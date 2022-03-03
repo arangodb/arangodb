@@ -36,7 +36,7 @@ class SpinLocker {
 
  public:
   SpinLocker(Mode mode, ReadWriteSpinLock& lock, bool doLock = true,
-             Effort effort = Effort::Succeed) noexcept
+             Effort effort = Effort::Succeed)
       : _lock(lock), _mode(mode), _locked(false) {
     if (doLock) {
       if (effort == Effort::Succeed) {
@@ -56,8 +56,7 @@ class SpinLocker {
     }
   }
 
-  SpinLocker(Mode mode, ReadWriteSpinLock& lock,
-             std::size_t maxAttempts) noexcept
+  SpinLocker(Mode mode, ReadWriteSpinLock& lock, std::size_t maxAttempts)
       : _lock(lock), _mode(mode), _locked(false) {
     if (_mode == Mode::Read) {
       _locked = _lock.lockRead(maxAttempts);
@@ -68,7 +67,7 @@ class SpinLocker {
 
   ~SpinLocker() { release(); }
 
-  SpinLocker(SpinLocker&& other) noexcept
+  SpinLocker(SpinLocker&& other)
       : _lock(other._lock), _mode(other._mode), _locked(other._locked) {
     other._locked = false;
   }
@@ -80,9 +79,9 @@ class SpinLocker {
   SpinLocker(SpinLocker const&) = delete;
   SpinLocker& operator=(SpinLocker const&) = delete;
 
-  bool isLocked() const noexcept { return _locked; }
+  bool isLocked() const { return _locked; }
 
-  void release() noexcept {
+  void release() {
     if (_locked) {
       if (_mode == Mode::Read) {
         _lock.unlockRead();

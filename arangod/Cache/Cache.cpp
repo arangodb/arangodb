@@ -26,6 +26,7 @@
 #include <cmath>
 #include <cstdint>
 #include <limits>
+#include <list>
 #include <thread>
 
 #include "Cache/Cache.h"
@@ -48,13 +49,20 @@ namespace arangodb::cache {
 using SpinLocker = ::arangodb::basics::SpinLocker;
 using SpinUnlocker = ::arangodb::basics::SpinUnlocker;
 
-Cache::Cache(Manager* manager, std::uint64_t id, Metadata&& metadata,
-             std::shared_ptr<Table> table, bool enableWindowedStats,
+const std::uint64_t Cache::minSize = 16384;
+const std::uint64_t Cache::minLogSize = 14;
+
+std::uint64_t Cache::_findStatsCapacity = 16384;
+
+Cache::Cache(ConstructionGuard guard, Manager* manager, std::uint64_t id,
+             Metadata&& metadata, std::shared_ptr<Table> table,
+             bool enableWindowedStats,
              std::function<Table::BucketClearer(Metadata*)> bucketClearer,
              std::size_t slotsPerBucket)
     : _taskLock(),
       _shutdown(false),
       _enableWindowedStats(enableWindowedStats),
+      _findStats(nullptr),
       _findHits(),
       _findMisses(),
       _manager(manager),
@@ -74,16 +82,17 @@ Cache::Cache(Manager* manager, std::uint64_t id, Metadata&& metadata,
   _table->enable();
   if (_enableWindowedStats) {
     try {
-      _findStats = std::make_unique<StatBuffer>(manager->sharedPRNG(),
-                                                findStatsCapacity);
+      _findStats.reset(
+          new StatBuffer(manager->sharedPRNG(), _findStatsCapacity));
     } catch (std::bad_alloc const&) {
+      _findStats.reset(nullptr);
       _enableWindowedStats = false;
     }
   }
 }
 
 std::uint64_t Cache::size() const {
-  if (isShutdown()) [[unlikely]] {
+  if (isShutdown()) {
     return 0;
   }
 
@@ -92,7 +101,7 @@ std::uint64_t Cache::size() const {
 }
 
 std::uint64_t Cache::usageLimit() const {
-  if (isShutdown()) [[unlikely]] {
+  if (isShutdown()) {
     return 0;
   }
 
@@ -101,7 +110,7 @@ std::uint64_t Cache::usageLimit() const {
 }
 
 std::uint64_t Cache::usage() const {
-  if (isShutdown()) [[unlikely]] {
+  if (isShutdown()) {
     return false;
   }
 
@@ -110,7 +119,7 @@ std::uint64_t Cache::usage() const {
 }
 
 void Cache::sizeHint(uint64_t numElements) {
-  if (isShutdown()) [[unlikely]] {
+  if (isShutdown()) {
     return;
   }
 
@@ -161,8 +170,8 @@ std::pair<double, double> Cache::hitRates() {
   return std::pair<double, double>(lifetimeRate, windowedRate);
 }
 
-bool Cache::isResizing() const noexcept {
-  if (isShutdown()) [[unlikely]] {
+bool Cache::isResizing() {
+  if (isShutdown()) {
     return false;
   }
 
@@ -170,8 +179,8 @@ bool Cache::isResizing() const noexcept {
   return _metadata.isResizing();
 }
 
-bool Cache::isMigrating() const noexcept {
-  if (isShutdown()) [[unlikely]] {
+bool Cache::isMigrating() {
+  if (isShutdown()) {
     return false;
   }
 
@@ -179,8 +188,8 @@ bool Cache::isMigrating() const noexcept {
   return _metadata.isMigrating();
 }
 
-bool Cache::isBusy() const noexcept {
-  if (isShutdown()) [[unlikely]] {
+bool Cache::isBusy() {
+  if (isShutdown()) {
     return false;
   }
 
@@ -190,23 +199,21 @@ bool Cache::isBusy() const noexcept {
 
 Cache::Inserter::Inserter(Cache& cache, void const* key, std::size_t keySize,
                           void const* value, std::size_t valueSize,
-                          std::function<bool(Result const&)> const& retry) {
+                          std::function<bool(Result const&)> retry) {
   std::unique_ptr<CachedValue> cv{
       CachedValue::construct(key, keySize, value, valueSize)};
-  if (cv) [[likely]] {
-    do {
-      status = cache.insert(cv.get());
-      if (status.ok()) {
-        cv.release();
-        break;
-      }
-      if (!retry(status)) {
-        break;
-      }
-      basics::cpu_relax();
-    } while (true);
-  } else {
+  if (!cv) {
     status.reset(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  status = cache.insert(cv.get());
+  while (status.fail() && retry(status)) {
+    basics::cpu_relax();
+    status = cache.insert(cv.get());
+  }
+
+  if (status.ok()) {
+    cv.release();
   }
 }
 
@@ -387,7 +394,7 @@ void Cache::shutdown() {
 }
 
 bool Cache::canResize() {
-  if (isShutdown()) [[unlikely]] {
+  if (isShutdown()) {
     return false;
   }
 
@@ -396,7 +403,7 @@ bool Cache::canResize() {
 }
 
 bool Cache::canMigrate() {
-  if (isShutdown()) [[unlikely]] {
+  if (isShutdown()) {
     return false;
   }
 
@@ -417,7 +424,7 @@ bool Cache::canMigrate() {
 /// That way we still visit the buckets in a sufficiently random order, but we
 /// are guaranteed to make progress in a finite amount of time.
 bool Cache::freeMemory() {
-  if (isShutdown()) [[unlikely]] {
+  if (isShutdown()) {
     return false;
   }
 
@@ -448,7 +455,7 @@ bool Cache::freeMemory() {
 }
 
 bool Cache::migrate(std::shared_ptr<Table> newTable) {
-  if (isShutdown()) [[unlikely]] {
+  if (isShutdown()) {
     return false;
   }
 

@@ -26,6 +26,7 @@
 #include <atomic>
 #include <chrono>
 #include <cstdint>
+#include <list>
 
 #include "Cache/Cache.h"
 #include "Cache/CachedValue.h"
@@ -38,7 +39,8 @@
 #include "Cache/PlainBucket.h"
 #include "Cache/Table.h"
 
-namespace arangodb::cache {
+namespace arangodb {
+namespace cache {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief A simple, LRU-ish cache.
@@ -58,6 +60,7 @@ class PlainCache final : public Cache {
   PlainCache(PlainCache const&) = delete;
   PlainCache& operator=(PlainCache const&) = delete;
 
+ public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Looks up the given key.
   ///
@@ -98,14 +101,8 @@ class PlainCache final : public Cache {
   friend class Manager;
   friend class MigrateTask;
 
-  static constexpr uint64_t allocationSize(bool enableWindowedStats) {
-    return sizeof(PlainCache) +
-           (enableWindowedStats
-                ? (sizeof(StatBuffer) +
-                   StatBuffer::allocationSize(findStatsCapacity))
-                : 0);
-  }
-
+ private:
+  static uint64_t allocationSize(bool enableWindowedStats);
   static std::shared_ptr<Cache> create(Manager* manager, std::uint64_t id,
                                        Metadata&& metadata,
                                        std::shared_ptr<Table> table,
@@ -120,8 +117,10 @@ class PlainCache final : public Cache {
   std::pair<Result, Table::BucketLocker> getBucket(std::uint32_t hash,
                                                    std::uint64_t maxTries,
                                                    bool singleOperation = true);
+  uint32_t getIndex(std::uint32_t hash, bool useAuxiliary) const;
 
   static Table::BucketClearer bucketClearer(Metadata* metadata);
 };
 
-}  // end namespace arangodb::cache
+};  // end namespace cache
+};  // end namespace arangodb

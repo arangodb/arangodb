@@ -43,12 +43,12 @@ Finding::Finding(CachedValue* v, Result const& r) : _value(v), _result(r) {
   }
 }
 
-Finding::Finding(Finding&& other) noexcept
+Finding::Finding(Finding&& other)
     : _value(other._value), _result(std::move(other._result)) {
   other._value = nullptr;
 }
 
-Finding& Finding::operator=(Finding&& other) noexcept {
+Finding& Finding::operator=(Finding&& other) {
   if (&other == this) {
     return *this;
   }
@@ -100,7 +100,7 @@ void Finding::reset(CachedValue* v) {
 
 void Finding::reportError(Result const& r) { _result = r; }
 
-bool Finding::found() const noexcept { return (_value != nullptr); }
+bool Finding::found() const { return (_value != nullptr); }
 
 CachedValue const* Finding::value() const { return _value; }
 
@@ -108,6 +108,6 @@ CachedValue* Finding::copy() const {
   return ((_value == nullptr) ? nullptr : _value->copy());
 }
 
-Result const& Finding::result() const noexcept { return _result; }
+Result const& Finding::result() const { return _result; }
 
 }  // namespace arangodb::cache

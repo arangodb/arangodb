@@ -46,9 +46,8 @@
 
 namespace arangodb {
 class SharedPRNGFeature;
-}
 
-namespace arangodb::cache {
+namespace cache {
 
 class Cache;           // forward declaration
 class FreeMemoryTask;  // forward declaration
@@ -78,7 +77,7 @@ class Manager {
   typedef std::function<bool(std::function<void()>)> PostFn;
 
  public:
-  static constexpr std::uint64_t minSize = 1024 * 1024;
+  static const std::uint64_t minSize;
   typedef FrequencyBuffer<uint64_t> AccessStatBuffer;
   typedef FrequencyBuffer<uint8_t> FindStatBuffer;
   typedef std::vector<std::pair<std::shared_ptr<Cache>&, double>> PriorityList;
@@ -204,6 +203,7 @@ class Manager {
   std::uint64_t _nextCacheId;
 
   // actual tables to lease out
+
   std::array<
       std::stack<std::shared_ptr<Table>, std::vector<std::shared_ptr<Table>>>,
       32>
@@ -296,4 +296,5 @@ class Manager {
   [[nodiscard]] bool pastRebalancingGracePeriod() const;
 };
 
-}  // end namespace arangodb::cache
+};  // end namespace cache
+};  // end namespace arangodb

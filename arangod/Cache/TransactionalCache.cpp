@@ -22,7 +22,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <atomic>
+#include <chrono>
 #include <cstdint>
+#include <list>
 
 #include "Cache/TransactionalCache.h"
 
@@ -48,19 +50,22 @@ Finding TransactionalCache::find(void const* key, std::uint32_t keySize) {
   std::uint32_t hash = hashKey(key, keySize);
 
   auto [status, guard] = getBucket(hash, Cache::triesFast, false);
-  if (status != TRI_ERROR_NO_ERROR) {
+  if (status.fail()) {
     result.reportError(status);
-  } else {
-    TransactionalBucket& bucket = guard.bucket<TransactionalBucket>();
-    result.set(bucket.find(hash, key, keySize));
-    if (result.found()) {
-      recordStat(Stat::findHit);
-    } else {
-      recordStat(Stat::findMiss);
-      result.reportError(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
-    }
-    recordStat(result.found() ? Stat::findHit : Stat::findMiss);
+    return result;
   }
+
+  TransactionalBucket& bucket = guard.bucket<TransactionalBucket>();
+  result.set(bucket.find(hash, key, keySize));
+  if (result.found()) {
+    recordStat(Stat::findHit);
+  } else {
+    recordStat(Stat::findMiss);
+    status.reset(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+    result.reportError(status);
+  }
+  recordStat(result.found() ? Stat::findHit : Stat::findMiss);
+
   return result;
 }
 
@@ -218,6 +223,13 @@ Result TransactionalCache::banish(void const* key, std::uint32_t keySize) {
   return status;
 }
 
+uint64_t TransactionalCache::allocationSize(bool enableWindowedStats) {
+  return sizeof(TransactionalCache) +
+         (enableWindowedStats ? (sizeof(StatBuffer) +
+                                 StatBuffer::allocationSize(_findStatsCapacity))
+                              : 0);
+}
+
 std::shared_ptr<Cache> TransactionalCache::create(Manager* manager,
                                                   std::uint64_t id,
                                                   Metadata&& metadata,
@@ -228,12 +240,12 @@ std::shared_ptr<Cache> TransactionalCache::create(Manager* manager,
                                               table, enableWindowedStats);
 }
 
-TransactionalCache::TransactionalCache(Cache::ConstructionGuard /*guard*/,
+TransactionalCache::TransactionalCache(Cache::ConstructionGuard guard,
                                        Manager* manager, std::uint64_t id,
                                        Metadata&& metadata,
                                        std::shared_ptr<Table> table,
                                        bool enableWindowedStats)
-    : Cache(manager, id, std::move(metadata), table, enableWindowedStats,
+    : Cache(guard, manager, id, std::move(metadata), table, enableWindowedStats,
             TransactionalCache::bucketClearer, TransactionalBucket::slotsData) {
 }
 
@@ -391,29 +403,30 @@ void TransactionalCache::migrateBucket(void* sourcePtr,
   source._state.toggleFlag(BucketState::Flag::migrated);
 }
 
-std::tuple<::ErrorCode, Table::BucketLocker> TransactionalCache::getBucket(
+std::tuple<Result, Table::BucketLocker> TransactionalCache::getBucket(
     std::uint32_t hash, std::uint64_t maxTries, bool singleOperation) {
-  ::ErrorCode status = TRI_ERROR_NO_ERROR;
+  Result status;
   Table::BucketLocker guard;
 
   std::shared_ptr<Table> table = this->table();
-  if (isShutdown() || table == nullptr) [[unlikely]] {
-    status = TRI_ERROR_SHUTTING_DOWN;
-  } else {
-    if (singleOperation) {
-      _manager->reportAccess(_id);
-    }
-
-    std::uint64_t term = _manager->_transactions.term();
-    guard = table->fetchAndLockBucket(hash, maxTries);
-    if (guard.isLocked()) {
-      guard.bucket<TransactionalBucket>().updateBanishTerm(term);
-    } else {
-      status = TRI_ERROR_LOCK_TIMEOUT;
-    }
+  if (isShutdown() || table == nullptr) {
+    status.reset(TRI_ERROR_SHUTTING_DOWN);
+    return std::make_tuple(std::move(status), std::move(guard));
   }
 
-  return std::make_tuple(status, std::move(guard));
+  if (singleOperation) {
+    _manager->reportAccess(_id);
+  }
+
+  std::uint64_t term = _manager->_transactions.term();
+  guard = table->fetchAndLockBucket(hash, maxTries);
+  if (guard.isLocked()) {
+    guard.bucket<TransactionalBucket>().updateBanishTerm(term);
+  } else {
+    status.reset(TRI_ERROR_LOCK_TIMEOUT);
+  }
+
+  return std::make_tuple(std::move(status), std::move(guard));
 }
 
 Table::BucketClearer TransactionalCache::bucketClearer(Metadata* metadata) {
