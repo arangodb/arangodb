@@ -29,13 +29,13 @@ namespace arangodb::replication2::replicated_log {
 
 struct ParticipantHealth {
   RebootId rebootId;
-  bool isHealthy;
+  bool notIsFailed;
 };
 
 struct ParticipantsHealth {
-  auto isHealthy(ParticipantId const& participant) const -> bool {
+  auto notIsFailed(ParticipantId const& participant) const -> bool {
     if (auto it = _health.find(participant); it != std::end(_health)) {
-      return it->second.isHealthy;
+      return it->second.notIsFailed;
     }
     return false;
   };

@@ -2575,13 +2575,14 @@ void Supervision::checkReplicatedLogs() {
     std::unordered_map<replication2::ParticipantId, ParticipantHealth> info;
     auto& dbservers = snapshot().hasAsChildren(plannedServers).value().get();
     for (auto const& [serverId, node] : dbservers) {
-      bool const isHealthy = serverHealth(serverId) == HEALTH_STATUS_GOOD;
+      bool const notIsFailed = (serverHealth(serverId) == HEALTH_STATUS_GOOD) or
+                               (serverHealth(serverId) == HEALTH_STATUS_BAD);
 
       auto rebootID = snapshot().hasAsUInt(basics::StringUtils::concatT(
           curServersKnown, serverId, "/", StaticStrings::RebootId));
       if (rebootID) {
         info.emplace(serverId,
-                     ParticipantHealth{RebootId{*rebootID}, isHealthy});
+                     ParticipantHealth{RebootId{*rebootID}, notIsFailed});
       }
     }
     return ParticipantsHealth{info};
@@ -2694,7 +2695,7 @@ void Supervision::checkReplicatedStates() {
 
       auto action = std::invoke(
           [&, &dbName = dbName, &idString = idString]()
-              -> std::unique_ptr<replication2::replicated_state::Action> {
+              -> std::optional<replication2::replicated_state::Action> {
             try {
               return replication2::replicated_state::checkReplicatedState(
                   log, state);
@@ -2704,12 +2705,13 @@ void Supervision::checkReplicatedStates() {
                      "for "
                      "replicated log "
                   << dbName << "/" << idString << ": " << err.what();
-              return nullptr;
+              return std::nullopt;
             }
           });
 
-      if (action != nullptr) {
-        envelope = action->execute(dbName, std::move(envelope));
+      if (action.has_value()) {
+        envelope =
+            execute(state.target.id, dbName, *action, std::move(envelope));
       }
     }
   }

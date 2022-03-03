@@ -52,7 +52,7 @@ function TransactionsInvocationsSuite() {
       let params = { doc: [] };
       let level = 0;
       let start = params.doc;
-      while (level < 64) {
+      while (level < 180) {
         start.push([]);
         start = start[0];
         ++level;
@@ -74,7 +74,7 @@ function TransactionsInvocationsSuite() {
       let params = { doc: [] };
       let level = 0;
       let start = params.doc;
-      while (level < 77) {
+      while (level < 197) {
         start.push([]);
         start = start[0];
         ++level;
@@ -103,7 +103,7 @@ function TransactionsInvocationsSuite() {
       let params = { doc: [] };
       let level = 0;
       let start = params.doc;
-      while (level < 100) {
+      while (level < 199) {
         start.push([]);
         start = start[0];
         ++level;
@@ -129,7 +129,7 @@ function TransactionsInvocationsSuite() {
       let params = { doc: {} };
       let level = 0;
       let start = params.doc;
-      while (level < 64) {
+      while (level < 180) {
         start.doc = {};
         start = start.doc;
         ++level;
@@ -151,7 +151,7 @@ function TransactionsInvocationsSuite() {
       let params = { doc: {} };
       let level = 0;
       let start = params.doc;
-      while (level < 77) {
+      while (level < 197) {
         start.doc = {};
         start = start.doc;
         ++level;
@@ -180,7 +180,7 @@ function TransactionsInvocationsSuite() {
       let params = { doc: {} };
       let level = 0;
       let start = params.doc;
-      while (level < 100) {
+      while (level < 199) {
         start.doc = {};
         start = start.doc;
         ++level;
