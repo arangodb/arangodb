@@ -2620,11 +2620,8 @@ void Supervision::checkReplicatedLogs() {
             }
           });
 
-      auto maybeLogId = replication2::LogId::fromString(idString);
-
-      if (maybeAction && maybeLogId) {
+      if (maybeAction) {
         auto const& action = *maybeAction;
-        auto const& logId = *maybeLogId;
 
         if (target.supervision.has_value() &&
             target.supervision->maxActionsTraceLength > 0) {
@@ -2650,7 +2647,7 @@ void Supervision::checkReplicatedLogs() {
                   .end();
         }
         envelope = arangodb::replication2::replicated_log::execute(
-            action, dbName, logId, std::move(envelope));
+            action, dbName, target.id, std::move(envelope));
       }
     }
   }
