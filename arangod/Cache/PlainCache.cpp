@@ -46,24 +46,19 @@ Finding PlainCache::find(void const* key, std::uint32_t keySize) {
   Finding result;
   std::uint32_t hash = hashKey(key, keySize);
 
-  Result status;
-  Table::BucketLocker guard;
-  std::tie(status, guard) = getBucket(hash, Cache::triesFast);
-  if (status.fail()) {
+  auto [status, guard] = getBucket(hash, Cache::triesFast);
+  if (status != TRI_ERROR_NO_ERROR) {
     result.reportError(status);
-    return result;
-  }
-
-  PlainBucket& bucket = guard.bucket<PlainBucket>();
-  result.set(bucket.find(hash, key, keySize));
-  if (result.found()) {
-    recordStat(Stat::findHit);
   } else {
-    recordStat(Stat::findMiss);
-    status.reset(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
-    result.reportError(status);
+    PlainBucket& bucket = guard.bucket<PlainBucket>();
+    result.set(bucket.find(hash, key, keySize));
+    if (result.found()) {
+      recordStat(Stat::findHit);
+    } else {
+      recordStat(Stat::findMiss);
+      result.reportError(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+    }
   }
-
   return result;
 }
 
@@ -290,27 +285,26 @@ void PlainCache::migrateBucket(void* sourcePtr,
   source._state.toggleFlag(BucketState::Flag::migrated);
 }
 
-std::pair<Result, Table::BucketLocker> PlainCache::getBucket(
+std::pair<::ErrorCode, Table::BucketLocker> PlainCache::getBucket(
     std::uint32_t hash, std::uint64_t maxTries, bool singleOperation) {
-  Result status;
+  ::ErrorCode status = TRI_ERROR_NO_ERROR;
   Table::BucketLocker guard;
 
   std::shared_ptr<Table> table = this->table();
-  if (isShutdown() || table == nullptr) {
-    status.reset(TRI_ERROR_SHUTTING_DOWN);
-    return std::make_pair(std::move(status), std::move(guard));
+  if (ADB_UNLIKELY(isShutdown() || table == nullptr)) {
+    status = TRI_ERROR_SHUTTING_DOWN;
+  } else {
+    if (singleOperation) {
+      _manager->reportAccess(_id);
+    }
+
+    guard = table->fetchAndLockBucket(hash, maxTries);
+    if (!guard.isLocked()) {
+      status = TRI_ERROR_LOCK_TIMEOUT;
+    }
   }
 
-  if (singleOperation) {
-    _manager->reportAccess(_id);
-  }
-
-  guard = table->fetchAndLockBucket(hash, maxTries);
-  if (!guard.isLocked()) {
-    status.reset(TRI_ERROR_LOCK_TIMEOUT);
-  }
-
-  return std::make_pair(std::move(status), std::move(guard));
+  return std::make_pair(status, std::move(guard));
 }
 
 Table::BucketClearer PlainCache::bucketClearer(Metadata* metadata) {

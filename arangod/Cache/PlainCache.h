@@ -23,10 +23,9 @@
 
 #pragma once
 
-#include <atomic>
-#include <chrono>
 #include <cstdint>
 
+#include "Basics/ErrorCode.h"
 #include "Cache/Cache.h"
 #include "Cache/CachedValue.h"
 #include "Cache/Common.h"
@@ -117,9 +116,8 @@ class PlainCache final : public Cache {
                              std::shared_ptr<Table> newTable) override;
 
   // helpers
-  std::pair<Result, Table::BucketLocker> getBucket(std::uint32_t hash,
-                                                   std::uint64_t maxTries,
-                                                   bool singleOperation = true);
+  std::pair<::ErrorCode, Table::BucketLocker> getBucket(
+      std::uint32_t hash, std::uint64_t maxTries, bool singleOperation = true);
 
   static Table::BucketClearer bucketClearer(Metadata* metadata);
 };
