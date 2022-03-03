@@ -1830,6 +1830,34 @@ TEST(ValidatorTest, ArrayCompactNrItemsWrong3) {
   ASSERT_VELOCYPACK_EXCEPTION(validator.validate(value.c_str(), value.size()), Exception::ValidatorInvalidLength);
 }
 
+TEST(ValidatorTest, ArrayCompactNrItemsExceedsBytesize) {
+  std::string const value("\x13\x06\x42\x40\x40\x02", 6);
+
+  Validator validator;
+  ASSERT_VELOCYPACK_EXCEPTION(validator.validate(value.c_str(), value.size()), Exception::ValidatorInvalidLength);
+}
+
+TEST(ValidatorTest, ArrayCompactMemberExceedsBytesize1) {
+  std::string const value("\x13\x06\x43\x40\x40\x02", 6);
+
+  Validator validator;
+  ASSERT_VELOCYPACK_EXCEPTION(validator.validate(value.c_str(), value.size()), Exception::ValidatorInvalidLength);
+}
+
+TEST(ValidatorTest, ArrayCompactMemberExceedsBytesize2) {
+  std::string const value("\x13\x06\x44\x40\x40\x02", 6);
+
+  Validator validator;
+  ASSERT_VELOCYPACK_EXCEPTION(validator.validate(value.c_str(), value.size()), Exception::ValidatorInvalidLength);
+}
+
+TEST(ValidatorTest, ArrayCompactMemberExceedsBytesize3) {
+  std::string const value("\x13\x06\x45\x40\x40\x02", 6);
+
+  Validator validator;
+  ASSERT_VELOCYPACK_EXCEPTION(validator.validate(value.c_str(), value.size()), Exception::ValidatorInvalidLength);
+}
+
 TEST(ValidatorTest, ArrayCompactManyEntries) {
   Builder b;
   b.openArray(true);
