@@ -28,9 +28,10 @@
 #include "Replication2/Streams/Streams.h"
 
 namespace arangodb::futures {
+struct Unit;
 template<typename T>
 class Future;
-}
+}  // namespace arangodb::futures
 namespace arangodb {
 class Result;
 }
@@ -42,6 +43,9 @@ struct ILogLeader;
 }  // namespace replicated_log
 
 namespace replicated_state {
+
+template<typename S>
+struct FollowerStateManager;
 
 struct IReplicatedLeaderStateBase {
   virtual ~IReplicatedLeaderStateBase() = default;
@@ -87,7 +91,10 @@ struct IReplicatedFollowerState : IReplicatedFollowerStateBase {
   using Stream = streams::Stream<EntryType>;
   using EntryIterator = typename Stream::Iterator;
 
-  // TODO make functions protected
+  using WaitForAppliedFuture = futures::Future<futures::Unit>;
+  [[nodiscard]] auto waitForApplied(LogIndex index) -> WaitForAppliedFuture;
+
+ protected:
   /**
    * Called by the state machine manager if new log entries have been committed
    * and are ready to be applied to the state machine. The implementation
@@ -116,12 +123,23 @@ struct IReplicatedFollowerState : IReplicatedFollowerStateBase {
                                LogIndex localCommitIndex) noexcept
       -> futures::Future<Result> = 0;
 
-  [[nodiscard]] auto getStream() const -> std::shared_ptr<Stream> const&;
-
+  /**
+   * TODO Comment missing
+   * @return
+   */
   [[nodiscard]] virtual auto resign() && noexcept
       -> std::unique_ptr<CoreType> = 0;
 
-  // TODO make private
+ protected:
+  [[nodiscard]] auto getStream() const -> std::shared_ptr<Stream> const&;
+
+ private:
+  friend struct FollowerStateManager<S>;
+
+  void setStateManager(
+      std::shared_ptr<FollowerStateManager<S>> manager) noexcept;
+
+  std::weak_ptr<FollowerStateManager<S>> _manager;
   std::shared_ptr<Stream> _stream;
 };
 }  // namespace replicated_state
