@@ -1,6 +1,10 @@
 v3.9.1 (XXXX-XX-XX)
 -------------------
 
+* Avoid multiple parallel SIGHUP requests to be handled at the same time.
+  Now collapse multiple incoming SIGHUP requests into a single one, which can be
+  executed race-free.
+
 * Upgraded JavaScript "i" module from 0.3.6 to 0.3.7.
 
 * Removed internal JavaScript dependencies "mocha" and "chalk". We recommend
