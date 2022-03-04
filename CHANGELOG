@@ -2,8 +2,8 @@ v3.9.1 (XXXX-XX-XX)
 -------------------
 
 * Added `disableIndex` index hint for AQL FOR loops. This index hint disables
-  the usage of any index (except geo or full text indexes) and will cause a
-  full scan over the collection.
+  the usage of any index (except geo or full text indexes) and will cause a full
+  scan over the collection.
   In some circumstances a full scan can be more efficient than an index scan,
   for example if the index scan produces many matches (close to the number of
   documents in the collection) and the index is not fully covering the query.
@@ -30,6 +30,10 @@ v3.9.1 (XXXX-XX-XX)
 
   The default value for `maxProjections` is `5`, which is compatible with the
   previous hard-coded default value.
+
+* Avoid a deadlock in agency, when Inception::gossip() acquired a mutex, then
+  could call Agent under the mutex, and Agent could finally could call
+  Inception::signalConditionVar(), which would try to acquire the mutex again.
 
 * Avoid multiple parallel SIGHUP requests to be handled at the same time.
   Now collapse multiple incoming SIGHUP requests into a single one, which can be
