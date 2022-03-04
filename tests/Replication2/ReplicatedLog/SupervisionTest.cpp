@@ -22,10 +22,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <gtest/gtest.h>
+#include <variant>
 
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/Supervision.h"
+#include "Replication2/ReplicatedLog/SupervisionAction.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -161,11 +163,9 @@ TEST_F(LeaderStateMachineTest, test_election_success) {
                                           .notIsFailed = true}}}};
 
   auto r = tryLeadershipElection(plan, current, health);
-  EXPECT_NE(r, nullptr);
+  EXPECT_TRUE(std::holds_alternative<LeaderElectionAction>(r));
 
-  EXPECT_EQ(r->type(), Action::ActionType::LeaderElectionAction) << *r;
-
-  auto& action = dynamic_cast<LeaderElectionAction&>(*r);
+  auto& action = std::get<LeaderElectionAction>(r);
   EXPECT_EQ(action._election.outcome,
             LogCurrentSupervisionElection::Outcome::SUCCESS);
 
@@ -216,10 +216,9 @@ TEST_F(LeaderStateMachineTest, test_election_fails) {
 
   auto r = checkLeaderFailed(plan, health);
 
-  ASSERT_NE(r, nullptr);
-  EXPECT_EQ(r->type(), Action::ActionType::UpdateTermAction);
+  EXPECT_TRUE(std::holds_alternative<UpdateTermAction>(r));
 
-  auto& action = dynamic_cast<UpdateTermAction&>(*r);
+  auto& action = std::get<UpdateTermAction>(r);
 
   // TODO: Friend op == for newTerm
   EXPECT_EQ(action._newTerm.term, LogTerm{plan.currentTerm->term.value + 1});
@@ -261,11 +260,9 @@ TEST_F(LeaderStateMachineTest, test_election_leader_with_higher_term) {
 
   auto r = tryLeadershipElection(plan, current, health);
 
-  ASSERT_NE(r, nullptr);
+  EXPECT_TRUE(std::holds_alternative<LeaderElectionAction>(r));
 
-  EXPECT_EQ(r->type(), Action::ActionType::LeaderElectionAction) << *r;
-
-  auto& action = dynamic_cast<LeaderElectionAction&>(*r);
+  auto& action = std::get<LeaderElectionAction>(r);
   EXPECT_TRUE(bool(action._newTerm));
   EXPECT_TRUE(bool(action._newTerm->leader));
   EXPECT_EQ(action._newTerm->leader->serverId, "C");
@@ -290,9 +287,7 @@ TEST_F(LeaderStateMachineTest, test_leader_intact) {
                                           .notIsFailed = true}}}};
 
   auto r = checkLeaderFailed(plan, health);
-
-  EXPECT_NE(r, nullptr);
-  EXPECT_EQ(r->type(), Action::ActionType::EmptyAction);
+  EXPECT_TRUE(std::holds_alternative<EmptyAction>(r));
 }
 
 struct SupervisionLogTest : ::testing::Test {};
@@ -311,10 +306,9 @@ TEST_F(SupervisionLogTest, test_log_created) {
                         .current = std::nullopt},
                     ParticipantsHealth{});
 
-  EXPECT_NE(r, nullptr);
-  EXPECT_EQ(r->type(), Action::ActionType::AddLogToPlanAction) << *r;
+  EXPECT_TRUE(std::holds_alternative<AddLogToPlanAction>(r));
 
-  auto& action = dynamic_cast<AddLogToPlanAction&>(*r);
+  auto& action = std::get<AddLogToPlanAction>(r);
   EXPECT_EQ(
       action._spec.participantsConfig,
       (ParticipantsConfig{.generation = 1, .participants = participants}));
@@ -336,8 +330,7 @@ TEST_F(SupervisionLogTest, test_log_present) {
                         .current = std::nullopt},
                     ParticipantsHealth());
 
-  EXPECT_NE(r, nullptr);
-  EXPECT_EQ(r->type(), Action::ActionType::EmptyAction) << *r;
+  EXPECT_TRUE(std::holds_alternative<EmptyAction>(r));
 }
 
 TEST_F(SupervisionLogTest, test_checkleader_present) {
@@ -380,6 +373,5 @@ TEST_F(SupervisionLogTest, test_checkleader_present) {
                                           .notIsFailed = true}}}};
 
   auto r = checkLeaderPresent(plan, current, health);
-  EXPECT_NE(r, nullptr);
-  EXPECT_EQ(r->type(), Action::ActionType::EmptyAction) << *r;
+  EXPECT_TRUE(std::holds_alternative<EmptyAction>(r));
 }

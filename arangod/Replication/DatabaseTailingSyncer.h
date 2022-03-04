@@ -83,7 +83,7 @@ class DatabaseTailingSyncer : public TailingSyncer {
 
   Result inheritFromInitialSyncer(DatabaseInitialSyncer const& syncer);
   Result registerOnLeader();
-  void unregisterFromLeader();
+  void unregisterFromLeader(bool hardLocked);
 
  protected:
   Result syncCollectionCatchupInternal(std::string const& collectionName,

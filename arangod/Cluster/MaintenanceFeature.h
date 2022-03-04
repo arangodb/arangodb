@@ -403,7 +403,7 @@ class MaintenanceFeature : public ArangodFeature {
   containers::FlatHashSet<std::string> dirty(
       containers::FlatHashSet<std::string> const& = {});
   /// @brief get n random db names
-  std::unordered_set<std::string> pickRandomDirty(size_t n);
+  containers::FlatHashSet<std::string> pickRandomDirty(size_t n);
 
   /// @brief maximum number of replication error occurrences that are kept per
   /// shard.

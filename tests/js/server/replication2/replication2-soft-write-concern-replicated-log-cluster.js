@@ -117,19 +117,6 @@ const replicatedLogSuite = function () {
     };
   }());
 
-  const getReplicatedLogLeaderPlan = function (database, logId) {
-    let {plan} = readReplicatedLogAgency(database, logId);
-    if (!plan.currentTerm) {
-      throw Error("no current term in plan");
-    }
-    if (!plan.currentTerm.leader) {
-      throw Error("current term has no leader");
-    }
-    const leader = plan.currentTerm.leader.serverId;
-    const term = plan.currentTerm.term;
-    return {leader, term};
-  };
-
   const createReplicatedLogAndWaitForLeader = function (database) {
     const logId = nextUniqueLogId();
     const servers = _.sampleSize(dbservers, targetConfig.replicationFactor);
@@ -142,7 +129,7 @@ const replicatedLogSuite = function () {
 
     waitFor(replicatedLogLeaderEstablished(database, logId, undefined, servers));
 
-    const {leader, term} = getReplicatedLogLeaderPlan(database, logId);
+    const {leader, term} = helper.getReplicatedLogLeaderPlan(database, logId);
     const followers = _.difference(servers, [leader]);
     return {logId, servers, leader, term, followers};
   };
