@@ -1930,6 +1930,12 @@ void Ast::injectBindParameters(
             // "unused bind parameter
             // '@...' later.
             parameters.registerNode(param, node);
+          } else {
+            // double check that the already registered node has the correct
+            // type
+            TRI_ASSERT(cachedNode->type == NODE_TYPE_VIEW ||
+                       cachedNode->type == NODE_TYPE_COLLECTION);
+            TRI_ASSERT(cachedNode->getStringView() == name);
           }
         }
       } else if (node->type == NODE_TYPE_BOUND_ATTRIBUTE_ACCESS) {
