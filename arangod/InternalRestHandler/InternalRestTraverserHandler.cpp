@@ -259,6 +259,7 @@ void InternalRestTraverserHandler::queryEngine() {
     generateError(ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND, "");
     return;
   }
+  LOG_DEVEL << "Server produced: " << result.slice().toJson();
   generateResult(ResponseCode::OK, result.slice(), engine->context());
 }
 

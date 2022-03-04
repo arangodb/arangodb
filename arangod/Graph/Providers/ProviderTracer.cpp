@@ -114,6 +114,16 @@ void ProviderTracer<ProviderImpl>::addEdgeToBuilder(
 }
 
 template<class ProviderImpl>
+void ProviderTracer<ProviderImpl>::addEdgeIDToBuilder(
+    typename Step::Edge const& edge, arangodb::velocypack::Builder& builder) {
+  double start = TRI_microtime();
+  auto sg = arangodb::scopeGuard([&]() noexcept {
+    _stats["addEdgeToIDBuilder"].addTiming(TRI_microtime() - start);
+  });
+  return _impl.addEdgeIDToBuilder(edge, builder);
+}
+
+template<class ProviderImpl>
 void ProviderTracer<ProviderImpl>::destroyEngines() {
   double start = TRI_microtime();
   auto sg = arangodb::scopeGuard([&]() noexcept {

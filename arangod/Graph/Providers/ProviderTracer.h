@@ -73,6 +73,8 @@ class ProviderTracer {
                           arangodb::velocypack::Builder& builder);
   void addEdgeToBuilder(typename Step::Edge const& edge,
                         arangodb::velocypack::Builder& builder);
+  void addEdgeIDToBuilder(typename Step::Edge const& edge,
+                          arangodb::velocypack::Builder& builder);
 
   void prepareIndexExpressions(aql::Ast* ast);
 

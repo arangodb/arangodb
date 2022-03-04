@@ -440,6 +440,13 @@ auto ClusterProvider<StepImpl>::addEdgeToBuilder(
 }
 
 template<class StepImpl>
+auto ClusterProvider<StepImpl>::addEdgeIDToBuilder(
+    typename Step::Edge const& edge, arangodb::velocypack::Builder& builder)
+    -> void {
+  builder.add(VPackValue(edge.getID().begin()));
+}
+
+template<class StepImpl>
 void ClusterProvider<StepImpl>::prepareIndexExpressions(aql::Ast* ast) {
   // Nothing to do here. The variables are send over in a different way.
   // We do not make use of special indexes here anyways.
