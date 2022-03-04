@@ -12,7 +12,8 @@ const LinkPropertiesForm = ({
   formState,
   dispatch,
   disabled,
-  view
+  view,
+  addNew
 }: FormProps<FormState>) => {
   const [collection, setCollection, addDisabled, links] = useLinkState(
     formState,
@@ -54,13 +55,13 @@ const LinkPropertiesForm = ({
       }
     });
     setCollection("");
+    addNew === false;
   };
-
   return disabled && isEmpty(links) ? (
     <span>No links found.</span>
   ) : (
     <>
-      {!disabled && linkVal.length < 1 && (
+      {!disabled && addNew && (
         <NewLink
           disabled={addDisabled || !options.includes(collection)}
           addLink={addLink}
@@ -70,15 +71,17 @@ const LinkPropertiesForm = ({
         />
       )}
 
-      <LinkView
-        view={view}
-        link={linkVal}
-        links={links}
-        dispatch={
-          (dispatch as unknown) as Dispatch<DispatchArgs<LinkProperties>>
-        }
-        disabled={disabled}
-      />
+      {!addNew && (
+        <LinkView
+          view={view}
+          link={linkVal}
+          links={links}
+          dispatch={
+            (dispatch as unknown) as Dispatch<DispatchArgs<LinkProperties>>
+          }
+          disabled={disabled}
+        />
+      )}
       {/* {map(links, (properties, coll) => {
           return properties ? (
             <tr key={coll} style={{ borderBottom: "1px  solid #DDD" }}>

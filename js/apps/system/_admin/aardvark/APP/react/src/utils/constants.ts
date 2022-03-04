@@ -28,4 +28,5 @@ export type FormProps<FormState> = {
   dispatch: Dispatch<DispatchArgs<FormState>>;
   disabled?: boolean;
   view?: string;
+  addNew?: boolean
 };

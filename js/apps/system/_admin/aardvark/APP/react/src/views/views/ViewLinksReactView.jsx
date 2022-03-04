@@ -1,4 +1,4 @@
-import { cloneDeep } from "lodash";
+import { cloneDeep, isEmpty } from "lodash";
 import React, { useEffect, useReducer, useRef, useState } from "react";
 import {
   getReducer,
@@ -49,27 +49,29 @@ const ViewLinksReactView = ({ name }) => {
 
   const formState = state.formState;
 
-  const [newLink, setNewLink] = useState(false);
+  const [viewLink, setViewLink] = useState(false);
   const [icon, setIcon] = useState("fa-plus-circle");
+  const [newLink, setNewLink] = useState(false);
 
   const handleNewLinkClick = e => {
     e.preventDefault();
-    setNewLink(!newLink);
+    setNewLink(true);
+    setViewLink(true);
   };
 
   const handleBackClick = e => {
     e.preventDefault();
-    setNewLink(false);
+    setViewLink(false);
   };
 
   const handleViewLink = link => {
     console.log(link);
-    setNewLink(true);
+    setViewLink(true);
   };
 
   return (
     <div className={"centralContent"} id={"content"}>
-      {!newLink && (
+      {!viewLink && (
         <LinkList
           links={links}
           addClick={handleNewLinkClick}
@@ -77,7 +79,7 @@ const ViewLinksReactView = ({ name }) => {
           icon={icon}
         />
       )}
-      {newLink && (
+      {viewLink && (
         <div
           id={"modal-dialog"}
           className={"createModalDialog"}
@@ -94,6 +96,7 @@ const ViewLinksReactView = ({ name }) => {
                   dispatch={dispatch}
                   disabled={!isAdminUser}
                   view={name}
+                  addNew={newLink}
                 />
               </div>
             </div>
