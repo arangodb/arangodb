@@ -30,6 +30,7 @@
 #include "Basics/debugging.h"
 #include "Cache/BinaryHasher.h"
 #include "Cache/CachedValue.h"
+#include "Cache/VPackHasher.h"
 
 namespace arangodb::cache {
 
@@ -279,4 +280,17 @@ template CachedValue* TransactionalBucket::remove<BinaryHasher>(
 template CachedValue* TransactionalBucket::banish<BinaryHasher>(
     BinaryHasher const& hasher, std::uint32_t hash, void const* key,
     std::size_t keySize) noexcept;
+
+template CachedValue* TransactionalBucket::find<VPackHasher>(
+    VPackHasher const& hasher, std::uint32_t hash, void const* key,
+    std::size_t keySize, bool moveToFront) noexcept;
+
+template CachedValue* TransactionalBucket::remove<VPackHasher>(
+    VPackHasher const& hasher, std::uint32_t hash, void const* key,
+    std::size_t keySize) noexcept;
+
+template CachedValue* TransactionalBucket::banish<VPackHasher>(
+    VPackHasher const& hasher, std::uint32_t hash, void const* key,
+    std::size_t keySize) noexcept;
+
 }  // namespace arangodb::cache

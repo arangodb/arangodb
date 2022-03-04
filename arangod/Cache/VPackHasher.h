@@ -25,22 +25,28 @@
 
 #include <utility>
 #include <cstdint>
-#include <cstring>
 
-#include "Basics/fasthash.h"
+#include "Basics/VelocyPackHelper.h"
+
+#include <velocypack/Slice.h>
 
 namespace arangodb::cache {
 
-struct BinaryHasher {
+struct VPackHasher {
   inline std::uint32_t hashKey(void const* key,
-                               std::size_t keySize) const noexcept {
+                               std::size_t /*keySize*/) const noexcept {
     return (std::max)(static_cast<std::uint32_t>(1),
-                      fasthash32(key, keySize, 0xdeadbeefUL));
+                      VPackSlice(static_cast<std::uint8_t const*>(key))
+                          .normalizedHash32(0xdeadbeefUL));
   }
 
-  inline bool sameKey(void const* key1, std::size_t keySize1, void const* key2,
-                      std::size_t keySize2) const noexcept {
-    return (keySize1 == keySize2 && (0 == std::memcmp(key1, key2, keySize1)));
+  inline bool sameKey(void const* key1, std::size_t /*keySize1*/,
+                      void const* key2,
+                      std::size_t /*keySize2*/) const noexcept {
+    int res = arangodb::basics::VelocyPackHelper::compare(
+        VPackSlice(static_cast<std::uint8_t const*>(key1)),
+        VPackSlice(static_cast<std::uint8_t const*>(key2)), true);
+    return res == 0;
   }
 };
 

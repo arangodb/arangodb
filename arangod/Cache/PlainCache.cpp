@@ -27,6 +27,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/voc-errors.h"
+#include "Cache/BinaryHasher.h"
 #include "Cache/Cache.h"
 #include "Cache/CachedValue.h"
 #include "Cache/Common.h"
@@ -35,17 +36,21 @@
 #include "Cache/Metadata.h"
 #include "Cache/PlainBucket.h"
 #include "Cache/Table.h"
+#include "Cache/VPackHasher.h"
 
 namespace arangodb::cache {
 
 using SpinLocker = ::arangodb::basics::SpinLocker;
 
-Finding PlainCache::find(void const* key, std::uint32_t keySize) {
+template<typename Hasher>
+Finding PlainCache<Hasher>::find(void const* key, std::uint32_t keySize) {
   TRI_ASSERT(key != nullptr);
   Finding result;
   std::uint32_t hash = _hasher.hashKey(key, keySize);
 
-  auto [status, guard] = getBucket(hash, Cache::triesFast);
+  ::ErrorCode status = TRI_ERROR_NO_ERROR;
+  Table::BucketLocker guard;
+  std::tie(status, guard) = getBucket(hash, Cache::triesFast);
   if (status != TRI_ERROR_NO_ERROR) {
     result.reportError(status);
   } else {
@@ -61,7 +66,8 @@ Finding PlainCache::find(void const* key, std::uint32_t keySize) {
   return result;
 }
 
-Result PlainCache::insert(CachedValue* value) {
+template<typename Hasher>
+Result PlainCache<Hasher>::insert(CachedValue* value) {
   TRI_ASSERT(value != nullptr);
   bool maybeMigrate = false;
   std::uint32_t hash = _hasher.hashKey(value->key(), value->keySize());
@@ -130,7 +136,8 @@ Result PlainCache::insert(CachedValue* value) {
   return status;
 }
 
-Result PlainCache::remove(void const* key, std::uint32_t keySize) {
+template<typename Hasher>
+Result PlainCache<Hasher>::remove(void const* key, std::uint32_t keySize) {
   TRI_ASSERT(key != nullptr);
   bool maybeMigrate = false;
   std::uint32_t hash = _hasher.hashKey(key, keySize);
@@ -169,26 +176,32 @@ Result PlainCache::remove(void const* key, std::uint32_t keySize) {
   return status;
 }
 
-Result PlainCache::banish(void const* key, std::uint32_t keySize) {
+template<typename Hasher>
+Result PlainCache<Hasher>::banish(void const* key, std::uint32_t keySize) {
   return {TRI_ERROR_NOT_IMPLEMENTED};
 }
 
-std::shared_ptr<Cache> PlainCache::create(Manager* manager, std::uint64_t id,
-                                          Metadata&& metadata,
-                                          std::shared_ptr<Table> table,
-                                          bool enableWindowedStats) {
-  return std::make_shared<PlainCache>(Cache::ConstructionGuard(), manager, id,
-                                      std::move(metadata), table,
-                                      enableWindowedStats);
+template<typename Hasher>
+std::shared_ptr<Cache> PlainCache<Hasher>::create(
+    Manager* manager, Hasher hasher, std::uint64_t id, Metadata&& metadata,
+    std::shared_ptr<Table> table, bool enableWindowedStats) {
+  return std::make_shared<PlainCache<Hasher>>(
+      Cache::ConstructionGuard(), manager, std::move(hasher), id,
+      std::move(metadata), table, enableWindowedStats);
 }
 
-PlainCache::PlainCache(Cache::ConstructionGuard /*guard*/, Manager* manager,
-                       std::uint64_t id, Metadata&& metadata,
-                       std::shared_ptr<Table> table, bool enableWindowedStats)
+template<typename Hasher>
+PlainCache<Hasher>::PlainCache(Cache::ConstructionGuard /*guard*/,
+                               Manager* manager, Hasher hasher,
+                               std::uint64_t id, Metadata&& metadata,
+                               std::shared_ptr<Table> table,
+                               bool enableWindowedStats)
     : Cache(manager, id, std::move(metadata), table, enableWindowedStats,
-            PlainCache::bucketClearer, PlainBucket::slotsData) {}
+            PlainCache::bucketClearer, PlainBucket::slotsData),
+      _hasher(std::move(hasher)) {}
 
-PlainCache::~PlainCache() {
+template<typename Hasher>
+PlainCache<Hasher>::~PlainCache() {
   if (!isShutdown()) {
     try {
       shutdown();
@@ -198,7 +211,8 @@ PlainCache::~PlainCache() {
   }
 }
 
-std::uint64_t PlainCache::freeMemoryFrom(std::uint32_t hash) {
+template<typename Hasher>
+std::uint64_t PlainCache<Hasher>::freeMemoryFrom(std::uint32_t hash) {
   std::uint64_t reclaimed = 0;
   bool maybeMigrate = false;
   Result status;
@@ -232,9 +246,10 @@ std::uint64_t PlainCache::freeMemoryFrom(std::uint32_t hash) {
   return reclaimed;
 }
 
-void PlainCache::migrateBucket(void* sourcePtr,
-                               std::unique_ptr<Table::Subtable> targets,
-                               std::shared_ptr<Table> newTable) {
+template<typename Hasher>
+void PlainCache<Hasher>::migrateBucket(void* sourcePtr,
+                                       std::unique_ptr<Table::Subtable> targets,
+                                       std::shared_ptr<Table> newTable) {
   // lock current bucket
   std::shared_ptr<Table> table = this->table();
 
@@ -286,7 +301,8 @@ void PlainCache::migrateBucket(void* sourcePtr,
   source._state.toggleFlag(BucketState::Flag::migrated);
 }
 
-std::pair<::ErrorCode, Table::BucketLocker> PlainCache::getBucket(
+template<typename Hasher>
+std::pair<::ErrorCode, Table::BucketLocker> PlainCache<Hasher>::getBucket(
     std::uint32_t hash, std::uint64_t maxTries, bool singleOperation) {
   ::ErrorCode status = TRI_ERROR_NO_ERROR;
   Table::BucketLocker guard;
@@ -308,7 +324,8 @@ std::pair<::ErrorCode, Table::BucketLocker> PlainCache::getBucket(
   return std::make_pair(status, std::move(guard));
 }
 
-Table::BucketClearer PlainCache::bucketClearer(Metadata* metadata) {
+template<typename Hasher>
+Table::BucketClearer PlainCache<Hasher>::bucketClearer(Metadata* metadata) {
   return [metadata](void* ptr) -> void {
     auto bucket = static_cast<PlainBucket*>(ptr);
     bucket->lock(Cache::triesGuarantee);
@@ -324,5 +341,9 @@ Table::BucketClearer PlainCache::bucketClearer(Metadata* metadata) {
     bucket->clear();
   };
 }
+
+// template class instantiations for PlainCache
+template class PlainCache<BinaryHasher>;
+template class PlainCache<VPackHasher>;
 
 }  // namespace arangodb::cache

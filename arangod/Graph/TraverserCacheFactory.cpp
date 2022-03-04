@@ -26,6 +26,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryContext.h"
 #include "Basics/ResourceUsage.h"
+#include "Cache/BinaryHasher.h"
 #include "Cache/Cache.h"
 #include "Cache/CacheManagerFeature.h"
 #include "Cluster/ServerState.h"
@@ -50,8 +51,8 @@ TraverserCache* CacheFactory::CreateCache(
     auto cacheManager =
         query.vocbase().server().getFeature<CacheManagerFeature>().manager();
     if (cacheManager != nullptr) {
-      std::shared_ptr<arangodb::cache::Cache> cache =
-          cacheManager->createCache(cache::CacheType::Plain);
+      std::shared_ptr<arangodb::cache::Cache> cache = cacheManager->createCache(
+          cache::CacheType::Plain, cache::BinaryHasher{});
       if (cache != nullptr) {
         return new TraverserDocumentCache(query, std::move(cache), opts);
       }

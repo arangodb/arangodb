@@ -26,7 +26,6 @@
 #include <cstdint>
 
 #include "Basics/ErrorCode.h"
-#include "Cache/BinaryHasher.h"
 #include "Cache/Cache.h"
 #include "Cache/CachedValue.h"
 #include "Cache/Common.h"
@@ -47,11 +46,13 @@ namespace arangodb::cache {
 /// simple API following that of the base Cache class. For any non-pure-virtual
 /// functions, see Cache.h for documentation.
 ////////////////////////////////////////////////////////////////////////////////
+
+template<typename Hasher>
 class PlainCache final : public Cache {
  public:
-  PlainCache(Cache::ConstructionGuard guard, Manager* manager, std::uint64_t id,
-             Metadata&& metadata, std::shared_ptr<Table> table,
-             bool enableWindowedStats);
+  PlainCache(Cache::ConstructionGuard guard, Manager* manager, Hasher hasher,
+             std::uint64_t id, Metadata&& metadata,
+             std::shared_ptr<Table> table, bool enableWindowedStats);
   ~PlainCache();
 
   PlainCache() = delete;
@@ -98,7 +99,7 @@ class PlainCache final : public Cache {
   friend class Manager;
   friend class MigrateTask;
 
-  BinaryHasher _hasher;
+  Hasher _hasher;
 
   static constexpr uint64_t allocationSize(bool enableWindowedStats) {
     return sizeof(PlainCache) +
@@ -108,8 +109,8 @@ class PlainCache final : public Cache {
                 : 0);
   }
 
-  static std::shared_ptr<Cache> create(Manager* manager, std::uint64_t id,
-                                       Metadata&& metadata,
+  static std::shared_ptr<Cache> create(Manager* manager, Hasher hasher,
+                                       std::uint64_t id, Metadata&& metadata,
                                        std::shared_ptr<Table> table,
                                        bool enableWindowedStats);
 

@@ -86,7 +86,7 @@ TEST(CacheRebalancerTest, test_rebalancing_with_plaincache_LongRunning) {
   std::size_t threadCount = 4;
   std::vector<std::shared_ptr<Cache>> caches;
   for (std::size_t i = 0; i < cacheCount; i++) {
-    caches.emplace_back(manager.createCache(CacheType::Plain));
+    caches.emplace_back(manager.createCache(CacheType::Plain, hasher));
   }
 
   std::atomic<bool> doneRebalancing(false);
@@ -214,7 +214,7 @@ TEST(CacheRebalancerTest,
   std::size_t threadCount = 4;
   std::vector<std::shared_ptr<Cache>> caches;
   for (std::size_t i = 0; i < cacheCount; i++) {
-    caches.emplace_back(manager.createCache(CacheType::Transactional));
+    caches.emplace_back(manager.createCache(CacheType::Transactional, hasher));
   }
 
   bool doneRebalancing = false;

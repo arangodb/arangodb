@@ -22,20 +22,18 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <algorithm>
-#include <atomic>
 #include <chrono>
 #include <cmath>
 #include <memory>
 #include <set>
-#include <stack>
 #include <utility>
 
 #include "Cache/Manager.h"
 
-#include "RestServer/SharedPRNGFeature.h"
 #include "Basics/SpinLocker.h"
 #include "Basics/SpinUnlocker.h"
 #include "Basics/voc-errors.h"
+#include "Cache/BinaryHasher.h"
 #include "Cache/Cache.h"
 #include "Cache/CachedValue.h"
 #include "Cache/Common.h"
@@ -46,21 +44,25 @@
 #include "Cache/Table.h"
 #include "Cache/Transaction.h"
 #include "Cache/TransactionalCache.h"
+#include "Cache/VPackHasher.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "RestServer/SharedPRNGFeature.h"
 
 namespace arangodb::cache {
 
 using SpinLocker = ::arangodb::basics::SpinLocker;
 using SpinUnlocker = ::arangodb::basics::SpinUnlocker;
 
+// note: the usage of BinaryHasher here is arbitrary. actually all
+// hashers should be stateless and thus there should be no size difference
+// between them
 const std::uint64_t Manager::minCacheAllocation =
     Cache::minSize + Table::allocationSize(Table::minLogSize) +
-    std::max(PlainCache::allocationSize(true),
-             TransactionalCache::allocationSize(true)) +
+    std::max(PlainCache<BinaryHasher>::allocationSize(true),
+             TransactionalCache<BinaryHasher>::allocationSize(true)) +
     Manager::cacheRecordOverhead;
-const std::chrono::milliseconds Manager::rebalancingGracePeriod(10);
 
 Manager::Manager(SharedPRNGFeature& sharedPRNG, PostFn schedulerPost,
                  std::uint64_t globalLimit, bool enableWindowedStats)
@@ -118,49 +120,55 @@ Manager::~Manager() {
   }
 }
 
-std::shared_ptr<Cache> Manager::createCache(CacheType type,
+template<typename Hasher>
+std::shared_ptr<Cache> Manager::createCache(CacheType type, Hasher hasher,
                                             bool enableWindowedStats,
                                             std::uint64_t maxSize) {
   std::shared_ptr<Cache> result;
   {
-    SpinLocker guard(SpinLocker::Mode::Write, _lock);
-    bool allowed = isOperational();
     Metadata metadata;
     std::shared_ptr<Table> table;
-    std::uint64_t id = _nextCacheId++;
+
+    SpinLocker guard(SpinLocker::Mode::Write, _lock);
+    bool allowed = isOperational();
 
     if (allowed) {
-      std::uint64_t fixedSize = 0;
-      switch (type) {
-        case CacheType::Plain:
-          fixedSize = PlainCache::allocationSize(enableWindowedStats);
-          break;
-        case CacheType::Transactional:
-          fixedSize = TransactionalCache::allocationSize(enableWindowedStats);
-          break;
-        default:
-          break;
-      }
+      std::uint64_t fixedSize = [](CacheType type, bool enableWindowedStats) {
+        switch (type) {
+          case CacheType::Plain:
+            return PlainCache<Hasher>::allocationSize(enableWindowedStats);
+          case CacheType::Transactional:
+            return TransactionalCache<Hasher>::allocationSize(
+                enableWindowedStats);
+          default:
+            return std::uint64_t(0);
+        }
+      }(type, enableWindowedStats);
       std::tie(allowed, metadata, table) = registerCache(fixedSize, maxSize);
     }
 
+    // note: allowed can be overwritten by registerCache()
     if (allowed) {
+      std::uint64_t id = _nextCacheId++;
+
       switch (type) {
         case CacheType::Plain:
-          result = PlainCache::create(this, id, std::move(metadata), table,
-                                      enableWindowedStats);
+          result = PlainCache<Hasher>::create(
+              this, std::move(hasher), id, std::move(metadata),
+              std::move(table), enableWindowedStats);
           break;
         case CacheType::Transactional:
-          result = TransactionalCache::create(this, id, std::move(metadata),
-                                              table, enableWindowedStats);
+          result = TransactionalCache<Hasher>::create(
+              this, std::move(hasher), id, std::move(metadata),
+              std::move(table), enableWindowedStats);
           break;
         default:
           break;
       }
-    }
 
-    if (result != nullptr) {
-      _caches.try_emplace(id, result);
+      if (result != nullptr) {
+        _caches.try_emplace(id, result);
+      }
     }
   }
 
@@ -854,5 +862,14 @@ bool Manager::pastRebalancingGracePeriod() const {
 
   return ok;
 }
+
+// template instantiations for createCache()
+template std::shared_ptr<Cache> Manager::createCache<BinaryHasher>(
+    CacheType type, BinaryHasher hasher, bool enableWindowedStats,
+    std::uint64_t maxSize);
+
+template std::shared_ptr<Cache> Manager::createCache<VPackHasher>(
+    CacheType type, VPackHasher hasher, bool enableWindowedStats,
+    std::uint64_t maxSize);
 
 }  // namespace arangodb::cache

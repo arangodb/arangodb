@@ -31,8 +31,7 @@
 #include <limits>
 #include <memory>
 
-namespace arangodb {
-namespace cache {
+namespace arangodb::cache {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Class to manage operations on a table of buckets.
@@ -41,8 +40,8 @@ class Table : public std::enable_shared_from_this<Table> {
  public:
   static constexpr double idealLowerRatio = 0.04;
   static constexpr double idealUpperRatio = 0.25;
-  static const std::uint32_t minLogSize;
-  static const std::uint32_t maxLogSize;
+  static constexpr std::uint32_t minLogSize = 8;
+  static constexpr std::uint32_t maxLogSize = 32;
   static constexpr std::uint32_t standardLogSizeAdjustment = 6;
   static constexpr std::uint64_t triesGuarantee =
       std::numeric_limits<std::uint64_t>::max();
@@ -56,11 +55,11 @@ class Table : public std::enable_shared_from_this<Table> {
     static constexpr std::size_t paddingSize =
         BUCKET_SIZE - sizeof(BucketState);
     std::uint8_t _padding[paddingSize];
-    GenericBucket();
-    bool lock(std::uint64_t maxTries);
-    void unlock();
+    GenericBucket() noexcept;
+    bool lock(std::uint64_t maxTries) noexcept;
+    void unlock() noexcept;
     void clear();
-    bool isMigrated() const;
+    bool isMigrated() const noexcept;
   };
   static_assert(sizeof(GenericBucket) == BUCKET_SIZE,
                 "Expected sizeof(GenericBucket) == BUCKET_SIZE.");
@@ -70,7 +69,7 @@ class Table : public std::enable_shared_from_this<Table> {
   /// @brief Helper class for RAII-style bucket locking
   //////////////////////////////////////////////////////////////////////////////
   struct BucketLocker {
-    BucketLocker();
+    BucketLocker() noexcept;
     BucketLocker(void* bucket, Table* source, std::uint64_t maxAttempts);
     BucketLocker(BucketLocker&&) noexcept;
     ~BucketLocker();
@@ -79,20 +78,19 @@ class Table : public std::enable_shared_from_this<Table> {
     BucketLocker(BucketLocker const&) = delete;             // no copy
     BucketLocker& operator=(BucketLocker const&) = delete;  // no copy
 
-    bool isValid() const;
-    bool isLocked() const;
+    bool isValid() const noexcept;
+    bool isLocked() const noexcept;
 
-    Table* source() const;
+    Table* source() const noexcept;
 
     template<typename BucketType>
     BucketType& bucket() const;
 
-    void release();
+    void release() noexcept;
 
    private:
-    void steal(BucketLocker&&);
+    void steal(BucketLocker&&) noexcept;
 
-   private:
     GenericBucket* _bucket;
     Table* _source;
     bool _locked;
@@ -136,22 +134,25 @@ class Table : public std::enable_shared_from_this<Table> {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns the memory usage for a table with specified logSize
   //////////////////////////////////////////////////////////////////////////////
-  static std::uint64_t allocationSize(std::uint32_t logSize);
+  static constexpr std::uint64_t allocationSize(std::uint32_t logSize) {
+    return sizeof(Table) +
+           (BUCKET_SIZE * (static_cast<std::uint64_t>(1) << logSize)) + padding;
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns the memory usage of the table.
   //////////////////////////////////////////////////////////////////////////////
-  std::uint64_t memoryUsage() const;
+  std::uint64_t memoryUsage() const noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns the number of buckets in the table. At most 2^32.
   //////////////////////////////////////////////////////////////////////////////
-  std::uint64_t size() const;
+  std::uint64_t size() const noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns the logSize of the table. (2^(logSize()) == size())
   //////////////////////////////////////////////////////////////////////////////
-  std::uint32_t logSize() const;
+  std::uint32_t logSize() const noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Fetches a pointer to the bucket mapped by the given hash, and locks
@@ -202,7 +203,7 @@ class Table : public std::enable_shared_from_this<Table> {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Enables table.
   //////////////////////////////////////////////////////////////////////////////
-  void enable();
+  void enable() noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Report that a slot was filled.
@@ -264,10 +265,9 @@ class Table : public std::enable_shared_from_this<Table> {
   std::atomic<std::uint64_t> _slotsUsed;
 
  private:
-  void disable();
-  bool isEnabled(std::uint64_t maxTries = triesGuarantee);
+  void disable() noexcept;
+  bool isEnabled(std::uint64_t maxTries = triesGuarantee) noexcept;
   static void defaultClearer(void* ptr);
 };
 
-};  // end namespace cache
-};  // end namespace arangodb
+};  // end namespace arangodb::cache

@@ -34,7 +34,7 @@
 
 namespace arangodb::cache {
 
-Metadata::Metadata()
+Metadata::Metadata() noexcept
     : fixedSize(0),
       tableSize(0),
       maxSize(0),
@@ -48,7 +48,7 @@ Metadata::Metadata()
       _resizing(false) {}
 
 Metadata::Metadata(uint64_t usageLimit, std::uint64_t fixed,
-                   std::uint64_t table, std::uint64_t max)
+                   std::uint64_t table, std::uint64_t max) noexcept
     : fixedSize(fixed),
       tableSize(table),
       maxSize(max),

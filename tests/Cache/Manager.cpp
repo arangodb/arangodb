@@ -86,7 +86,7 @@ TEST(CacheManagerTest, test_mixed_cache_types_under_mixed_load_LongRunning) {
   std::vector<std::shared_ptr<Cache>> caches;
   for (std::size_t i = 0; i < cacheCount; i++) {
     auto res = manager.createCache(
-        ((i % 2 == 0) ? CacheType::Plain : CacheType::Transactional));
+        (i % 2 == 0) ? CacheType::Plain : CacheType::Transactional, hasher);
     TRI_ASSERT(res);
     caches.emplace_back(res);
   }
@@ -195,10 +195,11 @@ TEST(CacheManagerTest, test_manager_under_cache_lifecycle_chaos_LongRunning) {
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
   Manager manager(sharedPRNG, postFn, 1024ULL * 1024ULL * 1024ULL);
+  BinaryHasher hasher;
   std::size_t threadCount = 4;
   std::uint64_t operationCount = 4ULL * 1024ULL;
 
-  auto worker = [&manager, operationCount]() -> void {
+  auto worker = [&manager, &hasher, operationCount]() -> void {
     std::queue<std::shared_ptr<Cache>> caches;
 
     for (std::uint64_t i = 0; i < operationCount; i++) {
@@ -207,7 +208,8 @@ TEST(CacheManagerTest, test_manager_under_cache_lifecycle_chaos_LongRunning) {
       switch (r) {
         case 0: {
           auto res = manager.createCache(
-              (i % 2 == 0) ? CacheType::Plain : CacheType::Transactional);
+              (i % 2 == 0) ? CacheType::Plain : CacheType::Transactional,
+              hasher);
           if (res) {
             caches.emplace(res);
           }

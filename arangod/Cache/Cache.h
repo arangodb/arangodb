@@ -41,7 +41,9 @@
 
 namespace arangodb::cache {
 
+template<typename Hasher>
 class PlainCache;
+template<typename Hasher>
 class TransactionalCache;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -58,7 +60,9 @@ class Cache : public std::enable_shared_from_this<Cache> {
   class ConstructionGuard {
    private:
     ConstructionGuard() = default;
+    template<typename Hasher>
     friend class PlainCache;
+    template<typename Hasher>
     friend class TransactionalCache;
   };
 

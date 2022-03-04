@@ -27,6 +27,7 @@
 
 #include "Basics/SpinLocker.h"
 #include "Basics/voc-errors.h"
+#include "Cache/BinaryHasher.h"
 #include "Cache/Cache.h"
 #include "Cache/CachedValue.h"
 #include "Cache/Common.h"
@@ -35,17 +36,22 @@
 #include "Cache/Metadata.h"
 #include "Cache/Table.h"
 #include "Cache/TransactionalBucket.h"
+#include "Cache/VPackHasher.h"
 
 namespace arangodb::cache {
 
 using SpinLocker = ::arangodb::basics::SpinLocker;
 
-Finding TransactionalCache::find(void const* key, std::uint32_t keySize) {
+template<typename Hasher>
+Finding TransactionalCache<Hasher>::find(void const* key,
+                                         std::uint32_t keySize) {
   TRI_ASSERT(key != nullptr);
   Finding result;
   std::uint32_t hash = _hasher.hashKey(key, keySize);
 
-  auto [status, guard] = getBucket(hash, Cache::triesFast, false);
+  ::ErrorCode status = TRI_ERROR_NO_ERROR;
+  Table::BucketLocker guard;
+  std::tie(status, guard) = getBucket(hash, Cache::triesFast, false);
   if (status != TRI_ERROR_NO_ERROR) {
     result.reportError(status);
   } else {
@@ -62,7 +68,8 @@ Finding TransactionalCache::find(void const* key, std::uint32_t keySize) {
   return result;
 }
 
-Result TransactionalCache::insert(CachedValue* value) {
+template<typename Hasher>
+Result TransactionalCache<Hasher>::insert(CachedValue* value) {
   TRI_ASSERT(value != nullptr);
   bool maybeMigrate = false;
   std::uint32_t hash = _hasher.hashKey(value->key(), value->keySize());
@@ -136,7 +143,9 @@ Result TransactionalCache::insert(CachedValue* value) {
   return status;
 }
 
-Result TransactionalCache::remove(void const* key, std::uint32_t keySize) {
+template<typename Hasher>
+Result TransactionalCache<Hasher>::remove(void const* key,
+                                          std::uint32_t keySize) {
   TRI_ASSERT(key != nullptr);
   bool maybeMigrate = false;
   std::uint32_t hash = _hasher.hashKey(key, keySize);
@@ -176,7 +185,9 @@ Result TransactionalCache::remove(void const* key, std::uint32_t keySize) {
   return status;
 }
 
-Result TransactionalCache::banish(void const* key, std::uint32_t keySize) {
+template<typename Hasher>
+Result TransactionalCache<Hasher>::banish(void const* key,
+                                          std::uint32_t keySize) {
   TRI_ASSERT(key != nullptr);
   bool maybeMigrate = false;
   std::uint32_t hash = _hasher.hashKey(key, keySize);
@@ -217,26 +228,26 @@ Result TransactionalCache::banish(void const* key, std::uint32_t keySize) {
   return status;
 }
 
-std::shared_ptr<Cache> TransactionalCache::create(Manager* manager,
-                                                  std::uint64_t id,
-                                                  Metadata&& metadata,
-                                                  std::shared_ptr<Table> table,
-                                                  bool enableWindowedStats) {
-  return std::make_shared<TransactionalCache>(Cache::ConstructionGuard(),
-                                              manager, id, std::move(metadata),
-                                              table, enableWindowedStats);
+template<typename Hasher>
+std::shared_ptr<Cache> TransactionalCache<Hasher>::create(
+    Manager* manager, Hasher hasher, std::uint64_t id, Metadata&& metadata,
+    std::shared_ptr<Table> table, bool enableWindowedStats) {
+  return std::make_shared<TransactionalCache<Hasher>>(
+      Cache::ConstructionGuard(), manager, std::move(hasher), id,
+      std::move(metadata), table, enableWindowedStats);
 }
 
-TransactionalCache::TransactionalCache(Cache::ConstructionGuard /*guard*/,
-                                       Manager* manager, std::uint64_t id,
-                                       Metadata&& metadata,
-                                       std::shared_ptr<Table> table,
-                                       bool enableWindowedStats)
+template<typename Hasher>
+TransactionalCache<Hasher>::TransactionalCache(
+    Cache::ConstructionGuard /*guard*/, Manager* manager, Hasher hasher,
+    std::uint64_t id, Metadata&& metadata, std::shared_ptr<Table> table,
+    bool enableWindowedStats)
     : Cache(manager, id, std::move(metadata), table, enableWindowedStats,
-            TransactionalCache::bucketClearer, TransactionalBucket::slotsData) {
-}
+            TransactionalCache::bucketClearer, TransactionalBucket::slotsData),
+      _hasher(std::move(hasher)) {}
 
-TransactionalCache::~TransactionalCache() {
+template<typename Hasher>
+TransactionalCache<Hasher>::~TransactionalCache() {
   if (!isShutdown()) {
     try {
       shutdown();
@@ -246,7 +257,8 @@ TransactionalCache::~TransactionalCache() {
   }
 }
 
-uint64_t TransactionalCache::freeMemoryFrom(std::uint32_t hash) {
+template<typename Hasher>
+uint64_t TransactionalCache<Hasher>::freeMemoryFrom(std::uint32_t hash) {
   std::uint64_t reclaimed = 0;
   bool maybeMigrate = false;
 
@@ -281,9 +293,10 @@ uint64_t TransactionalCache::freeMemoryFrom(std::uint32_t hash) {
   return reclaimed;
 }
 
-void TransactionalCache::migrateBucket(void* sourcePtr,
-                                       std::unique_ptr<Table::Subtable> targets,
-                                       std::shared_ptr<Table> newTable) {
+template<typename Hasher>
+void TransactionalCache<Hasher>::migrateBucket(
+    void* sourcePtr, std::unique_ptr<Table::Subtable> targets,
+    std::shared_ptr<Table> newTable) {
   std::uint64_t term = _manager->_transactions.term();
 
   // lock current bucket
@@ -391,8 +404,11 @@ void TransactionalCache::migrateBucket(void* sourcePtr,
   source._state.toggleFlag(BucketState::Flag::migrated);
 }
 
-std::tuple<::ErrorCode, Table::BucketLocker> TransactionalCache::getBucket(
-    std::uint32_t hash, std::uint64_t maxTries, bool singleOperation) {
+template<typename Hasher>
+std::tuple<::ErrorCode, Table::BucketLocker>
+TransactionalCache<Hasher>::getBucket(std::uint32_t hash,
+                                      std::uint64_t maxTries,
+                                      bool singleOperation) {
   ::ErrorCode status = TRI_ERROR_NO_ERROR;
   Table::BucketLocker guard;
 
@@ -416,7 +432,9 @@ std::tuple<::ErrorCode, Table::BucketLocker> TransactionalCache::getBucket(
   return std::make_tuple(status, std::move(guard));
 }
 
-Table::BucketClearer TransactionalCache::bucketClearer(Metadata* metadata) {
+template<typename Hasher>
+Table::BucketClearer TransactionalCache<Hasher>::bucketClearer(
+    Metadata* metadata) {
   return [metadata](void* ptr) -> void {
     auto bucket = static_cast<TransactionalBucket*>(ptr);
     bucket->lock(Cache::triesGuarantee);
@@ -431,5 +449,9 @@ Table::BucketClearer TransactionalCache::bucketClearer(Metadata* metadata) {
     bucket->clear();
   };
 }
+
+// template class instantiations for TransactionalCachee
+template class TransactionalCache<BinaryHasher>;
+template class TransactionalCache<VPackHasher>;
 
 }  // namespace arangodb::cache

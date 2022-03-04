@@ -51,9 +51,12 @@ TEST(CachePlainCacheTest, test_basic_cache_creation) {
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
   Manager manager(sharedPRNG, postFn, 1024 * 1024);
-  auto cache1 = manager.createCache(CacheType::Plain, false, 256 * 1024);
+  BinaryHasher hasher;
+  auto cache1 =
+      manager.createCache(CacheType::Plain, hasher, false, 256 * 1024);
   ASSERT_TRUE(true);
-  auto cache2 = manager.createCache(CacheType::Plain, false, 512 * 1024);
+  auto cache2 =
+      manager.createCache(CacheType::Plain, hasher, false, 512 * 1024);
 
   ASSERT_EQ(0, cache1->usage());
   ASSERT_TRUE(256 * 1024 >= cache1->size());
@@ -70,7 +73,8 @@ TEST(CachePlainCacheTest, check_that_insertion_works_as_expected) {
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
   Manager manager(sharedPRNG, postFn, 4 * cacheLimit);
-  auto cache = manager.createCache(CacheType::Plain, false, cacheLimit);
+  BinaryHasher hasher;
+  auto cache = manager.createCache(CacheType::Plain, hasher, false, cacheLimit);
 
   for (std::uint64_t i = 0; i < 1024; i++) {
     CachedValue* value = CachedValue::construct(&i, sizeof(std::uint64_t), &i,
@@ -123,8 +127,8 @@ TEST(CachePlainCacheTest, test_that_removal_works_as_expected) {
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
   Manager manager(sharedPRNG, postFn, 4 * cacheLimit);
-  auto cache = manager.createCache(CacheType::Plain, false, cacheLimit);
   BinaryHasher hasher;
+  auto cache = manager.createCache(CacheType::Plain, hasher, false, cacheLimit);
 
   for (std::uint64_t i = 0; i < 1024; i++) {
     CachedValue* value = CachedValue::construct(&i, sizeof(std::uint64_t), &i,
@@ -191,7 +195,8 @@ TEST(CachePlainCacheTest,
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
   Manager manager(sharedPRNG, postFn, 1024 * 1024 * 1024);
-  auto cache = manager.createCache(CacheType::Plain);
+  BinaryHasher hasher;
+  auto cache = manager.createCache(CacheType::Plain, hasher);
   std::uint64_t minimumUsage = cache->usageLimit() * 2;
 
   for (std::uint64_t i = 0; i < 4 * 1024 * 1024; i++) {
@@ -220,9 +225,9 @@ TEST(CachePlainCacheTest, test_behavior_under_mixed_load_LongRunning) {
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
   Manager manager(sharedPRNG, postFn, 1024 * 1024 * 1024);
-  std::size_t threadCount = 4;
-  std::shared_ptr<Cache> cache = manager.createCache(CacheType::Plain);
   BinaryHasher hasher;
+  std::size_t threadCount = 4;
+  std::shared_ptr<Cache> cache = manager.createCache(CacheType::Plain, hasher);
 
   std::uint64_t chunkSize = 16 * 1024 * 1024;
   std::uint64_t initialInserts = 4 * 1024 * 1024;
@@ -318,9 +323,13 @@ TEST(CachePlainCacheTest, test_hit_rate_statistics_reporting) {
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
   Manager manager(sharedPRNG, postFn, 4 * cacheLimit);
-  auto cacheMiss = manager.createCache(CacheType::Plain, true, cacheLimit);
-  auto cacheHit = manager.createCache(CacheType::Plain, true, cacheLimit);
-  auto cacheMixed = manager.createCache(CacheType::Plain, true, cacheLimit);
+  BinaryHasher hasher;
+  auto cacheMiss =
+      manager.createCache(CacheType::Plain, hasher, true, cacheLimit);
+  auto cacheHit =
+      manager.createCache(CacheType::Plain, hasher, true, cacheLimit);
+  auto cacheMixed =
+      manager.createCache(CacheType::Plain, hasher, true, cacheLimit);
 
   for (std::uint64_t i = 0; i < 1024; i++) {
     CachedValue* value = CachedValue::construct(&i, sizeof(std::uint64_t), &i,

@@ -107,8 +107,9 @@ class Manager {
   /// lifetime. It should likely only be set to a non-default value for
   /// infrequently accessed or short-lived caches.
   //////////////////////////////////////////////////////////////////////////////
+  template<typename Hasher>
   std::shared_ptr<Cache> createCache(
-      CacheType type, bool enableWindowedStats = false,
+      CacheType type, Hasher hasher, bool enableWindowedStats = false,
       std::uint64_t maxSize = std::numeric_limits<std::uint64_t>::max());
 
   //////////////////////////////////////////////////////////////////////////////
@@ -234,8 +235,10 @@ class Manager {
   friend class FreeMemoryTask;
   friend struct Metadata;
   friend class MigrateTask;
+  template<typename Hasher>
   friend class PlainCache;
   friend class Rebalancer;
+  template<typename Hasher>
   friend class TransactionalCache;
 
  private:  // used by caches
@@ -255,8 +258,8 @@ class Manager {
 
  private:  // used internally and by tasks
   static constexpr double highwaterMultiplier = 0.8;
+  static constexpr std::chrono::milliseconds rebalancingGracePeriod{10};
   static const std::uint64_t minCacheAllocation;
-  static const std::chrono::milliseconds rebalancingGracePeriod;
 
   // check if shutdown or shutting down
   [[nodiscard]] bool isOperational() const;

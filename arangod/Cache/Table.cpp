@@ -42,16 +42,13 @@ namespace arangodb::cache {
 
 using SpinLocker = ::arangodb::basics::SpinLocker;
 
-const std::uint32_t Table::minLogSize = 8;
-const std::uint32_t Table::maxLogSize = 32;
+Table::GenericBucket::GenericBucket() noexcept : _state{}, _padding{} {}
 
-Table::GenericBucket::GenericBucket() : _state{}, _padding{} {}
-
-bool Table::GenericBucket::lock(std::uint64_t maxTries) {
+bool Table::GenericBucket::lock(std::uint64_t maxTries) noexcept {
   return _state.lock(maxTries);
 }
 
-void Table::GenericBucket::unlock() {
+void Table::GenericBucket::unlock() noexcept {
   TRI_ASSERT(_state.isLocked());
   _state.unlock();
 }
@@ -67,7 +64,7 @@ void Table::GenericBucket::clear() {
               });
 }
 
-bool Table::GenericBucket::isMigrated() const {
+bool Table::GenericBucket::isMigrated() const noexcept {
   TRI_ASSERT(_state.isLocked());
   return _state.isSet(BucketState::Flag::migrated);
 }
@@ -112,7 +109,7 @@ template bool Table::Subtable::applyToAllBuckets<PlainBucket>(
 template bool Table::Subtable::applyToAllBuckets<TransactionalBucket>(
     std::function<bool(TransactionalBucket&)>);
 
-Table::BucketLocker::BucketLocker()
+Table::BucketLocker::BucketLocker() noexcept
     : _bucket(nullptr), _source(nullptr), _locked(false) {}
 
 Table::BucketLocker::BucketLocker(void* bucket, Table* source,
@@ -141,14 +138,16 @@ Table::BucketLocker& Table::BucketLocker::operator=(
   return *this;
 }
 
-bool Table::BucketLocker::isValid() const { return _bucket != nullptr; }
+bool Table::BucketLocker::isValid() const noexcept {
+  return _bucket != nullptr;
+}
 
-bool Table::BucketLocker::isLocked() const {
+bool Table::BucketLocker::isLocked() const noexcept {
   TRI_ASSERT(!_locked || isValid());
   return _locked;
 }
 
-Table* Table::BucketLocker::source() const { return _source; }
+Table* Table::BucketLocker::source() const noexcept { return _source; }
 
 template<typename BucketType>
 BucketType& Table::BucketLocker::bucket() const {
@@ -162,7 +161,7 @@ template PlainBucket& Table::BucketLocker::bucket<PlainBucket>() const;
 template TransactionalBucket& Table::BucketLocker::bucket<TransactionalBucket>()
     const;
 
-void Table::BucketLocker::release() {
+void Table::BucketLocker::release() noexcept {
   if (isValid() && isLocked()) {
     _bucket->unlock();
     _locked = false;
@@ -171,7 +170,7 @@ void Table::BucketLocker::release() {
   _source = nullptr;
 }
 
-void Table::BucketLocker::steal(Table::BucketLocker&& other) {
+void Table::BucketLocker::steal(Table::BucketLocker&& other) noexcept {
   _bucket = other._bucket;
   _source = other._source;
   _locked = other._locked;
@@ -211,19 +210,13 @@ Table::~Table() {
   }
 }
 
-std::uint64_t Table::allocationSize(std::uint32_t logSize) {
-  return sizeof(Table) +
-         (BUCKET_SIZE * (static_cast<std::uint64_t>(1) << logSize)) +
-         Table::padding;
+std::uint64_t Table::memoryUsage() const noexcept {
+  return allocationSize(_logSize);
 }
 
-std::uint64_t Table::memoryUsage() const {
-  return Table::allocationSize(_logSize);
-}
+std::uint64_t Table::size() const noexcept { return _size; }
 
-std::uint64_t Table::size() const { return _size; }
-
-std::uint32_t Table::logSize() const { return _logSize; }
+std::uint32_t Table::logSize() const noexcept { return _logSize; }
 
 Table::BucketLocker Table::fetchAndLockBucket(std::uint32_t hash,
                                               std::uint64_t maxTries) {
@@ -323,17 +316,17 @@ void Table::clear() {
   _slotsUsed = 0;
 }
 
-void Table::disable() {
+void Table::disable() noexcept {
   SpinLocker guard(SpinLocker::Mode::Write, _lock);
   _disabled = true;
 }
 
-void Table::enable() {
+void Table::enable() noexcept {
   SpinLocker guard(SpinLocker::Mode::Write, _lock);
   _disabled = false;
 }
 
-bool Table::isEnabled(std::uint64_t maxTries) {
+bool Table::isEnabled(std::uint64_t maxTries) noexcept {
   SpinLocker guard(SpinLocker::Mode::Read, _lock,
                    static_cast<std::size_t>(maxTries));
   return guard.isLocked() && !_disabled;
