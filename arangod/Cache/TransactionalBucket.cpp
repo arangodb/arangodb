@@ -28,9 +28,9 @@
 
 #include "Basics/Common.h"
 #include "Basics/debugging.h"
-#include "Cache/BinaryHasher.h"
+#include "Cache/BinaryKeyHasher.h"
 #include "Cache/CachedValue.h"
-#include "Cache/VPackHasher.h"
+#include "Cache/VPackKeyHasher.h"
 
 namespace arangodb::cache {
 
@@ -269,28 +269,28 @@ bool TransactionalBucket::haveOpenTransaction() const noexcept {
   return ((_banishTerm & static_cast<uint64_t>(1)) > 0);
 }
 
-template CachedValue* TransactionalBucket::find<BinaryHasher>(
-    BinaryHasher const& hasher, std::uint32_t hash, void const* key,
+template CachedValue* TransactionalBucket::find<BinaryKeyHasher>(
+    BinaryKeyHasher const& hasher, std::uint32_t hash, void const* key,
     std::size_t keySize, bool moveToFront) noexcept;
 
-template CachedValue* TransactionalBucket::remove<BinaryHasher>(
-    BinaryHasher const& hasher, std::uint32_t hash, void const* key,
+template CachedValue* TransactionalBucket::remove<BinaryKeyHasher>(
+    BinaryKeyHasher const& hasher, std::uint32_t hash, void const* key,
     std::size_t keySize) noexcept;
 
-template CachedValue* TransactionalBucket::banish<BinaryHasher>(
-    BinaryHasher const& hasher, std::uint32_t hash, void const* key,
+template CachedValue* TransactionalBucket::banish<BinaryKeyHasher>(
+    BinaryKeyHasher const& hasher, std::uint32_t hash, void const* key,
     std::size_t keySize) noexcept;
 
-template CachedValue* TransactionalBucket::find<VPackHasher>(
-    VPackHasher const& hasher, std::uint32_t hash, void const* key,
+template CachedValue* TransactionalBucket::find<VPackKeyHasher>(
+    VPackKeyHasher const& hasher, std::uint32_t hash, void const* key,
     std::size_t keySize, bool moveToFront) noexcept;
 
-template CachedValue* TransactionalBucket::remove<VPackHasher>(
-    VPackHasher const& hasher, std::uint32_t hash, void const* key,
+template CachedValue* TransactionalBucket::remove<VPackKeyHasher>(
+    VPackKeyHasher const& hasher, std::uint32_t hash, void const* key,
     std::size_t keySize) noexcept;
 
-template CachedValue* TransactionalBucket::banish<VPackHasher>(
-    VPackHasher const& hasher, std::uint32_t hash, void const* key,
+template CachedValue* TransactionalBucket::banish<VPackKeyHasher>(
+    VPackKeyHasher const& hasher, std::uint32_t hash, void const* key,
     std::size_t keySize) noexcept;
 
 }  // namespace arangodb::cache

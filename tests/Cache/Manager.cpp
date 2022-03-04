@@ -30,7 +30,7 @@
 #include <thread>
 #include <vector>
 
-#include "Cache/BinaryHasher.h"
+#include "Cache/BinaryKeyHasher.h"
 #include "Cache/CacheManagerFeatureThreads.h"
 #include "Cache/Common.h"
 #include "Cache/Manager.h"
@@ -80,7 +80,7 @@ TEST(CacheManagerTest, test_mixed_cache_types_under_mixed_load_LongRunning) {
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
   Manager manager(sharedPRNG, postFn, 1024ULL * 1024ULL * 1024ULL);
-  BinaryHasher hasher;
+  BinaryKeyHasher hasher;
   std::size_t cacheCount = 4;
   std::size_t threadCount = 4;
   std::vector<std::shared_ptr<Cache>> caches;
@@ -195,7 +195,7 @@ TEST(CacheManagerTest, test_manager_under_cache_lifecycle_chaos_LongRunning) {
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
   Manager manager(sharedPRNG, postFn, 1024ULL * 1024ULL * 1024ULL);
-  BinaryHasher hasher;
+  BinaryKeyHasher hasher;
   std::size_t threadCount = 4;
   std::uint64_t operationCount = 4ULL * 1024ULL;
 

@@ -28,13 +28,13 @@
 #include <string>
 
 #include "Basics/debugging.h"
-#include "Cache/BinaryHasher.h"
+#include "Cache/BinaryKeyHasher.h"
 #include "Cache/PlainBucket.h"
 
 using namespace arangodb::cache;
 
 TEST(CachePlainBucketTest, verify_that_insertion_works_correctly) {
-  BinaryHasher hasher;
+  BinaryKeyHasher hasher;
   auto bucket = std::make_unique<PlainBucket>();
   bool success;
 
@@ -85,7 +85,7 @@ TEST(CachePlainBucketTest, verify_that_insertion_works_correctly) {
 }
 
 TEST(CachePlainBucketTest, verify_removal_works_correctly) {
-  BinaryHasher hasher;
+  BinaryKeyHasher hasher;
   auto bucket = std::make_unique<PlainBucket>();
   bool success;
 
@@ -135,7 +135,7 @@ TEST(CachePlainBucketTest, verify_removal_works_correctly) {
 }
 
 TEST(CachePlainBucketTest, verify_eviction_works_correctly) {
-  BinaryHasher hasher;
+  BinaryKeyHasher hasher;
   auto bucket = std::make_unique<PlainBucket>();
   bool success;
 

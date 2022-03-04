@@ -34,7 +34,7 @@
 #include "Basics/WriteLocker.h"
 #include "Basics/debugging.h"
 #include "Basics/hashes.h"
-#include "Cache/BinaryHasher.h"
+#include "Cache/BinaryKeyHasher.h"
 #include "Cache/CacheManagerFeature.h"
 #include "Cache/Common.h"
 #include "Cache/Manager.h"
@@ -2077,7 +2077,7 @@ void RocksDBCollection::createCache() const {
   TRI_ASSERT(manager != nullptr);
   LOG_TOPIC("f5df2", DEBUG, Logger::CACHE) << "Creating document cache";
   _cache = manager->createCache(cache::CacheType::Transactional,
-                                cache::BinaryHasher{});
+                                cache::BinaryKeyHasher{});
   TRI_ASSERT(_cacheEnabled);
 }
 

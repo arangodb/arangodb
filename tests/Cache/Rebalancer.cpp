@@ -31,7 +31,7 @@
 #include <vector>
 
 #include "Basics/voc-errors.h"
-#include "Cache/BinaryHasher.h"
+#include "Cache/BinaryKeyHasher.h"
 #include "Cache/Common.h"
 #include "Cache/Manager.h"
 #include "Cache/PlainCache.h"
@@ -80,7 +80,7 @@ TEST(CacheRebalancerTest, test_rebalancing_with_plaincache_LongRunning) {
   Manager manager(sharedPRNG, postFn, 128 * 1024 * 1024);
   Rebalancer rebalancer(&manager);
 
-  BinaryHasher hasher;
+  BinaryKeyHasher hasher;
 
   std::size_t cacheCount = 4;
   std::size_t threadCount = 4;
@@ -208,7 +208,7 @@ TEST(CacheRebalancerTest,
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
   Manager manager(sharedPRNG, postFn, 128 * 1024 * 1024);
   Rebalancer rebalancer(&manager);
-  BinaryHasher hasher;
+  BinaryKeyHasher hasher;
 
   std::size_t cacheCount = 4;
   std::size_t threadCount = 4;

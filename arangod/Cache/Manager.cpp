@@ -33,7 +33,7 @@
 #include "Basics/SpinLocker.h"
 #include "Basics/SpinUnlocker.h"
 #include "Basics/voc-errors.h"
-#include "Cache/BinaryHasher.h"
+#include "Cache/BinaryKeyHasher.h"
 #include "Cache/Cache.h"
 #include "Cache/CachedValue.h"
 #include "Cache/Common.h"
@@ -44,7 +44,7 @@
 #include "Cache/Table.h"
 #include "Cache/Transaction.h"
 #include "Cache/TransactionalCache.h"
-#include "Cache/VPackHasher.h"
+#include "Cache/VPackKeyHasher.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -55,13 +55,13 @@ namespace arangodb::cache {
 using SpinLocker = ::arangodb::basics::SpinLocker;
 using SpinUnlocker = ::arangodb::basics::SpinUnlocker;
 
-// note: the usage of BinaryHasher here is arbitrary. actually all
+// note: the usage of BinaryKeyHasher here is arbitrary. actually all
 // hashers should be stateless and thus there should be no size difference
 // between them
 const std::uint64_t Manager::minCacheAllocation =
     Cache::minSize + Table::allocationSize(Table::minLogSize) +
-    std::max(PlainCache<BinaryHasher>::allocationSize(true),
-             TransactionalCache<BinaryHasher>::allocationSize(true)) +
+    std::max(PlainCache<BinaryKeyHasher>::allocationSize(true),
+             TransactionalCache<BinaryKeyHasher>::allocationSize(true)) +
     Manager::cacheRecordOverhead;
 
 Manager::Manager(SharedPRNGFeature& sharedPRNG, PostFn schedulerPost,
@@ -864,12 +864,12 @@ bool Manager::pastRebalancingGracePeriod() const {
 }
 
 // template instantiations for createCache()
-template std::shared_ptr<Cache> Manager::createCache<BinaryHasher>(
-    CacheType type, BinaryHasher hasher, bool enableWindowedStats,
+template std::shared_ptr<Cache> Manager::createCache<BinaryKeyHasher>(
+    CacheType type, BinaryKeyHasher hasher, bool enableWindowedStats,
     std::uint64_t maxSize);
 
-template std::shared_ptr<Cache> Manager::createCache<VPackHasher>(
-    CacheType type, VPackHasher hasher, bool enableWindowedStats,
+template std::shared_ptr<Cache> Manager::createCache<VPackKeyHasher>(
+    CacheType type, VPackKeyHasher hasher, bool enableWindowedStats,
     std::uint64_t maxSize);
 
 }  // namespace arangodb::cache

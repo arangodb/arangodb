@@ -27,7 +27,7 @@
 
 #include "Basics/SpinLocker.h"
 #include "Basics/voc-errors.h"
-#include "Cache/BinaryHasher.h"
+#include "Cache/BinaryKeyHasher.h"
 #include "Cache/Cache.h"
 #include "Cache/CachedValue.h"
 #include "Cache/Common.h"
@@ -36,7 +36,7 @@
 #include "Cache/Metadata.h"
 #include "Cache/Table.h"
 #include "Cache/TransactionalBucket.h"
-#include "Cache/VPackHasher.h"
+#include "Cache/VPackKeyHasher.h"
 
 namespace arangodb::cache {
 
@@ -451,7 +451,7 @@ Table::BucketClearer TransactionalCache<Hasher>::bucketClearer(
 }
 
 // template class instantiations for TransactionalCachee
-template class TransactionalCache<BinaryHasher>;
-template class TransactionalCache<VPackHasher>;
+template class TransactionalCache<BinaryKeyHasher>;
+template class TransactionalCache<VPackKeyHasher>;
 
 }  // namespace arangodb::cache

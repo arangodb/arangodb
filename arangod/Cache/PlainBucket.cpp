@@ -27,9 +27,9 @@
 
 #include "Basics/Common.h"
 #include "Basics/debugging.h"
-#include "Cache/BinaryHasher.h"
+#include "Cache/BinaryKeyHasher.h"
 #include "Cache/CachedValue.h"
-#include "Cache/VPackHasher.h"
+#include "Cache/VPackKeyHasher.h"
 
 namespace arangodb::cache {
 
@@ -187,22 +187,20 @@ void PlainBucket::moveSlot(std::size_t slot, bool moveToFront) noexcept {
   _cachedData[i] = value;
 }
 
-template CachedValue* PlainBucket::find<BinaryHasher>(
-    BinaryHasher const& hasher, std::uint32_t hash, void const* key,
+template CachedValue* PlainBucket::find<BinaryKeyHasher>(
+    BinaryKeyHasher const& hasher, std::uint32_t hash, void const* key,
     std::size_t keySize, bool moveToFront) noexcept;
 
-template CachedValue* PlainBucket::remove<BinaryHasher>(
-    BinaryHasher const& hasher, std::uint32_t hash, void const* key,
+template CachedValue* PlainBucket::remove<BinaryKeyHasher>(
+    BinaryKeyHasher const& hasher, std::uint32_t hash, void const* key,
     std::size_t keySize) noexcept;
 
-template CachedValue* PlainBucket::find<VPackHasher>(VPackHasher const& hasher,
-                                                     std::uint32_t hash,
-                                                     void const* key,
-                                                     std::size_t keySize,
-                                                     bool moveToFront) noexcept;
+template CachedValue* PlainBucket::find<VPackKeyHasher>(
+    VPackKeyHasher const& hasher, std::uint32_t hash, void const* key,
+    std::size_t keySize, bool moveToFront) noexcept;
 
-template CachedValue* PlainBucket::remove<VPackHasher>(
-    VPackHasher const& hasher, std::uint32_t hash, void const* key,
+template CachedValue* PlainBucket::remove<VPackKeyHasher>(
+    VPackKeyHasher const& hasher, std::uint32_t hash, void const* key,
     std::size_t keySize) noexcept;
 
 }  // namespace arangodb::cache

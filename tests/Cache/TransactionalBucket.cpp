@@ -28,7 +28,7 @@
 #include <string>
 
 #include "Basics/debugging.h"
-#include "Cache/BinaryHasher.h"
+#include "Cache/BinaryKeyHasher.h"
 #include "Cache/TransactionalBucket.h"
 
 using namespace arangodb::cache;
@@ -62,7 +62,7 @@ TEST(CacheTransactionalBucketTest, test_locking_behavior) {
 }
 
 TEST(CacheTransactionalBucketTest, verify_that_insertion_works_as_expected) {
-  BinaryHasher hasher;
+  BinaryKeyHasher hasher;
   auto bucket = std::make_unique<TransactionalBucket>();
   bool success;
 
@@ -112,7 +112,7 @@ TEST(CacheTransactionalBucketTest, verify_that_insertion_works_as_expected) {
 }
 
 TEST(CacheTransactionalBucketTest, verify_that_removal_works_as_expected) {
-  BinaryHasher hasher;
+  BinaryKeyHasher hasher;
   auto bucket = std::make_unique<TransactionalBucket>();
   bool success;
 
@@ -162,7 +162,7 @@ TEST(CacheTransactionalBucketTest, verify_that_removal_works_as_expected) {
 }
 
 TEST(CacheTransactionalBucketTest, verify_that_eviction_works_as_expected) {
-  BinaryHasher hasher;
+  BinaryKeyHasher hasher;
   auto bucket = std::make_unique<TransactionalBucket>();
   bool success;
 
@@ -228,7 +228,7 @@ TEST(CacheTransactionalBucketTest, verify_that_eviction_works_as_expected) {
 }
 
 TEST(CacheTransactionalBucketTest, verify_that_banishing_works_as_expected) {
-  BinaryHasher hasher;
+  BinaryKeyHasher hasher;
   auto bucket = std::make_unique<TransactionalBucket>();
   bool success;
   CachedValue* res;

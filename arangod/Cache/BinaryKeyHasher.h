@@ -31,7 +31,7 @@
 
 namespace arangodb::cache {
 
-struct BinaryHasher {
+struct BinaryKeyHasher {
   inline std::uint32_t hashKey(void const* key,
                                std::size_t keySize) const noexcept {
     return (std::max)(static_cast<std::uint32_t>(1),

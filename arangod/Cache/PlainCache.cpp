@@ -27,7 +27,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/voc-errors.h"
-#include "Cache/BinaryHasher.h"
+#include "Cache/BinaryKeyHasher.h"
 #include "Cache/Cache.h"
 #include "Cache/CachedValue.h"
 #include "Cache/Common.h"
@@ -36,7 +36,7 @@
 #include "Cache/Metadata.h"
 #include "Cache/PlainBucket.h"
 #include "Cache/Table.h"
-#include "Cache/VPackHasher.h"
+#include "Cache/VPackKeyHasher.h"
 
 namespace arangodb::cache {
 
@@ -343,7 +343,7 @@ Table::BucketClearer PlainCache<Hasher>::bucketClearer(Metadata* metadata) {
 }
 
 // template class instantiations for PlainCache
-template class PlainCache<BinaryHasher>;
-template class PlainCache<VPackHasher>;
+template class PlainCache<BinaryKeyHasher>;
+template class PlainCache<VPackKeyHasher>;
 
 }  // namespace arangodb::cache

@@ -25,7 +25,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Cache/BinaryHasher.h"
+#include "Cache/BinaryKeyHasher.h"
 #include "Cache/CacheManagerFeature.h"
 #include "Cache/Common.h"
 #include "Cache/Manager.h"
@@ -220,7 +220,7 @@ void RocksDBIndex::createCache() {
   TRI_ASSERT(manager != nullptr);
   LOG_TOPIC("49e6c", DEBUG, Logger::CACHE) << "Creating index cache";
   _cache = manager->createCache(cache::CacheType::Transactional,
-                                cache::BinaryHasher{});
+                                cache::BinaryKeyHasher{});
   TRI_ASSERT(_cacheEnabled);
 }
 

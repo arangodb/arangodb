@@ -29,7 +29,7 @@
 #include <thread>
 #include <vector>
 
-#include "Cache/BinaryHasher.h"
+#include "Cache/BinaryKeyHasher.h"
 #include "Cache/Common.h"
 #include "Cache/Manager.h"
 #include "Cache/Transaction.h"
@@ -51,7 +51,7 @@ TEST(CacheTransactionalCacheTest, test_basic_cache_construction) {
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
   Manager manager(sharedPRNG, postFn, 1024 * 1024);
-  BinaryHasher hasher;
+  BinaryKeyHasher hasher;
   auto cache1 =
       manager.createCache(CacheType::Transactional, hasher, false, 256 * 1024);
   auto cache2 =
@@ -72,7 +72,7 @@ TEST(CacheTransactionalCacheTest, verify_that_insertion_works_as_expected) {
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
   Manager manager(sharedPRNG, postFn, 4 * cacheLimit);
-  BinaryHasher hasher;
+  BinaryKeyHasher hasher;
   auto cache =
       manager.createCache(CacheType::Transactional, hasher, false, cacheLimit);
 
@@ -127,7 +127,7 @@ TEST(CacheTransactionalCacheTest, verify_removal_works_as_expected) {
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
   Manager manager(sharedPRNG, postFn, 4 * cacheLimit);
-  BinaryHasher hasher;
+  BinaryKeyHasher hasher;
   auto cache =
       manager.createCache(CacheType::Transactional, hasher, false, cacheLimit);
 
@@ -192,7 +192,7 @@ TEST(CacheTransactionalCacheTest, verify_banishing_works_as_expected) {
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
   Manager manager(sharedPRNG, postFn, 4 * cacheLimit);
-  BinaryHasher hasher;
+  BinaryKeyHasher hasher;
   auto cache =
       manager.createCache(CacheType::Transactional, hasher, false, cacheLimit);
 
@@ -265,7 +265,7 @@ TEST(CacheTransactionalCacheTest,
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
   Manager manager(sharedPRNG, postFn, 1024 * 1024 * 1024);
-  BinaryHasher hasher;
+  BinaryKeyHasher hasher;
   auto cache = manager.createCache(CacheType::Transactional, hasher);
   std::uint64_t minimumUsage = cache->usageLimit() * 2;
 
@@ -295,7 +295,7 @@ TEST(CacheTransactionalCacheTest, test_behavior_under_mixed_load_LongRunning) {
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
   Manager manager(sharedPRNG, postFn, 1024 * 1024 * 1024);
-  BinaryHasher hasher;
+  BinaryKeyHasher hasher;
   std::size_t threadCount = 4;
   std::shared_ptr<Cache> cache =
       manager.createCache(CacheType::Transactional, hasher);

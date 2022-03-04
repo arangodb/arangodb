@@ -27,7 +27,7 @@
 #include <cstdint>
 #include <string>
 
-#include "Cache/BinaryHasher.h"
+#include "Cache/BinaryKeyHasher.h"
 #include "Cache/CachedValue.h"
 
 using namespace arangodb::cache;
@@ -132,7 +132,7 @@ TEST(CacheCachedValueTest, samekey_method_for_key_comparison_works) {
   std::string k3("TEST");
   std::uint64_t v = 1;
 
-  BinaryHasher hasher;
+  BinaryKeyHasher hasher;
 
   auto cv =
       CachedValue::construct(k1.data(), static_cast<std::uint32_t>(k1.size()),
