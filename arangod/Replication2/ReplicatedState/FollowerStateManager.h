@@ -46,7 +46,7 @@ struct FollowerStateManager
   using Iterator = typename Stream::Iterator;
 
   FollowerStateManager(
-      std::shared_ptr<ReplicatedStateBase> parent,
+      LoggerContext loggerContext, std::shared_ptr<ReplicatedStateBase> parent,
       std::shared_ptr<replicated_log::ILogFollower> logFollower,
       std::unique_ptr<CoreType> core,
       std::unique_ptr<ReplicatedStateToken> token,
@@ -109,5 +109,6 @@ struct FollowerStateManager
   std::weak_ptr<ReplicatedStateBase> const parent;
   std::shared_ptr<replicated_log::ILogFollower> const logFollower;
   std::shared_ptr<Factory> const factory;
+  LoggerContext const loggerContext;
 };
 }  // namespace arangodb::replication2::replicated_state
