@@ -1842,6 +1842,14 @@ void Ast::injectBindParameters(
               // finally note that the node was created from a bind parameter
               node->setFlag(FLAG_BIND_PARAMETER);
 
+              // register the AstNode for this bind parameter, so when the query
+              // string refers to the same bind parameter multiple times, we
+              // don't have to regenerate an AstNode for it. in case a bind
+              // parameter is used multiple times in the query string, upon any
+              // following occurrences the AstNode registered here will be
+              // found, and only a shallow copy of the existing AstNode will be
+              // created. This helps to save memory and processing time for
+              // large bind parameter values.
               parameters.registerNode(param, node);
             }
           }
@@ -1910,9 +1918,17 @@ void Ast::injectBindParameters(
               }
             }
           }
+
+          TRI_ASSERT(newNode != nullptr);
           node = newNode;
 
           if (cachedNode == nullptr) {
+            // store the just created AstNode for this bind parameter, to mark
+            // the bind parameter as being "used". It does not matter which
+            // AstNode we store for the bind parameter, but we have to store one
+            // if none was yet registered. Otherwise we'll run into an error
+            // "unused bind parameter
+            // '@...' later.
             parameters.registerNode(param, node);
           }
         }

@@ -66,8 +66,10 @@ uint64_t BindParameters::hash() const {
   return _builder->slice().hash();
 }
 
-/// @brief return a bind parameter value by name
-/// will return VPackSlice::noneSlice() if the bind parameter does not exist!
+/// @brief return a bind parameter value and its corresponding AstNode by
+/// parameter name. will return VPackSlice::noneSlice() if the bind parameter
+/// does not exist. the returned AstNode is a nullptr in case no AstNode was yet
+/// registered for this bind parameter. This is not an error.
 std::pair<VPackSlice, AstNode*> BindParameters::get(
     std::string const& name) const noexcept {
   TRI_ASSERT(_processed);
@@ -79,7 +81,7 @@ std::pair<VPackSlice, AstNode*> BindParameters::get(
 
   // return parameter value and AstNode
   TRI_ASSERT(!(*it).second.first.isNone());
-  return std::make_pair((*it).second.first, (*it).second.second);
+  return (*it).second;
 }
 
 /// @brief register an AstNode for the bind parameter

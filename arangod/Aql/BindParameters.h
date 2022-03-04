@@ -60,8 +60,10 @@ class BindParameters {
   /// @brief destroy the parameters
   ~BindParameters();
 
-  /// @brief return a bind parameter value by name
-  /// will return VPackSlice::noneSlice() if the bind parameter does not exist!
+  /// @brief return a bind parameter value and its corresponding AstNode by
+  /// parameter name. will return VPackSlice::noneSlice() if the bind parameter
+  /// does not exist. the returned AstNode is a nullptr in case no AstNode was
+  /// yet registered for this bind parameter. This is not an error.
   std::pair<arangodb::velocypack::Slice, AstNode*> get(
       std::string const& name) const noexcept;
 
