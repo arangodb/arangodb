@@ -55,7 +55,6 @@ namespace arangodb::cache {
 using SpinLocker = ::arangodb::basics::SpinLocker;
 using SpinUnlocker = ::arangodb::basics::SpinUnlocker;
 
-const std::uint64_t Manager::minSize = 1024 * 1024;
 const std::uint64_t Manager::minCacheAllocation =
     Cache::minSize + Table::allocationSize(Table::minLogSize) +
     std::max(PlainCache::allocationSize(true),
@@ -160,7 +159,7 @@ std::shared_ptr<Cache> Manager::createCache(CacheType type,
       }
     }
 
-    if (result.get() != nullptr) {
+    if (result != nullptr) {
       _caches.try_emplace(id, result);
     }
   }

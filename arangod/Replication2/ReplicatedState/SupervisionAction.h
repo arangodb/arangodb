@@ -22,86 +22,47 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
-
-#include <Agency/TransactionBuilder.h>
-#include <Replication2/ReplicatedLog/AgencyLogSpecification.h>
-#include <Replication2/ReplicatedState/AgencySpecification.h>
-
 #include <memory>
+
+#include "Agency/TransactionBuilder.h"
+#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
+#include "Replication2/ReplicatedState/AgencySpecification.h"
 #include "Replication2/ReplicatedState/StateCommon.h"
 
 namespace arangodb::replication2::replicated_state {
-struct Action {
-  enum class ActionType {
-    EmptyAction,
-    AddStateToPlanAction,
-    AddParticipantAction,
-    UnExcludeParticipantAction
-  };
-  virtual auto execute(std::string dbName, arangodb::agency::envelope envelope)
-      -> arangodb::agency::envelope = 0;
 
-  virtual ActionType type() const = 0;
-  virtual void toVelocyPack(VPackBuilder& builder) const = 0;
-  virtual ~Action() = default;
-};
+struct EmptyAction {};
 
-auto to_string(Action::ActionType action) -> std::string_view;
-
-struct EmptyAction : Action {
-  auto execute(std::string dbName, arangodb::agency::envelope envelope)
-      -> arangodb::agency::envelope override;
-
-  ActionType type() const override { return ActionType::EmptyAction; };
-  void toVelocyPack(VPackBuilder& builder) const override;
-};
-
-struct AddStateToPlanAction : Action {
-  auto execute(std::string dbName, arangodb::agency::envelope envelope)
-      -> arangodb::agency::envelope override;
-
-  ActionType type() const override { return ActionType::AddStateToPlanAction; };
-  void toVelocyPack(VPackBuilder& builder) const override;
-
-  AddStateToPlanAction(
-      arangodb::replication2::agency::LogTarget const& logTarget,
-      agency::Plan const& statePlan)
-      : logTarget{logTarget}, statePlan{statePlan} {};
-
-  arangodb::replication2::agency::LogTarget logTarget;
-  agency::Plan statePlan;
-};
-
-struct AddParticipantAction : Action {
-  auto execute(std::string dbName, arangodb::agency::envelope envelope)
-      -> arangodb::agency::envelope override;
-
-  ActionType type() const override { return ActionType::AddParticipantAction; };
-  void toVelocyPack(VPackBuilder& builder) const override;
-
-  AddParticipantAction(LogId const& log, ParticipantId const& participant,
-                       StateGeneration const& generation)
-      : log{log}, participant{participant}, generation{generation} {};
-
-  LogId log;
+struct AddParticipantAction {
   ParticipantId participant;
   StateGeneration generation;
 };
 
-struct UnExcludeParticipantAction : Action {
-  auto execute(std::string dbName, arangodb::agency::envelope envelope)
-      -> arangodb::agency::envelope override;
-
-  ActionType type() const override {
-    return ActionType::UnExcludeParticipantAction;
-  };
-  void toVelocyPack(VPackBuilder& builder) const override;
-
-  UnExcludeParticipantAction(LogId const& log, ParticipantId const& participant)
-      : log{log}, participant{participant} {};
-
-  LogId log;
-  ParticipantId participant;
+struct AddStateToPlanAction {
+  replication2::agency::LogTarget logTarget;
+  agency::Plan statePlan;
 };
+
+struct ModifyParticipantFlagsAction {
+  ParticipantId participant;
+  ParticipantFlags flags;
+};
+
+using Action = std::variant<EmptyAction, AddParticipantAction,
+                            AddStateToPlanAction, ModifyParticipantFlagsAction>;
+
+struct Executor {
+  LogId id;
+  DatabaseID const& database;
+  arangodb::agency::envelope envelope;
+
+  void operator()(EmptyAction const&);
+  void operator()(AddParticipantAction const&);
+  void operator()(AddStateToPlanAction const&);
+  void operator()(ModifyParticipantFlagsAction const&);
+};
+
+auto execute(LogId id, DatabaseID const& database, Action const& action,
+             arangodb::agency::envelope envelope) -> arangodb::agency::envelope;
 
 }  // namespace arangodb::replication2::replicated_state
