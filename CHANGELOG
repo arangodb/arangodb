@@ -1,6 +1,10 @@
 v3.9.1 (XXXX-XX-XX)
 -------------------
 
+* Avoid a deadlock in agency, when Inception::gossip() acquired a mutex, then
+  could call Agent under the mutex, and Agent could finally could call
+  Inception::signalConditionVar(), which would try to acquire the mutex again.
+
 * Avoid multiple parallel SIGHUP requests to be handled at the same time.
   Now collapse multiple incoming SIGHUP requests into a single one, which can be
   executed race-free.
