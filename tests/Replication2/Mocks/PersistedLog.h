@@ -60,9 +60,14 @@ struct MockLog : replication2::replicated_log::PersistedLog {
 
   [[nodiscard]] storeType getStorage() const { return _storage; }
 
+  auto checkEntryWaitedForSync(LogIndex idx) const noexcept -> bool {
+    return _writtenWithWaitForSync.find(idx) != _writtenWithWaitForSync.end();
+  }
+
  private:
   using iteratorType = storeType::iterator;
   storeType _storage;
+  std::unordered_set<LogIndex> _writtenWithWaitForSync;
 };
 
 struct AsyncMockLog : MockLog {

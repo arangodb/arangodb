@@ -563,7 +563,7 @@ LocalDocumentId RocksDBPrimaryIndex::lookupKey(
       rocksdb::Slice s(reinterpret_cast<char const*>(f.value()->value()),
                        f.value()->valueSize());
       return RocksDBValue::documentId(s);
-    } else if (f.result().errorNumber() == TRI_ERROR_LOCK_TIMEOUT) {
+    } else if (f.result() == TRI_ERROR_LOCK_TIMEOUT) {
       // assuming someone is currently holding a write lock, which
       // is why we cannot access the TransactionalBucket.
       lockTimeout = true;  // we skip the insert in this case
