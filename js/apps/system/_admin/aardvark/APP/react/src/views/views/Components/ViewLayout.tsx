@@ -20,8 +20,9 @@ const ViewLayout: React.FC<ViewLayoutProps> = ({
       <thead>
         <tr>
           <ArangoTH seq={disabled ? 0 : 1} style={{ width: "100%" }}>
-            <a href={`/${view}`}>{view}</a>/<a href={`/${link}`}>{link}</a>/
-            <a href={`/${field}`}>{field}</a>
+            <a href={`/${view}`}>{view}</a>
+            <a href={`/${link}`}>{link !== undefined ? "/" + link : ""}</a>
+            <a href={`/${field}`}>{field !== undefined ? "/" + field : ""}</a>
           </ArangoTH>
         </tr>
       </thead>

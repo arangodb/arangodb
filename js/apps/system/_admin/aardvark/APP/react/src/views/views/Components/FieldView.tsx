@@ -63,7 +63,7 @@ const FieldView: React.FC<FieldViewPprops> = ({
               <ArangoTD seq={disabled ? 0 : 1}>{fld}</ArangoTD>
               <ArangoTD seq={disabled ? 1 : 2}>
                 {properties &&
-                  map(properties.analyzers, a => <Badge name={a} />)}
+                  map(properties.analyzers, a => <Badge key={a} name={a} />)}
                 {/* <LinkPropertiesInput
                 formState={properties}
                 disabled={disabled}

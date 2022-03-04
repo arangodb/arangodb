@@ -63,6 +63,7 @@ const LinkPropertiesForm = ({
     <>
       {!disabled && addNew && (
         <NewLink
+          view={view}
           disabled={addDisabled || !options.includes(collection)}
           addLink={addLink}
           collection={collection}
