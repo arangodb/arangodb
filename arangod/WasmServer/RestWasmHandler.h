@@ -39,6 +39,7 @@ class RestWasmHandler : public arangodb::RestVocbaseBaseHandler {
   auto executeByMethod(wasm::WasmVmMethods const& methods) -> RestStatus;
   auto handleGetRequest(wasm::WasmVmMethods const& methods) -> RestStatus;
   auto handlePostRequest(wasm::WasmVmMethods const& methods) -> RestStatus;
+  auto handleDeleteRequest(wasm::WasmVmMethods const& methods) -> RestStatus;
 
  public:
   RestStatus execute() override;

@@ -23,53 +23,71 @@
 
 #include <gtest/gtest.h>
 #include "WasmServer/WasmCommon.h"
+#include "velocypack/Builder.h"
 #include "velocypack/Parser.h"
+#include "Basics/ResultT.h"
 
 using namespace arangodb;
 using namespace arangodb::wasm;
 
-struct WasmFunctionSliceTest : ::testing::Test {};
+struct WasmFunctionCreation : public ::testing::Test {
+  void expectWasmFunction(std::string&& string, WasmFunction&& wasmFunction) {
+    auto result =
+        WasmFunction::fromVelocyPack(VPackParser::fromJson(string)->slice());
+    EXPECT_EQ(result, ResultT<WasmFunction>{wasmFunction});
+  }
 
-TEST_F(WasmFunctionSliceTest, converts_from_velocypack) {
-  auto input = VPackParser::fromJson(
-      R"({"name": "Anne", "code": "ABC", "isDeterministic": true})");
-  auto result = WasmFunction::fromVelocyPack(input->slice());
-  EXPECT_TRUE(result.ok());
-  EXPECT_EQ(result.get(), (WasmFunction{"Anne", "ABC", true}));
+  void expectError(std::string&& string) {
+    auto result =
+        WasmFunction::fromVelocyPack(VPackParser::fromJson(string)->slice());
+    EXPECT_TRUE(result.fail());
+    EXPECT_EQ(result.errorNumber(), TRI_ERROR_BAD_PARAMETER);
+  }
+};
+
+TEST_F(WasmFunctionCreation, WasmFunction_is_created_from_velocypack) {
+  expectWasmFunction(
+      R"({"name": "Anne", "code": "ABC", "isDeterministic": true})",
+      WasmFunction{"Anne", "ABC", true});
 }
 
-TEST_F(WasmFunctionSliceTest, uses_false_as_isDeterministic_default) {
-  auto input = VPackParser::fromJson(R"({"name": "Anne", "code": "ABC"})");
-  auto result = WasmFunction::fromVelocyPack(input->slice());
-  EXPECT_TRUE(result.ok());
-  EXPECT_EQ(result.get(), (WasmFunction{"Anne", "ABC", false}));
+TEST_F(WasmFunctionCreation, uses_false_as_isDeterministic_default) {
+  expectWasmFunction(R"({"name": "Anne", "code": "ABC"})",
+                     WasmFunction{"Anne", "ABC", false});
 }
 
-TEST_F(WasmFunctionSliceTest, requires_name_field) {
-  auto input = VPackParser::fromJson(R"({"code": "ABC"})");
-  auto result = WasmFunction::fromVelocyPack(input->slice());
-  EXPECT_TRUE(result.fail());
-  EXPECT_EQ(result.errorNumber(), TRI_ERROR_BAD_PARAMETER);
+TEST_F(WasmFunctionCreation, requires_name_field) {
+  expectError(R"({"code": "ABC"})");
 }
 
-TEST_F(WasmFunctionSliceTest, requires_code_field) {
-  auto input = VPackParser::fromJson(R"({"name": "test"})");
-  auto result = WasmFunction::fromVelocyPack(input->slice());
-  EXPECT_TRUE(result.fail());
-  EXPECT_EQ(result.errorNumber(), TRI_ERROR_BAD_PARAMETER);
+TEST_F(WasmFunctionCreation, requires_code_field) {
+  expectError(R"({"name": "test"})");
 }
 
-TEST_F(WasmFunctionSliceTest, gives_error_for_invalid_jason) {
-  auto input = VPackParser::fromJson(R"([])");
-  auto result = WasmFunction::fromVelocyPack(input->slice());
-  EXPECT_TRUE(result.fail());
-  EXPECT_EQ(result.errorNumber(), TRI_ERROR_BAD_PARAMETER);
+TEST_F(WasmFunctionCreation, requires_json_object) { expectError(R"([])"); }
+
+TEST_F(WasmFunctionCreation, gives_error_for_unknown_key) {
+  expectError(R"({"name": "test", "code": "ABC", "banane": 5})");
 }
 
-TEST_F(WasmFunctionSliceTest, gives_error_for_invalid_key) {
-  auto input = VPackParser::fromJson(
-      R"({"name": "Klaus", "code": "XSAWE", "babane": 5})");
-  auto result = WasmFunction::fromVelocyPack(input->slice());
-  EXPECT_TRUE(result.fail());
-  EXPECT_EQ(result.errorNumber(), TRI_ERROR_BAD_PARAMETER);
+TEST_F(WasmFunctionCreation, expects_name_as_string) {
+  expectError(R"({"name": 1, "code": "ysww"})");
+}
+
+TEST_F(WasmFunctionCreation, expects_code_as_string) {
+  expectError(R"({"name": "some_function", "code": 1})");
+}
+
+TEST_F(WasmFunctionCreation, expects_isDeterministic_as_string) {
+  expectError(
+      R"({"name": "some_function", "code": "some code", "isDeterministic": "ABC"})");
+}
+
+TEST(WasmFunctionConversion, converts_to_velocypack) {
+  auto velocypack = VPackBuilder();
+  WasmFunction{"function_name", "test code", false}.toVelocyPack(velocypack);
+  EXPECT_TRUE(velocypack.slice().binaryEquals(
+      VPackParser::fromJson(
+          R"({"name": "function_name", "code": "test code", "isDeterministic": false})")
+          ->slice()));
 }

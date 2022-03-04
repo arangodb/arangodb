@@ -25,8 +25,6 @@ void WasmServerFeature::prepare() {
   }
 }
 
-WasmServerFeature::~WasmServerFeature() = default;
-
 void WasmServerFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions>) {}
 void WasmServerFeature::validateOptions(
@@ -35,7 +33,7 @@ void WasmServerFeature::validateOptions(
 void WasmServerFeature::addFunction(wasm::WasmFunction const& function) {
   _guardedFunctions.doUnderLock(
       [&function](GuardedFunctions& guardedFunctions) {
-        guardedFunctions._functions.emplace(function.name, function);
+        guardedFunctions._functions.emplace(function.name(), function);
       });
 }
 
@@ -70,4 +68,11 @@ auto WasmServerFeature::executeFunction(std::string const& name, uint64_t a,
   } else {
     // TODO
   }
+}
+
+void WasmServerFeature::deleteFunction(std::string const& functionName) {
+  _guardedFunctions.doUnderLock(
+      [&functionName](GuardedFunctions& guardedFunctions) {
+        guardedFunctions._functions.erase(functionName);
+      });
 }

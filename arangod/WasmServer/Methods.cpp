@@ -36,10 +36,20 @@ struct WasmVmMethodsSingleServer final
       std::enable_shared_from_this<WasmVmMethodsSingleServer> {
   explicit WasmVmMethodsSingleServer(TRI_vocbase_t& vocbase)
       : vocbase(vocbase){};
-  auto createWasmUdf(WasmFunction const& function) const -> futures::Future<Result> override {
+
+  auto createWasmUdf(WasmFunction const& function) const
+      -> futures::Future<Result> override {
     vocbase.server().getFeature<WasmServerFeature>().addFunction(function);
+    return Result{TRI_ERROR_NO_ERROR};
+  }
+
+  auto deleteWasmUdf(std::string const& functionName) const
+      -> futures::Future<Result> override {
+    vocbase.server().getFeature<WasmServerFeature>().deleteFunction(
+        functionName);
     return Result{};
   }
+
   TRI_vocbase_t& vocbase;
 };
 
@@ -52,5 +62,5 @@ auto WasmVmMethods::createInstance(TRI_vocbase_t& vocbase)
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_NOT_IMPLEMENTED,
           "This API is only available on single server.");
-   }
+  }
 }

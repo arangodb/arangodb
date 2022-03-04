@@ -37,6 +37,7 @@
 
 #include "WasmServer/WasmCommon.h"
 #include "Basics/ResultT.h"
+#include "Futures/Future.h"
 
 using namespace arangodb;
 using namespace arangodb::wasm;
@@ -60,6 +61,8 @@ auto RestWasmHandler::executeByMethod(WasmVmMethods const& methods)
       return handleGetRequest(methods);
     case rest::RequestType::POST:
       return handlePostRequest(methods);
+    case rest::RequestType::DELETE_REQ:
+      return handleDeleteRequest(methods);
     default:
       generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                     TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
@@ -76,6 +79,26 @@ auto RestWasmHandler::handleGetRequest(WasmVmMethods const& methods)
   return RestStatus::DONE;
 }
 
+auto RestWasmHandler::handleDeleteRequest(WasmVmMethods const& methods)
+    -> RestStatus {
+  auto success = bool{};
+  auto slice = parseVPackBody(success);
+  if (!success) {
+    return RestStatus::DONE;
+  }
+  if (!slice.isString()) {
+    generateError(
+        ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+        "RestWasmHandler Expects name of deletable function as string");
+  }
+  auto name = slice.copyString();
+  methods.deleteWasmUdf(name);
+
+  LOG_DEVEL << "function " << name << " deleted";
+
+  return RestStatus::DONE;
+}
+
 auto RestWasmHandler::handlePostRequest(WasmVmMethods const& methods)
     -> RestStatus {
   auto success = bool{};
@@ -83,19 +106,20 @@ auto RestWasmHandler::handlePostRequest(WasmVmMethods const& methods)
   if (!success) {
     return RestStatus::DONE;
   }
-  if (!slice.isObject()) {
-    generateError(ResponseCode::BAD, ErrorCode(TRI_ERROR_BAD_PARAMETER),
-                  "Expecting body to contain Json Object");
-    return RestStatus::DONE;
-  }
+
   ResultT<WasmFunction> function = WasmFunction::fromVelocyPack(slice);
   if (function.fail()) {
     generateError(ResponseCode::BAD, function.errorNumber(),
                   function.errorMessage());
     return RestStatus::DONE;
   }
+
+  auto create = methods.createWasmUdf(function.get());
+
+  // testing
   auto builder = VPackBuilder();
-  toVelocyPack(function.get(), builder);
-  LOG_DEVEL << "Hello" << builder.toJson();
+  function.get().toVelocyPack(builder);
+  LOG_DEVEL << builder.toJson();
+
   return RestStatus::DONE;
 }

@@ -39,7 +39,10 @@ namespace arangodb::wasm {
 
 struct WasmVmMethods {
   virtual ~WasmVmMethods() = default;
-  virtual auto createWasmUdf(WasmFunction const& function) const -> futures::Future<Result> = 0;
+  virtual auto createWasmUdf(WasmFunction const& function) const
+      -> futures::Future<Result> = 0;
+  virtual auto deleteWasmUdf(std::string const& functionName) const
+      -> futures::Future<Result> = 0;
   static auto createInstance(TRI_vocbase_t& vocbase)
       -> std::shared_ptr<WasmVmMethods>;
 };

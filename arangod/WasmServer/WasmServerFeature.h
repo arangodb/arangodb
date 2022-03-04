@@ -36,7 +36,7 @@ class WasmServerFeature final : public ArangodFeature {
   }
 
   explicit WasmServerFeature(Server& server);
-  ~WasmServerFeature() override;
+  ~WasmServerFeature() override = default;
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -44,6 +44,7 @@ class WasmServerFeature final : public ArangodFeature {
   void addFunction(wasm::WasmFunction const& function);
   auto loadFunction(std::string const& name) -> std::optional<wasm3::module>;
   auto executeFunction(std::string const& name) -> std::optional<uint64_t>;
+  void deleteFunction(std::string const& functionName);
 
  private:
   struct GuardedFunctions {

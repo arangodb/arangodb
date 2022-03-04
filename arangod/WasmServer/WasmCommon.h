@@ -1,4 +1,3 @@
-
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
@@ -27,7 +26,9 @@
 #include "velocypack/Builder.h"
 #include "velocypack/Slice.h"
 #include "Basics/ResultT.h"
+#include "Basics/Result.h"
 #include "velocypack/Slice.h"
+#include <set>
 
 namespace arangodb::wasm {
 
@@ -36,20 +37,28 @@ struct WasmContainer {
   size_t length;
 };
 
-struct WasmFunction {
-  std::string name;
-  WasmContainer code;
-  bool isDeterministic;
+class WasmFunction {
+ private:
+  std::string _name;
+  WasmContainer _code;
+  bool _isDeterministic;
+  static auto requiredStringField(std::string const&& fieldName,
+                                  velocypack::Slice slice)
+      -> ResultT<velocypack::Slice>;
+  static auto optionalBoolField(std::string const&& fieldName,
+                                bool defaultValue, velocypack::Slice slice)
+      -> arangodb::ResultT<bool>;
+  static auto checkOnlyValidFieldnamesAreIncluded(
+      std::set<std::string>&& validFieldnames, velocypack::Slice slice)
+      -> arangodb::Result;
+
+ public:
+  WasmFunction(std::string name, std::string code, bool isDeterministic);
+  auto name() const -> std::string { return _name; };
   static auto fromVelocyPack(arangodb::velocypack::Slice slice)
       -> ResultT<WasmFunction>;
+  void toVelocyPack(VPackBuilder& builder);
+  auto operator==(const WasmFunction& function) const -> bool = default;
 };
-
-void toVelocyPack(WasmFunction const& wasmFunction, VPackBuilder& builder);
-auto requiredStringSliceField(std::string_view fieldName,
-                              velocypack::Slice slice)
-    -> ResultT<velocypack::Slice>;
-auto deterministicField(velocypack::Slice slice) -> arangodb::ResultT<bool>;
-auto areOnlyValidFieldsIncluded(velocypack::Slice slice)
-    -> arangodb::ResultT<bool>;
 
 }  // namespace arangodb::wasm
