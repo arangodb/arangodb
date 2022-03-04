@@ -25,10 +25,10 @@
 
 #include <memory>
 
-#include "Basics/StringUtils.h"
 #include "Basics/Exceptions.h"
-#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
+#include "Basics/StringUtils.h"
 #include "Random/RandomGenerator.h"
+#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/SupervisionAction.h"
 
@@ -38,8 +38,7 @@ using namespace arangodb::replication2::agency;
 
 namespace arangodb::replication2::replicated_log {
 
-auto checkLogAdded(const Log& log, ParticipantsHealth const& health)
-    -> std::unique_ptr<Action> {
+auto checkLogAdded(const Log& log, ParticipantsHealth const& health) -> Action {
   if (!log.plan) {
     // TODO: this is a temporary hack
     if (log.target.participants.empty()) {
@@ -55,30 +54,29 @@ auto checkLogAdded(const Log& log, ParticipantsHealth const& health)
         }
       }
 
-      return std::make_unique<AddParticipantsToTargetAction>(newTarget);
+      return AddParticipantsToTargetAction(newTarget);
     }
     auto const spec = LogPlanSpecification(
         log.target.id, std::nullopt,
         ParticipantsConfig{.generation = 1,
                            .participants = log.target.participants});
 
-    return std::make_unique<AddLogToPlanAction>(spec);
+    return AddLogToPlanAction(spec);
   }
-  return std::make_unique<EmptyAction>();
+  return EmptyAction();
 }
 
 auto checkTermPresent(LogPlanSpecification const& plan, LogConfig const& config)
-    -> std::unique_ptr<Action> {
+    -> Action {
   if (!plan.currentTerm) {
-    return std::make_unique<CreateInitialTermAction>(
-        plan.id, LogPlanTermSpecification(LogTerm(1), config, std::nullopt));
+    return CreateInitialTermAction(
+        LogPlanTermSpecification(LogTerm(1), config, std::nullopt));
   }
-  return std::make_unique<EmptyAction>();
+  return EmptyAction();
 }
 
 auto checkLeaderFailed(LogPlanSpecification const& plan,
-                       ParticipantsHealth const& health)
-    -> std::unique_ptr<Action> {
+                       ParticipantsHealth const& health) -> Action {
   // TODO: if we assert this here, we assume we're always called
   //       with non std::nullopt currentTerm and leader
   TRI_ASSERT(plan.currentTerm != std::nullopt);
@@ -88,7 +86,7 @@ auto checkLeaderFailed(LogPlanSpecification const& plan,
       health.validRebootId(plan.currentTerm->leader->serverId,
                            plan.currentTerm->leader->rebootId)) {
     // Current leader is all healthy so nothing to do.
-    return std::make_unique<EmptyAction>();
+    return EmptyAction();
   } else {
     // Leader has failed; start a new term
     auto newTerm = *plan.currentTerm;
@@ -96,7 +94,7 @@ auto checkLeaderFailed(LogPlanSpecification const& plan,
     newTerm.leader.reset();
     newTerm.term = LogTerm{plan.currentTerm->term.value + 1};
 
-    return std::make_unique<UpdateTermAction>(plan.id, newTerm);
+    return UpdateTermAction(newTerm);
   }
 }
 
@@ -116,13 +114,12 @@ auto checkLeaderFailed(LogPlanSpecification const& plan,
 auto checkLeaderRemovedFromTarget(LogTarget const& target,
                                   LogPlanSpecification const& plan,
                                   LogCurrent const& current,
-                                  ParticipantsHealth const& health)
-    -> std::unique_ptr<Action> {
+                                  ParticipantsHealth const& health) -> Action {
   // TODO: integrate
   if (!current.leader || !current.leader->committedParticipantsConfig ||
       current.leader->committedParticipantsConfig->generation !=
           plan.participantsConfig.generation) {
-    return std::make_unique<EmptyAction>();
+    return EmptyAction();
   }
 
   if (plan.currentTerm && plan.currentTerm->leader &&
@@ -153,7 +150,7 @@ auto checkLeaderRemovedFromTarget(LogTarget const& target,
             term, plan.currentTerm->config,
             LogPlanTermSpecification::Leader{participant, rebootId});
 
-        return std::make_unique<DictateLeaderAction>(target.id, termSpec);
+        return DictateLeaderAction(termSpec);
       }
     }
 
@@ -170,15 +167,15 @@ auto checkLeaderRemovedFromTarget(LogTarget const& target,
 
       flags.forced = true;
 
-      return std::make_unique<UpdateParticipantFlagsAction>(
-          target.id, chosenOne, flags, plan.participantsConfig.generation);
+      return UpdateParticipantFlagsAction(chosenOne, flags,
+                                          plan.participantsConfig.generation);
     } else {
       // We should be signaling that we could not determine a leader
       // because noone suitable was available
     }
   }
 
-  return std::make_unique<EmptyAction>();
+  return EmptyAction();
 }
 
 /*
@@ -189,8 +186,7 @@ auto checkLeaderRemovedFromTarget(LogTarget const& target,
 auto checkLeaderInTarget(LogTarget const& target,
                          LogPlanSpecification const& plan,
                          LogCurrent const& current,
-                         ParticipantsHealth const& health)
-    -> std::unique_ptr<Action> {
+                         ParticipantsHealth const& health) -> Action {
   // Someone wishes there to be a particular leader
 
   if (target.leader && plan.currentTerm && plan.currentTerm->leader &&
@@ -204,7 +200,7 @@ auto checkLeaderInTarget(LogTarget const& target,
     if (!current.leader || !current.leader->committedParticipantsConfig ||
         current.leader->committedParticipantsConfig->generation !=
             plan.participantsConfig.generation) {
-      return std::make_unique<EmptyAction>();
+      return EmptyAction();
     }
 
     if (!plan.participantsConfig.participants.contains(*target.leader)) {
@@ -212,22 +208,20 @@ auto checkLeaderInTarget(LogTarget const& target,
           current.supervision->error ==
               LogCurrentSupervisionError::TARGET_LEADER_INVALID) {
         // Error has already been reported; don't re-report
-        return std::make_unique<EmptyAction>();
+        return EmptyAction();
       } else {
-        return std::make_unique<ErrorAction>(
-            plan.id, LogCurrentSupervisionError::TARGET_LEADER_INVALID);
+        return ErrorAction(LogCurrentSupervisionError::TARGET_LEADER_INVALID);
       }
     }
     auto const& planLeaderConfig =
         plan.participantsConfig.participants.at(*target.leader);
 
     if (planLeaderConfig.forced != true || planLeaderConfig.excluded == true) {
-      return std::make_unique<ErrorAction>(
-          plan.id, LogCurrentSupervisionError::TARGET_LEADER_EXCLUDED);
+      return ErrorAction(LogCurrentSupervisionError::TARGET_LEADER_EXCLUDED);
     }
 
     if (!health.notIsFailed(*target.leader)) {
-      return std::make_unique<EmptyAction>();
+      return EmptyAction();
       // TODO: we need to be able to trace why actions were not taken
       //       distinguishing between errors and conditions not being met (?)
     };
@@ -238,9 +232,9 @@ auto checkLeaderInTarget(LogTarget const& target,
         term, plan.currentTerm->config,
         LogPlanTermSpecification::Leader{*target.leader, rebootId});
 
-    return std::make_unique<DictateLeaderAction>(target.id, termSpec);
+    return DictateLeaderAction(termSpec);
   }
-  return std::make_unique<EmptyAction>();
+  return EmptyAction();
 }
 
 auto computeReason(LogCurrentLocalState const& status, bool healthy,
@@ -289,8 +283,7 @@ auto runElectionCampaign(LogCurrentLocalStates const& states,
 
 auto tryLeadershipElection(LogPlanSpecification const& plan,
                            LogCurrent const& current,
-                           ParticipantsHealth const& health)
-    -> std::unique_ptr<Action> {
+                           ParticipantsHealth const& health) -> Action {
   // Check whether there are enough participants to reach a quorum
 
   if (plan.participantsConfig.participants.size() + 1 <=
@@ -298,7 +291,7 @@ auto tryLeadershipElection(LogPlanSpecification const& plan,
     auto election = LogCurrentSupervisionElection();
     election.term = plan.currentTerm->term;
     election.outcome = LogCurrentSupervisionElection::Outcome::IMPOSSIBLE;
-    return std::make_unique<LeaderElectionAction>(plan.id, election);
+    return LeaderElectionAction(election);
   }
 
   TRI_ASSERT(plan.participantsConfig.participants.size() + 1 >
@@ -319,7 +312,7 @@ auto tryLeadershipElection(LogPlanSpecification const& plan,
   if (numElectible == 0 ||
       numElectible > std::numeric_limits<uint16_t>::max()) {
     election.outcome = LogCurrentSupervisionElection::Outcome::IMPOSSIBLE;
-    return std::make_unique<LeaderElectionAction>(plan.id, election);
+    return LeaderElectionAction(election);
   }
 
   if (election.participantsAvailable >= requiredNumberOfOKParticipants) {
@@ -330,8 +323,8 @@ auto tryLeadershipElection(LogPlanSpecification const& plan,
     auto const& newLeaderRebootId = health._health.at(newLeader).rebootId;
 
     election.outcome = LogCurrentSupervisionElection::Outcome::SUCCESS;
-    return std::make_unique<LeaderElectionAction>(
-        plan.id, election,
+    return LeaderElectionAction(
+        election,
         LogPlanTermSpecification(
             LogTerm{plan.currentTerm->term.value + 1}, plan.currentTerm->config,
             LogPlanTermSpecification::Leader{.serverId = newLeader,
@@ -340,19 +333,18 @@ auto tryLeadershipElection(LogPlanSpecification const& plan,
     // Not enough participants were available to form a quorum, so
     // we can't elect a leader
     election.outcome = LogCurrentSupervisionElection::Outcome::FAILED;
-    return std::make_unique<LeaderElectionAction>(plan.id, election);
+    return LeaderElectionAction(election);
   }
 }
 
 auto checkLeaderPresent(LogPlanSpecification const& plan,
                         LogCurrent const& current,
-                        ParticipantsHealth const& health)
-    -> std::unique_ptr<Action> {
+                        ParticipantsHealth const& health) -> Action {
   // currentTerm has no leader
   if (!plan.currentTerm->leader.has_value()) {
     return tryLeadershipElection(plan, current, health);
   } else {
-    return std::make_unique<EmptyAction>();
+    return EmptyAction();
   }
 }
 
@@ -373,7 +365,7 @@ auto desiredParticipantFlags(LogTarget const& target,
 
 auto checkLogTargetParticipantFlags(LogTarget const& target,
                                     LogPlanSpecification const& plan)
-    -> std::unique_ptr<Action> {
+    -> Action {
   auto const& tps = target.participants;
   auto const& pps = plan.participantsConfig.participants;
 
@@ -384,20 +376,19 @@ auto checkLogTargetParticipantFlags(LogTarget const& target,
       auto const df = desiredParticipantFlags(target, plan, targetParticipant);
       if (df != planParticipant->second) {
         // Flags changed, so we need to commit new flags for this participant
-        return std::make_unique<UpdateParticipantFlagsAction>(
-            target.id, targetParticipant, df,
-            plan.participantsConfig.generation);
+        return UpdateParticipantFlagsAction(targetParticipant, df,
+                                            plan.participantsConfig.generation);
       }
     }
   }
 
   // nothing changed, nothing to do
-  return std::make_unique<EmptyAction>();
+  return EmptyAction();
 }
 
 auto checkLogTargetParticipantAdded(LogTarget const& target,
                                     LogPlanSpecification const& plan)
-    -> std::unique_ptr<Action> {
+    -> Action {
   auto tps = target.participants;
   auto pps = plan.participantsConfig.participants;
 
@@ -406,17 +397,16 @@ auto checkLogTargetParticipantAdded(LogTarget const& target,
     if (auto const& planParticipant = pps.find(targetParticipant);
         planParticipant == pps.end()) {
       // Here's a participant that is not in plan yet; we add it
-      return std::make_unique<AddParticipantToPlanAction>(
-          plan.id, targetParticipant, targetFlags,
-          plan.participantsConfig.generation);
+      return AddParticipantToPlanAction(targetParticipant, targetFlags,
+                                        plan.participantsConfig.generation);
     }
   }
-  return std::make_unique<EmptyAction>();
+  return EmptyAction();
 }
 
 auto checkLogTargetParticipantRemoved(LogTarget const& target,
                                       LogPlanSpecification const& plan)
-    -> std::unique_ptr<Action> {
+    -> Action {
   auto tps = target.participants;
   auto pps = plan.participantsConfig.participants;
 
@@ -430,38 +420,35 @@ auto checkLogTargetParticipantRemoved(LogTarget const& target,
         auto newTerm = *plan.currentTerm;
         newTerm.term = LogTerm{newTerm.term.value + 1};
         newTerm.leader.reset();
-        return std::make_unique<EvictLeaderAction>(
-            plan.id, planParticipant, desiredFlags, newTerm,
-            plan.participantsConfig.generation);
+        return EvictLeaderAction(planParticipant, desiredFlags, newTerm,
+                                 plan.participantsConfig.generation);
       } else {
-        return std::make_unique<RemoveParticipantFromPlanAction>(
-            plan.id, planParticipant, plan.participantsConfig.generation);
+        return RemoveParticipantFromPlanAction(
+            planParticipant, plan.participantsConfig.generation);
       }
     }
   }
-  return std::make_unique<EmptyAction>();
+  return EmptyAction();
 }
 
 // Check whether the Target configuration differs from Plan
 // and do a validity check on the new config
 auto checkLogTargetConfig(LogTarget const& target,
-                          LogPlanSpecification const& plan)
-    -> std::unique_ptr<Action> {
+                          LogPlanSpecification const& plan) -> Action {
   if (plan.currentTerm && target.config != plan.currentTerm->config) {
     // TODO: validity Check on target config
-    return std::make_unique<UpdateLogConfigAction>(plan.id, target.config);
+    return UpdateLogConfigAction(target.config);
   }
-  return std::make_unique<EmptyAction>();
+  return EmptyAction();
 }
 
-auto isEmptyAction(std::unique_ptr<Action>& action) {
-  return (action == nullptr) or
-         (action->type() == Action::ActionType::EmptyAction);
+auto isEmptyAction(Action& action) {
+  return std::holds_alternative<EmptyAction>(action);
 }
 
 // The main function
 auto checkReplicatedLog(Log const& log, ParticipantsHealth const& health)
-    -> std::unique_ptr<Action> {
+    -> Action {
   // Check whether this log exists in plan;
   //
   // If it doesn't the action is to create the log;
@@ -485,7 +472,7 @@ auto checkReplicatedLog(Log const& log, ParticipantsHealth const& health)
   // leadership
   // TODO: Action that reports we're waiting for Current
   if (!log.current) {
-    return std::make_unique<EmptyAction>();
+    return EmptyAction();
   }
 
   // Check that the log has a leader in plan; if not try electing one
@@ -551,7 +538,7 @@ auto checkReplicatedLog(Log const& log, ParticipantsHealth const& health)
   }
 
   // Nothing todo
-  return std::make_unique<EmptyAction>();
+  return EmptyAction();
 }
 
 }  // namespace arangodb::replication2::replicated_log
