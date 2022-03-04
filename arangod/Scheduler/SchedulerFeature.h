@@ -28,6 +28,9 @@
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SupervisedScheduler.h"
 
+#include <functional>
+#include <memory>
+
 namespace arangodb {
 
 class SchedulerFeature final : public application_features::ApplicationFeature {
@@ -44,7 +47,16 @@ class SchedulerFeature final : public application_features::ApplicationFeature {
   void stop() override final;
   void unprepare() override final;
 
+  // -------------------------------------------------------------------------
+  // UNRELATED SECTION STARTS HERE: Signals and other things crept into Sched
+  // -------------------------------------------------------------------------
+  void buildControlCHandler();
+  void buildHangupHandler();
+
  private:
+  void signalStuffInit();
+  void signalStuffDeinit();
+
   uint64_t _nrMinimalThreads = 4;
   uint64_t _nrMaximalThreads = 0;
   uint64_t _queueSize = 4096;
@@ -56,23 +68,11 @@ class SchedulerFeature final : public application_features::ApplicationFeature {
 
   std::unique_ptr<Scheduler> _scheduler;
 
-  // -------------------------------------------------------------------------
-  // UNRELATED SECTION STARTS HERE: Signals and other things crept into Sched
-  // -------------------------------------------------------------------------
-
- public:
-  void buildControlCHandler();
-  void buildHangupHandler();
-
- private:
-  void signalStuffInit();
-  void signalStuffDeinit();
-
-  std::function<void(const asio_ns::error_code&, int)> _signalHandler;
-  std::function<void(const asio_ns::error_code&, int)> _exitHandler;
+  std::function<void(asio_ns::error_code const&, int)> _signalHandler;
+  std::function<void(asio_ns::error_code const&, int)> _exitHandler;
   std::shared_ptr<asio_ns::signal_set> _exitSignals;
 
-  std::function<void(const asio_ns::error_code&, int)> _hangupHandler;
+  std::function<void(asio_ns::error_code const&, int)> _hangupHandler;
   std::shared_ptr<asio_ns::signal_set> _hangupSignals;
 };
 
