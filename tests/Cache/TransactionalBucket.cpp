@@ -28,6 +28,7 @@
 #include <string>
 
 #include "Basics/debugging.h"
+#include "Cache/BinaryHasher.h"
 #include "Cache/TransactionalBucket.h"
 
 using namespace arangodb::cache;
@@ -61,6 +62,7 @@ TEST(CacheTransactionalBucketTest, test_locking_behavior) {
 }
 
 TEST(CacheTransactionalBucketTest, verify_that_insertion_works_as_expected) {
+  BinaryHasher hasher;
   auto bucket = std::make_unique<TransactionalBucket>();
   bool success;
 
@@ -91,14 +93,14 @@ TEST(CacheTransactionalBucketTest, verify_that_insertion_works_as_expected) {
   }
   for (std::size_t i = 0; i < 7; i++) {
     CachedValue* res =
-        bucket->find(hashes[i], ptrs[i]->key(), ptrs[i]->keySize());
+        bucket->find(hasher, hashes[i], ptrs[i]->key(), ptrs[i]->keySize());
     ASSERT_EQ(res, ptrs[i]);
   }
 
   // check that insert is ignored if full
   bucket->insert(hashes[8], ptrs[8]);
   CachedValue* res =
-      bucket->find(hashes[8], ptrs[8]->key(), ptrs[8]->keySize());
+      bucket->find(hasher, hashes[8], ptrs[8]->key(), ptrs[8]->keySize());
   ASSERT_EQ(nullptr, res);
 
   bucket->unlock();
@@ -110,6 +112,7 @@ TEST(CacheTransactionalBucketTest, verify_that_insertion_works_as_expected) {
 }
 
 TEST(CacheTransactionalBucketTest, verify_that_removal_works_as_expected) {
+  BinaryHasher hasher;
   auto bucket = std::make_unique<TransactionalBucket>();
   bool success;
 
@@ -132,22 +135,22 @@ TEST(CacheTransactionalBucketTest, verify_that_removal_works_as_expected) {
   }
   for (std::size_t i = 0; i < 3; i++) {
     CachedValue* res =
-        bucket->find(hashes[i], ptrs[i]->key(), ptrs[i]->keySize());
+        bucket->find(hasher, hashes[i], ptrs[i]->key(), ptrs[i]->keySize());
     ASSERT_EQ(res, ptrs[i]);
   }
 
   CachedValue* res;
-  res = bucket->remove(hashes[1], ptrs[1]->key(), ptrs[1]->keySize());
+  res = bucket->remove(hasher, hashes[1], ptrs[1]->key(), ptrs[1]->keySize());
   ASSERT_EQ(res, ptrs[1]);
-  res = bucket->find(hashes[1], ptrs[1]->key(), ptrs[1]->keySize());
+  res = bucket->find(hasher, hashes[1], ptrs[1]->key(), ptrs[1]->keySize());
   ASSERT_EQ(nullptr, res);
-  res = bucket->remove(hashes[0], ptrs[0]->key(), ptrs[0]->keySize());
+  res = bucket->remove(hasher, hashes[0], ptrs[0]->key(), ptrs[0]->keySize());
   ASSERT_EQ(res, ptrs[0]);
-  res = bucket->find(hashes[0], ptrs[0]->key(), ptrs[0]->keySize());
+  res = bucket->find(hasher, hashes[0], ptrs[0]->key(), ptrs[0]->keySize());
   ASSERT_EQ(nullptr, res);
-  res = bucket->remove(hashes[2], ptrs[2]->key(), ptrs[2]->keySize());
+  res = bucket->remove(hasher, hashes[2], ptrs[2]->key(), ptrs[2]->keySize());
   ASSERT_EQ(res, ptrs[2]);
-  res = bucket->find(hashes[2], ptrs[2]->key(), ptrs[2]->keySize());
+  res = bucket->find(hasher, hashes[2], ptrs[2]->key(), ptrs[2]->keySize());
   ASSERT_EQ(nullptr, res);
 
   bucket->unlock();
@@ -159,6 +162,7 @@ TEST(CacheTransactionalBucketTest, verify_that_removal_works_as_expected) {
 }
 
 TEST(CacheTransactionalBucketTest, verify_that_eviction_works_as_expected) {
+  BinaryHasher hasher;
   auto bucket = std::make_unique<TransactionalBucket>();
   bool success;
 
@@ -189,7 +193,7 @@ TEST(CacheTransactionalBucketTest, verify_that_eviction_works_as_expected) {
   }
   for (std::size_t i = 0; i < 8; i++) {
     CachedValue* res =
-        bucket->find(hashes[i], ptrs[i]->key(), ptrs[i]->keySize());
+        bucket->find(hasher, hashes[i], ptrs[i]->key(), ptrs[i]->keySize());
     ASSERT_EQ(res, ptrs[i]);
   }
 
@@ -198,7 +202,7 @@ TEST(CacheTransactionalBucketTest, verify_that_eviction_works_as_expected) {
   ASSERT_EQ(candidate, ptrs[0]);
   bucket->evict(candidate, false);
   CachedValue* res =
-      bucket->find(hashes[0], ptrs[0]->key(), ptrs[0]->keySize());
+      bucket->find(hasher, hashes[0], ptrs[0]->key(), ptrs[0]->keySize());
   ASSERT_EQ(nullptr, res);
   ASSERT_FALSE(bucket->isFull());
 
@@ -206,13 +210,13 @@ TEST(CacheTransactionalBucketTest, verify_that_eviction_works_as_expected) {
   candidate = bucket->evictionCandidate();
   ASSERT_EQ(candidate, ptrs[1]);
   bucket->evict(candidate, true);
-  res = bucket->find(hashes[1], ptrs[1]->key(), ptrs[1]->keySize());
+  res = bucket->find(hasher, hashes[1], ptrs[1]->key(), ptrs[1]->keySize());
   ASSERT_EQ(nullptr, res);
   ASSERT_FALSE(bucket->isFull());
 
   // check that we can insert now after eviction optimized for insertion
   bucket->insert(hashes[8], ptrs[8]);
-  res = bucket->find(hashes[8], ptrs[8]->key(), ptrs[8]->keySize());
+  res = bucket->find(hasher, hashes[8], ptrs[8]->key(), ptrs[8]->keySize());
   ASSERT_EQ(res, ptrs[8]);
 
   bucket->unlock();
@@ -224,6 +228,7 @@ TEST(CacheTransactionalBucketTest, verify_that_eviction_works_as_expected) {
 }
 
 TEST(CacheTransactionalBucketTest, verify_that_banishing_works_as_expected) {
+  BinaryHasher hasher;
   auto bucket = std::make_unique<TransactionalBucket>();
   bool success;
   CachedValue* res;
@@ -254,33 +259,33 @@ TEST(CacheTransactionalBucketTest, verify_that_banishing_works_as_expected) {
     }
   }
   for (std::size_t i = 0; i < 8; i++) {
-    res = bucket->find(hashes[i], ptrs[i]->key(), ptrs[i]->keySize());
+    res = bucket->find(hasher, hashes[i], ptrs[i]->key(), ptrs[i]->keySize());
     ASSERT_EQ(res, ptrs[i]);
   }
 
   // banish 1-5 to fill banish list
   for (std::size_t i = 1; i < 6; i++) {
-    bucket->banish(hashes[i], ptrs[i]->key(), ptrs[i]->keySize());
+    bucket->banish(hasher, hashes[i], ptrs[i]->key(), ptrs[i]->keySize());
   }
   for (std::size_t i = 1; i < 6; i++) {
     ASSERT_TRUE(bucket->isBanished(hashes[i]));
-    res = bucket->find(hashes[i], ptrs[i]->key(), ptrs[i]->keySize());
+    res = bucket->find(hasher, hashes[i], ptrs[i]->key(), ptrs[i]->keySize());
     ASSERT_EQ(nullptr, res);
   }
   // verify actually not fully banished
   ASSERT_FALSE(bucket->isFullyBanished());
   ASSERT_FALSE(bucket->isBanished(hashes[6]));
   // verify it didn't remove matching hash with non-matching key
-  res = bucket->find(hashes[0], ptrs[0]->key(), ptrs[0]->keySize());
+  res = bucket->find(hasher, hashes[0], ptrs[0]->key(), ptrs[0]->keySize());
   ASSERT_EQ(res, ptrs[0]);
 
   // proceed to fully banish
-  bucket->banish(hashes[6], ptrs[6]->key(), ptrs[6]->keySize());
+  bucket->banish(hasher, hashes[6], ptrs[6]->key(), ptrs[6]->keySize());
   ASSERT_TRUE(bucket->isBanished(hashes[6]));
-  res = bucket->find(hashes[6], ptrs[6]->key(), ptrs[6]->keySize());
+  res = bucket->find(hasher, hashes[6], ptrs[6]->key(), ptrs[6]->keySize());
   ASSERT_EQ(nullptr, res);
   // make sure it still didn't remove non-matching key
-  res = bucket->find(hashes[0], ptrs[0]->key(), ptrs[0]->keySize());
+  res = bucket->find(hasher, hashes[0], ptrs[0]->key(), ptrs[0]->keySize());
   ASSERT_EQ(ptrs[0], res);
   // make sure it's fully banished
   ASSERT_TRUE(bucket->isFullyBanished());

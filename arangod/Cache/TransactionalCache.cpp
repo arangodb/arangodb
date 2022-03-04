@@ -21,7 +21,6 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <atomic>
 #include <cstdint>
 
 #include "Cache/TransactionalCache.h"
@@ -36,7 +35,6 @@
 #include "Cache/Metadata.h"
 #include "Cache/Table.h"
 #include "Cache/TransactionalBucket.h"
-#include "Logger/Logger.h"
 
 namespace arangodb::cache {
 
@@ -45,14 +43,14 @@ using SpinLocker = ::arangodb::basics::SpinLocker;
 Finding TransactionalCache::find(void const* key, std::uint32_t keySize) {
   TRI_ASSERT(key != nullptr);
   Finding result;
-  std::uint32_t hash = hashKey(key, keySize);
+  std::uint32_t hash = _hasher.hashKey(key, keySize);
 
   auto [status, guard] = getBucket(hash, Cache::triesFast, false);
   if (status != TRI_ERROR_NO_ERROR) {
     result.reportError(status);
   } else {
     TransactionalBucket& bucket = guard.bucket<TransactionalBucket>();
-    result.set(bucket.find(hash, key, keySize));
+    result.set(bucket.find(_hasher, hash, key, keySize));
     if (result.found()) {
       recordStat(Stat::findHit);
     } else {
@@ -67,7 +65,7 @@ Finding TransactionalCache::find(void const* key, std::uint32_t keySize) {
 Result TransactionalCache::insert(CachedValue* value) {
   TRI_ASSERT(value != nullptr);
   bool maybeMigrate = false;
-  std::uint32_t hash = hashKey(value->key(), value->keySize());
+  std::uint32_t hash = _hasher.hashKey(value->key(), value->keySize());
 
   Result status;
   Table* source;
@@ -84,7 +82,7 @@ Result TransactionalCache::insert(CachedValue* value) {
     if (allowed) {
       std::int64_t change = static_cast<std::int64_t>(value->size());
       CachedValue* candidate =
-          bucket.find(hash, value->key(), value->keySize());
+          bucket.find(_hasher, hash, value->key(), value->keySize());
 
       if (candidate == nullptr && bucket.isFull()) {
         candidate = bucket.evictionCandidate();
@@ -108,7 +106,8 @@ Result TransactionalCache::insert(CachedValue* value) {
           bool eviction = false;
           if (candidate != nullptr) {
             bucket.evict(candidate, true);
-            if (!candidate->sameKey(value->key(), value->keySize())) {
+            if (!_hasher.sameKey(candidate->key(), candidate->keySize(),
+                                 value->key(), value->keySize())) {
               eviction = true;
             }
             freeValue(candidate);
@@ -140,7 +139,7 @@ Result TransactionalCache::insert(CachedValue* value) {
 Result TransactionalCache::remove(void const* key, std::uint32_t keySize) {
   TRI_ASSERT(key != nullptr);
   bool maybeMigrate = false;
-  std::uint32_t hash = hashKey(key, keySize);
+  std::uint32_t hash = _hasher.hashKey(key, keySize);
 
   Result status;
   Table* source;
@@ -153,7 +152,7 @@ Result TransactionalCache::remove(void const* key, std::uint32_t keySize) {
 
     TransactionalBucket& bucket = guard.bucket<TransactionalBucket>();
     source = guard.source();
-    CachedValue* candidate = bucket.remove(hash, key, keySize);
+    CachedValue* candidate = bucket.remove(_hasher, hash, key, keySize);
 
     if (candidate != nullptr) {
       std::int64_t change = -static_cast<std::int64_t>(candidate->size());
@@ -180,7 +179,7 @@ Result TransactionalCache::remove(void const* key, std::uint32_t keySize) {
 Result TransactionalCache::banish(void const* key, std::uint32_t keySize) {
   TRI_ASSERT(key != nullptr);
   bool maybeMigrate = false;
-  std::uint32_t hash = hashKey(key, keySize);
+  std::uint32_t hash = _hasher.hashKey(key, keySize);
 
   Result status;
   Table* source;
@@ -193,7 +192,7 @@ Result TransactionalCache::banish(void const* key, std::uint32_t keySize) {
 
     TransactionalBucket& bucket = guard.bucket<TransactionalBucket>();
     source = guard.source();
-    CachedValue* candidate = bucket.banish(hash, key, keySize);
+    CachedValue* candidate = bucket.banish(_hasher, hash, key, keySize);
 
     if (candidate != nullptr) {
       std::int64_t change = -static_cast<std::int64_t>(candidate->size());
@@ -328,9 +327,10 @@ void TransactionalCache::migrateBucket(void* sourcePtr,
       for (std::size_t j = 0; j < TransactionalBucket::slotsBanish; j++) {
         std::uint32_t hash = source._banishHashes[j];
         if (hash != 0) {
-          auto targetBucket = reinterpret_cast<TransactionalBucket*>(
-              targets->fetchBucket(hash));
-          CachedValue* candidate = targetBucket->banish(hash, nullptr, 0);
+          auto targetBucket =
+              static_cast<TransactionalBucket*>(targets->fetchBucket(hash));
+          CachedValue* candidate =
+              targetBucket->banish(_hasher, hash, nullptr, 0);
           if (candidate != nullptr) {
             std::uint64_t size = candidate->size();
             freeValue(candidate);
@@ -352,7 +352,7 @@ void TransactionalCache::migrateBucket(void* sourcePtr,
         CachedValue* value = source._cachedData[k];
 
         auto targetBucket =
-            reinterpret_cast<TransactionalBucket*>(targets->fetchBucket(hash));
+            static_cast<TransactionalBucket*>(targets->fetchBucket(hash));
         if (targetBucket->isBanished(hash)) {
           std::uint64_t size = value->size();
           freeValue(value);
@@ -418,7 +418,7 @@ std::tuple<::ErrorCode, Table::BucketLocker> TransactionalCache::getBucket(
 
 Table::BucketClearer TransactionalCache::bucketClearer(Metadata* metadata) {
   return [metadata](void* ptr) -> void {
-    auto bucket = reinterpret_cast<TransactionalBucket*>(ptr);
+    auto bucket = static_cast<TransactionalBucket*>(ptr);
     bucket->lock(Cache::triesGuarantee);
     for (std::size_t j = 0; j < TransactionalBucket::slotsData; j++) {
       if (bucket->_cachedData[j] != nullptr) {

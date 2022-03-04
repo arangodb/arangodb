@@ -26,6 +26,7 @@
 #include <cstdint>
 
 #include "Basics/ErrorCode.h"
+#include "Cache/BinaryHasher.h"
 #include "Cache/Cache.h"
 #include "Cache/CachedValue.h"
 #include "Cache/Common.h"
@@ -96,6 +97,8 @@ class PlainCache final : public Cache {
   friend class FreeMemoryTask;
   friend class Manager;
   friend class MigrateTask;
+
+  BinaryHasher _hasher;
 
   static constexpr uint64_t allocationSize(bool enableWindowedStats) {
     return sizeof(PlainCache) +

@@ -30,12 +30,13 @@
 #include <thread>
 #include <vector>
 
-#include "RestServer/SharedPRNGFeature.h"
+#include "Cache/BinaryHasher.h"
 #include "Cache/CacheManagerFeatureThreads.h"
 #include "Cache/Common.h"
 #include "Cache/Manager.h"
 #include "Cache/PlainCache.h"
 #include "Random/RandomGenerator.h"
+#include "RestServer/SharedPRNGFeature.h"
 
 #include "Mocks/Servers.h"
 #include "MockScheduler.h"
@@ -79,6 +80,7 @@ TEST(CacheManagerTest, test_mixed_cache_types_under_mixed_load_LongRunning) {
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
   Manager manager(sharedPRNG, postFn, 1024ULL * 1024ULL * 1024ULL);
+  BinaryHasher hasher;
   std::size_t cacheCount = 4;
   std::size_t threadCount = 4;
   std::vector<std::shared_ptr<Cache>> caches;
@@ -94,7 +96,8 @@ TEST(CacheManagerTest, test_mixed_cache_types_under_mixed_load_LongRunning) {
   std::uint64_t operationCount = 4 * 1024 * 1024;
   std::atomic<std::uint64_t> hitCount(0);
   std::atomic<std::uint64_t> missCount(0);
-  auto worker = [&caches, cacheCount, initialInserts, operationCount, &hitCount,
+  auto worker = [&hasher, &caches, cacheCount, initialInserts, operationCount,
+                 &hitCount,
                  &missCount](std::uint64_t lower, std::uint64_t upper) -> void {
     // fill with some initial data
     for (std::uint64_t i = 0; i < initialInserts; i++) {
@@ -150,7 +153,8 @@ TEST(CacheManagerTest, test_mixed_cache_types_under_mixed_load_LongRunning) {
         if (f.found()) {
           hitCount++;
           TRI_ASSERT(f.value() != nullptr);
-          TRI_ASSERT(f.value()->sameKey(&item, sizeof(std::uint64_t)));
+          TRI_ASSERT(hasher.sameKey(f.value()->key(), f.value()->keySize(),
+                                    &item, sizeof(std::uint64_t)));
         } else {
           missCount++;
           TRI_ASSERT(f.value() == nullptr);

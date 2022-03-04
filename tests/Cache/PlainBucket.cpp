@@ -28,11 +28,13 @@
 #include <string>
 
 #include "Basics/debugging.h"
+#include "Cache/BinaryHasher.h"
 #include "Cache/PlainBucket.h"
 
 using namespace arangodb::cache;
 
 TEST(CachePlainBucketTest, verify_that_insertion_works_correctly) {
+  BinaryHasher hasher;
   auto bucket = std::make_unique<PlainBucket>();
   bool success;
 
@@ -64,14 +66,14 @@ TEST(CachePlainBucketTest, verify_that_insertion_works_correctly) {
   }
   for (std::size_t i = 0; i < 10; i++) {
     CachedValue* res =
-        bucket->find(hashes[i], ptrs[i]->key(), ptrs[i]->keySize());
+        bucket->find(hasher, hashes[i], ptrs[i]->key(), ptrs[i]->keySize());
     ASSERT_EQ(res, ptrs[i]);
   }
 
   // check that insert is ignored if full
   bucket->insert(hashes[10], ptrs[10]);
   CachedValue* res =
-      bucket->find(hashes[10], ptrs[10]->key(), ptrs[10]->keySize());
+      bucket->find(hasher, hashes[10], ptrs[10]->key(), ptrs[10]->keySize());
   ASSERT_EQ(nullptr, res);
 
   bucket->unlock();
@@ -83,6 +85,7 @@ TEST(CachePlainBucketTest, verify_that_insertion_works_correctly) {
 }
 
 TEST(CachePlainBucketTest, verify_removal_works_correctly) {
+  BinaryHasher hasher;
   auto bucket = std::make_unique<PlainBucket>();
   bool success;
 
@@ -105,22 +108,22 @@ TEST(CachePlainBucketTest, verify_removal_works_correctly) {
   }
   for (std::size_t i = 0; i < 3; i++) {
     CachedValue* res =
-        bucket->find(hashes[i], ptrs[i]->key(), ptrs[i]->keySize());
+        bucket->find(hasher, hashes[i], ptrs[i]->key(), ptrs[i]->keySize());
     ASSERT_EQ(res, ptrs[i]);
   }
 
   CachedValue* res;
-  res = bucket->remove(hashes[1], ptrs[1]->key(), ptrs[1]->keySize());
+  res = bucket->remove(hasher, hashes[1], ptrs[1]->key(), ptrs[1]->keySize());
   ASSERT_EQ(res, ptrs[1]);
-  res = bucket->find(hashes[1], ptrs[1]->key(), ptrs[1]->keySize());
+  res = bucket->find(hasher, hashes[1], ptrs[1]->key(), ptrs[1]->keySize());
   ASSERT_EQ(nullptr, res);
-  res = bucket->remove(hashes[0], ptrs[0]->key(), ptrs[0]->keySize());
+  res = bucket->remove(hasher, hashes[0], ptrs[0]->key(), ptrs[0]->keySize());
   ASSERT_EQ(res, ptrs[0]);
-  res = bucket->find(hashes[0], ptrs[0]->key(), ptrs[0]->keySize());
+  res = bucket->find(hasher, hashes[0], ptrs[0]->key(), ptrs[0]->keySize());
   ASSERT_EQ(nullptr, res);
-  res = bucket->remove(hashes[2], ptrs[2]->key(), ptrs[2]->keySize());
+  res = bucket->remove(hasher, hashes[2], ptrs[2]->key(), ptrs[2]->keySize());
   ASSERT_EQ(res, ptrs[2]);
-  res = bucket->find(hashes[2], ptrs[2]->key(), ptrs[2]->keySize());
+  res = bucket->find(hasher, hashes[2], ptrs[2]->key(), ptrs[2]->keySize());
   ASSERT_EQ(nullptr, res);
 
   bucket->unlock();
@@ -132,6 +135,7 @@ TEST(CachePlainBucketTest, verify_removal_works_correctly) {
 }
 
 TEST(CachePlainBucketTest, verify_eviction_works_correctly) {
+  BinaryHasher hasher;
   auto bucket = std::make_unique<PlainBucket>();
   bool success;
 
@@ -163,7 +167,7 @@ TEST(CachePlainBucketTest, verify_eviction_works_correctly) {
   }
   for (std::size_t i = 0; i < 10; i++) {
     CachedValue* res =
-        bucket->find(hashes[i], ptrs[i]->key(), ptrs[i]->keySize());
+        bucket->find(hasher, hashes[i], ptrs[i]->key(), ptrs[i]->keySize());
     ASSERT_EQ(res, ptrs[i]);
   }
 
@@ -172,7 +176,7 @@ TEST(CachePlainBucketTest, verify_eviction_works_correctly) {
   ASSERT_EQ(candidate, ptrs[0]);
   bucket->evict(candidate, false);
   CachedValue* res =
-      bucket->find(hashes[0], ptrs[0]->key(), ptrs[0]->keySize());
+      bucket->find(hasher, hashes[0], ptrs[0]->key(), ptrs[0]->keySize());
   ASSERT_EQ(nullptr, res);
   ASSERT_FALSE(bucket->isFull());
 
@@ -180,13 +184,13 @@ TEST(CachePlainBucketTest, verify_eviction_works_correctly) {
   candidate = bucket->evictionCandidate();
   ASSERT_EQ(candidate, ptrs[1]);
   bucket->evict(candidate, true);
-  res = bucket->find(hashes[1], ptrs[1]->key(), ptrs[1]->keySize());
+  res = bucket->find(hasher, hashes[1], ptrs[1]->key(), ptrs[1]->keySize());
   ASSERT_EQ(nullptr, res);
   ASSERT_FALSE(bucket->isFull());
 
   // check that we can insert now after eviction optimized for insertion
   bucket->insert(hashes[10], ptrs[10]);
-  res = bucket->find(hashes[10], ptrs[10]->key(), ptrs[10]->keySize());
+  res = bucket->find(hasher, hashes[10], ptrs[10]->key(), ptrs[10]->keySize());
   ASSERT_EQ(res, ptrs[10]);
 
   bucket->unlock();

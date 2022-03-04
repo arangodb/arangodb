@@ -34,7 +34,6 @@
 #include "Basics/SpinLocker.h"
 #include "Basics/SpinUnlocker.h"
 #include "Basics/cpu-relax.h"
-#include "Basics/fasthash.h"
 #include "Basics/voc-errors.h"
 #include "Cache/CachedValue.h"
 #include "Cache/Common.h"
@@ -82,7 +81,7 @@ Cache::Cache(Manager* manager, std::uint64_t id, Metadata&& metadata,
   }
 }
 
-std::uint64_t Cache::size() const {
+std::uint64_t Cache::size() const noexcept {
   if (ADB_UNLIKELY(isShutdown())) {
     return 0;
   }
@@ -91,7 +90,7 @@ std::uint64_t Cache::size() const {
   return _metadata.allocatedSize;
 }
 
-std::uint64_t Cache::usageLimit() const {
+std::uint64_t Cache::usageLimit() const noexcept {
   if (ADB_UNLIKELY(isShutdown())) {
     return 0;
   }
@@ -100,7 +99,7 @@ std::uint64_t Cache::usageLimit() const {
   return _metadata.softUsageLimit;
 }
 
-std::uint64_t Cache::usage() const {
+std::uint64_t Cache::usage() const noexcept {
   if (ADB_UNLIKELY(isShutdown())) {
     return false;
   }
@@ -276,16 +275,10 @@ void Cache::freeValue(CachedValue* value) noexcept {
   delete value;
 }
 
-bool Cache::reclaimMemory(std::uint64_t size) {
+bool Cache::reclaimMemory(std::uint64_t size) noexcept {
   SpinLocker metaGuard(SpinLocker::Mode::Read, _metadata.lock());
   _metadata.adjustUsageIfAllowed(-static_cast<std::int64_t>(size));
   return (_metadata.softUsageLimit >= _metadata.usage);
-}
-
-std::uint32_t Cache::hashKey(void const* key,
-                             std::size_t keySize) const noexcept {
-  return (std::max)(static_cast<std::uint32_t>(1),
-                    fasthash32(key, keySize, 0xdeadbeefUL));
 }
 
 void Cache::recordStat(Stat stat) {
@@ -386,7 +379,7 @@ void Cache::shutdown() {
   }
 }
 
-bool Cache::canResize() {
+bool Cache::canResize() noexcept {
   if (ADB_UNLIKELY(isShutdown())) {
     return false;
   }
@@ -395,7 +388,7 @@ bool Cache::canResize() {
   return !(_metadata.isResizing() || _metadata.isMigrating());
 }
 
-bool Cache::canMigrate() {
+bool Cache::canMigrate() noexcept {
   if (ADB_UNLIKELY(isShutdown())) {
     return false;
   }

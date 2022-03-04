@@ -29,12 +29,13 @@
 #include <thread>
 #include <vector>
 
-#include "RestServer/SharedPRNGFeature.h"
+#include "Cache/BinaryHasher.h"
 #include "Cache/Common.h"
 #include "Cache/Manager.h"
 #include "Cache/Transaction.h"
 #include "Cache/TransactionalCache.h"
 #include "Random/RandomGenerator.h"
+#include "RestServer/SharedPRNGFeature.h"
 
 #include "Mocks/Servers.h"
 #include "MockScheduler.h"
@@ -125,6 +126,8 @@ TEST(CacheTransactionalCacheTest, verify_removal_works_as_expected) {
   Manager manager(sharedPRNG, postFn, 4 * cacheLimit);
   auto cache = manager.createCache(CacheType::Transactional, false, cacheLimit);
 
+  BinaryHasher hasher;
+
   for (std::uint64_t i = 0; i < 1024; i++) {
     CachedValue* value = CachedValue::construct(&i, sizeof(std::uint64_t), &i,
                                                 sizeof(std::uint64_t));
@@ -134,7 +137,8 @@ TEST(CacheTransactionalCacheTest, verify_removal_works_as_expected) {
       auto f = cache->find(&i, sizeof(std::uint64_t));
       ASSERT_TRUE(f.found());
       ASSERT_NE(f.value(), nullptr);
-      ASSERT_TRUE(f.value()->sameKey(&i, sizeof(std::uint64_t)));
+      ASSERT_TRUE(hasher.sameKey(f.value()->key(), f.value()->keySize(), &i,
+                                 sizeof(std::uint64_t)));
     } else {
       delete value;
     }
@@ -145,7 +149,8 @@ TEST(CacheTransactionalCacheTest, verify_removal_works_as_expected) {
     if (f.found()) {
       inserted++;
       ASSERT_NE(f.value(), nullptr);
-      ASSERT_TRUE(f.value()->sameKey(&j, sizeof(std::uint64_t)));
+      ASSERT_TRUE(hasher.sameKey(f.value()->key(), f.value()->keySize(), &j,
+                                 sizeof(std::uint64_t)));
     }
   }
 
@@ -160,7 +165,8 @@ TEST(CacheTransactionalCacheTest, verify_removal_works_as_expected) {
       if (f.found()) {
         found++;
         ASSERT_NE(f.value(), nullptr);
-        ASSERT_TRUE(f.value()->sameKey(&j, sizeof(std::uint64_t)));
+        ASSERT_TRUE(hasher.sameKey(f.value()->key(), f.value()->keySize(), &j,
+                                   sizeof(std::uint64_t)));
       }
     }
     ASSERT_EQ(inserted, found);
@@ -185,6 +191,8 @@ TEST(CacheTransactionalCacheTest, verify_banishing_works_as_expected) {
   Manager manager(sharedPRNG, postFn, 4 * cacheLimit);
   auto cache = manager.createCache(CacheType::Transactional, false, cacheLimit);
 
+  BinaryHasher hasher;
+
   Transaction* tx = manager.beginTransaction(false);
 
   for (std::uint64_t i = 0; i < 1024; i++) {
@@ -196,7 +204,8 @@ TEST(CacheTransactionalCacheTest, verify_banishing_works_as_expected) {
       auto f = cache->find(&i, sizeof(std::uint64_t));
       ASSERT_TRUE(f.found());
       ASSERT_NE(f.value(), nullptr);
-      ASSERT_TRUE(f.value()->sameKey(&i, sizeof(std::uint64_t)));
+      ASSERT_TRUE(hasher.sameKey(f.value()->key(), f.value()->keySize(), &i,
+                                 sizeof(std::uint64_t)));
     } else {
       delete value;
     }
@@ -284,13 +293,15 @@ TEST(CacheTransactionalCacheTest, test_behavior_under_mixed_load_LongRunning) {
   Manager manager(sharedPRNG, postFn, 1024 * 1024 * 1024);
   std::size_t threadCount = 4;
   std::shared_ptr<Cache> cache = manager.createCache(CacheType::Transactional);
+  BinaryHasher hasher;
 
   std::uint64_t chunkSize = 16 * 1024 * 1024;
   std::uint64_t initialInserts = 4 * 1024 * 1024;
   std::uint64_t operationCount = 16 * 1024 * 1024;
   std::atomic<std::uint64_t> hitCount(0);
   std::atomic<std::uint64_t> missCount(0);
-  auto worker = [&manager, &cache, initialInserts, operationCount, &hitCount,
+  auto worker = [&manager, &hasher, &cache, initialInserts, operationCount,
+                 &hitCount,
                  &missCount](std::uint64_t lower, std::uint64_t upper) -> void {
     Transaction* tx = manager.beginTransaction(false);
     // fill with some initial data
@@ -354,7 +365,8 @@ TEST(CacheTransactionalCacheTest, test_behavior_under_mixed_load_LongRunning) {
         if (f.found()) {
           hitCount++;
           TRI_ASSERT(f.value() != nullptr);
-          TRI_ASSERT(f.value()->sameKey(&item, sizeof(std::uint64_t)));
+          TRI_ASSERT(hasher.sameKey(f.value()->key(), f.value()->keySize(),
+                                    &item, sizeof(std::uint64_t)));
         } else {
           missCount++;
           TRI_ASSERT(f.value() == nullptr);

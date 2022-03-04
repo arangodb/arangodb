@@ -30,8 +30,8 @@
 #include <thread>
 #include <vector>
 
-#include "RestServer/SharedPRNGFeature.h"
 #include "Basics/voc-errors.h"
+#include "Cache/BinaryHasher.h"
 #include "Cache/Common.h"
 #include "Cache/Manager.h"
 #include "Cache/PlainCache.h"
@@ -39,6 +39,7 @@
 #include "Cache/Transaction.h"
 #include "Cache/TransactionalCache.h"
 #include "Random/RandomGenerator.h"
+#include "RestServer/SharedPRNGFeature.h"
 
 #include "Mocks/Servers.h"
 #include "MockScheduler.h"
@@ -79,6 +80,8 @@ TEST(CacheRebalancerTest, test_rebalancing_with_plaincache_LongRunning) {
   Manager manager(sharedPRNG, postFn, 128 * 1024 * 1024);
   Rebalancer rebalancer(&manager);
 
+  BinaryHasher hasher;
+
   std::size_t cacheCount = 4;
   std::size_t threadCount = 4;
   std::vector<std::shared_ptr<Cache>> caches;
@@ -105,7 +108,8 @@ TEST(CacheRebalancerTest, test_rebalancing_with_plaincache_LongRunning) {
   std::uint64_t operationCount = 4 * 1024 * 1024;
   std::atomic<std::uint64_t> hitCount(0);
   std::atomic<std::uint64_t> missCount(0);
-  auto worker = [&caches, cacheCount, initialInserts, operationCount, &hitCount,
+  auto worker = [&hasher, &caches, cacheCount, initialInserts, operationCount,
+                 &hitCount,
                  &missCount](std::uint64_t lower, std::uint64_t upper) -> void {
     // fill with some initial data
     for (std::uint64_t i = 0; i < initialInserts; i++) {
@@ -161,7 +165,8 @@ TEST(CacheRebalancerTest, test_rebalancing_with_plaincache_LongRunning) {
         if (f.found()) {
           hitCount++;
           TRI_ASSERT(f.value() != nullptr);
-          TRI_ASSERT(f.value()->sameKey(&item, sizeof(std::uint64_t)));
+          TRI_ASSERT(hasher.sameKey(f.value()->key(), f.value()->keySize(),
+                                    &item, sizeof(std::uint64_t)));
         } else {
           missCount++;
           TRI_ASSERT(f.value() == nullptr);
@@ -203,6 +208,7 @@ TEST(CacheRebalancerTest,
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
   Manager manager(sharedPRNG, postFn, 128 * 1024 * 1024);
   Rebalancer rebalancer(&manager);
+  BinaryHasher hasher;
 
   std::size_t cacheCount = 4;
   std::size_t threadCount = 4;
@@ -230,8 +236,8 @@ TEST(CacheRebalancerTest,
   std::uint64_t operationCount = 4 * 1024 * 1024;
   std::atomic<std::uint64_t> hitCount(0);
   std::atomic<std::uint64_t> missCount(0);
-  auto worker = [&manager, &caches, cacheCount, initialInserts, operationCount,
-                 &hitCount,
+  auto worker = [&manager, &hasher, &caches, cacheCount, initialInserts,
+                 operationCount, &hitCount,
                  &missCount](std::uint64_t lower, std::uint64_t upper) -> void {
     Transaction* tx = manager.beginTransaction(false);
     // fill with some initial data
@@ -300,7 +306,8 @@ TEST(CacheRebalancerTest,
         if (f.found()) {
           hitCount++;
           TRI_ASSERT(f.value() != nullptr);
-          TRI_ASSERT(f.value()->sameKey(&item, sizeof(std::uint64_t)));
+          TRI_ASSERT(hasher.sameKey(f.value()->key(), f.value()->keySize(),
+                                    &item, sizeof(std::uint64_t)));
         } else {
           missCount++;
           TRI_ASSERT(f.value() == nullptr);

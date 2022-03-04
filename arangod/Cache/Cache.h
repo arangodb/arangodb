@@ -92,17 +92,17 @@ class Cache : public std::enable_shared_from_this<Cache> {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns the total memory usage for this cache in bytes.
   //////////////////////////////////////////////////////////////////////////////
-  std::uint64_t size() const;
+  std::uint64_t size() const noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns the limit on data memory usage for this cache in bytes.
   //////////////////////////////////////////////////////////////////////////////
-  std::uint64_t usageLimit() const;
+  std::uint64_t usageLimit() const noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns the current data memory usage for this cache in bytes.
   //////////////////////////////////////////////////////////////////////////////
-  std::uint64_t usage() const;
+  std::uint64_t usage() const noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Gives hint to attempt to preallocate space for an incoming load.
@@ -202,9 +202,8 @@ class Cache : public std::enable_shared_from_this<Cache> {
   void requestMigrate(std::uint32_t requestedLogSize = 0);
 
   static void freeValue(CachedValue* value) noexcept;
-  bool reclaimMemory(std::uint64_t size);
+  bool reclaimMemory(std::uint64_t size) noexcept;
 
-  std::uint32_t hashKey(void const* key, std::size_t keySize) const noexcept;
   void recordStat(Stat stat);
 
   bool reportInsert(bool hadEviction);
@@ -213,8 +212,8 @@ class Cache : public std::enable_shared_from_this<Cache> {
   Metadata& metadata();
   std::shared_ptr<Table> table() const;
   void shutdown();
-  bool canResize();
-  bool canMigrate();
+  bool canResize() noexcept;
+  bool canMigrate() noexcept;
   bool freeMemory();
   bool migrate(std::shared_ptr<Table> newTable);
 

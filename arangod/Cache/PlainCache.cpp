@@ -21,7 +21,6 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <chrono>
 #include <cstdint>
 
 #include "Cache/PlainCache.h"
@@ -44,14 +43,14 @@ using SpinLocker = ::arangodb::basics::SpinLocker;
 Finding PlainCache::find(void const* key, std::uint32_t keySize) {
   TRI_ASSERT(key != nullptr);
   Finding result;
-  std::uint32_t hash = hashKey(key, keySize);
+  std::uint32_t hash = _hasher.hashKey(key, keySize);
 
   auto [status, guard] = getBucket(hash, Cache::triesFast);
   if (status != TRI_ERROR_NO_ERROR) {
     result.reportError(status);
   } else {
     PlainBucket& bucket = guard.bucket<PlainBucket>();
-    result.set(bucket.find(hash, key, keySize));
+    result.set(bucket.find(_hasher, hash, key, keySize));
     if (result.found()) {
       recordStat(Stat::findHit);
     } else {
@@ -65,7 +64,7 @@ Finding PlainCache::find(void const* key, std::uint32_t keySize) {
 Result PlainCache::insert(CachedValue* value) {
   TRI_ASSERT(value != nullptr);
   bool maybeMigrate = false;
-  std::uint32_t hash = hashKey(value->key(), value->keySize());
+  std::uint32_t hash = _hasher.hashKey(value->key(), value->keySize());
 
   Result status;
   Table* source;
@@ -80,7 +79,8 @@ Result PlainCache::insert(CachedValue* value) {
     source = guard.source();
     bool allowed = true;
     std::int64_t change = static_cast<std::int64_t>(value->size());
-    CachedValue* candidate = bucket.find(hash, value->key(), value->keySize());
+    CachedValue* candidate =
+        bucket.find(_hasher, hash, value->key(), value->keySize());
 
     if (candidate == nullptr && bucket.isFull()) {
       candidate = bucket.evictionCandidate();
@@ -105,7 +105,8 @@ Result PlainCache::insert(CachedValue* value) {
         bool eviction = false;
         if (candidate != nullptr) {
           bucket.evict(candidate, true);
-          if (!candidate->sameKey(value->key(), value->keySize())) {
+          if (!_hasher.sameKey(candidate->key(), candidate->keySize(),
+                               value->key(), value->keySize())) {
             eviction = true;
           }
           freeValue(candidate);
@@ -132,7 +133,7 @@ Result PlainCache::insert(CachedValue* value) {
 Result PlainCache::remove(void const* key, std::uint32_t keySize) {
   TRI_ASSERT(key != nullptr);
   bool maybeMigrate = false;
-  std::uint32_t hash = hashKey(key, keySize);
+  std::uint32_t hash = _hasher.hashKey(key, keySize);
 
   Result status;
   Table* source;
@@ -144,7 +145,7 @@ Result PlainCache::remove(void const* key, std::uint32_t keySize) {
     }
     PlainBucket& bucket = guard.bucket<PlainBucket>();
     source = guard.source();
-    CachedValue* candidate = bucket.remove(hash, key, keySize);
+    CachedValue* candidate = bucket.remove(_hasher, hash, key, keySize);
 
     if (candidate != nullptr) {
       std::int64_t change = -static_cast<std::int64_t>(candidate->size());
@@ -252,7 +253,7 @@ void PlainCache::migrateBucket(void* sourcePtr,
         CachedValue* value = source._cachedData[k];
 
         auto targetBucket =
-            reinterpret_cast<PlainBucket*>(targets->fetchBucket(hash));
+            static_cast<PlainBucket*>(targets->fetchBucket(hash));
         bool haveSpace = true;
         if (targetBucket->isFull()) {
           CachedValue* candidate = targetBucket->evictionCandidate();
@@ -309,7 +310,7 @@ std::pair<::ErrorCode, Table::BucketLocker> PlainCache::getBucket(
 
 Table::BucketClearer PlainCache::bucketClearer(Metadata* metadata) {
   return [metadata](void* ptr) -> void {
-    auto bucket = reinterpret_cast<PlainBucket*>(ptr);
+    auto bucket = static_cast<PlainBucket*>(ptr);
     bucket->lock(Cache::triesGuarantee);
     for (std::size_t j = 0; j < PlainBucket::slotsData; j++) {
       if (bucket->_cachedData[j] != nullptr) {
