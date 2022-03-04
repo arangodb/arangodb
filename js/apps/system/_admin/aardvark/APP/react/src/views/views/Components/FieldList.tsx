@@ -90,7 +90,7 @@ const FieldView: React.FC<FieldListProps> = ({
                   onClick={getFieldRemover(fld)}
                 />
                 <IconButton
-                  icon={"edit"}
+                  icon={!showField ? "edit" : "close"}
                   type={"warning"}
                   onClick={() => viewFieled(fld)}
                 />

@@ -23,7 +23,7 @@ type CollProps = {
   icon: string;
 };
 
-const CollectionList: React.FC<CollProps> = ({
+const LinkList: React.FC<CollProps> = ({
   links,
   addClick,
   icon,
@@ -96,6 +96,7 @@ const CollectionList: React.FC<CollProps> = ({
                   </>
                 }
                 key={key}
+                linkKey={key}
               />
             ))}
         </tbody>
@@ -118,4 +119,4 @@ const CollectionList: React.FC<CollProps> = ({
   );
 };
 
-export default CollectionList;
+export default LinkList;

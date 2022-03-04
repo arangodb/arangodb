@@ -65,8 +65,8 @@ const ViewLinksReactView = ({ name }) => {
   };
 
   const handleViewLink = link => {
-    console.log(link);
     setViewLink(true);
+    setNewLink(false);
   };
 
   return (

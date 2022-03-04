@@ -8,7 +8,7 @@ interface LinkProps {
     includeAllFields: boolean;
     analyzers: [];
     action: React.ReactElement;
-    key: number;
+    linkKey: number;
   };
 }
 
@@ -17,18 +17,18 @@ const Link: React.FC<LinkProps["link"]> = ({
   includeAllFields,
   analyzers,
   action,
-  key
+  linkKey
 }) => {
   return (
     <tr>
-      <ArangoTD seq={key}>{name}</ArangoTD>
-      <ArangoTD seq={key}>{includeAllFields}</ArangoTD>
-      <ArangoTD seq={key}>
+      <ArangoTD seq={linkKey}>{name}</ArangoTD>
+      <ArangoTD seq={linkKey}>{includeAllFields}</ArangoTD>
+      <ArangoTD seq={linkKey}>
         {analyzers.map(a => (
-          <Badge name={a} />
+          <Badge key={a} name={a} />
         ))}
       </ArangoTD>
-      <ArangoTD seq={key}>{action}</ArangoTD>
+      <ArangoTD seq={linkKey}>{action}</ArangoTD>
     </tr>
   );
 };
