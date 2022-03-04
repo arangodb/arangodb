@@ -1,7 +1,9 @@
 #include <string>
+#include <set>
 #include "WasmCommon.h"
 #include "velocypack/Builder.h"
 #include "velocypack/Slice.h"
+#include "velocypack/vpack.h"
 #include "Basics/ResultT.h"
 
 using namespace arangodb::wasm;
@@ -17,6 +19,14 @@ void arangodb::wasm::toVelocyPack(WasmFunction const& wasmFunction,
 
 auto WasmFunction::fromVelocyPack(Slice slice) -> ResultT<WasmFunction> {
   auto wasmFunction = WasmFunction{};
+
+  if (!slice.isObject()) {
+    return ResultT<WasmFunction>::error(TRI_ERROR_BAD_PARAMETER, "WasmFunction::fromVelocyPack can only be parsed from an object");
+  }
+
+  if (auto check = areOnlyValidFieldsIncluded(slice); check.fail()) {
+    return ResultT<WasmFunction>::error(check.errorNumber(), check.errorMessage());
+  }
 
   if (auto nameslice = requiredStringSliceField("name", slice);
       nameslice.ok()) {
@@ -42,6 +52,16 @@ auto WasmFunction::fromVelocyPack(Slice slice) -> ResultT<WasmFunction> {
   }
 
   return ResultT<WasmFunction>(wasmFunction);
+}
+
+auto arangodb::wasm::areOnlyValidFieldsIncluded(Slice slice) -> arangodb::ResultT<bool> {
+  std::set<std::string> validFields {"name", "code", "isDeterministic"};
+  for (const auto& field: ObjectIterator(slice)) {
+    if (!(validFields.contains(field.key.copyString()))) {
+      return ResultT<bool>::error(TRI_ERROR_BAD_PARAMETER, "WasmFunction::fromVelocyPack expect only fields name, code and isDeterministic");
+    }
+  }
+  return true; 
 }
 
 auto arangodb::wasm::requiredStringSliceField(std::string_view fieldName,

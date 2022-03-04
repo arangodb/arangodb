@@ -35,9 +35,11 @@ struct WasmFunction {
   std::string code;
   bool isDeterministic;
   static auto fromVelocyPack(arangodb::velocypack::Slice slice) -> ResultT<WasmFunction>;
+  auto operator<=>(const WasmFunction& function) const = default;
 };
 
   void toVelocyPack(WasmFunction const& wasmFunction, VPackBuilder& builder);
   auto requiredStringSliceField(std::string_view fieldName, velocypack::Slice slice) -> ResultT<velocypack::Slice>;
   auto deterministicField(velocypack::Slice slice) -> arangodb::ResultT<bool>;
+  auto areOnlyValidFieldsIncluded(velocypack::Slice slice) -> arangodb::ResultT<bool>;
 }  // namespace arangodb::wasm

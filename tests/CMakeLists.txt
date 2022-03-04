@@ -302,6 +302,7 @@ set(ARANGODB_TESTS_SOURCES
   VocBase/LogicalViewTest.cpp
   VocBase/VersionTest.cpp
   VPackDeserializer/BasicTests.cpp
+  WasmServer/WasmFunctionSliceTest.cpp
   Zkd/Conversion.cpp
   Zkd/Library.cpp
   ${ADDITIONAL_TEST_SOURCES})
