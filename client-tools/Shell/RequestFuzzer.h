@@ -23,11 +23,13 @@
 
 #pragma once
 
+#include <array>
 #include <charconv>
 #include <deque>
 #include <map>
 #include <random>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 
 #include <optional>
@@ -40,7 +42,7 @@ enum CharOperation { ADD_STRING, ADD_INT_32, MAX_CHAR_OP_VALUE };
 enum LineOperation {
 
   COPY_LINE,
-  REMOVE_LINE,
+  INJECT_RAND_BYTE_IN_LINE,
   ADD_LINE,
   MAX_LINE_OP_VALUE
 };
@@ -54,17 +56,6 @@ enum RequestType {
   HEAD,
   RAND_REQ_TYPE,
   MAX_REQ_VALUE
-};
-
-enum CommonRoute {
-  WORD1,
-  WORD2,
-  WORD3,
-  WORD4,
-  WORD5,
-  WORD6,
-  RAND_COMMON_ROUTE,
-  MAX_ROUTE_VALUE
 };
 
 enum class HttpWord { HTTP, RAND_HTTP_WORD, MAX_VALUE };
@@ -92,6 +83,7 @@ class RequestFuzzer {
         _stringLines{} {}
 
   void randomizeHeader(std::string& header);
+  void writeSampleHeader(std::string& header);
 
  private:
   void randomizeCharOperation(std::string& input, uint32_t numIts = 1);
@@ -101,7 +93,9 @@ class RequestFuzzer {
   template<typename T>
   T generateRandNumWithinRange(T min, T max);
 
-  void generateRandAsciiString(std::string& input);
+  void generateRandAsciiString(std::string& input, bool isRandChar = false);
+
+  int32_t generateRandInt32();
 
   static constexpr size_t limitNumIterations = 10;
   uint32_t _numIterations;
@@ -114,10 +108,63 @@ class RequestFuzzer {
       {RequestType::POST, "POST"},     {RequestType::PATCH, "PATCH"},
       {RequestType::DELETE, "DELETE"}, {RequestType::HEAD, "HEAD"}};
 
-  const std::unordered_map<CommonRoute, std::string> _routeWordList = {
-      {CommonRoute::WORD1, "_db"},     {CommonRoute::WORD2, "_admin"},
-      {CommonRoute::WORD3, "_api"},    {CommonRoute::WORD4, "_system"},
-      {CommonRoute::WORD5, "_cursor"}, {CommonRoute::WORD6, "aardvak"}};
+  static constexpr uint32_t _maxNestedRoutes = 4;
+
+  static constexpr std::array<std::string_view, 12> _wordListForRoute = {
+      {"/_db", "/_admin", "/_api", "/_system", "/_cursor", "/version",
+       "/status", "/license", "/collection", "/database",
+       "/current"
+       "random"}};
+
+  static constexpr std::array<std::string_view, 48> _wordListForKeys = {
+      {"Accept",
+       "",
+       "Accept-Charset",
+       "Accept-Encoding",
+       "Accept-Language",
+       "Accept-Ranges",
+       "Allow",
+       "Authorization",
+       "Cache-control",
+       "Connection",
+       "Content-encoding",
+       "Content-language",
+       "Content-length",
+       "Content-location",
+       "Content-MD5",
+       "Content-range",
+       "Content-type",
+       "Date",
+       "ETag",
+       "Expect",
+       "Expires",
+       "From",
+       "Host",
+       "If-Match",
+       "If-modified-since",
+       "If-none-match",
+       "If-range",
+       "If-unmodified-since",
+       "Last-modified",
+       "Location",
+       "Max-forwards",
+       "Pragma",
+       "Proxy-authenticate",
+       "Proxy-authorization",
+       "Range",
+       "Referer",
+       "Retry-after",
+       "Server",
+       "TE",
+       "Trailer",
+       "Transfer-encoding",
+       "Upgrade",
+       "User-agent",
+       "Vary",
+       "Via",
+       "Warning",
+       "Www-authenticate",
+       "random"}};
 };
 }  // namespace fuzzer
 }  // namespace arangodb

@@ -993,6 +993,7 @@ static void ClientConnection_httpPostRaw(
 
 static void httpFuzzRequest(V8ClientConnection* v8connection,
                             v8::Isolate* isolate,
+                            v8::FunctionCallbackInfo<v8::Value> const& args,
                             fuzzer::RequestFuzzer* fuzzer) {
   v8::HandleScope scope(isolate);
   if (isExecutionDeadlineReached(isolate)) {
@@ -1000,7 +1001,7 @@ static void httpFuzzRequest(V8ClientConnection* v8connection,
   }
   std::string header;
   fuzzer->randomizeHeader(header);
-  v8connection->requestFuzz(isolate, header);
+  TRI_V8_RETURN(v8connection->requestFuzz(isolate, header));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1056,7 +1057,10 @@ static void ClientConnection_httpFuzzRequests(
   auto fuzzer = std::make_unique<fuzzer::RequestFuzzer>(numIts, seed);
 
   for (uint32_t i = 0; i < numReqs; ++i) {
-    httpFuzzRequest(v8connection, isolate, fuzzer.get());
+    httpFuzzRequest(v8connection, isolate, args, fuzzer.get());
+    velocypack::Builder builder;
+    TRI_V8ToVPack(isolate, builder, args.GetReturnValue().Get(), false);
+    LOG_DEVEL << builder.slice().toJson();
   }
 
   TRI_V8_TRY_CATCH_END
@@ -2240,6 +2244,7 @@ v8::Local<v8::Value> V8ClientConnection::requestFuzz(v8::Isolate* isolate,
   bool retry = true;
 
 again:
+  LOG_DEVEL << "retrying connection";
   auto req = std::make_unique<fu::Request>();
 
   std::shared_ptr<fu::Connection> connection = acquireConnection();
@@ -2254,6 +2259,7 @@ again:
   try {
     req->setFuzzReqHeader(header);
     req->setFuzzerReq(true);
+    LOG_DEVEL << "send fuzzed req";
     response = connection->sendRequest(std::move(req));
   } catch (fu::Error const& ec) {
     rc = ec;
@@ -2267,6 +2273,7 @@ again:
   auto context = TRI_IGETC;
   // not complete
   if (!response) {
+    LOG_DEVEL << "no response from server";
     v8::Local<v8::Object> result = v8::Object::New(isolate);
     auto errorNumber = fuerteToArangoErrorCode(rc);
     _lastErrorMessage = fu::to_string(rc);
@@ -2292,6 +2299,8 @@ again:
   if (canParseResponse(*response)) {
     return parseReplyBodyToV8(*response, isolate);
   }
+
+  LOG_DEVEL << "parsing payload";
 
   auto payloadSize = response->payload().size();
   if (payloadSize > 0) {
@@ -2343,6 +2352,7 @@ again:
   auto context = TRI_IGETC;
   // not complete
   if (!response) {
+    LOG_DEVEL << "no response in PUT";
     v8::Local<v8::Object> result = v8::Object::New(isolate);
     auto errorNumber = fuerteToArangoErrorCode(rc);
     _lastErrorMessage = fu::to_string(rc);
@@ -2371,8 +2381,10 @@ again:
 
   auto payloadSize = response->payload().size();
   if (payloadSize > 0) {
+    LOG_DEVEL << "payload in PUT";
     return translateResultBodyToV8(*response, isolate);
   } else {
+    LOG_DEVEL << "no payload in PUT";
     // no body
     v8::Local<v8::Object> result = v8::Object::New(isolate);
     setResultMessage(isolate, context, false, _lastHttpReturnCode, result);

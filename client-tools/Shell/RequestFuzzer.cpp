@@ -22,8 +22,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RequestFuzzer.h"
-#include <cassert>
 #include <cstring>
+
+#include <Basics/debugging.h>
+
+#include <Logger/LogMacros.h>
 
 namespace arangodb {
 namespace fuzzer {
@@ -38,14 +41,11 @@ void RequestFuzzer::randomizeCharOperation(std::string& input,
         generateRandAsciiString(input);
         break;
       case CharOperation::ADD_INT_32: {
-        uint32_t uintValue = _randContext.mt();
-        int32_t intValue;
-        memcpy(&intValue, &uintValue, sizeof(uintValue));
-        input.append(std::to_string(intValue));
+        input.append(std::to_string(generateRandInt32()));
         break;
       }
       default:
-        assert(false);
+        TRI_ASSERT(false);
     }
   }
 }
@@ -56,30 +56,60 @@ void RequestFuzzer::randomizeLineOperation(uint32_t numIts) {
     LineOperation lineOp = static_cast<LineOperation>(
         _randContext.mt() % LineOperation::MAX_LINE_OP_VALUE);
     switch (lineOp) {
-      case LineOperation::REMOVE_LINE: {
-        if (_stringLines.size() <= 1) {
-          break;
+      case LineOperation::INJECT_RAND_BYTE_IN_LINE: {
+        if (_stringLines.size() > 1) {
+          uint32_t initLinePos;
+          if (generateRandNumWithinRange<uint32_t>(0, 99) > 0) {
+            initLinePos = 1;
+          } else {
+            initLinePos = 0;
+          }
+          uint32_t randPos = generateRandNumWithinRange<uint32_t>(
+              initLinePos, _stringLines.size() - 1);
+          generateRandAsciiString(_stringLines[randPos], true);
         }
-        _stringLines.erase(
-            _stringLines.begin() +
-            generateRandNumWithinRange<uint32_t>(1, _stringLines.size() - 1));
         break;
       }
       case LineOperation::COPY_LINE: {
-        _stringLines.emplace_back(_stringLines.at(
-            generateRandNumWithinRange<uint32_t>(0, _stringLines.size() - 1)));
+        if (_stringLines.size() > 1) {
+          _stringLines.emplace_back(
+              _stringLines.at(generateRandNumWithinRange<uint32_t>(
+                  1, _stringLines.size() - 1)));
+        }
         break;
       }
       case LineOperation::ADD_LINE: {
         std::string charsToAppend;
-        randomizeCharOperation(charsToAppend, its);
-        _stringLines.emplace_back(std::move(charsToAppend));
+        uint32_t numHeaderFields =
+            generateRandNumWithinRange<uint32_t>(1, _wordListForKeys.size());
+        std::unordered_map<std::string, std::string> keysAndValues;
+        for (uint32_t i = 0; i < numHeaderFields; ++i) {
+          uint32_t keyPos = generateRandNumWithinRange<uint32_t>(
+              0, _wordListForKeys.size() - 1);
+          std::string keyName;
+          std::string value;
+          if (!(_wordListForKeys[keyPos] == "random")) {
+            keyName = _wordListForKeys[keyPos];
+          } else {
+            randomizeCharOperation(keyName, 1);
+          }
+          randomizeCharOperation(value,
+                                 generateRandNumWithinRange<uint32_t>(1, 3));
+          keysAndValues[keyName] = value;
+        }
+        for (auto const& [key, value] : keysAndValues) {
+          _stringLines.emplace_back(std::move(key) + ":" + std::move(value));
+        }
         break;
       }
       default:
-        assert(false);
+        TRI_ASSERT(false);
     }
   }
+}
+
+void RequestFuzzer::writeSampleHeader(std::string& header) {
+  header.append("GET /_api/version HTTP/1.1\r\n\r\nHost: 127.0.0.1:8529\r\n");
 }
 
 void RequestFuzzer::randomizeHeader(std::string& header) {
@@ -92,35 +122,44 @@ void RequestFuzzer::randomizeHeader(std::string& header) {
     randomizeCharOperation(firstLine);
   }
   firstLine.append(" ");
-  uint32_t numNestedAddrs = generateRandNumWithinRange<uint32_t>(1, 10);
-  for (uint32_t j = 0; j < numNestedAddrs; ++j) {
-    CommonRoute randCommonRoute = static_cast<CommonRoute>(
-        _randContext.mt() % CommonRoute::MAX_ROUTE_VALUE);
-    firstLine.append("/");
-    if (randCommonRoute != CommonRoute::RAND_COMMON_ROUTE) {
-      firstLine.append(_routeWordList.at(randCommonRoute));
+  uint32_t numNestedRoutes =
+      generateRandNumWithinRange<uint32_t>(1, _maxNestedRoutes);
+  for (uint32_t i = 0; i < numNestedRoutes; ++i) {
+    uint32_t routePos =
+        generateRandNumWithinRange<uint32_t>(0, _wordListForRoute.size() - 1);
+    if (!(_wordListForRoute[routePos] == "random")) {
+      firstLine.append(_wordListForRoute[routePos]);
     } else {
       randomizeCharOperation(firstLine);
     }
   }
+  firstLine.append(" ");
   if (_randContext.mt() % 2 == 0) {
-    firstLine.append(" HTTP");
+    firstLine.append(" HTTP/");
   } else {
     randomizeCharOperation(firstLine);
   }
-  if (_randContext.mt() % 2 == 0) {
-    firstLine.append("/");
-  }
-  if (_randContext.mt() % 2 == 0) {
-    firstLine.append("1.1");
+  if (generateRandNumWithinRange<uint32_t>(0, 99) > 0) {
+    if (_randContext.mt() % 2 == 0) {
+      firstLine.append("1.1");
+    } else {
+      firstLine.append(
+          std::to_string(generateRandNumWithinRange<uint32_t>(0, 9)) + "." +
+          std::to_string(generateRandNumWithinRange<uint32_t>(0, 9)));
+    }
   } else {
-    randomizeCharOperation(firstLine);
+    firstLine.append(std::to_string(generateRandInt32()));
   }
   _stringLines.emplace_back(firstLine);
   randomizeLineOperation(_numIterations);
-  for (auto const& line : _stringLines) {
-    header.append(line);
-    header.push_back('\n');
+  for (uint32_t i = 0; i < _stringLines.size(); ++i) {
+    header.append(_stringLines[i]);
+    if (i == _stringLines.size() - 1) {
+      firstLine.append("\r\n\r\n");
+
+    } else {
+      firstLine.append("\r\n");
+    }
   }
 }
 
@@ -129,17 +168,32 @@ T RequestFuzzer::generateRandNumWithinRange(T min, T max) {
   return min + (_randContext.mt() % (max + 1 - min));
 }
 
-void RequestFuzzer::generateRandAsciiString(std::string& input) {
+int32_t RequestFuzzer::generateRandInt32() {
+  uint32_t uintValue = _randContext.mt();
+  int32_t intValue;
+  memcpy(&intValue, &uintValue, sizeof(uintValue));
+  return intValue;
+}
+
+void RequestFuzzer::generateRandAsciiString(std::string& input,
+                                            bool isRandChar) {
   static constexpr char chars[] =
       "0123456789"
       "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
       "abcdefghijklmnopqrstuvwxyz";
 
-  uint32_t randStrLength = generateRandNumWithinRange<uint32_t>(
-      0, _randContext.maxRandAsciiStringLength);
+  uint32_t randStrLength = isRandChar
+                               ? 1
+                               : generateRandNumWithinRange<uint32_t>(
+                                     0, _randContext.maxRandAsciiStringLength);
 
   for (uint32_t i = 0; i < randStrLength; ++i) {
-    input += chars[_randContext.mt() % (sizeof(chars) - 1)];
+    if (isRandChar) {
+      input[generateRandNumWithinRange<uint32_t>(0, input.size())] =
+          chars[_randContext.mt() % (sizeof(chars) - 1)];
+    } else {
+      input += chars[_randContext.mt() % (sizeof(chars) - 1)];
+    }
   }
 }
 }  // namespace fuzzer
