@@ -21,6 +21,7 @@
 /// @author Alexandru Petenchea
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <Basics/ResultT.h>
 #include <Basics/Exceptions.h>
 #include <Basics/voc-errors.h>
 #include <Futures/Future.h>
@@ -50,15 +51,9 @@ struct PrototypeStateMethodsDBServer final
   explicit PrototypeStateMethodsDBServer(TRI_vocbase_t& vocbase)
       : _vocbase(vocbase) {}
 
-  auto insert(LogId id, std::string key, std::string value) const
-      -> futures::Future<Result> override {
-    auto leader = getPrototypeStateLeaderById(id);
-    return leader->set(std::move(key), std::move(value));
-  }
-
   auto insert(LogId id,
-              std::vector<std::pair<std::string, std::string>> const& entries)
-      const -> futures::Future<Result> override {
+              std::unordered_map<std::string, std::string> const& entries) const
+      -> futures::Future<ResultT<LogIndex>> override {
     auto leader = getPrototypeStateLeaderById(id);
     return leader->set(entries);
   };
@@ -116,8 +111,9 @@ struct PrototypeStateMethodsDBServer final
 struct PrototypeStateMethodsCoordinator final
     : PrototypeStateMethods,
       std::enable_shared_from_this<PrototypeStateMethodsCoordinator> {
-  auto insert(LogId id, std::string key, std::string value) const
-      -> futures::Future<Result> override {
+  auto insert(LogId id,
+              std::unordered_map<std::string, std::string> const& entries) const
+      -> futures::Future<ResultT<LogIndex>> override {
     auto path =
         basics::StringUtils::joinT("/", "_api/prototype-state", id, "insert");
     network::RequestOptions opts;
@@ -125,42 +121,28 @@ struct PrototypeStateMethodsCoordinator final
     VPackBuilder builder{};
     {
       VPackObjectBuilder ob{&builder};
-      builder.add(key, VPackValue(value));
-    }
-    return network::sendRequest(_pool, "server:" + getLogLeader(id),
-                                fuerte::RestVerb::Post, path,
-                                builder.bufferRef(), opts)
-        .thenValue([](network::Response&& resp) {
-          if (resp.fail() || !fuerte::statusIsSuccess(resp.statusCode())) {
-            THROW_ARANGO_EXCEPTION(resp.combinedResult());
-          }
-          return resp.combinedResult();
-        });
-  }
-
-  auto insert(LogId id,
-              std::vector<std::pair<std::string, std::string>> const& entries)
-      const -> futures::Future<Result> override {
-    auto path = basics::StringUtils::joinT("/", "_api/prototype-state", id,
-                                           "multi-insert");
-    network::RequestOptions opts;
-    opts.database = _vocbase.name();
-    VPackBuilder builder{};
-    {
-      VPackArrayBuilder ab{&builder};
       for (auto const& [key, value] : entries) {
-        VPackObjectBuilder ob{&builder};
         builder.add(key, VPackValue(value));
       }
     }
     return network::sendRequest(_pool, "server:" + getLogLeader(id),
                                 fuerte::RestVerb::Post, path,
                                 builder.bufferRef(), opts)
-        .thenValue([](network::Response&& resp) {
+        .thenValue([](network::Response&& resp) -> ResultT<LogIndex> {
           if (resp.fail() || !fuerte::statusIsSuccess(resp.statusCode())) {
             THROW_ARANGO_EXCEPTION(resp.combinedResult());
+          } else {
+            auto slice = resp.slice();
+            if (auto result = slice.get("result");
+                result.isObject() && result.length() == 1) {
+              return result.get("index").extract<LogIndex>();
+            }
+            THROW_ARANGO_EXCEPTION_MESSAGE(
+                TRI_ERROR_INTERNAL,
+                basics::StringUtils::concatT(
+                    "expected result containing index in leader response: ",
+                    slice.toJson()));
           }
-          return resp.combinedResult();
         });
   }
 

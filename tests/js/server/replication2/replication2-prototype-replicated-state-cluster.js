@@ -241,6 +241,8 @@ const replicatedStateSuite = function () {
       let {leader} = getReplicatedLogLeaderPlan(database, stateId);
       let url = getServerUrl(leader);
 
+      let coord = lh.coordinators[0];
+      let coordUrl = getServerUrl(coord);
 
       let result = request.post({url: `${url}/_db/${database}/_api/prototype-state/${stateId}/insert`, body: {foo : "bar"}, json: true });
       checkRequestResult(result);
@@ -248,7 +250,7 @@ const replicatedStateSuite = function () {
       require('internal').print(result.json);
 
 
-      result = request.post({url: `${url}/_db/${database}/_api/prototype-state/${stateId}/multi-insert`, body: [{foo1 : "bar1"}, {foo2 : "bar2"}], json: true });
+      result = request.post({url: `${url}/_db/${database}/_api/prototype-state/${stateId}/insert`, body: {foo1 : "bar1", foo2 : "bar2"}, json: true });
       checkRequestResult(result);
       require('internal').print("################################################");
       require('internal').print(result.json);
@@ -278,6 +280,28 @@ const replicatedStateSuite = function () {
       require('internal').print(result.json);
 
       result = request.get({url: `${url}/_db/${database}/_api/prototype-state/${stateId}/entry/foo1`});
+      require('internal').print("################################################");
+      require('internal').print(result.json);
+
+      result = request.post({url: `${coordUrl}/_db/${database}/_api/prototype-state/${stateId}/insert`, body: {foo100 : "bar100"}, json: true });
+      checkRequestResult(result);
+      require('internal').print("################################################");
+      require('internal').print(result.json);
+
+      result = request.get({url: `${url}/_db/${database}/_api/prototype-state/${stateId}/entry/foo100`});
+      require('internal').print("################################################");
+      require('internal').print(result.json);
+
+      result = request.post({url: `${coordUrl}/_db/${database}/_api/prototype-state/${stateId}/insert`, body: {foo200 : "bar200", foo300 : "bar300"}, json: true });
+      checkRequestResult(result);
+      require('internal').print("################################################");
+      require('internal').print(result.json);
+
+      result = request.get({url: `${coordUrl}/_db/${database}/_api/prototype-state/${stateId}/entry/foo300`});
+      require('internal').print("################################################");
+      require('internal').print(result.json);
+
+      result = request.get({url: `${coordUrl}/_db/${database}/_api/prototype-state/${stateId}/multi-get?key[]=foo300&key[]=abcd&key[]=foo200`});
       require('internal').print("################################################");
       require('internal').print(result.json);
     },

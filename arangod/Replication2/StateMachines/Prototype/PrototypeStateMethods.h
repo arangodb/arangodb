@@ -22,8 +22,19 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+#include <memory>
+#include <optional>
+#include <string>
+#include <unordered_map>
+#include <vector>
+
 namespace arangodb {
+
+template<typename T>
+class ResultT;
+
 class Result;
+
 namespace futures {
 template<typename T>
 class Future;
@@ -42,13 +53,10 @@ class LogId;
 struct PrototypeStateMethods {
   virtual ~PrototypeStateMethods() = default;
 
-  [[nodiscard]] virtual auto insert(LogId id, std::string key,
-                                    std::string value) const
-      -> futures::Future<Result> = 0;
   [[nodiscard]] virtual auto insert(
       LogId id,
-      std::vector<std::pair<std::string, std::string>> const& entries) const
-      -> futures::Future<Result> = 0;
+      std::unordered_map<std::string, std::string> const& entries) const
+      -> futures::Future<ResultT<LogIndex>> = 0;
 
   [[nodiscard]] virtual auto get(LogId id, std::string key) const
       -> futures::Future<std::optional<std::string>> = 0;

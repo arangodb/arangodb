@@ -50,12 +50,7 @@ class RestPrototypeStateHandler : public RestVocbaseBaseHandler {
   RestStatus handleDeleteRequest(
       replication2::PrototypeStateMethods const& methods);
 
-  RestStatus handlePost(replication2::PrototypeStateMethods const& methods,
-                        velocypack::Slice specSlice);
   RestStatus handlePostInsert(
-      replication2::PrototypeStateMethods const& methods,
-      replication2::LogId logId, velocypack::Slice payload);
-  RestStatus handlePostInsertMulti(
       replication2::PrototypeStateMethods const& methods,
       replication2::LogId logId, velocypack::Slice payload);
 
@@ -66,7 +61,6 @@ class RestPrototypeStateHandler : public RestVocbaseBaseHandler {
       replication2::PrototypeStateMethods const& methods,
       replication2::LogId logId, velocypack::Slice payload);
 
-  RestStatus handleGet(replication2::PrototypeStateMethods const& methods);
   RestStatus handleGetEntry(replication2::PrototypeStateMethods const& methods,
                             replication2::LogId);
   RestStatus handleGetMulti(replication2::PrototypeStateMethods const& methods,

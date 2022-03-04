@@ -86,11 +86,9 @@ RestStatus RestPrototypeStateHandler::handlePostRequest(
   LogId logId{basics::StringUtils::uint64(suffixes[0])};
   if (auto& verb = suffixes[1]; verb == "insert") {
     return handlePostInsert(methods, logId, body);
-  } else if (verb == "multi-insert") {
-    return handlePostInsertMulti(methods, logId, body);
   } else {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
-                  "expected one of the resources 'insert', 'multi-insert'");
+                  "expected one of the resources 'insert'");
   }
   return RestStatus::DONE;
 }
@@ -98,59 +96,38 @@ RestStatus RestPrototypeStateHandler::handlePostRequest(
 RestStatus RestPrototypeStateHandler::handlePostInsert(
     PrototypeStateMethods const& methods, replication2::LogId logId,
     velocypack::Slice payload) {
-  if (!payload.isObject() || payload.length() != 1) {
-    generateError(
-        rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-        basics::StringUtils::concatT(
-            "expected one object containing a key-value pair, but got ",
-            payload.toJson()));
-  }
-
-  auto key = payload.keyAt(0).copyString();
-  auto value = payload.valueAt(0).copyString();
-  return waitForFuture(methods.insert(logId, std::move(key), std::move(value))
-                           .thenValue([this](auto&& waitForResult) {
-                             if (waitForResult.ok()) {
-                               generateOk(rest::ResponseCode::OK,
-                                          VPackSlice::noneSlice());
-                             } else {
-                               generateError(waitForResult);
-                             }
-                             return RestStatus::DONE;
-                           }));
-}
-
-RestStatus RestPrototypeStateHandler::handlePostInsertMulti(
-    PrototypeStateMethods const& methods, replication2::LogId logId,
-    velocypack::Slice payload) {
-  if (!payload.isArray()) {
-    generateError(ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
-                  "array expected at top-level");
+  if (!payload.isObject()) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  basics::StringUtils::concatT("expected object containing "
+                                               "key-value pairs, but got ",
+                                               payload.toJson()));
     return RestStatus::DONE;
   }
 
-  std::vector<std::pair<std::string, std::string>> entries;
-  for (VPackArrayIterator it{payload}; it.valid(); ++it) {
-    auto entry = *it;
-    if (!entry.isObject() || entry.length() != 1) {
+  std::unordered_map<std::string, std::string> entries;
+  for (auto const& [key, value] : VPackObjectIterator{payload}) {
+    if (key.isString() && value.isString()) {
+      entries.emplace(key.copyString(), value.copyString());
+    } else {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     basics::StringUtils::concatT(
-                        "expected a single object containing "
-                        "one key-value pair, but got ",
-                        entry.toJson(), " at index ", it.index()));
+                        "expected key-value pair of strings but got {",
+                        key.toJson(), ": ", value.toJson(), "}"));
       return RestStatus::DONE;
     }
-    auto key = entry.keyAt(0).copyString();
-    auto value = entry.valueAt(0).copyString();
-    entries.emplace_back(std::move(key), std::move(value));
   }
 
   return waitForFuture(
       methods.insert(logId, entries).thenValue([this](auto&& waitForResult) {
         if (waitForResult.ok()) {
-          generateOk(rest::ResponseCode::OK, VPackSlice::noneSlice());
+          VPackBuilder result;
+          {
+            VPackObjectBuilder ob(&result);
+            result.add("index", VPackValue(waitForResult.get()));
+          }
+          generateOk(rest::ResponseCode::OK, result.slice());
         } else {
-          generateError(waitForResult);
+          generateError(waitForResult.result());
         }
         return RestStatus::DONE;
       }));
@@ -159,20 +136,13 @@ RestStatus RestPrototypeStateHandler::handlePostInsertMulti(
 RestStatus RestPrototypeStateHandler::handleGetRequest(
     PrototypeStateMethods const& methods) {
   std::vector<std::string> const& suffixes = _request->suffixes();
-  /*
-  if (suffixes.empty()) {
-    return handleGet(methods);
+  if (suffixes.size() < 2) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "expect POST /_api/prototype-state/<state-id>/[verb]");
+    return RestStatus::DONE;
   }
-   */
 
   LogId logId{basics::StringUtils::uint64(suffixes[0])};
-
-  /*
-  if (suffixes.size() == 1) {
-    return handleGetProtoypeState(methods, logId);
-  }
-   */
-
   auto const& verb = suffixes[1];
   if (verb == "entry") {
     return handleGetEntry(methods, logId);

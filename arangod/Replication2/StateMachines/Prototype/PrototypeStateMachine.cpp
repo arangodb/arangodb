@@ -25,6 +25,7 @@
 #include "Basics/voc-errors.h"
 #include "Futures/Future.h"
 #include "velocypack/Iterator.h"
+#include "Replication2/ReplicatedLog/LogCommon.h"
 
 #include "PrototypeStateMachine.h"
 
@@ -38,14 +39,11 @@ void PrototypeCore::applyEntries(std::unique_ptr<EntryIterator> ptr) {
   while (auto entry = ptr->next()) {
     PrototypeLogEntry const& logEntry = entry->second;
     std::visit(overload{
-                   [&](PrototypeLogEntry::InsertOperation const& op) {
-                     store = store.set(op.key, op.value);
-                   },
                    [&](PrototypeLogEntry::DeleteOperation const& op) {
                      store = store.erase(op.key);
                    },
-                   [&](PrototypeLogEntry::BulkInsertOperation const& op) {
-                     for (auto const& [key, value] : op.map) {
+                   [&](PrototypeLogEntry::InsertOperation const& op) {
+                     for (auto const& [key, value] : op.entries) {
                        store = store.set(key, value);
                      }
                    },
@@ -81,50 +79,27 @@ auto PrototypeLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
   });
 }
 
-auto PrototypeLeaderState::set(std::string key, std::string value)
-    -> futures::Future<Result> {
-  PrototypeLogEntry entry{
-      PrototypeLogEntry::InsertOperation{.key = key, .value = value}};
-
-  auto stream = getStream();
-  auto idx = stream->insert(entry);
-
-  return stream->waitFor(idx).thenValue(
-      [self = shared_from_this(), key = std::move(key),
-       value = std::move(value)](auto&& res) mutable {
-        return self->guardedData.template doUnderLock(
-            [key = std::move(key),
-             value = std::move(value)](auto& core) mutable {
-              if (!core) {
-                return Result{TRI_ERROR_CLUSTER_NOT_LEADER};
-              }
-              core->store = core->store.set(std::move(key), std::move(value));
-              return Result{TRI_ERROR_NO_ERROR};
-            });
-      });
-}
-
 auto PrototypeLeaderState::set(
-    std::vector<std::pair<std::string, std::string>> entries)
-    -> futures::Future<Result> {
+    std::unordered_map<std::string, std::string> entries)
+    -> futures::Future<ResultT<LogIndex>> {
   auto stream = getStream();
 
-  PrototypeLogEntry entry{PrototypeLogEntry::BulkInsertOperation{
-      .map = {entries.begin(), entries.end()}}};
+  PrototypeLogEntry entry{PrototypeLogEntry::InsertOperation{entries}};
   auto idx = stream->insert(entry);
 
   return stream->waitFor(idx).thenValue(
-      [self = shared_from_this(),
+      [self = shared_from_this(), idx = idx,
        entries = std::move(entries)](auto&& res) mutable {
         return self->guardedData.template doUnderLock(
-            [entries = std::move(entries)](auto& core) {
+            [idx = idx,
+             entries = std::move(entries)](auto& core) -> ResultT<LogIndex> {
               if (!core) {
-                return Result{TRI_ERROR_CLUSTER_NOT_LEADER};
+                return ResultT<LogIndex>::error(TRI_ERROR_CLUSTER_NOT_LEADER);
               }
               for (auto const& [key, value] : entries) {
                 core->store = core->store.set(key, value);
               }
-              return Result{TRI_ERROR_NO_ERROR};
+              return idx;
             });
       });
 }
@@ -232,26 +207,20 @@ operator()(
   auto type = s.get("type");
   TRI_ASSERT(type.isString());
 
-  if (type.isEqualString("insert")) {
-    auto key = s.get("key");
-    auto value = s.get("value");
-    TRI_ASSERT(key.isString() && value.isString());
-    return PrototypeLogEntry{.operation = PrototypeLogEntry::InsertOperation{
-                                 key.copyString(), value.copyString()}};
-  } else if (type.isEqualString("delete")) {
+  if (type.isEqualString("delete")) {
     auto key = s.get("key");
     TRI_ASSERT(key.isString());
     return PrototypeLogEntry{
         .operation = PrototypeLogEntry::DeleteOperation{key.copyString()}};
-  } else if (type.isEqualString("bulkInsert")) {
-    auto mapOb = s.get("map");
+  } else if (type.isEqualString("insert")) {
+    auto mapOb = s.get("entries");
     TRI_ASSERT(mapOb.isObject());
     std::unordered_map<std::string, std::string> map;
     for (auto const& [key, value] : VPackObjectIterator(mapOb)) {
       map.emplace(key.copyString(), value.copyString());
     }
     return PrototypeLogEntry{
-        .operation = PrototypeLogEntry::BulkInsertOperation{std::move(map)}};
+        .operation = PrototypeLogEntry::InsertOperation{std::move(map)}};
   } else if (type.isEqualString("bulkDelete")) {
     auto keysAr = s.get("keys");
     TRI_ASSERT(keysAr.isArray());
@@ -272,23 +241,17 @@ operator()(
     streams::serializer_tag_t<replicated_state::prototype::PrototypeLogEntry>,
     prototype::PrototypeLogEntry const& e, velocypack::Builder& b) const {
   std::visit(overload{
-                 [&b](PrototypeLogEntry::InsertOperation const& op) {
-                   VPackObjectBuilder ob(&b);
-                   b.add("type", VPackValue("insert"));
-                   b.add("key", VPackValue(op.key));
-                   b.add("value", VPackValue(op.value));
-                 },
                  [&b](PrototypeLogEntry::DeleteOperation const& op) {
                    VPackObjectBuilder ob(&b);
                    b.add("type", VPackValue("delete"));
                    b.add("key", VPackValue(op.key));
                  },
-                 [&b](PrototypeLogEntry::BulkInsertOperation const& op) {
+                 [&b](PrototypeLogEntry::InsertOperation const& op) {
                    VPackObjectBuilder ob(&b);
-                   b.add("type", VPackValue("bulkInsert"));
+                   b.add("type", VPackValue("insert"));
                    {
-                     VPackObjectBuilder ob2(&b, "map");
-                     for (auto const& [key, value] : op.map) {
+                     VPackObjectBuilder ob2(&b, "entries");
+                     for (auto const& [key, value] : op.entries) {
                        b.add("key", VPackValue(key));
                        b.add("value", VPackValue(value));
                      }

@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include "Basics/ResultT.h"
 #include "Basics/UnshackledMutex.h"
 #include "Futures/Future.h"
 #include "Replication2/ReplicatedState/ReplicatedState.h"
@@ -71,10 +72,7 @@ struct PrototypeState {
 
 struct PrototypeLogEntry {
   struct InsertOperation {
-    std::string key, value;
-  };
-  struct BulkInsertOperation {
-    std::unordered_map<std::string, std::string> map;
+    std::unordered_map<std::string, std::string> entries;
   };
   struct DeleteOperation {
     std::string key;
@@ -83,9 +81,7 @@ struct PrototypeLogEntry {
     std::vector<std::string> keys;
   };
 
-  std::variant<InsertOperation, DeleteOperation, BulkInsertOperation,
-               BulkDeleteOperation>
-      operation;
+  std::variant<DeleteOperation, InsertOperation, BulkDeleteOperation> operation;
 };
 
 struct PrototypeCore {
@@ -107,11 +103,10 @@ struct PrototypeLeaderState
   auto recoverEntries(std::unique_ptr<EntryIterator> ptr)
       -> futures::Future<Result> override;
 
-  auto set(std::string key, std::string value) -> futures::Future<Result>;
-  auto set(std::vector<std::pair<std::string, std::string>> entries)
-      -> futures::Future<Result>;
+  auto set(std::unordered_map<std::string, std::string> entries)
+      -> futures::Future<ResultT<LogIndex>>;
   template<MapStringIterator Iterator>
-  auto set(Iterator begin, Iterator end) -> futures::Future<Result>;
+  auto set(Iterator begin, Iterator end) -> futures::Future<ResultT<LogIndex>>;
 
   auto remove(std::string key) -> futures::Future<Result>;
   auto remove(std::vector<std::string> keys) -> futures::Future<Result>;
@@ -145,24 +140,25 @@ auto PrototypeLeaderState::get(Iterator begin, Iterator end)
 
 template<MapStringIterator Iterator>
 auto PrototypeLeaderState::set(Iterator begin, Iterator end)
-    -> futures::Future<Result> {
+    -> futures::Future<ResultT<LogIndex>> {
   auto stream = getStream();
 
   PrototypeLogEntry entry{
-      PrototypeLogEntry::BulkInsertOperation{.map = {begin, end}}};
+      PrototypeLogEntry::InsertOperation{.entries = {begin, end}}};
   auto idx = stream->insert(entry);
 
   return stream->waitFor(idx).thenValue(
-      [self = shared_from_this(), begin, end](auto&& res) {
-        return self->guardedData.template doUnderLock([begin, end](auto& core) {
-          if (!core) {
-            return Result{TRI_ERROR_CLUSTER_NOT_LEADER};
-          }
-          for (auto it{begin}; it != end; ++it) {
-            core->store = core->store.set(it->first, it->second);
-          }
-          return Result{TRI_ERROR_NO_ERROR};
-        });
+      [self = shared_from_this(), idx, begin, end](auto&& res) {
+        return self->guardedData.template doUnderLock(
+            [idx, begin, end](auto& core) -> ResultT<LogIndex> {
+              if (!core) {
+                return Result{TRI_ERROR_CLUSTER_NOT_LEADER};
+              }
+              for (auto it{begin}; it != end; ++it) {
+                core->store = core->store.set(it->first, it->second);
+              }
+              return idx;
+            });
       });
 }
 
