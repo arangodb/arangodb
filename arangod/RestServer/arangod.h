@@ -118,6 +118,7 @@ class UpgradeFeature;
 class V8DealerFeature;
 class V8PlatformFeature;
 class V8SecurityFeature;
+class WasmServerFeature;
 class VersionFeature;
 class ViewTypesFeature;
 class ClusterEngine;
@@ -249,6 +250,7 @@ using ArangodFeatures = TypeList<
     V8DealerFeature,
     V8PlatformFeature,
     V8SecurityFeature,
+    WasmServerFeature,
     transaction::ManagerFeature,
     ViewTypesFeature,
     aql::AqlFunctionFeature,

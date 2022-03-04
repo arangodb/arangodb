@@ -706,6 +706,7 @@ set(LIB_ARANGO_WASM_SOURCES
   WasmServer/Methods.cpp
   WasmServer/WasmCommon.cpp
   RestHandler/RestWasmHandler.cpp
+  WasmServer/WasmServerFeature.cpp
 )
 
 set(LIB_ARANGO_NETWORK_SOURCES

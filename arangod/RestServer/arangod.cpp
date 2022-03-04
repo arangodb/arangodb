@@ -133,6 +133,7 @@
 #include "Transaction/ManagerFeature.h"
 #include "V8Server/FoxxFeature.h"
 #include "V8Server/V8DealerFeature.h"
+#include "WasmServer/WasmServerFeature.h"
 
 #ifdef _WIN32
 #include "Basics/win-utils.h"
