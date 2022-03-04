@@ -1016,7 +1016,7 @@ function runInRSpec (options, instanceInfo, file, addArgs) {
     command = options.ruby;
     if (!fs.exists(rspec) || !fs.exists(command)) {
       return {
-        total: 0,
+        total: 1,
         failed: 1,
         status: false,
         forceTerminate: false,
