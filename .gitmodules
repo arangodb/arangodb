@@ -1,3 +1,6 @@
 [submodule "iresearch"]
 	path = 3rdParty/iresearch
 	url = https://github.com/iresearch-toolkit/iresearch.git
+[submodule "3rdParty/wasm3"]
+	path = 3rdParty/wasm3
+	url = https://github.com/wasm3/wasm3

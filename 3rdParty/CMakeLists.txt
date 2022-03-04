@@ -257,6 +257,15 @@ target_include_directories(linenoise-ng SYSTEM PUBLIC
   ${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/include)
 
 ################################################################################
+## wasm3
+################################################################################
+
+UpdateModule(${GIT_EXECUTABLE} "wasm3" ${CMAKE_CURRENT_SOURCE_DIR} "README.md")
+
+set(WASIENV 0 CACHE STRING "")
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/wasm3/source ${CMAKE_BINARY_DIR}/m3)
+
+################################################################################
 ## LINK_DIRECTORIES
 ################################################################################
 
