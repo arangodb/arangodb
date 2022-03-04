@@ -36,6 +36,7 @@
 #include "Basics/WriteLocker.h"
 #include "Basics/application-exit.h"
 #include "Basics/build.h"
+#include "Basics/exitcodes.h"
 #include "Basics/files.h"
 #include "Basics/system-functions.h"
 #include "Cache/CacheManagerFeature.h"
@@ -870,6 +871,26 @@ void RocksDBEngine::start() {
             << "it is required to restart with a new database directory and "
                "re-import data";
         FATAL_ERROR_EXIT();
+      }
+     
+      // check if we have too many column families, namely some known ones
+      // from future versions of ArangoDB
+      if (existingColumnFamilies.size() > numberOfColumnFamilies) {
+        for (auto const& it : existingColumnFamilies) {
+          if (it == "ZkdIndex" || it == "ReplicatedLogs") {
+            // introduced in 3.9 or 3.10
+            LOG_TOPIC("1bdd3", ERR, Logger::STARTUP) 
+              << "Unknown column family found in RocksDB database: " << it;
+          }
+        }
+        
+        LOG_TOPIC("c91a4", ERR, Logger::STARTUP)
+            << "Database version check failed: "
+            << "the database directory seems to be from a future ArangoDB version. "
+            << "This is unsupported!";
+        // let's continue, because maybe the database starts anyway for some
+        // magic reasons...
+        // FATAL_ERROR_EXIT_CODE(TRI_EXIT_VERSION_CHECK_FAILED);
       }
     }
   }
