@@ -24,6 +24,9 @@
 #include "Methods.h"
 #include "Futures/Future.h"
 #include "Cluster/ServerState.h"
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "WasmServerFeature.h"
+#include "WasmCommon.h"
 
 using namespace arangodb;
 using namespace arangodb::wasm;
@@ -33,7 +36,8 @@ struct WasmVmMethodsSingleServer final
       std::enable_shared_from_this<WasmVmMethodsSingleServer> {
   explicit WasmVmMethodsSingleServer(TRI_vocbase_t& vocbase)
       : vocbase(vocbase){};
-  auto createWasmUdf() const -> futures::Future<Result> override {
+  auto createWasmUdf(WasmFunction const& function) const -> futures::Future<Result> override {
+    vocbase.server().getFeature<WasmServerFeature>().addFunction(function);
     return Result{};
   }
   TRI_vocbase_t& vocbase;
@@ -48,5 +52,5 @@ auto WasmVmMethods::createInstance(TRI_vocbase_t& vocbase)
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_NOT_IMPLEMENTED,
           "This API is only available on single server.");
-  }
+   }
 }

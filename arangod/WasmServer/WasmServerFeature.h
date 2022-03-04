@@ -23,6 +23,8 @@
 #pragma once
 
 #include "RestServer/arangod.h"
+#include "WasmCommon.h"
+#include "Basics/Guarded.h"
 
 namespace arangodb {
 class WasmServerFeature final : public ArangodFeature {
@@ -37,5 +39,12 @@ class WasmServerFeature final : public ArangodFeature {
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override;
+  void addFunction(wasm::WasmFunction const& function);
+
+private:
+struct GuardedFunctions {
+    std::unordered_map<std::string, wasm::WasmFunction> _functions;
+  };
+  Guarded<GuardedFunctions> _guardedFunctions;
 };
 }  // namespace arangodb

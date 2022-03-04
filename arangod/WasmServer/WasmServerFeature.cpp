@@ -13,7 +13,8 @@ WasmServerFeature::WasmServerFeature(Server& server)
 }
 
 void WasmServerFeature::prepare() {
-  if (ServerState::instance()->isCoordinator() or ServerState::instance()->isDBServer()) {
+  if (ServerState::instance()->isCoordinator() or
+      ServerState::instance()->isDBServer()) {
     setEnabled(true);
   } else {
     setEnabled(false);
@@ -22,5 +23,14 @@ void WasmServerFeature::prepare() {
 
 WasmServerFeature::~WasmServerFeature() = default;
 
-void WasmServerFeature::collectOptions(std::shared_ptr<options::ProgramOptions>) {}
-void WasmServerFeature::validateOptions(std::shared_ptr<options::ProgramOptions>) {}
+void WasmServerFeature::collectOptions(
+    std::shared_ptr<options::ProgramOptions>) {}
+void WasmServerFeature::validateOptions(
+    std::shared_ptr<options::ProgramOptions>) {}
+
+void WasmServerFeature::addFunction(wasm::WasmFunction const& function) {
+  _guardedFunctions.doUnderLock(
+      [&function](GuardedFunctions& guardedFunctions) {
+        guardedFunctions._functions.emplace(function.name, function);
+      });
+}
