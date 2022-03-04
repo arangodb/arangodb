@@ -240,8 +240,7 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
         
         print('\n' + (new Date()).toISOString() + GREEN + " [============] " + runFn.info + ': Trying', te, '...', RESET);
         let reply = runFn(options, instanceInfo, te, env);
-
-        if (reply.hasOwnProperty('forceTerminate')) {
+        if (reply.hasOwnProperty('forceTerminate') && reply.forceTerminate) {
           results[te] = reply;
           continueTesting = false;
           forceTerminate = true;
@@ -1017,7 +1016,7 @@ function runInRSpec (options, instanceInfo, file, addArgs) {
     command = options.ruby;
     if (!fs.exists(rspec) || !fs.exists(command)) {
       return {
-        total: 0,
+        total: 1,
         failed: 1,
         status: false,
         forceTerminate: false,
