@@ -60,6 +60,8 @@ struct Query : std::enable_shared_from_this<Query> {
 
   void loadGraph();
 
+  void getGraph(VPackBuilder& builder);
+
   enum class State { CREATED, LOADING, RUNNING, STORING, ERROR, DONE };
 
   auto getState() const -> State { return _state; }

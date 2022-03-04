@@ -72,8 +72,6 @@ void Pregel3Feature::createQuery(
     TRI_vocbase_t& vocbase, std::string queryId,
     const pregel3::GraphSpecification& graphSpec,
     const pregel3::AlgorithmSpecification& algSpec) {
-  // TODO: setup query
-  LOG_DEVEL << "Create a query now";
 
   _queries.emplace(
       queryId, std::make_shared<Query>(vocbase, queryId, graphSpec, algSpec));

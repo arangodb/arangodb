@@ -68,7 +68,7 @@ void Query::loadGraph() {
   CollectionNameResolver collectionNameResolver(_vocbase);
 
   auto addVertex = [&](LocalDocumentId const& token, VPackSlice slice) {
-    // LOG_DEVEL << "Adding a vertex" << slice.toJson();
+    LOG_DEVEL << "Adding a vertex" << slice.toJson();
     // todo add dependence on _graphSpec (other graphs)
     // todo add dependence on slice (currently empty properties are added)
 
@@ -102,7 +102,7 @@ void Query::loadGraph() {
   // been added. todo check this lambda, it may be wrong
   auto addSingleEdge = [&](LocalDocumentId const& token,
                            VPackSlice slice) -> bool {
-    // LOG_DEVEL << "Adding an edge" << slice.toJson();
+    LOG_DEVEL << "Adding an edge" << slice.toJson();
     std::string to = slice.get("_to").copyString();
     std::string from = slice.get("_from").copyString();
     size_t const toIdx = _vertexIdToIdx.find(to)->second;
@@ -143,8 +143,6 @@ void Query::loadGraph() {
           GraphSpecification::GraphSpecificationByCollections>(
           _graphSpec._graphSpec)) {
     // todo choose one of standard graph types (define some) or CustomGraph
-    _graph =
-        std::make_shared<Graph<EmptyVertexProperties, EmptyEdgeProperties>>();
     if (_algSpec.algName == "MinCut") {
       _graph = std::make_shared<MinCutGraph>();
       auto resDefCap = extractDefaultCapacity(_algSpec);
@@ -211,6 +209,12 @@ void Query::loadGraph() {
                        .count()
                 << " sec";
     }
+  }
+}
+void Query::getGraph(VPackBuilder& builder) {
+  if (_graph != nullptr) {
+    LOG_DEVEL << "_graph not empty";
+    _graph->toVelocyPack(builder);
   }
 }
 

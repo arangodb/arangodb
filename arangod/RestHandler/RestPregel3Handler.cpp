@@ -120,7 +120,7 @@ auto RestPregel3Handler::handlePostRequest(
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
   // verify suffixes
   // this has to be changed when the API has more POST queries
-  if (suffixes.size() < 4 || suffixes[0] != "query") {
+  if (suffixes.size() > 4 || suffixes[0] != "queries") {
     generateError(rest::ResponseCode::NOT_IMPLEMENTED,
                   ErrorCode(TRI_ERROR_NOT_IMPLEMENTED),
                   "Call with .../_api_pregel3/query.");
@@ -209,7 +209,11 @@ auto RestPregel3Handler::handleGetRequest(
   if (suffixes[2] == "loadGraph") {
     query->setState(Query::State::LOADING);
     query->loadGraph();
-    // todo
+  } else if (suffixes[2] == "getGraph") {
+    VPackBuilder builder;
+    query->getGraph(builder);
+    generateOk(rest::ResponseCode::OK, builder.slice());
+    return RestStatus::DONE;
   } else if (suffixes[2] == "start") {
     query->setState(Query::State::RUNNING);
     // todo
@@ -225,9 +229,9 @@ auto RestPregel3Handler::handleGetRequest(
     VPackObjectBuilder ob(&builder);
     builder.add(Utils::state,
                 VPackValue(static_cast<uint8_t>(query->getState())));
-    VPackBuilder graphSpecBuilder;
-    query->getGraphSpecification().toVelocyPack(graphSpecBuilder);
-    builder.add(Utils::graphSpec, graphSpecBuilder.slice());
+    builder.add(VPackValue(Utils::graphSpec));
+    query->getGraphSpecification().toVelocyPack(builder);
   }
+  generateOk(rest::ResponseCode::OK, builder.slice());
   return RestStatus::DONE;
 }

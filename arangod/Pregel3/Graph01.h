@@ -5,12 +5,17 @@
 #include <unordered_set>
 #include <unordered_map>
 #include "Basics/debugging.h"
+#include "velocypack/Builder.h"
+
+namespace arangodb::pregel3 {
 
 template<class VertexProperties>
 struct Vertex {
   std::vector<size_t> outEdges;
   std::vector<size_t> inEdges;
   VertexProperties props;
+
+  void toVelocyPack(VPackBuilder& builder);
 
   size_t degree() { return outEdges.size() + inEdges.size(); }
 
@@ -21,6 +26,7 @@ struct Vertex {
 
 struct EmptyVertexProperties {
   virtual ~EmptyVertexProperties() = default;
+  static void toVelocyPack(VPackBuilder& builder);
 };
 using VertexWithEmptyProps = Vertex<EmptyVertexProperties>;
 
@@ -28,6 +34,8 @@ struct MinCutVertex : public Vertex<EmptyVertexProperties> {
   size_t label;
   double excess;
   bool isLeaf = false;
+
+  void toVelocyPack(VPackBuilder& builder);
 };
 
 template<class EdgeProperties>
@@ -37,6 +45,8 @@ struct Edge {
   EdgeProperties props;
 
   Edge(size_t from, size_t to) : from(from), to(to) {}
+
+  void toVelocyPack(VPackBuilder& builder);
 };
 
 template<class EdgeProperties>
@@ -44,10 +54,13 @@ struct MultiEdge {
   size_t from;
   size_t to;
   std::vector<size_t> edgeIdxs;
+
+  void toVelocyPack(VPackBuilder& builder);
 };
 
 struct EmptyEdgeProperties {
   virtual ~EmptyEdgeProperties() = default;
+  static void toVelocyPack(VPackBuilder& builder);
 };
 using EdgeWithEmptyProps = Edge<EmptyEdgeProperties>;
 
@@ -60,6 +73,8 @@ struct MinCutEdge : public Edge<EmptyEdgeProperties> {
       : Edge(from, to), capacity(capacity){};
   MinCutEdge(size_t from, size_t to, double capacity, size_t edgeRev)
       : Edge(from, to), capacity(capacity), edgeRev(edgeRev){};
+
+  void toVelocyPack(VPackBuilder& builder);
 
   double residual() const {
     TRI_ASSERT(capacity >= flow);
@@ -79,6 +94,7 @@ struct MinCutEdge : public Edge<EmptyEdgeProperties> {
 
 struct BaseGraph {
   virtual ~BaseGraph() = default;
+  virtual void toVelocyPack(VPackBuilder&) = 0;
 };
 
 template<class V, class E>
@@ -94,7 +110,28 @@ struct Graph : BaseGraph {
                   // vertices
 
   ~Graph() override = default;
+  void toVelocyPack(VPackBuilder& builder) override;
 };
+
+template<class V, class E>
+void Graph<V, E>::toVelocyPack(VPackBuilder& builder) {
+  VPackObjectBuilder ob(&builder);
+  builder.add(VPackValue("vertices"));
+  {
+    VPackArrayBuilder ab(&builder);
+    for (auto& v : vertices) {
+      v.toVelocyPack(builder);
+    }
+  }
+  {
+    builder.add(VPackValue("edges"));
+    VPackArrayBuilder ab(&builder);
+    for (auto& e : edges) {
+      e.toVelocyPack(builder);
+    }
+  }
+  // todo add graph properties: number of vertices/edges
+}
 
 using EmptyPropertiesGraph = Graph<VertexWithEmptyProps, EdgeWithEmptyProps>;
 
@@ -119,3 +156,5 @@ class MinCutGraph : public Graph<MinCutVertex, MinCutEdge> {
   std::unordered_set<size_t> applicableEdges;
   std::unordered_set<size_t> relabableVertices;
 };
+
+}  // namespace arangodb::pregel3

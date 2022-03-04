@@ -116,24 +116,29 @@ auto GraphSpecification::fromVelocyPack(VPackSlice slice)
 }
 
 void GraphSpecification::toVelocyPack(VPackBuilder& builder) {
+  VPackObjectBuilder ob(&builder);
   if (std::holds_alternative<GraphName>(_graphSpec)) {
     builder.add(Utils::graphName,
                 VPackValue(std::get<std::string>(_graphSpec)));
   } else {
-    auto graphSpec = std::get<GraphSpecificationByCollections>(_graphSpec);
+    auto const& graphSpec =
+        std::get<GraphSpecificationByCollections>(_graphSpec);
     // add vertex collections names
-    builder.add(Utils::vertexCollNames, VPackValue(VPackValueType::Array));
-    for (auto const& vName : graphSpec.vertexCollectionNames) {
-      builder.add(VPackValue(vName));
+    builder.add(VPackValue(Utils::vertexCollNames));
+    {
+      VPackArrayBuilder ab(&builder);
+      for (auto const& vName : graphSpec.vertexCollectionNames) {
+        builder.add(VPackValue(vName));
+      }
     }
-    builder.close();
-
     // add edge collections names
-    builder.add(Utils::edgeCollNames, VPackValue(VPackValueType::Array));
-    for (auto const& eName : graphSpec.edgeCollectionNames) {
-      builder.add(VPackValue(eName));
+    builder.add(VPackValue(Utils::edgeCollNames));
+    {
+      VPackArrayBuilder ab(&builder);
+      for (auto const& eName : graphSpec.edgeCollectionNames) {
+        builder.add(VPackValue(eName));
+      }
     }
-    builder.close();
   }
 }
 }  // namespace arangodb::pregel3
