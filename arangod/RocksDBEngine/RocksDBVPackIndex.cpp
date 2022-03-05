@@ -24,6 +24,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBVPackIndex.h"
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AstNode.h"
 #include "Aql/SortCondition.h"
@@ -31,7 +32,9 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/cpu-relax.h"
 #include "Cache/CachedValue.h"
+#include "Cache/CacheManagerFeature.h"
 #include "Cache/TransactionalCache.h"
+#include "Cache/VPackKeyHasher.h"
 #include "Containers/FlatHashMap.h"
 #include "Containers/FlatHashSet.h"
 #include "Indexes/SortedIndexAttributeMatcher.h"
@@ -40,6 +43,7 @@
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBComparator.h"
 #include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
+#include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
@@ -243,10 +247,10 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
         _bounds(std::move(bounds)),
         _rangeBound(reverse ? _bounds.start() : _bounds.end()),
         _format(format),
-        _mustSeek(true),
         _mustCheckBounds(
             RocksDBTransactionState::toState(trx)->iteratorMustCheckBounds(
-                collection->id(), readOwnWrites)) {
+                collection->id(), readOwnWrites)),
+        _mustSeek(true) {
     TRI_ASSERT(index->columnFamily() ==
                RocksDBColumnFamilyManager::get(
                    RocksDBColumnFamilyManager::Family::VPackIndex));
@@ -672,13 +676,14 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
     // the bounds checks for the base iterator (from the snapshot), but not for
     // the delta iterator (from the current transaction), so we still have to
     // carry out the checks ourselves.
+    if (!_mustCheckBounds) {
+      return false;
+    }
 
     if constexpr (reverse) {
-      return _mustCheckBounds &&
-             (_cmp->Compare(_iterator->key(), _rangeBound) < 0);
+      return _cmp->Compare(_iterator->key(), _rangeBound) < 0;
     } else {
-      return _mustCheckBounds &&
-             (_cmp->Compare(_iterator->key(), _rangeBound) > 0);
+      return _cmp->Compare(_iterator->key(), _rangeBound) > 0;
     }
   }
 
@@ -733,8 +738,8 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
   // used for iterate_upper_bound iterate_lower_bound
   rocksdb::Slice _rangeBound;
   RocksDBVPackIndexSearchValueFormat const _format;
-  bool _mustSeek;
   bool const _mustCheckBounds;
+  bool _mustSeek;
   size_t _lookupHits = 0;
   size_t _lookupMisses = 0;
   size_t _lookupRocksDB = 0;
@@ -758,7 +763,18 @@ RocksDBVPackIndex::RocksDBVPackIndex(IndexId iid,
     : RocksDBIndex(iid, collection, info,
                    RocksDBColumnFamilyManager::get(
                        RocksDBColumnFamilyManager::Family::VPackIndex),
-                   /*useCache*/ !ServerState::instance()->isCoordinator()),
+                   /*useCache*/ false &&
+                       !ServerState::instance()->isCoordinator() /*TODO*/,
+                   /*cacheManager*/
+                   collection.vocbase()
+                       .server()
+                       .getFeature<CacheManagerFeature>()
+                       .manager(),
+                   /*engine*/
+                   collection.vocbase()
+                       .server()
+                       .getFeature<EngineSelectorFeature>()
+                       .engine<RocksDBEngine>()),
       _deduplicate(arangodb::basics::VelocyPackHelper::getBooleanValue(
           info, "deduplicate", true)),
       _estimates(true),
@@ -795,6 +811,10 @@ RocksDBVPackIndex::RocksDBVPackIndex(IndexId iid,
   fillPaths(_storedValues, _storedValuesPaths, nullptr);
   TRI_ASSERT(_fields.size() == _paths.size());
   TRI_ASSERT(_storedValues.size() == _storedValuesPaths.size());
+
+  if (_cacheEnabled) {
+    createCache();
+  }
 }
 
 /// @brief destroy the index
@@ -1996,6 +2016,12 @@ void RocksDBVPackIndex::afterTruncate(TRI_voc_tick_t tick,
   TRI_ASSERT(_estimator != nullptr);
   _estimator->bufferTruncate(tick);
   RocksDBIndex::afterTruncate(tick, trx);
+}
+
+std::shared_ptr<cache::Cache> RocksDBVPackIndex::cacheFactory() const {
+  TRI_ASSERT(_cacheManager != nullptr);
+  return _cacheManager->createCache(cache::CacheType::Transactional,
+                                    cache::VPackKeyHasher{});
 }
 
 RocksDBCuckooIndexEstimatorType* RocksDBVPackIndex::estimator() {

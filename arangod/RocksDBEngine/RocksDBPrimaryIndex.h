@@ -48,10 +48,8 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
   friend class RocksDBAnyIndexIterator;
 
  public:
-  RocksDBPrimaryIndex() = delete;
-
   RocksDBPrimaryIndex(arangodb::LogicalCollection& collection,
-                      arangodb::velocypack::Slice const& info);
+                      arangodb::velocypack::Slice info);
 
   ~RocksDBPrimaryIndex();
 

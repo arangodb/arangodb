@@ -2069,7 +2069,7 @@ void RocksDBCollection::createCache() const {
   }
 
   TRI_ASSERT(_cacheEnabled);
-  TRI_ASSERT(_cache.get() == nullptr);
+  TRI_ASSERT(_cache == nullptr);
   auto* manager = _logicalCollection.vocbase()
                       .server()
                       .getFeature<CacheManagerFeature>()

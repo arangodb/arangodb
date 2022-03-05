@@ -33,6 +33,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/cpu-relax.h"
 #include "Cache/CachedValue.h"
+#include "Cache/CacheManagerFeature.h"
 #include "Cache/TransactionalCache.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "RocksDBEngine/RocksDBCollection.h"
@@ -439,7 +440,17 @@ RocksDBEdgeIndex::RocksDBEdgeIndex(IndexId iid,
                   .server()
                   .getFeature<EngineSelectorFeature>()
                   .engine<RocksDBEngine>()
-                  .useEdgeCache() /*useCache*/),
+                  .useEdgeCache() /*useCache*/,
+          /*cacheManager*/
+          collection.vocbase()
+              .server()
+              .getFeature<CacheManagerFeature>()
+              .manager(),
+          /*engine*/
+          collection.vocbase()
+              .server()
+              .getFeature<EngineSelectorFeature>()
+              .engine<RocksDBEngine>()),
       _directionAttr(attr),
       _isFromIndex(attr == StaticStrings::FromString),
       _estimator(nullptr),
@@ -458,6 +469,10 @@ RocksDBEdgeIndex::RocksDBEdgeIndex(IndexId iid,
   // edge indexes are always created with ID 1 or 2
   TRI_ASSERT(iid.isEdge());
   TRI_ASSERT(objectId() != 0);
+
+  if (_cacheEnabled) {
+    createCache();
+  }
 }
 
 RocksDBEdgeIndex::~RocksDBEdgeIndex() = default;
@@ -648,7 +663,7 @@ static std::string FindMedian(rocksdb::Iterator* it, std::string const& start,
 
 void RocksDBEdgeIndex::warmup(transaction::Methods* trx,
                               std::shared_ptr<basics::LocalTaskQueue> queue) {
-  if (!useCache()) {
+  if (!hasCache()) {
     return;
   }
 
@@ -681,10 +696,7 @@ void RocksDBEdgeIndex::warmup(transaction::Methods* trx,
   ro.verify_checksums = false;
   ro.fill_cache = EdgeIndexFillBlockCache;
 
-  auto& selector =
-      _collection.vocbase().server().getFeature<EngineSelectorFeature>();
-  auto& engine = selector.engine<RocksDBEngine>();
-  std::unique_ptr<rocksdb::Iterator> it(engine.db()->NewIterator(ro, _cf));
+  std::unique_ptr<rocksdb::Iterator> it(_engine.db()->NewIterator(ro, _cf));
   // get the first and last actual key
   it->Seek(bounds.start());
   if (!it->Valid()) {
@@ -755,10 +767,8 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
   options.total_order_seek = true;  // otherwise full-index-scan does not work
   options.verify_checksums = false;
   options.fill_cache = EdgeIndexFillBlockCache;
-  auto& selector =
-      _collection.vocbase().server().getFeature<EngineSelectorFeature>();
-  auto& engine = selector.engine<RocksDBEngine>();
-  std::unique_ptr<rocksdb::Iterator> it(engine.db()->NewIterator(options, _cf));
+  std::unique_ptr<rocksdb::Iterator> it(
+      _engine.db()->NewIterator(options, _cf));
 
   ManagedDocumentResult mdr;
 
@@ -957,10 +967,7 @@ void RocksDBEdgeIndex::recalculateEstimates() {
   TRI_ASSERT(_estimator != nullptr);
   _estimator->clear();
 
-  auto& selector =
-      _collection.vocbase().server().getFeature<EngineSelectorFeature>();
-  auto& engine = selector.engine<RocksDBEngine>();
-  rocksdb::TransactionDB* db = engine.db();
+  rocksdb::TransactionDB* db = _engine.db();
   rocksdb::SequenceNumber seq = db->GetLatestSequenceNumber();
 
   auto bounds = RocksDBKeyBounds::EdgeIndex(objectId());

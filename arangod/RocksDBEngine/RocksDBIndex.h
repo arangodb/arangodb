@@ -67,7 +67,7 @@ class RocksDBIndex : public Index {
       velocypack::Builder& builder,
       std::underlying_type<Index::Serialize>::type) const override;
 
-  uint64_t objectId() const { return _objectId.load(); }
+  uint64_t objectId() const noexcept { return _objectId; }
 
   /// @brief if true this index should not be shown externally
   virtual bool isHidden() const override {
@@ -157,26 +157,19 @@ class RocksDBIndex : public Index {
                std::vector<std::vector<arangodb::basics::AttributeName>> const&
                    attributes,
                bool unique, bool sparse, rocksdb::ColumnFamilyHandle* cf,
-               uint64_t objectId, bool useCache);
-
-  RocksDBIndex(IndexId id, LogicalCollection& collection,
-               std::string const& name,
-               std::vector<std::vector<arangodb::basics::AttributeName>> const&
-                   attributes,
-               bool unique, bool sparse, rocksdb::ColumnFamilyHandle* cf,
                uint64_t objectId, bool useCache, cache::Manager* cacheManager,
                RocksDBEngine& engine);
 
   RocksDBIndex(IndexId id, LogicalCollection& collection,
                arangodb::velocypack::Slice info,
-               rocksdb::ColumnFamilyHandle* cf, bool useCache);
-
-  RocksDBIndex(IndexId id, LogicalCollection& collection,
-               arangodb::velocypack::Slice const& info,
                rocksdb::ColumnFamilyHandle* cf, bool useCache,
                cache::Manager* cacheManager, RocksDBEngine& engine);
 
-  inline bool useCache() const { return (_cacheEnabled && _cache); }
+  inline bool hasCache() const noexcept {
+    return _cacheEnabled && (_cache != nullptr);
+  }
+
+  virtual std::shared_ptr<cache::Cache> cacheFactory() const;
 
   void invalidateCacheEntry(char const* data, std::size_t len);
 
@@ -184,17 +177,23 @@ class RocksDBIndex : public Index {
     invalidateCacheEntry(ref.data(), ref.size());
   }
 
- protected:
   rocksdb::ColumnFamilyHandle* _cf;
 
-  mutable std::shared_ptr<cache::Cache> _cache;
+  // we have to store references to the cacheManager and engine because the
+  // vocbase might already be destroyed at the time the destructor is executed
+  cache::Manager* _cacheManager;
+
+  // user-side request for caching. will effectively be followed only if
+  // _cacheManager != nullptr.
   bool _cacheEnabled;
 
- private:
-  // we have to store references to the cacheManager and engine because the
-  // vocbase might already be destroyed at the time the desctructor is executed
-  cache::Manager* _cacheManager;
+  // the actual cache object. can be a nullptr, and can only be set if
+  // _cacheManager != nullptr.
+  mutable std::shared_ptr<cache::Cache> _cache;
+
   RocksDBEngine& _engine;
-  std::atomic<uint64_t> _objectId;
+
+ private:
+  uint64_t const _objectId;
 };
 }  // namespace arangodb

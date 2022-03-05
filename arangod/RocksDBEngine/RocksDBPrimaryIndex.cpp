@@ -22,12 +22,15 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBPrimaryIndex.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cache/CachedValue.h"
+#include "Cache/CacheManagerFeature.h"
 #include "Cache/TransactionalCache.h"
 #include "Cluster/ServerState.h"
 #include "Indexes/SortedIndexAttributeMatcher.h"
@@ -497,8 +500,7 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
 // ================ PrimaryIndex ================
 
 RocksDBPrimaryIndex::RocksDBPrimaryIndex(
-    arangodb::LogicalCollection& collection,
-    arangodb::velocypack::Slice const& info)
+    arangodb::LogicalCollection& collection, arangodb::velocypack::Slice info)
     : RocksDBIndex(
           IndexId::primary(), collection, StaticStrings::IndexNamePrimary,
           std::vector<std::vector<arangodb::basics::AttributeName>>(
@@ -508,14 +510,29 @@ RocksDBPrimaryIndex::RocksDBPrimaryIndex(
           RocksDBColumnFamilyManager::get(
               RocksDBColumnFamilyManager::Family::PrimaryIndex),
           basics::VelocyPackHelper::stringUInt64(info, StaticStrings::ObjectId),
+          /*useCache*/
           static_cast<RocksDBCollection*>(collection.getPhysical())
-              ->cacheEnabled()),
+              ->cacheEnabled(),
+          /*cacheManager*/
+          collection.vocbase()
+              .server()
+              .getFeature<CacheManagerFeature>()
+              .manager(),
+          /*engine*/
+          collection.vocbase()
+              .server()
+              .getFeature<EngineSelectorFeature>()
+              .engine<RocksDBEngine>()),
       _coveredFields({{AttributeName(StaticStrings::KeyString, false)},
                       {AttributeName(StaticStrings::IdString, false)}}),
       _isRunningInCluster(ServerState::instance()->isRunningInCluster()) {
   TRI_ASSERT(_cf == RocksDBColumnFamilyManager::get(
                         RocksDBColumnFamilyManager::Family::PrimaryIndex));
   TRI_ASSERT(objectId() != 0);
+
+  if (_cacheEnabled) {
+    createCache();
+  }
 }
 
 RocksDBPrimaryIndex::~RocksDBPrimaryIndex() = default;
@@ -527,7 +544,7 @@ RocksDBPrimaryIndex::coveredFields() const {
 
 void RocksDBPrimaryIndex::load() {
   RocksDBIndex::load();
-  if (useCache()) {
+  if (hasCache()) {
     // FIXME: make the factor configurable
     RocksDBCollection* rdb =
         static_cast<RocksDBCollection*>(_collection.getPhysical());
@@ -554,7 +571,7 @@ LocalDocumentId RocksDBPrimaryIndex::lookupKey(
   key->constructPrimaryIndexValue(objectId(), keyRef);
 
   bool lockTimeout = false;
-  if (useCache()) {
+  if (hasCache()) {
     TRI_ASSERT(_cache != nullptr);
     // check cache first for fast path
     auto f = _cache->find(key->string().data(),
@@ -578,7 +595,7 @@ LocalDocumentId RocksDBPrimaryIndex::lookupKey(
     return LocalDocumentId();
   }
 
-  if (useCache() && !lockTimeout) {
+  if (hasCache() && !lockTimeout) {
     TRI_ASSERT(_cache != nullptr);
     // write entry back to cache
     std::size_t attempts = 0;
