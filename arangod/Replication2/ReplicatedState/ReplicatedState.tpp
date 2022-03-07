@@ -210,7 +210,8 @@ auto ReplicatedState<S>::GuardedData::runFollower(
   LOG_CTX("95b9d", DEBUG, _self.loggerContext) << "create follower state";
 
   auto loggerCtx =
-      _self.loggerContext.with<logContextKeyStateComponent>("follower-manager");
+      _self.loggerContext.template with<logContextKeyStateComponent>(
+          "follower-manager");
   auto manager = std::make_shared<FollowerStateManager<S>>(
       std::move(loggerCtx), _self.shared_from_this(), std::move(logFollower),
       std::move(core), std::move(token), _self.factory);
@@ -231,7 +232,8 @@ auto ReplicatedState<S>::GuardedData::runLeader(
   LOG_CTX("95b9d", DEBUG, _self.loggerContext) << "create leader state";
 
   auto loggerCtx =
-      _self.loggerContext.with<logContextKeyStateComponent>("leader-manager");
+      _self.loggerContext.template with<logContextKeyStateComponent>(
+          "leader-manager");
   auto manager = std::make_shared<LeaderStateManager<S>>(
       std::move(loggerCtx), _self.shared_from_this(), std::move(logLeader),
       std::move(core), std::move(token), _self.factory);
