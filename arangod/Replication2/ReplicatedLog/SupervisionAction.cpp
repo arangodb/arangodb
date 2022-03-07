@@ -49,11 +49,15 @@ void Executor::operator()(ErrorAction const& action) {
 }
 
 void Executor::operator()(AddLogToPlanAction const& action) {
+  auto spec = LogPlanSpecification(
+      log, std::nullopt,
+      ParticipantsConfig{.generation = 1,
+                         .participants = action._participants});
+
   envelope = envelope.write()
-                 .emplace_object(planPath->str(),
-                                 [&](VPackBuilder& builder) {
-                                   action._spec.toVelocyPack(builder);
-                                 })
+                 .emplace_object(
+                     planPath->str(),
+                     [&](VPackBuilder& builder) { spec.toVelocyPack(builder); })
                  .inc(paths::plan()->version()->str())
                  .precs()
                  .isEmpty(planPath->str())

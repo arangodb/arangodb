@@ -300,20 +300,16 @@ TEST_F(SupervisionLogTest, test_log_created) {
 
       {"C", ParticipantFlags{.forced = false, .excluded = false}}};
 
-  auto r =
-      checkLogAdded(Log{.target = LogTarget(LogId{44}, participants, config),
-                        .plan = std::nullopt,
-                        .current = std::nullopt},
-                    ParticipantsHealth{});
+  auto r = checkReplicatedLog(
+      Log{.target = LogTarget(LogId{44}, participants, config),
+          .plan = std::nullopt,
+          .current = std::nullopt},
+      ParticipantsHealth{});
 
   EXPECT_TRUE(std::holds_alternative<AddLogToPlanAction>(r));
 
   auto& action = std::get<AddLogToPlanAction>(r);
-  EXPECT_EQ(
-      action._spec.participantsConfig,
-      (ParticipantsConfig{.generation = 1, .participants = participants}));
-
-  // TODO check that the plan spec contains the required info
+  EXPECT_EQ(action._participants, participants);
 }
 
 TEST_F(SupervisionLogTest, test_log_present) {
@@ -324,13 +320,14 @@ TEST_F(SupervisionLogTest, test_log_present) {
 
       {"C", ParticipantFlags{.forced = false, .excluded = false}}};
 
-  auto r =
-      checkLogAdded(Log{.target = LogTarget(LogId(44), participants, config),
-                        .plan = LogPlanSpecification(),
-                        .current = std::nullopt},
-                    ParticipantsHealth());
+  auto r = checkReplicatedLog(
+      Log{.target = LogTarget(LogId(44), participants, config),
+          .plan = LogPlanSpecification(),
+          .current = std::nullopt},
+      ParticipantsHealth());
 
-  EXPECT_TRUE(std::holds_alternative<EmptyAction>(r));
+  EXPECT_TRUE(std::holds_alternative<CreateInitialTermAction>(r))
+      << to_string(r);
 }
 
 TEST_F(SupervisionLogTest, test_checkleader_present) {

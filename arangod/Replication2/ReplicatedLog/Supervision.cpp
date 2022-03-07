@@ -38,33 +38,23 @@ using namespace arangodb::replication2::agency;
 
 namespace arangodb::replication2::replicated_log {
 
-auto checkLogAdded(const Log& log, ParticipantsHealth const& health) -> Action {
-  if (!log.plan) {
-    // TODO: this is a temporary hack
-    if (log.target.participants.empty()) {
-      auto newTarget = log.target;
+#if 0
+// TODO: this is a temporary hack/
+// TODO: see whether we still need it
+if (log.target.participants.empty()) {
+  auto newTarget = log.target;
 
-      for (auto const& [pid, health] : health._health) {
-        if (health.notIsFailed) {
-          newTarget.participants.emplace(pid, ParticipantFlags{});
-        }
-        if (newTarget.participants.size() ==
-            log.target.config.replicationFactor) {
-          break;
-        }
-      }
-
-      return AddParticipantsToTargetAction(newTarget);
+  for (auto const& [pid, health] : health._health) {
+    if (health.notIsFailed) {
+      newTarget.participants.emplace(pid, ParticipantFlags{});
     }
-    auto const spec = LogPlanSpecification(
-        log.target.id, std::nullopt,
-        ParticipantsConfig{.generation = 1,
-                           .participants = log.target.participants});
-
-    return AddLogToPlanAction(spec);
+    if (newTarget.participants.size() == log.target.config.replicationFactor) {
+      break;
+    }
   }
-  return EmptyAction();
-}
+
+  return AddParticipantsToTargetAction(newTarget);
+#endif
 
 auto checkTermPresent(LogPlanSpecification const& plan, LogConfig const& config)
     -> Action {
@@ -449,14 +439,11 @@ auto isEmptyAction(Action& action) {
 // The main function
 auto checkReplicatedLog(Log const& log, ParticipantsHealth const& health)
     -> Action {
-  // Check whether this log exists in plan;
-  //
-  // If it doesn't the action is to create the log;
-  //
-  // Currently this also checks whether the participants list is empty, and if
-  // so patches Target to contain a list of Followers. This is a temporary fix
-  if (auto action = checkLogAdded(log, health); !isEmptyAction(action)) {
-    return action;
+  //  auto const& target = log.target;
+
+  if (!log.plan) {
+    // The log is not planned right now, so we create it
+    return AddLogToPlanAction(log.target.participants);
   }
 
   // TODO: maybe we should report an error here; we won't make any progress,
