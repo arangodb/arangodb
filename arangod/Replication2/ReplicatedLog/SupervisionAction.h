@@ -110,6 +110,12 @@ struct UpdateTermAction {
   LogPlanTermSpecification _newTerm;
 };
 
+struct WriteEmptyTermAction {
+  static constexpr std::string_view name = "WriteEmptyTermAction";
+
+  LogPlanTermSpecification _term;
+};
+
 struct LeaderElectionAction {
   static constexpr std::string_view name = "LeaderElectionAction";
 
@@ -172,9 +178,10 @@ using Action =
     std::variant<EmptyAction, ErrorAction, AddLogToPlanAction,
                  AddParticipantsToTargetAction, CreateInitialTermAction,
                  CurrentNotAvailableAction, DictateLeaderAction,
-                 EvictLeaderAction, UpdateTermAction, LeaderElectionAction,
-                 UpdateParticipantFlagsAction, AddParticipantToPlanAction,
-                 RemoveParticipantFromPlanAction, UpdateLogConfigAction>;
+                 EvictLeaderAction, UpdateTermAction, WriteEmptyTermAction,
+                 LeaderElectionAction, UpdateParticipantFlagsAction,
+                 AddParticipantToPlanAction, RemoveParticipantFromPlanAction,
+                 UpdateLogConfigAction>;
 
 using namespace arangodb::cluster::paths;
 
@@ -224,6 +231,7 @@ struct Executor {
   void operator()(CurrentNotAvailableAction const& action);
   void operator()(EvictLeaderAction const& action);
   void operator()(UpdateTermAction const& action);
+  void operator()(WriteEmptyTermAction const& action);
   void operator()(LeaderElectionAction const& action);
   void operator()(UpdateParticipantFlagsAction const& action);
   void operator()(AddParticipantToPlanAction const& action);
@@ -246,6 +254,7 @@ struct VelocyPacker {
   void operator()(DictateLeaderAction const& action);
   void operator()(EvictLeaderAction const& action);
   void operator()(UpdateTermAction const& action);
+  void operator()(WriteEmptyTermAction const& action);
   void operator()(LeaderElectionAction const& action);
   void operator()(UpdateParticipantFlagsAction const& action);
   void operator()(AddParticipantToPlanAction const& action);

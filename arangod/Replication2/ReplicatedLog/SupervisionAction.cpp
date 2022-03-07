@@ -151,6 +151,20 @@ void Executor::operator()(UpdateTermAction const& action) {
                  .end();
 }
 
+void Executor::operator()(WriteEmptyTermAction const& action) {
+  auto newTerm = action._term;
+  newTerm.term = LogTerm{action._term.term.value + 1};
+  newTerm.leader.reset();
+
+  envelope = envelope.write()
+                 .emplace_object(planPath->currentTerm()->str(),
+                                 [&](VPackBuilder& builder) {
+                                   newTerm.toVelocyPack(builder);
+                                 })
+                 .inc(paths::plan()->version()->str())
+                 .end();
+}
+
 void Executor::operator()(LeaderElectionAction const& action) {
   if (action._election.outcome ==
       LogCurrentSupervisionElection::Outcome::SUCCESS) {
@@ -300,6 +314,14 @@ void VelocyPacker::operator()(UpdateTermAction const& action) {
 
   builder.add(VPackValue("newTerm"));
   action._newTerm.toVelocyPack(builder);
+}
+
+void VelocyPacker::operator()(WriteEmptyTermAction const& action) {
+  builder.add(VPackValue("type"));
+  builder.add(VPackValue(action.name));
+
+  builder.add(VPackValue("previousTerm"));
+  action._term.toVelocyPack(builder);
 }
 
 void VelocyPacker::operator()(LeaderElectionAction const& action) {

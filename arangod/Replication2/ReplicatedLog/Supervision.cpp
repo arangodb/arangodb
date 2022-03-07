@@ -56,8 +56,8 @@ if (log.target.participants.empty()) {
   return AddParticipantsToTargetAction(newTarget);
 #endif
 
-auto checkLeaderFailed(LogPlanSpecification const& plan,
-                       ParticipantsHealth const& health) -> Action {
+auto isLeaderFailed(LogPlanSpecification const& plan,
+                    ParticipantsHealth const& health) -> bool {
   // TODO: if we assert this here, we assume we're always called
   //       with non std::nullopt currentTerm and leader
   TRI_ASSERT(plan.currentTerm != std::nullopt);
@@ -67,15 +67,9 @@ auto checkLeaderFailed(LogPlanSpecification const& plan,
       health.validRebootId(plan.currentTerm->leader->serverId,
                            plan.currentTerm->leader->rebootId)) {
     // Current leader is all healthy so nothing to do.
-    return EmptyAction();
+    return false;
   } else {
-    // Leader has failed; start a new term
-    auto newTerm = *plan.currentTerm;
-
-    newTerm.leader.reset();
-    newTerm.term = LogTerm{plan.currentTerm->term.value + 1};
-
-    return UpdateTermAction(newTerm);
+    return true;
   }
 }
 
@@ -444,70 +438,71 @@ auto checkReplicatedLog(Log const& log, ParticipantsHealth const& health)
     if (!plan.currentTerm) {
       return CreateInitialTermAction{._config = target.config};
     } else {
+      auto const& currentTerm = *plan.currentTerm;
+
       if (!log.current) {
         // As long as we don't  have current, we cannot progress with
         // establishing leadership
         return CurrentNotAvailableAction{};
       } else {
         if (plan.currentTerm->leader) {
-          //  auto const& leader = plan.currentTerm->leader;
+          // auto const& leader = plan.currentTerm->leader;
 
           // If the leader is unhealthy, we need to create a new term that
           // does not have a leader; in the next round we should be electing
           // a new leader above
-          if (auto action = checkLeaderFailed(*log.plan, health);
-              !isEmptyAction(action)) {
-            return action;
-          }
 
-          // Check whether the participant entry for the current
-          // leader has been removed from target; this means we have
-          // to gracefully remove this leader
-          if (auto action = checkLeaderRemovedFromTarget(log.target, *log.plan,
-                                                         *log.current, health);
-              !isEmptyAction(action)) {
-            return action;
-          }
+          if (isLeaderFailed(plan, health)) {
+            return WriteEmptyTermAction{._term = currentTerm};
+          } else {
+            // Check whether the participant entry for the current
+            // leader has been removed from target; this means we have
+            // to gracefully remove this leader
+            if (auto action = checkLeaderRemovedFromTarget(
+                    log.target, *log.plan, *log.current, health);
+                !isEmptyAction(action)) {
+              return action;
+            }
 
-          // Check whether the flags for a participant differ between target and
-          // plan if so, transfer that change to them
-          if (auto action =
-                  checkLogTargetParticipantFlags(log.target, *log.plan);
-              !isEmptyAction(action)) {
-            return action;
-          }
+            // Check whether the flags for a participant differ between target
+            // and plan if so, transfer that change to them
+            if (auto action =
+                    checkLogTargetParticipantFlags(log.target, *log.plan);
+                !isEmptyAction(action)) {
+              return action;
+            }
 
-          // Check whether a participant has been added to Target that is not
-          // Planned yet
-          if (auto action =
-                  checkLogTargetParticipantAdded(log.target, *log.plan);
-              !isEmptyAction(action)) {
-            return action;
-          }
+            // Check whether a participant has been added to Target that is not
+            // Planned yet
+            if (auto action =
+                    checkLogTargetParticipantAdded(log.target, *log.plan);
+                !isEmptyAction(action)) {
+              return action;
+            }
 
-          // Handle the case of the user putting a *specific* participant into
-          // target to become leader
-          if (auto action = checkLeaderInTarget(log.target, *log.plan,
-                                                *log.current, health);
-              !isEmptyAction(action)) {
-            return action;
-          }
+            // Handle the case of the user putting a *specific* participant into
+            // target to become leader
+            if (auto action = checkLeaderInTarget(log.target, *log.plan,
+                                                  *log.current, health);
+                !isEmptyAction(action)) {
+              return action;
+            }
 
-          // Check whether a participant has been removed from Target that is
-          // still in Plan
-          if (auto action =
-                  checkLogTargetParticipantRemoved(log.target, *log.plan);
-              !isEmptyAction(action)) {
-            return action;
-          }
+            // Check whether a participant has been removed from Target that is
+            // still in Plan
+            if (auto action =
+                    checkLogTargetParticipantRemoved(log.target, *log.plan);
+                !isEmptyAction(action)) {
+              return action;
+            }
 
-          // Check whether the configuration of the replicated log has been
-          // changed
-          if (auto action = checkLogTargetConfig(log.target, *log.plan);
-              !isEmptyAction(action)) {
-            return action;
+            // Check whether the configuration of the replicated log has been
+            // changed
+            if (auto action = checkLogTargetConfig(log.target, *log.plan);
+                !isEmptyAction(action)) {
+              return action;
+            }
           }
-
         } else {
           // We do not have a leader so we'll run an election
           // this cannot return EmptyAction
