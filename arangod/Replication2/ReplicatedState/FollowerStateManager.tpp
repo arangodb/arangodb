@@ -58,9 +58,16 @@ void FollowerStateManager<S>::applyEntries(
           if (result.ok()) {
             LOG_CTX("6e9bb", TRACE, self->loggerContext)
                 << "follower state applied range " << range;
-            auto action =
-                self->_guardedData.getLockedGuard()->updateNextIndex(range.to);
-            return self->pollNewEntries();
+
+            auto [outerAction, pollFuture] =
+                self->pollNewEntries([&](GuardedData& data) {
+                  return data.updateNextIndex(range.to);
+                });
+            // this action will resolve promises that wait for a given index to
+            // be applied
+            outerAction.fire();
+            self->handlePollResult(std::move(pollFuture));
+            return;
           } else {
             LOG_CTX("335f0", ERR, self->loggerContext)
                 << "follower failed to apply range " << range
@@ -84,18 +91,26 @@ void FollowerStateManager<S>::applyEntries(
 }
 
 template<typename S>
-void FollowerStateManager<S>::pollNewEntries() {
-  auto [stream, index] = _guardedData.doUnderLock([&](GuardedData& data) {
+template<typename F>
+auto FollowerStateManager<S>::pollNewEntries(F&& fn) {
+  return _guardedData.doUnderLock([&](GuardedData& data) {
+    auto result = std::invoke(std::forward<F>(fn), data);
     TRI_ASSERT(data.stream != nullptr);
     LOG_CTX("a1462", TRACE, loggerContext)
-        << "polling for new entries nextEntry = " << data.nextEntry;
+        << "polling for new entries _nextWaitForIndex = "
+        << data._nextWaitForIndex;
     data.updateInternalState(FollowerInternalState::kNothingToApply);
-    return std::make_pair(data.stream, data.nextEntry);
+    return std::make_tuple(std::move(result), data.stream->waitForIterator(
+                                                  data._nextWaitForIndex));
   });
+}
 
-  stream->waitForIterator(index).thenFinal(
-      [weak = this->weak_from_this()](
-          futures::Try<std::unique_ptr<Iterator>> result) noexcept {
+template<typename S>
+void FollowerStateManager<S>::handlePollResult(
+    futures::Future<std::unique_ptr<Iterator>>&& pollFuture) {
+  std::move(pollFuture)
+      .thenFinal([weak = this->weak_from_this()](
+                     futures::Try<std::unique_ptr<Iterator>> result) noexcept {
         auto self = weak.lock();
         if (self == nullptr) {
           return;
@@ -123,7 +138,7 @@ template<typename S>
 auto FollowerStateManager<S>::waitForApplied(LogIndex idx)
     -> futures::Future<futures::Unit> {
   auto guard = _guardedData.getLockedGuard();
-  if (guard->nextEntry > idx) {
+  if (guard->_nextWaitForIndex > idx) {
     return futures::Future<futures::Unit>{std::in_place};
   }
 
@@ -193,12 +208,15 @@ void FollowerStateManager<S>::checkSnapshot(
 template<typename S>
 void FollowerStateManager<S>::startService(
     std::shared_ptr<IReplicatedFollowerState<S>> hiddenState) {
-  _guardedData.doUnderLock([&](GuardedData& data) {
+  hiddenState->setStateManager(this->shared_from_this());
+
+  auto [nothing, pollFuture] = pollNewEntries([&](GuardedData& data) {
     LOG_CTX("26c55", TRACE, loggerContext) << "starting service as follower";
     data.state = hiddenState;
+    return std::monostate{};
   });
-  hiddenState->setStateManager(this->shared_from_this());
-  pollNewEntries();
+
+  handlePollResult(std::move(pollFuture));
 }
 
 template<typename S>
@@ -223,46 +241,7 @@ void FollowerStateManager<S>::awaitLeaderShip() {
   _guardedData.getLockedGuard()->updateInternalState(
       FollowerInternalState::kWaitForLeaderConfirmation);
   try {
-    logFollower->waitForLeaderAcked().thenFinal(
-        [weak = this->weak_from_this()](
-            futures::Try<replicated_log::WaitForResult>&& result) noexcept {
-          auto self = weak.lock();
-          if (self == nullptr) {
-            return;
-          }
-          try {
-            try {
-              result.throwIfFailed();
-              LOG_CTX("53ba1", TRACE, self->loggerContext)
-                  << "leadership acknowledged - ingesting log data";
-              self->ingestLogData();
-            } catch (replicated_log::ParticipantResignedException const&) {
-              if (auto ptr = self->parent.lock(); ptr) {
-                LOG_CTX("79e37", DEBUG, self->loggerContext)
-                    << "participant resigned before leadership - force rebuild";
-                ptr->forceRebuild();
-              } else {
-                LOG_CTX("15cb4", DEBUG, self->loggerContext)
-                    << "LogFollower resigned, but Replicated State already "
-                       "gone";
-              }
-            } catch (basics::Exception const& e) {
-              LOG_CTX("f2188", FATAL, self->loggerContext)
-                  << "waiting for leader ack failed with unexpected exception: "
-                  << e.message();
-              FATAL_ERROR_EXIT();
-            }
-          } catch (std::exception const& ex) {
-            LOG_CTX("c7787", FATAL, self->loggerContext)
-                << "waiting for leader ack failed with unexpected exception: "
-                << ex.what();
-            FATAL_ERROR_EXIT();
-          } catch (...) {
-            LOG_CTX("43456", FATAL, self->loggerContext)
-                << "waiting for leader ack failed with unexpected exception";
-            FATAL_ERROR_EXIT();
-          }
-        });
+    handleAwaitLeadershipResult(logFollower->waitForLeaderAcked());
   } catch (replicated_log::ParticipantResignedException const&) {
     if (auto p = parent.lock(); p) {
       LOG_CTX("1cb5c", TRACE, loggerContext)
@@ -272,6 +251,51 @@ void FollowerStateManager<S>::awaitLeaderShip() {
       LOG_CTX("a62cb", TRACE, loggerContext) << "replicated state already gone";
     }
   }
+}
+
+template<typename S>
+void FollowerStateManager<S>::handleAwaitLeadershipResult(
+    futures::Future<replicated_log::WaitForResult>&& f) {
+  std::move(f).thenFinal(
+      [weak = this->weak_from_this()](
+          futures::Try<replicated_log::WaitForResult>&& result) noexcept {
+        auto self = weak.lock();
+        if (self == nullptr) {
+          return;
+        }
+        try {
+          try {
+            result.throwIfFailed();
+            LOG_CTX("53ba1", TRACE, self->loggerContext)
+                << "leadership acknowledged - ingesting log data";
+            self->ingestLogData();
+          } catch (replicated_log::ParticipantResignedException const&) {
+            if (auto ptr = self->parent.lock(); ptr) {
+              LOG_CTX("79e37", DEBUG, self->loggerContext)
+                  << "participant resigned before leadership - force rebuild";
+              ptr->forceRebuild();
+            } else {
+              LOG_CTX("15cb4", DEBUG, self->loggerContext)
+                  << "LogFollower resigned, but Replicated State already "
+                     "gone";
+            }
+          } catch (basics::Exception const& e) {
+            LOG_CTX("f2188", FATAL, self->loggerContext)
+                << "waiting for leader ack failed with unexpected exception: "
+                << e.message();
+            FATAL_ERROR_EXIT();
+          }
+        } catch (std::exception const& ex) {
+          LOG_CTX("c7787", FATAL, self->loggerContext)
+              << "waiting for leader ack failed with unexpected exception: "
+              << ex.what();
+          FATAL_ERROR_EXIT();
+        } catch (...) {
+          LOG_CTX("43456", FATAL, self->loggerContext)
+              << "waiting for leader ack failed with unexpected exception";
+          FATAL_ERROR_EXIT();
+        }
+      });
 }
 
 template<typename S>
@@ -345,7 +369,7 @@ auto FollowerStateManager<S>::resign() && noexcept
   TRI_ASSERT(!guard->_didResign);
   guard->_didResign = true;
   std::swap(*resolveQueue, guard->waitForAppliedQueue);
-  return {
+  return std::make_tuple(
       std::move(core), std::move(guard->token),
       DeferredAction([resolveQueue = std::move(resolveQueue)]() noexcept {
         for (auto& p : *resolveQueue) {
@@ -353,7 +377,7 @@ auto FollowerStateManager<S>::resign() && noexcept
               TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED,
               ADB_HERE));
         }
-      })};
+      }));
 }
 
 template<typename S>
@@ -371,13 +395,13 @@ void FollowerStateManager<S>::GuardedData::updateInternalState(
 }
 
 template<typename S>
-auto FollowerStateManager<S>::GuardedData::updateNextIndex(LogIndex index)
-    -> DeferredAction {
-  nextEntry = index;
+auto FollowerStateManager<S>::GuardedData::updateNextIndex(
+    LogIndex nextWaitForIndex) -> DeferredAction {
+  _nextWaitForIndex = nextWaitForIndex;
   auto resolveQueue = std::make_unique<WaitForAppliedQueue>();
   LOG_CTX("9929a", TRACE, self.loggerContext)
-      << "Resolving WaitForApplied promises upto " << index;
-  auto const end = waitForAppliedQueue.lower_bound(index);
+      << "Resolving WaitForApplied promises upto " << nextWaitForIndex;
+  auto const end = waitForAppliedQueue.lower_bound(nextWaitForIndex);
   for (auto it = waitForAppliedQueue.begin(); it != end;) {
     resolveQueue->insert(waitForAppliedQueue.extract(it++));
   }
