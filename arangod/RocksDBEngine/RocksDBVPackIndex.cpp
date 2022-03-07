@@ -242,7 +242,8 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
       : IndexIterator(collection, trx, readOwnWrites),
         _index(index),
         _cmp(static_cast<RocksDBVPackComparator const*>(index->comparator())),
-        _cache(std::move(cache)),
+        _cache(std::static_pointer_cast<
+               cache::TransactionalCache<cache::VPackKeyHasher>>(cache)),
         _resultIterator(VPackArrayIterator(VPackArrayIterator::Empty{})),
         _bounds(std::move(bounds)),
         _rangeBound(reverse ? _bounds.start() : _bounds.end()),
@@ -257,9 +258,10 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
   }
 
   ~RocksDBVPackIndexIterator() {
-    // LOG_DEVEL << "LOOKUP HITS: " << _lookupHits << ", MISSES: " <<
-    // _lookupMisses << ", ROCKSDB LOOKUPS: " << _lookupRocksDB << ", CACHE
-    // INSERTS: " << _lookupInserts << ", INSERT FAILS: " << _lookupInsertFails;
+    LOG_DEVEL << "LOOKUP HITS: " << _lookupHits << ", MISSES: " << _lookupMisses
+              << ", ROCKSDB LOOKUPS: " << _lookupRocksDB
+              << ", CACHE INSERTS: " << _lookupInserts
+              << ", INSERT FAILS: " << _lookupInsertFails;
   }
 
  public:
@@ -328,12 +330,16 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
 
       TRI_ASSERT(lastNonEq.isNone() ||
                  _format != RocksDBVPackIndexSearchValueFormat::kValuesOnly);
+      // we cannot use the cache if lastNonEq is set.
       TRI_ASSERT(lastNonEq.isNone() || _cache == nullptr);
 
       _index->buildIndexRangeBounds(_trx, searchSlice, *leftSearch, lastNonEq,
                                     _bounds);
       _rangeBound = reverse ? _bounds.start() : _bounds.end();
     }
+    // if l == 0, there must also be no cache
+    TRI_ASSERT(l > 0 || _cache == nullptr);
+
     return true;
   }
 
@@ -381,31 +387,34 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
 
     if (_cache) {
       while (limit > 0) {
-        // return data from local cache first, if we still have any
+        // return values from local buffer first, if we still have any
         if (_resultIterator.valid()) {
           while (_resultIterator.valid()) {
+            // read LocalDocumentId
             TRI_ASSERT(_resultIterator.value().isNumber());
             LocalDocumentId documentId{
                 _resultIterator.value().getNumericValue<uint64_t>()};
             _resultIterator.next();
+
+            // read actual index value
             TRI_ASSERT(_resultIterator.valid());
 
             if (_index->hasStoredValues()) {
               VPackSlice key = _resultIterator.value();
               _resultIterator.next();
               VPackSlice storedValues = _resultIterator.value();
-              _resultIterator.next();
               auto data = SliceCoveringDataWithStoredValues(key, storedValues);
               cb(documentId, data);
             } else {
               VPackSlice key = _resultIterator.value();
-              _resultIterator.next();
               auto data = SliceCoveringData(key);
               cb(documentId, data);
             }
+            _resultIterator.next();
+
             limit--;
             if (limit == 0) {
-              // Limit reached bail out
+              // Limit reached. bail out
               return _resultIterator.valid();
             }
           }
@@ -413,15 +422,20 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
           return false;
         }
 
+        // no _resultIterator set (yet), so we need to consult the in-memory
+        // cache or even do a lookup in RocksDB later.
         auto lookupResult = lookupInCache(cb, limit);
         if (lookupResult == LookupResult::kInCacheAndFullyHandled) {
           TRI_ASSERT(!_resultIterator.valid());
           return false;
         }
         if (lookupResult == LookupResult::kNotInCache) {
+          // value not found in in-memory cache. break out of the look and
+          // do a lookup in RocksDB.
           break;
         }
 
+        // value was found in cache.
         TRI_ASSERT(lookupResult == LookupResult::kInCacheAndPartlyHandled);
         TRI_ASSERT(_resultIterator.valid());
       }
@@ -580,32 +594,50 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
     kInCacheAndPartlyHandled
   };
 
+  rocksdb::Slice lookupValueForCache() const noexcept {
+    /*
+    VPackSlice s(reinterpret_cast<uint8_t const*>(_bounds.start().data() +
+    sizeof(uint64_t))); s = s.at(0); return rocksdb::Slice(s.startAs<char>(),
+    s.byteSize());
+    */
+    // use bounds start value
+    rocksdb::Slice lookupValue = _bounds.start();
+    // remove object id prefix
+    return rocksdb::Slice(lookupValue.data() + sizeof(uint64_t),
+                          lookupValue.size() - sizeof(uint64_t));
+  }
+
   LookupResult lookupInCache(CoveringCallback const& cb, size_t& limit) {
+    size_t const numFields = _index->hasStoredValues() ? 3 : 2;
+    rocksdb::Slice key = lookupValueForCache();
+
     for (size_t attempts = 0; attempts < 10; ++attempts) {
       // Try to read from cache
-      rocksdb::Slice lookupValue = _bounds.start();
-      auto finding = _cache->find(lookupValue.data(),
-                                  static_cast<uint32_t>(lookupValue.size()));
+      auto finding =
+          _cache->find(key.data(), static_cast<uint32_t>(key.size()));
       if (finding.found()) {
         ++_lookupHits;
         // We got sth. in the cache
         VPackSlice cachedData(finding.value()->value());
         TRI_ASSERT(cachedData.isArray());
-        size_t fields = _index->hasStoredValues() ? 3 : 2;
-        if (cachedData.length() / fields < limit) {
+        if (cachedData.length() / numFields < limit) {
           // Directly return it, no need to copy
           _resultIterator = VPackArrayIterator(cachedData);
           while (_resultIterator.valid()) {
+            // LocalDocumentId
             TRI_ASSERT(_resultIterator.value().isNumber());
             LocalDocumentId documentId{
                 _resultIterator.value().getNumericValue<uint64_t>()};
             _resultIterator.next();
 
+            // index value
             TRI_ASSERT(_resultIterator.valid());
             TRI_ASSERT(_resultIterator.value().isArray());
 
             VPackSlice key = _resultIterator.value();
             _resultIterator.next();
+
+            // "storedValues" (optional)
             if (_index->hasStoredValues()) {
               VPackSlice storedValues = _resultIterator.value();
               _resultIterator.next();
@@ -620,26 +652,21 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
           }
           _resultIterator = VPackArrayIterator(VPackArrayIterator::Empty{});
           return LookupResult::kInCacheAndFullyHandled;
-        } else {
-          // We need to copy it.
-          // And then we just get back to beginning of the loop
-          _resultBuilder.clear();
-          _resultBuilder.add(cachedData);
-          TRI_ASSERT(_resultBuilder.slice().isArray());
-          _resultIterator = VPackArrayIterator(_resultBuilder.slice());
-          return LookupResult::kInCacheAndPartlyHandled;
         }
-        break;
+
+        // We need to copy the data from the cache, and let the caller
+        // handler the result.
+        _resultBuilder.clear();
+        _resultBuilder.add(cachedData);
+        TRI_ASSERT(_resultBuilder.slice().isArray());
+        _resultIterator = VPackArrayIterator(_resultBuilder.slice());
+        return LookupResult::kInCacheAndPartlyHandled;
       }  // finding found
-      else {
-        // LOG_DEVEL << "CACHE VALUE NOT FOUND: " << _bounds;
-        ++_lookupMisses;
-      }
+
       if (finding.result() != TRI_ERROR_LOCK_TIMEOUT) {
-        // We really have not found an entry.
-        // Otherwise we do not know yet
         break;
       }
+      // enhance our calm...
       basics::cpu_relax();
     }  // attempts
     return LookupResult::kNotInCache;
@@ -647,9 +674,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
 
   void storeCacheValue(VPackSlice slice) {
     size_t attempts = 0;
-    rocksdb::Slice key = _bounds.start();
-    // LOG_DEVEL << "INSERTING INTO CACHE: " << _bounds << ", KEY SIZE: " <<
-    // key.size() << ", VALUE SIZE: " << slice.byteSize();
+    rocksdb::Slice key = lookupValueForCache();
     cache::Cache::Inserter inserter(
         *_cache, key.data(), static_cast<uint32_t>(key.size()), slice.start(),
         static_cast<uint64_t>(slice.byteSize()),
@@ -731,7 +756,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
   arangodb::RocksDBVPackIndex const* _index;
   RocksDBVPackComparator const* _cmp;
   std::unique_ptr<rocksdb::Iterator> _iterator;
-  std::shared_ptr<cache::Cache> _cache;
+  std::shared_ptr<cache::TransactionalCache<cache::VPackKeyHasher>> _cache;
   arangodb::velocypack::Builder _resultBuilder;
   arangodb::velocypack::ArrayIterator _resultIterator;
   RocksDBKeyBounds _bounds;
@@ -763,8 +788,9 @@ RocksDBVPackIndex::RocksDBVPackIndex(IndexId iid,
     : RocksDBIndex(iid, collection, info,
                    RocksDBColumnFamilyManager::get(
                        RocksDBColumnFamilyManager::Family::VPackIndex),
-                   /*useCache*/ false &&
-                       !ServerState::instance()->isCoordinator() /*TODO*/,
+                   /*useCache*/
+                   arangodb::basics::VelocyPackHelper::getBooleanValue(
+                       info, StaticStrings::CacheEnabled, false),
                    /*cacheManager*/
                    collection.vocbase()
                        .server()
@@ -775,8 +801,10 @@ RocksDBVPackIndex::RocksDBVPackIndex(IndexId iid,
                        .server()
                        .getFeature<EngineSelectorFeature>()
                        .engine<RocksDBEngine>()),
+      _cacheEnabled(arangodb::basics::VelocyPackHelper::getBooleanValue(
+          info, StaticStrings::CacheEnabled, false)),
       _deduplicate(arangodb::basics::VelocyPackHelper::getBooleanValue(
-          info, "deduplicate", true)),
+          info, StaticStrings::IndexDeduplicate, true)),
       _estimates(true),
       _estimator(nullptr),
       _storedValues(Index::parseFields(
@@ -787,7 +815,7 @@ RocksDBVPackIndex::RocksDBVPackIndex(IndexId iid,
                         RocksDBColumnFamilyManager::Family::VPackIndex));
 
   if (_unique) {
-    // unique indexes will always have a hard-coded estimate of 1
+    // unique indexes always have a hard-coded estimate of 1
     _estimates = true;
   } else if (VPackSlice s = info.get(StaticStrings::IndexEstimates);
              s.isBoolean()) {
@@ -813,7 +841,13 @@ RocksDBVPackIndex::RocksDBVPackIndex(IndexId iid,
   TRI_ASSERT(_storedValues.size() == _storedValuesPaths.size());
 
   if (_cacheEnabled) {
+    // create a hash cache in front of the index if requested.
+    // note: _cacheEnabled contains the user's setting for caching.
+    // the cache may effectively still be turned off for system
+    // collections or on the coordinator...
     createCache();
+    // now, we may or may not have a cache, depending on whether the
+    // collection/environment are eligible for caching.
   }
 }
 
@@ -826,6 +860,8 @@ RocksDBVPackIndex::coveredFields() const {
 }
 
 bool RocksDBVPackIndex::hasSelectivityEstimate() const {
+  // unique indexes always have a selectivity estimate (which is hard-coded
+  // to a value of 1). non-unique indexes can have a selectivity estimate.
   return _unique || _estimates;
 }
 
@@ -865,8 +901,9 @@ void RocksDBVPackIndex::toVelocyPack(
     builder.close();
   }
 
-  builder.add("deduplicate", VPackValue(_deduplicate));
+  builder.add(StaticStrings::IndexDeduplicate, VPackValue(_deduplicate));
   builder.add(StaticStrings::IndexEstimates, VPackValue(_estimates));
+  builder.add(StaticStrings::CacheEnabled, VPackValue(_cacheEnabled));
   builder.close();
 }
 
@@ -1287,6 +1324,9 @@ Result RocksDBVPackIndex::insert(transaction::Methods& trx,
     rocksdb::Status s;
     // unique indexes have a different key structure
     for (RocksDBKey const& key : elements) {
+      // banish key in in-memory cache
+      invalidateCacheEntry(key.string());
+
       if (performChecks) {
         s = mthds->GetForUpdate(_cf, key.string(), &existing);
         if (s.ok()) {  // detected conflicting index entry
@@ -1364,6 +1404,9 @@ Result RocksDBVPackIndex::insert(transaction::Methods& trx,
 
     rocksdb::Status s;
     for (RocksDBKey const& key : elements) {
+      // banish key in in-memory cache
+      invalidateCacheEntry(key.string());
+
       TRI_ASSERT(key.containsLocalDocumentId(documentId));
       s = mthds->PutUntracked(_cf, key, value.string());
       if (!s.ok()) {
@@ -1490,6 +1533,9 @@ Result RocksDBVPackIndex::update(
 
   RocksDBValue value = RocksDBValue::UniqueVPackIndexValue(newDocumentId);
   for (auto const& key : elements) {
+    // banish key in in-memory cache
+    invalidateCacheEntry(key.string());
+
     rocksdb::Status s =
         mthds->Put(_cf, key, value.string(), /*assume_tracked*/ false);
     if (!s.ok()) {
@@ -1541,6 +1587,9 @@ Result RocksDBVPackIndex::remove(transaction::Methods& trx,
 
   if (_unique) {
     for (size_t i = 0; i < count; ++i) {
+      // banish key in in-memory cache
+      invalidateCacheEntry(elements[i].string());
+
       s = mthds->Delete(_cf, elements[i]);
 
       if (!s.ok()) {
@@ -1554,6 +1603,9 @@ Result RocksDBVPackIndex::remove(transaction::Methods& trx,
   } else {
     // non-unique index contain the unique objectID written exactly once
     for (size_t i = 0; i < count; ++i) {
+      // banish key in in-memory cache
+      invalidateCacheEntry(elements[i].string());
+
       s = mthds->SingleDelete(_cf, elements[i]);
 
       if (!s.ok()) {

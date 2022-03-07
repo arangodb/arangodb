@@ -220,9 +220,10 @@ std::uint32_t Table::logSize() const noexcept { return _logSize; }
 
 Table::BucketLocker Table::fetchAndLockBucket(std::uint32_t hash,
                                               std::uint64_t maxTries) {
+  BucketLocker bucketGuard;
+
   SpinLocker guard(SpinLocker::Mode::Read, _lock,
                    static_cast<std::size_t>(maxTries));
-  BucketLocker bucketGuard;
 
   if (guard.isLocked()) {
     if (!_disabled) {
@@ -360,7 +361,7 @@ void Table::signalEvictions() {
   _evictions = true;
 }
 
-std::uint32_t Table::idealSize() {
+std::uint32_t Table::idealSize() noexcept {
   bool forceGrowth = false;
   {
     SpinLocker guard(SpinLocker::Mode::Write, _lock);

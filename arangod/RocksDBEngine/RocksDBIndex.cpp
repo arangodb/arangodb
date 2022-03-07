@@ -326,16 +326,15 @@ std::shared_ptr<cache::Cache> RocksDBIndex::cacheFactory() const {
 void RocksDBIndex::invalidateCacheEntry(char const* data, std::size_t len) {
   if (hasCache()) {
     TRI_ASSERT(_cache != nullptr);
-    bool banished = false;
-    while (!banished) {
+    do {
       auto status = _cache->banish(data, static_cast<uint32_t>(len));
       if (status.ok()) {
-        banished = true;
+        break;
       } else if (status.errorNumber() == TRI_ERROR_SHUTTING_DOWN) {
         destroyCache();
         break;
       }
-    }
+    } while (true);
   }
 }
 

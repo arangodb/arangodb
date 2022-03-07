@@ -125,6 +125,8 @@ class StaticStrings {
   static std::string const DataSourceParameters;
 
   // Index definition fields
+  static std::string const
+      IndexDeduplicate;  // index deduplicate flag (for array indexes)
   static std::string const IndexExpireAfter;     // ttl index expire value
   static std::string const IndexFields;          // index fields
   static std::string const IndexId;              // index id
@@ -223,7 +225,7 @@ class StaticStrings {
   static std::string const ParsedBody;
 
   // collection attributes
-  static std::string const CacheEnabled;
+  static std::string const CacheEnabled;  // also used for indexes
   static std::string const DistributeShardsLike;
   static std::string const Indexes;
   static std::string const IsSmart;

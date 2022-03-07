@@ -23,8 +23,6 @@
 
 #pragma once
 
-#include <rocksdb/status.h>
-
 #include "Basics/AttributeNameParser.h"
 #include "Basics/Common.h"
 #include "Indexes/Index.h"
@@ -32,6 +30,9 @@
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "VocBase/Identifiers/IndexId.h"
+
+#include <rocksdb/status.h>
+#include <rocksdb/slice.h>
 
 namespace rocksdb {
 class Comparator;
@@ -174,6 +175,10 @@ class RocksDBIndex : public Index {
   void invalidateCacheEntry(char const* data, std::size_t len);
 
   void invalidateCacheEntry(std::string_view ref) {
+    invalidateCacheEntry(ref.data(), ref.size());
+  }
+
+  void invalidateCacheEntry(rocksdb::Slice ref) {
     invalidateCacheEntry(ref.data(), ref.size());
   }
 

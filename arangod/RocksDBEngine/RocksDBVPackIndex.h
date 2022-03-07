@@ -231,8 +231,14 @@ class RocksDBVPackIndex : public RocksDBIndex {
   /// otherwise the non-negative number is the index of the expanding one.
   std::vector<int> _expanding;
 
+  /// @brief whether or not the user requested to use a cache for the index.
+  /// note: even if this is set to true, it may not mean that the cache is
+  /// effectively in use. for example, for system collections and on the
+  /// coordinator, no cache will actually be used although this flag may be true
+  bool const _cacheEnabled;
+
   /// @brief whether or not array indexes will de-duplicate their input values
-  bool _deduplicate;
+  bool const _deduplicate;
 
   /// @brief whether or not we want to have estimates
   bool _estimates;

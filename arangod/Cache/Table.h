@@ -242,18 +242,19 @@ class Table : public std::enable_shared_from_this<Table> {
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns the ideal size of the table based on fill ratio.
+  /// side effect: may trigger table growth!
   //////////////////////////////////////////////////////////////////////////////
-  uint32_t idealSize();
+  uint32_t idealSize() noexcept;
 
  private:
   basics::ReadWriteSpinLock _lock;
   bool _disabled;
   bool _evictions;
 
-  std::uint32_t _logSize;
-  std::uint64_t _size;
-  std::uint32_t _shift;
-  std::uint32_t _mask;
+  std::uint32_t const _logSize;
+  std::uint64_t const _size;
+  std::uint32_t const _shift;
+  std::uint32_t const _mask;
   std::unique_ptr<std::uint8_t[]> _buffer;
   GenericBucket* _buckets;
 
