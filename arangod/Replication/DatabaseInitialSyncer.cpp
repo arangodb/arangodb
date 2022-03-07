@@ -235,6 +235,7 @@ arangodb::Result fetchRevisions(
       reqOptions.param("collection", leader)
           .param("serverId", state.localServerIdString)
           .param("batchId", std::to_string(config.batch.id));
+      reqOptions.database = config.vocbase.name();
       reqOptions.timeout = arangodb::network::Timeout(25.0);
       auto buffer = requestBuilder.steal();
       auto f = arangodb::network::sendRequestRetry(
