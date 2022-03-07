@@ -41,7 +41,7 @@ struct ExecutionStats {
   ExecutionStats();
 
   /// @brief instantiate the statistics from VelocyPack
-  explicit ExecutionStats(arangodb::velocypack::Slice const& slice);
+  explicit ExecutionStats(arangodb::velocypack::Slice slice);
 
  public:
   /// @brief convert the statistics to VelocyPack
@@ -77,6 +77,14 @@ struct ExecutionStats {
 
   /// @brief number of documents scanned (using indexes scan)
   int64_t scannedIndex;
+
+  /// @brief number of cursors created. currently only populated by
+  /// IndexExecutor.
+  int64_t cursorsCreated;
+
+  /// @brief number of existing cursors that were rearmed. currently only
+  /// populated by IndexExecutor.
+  int64_t cursorsRearmed;
 
   /// @brief number of documents filtered away
   int64_t filtered;

@@ -29,6 +29,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "Graph/Cache/RefactoredClusterTraverserCache.h"
 #include "Transaction/Methods.h"
+#include "Aql/InAndOutRowExpressionContext.h"
 
 #include <optional>
 #include <vector>
@@ -46,18 +47,19 @@ struct IndexAccessor {
                 std::optional<size_t> memberToUpdate,
                 std::unique_ptr<arangodb::aql::Expression> expression,
                 std::optional<aql::NonConstExpressionContainer> nonConstPart,
-                size_t cursorId);
+                size_t cursorId, TRI_edge_direction_e direction);
   IndexAccessor(IndexAccessor const&) = delete;
   IndexAccessor(IndexAccessor&&) = default;
   IndexAccessor& operator=(IndexAccessor const&) = delete;
 
-  aql::AstNode* getCondition() const;
-  aql::Expression* getExpression() const;
-  transaction::Methods::IndexHandle indexHandle() const;
+  aql::AstNode* getCondition() const noexcept;
+  aql::Expression* getExpression() const noexcept;
+  transaction::Methods::IndexHandle indexHandle() const noexcept;
   std::optional<size_t> getMemberToUpdate() const;
-  size_t cursorId() const;
+  size_t cursorId() const noexcept;
+  TRI_edge_direction_e direction() const noexcept;
 
-  bool hasNonConstParts() const;
+  bool hasNonConstParts() const noexcept;
 
   aql::NonConstExpressionContainer const& nonConstPart() const;
 
@@ -69,6 +71,7 @@ struct IndexAccessor {
   std::unique_ptr<arangodb::aql::Expression> _expression;
   size_t _cursorId;
   std::optional<aql::NonConstExpressionContainer> _nonConstContainer;
+  TRI_edge_direction_e const _direction;
 };
 
 struct BaseProviderOptions {
@@ -82,6 +85,8 @@ struct BaseProviderOptions {
                 std::unordered_map<uint64_t, std::vector<IndexAccessor>>>&&
           indexInfo,
       aql::FixedVarExpressionContext& expressionContext,
+      std::vector<std::pair<aql::Variable const*, aql::RegisterId>>
+          filterConditionVariables,
       std::unordered_map<std::string, std::vector<std::string>> const&
           collectionToShardMap);
 
@@ -97,6 +102,9 @@ struct BaseProviderOptions {
   collectionToShardMap() const;
 
   aql::FixedVarExpressionContext& expressionContext() const;
+
+  void prepareContext(aql::InputAqlItemRow input);
+  void unPrepareContext();
 
   bool hasWeightMethod() const;
 
@@ -125,6 +133,11 @@ struct BaseProviderOptions {
 
   // Optional callback to compute the weight of an edge.
   std::optional<WeightCallback> _weightCallback;
+
+  // TODO: Currently this will be a copy. As soon as we remove the old
+  // non-refactored code, we will do a move instead of a copy operation.
+  std::vector<std::pair<aql::Variable const*, aql::RegisterId>>
+      _filterConditionVariables;
 };
 
 struct ClusterBaseProviderOptions {

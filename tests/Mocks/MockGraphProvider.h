@@ -73,12 +73,11 @@ class MockGraphProviderOptions {
   MockGraph const& _data;
   LooseEndBehaviour _looseEnds;
   bool _reverse;
-  ;
 };
 
 class MockGraphProvider {
   using VertexType = arangodb::velocypack::HashedStringRef;
-  using EdgeType = MockGraph::EdgeDef;
+  using MockEdgeType = MockGraph::EdgeDef;
 
  public:
   using Options = MockGraphProviderOptions;
@@ -87,6 +86,8 @@ class MockGraphProvider {
 
   class Step : public arangodb::graph::BaseStep<Step> {
    public:
+    using EdgeType = arangodb::velocypack::HashedStringRef;
+
     class Vertex {
      public:
       explicit Vertex(VertexType v) : _vertex(v){};
@@ -108,13 +109,52 @@ class MockGraphProvider {
 
     class Edge {
      public:
-      Edge(EdgeType e) : _edge(e){};
+      Edge(MockEdgeType e) : _edge(e) {
+        _id = std::to_string(_edge._id);
+        _idRef = arangodb::velocypack::HashedStringRef{
+            _id.c_str(), static_cast<uint32_t>(_id.length())};
+      };
 
-      std::string toString() const {
-        return "Edge - _from: " + _edge._from + ", _to: " + _edge._to;
+      Edge(Edge const& other) {
+        _edge = other._edge;
+        _id = other._id;
+        _idRef = arangodb::velocypack::HashedStringRef{
+            _id.c_str(), static_cast<uint32_t>(_id.length())};
       }
 
-      EdgeType getEdge() const { return _edge; }
+      Edge(Edge&& other) {
+        _edge = std::move(other._edge);
+        _id = std::move(other._id);
+        _idRef = arangodb::velocypack::HashedStringRef{
+            _id.c_str(), static_cast<uint32_t>(_id.length())};
+      }
+
+      Edge& operator=(Edge const& other) {
+        _edge = other._edge;
+        _id = other._id;
+        _idRef = arangodb::velocypack::HashedStringRef{
+            _id.c_str(), static_cast<uint32_t>(_id.length())};
+        return *this;
+      }
+
+      Edge& operator=(Edge&& other) {
+        _edge = std::move(other._edge);
+        _id = std::move(other._id);
+        _idRef = arangodb::velocypack::HashedStringRef{
+            _id.c_str(), static_cast<uint32_t>(_id.length())};
+        return *this;
+      }
+
+      std::string toString() const {
+        return "Edge - _from: " + _edge._from + ", _to: " + _edge._to +
+               " edgeIdentifier: " + _id;
+      }
+
+      MockEdgeType getEdge() const { return _edge; }
+      arangodb::velocypack::HashedStringRef const& getID() const {
+        return _idRef;
+      }
+
       bool isValid() const {
         if (_edge._from.empty() && _edge._to.empty()) {
           return false;
@@ -123,13 +163,15 @@ class MockGraphProvider {
       };
 
      private:
-      EdgeType _edge;
+      MockEdgeType _edge;
+      EdgeType _idRef;
+      std::string _id;
     };
 
     Step(VertexType v, bool isProcessable);
-    Step(size_t prev, VertexType v, EdgeType e, bool isProcessable);
+    Step(size_t prev, VertexType v, MockEdgeType e, bool isProcessable);
     Step(size_t prev, VertexType v, bool isProcessable, size_t depth);
-    Step(size_t prev, VertexType v, EdgeType e, bool isProcessable,
+    Step(size_t prev, VertexType v, MockEdgeType e, bool isProcessable,
          size_t depth);
     ~Step() = default;
 
@@ -170,6 +212,9 @@ class MockGraphProvider {
     }
 
     VertexType getVertexIdentifier() const { return getVertex().getID(); }
+    arangodb::velocypack::HashedStringRef getEdgeIdentifier() const {
+      return _edge.getID();
+    }
 
     std::string getCollectionName() const {
       auto collectionNameResult = extractCollectionName(_vertex.getID());
@@ -238,6 +283,8 @@ class MockGraphProvider {
                         arangodb::velocypack::Builder& builder);
 
   void prepareIndexExpressions(aql::Ast* ast);
+  void prepareContext(aql::InputAqlItemRow input);
+  void unPrepareContext();
 
   [[nodiscard]] transaction::Methods* trx();
 

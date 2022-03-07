@@ -34,7 +34,6 @@
 #include "Utils/ExecContext.h"
 
 #include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <fstream>
 
@@ -104,7 +103,7 @@ RestStatus RestSystemReportHandler::execute() {
   }
 
   using namespace std::chrono;
-  auto start = steady_clock::now();
+  [[maybe_unused]] auto start = steady_clock::now();
 
   VPackBuilder result;
   {

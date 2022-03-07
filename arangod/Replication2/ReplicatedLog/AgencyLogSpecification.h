@@ -43,6 +43,9 @@ struct LogPlanTermSpecification {
   struct Leader {
     ParticipantId serverId;
     RebootId rebootId;
+
+    friend auto operator==(Leader const&, Leader const&) noexcept
+        -> bool = default;
   };
   std::optional<Leader> leader;
 
@@ -52,6 +55,10 @@ struct LogPlanTermSpecification {
 
   LogPlanTermSpecification(LogTerm term, LogConfig config,
                            std::optional<Leader>);
+
+  friend auto operator==(LogPlanTermSpecification const&,
+                         LogPlanTermSpecification const&) noexcept
+      -> bool = default;
 };
 
 struct LogPlanSpecification {
@@ -68,6 +75,10 @@ struct LogPlanSpecification {
   LogPlanSpecification(LogId id, std::optional<LogPlanTermSpecification> term);
   LogPlanSpecification(LogId id, std::optional<LogPlanTermSpecification> term,
                        ParticipantsConfig participantsConfig);
+
+  friend auto operator==(LogPlanSpecification const&,
+                         LogPlanSpecification const&) noexcept
+      -> bool = default;
 };
 
 struct LogCurrentLocalState {
@@ -137,7 +148,10 @@ auto to_string(LogCurrentSupervisionElection::Outcome) noexcept
 auto toVelocyPack(LogCurrentSupervisionElection::Outcome, VPackBuilder&)
     -> void;
 
-enum class LogCurrentSupervisionError { TARGET_LEADER_INVALID };
+enum class LogCurrentSupervisionError {
+  TARGET_LEADER_INVALID,
+  TARGET_LEADER_EXCLUDED
+};
 
 auto to_string(LogCurrentSupervisionError) noexcept -> std::string_view;
 auto toVelocyPack(LogCurrentSupervisionError, VPackBuilder&) -> void;

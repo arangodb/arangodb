@@ -46,7 +46,6 @@
 #include "VocBase/ticks.h"
 
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -141,7 +140,7 @@ std::unique_ptr<PhysicalCollection> ClusterEngine::createPhysicalCollection(
       new ClusterCollection(collection, engineType(), info));
 }
 
-void ClusterEngine::getStatistics(velocypack::Builder& builder, bool v2) const {
+void ClusterEngine::getStatistics(velocypack::Builder& builder) const {
   Result res = getEngineStatsFromDBServers(
       server().getFeature<ClusterFeature>(), builder);
   if (res.fail()) {
@@ -256,12 +255,8 @@ arangodb::Result ClusterEngine::dropView(TRI_vocbase_t const& vocbase,
   return TRI_ERROR_NOT_IMPLEMENTED;
 }
 
-Result ClusterEngine::changeView(TRI_vocbase_t& vocbase,
-                                 arangodb::LogicalView const& view,
-                                 bool /*doSync*/
-) {
+Result ClusterEngine::changeView(LogicalView const&, velocypack::Slice) {
   if (inRecovery()) {
-    // nothing to do
     return {};
   }
   return TRI_ERROR_NOT_IMPLEMENTED;

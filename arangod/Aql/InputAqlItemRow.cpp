@@ -31,7 +31,6 @@
 #include "Aql/Range.h"
 
 #include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 #include <boost/container/flat_set.hpp>
 
 #include <algorithm>

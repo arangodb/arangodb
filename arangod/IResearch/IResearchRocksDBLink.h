@@ -49,7 +49,7 @@ class IResearchRocksDBLink final : public RocksDBIndex, public IResearchLink {
 
   bool canBeDropped() const override { return IResearchLink::canBeDropped(); }
 
-  Result drop() override { return IResearchLink::drop(); }
+  Result drop() override /*noexcept*/ { return IResearchLink::drop(); }
 
   bool hasSelectivityEstimate() const override {
     return IResearchLink::hasSelectivityEstimate();
@@ -80,8 +80,8 @@ class IResearchRocksDBLink final : public RocksDBIndex, public IResearchLink {
   }
 
   Result remove(transaction::Methods& trx, RocksDBMethods*,
-                LocalDocumentId const& documentId, VPackSlice doc) override {
-    return IResearchLink::remove(trx, documentId, doc);
+                LocalDocumentId const& documentId, VPackSlice) override {
+    return IResearchLink::remove(trx, documentId);
   }
 
   ////////////////////////////////////////////////////////////////////////////////

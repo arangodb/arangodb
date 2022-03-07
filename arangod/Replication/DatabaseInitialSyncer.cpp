@@ -49,6 +49,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
+#include "StorageEngine/TransactionState.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
@@ -64,7 +65,6 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 #include <velocypack/Validator.h>
-#include <velocypack/velocypack-aliases.h>
 #include <array>
 #include <cstring>
 
@@ -88,6 +88,13 @@ std::chrono::milliseconds sleepTimeFromWaitTime(double waitTime) {
   }
 
   return std::chrono::seconds(2);
+}
+
+bool isVelocyPack(arangodb::httpclient::SimpleHttpResult const& response) {
+  bool found = false;
+  std::string const& cType = response.getHeaderField(
+      arangodb::StaticStrings::ContentTypeHeader, found);
+  return found && cType == arangodb::StaticStrings::MimeTypeVPack;
 }
 
 std::string const kTypeString = "type";
@@ -115,14 +122,14 @@ arangodb::Result removeRevisions(
   options.isRestore = true;
   options.waitForSync = false;
 
+  double t = TRI_microtime();
   for (arangodb::RevisionId const& rid : toRemove) {
-    double t = TRI_microtime();
     auto r = physical->remove(trx, arangodb::LocalDocumentId::create(rid), mdr,
                               options);
 
-    stats.waitedForRemovals += TRI_microtime() - t;
     if (r.fail() && r.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
       // ignore not found, we remove conflicting docs ahead of time
+      stats.waitedForRemovals += TRI_microtime() - t;
       return r;
     }
 
@@ -130,6 +137,8 @@ arangodb::Result removeRevisions(
       ++stats.numDocsRemoved;
     }
   }
+
+  stats.waitedForRemovals += TRI_microtime() - t;
 
   return Result();
 }
@@ -390,7 +399,7 @@ DatabaseInitialSyncer::DatabaseInitialSyncer(
       _config{_state.applier, _batch,        _state.connection,
               false,          _state.leader, _progress,
               _state,         vocbase},
-      _lastAbortionCheck(std::chrono::steady_clock::now()),
+      _lastCancellationCheck(std::chrono::steady_clock::now()),
       _isClusterRole(ServerState::instance()->isClusterRole()),
       _quickKeysNumDocsLimit(
           vocbase.server().getFeature<ReplicationFeature>().quickKeysLimit()) {
@@ -572,13 +581,20 @@ bool DatabaseInitialSyncer::isAborted() const {
     }
   }
 
-  if (_checkAbortion) {
+  if (_checkCancellation) {
     // execute custom check for abortion only every few seconds, in case
     // it is expensive
+    constexpr auto checkFrequency = std::chrono::seconds(5);
+
     auto now = std::chrono::steady_clock::now();
-    if (now - _lastAbortionCheck >= std::chrono::seconds(5)) {
-      _lastAbortionCheck = now;
-      if (_checkAbortion()) {
+    TRI_IF_FAILURE("Replication::forceCheckCancellation") {
+      // always force the cancellation check!
+      _lastCancellationCheck = now - checkFrequency;
+    }
+
+    if (now - _lastCancellationCheck >= checkFrequency) {
+      _lastCancellationCheck = now;
+      if (_checkCancellation()) {
         return true;
       }
     }
@@ -659,6 +675,7 @@ Result DatabaseInitialSyncer::parseCollectionDumpMarker(
 Result DatabaseInitialSyncer::parseCollectionDump(
     transaction::Methods& trx, LogicalCollection* coll,
     httpclient::SimpleHttpResult* response, uint64_t& markersProcessed) {
+  TRI_ASSERT(response != nullptr);
   TRI_ASSERT(!trx.isSingleOperationTransaction());
 
   FormatHint hint = FormatHint::AutoDetect;
@@ -667,17 +684,17 @@ Result DatabaseInitialSyncer::parseCollectionDump(
   char const* p = data.begin();
   char const* end = p + data.length();
 
-  bool found = false;
-  std::string const& cType =
-      response->getHeaderField(StaticStrings::ContentTypeHeader, found);
-
-  if (found && cType == StaticStrings::MimeTypeVPack) {
+  if (isVelocyPack(*response)) {
     // received a velocypack response from the leader
-    LOG_TOPIC("b9f4d", DEBUG, Logger::REPLICATION)
-        << "using vpack for chunk contents";
 
-    VPackValidator validator(
-        &basics::VelocyPackHelper::strictRequestValidationOptions);
+    // intentional copy
+    VPackOptions validationOptions =
+        basics::VelocyPackHelper::strictRequestValidationOptions;
+
+    // allow custom types being sent here
+    validationOptions.disallowCustom = false;
+
+    VPackValidator validator(&validationOptions);
 
     // now check the sub-format of the velocypack data we received...
     VPackSlice s(reinterpret_cast<uint8_t const*>(p));
@@ -833,17 +850,20 @@ void DatabaseInitialSyncer::fetchDumpChunk(
       _config.flushed = true;
     }
 
+    bool isVPack = false;
     auto headers = replutils::createHeaders();
     if (_config.leader.version() >= 30800) {
       // from 3.8 onwards, it is safe and also faster to retrieve vpack-encoded
       // dumps. in previous versions there may be vpack encoding issues for the
       // /_api/replication/dump responses.
       headers[StaticStrings::Accept] = StaticStrings::MimeTypeVPack;
+      isVPack = true;
     }
 
     _config.progress.set(
         std::string("fetching leader collection dump for collection '") +
-        coll->name() + "', type: " + typeString + ", id: " + leaderColl +
+        coll->name() + "', type: " + typeString +
+        ", format: " + (isVPack ? "vpack" : "json") + ", id: " + leaderColl +
         ", batch " + itoa(batch) + ", url: " + url);
 
     double t = TRI_microtime();
@@ -1021,9 +1041,19 @@ Result DatabaseInitialSyncer::fetchCollectionDump(
       // request to the scheduler, which can run it asynchronously
       sharedStatus->request([this, self, baseUrl, sharedStatus, coll,
                              leaderColl, batch, fromTick, chunkSize]() {
+        TRI_IF_FAILURE("Replication::forceCheckCancellation") {
+          // we intentionally sleep here for a while, so the next call gets
+          // executed after the scheduling thread has thrown its
+          // TRI_ERROR_INTERNAL exception for our failure point
+          std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
         fetchDumpChunk(sharedStatus, baseUrl, coll, leaderColl, batch + 1,
                        fromTick, chunkSize);
       });
+      TRI_IF_FAILURE("Replication::forceCheckCancellation") {
+        // forcefully abort replication once we have scheduled the job
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+      }
     }
 
     SingleCollectionTransaction trx(
@@ -1409,6 +1439,72 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(
   }
 }
 
+/// @brief order a new chunk from the /revisions API
+void DatabaseInitialSyncer::fetchRevisionsChunk(
+    std::shared_ptr<Syncer::JobSynchronizer> sharedStatus,
+    std::string const& baseUrl, arangodb::LogicalCollection* coll,
+    std::string const& leaderColl, std::string const& requestPayload,
+    RevisionId requestResume) {
+  if (isAborted()) {
+    sharedStatus->gotResponse(Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED));
+    return;
+  }
+
+  try {
+    std::string const typeString =
+        (coll->type() == TRI_COL_TYPE_EDGE ? "edge" : "document");
+
+    if (!_config.isChild()) {
+      batchExtend();
+    }
+
+    using ::arangodb::basics::StringUtils::urlEncode;
+
+    // assemble URL to call
+    std::string url = baseUrl + "&" + StaticStrings::RevisionTreeResume + "=" +
+                      urlEncode(requestResume.toString());
+
+    bool isVPack = false;
+    auto headers = replutils::createHeaders();
+    if (_config.leader.version() >= 31000) {
+      headers[StaticStrings::Accept] = StaticStrings::MimeTypeVPack;
+      isVPack = true;
+    }
+
+    _config.progress.set(
+        std::string(
+            "fetching leader collection revision ranges for collection '") +
+        coll->name() + "', type: " + typeString + ", format: " +
+        (isVPack ? "vpack" : "json") + ", id: " + leaderColl + ", url: " + url);
+
+    double t = TRI_microtime();
+
+    // send request
+    std::unique_ptr<httpclient::SimpleHttpResult> response;
+    _config.connection.lease([&](httpclient::SimpleHttpClient* client) {
+      response.reset(client->retryRequest(rest::RequestType::PUT, url,
+                                          requestPayload.data(),
+                                          requestPayload.size(), headers));
+    });
+
+    t = TRI_microtime() - t;
+
+    if (replutils::hasFailed(response.get())) {
+      sharedStatus->gotResponse(
+          replutils::buildHttpError(response.get(), url, _config.connection),
+          t);
+      return;
+    }
+
+    // success!
+    sharedStatus->gotResponse(std::move(response), t);
+  } catch (basics::Exception const& ex) {
+    sharedStatus->gotResponse(Result(ex.code(), ex.what()));
+  } catch (std::exception const& ex) {
+    sharedStatus->gotResponse(Result(TRI_ERROR_INTERNAL, ex.what()));
+  }
+}
+
 /// @brief incrementally fetch data from a collection using keys as the primary
 /// document identifier
 Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
@@ -1619,17 +1715,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
                                                                    ridBuffer));
       }
     }
-    std::string request = requestBuilder.slice().toJson();
 
-    std::string url = baseUrl + "/" + RestReplicationHandler::Ranges +
-                      "?collection=" + urlEncode(leaderColl) +
-                      "&serverId=" + _state.localServerIdString +
-                      "&batchId=" + std::to_string(_config.batch.id);
-    auto headers = replutils::createHeaders();
-    std::unique_ptr<httpclient::SimpleHttpResult> response;
-    RevisionId requestResume{ranges[0].first};  // start with beginning
-    RevisionId iterResume = requestResume;
-    std::size_t chunk = 0;
     std::unique_ptr<ReplicationIterator> iter =
         physical->getReplicationIterator(
             ReplicationIterator::Ordering::Revision, *trx);
@@ -1637,81 +1723,127 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
       return Result(TRI_ERROR_INTERNAL, "could not get replication iterator");
     }
 
-    std::vector<RevisionId> toFetch;
-    std::vector<RevisionId> toRemove;
-    const uint64_t documentsFound = treeLocal->count();
     RevisionReplicationIterator& local =
         *static_cast<RevisionReplicationIterator*>(iter.get());
 
+    uint64_t const documentsFound = treeLocal->count();
+
+    std::vector<RevisionId> toFetch;
+    std::vector<RevisionId> toRemove;
+
+    std::string const requestPayload = requestBuilder.slice().toJson();
+    std::string const url = baseUrl + "/" + RestReplicationHandler::Ranges +
+                            "?collection=" + urlEncode(leaderColl) +
+                            "&serverId=" + _state.localServerIdString +
+                            "&batchId=" + std::to_string(_config.batch.id);
+    RevisionId requestResume{ranges[0].first};  // start with beginning
+    RevisionId iterResume = requestResume;
+    std::size_t chunk = 0;
+
+    // the shared status will wait in its destructor until all posted
+    // requests have been completed/canceled!
+    auto self = shared_from_this();
+    auto sharedStatus = std::make_shared<Syncer::JobSynchronizer>(self);
+
+    // order initial chunk. this will block until the initial response
+    // has arrived
+    fetchRevisionsChunk(sharedStatus, url, coll, leaderColl, requestPayload,
+                        requestResume);
+
+    // Builder will be recycled
+    VPackBuilder responseBuilder;
+
     while (requestResume < RevisionId::max()) {
-      if (isAborted()) {
-        return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
-      }
+      std::unique_ptr<httpclient::SimpleHttpResult> chunkResponse;
 
-      if (!_config.isChild()) {
-        batchExtend();
-      }
+      // block until we either got a response or were shut down
+      Result res = sharedStatus->waitForResponse(chunkResponse);
 
-      std::string batchUrl = url + "&" + StaticStrings::RevisionTreeResume +
-                             "=" + requestResume.toString();
-      std::string msg = "fetching collection revision ranges for collection '" +
-                        coll->name() + "' from " + batchUrl;
-      _config.progress.set(msg);
-      double t = TRI_microtime();
-      _config.connection.lease([&](httpclient::SimpleHttpClient* client) {
-        response.reset(client->retryRequest(rest::RequestType::PUT, batchUrl,
-                                            request.data(), request.size(),
-                                            headers));
-      });
-      stats.waitedForKeys += TRI_microtime() - t;
+      // update our statistics
       ++stats.numKeysRequests;
+      stats.waitedForKeys += sharedStatus->time();
 
-      if (replutils::hasFailed(response.get())) {
-        ++stats.numFailedConnects;
-        return replutils::buildHttpError(response.get(), batchUrl,
-                                         _config.connection);
+      if (res.fail()) {
+        // no response or error or shutdown
+        return res;
       }
 
-      if (response->hasContentLength()) {
-        stats.numSyncBytesReceived += response->getContentLength();
+      // now we have got a response!
+      TRI_ASSERT(chunkResponse != nullptr);
+
+      if (chunkResponse->hasContentLength()) {
+        stats.numSyncBytesReceived += chunkResponse->getContentLength();
       }
 
-      VPackBuilder responseBuilder;
-      Result r = replutils::parseResponse(responseBuilder, response.get());
-      if (r.fail()) {
-        ++stats.numFailedConnects;
-        return Result(
-            TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-            concatT("got invalid response from leader at ",
-                    _config.leader.endpoint, batchUrl, ": ", r.errorMessage()));
+      VPackSlice slice;
+
+      if (::isVelocyPack(*chunkResponse)) {
+        // velocypack body...
+
+        // intentional copy of options
+        VPackOptions validationOptions =
+            basics::VelocyPackHelper::strictRequestValidationOptions;
+        // allow custom types being sent here
+        validationOptions.disallowCustom = false;
+        VPackValidator validator(&validationOptions);
+
+        validator.validate(chunkResponse->getBody().begin(),
+                           chunkResponse->getBody().length(),
+                           /*isSubPart*/ false);
+
+        slice = VPackSlice(
+            reinterpret_cast<uint8_t const*>(chunkResponse->getBody().begin()));
+      } else {
+        // JSON body...
+        // recycle builder
+        responseBuilder.clear();
+        Result r =
+            replutils::parseResponse(responseBuilder, chunkResponse.get());
+        if (r.fail()) {
+          ++stats.numFailedConnects;
+          return Result(
+              TRI_ERROR_REPLICATION_INVALID_RESPONSE,
+              concatT("got invalid response from leader at ",
+                      _config.leader.endpoint, url, ": ", r.errorMessage()));
+        }
+        slice = responseBuilder.slice();
       }
 
-      VPackSlice const slice = responseBuilder.slice();
       if (!slice.isObject()) {
         ++stats.numFailedConnects;
         return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                       std::string("got invalid response from leader at ") +
-                          _config.leader.endpoint + batchUrl +
+                          _config.leader.endpoint + url +
                           ": response is not an object");
       }
 
-      VPackSlice const resumeSlice = slice.get("resume");
+      VPackSlice resumeSlice = slice.get("resume");
       if (!resumeSlice.isNone() && !resumeSlice.isString()) {
         ++stats.numFailedConnects;
         return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                       std::string("got invalid response from leader at ") +
-                          _config.leader.endpoint + batchUrl +
+                          _config.leader.endpoint + url +
                           ": response field 'resume' is not a number");
       }
       requestResume = resumeSlice.isNone() ? RevisionId::max()
                                            : RevisionId::fromSlice(resumeSlice);
 
-      VPackSlice const rangesSlice = slice.get("ranges");
+      if (requestResume < RevisionId::max() && !isAborted()) {
+        // already fetch next chunk in the background, by posting the
+        // request to the scheduler, which can run it asynchronously
+        sharedStatus->request([this, self, url, sharedStatus, coll, leaderColl,
+                               requestResume, &requestPayload]() {
+          fetchRevisionsChunk(sharedStatus, url, coll, leaderColl,
+                              requestPayload, requestResume);
+        });
+      }
+
+      VPackSlice rangesSlice = slice.get("ranges");
       if (!rangesSlice.isArray()) {
         ++stats.numFailedConnects;
         return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                       std::string("got invalid response from leader at ") +
-                          _config.leader.endpoint + batchUrl +
+                          _config.leader.endpoint + url +
                           ": response field 'ranges' is not an array");
       }
 
@@ -1721,7 +1853,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
           return Result(
               TRI_ERROR_REPLICATION_INVALID_RESPONSE,
               std::string("got invalid response from leader at ") +
-                  _config.leader.endpoint + batchUrl +
+                  _config.leader.endpoint + url +
                   ": response field 'ranges' entry is not a revision range");
         }
         auto& currentRange = ranges[chunk];
@@ -1789,7 +1921,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
         }
       }
 
-      Result res = ::removeRevisions(*trx, *coll, toRemove, stats);
+      res = ::removeRevisions(*trx, *coll, toRemove, stats);
       if (res.fail()) {
         return res;
       }
@@ -1801,6 +1933,12 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
         return res;
       }
       toFetch.clear();
+
+      res = trx->state()->performIntermediateCommitIfRequired(coll->id());
+
+      if (res.fail()) {
+        return res;
+      }
     }
 
     // adjust counts

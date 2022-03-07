@@ -87,11 +87,11 @@ struct FieldMeta {
     }
 
     bool operator()(AnalyzerPool::ptr const& lhs,
-                    irs::string_ref const& rhs) const noexcept {
+                    irs::string_ref rhs) const noexcept {
       return lhs->name() < rhs;
     }
 
-    bool operator()(irs::string_ref const& lhs,
+    bool operator()(irs::string_ref lhs,
                     AnalyzerPool::ptr const& rhs) const noexcept {
       return lhs < rhs->name();
     }
@@ -271,6 +271,11 @@ struct IResearchLinkMeta : public FieldMeta {
   /// @brief amount of memory in bytes occupied by this IResearchLinkMeta
   ////////////////////////////////////////////////////////////////////////////////
   size_t memory() const noexcept;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief checks if this link will index '_id' attribute
+  ////////////////////////////////////////////////////////////////////////////////
+  bool willIndexIdAttribute() const noexcept;
 };
 
 }  // namespace iresearch

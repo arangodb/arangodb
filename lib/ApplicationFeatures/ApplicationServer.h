@@ -316,24 +316,64 @@ class ApplicationServer {
   bool _dumpOptions = false;
 };
 
+// ApplicationServerT is intended to provide statically checked access to
+// application features. Whenever you need to create an application server
+// consider the following usage pattern:
+//
+// Declare a list of all features in header file:
+//
+// namespace arangodb {
+// class Feature1;
+// class Feature2;
+// using namespace arangodb::application_features;
+// using ServerFeatures = basics::TypeList<Feature1, Feature2>;
+// using Server = ApplicationServerT<ServerFeatures>;
+// using ServerFeature = ApplicationFeatureT<ServerFeatures>;
+// }
+//
+// Note that the order of features in basics::TypeList<Feature1, Feature2> is
+// significant and defines creation order, i.e. Feature1 is constructed before
+// Feature2.
+//
+// To instantiate server and its features consider the following snippet:
+//
+// Server server;
+// server.addFeatures(Visitor{
+//   []<typename T>(Server& server, TypeTag<T>) {
+//     return std::make_unique<T>(server);
+//   },
+//   [](Server& server, TypeTag<Feature2>) {
+//     // Feature constructor requires extra argument
+//     return std::make_unique<Feature2>(server, "arg");
+//   }});
+
 template<typename Features>
 class ApplicationServerT : public ApplicationServer {
  public:
+  // Returns feature identifier.
   template<typename T>
   static constexpr size_t id() noexcept {
     return Features::template id<T>();
   }
 
+  // Returns true if a feature denoted by `T` is registered with the server.
   template<typename T>
   static constexpr bool contains() noexcept {
     return Features::template contains<T>();
+  }
+
+  // Returns true if a feature denoted by `Feature` is created before other
+  // feautures denoted by `OtherFeatures`.
+  template<typename Feature, typename... OtherFeatures>
+  static constexpr bool isCreatedAfter() noexcept {
+    return (std::greater{}(id<Feature>(), id<OtherFeatures>()) && ...);
   }
 
   ApplicationServerT(std::shared_ptr<arangodb::options::ProgramOptions> opts,
                      char const* binaryPath)
       : ApplicationServer{opts, binaryPath, _features} {}
 
-  // adds all registered features to the application server.
+  // Adds all registered features to the application server.
   template<typename Initializer>
   void addFeatures(Initializer&& initializer) {
     Features::visit([&]<typename T>(TypeTag<T>) {
@@ -348,9 +388,9 @@ class ApplicationServerT : public ApplicationServer {
   }
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-  // adds a feature to the application server. the application server
+  // Adds a feature to the application server. the application server
   // will take ownership of the feature object and destroy it in its
-  // destructor
+  // destructor.
   template<typename Type, typename Impl = Type, typename... Args>
   Impl& addFeature(Args&&... args) {
     static_assert(std::is_base_of_v<ApplicationFeature, Type>);
@@ -366,29 +406,29 @@ class ApplicationServerT : public ApplicationServer {
   }
 #endif
 
-  // return whether or not a feature is enabled
-  // will throw when called for a non-existing feature
+  // Return whether or not a feature is enabled
+  // will throw when called for a non-existing feature.
   template<typename T>
   bool isEnabled() const {
     return getFeature<T>().isEnabled();
   }
 
-  // return whether or not a feature is optional
-  // will throw when called for a non-existing feature
+  // Return whether or not a feature is optional
+  // will throw when called for a non-existing feature.
   template<typename T>
   bool isOptional() const {
     return getFeature<T>().isOptional();
   }
 
-  // return whether or not a feature is required
-  // will throw when called for a non-existing feature
+  // Return whether or not a feature is required
+  // will throw when called for a non-existing feature.
   template<typename T>
   bool isRequired() const {
     return getFeature<T>().isRequired();
   }
 
-  // checks for the existence of a feature. will not throw when used for
-  // a non-existing feature
+  // Checks for the existence of a feature. will not throw when used for
+  // a non-existing feature.
   template<typename Type>
   bool hasFeature() const noexcept {
     static_assert(std::is_base_of_v<ApplicationFeature, Type>);
@@ -397,8 +437,8 @@ class ApplicationServerT : public ApplicationServer {
     return nullptr != _features[featureId];
   }
 
-  // returns a const reference to a feature. will throw when used for
-  // a non-existing feature
+  // Returns a const reference to a feature. will throw when used for
+  // a non-existing feature.
   template<typename Type, typename Impl = Type>
   Impl& getFeature() const {
     static_assert(std::is_base_of_v<ApplicationFeature, Type>);
@@ -417,8 +457,8 @@ class ApplicationServerT : public ApplicationServer {
 #endif
   }
 
-  // returns the feature with the given name if known and enabled
-  // throws otherwise
+  // Returns the feature with the given name if known and enabled
+  // throws otherwise.
   template<typename Type, typename Impl = Type>
   Impl& getEnabledFeature() const {
     auto& feature = getFeature<Type, Impl>();

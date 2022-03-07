@@ -20,20 +20,16 @@
 ///
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
-
 #pragma once
 
 #include <absl/container/flat_hash_set.h>
 
-namespace arangodb {
-namespace containers {
+namespace arangodb::containers {
 
-template<typename T,
-         typename Hash =
-             ::iresearch_absl::container_internal::hash_default_hash<T>,
-         typename Eq = ::iresearch_absl::container_internal::hash_default_eq<T>,
-         typename Allocator = std::allocator<T>>
-using FlatHashSet = ::iresearch_absl::flat_hash_set<T, Hash, Eq, Allocator>;
+template<class T,
+         class Hash = iresearch_absl::container_internal::hash_default_hash<T>,
+         class Eq = iresearch_absl::container_internal::hash_default_eq<T>,
+         class Allocator = std::allocator<T>>
+using FlatHashSet = iresearch_absl::flat_hash_set<T, Hash, Eq, Allocator>;
 
-}
-}  // namespace arangodb
+}  // namespace arangodb::containers

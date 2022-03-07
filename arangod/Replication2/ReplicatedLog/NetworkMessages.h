@@ -45,6 +45,7 @@
 #endif
 
 #include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/ReplicatedLog/LogEntries.h"
 #include "Replication2/ReplicatedLog/types.h"
 
 namespace arangodb {
@@ -116,7 +117,7 @@ struct AppendEntriesRequest {
   ParticipantId leaderId;
   TermIndexPair prevLogEntry;
   LogIndex leaderCommit;
-  LogIndex largestCommonIndex;
+  LogIndex lowestIndexToKeep;
   MessageId messageId;
   EntryContainer entries{};
   bool waitForSync = false;
@@ -124,7 +125,7 @@ struct AppendEntriesRequest {
   AppendEntriesRequest() = default;
   AppendEntriesRequest(LogTerm leaderTerm, ParticipantId leaderId,
                        TermIndexPair prevLogEntry, LogIndex leaderCommit,
-                       LogIndex largestCommonIndex, MessageId messageId,
+                       LogIndex lowestIndexToKeep, MessageId messageId,
                        bool waitForSync, EntryContainer entries);
   ~AppendEntriesRequest() noexcept = default;
 

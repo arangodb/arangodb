@@ -45,6 +45,9 @@ ReplicatedLogFeature::ReplicatedLogFeature(Server& server)
       _replicatedLogMetrics(std::make_shared<ReplicatedLogMetrics>(
           server.getFeature<metrics::MetricsFeature>())),
       _options(std::make_shared<ReplicatedLogGlobalSettings>()) {
+  static_assert(
+      Server::isCreatedAfter<ReplicatedLogFeature, metrics::MetricsFeature>());
+
   setOptional(true);
   startsAfter<CommunicationFeaturePhase>();
   startsAfter<DatabaseFeaturePhase>();

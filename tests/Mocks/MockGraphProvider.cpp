@@ -29,11 +29,11 @@
 #include "Aql/QueryContext.h"
 #include "Futures/Future.h"
 #include "Futures/Utilities.h"
+#include "Aql/InputAqlItemRow.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/HashedStringRef.h>
 #include <velocypack/Value.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::tests;
@@ -57,7 +57,7 @@ MockGraphProvider::Step::Step(VertexType v, bool isProcessable)
       _edge({}),
       _isProcessable(isProcessable) {}
 
-MockGraphProvider::Step::Step(size_t prev, VertexType v, EdgeType e,
+MockGraphProvider::Step::Step(size_t prev, VertexType v, MockEdgeType e,
                               bool isProcessable)
     : arangodb::graph::BaseStep<Step>{prev},
       _vertex(v),
@@ -71,7 +71,7 @@ MockGraphProvider::Step::Step(size_t prev, VertexType v, bool isProcessable,
       _edge({}),
       _isProcessable(isProcessable) {}
 
-MockGraphProvider::Step::Step(size_t prev, VertexType v, EdgeType e,
+MockGraphProvider::Step::Step(size_t prev, VertexType v, MockEdgeType e,
                               bool isProcessable, size_t depth)
     : arangodb::graph::BaseStep<Step>{prev, depth},
       _vertex(v),
@@ -216,6 +216,14 @@ auto MockGraphProvider::expand(Step const& source, size_t previousIndex)
 }
 
 void MockGraphProvider::prepareIndexExpressions(aql::Ast* ast) {
+  // Nothing to do here. We do not have any special index conditions
+}
+
+void MockGraphProvider::prepareContext(aql::InputAqlItemRow input) {
+  // Nothing to do here. We do not have any special index conditions
+}
+
+void MockGraphProvider::unPrepareContext() {
   // Nothing to do here. We do not have any special index conditions
 }
 

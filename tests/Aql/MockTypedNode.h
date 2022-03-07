@@ -30,7 +30,7 @@ namespace arangodb::tests::aql {
 
 // An execution node pretending to be of an arbitrary type.
 class MockTypedNode : public ::arangodb::aql::ExecutionNode {
-  friend class ExecutionBlock;
+  friend class ::arangodb::aql::ExecutionBlock;
 
  public:
   MockTypedNode(::arangodb::aql::ExecutionPlan* plan,

@@ -27,7 +27,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <algorithm>
 #include <chrono>
@@ -1630,6 +1629,8 @@ RestoreFeature::RestoreFeature(Server& server, int& exitCode)
                      Logger::RESTORE},
       _clientTaskQueue{server, ::processJob},
       _exitCode{exitCode} {
+  static_assert(Server::isCreatedAfter<RestoreFeature, HttpEndpointProvider>());
+
   requiresElevatedPrivileges(false);
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseClient>();

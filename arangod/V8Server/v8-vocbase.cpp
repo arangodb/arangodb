@@ -29,7 +29,6 @@
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <v8.h>
 #include <iostream>
@@ -1514,7 +1513,7 @@ static void JS_EngineStats(v8::FunctionCallbackInfo<v8::Value> const& args) {
   StorageEngine& engine =
       v8g->server().getFeature<EngineSelectorFeature>().engine();
   VPackBuilder builder;
-  engine.getStatistics(builder, true);
+  engine.getStatistics(builder);
 
   v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, builder.slice());
   TRI_V8_RETURN(result);

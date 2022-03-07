@@ -25,7 +25,6 @@
 #include <rocksdb/utilities/transaction.h>
 
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "RocksDBMetadata.h"
 

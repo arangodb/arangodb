@@ -21,9 +21,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <gtest/gtest.h>
-#include "Replication2/ReplicatedLog/LogCommon.h"
 
+#include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/Algorithms.h"
+
+#include "Basics/VelocyPackHelper.h"
 
 #include <algorithm>
 
@@ -75,7 +77,6 @@ struct CalcCommitIndexTest : ::testing::Test {
           [participantId](auto& pst) { return pst.id == participantId; });
       ASSERT_NE(participant, std::end(participants));
       EXPECT_GE(participant->lastIndex(), expectedLogIndex);
-      EXPECT_FALSE(participant->isFailed());
       EXPECT_FALSE(participant->isExcluded());
       EXPECT_EQ(participant->lastTerm(), term);
       minIndex = std::min(minIndex, participant->lastIndex());
@@ -376,8 +377,8 @@ TEST_F(CalcCommitIndexTest, nothing_to_commit) {
 }
 
 TEST_F(CalcCommitIndexTest, failed_participant) {
-  // One participant has failed, which means we cannot make any progress
-  // beyond LogIndex{25}
+  // One participant is marked as failed, but this should have no effect on the
+  // calculated commit index.
 
   auto participants = std::vector{
       ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(50),
@@ -388,7 +389,7 @@ TEST_F(CalcCommitIndexTest, failed_participant) {
       ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(35),
                             .id = "C"},
   };
-  auto expectedLogIndex = LogIndex{25};
+  auto expectedLogIndex = LogIndex{35};
 
   auto [index, reason, quorum] = algorithms::calculateCommitIndex(
       participants, CalculateCommitIndexOptions{2, 2}, LogIndex{1},
@@ -444,15 +445,45 @@ TEST_F(CalcCommitIndexTest, failed_with_soft_write_concern) {
       ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(17),
                             .id = "E"},
   };
-  auto expectedLogIndex = LogIndex{5};
+  auto expectedLogIndex = LogIndex{17};
 
   auto [index, reason, quorum] = algorithms::calculateCommitIndex(
-      participants, CalculateCommitIndexOptions{2, 3}, LogIndex{15},
-      createDefaultTermIndexPair(15));
+      participants, CalculateCommitIndexOptions{2, 3}, LogIndex{1},
+      createDefaultTermIndexPair(60));
   EXPECT_EQ(index, expectedLogIndex);
   EXPECT_TRUE(std::holds_alternative<CommitFailReason::QuorumSizeNotReached>(
       reason.value));
   EXPECT_EQ(quorum.size(), 3);
+  verifyQuorum(participants, quorum, expectedLogIndex);
+}
+
+TEST_F(CalcCommitIndexTest, failed_with_reduced_soft_write_concern) {
+  auto participants = std::vector{
+      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(55),
+                            .id = "A",
+                            .failed = true},
+      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(15),
+                            .id = "B"},
+      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(25),
+                            .id = "C",
+                            .failed = true},
+      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(5),
+                            .id = "D",
+                            .failed = true},
+      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(17),
+                            .id = "E"},
+  };
+  auto expectedLogIndex = LogIndex{25};
+
+  auto [index, reason, quorum] = algorithms::calculateCommitIndex(
+      participants, CalculateCommitIndexOptions{2, 3}, LogIndex{1},
+      createDefaultTermIndexPair(60));
+  EXPECT_EQ(index, expectedLogIndex);
+  EXPECT_TRUE(std::holds_alternative<CommitFailReason::QuorumSizeNotReached>(
+      reason.value));
+  // softWriteConcern is 3, but should have been reduced to 2 due to 3 failed
+  // servers.
+  EXPECT_EQ(quorum.size(), 2);
   verifyQuorum(participants, quorum, expectedLogIndex);
 }
 
@@ -471,7 +502,8 @@ TEST_F(CalcCommitIndexTest, smallest_failed) {
       ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(17),
                             .id = "E"},
   };
-  auto expectedLogIndex = LogIndex{15};
+  // Note that the effective writeConcern will be 3, due to 2 failed servers.
+  auto expectedLogIndex = LogIndex{17};
 
   auto [index, reason, quorum] = algorithms::calculateCommitIndex(
       participants, CalculateCommitIndexOptions{2, 4}, LogIndex{15},
@@ -498,11 +530,12 @@ TEST_F(CalcCommitIndexTest, nothing_to_commit_failed) {
       ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(17),
                             .id = "E"},
   };
-  auto expectedLogIndex = LogIndex{15};
+  // Note that the effective writeConcern will be 3, due to 2 failed servers.
+  auto expectedLogIndex = LogIndex{17};
 
   auto [index, reason, quorum] = algorithms::calculateCommitIndex(
       participants, CalculateCommitIndexOptions{2, 4}, LogIndex{15},
-      createDefaultTermIndexPair(15));
+      createDefaultTermIndexPair(17));
   EXPECT_EQ(index, expectedLogIndex);
   EXPECT_TRUE(
       std::holds_alternative<CommitFailReason::NothingToCommit>(reason.value));
@@ -624,14 +657,34 @@ TEST_F(CalcCommitIndexTest, who_forced_participant_not_in_quorum) {
   EXPECT_EQ(index, expectedLogIndex);
 }
 
-TEST_F(CalcCommitIndexTest, who_all_failed_excluded) {
+TEST_F(CalcCommitIndexTest, who_failed_excluded) {
   auto participants = std::vector{
-      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(50),
+      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(25),
                             .id = "A",
                             .failed = true},
-      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(25),
+      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(50),
                             .id = "B",
                             .flags = {.excluded = true}}};
+
+  auto expectedLogIndex = LogIndex{25};
+  auto [index, reason, quorum] = algorithms::calculateCommitIndex(
+      participants, CalculateCommitIndexOptions{1, 1}, LogIndex{1},
+      createDefaultTermIndexPair(50));
+
+  EXPECT_EQ(index, expectedLogIndex);
+  EXPECT_EQ(reason, (CommitFailReason::withQuorumSizeNotReached({"A"})))
+      << "Actual: " << basics::velocypackhelper::toJson(reason);
+}
+
+TEST_F(CalcCommitIndexTest, who_all_excluded) {
+  auto participants = std::vector{
+      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(25),
+                            .id = "A",
+                            .flags = {.excluded = true}},
+      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(50),
+                            .id = "B",
+                            .flags = {.excluded = true}},
+  };
 
   auto expectedLogIndex = LogIndex{1};
   auto [index, reason, quorum] = algorithms::calculateCommitIndex(
@@ -642,9 +695,37 @@ TEST_F(CalcCommitIndexTest, who_all_failed_excluded) {
   EXPECT_EQ(
       reason,
       (CommitFailReason::withNonEligibleServerRequiredForQuorum(
-          {{"A", CommitFailReason::NonEligibleServerRequiredForQuorum::kFailed},
-           {"B", CommitFailReason::NonEligibleServerRequiredForQuorum::
-                     kExcluded}})));
+          {{"A",
+            CommitFailReason::NonEligibleServerRequiredForQuorum::kExcluded},
+           {"B",
+            CommitFailReason::NonEligibleServerRequiredForQuorum::kExcluded}})))
+      << "Actual: " << basics::velocypackhelper::toJson(reason);
+}
+
+TEST_F(CalcCommitIndexTest, who_all_excluded_wrong_term) {
+  auto participants = std::vector{
+      ParticipantStateTuple{
+          .lastAckedEntry = TermIndexPair{LogTerm{1}, LogIndex{25}}, .id = "A"},
+      ParticipantStateTuple{
+          .lastAckedEntry = TermIndexPair{LogTerm{2}, LogIndex{50}},
+          .id = "B",
+          .flags = {.excluded = true}},
+  };
+
+  auto expectedLogIndex = LogIndex{1};
+  auto [index, reason, quorum] = algorithms::calculateCommitIndex(
+      participants, CalculateCommitIndexOptions{1, 1}, LogIndex{1},
+      TermIndexPair{LogTerm{2}, LogIndex{50}});
+
+  EXPECT_EQ(index, expectedLogIndex);
+  EXPECT_EQ(
+      reason,
+      (CommitFailReason::withNonEligibleServerRequiredForQuorum(
+          {{"A",
+            CommitFailReason::NonEligibleServerRequiredForQuorum::kWrongTerm},
+           {"B",
+            CommitFailReason::NonEligibleServerRequiredForQuorum::kExcluded}})))
+      << "Actual: " << basics::velocypackhelper::toJson(reason);
 }
 
 TEST_F(CalcCommitIndexTest, write_concern_too_big) {
@@ -713,7 +794,7 @@ TEST_F(CalcCommitIndexTest, who_non_eligible_required) {
       ParticipantStateTuple{
           .lastAckedEntry = TermIndexPair{LogTerm{2}, LogIndex{50}},
           .id = "A",
-          .failed = true},
+          .flags = {.excluded = true}},
       ParticipantStateTuple{
           .lastAckedEntry = TermIndexPair{LogTerm{2}, LogIndex{25}},
           .id = "B",
@@ -733,9 +814,11 @@ TEST_F(CalcCommitIndexTest, who_non_eligible_required) {
   EXPECT_EQ(
       reason,
       (CommitFailReason::withNonEligibleServerRequiredForQuorum(
-          {{"A", CommitFailReason::NonEligibleServerRequiredForQuorum::kFailed},
+          {{"A",
+            CommitFailReason::NonEligibleServerRequiredForQuorum::kExcluded},
            {"B",
             CommitFailReason::NonEligibleServerRequiredForQuorum::kExcluded},
            {"C", CommitFailReason::NonEligibleServerRequiredForQuorum::
-                     kWrongTerm}})));
+                     kWrongTerm}})))
+      << "Actual: " << basics::velocypackhelper::toJson(reason);
 }

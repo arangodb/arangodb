@@ -49,18 +49,18 @@ auto to_string(LeaderInternalState) noexcept -> std::string_view;
 struct LeaderStatus {
   using clock = std::chrono::system_clock;
 
-  struct State {
+  struct ManagerState {
     LeaderInternalState state{};
     clock::time_point lastChange{};
     std::optional<std::string> detail;
 
     void toVelocyPack(velocypack::Builder&) const;
-    static auto fromVelocyPack(velocypack::Slice) -> State;
+    static auto fromVelocyPack(velocypack::Slice) -> ManagerState;
   };
 
+  ManagerState managerState;
   StateGeneration generation;
-  State state;
-  replicated_log::LeaderStatus log;
+  SnapshotInfo snapshot;
 
   void toVelocyPack(velocypack::Builder&) const;
   static auto fromVelocyPack(velocypack::Slice) -> LeaderStatus;
@@ -79,28 +79,49 @@ auto to_string(FollowerInternalState) noexcept -> std::string_view;
 struct FollowerStatus {
   using clock = std::chrono::system_clock;
 
-  struct State {
+  struct ManagerState {
     FollowerInternalState state{};
     clock::time_point lastChange{};
     std::optional<std::string> detail;
 
     void toVelocyPack(velocypack::Builder&) const;
-    static auto fromVelocyPack(velocypack::Slice) -> State;
+    static auto fromVelocyPack(velocypack::Slice) -> ManagerState;
   };
 
+  ManagerState managerState;
   StateGeneration generation;
-  State state;
-  replicated_log::FollowerStatus log;
+  SnapshotInfo snapshot;
 
   void toVelocyPack(velocypack::Builder&) const;
   static auto fromVelocyPack(velocypack::Slice) -> FollowerStatus;
 };
 
-struct StateStatus {
-  std::variant<LeaderStatus, FollowerStatus> variant;
+struct UnconfiguredStatus {
+  StateGeneration generation;
+  SnapshotInfo snapshot;
 
-  auto asFollowerStatus() const noexcept -> FollowerStatus const* {
+  void toVelocyPack(velocypack::Builder&) const;
+  static auto fromVelocyPack(velocypack::Slice) -> UnconfiguredStatus;
+
+  auto operator==(UnconfiguredStatus const&) const noexcept -> bool = default;
+};
+
+struct StateStatus {
+  std::variant<LeaderStatus, FollowerStatus, UnconfiguredStatus> variant;
+
+  [[nodiscard]] auto asFollowerStatus() const noexcept
+      -> FollowerStatus const* {
     return std::get_if<FollowerStatus>(&variant);
+  }
+
+  [[nodiscard]] auto getSnapshotInfo() const noexcept -> SnapshotInfo const& {
+    return std::visit(
+        [](auto&& s) -> SnapshotInfo const& { return s.snapshot; }, variant);
+  }
+
+  [[nodiscard]] auto getGeneration() const noexcept -> StateGeneration {
+    return std::visit([](auto&& s) -> StateGeneration { return s.generation; },
+                      variant);
   }
 
   void toVelocyPack(velocypack::Builder&) const;

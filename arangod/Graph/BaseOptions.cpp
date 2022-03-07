@@ -49,28 +49,44 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::graph;
 using namespace arangodb::traverser;
 
-BaseOptions::LookupInfo::LookupInfo()
+BaseOptions::LookupInfo::LookupInfo(TRI_edge_direction_e direction)
     : indexCondition(nullptr),
+      direction(direction),
       conditionNeedUpdate(false),
       conditionMemberToUpdate(0) {
   // NOTE: We need exactly one in this case for the optimizer to update
   idxHandles.resize(1);
+  TRI_ASSERT(direction == TRI_EDGE_IN || direction == TRI_EDGE_OUT);
 }
 
 BaseOptions::LookupInfo::~LookupInfo() = default;
 
 BaseOptions::LookupInfo::LookupInfo(arangodb::aql::QueryContext& query,
-                                    VPackSlice const& info,
-                                    VPackSlice const& shards) {
+                                    VPackSlice info, VPackSlice shards) {
   TRI_ASSERT(shards.isArray());
   idxHandles.reserve(shards.length());
+
+  TRI_edge_direction_e dir = TRI_EDGE_ANY;
+  VPackSlice dirSlice = info.get(StaticStrings::GraphDirection);
+  if (dirSlice.isEqualString(StaticStrings::GraphDirectionInbound)) {
+    dir = TRI_EDGE_IN;
+  } else if (dirSlice.isEqualString(StaticStrings::GraphDirectionOutbound)) {
+    dir = TRI_EDGE_OUT;
+  }
+  if (dir == TRI_EDGE_ANY) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        "Missing or invalid direction attribute in graph definition");
+  }
+  // set direction for lookup info
+  direction = dir;
+  TRI_ASSERT(direction == TRI_EDGE_IN || direction == TRI_EDGE_OUT);
 
   conditionNeedUpdate = arangodb::basics::VelocyPackHelper::getBooleanValue(
       info, "condNeedUpdate", false);
@@ -129,16 +145,30 @@ BaseOptions::LookupInfo::LookupInfo(arangodb::aql::QueryContext& query,
 BaseOptions::LookupInfo::LookupInfo(LookupInfo const& other)
     : idxHandles(other.idxHandles),
       indexCondition(other.indexCondition),
+      direction(other.direction),
       conditionNeedUpdate(other.conditionNeedUpdate),
       conditionMemberToUpdate(other.conditionMemberToUpdate) {
   if (other.expression != nullptr) {
     expression = other.expression->clone(nullptr);
   }
   _nonConstContainer = other._nonConstContainer.clone(nullptr);
+
+  TRI_ASSERT(direction == TRI_EDGE_IN || direction == TRI_EDGE_OUT);
 }
 
 void BaseOptions::LookupInfo::buildEngineInfo(VPackBuilder& result) const {
   result.openObject();
+
+  // direction
+  TRI_ASSERT(direction == TRI_EDGE_IN || direction == TRI_EDGE_OUT);
+  if (direction == TRI_EDGE_IN) {
+    result.add(StaticStrings::GraphDirection,
+               VPackValue(StaticStrings::GraphDirectionInbound));
+  } else {
+    result.add(StaticStrings::GraphDirection,
+               VPackValue(StaticStrings::GraphDirectionOutbound));
+  }
+
   result.add(VPackValue("handle"));
   // We only run toVelocyPack on Coordinator.
   TRI_ASSERT(idxHandles.size() == 1);
@@ -244,7 +274,7 @@ BaseOptions::BaseOptions(arangodb::aql::QueryContext& query)
       _parallelism(1),
       _produceVertices(true),
       _isCoordinator(arangodb::ServerState::instance()->isCoordinator()),
-      _refactor(false) {}
+      _refactor(arangodb::ServerState::instance()->isSingleServer()) {}
 
 BaseOptions::BaseOptions(BaseOptions const& other, bool allowAlreadyBuiltCopy)
     : _trx(other._query.newTrxContext()),
@@ -341,9 +371,10 @@ void BaseOptions::setVariable(aql::Variable const* variable) {
 void BaseOptions::addLookupInfo(aql::ExecutionPlan* plan,
                                 std::string const& collectionName,
                                 std::string const& attributeName,
-                                aql::AstNode* condition, bool onlyEdgeIndexes) {
+                                aql::AstNode* condition, bool onlyEdgeIndexes,
+                                TRI_edge_direction_e direction) {
   injectLookupInfoInList(_baseLookupInfos, plan, collectionName, attributeName,
-                         condition, onlyEdgeIndexes);
+                         condition, onlyEdgeIndexes, direction);
 }
 
 void BaseOptions::injectLookupInfoInList(std::vector<LookupInfo>& list,
@@ -351,16 +382,26 @@ void BaseOptions::injectLookupInfoInList(std::vector<LookupInfo>& list,
                                          std::string const& collectionName,
                                          std::string const& attributeName,
                                          aql::AstNode* condition,
-                                         bool onlyEdgeIndexes) {
-  LookupInfo info;
+                                         bool onlyEdgeIndexes,
+                                         TRI_edge_direction_e direction) {
+  TRI_ASSERT(
+      (direction == TRI_EDGE_IN && attributeName == StaticStrings::ToString) ||
+      (direction == TRI_EDGE_OUT &&
+       attributeName == StaticStrings::FromString));
+
+  LookupInfo info(direction);
   info.indexCondition = condition->clone(plan->getAst());
   auto coll = _query.collections().get(collectionName);
   if (!coll) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
 
+  // arbitrary value for "number of edges in collection" used here. the
+  // actual value does not matter much. 1000 has historically worked fine.
+  constexpr size_t itemsInCollection = 1000;
+
   bool res = aql::utils::getBestIndexHandleForFilterCondition(
-      *coll, info.indexCondition, _tmpVar, 1000, aql::IndexHint(),
+      *coll, info.indexCondition, _tmpVar, itemsInCollection, aql::IndexHint(),
       info.idxHandles[0], onlyEdgeIndexes);
   // Right now we have an enforced edge index which should always fit.
   if (!res) {
@@ -480,7 +521,8 @@ bool BaseOptions::evaluateExpression(arangodb::aql::Expression* expression,
   }
 
   TRI_ASSERT(value.isObject() || value.isNull());
-  _expressionCtx.setVariable(_tmpVar, value);
+  _expressionCtx.setVariableValue(_tmpVar,
+                                  AqlValue(AqlValueHintSliceNoCopy(value)));
   ScopeGuard defer(
       [&]() noexcept { _expressionCtx.clearVariableValue(_tmpVar); });
   bool mustDestroy = false;
@@ -488,7 +530,6 @@ bool BaseOptions::evaluateExpression(arangodb::aql::Expression* expression,
   aql::AqlValueGuard guard{res, mustDestroy};
   TRI_ASSERT(res.isBoolean());
   bool result = res.toBoolean();
-  _expressionCtx.clearVariable(_tmpVar);
   if (!result) {
     cache()->increaseFilterCounter();
   }

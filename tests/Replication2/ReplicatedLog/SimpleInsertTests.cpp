@@ -111,7 +111,7 @@ TEST_F(ReplicatedLogTest, write_single_entry_to_follower) {
       entry = iter->next();
       ASSERT_TRUE(entry.has_value());
       EXPECT_EQ(entry->logIndex(), LogIndex{1});
-      EXPECT_EQ(entry->logPayload(), std::nullopt);
+      EXPECT_FALSE(entry->hasPayload());
 
       entry = iter->next();
       EXPECT_TRUE(entry.has_value())
@@ -119,7 +119,7 @@ TEST_F(ReplicatedLogTest, write_single_entry_to_follower) {
       if (entry.has_value()) {
         EXPECT_EQ(entry->logIndex(), LogIndex{2});
         EXPECT_EQ(entry->logTerm(), LogTerm{1});
-        EXPECT_EQ(entry->logPayload(),
+        EXPECT_EQ(*entry->logPayload(),
                   LogPayload::createFromString("first entry"));
       }
 
@@ -155,14 +155,14 @@ TEST_F(ReplicatedLogTest, write_single_entry_to_follower) {
       entry = iter->next();
       ASSERT_TRUE(entry.has_value());
       EXPECT_EQ(entry->logIndex(), LogIndex{1});
-      EXPECT_EQ(entry->logPayload(), std::nullopt);
+      EXPECT_FALSE(entry->hasPayload());
 
       entry = iter->next();
       ASSERT_TRUE(entry.has_value())
           << "expect one entry in follower log, found nothing";
       EXPECT_EQ(entry->logIndex(), LogIndex{2});
       EXPECT_EQ(entry->logTerm(), LogTerm{1});
-      EXPECT_EQ(entry->logPayload(),
+      EXPECT_EQ(*entry->logPayload(),
                 LogPayload::createFromString("first entry"));
 
       entry = iter->next();
@@ -304,7 +304,7 @@ TEST_F(ReplicatedLogTest, wake_up_as_leader_with_persistent_data) {
     auto last = iter->next();
     ASSERT_TRUE(last.has_value());
     EXPECT_EQ(last->logIndex(), LogIndex{4});
-    EXPECT_EQ(last->logPayload(), std::nullopt);
+    EXPECT_EQ(last->logPayload(), nullptr);
   }
 }
 
@@ -547,6 +547,6 @@ TEST_F(ReplicatedLogTest,
     auto last = iter->next();
     ASSERT_TRUE(last.has_value());
     EXPECT_EQ(last->logIndex(), LogIndex{4});
-    EXPECT_EQ(last->logPayload(), std::nullopt);
+    EXPECT_EQ(last->logPayload(), nullptr);
   }
 }

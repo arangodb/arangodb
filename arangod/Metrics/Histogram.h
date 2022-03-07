@@ -120,47 +120,30 @@ class Histogram : public Metric {
 
   size_t size() const { return _c.size(); }
 
-  void toPrometheus(std::string& result, std::string_view globals,
-                    std::string_view alternativeName) const final {
-    uint64_t sum(0);
+  void toPrometheus(std::string& result, std::string_view globals) const final {
     std::string ls;
-    bool haveGlobals = !globals.empty();
-    if (haveGlobals) {
-      ls += globals;
+    auto const globals_size = globals.size();
+    auto const labels_size = labels().size();
+    ls.reserve(globals_size + labels_size + 1);
+    ls += globals;
+    if (globals_size != 0 && labels_size != 0) {
+      ls += ',';
     }
-    if (!labels().empty()) {
-      if (haveGlobals) {
-        ls += ",";
-      }
-      ls += labels();
-    }
-
-    std::string theName{alternativeName.empty() ? name() : alternativeName};
-
-    for (size_t i = 0; i < size(); ++i) {
-      uint64_t n = load(i);
-      sum += n;
-      result += theName;
-      result += "_bucket{";
+    ls += labels();
+    uint64_t sum = 0;
+    for (size_t i = 0, end = size(); i != end; ++i) {
+      sum += load(i);
+      result.append(name()).append("_bucket{");
       if (!ls.empty()) {
-        result += ls + ",";
+        result.append(ls) += ',';
       }
-      auto v = !alternativeName.empty() ? n : sum;
-      result += "le=\"" + _scale.delim(i) + "\"} " + std::to_string(v) + "\n";
+      result.append("le=\"").append(_scale.delim(i)).append("\"}");
+      result.append(std::to_string(sum)) += '\n';
     }
-    result += theName + "_count";
-    if (!ls.empty()) {
-      result += "{" + ls + "}";
-    }
-    result += " " + std::to_string(sum) + "\n";
-    if (alternativeName.empty()) {  // This is version 2 of the API
-      result += theName + "_sum";
-      if (!ls.empty()) {
-        result += "{" + ls + "}";
-      }
-      result +=
-          " " + std::to_string(_sum.load(std::memory_order_relaxed)) + "\n";
-    }
+    (result.append(name()).append("_count") += '{').append(ls) += '}';
+    result.append(std::to_string(sum)) += '\n';
+    (result.append(name()).append("_sum") += '{').append(ls) += '}';
+    result.append(std::to_string(_sum.load(std::memory_order_relaxed))) += '\n';
   }
 
   std::ostream& print(std::ostream& o) const {

@@ -28,11 +28,10 @@
 
 #include "velocypack/Builder.h"
 #include "velocypack/velocypack-common.h"
-#include "velocypack/velocypack-aliases.h"
 
+#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/ParticipantsHealth.h"
-#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/SupervisionAction.h"
 
 using namespace arangodb::replication2::agency;
@@ -43,18 +42,15 @@ using LogCurrentLocalStates =
     std::unordered_map<ParticipantId, LogCurrentLocalState>;
 
 // Check whether a log has been added to target
-auto checkLogAdded(Log const& log, ParticipantsHealth const& health)
-    -> std::unique_ptr<Action>;
+auto checkLogAdded(Log const& log, ParticipantsHealth const& health) -> Action;
 
 //
 auto checkLeaderPresent(LogPlanSpecification const& plan,
                         LogCurrent const& current,
-                        ParticipantsHealth const& health)
-    -> std::unique_ptr<Action>;
+                        ParticipantsHealth const& health) -> Action;
 
-auto checkLeaderHealth(LogPlanSpecification const& plan,
-                       ParticipantsHealth const& health)
-    -> std::unique_ptr<Action>;
+auto checkLeaderFailed(LogPlanSpecification const& plan,
+                       ParticipantsHealth const& health) -> Action;
 
 auto computeReason(LogCurrentLocalState const& status, bool healthy,
                    bool excluded, LogTerm term)
@@ -67,28 +63,24 @@ auto runElectionCampaign(LogCurrentLocalStates const& states,
 
 auto tryLeadershipElection(LogPlanSpecification const& plan,
                            LogCurrent const& current,
-                           ParticipantsHealth const& health)
-    -> std::unique_ptr<Action>;
+                           ParticipantsHealth const& health) -> Action;
 
 auto checkLogTargetParticipantFlags(LogTarget const& target,
-                                    LogPlanSpecification const& plan)
-    -> std::unique_ptr<Action>;
+                                    LogPlanSpecification const& plan) -> Action;
 
 auto checkLogTargetParticipantAdded(LogTarget const& target,
-                                    LogPlanSpecification const& plan)
-    -> std::unique_ptr<Action>;
+                                    LogPlanSpecification const& plan) -> Action;
 
 auto checkLogTargetParticipantRemoved(LogTarget const& target,
                                       LogPlanSpecification const& plan)
-    -> std::unique_ptr<Action>;
+    -> Action;
 
 auto checkLogTargetConfig(LogTarget const& target,
-                          LogPlanSpecification const& plan)
-    -> std::unique_ptr<Action>;
+                          LogPlanSpecification const& plan) -> Action;
 
 // Actions capture entries in log, so they have to stay
 // valid until the returned action has been executed (or discarded)
 auto checkReplicatedLog(Log const& log, ParticipantsHealth const& health)
-    -> std::unique_ptr<Action>;
+    -> Action;
 
 }  // namespace arangodb::replication2::replicated_log
