@@ -407,6 +407,8 @@ class StaticStrings {
 
   // API Strings
   static std::string_view const ApiLogInternal;
+  static std::string_view const ApiLogExternal;
+  static std::string_view const ApiReplicatedStateExternal;
 
   // TODO: remove me after refactor is done
   static std::string const GraphRefactorFlag;

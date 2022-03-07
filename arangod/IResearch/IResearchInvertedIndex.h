@@ -176,7 +176,7 @@ class IResearchInvertedIndex : public IResearchDataStore {
 
   bool isSorted() const { return !_meta._sort.empty(); }
 
-  Result init(InitCallback const& initCallback = {});
+  Result init(bool& pathExists, InitCallback const& initCallback = {});
 
   static std::vector<std::vector<arangodb::basics::AttributeName>> fields(
       IResearchInvertedIndexMeta const& meta);

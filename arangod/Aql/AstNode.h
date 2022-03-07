@@ -583,8 +583,8 @@ struct AstNode {
   void computeValue(arangodb::velocypack::Builder& builder) const;
   void freeComputedValue() noexcept;
 
-  /// @brief stringify the value of a node into a string buffer
-  /// this method is used when generated JavaScript code for the node!
+  /// @brief stringify the value of a node into a string buffer.
+  /// this method is used when generating JavaScript code for the node!
   /// this creates an equivalent to what JSON.stringify() would do
   void appendValue(std::string& buffer) const;
 

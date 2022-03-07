@@ -358,7 +358,8 @@ class IResearchDataStore {
   /// @brief initialize the data store with a new or from an existing directory
   //////////////////////////////////////////////////////////////////////////////
   Result initDataStore(
-      InitCallback const& initCallback, uint32_t version, bool sorted,
+      bool& pathExists, InitCallback const& initCallback, uint32_t version,
+      bool sorted,
       std::vector<IResearchViewStoredValues::StoredColumn> const& storedColumns,
       irs::type_info::type_id primarySortCompression);
 
@@ -376,13 +377,13 @@ class IResearchDataStore {
   /// @brief wait for all outstanding commit/consolidate operations and closes
   /// data store
   //////////////////////////////////////////////////////////////////////////////
-  Result shutdownDataStore();
+  void shutdownDataStore() noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief wait for all outstanding commit/consolidate operations and remove
   /// data store
   //////////////////////////////////////////////////////////////////////////////
-  Result deleteDataStore();
+  Result deleteDataStore() noexcept;
 
  public:  // TODO(MBkkt) public only for tests, make protected
   // These methods only for tests

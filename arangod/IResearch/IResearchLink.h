@@ -122,7 +122,7 @@ class IResearchLink : public IResearchDataStore {
   /// @brief called when the iResearch Link is unloaded from memory
   /// @note arangodb::Index override
   ////////////////////////////////////////////////////////////////////////////////
-  Result unload();
+  Result unload() noexcept;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief lookup referenced analyzer
@@ -133,8 +133,8 @@ class IResearchLink : public IResearchDataStore {
   /// @brief initialize from the specified definition used in make(...)
   /// @return success
   ////////////////////////////////////////////////////////////////////////////////
-  virtual Result init(velocypack::Slice definition,
-                      InitCallback const& init = {});
+  Result init(velocypack::Slice definition, bool& pathExists,
+              InitCallback const& init = {});
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @return arangosearch internal format identifier
@@ -183,11 +183,12 @@ class IResearchLink : public IResearchDataStore {
   template<typename T>
   Result toView(std::shared_ptr<LogicalView> const& logical,
                 std::shared_ptr<T>& view);
-  Result initAndLink(InitCallback const& init, IResearchView* view);
+  Result initAndLink(bool& pathExists, InitCallback const& init,
+                     IResearchView* view);
 
-  Result initSingleServer(InitCallback const& init);
+  Result initSingleServer(bool& pathExists, InitCallback const& init);
   Result initCoordinator(InitCallback const& init);
-  Result initDBServer(InitCallback const& init);
+  Result initDBServer(bool& pathExists, InitCallback const& init);
 
   IResearchLinkMeta _meta;
   // the identifier of the desired view (read-only, set via init())

@@ -438,6 +438,9 @@ std::string const StaticStrings::ValidationParameterRule("rule");
 std::string const StaticStrings::ValidationParameterType("type");
 
 std::string_view const StaticStrings::ApiLogInternal("/_api/log-internal");
+std::string_view const StaticStrings::ApiLogExternal("/_api/log");
+std::string_view const StaticStrings::ApiReplicatedStateExternal(
+    "/_api/replicated-state");
 
 // TODO REMOVE ME AFTER REFACTOR IS DONE
 std::string const StaticStrings::GraphRefactorFlag("refactor");
