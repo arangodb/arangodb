@@ -17,7 +17,7 @@ WasmFunction::WasmFunction(std::string name, std::string code,
       _code{std::move(code)},
       _isDeterministic{isDeterministic} {}
 
-void WasmFunction::toVelocyPack(VPackBuilder& builder) {
+void WasmFunction::toVelocyPack(VPackBuilder& builder) const {
   auto ob = VPackObjectBuilder(&builder);
   builder.add("name", VPackValue(_name));
   builder.add("code", VPackValue(_code));

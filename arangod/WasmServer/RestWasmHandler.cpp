@@ -27,6 +27,7 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
+#include "velocypack/Parser.h"
 
 #include "GeneralServer/RestHandler.h"
 #include "Logger/LogMacros.h"
@@ -72,10 +73,18 @@ auto RestWasmHandler::executeByMethod(WasmVmMethods const& methods)
 
 auto RestWasmHandler::handleGetRequest(WasmVmMethods const& methods)
     -> RestStatus {
-  std::vector<std::string> const& suffixes = _request->decodedSuffixes();
-  for (auto& suffix : suffixes) {
-    LOG_DEVEL << suffix;
+  auto allFunctions = methods.getAllWasmUdfs().get();
+
+  VPackBuilder builder;
+  {
+    VPackArrayBuilder ob(&builder);
+    for (auto const& function : allFunctions) {
+      VPackBuilder functionBuilder;
+      function.second.toVelocyPack(functionBuilder);
+      builder.add(functionBuilder.slice());
+    }
   }
+  generateOk(rest::ResponseCode::OK, builder.slice());
   return RestStatus::DONE;
 }
 
@@ -89,13 +98,17 @@ auto RestWasmHandler::handleDeleteRequest(WasmVmMethods const& methods)
   if (!slice.isString()) {
     generateError(
         ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
-        "RestWasmHandler Expects name of deletable function as string");
+        "RestWasmHandler Expects name of removable function as string");
   }
-  auto name = slice.copyString();
-  methods.deleteWasmUdf(name);
 
-  LOG_DEVEL << "function " << name << " deleted";
+  methods.deleteWasmUdf(slice.copyString());
 
+  VPackBuilder builder;
+  {
+    VPackObjectBuilder ob(&builder);
+    builder.add("removed", VPackValue(true));
+  }
+  generateOk(rest::ResponseCode::OK, builder.slice());
   return RestStatus::DONE;
 }
 
@@ -106,7 +119,6 @@ auto RestWasmHandler::handlePostRequest(WasmVmMethods const& methods)
   if (!success) {
     return RestStatus::DONE;
   }
-
   ResultT<WasmFunction> function = WasmFunction::fromVelocyPack(slice);
   if (function.fail()) {
     generateError(ResponseCode::BAD, function.errorNumber(),
@@ -116,10 +128,13 @@ auto RestWasmHandler::handlePostRequest(WasmVmMethods const& methods)
 
   auto create = methods.createWasmUdf(function.get());
 
-  // testing
-  auto builder = VPackBuilder();
-  function.get().toVelocyPack(builder);
-  LOG_DEVEL << builder.toJson();
-
+  VPackBuilder builder;
+  {
+    VPackObjectBuilder ob1(&builder);
+    VPackBuilder functionBuilder;
+    function.get().toVelocyPack(functionBuilder);
+    builder.add("installed", functionBuilder.slice());
+  }
+  generateOk(rest::ResponseCode::CREATED, builder.slice());
   return RestStatus::DONE;
 }

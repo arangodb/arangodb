@@ -1,3 +1,4 @@
+#include <unordered_map>
 #include "WasmServerFeature.h"
 #include <s2/base/integral_types.h>
 #include <optional>
@@ -33,7 +34,7 @@ void WasmServerFeature::validateOptions(
 void WasmServerFeature::addFunction(wasm::WasmFunction const& function) {
   _guardedFunctions.doUnderLock(
       [&function](GuardedFunctions& guardedFunctions) {
-        guardedFunctions._functions.emplace(function.name(), function);
+        guardedFunctions._functions.insert_or_assign(function.name(), function);
       });
 }
 
@@ -74,5 +75,13 @@ void WasmServerFeature::deleteFunction(std::string const& functionName) {
   _guardedFunctions.doUnderLock(
       [&functionName](GuardedFunctions& guardedFunctions) {
         guardedFunctions._functions.erase(functionName);
+      });
+}
+
+auto WasmServerFeature::getAllFunctions() const
+    -> std::unordered_map<std::string, wasm::WasmFunction> {
+  return _guardedFunctions.doUnderLock(
+      [&](GuardedFunctions const& guardedFunctions) {
+        return guardedFunctions._functions;
       });
 }
