@@ -1534,9 +1534,20 @@ StorageEngineMock::buildLinkMock(arangodb::IndexId id,
                                  VPackSlice const& info) {
   auto index = std::shared_ptr<arangodb::iresearch::IResearchLinkMock>(
       new arangodb::iresearch::IResearchLinkMock(id, collection));
+  bool pathExists = false;
+  auto cleanup = arangodb::scopeGuard([&]() noexcept {
+    if (pathExists) {
+      try {
+        index->unload();  // TODO(MBkkt) unload should be implicit noexcept?
+      } catch (...) {
+      }
+    } else {
+      index->drop();
+    }
+  });
   auto res =
       static_cast<arangodb::iresearch::IResearchLinkMock*>(index.get())
-          ->init(info, []() -> irs::directory_attributes {
+          ->init(info, pathExists, []() -> irs::directory_attributes {
             if (arangodb::iresearch::IResearchLinkMock::InitCallback !=
                 nullptr) {
               return arangodb::iresearch::IResearchLinkMock::InitCallback();
@@ -1547,6 +1558,7 @@ StorageEngineMock::buildLinkMock(arangodb::IndexId id,
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
   }
+  cleanup.cancel();
   return index;
 }
 

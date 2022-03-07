@@ -135,7 +135,8 @@ class IResearchInvertedIndexIteratorTestBase
     _index = std::make_shared<arangodb::iresearch::IResearchInvertedIndex>(
         id, *_collection, std::move(meta));
     EXPECT_TRUE(_index);
-    EXPECT_TRUE(_index->init().ok());
+    bool pathExists = false;
+    EXPECT_TRUE(_index->init(pathExists).ok());
 
     // now populate the docs
     static std::vector<std::string> const EMPTY;

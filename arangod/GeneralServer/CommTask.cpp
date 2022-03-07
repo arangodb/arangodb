@@ -546,6 +546,11 @@ bool CommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
 
   RequestLane lane = handler->determineRequestLane();
   handler->trackQueueStart();
+  // We just injected the request pointer a before calling this method
+  TRI_ASSERT(handler->request() != nullptr);
+  LOG_TOPIC("ecd0a", DEBUG, Logger::REQUESTS)
+      << "Handling request " << (void*)this << " on path "
+      << handler->request()->requestPath() << " on lane " << lane;
 
   ContentType respType = handler->request()->contentTypeResponse();
   uint64_t mid = handler->messageId();

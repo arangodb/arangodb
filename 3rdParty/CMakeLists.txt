@@ -121,6 +121,8 @@ set(BOOST_VERSION ${BOOST_VERSION} PARENT_SCOPE)
 ## Velocypack
 ################################################################################
 
+UpdateModule(${GIT_EXECUTABLE} "velocypack" ${CMAKE_CURRENT_SOURCE_DIR} "README.md")
+
 set(HashType "xxhash" CACHE STRING "Hash type (fasthash, xxhash)" FORCE)
 set(BuildVelocyPackExamples OFF CACHE BOOL "Build VelocyPack Examples" FORCE)
 set(BuildTools OFF CACHE BOOL "Build VelocyPack Tools" FORCE)

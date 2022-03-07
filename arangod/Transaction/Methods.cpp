@@ -1480,10 +1480,8 @@ Future<OperationResult> transaction::Methods::modifyLocal(
   [[maybe_unused]] size_t numExclusions = 0;
 
   // lambda //////////////
-  auto workForOneDocument = [this, &numExclusions, &operation, &options,
-                             &collection, &resultBuilder, &cid, &previous,
-                             &result](VPackSlice const newVal, bool isBabies,
-                                      bool& excludeFromReplication) -> Result {
+  auto workForOneDocument = [&](VPackSlice newVal, bool isBabies,
+                                bool& excludeFromReplication) -> Result {
     Result res;
     if (!newVal.isObject()) {
       res.reset(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
