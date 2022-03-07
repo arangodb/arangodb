@@ -78,6 +78,22 @@ class RebootId {
   uint64_t _value{};
 };
 
+template<class Inspector>
+auto inspect(Inspector& f, RebootId& id) {
+  if (Inspector::isLoading) {
+    uint64_t v;
+    auto res = f.apply(v);
+    if (!res.ok()) {
+      return res;
+    }
+    id = RebootId{v};
+    return res;
+  } else {
+    auto v = id.value();
+    return f.apply(v);
+  }
+}
+
 namespace velocypack {
 class Builder;
 class Slice;

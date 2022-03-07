@@ -42,7 +42,7 @@ struct LogPlanTermSpecification {
   LogConfig config;
   struct Leader {
     ParticipantId serverId;
-    RebootId rebootId;
+    RebootId rebootId{0};
 
     friend auto operator==(Leader const&, Leader const&) noexcept
         -> bool = default;
@@ -61,6 +61,19 @@ struct LogPlanTermSpecification {
       -> bool = default;
 };
 
+template<class Inspector>
+auto inspect(Inspector& f, LogPlanTermSpecification& spec) {
+  return f.object(spec).fields(f.field(StaticStrings::Term, spec.term),
+                               f.field(StaticStrings::Config, spec.config),
+                               f.field(StaticStrings::Leader, spec.leader));
+}
+
+template<class Inspector>
+auto inspect(Inspector& f, LogPlanTermSpecification::Leader& leader) {
+  return f.object(leader).fields(
+      f.field(StaticStrings::ServerId, leader.serverId),
+      f.field(StaticStrings::RebootId, leader.rebootId));
+}
 struct LogPlanSpecification {
   LogId id;
   std::optional<LogPlanTermSpecification> currentTerm;
@@ -80,6 +93,14 @@ struct LogPlanSpecification {
                          LogPlanSpecification const&) noexcept
       -> bool = default;
 };
+
+template<class Inspector>
+auto inspect(Inspector& f, LogPlanSpecification& spec) {
+  return f.object(spec).fields(
+      f.field(StaticStrings::Id, spec.id),
+      f.field(StaticStrings::CurrentTerm, spec.currentTerm),
+      f.field("participantsConfig", spec.participantsConfig));
+}
 
 struct LogCurrentLocalState {
   LogTerm term{};

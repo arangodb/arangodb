@@ -50,6 +50,7 @@
 #include <velocypack/Slice.h>
 
 #include <Basics/Identifier.h>
+#include "Basics/StaticStrings.h"
 #include <Containers/ImmerMemoryPolicy.h>
 
 namespace arangodb::velocypack {
@@ -87,6 +88,11 @@ struct LogTerm {
 
   [[nodiscard]] explicit operator velocypack::Value() const noexcept;
 };
+
+template<class Inspector>
+auto inspect(Inspector& f, LogTerm& t) {
+  return f.apply(t.value);
+}
 
 auto operator<<(std::ostream&, LogTerm) -> std::ostream&;
 
@@ -157,6 +163,22 @@ class LogId : public arangodb::basics::Identifier {
   [[nodiscard]] explicit operator velocypack::Value() const noexcept;
 };
 
+template<class Inspector>
+auto inspect(Inspector& f, LogId& id) {
+  if (Inspector::isLoading) {
+    LogId::BaseType v;
+    auto res = f.apply(v);
+    if (!res.ok()) {
+      return res;
+    }
+    id = LogId{v};
+    return res;
+  } else {
+    auto v = id.id();
+    return f.apply(v);
+  }
+}
+
 auto to_string(LogId logId) -> std::string;
 
 struct LogConfig {
@@ -175,6 +197,22 @@ struct LogConfig {
       -> bool = default;
 };
 
+template<class Inspector>
+auto inspect(Inspector& f, LogConfig& config) {
+  return f.object(config)
+      .fields(
+          f.field(StaticStrings::WaitForSyncString, config.waitForSync),
+          f.field(StaticStrings::WriteConcern, config.writeConcern),
+          f.field(StaticStrings::SoftWriteConcern,
+                  config.softWriteConcern),  // TODO - softWriteConcern should
+                                             // fallback to writeConcern
+          f.field(StaticStrings::ReplicationFactor, config.replicationFactor))
+      .invariant([](LogConfig const& config) {
+        // TODO - check more?
+        return config.writeConcern <= config.replicationFactor;
+      });
+}
+
 struct ParticipantFlags {
   bool forced = false;
   bool excluded = false;
@@ -190,6 +228,12 @@ struct ParticipantFlags {
   static auto fromVelocyPack(velocypack::Slice) -> ParticipantFlags;
 };
 
+template<class Inspector>
+auto inspect(Inspector& f, ParticipantFlags& flags) {
+  return f.object(flags).fields(f.field("excluded", flags.excluded).fallback(false),
+                                f.field("forced", flags.forced).fallback(false));
+}
+
 auto operator<<(std::ostream&, ParticipantFlags const&) -> std::ostream&;
 
 struct ParticipantsConfig {
@@ -204,6 +248,12 @@ struct ParticipantsConfig {
                          ParticipantsConfig const& right) noexcept
       -> bool = default;
 };
+
+template<class Inspector>
+auto inspect(Inspector& f, ParticipantsConfig& config) {
+  return f.object(config).fields(f.field("generation", config.generation),
+                                 f.field("participants", config.participants));
+}
 
 // These settings are initialised by the ReplicatedLogFeature based on command
 // line arguments

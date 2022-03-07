@@ -29,6 +29,7 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 
+#include <velocypack/Inspection.h>
 #include <velocypack/Iterator.h>
 
 #include <type_traits>
@@ -44,53 +45,25 @@ auto constexpr StringCommittedParticipantsConfig =
 
 auto LogPlanTermSpecification::toVelocyPack(VPackBuilder& builder) const
     -> void {
-  VPackObjectBuilder ob(&builder);
-  builder.add(StaticStrings::Term, VPackValue(term.value));
-
-  builder.add(VPackValue(StaticStrings::Config));
-  config.toVelocyPack(builder);
-
-  if (leader.has_value()) {
-    VPackObjectBuilder ob2(&builder, StaticStrings::Leader);
-    builder.add(StaticStrings::ServerId, VPackValue(leader->serverId));
-    builder.add(StaticStrings::RebootId, VPackValue(leader->rebootId.value()));
-  }
+  velocypack::serialize(builder, *this);
 }
 
 LogPlanTermSpecification::LogPlanTermSpecification(from_velocypack_t,
-                                                   VPackSlice slice)
-    : term(slice.get(StaticStrings::Term).extract<LogTerm>()),
-      config(slice.get(StaticStrings::Config)) {
+                                                   VPackSlice slice) {
   // Participants were moved to LogPlanSpecification. This assertion can be
   // removed after the transition is complete.
   TRI_ASSERT(slice.get(StaticStrings::Participants).isNone());
-  if (auto leaders = slice.get(StaticStrings::Leader); !leaders.isNone()) {
-    leader = Leader{leaders.get(StaticStrings::ServerId).copyString(),
-                    leaders.get(StaticStrings::RebootId).extract<RebootId>()};
-  }
+  velocypack::deserialize(slice, *this);
 }
 
 LogPlanSpecification::LogPlanSpecification() = default;
 auto LogPlanSpecification::toVelocyPack(VPackBuilder& builder) const -> void {
-  VPackObjectBuilder ob(&builder);
-  builder.add(StaticStrings::Id, VPackValue(id.id()));
-  if (currentTerm.has_value()) {
-    builder.add(VPackValue(StaticStrings::CurrentTerm));
-    currentTerm->toVelocyPack(builder);
-  }
-  builder.add(VPackValue("participantsConfig"));
-  participantsConfig.toVelocyPack(builder);
+  velocypack::serialize(builder, *this);
 }
 
-LogPlanSpecification::LogPlanSpecification(from_velocypack_t, VPackSlice slice)
-    : id(slice.get(StaticStrings::Id).extract<LogId>()) {
-  if (auto term = slice.get(StaticStrings::CurrentTerm); !term.isNone()) {
-    currentTerm = LogPlanTermSpecification{from_velocypack, term};
-  }
-
-  if (auto partConfig = slice.get("participantsConfig"); !partConfig.isNone()) {
-    participantsConfig = ParticipantsConfig::fromVelocyPack(partConfig);
-  }
+LogPlanSpecification::LogPlanSpecification(from_velocypack_t,
+                                           VPackSlice slice) {
+  velocypack::deserialize(slice, *this);
 }
 
 LogPlanTermSpecification::LogPlanTermSpecification(LogTerm term,
