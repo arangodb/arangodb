@@ -45,7 +45,7 @@ struct EmptyAction {
 struct ErrorAction {
   static constexpr std::string_view name = "ErrorAction";
 
-  ErrorAction(LogCurrentSupervisionError const &error) : _error{error} {};
+  ErrorAction(LogCurrentSupervisionError const& error) : _error{error} {};
 
   LogCurrentSupervisionError _error;
 };
@@ -53,7 +53,7 @@ struct ErrorAction {
 struct AddLogToPlanAction {
   static constexpr std::string_view name = "AddLogToPlanAction";
 
-  AddLogToPlanAction(LogTarget::Participants const &participants)
+  AddLogToPlanAction(LogTarget::Participants const& participants)
       : _participants(participants){};
   LogTarget::Participants const _participants;
 };
@@ -61,7 +61,7 @@ struct AddLogToPlanAction {
 struct AddParticipantsToTargetAction {
   static constexpr std::string_view name = "AddParticipantsToTargetAction";
 
-  AddParticipantsToTargetAction(LogTarget const &spec) : _spec(spec){};
+  AddParticipantsToTargetAction(LogTarget const& spec) : _spec(spec){};
   LogTarget const _spec;
 };
 
@@ -71,10 +71,14 @@ struct CreateInitialTermAction {
   LogConfig const _config;
 };
 
+struct CurrentNotAvailableAction {
+  static constexpr std::string_view name = "CurrentNotAvailableAction";
+};
+
 struct DictateLeaderAction {
   static constexpr std::string_view name = "DictateLeaderAction";
 
-  DictateLeaderAction(LogPlanTermSpecification const &newTerm)
+  DictateLeaderAction(LogPlanTermSpecification const& newTerm)
       : _term{newTerm} {};
 
   LogPlanTermSpecification _term;
@@ -83,11 +87,13 @@ struct DictateLeaderAction {
 struct EvictLeaderAction {
   static constexpr std::string_view name = "EvictLeaderAction";
 
-  EvictLeaderAction(ParticipantId const &leader, ParticipantFlags const &flags,
-                    LogPlanTermSpecification const &newTerm,
+  EvictLeaderAction(ParticipantId const& leader, ParticipantFlags const& flags,
+                    LogPlanTermSpecification const& newTerm,
                     std::size_t generation)
-      : _leader{leader}, _flags{flags}, _newTerm{newTerm}, _generation{
-                                                               generation} {};
+      : _leader{leader},
+        _flags{flags},
+        _newTerm{newTerm},
+        _generation{generation} {};
 
   ParticipantId _leader;
   ParticipantFlags _flags;
@@ -98,7 +104,7 @@ struct EvictLeaderAction {
 struct UpdateTermAction {
   static constexpr std::string_view name = "UpdateTermAction";
 
-  UpdateTermAction(LogPlanTermSpecification const &newTerm)
+  UpdateTermAction(LogPlanTermSpecification const& newTerm)
       : _newTerm(newTerm){};
 
   LogPlanTermSpecification _newTerm;
@@ -107,9 +113,9 @@ struct UpdateTermAction {
 struct LeaderElectionAction {
   static constexpr std::string_view name = "LeaderElectionAction";
 
-  LeaderElectionAction(LogCurrentSupervisionElection const &election)
+  LeaderElectionAction(LogCurrentSupervisionElection const& election)
       : _election{election}, _newTerm{std::nullopt} {};
-  LeaderElectionAction(LogCurrentSupervisionElection const &election,
+  LeaderElectionAction(LogCurrentSupervisionElection const& election,
                        LogPlanTermSpecification newTerm)
       : _election{election}, _newTerm{newTerm} {};
 
@@ -120,8 +126,8 @@ struct LeaderElectionAction {
 struct UpdateParticipantFlagsAction {
   static constexpr std::string_view name = "UpdateParticipantFlagsAction";
 
-  UpdateParticipantFlagsAction(ParticipantId const &participant,
-                               ParticipantFlags const &flags,
+  UpdateParticipantFlagsAction(ParticipantId const& participant,
+                               ParticipantFlags const& flags,
                                std::size_t generation)
       : _participant(participant), _flags(flags), _generation{generation} {};
 
@@ -133,8 +139,8 @@ struct UpdateParticipantFlagsAction {
 struct AddParticipantToPlanAction {
   static constexpr std::string_view name = "AddParticipantToPlanAction";
 
-  AddParticipantToPlanAction(ParticipantId const &participant,
-                             ParticipantFlags const &flags,
+  AddParticipantToPlanAction(ParticipantId const& participant,
+                             ParticipantFlags const& flags,
                              std::size_t generation)
       : _participant(participant), _flags(flags), _generation{generation} {};
 
@@ -146,7 +152,7 @@ struct AddParticipantToPlanAction {
 struct RemoveParticipantFromPlanAction {
   static constexpr std::string_view name = "RemoveParticipantFromPlanAction";
 
-  RemoveParticipantFromPlanAction(ParticipantId const &participant,
+  RemoveParticipantFromPlanAction(ParticipantId const& participant,
                                   std::size_t generation)
       : _participant(participant), _generation{generation} {};
 
@@ -157,7 +163,7 @@ struct RemoveParticipantFromPlanAction {
 struct UpdateLogConfigAction {
   static constexpr std::string_view name = "UpdateLogConfigAction";
 
-  UpdateLogConfigAction(LogConfig const &config) : _config(config){};
+  UpdateLogConfigAction(LogConfig const& config) : _config(config){};
 
   LogConfig _config;
 };
@@ -165,10 +171,10 @@ struct UpdateLogConfigAction {
 using Action =
     std::variant<EmptyAction, ErrorAction, AddLogToPlanAction,
                  AddParticipantsToTargetAction, CreateInitialTermAction,
-                 DictateLeaderAction, EvictLeaderAction, UpdateTermAction,
-                 LeaderElectionAction, UpdateParticipantFlagsAction,
-                 AddParticipantToPlanAction, RemoveParticipantFromPlanAction,
-                 UpdateLogConfigAction>;
+                 CurrentNotAvailableAction, DictateLeaderAction,
+                 EvictLeaderAction, UpdateTermAction, LeaderElectionAction,
+                 UpdateParticipantFlagsAction, AddParticipantToPlanAction,
+                 RemoveParticipantFromPlanAction, UpdateLogConfigAction>;
 
 using namespace arangodb::cluster::paths;
 
@@ -176,9 +182,11 @@ using namespace arangodb::cluster::paths;
  * Execute a SupervisionAction
  */
 struct Executor {
-  explicit Executor(DatabaseID const &dbName, LogId const &log,
+  explicit Executor(DatabaseID const& dbName, LogId const& log,
                     arangodb::agency::envelope envelope)
-      : dbName{dbName}, log{log}, envelope{std::move(envelope)},
+      : dbName{dbName},
+        log{log},
+        envelope{std::move(envelope)},
         targetPath{
             root()->arango()->target()->replicatedLogs()->database(dbName)->log(
                 log)},
@@ -207,46 +215,48 @@ struct Executor {
 
   std::shared_ptr<Root::Arango::Plan::Version const> planVersionPath;
 
-  void operator()(EmptyAction const &action);
-  void operator()(ErrorAction const &action);
-  void operator()(AddLogToPlanAction const &action);
-  void operator()(AddParticipantsToTargetAction const &action);
-  void operator()(CreateInitialTermAction const &action);
-  void operator()(DictateLeaderAction const &action);
-  void operator()(EvictLeaderAction const &action);
-  void operator()(UpdateTermAction const &action);
-  void operator()(LeaderElectionAction const &action);
-  void operator()(UpdateParticipantFlagsAction const &action);
-  void operator()(AddParticipantToPlanAction const &action);
-  void operator()(RemoveParticipantFromPlanAction const &action);
-  void operator()(UpdateLogConfigAction const &action);
+  void operator()(EmptyAction const& action);
+  void operator()(ErrorAction const& action);
+  void operator()(AddLogToPlanAction const& action);
+  void operator()(AddParticipantsToTargetAction const& action);
+  void operator()(CreateInitialTermAction const& action);
+  void operator()(DictateLeaderAction const& action);
+  void operator()(CurrentNotAvailableAction const& action);
+  void operator()(EvictLeaderAction const& action);
+  void operator()(UpdateTermAction const& action);
+  void operator()(LeaderElectionAction const& action);
+  void operator()(UpdateParticipantFlagsAction const& action);
+  void operator()(AddParticipantToPlanAction const& action);
+  void operator()(RemoveParticipantFromPlanAction const& action);
+  void operator()(UpdateLogConfigAction const& action);
 };
 
 struct VelocyPacker {
-  VelocyPacker(VPackBuilder &builder) : builder(builder), ob(&builder){};
-  VelocyPacker(VelocyPacker &) = delete;
-  VPackBuilder &builder;
+  VelocyPacker(VPackBuilder& builder) : builder(builder), ob(&builder){};
+  VelocyPacker(VelocyPacker&) = delete;
+  VPackBuilder& builder;
   VPackObjectBuilder ob;
 
-  void operator()(EmptyAction const &action);
-  void operator()(ErrorAction const &action);
-  void operator()(AddLogToPlanAction const &action);
-  void operator()(AddParticipantsToTargetAction const &action);
-  void operator()(CreateInitialTermAction const &action);
-  void operator()(DictateLeaderAction const &action);
-  void operator()(EvictLeaderAction const &action);
-  void operator()(UpdateTermAction const &action);
-  void operator()(LeaderElectionAction const &action);
-  void operator()(UpdateParticipantFlagsAction const &action);
-  void operator()(AddParticipantToPlanAction const &action);
-  void operator()(RemoveParticipantFromPlanAction const &action);
-  void operator()(UpdateLogConfigAction const &action);
+  void operator()(EmptyAction const& action);
+  void operator()(ErrorAction const& action);
+  void operator()(AddLogToPlanAction const& action);
+  void operator()(AddParticipantsToTargetAction const& action);
+  void operator()(CreateInitialTermAction const& action);
+  void operator()(CurrentNotAvailableAction const& action);
+  void operator()(DictateLeaderAction const& action);
+  void operator()(EvictLeaderAction const& action);
+  void operator()(UpdateTermAction const& action);
+  void operator()(LeaderElectionAction const& action);
+  void operator()(UpdateParticipantFlagsAction const& action);
+  void operator()(AddParticipantToPlanAction const& action);
+  void operator()(RemoveParticipantFromPlanAction const& action);
+  void operator()(UpdateLogConfigAction const& action);
 };
 
-auto execute(Action const &action, DatabaseID const &dbName, LogId const &log,
+auto execute(Action const& action, DatabaseID const& dbName, LogId const& log,
              arangodb::agency::envelope envelope) -> arangodb::agency::envelope;
 
-auto to_string(Action const &action) -> std::string_view;
-void toVelocyPack(Action const &action, VPackBuilder &builder);
+auto to_string(Action const& action) -> std::string_view;
+void toVelocyPack(Action const& action, VPackBuilder& builder);
 
-} // namespace arangodb::replication2::replicated_log
+}  // namespace arangodb::replication2::replicated_log

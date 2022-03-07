@@ -443,13 +443,13 @@ auto checkReplicatedLog(Log const& log, ParticipantsHealth const& health)
 
     if (!plan.currentTerm) {
       return CreateInitialTermAction{._config = target.config};
-    }
-
-    // As long as we don't  have current, we cannot progress with establishing
-    // leadership
-    // TODO: Action that reports we're waiting for Current
-    if (!log.current) {
-      return EmptyAction();
+    } else {
+      if (!log.current) {
+        // As long as we don't  have current, we cannot progress with
+        // establishing leadership
+        return CurrentNotAvailableAction{};
+      } else {
+      }
     }
 
     // Check that the log has a leader in plan; if not try electing one
