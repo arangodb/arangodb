@@ -68,9 +68,7 @@ struct AddParticipantsToTargetAction {
 struct CreateInitialTermAction {
   static constexpr std::string_view name = "CreateIntialTermAction";
 
-  CreateInitialTermAction(LogPlanTermSpecification const &term) : _term(term){};
-
-  LogPlanTermSpecification const _term;
+  LogConfig const _config;
 };
 
 struct DictateLeaderAction {

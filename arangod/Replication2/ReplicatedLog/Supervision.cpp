@@ -56,15 +56,6 @@ if (log.target.participants.empty()) {
   return AddParticipantsToTargetAction(newTarget);
 #endif
 
-auto checkTermPresent(LogPlanSpecification const& plan, LogConfig const& config)
-    -> Action {
-  if (!plan.currentTerm) {
-    return CreateInitialTermAction(
-        LogPlanTermSpecification(LogTerm(1), config, std::nullopt));
-  }
-  return EmptyAction();
-}
-
 auto checkLeaderFailed(LogPlanSpecification const& plan,
                        ParticipantsHealth const& health) -> Action {
   // TODO: if we assert this here, we assume we're always called
@@ -439,91 +430,90 @@ auto isEmptyAction(Action& action) {
 // The main function
 auto checkReplicatedLog(Log const& log, ParticipantsHealth const& health)
     -> Action {
-  //  auto const& target = log.target;
+  auto const& target = log.target;
 
   if (!log.plan) {
     // The log is not planned right now, so we create it
     return AddLogToPlanAction(log.target.participants);
+  } else {
+    // plan now exists
+    auto const& plan = *log.plan;
+    // TODO: maybe we should report an error here; we won't make any progress,
+    // but also don't implode
+
+    if (!plan.currentTerm) {
+      return CreateInitialTermAction{._config = target.config};
+    }
+
+    // As long as we don't  have current, we cannot progress with establishing
+    // leadership
+    // TODO: Action that reports we're waiting for Current
+    if (!log.current) {
+      return EmptyAction();
+    }
+
+    // Check that the log has a leader in plan; if not try electing one
+    if (auto action = checkLeaderPresent(*log.plan, *log.current, health);
+        !isEmptyAction(action)) {
+      return action;
+    }
+
+    // TODO: maybe we should report an error here; we won't make any progress,
+    // but also don't implode
+    TRI_ASSERT(log.plan->currentTerm->leader);
+
+    // If the leader is unhealthy, we need to create a new term that
+    // does not have a leader; in the next round we should be electing
+    // a new leader above
+    if (auto action = checkLeaderFailed(*log.plan, health);
+        !isEmptyAction(action)) {
+      return action;
+    }
+
+    // Check whether the participant entry for the current
+    // leader has been removed from target; this means we have
+    // to gracefully remove this leader
+    if (auto action = checkLeaderRemovedFromTarget(log.target, *log.plan,
+                                                   *log.current, health);
+        !isEmptyAction(action)) {
+      return action;
+    }
+
+    // Check whether the flags for a participant differ between target and plan
+    // if so, transfer that change to them
+    if (auto action = checkLogTargetParticipantFlags(log.target, *log.plan);
+        !isEmptyAction(action)) {
+      return action;
+    }
+
+    // Check whether a participant has been added to Target that is not Planned
+    // yet
+    if (auto action = checkLogTargetParticipantAdded(log.target, *log.plan);
+        !isEmptyAction(action)) {
+      return action;
+    }
+
+    // Handle the case of the user putting a *specific* participant into target
+    // to become leader
+    if (auto action =
+            checkLeaderInTarget(log.target, *log.plan, *log.current, health);
+        !isEmptyAction(action)) {
+      return action;
+    }
+
+    // Check whether a participant has been removed from Target that is still in
+    // Plan
+    if (auto action = checkLogTargetParticipantRemoved(log.target, *log.plan);
+        !isEmptyAction(action)) {
+      return action;
+    }
+
+    // Check whether the configuration of the replicated log has been changed
+    if (auto action = checkLogTargetConfig(log.target, *log.plan);
+        !isEmptyAction(action)) {
+      return action;
+    }
   }
-
-  // TODO: maybe we should report an error here; we won't make any progress,
-  // but also don't implode
-  TRI_ASSERT(log.plan.has_value());
-
-  if (auto action = checkTermPresent(*log.plan, log.target.config);
-      !isEmptyAction(action)) {
-    return action;
-  }
-
-  // As long as we don't  have current, we cannot progress with establishing
-  // leadership
-  // TODO: Action that reports we're waiting for Current
-  if (!log.current) {
-    return EmptyAction();
-  }
-
-  // Check that the log has a leader in plan; if not try electing one
-  if (auto action = checkLeaderPresent(*log.plan, *log.current, health);
-      !isEmptyAction(action)) {
-    return action;
-  }
-
-  // TODO: maybe we should report an error here; we won't make any progress,
-  // but also don't implode
-  TRI_ASSERT(log.plan->currentTerm->leader);
-
-  // If the leader is unhealthy, we need to create a new term that
-  // does not have a leader; in the next round we should be electing
-  // a new leader above
-  if (auto action = checkLeaderFailed(*log.plan, health);
-      !isEmptyAction(action)) {
-    return action;
-  }
-
-  // Check whether the participant entry for the current
-  // leader has been removed from target; this means we have
-  // to gracefully remove this leader
-  if (auto action = checkLeaderRemovedFromTarget(log.target, *log.plan,
-                                                 *log.current, health);
-      !isEmptyAction(action)) {
-    return action;
-  }
-
-  // Check whether the flags for a participant differ between target and plan
-  // if so, transfer that change to them
-  if (auto action = checkLogTargetParticipantFlags(log.target, *log.plan);
-      !isEmptyAction(action)) {
-    return action;
-  }
-
-  // Check whether a participant has been added to Target that is not Planned
-  // yet
-  if (auto action = checkLogTargetParticipantAdded(log.target, *log.plan);
-      !isEmptyAction(action)) {
-    return action;
-  }
-
-  // Handle the case of the user putting a *specific* participant into target to
-  // become leader
-  if (auto action =
-          checkLeaderInTarget(log.target, *log.plan, *log.current, health);
-      !isEmptyAction(action)) {
-    return action;
-  }
-
-  // Check whether a participant has been removed from Target that is still in
-  // Plan
-  if (auto action = checkLogTargetParticipantRemoved(log.target, *log.plan);
-      !isEmptyAction(action)) {
-    return action;
-  }
-
-  // Check whether the configuration of the replicated log has been changed
-  if (auto action = checkLogTargetConfig(log.target, *log.plan);
-      !isEmptyAction(action)) {
-    return action;
-  }
-
   // Nothing todo
   return EmptyAction();
 }
