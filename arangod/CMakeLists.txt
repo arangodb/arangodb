@@ -702,13 +702,6 @@ set(LIB_ARANGO_V8SERVER_SOURCES
   V8Server/v8-vocindex.cpp
   V8Server/v8-replicated-logs.cpp V8Server/v8-replicated-logs.h)
 
-set(LIB_ARANGO_WASM_SOURCES
-  WasmServer/Methods.cpp
-  WasmServer/WasmCommon.cpp
-  RestHandler/RestWasmHandler.cpp
-  WasmServer/WasmServerFeature.cpp
-)
-
 set(LIB_ARANGO_NETWORK_SOURCES
   Network/ClusterUtils.cpp
   Network/ConnectionPool.cpp
@@ -960,10 +953,6 @@ add_library(arango_v8server STATIC
   ${LIB_ARANGO_V8SERVER_SOURCES}
 )
 
-add_library(arango_wasm STATIC
-  ${LIB_ARANGO_WASM_SOURCES}
-)
-
 add_library(arango_utils STATIC
   ${LIB_ARANGO_UTILS_SOURCES}
 )
@@ -1039,6 +1028,8 @@ add_library(arango_cluster_methods STATIC
   ${LIB_ARANGO_CLUSTER_METHODS_SOURCES}
   ${ADDITIONAL_LIB_ARANGO_CLUSTER_METHODS_SOURCES}
 )
+
+add_subdirectory(WasmServer)
 
 # Note that arango_geo publicly exports the /J compile option for MSVC, because
 # s2 requires /J to be set on Windows.
@@ -1183,7 +1174,6 @@ target_link_libraries(arango_vocbase arango_replication2)
 target_link_libraries(arango_vocbase boost_system)
 target_link_libraries(arango_vocbase arango::validation)
 
-target_link_libraries(arango_wasm m3)
 target_link_libraries(arango_wasm arango)
 
 target_link_libraries(arangoserver arango_agency)

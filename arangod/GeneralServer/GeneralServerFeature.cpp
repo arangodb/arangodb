@@ -103,7 +103,6 @@
 #include "RestHandler/RestVersionHandler.h"
 #include "RestHandler/RestViewHandler.h"
 #include "RestHandler/RestWalAccessHandler.h"
-#include "RestHandler/RestWasmHandler.h"
 #include "RestServer/EndpointFeature.h"
 #include "Metrics/HistogramBuilder.h"
 #include "Metrics/CounterBuilder.h"
@@ -115,6 +114,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "V8Server/V8DealerFeature.h"
+#include "WasmServer/RestWasmHandler.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/RestHandler/RestHotBackupHandler.h"
