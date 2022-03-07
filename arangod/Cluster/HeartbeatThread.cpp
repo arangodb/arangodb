@@ -423,14 +423,14 @@ void HeartbeatThread::getNewsFromAgencyForDBServer() {
     VPackSlice failedServersSlice = result[0].get(std::vector<std::string>(
         {AgencyCommHelper::path(), "Target", "FailedServers"}));
     if (failedServersSlice.isObject()) {
-      std::vector<ServerID> failedServers = {};
+      containers::FlatHashSet<ServerID> failedServers;
       for (auto const& server : VPackObjectIterator(failedServersSlice)) {
-        failedServers.push_back(server.key.copyString());
+        failedServers.emplace(server.key.stringView());
       }
       LOG_TOPIC("52626", DEBUG, Logger::HEARTBEAT)
           << "Updating failed servers list.";
       auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
-      ci.setFailedServers(failedServers);
+      ci.setFailedServers(std::move(failedServers));
       transaction::cluster::abortTransactionsWithFailedServers(ci);
     } else {
       LOG_TOPIC("80491", WARN, Logger::HEARTBEAT)
@@ -697,9 +697,9 @@ void HeartbeatThread::getNewsFromAgencyForCoordinator() {
         {AgencyCommHelper::path(), "Target", "FailedServers"}));
 
     if (failedServersSlice.isObject()) {
-      std::vector<ServerID> failedServers = {};
+      containers::FlatHashSet<ServerID> failedServers;
       for (auto const& server : VPackObjectIterator(failedServersSlice)) {
-        failedServers.push_back(server.key.copyString());
+        failedServers.emplace(server.key.stringView());
       }
       LOG_TOPIC("43332", DEBUG, Logger::HEARTBEAT)
           << "Updating failed servers list.";

@@ -2541,6 +2541,21 @@ void RestReplicationHandler::handleCommandAddFollower() {
     return;
   }
 
+  TRI_IF_FAILURE("LeaderWrongChecksumOnSoftLock" + col->name()) {
+    // Check if we are a softLock, if yes simulate non-matching checksums.
+    transaction::Manager* mgr = transaction::ManagerFeature::manager();
+    TRI_ASSERT(mgr != nullptr);
+    auto trxCtxtLease =
+        mgr->leaseManagedTrx(readLockId, AccessMode::Type::READ, true);
+    if (trxCtxtLease) {
+      transaction::Methods trx{trxCtxtLease};
+      if (!trx.isLocked(col.get(), AccessMode::Type::EXCLUSIVE)) {
+        referenceChecksum =
+            ResultT<std::string>::success("ThisCannotBeMatched");
+      }
+    }
+  }
+
   LOG_TOPIC("40b17", DEBUG, Logger::REPLICATION)
       << "Compare Leader: " << referenceChecksum.get()
       << " == Follower: " << checksumSlice.copyString();
@@ -2800,6 +2815,10 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
     // This has potential to never ever finish, so we need a short
     // hard lock for the final sync.
     lockType = AccessMode::Type::EXCLUSIVE;
+
+    TRI_IF_FAILURE("LeaderBlockRequestsLanesForSyncOnShard" + col->name()) {
+      TRI_AddFailurePointDebugging("BlockSchedulerMediumQueue");
+    }
   }
 
   LOG_TOPIC("4fac2", DEBUG, Logger::REPLICATION)
@@ -3722,4 +3741,38 @@ void RestReplicationHandler::registerTombstone(TransactionId id) const {
                  RestReplicationHandler::_tombstoneTimeout);
   }
   timeoutTombstones();
+}
+RequestLane RestReplicationHandler::lane() const {
+  auto const& suffixes = _request->suffixes();
+
+  size_t const len = suffixes.size();
+  if (len >= 1) {
+    std::string const& command = suffixes[0];
+    if (command == AddFollower) {
+      // Adding another server into the follower list
+      // should be done quickly. The follower at this stage
+      // is assumed to be in-sync, but cannot be used for failover
+      // as long as it is not added. So get this sorted out quickly.
+      return RequestLane::CLUSTER_INTERNAL;
+    }
+    if (command == HoldReadLockCollection) {
+      if (_request->requestType() == RequestType::DELETE_REQ) {
+        // A deleting request here, will allow as to unlock
+        // the collection / shard in question.
+        // In case of a hard-lock this shard is actually blocking
+        // other operations. So let's hurry up with this.
+        return RequestLane::CLUSTER_INTERNAL;
+      } else {
+        // This process will determine the start of a replication.
+        // It can be delayed a bit and can be queued after other write
+        // operations The follower is not in sync and requires to catch up
+        // anyways.
+        return RequestLane::SERVER_REPLICATION_CATCHUP;
+      }
+    }
+    if (command == RemoveFollower || command == LoggerFollow) {
+      return RequestLane::SERVER_REPLICATION_CATCHUP;
+    }
+  }
+  return RequestLane::SERVER_REPLICATION;
 }

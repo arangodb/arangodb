@@ -1327,7 +1327,9 @@ function abortSurvivors(arangod, options) {
   }
 }
 
-function checkInstanceAlive (instanceInfo, options) {
+// skipHealthCheck can be set to true to avoid a call to /_admin/cluster/health
+// on the coordinator. This is necessary if only the agency is running yet.
+function checkInstanceAlive(instanceInfo, options, {skipHealthCheck = false} = {}) {
   if (options.activefailover &&
       instanceInfo.hasOwnProperty('authOpts') &&
       (instanceInfo.url !== instanceInfo.agencyUrl)
@@ -1350,26 +1352,21 @@ function checkInstanceAlive (instanceInfo, options) {
     }
     return previous && ret;
   }, true);
-  if (rc && options.cluster && instanceInfo.arangods.length > 1) {
-    try {
-      let health = require('internal').clusterHealth();
-      rc = instanceInfo.arangods.reduce((previous, arangod) => {
-        if (arangod.role === "agent") return true;
-        if (arangod.role === "single") return true;
-        if (health.hasOwnProperty(arangod.id)) {
-          if (health[arangod.id].Status === "GOOD") {
-            return true;
-          } else {
-            print(RED + "ClusterHealthCheck failed " + arangod.id + " has status " + health[arangod.id].Status + " (which is not equal to GOOD)");
-            return false;
-          }
-        } else {
-          print(RED + "ClusterHealthCheck failed " + arangod.id + " does not have health property");
-          return false;
-        }
-      }, true);
-    } catch (x) {
-      print(Date() + " ClusterHealthCheck failed: " + x);
+  if (rc && options.cluster && !skipHealthCheck && instanceInfo.arangods.length > 1) {
+    const seconds = x => x * 1000;
+    const checkAllAlive = () => instanceInfo.arangods.every(arangod => checkArangoAlive(arangod, options));
+    let first = true;
+    rc = false;
+    for (
+      const start = Date.now();
+      !rc && Date.now() < start + seconds(60) && checkAllAlive();
+      internal.sleep(1)
+    ) {
+      rc = checkServersGOOD(instanceInfo);
+      if (first) {
+        print(RESET + "Waiting for all servers to go GOOD...");
+        first = false;
+      }
     }
   }
   if (!rc) {
@@ -2022,7 +2019,7 @@ function startInstanceCluster (instanceInfo, protocol, options,
 
   let agencyEndpoint = instanceInfo.endpoint;
   instanceInfo.agencyUrl = instanceInfo.url;
-  if (!checkInstanceAlive(instanceInfo, options)) {
+  if (!checkInstanceAlive(instanceInfo, options, {skipHealthCheck: true})) {
     throw new Error('startup of agency failed! bailing out!');
   }
 
@@ -2488,7 +2485,7 @@ function restartOneInstance(options, oneInstance, instanceInfo, moreArgs) {
     print("relaunching: " + JSON.stringify(oneInstance));
     launchInstance(options, oneInstance, moreArgs);
   }
- 
+
   if (options.cluster && !options.skipReconnect) {
     checkClusterAlive(options, instanceInfo, {}); // todo addArgs
     print("reconnecting " + instanceInfo.endpoint);
@@ -2527,8 +2524,7 @@ function reStartInstance(options, instanceInfo, moreArgs) {
         agencyInstance.arangods.push(_.clone(oneInstance));
       }
     });
-    let agencyEndpoint = instanceInfo.endpoint;
-    if (!checkInstanceAlive(agencyInstance, options)) {
+    if (!checkInstanceAlive(agencyInstance, options, {skipHealthCheck: true})) {
       throw new Error('startup of agency failed! bailing out!');
     }
   }
@@ -2587,6 +2583,34 @@ function aggregateFatalErrors(currentTest) {
     serverFailMessagesLocal = "";
   }
 }
+
+function checkServersGOOD(instanceInfo) {
+  try {
+    const health = internal.clusterHealth();
+    return instanceInfo.arangods.every((arangod) => {
+      if (arangod.role === "agent" || arangod.role === "single") {
+        return true;
+      }
+      if (health.hasOwnProperty(arangod.id)) {
+        if (health[arangod.id].Status === "GOOD") {
+          return true;
+        } else {
+          print(RED + "ClusterHealthCheck failed " + arangod.id + " has status "
+            + health[arangod.id].Status + " (which is not equal to GOOD)");
+          return false;
+        }
+      } else {
+        print(RED + "ClusterHealthCheck failed " + arangod.id
+          + " does not have health property");
+        return false;
+      }
+    });
+  } catch(e) {
+    print("Error checking cluster health " + e);
+    return false;
+  }
+}
+
 // exports.analyzeServerCrash = analyzeServerCrash;
 exports.makeArgs = {
   arangod: makeArgsArangod,
@@ -2634,6 +2658,7 @@ exports.restartOneInstance = restartOneInstance;
 exports.setupBinaries = setupBinaries;
 exports.executableExt = executableExt;
 exports.serverCrashed = serverCrashedLocal;
+exports.checkServersGOOD = checkServersGOOD;
 
 exports.aggregateFatalErrors = aggregateFatalErrors;
 exports.cleanupDBDirectoriesAppend = cleanupDBDirectoriesAppend;

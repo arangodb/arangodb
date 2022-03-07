@@ -45,6 +45,11 @@ struct UnconfiguredStateManager
   using LeaderType = typename ReplicatedStateTraits<S>::LeaderType;
   using CoreType = typename ReplicatedStateTraits<S>::CoreType;
 
+  using WaitForAppliedQueue =
+      typename ReplicatedState<S>::StateManagerBase::WaitForAppliedQueue;
+  using WaitForAppliedPromise =
+      typename ReplicatedState<S>::StateManagerBase::WaitForAppliedQueue;
+
   UnconfiguredStateManager(
       std::shared_ptr<ReplicatedState<S>> const& parent,
       std::shared_ptr<replicated_log::LogUnconfiguredParticipant>
@@ -52,13 +57,14 @@ struct UnconfiguredStateManager
       std::unique_ptr<CoreType> core,
       std::unique_ptr<ReplicatedStateToken> token);
 
-  void run();
+  void run() override;
 
   [[nodiscard]] auto getStatus() const -> StateStatus override;
 
   [[nodiscard]] auto resign() && noexcept
-      -> std::pair<std::unique_ptr<CoreType>,
-                   std::unique_ptr<ReplicatedStateToken>> override;
+      -> std::tuple<std::unique_ptr<CoreType>,
+                    std::unique_ptr<ReplicatedStateToken>,
+                    DeferredAction> override;
 
  private:
   std::weak_ptr<ReplicatedState<S>> _parent;

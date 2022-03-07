@@ -37,14 +37,12 @@
 
 #include <cstdint>
 #include <limits>
-#include <list>
 #include <memory>
 
-namespace arangodb {
-namespace cache {
+namespace arangodb::cache {
 
-class PlainCache;          // forward declaration
-class TransactionalCache;  // forward declaration
+class PlainCache;
+class TransactionalCache;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief The common structure of all caches managed by Manager.
@@ -64,22 +62,21 @@ class Cache : public std::enable_shared_from_this<Cache> {
     friend class TransactionalCache;
   };
 
+  Cache(Manager* manager, std::uint64_t id, Metadata&& metadata,
+        std::shared_ptr<Table> table, bool enableWindowedStats,
+        std::function<Table::BucketClearer(Metadata*)> bucketClearer,
+        std::size_t slotsPerBucket);
+
  public:
+  virtual ~Cache() = default;
+
   typedef FrequencyBuffer<uint8_t> StatBuffer;
 
-  static const std::uint64_t minSize;
-  static const std::uint64_t minLogSize;
+  static constexpr std::uint64_t minSize = 16384;
+  static constexpr std::uint64_t minLogSize = 14;
 
   static constexpr std::uint64_t triesGuarantee =
       std::numeric_limits<std::uint64_t>::max();
-
- public:
-  Cache(ConstructionGuard guard, Manager* manager, std::uint64_t id,
-        Metadata&& metadata, std::shared_ptr<Table> table,
-        bool enableWindowedStats,
-        std::function<Table::BucketClearer(Metadata*)> bucketClearer,
-        std::size_t slotsPerBucket);
-  virtual ~Cache() = default;
 
   // primary functionality; documented in derived classes
   virtual Finding find(void const* key, std::uint32_t keySize) = 0;
@@ -90,7 +87,7 @@ class Cache : public std::enable_shared_from_this<Cache> {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns the ID for this cache.
   //////////////////////////////////////////////////////////////////////////////
-  std::uint64_t id() const { return _id; }
+  std::uint64_t id() const noexcept { return _id; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns the total memory usage for this cache in bytes.
@@ -128,38 +125,38 @@ class Cache : public std::enable_shared_from_this<Cache> {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Check whether the cache is currently in the process of resizing.
   //////////////////////////////////////////////////////////////////////////////
-  bool isResizing();
+  bool isResizing() const noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Check whether the cache is currently in the process of migrating.
   //////////////////////////////////////////////////////////////////////////////
-  bool isMigrating();
+  bool isMigrating() const noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Chedk whether the cache is currently migrating or resizing.
   //////////////////////////////////////////////////////////////////////////////
-  bool isBusy();
+  bool isBusy() const noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Check whether the cache has begun the process of shutting down.
   //////////////////////////////////////////////////////////////////////////////
-  inline bool isShutdown() const { return _shutdown.load(); }
+  inline bool isShutdown() const noexcept { return _shutdown.load(); }
 
   struct Inserter {
     Inserter(Cache& cache, void const* key, std::size_t keySize,
              void const* value, std::size_t valueSize,
-             std::function<bool(Result const&)> retry);
+             std::function<bool(Result const&)> const& retry);
     Result status;
   };
 
  protected:
   static constexpr std::uint64_t triesFast = 200;
   static constexpr std::uint64_t triesSlow = 10000;
+  static constexpr std::uint64_t findStatsCapacity = 16384;
 
   basics::ReadWriteSpinLock _taskLock;
   std::atomic<bool> _shutdown;
 
-  static std::uint64_t _findStatsCapacity;
   bool _enableWindowedStats;
   std::unique_ptr<StatBuffer> _findStats;
   mutable basics::SharedCounter<64> _findHits;
@@ -167,7 +164,7 @@ class Cache : public std::enable_shared_from_this<Cache> {
 
   // allow communication with manager
   Manager* _manager;
-  std::uint64_t _id;
+  std::uint64_t const _id;
   Metadata _metadata;
 
  private:
@@ -176,7 +173,7 @@ class Cache : public std::enable_shared_from_this<Cache> {
   std::shared_ptr<Table> _table;
 
   Table::BucketClearer _bucketClearer;
-  std::size_t _slotsPerBucket;
+  std::size_t const _slotsPerBucket;
 
   // manage eviction rate
   basics::SharedCounter<64> _insertsTotal;
@@ -227,5 +224,4 @@ class Cache : public std::enable_shared_from_this<Cache> {
                              std::shared_ptr<Table> newTable) = 0;
 };
 
-};  // end namespace cache
-};  // end namespace arangodb
+}  // end namespace arangodb::cache

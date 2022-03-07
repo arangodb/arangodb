@@ -44,6 +44,7 @@
 #include "Replication2/ReplicatedState/LeaderStateManager.tpp"
 #include "Replication2/ReplicatedState/FollowerStateManager.tpp"
 #include "Replication2/ReplicatedState/UnconfiguredStateManager.tpp"
+#include "Replication2/ReplicatedState/StateInterfaces.h"
 
 namespace arangodb::replication2::replicated_state {
 
@@ -65,6 +66,27 @@ auto IReplicatedFollowerState<S>::getStream() const
   }
 
   THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE);
+}
+
+template<typename S>
+void IReplicatedFollowerState<S>::setStateManager(
+    std::shared_ptr<FollowerStateManager<S>> manager) noexcept {
+  _manager = manager;
+  _stream = manager->getStream();
+  TRI_ASSERT(_stream != nullptr);
+}
+
+template<typename S>
+auto IReplicatedFollowerState<S>::waitForApplied(LogIndex index)
+    -> futures::Future<futures::Unit> {
+  if (auto manager = _manager.lock(); manager != nullptr) {
+    return manager->waitForApplied(index);
+  } else {
+    WaitForAppliedFuture future(
+        std::make_exception_ptr(replicated_log::ParticipantResignedException(
+            TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED, ADB_HERE)));
+    return future;
+  }
 }
 
 template<typename S>
@@ -189,7 +211,7 @@ auto ReplicatedState<S>::GuardedData::runFollower(
       std::move(token), _self.factory);
   currentManager = manager;
 
-  return DeferredAction{[manager]() noexcept { manager->run(); }};
+  return DeferredAction([manager]() noexcept { manager->run(); });
 } catch (std::exception const& e) {
   LOG_TOPIC("ab9de", DEBUG, Logger::REPLICATED_STATE)
       << "runFollower caught exception: " << e.what();
@@ -207,7 +229,7 @@ auto ReplicatedState<S>::GuardedData::runLeader(
       std::move(token), _self.factory);
   currentManager = manager;
 
-  return DeferredAction{[manager]() noexcept { manager->run(); }};
+  return DeferredAction([manager]() noexcept { manager->run(); });
 } catch (std::exception const& e) {
   LOG_TOPIC("016f3", DEBUG, Logger::REPLICATED_STATE)
       << "run leader caught exception: " << e.what();
@@ -227,7 +249,7 @@ auto ReplicatedState<S>::GuardedData::runUnconfigured(
       std::move(core), std::move(token));
   currentManager = manager;
 
-  return DeferredAction{[manager]() noexcept { manager->run(); }};
+  return DeferredAction([manager]() noexcept { manager->run(); });
 } catch (std::exception const& e) {
   LOG_TOPIC("6f1eb", DEBUG, Logger::REPLICATED_STATE)
       << "run unconfigured caught exception: " << e.what();
@@ -237,8 +259,10 @@ auto ReplicatedState<S>::GuardedData::runUnconfigured(
 template<typename S>
 auto ReplicatedState<S>::GuardedData::forceRebuild() -> DeferredAction {
   try {
-    auto [core, token] = std::move(*currentManager).resign();
-    return rebuild(std::move(core), std::move(token));
+    auto [core, token, queueAction] = std::move(*currentManager).resign();
+    auto runAction = rebuild(std::move(core), std::move(token));
+    return DeferredAction::combine(std::move(queueAction),
+                                   std::move(runAction));
   } catch (std::exception const& e) {
     LOG_TOPIC("af348", DEBUG, Logger::REPLICATED_STATE)
         << "forced rebuild caught exception: " << e.what();
@@ -249,12 +273,13 @@ auto ReplicatedState<S>::GuardedData::forceRebuild() -> DeferredAction {
 template<typename S>
 auto ReplicatedState<S>::GuardedData::flush(StateGeneration planGeneration)
     -> DeferredAction {
-  auto [core, token] = std::move(*currentManager).resign();
+  auto [core, token, queueAction] = std::move(*currentManager).resign();
   if (token->generation != planGeneration) {
     token = std::make_unique<ReplicatedStateToken>(planGeneration);
   }
 
-  return rebuild(std::move(core), std::move(token));
+  auto runAction = rebuild(std::move(core), std::move(token));
+  return DeferredAction::combine(std::move(queueAction), std::move(runAction));
 }
 
 }  // namespace arangodb::replication2::replicated_state

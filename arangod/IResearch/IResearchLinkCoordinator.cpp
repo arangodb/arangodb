@@ -84,10 +84,10 @@ IResearchLinkCoordinator::IResearchLinkCoordinator(
   _sparse = true;   // always sparse
 }
 
-Result IResearchLinkCoordinator::init(
-    velocypack::Slice definition,
-    IResearchLink::InitCallback const& initCallback) {
-  auto r = IResearchLink::init(definition, initCallback);
+Result IResearchLinkCoordinator::init(velocypack::Slice definition) {
+  bool pathExists = false;
+  auto r = IResearchLink::init(definition, pathExists);
+  TRI_ASSERT(!pathExists);
   if (!r.ok()) {
     return r;
   }
