@@ -34,9 +34,7 @@ struct ReplicatedLogMethods;
 
 class RestLogHandler : public RestVocbaseBaseHandler {
  public:
-  RestLogHandler(application_features::ApplicationServer&, GeneralRequest*,
-                 GeneralResponse*);
-  ~RestLogHandler() override;
+  RestLogHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
 
  public:
   RestStatus execute() final;

@@ -212,8 +212,8 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
     EXPECT_TRUE(true == index->sparse());
     EXPECT_TRUE((arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK ==
                  index->type()));
-    EXPECT_TRUE(
-        (arangodb::iresearch::DATA_SOURCE_TYPE.name() == index->typeName()));
+    EXPECT_TRUE((arangodb::iresearch::StaticStrings::DataSourceType ==
+                 index->typeName()));
     EXPECT_TRUE((false == index->unique()));
 
     arangodb::iresearch::IResearchLinkMeta actualMeta;
@@ -244,9 +244,6 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
     EXPECT_TRUE(figuresSlice.hasKey("numLiveDocs"));
     EXPECT_TRUE(figuresSlice.get("numLiveDocs").isNumber());
     EXPECT_EQ(0, figuresSlice.get("numLiveDocs").getNumber<size_t>());
-    EXPECT_TRUE(figuresSlice.hasKey("numBufferedDocs"));
-    EXPECT_TRUE(figuresSlice.get("numBufferedDocs").isNumber());
-    EXPECT_EQ(0, figuresSlice.get("numBufferedDocs").getNumber<size_t>());
     EXPECT_TRUE(figuresSlice.hasKey("numSegments"));
     EXPECT_TRUE(figuresSlice.get("numSegments").isNumber());
     EXPECT_EQ(0, figuresSlice.get("numSegments").getNumber<size_t>());
@@ -306,9 +303,6 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
       EXPECT_TRUE(figuresSlice.hasKey("numLiveDocs"));
       EXPECT_TRUE(figuresSlice.get("numLiveDocs").isNumber());
       EXPECT_EQ(0, figuresSlice.get("numLiveDocs").getNumber<size_t>());
-      EXPECT_TRUE(figuresSlice.hasKey("numBufferedDocs"));
-      EXPECT_TRUE(figuresSlice.get("numBufferedDocs").isNumber());
-      EXPECT_EQ(0, figuresSlice.get("numBufferedDocs").getNumber<size_t>());
       EXPECT_TRUE(figuresSlice.hasKey("numSegments"));
       EXPECT_TRUE(figuresSlice.get("numSegments").isNumber());
       EXPECT_EQ(0, figuresSlice.get("numSegments").getNumber<size_t>());
@@ -369,8 +363,8 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
     EXPECT_TRUE(true == index->sparse());
     EXPECT_TRUE((arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK ==
                  index->type()));
-    EXPECT_TRUE(
-        (arangodb::iresearch::DATA_SOURCE_TYPE.name() == index->typeName()));
+    EXPECT_TRUE((arangodb::iresearch::StaticStrings::DataSourceType ==
+                 index->typeName()));
     EXPECT_TRUE((false == index->unique()));
 
     {
@@ -400,9 +394,6 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
       EXPECT_TRUE(figuresSlice.hasKey("numLiveDocs"));
       EXPECT_TRUE(figuresSlice.get("numLiveDocs").isNumber());
       EXPECT_EQ(0, figuresSlice.get("numLiveDocs").getNumber<size_t>());
-      EXPECT_TRUE(figuresSlice.hasKey("numBufferedDocs"));
-      EXPECT_TRUE(figuresSlice.get("numBufferedDocs").isNumber());
-      EXPECT_EQ(0, figuresSlice.get("numBufferedDocs").getNumber<size_t>());
       EXPECT_TRUE(figuresSlice.hasKey("numSegments"));
       EXPECT_TRUE(figuresSlice.get("numSegments").isNumber());
       EXPECT_EQ(0, figuresSlice.get("numSegments").getNumber<size_t>());
@@ -431,9 +422,6 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
       EXPECT_TRUE(figuresSlice.hasKey("numLiveDocs"));
       EXPECT_TRUE(figuresSlice.get("numLiveDocs").isNumber());
       EXPECT_EQ(0, figuresSlice.get("numLiveDocs").getNumber<size_t>());
-      EXPECT_TRUE(figuresSlice.hasKey("numBufferedDocs"));
-      EXPECT_TRUE(figuresSlice.get("numBufferedDocs").isNumber());
-      EXPECT_EQ(0, figuresSlice.get("numBufferedDocs").getNumber<size_t>());
       EXPECT_TRUE(figuresSlice.hasKey("numSegments"));
       EXPECT_TRUE(figuresSlice.get("numSegments").isNumber());
       EXPECT_EQ(0, figuresSlice.get("numSegments").getNumber<size_t>());

@@ -23,6 +23,8 @@
 #pragma once
 
 #include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/ReplicatedLog/LogEntries.h"
+#include "Replication2/ReplicatedState/AgencySpecification.h"
 
 #include <variant>
 
@@ -37,9 +39,8 @@ class Future;
 namespace arangodb::replication2 {
 
 namespace agency {
-struct LogPlanSpecification;
-struct LogPlanTermSpecification;
-}  // namespace agency
+struct LogTarget;
+}
 
 namespace replicated_log {
 struct LogStatus;
@@ -63,8 +64,8 @@ struct ReplicatedLogMethods {
                    replication2::replicated_log::GlobalStatus>;
 
   virtual ~ReplicatedLogMethods() = default;
-  virtual auto createReplicatedLog(agency::LogPlanSpecification const& spec)
-      const -> futures::Future<Result> = 0;
+  virtual auto createReplicatedLog(agency::LogTarget const& spec) const
+      -> futures::Future<Result> = 0;
   virtual auto deleteReplicatedLog(LogId id) const
       -> futures::Future<Result> = 0;
   virtual auto getReplicatedLogs() const
@@ -97,6 +98,22 @@ struct ReplicatedLogMethods {
 
   static auto createInstance(TRI_vocbase_t& vocbase)
       -> std::shared_ptr<ReplicatedLogMethods>;
+};
+
+struct ReplicatedStateMethods {
+  virtual ~ReplicatedStateMethods() = default;
+
+  virtual auto createReplicatedState(
+      replicated_state::agency::Target const& spec) const
+      -> futures::Future<Result> = 0;
+  virtual auto deleteReplicatedLog(LogId id) const
+      -> futures::Future<Result> = 0;
+
+  virtual auto getLocalStatus(LogId) const
+      -> futures::Future<replicated_state::StateStatus> = 0;
+
+  static auto createInstance(TRI_vocbase_t& vocbase)
+      -> std::shared_ptr<ReplicatedStateMethods>;
 };
 
 }  // namespace arangodb::replication2

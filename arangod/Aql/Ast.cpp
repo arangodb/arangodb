@@ -23,7 +23,6 @@
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "Ast.h"
 
@@ -47,6 +46,7 @@
 #include "Basics/tryEmplaceHelper.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
+#include "Containers/FlatHashSet.h"
 #include "Containers/SmallVector.h"
 #include "Graph/Graph.h"
 #include "RestServer/DatabaseFeature.h"
@@ -61,6 +61,21 @@ using namespace arangodb::aql;
 namespace StringUtils = arangodb::basics::StringUtils;
 
 namespace {
+
+struct ValidateAndOptimizeContext {
+  explicit ValidateAndOptimizeContext(transaction::Methods& t) : trx(t) {}
+
+  std::unordered_set<std::string> writeCollectionsSeen;
+  std::unordered_map<Variable const*, AstNode const*> variableDefinitions;
+  AqlFunctionsInternalCache aqlFunctionsInternalCache;
+  transaction::Methods& trx;
+  int64_t stopOptimizationRequests = 0;
+  int64_t nestingLevel = 0;     // only used for subqueries
+  int64_t filterDepth = -1;     // -1 = not in filter
+  uint64_t recursionDepth = 0;  // current depth of the tree we walk
+  bool hasSeenAnyWriteNode = false;
+  bool hasSeenWriteNodeInCurrentScope = false;
+};
 
 auto doNothingVisitor = [](AstNode const*) {};
 
@@ -253,6 +268,12 @@ Ast::Ast(QueryContext& query,
 /// @brief destroy the AST
 Ast::~Ast() = default;
 
+// frees all data
+void Ast::clear() noexcept { _resources.clear(); }
+
+// frees most data (keeps a bit of memory around to avoid later re-allocations)
+void Ast::clearMost() noexcept { _resources.clearMost(); }
+
 /// @brief convert the AST into VelocyPack
 void Ast::toVelocyPack(VPackBuilder& builder, bool verbose) const {
   {
@@ -425,26 +446,6 @@ AstNode* Ast::createNodeLet(AstNode const* variable,
 
   node->addMember(variable);
   node->addMember(expression);
-
-  return node;
-}
-
-/// @brief create an AST let node, with an IF condition
-AstNode* Ast::createNodeLet(char const* variableName, size_t nameLength,
-                            AstNode const* expression,
-                            AstNode const* condition) {
-  if (variableName == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
-
-  AstNode* node = createNode(NODE_TYPE_LET);
-  node->reserve(3);
-
-  AstNode* variable =
-      createNodeVariable(std::string_view(variableName, nameLength), true);
-  node->addMember(variable);
-  node->addMember(expression);
-  node->addMember(condition);
 
   return node;
 }
@@ -1795,7 +1796,7 @@ void Ast::injectBindParameters(
                                 param);
         }
 
-        VPackSlice value = parameters.markUsed(param);
+        auto [value, cachedNode] = parameters.get(param);
         if (value.isNone()) {
           // query uses a bind parameter that was not defined by the user
           ::throwFormattedError(_query, TRI_ERROR_QUERY_BIND_PARAMETER_MISSING,
@@ -1804,23 +1805,53 @@ void Ast::injectBindParameters(
 
         if (node->type == NODE_TYPE_PARAMETER) {
           auto const constantParameter = node->isConstant();
-          // bind parameter containing a value literal
-          node = nodeFromVPack(value, true);
 
-          if (node != nullptr) {
+          if (cachedNode != nullptr) {
+            // we have already processed this bind parameter and turned it into
+            // an AstNode before.
+            // now only create a shallow copy of the bind parameter.
+            node = shallowCopyForModify(cachedNode);
+
             if (constantParameter) {
-              // already mark node as constant here if parameters are constant
-              node->setFlag(DETERMINED_CONSTANT, VALUE_CONSTANT);
+              TRI_ASSERT(node->hasFlag(DETERMINED_CONSTANT));
+              TRI_ASSERT(node->hasFlag(VALUE_CONSTANT));
             }
-            // mark node as simple
-            node->setFlag(DETERMINED_SIMPLE, VALUE_SIMPLE);
-            // mark node as executable on db-server
-            node->setFlag(DETERMINED_RUNONDBSERVER, VALUE_RUNONDBSERVER);
-            // mark node as deterministic
-            node->setFlag(DETERMINED_NONDETERMINISTIC);
+            TRI_ASSERT(node->hasFlag(DETERMINED_SIMPLE));
+            TRI_ASSERT(node->hasFlag(VALUE_SIMPLE));
+            TRI_ASSERT(node->hasFlag(DETERMINED_RUNONDBSERVER));
+            TRI_ASSERT(node->hasFlag(VALUE_RUNONDBSERVER));
+            TRI_ASSERT(node->hasFlag(DETERMINED_NONDETERMINISTIC));
+            TRI_ASSERT(!node->hasFlag(VALUE_NONDETERMINISTIC));
+            TRI_ASSERT(node->hasFlag(FLAG_BIND_PARAMETER));
+          } else {
+            // bind parameter containing a value literal. not processed before.
+            node = nodeFromVPack(value, true);
 
-            // finally note that the node was created from a bind parameter
-            node->setFlag(FLAG_BIND_PARAMETER);
+            if (node != nullptr) {
+              if (constantParameter) {
+                // already mark node as constant here if parameters are constant
+                node->setFlag(DETERMINED_CONSTANT, VALUE_CONSTANT);
+              }
+              // mark node as simple
+              node->setFlag(DETERMINED_SIMPLE, VALUE_SIMPLE);
+              // mark node as executable on db-server
+              node->setFlag(DETERMINED_RUNONDBSERVER, VALUE_RUNONDBSERVER);
+              // mark node as deterministic
+              node->setFlag(DETERMINED_NONDETERMINISTIC);
+
+              // finally note that the node was created from a bind parameter
+              node->setFlag(FLAG_BIND_PARAMETER);
+
+              // register the AstNode for this bind parameter, so when the query
+              // string refers to the same bind parameter multiple times, we
+              // don't have to regenerate an AstNode for it. in case a bind
+              // parameter is used multiple times in the query string, upon any
+              // following occurrences the AstNode registered here will be
+              // found, and only a shallow copy of the existing AstNode will be
+              // created. This helps to save memory and processing time for
+              // large bind parameter values.
+              parameters.registerNode(param, node);
+            }
           }
         } else {
           TRI_ASSERT(node->type == NODE_TYPE_PARAMETER_DATASOURCE);
@@ -1887,7 +1918,25 @@ void Ast::injectBindParameters(
               }
             }
           }
+
+          TRI_ASSERT(newNode != nullptr);
           node = newNode;
+
+          if (cachedNode == nullptr) {
+            // store the just created AstNode for this bind parameter, to mark
+            // the bind parameter as being "used". It does not matter which
+            // AstNode we store for the bind parameter, but we have to store one
+            // if none was yet registered. Otherwise we'll run into an error
+            // "unused bind parameter
+            // '@...' later.
+            parameters.registerNode(param, node);
+          } else {
+            // double check that the already registered node has the correct
+            // type
+            TRI_ASSERT(cachedNode->type == NODE_TYPE_VIEW ||
+                       cachedNode->type == NODE_TYPE_COLLECTION);
+            TRI_ASSERT(cachedNode->getStringView() == name);
+          }
         }
       } else if (node->type == NODE_TYPE_BOUND_ATTRIBUTE_ACCESS) {
         // look at second sub-node. this is the (replaced) bind parameter
@@ -1980,13 +2029,15 @@ void Ast::injectBindParameters(
     }
   }
 
-  // visit all bind parameters to ensure that they are all marked as used
-  parameters.visit([](std::string const& key, VPackSlice /*value*/, bool used) {
-    if (!used) {
-      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_BIND_PARAMETER_UNDECLARED,
-                                    key.c_str());
-    }
-  });
+  // visit all bind parameters to ensure that they have all been accessed via
+  // registerNode
+  parameters.visit(
+      [](std::string const& key, VPackSlice /*value*/, AstNode* node) {
+        if (node == nullptr) {
+          THROW_ARANGO_EXCEPTION_PARAMS(
+              TRI_ERROR_QUERY_BIND_PARAMETER_UNDECLARED, key.c_str());
+        }
+      });
 }
 
 /// @brief replace an attribute access with just the variable
@@ -2151,22 +2202,7 @@ size_t Ast::extractParallelism(AstNode const* optionsNode) {
 /// bind parameter injection. merging this pass with the regular AST
 /// optimizations saves one extra pass over the AST
 void Ast::validateAndOptimize(transaction::Methods& trx) {
-  struct TraversalContext {
-    TraversalContext(transaction::Methods& t) : trx(t) {}
-
-    std::unordered_set<std::string> writeCollectionsSeen;
-    std::unordered_map<Variable const*, AstNode const*> variableDefinitions;
-    AqlFunctionsInternalCache aqlFunctionsInternalCache;
-    transaction::Methods& trx;
-    int64_t stopOptimizationRequests = 0;
-    int64_t nestingLevel = 0;     // only used for subqueries
-    int64_t filterDepth = -1;     // -1 = not in filter
-    uint64_t recursionDepth = 0;  // current depth of the tree we walk
-    bool hasSeenAnyWriteNode = false;
-    bool hasSeenWriteNodeInCurrentScope = false;
-  };
-
-  TraversalContext context(trx);
+  ::ValidateAndOptimizeContext context(trx);
 
   auto preVisitor = [&](AstNode const* node) -> bool {
     auto ctx = &context;
@@ -2189,7 +2225,7 @@ void Ast::validateAndOptimize(transaction::Methods& trx) {
 
       if (func->hasFlag(Function::Flags::NoEval)) {
         // NOOPT will turn all function optimizations off
-        ++(ctx->stopOptimizationRequests);
+        ++ctx->stopOptimizationRequests;
       }
       if (node->willUseV8()) {
         setWillUseV8();
@@ -2206,6 +2242,8 @@ void Ast::validateAndOptimize(transaction::Methods& trx) {
     } else if (node->type == NODE_TYPE_SUBQUERY) {
       ++ctx->nestingLevel;
     } else if (node->hasFlag(FLAG_BIND_PARAMETER)) {
+      // don't traverse deeper into values that were created
+      // from a bind parameter
       return false;
     } else if (node->type == NODE_TYPE_REMOVE ||
                node->type == NODE_TYPE_INSERT ||
@@ -2221,6 +2259,11 @@ void Ast::validateAndOptimize(transaction::Methods& trx) {
       return false;
     } else if (node->type == NODE_TYPE_ARRAY && node->isConstant()) {
       // nothing to be done in constant arrays
+      return false;
+    } else if (node->type == NODE_TYPE_OBJECT && node->isConstant() &&
+               node->hasFlag(DETERMINED_CHECKUNIQUENESS) &&
+               !node->hasFlag(VALUE_CHECKUNIQUENESS)) {
+      // nothing to be done in constant objects with known-to-be-unique keys
       return false;
     }
 
@@ -2380,7 +2423,21 @@ void Ast::validateAndOptimize(transaction::Methods& trx) {
     // reference to a variable, may be able to insert the variable value
     // directly
     if (node->type == NODE_TYPE_REFERENCE) {
-      return this->optimizeReference(node);
+      // this may be a reference to a variable name, not a reference to the
+      // result this can be happen for variables that are specified in the
+      // COLLECT...KEEP clause.
+      if (!node->hasFlag(FLAG_KEEP_VARIABLENAME)) {
+        // look up the definition for the variable
+        auto it = ctx->variableDefinitions.find(
+            static_cast<Variable*>(node->getData()));
+        if (it != ctx->variableDefinitions.end() &&
+            (*it).second->isConstant()) {
+          // if the definition is a constant, return the const value
+          return const_cast<AstNode*>((*it).second);
+        }
+      }
+      // optimization not allowed
+      return node;
     }
 
     // indexed access, e.g. a[0] or a['foo']
@@ -2394,20 +2451,20 @@ void Ast::validateAndOptimize(transaction::Methods& trx) {
       TRI_ASSERT(node->numMembers() == 2);
       Variable const* variable =
           static_cast<Variable const*>(node->getMember(0)->getData());
-      AstNode const* definition = node->getMember(1);
+      AstNode const* source = node->getMember(1);
       // recursively process assignments so we can track LET a = b LET c = b
 
-      while (definition->type == NODE_TYPE_REFERENCE) {
+      while (source->type == NODE_TYPE_REFERENCE) {
         auto it = ctx->variableDefinitions.find(
-            static_cast<Variable const*>(definition->getData()));
+            static_cast<Variable const*>(source->getData()));
         if (it == ctx->variableDefinitions.end()) {
           break;
         }
-        definition = (*it).second;
+        source = (*it).second;
       }
 
-      ctx->variableDefinitions.try_emplace(variable, definition);
-      return this->optimizeLet(node);
+      ctx->variableDefinitions.try_emplace(variable, source);
+      return node;
     }
 
     // FILTER
@@ -2759,6 +2816,12 @@ AstNode* Ast::clone(AstNode const* node) {
   if (type == NODE_TYPE_NOP) {
     // nop node is a singleton
     return const_cast<AstNode*>(node);
+  }
+
+  if (node->hasFlag(FLAG_BIND_PARAMETER)) {
+    // use a simplified (i.e. fast) shallow cloning for values
+    // originally created from bind parameters
+    return shallowCopyForModify(node);
   }
 
   AstNode* copy = createNode(type);
@@ -3638,33 +3701,6 @@ AstNode* Ast::optimizeFunctionCall(
   return nodeFromVPack(materializer.slice(a, false), true);
 }
 
-/// @brief optimizes a reference to a variable
-/// references are replaced with constants if possible
-AstNode* Ast::optimizeReference(AstNode* node) {
-  TRI_ASSERT(node != nullptr);
-  TRI_ASSERT(node->type == NODE_TYPE_REFERENCE);
-
-  auto variable = static_cast<Variable*>(node->getData());
-
-  if (variable == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
-
-  // constant propagation
-  if (variable->getConstAstNode() == nullptr) {
-    return node;
-  }
-
-  if (node->hasFlag(FLAG_KEEP_VARIABLENAME)) {
-    // this is a reference to a variable name, not a reference to the result
-    // this can be happen for variables that are specified in the COLLECT...KEEP
-    // clause
-    return node;
-  }
-
-  return variable->getConstAstNode();
-}
-
 /// @brief optimizes indexed access, e.g. a[0] or a['foo']
 AstNode* Ast::optimizeIndexedAccess(AstNode* node) {
   TRI_ASSERT(node != nullptr);
@@ -3690,33 +3726,6 @@ AstNode* Ast::optimizeIndexedAccess(AstNode* node) {
   }
 
   // can't optimize when we get here
-  return node;
-}
-
-/// @brief optimizes the LET statement
-AstNode* Ast::optimizeLet(AstNode* node) {
-  TRI_ASSERT(node != nullptr);
-  TRI_ASSERT(node->type == NODE_TYPE_LET);
-  TRI_ASSERT(node->numMembers() >= 2);
-
-  AstNode* variable = node->getMember(0);
-  AstNode* expression = node->getMember(1);
-
-  bool const hasCondition = (node->numMembers() > 2);
-
-  auto v = static_cast<Variable*>(variable->getData());
-  TRI_ASSERT(v != nullptr);
-
-  if (!hasCondition && expression->isConstant()) {
-    // if the expression assigned to the LET variable is constant, we'll store
-    // a pointer to the const value in the variable
-    // further optimizations can then use this pointer and optimize further,
-    // e.g.
-    // LET a = 1 LET b = a + 1, c = b + a can be optimized to LET a = 1 LET b =
-    // 2 LET c = 4
-    v->setConstAstNode(expression);
-  }
-
   return node;
 }
 
@@ -3782,29 +3791,25 @@ AstNode* Ast::optimizeObject(AstNode* node) {
   size_t const n = node->numMembers();
 
   // only useful to check when there are 2 or more keys
-  if (n < 2) {
-    // no need to check for uniqueless later
-    node->setFlag(DETERMINED_CHECKUNIQUENESS);
-    return node;
-  }
+  if (n >= 2) {
+    containers::FlatHashSet<std::string> keys;
 
-  std::unordered_set<std::string> keys;
+    for (size_t i = 0; i < n; ++i) {
+      auto member = node->getMemberUnchecked(i);
 
-  for (size_t i = 0; i < n; ++i) {
-    auto member = node->getMemberUnchecked(i);
-
-    if (member->type == NODE_TYPE_OBJECT_ELEMENT) {
-      // constant key
-      if (!keys.emplace(member->getString()).second) {
-        // duplicate key
+      if (member->type == NODE_TYPE_OBJECT_ELEMENT) {
+        // constant key
+        if (!keys.emplace(member->getString()).second) {
+          // duplicate key
+          node->setFlag(DETERMINED_CHECKUNIQUENESS, VALUE_CHECKUNIQUENESS);
+          return node;
+        }
+      } else if (member->type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT) {
+        // dynamic key... we don't know the key yet, so there's no
+        // way around check it at runtime later
         node->setFlag(DETERMINED_CHECKUNIQUENESS, VALUE_CHECKUNIQUENESS);
         return node;
       }
-    } else if (member->type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT) {
-      // dynamic key... we don't know the key yet, so there's no
-      // way around check it at runtime later
-      node->setFlag(DETERMINED_CHECKUNIQUENESS, VALUE_CHECKUNIQUENESS);
-      return node;
     }
   }
 

@@ -29,7 +29,6 @@
 #include "Basics/LocalTaskQueue.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/fasthash.h"
@@ -63,7 +62,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/VocBase/Methods/CollectionValidatorEE.h"
@@ -1206,7 +1204,7 @@ futures::Future<OperationResult> Collections::revisionId(
 
     iterator->allDocuments(
         [&](LocalDocumentId const&, VPackSlice doc) {
-          cb(doc.resolveExternal());
+          cb(doc);
           return true;
         },
         1000);
@@ -1291,19 +1289,31 @@ arangodb::Result Collections::checksum(LogicalCollection& collection,
   return trx.finish(res);
 }
 
+/// @brief the list of collection attributes that are allowed by user-input
+/// this is to avoid retyping the same list twice
+#define COMMON_ALLOWED_COLLECTION_INPUT_ATTRIBUTES                            \
+  StaticStrings::DataSourceSystem, StaticStrings::DataSourceId, "keyOptions", \
+      StaticStrings::WaitForSyncString, StaticStrings::CacheEnabled,          \
+      StaticStrings::ShardKeys, StaticStrings::NumberOfShards,                \
+      StaticStrings::DistributeShardsLike, "avoidServers",                    \
+      StaticStrings::IsSmart, StaticStrings::ShardingStrategy,                \
+      StaticStrings::GraphSmartGraphAttribute, StaticStrings::Schema,         \
+      StaticStrings::SmartJoinAttribute, StaticStrings::ReplicationFactor,    \
+      StaticStrings::MinReplicationFactor, /* deprecated */                   \
+      StaticStrings::WriteConcern, "servers"
+
 arangodb::velocypack::Builder Collections::filterInput(
-    arangodb::velocypack::Slice properties) {
+    arangodb::velocypack::Slice properties, bool allowDC2DCAttributes) {
+#ifdef USE_ENTERPRISE
+  if (allowDC2DCAttributes) {
+    return velocypack::Collection::keep(
+        properties,
+        std::unordered_set<std::string>{
+            StaticStrings::IsDisjoint, StaticStrings::InternalValidatorTypes,
+            COMMON_ALLOWED_COLLECTION_INPUT_ATTRIBUTES});
+  }
+#endif
   return velocypack::Collection::keep(
-      properties,
-      std::unordered_set<std::string>{
-          StaticStrings::DataSourceSystem, StaticStrings::DataSourceId,
-          "keyOptions", StaticStrings::WaitForSyncString,
-          StaticStrings::CacheEnabled, StaticStrings::ShardKeys,
-          StaticStrings::NumberOfShards, StaticStrings::DistributeShardsLike,
-          "avoidServers", StaticStrings::IsSmart,
-          StaticStrings::ShardingStrategy,
-          StaticStrings::GraphSmartGraphAttribute, StaticStrings::Schema,
-          StaticStrings::SmartJoinAttribute, StaticStrings::ReplicationFactor,
-          StaticStrings::MinReplicationFactor,  // deprecated
-          StaticStrings::WriteConcern, "servers"});
+      properties, std::unordered_set<std::string>{
+                      COMMON_ALLOWED_COLLECTION_INPUT_ATTRIBUTES});
 }

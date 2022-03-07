@@ -74,11 +74,9 @@ arangodb::LogicalCollection* UnwrapCollection(
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wraps a LogicalCollection
 ////////////////////////////////////////////////////////////////////////////////
-v8::Handle<v8::Object> WrapCollection(  // wrap collection
-    v8::Isolate* isolate,               // isolate
-    std::shared_ptr<arangodb::LogicalCollection> const&
-        collection  // collection
-) {
+v8::Handle<v8::Object> WrapCollection(
+    v8::Isolate* isolate,
+    std::shared_ptr<arangodb::LogicalCollection> const& collection) {
   v8::EscapableHandleScope scope(isolate);
   TRI_GET_GLOBALS();
   auto context = TRI_IGETC;
@@ -90,6 +88,10 @@ v8::Handle<v8::Object> WrapCollection(  // wrap collection
   if (result.IsEmpty()) {
     return scope.Escape<v8::Object>(result);
   }
+
+  LOG_TOPIC("44ea5", TRACE, arangodb::Logger::V8)
+      << "Wrapping Collection " << collection->name() << " with ptr "
+      << (void*)collection.get() << " to context ID " << v8g->_id;
 
   auto value = std::shared_ptr<void>(  // persistent value
       collection.get(),                // value

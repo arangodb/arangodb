@@ -26,6 +26,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ScopeGuard.h"
+#include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/asio_ns.h"
 #include "Basics/dtrace-wrapper.h"
@@ -39,7 +40,6 @@
 #include "Statistics/ConnectionStatistics.h"
 #include "Statistics/RequestStatistics.h"
 
-#include <velocypack/velocypack-aliases.h>
 #include <cstring>
 
 using namespace arangodb::basics;

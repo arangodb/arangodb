@@ -25,6 +25,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ScopeGuard.h"
+#include "Basics/StringBuffer.h"
 #include "Basics/asio_ns.h"
 #include "Basics/dtrace-wrapper.h"
 #include "Cluster/ServerState.h"
@@ -39,7 +40,6 @@
 #include "Statistics/ConnectionStatistics.h"
 #include "Statistics/RequestStatistics.h"
 
-#include <velocypack/velocypack-aliases.h>
 #include <cstring>
 
 using namespace arangodb;
@@ -142,6 +142,7 @@ int HttpCommTask<T>::on_header_value(llhttp_t* p, const char* at, size_t len) {
 template<SocketType T>
 int HttpCommTask<T>::on_header_complete(llhttp_t* p) {
   HttpCommTask<T>* me = static_cast<HttpCommTask<T>*>(p->data);
+  me->_response.reset();
   if (!me->_lastHeaderField.empty()) {
     me->_request->setHeaderV2(std::move(me->_lastHeaderField),
                               std::move(me->_lastHeaderValue));
@@ -151,12 +152,12 @@ int HttpCommTask<T>::on_header_complete(llhttp_t* p) {
       (p->http_major != 1 || p->http_minor != 1)) {
     me->sendSimpleResponse(rest::ResponseCode::HTTP_VERSION_NOT_SUPPORTED,
                            rest::ContentType::UNSET, 1, VPackBuffer<uint8_t>());
-    return HPE_OK;
+    return HPE_USER;
   }
   if (p->content_length > GeneralCommTask<T>::MaximalBodySize) {
     me->sendSimpleResponse(rest::ResponseCode::REQUEST_ENTITY_TOO_LARGE,
                            rest::ContentType::UNSET, 1, VPackBuffer<uint8_t>());
-    return HPE_OK;
+    return HPE_USER;
   }
   me->_shouldKeepAlive = llhttp_should_keep_alive(p);
 
@@ -298,7 +299,7 @@ bool HttpCommTask<T>::readCallback(asio_ns::error_code ec) {
     }
   }
 
-  if (err != HPE_OK && err != HPE_USER) {
+  if (err != HPE_OK && err != HPE_USER && err != HPE_CB_HEADERS_COMPLETE) {
     if (err == HPE_INVALID_EOF_STATE) {
       LOG_TOPIC("595fd", TRACE, Logger::REQUESTS)
           << "Connection closed by peer, with ptr " << this;

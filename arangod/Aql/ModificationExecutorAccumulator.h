@@ -25,10 +25,9 @@
 
 #include "Basics/Common.h"
 #include "Basics/debugging.h"
-#include "Logger/LogMacros.h"
 
+#include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 namespace arangodb::aql {
 

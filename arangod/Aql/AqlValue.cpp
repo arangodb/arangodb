@@ -37,7 +37,6 @@
 #include <velocypack/Buffer.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 #include <type_traits>
 
 #ifndef velocypack_malloc
@@ -1154,7 +1153,8 @@ AqlValue AqlValue::clone() const {
     case VPACK_SLICE_POINTER: {
       if (isManagedDocument()) {
         // copy from externally managed document. this will not copy the data
-        return AqlValue(AqlValueHintDocumentNoCopy(_data.pointerMeta.pointer));
+        return AqlValue(
+            AqlValueHintSliceNoCopy(VPackSlice(_data.pointerMeta.pointer)));
       }
       // copy from regular pointer. this may copy the data
       return AqlValue(_data.pointerMeta.pointer);
@@ -1334,7 +1334,7 @@ AqlValue::AqlValue() noexcept {
                 "invalid value for VPACK_INLINE");
 }
 
-AqlValue::AqlValue(uint8_t const* pointer) {
+AqlValue::AqlValue(uint8_t const* pointer) noexcept {
   // we must get rid of Externals first here, because all
   // methods that use VPACK_SLICE_POINTER expect its contents
   // to be non-Externals
@@ -1374,28 +1374,28 @@ AqlValue::AqlValue(AqlValue const& other, void* data) noexcept {
   }
 }
 
-AqlValue::AqlValue(AqlValueHintNone const&) noexcept {
+AqlValue::AqlValue(AqlValueHintNone) noexcept {
   _data.inlineSliceMeta.slice[0] = 0x00;  // none in VPack
   setType(AqlValueType::VPACK_INLINE);
 }
 
-AqlValue::AqlValue(AqlValueHintNull const&) noexcept {
+AqlValue::AqlValue(AqlValueHintNull) noexcept {
   _data.inlineSliceMeta.slice[0] = 0x18;  // null in VPack
   setType(AqlValueType::VPACK_INLINE);
 }
 
-AqlValue::AqlValue(AqlValueHintBool const& v) noexcept {
+AqlValue::AqlValue(AqlValueHintBool v) noexcept {
   _data.inlineSliceMeta.slice[0] =
       v.value ? 0x1a : 0x19;  // true/false in VPack
   setType(AqlValueType::VPACK_INLINE);
 }
 
-AqlValue::AqlValue(AqlValueHintZero const&) noexcept {
+AqlValue::AqlValue(AqlValueHintZero) noexcept {
   _data.inlineSliceMeta.slice[0] = 0x30;  // 0 in VPack
   setType(AqlValueType::VPACK_INLINE);
 }
 
-AqlValue::AqlValue(AqlValueHintDouble const& v) noexcept {
+AqlValue::AqlValue(AqlValueHintDouble v) noexcept {
   double value = v.value;
   if (std::isnan(value) || !std::isfinite(value) || value == HUGE_VAL ||
       value == -HUGE_VAL) {
@@ -1417,7 +1417,7 @@ AqlValue::AqlValue(AqlValueHintDouble const& v) noexcept {
   }
 }
 
-AqlValue::AqlValue(AqlValueHintInt const& v) noexcept {
+AqlValue::AqlValue(AqlValueHintInt v) noexcept {
   int64_t value = v.value;
   if (value >= -6 && value <= 9) {
     // a smallint
@@ -1449,7 +1449,7 @@ AqlValue::AqlValue(AqlValueHintInt const& v) noexcept {
   }
 }
 
-AqlValue::AqlValue(AqlValueHintUInt const& v) noexcept {
+AqlValue::AqlValue(AqlValueHintUInt v) noexcept {
   uint64_t value = v.value;
   if (value <= 9) {
     // a Smallint, 0x30 - 0x39
@@ -1509,15 +1509,15 @@ AqlValue::AqlValue(char const* value, size_t length) {
   }
 }
 
-AqlValue::AqlValue(std::string const& value)
+AqlValue::AqlValue(std::string_view value)
     : AqlValue(value.data(), value.size()) {}
 
-AqlValue::AqlValue(AqlValueHintEmptyArray const&) noexcept {
+AqlValue::AqlValue(AqlValueHintEmptyArray) noexcept {
   _data.inlineSliceMeta.slice[0] = 0x01;  // empty array in VPack
   setType(AqlValueType::VPACK_INLINE);
 }
 
-AqlValue::AqlValue(AqlValueHintEmptyObject const&) noexcept {
+AqlValue::AqlValue(AqlValueHintEmptyObject) noexcept {
   _data.inlineSliceMeta.slice[0] = 0x0a;  // empty object in VPack
   setType(AqlValueType::VPACK_INLINE);
 }
@@ -1544,15 +1544,14 @@ AqlValue::AqlValue(arangodb::velocypack::Buffer<uint8_t>&& buffer) {
   }
 }
 
-AqlValue::AqlValue(AqlValueHintDocumentNoCopy const& v) noexcept {
-  setPointer<true>(v.ptr);
+AqlValue::AqlValue(AqlValueHintSliceNoCopy v) noexcept {
+  setPointer<true>(v.slice.start());
   TRI_ASSERT(!VPackSlice(_data.pointerMeta.pointer).isExternal());
 }
 
-AqlValue::AqlValue(AqlValueHintCopy const& v) {
-  TRI_ASSERT(v.ptr != nullptr);
-  VPackSlice slice(v.ptr);
-  initFromSlice(slice, slice.byteSize());
+AqlValue::AqlValue(AqlValueHintSliceCopy v) {
+  TRI_ASSERT(v.slice.start() != nullptr);
+  initFromSlice(v.slice, v.slice.byteSize());
 }
 
 AqlValue::AqlValue(arangodb::velocypack::Slice slice) {
@@ -1721,10 +1720,10 @@ template void AqlValue::setPointer<false>(uint8_t const* pointer) noexcept;
 static_assert(std::is_standard_layout<AqlValue>::value,
               "AqlValue has an invalid type");
 
-AqlValueHintCopy::AqlValueHintCopy(uint8_t const* ptr) noexcept : ptr(ptr) {}
-AqlValueHintDocumentNoCopy::AqlValueHintDocumentNoCopy(
-    uint8_t const* v) noexcept
-    : ptr(v) {}
+AqlValueHintSliceCopy::AqlValueHintSliceCopy(VPackSlice s) noexcept
+    : slice(s) {}
+AqlValueHintSliceNoCopy::AqlValueHintSliceNoCopy(VPackSlice s) noexcept
+    : slice(s) {}
 AqlValueHintBool::AqlValueHintBool(bool v) noexcept : value(v) {}
 AqlValueHintDouble::AqlValueHintDouble(double v) noexcept : value(v) {}
 AqlValueHintInt::AqlValueHintInt(int64_t v) noexcept : value(v) {}

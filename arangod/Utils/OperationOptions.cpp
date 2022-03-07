@@ -64,9 +64,6 @@ const char* indexOpModeString(IndexOperationMode mode) {
 }
 }  // namespace
 
-// The following code does not work with VisualStudio 2019's `cl`
-// Lets keep it for debugging on linux.
-#ifndef _WIN32
 std::ostream& operator<<(std::ostream& os, OperationOptions const& ops) {
   // clang-format off
   os << "OperationOptions : " << std::boolalpha
@@ -87,7 +84,6 @@ std::ostream& operator<<(std::ostream& os, OperationOptions const& ops) {
   // clang-format on
   return os;
 }
-#endif
 
 // get associate execution context
 ExecContext const& OperationOptions::context() const {

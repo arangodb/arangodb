@@ -29,7 +29,6 @@
 #include <vector>
 
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <s2/s2loop.h>
 #include <s2/s2point_region.h>
@@ -162,7 +161,8 @@ Type type(VPackSlice const& vpack) {
   return Type::UNKNOWN;
 };
 
-Result parseRegion(VPackSlice const& vpack, ShapeContainer& region) {
+Result parseRegion(VPackSlice const& vpack, ShapeContainer& region,
+                   bool legacy) {
   if (vpack.isObject()) {
     Type t = type(vpack);
     switch (t) {
@@ -195,10 +195,10 @@ Result parseRegion(VPackSlice const& vpack, ShapeContainer& region) {
         return res;
       }
       case Type::POLYGON: {
-        return parsePolygon(vpack, region);
+        return parsePolygon(vpack, region, legacy);
       }
       case Type::MULTI_POLYGON: {
-        return parseMultiPolygon(vpack, region);
+        return parseMultiPolygon(vpack, region, legacy);
       }
       case Type::GEOMETRY_COLLECTION: {
         return Result(TRI_ERROR_NOT_IMPLEMENTED,
@@ -263,7 +263,8 @@ Result parseMultiPoint(VPackSlice const& vpack, ShapeContainer& region) {
 ///    [ [100.2, 0.2], [100.8, 0.2], [100.8, 0.8], [100.2, 0.8], [100.2, 0.2] ]
 ///   ]
 /// }
-Result parsePolygon(VPackSlice const& vpack, ShapeContainer& region) {
+Result parsePolygon(VPackSlice const& vpack, ShapeContainer& region,
+                    bool legacy) {
   if (Type::POLYGON != type(vpack)) {
     return {TRI_ERROR_BAD_PARAMETER, "requires type: 'Polygon'"};
   }
@@ -319,7 +320,7 @@ Result parsePolygon(VPackSlice const& vpack, ShapeContainer& region) {
       return Result(TRI_ERROR_BAD_PARAMETER, "Loop with no vertices");
     }
 
-    if (n == 1) {             // cheap rectangle detection
+    if (legacy && n == 1) {   // cheap rectangle detection
       if (vtx.size() == 1) {  // empty rectangle
         S2LatLng v0(vtx[0]);
         region.reset(std::make_unique<S2LatLngRect>(v0, v0),
@@ -353,40 +354,66 @@ Result parsePolygon(VPackSlice const& vpack, ShapeContainer& region) {
           std::string("Invalid loop in polygon: ").append(error.text()));
     }
 
+    // Note that we are using InitNested for S2Polygon below.
+    // Therefore, we are supposed to deliver all our loops in CCW
+    // convention (aka right hand rule, interiour is to the left of
+    // the polyline).
+    // Since we want to allow for loops, whose interiour covers
+    // more than half of the earth, we must not blindly "Normalize"
+    // the loops, as we did in earlier versions, although RFC7946
+    // says "parsers SHOULD NOT reject Polygons that do not follow
+    // the right-hand rule". Since we cannot detect if the outer loop
+    // respects the rule, we cannot reject it. However, for the other
+    // loops, we can be a bit more tolerant: If a subsequent loop is
+    // not contained in the first one (following the right hand rule),
+    // then we can invert it silently and if it is then contained
+    // in the first, we have proper nesting and leave the rest to
+    // InitNested. This is, why we proceed like this:
     S2Loop* loop = loops.back().get();
-    // normalization ensures that point orientation does not matter for Polygon
-    // type the RFC recommends this for better compatibility
-    loop->Normalize();
+    if (legacy) {
+      loop->Normalize();
+    }
 
-    // subsequent loops must be holes within first loop
+    // subsequent loops must be holes within first loop:
     if (loops.size() > 1 && !loops.front()->Contains(loop)) {
-      return Result(TRI_ERROR_BAD_PARAMETER,
-                    "Subsequent loop not a hole in polygon");
+      bool bad = true;
+      if (!legacy) {
+        loop->Invert();
+        if (loops.front()->Contains(loop)) {
+          bad = false;
+        }
+      }
+      if (bad) {
+        return Result(TRI_ERROR_BAD_PARAMETER,
+                      "Subsequent loop not a hole in polygon");
+      }
     }
   }
 
   std::unique_ptr<S2Polygon> poly;
   if (loops.size() == 1) {
-    poly = std::make_unique<S2Polygon>(std::move(loops[0]), S2Debug::DISABLE);
+    poly = std::make_unique<S2Polygon>(std::move(loops[0]));
   } else if (loops.size() > 1) {
-    poly = std::make_unique<S2Polygon>(std::move(loops));
-    poly->set_s2debug_override(S2Debug::DISABLE);
+    poly = std::make_unique<S2Polygon>();
+    poly->InitNested(std::move(loops));
+  } else {
+    return Result(TRI_ERROR_BAD_PARAMETER, "Empty polygons are not allowed");
   }
-  if (poly) {
-    if (!poly->IsValid()) {
-      return Result(TRI_ERROR_BAD_PARAMETER, "Polygon is not valid");
-    }
-    region.reset(std::move(poly), ShapeContainer::Type::S2_POLYGON);
-    return TRI_ERROR_NO_ERROR;
+  S2Error err;
+  poly->FindValidationError(&err);
+  if (!err.ok()) {
+    return Result(TRI_ERROR_BAD_PARAMETER,
+                  "S2 polygon verification error: " + err.text());
   }
-  return Result(TRI_ERROR_BAD_PARAMETER, "Empty polygons are not allowed");
+  region.reset(std::move(poly), ShapeContainer::Type::S2_POLYGON);
+  return TRI_ERROR_NO_ERROR;
 }
 
 /// @brief parse GeoJson polygon or array of loops. Each loop consists of
 /// an array of coordinates: Example [[[lon, lat], [lon, lat], ...],...].
 /// The multipolygon contains an array of looops
-Result parseMultiPolygon(velocypack::Slice const& vpack,
-                         ShapeContainer& region) {
+Result parseMultiPolygon(velocypack::Slice const& vpack, ShapeContainer& region,
+                         bool legacy) {
   if (Type::MULTI_POLYGON != type(vpack)) {
     return {TRI_ERROR_BAD_PARAMETER, "requires type: 'MultiPolygon'"};
   }
@@ -452,36 +479,61 @@ Result parseMultiPolygon(velocypack::Slice const& vpack,
             TRI_ERROR_BAD_PARAMETER,
             std::string("Invalid loop in polygon: ").append(error.text()));
       }
+      // Note that we are using InitNested for S2Polygon below.
+      // Therefore, we are supposed to deliver all our loops in CCW
+      // convention (aka right hand rule, interiour is to the left of
+      // the polyline).
+      // Since we want to allow for loops, whose interiour covers
+      // more than half of the earth, we must not blindly "Normalize"
+      // the loops, as we did in earlier versions, although RFC7946
+      // says "parsers SHOULD NOT reject Polygons that do not follow
+      // the right-hand rule". Since we cannot detect if the outer loop
+      // respects the rule, we cannot reject it. However, for the other
+      // loops, we can be a bit more tolerant: If a subsequent loop is
+      // not contained in the first one (following the right hand rule),
+      // then we can invert it silently and if it is then contained
+      // in the first, we have proper nesting and leave the rest to
+      // InitNested. This is, why we proceed like this:
       S2Loop* loop = loops.back().get();
-      // normalization ensures that CCW orientation does not matter for Polygon
-      // the RFC recommends this for better compatibility
-      loop->Normalize();
+      if (legacy) {
+        loop->Normalize();
+      }
 
       // Any subsequent loop must be a hole within first loop
       if (outerLoop + 1 < loops.size() &&
           !loops[outerLoop]->Contains(loops.back().get())) {
-        return Result(TRI_ERROR_BAD_PARAMETER,
-                      "Subsequent loop not a hole in polygon");
+        bool bad = true;
+        if (!legacy) {
+          loop->Invert();
+          if (loops[outerLoop]->Contains(loop)) {
+            bad = false;
+          }
+        }
+        if (bad) {
+          return Result(TRI_ERROR_BAD_PARAMETER,
+                        "Subsequent loop not a hole in polygon");
+        }
       }
     }
   }
 
   std::unique_ptr<S2Polygon> poly;
   if (loops.size() == 1) {
-    poly = std::make_unique<S2Polygon>(std::move(loops[0]), S2Debug::DISABLE);
+    poly = std::make_unique<S2Polygon>(std::move(loops[0]));
   } else if (loops.size() > 1) {
     poly = std::make_unique<S2Polygon>();
-    poly->set_s2debug_override(S2Debug::DISABLE);
     poly->InitNested(std::move(loops));
+  } else {
+    return Result(TRI_ERROR_BAD_PARAMETER, "Empty polygons are not allowed");
   }
-  if (poly) {
-    if (!poly->IsValid()) {
-      return Result(TRI_ERROR_BAD_PARAMETER, "Polygon is not valid");
-    }
-    region.reset(std::move(poly), ShapeContainer::Type::S2_POLYGON);
-    return TRI_ERROR_NO_ERROR;
+  S2Error err;
+  poly->FindValidationError(&err);
+  if (!err.ok()) {
+    return Result(TRI_ERROR_BAD_PARAMETER,
+                  "S2 multipolygon verification error: " + err.text());
   }
-  return Result(TRI_ERROR_BAD_PARAMETER, "Empty polygons are not allowed");
+  region.reset(std::move(poly), ShapeContainer::Type::S2_POLYGON);
+  return TRI_ERROR_NO_ERROR;
 }
 
 /// https://tools.ietf.org/html/rfc7946#section-3.1.4

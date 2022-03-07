@@ -29,8 +29,7 @@ namespace arangodb {
 
 class RocksDBIndexFactory final : public IndexFactory {
  public:
-  explicit RocksDBIndexFactory(application_features::ApplicationServer&);
-  ~RocksDBIndexFactory() = default;
+  explicit RocksDBIndexFactory(ArangodServer&);
 
   /// @brief index name aliases (e.g. "persistent" => "hash", "skiplist" =>
   /// "hash") used to display storage engine capabilities

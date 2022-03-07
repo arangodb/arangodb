@@ -97,7 +97,7 @@ void abortFollowerTransactionsOnShard(DataSourceId cid) {
 void abortTransactionsWithFailedServers(ClusterInfo& ci) {
   TRI_ASSERT(ServerState::instance()->isRunningInCluster());
 
-  std::vector<ServerID> failed = ci.getFailedServers();
+  auto failedServers = ci.getFailedServers();
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
   TRI_ASSERT(mgr != nullptr);
 
@@ -106,7 +106,7 @@ void abortTransactionsWithFailedServers(ClusterInfo& ci) {
     // abort all transactions using a lead server
     didWork = mgr->abortManagedTrx([&](TransactionState const& state,
                                        std::string const& /*user*/) -> bool {
-      for (ServerID const& sid : failed) {
+      for (auto const& sid : failedServers) {
         if (state.knowsServer(sid)) {
           return true;
         }
@@ -116,12 +116,13 @@ void abortTransactionsWithFailedServers(ClusterInfo& ci) {
 
   } else if (ServerState::instance()->isDBServer()) {
     // only care about failed coordinators
-    failed.erase(std::remove_if(failed.begin(), failed.end(),
-                                [](ServerID const& str) {
-                                  return !ClusterHelpers::isDBServerName(str);
-                                }),
-                 failed.end());
-    if (failed.empty()) {
+    size_t coordinatorsCount = 0;
+    for (auto const& server : failedServers) {
+      if (ClusterHelpers::isCoordinatorName(server)) {
+        ++coordinatorsCount;
+      }
+    }
+    if (coordinatorsCount == 0) {
       return;
     }
 
@@ -130,15 +131,15 @@ void abortTransactionsWithFailedServers(ClusterInfo& ci) {
                                        std::string const& /*user*/) -> bool {
       uint32_t serverId = state.id().serverId();
       if (serverId != 0) {
-        ServerID coordId = ci.getCoordinatorByShortID(serverId);
-        return std::find(failed.begin(), failed.end(), coordId) != failed.end();
+        auto coordId = ci.getCoordinatorByShortID(serverId);
+        return failedServers.contains(coordId);
       }
       return false;
     });
   }
 
   LOG_TOPIC_IF("b59e3", INFO, Logger::TRANSACTIONS, didWork)
-      << "aborting transactions for servers '" << failed << "'";
+      << "aborting transactions for servers '" << failedServers << "'";
 }
 
 }  // namespace cluster

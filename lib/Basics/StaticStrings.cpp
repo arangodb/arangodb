@@ -135,9 +135,11 @@ std::string const StaticStrings::IndexInBackground("inBackground");
 std::string const StaticStrings::IndexIsBuilding("isBuilding");
 std::string const StaticStrings::IndexName("name");
 std::string const StaticStrings::IndexSparse("sparse");
+std::string const StaticStrings::IndexStoredValues("storedValues");
 std::string const StaticStrings::IndexType("type");
 std::string const StaticStrings::IndexUnique("unique");
 std::string const StaticStrings::IndexEstimates("estimates");
+std::string const StaticStrings::IndexLegacyPolygons("legacyPolygons");
 
 // static index names
 std::string const StaticStrings::IndexNameEdge("edge");
@@ -293,6 +295,11 @@ std::string const StaticStrings::FullLocalPrefix("_local_");
 std::string const StaticStrings::FullFromPrefix("_from_");
 std::string const StaticStrings::FullToPrefix("_to_");
 
+// Graph directions
+std::string const StaticStrings::GraphDirection("direction");
+std::string const StaticStrings::GraphDirectionInbound("inbound");
+std::string const StaticStrings::GraphDirectionOutbound("outbound");
+
 // Pregel Section Start
 
 // Pregel Accumulator Attributes
@@ -366,6 +373,7 @@ std::string const StaticStrings::Spearhead("spearhead");
 std::string const StaticStrings::TargetConfig("targetConfig");
 std::string const StaticStrings::Term("term");
 std::string const StaticStrings::CommitIndex("commitIndex");
+std::string const StaticStrings::Outcome("outcome");
 
 // Generic attribute names
 std::string const StaticStrings::AttrCoordinator("coordinator");
@@ -428,6 +436,9 @@ std::string const StaticStrings::ValidationParameterRule("rule");
 std::string const StaticStrings::ValidationParameterType("type");
 
 std::string_view const StaticStrings::ApiLogInternal("/_api/log-internal");
+std::string_view const StaticStrings::ApiLogExternal("/_api/log");
+std::string_view const StaticStrings::ApiReplicatedStateExternal(
+    "/_api/replicated-state");
 
 // TODO REMOVE ME AFTER REFACTOR IS DONE
 std::string const StaticStrings::GraphRefactorFlag("refactor");

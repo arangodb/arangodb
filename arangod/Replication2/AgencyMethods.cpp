@@ -30,9 +30,9 @@
 #include <string>
 #include <utility>
 
-#include <velocypack/velocypack-aliases.h>
 #include <velocypack/velocypack-common.h>
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Agency/AsyncAgencyComm.h"
 #include "Agency/TransactionBuilder.h"
 #include "Agency/AgencyPaths.h"
@@ -162,22 +162,25 @@ auto methods::deleteReplicatedLog(DatabaseID const& database, LogId id)
 
 auto methods::createReplicatedLogTrx(arangodb::agency::envelope envelope,
                                      DatabaseID const& database,
-                                     LogPlanSpecification const& spec)
+                                     LogTarget const& spec)
     -> arangodb::agency::envelope {
-  auto path =
-      paths::plan()->replicatedLogs()->database(database)->log(spec.id)->str();
+  auto path = paths::target()
+                  ->replicatedLogs()
+                  ->database(database)
+                  ->log(spec.id)
+                  ->str();
 
   return envelope.write()
       .emplace_object(
           path, [&](VPackBuilder& builder) { spec.toVelocyPack(builder); })
-      .inc(paths::plan()->version()->str())
+      .inc(paths::target()->version()->str())
       .precs()
       .isEmpty(path)
       .end();
 }
 
 auto methods::createReplicatedLog(DatabaseID const& database,
-                                  LogPlanSpecification const& spec)
+                                  LogTarget const& spec)
     -> futures::Future<ResultT<uint64_t>> {
   VPackBufferUInt8 trx;
   {
@@ -231,4 +234,38 @@ auto methods::getCurrentSupervision(TRI_vocbase_t& vocbase, LogId id)
                                "Current/ReplicatedLogs/", vocbase.name(), "/",
                                id, "/supervision"));
   return LogCurrentSupervision{from_velocypack, builder.slice()};
+}
+
+namespace {
+auto createReplicatedStateTrx(arangodb::agency::envelope envelope,
+                              DatabaseID const& database,
+                              replicated_state::agency::Target const& spec)
+    -> arangodb::agency::envelope {
+  auto path = paths::target()
+                  ->replicatedStates()
+                  ->database(database)
+                  ->state(spec.id)
+                  ->str();
+
+  return envelope.write()
+      .emplace_object(
+          path, [&](VPackBuilder& builder) { spec.toVelocyPack(builder); })
+      .inc(paths::target()->version()->str())
+      .precs()
+      .isEmpty(path)
+      .end();
+}
+}  // namespace
+
+auto methods::createReplicatedState(
+    DatabaseID const& database, replicated_state::agency::Target const& spec)
+    -> futures::Future<ResultT<uint64_t>> {
+  VPackBufferUInt8 trx;
+  {
+    VPackBuilder builder(trx);
+    createReplicatedStateTrx(arangodb::agency::envelope::into_builder(builder),
+                             database, spec)
+        .done();
+  }
+  return sendAgencyWriteTransaction(std::move(trx));
 }

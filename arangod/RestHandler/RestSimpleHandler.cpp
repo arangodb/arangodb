@@ -27,7 +27,6 @@
 #include "Basics/Exceptions.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Graph/Traverser.h"
 #include "Transaction/Context.h"
@@ -39,14 +38,13 @@
 #include <velocypack/Dumper.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::rest;
 
 RestSimpleHandler::RestSimpleHandler(
-    application_features::ApplicationServer& server, GeneralRequest* request,
-    GeneralResponse* response, arangodb::aql::QueryRegistry* queryRegistry)
+    ArangodServer& server, GeneralRequest* request, GeneralResponse* response,
+    arangodb::aql::QueryRegistry* queryRegistry)
     : RestCursorHandler(server, request, response, queryRegistry),
       _silent(true) {}
 
@@ -56,7 +54,7 @@ RestStatus RestSimpleHandler::execute() {
 
   if (type == rest::RequestType::PUT) {
     bool parsingSuccess = false;
-    VPackSlice const body = this->parseVPackBody(parsingSuccess);
+    VPackSlice body = this->parseVPackBody(parsingSuccess);
     if (!parsingSuccess) {
       return RestStatus::DONE;
     }
@@ -94,7 +92,7 @@ RestStatus RestSimpleHandler::removeByKeys(VPackSlice const& slice) {
   TRI_ASSERT(slice.isObject());
   std::string collectionName;
   {
-    VPackSlice const value = slice.get("collection");
+    VPackSlice value = slice.get("collection");
 
     if (!value.isString()) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
@@ -113,7 +111,7 @@ RestStatus RestSimpleHandler::removeByKeys(VPackSlice const& slice) {
     }
   }
 
-  VPackSlice const keys = slice.get("keys");
+  VPackSlice keys = slice.get("keys");
 
   if (!keys.isArray()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
@@ -125,7 +123,7 @@ RestStatus RestSimpleHandler::removeByKeys(VPackSlice const& slice) {
   bool returnOld = false;
   _silent = true;
   {
-    VPackSlice const value = slice.get("options");
+    VPackSlice value = slice.get("options");
     if (value.isObject()) {
       VPackSlice wfs = value.get("waitForSync");
       if (wfs.isBool()) {

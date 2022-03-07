@@ -46,7 +46,7 @@ class QueryString {
   explicit QueryString(std::string_view val)
       : QueryString(val.data(), val.size()) {}
 
-  explicit QueryString(std::string val)
+  explicit QueryString(std::string val) noexcept
       : _queryString(std::move(val)), _hash(computeHash()) {}
 
   QueryString() : QueryString("", 0) {}

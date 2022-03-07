@@ -40,7 +40,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <fstream>
 #include <sys/types.h>
@@ -153,7 +152,7 @@ static void JS_ProcessCsvFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   TRI_GET_GLOBALS();
-  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  V8SecurityFeature& v8security = v8g->_v8security;
 
   if (!v8security.isAllowedToAccessPath(isolate, *filename,
                                         FSAccessType::READ)) {
@@ -281,7 +280,7 @@ static void JS_ProcessJsonFile(
   }
 
   TRI_GET_GLOBALS();
-  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  V8SecurityFeature& v8security = v8g->_v8security;
 
   if (!v8security.isAllowedToAccessPath(isolate, *filename,
                                         FSAccessType::READ)) {

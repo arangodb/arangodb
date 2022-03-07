@@ -35,8 +35,6 @@
 #include "Basics/system-functions.h"
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/ServerState.h"
-#include "FeaturePhases/DatabaseFeaturePhase.h"
-#include "FeaturePhases/ServerFeaturePhase.h"
 #include "Indexes/Index.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -50,7 +48,6 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <chrono>
 #include <thread>
@@ -156,11 +153,12 @@ Result TtlProperties::fromVelocyPack(VPackSlice const& slice) {
   }
 }
 
-class TtlThread final : public Thread {
+class TtlThread final : public ServerThread<ArangodServer> {
  public:
-  explicit TtlThread(application_features::ApplicationServer& server,
-                     TtlFeature& ttlFeature)
-      : Thread(server, "TTL"), _ttlFeature(ttlFeature), _working(false) {}
+  explicit TtlThread(ArangodServer& server, TtlFeature& ttlFeature)
+      : ServerThread<ArangodServer>(server, "TTL"),
+        _ttlFeature(ttlFeature),
+        _working(false) {}
 
   ~TtlThread() { shutdown(); }
 
@@ -265,7 +263,7 @@ class TtlThread final : public Thread {
     uint64_t limitLeft = properties.maxTotalRemoves;
 
     // iterate over all databases
-    auto& db = _server.getFeature<DatabaseFeature>();
+    auto& db = server().getFeature<DatabaseFeature>();
     for (auto const& name : db.getDatabaseNames()) {
       if (!isActive()) {
         // feature deactivated (for example, due to running on current follower
@@ -428,8 +426,8 @@ class TtlThread final : public Thread {
 
 }  // namespace arangodb
 
-TtlFeature::TtlFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Ttl"), _allowRunning(true), _active(true) {
+TtlFeature::TtlFeature(Server& server)
+    : ArangodFeature{server, *this}, _allowRunning(true), _active(true) {
   startsAfter<application_features::DatabaseFeaturePhase>();
   startsAfter<application_features::ServerFeaturePhase>();
 }

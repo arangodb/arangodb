@@ -4,37 +4,33 @@ ArangoDB uses `clang-format` to lint the codebase of [arangodb/arangodb](https:/
 
 You are expected to format your local changes via clang-format. Here are your options:
 
-1. Lint with a **pre-commit git hook** (OS dependant)
+1. Lint with a **pre-commit git hook** (OS-dependent)
     * pre-requisites
         * Docker
         * Git 2.9+
+        * On Linux: bash, with some common tools installed
     * how-to (one-time setup)
         * `cd arangodb`
-        * `cp .githooks/pre-commit-[linux, macos, windows] .git/hooks/pre-commit`
+        * `cp .githooks/pre-commit .git/hooks/pre-commit`
         * `git config core.hooksPath .git/hooks`
         * `cd enterprise`
-        * `cp .githooks/pre-commit-[linux, macos, windows] .git/hooks/pre-commit`
+        * `cp .githooks/pre-commit .git/hooks/pre-commit`
         * `git config core.hooksPath .git/hooks`
-2. Lint with a **local shell script** (OS dependant)
+
+   The commit hook will automatically verify that all to-be-committed files are
+   correctly formatted, and will abort the commit process in case of a formatting
+   violation.
+
+2. Reformat code with a **local shell script** (OS-dependent)
     * pre-requisites
         * Docker
-        * Your local changes have been added with `git add`
+        * Git 2.9+
+        * On Linux: bash, with some common tools installed
     * how-to (must run manually)
         * `cd arangodb`
         * `./scripts/clang-format-[linux, macos, windows].sh`
 
-3. Lint with a **codebase-wide format script** (not recommended unless absolutely necessary)
-    * pre-requisites
-        * Docker
-    * how-to (MacOS / Linux)
-        * `cd arangodb`
-        * `files=$(find arangod client-tools arangosh lib tests enterprise/Enterprise enterprise/tests -type f -name "*.cpp" -o -name "*.hpp" -o -name "*.cc" -o -name "*.c" -o -name "*.h")`
-        * `docker run --rm -u "$(id -u):$(id -g)" --mount type=bind,source="$(pwd)",target=/usr/src/arangodb arangodb/clang-format:1.0 "$files"`
-    * how-to (Windows)
-        * The [dir](https://docs.microsoft.com/en-us/windows-server/administration/windows-commands/dir) command should be able to replace the `find` logic seen above. Please use the same file extension matches.
-        * `docker run --rm --mount type=bind,source=${pwd},target=/usr/src/arangodb arangodb/clang-format:1.0 "YOUR LIST OF FILES"`
-
-4. Lint with your **custom clang-format setup**
+3. Lint with your **custom clang-format setup**
     * This would be up to you to configure, if you do not want to rely on Docker and/or already have a way of automatically linting your changes via clang-format. We still highly encourage that you use `clang-format 12` or higher.
 
 Once your changes are pushed, a [Github Action CI](https://github.com/arangodb/clang-format-action) will be triggered to validate that your changes comply to the [established clang-format standard](https://github.com/arangodb/arangodb/blob/devel/.clang-format). Should you be missing any format specifications, your push’s CI will fail.

@@ -31,7 +31,7 @@
 #include <utility>
 #include <vector>
 
-#include "ApplicationFeatures/SharedPRNGFeature.h"
+#include "RestServer/SharedPRNGFeature.h"
 #include "Basics/debugging.h"
 
 namespace arangodb {
@@ -89,7 +89,7 @@ class FrequencyBuffer {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Reports the hidden allocation size (not captured by sizeof).
   //////////////////////////////////////////////////////////////////////////////
-  static std::size_t allocationSize(std::size_t capacity) {
+  static constexpr std::size_t allocationSize(std::size_t capacity) {
     return capacity * sizeof(T);
   }
 

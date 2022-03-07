@@ -84,6 +84,12 @@ enum TRI_vocbase_col_status_e : int {
   TRI_VOC_COL_STATUS_DELETED = 5,
 };
 
+namespace arangodb {
+
+enum class ViewType { kSearch = 0 };
+
+}  // namespace arangodb
+
 /// @brief Hash function for a vector of VPackSlice
 namespace std {
 

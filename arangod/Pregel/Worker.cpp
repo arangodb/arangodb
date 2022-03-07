@@ -31,11 +31,10 @@
 #include "Pregel/PregelFeature.h"
 #include "Pregel/VertexComputation.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/WriteLocker.h"
 #include "Network/Methods.h"
 #include "Scheduler/SchedulerFeature.h"
-
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -810,9 +809,8 @@ void Worker<V, E, M>::_callConductorWithResponse(
   } else {
     std::string baseUrl = Utils::baseUrl(Utils::conductorPrefix);
 
-    application_features::ApplicationServer& server =
-        _config.vocbase()->server();
-    auto const& nf = server.getFeature<arangodb::NetworkFeature>();
+    auto& server = _config.vocbase()->server();
+    auto const& nf = server.template getFeature<arangodb::NetworkFeature>();
     network::ConnectionPool* pool = nf.pool();
 
     VPackBuffer<uint8_t> buffer;

@@ -25,6 +25,7 @@
 
 #include <stdexcept>
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Actions/RestActionHandler.h"
 #include "Agency/AgencyFeature.h"
 #include "Agency/RestAgencyHandler.h"
@@ -84,6 +85,7 @@
 #include "RestHandler/RestPregelHandler.h"
 #include "RestHandler/RestQueryCacheHandler.h"
 #include "RestHandler/RestQueryHandler.h"
+#include "RestHandler/RestReplicatedStateHandler.h"
 #include "RestHandler/RestShutdownHandler.h"
 #include "RestHandler/RestSimpleHandler.h"
 #include "RestHandler/RestSimpleQueryHandler.h"
@@ -140,9 +142,8 @@ DECLARE_COUNTER(arangodb_http2_connections_total,
 DECLARE_COUNTER(arangodb_vst_connections_total,
                 "Total number of VST connections");
 
-GeneralServerFeature::GeneralServerFeature(
-    application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "GeneralServer"),
+GeneralServerFeature::GeneralServerFeature(Server& server)
+    : ArangodFeature{server, *this},
       _allowMethodOverride(false),
       _proxyCheck(true),
       _returnQueueTimeHeader(true),
@@ -160,6 +161,9 @@ GeneralServerFeature::GeneralServerFeature(
           arangodb_http2_connections_total{})),
       _vstConnections(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_vst_connections_total{})) {
+  static_assert(
+      Server::isCreatedAfter<GeneralServerFeature, metrics::MetricsFeature>());
+
   setOptional(true);
   startsAfter<application_features::AqlFeaturePhase>();
 
@@ -429,9 +433,6 @@ void GeneralServerFeature::defineHandlers() {
   ClusterFeature& cluster = server().getFeature<ClusterFeature>();
   AuthenticationFeature& authentication =
       server().getFeature<AuthenticationFeature>();
-#ifdef USE_ENTERPRISE
-  HotBackupFeature& backup = server().getFeature<HotBackupFeature>();
-#endif
 
   // ...........................................................................
   // /_api
@@ -532,17 +533,16 @@ void GeneralServerFeature::defineHandlers() {
       RestVocbaseBaseHandler::VIEW_PATH,
       RestHandlerCreator<RestViewHandler>::createNoData);
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (cluster.isEnabled()) {
     _handlerFactory->addPrefixHandler(
-        "/_api/log", RestHandlerCreator<RestLogHandler>::createNoData);
-  }
-#endif
-
-  if (cluster.isEnabled()) {
+        std::string{StaticStrings::ApiLogExternal},
+        RestHandlerCreator<RestLogHandler>::createNoData);
     _handlerFactory->addPrefixHandler(
         std::string{StaticStrings::ApiLogInternal},
         RestHandlerCreator<RestLogInternalHandler>::createNoData);
+    _handlerFactory->addPrefixHandler(
+        std::string{StaticStrings::ApiReplicatedStateExternal},
+        RestHandlerCreator<RestReplicatedStateHandler>::createNoData);
   }
 
   // This is the only handler were we need to inject
@@ -744,6 +744,7 @@ void GeneralServerFeature::defineHandlers() {
       RestHandlerCreator<arangodb::RestLicenseHandler>::createNoData);
 
 #ifdef USE_ENTERPRISE
+  HotBackupFeature& backup = server().getFeature<HotBackupFeature>();
   if (backup.isAPIEnabled()) {
     _handlerFactory->addPrefixHandler(
         "/_admin/backup",

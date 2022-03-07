@@ -26,7 +26,6 @@
 #include <fuerte/connection.h>
 #include <fuerte/requests.h>
 #include <velocypack/Parser.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "Mocks/LogLevels.h"
 #include "Mocks/Servers.h"
@@ -77,7 +76,6 @@ struct DummyPool : public network::ConnectionPool {
 
   std::shared_ptr<fuerte::Connection> createConnection(
       fuerte::ConnectionBuilder&) override {
-    LOG_DEVEL << "Reconnecting";
     if (_handOutPooledConnectionNext) {
       _handOutPooledConnectionNext = false;
       // We only hand out connected connections

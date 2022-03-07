@@ -3,7 +3,7 @@
 
 #include "jemalloc/internal/psset.h"
 
-#include "jemalloc/internal/flat_bitmap.h"
+#include "jemalloc/internal/fb.h"
 
 void
 psset_init(psset_t *psset) {
@@ -201,11 +201,32 @@ psset_purge_list_ind(hpdata_t *ps) {
 	size_t ndirty = hpdata_ndirty_get(ps);
 	/* Shouldn't have something with no dirty pages purgeable. */
 	assert(ndirty > 0);
+	/*
+	 * Higher indices correspond to lists we'd like to purge earlier; make
+	 * the two highest indices correspond to empty lists, which we attempt
+	 * to purge before purging any non-empty list.  This has two advantages:
+	 * - Empty page slabs are the least likely to get reused (we'll only
+	 *   pick them for an allocation if we have no other choice).
+	 * - Empty page slabs can purge every dirty page they contain in a
+	 *   single call, which is not usually the case.
+	 *
+	 * We purge hugeified empty slabs before nonhugeified ones, on the basis
+	 * that they are fully dirty, while nonhugified slabs might not be, so
+	 * we free up more pages more easily.
+	 */
+	if (hpdata_nactive_get(ps) == 0) {
+		if (hpdata_huge_get(ps)) {
+			return PSSET_NPURGE_LISTS - 1;
+		} else {
+			return PSSET_NPURGE_LISTS - 2;
+		}
+	}
+
 	pszind_t pind = sz_psz2ind(sz_psz_quantize_floor(ndirty << LG_PAGE));
 	/*
-	 * Higher indices correspond to lists we'd like to purge earlier;
-	 * increment the index for the nonhugified hpdatas first, so that we'll
-	 * pick them before picking hugified ones.
+	 * For non-empty slabs, we may reuse them again.  Prefer purging
+	 * non-hugeified slabs before hugeified ones then, among pages of
+	 * similar dirtiness.  We still get some benefit from the hugification.
 	 */
 	return (size_t)pind * 2 + (hpdata_huge_get(ps) ? 0 : 1);
 }
@@ -321,7 +342,7 @@ psset_pick_purge(psset_t *psset) {
 		return NULL;
 	}
 	pszind_t ind = (pszind_t)ind_ssz;
-	assert(ind < PSSET_NPSIZES);
+	assert(ind < PSSET_NPURGE_LISTS);
 	hpdata_t *ps = hpdata_purge_list_first(&psset->to_purge[ind]);
 	assert(ps != NULL);
 	return ps;

@@ -14,20 +14,6 @@
  */
 
 /*
- * This is a *small* extent cache, after all.  Assuming 4k pages and an ngroup
- * of 4, this allows caching of sizes up to 128k.
- */
-#define SEC_NPSIZES 16
-/*
- * For now, we put a cap on the number of SECs an arena can have.  There's no
- * reason it can't be dynamic; it's just inconvenient.  This number of shards
- * are embedded in the arenas, so there's a space / configurability tradeoff
- * here.  Eventually, we should probably dynamically allocate only however many
- * we require.
- */
-#define SEC_NSHARDS_MAX 8
-
-/*
  * For now, this is just one field; eventually, we'll probably want to get more
  * fine-grained data out (like per-size class statistics).
  */
@@ -91,7 +77,7 @@ struct sec_shard_s {
 	 * hooks are installed.
 	 */
 	bool enabled;
-	sec_bin_t bins[SEC_NPSIZES];
+	sec_bin_t *bins;
 	/* Number of bytes in all bins in the shard. */
 	size_t bytes_cur;
 	/* The next pszind to flush in the flush-some pathways. */
@@ -104,10 +90,12 @@ struct sec_s {
 	pai_t *fallback;
 
 	sec_opts_t opts;
-	sec_shard_t shards[SEC_NSHARDS_MAX];
+	sec_shard_t *shards;
+	pszind_t npsizes;
 };
 
-bool sec_init(sec_t *sec, pai_t *fallback, const sec_opts_t *opts);
+bool sec_init(tsdn_t *tsdn, sec_t *sec, base_t *base, pai_t *fallback,
+    const sec_opts_t *opts);
 void sec_flush(tsdn_t *tsdn, sec_t *sec);
 void sec_disable(tsdn_t *tsdn, sec_t *sec);
 

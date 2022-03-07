@@ -51,7 +51,6 @@
 #include "Utils/SingleCollectionTransaction.h"
 
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <chrono>
 
@@ -232,7 +231,7 @@ uint64_t RocksDBMetaCollection::recalculateCounts() {
   std::unique_ptr<rocksdb::Iterator> it(db->NewIterator(ro, cf));
   std::size_t count = 0;
 
-  application_features::ApplicationServer& server = vocbase.server();
+  ArangodServer& server = vocbase.server();
 
   for (it->Seek(bounds.start()); it->Valid(); it->Next()) {
     TRI_ASSERT(it->key().compare(upper) < 0);

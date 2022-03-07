@@ -3,6 +3,7 @@
 
 #include "jemalloc/internal/exp_grow.h"
 #include "jemalloc/internal/pai.h"
+#include "san_bump.h"
 
 
 /*
@@ -98,6 +99,9 @@ struct pac_s {
 	exp_grow_t exp_grow;
 	malloc_mutex_t grow_mtx;
 
+	/* Special allocator for guarded frequently reused extents. */
+	san_bump_alloc_t sba;
+
 	/* How large extents should be before getting auto-purged. */
 	atomic_zu_t oversize_threshold;
 
@@ -121,12 +125,15 @@ bool pac_init(tsdn_t *tsdn, pac_t *pac, base_t *base, emap_t *emap,
     edata_cache_t *edata_cache, nstime_t *cur_time, size_t oversize_threshold,
     ssize_t dirty_decay_ms, ssize_t muzzy_decay_ms, pac_stats_t *pac_stats,
     malloc_mutex_t *stats_mtx);
-void pac_stats_merge(tsdn_t *tsdn, pac_t *pac, pac_stats_t *pac_stats_out,
-    pac_estats_t *estats_out, size_t *resident);
 
 static inline size_t
 pac_mapped(pac_t *pac) {
 	return atomic_load_zu(&pac->stats->pac_mapped, ATOMIC_RELAXED);
+}
+
+static inline ehooks_t *
+pac_ehooks_get(pac_t *pac) {
+	return base_ehooks_get(pac->base);
 }
 
 /*

@@ -36,8 +36,6 @@
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
 
-#include <velocypack/velocypack-aliases.h>
-
 using namespace arangodb;
 
 ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info,
@@ -515,8 +513,7 @@ ErrorCode ShardingInfo::getResponsibleShard(arangodb::velocypack::Slice slice,
 }
 
 Result ShardingInfo::validateShardsAndReplicationFactor(
-    arangodb::velocypack::Slice slice,
-    application_features::ApplicationServer const& server,
+    arangodb::velocypack::Slice slice, ArangodServer const& server,
     bool enforceReplicationFactor) {
   if (slice.isObject()) {
     auto& cl = server.getFeature<ClusterFeature>();

@@ -47,7 +47,6 @@
 #include <Logger/LogMacros.h>
 #include <velocypack/Builder.h>
 #include <velocypack/HashedStringRef.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::graph;
@@ -509,7 +508,8 @@ template class ::arangodb::graph::TwoSidedEnumerator<
     SingleServerProvider<SingleServerProviderStep>,
     ::arangodb::graph::PathValidator<
         SingleServerProvider<SingleServerProviderStep>,
-        PathStore<SingleServerProviderStep>, VertexUniquenessLevel::PATH>>;
+        PathStore<SingleServerProviderStep>, VertexUniquenessLevel::PATH,
+        EdgeUniquenessLevel::PATH>>;
 
 template class ::arangodb::graph::TwoSidedEnumerator<
     ::arangodb::graph::QueueTracer<
@@ -523,25 +523,26 @@ template class ::arangodb::graph::TwoSidedEnumerator<
             SingleServerProvider<SingleServerProviderStep>>,
         ::arangodb::graph::PathStoreTracer<
             ::arangodb::graph::PathStore<SingleServerProviderStep>>,
-        VertexUniquenessLevel::PATH>>;
+        VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
 
 /* ClusterProvider Section */
 
 template class ::arangodb::graph::TwoSidedEnumerator<
-    ::arangodb::graph::FifoQueue<::arangodb::graph::ClusterProvider::Step>,
-    ::arangodb::graph::PathStore<ClusterProvider::Step>, ClusterProvider,
-    ::arangodb::graph::PathValidator<ClusterProvider,
-                                     PathStore<ClusterProvider::Step>,
-                                     VertexUniquenessLevel::PATH>>;
+    ::arangodb::graph::FifoQueue<::arangodb::graph::ClusterProviderStep>,
+    ::arangodb::graph::PathStore<ClusterProviderStep>,
+    ClusterProvider<ClusterProviderStep>,
+    ::arangodb::graph::PathValidator<
+        ClusterProvider<ClusterProviderStep>, PathStore<ClusterProviderStep>,
+        VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
 
 template class ::arangodb::graph::TwoSidedEnumerator<
     ::arangodb::graph::QueueTracer<
-        ::arangodb::graph::FifoQueue<::arangodb::graph::ClusterProvider::Step>>,
+        ::arangodb::graph::FifoQueue<::arangodb::graph::ClusterProviderStep>>,
     ::arangodb::graph::PathStoreTracer<
-        ::arangodb::graph::PathStore<ClusterProvider::Step>>,
-    ::arangodb::graph::ProviderTracer<ClusterProvider>,
+        ::arangodb::graph::PathStore<ClusterProviderStep>>,
+    ::arangodb::graph::ProviderTracer<ClusterProvider<ClusterProviderStep>>,
     ::arangodb::graph::PathValidator<
-        ::arangodb::graph::ProviderTracer<ClusterProvider>,
+        ::arangodb::graph::ProviderTracer<ClusterProvider<ClusterProviderStep>>,
         ::arangodb::graph::PathStoreTracer<
-            ::arangodb::graph::PathStore<ClusterProvider::Step>>,
-        VertexUniquenessLevel::PATH>>;
+            ::arangodb::graph::PathStore<ClusterProviderStep>>,
+        VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;

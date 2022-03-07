@@ -34,7 +34,9 @@ using namespace arangodb;
 using namespace arangodb::rocksutils;
 using namespace arangodb::velocypack;
 
-const char RocksDBKeyBounds::_stringSeparator = '\0';
+namespace {
+constexpr char kStringSeparator = '\0';
+}
 
 RocksDBKeyBounds RocksDBKeyBounds::Empty() {
   return RocksDBKeyBounds::PrimaryIndex(0);
@@ -95,9 +97,8 @@ RocksDBKeyBounds RocksDBKeyBounds::GeoIndex(uint64_t indexId, uint64_t minCell,
                           maxCell);
 }
 
-RocksDBKeyBounds RocksDBKeyBounds::VPackIndex(uint64_t indexId,
-                                              VPackSlice const& left,
-                                              VPackSlice const& right) {
+RocksDBKeyBounds RocksDBKeyBounds::VPackIndex(uint64_t indexId, VPackSlice left,
+                                              VPackSlice right) {
   return RocksDBKeyBounds(RocksDBEntryType::VPackIndexValue, indexId, left,
                           right);
 }
@@ -108,8 +109,8 @@ RocksDBKeyBounds RocksDBKeyBounds::ZkdIndex(uint64_t indexId) {
 
 /// used for seeking lookups
 RocksDBKeyBounds RocksDBKeyBounds::UniqueVPackIndex(uint64_t indexId,
-                                                    VPackSlice const& left,
-                                                    VPackSlice const& right) {
+                                                    VPackSlice left,
+                                                    VPackSlice right) {
   return RocksDBKeyBounds(RocksDBEntryType::UniqueVPackIndexValue, indexId,
                           left, right);
 }
@@ -123,7 +124,7 @@ RocksDBKeyBounds RocksDBKeyBounds::PrimaryIndex(uint64_t indexId,
 
 /// used for point lookups
 RocksDBKeyBounds RocksDBKeyBounds::UniqueVPackIndex(uint64_t indexId,
-                                                    VPackSlice const& left) {
+                                                    VPackSlice left) {
   return RocksDBKeyBounds(RocksDBEntryType::UniqueVPackIndexValue, indexId,
                           left);
 }
@@ -269,13 +270,13 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t id,
       // format: id lower id upper
       //         start    end
       _internals.reserve(
-          sizeof(id) + (lower.size() + sizeof(_stringSeparator)) + sizeof(id) +
-          (upper.size() + sizeof(_stringSeparator)));
+          sizeof(id) + (lower.size() + sizeof(kStringSeparator)) + sizeof(id) +
+          (upper.size() + sizeof(kStringSeparator)));
 
       // id - lower
       uint64ToPersistent(_internals.buffer(), id);
       _internals.buffer().append(lower.data(), lower.length());
-      _internals.push_back(_stringSeparator);
+      _internals.push_back(kStringSeparator);
 
       // set separator
       _internals.separate();
@@ -283,7 +284,7 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t id,
       // id - upper
       uint64ToPersistent(_internals.buffer(), id);
       _internals.buffer().append(upper.data(), upper.length());
-      _internals.push_back(_stringSeparator);
+      _internals.push_back(kStringSeparator);
 
       break;
     }
@@ -370,7 +371,7 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first)
       uint64ToPersistent(_internals.buffer(), first);
       if (type == RocksDBEntryType::EdgeIndexValue) {
         _internals.push_back('\0');
-        _internals.push_back(_stringSeparator);
+        _internals.push_back(kStringSeparator);
       }
 
       _internals.separate();
@@ -387,7 +388,7 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first)
         uint64ToPersistent(_internals.buffer(), first);
         _internals.push_back(0xFFU);  // higher than any ascii char
         if (type == RocksDBEntryType::EdgeIndexValue) {
-          _internals.push_back(_stringSeparator);
+          _internals.push_back(kStringSeparator);
         }
       }
       break;
@@ -442,13 +443,13 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
       _internals.reserve(2 * (sizeof(uint64_t) + second.size() + 2) + 1);
       uint64ToPersistent(_internals.buffer(), first);
       _internals.buffer().append(second.data(), second.length());
-      _internals.push_back(_stringSeparator);
+      _internals.push_back(kStringSeparator);
 
       _internals.separate();
 
       uint64ToPersistent(_internals.buffer(), first);
       _internals.buffer().append(second.data(), second.length());
-      _internals.push_back(_stringSeparator);
+      _internals.push_back(kStringSeparator);
       uint64ToPersistent(_internals.buffer(), UINT64_MAX);
       if (type == RocksDBEntryType::EdgeIndexValue) {
         _internals.push_back(0xFFU);  // high-byte for prefix extractor
@@ -489,6 +490,13 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
 RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
                                    VPackSlice second, VPackSlice third)
     : _type(type) {
+  fill(type, first, second, third);
+}
+
+void RocksDBKeyBounds::fill(RocksDBEntryType type, uint64_t first,
+                            VPackSlice second, VPackSlice third) {
+  clear();
+  _type = type;
   switch (_type) {
     case RocksDBEntryType::VPackIndexValue:
     case RocksDBEntryType::UniqueVPackIndexValue: {

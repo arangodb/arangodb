@@ -23,7 +23,6 @@
 
 #include <Graph/TraverserOptions.h>
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "ExecutionPlan.h"
 
@@ -278,7 +277,7 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(
           }
         } else if (name == StaticStrings::GraphRefactorFlag &&
                    value->isBoolValue()) {
-          options->setRefactor(value);
+          options->setRefactor(value->getBoolValue());
         } else {
           ExecutionPlan::invalidOptionAttribute(
               ast->query(), "unknown", "TRAVERSAL", name.data(), name.size());
@@ -555,31 +554,40 @@ ExecutionPlan* ExecutionPlan::clone(Ast* ast) {
 /// @brief clone an existing execution plan
 ExecutionPlan* ExecutionPlan::clone() { return clone(_ast); }
 
+// build flags for plan serialization
+unsigned ExecutionPlan::buildSerializationFlags(
+    bool verbose, bool includeInternals, bool explainRegisters) noexcept {
+  unsigned flags = ExecutionNode::SERIALIZE_ESTIMATES;
+  if (verbose) {
+    flags |=
+        ExecutionNode::SERIALIZE_PARENTS | ExecutionNode::SERIALIZE_FUNCTIONS;
+
+    if (includeInternals) {
+      flags |= ExecutionNode::SERIALIZE_DETAILS;
+    }
+  }
+
+  if (explainRegisters) {
+    flags |= ExecutionNode::SERIALIZE_REGISTER_INFORMATION;
+  }
+
+  return flags;
+}
+
 /// @brief export to VelocyPack
 std::shared_ptr<VPackBuilder> ExecutionPlan::toVelocyPack(
-    Ast* ast, bool verbose, ExplainRegisterPlan explainRegisterPlan) const {
+    Ast* ast, unsigned flags) const {
   VPackOptions options;
   options.checkAttributeUniqueness = false;
   options.buildUnindexedArrays = true;
   auto builder = std::make_shared<VPackBuilder>(&options);
-
-  toVelocyPack(*builder, ast, verbose, explainRegisterPlan);
+  toVelocyPack(*builder, ast, flags);
   return builder;
 }
 
 /// @brief export to VelocyPack
-void ExecutionPlan::toVelocyPack(
-    VPackBuilder& builder, Ast* ast, bool verbose,
-    ExplainRegisterPlan explainRegisterPlan) const {
-  unsigned flags = ExecutionNode::SERIALIZE_ESTIMATES;
-  if (verbose) {
-    flags |= ExecutionNode::SERIALIZE_PARENTS |
-             ExecutionNode::SERIALIZE_DETAILS |
-             ExecutionNode::SERIALIZE_FUNCTIONS;
-  }
-  if (explainRegisterPlan == ExplainRegisterPlan::Yes) {
-    flags |= ExecutionNode::SERIALIZE_REGISTER_INFORMATION;
-  }
+void ExecutionPlan::toVelocyPack(VPackBuilder& builder, Ast* ast,
+                                 unsigned flags) const {
   builder.openObject();
   builder.add(VPackValue("nodes"));
 
@@ -2623,19 +2631,38 @@ bool ExecutionPlan::fullCount() const noexcept {
 void ExecutionPlan::findCollectionAccessVariables() {
   _ast->variables()->visit([this](Variable* variable) {
     ExecutionNode* node = this->getVarSetBy(variable->id);
-    if (node != nullptr) {
-      if (node->getType() == ExecutionNode::ENUMERATE_COLLECTION ||
-          node->getType() == ExecutionNode::INDEX ||
-          node->getType() == ExecutionNode::INSERT ||
-          node->getType() == ExecutionNode::UPDATE ||
-          node->getType() == ExecutionNode::REPLACE ||
-          node->getType() == ExecutionNode::REMOVE) {
-        // TODO: maybe add more node types here, e.g. arangosearch nodes
-        // also check if it makes sense to do this if the node uses
-        // projections
-        variable->isDataFromCollection = true;
+    if (node == nullptr) {
+      return;
+    }
+    if (node->getType() == ExecutionNode::ENUMERATE_COLLECTION ||
+        node->getType() == ExecutionNode::INDEX) {
+      // we only produce full documents if there are no projections
+      variable->isFullDocumentFromCollection =
+          ExecutionNode::castTo<DocumentProducingNode const*>(node)
+              ->projections()
+              .empty();
+    } else if (node->getType() == ExecutionNode::INSERT ||
+               node->getType() == ExecutionNode::UPDATE ||
+               node->getType() == ExecutionNode::REPLACE ||
+               node->getType() == ExecutionNode::REMOVE) {
+      // these nodes always return full documents
+      variable->isFullDocumentFromCollection = true;
+    } else if (node->getType() == ExecutionNode::ENUMERATE_IRESEARCH_VIEW) {
+      // views always return full documents
+      variable->isFullDocumentFromCollection = true;
+    } else if (node->getType() == ExecutionNode::MATERIALIZE) {
+      // materialize nodes always return full documents
+      variable->isFullDocumentFromCollection = true;
+    } else if (node->getType() == ExecutionNode::TRAVERSAL) {
+      TraversalNode const* tn =
+          ExecutionNode::castTo<TraversalNode const*>(node);
+      if (variable == tn->vertexOutVariable() ||
+          variable == tn->edgeOutVariable()) {
+        // traversal vertices and edges are always returned as full documents
+        variable->isFullDocumentFromCollection = true;
       }
     }
+    // TODO: maybe add more node types here?
   });
 }
 

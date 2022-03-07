@@ -232,6 +232,12 @@ bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt,
           continue;
         }
 
+        if (mod->getOptions().exclusive) {
+          // exclusive lock used. this is not supported by the
+          // SingleRemoteOperationNode
+          continue;
+        }
+
         auto parentType = parentModification->getType();
         Variable const* update = nullptr;
         Variable const* keyVar = nullptr;
@@ -275,11 +281,11 @@ bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt,
         modified = true;
       } else if (::parentIsReturnOrConstCalc(node)) {
         ExecutionNode* singleOperationNode =
-            plan->registerNode(new SingleRemoteOperationNode(
+            plan->createNode<SingleRemoteOperationNode>(
                 plan, plan->nextId(), EN::INDEX, true, key,
                 indexNode->collection(), ModificationOptions{}, nullptr /*in*/,
                 indexNode->outVariable() /*out*/, nullptr /*old*/,
-                nullptr /*new*/));
+                nullptr /*new*/);
         ::replaceNode(plan, indexNode, singleOperationNode);
         modified = true;
       }
@@ -310,6 +316,12 @@ bool substituteClusterSingleDocumentOperationsNoIndex(
     }
 
     if (!::parentIsReturnOrConstCalc(node)) {
+      continue;
+    }
+
+    if (mod->getOptions().exclusive) {
+      // exclusive lock used. this is not supported by the
+      // SingleRemoteOperationNode
       continue;
     }
 
@@ -411,15 +423,19 @@ bool substituteClusterSingleDocumentOperationsNoIndex(
     }
 
     ExecutionNode* singleOperationNode =
-        plan->registerNode(new SingleRemoteOperationNode(
+        plan->createNode<SingleRemoteOperationNode>(
             plan, plan->nextId(), depType, false, key, mod->collection(),
             mod->getOptions(), update /*in*/, nullptr, mod->getOutVariableOld(),
-            mod->getOutVariableNew()));
+            mod->getOutVariableNew());
 
     ::replaceNode(plan, mod, singleOperationNode);
 
     if (calc) {
-      plan->unlinkNode(calc);
+      plan->clearVarUsageComputed();
+      plan->findVarUsage();
+      if (!calc->isVarUsedLater(calc->outVariable())) {
+        plan->unlinkNode(calc);
+      }
     }
     modified = true;
   }  // for node : nodes

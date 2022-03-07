@@ -30,6 +30,7 @@
 #include <fuerte/requests.h>
 #include <v8.h>
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/V8SecurityFeature.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
@@ -51,11 +52,13 @@
 #include "V8/v8-deadline.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
+#ifdef USE_ENTERPRISE
+#include "Enterprise/Encryption/EncryptionFeature.h"
+#endif
 
 #include <velocypack/Builder.h>
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <iostream>
 
@@ -78,8 +81,8 @@ std::string connectionIdentifier(fuerte::ConnectionBuilder& builder) {
 }
 }  // namespace
 
-V8ClientConnection::V8ClientConnection(
-    application_features::ApplicationServer& server, ClientFeature& client)
+V8ClientConnection::V8ClientConnection(ArangoshServer& server,
+                                       ClientFeature& client)
     : _server(server),
       _client(client),
       _requestTimeout(_client.requestTimeout()),
@@ -294,9 +297,7 @@ std::string V8ClientConnection::endpointSpecification() const {
   return "";
 }
 
-application_features::ApplicationServer& V8ClientConnection::server() {
-  return _server;
-}
+ArangoshServer& V8ClientConnection::server() { return _server; }
 
 void V8ClientConnection::setDatabaseName(std::string const& value) {
   _databaseName = normalizeUtf8ToNFC(value);
@@ -514,8 +515,10 @@ static void ClientConnection_ConstructorCallback(
   v8::Local<v8::External> wrap = v8::Local<v8::External>::Cast(args.Data());
   ClientFeature* client = static_cast<ClientFeature*>(wrap->Value());
 
+  TRI_GET_SERVER_GLOBALS(ArangoshServer);
+
   auto v8connection =
-      std::make_unique<V8ClientConnection>(client->server(), *client);
+      std::make_unique<V8ClientConnection>(v8g->server(), *client);
   v8connection->connect();
 
   if (v8connection->isConnected() &&
@@ -586,8 +589,10 @@ static void ClientConnection_reconnect(
   }
 
   if (args.Length() < 2) {
+    // Note that there are two additional parameters, which aren't advertised,
+    // namely `warnConnect` and `jwtSecret`.
     TRI_V8_THROW_EXCEPTION_USAGE(
-        "reconnect(<endpoint>, <database>, [, <username>, <password>])");
+        "reconnect(<endpoint>, <database>, [ <username>, <password> ])");
   }
 
   std::string const endpoint = TRI_ObjectToString(isolate, args[0]);
@@ -625,6 +630,11 @@ static void ClientConnection_reconnect(
     warnConnect = TRI_ObjectToBoolean(isolate, args[4]);
   }
 
+  std::string jwtSecret;
+  if (args.Length() > 5) {
+    jwtSecret = TRI_ObjectToString(isolate, args[5]);
+  }
+
   V8SecurityFeature& v8security =
       v8connection->server().getFeature<V8SecurityFeature>();
   if (!v8security.isAllowedToConnectToEndpoint(isolate, endpoint, endpoint)) {
@@ -638,6 +648,7 @@ static void ClientConnection_reconnect(
   client->setUsername(username);
   client->setPassword(password);
   client->setWarnConnect(warnConnect);
+  client->setJwtSecret(jwtSecret);
 
   try {
     v8connection->reconnect();
@@ -1256,12 +1267,20 @@ static void ClientConnection_importCsv(
   V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
       args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
+  ArangoshServer& server = v8connection->server();
+  EncryptionFeature* encryption{};
+  if constexpr (ArangoshServer::contains<EncryptionFeature>()) {
+    if (server.hasFeature<EncryptionFeature>()) {
+      encryption = &server.getFeature<EncryptionFeature>();
+    }
+  }
+
   v8::Local<v8::External> wrap = v8::Local<v8::External>::Cast(args.Data());
   ClientFeature* client = static_cast<ClientFeature*>(wrap->Value());
 
   SimpleHttpClientParams params(client->requestTimeout(), client->getWarn());
-  ImportHelper ih(*client, v8connection->endpointSpecification(), params,
-                  DefaultChunkSize, 1);
+  ImportHelper ih(encryption, *client, v8connection->endpointSpecification(),
+                  params, DefaultChunkSize, 1);
 
   ih.setQuote(quote);
   ih.setSeparator(separator.c_str());
@@ -1341,12 +1360,21 @@ static void ClientConnection_importJson(
   V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
       args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
+  ArangoshServer& server = v8connection->server();
+
+  EncryptionFeature* encryption{};
+  if constexpr (ArangoshServer::contains<EncryptionFeature>()) {
+    if (server.hasFeature<EncryptionFeature>()) {
+      encryption = &server.getFeature<EncryptionFeature>();
+    }
+  }
+
   v8::Local<v8::External> wrap = v8::Local<v8::External>::Cast(args.Data());
   ClientFeature* client = static_cast<ClientFeature*>(wrap->Value());
 
   SimpleHttpClientParams params(client->requestTimeout(), client->getWarn());
-  ImportHelper ih(*client, v8connection->endpointSpecification(), params,
-                  DefaultChunkSize, 1);
+  ImportHelper ih(encryption, *client, v8connection->endpointSpecification(),
+                  params, DefaultChunkSize, 1);
 
   std::string fileName = TRI_ObjectToString(isolate, args[0]);
   std::string collectionName = TRI_ObjectToString(isolate, args[1]);

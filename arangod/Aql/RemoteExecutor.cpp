@@ -36,7 +36,6 @@
 #include "Aql/SharedQueryState.h"
 #include "Aql/SkipResult.h"
 #include "Basics/MutexLocker.h"
-#include "Basics/StringBuffer.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
@@ -51,7 +50,6 @@
 #include <fuerte/requests.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;

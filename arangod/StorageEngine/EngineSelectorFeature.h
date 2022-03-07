@@ -23,18 +23,18 @@
 
 #pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
+#include "RestServer/arangod.h"
 
 namespace arangodb {
 
 class StorageEngine;
 
-class EngineSelectorFeature final
-    : public application_features::ApplicationFeature {
+class EngineSelectorFeature final : public ArangodFeature {
  public:
-  explicit EngineSelectorFeature(
-      application_features::ApplicationServer& server);
+  static constexpr std::string_view name() noexcept { return "EngineSelector"; }
+
+  explicit EngineSelectorFeature(Server& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
@@ -54,9 +54,9 @@ class EngineSelectorFeature final
                                    int>::type = 0>
   As& engine();
 
-  std::string const& engineName();
+  std::string_view engineName();
 
-  static std::string const& defaultEngine();
+  static std::string_view defaultEngine();
 
   /// @brief note that this will return true for the ClusterEngine too, in case
   /// the underlying engine is the RocksDB engine.

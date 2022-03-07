@@ -40,6 +40,13 @@ class RocksDBZkdIndexBase : public RocksDBIndex {
   bool canBeDropped() const override { return true; }
   bool isSorted() const override { return false; }
   bool hasSelectivityEstimate() const override { return false; /* TODO */ }
+
+  std::vector<std::vector<arangodb::basics::AttributeName>> const&
+  coveredFields() const override {
+    // index does not cover the index attributes!
+    return Index::emptyCoveredFields;
+  }
+
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,
                 const LocalDocumentId& documentId,
                 arangodb::velocypack::Slice doc,
@@ -61,7 +68,7 @@ class RocksDBZkdIndexBase : public RocksDBIndex {
   std::unique_ptr<IndexIterator> iteratorForCondition(
       transaction::Methods* trx, const aql::AstNode* node,
       const aql::Variable* reference, const IndexIteratorOptions& opts,
-      ReadOwnWrites readOwnWrites) override;
+      ReadOwnWrites readOwnWrites, int) override;
 };
 
 class RocksDBZkdIndex final : public RocksDBZkdIndexBase {
@@ -82,7 +89,7 @@ class RocksDBUniqueZkdIndex final : public RocksDBZkdIndexBase {
   std::unique_ptr<IndexIterator> iteratorForCondition(
       transaction::Methods* trx, const aql::AstNode* node,
       const aql::Variable* reference, const IndexIteratorOptions& opts,
-      ReadOwnWrites readOwnWrites) override;
+      ReadOwnWrites readOwnWrites, int) override;
 };
 
 namespace zkd {

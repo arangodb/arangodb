@@ -28,18 +28,30 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "Containers/FlatHashMap.h"
+#include "Containers/FlatHashSet.h"
 #include "Network/NetworkFeature.h"
 #include "Metrics/Fwd.h"
 
 namespace arangodb {
+namespace application_features {
+class CommunicationFeaturePhase;
+class DatabaseFeaturePhase;
+}  // namespace application_features
+namespace metrics {
+class MetricsFeature;
+}
 
 class AgencyCache;
 class AgencyCallbackRegistry;
+class DatabaseFeature;
 class HeartbeatThread;
 
-class ClusterFeature : public application_features::ApplicationFeature {
+class ClusterFeature : public ArangodFeature {
  public:
-  explicit ClusterFeature(application_features::ApplicationServer& server);
+  static constexpr std::string_view name() noexcept { return "Cluster"; }
+
+  explicit ClusterFeature(Server& server);
   ~ClusterFeature();
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -124,10 +136,10 @@ class ClusterFeature : public application_features::ApplicationFeature {
    * @brief Add databases to dirty list
    */
   void addDirty(std::string const& database);
-  void addDirty(std::unordered_set<std::string> const& databases,
+  void addDirty(containers::FlatHashSet<std::string> const& databases,
                 bool callNotify);
   void addDirty(
-      std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const&
+      containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
           changeset);
   std::unordered_set<std::string> allDatabases() const;
 
@@ -136,7 +148,7 @@ class ClusterFeature : public application_features::ApplicationFeature {
    *        This method must not be called by any other mechanism than
    *        the very start of a single maintenance run.
    */
-  std::unordered_set<std::string> dirty();
+  containers::FlatHashSet<std::string> dirty();
 
   /**
    * @brief Check database for dirtyness
@@ -174,6 +186,8 @@ class ClusterFeature : public application_features::ApplicationFeature {
                             std::string const& endpoints);
 
  private:
+  ClusterFeature(Server& server, metrics::MetricsFeature& metrics,
+                 DatabaseFeature& database, size_t registration);
   void reportRole(ServerState::RoleEnum);
 
   std::vector<std::string> _agencyEndpoints;
@@ -208,6 +222,7 @@ class ClusterFeature : public application_features::ApplicationFeature {
   std::unique_ptr<AgencyCache> _agencyCache;
   uint64_t _heartbeatInterval = 0;
   std::unique_ptr<AgencyCallbackRegistry> _agencyCallbackRegistry;
+  metrics::MetricsFeature& _metrics;
   ServerState::RoleEnum _requestedRole = ServerState::RoleEnum::ROLE_UNDEFINED;
   metrics::Histogram<metrics::LogScale<uint64_t>>& _agency_comm_request_time_ms;
   std::unique_ptr<network::ConnectionPool> _asyncAgencyCommPool;
@@ -220,7 +235,7 @@ class ClusterFeature : public application_features::ApplicationFeature {
   /// @brief lock for dirty database list
   mutable arangodb::Mutex _dirtyLock;
   /// @brief dirty databases, where a job could not be posted)
-  std::unordered_set<std::string> _dirtyDatabases;
+  containers::FlatHashSet<std::string> _dirtyDatabases;
 };
 
 }  // namespace arangodb

@@ -25,9 +25,9 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 #include "Basics/Result.h"
 #include "Basics/debugging.h"
+#include "RestServer/arangod.h"
 #include "Replication2/Version.h"
 #include "Utils/OperationOptions.h"
 #include "VocBase/voc-types.h"
@@ -76,8 +76,7 @@ struct DBUser {
 
 class CreateDatabaseInfo {
  public:
-  CreateDatabaseInfo(application_features::ApplicationServer&,
-                     ExecContext const&);
+  CreateDatabaseInfo(ArangodServer&, ExecContext const&);
   Result load(std::string const& name, uint64_t id);
 
   Result load(std::string const& name, VPackSlice const& options,
@@ -91,7 +90,7 @@ class CreateDatabaseInfo {
   void toVelocyPack(VPackBuilder& builder, bool withUsers = false) const;
   void UsersToVelocyPack(VPackBuilder& builder) const;
 
-  application_features::ApplicationServer& server() const;
+  ArangodServer& server() const;
 
   uint64_t getId() const {
     TRI_ASSERT(_valid);
@@ -143,7 +142,7 @@ class CreateDatabaseInfo {
   Result checkOptions();
 
  private:
-  application_features::ApplicationServer& _server;
+  ArangodServer& _server;
   ExecContext const& _context;
 
   std::uint64_t _id = 0;
@@ -168,8 +167,7 @@ struct VocbaseOptions {
   replication::Version replicationVersion = replication::Version::ONE;
 };
 
-VocbaseOptions getVocbaseOptions(application_features::ApplicationServer&,
-                                 velocypack::Slice const&);
+VocbaseOptions getVocbaseOptions(ArangodServer&, velocypack::Slice);
 
 void addClusterOptions(VPackBuilder& builder, std::string const& sharding,
                        std::uint32_t replicationFactor,

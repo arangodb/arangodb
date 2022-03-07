@@ -23,11 +23,9 @@
 
 #pragma once
 
-#include <atomic>
-#include <chrono>
 #include <cstdint>
-#include <list>
 
+#include "Basics/ErrorCode.h"
 #include "Cache/Cache.h"
 #include "Cache/CachedValue.h"
 #include "Cache/Common.h"
@@ -39,8 +37,7 @@
 #include "Cache/Table.h"
 #include "Cache/TransactionalBucket.h"
 
-namespace arangodb {
-namespace cache {
+namespace arangodb::cache {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief A transactional, LRU-ish cache.
@@ -57,6 +54,7 @@ namespace cache {
 /// values and allow for clients to fall through to the backing transactional
 /// store.
 ////////////////////////////////////////////////////////////////////////////////
+
 class TransactionalCache final : public Cache {
  public:
   TransactionalCache(Cache::ConstructionGuard guard, Manager* manager,
@@ -68,7 +66,6 @@ class TransactionalCache final : public Cache {
   TransactionalCache(TransactionalCache const&) = delete;
   TransactionalCache& operator=(TransactionalCache const&) = delete;
 
- public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Looks up the given key.
   ///
@@ -117,8 +114,14 @@ class TransactionalCache final : public Cache {
   friend class Manager;
   friend class MigrateTask;
 
- private:
-  static uint64_t allocationSize(bool enableWindowedStats);
+  static constexpr uint64_t allocationSize(bool enableWindowedStats) {
+    return sizeof(TransactionalCache) +
+           (enableWindowedStats
+                ? (sizeof(StatBuffer) +
+                   StatBuffer::allocationSize(findStatsCapacity))
+                : 0);
+  }
+
   static std::shared_ptr<Cache> create(Manager* manager, std::uint64_t id,
                                        Metadata&& metadata,
                                        std::shared_ptr<Table> table,
@@ -130,12 +133,10 @@ class TransactionalCache final : public Cache {
                              std::shared_ptr<Table> newTable) override;
 
   // helpers
-  std::tuple<Result, Table::BucketLocker> getBucket(
+  std::tuple<::ErrorCode, Table::BucketLocker> getBucket(
       std::uint32_t hash, std::uint64_t maxTries, bool singleOperation = true);
-  std::uint32_t getIndex(uint32_t hash, bool useAuxiliary) const;
 
   static Table::BucketClearer bucketClearer(Metadata* metadata);
 };
 
-};  // end namespace cache
-};  // end namespace arangodb
+}  // end namespace arangodb::cache

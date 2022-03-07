@@ -55,7 +55,32 @@ auto aliases::supervision()
   return root()->arango()->supervision();
 }
 
+auto Root::Arango::Target::ReplicatedLogs::Database::log(
+    replication2::LogId id) const -> std::shared_ptr<const Log> {
+  return Log::make_shared(shared_from_this(), std::to_string(id.id()));
+}
+
 auto Root::Arango::Plan::ReplicatedLogs::Database::log(
     replication2::LogId id) const -> std::shared_ptr<const Log> {
   return Log::make_shared(shared_from_this(), std::to_string(id.id()));
+}
+
+auto Root::Arango::Plan::ReplicatedStates::Database::state(
+    replication2::LogId id) const -> std::shared_ptr<const State> {
+  return State::make_shared(shared_from_this(), std::to_string(id.id()));
+}
+
+auto Root::Arango::Current::ReplicatedLogs::Database::log(
+    replication2::LogId id) const -> std::shared_ptr<const Log> {
+  return Log::make_shared(shared_from_this(), std::to_string(id.id()));
+}
+
+auto Root::Arango::Current::ReplicatedStates::Database::state(
+    replication2::LogId id) const -> std::shared_ptr<const State> {
+  return State::make_shared(shared_from_this(), std::to_string(id.id()));
+}
+
+auto Root::Arango::Target::ReplicatedStates::Database::state(
+    replication2::LogId id) const -> std::shared_ptr<const State> {
+  return State::make_shared(shared_from_this(), std::to_string(id.id()));
 }

@@ -64,7 +64,9 @@ struct Link : public arangodb::iresearch::IResearchLink {
   Link(arangodb::IndexId id, arangodb::LogicalCollection& col)
       : IResearchLink(id, col) {
     auto json = VPackParser::fromJson(R"({ "view": "42" })");
-    EXPECT_TRUE(init(json->slice()).ok());
+    bool pathExists = false;
+    EXPECT_TRUE(init(json->slice(), pathExists).ok());
+    EXPECT_FALSE(pathExists);
   }
 };
 
@@ -340,7 +342,9 @@ TEST_F(IResearchViewDBServerTest, test_make) {
     EXPECT_FALSE(wiew->deleted());
     EXPECT_EQ(wiewId, wiew->id().id());
     EXPECT_EQ(impl->id(), wiew->planId());  // same as view ID
-    EXPECT_EQ(arangodb::iresearch::DATA_SOURCE_TYPE, wiew->type());
+    EXPECT_EQ(arangodb::iresearch::StaticStrings::DataSourceType,
+              wiew->typeName());
+    EXPECT_EQ(arangodb::ViewType::kSearch, wiew->type());
     EXPECT_EQ(&vocbase, &(wiew->vocbase()));
   }
 }
@@ -452,7 +456,7 @@ TEST_F(IResearchViewDBServerTest, test_query) {
         std::vector<std::string>{logicalCollection->name()}, EMPTY, EMPTY,
         arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
-    arangodb::containers::HashSet<arangodb::DataSourceId> collections;
+    arangodb::containers::FlatHashSet<arangodb::DataSourceId> collections;
     collections.insert(logicalCollection->id());
     auto* snapshot = wiewImpl->snapshot(
         trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate,
@@ -514,7 +518,7 @@ TEST_F(IResearchViewDBServerTest, test_query) {
         std::vector<std::string>{logicalCollection->name()}, EMPTY, EMPTY,
         arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
-    arangodb::containers::HashSet<arangodb::DataSourceId> collections;
+    arangodb::containers::FlatHashSet<arangodb::DataSourceId> collections;
     collections.insert(logicalCollection->id());
     auto* snapshot = wiewImpl->snapshot(
         trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate,
@@ -574,7 +578,7 @@ TEST_F(IResearchViewDBServerTest, test_query) {
         arangodb::transaction::StandaloneContext::Create(*vocbase), collections,
         EMPTY, EMPTY, trxOptions);
     EXPECT_TRUE(trx0.begin().ok());
-    arangodb::containers::HashSet<arangodb::DataSourceId> collectionIds;
+    arangodb::containers::FlatHashSet<arangodb::DataSourceId> collectionIds;
     collectionIds.insert(logicalCollection->id());
     EXPECT_TRUE(
         (nullptr == wiewImpl->snapshot(
@@ -682,7 +686,7 @@ TEST_F(IResearchViewDBServerTest, test_query) {
             std::vector<std::string>{logicalCollection->name()}, EMPTY, EMPTY,
             arangodb::transaction::Options{});
         EXPECT_TRUE(trx.begin().ok());
-        arangodb::containers::HashSet<arangodb::DataSourceId> collections;
+        arangodb::containers::FlatHashSet<arangodb::DataSourceId> collections;
         collections.insert(logicalCollection->id());
         auto* snapshot = wiewImpl->snapshot(
             trx,
@@ -840,7 +844,7 @@ TEST_F(IResearchViewDBServerTest, test_toVelocyPack) {
     EXPECT_TRUE((slice.hasKey("name") && slice.get("name").isString() &&
                  std::string("testView") == slice.get("name").copyString()));
     EXPECT_TRUE((slice.hasKey("type") && slice.get("type").isString() &&
-                 arangodb::iresearch::DATA_SOURCE_TYPE.name() ==
+                 arangodb::iresearch::StaticStrings::DataSourceType ==
                      slice.get("type").copyString()));
   }
 
@@ -879,7 +883,7 @@ TEST_F(IResearchViewDBServerTest, test_toVelocyPack) {
     EXPECT_TRUE((slice.hasKey("name") && slice.get("name").isString() &&
                  std::string("testView") == slice.get("name").copyString()));
     EXPECT_TRUE((slice.hasKey("type") && slice.get("type").isString() &&
-                 arangodb::iresearch::DATA_SOURCE_TYPE.name() ==
+                 arangodb::iresearch::StaticStrings::DataSourceType ==
                      slice.get("type").copyString()));
     auto expectedStoredValue = arangodb::velocypack::Parser::fromJson(
         "[{ \"fields\":[\"test.t\"], \"compression\":\"none\"}, "
@@ -929,7 +933,7 @@ TEST_F(IResearchViewDBServerTest, test_toVelocyPack) {
     EXPECT_TRUE(slice.hasKey("planId") && slice.get("planId").isString() &&
                 std::string("3") == slice.get("planId").copyString());
     EXPECT_TRUE(slice.hasKey("type") && slice.get("type").isString() &&
-                arangodb::iresearch::DATA_SOURCE_TYPE.name() ==
+                arangodb::iresearch::StaticStrings::DataSourceType ==
                     slice.get("type").copyString());
     EXPECT_TRUE(slice.hasKey("cleanupIntervalStep") &&
                 slice.get("cleanupIntervalStep").isNumber());
@@ -1016,7 +1020,7 @@ TEST_F(IResearchViewDBServerTest, test_transaction_snapshot) {
         std::vector<std::string>{logicalCollection->name()}, EMPTY, EMPTY,
         arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
-    arangodb::containers::HashSet<arangodb::DataSourceId> collections;
+    arangodb::containers::FlatHashSet<arangodb::DataSourceId> collections;
     collections.insert(logicalCollection->id());
     auto* snapshot = wiewImpl->snapshot(
         trx, arangodb::iresearch::IResearchView::SnapshotMode::Find,
@@ -1032,7 +1036,7 @@ TEST_F(IResearchViewDBServerTest, test_transaction_snapshot) {
         std::vector<std::string>{logicalCollection->name()}, EMPTY, EMPTY,
         arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
-    arangodb::containers::HashSet<arangodb::DataSourceId> collections;
+    arangodb::containers::FlatHashSet<arangodb::DataSourceId> collections;
     collections.insert(logicalCollection->id());
     EXPECT_TRUE(
         (nullptr == wiewImpl->snapshot(
@@ -1060,7 +1064,7 @@ TEST_F(IResearchViewDBServerTest, test_transaction_snapshot) {
         std::vector<std::string>{logicalCollection->name()}, EMPTY, EMPTY,
         opts);
     EXPECT_TRUE(trx.begin().ok());
-    arangodb::containers::HashSet<arangodb::DataSourceId> collections;
+    arangodb::containers::FlatHashSet<arangodb::DataSourceId> collections;
     collections.insert(logicalCollection->id());
     auto* snapshot = wiewImpl->snapshot(
         trx, arangodb::iresearch::IResearchView::SnapshotMode::Find,
@@ -1077,7 +1081,7 @@ TEST_F(IResearchViewDBServerTest, test_transaction_snapshot) {
         std::vector<std::string>{logicalCollection->name()}, EMPTY, EMPTY,
         opts);
     EXPECT_TRUE(trx.begin().ok());
-    arangodb::containers::HashSet<arangodb::DataSourceId> collections;
+    arangodb::containers::FlatHashSet<arangodb::DataSourceId> collections;
     collections.insert(logicalCollection->id());
     EXPECT_TRUE(
         (nullptr == wiewImpl->snapshot(

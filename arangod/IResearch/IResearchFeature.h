@@ -24,8 +24,8 @@
 
 #pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
 #include "StorageEngine/StorageEngine.h"
+#include "RestServer/arangod.h"
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
@@ -65,11 +65,11 @@ bool isScorer(aql::Function const& func) noexcept;
 ////////////////////////////////////////////////////////////////////////////////
 /// @class IResearchFeature
 ////////////////////////////////////////////////////////////////////////////////
-class IResearchFeature final : public application_features::ApplicationFeature {
+class IResearchFeature final : public ArangodFeature {
  public:
-  static std::string const& name();
+  static constexpr std::string_view name() noexcept { return "ArangoSearch"; }
 
-  explicit IResearchFeature(application_features::ApplicationServer& server);
+  explicit IResearchFeature(Server& server);
 
   void beginShutdown() override;
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
