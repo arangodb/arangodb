@@ -56,6 +56,7 @@ const LinkPropertiesForm = ({
         value: {}
       }
     });
+
     setCollection("");
     showLink();
     setLink(collection);
@@ -87,7 +88,17 @@ const LinkPropertiesForm = ({
           disabled={disabled}
         />
       )}
-      {show === "ViewChild" && <h1>New Link: {link}</h1>}
+      {show === "ViewChild" && (
+        <LinkView
+          view={view}
+          link={link}
+          links={links}
+          dispatch={
+            (dispatch as unknown) as Dispatch<DispatchArgs<LinkProperties>>
+          }
+          disabled={disabled}
+        />
+      )}
       {/* {map(links, (properties, coll) => {
           return properties ? (
             <tr key={coll} style={{ borderBottom: "1px  solid #DDD" }}>
