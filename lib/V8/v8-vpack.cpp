@@ -38,11 +38,6 @@
 
 using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 
-namespace {
-/// @brief maximum array/object nesting depth
-static constexpr int maxRecursion = 80;
-}  // namespace
-
 /// @brief converts a VelocyValueType::String into a V8 object
 static inline v8::Handle<v8::Value> ObjectVPackString(v8::Isolate* isolate,
                                                       VPackSlice slice) {
@@ -274,7 +269,7 @@ struct BuilderContext {
   v8::Isolate* isolate;
   v8::Handle<v8::Value> toJsonKey;
   VPackBuilder& builder;
-  int level;
+  uint32_t level;
   bool keepTopLevelOpen;
 };
 
@@ -354,7 +349,7 @@ static void V8ToVPack(BuilderContext& context, v8::Handle<v8::Value> parameter,
   if (parameter->IsArray()) {
     v8::Handle<v8::Array> array = v8::Handle<v8::Array>::Cast(parameter);
 
-    if (context.level + 1 > ::maxRecursion) {
+    if (context.level + 1 > VPackOptions::Defaults.nestingLimit) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                      "input value is nested too deep");
     }
@@ -468,7 +463,7 @@ static void V8ToVPack(BuilderContext& context, v8::Handle<v8::Value> parameter,
                                       .FromMaybe(v8::Local<v8::Array>());
     uint32_t const n = names->Length();
 
-    if (context.level + 1 > ::maxRecursion) {
+    if (context.level + 1 > VPackOptions::Defaults.nestingLimit) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                      "input value is nested too deep");
     }

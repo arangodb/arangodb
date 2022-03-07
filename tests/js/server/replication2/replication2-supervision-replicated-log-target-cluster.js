@@ -249,7 +249,7 @@ const replicatedLogSuite = function () {
         //  3. update participant flags with leader.forced = false
         {
           const action = _.nth(actions, -3).desc;
-          assertEqual(action.type, 'UpdateParticipantFlags');
+          assertEqual(action.type, 'UpdateParticipantFlagsAction');
           assertEqual(action.participant, newLeader);
           assertEqual(action.flags, {excluded: false, forced: true});
         }
@@ -260,7 +260,7 @@ const replicatedLogSuite = function () {
         }
         {
           const action = _.nth(actions, -1).desc;
-          assertEqual(action.type, 'UpdateParticipantFlags');
+          assertEqual(action.type, 'UpdateParticipantFlagsAction');
           assertEqual(action.participant, newLeader);
           assertEqual(action.flags, {excluded: false, forced: false});
         }

@@ -40,7 +40,13 @@ struct LeaderStateManager
   using LeaderType = typename ReplicatedStateTraits<S>::LeaderType;
   using CoreType = typename ReplicatedStateTraits<S>::CoreType;
 
+  using WaitForAppliedQueue =
+      typename ReplicatedState<S>::StateManagerBase::WaitForAppliedQueue;
+  using WaitForAppliedPromise =
+      typename ReplicatedState<S>::StateManagerBase::WaitForAppliedQueue;
+
   explicit LeaderStateManager(
+      LoggerContext loggerContext,
       std::shared_ptr<ReplicatedState<S>> const& parent,
       std::shared_ptr<replicated_log::ILogLeader> leader,
       std::unique_ptr<CoreType> core,
@@ -52,11 +58,12 @@ struct LeaderStateManager
 
   [[nodiscard]] auto getStatus() const -> StateStatus final;
 
-  void run();
+  void run() override;
 
   [[nodiscard]] auto resign() && noexcept
-      -> std::pair<std::unique_ptr<CoreType>,
-                   std::unique_ptr<ReplicatedStateToken>> override;
+      -> std::tuple<std::unique_ptr<CoreType>,
+                    std::unique_ptr<ReplicatedStateToken>,
+                    DeferredAction> override;
 
   using Multiplexer = streams::LogMultiplexer<ReplicatedStateStreamSpec<S>>;
   std::shared_ptr<IReplicatedLeaderState<S>> state;
@@ -71,6 +78,7 @@ struct LeaderStateManager
   std::unique_ptr<CoreType> core;
   std::unique_ptr<ReplicatedStateToken> token;
 
+  LoggerContext const loggerContext;
   std::shared_ptr<Factory> const factory;
   bool _didResign = false;
 

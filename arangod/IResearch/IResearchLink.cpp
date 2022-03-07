@@ -206,24 +206,24 @@ Result IResearchLink::toView(std::shared_ptr<LogicalView> const& logical,
   return {};
 }
 
-Result IResearchLink::initAndLink(InitCallback const& init,
+Result IResearchLink::initAndLink(bool& pathExists, InitCallback const& init,
                                   IResearchView* view) {
-  auto r = initDataStore(init, _meta._version, !_meta._sort.empty(),
+  auto r = initDataStore(pathExists, init, _meta._version, !_meta._sort.empty(),
                          _meta._storedValues.columns(), _meta._sortCompression);
   if (r.ok() && view) {
     r = view->link(_asyncSelf);
-    // TODO(MBkkt) Should we remove directory if we create it?
   }
   return r;
 }
 
-Result IResearchLink::initSingleServer(InitCallback const& init) {
+Result IResearchLink::initSingleServer(bool& pathExists,
+                                       InitCallback const& init) {
   std::shared_ptr<IResearchView> view;
   auto r = toView(_collection.vocbase().lookupView(_viewGuid), view);
   if (!r.ok()) {
     return r;
   }
-  return initAndLink(init, view.get());
+  return initAndLink(pathExists, init, view.get());
 }
 
 Result IResearchLink::initCoordinator(InitCallback const& init) {
@@ -236,7 +236,7 @@ Result IResearchLink::initCoordinator(InitCallback const& init) {
   return view->link(*this);
 }
 
-Result IResearchLink::initDBServer(InitCallback const& init) {
+Result IResearchLink::initDBServer(bool& pathExists, InitCallback const& init) {
   auto& vocbase = _collection.vocbase();
   auto& server = vocbase.server();
   bool const clusterEnabled = server.getFeature<ClusterFeature>().isEnabled();
@@ -269,7 +269,7 @@ Result IResearchLink::initDBServer(InitCallback const& init) {
         " Please rollback the updated arangodb binary and"
         " finish the recovery first.");
   }
-  return initAndLink(init, view.get());
+  return initAndLink(pathExists, init, view.get());
 }
 
 IResearchLink::IResearchLink(IndexId iid, LogicalCollection& collection)
@@ -333,7 +333,7 @@ Result IResearchLink::drop() {
   return deleteDataStore();
 }
 
-Result IResearchLink::init(velocypack::Slice definition,
+Result IResearchLink::init(velocypack::Slice definition, bool& pathExists,
                            InitCallback const& init) {
   auto& vocbase = _collection.vocbase();
   auto& server = vocbase.server();
@@ -362,11 +362,11 @@ Result IResearchLink::init(velocypack::Slice definition,
   _viewGuid = definition.get(StaticStrings::ViewIdField).stringView();
   Result r;
   if (isSingleServer) {
-    r = initSingleServer(init);
+    r = initSingleServer(pathExists, init);
   } else if (ServerState::instance()->isCoordinator()) {
     r = initCoordinator(init);
   } else if (ServerState::instance()->isDBServer()) {
-    r = initDBServer(init);
+    r = initDBServer(pathExists, init);
   } else {
     TRI_ASSERT(false);
     return r;
@@ -458,19 +458,18 @@ bool IResearchLink::setCollectionName(irs::string_ref name) noexcept {
   return false;
 }
 
-Result IResearchLink::unload() {
-  // this code is used by the MMFilesEngine
-  // if the collection is in the process of being removed then drop it from the
-  // view
-  // FIXME TODO remove once LogicalCollection::drop(...) will drop its indexes
-  // explicitly
+Result IResearchLink::unload() noexcept {
+  // TODO(MBkkt) It's true? Now it's just a guess.
+  // This is necessary because the removal of the collection can be parallel
+  // with the removal of the link: when we decided whether to drop the link,
+  // the collection was still there. But when we did an unload link,
+  // the collection was already lazily deleted.
   if (_collection.deleted()  // collection deleted
-      || TRI_vocbase_col_status_e::TRI_VOC_COL_STATUS_DELETED ==
-             _collection.status()) {
+      || _collection.status() == TRI_VOC_COL_STATUS_DELETED) {
     return drop();
   }
-
-  return shutdownDataStore();
+  shutdownDataStore();
+  return {};
 }
 
 ////////////////////////////////////////////////////////////////////////////////

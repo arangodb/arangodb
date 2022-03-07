@@ -103,6 +103,9 @@ const getServerHealth = function (serverId) {
 const dbservers = (function () {
   return global.ArangoClusterInfo.getDBServers().map((x) => x.serverId);
 }());
+const coordinators = (function () {
+  return global.ArangoClusterInfo.getCoordinators().map((x) => x.serverId);
+}());
 
 
 const readReplicatedLogAgency = function (database, logId) {
@@ -457,6 +460,7 @@ exports.readAgencyValueAt = readAgencyValueAt;
 exports.createParticipantsConfig = createParticipantsConfig;
 exports.createTermSpecification = createTermSpecification;
 exports.dbservers = dbservers;
+exports.coordinators = coordinators;
 exports.readReplicatedLogAgency = readReplicatedLogAgency;
 exports.replicatedLogSetPlanParticipantsConfig = replicatedLogSetPlanParticipantsConfig;
 exports.replicatedLogUpdatePlanParticipantsConfigParticipants = replicatedLogUpdatePlanParticipantsConfigParticipants;

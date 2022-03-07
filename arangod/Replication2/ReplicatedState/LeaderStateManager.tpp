@@ -34,7 +34,7 @@ void LeaderStateManager<S>::run() {
   // 2.2 apply all log entries of the previous term
   // 3. make leader state available
 
-  LOG_TOPIC("53ba0", TRACE, Logger::REPLICATED_STATE)
+  LOG_CTX("53ba0", TRACE, loggerContext)
       << "LeaderStateManager waiting for leadership to be established";
   updateInternalState(LeaderInternalState::kWaitingForLeadershipEstablished);
   logLeader->waitForLeadership()
@@ -44,27 +44,27 @@ void LeaderStateManager<S>::run() {
           return futures::Future<Result>{
               TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED};
         }
-        LOG_TOPIC("53ba1", TRACE, Logger::REPLICATED_STATE)
+        LOG_CTX("53ba1", TRACE, self->loggerContext)
             << "LeaderStateManager established";
         self->updateInternalState(LeaderInternalState::kIngestingExistingLog);
         auto mux = Multiplexer::construct(self->logLeader);
         mux->digestAvailableEntries();
         self->stream = mux->template getStreamById<1>();  // TODO fix stream id
 
-        LOG_TOPIC("53ba2", TRACE, Logger::REPLICATED_STATE)
+        LOG_CTX("53ba2", TRACE, self->loggerContext)
             << "receiving committed entries for recovery";
         // TODO we don't have to `waitFor` we can just access the log.
         //    new entries are not yet written, because the stream is
         //    not published.
         return self->stream->waitForIterator(LogIndex{0})
             .thenValue([weak](std::unique_ptr<Iterator>&& result) {
-              LOG_TOPIC("53ba0", TRACE, Logger::REPLICATED_STATE)
-                  << "creating leader instance and starting recovery";
               auto self = weak.lock();
               if (self == nullptr) {
                 return futures::Future<Result>{
                     TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED};
               }
+              LOG_CTX("53ba0", TRACE, self->loggerContext)
+                  << "creating leader instance and starting recovery";
               self->updateInternalState(
                   LeaderInternalState::kRecoveryInProgress, result->range());
               std::shared_ptr<IReplicatedLeaderState<S>> machine =
@@ -80,7 +80,7 @@ void LeaderStateManager<S>::run() {
                     }
                     try {
                       if (auto result = tryResult.get(); result.ok()) {
-                        LOG_TOPIC("1a375", DEBUG, Logger::REPLICATED_STATE)
+                        LOG_CTX("1a375", DEBUG, self->loggerContext)
                             << "recovery on leader completed";
                         self->state = machine;
                         self->token->snapshot.updateStatus(
@@ -91,17 +91,17 @@ void LeaderStateManager<S>::run() {
                         self->beginWaitingForParticipantResigned();
                         return result;
                       } else {
-                        LOG_TOPIC("3fd49", FATAL, Logger::REPLICATED_STATE)
+                        LOG_CTX("3fd49", FATAL, self->loggerContext)
                             << "recovery failed with error: "
                             << result.errorMessage();
                         FATAL_ERROR_EXIT();
                       }
                     } catch (std::exception const& e) {
-                      LOG_TOPIC("3aaf8", FATAL, Logger::REPLICATED_STATE)
+                      LOG_CTX("3aaf8", FATAL, self->loggerContext)
                           << "recovery failed with exception: " << e.what();
                       FATAL_ERROR_EXIT();
                     } catch (...) {
-                      LOG_TOPIC("a207d", FATAL, Logger::REPLICATED_STATE)
+                      LOG_CTX("a207d", FATAL, self->loggerContext)
                           << "recovery failed with unknown exception";
                       FATAL_ERROR_EXIT();
                     }
@@ -118,12 +118,12 @@ void LeaderStateManager<S>::run() {
               auto res = result.get();  // throws exceptions
               TRI_ASSERT(res.ok());
             } catch (std::exception const& e) {
-              LOG_TOPIC("e73bc", FATAL, Logger::REPLICATED_STATE)
+              LOG_CTX("e73bc", FATAL, self->loggerContext)
                   << "Unexpected exception in leader startup procedure: "
                   << e.what();
               FATAL_ERROR_EXIT();
             } catch (...) {
-              LOG_TOPIC("4d2b7", FATAL, Logger::REPLICATED_STATE)
+              LOG_CTX("4d2b7", FATAL, self->loggerContext)
                   << "Unexpected exception in leader startup procedure";
               FATAL_ERROR_EXIT();
             }
@@ -132,6 +132,7 @@ void LeaderStateManager<S>::run() {
 
 template<typename S>
 LeaderStateManager<S>::LeaderStateManager(
+    LoggerContext loggerContext,
     std::shared_ptr<ReplicatedState<S>> const& parent,
     std::shared_ptr<replicated_log::ILogLeader> leader,
     std::unique_ptr<CoreType> core, std::unique_ptr<ReplicatedStateToken> token,
@@ -141,6 +142,7 @@ LeaderStateManager<S>::LeaderStateManager(
       internalState(LeaderInternalState::kWaitingForLeadershipEstablished),
       core(std::move(core)),
       token(std::move(token)),
+      loggerContext(std::move(loggerContext)),
       factory(std::move(factory)) {
   TRI_ASSERT(this->core != nullptr);
   TRI_ASSERT(this->token != nullptr);
@@ -176,10 +178,9 @@ auto LeaderStateManager<S>::getStatus() const -> StateStatus {
 
 template<typename S>
 auto LeaderStateManager<S>::resign() && noexcept
-    -> std::pair<std::unique_ptr<CoreType>,
-                 std::unique_ptr<ReplicatedStateToken>> {
-  LOG_TOPIC("edcf3", TRACE, Logger::REPLICATED_STATE)
-      << "Leader manager resign";
+    -> std::tuple<std::unique_ptr<CoreType>,
+                  std::unique_ptr<ReplicatedStateToken>, DeferredAction> {
+  LOG_CTX("edcf3", TRACE, loggerContext) << "Leader manager resign";
   auto core = std::invoke([&] {
     if (state != nullptr) {
       TRI_ASSERT(this->core == nullptr);
@@ -192,7 +193,7 @@ auto LeaderStateManager<S>::resign() && noexcept
   TRI_ASSERT(token != nullptr);
   TRI_ASSERT(!_didResign);
   _didResign = true;
-  return {std::move(core), std::move(token)};
+  return std::make_tuple(std::move(core), std::move(token), DeferredAction{});
 }
 
 template<typename S>
