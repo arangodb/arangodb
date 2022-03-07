@@ -30,6 +30,7 @@ export type FormProps<FormState> = {
   dispatch: Dispatch<DispatchArgs<FormState>>;
   disabled?: boolean;
   view?: string;
-  show?: RenderView,
+  show?: RenderView;
+  showLink?: any;
 };
 

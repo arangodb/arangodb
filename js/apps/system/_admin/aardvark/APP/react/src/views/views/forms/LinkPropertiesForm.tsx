@@ -13,7 +13,8 @@ const LinkPropertiesForm = ({
   dispatch,
   disabled,
   view,
-  show
+  show,
+  showLink
 }: FormProps<FormState>) => {
   const [collection, setCollection, addDisabled, links] = useLinkState(
     formState,
@@ -23,6 +24,8 @@ const LinkPropertiesForm = ({
     getApiRouteForCurrentDB().get(path, qs)
   );
   const [options, setOptions] = useState<string[]>([]);
+  const [link, setLink] = useState<string>();
+
   useEffect(() => {
     if (data) {
       const linkKeys = chain(links)
@@ -54,16 +57,9 @@ const LinkPropertiesForm = ({
       }
     });
     setCollection("");
-    showCurentLink(collection);
+    showLink();
+    setLink(collection);
   };
-
-  const showCurentLink = (link: string) => {
-    if (link !== undefined) {
-      show === "ViewChild";
-      console.log(link);
-    }
-  };
-  console.log(show);
 
   return disabled && isEmpty(links) ? (
     <span>No links found.</span>
@@ -91,7 +87,7 @@ const LinkPropertiesForm = ({
           disabled={disabled}
         />
       )}
-      {show === "ViewChild" && <h1>This is a new link.</h1>}
+      {show === "ViewChild" && <h1>New Link: {link}</h1>}
       {/* {map(links, (properties, coll) => {
           return properties ? (
             <tr key={coll} style={{ borderBottom: "1px  solid #DDD" }}>

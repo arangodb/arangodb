@@ -67,6 +67,10 @@ const ViewLinksReactView = ({ name }) => {
     setShow("ViewParent");
   };
 
+  const handleShowLink = () => {
+    setShow("ViewChild");
+  };
+
   return (
     <div className={"centralContent"} id={"content"}>
       {show === "LinkList" && (
@@ -95,6 +99,7 @@ const ViewLinksReactView = ({ name }) => {
                   disabled={!isAdminUser}
                   view={name}
                   show={show}
+                  showLink={handleShowLink}
                 />
               </div>
             </div>
