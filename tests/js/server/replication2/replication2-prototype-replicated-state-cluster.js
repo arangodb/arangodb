@@ -28,143 +28,48 @@ const jsunity = require('jsunity');
 const arangodb = require("@arangodb");
 const request = require("@arangodb/request");
 const _ = require('lodash');
-const {sleep} = require('internal');
 const db = arangodb.db;
-const ERRORS = arangodb.errors;
-const ArangoError = arangodb.ArangoError;
 const lh = require("@arangodb/testutils/replicated-logs-helper");
 const sh = require("@arangodb/testutils/replicated-state-helper");
 const spreds = require("@arangodb/testutils/replicated-state-predicates");
 
 const database = "replication2_prototype_state_test_db";
 
-const checkRequestResult = function (requestResult) {
-  if (requestResult === undefined) {
-    throw new ArangoError({
-      'error': true,
-      'code': 500,
-      'errorNum': arangodb.ERROR_INTERNAL,
-      'errorMessage': 'Unknown error. Request result is empty'
-    });
-  }
-
-  if (requestResult.hasOwnProperty('error')) {
-    if (requestResult.error) {
-      if (requestResult.errorNum === arangodb.ERROR_TYPE_ERROR) {
-        throw new TypeError(requestResult.errorMessage);
-      }
-
-      const error = new ArangoError(requestResult);
-      error.message = requestResult.message;
-      throw error;
-    }
-
-    // remove the property from the original object
-    delete requestResult.error;
-  }
-
-  if (requestResult.json.error) {
-    throw new ArangoError({
-      'error': true,
-      'code': requestResult.json.code,
-      'errorNum': arangodb.ERROR_INTERNAL,
-      'errorMessage': 'Error during request'
-    });
-  }
-
-  return requestResult;
+const insertEntries = function (url, stateId, payload) {
+  return request.post({
+    url: `${url}/_db/${database}/_api/prototype-state/${stateId}/insert`,
+    body: payload,
+    json: true
+  });
 };
 
-const getServerUrl = function (serverId) {
-  let endpoint = global.ArangoClusterInfo.getServerEndpoint(serverId);
-  return endpoint.replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
+const getEntry = function (url, stateId, entry) {
+  return request.get({url: `${url}/_db/${database}/_api/prototype-state/${stateId}/entry/${entry}`});
 };
 
-const readAgencyValueAt = function (key) {
-  const response = global.ArangoAgency.get(key);
-  const path = ["arango", ...key.split('/')];
-  let result = response;
-  for (const p of path) {
-    if (result === undefined) {
-      return undefined;
-    }
-    result = result[p];
-  }
-  return result;
+const getEntries = function (url, stateId, entries) {
+  return request.post({
+    url: `${url}/_db/${database}/_api/prototype-state/${stateId}/multi-get`,
+    body: entries,
+    json: true
+  });
 };
 
-const readReplicatedLogAgency = function (database, logId) {
-  let target = readAgencyValueAt(`Target/ReplicatedLogs/${database}/${logId}`);
-  let plan = readAgencyValueAt(`Plan/ReplicatedLogs/${database}/${logId}`);
-  let current = readAgencyValueAt(`Current/ReplicatedLogs/${database}/${logId}`);
-  return {target, plan, current};
+const removeEntry = function (url, stateId, entry) {
+  return request.delete({url: `${url}/_db/${database}/_api/prototype-state/${stateId}/entry/${entry}`});
 };
 
-const getReplicatedLogLeaderPlan = function (database, logId) {
-  let {plan} = readReplicatedLogAgency(database, logId);
-  if (!plan.currentTerm) {
-    throw Error("no current term in plan");
-  }
-  if (!plan.currentTerm.leader) {
-    throw Error("current term has no leader");
-  }
-  const leader = plan.currentTerm.leader.serverId;
-  const term = plan.currentTerm.term;
-  return {leader, term};
-};
-
-const updateReplicatedStateTarget = function(dbname, stateId, callback) {
-  let {target: targetState} = sh.readReplicatedStateAgency(database, stateId);
-
-  const state = callback(targetState);
-
-  global.ArangoAgency.set(`Target/ReplicatedStates/${database}/${stateId}`, state);
-  global.ArangoAgency.increaseVersion(`Target/Version`);
-};
-
-const registerAgencyTestBegin = function (testName) {
-  global.ArangoAgency.set(`Testing/${testName}/Begin`, (new Date()).toISOString());
-};
-
-const registerAgencyTestEnd = function (testName) {
-  global.ArangoAgency.set(`Testing/${testName}/End`, (new Date()).toISOString());
-};
-
-const waitForReplicatedLogAvailable = function (id) {
-  while (true) {
-    try {
-      let status = db._replicatedLog(id).status();
-      const leaderId = status.leaderId;
-      if (leaderId !== undefined && status.participants !== undefined &&
-          status.participants[leaderId].connection.errorCode === 0 && status.participants[leaderId].response.role === "leader") {
-        break;
-      }
-      console.info("replicated log not yet available");
-    } catch (err) {
-      const errors = [
-        ERRORS.ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED.code,
-        ERRORS.ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND.code
-      ];
-      if (errors.indexOf(err.errorNum) === -1) {
-        throw err;
-      }
-    }
-
-    sleep(1);
-  }
+const removeEntries = function (url, stateId, entries) {
+  return request.delete({
+    url: `${url}/_db/${database}/_api/prototype-state/${stateId}/multi-remove`,
+    body: entries,
+    json: true
+  });
 };
 
 const replicatedStateSuite = function () {
-  const targetConfig = {
-    writeConcern: 2,
-    softWriteConcern: 2,
-    replicationFactor: 3,
-    waitForSync: false,
-  };
-
-  const {setUpAll, tearDownAll, stopServer, continueServer, resumeAll} = (function () {
+  const {setUpAll, tearDownAll} = (function () {
     let previousDatabase, databaseExisted = true;
-    let stoppedServers = {};
     return {
       setUpAll: function () {
         previousDatabase = db._name();
@@ -181,37 +86,14 @@ const replicatedStateSuite = function () {
           db._dropDatabase(database);
         }
       },
-      stopServer: function (serverId) {
-        if (stoppedServers[serverId] !== undefined) {
-          throw Error(`{serverId} already stopped`);
-        }
-        lh.stopServer(serverId);
-        stoppedServers[serverId] = true;
-      },
-      continueServer: function (serverId) {
-        if (stoppedServers[serverId] === undefined) {
-          throw Error(`{serverId} not stopped`);
-        }
-        lh.continueServer(serverId);
-        delete stoppedServers[serverId];
-      },
-      resumeAll: function () {
-        Object.keys(stoppedServers).forEach(function (key) {
-          continueServer(key);
-        });
-      }
     };
   }());
 
   return {
     setUpAll, tearDownAll,
-    setUp: registerAgencyTestBegin,
-    tearDown: registerAgencyTestEnd,
+    setUp: lh.registerAgencyTestBegin,
+    tearDown: lh.registerAgencyTestEnd,
 
-    // Request creation of a replicated state by
-    // writing a configuration to Target
-    //
-    // Await availability of the requested state
     testCreateReplicatedState: function() {
       const stateId = lh.nextUniqueLogId();
 
@@ -221,89 +103,85 @@ const replicatedStateSuite = function () {
         participants[server] = {};
       }
 
-      updateReplicatedStateTarget(database, stateId,
+      sh.updateReplicatedStateTarget(database, stateId,
                                   function(target) {
-                                    return { id: stateId,
-                                             participants: participants,
-                                             config: { waitForSync: true,
-                                                       writeConcern: 2,
-                                                       softWriteConcern: 3,
-					               replicationFactor: 3},
-                                             properties: {
-                                               implementation: {
-                                                 type: "prototype"
-                                             }}};
-                                  });
+                                    return {
+                                      id: stateId,
+                                      participants: participants,
+                                      config: {
+                                        waitForSync: true,
+                                        writeConcern: 2,
+                                        softWriteConcern: 3,
+                                        replicationFactor: 3
+                                      },
+                                      properties: {
+                                        implementation: {
+                                          type: "prototype"
+                                        }
+                                      }
+                                    };
+      });
 
       lh.waitFor(spreds.replicatedStateIsReady(database, stateId, servers));
-      waitForReplicatedLogAvailable(stateId);
+      lh.waitForReplicatedLogAvailable(stateId, db);
 
-      let {leader} = getReplicatedLogLeaderPlan(database, stateId);
-      let url = getServerUrl(leader);
+      let {leader} = lh.getReplicatedLogLeaderPlan(database, stateId);
+      let leaderUrl = lh.getServerUrl(leader);
 
       let coord = lh.coordinators[0];
-      let coordUrl = getServerUrl(coord);
+      let coordUrl = lh.getServerUrl(coord);
 
-      let result = request.post({url: `${url}/_db/${database}/_api/prototype-state/${stateId}/insert`, body: {foo : "bar"}, json: true });
-      checkRequestResult(result);
-      require('internal').print("################################################");
-      require('internal').print(result.json);
+      let result = insertEntries(leaderUrl, stateId, {foo0 : "bar0", foo1: "bar1", foo2: "bar2"});
+      lh.checkRequestResult(result);
+      assertEqual(result.json.result.index, 2);
 
+      result = getEntry(leaderUrl, stateId, "foo0");
+      lh.checkRequestResult(result);
+      assertEqual(result.json.result.foo0,  "bar0");
 
-      result = request.post({url: `${url}/_db/${database}/_api/prototype-state/${stateId}/insert`, body: {foo1 : "bar1", foo2 : "bar2"}, json: true });
-      checkRequestResult(result);
-      require('internal').print("################################################");
-      require('internal').print(result.json);
+      result = getEntries(leaderUrl, stateId, ["foo1", "foo2"]);
+      lh.checkRequestResult(result);
+      assertEqual(result.json.result.foo1,  "bar1");
+      assertEqual(result.json.result.foo2,  "bar2");
 
-      result = request.get({url: `${url}/_db/${database}/_api/prototype-state/${stateId}/entry/foo`});
-      checkRequestResult(result);
-      require('internal').print("################################################");
-      require('internal').print(result.json);
+      result = removeEntry(leaderUrl, stateId, "foo0");
+      lh.checkRequestResult(result);
+      assertEqual(result.json.result.index, 3);
 
-      result = request.get({url: `${url}/_db/${database}/_api/prototype-state/${stateId}/multi-get?key[]=foo1&key[]=foo2`});
-      checkRequestResult(result);
-      require('internal').print("################################################");
-      require('internal').print(result.json);
+      result = getEntry(leaderUrl, stateId, "foo0");
+      assertEqual(result.json.code, 404);
 
-      result = request.delete({url: `${url}/_db/${database}/_api/prototype-state/${stateId}/entry/foo`});
-      checkRequestResult(result);
-      require('internal').print("################################################");
-      require('internal').print(result.json);
+      result = removeEntries(leaderUrl, stateId, ["foo1", "foo2"]);
+      lh.checkRequestResult(result);
+      assertEqual(result.json.result.index, 4);
 
-      result = request.get({url: `${url}/_db/${database}/_api/prototype-state/${stateId}/entry/foo`});
-      require('internal').print("################################################");
-      require('internal').print(result.json);
+      result = getEntry(leaderUrl, stateId, "foo2");
+      assertEqual(result.json.code, 404);
 
-      result = request.delete({url: `${url}/_db/${database}/_api/prototype-state/${stateId}/multi-remove`, body: ["foo1", "foo2"], json: true });
-      checkRequestResult(result);
-      require('internal').print("################################################");
-      require('internal').print(result.json);
+      result = insertEntries(coordUrl, stateId, {foo100: "bar100", foo200: "bar200", foo300: "bar300", foo400: "bar400"});
+      lh.checkRequestResult(result);
+      assertEqual(result.json.result.index, 5);
 
-      result = request.get({url: `${url}/_db/${database}/_api/prototype-state/${stateId}/entry/foo1`});
-      require('internal').print("################################################");
-      require('internal').print(result.json);
+      result = getEntry(coordUrl, stateId, "foo100");
+      lh.checkRequestResult(result);
+      assertEqual(result.json.result.foo100,  "bar100");
 
-      result = request.post({url: `${coordUrl}/_db/${database}/_api/prototype-state/${stateId}/insert`, body: {foo100 : "bar100"}, json: true });
-      checkRequestResult(result);
-      require('internal').print("################################################");
-      require('internal').print(result.json);
+      result = getEntries(coordUrl, stateId, ["foo200", "foo300"]);
+      lh.checkRequestResult(result);
+      assertEqual(result.json.result.foo200,  "bar200");
+      assertEqual(result.json.result.foo300,  "bar300");
 
-      result = request.get({url: `${url}/_db/${database}/_api/prototype-state/${stateId}/entry/foo100`});
-      require('internal').print("################################################");
-      require('internal').print(result.json);
+      result = removeEntry(coordUrl, stateId, "foo300");
+      lh.checkRequestResult(result);
+      assertEqual(result.json.result.index, 6);
 
-      result = request.post({url: `${coordUrl}/_db/${database}/_api/prototype-state/${stateId}/insert`, body: {foo200 : "bar200", foo300 : "bar300"}, json: true });
-      checkRequestResult(result);
-      require('internal').print("################################################");
-      require('internal').print(result.json);
+      result = removeEntries(coordUrl, stateId, ["foo200", "foo300"]);
+      lh.checkRequestResult(result);
+      assertEqual(result.json.result.index, 7);
 
-      result = request.get({url: `${coordUrl}/_db/${database}/_api/prototype-state/${stateId}/entry/foo300`});
-      require('internal').print("################################################");
-      require('internal').print(result.json);
-
-      result = request.get({url: `${coordUrl}/_db/${database}/_api/prototype-state/${stateId}/multi-get?key[]=foo300&key[]=abcd&key[]=foo200`});
-      require('internal').print("################################################");
-      require('internal').print(result.json);
+      result = getEntry(leaderUrl, stateId, "foo400");
+      lh.checkRequestResult(result);
+      assertEqual(result.json.result.foo400,  "bar400");
     },
   };
 };

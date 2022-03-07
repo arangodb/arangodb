@@ -53,17 +53,18 @@ class RestPrototypeStateHandler : public RestVocbaseBaseHandler {
   RestStatus handlePostInsert(
       replication2::PrototypeStateMethods const& methods,
       replication2::LogId logId, velocypack::Slice payload);
+  RestStatus handlePostRetrieveMulti(
+      replication2::PrototypeStateMethods const& methods, replication2::LogId,
+      velocypack::Slice payload);
 
   RestStatus handleDeleteRemove(
       replication2::PrototypeStateMethods const& methods,
-      replication2::LogId logId, velocypack::Slice payload);
+      replication2::LogId logId);
   RestStatus handleDeleteRemoveMulti(
       replication2::PrototypeStateMethods const& methods,
       replication2::LogId logId, velocypack::Slice payload);
 
   RestStatus handleGetEntry(replication2::PrototypeStateMethods const& methods,
-                            replication2::LogId);
-  RestStatus handleGetMulti(replication2::PrototypeStateMethods const& methods,
                             replication2::LogId);
 };
 }  // namespace arangodb

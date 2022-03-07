@@ -108,10 +108,12 @@ struct PrototypeLeaderState
   template<MapStringIterator Iterator>
   auto set(Iterator begin, Iterator end) -> futures::Future<ResultT<LogIndex>>;
 
-  auto remove(std::string key) -> futures::Future<Result>;
-  auto remove(std::vector<std::string> keys) -> futures::Future<Result>;
+  auto remove(std::string key) -> futures::Future<ResultT<LogIndex>>;
+  auto remove(std::vector<std::string> keys)
+      -> futures::Future<ResultT<LogIndex>>;
   template<StringIterator Iterator>
-  auto remove(Iterator begin, Iterator end) -> futures::Future<Result>;
+  auto remove(Iterator begin, Iterator end)
+      -> futures::Future<ResultT<LogIndex>>;
 
   auto get(std::string key) -> std::optional<std::string>;
   template<StringIterator Iterator>
@@ -164,25 +166,26 @@ auto PrototypeLeaderState::set(Iterator begin, Iterator end)
 
 template<StringIterator Iterator>
 auto PrototypeLeaderState::remove(Iterator begin, Iterator end)
-    -> futures::Future<Result> {
+    -> futures::Future<ResultT<LogIndex>> {
   auto stream = getStream();
 
   PrototypeLogEntry entry{
       PrototypeLogEntry::BulkDeleteOperation{.keys = {begin, end}}};
   auto idx = stream->insert(entry);
 
-  return stream->waitFor(idx).thenValue(
-      [self = shared_from_this(), begin, end](auto&& res) {
-        return self->guardedData.template doUnderLock([begin, end](auto& core) {
+  return stream->waitFor(idx).thenValue([self = shared_from_this(), begin, end,
+                                         idx](auto&& res) {
+    return self->guardedData.template doUnderLock(
+        [begin, end, idx](auto& core) -> futures::Future<ResultT<LogIndex>> {
           if (!core) {
-            return Result{TRI_ERROR_CLUSTER_NOT_LEADER};
+            return ResultT<LogIndex>::error(TRI_ERROR_CLUSTER_NOT_LEADER);
           }
           for (auto it{begin}; it != end; ++it) {
             core->store = core->store.erase(*it);
           }
-          return Result{TRI_ERROR_NO_ERROR};
+          return idx;
         });
-      });
+  });
 }
 
 struct PrototypeFollowerState : IReplicatedFollowerState<PrototypeState> {

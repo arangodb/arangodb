@@ -73,11 +73,13 @@ TEST_F(PrototypeStateMachineTest, simple_operations) {
   ASSERT_NE(leaderState, nullptr);
 
   {
-    auto result = leaderState->set("foo", "bar");
+    auto entries = std::unordered_map<std::string, std::string>{{"foo", "bar"}};
+    auto result = leaderState->set(entries);
     while (follower->hasPendingAppendEntries()) {
       follower->runAsyncAppendEntries();
     }
-    ASSERT_TRUE(result.get().ok());
+    auto index = result.get()->value;
+    ASSERT_EQ(index, 2);
   }
 
   {
@@ -90,20 +92,12 @@ TEST_F(PrototypeStateMachineTest, simple_operations) {
   {
     std::initializer_list<std::pair<std::string, std::string>> values1{
         {"foo1", "bar1"}, {"foo2", "bar2"}, {"foo3", "bar3"}};
-
-    auto result = leaderState->set(values1);
+    auto result = leaderState->set(values1.begin(), values1.end());
     while (follower->hasPendingAppendEntries()) {
       follower->runAsyncAppendEntries();
     }
-    ASSERT_TRUE(result.get().ok());
-
-    std::unordered_map<std::string, std::string> values2{
-        {std::string("foo1"), std::string("bar1")}};
-    result = leaderState->set(values2.begin(), values2.end());
-    while (follower->hasPendingAppendEntries()) {
-      follower->runAsyncAppendEntries();
-    }
-    ASSERT_TRUE(result.get().ok());
+    auto index = result.get()->value;
+    ASSERT_EQ(index, 3);
   }
 
   {
@@ -119,17 +113,19 @@ TEST_F(PrototypeStateMachineTest, simple_operations) {
     while (follower->hasPendingAppendEntries()) {
       follower->runAsyncAppendEntries();
     }
-    ASSERT_TRUE(result.get().ok());
+    auto index = result.get()->value;
+    ASSERT_EQ(index, 4);
     ASSERT_EQ(leaderState->get("foo1"), std::nullopt);
   }
 
   {
     std::vector<std::string> entries = {"nofoo", "foo2"};
-    auto result = leaderState->remove(entries.begin(), entries.end());
+    auto result = leaderState->remove(entries);
     while (follower->hasPendingAppendEntries()) {
       follower->runAsyncAppendEntries();
     }
-    ASSERT_TRUE(result.get().ok());
+    auto index = result.get()->value;
+    ASSERT_EQ(index, 5);
     ASSERT_EQ(leaderState->get("foo2"), std::nullopt);
     ASSERT_EQ(leaderState->get("foo3"), "bar3");
   }

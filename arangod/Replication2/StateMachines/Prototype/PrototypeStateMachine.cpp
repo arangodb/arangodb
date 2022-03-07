@@ -104,43 +104,46 @@ auto PrototypeLeaderState::set(
       });
 }
 
-auto PrototypeLeaderState::remove(std::string key) -> futures::Future<Result> {
+auto PrototypeLeaderState::remove(std::string key)
+    -> futures::Future<ResultT<LogIndex>> {
   auto stream = getStream();
   PrototypeLogEntry entry{PrototypeLogEntry::DeleteOperation{.key = key}};
   auto idx = stream->insert(entry);
 
-  return stream->waitFor(idx).thenValue(
-      [self = shared_from_this(), key = std::move(key)](auto&& res) mutable {
-        return self->guardedData.template doUnderLock(
-            [key = std::move(key)](auto& core) {
-              if (!core) {
-                return Result{TRI_ERROR_CLUSTER_NOT_LEADER};
-              }
-              core->store = core->store.erase(key);
-              return Result{TRI_ERROR_NO_ERROR};
-            });
-      });
+  return stream->waitFor(idx).thenValue([self = shared_from_this(),
+                                         key = std::move(key),
+                                         idx = idx](auto&& res) mutable {
+    return self->guardedData.template doUnderLock(
+        [key = std::move(key), idx = idx](auto& core) -> ResultT<LogIndex> {
+          if (!core) {
+            return ResultT<LogIndex>::error(TRI_ERROR_CLUSTER_NOT_LEADER);
+          }
+          core->store = core->store.erase(key);
+          return idx;
+        });
+  });
 }
 
 auto PrototypeLeaderState::remove(std::vector<std::string> keys)
-    -> futures::Future<Result> {
+    -> futures::Future<ResultT<LogIndex>> {
   auto stream = getStream();
 
   PrototypeLogEntry entry{PrototypeLogEntry::BulkDeleteOperation{.keys = keys}};
   auto idx = stream->insert(entry);
 
   return stream->waitFor(idx).thenValue(
-      [self = shared_from_this(),
+      [self = shared_from_this(), idx = idx,
        entries = std::move(keys)](auto&& res) mutable {
         return self->guardedData.template doUnderLock(
-            [entries = std::move(entries)](auto& core) {
+            [entries = std::move(entries),
+             idx = idx](auto& core) -> ResultT<LogIndex> {
               if (!core) {
-                return Result{TRI_ERROR_CLUSTER_NOT_LEADER};
+                return ResultT<LogIndex>::error(TRI_ERROR_CLUSTER_NOT_LEADER);
               }
               for (auto it{entries.begin()}; it != entries.end(); ++it) {
                 core->store = core->store.erase(*it);
               }
-              return Result{TRI_ERROR_NO_ERROR};
+              return idx;
             });
       });
 }

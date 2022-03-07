@@ -45,10 +45,9 @@ namespace arangodb::replication2 {
 class LogId;
 
 /**
- * This is a collection of functions that is used by the RestHandler and the V8
- * interface. It covers two different implementations. One for dbservers that
- * actually execute the commands and one for coordinators that forward the
- * request to the leader.
+ * This is a collection of functions that is used by the RestHandler. It covers
+ * two different implementations. One for dbservers that actually execute the
+ * commands and one for coordinators that forward the request to the leader.
  */
 struct PrototypeStateMethods {
   virtual ~PrototypeStateMethods() = default;
@@ -60,15 +59,14 @@ struct PrototypeStateMethods {
 
   [[nodiscard]] virtual auto get(LogId id, std::string key) const
       -> futures::Future<std::optional<std::string>> = 0;
-  [[nodiscard]] virtual auto get(LogId id,
-                                 std::vector<std::string> const& keys) const
+  [[nodiscard]] virtual auto get(LogId id, std::vector<std::string> keys) const
       -> futures::Future<std::unordered_map<std::string, std::string>> = 0;
 
   [[nodiscard]] virtual auto remove(LogId id, std::string key) const
-      -> futures::Future<Result> = 0;
+      -> futures::Future<ResultT<LogIndex>> = 0;
   [[nodiscard]] virtual auto remove(LogId id,
                                     std::vector<std::string> keys) const
-      -> futures::Future<Result> = 0;
+      -> futures::Future<ResultT<LogIndex>> = 0;
 
   static auto createInstance(TRI_vocbase_t& vocbase)
       -> std::shared_ptr<PrototypeStateMethods>;
