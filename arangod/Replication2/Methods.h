@@ -101,7 +101,9 @@ struct ReplicatedLogMethods {
   // TODO This could be merged with `insert()` by using a common result type,
   //      Future<InsertResult> or so, which internally differentiates between
   //      the variants.
+  //      See https://arangodb.atlassian.net/browse/CINFRA-278.
   // TODO Implement this for a list of payloads as well, as insert() does.
+  //      See https://arangodb.atlassian.net/browse/CINFRA-278.
   virtual auto insertWithoutCommit(LogId, LogPayload, bool waitForSync) const
       -> futures::Future<LogIndex> = 0;
 
