@@ -51,27 +51,25 @@ const ViewLinksReactView = ({ name }) => {
 
   const [viewLink, setViewLink] = useState(false);
   const [icon, setIcon] = useState("fa-plus-circle");
-  const [newLink, setNewLink] = useState(false);
+  const [show, setShow] = useState("LinkList");
 
   const handleNewLinkClick = e => {
     e.preventDefault();
-    setNewLink(true);
-    setViewLink(true);
+    setShow("AddNew");
   };
 
   const handleBackClick = e => {
     e.preventDefault();
-    setViewLink(false);
+    setShow("LinkList");
   };
 
   const handleViewLink = link => {
-    setViewLink(true);
-    setNewLink(false);
+    setShow("ViewParent");
   };
 
   return (
     <div className={"centralContent"} id={"content"}>
-      {!viewLink && (
+      {show === "LinkList" && (
         <LinkList
           links={links}
           addClick={handleNewLinkClick}
@@ -79,7 +77,7 @@ const ViewLinksReactView = ({ name }) => {
           icon={icon}
         />
       )}
-      {viewLink && (
+      {show !== "LinkList" && (
         <div
           id={"modal-dialog"}
           className={"createModalDialog"}
@@ -96,7 +94,7 @@ const ViewLinksReactView = ({ name }) => {
                   dispatch={dispatch}
                   disabled={!isAdminUser}
                   view={name}
-                  addNew={newLink}
+                  show={show}
                 />
               </div>
             </div>

@@ -10,7 +10,7 @@ type NewLinkProps = {
   collection: string | number;
   addLink: Function;
   updateCollection: (value: string | number) => void;
-  view: string | undefined;
+  view?: string | undefined;
 };
 
 const NewLink: React.FC<NewLinkProps> = ({
