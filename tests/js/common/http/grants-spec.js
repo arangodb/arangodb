@@ -166,7 +166,6 @@ describe('UserProperties', function () {
   };
 
   const verifyEmptyConfig = (result) => {
-    console.warn(result);
     expect(result.error).to.be.false;
     expect(result).to.have.property('code', 200);
     expect(result).to.have.property('result', null);
