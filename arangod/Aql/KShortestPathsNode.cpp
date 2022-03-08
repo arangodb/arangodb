@@ -39,13 +39,10 @@
 #include "Graph/KShortestPathsFinder.h"
 #include "Graph/PathManagement/PathResult.h"
 #include "Graph/PathManagement/PathStore.h"
-#include "Graph/PathManagement/PathStoreTracer.h"
-#include "Graph/PathManagement/PathValidator.h"
 #include "Graph/Providers/ClusterProvider.h"
 #include "Graph/Providers/ProviderTracer.h"
 #include "Graph/Providers/SingleServerProvider.h"
 #include "Graph/Queues/FifoQueue.h"
-#include "Graph/Queues/QueueTracer.h"
 #include "Graph/ShortestPathOptions.h"
 #include "Graph/ShortestPathResult.h"
 #include "Graph/Steps/SingleServerProviderStep.h"
@@ -392,11 +389,11 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
 
       // TODO [GraphRefactor]: Clean this up (de-dupllicate with
       // SmartGraphEngine)
-      BaseProviderOptions forwardProviderOptions(
+      SingleServerBaseProviderOptions forwardProviderOptions(
           opts->tmpVar(), std::move(usedIndexes), opts->getExpressionCtx(), {},
           opts->collectionToShard());
 
-      BaseProviderOptions backwardProviderOptions(
+      SingleServerBaseProviderOptions backwardProviderOptions(
           opts->tmpVar(), std::move(reversedUsedIndexes),
           opts->getExpressionCtx(), {}, opts->collectionToShard());
 
@@ -405,29 +402,29 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
         return _makeExecutionBlockImpl<
             KPathEnumerator<SingleServerProvider<SingleServerProviderStep>>,
             SingleServerProvider<SingleServerProviderStep>,
-            BaseProviderOptions>(opts, std::move(forwardProviderOptions),
-                                 std::move(backwardProviderOptions),
-                                 enumeratorOptions, validatorOptions,
-                                 outputRegister, engine, sourceInput,
-                                 targetInput, registerInfos);
+            SingleServerBaseProviderOptions>(
+            opts, std::move(forwardProviderOptions),
+            std::move(backwardProviderOptions), enumeratorOptions,
+            validatorOptions, outputRegister, engine, sourceInput, targetInput,
+            registerInfos);
       } else {
         return _makeExecutionBlockImpl<
             TracedKPathEnumerator<
                 SingleServerProvider<SingleServerProviderStep>>,
             ProviderTracer<SingleServerProvider<SingleServerProviderStep>>,
-            BaseProviderOptions>(opts, std::move(forwardProviderOptions),
-                                 std::move(backwardProviderOptions),
-                                 enumeratorOptions, validatorOptions,
-                                 outputRegister, engine, sourceInput,
-                                 targetInput, registerInfos);
+            SingleServerBaseProviderOptions>(
+            opts, std::move(forwardProviderOptions),
+            std::move(backwardProviderOptions), enumeratorOptions,
+            validatorOptions, outputRegister, engine, sourceInput, targetInput,
+            registerInfos);
       }
     } else {
       auto cache = std::make_shared<RefactoredClusterTraverserCache>(
           opts->query().resourceMonitor());
-      ClusterBaseProviderOptions forwardProviderOptions(cache, engines(),
-                                                        false);
-      ClusterBaseProviderOptions backwardProviderOptions(cache, engines(),
-                                                         true);
+      ClusterBaseProviderOptions forwardProviderOptions(
+          cache, engines(), false, opts->produceVertices());
+      ClusterBaseProviderOptions backwardProviderOptions(
+          cache, engines(), true, opts->produceVertices());
 
       return _makeExecutionBlockImpl<
           KPathEnumerator<ClusterProvider<ClusterProviderStep>>,
