@@ -216,9 +216,15 @@ arangodb::Result fetchRevisions(
 
   arangodb::network::ConnectionPool* pool = netFeature.pool();
 
+  std::size_t queueSize = 10;
+  if ((config.leader.majorVersion == 3 && config.leader.minorVersion < 9) ||
+      (config.leader.majorVersion == 3 && config.leader.minorVersion == 9 &&
+       config.leader.patchVersion < 2)) {
+    queueSize = 1;
+  }
   while (current < toFetch.size() || !futures.empty()) {
     // Send some requests off if not enough in flight and something to go
-    while (futures.size() < 10 && current < toFetch.size()) {
+    while (futures.size() < queueSize && current < toFetch.size()) {
       VPackBuilder requestBuilder;
       std::unordered_set<arangodb::RevisionId> shoppingList;
       {
