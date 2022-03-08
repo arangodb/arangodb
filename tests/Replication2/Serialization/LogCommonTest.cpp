@@ -68,11 +68,18 @@ TEST(LogCommonTest, commit_fail_reason) {
 
   builder.clear();
   reason = CommitFailReason::withQuorumSizeNotReached(
-      {{"PRMR-1234", {.isFailed = false}}});
+      {{"PRMR-1234",
+        {.isFailed = false,
+         .isExcluded = true,
+         .lastAcknowledged = TermIndexPair(LogTerm(1), LogIndex(2))}}},
+      TermIndexPair(LogTerm(3), LogIndex(4)));
   reason.toVelocyPack(builder);
   slice = builder.slice();
   fromVPack = CommitFailReason::fromVelocyPack(slice);
-  EXPECT_EQ(reason, fromVPack);
+  EXPECT_EQ(reason, fromVPack)
+      << "original: " << to_string(reason) << "\n"
+      << "intermediate velocypack: " << slice.toJson() << "\n"
+      << "result: " << to_string(fromVPack);
 
   builder.clear();
   reason = CommitFailReason::withForcedParticipantNotInQuorum("PRMR-1234");

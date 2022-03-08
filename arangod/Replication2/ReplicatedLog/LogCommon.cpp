@@ -215,8 +215,10 @@ auto replicated_log::CommitFailReason::withNothingToCommit() noexcept
 }
 
 auto replicated_log::CommitFailReason::withQuorumSizeNotReached(
-    QuorumSizeNotReached::who_type who) noexcept -> CommitFailReason {
-  return CommitFailReason(std::in_place, QuorumSizeNotReached{std::move(who)});
+    QuorumSizeNotReached::who_type who, TermIndexPair spearhead) noexcept
+    -> CommitFailReason {
+  return CommitFailReason(std::in_place,
+                          QuorumSizeNotReached{std::move(who), spearhead});
 }
 
 auto replicated_log::CommitFailReason::withForcedParticipantNotInQuorum(
@@ -246,6 +248,10 @@ inline constexpr std::string_view CandidatesFieldName = "candidates";
 inline constexpr std::string_view NonEligibleExcluded = "excluded";
 inline constexpr std::string_view NonEligibleWrongTerm = "wrongTerm";
 inline constexpr std::string_view IsFailedFieldName = "isFailed";
+inline constexpr std::string_view IsExcludedFieldName = "isExcluded";
+inline constexpr std::string_view LastAcknowledgedFieldName =
+    "lastAcknowledged";
+inline constexpr std::string_view SpearheadFieldName = "spearhead";
 }  // namespace
 
 auto replicated_log::CommitFailReason::NothingToCommit::fromVelocyPack(
@@ -281,6 +287,7 @@ auto replicated_log::CommitFailReason::QuorumSizeNotReached::fromVelocyPack(
     result.who.try_emplace(
         participantId, ParticipantInfo::fromVelocyPack(participantInfoSlice));
   }
+  result.spearhead = TermIndexPair::fromVelocyPack(s.get(SpearheadFieldName));
   return result;
 }
 
@@ -297,6 +304,10 @@ void replicated_log::CommitFailReason::QuorumSizeNotReached::toVelocyPack(
       participantInfo.toVelocyPack(builder);
     }
   }
+  {
+    builder.add(VPackValue(SpearheadFieldName));
+    spearhead.toVelocyPack(builder);
+  }
 }
 
 auto replicated_log::CommitFailReason::QuorumSizeNotReached::ParticipantInfo::
@@ -304,20 +315,41 @@ auto replicated_log::CommitFailReason::QuorumSizeNotReached::ParticipantInfo::
   TRI_ASSERT(s.get(IsFailedFieldName).isBool())
       << "Expected bool in field `" << IsFailedFieldName << "` in "
       << s.toJson();
-  return {.isFailed = s.get(IsFailedFieldName).getBool()};
+  return {
+      .isFailed = s.get(IsFailedFieldName).getBool(),
+      .isExcluded = s.get(IsExcludedFieldName).getBool(),
+      .lastAcknowledged =
+          TermIndexPair::fromVelocyPack(s.get(LastAcknowledgedFieldName)),
+  };
 }
 
 void replicated_log::CommitFailReason::QuorumSizeNotReached::ParticipantInfo::
     toVelocyPack(velocypack::Builder& builder) const {
   VPackObjectBuilder obj(&builder);
-  builder.add(IsFailedFieldName, VPackValue(isFailed));
+  builder.add(IsFailedFieldName, isFailed);
+  builder.add(IsExcludedFieldName, isExcluded);
+  {
+    builder.add(VPackValue(LastAcknowledgedFieldName));
+    lastAcknowledged.toVelocyPack(builder);
+  }
 }
 
 auto replicated_log::operator<<(
     std::ostream& ostream,
     CommitFailReason::QuorumSizeNotReached::ParticipantInfo pInfo)
     -> std::ostream& {
-  return ostream << "{ isFailed: " << pInfo.isFailed << " }";
+  ostream << "{ ";
+  ostream << std::boolalpha;
+  if (pInfo.isExcluded) {
+    ostream << "isExcluded: " << pInfo.isExcluded;
+  } else {
+    ostream << "lastAcknowledgedEntry: " << pInfo.lastAcknowledged;
+    if (pInfo.isFailed) {
+      ostream << ", isFailed: " << pInfo.isFailed;
+    }
+  }
+  ostream << " }";
+  return ostream;
 }
 
 auto replicated_log::CommitFailReason::ForcedParticipantNotInQuorum::
@@ -429,7 +461,10 @@ auto replicated_log::to_string(CommitFailReason const& r) -> std::string {
     auto operator()(CommitFailReason::QuorumSizeNotReached const& reason)
         -> std::string {
       auto stream = std::stringstream();
-      stream << "Required quorum size not yet reached. Participants ";
+      stream << "Required quorum size not yet reached. ";
+      stream << "The leader's spearhead is at " << reason.spearhead << ". ";
+      stream << "Participants who aren't currently contributing to the "
+                "spearhead are ";
       // ADL cannot find this operator here.
       arangodb::operator<<(stream, reason.who);
       return stream.str();

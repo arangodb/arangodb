@@ -370,18 +370,23 @@ auto algorithms::calculateCommitIndex(
               {}};
     } else {
       // We commit as far away as we can get, but report all participants who
-      // haven't reached the spearhead yet.
+      // can't be part of a quorum for the spearhead.
       auto who = CommitFailReason::QuorumSizeNotReached::who_type();
-      for (auto const& participant : eligible) {
-        if (participant.lastIndex() < spearhead) {
+      for (auto const& participant : participants) {
+        if (participant.lastAckedEntry < lastTermIndex ||
+            participant.isExcluded()) {
           who.try_emplace(
               participant.id,
               CommitFailReason::QuorumSizeNotReached::ParticipantInfo{
-                  .isFailed = participant.isFailed()});
+                  .isFailed = participant.isFailed(),
+                  .isExcluded = participant.isExcluded(),
+                  .lastAcknowledged = participant.lastAckedEntry,
+              });
         }
       }
       return {commitIndex,
-              CommitFailReason::withQuorumSizeNotReached(std::move(who)),
+              CommitFailReason::withQuorumSizeNotReached(std::move(who),
+                                                         lastTermIndex),
               std::move(quorum)};
     }
   }

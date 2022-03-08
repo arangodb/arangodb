@@ -244,6 +244,8 @@ struct CommitFailReason {
   struct QuorumSizeNotReached {
     struct ParticipantInfo {
       bool isFailed{};
+      bool isExcluded{};
+      TermIndexPair lastAcknowledged;
       static auto fromVelocyPack(velocypack::Slice) -> ParticipantInfo;
       void toVelocyPack(velocypack::Builder& builder) const;
       friend auto operator==(ParticipantInfo const& left,
@@ -254,6 +256,7 @@ struct CommitFailReason {
     static auto fromVelocyPack(velocypack::Slice) -> QuorumSizeNotReached;
     void toVelocyPack(velocypack::Builder& builder) const;
     who_type who;
+    TermIndexPair spearhead;
     friend auto operator==(QuorumSizeNotReached const& left,
                            QuorumSizeNotReached const& right) noexcept
         -> bool = default;
@@ -307,8 +310,9 @@ struct CommitFailReason {
       value;
 
   static auto withNothingToCommit() noexcept -> CommitFailReason;
-  static auto withQuorumSizeNotReached(
-      QuorumSizeNotReached::who_type who) noexcept -> CommitFailReason;
+  static auto withQuorumSizeNotReached(QuorumSizeNotReached::who_type who,
+                                       TermIndexPair spearhead) noexcept
+      -> CommitFailReason;
   static auto withForcedParticipantNotInQuorum(ParticipantId who) noexcept
       -> CommitFailReason;
   static auto withNonEligibleServerRequiredForQuorum(

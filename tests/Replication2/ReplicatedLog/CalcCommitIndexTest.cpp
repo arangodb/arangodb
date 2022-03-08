@@ -612,14 +612,22 @@ TEST_F(CalcCommitIndexTest, who_quorum_size_not_reached) {
       ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(35),
                        .id = "C"}};
 
+  auto const spearhead = createDefaultTermIndexPair(50);
   auto [index, reason, quorum] = algorithms::calculateCommitIndex(
-      participants, CalculateCommitIndexOptions{2, 2}, LogIndex{1},
-      createDefaultTermIndexPair(50));
+      participants, CalculateCommitIndexOptions{2, 2}, LogIndex{1}, spearhead);
 
   auto who = CommitFailReason::QuorumSizeNotReached::who_type();
-  who["B"] = {.isFailed = false};
-  who["C"] = {.isFailed = false};
-  EXPECT_EQ(reason, CommitFailReason::withQuorumSizeNotReached(std::move(who)));
+  who["B"] = {.isFailed = false,
+              .isExcluded = false,
+              .lastAcknowledged = participants[1].lastAckedEntry};
+  who["C"] = {.isFailed = false,
+              .isExcluded = false,
+              .lastAcknowledged = participants[2].lastAckedEntry};
+  auto const expected =
+      CommitFailReason::withQuorumSizeNotReached(std::move(who), spearhead);
+  EXPECT_EQ(reason, expected)
+      << "Actual: " << basics::velocypackhelper::toJson(reason) << "\n"
+      << "Expected: " << basics::velocypackhelper::toJson(expected);
 }
 
 TEST_F(CalcCommitIndexTest, who_quorum_size_not_reached_multiple) {
@@ -631,16 +639,25 @@ TEST_F(CalcCommitIndexTest, who_quorum_size_not_reached_multiple) {
       ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(25),
                        .id = "C"}};
 
+  auto const spearhead = createDefaultTermIndexPair(50);
   auto [index, reason, quorum] = algorithms::calculateCommitIndex(
-      participants, CalculateCommitIndexOptions{2, 2}, LogIndex{1},
-      createDefaultTermIndexPair(50));
+      participants, CalculateCommitIndexOptions{2, 2}, LogIndex{1}, spearhead);
 
   auto who = CommitFailReason::QuorumSizeNotReached::who_type();
-  who["A"] = {.isFailed = false};
-  who["B"] = {.isFailed = false};
-  who["C"] = {.isFailed = false};
-  EXPECT_EQ(reason, CommitFailReason::withQuorumSizeNotReached(std::move(who)))
-      << "Actual: " << basics::velocypackhelper::toJson(reason);
+  who["A"] = {.isFailed = false,
+              .isExcluded = false,
+              .lastAcknowledged = participants[0].lastAckedEntry};
+  who["B"] = {.isFailed = false,
+              .isExcluded = false,
+              .lastAcknowledged = participants[1].lastAckedEntry};
+  who["C"] = {.isFailed = false,
+              .isExcluded = false,
+              .lastAcknowledged = participants[2].lastAckedEntry};
+  auto const expected =
+      CommitFailReason::withQuorumSizeNotReached(std::move(who), spearhead);
+  EXPECT_EQ(reason, expected)
+      << "Actual: " << basics::velocypackhelper::toJson(reason) << "\n"
+      << "Expected: " << basics::velocypackhelper::toJson(expected);
 }
 
 TEST_F(CalcCommitIndexTest, who_forced_participant_not_in_quorum) {
@@ -673,16 +690,23 @@ TEST_F(CalcCommitIndexTest, who_failed_excluded) {
                        .flags = {.excluded = true}}};
 
   auto expectedLogIndex = LogIndex{25};
+  auto const spearhead = createDefaultTermIndexPair(50);
   auto [index, reason, quorum] = algorithms::calculateCommitIndex(
-      participants, CalculateCommitIndexOptions{1, 1}, LogIndex{1},
-      createDefaultTermIndexPair(50));
+      participants, CalculateCommitIndexOptions{1, 1}, LogIndex{1}, spearhead);
 
   auto who = CommitFailReason::QuorumSizeNotReached::who_type();
-  who["A"] = {.isFailed = true};
+  who["A"] = {.isFailed = true,
+              .isExcluded = false,
+              .lastAcknowledged = participants[0].lastAckedEntry};
+  who["B"] = {.isFailed = false,
+              .isExcluded = true,
+              .lastAcknowledged = participants[1].lastAckedEntry};
   EXPECT_EQ(index, expectedLogIndex);
-  EXPECT_EQ(reason,
-            (CommitFailReason::withQuorumSizeNotReached(std::move(who))))
-      << "Actual: " << basics::velocypackhelper::toJson(reason);
+  auto const expected =
+      CommitFailReason::withQuorumSizeNotReached(std::move(who), spearhead);
+  EXPECT_EQ(reason, expected)
+      << "Actual: " << basics::velocypackhelper::toJson(reason) << "\n"
+      << "Expected: " << basics::velocypackhelper::toJson(expected);
 }
 
 TEST_F(CalcCommitIndexTest, who_all_excluded) {
