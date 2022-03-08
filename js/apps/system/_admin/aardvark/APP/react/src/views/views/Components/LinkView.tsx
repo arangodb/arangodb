@@ -3,12 +3,12 @@ import ViewLayout from "./ViewLayout";
 import { DispatchArgs } from "../../../utils/constants";
 import { LinkProperties } from "../constants";
 import { ArangoTD } from "../../../components/arango/table";
-import { map } from "lodash";
+// import { map } from "lodash";
 import LinkPropertiesInput from "../forms/inputs/LinkPropertiesInput";
 import { IconButton } from "../../../components/arango/buttons";
 
 interface LinkViewProps {
-  links: {}[];
+  links: {};
   disabled: boolean | undefined;
   dispatch: Dispatch<DispatchArgs<LinkProperties>>;
   view?: string | undefined;
@@ -36,31 +36,39 @@ const LinkView: React.FC<LinkViewProps> = ({
     removeLink(collection);
   };
 
+  const loopLinks = (links: object | any) => {
+    for (const l in links) {
+      if (link === l) {
+        const link = links[l];
+        return link;
+      }
+    }
+  };
+  const newLink = loopLinks(links);
+
   return (
     <ViewLayout view={view} disabled={disabled} link={link}>
-      {map(links, (properties, coll) => (
-        <tr key={coll} style={{ borderBottom: "1px  solid #DDD" }}>
-          <ArangoTD seq={disabled ? 1 : 2}>
-            <LinkPropertiesInput
-              formState={properties}
-              disabled={disabled || !properties}
-              dispatch={dispatch}
-              basePath={`links[${coll}]`}
+      <tr key={newLink} style={{ borderBottom: "1px  solid #DDD" }}>
+        <ArangoTD seq={disabled ? 1 : 2}>
+          <LinkPropertiesInput
+            formState={newLink}
+            disabled={disabled || !newLink}
+            dispatch={dispatch}
+            basePath={`links[${link}]`}
+          />
+        </ArangoTD>
+
+        {/* <ArangoTD seq={disabled ? 0 : 1}>{coll}</ArangoTD> */}
+        {disabled ? null : (
+          <ArangoTD seq={0} valign={"middle"}>
+            <IconButton
+              icon={"trash-o"}
+              type={"danger"}
+              onClick={getLinkRemover(newLink)}
             />
           </ArangoTD>
-
-          {/* <ArangoTD seq={disabled ? 0 : 1}>{coll}</ArangoTD> */}
-          {disabled ? null : (
-            <ArangoTD seq={0} valign={"middle"}>
-              <IconButton
-                icon={"trash-o"}
-                type={"danger"}
-                onClick={getLinkRemover(coll)}
-              />
-            </ArangoTD>
-          )}
-        </tr>
-      ))}
+        )}
+      </tr>
     </ViewLayout>
   );
 };
