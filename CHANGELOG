@@ -8,6 +8,11 @@ devel
   did not work as expected, the graph visualization properties did not get
   persisted as well. This is now resolved.
 
+* Fix null pointer access when using WINDOW operation with a COUNT/LENGTH
+  aggregate function without any arguments.
+
+* Bugfix: DC-2-DC Disjoint-SmartGraphs and Hybrid-SmartGraphs are now
+
 * Enable range deletions in the WAL for truncate operationns in the cluster, 
   too. This can speed up truncate operations for large collections/shards.
 
@@ -162,10 +167,11 @@ devel
 * Fix potential access to dangling reference in cancellation of shard
   synchronization.
 
-* Limited module resolution in arangosh to the path from which arangosh is invoked.
+* Limited module resolution in arangosh to the path from which arangosh is
+  invoked.
 
-* Fixed BTS-621 Fixed rare case of segfault in cluster during database recovery if DBServer is
-  in upgrade mode in the same time.
+* Fixed BTS-621 Fixed rare case of segfault in cluster during database recovery
+  if DBServer is in upgrade mode in the same time.
 
 * Changed default value of startup option 
   `--rocksdb.cache-index-and-filter-blocks` from `false` to `true`.
