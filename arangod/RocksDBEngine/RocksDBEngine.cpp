@@ -517,7 +517,7 @@ void RocksDBEngine::collectOptions(
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnDBServer,
-                      arangodb::options::Flags::Hidden))
+                      arangodb::options::Flags::Uncommon))
       .setIntroducedIn(31000);
 
   options->addOption("--rocksdb.debug-logging",
