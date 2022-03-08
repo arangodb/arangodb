@@ -29,8 +29,8 @@
 'use strict';
 
 const jsunity = require("jsunity");
-
-const sleep = require('internal').sleep;
+const internal = require('internal');
+const sleep = internal.sleep;
 let api = "/_api/cursor";
 let reId = /^\d+$/;
 const forceJson = internal.options().hasOwnProperty('server.force-json') && internal.options()['server.force-json'];
@@ -46,11 +46,11 @@ function dealing_with_cursorsSuite_error_handlingSuite () {
       let cmd = api;
       let doc = arango.POST_RAW(cmd, "");
 
-      assertEqual(doc.code, 400);
+      assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
       assertEqual(doc.headers['content-type'], contentType);
       assertTrue(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['code'], 400);
-      assertEqual(doc.parsedBody['errorNum'], 1502);
+      assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
+      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_QUERY_EMPTY.code);
     },
 
     test_returns_an_error_if_query_attribute_is_missing: function() {
@@ -58,11 +58,11 @@ function dealing_with_cursorsSuite_error_handlingSuite () {
       let body = "{ }";
       let doc = arango.POST_RAW(cmd, body);
 
-      assertEqual(doc.code, 400);
+      assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
       assertEqual(doc.headers['content-type'], contentType);
       assertTrue(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['code'], 400);
-      assertEqual(doc.parsedBody['errorNum'], 600);
+      assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
+      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_HTTP_CORRUPTED_JSON.code);
     },
 
     test_returns_an_error_if_query_is_null: function() {
@@ -70,11 +70,11 @@ function dealing_with_cursorsSuite_error_handlingSuite () {
       let body = "{ \"query\" : null }";
       let doc = arango.POST_RAW(cmd, body);
 
-      assertEqual(doc.code, 400);
+      assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
       assertEqual(doc.headers['content-type'], contentType);
       assertTrue(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['code'], 400);
-      assertEqual(doc.parsedBody['errorNum'], 1502);
+      assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
+      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_QUERY_EMPTY.code);
     },
 
     test_returns_an_error_if_query_string_is_empty: function() {
@@ -82,11 +82,11 @@ function dealing_with_cursorsSuite_error_handlingSuite () {
       let body = "{ \"query\" : \"\" }";
       let doc = arango.POST_RAW(cmd, body);
 
-      assertEqual(doc.code, 400);
+      assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
       assertEqual(doc.headers['content-type'], contentType);
       assertTrue(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['code'], 400);
-      assertEqual(doc.parsedBody['errorNum'], 1502);
+      assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
+      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_QUERY_EMPTY.code);
     },
 
     test_returns_an_error_if_query_string_is_just_whitespace: function() {
@@ -94,11 +94,11 @@ function dealing_with_cursorsSuite_error_handlingSuite () {
       let body = "{ \"query\" : \"    \" }";
       let doc = arango.POST_RAW(cmd, body);
 
-      assertEqual(doc.code, 400);
+      assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
       assertEqual(doc.headers['content-type'], contentType);
       assertTrue(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['code'], 400);
-      assertEqual(doc.parsedBody['errorNum'], 1501);
+      assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
+      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_QUERY_PARSE.code);
     },
 
     test_returns_an_error_if_collection_is_unknown: function() {
@@ -106,44 +106,44 @@ function dealing_with_cursorsSuite_error_handlingSuite () {
       let body = { "query" : "FOR u IN unknowncollection LIMIT 2 RETURN u.n", "count" : true, "bindVars" : {}, "batchSize" : 2 };
       let doc = arango.POST_RAW(cmd, body);
 
-      assertEqual(doc.code, 404);
+      assertEqual(doc.code, internal.errors.ERROR_HTTP_NOT_FOUND.code);
       assertEqual(doc.headers['content-type'], contentType);
       assertTrue(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['code'], 404);
-      assertEqual(doc.parsedBody['errorNum'], 1203);
+      assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_NOT_FOUND.code);
+      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
     },
 
     test_returns_an_error_if_cursor_identifier_is_missing: function() {
       let cmd = api;
       let doc = arango.PUT_RAW(cmd, "");
 
-      assertEqual(doc.code, 400);
+      assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
       assertEqual(doc.headers['content-type'], contentType);
       assertTrue(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['code'], 400);
-      assertEqual(doc.parsedBody['errorNum'], 400);
+      assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
+      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
     },
 
     test_returns_an_error_if_cursor_identifier_is_invalid___PUT: function() {
       let cmd = api + "/123456";
       let doc = arango.PUT_RAW(cmd, "");
 
-      assertEqual(doc.code, 404);
+      assertEqual(doc.code, internal.errors.ERROR_HTTP_NOT_FOUND.code);
       assertEqual(doc.headers['content-type'], contentType);
       assertTrue(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['code'], 404);
-      assertEqual(doc.parsedBody['errorNum'], 1600);
+      assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_NOT_FOUND.code);
+      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_CURSOR_NOT_FOUND.code);
     },
 
     test_returns_an_error_if_cursor_identifier_is_invalid___POST: function() {
       let cmd = api + "/123456";
       let doc = arango.POST_RAW(cmd, "");
 
-      assertEqual(doc.code, 404);
+      assertEqual(doc.code, internal.errors.ERROR_HTTP_NOT_FOUND.code);
       assertEqual(doc.headers['content-type'], contentType);
       assertTrue(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['code'], 404);
-      assertEqual(doc.parsedBody['errorNum'], 1600);
+      assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_NOT_FOUND.code);
+      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_CURSOR_NOT_FOUND.code);
     },
 
     test_returns_an_error_if_memory_limit_is_violated: function() {
@@ -151,11 +151,11 @@ function dealing_with_cursorsSuite_error_handlingSuite () {
       let body = { "query" : "FOR i IN 1..100000 SORT i RETURN i", "memoryLimit" : 100000 };
       let doc = arango.POST_RAW(cmd, body);
 
-      assertEqual(doc.code, 500);
+      assertEqual(doc.code, internal.errors.ERROR_HTTP_SERVER_ERROR.code);
       assertEqual(doc.headers['content-type'], contentType);
       assertTrue(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['code'], 500);
-      assertEqual(doc.parsedBody['errorNum'], 32);
+      assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_SERVER_ERROR.code);
+      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_RESOURCE_LIMIT.code);
     },
 
     test_returns_no_errors_but_warnings_if_fail_on_warning_is_not_triggered: function() {
@@ -171,11 +171,11 @@ function dealing_with_cursorsSuite_error_handlingSuite () {
       assertEqual(doc.parsedBody['result'].length, 5);
       assertEqual(doc.parsedBody['result'], [ null, null, null, null, null ]);
       assertEqual(doc.parsedBody['extra']['warnings'].length, 5);
-      assertEqual(doc.parsedBody['extra']['warnings'][0]['code'], 1562);
-      assertEqual(doc.parsedBody['extra']['warnings'][1]['code'], 1562);
-      assertEqual(doc.parsedBody['extra']['warnings'][2]['code'], 1562);
-      assertEqual(doc.parsedBody['extra']['warnings'][3]['code'], 1562);
-      assertEqual(doc.parsedBody['extra']['warnings'][4]['code'], 1562);
+      assertEqual(doc.parsedBody['extra']['warnings'][0]['code'], internal.errors.ERROR_QUERY_DIVISION_BY_ZERO.code);
+      assertEqual(doc.parsedBody['extra']['warnings'][1]['code'], internal.errors.ERROR_QUERY_DIVISION_BY_ZERO.code);
+      assertEqual(doc.parsedBody['extra']['warnings'][2]['code'], internal.errors.ERROR_QUERY_DIVISION_BY_ZERO.code);
+      assertEqual(doc.parsedBody['extra']['warnings'][3]['code'], internal.errors.ERROR_QUERY_DIVISION_BY_ZERO.code);
+      assertEqual(doc.parsedBody['extra']['warnings'][4]['code'], internal.errors.ERROR_QUERY_DIVISION_BY_ZERO.code);
     },
 
     test_returns_no_errors_but_warnings_if_fail_on_warning_is_not_triggered__limiting_number_of_warnings: function() {
@@ -191,9 +191,9 @@ function dealing_with_cursorsSuite_error_handlingSuite () {
       assertEqual(doc.parsedBody['result'].length, 5);
       assertEqual(doc.parsedBody['result'], [ null, null, null, null, null ]);
       assertEqual(doc.parsedBody['extra']['warnings'].length, 3);
-      assertEqual(doc.parsedBody['extra']['warnings'][0]['code'], 1562);
-      assertEqual(doc.parsedBody['extra']['warnings'][1]['code'], 1562);
-      assertEqual(doc.parsedBody['extra']['warnings'][2]['code'], 1562);
+      assertEqual(doc.parsedBody['extra']['warnings'][0]['code'], internal.errors.ERROR_QUERY_DIVISION_BY_ZERO.code);
+      assertEqual(doc.parsedBody['extra']['warnings'][1]['code'], internal.errors.ERROR_QUERY_DIVISION_BY_ZERO.code);
+      assertEqual(doc.parsedBody['extra']['warnings'][2]['code'], internal.errors.ERROR_QUERY_DIVISION_BY_ZERO.code);
     },
 
     test_returns_an_error_if_fail_on_warning_is_triggered: function() {
@@ -201,11 +201,11 @@ function dealing_with_cursorsSuite_error_handlingSuite () {
       let body = "{ \"query\" : \"FOR i IN 1..5 RETURN i / 0\", \"options\" : { \"failOnWarning\" : true } }";
       let doc = arango.POST_RAW(cmd, body);
 
-      assertEqual(doc.code, 400);
+      assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
       assertEqual(doc.headers['content-type'], contentType);
       assertTrue(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['code'], 400);
-      assertEqual(doc.parsedBody['errorNum'], 1562);
+      assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
+      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_QUERY_DIVISION_BY_ZERO.code);
     }
   };
 }
@@ -280,11 +280,11 @@ function dealing_with_cursorsSuite_handling_a_cursor_with_continuationSuite () {
       cmd = api + `/${id}`;
       doc = arango.PUT_RAW(cmd, "");
 
-      assertEqual(doc.code, 404);
+      assertEqual(doc.code, internal.errors.ERROR_HTTP_NOT_FOUND.code);
       assertEqual(doc.headers['content-type'], contentType);
       assertTrue(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['errorNum'], 1600);
-      assertEqual(doc.parsedBody['code'], 404);
+      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_CURSOR_NOT_FOUND.code);
+      assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_NOT_FOUND.code);
     },
 
     test_creates_a_cursor_and_consumes_data_incrementally___POST: function() {
@@ -336,11 +336,11 @@ function dealing_with_cursorsSuite_handling_a_cursor_with_continuationSuite () {
       cmd = api + `/${id}`;
       doc = arango.POST_RAW(cmd, "");
 
-      assertEqual(doc.code, 404);
+      assertEqual(doc.code, internal.errors.ERROR_HTTP_NOT_FOUND.code);
       assertEqual(doc.headers['content-type'], contentType);
       assertTrue(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['errorNum'], 1600);
-      assertEqual(doc.parsedBody['code'], 404);
+      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_CURSOR_NOT_FOUND.code);
+      assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_NOT_FOUND.code);
     }
   };
 }
@@ -464,11 +464,11 @@ function dealing_with_cursorsSuite_handling_a_cursorSuite () {
       cmd = api + `/${id}`;
       doc = arango.PUT_RAW(cmd, "");
 
-      assertEqual(doc.code, 404);
+      assertEqual(doc.code, internal.errors.ERROR_HTTP_NOT_FOUND.code);
       assertEqual(doc.headers['content-type'], contentType);
       assertTrue(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['errorNum'], 1600);
-      assertEqual(doc.parsedBody['code'], 404);
+      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_CURSOR_NOT_FOUND.code);
+      assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_NOT_FOUND.code);
     },
 
     test_creates_a_usable_cursor_and_consumes_data_incrementally___POST: function() {
@@ -520,11 +520,11 @@ function dealing_with_cursorsSuite_handling_a_cursorSuite () {
       cmd = api + `/${id}`;
       doc = arango.POST_RAW(cmd, "");
 
-      assertEqual(doc.code, 404);
+      assertEqual(doc.code, internal.errors.ERROR_HTTP_NOT_FOUND.code);
       assertEqual(doc.headers['content-type'], contentType);
       assertTrue(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['errorNum'], 1600);
-      assertEqual(doc.parsedBody['code'], 404);
+      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_CURSOR_NOT_FOUND.code);
+      assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_NOT_FOUND.code);
     },
 
     test_creates_a_cursor_and_deletes_it_in_the_middle___PUT: function() {
@@ -674,11 +674,11 @@ function dealing_with_cursorsSuite_handling_a_cursorSuite () {
 
       doc = arango.DELETE_RAW(cmd);
 
-      assertEqual(doc.code, 404);
+      assertEqual(doc.code, internal.errors.ERROR_HTTP_NOT_FOUND.code);
       assertEqual(doc.headers['content-type'], contentType);
       assertTrue(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['errorNum'], 1600);
-      assertEqual(doc.parsedBody['code'], 404);
+      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_CURSOR_NOT_FOUND.code);
+      assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_NOT_FOUND.code);
       assertEqual(doc.parsedBody['id'], undefined);
     },
 
@@ -686,11 +686,11 @@ function dealing_with_cursorsSuite_handling_a_cursorSuite () {
       let cmd = api + "/999999"; // we assume this cursor id is invalid;
       let doc = arango.DELETE_RAW(cmd);
 
-      assertEqual(doc.code, 404);
+      assertEqual(doc.code, internal.errors.ERROR_HTTP_NOT_FOUND.code);
       assertEqual(doc.headers['content-type'], contentType);
       assertTrue(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['errorNum'], 1600);
-      assertEqual(doc.parsedBody['code'], 404);
+      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_CURSOR_NOT_FOUND.code);
+      assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_NOT_FOUND.code);
       assertEqual(doc.parsedBody['id'], undefined);
     },
 
@@ -819,11 +819,11 @@ function dealing_with_cursorsSuite_handling_a_cursorSuite () {
 
       sleep(8); // this should delete the cursor on the server
       doc = arango.PUT_RAW(cmd, "");
-      assertEqual(doc.code, 404);
+      assertEqual(doc.code, internal.errors.ERROR_HTTP_NOT_FOUND.code);
       assertEqual(doc.headers['content-type'], contentType);
       assertTrue(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['errorNum'], 1600);
-      assertEqual(doc.parsedBody['code'], 404);
+      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_CURSOR_NOT_FOUND.code);
+      assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_NOT_FOUND.code);
     },
 
     test_creates_a_cursor_that_will_expire___POST: function() {
@@ -881,11 +881,11 @@ function dealing_with_cursorsSuite_handling_a_cursorSuite () {
 
       sleep(8); // this should delete the cursor on the server;
       doc = arango.POST_RAW(cmd, "");
-      assertEqual(doc.code, 404);
+      assertEqual(doc.code, internal.errors.ERROR_HTTP_NOT_FOUND.code);
       assertEqual(doc.headers['content-type'], contentType);
       assertTrue(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['errorNum'], 1600);
-      assertEqual(doc.parsedBody['code'], 404);
+      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_CURSOR_NOT_FOUND.code);
+      assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_NOT_FOUND.code);
     },
 
     test_creates_a_cursor_that_will_not_expire___PUT: function() {
@@ -1136,11 +1136,11 @@ function dealing_with_cursorsSuite_checking_a_querySuite () {
       let body = { "query" : `FOR u IN ${cn} FILTER u.name = @name LIMIT 2 RETURN u.n` };
       let doc = arango.POST_RAW(cmd, body);
 
-      assertEqual(doc.code, 400);
+      assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
       assertEqual(doc.headers['content-type'], contentType);
       assertTrue(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['code'], 400);
-      assertEqual(doc.parsedBody['errorNum'], 1501);
+      assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
+      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_QUERY_PARSE.code);
     }
   };
 }
