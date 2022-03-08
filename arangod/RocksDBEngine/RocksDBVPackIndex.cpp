@@ -263,14 +263,16 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
                RocksDBColumnFamilyManager::get(
                    RocksDBColumnFamilyManager::Family::VPackIndex));
 
+    // if the cache is enabled, it must use the VPackKeyHasher!
     TRI_ASSERT(_cache == nullptr ||
                _cache->hasher().name() == "VPackKeyHasher");
+
     TRI_IF_FAILURE("VPackIndexFailWithoutCache") {
       if (_cache == nullptr) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
     }
-    TRI_IF_FAILURE("VPackIndexFailOnCache") {
+    TRI_IF_FAILURE("VPackIndexFailWithCache") {
       if (_cache != nullptr) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
@@ -281,7 +283,8 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
     LOG_DEVEL << "LOOKUP HITS: " << _lookupHits << ", MISSES: " << _lookupMisses
               << ", ROCKSDB LOOKUPS: " << _lookupRocksDB
               << ", CACHE INSERTS: " << _lookupInserts
-              << ", INSERT FAILS: " << _lookupInsertFails;
+              << ", INSERT FAILS: " << _lookupInsertFails
+              << ", CACHE: " << (_cache != nullptr);
   }
 
  public:
