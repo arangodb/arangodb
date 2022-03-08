@@ -674,6 +674,10 @@ void TraverserOptions::addDepthLookupInfo(aql::ExecutionPlan* plan,
                          onlyEdgeIndexes, direction);
 }
 
+bool TraverserOptions::hasSpecificCursorForDepth(uint64_t depth) const {
+  return _depthLookupInfo.contains(depth);
+}
+
 bool TraverserOptions::vertexHasFilter(uint64_t depth) const {
   if (_baseVertexExpression != nullptr) {
     return true;
@@ -864,10 +868,12 @@ std::unique_ptr<EdgeCursor> arangodb::traverser::TraverserOptions::buildCursor(
 
   auto specific = _depthLookupInfo.find(depth);
   if (specific != _depthLookupInfo.end()) {
+    // use specific cursor
     return std::make_unique<graph::SingleServerEdgeCursor>(
         this, _tmpVar, nullptr, specific->second);
   }
 
+  // otherwise, retain / reuse the general (global) cursor
   return std::make_unique<graph::SingleServerEdgeCursor>(this, _tmpVar, nullptr,
                                                          _baseLookupInfos);
 }

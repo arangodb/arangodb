@@ -31,7 +31,6 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Aql/GraphNode.h"
-#include "Aql/Query.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/SortCondition.h"
@@ -60,6 +59,7 @@
 
 #include <Graph/algorithm-aliases.h>
 #include <memory>
+#include <utility>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -172,14 +172,14 @@ TraversalNode::TraversalNode(
     ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
     std::vector<Collection*> const& edgeColls,
     std::vector<Collection*> const& vertexColls, Variable const* inVariable,
-    std::string const& vertexId, TRI_edge_direction_e defaultDirection,
+    std::string vertexId, TRI_edge_direction_e defaultDirection,
     std::vector<TRI_edge_direction_e> const& directions,
     std::unique_ptr<graph::BaseOptions> options, graph::Graph const* graph)
     : GraphNode(plan, id, vocbase, edgeColls, vertexColls, defaultDirection,
                 directions, std::move(options), graph),
       _pathOutVariable(nullptr),
       _inVariable(inVariable),
-      _vertexId(vertexId),
+      _vertexId(std::move(vertexId)),
       _fromCondition(nullptr),
       _toCondition(nullptr) {}
 
@@ -332,7 +332,7 @@ void TraversalNode::setPathOutput(Variable const* outVar) {
 /// @brief return the in variable
 Variable const* TraversalNode::inVariable() const { return _inVariable; }
 
-std::string const TraversalNode::getStartVertex() const { return _vertexId; }
+std::string TraversalNode::getStartVertex() const { return _vertexId; }
 
 void TraversalNode::setInVariable(Variable const* inVariable) {
   _inVariable = inVariable;
@@ -676,10 +676,142 @@ TraversalNode::buildUsedDepthBasedIndexes() const {
   return result;
 }
 
+std::unique_ptr<ExecutionBlock> TraversalNode::createRefactoredBlock(
+    ExecutionEngine& engine,
+    std::vector<std::pair<Variable const*, RegisterId>>&&
+        filterConditionVariables,
+    std::function<void(bool,
+                       std::shared_ptr<aql::PruneExpressionEvaluator>&)> const&
+        checkPruneAvailability,
+    std::function<void(bool,
+                       std::shared_ptr<aql::PruneExpressionEvaluator>&)> const&
+        checkPostFilterAvailability,
+    const std::unordered_map<
+        TraversalExecutorInfosHelper::OutputName, RegisterId,
+        TraversalExecutorInfosHelper::OutputNameHash>& outputRegisterMapping,
+    RegisterId inputRegister, RegisterInfos registerInfos,
+    std::unordered_map<ServerID, aql::EngineId> const* engines) const {
+  TraverserOptions* opts = this->options();
+
+  arangodb::graph::OneSidedEnumeratorOptions options{opts->minDepth,
+                                                     opts->maxDepth};
+  /*
+   * PathValidator Disjoint Helper (TODO [GraphRefactor]: Copy from createBlock)
+   * Clean this up as soon we clean up the whole TraversalNode as well.
+   */
+  auto generateDisjointPathValidatorOptions = [&]() -> std::pair<bool, bool> {
+    bool isSatLeader = false;
+    if (isDisjoint()) {
+      isSatLeader = opts->isSatelliteLeader();
+    }
+    return {isDisjoint(), isSatLeader};
+  };
+  auto isDisjointIsSat = generateDisjointPathValidatorOptions();
+
+  PathValidatorOptions validatorOptions{opts->_tmpVar, opts->getExpressionCtx(),
+                                        isDisjointIsSat.first,
+                                        isDisjointIsSat.second};
+
+  // Prune Section
+  if (pruneExpression() != nullptr) {
+    std::shared_ptr<aql::PruneExpressionEvaluator> pruneEvaluator;
+    checkPruneAvailability(true, pruneEvaluator);
+    validatorOptions.setPruneEvaluator(std::move(pruneEvaluator));
+  }
+
+  // Post-filter section
+  if (postFilterExpression() != nullptr) {
+    std::shared_ptr<aql::PruneExpressionEvaluator> postFilterEvaluator;
+    checkPostFilterAvailability(true, postFilterEvaluator);
+    validatorOptions.setPostFilterEvaluator(std::move(postFilterEvaluator));
+  }
+
+  // Vertex Expressions Section
+  // I. Set the list of allowed collections
+  validatorOptions.addAllowedVertexCollections(opts->vertexCollections);
+
+  // II. Global prune expression
+  if (opts->_baseVertexExpression != nullptr) {
+    auto baseVertexExpression =
+        opts->_baseVertexExpression->clone(_plan->getAst());
+    validatorOptions.setAllVerticesExpression(std::move(baseVertexExpression));
+  }
+
+  // III. Depth-based prune expressions
+  for (auto const& vertexExpressionPerDepth : opts->_vertexExpressions) {
+    auto depth = vertexExpressionPerDepth.first;
+    auto expression = vertexExpressionPerDepth.second->clone(_plan->getAst());
+    validatorOptions.setVertexExpression(depth, std::move(expression));
+  }
+
+  if (ServerState::instance()->isCoordinator()) {
+    auto clusterBaseProviderOptions =
+        getClusterBaseProviderOptions(opts, filterConditionVariables);
+
+    auto executorInfos = TraversalExecutorInfos(  // todo add a parameter:
+                                                  // SingleServer, Cluster...
+        nullptr, outputRegisterMapping, getStartVertex(), inputRegister,
+        std::move(filterConditionVariables), plan()->getAst(),
+        opts->uniqueVertices, opts->uniqueEdges, opts->mode, opts->refactor(),
+        opts->defaultWeight, opts->weightAttribute, opts->trx(), opts->query(),
+        std::move(validatorOptions),
+        //                                 arangodb::graph::OneSidedEnumeratorOptions{opts->minDepth,
+        //                                 opts->maxDepth});
+        std::move(options), opts, std::move(clusterBaseProviderOptions));
+
+    return std::make_unique<ExecutionBlockImpl<TraversalExecutor>>(
+        &engine, this, std::move(registerInfos), std::move(executorInfos));
+  } else {
+    auto singleServerBaseProviderOptions =
+        getSingleServerBaseProviderOptions(opts, filterConditionVariables);
+    auto executorInfos = TraversalExecutorInfos(  // todo add a parameter:
+                                                  // SingleServer, Cluster...
+        nullptr, outputRegisterMapping, getStartVertex(), inputRegister,
+        std::move(filterConditionVariables), plan()->getAst(),
+        opts->uniqueVertices, opts->uniqueEdges, opts->mode, opts->refactor(),
+        opts->defaultWeight, opts->weightAttribute, opts->trx(), opts->query(),
+        std::move(validatorOptions),
+        //                                 arangodb::graph::OneSidedEnumeratorOptions{opts->minDepth,
+        //                                 opts->maxDepth});
+        std::move(options), opts, std::move(singleServerBaseProviderOptions));
+
+    return std::make_unique<ExecutionBlockImpl<TraversalExecutor>>(
+        &engine, this, std::move(registerInfos), std::move(executorInfos));
+  }
+}
+
+ClusterBaseProviderOptions TraversalNode::getClusterBaseProviderOptions(
+    TraverserOptions* opts,
+    std::vector<std::pair<Variable const*, RegisterId>> const&
+        filterConditionVariables) const {
+  auto traverserCache = std::make_shared<RefactoredClusterTraverserCache>(
+      opts->query().resourceMonitor());
+  return {traverserCache,
+          engines(),
+          false,
+          opts->produceVertices(),
+          &opts->getExpressionCtx(),
+          filterConditionVariables};
+}
+
+SingleServerBaseProviderOptions
+TraversalNode::getSingleServerBaseProviderOptions(
+    TraverserOptions* opts,
+    std::vector<std::pair<Variable const*, RegisterId>> const&
+        filterConditionVariables) const {
+  std::pair<std::vector<IndexAccessor>,
+            std::unordered_map<uint64_t, std::vector<IndexAccessor>>>
+      usedIndexes{};
+  usedIndexes.first = buildUsedIndexes();
+  usedIndexes.second = buildUsedDepthBasedIndexes();
+  return {opts->tmpVar(), std::move(usedIndexes), opts->getExpressionCtx(),
+          filterConditionVariables, opts->collectionToShard()};
+}
+
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
     ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const& cache) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
   auto inputRegisters = RegIdSet{};
@@ -724,6 +856,16 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
   }
   TraverserOptions* opts = this->options();
   std::unique_ptr<Traverser> traverser;
+  /*
+   * PathValidator Disjoint Helper
+   */
+  auto generateDisjointPathValidatorOptions = [&]() -> std::pair<bool, bool> {
+    bool isSatLeader = false;
+    if (isDisjoint()) {
+      isSatLeader = opts->isSatelliteLeader();
+    }
+    return {isDisjoint(), isSatLeader};
+  };
 
   /*
    * PRUNE SECTION
@@ -849,6 +991,7 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
   // Optimized condition
   std::vector<std::pair<Variable const*, RegisterId>> filterConditionVariables;
   filterConditionVariables.reserve(_conditionVariables.size());
+
   for (auto const& it : _conditionVariables) {
     if (it != _tmpObjVariable) {
       auto idIt = varInfo.find(it->id);
@@ -876,8 +1019,18 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
       /*
        * Default Cluster Traverser
        */
-      traverser = std::make_unique<arangodb::traverser::ClusterTraverser>(
-          opts, engines(), engine.getQuery().vocbase().name());
+      if (opts->refactor()) {
+        // Note: Using refactored cluster engine.
+        return createRefactoredBlock(
+            engine, std::move(filterConditionVariables), checkPruneAvailability,
+            checkPostFilterAvailability, outputRegisterMapping, inputRegister,
+            registerInfos, engines());
+
+      } else {
+        // Note: Using non-refactored cluster engine.
+        traverser = std::make_unique<arangodb::traverser::ClusterTraverser>(
+            opts, engines(), engine.getQuery().vocbase().name());
+      }
 #ifdef USE_ENTERPRISE
     }
 #endif
@@ -893,40 +1046,101 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
     initializeIndexConditions();
 
     if (opts->refactor()) {
+      return createRefactoredBlock(
+          engine, std::move(filterConditionVariables), checkPruneAvailability,
+          checkPostFilterAvailability, outputRegisterMapping, inputRegister,
+          registerInfos, nullptr);
+    } else {
+      traverser =
+          std::make_unique<arangodb::traverser::SingleServerTraverser>(opts);
+    }
+  }
+
+  TRI_ASSERT(traverser != nullptr);
+
+  auto isDisjointIsSat = generateDisjointPathValidatorOptions();
+  PathValidatorOptions validatorOptions{opts->_tmpVar, opts->getExpressionCtx(),
+                                        isDisjointIsSat.first,
+                                        isDisjointIsSat.second};
+
+  if (ServerState::instance()->isCoordinator() && !isSmart()) {
+    // Note: In case we're smart, we are NOT allowed to initialize the
+    // ClusterProvider.
+    auto clusterBaseProviderOptions =
+        getClusterBaseProviderOptions(opts, filterConditionVariables);
+
+    auto executorInfos = TraversalExecutorInfos(
+        std::move(traverser), outputRegisterMapping, getStartVertex(),
+        inputRegister, std::move(filterConditionVariables), plan()->getAst(),
+        opts->uniqueVertices, opts->uniqueEdges, opts->mode, opts->refactor(),
+        opts->defaultWeight, opts->weightAttribute, opts->trx(), opts->query(),
+        std::move(validatorOptions),
+        arangodb::graph::OneSidedEnumeratorOptions{opts->minDepth,
+                                                   opts->maxDepth},
+        opts, std::move(clusterBaseProviderOptions));
+
+    return std::make_unique<ExecutionBlockImpl<TraversalExecutor>>(
+        &engine, this, std::move(registerInfos), std::move(executorInfos));
+  } else {
+    if (isSmart() && ServerState::instance()->isCoordinator()) {
+      /*
+       * Ok this whole file is causing a lot of headache:
+       *
+       * We do have too many cases. The flow is not clear anymore.
+       * This is caused by (isSmart(), isDisjoint(), isCluster(),
+       * isSingleServer()) and so on. This needs to be cleaned up before we
+       * merge back. Cannot stay like this(!).
+       *
+       * This particular if statement here is required as in a cluster
+       * environment where we do have a SmartGraph - we are not allowed to parse
+       * a local traversal enumerator on the coordinator side - therefore we
+       * have to manually force the refactor flag to be set to false.
+       *
+       * This needs to be done as we did not refactor the Coordinator side of a
+       * SmartGraph at all. This will be the next step.
+       *
+       */
+
+      // Currently disabled.
+      // Means, we will not parse a _traversalEnumerator in that case.
+      const bool forceIsRefactor = false;
+      TRI_ASSERT(traverser != nullptr);
+
+      /*
+       * [GraphRefactor] Note: This whole section also got lost during attempt
+       * to refactor (pruneExpression && postFilterExpression). This also needs
+       * to be cleaned up before we can merge back to devel.
+       *
+       * This will be easier as soon as we start to get rid of old code.
+       * For now this is being dirty implemented to be able to use Jenkins.
+       *
+       * Path Validator Duplicate Area START
+       *
+       */
+
       std::pair<std::vector<IndexAccessor>,
                 std::unordered_map<uint64_t, std::vector<IndexAccessor>>>
           usedIndexes{};
       usedIndexes.first = buildUsedIndexes();
       usedIndexes.second = buildUsedDepthBasedIndexes();
 
-      std::vector<Variable const*> vars{};
-      std::vector<RegisterId> regs{};
-
-      for (auto [var, reg] : filterConditionVariables) {
-        vars.emplace_back(var);
-        regs.emplace_back(reg);
-      }
-
-      arangodb::graph::BaseProviderOptions baseProviderOptions{
+      arangodb::graph::SingleServerBaseProviderOptions smartBaseProviderOptions{
           opts->tmpVar(), std::move(usedIndexes), opts->getExpressionCtx(),
           filterConditionVariables, opts->collectionToShard()};
 
       arangodb::graph::OneSidedEnumeratorOptions options{opts->minDepth,
                                                          opts->maxDepth};
-      PathValidatorOptions validatorOptions{opts->_tmpVar,
-                                            opts->getExpressionCtx()};
 
       // Prune Section
       if (pruneExpression() != nullptr) {
         std::shared_ptr<aql::PruneExpressionEvaluator> pruneEvaluator;
-        checkPruneAvailability(true, pruneEvaluator);
-        validatorOptions.setPruneEvaluator(std::move(pruneEvaluator));
+        checkPruneAvailability(false, pruneEvaluator);
       }
 
+      // Post-filter section
       if (postFilterExpression() != nullptr) {
         std::shared_ptr<aql::PruneExpressionEvaluator> postFilterEvaluator;
-        checkPostFilterAvailability(true, postFilterEvaluator);
-        validatorOptions.setPostFilterEvaluator(std::move(postFilterEvaluator));
+        checkPostFilterAvailability(false, postFilterEvaluator);
       }
 
       // Vertex Expressions Section
@@ -949,48 +1163,45 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
         validatorOptions.setVertexExpression(depth, std::move(expression));
       }
 
+      /*
+       * Path Validator Duplicate Area END
+       */
+
       auto executorInfos = TraversalExecutorInfos(
-          nullptr, outputRegisterMapping, getStartVertex(), inputRegister,
-          std::move(filterConditionVariables), plan()->getAst(),
-          opts->uniqueVertices, opts->uniqueEdges, opts->mode, opts->refactor(),
+          std::move(traverser), outputRegisterMapping, getStartVertex(),
+          inputRegister, std::move(filterConditionVariables), plan()->getAst(),
+          opts->uniqueVertices, opts->uniqueEdges, opts->mode, forceIsRefactor,
           opts->defaultWeight, opts->weightAttribute, opts->trx(),
-          opts->query(), std::move(baseProviderOptions),
-          std::move(validatorOptions),
-          //                                 arangodb::graph::OneSidedEnumeratorOptions{opts->minDepth,
-          //                                 opts->maxDepth});
-          std::move(options));
+          opts->query(), std::move(validatorOptions),
+          arangodb::graph::OneSidedEnumeratorOptions{opts->minDepth,
+                                                     opts->maxDepth},
+          opts, std::move(smartBaseProviderOptions));
 
       return std::make_unique<ExecutionBlockImpl<TraversalExecutor>>(
           &engine, this, std::move(registerInfos), std::move(executorInfos));
-    } else {
-      traverser =
-          std::make_unique<arangodb::traverser::SingleServerTraverser>(opts);
     }
+
+    /*
+     * TODO [GraphRefactor]: In which state and why this section is being
+     * reached?
+     */
+    arangodb::graph::SingleServerBaseProviderOptions
+        singleServerBaseProviderOptions =
+            getSingleServerBaseProviderOptions(opts, filterConditionVariables);
+
+    auto executorInfos = TraversalExecutorInfos(
+        std::move(traverser), outputRegisterMapping, getStartVertex(),
+        inputRegister, std::move(filterConditionVariables), plan()->getAst(),
+        opts->uniqueVertices, opts->uniqueEdges, opts->mode, opts->refactor(),
+        opts->defaultWeight, opts->weightAttribute, opts->trx(), opts->query(),
+        std::move(validatorOptions),
+        arangodb::graph::OneSidedEnumeratorOptions{opts->minDepth,
+                                                   opts->maxDepth},
+        opts, std::move(singleServerBaseProviderOptions));
+
+    return std::make_unique<ExecutionBlockImpl<TraversalExecutor>>(
+        &engine, this, std::move(registerInfos), std::move(executorInfos));
   }
-
-  TRI_ASSERT(traverser != nullptr);
-  std::pair<std::vector<IndexAccessor>,
-            std::unordered_map<uint64_t, std::vector<IndexAccessor>>>
-      usedIndexes{};
-  usedIndexes.first = buildUsedIndexes();
-  usedIndexes.second = buildUsedDepthBasedIndexes();
-
-  arangodb::graph::BaseProviderOptions baseProviderOptions{
-      opts->tmpVar(), std::move(usedIndexes), opts->getExpressionCtx(),
-      filterConditionVariables, opts->collectionToShard()};
-  PathValidatorOptions validatorOptions{opts->_tmpVar,
-                                        opts->getExpressionCtx()};
-  auto executorInfos = TraversalExecutorInfos(
-      std::move(traverser), outputRegisterMapping, getStartVertex(),
-      inputRegister, std::move(filterConditionVariables), plan()->getAst(),
-      opts->uniqueVertices, opts->uniqueEdges, opts->mode, opts->refactor(),
-      opts->defaultWeight, opts->weightAttribute, opts->trx(), opts->query(),
-      std::move(baseProviderOptions), std::move(validatorOptions),
-      arangodb::graph::OneSidedEnumeratorOptions{opts->minDepth,
-                                                 opts->maxDepth});
-
-  return std::make_unique<ExecutionBlockImpl<TraversalExecutor>>(
-      &engine, this, std::move(registerInfos), std::move(executorInfos));
 }
 
 /// @brief clone ExecutionNode recursively
