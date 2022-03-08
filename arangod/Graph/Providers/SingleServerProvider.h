@@ -59,7 +59,7 @@ namespace graph {
 template<class StepType>
 class SingleServerProvider {
  public:
-  using Options = BaseProviderOptions;
+  using Options = SingleServerBaseProviderOptions;
   using Step = StepType;
 
  public:
@@ -117,7 +117,7 @@ class SingleServerProvider {
 
   std::unique_ptr<RefactoredSingleServerEdgeCursor<Step>> _cursor;
 
-  BaseProviderOptions _opts;
+  SingleServerBaseProviderOptions _opts;
 
   RefactoredTraverserCache _cache;
 
