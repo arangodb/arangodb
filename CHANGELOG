@@ -1,4 +1,4 @@
-v3.8.6 (2022-02-16)
+v3.8.7 (XXXX-XX-XX)
 -------------------
 
 * Log a better startup error in case an ArangoDB 3.8 is started on a too new
@@ -6,6 +6,10 @@ v3.8.6 (2022-02-16)
 
 * Harden validator for binary VelocyPack against additional types of malicious
   inputs.
+
+
+v3.8.6 (2022-02-16)
+-------------------
 
 * Replaced internal JS dependency xmldom with @xmldom/xmldom.
 
