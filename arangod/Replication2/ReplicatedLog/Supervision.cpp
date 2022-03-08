@@ -338,9 +338,9 @@ auto desiredParticipantFlags(LogTarget const& target,
   return target.participants.at(participant);
 }
 
-auto checkLogTargetParticipantFlags(LogTarget const& target,
+auto getParticipantWithUpdatedFlags(LogTarget const& target,
                                     LogPlanSpecification const& plan)
-    -> Action {
+    -> std::optional<std::pair<ParticipantId, ParticipantFlags>> {
   auto const& tps = target.participants;
   auto const& pps = plan.participantsConfig.participants;
 
@@ -351,14 +351,13 @@ auto checkLogTargetParticipantFlags(LogTarget const& target,
       auto const df = desiredParticipantFlags(target, plan, targetParticipant);
       if (df != planParticipant->second) {
         // Flags changed, so we need to commit new flags for this participant
-        return UpdateParticipantFlagsAction(targetParticipant, df,
-                                            plan.participantsConfig.generation);
+        return std::make_pair(targetParticipant, df);
       }
     }
   }
 
   // nothing changed, nothing to do
-  return EmptyAction();
+  return std::nullopt;
 }
 
 auto getAddedParticipant(LogTarget const& target,
@@ -478,10 +477,11 @@ auto checkReplicatedLog(Log const& log, ParticipantsHealth const& health)
 
             // Check whether the flags for a participant differ between target
             // and plan if so, transfer that change to them
-            if (auto action =
-                    checkLogTargetParticipantFlags(log.target, *log.plan);
-                !isEmptyAction(action)) {
-              return action;
+            if (auto participantFlags =
+                    getParticipantWithUpdatedFlags(target, plan)) {
+              return UpdateParticipantFlagsAction(
+                  participantFlags->first, participantFlags->second,
+                  plan.participantsConfig.generation);
             }
 
             // Check whether a participant has been added to Target that is not
@@ -500,8 +500,8 @@ auto checkReplicatedLog(Log const& log, ParticipantsHealth const& health)
               return action;
             }
 
-            // Check whether a participant has been removed from Target that is
-            // still in Plan
+            // Check whether a participant that is in Plan is not in Target
+            // (i.e. has been removed)
             if (auto participant = getRemovedParticipant(target, plan)) {
               if (participant->first == plan.currentTerm->leader->serverId) {
                 auto desiredFlags = participant->second;
