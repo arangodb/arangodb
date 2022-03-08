@@ -28,7 +28,6 @@
 #include <cstddef>
 
 namespace arangodb {
-
 namespace graph {
 
 struct TwoSidedEnumeratorOptions {
@@ -37,8 +36,8 @@ struct TwoSidedEnumeratorOptions {
 
   ~TwoSidedEnumeratorOptions();
 
-  size_t getMinDepth() const;
-  size_t getMaxDepth() const;
+  [[nodiscard]] size_t getMinDepth() const;
+  [[nodiscard]] size_t getMaxDepth() const;
 
  private:
   size_t _minDepth;
