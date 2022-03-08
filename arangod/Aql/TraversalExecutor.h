@@ -180,7 +180,7 @@ class TraversalExecutorInfos {
       TraversalExecutorInfosHelper::OutputName type) const;
 
  private:
-  std::shared_ptr<traverser::Traverser>
+  std::unique_ptr<traverser::Traverser>
       _traverser;  // TODO [GraphRefactor]: Old way, to be removed after
                    // refactor is done!
   std::unique_ptr<arangodb::graph::TraversalEnumerator> _traversalEnumerator =
