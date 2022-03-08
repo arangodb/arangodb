@@ -238,6 +238,13 @@ describe('UserProperties', function () {
       users.remove(nonRootUser);
     } catch (ignore) {
     }
+
+    // cleanup root users config we might have been modified in any of our tests
+    const cleanupRootUrl = generateWriteConfigUrl(rootUser, rootDB);
+    request.delete({
+      url: cleanupRootUrl,
+      json: true
+    });
   });
 
   after(function () {
