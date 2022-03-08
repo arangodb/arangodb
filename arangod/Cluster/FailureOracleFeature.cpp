@@ -68,7 +68,7 @@ class FailureOracleImpl final
   void start();
   void stop();
   auto getStatus() -> FailureOracleFeature::Status;
-  void reload(VPackSlice const& result);
+  void reload(VPackSlice result, consensus::index_t raftIndex);
   void flush();
   void scheduleFlush() noexcept;
 
@@ -78,10 +78,11 @@ class FailureOracleImpl final
  private:
   mutable std::shared_mutex _mutex;
   FailureOracleFeature::FailureMap _isFailed;
+  consensus::index_t _lastRaftIndex{0};
   std::shared_ptr<AgencyCallback> _agencyCallback;
   Scheduler::WorkHandle _flushJob;
   ClusterFeature& _clusterFeature;
-  std::atomic_bool _is_running;
+  std::atomic_bool _isRunning;
   std::chrono::system_clock::time_point _lastUpdated;
 };
 
@@ -89,7 +90,7 @@ FailureOracleImpl::FailureOracleImpl(ClusterFeature& _clusterFeature)
     : _clusterFeature{_clusterFeature} {};
 
 void FailureOracleImpl::start() {
-  _is_running.store(true);
+  _isRunning.store(true);
 
   auto agencyCallbackRegistry = _clusterFeature.agencyCallbackRegistry();
   if (!agencyCallbackRegistry) {
@@ -109,7 +110,7 @@ void FailureOracleImpl::start() {
 }
 
 void FailureOracleImpl::stop() {
-  _is_running.store(false);
+  _isRunning.store(false);
   LOG_TOPIC("cf940", DEBUG, Logger::CLUSTER) << "Stopping Failure Oracle";
 
   try {
@@ -133,7 +134,8 @@ auto FailureOracleImpl::getStatus() -> FailureOracleFeature::Status {
                                       .lastUpdated = _lastUpdated};
 }
 
-void FailureOracleImpl::reload(VPackSlice const& result) {
+void FailureOracleImpl::reload(VPackSlice result,
+                               consensus::index_t raftIndex) {
   FailureOracleFeature::FailureMap isFailed;
   for (auto const [key, value] : VPackObjectIterator(result)) {
     auto const serverId = key.copyString();
@@ -142,7 +144,15 @@ void FailureOracleImpl::reload(VPackSlice const& result) {
     isFailed[serverId] = isServerFailed;
   }
   std::unique_lock writeLock(_mutex);
+  if (_lastRaftIndex >= raftIndex) {
+    LOG_TOPIC("289b0", TRACE, Logger::CLUSTER)
+        << "skipping reload with old raft index " << raftIndex
+        << "; already at " << _lastRaftIndex;
+    return;
+  }
+
   std::swap(_isFailed, isFailed);
+  _lastRaftIndex = raftIndex;
   _lastUpdated = std::chrono::system_clock::now();
   if (ADB_UNLIKELY(Logger::isEnabled(LogLevel::TRACE, Logger::CLUSTER))) {
     if (isFailed != _isFailed) {
@@ -154,19 +164,18 @@ void FailureOracleImpl::reload(VPackSlice const& result) {
 }
 
 void FailureOracleImpl::flush() {
-  if (!_is_running.load()) {
+  if (!_isRunning.load()) {
     LOG_TOPIC("65a8b", TRACE, Logger::CLUSTER)
         << "Failure Oracle feature no longer running, ignoring flush";
     return;
   }
-  std::shared_ptr<VPackBuilder> builder;
   AgencyCache& agencyCache = _clusterFeature.agencyCache();
-  std::tie(builder, std::ignore) = agencyCache.get(kSupervisionHealthPath);
+  auto [builder, raftIndex] = agencyCache.get(kSupervisionHealthPath);
   if (auto result = builder->slice(); !result.isNone()) {
     TRI_ASSERT(result.isObject())
         << " expected object in agency at " << kSupervisionHealthPath
         << " but got " << result.toString();
-    reload(result);
+    reload(result, raftIndex);
   } else {
     LOG_TOPIC("f6403", ERR, Logger::CLUSTER)
         << "Agency cache returned no result for " << kSupervisionHealthPath;
@@ -188,7 +197,7 @@ void FailureOracleImpl::scheduleFlush() noexcept {
       RequestLane::AGENCY_CLUSTER, 50s,
       [weak = weak_from_this()](bool canceled) {
         auto self = weak.lock();
-        if (self && !canceled && self->_is_running.load()) {
+        if (self && !canceled && self->_isRunning.load()) {
           try {
             self->flush();
           } catch (std::exception& ex) {
@@ -209,14 +218,15 @@ void FailureOracleImpl::createAgencyCallback(Server& server) {
   TRI_ASSERT(_agencyCallback == nullptr);
   _agencyCallback = std::make_shared<AgencyCallback>(
       server, kSupervisionHealthPath,
-      [weak = weak_from_this()](VPackSlice const& result) {
+      [weak = weak_from_this()](VPackSlice result,
+                                consensus::index_t raftIndex) {
         auto self = weak.lock();
         if (self) {
           if (!result.isNone()) {
             TRI_ASSERT(result.isObject())
                 << " expected object in agency at " << kSupervisionHealthPath
                 << " but got " << result.toString();
-            self->reload(result);
+            self->reload(result, raftIndex);
           } else {
             LOG_TOPIC("581ba", WARN, Logger::CLUSTER)
                 << "Failure Oracle callback got no result, skipping reload";
