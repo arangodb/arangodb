@@ -361,9 +361,9 @@ auto checkLogTargetParticipantFlags(LogTarget const& target,
   return EmptyAction();
 }
 
-auto checkLogTargetParticipantAdded(LogTarget const& target,
-                                    LogPlanSpecification const& plan)
-    -> Action {
+auto getAddedParticipant(LogTarget const& target,
+                         LogPlanSpecification const& plan)
+    -> std::optional<std::pair<ParticipantId, ParticipantFlags>> {
   auto tps = target.participants;
   auto pps = plan.participantsConfig.participants;
 
@@ -372,11 +372,23 @@ auto checkLogTargetParticipantAdded(LogTarget const& target,
     if (auto const& planParticipant = pps.find(targetParticipant);
         planParticipant == pps.end()) {
       // Here's a participant that is not in plan yet; we add it
-      return AddParticipantToPlanAction(targetParticipant, targetFlags,
-                                        plan.participantsConfig.generation);
+      return std::make_pair(targetParticipant, targetFlags);
     }
   }
-  return EmptyAction();
+  return std::nullopt;
+}
+
+auto getRemovedParticipant(LogTarget const& target,
+                           LogPlanSpecification const& plan)
+    -> std::optional<std::pair<ParticipantId, ParticipantFlags>> {
+  for (auto const& [planParticipant, flags] :
+       plan.participantsConfig.participants) {
+    if (!target.participants.contains(planParticipant)) {
+      return std::make_pair(planParticipant, flags);
+    }
+  }
+
+  return std::nullopt;
 }
 
 auto checkLogTargetParticipantRemoved(LogTarget const& target,
@@ -446,7 +458,7 @@ auto checkReplicatedLog(Log const& log, ParticipantsHealth const& health)
         return CurrentNotAvailableAction{};
       } else {
         if (plan.currentTerm->leader) {
-          // auto const& leader = plan.currentTerm->leader;
+          //          auto const& leader = plan.currentTerm->leader;
 
           // If the leader is unhealthy, we need to create a new term that
           // does not have a leader; in the next round we should be electing
@@ -474,10 +486,10 @@ auto checkReplicatedLog(Log const& log, ParticipantsHealth const& health)
 
             // Check whether a participant has been added to Target that is not
             // Planned yet
-            if (auto action =
-                    checkLogTargetParticipantAdded(log.target, *log.plan);
-                !isEmptyAction(action)) {
-              return action;
+            if (auto participant = getAddedParticipant(log.target, plan)) {
+              return AddParticipantToPlanAction(
+                  participant->first, participant->second,
+                  plan.participantsConfig.generation);
             }
 
             // Handle the case of the user putting a *specific* participant into
@@ -490,17 +502,26 @@ auto checkReplicatedLog(Log const& log, ParticipantsHealth const& health)
 
             // Check whether a participant has been removed from Target that is
             // still in Plan
-            if (auto action =
-                    checkLogTargetParticipantRemoved(log.target, *log.plan);
-                !isEmptyAction(action)) {
-              return action;
+            if (auto participant = getRemovedParticipant(target, plan)) {
+              if (participant->first == plan.currentTerm->leader->serverId) {
+                auto desiredFlags = participant->second;
+                desiredFlags.excluded = false;
+                auto newTerm = *plan.currentTerm;
+                newTerm.term = LogTerm{newTerm.term.value + 1};
+                newTerm.leader.reset();
+                return EvictLeaderAction(participant->first, desiredFlags,
+                                         newTerm,
+                                         plan.participantsConfig.generation);
+              } else {
+                return RemoveParticipantFromPlanAction(
+                    participant->first, plan.participantsConfig.generation);
+              }
             }
 
             // Check whether the configuration of the replicated log has been
             // changed
-            if (auto action = checkLogTargetConfig(log.target, *log.plan);
-                !isEmptyAction(action)) {
-              return action;
+            if (target.config != currentTerm.config) {
+              return UpdateLogConfigAction(target.config);
             }
           }
         } else {
