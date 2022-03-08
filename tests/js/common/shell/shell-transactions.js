@@ -595,7 +595,7 @@ function TransactionsImplicitCollectionsSuite() {
         db._executeTransaction({
           collections: { allowImplicit: false, read: cn2 },
           action: "function (params) { " +
-            "return require('internal').db._query('FOR i IN ANY @start @@cn RETURN i', { '@cn' : params.cn2, start: params.cn1 + '/1' }).toArray(); }",
+            "return require('internal').db._query('WITH @@cn1 FOR i IN ANY @start @@cn RETURN i', { '@cn1': params.cn1, '@cn' : params.cn2, start: params.cn1 + '/1' }).toArray(); }",
           params: { cn1: cn1, cn2: cn2 }
         });
       }

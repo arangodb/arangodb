@@ -66,6 +66,7 @@ struct Link : public arangodb::iresearch::IResearchLink {
     auto json = VPackParser::fromJson(R"({ "view": "42" })");
     bool pathExists = false;
     EXPECT_TRUE(init(json->slice(), pathExists).ok());
+    EXPECT_FALSE(pathExists);
   }
 };
 

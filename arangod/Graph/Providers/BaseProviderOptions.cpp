@@ -75,7 +75,7 @@ aql::NonConstExpressionContainer const& IndexAccessor::nonConstPart() const {
   return _nonConstContainer.value();
 }
 
-BaseProviderOptions::BaseProviderOptions(
+SingleServerBaseProviderOptions::SingleServerBaseProviderOptions(
     aql::Variable const* tmpVar,
     std::pair<std::vector<IndexAccessor>,
               std::unordered_map<uint64_t, std::vector<IndexAccessor>>>&&
@@ -92,36 +92,38 @@ BaseProviderOptions::BaseProviderOptions(
       _weightCallback(std::nullopt),
       _filterConditionVariables(filterConditionVariables) {}
 
-aql::Variable const* BaseProviderOptions::tmpVar() const {
+aql::Variable const* SingleServerBaseProviderOptions::tmpVar() const {
   return _temporaryVariable;
 }
 
 // first is global index information, second is depth-based index information.
 std::pair<std::vector<IndexAccessor>,
           std::unordered_map<uint64_t, std::vector<IndexAccessor>>>&
-BaseProviderOptions::indexInformations() {
+SingleServerBaseProviderOptions::indexInformations() {
   return _indexInformation;
 }
 
 std::unordered_map<std::string, std::vector<std::string>> const&
-BaseProviderOptions::collectionToShardMap() const {
+SingleServerBaseProviderOptions::collectionToShardMap() const {
   return _collectionToShardMap;
 }
 
-aql::FixedVarExpressionContext& BaseProviderOptions::expressionContext() const {
+aql::FixedVarExpressionContext&
+SingleServerBaseProviderOptions::expressionContext() const {
   return _expressionContext;
 }
 
-bool BaseProviderOptions::hasWeightMethod() const {
+bool SingleServerBaseProviderOptions::hasWeightMethod() const {
   return _weightCallback.has_value();
 }
 
-void BaseProviderOptions::setWeightEdgeCallback(WeightCallback callback) {
+void SingleServerBaseProviderOptions::setWeightEdgeCallback(
+    WeightCallback callback) {
   _weightCallback = std::move(callback);
 }
 
-double BaseProviderOptions::weightEdge(double prefixWeight,
-                                       arangodb::velocypack::Slice edge) const {
+double SingleServerBaseProviderOptions::weightEdge(
+    double prefixWeight, arangodb::velocypack::Slice edge) const {
   if (!hasWeightMethod()) {
     // We do not have a weight. Hardcode.
     return prefixWeight + 1;
@@ -129,20 +131,44 @@ double BaseProviderOptions::weightEdge(double prefixWeight,
   return _weightCallback.value()(prefixWeight, edge);
 }
 
-void BaseProviderOptions::prepareContext(aql::InputAqlItemRow input) {
+void SingleServerBaseProviderOptions::prepareContext(
+    aql::InputAqlItemRow input) {
   for (auto const& [var, reg] : _filterConditionVariables) {
     _expressionContext.setVariableValue(var, input.getValue(reg));
   }
 }
 
-void BaseProviderOptions::unPrepareContext() {
+void SingleServerBaseProviderOptions::unPrepareContext() {
   _expressionContext.clearVariableValues();
 }
 
 ClusterBaseProviderOptions::ClusterBaseProviderOptions(
     std::shared_ptr<RefactoredClusterTraverserCache> cache,
-    std::unordered_map<ServerID, aql::EngineId> const* engines, bool backward)
-    : _cache(std::move(cache)), _engines(engines), _backward(backward) {
+    std::unordered_map<ServerID, aql::EngineId> const* engines, bool backward,
+    bool produceVertices)
+    : _cache(std::move(cache)),
+      _engines(engines),
+      _backward(backward),
+      _produceVertices(produceVertices),
+      _expressionContext(nullptr),
+      _weightCallback(std::nullopt) {
+  TRI_ASSERT(_cache != nullptr);
+  TRI_ASSERT(_engines != nullptr);
+}
+
+ClusterBaseProviderOptions::ClusterBaseProviderOptions(
+    std::shared_ptr<RefactoredClusterTraverserCache> cache,
+    std::unordered_map<ServerID, aql::EngineId> const* engines, bool backward,
+    bool produceVertices, aql::FixedVarExpressionContext* expressionContext,
+    std::vector<std::pair<aql::Variable const*, aql::RegisterId>>
+        filterConditionVariables)
+    : _cache(std::move(cache)),
+      _engines(engines),
+      _backward(backward),
+      _produceVertices(produceVertices),
+      _expressionContext(expressionContext),
+      _filterConditionVariables(filterConditionVariables),
+      _weightCallback(std::nullopt) {
   TRI_ASSERT(_cache != nullptr);
   TRI_ASSERT(_engines != nullptr);
 }
@@ -154,8 +180,53 @@ RefactoredClusterTraverserCache* ClusterBaseProviderOptions::getCache() {
 
 bool ClusterBaseProviderOptions::isBackward() const { return _backward; }
 
+bool ClusterBaseProviderOptions::produceVertices() const {
+  return _produceVertices;
+}
+
 std::unordered_map<ServerID, aql::EngineId> const*
 ClusterBaseProviderOptions::engines() const {
   TRI_ASSERT(_engines != nullptr);
   return _engines;
+}
+
+void ClusterBaseProviderOptions::prepareContext(aql::InputAqlItemRow input) {
+  // [GraphRefactor] Note: Currently, only used in Traversal, but not
+  // KShortestPath
+  if (_expressionContext != nullptr) {
+    for (auto const& [var, reg] : _filterConditionVariables) {
+      _expressionContext->setVariableValue(var, input.getValue(reg));
+    }
+  }
+}
+
+void ClusterBaseProviderOptions::unPrepareContext() {
+  // [GraphRefactor] Note: Currently, only used in Traversal, but not
+  // KShortestPath
+  if (_expressionContext != nullptr) {
+    _expressionContext->clearVariableValues();
+  }
+}
+
+aql::FixedVarExpressionContext*
+ClusterBaseProviderOptions::expressionContext() {
+  return _expressionContext;
+}
+
+bool ClusterBaseProviderOptions::hasWeightMethod() const {
+  return _weightCallback.has_value();
+}
+
+void ClusterBaseProviderOptions::setWeightEdgeCallback(
+    WeightCallback callback) {
+  _weightCallback = std::move(callback);
+}
+
+double ClusterBaseProviderOptions::weightEdge(
+    double prefixWeight, arangodb::velocypack::Slice edge) const {
+  if (!hasWeightMethod()) {
+    // We do not have a weight. Hardcode.
+    return prefixWeight + 1;
+  }
+  return _weightCallback.value()(prefixWeight, edge);
 }
