@@ -130,7 +130,7 @@ struct PrototypeLeaderState
 template<class Iterator>
 auto PrototypeLeaderState::get(Iterator begin, Iterator end)
     -> std::unordered_map<std::string, std::string> {
-  return guardedData.template doUnderLock([begin, end](auto& core) {
+  return guardedData.doUnderLock([begin, end](auto& core) {
     std::unordered_map<std::string, std::string> result;
     if (!core) {
       return result;
@@ -155,7 +155,7 @@ auto PrototypeLeaderState::set(Iterator begin, Iterator end)
 
   return stream->waitFor(idx).thenValue(
       [self = shared_from_this(), idx, begin, end](auto&& res) {
-        return self->guardedData.template doUnderLock(
+        return self->guardedData.doUnderLock(
             [idx, begin, end](auto& core) -> ResultT<LogIndex> {
               if (!core) {
                 return Result{TRI_ERROR_CLUSTER_NOT_LEADER};
@@ -179,7 +179,7 @@ auto PrototypeLeaderState::remove(Iterator begin, Iterator end)
 
   return stream->waitFor(idx).thenValue([self = shared_from_this(), begin, end,
                                          idx](auto&& res) {
-    return self->guardedData.template doUnderLock(
+    return self->guardedData.doUnderLock(
         [begin, end, idx](auto& core) -> futures::Future<ResultT<LogIndex>> {
           if (!core) {
             return ResultT<LogIndex>::error(TRI_ERROR_CLUSTER_NOT_LEADER);
