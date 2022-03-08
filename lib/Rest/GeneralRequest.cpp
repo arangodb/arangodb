@@ -241,37 +241,57 @@ std::map<std::string, std::string> GeneralRequest::parameters() const {
 // needs to be here because of a gcc bug with templates and namespaces
 // https://stackoverflow.com/a/25594741/1473569
 namespace arangodb {
+
 template<>
-bool GeneralRequest::parsedValue(std::string const& key, bool valueNotFound) {
+auto GeneralRequest::parsedValue(std::string const& key)
+    -> std::optional<bool> {
   bool found = false;
   std::string const& val = this->value(key, found);
   if (found) {
     return StringUtils::boolean(val);
+  } else {
+    return std::nullopt;
   }
-  return valueNotFound;
 }
 
 template<>
-uint64_t GeneralRequest::parsedValue(std::string const& key,
-                                     uint64_t valueNotFound) {
+auto GeneralRequest::parsedValue(std::string const& key)
+    -> std::optional<uint64_t> {
   bool found = false;
   std::string const& val = this->value(key, found);
   if (found) {
     return StringUtils::uint64(val);
+  } else {
+    return std::nullopt;
   }
-  return valueNotFound;
 }
 
 template<>
-double GeneralRequest::parsedValue(std::string const& key,
-                                   double valueNotFound) {
+auto GeneralRequest::parsedValue(std::string const& key)
+    -> std::optional<double> {
   bool found = false;
   std::string const& val = this->value(key, found);
   if (found) {
     return StringUtils::doubleDecimal(val);
+  } else {
+    return std::nullopt;
   }
-  return valueNotFound;
 }
+
+template<typename T>
+auto GeneralRequest::parsedValue(std::string const& key, T valueNotFound) -> T {
+  if (auto res = parsedValue<decltype(valueNotFound)>(key); res.has_value()) {
+    return *res;
+  } else {
+    return valueNotFound;
+  }
+}
+template auto GeneralRequest::parsedValue<bool>(std::string const&, bool)
+    -> bool;
+template auto GeneralRequest::parsedValue<uint64_t>(std::string const&,
+                                                    uint64_t) -> uint64_t;
+template auto GeneralRequest::parsedValue<double>(std::string const&, double)
+    -> double;
 
 std::shared_ptr<VPackBuilder> GeneralRequest::toVelocyPackBuilderPtr(
     bool strictValidation) {

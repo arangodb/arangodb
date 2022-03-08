@@ -127,7 +127,7 @@ const replicatedStateSuite = function () {
       });
 
       lh.waitFor(spreds.replicatedStateIsReady(database, stateId, servers));
-      lh.waitForReplicatedLogAvailable(stateId, db);
+      lh.waitForReplicatedLogAvailable(stateId);
 
       let {leader} = lh.getReplicatedLogLeaderPlan(database, stateId);
       let leaderUrl = lh.getServerUrl(leader);

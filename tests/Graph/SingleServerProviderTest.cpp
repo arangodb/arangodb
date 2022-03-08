@@ -109,7 +109,7 @@ class SingleServerProviderTest : public ::testing::Test {
     _expressionContext =
         std::make_unique<arangodb::aql::FixedVarExpressionContext>(
             *_trx, *query, _functionsCache);
-    BaseProviderOptions opts(
+    SingleServerBaseProviderOptions opts(
         _tmpVar,
         std::make_pair(
             std::move(usedIndexes),
