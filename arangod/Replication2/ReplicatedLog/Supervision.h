@@ -42,45 +42,45 @@ using LogCurrentLocalStates =
     std::unordered_map<ParticipantId, LogCurrentLocalState>;
 
 // Check whether a log has been added to target
-auto checkLogAdded(Log const &log, ParticipantsHealth const &health) -> Action;
+auto checkLogAdded(Log const& log, ParticipantsHealth const& health) -> Action;
 
 //
-auto checkLeaderPresent(LogPlanSpecification const &plan,
-                        LogCurrent const &current,
-                        ParticipantsHealth const &health) -> Action;
+auto checkLeaderPresent(LogPlanSpecification const& plan,
+                        LogCurrent const& current,
+                        ParticipantsHealth const& health) -> Action;
 
-auto isLeaderFailed(LogPlanSpecification const &plan,
-                    ParticipantsHealth const &health) -> bool;
+auto isLeaderFailed(LogPlanSpecification const& plan,
+                    ParticipantsHealth const& health) -> bool;
 
-auto computeReason(LogCurrentLocalState const &status, bool healthy,
+auto computeReason(LogCurrentLocalState const& status, bool healthy,
                    bool excluded, LogTerm term)
     -> LogCurrentSupervisionElection::ErrorCode;
 
-auto runElectionCampaign(LogCurrentLocalStates const &states,
-                         ParticipantsConfig const &participantsConfig,
-                         ParticipantsHealth const &health, LogTerm term)
+auto runElectionCampaign(LogCurrentLocalStates const& states,
+                         ParticipantsConfig const& participantsConfig,
+                         ParticipantsHealth const& health, LogTerm term)
     -> LogCurrentSupervisionElection;
 
-auto doLeadershipElection(LogPlanSpecification const &plan,
-                          LogCurrent const &current,
-                          ParticipantsHealth const &health) -> Action;
+auto doLeadershipElection(LogPlanSpecification const& plan,
+                          LogCurrent const& current,
+                          ParticipantsHealth const& health) -> Action;
 
-auto checkLogTargetParticipantFlags(LogTarget const &target,
-                                    LogPlanSpecification const &plan) -> Action;
+auto checkLogTargetParticipantFlags(LogTarget const& target,
+                                    LogPlanSpecification const& plan) -> Action;
 
-auto checkLogTargetParticipantAdded(LogTarget const &target,
-                                    LogPlanSpecification const &plan) -> Action;
+auto checkLogTargetParticipantAdded(LogTarget const& target,
+                                    LogPlanSpecification const& plan) -> Action;
 
-auto checkLogTargetParticipantRemoved(LogTarget const &target,
-                                      LogPlanSpecification const &plan)
+auto checkLogTargetParticipantRemoved(LogTarget const& target,
+                                      LogPlanSpecification const& plan)
     -> Action;
 
-auto checkLogTargetConfig(LogTarget const &target,
-                          LogPlanSpecification const &plan) -> Action;
+auto checkLogTargetConfig(LogTarget const& target,
+                          LogPlanSpecification const& plan) -> Action;
 
 // Actions capture entries in log, so they have to stay
 // valid until the returned action has been executed (or discarded)
-auto checkReplicatedLog(Log const &log, ParticipantsHealth const &health)
+auto checkReplicatedLog(Log const& log, ParticipantsHealth const& health)
     -> Action;
 
-} // namespace arangodb::replication2::replicated_log
+}  // namespace arangodb::replication2::replicated_log
