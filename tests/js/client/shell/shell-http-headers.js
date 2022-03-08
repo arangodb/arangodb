@@ -70,8 +70,8 @@ function headersClusterSuite () {
     // test executing request on the coordinator
     testCoordinator: function() {
       let result = arango.GET_RAW("/_api/version");
-      assertTrue(result.hasOwnProperty("headers"));
-      assertTrue(result.headers.hasOwnProperty("server"));
+      assertTrue(result.hasOwnProperty("headers"), "no headers found");
+      assertTrue(result.headers.hasOwnProperty("server"), "server header not found");
       assertEqual("ArangoDB", result.headers["server"]);
     },
 
@@ -92,8 +92,8 @@ function headersClusterSuite () {
         arango.reconnect(dbserver.endpoint, "_system", arango.connectedUser(), "");
 
         let result = arango.GET_RAW("/_api/version");
-        assertTrue(result.hasOwnProperty("headers"));
-        assertFalse(result.headers.hasOwnProperty("server"));
+        assertTrue(result.hasOwnProperty("headers"), "no headers found");
+        assertFalse(result.headers.hasOwnProperty("server"), "server header found");
       });
     },
     
