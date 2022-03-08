@@ -84,6 +84,14 @@ struct DictateLeaderAction {
   LogPlanTermSpecification _term;
 };
 
+struct DictateLeaderFailedAction {
+  static constexpr std::string_view name = "DictateLeaderAction";
+
+  DictateLeaderFailedAction(std::string const& message) : _message{message} {};
+
+  std::string _message;
+};
+
 struct EvictLeaderAction {
   static constexpr std::string_view name = "EvictLeaderAction";
 
@@ -178,10 +186,10 @@ using Action =
     std::variant<EmptyAction, ErrorAction, AddLogToPlanAction,
                  AddParticipantsToTargetAction, CreateInitialTermAction,
                  CurrentNotAvailableAction, DictateLeaderAction,
-                 EvictLeaderAction, UpdateTermAction, WriteEmptyTermAction,
-                 LeaderElectionAction, UpdateParticipantFlagsAction,
-                 AddParticipantToPlanAction, RemoveParticipantFromPlanAction,
-                 UpdateLogConfigAction>;
+                 DictateLeaderFailedAction, EvictLeaderAction, UpdateTermAction,
+                 WriteEmptyTermAction, LeaderElectionAction,
+                 UpdateParticipantFlagsAction, AddParticipantToPlanAction,
+                 RemoveParticipantFromPlanAction, UpdateLogConfigAction>;
 
 using namespace arangodb::cluster::paths;
 
@@ -228,6 +236,7 @@ struct Executor {
   void operator()(AddParticipantsToTargetAction const& action);
   void operator()(CreateInitialTermAction const& action);
   void operator()(DictateLeaderAction const& action);
+  void operator()(DictateLeaderFailedAction const& action);
   void operator()(CurrentNotAvailableAction const& action);
   void operator()(EvictLeaderAction const& action);
   void operator()(UpdateTermAction const& action);
@@ -252,6 +261,7 @@ struct VelocyPacker {
   void operator()(CreateInitialTermAction const& action);
   void operator()(CurrentNotAvailableAction const& action);
   void operator()(DictateLeaderAction const& action);
+  void operator()(DictateLeaderFailedAction const& action);
   void operator()(EvictLeaderAction const& action);
   void operator()(UpdateTermAction const& action);
   void operator()(WriteEmptyTermAction const& action);

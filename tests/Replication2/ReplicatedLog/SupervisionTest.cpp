@@ -162,7 +162,7 @@ TEST_F(LeaderStateMachineTest, test_election_success) {
                   {"C", ParticipantHealth{.rebootId = RebootId{1},
                                           .notIsFailed = true}}}};
 
-  auto r = tryLeadershipElection(plan, current, health);
+  auto r = doLeadershipElection(plan, current, health);
   EXPECT_TRUE(std::holds_alternative<LeaderElectionAction>(r));
 
   auto &action = std::get<LeaderElectionAction>(r);
@@ -252,7 +252,7 @@ TEST_F(LeaderStateMachineTest, test_election_leader_with_higher_term) {
                   {"C", ParticipantHealth{.rebootId = RebootId{14},
                                           .notIsFailed = true}}}};
 
-  auto r = tryLeadershipElection(plan, current, health);
+  auto r = doLeadershipElection(plan, current, health);
 
   EXPECT_TRUE(std::holds_alternative<LeaderElectionAction>(r));
 
@@ -324,6 +324,7 @@ TEST_F(SupervisionLogTest, test_log_present) {
       << to_string(r);
 }
 
+#if 0
 TEST_F(SupervisionLogTest, test_checkleader_present) {
   // We have no leader, so we have to first run a leadership campaign and then
   // select a leader.
@@ -366,3 +367,5 @@ TEST_F(SupervisionLogTest, test_checkleader_present) {
   auto r = checkLeaderPresent(plan, current, health);
   EXPECT_TRUE(std::holds_alternative<EmptyAction>(r));
 }
+
+#endif

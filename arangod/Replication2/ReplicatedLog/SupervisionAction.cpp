@@ -104,6 +104,16 @@ void Executor::operator()(DictateLeaderAction const& action) {
                  .end();
 }
 
+void Executor::operator()(DictateLeaderFailedAction const& action) {
+  envelope = envelope.write()
+                 .emplace_object(currentPath->supervision()->error()->str(),
+                                 [&](VPackBuilder& builder) {
+                                   builder.add(VPackValue(action._message));
+                                 })
+                 .inc(paths::current()->version()->str())
+                 .end();
+}
+
 void Executor::operator()(CurrentNotAvailableAction const& action) {
   envelope =
       envelope.write()
@@ -301,6 +311,14 @@ void VelocyPacker::operator()(DictateLeaderAction const& action) {
 
   builder.add(VPackValue("newTerm"));
   action._term.toVelocyPack(builder);
+}
+
+void VelocyPacker::operator()(DictateLeaderFailedAction const& action) {
+  builder.add(VPackValue("type"));
+  builder.add(VPackValue(action.name));
+
+  builder.add(VPackValue("message"));
+  builder.add(VPackValue(action._message));
 }
 
 void VelocyPacker::operator()(EvictLeaderAction const& action) {
