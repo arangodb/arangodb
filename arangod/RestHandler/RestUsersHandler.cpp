@@ -457,7 +457,8 @@ RestStatus RestUsersHandler::putRequest(auth::UserManager* um) {
 
             if (oldConf.isObject() &&
                 !oldConf.isEmptyObject()) {  // merge value in
-              u.setConfigData(VPackCollection::merge(oldConf, b.slice(), false));
+              u.setConfigData(
+                  VPackCollection::merge(oldConf, b.slice(), false));
             } else {
               u.setConfigData(std::move(b));
             }
