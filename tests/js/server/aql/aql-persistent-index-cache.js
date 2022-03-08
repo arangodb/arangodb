@@ -217,48 +217,56 @@ function VPackIndexCacheSuite (type, unique, cacheEnabled) {
     testPointLookupNonCovering1: function () {
       setFailurePointForPointLookup();
 
-      let result = db._query(`FOR i IN 0..999 FOR doc IN ${cn} FILTER doc.value1 == i RETURN doc`).toArray();
-      assertEqual(1000, result.length);
-      for (let i = 0; i < result.length; ++i) {
-        const doc = result[i];
-        assertEqual("test" + i, doc._key);
-        assertEqual(i, doc.value1);
-        assertEqual("testmann" + String(i).padStart(5, "0"), doc.value2);
+      for (let tries = 0; tries < (cacheEnabled ? 3 : 1); ++tries) {
+        let result = db._query(`FOR i IN 0..999 FOR doc IN ${cn} FILTER doc.value1 == i RETURN doc`).toArray();
+        assertEqual(1000, result.length);
+        for (let i = 0; i < result.length; ++i) {
+          const doc = result[i];
+          assertEqual("test" + i, doc._key);
+          assertEqual(i, doc.value1);
+          assertEqual("testmann" + String(i).padStart(5, "0"), doc.value2);
+        }
       }
     },
 
     testPointLookupNonCovering2: function () {
       setFailurePointForPointLookup();
 
-      let result = db._query(`FOR i IN 0..999 FOR doc IN ${cn} FILTER doc.value1 == i && doc.value2 == CONCAT('testmann', SUBSTRING('00000', 0, 5 - LENGTH(TO_STRING(i))), i) RETURN doc`).toArray();
-      assertEqual(1000, result.length);
-      for (let i = 0; i < result.length; ++i) {
-        const doc = result[i];
-        assertEqual("test" + i, doc._key);
-        assertEqual(i, doc.value1);
-        assertEqual("testmann" + String(i).padStart(5, "0"), doc.value2);
+      for (let tries = 0; tries < (cacheEnabled ? 3 : 1); ++tries) {
+        let result = db._query(`FOR i IN 0..999 FOR doc IN ${cn} FILTER doc.value1 == i && doc.value2 == CONCAT('testmann', SUBSTRING('00000', 0, 5 - LENGTH(TO_STRING(i))), i) RETURN doc`).toArray();
+        assertEqual(1000, result.length);
+        for (let i = 0; i < result.length; ++i) {
+          const doc = result[i];
+          assertEqual("test" + i, doc._key);
+          assertEqual(i, doc.value1);
+          assertEqual("testmann" + String(i).padStart(5, "0"), doc.value2);
+        }
       }
     },
     
     testPointLookupCovering1: function () {
       setFailurePointForPointLookup();
 
-      let result = db._query(`FOR i IN 0..999 FOR doc IN ${cn} FILTER doc.value1 == i RETURN doc.value1`).toArray();
-      assertEqual(1000, result.length);
-      for (let i = 0; i < result.length; ++i) {
-        assertEqual(i, result[i]);
+      for (let tries = 0; tries < (cacheEnabled ? 3 : 1); ++tries) {
+        let result = db._query(`FOR i IN 0..999 FOR doc IN ${cn} FILTER doc.value1 == i RETURN doc.value1`).toArray();
+        assertEqual(1000, result.length);
+        for (let i = 0; i < result.length; ++i) {
+          assertEqual(i, result[i]);
+        }
       }
     },
 
     testPointLookupCovering2: function () {
       setFailurePointForPointLookup();
 
-      let result = db._query(`FOR i IN 0..999 FOR doc IN ${cn} FILTER doc.value1 == i RETURN [doc.value1, doc.value2]`).toArray();
-      assertEqual(1000, result.length);
-      for (let i = 0; i < result.length; ++i) {
-        const doc = result[i];
-        assertEqual(i, doc[0]);
-        assertEqual("testmann" + String(i).padStart(5, "0"), doc[1]);
+      for (let tries = 0; tries < (cacheEnabled ? 3 : 1); ++tries) {
+        let result = db._query(`FOR i IN 0..999 FOR doc IN ${cn} FILTER doc.value1 == i RETURN [doc.value1, doc.value2]`).toArray();
+        assertEqual(1000, result.length);
+        for (let i = 0; i < result.length; ++i) {
+          const doc = result[i];
+          assertEqual(i, doc[0]);
+          assertEqual("testmann" + String(i).padStart(5, "0"), doc[1]);
+        }
       }
     },
     
@@ -360,9 +368,25 @@ function PersistentIndexNonUniqueCacheEnabledSuite() {
   return suite;
 }
 
+function PersistentIndexUniqueCacheDisabledSuite() {
+  'use strict';
+  let suite = {};
+  deriveTestSuite(VPackIndexCacheSuite("persistent", /*unique*/ true, /*cacheEnabled*/ false), suite, '_persistent_unique_cacheDisabled');
+  return suite;
+}
+
+function PersistentIndexUniqueCacheEnabledSuite() {
+  'use strict';
+  let suite = {};
+  deriveTestSuite(VPackIndexCacheSuite("persistent", /*unique*/ true, /*cacheEnabled*/ true), suite, '_persistent_unique_cacheEnabled');
+  return suite;
+}
+
 jsunity.run(CreateSuite);
 jsunity.run(PersistentIndexNonUniqueCacheDisabledSuite);
 jsunity.run(PersistentIndexNonUniqueCacheEnabledSuite);
+jsunity.run(PersistentIndexUniqueCacheDisabledSuite);
+jsunity.run(PersistentIndexUniqueCacheEnabledSuite);
 jsunity.run(OtherIndexesSuite);
 
 return jsunity.done();

@@ -107,11 +107,15 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
   RocksDBVPackUniqueIndexIterator(LogicalCollection* collection,
                                   transaction::Methods* trx,
                                   arangodb::RocksDBVPackIndex const* index,
+                                  std::shared_ptr<cache::Cache> cache,
                                   VPackSlice indexValues,
                                   ReadOwnWrites readOwnWrites)
       : IndexIterator(collection, trx, readOwnWrites),
         _index(index),
         _cmp(index->comparator()),
+        _cache(std::static_pointer_cast<
+               cache::TransactionalCache<cache::VPackKeyHasher>>(
+            std::move(cache))),
         _key(trx),
         _done(false) {
     TRI_ASSERT(index->unique());
@@ -119,6 +123,17 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
                RocksDBColumnFamilyManager::get(
                    RocksDBColumnFamilyManager::Family::VPackIndex));
     _key->constructUniqueVPackIndexValue(index->objectId(), indexValues);
+
+    // if the cache is enabled, it must use the VPackKeyHasher!
+    TRI_ASSERT(_cache == nullptr ||
+               _cache->hasher().name() == "VPackKeyHasher");
+  }
+
+  ~RocksDBVPackUniqueIndexIterator() {
+    LOG_DEVEL << "UNIQUE CACHE - LOOKUP HITS: " << _lookupHits
+              << ", MISSES: " << _lookupMisses
+              << ", ROCKSDB LOOKUPS: " << _lookupRocksDB
+              << ", CACHE: " << (_cache != nullptr);
   }
 
  public:
@@ -163,59 +178,58 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
 
   /// @brief Get the next limit many element in the index
   bool nextImpl(LocalDocumentIdCallback const& cb, size_t limit) override {
-    TRI_ASSERT(_trx->state()->isRunning());
+    return nextImplementation(
+        [&cb, this](VPackSlice cachedData) {
+          TRI_ASSERT(cachedData.isArray());
+          TRI_ASSERT(cachedData.length() ==
+                     (_index->hasStoredValues() ? 3 : 2));
 
-    if (limit == 0 || _done) {
-      // already looked up something
-      return false;
-    }
-
-    _done = true;
-
-    rocksdb::PinnableSlice ps;
-    RocksDBMethods* mthds =
-        RocksDBTransactionState::toMethods(_trx, _collection->id());
-    rocksdb::Status s = mthds->Get(_index->columnFamily(), _key->string(), &ps,
-                                   canReadOwnWrites());
-
-    if (s.ok()) {
-      cb(RocksDBValue::documentId(ps));
-    }
-
-    // there is at most one element, so we are done now
-    return false;
+          VPackArrayIterator it(cachedData);
+          TRI_ASSERT(it.value().isNumber());
+          LocalDocumentId documentId{it.value().getNumericValue<uint64_t>()};
+          cb(documentId);
+        },
+        [&cb, this](rocksdb::PinnableSlice& ps) {
+          LocalDocumentId documentId = RocksDBValue::documentId(ps);
+          cb(documentId);
+        },
+        limit);
   }
 
   bool nextCoveringImpl(CoveringCallback const& cb, size_t limit) override {
-    TRI_ASSERT(_trx->state()->isRunning());
+    return nextImplementation(
+        [&cb, this](VPackSlice cachedData) {
+          TRI_ASSERT(cachedData.isArray());
+          TRI_ASSERT(cachedData.length() ==
+                     (_index->hasStoredValues() ? 3 : 2));
 
-    if (limit == 0 || _done) {
-      // already looked up something
-      return false;
-    }
-
-    _done = true;
-
-    rocksdb::PinnableSlice ps;
-    RocksDBMethods* mthds =
-        RocksDBTransactionState::toMethods(_trx, _collection->id());
-    rocksdb::Status s = mthds->Get(_index->columnFamily(), _key->string(), &ps,
-                                   canReadOwnWrites());
-
-    if (s.ok()) {
-      if (_index->hasStoredValues()) {
-        auto data = SliceCoveringDataWithStoredValues(
-            RocksDBKey::indexedVPack(_key.ref()),
-            RocksDBValue::uniqueIndexStoredValues(ps));
-        cb(LocalDocumentId(RocksDBValue::documentId(ps)), data);
-      } else {
-        auto data = SliceCoveringData(RocksDBKey::indexedVPack(_key.ref()));
-        cb(LocalDocumentId(RocksDBValue::documentId(ps)), data);
-      }
-    }
-
-    // there is at most one element, so we are done now
-    return false;
+          VPackArrayIterator it(cachedData);
+          TRI_ASSERT(it.value().isNumber());
+          LocalDocumentId documentId{it.value().getNumericValue<uint64_t>()};
+          it.next();
+          VPackSlice value = it.value();
+          if (_index->hasStoredValues()) {
+            it.next();
+            VPackSlice storedValues = it.value();
+            auto data = SliceCoveringDataWithStoredValues(value, storedValues);
+            cb(documentId, data);
+          } else {
+            auto data = SliceCoveringData(value);
+            cb(documentId, data);
+          }
+        },
+        [&cb, this](rocksdb::PinnableSlice& ps) {
+          if (_index->hasStoredValues()) {
+            auto data = SliceCoveringDataWithStoredValues(
+                RocksDBKey::indexedVPack(_key.ref()),
+                RocksDBValue::uniqueIndexStoredValues(ps));
+            cb(LocalDocumentId(RocksDBValue::documentId(ps)), data);
+          } else {
+            auto data = SliceCoveringData(RocksDBKey::indexedVPack(_key.ref()));
+            cb(LocalDocumentId(RocksDBValue::documentId(ps)), data);
+          }
+        },
+        limit);
   }
 
   /// @brief Reset the cursor
@@ -225,10 +239,117 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
   }
 
  private:
+  template<typename F1, typename F2>
+  inline bool nextImplementation(F1&& handleCacheEntry, F2&& handleRocksDBValue,
+                                 size_t limit) {
+    TRI_ASSERT(_trx->state()->isRunning());
+
+    if (limit == 0 || _done) {
+      // already looked up something
+      return false;
+    }
+
+    _done = true;
+
+    if (_cache != nullptr) {
+      rocksdb::Slice key = lookupValueForCache();
+
+      for (size_t attempts = 0; attempts < 10; ++attempts) {
+        // Try to read from cache
+        auto finding =
+            _cache->find(key.data(), static_cast<uint32_t>(key.size()));
+        if (finding.found()) {
+          ++_lookupHits;
+          // We got sth. in the cache
+          VPackSlice cachedData(finding.value()->value());
+          if (!cachedData.isEmptyArray()) {
+            handleCacheEntry(cachedData);
+          }
+          return false;
+        }  // finding found
+
+        if (finding.result() != TRI_ERROR_LOCK_TIMEOUT) {
+          break;
+        }
+        // enhance our calm...
+        basics::cpu_relax();
+      }  // attempts
+    }
+
+    ++_lookupRocksDB;
+
+    rocksdb::PinnableSlice ps;
+    RocksDBMethods* mthds =
+        RocksDBTransactionState::toMethods(_trx, _collection->id());
+    rocksdb::Status s = mthds->Get(_index->columnFamily(), _key->string(), &ps,
+                                   canReadOwnWrites());
+
+    if (s.ok()) {
+      handleRocksDBValue(ps);
+
+      if (_cache != nullptr) {
+        transaction::BuilderLeaser builder(_trx);
+
+        builder->openArray(true);
+        // LocalDocumentId
+        builder->add(VPackValue(RocksDBValue::documentId(ps).id()));
+        // index values
+        builder->add(RocksDBKey::indexedVPack(_key->string()));
+        if (_index->hasStoredValues()) {
+          // "storedValues"
+          builder->add(RocksDBValue::uniqueIndexStoredValues(ps));
+        }
+        builder->close();
+
+        // store result in cache
+        storeInCache(builder->slice());
+      }
+    } else {
+      // we found nothing. store this in the cache
+      if (_cache != nullptr) {
+        storeInCache(VPackSlice::emptyArraySlice());
+      }
+    }
+
+    // there is at most one element, so we are done now
+    return false;
+  }
+
+  // store a value inside the in-memory hash cache
+  void storeInCache(VPackSlice slice) {
+    TRI_ASSERT(_cache != nullptr);
+
+    size_t attempts = 0;
+    rocksdb::Slice key = lookupValueForCache();
+    cache::Cache::Inserter inserter(
+        *_cache, key.data(), static_cast<uint32_t>(key.size()), slice.start(),
+        static_cast<uint64_t>(slice.byteSize()),
+        [&attempts](Result const& res) -> bool {
+          return res.is(TRI_ERROR_LOCK_TIMEOUT) && ++attempts <= 10;
+        });
+    if (inserter.status.fail()) {
+      LOG_TOPIC("b33d8", TRACE, arangodb::Logger::CACHE)
+          << "Failed to cache: " << slice.toJson();
+    }
+  }
+
+  rocksdb::Slice lookupValueForCache() const noexcept {
+    // use bounds start value
+    rocksdb::Slice lookupValue = _key->string();
+    // remove object id prefix
+    return rocksdb::Slice(lookupValue.data() + sizeof(uint64_t),
+                          lookupValue.size() - sizeof(uint64_t));
+  }
+
   arangodb::RocksDBVPackIndex const* _index;
   rocksdb::Comparator const* _cmp;
+  std::shared_ptr<cache::TransactionalCache<cache::VPackKeyHasher>> _cache;
   RocksDBKeyLeaser _key;
   bool _done;
+
+  size_t _lookupHits = 0;
+  size_t _lookupMisses = 0;
+  size_t _lookupRocksDB = 0;
 };
 
 /// @brief Iterator structure for RocksDB. We require a start and stop node
@@ -280,10 +401,9 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
   }
 
   ~RocksDBVPackIndexIterator() {
-    LOG_DEVEL << "LOOKUP HITS: " << _lookupHits << ", MISSES: " << _lookupMisses
+    LOG_DEVEL << "NON-UNIQUE CACHE - LOOKUP HITS: " << _lookupHits
+              << ", MISSES: " << _lookupMisses
               << ", ROCKSDB LOOKUPS: " << _lookupRocksDB
-              << ", CACHE INSERTS: " << _lookupInserts
-              << ", INSERT FAILS: " << _lookupInsertFails
               << ", CACHE: " << (_cache != nullptr);
   }
 
@@ -365,303 +485,97 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
 
     return true;
   }
-  /*
-    /// @brief Get the next limit many elements in the index
-    bool nextImpl(LocalDocumentIdCallback const& cb, size_t limit) override {
-      ensureIterator();
-      TRI_ASSERT(_trx->state()->isRunning());
-      TRI_ASSERT(_iterator != nullptr);
-
-      if (limit == 0 || !_iterator->Valid() || outOfRange()) {
-        // No limit no data, or we are actually done. The last call should have
-        // returned false
-        TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
-        // validate that Iterator is in a good shape and hasn't failed
-        arangodb::rocksutils::checkIteratorStatus(_iterator.get());
-        return false;
-      }
-
-      TRI_ASSERT(limit > 0);
-
-      do {
-        TRI_ASSERT(_index->objectId() ==
-    RocksDBKey::objectId(_iterator->key()));
-
-        if constexpr (unique) {
-          cb(RocksDBValue::documentId(_iterator->value()));
-        } else {
-          cb(RocksDBKey::indexDocumentId(_iterator->key()));
-        }
-
-        if (!advance()) {
-          // validate that Iterator is in a good shape and hasn't failed
-          arangodb::rocksutils::checkIteratorStatus(_iterator.get());
-          return false;
-        }
-
-        --limit;
-        if (limit == 0) {
-          return true;
-        }
-      } while (true);
-    }
-    */
 
   /// @brief Get the next limit many elements in the index
   bool nextImpl(LocalDocumentIdCallback const& cb, size_t limit) override {
-    TRI_ASSERT(_trx->state()->isRunning());
+    return nextImplementation(
+        [&cb, this]() {
+          // read LocalDocumentId
+          TRI_ASSERT(_resultIterator.value().isNumber());
+          LocalDocumentId documentId{
+              _resultIterator.value().getNumericValue<uint64_t>()};
+          _resultIterator.next();
 
-    auto handleIndexEntry = [&cb, this]() {
-      // read LocalDocumentId
-      TRI_ASSERT(_resultIterator.value().isNumber());
-      LocalDocumentId documentId{
-          _resultIterator.value().getNumericValue<uint64_t>()};
-      _resultIterator.next();
+          // skip over key
+          TRI_ASSERT(_resultIterator.valid());
+          _resultIterator.next();
 
-      // skip over key
-      TRI_ASSERT(_resultIterator.valid());
-      _resultIterator.next();
-
-      if (_index->hasStoredValues()) {
-        // skip over "storedValues" if present
-        _resultIterator.next();
-      }
-
-      cb(documentId);
-    };
-
-    if (_cache) {
-      while (limit > 0) {
-        // return values from local buffer first, if we still have any
-        if (_resultIterator.valid()) {
-          while (_resultIterator.valid()) {
-            handleIndexEntry();
-
-            if (--limit == 0) {
-              // Limit reached. bail out
-              return _resultIterator.valid();
-            }
+          if (_index->hasStoredValues()) {
+            // skip over "storedValues" if present
+            _resultIterator.next();
           }
-          // all exhausted
-          return false;
-        }
 
-        // no _resultIterator set (yet), so we need to consult the in-memory
-        // cache or even do a lookup in RocksDB later.
-        auto lookupResult = lookupInCache(handleIndexEntry, limit);
+          cb(documentId);
+        },
+        [&cb, this]() {
+          TRI_ASSERT(_index->objectId() ==
+                     RocksDBKey::objectId(_iterator->key()));
 
-        if (lookupResult == CacheLookupResult::kInCacheAndFullyHandled) {
-          // value was found in cache, and the number of cache results was <=
-          // limit. this means we have produced all results for the lookup
-          // value, and can exit the loop here.
-          TRI_ASSERT(!_resultIterator.valid());
-          return false;
-        }
-        if (lookupResult == CacheLookupResult::kNotInCache) {
-          // value not found in in-memory cache. break out of the look and
-          // do a lookup in RocksDB.
-          break;
-        }
-
-        // value was found in cache, because there are more results than
-        // <limit>.
-        TRI_ASSERT(lookupResult == CacheLookupResult::kInCacheAndPartlyHandled);
-        TRI_ASSERT(_resultIterator.valid());
-      }
-    }
-
-    TRI_ASSERT(!_resultIterator.valid());
-
-    // look up the value in RocksDB
-    ++_lookupRocksDB;
-    ensureIterator();
-    TRI_ASSERT(_iterator != nullptr);
-
-    if (limit == 0 || !_iterator->Valid() || outOfRange()) {
-      // No limit no data, or we are actually done. The last call should have
-      // returned false
-      TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
-      // validate that Iterator is in a good shape and hasn't failed
-      arangodb::rocksutils::checkIteratorStatus(_iterator.get());
-
-      if (_cache != nullptr) {
-        // store in in-memory cache that we found nothing.
-        storeInCache(VPackSlice::emptyArraySlice());
-      }
-
-      // no data found
-      return false;
-    }
-
-    TRI_ASSERT(limit > 0);
-
-    if (_cache != nullptr) {
-      processIteratorData();
-      return nextImpl(cb, limit);
-    }
-
-    // cannot get here if we have a cache
-    do {
-      TRI_ASSERT(_index->objectId() == RocksDBKey::objectId(_iterator->key()));
-
-      if constexpr (unique) {
-        cb(RocksDBValue::documentId(_iterator->value()));
-      } else {
-        cb(RocksDBKey::indexDocumentId(_iterator->key()));
-      }
-
-      if (!advance()) {
-        // validate that Iterator is in a good shape and hasn't failed
-        arangodb::rocksutils::checkIteratorStatus(_iterator.get());
-        return false;
-      }
-
-      --limit;
-      if (limit == 0) {
-        return true;
-      }
-    } while (true);
+          if constexpr (unique) {
+            cb(RocksDBValue::documentId(_iterator->value()));
+          } else {
+            cb(RocksDBKey::indexDocumentId(_iterator->key()));
+          }
+        },
+        limit);
   }
 
   bool nextCoveringImpl(CoveringCallback const& cb, size_t limit) override {
-    TRI_ASSERT(_trx->state()->isRunning());
+    return nextImplementation(
+        [&cb, this]() {
+          // read LocalDocumentId
+          TRI_ASSERT(_resultIterator.value().isNumber());
+          LocalDocumentId documentId{
+              _resultIterator.value().getNumericValue<uint64_t>()};
+          _resultIterator.next();
 
-    auto handleIndexEntry = [&cb, this]() {
-      // read LocalDocumentId
-      TRI_ASSERT(_resultIterator.value().isNumber());
-      LocalDocumentId documentId{
-          _resultIterator.value().getNumericValue<uint64_t>()};
-      _resultIterator.next();
+          // read actual index value
+          TRI_ASSERT(_resultIterator.valid());
+          VPackSlice key = _resultIterator.value();
+          _resultIterator.next();
 
-      // read actual index value
-      TRI_ASSERT(_resultIterator.valid());
-      VPackSlice key = _resultIterator.value();
-      _resultIterator.next();
+          if (_index->hasStoredValues()) {
+            // "storedValues"
+            VPackSlice storedValues = _resultIterator.value();
+            _resultIterator.next();
 
-      if (_index->hasStoredValues()) {
-        // "storedValues"
-        VPackSlice storedValues = _resultIterator.value();
-        _resultIterator.next();
+            auto data = SliceCoveringDataWithStoredValues(key, storedValues);
+            cb(documentId, data);
+          } else {
+            auto data = SliceCoveringData(key);
+            cb(documentId, data);
+          }
+        },
+        [&cb, this]() {
+          rocksdb::Slice key = _iterator->key();
+          TRI_ASSERT(_index->objectId() == RocksDBKey::objectId(key));
 
-        auto data = SliceCoveringDataWithStoredValues(key, storedValues);
-        cb(documentId, data);
-      } else {
-        auto data = SliceCoveringData(key);
-        cb(documentId, data);
-      }
-    };
-
-    if (_cache) {
-      while (limit > 0) {
-        // return values from local buffer first, if we still have any
-        if (_resultIterator.valid()) {
-          while (_resultIterator.valid()) {
-            handleIndexEntry();
-
-            if (--limit == 0) {
-              // Limit reached. bail out
-              return _resultIterator.valid();
+          if constexpr (unique) {
+            LocalDocumentId const documentId(
+                RocksDBValue::documentId(_iterator->value()));
+            if (_index->hasStoredValues()) {
+              auto data = SliceCoveringDataWithStoredValues(
+                  RocksDBKey::indexedVPack(key),
+                  RocksDBValue::uniqueIndexStoredValues(_iterator->value()));
+              cb(documentId, data);
+            } else {
+              auto data = SliceCoveringData(RocksDBKey::indexedVPack(key));
+              cb(documentId, data);
+            }
+          } else {
+            LocalDocumentId const documentId(RocksDBKey::indexDocumentId(key));
+            if (_index->hasStoredValues()) {
+              auto data = SliceCoveringDataWithStoredValues(
+                  RocksDBKey::indexedVPack(key),
+                  RocksDBValue::indexStoredValues(_iterator->value()));
+              cb(documentId, data);
+            } else {
+              auto data = SliceCoveringData(RocksDBKey::indexedVPack(key));
+              cb(documentId, data);
             }
           }
-          // all exhausted
-          return false;
-        }
-
-        // no _resultIterator set (yet), so we need to consult the in-memory
-        // cache or even do a lookup in RocksDB later.
-        auto lookupResult = lookupInCache(handleIndexEntry, limit);
-
-        if (lookupResult == CacheLookupResult::kInCacheAndFullyHandled) {
-          // value was found in cache, and the number of cache results was <=
-          // limit. this means we have produced all results for the lookup
-          // value, and can exit the loop here.
-          TRI_ASSERT(!_resultIterator.valid());
-          return false;
-        }
-        if (lookupResult == CacheLookupResult::kNotInCache) {
-          // value not found in in-memory cache. break out of the look and
-          // do a lookup in RocksDB.
-          break;
-        }
-
-        // value was found in cache, because there are more results than
-        // <limit>.
-        TRI_ASSERT(lookupResult == CacheLookupResult::kInCacheAndPartlyHandled);
-        TRI_ASSERT(_resultIterator.valid());
-      }
-    }
-
-    TRI_ASSERT(!_resultIterator.valid());
-
-    // look up the value in RocksDB
-    ++_lookupRocksDB;
-    ensureIterator();
-    TRI_ASSERT(_iterator != nullptr);
-
-    if (limit == 0 || !_iterator->Valid() || outOfRange()) {
-      // No limit no data, or we are actually done. The last call should have
-      // returned false
-      TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
-      // validate that Iterator is in a good shape and hasn't failed
-      arangodb::rocksutils::checkIteratorStatus(_iterator.get());
-
-      if (_cache != nullptr) {
-        // store in in-memory cache that we found nothing.
-        storeInCache(VPackSlice::emptyArraySlice());
-      }
-
-      // no data found
-      return false;
-    }
-
-    TRI_ASSERT(limit > 0);
-
-    if (_cache != nullptr) {
-      processIteratorData();
-      return nextCoveringImpl(cb, limit);
-    }
-
-    // cannot get here if we have a cache
-    do {
-      rocksdb::Slice key = _iterator->key();
-      TRI_ASSERT(_index->objectId() == RocksDBKey::objectId(key));
-
-      if constexpr (unique) {
-        LocalDocumentId const documentId(
-            RocksDBValue::documentId(_iterator->value()));
-        if (_index->hasStoredValues()) {
-          auto data = SliceCoveringDataWithStoredValues(
-              RocksDBKey::indexedVPack(key),
-              RocksDBValue::uniqueIndexStoredValues(_iterator->value()));
-          cb(documentId, data);
-        } else {
-          auto data = SliceCoveringData(RocksDBKey::indexedVPack(key));
-          cb(documentId, data);
-        }
-      } else {
-        LocalDocumentId const documentId(RocksDBKey::indexDocumentId(key));
-        if (_index->hasStoredValues()) {
-          auto data = SliceCoveringDataWithStoredValues(
-              RocksDBKey::indexedVPack(key),
-              RocksDBValue::indexStoredValues(_iterator->value()));
-          cb(documentId, data);
-        } else {
-          auto data = SliceCoveringData(RocksDBKey::indexedVPack(key));
-          cb(documentId, data);
-        }
-      }
-
-      if (!advance()) {
-        // validate that Iterator is in a good shape and hasn't failed
-        arangodb::rocksutils::checkIteratorStatus(_iterator.get());
-        return false;
-      }
-
-      --limit;
-      if (limit == 0) {
-        return true;
-      }
-    } while (true);
+        },
+        limit);
   }
 
   void skipImpl(uint64_t count, uint64_t& skipped) override {
@@ -702,7 +616,125 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
   }
 
  private:
-  void processIteratorData() {
+  enum class CacheLookupResult {
+    kNotInCache,
+    kInCacheAndFullyHandled,
+    kInCacheAndPartlyHandled
+  };
+
+  /// internal retrieval loop
+  template<typename F1, typename F2>
+  inline bool nextImplementation(F1&& handleIndexEntry,
+                                 F2&& consumeIteratorValue, size_t limit) {
+    if (_cache) {
+      while (true) {
+        // this loop will only be left by return statements
+        while (limit > 0) {
+          // return values from local buffer first, if we still have any
+          if (_resultIterator.valid()) {
+            while (_resultIterator.valid()) {
+              handleIndexEntry();
+
+              if (--limit == 0) {
+                // Limit reached. bail out
+                return _resultIterator.valid();
+              }
+            }
+            // all exhausted
+            return false;
+          }
+
+          // no _resultIterator set (yet), so we need to consult the in-memory
+          // cache or even do a lookup in RocksDB later.
+          auto lookupResult = lookupInCache(handleIndexEntry, limit);
+
+          if (lookupResult == CacheLookupResult::kInCacheAndFullyHandled) {
+            // value was found in cache, and the number of cache results was <=
+            // limit. this means we have produced all results for the lookup
+            // value, and can exit the loop here.
+            TRI_ASSERT(!_resultIterator.valid());
+            return false;
+          }
+          if (lookupResult == CacheLookupResult::kNotInCache) {
+            // value not found in in-memory cache. break out of the look and
+            // do a lookup in RocksDB.
+            break;
+          }
+
+          // value was found in cache, because there are more results than
+          // <limit>.
+          TRI_ASSERT(lookupResult ==
+                     CacheLookupResult::kInCacheAndPartlyHandled);
+          TRI_ASSERT(_resultIterator.valid());
+        }
+
+        TRI_ASSERT(!_resultIterator.valid());
+
+        // look up the value in RocksDB
+        ++_lookupRocksDB;
+        ensureIterator();
+        TRI_ASSERT(_iterator != nullptr);
+
+        if (limit == 0 || !_iterator->Valid() || outOfRange()) {
+          // No limit no data, or we are actually done. The last call should
+          // have returned false
+          TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
+          // validate that Iterator is in a good shape and hasn't failed
+          arangodb::rocksutils::checkIteratorStatus(_iterator.get());
+
+          // store in in-memory cache that we found nothing.
+          storeInCache(VPackSlice::emptyArraySlice());
+
+          // no data found
+          return false;
+        }
+
+        TRI_ASSERT(limit > 0);
+
+        fillResultBuilder();
+        // now we should have data in the result builder.
+        TRI_ASSERT(_resultIterator.valid());
+        // go to next round
+      }  // while (true)
+    }
+
+    TRI_ASSERT(!_resultIterator.valid());
+
+    // look up the value in RocksDB
+    ++_lookupRocksDB;
+    ensureIterator();
+    TRI_ASSERT(_iterator != nullptr);
+
+    if (limit == 0 || !_iterator->Valid() || outOfRange()) {
+      // No limit no data, or we are actually done. The last call should have
+      // returned false
+      TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
+      // validate that Iterator is in a good shape and hasn't failed
+      arangodb::rocksutils::checkIteratorStatus(_iterator.get());
+
+      // no data found
+      return false;
+    }
+
+    TRI_ASSERT(limit > 0);
+
+    // cannot get here if we have a cache
+    do {
+      consumeIteratorValue();
+
+      if (!advance()) {
+        // validate that Iterator is in a good shape and hasn't failed
+        arangodb::rocksutils::checkIteratorStatus(_iterator.get());
+        return false;
+      }
+
+      if (--limit == 0) {
+        return true;
+      }
+    } while (true);
+  }
+
+  void fillResultBuilder() {
     TRI_ASSERT(_cache != nullptr);
 
     _resultBuilder.clear();
@@ -759,15 +791,9 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
                           lookupValue.size() - sizeof(uint64_t));
   }
 
-  enum class CacheLookupResult {
-    kNotInCache,
-    kInCacheAndFullyHandled,
-    kInCacheAndPartlyHandled
-  };
-
   // look up a value in the in-memory hash cache
   template<typename F>
-  CacheLookupResult lookupInCache(F&& cb, size_t& limit) {
+  inline CacheLookupResult lookupInCache(F&& cb, size_t& limit) {
     TRI_ASSERT(_cache != nullptr);
 
     size_t const numFields = _index->hasStoredValues() ? 3 : 2;
@@ -787,7 +813,8 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
           _resultIterator = VPackArrayIterator(cachedData);
           while (_resultIterator.valid()) {
             cb();
-            limit--;
+            TRI_ASSERT(limit > 0);
+            --limit;
           }
           _resultIterator = VPackArrayIterator(VPackArrayIterator::Empty{});
           return CacheLookupResult::kInCacheAndFullyHandled;
@@ -907,8 +934,6 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
   size_t _lookupHits = 0;
   size_t _lookupMisses = 0;
   size_t _lookupRocksDB = 0;
-  size_t _lookupInserts = 0;
-  size_t _lookupInsertFails = 0;
 };
 
 }  // namespace arangodb
@@ -1811,7 +1836,7 @@ std::unique_ptr<IndexIterator> RocksDBVPackIndex::buildIterator(
     leftSearch->close();
 
     return std::make_unique<RocksDBVPackUniqueIndexIterator>(
-        &_collection, trx, this, leftSearch->slice(), readOwnWrites);
+        &_collection, trx, this, _cache, leftSearch->slice(), readOwnWrites);
   }
 
   // generic case: we have a non-unique index or have non-equality lookups
