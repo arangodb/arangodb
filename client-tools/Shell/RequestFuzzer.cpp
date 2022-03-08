@@ -38,7 +38,7 @@ void RequestFuzzer::randomizeCharOperation(std::string& input,
         _randContext.mt() % CharOperation::MAX_CHAR_OP_VALUE);
     switch (charOp) {
       case CharOperation::ADD_STRING:
-        generateRandAsciiString(input);
+        generateRandReadableAsciiString(input);
         break;
       case CharOperation::ADD_INT_32: {
         input.append(std::to_string(generateRandInt32()));
@@ -64,9 +64,16 @@ void RequestFuzzer::randomizeLineOperation(uint32_t numIts) {
           } else {
             initLinePos = 0;
           }
-          uint32_t randPos = generateRandNumWithinRange<uint32_t>(
+          uint32_t randPos;
+          randPos = generateRandNumWithinRange<uint32_t>(
               initLinePos, _stringLines.size() - 1);
-          generateRandAsciiString(_stringLines[randPos], true);
+          if (_stringLines[randPos].find("Content-length") ==
+                  std::string::npos &&
+              _reqHasBody) {
+            _stringLines.emplace_back("Content-length:" +
+                                      std::to_string(_reqBodySize));
+          }
+          generateRandAsciiChar(_stringLines[randPos]);
         }
         break;
       }
@@ -79,25 +86,27 @@ void RequestFuzzer::randomizeLineOperation(uint32_t numIts) {
         break;
       }
       case LineOperation::ADD_LINE: {
-        std::string charsToAppend;
         uint32_t numHeaderFields =
-            generateRandNumWithinRange<uint32_t>(1, _wordListForKeys.size());
-        std::unordered_map<std::string, std::string> keysAndValues;
+            generateRandNumWithinRange<uint32_t>(0, _wordListForKeys.size());
         for (uint32_t i = 0; i < numHeaderFields; ++i) {
           uint32_t keyPos = generateRandNumWithinRange<uint32_t>(
               0, _wordListForKeys.size() - 1);
           std::string keyName;
           std::string value;
-          if (!(_wordListForKeys[keyPos] == "random")) {
+          if (!(_wordListForKeys[keyPos] == "random") &&
+              !(_wordListForKeys[keyPos] == "Content-length")) {
             keyName = _wordListForKeys[keyPos];
           } else {
             randomizeCharOperation(keyName, 1);
           }
-          randomizeCharOperation(value,
-                                 generateRandNumWithinRange<uint32_t>(1, 3));
-          keysAndValues[keyName] = value;
+          randomizeCharOperation(value, 1);
+          _keysAndValues[keyName] = value;
         }
-        for (auto const& [key, value] : keysAndValues) {
+        if (_reqHasBody) {
+          _keysAndValues.try_emplace("Content-length",
+                                     std::to_string(_reqBodySize));
+        }
+        for (auto const& [key, value] : _keysAndValues) {
           _stringLines.emplace_back(std::move(key) + ":" + std::move(value));
         }
         break;
@@ -108,15 +117,15 @@ void RequestFuzzer::randomizeLineOperation(uint32_t numIts) {
   }
 }
 
-void RequestFuzzer::writeSampleHeader(std::string& header) {
-  header.append("GET /_api/version HTTP/1.1\r\n\r\nHost: 127.0.0.1:8529\r\n");
-}
-
-void RequestFuzzer::randomizeHeader(std::string& header) {
-  RequestType randReqType =
-      static_cast<RequestType>(_randContext.mt() % RequestType::MAX_REQ_VALUE);
+void RequestFuzzer::randomizeHeader(std::string& header,
+                                    std::optional<size_t> const payloadSize) {
+  if (payloadSize.has_value()) {
+    _reqBodySize = payloadSize.value();
+  }
   std::string firstLine;
-  if (randReqType != RequestType::RAND_REQ_TYPE) {
+  if (generateRandNumWithinRange<uint32_t>(0, 99) > 0) {
+    RequestType randReqType = static_cast<RequestType>(
+        _randContext.mt() % RequestType::MAX_REQ_VALUE);
     firstLine.append(_requestTypes.at(randReqType));
   } else {
     randomizeCharOperation(firstLine);
@@ -134,32 +143,99 @@ void RequestFuzzer::randomizeHeader(std::string& header) {
     }
   }
   firstLine.append(" ");
-  if (_randContext.mt() % 2 == 0) {
+  if (generateRandNumWithinRange<uint32_t>(0, 99) > 0) {
     firstLine.append(" HTTP/");
   } else {
     randomizeCharOperation(firstLine);
   }
-  if (generateRandNumWithinRange<uint32_t>(0, 99) > 0) {
+  if (generateRandNumWithinRange<uint32_t>(0, 99) > 3) {
+    firstLine.append("1.1");
+  } else {
     if (_randContext.mt() % 2 == 0) {
-      firstLine.append("1.1");
-    } else {
       firstLine.append(
           std::to_string(generateRandNumWithinRange<uint32_t>(0, 9)) + "." +
           std::to_string(generateRandNumWithinRange<uint32_t>(0, 9)));
+    } else {
+      firstLine.append(std::to_string(generateRandInt32()));
     }
-  } else {
-    firstLine.append(std::to_string(generateRandInt32()));
   }
   _stringLines.emplace_back(firstLine);
   randomizeLineOperation(_numIterations);
   for (uint32_t i = 0; i < _stringLines.size(); ++i) {
-    header.append(_stringLines[i]);
-    if (i == _stringLines.size() - 1) {
-      firstLine.append("\r\n\r\n");
+    header.append(_stringLines[i] + "\r\n");
+  }
+  header.append("\r\n");  // new line for the end of the header
+}
 
-    } else {
-      firstLine.append("\r\n");
+std::optional<std::string> RequestFuzzer::randomizeBody() {
+  if (generateRandNumWithinRange<uint32_t>(0, 99) > 30) {
+    velocypack::Builder builder;
+    randomizeBodyInternal(builder);
+    _reqHasBody = true;
+    return builder.slice().toString();
+    // sample body
+    //   return ("{\"database\": true, \"url\": true}");
+  } else {
+    return std::nullopt;
+  }
+}
+
+void RequestFuzzer::randomizeBodyInternal(velocypack::Builder& builder) {
+  while (true) {
+    BodyOperation bodyOp = static_cast<BodyOperation>(
+        _randContext.mt() % BodyOperation::MAX_BODY_OP_VALUE);
+    if (_recursionDepth > _maxDepth && bodyOp <= BodyOperation::ADD_OBJECT) {
+      continue;
     }
+    switch (bodyOp) {
+      case ADD_ARRAY: {
+        builder.openArray(_randContext.mt() % 2 ? true : false);
+        uint32_t numMembers = _randContext.mt() % _arrayNumMembers;
+        for (uint32_t i = 0; i < numMembers; ++i) {
+          ++_recursionDepth;
+          randomizeBodyInternal(builder);
+          --_recursionDepth;
+        }
+        builder.close();
+        break;
+      }
+      case ADD_OBJECT: {
+        builder.openObject(_randContext.mt() % 2 ? true : false);
+        uint32_t numMembers = _randContext.mt() % _objNumMembers;
+        if (_tempObjectKeys.size() <= _recursionDepth) {
+          _tempObjectKeys.resize(_recursionDepth + 1);
+        } else {
+          _tempObjectKeys[_recursionDepth].clear();
+        }
+        ++_recursionDepth;
+        for (uint32_t i = 0; i < numMembers; ++i) {
+          while (true) {
+            _tempStr.clear();
+            generateRandReadableAsciiString(_tempStr);
+            if (_tempObjectKeys[_recursionDepth - 1].emplace(_tempStr).second) {
+              break;
+            }
+          }
+          // key
+          builder.add(velocypack::Value(_tempStr));
+          // value
+          randomizeBodyInternal(builder);
+        }
+        --_recursionDepth;
+        _tempObjectKeys[_recursionDepth].clear();
+        builder.close();
+        break;
+      }
+      case ADD_CHAR_SEQ: {
+        _tempStr.clear();
+        generateRandReadableAsciiString(_tempStr);
+        builder.add(velocypack::Value(_tempStr));
+        break;
+      }
+      default:
+        TRI_ASSERT(false);
+    }
+    break;
   }
 }
 
@@ -175,26 +251,28 @@ int32_t RequestFuzzer::generateRandInt32() {
   return intValue;
 }
 
-void RequestFuzzer::generateRandAsciiString(std::string& input,
-                                            bool isRandChar) {
+void RequestFuzzer::generateRandAsciiChar(std::string& input) {
+  input[generateRandNumWithinRange<uint32_t>(0, input.size())] =
+      generateRandNumWithinRange<uint32_t>(0x0, 0x7F);
+}
+
+void RequestFuzzer::generateRandReadableAsciiString(std::string& input) {
   static constexpr char chars[] =
       "0123456789"
       "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
       "abcdefghijklmnopqrstuvwxyz";
 
-  uint32_t randStrLength = isRandChar
-                               ? 1
-                               : generateRandNumWithinRange<uint32_t>(
-                                     0, _randContext.maxRandAsciiStringLength);
+  uint32_t randStrLength = generateRandNumWithinRange<uint32_t>(
+      0, _randContext.maxRandAsciiStringLength);
 
   for (uint32_t i = 0; i < randStrLength; ++i) {
-    if (isRandChar) {
-      input[generateRandNumWithinRange<uint32_t>(0, input.size())] =
-          chars[_randContext.mt() % (sizeof(chars) - 1)];
-    } else {
-      input += chars[_randContext.mt() % (sizeof(chars) - 1)];
-    }
+    input += chars[_randContext.mt() % (sizeof(chars) - 1)];
   }
+}
+
+void RequestFuzzer::logStart() {
+  LOG_TOPIC("871a6", INFO, arangodb::Logger::COMMUNICATION)
+      << "Started fuzzing... Seed: " << _seed;
 }
 }  // namespace fuzzer
 };  // namespace arangodb

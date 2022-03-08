@@ -71,11 +71,7 @@ class V8ClientConnection {
   ~V8ClientConnection();
 
   void setInterrupted(bool interrupted);
-  // void setFuzzer(std::unique_ptr<fuzzer::RequestFuzzer>& fuzzer) {_fuzzer =
-  // fuzzer;}
-  void randomizeHeader(std::string& header) {
-    _fuzzer->randomizeHeader(header);
-  }
+
   bool isConnected() const;
 
   void connect();
@@ -141,7 +137,8 @@ class V8ClientConnection {
       std::unordered_map<std::string, std::string> const& headerFields,
       bool raw);
 
-  v8::Local<v8::Value> requestFuzz(v8::Isolate* isolate, std::string& header);
+  v8::Local<v8::Value> requestFuzz(v8::Isolate* isolate,
+                                   fuzzer::RequestFuzzer* fuzzer);
 
   void initServer(v8::Isolate*, v8::Handle<v8::Context> context);
 
@@ -196,6 +193,7 @@ class V8ClientConnection {
   std::atomic<bool> _setCustomError;
 
   std::unique_ptr<fuzzer::RequestFuzzer> _fuzzer = nullptr;
+  static constexpr uint32_t _fuzzClosedConnectionCode = 1000;
 
   // a per-endpoint, per-user cache for connections. whenever we reconnect
   // to another endpoint, we can put the old connection into this cache,

@@ -27,12 +27,14 @@
 #include <charconv>
 #include <deque>
 #include <map>
+#include <optional>
 #include <random>
 #include <string>
 #include <string_view>
 #include <unordered_map>
+#include <unordered_set>
 
-#include <optional>
+#include "Basics/VelocyPackHelper.h"
 
 namespace arangodb {
 namespace fuzzer {
@@ -40,7 +42,6 @@ namespace fuzzer {
 enum CharOperation { ADD_STRING, ADD_INT_32, MAX_CHAR_OP_VALUE };
 
 enum LineOperation {
-
   COPY_LINE,
   INJECT_RAND_BYTE_IN_LINE,
   ADD_LINE,
@@ -50,13 +51,16 @@ enum LineOperation {
 enum RequestType {
   GET,
   PUT,
+  PUT_RAW,
+  OPTIONS,
   POST,
   PATCH,
   DELETE,
   HEAD,
-  RAND_REQ_TYPE,
   MAX_REQ_VALUE
 };
+
+enum BodyOperation { ADD_ARRAY, ADD_OBJECT, ADD_CHAR_SEQ, MAX_BODY_OP_VALUE };
 
 enum class HttpWord { HTTP, RAND_HTTP_WORD, MAX_VALUE };
 
@@ -80,10 +84,15 @@ class RequestFuzzer {
       : _numIterations(numIt.value_or(limitNumIterations)),
         _seed(seed.value_or(std::random_device()())),
         _randContext{_seed},
-        _stringLines{} {}
+        _stringLines{},
+        _keysAndValues{},
+        _reqHasBody(false) {}
 
-  void randomizeHeader(std::string& header);
-  void writeSampleHeader(std::string& header);
+  void randomizeHeader(std::string& header, std::optional<size_t> payloadSize);
+  std::optional<std::string> randomizeBody();
+  void randomizeBodyInternal(velocypack::Builder& builder);
+  // void randomizeReq(std::string& body, std::string& header, bool& hasBody);
+  void logStart();
 
  private:
   void randomizeCharOperation(std::string& input, uint32_t numIts = 1);
@@ -93,7 +102,8 @@ class RequestFuzzer {
   template<typename T>
   T generateRandNumWithinRange(T min, T max);
 
-  void generateRandAsciiString(std::string& input, bool isRandChar = false);
+  void generateRandReadableAsciiString(std::string& input);
+  void generateRandAsciiChar(std::string& input);
 
   int32_t generateRandInt32();
 
@@ -102,18 +112,28 @@ class RequestFuzzer {
   uint32_t _seed;
   RandContext _randContext;
   std::vector<std::string> _stringLines;
+  std::unordered_map<std::string, std::string> _keysAndValues;
+  std::string _tempStr;
+  bool _reqHasBody;
+  std::string _reqBody;
+  size_t _reqBodySize;
 
   const std::unordered_map<RequestType, std::string> _requestTypes = {
-      {RequestType::GET, "GET"},       {RequestType::PUT, "PUT"},
-      {RequestType::POST, "POST"},     {RequestType::PATCH, "PATCH"},
-      {RequestType::DELETE, "DELETE"}, {RequestType::HEAD, "HEAD"}};
+      {RequestType::GET, "GET"},         {RequestType::PUT, "PUT"},
+      {RequestType::PUT_RAW, "PUT_RAW"}, {RequestType::OPTIONS, "OPTIONS"},
+      {RequestType::POST, "POST"},       {RequestType::PATCH, "PATCH"},
+      {RequestType::DELETE, "DELETE"},   {RequestType::HEAD, "HEAD"}};
 
   static constexpr uint32_t _maxNestedRoutes = 4;
+  static constexpr uint32_t _maxDepth = 4;
+  static constexpr uint32_t _objNumMembers = 4;
+  static constexpr uint32_t _arrayNumMembers = 4;
+  uint32_t _recursionDepth = 0;
+  std::vector<std::unordered_set<std::string>> _tempObjectKeys;
 
-  static constexpr std::array<std::string_view, 12> _wordListForRoute = {
+  static constexpr std::array<std::string_view, 13> _wordListForRoute = {
       {"/_db", "/_admin", "/_api", "/_system", "/_cursor", "/version",
-       "/status", "/license", "/collection", "/database",
-       "/current"
+       "/status", "/license", "/collection", "/database", "/current", "/log",
        "random"}};
 
   static constexpr std::array<std::string_view, 48> _wordListForKeys = {

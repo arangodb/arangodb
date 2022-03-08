@@ -999,9 +999,8 @@ static void httpFuzzRequest(V8ClientConnection* v8connection,
   if (isExecutionDeadlineReached(isolate)) {
     return;
   }
-  std::string header;
-  fuzzer->randomizeHeader(header);
-  TRI_V8_RETURN(v8connection->requestFuzz(isolate, header));
+
+  TRI_V8_RETURN(v8connection->requestFuzz(isolate, fuzzer));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1028,7 +1027,7 @@ static void ClientConnection_httpFuzzRequests(
 
   // arg0 = number of iterations, arg1 = number of requests, arg2 = seed for
   // rand
-  uint32_t numReqs = 2;
+  uint32_t numReqs = 200;
   std::optional<uint32_t> numIts;
   std::optional<uint32_t> seed;
   if (args.Length() > 0) {
@@ -1055,13 +1054,28 @@ static void ClientConnection_httpFuzzRequests(
         "(numIterations and numRequests must be > 0).");
   }
   auto fuzzer = std::make_unique<fuzzer::RequestFuzzer>(numIts, seed);
+  std::unordered_map<unsigned, uint32_t> fuzzReturnCodesCount;
 
+  fuzzer->logStart();
   for (uint32_t i = 0; i < numReqs; ++i) {
     httpFuzzRequest(v8connection, isolate, args, fuzzer.get());
     velocypack::Builder builder;
     TRI_V8ToVPack(isolate, builder, args.GetReturnValue().Get(), false);
-    LOG_DEVEL << builder.slice().toJson();
+    fuzzReturnCodesCount[builder.slice().get("code").getUInt()]++;
   }
+
+  std::string statistics =
+      "Fuzzer statistics:    Total requests=" + std::to_string(numReqs);
+  for (auto const& [returnCode, count] : fuzzReturnCodesCount) {
+    if (returnCode == 1000) {
+      statistics.append(",  Closed Connection=" + std::to_string(count));
+    } else {
+      statistics.append(",  " + std::to_string(returnCode) + "=" +
+                        std::to_string(count));
+    }
+  }
+
+  LOG_TOPIC("871a6", INFO, arangodb::Logger::COMMUNICATION) << statistics;
 
   TRI_V8_TRY_CATCH_END
 }
@@ -2239,12 +2253,8 @@ void setResultMessage(v8::Isolate* isolate, v8::Local<v8::Context> context,
   }
 }
 
-v8::Local<v8::Value> V8ClientConnection::requestFuzz(v8::Isolate* isolate,
-                                                     std::string& header) {
-  bool retry = true;
-
-again:
-  LOG_DEVEL << "retrying connection";
+v8::Local<v8::Value> V8ClientConnection::requestFuzz(
+    v8::Isolate* isolate, fuzzer::RequestFuzzer* fuzzer) {
   auto req = std::make_unique<fu::Request>();
 
   std::shared_ptr<fu::Connection> connection = acquireConnection();
@@ -2254,26 +2264,50 @@ again:
     return v8::Undefined(isolate);
   }
 
+  auto body = fuzzer->randomizeBody();
+  std::string header;
+  if (body.has_value()) {
+    v8::Local<v8::Value> bodyAsV8;
+    if (body.value()[0] == '{') {
+      VPackParser fuzzParser;
+      fuzzParser.parse(body.value().data(), body.value().size());
+      auto parsedBody = fuzzParser.builder();
+      bodyAsV8 = TRI_VPackToV8(isolate, parsedBody.slice());
+    } else {
+      bodyAsV8 = TRI_V8_STD_STRING(isolate, body.value());
+    }
+    if (!setPostBody(*req, isolate, bodyAsV8, _vpackOptions, _forceJson,
+                     false)) {
+      return v8::Undefined(isolate);
+    }
+    fuzzer->randomizeHeader(header, req->payloadSize());
+  } else {
+    fuzzer->randomizeHeader(header, std::nullopt);
+  }
+
   fu::Error rc = fu::Error::NoError;
   std::unique_ptr<fu::Response> response;
   try {
     req->setFuzzReqHeader(header);
     req->setFuzzerReq(true);
-    LOG_DEVEL << "send fuzzed req";
     response = connection->sendRequest(std::move(req));
   } catch (fu::Error const& ec) {
     rc = ec;
   }
 
-  if (rc == fu::Error::ConnectionClosed && retry) {
-    retry = false;
-    goto again;
+  auto context = TRI_IGETC;
+
+  if (rc == fu::Error::ConnectionClosed) {
+    // connection = acquireConnection();
+    v8::Local<v8::Object> result = v8::Object::New(isolate);
+    setResultMessage(isolate, context, false, _fuzzClosedConnectionCode,
+                     result);
+    return result;
+    // return v8::Undefined(isolate);
   }
 
-  auto context = TRI_IGETC;
   // not complete
   if (!response) {
-    LOG_DEVEL << "no response from server";
     v8::Local<v8::Object> result = v8::Object::New(isolate);
     auto errorNumber = fuerteToArangoErrorCode(rc);
     _lastErrorMessage = fu::to_string(rc);
@@ -2299,8 +2333,6 @@ again:
   if (canParseResponse(*response)) {
     return parseReplyBodyToV8(*response, isolate);
   }
-
-  LOG_DEVEL << "parsing payload";
 
   auto payloadSize = response->payload().size();
   if (payloadSize > 0) {
@@ -2352,7 +2384,6 @@ again:
   auto context = TRI_IGETC;
   // not complete
   if (!response) {
-    LOG_DEVEL << "no response in PUT";
     v8::Local<v8::Object> result = v8::Object::New(isolate);
     auto errorNumber = fuerteToArangoErrorCode(rc);
     _lastErrorMessage = fu::to_string(rc);
@@ -2381,10 +2412,8 @@ again:
 
   auto payloadSize = response->payload().size();
   if (payloadSize > 0) {
-    LOG_DEVEL << "payload in PUT";
     return translateResultBodyToV8(*response, isolate);
   } else {
-    LOG_DEVEL << "no payload in PUT";
     // no body
     v8::Local<v8::Object> result = v8::Object::New(isolate);
     setResultMessage(isolate, context, false, _lastHttpReturnCode, result);
