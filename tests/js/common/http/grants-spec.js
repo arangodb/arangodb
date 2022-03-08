@@ -186,9 +186,9 @@ describe('UserProperties', function () {
   };
 
   const verifyOverwriteConfigObject = (result) => {
-  // We do have one "global" property we can modify. If we write to that same top-level attribute again, it will be
-  // fully replaced by the supplied object given. In case we write to another top-level attribute, it will be merged with
-  // the other already available ones (This is tested in verifyMergedConfigObject).
+    // We do have one "global" property we can modify. If we write to that same top-level attribute again, it will be
+    // fully replaced by the supplied object given. In case we write to another top-level attribute, it will be merged with
+    // the other already available ones (This is tested in verifyMergedConfigObject).
     expect(result.error).to.be.false;
     expect(result).to.have.property('code', 200);
 
