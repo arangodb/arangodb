@@ -131,9 +131,9 @@ void AgencyCallback::refetchAndUpdate(bool needToAcquireMutex,
 
   if (needToAcquireMutex) {
     CONDITION_LOCKER(locker, _cv);
-    checkValue(std::move(newData), forceCheck, idx);
+    checkValue(std::move(newData), idx, forceCheck);
   } else {
-    checkValue(std::move(newData), forceCheck, idx);
+    checkValue(std::move(newData), idx, forceCheck);
   }
 }
 
