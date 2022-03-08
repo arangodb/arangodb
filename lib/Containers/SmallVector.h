@@ -26,11 +26,17 @@
 #include <algorithm>
 #include <vector>
 
+#include "Basics/debugging.h"
+
 #include "Containers/details/short_alloc.h"
 
 namespace arangodb::containers {
 
-#ifndef _DEBUG
+#if defined(_MSC_VER) && defined(_DEBUG)
+#define MSVC_DEBUG
+#endif
+
+#ifndef MSVC_DEBUG
 constexpr static auto minAlignment = std::size_t{1};
 #else
 // Make Debug-MSVC happy
