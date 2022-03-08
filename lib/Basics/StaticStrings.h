@@ -73,6 +73,7 @@ class StaticStrings {
   static std::string const Overwrite;
   static std::string const OverwriteMode;
   static std::string const Compact;
+  static std::string const DontWaitForCommit;
 
   // replication headers
   static std::string const ReplicationHeaderCheckMore;
@@ -125,16 +126,18 @@ class StaticStrings {
   static std::string const DataSourceParameters;
 
   // Index definition fields
-  static std::string const IndexExpireAfter;   // ttl index expire value
-  static std::string const IndexFields;        // index fields
-  static std::string const IndexId;            // index id
-  static std::string const IndexInBackground;  // index in background
-  static std::string const IndexIsBuilding;    // index build in-process
-  static std::string const IndexName;          // index name
-  static std::string const IndexSparse;        // index sparsity marker
-  static std::string const IndexType;          // index type
-  static std::string const IndexUnique;        // index uniqueness marker
-  static std::string const IndexEstimates;     // index estimates flag
+  static std::string const IndexExpireAfter;     // ttl index expire value
+  static std::string const IndexFields;          // index fields
+  static std::string const IndexId;              // index id
+  static std::string const IndexInBackground;    // index in background
+  static std::string const IndexIsBuilding;      // index build in-process
+  static std::string const IndexName;            // index name
+  static std::string const IndexSparse;          // index sparsity marker
+  static std::string const IndexStoredValues;    // index stored values
+  static std::string const IndexType;            // index type
+  static std::string const IndexUnique;          // index uniqueness marker
+  static std::string const IndexEstimates;       // index estimates flag
+  static std::string const IndexLegacyPolygons;  // index legacyPolygons flag
 
   // static index names
   static std::string const IndexNameEdge;
@@ -274,6 +277,11 @@ class StaticStrings {
   static std::string const FullFromPrefix;
   static std::string const FullToPrefix;
 
+  // Graph directions
+  static std::string const GraphDirection;
+  static std::string const GraphDirectionInbound;
+  static std::string const GraphDirectionOutbound;
+
   // Pregel Section Start
 
   // Pregel Accumulator Attributes
@@ -341,6 +349,7 @@ class StaticStrings {
   static std::string const TargetConfig;
   static std::string const Term;
   static std::string const CommitIndex;
+  static std::string const Outcome;
 
   // generic attribute names
   static std::string const AttrCoordinator;
@@ -398,6 +407,8 @@ class StaticStrings {
 
   // API Strings
   static std::string_view const ApiLogInternal;
+  static std::string_view const ApiLogExternal;
+  static std::string_view const ApiReplicatedStateExternal;
 
   // TODO: remove me after refactor is done
   static std::string const GraphRefactorFlag;

@@ -35,6 +35,7 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "Logger/LogStructuredParamsAllowList.h"
 #include "Meta/conversion.h"
 #include "Rest/CommonDefines.h"
 #include "StorageEngine/TransactionState.h"
@@ -51,7 +52,6 @@
 #include <velocypack/Exception.h>
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -214,13 +214,28 @@ std::string const RestVocbaseBaseHandler::VIEW_PATH = "/_api/view";
 std::string const RestVocbaseBaseHandler::INTERNAL_TRAVERSER_PATH =
     "/_internal/traverser";
 
-RestVocbaseBaseHandler::RestVocbaseBaseHandler(
-    application_features::ApplicationServer& server, GeneralRequest* request,
-    GeneralResponse* response)
+RestVocbaseBaseHandler::RestVocbaseBaseHandler(ArangodServer& server,
+                                               GeneralRequest* request,
+                                               GeneralResponse* response)
     : RestBaseHandler(server, request, response),
       _context(*static_cast<VocbaseContext*>(request->requestContext())),
-      _vocbase(_context.vocbase()) {
+      _vocbase(_context.vocbase()),
+      _scopeVocbaseValues(
+          LogContext::makeValue()
+              .with<structuredParams::DatabaseName>(_vocbase.name())
+              .share()) {
   TRI_ASSERT(request->requestContext());
+}
+
+void RestVocbaseBaseHandler::prepareExecute(bool isContinue) {
+  RestHandler::prepareExecute(isContinue);
+  _logContextVocbaseEntry =
+      LogContext::Current::pushValues(_scopeVocbaseValues);
+}
+
+void RestVocbaseBaseHandler::shutdownExecute(bool isFinalized) noexcept {
+  LogContext::Current::popEntry(_logContextVocbaseEntry);
+  RestHandler::shutdownExecute(isFinalized);
 }
 
 RestVocbaseBaseHandler::~RestVocbaseBaseHandler() = default;
@@ -624,15 +639,25 @@ std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
         TRI_ERROR_TRANSACTION_NOT_FOUND,
         std::string("transaction ") + std::to_string(tid.id()) + " not found");
   }
+
   std::unique_ptr<transaction::Methods> trx;
   if (ServerState::instance()->isDBServer() &&
       !opOptions.isSynchronousReplicationFrom.empty()) {
+    // a write request from synchronous replication
     TRI_ASSERT(AccessMode::isWriteOrExclusive(type));
     // inject at least the required collection name
     trx = std::make_unique<transaction::Methods>(std::move(ctx), collectionName,
                                                  type);
   } else {
     trx = std::make_unique<transaction::Methods>(std::move(ctx));
+    if (isSideUser) {
+      // this is a call from the DOCUMENT() AQL function into an existing AQL
+      // query. locks are already acquired by the AQL transaction.
+      if (type != AccessMode::Type::READ) {
+        basics::abortOrThrow(TRI_ERROR_INTERNAL,
+                             "invalid access mode for request", ADB_HERE);
+      }
+    }
   }
   return trx;
 }

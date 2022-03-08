@@ -30,6 +30,9 @@
 #  ifdef __hppa__
 #    define LG_QUANTUM		4
 #  endif
+#  ifdef __loongarch__
+#    define LG_QUANTUM		4
+#  endif
 #  ifdef __m68k__
 #    define LG_QUANTUM		3
 #  endif
@@ -64,6 +67,9 @@
 #  endif
 #  ifdef __le32__
 #    define LG_QUANTUM		4
+#  endif
+#  ifdef __arc__
+#    define LG_QUANTUM		3
 #  endif
 #  ifndef LG_QUANTUM
 #    error "Unknown minimum alignment for architecture; specify via "

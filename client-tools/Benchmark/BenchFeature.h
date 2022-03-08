@@ -26,9 +26,9 @@
 #include <atomic>
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "Benchmark/arangobench.h"
 #include "Benchmark/BenchmarkThread.h"
 #include "Benchmark/BenchmarkStats.h"
-#include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
 namespace arangobench {
@@ -52,9 +52,11 @@ struct BenchRunResult {
   }
 };
 
-class BenchFeature final : public application_features::ApplicationFeature {
+class BenchFeature final : public ArangoBenchFeature {
  public:
-  BenchFeature(application_features::ApplicationServer& server, int* result);
+  static constexpr std::string_view name() noexcept { return "Bench"; }
+
+  BenchFeature(Server& server, int* result);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
   void start() override final;

@@ -37,8 +37,7 @@ struct ViewFactory;
 
 }  // namespace arangodb
 
-namespace arangodb {
-namespace iresearch {
+namespace arangodb::iresearch {
 
 class IResearchLink;
 
@@ -67,11 +66,11 @@ class IResearchViewCoordinator final : public LogicalView {
   //////////////////////////////////////////////////////////////////////////////
   Result link(IResearchLink const& link);
 
-  void open() override {}
+  void open() final {}
 
   using LogicalDataSource::properties;
-  virtual Result properties(VPackSlice properties, bool isUserRequest,
-                            bool partialUpdate) override;
+  Result properties(VPackSlice properties, bool isUserRequest,
+                    bool partialUpdate) final;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief unlink remove 'cid' from the persisted list of tracked collection
@@ -80,7 +79,7 @@ class IResearchViewCoordinator final : public LogicalView {
   //////////////////////////////////////////////////////////////////////////////
   Result unlink(DataSourceId cid) noexcept;
 
-  bool visitCollections(CollectionVisitor const& visitor) const override;
+  bool visitCollections(CollectionVisitor const& visitor) const final;
 
   ///////////////////////////////////////////////////////////////////////////////
   /// @return primary sorting order of a view, empty -> use system order
@@ -104,12 +103,12 @@ class IResearchViewCoordinator final : public LogicalView {
   }
 
  protected:
-  virtual Result appendVelocyPackImpl(VPackBuilder& builder,
-                                      Serialization context) const override;
+  Result appendVPackImpl(VPackBuilder& build, Serialization ctx,
+                         bool safe) const final;
 
-  virtual Result dropImpl() override;
+  Result dropImpl() final;
 
-  Result renameImpl(std::string const& oldName) override;
+  Result renameImpl(std::string const& oldName) final;
 
  private:
   struct ViewFactory;
@@ -123,5 +122,4 @@ class IResearchViewCoordinator final : public LogicalView {
   IResearchViewMeta _meta;
 };
 
-}  // namespace iresearch
-}  // namespace arangodb
+}  // namespace arangodb::iresearch

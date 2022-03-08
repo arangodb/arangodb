@@ -660,9 +660,11 @@ function getProcessStats(pid) {
   if (platform === 'linux') {
     let pidStr = "" + pid;
     let ioraw;
+    let fn = fs.join('/', 'proc', pidStr, 'io');
     try {
-      ioraw = fs.readBuffer(fs.join('/', 'proc', pidStr, 'io'));
+      ioraw = fs.readBuffer(fn);
     } catch (x) {
+      print("Proc FN gone: " + fn);
       print(x.stack);
       throw x;
     }
@@ -804,7 +806,7 @@ function killRemainingProcesses(results) {
   results.status = results.status && (running.length === 0);
   let i = 0;
   for (i = 0; i < running.length; i++) {
-    let status = require("internal").statusExternal(running[i].pid, false);
+    let status = internal.statusExternal(running[i].pid, false);
     if (status.status === "TERMINATED") {
       print("process exited without us joining it (marking crashy): " + JSON.stringify(running[i]) + JSON.stringify(status));
     }
@@ -1325,7 +1327,9 @@ function abortSurvivors(arangod, options) {
   }
 }
 
-function checkInstanceAlive (instanceInfo, options) {
+// skipHealthCheck can be set to true to avoid a call to /_admin/cluster/health
+// on the coordinator. This is necessary if only the agency is running yet.
+function checkInstanceAlive(instanceInfo, options, {skipHealthCheck = false} = {}) {
   if (options.activefailover &&
       instanceInfo.hasOwnProperty('authOpts') &&
       (instanceInfo.url !== instanceInfo.agencyUrl)
@@ -1348,26 +1352,21 @@ function checkInstanceAlive (instanceInfo, options) {
     }
     return previous && ret;
   }, true);
-  if (rc && options.cluster && instanceInfo.arangods.length > 1) {
-    try {
-      let health = require('internal').clusterHealth();
-      rc = instanceInfo.arangods.reduce((previous, arangod) => {
-        if (arangod.role === "agent") return true;
-        if (arangod.role === "single") return true;
-        if (health.hasOwnProperty(arangod.id)) {
-          if (health[arangod.id].Status === "GOOD") {
-            return true;
-          } else {
-            print(RED + "ClusterHealthCheck failed " + arangod.id + " has status " + health[arangod.id].Status + " (which is not equal to GOOD)");
-            return false;
-          }
-        } else {
-          print(RED + "ClusterHealthCheck failed " + arangod.id + " does not have health property");
-          return false;
-        }
-      }, true);
-    } catch (x) {
-      print(Date() + " ClusterHealthCheck failed: " + x);
+  if (rc && options.cluster && !skipHealthCheck && instanceInfo.arangods.length > 1) {
+    const seconds = x => x * 1000;
+    const checkAllAlive = () => instanceInfo.arangods.every(arangod => checkArangoAlive(arangod, options));
+    let first = true;
+    rc = false;
+    for (
+      const start = Date.now();
+      !rc && Date.now() < start + seconds(60) && checkAllAlive();
+      internal.sleep(1)
+    ) {
+      rc = checkServersGOOD(instanceInfo);
+      if (first) {
+        print(RESET + "Waiting for all servers to go GOOD...");
+        first = false;
+      }
     }
   }
   if (!rc) {
@@ -1555,6 +1554,77 @@ function shutdownArangod (arangod, options, forceTerminate) {
     }
   } else {
     print(Date() + ' Server already dead, doing nothing.');
+  }
+}
+
+
+function shutDownOneInstance(options, arangod, fullInstance, counters, forceTerminate, timeout) {
+  let shutdownTime = internal.time();
+  if (!arangod.hasOwnProperty('exitStatus')) {
+    shutdownArangod(arangod, options, forceTerminate);
+    if (forceTerminate) {
+      print(Date() + " FORCED shut down: " + JSON.stringify(arangod));
+    } else {
+      arangod.exitStatus = {
+        status: 'RUNNING'
+      };
+      print(Date() + " Commanded shut down: " + JSON.stringify(arangod));
+    }
+    return true;
+  }
+  if (arangod.exitStatus.status === 'RUNNING') {
+    arangod.exitStatus = statusExternal(arangod.pid, false);
+    if (!crashUtils.checkMonitorAlive(ARANGOD_BIN, arangod, options, arangod.exitStatus)) {
+      if (arangod.role !== 'agent') {
+        counters.nonAgenciesCount--;
+      }
+      print(Date() + ' Server "' + arangod.role + '" shutdown: detected irregular death by monitor: pid', arangod.pid);
+      return false;
+    }
+  }
+  if (arangod.exitStatus.status === 'RUNNING') {
+    let localTimeout = timeout;
+    if (arangod.role === 'agent') {
+      localTimeout = localTimeout + 60;
+    }
+    if ((internal.time() - shutdownTime) > localTimeout) {
+      dumpAgency(fullInstance, options);
+      print(Date() + ' forcefully terminating ' + yaml.safeDump(arangod) +
+            ' after ' + timeout + 's grace period; marking crashy.');
+      serverCrashedLocal = true;
+      counters.shutdownSuccess = false;
+      killWithCoreDump(options, arangod);
+      analyzeServerCrash(arangod,
+                         options,
+                         'shutdown timeout; instance "' +
+                         arangod.role +
+                         '" forcefully KILLED after 60s - ' +
+                         arangod.exitStatus.signal);
+      if (arangod.role !== 'agent') {
+        counters.nonAgenciesCount--;
+      }
+      return false;
+    } else {
+      return true;
+    }
+  } else if (arangod.exitStatus.status !== 'TERMINATED') {
+    if (arangod.role !== 'agent') {
+      counters.nonAgenciesCount--;
+    }
+    if (arangod.exitStatus.hasOwnProperty('signal') || arangod.exitStatus.hasOwnProperty('monitor')) {
+      analyzeServerCrash(arangod, options, 'instance "' + arangod.role + '" Shutdown - ' + arangod.exitStatus.signal);
+      print(Date() + " shutdownInstance: Marking crashy - " + JSON.stringify(arangod));
+      serverCrashedLocal = true;
+      counters.shutdownSuccess = false;
+    }
+    crashUtils.stopProcdump(options, arangod);
+  } else {
+    if (arangod.role !== 'agent') {
+      counters.nonAgenciesCount--;
+    }
+    print(Date() + ' Server "' + arangod.role + '" shutdown: Success: pid', arangod.pid);
+    crashUtils.stopProcdump(options, arangod);
+    return false;
   }
 }
 
@@ -1949,7 +2019,7 @@ function startInstanceCluster (instanceInfo, protocol, options,
 
   let agencyEndpoint = instanceInfo.endpoint;
   instanceInfo.agencyUrl = instanceInfo.url;
-  if (!checkInstanceAlive(instanceInfo, options)) {
+  if (!checkInstanceAlive(instanceInfo, options, {skipHealthCheck: true})) {
     throw new Error('startup of agency failed! bailing out!');
   }
 
@@ -2379,29 +2449,57 @@ function startInstance (protocol, options, addArgs, testname, tmpDir) {
   return instanceInfo;
 }
 
-function reStartInstance(options, instanceInfo, moreArgs) {
-  let launchInstance = function(options, oneInstanceInfo) {
-    if (oneInstanceInfo.pid) {
-      return;
-    }
-    try {
-      Object.assign(oneInstanceInfo.args, moreArgs);
-      oneInstanceInfo.pid = executeArangod(ARANGOD_BIN, toArgv(oneInstanceInfo.args), options).pid;
-    } catch (x) {
-      print(Date() + ' failed to run arangod - ' + JSON.stringify(x));
+function launchInstance(options, oneInstanceInfo, moreArgs) {
+  if (oneInstanceInfo.pid) {
+    return;
+  }
+  try {
+    Object.assign(oneInstanceInfo.args, moreArgs);
+    oneInstanceInfo.pid = executeArangod(ARANGOD_BIN, toArgv(oneInstanceInfo.args), options).pid;
+  } catch (x) {
+    print(Date() + ' failed to run arangod - ' + JSON.stringify(x));
 
-      throw x;
+    throw x;
+  }
+  if (crashUtils.isEnabledWindowsMonitor(options, oneInstanceInfo, oneInstanceInfo.pid, ARANGOD_BIN)) {
+    if (!crashUtils.runProcdump(options, oneInstanceInfo, oneInstanceInfo.rootDir, oneInstanceInfo.pid)) {
+      print('Killing ' + ARANGOD_BIN + ' - ' + JSON.stringify(oneInstanceInfo.args));
+      let res = killExternal(oneInstanceInfo.pid);
+      oneInstanceInfo.pid = res.pid;
+      oneInstanceInfo.exitStatus = res;
+      throw new Error("launching procdump failed, aborting.");
     }
-    if (crashUtils.isEnabledWindowsMonitor(options, oneInstanceInfo, oneInstanceInfo.pid, ARANGOD_BIN)) {
-      if (!crashUtils.runProcdump(options, oneInstanceInfo, oneInstanceInfo.rootDir, oneInstanceInfo.pid)) {
-        print('Killing ' + ARANGOD_BIN + ' - ' + JSON.stringify(oneInstanceInfo.args));
-        let res = killExternal(oneInstanceInfo.pid);
-        oneInstanceInfo.pid = res.pid;
-        oneInstanceInfo.exitStatus = res;
-        throw new Error("launching procdump failed, aborting.");
-      }
-    }
-  };
+  }
+};
+
+function restartOneInstance(options, oneInstance, instanceInfo, moreArgs) {
+  const startTime = time();
+  delete(oneInstance.exitStatus);
+  delete(oneInstance.pid);
+  oneInstance.upAndRunning = false;
+
+  if (oneInstance.role === 'agent') {
+    print("relaunching: " + JSON.stringify(oneInstance));
+    launchInstance(options, oneInstance, moreArgs);
+  } else {
+    print("relaunching: " + JSON.stringify(oneInstance));
+    launchInstance(options, oneInstance, moreArgs);
+  }
+
+  if (options.cluster && !options.skipReconnect) {
+    checkClusterAlive(options, instanceInfo, {}); // todo addArgs
+    print("reconnecting " + instanceInfo.endpoint);
+    arango.reconnect(instanceInfo.endpoint,
+                     '_system',
+                     options.username,
+                     options.password,
+                     false
+                    );
+  }
+  launchFinalize(options, instanceInfo, startTime);
+}
+
+function reStartInstance(options, instanceInfo, moreArgs) {
 
   const startTime = time();
 
@@ -2422,12 +2520,11 @@ function reStartInstance(options, instanceInfo, moreArgs) {
       }
       if (oneInstance.role === 'agent') {
         print("relaunching: " + JSON.stringify(oneInstance));
-        launchInstance(options, oneInstance);
+        launchInstance(options, oneInstance, moreArgs);
         agencyInstance.arangods.push(_.clone(oneInstance));
       }
     });
-    let agencyEndpoint = instanceInfo.endpoint;
-    if (!checkInstanceAlive(agencyInstance, options)) {
+    if (!checkInstanceAlive(agencyInstance, options, {skipHealthCheck: true})) {
       throw new Error('startup of agency failed! bailing out!');
     }
   }
@@ -2440,7 +2537,7 @@ function reStartInstance(options, instanceInfo, moreArgs) {
         (oneInstance.role === 'primary') ||
         (oneInstance.role === 'dbserver')) {
       print("relaunching: " + JSON.stringify(oneInstance));
-      launchInstance(options, oneInstance);
+      launchInstance(options, oneInstance, moreArgs);
     }
   });
   instanceInfo.arangods.forEach(function (oneInstance, i) {
@@ -2449,7 +2546,7 @@ function reStartInstance(options, instanceInfo, moreArgs) {
     }
     if ((oneInstance.role === 'COORDINATOR') || (oneInstance.role === 'coordinator')) {
       print("relaunching: " + JSON.stringify(oneInstance));
-      launchInstance(options, oneInstance);
+      launchInstance(options, oneInstance, moreArgs);
     }
   });
   instanceInfo.arangods.forEach(function (oneInstance, i) {
@@ -2457,7 +2554,7 @@ function reStartInstance(options, instanceInfo, moreArgs) {
       return;
     }
     if (oneInstance.role === 'single') {
-      launchInstance(options, oneInstance);
+      launchInstance(options, oneInstance, moreArgs);
     }
   });
 
@@ -2486,6 +2583,34 @@ function aggregateFatalErrors(currentTest) {
     serverFailMessagesLocal = "";
   }
 }
+
+function checkServersGOOD(instanceInfo) {
+  try {
+    const health = internal.clusterHealth();
+    return instanceInfo.arangods.every((arangod) => {
+      if (arangod.role === "agent" || arangod.role === "single") {
+        return true;
+      }
+      if (health.hasOwnProperty(arangod.id)) {
+        if (health[arangod.id].Status === "GOOD") {
+          return true;
+        } else {
+          print(RED + "ClusterHealthCheck failed " + arangod.id + " has status "
+            + health[arangod.id].Status + " (which is not equal to GOOD)");
+          return false;
+        }
+      } else {
+        print(RED + "ClusterHealthCheck failed " + arangod.id
+          + " does not have health property");
+        return false;
+      }
+    });
+  } catch(e) {
+    print("Error checking cluster health " + e);
+    return false;
+  }
+}
+
 // exports.analyzeServerCrash = analyzeServerCrash;
 exports.makeArgs = {
   arangod: makeArgsArangod,
@@ -2520,6 +2645,7 @@ exports.run = {
 };
 
 exports.shutdownInstance = shutdownInstance;
+exports.shutDownOneInstance = shutDownOneInstance;
 exports.getProcessStats = getProcessStats;
 exports.getDeltaProcessStats = getDeltaProcessStats;
 exports.checkServerFailurePoints = checkServerFailurePoints;
@@ -2528,9 +2654,11 @@ exports.getMemProfSnapshot = getMemProfSnapshot;
 exports.startArango = startArango;
 exports.startInstance = startInstance;
 exports.reStartInstance = reStartInstance;
+exports.restartOneInstance = restartOneInstance;
 exports.setupBinaries = setupBinaries;
 exports.executableExt = executableExt;
 exports.serverCrashed = serverCrashedLocal;
+exports.checkServersGOOD = checkServersGOOD;
 
 exports.aggregateFatalErrors = aggregateFatalErrors;
 exports.cleanupDBDirectoriesAppend = cleanupDBDirectoriesAppend;

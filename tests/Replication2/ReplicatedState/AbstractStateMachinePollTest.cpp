@@ -25,6 +25,7 @@
 #include <utility>
 
 #include "StateMachineTestHelper.h"
+#include "Replication2/Mocks/FakeFailureOracle.h"
 
 #include "Replication2/ReplicatedLog/LogFollower.h"
 #include "Replication2/ReplicatedLog/LogLeader.h"
@@ -101,8 +102,22 @@ struct Leader : ParticipantBase {
       LogConfig config, ParticipantId id, LogTerm term,
       std::vector<std::shared_ptr<replicated_log::AbstractFollower>> const&
           follower)
-      : ParticipantBase(log),
-        log(log->becomeLeader(config, std::move(id), term, follower)) {}
+      : ParticipantBase(log) {
+    auto participants =
+        std::unordered_map<ParticipantId, ParticipantFlags>{{id, {}}};
+    for (auto const& participant : follower) {
+      participants.emplace(participant->getParticipantId(), ParticipantFlags{});
+    }
+    auto participantsConfig =
+        std::make_shared<ParticipantsConfig>(ParticipantsConfig{
+            .generation = 1,
+            .participants = std::move(participants),
+        });
+
+    this->log = log->becomeLeader(config, std::move(id), term, follower,
+                                  participantsConfig,
+                                  std::make_shared<test::FakeFailureOracle>());
+  }
 
   std::shared_ptr<replicated_log::LogLeader> log;
 };

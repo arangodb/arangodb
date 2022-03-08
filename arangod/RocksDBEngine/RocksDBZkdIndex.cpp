@@ -24,9 +24,10 @@
 
 #include "Zkd/ZkdHelper.h"
 
-#include <Aql/Variable.h>
-#include <Containers/Enumerate.h>
-#include <Transaction/Helpers.h>
+#include "Aql/Variable.h"
+#include "Containers/Enumerate.h"
+#include "Containers/FlatHashSet.h"
+#include "Transaction/Helpers.h"
 #include "RocksDBColumnFamilyManager.h"
 #include "RocksDBMethods.h"
 #include "RocksDBTransactionMethods.h"
@@ -330,7 +331,7 @@ void zkd::extractBoundsFromCondition(
   auto const checkIsBoundForAttribute =
       [&](aql::AstNode* op, aql::AstNode* access, aql::AstNode* other,
           bool reverse) -> bool {
-    std::unordered_set<std::string>
+    arangodb::containers::FlatHashSet<std::string>
         nonNullAttributes;  // TODO only used in sparse case
     if (!index->canUseConditionPart(access, other, op, reference,
                                     nonNullAttributes, false)) {
@@ -550,7 +551,8 @@ std::unique_ptr<IndexIterator>
 arangodb::RocksDBZkdIndexBase::iteratorForCondition(
     arangodb::transaction::Methods* trx, const arangodb::aql::AstNode* node,
     const arangodb::aql::Variable* reference,
-    const arangodb::IndexIteratorOptions& opts, ReadOwnWrites readOwnWrites) {
+    const arangodb::IndexIteratorOptions& opts, ReadOwnWrites readOwnWrites,
+    int) {
   auto&& [min, max] = boundsForIterator(this, node, reference, opts);
 
   return std::make_unique<RocksDBZkdIndexIterator<false>>(
@@ -562,7 +564,8 @@ std::unique_ptr<IndexIterator>
 arangodb::RocksDBUniqueZkdIndex::iteratorForCondition(
     arangodb::transaction::Methods* trx, const arangodb::aql::AstNode* node,
     const arangodb::aql::Variable* reference,
-    const arangodb::IndexIteratorOptions& opts, ReadOwnWrites readOwnWrites) {
+    const arangodb::IndexIteratorOptions& opts, ReadOwnWrites readOwnWrites,
+    int) {
   auto&& [min, max] = boundsForIterator(this, node, reference, opts);
 
   return std::make_unique<RocksDBZkdIndexIterator<true>>(

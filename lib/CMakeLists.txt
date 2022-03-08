@@ -12,7 +12,6 @@ if (MSVC)
     Basics/threads-win32.cpp
     Basics/win-utils.cpp
     Zip/iowin32.cpp
-    ApplicationFeatures/WindowsServiceFeature.cpp
   )
 else ()
   set(LIB_ARANGO_POSIX
@@ -70,14 +69,8 @@ add_library(arango STATIC
   ApplicationFeatures/ApplicationServer.cpp
   ApplicationFeatures/ConfigFeature.cpp
   ApplicationFeatures/CommunicationFeaturePhase.cpp
-  ApplicationFeatures/CpuUsageFeature.cpp
   ApplicationFeatures/GreetingsFeature.cpp
-  ApplicationFeatures/GreetingsFeaturePhase.cpp
   ApplicationFeatures/LanguageFeature.cpp
-  ApplicationFeatures/TimeZoneFeature.cpp
-  ApplicationFeatures/NonceFeature.cpp
-  ApplicationFeatures/PrivilegeFeature.cpp
-  ApplicationFeatures/SharedPRNGFeature.cpp
   ApplicationFeatures/ShellColorsFeature.cpp
   ApplicationFeatures/ShutdownFeature.cpp
   ApplicationFeatures/TempFeature.cpp
@@ -217,7 +210,7 @@ add_library(arango STATIC
 #     -fno-rtti may not work. For example, programs may fail to
 #     link if a class compiled with -fno-rtti is used as a
 #     base for a class compiled with -frtti.
-if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+if(MSVC)
   set_source_files_properties(
     Containers/MerkleTreeHelpers.cpp
     PROPERTIES COMPILE_FLAGS "/GR-")
@@ -264,7 +257,7 @@ target_include_directories(arango
   PUBLIC
   ${FROZEN_INCLUDE_DIR}
   ${ABSL_INCLUDE_DIR}
-  )
+)
 
 add_dependencies(arango snappy)
 target_link_libraries(arango snappy)
@@ -337,7 +330,7 @@ target_link_libraries(arango_geo
   s2
 )
 
-if (WINDOWS)
+if (MSVC)
   target_compile_options(arango_geo PUBLIC "-J")
 endif()
 
@@ -381,12 +374,12 @@ target_link_libraries(arango_v8
 target_include_directories(arango_v8 PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_include_directories(arango_v8 PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 target_include_directories(arango_v8 SYSTEM PUBLIC ${OPENSSL_INCLUDE_DIR})
-target_include_directories(arango_v8 SYSTEM PUBLIC ${ICU_INCLUDE_DIR})
-target_include_directories(arango_v8_deadline PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(arango_v8 SYSTEM PUBLIC ${ICU_INCLUDE_DIR} ${ABSL_INCLUDE_DIR})
+target_include_directories(arango_v8_deadline PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${ABSL_INCLUDE_DIR})
 target_include_directories(arango_v8_no_deadline PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
 target_link_libraries(arango_v8 v8_interface)
-target_link_libraries(arango_v8_deadline v8_interface)
+target_link_libraries(arango_v8_deadline arango v8_interface)
 target_link_libraries(arango_v8_no_deadline v8_interface)
 
 target_link_libraries(arango_v8_deadline velocypack)
@@ -403,6 +396,12 @@ if (USE_FAIL_ON_WARNINGS)
     target_compile_options(arango_v8 PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
     target_compile_options(arango_geo PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS96)
     target_compile_options(arango PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+    if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang") # clang-cl.exe
+      # There's a warning about /MP being unused if compiling only a single file
+      target_compile_options(arango_v8 PRIVATE -Wno-unused-command-line-argument)
+      target_compile_options(arango_geo PRIVATE -Wno-unused-command-line-argument)
+      target_compile_options(arango PRIVATE -Wno-unused-command-line-argument)
+    endif()
   else ()
     target_compile_options(arango_v8 PRIVATE -Werror -Wno-error=deprecated-declarations)
     target_compile_options(arango_geo PRIVATE -Werror -Wno-error=deprecated-declarations)

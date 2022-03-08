@@ -50,7 +50,7 @@ class TestQueryRegistry : public QueryRegistry {
 
 class UserManagerTest : public ::testing::Test {
  protected:
-  application_features::ApplicationServer server;
+  arangodb::ArangodServer server;
   TestQueryRegistry queryRegistry;
   ServerState* state;
   auth::UserManager um;

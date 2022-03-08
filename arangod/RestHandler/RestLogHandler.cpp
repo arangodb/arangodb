@@ -24,7 +24,6 @@
 #include "RestLogHandler.h"
 
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <Cluster/ServerState.h>
 #include <Network/ConnectionPool.h>
@@ -36,6 +35,7 @@
 #include "Replication2/AgencyMethods.h"
 #include "Replication2/Methods.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
+#include "Replication2/ReplicatedLog/LogEntries.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogIterator.h"
@@ -109,18 +109,38 @@ RestStatus RestLogHandler::handlePostRequest(
 RestStatus RestLogHandler::handlePostInsert(ReplicatedLogMethods const& methods,
                                             replication2::LogId logId,
                                             velocypack::Slice payload) {
-  return waitForFuture(
-      methods.insert(logId, LogPayload::createFromSlice(payload))
-          .thenValue([this](auto&& waitForResult) {
-            VPackBuilder response;
-            {
-              VPackObjectBuilder result(&response);
-              response.add("index", VPackValue(waitForResult.first));
-              response.add(VPackValue("result"));
-              waitForResult.second.toVelocyPack(response);
-            }
-            generateOk(rest::ResponseCode::ACCEPTED, response.slice());
-          }));
+  bool const waitForSync =
+      _request->parsedValue(StaticStrings::WaitForSyncString, false);
+  bool const dontWaitForCommit =
+      _request->parsedValue(StaticStrings::DontWaitForCommit, false);
+  if (dontWaitForCommit) {
+    return waitForFuture(
+        methods
+            .insertWithoutCommit(logId, LogPayload::createFromSlice(payload),
+                                 waitForSync)
+            .thenValue([this](LogIndex idx) {
+              VPackBuilder response;
+              {
+                VPackObjectBuilder result(&response);
+                response.add("index", VPackValue(idx));
+              }
+              generateOk(rest::ResponseCode::ACCEPTED, response.slice());
+            }));
+
+  } else {
+    return waitForFuture(
+        methods.insert(logId, LogPayload::createFromSlice(payload), waitForSync)
+            .thenValue([this](auto&& waitForResult) {
+              VPackBuilder response;
+              {
+                VPackObjectBuilder result(&response);
+                response.add("index", VPackValue(waitForResult.first));
+                response.add(VPackValue("result"));
+                waitForResult.second.toVelocyPack(response);
+              }
+              generateOk(rest::ResponseCode::CREATED, response.slice());
+            }));
+  }
 }
 
 RestStatus RestLogHandler::handlePostInsertMulti(
@@ -131,23 +151,32 @@ RestStatus RestLogHandler::handlePostInsertMulti(
                   "array expected at top-level");
     return RestStatus::DONE;
   }
-
+  bool const waitForSync =
+      _request->parsedValue(StaticStrings::WaitForSyncString, false);
+  bool const dontWaitForCommit =
+      _request->parsedValue(StaticStrings::DontWaitForCommit, false);
+  if (dontWaitForCommit) {
+    generateError(ResponseCode::BAD, TRI_ERROR_HTTP_NOT_IMPLEMENTED,
+                  "dontWaitForCommit is not implemented for multiple inserts");
+    return RestStatus::DONE;
+  }
   auto iter = replicated_log::VPackArrayToLogPayloadIterator{payload};
-  auto f = methods.insert(logId, iter).thenValue([this](auto&& waitForResult) {
-    VPackBuilder response;
-    {
-      VPackObjectBuilder result(&response);
-      {
-        VPackArrayBuilder a(&response, "indexes");
-        for (auto index : waitForResult.first) {
-          response.add(VPackValue(index));
-        }
-      }
-      response.add(VPackValue("result"));
-      waitForResult.second.toVelocyPack(response);
-    }
-    generateOk(rest::ResponseCode::ACCEPTED, response.slice());
-  });
+  auto f = methods.insert(logId, iter, waitForSync)
+               .thenValue([this](auto&& waitForResult) {
+                 VPackBuilder response;
+                 {
+                   VPackObjectBuilder result(&response);
+                   {
+                     VPackArrayBuilder a(&response, "indexes");
+                     for (auto index : waitForResult.first) {
+                       response.add(VPackValue(index));
+                     }
+                   }
+                   response.add(VPackValue("result"));
+                   waitForResult.second.toVelocyPack(response);
+                 }
+                 generateOk(rest::ResponseCode::CREATED, response.slice());
+               });
   return waitForFuture(std::move(f));
 }
 
@@ -167,8 +196,8 @@ RestStatus RestLogHandler::handlePostRelease(
 RestStatus RestLogHandler::handlePost(ReplicatedLogMethods const& methods,
                                       velocypack::Slice specSlice) {
   // create a new log
-  replication2::agency::LogPlanSpecification spec(
-      replication2::agency::from_velocypack, specSlice);
+  replication2::agency::LogTarget spec(replication2::agency::from_velocypack,
+                                       specSlice);
   return waitForFuture(
       methods.createReplicatedLog(spec).thenValue([this](Result&& result) {
         if (result.ok()) {
@@ -237,10 +266,9 @@ RestStatus RestLogHandler::handleDeleteRequest(
       }));
 }
 
-RestLogHandler::RestLogHandler(application_features::ApplicationServer& server,
-                               GeneralRequest* req, GeneralResponse* resp)
+RestLogHandler::RestLogHandler(ArangodServer& server, GeneralRequest* req,
+                               GeneralResponse* resp)
     : RestVocbaseBaseHandler(server, req, resp) {}
-RestLogHandler::~RestLogHandler() = default;
 
 RestStatus RestLogHandler::handleGet(ReplicatedLogMethods const& methods) {
   return waitForFuture(

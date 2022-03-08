@@ -49,6 +49,10 @@ class PathResultInterface {
   virtual ~PathResultInterface() {}
 
   virtual auto toVelocyPack(arangodb::velocypack::Builder& builder) -> void = 0;
+  virtual auto lastVertexToVelocyPack(arangodb::velocypack::Builder& builder)
+      -> void = 0;
+  virtual auto lastEdgeToVelocyPack(arangodb::velocypack::Builder& builder)
+      -> void = 0;
 };
 
 class TraversalEnumerator {
@@ -72,6 +76,11 @@ class TraversalEnumerator {
   virtual auto destroyEngines() -> void = 0;
 
   virtual auto stealStats() -> aql::TraversalStats = 0;
+
+  virtual auto validatorUsesPrune() const -> bool = 0;
+  virtual auto validatorUsesPostFilter() const -> bool = 0;
+  virtual auto setValidatorContext(aql::InputAqlItemRow& inputRow) -> void = 0;
+  virtual auto unprepareValidatorContext() -> void = 0;
 };
 
 }  // namespace graph

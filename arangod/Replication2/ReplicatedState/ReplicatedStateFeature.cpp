@@ -20,27 +20,42 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
+
 #include "ReplicatedStateFeature.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
-
-#include "Logger/LogMacros.h"
-#include "Basics/debugging.h"
 #include "Basics/application-exit.h"
+#include "Basics/debugging.h"
+#include "Logger/LogContextKeys.h"
+#include "Logger/LogMacros.h"
+#include "Replication2/ReplicatedLog/ReplicatedLog.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
 
 auto replicated_state::ReplicatedStateFeature::createReplicatedState(
-    std::string_view name, std::shared_ptr<replicated_log::ReplicatedLog> log)
+    std::string_view name, std::shared_ptr<replicated_log::ReplicatedLog> log,
+    LoggerContext const& loggerContext)
     -> std::shared_ptr<ReplicatedStateBase> {
-  auto name_str =
-      std::string{name};  // TODO C++20 transparent hashing not yet available
+  auto name_str = std::string{name};
   if (auto iter = factories.find(name_str); iter != std::end(factories)) {
-    return iter->second->createReplicatedState(std::move(log));
+    LOG_TOPIC("24af7", TRACE, Logger::REPLICATED_STATE)
+        << "Creating replicated state of type `" << name << "`.";
+    auto logId = log->getId();
+    return iter->second->createReplicatedState(
+        std::move(log), loggerContext.with<logContextKeyStateImpl>(name_str)
+                            .with<logContextKeyLogId>(logId));
   }
   THROW_ARANGO_EXCEPTION(
       TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);  // TODO fix error code
+}
+
+auto replicated_state::ReplicatedStateFeature::createReplicatedState(
+    std::string_view name, std::shared_ptr<replicated_log::ReplicatedLog> log)
+    -> std::shared_ptr<ReplicatedStateBase> {
+  return createReplicatedState(name, std::move(log),
+                               LoggerContext(Logger::REPLICATED_STATE));
 }
 
 void replicated_state::ReplicatedStateFeature::assertWasInserted(
@@ -51,3 +66,7 @@ void replicated_state::ReplicatedStateFeature::assertWasInserted(
     FATAL_ERROR_EXIT();
   }
 }
+
+replicated_state::ReplicatedStateAppFeature::ReplicatedStateAppFeature(
+    Server& server)
+    : ArangodFeature{server, *this} {}

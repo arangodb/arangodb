@@ -29,23 +29,15 @@
 #include <s2/s2point.h>
 
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "Basics/Common.h"
 #include "Basics/debugging.h"
-#include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/ReplicatedLog/LogEntries.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/Identifiers/RevisionId.h"
 
 namespace arangodb {
-
-namespace replication2 {
-class LogId;
-struct LogIndex;
-struct LogTerm;
-struct LogPayload;
-}  // namespace replication2
 
 class RocksDBValue {
  public:
@@ -62,9 +54,12 @@ class RocksDBValue {
                                         RevisionId revision);
   static RocksDBValue EdgeIndexValue(std::string_view vertexId);
   static RocksDBValue VPackIndexValue();
+  static RocksDBValue VPackIndexValue(VPackSlice data);
   static RocksDBValue ZkdIndexValue();
   static RocksDBValue UniqueZkdIndexValue(LocalDocumentId const& docId);
   static RocksDBValue UniqueVPackIndexValue(LocalDocumentId const& docId);
+  static RocksDBValue UniqueVPackIndexValue(LocalDocumentId const& docId,
+                                            VPackSlice data);
   static RocksDBValue View(VPackSlice data);
   static RocksDBValue ReplicationApplierConfig(VPackSlice data);
   static RocksDBValue KeyGeneratorValue(VPackSlice data);
@@ -112,6 +107,9 @@ class RocksDBValue {
   static VPackSlice data(RocksDBValue const&);
   static VPackSlice data(rocksdb::Slice const&);
   static VPackSlice data(std::string_view);
+
+  static VPackSlice uniqueIndexStoredValues(rocksdb::Slice const&);
+  static VPackSlice indexStoredValues(rocksdb::Slice const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Centroid of shape or point on the sphere surface in degrees
@@ -161,6 +159,8 @@ class RocksDBValue {
   explicit RocksDBValue(RocksDBEntryType type);
   RocksDBValue(RocksDBEntryType type, LocalDocumentId const& docId,
                RevisionId revision);
+  RocksDBValue(RocksDBEntryType type, LocalDocumentId const& docId,
+               VPackSlice data);
   RocksDBValue(RocksDBEntryType type, VPackSlice data);
   RocksDBValue(RocksDBEntryType type, std::string_view data);
   RocksDBValue(RocksDBEntryType type, replication2::PersistingLogEntry const&);

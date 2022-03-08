@@ -37,8 +37,7 @@ DECLARE_COUNTER(arangodb_rocksdb_write_stops_total,
 namespace arangodb {
 
 /// @brief Setup the object, clearing variables, but do no real work
-RocksDBMetricsListener::RocksDBMetricsListener(
-    application_features::ApplicationServer& server)
+RocksDBMetricsListener::RocksDBMetricsListener(ArangodServer& server)
     : _writeStalls(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_rocksdb_write_stalls_total{})),
       _writeStops(server.getFeature<metrics::MetricsFeature>().add(
@@ -55,7 +54,7 @@ void RocksDBMetricsListener::OnStallConditionsChanged(
 
   if (info.condition.cur == rocksdb::WriteStallCondition::kDelayed) {
     _writeStalls.count();
-    LOG_TOPIC("9123c", WARN, Logger::ENGINES)
+    LOG_TOPIC("9123c", DEBUG, Logger::ENGINES)
         << "rocksdb is slowing incoming writes to column family '"
         << info.cf_name << "' to let background writes catch up";
   } else if (info.condition.cur == rocksdb::WriteStallCondition::kStopped) {
@@ -65,9 +64,15 @@ void RocksDBMetricsListener::OnStallConditionsChanged(
         << info.cf_name << "' to let background writes catch up";
   } else {
     TRI_ASSERT(info.condition.cur == rocksdb::WriteStallCondition::kNormal);
-    LOG_TOPIC("9123e", INFO, Logger::ENGINES)
-        << "rocksdb is resuming normal writes for column family '"
-        << info.cf_name << "'";
+    if (info.condition.prev == rocksdb::WriteStallCondition::kStopped) {
+      LOG_TOPIC("9123e", INFO, Logger::ENGINES)
+          << "rocksdb is resuming normal writes from stop for column family '"
+          << info.cf_name << "'";
+    } else {
+      LOG_TOPIC("9123f", DEBUG, Logger::ENGINES)
+          << "rocksdb is resuming normal writes from stall for column family '"
+          << info.cf_name << "'";
+    }
   }
 }
 

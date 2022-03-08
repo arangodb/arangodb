@@ -23,9 +23,9 @@
 
 #include "Methods.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Agency/AgencyFeature.h"
 #include "Agency/Agent.h"
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
 #include "Basics/HybridLogicalClock.h"
@@ -39,6 +39,7 @@
 #include "Network/Utils.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "RestServer/arangod.h"
 
 #include <fuerte/connection.h>
 #include <fuerte/requests.h>
@@ -476,18 +477,15 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
         // if that server is failed, if so, we should no longer retry,
         // regardless of the timeout:
         bool found = false;
-        if (_destination.size() > 7 &&
-            _destination.compare(0, 7, "server:") == 0) {
+        if (_destination.size() > 7 && _destination.starts_with("server:")) {
           auto failedServers = _pool->config().clusterInfo->getFailedServers();
-          for (auto const& f : failedServers) {
-            if (_destination.compare(7, _destination.size() - 7, f) == 0) {
-              found = true;
-              LOG_TOPIC("feade", DEBUG, Logger::COMMUNICATION)
-                  << "Found destination " << _destination
-                  << " to be in failed servers list, will no longer retry, "
-                     "aborting operation";
-              break;
-            }
+          auto serverId = std::string_view{_destination}.substr(7);
+          if (failedServers.contains(serverId)) {
+            found = true;
+            LOG_TOPIC("feade", DEBUG, Logger::COMMUNICATION)
+                << "Found destination " << _destination
+                << " to be in failed servers list, will no longer retry, "
+                   "aborting operation";
           }
         }
 

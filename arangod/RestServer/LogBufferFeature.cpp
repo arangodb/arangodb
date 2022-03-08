@@ -167,7 +167,7 @@ class LogAppenderDebugOutput final : public LogAppender {
   LogAppenderDebugOutput() : LogAppender() {}
 
  public:
-  void logMessage(LogMessage const& message) {
+  void logMessage(LogMessage const& message) override {
     // only handle FATAl and ERR log messages
     if (message._level != LogLevel::FATAL && message._level != LogLevel::ERR) {
       return;
@@ -188,7 +188,7 @@ class LogAppenderEventLog final : public LogAppender {
   LogAppenderEventLog() : LogAppender() {}
 
  public:
-  void logMessage(LogMessage const& message) {
+  void logMessage(LogMessage const& message) override {
     // only handle FATAl and ERR log messages
     if (message._level != LogLevel::FATAL && message._level != LogLevel::ERR) {
       return;
@@ -206,7 +206,7 @@ class LogAppenderEventLog final : public LogAppender {
 /// in our metrics
 class LogAppenderMetricsCounter final : public LogAppender {
  public:
-  LogAppenderMetricsCounter(application_features::ApplicationServer& server)
+  LogAppenderMetricsCounter(ArangodServer& server)
       : LogAppender(),
         _warningsCounter(server.getFeature<metrics::MetricsFeature>().add(
             arangodb_logger_warnings_total{})),
@@ -229,9 +229,8 @@ class LogAppenderMetricsCounter final : public LogAppender {
   metrics::Counter& _errorsCounter;
 };
 
-LogBufferFeature::LogBufferFeature(
-    application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "LogBuffer"),
+LogBufferFeature::LogBufferFeature(Server& server)
+    : ArangodFeature{server, *this},
       _minInMemoryLogLevel("info"),
       _useInMemoryAppender(true) {
   setOptional(true);

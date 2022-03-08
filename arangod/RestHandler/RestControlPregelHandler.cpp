@@ -38,16 +38,15 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 namespace arangodb {
 
-RestControlPregelHandler::RestControlPregelHandler(
-    application_features::ApplicationServer& server, GeneralRequest* request,
-    GeneralResponse* response)
+RestControlPregelHandler::RestControlPregelHandler(ArangodServer& server,
+                                                   GeneralRequest* request,
+                                                   GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response),
       _pregel(server.getFeature<pregel::PregelFeature>()) {}
 

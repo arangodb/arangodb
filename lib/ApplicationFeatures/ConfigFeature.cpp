@@ -26,7 +26,6 @@
 #include <stdlib.h>
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/ShellColorsFeature.h"
 #include "ApplicationFeatures/VersionFeature.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/FileUtils.h"
@@ -36,7 +35,6 @@
 #include "Basics/exitcodes.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
-#include "Logger/LoggerFeature.h"
 #include "Logger/LoggerStream.h"
 #include "ProgramOptions/IniFileParser.h"
 #include "ProgramOptions/Option.h"
@@ -48,18 +46,6 @@ using namespace arangodb::basics;
 using namespace arangodb::options;
 
 namespace arangodb {
-
-ConfigFeature::ConfigFeature(application_features::ApplicationServer& server,
-                             std::string const& progname,
-                             std::string const& configFilename)
-    : ApplicationFeature(server, "Config"),
-      _file(configFilename),
-      _checkConfiguration(false),
-      _progname(progname) {
-  setOptional(false);
-  startsAfter<LoggerFeature>();
-  startsAfter<ShellColorsFeature>();
-}
 
 void ConfigFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--configuration,-c", "the configuration file or 'none'",
@@ -107,8 +93,8 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
 
   bool fatal = true;
 
-  if (server().hasFeature<VersionFeature>()) {
-    fatal = !server().getFeature<VersionFeature>().printVersion();
+  if (_version) {
+    fatal = !_version->printVersion();
   }
 
   // always prefer an explicitly given config file

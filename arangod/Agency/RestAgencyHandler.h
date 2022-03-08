@@ -36,8 +36,8 @@ namespace arangodb {
 
 class RestAgencyHandler : public RestVocbaseBaseHandler {
  public:
-  RestAgencyHandler(application_features::ApplicationServer&, GeneralRequest*,
-                    GeneralResponse*, consensus::Agent*);
+  RestAgencyHandler(ArangodServer&, GeneralRequest*, GeneralResponse*,
+                    consensus::Agent*);
 
  public:
   char const* name() const override final { return "RestAgencyHandler"; }

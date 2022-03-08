@@ -24,7 +24,6 @@
 #include "FrontendFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "FeaturePhases/ServerFeaturePhase.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "V8Server/V8DealerFeature.h"
@@ -34,9 +33,8 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-FrontendFeature::FrontendFeature(
-    application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Frontend"), _versionCheck(true) {
+FrontendFeature::FrontendFeature(Server& server)
+    : ArangodFeature{server, *this}, _versionCheck(true) {
   setOptional(true);
   startsAfter<ServerFeaturePhase>();
 }

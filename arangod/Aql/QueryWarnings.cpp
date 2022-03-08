@@ -28,7 +28,6 @@
 #include "Basics/Exceptions.h"
 
 #include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;

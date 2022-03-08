@@ -31,6 +31,7 @@
 #include "Statistics/RequestStatistics.h"
 
 #include <atomic>
+#include <memory>
 #include <string_view>
 #include <thread>
 
@@ -63,8 +64,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   RestHandler& operator=(RestHandler const&) = delete;
 
  public:
-  RestHandler(application_features::ApplicationServer&, GeneralRequest*,
-              GeneralResponse*);
+  RestHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
   virtual ~RestHandler();
 
   void assignHandlerId();
@@ -89,7 +89,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
     return std::move(_response);
   }
 
-  application_features::ApplicationServer& server() { return _server; }
+  ArangodServer& server() { return _server; }
 
   RequestStatistics::Item const& statistics() { return _statistics; }
   RequestStatistics::Item&& stealStatistics();
@@ -120,10 +120,10 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
 
   RequestLane determineRequestLane();
 
-  virtual void prepareExecute(bool isContinue) {}
+  virtual void prepareExecute(bool isContinue);
   virtual RestStatus execute() = 0;
   virtual RestStatus continueExecute() { return RestStatus::DONE; }
-  virtual void shutdownExecute(bool isFinalized) noexcept {}
+  virtual void shutdownExecute(bool isFinalized) noexcept;
 
   // you might need to implment this in your handler
   // if it will be executed in an async job
@@ -213,7 +213,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
 
   std::unique_ptr<GeneralRequest> _request;
   std::unique_ptr<GeneralResponse> _response;
-  application_features::ApplicationServer& _server;
+  ArangodServer& _server;
   RequestStatistics::Item _statistics;
 
  private:
@@ -232,6 +232,9 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   bool _trackedAsOngoingLowPrio;
 
   RequestLane _lane;
+
+  std::shared_ptr<LogContext::Values> _logContextScopeValues;
+  LogContext::EntryPtr _logContextEntry;
 
  protected:
   std::atomic<bool> _canceled;

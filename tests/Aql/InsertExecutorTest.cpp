@@ -28,12 +28,12 @@
 #include "Aql/Query.h"
 #include "Aql/VelocyPackHelper.h"
 #include "RestServer/QueryRegistryFeature.h"
+#include "RestServer/FlushFeature.h"
 
 #include <velocypack/Buffer.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "../IResearch/IResearchQueryCommon.h"
 

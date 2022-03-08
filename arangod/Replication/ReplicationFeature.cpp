@@ -23,11 +23,11 @@
 
 #include "ReplicationFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/Thread.h"
 #include "Basics/application-exit.h"
 #include "Cluster/ClusterFeature.h"
-#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -36,15 +36,9 @@
 #include "Replication/DatabaseReplicationApplier.h"
 #include "Replication/GlobalReplicationApplier.h"
 #include "Replication/ReplicationApplierConfiguration.h"
-#include "RocksDBEngine/RocksDBEngine.h"
-#include "RocksDBEngine/RocksDBRecoveryManager.h"
 #include "Rest/GeneralResponse.h"
-#include "RestServer/DatabaseFeature.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/MetricsFeature.h"
-#include "RestServer/ServerIdFeature.h"
-#include "RestServer/SystemDatabaseFeature.h"
-#include "StorageEngine/StorageEngineFeature.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb::application_features;
@@ -86,8 +80,8 @@ DECLARE_COUNTER(arangodb_replication_cluster_inventory_requests_total,
 
 namespace arangodb {
 
-ReplicationFeature::ReplicationFeature(ApplicationServer& server)
-    : ApplicationFeature(server, "Replication"),
+ReplicationFeature::ReplicationFeature(Server& server)
+    : ArangodFeature{server, *this},
       _connectTimeout(10.0),
       _requestTimeout(600.0),
       _forceConnectTimeout(false),
@@ -95,12 +89,19 @@ ReplicationFeature::ReplicationFeature(ApplicationServer& server)
       _replicationApplierAutoStart(true),
       _enableActiveFailover(false),
       _syncByRevision(true),
-      _connectionCache{server, httpclient::ConnectionCache::Options{5}},
+      _connectionCache{
+          server.getFeature<application_features::CommunicationFeaturePhase>(),
+          httpclient::ConnectionCache::Options{5}},
       _parallelTailingInvocations(0),
       _maxParallelTailingInvocations(0),
       _quickKeysLimit(1000000),
       _inventoryRequests(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_replication_cluster_inventory_requests_total{})) {
+  static_assert(
+      Server::isCreatedAfter<ReplicationFeature,
+                             application_features::CommunicationFeaturePhase,
+                             metrics::MetricsFeature>());
+
   setOptional(true);
   startsAfter<BasicFeaturePhaseServer>();
 

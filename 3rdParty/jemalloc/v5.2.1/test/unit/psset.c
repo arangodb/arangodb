@@ -18,12 +18,14 @@ edata_init_test(edata_t *edata) {
 static void
 test_psset_fake_purge(hpdata_t *ps) {
 	hpdata_purge_state_t purge_state;
+	hpdata_alloc_allowed_set(ps, false);
 	hpdata_purge_begin(ps, &purge_state);
 	void *addr;
 	size_t size;
 	while (hpdata_purge_next(ps, &purge_state, &addr, &size)) {
 	}
 	hpdata_purge_end(ps, &purge_state);
+	hpdata_alloc_allowed_set(ps, true);
 }
 
 static void
@@ -543,7 +545,7 @@ TEST_END
 TEST_BEGIN(test_purge_prefers_nonhuge) {
 	/*
 	 * All else being equal, we should prefer purging non-huge pages over
-	 * huge ones.
+	 * huge ones for non-empty extents.
 	 */
 
 	/* Nothing magic about this constant. */
@@ -623,6 +625,112 @@ TEST_BEGIN(test_purge_prefers_nonhuge) {
 }
 TEST_END
 
+TEST_BEGIN(test_purge_prefers_empty) {
+	void *ptr;
+
+	psset_t psset;
+	psset_init(&psset);
+
+	hpdata_t hpdata_empty;
+	hpdata_t hpdata_nonempty;
+	hpdata_init(&hpdata_empty, (void *)(10 * HUGEPAGE), 123);
+	psset_insert(&psset, &hpdata_empty);
+	hpdata_init(&hpdata_nonempty, (void *)(11 * HUGEPAGE), 456);
+	psset_insert(&psset, &hpdata_nonempty);
+
+	psset_update_begin(&psset, &hpdata_empty);
+	ptr = hpdata_reserve_alloc(&hpdata_empty, PAGE);
+	expect_ptr_eq(hpdata_addr_get(&hpdata_empty), ptr, "");
+	hpdata_unreserve(&hpdata_empty, ptr, PAGE);
+	hpdata_purge_allowed_set(&hpdata_empty, true);
+	psset_update_end(&psset, &hpdata_empty);
+
+	psset_update_begin(&psset, &hpdata_nonempty);
+	ptr = hpdata_reserve_alloc(&hpdata_nonempty, 10 * PAGE);
+	expect_ptr_eq(hpdata_addr_get(&hpdata_nonempty), ptr, "");
+	hpdata_unreserve(&hpdata_nonempty, ptr, 9 * PAGE);
+	hpdata_purge_allowed_set(&hpdata_nonempty, true);
+	psset_update_end(&psset, &hpdata_nonempty);
+
+	/*
+	 * The nonempty slab has 9 dirty pages, while the empty one has only 1.
+	 * We should still pick the empty one for purging.
+	 */
+	hpdata_t *to_purge = psset_pick_purge(&psset);
+	expect_ptr_eq(&hpdata_empty, to_purge, "");
+}
+TEST_END
+
+TEST_BEGIN(test_purge_prefers_empty_huge) {
+	void *ptr;
+
+	psset_t psset;
+	psset_init(&psset);
+
+	enum {NHP = 10 };
+
+	hpdata_t hpdata_huge[NHP];
+	hpdata_t hpdata_nonhuge[NHP];
+
+	uintptr_t cur_addr = 100 * HUGEPAGE;
+	uint64_t cur_age = 123;
+	for (int i = 0; i < NHP; i++) {
+		hpdata_init(&hpdata_huge[i], (void *)cur_addr, cur_age);
+		cur_addr += HUGEPAGE;
+		cur_age++;
+		psset_insert(&psset, &hpdata_huge[i]);
+
+		hpdata_init(&hpdata_nonhuge[i], (void *)cur_addr, cur_age);
+		cur_addr += HUGEPAGE;
+		cur_age++;
+		psset_insert(&psset, &hpdata_nonhuge[i]);
+
+		/*
+		 * Make the hpdata_huge[i] fully dirty, empty, purgable, and
+		 * huge.
+		 */
+		psset_update_begin(&psset, &hpdata_huge[i]);
+		ptr = hpdata_reserve_alloc(&hpdata_huge[i], HUGEPAGE);
+		expect_ptr_eq(hpdata_addr_get(&hpdata_huge[i]), ptr, "");
+		hpdata_hugify(&hpdata_huge[i]);
+		hpdata_unreserve(&hpdata_huge[i], ptr, HUGEPAGE);
+		hpdata_purge_allowed_set(&hpdata_huge[i], true);
+		psset_update_end(&psset, &hpdata_huge[i]);
+
+		/*
+		 * Make hpdata_nonhuge[i] fully dirty, empty, purgable, and
+		 * non-huge.
+		 */
+		psset_update_begin(&psset, &hpdata_nonhuge[i]);
+		ptr = hpdata_reserve_alloc(&hpdata_nonhuge[i], HUGEPAGE);
+		expect_ptr_eq(hpdata_addr_get(&hpdata_nonhuge[i]), ptr, "");
+		hpdata_unreserve(&hpdata_nonhuge[i], ptr, HUGEPAGE);
+		hpdata_purge_allowed_set(&hpdata_nonhuge[i], true);
+		psset_update_end(&psset, &hpdata_nonhuge[i]);
+	}
+
+	/*
+	 * We have a bunch of empty slabs, half huge, half nonhuge, inserted in
+	 * alternating order.  We should pop all the huge ones before popping
+	 * any of the non-huge ones for purging.
+	 */
+	for (int i = 0; i < NHP; i++) {
+		hpdata_t *to_purge = psset_pick_purge(&psset);
+		expect_ptr_eq(&hpdata_huge[i], to_purge, "");
+		psset_update_begin(&psset, to_purge);
+		hpdata_purge_allowed_set(to_purge, false);
+		psset_update_end(&psset, to_purge);
+	}
+	for (int i = 0; i < NHP; i++) {
+		hpdata_t *to_purge = psset_pick_purge(&psset);
+		expect_ptr_eq(&hpdata_nonhuge[i], to_purge, "");
+		psset_update_begin(&psset, to_purge);
+		hpdata_purge_allowed_set(to_purge, false);
+		psset_update_end(&psset, to_purge);
+	}
+}
+TEST_END
+
 int
 main(void) {
 	return test_no_reentrancy(
@@ -634,5 +742,7 @@ main(void) {
 	    test_stats,
 	    test_oldest_fit,
 	    test_insert_remove,
-	    test_purge_prefers_nonhuge);
+	    test_purge_prefers_nonhuge,
+	    test_purge_prefers_empty,
+	    test_purge_prefers_empty_huge);
 }

@@ -21,6 +21,7 @@
 /// @author Andrey Abramov
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
+#include "Basics/DownCast.h"
 
 #include "IResearchViewNode.h"
 
@@ -44,6 +45,7 @@
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
+#include "Containers/FlatHashSet.h"
 #include "IResearch/AqlHelper.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchView.h"
@@ -762,12 +764,12 @@ SnapshotPtr snapshotDBServer(IResearchViewNode const& node,
                              transaction::Methods& trx) {
   TRI_ASSERT(ServerState::instance()->isDBServer());
 
-  auto& view = LogicalView::cast<IResearchView>(*node.view());
+  auto const& view = basics::downCast<IResearchView>(*node.view());
   auto& options = node.options();
   auto* resolver = trx.resolver();
   TRI_ASSERT(resolver);
 
-  ::arangodb::containers::HashSet<DataSourceId> collections;
+  ::arangodb::containers::FlatHashSet<DataSourceId> collections;
   for (auto& shard : node.shards()) {
     auto collection = resolver->getCollection(shard);
 
@@ -817,7 +819,7 @@ SnapshotPtr snapshotSingleServer(IResearchViewNode const& node,
                                  transaction::Methods& trx) {
   TRI_ASSERT(ServerState::instance()->isSingleServer());
 
-  auto& view = LogicalView::cast<IResearchView>(*node.view());
+  auto const& view = basics::downCast<IResearchView>(*node.view());
   auto& options = node.options();
 
   IResearchView::SnapshotMode mode = IResearchView::SnapshotMode::Find;
@@ -841,24 +843,20 @@ SnapshotPtr snapshotSingleServer(IResearchViewNode const& node,
 
 inline IResearchViewSort const& primarySort(arangodb::LogicalView const& view) {
   if (arangodb::ServerState::instance()->isCoordinator()) {
-    auto& viewImpl =
-        arangodb::LogicalView::cast<IResearchViewCoordinator>(view);
+    auto const& viewImpl = basics::downCast<IResearchViewCoordinator>(view);
     return viewImpl.primarySort();
   }
-
-  auto& viewImpl = arangodb::LogicalView::cast<IResearchView>(view);
+  auto const& viewImpl = basics::downCast<IResearchView>(view);
   return viewImpl.primarySort();
 }
 
 inline IResearchViewStoredValues const& storedValues(
     arangodb::LogicalView const& view) {
   if (arangodb::ServerState::instance()->isCoordinator()) {
-    auto& viewImpl =
-        arangodb::LogicalView::cast<IResearchViewCoordinator>(view);
+    auto const& viewImpl = basics::downCast<IResearchViewCoordinator>(view);
     return viewImpl.storedValues();
   }
-
-  auto& viewImpl = arangodb::LogicalView::cast<IResearchView>(view);
+  auto const& viewImpl = basics::downCast<IResearchView>(view);
   return viewImpl.storedValues();
 }
 
@@ -1136,7 +1134,8 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan,
     }
 
     TRI_ASSERT(_view);
-    auto& primarySort = LogicalView::cast<IResearchView>(*_view).primarySort();
+    auto const& primarySort =
+        basics::downCast<IResearchView>(*_view).primarySort();
 
     if (sort != primarySort) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
@@ -1603,7 +1602,10 @@ void IResearchViewNode::filterCondition(aql::AstNode const* node) noexcept {
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wswitch"
 #endif
-
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wswitch"
+#endif
 std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     aql::ExecutionEngine& engine,
     std::unordered_map<aql::ExecutionNode*, aql::ExecutionBlock*> const&)
@@ -1639,7 +1641,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
                                      "views and transactions");
     }
 
-    auto& view = LogicalView::cast<IResearchView>(*this->view());
+    auto const& view = basics::downCast<IResearchView>(*this->view());
 
     std::shared_ptr<IResearchView::Snapshot const> reader;
 
@@ -1877,6 +1879,9 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
 
 #if defined(__GNUC__)
 #pragma GCC diagnostic pop
+#endif
+#if defined(__clang__)
+#pragma clang diagnostic pop
 #endif
 
 bool IResearchViewNode::OptimizationState::canVariablesBeReplaced(

@@ -146,4 +146,8 @@ template class ::arangodb::graph::QueueTracer<
 
 /* ClusterServerProvider Section */
 template class ::arangodb::graph::QueueTracer<
-    arangodb::graph::FifoQueue<arangodb::graph::ClusterProvider::Step>>;
+    arangodb::graph::FifoQueue<arangodb::graph::ClusterProviderStep>>;
+template class ::arangodb::graph::QueueTracer<
+    arangodb::graph::LifoQueue<arangodb::graph::ClusterProviderStep>>;
+template class ::arangodb::graph::QueueTracer<
+    arangodb::graph::WeightedQueue<arangodb::graph::ClusterProviderStep>>;

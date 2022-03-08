@@ -21,8 +21,8 @@
 /// @author Andrey Abramov
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
-
 #include "Basics/Common.h"
+#include "Basics/DownCast.h"
 
 #include "IResearchLinkHelper.h"
 
@@ -252,7 +252,7 @@ struct State {
 template<typename ViewType>
 Result modifyLinks(std::unordered_set<DataSourceId>& modified, ViewType& view,
                    velocypack::Slice links, LinkVersion defaultVersion,
-                   std::unordered_set<DataSourceId> const& stale = {}) {
+                   std::unordered_set<DataSourceId> const& stale) {
   LOG_TOPIC("4bdd2", DEBUG, arangodb::iresearch::TOPIC)
       << "link modification request for view '" << view.name()
       << "', original definition:" << links.toString();
@@ -616,9 +616,10 @@ namespace iresearch {
   return builder;
 }
 
-/*static*/ bool IResearchLinkHelper::equal(
-    application_features::ApplicationServer& server, velocypack::Slice lhs,
-    velocypack::Slice rhs, irs::string_ref dbname) {
+/*static*/ bool IResearchLinkHelper::equal(ArangodServer& server,
+                                           velocypack::Slice lhs,
+                                           velocypack::Slice rhs,
+                                           irs::string_ref dbname) {
   if (!lhs.isObject() || !rhs.isObject()) {
     return false;
   }
@@ -915,12 +916,12 @@ namespace iresearch {
   try {
     if (ServerState::instance()->isCoordinator()) {
       return modifyLinks<IResearchViewCoordinator>(
-          modified, LogicalView::cast<IResearchViewCoordinator>(view), links,
+          modified, basics::downCast<IResearchViewCoordinator>(view), links,
           defaultVersion, stale);
     }
 
     return modifyLinks<IResearchView>(modified,
-                                      LogicalView::cast<IResearchView>(view),
+                                      basics::downCast<IResearchView>(view),
                                       links, defaultVersion, stale);
   } catch (basics::Exception& e) {
     LOG_TOPIC("72dde", WARN, arangodb::iresearch::TOPIC)

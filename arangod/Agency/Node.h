@@ -27,7 +27,6 @@
 #include "Basics/ResultT.h"
 
 #include <velocypack/Buffer.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <cstdint>
 #include <type_traits>

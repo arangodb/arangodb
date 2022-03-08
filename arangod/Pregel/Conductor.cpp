@@ -34,6 +34,7 @@
 #include "Pregel/Recovery.h"
 #include "Pregel/Utils.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Agency/TimeString.h"
 #include "Basics/FunctionUtils.h"
 #include "Basics/MutexLocker.h"
@@ -51,7 +52,6 @@
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::pregel;

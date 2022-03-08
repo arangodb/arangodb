@@ -27,6 +27,7 @@
 #include "Basics/DataProtector.h"
 #include "Basics/Mutex.h"
 #include "Basics/Thread.h"
+#include "RestServer/arangod.h"
 #include "Utils/VersionTracker.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/Methods/Databases.h"
@@ -49,12 +50,12 @@ class Slice;    // forward declaration
 
 namespace arangodb {
 
-class DatabaseManagerThread final : public Thread {
+class DatabaseManagerThread final : public ServerThread<ArangodServer> {
  public:
   DatabaseManagerThread(DatabaseManagerThread const&) = delete;
   DatabaseManagerThread& operator=(DatabaseManagerThread const&) = delete;
 
-  explicit DatabaseManagerThread(application_features::ApplicationServer&);
+  explicit DatabaseManagerThread(Server&);
   ~DatabaseManagerThread();
 
   void run() override;
@@ -66,11 +67,13 @@ class DatabaseManagerThread final : public Thread {
   }
 };
 
-class DatabaseFeature : public application_features::ApplicationFeature {
+class DatabaseFeature : public ArangodFeature {
   friend class DatabaseManagerThread;
 
  public:
-  explicit DatabaseFeature(application_features::ApplicationServer& server);
+  static constexpr std::string_view name() noexcept { return "Database"; }
+
+  explicit DatabaseFeature(Server& server);
   ~DatabaseFeature();
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -173,8 +176,7 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   static TRI_vocbase_t& getCalculationVocbase();
 
  private:
-  static void initCalculationVocbase(
-      application_features::ApplicationServer& server);
+  static void initCalculationVocbase(ArangodServer& server);
 
   void stopAppliers();
 

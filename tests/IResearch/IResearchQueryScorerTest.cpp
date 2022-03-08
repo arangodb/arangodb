@@ -38,8 +38,8 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
 
+#include <regex>
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "utils/string_utils.hpp"
 
@@ -466,13 +466,22 @@ TEST_P(IResearchQueryScorerTest, test) {
         "RETURN { d, 'score' : customscorer(d, (FOR j IN testView SEARCH "
         "j.name == 'A' SORT BM25(j) RETURN j)[0].seq) }";
 
-    // need to turn off certain optimizations so that the independent subquery
-    // is not moved out of the FOR loop
-    auto queryResult = arangodb::tests::executeQuery(
+    auto queryResult = arangodb::tests::explainQuery(
         vocbase, query, nullptr,
         "{ \"optimizer\": { \"rules\": [\"-move-calculations-up\", "
         "\"-move-calculations-up-2\"]}}");
-    ASSERT_TRUE(queryResult.result.is(TRI_ERROR_INTERNAL));
+    ASSERT_TRUE(queryResult.result.is(TRI_ERROR_BAD_PARAMETER));
+    ASSERT_TRUE(std::regex_search(
+        std::string(queryResult.errorMessage()),
+        std::regex("variable '.' is used in scorer function.*CUSTOMSCORER")));
+
+    // need to turn off certain optimizations so that the independent subquery
+    // is not moved out of the FOR loop
+    queryResult = arangodb::tests::executeQuery(
+        vocbase, query, nullptr,
+        "{ \"optimizer\": { \"rules\": [\"-move-calculations-up\", "
+        "\"-move-calculations-up-2\"]}}");
+    ASSERT_TRUE(queryResult.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // test that moves an unrelated subquery out of the loop (same case as above,

@@ -39,7 +39,6 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a TRI_vocbase_t that will call shutdown() on deallocation
@@ -95,7 +94,7 @@ v8::Isolate* v8Isolate();
 
 bool assertRules(
     TRI_vocbase_t& vocbase, std::string const& queryString,
-    std::vector<int> expectedRulesIds,
+    std::vector<int> const& expectedRulesIds,
     std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
     std::string const& optionsString = "{}");
 
@@ -119,8 +118,7 @@ std::shared_ptr<arangodb::aql::Query> prepareQuery(
     std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
     std::string const& optionsString = "{}");
 
-uint64_t getCurrentPlanVersion(
-    arangodb::application_features::ApplicationServer&);
+uint64_t getCurrentPlanVersion(arangodb::ArangodServer&);
 
 void setDatabasePath(arangodb::DatabasePathFeature& feature);
 
@@ -143,6 +141,7 @@ std::string mangleNull(std::string name);
 std::string mangleNumeric(std::string name);
 std::string mangleString(std::string name, std::string_view suffix);
 std::string mangleStringIdentity(std::string name);
+std::string mangleInvertedIndexStringIdentity(std::string name);
 
 inline arangodb::aql::AstNode* defaultExpressionExtractor(
     arangodb::aql::AstNode* root) {
@@ -220,16 +219,20 @@ inline VPackBuilder dbArgsBuilder(std::string const& name = "_system") {
   return builder;
 }
 
-arangodb::CreateDatabaseInfo createInfo(
-    arangodb::application_features::ApplicationServer& server,
-    std::string const& name, uint64_t id);
+VPackBuilder getInvertedIndexPropertiesSlice(
+    arangodb::IndexId iid, std::vector<std::string> const& fields,
+    std::vector<std::vector<std::string>> const* storedFields = nullptr,
+    std::vector<std::pair<std::string, bool>> const* sortedFields = nullptr);
+
+arangodb::CreateDatabaseInfo createInfo(arangodb::ArangodServer& server,
+                                        std::string const& name, uint64_t id);
 arangodb::CreateDatabaseInfo systemDBInfo(
-    arangodb::application_features::ApplicationServer& server,
+    arangodb::ArangodServer& server,
     std::string const& name = arangodb::StaticStrings::SystemDatabase,
     uint64_t id = 1);
-arangodb::CreateDatabaseInfo testDBInfo(
-    arangodb::application_features::ApplicationServer& server,
-    std::string const& name = "testVocbase", uint64_t id = 2);
+arangodb::CreateDatabaseInfo testDBInfo(arangodb::ArangodServer& server,
+                                        std::string const& name = "testVocbase",
+                                        uint64_t id = 2);
 arangodb::CreateDatabaseInfo unknownDBInfo(
-    arangodb::application_features::ApplicationServer& server,
-    std::string const& name = "unknownVocbase", uint64_t id = 3);
+    arangodb::ArangodServer& server, std::string const& name = "unknownVocbase",
+    uint64_t id = 3);

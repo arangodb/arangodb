@@ -56,11 +56,12 @@
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
 #include "Transaction/Methods.h"
+#include "Utilities/NameValidator.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Events.h"
 #include "Utils/ExecContext.h"
 #include "Utils/OperationOptions.h"
-#include "Utilities/NameValidator.h"
+#include "V8Server/FoxxFeature.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
@@ -70,26 +71,24 @@
 #ifdef USE_ENTERPRISE
 #include "Enterprise/RocksDBEngine/RocksDBHotBackup.h"
 #endif
-#include "StorageEngine/EngineSelectorFeature.h"
-#include "ClusterEngine/Common.h"
-#include "ClusterEngine/ClusterEngine.h"
-
 #include <velocypack/Buffer.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 #include <velocypack/HashedStringRef.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
+#include <algorithm>
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_generators.hpp>
 #include <boost/uuid/uuid_io.hpp>
-
-#include <algorithm>
 #include <numeric>
-#include <vector>
 #include <random>
+#include <vector>
+
+#include "ClusterEngine/ClusterEngine.h"
+#include "ClusterEngine/Common.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -636,14 +635,10 @@ void ClusterMethods::realNameFromSmartName(std::string&) {}
 /// fetched from ClusterInfo and with shuffle to mix it up.
 ////////////////////////////////////////////////////////////////////////////////
 
-static std::shared_ptr<
-    std::unordered_map<std::string, std::vector<std::string>>>
-DistributeShardsEvenly(ClusterInfo& ci, uint64_t numberOfShards,
-                       uint64_t replicationFactor,
-                       std::vector<std::string>& dbServers,
-                       bool warnAboutReplicationFactor) {
-  auto shards = std::make_shared<
-      std::unordered_map<std::string, std::vector<std::string>>>();
+static std::shared_ptr<ShardMap> DistributeShardsEvenly(
+    ClusterInfo& ci, uint64_t numberOfShards, uint64_t replicationFactor,
+    std::vector<std::string>& dbServers, bool warnAboutReplicationFactor) {
+  auto shards = std::make_shared<ShardMap>();
 
   if (dbServers.empty()) {
     ci.loadCurrentDBServers();
@@ -710,10 +705,9 @@ DistributeShardsEvenly(ClusterInfo& ci, uint64_t numberOfShards,
 /// @brief Clone shard distribution from other collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static std::shared_ptr<
-    std::unordered_map<std::string, std::vector<std::string>>>
-CloneShardDistribution(ClusterInfo& ci, std::shared_ptr<LogicalCollection> col,
-                       std::shared_ptr<LogicalCollection> const& other) {
+static std::shared_ptr<ShardMap> CloneShardDistribution(
+    ClusterInfo& ci, std::shared_ptr<LogicalCollection> col,
+    std::shared_ptr<LogicalCollection> const& other) {
   TRI_ASSERT(col);
   TRI_ASSERT(other);
 
@@ -731,8 +725,7 @@ CloneShardDistribution(ClusterInfo& ci, std::shared_ptr<LogicalCollection> col,
         TRI_ERROR_CLUSTER_CHAIN_OF_DISTRIBUTESHARDSLIKE, errorMessage);
   }
 
-  auto result = std::make_shared<
-      std::unordered_map<std::string, std::vector<std::string>>>();
+  auto result = std::make_shared<ShardMap>();
 
   // We need to replace the distribute with the cid.
   auto cidString = arangodb::basics::StringUtils::itoa(other.get()->id().id());
@@ -766,8 +759,11 @@ CloneShardDistribution(ClusterInfo& ci, std::shared_ptr<LogicalCollection> col,
   for (uint64_t i = 0; i < numberOfShards; ++i) {
     // determine responsible server(s)
     std::string shardId = "s" + StringUtils::itoa(id + i);
-    result->try_emplace(std::move(shardId),
-                        otherShardsMap->at(otherShards.at(i)));
+    auto it = otherShardsMap->find(otherShards.at(i));
+    if (it == otherShardsMap->end()) {
+      throw std::runtime_error{"Unknown shards"};
+    }
+    result->try_emplace(std::move(shardId), it->second);
   }
   return result;
 }
@@ -1352,13 +1348,61 @@ futures::Future<OperationResult> countOnCoordinator(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief gets the metrics from DBServers
+////////////////////////////////////////////////////////////////////////////////
+
+futures::Future<metrics::RawDBServers> metricsOnCoordinator(
+    NetworkFeature& network, ClusterFeature& cluster) {
+  auto* pool = network.pool();
+  auto serverIds = cluster.clusterInfo().getCurrentDBServers();
+
+  std::vector<Future<network::Response>> futures;
+  futures.reserve(serverIds.size());
+  for (auto const& id : serverIds) {
+    network::Headers headers;
+    headers.emplace(StaticStrings::Accept,
+                    StaticStrings::MimeTypeJsonNoEncoding);
+    futures.push_back(network::sendRequest(
+        pool, "server:" + id, fuerte::RestVerb::Get, "/_admin/metrics", {},
+        network::RequestOptions{}.param("type", "json"), std::move(headers)));
+  }
+  return collectAll(futures).thenValue(
+      [](std::vector<Try<network::Response>>&& responses) {
+        metrics::RawDBServers metrics;
+        metrics.reserve(responses.size());
+        for (auto& response : responses) {
+          if (!response.hasValue() || response->fail() ||
+              !response->hasResponse()) {
+            continue;  // Shit happens, just ignore it
+          }
+          auto payload = response->response().stealPayload();
+          if (!payload) {
+            TRI_ASSERT(false);
+            continue;
+          }
+          velocypack::Slice slice{payload->data()};
+          if (!slice.isArray()) {
+            continue;  // some like 503
+          }
+          if (auto const size = slice.length(); size % 3 != 0) {
+            TRI_ASSERT(false);
+            continue;
+          }
+          metrics.push_back(std::move(payload));
+        }
+        return metrics;
+      });
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief gets the selectivity estimates from DBservers
 ////////////////////////////////////////////////////////////////////////////////
 
-Result selectivityEstimatesOnCoordinator(
-    ClusterFeature& feature, std::string const& dbname,
-    std::string const& collname,
-    std::unordered_map<std::string, double>& result, TransactionId tid) {
+Result selectivityEstimatesOnCoordinator(ClusterFeature& feature,
+                                         std::string const& dbname,
+                                         std::string const& collname,
+                                         IndexEstMap& result,
+                                         TransactionId tid) {
   // Set a few variables needed for our work:
   ClusterInfo& ci = feature.clusterInfo();
 
@@ -1414,7 +1458,7 @@ Result selectivityEstimatesOnCoordinator(
   //            }
   // }
 
-  std::map<std::string, std::vector<double>> indexEstimates;
+  containers::FlatHashMap<std::string, std::vector<double>> indexEstimates;
   for (Future<network::Response>& f : futures) {
     network::Response const& r = f.get();
 
@@ -1504,6 +1548,9 @@ futures::Future<OperationResult> createDocumentOnCoordinator(
     }
   }
 
+  bool const isJobsCollection =
+      coll.system() && coll.name() == StaticStrings::JobsCollection;
+
   Future<Result> f = makeFuture(Result());
   const bool isManaged =
       trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED);
@@ -1588,6 +1635,18 @@ futures::Future<OperationResult> createDocumentOnCoordinator(
           baseUrl + StringUtils::urlEncode(it.first), std::move(reqBuffer),
           reqOpts, std::move(headers));
       futures.emplace_back(std::move(future));
+    }
+
+    // track that we have done a local insert into a Foxx queue.
+    // this information will be broadcasted to other coordinators
+    // in the cluster eventually via the agency.
+    // because the agency update is posted asynchronously, there is the
+    // possibility that this coordinator dies before the update is
+    // broadcasted to the agency. this is a rather unlikely edge case,
+    // and we currently do not optimize for that (i.e. posting updates
+    // to the agency is currently best effort).
+    if (isJobsCollection && trx.vocbase().server().hasFeature<FoxxFeature>()) {
+      trx.vocbase().server().getFeature<FoxxFeature>().trackLocalQueueInsert();
     }
 
     // Now compute the result
@@ -2776,8 +2835,7 @@ ClusterMethods::persistCollectionsInAgency(
       TRI_ASSERT(col->vocbase().name() == dbName);
       std::string distributeShardsLike = col->distributeShardsLike();
       std::vector<std::string> avoid = col->avoidServers();
-      std::shared_ptr<std::unordered_map<std::string, std::vector<std::string>>>
-          shards = nullptr;
+      std::shared_ptr<ShardMap> shards;
 
       if (!distributeShardsLike.empty()) {
         std::shared_ptr<LogicalCollection> myColToDistributeLike;
@@ -2864,10 +2922,10 @@ ClusterMethods::persistCollectionsInAgency(
           ignoreKeys, LogicalDataSource::Serialization::List);
 
       auto const serverState = ServerState::instance();
-      infos.emplace_back(ClusterCollectionCreationInfo{
-          std::to_string(col->id().id()), col->numberOfShards(),
-          col->replicationFactor(), col->writeConcern(), waitForSyncReplication,
-          velocy.slice(), serverState->getId(), serverState->getRebootId()});
+      infos.emplace_back(std::to_string(col->id().id()), col->numberOfShards(),
+                         col->replicationFactor(), col->writeConcern(),
+                         waitForSyncReplication, velocy.slice(),
+                         serverState->getId(), serverState->getRebootId());
       vpackData.emplace_back(velocy.steal());
     }  // for col : collections
 
@@ -3520,7 +3578,12 @@ arangodb::Result hotRestoreCoordinator(ClusterFeature& feature,
     // Check timestamps of all dbservers:
     size_t good = 0;  // Count restarted servers
     for (auto const& dbs : dbServers) {
-      if (postServersKnown.at(dbs) != preServersKnown.at(dbs)) {
+      auto it1 = postServersKnown.find(dbs);
+      auto it2 = preServersKnown.find(dbs);
+      if (it1 == postServersKnown.end() || it2 == preServersKnown.end()) {
+        throw std::runtime_error{"Not found dbs in ServersKnown"};
+      }
+      if (it1->second != it2->second) {
         ++good;
       }
     }

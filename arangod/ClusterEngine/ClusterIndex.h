@@ -38,7 +38,7 @@ class ClusterIndex : public Index {
  public:
   ClusterIndex(IndexId id, LogicalCollection& collection,
                ClusterEngineType engineType, Index::IndexType type,
-               arangodb::velocypack::Slice const& info);
+               arangodb::velocypack::Slice info);
 
   ~ClusterIndex();
 
@@ -80,8 +80,6 @@ class ClusterIndex : public Index {
   size_t memory() const override { return 0; }
 
   Result drop() override { return Result(TRI_ERROR_NOT_IMPLEMENTED); }
-
-  bool hasCoveringIterator() const override;
 
   /// @brief Checks if this index is identical to the given definition
   bool matchesDefinition(arangodb::velocypack::Slice const&) const override;

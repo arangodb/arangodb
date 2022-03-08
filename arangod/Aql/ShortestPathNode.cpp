@@ -40,7 +40,6 @@
 #include "Indexes/Index.h"
 
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <memory>
 
@@ -416,18 +415,20 @@ void ShortestPathNode::prepareOptions() {
     switch (dir) {
       case TRI_EDGE_IN:
         opts->addLookupInfo(_plan, _edgeColls[i]->name(),
-                            StaticStrings::ToString, _toCondition->clone(ast));
+                            StaticStrings::ToString, _toCondition->clone(ast),
+                            /*onlyEdgeindexes*/ false, dir);
         opts->addReverseLookupInfo(_plan, _edgeColls[i]->name(),
                                    StaticStrings::FromString,
-                                   _fromCondition->clone(ast));
+                                   _fromCondition->clone(ast),
+                                   /*onlyEdgeIndexes*/ false, TRI_EDGE_OUT);
         break;
       case TRI_EDGE_OUT:
-        opts->addLookupInfo(_plan, _edgeColls[i]->name(),
-                            StaticStrings::FromString,
-                            _fromCondition->clone(ast));
-        opts->addReverseLookupInfo(_plan, _edgeColls[i]->name(),
-                                   StaticStrings::ToString,
-                                   _toCondition->clone(ast));
+        opts->addLookupInfo(
+            _plan, _edgeColls[i]->name(), StaticStrings::FromString,
+            _fromCondition->clone(ast), /*onlyEdgeIndexes*/ false, dir);
+        opts->addReverseLookupInfo(
+            _plan, _edgeColls[i]->name(), StaticStrings::ToString,
+            _toCondition->clone(ast), /*onlyEdgeIndexes*/ false, TRI_EDGE_IN);
         break;
       case TRI_EDGE_ANY:
         TRI_ASSERT(false);

@@ -24,7 +24,6 @@
 #include "RocksDBCollection.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Aql/PlanCache.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/RecursiveLocker.h"
@@ -64,11 +63,9 @@
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "StorageEngine/EngineSelectorFeature.h"
-#include "StorageEngine/StorageEngine.h"
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Hints.h"
-#include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Events.h"
@@ -85,7 +82,6 @@
 #include <rocksdb/utilities/transaction.h>
 #include <rocksdb/utilities/transaction_db.h>
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 namespace {
 // number of write operations in transactions after which we will start
@@ -239,7 +235,6 @@ RocksDBCollection::RocksDBCollection(LogicalCollection& collection,
                             .server()
                             .getFeature<CacheManagerFeature>()
                             .manager() != nullptr),
-      _numIndexCreations(0),
       _statistics(collection.vocbase()
                       .server()
                       .getFeature<metrics::MetricsFeature>()
@@ -261,7 +256,6 @@ RocksDBCollection::RocksDBCollection(LogicalCollection& collection,
                   .server()
                   .getFeature<CacheManagerFeature>()
                   .manager() != nullptr),
-      _numIndexCreations(0),
       _statistics(collection.vocbase()
                       .server()
                       .getFeature<metrics::MetricsFeature>()
@@ -418,11 +412,7 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
     throw;
   }
 
-  _numIndexCreations.fetch_add(1, std::memory_order_release);
-  auto colGuard = scopeGuard([&]() noexcept {
-    _numIndexCreations.fetch_sub(1, std::memory_order_release);
-    vocbase.release();
-  });
+  auto colGuard = scopeGuard([&]() noexcept { vocbase.release(); });
 
   READ_LOCKER(inventoryLocker, vocbase._inventoryLock);
 
@@ -550,6 +540,7 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
         _indexes.emplace(buildIdx);
       }
 
+      RocksDBFilePurgePreventer walKeeper(&engine);
       res = buildIdx->fillIndexBackground(locker);
     } else {
       res = buildIdx->fillIndexForeground();
@@ -785,7 +776,7 @@ Result RocksDBCollection::truncate(transaction::Methods& trx,
       return rocksutils::convertStatus(s);
     }
 
-    // delete indexes, place estimator blockers
+    // delete index values
     {
       RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
       for (std::shared_ptr<Index> const& idx : _indexes) {
@@ -1222,6 +1213,15 @@ Result RocksDBCollection::performUpdateOrReplace(
       return res.reset(TRI_ERROR_ARANGO_CONFLICT,
                        "conflict, _rev values do not match");
     }
+  }
+
+  if (newSlice.length() <= 1 && isUpdate) {
+    // shortcut. no need to do anything
+    resultMdr.setManaged(oldDoc.begin());
+    TRI_ASSERT(!resultMdr.empty());
+
+    trackWaitForSync(trx, options);
+    return res;
   }
 
   // merge old and new values
@@ -1966,7 +1966,7 @@ arangodb::Result RocksDBCollection::lookupDocumentVPack(
       // TODO we could potentially use the PinSlice method ?!
       return res;  // all good
     }
-    if (f.result().errorNumber() == TRI_ERROR_LOCK_TIMEOUT) {
+    if (f.result() == TRI_ERROR_LOCK_TIMEOUT) {
       // assuming someone is currently holding a write lock, which
       // is why we cannot access the TransactionalBucket.
       lockTimeout = true;  // we skip the insert in this case
@@ -2116,10 +2116,12 @@ void RocksDBCollection::invalidateCacheEntry(RocksDBKey const& k) const {
 /// @brief can use non transactional range delete in write ahead log
 bool RocksDBCollection::canUseRangeDeleteInWal() const {
   if (ServerState::instance()->isSingleServer()) {
-    // disableWalFilePruning is used by createIndex
-    return _numIndexCreations.load(std::memory_order_acquire) == 0;
+    return true;
   }
-  return false;
+  auto& selector =
+      _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>();
+  auto& engine = selector.engine<RocksDBEngine>();
+  return engine.useRangeDeleteInWal();
 }
 
 }  // namespace arangodb

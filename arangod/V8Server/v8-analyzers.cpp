@@ -28,6 +28,7 @@
 
 #include <velocypack/Parser.h>
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ClusterTypes.h"
@@ -74,6 +75,10 @@ v8::Handle<v8::Object> WrapAnalyzer(
   if (result.IsEmpty()) {
     return scope.Escape<v8::Object>(result);
   }
+
+  LOG_TOPIC("44ea6", TRACE, arangodb::Logger::V8)
+      << "Wrapping Analyzer " << analyzer->name() << " with ptr "
+      << (void*)analyzer.get() << " to context ID " << v8g->_id;
 
   auto itr = TRI_v8_global_t::SharedPtrPersistent::emplace(*isolate, analyzer);
   auto& entry = itr.first;
@@ -284,9 +289,9 @@ void JS_Create(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   PREVENT_EMBEDDED_TRANSACTION();
 
-  TRI_GET_GLOBALS();
+  TRI_GET_SERVER_GLOBALS(arangodb::ArangodServer);
   auto& analyzers =
-      v8g->_server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+      v8g->server().getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
 
   auto nameFromArgs = TRI_ObjectToString(isolate, args[0]);
   auto splittedAnalyzerName =
@@ -300,7 +305,8 @@ void JS_Create(v8::FunctionCallbackInfo<v8::Value> const& args) {
     return;
   }
 
-  bool extendedNames = v8g->_server.getFeature<arangodb::DatabaseFeature>()
+  bool extendedNames = v8g->server()
+                           .getFeature<arangodb::DatabaseFeature>()
                            .extendedNamesForAnalyzers();
   if (!arangodb::AnalyzerNameValidator::isAllowedName(
           extendedNames,
@@ -426,9 +432,9 @@ void JS_Get(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   PREVENT_EMBEDDED_TRANSACTION();
 
-  TRI_GET_GLOBALS();
+  TRI_GET_SERVER_GLOBALS(arangodb::ArangodServer);
   auto& analyzers =
-      v8g->_server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+      v8g->server().getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
 
   auto name = arangodb::iresearch::IResearchAnalyzerFeature::normalize(
       TRI_ObjectToString(isolate, args[0]), vocbase.name());
@@ -498,12 +504,12 @@ void JS_List(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  TRI_GET_GLOBALS();
+  TRI_GET_SERVER_GLOBALS(arangodb::ArangodServer);
   auto& analyzers =
-      v8g->_server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+      v8g->server().getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
   auto sysVocbase =
-      v8g->_server.hasFeature<arangodb::SystemDatabaseFeature>()
-          ? v8g->_server.getFeature<arangodb::SystemDatabaseFeature>().use()
+      v8g->server().hasFeature<arangodb::SystemDatabaseFeature>()
+          ? v8g->server().getFeature<arangodb::SystemDatabaseFeature>().use()
           : nullptr;
 
   // ...........................................................................
@@ -581,9 +587,9 @@ void JS_Remove(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   PREVENT_EMBEDDED_TRANSACTION();
 
-  TRI_GET_GLOBALS();
+  TRI_GET_SERVER_GLOBALS(arangodb::ArangodServer);
   auto& analyzers =
-      v8g->_server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+      v8g->server().getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
 
   auto nameFromArgs = TRI_ObjectToString(isolate, args[0]);
   auto splittedAnalyzerName =
@@ -597,7 +603,8 @@ void JS_Remove(v8::FunctionCallbackInfo<v8::Value> const& args) {
     return;
   }
 
-  bool extendedNames = v8g->_server.getFeature<arangodb::DatabaseFeature>()
+  bool extendedNames = v8g->server()
+                           .getFeature<arangodb::DatabaseFeature>()
                            .extendedNamesForAnalyzers();
   if (!arangodb::AnalyzerNameValidator::isAllowedName(
           extendedNames,

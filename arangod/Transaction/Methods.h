@@ -45,6 +45,8 @@
 
 #include <velocypack/Slice.h>
 
+#include <string_view>
+
 #ifdef USE_ENTERPRISE
 #define ENTERPRISE_VIRT virtual
 #else
@@ -92,6 +94,8 @@ class Methods {
   using Future = futures::Future<T>;
   using IndexHandle = std::shared_ptr<arangodb::Index>;  // legacy
   using VPackSlice = arangodb::velocypack::Slice;
+
+  static constexpr int kNoMutableConditionIdx{-1};
 
   Methods() = delete;
   Methods(Methods const&) = delete;
@@ -355,7 +359,7 @@ class Methods {
   std::unique_ptr<IndexIterator> indexScanForCondition(
       IndexHandle const&, arangodb::aql::AstNode const*,
       arangodb::aql::Variable const*, IndexIteratorOptions const&,
-      ReadOwnWrites readOwnWrites);
+      ReadOwnWrites readOwnWrites, int mutableConditionIdx);
 
   /// @brief factory for IndexIterator objects
   /// note: the caller must have read-locked the underlying collection when
@@ -376,15 +380,18 @@ class Methods {
   CollectionNameResolver const* resolver() const;
 
 #ifndef USE_ENTERPRISE
-  bool skipInaccessible() const { return false; }
-  bool isInaccessibleCollection(DataSourceId /*cid*/) const { return false; }
-  bool isInaccessibleCollection(std::string const& /*cname*/) const {
+  [[nodiscard]] bool skipInaccessible() const { return false; }
+  [[nodiscard]] bool isInaccessibleCollection(DataSourceId /*cid*/) const {
+    return false;
+  }
+  [[nodiscard]] bool isInaccessibleCollection(
+      std::string_view /*cname*/) const {
     return false;
   }
 #else
-  bool skipInaccessible() const;
-  bool isInaccessibleCollection(DataSourceId /*cid*/) const;
-  bool isInaccessibleCollection(std::string const& /*cname*/) const;
+  [[nodiscard]] bool skipInaccessible() const;
+  [[nodiscard]] bool isInaccessibleCollection(DataSourceId /*cid*/) const;
+  [[nodiscard]] bool isInaccessibleCollection(std::string_view /*cname*/) const;
 #endif
 
   static ErrorCode validateSmartJoinAttribute(

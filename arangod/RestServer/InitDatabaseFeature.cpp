@@ -45,7 +45,6 @@
 #include "Basics/files.h"
 #include "Basics/terminal-utils.h"
 #include "Cluster/ServerState.h"
-#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerFeature.h"
@@ -62,10 +61,8 @@ using namespace arangodb::options;
 namespace arangodb {
 
 InitDatabaseFeature::InitDatabaseFeature(
-    application_features::ApplicationServer& server,
-    std::vector<std::type_index> const& nonServerFeatures)
-    : ApplicationFeature(server, "InitDatabase"),
-      _nonServerFeatures(nonServerFeatures) {
+    Server& server, std::span<const size_t> nonServerFeatures)
+    : ArangodFeature{server, *this}, _nonServerFeatures(nonServerFeatures) {
   setOptional(false);
   startsAfter<BasicFeaturePhaseServer>();
 }
@@ -102,8 +99,8 @@ void InitDatabaseFeature::validateOptions(
 
     // we can turn off all warnings about environment here, because they
     // wil show up on a regular start later anyway
-    server().disableFeatures(std::vector<std::type_index>{
-        std::type_index(typeid(EnvironmentFeature))});
+    server().disableFeatures(
+        std::array{ArangodServer::id<EnvironmentFeature>()});
   }
 }
 

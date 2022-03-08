@@ -28,8 +28,7 @@
 namespace arangodb {
 class RestTasksHandler : public arangodb::RestVocbaseBaseHandler {
  public:
-  RestTasksHandler(application_features::ApplicationServer&, GeneralRequest*,
-                   GeneralResponse*);
+  RestTasksHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
 
  public:
   char const* name() const override final { return "RestTasksHandler"; }

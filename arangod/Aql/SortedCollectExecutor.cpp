@@ -35,7 +35,6 @@
 #include "Basics/ConditionalDeleter.h"
 
 #include <velocypack/Buffer.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <Logger/LogMacros.h>
 #include <utility>
@@ -287,7 +286,7 @@ void SortedCollectExecutor::CollectGroup::writeToOutput(
 [[nodiscard]] auto SortedCollectExecutor::expectedNumberOfRowsNew(
     AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept
     -> size_t {
-  if (input.finalState() == ExecutorState::DONE) {
+  if (input.finalState() == MainQueryState::DONE) {
     // Worst case assumption:
     // For every input row we have a new group.
     // If we have an open group right now, we need to add 1 to this estimate.

@@ -42,7 +42,6 @@
 #include <rocksdb/utilities/write_batch_with_index.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <algorithm>
 
@@ -514,7 +513,7 @@ Result RocksDBFulltextIndex::applyQueryToken(
 std::unique_ptr<IndexIterator> RocksDBFulltextIndex::iteratorForCondition(
     transaction::Methods* trx, aql::AstNode const* condNode,
     aql::Variable const* var, IndexIteratorOptions const& opts,
-    ReadOwnWrites readOwnWrites) {
+    ReadOwnWrites readOwnWrites, int) {
   TRI_ASSERT(!isSorted() || opts.sorted);
   TRI_ASSERT(condNode != nullptr);
   TRI_ASSERT(condNode->numMembers() == 1);  // should only be an FCALL

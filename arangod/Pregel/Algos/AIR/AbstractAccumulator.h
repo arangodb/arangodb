@@ -29,7 +29,6 @@
 #include <numeric>
 
 #include "velocypack/Builder.h"
-#include "velocypack/velocypack-aliases.h"
 
 #include "AccumulatorOptions.h"
 #include "MessageData.h"

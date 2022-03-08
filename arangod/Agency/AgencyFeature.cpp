@@ -33,7 +33,6 @@
 #include "Basics/application-exit.h"
 #include "Cluster/ClusterFeature.h"
 #include "Endpoint/Endpoint.h"
-#include "FeaturePhases/FoxxFeaturePhase.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchFeature.h"
 #include "Logger/Logger.h"
@@ -51,8 +50,8 @@ using namespace arangodb::rest;
 
 namespace arangodb {
 
-AgencyFeature::AgencyFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Agency"),
+AgencyFeature::AgencyFeature(Server& server)
+    : ArangodFeature{server, *this},
       _activated(false),
       _size(1),
       _poolSize(1),
@@ -69,10 +68,8 @@ AgencyFeature::AgencyFeature(application_features::ApplicationServer& server)
       _supervisionOkThreshold(5.0),
       _cmdLineTimings(false) {
   setOptional(true);
-  startsAfter<FoxxFeaturePhase>();
+  startsAfter<application_features::FoxxFeaturePhase>();
 }
-
-AgencyFeature::~AgencyFeature() = default;
 
 void AgencyFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("agency", "agency");
@@ -299,25 +296,23 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   // - ArangoSearch: not needed by agency
   // - IResearchAnalyzer: analyzers are not needed by agency
   // - Action/Script/FoxxQueues/Frontend: Foxx and JavaScript APIs
-
-  std::vector<std::type_index> disabledFeatures(
-      {std::type_index(typeid(iresearch::IResearchFeature)),
-       std::type_index(typeid(iresearch::IResearchAnalyzerFeature)),
-       std::type_index(typeid(ActionFeature)),
-       std::type_index(typeid(FoxxFeature)),
-       std::type_index(typeid(FrontendFeature))});
+  {
+    server().disableFeatures(std::array{
+        ArangodServer::id<iresearch::IResearchFeature>(),
+        ArangodServer::id<iresearch::IResearchAnalyzerFeature>(),
+        ArangodServer::id<ActionFeature>(), ArangodServer::id<FoxxFeature>(),
+        ArangodServer::id<FrontendFeature>()});
+  }
 
   if (!V8DealerFeature::javascriptRequestedViaOptions(options)) {
     // specifying --console requires JavaScript, so we can only turn Javascript
     // off if not requested
 
     // console mode inactive. so we can turn off V8
-    disabledFeatures.emplace_back(std::type_index(typeid(ScriptFeature)));
-    disabledFeatures.emplace_back(std::type_index(typeid(V8PlatformFeature)));
-    disabledFeatures.emplace_back(std::type_index(typeid(V8DealerFeature)));
+    server().disableFeatures(std::array{ArangodServer::id<ScriptFeature>(),
+                                        ArangodServer::id<V8PlatformFeature>(),
+                                        ArangodServer::id<V8DealerFeature>()});
   }
-
-  server().disableFeatures(disabledFeatures);
 }
 
 void AgencyFeature::prepare() {

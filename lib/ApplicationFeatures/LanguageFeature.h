@@ -31,7 +31,7 @@
 
 namespace arangodb {
 namespace application_features {
-class ApplicationServer;
+class GreetingsFeaturePhase;
 }
 namespace options {
 class ProgramOptions;
@@ -39,7 +39,19 @@ class ProgramOptions;
 
 class LanguageFeature final : public application_features::ApplicationFeature {
  public:
-  explicit LanguageFeature(application_features::ApplicationServer& server);
+  static constexpr std::string_view name() noexcept { return "Language"; }
+
+  template<typename Server>
+  explicit LanguageFeature(Server& server)
+      : application_features::ApplicationFeature{server, *this},
+        _locale(),
+        _binaryPath(server.getBinaryPath()),
+        _icuDataPtr(nullptr),
+        _forceLanguageCheck(true) {
+    setOptional(false);
+    startsAfter<application_features::GreetingsFeaturePhase, Server>();
+  }
+
   ~LanguageFeature();
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;

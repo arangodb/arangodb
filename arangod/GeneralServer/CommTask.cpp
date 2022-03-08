@@ -64,8 +64,8 @@ inline bool startsWith(std::string const& path, char const* other) {
   return (size <= path.size() && path.compare(0, size, other, size) == 0);
 }
 
-TRI_vocbase_t* lookupDatabaseFromRequest(
-    application_features::ApplicationServer& server, GeneralRequest& req) {
+TRI_vocbase_t* lookupDatabaseFromRequest(ArangodServer& server,
+                                         GeneralRequest& req) {
   // get database name from request
   if (req.databaseName().empty()) {
     // if no database name was specified in the request, use system database
@@ -78,8 +78,7 @@ TRI_vocbase_t* lookupDatabaseFromRequest(
 }
 
 /// Set the appropriate requestContext
-bool resolveRequestContext(application_features::ApplicationServer& server,
-                           GeneralRequest& req) {
+bool resolveRequestContext(ArangodServer& server, GeneralRequest& req) {
   TRI_vocbase_t* vocbase = lookupDatabaseFromRequest(server, req);
 
   // invalid database name specified, database not found etc.
@@ -547,6 +546,11 @@ bool CommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
 
   RequestLane lane = handler->determineRequestLane();
   handler->trackQueueStart();
+  // We just injected the request pointer a before calling this method
+  TRI_ASSERT(handler->request() != nullptr);
+  LOG_TOPIC("ecd0a", DEBUG, Logger::REQUESTS)
+      << "Handling request " << (void*)this << " on path "
+      << handler->request()->requestPath() << " on lane " << lane;
 
   ContentType respType = handler->request()->contentTypeResponse();
   uint64_t mid = handler->messageId();

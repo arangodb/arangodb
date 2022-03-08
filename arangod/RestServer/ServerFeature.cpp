@@ -23,28 +23,21 @@
 
 #include "ServerFeature.h"
 
-#include "ApplicationFeatures/HttpEndpointProvider.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/application-exit.h"
 #include "Basics/process-utils.h"
 #include "Cluster/HeartbeatThread.h"
 #include "Cluster/ServerState.h"
-#include "FeaturePhases/AqlFeaturePhase.h"
-#include "GeneralServer/GeneralServerFeature.h"
-#include "GeneralServer/SslServerFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Replication/ReplicationFeature.h"
-#include "RestServer/DaemonFeature.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/SupervisorFeature.h"
-#include "RestServer/UpgradeFeature.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "Statistics/StatisticsFeature.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
@@ -57,9 +50,8 @@ using namespace arangodb::rest;
 
 namespace arangodb {
 
-ServerFeature::ServerFeature(application_features::ApplicationServer& server,
-                             int* res)
-    : ApplicationFeature(server, "Server"),
+ServerFeature::ServerFeature(Server& server, int* res)
+    : ArangodFeature{server, *this},
       _result(res),
       _operationMode(OperationMode::MODE_SERVER)
 #if _WIN32
@@ -205,14 +197,23 @@ void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     FATAL_ERROR_EXIT();
   }
 
+  auto disableDeamonAndSupervisor = [&]() {
+    if constexpr (Server::contains<DaemonFeature>()) {
+      server().disableFeatures(std::array{Server::id<DaemonFeature>()});
+    }
+    if constexpr (Server::contains<SupervisorFeature>()) {
+      server().disableFeatures(std::array{Server::id<SupervisorFeature>()});
+    }
+  };
+
   if (!_restServer) {
-    server().disableFeatures(std::vector<std::type_index>{
-        std::type_index(typeid(DaemonFeature)),
-        std::type_index(typeid(HttpEndpointProvider)),
-        std::type_index(typeid(GeneralServerFeature)),
-        std::type_index(typeid(SslServerFeature)),
-        std::type_index(typeid(StatisticsFeature)),
-        std::type_index(typeid(SupervisorFeature))});
+    server().disableFeatures(std::array{
+        Server::id<HttpEndpointProvider>(),
+        Server::id<GeneralServerFeature>(),
+        Server::id<SslServerFeature>(),
+        Server::id<StatisticsFeature>(),
+    });
+    disableDeamonAndSupervisor();
 
     if (!options->processingResult().touched("replication.auto-start")) {
       // turn off replication applier when we do not have a rest server
@@ -225,9 +226,7 @@ void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   }
 
   if (_operationMode == OperationMode::MODE_CONSOLE) {
-    server().disableFeatures(std::vector<std::type_index>{
-        std::type_index(typeid(DaemonFeature)),
-        std::type_index(typeid(SupervisorFeature))});
+    disableDeamonAndSupervisor();
     v8dealer.setMinimumContexts(2);
   }
 

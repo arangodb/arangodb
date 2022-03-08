@@ -45,7 +45,6 @@
 #include "Basics/FileUtils.h"
 #include "Basics/application-exit.h"
 #include "Basics/files.h"
-#include "FeaturePhases/AqlFeaturePhase.h"
 #include "Logger/LogLevel.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -63,9 +62,8 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
-SslServerFeature::SslServerFeature(
-    application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "SslServer"),
+SslServerFeature::SslServerFeature(Server& server)
+    : ArangodFeature{server, *this},
       _cafile(),
       _keyfile(),
       _cipherList("HIGH:!EXPORT:!aNULL@STRENGTH"),

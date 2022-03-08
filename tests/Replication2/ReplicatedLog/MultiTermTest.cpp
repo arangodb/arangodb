@@ -248,6 +248,7 @@ TEST_F(MultiTermTest, resign_leader_append_entries) {
     follower->runAsyncAppendEntries();
     EXPECT_FALSE(follower->hasPendingAppendEntries());
 
+    ASSERT_FALSE(f2.isReady());
     while (newFollower->hasPendingAppendEntries()) {
       newFollower->runAsyncAppendEntries();
     }
@@ -267,10 +268,6 @@ TEST_F(MultiTermTest, resign_leader_append_entries) {
       EXPECT_EQ(result.currentCommitIndex, LogIndex{3});
       EXPECT_EQ(result.quorum->index, LogIndex{3});
       EXPECT_EQ(result.quorum->term, LogTerm{2});
-      auto quorum = result.quorum->quorum;
-      std::sort(quorum.begin(), quorum.end());
-      EXPECT_EQ(quorum,
-                (std::vector<ParticipantId>{"newFollower", "newLeader"}));
     }
   }
 }

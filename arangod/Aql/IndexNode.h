@@ -63,7 +63,8 @@ class IndexNode : public ExecutionNode,
   IndexNode(ExecutionPlan* plan, ExecutionNodeId id,
             aql::Collection const* collection, Variable const* outVariable,
             std::vector<transaction::Methods::IndexHandle> const& indexes,
-            std::unique_ptr<Condition> condition, IndexIteratorOptions const&);
+            bool allCoveredByOneIndex, std::unique_ptr<Condition> condition,
+            IndexIteratorOptions const&);
 
   IndexNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
 
@@ -98,6 +99,11 @@ class IndexNode : public ExecutionNode,
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final;
 
+  /// @brief replaces variables in the internals of the execution node
+  /// replacements are { old variable id => new variable }
+  void replaceVariables(std::unordered_map<VariableId, Variable const*> const&
+                            replacements) override;
+
   /// @brief getVariablesSetHere
   std::vector<Variable const*> getVariablesSetHere() const override final;
 
@@ -119,12 +125,14 @@ class IndexNode : public ExecutionNode,
   }
 
   bool canApplyLateDocumentMaterializationRule() const {
-    return isProduceResult() && !_projections.supportsCoveringIndex();
+    return isProduceResult() && !_projections.usesCoveringIndex();
   }
 
   bool isDeterministic() override final {
     return canReadOwnWrites() == ReadOwnWrites::no;
   }
+
+  bool isAllCoveredByOneIndex() const noexcept { return _allCoveredByOneIndex; }
 
   struct IndexVariable {
     size_t indexFieldNum;
@@ -162,7 +170,9 @@ class IndexNode : public ExecutionNode,
   /// @brief adds a UNIQUE() to a dynamic IN condition
   arangodb::aql::AstNode* makeUnique(arangodb::aql::AstNode*) const;
 
- private:
+  // prepare projections for usage with an index
+  void prepareProjections();
+
   /// @brief the index
   std::vector<transaction::Methods::IndexHandle> _indexes;
 
@@ -180,6 +190,9 @@ class IndexNode : public ExecutionNode,
 
   /// @brief output variables to non-materialized document index references
   IndexValuesVars _outNonMaterializedIndVars;
+
+  /// @brief We have single index and this index covered whole condition
+  bool _allCoveredByOneIndex;
 };
 
 }  // namespace aql

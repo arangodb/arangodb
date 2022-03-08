@@ -1,5 +1,247 @@
 devel
 -----
+
+* Enable range deletions in the WAL for truncate operationns in the cluster, 
+  too. This can speed up truncate operations for large collections/shards.
+
+* Set max recursion depth for VelocyPack, JSON and JavaScript arrays and 
+  objects to about 200.
+
+* Updated snowball to version 2.2.0
+
+* Fixed: Deadlock created by high load and a follower trying to get into sync.
+  In the final synchronization phase the follower needs to temporarily block writes
+  on the leader so we have a reliable point in time where we can prove that the data is consistent.
+  If the leader at this point is flooded with write requests to that shard there is a chance
+  that all worker threads only pick up those writes, which cannot make any progress until the
+  lock is cleared. However, the process to clear the lock was on the same priority as those writes.
+  Hence this lock clear operations could not bypass the writes. Now we moved every follow up request
+  after the lock to HIGH lanes, which will allow them to bypass all non-internal operations.
+
+* arangosh now uses the same header the UI uses to gain higher priority on initial connection.
+  This will increase the chance for an arangosh to connect to a server under very high load.
+
+* Removed internal JavaScript dependencies "mocha" and "chalk". We recommend
+  always bundling your own copy of third-party modules, even ones listed as
+  public.
+
+* Bugfix: DC2DC Disjoint-SmartGraphs and Hybrid-SmartGraphs are now
+  replicated to the follower data-center keeping their sharding intact.
+
+* Optimize further RocksDB throttle to allow for no change on any
+  given calculation cycle.
+
+* Added a log message that appears upon starting arangod that shows the number 
+  of the parent process id and, if able to acknowledge it, the name of the 
+  parent process.
+
+* Avoid multiple parallel SIGHUP requests to be handled at the same time.
+  Now collapse multiple incoming SIGHUP requests into a single one, which can
+  be executed race-free.
+
+* Parallelize applying of revision tree changes with fetching next revision
+  tree range in incremental collection replication for collections created 
+  with ArangoDB 3.8 and higher.
+
+* Support JSON schema objects for documenting Foxx endpoints.
+
+* Internal refactoring of IndexIterator APIs.
+
+* Sorted out various geo problems:
+
+  - No more special detection of "latitude-longitude rectangles" is done,
+    since this is in conflict with the definition of polygon boundaries to
+    be geodesics.
+  - Linear rings in polygons are no longer automatically "normalized", so
+    now it is possible to have polygons which cover more than half of the
+    Earth.
+  - Rules for polygons and multigons have been clarified and are now properly
+    enforced for the `GEO_POLYGON` and `GEO_MULTIPOLYGON` AQL functions.
+  - Introduced `legacyPolygon` flag for geo indexes to continue to support
+    the old behaviour in existing geo indexes.
+  - Added lots of additional tests, thereby fixing several bugs in geo index
+    lookup.
+  - Use a faster algorithm for pure `GEO_CONTAINS` and `GEO_INTERSECTS`
+    queries.
+
+* Fix counts and file size sum in hotbackup META files. Do no longer count
+  directories.
+
+* Fixed an assertion failure which could occur when there was an error in
+  the HTTP header, so that the message body was not actually read.
+
+* Fixed a crash which could occur when there was an error in the HTTP
+  header parsing).
+
+* Added back the optimization for empty document update operations (i.e. update
+  requests in which no attributes were specified to be updated), handling them 
+  in a special way without performing any writes, also excluding such special 
+  cases of operation from replication to followers.
+
+* Upgraded JavaScript "i" module from 0.3.6 to 0.3.7.
+
+* Bug-Fix: Resolve BTS-673/Issue #15107, a spliced subquery could return
+  too few results
+
+* Changed Foxx service generator output to use static variable names
+
+* As we are now in constant stall regime, stall onset and warnings are
+  demoted to DEBUG.
+
+* Allow early pruning (moving a FILTER condition into an IndexNode or
+  EnumerateCollectionNode) in more cases than before. Previously, early
+  pruning was only possible if the FILTER condition referred to exactly one
+  variable, which had to be the FOR loop's own variable. Now, early
+  pruning is possible with arbitrary variables that are accessible by the
+  FOR loop.
+
+* Fixed a race detected with chaos tests, where a db server could have
+  momentarily lost leadership, just when it was about to drop a
+  follower to that shard.
+
+* In an attempt to make the performance of the RocksDB throttle much
+  more consistent and predictable the default compaction slow down
+  trigger is lowered to 128kB.
+
+* Fixed BTS-750: Fixed the issue restricted to cluster mode in which queries 
+  containing the keywords UPDATE or REPLACE together with the keyword WITH and
+  the same key value would result in an error. For example: 
+  `UPDATE 'key1' WITH {_key: 'key1'} IN Collection`
+  because the same key used to update was provided in the object to update the
+  document with.  
+
+* The multi-dimensional index type `zkd` now supports an optional index hint for
+  tweaking performance by prefetching documents:
+	
+	```
+	FOR app IN appointments OPTIONS { lookahead: 32 }
+    FILTER @to <= app.to
+    FILTER app.from <= @from
+    RETURN app
+	```
+	
+	Specifiying a lookahead value greater than zero makes the index fetch more documents
+	that are no longer in the search box, before seeking to the next lookup position.
+	Because the seek operation is computationally expensive, probing more documents
+	before seeking may reduce the number of seeks, if matching documents are found.
+	Please keep in mind that it might also affect performance negatively if documents
+	are fetched unnecessarily.
+
+* Replaced internal JS dependency xmldom with @xmldom/xmldom.
+
+* Enabled new internal graph refactored code for depth-first, breadth-first and
+  weighted traversals by default.
+
+* Replaced internal JS dependency ansi-html with ansi-html-community.
+
+* Improved performance of inner joins with dynamic lookup conditions being
+  injected from an outer loop, for indexes of type "persistent", "hash" and
+  "skiplist". Performance improvements can be expected if the inner join is
+  invoked a lot of times with many different values fed in by the outer loop.
+  The performance improvements are due to some improved handling of index
+  lookup conditions in the internals of the VelocyPack-based index.
+
+* Upgrade bundled version of jemalloc to 5.3rc (upstream commit a4e8122).
+
+* Improve usefulness of `storedValues` together with late materialization.
+
+* Reintroduce shard synchronization cancellation check that was disabled
+  before.
+
+* Bug-Fix: AQL WINDOW statement if applied within a subquery could accidentally
+  skip over some subquery results. This did only show up if the subquery fills
+  exactly one internal batch before it is completed, so it is rather unlikely.
+
+* Fix potential access to dangling reference in cancellation of shard
+  synchronization.
+
+* Limited module resolution in arangosh to the path from which arangosh is invoked.
+
+* Fixed BTS-621 Fixed rare case of segfault in cluster during database recovery if DBServer is
+  in upgrade mode in the same time.
+
+* Changed default value of startup option 
+  `--rocksdb.cache-index-and-filter-blocks` from `false` to `true`.
+  This makes RocksDB track all loaded index and filter blocks in the block
+  cache, so they are accounted for in RocksDB's block cache. Also the default
+  value for the startup option `--rocksdb.enforce-block-cache-size-limit`
+  was flipped from `false` to `true` to make the RocksDB block cache not
+  temporarily exceed the configured memory limit (`--rocksdb.block-cache-size`).
+
+  These default value changes will make RocksDB adhere much better to the
+  configured memory limit. This is a trade-off between memory usage stability
+  and performance. These change may have a small negative impact on performance
+  because if the block cache is not large enough to hold the data plus the
+  index and filter blocks, additional disk I/O may be performed compared to
+  previous versions. In case there is still unused RAM capacity available, it
+  may be sensible to increase the total size of the RocksDB block cache.
+
+* Add "filtered" column to AQL query profiling output.
+  This column shows how many documents were filtered by the node and thus
+  provides insights into if additional indexes could help.
+
+* Reuse ExecutorExpressionContext inside IndexExecutor, so that repeated
+  setup and teardown of expression contexts can be avoided.
+
+* Reduce memory usage of inner joins if they were performed by the 
+  IndexExecutor with dynamic index lookup expressions that needed to be
+  recomputed for input from the outer loop.
+
+  For example, in the query
+  ```
+  FOR i IN 1..1000
+    FOR doc IN collection
+      FILTER doc.indexAttribute == i
+      RETURN doc
+  ```
+  the inner loop will be executed 1000 times. The IndexExecutor in the inner
+  loop needed to rebuild the index lookup attribute from the value of `i` 1000
+  times as well. The memory for index lookup attributes came from the Ast's
+  memory allocator and was not freed until the end of the query. In this
+  query, it would mean that up to 1000 lookup values were held in memory. With
+  larger inputs even more memory would be used.
+
+  Now the memory for index lookup values is freed when a new lookup value is
+  computed, i.e. only a single lookup value is held in memory.
+  This drastically reduces peak memory usage for queries that use index lookups
+  in inner loops and that get lots of different inputs from outer loops.
+
+* Adjust interal RocksDB setting `optimize_filters_for_hits` for Documents
+  column family, setting it from `false` to `true`. This should reduce memory
+  and disk space requirements for the bottom-most .sst files of the documents
+  column family.
+
+* Upgrade VelocyPack library to latest version.
+
+* Slightly improve the explain output of SingleRemoteOperationNodes.
+
+* Added more detail to the log messages that display the total time consumption
+  and total amount of data parsed for the client tools arangodump and 
+  arangorestore. 
+
+* Fixed minDepth handling of weighted Traversals. When using a minDepth of 3, also paths of length
+  2 have been returned, on all locally executed variants (SingleServer, OneShard, DisjointSmart).
+
+* Fixed BTS-728 (no released version infected) fixed: for DisjointSmartGraphs, that include
+  a satellite vertex collection, valid disjoint path were not always followed, if one of the
+  satellites has a connection to two (or more) vertices that have different shardValues that
+  by chance are routed to the same shard.
+
+* Fixed PRESUPP-445: Foxx queues: Some Jobs are never run in case of
+  multiple Coordinators.
+
+* Fixed BTS-740 (no released version infected) fixed Smart<->Sat SmartEdgeCollections
+  determining the shard in SingleRemoteModification nodes was incorrect. E.g. this could
+  be triggered, by viewing the details of an edge in the UI. Only alpha/beta of 3.9.0
+  contained this bug.
+
+* Fixed BTS-729 (no released version infected): Some conditions in a Hybrid
+  Smart Graph could led to wrong shard location calculation and therefore to
+  wrong graph query results. Only alpha/beta of 3.9.0 contained this bug.
+
+* Upgraded bundled version of RocksDB to 6.29.
+
+* Fix creation of satellite graphs with a `numberOfShards` value != 1.
   
 * Disable optimizer rule "optimize-cluster-single-document-operations" when a
   collection is accessed in exclusive mode, because the optimized query would
@@ -7,13 +249,54 @@ devel
 
 * Upgraded boost to 1.78.0.
 
+* Fixed issue #15501: Regression when using "exclusive" query option?
+  This fixes a regression in AQL query execution when exclusive locks are used
+  for a query and the query also uses the DOCUMENT() AQL function. In this
+  case, when there were more concurrent requests to the underlying collection
+  than available scheduler threads for the low priority queue, the query
+  start successfully acquired the exclusive lock, but could not get its 
+  follow-up requests through and starve while holding the exclusive lock.
+
 * Improve performance of `db._explain()` for very large query execution plans.
   Higher performance is achieved by not serializing some internal data
   structures when serializing execution plans. Serializing internal data is
   now opt-in and turned off if not needed. Apart from performance, there should 
   be no end user visible changes.
 
+* APM-24: Log messages can be displayed together with some other useful 
+  parameters, e.g., the name of the database, username, query id, and so on. 
+  There are some predefined parameters that we consider displaying, but, 
+  for the moment, only database, username and url are being displayed.
+  The usage upon starting the server is, for example: 
+  `arangod --log.structured-param database --log.structured-param username`
+
 * Fixed BTS-712: Collation analyzer now always produces valid UTF-8 sequence.
+
+* Add optional "storedValues" attribute for persistent indexes.
+
+  This will add the specified extra fields to the index, so that they can be
+  used for projections, but not for lookups or sorting.
+
+  Example:
+
+      db.<collection>.ensureIndex({ 
+        type: "persistent", 
+        fields: ["value1"], 
+        storedValues: ["value2"] 
+      });
+
+  This will index `value1` in the traditional sense, so the index can be
+  used for looking up by `value1` or for sorting by `value1`. The index also
+  supports projections on `value1` as usual.
+  In addition, due to `storedValues` being used here, the index can now also 
+  supply the values for the `value2` attribute for projections.
+
+  This allows covering index scans in more cases and helps to avoid making
+  extra document lookups in the documents column family. This can have a
+  great positive effect on index scan performance if the number of scanned 
+  index entries is large.
+
+  The maximum number of attributes to store in `storedValues` is 32.
 
 * Fixed a bug that hotbackup upload could miss files (fixes BTS-734).
 

@@ -93,17 +93,18 @@ struct EdgeDocumentToken {
 
   DataSourceId cid() const {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    TRI_ASSERT(_type == TokenType::LOCAL);
+    TRI_ASSERT((_type == TokenType::LOCAL && _data.document.cid.isSet()) ||
+               _type == TokenType::NONE);
 #endif
-    TRI_ASSERT(_data.document.cid.isSet());
     return _data.document.cid;
   }
 
   LocalDocumentId localDocumentId() const {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    TRI_ASSERT(_type == TokenType::LOCAL);
+    TRI_ASSERT(
+        (_type == TokenType::LOCAL && _data.document.localDocumentId.isSet()) ||
+        _type == TokenType::NONE);
 #endif
-    TRI_ASSERT(_data.document.localDocumentId.isSet());
     return _data.document.localDocumentId;
   }
 

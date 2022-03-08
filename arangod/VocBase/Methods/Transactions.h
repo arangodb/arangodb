@@ -25,7 +25,6 @@
 
 #include <v8.h>
 #include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
 #include "VocBase/vocbase.h"

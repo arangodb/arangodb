@@ -32,6 +32,7 @@
 
 #include "ShellConsoleFeature.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
@@ -39,7 +40,6 @@
 #include "Basics/operating-system.h"
 #include "Basics/system-functions.h"
 #include "Basics/terminal-utils.h"
-#include "FeaturePhases/BasicFeaturePhaseClient.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -71,9 +71,8 @@ static const int INTENSITY = FOREGROUND_INTENSITY | BACKGROUND_INTENSITY;
 
 namespace arangodb {
 
-ShellConsoleFeature::ShellConsoleFeature(
-    application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Console"),
+ShellConsoleFeature::ShellConsoleFeature(Server& server)
+    : ArangoshFeature(server, *this),
 #ifdef _WIN32
       _cygwinShell(false),
 #endif

@@ -28,12 +28,14 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
+#include "IResearchAnalyzerFeature.h"
 #include "IResearch/GeoAnalyzer.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchKludge.h"
 #include "IResearch/IResearchPrimaryKeyFilter.h"
 #include "IResearch/IResearchViewMeta.h"
 #include "IResearch/IResearchVPackTermAttribute.h"
+#include "IResearch/VelocyPackHelper.h"
 #include "Logger/LogMacros.h"
 #include "Misc.h"
 #include "Transaction/Helpers.h"
@@ -42,6 +44,7 @@
 #include "search/term_filter.hpp"
 
 #include "utils/log.hpp"
+#include "Basics/DownCast.h"
 
 namespace {
 
@@ -93,18 +96,6 @@ static_assert(
     "Values are not adjacent");
 
 irs::string_ref const PK_COLUMN("@_PK");
-
-// wrapper for use objects with the IResearch unbounded_object_pool
-template<typename T>
-struct AnyFactory {
-  typedef std::shared_ptr<T> ptr;
-
-  template<typename... Args>
-  static ptr make(Args&&... args) {
-    return std::make_shared<T>(std::forward<Args>(args)...);
-  }
-};  // AnyFactory
-
 size_t constexpr DEFAULT_POOL_SIZE = 8;  // arbitrary value
 irs::unbounded_object_pool<arangodb::iresearch::AnalyzerPool::Builder>
     StringStreamPool(DEFAULT_POOL_SIZE);
@@ -199,7 +190,7 @@ inline bool canHandleValue(
 
 // returns 'context' in case if can't find the specified 'field'
 inline arangodb::iresearch::FieldMeta const* findMeta(
-    irs::string_ref const& key, arangodb::iresearch::FieldMeta const* context) {
+    irs::string_ref key, arangodb::iresearch::FieldMeta const* context) {
   TRI_ASSERT(context);
 
   auto const* meta = context->_fields.findPtr(key);
@@ -321,13 +312,7 @@ namespace iresearch {
   field._value =
       irs::bytes_ref(reinterpret_cast<irs::byte_type const*>(&pk), sizeof(pk));
   field._analyzer = StringStreamPool.emplace(AnalyzerPool::StringStreamTag());
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  auto& sstream =
-      dynamic_cast<irs::string_token_stream&>(*field._analyzer.get());
-#else
-  auto& sstream =
-      static_cast<irs::string_token_stream&>(*field._analyzer.get());
-#endif
+  auto& sstream = basics::downCast<irs::string_token_stream>(*field._analyzer);
   sstream.reset(field._value);
 }
 
@@ -498,13 +483,9 @@ bool FieldIterator::setValue(VPackSlice const value,
       setBoolValue(_currentTypedAnalyzerValue->value);
       _primitiveTypeResetter = [](irs::token_stream* stream,
                                   VPackSlice slice) -> void {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-        auto bool_stream = dynamic_cast<irs::boolean_token_stream*>(stream);
-        TRI_ASSERT(bool_stream);
-#else
-        auto bool_stream = static_cast<irs::boolean_token_stream*>(stream);
-#endif
+        TRI_ASSERT(stream);
         TRI_ASSERT(slice.isBool());
+        auto* bool_stream = basics::downCast<irs::boolean_token_stream>(stream);
         bool_stream->reset(slice.getBool());
       };
     } break;
@@ -519,18 +500,15 @@ bool FieldIterator::setValue(VPackSlice const value,
       setNumericValue(_currentTypedAnalyzerValue->value);
       _primitiveTypeResetter = [](irs::token_stream* stream,
                                   VPackSlice slice) -> void {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-        auto number_stream = dynamic_cast<irs::numeric_token_stream*>(stream);
-        TRI_ASSERT(number_stream);
-#else
-        auto number_stream = static_cast<irs::numeric_token_stream*>(stream);
-#endif
+        TRI_ASSERT(stream);
         TRI_ASSERT(slice.isNumber());
+        auto* number_stream =
+            basics::downCast<irs::numeric_token_stream>(stream);
         number_stream->reset(slice.getNumber<double>());
       };
     } break;
     default: {
-      iresearch::kludge::mangleField(_nameBuffer, valueAnalyzer);
+      iresearch::kludge::mangleField(_nameBuffer, true, valueAnalyzer);
       _value._analyzer = std::move(analyzer);
       _value._fieldFeatures = pool->fieldFeatures();
       _value._indexFeatures = pool->indexFeatures();
@@ -544,7 +522,7 @@ bool FieldIterator::setValue(VPackSlice const value,
                                         : _value._analyzer.get(),
                   value, _buffer);
 
-    if (!value.isNone()) {
+    if (!valueSlice.isNone()) {
       _value._value = iresearch::ref<irs::byte_type>(valueSlice);
       _value._storeValues = std::max(ValueStorage::VALUE, _value._storeValues);
     }
@@ -742,6 +720,290 @@ bool StoredValue::write(irs::data_output& out) const {
       // a builder is destroyed but a buffer is alive
     }
     out.write_bytes(slice.start(), slice.byteSize());
+  }
+  return true;
+}
+
+InvertedIndexFieldIterator::InvertedIndexFieldIterator(
+    arangodb::transaction::Methods&, irs::string_ref collection,
+    IndexId indexId)
+    : _collection(collection), _indexId(indexId) {
+  // we need id column for range queries
+  _value._storeValues = ValueStorage::ID;
+}
+
+void InvertedIndexFieldIterator::next() {
+  TRI_ASSERT(valid());
+  if (_currentTypedAnalyzer) {
+    if (_currentTypedAnalyzer->next()) {
+      TRI_ASSERT(_primitiveTypeResetter);
+      TRI_ASSERT(_currentTypedAnalyzerValue);
+      TRI_ASSERT(_value._analyzer.get());
+      _primitiveTypeResetter(_value._analyzer.get(),
+                             _currentTypedAnalyzerValue->value);
+      return;
+    }
+    _currentTypedAnalyzer.reset();
+  }
+  while (_begin != _end) {
+    _valueSlice = VPackSlice::noneSlice();
+    while (!_arrayStack.empty()) {
+      if (_arrayStack.back().valid()) {
+        if (_begin->expansion.empty()) {
+          _valueSlice = *_arrayStack.back();
+        } else {
+          // for array subobjects we index "null" in case of absence as declared
+          // for other indicies
+          _valueSlice = get(*_arrayStack.back(), _begin->expansion,
+                            VPackSlice::nullSlice());
+        }
+        ++_arrayStack.back();
+        _nameBuffer.resize(_prefixLength);  // FIXME: just clear should work!
+        break;
+      }
+      _arrayStack.pop_back();
+    }
+    if (_arrayStack.empty()) {
+      while (_valueSlice.isNone()) {
+        if (++_begin == _end) {
+          TRI_ASSERT(!valid());
+          return;  // exhausted
+        }
+        _valueSlice = get(_slice, _begin->attribute, VPackSlice::noneSlice());
+        if (!_valueSlice.isNone() && !_valueSlice.isArray() &&
+            _begin->attribute.back().shouldExpand) {
+          _valueSlice = VPackSlice::noneSlice();
+        }
+      }
+      _nameBuffer.clear();
+    }
+    if (!_valueSlice.isNone()) {
+      if (_nameBuffer.empty()) {
+        bool isFirst = true;
+        for (auto& a : _begin->attribute) {
+          if (!isFirst) {
+            _nameBuffer += NESTING_LEVEL_DELIMITER;
+          }
+          _nameBuffer.append(a.name);
+          isFirst = false;
+        }
+        if (!_begin->expansion.empty()) {
+          _nameBuffer.append("[*]");
+        }
+        for (auto& a : _begin->expansion) {
+          _nameBuffer += NESTING_LEVEL_DELIMITER;
+          _nameBuffer.append(a.name);
+        }
+      }
+      TRI_ASSERT(_begin->analyzer._pool);
+      switch (_valueSlice.type()) {
+        case VPackValueType::Null:
+          setNullValue();
+          return;
+        case VPackValueType::Bool:
+          setBoolValue(_valueSlice);
+          return;
+        case VPackValueType::Object:
+          if (setValue(_valueSlice, _begin->analyzer)) {
+            return;
+          }
+          THROW_ARANGO_EXCEPTION_FORMAT(
+              TRI_ERROR_NOT_IMPLEMENTED,
+              "Inverted index does not support indexing objects and configured "
+              "analyzer does "
+              "not accept objects. Please use another analyzer to process an "
+              "object or exclude field '%s' "
+              "from index definition",
+              _nameBuffer.c_str());
+          return;  // never reached
+        case VPackValueType::Array: {
+          if (_begin->attribute.back().shouldExpand && _arrayStack.empty()) {
+            _arrayStack.push_back(VPackArrayIterator(_valueSlice));
+            _prefixLength = _nameBuffer.size();
+          } else if (setValue(_valueSlice, _begin->analyzer)) {
+            return;
+          } else {
+            THROW_ARANGO_EXCEPTION_FORMAT(
+                TRI_ERROR_NOT_IMPLEMENTED,
+                "Configured analyzer does not accepts arrays and field has no "
+                "expansion set. "
+                "Please use another analyzer to process an array or exclude "
+                "field '%s' "
+                "from index definition or enable expansion",
+                _nameBuffer.c_str());
+          }
+          break;
+        }
+        case VPackValueType::Double:
+        case VPackValueType::Int:
+        case VPackValueType::UInt:
+        case VPackValueType::SmallInt:
+          setNumericValue(_valueSlice);
+          return;
+        case VPackValueType::String: {
+          setValue(_valueSlice, _begin->analyzer);
+          return;
+        }
+        default:
+          break;
+      }
+    }
+  }
+}
+
+void InvertedIndexFieldIterator::setBoolValue(VPackSlice const value) {
+  TRI_ASSERT(value.isBool());
+
+  arangodb::iresearch::kludge::mangleBool(_nameBuffer);
+
+  // init stream
+  auto stream = BoolStreamPool.emplace(AnalyzerPool::BooleanStreamTag());
+  static_cast<irs::boolean_token_stream*>(stream.get())->reset(value.getBool());
+
+  // set field properties
+  _value._name = _nameBuffer;
+  _value._analyzer = std::move(stream);
+  _value._indexFeatures = irs::IndexFeatures::NONE;
+  _value._fieldFeatures = {};
+}
+
+void InvertedIndexFieldIterator::setNumericValue(VPackSlice const value) {
+  TRI_ASSERT(value.isNumber());
+
+  arangodb::iresearch::kludge::mangleNumeric(_nameBuffer);
+
+  // init stream
+  auto stream = NumericStreamPool.emplace(AnalyzerPool::NumericStreamTag());
+  static_cast<irs::numeric_token_stream*>(stream.get())
+      ->reset(value.getNumber<double>());
+
+  // set field properties
+  _value._name = _nameBuffer;
+  _value._analyzer = std::move(stream);  // FIXME don't use shared_ptr
+  _value._indexFeatures = irs::IndexFeatures::NONE;
+  _value._fieldFeatures = {NumericStreamFeatures.begin(),
+                           NumericStreamFeatures.size()};
+}
+
+void InvertedIndexFieldIterator::setNullValue() {
+  arangodb::iresearch::kludge::mangleNull(_nameBuffer);
+
+  // init stream
+  auto stream = NullStreamPool.emplace(AnalyzerPool::NullStreamTag());
+  static_cast<irs::null_token_stream*>(stream.get())->reset();
+
+  // set field properties
+  _value._name = _nameBuffer;
+  _value._analyzer = std::move(stream);  // FIXME don't use shared_ptr
+  _value._indexFeatures = irs::IndexFeatures::NONE;
+  _value._fieldFeatures = {};
+}
+
+bool InvertedIndexFieldIterator::setValue(
+    VPackSlice const value, FieldMeta::Analyzer const& valueAnalyzer) {
+  TRI_ASSERT(value.isObject() || value.isArray() || value.isString());
+
+  auto& pool = valueAnalyzer._pool;
+
+  if (!pool) {
+    LOG_TOPIC("189db", WARN, iresearch::TOPIC)
+        << "got nullptr analyzer factory";
+
+    return false;
+  }
+
+  irs::string_ref valueRef;
+  AnalyzerValueType valueType{AnalyzerValueType::Undefined};
+
+  switch (value.type()) {
+    case VPackValueType::Array: {
+      valueRef = iresearch::ref<char>(value);
+      valueType = AnalyzerValueType::Array;
+    } break;
+    case VPackValueType::Object: {
+      valueRef = iresearch::ref<char>(value);
+      valueType = AnalyzerValueType::Object;
+    } break;
+    case VPackValueType::String: {
+      valueRef = iresearch::getStringRef(value);
+      valueType = AnalyzerValueType::String;
+    } break;
+    default:
+      TRI_ASSERT(false);
+      return false;
+  }
+
+  if (!pool->accepts(valueType)) {
+    return false;
+  }
+
+  // init stream
+  auto analyzer = pool->get();
+
+  if (!analyzer) {
+    LOG_TOPIC("22eeb", WARN, arangodb::iresearch::TOPIC)
+        << "got nullptr from analyzer factory, name '" << pool->name() << "'";
+    return false;
+  }
+  if (!analyzer->reset(valueRef)) {
+    return false;
+  }
+  // set field properties
+  switch (pool->returnType()) {
+    case AnalyzerValueType::Bool: {
+      if (!analyzer->next()) {
+        return false;
+      }
+      _currentTypedAnalyzer = std::move(analyzer);
+      _currentTypedAnalyzerValue =
+          irs::get<VPackTermAttribute>(*_currentTypedAnalyzer);
+      TRI_ASSERT(_currentTypedAnalyzerValue);
+      setBoolValue(_currentTypedAnalyzerValue->value);
+      _primitiveTypeResetter = [](irs::token_stream* stream,
+                                  VPackSlice slice) -> void {
+        TRI_ASSERT(stream);
+        TRI_ASSERT(slice.isBool());
+        auto* bool_stream = basics::downCast<irs::boolean_token_stream>(stream);
+        bool_stream->reset(slice.getBool());
+      };
+    } break;
+    case AnalyzerValueType::Number: {
+      if (!analyzer->next()) {
+        return false;
+      }
+      _currentTypedAnalyzer = std::move(analyzer);
+      _currentTypedAnalyzerValue =
+          irs::get<VPackTermAttribute>(*_currentTypedAnalyzer);
+      TRI_ASSERT(_currentTypedAnalyzerValue);
+      setNumericValue(_currentTypedAnalyzerValue->value);
+      _primitiveTypeResetter = [](irs::token_stream* stream,
+                                  VPackSlice slice) -> void {
+        TRI_ASSERT(stream);
+        TRI_ASSERT(slice.isNumber());
+        auto* number_stream =
+            basics::downCast<irs::numeric_token_stream>(stream);
+        number_stream->reset(slice.getNumber<double>());
+      };
+    } break;
+    default: {
+      iresearch::kludge::mangleField(_nameBuffer, false, valueAnalyzer);
+      _value._analyzer = std::move(analyzer);
+      _value._fieldFeatures = pool->fieldFeatures();
+      _value._indexFeatures = pool->indexFeatures();
+      _value._name = _nameBuffer;
+    } break;
+  }
+  auto* storeFunc = pool->storeFunc();
+  if (storeFunc) {
+    auto const valueSlice =
+        storeFunc(_currentTypedAnalyzer ? _currentTypedAnalyzer.get()
+                                        : _value._analyzer.get(),
+                  value, _buffer);
+
+    if (!valueSlice.isNone()) {
+      _value._value = iresearch::ref<irs::byte_type>(valueSlice);
+      _value._storeValues = std::max(ValueStorage::VALUE, _value._storeValues);
+    }
   }
   return true;
 }

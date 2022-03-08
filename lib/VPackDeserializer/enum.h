@@ -77,7 +77,7 @@ struct deserialize_plan_executor<
 
   template<typename C>
   static auto unpack(::arangodb::velocypack::deserializer::slice_type s,
-                     typename H::state_type hints, C &&) -> result_type {
+                     typename H::state_type hints, C&&) -> result_type {
     using comparator_hints =
         std::conditional_t<all_strings, hints::hint_list<hints::is_string>,
                            hints::hint_list_empty>;

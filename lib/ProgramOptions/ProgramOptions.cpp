@@ -31,7 +31,6 @@
 #include "ProgramOptions/Translator.h"
 
 #include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <algorithm>
 #include <iostream>

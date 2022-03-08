@@ -26,7 +26,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 
 #include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "Logger/LogMacros.h"
 #include "Pregel/PregelFeature.h"
@@ -37,9 +36,9 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 using namespace arangodb::pregel;
 
-RestPregelHandler::RestPregelHandler(
-    application_features::ApplicationServer& server, GeneralRequest* request,
-    GeneralResponse* response)
+RestPregelHandler::RestPregelHandler(ArangodServer& server,
+                                     GeneralRequest* request,
+                                     GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response),
       _pregel(server.getFeature<PregelFeature>()) {}
 

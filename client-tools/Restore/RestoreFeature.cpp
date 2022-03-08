@@ -27,7 +27,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <algorithm>
 #include <chrono>
@@ -67,9 +66,6 @@
 #endif
 
 namespace {
-
-/// @brief name of the feature to report to application server
-constexpr auto FeatureName = "Restore";
 
 /// @brief return the target replication factor for the specified collection
 uint64_t getReplicationFactor(arangodb::RestoreFeature::Options const& options,
@@ -209,9 +205,8 @@ void makeAttributesUnique(arangodb::velocypack::Builder& builder,
 
 /// @brief Create the database to restore to, connecting manually
 arangodb::Result tryCreateDatabase(
-    arangodb::application_features::ApplicationServer& server,
-    std::string const& name, VPackSlice properties,
-    arangodb::RestoreFeature::Options const& options) {
+    arangodb::ArangoRestoreServer& server, std::string const& name,
+    VPackSlice properties, arangodb::RestoreFeature::Options const& options) {
   using arangodb::httpclient::SimpleHttpClient;
   using arangodb::httpclient::SimpleHttpResult;
   using arangodb::rest::RequestType;
@@ -292,9 +287,9 @@ arangodb::Result tryCreateDatabase(
 
 /// @check If directory is encrypted, check that key option is specified
 void checkEncryption(arangodb::ManagedDirectory& directory) {
+#ifdef USE_ENTERPRISE
   using arangodb::Logger;
   if (directory.isEncrypted()) {
-#ifdef USE_ENTERPRISE
     if (!directory.encryptionFeature()->keyOptionSpecified()) {
       LOG_TOPIC("cc58e", WARN, Logger::RESTORE)
           << "the dump data seems to be encrypted with "
@@ -309,8 +304,8 @@ void checkEncryption(arangodb::ManagedDirectory& directory) {
           << "# using encryption type " << directory.encryptionType()
           << " for reading dump";
     }
-#endif
   }
+#endif
 }
 
 void getDBProperties(arangodb::ManagedDirectory& directory,
@@ -342,10 +337,9 @@ void getDBProperties(arangodb::ManagedDirectory& directory,
 }
 
 /// @brief Check the database name specified by the dump file
-arangodb::Result checkDumpDatabase(
-    arangodb::application_features::ApplicationServer& server,
-    arangodb::ManagedDirectory& directory, bool forceSameDatabase,
-    bool& useEnvelope) {
+arangodb::Result checkDumpDatabase(arangodb::ArangoRestoreServer& server,
+                                   arangodb::ManagedDirectory& directory,
+                                   bool forceSameDatabase, bool& useEnvelope) {
   using arangodb::ClientFeature;
   using arangodb::HttpEndpointProvider;
   using arangodb::Logger;
@@ -1038,7 +1032,14 @@ std::vector<RestoreFeature::DatabaseInfo> RestoreFeature::determineDatabaseList(
       std::string path =
           basics::FileUtils::buildFilename(_options.inputPath, it);
       if (basics::FileUtils::isDirectory(path)) {
-        ManagedDirectory dbDirectory(server(), path, false, false, false);
+        EncryptionFeature* encryption{};
+        if constexpr (Server::contains<EncryptionFeature>()) {
+          if (server().hasFeature<EncryptionFeature>()) {
+            encryption = &server().getFeature<EncryptionFeature>();
+          }
+        }
+
+        ManagedDirectory dbDirectory(encryption, path, false, false, false);
         databases.push_back({it, VPackBuilder{}, ""});
         getDBProperties(dbDirectory, databases.back().properties);
         try {
@@ -1622,12 +1623,14 @@ Result RestoreFeature::RestoreSendJob::run(
   return res;
 }
 
-RestoreFeature::RestoreFeature(application_features::ApplicationServer& server,
-                               int& exitCode)
-    : ApplicationFeature(server, RestoreFeature::featureName()),
-      _clientManager{server, Logger::RESTORE},
+RestoreFeature::RestoreFeature(Server& server, int& exitCode)
+    : ArangoRestoreFeature{server, *this},
+      _clientManager{server.getFeature<HttpEndpointProvider, ClientFeature>(),
+                     Logger::RESTORE},
       _clientTaskQueue{server, ::processJob},
       _exitCode{exitCode} {
+  static_assert(Server::isCreatedAfter<RestoreFeature, HttpEndpointProvider>());
+
   requiresElevatedPrivileges(false);
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseClient>();
@@ -1907,9 +1910,17 @@ void RestoreFeature::start() {
 
   double const start = TRI_microtime();
 
+  EncryptionFeature* encryption{};
+  if constexpr (Server::contains<EncryptionFeature>()) {
+    if (server().hasFeature<EncryptionFeature>()) {
+      encryption = &server().getFeature<EncryptionFeature>();
+    }
+  }
+
   // set up the output directory, not much else
-  _directory = std::make_unique<ManagedDirectory>(server(), _options.inputPath,
-                                                  false, false, true);
+  _directory = std::make_unique<ManagedDirectory>(
+      encryption, _options.inputPath, false, false, true);
+
   if (_directory->status().fail()) {
     switch (static_cast<int>(_directory->status().errorNumber())) {
       case static_cast<int>(TRI_ERROR_FILE_NOT_FOUND):
@@ -2070,8 +2081,16 @@ void RestoreFeature::start() {
       client.setDatabaseName(db.name);
       LOG_TOPIC("36075", INFO, Logger::RESTORE)
           << "Restoring database '" << db.name << "'";
+
+      EncryptionFeature* encryption{};
+      if constexpr (Server::contains<EncryptionFeature>()) {
+        if (server().hasFeature<EncryptionFeature>()) {
+          encryption = &server().getFeature<EncryptionFeature>();
+        }
+      }
+
       _directory = std::make_unique<ManagedDirectory>(
-          server(),
+          encryption,
           basics::FileUtils::buildFilename(_options.inputPath, db.directory),
           false, false, true);
 
@@ -2193,20 +2212,20 @@ void RestoreFeature::start() {
 
     if (_options.importData) {
       LOG_TOPIC("a66e1", INFO, Logger::RESTORE)
-          << "Processed " << _stats.restoredCollections << " collection(s) in "
-          << Logger::FIXED(totalTime, 6) << " s, "
-          << "read " << formatSize(_stats.totalRead) << " from datafiles, "
+          << "Processed " << _stats.restoredCollections
+          << " collection(s) from " << databases.size() << " database(s) in "
+          << Logger::FIXED(totalTime, 6) << " s total time. Read "
+          << formatSize(_stats.totalRead) << " from datafiles, "
           << "sent " << _stats.totalBatches << " data batch(es) of "
-          << formatSize(_stats.totalSent) << " total size";
+          << formatSize(_stats.totalSent) << " total size.";
     } else if (_options.importStructure) {
       LOG_TOPIC("147ca", INFO, Logger::RESTORE)
-          << "Processed " << _stats.restoredCollections << " collection(s) in "
-          << Logger::FIXED(totalTime, 6) << " s";
+          << "Processed " << _stats.restoredCollections
+          << " collection(s) from " << databases.size() << " database(s) in "
+          << Logger::FIXED(totalTime, 6) << " s total time.";
     }
   }
 }
-
-std::string RestoreFeature::featureName() { return ::FeatureName; }
 
 ClientTaskQueue<RestoreFeature::RestoreJob>& RestoreFeature::taskQueue() {
   return _clientTaskQueue;

@@ -31,7 +31,6 @@
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
 class CollectionNameResolver;
@@ -123,16 +122,24 @@ class StringLeaser {
 
 class BuilderLeaser {
  public:
-  explicit BuilderLeaser(transaction::Methods*);
   explicit BuilderLeaser(transaction::Context*);
+  explicit BuilderLeaser(transaction::Methods*);
   ~BuilderLeaser();
-  inline arangodb::velocypack::Builder* builder() const { return _builder; }
-  inline arangodb::velocypack::Builder* operator->() const { return _builder; }
-  inline arangodb::velocypack::Builder& operator*() { return *_builder; }
-  inline arangodb::velocypack::Builder const& operator*() const {
+  inline arangodb::velocypack::Builder* builder() const noexcept {
+    return _builder;
+  }
+  inline arangodb::velocypack::Builder* operator->() const noexcept {
+    return _builder;
+  }
+  inline arangodb::velocypack::Builder& operator*() noexcept {
     return *_builder;
   }
-  inline arangodb::velocypack::Builder* get() const { return _builder; }
+  inline arangodb::velocypack::Builder& operator*() const noexcept {
+    return *_builder;
+  }
+  inline arangodb::velocypack::Builder* get() const noexcept {
+    return _builder;
+  }
   inline arangodb::velocypack::Builder* steal() {
     arangodb::velocypack::Builder* res = _builder;
     _builder = nullptr;
