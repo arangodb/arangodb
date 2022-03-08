@@ -29,7 +29,7 @@ const _ = require('lodash');
 const {sleep} = require('internal');
 const {db, errors: ERRORS} = arangodb;
 const lh = require("@arangodb/testutils/replicated-logs-helper");
-const helper = require("../../../../js/server/modules/@arangodb/testutils/replicated-logs-helper");
+const helper = require("@arangodb/testutils/replicated-logs-helper");
 
 const {waitForReplicatedLogAvailable} = helper;
 
