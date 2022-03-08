@@ -101,6 +101,9 @@ class SingleServerProvider {
 
   void prepareIndexExpressions(aql::Ast* ast);
 
+  void prepareContext(aql::InputAqlItemRow input);
+  void unPrepareContext();
+
  private:
   void activateCache(bool enableDocumentCache);
 

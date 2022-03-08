@@ -24,9 +24,10 @@
 
 #include "Zkd/ZkdHelper.h"
 
-#include <Aql/Variable.h>
-#include <Containers/Enumerate.h>
-#include <Transaction/Helpers.h>
+#include "Aql/Variable.h"
+#include "Containers/Enumerate.h"
+#include "Containers/FlatHashSet.h"
+#include "Transaction/Helpers.h"
 #include "RocksDBColumnFamilyManager.h"
 #include "RocksDBMethods.h"
 #include "RocksDBTransactionMethods.h"
@@ -330,7 +331,7 @@ void zkd::extractBoundsFromCondition(
   auto const checkIsBoundForAttribute =
       [&](aql::AstNode* op, aql::AstNode* access, aql::AstNode* other,
           bool reverse) -> bool {
-    std::unordered_set<std::string>
+    arangodb::containers::FlatHashSet<std::string>
         nonNullAttributes;  // TODO only used in sparse case
     if (!index->canUseConditionPart(access, other, op, reference,
                                     nonNullAttributes, false)) {

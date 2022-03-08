@@ -36,26 +36,44 @@ struct FollowerStateManager
   using EntryType = typename ReplicatedStateTraits<S>::EntryType;
   using FollowerType = typename ReplicatedStateTraits<S>::FollowerType;
   using LeaderType = typename ReplicatedStateTraits<S>::LeaderType;
+  using CoreType = typename ReplicatedStateTraits<S>::CoreType;
+  using WaitForAppliedQueue =
+      typename ReplicatedState<S>::StateManagerBase::WaitForAppliedQueue;
+  using WaitForAppliedPromise =
+      typename ReplicatedState<S>::StateManagerBase::WaitForAppliedPromise;
 
   using Stream = streams::Stream<EntryType>;
   using Iterator = typename Stream::Iterator;
 
   FollowerStateManager(
-      std::shared_ptr<ReplicatedStateBase> parent,
+      LoggerContext loggerContext, std::shared_ptr<ReplicatedStateBase> parent,
       std::shared_ptr<replicated_log::ILogFollower> logFollower,
-      std::unique_ptr<ReplicatedStateCore> core,
+      std::unique_ptr<CoreType> core,
+      std::unique_ptr<ReplicatedStateToken> token,
       std::shared_ptr<Factory> factory) noexcept;
 
-  void run();
-  auto getStatus() const -> StateStatus final;
-  auto getSnapshotStatus() const -> SnapshotStatus final;
+  void run() override;
 
-  auto getFollowerState() -> std::shared_ptr<IReplicatedFollowerState<S>>;
+  [[nodiscard]] auto getStatus() const -> StateStatus final;
+
+  [[nodiscard]] auto getFollowerState() const
+      -> std::shared_ptr<IReplicatedFollowerState<S>>;
+
+  [[nodiscard]] auto resign() && noexcept
+      -> std::tuple<std::unique_ptr<CoreType>,
+                    std::unique_ptr<ReplicatedStateToken>,
+                    DeferredAction> override;
+
+  [[nodiscard]] auto getStream() const noexcept -> std::shared_ptr<Stream>;
+
+  auto waitForApplied(LogIndex) -> futures::Future<futures::Unit>;
 
  private:
   void awaitLeaderShip();
   void ingestLogData();
-  void pollNewEntries();
+
+  template<typename F>
+  auto pollNewEntries(F&& fn);
   void checkSnapshot(std::shared_ptr<IReplicatedFollowerState<S>>);
   void tryTransferSnapshot(std::shared_ptr<IReplicatedFollowerState<S>>);
   void startService(std::shared_ptr<IReplicatedFollowerState<S>>);
@@ -63,29 +81,41 @@ struct FollowerStateManager
   void applyEntries(std::unique_ptr<Iterator> iter) noexcept;
 
   using Demultiplexer = streams::LogDemultiplexer<ReplicatedStateStreamSpec<S>>;
-  LogIndex nextEntry{1};
 
-  // TODO locking
+  struct GuardedData {
+    FollowerStateManager& self;
+    LogIndex _nextWaitForIndex{1};
+    std::shared_ptr<Stream> stream;
+    std::shared_ptr<IReplicatedFollowerState<S>> state;
 
-  std::shared_ptr<Stream> stream;
-  std::shared_ptr<IReplicatedFollowerState<S>> state;
-  std::weak_ptr<ReplicatedStateBase> parent;
-  std::shared_ptr<replicated_log::ILogFollower> logFollower;
+    FollowerInternalState internalState{
+        FollowerInternalState::kUninitializedState};
+    std::chrono::system_clock::time_point lastInternalStateChange;
+    std::optional<LogRange> ingestionRange;
 
-  FollowerInternalState internalState{
-      FollowerInternalState::kUninitializedState};
-  std::chrono::system_clock::time_point lastInternalStateChange;
-  std::optional<LogRange> ingestionRange;
+    // core will be nullptr as soon as the FollowerState was created
+    std::unique_ptr<CoreType> core;
+    std::unique_ptr<ReplicatedStateToken> token;
+    WaitForAppliedQueue waitForAppliedQueue;
 
-  std::unique_ptr<ReplicatedStateCore> core;
+    bool _didResign = false;
+
+    GuardedData(FollowerStateManager& self, std::unique_ptr<CoreType> core,
+                std::unique_ptr<ReplicatedStateToken> token);
+    void updateInternalState(FollowerInternalState newState,
+                             std::optional<LogRange> range = std::nullopt);
+    auto updateNextIndex(LogIndex nextWaitForIndex) -> DeferredAction;
+  };
+
+  void handlePollResult(
+      futures::Future<std::unique_ptr<Iterator>>&& pollFuture);
+  void handleAwaitLeadershipResult(
+      futures::Future<replicated_log::WaitForResult>&&);
+
+  Guarded<GuardedData> _guardedData;
+  std::weak_ptr<ReplicatedStateBase> const parent;
+  std::shared_ptr<replicated_log::ILogFollower> const logFollower;
   std::shared_ptr<Factory> const factory;
-
- private:
-  void updateInternalState(FollowerInternalState newState,
-                           std::optional<LogRange> range = std::nullopt) {
-    internalState = newState;
-    lastInternalStateChange = std::chrono::system_clock::now();
-    ingestionRange = range;
-  }
+  LoggerContext const loggerContext;
 };
 }  // namespace arangodb::replication2::replicated_state

@@ -337,6 +337,8 @@ function getQueryMultiplePlansAndExecutions (query, bindVars, testObject, debug)
     // ignore these statistics for comparisons
     delete results[i].stats.scannedFull;
     delete results[i].stats.scannedIndex;
+    delete results[i].stats.cursorsCreated;
+    delete results[i].stats.cursorsRearmed;
     delete results[i].stats.filtered;
     delete results[i].stats.executionTime;
     delete results[i].stats.httpRequests;

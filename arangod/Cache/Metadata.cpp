@@ -94,7 +94,7 @@ Metadata& Metadata::operator=(Metadata&& other) noexcept {
   return *this;
 }
 
-basics::ReadWriteSpinLock& Metadata::lock() const { return _lock; }
+basics::ReadWriteSpinLock& Metadata::lock() const noexcept { return _lock; }
 
 bool Metadata::adjustUsageIfAllowed(std::int64_t usageChange) noexcept {
   while (true) {

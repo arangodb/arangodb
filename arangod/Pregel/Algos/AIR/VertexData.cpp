@@ -27,8 +27,6 @@
 
 #include <Pregel/Algos/AIR/AbstractAccumulator.h>
 
-#include <velocypack/velocypack-aliases.h>
-
 #include <utility>
 
 using namespace arangodb::pregel::algos::accumulators;

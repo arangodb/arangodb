@@ -24,6 +24,8 @@
 #pragma once
 
 #include <functional>
+#include <string>
+#include <string_view>
 
 #include "Shell/arangosh.h"
 #include "ApplicationFeatures/HttpEndpointProvider.h"
@@ -59,12 +61,17 @@ class ClientFeature final : public HttpEndpointProvider {
                       maxNumEndpoints,
                       connectionTimeout,
                       requestTimeout} {
-    startsAfter<CommunicationFeaturePhase, Server>();
-    startsAfter<GreetingsFeaturePhase, Server>();
+    static_assert(Server::template isCreatedAfter<HttpEndpointProvider,
+                                                  CommunicationFeaturePhase>());
 
     if constexpr (Server::template contains<ShellConsoleFeature>()) {
+      static_assert(Server::template isCreatedAfter<HttpEndpointProvider,
+                                                    ShellConsoleFeature>());
       _console = &server.template getFeature<ShellConsoleFeature>();
     }
+
+    startsAfter<CommunicationFeaturePhase, Server>();
+    startsAfter<GreetingsFeaturePhase, Server>();
   }
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -84,6 +91,7 @@ class ClientFeature final : public HttpEndpointProvider {
   std::string const& password() const { return _password; }
   void setPassword(std::string const& value) { _password = value; }
   std::string const& jwtSecret() const { return _jwtSecret; }
+  void setJwtSecret(std::string_view jwtSecret) { _jwtSecret = jwtSecret; }
   double connectionTimeout() const { return _connectionTimeout; }
   double requestTimeout() const { return _requestTimeout; }
   void requestTimeout(double value) { _requestTimeout = value; }

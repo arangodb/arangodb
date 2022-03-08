@@ -28,7 +28,6 @@
 #include <iosfwd>
 #include <memory>
 #include "velocypack/Builder.h"
-#include "velocypack/velocypack-aliases.h"
 
 #include "Basics/Result.h"
 

@@ -61,7 +61,7 @@
     <ClCompile Include="..\..\..\..\src\fxp.c" />
     <ClCompile Include="..\..\..\..\src\hook.c" />
     <ClCompile Include="..\..\..\..\src\hpa.c" />
-    <ClCompile Include="..\..\..\..\src\hpa_central.c" />
+    <ClCompile Include="..\..\..\..\src\hpa_hooks.c" />
     <ClCompile Include="..\..\..\..\src\hpdata.c" />
     <ClCompile Include="..\..\..\..\src\inspect.c" />
     <ClCompile Include="..\..\..\..\src\jemalloc.c" />
@@ -85,6 +85,8 @@
     <ClCompile Include="..\..\..\..\src\psset.c" />
     <ClCompile Include="..\..\..\..\src\rtree.c" />
     <ClCompile Include="..\..\..\..\src\safety_check.c" />
+    <ClCompile Include="..\..\..\..\src\san.c" />
+    <ClCompile Include="..\..\..\..\src\san_bump.c" />
     <ClCompile Include="..\..\..\..\src\sc.c" />
     <ClCompile Include="..\..\..\..\src\sec.c" />
     <ClCompile Include="..\..\..\..\src\stats.c" />

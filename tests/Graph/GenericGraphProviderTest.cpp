@@ -35,7 +35,6 @@
 #include "Graph/Steps/SingleServerProviderStep.h"
 #include "Graph/TraverserOptions.h"
 
-#include <velocypack/velocypack-aliases.h>
 #include <unordered_set>
 
 using namespace arangodb;
@@ -53,7 +52,7 @@ static_assert(GTEST_HAS_TYPED_TEST, "We need typed tests for the following:");
 using TypesToTest =
     ::testing::Types<MockGraphProvider,
                      SingleServerProvider<SingleServerProviderStep>,
-                     ClusterProvider>;
+                     ClusterProvider<ClusterProviderStep>>;
 
 template<class ProviderType>
 class GraphProviderTest : public ::testing::Test {
@@ -119,22 +118,26 @@ class GraphProviderTest : public ::testing::Test {
 
       std::vector<IndexAccessor> usedIndexes{};
       usedIndexes.emplace_back(IndexAccessor{edgeIndexHandle, indexCondition, 0,
-                                             nullptr, std::nullopt, 0});
+                                             nullptr, std::nullopt, 0,
+                                             TRI_EDGE_OUT});
 
       _expressionContext =
           std::make_unique<arangodb::aql::FixedVarExpressionContext>(
               *_trx.get(), *query, _functionsCache);
+      std::vector<Variable const*> vars;
+      std::vector<RegisterId const*> regs;
 
       BaseProviderOptions opts(
           tmpVar,
           std::make_pair(
               std::move(usedIndexes),
               std::unordered_map<uint64_t, std::vector<IndexAccessor>>{}),
-          *_expressionContext.get(), _emptyShardMap);
+          *_expressionContext.get(), {}, _emptyShardMap);
       return SingleServerProvider<SingleServerProviderStep>(
           *query.get(), std::move(opts), resourceMonitor);
     }
-    if constexpr (std::is_same_v<ProviderType, ClusterProvider>) {
+    if constexpr (std::is_same_v<ProviderType,
+                                 ClusterProvider<ClusterProviderStep>>) {
       // Prepare the DBServerResponses
       std::vector<arangodb::tests::PreparedRequestResponse> preparedResponses;
       uint64_t engineId = 0;
@@ -171,7 +174,8 @@ class GraphProviderTest : public ::testing::Test {
             ast->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
         fromCondition->addMember(cond);
         opts.addLookupInfo(fakeQuery->plan(), "s9880",
-                           StaticStrings::FromString, fromCondition);
+                           StaticStrings::FromString, fromCondition,
+                           /*onlyEdgeIndexes*/ false, TRI_EDGE_OUT);
 
         auto const* revAccess =
             ast->createNodeAttributeAccess(tmpVarRef, StaticStrings::ToString);
@@ -181,7 +185,8 @@ class GraphProviderTest : public ::testing::Test {
             ast->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
         toCondition->addMember(revCond);
         opts.addReverseLookupInfo(fakeQuery->plan(), "s9880",
-                                  StaticStrings::FromString, toCondition);
+                                  StaticStrings::ToString, toCondition,
+                                  /*onlyEdgeIndexes*/ false, TRI_EDGE_IN);
 
         std::tie(preparedResponses, engineId) =
             graph.simulateApi(server, expectedVerticesEdgesBundleToFetch, opts);
@@ -230,7 +235,8 @@ class GraphProviderTest : public ::testing::Test {
 
       ClusterBaseProviderOptions opts(clusterCache, clusterEngines.get(),
                                       false);
-      return ClusterProvider(*query.get(), std::move(opts), resourceMonitor);
+      return ClusterProvider<ClusterProviderStep>(*query.get(), std::move(opts),
+                                                  resourceMonitor);
     }
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
@@ -270,7 +276,7 @@ TYPED_TEST(GraphProviderTest, no_results_if_graph_is_empty) {
                                               SingleServerProviderStep>> ||
                 std::is_same_v<TypeParam, MockGraphProvider>) {
     EXPECT_EQ(stats.getHttpRequests(), 0);
-  } else if (std::is_same_v<TypeParam, ClusterProvider>) {
+  } else if (std::is_same_v<TypeParam, ClusterProvider<ClusterProviderStep>>) {
     EXPECT_EQ(stats.getHttpRequests(), 2);
   }
 
@@ -315,7 +321,8 @@ TYPED_TEST(GraphProviderTest, should_enumerate_a_single_edge) {
                                                 SingleServerProviderStep>> ||
                   std::is_same_v<TypeParam, MockGraphProvider>) {
       EXPECT_EQ(stats.getHttpRequests(), 0);
-    } else if (std::is_same_v<TypeParam, ClusterProvider>) {
+    } else if (std::is_same_v<TypeParam,
+                              ClusterProvider<ClusterProviderStep>>) {
       EXPECT_EQ(stats.getHttpRequests(), 2);
     }
     // We have 1 edge, this shall be counted
@@ -378,7 +385,8 @@ TYPED_TEST(GraphProviderTest, should_enumerate_all_edges) {
                                                 SingleServerProviderStep>> ||
                   std::is_same_v<TypeParam, MockGraphProvider>) {
       EXPECT_EQ(stats.getHttpRequests(), 0);
-    } else if (std::is_same_v<TypeParam, ClusterProvider>) {
+    } else if (std::is_same_v<TypeParam,
+                              ClusterProvider<ClusterProviderStep>>) {
       EXPECT_EQ(stats.getHttpRequests(), 2);
     }
     // We have 3 edges, this shall be counted
@@ -402,7 +410,7 @@ TYPED_TEST(GraphProviderTest, destroy_engines) {
                                               SingleServerProviderStep>> ||
                 std::is_same_v<TypeParam, MockGraphProvider>) {
     EXPECT_EQ(statsAfterSteal.getHttpRequests(), 0);
-  } else if (std::is_same_v<TypeParam, ClusterProvider>) {
+  } else if (std::is_same_v<TypeParam, ClusterProvider<ClusterProviderStep>>) {
     EXPECT_EQ(statsAfterSteal.getHttpRequests(),
               this->clusterEngines.get()->size());
   }

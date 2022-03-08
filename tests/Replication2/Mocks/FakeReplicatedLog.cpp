@@ -21,6 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "FakeReplicatedLog.h"
+#include "FakeFailureOracle.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -38,7 +39,8 @@ auto TestReplicatedLog::becomeLeader(
     ParticipantId const& id, LogTerm term,
     std::vector<std::shared_ptr<replicated_log::AbstractFollower>> const&
         follower,
-    std::size_t writeConcern, bool waitForSync)
+    std::size_t writeConcern, bool waitForSync,
+    std::shared_ptr<cluster::IFailureOracle> failureOracle)
     -> std::shared_ptr<replicated_log::LogLeader> {
   LogConfig config;
   config.writeConcern = writeConcern;
@@ -57,6 +59,10 @@ auto TestReplicatedLog::becomeLeader(
           .participants = std::move(participants),
       });
 
-  return becomeLeader(config, id, term, follower,
-                      std::move(participantsConfig));
+  if (!failureOracle) {
+    failureOracle = std::make_shared<FakeFailureOracle>();
+  }
+
+  return becomeLeader(config, id, term, follower, std::move(participantsConfig),
+                      failureOracle);
 }

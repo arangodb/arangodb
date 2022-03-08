@@ -128,8 +128,6 @@ void Inception::gossip() {
   network::RequestOptions reqOpts;
   reqOpts.timeout = network::Timeout(1);
 
-  CONDITION_LOCKER(guard, _cv);
-
   while (!this->isStopping() && !_agent.isStopping()) {
     auto const config = _agent.config();  // get a copy of conf
     auto const version = config.version();
@@ -153,7 +151,7 @@ void Inception::gossip() {
     for (auto const& p : config.gossipPeers()) {
       if (p != config.endpoint()) {
         {
-          MUTEX_LOCKER(ackedLocker, _vLock);
+          MUTEX_LOCKER(ackedLocker, _ackLock);
           auto const& ackedPeer = _acked.find(p);
           if (ackedPeer != _acked.end() && ackedPeer->second >= version) {
             continue;
@@ -183,7 +181,7 @@ void Inception::gossip() {
     for (auto const& pair : config.pool()) {
       if (pair.second != config.endpoint()) {
         {
-          MUTEX_LOCKER(ackedLocker, _vLock);
+          MUTEX_LOCKER(ackedLocker, _ackLock);
           if (_acked[pair.second] > version) {
             continue;
           }
@@ -229,6 +227,8 @@ void Inception::gossip() {
 
     // don't panic just yet
     //  wait() is true on signal, false on timeout
+    CONDITION_LOCKER(guard, _cv);
+
     if (_cv.wait(waitInterval)) {
       waitInterval = 250000;
     } else {
@@ -273,8 +273,6 @@ bool Inception::restartingActiveAgent() {
 
   auto const& nf = _agent.server().getFeature<arangodb::NetworkFeature>();
   network::ConnectionPool* cp = nf.pool();
-
-  CONDITION_LOCKER(guard, _cv);
 
   active.erase(std::remove(active.begin(), active.end(), myConfig.id()),
                active.end());
@@ -460,6 +458,7 @@ bool Inception::restartingActiveAgent() {
       break;
     }
 
+    CONDITION_LOCKER(guard, _cv);
     _cv.wait(waitInterval);
     if (waitInterval < 2500000) {  // 2.5s
       waitInterval *= 2;
@@ -471,7 +470,7 @@ bool Inception::restartingActiveAgent() {
 
 void Inception::reportVersionForEp(std::string const& endpoint,
                                    size_t version) {
-  MUTEX_LOCKER(versionLocker, _vLock);
+  MUTEX_LOCKER(versionLocker, _ackLock);
   if (_acked[endpoint] < version) {
     _acked[endpoint] = version;
   }

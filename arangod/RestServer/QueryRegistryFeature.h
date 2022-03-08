@@ -119,7 +119,6 @@ class QueryRegistryFeature final : public ArangodFeature {
   metrics::Histogram<metrics::LogScale<double>>& _slowQueryTimes;
   metrics::Counter& _totalQueryExecutionTime;
   metrics::Counter& _queriesCounter;
-  metrics::Counter& _slowQueriesCounter;
   metrics::Gauge<uint64_t>& _runningQueries;
   metrics::Gauge<uint64_t>& _globalQueryMemoryUsage;
   metrics::Gauge<uint64_t>& _globalQueryMemoryLimit;

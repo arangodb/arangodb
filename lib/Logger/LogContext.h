@@ -298,8 +298,7 @@ struct LogContext::ValueBuilder<LogContext::KeyValue<K, V>, Base, Depth> {
   }
   std::shared_ptr<Values> share() && {
     return std::move(*this).passValues([]<class... Args>(Args && ... args) {
-      return std::make_shared<
-          ValuesImpl<ValueTypesT, KeysT>>(
+      return std::make_shared<ValuesImpl<ValueTypesT, KeysT>>(
           std::forward<Args>(args)...);
     });
   }
@@ -402,11 +401,14 @@ struct LogContext::Entry {
  private:
   void incRefCnt() noexcept {
     TRI_ASSERT(_refCount.load() > 0);
+    // (1) - this acquire-fetch-add synchronizes-with the release-fetch-sub (2)
     _refCount.fetch_add(1, std::memory_order_acquire);
   }
   [[nodiscard]] std::size_t decRefCnt() noexcept {
     TRI_ASSERT(_refCount.load() > 0);
-    return _refCount.fetch_sub(1, std::memory_order_relaxed);
+    // (2) - this release-fetch-sub synchronizes-with the acquire-fetch-add (1)
+    //       and the acquire-load (3)
+    return _refCount.fetch_sub(1, std::memory_order_release);
   }
 
   friend class LogContext;
@@ -466,7 +468,7 @@ struct LogContext::EntryPtr {
 
 template<class Vals>
 struct LogContext::EntryImpl final : Entry {
-  //explicit EntryImpl(Vals&& v) : _values(std::move(v)) {}
+  // explicit EntryImpl(Vals&& v) : _values(std::move(v)) {}
   template<class... Args>
   explicit EntryImpl(Args&&... args) : _values(std::forward<Args>(args)...) {}
   void visit(Visitor const& visitor) const override { _values->visit(visitor); }
@@ -606,6 +608,8 @@ struct LogContext::ScopedContext {
 
 template<class Vals>
 inline void LogContext::EntryImpl<Vals>::release(EntryCache& cache) noexcept {
+  // (3) - this acquire-load synchronizes-with the release-fetch-sub (2)
+  std::ignore = this->_refCount.load(std::memory_order_acquire);
   void* p = this;
   this->~EntryImpl();
   if (sizeof(*this) <= LogContext::EntryCache::MinEntryCacheSize &&
@@ -641,17 +645,15 @@ inline LogContext::~LogContext() {
   auto* t = _tail;
   while (t != nullptr) {
     auto prev = t->_prev;
-    if (t->_refCount == 1) {
-      // we have the only reference to this Entry, so we can "reuse" t's
+    if (t->_refCount.load(std::memory_order_relaxed) == 1 ||
+        t->decRefCnt() == 1) {
+      // we have/had the only reference to this Entry, so we can "reuse" t's
       // reference to prev and therefore do not need to update any refCount.
       t->release(cache);
     } else {
-      if (prev) {
-        prev->incRefCnt();
-      }
-      if (t->decRefCnt() == 1) {
-        t->release(cache);
-      }
+      // we have decremented the refcnt, but some other LogContext still holds
+      // a reference to this entry, so there is nothing left for us to do!
+      break;
     }
     t = prev;
   }
@@ -693,7 +695,8 @@ inline LogContext::ValueBuilder<> LogContext::makeValue() noexcept {
 #ifndef _MSC_VER
 __attribute__((no_sanitize("null")))
 #endif
-inline LogContext& LogContext::current() noexcept {
+inline LogContext&
+LogContext::current() noexcept {
   return _threadControlBlock._logContext;
 }
 
@@ -706,11 +709,11 @@ template<class KV, class Base, std::size_t Depth>
 inline LogContext::EntryPtr LogContext::Current::pushValues(
     ValueBuilder<KV, Base, Depth>&& v) {
   return std::move(v).passValues([]<class... Args>(Args && ... args) {
-      return Current::appendEntry<
-          ValuesImpl<typename ValueBuilder<KV, Base, Depth>::ValueTypesT,
-                     typename ValueBuilder<KV, Base, Depth>::KeysT>>(
-          std::forward<Args>(args)...);
-    });
+    return Current::appendEntry<
+        ValuesImpl<typename ValueBuilder<KV, Base, Depth>::ValueTypesT,
+                   typename ValueBuilder<KV, Base, Depth>::KeysT>>(
+        std::forward<Args>(args)...);
+  });
 }
 
 template<class T, class... Args>
@@ -744,17 +747,19 @@ inline LogContext::Entry* LogContext::pushEntry(
 inline void LogContext::popTail(EntryCache& cache) noexcept {
   TRI_ASSERT(_tail != nullptr);
   auto prev = _tail->_prev;
-  if (_tail->_refCount == 1) {
+  if (_tail->_refCount.load(std::memory_order_relaxed) == 1) {
     // we have the only reference to this Entry, so we can "reuse" _tail's
     // reference to prev and therefore do not need to update any refCount.
     _tail->release(cache);
-  } else {
-    if (prev) {
-      prev->incRefCnt();
-    }
+  } else if (prev) {
+    prev->incRefCnt();
     if (_tail->decRefCnt() == 1) {
+      TRI_ASSERT(prev->_refCount.load() > 1);
+      std::ignore = prev->decRefCnt();
       _tail->release(cache);
     }
+  } else if (_tail->decRefCnt() == 1) {
+    _tail->release(cache);
   }
   _tail = prev;
 }

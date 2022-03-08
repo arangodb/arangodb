@@ -24,6 +24,7 @@
 #include "Graph/Providers/BaseProviderOptions.h"
 #include "Aql/NonConstExpression.h"
 #include "Aql/NonConstExpressionContainer.h"
+#include "Aql/InAndOutRowExpressionContext.h"
 
 using namespace arangodb;
 using namespace arangodb::graph;
@@ -33,24 +34,24 @@ IndexAccessor::IndexAccessor(
     std::optional<size_t> memberToUpdate,
     std::unique_ptr<arangodb::aql::Expression> expression,
     std::optional<aql::NonConstExpressionContainer> nonConstPart,
-    size_t cursorId)
+    size_t cursorId, TRI_edge_direction_e direction)
     : _idx(idx),
       _indexCondition(condition),
       _memberToUpdate(memberToUpdate),
+      _expression(std::move(expression)),
       _cursorId(cursorId),
-      _nonConstContainer(std::move(nonConstPart)) {
-  if (expression != nullptr) {
-    _expression = std::move(expression);
-  }
+      _nonConstContainer(std::move(nonConstPart)),
+      _direction(direction) {}
+
+aql::AstNode* IndexAccessor::getCondition() const noexcept {
+  return _indexCondition;
 }
 
-aql::AstNode* IndexAccessor::getCondition() const { return _indexCondition; }
-
-aql::Expression* IndexAccessor::getExpression() const {
+aql::Expression* IndexAccessor::getExpression() const noexcept {
   return _expression.get();
 }
 
-transaction::Methods::IndexHandle IndexAccessor::indexHandle() const {
+transaction::Methods::IndexHandle IndexAccessor::indexHandle() const noexcept {
   return _idx;
 }
 
@@ -58,9 +59,13 @@ std::optional<size_t> IndexAccessor::getMemberToUpdate() const {
   return _memberToUpdate;
 }
 
-size_t IndexAccessor::cursorId() const { return _cursorId; }
+size_t IndexAccessor::cursorId() const noexcept { return _cursorId; }
 
-bool IndexAccessor::hasNonConstParts() const {
+TRI_edge_direction_e IndexAccessor::direction() const noexcept {
+  return _direction;
+}
+
+bool IndexAccessor::hasNonConstParts() const noexcept {
   return _nonConstContainer.has_value() &&
          !_nonConstContainer->_expressions.empty();
 }
@@ -76,13 +81,16 @@ BaseProviderOptions::BaseProviderOptions(
               std::unordered_map<uint64_t, std::vector<IndexAccessor>>>&&
         indexInfo,
     aql::FixedVarExpressionContext& expressionContext,
+    std::vector<std::pair<aql::Variable const*, aql::RegisterId>>
+        filterConditionVariables,
     std::unordered_map<std::string, std::vector<std::string>> const&
         collectionToShardMap)
     : _temporaryVariable(tmpVar),
       _indexInformation(std::move(indexInfo)),
       _expressionContext(expressionContext),
       _collectionToShardMap(collectionToShardMap),
-      _weightCallback(std::nullopt) {}
+      _weightCallback(std::nullopt),
+      _filterConditionVariables(filterConditionVariables) {}
 
 aql::Variable const* BaseProviderOptions::tmpVar() const {
   return _temporaryVariable;
@@ -116,9 +124,19 @@ double BaseProviderOptions::weightEdge(double prefixWeight,
                                        arangodb::velocypack::Slice edge) const {
   if (!hasWeightMethod()) {
     // We do not have a weight. Hardcode.
-    return 1.0;
+    return prefixWeight + 1;
   }
   return _weightCallback.value()(prefixWeight, edge);
+}
+
+void BaseProviderOptions::prepareContext(aql::InputAqlItemRow input) {
+  for (auto const& [var, reg] : _filterConditionVariables) {
+    _expressionContext.setVariableValue(var, input.getValue(reg));
+  }
+}
+
+void BaseProviderOptions::unPrepareContext() {
+  _expressionContext.clearVariableValues();
 }
 
 ClusterBaseProviderOptions::ClusterBaseProviderOptions(

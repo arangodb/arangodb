@@ -39,7 +39,6 @@
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Parser.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::iresearch;
@@ -65,7 +64,7 @@ struct custom_sort : public irs::sort {
         }
       }
 
-      virtual void collect(const irs::bytes_ref& in) override {}
+      virtual void collect(irs::bytes_ref) override {}
 
       virtual void reset() override {}
 
@@ -87,7 +86,7 @@ struct custom_sort : public irs::sort {
         }
       }
 
-      virtual void collect(const irs::bytes_ref& in) override {}
+      virtual void collect(irs::bytes_ref in) override {}
 
       virtual void reset() override {}
 

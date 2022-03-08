@@ -27,21 +27,36 @@
 
 namespace arangodb::metrics {
 
+void Metric::addInfo(std::string& result, std::string_view name,
+                     std::string_view help, std::string_view type) {
+  (result.append("# HELP ").append(name) += ' ').append(help) += '\n';
+  (result.append("# TYPE ").append(name) += ' ').append(type) += '\n';
+}
+
+void Metric::addMark(std::string& result, std::string_view name,
+                     std::string_view globals, std::string_view labels) {
+  (result.append(name) += '{').append(globals);
+  if (!labels.empty()) {
+    if (!globals.empty()) {
+      result += ',';
+    }
+    result += labels;
+  }
+  result += '}';
+}
+
 Metric::Metric(std::string_view name, std::string_view help,
                std::string_view labels) noexcept
     : _name{name}, _help{help}, _labels{labels} {}
-
-std::string_view Metric::help() const noexcept { return _help; }
 
 std::string_view Metric::name() const noexcept { return _name; }
 
 std::string_view Metric::labels() const noexcept { return _labels; }
 
-void Metric::toPrometheusBegin(std::string& result,
-                               std::string_view name) const {
-  result.append("# HELP ").append(name).append(" ").append(help()).append("\n");
-  result.append("# TYPE ").append(name).append(" ").append(type()).append("\n");
-}
+std::string_view Metric::help() const noexcept { return _help; }
+
+void Metric::toVPack(velocypack::Builder& builder,
+                     ArangodServer& server) const {}
 
 Metric::~Metric() = default;
 

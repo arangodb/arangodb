@@ -187,9 +187,8 @@ extern void str_append(struct str * str, const struct str * add) {
 /* Append a character to this str. */
 extern void str_append_ch(struct str * str, char add) {
 
-    symbol q[1];
-    q[0] = add;
-    str->data = add_to_b(str->data, 1, q);
+    symbol sym = (unsigned char)add;
+    str->data = add_to_b(str->data, 1, &sym);
 }
 
 /* Append a low level block to a str. */

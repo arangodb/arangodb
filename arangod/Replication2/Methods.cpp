@@ -36,14 +36,17 @@
 #include "Replication2/ReplicatedLog/LogLeader.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
+#include "Replication2/ReplicatedState/ReplicatedState.h"
 #include "VocBase/vocbase.h"
 
 #include "Methods.h"
+#include "Agency/AsyncAgencyComm.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_log;
 
+namespace {
 struct ReplicatedLogMethodsDBServer final
     : ReplicatedLogMethods,
       std::enable_shared_from_this<ReplicatedLogMethodsDBServer> {
@@ -175,6 +178,7 @@ struct VPackLogIterator final : PersistedLogIterator {
   VPackArrayIterator iter;
   VPackArrayIterator end;
 };
+
 }  // namespace
 
 struct ReplicatedLogMethodsCoordinator final
@@ -219,42 +223,22 @@ struct ReplicatedLogMethodsCoordinator final
 
   auto getGlobalStatus(LogId id) const
       -> futures::Future<replication2::replicated_log::GlobalStatus> override {
-    auto path = basics::StringUtils::joinT("/", "_api/log", id, "local-status");
-    network::RequestOptions opts;
-    opts.database = vocbase.name();
-
-    auto leader = clusterInfo.getReplicatedLogLeader(opts.database, id);
-    if (leader.fail()) {
-      if (leader.is(TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED)) {
-        return GlobalStatus{
-            replication2::agency::methods::getCurrentSupervision(vocbase, id),
-            {},
-            std::nullopt};
-      } else {
-        THROW_ARANGO_EXCEPTION(leader.result());
-      }
-    }
-    auto leaderId = std::move(*leader);
-
-    return network::sendRequest(pool, "server:" + leaderId,
-                                fuerte::RestVerb::Get, path, {}, opts)
-        .thenValue([self = shared_from_this(), id,
-                    leaderId](network::Response&& resp) mutable {
-          if (resp.fail() || !fuerte::statusIsSuccess(resp.statusCode())) {
-            THROW_ARANGO_EXCEPTION(resp.combinedResult());
+    // 1. Determine which source to use for gathering information
+    // 2. Query information from all sources
+    auto source = GlobalStatus::SpecificationSource::kLocalCache;
+    auto futureSpec = loadLogSpecification(vocbase.name(), id, source);
+    return std::move(futureSpec)
+        .thenValue([self = shared_from_this(), source](
+                       ResultT<std::shared_ptr<
+                           replication2::agency::LogPlanSpecification const>>
+                           result) {
+          if (result.fail()) {
+            THROW_ARANGO_EXCEPTION(result.result());
           }
 
-          auto supervision =
-              replication2::agency::methods::getCurrentSupervision(
-                  self->vocbase, id);
-          auto leaderStatus =
-              replication2::replicated_log::LogStatus::fromVelocyPack(
-                  resp.slice().get("result"));
-          auto participants = std::unordered_map<ParticipantId, LogStatus>{
-              {leaderId, std::move(leaderStatus)}};
-          return GlobalStatus{.supervision = std::move(supervision),
-                              .participants = std::move(participants),
-                              .leaderId = std::move(leaderId)};
+          auto const& spec = result.get();
+          TRI_ASSERT(spec != nullptr);
+          return self->collectGlobalStatusUsingSpec(spec, source);
         });
   }
 
@@ -371,8 +355,8 @@ struct ReplicatedLogMethodsCoordinator final
     network::RequestOptions opts;
     opts.database = vocbase.name();
     return network::sendRequest(pool, "server:" + getLogLeader(id),
-                                fuerte::RestVerb::Post, path, payload.dummy,
-                                opts)
+                                fuerte::RestVerb::Post, path,
+                                payload.copyBuffer(), opts)
         .thenValue([](network::Response&& resp) {
           if (resp.fail() || !fuerte::statusIsSuccess(resp.statusCode())) {
             THROW_ARANGO_EXCEPTION(resp.combinedResult());
@@ -474,10 +458,204 @@ struct ReplicatedLogMethodsCoordinator final
     return *leader;
   }
 
+  auto loadLogSpecification(DatabaseID const& database, replication2::LogId id,
+                            GlobalStatus::SpecificationSource source) const
+      -> futures::Future<ResultT<std::shared_ptr<
+          arangodb::replication2::agency::LogPlanSpecification const>>> {
+    if (source == GlobalStatus::SpecificationSource::kLocalCache) {
+      return clusterInfo.getReplicatedLogPlanSpecification(database, id);
+    } else {
+      return ResultT<std::shared_ptr<
+          arangodb::replication2::agency::LogPlanSpecification const>>::
+          error(TRI_ERROR_NOT_IMPLEMENTED);
+    }
+  }
+
+  auto readSupervisionStatus(replication2::LogId id) const
+      -> futures::Future<GlobalStatus::SupervisionStatus> {
+    AsyncAgencyComm ac;
+    using Status = GlobalStatus::SupervisionStatus;
+    // TODO move this into the agency methods
+    auto f = ac.getValues(arangodb::cluster::paths::aliases::current()
+                              ->replicatedLogs()
+                              ->database(vocbase.name())
+                              ->log(id)
+                              ->supervision(),
+                          std::chrono::seconds{5});
+    return std::move(f).then([self = shared_from_this()](
+                                 futures::Try<AgencyReadResult>&& tryResult) {
+      auto result =
+          basics::catchToResultT([&] { return std::move(tryResult.get()); });
+
+      auto const statusFromResult = [](Result const& res) {
+        return Status{
+            .connection = {.error = res.errorNumber(),
+                           .errorMessage = std::string{res.errorMessage()}},
+            .response = std::nullopt};
+      };
+
+      if (result.fail()) {
+        return statusFromResult(result.result());
+      }
+      auto& read = result.get();
+      auto status = statusFromResult(read.asResult());
+      if (read.ok() && !read.value().isNone()) {
+        status.response.emplace(arangodb::replication2::agency::from_velocypack,
+                                read.value());
+      }
+
+      return status;
+    });
+  }
+
+  auto queryParticipantsStatus(replication2::LogId id,
+                               replication2::ParticipantId const& participant)
+      const -> futures::Future<GlobalStatus::ParticipantStatus> {
+    using Status = GlobalStatus::ParticipantStatus;
+    auto path = basics::StringUtils::joinT("/", "_api/log", id, "local-status");
+    network::RequestOptions opts;
+    opts.database = vocbase.name();
+    opts.timeout = std::chrono::seconds{5};
+    return network::sendRequest(pool, "server:" + participant,
+                                fuerte::RestVerb::Get, path, {}, opts)
+        .then([](futures::Try<network::Response>&& tryResult) mutable {
+          auto result = basics::catchToResultT(
+              [&] { return std::move(tryResult.get()); });
+
+          auto const statusFromResult = [](Result const& res) {
+            return Status{
+                .connection = {.error = res.errorNumber(),
+                               .errorMessage = std::string{res.errorMessage()}},
+                .response = std::nullopt};
+          };
+
+          if (result.fail()) {
+            return statusFromResult(result.result());
+          }
+
+          auto& response = result.get();
+          auto status = statusFromResult(response.combinedResult());
+          if (response.combinedResult().ok()) {
+            status.response = GlobalStatus::ParticipantStatus::Response{
+                .value =
+                    replication2::replicated_log::LogStatus::fromVelocyPack(
+                        response.slice().get("result"))};
+          }
+          return status;
+        });
+  }
+
+  auto collectGlobalStatusUsingSpec(
+      std::shared_ptr<replication2::agency::LogPlanSpecification const> spec,
+      GlobalStatus::SpecificationSource source) const
+      -> futures::Future<GlobalStatus> {
+    // send of a request to all participants
+
+    auto psf = std::invoke([&] {
+      auto const& participants = spec->participantsConfig.participants;
+      std::vector<futures::Future<GlobalStatus::ParticipantStatus>> pfs;
+      pfs.reserve(participants.size());
+      for (auto const& [id, flags] : participants) {
+        pfs.emplace_back(queryParticipantsStatus(spec->id, id));
+      }
+      return futures::collectAll(pfs);
+    });
+    auto af = readSupervisionStatus(spec->id);
+    return futures::collect(std::move(af), std::move(psf))
+        .thenValue([spec, source](auto&& pairResult) {
+          auto& [agency, participantResults] = pairResult;
+
+          auto leader = std::optional<ParticipantId>{};
+          if (spec->currentTerm && spec->currentTerm->leader) {
+            leader = spec->currentTerm->leader->serverId;
+          }
+          auto participantsMap =
+              std::unordered_map<ParticipantId,
+                                 GlobalStatus::ParticipantStatus>{};
+
+          auto const& participants = spec->participantsConfig.participants;
+          std::size_t idx = 0;
+          for (auto const& [id, flags] : participants) {
+            auto& result = participantResults.at(idx++);
+            participantsMap[id] = std::move(result.get());
+          }
+
+          return GlobalStatus{
+              .supervision = agency,
+              .participants = participantsMap,
+              .specification = {.source = source, .plan = *spec},
+              .leaderId = std::move(leader)};
+        });
+  }
+
   TRI_vocbase_t& vocbase;
   ClusterInfo& clusterInfo;
   network::ConnectionPool* pool;
 };
+
+struct ReplicatedStateDBServerMethods
+    : std::enable_shared_from_this<ReplicatedStateDBServerMethods>,
+      ReplicatedStateMethods {
+  explicit ReplicatedStateDBServerMethods(TRI_vocbase_t& vocbase)
+      : vocbase(vocbase) {}
+
+  auto createReplicatedState(replicated_state::agency::Target const& spec) const
+      -> futures::Future<Result> override {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+
+  auto deleteReplicatedLog(LogId id) const -> futures::Future<Result> override {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+
+  auto getLocalStatus(LogId id) const
+      -> futures::Future<replicated_state::StateStatus> override {
+    auto state = vocbase.getReplicatedStateById(id);
+    if (auto status = state->getStatus(); status.has_value()) {
+      return std::move(*status);
+    }
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_HTTP_SERVICE_UNAVAILABLE);
+  }
+
+  TRI_vocbase_t& vocbase;
+};
+
+struct ReplicatedStateCoordinatorMethods
+    : std::enable_shared_from_this<ReplicatedStateCoordinatorMethods>,
+      ReplicatedStateMethods {
+  explicit ReplicatedStateCoordinatorMethods(TRI_vocbase_t& vocbase)
+      : vocbase(vocbase),
+        clusterInfo(
+            vocbase.server().getFeature<ClusterFeature>().clusterInfo()) {}
+
+  auto createReplicatedState(replicated_state::agency::Target const& spec) const
+      -> futures::Future<Result> override {
+    return replication2::agency::methods::createReplicatedState(vocbase.name(),
+                                                                spec)
+        .thenValue([self = shared_from_this()](
+                       ResultT<uint64_t>&& res) -> futures::Future<Result> {
+          if (res.fail()) {
+            return futures::Future<Result>{std::in_place, res.result()};
+          }
+
+          return self->clusterInfo.waitForPlan(res.get());
+        });
+  }
+
+  auto deleteReplicatedLog(LogId id) const -> futures::Future<Result> override {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+
+  auto getLocalStatus(LogId id) const
+      -> futures::Future<replicated_state::StateStatus> override {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+
+  TRI_vocbase_t& vocbase;
+  ClusterInfo& clusterInfo;
+};
+
+}  // namespace
 
 auto ReplicatedLogMethods::createInstance(TRI_vocbase_t& vocbase)
     -> std::shared_ptr<ReplicatedLogMethods> {
@@ -486,6 +664,20 @@ auto ReplicatedLogMethods::createInstance(TRI_vocbase_t& vocbase)
       return std::make_shared<ReplicatedLogMethodsCoordinator>(vocbase);
     case ServerState::ROLE_DBSERVER:
       return std::make_shared<ReplicatedLogMethodsDBServer>(vocbase);
+    default:
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_NOT_IMPLEMENTED,
+          "api only on available coordinators or dbservers");
+  }
+}
+
+auto ReplicatedStateMethods::createInstance(TRI_vocbase_t& vocbase)
+    -> std::shared_ptr<ReplicatedStateMethods> {
+  switch (ServerState::instance()->getRole()) {
+    case ServerState::ROLE_DBSERVER:
+      return std::make_shared<ReplicatedStateDBServerMethods>(vocbase);
+    case ServerState::ROLE_COORDINATOR:
+      return std::make_shared<ReplicatedStateCoordinatorMethods>(vocbase);
     default:
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_NOT_IMPLEMENTED,

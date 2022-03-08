@@ -660,7 +660,7 @@ void extractNonConstPartsOfAndPart(
 ///        Returns false if no index could be found.
 
 bool getBestIndexHandleForFilterCondition(
-    aql::Collection const& collection, arangodb::aql::AstNode*& node,
+    aql::Collection const& collection, arangodb::aql::AstNode* node,
     arangodb::aql::Variable const* reference, size_t itemsInCollection,
     aql::IndexHint const& hint, std::shared_ptr<Index>& usedIndex,
     bool onlyEdgeIndexes) {

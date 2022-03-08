@@ -89,7 +89,7 @@ class FrequencyBuffer {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Reports the hidden allocation size (not captured by sizeof).
   //////////////////////////////////////////////////////////////////////////////
-  static std::size_t allocationSize(std::size_t capacity) {
+  static constexpr std::size_t allocationSize(std::size_t capacity) {
     return capacity * sizeof(T);
   }
 

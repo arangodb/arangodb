@@ -9,6 +9,12 @@
 #define _CRT_SPINCOUNT 4000
 #endif
 
+/*
+ * Based on benchmark results, a fixed spin with this amount of retries works
+ * well for our critical sections.
+ */
+int64_t opt_mutex_max_spin = 600;
+
 /******************************************************************************/
 /* Data. */
 
@@ -51,7 +57,7 @@ malloc_mutex_lock_slow(malloc_mutex_t *mutex) {
 		goto label_spin_done;
 	}
 
-	int cnt = 0, max_cnt = MALLOC_MUTEX_MAX_SPIN;
+	int cnt = 0;
 	do {
 		spin_cpu_spinwait();
 		if (!atomic_load_b(&mutex->locked, ATOMIC_RELAXED)
@@ -59,7 +65,7 @@ malloc_mutex_lock_slow(malloc_mutex_t *mutex) {
 			data->n_spin_acquired++;
 			return;
 		}
-	} while (cnt++ < max_cnt);
+	} while (cnt++ < opt_mutex_max_spin || opt_mutex_max_spin == -1);
 
 	if (!config_stats) {
 		/* Only spin is useful when stats is off. */

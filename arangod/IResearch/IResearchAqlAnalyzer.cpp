@@ -239,7 +239,7 @@ ExecutionNode* getCalcNode(ExecutionNode* node) {
 namespace arangodb {
 namespace iresearch {
 
-/*static*/ bool AqlAnalyzer::normalize_vpack(const irs::string_ref& args,
+/*static*/ bool AqlAnalyzer::normalize_vpack(irs::string_ref args,
                                              std::string& out) {
   auto const slice = arangodb::iresearch::slice(args);
   VPackBuilder builder;
@@ -251,7 +251,7 @@ namespace iresearch {
   return false;
 }
 
-/*static*/ bool AqlAnalyzer::normalize_json(const irs::string_ref& args,
+/*static*/ bool AqlAnalyzer::normalize_json(irs::string_ref args,
                                             std::string& out) {
   auto src = VPackParser::fromJson(args.c_str(), args.size());
   VPackBuilder builder;
@@ -263,13 +263,13 @@ namespace iresearch {
 }
 
 /*static*/ irs::analysis::analyzer::ptr AqlAnalyzer::make_vpack(
-    irs::string_ref const& args) {
+    irs::string_ref args) {
   auto const slice = arangodb::iresearch::slice(args);
   return make_slice(slice);
 }
 
 /*static*/ irs::analysis::analyzer::ptr AqlAnalyzer::make_json(
-    irs::string_ref const& args) {
+    irs::string_ref args) {
   auto builder = VPackParser::fromJson(args.c_str(), args.size());
   return make_slice(builder->slice());
 }
@@ -444,7 +444,7 @@ bool AqlAnalyzer::next() {
   return false;
 }
 
-bool AqlAnalyzer::reset(irs::string_ref const& field) noexcept {
+bool AqlAnalyzer::reset(irs::string_ref field) noexcept {
   try {
     if (!_plan) {  // lazy initialization
       // important to hold a copy here as parser accepts reference!
@@ -458,10 +458,8 @@ bool AqlAnalyzer::reset(irs::string_ref const& field) noexcept {
       Ast::traverseAndModify(
           astRoot, [this, field, ast](AstNode* node) -> AstNode* {
             if (node->type == NODE_TYPE_PARAMETER) {
-          // should be only our parameter name. see validation method!
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+              // should be only our parameter name. see validation method!
               TRI_ASSERT(node->getStringView() == CALCULATION_PARAMETER_NAME);
-#endif
               // FIXME: move to computed value once here could be not only
               // strings
               auto newNode = ast->createNodeValueMutableString(field.c_str(),

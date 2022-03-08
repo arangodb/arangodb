@@ -31,7 +31,6 @@
 #include "Graph/Providers/SingleServerProvider.h"
 #include "Graph/Steps/SingleServerProviderStep.h"
 
-#include <velocypack/velocypack-aliases.h>
 #include <unordered_set>
 
 using namespace arangodb;
@@ -104,7 +103,8 @@ class SingleServerProviderTest : public ::testing::Test {
     // can be used to create an expression, currently unused but may be helpful
     // for additional tests auto expr = conditionKeyMatches(stringToMatch);
     usedIndexes.emplace_back(IndexAccessor{edgeIndexHandle, indexCondition, 0,
-                                           nullptr, std::nullopt, 0});
+                                           nullptr, std::nullopt, 0,
+                                           TRI_EDGE_OUT});
 
     _expressionContext =
         std::make_unique<arangodb::aql::FixedVarExpressionContext>(
@@ -114,7 +114,7 @@ class SingleServerProviderTest : public ::testing::Test {
         std::make_pair(
             std::move(usedIndexes),
             std::unordered_map<uint64_t, std::vector<IndexAccessor>>{}),
-        *_expressionContext.get(), _emptyShardMap);
+        *_expressionContext.get(), {}, _emptyShardMap);
     return {*query.get(), std::move(opts), _resourceMonitor};
   }
 

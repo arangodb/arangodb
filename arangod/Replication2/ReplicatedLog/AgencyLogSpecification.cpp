@@ -30,7 +30,6 @@
 #include "Logger/Logger.h"
 
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <type_traits>
 
@@ -304,6 +303,8 @@ auto agency::to_string(LogCurrentSupervisionError error) noexcept
   switch (error) {
     case LogCurrentSupervisionError::TARGET_LEADER_INVALID:
       return "the leader selected in target is invalid";
+    case LogCurrentSupervisionError::TARGET_LEADER_EXCLUDED:
+      return "the leader selected in target is excluded";
   }
   LOG_TOPIC("7eee2", FATAL, arangodb::Logger::REPLICATION2)
       << "Invalid LogCurrentSupervisionError "

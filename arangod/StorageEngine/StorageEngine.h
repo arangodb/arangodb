@@ -258,15 +258,12 @@ class StorageEngine : public ArangodFeature {
                                             LogicalCollection const& collection,
                                             std::string const& oldName) = 0;
 
-  // asks the storage engine to change properties of the view as specified in
-  // the VPack Slice object and persist them. If this operation fails
-  // somewhere in the middle, the storage engine is required to fully revert the
-  // property changes and throw only then, so that subsequent operations will
-  // not fail. the WAL entry for the propery change will be written *after* the
-  // call to "changeView" returns
-  virtual arangodb::Result changeView(TRI_vocbase_t& vocbase,
-                                      arangodb::LogicalView const& view,
-                                      bool doSync) = 0;
+  // If this operation fails somewhere in the middle, the storage engine is
+  // required to fully revert the property changes and throw only then, so that
+  // subsequent operations will not fail. The WAL entry for the property change
+  // will be written *after* the call to "changeView" returns
+  virtual Result changeView(LogicalView const& view,
+                            velocypack::Slice update) = 0;
 
   //// Operations on Views
   // asks the storage engine to create a view as specified in the VPack
@@ -343,9 +340,9 @@ class StorageEngine : public ArangodFeature {
 
   void getCapabilities(velocypack::Builder& builder) const;
 
-  virtual void getStatistics(velocypack::Builder& builder, bool v2) const;
+  virtual void getStatistics(velocypack::Builder& builder) const;
 
-  virtual void getStatistics(std::string& result, bool v2) const;
+  virtual void getStatistics(std::string& result) const;
 
   // management methods for synchronizing with external persistent stores
   virtual TRI_voc_tick_t currentTick() const = 0;

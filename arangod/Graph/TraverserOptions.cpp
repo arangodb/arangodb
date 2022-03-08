@@ -36,7 +36,6 @@
 #include "Indexes/Index.h"
 
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::graph;
@@ -424,6 +423,24 @@ TraverserOptions::TraverserOptions(TraverserOptions const& other,
     TRI_ASSERT(other._baseVertexExpression == nullptr);
   }
 
+  if (other.refactor()) {
+    // TODO: [GraphRefactor] Clean this up as soon as we get rid of all the old
+    // code
+    if (other._baseVertexExpression != nullptr) {
+      auto baseVertexExpression = other._baseVertexExpression->clone(
+          other._baseVertexExpression->ast());
+      _baseVertexExpression = std::move(baseVertexExpression);
+    }
+    if (!other._vertexExpressions.empty()) {
+      for (auto const& vertexExpressionPerDepth : other._vertexExpressions) {
+        auto depth = vertexExpressionPerDepth.first;
+        auto expression = vertexExpressionPerDepth.second->clone(
+            vertexExpressionPerDepth.second->ast());
+        _vertexExpressions.insert({depth, std::move(expression)});
+      }
+    }
+  }
+
   // Check for illegal option combination:
   TRI_ASSERT(uniqueEdges != TraverserOptions::UniquenessLevel::GLOBAL);
   TRI_ASSERT(uniqueVertices != TraverserOptions::UniquenessLevel::GLOBAL ||
@@ -650,11 +667,11 @@ void TraverserOptions::addDepthLookupInfo(aql::ExecutionPlan* plan,
                                           std::string const& collectionName,
                                           std::string const& attributeName,
                                           aql::AstNode* condition,
-                                          uint64_t depth,
-                                          bool onlyEdgeIndexes) {
+                                          uint64_t depth, bool onlyEdgeIndexes,
+                                          TRI_edge_direction_e direction) {
   auto& list = _depthLookupInfo[depth];
   injectLookupInfoInList(list, plan, collectionName, attributeName, condition,
-                         onlyEdgeIndexes);
+                         onlyEdgeIndexes, direction);
 }
 
 bool TraverserOptions::vertexHasFilter(uint64_t depth) const {
@@ -888,22 +905,40 @@ double TraverserOptions::estimateCost(size_t& nrItems) const {
   return cost;
 }
 
+std::unique_ptr<aql::PruneExpressionEvaluator>
+TraverserOptions::createPruneEvaluator(std::vector<aql::Variable const*> vars,
+                                       std::vector<aql::RegisterId> regs,
+                                       size_t vertexVarIdx, size_t edgeVarIdx,
+                                       size_t pathVarIdx,
+                                       aql::Expression* expr) {
+  return std::make_unique<aql::PruneExpressionEvaluator>(
+      _trx, _query, _aqlFunctionsInternalCache, std::move(vars),
+      std::move(regs), vertexVarIdx, edgeVarIdx, pathVarIdx, expr);
+}
+
+std::unique_ptr<aql::PruneExpressionEvaluator>
+TraverserOptions::createPostFilterEvaluator(
+    std::vector<aql::Variable const*> vars, std::vector<aql::RegisterId> regs,
+    size_t vertexVarIdx, size_t edgeVarIdx, aql::Expression* expr) {
+  return std::make_unique<aql::PruneExpressionEvaluator>(
+      _trx, _query, _aqlFunctionsInternalCache, std::move(vars),
+      std::move(regs), vertexVarIdx, edgeVarIdx,
+      std::numeric_limits<std::size_t>::max(), expr);
+}
+
 void TraverserOptions::activatePrune(std::vector<aql::Variable const*> vars,
                                      std::vector<aql::RegisterId> regs,
                                      size_t vertexVarIdx, size_t edgeVarIdx,
                                      size_t pathVarIdx, aql::Expression* expr) {
-  _pruneExpression = std::make_unique<aql::PruneExpressionEvaluator>(
-      _trx, _query, _aqlFunctionsInternalCache, std::move(vars),
-      std::move(regs), vertexVarIdx, edgeVarIdx, pathVarIdx, expr);
+  _pruneExpression = createPruneEvaluator(vars, regs, vertexVarIdx, edgeVarIdx,
+                                          pathVarIdx, expr);
 }
 
 void TraverserOptions::activatePostFilter(
     std::vector<aql::Variable const*> vars, std::vector<aql::RegisterId> regs,
     size_t vertexVarIdx, size_t edgeVarIdx, aql::Expression* expr) {
-  _postFilterExpression = std::make_unique<aql::PruneExpressionEvaluator>(
-      _trx, _query, _aqlFunctionsInternalCache, std::move(vars),
-      std::move(regs), vertexVarIdx, edgeVarIdx,
-      std::numeric_limits<std::size_t>::max(), expr);
+  _postFilterExpression =
+      createPostFilterEvaluator(vars, regs, vertexVarIdx, edgeVarIdx, expr);
 }
 
 double TraverserOptions::weightEdge(VPackSlice edge) const {
