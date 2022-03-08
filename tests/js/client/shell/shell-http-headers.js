@@ -36,9 +36,9 @@ function headersSingleSuite () {
     testSingle: function() {
       let result = arango.GET_RAW("/_api/version");
       assertTrue(result.hasOwnProperty("headers"));
-      assertTrue(result.headers.hasOwnProperty("server"), result);
       if (arango.protocol() !== 'vst') {
-        // VST does not send this header
+        // VST does not send this header, never
+        assertTrue(result.headers.hasOwnProperty("server"), result);
         assertEqual("ArangoDB", result.headers["server"]);
       }
     },
@@ -71,8 +71,11 @@ function headersClusterSuite () {
     testCoordinator: function() {
       let result = arango.GET_RAW("/_api/version");
       assertTrue(result.hasOwnProperty("headers"), "no headers found");
-      assertTrue(result.headers.hasOwnProperty("server"), "server header not found");
-      assertEqual("ArangoDB", result.headers["server"]);
+      if (arango.protocol() !== 'vst') {
+        // VST does not send this header, never
+        assertTrue(result.headers.hasOwnProperty("server"), "server header not found");
+        assertEqual("ArangoDB", result.headers["server"]);
+      }
     },
 
     // test executing requests on DB-Servers
