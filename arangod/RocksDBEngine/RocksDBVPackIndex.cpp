@@ -249,7 +249,8 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
         _index(index),
         _cmp(static_cast<RocksDBVPackComparator const*>(index->comparator())),
         _cache(std::static_pointer_cast<
-               cache::TransactionalCache<cache::VPackKeyHasher>>(cache)),
+               cache::TransactionalCache<cache::VPackKeyHasher>>(
+            std::move(cache))),
         _resultIterator(VPackArrayIterator(VPackArrayIterator::Empty{})),
         _bounds(std::move(bounds)),
         _rangeBound(reverse ? _bounds.start() : _bounds.end()),
@@ -261,6 +262,19 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
     TRI_ASSERT(index->columnFamily() ==
                RocksDBColumnFamilyManager::get(
                    RocksDBColumnFamilyManager::Family::VPackIndex));
+
+    TRI_ASSERT(_cache == nullptr ||
+               _cache->hasher().name() == "VPackKeyHasher");
+    TRI_IF_FAILURE("VPackIndexFailWithoutCache") {
+      if (_cache == nullptr) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
+    }
+    TRI_IF_FAILURE("VPackIndexFailOnCache") {
+      if (_cache != nullptr) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
+    }
   }
 
   ~RocksDBVPackIndexIterator() {

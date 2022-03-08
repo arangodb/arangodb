@@ -23,15 +23,18 @@
 
 #pragma once
 
-#include <utility>
 #include <cstdint>
 #include <cstring>
+#include <string_view>
+#include <utility>
 
 #include "Basics/fasthash.h"
 
 namespace arangodb::cache {
 
 struct BinaryKeyHasher {
+  std::string_view name() const noexcept { return "BinaryKeyHasher"; }
+
   inline std::uint32_t hashKey(void const* key,
                                std::size_t keySize) const noexcept {
     return (std::max)(static_cast<std::uint32_t>(1),

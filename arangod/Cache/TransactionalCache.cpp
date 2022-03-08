@@ -228,6 +228,12 @@ Result TransactionalCache<Hasher>::banish(void const* key,
   return status;
 }
 
+/// @brief provide access to the Hasher object
+template<typename Hasher>
+Hasher const& TransactionalCache<Hasher>::hasher() const noexcept {
+  return _hasher;
+}
+
 template<typename Hasher>
 std::shared_ptr<Cache> TransactionalCache<Hasher>::create(
     Manager* manager, Hasher hasher, std::uint64_t id, Metadata&& metadata,

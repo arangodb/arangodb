@@ -32,6 +32,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/cpu-relax.h"
+#include "Cache/BinaryKeyHasher.h"
 #include "Cache/CachedValue.h"
 #include "Cache/CacheManagerFeature.h"
 #include "Cache/TransactionalCache.h"
@@ -128,13 +129,18 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
                                  ReadOwnWrites readOwnWrites)
       : IndexIterator(collection, trx, readOwnWrites),
         _index(index),
-        _cache(std::move(cache)),
+        _cache(std::static_pointer_cast<
+               cache::TransactionalCache<cache::BinaryKeyHasher>>(
+            std::move(cache))),
         _keys(std::move(keys)),
         _keysIterator(_keys.slice()),
         _bounds(RocksDBKeyBounds::EdgeIndex(0)),
         _builderIterator(VPackArrayIterator::Empty{}),
         _lastKey(VPackSlice::nullSlice()) {
     TRI_ASSERT(_keys.slice().isArray());
+
+    TRI_ASSERT(_cache != nullptr);
+    TRI_ASSERT(_cache->hasher().name() == "BinaryKeyHasher");
   }
 
   char const* typeName() const override { return "edge-index-iterator"; }
@@ -395,7 +401,7 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
 
   RocksDBEdgeIndex const* _index;
 
-  std::shared_ptr<cache::Cache> _cache;
+  std::shared_ptr<cache::TransactionalCache<cache::BinaryKeyHasher>> _cache;
   arangodb::velocypack::Builder _keys;
   arangodb::velocypack::ArrayIterator _keysIterator;
 

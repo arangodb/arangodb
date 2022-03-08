@@ -181,6 +181,12 @@ Result PlainCache<Hasher>::banish(void const* key, std::uint32_t keySize) {
   return {TRI_ERROR_NOT_IMPLEMENTED};
 }
 
+/// @brief provide access to the Hasher object
+template<typename Hasher>
+Hasher const& PlainCache<Hasher>::hasher() const noexcept {
+  return _hasher;
+}
+
 template<typename Hasher>
 std::shared_ptr<Cache> PlainCache<Hasher>::create(
     Manager* manager, Hasher hasher, std::uint64_t id, Metadata&& metadata,

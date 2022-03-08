@@ -109,6 +109,9 @@ class TransactionalCache final : public Cache {
   //////////////////////////////////////////////////////////////////////////////
   Result banish(void const* key, std::uint32_t keySize) override;
 
+  /// @brief provide access to the Hasher object
+  Hasher const& hasher() const noexcept;
+
  private:
   // friend class manager and tasks
   friend class FreeMemoryTask;
