@@ -166,7 +166,6 @@ describe('UserProperties', function () {
   };
 
   const verifyEmptyConfig = (result) => {
-    console.warn(result);
     expect(result.error).to.be.false;
     expect(result).to.have.property('code', 200);
     expect(result).to.have.property('result', null);
@@ -187,6 +186,9 @@ describe('UserProperties', function () {
   };
 
   const verifyOverwriteConfigObject = (result) => {
+    // We do have one "global" property we can modify. If we write to that same top-level attribute again, it will be
+    // fully replaced by the supplied object given. In case we write to another top-level attribute, it will be merged with
+    // the other already available ones (This is tested in verifyMergedConfigObject).
     expect(result.error).to.be.false;
     expect(result).to.have.property('code', 200);
 
@@ -203,18 +205,12 @@ describe('UserProperties', function () {
   };
 
   const generateReadConfigUrl = (user, database) => {
-    if (database === rootDB) {
-      return `/_api/user/${user}/config`;
-    }
     return `/_db/${database}/_api/user/${user}/config`;
   };
 
   const generateWriteConfigUrl = (user, database, attribute) => {
     if (!attribute) {
       attribute = configPropertyAttribute;
-    }
-    if (database === rootDB) {
-      return `/_api/user/${user}/config/${attribute}`;
     }
     return `/_db/${database}/_api/user/${user}/config/${attribute}`;
   };
@@ -242,6 +238,13 @@ describe('UserProperties', function () {
       users.remove(nonRootUser);
     } catch (ignore) {
     }
+
+    // cleanup root users config we might have been modified in any of our tests
+    const cleanupRootUrl = generateWriteConfigUrl(rootUser, rootDB);
+    request.delete({
+      url: cleanupRootUrl,
+      json: true
+    });
   });
 
   after(function () {
