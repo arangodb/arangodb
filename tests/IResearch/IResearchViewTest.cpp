@@ -2765,6 +2765,7 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
       auto json = VPackParser::fromJson(R"({ "view": "42" })");
       bool pathExists = false;
       EXPECT_TRUE(init(json->slice(), pathExists).ok());
+      EXPECT_TRUE(pathExists);
     }
   };
 

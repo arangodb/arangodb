@@ -27,6 +27,7 @@
 #include <cstddef>
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -191,6 +192,10 @@ class GeneralRequest {
   /// found
   template<typename T>
   T parsedValue(std::string const& key, T valueNotFound);
+  /// @brief returns parsed value, returns std::nullopt if parameter was not
+  /// found
+  template<typename T>
+  auto parsedValue(std::string const& key) -> std::optional<T>;
 
   /// @brief the content length
   virtual size_t contentLength() const = 0;

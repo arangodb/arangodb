@@ -53,6 +53,7 @@ struct FollowerWaitForAppliedTest
   std::shared_ptr<State::FactoryType> factory =
       std::make_shared<State::FactoryType>();
   std::unique_ptr<State::CoreType> core = std::make_unique<State::CoreType>();
+  LoggerContext const loggerCtx{Logger::REPLICATED_STATE};
 };
 
 TEST_F(FollowerWaitForAppliedTest, wait_for_applied_future_test) {
@@ -63,7 +64,7 @@ TEST_F(FollowerWaitForAppliedTest, wait_for_applied_future_test) {
   follower->updateCommitIndex(LogIndex{1});  // insert and commit index 1
 
   auto manager = std::make_shared<FollowerStateManager<State>>(
-      nullptr, follower, std::move(core),
+      loggerCtx, nullptr, follower, std::move(core),
       std::make_unique<ReplicatedStateToken>(StateGeneration{1}), factory);
   manager->run();
   follower->triggerLeaderAcked();
@@ -102,7 +103,7 @@ TEST_F(FollowerWaitForAppliedTest, wait_for_applied_resign_resolve) {
   follower->updateCommitIndex(LogIndex{1});  // insert and commit index 1
 
   auto manager = std::make_shared<FollowerStateManager<State>>(
-      nullptr, follower, std::move(core),
+      loggerCtx, nullptr, follower, std::move(core),
       std::make_unique<ReplicatedStateToken>(StateGeneration{1}), factory);
   manager->run();
   follower->triggerLeaderAcked();
