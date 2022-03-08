@@ -64,7 +64,8 @@ TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
       _provider(std::move(provider)),
       _validator(_provider, _interior, std::move(validatorOptions)),
       _direction(dir),
-      _minDepth(options.getMinDepth()) {}
+      _minDepth(options.getMinDepth()),
+      _graphOptions(options) {}
 
 template<class QueueType, class PathStoreType, class ProviderType,
          class PathValidator>
