@@ -209,9 +209,6 @@ describe('UserProperties', function () {
     if (!attribute) {
       attribute = configPropertyAttribute;
     }
-    if (database === rootDB) {
-      return `/_api/user/${user}/config/${attribute}`;
-    }
     return `/_db/${database}/_api/user/${user}/config/${attribute}`;
   };
 
