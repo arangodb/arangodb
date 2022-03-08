@@ -22,9 +22,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+#include <s2/base/integral_types.h>
 #include "RestServer/arangod.h"
 #include "WasmCommon.h"
 #include "Basics/Guarded.h"
+#include "Wasm3cpp.h"
 
 namespace arangodb {
 class WasmServerFeature final : public ArangodFeature {
@@ -40,11 +42,15 @@ class WasmServerFeature final : public ArangodFeature {
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override;
   void addFunction(wasm::WasmFunction const& function);
+  auto loadFunction(std::string const& name) -> std::optional<wasm3::module>;
+  auto executeFunction(std::string const& name) -> std::optional<uint64_t>;
 
-private:
-struct GuardedFunctions {
+ private:
+  struct GuardedFunctions {
     std::unordered_map<std::string, wasm::WasmFunction> _functions;
   };
   Guarded<GuardedFunctions> _guardedFunctions;
+
+  wasm3::environment environment;
 };
 }  // namespace arangodb

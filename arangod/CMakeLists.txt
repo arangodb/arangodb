@@ -1183,6 +1183,7 @@ target_link_libraries(arango_vocbase arango_replication2)
 target_link_libraries(arango_vocbase boost_system)
 target_link_libraries(arango_vocbase arango::validation)
 
+target_link_libraries(arango_wasm m3)
 target_link_libraries(arango_wasm arango)
 
 target_link_libraries(arangoserver arango_agency)

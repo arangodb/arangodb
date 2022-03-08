@@ -30,16 +30,26 @@
 #include "velocypack/Slice.h"
 
 namespace arangodb::wasm {
-struct WasmFunction {
-  std::string name;
-  std::string code;
-  bool isDeterministic;
-  static auto fromVelocyPack(arangodb::velocypack::Slice slice) -> ResultT<WasmFunction>;
-  auto operator<=>(const WasmFunction& function) const = default;
+
+struct WasmContainer {
+  uint8_t* code;
+  size_t length;
 };
 
-  void toVelocyPack(WasmFunction const& wasmFunction, VPackBuilder& builder);
-  auto requiredStringSliceField(std::string_view fieldName, velocypack::Slice slice) -> ResultT<velocypack::Slice>;
-  auto deterministicField(velocypack::Slice slice) -> arangodb::ResultT<bool>;
-  auto areOnlyValidFieldsIncluded(velocypack::Slice slice) -> arangodb::ResultT<bool>;
+struct WasmFunction {
+  std::string name;
+  WasmContainer code;
+  bool isDeterministic;
+  static auto fromVelocyPack(arangodb::velocypack::Slice slice)
+      -> ResultT<WasmFunction>;
+};
+
+void toVelocyPack(WasmFunction const& wasmFunction, VPackBuilder& builder);
+auto requiredStringSliceField(std::string_view fieldName,
+                              velocypack::Slice slice)
+    -> ResultT<velocypack::Slice>;
+auto deterministicField(velocypack::Slice slice) -> arangodb::ResultT<bool>;
+auto areOnlyValidFieldsIncluded(velocypack::Slice slice)
+    -> arangodb::ResultT<bool>;
+
 }  // namespace arangodb::wasm
