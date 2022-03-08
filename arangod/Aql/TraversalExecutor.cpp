@@ -194,7 +194,10 @@ TraversalExecutorInfos::traversalEnumerator() const {
 }
 
 // OLD
-Traverser& TraversalExecutorInfos::traverser() { return *_traverser; }
+Traverser* TraversalExecutorInfos::traverser() {
+  TRI_ASSERT(_traverser != nullptr);
+  return _traverser.get();
+}
 
 bool TraversalExecutorInfos::usesOutputRegister(
     TraversalExecutorInfosHelper::OutputName type) const {
@@ -804,13 +807,15 @@ TraversalExecutor::TraversalExecutor(Fetcher& fetcher, Infos& infos)
   if (infos.isRefactor()) {
     _traversalEnumerator.clear(false);
   } else {
-    _traverser.done();
+    TRI_ASSERT(_traverser != nullptr);
+    _traverser->done();
   }
 }
 
 TraversalExecutor::~TraversalExecutor() {
   if (!_infos.isRefactor()) {
-    auto opts = _traverser.options();
+    TRI_ASSERT(_traverser != nullptr);
+    auto opts = _traverser->options();
     if (opts != nullptr) {
       // The InAndOutRowExpressionContext in the PruneExpressionEvaluator
       // holds an InputAqlItemRow. As the Plan holds the
@@ -839,23 +844,24 @@ TraversalExecutor::~TraversalExecutor() {
 
 auto TraversalExecutor::doOutput(OutputAqlItemRow& output) -> void {
   if (!_infos.isRefactor()) {
-    while (!output.isFull() && _traverser.hasMore() && _traverser.next()) {
+    TRI_ASSERT(_traverser != nullptr);
+    while (!output.isFull() && _traverser->hasMore() && _traverser->next()) {
       TRI_ASSERT(_inputRow.isInitialized());
 
       // traverser now has next v, e, p values
       if (_infos.useVertexOutput()) {
-        AqlValue vertex = _traverser.lastVertexToAqlValue();
+        AqlValue vertex = _traverser->lastVertexToAqlValue();
         AqlValueGuard guard{vertex, true};
         output.moveValueInto(_infos.vertexRegister(), _inputRow, guard);
       }
       if (_infos.useEdgeOutput()) {
-        AqlValue edge = _traverser.lastEdgeToAqlValue();
+        AqlValue edge = _traverser->lastEdgeToAqlValue();
         AqlValueGuard guard{edge, true};
         output.moveValueInto(_infos.edgeRegister(), _inputRow, guard);
       }
       if (_infos.usePathOutput()) {
-        transaction::BuilderLeaser tmp(_traverser.trx());
-        AqlValue path = _traverser.pathToAqlValue(*tmp.builder());
+        transaction::BuilderLeaser tmp(_traverser->trx());
+        AqlValue path = _traverser->pathToAqlValue(*tmp.builder());
         AqlValueGuard guard{path, true};
         output.moveValueInto(_infos.pathRegister(), _inputRow, guard);
       }
@@ -921,7 +927,8 @@ auto TraversalExecutor::doSkip(AqlCall& call) -> size_t {
   auto skip = size_t{0};
 
   if (!_infos.isRefactor()) {
-    while (call.shouldSkip() && _traverser.hasMore() && _traverser.next()) {
+    TRI_ASSERT(_traverser != nullptr);
+    while (call.shouldSkip() && _traverser->hasMore() && _traverser->next()) {
       TRI_ASSERT(_inputRow.isInitialized());
       skip++;
       call.didSkip(1);
@@ -947,13 +954,14 @@ auto TraversalExecutor::produceRows(AqlItemBlockInputRange& input,
   ExecutorState state{ExecutorState::HASMORE};
 
   if (!_infos.isRefactor()) {
+    TRI_ASSERT(_traverser != nullptr);
     while (true) {
-      if (_traverser.hasMore()) {
+      if (_traverser->hasMore()) {
         TRI_ASSERT(_inputRow.isInitialized());
         doOutput(output);
 
         if (output.isFull()) {
-          if (_traverser.hasMore()) {
+          if (_traverser->hasMore()) {
             state = ExecutorState::HASMORE;
           } else {
             state = input.upstreamState();
@@ -969,9 +977,9 @@ auto TraversalExecutor::produceRows(AqlItemBlockInputRange& input,
       }
     }
 
-    oldStats.addFiltered(_traverser.getAndResetFilteredPaths());
-    oldStats.addScannedIndex(_traverser.getAndResetReadDocuments());
-    oldStats.addHttpRequests(_traverser.getAndResetHttpRequests());
+    oldStats.addFiltered(_traverser->getAndResetFilteredPaths());
+    oldStats.addScannedIndex(_traverser->getAndResetReadDocuments());
+    oldStats.addHttpRequests(_traverser->getAndResetHttpRequests());
 
     return {state, oldStats, AqlCall{}};
   } else {
@@ -1002,14 +1010,15 @@ auto TraversalExecutor::skipRowsRange(AqlItemBlockInputRange& input,
   auto skipped = size_t{0};
 
   if (!_infos.isRefactor()) {
+    TRI_ASSERT(_traverser != nullptr);
     while (true) {
       skipped += doSkip(call);
 
-      oldStats.addFiltered(_traverser.getAndResetFilteredPaths());
-      oldStats.addScannedIndex(_traverser.getAndResetReadDocuments());
-      oldStats.addHttpRequests(_traverser.getAndResetHttpRequests());
+      oldStats.addFiltered(_traverser->getAndResetFilteredPaths());
+      oldStats.addScannedIndex(_traverser->getAndResetReadDocuments());
+      oldStats.addHttpRequests(_traverser->getAndResetHttpRequests());
 
-      if (!_traverser.hasMore()) {
+      if (!_traverser->hasMore()) {
         if (!initTraverser(input)) {
           return {input.upstreamState(), oldStats, skipped, AqlCall{}};
         }
@@ -1052,8 +1061,9 @@ auto TraversalExecutor::skipRowsRange(AqlItemBlockInputRange& input,
 // TODO: this is quite a big function, refactor
 bool TraversalExecutor::initTraverser(AqlItemBlockInputRange& input) {
   if (!_infos.isRefactor()) {
-    _traverser.clear();
-    auto opts = _traverser.options();
+    TRI_ASSERT(_traverser != nullptr);
+    _traverser->clear();
+    auto opts = _traverser->options();
     opts->clearVariableValues();
 
     // Now reset the traverser
@@ -1098,7 +1108,7 @@ bool TraversalExecutor::initTraverser(AqlItemBlockInputRange& input) {
         if (in.isObject()) {
           try {
             sourceString =
-                _traverser.options()->trx()->extractIdString(in.slice());
+                _traverser->options()->trx()->extractIdString(in.slice());
           } catch (...) {
             // on purpose ignore this error.
           }
@@ -1110,13 +1120,13 @@ bool TraversalExecutor::initTraverser(AqlItemBlockInputRange& input) {
       auto pos = sourceString.find('/');
 
       if (pos == std::string::npos) {
-        _traverser.options()->query().warnings().registerWarning(
+        _traverser->options()->query().warnings().registerWarning(
             TRI_ERROR_BAD_PARAMETER,
             "Invalid input for traversal: Only "
             "id strings or objects with _id are "
             "allowed");
       } else {
-        _traverser.setStartVertex(sourceString);
+        _traverser->setStartVertex(sourceString);
         TRI_ASSERT(_inputRow.isInitialized());
         return true;
       }

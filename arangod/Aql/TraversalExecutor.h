@@ -111,7 +111,7 @@ class TraversalExecutorInfos {
 
   [[nodiscard]] auto traversalEnumerator() const
       -> arangodb::graph::TraversalEnumerator&;
-  traverser::Traverser& traverser();
+  traverser::Traverser* traverser();
 
   bool usesOutputRegister(TraversalExecutorInfosHelper::OutputName type) const;
 
@@ -180,7 +180,7 @@ class TraversalExecutorInfos {
       TraversalExecutorInfosHelper::OutputName type) const;
 
  private:
-  std::unique_ptr<traverser::Traverser>
+  std::shared_ptr<traverser::Traverser>
       _traverser;  // TODO [GraphRefactor]: Old way, to be removed after
                    // refactor is done!
   std::unique_ptr<arangodb::graph::TraversalEnumerator> _traversalEnumerator =
@@ -245,7 +245,7 @@ class TraversalExecutor {
   Infos& _infos;
   InputAqlItemRow _inputRow;
 
-  traverser::Traverser& _traverser;  // TODO [GraphRefactor]: Old way, to be
+  traverser::Traverser* _traverser;  // TODO [GraphRefactor]: Old way, to be
                                      // removed after refactor is done!
 
   /// @brief the refactored finder variant.
