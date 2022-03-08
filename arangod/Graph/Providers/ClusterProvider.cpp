@@ -447,6 +447,12 @@ auto ClusterProvider<StepImpl>::addEdgeIDToBuilder(
 }
 
 template<class StepImpl>
+auto ClusterProvider<StepImpl>::getEdgeId(typename Step::Edge const& edge)
+    -> std::string {
+  return edge.getID().toString();
+}
+
+template<class StepImpl>
 void ClusterProvider<StepImpl>::prepareIndexExpressions(aql::Ast* ast) {
   // Nothing to do here. The variables are send over in a different way.
   // We do not make use of special indexes here anyways.

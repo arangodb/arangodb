@@ -38,6 +38,7 @@
 #include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/TransactionState.h"
+#include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "Transaction/Options.h"
 #include "VocBase/LogicalCollection.h"
@@ -102,6 +103,10 @@ void RefactoredTraverserCache::clear() {
 template<typename ResultType>
 bool RefactoredTraverserCache::appendEdge(EdgeDocumentToken const& idToken,
                                           bool onlyId, ResultType& result) {
+  if constexpr (std::is_same_v<ResultType, std::string>) {
+    // Only Ids can be extracted into a std::string
+    TRI_ASSERT(onlyId);
+  }
   auto col = _trx->vocbase().lookupCollection(idToken.cid());
 
   if (ADB_UNLIKELY(col == nullptr)) {
@@ -118,7 +123,15 @@ bool RefactoredTraverserCache::appendEdge(EdgeDocumentToken const& idToken,
               _trx, idToken.localDocumentId(),
               [&](LocalDocumentId const&, VPackSlice edge) -> bool {
                 if (onlyId) {
-                  edge = edge.get(StaticStrings::IdString);
+                  if constexpr (std::is_same_v<ResultType, std::string>) {
+                    // If we want to expose the ID, we need to translate the
+                    // custom type Unfortunately we cannot do this in slice only
+                    // manner, as there is no complete slice with the _id.
+                    result = transaction::helpers::extractIdString(
+                        _trx->resolver(), edge, VPackSlice::noneSlice());
+                    return true;
+                  }
+                  edge = edge.get(StaticStrings::IdString).translate();
                 }
                 // NOTE: Do not count this as Primary Index Scan, we
                 // counted it in the edge Index before copying...
@@ -255,6 +268,15 @@ void RefactoredTraverserCache::insertEdgeIdIntoResult(
   if (!appendEdge(idToken, true, builder)) {
     builder.add(VPackSlice::nullSlice());
   }
+}
+
+std::string RefactoredTraverserCache::getEdgeId(
+    EdgeDocumentToken const& idToken) {
+  std::string res;
+  if (!appendEdge(idToken, true, res)) {
+    res = "null";
+  }
+  return res;
 }
 
 void RefactoredTraverserCache::insertVertexIntoResult(

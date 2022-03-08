@@ -76,6 +76,8 @@ class ProviderTracer {
   void addEdgeIDToBuilder(typename Step::Edge const& edge,
                           arangodb::velocypack::Builder& builder);
 
+  auto getEdgeId(typename Step::Edge const& edge) -> std::string;
+
   void prepareIndexExpressions(aql::Ast* ast);
 
   // Note: ClusterProvider will need to implement destroyEngines

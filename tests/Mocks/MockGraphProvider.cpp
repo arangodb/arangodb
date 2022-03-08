@@ -164,6 +164,21 @@ auto MockGraphProvider::addEdgeToBuilder(const Step::Edge& edge,
   builder.close();
 }
 
+auto MockGraphProvider::addEdgeIDToBuilder(
+    const Step::Edge& edge, arangodb::velocypack::Builder& builder) -> void {
+  std::string fromId = edge.getEdge()._from;
+  std::string toId = edge.getEdge()._to;
+  std::string keyId = fromId.substr(2) + "-" + toId.substr(2);
+  builder.add(VPackValue("e/" + keyId));
+}
+
+auto MockGraphProvider::getEdgeId(const Step::Edge& edge) -> std::string {
+  std::string fromId = edge.getEdge()._from;
+  std::string toId = edge.getEdge()._to;
+  std::string keyId = fromId.substr(2) + "-" + toId.substr(2);
+  return "e/" + keyId;
+}
+
 auto MockGraphProvider::expand(Step const& source, size_t previousIndex)
     -> std::vector<Step> {
   LOG_TOPIC("78157", TRACE, Logger::GRAPHS)

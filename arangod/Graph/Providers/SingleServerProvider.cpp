@@ -57,7 +57,7 @@ template<class Step>
 void SingleServerProvider<Step>::addEdgeIDToBuilder(
     typename Step::Edge const& edge, arangodb::velocypack::Builder& builder) {
   if (edge.isValid()) {
-    insertEdgeIntoResult(edge.getID(), builder);
+    insertEdgeIdIntoResult(edge.getID(), builder);
   } else {
     // We can never hand out invalid ids.
     // For production just be sure to add something sensible.
@@ -187,6 +187,12 @@ template<class Step>
 void SingleServerProvider<Step>::insertEdgeIdIntoResult(
     EdgeDocumentToken edge, arangodb::velocypack::Builder& builder) {
   _cache.insertEdgeIdIntoResult(edge, builder);
+}
+
+template<class Step>
+std::string SingleServerProvider<Step>::getEdgeId(
+    typename Step::Edge const& edge) {
+  return _cache.getEdgeId(edge.getID());
 }
 
 template<class Step>

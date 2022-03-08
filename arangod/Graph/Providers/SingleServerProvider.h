@@ -84,6 +84,8 @@ class SingleServerProvider {
   void insertEdgeIdIntoResult(EdgeDocumentToken edge,
                               arangodb::velocypack::Builder& builder);
 
+  std::string getEdgeId(typename Step::Edge const& edge);
+
   void addVertexToBuilder(typename Step::Vertex const& vertex,
                           arangodb::velocypack::Builder& builder,
                           bool writeIdIfNotFound = false);
