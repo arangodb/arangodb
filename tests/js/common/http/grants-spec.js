@@ -202,9 +202,6 @@ describe('UserProperties', function () {
   };
 
   const generateReadConfigUrl = (user, database) => {
-    if (database === rootDB) {
-      return `/_api/user/${user}/config`;
-    }
     return `/_db/${database}/_api/user/${user}/config`;
   };
 
