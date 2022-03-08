@@ -129,4 +129,13 @@ TEST_F(PrototypeStateMachineTest, simple_operations) {
     ASSERT_EQ(leaderState->get("foo2"), std::nullopt);
     ASSERT_EQ(leaderState->get("foo3"), "bar3");
   }
+
+  {
+    auto result = leaderState->getSnapshot();
+    ASSERT_TRUE(result.ok());
+    auto map = result.get();
+    auto expected = std::unordered_map<std::string, std::string>{
+        {"foo", "bar"}, {"foo3", "bar3"}};
+    ASSERT_EQ(map, expected);
+  }
 }

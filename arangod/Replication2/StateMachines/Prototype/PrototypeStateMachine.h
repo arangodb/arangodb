@@ -45,6 +45,8 @@ namespace arangodb::replication2::replicated_state {
  */
 namespace prototype {
 
+/*
+ * This doesn't work yet with AppleClang.
 template<class T>
 concept StringIterator =
     std::same_as<typename std::iterator_traits<T>::value_type, std::string>;
@@ -55,6 +57,7 @@ concept MapStringIterator =
                  std::pair<const std::string, std::string>> ||
     std::same_as<typename std::iterator_traits<T>::value_type,
                  std::pair<std::string, std::string>>;
+*/
 
 struct PrototypeFactory;
 struct PrototypeLogEntry;
@@ -105,25 +108,26 @@ struct PrototypeLeaderState
 
   auto set(std::unordered_map<std::string, std::string> entries)
       -> futures::Future<ResultT<LogIndex>>;
-  template<MapStringIterator Iterator>
+  template<class Iterator>
   auto set(Iterator begin, Iterator end) -> futures::Future<ResultT<LogIndex>>;
 
   auto remove(std::string key) -> futures::Future<ResultT<LogIndex>>;
   auto remove(std::vector<std::string> keys)
       -> futures::Future<ResultT<LogIndex>>;
-  template<StringIterator Iterator>
+  template<class Iterator>
   auto remove(Iterator begin, Iterator end)
       -> futures::Future<ResultT<LogIndex>>;
 
   auto get(std::string key) -> std::optional<std::string>;
-  template<StringIterator Iterator>
+  template<class Iterator>
   auto get(Iterator begin, Iterator end)
       -> std::unordered_map<std::string, std::string>;
+  auto getSnapshot() -> ResultT<std::unordered_map<std::string, std::string>>;
 
   Guarded<std::unique_ptr<PrototypeCore>, basics::UnshackledMutex> guardedData;
 };
 
-template<StringIterator Iterator>
+template<class Iterator>
 auto PrototypeLeaderState::get(Iterator begin, Iterator end)
     -> std::unordered_map<std::string, std::string> {
   return guardedData.template doUnderLock([begin, end](auto& core) {
@@ -140,7 +144,7 @@ auto PrototypeLeaderState::get(Iterator begin, Iterator end)
   });
 }
 
-template<MapStringIterator Iterator>
+template<class Iterator>
 auto PrototypeLeaderState::set(Iterator begin, Iterator end)
     -> futures::Future<ResultT<LogIndex>> {
   auto stream = getStream();
@@ -164,7 +168,7 @@ auto PrototypeLeaderState::set(Iterator begin, Iterator end)
       });
 }
 
-template<StringIterator Iterator>
+template<class Iterator>
 auto PrototypeLeaderState::remove(Iterator begin, Iterator end)
     -> futures::Future<ResultT<LogIndex>> {
   auto stream = getStream();

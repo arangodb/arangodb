@@ -67,6 +67,10 @@ const removeEntries = function (url, stateId, entries) {
   });
 };
 
+const getSnapshot = function (url, stateId) {
+  return request.get({url: `${url}/_db/${database}/_api/prototype-state/${stateId}/snapshot`});
+};
+
 const replicatedStateSuite = function () {
   const {setUpAll, tearDownAll} = (function () {
     let previousDatabase, databaseExisted = true;
@@ -94,7 +98,7 @@ const replicatedStateSuite = function () {
     setUp: lh.registerAgencyTestBegin,
     tearDown: lh.registerAgencyTestEnd,
 
-    testCreateReplicatedState: function() {
+    testPrototypeReplicatedStateMethods: function() {
       const stateId = lh.nextUniqueLogId();
 
       const servers = _.sampleSize(lh.dbservers, 3);
@@ -141,8 +145,7 @@ const replicatedStateSuite = function () {
 
       result = getEntries(leaderUrl, stateId, ["foo1", "foo2"]);
       lh.checkRequestResult(result);
-      assertEqual(result.json.result.foo1,  "bar1");
-      assertEqual(result.json.result.foo2,  "bar2");
+      assertEqual(result.json.result, {foo1: "bar1", foo2: "bar2"});
 
       result = removeEntry(leaderUrl, stateId, "foo0");
       lh.checkRequestResult(result);
@@ -182,6 +185,14 @@ const replicatedStateSuite = function () {
       result = getEntry(leaderUrl, stateId, "foo400");
       lh.checkRequestResult(result);
       assertEqual(result.json.result.foo400,  "bar400");
+
+      result = getSnapshot(leaderUrl, stateId);
+      lh.checkRequestResult(result);
+      assertEqual(result.json.result, {foo100: "bar100", foo400: "bar400"});
+
+      result = getSnapshot(coordUrl, stateId);
+      lh.checkRequestResult(result);
+      assertEqual(result.json.result, {foo100: "bar100", foo400: "bar400"});
     },
   };
 };

@@ -70,6 +70,12 @@ struct PrototypeStateMethodsDBServer final : PrototypeStateMethods {
     return leader->get(keys.begin(), keys.end());
   }
 
+  [[nodiscard]] auto getSnapshot(LogId id) const -> futures::Future<
+      ResultT<std::unordered_map<std::string, std::string>>> override {
+    auto leader = getPrototypeStateLeaderById(id);
+    return leader->getSnapshot();
+  }
+
   [[nodiscard]] auto remove(LogId id, std::string key) const
       -> futures::Future<ResultT<LogIndex>> override {
     auto leader = getPrototypeStateLeaderById(id);
@@ -108,8 +114,9 @@ struct PrototypeStateMethodsDBServer final : PrototypeStateMethods {
 };
 
 struct PrototypeStateMethodsCoordinator final : PrototypeStateMethods {
-  auto insert(LogId id,
-              std::unordered_map<std::string, std::string> const& entries) const
+  [[nodiscard]] auto insert(
+      LogId id,
+      std::unordered_map<std::string, std::string> const& entries) const
       -> futures::Future<ResultT<LogIndex>> override {
     auto path =
         basics::StringUtils::joinT("/", "_api/prototype-state", id, "insert");
@@ -130,7 +137,7 @@ struct PrototypeStateMethodsCoordinator final : PrototypeStateMethods {
         });
   }
 
-  auto get(LogId id, std::string key) const
+  [[nodiscard]] auto get(LogId id, std::string key) const
       -> futures::Future<std::optional<std::string>> override {
     auto path = basics::StringUtils::joinT("/", "_api/prototype-state", id,
                                            "entry", key);
@@ -159,8 +166,9 @@ struct PrototypeStateMethodsCoordinator final : PrototypeStateMethods {
         });
   }
 
-  auto get(LogId id, std::vector<std::string> keys) const -> futures::Future<
-      std::unordered_map<std::string, std::string>> override {
+  [[nodiscard]] auto get(LogId id, std::vector<std::string> keys) const
+      -> futures::Future<
+          std::unordered_map<std::string, std::string>> override {
     auto path = basics::StringUtils::joinT("/", "_api/prototype-state", id,
                                            "multi-get");
     network::RequestOptions opts;
@@ -198,7 +206,39 @@ struct PrototypeStateMethodsCoordinator final : PrototypeStateMethods {
         });
   }
 
-  auto remove(LogId id, std::string key) const
+  [[nodiscard]] auto getSnapshot(LogId id) const -> futures::Future<
+      ResultT<std::unordered_map<std::string, std::string>>> override {
+    auto path =
+        basics::StringUtils::joinT("/", "_api/prototype-state", id, "snapshot");
+    network::RequestOptions opts;
+    opts.database = _vocbase.name();
+
+    return network::sendRequest(_pool, "server:" + getLogLeader(id),
+                                fuerte::RestVerb::Get, path, {}, opts)
+        .thenValue(
+            [](network::Response&& resp)
+                -> ResultT<std::unordered_map<std::string, std::string>> {
+              if (resp.fail() || !fuerte::statusIsSuccess(resp.statusCode())) {
+                THROW_ARANGO_EXCEPTION(resp.combinedResult());
+              } else {
+                auto slice = resp.slice();
+                if (auto result = slice.get("result"); result.isObject()) {
+                  std::unordered_map<std::string, std::string> map;
+                  for (auto it : VPackObjectIterator{result}) {
+                    map.emplace(it.key.copyString(), it.value.copyString());
+                  }
+                  return map;
+                }
+                THROW_ARANGO_EXCEPTION_MESSAGE(
+                    TRI_ERROR_INTERNAL, basics::StringUtils::concatT(
+                                            "expected result containing map "
+                                            "in leader response: ",
+                                            slice.toJson()));
+              }
+            });
+  }
+
+  [[nodiscard]] auto remove(LogId id, std::string key) const
       -> futures::Future<ResultT<LogIndex>> override {
     auto path = basics::StringUtils::joinT("/", "_api/prototype-state", id,
                                            "entry", key);
@@ -211,7 +251,7 @@ struct PrototypeStateMethodsCoordinator final : PrototypeStateMethods {
         });
   }
 
-  auto remove(LogId id, std::vector<std::string> keys) const
+  [[nodiscard]] auto remove(LogId id, std::vector<std::string> keys) const
       -> futures::Future<ResultT<LogIndex>> override {
     auto path = basics::StringUtils::joinT("/", "_api/prototype-state", id,
                                            "multi-remove");
@@ -239,7 +279,7 @@ struct PrototypeStateMethodsCoordinator final : PrototypeStateMethods {
         _pool(vocbase.server().getFeature<NetworkFeature>().pool()) {}
 
  private:
-  auto getLogLeader(LogId id) const -> ServerID {
+  [[nodiscard]] auto getLogLeader(LogId id) const -> ServerID {
     auto leader = _clusterInfo.getReplicatedLogLeader(_vocbase.name(), id);
     if (leader.fail()) {
       if (leader.is(TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED)) {

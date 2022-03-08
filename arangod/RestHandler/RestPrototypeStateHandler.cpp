@@ -191,9 +191,11 @@ RestStatus RestPrototypeStateHandler::handleGetRequest(
   auto const& verb = suffixes[1];
   if (verb == "entry") {
     return handleGetEntry(methods, logId);
+  } else if (verb == "snapshot") {
+    return handleGetSnapshot(methods, logId);
   } else {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
-                  "expected one of the resources 'entry'");
+                  "expected one of the resources 'entry', 'snapshot'");
   }
   return RestStatus::DONE;
 }
@@ -224,6 +226,33 @@ RestStatus RestPrototypeStateHandler::handleGetEntry(
                       basics::StringUtils::concatT("key ", key, " not found"));
                 }
               }));
+}
+
+RestStatus RestPrototypeStateHandler::handleGetSnapshot(
+    PrototypeStateMethods const& methods, replication2::LogId logId) {
+  auto const& suffixes = _request->suffixes();
+  if (suffixes.size() != 2) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "expect GET /_api/prototype-state/<state-id>/snapshot");
+    return RestStatus::DONE;
+  }
+
+  return waitForFuture(
+      methods.getSnapshot(logId).thenValue([this](auto&& waitForResult) {
+        if (waitForResult.ok()) {
+          auto map = waitForResult.get();
+          VPackBuilder result;
+          {
+            VPackObjectBuilder ob(&result);
+            for (auto const& [key, value] : map)
+              result.add(key, VPackValue(value));
+          }
+          generateOk(rest::ResponseCode::OK, result.slice());
+        } else {
+          generateError(waitForResult.result());
+        }
+        return RestStatus::DONE;
+      }));
 }
 
 RestStatus RestPrototypeStateHandler::handleDeleteRequest(

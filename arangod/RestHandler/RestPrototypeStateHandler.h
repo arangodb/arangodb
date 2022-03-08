@@ -66,5 +66,7 @@ class RestPrototypeStateHandler : public RestVocbaseBaseHandler {
 
   RestStatus handleGetEntry(replication2::PrototypeStateMethods const& methods,
                             replication2::LogId);
+  RestStatus handleGetSnapshot(
+      replication2::PrototypeStateMethods const& methods, replication2::LogId);
 };
 }  // namespace arangodb

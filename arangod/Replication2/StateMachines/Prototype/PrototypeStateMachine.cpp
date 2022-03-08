@@ -90,7 +90,7 @@ auto PrototypeLeaderState::set(
   return stream->waitFor(idx).thenValue(
       [self = shared_from_this(), idx = idx,
        entries = std::move(entries)](auto&& res) mutable {
-        return self->guardedData.template doUnderLock(
+        return self->guardedData.doUnderLock(
             [idx = idx,
              entries = std::move(entries)](auto& core) -> ResultT<LogIndex> {
               if (!core) {
@@ -113,7 +113,7 @@ auto PrototypeLeaderState::remove(std::string key)
   return stream->waitFor(idx).thenValue([self = shared_from_this(),
                                          key = std::move(key),
                                          idx = idx](auto&& res) mutable {
-    return self->guardedData.template doUnderLock(
+    return self->guardedData.doUnderLock(
         [key = std::move(key), idx = idx](auto& core) -> ResultT<LogIndex> {
           if (!core) {
             return ResultT<LogIndex>::error(TRI_ERROR_CLUSTER_NOT_LEADER);
@@ -134,7 +134,7 @@ auto PrototypeLeaderState::remove(std::vector<std::string> keys)
   return stream->waitFor(idx).thenValue(
       [self = shared_from_this(), idx = idx,
        entries = std::move(keys)](auto&& res) mutable {
-        return self->guardedData.template doUnderLock(
+        return self->guardedData.doUnderLock(
             [entries = std::move(entries),
              idx = idx](auto& core) -> ResultT<LogIndex> {
               if (!core) {
@@ -158,6 +158,20 @@ auto PrototypeLeaderState::get(std::string key) -> std::optional<std::string> {
           return *it;
         }
         return std::nullopt;
+      });
+}
+
+auto PrototypeLeaderState::getSnapshot()
+    -> ResultT<std::unordered_map<std::string, std::string>> {
+  return guardedData.doUnderLock(
+      [](auto& core) -> ResultT<std::unordered_map<std::string, std::string>> {
+        if (!core) {
+          return ResultT<std::unordered_map<std::string, std::string>>::error(
+              TRI_ERROR_CLUSTER_NOT_LEADER);
+        }
+        std::unordered_map<std::string, std::string> result{core->store.begin(),
+                                                            core->store.end()};
+        return result;
       });
 }
 
