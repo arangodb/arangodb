@@ -23,6 +23,8 @@
 
 #pragma once
 
+#include <map>
+
 #include "Replication2/ReplicatedState/ReplicatedStateToken.h"
 #include "Replication2/ReplicatedState/ReplicatedStateTraits.h"
 #include "Replication2/ReplicatedState/StateStatus.h"
@@ -30,11 +32,15 @@
 
 #include "Basics/Guarded.h"
 #include "Replication2/DeferredExecution.h"
+#include "Replication2/LoggerContext.h"
 
 namespace arangodb::futures {
 template<typename T>
 class Future;
-}
+template<typename T>
+class Promise;
+struct Unit;
+}  // namespace arangodb::futures
 namespace arangodb {
 class Result;
 }
@@ -89,7 +95,8 @@ struct ReplicatedState final
   using CoreType = typename ReplicatedStateTraits<S>::CoreType;
 
   explicit ReplicatedState(std::shared_ptr<replicated_log::ReplicatedLog> log,
-                           std::shared_ptr<Factory> factory);
+                           std::shared_ptr<Factory> factory,
+                           LoggerContext loggerContext);
 
   /**
    * Forces to rebuild the state machine depending on the replicated log state.
@@ -117,10 +124,16 @@ struct ReplicatedState final
 
   struct StateManagerBase {
     virtual ~StateManagerBase() = default;
+    virtual void run() = 0;
+
+    using WaitForAppliedPromise = futures::Promise<futures::Unit>;
+    using WaitForAppliedQueue = std::multimap<LogIndex, WaitForAppliedPromise>;
+
     [[nodiscard]] virtual auto getStatus() const -> StateStatus = 0;
     [[nodiscard]] virtual auto resign() && noexcept
-        -> std::pair<std::unique_ptr<CoreType>,
-                     std::unique_ptr<ReplicatedStateToken>> = 0;
+        -> std::tuple<std::unique_ptr<CoreType>,
+                      std::unique_ptr<ReplicatedStateToken>,
+                      DeferredAction> = 0;
   };
 
  private:
@@ -163,6 +176,7 @@ struct ReplicatedState final
     std::shared_ptr<StateManagerBase> currentManager = nullptr;
   };
   Guarded<GuardedData> guardedData;
+  LoggerContext const loggerContext;
 };
 
 template<typename S>

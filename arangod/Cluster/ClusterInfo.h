@@ -30,6 +30,7 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 #include <memory>
+#include <mutex>
 
 #include "Agency/AgencyComm.h"
 #include "Basics/Mutex.h"
@@ -922,9 +923,9 @@ class ClusterInfo final {
   getCurrent(uint64_t& currentIndex,
              containers::FlatHashSet<std::string> const&);
 
-  std::vector<std::string> getFailedServers() const;
+  containers::FlatHashSet<ServerID> getFailedServers() const;
 
-  void setFailedServers(std::vector<std::string> const& failedServers);
+  void setFailedServers(containers::FlatHashSet<ServerID> failedServers);
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   void setServers(containers::FlatHashMap<ServerID, std::string> servers);
@@ -1247,8 +1248,8 @@ class ClusterInfo final {
 
   static constexpr double checkAnalyzersPreconditionTimeout = 10.0;
 
-  mutable arangodb::Mutex _failedServersMutex;
-  std::vector<std::string> _failedServers;
+  mutable std::mutex _failedServersMutex;
+  containers::FlatHashSet<ServerID> _failedServers;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief plan and current update threads

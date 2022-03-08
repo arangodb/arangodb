@@ -73,6 +73,7 @@ class StaticStrings {
   static std::string const Overwrite;
   static std::string const OverwriteMode;
   static std::string const Compact;
+  static std::string const DontWaitForCommit;
 
   // replication headers
   static std::string const ReplicationHeaderCheckMore;
@@ -406,6 +407,8 @@ class StaticStrings {
 
   // API Strings
   static std::string_view const ApiLogInternal;
+  static std::string_view const ApiLogExternal;
+  static std::string_view const ApiReplicatedStateExternal;
 
   // TODO: remove me after refactor is done
   static std::string const GraphRefactorFlag;

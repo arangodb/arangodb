@@ -363,7 +363,7 @@ exports.runParallelArangoshTests = function (tests, duration, cn) {
   return clients;
 };
 
-exports.waitForShardsInSync = function(cn, timeout) {
+exports.waitForShardsInSync = function (cn, timeout, minimumRequiredFollowers = 0) {
   if (!timeout) {
     timeout = 300;
   }
@@ -380,7 +380,8 @@ exports.waitForShardsInSync = function(cn, timeout) {
     let shards = Object.keys(collInfo.Plan);
     let insync = 0;
     for (let s of shards) {
-      if (collInfo.Plan[s].followers.length === collInfo.Current[s].followers.length) {
+      if (collInfo.Plan[s].followers.length === collInfo.Current[s].followers.length
+        && minimumRequiredFollowers <= collInfo.Plan[s].followers.length) {
         ++insync;
       }
     }

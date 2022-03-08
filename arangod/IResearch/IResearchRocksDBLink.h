@@ -49,7 +49,7 @@ class IResearchRocksDBLink final : public RocksDBIndex, public IResearchLink {
 
   bool canBeDropped() const override { return IResearchLink::canBeDropped(); }
 
-  Result drop() override { return IResearchLink::drop(); }
+  Result drop() override /*noexcept*/ { return IResearchLink::drop(); }
 
   bool hasSelectivityEstimate() const override {
     return IResearchLink::hasSelectivityEstimate();

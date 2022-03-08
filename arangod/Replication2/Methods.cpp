@@ -36,6 +36,7 @@
 #include "Replication2/ReplicatedLog/LogLeader.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
+#include "Replication2/ReplicatedState/ReplicatedState.h"
 #include "VocBase/vocbase.h"
 
 #include "Methods.h"
@@ -45,6 +46,7 @@ using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_log;
 
+namespace {
 struct ReplicatedLogMethodsDBServer final
     : ReplicatedLogMethods,
       std::enable_shared_from_this<ReplicatedLogMethodsDBServer> {
@@ -118,16 +120,18 @@ struct ReplicatedLogMethodsDBServer final
     return log.getInternalIteratorRange(start, start + limit);
   }
 
-  auto insert(LogId id, LogPayload payload) const -> futures::Future<
-      std::pair<LogIndex, replicated_log::WaitForResult>> override {
+  auto insert(LogId id, LogPayload payload, bool waitForSync) const
+      -> futures::Future<
+          std::pair<LogIndex, replicated_log::WaitForResult>> override {
     auto log = vocbase.getReplicatedLogLeaderById(id);
-    auto idx = log->insert(std::move(payload));
+    auto idx = log->insert(std::move(payload), waitForSync);
     return log->waitFor(idx).thenValue([idx](auto&& result) {
       return std::make_pair(idx, std::forward<decltype(result)>(result));
     });
   }
 
-  auto insert(LogId id, TypedLogIterator<LogPayload>& iter) const
+  auto insert(LogId id, TypedLogIterator<LogPayload>& iter,
+              bool waitForSync) const
       -> futures::Future<std::pair<std::vector<LogIndex>,
                                    replicated_log::WaitForResult>> override {
     auto log = vocbase.getReplicatedLogLeaderById(id);
@@ -146,6 +150,13 @@ struct ReplicatedLogMethodsDBServer final
           return std::make_pair(std::move(indexes),
                                 std::forward<decltype(result)>(result));
         });
+  }
+
+  auto insertWithoutCommit(LogId id, LogPayload payload, bool waitForSync) const
+      -> futures::Future<LogIndex> override {
+    auto log = vocbase.getReplicatedLogLeaderById(id);
+    auto idx = log->insert(std::move(payload), waitForSync);
+    return {idx};
   }
 
   auto release(LogId id, LogIndex index) const
@@ -346,12 +357,15 @@ struct ReplicatedLogMethodsCoordinator final
         });
   }
 
-  auto insert(LogId id, LogPayload payload) const -> futures::Future<
-      std::pair<LogIndex, replicated_log::WaitForResult>> override {
+  auto insert(LogId id, LogPayload payload, bool waitForSync) const
+      -> futures::Future<
+          std::pair<LogIndex, replicated_log::WaitForResult>> override {
     auto path = basics::StringUtils::joinT("/", "_api/log", id, "insert");
 
     network::RequestOptions opts;
     opts.database = vocbase.name();
+    opts.param(StaticStrings::WaitForSyncString,
+               waitForSync ? "true" : "false");
     return network::sendRequest(pool, "server:" + getLogLeader(id),
                                 fuerte::RestVerb::Post, path,
                                 payload.copyBuffer(), opts)
@@ -372,7 +386,8 @@ struct ReplicatedLogMethodsCoordinator final
         });
   }
 
-  auto insert(LogId id, TypedLogIterator<LogPayload>& iter) const
+  auto insert(LogId id, TypedLogIterator<LogPayload>& iter,
+              bool waitForSync) const
       -> futures::Future<std::pair<std::vector<LogIndex>,
                                    replicated_log::WaitForResult>> override {
     auto path = basics::StringUtils::joinT("/", "_api/log", id, "multi-insert");
@@ -389,6 +404,8 @@ struct ReplicatedLogMethodsCoordinator final
 
     network::RequestOptions opts;
     opts.database = vocbase.name();
+    opts.param(StaticStrings::WaitForSyncString,
+               waitForSync ? "true" : "false");
     return network::sendRequest(pool, "server:" + getLogLeader(id),
                                 fuerte::RestVerb::Post, path,
                                 builder.bufferRef(), opts)
@@ -413,6 +430,28 @@ struct ReplicatedLogMethodsCoordinator final
           return std::make_pair(
               std::move(indexes),
               replicated_log::WaitForResult(commitIndex, std::move(quorum)));
+        });
+  }
+
+  auto insertWithoutCommit(LogId id, LogPayload payload, bool waitForSync) const
+      -> futures::Future<LogIndex> override {
+    auto path = basics::StringUtils::joinT("/", "_api/log", id, "insert");
+
+    network::RequestOptions opts;
+    opts.database = vocbase.name();
+    opts.param(StaticStrings::WaitForSyncString,
+               waitForSync ? "true" : "false");
+    opts.param(StaticStrings::DontWaitForCommit, "true");
+    return network::sendRequest(pool, "server:" + getLogLeader(id),
+                                fuerte::RestVerb::Post, path,
+                                payload.copyBuffer(), opts)
+        .thenValue([](network::Response&& resp) {
+          if (resp.fail() || !fuerte::statusIsSuccess(resp.statusCode())) {
+            THROW_ARANGO_EXCEPTION(resp.combinedResult());
+          }
+          auto result = resp.slice().get("result");
+          auto index = result.get("index").extract<LogIndex>();
+          return index;
         });
   }
 
@@ -591,6 +630,70 @@ struct ReplicatedLogMethodsCoordinator final
   network::ConnectionPool* pool;
 };
 
+struct ReplicatedStateDBServerMethods
+    : std::enable_shared_from_this<ReplicatedStateDBServerMethods>,
+      ReplicatedStateMethods {
+  explicit ReplicatedStateDBServerMethods(TRI_vocbase_t& vocbase)
+      : vocbase(vocbase) {}
+
+  auto createReplicatedState(replicated_state::agency::Target const& spec) const
+      -> futures::Future<Result> override {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+
+  auto deleteReplicatedLog(LogId id) const -> futures::Future<Result> override {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+
+  auto getLocalStatus(LogId id) const
+      -> futures::Future<replicated_state::StateStatus> override {
+    auto state = vocbase.getReplicatedStateById(id);
+    if (auto status = state->getStatus(); status.has_value()) {
+      return std::move(*status);
+    }
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_HTTP_SERVICE_UNAVAILABLE);
+  }
+
+  TRI_vocbase_t& vocbase;
+};
+
+struct ReplicatedStateCoordinatorMethods
+    : std::enable_shared_from_this<ReplicatedStateCoordinatorMethods>,
+      ReplicatedStateMethods {
+  explicit ReplicatedStateCoordinatorMethods(TRI_vocbase_t& vocbase)
+      : vocbase(vocbase),
+        clusterInfo(
+            vocbase.server().getFeature<ClusterFeature>().clusterInfo()) {}
+
+  auto createReplicatedState(replicated_state::agency::Target const& spec) const
+      -> futures::Future<Result> override {
+    return replication2::agency::methods::createReplicatedState(vocbase.name(),
+                                                                spec)
+        .thenValue([self = shared_from_this()](
+                       ResultT<uint64_t>&& res) -> futures::Future<Result> {
+          if (res.fail()) {
+            return futures::Future<Result>{std::in_place, res.result()};
+          }
+
+          return self->clusterInfo.waitForPlan(res.get());
+        });
+  }
+
+  auto deleteReplicatedLog(LogId id) const -> futures::Future<Result> override {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+
+  auto getLocalStatus(LogId id) const
+      -> futures::Future<replicated_state::StateStatus> override {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+
+  TRI_vocbase_t& vocbase;
+  ClusterInfo& clusterInfo;
+};
+
+}  // namespace
+
 auto ReplicatedLogMethods::createInstance(TRI_vocbase_t& vocbase)
     -> std::shared_ptr<ReplicatedLogMethods> {
   switch (ServerState::instance()->getRole()) {
@@ -598,6 +701,20 @@ auto ReplicatedLogMethods::createInstance(TRI_vocbase_t& vocbase)
       return std::make_shared<ReplicatedLogMethodsCoordinator>(vocbase);
     case ServerState::ROLE_DBSERVER:
       return std::make_shared<ReplicatedLogMethodsDBServer>(vocbase);
+    default:
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_NOT_IMPLEMENTED,
+          "api only on available coordinators or dbservers");
+  }
+}
+
+auto ReplicatedStateMethods::createInstance(TRI_vocbase_t& vocbase)
+    -> std::shared_ptr<ReplicatedStateMethods> {
+  switch (ServerState::instance()->getRole()) {
+    case ServerState::ROLE_DBSERVER:
+      return std::make_shared<ReplicatedStateDBServerMethods>(vocbase);
+    case ServerState::ROLE_COORDINATOR:
+      return std::make_shared<ReplicatedStateCoordinatorMethods>(vocbase);
     default:
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_NOT_IMPLEMENTED,
