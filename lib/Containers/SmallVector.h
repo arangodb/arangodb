@@ -63,10 +63,6 @@ class SmallVectorWithArena {
     // later allocations can grow the vector beyond the size of the arena, and
     // then heap allocations will need to be made.
     _vector.reserve(BufSize / sizeof(T));
-    // The vector's underlying array should lie in the Arena
-    TRI_ASSERT((char*)&_arena <= (char*)_vector.data() &&
-               (char*)(_vector.data() + _vector.size()) <=
-                   (char*)(&_arena + sizeof(_arena)));
   }
 
   SmallVectorWithArena(SmallVectorWithArena const& other) = delete;
