@@ -46,7 +46,7 @@ struct FollowerStateManager
   using Iterator = typename Stream::Iterator;
 
   FollowerStateManager(
-      std::shared_ptr<ReplicatedStateBase> parent,
+      LoggerContext loggerContext, std::shared_ptr<ReplicatedStateBase> parent,
       std::shared_ptr<replicated_log::ILogFollower> logFollower,
       std::unique_ptr<CoreType> core,
       std::unique_ptr<ReplicatedStateToken> token,
@@ -71,7 +71,9 @@ struct FollowerStateManager
  private:
   void awaitLeaderShip();
   void ingestLogData();
-  void pollNewEntries();
+
+  template<typename F>
+  auto pollNewEntries(F&& fn);
   void checkSnapshot(std::shared_ptr<IReplicatedFollowerState<S>>);
   void tryTransferSnapshot(std::shared_ptr<IReplicatedFollowerState<S>>);
   void startService(std::shared_ptr<IReplicatedFollowerState<S>>);
@@ -82,7 +84,7 @@ struct FollowerStateManager
 
   struct GuardedData {
     FollowerStateManager& self;
-    LogIndex nextEntry{1};
+    LogIndex _nextWaitForIndex{1};
     std::shared_ptr<Stream> stream;
     std::shared_ptr<IReplicatedFollowerState<S>> state;
 
@@ -102,12 +104,18 @@ struct FollowerStateManager
                 std::unique_ptr<ReplicatedStateToken> token);
     void updateInternalState(FollowerInternalState newState,
                              std::optional<LogRange> range = std::nullopt);
-    auto updateNextIndex(LogIndex index) -> DeferredAction;
+    auto updateNextIndex(LogIndex nextWaitForIndex) -> DeferredAction;
   };
+
+  void handlePollResult(
+      futures::Future<std::unique_ptr<Iterator>>&& pollFuture);
+  void handleAwaitLeadershipResult(
+      futures::Future<replicated_log::WaitForResult>&&);
 
   Guarded<GuardedData> _guardedData;
   std::weak_ptr<ReplicatedStateBase> const parent;
   std::shared_ptr<replicated_log::ILogFollower> const logFollower;
   std::shared_ptr<Factory> const factory;
+  LoggerContext const loggerContext;
 };
 }  // namespace arangodb::replication2::replicated_state

@@ -46,6 +46,7 @@ struct LeaderStateManager
       typename ReplicatedState<S>::StateManagerBase::WaitForAppliedQueue;
 
   explicit LeaderStateManager(
+      LoggerContext loggerContext,
       std::shared_ptr<ReplicatedState<S>> const& parent,
       std::shared_ptr<replicated_log::ILogLeader> leader,
       std::unique_ptr<CoreType> core,
@@ -77,6 +78,7 @@ struct LeaderStateManager
   std::unique_ptr<CoreType> core;
   std::unique_ptr<ReplicatedStateToken> token;
 
+  LoggerContext const loggerContext;
   std::shared_ptr<Factory> const factory;
   bool _didResign = false;
 

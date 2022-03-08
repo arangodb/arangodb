@@ -55,8 +55,7 @@ class IResearchLinkCoordinator final : public arangodb::ClusterIndex,
   /// @brief initialize from the specified definition used in make(...)
   /// @return success
   ////////////////////////////////////////////////////////////////////////////////
-  Result init(velocypack::Slice definition,
-              InitCallback const& initCallback = {}) final;
+  Result init(velocypack::Slice definition);
 
   bool canBeDropped() const final { return IResearchLink::canBeDropped(); }
 

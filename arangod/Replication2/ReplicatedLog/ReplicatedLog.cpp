@@ -51,7 +51,8 @@ replicated_log::ReplicatedLog::ReplicatedLog(
     std::shared_ptr<ReplicatedLogMetrics> const& metrics,
     std::shared_ptr<ReplicatedLogGlobalSettings const> options,
     LoggerContext const& logContext)
-    : _logContext(logContext.with<logContextKeyLogId>(core->logId())),
+    : _logId(core->logId()),
+      _logContext(logContext.with<logContextKeyLogId>(core->logId())),
       _participant(std::make_shared<LogUnconfiguredParticipant>(std::move(core),
                                                                 metrics)),
       _metrics(metrics),
@@ -168,4 +169,8 @@ auto replicated_log::ReplicatedLog::drop() -> std::unique_ptr<LogCore> {
     return res;
   });
   return std::move(core);
+}
+
+auto replicated_log::ReplicatedLog::getId() const noexcept -> LogId {
+  return _logId;
 }
