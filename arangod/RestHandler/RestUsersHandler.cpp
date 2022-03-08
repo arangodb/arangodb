@@ -341,7 +341,7 @@ RestStatus RestUsersHandler::postRequest(auth::UserManager* um) {
 
 RestStatus RestUsersHandler::putRequest(auth::UserManager* um) {
   std::vector<std::string> suffixes = _request->decodedSuffixes();
-  bool parseSuccess = true;
+  bool parseSuccess = false;
   VPackSlice const body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER);
