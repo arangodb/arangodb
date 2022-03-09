@@ -1057,7 +1057,6 @@ static void ClientConnection_httpFuzzRequests(
   auto fuzzer = std::make_unique<fuzzer::RequestFuzzer>(numIts, seed);
   std::unordered_map<unsigned, uint32_t> fuzzReturnCodesCount;
 
-  fuzzer->logStart();
   for (uint32_t i = 0; i < numReqs; ++i) {
     httpFuzzRequest(v8connection, isolate, args, fuzzer.get());
     velocypack::Builder builder;
@@ -1085,8 +1084,6 @@ static void ClientConnection_httpFuzzRequests(
   }
   builder.close();
   builder.close();
-
-  LOG_TOPIC("871a6", INFO, arangodb::Logger::COMMUNICATION) << statistics;
 
   TRI_V8_RETURN(TRI_VPackToV8(isolate, builder.slice()));
 
@@ -2304,7 +2301,6 @@ v8::Local<v8::Value> V8ClientConnection::requestFuzz(
   std::unique_ptr<fu::Response> response;
   try {
     req->setFuzzReqHeader(header);
-    req->setFuzzerReq(true);
     response = connection->sendRequest(std::move(req));
   } catch (fu::Error const& ec) {
     rc = ec;

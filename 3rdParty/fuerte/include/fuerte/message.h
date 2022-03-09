@@ -199,8 +199,7 @@ class Request final : public Message {
   MessageHeader const& messageHeader() const override { return header; }
   void setFuzzReqHeader(std::string const& fuzzHeader) {_fuzzReqHeader = fuzzHeader;}
   std::optional<std::string> getFuzzReqHeader() const {return _fuzzReqHeader;}
-  void setFuzzerReq(bool isFuzzerReq) {_isFuzzerReq = isFuzzerReq;}
-  bool getFuzzerReq() const {return _isFuzzerReq;}
+  bool getFuzzerReq() const noexcept { return _fuzzReqHeader.has_value(); }
 
   ///////////////////////////////////////////////
   // header accessors

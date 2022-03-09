@@ -25,8 +25,6 @@
 
 #include <array>
 #include <charconv>
-#include <deque>
-#include <map>
 #include <optional>
 #include <random>
 #include <string>
@@ -46,18 +44,6 @@ enum LineOperation {
   kInjectRandByteInLine,
   kAddLine,
   kMaxLineOpValue
-};
-
-enum RequestType {
-  kGet = 0,
-  kPut,
-  kPutRaw,
-  kOptions,
-  kPost,
-  kPatch,
-  kDelete,
-  kHead,
-  kMaxReqValue
 };
 
 enum BodyOperation { kAddArray = 0, kAddObject, kAddCharSeq, kMaxBodyOpValue };
@@ -87,14 +73,12 @@ class RequestFuzzer {
   void randomizeHeader(std::string& header, std::optional<size_t> payloadSize);
   std::optional<std::string> randomizeBody();
   void randomizeBodyInternal(velocypack::Builder& builder);
-  // void randomizeReq(std::string& body, std::string& header, bool& hasBody);
-  void logStart();
   uint32_t getSeed() { return _seed; }
 
  private:
-  void randomizeCharOperation(std::string& input, uint32_t numIts = 1);
+  void randomizeCharOperation(std::string& input, uint32_t numIts);
 
-  void randomizeLineOperation(uint32_t numIts = 1);
+  void randomizeLineOperation(uint32_t numIts);
 
   template<typename T>
   T generateRandNumWithinRange(T min, T max);
@@ -114,12 +98,6 @@ class RequestFuzzer {
   bool _reqHasBody;
   std::string _reqBody;
   size_t _reqBodySize;
-
-  const std::unordered_map<RequestType, std::string> _requestTypes = {
-      {RequestType::kGet, "GET"},        {RequestType::kPut, "PUT"},
-      {RequestType::kPutRaw, "PUT_RAW"}, {RequestType::kOptions, "OPTIONS"},
-      {RequestType::kPost, "POST"},      {RequestType::kPatch, "PATCH"},
-      {RequestType::kDelete, "DELETE"},  {RequestType::kHead, "HEAD"}};
 
   static constexpr uint32_t _maxNestedRoutes = 4;
   static constexpr uint32_t _maxDepth = 4;

@@ -22,11 +22,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RequestFuzzer.h"
-#include <cstring>
+#include <Rest/CommonDefines.h>
 
-#include <Basics/debugging.h>
-
-#include <Logger/LogMacros.h>
+namespace rest = arangodb::rest;
 
 namespace arangodb::fuzzer {
 
@@ -123,9 +121,9 @@ void RequestFuzzer::randomizeHeader(std::string& header,
   }
   std::string firstLine;
   if (generateRandNumWithinRange<uint32_t>(0, 99) > 0) {
-    RequestType randReqType =
-        static_cast<RequestType>(_randContext.mt() % RequestType::kMaxReqValue);
-    firstLine.append(_requestTypes.at(randReqType));
+    rest::RequestType randReqType = static_cast<RequestType>(
+        _randContext.mt() % rest::RequestType::ILLEGAL);
+    firstLine.append(rest::contentTypeToString(randReqType));
   } else {
     randomizeCharOperation(firstLine);
   }
@@ -269,8 +267,4 @@ void RequestFuzzer::generateRandReadableAsciiString(std::string& input) {
   }
 }
 
-void RequestFuzzer::logStart() {
-  LOG_TOPIC("871a6", INFO, arangodb::Logger::COMMUNICATION)
-      << "Started fuzzing... Seed: " << _seed;
-}
 };  // namespace arangodb::fuzzer
