@@ -165,7 +165,7 @@ void V8PlatformFeature::collectOptions(
   options->addOption(
       "--javascript.v8-options", "options to pass to v8",
       new VectorParameter<StringParameter>(&_v8Options),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options->addOption("--javascript.v8-max-heap", "maximal heap size (in MB)",
                      new UInt64Parameter(&_v8MaxHeap));

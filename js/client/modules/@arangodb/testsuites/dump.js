@@ -245,6 +245,7 @@ class DumpRestoreHelper {
         return false;
       }
       this.bindInstanceInfo(this.secondRunOptions);
+      arango.reconnect(arango.getEndpoint(), '_system', "root", "");
       return true;
 
     }
@@ -309,6 +310,7 @@ class DumpRestoreHelper {
   runCleanupSuite(path) {
     this.print('Cleaning up - ' + path);
     this.results.cleanup = this.arangosh(path, this.clientAuth);
+    arango.reconnect(arango.getEndpoint(), '_system', "root", "");
     return this.validate(this.results.cleanup);
   }
 

@@ -26,6 +26,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/application-exit.h"
+#include "Basics/system-compiler.h"
 #include "Cluster/AgencyCache.h"
 #include "Cluster/AgencyCallback.h"
 #include "Cluster/ClusterFeature.h"
@@ -43,7 +44,9 @@ namespace arangodb::cluster {
 namespace {
 constexpr auto kSupervisionHealthPath = "Supervision/Health";
 constexpr auto kHealthyServerKey = "Status";
-constexpr auto HealthyServerValue = "GOOD";
+[[maybe_unused]] constexpr auto kServerStatusGood = "GOOD";
+[[maybe_unused]] constexpr auto kServerStatusBad = "BAD";
+constexpr auto kServerStatusFailed = "FAILED";
 }  // namespace
 
 class FailureOracleImpl final
@@ -65,7 +68,7 @@ class FailureOracleImpl final
   void start();
   void stop();
   auto getStatus() -> FailureOracleFeature::Status;
-  void reload(VPackSlice const& result);
+  void reload(VPackSlice result, consensus::index_t raftIndex);
   void flush();
   void scheduleFlush() noexcept;
 
@@ -75,10 +78,11 @@ class FailureOracleImpl final
  private:
   mutable std::shared_mutex _mutex;
   FailureOracleFeature::FailureMap _isFailed;
+  consensus::index_t _lastRaftIndex{0};
   std::shared_ptr<AgencyCallback> _agencyCallback;
   Scheduler::WorkHandle _flushJob;
   ClusterFeature& _clusterFeature;
-  std::atomic_bool _is_running;
+  std::atomic_bool _isRunning;
   std::chrono::system_clock::time_point _lastUpdated;
 };
 
@@ -86,24 +90,28 @@ FailureOracleImpl::FailureOracleImpl(ClusterFeature& _clusterFeature)
     : _clusterFeature{_clusterFeature} {};
 
 void FailureOracleImpl::start() {
-  _is_running.store(true);
+  _isRunning.store(true);
 
   auto agencyCallbackRegistry = _clusterFeature.agencyCallbackRegistry();
   if (!agencyCallbackRegistry) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "Expected non-null AgencyCallbackRegistry "
                                    "while starting FailureOracle.");
+    TRI_ASSERT(false);
   }
+  LOG_TOPIC("848eb", DEBUG, Logger::CLUSTER) << "Started Failure Oracle";
   Result res = agencyCallbackRegistry->registerCallback(_agencyCallback, true);
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
+    TRI_ASSERT(false);
   }
 
   scheduleFlush();
 }
 
 void FailureOracleImpl::stop() {
-  _is_running.store(false);
+  _isRunning.store(false);
+  LOG_TOPIC("cf940", DEBUG, Logger::CLUSTER) << "Stopping Failure Oracle";
 
   try {
     auto agencyCallbackRegistry = _clusterFeature.agencyCallbackRegistry();
@@ -126,31 +134,52 @@ auto FailureOracleImpl::getStatus() -> FailureOracleFeature::Status {
                                       .lastUpdated = _lastUpdated};
 }
 
-void FailureOracleImpl::reload(const VPackSlice& result) {
+void FailureOracleImpl::reload(VPackSlice result,
+                               consensus::index_t raftIndex) {
   FailureOracleFeature::FailureMap isFailed;
-  for (auto [key, value] : VPackObjectIterator(result)) {
-    auto serverId = key.copyString();
-    auto isServerGood =
-        value.get(kHealthyServerKey).isEqualString(HealthyServerValue);
-    isFailed[serverId] = !isServerGood;
+  for (auto const [key, value] : VPackObjectIterator(result)) {
+    auto const serverId = key.copyString();
+    auto const isServerFailed =
+        value.get(kHealthyServerKey).isEqualString(kServerStatusFailed);
+    isFailed[serverId] = isServerFailed;
   }
   std::unique_lock writeLock(_mutex);
-  _isFailed = std::move(isFailed);
+  if (_lastRaftIndex >= raftIndex) {
+    LOG_TOPIC("289b0", TRACE, Logger::CLUSTER)
+        << "skipping reload with old raft index " << raftIndex
+        << "; already at " << _lastRaftIndex;
+    return;
+  }
+
+  std::swap(_isFailed, isFailed);
+  _lastRaftIndex = raftIndex;
   _lastUpdated = std::chrono::system_clock::now();
+  if (ADB_UNLIKELY(Logger::isEnabled(LogLevel::TRACE, Logger::CLUSTER))) {
+    if (isFailed != _isFailed) {
+      LOG_TOPIC("321d2", TRACE, Logger::CLUSTER)
+          << "reloading with " << _isFailed << " at "
+          << timepointToString(_lastUpdated);
+    }
+  }
 }
 
 void FailureOracleImpl::flush() {
-  if (!_is_running.load()) {
+  if (!_isRunning.load()) {
+    LOG_TOPIC("65a8b", TRACE, Logger::CLUSTER)
+        << "Failure Oracle feature no longer running, ignoring flush";
     return;
   }
-  std::shared_ptr<VPackBuilder> builder;
   AgencyCache& agencyCache = _clusterFeature.agencyCache();
-  std::tie(builder, std::ignore) = agencyCache.get(kSupervisionHealthPath);
+  auto [builder, raftIndex] = agencyCache.get(kSupervisionHealthPath);
   if (auto result = builder->slice(); !result.isNone()) {
     TRI_ASSERT(result.isObject())
         << " expected object in agency at " << kSupervisionHealthPath
         << " but got " << result.toString();
-    reload(result);
+    reload(result, raftIndex);
+  } else {
+    LOG_TOPIC("f6403", ERR, Logger::CLUSTER)
+        << "Agency cache returned no result for " << kSupervisionHealthPath;
+    TRI_ASSERT(false);
   }
 }
 
@@ -159,6 +188,8 @@ void FailureOracleImpl::scheduleFlush() noexcept {
 
   auto scheduler = SchedulerFeature::SCHEDULER;
   if (!scheduler) {
+    LOG_TOPIC("6c08b", ERR, Logger::CLUSTER)
+        << "Scheduler unavailable, aborting scheduled flushes.";
     return;
   }
 
@@ -166,15 +197,18 @@ void FailureOracleImpl::scheduleFlush() noexcept {
       RequestLane::AGENCY_CLUSTER, 50s,
       [weak = weak_from_this()](bool canceled) {
         auto self = weak.lock();
-        if (self && !canceled && self->_is_running.load()) {
+        if (self && !canceled && self->_isRunning.load()) {
           try {
             self->flush();
           } catch (std::exception& ex) {
-            LOG_TOPIC("42bf3", WARN, Logger::CLUSTER)
+            LOG_TOPIC("42bf3", FATAL, Logger::CLUSTER)
                 << "Exception while flushing the failure oracle " << ex.what();
             FATAL_ERROR_EXIT();
           }
           self->scheduleFlush();
+        } else {
+          LOG_TOPIC("b5839", DEBUG, Logger::CLUSTER)
+              << "Failure Oracle is gone, exiting scheduled flush loop.";
         }
       });
 }
@@ -184,13 +218,22 @@ void FailureOracleImpl::createAgencyCallback(Server& server) {
   TRI_ASSERT(_agencyCallback == nullptr);
   _agencyCallback = std::make_shared<AgencyCallback>(
       server, kSupervisionHealthPath,
-      [weak = weak_from_this()](VPackSlice const& result) {
+      [weak = weak_from_this()](VPackSlice result,
+                                consensus::index_t raftIndex) {
         auto self = weak.lock();
-        if (self && !result.isNone()) {
-          TRI_ASSERT(result.isObject())
-              << " expected object in agency at " << kSupervisionHealthPath
-              << " but got " << result.toString();
-          self->reload(result);
+        if (self) {
+          if (!result.isNone()) {
+            TRI_ASSERT(result.isObject())
+                << " expected object in agency at " << kSupervisionHealthPath
+                << " but got " << result.toString();
+            self->reload(result, raftIndex);
+          } else {
+            LOG_TOPIC("581ba", WARN, Logger::CLUSTER)
+                << "Failure Oracle callback got no result, skipping reload";
+          }
+        } else {
+          LOG_TOPIC("453b4", DEBUG, Logger::CLUSTER)
+              << "Failure Oracle is gone, ignoring agency callback";
         }
         return true;
       },

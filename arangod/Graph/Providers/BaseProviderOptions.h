@@ -74,12 +74,12 @@ struct IndexAccessor {
   TRI_edge_direction_e const _direction;
 };
 
-struct BaseProviderOptions {
+struct SingleServerBaseProviderOptions {
   using WeightCallback = std::function<double(
       double originalWeight, arangodb::velocypack::Slice edge)>;
 
  public:
-  BaseProviderOptions(
+  SingleServerBaseProviderOptions(
       aql::Variable const* tmpVar,
       std::pair<std::vector<IndexAccessor>,
                 std::unordered_map<uint64_t, std::vector<IndexAccessor>>>&&
@@ -90,8 +90,9 @@ struct BaseProviderOptions {
       std::unordered_map<std::string, std::vector<std::string>> const&
           collectionToShardMap);
 
-  BaseProviderOptions(BaseProviderOptions const&) = delete;
-  BaseProviderOptions(BaseProviderOptions&&) = default;
+  SingleServerBaseProviderOptions(SingleServerBaseProviderOptions const&) =
+      delete;
+  SingleServerBaseProviderOptions(SingleServerBaseProviderOptions&&) = default;
 
   aql::Variable const* tmpVar() const;
   std::pair<std::vector<IndexAccessor>,
@@ -141,18 +142,43 @@ struct BaseProviderOptions {
 };
 
 struct ClusterBaseProviderOptions {
+  using WeightCallback = std::function<double(
+      double originalWeight, arangodb::velocypack::Slice edge)>;
+
  public:
   ClusterBaseProviderOptions(
       std::shared_ptr<RefactoredClusterTraverserCache> cache,
-      std::unordered_map<ServerID, aql::EngineId> const* engines,
-      bool backward);
+      std::unordered_map<ServerID, aql::EngineId> const* engines, bool backward,
+      bool produceVertices);
+
+  ClusterBaseProviderOptions(
+      std::shared_ptr<RefactoredClusterTraverserCache> cache,
+      std::unordered_map<ServerID, aql::EngineId> const* engines, bool backward,
+      bool produceVertices, aql::FixedVarExpressionContext* expressionContext,
+      std::vector<std::pair<aql::Variable const*, aql::RegisterId>>
+          filterConditionVariables);
 
   RefactoredClusterTraverserCache* getCache();
 
   bool isBackward() const;
 
+  bool produceVertices() const;
+
   [[nodiscard]] std::unordered_map<ServerID, aql::EngineId> const* engines()
       const;
+
+  // [GraphRefactor] Note: Both used in SingleServer and Cluster variant.
+  // If more overlaps reoccur, we might want to implement a base class.
+  void prepareContext(aql::InputAqlItemRow input);
+  void unPrepareContext();
+  aql::FixedVarExpressionContext* expressionContext();
+
+  bool hasWeightMethod() const;
+
+  double weightEdge(double prefixWeight,
+                    arangodb::velocypack::Slice edge) const;
+
+  void setWeightEdgeCallback(WeightCallback callback);
 
  private:
   std::shared_ptr<RefactoredClusterTraverserCache> _cache;
@@ -160,6 +186,19 @@ struct ClusterBaseProviderOptions {
   std::unordered_map<ServerID, aql::EngineId> const* _engines;
 
   bool _backward;
+
+  bool _produceVertices;
+
+  // [GraphRefactor] Note: All vars below used in SingleServer && Cluster case
+  aql::FixedVarExpressionContext* _expressionContext;
+
+  // TODO: Currently this will be a copy. As soon as we remove the old
+  // non-refactored code, we will do a move instead of a copy operation.
+  std::vector<std::pair<aql::Variable const*, aql::RegisterId>>
+      _filterConditionVariables;
+
+  // Optional callback to compute the weight of an edge.
+  std::optional<WeightCallback> _weightCallback;
 };
 
 }  // namespace graph

@@ -29,8 +29,9 @@
 
 #include <Basics/StaticStrings.h>
 #include <Basics/StringUtils.h>
-
 #include <Basics/VelocyPackHelper.h>
+#include <Basics/debugging.h>
+
 #include <chrono>
 #include <utility>
 
@@ -214,8 +215,10 @@ auto replicated_log::CommitFailReason::withNothingToCommit() noexcept
 }
 
 auto replicated_log::CommitFailReason::withQuorumSizeNotReached(
-    ParticipantId who) noexcept -> CommitFailReason {
-  return CommitFailReason(std::in_place, QuorumSizeNotReached{std::move(who)});
+    QuorumSizeNotReached::who_type who, TermIndexPair spearhead) noexcept
+    -> CommitFailReason {
+  return CommitFailReason(std::in_place,
+                          QuorumSizeNotReached{std::move(who), spearhead});
 }
 
 auto replicated_log::CommitFailReason::withForcedParticipantNotInQuorum(
@@ -242,9 +245,13 @@ inline constexpr std::string_view NonEligibleServerRequiredForQuorumEnum =
     "NonEligibleServerRequiredForQuorum";
 inline constexpr std::string_view WhoFieldName = "who";
 inline constexpr std::string_view CandidatesFieldName = "candidates";
-inline constexpr std::string_view NonEligibleFailed = "failed";
 inline constexpr std::string_view NonEligibleExcluded = "excluded";
 inline constexpr std::string_view NonEligibleWrongTerm = "wrongTerm";
+inline constexpr std::string_view IsFailedFieldName = "isFailed";
+inline constexpr std::string_view IsExcludedFieldName = "isExcluded";
+inline constexpr std::string_view LastAcknowledgedFieldName =
+    "lastAcknowledged";
+inline constexpr std::string_view SpearheadFieldName = "spearhead";
 }  // namespace
 
 auto replicated_log::CommitFailReason::NothingToCommit::fromVelocyPack(
@@ -271,17 +278,78 @@ auto replicated_log::CommitFailReason::QuorumSizeNotReached::fromVelocyPack(
   TRI_ASSERT(s.get(ReasonFieldName).isEqualString(QuorumSizeNotReachedEnum))
       << "Expected string `" << QuorumSizeNotReachedEnum
       << "`, found: " << s.stringView();
-  TRI_ASSERT(s.get(WhoFieldName).isString())
-      << "Expected string, found: " << s.toJson();
-  return {s.get(WhoFieldName).toString()};
+  TRI_ASSERT(s.get(WhoFieldName).isObject())
+      << "Expected object, found: " << s.toJson();
+  auto result = QuorumSizeNotReached();
+  for (auto const& [participantIdSlice, participantInfoSlice] :
+       VPackObjectIterator(s.get(WhoFieldName))) {
+    auto const participantId = participantIdSlice.stringView();
+    result.who.try_emplace(
+        participantId, ParticipantInfo::fromVelocyPack(participantInfoSlice));
+  }
+  result.spearhead = TermIndexPair::fromVelocyPack(s.get(SpearheadFieldName));
+  return result;
 }
 
 void replicated_log::CommitFailReason::QuorumSizeNotReached::toVelocyPack(
     velocypack::Builder& builder) const {
   VPackObjectBuilder obj(&builder);
-  builder.add(std::string_view(ReasonFieldName),
-              VPackValue(QuorumSizeNotReachedEnum));
-  builder.add(std::string_view(WhoFieldName), VPackValue(who));
+  builder.add(ReasonFieldName, VPackValue(QuorumSizeNotReachedEnum));
+  {
+    builder.add(VPackValue(WhoFieldName));
+    VPackObjectBuilder objWho(&builder);
+
+    for (auto const& [participantId, participantInfo] : who) {
+      builder.add(VPackValue(participantId));
+      participantInfo.toVelocyPack(builder);
+    }
+  }
+  {
+    builder.add(VPackValue(SpearheadFieldName));
+    spearhead.toVelocyPack(builder);
+  }
+}
+
+auto replicated_log::CommitFailReason::QuorumSizeNotReached::ParticipantInfo::
+    fromVelocyPack(velocypack::Slice s) -> ParticipantInfo {
+  TRI_ASSERT(s.get(IsFailedFieldName).isBool())
+      << "Expected bool in field `" << IsFailedFieldName << "` in "
+      << s.toJson();
+  return {
+      .isFailed = s.get(IsFailedFieldName).getBool(),
+      .isExcluded = s.get(IsExcludedFieldName).getBool(),
+      .lastAcknowledged =
+          TermIndexPair::fromVelocyPack(s.get(LastAcknowledgedFieldName)),
+  };
+}
+
+void replicated_log::CommitFailReason::QuorumSizeNotReached::ParticipantInfo::
+    toVelocyPack(velocypack::Builder& builder) const {
+  VPackObjectBuilder obj(&builder);
+  builder.add(IsFailedFieldName, isFailed);
+  builder.add(IsExcludedFieldName, isExcluded);
+  {
+    builder.add(VPackValue(LastAcknowledgedFieldName));
+    lastAcknowledged.toVelocyPack(builder);
+  }
+}
+
+auto replicated_log::operator<<(
+    std::ostream& ostream,
+    CommitFailReason::QuorumSizeNotReached::ParticipantInfo pInfo)
+    -> std::ostream& {
+  ostream << "{ ";
+  ostream << std::boolalpha;
+  if (pInfo.isExcluded) {
+    ostream << "isExcluded: " << pInfo.isExcluded;
+  } else {
+    ostream << "lastAcknowledgedEntry: " << pInfo.lastAcknowledged;
+    if (pInfo.isFailed) {
+      ostream << ", isFailed: " << pInfo.isFailed;
+    }
+  }
+  ostream << " }";
+  return ostream;
 }
 
 auto replicated_log::CommitFailReason::ForcedParticipantNotInQuorum::
@@ -322,8 +390,6 @@ auto replicated_log::CommitFailReason::NonEligibleServerRequiredForQuorum::
                   NonEligibleServerRequiredForQuorum::Why why) noexcept
     -> std::string_view {
   switch (why) {
-    case kFailed:
-      return NonEligibleFailed;
     case kExcluded:
       return NonEligibleExcluded;
     case kWrongTerm:
@@ -343,9 +409,7 @@ auto replicated_log::CommitFailReason::NonEligibleServerRequiredForQuorum::
   CandidateMap candidates;
   for (auto const& [key, value] :
        velocypack::ObjectIterator(s.get(CandidatesFieldName))) {
-    if (value.isEqualString(NonEligibleFailed)) {
-      candidates[key.copyString()] = kFailed;
-    } else if (value.isEqualString(NonEligibleExcluded)) {
+    if (value.isEqualString(NonEligibleExcluded)) {
       candidates[key.copyString()] = kExcluded;
     } else if (value.isEqualString(NonEligibleWrongTerm)) {
       candidates[key.copyString()] = kWrongTerm;
@@ -381,6 +445,14 @@ void replicated_log::CommitFailReason::toVelocyPack(
   std::visit([&](auto const& v) { v.toVelocyPack(builder); }, value);
 }
 
+auto replicated_log::CommitFailReason::withFewerParticipantsThanWriteConcern(
+    FewerParticipantsThanWriteConcern fewerParticipantsThanWriteConcern)
+    -> replicated_log::CommitFailReason {
+  auto result = CommitFailReason();
+  result.value = fewerParticipantsThanWriteConcern;
+  return result;
+}
+
 auto replicated_log::to_string(CommitFailReason const& r) -> std::string {
   struct ToStringVisitor {
     auto operator()(CommitFailReason::NothingToCommit const&) -> std::string {
@@ -388,7 +460,14 @@ auto replicated_log::to_string(CommitFailReason const& r) -> std::string {
     }
     auto operator()(CommitFailReason::QuorumSizeNotReached const& reason)
         -> std::string {
-      return "Required quorum size not yet reached. Participant " + reason.who;
+      auto stream = std::stringstream();
+      stream << "Required quorum size not yet reached. ";
+      stream << "The leader's spearhead is at " << reason.spearhead << ". ";
+      stream << "Participants who aren't currently contributing to the "
+                "spearhead are ";
+      // ADL cannot find this operator here.
+      arangodb::operator<<(stream, reason.who);
+      return stream.str();
     }
     auto operator()(
         CommitFailReason::ForcedParticipantNotInQuorum const& reason)
@@ -404,6 +483,16 @@ auto replicated_log::to_string(CommitFailReason const& r) -> std::string {
         result += basics::StringUtils::concatT(" ", pid, ": ", why);
       }
       return result;
+    }
+    auto operator()(
+        CommitFailReason::FewerParticipantsThanWriteConcern const& reason) {
+      using namespace basics::StringUtils;
+      return concatT("Fewer participants than write concern. Have ",
+                     reason.numParticipants,
+                     " participants and effectiveWriteConcern=",
+                     reason.effectiveWriteConcern,
+                     ". With writeConcern=", reason.writeConcern,
+                     " and softWriteConcern=", reason.softWriteConcern, ".");
     }
   };
 
@@ -458,4 +547,21 @@ auto replication2::ParticipantsConfig::fromVelocyPack(velocypack::Slice s)
     config.participants.emplace(std::move(id), flags);
   }
   return config;
+}
+
+auto replicated_log::CommitFailReason::FewerParticipantsThanWriteConcern::
+    fromVelocyPack(velocypack::Slice)
+        -> replicated_log::CommitFailReason::FewerParticipantsThanWriteConcern {
+  auto result =
+      replicated_log::CommitFailReason::FewerParticipantsThanWriteConcern();
+
+  return result;
+}
+
+void replicated_log::CommitFailReason::FewerParticipantsThanWriteConcern::
+    toVelocyPack(velocypack::Builder& builder) const {
+  VPackObjectBuilder obj(&builder);
+  builder.add(StaticStrings::WriteConcern, writeConcern);
+  builder.add(StaticStrings::SoftWriteConcern, softWriteConcern);
+  builder.add(StaticStrings::EffectiveWriteConcern, effectiveWriteConcern);
 }

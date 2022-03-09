@@ -629,8 +629,12 @@ set(LIB_ARANGO_REPLICATION2_SOURCES
   Replication2/ReplicatedState/UpdateReplicatedState.h
   Replication2/StateMachines/BlackHole/BlackHoleStateMachine.cpp
   Replication2/StateMachines/BlackHole/BlackHoleStateMachineFeature.cpp
+  Replication2/StateMachines/Prototype/PrototypeStateMachine.cpp
+  Replication2/StateMachines/Prototype/PrototypeStateMachineFeature.cpp
+  Replication2/StateMachines/Prototype/PrototypeStateMethods.cpp
   Replication2/Version.cpp
   RestHandler/RestLogHandler.cpp
+  RestHandler/RestPrototypeStateHandler.cpp
   RestHandler/RestLogInternalHandler.cpp
 )
 
@@ -777,6 +781,7 @@ set(LIB_ARANGOSERVER_SOURCES
   GeneralServer/H2CommTask.cpp
   GeneralServer/HttpCommTask.cpp
   GeneralServer/IoContext.cpp
+  GeneralServer/RequestLane.cpp
   GeneralServer/RestHandler.cpp
   GeneralServer/RestHandlerFactory.cpp
   GeneralServer/ServerSecurityFeature.cpp
@@ -810,6 +815,7 @@ set(LIB_ARANGOSERVER_SOURCES
   RestHandler/RestLicenseHandler.cpp
   RestHandler/RestQueryCacheHandler.cpp
   RestHandler/RestQueryHandler.cpp
+  RestHandler/RestReplicatedStateHandler.cpp
   RestHandler/RestShutdownHandler.cpp
   RestHandler/RestSimpleHandler.cpp
   RestHandler/RestSimpleQueryHandler.cpp
