@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_GRAPH_BREADTHFIRSTENUMERATOR_H
-#define ARANGODB_GRAPH_BREADTHFIRSTENUMERATOR_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Graph/PathEnumerator.h"
@@ -40,19 +39,20 @@ struct TraverserOptions;
 namespace graph {
 class EdgeCursor;
 
-class BreadthFirstEnumerator final : public arangodb::traverser::PathEnumerator {
+class BreadthFirstEnumerator final
+    : public arangodb::traverser::PathEnumerator {
  private:
   /// @brief One entry in the schreier vector
   struct PathStep {
     size_t sourceIdx;
     graph::EdgeDocumentToken edge;
-    arangodb::velocypack::StringRef /* const */ vertex;
+    std::string_view /* const */ vertex;
 
    public:
-    explicit PathStep(arangodb::velocypack::StringRef vertex);
+    explicit PathStep(std::string_view vertex);
 
     PathStep(size_t sourceIdx, graph::EdgeDocumentToken&& edge,
-             arangodb::velocypack::StringRef vertex);
+             std::string_view vertex);
 
     ~PathStep() = default;
 
@@ -72,7 +72,9 @@ class BreadthFirstEnumerator final : public arangodb::traverser::PathEnumerator 
     explicit NextStep(size_t sourceIdx) : sourceIdx(sourceIdx) {}
   };
 
-  /// @brief schreier vector to store the visited vertices
+  /// @brief schreier vector to store the visited vertices.
+  /// note: for memory usage tracking, it is require to call growStorage()
+  /// before inserting into the schreier vector.
   std::vector<PathStep> _schreier;
 
   /// @brief Next free index in schreier vector.
@@ -102,13 +104,15 @@ class BreadthFirstEnumerator final : public arangodb::traverser::PathEnumerator 
   BreadthFirstEnumerator(arangodb::traverser::Traverser* traverser,
                          arangodb::traverser::TraverserOptions* opts);
 
-  ~BreadthFirstEnumerator() = default;
-  
-  void setStartVertex(arangodb::velocypack::StringRef startVertex) override;
+  ~BreadthFirstEnumerator();
+
+  void clear() final;
+
+  void setStartVertex(std::string_view startVertex) override;
 
   /// @brief Get the next Path element from the traversal.
   bool next() override;
-  
+
   aql::AqlValue lastVertexToAqlValue() override;
 
   aql::AqlValue lastEdgeToAqlValue() override;
@@ -125,7 +129,7 @@ class BreadthFirstEnumerator final : public arangodb::traverser::PathEnumerator 
    *
    * @return true if the vertex is already in the path
    */
-  bool pathContainsVertex(size_t index, arangodb::velocypack::StringRef vertex) const;
+  bool pathContainsVertex(size_t index, std::string_view vertex) const;
 
   /**
    * @brief Helper function to validate if the path contains the given
@@ -136,7 +140,8 @@ class BreadthFirstEnumerator final : public arangodb::traverser::PathEnumerator 
    *
    * @return true if the edge is already in the path
    */
-  bool pathContainsEdge(size_t index, graph::EdgeDocumentToken const& edge) const;
+  bool pathContainsEdge(size_t index,
+                        graph::EdgeDocumentToken const& edge) const;
 
   /**
    * @brief Reset iterators to search within next depth
@@ -149,13 +154,20 @@ class BreadthFirstEnumerator final : public arangodb::traverser::PathEnumerator 
 
   aql::AqlValue edgeToAqlValue(size_t index);
 
-  aql::AqlValue pathToIndexToAqlValue(arangodb::velocypack::Builder& result, size_t index);
+  aql::AqlValue pathToIndexToAqlValue(arangodb::velocypack::Builder& result,
+                                      size_t index);
 
-  velocypack::Slice pathToIndexToSlice(arangodb::velocypack::Builder& result, size_t index);
+  velocypack::Slice pathToIndexToSlice(arangodb::velocypack::Builder& result,
+                                       size_t index, bool fromPrune);
 
   bool shouldPrune();
+
+  void growStorage();
+
+  constexpr size_t pathStepSize() const noexcept;
+
+  bool validDisjointPath(size_t nextVertexIndex,
+                         std::string_view const& vertex) const;
 };
 }  // namespace graph
 }  // namespace arangodb
-
-#endif

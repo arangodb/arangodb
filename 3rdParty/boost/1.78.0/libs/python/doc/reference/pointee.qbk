@@ -1,0 +1,47 @@
+[section boost/python/pointee.hpp]
+[section Introduction]
+<boost/python/pointee.hpp> introduces a traits metafunction `template pointee<T>` that can be used to extract the "pointed-to" type from the type of a pointer or smart pointer. 
+[endsect]
+[section Class template `pointee`]
+`pointee<T>` is used by the [link high_level_components.boost_python_class_hpp.class_template_class_t_bases_hel `class_<...>`] template to deduce the type being held when a pointer or smart pointer type is used as its HeldType argument. 
+``
+namespace boost { namespace python
+{
+   template <class T> struct pointee
+   {
+      typedef T::element_type type;
+   };
+
+   // specialization for pointers
+   template <T> struct pointee<T*>
+   {
+      typedef T type;
+   };
+}
+``
+[endsect]
+[section Examples]
+Given a 3rd-party smart pointer type `smart_pointer<T>`, one might partially specialize `pointee<smart_pointer<T> >` so that it can be used as the HeldType for a class wrapper:
+``
+#include <boost/python/pointee.hpp>
+#include <boost/python/class.hpp>
+#include <third_party_lib.hpp>
+
+namespace boost { namespace python
+{
+  template <class T> struct pointee<smart_pointer<T> >
+  {
+     typedef T type;
+  };
+}}
+
+BOOST_PYTHON_MODULE(pointee_demo)
+{
+   class_<third_party_class, smart_pointer<third_party_class> >("third_party_class")
+      .def(...)
+      ...
+      ;
+}
+``
+[endsect]
+[endsect]

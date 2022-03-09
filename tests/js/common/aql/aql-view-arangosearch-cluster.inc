@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertUndefined, assertEqual, assertNotEqual, assertTrue, assertFalse*/
+/*global assertUndefined, assertEqual, assertNotEqual, assertTrue, assertFalse, assertNotUndefined, fail*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for iresearch usage
@@ -42,6 +42,21 @@
     var cg;
     var vg;
     var meta;
+    const longValue  = "VeryLongValueToNotFitIntoSSOAndTriggerBufferCopyingIssuesIfAnyBlaBlaBla";
+
+    function getNodes(query, type, bindVars, options) {
+      let stmt = db._createStatement(query);
+      if (typeof bindVars === "object") {
+        stmt.bind(bindVars);
+      }
+      if (typeof options === "object") {
+        stmt.setOptions(options);
+      }
+      return stmt.explain()
+                 .plan
+                 .nodes
+                 .filter(node => node.type === type);
+    }
 
     console.info("Test suite arguments: " + JSON.stringify(args));
 
@@ -67,7 +82,6 @@
         arrayCol.save({ c: 0, a: ['foo', 'bar', 'baz']});
         // this will allow to catch if accidentally "all" filter will be used
         arrayCol.save({ c: 1, a: ['afoo', 'abar', 'abaz']});
-
         db._dropView("UnitTestsView");
         v = db._createView("UnitTestsView", "arangosearch", {});
         meta = {
@@ -156,6 +170,66 @@
           }
         };
         arrayV.properties(meta);
+        
+        db._drop("TestsCollectionWithManyFields");
+        let mfc = db._create("TestsCollectionWithManyFields");
+        mfc.save({field1:"1value", field2:"2value", field3: 1, field4: 11111, field5: 1, field6: 1});
+        mfc.save({field1:"1value1", field2:"2value1", field3: 2, field4: 11112, field5: 2, field6: 2});
+        mfc.save({field1:"1value2", field2:"2value2", field3: 3, field4: 11113, field5: 3, field6: 3});
+        mfc.save({field1:"1value3", field2:"2value3", field3: 4, field4: 11114, field5: 4, field6: 4});
+        db._drop("TestsCollectionWithLongFields");
+        let longData = [];
+        let lfc = db._create("TestsCollectionWithLongFields");
+        for (let k = 0; k < 1500; ++k) {
+          longData.push({field1:longValue + k, field2:longValue, field3: k});
+        }
+        lfc.save(longData);
+        
+        try { analyzers.remove("customAnalyzer", true); } catch(err) {}
+        analyzers.save("customAnalyzer", "text",  {"locale": "en.utf-8",
+                                                   "case": "lower",
+                                                   "stopwords": [],
+                                                   "accent": false,
+                                                   "stemming": false},
+                                                   ["position", "norm", "frequency"]);
+                                                   
+        let wps = db._createView("WithPrimarySort", "arangosearch", 
+                                 {primarySort: [{field: "field1", direction: "asc"},
+                                                {field: "field2", direction: "asc"},
+                                                {field: "field3", direction: "asc"},
+                                                {field: "field4", direction: "asc"},
+                                                {field: "_key", direction: "asc"}]});
+                                      
+        wps.properties({links:{TestsCollectionWithManyFields: {
+                                storeValues: "id",
+                                analyzers: ["customAnalyzer"],
+                                fields: {
+                                  field1: {},
+                                  field2: {},
+                                  field3: {},
+                                  field4: {},
+                                  field5: {},
+                                  field6: {},
+                                  _key: {}}}}});
+        let wsv = db._createView("WithStoredValues", "arangosearch", 
+                               {storedValues: [["field1"], ["field2"], ["field3"]]});
+        wsv.properties({links:{TestsCollectionWithLongFields: {
+                              storeValues: "id",
+                              analyzers: ["customAnalyzer"],
+                              fields: {
+                                field1: {},
+                                field2: {},
+                                field3: {}}}}});
+        let wpsl = db._createView("WithLongPrimarySort", "arangosearch", 
+                               {primarySort: [{field: "field1", direction: "asc"}],
+                                storedValues: [["field2"], ["field3"]]});
+        wpsl.properties({links:{TestsCollectionWithLongFields: {
+                              storeValues: "id",
+                              analyzers: ["customAnalyzer"],
+                              fields: {
+                                field1: {},
+                                field2: {},
+                                field3: {}}}}});
       },
 
       tearDownAll : function () {
@@ -177,6 +251,12 @@
         db._drop("AuxUnitTestsCollection");
         db._dropView("UnitTestsWithArrayView");
         db._drop("UnitTestsWithArrayCollection");
+        db._dropView("WithPrimarySort");
+        db._drop("TestsCollectionWithManyFields");
+        db._dropView("WithStoredValues");
+        db._dropView("WithLongPrimarySort");
+        db._drop("TestsCollectionWithLongFields");
+        analyzers.remove("customAnalyzer", true);
       },
 
       testViewInFunctionCall : function () {
@@ -185,6 +265,37 @@
         } catch (e) {
           assertEqual(ERRORS.ERROR_NOT_IMPLEMENTED.code, e.errorNum);
         }
+      },
+
+      testV8FunctionInSearch: function () {
+        try {
+          db._query("FOR doc IN CompoundView SEARCH doc.a == 'foo' && APPLY('LOWER', 'abc') == 'ABC' OPTIONS { waitForSync: true } RETURN doc");
+          fail();
+        } catch (e) {
+          assertEqual(ERRORS.ERROR_NOT_IMPLEMENTED.code, e.errorNum);
+        }
+      },
+
+      testAnalyzerFunctionInReturnStatement: function () {
+        var result = db._query("FOR doc IN CompoundView SEARCH doc.name == 'full' OPTIONS { waitForSync: true } RETURN ANALYZER(doc.text, 'text_en')").toArray();
+        assertEqual(result.length, 1);
+        assertEqual(result[0], "the quick brown fox jumps over the lazy dog");
+      },
+
+      testTransactionRegistration : function () {
+        // ensure data is synced
+        db._query("FOR d IN CompoundView OPTIONS {waitForSync:true} LIMIT 1 RETURN 1");
+
+        // implicit read lock
+        var result = db._executeTransaction({
+          collections: { },
+          action: function () {
+            var db = require("@arangodb").db;
+            return db._query("FOR d IN CompoundView SEARCH d.name == 'full' RETURN d.text").toArray();
+          }
+        });
+        assertEqual("the quick brown fox jumps over the lazy dog", result[0]);
+        assertEqual(1, result.length);
       },
 
       testViewCollectionOptions : function() {
@@ -429,6 +540,15 @@
         assertEqual(result[1].c, 0);
       },
 
+      testStartsWithFilterArrayWithoutMinMatchCountViaReference : function () {
+        var result = db._query("LET x = NOOPT(['fo', 'g']) FOR doc IN UnitTestsView SEARCH STARTS_WITH(doc.a, x) OPTIONS { waitForSync : true } RETURN doc").toArray();
+  
+        assertEqual(result.length, 10);
+        result.forEach(function(res) {
+          assertEqual(res.a, 'foo');
+        });
+      },
+
       testStartsWithFilterArrayWithoutMinMatchCount : function () {
         var result = db._query("FOR doc IN UnitTestsView SEARCH STARTS_WITH(doc.a, ['fo', 'g']) OPTIONS { waitForSync : true } RETURN doc").toArray();
 
@@ -551,6 +671,19 @@
 
         assertEqual(result3.length, 1);
         assertEqual(result3[0].name, 'full');
+        
+        var result6v = db._query("LET phraseStruct = NOOPT([' fox',  ' jumps']) "
+                               + "FOR doc IN UnitTestsView SEARCH ANALYZER(PHRASE(doc.text,  'quick ', 0, 'brown', 0, phraseStruct), 'text_en') OPTIONS { waitForSync : true } RETURN doc").toArray();
+
+        assertEqual(result6v.length, 1);
+        assertEqual(result6v[0].name, 'full');
+      
+            
+        var result6v2 = db._query("LET phraseStruct = NOOPT(['quick ', 0, 'brown', 0, [' fox',  ' jumps']]) "
+                               + "FOR doc IN UnitTestsView SEARCH ANALYZER(PHRASE(doc.text, phraseStruct), 'text_en') OPTIONS { waitForSync : true } RETURN doc").toArray();
+
+        assertEqual(result6v2.length, 1);
+        assertEqual(result6v2[0].name, 'full');
       },
 
       testExistsFilter : function () {
@@ -732,6 +865,32 @@
         });
       },
 
+      testViewInInnerLoopSortByAttributeWINDOW : function() {
+        var expected = [];
+        expected.push({ a: "bar", b: "foo", c: 1, unique: 1 });
+        expected.push({ a: "baz", b: "foo", c: 1, unique: 1 });
+        expected.push({ a: "foo", b: "bar", c: 0, unique: 2 });
+        expected.push({ a: "foo", b: "baz", c: 0, unique: 2 });
+
+        var result = db._query(
+          "FOR adoc IN AnotherUnitTestsCollection" +
+          "  FOR doc IN UnitTestsView SEARCH adoc.id == doc.c && STARTS_WITH(doc['a'], adoc.a) OPTIONS { waitForSync: true } " +
+          "SORT doc.c DESC, doc.a, doc.b " +
+          "WINDOW {preceding: 'unbounded'} AGGREGATE u = COUNT_DISTINCT(doc.c)" +
+          "RETURN MERGE(doc, {unique: u})"
+        , null, { waitForSync: true }).toArray();
+
+        assertEqual(result.length, expected.length);
+        var i = 0;
+        result.forEach(function(res) {
+          var doc = expected[i++];
+          assertEqual(doc.a, res.a);
+          assertEqual(doc.b, res.b);
+          assertEqual(doc.c, res.c);
+          assertEqual(doc.unique, res.unique);
+        });
+      },
+
       testViewInInnerLoopSortByAttributeWithNonDeterministic : function() {
         var expected = [];
         expected.push({ a: "bar", b: "foo", c: 1 });
@@ -767,13 +926,28 @@
         expected.push({ a: "foo", b: "bar", c: 0 });
         expected.push({ a: "foo", b: "baz", c: 0 });
 
-        var result = db._query(
-          "FOR doc0 IN CompoundView OPTIONS { collections: ['UnitTestsCollection2'], waitForSync:true } " +
-          "  FOR doc1 IN UnitTestsView SEARCH doc0.c == doc1.c && STARTS_WITH(doc1['a'], doc0.a) OPTIONS { waitForSync: true } " +
-          "FILTER doc1.c < 2 " +
-          "SORT doc1.c DESC, doc1.a, doc1.b " +
-          "RETURN doc1"
-        , null, { waitForSync: true }).toArray();
+        var query = "FOR doc0 IN CompoundView OPTIONS { collections: ['UnitTestsCollection2'], waitForSync:true } " +
+                  "  FOR doc1 IN UnitTestsView SEARCH doc0.c == doc1.c && STARTS_WITH(doc1['a'], doc0.a) OPTIONS { waitForSync: true } " +
+                  "FILTER doc1.c < 2 " +
+                  "SORT doc1.c DESC, doc1.a, doc1.b " +
+                  "RETURN doc1";
+
+        var viewNodes = getNodes(query, "EnumerateViewNode");
+        assertEqual(2, viewNodes.length);
+        var remoteNodes = getNodes(query, "RemoteNode");
+        assertEqual(3, remoteNodes.length);
+
+        var viewNode0 = viewNodes[0];
+        assertNotUndefined(viewNode0);
+        assertEqual(db.UnitTestsCollection2.count(), viewNode0.estimatedNrItems);
+        assertEqual(viewNode0.estimatedCost, viewNode0.estimatedNrItems + 1);
+
+        var viewNode1 = viewNodes[1];
+        assertNotUndefined(viewNode1);
+        assertEqual(db.UnitTestsCollection2.count()*db.UnitTestsCollection.count(), viewNode1.estimatedNrItems);
+        assertEqual(viewNode1.estimatedCost, remoteNodes[1].estimatedCost + viewNode1.estimatedNrItems);
+
+        var result = db._query(query, null, { waitForSync: true }).toArray();
 
         assertEqual(result.length, expected.length);
         var i = 0;
@@ -890,108 +1064,116 @@
           }
         ];
 
-        // create entities collection
-        var entities = db._createDocumentCollection("entities");
+        try {
+          // create entities collection
+          var entities = db._createDocumentCollection("entities");
 
-        entitiesData.forEach(function(doc) {
-          entities.save(doc);
-        });
+          entitiesData.forEach(function(doc) {
+            entities.save(doc);
+          });
 
-        // create links collection
-        var links = db._createEdgeCollection("links", args);
-        linksData.forEach(function(doc) {
-          links.save(doc);
-        });
+          // create links collection
+          var links = db._createEdgeCollection("links", args);
+          linksData.forEach(function(doc) {
+            links.save(doc);
+          });
 
-        var entitiesView = db._createView("entities_view", "arangosearch",{
-          "writebufferSizeMax": 33554432,
-          "consolidationPolicy": {
-            "type": "bytes_accum",
-            "threshold": 0.10000000149011612
-          },
-          "writebufferActive": 0,
-          "consolidationIntervalMsec": 60000,
-          "cleanupIntervalStep": 10,
-          "links": {
-            "entities": {
-              "analyzers": [
-                "identity"
-              ],
-              "fields": {},
-              "includeAllFields": true,
-              "storeValues": "id",
-              "trackListPositions": false
-            }
-          },
-          "type": "arangosearch",
-          "writebufferIdle": 64
-        });
-
-        var linksView = db._createView("links_view", "arangosearch",{
-          "writebufferSizeMax": 33554432,
-          "consolidationPolicy": {
-            "type": "bytes_accum",
-            "threshold": 0.10000000149011612
-          },
-          "writebufferActive": 0,
-          "consolidationIntervalMsec": 60000,
-          "cleanupIntervalStep": 10,
-          "links": {
+          var entitiesView = db._createView("entities_view", "arangosearch", {
+            "writebufferSizeMax": 33554432,
+            "consolidationPolicy": {
+              "type": "bytes_accum",
+              "threshold": 0.10000000149011612
+            },
+            "writebufferActive": 0,
+            "consolidationIntervalMsec": 60000,
+            "cleanupIntervalStep": 10,
             "links": {
-              "analyzers": [
-                "identity"
-              ],
-              "fields": {},
-              "includeAllFields": true,
-              "storeValues": "id",
-              "trackListPositions": false
-            }
-          },
-          "type": "arangosearch",
-          "writebufferIdle": 64
-        });
+              "entities": {
+                "analyzers": [
+                  "identity"
+                ],
+                "fields": {},
+                "includeAllFields": true,
+                "storeValues": "id",
+                "trackListPositions": false
+              }
+            },
+            "type": "arangosearch",
+            "writebufferIdle": 64
+          });
 
-        var expectedResult = [
-          { id: "person1", marriedIds: ["person2", "person3"] },
-          { id: "person2", marriedIds: ["person1" ] },
-          { id: "person3", marriedIds: ["person1" ] },
-          { id: "person4", marriedIds: ["person5" ] },
-          { id: "person5", marriedIds: ["person4" ] }
-        ];
+          var linksView = db._createView("links_view", "arangosearch", {
+            "writebufferSizeMax": 33554432,
+            "consolidationPolicy": {
+              "type": "bytes_accum",
+              "threshold": 0.10000000149011612
+            },
+            "writebufferActive": 0,
+            "consolidationIntervalMsec": 60000,
+            "cleanupIntervalStep": 10,
+            "links": {
+              "links": {
+                "analyzers": [
+                  "identity"
+                ],
+                "fields": {},
+                "includeAllFields": true,
+                "storeValues": "id",
+                "trackListPositions": false
+              }
+            },
+            "type": "arangosearch",
+            "writebufferIdle": 64
+          });
 
-        var queryString = 
-          "FOR org IN entities_view SEARCH org.type == 'person' OPTIONS {waitForSync:true} " + 
-          "LET marriedIds = ( " +
-          " LET entityIds = ( " +
-          " FOR l IN links_view SEARCH l.type == 'relationship' AND l.subType == 'married' AND (l.from == org.id OR l.to == org.id) OPTIONS {waitForSync:true} " +
-          "    RETURN DISTINCT l.from == org.id ? l.to : l.from" +
-          "  ) " +
-          "  FOR entityId IN entityIds SORT entityId RETURN entityId " +
-          ") " +
-          "LIMIT 10 " +
-          "SORT org._key " + 
-          "RETURN { id: org._key, marriedIds: marriedIds }";
+          var expectedResult = [
+            { id: "person1", marriedIds: ["person2", "person3"] },
+            { id: "person2", marriedIds: ["person1" ] },
+            { id: "person3", marriedIds: ["person1" ] },
+            { id: "person4", marriedIds: ["person5" ] },
+            { id: "person5", marriedIds: ["person4" ] }
+          ];
 
-        var result = db._query(queryString).toArray();
+          var queryString = 
+            "FOR org IN entities_view SEARCH org.type == 'person' OPTIONS {waitForSync:true} " + 
+            "LET marriedIds = ( " +
+            " LET entityIds = ( " +
+            " FOR l IN links_view SEARCH l.type == 'relationship' AND l.subType == 'married' AND (l.from == org.id OR l.to == org.id) OPTIONS {waitForSync:true} " +
+            "    RETURN DISTINCT l.from == org.id ? l.to : l.from" +
+            "  ) " +
+            "  FOR entityId IN entityIds SORT entityId RETURN entityId " +
+            ") " +
+            "LIMIT 10 " +
+            "SORT org._key " + 
+            "RETURN { id: org._key, marriedIds: marriedIds }";
 
-        assertEqual(result.length, expectedResult.length);
+          var result = db._query(queryString).toArray();
 
-        var i = 0;
-        result.forEach(function(doc) {
-          var expectedDoc = expectedResult[i++];
-          assertEqual(expectedDoc.org, doc.org);
-          assertEqual(expectedDoc.marriedIds, doc.marriedIds);
-        });
+          assertEqual(result.length, expectedResult.length);
 
-        entitiesView.drop();
-        linksView.drop();
-        entities.drop();
-        links.drop();
+          var i = 0;
+          result.forEach(function(doc) {
+            var expectedDoc = expectedResult[i++];
+            assertEqual(expectedDoc.org, doc.org);
+            assertEqual(expectedDoc.marriedIds, doc.marriedIds);
+          });
+        } finally {
+          db._dropView("entities_view");
+          db._dropView("links_view");
+          db._drop("entities");
+          db._drop("links");
+        }
       },
 
       testAttributeInRangeOpenInterval : function () {
-        var result = db._query("FOR doc IN UnitTestsView SEARCH IN_RANGE(doc.c, 1, 3, false, false) OPTIONS { waitForSync : true } RETURN doc").toArray();
+        var query = "FOR doc IN UnitTestsView SEARCH IN_RANGE(doc.c, 1, 3, false, false) OPTIONS { waitForSync : true } RETURN doc";
 
+        var viewNode = getNodes(query, "EnumerateViewNode")[0];
+        assertNotUndefined(viewNode);
+        assertEqual(db.UnitTestsCollection.count(), viewNode.estimatedNrItems);
+        assertEqual(viewNode.estimatedCost, viewNode.estimatedNrItems + 1);
+
+        var result = db._query(query).toArray();
         assertEqual(result.length, 4);
         result.forEach(function(res) {
           assertTrue(res.c > 1 && res.c < 3);
@@ -1023,6 +1205,26 @@
           assertTrue(res.score > 1 && res.score < 2);
         });
       },
+
+      testScorersWithDistinctWINDOW : function() {
+        var result = db._query(
+          "LET values = (FOR y IN UnitTestsCollection FILTER y.c == 0 RETURN DISTINCT y.a) " +
+          "LET x = FIRST(FOR x IN values FILTER x == 'foo' RETURN x) " +
+          "FOR doc IN UnitTestsView SEARCH doc.a == x && doc.c == 0 OPTIONS { waitForSync: true } " +
+          "LET score = BM25(doc, 20.01, 0.01)*0.0001 + 1.0 " + 
+          "WINDOW {preceding: 100} AGGREGATE maxScore = MAX(score) " +
+          "RETURN { a: doc.a, score: maxScore }"
+        ).toArray();
+
+        let max = 0;
+        result.forEach(function (res) {
+          assertEqual(res.a, "foo");
+          assertTrue(res.score > 1 && res.score < 2);
+          assertTrue(max <= res.score);
+          max = res.score;
+        });
+      },
+
       testAttributeNotInRangeOpenInterval : function () {
         var result = db._query("FOR doc IN UnitTestsView SEARCH NOT(IN_RANGE(doc.c, 1, 3, false, false)) OPTIONS { waitForSync : true } RETURN doc").toArray();
 
@@ -1151,8 +1353,7 @@
             c.save(i === 0 ? docs : docs.reverse());
             res.push(db._query("FOR d IN vIssue10090 SEARCH d.type == 'person' AND PHRASE(d.text, 'foo bar', 'text_en') OPTIONS { waitForSync: true } RETURN d").toArray());
           }
-          finally
-          {
+          finally {
             db._dropView("vIssue10090");
             db._drop("cIssue10090");
           }
@@ -1705,8 +1906,7 @@
             " SEARCH ( NOT(d.value1 IN ['R']) AND d.value2 IN ['A', 'B', 'C', 'D'] OR d.valueArray IN ['D', 'A', 'B']) AND (d.valueArray == 'A' OR (d.valueArray == 'C' AND d.valueArray == 'D')) " + 
             " OPTIONS { waitForSync : true, conditionOptimization: 'none' } SORT d.value1 ASC RETURN d").toArray();
           assertEqual(resNone, resAuto);         
-        } 
-        finally {
+        } finally {
           db._drop(queryOptColl);
           db._dropView(queryOptView);
         }
@@ -1771,8 +1971,8 @@
               " OPTIONS { waitForSync : true} SORT BM25(d) DESC RETURN d").toArray();
             assertEqual(3, res.length);  
             assertEqual('1', res[0].value1);
-            assertEqual('3', res[1].value1);
-            assertEqual('2', res[2].value1);
+            assertEqual('2', res[1].value1);
+            assertEqual('3', res[2].value1);
           }
           {
             let res = db._query("FOR d IN " + queryView  + 
@@ -1783,8 +1983,7 @@
             assertEqual('2', res[1].value1);
             assertEqual('3', res[2].value1);
           }
-        } 
-        finally {
+        } finally {
           db._drop(queryColl);
           db._dropView(queryView);
           analyzers.remove(queryAnalyzer, true);
@@ -1817,8 +2016,7 @@
             assertEqual(1, res.length);  
             assertTrue(res[0]);
           }
-        }
-        finally {
+        } finally {
           analyzers.remove(queryAnalyzer, true);
         }
       },
@@ -1927,6 +2125,398 @@
       testPhraseInRangeViaArray : function () {
         var result = db._query("FOR doc IN UnitTestsView SEARCH PHRASE(doc.text, [{IN_RANGE: ['quic', 'ruick', false, true]}, 'brown'], 'text_en') OPTIONS { waitForSync : true } RETURN doc").toArray();
         assertEqual(1, result.length);
+      },
+
+      testVolatileFilter : function() {
+        let result = db._query("FOR doc IN AnotherUnitTestsCollection LET kk = NOEVAL(doc.id) "
+                               + " FOR c IN UnitTestsWithArrayView SEARCH c.c == kk "
+                               + " OPTIONS { waitForSync : true } SORT c.c RETURN c ").toArray();
+        assertEqual(2, result.length);
+        assertEqual(result[0].c, 0);
+        assertEqual(result[1].c, 1);
+      },
+      
+      testQueryWithMultipleSortView : function() {
+        let res= db._query("FOR doc IN WithPrimarySort SEARCH ANALYZER(doc.field3 == 1, 'customAnalyzer') "
+        + " OPTIONS { waitForSync : true } SORT doc._key  LIMIT 0, 50  RETURN doc ").toArray();
+        assertEqual(1, res.length);
+      },
+
+      testGeo: function() {
+        let queryColl = "GeoCollection";
+        let queryView = "GeoView";
+        let queryAnalyzer = "mygeo";
+        let geoData = [
+          { "id": 1,  "geometry": { "type": "Point", "coordinates": [ 37.615895, 55.7039   ] } },
+          { "id": 2,  "geometry": { "type": "Point", "coordinates": [ 37.615315, 55.703915 ] } },
+          { "id": 3,  "geometry": { "type": "Point", "coordinates": [ 37.61509, 55.703537  ] } },
+          { "id": 4,  "geometry": { "type": "Point", "coordinates": [ 37.614183, 55.703806 ] } },
+          { "id": 5,  "geometry": { "type": "Point", "coordinates": [ 37.613792, 55.704405 ] } },
+          { "id": 6,  "geometry": { "type": "Point", "coordinates": [ 37.614956, 55.704695 ] } },
+          { "id": 7,  "geometry": { "type": "Point", "coordinates": [ 37.616297, 55.704831 ] } },
+          { "id": 8,  "geometry": { "type": "Point", "coordinates": [ 37.617053, 55.70461  ] } },
+          { "id": 9,  "geometry": { "type": "Point", "coordinates": [ 37.61582, 55.704459  ] } },
+          { "id": 10, "geometry": { "type": "Point", "coordinates": [ 37.614634, 55.704338 ] } },
+          { "id": 11, "geometry": { "type": "Point", "coordinates": [ 37.613121, 55.704193 ] } },
+          { "id": 12, "geometry": { "type": "Point", "coordinates": [ 37.614135, 55.703298 ] } },
+          { "id": 13, "geometry": { "type": "Point", "coordinates": [ 37.613663, 55.704002 ] } },
+          { "id": 14, "geometry": { "type": "Point", "coordinates": [ 37.616522, 55.704235 ] } },
+          { "id": 15, "geometry": { "type": "Point", "coordinates": [ 37.615508, 55.704172 ] } },
+          { "id": 16, "geometry": { "type": "Point", "coordinates": [ 37.614629, 55.704081 ] } },
+          { "id": 17, "geometry": { "type": "Point", "coordinates": [ 37.610235, 55.709754 ] } },
+          { "id": 18, "geometry": { "type": "Point", "coordinates": [ 37.605,    55.707917 ] } },
+          { "id": 19, "geometry": { "type": "Point", "coordinates": [ 37.545776, 55.722083 ] } },
+          { "id": 20, "geometry": { "type": "Point", "coordinates": [ 37.559509, 55.715895 ] } },
+          { "id": 21, "geometry": { "type": "Point", "coordinates": [ 37.701645, 55.832144 ] } },
+          { "id": 22, "geometry": { "type": "Point", "coordinates": [ 37.73735,  55.816715 ] } },
+          { "id": 23, "geometry": { "type": "Point", "coordinates": [ 37.75589,  55.798193 ] } },
+          { "id": 24, "geometry": { "type": "Point", "coordinates": [ 37.659073, 55.843711 ] } },
+          { "id": 25, "geometry": { "type": "Point", "coordinates": [ 37.778549, 55.823659 ] } },
+          { "id": 26, "geometry": { "type": "Point", "coordinates": [ 37.729797, 55.853733 ] } },
+          { "id": 27, "geometry": { "type": "Point", "coordinates": [ 37.608261, 55.784682 ] } },
+          { "id": 28, "geometry": { "type": "Point", "coordinates": [ 37.525177, 55.802825 ] } },
+          { "id": 29, "geometry": { "type": "Polygon", "coordinates": [
+            [[ 37.614323, 55.705898 ],
+             [ 37.615825, 55.705898 ],
+             [ 37.615825, 55.70652  ],
+             [ 37.614323, 55.70652  ],
+             [ 37.614323, 55.705898 ]]
+          ]}}
+       ];
+  
+        try {
+          db._drop(queryColl);
+          db._dropView(queryView);
+          analyzers.save(queryAnalyzer, "geojson", {});
+          let coll = db._create(queryColl);
+          let view = db._createView(queryView, "arangosearch", { 
+                links: { 
+                    [queryColl] : { 
+                        fields: {
+                          id: { },
+                          geometry: { analyzers: [queryAnalyzer] }
+                        }
+                    }
+                }
+            });
+  
+          geoData.forEach(doc => coll.save(doc));
+  
+          {
+            let queryString = 
+              "FOR d IN @@view " + 
+              "SEARCH ANALYZER(GEO_DISTANCE(@origin, d.geometry) < 100, @queryAnalyzer) " + 
+              "OPTIONS { waitForSync: true } " +
+              "SORT d.id ASC " + 
+              "RETURN d";
+  
+            let bindVars = {
+              "@view" : queryView,
+              "origin" : geoData[7].geometry,
+              "queryAnalyzer" : queryAnalyzer
+            };
+            let res = db._query(queryString, bindVars).toArray();
+            let expected = [ 7, 8, 9, 14 ];
+            assertEqual(expected.length, res.length);
+            for (let i = 0; i < expected.length; ++i) {
+              assertEqual(expected[0], res[0].id);
+            }
+          }
+  
+          {
+            let queryString = 
+              "FOR d IN @@view " + 
+              "SEARCH ANALYZER(GEO_DISTANCE(@origin, d.geometry) > 0 && GEO_DISTANCE(@origin, d.geometry) < 100, @queryAnalyzer) " + 
+              "OPTIONS { waitForSync: true } " +
+              "SORT d.id ASC " + 
+              "RETURN d";
+  
+            let bindVars = {
+              "@view" : queryView,
+              "origin" : geoData[7].geometry,
+              "queryAnalyzer" : queryAnalyzer
+            };
+            let res = db._query(queryString, bindVars).toArray();
+            let expected = [ 7, 9, 14 ];
+            assertEqual(expected.length, res.length);
+            for (let i = 0; i < expected.length; ++i) {
+              assertEqual(expected[0], res[0].id);
+            }
+          }
+
+          {
+            let queryString = 
+              "FOR d IN @@view " + 
+              "SEARCH ANALYZER(GEO_DISTANCE(@origin, d.geometry) >= 0 && GEO_DISTANCE(@origin, d.geometry) < 100, @queryAnalyzer) " + 
+              "OPTIONS { waitForSync: true } " +
+              "SORT d.id ASC " + 
+              "RETURN d";
+  
+            let bindVars = {
+              "@view" : queryView,
+              "origin" : geoData[7].geometry,
+              "queryAnalyzer" : queryAnalyzer
+            };
+            let res = db._query(queryString, bindVars).toArray();
+            let expected = [ 7, 8, 9, 14 ];
+            assertEqual(expected.length, res.length);
+            for (let i = 0; i < expected.length; ++i) {
+              assertEqual(expected[0], res[0].id);
+            }
+          }
+  
+          {
+            let queryString = 
+              "FOR d IN @@view " + 
+              "SEARCH ANALYZER(GEO_IN_RANGE(@origin, d.geometry, 0, 100), @queryAnalyzer) " + 
+              "OPTIONS { waitForSync: true } " +
+              "SORT d.id ASC " + 
+              "RETURN d";
+  
+            let bindVars = {
+              "@view" : queryView,
+              "origin" : geoData[7].geometry,
+              "queryAnalyzer" : queryAnalyzer
+            };
+            let res = db._query(queryString, bindVars).toArray();
+            let expected = [ 7, 8, 9, 14 ];
+            assertEqual(expected.length, res.length);
+            for (let i = 0; i < expected.length; ++i) {
+              assertEqual(expected[0], res[0].id);
+            }
+          }
+  
+          {
+            let queryString = 
+              "FOR d IN @@view " + 
+              "SEARCH ANALYZER(GEO_DISTANCE(d.geometry, @origin) < 100, @queryAnalyzer) " + 
+              "OPTIONS { waitForSync: true } " +
+              "SORT d.id ASC " + 
+              "RETURN d";
+  
+            let bindVars = {
+              "@view" : queryView,
+              "origin" : geoData[7].geometry,
+              "queryAnalyzer" : queryAnalyzer
+            };
+            let res = db._query(queryString, bindVars).toArray();
+            let expected = [ 7, 8, 9, 14 ];
+            assertEqual(expected.length, res.length);
+            for (let i = 0; i < expected.length; ++i) {
+              assertEqual(expected[0], res[0].id);
+            }
+          }
+  
+          {
+            let queryString = 
+              "FOR d IN @@view " + 
+              "SEARCH ANALYZER(GEO_CONTAINS(d.geometry, @origin), @queryAnalyzer) " + 
+              "OPTIONS { waitForSync: true } " +
+              "SORT d.id ASC " + 
+              "RETURN d";
+  
+            let bindVars = {
+              "@view" : queryView,
+              "origin" : geoData[7].geometry,
+              "queryAnalyzer" : queryAnalyzer
+            };
+            let res = db._query(queryString, bindVars).toArray();
+            let expected = [ geoData[7].id ];
+            assertEqual(expected.length, res.length);
+            for (let i = 0; i < expected.length; ++i) {
+              assertEqual(expected[0], res[0].id);
+            }
+          }
+  
+          {
+            let queryString = 
+              "FOR d IN @@view " + 
+              "SEARCH ANALYZER(GEO_CONTAINS(@origin, d.geometry), @queryAnalyzer) " + 
+              "OPTIONS { waitForSync: true } " +
+              "SORT d.id ASC " + 
+              "RETURN d";
+  
+            let bindVars = {
+              "@view" : queryView,
+              "origin" : geoData[7].geometry,
+              "queryAnalyzer" : queryAnalyzer
+            };
+            let res = db._query(queryString, bindVars).toArray();
+            let expected = [ geoData[7].id ];
+            assertEqual(expected.length, res.length);
+            for (let i = 0; i < expected.length; ++i) {
+              assertEqual(expected[0], res[0].id);
+            }
+          }
+  
+  
+          {
+            let queryString = 
+              "FOR d IN @@view " + 
+              "SEARCH ANALYZER(GEO_INTERSECTS(d.geometry, @origin), @queryAnalyzer) " + 
+              "OPTIONS { waitForSync: true } " +
+              "SORT d.id ASC " + 
+              "RETURN d";
+  
+            let bindVars = {
+              "@view" : queryView,
+              "origin" : geoData[7].geometry,
+              "queryAnalyzer" : queryAnalyzer
+            };
+            let res = db._query(queryString, bindVars).toArray();
+            let expected = [ geoData[7].id ];
+            assertEqual(expected.length, res.length);
+            for (let i = 0; i < expected.length; ++i) {
+              assertEqual(expected[0], res[0].id);
+            }
+          }
+  
+          {
+            let queryString = 
+              "FOR d IN @@view " + 
+              "SEARCH ANALYZER(GEO_INTERSECTS(@origin, d.geometry), @queryAnalyzer) " + 
+              "OPTIONS { waitForSync: true } " +
+              "SORT d.id ASC " + 
+              "RETURN d";
+  
+            let bindVars = {
+              "@view" : queryView,
+              "origin" : geoData[7].geometry,
+              "queryAnalyzer" : queryAnalyzer
+            };
+            let res = db._query(queryString, bindVars).toArray();
+            let expected = [ geoData[7].id ];
+            assertEqual(expected.length, res.length);
+            for (let i = 0; i < expected.length; ++i) {
+              assertEqual(expected[0], res[0].id);
+            }
+          }
+  
+          {
+            let shape = {
+                "type": "Polygon",
+                "coordinates": [
+                    [
+                        [37.590322, 55.695583],
+                        [37.626114, 55.695583],
+                        [37.626114, 55.71488],
+                        [37.590322, 55.71488],
+                        [37.590322, 55.695583]
+                    ]
+                ]};
+  
+            let queryString = 
+              "FOR d IN @@view " + 
+              "SEARCH ANALYZER(GEO_CONTAINS(@shape, d.geometry), @queryAnalyzer) " + 
+              "OPTIONS { waitForSync: true } " +
+              "SORT d.id ASC " + 
+              "RETURN d";
+  
+            let bindVars = {
+              "@view" : queryView,
+              "shape" : shape,
+              "queryAnalyzer" : queryAnalyzer
+            };
+            let res = db._query(queryString, bindVars).toArray();
+            let expected = [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 29 ];
+            assertEqual(expected.length, res.length);
+            for (let i = 0; i < expected.length; ++i) {
+              assertEqual(expected[0], res[0].id);
+            }
+          }
+  
+          {
+            let shape = {
+                "type": "Polygon",
+                "coordinates": [
+                    [
+                        [37.590322, 55.695583],
+                        [37.626114, 55.695583],
+                        [37.626114, 55.71488],
+                        [37.590322, 55.71488],
+                        [37.590322, 55.695583]
+                    ]
+                ]};
+  
+            let queryString = 
+              "FOR d IN @@view " + 
+              "SEARCH ANALYZER(GEO_INTERSECTS(@shape, d.geometry), @queryAnalyzer) && d.id > 15 " + 
+              "OPTIONS { waitForSync: true } " +
+              "SORT d.id ASC " + 
+              "RETURN d";
+  
+            let bindVars = {
+              "@view" : queryView,
+              "shape" : shape,
+              "queryAnalyzer" : queryAnalyzer
+            };
+            let res = db._query(queryString, bindVars).toArray();
+            let expected = [ 16, 17, 18, 29 ];
+            assertEqual(expected.length, res.length);
+            for (let i = 0; i < expected.length; ++i) {
+              assertEqual(expected[0], res[0].id);
+            }
+          }
+  
+          {
+            let shape = {
+                "type": "Polygon",
+                "coordinates": [
+                    [
+                        [37.590322, 55.695583],
+                        [37.626114, 55.695583],
+                        [37.626114, 55.71488],
+                        [37.590322, 55.71488],
+                        [37.590322, 55.695583]
+                    ]
+                ]};
+  
+            let queryString = 
+              "FOR d IN @@view " + 
+              "SEARCH ANALYZER(GEO_CONTAINS(d.geometry, @shape), @queryAnalyzer) " + 
+              "OPTIONS { waitForSync: true } " +
+              "SORT d.id ASC " + 
+              "RETURN d";
+  
+            let bindVars = {
+              "@view" : queryView,
+              "shape" : shape,
+              "queryAnalyzer" : queryAnalyzer
+            };
+            let res = db._query(queryString, bindVars).toArray();
+            assertEqual(0, res.length);
+          }
+  
+        } finally {
+          db._drop(queryColl);
+          db._dropView(queryView);
+          analyzers.remove(queryAnalyzer, true);
+        }
+      },
+
+      testReadPrimarySortStoredValues : function() {
+        var result = db._query("FOR doc IN WithLongPrimarySort SEARCH doc.field3 > 0 OPTIONS { waitForSync : true } SORT doc.field1 ASC " +
+                              " RETURN {f1:doc.field1, f2: doc.field2, f3: doc.field3}").toArray();
+        assertEqual(1499, result.length);
+        let expected = [];
+        for (let k = 1; k < 1500; ++k) {
+          expected.push(longValue + k);
+        }
+        expected.sort();
+        for (let k = 0; k < 1499; ++k) {
+          assertEqual(expected[k], result[k].f1);
+        }
+      },
+
+      testReadStoredValues : function() {
+        var result = db._query("FOR doc IN WithStoredValues SEARCH doc.field3 > 0 OPTIONS { waitForSync : true } SORT doc.field3 ASC " +
+                             " RETURN {f1:doc.field1, f2: doc.field2, f3: doc.field3}").toArray();
+        assertEqual(1499, result.length);
+        for (let k = 0; k < 1499; ++k) {
+          assertEqual(k + 1, result[k].f3);
+          assertEqual(longValue + (k + 1), result[k].f1);
+          assertEqual(longValue, result[k].f2);
+        }
       }
     };
   };

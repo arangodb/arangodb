@@ -29,6 +29,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace arangodb { namespace fuerte { inline namespace v1 {
@@ -53,9 +54,14 @@ StatusCode constexpr StatusMethodNotAllowed = 405;
 StatusCode constexpr StatusNotAcceptable = 406;
 StatusCode constexpr StatusConflict = 409;
 StatusCode constexpr StatusPreconditionFailed = 412;
+StatusCode constexpr StatusMisdirectedRequest = 421;
 StatusCode constexpr StatusInternalError = 500;
 StatusCode constexpr StatusServiceUnavailable = 503;
 StatusCode constexpr StatusVersionNotSupported = 505;
+
+std::string status_code_to_string(StatusCode);
+
+bool statusIsSuccess(StatusCode);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                         enum class ErrorCondition
@@ -67,13 +73,13 @@ enum class Error : uint16_t {
   CouldNotConnect = 1000,
   CloseRequested = 1001,
   ConnectionClosed = 1002,
-  Timeout = 1003,
+  RequestTimeout = 1003,
   QueueCapacityExceeded = 1004,
 
   ReadError = 1102,
   WriteError = 1103,
 
-  Canceled = 1104,
+  ConnectionCanceled = 1104,
 
   VstUnauthorized = 2000,
 
@@ -112,7 +118,8 @@ enum class RestVerb {
   Options = 6
 };
 std::string to_string(RestVerb type);
-RestVerb from_string(std::string const&);
+RestVerb from_string(std::string_view type);
+RestVerb from_string(std::string const& type);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       MessageType
@@ -140,16 +147,44 @@ std::string to_string(SocketType type);
 // --SECTION--                                                     ProtocolType
 // -----------------------------------------------------------------------------
 
-enum class ProtocolType : uint8_t { Undefined = 0, Http = 1, Http2 = 2, Vst = 3 };
+enum class ProtocolType : uint8_t {
+  Undefined = 0,
+  Http = 1,
+  Http2 = 2,
+  Vst = 3
+};
 std::string to_string(ProtocolType type);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       ContentType
 // -----------------------------------------------------------------------------
 
-enum class ContentType : uint8_t { Unset = 0, Custom, VPack, Dump, Json, Html, Text, BatchPart, FormData };
-ContentType to_ContentType(std::string const& val);
+enum class ContentType : uint8_t {
+  Unset = 0,
+  Custom,
+  VPack,
+  Dump,
+  Json,
+  Html,
+  Text,
+  BatchPart,
+  FormData
+};
+ContentType to_ContentType(std::string_view val);
 std::string to_string(ContentType type);
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   ContentEncoding
+// -----------------------------------------------------------------------------
+
+enum class ContentEncoding : uint8_t {
+  Identity = 0,
+  Deflate = 1,
+  Gzip = 2,
+  Custom = 3
+};
+ContentEncoding to_ContentEncoding(std::string_view val);
+std::string to_string(ContentEncoding type);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                AuthenticationType
@@ -177,6 +212,7 @@ struct ConnectionConfiguration {
       : _socketType(SocketType::Tcp),
         _protocolType(ProtocolType::Vst),
         _vstVersion(vst::VST1_1),
+        _upgradeH1ToH2(false),
         _host("localhost"),
         _port("8529"),
         _verifyHost(false),
@@ -184,6 +220,7 @@ struct ConnectionConfiguration {
         _idleTimeout(300000),
         _connectRetryPause(1000),
         _maxConnectRetries(3),
+        _useIdleTimeout(true),
         _authenticationType(AuthenticationType::None),
         _user(""),
         _password(""),
@@ -193,6 +230,7 @@ struct ConnectionConfiguration {
   SocketType _socketType;      // tcp, ssl or unix
   ProtocolType _protocolType;  // vst or http
   vst::VSTVersion _vstVersion;
+  bool _upgradeH1ToH2;
 
   std::string _host;
   std::string _port;
@@ -202,6 +240,7 @@ struct ConnectionConfiguration {
   std::chrono::milliseconds _idleTimeout;
   std::chrono::milliseconds _connectRetryPause;
   unsigned _maxConnectRetries;
+  bool _useIdleTimeout;
 
   AuthenticationType _authenticationType;
   std::string _user;

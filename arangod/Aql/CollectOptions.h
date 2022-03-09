@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,20 +21,21 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_COLLECT_OPTIONS_H
-#define ARANGOD_AQL_COLLECT_OPTIONS_H 1
+#pragma once
 
 #include <string>
+#include <string_view>
 
 namespace arangodb {
 namespace velocypack {
 class Builder;
 class Slice;
-}
+}  // namespace velocypack
 namespace aql {
+struct Variable;
 
 /// @brief CollectOptions
-struct CollectOptions {
+struct CollectOptions final {
   /// @brief selected aggregation method
   enum class CollectMethod { UNDEFINED, HASH, SORTED, DISTINCT, COUNT };
 
@@ -46,7 +47,7 @@ struct CollectOptions {
   CollectOptions& operator=(CollectOptions const& other) = default;
 
   /// @brief constructor
-  explicit CollectOptions(arangodb::velocypack::Slice const&);
+  explicit CollectOptions(arangodb::velocypack::Slice);
 
   /// @brief whether or not the method can be used
   bool canUseMethod(CollectMethod method) const;
@@ -58,15 +59,24 @@ struct CollectOptions {
   void toVelocyPack(arangodb::velocypack::Builder&) const;
 
   /// @brief get the aggregation method from a string
-  static CollectMethod methodFromString(std::string const&);
+  static CollectMethod methodFromString(std::string_view);
 
   /// @brief stringify the aggregation method
-  static std::string methodToString(CollectOptions::CollectMethod method);
+  static std::string_view methodToString(CollectOptions::CollectMethod method);
 
   CollectMethod method;
 };
 
+struct GroupVarInfo final {
+  Variable const* outVar;
+  Variable const* inVar;
+};
+
+struct AggregateVarInfo final {
+  Variable const* outVar;
+  Variable const* inVar;
+  std::string type;
+};
+
 }  // namespace aql
 }  // namespace arangodb
-
-#endif

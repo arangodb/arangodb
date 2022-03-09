@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_UTILS_CURSOR_H
-#define ARANGOD_UTILS_CURSOR_H 1
+#pragma once
 
 #include "Aql/ExecutionState.h"
 #include "Basics/Common.h"
@@ -31,6 +30,7 @@
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Iterator.h>
+#include <atomic>
 
 namespace arangodb {
 
@@ -52,7 +52,7 @@ class Cursor {
 
   Cursor(CursorId id, size_t batchSize, double ttl, bool hasCount)
       : _id(id),
-        _batchSize(batchSize),
+        _batchSize(batchSize == 0 ? 1 : batchSize),
         _ttl(ttl),
         _expires(TRI_microtime() + _ttl),
         _hasCount(hasCount),
@@ -70,9 +70,14 @@ class Cursor {
 
   inline double ttl() const { return _ttl; }
 
-  inline double expires() const { return _expires; }
+  inline double expires() const {
+    return _expires.load(std::memory_order_relaxed);
+  }
 
-  inline bool isUsed() const { return _isUsed; }
+  inline bool isUsed() const {
+    // (1) - this release-store synchronizes-with the acquire-load (2)
+    return _isUsed.load(std::memory_order_acquire);
+  }
 
   inline bool isDeleted() const { return _isDeleted; }
 
@@ -82,16 +87,23 @@ class Cursor {
     TRI_ASSERT(!_isDeleted);
     TRI_ASSERT(!_isUsed);
 
-    _isUsed = true;
-    _expires = TRI_microtime() + _ttl;
+    _isUsed.store(true, std::memory_order_relaxed);
   }
 
-  void release() {
+  void release() noexcept {
     TRI_ASSERT(_isUsed);
-    _isUsed = false;
+    _expires.store(TRI_microtime() + _ttl, std::memory_order_relaxed);
+    // (2) - this release-store synchronizes-with the acquire-load (1)
+    _isUsed.store(false, std::memory_order_release);
   }
 
   virtual void kill() {}
+
+  // Debug method to kill a query at a specific position
+  // during execution. It internally asserts that the query
+  // is actually visible through other APIS (e.g. current queries)
+  // so user actually has a chance to kill it here.
+  virtual void debugKillQuery() {}
 
   virtual size_t count() const = 0;
 
@@ -109,7 +121,8 @@ class Cursor {
    * free this thread on DONE we have a result. Second: Result If State==DONE
    * this contains Error information or NO_ERROR. On NO_ERROR result is filled.
    */
-  virtual std::pair<aql::ExecutionState, Result> dump(velocypack::Builder& result) = 0;
+  virtual std::pair<aql::ExecutionState, Result> dump(
+      velocypack::Builder& result) = 0;
 
   /**
    * @brief Dump the cursor result. This is guaranteed to return the result in
@@ -120,7 +133,7 @@ class Cursor {
    * @return ErrorResult, if something goes wrong
    */
   virtual Result dumpSync(velocypack::Builder& result) = 0;
-  
+
   /// Set wakeup handler on streaming cursor
   virtual void setWakeupHandler(std::function<bool()> const& cb) {}
   virtual void resetWakeupHandler() {}
@@ -129,11 +142,9 @@ class Cursor {
   CursorId const _id;
   size_t const _batchSize;
   double _ttl;
-  double _expires;
+  std::atomic<double> _expires;
   bool const _hasCount;
   bool _isDeleted;
-  bool _isUsed;
+  std::atomic<bool> _isUsed;
 };
 }  // namespace arangodb
-
-#endif

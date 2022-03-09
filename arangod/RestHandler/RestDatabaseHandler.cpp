@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,19 +24,24 @@
 #include "RestDatabaseHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/Result.h"
+#include "Basics/Utf8Helper.h"
+#include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
+#include "Cluster/ServerState.h"
 #include "Utils/Events.h"
 #include "VocBase/Methods/Databases.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestDatabaseHandler::RestDatabaseHandler(application_features::ApplicationServer& server,
-                                         GeneralRequest* request, GeneralResponse* response)
+RestDatabaseHandler::RestDatabaseHandler(ArangodServer& server,
+                                         GeneralRequest* request,
+                                         GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
 RestStatus RestDatabaseHandler::execute() {
@@ -48,7 +54,8 @@ RestStatus RestDatabaseHandler::execute() {
   } else if (type == rest::RequestType::DELETE_REQ) {
     return deleteDatabase();
   } else {
-    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
 
     return RestStatus::DONE;
   }
@@ -89,6 +96,16 @@ RestStatus RestDatabaseHandler::getDatabases() {
     builder.close();
   } else if (suffixes[0] == "current") {
     _vocbase.toVelocyPack(builder);
+  } else if (suffixes[0] == "shardStatistics") {
+    // shard statistics for the database
+    if (!ServerState::instance()->isCoordinator()) {
+      res.reset(TRI_ERROR_CLUSTER_ONLY_ON_COORDINATOR);
+    } else {
+      std::string const& restrictServer = _request->value("DBserver");
+      ClusterInfo& ci = server().getFeature<ClusterFeature>().clusterInfo();
+      res = ci.getShardStatisticsForDatabase(_vocbase.name(), restrictServer,
+                                             builder);
+    }
   }
 
   if (res.fail()) {
@@ -106,9 +123,11 @@ RestStatus RestDatabaseHandler::getDatabases() {
 // //////////////////////////////////////////////////////////////////////////////
 RestStatus RestDatabaseHandler::createDatabase() {
   if (!_vocbase.isSystem()) {
-    generateError(GeneralResponse::responseCode(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE),
-                  TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
-    events::CreateDatabase("", TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
+    generateError(
+        GeneralResponse::responseCode(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE),
+        TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
+    events::CreateDatabase("", Result(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE),
+                           _context);
     return RestStatus::DONE;
   }
 
@@ -117,21 +136,31 @@ RestStatus RestDatabaseHandler::createDatabase() {
   VPackSlice body = this->parseVPackBody(parseSuccess);
   if (!suffixes.empty() || !parseSuccess) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
-    events::CreateDatabase("", TRI_ERROR_BAD_PARAMETER);
+    events::CreateDatabase("", Result(TRI_ERROR_BAD_PARAMETER), _context);
     return RestStatus::DONE;
   }
   VPackSlice nameVal = body.get("name");
   if (!nameVal.isString()) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
-    events::CreateDatabase("", TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
+    generateError(rest::ResponseCode::BAD,
+                  TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
+    events::CreateDatabase("", Result(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID),
+                           _context);
     return RestStatus::DONE;
   }
   std::string dbName = nameVal.copyString();
+  if (dbName != normalizeUtf8ToNFC(dbName)) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_ARANGO_ILLEGAL_NAME,
+                  "database name is not properly UTF-8 NFC-normalized");
+    events::CreateDatabase(dbName, Result(TRI_ERROR_ARANGO_ILLEGAL_NAME),
+                           _context);
+    return RestStatus::DONE;
+  }
 
   VPackSlice options = body.get("options");
   VPackSlice users = body.get("users");
 
-  Result res = methods::Databases::create(server(), dbName, users, options);
+  Result res =
+      methods::Databases::create(server(), _context, dbName, users, options);
   if (res.ok()) {
     generateOk(rest::ResponseCode::CREATED, VPackSlice::trueSlice());
   } else {
@@ -139,7 +168,8 @@ RestStatus RestDatabaseHandler::createDatabase() {
         res.errorNumber() == TRI_ERROR_ARANGO_DUPLICATE_NAME) {
       generateError(res);
     } else {  // http_server compatibility
-      generateError(rest::ResponseCode::BAD, res.errorNumber(), res.errorMessage());
+      generateError(rest::ResponseCode::BAD, res.errorNumber(),
+                    res.errorMessage());
     }
   }
   return RestStatus::DONE;
@@ -150,20 +180,29 @@ RestStatus RestDatabaseHandler::createDatabase() {
 // //////////////////////////////////////////////////////////////////////////////
 RestStatus RestDatabaseHandler::deleteDatabase() {
   if (!_vocbase.isSystem()) {
-    generateError(GeneralResponse::responseCode(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE),
-                  TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
-    events::DropDatabase("", TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
+    generateError(
+        GeneralResponse::responseCode(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE),
+        TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
+    events::DropDatabase("", Result(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE),
+                         _context);
     return RestStatus::DONE;
   }
-  std::vector<std::string> const& suffixes = _request->suffixes();
+  std::vector<std::string> const& suffixes = _request->decodedSuffixes();
   if (suffixes.size() != 1) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
-    events::DropDatabase("", TRI_ERROR_HTTP_BAD_PARAMETER);
+    events::DropDatabase("", Result(TRI_ERROR_HTTP_BAD_PARAMETER), _context);
     return RestStatus::DONE;
   }
 
   std::string const& dbName = suffixes[0];
-  Result res = methods::Databases::drop(&_vocbase, dbName);
+  if (dbName != normalizeUtf8ToNFC(dbName)) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_ARANGO_ILLEGAL_NAME,
+                  "database name is not properly UTF-8 NFC-normalized");
+    events::DropDatabase(dbName, Result(TRI_ERROR_ARANGO_ILLEGAL_NAME),
+                         _context);
+    return RestStatus::DONE;
+  }
+  Result res = methods::Databases::drop(_context, &_vocbase, dbName);
 
   if (res.ok()) {
     generateOk(rest::ResponseCode::OK, VPackSlice::trueSlice());

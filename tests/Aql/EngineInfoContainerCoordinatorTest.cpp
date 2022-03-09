@@ -1,11 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test case for EngineInfoContainerCoordinator
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -36,6 +33,8 @@
 #include "Aql/ExecutionNode.h"
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
+#include "Basics/GlobalResourceMonitor.h"
+#include "Basics/ResourceUsage.h"
 #include "Cluster/RebootTracker.h"
 #include "Mocks/Servers.h"
 #include "Transaction/Methods.h"
@@ -87,74 +86,77 @@ TEST(EngineInfoContainerTest, it_should_be_able_to_add_more_snippets) {
 //     1. queryRegistry->insert(_id, query, 600.0);
 // 3. query->engine();
 
-TEST(EngineInfoContainerTest, it_should_create_an_executionengine_for_the_first_snippet) {
+TEST(EngineInfoContainerTest,
+     it_should_create_an_executionengine_for_the_first_snippet) {
   MapRemoteToSnippet queryIds;
   std::string const dbname = "TestDB";
-  
+
   mocks::MockAqlServer server;
 
   // ------------------------------
   // Section: Create Mock Instances
   // ------------------------------
-//  fakeit::Mock<ExecutionNode> singletonMock;
-//  ExecutionNode& sNode = singletonMock.get();
-//  fakeit::When(Method(singletonMock, getType)).AlwaysReturn(ExecutionNode::SINGLETON);
-//
-//  fakeit::Mock<ExecutionEngine> mockEngine;
-//  // ExecutionEngine& myEngine = mockEngine.get();
-//
-//  fakeit::Mock<ExecutionBlock> rootBlockMock;
-//  ExecutionBlock& rootBlock = rootBlockMock.get();
-//
-//  fakeit::Mock<Query> mockQuery;
-//  Query& query = mockQuery.get();
-//
-//  fakeit::Mock<transaction::Methods> mockTrx;
-//   transaction::Methods& trx = mockTrx.get();
+  //  fakeit::Mock<ExecutionNode> singletonMock;
+  //  ExecutionNode& sNode = singletonMock.get();
+  //  fakeit::When(Method(singletonMock,
+  //  getType)).AlwaysReturn(ExecutionNode::SINGLETON);
+  //
+  //  fakeit::Mock<ExecutionEngine> mockEngine;
+  //  // ExecutionEngine& myEngine = mockEngine.get();
+  //
+  //  fakeit::Mock<ExecutionBlock> rootBlockMock;
+  //  ExecutionBlock& rootBlock = rootBlockMock.get();
+  //
+  //  fakeit::Mock<Query> mockQuery;
+  //  Query& query = mockQuery.get();
+  //
+  //  fakeit::Mock<transaction::Methods> mockTrx;
+  //   transaction::Methods& trx = mockTrx.get();
 
   // ------------------------------
   // Section: Mock Functions
   // ------------------------------
-/*
-  fakeit::When(OverloadedMethod(mockQuery, void(ExecutionEngine * ))).Do(
-    [](ExecutionEngine *eng) -> void {
-      // We expect that the snippet injects a new engine into our
-      // query.
-      // However we have to return a mocked engine later
-      ASSERT_NE(eng, nullptr);
-      // Throw it away
-      delete eng;
-    }
-  );
-  //fakeit::When(Method(mockQuery, trx)).Return(&trx);
-  /// fakeit::When(Method(mockQuery, engine)).Return(&myEngine).Return(&myEngine);
-  fakeit::When(Method(mockEngine, createBlocks)).Return(Result{TRI_ERROR_NO_ERROR});
-  fakeit::When(ConstOverloadedMethod(mockEngine, root, ExecutionBlock * ())).AlwaysReturn(&rootBlock);
- */
+  /*
+    fakeit::When(OverloadedMethod(mockQuery, void(ExecutionEngine * ))).Do(
+      [](ExecutionEngine *eng) -> void {
+        // We expect that the snippet injects a new engine into our
+        // query.
+        // However we have to return a mocked engine later
+        ASSERT_NE(eng, nullptr);
+        // Throw it away
+        delete eng;
+      }
+    );
+    //fakeit::When(Method(mockQuery, trx)).Return(&trx);
+    /// fakeit::When(Method(mockQuery,
+    engine)).Return(&myEngine).Return(&myEngine);
+    fakeit::When(Method(mockEngine,
+    createBlocks)).Return(Result{TRI_ERROR_NO_ERROR});
+    fakeit::When(ConstOverloadedMethod(mockEngine, root, ExecutionBlock *
+    ())).AlwaysReturn(&rootBlock);
+   */
 
   // ------------------------------
   // Section: Run the test
   // ------------------------------
-  
+
   auto oldRole = ServerState::instance()->getRole();
   ServerState::instance()->setRole(ServerState::RoleEnum::ROLE_COORDINATOR);
-  auto guard = scopeGuard([=] {
-    ServerState::instance()->setRole(oldRole);
-  });
-  
+  auto guard =
+      scopeGuard([=]() noexcept { ServerState::instance()->setRole(oldRole); });
+
   // simon: we only use this query for the API
   auto q = server.createFakeQuery("RETURN 1");
   ASSERT_EQ(q->rootEngine()->blocksForTesting().size(), 3);
-  
-  ExecutionBlock* block = q->rootEngine()->blocksForTesting()[2];
+
+  ExecutionBlock* block = q->rootEngine()->blocksForTesting()[2].get();
   ASSERT_EQ(block->getPlanNode()->getType(), ExecutionNode::RETURN);
-  
+
   ASSERT_EQ(q->snippets().size(), 1);
-  
+
   // The last engine should not be stored
   // It is not added to the registry
   ASSERT_TRUE(queryIds.empty());
-  
 }
 
 #if 0
@@ -299,8 +301,9 @@ TEST(EngineInfoContainerTest,
   testee.addNode(&sNode);
   // Close the second snippet
   testee.closeSnippet();
-  ResourceMonitor monitor;
-  AqlItemBlockManager mgr(&monitor, SerializationFormat::SHADOWROWS); /// TODO
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor monitor{global};
+  AqlItemBlockManager mgr(monitor, SerializationFormat::SHADOWROWS); /// TODO
 
   std::vector<uint64_t> coordinatorQueryIds{};
   SnippetList coordSnippets;
@@ -553,8 +556,9 @@ TEST(EngineInfoContainerTest, snippets_are_a_stack_insert_node_always_into_top_s
   testee.closeSnippet();
 
   testee.addNode(&tbNode);
-  ResourceMonitor monitor;
-  AqlItemBlockManager mgr(&monitor, SerializationFormat::SHADOWROWS); /// TODO
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor monitor{global};
+  AqlItemBlockManager mgr(monitor, SerializationFormat::SHADOWROWS); /// TODO
   SnippetList coordSnippets;
   std::vector<uint64_t> coordinatorQueryIds{};
   auto result =
@@ -737,8 +741,9 @@ TEST(EngineInfoContainerTest, error_cases_cloning_of_a_query_fails_throws_an_err
       .Throw(arangodb::basics::Exception(TRI_ERROR_DEBUG, __FILE__, __LINE__));
   */
   std::vector<uint64_t> coordinatorQueryIds{};
-  ResourceMonitor monitor;
-  AqlItemBlockManager mgr(&monitor, SerializationFormat::SHADOWROWS); /// TODO
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor monitor{global};
+  AqlItemBlockManager mgr(monitor, SerializationFormat::SHADOWROWS); /// TODO
   SnippetList coordSnippets;
   auto result =
       testee.buildEngines(query,
@@ -914,8 +919,9 @@ TEST(EngineInfoContainerTest, error_cases_cloning_of_a_query_fails_returns_a_nul
         return nullptr;
       });
   */
-  ResourceMonitor monitor;
-  AqlItemBlockManager mgr(&monitor, SerializationFormat::SHADOWROWS); /// TODO
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor monitor{global};
+  AqlItemBlockManager mgr(monitor, SerializationFormat::SHADOWROWS); /// TODO
    std::vector<uint64_t> coordinatorQueryIds{};
   SnippetList coordSnippets;
   auto result =

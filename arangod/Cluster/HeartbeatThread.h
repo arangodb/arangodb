@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,18 +21,17 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_HEARTBEAT_THREAD_H
-#define ARANGOD_CLUSTER_HEARTBEAT_THREAD_H 1
+#pragma once
 
 #include "Basics/Thread.h"
 
 #include "Agency/AgencyComm.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Mutex.h"
+#include "Basics/Thread.h"
 #include "Cluster/AgencyCallback.h"
-#include "Cluster/CriticalThread.h"
 #include "Cluster/DBServerAgencySync.h"
-#include "RestServer/MetricsFeature.h"
+#include "Metrics/Fwd.h"
 
 #include <velocypack/Slice.h>
 #include <chrono>
@@ -50,17 +49,17 @@ struct AgencyVersions {
       : plan(_plan), current(_plan) {}
 
   explicit AgencyVersions(const DBServerAgencySyncResult& result)
-      : plan(result.planVersion), current(result.currentVersion) {}
+      : plan(result.planIndex), current(result.currentIndex) {}
 };
 
 class AgencyCallbackRegistry;
 class HeartbeatBackgroundJobThread;
 
-class HeartbeatThread : public CriticalThread,
+class HeartbeatThread : public ServerThread<ArangodServer>,
                         public std::enable_shared_from_this<HeartbeatThread> {
  public:
-  HeartbeatThread(application_features::ApplicationServer&, AgencyCallbackRegistry*,
-                  std::chrono::microseconds, uint64_t maxFailsBeforeWarning);
+  HeartbeatThread(Server&, AgencyCallbackRegistry*, std::chrono::microseconds,
+                  uint64_t maxFailsBeforeWarning);
   ~HeartbeatThread();
 
  public:
@@ -99,22 +98,7 @@ class HeartbeatThread : public CriticalThread,
   /// @brief break runDBserver out of wait on condition after setting state in
   /// base class
   //////////////////////////////////////////////////////////////////////////////
-  virtual void beginShutdown() override;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief add thread name to ongoing list of threads that have crashed
-  ///        unexpectedly
-  //////////////////////////////////////////////////////////////////////////////
-
-  static void recordThreadDeath(const std::string& threadName);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief post list of deadThreads to current log.  Called regularly, but
-  /// only
-  ///        posts to log roughly every 60 minutes
-  //////////////////////////////////////////////////////////////////////////////
-
-  static void logThreadDeaths(bool force = false);
+  void beginShutdown() override;
 
   /// @brief Reference to agency sync job
   DBServerAgencySync& agencySync();
@@ -146,11 +130,10 @@ class HeartbeatThread : public CriticalThread,
   void runSingleServer();
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief heartbeat main loop for agent and single db ... provides thread
-  /// crash reporting
+  /// @brief heartbeat main loop for agents
   //////////////////////////////////////////////////////////////////////////////
 
-  void runSimpleServer();
+  void runAgent();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief handles a plan change, coordinator case
@@ -187,17 +170,30 @@ class HeartbeatThread : public CriticalThread,
   void getNewsFromAgencyForCoordinator();
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief force update of db servers
+  //////////////////////////////////////////////////////////////////////////////
+
+  void updateDBServers();
+
+  // handle changes of user version (Sync/UserVersion)
+  void handleUserVersionChange(arangodb::velocypack::Slice userVersion);
+
+  // handle changes of foxx queue version (Sync/FoxxQueueVersion)
+  void handleFoxxQueueVersionChange(
+      arangodb::velocypack::Slice foxxQueueVersion);
+
+ public:
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief bring the db server in sync with the desired state
   //////////////////////////////////////////////////////////////////////////////
 
- public:
   void notify();
 
+ private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief update the local agent pool from the slice
   //////////////////////////////////////////////////////////////////////////////
 
- private:
   void updateAgentPool(arangodb::velocypack::Slice const& agentPool);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -324,14 +320,18 @@ class HeartbeatThread : public CriticalThread,
   // last value of current which we have noticed:
   std::atomic<uint64_t> _lastCurrentVersionNoticed;
   // For periodic update of the current DBServer list:
-  std::atomic<int> _DBServerUpdateCounter;
+  std::atomic<int> _updateCounter;
+  // For event-based update of the current DBServer list:
+  std::atomic<bool> _updateDBServers;
+
+  /// @brief point in time the server last reported itself as unhealthy (used
+  /// to prevent log spamming on every occurrence of unhealthiness)
+  std::chrono::steady_clock::time_point _lastUnhealthyTimestamp;
 
   /// @brief Sync job
   DBServerAgencySync _agencySync;
 
-  Histogram<log_scale_t<uint64_t>>& _heartbeat_send_time_ms;
-  Counter& _heartbeat_failure_counter;
+  metrics::Histogram<metrics::LogScale<uint64_t>>& _heartbeat_send_time_ms;
+  metrics::Counter& _heartbeat_failure_counter;
 };
 }  // namespace arangodb
-
-#endif

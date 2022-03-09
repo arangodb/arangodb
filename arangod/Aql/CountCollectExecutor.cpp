@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -29,6 +30,7 @@
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/RegisterInfos.h"
 #include "Aql/Stats.h"
+#include "Basics/Exceptions.h"
 
 #include <utility>
 
@@ -72,7 +74,8 @@ auto CountCollectExecutor::produceRows(AqlItemBlockInputRange& inputRange,
           AqlCall{0, true, 0, AqlCall::LimitType::HARD}};
 }
 
-auto CountCollectExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call)
+auto CountCollectExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
+                                         AqlCall& call)
     -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
   TRI_IF_FAILURE("CountCollectExecutor::produceRows") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -94,9 +97,9 @@ auto CountCollectExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, Aql
           AqlCall{0, false, 0, AqlCall::LimitType::HARD}};
 }
 
-auto CountCollectExecutor::expectedNumberOfRowsNew(AqlItemBlockInputRange const& input,
-                                                   AqlCall const& call) const
-    noexcept -> size_t {
+auto CountCollectExecutor::expectedNumberOfRowsNew(
+    AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept
+    -> size_t {
   auto subqueries = input.countShadowRows();
   if (subqueries > 0) {
     // We will return 1 row for every subquery execution.
@@ -108,7 +111,8 @@ auto CountCollectExecutor::expectedNumberOfRowsNew(AqlItemBlockInputRange const&
   return std::min<size_t>(1, call.getLimit());
 }
 
-const CountCollectExecutor::Infos& CountCollectExecutor::infos() const noexcept {
+const CountCollectExecutor::Infos& CountCollectExecutor::infos()
+    const noexcept {
   return _infos;
 }
 

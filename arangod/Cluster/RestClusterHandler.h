@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,16 +21,14 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_REST_CLUSTER_HANDLER_H
-#define ARANGOD_REST_HANDLER_REST_CLUSTER_HANDLER_H 1
+#pragma once
 
 #include "RestHandler/RestBaseHandler.h"
 
 namespace arangodb {
 class RestClusterHandler : public arangodb::RestBaseHandler {
  public:
-  RestClusterHandler(application_features::ApplicationServer&, GeneralRequest*,
-                     GeneralResponse*);
+  RestClusterHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
 
  public:
   virtual char const* name() const override { return "RestClusterHandler"; }
@@ -45,7 +44,8 @@ class RestClusterHandler : public arangodb::RestBaseHandler {
 
   /// _api/cluster/agency-cache
   void handleAgencyCache();
+
+  /// _api/cluster/cluster-info
+  void handleClusterInfo();
 };
 }  // namespace arangodb
-
-#endif

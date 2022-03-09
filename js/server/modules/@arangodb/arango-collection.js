@@ -97,25 +97,6 @@ ArangoCollection.prototype.toArray = function () {
 };
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock collectionTruncate
-// //////////////////////////////////////////////////////////////////////////////
-
-ArangoCollection.prototype.truncate = function () {
-  var cluster = require('@arangodb/cluster');
-  if (cluster.isCoordinator()) {
-    if (this.status() === ArangoCollection.STATUS_UNLOADED) {
-      this.load();
-    }
-  }
-  var ret = this.TRUNCATE();
-  // manually trigger compaction, otherwise the SST files stay large
-  if (internal.db._engine().name === "rocksdb" && this.compact) {
-    this.compact();
-  }
-  return ret;
-};
-
-// //////////////////////////////////////////////////////////////////////////////
 // / @brief finds an index of a collection
 // /
 // / @FUN{@FA{collection}.index(@FA{index-id})}
@@ -275,9 +256,6 @@ ArangoCollection.prototype.removeByExample = function (example,
     waitForSync = tmp_options.waitForSync;
     limit = tmp_options.limit;
   }
-
-  var i;
-  var cluster = require('@arangodb/cluster');
 
   var query = buildExampleQuery(this, example, limit);
   var opts = { waitForSync };

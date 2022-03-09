@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_COMPUTATION_H
-#define ARANGODB_PREGEL_COMPUTATION_H 1
+#pragma once
 
 #include <algorithm>
 #include <cstddef>
@@ -31,15 +31,16 @@
 #include "Pregel/OutgoingCache.h"
 #include "Pregel/WorkerConfig.h"
 #include "Pregel/WorkerContext.h"
+#include "Reports.h"
 
 namespace arangodb {
 namespace pregel {
 
-template <typename V, typename E, typename M>
+template<typename V, typename E, typename M>
 class Worker;
 class IAggregator;
 
-template <typename V, typename E, typename M>
+template<typename V, typename E, typename M>
 class VertexContext {
   friend class Worker<V, E, M>;
 
@@ -49,20 +50,26 @@ class VertexContext {
   GraphStore<V, E>* _graphStore = nullptr;
   AggregatorHandler* _readAggregators = nullptr;
   AggregatorHandler* _writeAggregators = nullptr;
-  Vertex<V,E>* _vertexEntry = nullptr;
+  Vertex<V, E>* _vertexEntry = nullptr;
 
  public:
   virtual ~VertexContext() = default;
 
-  template <typename T>
+  template<typename T>
   inline void aggregate(std::string const& name, T const& value) {
     T const* ptr = &value;
     _writeAggregators->aggregate(name, ptr);
   }
 
-  template <typename T>
-  inline const T* getAggregatedValue(std::string const& name) {
-    return (const T*)_readAggregators->getAggregatedValue(name);
+  template<typename T>
+  inline const T& getAggregatedValueRef(std::string const& name) {
+    auto ptr = _readAggregators->getAggregatedValue(name);
+    TRI_ASSERT(ptr != nullptr);
+    if (ptr == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "unexpected read aggregator reference.");
+    }
+    return *(T const*)ptr;
   }
 
   IAggregator const* getReadAggregator(std::string const& name) {
@@ -75,11 +82,9 @@ class VertexContext {
 
   inline WorkerContext const* context() const { return _context; }
 
-  V* mutableVertexData() {
-    return &(_vertexEntry->data());
-  }
+  V* mutableVertexData() { return &(_vertexEntry->data()); }
 
-  V vertexData() const { return _vertexEntry->data(); }
+  V const& vertexData() const { return _vertexEntry->data(); }
 
   size_t getEdgeCount() const { return _vertexEntry->getEdgeCount(); }
 
@@ -100,19 +105,24 @@ class VertexContext {
   void voteActive() { _vertexEntry->setActive(true); }
   bool isActive() { return _vertexEntry->active(); }
 
+  inline uint64_t phaseGlobalSuperstep() {
+    return globalSuperstep() -
+           getAggregatedValueRef<uint64_t>(Utils::phaseFirstStepKey);
+  }
   inline uint64_t globalSuperstep() const { return _gss; }
   inline uint64_t localSuperstep() const { return _lss; }
 
   PregelShard shard() const { return _vertexEntry->shard(); }
-  velocypack::StringRef key() const { return _vertexEntry->key(); }
+  std::string_view key() const { return _vertexEntry->key(); }
   PregelID pregelId() const { return _vertexEntry->pregelId(); }
 };
 
-template <typename V, typename E, typename M>
+template<typename V, typename E, typename M>
 class VertexComputation : public VertexContext<V, E, M> {
   friend class Worker<V, E, M>;
   OutCache<M>* _cache = nullptr;
   bool _enterNextGSS = false;
+  ReportManager _reports;
 
  public:
   virtual ~VertexComputation() = default;
@@ -122,7 +132,7 @@ class VertexComputation : public VertexContext<V, E, M> {
   }
 
   void sendMessage(PregelID const& pid, M const& data) {
-    _cache->appendMessage(pid.shard, velocypack::StringRef(pid.key), data);
+    _cache->appendMessage(pid.shard, std::string_view(pid.key), data);
   }
 
   /// Send message along outgoing edges to all reachable neighbours
@@ -147,9 +157,11 @@ class VertexComputation : public VertexContext<V, E, M> {
   }
 
   virtual void compute(MessageIterator<M> const& messages) = 0;
+
+  ReportManager& getReportManager() { return _reports; }
 };
 
-template <typename V, typename E, typename M>
+template<typename V, typename E, typename M>
 class VertexCompensation : public VertexContext<V, E, M> {
   friend class Worker<V, E, M>;
 
@@ -159,4 +171,3 @@ class VertexCompensation : public VertexContext<V, E, M> {
 };
 }  // namespace pregel
 }  // namespace arangodb
-#endif

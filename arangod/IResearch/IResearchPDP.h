@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,15 +21,14 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_IRESEARCH__IRESEARCH_PDP_H
-#define ARANGOD_IRESEARCH__IRESEARCH_PDP_H 1
+#pragma once
 
 #include "types.hpp"
 #include "Basics/Result.h"
 
 namespace iresearch {
 class parametric_description;
-} // iresearch
+}  // namespace iresearch
 
 namespace arangodb {
 namespace iresearch {
@@ -37,11 +37,7 @@ constexpr irs::byte_type MAX_LEVENSHTEIN_DISTANCE = 4;
 constexpr irs::byte_type MAX_DAMERAU_LEVENSHTEIN_DISTANCE = 3;
 
 const irs::parametric_description& getParametricDescription(
-  irs::byte_type max_distance,
-  bool with_transpositions);
+    irs::byte_type max_distance, bool with_transpositions);
 
-} // iresearch
-} // arangodb
-
-#endif // ARANGOD_IRESEARCH__IRESEARCH_PDP_H
-
+}  // namespace iresearch
+}  // namespace arangodb

@@ -370,7 +370,6 @@ function ExplainSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testExplainUpdate3 : function () {
-      db._explain({ query : "for u in @@cn update u in @@cn", bindVars: { "@cn": cn }, options });
       var st = new ArangoStatement(db, { query : "for u in @@cn update u in @@cn", bindVars: { "@cn": cn }, options });
       var nodes = st.explain().plan.nodes, node;
 

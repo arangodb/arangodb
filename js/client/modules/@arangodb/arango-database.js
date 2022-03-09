@@ -51,6 +51,7 @@ exports.ArangoDatabase = ArangoDatabase;
 
 // load after exporting ArangoDatabase
 ArangoCollection = require('@arangodb/arango-collection').ArangoCollection;
+const ArangoReplicatedLog = require('@arangodb/replicated-logs').ArangoReplicatedLog;
 ArangoView = require('@arangodb/arango-view').ArangoView;
 var ArangoError = require('@arangodb').ArangoError;
 var ArangoStatement = require('@arangodb/arango-statement').ArangoStatement;
@@ -108,6 +109,18 @@ ArangoDatabase.prototype._collectionurl = function (id) {
   }
 
   return '/_api/collection/' + encodeURIComponent(id);
+};
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return the base url for replicated log usage
+// //////////////////////////////////////////////////////////////////////////////
+
+ArangoDatabase.prototype._replicatedlogurl = function (id) {
+  if (id === undefined) {
+    return '/_api/log';
+  }
+
+  return '/_api/log/' + encodeURIComponent(id);
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -238,7 +251,11 @@ var helpArangoDatabase = arangosh.createHelpHeadline('ArangoDatabase (db) help')
   '  _view(<name>)                         get view by name                  ' + '\n' +
   '  _createView(<name>, <type>,           creates a new view                ' + '\n' +
   '              <properties>)                                               ' + '\n' +
-  '  _dropView(<name>)                     delete a view                     ';
+  '  _dropView(<name>)                     delete a view                     ' + '\n' +
+  '                                                                          ' + '\n' +
+  'License Functions:                                                        ' + '\n' +
+  '  _getLicense()                         get license information           ' + '\n' +
+  '  _setLicense(<license-string>)         set license string                ';
 
 ArangoDatabase.prototype._help = function () {
   internal.print(helpArangoDatabase);
@@ -253,11 +270,67 @@ ArangoDatabase.prototype.toString = function () {
 };
 
 // //////////////////////////////////////////////////////////////////////////////
+// / @brief return license information
+// //////////////////////////////////////////////////////////////////////////////
+
+ArangoDatabase.prototype._getLicense = function (options) {
+  let url = "/_admin/license";
+  var requestResult = this._connection.GET(url, {});
+
+  arangosh.checkRequestResult(requestResult);
+
+  return requestResult;
+};
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return license information
+// //////////////////////////////////////////////////////////////////////////////
+
+ArangoDatabase.prototype._setLicense = function (data, options) {
+  let url = "/_admin/license?";
+  if (options && options.force) {
+    url += "force=true";
+  }
+  if (typeof data !== 'string') {
+    throw new ArangoError({
+      error: true,
+      code: internal.errors.ERROR_HTTP_PRECONDITION_FAILED.code,
+      errorNum: internal.errors.ERROR_LICENSE_INVALID.code,
+      errorMessage:
+        "License body must be a string. It is however " + (typeof data) + "."});
+  }
+
+  var requestResult = this._connection.PUT(url, JSON.stringify(data));
+  arangosh.checkRequestResult(requestResult);
+
+  return requestResult.result;
+};
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief compacts the entire database
+// //////////////////////////////////////////////////////////////////////////////
+
+ArangoDatabase.prototype._compact = function (options) {
+  let url = "/_admin/compact?";
+  if (options && options.changeLevel) {
+    url += "changeLevel=true&";
+  }
+  if (options && options.bottomMost) {
+    url += "bottomMost=true";
+  }
+  var requestResult = this._connection.PUT(url, {});
+
+  arangosh.checkRequestResult(requestResult);
+
+  return requestResult.result;
+};
+
+// //////////////////////////////////////////////////////////////////////////////
 // / @brief return all collections from the database
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoDatabase.prototype._collections = function () {
-  var requestResult = this._connection.GET(this._collectionurl());
+  var requestResult = this._connection.GET(this._collectionurl(), {"x-arango-frontend": "true"});
 
   arangosh.checkRequestResult(requestResult);
 
@@ -298,8 +371,8 @@ ArangoDatabase.prototype._collection = function (id) {
 
   // return null in case of not found
   if (requestResult !== null
-    && requestResult.error === true
-    && requestResult.errorNum === internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code) {
+      && requestResult.error === true
+      && requestResult.errorNum === internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code) {
     return null;
   }
 
@@ -317,32 +390,44 @@ ArangoDatabase.prototype._collection = function (id) {
 };
 
 // //////////////////////////////////////////////////////////////////////////////
+// / @brief return a replicated log identified by its id
+// //////////////////////////////////////////////////////////////////////////////
+
+ArangoDatabase.prototype._replicatedLog = function (id) {
+  var requestResult = this._connection.GET(this._replicatedlogurl(id));
+
+  // return null in case of not found
+  if (requestResult !== null
+      && requestResult.error === true
+      && requestResult.errorNum === internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code) {
+    return null;
+  }
+
+  // check all other errors and throw them
+  arangosh.checkRequestResult(requestResult);
+
+  return new ArangoReplicatedLog(this, id);
+};
+
+// //////////////////////////////////////////////////////////////////////////////
 // / @brief creates a new collection
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoDatabase.prototype._create = function (name, properties, type, options) {
-  let body = {
+  try {
+    // try to NFC-normalize the database name
+    name = String(name).normalize("NFC");
+  } catch (err) {}
+  let body = Object.assign(properties !== undefined ? properties : {}, {
     'name': name,
     'type': ArangoCollection.TYPE_DOCUMENT
-  };
-
-  if (properties !== undefined) {
-    [ 'waitForSync', 'journalSize', 'isSystem', 'isVolatile',
-      'doCompact', 'keyOptions', 'shardKeys', 'numberOfShards',
-      'distributeShardsLike', 'indexBuckets', 'id', 'isSmart',
-      'replicationFactor', 'minReplicationFactor', 'writeConcern', 'shardingStrategy', 'smartGraphAttribute',
-      'smartJoinAttribute', 'avoidServers', 'cacheEnabled', 'schema'].forEach(function (p) {
-      if (properties.hasOwnProperty(p)) {
-        body[p] = properties[p];
-      }
-    });
-  }
+  });
 
   if (typeof type === 'object') {
     options = type;
     type = undefined;
   }
-  
+
   let urlAddons = [];
   if (typeof options === "object" && options !== null) {
     if (options.hasOwnProperty('waitForSyncReplication')) {
@@ -382,6 +467,17 @@ ArangoDatabase.prototype._create = function (name, properties, type, options) {
   }
 
   return undefined;
+};
+
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief creates a replicated log
+// //////////////////////////////////////////////////////////////////////////////
+
+ArangoDatabase.prototype._createReplicatedLog = function (spec) {
+  let requestResult = this._connection.POST(this._replicatedlogurl(), spec);
+  arangosh.checkRequestResult(requestResult);
+  return new ArangoReplicatedLog(this, spec.id);
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -992,13 +1088,13 @@ ArangoDatabase.prototype._parse = function (query) {
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoDatabase.prototype._createDatabase = function (name, options, users) {
-  var data = {
-    name: name,
+  let data = {
+    name: String(name).normalize("NFC"),
     options: options || { },
     users: users || []
   };
 
-  var requestResult = this._connection.POST('/_api/database', data);
+  let requestResult = this._connection.POST('/_api/database', data);
 
   if (requestResult !== null && requestResult.error === true) {
     throw new ArangoError(requestResult);
@@ -1014,7 +1110,7 @@ ArangoDatabase.prototype._createDatabase = function (name, options, users) {
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoDatabase.prototype._dropDatabase = function (name) {
-  var requestResult = this._connection.DELETE('/_api/database/' + encodeURIComponent(name));
+  let requestResult = this._connection.DELETE('/_api/database/' + encodeURIComponent(String(name).normalize("NFC")));
 
   if (requestResult !== null && requestResult.error === true) {
     throw new ArangoError(requestResult);
@@ -1069,6 +1165,7 @@ ArangoDatabase.prototype._useDatabase = function (name) {
     this._queryProperties(true);
     this._flushCache();
   } catch (err) {
+    this._flushCache();
     this._connection.setDatabaseName(old);
 
     if (err.hasOwnProperty('errorNum')) {

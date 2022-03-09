@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,11 +21,9 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_ENGINE_CLUSTER_INDEX_H
-#define ARANGOD_CLUSTER_ENGINE_CLUSTER_INDEX_H 1
+#pragma once
 
 #include <velocypack/Builder.h>
-#include <velocypack/StringRef.h>
 
 #include "Basics/Common.h"
 #include "ClusterEngine/ClusterTransactionState.h"
@@ -37,16 +36,18 @@ class LogicalCollection;
 
 class ClusterIndex : public Index {
  public:
-  ClusterIndex(IndexId id, LogicalCollection& collection, ClusterEngineType engineType,
-               Index::IndexType type, arangodb::velocypack::Slice const& info);
+  ClusterIndex(IndexId id, LogicalCollection& collection,
+               ClusterEngineType engineType, Index::IndexType type,
+               arangodb::velocypack::Slice info);
 
   ~ClusterIndex();
 
   void toVelocyPackFigures(velocypack::Builder& builder) const override;
 
   /// @brief return a VelocyPack representation of the index
-  void toVelocyPack(velocypack::Builder& builder,
-                    std::underlying_type<Index::Serialize>::type) const override;
+  void toVelocyPack(
+      velocypack::Builder& builder,
+      std::underlying_type<Index::Serialize>::type) const override;
 
   /// @brief if true this index should not be shown externally
   bool isHidden() const override {
@@ -68,7 +69,8 @@ class ClusterIndex : public Index {
 
   bool hasSelectivityEstimate() const override;
 
-  double selectivityEstimate(arangodb::velocypack::StringRef const& = arangodb::velocypack::StringRef()) const override;
+  double selectivityEstimate(
+      std::string_view = std::string_view()) const override;
 
   /// @brief update the cluster selectivity estimate
   void updateClusterSelectivityEstimate(double estimate) override;
@@ -76,42 +78,41 @@ class ClusterIndex : public Index {
   void load() override {}
   void unload() override {}
   size_t memory() const override { return 0; }
-  
-  bool isPersistent() const override;
 
   Result drop() override { return Result(TRI_ERROR_NOT_IMPLEMENTED); }
-
-  bool hasCoveringIterator() const override;
 
   /// @brief Checks if this index is identical to the given definition
   bool matchesDefinition(arangodb::velocypack::Slice const&) const override;
 
-  Index::FilterCosts supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
-                                             arangodb::aql::AstNode const* node,
-                                             arangodb::aql::Variable const* reference, 
-                                             size_t itemsInIndex) const override;
+  Index::FilterCosts supportsFilterCondition(
+      std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
+      arangodb::aql::AstNode const* node,
+      arangodb::aql::Variable const* reference,
+      size_t itemsInIndex) const override;
 
-  Index::SortCosts supportsSortCondition(arangodb::aql::SortCondition const* sortCondition,
-                                         arangodb::aql::Variable const* reference, 
-                                         size_t itemsInIndex) const override;
+  Index::SortCosts supportsSortCondition(
+      arangodb::aql::SortCondition const* sortCondition,
+      arangodb::aql::Variable const* reference,
+      size_t itemsInIndex) const override;
 
   /// @brief specializes the condition for use with the index
-  arangodb::aql::AstNode* specializeCondition(arangodb::aql::AstNode* node,
-                                              arangodb::aql::Variable const* reference) const override;
+  arangodb::aql::AstNode* specializeCondition(
+      arangodb::aql::AstNode* node,
+      arangodb::aql::Variable const* reference) const override;
 
   void updateProperties(velocypack::Slice const&);
 
-  std::vector<std::vector<arangodb::basics::AttributeName>> const& coveredFields() const override;
+  std::vector<std::vector<arangodb::basics::AttributeName>> const&
+  coveredFields() const override;
 
  protected:
   ClusterEngineType _engineType;
   Index::IndexType _indexType;
   velocypack::Builder _info;
+  bool _estimates;
   double _clusterSelectivity;
 
   // Only used in RocksDB edge index.
   std::vector<std::vector<arangodb::basics::AttributeName>> _coveredFields;
 };
 }  // namespace arangodb
-
-#endif

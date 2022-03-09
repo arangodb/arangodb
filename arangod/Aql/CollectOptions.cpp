@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,30 +26,29 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb::aql;
 
 /// @brief constructor
-CollectOptions::CollectOptions(VPackSlice const& slice)
+CollectOptions::CollectOptions(VPackSlice slice)
     : method(CollectMethod::UNDEFINED) {
   VPackSlice v = slice.get("collectOptions");
   if (v.isObject()) {
     v = v.get("method");
     if (v.isString()) {
-      method = methodFromString(v.copyString());
+      method = methodFromString(v.stringView());
     }
   }
 }
 
 /// @brief whether or not the method can be used
-bool CollectOptions::canUseMethod(CollectMethod method) const {
-  return (this->method == method || this->method == CollectMethod::UNDEFINED);
+bool CollectOptions::canUseMethod(CollectMethod m) const {
+  return (this->method == m || this->method == CollectMethod::UNDEFINED);
 }
 
 /// @brief whether or not the method should be used (i.e. is preferred)
-bool CollectOptions::shouldUseMethod(CollectMethod method) const {
-  return (this->method == method);
+bool CollectOptions::shouldUseMethod(CollectMethod m) const {
+  return (this->method == m);
 }
 
 /// @brief convert the options to VelocyPack
@@ -59,7 +58,8 @@ void CollectOptions::toVelocyPack(VPackBuilder& builder) const {
 }
 
 /// @brief get the aggregation method from a string
-CollectOptions::CollectMethod CollectOptions::methodFromString(std::string const& method) {
+CollectOptions::CollectMethod CollectOptions::methodFromString(
+    std::string_view method) {
   if (method == "hash") {
     return CollectMethod::HASH;
   }
@@ -77,18 +77,19 @@ CollectOptions::CollectMethod CollectOptions::methodFromString(std::string const
 }
 
 /// @brief stringify the aggregation method
-std::string CollectOptions::methodToString(CollectOptions::CollectMethod method) {
+std::string_view CollectOptions::methodToString(
+    CollectOptions::CollectMethod method) {
   if (method == CollectMethod::HASH) {
-    return std::string("hash");
+    return "hash";
   }
   if (method == CollectMethod::SORTED) {
-    return std::string("sorted");
+    return "sorted";
   }
   if (method == CollectMethod::DISTINCT) {
-    return std::string("distinct");
+    return "distinct";
   }
   if (method == CollectMethod::COUNT) {
-    return std::string("count");
+    return "count";
   }
 
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,

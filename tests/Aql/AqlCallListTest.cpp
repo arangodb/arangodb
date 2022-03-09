@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -96,7 +97,8 @@ TEST_F(AqlCallListTest, multiple_calls) {
     // Modifying has no side effect on default call
     popped.didProduce(1);
     EXPECT_FALSE(popped == defaultCall);
-    // Indirect test, modifing pop has no side-effect on the internal default call.
+    // Indirect test, modifing pop has no side-effect on the internal default
+    // call.
   }
 }
 
@@ -151,7 +153,8 @@ TEST_F(AqlCallListTest, multiple_calls_peek) {
       popped.didProduce(1);
       EXPECT_FALSE(popped == defaultCall);
     }
-    // Indirect test, modifing pop has no side-effect on the internal default call.
+    // Indirect test, modifing pop has no side-effect on the internal default
+    // call.
   }
 }
 

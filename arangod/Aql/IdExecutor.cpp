@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -41,11 +42,12 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 IdExecutorInfos::IdExecutorInfos(bool doCount, RegisterId outputRegister,
-                                 std::string distributeId, bool isResponsibleForInitializeCursor)
+                                 std::string distributeId,
+                                 bool isResponsibleForInitializeCursor)
     : _doCount(doCount),
+      _isResponsibleForInitializeCursor(isResponsibleForInitializeCursor),
       _outputRegister(outputRegister),
-      _distributeId(std::move(distributeId)),
-      _isResponsibleForInitializeCursor(isResponsibleForInitializeCursor) {
+      _distributeId(std::move(distributeId)) {
   // We can only doCount in the case where this executor is used as a Return.
   // And we can only have a distributeId if this executor is used as Gather.
   TRI_ASSERT(!_doCount || _distributeId.empty());
@@ -57,13 +59,15 @@ auto IdExecutorInfos::getOutputRegister() const noexcept -> RegisterId {
   return _outputRegister;
 }
 
-std::string const& IdExecutorInfos::distributeId() { return _distributeId; }
+std::string const& IdExecutorInfos::distributeId() const noexcept {
+  return _distributeId;
+}
 
-bool IdExecutorInfos::isResponsibleForInitializeCursor() const {
+bool IdExecutorInfos::isResponsibleForInitializeCursor() const noexcept {
   return _isResponsibleForInitializeCursor;
 }
 
-template <class UsedFetcher>
+template<class UsedFetcher>
 IdExecutor<UsedFetcher>::IdExecutor(Fetcher& fetcher, IdExecutorInfos& infos)
     : _fetcher(fetcher), _infos(infos) {
   if (!infos.distributeId().empty()) {
@@ -71,15 +75,14 @@ IdExecutor<UsedFetcher>::IdExecutor(Fetcher& fetcher, IdExecutorInfos& infos)
   }
 }
 
-template <class UsedFetcher>
+template<class UsedFetcher>
 IdExecutor<UsedFetcher>::~IdExecutor() = default;
 
-template <class UsedFetcher>
+template<class UsedFetcher>
 auto IdExecutor<UsedFetcher>::produceRows(AqlItemBlockInputRange& inputRange,
                                           OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, CountStats, AqlCall> {
   CountStats stats;
-  TRI_ASSERT(output.numRowsWritten() == 0);
   if (inputRange.hasDataRow()) {
     TRI_ASSERT(!output.isFull());
     TRI_IF_FAILURE("SingletonBlock::getOrSkipSome") {
@@ -87,9 +90,9 @@ auto IdExecutor<UsedFetcher>::produceRows(AqlItemBlockInputRange& inputRange,
     }
     auto const& [state, inputRow] = inputRange.peekDataRow();
 
-    output.fastForwardAllRows(inputRow, inputRange.countDataRows());
+    size_t rows = inputRange.countAndSkipAllRemainingDataRows();
 
-    std::ignore = inputRange.skipAllRemainingDataRows();
+    output.fastForwardAllRows(inputRow, rows);
 
     TRI_IF_FAILURE("SingletonBlock::getOrSkipSomeSet") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -103,8 +106,9 @@ auto IdExecutor<UsedFetcher>::produceRows(AqlItemBlockInputRange& inputRange,
   return {inputRange.upstreamState(), stats, output.getClientCall()};
 }
 
-template <class UsedFetcher>
-auto IdExecutor<UsedFetcher>::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call)
+template<class UsedFetcher>
+auto IdExecutor<UsedFetcher>::skipRowsRange(AqlItemBlockInputRange& inputRange,
+                                            AqlCall& call)
     -> std::tuple<ExecutorState, CountStats, size_t, AqlCall> {
   CountStats stats;
   size_t skipped = 0;
@@ -121,4 +125,5 @@ auto IdExecutor<UsedFetcher>::skipRowsRange(AqlItemBlockInputRange& inputRange, 
 
 template class ::arangodb::aql::IdExecutor<ConstFetcher>;
 // ID can always pass through
-template class ::arangodb::aql::IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>;
+template class ::arangodb::aql::IdExecutor<
+    SingleRowFetcher<BlockPassthrough::Enable>>;

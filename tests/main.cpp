@@ -1,3 +1,26 @@
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+/// @author Andreas Streichardt
+////////////////////////////////////////////////////////////////////////////////
+
 #include <chrono>
 #include <thread>
 
@@ -11,6 +34,7 @@
 #include "Basics/Thread.h"
 #include "Basics/icu-helper.h"
 #include "Cluster/ServerState.h"
+#include "ClusterEngine/ClusterEngine.h"
 #include "Logger/LogAppender.h"
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
@@ -18,11 +42,10 @@
 #include "RestServer/ServerIdFeature.h"
 #include "VocBase/Identifiers/ServerId.h"
 
-template <class Function>
+template<class Function>
 class TestThread : public arangodb::Thread {
  public:
-  TestThread(arangodb::application_features::ApplicationServer& server,
-             Function&& f, int i, char* c[])
+  TestThread(arangodb::ArangodServer& server, Function&& f, int i, char* c[])
       : arangodb::Thread(server, "gtest"), _f(f), _i(i), _c(c), _done(false) {
     run();
     CONDITION_LOCKER(guard, _wait);
@@ -55,11 +78,6 @@ class TestThread : public arangodb::Thread {
 
 char const* ARGV0 = "";
 
-namespace arangodb {
-  // Only to please the linker, this is not used in the tests.
-  std::function<int()>* restartAction;
-}
-
 int main(int argc, char* argv[]) {
   ::testing::InitGoogleTest(&argc, argv);
 
@@ -67,7 +85,8 @@ int main(int argc, char* argv[]) {
   int subargc = 0;
   char** subargv = (char**)malloc(sizeof(char*) * argc);
   bool logLineNumbers = false;
-  arangodb::RandomGenerator::initialize(arangodb::RandomGenerator::RandomType::MERSENNE);
+  arangodb::RandomGenerator::initialize(
+      arangodb::RandomGenerator::RandomType::MERSENNE);
   // global setup...
   for (int i = 0; i < argc; i++) {
     if (strcmp(argv[i], "--version") == 0) {
@@ -95,14 +114,14 @@ int main(int argc, char* argv[]) {
 
   ARGV0 = subargv[0];
 
-  arangodb::application_features::ApplicationServer server(nullptr, nullptr);
+  arangodb::ArangodServer server(nullptr, nullptr);
   arangodb::ServerState state(server);
   state.setRole(arangodb::ServerState::ROLE_SINGLE);
   arangodb::ShellColorsFeature sc(server);
 
   arangodb::Logger::setShowLineNumber(logLineNumbers);
   arangodb::Logger::initialize(server, false);
-  arangodb::LogAppender::addAppender("-");
+  arangodb::LogAppender::addAppender(arangodb::Logger::defaultLogGroup(), "-");
 
   sc.prepare();
 
@@ -110,15 +129,21 @@ int main(int argc, char* argv[]) {
   ctx.exit(0);  // set "good" exit code by default
 
   arangodb::ServerIdFeature::setId(arangodb::ServerId{12345});
+  // many other places rely on the reboot id being initialized,
+  // so we do it here in a central place
+  arangodb::ServerState::instance()->setRebootId(arangodb::RebootId{1});
+  arangodb::ServerState::instance()->setGoogleTest(true);
   IcuInitializer::setup(ARGV0);
+
+  // enable mocking globally - not awesome, but helps to prevent runtime
+  // assertions in queries
+  arangodb::ClusterEngine::Mocking = true;
 
   // Run tests in subthread such that it has a larger stack size in libmusl,
   // the stack size for subthreads has been reconfigured in the
   // ArangoGlobalContext above in the libmusl case:
   int result;
-  auto tests = [](int argc, char* argv[]) -> int {
-    return RUN_ALL_TESTS();
-  };
+  auto tests = [](int argc, char* argv[]) -> int { return RUN_ALL_TESTS(); };
   TestThread<decltype(tests)> t(server, std::move(tests), subargc, subargv);
   result = t.result();
 

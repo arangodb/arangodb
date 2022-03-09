@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -37,7 +37,9 @@ static size_t const QUEUE_SIZE = 64 * 1024 - 2;  // current (1.62) boost maximum
 
 static std::unique_ptr<ConnectionStatistics[]> _statisticsBuffer;
 
-static boost::lockfree::queue<ConnectionStatistics*, boost::lockfree::capacity<QUEUE_SIZE>> _freeList;
+static boost::lockfree::queue<ConnectionStatistics*,
+                              boost::lockfree::capacity<QUEUE_SIZE>>
+    _freeList;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             static public methods
@@ -64,21 +66,18 @@ void ConnectionStatistics::initialize() {
 ConnectionStatistics::Item ConnectionStatistics::acquire() {
   ConnectionStatistics* statistics = nullptr;
 
-  if (StatisticsFeature::enabled() && _freeList.pop(statistics)) {
-    return Item{ statistics };
+  if (_freeList.pop(statistics)) {
+    return Item{statistics};
   }
 
   return Item{};
 }
 
 void ConnectionStatistics::getSnapshot(Snapshot& snapshot) {
-  if (!StatisticsFeature::enabled()) {
-    // all the below objects may be deleted if we don't have statistics enabled
-    return;
-  }
-
   snapshot.httpConnections = statistics::HttpConnections;
   snapshot.totalRequests = statistics::TotalRequests;
+  snapshot.totalRequestsSuperuser = statistics::TotalRequestsSuperuser;
+  snapshot.totalRequestsUser = statistics::TotalRequestsUser;
   snapshot.methodRequests = statistics::MethodRequests;
   snapshot.asyncRequests = statistics::AsyncRequests;
   snapshot.connectionTime = statistics::ConnectionTimeDistribution;

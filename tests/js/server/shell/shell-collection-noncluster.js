@@ -76,7 +76,7 @@ function CollectionSuite() {
       }
       c.save(docs); 
 
-      c.truncate();
+      c.truncate({ compact: false });
       assertEqual(c.count(), 0);
       assertEqual(c.all().toArray().length, 0);
 

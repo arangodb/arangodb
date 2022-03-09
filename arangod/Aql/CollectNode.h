@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_COLLECT_NODE_H
-#define ARANGOD_AQL_COLLECT_NODE_H 1
+#pragma once
 
 #include "Aql/CollectOptions.h"
 #include "Aql/ExecutionNode.h"
@@ -41,36 +40,36 @@ class Slice;
 namespace aql {
 class ExecutionBlock;
 class ExecutionPlan;
-class RedundantCalculationsReplacer;
 struct Aggregator;
 
 /// @brief class CollectNode
 class CollectNode : public ExecutionNode {
   friend class ExecutionNode;
   friend class ExecutionBlock;
-  friend class RedundantCalculationsReplacer;
 
  public:
-  CollectNode(ExecutionPlan* plan, ExecutionNodeId id, CollectOptions const& options,
-              std::vector<std::pair<Variable const*, Variable const*>> const& groupVariables,
-              std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> const& aggregateVariables,
-              Variable const* expressionVariable, Variable const* outVariable,
-              std::vector<Variable const*> const& keepVariables,
-              std::unordered_map<VariableId, std::string const> const& variableMap,
-              bool count, bool isDistinctCommand);
+  CollectNode(
+      ExecutionPlan* plan, ExecutionNodeId id, CollectOptions const& options,
+      std::vector<GroupVarInfo> const& groupVariables,
+      std::vector<AggregateVarInfo> const& aggregateVariables,
+      Variable const* expressionVariable, Variable const* outVariable,
+      std::vector<Variable const*> const& keepVariables,
+      std::unordered_map<VariableId, std::string const> const& variableMap,
+      bool isDistinctCommand);
 
-  CollectNode(ExecutionPlan*, arangodb::velocypack::Slice const& base,
-              Variable const* expressionVariable, Variable const* outVariable,
-              std::vector<Variable const*> const& keepVariables,
-              std::unordered_map<VariableId, std::string const> const& variableMap,
-              std::vector<std::pair<Variable const*, Variable const*>> const& collectVariables,
-              std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> const& aggregateVariables,
-              bool count, bool isDistinctCommand);
+  CollectNode(
+      ExecutionPlan*, arangodb::velocypack::Slice const& base,
+      Variable const* expressionVariable, Variable const* outVariable,
+      std::vector<Variable const*> const& keepVariables,
+      std::unordered_map<VariableId, std::string const> const& variableMap,
+      std::vector<GroupVarInfo> const& collectVariables,
+      std::vector<AggregateVarInfo> const& aggregateVariables,
+      bool isDistinctCommand);
 
   ~CollectNode() override;
 
   /// @brief return the type of the node
-  NodeType getType() const final;
+  NodeType getType() const override final;
 
   /// @brief whether or not the node requires an additional post SORT
   bool isDistinctCommand() const;
@@ -90,10 +89,6 @@ class CollectNode : public ExecutionNode {
   /// @brief getOptions
   CollectOptions& getOptions();
 
-  /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
-                          std::unordered_set<ExecutionNode const*>& seen) const final;
-
   /// @brief calculate the expression register
   void calcExpressionRegister(RegisterId& expressionRegister,
                               RegIdSet& writeableOutputRegisters) const;
@@ -103,37 +98,35 @@ class CollectNode : public ExecutionNode {
                            RegIdSet& writeableOutputRegisters) const;
 
   /// @brief calculate the group registers
-  void calcGroupRegisters(std::vector<std::pair<RegisterId, RegisterId>>& groupRegisters,
-                          RegIdSet& readableInputRegisters,
-                          RegIdSet& writeableOutputRegisters) const;
+  void calcGroupRegisters(
+      std::vector<std::pair<RegisterId, RegisterId>>& groupRegisters,
+      RegIdSet& readableInputRegisters,
+      RegIdSet& writeableOutputRegisters) const;
 
   /// @brief calculate the aggregate registers
-  void calcAggregateRegisters(std::vector<std::pair<RegisterId, RegisterId>>& aggregateRegisters,
-                              RegIdSet& readableInputRegisters,
-                              RegIdSet& writeableOutputRegisters) const;
+  void calcAggregateRegisters(
+      std::vector<std::pair<RegisterId, RegisterId>>& aggregateRegisters,
+      RegIdSet& readableInputRegisters,
+      RegIdSet& writeableOutputRegisters) const;
 
-  void calcAggregateTypes(std::vector<std::unique_ptr<Aggregator>>& aggregateTypes) const;
+  void calcAggregateTypes(
+      std::vector<std::unique_ptr<Aggregator>>& aggregateTypes) const;
 
-  std::vector<std::pair<std::string, RegisterId>> calcInputVariableNames() const;
+  std::vector<std::pair<std::string, RegisterId>> calcInputVariableNames()
+      const;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
       ExecutionEngine& engine,
-      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const override;
+      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&)
+      const override;
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const final;
+                       bool withProperties) const override final;
 
   /// @brief estimateCost
-  CostEstimate estimateCost() const final;
-
-  /// @brief whether or not the count flag is set
-  bool count() const;
-  /// @brief set the count option
-  void count(bool value);
-
-  bool hasOutVariableButNoCount() const;
+  CostEstimate estimateCost() const override final;
 
   /// @brief whether or not the node has an outVariable (i.e. INTO ...)
   bool hasOutVariable() const;
@@ -148,11 +141,10 @@ class CollectNode : public ExecutionNode {
   void clearKeepVariables();
 
   void setAggregateVariables(
-      std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> const& aggregateVariables);
+      std::vector<AggregateVarInfo>&& aggregateVariables);
 
   /// @brief clear one of the aggregates
-  void clearAggregates(
-      std::function<bool(std::pair<Variable const*, std::pair<Variable const*, std::string>> const&)> cb);
+  void clearAggregates(std::function<bool(AggregateVarInfo const&)> cb);
 
   /// @brief whether or not the node has an expression variable (i.e. INTO ...
   /// = expr)
@@ -169,41 +161,50 @@ class CollectNode : public ExecutionNode {
 
   /// @brief restrict the KEEP variables (which may also be the auto-collected
   /// variables of an unrestricted `INTO var`) to the passed `variables`.
-  void restrictKeepVariables(std::unordered_set<const Variable*> const& variables);
+  void restrictKeepVariables(
+      containers::HashSet<Variable const*> const& variables);
 
   /// @brief return the variable map
   std::unordered_map<VariableId, std::string const> const& variableMap() const;
 
   /// @brief get all group variables (out, in)
-  std::vector<std::pair<Variable const*, Variable const*>> const& groupVariables() const;
+  std::vector<GroupVarInfo> const& groupVariables() const;
 
   /// @brief set all group variables (out, in)
-  void groupVariables(std::vector<std::pair<Variable const*, Variable const*>> const& vars);
+  void groupVariables(std::vector<GroupVarInfo> const& vars);
 
   /// @brief get all aggregate variables (out, in)
-  std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> const& aggregateVariables() const;
+  std::vector<AggregateVarInfo> const& aggregateVariables() const;
 
   /// @brief get all aggregate variables (out, in)
-  std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>>& aggregateVariables();
+  std::vector<AggregateVarInfo>& aggregateVariables();
+
+  void replaceVariables(std::unordered_map<VariableId, Variable const*> const&
+                            replacements) override;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(VarSet& vars) const final;
+  void getVariablesUsedHere(VarSet& vars) const override final;
 
   /// @brief getVariablesSetHere
-  std::vector<Variable const*> getVariablesSetHere() const final;
+  std::vector<Variable const*> getVariablesSetHere() const override final;
 
-  static void calculateAccessibleUserVariables(ExecutionNode const& node,
-                                               std::vector<Variable const*>& userVariables);
+  static void calculateAccessibleUserVariables(
+      ExecutionNode const& node, std::vector<Variable const*>& userVariables);
+
+ protected:
+  /// @brief export to VelocyPack
+  void doToVelocyPack(arangodb::velocypack::Builder&,
+                      unsigned flags) const override final;
 
  private:
   /// @brief options for the aggregation
   CollectOptions _options;
 
   /// @brief input/output variables for the collection (out, in)
-  std::vector<std::pair<Variable const*, Variable const*>> _groupVariables;
+  std::vector<GroupVarInfo> _groupVariables;
 
   /// @brief input/output variables for the aggregation (out, in)
-  std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> _aggregateVariables;
+  std::vector<AggregateVarInfo> _aggregateVariables;
 
   /// @brief input expression variable (might be null)
   Variable const* _expressionVariable;
@@ -217,9 +218,6 @@ class CollectNode : public ExecutionNode {
   /// @brief map of all variable ids and names (needed to construct group data)
   std::unordered_map<VariableId, std::string const> _variableMap;
 
-  /// @brief COUNTing node?
-  bool _count;
-
   /// @brief whether or not the node requires an additional post-SORT
   bool const _isDistinctCommand;
 
@@ -229,5 +227,3 @@ class CollectNode : public ExecutionNode {
 
 }  // namespace aql
 }  // namespace arangodb
-
-#endif

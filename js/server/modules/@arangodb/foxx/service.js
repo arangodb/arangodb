@@ -163,8 +163,8 @@ module.exports =
       const warnings = this.applyConfiguration(this._configuration, false);
       if (warnings) {
         console.warnLines(`Stored configuration for service "${this.mount}" has errors:\n  ${
-          Object.keys(warnings).map((key) => warnings[key]).join('\n  ')
-        }\nValues for unknown options will be discarded if you save the configuration in production mode using the web interface.`);
+          Object.keys(warnings).map((key) => `${key} ${warnings[key]}`).join('\n  ')
+        }\nValues for unknown options will be discarded if you save the configuration in production mode.`);
       }
 
       this.thumbnail = null;
@@ -197,6 +197,14 @@ module.exports =
       const omittedNames = knownNames.filter((name) => !configNames.includes(name));
       const names = replace ? configNames.concat(omittedNames) : configNames;
       const warnings = {};
+
+      if (!this.isDevelopment) {
+        for (const name of Object.keys(this._configuration)) {
+          if (!knownNames.includes(name) && !configNames.includes(name)) {
+            delete this._configuration[name];
+          }
+        }
+      }
 
       for (const name of names) {
         if (!knownNames.includes(name)) {
@@ -699,26 +707,19 @@ module.exports =
     }
 
     static get _appPath () {
+      let dirName = internal.db._name();
+      if (!internal.isAllowedDatabaseName(dirName, false)) {
+        dirName = internal.db._id();
+      } 
       return APP_PATH ? (
-        path.join(APP_PATH, '_db', internal.db._name())
-        ) : undefined;
+        path.join(APP_PATH, '_db', dirName)
+      ) : undefined;
+
     }
 
     static get _systemAppPath () {
-      return APP_PATH ? (
+      return STARTUP_PATH ? (
         path.join(STARTUP_PATH, 'apps', 'system')
-        ) : undefined;
-    }
-
-    static get _oldAppPath () {
-      return APP_PATH ? (
-        path.join(APP_PATH, 'databases', internal.db._name())
-        ) : undefined;
-    }
-
-    static get _devAppPath () {
-      return DEV_APP_PATH ? (
-        path.join(DEV_APP_PATH, 'databases', internal.db._name())
         ) : undefined;
     }
 };

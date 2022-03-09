@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -25,7 +26,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 
 #include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "Logger/LogMacros.h"
 #include "Pregel/PregelFeature.h"
@@ -36,21 +36,23 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 using namespace arangodb::pregel;
 
-RestPregelHandler::RestPregelHandler(application_features::ApplicationServer& server,
-                                     GeneralRequest* request, GeneralResponse* response)
-    : RestVocbaseBaseHandler(server, request, response) {}
+RestPregelHandler::RestPregelHandler(ArangodServer& server,
+                                     GeneralRequest* request,
+                                     GeneralResponse* response)
+    : RestVocbaseBaseHandler(server, request, response),
+      _pregel(server.getFeature<PregelFeature>()) {}
 
 RestStatus RestPregelHandler::execute() {
   try {
     bool parseSuccess = true;
     VPackSlice body = parseVPackBody(parseSuccess);
     if (!parseSuccess || !body.isObject()) {
-      LOG_TOPIC("cec03", ERR, Logger::PREGEL) << "Bad request body\n";
       // error message generated in parseVPackBody
       return RestStatus::DONE;
     }
     if (_request->requestType() != rest::RequestType::POST) {
-      generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_NOT_IMPLEMENTED,
+      generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                    TRI_ERROR_NOT_IMPLEMENTED,
                     "illegal method for /_api/pregel");
       return RestStatus::DONE;
     }
@@ -61,25 +63,12 @@ RestStatus RestPregelHandler::execute() {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_NOT_IMPLEMENTED,
                     "you are missing a prefix");
     } else if (suffix[0] == Utils::conductorPrefix) {
-      PregelFeature::handleConductorRequest(_vocbase, suffix[1], body, response);
+      _pregel.handleConductorRequest(_vocbase, suffix[1], body, response);
       generateResult(rest::ResponseCode::OK, response.slice());
-      /*
-       if (buffer.empty()) {
-         resetResponse(rest::ResponseCode::OK);
-       } else {
-         generateResult(rest::ResponseCode::OK, std::move(buffer));
-       }
-       */
     } else if (suffix[0] == Utils::workerPrefix) {
-      PregelFeature::handleWorkerRequest(_vocbase, suffix[1], body, response);
+      _pregel.handleWorkerRequest(_vocbase, suffix[1], body, response);
 
       generateResult(rest::ResponseCode::OK, response.slice());
-      /* if (buffer.empty()) {
-         resetResponse(rest::ResponseCode::OK);
-       } else {
-         generateResult(rest::ResponseCode::OK, std::move(buffer));
-       }
-       */
     } else {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_NOT_IMPLEMENTED,
                     "the prefix is incorrect");
@@ -87,13 +76,16 @@ RestStatus RestPregelHandler::execute() {
   } catch (basics::Exception const& ex) {
     LOG_TOPIC("d1b56", ERR, arangodb::Logger::PREGEL)
         << "Exception in pregel REST handler: " << ex.what();
-    generateError(GeneralResponse::responseCode(ex.code()), ex.code(), ex.what());
+    generateError(GeneralResponse::responseCode(ex.code()), ex.code(),
+                  ex.what());
   } catch (std::exception const& ex) {
     LOG_TOPIC("2f547", ERR, arangodb::Logger::PREGEL)
         << "Exception in pregel REST handler: " << ex.what();
-    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL, ex.what());
+    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
+                  ex.what());
   } catch (...) {
-    LOG_TOPIC("e2ef6", ERR, Logger::PREGEL) << "Exception in pregel REST handler";
+    LOG_TOPIC("e2ef6", ERR, Logger::PREGEL)
+        << "Exception in pregel REST handler";
     generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
                   "error in pregel handler");
   }

@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GEO_NEAR_QUERY_H
-#define ARANGOD_GEO_NEAR_QUERY_H 1
+#pragma once
 
 #include <queue>
 #include <type_traits>
@@ -69,7 +69,7 @@ struct DocumentsDescending {
 /// Will return points sorted by distance to the target point, can
 /// also filter contains / intersect in regions (on result points and
 /// search intervals). Should be storage engine agnostic
-template <typename CMP = DocumentsAscending>
+template<typename CMP = DocumentsAscending>
 class NearUtils {
   static_assert(std::is_same<CMP, DocumentsAscending>::value ||
                     std::is_same<CMP, DocumentsDescending>::value,
@@ -83,7 +83,8 @@ class NearUtils {
 
  public:
   /// @brief Type of documents buffer
-  typedef std::priority_queue<Document, std::vector<Document>, CMP> GeoDocumentsQueue;
+  typedef std::priority_queue<Document, std::vector<Document>, CMP>
+      GeoDocumentsQueue;
 
   explicit NearUtils(geo::QueryParams&& params) noexcept;
   ~NearUtils();
@@ -100,9 +101,11 @@ class NearUtils {
 
   /// @brief all intervals are covered, no more buffered results
   bool isDone() const {
-    TRI_ASSERT(_innerAngle >= S1ChordAngle::Zero() && _innerAngle <= _outerAngle);
+    TRI_ASSERT(_innerAngle >= S1ChordAngle::Zero() &&
+               _innerAngle <= _outerAngle);
     TRI_ASSERT(_outerAngle <= _maxAngle &&
-               _maxAngle <= S1ChordAngle::Radians(geo::kMaxRadiansBetweenPoints));
+               _maxAngle <=
+                   S1ChordAngle::Radians(geo::kMaxRadiansBetweenPoints));
     return _buffer.empty() && _allIntervalsCovered;
   }
 
@@ -221,5 +224,3 @@ class NearUtils {
 
 }  // namespace geo_index
 }  // namespace arangodb
-
-#endif

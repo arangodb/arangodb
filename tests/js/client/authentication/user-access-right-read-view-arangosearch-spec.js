@@ -32,7 +32,7 @@
 
 const expect = require('chai').expect;
 const users = require('@arangodb/users');
-const helper = require('@arangodb/user-helper');
+const helper = require('@arangodb/testutils/user-helper');
 const errors = require('@arangodb').errors;
 const db = require('@arangodb').db;
 const namePrefix = helper.namePrefix;

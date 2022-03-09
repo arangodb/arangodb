@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016-2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,8 +21,7 @@
 /// @author Andreas Streichardt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GENERAL_SERVER_ACCEPTOR_H
-#define ARANGOD_GENERAL_SERVER_ACCEPTOR_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -34,9 +34,9 @@ namespace rest {
 
 /// Abstract class handling the socket acceptor
 class Acceptor {
-
  public:
-  Acceptor(rest::GeneralServer& server, rest::IoContext& context, Endpoint* endpoint);
+  Acceptor(rest::GeneralServer& server, rest::IoContext& context,
+           Endpoint* endpoint);
   virtual ~Acceptor() = default;
 
  public:
@@ -64,4 +64,3 @@ class Acceptor {
 };
 }  // namespace rest
 }  // namespace arangodb
-#endif

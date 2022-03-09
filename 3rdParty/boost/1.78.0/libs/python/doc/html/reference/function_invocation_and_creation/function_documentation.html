@@ -1,0 +1,458 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Function documentation</title>
+<link rel="stylesheet" href="../../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="Boost.Python Reference Manual">
+<link rel="up" href="../function_invocation_and_creation.html" title="Chapter 4. Function Invocation and Creation">
+<link rel="prev" href="boost_python_raw_function_hpp.html" title="boost/python/raw_function.hpp">
+<link rel="next" href="models_of_callpolicies.html" title="Models of CallPolicies">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="" width="" height="" src="../../images/boost.png"></td></tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="boost_python_raw_function_hpp.html"><img src="../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../function_invocation_and_creation.html"><img src="../../images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../images/home.png" alt="Home"></a><a accesskey="n" href="models_of_callpolicies.html"><img src="../../images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="function_invocation_and_creation.function_documentation"></a><a class="link" href="function_documentation.html" title="Function documentation">Function
+      documentation</a>
+</h2></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="function_documentation.html#function_invocation_and_creation.function_documentation.boost_python_function_doc_signat">boost/python/function_doc_signature.hpp</a></span></dt>
+<dt><span class="section"><a href="function_documentation.html#function_invocation_and_creation.function_documentation.boost_python_pytype_function_hpp">boost/python/pytype_function.hpp</a></span></dt>
+</dl></div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="function_invocation_and_creation.function_documentation.boost_python_function_doc_signat"></a><a class="link" href="function_documentation.html#function_invocation_and_creation.function_documentation.boost_python_function_doc_signat" title="boost/python/function_doc_signature.hpp">boost/python/function_doc_signature.hpp</a>
+</h3></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="function_documentation.html#function_invocation_and_creation.function_documentation.boost_python_function_doc_signat.introduction">Introduction</a></span></dt>
+<dt><span class="section"><a href="function_documentation.html#function_invocation_and_creation.function_documentation.boost_python_function_doc_signat.class_function_doc_signature_gen">Class
+          <code class="computeroutput"><span class="identifier">function_doc_signature_generator</span></code></a></span></dt>
+<dt><span class="section"><a href="function_documentation.html#function_invocation_and_creation.function_documentation.boost_python_function_doc_signat.example">Example</a></span></dt>
+</dl></div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="function_invocation_and_creation.function_documentation.boost_python_function_doc_signat.introduction"></a><a class="link" href="function_documentation.html#function_invocation_and_creation.function_documentation.boost_python_function_doc_signat.introduction" title="Introduction">Introduction</a>
+</h4></div></div></div>
+<p>
+            Boost.Python supports docstrings with automatic appending of Pythonic
+            and C++ signatures. This feature is implemented by class <code class="computeroutput"><span class="identifier">function_doc_signature_generator</span></code>. The
+            class uses all of the overloads, supplied arg names and default values,
+            as well as the user-defined docstrings, to generate documentation for
+            a given function.
+          </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="function_invocation_and_creation.function_documentation.boost_python_function_doc_signat.class_function_doc_signature_gen"></a><a class="link" href="function_documentation.html#function_invocation_and_creation.function_documentation.boost_python_function_doc_signat.class_function_doc_signature_gen" title="Class function_doc_signature_generator">Class
+          <code class="computeroutput"><span class="identifier">function_doc_signature_generator</span></code></a>
+</h4></div></div></div>
+<p>
+            The class has only one public function which returns a list of strings
+            documenting the overloads of a function.
+          </p>
+<pre class="programlisting"><span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span> <span class="keyword">namespace</span> <span class="identifier">python</span> <span class="special">{</span> <span class="keyword">namespace</span> <span class="identifier">objects</span> <span class="special">{</span>
+
+    <span class="keyword">class</span> <span class="identifier">function_doc_signature_generator</span>
+    <span class="special">{</span>
+      <span class="keyword">public</span><span class="special">:</span>
+          <span class="keyword">static</span> <span class="identifier">list</span> <span class="identifier">function_doc_signatures</span><span class="special">(</span><span class="identifier">function</span> <span class="keyword">const</span> <span class="special">*</span><span class="identifier">f</span><span class="special">);</span>
+    <span class="special">};</span>
+
+<span class="special">}}}</span>
+</pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="function_invocation_and_creation.function_documentation.boost_python_function_doc_signat.example"></a><a class="link" href="function_documentation.html#function_invocation_and_creation.function_documentation.boost_python_function_doc_signat.example" title="Example">Example</a>
+</h4></div></div></div>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">python</span><span class="special">/</span><span class="identifier">module</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">python</span><span class="special">/</span><span class="identifier">def</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">python</span><span class="special">/</span><span class="identifier">args</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">python</span><span class="special">/</span><span class="identifier">tuple</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">python</span><span class="special">/</span><span class="keyword">class</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">python</span><span class="special">/</span><span class="identifier">overloads</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">python</span><span class="special">/</span><span class="identifier">raw_function</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="keyword">using</span> <span class="keyword">namespace</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">python</span><span class="special">;</span>
+
+<span class="identifier">tuple</span> <span class="identifier">f</span><span class="special">(</span><span class="keyword">int</span> <span class="identifier">x</span> <span class="special">=</span> <span class="number">1</span><span class="special">,</span> <span class="keyword">double</span> <span class="identifier">y</span> <span class="special">=</span> <span class="number">4.25</span><span class="special">,</span> <span class="keyword">char</span> <span class="keyword">const</span><span class="special">*</span> <span class="identifier">z</span> <span class="special">=</span> <span class="string">"wow"</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="keyword">return</span> <span class="identifier">make_tuple</span><span class="special">(</span><span class="identifier">x</span><span class="special">,</span> <span class="identifier">y</span><span class="special">,</span> <span class="identifier">z</span><span class="special">);</span>
+<span class="special">}</span>
+
+<span class="identifier">BOOST_PYTHON_FUNCTION_OVERLOADS</span><span class="special">(</span><span class="identifier">f_overloads</span><span class="special">,</span> <span class="identifier">f</span><span class="special">,</span> <span class="number">0</span><span class="special">,</span> <span class="number">3</span><span class="special">)</span>
+
+
+<span class="keyword">struct</span> <span class="identifier">X</span>
+<span class="special">{</span>
+    <span class="identifier">tuple</span> <span class="identifier">f</span><span class="special">(</span><span class="keyword">int</span> <span class="identifier">x</span> <span class="special">=</span> <span class="number">1</span><span class="special">,</span> <span class="keyword">double</span> <span class="identifier">y</span> <span class="special">=</span> <span class="number">4.25</span><span class="special">,</span> <span class="keyword">char</span> <span class="keyword">const</span><span class="special">*</span> <span class="identifier">z</span> <span class="special">=</span> <span class="string">"wow"</span><span class="special">)</span>
+    <span class="special">{</span>
+        <span class="keyword">return</span> <span class="identifier">make_tuple</span><span class="special">(</span><span class="identifier">x</span><span class="special">,</span> <span class="identifier">y</span><span class="special">,</span> <span class="identifier">z</span><span class="special">);</span>
+    <span class="special">}</span>
+<span class="special">};</span>
+
+<span class="identifier">BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS</span><span class="special">(</span><span class="identifier">X_f_overloads</span><span class="special">,</span> <span class="identifier">X</span><span class="special">::</span><span class="identifier">f</span><span class="special">,</span> <span class="number">0</span><span class="special">,</span> <span class="number">3</span><span class="special">)</span>
+
+<span class="identifier">tuple</span> <span class="identifier">raw_func</span><span class="special">(</span><span class="identifier">tuple</span> <span class="identifier">args</span><span class="special">,</span> <span class="identifier">dict</span> <span class="identifier">kw</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="keyword">return</span> <span class="identifier">make_tuple</span><span class="special">(</span><span class="identifier">args</span><span class="special">,</span> <span class="identifier">kw</span><span class="special">);</span>
+<span class="special">}</span>
+
+<span class="identifier">BOOST_PYTHON_MODULE</span><span class="special">(</span><span class="identifier">args_ext</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="identifier">def</span><span class="special">(</span><span class="string">"f"</span><span class="special">,</span> <span class="identifier">f</span><span class="special">,</span> <span class="special">(</span><span class="identifier">arg</span><span class="special">(</span><span class="string">"x"</span><span class="special">)=</span><span class="number">1</span><span class="special">,</span> <span class="identifier">arg</span><span class="special">(</span><span class="string">"y"</span><span class="special">)=</span><span class="number">4.25</span><span class="special">,</span> <span class="identifier">arg</span><span class="special">(</span><span class="string">"z"</span><span class="special">)=</span><span class="string">"wow"</span><span class="special">)</span>
+        <span class="special">,</span> <span class="string">"This is f's docstring"</span>
+        <span class="special">);</span>
+
+    <span class="identifier">def</span><span class="special">(</span><span class="string">"raw"</span><span class="special">,</span> <span class="identifier">raw_function</span><span class="special">(</span><span class="identifier">raw_func</span><span class="special">));</span>
+
+    <span class="identifier">def</span><span class="special">(</span><span class="string">"f1"</span><span class="special">,</span> <span class="identifier">f</span><span class="special">,</span> <span class="identifier">f_overloads</span><span class="special">(</span><span class="string">"f1's docstring"</span><span class="special">,</span> <span class="identifier">args</span><span class="special">(</span><span class="string">"x"</span><span class="special">,</span> <span class="string">"y"</span><span class="special">,</span> <span class="string">"z"</span><span class="special">)));</span>
+
+
+    <span class="identifier">class_</span><span class="special">&lt;</span><span class="identifier">X</span><span class="special">&gt;(</span><span class="string">"X"</span><span class="special">,</span> <span class="string">"This is X's docstring"</span><span class="special">,</span> <span class="identifier">init</span><span class="special">&lt;&gt;(</span><span class="identifier">args</span><span class="special">(</span><span class="string">"self"</span><span class="special">)))</span>
+        <span class="special">.</span><span class="identifier">def</span><span class="special">(</span><span class="string">"f"</span><span class="special">,</span> <span class="special">&amp;</span><span class="identifier">X</span><span class="special">::</span><span class="identifier">f</span>
+             <span class="special">,</span> <span class="string">"This is X.f's docstring"</span>
+             <span class="special">,</span> <span class="identifier">args</span><span class="special">(</span><span class="string">"self"</span><span class="special">,</span><span class="string">"x"</span><span class="special">,</span> <span class="string">"y"</span><span class="special">,</span> <span class="string">"z"</span><span class="special">))</span>
+
+        <span class="special">;</span>
+
+<span class="special">}</span>
+</pre>
+<p>
+            Python code:
+          </p>
+<pre class="programlisting"><span class="special">&gt;&gt;&gt;</span> <span class="keyword">import</span> <span class="identifier">args_ext</span>
+<span class="special">&gt;&gt;&gt;</span> <span class="identifier">help</span><span class="special">(</span><span class="identifier">args_ext</span><span class="special">)</span>
+<span class="identifier">Help</span> <span class="identifier">on</span> <span class="identifier">module</span> <span class="identifier">args_ext</span><span class="special">:</span>
+
+<span class="identifier">NAME</span>
+    <span class="identifier">args_ext</span>
+
+<span class="identifier">FILE</span>
+    <span class="identifier">args_ext</span><span class="special">.</span><span class="identifier">pyd</span>
+
+<span class="identifier">CLASSES</span>
+    <span class="identifier">Boost</span><span class="special">.</span><span class="identifier">Python</span><span class="special">.</span><span class="identifier">instance</span><span class="special">(</span><span class="identifier">__builtin__</span><span class="special">.</span><span class="identifier">object</span><span class="special">)</span>
+        <span class="identifier">X</span>
+
+    <span class="keyword">class</span> <span class="identifier">X</span><span class="special">(</span><span class="identifier">Boost</span><span class="special">.</span><span class="identifier">Python</span><span class="special">.</span><span class="identifier">instance</span><span class="special">)</span>
+     <span class="special">|</span>  <span class="identifier">This</span> <span class="keyword">is</span> <span class="identifier">X</span><span class="string">'s docstring
+     |
+     |  Method resolution order:
+     |      X
+     |      Boost.Python.instance
+     |      __builtin__.object
+     |
+     |  Methods defined here:
+     |
+     |  __init__(...)
+     |      __init__( (object)self) -&gt; None :
+     |       C++ signature:
+     |           void __init__(struct _object *)
+     |
+     |  f(...)
+     |      f( (X)self, (int)x, (float)y, (str)z) -&gt; tuple : This is X.f'</span><span class="identifier">s</span> <span class="identifier">docstring</span>
+     <span class="special">|</span>      <span class="identifier">C</span><span class="special">++</span> <span class="identifier">signature</span><span class="special">:</span>
+     <span class="special">|</span>          <span class="keyword">class</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">python</span><span class="special">::</span><span class="identifier">tuple</span> <span class="identifier">f</span><span class="special">(</span><span class="identifier">struct</span> <span class="identifier">X</span> <span class="special">{</span><span class="identifier">lvalue</span><span class="special">},</span><span class="identifier">int</span><span class="special">,</span><span class="identifier">double</span><span class="special">,</span><span class="identifier">char</span> <span class="identifier">const</span> <span class="special">*)</span>
+     <span class="special">|</span>
+     <span class="special">|</span>    <span class="special">.................</span>
+     <span class="special">|</span>
+<span class="identifier">FUNCTIONS</span>
+    <span class="identifier">f</span><span class="special">(...)</span>
+        <span class="identifier">f</span><span class="special">([</span> <span class="special">(</span><span class="identifier">int</span><span class="special">)</span><span class="identifier">x</span><span class="special">=</span><span class="number">1</span> <span class="special">[,</span> <span class="special">(</span><span class="identifier">float</span><span class="special">)</span><span class="identifier">y</span><span class="special">=</span><span class="number">4.25</span> <span class="special">[,</span> <span class="special">(</span><span class="identifier">str</span><span class="special">)</span><span class="identifier">z</span><span class="special">=</span><span class="string">'wow'</span><span class="special">]]])</span> <span class="special">-&gt;</span> <span class="identifier">tuple</span> <span class="special">:</span> <span class="identifier">This</span> <span class="keyword">is</span> <span class="identifier">f</span><span class="string">'s docstring
+        C++ signature:
+            class boost::python::tuple f([ int=1 [,double=4.25 [,char const *='</span><span class="identifier">wow</span><span class="string">']]])
+
+    f1(...)
+        f1([ (int)x [, (float)y [, (str)z]]]) -&gt; tuple : f1'</span><span class="identifier">s</span> <span class="identifier">docstring</span>
+        <span class="identifier">C</span><span class="special">++</span> <span class="identifier">signature</span><span class="special">:</span>
+            <span class="keyword">class</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">python</span><span class="special">::</span><span class="identifier">tuple</span> <span class="identifier">f1</span><span class="special">([</span> <span class="identifier">int</span> <span class="special">[,</span><span class="identifier">double</span> <span class="special">[,</span><span class="identifier">char</span> <span class="identifier">const</span> <span class="special">*]]])</span>
+
+    <span class="identifier">raw</span><span class="special">(...)</span>
+        <span class="identifier">object</span> <span class="identifier">raw</span><span class="special">(</span><span class="identifier">tuple</span> <span class="identifier">args</span><span class="special">,</span> <span class="identifier">dict</span> <span class="identifier">kwds</span><span class="special">)</span> <span class="special">:</span>
+        <span class="identifier">C</span><span class="special">++</span> <span class="identifier">signature</span><span class="special">:</span>
+            <span class="identifier">object</span> <span class="identifier">raw</span><span class="special">(</span><span class="identifier">tuple</span> <span class="identifier">args</span><span class="special">,</span> <span class="identifier">dict</span> <span class="identifier">kwds</span><span class="special">)</span>
+</pre>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="function_invocation_and_creation.function_documentation.boost_python_pytype_function_hpp"></a><a class="link" href="function_documentation.html#function_invocation_and_creation.function_documentation.boost_python_pytype_function_hpp" title="boost/python/pytype_function.hpp">boost/python/pytype_function.hpp</a>
+</h3></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="function_documentation.html#function_invocation_and_creation.function_documentation.boost_python_pytype_function_hpp.introduction">Introduction</a></span></dt>
+<dt><span class="section"><a href="function_documentation.html#function_invocation_and_creation.function_documentation.boost_python_pytype_function_hpp.class_wrap_pytype">Class
+          <code class="computeroutput"><span class="identifier">wrap_pytype</span></code></a></span></dt>
+<dt><span class="section"><a href="function_documentation.html#function_invocation_and_creation.function_documentation.boost_python_pytype_function_hpp.class_registered_pytype">Class
+          <code class="computeroutput"><span class="identifier">registered_pytype</span></code></a></span></dt>
+<dt><span class="section"><a href="function_documentation.html#function_invocation_and_creation.function_documentation.boost_python_pytype_function_hpp.class_expected_from_python_type">Class
+          <code class="computeroutput"><span class="identifier">expected_from_python_type</span></code></a></span></dt>
+<dt><span class="section"><a href="function_documentation.html#function_invocation_and_creation.function_documentation.boost_python_pytype_function_hpp.class_to_python_target_type">Class
+          <code class="computeroutput"><span class="identifier">to_python_target_type</span></code></a></span></dt>
+<dt><span class="section"><a href="function_documentation.html#function_invocation_and_creation.function_documentation.boost_python_pytype_function_hpp.example">Example</a></span></dt>
+</dl></div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="function_invocation_and_creation.function_documentation.boost_python_pytype_function_hpp.introduction"></a><a class="link" href="function_documentation.html#function_invocation_and_creation.function_documentation.boost_python_pytype_function_hpp.introduction" title="Introduction">Introduction</a>
+</h4></div></div></div>
+<p>
+            To support Pythonic signatures the converters should supply a <code class="computeroutput"><span class="identifier">get_pytype</span></code> function returning a pointer
+            to the associated <code class="computeroutput"><span class="identifier">PyTypeObject</span></code>.
+            See for example <a class="link" href="../concepts/resultconverter.html" title="ResultConverter"><code class="computeroutput"><span class="identifier">ResultConverter</span></code></a> or <a class="link" href="../to_from_python_type_conversion/boost_python_to_python_converter.html#to_from_python_type_conversion.boost_python_to_python_converter.class_template_to_python_convert.class_template_to_python_convert" title="Class template to_python_converter constructor"><code class="computeroutput"><span class="identifier">to_python_converter</span></code></a>. The classes
+            in this header file are meant to be used when implmenting <code class="computeroutput"><span class="identifier">get_pytype</span></code>. There are also <code class="computeroutput"><span class="identifier">_direct</span></code> versions of the templates of
+            <code class="computeroutput"><span class="keyword">class</span> <span class="identifier">T</span></code>
+            which should be used with undecorated type parameter, expected to be
+            in the conversion registry when the module loads.
+          </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="function_invocation_and_creation.function_documentation.boost_python_pytype_function_hpp.class_wrap_pytype"></a><a class="link" href="function_documentation.html#function_invocation_and_creation.function_documentation.boost_python_pytype_function_hpp.class_wrap_pytype" title="Class wrap_pytype">Class
+          <code class="computeroutput"><span class="identifier">wrap_pytype</span></code></a>
+</h4></div></div></div>
+<p>
+            This template generates a static <code class="computeroutput"><span class="identifier">get_pytype</span></code>
+            member returning the template parameter.
+          </p>
+<pre class="programlisting"><span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span> <span class="keyword">namespace</span> <span class="identifier">python</span> <span class="special">{</span> <span class="keyword">namespace</span> <span class="identifier">converter</span><span class="special">{</span>
+
+    <span class="keyword">template</span> <span class="special">&lt;</span> <span class="identifier">PyTypeObject</span> <span class="keyword">const</span> <span class="special">*</span><span class="identifier">pytype</span> <span class="special">&gt;</span>
+    <span class="keyword">class</span> <span class="identifier">wrap_pytype</span>
+    <span class="special">{</span>
+      <span class="keyword">public</span><span class="special">:</span>
+          <span class="keyword">static</span> <span class="identifier">PyTypeObject</span> <span class="keyword">const</span> <span class="special">*</span><span class="identifier">get_pytype</span><span class="special">(){</span><span class="keyword">return</span> <span class="identifier">pytype</span><span class="special">;</span> <span class="special">}</span>
+    <span class="special">};</span>
+
+<span class="special">}}}</span>
+</pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="function_invocation_and_creation.function_documentation.boost_python_pytype_function_hpp.class_registered_pytype"></a><a class="link" href="function_documentation.html#function_invocation_and_creation.function_documentation.boost_python_pytype_function_hpp.class_registered_pytype" title="Class registered_pytype">Class
+          <code class="computeroutput"><span class="identifier">registered_pytype</span></code></a>
+</h4></div></div></div>
+<p>
+            This template should be used with template parameters which are (possibly
+            decorated) types exported to python using <a class="link" href="../high_level_components.html#high_level_components.boost_python_class_hpp.class_template_class_t_bases_hel" title="Class template class_&lt;T, Bases, HeldType, NonCopyable&gt;"><code class="computeroutput"><span class="identifier">class_</span></code></a>. The generated a static
+            <code class="computeroutput"><span class="identifier">get_pytype</span></code> member returns
+            the corresponding python type.
+          </p>
+<pre class="programlisting"><span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span> <span class="keyword">namespace</span> <span class="identifier">python</span> <span class="special">{</span> <span class="keyword">namespace</span> <span class="identifier">converter</span><span class="special">{</span>
+
+    <span class="keyword">template</span> <span class="special">&lt;</span> <span class="keyword">class</span> <span class="identifier">T</span> <span class="special">&gt;</span>
+    <span class="keyword">class</span> <span class="identifier">registered_pytype</span>
+    <span class="special">{</span>
+      <span class="keyword">public</span><span class="special">:</span>
+          <span class="keyword">static</span> <span class="identifier">PyTypeObject</span> <span class="keyword">const</span> <span class="special">*</span><span class="identifier">get_pytype</span><span class="special">();</span>
+    <span class="special">};</span>
+
+<span class="special">}}}</span>
+</pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="function_invocation_and_creation.function_documentation.boost_python_pytype_function_hpp.class_expected_from_python_type"></a><a class="link" href="function_documentation.html#function_invocation_and_creation.function_documentation.boost_python_pytype_function_hpp.class_expected_from_python_type" title="Class expected_from_python_type">Class
+          <code class="computeroutput"><span class="identifier">expected_from_python_type</span></code></a>
+</h4></div></div></div>
+<p>
+            This template generates a static <code class="computeroutput"><span class="identifier">get_pytype</span></code>
+            member which inspects the registered <code class="computeroutput"><span class="identifier">from_python</span></code>
+            converters for the type <code class="computeroutput"><span class="identifier">T</span></code>
+            and returns a matching python type.
+          </p>
+<pre class="programlisting"><span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span> <span class="keyword">namespace</span> <span class="identifier">python</span> <span class="special">{</span> <span class="keyword">namespace</span> <span class="identifier">converter</span><span class="special">{</span>
+
+    <span class="keyword">template</span> <span class="special">&lt;</span> <span class="keyword">class</span> <span class="identifier">T</span> <span class="special">&gt;</span>
+    <span class="keyword">class</span> <span class="identifier">expected_from_python_type</span>
+    <span class="special">{</span>
+      <span class="keyword">public</span><span class="special">:</span>
+          <span class="keyword">static</span> <span class="identifier">PyTypeObject</span> <span class="keyword">const</span> <span class="special">*</span><span class="identifier">get_pytype</span><span class="special">();</span>
+    <span class="special">};</span>
+
+<span class="special">}}}</span>
+</pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="function_invocation_and_creation.function_documentation.boost_python_pytype_function_hpp.class_to_python_target_type"></a><a class="link" href="function_documentation.html#function_invocation_and_creation.function_documentation.boost_python_pytype_function_hpp.class_to_python_target_type" title="Class to_python_target_type">Class
+          <code class="computeroutput"><span class="identifier">to_python_target_type</span></code></a>
+</h4></div></div></div>
+<p>
+            This template generates a static <code class="computeroutput"><span class="identifier">get_pytype</span></code>
+            member returning the python type to which <code class="computeroutput"><span class="identifier">T</span></code>
+            can be converted.
+          </p>
+<pre class="programlisting"><span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span> <span class="keyword">namespace</span> <span class="identifier">python</span> <span class="special">{</span> <span class="keyword">namespace</span> <span class="identifier">converter</span><span class="special">{</span>
+
+    <span class="keyword">template</span> <span class="special">&lt;</span> <span class="keyword">class</span> <span class="identifier">T</span> <span class="special">&gt;</span>
+    <span class="keyword">class</span> <span class="identifier">to_python_target_type</span>
+    <span class="special">{</span>
+      <span class="keyword">public</span><span class="special">:</span>
+          <span class="keyword">static</span> <span class="identifier">PyTypeObject</span> <span class="keyword">const</span> <span class="special">*</span><span class="identifier">get_pytype</span><span class="special">();</span>
+    <span class="special">};</span>
+
+<span class="special">}}}</span>
+</pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="function_invocation_and_creation.function_documentation.boost_python_pytype_function_hpp.example"></a><a class="link" href="function_documentation.html#function_invocation_and_creation.function_documentation.boost_python_pytype_function_hpp.example" title="Example">Example</a>
+</h4></div></div></div>
+<p>
+            This example presumes that someone has implemented the standard noddy
+            example module from the Python documentation, and placed the corresponding
+            declarations in "noddy.h". Because <code class="computeroutput"><span class="identifier">noddy_NoddyObject</span></code>
+            is the ultimate trivial extension type, the example is a bit contrived:
+            it wraps a function for which all information is contained in the type
+            of its return value.
+          </p>
+<p>
+            C++ module definition:
+          </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">python</span><span class="special">/</span><span class="identifier">reference</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">python</span><span class="special">/</span><span class="identifier">module</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="string">"noddy.h"</span>
+
+<span class="keyword">struct</span> <span class="identifier">tag</span> <span class="special">{};</span>
+<span class="identifier">tag</span> <span class="identifier">make_tag</span><span class="special">()</span> <span class="special">{</span> <span class="keyword">return</span> <span class="identifier">tag</span><span class="special">();</span> <span class="special">}</span>
+
+<span class="keyword">using</span> <span class="keyword">namespace</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">python</span><span class="special">;</span>
+
+<span class="keyword">struct</span> <span class="identifier">tag_to_noddy</span>
+<span class="preprocessor">#if</span> <span class="identifier">defined</span> <span class="identifier">BOOST_PYTHON_SUPPORTS_PY_SIGNATURES</span> <span class="comment">//unnecessary overhead if py signatures are not supported</span>
+<span class="special">:</span> <span class="identifier">wrap_pytype</span><span class="special">&lt;&amp;</span><span class="identifier">noddy_NoddyType</span><span class="special">&gt;</span> <span class="comment">//inherits get_pytype from wrap_pytype</span>
+<span class="preprocessor">#endif</span>
+<span class="special">{</span>
+    <span class="keyword">static</span> <span class="identifier">PyObject</span><span class="special">*</span> <span class="identifier">convert</span><span class="special">(</span><span class="identifier">tag</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">x</span><span class="special">)</span>
+    <span class="special">{</span>
+        <span class="keyword">return</span> <span class="identifier">PyObject_New</span><span class="special">(</span><span class="identifier">noddy_NoddyObject</span><span class="special">,</span> <span class="special">&amp;</span><span class="identifier">noddy_NoddyType</span><span class="special">);</span>
+    <span class="special">}</span>
+<span class="special">};</span>
+
+<span class="identifier">BOOST_PYTHON_MODULE</span><span class="special">(</span><span class="identifier">to_python_converter</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="identifier">def</span><span class="special">(</span><span class="string">"make_tag"</span><span class="special">,</span> <span class="identifier">make_tag</span><span class="special">);</span>
+    <span class="identifier">to_python_converter</span><span class="special">&lt;</span><span class="identifier">tag</span><span class="special">,</span> <span class="identifier">tag_to_noddy</span>
+<span class="preprocessor">#if</span> <span class="identifier">defined</span> <span class="identifier">BOOST_PYTHON_SUPPORTS_PY_SIGNATURES</span> <span class="comment">//invalid if py signatures are not supported</span>
+          <span class="special">,</span> <span class="keyword">true</span>
+<span class="preprocessor">#endif</span>
+          <span class="special">&gt;();</span> <span class="comment">//"true" because tag_to_noddy has member get_pytype</span>
+<span class="special">}</span>
+</pre>
+<p>
+            The following example registers to and from python converters using the
+            templates expected_from_python_type and to_pyhton_target_type.
+          </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">python</span><span class="special">/</span><span class="identifier">module</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">python</span><span class="special">/</span><span class="identifier">def</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">python</span><span class="special">/</span><span class="identifier">extract</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">python</span><span class="special">/</span><span class="identifier">to_python_converter</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">python</span><span class="special">/</span><span class="keyword">class</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="keyword">using</span> <span class="keyword">namespace</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">python</span><span class="special">;</span>
+
+<span class="keyword">struct</span> <span class="identifier">A</span>
+<span class="special">{</span>
+<span class="special">};</span>
+
+<span class="keyword">struct</span> <span class="identifier">B</span>
+<span class="special">{</span>
+  <span class="identifier">A</span> <span class="identifier">a</span><span class="special">;</span>
+  <span class="identifier">B</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">A</span><span class="special">&amp;</span> <span class="identifier">a_</span><span class="special">):</span><span class="identifier">a</span><span class="special">(</span><span class="identifier">a_</span><span class="special">){}</span>
+<span class="special">};</span>
+
+<span class="comment">// Converter from A to python int</span>
+<span class="keyword">struct</span> <span class="identifier">BToPython</span>
+<span class="preprocessor">#if</span> <span class="identifier">defined</span> <span class="identifier">BOOST_PYTHON_SUPPORTS_PY_SIGNATURES</span> <span class="comment">//unnecessary overhead if py signatures are not supported</span>
+   <span class="special">:</span> <span class="identifier">converter</span><span class="special">::</span><span class="identifier">to_python_target_type</span><span class="special">&lt;</span><span class="identifier">A</span><span class="special">&gt;</span>  <span class="comment">//inherits get_pytype</span>
+<span class="preprocessor">#endif</span>
+<span class="special">{</span>
+  <span class="keyword">static</span> <span class="identifier">PyObject</span><span class="special">*</span> <span class="identifier">convert</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">B</span><span class="special">&amp;</span> <span class="identifier">b</span><span class="special">)</span>
+  <span class="special">{</span>
+    <span class="keyword">return</span> <span class="identifier">incref</span><span class="special">(</span><span class="identifier">object</span><span class="special">(</span><span class="identifier">b</span><span class="special">.</span><span class="identifier">a</span><span class="special">).</span><span class="identifier">ptr</span><span class="special">());</span>
+  <span class="special">}</span>
+<span class="special">};</span>
+
+<span class="comment">// Conversion from python int to A</span>
+<span class="keyword">struct</span> <span class="identifier">BFromPython</span>
+<span class="special">{</span>
+  <span class="identifier">BFromPython</span><span class="special">()</span>
+  <span class="special">{</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">python</span><span class="special">::</span><span class="identifier">converter</span><span class="special">::</span><span class="identifier">registry</span><span class="special">::</span><span class="identifier">push_back</span>
+        <span class="special">(</span> <span class="special">&amp;</span><span class="identifier">convertible</span>
+        <span class="special">,</span> <span class="special">&amp;</span><span class="identifier">construct</span>
+        <span class="special">,</span> <span class="identifier">type_id</span><span class="special">&lt;</span> <span class="identifier">B</span> <span class="special">&gt;()</span>
+<span class="preprocessor">#if</span> <span class="identifier">defined</span> <span class="identifier">BOOST_PYTHON_SUPPORTS_PY_SIGNATURES</span> <span class="comment">//invalid if py signatures are not supported</span>
+        <span class="special">,</span> <span class="special">&amp;</span><span class="identifier">converter</span><span class="special">::</span><span class="identifier">expected_from_python_type</span><span class="special">&lt;</span><span class="identifier">A</span><span class="special">&gt;::</span><span class="identifier">get_pytype</span><span class="comment">//convertible to A can be converted to B</span>
+<span class="preprocessor">#endif</span>
+        <span class="special">);</span>
+  <span class="special">}</span>
+
+  <span class="keyword">static</span> <span class="keyword">void</span><span class="special">*</span> <span class="identifier">convertible</span><span class="special">(</span><span class="identifier">PyObject</span><span class="special">*</span> <span class="identifier">obj_ptr</span><span class="special">)</span>
+  <span class="special">{</span>
+      <span class="identifier">extract</span><span class="special">&lt;</span><span class="keyword">const</span> <span class="identifier">A</span><span class="special">&amp;&gt;</span> <span class="identifier">ex</span><span class="special">(</span><span class="identifier">obj_ptr</span><span class="special">);</span>
+      <span class="keyword">if</span> <span class="special">(!</span><span class="identifier">ex</span><span class="special">.</span><span class="identifier">check</span><span class="special">())</span> <span class="keyword">return</span> <span class="number">0</span><span class="special">;</span>
+      <span class="keyword">return</span> <span class="identifier">obj_ptr</span><span class="special">;</span>
+  <span class="special">}</span>
+
+  <span class="keyword">static</span> <span class="keyword">void</span> <span class="identifier">construct</span><span class="special">(</span>
+      <span class="identifier">PyObject</span><span class="special">*</span> <span class="identifier">obj_ptr</span><span class="special">,</span>
+      <span class="identifier">converter</span><span class="special">::</span><span class="identifier">rvalue_from_python_stage1_data</span><span class="special">*</span> <span class="identifier">data</span><span class="special">)</span>
+  <span class="special">{</span>
+    <span class="keyword">void</span><span class="special">*</span> <span class="identifier">storage</span> <span class="special">=</span> <span class="special">(</span>
+        <span class="special">(</span><span class="identifier">converter</span><span class="special">::</span><span class="identifier">rvalue_from_python_storage</span><span class="special">&lt;</span> <span class="identifier">B</span> <span class="special">&gt;*)</span><span class="identifier">data</span><span class="special">)-&gt;</span> <span class="identifier">storage</span><span class="special">.</span><span class="identifier">bytes</span><span class="special">;</span>
+
+    <span class="identifier">extract</span><span class="special">&lt;</span><span class="keyword">const</span> <span class="identifier">A</span><span class="special">&amp;&gt;</span> <span class="identifier">ex</span><span class="special">(</span><span class="identifier">obj_ptr</span><span class="special">);</span>
+    <span class="keyword">new</span> <span class="special">(</span><span class="identifier">storage</span><span class="special">)</span> <span class="identifier">B</span><span class="special">(</span><span class="identifier">ex</span><span class="special">());</span>
+    <span class="identifier">data</span><span class="special">-&gt;</span><span class="identifier">convertible</span> <span class="special">=</span> <span class="identifier">storage</span><span class="special">;</span>
+  <span class="special">}</span>
+<span class="special">};</span>
+
+
+<span class="identifier">B</span> <span class="identifier">func</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">B</span><span class="special">&amp;</span> <span class="identifier">b</span><span class="special">)</span> <span class="special">{</span> <span class="keyword">return</span> <span class="identifier">b</span> <span class="special">;</span> <span class="special">}</span>
+
+<span class="identifier">BOOST_PYTHON_MODULE</span><span class="special">(</span><span class="identifier">pytype_function_ext</span><span class="special">)</span>
+<span class="special">{</span>
+  <span class="identifier">to_python_converter</span><span class="special">&lt;</span> <span class="identifier">B</span> <span class="special">,</span> <span class="identifier">BToPython</span>
+<span class="preprocessor">#if</span> <span class="identifier">defined</span> <span class="identifier">BOOST_PYTHON_SUPPORTS_PY_SIGNATURES</span> <span class="comment">//invalid if py signatures are not supported</span>
+             <span class="special">,</span><span class="keyword">true</span>
+<span class="preprocessor">#endif</span>
+             <span class="special">&gt;();</span> <span class="comment">//has get_pytype</span>
+  <span class="identifier">BFromPython</span><span class="special">();</span>
+
+  <span class="identifier">class_</span><span class="special">&lt;</span><span class="identifier">A</span><span class="special">&gt;(</span><span class="string">"A"</span><span class="special">)</span> <span class="special">;</span>
+
+  <span class="identifier">def</span><span class="special">(</span><span class="string">"func"</span><span class="special">,</span> <span class="special">&amp;</span><span class="identifier">func</span><span class="special">);</span>
+
+<span class="special">}</span>
+
+
+
+<span class="special">&gt;&gt;&gt;</span> <span class="identifier">from</span> <span class="identifier">pytype_function_ext</span> <span class="identifier">import</span> <span class="special">*</span>
+<span class="special">&gt;&gt;&gt;</span> <span class="identifier">print</span> <span class="identifier">func</span><span class="special">.</span><span class="identifier">__doc__</span>
+<span class="identifier">func</span><span class="special">(</span> <span class="special">(</span><span class="identifier">A</span><span class="special">)</span><span class="identifier">arg1</span><span class="special">)</span> <span class="special">-&gt;</span> <span class="identifier">A</span> <span class="special">:</span>
+    <span class="identifier">C</span><span class="special">++</span> <span class="identifier">signature</span><span class="special">:</span>
+         <span class="keyword">struct</span> <span class="identifier">B</span> <span class="identifier">func</span><span class="special">(</span><span class="keyword">struct</span> <span class="identifier">B</span><span class="special">)</span>
+</pre>
+</div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2002-2005, 2015 David Abrahams, Stefan Seefeld<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="boost_python_raw_function_hpp.html"><img src="../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../function_invocation_and_creation.html"><img src="../../images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../images/home.png" alt="Home"></a><a accesskey="n" href="models_of_callpolicies.html"><img src="../../images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

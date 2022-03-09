@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,20 +21,27 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_AST_RESOURCES_H
-#define ARANGOD_AQL_AST_RESOURCES_H 1
+#pragma once
 
 #include <string>
+#include <string_view>
 #include <vector>
 
+#include "Aql/AstNode.h"
 #include "Aql/ShortStringStorage.h"
 #include "Basics/Common.h"
+#include "Basics/FixedSizeAllocator.h"
 
 namespace arangodb {
-namespace aql {
-
-struct AstNode;
 struct ResourceMonitor;
+
+namespace velocypack {
+class Slice;
+}
+
+namespace aql {
+class Ast;
+struct AstNode;
 
 class AstResources {
  public:
@@ -42,50 +49,70 @@ class AstResources {
   AstResources(AstResources const&) = delete;
   AstResources& operator=(AstResources const&) = delete;
 
-  explicit AstResources(ResourceMonitor*);
+  explicit AstResources(arangodb::ResourceMonitor&);
   ~AstResources();
 
-  /// @brief add a node to the list of nodes
-  void addNode(AstNode*);
+  // frees all data
+  void clear() noexcept;
 
-  /// @brief register a string
+  // frees most data (keeps a bit of memory around to avoid later
+  // re-allocations)
+  void clearMost() noexcept;
+
+  // create and register an AstNode
+  AstNode* registerNode(AstNodeType type);
+
+  // create and register an AstNode
+  AstNode* registerNode(Ast*, arangodb::velocypack::Slice slice);
+
+  // register a string
   /// the string is freed when the query is destroyed
   char* registerString(char const* p, size_t length);
 
-  /// @brief register a string
+  // register a string
   /// the string is freed when the query is destroyed
-  char* registerString(std::string const& p) {
-    return registerString(p.data(), p.size());
+  char* registerString(std::string_view value) {
+    return registerString(value.data(), value.size());
   }
 
-  /// @brief register a potentially UTF-8-escaped string
-  /// the string is freed when the query is destroyed
+  // register a potentially UTF-8-escaped string
+  // the string is freed when the query is destroyed
   char* registerEscapedString(char const* p, size_t length, size_t& outLength);
 
+  // return the memory usage for a block of strings
+  constexpr static size_t memoryUsageForStringBlock() { return sizeof(char*); }
+
+  // return the minimum capacity for long strings container
+  constexpr static size_t kMinCapacityForLongStrings = 8;
+
  private:
-  /// @brief registers a long string and takes over the ownership for it
+  // clears dynamic string data. resets _strings and _stringsLength,
+  // but does not update _resourceMonitor!
+  void clearStrings() noexcept;
+
+  // calculate the new capacity for the container
+  template<typename T>
+  size_t newCapacity(T const& container, size_t initialCapacity) const noexcept;
+
+  // registers a long string and takes over the ownership for it
   char* registerLongString(char* copy, size_t length);
 
- private:
-  ResourceMonitor* _resourceMonitor;
+  // resource monitor used for tracking allocations/deallocations
+  arangodb::ResourceMonitor& _resourceMonitor;
 
-  /// @brief all nodes created in the AST - will be used for freeing them later
-  std::vector<AstNode*> _nodes;
+  // all nodes created in the AST - will be used for freeing them later
+  FixedSizeAllocator<AstNode> _nodes;
 
-  /// @brief strings created in the query - used for easy memory deallocation
+  // strings created in the query - used for easy memory deallocation
   std::vector<char*> _strings;
 
-  /// @brief cumulated length of strings in _strings
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // cumulated length of strings in _strings
   size_t _stringsLength;
-#endif
 
-  /// @brief short string storage. uses less memory allocations for short
+  // short string storage. uses less memory allocations for short
   /// strings
   ShortStringStorage _shortStringStorage;
 };
 
 }  // namespace aql
 }  // namespace arangodb
-
-#endif

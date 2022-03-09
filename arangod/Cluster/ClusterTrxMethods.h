@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,15 +21,16 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_CLUSTER_TRX_METHODS_H
-#define ARANGOD_CLUSTER_CLUSTER_TRX_METHODS_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Futures/Future.h"
+#include "Transaction/MethodsApi.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Slice.h>
+#include <set>
 
 namespace arangodb {
 
@@ -38,23 +40,32 @@ class TransactionState;
 namespace ClusterTrxMethods {
 using arangodb::futures::Future;
 
+struct IsServerIdLessThan {
+  bool operator()(ServerID const& lhs, ServerID const& rhs) const noexcept;
+};
+
+using SortedServersSet = std::set<ServerID, IsServerIdLessThan>;
+
 /// @brief begin a transaction on all followers
-Future<arangodb::Result> beginTransactionOnLeaders(TransactionState&,
-                                                   std::vector<ServerID> const& leaders);
+Future<Result> beginTransactionOnLeaders(
+    TransactionState&, ClusterTrxMethods::SortedServersSet const& leaders,
+    transaction::MethodsApi api);
 
 /// @brief commit a transaction on a subordinate
-Future<arangodb::Result> commitTransaction(transaction::Methods& trx);
+Future<arangodb::Result> commitTransaction(transaction::Methods& trx,
+                                           transaction::MethodsApi api);
 
 /// @brief commit a transaction on a subordinate
-Future<arangodb::Result> abortTransaction(transaction::Methods& trx);
+Future<arangodb::Result> abortTransaction(transaction::Methods& trx,
+                                          transaction::MethodsApi api);
 
 /// @brief add the transaction ID header for servers
-template <typename MapT>
+template<typename MapT>
 void addTransactionHeader(transaction::Methods const& trx,
                           ServerID const& server, MapT& headers);
 
 /// @brief add transaction ID header for setting up AQL snippets
-template <typename MapT>
+template<typename MapT>
 void addAQLTransactionHeader(transaction::Methods const& trx,
                              ServerID const& server, MapT& headers);
 
@@ -63,5 +74,3 @@ bool isElCheapo(transaction::Methods const& trx);
 bool isElCheapo(TransactionState const& state);
 }  // namespace ClusterTrxMethods
 }  // namespace arangodb
-
-#endif

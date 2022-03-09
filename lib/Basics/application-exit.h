@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,57 +21,25 @@
 /// @author Dr. Oreste Costa-Panaia
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_APPLICATION__EXIT_H
-#define ARANGODB_BASICS_APPLICATION__EXIT_H 1
+#pragma once
 
 #include "Basics/CleanupFunctions.h"
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief exit function type
-////////////////////////////////////////////////////////////////////////////////
-
 typedef void (*TRI_ExitFunction_t)(int, void*);
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief exit function
-////////////////////////////////////////////////////////////////////////////////
-
 extern TRI_ExitFunction_t TRI_EXIT_FUNCTION;
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief defines a exit function
-////////////////////////////////////////////////////////////////////////////////
-
 void TRI_Application_Exit_SetExit(TRI_ExitFunction_t);
 
 /// @brief aborts program execution, returning an error code
-/// if backtraces are enabled, a backtrace will be printed before
-#define FATAL_ERROR_EXIT_CODE(code)                           \
-  do {                                                        \
-    TRI_LogBacktrace();                                       \
-    ::arangodb::basics::CleanupFunctions::run(code, nullptr); \
-    ::arangodb::Logger::flush();                              \
-    ::arangodb::Logger::shutdown();                           \
-    TRI_EXIT_FUNCTION(code, nullptr);                         \
-    exit(code);                                               \
-  } while (0)
+[[noreturn]] void FATAL_ERROR_EXIT_CODE(int code) noexcept;
 
 /// @brief aborts program execution, returning an error code
 /// if backtraces are enabled, a backtrace will be printed before
-#define FATAL_ERROR_EXIT(...)            \
-  do {                                   \
-    FATAL_ERROR_EXIT_CODE(EXIT_FAILURE); \
-  } while (0)
+[[noreturn]] void FATAL_ERROR_EXIT() noexcept;
 
 /// @brief aborts program execution, calling std::abort
-/// if backtraces are enabled, a backtrace will be printed before
-#define FATAL_ERROR_ABORT(...)                             \
-  do {                                                     \
-    TRI_LogBacktrace();                                    \
-    arangodb::basics::CleanupFunctions::run(500, nullptr); \
-    arangodb::Logger::flush();                             \
-    arangodb::Logger::shutdown();                          \
-    std::abort();                                          \
-  } while (0)
-
-#endif
+[[noreturn]] void FATAL_ERROR_ABORT() noexcept;

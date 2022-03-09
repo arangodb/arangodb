@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -42,12 +42,14 @@ using namespace arangodb::aql;
 // --SECTION--                                             Coordinator Container
 // -----------------------------------------------------------------------------
 
-EngineInfoContainerCoordinator::EngineInfo::EngineInfo(QueryId id, ExecutionNodeId idOfRemoteNode)
+EngineInfoContainerCoordinator::EngineInfo::EngineInfo(
+    EngineId id, ExecutionNodeId idOfRemoteNode)
     : _id(id), _idOfRemoteNode(idOfRemoteNode) {
   TRI_ASSERT(_nodes.empty());
 }
 
-EngineInfoContainerCoordinator::EngineInfo::EngineInfo(EngineInfo&& other) noexcept
+EngineInfoContainerCoordinator::EngineInfo::EngineInfo(
+    EngineInfo&& other) noexcept
     : _id(other._id),
       _nodes(std::move(other._nodes)),
       _idOfRemoteNode(other._idOfRemoteNode) {}
@@ -57,17 +59,18 @@ void EngineInfoContainerCoordinator::EngineInfo::addNode(ExecutionNode* en) {
 }
 
 Result EngineInfoContainerCoordinator::EngineInfo::buildEngine(
-    Query& query, MapRemoteToSnippet const& dbServerQueryIds,
-    bool isfirst, std::unique_ptr<ExecutionEngine>& engine) const {
+    Query& query, MapRemoteToSnippet const& dbServerQueryIds, bool isfirst,
+    std::unique_ptr<ExecutionEngine>& engine) const {
   TRI_ASSERT(!_nodes.empty());
-  
+
   std::shared_ptr<SharedQueryState> sqs;
   if (isfirst) {
     sqs = query.sharedState();
   }
-  
-  engine = std::make_unique<ExecutionEngine>(query, query.itemBlockManager(),
-                                             SerializationFormat::SHADOWROWS, sqs);
+
+  engine =
+      std::make_unique<ExecutionEngine>(_id, query, query.itemBlockManager(),
+                                        SerializationFormat::SHADOWROWS, sqs);
 
   auto res = engine->createBlocks(_nodes, dbServerQueryIds);
   if (!res.ok()) {
@@ -80,7 +83,9 @@ Result EngineInfoContainerCoordinator::EngineInfo::buildEngine(
   return {TRI_ERROR_NO_ERROR};
 }
 
-QueryId EngineInfoContainerCoordinator::EngineInfo::queryId() const { return _id; }
+EngineId EngineInfoContainerCoordinator::EngineInfo::engineId() const {
+  return _id;
+}
 
 EngineInfoContainerCoordinator::EngineInfoContainerCoordinator() {
   // We always start with an empty coordinator snippet
@@ -100,7 +105,8 @@ void EngineInfoContainerCoordinator::addNode(ExecutionNode* node) {
   _engines[idx].addNode(node);
 }
 
-void EngineInfoContainerCoordinator::openSnippet(ExecutionNodeId idOfRemoteNode) {
+void EngineInfoContainerCoordinator::openSnippet(
+    ExecutionNodeId idOfRemoteNode) {
   _engineStack.emplace(_engines.size());  // Insert next id
   QueryId id = TRI_NewTickServer();
   _engines.emplace_back(id, idOfRemoteNode);
@@ -111,14 +117,13 @@ QueryId EngineInfoContainerCoordinator::closeSnippet() {
   TRI_ASSERT(!_engineStack.empty());
 
   size_t idx = _engineStack.top();
-  QueryId id = _engines[idx].queryId();
+  QueryId id = _engines[idx].engineId();
   _engineStack.pop();
   return id;
 }
 
 Result EngineInfoContainerCoordinator::buildEngines(
-    Query& query,
-    AqlItemBlockManager& mgr,
+    Query& query, AqlItemBlockManager& mgr,
     MapRemoteToSnippet const& dbServerQueryIds,
     aql::SnippetList& coordSnippets) const {
   TRI_ASSERT(_engineStack.size() == 1);
@@ -132,11 +137,12 @@ Result EngineInfoContainerCoordinator::buildEngines(
       if (res.fail()) {
         return res;
       }
-      TRI_ASSERT(!first || info.queryId() == 0);
+      TRI_ASSERT(!first || info.engineId() == 0);
       TRI_ASSERT(!first || query.sharedState() == engine->sharedState());
-      
+      TRI_ASSERT(info.engineId() == engine->engineId());
+
       first = false;
-      coordSnippets.emplace_back(std::make_pair(info.queryId(), std::move(engine)));
+      coordSnippets.emplace_back(std::move(engine));
     }
   } catch (basics::Exception const& ex) {
     return Result(ex.code(), ex.message());
@@ -148,6 +154,6 @@ Result EngineInfoContainerCoordinator::buildEngines(
 
   // This deactivates the defered cleanup.
   // From here on we rely on the AQL shutdown mechanism.
-//  guard.cancel();
+  //  guard.cancel();
   return Result();
 }

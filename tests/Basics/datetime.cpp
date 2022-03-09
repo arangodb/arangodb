@@ -1,11 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite for Endpoint classes
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2017-2019 triagens GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,13 +16,12 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <date/date.h>
-#include <velocypack/StringRef.h>
 
 #include "Basics/datetime.h"
 #include "gtest/gtest.h"
@@ -66,12 +62,12 @@ TEST(DateTimeTest, testing) {
                                        "2017-01-01:12:34Z-10:20"};
 
   for (auto const& dateTime : datesToTest) {
-    bool ret = parseDateTime(arangodb::velocypack::StringRef(dateTime), tp);
+    bool ret = parseDateTime(dateTime, tp);
     ASSERT_TRUE(ret);
   }
 
   for (auto const& dateTime : datesToFail) {
-    bool ret = parseDateTime(arangodb::velocypack::StringRef(dateTime), tp);
+    bool ret = parseDateTime(dateTime, tp);
     ASSERT_FALSE(ret);
   }
 }

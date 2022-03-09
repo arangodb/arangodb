@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_CLUSTER_REST_WAL_HANDLER_H
-#define ARANGOD_CLUSTER_CLUSTER_REST_WAL_HANDLER_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "RestHandler/RestBaseHandler.h"
@@ -30,8 +30,7 @@ namespace arangodb {
 
 class ClusterRestWalHandler : public RestBaseHandler {
  public:
-  ClusterRestWalHandler(application_features::ApplicationServer&,
-                        GeneralRequest*, GeneralResponse*);
+  ClusterRestWalHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
 
  public:
   RequestLane lane() const override final {
@@ -46,5 +45,3 @@ class ClusterRestWalHandler : public RestBaseHandler {
   void properties();
 };
 }  // namespace arangodb
-
-#endif

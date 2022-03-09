@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -28,7 +29,6 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/files.h"
 #include "Basics/system-functions.h"
-#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -36,8 +36,6 @@
 #include "Random/RandomGenerator.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
-#include "RestServer/InitDatabaseFeature.h"
-#include "RestServer/SystemDatabaseFeature.h"
 
 using namespace arangodb::options;
 
@@ -45,8 +43,8 @@ namespace arangodb {
 
 ServerId ServerIdFeature::SERVERID{0};
 
-ServerIdFeature::ServerIdFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "ServerId") {
+ServerIdFeature::ServerIdFeature(Server& server)
+    : ArangodFeature{server, *this} {
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseServer>();
 
@@ -63,7 +61,7 @@ void ServerIdFeature::start() {
 
   // read the server id or create a new one
   bool const checkVersion = database.checkVersion();
-  int res = determineId(checkVersion);
+  auto res = determineId(checkVersion);
 
   if (res == TRI_ERROR_ARANGO_EMPTY_DATADIR) {
     if (checkVersion) {
@@ -89,7 +87,8 @@ void ServerIdFeature::generateId() {
   TRI_ASSERT(SERVERID.empty());
 
   do {
-    SERVERID = ServerId(RandomGenerator::interval(static_cast<uint64_t>(0x0000FFFFFFFFFFFFULL)));
+    SERVERID = ServerId(RandomGenerator::interval(
+        static_cast<uint64_t>(0x0000FFFFFFFFFFFFULL)));
 
   } while (SERVERID.empty());
 
@@ -97,14 +96,15 @@ void ServerIdFeature::generateId() {
 }
 
 /// @brief reads server id from file
-int ServerIdFeature::readId() {
+ErrorCode ServerIdFeature::readId() {
   if (!TRI_ExistsFile(_idFilename.c_str())) {
     return TRI_ERROR_FILE_NOT_FOUND;
   }
 
   ServerId foundId;
   try {
-    VPackBuilder builder = basics::VelocyPackHelper::velocyPackFromFile(_idFilename);
+    VPackBuilder builder =
+        basics::VelocyPackHelper::velocyPackFromFile(_idFilename);
     VPackSlice content = builder.slice();
     if (!content.isObject()) {
       return TRI_ERROR_INTERNAL;
@@ -132,7 +132,7 @@ int ServerIdFeature::readId() {
 }
 
 /// @brief writes server id to file
-int ServerIdFeature::writeId() {
+ErrorCode ServerIdFeature::writeId() {
   // create a VelocyPack Object
   VPackBuilder builder;
   try {
@@ -151,16 +151,17 @@ int ServerIdFeature::writeId() {
     builder.close();
   } catch (...) {
     // out of memory
-    LOG_TOPIC("6cac3", ERR, arangodb::Logger::FIXME) << "cannot save server id in file '"
-                                            << _idFilename << "': out of memory";
+    LOG_TOPIC("6cac3", ERR, arangodb::Logger::FIXME)
+        << "cannot save server id in file '" << _idFilename
+        << "': out of memory";
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
   // save json info to file
   LOG_TOPIC("f6cbd", DEBUG, arangodb::Logger::FIXME)
       << "Writing server id to file '" << _idFilename << "'";
-  bool ok = arangodb::basics::VelocyPackHelper::velocyPackToFile(_idFilename,
-                                                                 builder.slice(), true);
+  bool ok = arangodb::basics::VelocyPackHelper::velocyPackToFile(
+      _idFilename, builder.slice(), true);
 
   if (!ok) {
     LOG_TOPIC("26de4", ERR, arangodb::Logger::FIXME)
@@ -174,8 +175,8 @@ int ServerIdFeature::writeId() {
 }
 
 /// @brief read / create the server id on startup
-int ServerIdFeature::determineId(bool checkVersion) {
-  int res = readId();
+ErrorCode ServerIdFeature::determineId(bool checkVersion) {
+  auto res = readId();
 
   if (res == TRI_ERROR_FILE_NOT_FOUND) {
     if (checkVersion) {

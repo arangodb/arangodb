@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -35,7 +36,9 @@ void arangodb::maskings::InstallMaskings() {
   AttributeMasking::installMasking("random", RandomMask::create);
 }
 
-std::unordered_map<std::string, ParseResult<AttributeMasking> (*)(Path, Maskings*, VPackSlice const&)> AttributeMasking::_maskings;
+std::unordered_map<std::string, ParseResult<AttributeMasking> (*)(
+                                    Path, Maskings*, VPackSlice const&)>
+    AttributeMasking::_maskings;
 
 ParseResult<AttributeMasking> AttributeMasking::parse(Maskings* maskings,
                                                       VPackSlice const& def) {
@@ -53,15 +56,17 @@ ParseResult<AttributeMasking> AttributeMasking::parse(Maskings* maskings,
 
     if (key == "type") {
       if (!entry.value.isString()) {
-        return ParseResult<AttributeMasking>(ParseResult<AttributeMasking>::ILLEGAL_PARAMETER,
-                                             "type must be a string");
+        return ParseResult<AttributeMasking>(
+            ParseResult<AttributeMasking>::ILLEGAL_PARAMETER,
+            "type must be a string");
       }
 
       type = entry.value.copyString();
     } else if (key == "path") {
       if (!entry.value.isString()) {
-        return ParseResult<AttributeMasking>(ParseResult<AttributeMasking>::ILLEGAL_PARAMETER,
-                                             "path must be a string");
+        return ParseResult<AttributeMasking>(
+            ParseResult<AttributeMasking>::ILLEGAL_PARAMETER,
+            "path must be a string");
       }
 
       path = entry.value.copyString();
@@ -69,8 +74,9 @@ ParseResult<AttributeMasking> AttributeMasking::parse(Maskings* maskings,
   }
 
   if (path.empty()) {
-    return ParseResult<AttributeMasking>(ParseResult<AttributeMasking>::ILLEGAL_PARAMETER,
-                                         "path must not be empty");
+    return ParseResult<AttributeMasking>(
+        ParseResult<AttributeMasking>::ILLEGAL_PARAMETER,
+        "path must not be empty");
   }
 
   ParseResult<Path> ap = Path::parse(path);

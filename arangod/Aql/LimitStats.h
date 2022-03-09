@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,8 +21,7 @@
 /// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_LIMIT_STATS_H
-#define ARANGOD_AQL_LIMIT_STATS_H
+#pragma once
 
 #include "ExecutionStats.h"
 
@@ -43,7 +43,7 @@ class LimitStats {
   void incrFullCountBy(size_t amount) noexcept;
 
   [[nodiscard]] auto getFullCount() const noexcept -> std::size_t;
-  
+
   auto operator+=(LimitStats const& other) noexcept -> void {
     incrFullCountBy(other.getFullCount());
   }
@@ -53,11 +53,9 @@ class LimitStats {
   // Don't forget to update operator== when adding new members!
 };
 
-auto operator+=(ExecutionStats& executionStats, LimitStats const& limitStats) noexcept
-    -> ExecutionStats&;
+auto operator+=(ExecutionStats& executionStats,
+                LimitStats const& limitStats) noexcept -> ExecutionStats&;
 
 auto operator==(LimitStats const&, LimitStats const&) noexcept -> bool;
 
 }  // namespace arangodb::aql
-
-#endif  // ARANGOD_AQL_LIMIT_STATS_H

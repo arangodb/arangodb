@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,14 +21,13 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_THREADS__POSIX_H
-#define ARANGODB_BASICS_THREADS__POSIX_H 1
+#pragma once
 
 #include "Basics/debugging.h"
 #include "Basics/system-compiler.h"
 
 // Compatible wth the Windows definition.
-#define INFINITE 0xFFFFFFFF // Infinite timeout
+#define INFINITE 0xFFFFFFFF  // Infinite timeout
 
 #ifdef TRI_HAVE_POSIX_THREADS
 
@@ -51,7 +50,5 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_thread_t pthread_t
-
-#endif
 
 #endif

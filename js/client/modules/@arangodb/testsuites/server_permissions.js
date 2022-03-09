@@ -1,5 +1,5 @@
 /* jshint strict: false, sub: true */
-/* global print, params */
+/* global print, arango */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -30,8 +30,8 @@ const time = require('internal').time;
 const fs = require('fs');
 const yaml = require('js-yaml');
 
-const pu = require('@arangodb/process-utils');
-const tu = require('@arangodb/test-utils');
+const pu = require('@arangodb/testutils/process-utils');
+const tu = require('@arangodb/testutils/test-utils');
 
 const toArgv = require('internal').toArgv;
 const executeScript = require('internal').executeScript;
@@ -82,9 +82,17 @@ function startParameterTest(options, testpath, suiteName) {
       if (paramsSecondRun.hasOwnProperty('server.jwt-secret')) {
         clonedOpts['server.jwt-secret'] = paramsSecondRun['server.jwt-secret'];
       }
+      if (paramsSecondRun.hasOwnProperty('database.password')) {
+        clonedOpts['server.password'] = paramsSecondRun['database.password'];
+        clonedOpts['password'] = paramsSecondRun['database.password'];
+        paramsFirstRun['server.password'] = paramsSecondRun['database.password'];
+      }
       if (runSetup) {
         delete paramsSecondRun.runSetup;
-        instanceInfo = pu.startInstance(options.protocol, options, paramsFirstRun, suiteName, rootDir); // first start
+        if (options.extremeVerbosity) {
+          print(paramsFirstRun);
+        }
+        instanceInfo = pu.startInstance(clonedOpts.protocol, clonedOpts, paramsFirstRun, suiteName, rootDir); // first start
         pu.cleanupDBDirectoriesAppend(instanceInfo.rootDir);      
         try {
           print(BLUE + '================================================================================' + RESET);
@@ -106,6 +114,12 @@ function startParameterTest(options, testpath, suiteName) {
           return;
         }
         if (pu.shutdownInstance(instanceInfo, clonedOpts, false)) {                                                     // stop
+          instanceInfo.arangods.forEach(function(arangod) {
+            arangod.pid = null;
+          });
+          if (options.extremeVerbosity) {
+            print(paramsSecondRun);
+          }
           pu.reStartInstance(clonedOpts, instanceInfo, paramsSecondRun);      // restart with restricted permissions
         }
         else {
@@ -116,10 +130,14 @@ function startParameterTest(options, testpath, suiteName) {
           };
         }
       } else {
-        instanceInfo = pu.startInstance(options.protocol, options, paramsSecondRun, suiteName, rootDir); // one start
+        instanceInfo = pu.startInstance(clonedOpts.protocol, clonedOpts, paramsSecondRun, suiteName, rootDir); // one start
       }
 
-      results[testFile] = tu.runInLocalArangosh(options, instanceInfo, testFile, {});
+      results[testFile] = tu.runInLocalArangosh(clonedOpts, instanceInfo, testFile, {});
+      if (instanceInfo.hasOwnProperty("authOpts") && instanceInfo.authOpts.hasOwnProperty("server.jwt-secret")) {
+        // Reconnect to set the server credentials right
+        arango.reconnect(arango.getEndpoint(), '_system', "root", "", true, instanceInfo.authOpts["server.jwt-secret"]);
+      }
       shutdownStatus = pu.shutdownInstance(instanceInfo, clonedOpts, false);
 
       results['shutdown'] = results['shutdown'] && shutdownStatus;
@@ -129,7 +147,7 @@ function startParameterTest(options, testpath, suiteName) {
         results.status = false;
       }
       else {
-        pu.cleanupLastDirectory(options);
+        pu.cleanupLastDirectory(clonedOpts);
       }
     } else {
       if (options.extremeVerbosity) {

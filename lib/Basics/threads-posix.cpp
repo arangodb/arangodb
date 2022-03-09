@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -157,14 +157,17 @@ bool TRI_StartThread(TRI_thread_t* thread, char const* name,
 /// @brief waits for a thread to finish
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_JoinThread(TRI_thread_t* thread) {
+ErrorCode TRI_JoinThread(TRI_thread_t* thread) {
   TRI_ASSERT(!TRI_IsSelfThread(thread));
   int res = pthread_join(*thread, nullptr);
 
-  if (res != TRI_ERROR_NO_ERROR) {
-    LOG_TOPIC("d5426", WARN, arangodb::Logger::THREADS) << "cannot join thread: " << strerror(res);
+  if (res != 0) {
+    LOG_TOPIC("d5426", WARN, arangodb::Logger::THREADS)
+        << "cannot join thread: " << strerror(res);
+    return TRI_ERROR_FAILED;
+  } else {
+    return TRI_ERROR_NO_ERROR;
   }
-  return res;
 }
 
 #ifndef __APPLE__
@@ -173,24 +176,27 @@ int TRI_JoinThread(TRI_thread_t* thread) {
 /// @brief waits for a thread to finish within the specified timeout (in ms).
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_JoinThreadWithTimeout(TRI_thread_t* thread, std::uint32_t timeout) {
+ErrorCode TRI_JoinThreadWithTimeout(TRI_thread_t* thread,
+                                    std::uint32_t timeout) {
   if (timeout == INFINITE) {
     return TRI_JoinThread(thread);
   }
-  
+
   TRI_ASSERT(!TRI_IsSelfThread(thread));
-  
+
   timespec ts;
   if (!timespec_get(&ts, TIME_UTC)) {
-    LOG_TOPIC("80661", FATAL, arangodb::Logger::FIXME) << "could not initialize timespec with current time";
+    LOG_TOPIC("80661", FATAL, arangodb::Logger::FIXME)
+        << "could not initialize timespec with current time";
     FATAL_ERROR_ABORT();
   }
   ts.tv_sec += timeout / 1000;
   ts.tv_nsec = (timeout % 1000) * 1'000'000;
 
   int res = pthread_timedjoin_np(*thread, nullptr, &ts);
-  if (res != TRI_ERROR_NO_ERROR) {
-    LOG_TOPIC("1f02d", WARN, arangodb::Logger::THREADS) << "cannot join thread: " << strerror(res);
+  if (res != 0) {
+    LOG_TOPIC("1f02d", WARN, arangodb::Logger::THREADS)
+        << "cannot join thread: " << strerror(res);
     return TRI_ERROR_FAILED;
   }
   return TRI_ERROR_NO_ERROR;
@@ -202,14 +208,16 @@ int TRI_JoinThreadWithTimeout(TRI_thread_t* thread, std::uint32_t timeout) {
 /// @brief detaches a thread
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_DetachThread(TRI_thread_t* thread) {
+bool TRI_DetachThread(TRI_thread_t* thread) {
   int res = pthread_detach(*thread);
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (res != 0) {
     LOG_TOPIC("e880a", WARN, arangodb::Logger::THREADS)
         << "cannot detach thread: " << strerror(res);
+    return false;
+  } else {
+    return true;
   }
-  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

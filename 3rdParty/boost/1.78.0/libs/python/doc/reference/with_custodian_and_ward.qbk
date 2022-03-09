@@ -1,0 +1,72 @@
+[section boost/python/with_custodian_and_ward.hpp]
+[section Introduction]
+This header provides facilities for establishing a lifetime dependency between two of a function's Python argument or result objects. The ward object will not be destroyed until after the custodian as long as the custodian object supports [@http://www.python.org/doc/current/lib/module-weakref.html weak references] (Boost.Python extension classes all support weak references). If the custodian object does not support weak references and is not `None`, an appropriate exception will be thrown. The two class templates `with_custodian_and_ward` and `with_custodian_and_ward_postcall` differ in the point at which they take effect.
+
+In order to reduce the chance of inadvertently creating dangling pointers, the default is to do lifetime binding before the underlying C++ object is invoked. However, before invocation the result object is not available, so `with_custodian_and_ward_postcall` is provided to bind lifetimes after invocation. Also, if a C++ exception is thrown after `with_custodian_and_ward<>::precall` but before the underlying C++ object actually stores a pointer, the lifetime of the custodian and ward objects will be artificially bound together, so one might choose `with_custodian_and_ward_postcall` instead, depending on the semantics of the function being wrapped.
+
+Please note that this is not the appropriate tool to use when wrapping functions which transfer ownership of a raw pointer across the function-call boundary. Please see the FAQ if you want to do that.
+[endsect]
+[section Class `with_custodian_and_ward`]
+[table
+[[Parameter][Requirements][Description][Default]]
+ [[custodian][ A positive compile-time constant of `type std::size_t`. ][ The 1-based index of the parameter which is the dependency in the lifetime relationship to be established. If used to wrap a member function, parameter 1 is the target object (`*this`). Note that if the target Python object type doesn't support weak references, a Python TypeError exception will be raised when the C++ object being wrapped is called. ][]]
+[[ward][ A positive compile-time constant of type `std::size_t`. ][ The 1-based index of the parameter which is the dependent in the lifetime relationship to be established. If used to wrap a member function, parameter 1 is the target object (`*this`). ][]]
+[[Base][ A model of [link concepts.callpolicies `CallPolicies`]][ Used for policy [link concepts.callpolicies.callpolicies_composition composition]. ][default_call_policies]]
+ ]
+``
+namespace boost { namespace python
+{
+   template <std::size_t custodian, std::size_t ward, class Base = default_call_policies>
+   struct with_custodian_and_ward : Base
+   {
+      static bool precall(PyObject* args);
+   };
+}}``
+[endsect]
+[section Class `with_custodian_and_ward` static functions]
+``bool precall(PyObject* args);``
+[variablelist
+[[Requires][`PyTuple_Check(args) != 0`]]
+[[Effects][Makes the lifetime of the argument indicated by ward dependent on the lifetime of the argument indicated by custodian. ]]
+[[Returns][false and PyErr_Occurred() != 0 upon failure, true otherwise.]]
+]
+[endsect]
+
+[section Class `with_custodian_and_ward_postcall`]
+[table
+[[Parameter][Requirements][Description][Default]]
+ [[custodian][ A positive compile-time constant of type `std::size_t`. ][ The index of the parameter which is the dependency in the lifetime relationship to be established. Zero indicates the result object; 1 indicates the first argument. If used to wrap a member function, parameter 1 is the target object (`*this`). Note that if the target Python object type doesn't support weak references, a Python TypeError exception will be raised when the C++ object being wrapped is called. ][]]
+[[ward][ A positive compile-time constant of type `std::size_t`. ][ The index of the parameter which is the dependent in the lifetime relationship to be established. Zero indicates the result object; 1 indicates the first argument. If used to wrap a member function, parameter 1 is the target object (`*this`). ][]]
+[[Base][ A model of [link concepts.callpolicies `CallPolicies`]][ Used for policy [link concepts.callpolicies.callpolicies_composition composition]. ][default_call_policies]]
+ ]
+``
+namespace boost { namespace python
+{
+   template <std::size_t custodian, std::size_t ward, class Base = default_call_policies>
+   struct with_custodian_and_ward_postcall : Base
+   {
+      static PyObject* postcall(PyObject* args, PyObject* result);
+   };
+}}
+``
+[endsect]
+[section Class `with_custodian_and_ward_postcall` static functions]
+``PyObject *postcall(PyObject* args, PyObject* result);``
+[variablelist
+[[Requires][`PyTuple_Check(args) != 0`, `result != 0`]]
+[[Effects][Makes the lifetime of the object indicated by ward dependent on the lifetime of the object indicated by custodian. ]]
+[[Returns][`0` and `PyErr_Occurred() != 0` upon failure, `true` otherwise. ]]
+]
+[endsect]
+[section Example]
+The following example shows how `with_custodian_and_ward_postcall` is used by the library to implement `return_internal_reference` 
+``
+template <std::size_t owner_arg = 1, class Base = default_call_policies>
+struct return_internal_reference
+    : with_custodian_and_ward_postcall<0, owner_arg, Base>
+{
+   typedef reference_existing_object result_converter;
+};
+``
+[endsect]
+[endsect]

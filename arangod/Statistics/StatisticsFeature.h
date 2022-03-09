@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,21 +21,28 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef APPLICATION_FEATURES_STATISTICS_FEATURE_H
-#define APPLICATION_FEATURES_STATISTICS_FEATURE_H 1
+#pragma once
 
 #include <array>
+#include <initializer_list>
 
-#include "ApplicationFeatures/ApplicationFeature.h"
+#include "Basics/Result.h"
 #include "Basics/system-functions.h"
 #include "Rest/CommonDefines.h"
+#include "RestServer/arangod.h"
+#include "Statistics/Descriptions.h"
 #include "Statistics/figures.h"
+
+struct TRI_vocbase_t;
 
 namespace arangodb {
 class Thread;
 class StatisticsWorker;
 namespace stats {
-  class Descriptions;
+class Descriptions;
+}
+namespace velocypack {
+class Builder;
 }
 
 namespace statistics {
@@ -46,6 +54,8 @@ extern std::initializer_list<double> const RequestTimeDistributionCuts;
 extern Counter AsyncRequests;
 extern Counter HttpConnections;
 extern Counter TotalRequests;
+extern Counter TotalRequestsSuperuser;
+extern Counter TotalRequestsUser;
 
 constexpr size_t MethodRequestsStatisticsSize =
     ((size_t)arangodb::rest::RequestType::ILLEGAL) + 1;
@@ -68,24 +78,18 @@ struct RequestFigures {
   Distribution requestTimeDistribution;
   Distribution totalTimeDistribution;
 };
-extern RequestFigures GeneralRequestFigures;
+extern RequestFigures SuperuserRequestFigures;
 extern RequestFigures UserRequestFigures;
 }  // namespace statistics
 
-class StatisticsFeature final : public application_features::ApplicationFeature {
+class StatisticsFeature final : public ArangodFeature {
  public:
-  static bool enabled() {
-    return STATISTICS != nullptr && STATISTICS->_statistics;
-  }
-
   static double time() { return TRI_microtime(); }
 
- private:
-  static StatisticsFeature* STATISTICS;
-
  public:
-  explicit StatisticsFeature(application_features::ApplicationServer& server);
-  ~StatisticsFeature();
+  static constexpr std::string_view name() noexcept { return "Statistics"; }
+
+  explicit StatisticsFeature(Server& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -94,23 +98,33 @@ class StatisticsFeature final : public application_features::ApplicationFeature 
   void stop() override final;
   void toPrometheus(std::string& result, double const& now);
 
-  static stats::Descriptions const* descriptions() {
-    if (STATISTICS != nullptr) {
-      return STATISTICS->_descriptions.get();
-    }
-    return nullptr;
-  }
+  stats::Descriptions const& descriptions() const { return _descriptions; }
+
+  static arangodb::velocypack::Builder fillDistribution(
+      statistics::Distribution const& dist);
+
+  static void appendHistogram(std::string& result,
+                              statistics::Distribution const& dist,
+                              std::string const& label,
+                              std::initializer_list<std::string> const& les);
+  static void appendMetric(std::string& result, std::string const& val,
+                           std::string const& label);
+
+  Result getClusterSystemStatistics(
+      TRI_vocbase_t& vocbase, double start,
+      arangodb::velocypack::Builder& result) const;
+
+  bool allDatabases() const { return _statisticsAllDatabases; }
 
  private:
   bool _statistics;
   bool _statisticsHistory;
   bool _statisticsHistoryTouched;
+  bool _statisticsAllDatabases;
 
-  std::unique_ptr<stats::Descriptions> _descriptions;
+  stats::Descriptions _descriptions;
   std::unique_ptr<Thread> _statisticsThread;
   std::unique_ptr<StatisticsWorker> _statisticsWorker;
 };
 
 }  // namespace arangodb
-
-#endif

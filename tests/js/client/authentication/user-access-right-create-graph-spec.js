@@ -33,7 +33,7 @@
 
 const expect = require('chai').expect;
 const users = require('@arangodb/users');
-const helper = require('@arangodb/user-helper');
+const helper = require('@arangodb/testutils/user-helper');
 const errors = require('@arangodb').errors;
 const graphModule = require('@arangodb/general-graph');
 const namePrefix = helper.namePrefix;

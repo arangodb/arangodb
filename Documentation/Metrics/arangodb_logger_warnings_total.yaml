@@ -1,0 +1,20 @@
+name: arangodb_logger_warnings_total
+introducedIn: "3.9.0"
+help: |
+  Total number of warnings logged.
+unit: number
+type: counter
+category: Errors
+complexity: simple
+exposedBy:
+  - agent
+  - coordinator
+  - dbserver
+  - single
+description: |
+  Total number of warnings (WARN messages) logged by the logger, 
+  including startup warnings.
+
+  Warnings might indicate problems, or might not. For example, 
+  expected transient environmental conditions such as short loss of 
+  network or database connectivity are logged as warnings, not errors. 

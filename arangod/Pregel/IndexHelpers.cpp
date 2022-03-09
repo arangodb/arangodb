@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,8 +23,12 @@
 
 #include "IndexHelpers.h"
 
+#include "Aql/AttributeNamePath.h"
 #include "Aql/OptimizerUtils.h"
+#include "Aql/Projections.h"
+#include "Basics/StaticStrings.h"
 #include "Cluster/ClusterMethods.h"
+#include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
 #include "Transaction/Methods.h"
 #include "VocBase/AccessMode.h"
@@ -35,38 +40,65 @@ EdgeCollectionInfo::EdgeCollectionInfo(transaction::Methods* trx,
                                        std::string const& collectionName)
     : _trx(trx),
       _collectionName(collectionName),
-      _searchBuilder() {
-
+      _collection(nullptr),
+      _coveringPosition(0) {
   if (!trx->isEdgeCollection(collectionName)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
   }
-}
 
-/// @brief Get edges for the given direction and start vertex.
-std::unique_ptr<arangodb::IndexIterator> EdgeCollectionInfo::getEdges(std::string const& vertexId) {
-  
-  /// @brief index used for iteration
-  transaction::Methods::IndexHandle indexId;
- 
   _trx->addCollectionAtRuntime(_collectionName, AccessMode::Type::READ);
-  auto doc = _trx->documentCollection(_collectionName);
-  
-  for (std::shared_ptr<arangodb::Index> const& idx : doc->getIndexes()) {
+
+  // projections we need to cover
+  aql::Projections edgeProjections(std::vector<aql::AttributeNamePath>(
+      {StaticStrings::FromString, StaticStrings::ToString}));
+
+  _collection = _trx->documentCollection(_collectionName);
+  TRI_ASSERT(_collection != nullptr);
+
+  for (std::shared_ptr<arangodb::Index> const& idx :
+       _collection->getIndexes()) {
+    // we currently rely on an outbound edge index, but this could be changed to
+    // use a different index in the future.
     if (idx->type() == arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX) {
-      auto fields = idx->fieldNames();
+      auto const& fields = idx->fieldNames();
       if (fields.size() == 1 && fields[0].size() == 1 &&
           fields[0][0] == StaticStrings::FromString) {
-        indexId = idx;
+        if (idx->covers(edgeProjections)) {
+          edgeProjections.setCoveringContext(_collection->id(), idx);
+          // Pregel currently only supports outbound edges.
+          _coveringPosition = edgeProjections.coveringIndexPosition(
+              aql::AttributeNamePath::Type::ToAttribute);
+        }
+        _index = idx;
         break;
       }
     }
   }
-  TRI_ASSERT(indexId != nullptr);  // We always have an edge Index
-  
+  TRI_ASSERT(_index != nullptr);  // We always have an edge index
+
+  // configure shared index iterator options
+  _indexIteratorOptions.enableCache = false;
+}
+
+/// @brief Get edges for the given direction and start vertex.
+arangodb::IndexIterator* EdgeCollectionInfo::getEdges(
+    std::string const& vertexId) {
   _searchBuilder.setVertexId(vertexId);
-  IndexIteratorOptions opts;
-  opts.enableCache = false;
-  return _trx->indexScanForCondition(indexId, _searchBuilder.getOutboundCondition(), _searchBuilder.getVariable(), opts);
+
+  if (_cursor == nullptr || !_cursor->canRearm()) {
+    _cursor = _trx->indexScanForCondition(
+        _index, _searchBuilder.getOutboundCondition(),
+        _searchBuilder.getVariable(), _indexIteratorOptions, ReadOwnWrites::no,
+        transaction::Methods::kNoMutableConditionIdx);
+  } else {
+    if (!_cursor->rearm(_searchBuilder.getOutboundCondition(),
+                        _searchBuilder.getVariable(), _indexIteratorOptions)) {
+      _cursor = std::make_unique<EmptyIndexIterator>(_collection, _trx);
+    }
+  }
+
+  TRI_ASSERT(_cursor != nullptr);
+  return _cursor.get();
 }
 
 /// @brief Return name of the wrapped collection

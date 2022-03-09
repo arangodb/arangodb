@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,26 +21,16 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GRAPH_SHORTEST_PATH_RESULT_H
-#define ARANGOD_GRAPH_SHORTEST_PATH_RESULT_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Graph/EdgeDocumentToken.h"
-#include <velocypack/StringRef.h>
 #include <deque>
 
 namespace arangodb {
 
 namespace aql {
 struct AqlValue;
-}
-
-namespace transaction {
-class Methods;
-}
-
-namespace velocypack {
-class Builder;
 }
 
 namespace graph {
@@ -54,6 +44,7 @@ class ShortestPathResult {
   friend class arangodb::graph::AttributeWeightShortestPathFinder;
   friend class arangodb::graph::ConstantWeightShortestPathFinder;
   friend class arangodb::graph::KShortestPathsFinder;
+
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Constructor. This is an abstract only class.
@@ -87,10 +78,15 @@ class ShortestPathResult {
 
   /// @brief Gets the length of the path. (Number of vertices)
 
-  size_t length() { return _vertices.size(); };
+  size_t length() { return _vertices.size(); }
 
-  void addVertex(arangodb::velocypack::StringRef v);
+  void addVertex(std::string_view v);
   void addEdge(arangodb::graph::EdgeDocumentToken e);
+
+  static constexpr size_t resultItemMemoryUsage() {
+    return sizeof(typename decltype(_vertices)::value_type) +
+           sizeof(typename decltype(_edges)::value_type);
+  }
 
  private:
   /// @brief Count how many documents have been read
@@ -100,7 +96,7 @@ class ShortestPathResult {
   // path is _vertices[0] , _edges[0], _vertices[1] etc.
 
   /// @brief vertices
-  std::deque<arangodb::velocypack::StringRef> _vertices;
+  std::deque<std::string_view> _vertices;
 
   /// @brief edges
   std::deque<arangodb::graph::EdgeDocumentToken> _edges;
@@ -108,4 +104,3 @@ class ShortestPathResult {
 
 }  // namespace graph
 }  // namespace arangodb
-#endif

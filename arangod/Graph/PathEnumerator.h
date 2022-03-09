@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,20 +21,21 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_VOCBASE_PATHENUMERATOR_H
-#define ARANGODB_VOCBASE_PATHENUMERATOR_H 1
-
-#include <vector>
+#pragma once
 
 #include "Basics/Common.h"
 #include "Graph/EdgeDocumentToken.h"
 
 #include <velocypack/Slice.h>
+#include <vector>
 
 namespace arangodb {
+struct ResourceMonitor;
+
 namespace aql {
 struct AqlValue;
-}
+class PruneExpressionEvaluator;
+}  // namespace aql
 
 namespace velocypack {
 class Builder;
@@ -48,10 +49,31 @@ namespace traverser {
 class Traverser;
 struct TraverserOptions;
 
-struct EnumeratedPath {
-  std::vector<graph::EdgeDocumentToken> edges;
-  std::vector<arangodb::velocypack::StringRef> vertices;
-  EnumeratedPath() {}
+class EnumeratedPath {
+ public:
+  explicit EnumeratedPath(arangodb::ResourceMonitor& resourceMonitor);
+  ~EnumeratedPath();
+
+  void pushVertex(std::string_view v);
+  void pushEdge(graph::EdgeDocumentToken const& e);
+  void popVertex() noexcept;
+  void popEdge() noexcept;
+  void clear();
+  size_t numVertices() const noexcept;
+  size_t numEdges() const noexcept;
+  std::vector<std::string_view> const& vertices() const noexcept;
+  std::vector<graph::EdgeDocumentToken> const& edges() const noexcept;
+  std::string_view lastVertex() const noexcept;
+  graph::EdgeDocumentToken const& lastEdge() const noexcept;
+
+ private:
+  template<typename T>
+  void growStorage(std::vector<T>& data);
+
+ private:
+  arangodb::ResourceMonitor& _resourceMonitor;
+  std::vector<graph::EdgeDocumentToken> _edges;
+  std::vector<std::string_view> _vertices;
 };
 
 class PathEnumerator {
@@ -81,7 +103,7 @@ class PathEnumerator {
   //////////////////////////////////////////////////////////////////////////////
 
   size_t _httpRequests;
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Indicates if we issue next() the first time.
   ///        It shall return an empty path in this case.
@@ -90,17 +112,19 @@ class PathEnumerator {
   bool _isFirst;
 
   bool keepEdge(graph::EdgeDocumentToken& eid, velocypack::Slice edge,
-                velocypack::StringRef sourceVertex, size_t depth, size_t cursorId);
+                std::string_view sourceVertex, size_t depth, size_t cursorId);
 
  public:
   PathEnumerator(Traverser* traverser, TraverserOptions* opts);
 
   virtual ~PathEnumerator();
 
+  virtual void clear() = 0;
+
   /// @brief set start vertex and reset
   /// note that the caller *must* guarantee that the string data pointed to by
   /// startVertex remains valid even after the call to reset()!!
-  virtual void setStartVertex(arangodb::velocypack::StringRef startVertex) = 0;
+  virtual void setStartVertex(std::string_view startVertex) = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Compute the next Path element from the traversal.
@@ -114,6 +138,11 @@ class PathEnumerator {
   virtual aql::AqlValue lastEdgeToAqlValue() = 0;
   virtual aql::AqlValue pathToAqlValue(arangodb::velocypack::Builder&) = 0;
 
+  /// @brief validate post filter statement
+  /// returns true if the path should be returned
+  /// returns false if the path should not be returned
+  bool usePostFilter(aql::PruneExpressionEvaluator* evaluator);
+
   /// @brief return number of HTTP requests made, and reset it to 0
   size_t getAndResetHttpRequests() {
     size_t value = _httpRequests;
@@ -124,7 +153,8 @@ class PathEnumerator {
   void incHttpRequests(size_t requests) { _httpRequests += requests; }
 
  protected:
-  graph::EdgeCursor* getCursor(arangodb::velocypack::StringRef nextVertex, uint64_t currentDepth);
+  graph::EdgeCursor* getCursor(std::string_view nextVertex,
+                               uint64_t currentDepth);
 
   /// @brief The vector of EdgeCursors to walk through.
   std::vector<std::unique_ptr<graph::EdgeCursor>> _cursors;
@@ -145,8 +175,10 @@ class DepthFirstEnumerator final : public PathEnumerator {
 
   ~DepthFirstEnumerator();
 
+  void clear() override {}
+
   /// @brief set start vertex and reset
-  void setStartVertex(arangodb::velocypack::StringRef startVertex) override;
+  void setStartVertex(std::string_view startVertex) override;
 
   /// @brief Get the next Path element from the traversal.
   bool next() override;
@@ -159,10 +191,10 @@ class DepthFirstEnumerator final : public PathEnumerator {
 
  private:
   bool shouldPrune();
+  bool validDisjointPath() const;
 
-  velocypack::Slice pathToSlice(arangodb::velocypack::Builder& result);
+  velocypack::Slice pathToSlice(arangodb::velocypack::Builder& result,
+                                bool fromPrune);
 };
 }  // namespace traverser
 }  // namespace arangodb
-
-#endif

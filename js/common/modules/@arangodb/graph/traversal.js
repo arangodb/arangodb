@@ -1,5 +1,4 @@
 /* jshint strict: false, unused: true */
-/* global ArangoClusterComm */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief Traversal "classes"
@@ -105,7 +104,7 @@ function collectionDatasourceFactory (edgeCollection) {
 
   // we can call the "fast" version of some edge functions if we are
   // running server-side and are not a coordinator
-  var useBuiltIn = (typeof ArangoClusterComm === 'object');
+  var useBuiltIn = require('internal').isArangod();
   if (useBuiltIn && require('@arangodb/cluster').isCoordinator()) {
     useBuiltIn = false;
   }

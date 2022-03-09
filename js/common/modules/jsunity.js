@@ -193,6 +193,18 @@ jsUnity.results.endTeardownAll = function(index) {
   TOTALTEARDOWNS += RESULTS.teardownAllDuration;
 };
 
+function MatchesTestFilter(key) {
+  if (testFilter === "undefined" || testFilter === undefined || testFilter === null) {
+    return true;
+  }
+  if (typeof testFilter === 'string') {
+    return key === testFilter;
+  }
+  if (Array.isArray(testFilter)) {
+    return testFilter.includes(key);
+  }
+  return false;
+}
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief runs a test with context
 // //////////////////////////////////////////////////////////////////////////////
@@ -232,7 +244,7 @@ function Run (testsuite) {
 
   for (var key in definition) {
     if (key.indexOf('test') === 0) {
-      if ((testFilter !== "undefined" && testFilter !== undefined && testFilter !== null) && (key !== testFilter)) {
+      if (!MatchesTestFilter(key)) {
         // print(`test "${key}" doesn't match "${testFilter}", skipping`);
         nonMatchedTests.push(key);
         continue;
@@ -377,10 +389,15 @@ function RunTest (path, outputReply, filter) {
   var content;
   var f;
 
-  content = fs.read(path);
+  if (path.includes("test-module-")) {
+    content = `return require(${JSON.stringify(path)}).run({ runSetup, getOptions });`;
+  } else {
+    content = fs.read(path);
+  }
 
-  content = `(function(){ require('jsunity').jsUnity.attachAssertions(); return (function() { require('jsunity').setTestFilter(${JSON.stringify(filter)}); const runSetup = false; const getOptions = false; ${content} }());
-});`;
+  // NOTE: this is intentionally a single long line to ensure that any line information
+  // refers to the correct line in the original source file.
+  content = `(function(){ require('jsunity').jsUnity.attachAssertions(); return (function() { require('jsunity').setTestFilter(${JSON.stringify(filter)}); const runSetup = false; const getOptions = false; ${content} }()); });`;
   f = internal.executeScript(content, undefined, path);
 
   if (f === undefined) {

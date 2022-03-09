@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_SKIP_RESULT_H
-#define ARANGOD_AQL_SKIP_RESULT_H
+#pragma once
 
 // for size_t
 #include <cstddef>
@@ -29,7 +29,7 @@
 #include <vector>
 
 namespace arangodb {
-template <typename T>
+template<typename T>
 class ResultT;
 }
 namespace arangodb::velocypack {
@@ -41,14 +41,15 @@ namespace arangodb::aql {
 
 class SkipResult {
  public:
-  static auto fromVelocyPack(velocypack::Slice) -> arangodb::ResultT<SkipResult>;
+  static auto fromVelocyPack(velocypack::Slice)
+      -> arangodb::ResultT<SkipResult>;
 
-  SkipResult();
+  SkipResult() = default;
 
-  ~SkipResult() = default;
-
-  SkipResult(SkipResult const& other);
+  SkipResult(SkipResult const& other) = default;
   SkipResult& operator=(const SkipResult&) = default;
+  SkipResult(SkipResult&& other) = default;
+  SkipResult& operator=(SkipResult&&) = default;
 
   auto getSkipCount() const noexcept -> size_t;
 
@@ -56,11 +57,12 @@ class SkipResult {
 
   auto didSkipSubquery(size_t skipped, size_t depth) -> void;
 
-  auto getSkipOnSubqueryLevel(size_t depth) -> size_t;
+  auto getSkipOnSubqueryLevel(size_t depth) const -> size_t;
 
   auto nothingSkipped() const noexcept -> bool;
 
-  auto toVelocyPack(arangodb::velocypack::Builder& builder) const noexcept -> void;
+  auto toVelocyPack(arangodb::velocypack::Builder& builder) const noexcept
+      -> void;
 
   auto incrementSubquery() -> void;
 
@@ -85,5 +87,3 @@ class SkipResult {
 std::ostream& operator<<(std::ostream&, arangodb::aql::SkipResult const&);
 
 }  // namespace arangodb::aql
-
-#endif

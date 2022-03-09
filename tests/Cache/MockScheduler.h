@@ -1,11 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief helper for cache suite
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -25,8 +22,7 @@
 /// @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef UNITTESTS_CACHE_MOCK_SCHEDULER_H
-#define UNITTESTS_CACHE_MOCK_SCHEDULER_H
+#pragma once
 
 #include <memory>
 #include <thread>
@@ -53,5 +49,3 @@ class MockScheduler {
 
 };  // end namespace cache
 };  // end namespace arangodb
-
-#endif

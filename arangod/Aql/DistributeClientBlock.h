@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_DISTRIBUTE_CLIENT_BLOCK_H
-#define ARANGOD_AQL_DISTRIBUTE_CLIENT_BLOCK_H
+#pragma once
 
 #include "Aql/SharedAqlItemBlockPtr.h"
 #include "Aql/SkipResult.h"
@@ -44,7 +44,7 @@ class DistributeClientBlock {
   class QueueEntry {
    public:
     QueueEntry(SkipResult const& skipped, SharedAqlItemBlockPtr block,
-               std::vector<size_t> choosen);
+               std::vector<size_t> chosen);
 
     auto numRows() const -> size_t;
 
@@ -52,12 +52,12 @@ class DistributeClientBlock {
 
     auto block() const -> SharedAqlItemBlockPtr const&;
 
-    auto choosen() const -> std::vector<size_t> const&;
+    auto chosen() const -> std::vector<size_t> const&;
 
    private:
     SkipResult _skip;
     SharedAqlItemBlockPtr _block;
-    std::vector<size_t> _choosen;
+    std::vector<size_t> _chosen;
   };
 
  public:
@@ -100,5 +100,3 @@ class DistributeClientBlock {
 
 }  // namespace aql
 }  // namespace arangodb
-
-#endif  // ARANGOD_AQL_DISTRIBUTE_CLIENT_BLOCK_H

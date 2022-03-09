@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,8 +21,7 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_AQLITEMBLOCKMATRIXITERATOR_H
-#define ARANGOD_AQL_AQLITEMBLOCKMATRIXITERATOR_H
+#pragma once
 
 #include "Aql/AqlItemBlockInputRange.h"
 #include "Aql/AqlItemMatrix.h"
@@ -35,34 +35,30 @@ class ShadowAqlItemRow;
 
 class AqlItemBlockInputMatrix {
  public:
-  explicit AqlItemBlockInputMatrix(ExecutorState state);
+  explicit AqlItemBlockInputMatrix(MainQueryState state);
 
-  AqlItemBlockInputMatrix(arangodb::aql::SharedAqlItemBlockPtr const&);
-
-  AqlItemBlockInputMatrix(ExecutorState state, AqlItemMatrix* aqlItemMatrix);
+  AqlItemBlockInputMatrix(MainQueryState state, AqlItemMatrix* aqlItemMatrix);
 
   std::pair<ExecutorState, ShadowAqlItemRow> nextShadowRow();
   ShadowAqlItemRow peekShadowRow() const;
 
+  void reset() noexcept {
+    // nothing to do here.
+  }
+
   bool hasShadowRow() const noexcept;
   bool hasDataRow() const noexcept;
+  bool hasValidRow() const noexcept;
 
   arangodb::aql::SharedAqlItemBlockPtr getBlock() const noexcept;
 
-  // Will provide access to the first block (from _aqlItemMatrix)
-  // After a block has been delivered, the block index will be increased.
-  // Next call then will deliver the next block etc.
-  AqlItemBlockInputRange& getInputRange();
   std::pair<ExecutorState, AqlItemMatrix const*> getMatrix() noexcept;
 
   ExecutorState upstreamState() const noexcept;
-  bool upstreamHasMore() const noexcept;
+
   size_t skipAllRemainingDataRows();
 
-  // Will return HASMORE if we were able to increase the row index.
-  // Otherwise will return DONE.
-  ExecutorState incrBlockIndex();
-  void resetBlockIndex() noexcept;
+  size_t skipAllShadowRowsOfDepth(size_t depth);
 
   /**
    * @brief Count how many datarows are expected in this range
@@ -78,20 +74,18 @@ class AqlItemBlockInputMatrix {
    */
   [[nodiscard]] auto countShadowRows() const noexcept -> std::size_t;
 
-  [[nodiscard]] auto finalState() const noexcept -> ExecutorState;
+  [[nodiscard]] auto finalState() const noexcept -> MainQueryState;
 
  private:
-  arangodb::aql::SharedAqlItemBlockPtr _block{nullptr};
-  ExecutorState _finalState{ExecutorState::HASMORE};
+  void advanceBlockIndexAndShadowRow() noexcept;
+
+ private:
+  MainQueryState _finalState{MainQueryState::HASMORE};
 
   // Only if _aqlItemMatrix is set (and NOT a nullptr), we have a valid and
   // usable DataRange object available to work with.
   AqlItemMatrix* _aqlItemMatrix;
-  AqlItemBlockInputRange _lastRange{ExecutorState::HASMORE};
-  size_t _currentBlockRowIndex = 0;
   ShadowAqlItemRow _shadowRow{CreateInvalidShadowRowHint{}};
 };
 
 }  // namespace arangodb::aql
-
-#endif  // ARANGOD_AQL_AQLITEMBLOCKINPUTITERATOR_H

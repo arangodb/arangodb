@@ -118,8 +118,9 @@ function optimizerRuleTestSuite() {
       let plan = AQL_EXPLAIN(query).plan;
       let nodes = plan.nodes.filter(function(n) { return n.type === 'CollectNode'; });
       assertEqual(1, nodes.length);
-      assertEqual([], nodes[0].aggregates);
-      assertTrue(nodes[0].count);
+      assertEqual(1, nodes[0].aggregates.length);
+      assertEqual("l", nodes[0].aggregates[0].outVariable.name);
+      assertEqual("LENGTH", nodes[0].aggregates[0].type);
       assertEqual("hash", nodes[0].collectOptions.method);
 
       assertEqual(-1, plan.rules.indexOf(ruleName));
@@ -136,8 +137,9 @@ function optimizerRuleTestSuite() {
       let plan = AQL_EXPLAIN(query).plan;
       let nodes = plan.nodes.filter(function(n) { return n.type === 'CollectNode'; });
       assertEqual(1, nodes.length);
-      assertEqual([], nodes[0].aggregates);
-      assertTrue(nodes[0].count);
+      assertEqual(1, nodes[0].aggregates.length);
+      assertEqual("l", nodes[0].aggregates[0].outVariable.name);
+      assertEqual("LENGTH", nodes[0].aggregates[0].type);
       assertEqual("sorted", nodes[0].collectOptions.method);
    
       assertNotEqual(-1, plan.rules.indexOf(ruleName));
@@ -158,8 +160,9 @@ function optimizerRuleTestSuite() {
       let plan = AQL_EXPLAIN(query).plan;
       let nodes = plan.nodes.filter(function(n) { return n.type === 'CollectNode'; });
       assertEqual(1, nodes.length);
-      assertEqual([], nodes[0].aggregates);
-      assertTrue(nodes[0].count);
+      assertEqual(1, nodes[0].aggregates.length);
+      assertEqual("l", nodes[0].aggregates[0].outVariable.name);
+      assertEqual("LENGTH", nodes[0].aggregates[0].type);
       assertEqual("hash", nodes[0].collectOptions.method);
 
       assertEqual(-1, plan.rules.indexOf(ruleName));
@@ -180,8 +183,9 @@ function optimizerRuleTestSuite() {
       let plan = AQL_EXPLAIN(query).plan;
       let nodes = plan.nodes.filter(function(n) { return n.type === 'CollectNode'; });
       assertEqual(1, nodes.length);
-      assertEqual([], nodes[0].aggregates);
-      assertTrue(nodes[0].count);
+      assertEqual(1, nodes[0].aggregates.length);
+      assertEqual("l", nodes[0].aggregates[0].outVariable.name);
+      assertEqual("LENGTH", nodes[0].aggregates[0].type);
       assertEqual("sorted", nodes[0].collectOptions.method);
 
       assertNotEqual(-1, plan.rules.indexOf(ruleName));

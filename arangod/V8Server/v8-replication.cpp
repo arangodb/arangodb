@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -51,7 +51,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -61,19 +60,22 @@ using namespace arangodb::rest;
 /// @brief get the state of the replication logger
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_StateLoggerReplication(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_StateLoggerReplication(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   // FIXME: use code in RestReplicationHandler and get rid of storage-engine
   //        dependent code here
   //
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  StorageEngine& engine =
+      v8g->server().getFeature<EngineSelectorFeature>().engine();
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
   TRI_vocbase_t& vocbase = GetContextVocBase(isolate);
 
   VPackBuilder builder;
-  auto res = engine->createLoggerState(&vocbase, builder);
+  auto res = engine.createLoggerState(&vocbase, builder);
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
@@ -88,13 +90,17 @@ static void JS_StateLoggerReplication(v8::FunctionCallbackInfo<v8::Value> const&
 /// @brief get the tick ranges that can be provided by the replication logger
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_TickRangesLoggerReplication(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_TickRangesLoggerReplication(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
   v8::Handle<v8::Array> result;
 
   VPackBuilder builder;
-  Result res = EngineSelectorFeature::ENGINE->createTickRanges(builder);
+  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  StorageEngine& engine =
+      v8g->server().getFeature<EngineSelectorFeature>().engine();
+  Result res = engine.createTickRanges(builder);
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
@@ -110,12 +116,16 @@ static void JS_TickRangesLoggerReplication(v8::FunctionCallbackInfo<v8::Value> c
 /// @brief get the first tick that can be provided by the replication logger
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_FirstTickLoggerReplication(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_FirstTickLoggerReplication(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   TRI_voc_tick_t tick = UINT64_MAX;
-  Result res = EngineSelectorFeature::ENGINE->firstTick(tick);
+  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  StorageEngine& engine =
+      v8g->server().getFeature<EngineSelectorFeature>().engine();
+  Result res = engine.firstTick(tick);
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
@@ -132,7 +142,8 @@ static void JS_FirstTickLoggerReplication(v8::FunctionCallbackInfo<v8::Value> co
 /// @brief get the last WAL entries
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_LastLoggerReplication(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_LastLoggerReplication(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -151,7 +162,10 @@ static void JS_LastLoggerReplication(v8::FunctionCallbackInfo<v8::Value> const& 
 
   auto transactionContext = transaction::V8Context::Create(vocbase, true);
   VPackBuilder builder(transactionContext->getVPackOptions());
-  Result res = EngineSelectorFeature::ENGINE->lastLogger(vocbase, tickStart, tickEnd, builder);
+  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  StorageEngine& engine =
+      v8g->server().getFeature<EngineSelectorFeature>().engine();
+  Result res = engine.lastLogger(vocbase, tickStart, tickEnd, builder);
   v8::Handle<v8::Value> result;
 
   if (res.fail()) {
@@ -172,8 +186,8 @@ enum ApplierType { APPLIER_DATABASE, APPLIER_GLOBAL };
 /// @brief sync data from a remote master
 ////////////////////////////////////////////////////////////////////////////////
 
-static void SynchronizeReplication(v8::FunctionCallbackInfo<v8::Value> const& args,
-                                   ApplierType applierType) {
+static void SynchronizeReplication(
+    v8::FunctionCallbackInfo<v8::Value> const& args, ApplierType applierType) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
   auto context = TRI_IGETC;
@@ -185,11 +199,7 @@ static void SynchronizeReplication(v8::FunctionCallbackInfo<v8::Value> const& ar
   // treat the argument as an object from now on
   v8::Handle<v8::Object> object = v8::Handle<v8::Object>::Cast(args[0]);
   VPackBuilder builder;
-  int res = TRI_V8ToVPack(isolate, builder, args[0], false);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION(res);
-  }
+  TRI_V8ToVPack(isolate, builder, args[0], false);
 
   auto& vocbase = GetContextVocBase(isolate);
   std::string databaseName;
@@ -207,9 +217,10 @@ static void SynchronizeReplication(v8::FunctionCallbackInfo<v8::Value> const& ar
             .FromMaybe(v8::Local<v8::Value>()));
   }
 
-  TRI_GET_GLOBALS();
+  TRI_GET_SERVER_GLOBALS(ArangodServer);
   ReplicationApplierConfiguration configuration =
-      ReplicationApplierConfiguration::fromVelocyPack(v8g->_server, builder.slice(), databaseName);
+      ReplicationApplierConfiguration::fromVelocyPack(
+          v8g->server(), builder.slice(), databaseName);
   configuration.validate();
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
@@ -217,7 +228,7 @@ static void SynchronizeReplication(v8::FunctionCallbackInfo<v8::Value> const& ar
 
   if (applierType == APPLIER_DATABASE) {
     // database-specific synchronization
-    syncer.reset(new DatabaseInitialSyncer(vocbase, configuration));
+    syncer = DatabaseInitialSyncer::create(vocbase, configuration);
 
     if (TRI_HasProperty(context, isolate, object, "leaderId")) {
       syncer->setLeaderId(TRI_ObjectToString(
@@ -227,7 +238,7 @@ static void SynchronizeReplication(v8::FunctionCallbackInfo<v8::Value> const& ar
     }
   } else if (applierType == APPLIER_GLOBAL) {
     configuration._skipCreateDrop = false;
-    syncer.reset(new GlobalInitialSyncer(configuration));
+    syncer = GlobalInitialSyncer::create(configuration);
   } else {
     TRI_ASSERT(false);
   }
@@ -239,39 +250,49 @@ static void SynchronizeReplication(v8::FunctionCallbackInfo<v8::Value> const& ar
       LOG_TOPIC("3d58b", DEBUG, Logger::REPLICATION)
           << "initial sync failed for database '" << vocbase.name()
           << "': " << r.errorMessage();
-      TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(),
-                                     "cannot sync from remote endpoint: " + r.errorMessage() +
-                                         ". last progress message was: '" +
-                                         syncer->progress() + "'");
+      TRI_V8_THROW_EXCEPTION_MESSAGE(
+          r.errorNumber(),
+          StringUtils::concatT(
+              "cannot sync from remote endpoint: ", r.errorMessage(),
+              ". last progress message was: '", syncer->progress(), "'"));
     }
 
-    if (keepBarrier) {
-      result->Set(context,
-                  TRI_V8_ASCII_STRING(isolate, "barrierId"),
-                  TRI_V8UInt64String<TRI_voc_tick_t>(isolate, syncer->stealBarrier())).FromMaybe(false);
+    if (keepBarrier) {  // TODO: keep just for API compatibility
+      result
+          ->Set(context, TRI_V8_ASCII_STRING(isolate, "barrierId"),
+                TRI_V8UInt64String<TRI_voc_tick_t>(isolate, 0))
+          .FromMaybe(false);
     }
 
-    result->Set(context,
-                TRI_V8_ASCII_STRING(isolate, "lastLogTick"),
-                TRI_V8UInt64String<TRI_voc_tick_t>(isolate, syncer->getLastLogTick())).FromMaybe(false);
+    result
+        ->Set(context, TRI_V8_ASCII_STRING(isolate, "lastLogTick"),
+              TRI_V8UInt64String<TRI_voc_tick_t>(isolate,
+                                                 syncer->getLastLogTick()))
+        .FromMaybe(false);
 
-    std::map<TRI_voc_cid_t, std::string>::const_iterator it;
-    std::map<TRI_voc_cid_t, std::string> const& c = syncer->getProcessedCollections();
+    std::map<DataSourceId, std::string>::const_iterator it;
+    std::map<DataSourceId, std::string> const& c =
+        syncer->getProcessedCollections();
 
     uint32_t j = 0;
     v8::Handle<v8::Array> collections = v8::Array::New(isolate);
     for (it = c.begin(); it != c.end(); ++it) {
-      std::string const cidString = StringUtils::itoa((*it).first);
+      std::string const cidString = StringUtils::itoa((*it).first.id());
 
       v8::Handle<v8::Object> ci = v8::Object::New(isolate);
-      ci->Set(context, TRI_V8_ASCII_STRING(isolate, "id"), TRI_V8_STD_STRING(isolate, cidString)).FromMaybe(false);
+      ci->Set(context, TRI_V8_ASCII_STRING(isolate, "id"),
+              TRI_V8_STD_STRING(isolate, cidString))
+          .FromMaybe(false);
       ci->Set(context, TRI_V8_ASCII_STRING(isolate, "name"),
-              TRI_V8_STD_STRING(isolate, (*it).second)).FromMaybe(false);
+              TRI_V8_STD_STRING(isolate, (*it).second))
+          .FromMaybe(false);
 
       collections->Set(context, j++, ci).FromMaybe(false);
     }
 
-    result->Set(context, TRI_V8_ASCII_STRING(isolate, "collections"), collections).FromMaybe(false);
+    result
+        ->Set(context, TRI_V8_ASCII_STRING(isolate, "collections"), collections)
+        .FromMaybe(false);
   } catch (arangodb::basics::Exception const& ex) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
         ex.code(), std::string("cannot sync from remote endpoint: ") +
@@ -297,117 +318,22 @@ static void SynchronizeReplication(v8::FunctionCallbackInfo<v8::Value> const& ar
   TRI_V8_TRY_CATCH_END
 }
 
-static void JS_SynchronizeReplication(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_SynchronizeReplication(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   SynchronizeReplication(args, APPLIER_DATABASE);
 }
 
-static void JS_SynchronizeGlobalReplication(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_SynchronizeGlobalReplication(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   SynchronizeReplication(args, APPLIER_GLOBAL);
-}
-
-/// @brief finalize the synchronization of a collection by tailing the WAL
-/// and filtering on the collection name until no more data is available
-static void JS_SynchronizeReplicationFinalize(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-  auto context = TRI_IGETC;
-
-  if (args.Length() != 1 || !args[0]->IsObject()) {
-    TRI_V8_THROW_EXCEPTION_USAGE("syncCollectionFinalize(<configure>)");
-  }
-
-  // treat the argument as an object from now on
-  v8::Handle<v8::Object> object = v8::Handle<v8::Object>::Cast(args[0]);
-
-  VPackBuilder builder;
-  int res = TRI_V8ToVPack(isolate, builder, args[0], false);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION(res);
-  }
-
-  std::string database;
-  if (TRI_HasProperty(context, isolate, object, "database")) {
-    database = TRI_ObjectToString(
-        isolate,
-        object->Get(context, TRI_V8_ASCII_STRING(isolate, "database"))
-            .FromMaybe(v8::Local<v8::Value>()));
-  }
-  if (database.empty()) {
-    TRI_V8_THROW_EXCEPTION_PARAMETER(
-        "<database> must be a valid database name");
-  }
-
-  std::string collection;
-  if (TRI_HasProperty(context, isolate, object, "collection")) {
-    collection = TRI_ObjectToString(
-        isolate,
-        object->Get(context, TRI_V8_ASCII_STRING(isolate, "collection"))
-            .FromMaybe(v8::Local<v8::Value>()));
-  }
-  if (collection.empty()) {
-    TRI_V8_THROW_EXCEPTION_PARAMETER(
-        "<collection> must be a valid collection name");
-  }
-
-  TRI_voc_tick_t fromTick = 0;
-  if (TRI_HasProperty(context, isolate, object, "from")) {
-    fromTick = TRI_ObjectToUInt64(
-        isolate,
-        object->Get(context, TRI_V8_ASCII_STRING(isolate, "from")).FromMaybe(v8::Local<v8::Value>()),
-        true);
-  }
-  if (fromTick == 0) {
-    TRI_V8_THROW_EXCEPTION_PARAMETER("<from> must be a valid start tick");
-  }
-
-  TRI_GET_GLOBALS();
-  ReplicationApplierConfiguration configuration =
-      ReplicationApplierConfiguration::fromVelocyPack(v8g->_server, builder.slice(), database);
-  // will throw if invalid
-  configuration.validate();
-
-  DatabaseGuard guard(database);
-
-  DatabaseTailingSyncer syncer(guard.database(), configuration, fromTick, true, 0);
-
-  if (TRI_HasProperty(context, isolate, object, "leaderId")) {
-    syncer.setLeaderId(TRI_ObjectToString(
-        isolate,
-        object->Get(context, TRI_V8_ASCII_STRING(isolate, "leaderId"))
-            .FromMaybe(v8::Local<v8::Value>())));
-  }
-
-  v8::Handle<v8::Object> result = v8::Object::New(isolate);
-
-  Result r;
-  try {
-    r = syncer.syncCollectionFinalize(collection);
-  } catch (arangodb::basics::Exception const& ex) {
-    r = Result(ex.code(), ex.what());
-  } catch (std::exception const& ex) {
-    r = Result(TRI_ERROR_INTERNAL, ex.what());
-  } catch (...) {
-    r = Result(TRI_ERROR_INTERNAL, "unknown exception");
-  }
-
-  if (r.fail()) {
-    LOG_TOPIC("f5995", ERR, Logger::REPLICATION)
-        << "syncCollectionFinalize failed: " << r.errorMessage();
-    std::string errorMsg = std::string("cannot sync data for shard '") + collection +
-                           "' from remote endpoint: " + r.errorMessage();
-    TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(), errorMsg);
-  }
-
-  TRI_V8_RETURN(result);
-  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the server's id
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_ServerIdReplication(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_ServerIdReplication(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -416,7 +342,8 @@ static void JS_ServerIdReplication(v8::FunctionCallbackInfo<v8::Value> const& ar
   TRI_V8_TRY_CATCH_END
 }
 
-static ReplicationApplier* getContinuousApplier(v8::Isolate* isolate, ApplierType applierType) {
+static ReplicationApplier* getContinuousApplier(v8::Isolate* isolate,
+                                                ApplierType applierType) {
   ReplicationApplier* applier = nullptr;
 
   if (applierType == APPLIER_DATABASE) {
@@ -426,8 +353,8 @@ static ReplicationApplier* getContinuousApplier(v8::Isolate* isolate, ApplierTyp
     applier = vocbase.replicationApplier();
   } else {
     // applier type global
-    TRI_GET_GLOBALS();
-    auto& replicationFeature = v8g->_server.getFeature<ReplicationFeature>();
+    TRI_GET_SERVER_GLOBALS(ArangodServer);
+    auto& replicationFeature = v8g->server().getFeature<ReplicationFeature>();
     applier = replicationFeature.globalReplicationApplier();
   }
 
@@ -443,8 +370,8 @@ static ReplicationApplier* getContinuousApplier(v8::Isolate* isolate, ApplierTyp
 /// @brief configure the replication applier manually
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ConfigureApplierReplication(v8::FunctionCallbackInfo<v8::Value> const& args,
-                                        ApplierType applierType) {
+static void ConfigureApplierReplication(
+    v8::FunctionCallbackInfo<v8::Value> const& args, ApplierType applierType) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -472,11 +399,7 @@ static void ConfigureApplierReplication(v8::FunctionCallbackInfo<v8::Value> cons
     }
 
     VPackBuilder builder;
-    int res = TRI_V8ToVPack(isolate, builder, args[0], false);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      TRI_V8_THROW_EXCEPTION(res);
-    }
+    TRI_V8ToVPack(isolate, builder, args[0], false);
 
     std::string databaseName;
     if (applierType == APPLIER_DATABASE) {
@@ -486,9 +409,8 @@ static void ConfigureApplierReplication(v8::FunctionCallbackInfo<v8::Value> cons
     }
 
     // merge the passed configuration into the existing one
-    configuration =
-        ReplicationApplierConfiguration::fromVelocyPack(configuration,
-                                                        builder.slice(), databaseName);
+    configuration = ReplicationApplierConfiguration::fromVelocyPack(
+        configuration, builder.slice(), databaseName);
 
     // will throw if invalid
     configuration.validate();
@@ -509,11 +431,13 @@ static void ConfigureApplierReplication(v8::FunctionCallbackInfo<v8::Value> cons
   TRI_V8_TRY_CATCH_END
 }
 
-static void JS_ConfigureApplierReplication(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_ConfigureApplierReplication(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   ConfigureApplierReplication(args, APPLIER_DATABASE);
 }
 
-static void JS_ConfigureGlobalApplierReplication(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_ConfigureGlobalApplierReplication(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   ConfigureApplierReplication(args, APPLIER_GLOBAL);
 }
 
@@ -521,8 +445,8 @@ static void JS_ConfigureGlobalApplierReplication(v8::FunctionCallbackInfo<v8::Va
 /// @brief start the replication applier manually
 ////////////////////////////////////////////////////////////////////////////////
 
-static void StartApplierReplication(v8::FunctionCallbackInfo<v8::Value> const& args,
-                                    ApplierType applierType) {
+static void StartApplierReplication(
+    v8::FunctionCallbackInfo<v8::Value> const& args, ApplierType applierType) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -538,24 +462,21 @@ static void StartApplierReplication(v8::FunctionCallbackInfo<v8::Value> const& a
     useTick = true;
   }
 
-  TRI_voc_tick_t barrierId = 0;
-  if (args.Length() >= 2) {
-    barrierId = TRI_ObjectToUInt64(isolate, args[1], true);
-  }
-
   ReplicationApplier* applier = getContinuousApplier(isolate, applierType);
 
-  applier->startTailing(initialTick, useTick, barrierId);
+  applier->startTailing(initialTick, useTick);
 
   TRI_V8_RETURN_TRUE();
   TRI_V8_TRY_CATCH_END
 }
 
-static void JS_StartApplierReplication(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_StartApplierReplication(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   StartApplierReplication(args, APPLIER_DATABASE);
 }
 
-static void JS_StartGlobalApplierReplication(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_StartGlobalApplierReplication(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   StartApplierReplication(args, APPLIER_GLOBAL);
 }
 
@@ -563,8 +484,8 @@ static void JS_StartGlobalApplierReplication(v8::FunctionCallbackInfo<v8::Value>
 /// @brief shuts down the replication applier manually
 ////////////////////////////////////////////////////////////////////////////////
 
-static void StopApplierReplication(v8::FunctionCallbackInfo<v8::Value> const& args,
-                                   ApplierType applierType) {
+static void StopApplierReplication(
+    v8::FunctionCallbackInfo<v8::Value> const& args, ApplierType applierType) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -580,11 +501,13 @@ static void StopApplierReplication(v8::FunctionCallbackInfo<v8::Value> const& ar
   TRI_V8_TRY_CATCH_END
 }
 
-static void JS_StopApplierReplication(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_StopApplierReplication(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   StopApplierReplication(args, APPLIER_DATABASE);
 }
 
-static void JS_StopGlobalApplierReplication(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_StopGlobalApplierReplication(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   StopApplierReplication(args, APPLIER_GLOBAL);
 }
 
@@ -592,8 +515,8 @@ static void JS_StopGlobalApplierReplication(v8::FunctionCallbackInfo<v8::Value> 
 /// @brief get the state of the replication applier
 ////////////////////////////////////////////////////////////////////////////////
 
-static void StateApplierReplication(v8::FunctionCallbackInfo<v8::Value> const& args,
-                                    ApplierType applierType) {
+static void StateApplierReplication(
+    v8::FunctionCallbackInfo<v8::Value> const& args, ApplierType applierType) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -614,8 +537,8 @@ static void StateApplierReplication(v8::FunctionCallbackInfo<v8::Value> const& a
   TRI_V8_TRY_CATCH_END
 }
 
-static void StateApplierReplicationAll(v8::FunctionCallbackInfo<v8::Value> const& args,
-                                       ApplierType applierType) {
+static void StateApplierReplicationAll(
+    v8::FunctionCallbackInfo<v8::Value> const& args, ApplierType applierType) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -623,8 +546,9 @@ static void StateApplierReplicationAll(v8::FunctionCallbackInfo<v8::Value> const
     TRI_V8_THROW_EXCEPTION_USAGE("stateAll()");
   }
 
-  TRI_GET_GLOBALS();
-  DatabaseFeature& databaseFeature = v8g->_server.getFeature<DatabaseFeature>();
+  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  DatabaseFeature& databaseFeature =
+      v8g->server().getFeature<DatabaseFeature>();
 
   VPackBuilder builder;
   builder.openObject();
@@ -652,15 +576,18 @@ static void StateApplierReplicationAll(v8::FunctionCallbackInfo<v8::Value> const
   TRI_V8_TRY_CATCH_END
 }
 
-static void JS_StateApplierReplication(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_StateApplierReplication(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   StateApplierReplication(args, APPLIER_DATABASE);
 }
 
-static void JS_StateApplierReplicationAll(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_StateApplierReplicationAll(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   StateApplierReplicationAll(args, APPLIER_DATABASE);
 }
 
-static void JS_StateGlobalApplierReplication(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_StateGlobalApplierReplication(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   StateApplierReplication(args, APPLIER_GLOBAL);
 }
 
@@ -668,8 +595,8 @@ static void JS_StateGlobalApplierReplication(v8::FunctionCallbackInfo<v8::Value>
 /// @brief stop the replication applier and "forget" all state
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ForgetApplierReplication(v8::FunctionCallbackInfo<v8::Value> const& args,
-                                     ApplierType applierType) {
+static void ForgetApplierReplication(
+    v8::FunctionCallbackInfo<v8::Value> const& args, ApplierType applierType) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -685,40 +612,43 @@ static void ForgetApplierReplication(v8::FunctionCallbackInfo<v8::Value> const& 
   TRI_V8_TRY_CATCH_END
 }
 
-static void JS_ForgetApplierReplication(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_ForgetApplierReplication(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   ForgetApplierReplication(args, APPLIER_DATABASE);
 }
 
-static void JS_ForgetGlobalApplierReplication(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_ForgetGlobalApplierReplication(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   ForgetApplierReplication(args, APPLIER_GLOBAL);
 }
 
-static void JS_FailoverEnabledGlobalApplierReplication(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_FailoverEnabledGlobalApplierReplication(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  auto replicationFeature = ReplicationFeature::INSTANCE;
-  if (replicationFeature != nullptr && replicationFeature->isActiveFailoverEnabled()) {
+  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  auto& replicationFeature = v8g->server().getFeature<ReplicationFeature>();
+  if (replicationFeature.isActiveFailoverEnabled()) {
     TRI_V8_RETURN_TRUE();
   }
   TRI_V8_RETURN_FALSE();
   TRI_V8_TRY_CATCH_END
 }
 
-void TRI_InitV8Replication(v8::Isolate* isolate, v8::Handle<v8::Context> context,
+void TRI_InitV8Replication(v8::Isolate* isolate,
+                           v8::Handle<v8::Context> context,
                            TRI_vocbase_t* vocbase, size_t threadNumber,
                            TRI_v8_global_t* v8g) {
   // replication functions. not intended to be used by end users
 
   // logger functions
-  TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING(isolate,
-                                                   "REPLICATION_LOGGER_STATE"),
-                               JS_StateLoggerReplication, true);
-  TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING(isolate,
-                                                   "REPLICATION_LOGGER_LAST"),
-                               JS_LastLoggerReplication, true);
+  TRI_AddGlobalFunctionVocbase(
+      isolate, TRI_V8_ASCII_STRING(isolate, "REPLICATION_LOGGER_STATE"),
+      JS_StateLoggerReplication, true);
+  TRI_AddGlobalFunctionVocbase(
+      isolate, TRI_V8_ASCII_STRING(isolate, "REPLICATION_LOGGER_LAST"),
+      JS_LastLoggerReplication, true);
   TRI_AddGlobalFunctionVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "REPLICATION_LOGGER_TICK_RANGES"),
       JS_TickRangesLoggerReplication, true);
@@ -734,24 +664,21 @@ void TRI_InitV8Replication(v8::Isolate* isolate, v8::Handle<v8::Context> context
       isolate,
       TRI_V8_ASCII_STRING(isolate, "GLOBAL_REPLICATION_APPLIER_CONFIGURE"),
       JS_ConfigureGlobalApplierReplication, true);
-  TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING(isolate,
-                                                   "REPLICATION_APPLIER_START"),
-                               JS_StartApplierReplication, true);
+  TRI_AddGlobalFunctionVocbase(
+      isolate, TRI_V8_ASCII_STRING(isolate, "REPLICATION_APPLIER_START"),
+      JS_StartApplierReplication, true);
   TRI_AddGlobalFunctionVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "GLOBAL_REPLICATION_APPLIER_START"),
       JS_StartGlobalApplierReplication, true);
-  TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING(isolate,
-                                                   "REPLICATION_APPLIER_STOP"),
-                               JS_StopApplierReplication, true);
+  TRI_AddGlobalFunctionVocbase(
+      isolate, TRI_V8_ASCII_STRING(isolate, "REPLICATION_APPLIER_STOP"),
+      JS_StopApplierReplication, true);
   TRI_AddGlobalFunctionVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "GLOBAL_REPLICATION_APPLIER_STOP"),
       JS_StopGlobalApplierReplication, true);
-  TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING(isolate,
-                                                   "REPLICATION_APPLIER_STATE"),
-                               JS_StateApplierReplication, true);
+  TRI_AddGlobalFunctionVocbase(
+      isolate, TRI_V8_ASCII_STRING(isolate, "REPLICATION_APPLIER_STATE"),
+      JS_StateApplierReplication, true);
   TRI_AddGlobalFunctionVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "REPLICATION_APPLIER_STATE_ALL"),
       JS_StateApplierReplicationAll, true);
@@ -762,7 +689,8 @@ void TRI_InitV8Replication(v8::Isolate* isolate, v8::Handle<v8::Context> context
       isolate, TRI_V8_ASCII_STRING(isolate, "REPLICATION_APPLIER_FORGET"),
       JS_ForgetApplierReplication, true);
   TRI_AddGlobalFunctionVocbase(
-      isolate, TRI_V8_ASCII_STRING(isolate, "GLOBAL_REPLICATION_APPLIER_FORGET"),
+      isolate,
+      TRI_V8_ASCII_STRING(isolate, "GLOBAL_REPLICATION_APPLIER_FORGET"),
       JS_ForgetGlobalApplierReplication, true);
   TRI_AddGlobalFunctionVocbase(
       isolate,
@@ -771,18 +699,13 @@ void TRI_InitV8Replication(v8::Isolate* isolate, v8::Handle<v8::Context> context
       JS_FailoverEnabledGlobalApplierReplication, true);
 
   // other functions
-  TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING(isolate,
-                                                   "REPLICATION_SYNCHRONIZE"),
-                               JS_SynchronizeReplication, true);
+  TRI_AddGlobalFunctionVocbase(
+      isolate, TRI_V8_ASCII_STRING(isolate, "REPLICATION_SYNCHRONIZE"),
+      JS_SynchronizeReplication, true);
   TRI_AddGlobalFunctionVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "GLOBAL_REPLICATION_SYNCHRONIZE"),
       JS_SynchronizeGlobalReplication, true);
   TRI_AddGlobalFunctionVocbase(
-      isolate, TRI_V8_ASCII_STRING(isolate, "REPLICATION_SYNCHRONIZE_FINALIZE"),
-      JS_SynchronizeReplicationFinalize, true);
-  TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING(isolate,
-                                                   "REPLICATION_SERVER_ID"),
-                               JS_ServerIdReplication, true);
+      isolate, TRI_V8_ASCII_STRING(isolate, "REPLICATION_SERVER_ID"),
+      JS_ServerIdReplication, true);
 }

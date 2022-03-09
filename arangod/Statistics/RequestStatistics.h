@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_STATISTICS_REQUEST_STATISTICS_H
-#define ARANGOD_STATISTICS_REQUEST_STATISTICS_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -69,12 +68,6 @@ class RequestStatistics {
     void SET_ASYNC() const {
       if (_stat != nullptr) {
         _stat->_async = true;
-      }
-    }
-
-    void SET_IGNORE() const {
-      if (_stat != nullptr) {
-        _stat->_ignore = true;
       }
     }
 
@@ -135,12 +128,6 @@ class RequestStatistics {
       }
     }
 
-    void SET_EXECUTE_ERROR() const {
-      if (_stat != nullptr) {
-        _stat->_executeError = true;
-      }
-    }
-
     void SET_REQUEST_START() const {
       if (_stat != nullptr) {
         _stat->_requestStart = StatisticsFeature::time();
@@ -168,18 +155,24 @@ class RequestStatistics {
       }
     }
 
+    double ELAPSED_WHILE_QUEUED() const {
+      if (_stat != nullptr) {
+        return _stat->_queueEnd - _stat->_queueStart;
+      } else {
+        return 0.0;
+      }
+    }
+
     void SET_SUPERUSER() const {
       if (_stat != nullptr) {
         _stat->_superuser = true;
       }
     }
 
-    double requestStart() const { return _stat->_requestStart; }
-
-    std::string timingsCsv();
+    std::string timingsCsv() const;
 
    private:
-     RequestStatistics* _stat;
+    RequestStatistics* _stat;
   };
 
   static Item acquire();
@@ -192,7 +185,8 @@ class RequestStatistics {
     statistics::Distribution bytesReceived;
   };
 
-  static void getSnapshot(Snapshot& snapshot, stats::RequestStatisticsSource source);
+  static void getSnapshot(Snapshot& snapshot,
+                          stats::RequestStatisticsSource source);
 
  private:
   static void process(RequestStatistics*);
@@ -215,9 +209,6 @@ class RequestStatistics {
     _sentBytes = 0.0;
     _requestType = rest::RequestType::ILLEGAL;
     _async = false;
-    _tooLarge = false;
-    _executeError = false;
-    _ignore = false;
     _released = true;
     _inQueue = false;
     _superuser = false;
@@ -240,13 +231,8 @@ class RequestStatistics {
   rest::RequestType _requestType;
 
   bool _async;
-  bool _tooLarge;
-  bool _executeError;
-  bool _ignore;
   bool _released;
   bool _inQueue;
   bool _superuser;
 };
 }  // namespace arangodb
-
-#endif

@@ -51,6 +51,17 @@ Only used on Linux/Mac, still uses autofoo.
 Only used on Linux, still uses autofoo. The "aux" directory has been removed from the
 libtool source because there must not be directories named "aux" on Windows.
 
+In order to update to new versions, run `autogen.sh` and then remove the unnecessary
+generated files, e.g.:
+```
+rm -rf v1.5/aux v1.5/autom4te.cache/ v1.5/config.log v1.5/config.status v1.5/Makefile v1.5/libtool
+```
+
+Note: some files normally excluded by .gitignore need to be added to the build:
+```
+git add -f v1.5/config v1.5/configure v1.5/Makefile.in
+```
+
 ## linenoise-ng
 
 Our maintained fork of linenoise
@@ -65,14 +76,16 @@ https://github.com/lz4/lz4
 
 ## rocksdb
 
-our branch is maintained at:
+(6.26.0, upstream commit f72fd5856585774063ac3fc8926f70626963d488)
+
+Our branch is maintained at:
 https://github.com/arangodb-helper/rocksdb
 
 Most changes can be ported upstream:
 https://github.com/facebook/rocksdb
 
 On Upgrade:
-- `./thirdparty.inc``needs to be adjusted to use the snappy we specify. This can be
+- `./thirdparty.inc` needs to be adjusted to use the snappy we specify. This can be
    adjusted by commenting out the section that sets Snappy-related CMake variables:
 
     -set(SNAPPY_HOME $ENV{THIRDPARTY_HOME}/Snappy.Library)
@@ -84,6 +97,72 @@ On Upgrade:
     +#set(SNAPPY_LIB_DEBUG ${SNAPPY_HOME}/lib/native/debug/amd64/snappy.lib)
     +#set(SNAPPY_LIB_RELEASE ${SNAPPY_HOME}/lib/native/retail/amd64/snappy.lib)
 
+The following other change has been made to CMakeLists.txt to allow compiling on ARM:
+```
+diff --git a/arangod/RocksDBEngine/CMakeLists.txt b/arangod/RocksDBEngine/CMakeLists.txt
+index 58205d5ca90..cb3f2c276d9 100644
+--- a/arangod/RocksDBEngine/CMakeLists.txt
++++ b/arangod/RocksDBEngine/CMakeLists.txt
+@@ -9,11 +9,6 @@ if(CMAKE_SYSTEM_NAME MATCHES "Cygwin")
+   add_definitions(-fno-builtin-memcmp -DCYGWIN)
+ elseif(CMAKE_SYSTEM_NAME MATCHES "Darwin")
+   add_definitions(-DOS_MACOSX)
+-  if(CMAKE_SYSTEM_PROCESSOR MATCHES arm)
+-    add_definitions(-DIOS_CROSS_COMPILE -DROCKSDB_LITE)
+-    # no debug info for IOS, that will make our library big
+-    add_definitions(-DNDEBUG)
+-  endif()
+ elseif(CMAKE_SYSTEM_NAME MATCHES "Linux")
+   add_definitions(-DOS_LINUX)
+ elseif(CMAKE_SYSTEM_NAME MATCHES "SunOS")
+```
+
+We also made the following modification to gtest (included in a subdirectory of
+RocksDB):
+```
+diff --git a/3rdParty/rocksdb/6.8/third-party/gtest-1.8.1/fused-src/gtest/gtest.h b/3rdParty/rocksdb/6.8/third-party/gtest-1.8.1/fused-src/gtest/gtest.h
+index ebb16db7b09..10188c93a8c 100644
+--- a/3rdParty/rocksdb/6.8/third-party/gtest-1.8.1/fused-src/gtest/gtest.h
++++ b/3rdParty/rocksdb/6.8/third-party/gtest-1.8.1/fused-src/gtest/gtest.h
+@@ -19371,7 +19371,7 @@ INSTANTIATE_TYPED_TEST_CASE_P(My, FooTest, MyTypes);
+    private:                                                                   \
+     typedef CaseName<gtest_TypeParam_> TestFixture;                           \
+     typedef gtest_TypeParam_ TypeParam;                                       \
+-    virtual void TestBody();                                                  \
++    virtual void TestBody() override;                                         \
+   };                                                                          \
+   static bool gtest_##CaseName##_##TestName##_registered_                     \
+         GTEST_ATTRIBUTE_UNUSED_ =                                             \
+```
+This change suppresses compile warnings about missing override specifiers, and
+hopefully can be removed once RocksDB upgrades their version of gtest.
+
+We also applied a small patch on top of `db/wal_manager.cc` which makes it handle
+expected errors (errors that occur when moving WAL files around while they are
+tailed) gracefully:
+```
+diff --git a/3rdParty/rocksdb/6.18/db/wal_manager.cc b/3rdParty/rocksdb/6.18/db/wal_manager.cc
+index 7e77e03618..c5bf3ee1b1 100644
+--- a/3rdParty/rocksdb/6.18/db/wal_manager.cc
++++ b/3rdParty/rocksdb/6.18/db/wal_manager.cc
+@@ -328,6 +339,15 @@ Status WalManager::GetSortedWalsOfType(const std::string& path,
+         }
+       }
+       if (!s.ok()) {
++        if (log_type == kArchivedLogFile &&
++            (s.IsNotFound() ||
++             (s.IsIOError() && env_->FileExists(ArchivedLogFileName(path, number)).IsNotFound()))) {
++          // It may happen that the iteration performed by GetChildren() found
++          // a logfile in the archive, but that this file has been deleted by
++          // another thread in the meantime. In this case just ignore it.
++          s = Status::OK();
++          continue;
++        }
+         return s;
+       }
+
+```
+
 ## s2geometry
 
 http://s2geometry.io/
@@ -92,8 +171,6 @@ http://s2geometry.io/
 
 Compression library
 https://github.com/google/snappy
-
-We change the target `snappy` to `snapy-dyn` so cmake doesn't interfere targets with the static library (that we need)
 
 ## snowball
 
@@ -177,6 +254,19 @@ Upstream is: https://github.com/taocpp/json
 
 - On upgrade do not add unnecessary files (e.g. src, tests, contrib)
   and update the commit hash in `./taocpp-json.version`.
+  
+## tzdata
+
+IANA time zone database / Olson database
+Contains information about the world's time zones
+
+Upstream is: https://www.iana.org/time-zones (Data Only Distribution)
+
+Windows builds require windowsZones.xml from the Unicode CLDR project:
+https://github.com/unicode-org/cldr/blob/master/common/supplemental/windowsZones.xml
+
+invoke `Installation/fetch_tz_database.sh` to do this.
+Fix CMakeLists.txt with new zone files if neccessary.
 
 ## V8
 

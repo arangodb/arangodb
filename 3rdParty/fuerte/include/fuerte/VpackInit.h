@@ -24,11 +24,11 @@
 #ifndef ARANGO_CXX_DRIVER_VPACK_INIT_H
 #define ARANGO_CXX_DRIVER_VPACK_INIT_H
 
-#include <memory>
-
 #include <fuerte/types.h>
 #include <velocypack/AttributeTranslator.h>
 #include <velocypack/Options.h>
+
+#include <memory>
 
 namespace arangodb { namespace fuerte { inline namespace v1 { namespace helper {
 

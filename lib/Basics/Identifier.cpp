@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -35,32 +35,33 @@ Identifier::BaseType const* Identifier::data() const noexcept { return &_id; }
 
 Identifier::operator bool() const noexcept { return _id != 0; }
 
-bool Identifier::operator==(Identifier const& other) const {
+bool Identifier::operator==(Identifier const& other) const noexcept {
   return _id == other._id;
 }
 
-bool Identifier::operator!=(Identifier const& other) const {
+bool Identifier::operator!=(Identifier const& other) const noexcept {
   return !(operator==(other));
 }
 
-bool Identifier::operator<(Identifier const& other) const {
+bool Identifier::operator<(Identifier const& other) const noexcept {
   return _id < other._id;
 }
 
-bool Identifier::operator<=(Identifier const& other) const {
+bool Identifier::operator<=(Identifier const& other) const noexcept {
   return _id <= other._id;
 }
 
-bool Identifier::operator>(Identifier const& other) const {
+bool Identifier::operator>(Identifier const& other) const noexcept {
   return _id > other._id;
 }
 
-bool Identifier::operator>=(Identifier const& other) const {
+bool Identifier::operator>=(Identifier const& other) const noexcept {
   return _id >= other._id;
 }
 
-}  // namespace arangodb::basics
-
-std::ostream& operator<<(std::ostream& s, arangodb::basics::Identifier const& i) {
+std::ostream& operator<<(std::ostream& s,
+                         arangodb::basics::Identifier const& i) {
   return s << std::to_string(i.id());
 }
+
+}  // namespace arangodb::basics

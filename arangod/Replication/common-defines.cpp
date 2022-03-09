@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,6 +23,7 @@
 
 #include <time.h>
 
+#include "Basics/StaticStrings.h"
 #include "Basics/system-functions.h"
 #include "Replication/common-defines.h"
 
@@ -38,7 +39,8 @@ void TRI_GetTimeStampReplication(char* dst, size_t maxLength) {
 }
 
 /// @brief generate a timestamp string in a target buffer
-void TRI_GetTimeStampReplication(double timeStamp, char* dst, size_t maxLength) {
+void TRI_GetTimeStampReplication(double timeStamp, char* dst,
+                                 size_t maxLength) {
   struct tm tb;
   time_t tt = static_cast<time_t>(timeStamp);
   TRI_gmtime(tt, &tb);
@@ -46,7 +48,8 @@ void TRI_GetTimeStampReplication(double timeStamp, char* dst, size_t maxLength) 
   strftime(dst, maxLength, "%Y-%m-%dT%H:%M:%SZ", &tb);
 }
 
-bool TRI_ExcludeCollectionReplication(std::string const& name, bool includeSystem,
+bool TRI_ExcludeCollectionReplication(std::string const& name,
+                                      bool includeSystem,
                                       bool includeFoxxQueues) {
   if (name.empty()) {
     // should not happen...
@@ -63,13 +66,15 @@ bool TRI_ExcludeCollectionReplication(std::string const& name, bool includeSyste
     return true;
   }
 
-  if (name.compare(0, 11, "_statistics") == 0 ||
+  // check if the name starts with _statistics
+  if (name.compare(0, 11, StaticStrings::StatisticsCollection) == 0 ||
       name == "_routing") {
     // these system collections will always be excluded
     return true;
-  } 
-  
-  if (!includeFoxxQueues && (name == "_jobs" || name == "_queues")) {
+  }
+
+  if (!includeFoxxQueues && (name == StaticStrings::JobsCollection ||
+                             name == StaticStrings::QueuesCollection)) {
     return true;
   }
 

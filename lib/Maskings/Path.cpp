@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -66,9 +67,9 @@ ParseResult<Path> Path::parse(std::string const& def) {
                                "path '" + def + "' contains illegal UTF-8");
     } else if (ch == 46) {
       if (buffer.size() == 0) {
-        return ParseResult<Path>(ParseResult<Path>::ILLEGAL_PARAMETER,
-                                 "path '" + def +
-                                     "' contains an empty component");
+        return ParseResult<Path>(
+            ParseResult<Path>::ILLEGAL_PARAMETER,
+            "path '" + def + "' contains an empty component");
       }
 
       components.push_back(buffer);
@@ -93,9 +94,9 @@ ParseResult<Path> Path::parse(std::string const& def) {
       }
 
       if (ch != quote) {
-        return ParseResult<Path>(ParseResult<Path>::ILLEGAL_PARAMETER,
-                                 "path '" + def +
-                                     "' contains an unbalanced quote");
+        return ParseResult<Path>(
+            ParseResult<Path>::ILLEGAL_PARAMETER,
+            "path '" + def + "' contains an unbalanced quote");
       }
 
       U8_NEXT(p, off, len, ch);

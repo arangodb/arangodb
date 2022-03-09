@@ -137,7 +137,7 @@ describe('Index figures', function () {
         let indexes2 = col.getIndexes(true);
         let edgeIndex2 = indexes2[1];
         expect(edgeIndex2.type).to.be.equal('edge');
-        expect(edgeIndex2.figures.cacheSize).to.be.above(oldSize);
+        expect(edgeIndex2.figures.cacheSize).to.be.at.least(oldSize);
       });
 
     });

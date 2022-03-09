@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,6 +28,7 @@
 #include <cstdint>
 #include <memory>
 #include <set>
+#include <string_view>
 
 #include <velocypack/AttributeTranslator.h>
 #include <velocypack/Collection.h>
@@ -35,8 +36,6 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Options.h>
 #include <velocypack/Slice.h>
-#include <velocypack/StringRef.h>
-#include <velocypack/velocypack-aliases.h>
 #include <velocypack/velocypack-common.h>
 
 #include "Basics/operating-system.h"
@@ -61,27 +60,22 @@
 #include "Basics/system-compiler.h"
 #include "Logger/LogMacros.h"
 
-extern "C" {
-unsigned long long XXH64(const void* input, size_t length, unsigned long long seed);
-}
-
 using namespace arangodb;
 using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 
 namespace {
 
-static arangodb::velocypack::StringRef const idRef("id");
-static arangodb::velocypack::StringRef const cidRef("cid");
+constexpr std::string_view idRef("id");
+constexpr std::string_view cidRef("cid");
 
 static std::unique_ptr<VPackAttributeTranslator> translator;
-static std::unique_ptr<VPackCustomTypeHandler>customTypeHandler;
+static std::unique_ptr<VPackCustomTypeHandler> customTypeHandler;
 
 template<bool useUtf8, typename Comparator>
-int compareObjects(VPackSlice const& lhs, 
-                   VPackSlice const& rhs,
+int compareObjects(VPackSlice lhs, VPackSlice rhs,
                    VPackOptions const* options) {
   // compare two velocypack objects
-  std::set<arangodb::velocypack::StringRef, Comparator> keys;
+  std::set<std::string_view, Comparator> keys;
   VPackCollection::unorderedKeys(lhs, keys);
   VPackCollection::unorderedKeys(rhs, keys);
   for (auto const& key : keys) {
@@ -96,7 +90,8 @@ int compareObjects(VPackSlice const& lhs,
       rhsValue = VPackSlice::nullSlice();
     }
 
-    int result = VelocyPackHelper::compare(lhsValue, rhsValue, useUtf8, options, &lhs, &rhs);
+    int result = VelocyPackHelper::compare(lhsValue, rhsValue, useUtf8, options,
+                                           &lhs, &rhs);
 
     if (result != 0) {
       return result;
@@ -167,32 +162,36 @@ static int8_t const typeWeights[256] = {
     3 /* 0xff */,
 };
 
-} // namespace
+}  // namespace
 
 // a default custom type handler that prevents throwing exceptions when
 // custom types are encountered during Slice.toJson() and family
 struct DefaultCustomTypeHandler final : public VPackCustomTypeHandler {
-  void dump(VPackSlice const&, VPackDumper* dumper, VPackSlice const&) override {
+  void dump(VPackSlice const&, VPackDumper* dumper,
+            VPackSlice const&) override {
     LOG_TOPIC("723df", WARN, arangodb::Logger::FIXME)
         << "DefaultCustomTypeHandler called";
     dumper->appendString("hello from CustomTypeHandler");
   }
-  std::string toString(VPackSlice const&, VPackOptions const*, VPackSlice const&) override {
+  std::string toString(VPackSlice const&, VPackOptions const*,
+                       VPackSlice const&) override {
     LOG_TOPIC("a01a7", WARN, arangodb::Logger::FIXME)
         << "DefaultCustomTypeHandler called";
     return "hello from CustomTypeHandler";
   }
 };
-  
-/*static*/ arangodb::velocypack::Options VelocyPackHelper::strictRequestValidationOptions;
-/*static*/ arangodb::velocypack::Options VelocyPackHelper::looseRequestValidationOptions;
+
+/*static*/ arangodb::velocypack::Options
+    VelocyPackHelper::strictRequestValidationOptions;
+/*static*/ arangodb::velocypack::Options
+    VelocyPackHelper::looseRequestValidationOptions;
 
 /// @brief static initializer for all VPack values
 void VelocyPackHelper::initialize() {
   LOG_TOPIC("bbce8", TRACE, arangodb::Logger::FIXME) << "initializing vpack";
 
   // initialize attribute translator
-  ::translator.reset(new VPackAttributeTranslator);
+  ::translator = std::make_unique<VPackAttributeTranslator>();
 
   // these attribute names will be translated into short integer values
   ::translator->add(StaticStrings::KeyString, KeyAttribute - AttributeBase);
@@ -205,9 +204,10 @@ void VelocyPackHelper::initialize() {
 
   // set the attribute translator in the global options
   VPackOptions::Defaults.attributeTranslator = ::translator.get();
-  VPackOptions::Defaults.unsupportedTypeBehavior = VPackOptions::ConvertUnsupportedType;
+  VPackOptions::Defaults.unsupportedTypeBehavior =
+      VPackOptions::ConvertUnsupportedType;
 
-  ::customTypeHandler.reset(new DefaultCustomTypeHandler);
+  ::customTypeHandler = std::make_unique<DefaultCustomTypeHandler>();
 
   VPackOptions::Defaults.customTypeHandler = ::customTypeHandler.get();
 
@@ -217,11 +217,16 @@ void VelocyPackHelper::initialize() {
   // allow dumping of Object attributes in "arbitrary" order (i.e. non-sorted
   // order)
   VPackOptions::Defaults.dumpAttributesInIndexOrder = false;
-  
+
   // disallow tagged values and BCDs. they are not used in ArangoDB as of now
   VPackOptions::Defaults.disallowTags = true;
   VPackOptions::Defaults.disallowBCD = true;
-  
+
+  // allow at most 200 levels of nested arrays/objects
+  // must be 200 + 1 because in velocypack the threshold value is exclusive,
+  // not inclusive.
+  VPackOptions::Defaults.nestingLimit = 200 + 1;
+
   // set up options for validating incoming end-user requests
   strictRequestValidationOptions = VPackOptions::Defaults;
   strictRequestValidationOptions.checkAttributeUniqueness = true;
@@ -231,8 +236,9 @@ void VelocyPackHelper::initialize() {
   strictRequestValidationOptions.disallowCustom = true;
   strictRequestValidationOptions.disallowTags = true;
   strictRequestValidationOptions.disallowBCD = true;
-  strictRequestValidationOptions.unsupportedTypeBehavior = VPackOptions::FailOnUnsupportedType;
-  
+  strictRequestValidationOptions.unsupportedTypeBehavior =
+      VPackOptions::FailOnUnsupportedType;
+
   // set up options for validating requests, without UTF-8 validation
   looseRequestValidationOptions = VPackOptions::Defaults;
   looseRequestValidationOptions.checkAttributeUniqueness = true;
@@ -241,30 +247,35 @@ void VelocyPackHelper::initialize() {
   looseRequestValidationOptions.disallowCustom = true;
   looseRequestValidationOptions.disallowTags = true;
   looseRequestValidationOptions.disallowBCD = true;
-  looseRequestValidationOptions.unsupportedTypeBehavior = VPackOptions::FailOnUnsupportedType;
+  looseRequestValidationOptions.unsupportedTypeBehavior =
+      VPackOptions::FailOnUnsupportedType;
 
   // run quick selfs test with the attribute translator
-  TRI_ASSERT(VPackSlice(::translator->translate(StaticStrings::KeyString)).getUInt() ==
-             KeyAttribute - AttributeBase);
-  TRI_ASSERT(VPackSlice(::translator->translate(StaticStrings::RevString)).getUInt() ==
-             RevAttribute - AttributeBase);
-  TRI_ASSERT(VPackSlice(::translator->translate(StaticStrings::IdString)).getUInt() ==
-             IdAttribute - AttributeBase);
-  TRI_ASSERT(VPackSlice(::translator->translate(StaticStrings::FromString)).getUInt() ==
-             FromAttribute - AttributeBase);
-  TRI_ASSERT(VPackSlice(::translator->translate(StaticStrings::ToString)).getUInt() ==
-             ToAttribute - AttributeBase);
+  TRI_ASSERT(
+      VPackSlice(::translator->translate(StaticStrings::KeyString)).getUInt() ==
+      KeyAttribute - AttributeBase);
+  TRI_ASSERT(
+      VPackSlice(::translator->translate(StaticStrings::RevString)).getUInt() ==
+      RevAttribute - AttributeBase);
+  TRI_ASSERT(
+      VPackSlice(::translator->translate(StaticStrings::IdString)).getUInt() ==
+      IdAttribute - AttributeBase);
+  TRI_ASSERT(VPackSlice(::translator->translate(StaticStrings::FromString))
+                 .getUInt() == FromAttribute - AttributeBase);
+  TRI_ASSERT(
+      VPackSlice(::translator->translate(StaticStrings::ToString)).getUInt() ==
+      ToAttribute - AttributeBase);
 
-  TRI_ASSERT(VPackSlice(::translator->translate(KeyAttribute - AttributeBase)).copyString() ==
-             StaticStrings::KeyString);
-  TRI_ASSERT(VPackSlice(::translator->translate(RevAttribute - AttributeBase)).copyString() ==
-             StaticStrings::RevString);
-  TRI_ASSERT(VPackSlice(::translator->translate(IdAttribute - AttributeBase)).copyString() ==
-             StaticStrings::IdString);
-  TRI_ASSERT(VPackSlice(::translator->translate(FromAttribute - AttributeBase)).copyString() ==
-             StaticStrings::FromString);
-  TRI_ASSERT(VPackSlice(::translator->translate(ToAttribute - AttributeBase)).copyString() ==
-             StaticStrings::ToString);
+  TRI_ASSERT(VPackSlice(::translator->translate(KeyAttribute - AttributeBase))
+                 .copyString() == StaticStrings::KeyString);
+  TRI_ASSERT(VPackSlice(::translator->translate(RevAttribute - AttributeBase))
+                 .copyString() == StaticStrings::RevString);
+  TRI_ASSERT(VPackSlice(::translator->translate(IdAttribute - AttributeBase))
+                 .copyString() == StaticStrings::IdString);
+  TRI_ASSERT(VPackSlice(::translator->translate(FromAttribute - AttributeBase))
+                 .copyString() == StaticStrings::FromString);
+  TRI_ASSERT(VPackSlice(::translator->translate(ToAttribute - AttributeBase))
+                 .copyString() == StaticStrings::ToString);
 }
 
 /// @brief turn off assembler optimizations in vpack
@@ -277,20 +288,14 @@ arangodb::velocypack::AttributeTranslator* VelocyPackHelper::getTranslator() {
   return ::translator.get();
 }
 
-bool VelocyPackHelper::AttributeSorterUTF8::operator()(std::string const& l,
-                                                       std::string const& r) const {
+bool VelocyPackHelper::AttributeSorterUTF8StringView::operator()(
+    std::string_view l, std::string_view r) const {
   // use UTF-8-based comparison of attribute names
   return TRI_compare_utf8(l.data(), l.size(), r.data(), r.size()) < 0;
 }
 
-bool VelocyPackHelper::AttributeSorterUTF8StringRef::operator()(VPackStringRef const& l,
-                                                                VPackStringRef const& r) const {
-  // use UTF-8-based comparison of attribute names
-  return TRI_compare_utf8(l.data(), l.size(), r.data(), r.size()) < 0;
-}
-
-bool VelocyPackHelper::AttributeSorterBinary::operator()(std::string const& l,
-                                                         std::string const& r) const noexcept {
+bool VelocyPackHelper::AttributeSorterBinaryStringView::operator()(
+    std::string_view l, std::string_view r) const noexcept {
   // use binary comparison of attribute names
   size_t cmpLength = (std::min)(l.size(), r.size());
   int res = memcmp(l.data(), r.data(), cmpLength);
@@ -302,27 +307,13 @@ bool VelocyPackHelper::AttributeSorterBinary::operator()(std::string const& l,
   }
   return false;
 }
-
-bool VelocyPackHelper::AttributeSorterBinaryStringRef::operator()(VPackStringRef const& l,
-                                                                  VPackStringRef const& r) const noexcept {
-  // use binary comparison of attribute names
-  size_t cmpLength = (std::min)(l.size(), r.size());
-  int res = memcmp(l.data(), r.data(), cmpLength);
-  if (res < 0) {
-    return true;
-  }
-  if (res == 0) {
-    return l.size() < r.size();
-  }
-  return false;
-}
-
 
 size_t VelocyPackHelper::VPackHash::operator()(VPackSlice const& slice) const {
   return static_cast<size_t>(slice.normalizedHash());
 }
 
-size_t VelocyPackHelper::VPackStringHash::operator()(VPackSlice const& slice) const noexcept {
+size_t VelocyPackHelper::VPackStringHash::operator()(
+    VPackSlice const& slice) const noexcept {
   return static_cast<size_t>(slice.hashString());
 }
 
@@ -341,8 +332,8 @@ again:
   return w;
 }
 
-bool VelocyPackHelper::VPackStringEqual::operator()(VPackSlice const& lhs,
-                                                    VPackSlice const& rhs) const noexcept {
+bool VelocyPackHelper::VPackStringEqual::operator()(
+    VPackSlice const& lhs, VPackSlice const& rhs) const noexcept {
   auto const lh = lhs.head();
   auto const rh = rhs.head();
 
@@ -356,14 +347,17 @@ bool VelocyPackHelper::VPackStringEqual::operator()(VPackSlice const& lhs,
     size = static_cast<VPackValueLength>(
         velocypack::readIntegerFixed<VPackValueLength, 8>(lhs.begin() + 1));
     if (size != static_cast<VPackValueLength>(
-                    velocypack::readIntegerFixed<VPackValueLength, 8>(rhs.begin() + 1))) {
+                    velocypack::readIntegerFixed<VPackValueLength, 8>(
+                        rhs.begin() + 1))) {
       return false;
     }
-    return (memcmp(lhs.start() + 1 + 8, rhs.start() + 1 + 8, static_cast<size_t>(size)) == 0);
+    return (memcmp(lhs.start() + 1 + 8, rhs.start() + 1 + 8,
+                   static_cast<size_t>(size)) == 0);
   }
 
   size = static_cast<VPackValueLength>(lh - 0x40);
-  return (memcmp(lhs.start() + 1, rhs.start() + 1, static_cast<size_t>(size)) == 0);
+  return (memcmp(lhs.start() + 1, rhs.start() + 1, static_cast<size_t>(size)) ==
+          0);
 }
 
 int VelocyPackHelper::compareNumberValues(VPackValueType lhsType,
@@ -406,7 +400,8 @@ int VelocyPackHelper::compareStringValues(char const* left, VPackValueLength nl,
                                           VPackValueLength nr, bool useUTF8) {
   int res;
   if (useUTF8) {
-    res = TRI_compare_utf8(left, static_cast<size_t>(nl), right, static_cast<size_t>(nr));
+    res = TRI_compare_utf8(left, static_cast<size_t>(nl), right,
+                           static_cast<size_t>(nr));
   } else {
     size_t len = static_cast<size_t>(nl < nr ? nl : nr);
     res = memcmp(left, right, len);
@@ -430,7 +425,8 @@ std::string VelocyPackHelper::checkAndGetStringValue(VPackSlice const& slice,
                                                      char const* name) {
   TRI_ASSERT(slice.isObject());
   if (!slice.hasKey(name)) {
-    std::string msg = "The attribute '" + std::string(name) + "' was not found.";
+    std::string msg =
+        "The attribute '" + std::string(name) + "' was not found.";
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, msg);
   }
   VPackSlice const sub = slice.get(name);
@@ -459,7 +455,8 @@ std::string VelocyPackHelper::checkAndGetStringValue(VPackSlice const& slice,
   return sub.copyString();
 }
 
-void VelocyPackHelper::ensureStringValue(VPackSlice const& slice, std::string const& name) {
+void VelocyPackHelper::ensureStringValue(VPackSlice const& slice,
+                                         std::string const& name) {
   TRI_ASSERT(slice.isObject());
   if (!slice.hasKey(name)) {
     std::string msg = "The attribute '" + name + "' was not found.";
@@ -498,7 +495,7 @@ VPackBuilder VelocyPackHelper::velocyPackFromFile(std::string const& path) {
   size_t length;
   char* content = TRI_SlurpFile(path.c_str(), &length);
   if (content != nullptr) {
-    auto guard = scopeGuard([&content]() { TRI_Free(content); });
+    auto guard = scopeGuard([&content]() noexcept { TRI_Free(content); });
     // The Parser might throw;
     VPackBuilder builder;
     VPackParser parser(builder);
@@ -508,14 +505,15 @@ VPackBuilder VelocyPackHelper::velocyPackFromFile(std::string const& path) {
   THROW_ARANGO_EXCEPTION(TRI_errno());
 }
 
-static bool PrintVelocyPack(int fd, VPackSlice const& slice, bool appendNewline) {
+static bool PrintVelocyPack(int fd, VPackSlice const& slice,
+                            bool appendNewline) {
   if (slice.isNone()) {
-    // sanity check
     return false;
   }
 
   arangodb::basics::StringBuffer buffer(false);
-  arangodb::basics::VPackStringBufferAdapter bufferAdapter(buffer.stringBuffer());
+  arangodb::basics::VPackStringBufferAdapter bufferAdapter(
+      buffer.stringBuffer());
   try {
     VPackDumper dumper(&bufferAdapter);
     dumper.dump(slice);
@@ -562,7 +560,8 @@ bool VelocyPackHelper::velocyPackToFile(std::string const& filename,
     TRI_UnlinkFile(tmp.c_str());
   }
 
-  int fd = TRI_CREATE(tmp.c_str(), O_CREAT | O_TRUNC | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
+  int fd = TRI_CREATE(tmp.c_str(),
+                      O_CREAT | O_TRUNC | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
                       S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
 
   if (fd < 0) {
@@ -582,7 +581,8 @@ bool VelocyPackHelper::velocyPackToFile(std::string const& filename,
   }
 
   if (syncFile) {
-    LOG_TOPIC("0acab", TRACE, arangodb::Logger::FIXME) << "syncing tmp file '" << tmp << "'";
+    LOG_TOPIC("0acab", TRACE, arangodb::Logger::FIXME)
+        << "syncing tmp file '" << tmp << "'";
 
     if (!TRI_fsync(fd)) {
       TRI_CLOSE(fd);
@@ -594,9 +594,7 @@ bool VelocyPackHelper::velocyPackToFile(std::string const& filename,
     }
   }
 
-  int res = TRI_CLOSE(fd);
-
-  if (res < 0) {
+  if (int res = TRI_CLOSE(fd); res < 0) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
     LOG_TOPIC("3f835", WARN, arangodb::Logger::FIXME)
         << "cannot close saved file '" << tmp << "': " << TRI_LAST_ERROR_STR;
@@ -604,9 +602,8 @@ bool VelocyPackHelper::velocyPackToFile(std::string const& filename,
     return false;
   }
 
-  res = TRI_RenameFile(tmp.c_str(), filename.c_str());
-
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (auto res = TRI_RenameFile(tmp.c_str(), filename.c_str());
+      res != TRI_ERROR_NO_ERROR) {
     TRI_set_errno(res);
     LOG_TOPIC("7f5c9", WARN, arangodb::Logger::FIXME)
         << "cannot rename saved file '" << tmp << "' to '" << filename
@@ -624,18 +621,21 @@ bool VelocyPackHelper::velocyPackToFile(std::string const& filename,
     if (fd < 0) {
       TRI_set_errno(TRI_ERROR_SYS_ERROR);
       LOG_TOPIC("fd84e", WARN, arangodb::Logger::FIXME)
-          << "cannot sync directory '" << filename << "': " << TRI_LAST_ERROR_STR;
+          << "cannot sync directory '" << filename
+          << "': " << TRI_LAST_ERROR_STR;
     } else {
       if (fsync(fd) < 0) {
         TRI_set_errno(TRI_ERROR_SYS_ERROR);
         LOG_TOPIC("6b8f6", WARN, arangodb::Logger::FIXME)
-            << "cannot sync directory '" << filename << "': " << TRI_LAST_ERROR_STR;
+            << "cannot sync directory '" << filename
+            << "': " << TRI_LAST_ERROR_STR;
       }
-      res = TRI_CLOSE(fd);
+      int res = TRI_CLOSE(fd);
       if (res < 0) {
         TRI_set_errno(TRI_ERROR_SYS_ERROR);
         LOG_TOPIC("7ceee", WARN, arangodb::Logger::FIXME)
-            << "cannot close directory '" << filename << "': " << TRI_LAST_ERROR_STR;
+            << "cannot close directory '" << filename
+            << "': " << TRI_LAST_ERROR_STR;
       }
     }
   }
@@ -645,7 +645,8 @@ bool VelocyPackHelper::velocyPackToFile(std::string const& filename,
 }
 
 int VelocyPackHelper::compare(VPackSlice lhs, VPackSlice rhs, bool useUTF8,
-                              VPackOptions const* options, VPackSlice const* lhsBase,
+                              VPackOptions const* options,
+                              VPackSlice const* lhsBase,
                               VPackSlice const* rhsBase) {
   {
     // will resolve externals and modify both lhs & rhs...
@@ -707,11 +708,13 @@ int VelocyPackHelper::compare(VPackSlice lhs, VPackSlice rhs, bool useUTF8,
       std::string rhsString;
 
       if (lhs.isCustom()) {
-        if (lhsBase == nullptr || options == nullptr || options->customTypeHandler == nullptr) {
+        if (lhsBase == nullptr || options == nullptr ||
+            options->customTypeHandler == nullptr) {
           THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                          "Could not extract custom attribute.");
         }
-        lhsString = options->customTypeHandler->toString(lhs, options, *lhsBase);
+        lhsString =
+            options->customTypeHandler->toString(lhs, options, *lhsBase);
         left = lhsString.data();
         nl = lhsString.size();
       } else {
@@ -719,11 +722,13 @@ int VelocyPackHelper::compare(VPackSlice lhs, VPackSlice rhs, bool useUTF8,
       }
 
       if (rhs.isCustom()) {
-        if (rhsBase == nullptr || options == nullptr || options->customTypeHandler == nullptr) {
+        if (rhsBase == nullptr || options == nullptr ||
+            options->customTypeHandler == nullptr) {
           THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                          "Could not extract custom attribute.");
         }
-        rhsString = options->customTypeHandler->toString(rhs, options, *rhsBase);
+        rhsString =
+            options->customTypeHandler->toString(rhs, options, *rhsBase);
         right = rhsString.data();
         nr = rhsString.size();
       } else {
@@ -763,9 +768,11 @@ int VelocyPackHelper::compare(VPackSlice lhs, VPackSlice rhs, bool useUTF8,
     }
     case VPackValueType::Object: {
       if (useUTF8) {
-        return ::compareObjects<true, AttributeSorterUTF8StringRef>(lhs, rhs, options);
-      } 
-      return ::compareObjects<false, AttributeSorterBinaryStringRef>(lhs, rhs, options);
+        return ::compareObjects<true, AttributeSorterUTF8StringView>(lhs, rhs,
+                                                                     options);
+      }
+      return ::compareObjects<false, AttributeSorterBinaryStringView>(lhs, rhs,
+                                                                      options);
     }
     case VPackValueType::Illegal:
     case VPackValueType::MinKey:
@@ -781,91 +788,8 @@ int VelocyPackHelper::compare(VPackSlice lhs, VPackSlice rhs, bool useUTF8,
   }
 }
 
-VPackBuilder VelocyPackHelper::merge(VPackSlice const& lhs, VPackSlice const& rhs,
-                                     bool nullMeansRemove, bool mergeObjects) {
-  return VPackCollection::merge(lhs, rhs, mergeObjects, nullMeansRemove);
-}
-
-double VelocyPackHelper::toDouble(VPackSlice const& slice, bool& failed) {
-  TRI_ASSERT(!slice.isNone());
-
-  failed = false;
-  switch (slice.type()) {
-    case VPackValueType::None:
-    case VPackValueType::Null:
-      return 0.0;
-    case VPackValueType::Bool:
-      return (slice.getBoolean() ? 1.0 : 0.0);
-    case VPackValueType::Double:
-    case VPackValueType::Int:
-    case VPackValueType::UInt:
-    case VPackValueType::SmallInt:
-      return slice.getNumericValue<double>();
-    case VPackValueType::String: {
-      std::string tmp(slice.copyString());
-      try {
-        // try converting string to number
-        return std::stod(tmp);
-      } catch (...) {
-        if (tmp.empty()) {
-          return 0.0;
-        }
-        // conversion failed
-      }
-      break;
-    }
-    case VPackValueType::Array: {
-      VPackValueLength const n = slice.length();
-
-      if (n == 0) {
-        return 0.0;
-      } else if (n == 1) {
-        return VelocyPackHelper::toDouble(slice.at(0).resolveExternal(), failed);
-      }
-      break;
-    }
-    case VPackValueType::External: {
-      return VelocyPackHelper::toDouble(slice.resolveExternal(), failed);
-    }
-    case VPackValueType::Illegal:
-    case VPackValueType::Object:
-    case VPackValueType::UTCDate:
-    case VPackValueType::MinKey:
-    case VPackValueType::MaxKey:
-    case VPackValueType::Binary:
-    case VPackValueType::BCD:
-    case VPackValueType::Custom:
-    case VPackValueType::Tagged:
-      break;
-  }
-
-  failed = true;
-  return 0.0;
-}
-
-// modify a VPack double value in place
-void VelocyPackHelper::patchDouble(VPackSlice slice, double value) {
-  TRI_ASSERT(slice.isDouble());
-  // get pointer to the start of the value
-  uint8_t* p = const_cast<uint8_t*>(slice.begin());
-  // skip one byte for the header and overwrite
-#ifndef TRI_UNALIGNED_ACCESS
-  // some architectures do not support unaligned writes, then copy bytewise
-  uint64_t dv;
-  memcpy(&dv, &value, sizeof(double));
-  VPackValueLength vSize = sizeof(double);
-  for (uint64_t x = dv; vSize > 0; vSize--) {
-    *(++p) = x & 0xff;
-    x >>= 8;
-  }
-#else
-  // other platforms support unaligned writes
-  // cppcheck-suppress *
-  *reinterpret_cast<double*>(p + 1) = value;
-#endif
-}
-
-bool VelocyPackHelper::hasNonClientTypes(VPackSlice input, bool checkExternals, bool checkCustom) {
+bool VelocyPackHelper::hasNonClientTypes(VPackSlice input, bool checkExternals,
+                                         bool checkCustom) {
   if (input.isExternal()) {
     return checkExternals;
   } else if (input.isCustom()) {
@@ -888,8 +812,10 @@ bool VelocyPackHelper::hasNonClientTypes(VPackSlice input, bool checkExternals, 
 
 void VelocyPackHelper::sanitizeNonClientTypes(VPackSlice input, VPackSlice base,
                                               VPackBuilder& output,
-                                              VPackOptions const* options, bool sanitizeExternals,
-                                              bool sanitizeCustom, bool allowUnindexed) {
+                                              VPackOptions const* options,
+                                              bool sanitizeExternals,
+                                              bool sanitizeCustom,
+                                              bool allowUnindexed) {
   if (sanitizeExternals && input.isExternal()) {
     // recursively resolve externals
     sanitizeNonClientTypes(input.resolveExternal(), base, output, options,
@@ -900,7 +826,8 @@ void VelocyPackHelper::sanitizeNonClientTypes(VPackSlice input, VPackSlice base,
           TRI_ERROR_INTERNAL,
           "cannot sanitize vpack without custom type handler");
     }
-    std::string custom = options->customTypeHandler->toString(input, options, base);
+    std::string custom =
+        options->customTypeHandler->toString(input, options, base);
     output.add(VPackValue(custom));
   } else if (input.isObject()) {
     output.openObject(allowUnindexed);
@@ -952,7 +879,8 @@ uint64_t VelocyPackHelper::extractIdValue(VPackSlice const& slice) {
   return 0;
 }
 
-arangodb::LoggerStream& operator<<(arangodb::LoggerStream& logger, VPackSlice const& slice) {
+arangodb::LoggerStream& operator<<(arangodb::LoggerStream& logger,
+                                   VPackSlice const& slice) {
   size_t const cutoff = 100;
   std::string sliceStr(slice.toJson());
   bool longer = sliceStr.size() > cutoff;

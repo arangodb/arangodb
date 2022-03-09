@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,7 +26,8 @@
 #include <chrono>
 #include <thread>
 
-#include <velocypack/velocypack-aliases.h>
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
@@ -40,29 +41,37 @@
 using namespace arangodb;
 using namespace arangodb::application_features;
 
-AgencyCallback::AgencyCallback(application_features::ApplicationServer& server, std::string const& key,
-                               std::function<bool(VPackSlice const&)> const& cb,
-                               bool needsValue, bool needsInitialValue)
-    : key(key),
-      _agency(server),
-      _cb(cb),
-      _needsValue(needsValue),
-      _wasSignaled(false),
-      _local(true) {
+AgencyCallback::AgencyCallback(ArangodServer& server, std::string key,
+                               CallbackType cb, bool needsValue,
+                               bool needsInitialValue)
+    : key(std::move(key)),
+      _server(server),
+      _cb(std::move(cb)),
+      _needsValue(needsValue) {
   if (_needsValue && needsInitialValue) {
     refetchAndUpdate(true, false);
   }
 }
 
+AgencyCallback::AgencyCallback(ArangodServer& server, std::string const& key,
+                               std::function<bool(VPackSlice const&)> const& cb,
+                               bool needsValue, bool needsInitialValue)
+    : AgencyCallback(
+          server, key,
+          [cb](VPackSlice slice, consensus::index_t) { return cb(slice); },
+          needsValue, needsInitialValue) {}
+
 void AgencyCallback::local(bool b) {
   _local = b;
+  if (!b) {
+    _agency = std::make_unique<AgencyComm>(_server);
+  }
 }
 
-bool AgencyCallback::local() const {
-  return _local;
-}
+bool AgencyCallback::local() const { return _local; }
 
-void AgencyCallback::refetchAndUpdate(bool needToAcquireMutex, bool forceCheck) {
+void AgencyCallback::refetchAndUpdate(bool needToAcquireMutex,
+                                      bool forceCheck) {
   if (!_needsValue) {
     // no need to pass any value to the callback
     if (needToAcquireMutex) {
@@ -78,32 +87,35 @@ void AgencyCallback::refetchAndUpdate(bool needToAcquireMutex, bool forceCheck) 
   std::shared_ptr<VPackBuilder> builder;
   consensus::index_t idx = 0;
   AgencyCommResult tmp;
-  
-  LOG_TOPIC("a6344", TRACE, Logger::CLUSTER) <<
-    "Refetching and update for " << AgencyCommHelper::path(key);
-  
+
+  LOG_TOPIC("a6344", TRACE, Logger::CLUSTER)
+      << "Refetching and update for " << AgencyCommHelper::path(key);
+
   if (_local) {
-    auto& _cache = _agency.server().getFeature<ClusterFeature>().agencyCache();
-    std::tie(builder, idx) = _cache.read(std::vector<std::string>{AgencyCommHelper::path(key)});
+    auto& _cache = _server.getFeature<ClusterFeature>().agencyCache();
+    std::tie(builder, idx) =
+        _cache.read(std::vector<std::string>{AgencyCommHelper::path(key)});
     result = builder->slice();
     if (!result.isArray()) {
-      if (!_agency.server().isStopping()) {
+      if (!_server.isStopping()) {
         // only log errors if we are not already shutting down...
         // in case of shutdown this error is somewhat expected
         LOG_TOPIC("ec320", ERR, arangodb::Logger::CLUSTER)
-          << "Callback to get agency cache was not successful: " << result.toJson();
+            << "Callback to get agency cache was not successful: "
+            << result.toJson();
       }
       return;
     }
   } else {
-    tmp = _agency.getValues(key);
+    TRI_ASSERT(_agency.get() != nullptr);
+    tmp = _agency->getValues(key);
     if (!tmp.successful()) {
-      if (!_agency.server().isStopping()) {
+      if (!_server.isStopping()) {
         // only log errors if we are not already shutting down...
         // in case of shutdown this error is somewhat expected
         LOG_TOPIC("fb402", ERR, arangodb::Logger::CLUSTER)
-          << "Callback getValues to agency was not successful: " << tmp.errorCode()
-          << " " << tmp.errorMessage();
+            << "Callback getValues to agency was not successful: "
+            << tmp.errorCode() << " " << tmp.errorMessage();
       }
       return;
     }
@@ -119,20 +131,23 @@ void AgencyCallback::refetchAndUpdate(bool needToAcquireMutex, bool forceCheck) 
 
   if (needToAcquireMutex) {
     CONDITION_LOCKER(locker, _cv);
-    checkValue(std::move(newData), forceCheck);
+    checkValue(std::move(newData), idx, forceCheck);
   } else {
-    checkValue(std::move(newData), forceCheck);
+    checkValue(std::move(newData), idx, forceCheck);
   }
 }
 
-void AgencyCallback::checkValue(std::shared_ptr<VPackBuilder> newData, bool forceCheck) {
+void AgencyCallback::checkValue(std::shared_ptr<VPackBuilder> newData,
+                                consensus::index_t raftIndex, bool forceCheck) {
   // Only called from refetchAndUpdate, we always have the mutex when
   // we get here!
-  if (!_lastData || !arangodb::basics::VelocyPackHelper::equal(_lastData->slice(), newData->slice(), false) || forceCheck) {
+  if (!_lastData || forceCheck ||
+      !arangodb::basics::VelocyPackHelper::equal(_lastData->slice(),
+                                                 newData->slice(), false)) {
     LOG_TOPIC("2bd14", DEBUG, Logger::CLUSTER)
         << "AgencyCallback: Got new value " << newData->slice().typeName()
         << " " << newData->toJson() << " forceCheck=" << forceCheck;
-    if (execute(newData)) {
+    if (execute(newData->slice(), raftIndex)) {
       _lastData = newData;
     } else {
       LOG_TOPIC("337dc", DEBUG, Logger::CLUSTER)
@@ -143,38 +158,40 @@ void AgencyCallback::checkValue(std::shared_ptr<VPackBuilder> newData, bool forc
 
 bool AgencyCallback::executeEmpty() {
   // only called from refetchAndUpdate, we always have the mutex when
-  // we get here!
-  LOG_TOPIC("96022", DEBUG, Logger::CLUSTER) << "Executing (empty)";
-  bool result = _cb(VPackSlice::noneSlice());
-  if (result) {
-    _wasSignaled = true;
-    _cv.signal();
-  }
-  return result;
+  // we get here! No value is needed, so this is just a notify.
+  // No index available in that case.
+  return execute(VPackSlice::noneSlice(), 0);
 }
 
-bool AgencyCallback::execute(std::shared_ptr<VPackBuilder> newData) {
+bool AgencyCallback::execute(velocypack::Slice newData,
+                             consensus::index_t raftIndex) {
   // only called from refetchAndUpdate, we always have the mutex when
   // we get here!
-  LOG_TOPIC("add4e", DEBUG, Logger::CLUSTER) << "Executing";
-  bool result = _cb(newData->slice());
-  if (result) {
-    _wasSignaled = true;
-    _cv.signal();
+  LOG_TOPIC("add4e", DEBUG, Logger::CLUSTER)
+      << "Executing" << (newData.isNone() ? " (empty)" : "");
+  try {
+    bool result = _cb(newData, raftIndex);
+    if (result) {
+      _wasSignaled = true;
+      _cv.signal();
+    }
+    return result;
+  } catch (std::exception const& ex) {
+    LOG_TOPIC("1de99", WARN, Logger::CLUSTER)
+        << "AgencyCallback execution failed: " << ex.what();
+    throw;
   }
-  return result;
 }
 
 bool AgencyCallback::executeByCallbackOrTimeout(double maxTimeout) {
   // One needs to acquire the mutex of the condition variable
   // before entering this function!
-  if (!_agency.server().isStopping()) {
+  if (!_server.isStopping()) {
     if (_wasSignaled) {
       // ok, we have been signaled already, so there is no need to wait at all
       // directly refetch the values
       _wasSignaled = false;
-      LOG_TOPIC("67690", DEBUG, Logger::CLUSTER)
-          << "We were signaled already";
+      LOG_TOPIC("67690", DEBUG, Logger::CLUSTER) << "We were signaled already";
       return false;
     }
 

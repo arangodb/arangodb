@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_CLUSTER_REST_COLLECTION_HANDLER_H
-#define ARANGOD_CLUSTER_CLUSTER_REST_COLLECTION_HANDLER_H 1
+#pragma once
 
 #include "RestHandler/RestCollectionHandler.h"
 
@@ -29,14 +29,13 @@ namespace arangodb {
 
 class ClusterRestCollectionHandler : public arangodb::RestCollectionHandler {
  public:
-  ClusterRestCollectionHandler(application_features::ApplicationServer&,
-                               GeneralRequest*, GeneralResponse*);
+  ClusterRestCollectionHandler(ArangodServer&, GeneralRequest*,
+                               GeneralResponse*);
 
  protected:
-  Result handleExtraCommandPut(std::shared_ptr<LogicalCollection> coll, std::string const& command,
+  Result handleExtraCommandPut(std::shared_ptr<LogicalCollection> coll,
+                               std::string const& command,
                                velocypack::Builder& builder) override final;
 };
 
 }  // namespace arangodb
-
-#endif

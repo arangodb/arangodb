@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,15 +21,14 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_ITERATOR_H
-#define ARANGODB_PREGEL_ITERATOR_H 1
+#pragma once
 
 #include "Pregel/TypedBuffer.h"
 
 namespace arangodb {
 namespace pregel {
 
-template <typename M>
+template<typename M>
 class MessageIterator {
   M const* _data;
   const size_t _size;
@@ -41,9 +41,9 @@ class MessageIterator {
   typedef const MessageIterator<M> const_iterator;
 
   explicit MessageIterator(M const* data)
-    : _data(data), _size(data ? 1 : 0), _current(0) {}
+      : _data(data), _size(data ? 1 : 0), _current(0) {}
   explicit MessageIterator(M const* data, size_t s)
-    : _data(data), _size(s), _current(0) {}
+      : _data(data), _size(s), _current(0) {}
 
   iterator begin() { return MessageIterator(_data, _size); }
   const_iterator begin() const { return MessageIterator(_data, _size); }
@@ -82,7 +82,7 @@ class MessageIterator {
   size_t size() const { return _size; }
 };
 
-template <typename T>
+template<typename T>
 class RangeIterator {
  private:
   std::vector<std::unique_ptr<TypedBuffer<T>>>& _buffers;
@@ -96,30 +96,29 @@ class RangeIterator {
   typedef const RangeIterator<T> const_iterator;
 
   RangeIterator(std::vector<std::unique_ptr<TypedBuffer<T>>>& bufs,
-                size_t beginBuffer, T* beginPtr,
-                size_t size)
-    : _buffers(bufs),
-      _beginBuffer(beginBuffer),
-      _beginPtr(beginPtr),
-      _currentBufferEnd(bufs.empty() ? beginPtr : bufs[_beginBuffer]->end()),
-      _size(size) {}
+                size_t beginBuffer, T* beginPtr, size_t size) noexcept
+      : _buffers(bufs),
+        _beginBuffer(beginBuffer),
+        _beginPtr(beginPtr),
+        _currentBufferEnd(bufs.empty() ? beginPtr : bufs[_beginBuffer]->end()),
+        _size(size) {}
 
   RangeIterator(RangeIterator const&) = delete;
   RangeIterator& operator=(RangeIterator const&) = delete;
 
-  RangeIterator(RangeIterator&& other)
-  : _buffers(other._buffers),
-  _beginBuffer(other._beginBuffer),
-  _beginPtr(other._beginPtr),
-  _currentBufferEnd(other._currentBufferEnd),
-  _size(other._size) {
+  RangeIterator(RangeIterator&& other) noexcept
+      : _buffers(other._buffers),
+        _beginBuffer(other._beginBuffer),
+        _beginPtr(other._beginPtr),
+        _currentBufferEnd(other._currentBufferEnd),
+        _size(other._size) {
     other._beginBuffer = 0;
     other._beginPtr = nullptr;
     other._currentBufferEnd = nullptr;
     other._size = 0;
   }
 
-  RangeIterator& operator=(RangeIterator&& other) {
+  RangeIterator& operator=(RangeIterator&& other) noexcept {
     TRI_ASSERT(&this->_buffers == &other._buffers);
     this->_beginBuffer = other._beginBuffer;
     this->_beginPtr = other._beginPtr;
@@ -132,14 +131,12 @@ class RangeIterator {
     return *this;
   }
 
-//  iterator begin() { return RangeIterator(_buffers.begin(), _begin, _end); }
-//  const_iterator begin() const { return RangeIterator(_buffers.begin(), _begin, _end); }
-  bool hasMore() const {
-    return _size > 0;
-  }
+  size_t size() const noexcept { return _size; }
+
+  bool hasMore() const noexcept { return _size > 0; }
 
   // prefix ++
-  RangeIterator& operator++() {
+  RangeIterator& operator++() noexcept {
     TRI_ASSERT(_beginPtr != _currentBufferEnd);
     TRI_ASSERT(_size > 0);
     ++_beginPtr;
@@ -161,4 +158,3 @@ class RangeIterator {
 };
 }  // namespace pregel
 }  // namespace arangodb
-#endif

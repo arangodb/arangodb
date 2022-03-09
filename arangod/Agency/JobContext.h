@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,14 +21,12 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CONSENSUS_JOB_CONTEXT_H
-#define ARANGOD_CONSENSUS_JOB_CONTEXT_H 1
+#pragma once
 
 #include "Job.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <string>
 
@@ -38,7 +36,8 @@ namespace consensus {
 class JobContext {
  public:
   /// @brief Contextualize arbitrary Job
-  JobContext(JOB_STATUS status, std::string id, Node const& snapshot, AgentInterface* agent);
+  JobContext(JOB_STATUS status, std::string id, Node const& snapshot,
+             AgentInterface* agent);
 
   /// @brief Create job
   void create(std::shared_ptr<VPackBuilder> b = nullptr);
@@ -59,5 +58,3 @@ class JobContext {
 
 }  // namespace consensus
 }  // namespace arangodb
-
-#endif

@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,6 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <Basics/ErrorCode.h>
 #include <string>
 
 struct TRI_vocbase_t;
@@ -45,16 +47,21 @@ namespace aql {
 void AssertQueryResultToSlice(arangodb::aql::QueryResult const& result,
                               arangodb::velocypack::Slice expected);
 
-/// @brief Tests if executing the given query on the given database results in the given expected value
+/// @brief Tests if executing the given query on the given database results in
+/// the given expected value
 ///        Expected is required to be an Array (maybe empty). As AQL can only
 ///        return a cursor, that is transformed into an Array.
 ///        Ordering matters. Also asserts that query was successful.
-void AssertQueryHasResult(TRI_vocbase_t& database, std::string const& queryString,
+void AssertQueryHasResult(TRI_vocbase_t& database,
+                          std::string const& queryString,
                           arangodb::velocypack::Slice expected);
 
-/// @brief Tests if executing the given query on the given database results in the given error
-///        Requires the query to error. Testing of no-error (TRI_ERROR_NO_ERROR) is not possible.
-void AssertQueryFailsWith(TRI_vocbase_t& database, std::string const& query, int errorNumber);
+/// @brief Tests if executing the given query on the given database results in
+/// the given error
+///        Requires the query to error. Testing of no-error (TRI_ERROR_NO_ERROR)
+///        is not possible.
+void AssertQueryFailsWith(TRI_vocbase_t& database, std::string const& query,
+                          ErrorCode errorNumber);
 
 }  // namespace aql
 }  // namespace tests

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2016-2020 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -39,55 +39,32 @@ namespace arangodb { namespace fuerte { inline namespace v1 { namespace vst {
 // Connection object that handles sending and receiving of
 //  Velocystream Messages.
 template <SocketType ST>
-class VstConnection final : public fuerte::GeneralConnection<ST> {
- public:
+struct VstConnection final
+    : public fuerte::MultiConnection<ST, vst::RequestItem> {
   explicit VstConnection(EventLoopService& loop,
                          detail::ConnectionConfiguration const&);
 
   ~VstConnection();
 
- public:
-  // this function prepares the request for sending
-  // by creating a RequestItem and setting:
-  //  - a messageid
-  //  - the buffer to be send
-  // this item is then moved to the request queue
-  // and a write action is triggerd when there is
-  // no other write in progress
-  void sendRequest(std::unique_ptr<Request>, RequestCallback) override;
-
-  // Return the number of unfinished requests.
-  std::size_t requestsLeft() const override;
-
  protected:
-  void finishConnect() override;
+  virtual void finishConnect() override;
 
-  /// The following is called when the connection is permanently failed. It is
-  /// used to shut down any activity in a way that avoids sleeping barbers
-  void terminateActivity() override;
-
-  // Thread-Safe: activate the writer loop (if off and items are queud)
-  void startWriting() override;
+  ///  Call on IO-Thread: writes out one queued request
+  virtual void doWrite() override { asyncWriteNextRequest(); }
 
   // called by the async_read handler (called from IO thread)
-  void asyncReadCallback(asio_ns::error_code const&) override;
+  virtual void asyncReadCallback(asio_ns::error_code const&) override;
 
-  /// abort ongoing / unfinished requests
-  void abortOngoingRequests(const fuerte::Error) override;
-
-  /// abort all requests lingering in the queue
-  void drainQueue(const fuerte::Error) override;
+  /// abort ongoing / unfinished requests expiring before given timpoint
+  virtual void abortRequests(
+      fuerte::Error, std::chrono::steady_clock::time_point now) override;
 
  private:
   ///  Call on IO-Thread: writes out one queued request
   void asyncWriteNextRequest();
 
   // called by the async_write handler (called from IO thread)
-  void asyncWriteCallback(asio_ns::error_code const& ec,
-                          std::shared_ptr<RequestItem>, size_t nwrite);
-
-  // Thread-Safe: activate the read loop (if needed)
-  void startReading();
+  void asyncWriteCallback(asio_ns::error_code const& ec);
 
   // Send out the authentication message on this connection
   void sendAuthenticationRequest();
@@ -98,24 +75,8 @@ class VstConnection final : public fuerte::GeneralConnection<ST> {
   std::unique_ptr<Response> createResponse(
       RequestItem& item, std::unique_ptr<velocypack::Buffer<uint8_t>>&);
 
-  // adjust the timeouts (only call from IO-Thread)
-  void setTimeout();
-
  private:
-  /// elements to send out
-  boost::lockfree::queue<vst::RequestItem*, boost::lockfree::capacity<64>>
-      _writeQueue;
-
-  /// stores in-flight messages
-  std::map<MessageID, std::shared_ptr<vst::RequestItem>> _messages;
-  std::atomic<uint32_t> _numMessages;
-
   const VSTVersion _vstVersion;
-
-  /// highest two bits mean read or write loops are active
-  /// low 30 bit contain number of queued request items
-  std::atomic<bool> _reading;
-  std::atomic<bool> _writing;
 };
 
 }}}}  // namespace arangodb::fuerte::v1::vst

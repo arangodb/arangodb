@@ -24,13 +24,11 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-
 // contains common code for aql-profiler* tests
-const profHelper = require("@arangodb/aql-profiler-test-helper");
+const profHelper = require("@arangodb/testutils/aql-profiler-test-helper");
 
 const _ = require('lodash');
 const {db, aql} = require('@arangodb');
-const console = require('console');
 const { getResponsibleServers } = global.ArangoClusterInfo;
 const internal = require('internal');
 const jsunity = require('jsunity');
@@ -55,13 +53,13 @@ function ahuacatlProfilerTestSuite () {
     EnumerateListNode, EnumerateViewNode, FilterNode, GatherNode, IndexNode,
     InsertNode, LimitNode, NoResultsNode, RemoteNode, RemoveNode, ReplaceNode,
     ReturnNode, ScatterNode, ShortestPathNode, SingletonNode, SortNode,
-    SubqueryNode, TraversalNode, UpdateNode, UpsertNode } = profHelper;
+    TraversalNode, UpdateNode, UpsertNode } = profHelper;
 
   const { CalculationBlock, CountCollectBlock, DistinctCollectBlock,
     EnumerateCollectionBlock, EnumerateListBlock, FilterBlock,
     HashedCollectBlock, IndexBlock, LimitBlock, NoResultsBlock, RemoteBlock,
     ReturnBlock, ShortestPathBlock, SingletonBlock, SortBlock,
-    SortedCollectBlock, SortingGatherBlock, SubqueryBlock, TraversalBlock,
+    SortedCollectBlock, SortingGatherBlock, TraversalBlock,
     UnsortingGatherBlock, RemoveBlock, InsertBlock, UpdateBlock, ReplaceBlock,
     UpsertBlock, ScatterBlock, DistributeBlock, IResearchViewUnorderedBlock,
     IResearchViewBlock, IResearchViewOrderedBlock } = profHelper;
@@ -197,13 +195,13 @@ function ahuacatlProfilerTestSuite () {
       const coordinatorBatches = (rowsPerShard) => addIntervals(fuzzyDBServerBatches(rowsPerShard), localCalls(rowsPerShard));
 
       const genNodeList = (rowsPerShard, rowsPerServer) => [
-        { type : SingletonBlock, calls : numberOfShards, items : numberOfShards },
-        { type : EnumerateCollectionBlock, calls : groupedBatches(rowsPerShard), items : totalItems(rowsPerShard) },
+        { type : SingletonBlock, calls : numberOfShards, items : numberOfShards, filtered: 0 },
+        { type : EnumerateCollectionBlock, calls : groupedBatches(rowsPerShard), items : totalItems(rowsPerShard), filtered: 0 },
         // Twice the number due to WAITING, fuzzy, because the Gather does not know
-        { type : RemoteBlock, calls : fuzzyDBServerBatches(rowsPerServer).map(i => i * 2), items : totalItems(rowsPerShard) },
+        { type : RemoteBlock, calls : fuzzyDBServerBatches(rowsPerServer).map(i => i * 2), items : totalItems(rowsPerShard), filtered: 0 },
         // We get dbServerBatches(rowsPerShard) times WAITING, plus the non-waiting getSome calls.
-        { type : UnsortingGatherBlock, calls : coordinatorBatches(rowsPerServer), items : totalItems(rowsPerShard) },
-        { type : ReturnBlock, calls : coordinatorBatches(rowsPerServer), items : totalItems(rowsPerShard) }
+        { type : UnsortingGatherBlock, calls : coordinatorBatches(rowsPerServer), items : totalItems(rowsPerShard), filtered: 0 },
+        { type : ReturnBlock, calls : coordinatorBatches(rowsPerServer), items : totalItems(rowsPerShard), filtered: 0 }
       ];
       const options = {optimizer: { rules: ["-parallelize-gather"] } };
       profHelper.runClusterChecks({col, exampleDocumentsByShard, query, genNodeList, options});

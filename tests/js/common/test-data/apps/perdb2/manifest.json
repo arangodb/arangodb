@@ -1,0 +1,7 @@
+{
+  "name": "perdb",
+  "version": "0.0.1",
+  "author": "arangodb",
+  "description": "simple test case for checking multiple databases",
+  "main": "index.js"
+}

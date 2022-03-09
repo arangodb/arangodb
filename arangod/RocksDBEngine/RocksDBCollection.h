@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,24 +21,26 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_ENGINE_ROCKSDB_COLLECTION_H
-#define ARANGOD_ROCKSDB_ENGINE_ROCKSDB_COLLECTION_H 1
+#pragma once
 
+#include "Statistics/ServerStatistics.h"
 #include "RocksDBEngine/RocksDBMetaCollection.h"
 #include "VocBase/Identifiers/IndexId.h"
 
 namespace rocksdb {
 class PinnableSlice;
 class Transaction;
-}
+}  // namespace rocksdb
 
 namespace arangodb {
 namespace cache {
 class Cache;
 }
+
 class LogicalCollection;
 class ManagedDocumentResult;
 class RocksDBPrimaryIndex;
+class RocksDBSavePoint;
 class RocksDBVPackIndex;
 class LocalDocumentId;
 
@@ -55,7 +57,8 @@ class RocksDBCollection final : public RocksDBMetaCollection {
 
   ~RocksDBCollection();
 
-  arangodb::Result updateProperties(VPackSlice const& slice, bool doSync) override;
+  arangodb::Result updateProperties(VPackSlice const& slice,
+                                    bool doSync) override;
 
   virtual PhysicalCollection* clone(LogicalCollection& logical) const override;
 
@@ -63,13 +66,11 @@ class RocksDBCollection final : public RocksDBMetaCollection {
   void getPropertiesVPack(velocypack::Builder&) const override;
 
   /// @brief closes an open collection
-  int close() override;
-  void load() override;
-  void unload() override;
+  ErrorCode close() override;
 
   /// return bounds for all documents
   RocksDBKeyBounds bounds() const override;
-  
+
   ////////////////////////////////////
   // -- SECTION Indexes --
   ///////////////////////////////////
@@ -81,71 +82,86 @@ class RocksDBCollection final : public RocksDBMetaCollection {
 
   /// @brief Drop an index with the given iid.
   bool dropIndex(IndexId iid) override;
-  std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx) const override;
-  std::unique_ptr<IndexIterator> getAnyIterator(transaction::Methods* trx) const override;
+  std::unique_ptr<IndexIterator> getAllIterator(
+      transaction::Methods* trx, ReadOwnWrites readOwnWrites) const override;
+  std::unique_ptr<IndexIterator> getAnyIterator(
+      transaction::Methods* trx) const override;
 
-  std::unique_ptr<ReplicationIterator> getReplicationIterator(ReplicationIterator::Ordering,
-                                                              uint64_t batchId) override;
-  std::unique_ptr<ReplicationIterator> getReplicationIterator(ReplicationIterator::Ordering,
-                                                              transaction::Methods&) override;
+  std::unique_ptr<ReplicationIterator> getReplicationIterator(
+      ReplicationIterator::Ordering, uint64_t batchId) override;
+  std::unique_ptr<ReplicationIterator> getReplicationIterator(
+      ReplicationIterator::Ordering, transaction::Methods&) override;
 
   ////////////////////////////////////
   // -- SECTION DML Operations --
   ///////////////////////////////////
 
-  Result truncate(transaction::Methods& trx, OperationOptions& options) override;
+  Result truncate(transaction::Methods& trx,
+                  OperationOptions& options) override;
 
-  /// @brief returns the LocalDocumentId and the revision id for the document with the 
-  /// specified key.
-  Result lookupKey(transaction::Methods* trx, velocypack::StringRef key,
-                   std::pair<LocalDocumentId, TRI_voc_rid_t>& result) const override;
+  /// @brief returns the LocalDocumentId and the revision id for the document
+  /// with the specified key.
+  Result lookupKey(transaction::Methods* trx, std::string_view key,
+                   std::pair<LocalDocumentId, RevisionId>& result,
+                   ReadOwnWrites readOwnWrites) const override;
 
   bool lookupRevision(transaction::Methods* trx, velocypack::Slice const& key,
-                      TRI_voc_rid_t& revisionId) const;
+                      RevisionId& revisionId, ReadOwnWrites) const;
 
-  Result read(transaction::Methods*, arangodb::velocypack::StringRef const& key,
-              ManagedDocumentResult& result) override;
-
-  bool readDocument(transaction::Methods* trx, LocalDocumentId const& token,
-                    ManagedDocumentResult& result) const override;
+  Result read(transaction::Methods*, std::string_view key,
+              IndexIterator::DocumentCallback const& cb,
+              ReadOwnWrites readOwnWrites) const override;
 
   /// @brief lookup with callback, not thread-safe on same transaction::Context
-  bool readDocumentWithCallback(transaction::Methods* trx, LocalDocumentId const& token,
-                                IndexIterator::DocumentCallback const& cb) const override;
+  Result read(transaction::Methods* trx, LocalDocumentId const& token,
+              IndexIterator::DocumentCallback const& cb,
+              ReadOwnWrites readOwnWrites) const override;
 
-  Result insert(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice newSlice,
-                arangodb::ManagedDocumentResult& resultMdr, OperationOptions& options) override;
+  bool readDocument(transaction::Methods* trx, LocalDocumentId const& token,
+                    ManagedDocumentResult& result,
+                    ReadOwnWrites readOwnWrites) const override;
 
-  Result update(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice newSlice,
+  Result insert(arangodb::transaction::Methods* trx,
+                arangodb::velocypack::Slice newSlice,
+                arangodb::ManagedDocumentResult& resultMdr,
+                OperationOptions& options) override;
+
+  Result update(arangodb::transaction::Methods* trx,
+                arangodb::velocypack::Slice newSlice,
                 ManagedDocumentResult& resultMdr, OperationOptions& options,
                 ManagedDocumentResult& previousMdr) override;
 
-  Result replace(transaction::Methods* trx, arangodb::velocypack::Slice newSlice,
+  Result replace(transaction::Methods* trx,
+                 arangodb::velocypack::Slice newSlice,
                  ManagedDocumentResult& resultMdr, OperationOptions& options,
                  ManagedDocumentResult& previousMdr) override;
 
   Result remove(transaction::Methods& trx, velocypack::Slice slice,
-                ManagedDocumentResult& previous, OperationOptions& options) override;
+                ManagedDocumentResult& previous,
+                OperationOptions& options) override;
 
   Result remove(transaction::Methods& trx, LocalDocumentId documentId,
-                ManagedDocumentResult& previous, OperationOptions& options) override;
+                ManagedDocumentResult& previous,
+                OperationOptions& options) override;
 
   inline bool cacheEnabled() const { return _cacheEnabled; }
 
-  void adjustNumberDocuments(transaction::Methods&, int64_t) override;
-
-  Result upgrade() override;
-  bool didPartialUpgrade() override;
-  Result cleanupAfterUpgrade() override;
-
- protected:
-  Result remove(transaction::Methods& trx, LocalDocumentId documentId,
-                LocalDocumentId expectedId, ManagedDocumentResult& previous,
-                OperationOptions& options);
+  bool hasDocuments() override;
 
  private:
+  [[nodiscard]] Result remove(transaction::Methods& trx,
+                              LocalDocumentId documentId,
+                              RevisionId expectedRev,
+                              ManagedDocumentResult& previous,
+                              OperationOptions& options);
+
+  [[nodiscard]] Result performUpdateOrReplace(
+      transaction::Methods* trx, velocypack::Slice newSlice,
+      ManagedDocumentResult& resultMdr, OperationOptions& options,
+      ManagedDocumentResult& previousMdr, bool isUpdate);
+
   /// @brief return engine-specific figures
-  void figuresSpecific(velocypack::Builder&) override;
+  void figuresSpecific(bool details, velocypack::Builder&) override;
 
   // @brief return the primary index
   // WARNING: Make sure that this instance
@@ -157,20 +173,27 @@ class RocksDBCollection final : public RocksDBMetaCollection {
   }
 
   arangodb::Result insertDocument(arangodb::transaction::Methods* trx,
+                                  RocksDBSavePoint& savepoint,
                                   LocalDocumentId const& documentId,
-                                  arangodb::velocypack::Slice const& doc,
-                                  OperationOptions& options) const;
+                                  arangodb::velocypack::Slice doc,
+                                  OperationOptions const& options,
+                                  RevisionId const& revisionId) const;
 
   arangodb::Result removeDocument(arangodb::transaction::Methods* trx,
+                                  RocksDBSavePoint& savepoint,
                                   LocalDocumentId const& documentId,
-                                  arangodb::velocypack::Slice const& doc,
-                                  OperationOptions& options) const;
+                                  arangodb::velocypack::Slice doc,
+                                  OperationOptions const& options,
+                                  RevisionId const& revisionId) const;
 
-  arangodb::Result updateDocument(transaction::Methods* trx, LocalDocumentId const& oldDocumentId,
+  arangodb::Result modifyDocument(transaction::Methods* trx,
+                                  RocksDBSavePoint& savepoint,
+                                  LocalDocumentId const& oldDocumentId,
                                   arangodb::velocypack::Slice const& oldDoc,
                                   LocalDocumentId const& newDocumentId,
                                   arangodb::velocypack::Slice const& newDoc,
-                                  OperationOptions& options) const;
+                                  OperationOptions& options,
+                                  RevisionId const& revisionId) const;
 
   /// @brief lookup document in cache and / or rocksdb
   /// @param readCache attempt to read from cache
@@ -178,13 +201,12 @@ class RocksDBCollection final : public RocksDBMetaCollection {
   arangodb::Result lookupDocumentVPack(transaction::Methods* trx,
                                        LocalDocumentId const& documentId,
                                        rocksdb::PinnableSlice& ps,
-                                       bool readCache,
-                                       bool fillCache) const;
-  
-  bool lookupDocumentVPack(transaction::Methods*,
-                           LocalDocumentId const& documentId,
-                           IndexIterator::DocumentCallback const& cb,
-                           bool withCache) const;
+                                       bool readCache, bool fillCache,
+                                       ReadOwnWrites readOwnWrites) const;
+  Result lookupDocumentVPack(transaction::Methods*,
+                             LocalDocumentId const& documentId,
+                             IndexIterator::DocumentCallback const& cb,
+                             bool withCache, ReadOwnWrites readOwnWrites) const;
 
   /// @brief create hash-cache
   void createCache() const;
@@ -192,26 +214,23 @@ class RocksDBCollection final : public RocksDBMetaCollection {
   void destroyCache() const;
 
   /// is this collection using a cache
-  inline bool useCache() const noexcept {
-    return (_cacheEnabled && _cache);
-  }
-  
+  inline bool useCache() const noexcept { return (_cacheEnabled && _cache); }
+
   /// @brief track key in file
-  void blackListKey(RocksDBKey const& key) const;
-  
+  void invalidateCacheEntry(RocksDBKey const& key) const;
+
   /// @brief can use non transactional range delete in write ahead log
   bool canUseRangeDeleteInWal() const;
 
  private:
-
   /// @brief cached ptr to primary index for performance, never delete
   RocksDBPrimaryIndex* _primaryIndex;
   /// @brief document cache (optional)
   mutable std::shared_ptr<cache::Cache> _cache;
 
-  bool _cacheEnabled;
-  /// @brief number of index creations in progress
-  std::atomic<int> _numIndexCreations;
+  std::atomic<bool> _cacheEnabled;
+
+  arangodb::TransactionStatistics& _statistics;
 };
 
 inline RocksDBCollection* toRocksDBCollection(PhysicalCollection* physical) {
@@ -227,5 +246,3 @@ inline RocksDBCollection* toRocksDBCollection(LogicalCollection& logical) {
 }
 
 }  // namespace arangodb
-
-#endif

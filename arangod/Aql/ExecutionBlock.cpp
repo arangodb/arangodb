@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,24 +30,21 @@
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/Timing.h"
 #include "Aql/Query.h"
 #include "Basics/Exceptions.h"
-#include "Basics/system-functions.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
-#include "Transaction/Context.h"
-#include "Transaction/Methods.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Dumper.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
 
 #define LOG_QUERY(logId, level)            \
   LOG_TOPIC(logId, level, Logger::QUERIES) \
-  << "[query#" << this->_engine->getQuery().id() << "] "
+      << "[query#" << this->_engine->getQuery().id() << "] "
 
 namespace {
 
@@ -73,23 +70,23 @@ std::string const& stateToString(aql::ExecutionState state) {
 }  // namespace
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-size_t ExecutionBlock::DefaultBatchSize = ExecutionBlock::ProductionDefaultBatchSize;
+size_t ExecutionBlock::DefaultBatchSize =
+    ExecutionBlock::ProductionDefaultBatchSize;
 #endif
 
 ExecutionBlock::ExecutionBlock(ExecutionEngine* engine, ExecutionNode const* ep)
     : _engine(engine),
-      _shutdownResult(TRI_ERROR_NO_ERROR),
-      _profile(engine->getQuery().queryOptions().getProfileLevel()),
-      _done(false),
-      _isInSplicedSubquery(ep != nullptr ? ep->isInSplicedSubquery() : false),
+      _upstreamState(ExecutionState::HASMORE),
       _exeNode(ep),
       _dependencies(),
       _dependencyPos(_dependencies.end()),
-      _upstreamState(ExecutionState::HASMORE) {}
+      _profileLevel(engine->getQuery().queryOptions().getProfileLevel()),
+      _done(false) {}
 
 ExecutionBlock::~ExecutionBlock() = default;
 
-std::pair<ExecutionState, Result> ExecutionBlock::initializeCursor(InputAqlItemRow const& input) {
+std::pair<ExecutionState, Result> ExecutionBlock::initializeCursor(
+    InputAqlItemRow const& input) {
   if (_dependencyPos == _dependencies.end()) {
     // We need to start again.
     _dependencyPos = _dependencies.begin();
@@ -108,32 +105,6 @@ std::pair<ExecutionState, Result> ExecutionBlock::initializeCursor(InputAqlItemR
   TRI_ASSERT(getHasMoreState() == ExecutionState::HASMORE);
   TRI_ASSERT(_dependencyPos == _dependencies.end());
   return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
-}
-
-std::pair<ExecutionState, Result> ExecutionBlock::shutdown(int errorCode) {
-  if (_dependencyPos == _dependencies.end()) {
-    _shutdownResult.reset(TRI_ERROR_NO_ERROR);
-    _dependencyPos = _dependencies.begin();
-  }
-
-  for (; _dependencyPos != _dependencies.end(); ++_dependencyPos) {
-    Result res;
-    ExecutionState state;
-    try {
-      std::tie(state, res) = (*_dependencyPos)->shutdown(errorCode);
-      if (state == ExecutionState::WAITING) {
-        return {state, TRI_ERROR_NO_ERROR};
-      }
-    } catch (...) {
-      _shutdownResult.reset(TRI_ERROR_INTERNAL);
-    }
-
-    if (res.fail()) {
-      _shutdownResult = res;
-    }
-  }
-
-  return {ExecutionState::DONE, _shutdownResult};
 }
 
 ExecutionState ExecutionBlock::getHasMoreState() {
@@ -158,77 +129,79 @@ void ExecutionBlock::addDependency(ExecutionBlock* ep) {
   _dependencyPos = _dependencies.end();
 }
 
-void ExecutionBlock::collectExecStats(ExecutionStats& stats) const {
-  if (_profile >= PROFILE_LEVEL_BLOCKS) {
+void ExecutionBlock::collectExecStats(ExecutionStats& stats) {
+  if (_profileLevel >= ProfileLevel::Blocks) {
     stats.addNode(getPlanNode()->id(), _execNodeStats);
   }
 }
 
-bool ExecutionBlock::isInSplicedSubquery() const noexcept {
-  return _isInSplicedSubquery;
-}
-
-void ExecutionBlock::traceExecuteBegin(AqlCallStack const& stack, std::string const& clientId) {
-  if (_profile >= PROFILE_LEVEL_BLOCKS) {
+void ExecutionBlock::traceExecuteBegin(AqlCallStack const& stack,
+                                       std::string const& clientId) {
+  if (_profileLevel >= ProfileLevel::Blocks) {
     if (_execNodeStats.runtime >= 0.0) {
-      _execNodeStats.runtime -= TRI_microtime();
+      _execNodeStats.runtime -= currentSteadyClockValue();
       TRI_ASSERT(_execNodeStats.runtime < 0.0);
     }
-    
-    if (_profile >= PROFILE_LEVEL_TRACE_1) {
+
+    if (_profileLevel >= ProfileLevel::TraceOne) {
       auto const node = getPlanNode();
       auto const queryId = this->_engine->getQuery().id();
       LOG_TOPIC("1e717", INFO, Logger::QUERIES)
           << "[query#" << queryId << "] "
           << "execute type=" << node->getTypeString()
           << " callStack= " << stack.toString() << " this=" << (uintptr_t)this
-          << " id=" << node->id() << (clientId.empty() ? "" : " clientId=" + clientId);
+          << " id=" << node->id()
+          << (clientId.empty() ? "" : " clientId=" + clientId);
     }
   }
 }
 
-void ExecutionBlock::traceExecuteEnd(std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> const& result,
-                                     std::string const& clientId)  {
-
-  if (_profile >= PROFILE_LEVEL_BLOCKS) {
+void ExecutionBlock::traceExecuteEnd(
+    std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> const& result,
+    std::string const& clientId) {
+  if (_profileLevel >= ProfileLevel::Blocks) {
     auto const& [state, skipped, block] = result;
-    auto const items = block != nullptr ? block->size() : 0;
+    auto const items = block != nullptr ? block->numRows() : 0;
 
     _execNodeStats.calls += 1;
     _execNodeStats.items += skipped.getSkipCount() + items;
     if (state != ExecutionState::WAITING) {
       TRI_ASSERT(_execNodeStats.runtime < 0.0);
-      _execNodeStats.runtime += TRI_microtime();
-      TRI_ASSERT(_execNodeStats.runtime > 0.0);
+      _execNodeStats.runtime += currentSteadyClockValue();
+      TRI_ASSERT(_execNodeStats.runtime >= 0.0);
     }
 
-    if (_profile >= PROFILE_LEVEL_TRACE_1) {
+    if (_profileLevel >= ProfileLevel::TraceOne) {
       size_t rows = 0;
       size_t shadowRows = 0;
       if (block != nullptr) {
-        shadowRows = block->getShadowRowIndexes().size();
-        rows = block->size() - shadowRows;
+        shadowRows = block->numShadowRows();
+        rows = block->numRows() - shadowRows;
       }
       ExecutionNode const* node = getPlanNode();
       LOG_QUERY("60bbc", INFO)
-          << "execute done " << printBlockInfo() << " state=" << stateToString(state)
+          << "execute done " << printBlockInfo()
+          << " state=" << stateToString(state)
           << " skipped=" << skipped.getSkipCount() << " produced=" << rows
           << " shadowRows=" << shadowRows
           << (clientId.empty() ? "" : " clientId=" + clientId);
-      ;
 
-      if (_profile >= PROFILE_LEVEL_TRACE_2) {
-        if (block == nullptr) {
-          LOG_QUERY("9b3f4", INFO)
-              << "execute type=" << node->getTypeString() << " result: nullptr";
-        } else {
-          auto const* opts = &_engine->getQuery().vpackOptions();
-          VPackBuilder builder;
-          block->toSimpleVPack(opts, builder);
-          LOG_QUERY("f12f9", INFO)
-              << "execute type=" << node->getTypeString()
-              << " result: " << VPackDumper::toString(builder.slice(), opts);
-        }
+      if (_profileLevel >= ProfileLevel::TraceTwo) {
+        auto const resultString =
+            std::invoke([&, &block = block]() -> std::string {
+              if (block == nullptr) {
+                return "nullptr";
+              } else {
+                auto const* opts = &_engine->getQuery().vpackOptions();
+                VPackBuilder builder;
+                block->toSimpleVPack(opts, builder);
+                return VPackDumper::toString(builder.slice(), opts);
+              }
+            });
+        LOG_QUERY("f12f9", INFO)
+            << "execute type=" << node->getTypeString() << " id=" << node->id()
+            << (clientId.empty() ? "" : " clientId=" + clientId)
+            << " result: " << resultString;
       }
     }
   }
@@ -244,6 +217,7 @@ auto ExecutionBlock::printTypeInfo() const -> std::string const {
 auto ExecutionBlock::printBlockInfo() const -> std::string const {
   std::stringstream stream;
   ExecutionNode const* node = getPlanNode();
-  stream << printTypeInfo() << " this=" << (uintptr_t)this << " id=" << node->id().id();
+  stream << printTypeInfo() << " this=" << (uintptr_t)this
+         << " id=" << node->id().id();
   return stream.str();
 }

@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,8 +21,7 @@
 /// @author Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_MASKINGS_ATTRIBUTE_RANDOM_STRING_MASK_H
-#define ARANGODB_MASKINGS_ATTRIBUTE_RANDOM_STRING_MASK_H 1
+#pragma once
 
 #include "Maskings/AttributeMasking.h"
 #include "Maskings/MaskingFunction.h"
@@ -31,7 +31,8 @@ namespace arangodb {
 namespace maskings {
 class RandomStringMask : public MaskingFunction {
  public:
-  static ParseResult<AttributeMasking> create(Path, Maskings*, VPackSlice const& def);
+  static ParseResult<AttributeMasking> create(Path, Maskings*,
+                                              VPackSlice const& def);
 
  public:
   VPackValue mask(bool, std::string& buffer) const override;
@@ -44,5 +45,3 @@ class RandomStringMask : public MaskingFunction {
 };
 }  // namespace maskings
 }  // namespace arangodb
-
-#endif

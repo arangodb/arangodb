@@ -30,7 +30,6 @@
 
 const db = require("@arangodb").db;
 const jsunity = require("jsunity");
-const console = require('console');
 const _ = require("lodash");
 const isEnterprise = require("internal").isEnterprise();
 

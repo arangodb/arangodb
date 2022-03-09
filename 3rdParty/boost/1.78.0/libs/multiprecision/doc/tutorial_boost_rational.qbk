@@ -1,0 +1,50 @@
+[/
+  Copyright 2011 - 2020 John Maddock.
+  Copyright 2013 - 2019 Paul A. Bristow.
+  Copyright 2013 Christopher Kormanyos.
+
+  Distributed under the Boost Software License, Version 1.0.
+  (See accompanying file LICENSE_1_0.txt or copy at
+  http://www.boost.org/LICENSE_1_0.txt).
+]
+
+[section:tommath_rational tommath_rational]
+
+`#include <boost/multiprecision/tommath.hpp>`
+
+   namespace boost{ namespace multiprecision{
+
+   typedef rational_adpater<tommath_int>        tommath_rational;
+   typedef number<tommath_rational >         tom_rational;
+
+   }} // namespaces
+
+The `tommath_rational` back-end is used via the typedef `boost::multiprecision::tom_rational`.  It acts as a thin wrapper around
+`boost::rational<tom_int>`
+to provide a rational number type that is a drop-in replacement for the native C++ number types, but with unlimited precision.
+
+The advantage of using this type rather than `boost::rational<tom_int>` directly, is that it is expression-template enabled,
+greatly reducing the number of temporaries created in complex expressions.
+
+There are also non-member functions:
+
+   tom_int numerator(const tom_rational&);
+   tom_int denominator(const tom_rational&);
+
+which return the numerator and denominator of the number.
+
+Things you should know when using this type:
+
+* Default constructed `tom_rational`s have the value zero (this the inherited Boost.Rational behavior).
+* Division by zero results in a `std::overflow_error` being thrown.
+* Conversion from a string results in a `std::runtime_error` being thrown if the string can not be
+interpreted as a valid rational number.
+* No changes are made to [tommath]'s global state, so this type can safely coexist with other [tommath] code.
+* Performance of this type has been found to be pretty poor - this need further investigation - but it appears that Boost.Rational
+needs some improvement in this area.
+
+[h5 Example:]
+
+[mp_rat_eg]
+
+[endsect] [/section:tommath_rational tommath_rational]

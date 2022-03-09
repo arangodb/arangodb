@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,11 +21,9 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_QUERY_RESULT_V8_H
-#define ARANGOD_AQL_QUERY_RESULT_V8_H 1
+#pragma once
 
 #include "Aql/QueryResult.h"
-#include "Basics/Common.h"
 
 #include <v8.h>
 
@@ -33,34 +31,30 @@ namespace arangodb {
 namespace aql {
 
 struct QueryResultV8 : public QueryResult {
+  QueryResultV8(QueryResultV8 const& other) = delete;
   QueryResultV8& operator=(QueryResultV8 const& other) = delete;
 
   QueryResultV8(QueryResultV8&& other) = default;
 
-  explicit QueryResultV8(QueryResult&& other)
-      : QueryResult(std::move(other)) {}
+  explicit QueryResultV8(QueryResult&& other) : QueryResult(std::move(other)) {}
 
   QueryResultV8() : QueryResult() {}
-  
-  explicit QueryResultV8(Result const& res) 
-      : QueryResult(res) {}
-  
-  explicit QueryResultV8(Result&& res) 
-      : QueryResult(std::move(res)) {}
-  
+
+  explicit QueryResultV8(Result const& res) : QueryResult(res) {}
+
+  explicit QueryResultV8(Result&& res) : QueryResult(std::move(res)) {}
+
   void reset(Result const& result) {
     QueryResult::reset(result);
     v8Data.Clear();
   }
-  
+
   void reset(Result&& result) {
     QueryResult::reset(std::move(result));
     v8Data.Clear();
   }
-  
+
   v8::Local<v8::Array> v8Data;
 };
 }  // namespace aql
 }  // namespace arangodb
-
-#endif

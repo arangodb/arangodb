@@ -15,11 +15,54 @@ must be equal to *"persistent"*.
 @RESTBODYPARAM{fields,array,required,string}
 an array of attribute paths.
 
-@RESTBODYPARAM{unique,boolean,required,}
-if *true*, then create a unique index.
+@RESTBODYPARAM{storedValues,array,optional,string}
+The optional **storedValues** attribute can contain an array of paths to additional 
+attributes to store in the index. These additional attributes cannot be used for
+index lookups or for sorting, but they can be used for projections. This allows an
+index to fully cover more queries and avoid extra document lookups.
+The maximum number of attributes in **storedValues** is 32.
+It is not possible to create multiple indexes with the same **fields** attributes
+and uniqueness but different **storedValues** attributes. That means the value of 
+**storedValues** is not considered by index creation calls when checking if an 
+index is already present or needs to be created.
+In unique indexes, only the attributes in **fields** are checked for uniqueness,
+but the attributes in **storedValues** are not checked for their uniqueness. 
+Non-existing attributes are stored as **null** values inside **storedValues**.
 
-@RESTBODYPARAM{sparse,boolean,required,}
-if *true*, then create a sparse index.
+@RESTBODYPARAM{unique,boolean,optional,}
+if *true*, then create a unique index. Defaults to *false*.
+In unique indexes, only the attributes in **fields** are checked for uniqueness,
+but the attributes in **storedValues** are not checked for their uniqueness.
+
+@RESTBODYPARAM{sparse,boolean,optional,}
+if *true*, then create a sparse index. Defaults to *false*.
+
+@RESTBODYPARAM{deduplicate,boolean,optional,}
+The attribute **deduplicate** is supported by array indexes of type *persistent*,
+*hash* or *skiplist*. It controls whether inserting duplicate index values
+from the same document into a unique array index will lead to a unique constraint
+error or not. The default value is *true*, so only a single instance of each
+non-unique index value will be inserted into the index per document. Trying to
+insert a value into the index that already exists in the index will always fail,
+regardless of the value of this attribute.
+
+@RESTBODYPARAM{estimates,boolean,optional,}
+The attribute **estimates** is supported by indexes of type *persistent*. This
+attribute controls whether index selectivity estimates are maintained for the
+index. Not maintaining index selectivity estimates can have a slightly positive
+impact on write performance.
+The downside of turning off index selectivity estimates will be that
+the query optimizer will not be able to determine the usefulness of different
+competing indexes in AQL queries when there are multiple candidate indexes to
+choose from.
+The *estimates* attribute is optional and defaults to *true* if not set. It will
+have no effect on indexes other than *persistent* (with *hash* and *skiplist*
+being mere aliases for *persistent* nowadays).
+
+@RESTBODYPARAM{inBackground,boolean,optional,}
+The optional attribute **inBackground** can be set to *true* to create the index
+in the background, which will not write-lock the underlying collection for
+as long as if the index is built in the foreground. The default value is *false*.
 
 @RESTDESCRIPTION
 

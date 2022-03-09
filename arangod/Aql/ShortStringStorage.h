@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,58 +21,66 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_SHORT_STRING_STORAGE_H
-#define ARANGOD_AQL_SHORT_STRING_STORAGE_H 1
+#pragma once
 
 #include <cstddef>
+#include <memory>
 #include <vector>
 
 #include "Basics/Common.h"
 
 namespace arangodb {
-namespace aql {
-
 struct ResourceMonitor;
+
+namespace aql {
 
 class ShortStringStorage {
  public:
   ShortStringStorage(ShortStringStorage const&) = delete;
   ShortStringStorage& operator=(ShortStringStorage const&) = delete;
 
-  ShortStringStorage(ResourceMonitor*, size_t);
+  ShortStringStorage(arangodb::ResourceMonitor& resourceMonitor, size_t);
 
   ~ShortStringStorage();
 
-  /// @brief register a short string
+  // register a short string
   char* registerString(char const* p, size_t length);
 
-  /// @brief register a short string, unescaping it
+  // register a short string, unescaping it
   char* unescape(char const* p, size_t length, size_t* outLength);
 
- private:
-  /// @brief allocate a new block of memory
-  void allocateBlock();
+  // frees all blocks
+  void clear() noexcept;
 
- public:
-  /// @brief maximum length of strings in short string storage
+  // frees all blocks but the first one. we keep one block to avoid
+  // later memory re-allocations.
+  void clearMost() noexcept;
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  size_t usedBlocks() const noexcept { return _blocks.size(); }
+#endif
+
+  // maximum length of strings in short string storage
   static constexpr size_t maxStringLength = 127;
 
  private:
-  ResourceMonitor* _resourceMonitor;
+  // allocate a new block of memory
+  void allocateBlock();
 
-  /// @brief already allocated string blocks
-  std::vector<char*> _blocks;
+  // resource monitor used for tracking allocations/deallocations
+  arangodb::ResourceMonitor& _resourceMonitor;
 
-  /// @brief size of each block
+  // already allocated string blocks
+  std::vector<std::unique_ptr<char[]>> _blocks;
+
+  // size of each block
   size_t const _blockSize;
 
-  /// @brief offset into current block
+  // offset into current block
   char* _current;
 
-  /// @brief end of current block
+  // end of current block
   char* _end;
 };
 }  // namespace aql
 }  // namespace arangodb
-
-#endif

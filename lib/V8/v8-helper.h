@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_V8_V8__HELPER_H
-#define ARANGODB_V8_V8__HELPER_H 1
+#pragma once
 
 #include <v8.h>
 #include "Basics/Common.h"
@@ -31,25 +30,31 @@
 #include "V8/v8-utils.h"
 #include "v8-globals.h"
 
+#include <optional>
+
 namespace arangodb {
 
-inline std::string stringify(v8::Isolate* isolate, v8::Handle<v8::Value> value) {
+inline std::string stringify(v8::Isolate* isolate,
+                             v8::Handle<v8::Value> value) {
   auto context = TRI_IGETC;
   // function converts js object to string using JSON.stringify
   if (value.IsEmpty()) {
     return std::string{};
   }
   auto ctx = isolate->GetCurrentContext();
-  v8::Local<v8::Object> json = ctx->Global()
-    ->Get(context,
-          TRI_V8_ASCII_STRING(isolate, "JSON"))
-    .FromMaybe(v8::Local<v8::Value>())
-    ->ToObject(ctx)
-    .FromMaybe(v8::Local<v8::Object>());
+  v8::Local<v8::Object> json =
+      ctx->Global()
+          ->Get(context, TRI_V8_ASCII_STRING(isolate, "JSON"))
+          .FromMaybe(v8::Local<v8::Value>())
+          ->ToObject(ctx)
+          .FromMaybe(v8::Local<v8::Object>());
   v8::Local<v8::Function> stringify =
-    json->Get(context, TRI_V8_ASCII_STRING(isolate, "stringify")).FromMaybe(v8::Local<v8::Value>()).As<v8::Function>();
+      json->Get(context, TRI_V8_ASCII_STRING(isolate, "stringify"))
+          .FromMaybe(v8::Local<v8::Value>())
+          .As<v8::Function>();
   v8::Local<v8::Value> args[1] = {value};
-  v8::Local<v8::Value> jsString = stringify->Call(TRI_IGETC, json, 1, args).FromMaybe(v8::Local<v8::Value>());
+  v8::Local<v8::Value> jsString = stringify->Call(TRI_IGETC, json, 1, args)
+                                      .FromMaybe(v8::Local<v8::Value>());
   v8::String::Utf8Value const rv(isolate, jsString);
   return std::string(*rv, rv.length());
 }
@@ -96,7 +101,7 @@ inline bool isContextCanceled(v8::Isolate* isolate) {
 
 inline std::tuple<bool, bool, Result> extractArangoError(v8::Isolate* isolate,
                                                          v8::TryCatch& tryCatch,
-                                                         int errorCode) {
+                                                         ErrorCode errorCode) {
   v8::Local<v8::Context> context = isolate->GetCurrentContext();
   // function tries to receive arango error form tryCatch Object
   // return tuple:
@@ -120,9 +125,9 @@ inline std::tuple<bool, bool, Result> extractArangoError(v8::Isolate* isolate,
   v8::Handle<v8::Value> exception = tryCatch.Exception();
   if (exception->IsString()) {
     // the error is a plain string
-    std::string errorMessage =
-        *v8::String::Utf8Value(isolate, exception->ToString(TRI_IGETC).FromMaybe(
-                                            v8::Local<v8::String>()));
+    std::string errorMessage = *v8::String::Utf8Value(
+        isolate,
+        exception->ToString(TRI_IGETC).FromMaybe(v8::Local<v8::String>()));
     std::get<1>(rv) = true;
     std::get<2>(rv).reset(errorCode, errorMessage);
     tryCatch.Reset();
@@ -144,39 +149,38 @@ inline std::tuple<bool, bool, Result> extractArangoError(v8::Isolate* isolate,
 
   v8::Handle<v8::Object> object = v8::Handle<v8::Object>::Cast(exception);
 
-  int errorNum = -1;
+  auto errorNum = std::optional<ErrorCode>{};
 
   if (TRI_HasProperty(context, isolate, object, "errorNum")) {
-    errorNum = static_cast<
-      int>(TRI_ObjectToInt64(isolate,
-                             object->Get(context,
-                                         TRI_V8_ASCII_STRING(isolate, "errorNum"))
-                             .FromMaybe(v8::Local<v8::Value>())));
+    errorNum = ErrorCode{static_cast<int>(TRI_ObjectToInt64(
+        isolate, object->Get(context, TRI_V8_ASCII_STRING(isolate, "errorNum"))
+                     .FromMaybe(v8::Local<v8::Value>())))};
   }
 
   try {
-    if ((errorNum != -1) && (TRI_HasProperty(context, isolate, object, "errorMessage") ||
-                             TRI_HasProperty(context, isolate, object, "message"))) {
+    if (errorNum.has_value() &&
+        (TRI_HasProperty(context, isolate, object, "errorMessage") ||
+         TRI_HasProperty(context, isolate, object, "message"))) {
       std::string errorMessage;
       if (TRI_HasProperty(context, isolate, object, "errorMessage")) {
-        v8::String::Utf8Value msg(isolate,
-                                  object->Get(context,
-                                              TRI_V8_ASCII_STRING(isolate, "errorMessage"))
-                                  .FromMaybe(v8::Local<v8::Value>()));
+        v8::String::Utf8Value msg(
+            isolate,
+            object->Get(context, TRI_V8_ASCII_STRING(isolate, "errorMessage"))
+                .FromMaybe(v8::Local<v8::Value>()));
         if (*msg != nullptr) {
           errorMessage = std::string(*msg, msg.length());
         }
       } else {
-        v8::String::Utf8Value msg(isolate,
-                                  object->Get(context,
-                                              TRI_V8_ASCII_STRING(isolate, "message"))
-                                  .FromMaybe(v8::Local<v8::Value>()));
+        v8::String::Utf8Value msg(
+            isolate,
+            object->Get(context, TRI_V8_ASCII_STRING(isolate, "message"))
+                .FromMaybe(v8::Local<v8::Value>()));
         if (*msg != nullptr) {
           errorMessage = std::string(*msg, msg.length());
         }
       }
       std::get<1>(rv) = true;
-      std::get<2>(rv).reset(errorNum, errorMessage);
+      std::get<2>(rv).reset(*errorNum, errorMessage);
       tryCatch.Reset();
       return rv;
     }
@@ -184,29 +188,27 @@ inline std::tuple<bool, bool, Result> extractArangoError(v8::Isolate* isolate,
     if (TRI_HasProperty(context, isolate, object, "name") &&
         TRI_HasProperty(context, isolate, object, "message")) {
       std::string name;
-      v8::String::Utf8Value nameString(isolate,
-                                       object->Get(context,
-                                                   TRI_V8_ASCII_STRING(isolate, "name"))
-                                       .FromMaybe(v8::Local<v8::Value>()));
+      v8::String::Utf8Value nameString(
+          isolate, object->Get(context, TRI_V8_ASCII_STRING(isolate, "name"))
+                       .FromMaybe(v8::Local<v8::Value>()));
       if (*nameString != nullptr) {
         name = std::string(*nameString, nameString.length());
       }
 
       std::string message;
-      v8::String::Utf8Value messageString(isolate,
-                                          object->Get(context,
-                                                      TRI_V8_ASCII_STRING(isolate, "message"))
-                                          .FromMaybe(v8::Local<v8::Value>()));
+      v8::String::Utf8Value messageString(
+          isolate, object->Get(context, TRI_V8_ASCII_STRING(isolate, "message"))
+                       .FromMaybe(v8::Local<v8::Value>()));
       if (*messageString != nullptr) {
         message = std::string(*messageString, messageString.length());
       }
       if (name == "TypeError") {
         std::get<2>(rv).reset(TRI_ERROR_TYPE_ERROR, message);
       } else {
-        if (errorNum == -1) {
+        if (!errorNum.has_value()) {
           errorNum = errorCode;
         }
-        std::get<2>(rv).reset(errorNum, name + ": " + message);
+        std::get<2>(rv).reset(*errorNum, name + ": " + message);
       }
       std::get<1>(rv) = true;
       tryCatch.Reset();
@@ -219,4 +221,3 @@ inline std::tuple<bool, bool, Result> extractArangoError(v8::Isolate* isolate,
   return rv;
 }
 }  // namespace arangodb
-#endif

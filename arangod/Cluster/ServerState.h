@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,21 +21,18 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_SERVER_STATE_H
-#define ARANGOD_CLUSTER_SERVER_STATE_H 1
+#pragma once
 
 #include <mutex>
 
 #include "Basics/Common.h"
 #include "Basics/ReadWriteSpinLock.h"
+#include "Basics/ResultT.h"
 #include "Cluster/ClusterTypes.h"
-#include "Cluster/ResultT.h"
+#include "RestServer/arangod.h"
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
-namespace application_features {
-class ApplicationServer;
-}
 class AgencyComm;
 class Result;
 
@@ -55,9 +52,14 @@ class ServerState {
     STATE_UNDEFINED = 0,  // initial value
     STATE_STARTUP,        // used by all roles
     STATE_SERVING,        // used by all roles
-    STATE_STOPPING,       // primary only
-    STATE_STOPPED,        // primary only
     STATE_SHUTDOWN        // used by all roles
+  };
+
+  enum ReadOnlyMode {
+    API_TRUE,  // Set from outside via API
+    API_FALSE,
+    LICENSE_TRUE,  // Set from license feature
+    LICENSE_FALSE
   };
 
   enum class Mode : uint8_t {
@@ -72,13 +74,13 @@ class ServerState {
   };
 
  public:
-  explicit ServerState(application_features::ApplicationServer&);
+  explicit ServerState(ArangodServer&);
 
   ~ServerState();
 
  public:
   /// @brief create the (sole) instance
-  static ServerState* instance();
+  static ServerState* instance() noexcept;
 
   /// @brief get the string representation of a role
   static std::string roleToString(RoleEnum);
@@ -119,8 +121,14 @@ class ServerState {
   /// @brief should not allow DDL operations / transactions
   static bool readOnly();
 
+  /// @brief should not allow DDL operations / transactions
+  static bool readOnlyByLicense();
+
+  /// @brief should not allow DDL operations / transactions
+  static bool readOnlyByAPI();
+
   /// @brief set server read-only
-  static bool setReadOnly(bool ro);
+  static bool setReadOnly(ReadOnlyMode);
 
  public:
   /// @brief sets the initialized flag
@@ -129,73 +137,86 @@ class ServerState {
   /// @brief whether or not the cluster was properly initialized
   bool initialized() const { return _initialized; }
 
-  bool isSingleServer() { return isSingleServer(loadRole()); }
+  bool isSingleServer() const noexcept { return isSingleServer(loadRole()); }
 
-  static bool isSingleServer(ServerState::RoleEnum role) {
+  static bool isSingleServer(ServerState::RoleEnum role) noexcept {
     TRI_ASSERT(role != ServerState::ROLE_UNDEFINED);
     return (role == ServerState::ROLE_SINGLE);
   }
 
   /// @brief check whether the server is a coordinator
-  bool isCoordinator() { return isCoordinator(loadRole()); }
+  bool isCoordinator() const noexcept { return isCoordinator(loadRole()); }
 
   /// @brief check whether the server is a coordinator
-  static bool isCoordinator(ServerState::RoleEnum role) {
+  static bool isCoordinator(ServerState::RoleEnum role) noexcept {
     TRI_ASSERT(role != ServerState::ROLE_UNDEFINED);
     return (role == ServerState::ROLE_COORDINATOR);
   }
 
   /// @brief check whether the server is a DB server (primary or secondary)
   /// running in cluster mode.
-  bool isDBServer() { return isDBServer(loadRole()); }
+  bool isDBServer() const noexcept { return isDBServer(loadRole()); }
 
   /// @brief check whether the server is a DB server (primary or secondary)
   /// running in cluster mode.
-  static bool isDBServer(ServerState::RoleEnum role) {
+  static bool isDBServer(ServerState::RoleEnum role) noexcept {
     TRI_ASSERT(role != ServerState::ROLE_UNDEFINED);
     return (role == ServerState::ROLE_DBSERVER);
   }
 
   /// @brief whether or not the role is a cluster-related role
-  static bool isClusterRole(ServerState::RoleEnum role) {
-    return (role == ServerState::ROLE_DBSERVER || role == ServerState::ROLE_COORDINATOR);
+  static bool isClusterRole(ServerState::RoleEnum role) noexcept {
+    return (role == ServerState::ROLE_DBSERVER ||
+            role == ServerState::ROLE_COORDINATOR);
   }
 
   /// @brief whether or not the role is a cluster-related role
-  bool isClusterRole() { return (isClusterRole(loadRole())); };
+  bool isClusterRole() const noexcept { return (isClusterRole(loadRole())); };
 
   /// @brief check whether the server is an agent
-  bool isAgent() { return isAgent(loadRole()); }
+  bool isAgent() const noexcept { return isAgent(loadRole()); }
 
   /// @brief check whether the server is an agent
-  static bool isAgent(ServerState::RoleEnum role) {
+  static bool isAgent(ServerState::RoleEnum role) noexcept {
     TRI_ASSERT(role != ServerState::ROLE_UNDEFINED);
     return (role == ServerState::ROLE_AGENT);
   }
 
   /// @brief check whether the server is running in a cluster
-  bool isRunningInCluster() { return isClusterRole(loadRole()); }
+  bool isRunningInCluster() const noexcept { return isClusterRole(loadRole()); }
 
   /// @brief check whether the server is running in a cluster
-  static bool isRunningInCluster(ServerState::RoleEnum role) {
+  static bool isRunningInCluster(ServerState::RoleEnum role) noexcept {
     return isClusterRole(role);
   }
 
   /// @brief check whether the server is a single or coordinator
-  bool isSingleServerOrCoordinator() {
-    RoleEnum role = loadRole();
+  bool isSingleServerOrCoordinator() const noexcept {
+    return isSingleServerOrCoordinator(loadRole());
+  }
+
+  static bool isSingleServerOrCoordinator(ServerState::RoleEnum role) noexcept {
     return isCoordinator(role) || isSingleServer(role);
   }
 
   /// @brief get the server role
-  inline RoleEnum getRole() const { return loadRole(); }
+  inline RoleEnum getRole() const noexcept { return loadRole(); }
 
   /// @brief register with agency, create / load server ID
   bool integrateIntoCluster(RoleEnum role, std::string const& myAddr,
                             std::string const& myAdvEndpoint);
 
-  /// @brief unregister this server with the agency
-  bool unregister();
+  /// @brief unregister this server with the agency, removing it from
+  /// the cluster setup.
+  /// the timeout can be used as the max wait time for the agency to
+  /// acknowledge the unregister action.
+  bool unregister(double timeout);
+
+  /// @brief mark this server as shut down in the agency, without removing it
+  /// from the cluster setup.
+  /// the timeout can be used as the max wait time for the agency to
+  /// acknowledge the logoff action.
+  bool logoff(double timeout);
 
   /// @brief set the server role
   void setRole(RoleEnum);
@@ -237,19 +258,13 @@ class ServerState {
   /// @brief set the current state
   void setState(StateEnum);
 
-  /// @brief gets the JavaScript startup path
-  std::string getJavaScriptPath();
-
-  /// @brief sets the JavaScript startup path
-  void setJavaScriptPath(std::string const&);
-
   bool isFoxxmaster() const;
 
-  std::string const& getFoxxmaster();
+  std::string getFoxxmaster() const;
 
   void setFoxxmaster(std::string const&);
 
-  void setFoxxmasterQueueupdate(bool);
+  void setFoxxmasterQueueupdate(bool value) noexcept;
 
   bool getFoxxmasterQueueupdate() const noexcept;
 
@@ -266,9 +281,16 @@ class ServerState {
   /// file where the server persists its UUID
   std::string getUuidFilename() const;
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  [[nodiscard]] bool isGoogleTest() const noexcept;
+  void setGoogleTest(bool isGoogleTests) noexcept;
+#else
+  [[nodiscard]] constexpr bool isGoogleTest() const noexcept { return false; }
+#endif
+
  private:
   /// @brief atomically fetches the server role
-  inline RoleEnum loadRole() const {
+  inline RoleEnum loadRole() const noexcept {
     return _role.load(std::memory_order_consume);
   }
 
@@ -280,6 +302,10 @@ class ServerState {
 
   /// @brief check equality of engines with other registered servers
   bool checkEngineEquality(AgencyComm&);
+
+  /// @brief check equality of naming conventions settings with other registered
+  /// servers
+  bool checkNamingConventionsEquality(AgencyComm&);
 
   /// @brief try to read the rebootID from the Agency
   ResultT<uint64_t> readRebootIdFromAgency(AgencyComm& comm);
@@ -299,7 +325,7 @@ class ServerState {
   bool isUuid(std::string const& value) const;
 
  private:
-  application_features::ApplicationServer& _server;
+  ArangodServer& _server;
 
   /// @brief server role
   std::atomic<RoleEnum> _role;
@@ -307,7 +333,8 @@ class ServerState {
   /// @brief r/w lock for state
   mutable arangodb::basics::ReadWriteSpinLock _lock;
 
-  /// @brief the server's id, can be set just once, use getId and setId, do not access directly
+  /// @brief the server's id, can be set just once, use getId and setId, do not
+  /// access directly
   std::string _id;
   /// @brief lock for writing and reading server id
   mutable std::mutex _idLock;
@@ -318,20 +345,19 @@ class ServerState {
   /// @brief the server's rebootId.
   ///
   /// A server
-  ///   * ~boots~ if it is started on a new database directory without a UUID persisted
-  ///   * ~reboots~ if it is started on a pre-existing database directory with a UUID present
+  ///   * ~boots~ if it is started on a new database directory without a UUID
+  ///   persisted
+  ///   * ~reboots~ if it is started on a pre-existing database directory with a
+  ///   UUID present
   ///
-  /// when integrating into a cluster (via integrateIntoCluster), the server tries to increment
-  /// the agency key Current/KnownServers/_id/rebootId; if this key did not exist it is
-  /// created with the value 1, so a valid rebootId is always >= 1, and if the server booted
-  /// must be 1.
+  /// when integrating into a cluster (via integrateIntoCluster), the server
+  /// tries to increment the agency key Current/KnownServers/_id/rebootId; if
+  /// this key did not exist it is created with the value 1, so a valid rebootId
+  /// is always >= 1, and if the server booted must be 1.
   ///
   /// Changes of rebootIds (i.e. server reboots) are noticed in ClusterInfo and
   /// can be used through a notification architecture from there
   RebootId _rebootId;
-
-  /// @brief the JavaScript startup path, can be set just once
-  std::string _javaScriptStartupPath;
 
   /// @brief the server's own endpoint, can be set just once
   std::string _myEndpoint;
@@ -348,16 +374,21 @@ class ServerState {
 
   /// @brief whether or not the cluster was initialized
   bool _initialized;
-  
-  bool _foxxmasterQueueupdate;
+
+  /// @brief lock for all foxxmaster-related members
+  mutable arangodb::basics::ReadWriteSpinLock _foxxmasterLock;
 
   std::string _foxxmaster;
 
   // @brief point in time since which this server is the Foxxmaster
   TRI_voc_tick_t _foxxmasterSince;
+
+  bool _foxxmasterQueueupdate;
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  bool _isGoogleTests = false;
+#endif
 };
 }  // namespace arangodb
 
 std::ostream& operator<<(std::ostream&, arangodb::ServerState::RoleEnum);
-
-#endif

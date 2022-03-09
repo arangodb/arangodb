@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,8 +21,7 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_UTILS_URLHELPER_H
-#define ARANGOD_UTILS_URLHELPER_H
+#pragma once
 
 #include <optional>
 #include <variant>
@@ -95,7 +95,8 @@ class Port {
 
 class Authority {
  public:
-  Authority(std::optional<UserInfo> userInfo, Host host, std::optional<Port> port);
+  Authority(std::optional<UserInfo> userInfo, Host host,
+            std::optional<Port> port);
 
   std::optional<UserInfo> const& userInfo() const noexcept;
   Host const& host() const noexcept;
@@ -216,5 +217,3 @@ std::ostream& operator<<(std::ostream&, UserInfo const&);
 
 }  // namespace url
 }  // namespace arangodb
-
-#endif  // ARANGOD_UTILS_URLHELPER_H

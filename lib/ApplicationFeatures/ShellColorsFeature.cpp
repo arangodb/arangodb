@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -59,17 +60,9 @@ char const* ShellColorsFeature::SHELL_COLOR_BOLD_MAGENTA = NoColor;
 char const* ShellColorsFeature::SHELL_COLOR_BLINK = NoColor;
 char const* ShellColorsFeature::SHELL_COLOR_BRIGHT = NoColor;
 char const* ShellColorsFeature::SHELL_COLOR_RESET = NoColor;
-
-ShellColorsFeature::ShellColorsFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "ShellColors"), _initialized(false) {
-  setOptional(false);
-
-  // it's admittedly a hack that we already call prepare here...
-  // however, setting the colors is one of the first steps we need to do,
-  // and we do not want to wait for the application server to have successfully
-  // parsed options etc. before we initialize the shell colors
-  prepare();
-}
+char const* ShellColorsFeature::SHELL_COLOR_LINK_START = NoColor;
+char const* ShellColorsFeature::SHELL_COLOR_LINK_MIDDLE = NoColor;
+char const* ShellColorsFeature::SHELL_COLOR_LINK_END = NoColor;
 
 void ShellColorsFeature::prepare() {
   // prevent duplicate invocation of prepare
@@ -98,6 +91,9 @@ void ShellColorsFeature::prepare() {
     SHELL_COLOR_BLINK = "\x1b[5m";
     SHELL_COLOR_BRIGHT = "\x1b[1m";
     SHELL_COLOR_RESET = "\x1b[0m";
+    SHELL_COLOR_LINK_START = "\x1b]8;;";
+    SHELL_COLOR_LINK_MIDDLE = "\x1b\\";
+    SHELL_COLOR_LINK_END = "\x1b]8;;\x1b\\";
   }
 }
 
@@ -127,6 +123,10 @@ bool ShellColorsFeature::prepareConsole() {
   if (!SetConsoleMode(hStdout, handleMode)) {
     return false;
   }
+
+  // Set the codepage for the console output to UTF-8 so that unicode characters
+  // are displayed correctly.
+  SetConsoleOutputCP(CP_UTF8);
   return true;
 }
 #endif

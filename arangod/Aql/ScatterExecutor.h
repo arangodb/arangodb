@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,8 +21,7 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_SCATTER_EXECUTOR_H
-#define ARANGOD_AQL_SCATTER_EXECUTOR_H
+#pragma once
 
 #include "Aql/BlocksWithClients.h"
 #include "Aql/ClusterNodes.h"
@@ -56,7 +56,7 @@ class ScatterExecutor {
     auto addBlock(SharedAqlItemBlockPtr block, SkipResult skipped) -> void;
     auto hasDataFor(AqlCall const& call) -> bool;
 
-    auto execute(AqlCallStack callStack, ExecutionState upstreamState)
+    auto execute(AqlCallStack const& callStack, ExecutionState upstreamState)
         -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>;
 
    private:
@@ -69,24 +69,24 @@ class ScatterExecutor {
   explicit ScatterExecutor(Infos const&);
   ~ScatterExecutor() = default;
 
-  auto distributeBlock(SharedAqlItemBlockPtr block, SkipResult skipped,
-                       std::unordered_map<std::string, ClientBlockData>& blockMap) const
-      -> void;
+  auto distributeBlock(
+      SharedAqlItemBlockPtr const& block, SkipResult skipped,
+      std::unordered_map<std::string, ClientBlockData>& blockMap) const -> void;
 };
 
 /**
  * @brief See ExecutionBlockImpl.h for documentation.
  */
-template <>
-class ExecutionBlockImpl<ScatterExecutor> : public BlocksWithClientsImpl<ScatterExecutor> {
+template<>
+class ExecutionBlockImpl<ScatterExecutor>
+    : public BlocksWithClientsImpl<ScatterExecutor> {
  public:
   ExecutionBlockImpl(ExecutionEngine* engine, ScatterNode const* node,
-                     RegisterInfos registerInfos, ScatterExecutor::Infos&& infos);
+                     RegisterInfos registerInfos,
+                     ScatterExecutor::Infos&& infos);
 
   ~ExecutionBlockImpl() override = default;
 };
 
 }  // namespace aql
 }  // namespace arangodb
-
-#endif  // ARANGOD_AQL_SCATTER_EXECUTOR_H

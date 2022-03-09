@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,21 +21,19 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CACHE_CACHE_MANAGER_FEATURE_H
-#define ARANGOD_CACHE_CACHE_MANAGER_FEATURE_H 1
+#pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Cache/CacheManagerFeatureThreads.h"
 #include "Cache/Manager.h"
+#include "RestServer/arangod.h"
 
 namespace arangodb {
 
-class CacheManagerFeature final : public application_features::ApplicationFeature {
+class CacheManagerFeature final : public ArangodFeature {
  public:
-  // note that the cache is optional and that MANAGER can be a nullptr!
-  static cache::Manager* MANAGER;
+  static constexpr std::string_view name() { return "CacheManager"; }
 
-  explicit CacheManagerFeature(application_features::ApplicationServer& server);
+  explicit CacheManagerFeature(Server& server);
   ~CacheManagerFeature();
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -43,10 +41,12 @@ class CacheManagerFeature final : public application_features::ApplicationFeatur
   void start() override final;
   void beginShutdown() override final;
   void stop() override final;
-  void unprepare() override final;
+
+  /// @brief Pointer to global instance; Can be null if cache is disabled
+  cache::Manager* manager();
 
  private:
-  static const uint64_t minRebalancingInterval;
+  static constexpr uint64_t minRebalancingInterval = 500 * 1000;
 
   std::unique_ptr<cache::Manager> _manager;
   std::unique_ptr<CacheRebalancerThread> _rebalancer;
@@ -55,5 +55,3 @@ class CacheManagerFeature final : public application_features::ApplicationFeatur
 };
 
 }  // namespace arangodb
-
-#endif

@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -59,7 +60,8 @@ IAggregator* AggregatorHandler::getAggregator(AggregatorID const& name) {
   }
 }
 
-void AggregatorHandler::aggregate(AggregatorID const& name, const void* valuePtr) {
+void AggregatorHandler::aggregate(AggregatorID const& name,
+                                  const void* valuePtr) {
   IAggregator* agg = getAggregator(name);
   if (agg) {
     agg->aggregate(valuePtr);
@@ -113,7 +115,8 @@ void AggregatorHandler::resetValues() {
   }
 }
 
-bool AggregatorHandler::serializeValues(VPackBuilder& b, bool onlyConverging) const {
+bool AggregatorHandler::serializeValues(VPackBuilder& b,
+                                        bool onlyConverging) const {
   bool hasValues = false;
   b.add(Utils::aggregatorValuesKey, VPackValue(VPackValueType::Object));
   READ_LOCKER(guard, _lock);

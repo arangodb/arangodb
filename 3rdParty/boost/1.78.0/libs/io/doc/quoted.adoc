@@ -1,0 +1,145 @@
+////
+Copyright 2019 Glen Joseph Fernandes
+(glenjofe@gmail.com)
+
+Distributed under the Boost Software License, Version 1.0.
+(http://www.boost.org/LICENSE_1_0.txt)
+////
+
+# Quoted Manipulators, <boost/io/quoted.hpp>
+:toc:
+:toc-title:
+:idprefix:
+
+## Introduction
+
+C++ Standard library stream I/O for strings that contain embedded spaces can
+produce unexpected results. For example,
+
+```
+std::stringstream ss;
+std::string original = "fooled you";
+std::string roundtrip;
+
+ss << original;
+ss >> roundtrip;
+
+std::cout << original;   // outputs: fooled you
+std::cout << roundtrip; // outputs: fooled
+
+assert(original == roundtrip); // assert will fire
+```
+
+The Boost quoted stream I/O manipulator places delimiters, defaulted to the
+double-quote ("), around strings on output, and strips off the delimiters on
+input. This ensures strings with embedded spaces round-trip as desired. For
+example,
+
+```
+std::stringstream ss;
+std::string original = "fooled you";
+std::string roundtrip;
+
+ss << quoted(original);
+ss >> quoted(roundtrip);
+
+std::cout << quoted(original); // outputs: "fooled you"
+std::cout << roundtrip;       // outputs: fooled you
+
+assert(original == roundtrip); // assert will not fire
+```
+
+If the string contains the delimiter character, on output that character will
+be preceded by an escape character, as will the escape character itself:
+
+```
+std::cout << quoted("'Jack & Jill'", '&', '\''); // outputs: '&'Jack && Jill&''
+```
+
+## Header synopsis
+
+[subs=+quotes]
+```
+namespace boost {
+namespace io {
+
+template<class Char, class Traits, class Alloc>
+`unspecified-type1`
+quoted(const std::basic_string<Char, Traits, Alloc>& string,
+       Char escape='\\', Char delim='\"');
+
+template<class Char>
+`unspecified-type2`
+quoted(const Char* string, Char escape='\\', Char delim='\"');
+
+template<class Char, class Traits, class Alloc>
+`unspecified-type3`
+quoted(std::basic_string<Char, Traits, Alloc>& string,
+       Char escape='\\', Char delim='\"');
+
+} // io
+} // boost
+```
+
+*unspecified-type1*, *unspecified-type2*, and *unspecified-type3* are
+implementation supplied types with implementation supplied `operator<<`:
+
+[subs=+quotes]
+```
+template<class Char, class Traits>
+std::basic_ostream<Char, Traits>&
+operator<<(std::basic_ostream<Char, Traits>& os,
+           const `unspecified-typeN`& proxy);
+```
+
+Effects:: Inserts characters into `os`:
+* `delim`
+* Each character in `string`. If the character to be output is equal to
+`escape` or `delim`, as determined by `operator==`, first output `escape`.
+* `delim`
+Remarks:: `string`, `escape`, and `delim` have the type and value of the
+corresponding arguments of the call to the `quoted` function that constructed
+`proxy`.
+Returns:: `os`.
+
+*unspecified-type3* is an implementation supplied type with an implementation
+supplied `operator>>`:
+
+[subs=+quotes]
+```
+template<class Char, class Traits>
+std::basic_istream<Char, Traits>&
+operator>>(std::basic_istream<Char, Traits>& is,
+           const `unspecified-type3`& proxy);
+```
+
+Effects:: Extracts characters from `os`:
+* If the first character extracted is equal to `delim`, as determined by
+`operator==`, then:
+** Turn off the `skipws` flag.
+** `string.clear()`
+** Until an unescaped `delim` character is reached or `is.not_good()`, extract
+characters from `os` and append them to string, except that if an escape is
+reached, ignore it and append the next character to string.
+** Discard the final `delim` character.
+** Restore the `skipws` flag to its original value.
+* Otherwise, `os >> string`.
+
+Remarks:: `string`, `escape`, and `delim` have the type and value of the
+corresponding arguments of the call to the `quoted` function that constructed
+`proxy`.
+Returns:: `is`.
+
+## Acknowledgements
+
+The `quoted()` stream manipulator emerged from discussions on the Boost
+developers mailing list. Participants included Beman Dawes, Rob Stewart,
+Alexander Lamaison, Eric Niebler, Vicente Botet, Andrey Semashev,
+Phil Richards, and Rob Murray. Eric Niebler's suggestions provided the basis
+for the name and form of the templates.
+
+Beman Dawes started the implementation of `quoted()` as a private detail
+header. Glen Fernandes updated the implementation and also made it public.
+
+Glen Fernandes corrected the implementation to properly account for stream
+width and fill, and optimized it to write directly to the stream buffer.

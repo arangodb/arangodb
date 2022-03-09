@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,12 +21,12 @@
 /// @author Manuel Baesler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_STATISTICS_STATISTICS_WORKER_H
-#define ARANGOD_STATISTICS_STATISTICS_WORKER_H 1
+#pragma once
 
 #include "Basics/ConditionVariable.h"
 #include "Basics/Thread.h"
 #include "Statistics/figures.h"
+#include "RestServer/arangod.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -34,14 +35,13 @@ struct TRI_vocbase_t;
 
 namespace arangodb {
 
-class StatisticsWorker final : public Thread {
+class StatisticsWorker final : public ServerThread<ArangodServer> {
  public:
   explicit StatisticsWorker(TRI_vocbase_t& vocbase);
   ~StatisticsWorker() { shutdown(); }
 
   void run() override;
   void beginShutdown() override;
-  void generateRawStatistics(std::string& result, double const& now);
 
  private:
   // removes old statistics
@@ -50,9 +50,9 @@ class StatisticsWorker final : public Thread {
 
   // calculate per second statistics
   void historian();
-  void computePerSeconds(velocypack::Builder& result, velocypack::Slice const& current,
-                         velocypack::Slice const& prev);
-  void generateRawStatistics(velocypack::Builder& result, double const& now);
+  void computePerSeconds(velocypack::Builder& result, velocypack::Slice current,
+                         velocypack::Slice prev);
+  void generateRawStatistics(velocypack::Builder& result, double now);
 
   // calculate per 15 seconds statistics
   void historianAverage();
@@ -62,22 +62,15 @@ class StatisticsWorker final : public Thread {
   void createCollections() const;
   void createCollection(std::string const&) const;
 
-  std::shared_ptr<arangodb::velocypack::Builder> lastEntry(std::string const& collection,
-                                                           double start) const;
+  std::shared_ptr<arangodb::velocypack::Builder> lastEntry(
+      std::string const& collection, double start) const;
 
-  void avgPercentDistributon(velocypack::Builder& result, velocypack::Slice const&,
-                             velocypack::Slice const&, velocypack::Builder const&) const;
-
-  velocypack::Builder fillDistribution(statistics::Distribution const& dist) const;
+  void avgPercentDistributon(velocypack::Builder& result, velocypack::Slice now,
+                             velocypack::Slice last,
+                             velocypack::Builder const&) const;
 
   // save one statistics object
-  void saveSlice(velocypack::Slice const&, std::string const&) const;
-
-  void appendHistogram(
-    std::string& result, statistics::Distribution const& dist,
-    std::string const& label, std::initializer_list<std::string> const& les) const;
-  void appendMetric(
-    std::string& result, std::string const& val, std::string const& label) const;
+  void saveSlice(velocypack::Slice slice, std::string const& collection) const;
 
   static constexpr uint64_t STATISTICS_INTERVAL = 10;    // 10 secs
   static constexpr uint64_t GC_INTERVAL = 8 * 60;        //  8 mins
@@ -100,10 +93,11 @@ class StatisticsWorker final : public Thread {
   velocypack::Builder _rawBuilder;
   velocypack::Builder _tempBuilder;
 
+  velocypack::Builder _lastStoredValue;
+
   std::string _clusterId;
-  TRI_vocbase_t& _vocbase;  // vocbase for querying/persisting statistics collections
+  TRI_vocbase_t&
+      _vocbase;  // vocbase for querying/persisting statistics collections
 };
 
 }  // namespace arangodb
-
-#endif

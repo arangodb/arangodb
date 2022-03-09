@@ -64,16 +64,14 @@ result cache were used. The *cacheable* attribute is not present when *allPlans*
 is set to *true*.
 
 Each plan in the result is a JSON object with the following attributes:
-- *nodes*: the array of execution nodes of the plan. The array of available node types
-  can be found [here](../../AQL/ExecutionAndPerformance/Optimizer.html)
+- *nodes*: the array of execution nodes of the plan.
 
 - *estimatedCost*: the total estimated cost for the plan. If there are multiple
   plans, the optimizer will choose the plan with the lowest total cost.
 
 - *collections*: an array of collections used in the query
 
-- *rules*: an array of rules the optimizer applied. An overview of the
-  available rules can be found [here](../../AQL/ExecutionAndPerformance/Optimizer.html)
+- *rules*: an array of rules the optimizer applied.
 
 - *variables*: array of variables used in the query (note: this may contain
   internal variables created by the optimizer)

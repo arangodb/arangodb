@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,8 +21,7 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_AQLCALLSET_H
-#define ARANGOD_AQL_AQLCALLSET_H
+#pragma once
 
 #include "Aql/AqlCallList.h"
 
@@ -31,7 +31,8 @@
 namespace arangodb::aql {
 
 // Partial map dep -> call. May be empty.
-// IMPORTANT: Are expected to be saved in increasing order (regarding dependency)
+// IMPORTANT: Are expected to be saved in increasing order (regarding
+// dependency)
 struct AqlCallSet {
   struct DepCallPair {
     std::size_t dependency{};
@@ -49,5 +50,3 @@ auto operator<<(std::ostream& out, AqlCallSet::DepCallPair const& callPair)
 auto operator<<(std::ostream&, AqlCallSet const&) -> std::ostream&;
 
 }  // namespace arangodb::aql
-
-#endif  // ARANGOD_AQL_AQLCALLSET_H

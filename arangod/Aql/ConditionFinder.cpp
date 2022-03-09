@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,7 +31,6 @@
 #include "Aql/SortNode.h"
 #include "Basics/tryEmplaceHelper.h"
 
-
 using namespace arangodb::aql;
 using EN = arangodb::aql::ExecutionNode;
 
@@ -49,7 +48,8 @@ bool ConditionFinder::before(ExecutionNode* en) {
     case EN::TRAVERSAL:
     case EN::K_SHORTEST_PATHS:
     case EN::SHORTEST_PATH:
-    case EN::ENUMERATE_IRESEARCH_VIEW: {
+    case EN::ENUMERATE_IRESEARCH_VIEW:
+    case EN::WINDOW: {
       // in these cases we simply ignore the intermediate nodes, note
       // that we have taken care of nodes that could throw exceptions
       // above.
@@ -84,7 +84,8 @@ bool ConditionFinder::before(ExecutionNode* en) {
     case EN::SORT: {
       // register which variables are used in a SORT
       if (_sorts.empty()) {
-        for (auto& it : ExecutionNode::castTo<SortNode const*>(en)->elements()) {
+        for (auto& it :
+             ExecutionNode::castTo<SortNode const*>(en)->elements()) {
           _sorts.emplace_back(it.var, it.ascending);
           TRI_IF_FAILURE("ConditionFinder::sortNode") {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -97,7 +98,9 @@ bool ConditionFinder::before(ExecutionNode* en) {
     case EN::CALCULATION: {
       _variableDefinitions.try_emplace(
           ExecutionNode::castTo<CalculationNode const*>(en)->outVariable()->id,
-          ExecutionNode::castTo<CalculationNode const*>(en)->expression()->node());
+          ExecutionNode::castTo<CalculationNode const*>(en)
+              ->expression()
+              ->node());
       TRI_IF_FAILURE("ConditionFinder::variableDefinition") {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
@@ -106,7 +109,7 @@ bool ConditionFinder::before(ExecutionNode* en) {
 
     case EN::ENUMERATE_COLLECTION: {
       auto node = ExecutionNode::castTo<EnumerateCollectionNode const*>(en);
-      if (_changes->find(node->id()) != _changes->end()) {
+      if (_changes.find(node->id()) != _changes.end()) {
         // already optimized this node
         break;
       }
@@ -126,7 +129,9 @@ bool ConditionFinder::before(ExecutionNode* en) {
       }
 
       std::vector<transaction::Methods::IndexHandle> usedIndexes;
-      auto [filtering, sorting] = condition->findIndexes(node, usedIndexes, sortCondition.get());
+      bool oneIndexCondition{false};
+      auto [filtering, sorting] = condition->findIndexes(
+          node, usedIndexes, sortCondition.get(), oneIndexCondition);
 
       if (filtering || sorting) {
         bool descending = false;
@@ -138,7 +143,7 @@ bool ConditionFinder::before(ExecutionNode* en) {
           // index cannot be used for filtering, but only for sorting
           // remove the condition now
           TRI_ASSERT(sorting);
-          condition.reset(new Condition(_plan->getAst()));
+          condition = std::make_unique<Condition>(_plan->getAst());
           condition->normalize(_plan);
         }
 
@@ -148,22 +153,28 @@ bool ConditionFinder::before(ExecutionNode* en) {
         // will clear out usedIndexes
         IndexIteratorOptions opts;
         opts.ascending = !descending;
+        opts.lookahead = node->hint().getLookahead();
         TRI_IF_FAILURE("ConditionFinder::insertIndexNode") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
 
         // We keep this node's change
-        _changes->try_emplace(
-            node->id(),
-            arangodb::lazyConstruct([&]{
-              IndexNode* idx = new IndexNode(_plan, _plan->nextId(), node->collection(),
-                                             node->outVariable(), usedIndexes, std::move(condition), opts);
+        _changes.try_emplace(
+            node->id(), arangodb::lazyConstruct([&] {
+              IndexNode* idx =
+                  new IndexNode(_plan, _plan->nextId(), node->collection(),
+                                node->outVariable(), usedIndexes,
+                                oneIndexCondition, std::move(condition), opts);
               // if the enumerate collection node had the counting flag
               // set, we can copy it over to the index node as well
               idx->copyCountFlag(node);
+              // copy over the read-own-writes flag from EnumerateCollectionNode
+              // to IndexNode
+              idx->setCanReadOwnWrites(node->canReadOwnWrites());
+              // copy max number of projections
+              idx->setMaxProjections(node->maxProjections());
               return idx;
-            })
-        );
+            }));
       }
       break;
     }
@@ -181,8 +192,8 @@ bool ConditionFinder::enterSubquery(ExecutionNode*, ExecutionNode*) {
   return false;
 }
 
-bool ConditionFinder::handleFilterCondition(ExecutionNode* en,
-                                            std::unique_ptr<Condition> const& condition) {
+bool ConditionFinder::handleFilterCondition(
+    ExecutionNode* en, std::unique_ptr<Condition> const& condition) {
   bool foundCondition = false;
 
   for (auto& it : _variableDefinitions) {
@@ -238,7 +249,7 @@ bool ConditionFinder::handleFilterCondition(ExecutionNode* en,
       auto noRes = new NoResultsNode(_plan, _plan->nextId());
       _plan->registerNode(noRes);
       _plan->insertDependency(x, noRes);
-      *_hasEmptyResult = true;
+      _producesEmptyResult = true;
     }
     return false;
   }
@@ -254,25 +265,24 @@ bool ConditionFinder::handleFilterCondition(ExecutionNode* en,
   return true;
 }
 
-void ConditionFinder::handleSortCondition(ExecutionNode* en, Variable const* outVar,
-                                          std::unique_ptr<Condition> const& condition,
-                                          std::unique_ptr<SortCondition>& sortCondition) {
+void ConditionFinder::handleSortCondition(
+    ExecutionNode* en, Variable const* outVar,
+    std::unique_ptr<Condition> const& condition,
+    std::unique_ptr<SortCondition>& sortCondition) {
   if (!en->isInInnerLoop()) {
     // we cannot optimize away a sort if we're in an inner loop ourselves
-    sortCondition.reset(
-        new SortCondition(_plan, _sorts, condition->getConstAttributes(outVar, false),
-                          condition->getNonNullAttributes(outVar), _variableDefinitions));
+    sortCondition.reset(new SortCondition(
+        _plan, _sorts, condition->getConstAttributes(outVar, false),
+        condition->getNonNullAttributes(outVar), _variableDefinitions));
   } else {
     sortCondition.reset(new SortCondition());
   }
 }
 
-ConditionFinder::ConditionFinder(ExecutionPlan* plan,
-                                 std::unordered_map<ExecutionNodeId, ExecutionNode*>* changes,
-                                 bool* hasEmptyResult, bool viewMode)
+ConditionFinder::ConditionFinder(
+    ExecutionPlan* plan,
+    std::unordered_map<ExecutionNodeId, ExecutionNode*>& changes)
     : _plan(plan),
       _variableDefinitions(),
-      _filters(),
-      _sorts(),
       _changes(changes),
-      _hasEmptyResult(hasEmptyResult) {}
+      _producesEmptyResult(false) {}

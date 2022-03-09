@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,9 +21,9 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_THREADS_H
-#define ARANGODB_BASICS_THREADS_H 1
+#pragma once
 
+#include "Basics/ErrorCode.h"
 #include "Basics/operating-system.h"
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -52,7 +52,8 @@ void TRI_InitThread(TRI_thread_t*);
 /// @brief starts a thread
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_StartThread(TRI_thread_t*, char const*, void (*starter)(void*), void* data);
+bool TRI_StartThread(TRI_thread_t*, char const*, void (*starter)(void*),
+                     void* data);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if we are the thread
@@ -66,8 +67,7 @@ bool TRI_IsSelfThread(TRI_thread_t* thread);
 
 // SHOULD BE REMOVED
 void TRI_InitThread(TRI_thread_t* thread);
-int TRI_JoinThread(TRI_thread_t* thread);
-int TRI_JoinThreadWithTimeout(TRI_thread_t* thread, std::uint32_t timeout);
-int TRI_DetachThread(TRI_thread_t* thread);
-
-#endif
+ErrorCode TRI_JoinThread(TRI_thread_t* thread);
+ErrorCode TRI_JoinThreadWithTimeout(TRI_thread_t* thread,
+                                    std::uint32_t timeout);
+bool TRI_DetachThread(TRI_thread_t* thread);

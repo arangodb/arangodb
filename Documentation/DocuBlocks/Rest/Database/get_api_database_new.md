@@ -5,21 +5,25 @@
 @RESTHEADER{POST /_api/database, Create database, createDatabase}
 
 @RESTBODYPARAM{name,string,required,string}
-Has to contain a valid database name.
+Has to contain a valid database name. The name must conform to the selected
+naming convention for databases. If the name contains Unicode characters, the
+name must be [NFC-normalized](https://en.wikipedia.org/wiki/Unicode_equivalence#Normal_forms).
+Non-normalized names will be rejected by arangod.
 
-@RESTBODYPARAM{options,object,optional,get_api_database_new_USERS}
+@RESTBODYPARAM{options,object,optional,get_api_database_new_OPTIONS}
 Optional object which can contain the following attributes:
 
-@RESTSTRUCT{sharding,get_api_database_new_USERS,string,optional,string}
+@RESTSTRUCT{sharding,get_api_database_new_OPTIONS,string,optional,}
 The sharding method to use for new collections in this database. Valid values
 are: "", "flexible", or "single". The first two are equivalent. _(cluster only)_
 
-@RESTSTRUCT{replicationFactor,get_api_database_new_USERS,integer,optional,}
+@RESTSTRUCT{replicationFactor,get_api_database_new_OPTIONS,integer,optional,}
 Default replication factor for new collections created in this database.
 Special values include "satellite", which will replicate the collection to
-every DB-Server, and 1, which disables replication. _(cluster only)_
+every DB-Server (Enterprise Edition only), and 1, which disables replication.
+_(cluster only)_
 
-@RESTSTRUCT{writeConcern,get_api_database_new_USERS,number,optional,}
+@RESTSTRUCT{writeConcern,get_api_database_new_OPTIONS,number,optional,}
 Default write concern for new collections created in this database.
 It determines how many copies of each shard are required to be
 in sync on the different DB-Servers. If there are less then these many copies
@@ -28,27 +32,30 @@ up-to-date copies will succeed at the same time however. The value of
 *writeConcern* can not be larger than *replicationFactor*. _(cluster only)_
 
 @RESTBODYPARAM{users,array,optional,get_api_database_new_USERS}
-Has to be an array of user objects to initially create for the new database.
-User information will not be changed for users that already exist.
-If *users* is not specified or does not contain any users, a default user
-*root* will be created with an empty string password. This ensures that the
-new database will be accessible after it is created.
-Each user object can contain the following attributes:
+An array of user objects. The users will be granted *Administrate* permissions
+for the new database. Users that do not exist yet will be created.
+If *users* is not specified or does not contain any users, the default user
+*root* will be used to ensure that the new database will be accessible after it
+is created. The *root* user is created with an empty password should it not
+exist. Each user object can contain the following attributes:
 
-@RESTSTRUCT{username,get_api_database_new_USERS,string,required,string}
-Login name of the user to be created
+@RESTSTRUCT{username,get_api_database_new_USERS,string,required,}
+Login name of an existing user or one to be created.
 
-@RESTSTRUCT{passwd,get_api_database_new_USERS,string,required,string}
-The user password as a string. If not specified, it will default to an empty string.
+@RESTSTRUCT{passwd,get_api_database_new_USERS,string,optional,password}
+The user password as a string. If not specified, it will default to an empty
+string. The attribute is ignored for users that already exist.
 
-@RESTSTRUCT{active,get_api_database_new_USERS,boolean,required,}
+@RESTSTRUCT{active,get_api_database_new_USERS,boolean,optional,}
 A flag indicating whether the user account should be activated or not.
-The default value is *true*. If set to *false*, the user won't be able to
-log into the database.
+The default value is *true*. If set to *false*, then the user won't be able to
+log into the database. The default is *true*. The attribute is ignored for users
+that already exist.
 
 @RESTSTRUCT{extra,get_api_database_new_USERS,object,optional,}
-A JSON object with extra user information. The data contained in *extra*
-will be stored for the user but not be interpreted further by ArangoDB.
+A JSON object with extra user information. It is used by the web interface
+to store graph viewer settings and saved queries. Should not be set or
+modified by end users, as custom attributes will not be preserved.
 
 @RESTDESCRIPTION
 Creates a new database

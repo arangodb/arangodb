@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,21 +21,23 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_ENGINE_ROCKSDB_COLLECTION_META_H
-#define ARANGOD_ROCKSDB_ENGINE_ROCKSDB_COLLECTION_META_H 1
+#pragma once
 
-#include "Basics/ReadWriteLock.h"
-#include "Basics/Result.h"
-#include "VocBase/voc-types.h"
-
-#include <mutex>
 #include <map>
+#include <mutex>
 #include <set>
+#include <atomic>
 
 #include <rocksdb/types.h>
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
+
+#include "Basics/ReadWriteLock.h"
+#include "Basics/Result.h"
+#include "VocBase/Identifiers/RevisionId.h"
+#include "VocBase/Identifiers/TransactionId.h"
+#include "VocBase/voc-types.h"
 
 namespace rocksdb {
 class DB;
@@ -50,24 +53,61 @@ class RocksDBRecoveryManager;
 struct RocksDBMetadata final {
   friend class RocksDBRecoveryManager;
 
+  RocksDBMetadata(RocksDBMetadata const&) = delete;
+  RocksDBMetadata operator=(RocksDBMetadata const&) = delete;
+
   /// @brief collection count
   struct DocCount {
-    rocksdb::SequenceNumber _committedSeq; /// safe sequence number for recovery
-    uint64_t _added; /// number of added documents
-    uint64_t _removed; /// number of removed documents
-    TRI_voc_rid_t _revisionId; /// @brief last used revision id
+    rocksdb::SequenceNumber
+        _committedSeq;       /// safe sequence number for recovery
+    uint64_t _added;         /// number of added documents
+    uint64_t _removed;       /// number of removed documents
+    RevisionId _revisionId;  /// @brief last used revision id
 
-    DocCount(rocksdb::SequenceNumber sq, uint64_t added, uint64_t removed, TRI_voc_rid_t rid)
-        : _committedSeq(sq), _added(added), _removed(removed), _revisionId(rid) {}
+    DocCount()
+        : _committedSeq{0},
+          _added{0},
+          _removed{0},
+          _revisionId{RevisionId::none()} {}
 
-    explicit DocCount(arangodb::velocypack::Slice const&);
-    void toVelocyPack(arangodb::velocypack::Builder&) const;
+    DocCount(rocksdb::SequenceNumber sq, uint64_t added, uint64_t removed,
+             RevisionId rid)
+        : _committedSeq(sq),
+          _added(added),
+          _removed(removed),
+          _revisionId(rid) {}
+
+    explicit DocCount(velocypack::Slice slice);
+    void toVelocyPack(velocypack::Builder& b) const;
   };
 
  public:
   RocksDBMetadata();
 
- public:
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  // marks document counts as tainted during testing
+  void setTainted() { _tainted = true; }
+#else
+  static constexpr void setTainted() noexcept {}
+#endif
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  bool tainted() const noexcept {
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+    // if we use failure tests, the document counts may have been intentionally
+    // corrupted. the tainted state is set by the failure points that corrupt
+    // the counters.
+    return _tainted;
+#else
+    // if we don't use failure tests, the document counts are never tainted.
+    return false;
+#endif
+  }
+#else
+  // non-maintainer mode...
+  static constexpr bool tainted() noexcept { return false; }
+#endif
+
   /**
    * @brief Place a blocker to allow proper commit/serialize semantics
    *
@@ -78,9 +118,9 @@ struct RocksDBMetadata final {
    *
    * @param  trxId The identifier for the active transaction
    * @param  seq   The sequence number immediately prior to call
-   * @return       May return error if we fail to allocate and place blocker
    */
-  Result placeBlocker(TRI_voc_tid_t trxId, rocksdb::SequenceNumber seq);
+  rocksdb::SequenceNumber placeBlocker(TransactionId trxId,
+                                       rocksdb::SequenceNumber seq);
 
   /**
    * @brief Update a blocker to allow proper commit/serialize semantics
@@ -92,7 +132,7 @@ struct RocksDBMetadata final {
    * @param  seq   The sequence number from the internal snapshot
    * @return       May return error if we fail to allocate and place blocker
    */
-  Result updateBlocker(TRI_voc_tid_t trxId, rocksdb::SequenceNumber seq);
+  Result updateBlocker(TransactionId trxId, rocksdb::SequenceNumber seq);
 
   /**
    * @brief Removes an existing transaction blocker
@@ -104,36 +144,49 @@ struct RocksDBMetadata final {
    * @param trxId Identifier for active transaction (should match input to
    *              earlier `placeBlocker` call)
    */
-  void removeBlocker(TRI_voc_tid_t trxId);
+  void removeBlocker(TransactionId trxId) noexcept;
+
+  /// @brief check if there is blocker with a seq number lower or equal to
+  /// the specified number
+  bool hasBlockerUpTo(rocksdb::SequenceNumber seq) const noexcept;
 
   /// @brief returns the largest safe seq to squash updates against
-  rocksdb::SequenceNumber committableSeq(rocksdb::SequenceNumber maxCommitSeq) const;
-
-  /// @brief get the current count, ONLY use in recovery
-  DocCount& countUnsafe() { return _count; }
+  rocksdb::SequenceNumber committableSeq(
+      rocksdb::SequenceNumber maxCommitSeq) const;
 
   /// @brief buffer a counter adjustment
-  void adjustNumberDocuments(rocksdb::SequenceNumber seq, TRI_voc_rid_t revId, int64_t adj);
+  void adjustNumberDocuments(rocksdb::SequenceNumber seq, RevisionId revId,
+                             int64_t adj);
+
+  /// @brief buffer a counter adjustment ONLY in recovery, optimized to use less
+  /// memory
+  void adjustNumberDocumentsInRecovery(rocksdb::SequenceNumber seq,
+                                       RevisionId revId, int64_t adj);
 
   /// @brief serialize the collection metadata
   arangodb::Result serializeMeta(rocksdb::WriteBatch&, LogicalCollection&,
                                  bool force, arangodb::velocypack::Builder&,
-                                 rocksdb::SequenceNumber& appliedSeq, std::string& output);
+                                 rocksdb::SequenceNumber& appliedSeq,
+                                 std::string& output);
 
   /// @brief deserialize collection metadata, only called on startup
   arangodb::Result deserializeMeta(rocksdb::DB*, LogicalCollection&);
-  
+
   void loadInitialNumberDocuments();
 
-  uint64_t numberDocuments() const {
+  uint64_t numberDocuments() const noexcept {
     return _numberDocuments.load(std::memory_order_acquire);
   }
-  
-  TRI_voc_rid_t revisionId() const {
+
+  rocksdb::SequenceNumber countCommitted() const {
+    std::lock_guard lock{_bufferLock};
+    return _count._committedSeq;
+  }
+
+  RevisionId revisionId() const noexcept {
     return _revisionId.load(std::memory_order_acquire);
   }
 
-public:
   // static helper methods to modify collection meta entries in rocksdb
 
   /// @brief load collection document count
@@ -149,20 +202,19 @@ public:
   /// @brief apply counter adjustments, only call from sync thread
   bool applyAdjustments(rocksdb::SequenceNumber commitSeq);
 
- private:
-  // TODO we should probably use flat_map or abseils Swiss Tables
-
   mutable arangodb::basics::ReadWriteLock _blockerLock;
   /// @brief blocker identifies a transaction being committed
-  std::map<TRI_voc_tid_t, rocksdb::SequenceNumber> _blockers;
-  std::set<std::pair<rocksdb::SequenceNumber, TRI_voc_tid_t>> _blockersBySeq;
+  // TODO we should probably use flat_map or abseils Swiss Tables
+  std::map<TransactionId, rocksdb::SequenceNumber> _blockers;
+  std::set<std::pair<rocksdb::SequenceNumber, TransactionId>> _blockersBySeq;
+  rocksdb::SequenceNumber _maxBlockersSequenceNumber;
 
   DocCount _count;  /// @brief document count struct
 
   /// document counter adjustment
   struct Adjustment {
     /// @brief last used revision id
-    TRI_voc_rid_t revisionId;
+    RevisionId revisionId;
     /// @brief number of added / removed documents
     int64_t adjustment;
   };
@@ -172,11 +224,48 @@ public:
   std::map<rocksdb::SequenceNumber, Adjustment> _bufferedAdjs;
   /// @brief internal buffer for adjustments
   std::map<rocksdb::SequenceNumber, Adjustment> _stagedAdjs;
-  
+
   // below values are updated immediately, but are not serialized
   std::atomic<uint64_t> _numberDocuments;
-  std::atomic<TRI_voc_rid_t> _revisionId;
-};
-}  // namespace arangodb
+  std::atomic<RevisionId> _revisionId;
 
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  // whether document counts are tainted during testing
+  bool _tainted = false;
 #endif
+};
+
+/// helper class for acquiring and releasing a blocker.
+/// constructing an object of this class will do nothing, but once
+/// placeBlocker() is called, the object takes care of releasing the
+/// blocker upon destruction. An acquired blocker can also be released
+/// prematurely by calling releaseBlocker().
+class RocksDBBlockerGuard {
+ public:
+  explicit RocksDBBlockerGuard(LogicalCollection* collection);
+  ~RocksDBBlockerGuard();
+  RocksDBBlockerGuard(RocksDBBlockerGuard const&) = delete;
+  RocksDBBlockerGuard& operator=(RocksDBBlockerGuard const&) = delete;
+  RocksDBBlockerGuard(RocksDBBlockerGuard&&) noexcept;
+  RocksDBBlockerGuard& operator=(RocksDBBlockerGuard&&) noexcept;
+
+  /// @brief place a blocker without prescribing a transaction id.
+  /// it is not allowed to call placeBlocker() if a blocker is already
+  /// acquired by the object.
+  rocksdb::SequenceNumber placeBlocker();
+
+  /// @brief place a blocker for a specific transaction id.
+  /// it is not allowed to call placeBlocker() if a blocker is already
+  /// acquired by the object.
+  rocksdb::SequenceNumber placeBlocker(TransactionId id);
+
+  /// @brief releases an acquired blocker. will do nothing if no
+  /// blocker is currently acquired by the object.
+  void releaseBlocker() noexcept;
+
+ private:
+  LogicalCollection* _collection;
+  TransactionId _trxId;
+};
+
+}  // namespace arangodb

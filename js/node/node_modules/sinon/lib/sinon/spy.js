@@ -31,11 +31,15 @@
             }
 
             if (types) {
+                // A new descriptor is needed here because we can only wrap functions
+                // By passing the original descriptor we would end up trying to spy non-function properties
+                var descriptor = {};
                 var methodDesc = sinon.getPropertyDescriptor(object, property);
+
                 for (var i = 0; i < types.length; i++) {
-                    methodDesc[types[i]] = spy.create(methodDesc[types[i]]);
+                    descriptor[types[i]] = spy.create(methodDesc[types[i]]);
                 }
-                return sinon.wrapMethod(object, property, methodDesc);
+                return sinon.wrapMethod(object, property, descriptor);
             }
 
             return sinon.wrapMethod(object, property, spy.create(object[property]));

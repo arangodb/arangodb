@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,20 +21,23 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_PREGEL_INDEX_HELPERS_H
-#define ARANGOD_PREGEL_INDEX_HELPERS_H 1
+#pragma once
 
 #include <memory>
+#include <string>
 
 #include "Aql/Graphs.h"
+#include "Indexes/IndexIterator.h"
 
 namespace arangodb {
+class Index;
 class IndexIterator;
+class LogicalCollection;
 
-namespace transaction{
+namespace transaction {
 class Methods;
 }
-  
+
 namespace traverser {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -57,13 +60,24 @@ class EdgeCollectionInfo {
 
   std::string _collectionName;
 
+  LogicalCollection* _collection;
+
+  /// @brief index used for iteration
+  std::shared_ptr<arangodb::Index> _index;
+
+  std::unique_ptr<arangodb::IndexIterator> _cursor;
+
+  // position of covering index attribute in the results
+  size_t _coveringPosition;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Temporary builder for index search values
-  ///        NOTE: Single search builder is NOT thread-save
+  ///        NOTE: Single search builder is NOT thread-safe
   //////////////////////////////////////////////////////////////////////////////
 
   aql::EdgeConditionBuilderContainer _searchBuilder;
+
+  IndexIteratorOptions _indexIteratorOptions;
 
  public:
   EdgeCollectionInfo(transaction::Methods* trx, std::string const& cname);
@@ -72,9 +86,11 @@ class EdgeCollectionInfo {
   /// @brief Get edges for the given direction and start vertex.
   ////////////////////////////////////////////////////////////////////////////////
 
-  std::unique_ptr<arangodb::IndexIterator> getEdges(std::string const&);
+  arangodb::IndexIterator* getEdges(std::string const&);
 
   transaction::Methods* trx() const { return _trx; }
+
+  size_t coveringPosition() const noexcept { return _coveringPosition; }
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief Return name of the wrapped collection
@@ -85,5 +101,3 @@ class EdgeCollectionInfo {
 
 }  // namespace traverser
 }  // namespace arangodb
-
-#endif

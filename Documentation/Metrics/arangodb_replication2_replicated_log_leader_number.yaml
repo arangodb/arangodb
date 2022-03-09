@@ -1,0 +1,13 @@
+name: arangodb_replication2_replicated_log_leader_number
+introducedIn: "3.9.0"
+help: |
+  Current number of replicated log leaders.
+unit: number
+type: gauge
+category: Replication
+complexity: simple
+exposedBy:
+  - dbserver
+  - single
+description: |
+  Number of replicated logs this server is currently a leader of.

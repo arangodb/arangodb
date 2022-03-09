@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -27,11 +28,12 @@
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/ShadowAqlItemRow.h"
 #include "AqlItemBlockHelper.h"
+#include "Basics/GlobalResourceMonitor.h"
+#include "Basics/ResourceUsage.h"
 #include "Basics/VelocyPackHelper.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -44,15 +46,22 @@ namespace aql {
 // Test empty constructor
 class InputRangeTest : public ::testing::TestWithParam<ExecutorState> {
  protected:
-  ResourceMonitor monitor;
-  AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
+  GlobalResourceMonitor global;
+  ResourceMonitor monitor{global};
+  AqlItemBlockManager itemBlockManager{monitor,
+                                       SerializationFormat::SHADOWROWS};
 
   AqlItemBlockInputRange createEmpty() {
-    return AqlItemBlockInputRange{GetParam()};
+    auto state = GetParam() == ExecutorState::HASMORE ? MainQueryState::HASMORE
+                                                      : MainQueryState::DONE;
+    return AqlItemBlockInputRange{state};
   }
 
-  AqlItemBlockInputRange createFromBlock(arangodb::aql::SharedAqlItemBlockPtr& block) {
-    return AqlItemBlockInputRange(GetParam(), 0, block, 0);
+  AqlItemBlockInputRange createFromBlock(
+      arangodb::aql::SharedAqlItemBlockPtr& block) {
+    auto state = GetParam() == ExecutorState::HASMORE ? MainQueryState::HASMORE
+                                                      : MainQueryState::DONE;
+    return AqlItemBlockInputRange(state, 0, block, 0);
   }
 
   void validateEndReached(AqlItemBlockInputRange& testee) {
@@ -128,8 +137,9 @@ class InputRangeTest : public ::testing::TestWithParam<ExecutorState> {
     EXPECT_EQ(expectedState, testee.upstreamState());
   }
 
-  void validateNextIsShadowRow(AqlItemBlockInputRange& testee, ExecutorState expectedState,
-                               int64_t value, uint64_t depth) {
+  void validateNextIsShadowRow(AqlItemBlockInputRange& testee,
+                               ExecutorState expectedState, int64_t value,
+                               uint64_t depth) {
     EXPECT_TRUE(testee.hasShadowRow());
     // The next is a ShadowRow, the state shall be done
     EXPECT_EQ(testee.upstreamState(), ExecutorState::DONE);
@@ -232,8 +242,8 @@ TEST_P(InputRangeTest, no_shadow_rows_in_block) {
 }
 
 TEST_P(InputRangeTest, level_0_shadow_rows_in_block) {
-  SharedAqlItemBlockPtr inputBlock =
-      buildBlock<1>(itemBlockManager, {{{1}}, {{2}}, {{3}}, {{4}}}, {{1, 0}, {3, 0}});
+  SharedAqlItemBlockPtr inputBlock = buildBlock<1>(
+      itemBlockManager, {{{1}}, {{2}}, {{3}}, {{4}}}, {{1, 0}, {3, 0}});
   auto testee = createFromBlock(inputBlock);
 
   validateNextIsDataRow(testee, ExecutorState::DONE, 1);
@@ -245,9 +255,9 @@ TEST_P(InputRangeTest, level_0_shadow_rows_in_block) {
 }
 
 TEST_P(InputRangeTest, multi_level_shadow_rows_in_block) {
-  SharedAqlItemBlockPtr inputBlock =
-      buildBlock<1>(itemBlockManager, {{{1}}, {{2}}, {{3}}, {{4}}, {{5}}, {{6}}, {{7}}},
-                    {{3, 0}, {4, 1}, {5, 2}});
+  SharedAqlItemBlockPtr inputBlock = buildBlock<1>(
+      itemBlockManager, {{{1}}, {{2}}, {{3}}, {{4}}, {{5}}, {{6}}, {{7}}},
+      {{3, 0}, {4, 1}, {5, 2}});
   auto testee = createFromBlock(inputBlock);
 
   validateNextIsDataRow(testee, ExecutorState::HASMORE, 1);
@@ -263,9 +273,9 @@ TEST_P(InputRangeTest, multi_level_shadow_rows_in_block) {
 }
 
 TEST_P(InputRangeTest, multi_shadow_rows_batches_in_block) {
-  SharedAqlItemBlockPtr inputBlock =
-      buildBlock<1>(itemBlockManager, {{{1}}, {{2}}, {{3}}, {{4}}, {{5}}, {{6}}, {{7}}},
-                    {{3, 0}, {4, 1}, {5, 0}, {6, 1}});
+  SharedAqlItemBlockPtr inputBlock = buildBlock<1>(
+      itemBlockManager, {{{1}}, {{2}}, {{3}}, {{4}}, {{5}}, {{6}}, {{7}}},
+      {{3, 0}, {4, 1}, {5, 0}, {6, 1}});
   auto testee = createFromBlock(inputBlock);
 
   validateNextIsDataRow(testee, ExecutorState::HASMORE, 1);
@@ -281,9 +291,9 @@ TEST_P(InputRangeTest, multi_shadow_rows_batches_in_block) {
 }
 
 TEST_P(InputRangeTest, multi_shadow_rows_batches_with_skip) {
-  SharedAqlItemBlockPtr inputBlock =
-      buildBlock<1>(itemBlockManager, {{{1}}, {{2}}, {{3}}, {{4}}, {{5}}, {{6}}, {{7}}},
-                    {{3, 0}, {4, 1}, {5, 0}, {6, 1}});
+  SharedAqlItemBlockPtr inputBlock = buildBlock<1>(
+      itemBlockManager, {{{1}}, {{2}}, {{3}}, {{4}}, {{5}}, {{6}}, {{7}}},
+      {{3, 0}, {4, 1}, {5, 0}, {6, 1}});
   auto testee = createFromBlock(inputBlock);
 
   validateNextIsDataRow(testee, ExecutorState::HASMORE, 1);
@@ -299,7 +309,8 @@ TEST_P(InputRangeTest, multi_shadow_rows_batches_with_skip) {
 }
 
 INSTANTIATE_TEST_CASE_P(AqlItemBlockInputRangeTest, InputRangeTest,
-                        ::testing::Values(ExecutorState::DONE, ExecutorState::HASMORE));
+                        ::testing::Values(ExecutorState::DONE,
+                                          ExecutorState::HASMORE));
 
 }  // namespace aql
 }  // namespace tests

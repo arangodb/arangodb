@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,13 +23,18 @@
 
 #include "IoContext.h"
 
-#include "Basics/cpu-relax.h"
+#include <thread>
+
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-IoContext::IoThread::IoThread(application_features::ApplicationServer& server, IoContext& iocontext)
+IoContext::IoThread::IoThread(application_features::ApplicationServer& server,
+                              IoContext& iocontext)
     : Thread(server, "Io"), _iocontext(iocontext) {}
 
 IoContext::IoThread::IoThread(IoThread const& other)
@@ -38,7 +44,12 @@ IoContext::IoThread::~IoThread() { shutdown(); }
 
 void IoContext::IoThread::run() {
   // run the asio io context
-  _iocontext.io_context.run();
+  try {
+    _iocontext.io_context.run();
+  } catch (std::exception const& ex) {
+    LOG_TOPIC("6794f", WARN, Logger::THREADS)
+        << "caught exception in IO thread: " << ex.what();
+  }
 }
 
 IoContext::IoContext(application_features::ApplicationServer& server)
@@ -64,7 +75,7 @@ IoContext::~IoContext() { stop(); }
 void IoContext::stop() {
   _work.reset();
   io_context.stop();
-  while(_thread.isRunning()) {
+  while (_thread.isRunning()) {
     std::this_thread::yield();
   }
 }

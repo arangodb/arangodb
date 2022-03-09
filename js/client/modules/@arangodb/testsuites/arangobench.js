@@ -35,8 +35,10 @@ const optionsDocumentation = [
   '   - `benchargs`: additional commandline arguments to arangobench'
 ];
 
+const fs = require('fs');
 const _ = require('lodash');
-const pu = require('@arangodb/process-utils');
+const pu = require('@arangodb/testutils/process-utils');
+const internal = require('internal');
 
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
 const CYAN = require('internal').COLORS.COLOR_CYAN;
@@ -54,107 +56,139 @@ const testPaths = {
 // //////////////////////////////////////////////////////////////////////////////
 
 const benchTodos = [{
+  'histogram.generate': true,
   'requests': '10000',
-  'concurrency': '2',
+  'threads': '2',
   'test-case': 'version',
   'keep-alive': 'false'
 }, {
+  'histogram.generate': true,
   'requests': '10000',
-  'concurrency': '2',
+  'threads': '2',
   'test-case': 'version',
   'async': 'true'
 }, {
+  'histogram.generate': true,
   'requests': '20000',
-  'concurrency': '1',
+  'threads': '1',
   'test-case': 'version',
   'async': 'true'
 }, {
-  'requests': '10000',
-  'concurrency': '3',
-  'test-case': 'stream-cursor',
-  'complexity': '4'
-}, {
-  'requests': '100000',
-  'concurrency': '2',
-  'test-case': 'shapes',
-  'batch-size': '16',
-  'complexity': '2'
-}, {
-  'requests': '100000',
-  'concurrency': '2',
-  'test-case': 'shapes-append',
-  'batch-size': '16',
-  'complexity': '4'
-}, {
-  'requests': '100000',
-  'concurrency': '2',
-  'test-case': 'random-shapes',
-  'batch-size': '16',
-  'complexity': '2'
-}, {
+  'histogram.generate': true,
   'requests': '1000',
-  'concurrency': '2',
+  'threads': '2',
   'test-case': 'version',
   'batch-size': '16'
 }, {
+  'histogram.generate': true,
   'requests': '100',
-  'concurrency': '1',
+  'threads': '1',
   'test-case': 'version',
   'batch-size': '0'
 }, {
+  'histogram.generate': true,
   'requests': '100',
-  'concurrency': '2',
+  'threads': '2',
   'test-case': 'document',
   'batch-size': '10',
   'complexity': '1'
 }, {
+  'histogram.generate': true,
   'requests': '2000',
-  'concurrency': '2',
+  'threads': '2',
   'test-case': 'crud',
   'complexity': '1'
 }, {
+  'histogram.generate': true,
   'requests': '4000',
-  'concurrency': '2',
+  'threads': '2',
   'test-case': 'crud-append',
   'complexity': '4'
 }, {
+  'histogram.generate': true,
   'requests': '4000',
-  'concurrency': '2',
+  'threads': '2',
   'test-case': 'edge',
   'complexity': '4'
 }, {
+  'histogram.generate': true,
   'requests': '5000',
-  'concurrency': '2',
-  'test-case': 'hash',
+  'threads': '2',
+  'test-case': 'persistent-index',
   'complexity': '1'
-}, {
-  'requests': '5000',
-  'concurrency': '2',
-  'test-case': 'skiplist',
-  'complexity': '1'
-}, {
-  'requests': '500',
-  'concurrency': '3',
-  'test-case': 'aqltrx',
-  'complexity': '1',
-  'transaction': true
-}, {
-  'requests': '1000',
-  'concurrency': '4',
-  'test-case': 'aqltrx',
-  'complexity': '1',
-  'transaction': true
-}, {
+},{
+  'histogram.generate': true,
+  'requests': '1',
+  'threads': '1',
+  'test-case': 'version',
+  'keep-alive': 'true',
+  'server.database': 'arangobench_testdb',
+  'create-database': true
+},{
+  'histogram.generate': true,
   'requests': '100',
-  'concurrency': '3',
-  'test-case': 'counttrx',
-  'transaction': true
+  'threads': '1',
+  'test-case': 'custom-query',
+  'custom-query': 'RETURN 1',
+  'keep-alive': 'true',
+  // test with Unicode database name
+  'server.database': 'c\\1234 @!§$ имя базы данных юникода!\'',
+  'create-database': true
+},{
+  'histogram.generate': true,
+  'requests': '100',
+  'threads': '1',
+  'test-case': 'version',
+  'keep-alive': 'true',
+  // test with Unicode database name
+  'server.database': '이것은 테스트입니까 ! @abc " mötör',
+  'create-database': true
 }, {
-  'requests': '500',
-  'concurrency': '3',
-  'test-case': 'multitrx',
-  'transaction': true
-}];
+  'histogram.generate': true,
+  'requests': '100',
+  'threads': '1',
+  'test-case': 'version',
+  'keep-alive': 'true',
+  // test with Unicode database name
+  'server.database': '이것은 테스트입니까 ! @abc " mötör',
+  'create-database': true,
+  'collection': 'testCollection',
+  //these flags have double @s because of the feature that trims the @ for escaping it in configuration files in /etc
+  //the double @s will be removed when this feature is deprecated
+  'custom-query': 'FOR doc IN @@@@collectionName FILTER doc.name == @@name RETURN doc',
+  'custom-query-bindvars': '{"@@collectionName": "testCollection", "name": "test"}'
+}, {
+  'histogram.generate': true,
+  'requests': '100',
+  'threads': '1',
+  'test-case': 'version',
+  'keep-alive': 'true',
+  // test with Unicode database name
+  'server.database': '이것은 테스트입니까 ! @abc " mötör',
+  'create-database': true,
+  'collection': 'testCollection',
+  //these flags have double @s because of the feature that trims the @ for escaping it in configuration files in /etc
+  //the double @s will be removed when this feature is deprecated
+  'custom-query': 'FOR doc IN @@@@collectionName FILTER doc.name == @@name RETURN doc',
+  'custom-query-bindvars': '{"@@collectionName": "testCollection", "value": "test"}',
+  'expected-failure': true
+}, {
+  'histogram.generate': true,
+  'requests': '100',
+  'threads': '1',
+  'test-case': 'version',
+  'keep-alive': 'true',
+  // test with Unicode database name
+  'server.database': '이것은 테스트입니까 ! @abc " mötör',
+  'create-database': true,
+  'collection': 'testCollection',
+  //these flags have double @s because of the feature that trims the @ for escaping it in configuration files in /etc
+  //the double @s will be removed when this feature is deprecated
+  'custom-query': 'FOR doc IN @@@@testCollection FILTER doc.name == @@name RETURN doc',
+  'custom-query-bindvars': '{"@@collectionName": "testCollection", "name": "test"}',
+  'expected-failure': true
+}
+];
 
 function arangobench (options) {
   if (options.skipArangoBench === true) {
@@ -186,12 +220,14 @@ function arangobench (options) {
   for (let i = 0; i < benchTodos.length; i++) {
     const benchTodo = benchTodos[i];
     const name = 'case' + i;
+    const reportfn = fs.join(instanceInfo.rootDir, 'report_' + name + '.json');
 
     if ((options.skipArangoBenchNonConnKeepAlive) &&
         benchTodo.hasOwnProperty('keep-alive') &&
         (benchTodo['keep-alive'] === 'false')) {
       benchTodo['keep-alive'] = true;
     }
+    benchTodo['json-report-file'] = reportfn;
 
     // On the cluster we do not yet have working transaction functionality:
     if (!options.cluster || !benchTodo.transaction) {
@@ -210,29 +246,84 @@ function arangobench (options) {
 
       let args = _.clone(benchTodo);
       delete args.transaction;
-
+      delete args['expected-failure'];
       if (options.hasOwnProperty('benchargs')) {
         args = Object.assign(args, options.benchargs);
       }
-
       let oneResult = pu.run.arangoBenchmark(options, instanceInfo, args, instanceInfo.rootDir, options.coreCheck);
-      print();
+      if (benchTodo.hasOwnProperty('expected-failure') && benchTodo['expected-failure']) {
+        continueTesting = pu.arangod.check.instanceAlive(instanceInfo, options);
+        if (benchTodo.hasOwnProperty('create-database') && benchTodo['create-database']) {
+          if (internal.db._databases().find(
+              dbName => dbName === benchTodo['server.database']) !== undefined) {
+            internal.db._dropDatabase(benchTodo['server.database']);
+          }
+        }
+        results[name] = oneResult;
+        results[name].total++;
+        results[name].failed = 0;
 
-      results[name] = oneResult;
-      results[name].total++;
-      results[name].failed = 0;
+        if (results[name].status) {
+          results[name].failed = 1;
+          results.status = false;
+          results.failed += 1;
+        }
+        if (oneResult.status && !options.force) {
+          break;
+        }
+      } else {
+        if (benchTodo.hasOwnProperty('duration')) {
+          oneResult.status = oneResult.status && oneResult.duration >= benchTodo['duration'];
+          if (!oneResult.status) {
+            oneResult.message += ` didn't run for the expected time ${benchTodo.duration} but only ${oneResult.duration}`;
+          }
+          if (!oneResult.status && options.extremeVerbosity) {
+            print("Duration test failed: " + JSON.stringify(oneResult));
+          }
+        }
 
-      if (!results[name].status) {
-        results[name].failed = 1;
-        results.status = false;
-        results.failed += 1;
-      }
+        if (benchTodo.hasOwnProperty('create-database') && benchTodo['create-database']) {
+          if (internal.db._databases().find(
+              dbName => dbName === benchTodo['server.database']) === undefined) {
+            oneResult.message += " no database was created!";
+            oneResult.status = false;
+          } else {
+            internal.db._dropDatabase(benchTodo['server.database']);
+          }
+        }
+        let content;
+        try {
+          content = fs.read(reportfn);
+          const jsonResult = JSON.parse(content);
+          const haveResultFields = jsonResult.hasOwnProperty('histogram') &&
+              jsonResult.hasOwnProperty('results') &&
+              jsonResult.hasOwnProperty('avg');
+          if (!haveResultFields) {
+            oneResult.status = false;
+            oneResult.message += "critical fields have been missing in the json result: '" +
+                content + "'";
+          }
+        } catch (x) {
+          oneResult.message += "failed to parse json report for '" +
+              reportfn + "' - '" + x.message + "' - content: '" + content;
+          oneResult.status = false;
+        }
 
+        results[name] = oneResult;
+        results[name].total++;
+        results[name].failed = 0;
+
+        if (!results[name].status) {
+          results[name].failed = 1;
+          results.status = false;
+          results.failed += 1;
+        }
       continueTesting = pu.arangod.check.instanceAlive(instanceInfo, options);
 
       if (oneResult.status !== true && !options.force) {
         break;
       }
+    }
     }
   }
 

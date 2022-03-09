@@ -1,0 +1,23 @@
+[#digit_expected]
+[section digit_expected]
+
+[h1 Synopsis]
+
+  namespace error
+  {
+    struct digit_expected;
+  }
+
+This is a [link parsing_error_message parsing error message].
+
+[h1 Description]
+
+Class representing the error that a digit character was expected at a specific
+location.
+
+[h1 Header]
+
+  #include <boost/metaparse/error/digit_expected.hpp>
+
+[endsect]
+

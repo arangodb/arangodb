@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,16 +21,15 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GRAPH_EDGEDOCUMENTTOKEN_H
-#define ARANGOD_GRAPH_EDGEDOCUMENTTOKEN_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Cluster/ServerState.h"
+#include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Slice.h>
-#include <velocypack/StringRef.h>
 
 namespace arangodb {
 
@@ -40,10 +39,11 @@ namespace graph {
 struct EdgeDocumentToken {
   EdgeDocumentToken() noexcept
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      : _data(0, LocalDocumentId()), _type(TokenType::NONE) {
+      : _data(DataSourceId::none(), LocalDocumentId::none()),
+        _type(TokenType::NONE) {
   }
 #else
-      : _data(0, LocalDocumentId()) {
+      : _data(DataSourceId::none(), LocalDocumentId::none()) {
   }
 #endif
 
@@ -60,7 +60,8 @@ struct EdgeDocumentToken {
 #endif
   }
 
-  EdgeDocumentToken(TRI_voc_cid_t const cid, LocalDocumentId const localDocumentId) noexcept
+  EdgeDocumentToken(DataSourceId const cid,
+                    LocalDocumentId const localDocumentId) noexcept
       : _data(cid, localDocumentId) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     _type = EdgeDocumentToken::TokenType::LOCAL;
@@ -90,19 +91,20 @@ struct EdgeDocumentToken {
     return *this;
   }
 
-  TRI_voc_cid_t cid() const {
+  DataSourceId cid() const {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    TRI_ASSERT(_type == TokenType::LOCAL);
+    TRI_ASSERT((_type == TokenType::LOCAL && _data.document.cid.isSet()) ||
+               _type == TokenType::NONE);
 #endif
-    TRI_ASSERT(_data.document.cid != 0);
     return _data.document.cid;
   }
 
   LocalDocumentId localDocumentId() const {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    TRI_ASSERT(_type == TokenType::LOCAL);
+    TRI_ASSERT(
+        (_type == TokenType::LOCAL && _data.document.localDocumentId.isSet()) ||
+        _type == TokenType::NONE);
 #endif
-    TRI_ASSERT(_data.document.localDocumentId.isSet());
     return _data.document.localDocumentId;
   }
 
@@ -118,12 +120,15 @@ struct EdgeDocumentToken {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     TRI_ASSERT(_type == TokenType::COORDINATOR);
 #endif
-    return velocypack::Slice(_data.vpack).binaryEquals(velocypack::Slice(other._data.vpack));
+    return velocypack::Slice(_data.vpack)
+        .binaryEquals(velocypack::Slice(other._data.vpack));
   }
 
   bool equalsLocal(EdgeDocumentToken const& other) const {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    TRI_ASSERT(_type == TokenType::LOCAL);
+    // For local the cid and localDocumentId have illegal values on NONE
+    // and can be compared with real values
+    TRI_ASSERT(_type == TokenType::LOCAL || _type == TokenType::NONE);
 #endif
     return _data.document.cid == other.cid() &&
            _data.document.localDocumentId == other.localDocumentId();
@@ -136,20 +141,28 @@ struct EdgeDocumentToken {
     return equalsLocal(other);
   }
 
+  bool isValid() const {
+    if (ServerState::instance()->isCoordinator()) {
+      return _data.vpack != nullptr;
+    }
+    return _data.document.cid != DataSourceId::none() &&
+           _data.document.localDocumentId != LocalDocumentId::none();
+  }
+
   size_t hash() const {
     if (ServerState::instance()->isCoordinator()) {
       auto vslice = arangodb::velocypack::Slice(vpack());
       return vslice.hash();
     }
     return std::hash<LocalDocumentId>{}(_data.document.localDocumentId) ^
-           (_data.document.cid << 1);
+           (_data.document.cid.id() << 1);
   }
 
  private:
   /// Identifying information for an edge documents valid on one server
   /// only used on a dbserver or single server
   struct LocalDocument {
-    TRI_voc_cid_t cid;
+    DataSourceId cid;
     LocalDocumentId localDocumentId;
     ~LocalDocument() = default;
   };
@@ -164,7 +177,7 @@ struct EdgeDocumentToken {
     TokenData(velocypack::Slice const& edge) noexcept : vpack(edge.begin()) {
       TRI_ASSERT(!velocypack::Slice(vpack).isExternal());
     }
-    TokenData(TRI_voc_cid_t cid, LocalDocumentId tk) noexcept {
+    TokenData(DataSourceId cid, LocalDocumentId tk) noexcept {
       document.cid = cid;
       document.localDocumentId = tk;
     }
@@ -191,19 +204,20 @@ struct EdgeDocumentToken {
 }  // namespace arangodb
 
 namespace std {
-template <>
+template<>
 struct hash<arangodb::graph::EdgeDocumentToken> {
-  size_t operator()(arangodb::graph::EdgeDocumentToken const& value) const noexcept {
+  size_t operator()(
+      arangodb::graph::EdgeDocumentToken const& value) const noexcept {
     return value.hash();
   }
 };
 
-template <>
+template<>
 struct equal_to<arangodb::graph::EdgeDocumentToken> {
-  bool operator()(arangodb::graph::EdgeDocumentToken const& lhs,
-                  arangodb::graph::EdgeDocumentToken const& rhs) const noexcept {
+  bool operator()(
+      arangodb::graph::EdgeDocumentToken const& lhs,
+      arangodb::graph::EdgeDocumentToken const& rhs) const noexcept {
     return lhs.equals(rhs);
   }
 };
 }  // namespace std
-#endif

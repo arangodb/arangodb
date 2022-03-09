@@ -1,0 +1,8 @@
+[#parser_combinator]
+[section Parser combinator]
+
+A ['parser combinator] is a [link parser parser] implemented as a template class
+taking one or more parsers as arguments.
+
+[endsect]
+

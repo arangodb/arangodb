@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,48 +21,85 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_STATISTICS_SERVER_STATISTICS_H
-#define ARANGOD_STATISTICS_SERVER_STATISTICS_H 1
+#pragma once
 
-#include <atomic>
 #include <cstdint>
-#include "RestServer/Metrics.h"
+#include <optional>
+#include <functional>
+
+#include "Metrics/Fwd.h"
 
 namespace arangodb {
-class MetricsFeature;
-}
 
 struct TransactionStatistics {
-  explicit TransactionStatistics(arangodb::MetricsFeature&);
+  explicit TransactionStatistics(metrics::MetricsFeature&);
   TransactionStatistics(TransactionStatistics const&) = delete;
-  TransactionStatistics(TransactionStatistics &&) = delete;
+  TransactionStatistics(TransactionStatistics&&) = delete;
   TransactionStatistics& operator=(TransactionStatistics const&) = delete;
-  TransactionStatistics& operator=(TransactionStatistics &&) = delete;
+  TransactionStatistics& operator=(TransactionStatistics&&) = delete;
 
-  arangodb::MetricsFeature& _metrics;
-  
-  Counter& _transactionsStarted;
-  Counter& _transactionsAborted;
-  Counter& _transactionsCommitted;
-  Counter& _intermediateCommits;
+  void setupDocumentMetrics();
+
+  metrics::MetricsFeature& _metrics;
+
+  metrics::Counter& _transactionsStarted;
+  metrics::Counter& _transactionsAborted;
+  metrics::Counter& _transactionsCommitted;
+  metrics::Counter& _intermediateCommits;
+  metrics::Counter& _readTransactions;
+
+  // total number of lock timeouts for exclusive locks
+  metrics::Counter& _exclusiveLockTimeouts;
+  // total number of lock timeouts for write locks
+  metrics::Counter& _writeLockTimeouts;
+  // total duration of lock acquisition (in microseconds)
+  metrics::Counter& _lockTimeMicros;
+  // histogram for lock acquisition (in seconds)
+  metrics::Histogram<metrics::LogScale<double>>& _lockTimes;
+  // Total number of times we used a fallback to sequential locking
+  metrics::Counter& _sequentialLocks;
+
+  struct ReadWriteMetrics {
+    // Total number of write operations in storage engine (excl. sync
+    // replication)
+    metrics::Counter& numWrites;
+    // Total number of write operations in storage engine by sync replication
+    metrics::Counter& numWritesReplication;
+    // Total number of truncate operations (not number of documents truncated!)
+    // (excl. sync replication)
+    metrics::Counter& numTruncates;
+    // Total number of truncate operations (not number of documents truncated!)
+    // by sync replication
+    metrics::Counter& numTruncatesReplication;
+
+    /// @brief the following metrics are conditional and only initialized if
+    /// startup option `--server.export-read-write-metrics` is set
+    metrics::Histogram<metrics::LogScale<float>>& rocksdb_read_sec;
+    metrics::Histogram<metrics::LogScale<float>>& rocksdb_insert_sec;
+    metrics::Histogram<metrics::LogScale<float>>& rocksdb_replace_sec;
+    metrics::Histogram<metrics::LogScale<float>>& rocksdb_remove_sec;
+    metrics::Histogram<metrics::LogScale<float>>& rocksdb_update_sec;
+    metrics::Histogram<metrics::LogScale<float>>& rocksdb_truncate_sec;
+  };
+
+  std::optional<ReadWriteMetrics> _readWriteMetrics;
 };
 
 struct ServerStatistics {
-
   ServerStatistics(ServerStatistics const&) = delete;
-  ServerStatistics(ServerStatistics &&) = delete;
+  ServerStatistics(ServerStatistics&&) = delete;
   ServerStatistics& operator=(ServerStatistics const&) = delete;
-  ServerStatistics& operator=(ServerStatistics &&) = delete;
+  ServerStatistics& operator=(ServerStatistics&&) = delete;
 
-  ServerStatistics& statistics();
+  void setupDocumentMetrics();
 
   TransactionStatistics _transactionsStatistics;
-  const double _startTime;
-  
+  double const _startTime;
+
   double uptime() const noexcept;
 
-  explicit ServerStatistics(arangodb::MetricsFeature& metrics, double start)
+  explicit ServerStatistics(metrics::MetricsFeature& metrics, double start)
       : _transactionsStatistics(metrics), _startTime(start) {}
 };
 
-#endif
+}  // namespace arangodb

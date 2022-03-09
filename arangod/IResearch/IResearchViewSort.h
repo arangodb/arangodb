@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,8 +22,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_IRESEARCH__IRESEARCH_VIEW_SORT_H
-#define ARANGODB_IRESEARCH__IRESEARCH_VIEW_SORT_H 1
+#pragma once
 
 #include "Basics/AttributeNameParser.h"
 #include "Basics/debugging.h"
@@ -72,7 +72,8 @@ class IResearchViewSort {
     return _fields.empty();
   }
 
-  void emplace_back(std::vector<basics::AttributeName>&& field, bool direction) {
+  void emplace_back(std::vector<basics::AttributeName>&& field,
+                    bool direction) {
     _fields.emplace_back(std::move(field));
     _directions.emplace_back(direction);
   }
@@ -88,7 +89,8 @@ class IResearchViewSort {
     return true;
   }
 
-  std::vector<std::vector<basics::AttributeName>> const& fields() const noexcept {
+  std::vector<std::vector<basics::AttributeName>> const& fields()
+      const noexcept {
     return _fields;
   }
 
@@ -112,9 +114,7 @@ class IResearchViewSort {
  private:
   std::vector<std::vector<basics::AttributeName>> _fields;
   std::vector<bool> _directions;
-}; // IResearchViewSort
+};  // IResearchViewSort
 
-} // iresearch
-} // arangodb
-
-#endif // ARANGODB_IRESEARCH__IRESEARCH_VIEW_SORT_H
+}  // namespace iresearch
+}  // namespace arangodb

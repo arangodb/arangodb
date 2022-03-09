@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,11 +21,11 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_EXECUTION_BLOCK_H
-#define ARANGOD_AQL_EXECUTION_BLOCK_H 1
+#pragma once
 
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutionNodeStats.h"
+#include "Aql/QueryOptions.h"
 #include "Aql/SkipResult.h"
 #include "Basics/Result.h"
 
@@ -71,9 +71,10 @@ class ExecutionBlock {
   /// @brief Number to use when we skip all. Should really be inf, but don't
   /// use something near std::numeric_limits<size_t>::max() to avoid overflows
   /// in calculations.
-  /// This is used as an argument for skipRowsRange(), e.g. when counting everything.
-  /// Setting this to any other value >0 does not (and must not) affect the
-  /// results. It's only to reduce the number of necessary skipRowsRange calls.
+  /// This is used as an argument for skipRowsRange(), e.g. when counting
+  /// everything. Setting this to any other value >0 does not (and must not)
+  /// affect the results. It's only to reduce the number of necessary
+  /// skipRowsRange calls.
   [[nodiscard]] static constexpr inline size_t SkipAllSize() {
     return 1000000000;
   }
@@ -86,15 +87,11 @@ class ExecutionBlock {
   ///    possibly repeat many times:
   ///      initializeCursor(...)   (optionally with bind parameters)
   ///      // use cursor functionality
-  ///    then the ExecutionEngine automatically calls
-  ///      shutdown()
   ///    DESTRUCTOR
 
   /// @brief initializeCursor, could be called multiple times
-  [[nodiscard]] virtual std::pair<ExecutionState, Result> initializeCursor(InputAqlItemRow const& input);
-
-  /// @brief shutdown, will be called exactly once for the whole query
-  [[nodiscard]] virtual std::pair<ExecutionState, Result> shutdown(int errorCode);
+  [[nodiscard]] virtual std::pair<ExecutionState, Result> initializeCursor(
+      InputAqlItemRow const& input);
 
   [[nodiscard]] ExecutionState getHasMoreState();
 
@@ -106,68 +103,64 @@ class ExecutionBlock {
 
   /// @brief main function to produce data in this ExecutionBlock.
   ///        It gets the AqlCallStack defining the operations required in every
-  ///        subquery level. It will then perform the requested amount of offset, data and fullcount.
-  ///        The AqlCallStack is copied on purpose, so this block can modify it.
-  ///        Will return
+  ///        subquery level. It will then perform the requested amount of
+  ///        offset, data and fullcount. The AqlCallStack is copied on purpose,
+  ///        so this block can modify it. Will return
   ///        1. state:
-  ///          * WAITING: We have async operation going on, nothing happend, please call again
-  ///          * HASMORE: Here is some data in the request range, there is still more, if required call again
-  ///          * DONE: Here is some data, and there will be no further data available.
+  ///          * WAITING: We have async operation going on, nothing happend,
+  ///          please call again
+  ///          * HASMORE: Here is some data in the request range, there is still
+  ///          more, if required call again
+  ///          * DONE: Here is some data, and there will be no further data
+  ///          available.
   ///        2. SkipResult: Amount of documents skipped.
   ///        3. SharedAqlItemBlockPtr: The next data block.
-  virtual std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> execute(AqlCallStack stack) = 0;
-  
-  virtual void collectExecStats(ExecutionStats&) const;
-  [[nodiscard]] bool isInSplicedSubquery() const noexcept;
-  
+  virtual std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> execute(
+      AqlCallStack const& stack) = 0;
+
+  virtual void collectExecStats(ExecutionStats&);
+
   [[nodiscard]] auto printBlockInfo() const -> std::string const;
   [[nodiscard]] auto printTypeInfo() const -> std::string const;
-  
+
  protected:
-  
   // Trace the start of a execute call
   void traceExecuteBegin(AqlCallStack const& stack,
                          std::string const& clientId = "");
 
   // Trace the end of a execute call, potentially with result
-  void traceExecuteEnd(std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> const& result,
+  void traceExecuteEnd(std::tuple<ExecutionState, SkipResult,
+                                  SharedAqlItemBlockPtr> const& result,
                        std::string const& clientId = "");
 
  protected:
   /// @brief the execution engine
   ExecutionEngine* _engine;
 
-  /// @brief the Result returned during the shutdown phase. Is kept for multiple
-  ///        waiting phases.
-  Result _shutdownResult;
-  
-  /// @brief profiling level
-  uint32_t _profile;
-
-  /// @brief if this is set, we are done, this is reset to false by execute()
-  bool _done;
-
-  bool _isInSplicedSubquery;
+  /// @brief the execution state of the dependency
+  ///        used to determine HASMORE or DONE better
+  ExecutionState _upstreamState;
 
   /// @brief our corresponding ExecutionNode node
-  ExecutionNode const* _exeNode;  // TODO: Can we get rid of this? Problem: Subquery Executor is using it.
+  ExecutionNode const* _exeNode;  // TODO: Can we get rid of this? Problem:
+                                  // Subquery Executor is using it.
 
   /// @brief our dependent nodes
   std::vector<ExecutionBlock*> _dependencies;
 
   /// @brief position in the dependencies while iterating through them
-  ///        used in initializeCursor and shutdown.
+  ///        used in initializeCursor .
   ///        Needs to be set to .end() everytime we modify _dependencies
   std::vector<ExecutionBlock*>::iterator _dependencyPos;
-  
+
   ExecutionNodeStats _execNodeStats;
 
-  /// @brief the execution state of the dependency
-  ///        used to determine HASMORE or DONE better
-  ExecutionState _upstreamState;
+  /// @brief profiling level
+  ProfileLevel _profileLevel;
+
+  /// @brief if this is set, we are done, this is reset to false by execute()
+  bool _done;
 };
 
 }  // namespace aql
 }  // namespace arangodb
-
-#endif

@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_APPLICATION_FEATURES_V8SECURITY_FEATURE_H
-#define ARANGODB_APPLICATION_FEATURES_V8SECURITY_FEATURE_H 1
+#pragma once
 
 #include <memory>
 #include <regex>
@@ -43,14 +43,26 @@ namespace options {
 class ProgramOptions;
 }
 
-enum class FSAccessType{
-  READ,
-  WRITE
-};
+enum class FSAccessType { READ, WRITE };
 
-class V8SecurityFeature final : public application_features::ApplicationFeature {
+class TempFeature;
+class V8PlatformFeature;
+
+class V8SecurityFeature final
+    : public application_features::ApplicationFeature {
  public:
-  explicit V8SecurityFeature(application_features::ApplicationServer& server);
+  static constexpr std::string_view name() noexcept { return "V8Security"; }
+
+  template<typename Server>
+  explicit V8SecurityFeature(Server& server)
+      : ApplicationFeature{server, *this},
+        _hardenInternalModule(false),
+        _allowProcessControl(false),
+        _allowPortTesting(false) {
+    setOptional(false);
+    startsAfter<TempFeature, Server>();
+    startsAfter<V8PlatformFeature, Server>();
+  }
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -74,75 +86,80 @@ class V8SecurityFeature final : public application_features::ApplicationFeature 
 
   /// @brief tests if the value of the startup option should be exposed to end
   /// users via JavaScript actions. will use _startupOptionsFilter*
-  bool shouldExposeStartupOption(v8::Isolate* isolate, std::string const& name) const;
+  bool shouldExposeStartupOption(v8::Isolate* isolate,
+                                 std::string const& name) const;
 
   /// @brief tests if the value of the environment variable should be exposed to
   /// end users via JavaScript actions. will use _environmentVariablesFilter*
-  bool shouldExposeEnvironmentVariable(v8::Isolate* isolate, std::string const& name) const;
+  bool shouldExposeEnvironmentVariable(v8::Isolate* isolate,
+                                       std::string const& name) const;
 
   /// @brief tests if the IP address or domain/host name given should be
   /// accessible via the JS_Download (internal.download) function in JavaScript
   /// actions the endpoint is passed in via protocol (e.g. tcp://, ssl://,
   /// unix://) and port number (if applicable)
-  bool isAllowedToConnectToEndpoint(v8::Isolate* isolate, std::string const& endpoint, std::string const& url) const;
+  bool isAllowedToConnectToEndpoint(v8::Isolate* isolate,
+                                    std::string const& endpoint,
+                                    std::string const& url) const;
 
   /// @brief tests if the path (or path component) shall be accessible for the
   /// calling JavaScript code
-  bool isAllowedToAccessPath(v8::Isolate* isolate, std::string const& path, FSAccessType) const;
-  bool isAllowedToAccessPath(v8::Isolate* isolate, char const* path, FSAccessType) const;
+  bool isAllowedToAccessPath(v8::Isolate* isolate, std::string const& path,
+                             FSAccessType) const;
+  bool isAllowedToAccessPath(v8::Isolate* isolate, char const* path,
+                             FSAccessType) const;
   bool isInternalContext(v8::Isolate* isolate) const;
+  bool isAdminScriptContext(v8::Isolate* isolate) const;
 
-  void addToInternalWhitelist(std::string const& item, FSAccessType);
+  void addToInternalAllowList(std::string const& item, FSAccessType);
 
  private:
   bool _hardenInternalModule;
   bool _allowProcessControl;
   bool _allowPortTesting;
 
-  std::string _readWhitelist;
-  std::unordered_set<std::string> _readWhitelistSet;
-  std::regex _readWhitelistRegex;
+  std::string _readAllowList;
+  std::unordered_set<std::string> _readAllowListSet;
+  std::regex _readAllowListRegex;
 
-  std::string _writeWhitelist;
-  std::unordered_set<std::string> _writeWhitelistSet;
-  std::regex _writeWhitelistRegex;
+  std::string _writeAllowList;
+  std::unordered_set<std::string> _writeAllowListSet;
+  std::regex _writeAllowListRegex;
 
-  // All the following options have whitelists and blacklists.
-  // The whitelist will take precedence over the blacklist
+  // All the following options have allow lists and deny lists.
+  // The allow list will take precedence over the deny list
   // Items is the corresponding Vector will be joined with
   // an logical OR to the final expression. That in turn
   // will be compiled into an std::regex.
 
-  std::string _startupOptionsWhitelist;
-  std::vector<std::string> _startupOptionsWhitelistVec;
-  std::regex _startupOptionsWhitelistRegex;
-  std::string _startupOptionsBlacklist;
-  std::vector<std::string> _startupOptionsBlacklistVec;
-  std::regex _startupOptionsBlacklistRegex;
+  std::string _startupOptionsAllowList;
+  std::vector<std::string> _startupOptionsAllowListVec;
+  std::regex _startupOptionsAllowListRegex;
+  std::string _startupOptionsDenyList;
+  std::vector<std::string> _startupOptionsDenyListVec;
+  std::regex _startupOptionsDenyListRegex;
 
   /// @brief regular expression string for forbidden IP address/host names
   /// to connect to via JS_Download/internal.download
-  std::string _endpointsWhitelist;
-  std::vector<std::string> _endpointsWhitelistVec;
-  std::regex _endpointsWhitelistRegex;
-  std::string _endpointsBlacklist;
-  std::vector<std::string> _endpointsBlacklistVec;
-  std::regex _endpointsBlacklistRegex;
+  std::string _endpointsAllowList;
+  std::vector<std::string> _endpointsAllowListVec;
+  std::regex _endpointsAllowListRegex;
+  std::string _endpointsDenyList;
+  std::vector<std::string> _endpointsDenyListVec;
+  std::regex _endpointsDenyListRegex;
 
   /// @brief regular expression string for environment variables filtering
-  std::string _environmentVariablesWhitelist;
-  std::vector<std::string> _environmentVariablesWhitelistVec;
-  std::regex _environmentVariablesWhitelistRegex;
-  std::string _environmentVariablesBlacklist;
-  std::vector<std::string> _environmentVariablesBlacklistVec;
-  std::regex _environmentVariablesBlacklistRegex;
+  std::string _environmentVariablesAllowList;
+  std::vector<std::string> _environmentVariablesAllowListVec;
+  std::regex _environmentVariablesAllowListRegex;
+  std::string _environmentVariablesDenyList;
+  std::vector<std::string> _environmentVariablesDenyListVec;
+  std::regex _environmentVariablesDenyListRegex;
 
   /// @brief variables for file access
-  std::string _filesWhitelist;
-  std::vector<std::string> _filesWhitelistVec;
-  std::regex _filesWhitelistRegex;
+  std::string _filesAllowList;
+  std::vector<std::string> _filesAllowListVec;
+  std::regex _filesAllowListRegex;
 };
 
 }  // namespace arangodb
-
-#endif

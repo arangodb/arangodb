@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_EXECUTION_STATS_H
-#define ARANGOD_AQL_EXECUTION_STATS_H 1
+#pragma once
 
 #include "Aql/ExecutionNodeId.h"
 
@@ -35,15 +34,15 @@ namespace arangodb {
 namespace velocypack {
 class Builder;
 class Slice;
-}
+}  // namespace velocypack
 namespace aql {
 
 struct ExecutionStats {
   ExecutionStats();
 
   /// @brief instantiate the statistics from VelocyPack
-  explicit ExecutionStats(arangodb::velocypack::Slice const& slice);
- 
+  explicit ExecutionStats(arangodb::velocypack::Slice slice);
+
  public:
   /// @brief convert the statistics to VelocyPack
   void toVelocyPack(arangodb::velocypack::Builder&, bool reportFullCount) const;
@@ -60,7 +59,8 @@ struct ExecutionStats {
   void addAlias(aql::ExecutionNodeId from, aql::ExecutionNodeId to) {
     _nodeAliases.emplace(from, to);
   }
-  void setAliases(std::map<aql::ExecutionNodeId, aql::ExecutionNodeId>&& aliases) {
+  void setAliases(
+      std::map<aql::ExecutionNodeId, aql::ExecutionNodeId>&& aliases) {
     _nodeAliases = std::move(aliases);
   }
 
@@ -77,6 +77,14 @@ struct ExecutionStats {
 
   /// @brief number of documents scanned (using indexes scan)
   int64_t scannedIndex;
+
+  /// @brief number of cursors created. currently only populated by
+  /// IndexExecutor.
+  int64_t cursorsCreated;
+
+  /// @brief number of existing cursors that were rearmed. currently only
+  /// populated by IndexExecutor.
+  int64_t cursorsRearmed;
 
   /// @brief number of documents filtered away
   int64_t filtered;
@@ -103,11 +111,9 @@ struct ExecutionStats {
   ///        will be counted as the target instead
   ///        within nodes.
   std::map<aql::ExecutionNodeId, aql::ExecutionNodeId> _nodeAliases;
-  
+
   ///  @brief statistics per ExecutionNodes
   std::map<aql::ExecutionNodeId, ExecutionNodeStats> _nodes;
 };
 }  // namespace aql
 }  // namespace arangodb
-
-#endif

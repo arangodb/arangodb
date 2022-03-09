@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Andreas Streichardt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_REST_AUTH_HANDLER_H
-#define ARANGOD_REST_HANDLER_REST_AUTH_HANDLER_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
@@ -32,24 +31,15 @@
 namespace arangodb {
 class RestAuthHandler : public RestVocbaseBaseHandler {
  public:
-  RestAuthHandler(application_features::ApplicationServer&, GeneralRequest*, GeneralResponse*);
-
-  std::string generateJwt(std::string const&, std::string const&);
+  RestAuthHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
 
  public:
   char const* name() const override final { return "RestAuthHandler"; }
   RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
   RestStatus execute() override;
-  void shutdownExecute(bool isFinalized) noexcept override;
 
  private:
+  std::string generateJwt(std::string const& username) const;
   RestStatus badRequest();
-
- private:
-  std::string _username;
-  bool _isValid = false;
-  std::chrono::seconds _validFor;
 };
 }  // namespace arangodb
-
-#endif

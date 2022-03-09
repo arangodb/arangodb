@@ -48,10 +48,6 @@ operations with the rocksdb storage engine.
 @RESTQUERYPARAM{clientInfo,string,optional}
 Short description of the client, used for informative purposes only.
 
-@RESTQUERYPARAM{barrierId,number,optional}
-Id of barrier used to keep WAL entries around. **Note** this is only required for the
-MMFiles storage engine
-
 @RESTDESCRIPTION
 Returns data from the server's write-ahead log (also named replication log). This method can be called
 by replication clients after an initial synchronization of data. The method
@@ -145,7 +141,7 @@ The response will also contain the following HTTP headers:
 
 - *x-arango-replication-checkmore*: whether or not there already exists more
   log data which the client could fetch immediately. If there is more log data
-  available, the client could call *logger-follow* again with an adjusted *from*
+  available, the client could call the tailing API again with an adjusted *from*
   value to fetch remaining log entries until there are no more.
 
   If there isn't any more log data to fetch, the client might decide to go

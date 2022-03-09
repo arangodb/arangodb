@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -27,11 +28,9 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryRegistry.h"
-#include "FeaturePhases/V8FeaturePhase.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
-#include "RestServer/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 
 using namespace arangodb::application_features;
@@ -48,8 +47,7 @@ static constexpr uint64_t readyBit = 0x8000000000000000ULL;
 
 namespace arangodb {
 
-AqlFeature::AqlFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Aql") {
+AqlFeature::AqlFeature(Server& server) : ArangodFeature{server, *this} {
   setOptional(false);
   startsAfter<V8FeaturePhase>();
 
@@ -76,11 +74,6 @@ void AqlFeature::unlease() noexcept { ::leases.fetch_sub(1); }
 
 void AqlFeature::start() {
   ::leases.fetch_or(::readyBit);
-
-  // register query time metrics
-  server().getFeature<arangodb::MetricsFeature>().counter(
-      StaticStrings::AqlQueryRuntimeMs, 0,
-      "Total execution time of all queries");
 
   LOG_TOPIC("cf921", DEBUG, Logger::QUERIES) << "AQL feature started";
 }
@@ -109,7 +102,7 @@ void AqlFeature::stop() {
     if (n == 0 && m == 0) {
       break;
     }
-    LOG_TOPIC_IF("63d54", INFO, Logger::QUERIES, (i % 64) == 0)
+    LOG_TOPIC_IF("63d54", INFO, Logger::QUERIES, (i++ % 64) == 0)
         << "AQLFeature shutdown, waiting for " << n
         << " registered queries to terminate and for " << m
         << " feature leases to be released";

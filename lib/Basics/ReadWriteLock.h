@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,8 +22,7 @@
 /// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_READ_WRITE_LOCK_H
-#define ARANGODB_BASICS_READ_WRITE_LOCK_H 1
+#pragma once
 
 #include <atomic>
 #include <chrono>
@@ -54,21 +53,21 @@ class ReadWriteLock {
   void lockWrite();
 
   /// @brief locks for writing within microsecond timeout
-  [[nodiscard]] bool writeLock(uint64_t timeout) {
+  [[nodiscard]] bool lockWrite(uint64_t timeout) {
     std::chrono::microseconds ms(timeout);
-    return writeLock(ms);
+    return lockWrite(ms);
   }
 
-  [[nodiscard]] bool writeLock(std::chrono::microseconds timeout);
+  [[nodiscard]] bool lockWrite(std::chrono::microseconds timeout);
 
   /// @brief locks for writing, but only tries
-  [[nodiscard]] bool tryLockWrite();
+  [[nodiscard]] bool tryLockWrite() noexcept;
 
   /// @brief locks for reading
   void lockRead();
 
   /// @brief locks for reading, tries only
-  [[nodiscard]] bool tryLockRead();
+  [[nodiscard]] bool tryLockRead() noexcept;
 
   /// @brief releases the read-lock or write-lock
   void unlock() noexcept;
@@ -78,7 +77,7 @@ class ReadWriteLock {
 
   /// @brief releases the write-lock
   void unlockWrite() noexcept;
-  
+
   [[nodiscard]] bool isLocked() const noexcept;
   [[nodiscard]] bool isLockedRead() const noexcept;
   [[nodiscard]] bool isLockedWrite() const noexcept;
@@ -115,12 +114,11 @@ class ReadWriteLock {
   static_assert((QUEUED_WRITER_MASK & WRITE_LOCK) == 0,
                 "QUEUED_WRITER_MASK and WRITE_LOCK conflict");
 
-  static_assert((READER_MASK & READER_INC) != 0 && (READER_MASK & (READER_INC >> 1)) == 0,
+  static_assert((READER_MASK & READER_INC) != 0 &&
+                    (READER_MASK & (READER_INC >> 1)) == 0,
                 "READER_INC must be first bit in READER_MASK");
   static_assert((QUEUED_WRITER_MASK & QUEUED_WRITER_INC) != 0 &&
                     (QUEUED_WRITER_MASK & (QUEUED_WRITER_INC >> 1)) == 0,
                 "QUEUED_WRITER_INC must be first bit in QUEUED_WRITER_MASK");
 };
 }  // namespace arangodb::basics
-
-#endif

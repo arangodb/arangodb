@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_V8EXECUTOR_H
-#define ARANGOD_AQL_V8EXECUTOR_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -39,9 +38,8 @@ class V8Executor {
   /// @brief checks if a V8 exception has occurred and throws an appropriate C++
   /// exception from it if so
   static void HandleV8Error(v8::TryCatch&, v8::Handle<v8::Value>&,
-                            arangodb::basics::StringBuffer*, bool duringCompile);
+                            arangodb::basics::StringBuffer*,
+                            bool duringCompile);
 };
 }  // namespace aql
 }  // namespace arangodb
-
-#endif

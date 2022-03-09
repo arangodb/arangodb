@@ -21,13 +21,29 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <fuerte/detail/vst.h>
+#include <fuerte/helper.h>
 #include <fuerte/message.h>
-
 #include <velocypack/Validator.h>
-#include <velocypack/velocypack-aliases.h>
+
 #include <sstream>
 
 #include "debugging.h"
+
+namespace {
+static std::string const emptyString;
+
+inline int hex2int(char ch, int errorCode) {
+  if ('0' <= ch && ch <= '9') {
+    return ch - '0';
+  } else if ('A' <= ch && ch <= 'F') {
+    return ch - 'A' + 10;
+  } else if ('a' <= ch && ch <= 'f') {
+    return ch - 'a' + 10;
+  }
+
+  return errorCode;
+}
+} // namespace
 
 namespace arangodb { namespace fuerte { inline namespace v1 {
 
@@ -38,7 +54,7 @@ namespace arangodb { namespace fuerte { inline namespace v1 {
 void MessageHeader::setMeta(StringMap map) {
   if (!this->_meta.empty()) {
     for (auto& pair : map) {
-      this->addMeta(pair.first, pair.second);
+      this->addMeta(std::move(pair.first), std::move(pair.second));
     }
   } else {
     this->_meta = std::move(map);
@@ -48,15 +64,14 @@ void MessageHeader::setMeta(StringMap map) {
 // Get value for header metadata key, returns empty string if not found.
 std::string const& MessageHeader::metaByKey(std::string const& key,
                                             bool& found) const {
-  static std::string emptyString("");
   if (_meta.empty()) {
     found = false;
-    return emptyString;
+    return ::emptyString;
   }
   auto const& it = _meta.find(key);
   if (it == _meta.end()) {
     found = false;
-    return emptyString;
+    return ::emptyString;
   } else {
     found = true;
     return it->second;
@@ -68,36 +83,13 @@ std::string const& MessageHeader::metaByKey(std::string const& key,
 ///////////////////////////////////////////////
 
 void RequestHeader::acceptType(std::string const& type) {
-   addMeta(fu_accept_key, type);
- }
-
-void RequestHeader::addParameter(std::string const& key,
-                                 std::string const& value) {
-  parameters.try_emplace(key, value);
+  addMeta(fu_accept_key, type);
 }
 
 /// @brief analyze path and split into components
 /// strips /_db/<name> prefix, sets db name and fills parameters
-void RequestHeader::parseArangoPath(std::string const& p) {
-  size_t pos = p.rfind('?');
-  if (pos != std::string::npos) {
-    this->path = p.substr(0, pos);
-
-    while (pos != std::string::npos && pos + 1 < p.length()) {
-      size_t pos2 = p.find('=', pos + 1);
-      if (pos2 == std::string::npos) {
-        break;
-      }
-      std::string key = p.substr(pos + 1, pos2 - pos - 1);
-      pos = p.find('&', pos2 + 1);  // points to next '&' or string::npos
-      std::string value = pos == std::string::npos
-                              ? p.substr(pos2 + 1)
-                              : p.substr(pos2 + 1, pos - pos2 - 1);
-      this->parameters.emplace(std::move(key), std::move(value));
-    }
-  } else {
-    this->path = p;
-  }
+void RequestHeader::parseArangoPath(std::string_view p) {
+  this->path = extractPathParameters(p, this->parameters);
 
   // extract database prefix /_db/<name>/
   const char* q = this->path.c_str();
@@ -107,11 +99,34 @@ void RequestHeader::parseArangoPath(std::string const& p) {
     q += 5;
     const char* pathBegin = q;
     // read until end of database name
-    while (*q != '\0' && *q != '/' && *q != '?' &&
-           *q != ' ' && *q != '\n' && *q != '\r') {
+    while (*q != '\0' && *q != '/' && *q != '?' && *q != ' ' && *q != '\n' &&
+           *q != '\r') {
       ++q;
     }
-    this->database = std::string(pathBegin, q - pathBegin);
+    FUERTE_ASSERT(q >= pathBegin);
+    this->database.clear();
+    char const* p = pathBegin;
+    while (p != q) {
+      std::string::value_type c = (*p);
+      if (c == '%') {
+        if (p + 2 < q) {
+          int h = ::hex2int(p[1], 256) << 4;
+          h += ::hex2int(p[2], 256);
+          if (h >= 256) {
+            throw std::invalid_argument("invalid encoding value in request URL");
+          }
+          this->database.push_back(static_cast<char>(h & 0xFF));
+          p += 2;
+        } else {
+          throw std::invalid_argument("invalid encoding value in request URL");
+        }
+      } else if (c == '+') {
+        this->database.push_back(' ');
+      } else {
+        this->database.push_back(c);
+      }
+      ++p;
+    }
     if (*q == '\0') {
       this->path = "/";
     } else {
@@ -123,6 +138,10 @@ void RequestHeader::parseArangoPath(std::string const& p) {
 ///////////////////////////////////////////////
 // class Message
 ///////////////////////////////////////////////
+
+ContentEncoding Message::contentEncoding() const {
+  return messageHeader().contentEncoding();
+}
 
 // content-type header accessors
 
@@ -251,19 +270,19 @@ asio_ns::const_buffer Response::payload() const {
 }
 
 size_t Response::payloadSize() const {
-  if (_payloadOffset > _payload.byteSize()) {
+  auto payloadByteSize = _payload.byteSize();
+  if (_payloadOffset > payloadByteSize) {
     return 0;
   }
-  return _payload.byteSize() - _payloadOffset;
+  return payloadByteSize - _payloadOffset;
 }
 
 std::shared_ptr<velocypack::Buffer<uint8_t>> Response::copyPayload() const {
   auto buffer = std::make_shared<velocypack::Buffer<uint8_t>>();
-  if (payloadSize() == 0) {
-    return buffer;
+  if (payloadSize() > 0) {
+    buffer->append(_payload.data() + _payloadOffset,
+                   _payload.byteSize() - _payloadOffset);
   }
-  buffer->append(_payload.data() + _payloadOffset,
-                 _payload.byteSize() - _payloadOffset);
   return buffer;
 }
 

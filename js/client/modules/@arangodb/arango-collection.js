@@ -317,24 +317,13 @@ ArangoCollection.prototype.name = function () {
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.status = function () {
-  if (this._status === null ||
-      this._status === ArangoCollection.STATUS_UNLOADING ||
-      this._status === ArangoCollection.STATUS_UNLOADED) {
+  if (this._status === null) {
     this._status = null;
     this.refresh();
   }
 
   // save original status
-  var result = this._status;
-
-  if (this._status === ArangoCollection.STATUS_UNLOADING ||
-      this._status === ArangoCollection.STATUS_UNLOADED) {
-    // if collection is currently unloading, we must not cache this info
-    this._status = null;
-  }
-
-  // return the correct result
-  return result;
+  return this._status;
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -355,18 +344,15 @@ ArangoCollection.prototype.type = function () {
 
 ArangoCollection.prototype.properties = function (properties) {
   var attributes = {
-    'doCompact': true,
-    'journalSize': true,
+    'globallyUniqueId': false,
     'isSmart': false,
     'isSystem': false,
-    'isVolatile': false,
     'waitForSync': true,
     'shardKeys': false,
     'smartGraphAttribute': false,
     'smartJoinAttribute': false,
     'numberOfShards': false,
     'keyOptions': false,
-    'indexBuckets': true,
     'replicationFactor': true,
     'minReplicationFactor': true,
     'writeConcern': true,
@@ -374,7 +360,8 @@ ArangoCollection.prototype.properties = function (properties) {
     'shardingStrategy': false,
     'cacheEnabled': true,
     'syncByRevision': true,
-    'schema' : null
+    'schema' : true,
+    'isDisjoint': true,
   };
   var a;
 
@@ -388,6 +375,7 @@ ArangoCollection.prototype.properties = function (properties) {
 
     for (a in attributes) {
       if (attributes.hasOwnProperty(a) &&
+        attributes[a] &&
         properties.hasOwnProperty(a)) {
         body[a] = properties[a];
       }
@@ -426,8 +414,8 @@ ArangoCollection.prototype.recalculateCount = function () {
 // / @brief gets the figures of a collection
 // //////////////////////////////////////////////////////////////////////////////
 
-ArangoCollection.prototype.figures = function () {
-  var requestResult = this._database._connection.GET(this._baseurl('figures'));
+ArangoCollection.prototype.figures = function (details) {
+  var requestResult = this._database._connection.GET(this._baseurl('figures') + '?details=' + (details ? 'true' : 'false'));
 
   arangosh.checkRequestResult(requestResult);
 
@@ -533,22 +521,20 @@ ArangoCollection.prototype.truncate = function (options) {
   } else {
     options = options || {};
   }
-
+  if (!options.hasOwnProperty('compact')) {
+    options.compact = true;
+  }
   let headers = {};
   if (options && options.transactionId) {
     headers['x-arango-trx-id'] = options.transactionId;
   }
 
-  var append = (options.waitForSync ? '&waitForSync=true' : '');
+  var append = (options.waitForSync ? '?waitForSync=true' : '');
+  append += (append === '') ? '?' : '&' + (options.compact ? 'compact=true' : 'compact=false');
   var requestResult = this._database._connection.PUT(this._baseurl('truncate') + append, null, headers);
-
   arangosh.checkRequestResult(requestResult);
   // invalidate cache
   this._status = null;
-
-  if (!options.compact) {
-    return;
-  }
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -1528,6 +1514,34 @@ ArangoCollection.prototype.loadIndexesIntoMemory = function () {
   var requestResult = this._database._connection.PUT(this._baseurl('loadIndexesIntoMemory'), null);
   this._status = null;
 
+  arangosh.checkRequestResult(requestResult);
+  return { result: true };
+};
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief MerkleTreeVerification
+//////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype._revisionTreeVerification = function() {
+  var batch = this._database._connection.POST(this._prefixurl('/_api/replication/batch'), {ttl : 3600});
+  if (!batch.hasOwnProperty("id")) {
+    throw "Could not create batch!";
+  }
+  var requestResult = this._database._connection.GET(this._prefixurl(
+    `/_api/replication/revisions/tree?collection=${encodeURIComponent(this._name)}&verification=true&batchId=${batch.id}`));
+  this._database._connection.DELETE(this._prefixurl(
+    `/_api/replication/batch/${batch.id}`));
+  return requestResult;
+};
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief MerkleTreeRebuilding
+//////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype._revisionTreeRebuild = function() {
+  // For some reason we need a batch ID here, which is not used!
+  let requestResult = this._database._connection.POST(this._prefixurl(
+    `/_api/replication/revisions/tree?collection=${encodeURIComponent(this._name)}&batchId=42`), {});
   arangosh.checkRequestResult(requestResult);
   return { result: true };
 };

@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -27,7 +28,8 @@
 using namespace arangodb;
 using namespace arangodb::maskings;
 
-ParseResult<Collection> Collection::parse(Maskings* maskings, VPackSlice const& def) {
+ParseResult<Collection> Collection::parse(Maskings* maskings,
+                                          VPackSlice const& def) {
   if (!def.isObject()) {
     return ParseResult<Collection>(
         ParseResult<Collection>::PARSE_FAILED,
@@ -56,12 +58,12 @@ ParseResult<Collection> Collection::parse(Maskings* maskings, VPackSlice const& 
       }
 
       for (auto const& mask : VPackArrayIterator(entry.value)) {
-        ParseResult<AttributeMasking> am = AttributeMasking::parse(maskings, mask);
+        ParseResult<AttributeMasking> am =
+            AttributeMasking::parse(maskings, mask);
 
         if (am.status != ParseResult<AttributeMasking>::VALID) {
-          return ParseResult<Collection>((ParseResult<Collection>::StatusCode)(
-                                             int)am.status,
-                                         am.message);
+          return ParseResult<Collection>(
+              (ParseResult<Collection>::StatusCode)(int)am.status, am.message);
         }
 
         attributes.push_back(am.result);
@@ -80,9 +82,9 @@ ParseResult<Collection> Collection::parse(Maskings* maskings, VPackSlice const& 
   } else if (type == "structure") {
     selection = CollectionSelection::STRUCTURE;
   } else {
-    return ParseResult<Collection>(ParseResult<Collection>::UNKNOWN_TYPE,
-                                   "found unknown collection type '" + type +
-                                       "'");
+    return ParseResult<Collection>(
+        ParseResult<Collection>::UNKNOWN_TYPE,
+        "found unknown collection type '" + type + "'");
   }
 
   return ParseResult<Collection>(Collection(selection, attributes));

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,26 +21,37 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_CLUSTER_FEATURE_H
-#define ARANGOD_CLUSTER_CLUSTER_FEATURE_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "Containers/FlatHashMap.h"
+#include "Containers/FlatHashSet.h"
 #include "Network/NetworkFeature.h"
-#include "RestServer/Metrics.h"
+#include "Metrics/Fwd.h"
 
 namespace arangodb {
+namespace application_features {
+class CommunicationFeaturePhase;
+class DatabaseFeaturePhase;
+}  // namespace application_features
+namespace metrics {
+class MetricsFeature;
+}
 
 class AgencyCache;
 class AgencyCallbackRegistry;
+class DatabaseFeature;
 class HeartbeatThread;
 
-class ClusterFeature : public application_features::ApplicationFeature {
+class ClusterFeature : public ArangodFeature {
  public:
-  explicit ClusterFeature(application_features::ApplicationServer& server);
+  static constexpr std::string_view name() noexcept { return "Cluster"; }
+
+  explicit ClusterFeature(Server& server);
   ~ClusterFeature();
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -79,29 +90,104 @@ class ClusterFeature : public application_features::ApplicationFeature {
     return _createWaitsForSyncReplication;
   }
   std::uint32_t writeConcern() const { return _writeConcern; }
-  std::uint32_t systemReplicationFactor() const { return _systemReplicationFactor; }
-  std::uint32_t defaultReplicationFactor() const { return _defaultReplicationFactor; }
+  std::uint32_t systemReplicationFactor() const {
+    return _systemReplicationFactor;
+  }
+  std::uint32_t defaultReplicationFactor() const {
+    return _defaultReplicationFactor;
+  }
   std::uint32_t maxNumberOfShards() const { return _maxNumberOfShards; }
   std::uint32_t minReplicationFactor() const { return _minReplicationFactor; }
   std::uint32_t maxReplicationFactor() const { return _maxReplicationFactor; }
-  double indexCreationTimeout() const { return _indexCreationTimeout; }
+  std::uint32_t maxNumberOfMoveShards() const { return _maxNumberOfMoveShards; }
   bool forceOneShard() const { return _forceOneShard; }
+  /// @brief index creation timeout in seconds. note: this used to be
+  /// a configurable parameter in previous versions, but is now hard-coded.
+  double indexCreationTimeout() const { return _indexCreationTimeout; }
 
   std::shared_ptr<HeartbeatThread> heartbeatThread();
 
   ClusterInfo& clusterInfo();
 
-  Counter& getDroppedFollowerCounter() { return _dropped_follower_counter->get(); }
+  /// @brief permissions required to access /_admin/cluster REST API endpoint:
+  /// - "jwt-all"    = JWT required to access all operations
+  /// - "jwt-write"  = JWT required to access post/put/delete operations
+  /// - "jwt-compat" = compatibility mode = same permissions as in 3.7
+  std::string const& apiJwtPolicy() const noexcept { return _apiJwtPolicy; }
+
+  metrics::Counter& followersDroppedCounter() {
+    TRI_ASSERT(_followersDroppedCounter != nullptr);
+    return *_followersDroppedCounter;
+  }
+  metrics::Counter& followersRefusedCounter() {
+    TRI_ASSERT(_followersRefusedCounter != nullptr);
+    return *_followersRefusedCounter;
+  }
+  metrics::Counter& followersWrongChecksumCounter() {
+    TRI_ASSERT(_followersWrongChecksumCounter != nullptr);
+    return *_followersWrongChecksumCounter;
+  }
+  metrics::Counter& followersTotalRebuildCounter() {
+    TRI_ASSERT(_followersTotalRebuildCounter != nullptr);
+    return *_followersTotalRebuildCounter;
+  }
+
+  /**
+   * @brief Add databases to dirty list
+   */
+  void addDirty(std::string const& database);
+  void addDirty(containers::FlatHashSet<std::string> const& databases,
+                bool callNotify);
+  void addDirty(
+      containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
+          changeset);
+  std::unordered_set<std::string> allDatabases() const;
+
+  /**
+   * @brief Swap out the list of dirty databases
+   *        This method must not be called by any other mechanism than
+   *        the very start of a single maintenance run.
+   */
+  containers::FlatHashSet<std::string> dirty();
+
+  /**
+   * @brief Check database for dirtyness
+   */
+  bool isDirty(std::string const& database) const;
+
+  /// @brief hand out async agency comm connection pool pruning:
+  void pruneAsyncAgencyConnectionPool() {
+    _asyncAgencyCommPool->pruneConnections();
+  }
+
+  /// the following methods may also be called from tests
+
+  void shutdownHeartbeatThread();
+  /// @brief wait for the AgencyCache to shut down
+  /// note: this may be called multiple times during shutdown
+  void shutdownAgencyCache();
+  /// @brief wait for the Plan and Current syncer to shut down
+  /// note: this may be called multiple times during shutdown
+  void waitForSyncersToStop();
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  void setSyncerShutdownCode(ErrorCode code) { _syncerShutdownCode = code; }
+#endif
+
+  metrics::Histogram<metrics::LogScale<uint64_t>>&
+  agency_comm_request_time_ms() {
+    return _agency_comm_request_time_ms;
+  }
 
  protected:
   void startHeartbeatThread(AgencyCallbackRegistry* agencyCallbackRegistry,
-                            uint64_t interval_ms, uint64_t maxFailsBeforeWarning,
+                            uint64_t interval_ms,
+                            uint64_t maxFailsBeforeWarning,
                             std::string const& endpoints);
 
-  void shutdownHeartbeatThread();
-  void shutdownAgencyCache();
-
  private:
+  ClusterFeature(Server& server, metrics::MetricsFeature& metrics,
+                 DatabaseFeature& database, size_t registration);
   void reportRole(ServerState::RoleEnum);
 
   std::vector<std::string> _agencyEndpoints;
@@ -109,29 +195,47 @@ class ClusterFeature : public application_features::ApplicationFeature {
   std::string _myRole;
   std::string _myEndpoint;
   std::string _myAdvertisedEndpoint;
-  std::uint32_t _writeConcern = 1;             // write concern
-  std::uint32_t _defaultReplicationFactor = 0; // a value of 0 means it will use the min replication factor
+  std::string _apiJwtPolicy;
+  std::uint32_t _writeConcern = 1;  // write concern
+  std::uint32_t _defaultReplicationFactor =
+      0;  // a value of 0 means it will use the min replication factor
   std::uint32_t _systemReplicationFactor = 2;
-  std::uint32_t _minReplicationFactor = 1;     // minimum replication factor (0 = unrestricted)
-  std::uint32_t _maxReplicationFactor = 10;    // maximum replication factor (0 = unrestricted)
-  std::uint32_t _maxNumberOfShards = 1000;     // maximum number of shards (0 = unrestricted)
+  std::uint32_t _minReplicationFactor =
+      1;  // minimum replication factor (0 = unrestricted)
+  std::uint32_t _maxReplicationFactor =
+      10;  // maximum replication factor (0 = unrestricted)
+  std::uint32_t _maxNumberOfShards =
+      1000;  // maximum number of shards (0 = unrestricted)
+  std::uint32_t _maxNumberOfMoveShards =
+      10;  // maximum number of shards to be moved per rebalance operation
+           // if value = 0, no move shards operations will be scheduled
+  ErrorCode _syncerShutdownCode = TRI_ERROR_SHUTTING_DOWN;
   bool _createWaitsForSyncReplication = true;
   bool _forceOneShard = false;
   bool _unregisterOnShutdown = false;
   bool _enableCluster = false;
   bool _requirePersistedId = false;
-  double _indexCreationTimeout = 3600.0;
-  bool _allocated = false;
+  /// @brief coordinator timeout for index creation. defaults to 4 days
+  double _indexCreationTimeout = 72.0 * 3600.0;
   std::unique_ptr<ClusterInfo> _clusterInfo;
   std::shared_ptr<HeartbeatThread> _heartbeatThread;
   std::unique_ptr<AgencyCache> _agencyCache;
   uint64_t _heartbeatInterval = 0;
   std::unique_ptr<AgencyCallbackRegistry> _agencyCallbackRegistry;
+  metrics::MetricsFeature& _metrics;
   ServerState::RoleEnum _requestedRole = ServerState::RoleEnum::ROLE_UNDEFINED;
+  metrics::Histogram<metrics::LogScale<uint64_t>>& _agency_comm_request_time_ms;
   std::unique_ptr<network::ConnectionPool> _asyncAgencyCommPool;
-  std::optional<std::reference_wrapper<Counter>> _dropped_follower_counter;
+  metrics::Counter* _followersDroppedCounter = nullptr;
+  metrics::Counter* _followersRefusedCounter = nullptr;
+  metrics::Counter* _followersWrongChecksumCounter = nullptr;
+  metrics::Counter* _followersTotalRebuildCounter = nullptr;
+  std::shared_ptr<AgencyCallback> _hotbackupRestoreCallback;
+
+  /// @brief lock for dirty database list
+  mutable arangodb::Mutex _dirtyLock;
+  /// @brief dirty databases, where a job could not be posted)
+  containers::FlatHashSet<std::string> _dirtyDatabases;
 };
 
 }  // namespace arangodb
-
-#endif

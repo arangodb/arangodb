@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,8 +22,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_IRESEARCH__IRESEARCH_VPACK_COMPARER_H
-#define ARANGODB_IRESEARCH__IRESEARCH_VPACK_COMPARER_H 1
+#pragma once
 
 #include "IResearchViewSort.h"
 #include "index/comparer.hpp"
@@ -36,21 +36,17 @@ class VPackComparer final : public irs::comparer {
   VPackComparer();
 
   explicit VPackComparer(IResearchViewSort const& sort) noexcept
-    : _sort(&sort), _size(sort.size()) {
-  }
+      : _sort(&sort), _size(sort.size()) {}
 
   VPackComparer(IResearchViewSort const& sort, size_t size) noexcept
-    : _sort(&sort), _size(std::min(sort.size(), size)) {
-  }
+      : _sort(&sort), _size(std::min(sort.size(), size)) {}
 
   void reset(IResearchViewSort const& sort) noexcept {
     _sort = &sort;
     _size = sort.size();
   }
 
-  bool empty() const noexcept {
-    return 0 == _size;
-  }
+  bool empty() const noexcept { return 0 == _size; }
 
  protected:
   virtual bool less(irs::bytes_ref const& lhs,
@@ -58,10 +54,8 @@ class VPackComparer final : public irs::comparer {
 
  private:
   IResearchViewSort const* _sort;
-  size_t _size; // number of buckets to compare
-}; // VPackComparer
+  size_t _size;  // number of buckets to compare
+};               // VPackComparer
 
-} // iresearch
-} // arangodb
-
-#endif // ARANGODB_IRESEARCH__IRESEARCH_VPACK_COMPARER_H
+}  // namespace iresearch
+}  // namespace arangodb

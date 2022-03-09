@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -44,7 +45,6 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Options.h>
-#include <velocypack/velocypack-aliases.h>
 #include <functional>
 
 using namespace arangodb;
@@ -55,11 +55,12 @@ namespace arangodb::tests::aql {
 class SortedCollectExecutorTestNoRowsUpstream : public ::testing::Test {
  protected:
   ExecutionState state;
-  ResourceMonitor monitor;
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor monitor{global};
   AqlItemBlockManager itemBlockManager;
 
   mocks::MockAqlServer server;
-  std::unique_ptr<arangodb::aql::Query> fakedQuery;
+  std::shared_ptr<arangodb::aql::Query> fakedQuery;
 
   RegIdSet const regToClear = {};
   RegIdSetStack const regToKeep = {{}};
@@ -74,7 +75,6 @@ class SortedCollectExecutorTestNoRowsUpstream : public ::testing::Test {
   RegisterId expressionRegister;
   Variable const* expressionVariable;
   std::vector<std::pair<std::string, RegisterId>> variables;
-  bool count;
 
   RegisterInfos registerInfos;
   SortedCollectExecutorInfos executorInfos;
@@ -84,18 +84,19 @@ class SortedCollectExecutorTestNoRowsUpstream : public ::testing::Test {
   NoStats stats;
 
   SortedCollectExecutorTestNoRowsUpstream()
-      : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
+      : itemBlockManager(monitor, SerializationFormat::SHADOWROWS),
         server(),
         fakedQuery(server.createFakeQuery()),
         groupRegisters{std::make_pair<RegisterId, RegisterId>(1, 0)},
         collectRegister(RegisterPlan::MaxRegisterId),
         expressionRegister(RegisterPlan::MaxRegisterId),
         expressionVariable(nullptr),
-        count(false),
-        registerInfos(RegIdSet{0}, RegIdSet{1}, 1 /*nrIn*/, 2 /*nrOut*/, regToClear, regToKeep),
-        executorInfos(std::move(groupRegisters), collectRegister, expressionRegister,
-                      expressionVariable, std::move(aggregateTypes), std::move(variables),
-                      std::move(aggregateRegisters), &VPackOptions::Defaults, count),
+        registerInfos(RegIdSet{0}, RegIdSet{1}, 1 /*nrIn*/, 2 /*nrOut*/,
+                      regToClear, regToKeep),
+        executorInfos(std::move(groupRegisters), collectRegister,
+                      expressionRegister, expressionVariable,
+                      std::move(aggregateTypes), std::move(variables),
+                      std::move(aggregateRegisters), &VPackOptions::Defaults),
         block(new AqlItemBlock(itemBlockManager, 1000, 2)) {}
 };
 
@@ -107,8 +108,8 @@ TEST_F(SortedCollectExecutorTestNoRowsUpstream, producer_gets_empty_input) {
 
   AqlCall clientCall;
 
-  AqlItemBlockInputRange emptyInputRange(ExecutorState::HASMORE);
-  AqlItemBlockInputRange inputRange(ExecutorState::DONE);
+  AqlItemBlockInputRange emptyInputRange(MainQueryState::HASMORE);
+  AqlItemBlockInputRange inputRange(MainQueryState::DONE);
 
   SharedAqlItemBlockPtr outputBlock =
       itemBlockManager.requestBlock(1, registerInfos.numberOfOutputRegisters());
@@ -117,10 +118,12 @@ TEST_F(SortedCollectExecutorTestNoRowsUpstream, producer_gets_empty_input) {
                           registerInfos.registersToClear(), {});
 
   {
-    auto [state, stats, upstreamCall] = testee.produceRows(emptyInputRange, result);
+    auto [state, stats, upstreamCall] =
+        testee.produceRows(emptyInputRange, result);
     ASSERT_EQ(ExecutorState::HASMORE, state);
     ASSERT_FALSE(upstreamCall.hasHardLimit());
-    ASSERT_TRUE(std::holds_alternative<AqlCall::Infinity>(upstreamCall.softLimit));
+    ASSERT_TRUE(
+        std::holds_alternative<AqlCall::Infinity>(upstreamCall.softLimit));
     ASSERT_EQ(0, upstreamCall.offset);
     ASSERT_EQ(clientCall.fullCount, upstreamCall.fullCount);
     ASSERT_EQ(0, result.numRowsWritten());
@@ -139,17 +142,18 @@ TEST_F(SortedCollectExecutorTestNoRowsUpstream, producer_gets_empty_input) {
 class SortedCollectExecutorTestRowsUpstream : public ::testing::Test {
  protected:
   ExecutionState state;
-  ResourceMonitor monitor;
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor monitor{global};
   AqlItemBlockManager itemBlockManager;
 
   mocks::MockAqlServer server;
-  std::unique_ptr<arangodb::aql::Query> fakedQuery;
+  std::shared_ptr<arangodb::aql::Query> fakedQuery;
 
   std::vector<std::pair<RegisterId, RegisterId>> groupRegisters;
 
   RegisterId collectRegister;
 
-  RegisterId nrOutputRegister;
+  RegisterCount nrOutputRegister;
 
   std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters;
   std::vector<std::string> aggregateTypes;
@@ -158,7 +162,6 @@ class SortedCollectExecutorTestRowsUpstream : public ::testing::Test {
   RegisterId expressionRegister;
   Variable const* expressionVariable;
   std::vector<std::pair<std::string, RegisterId>> variables;
-  bool count;
 
   RegisterInfos registerInfos;
   SortedCollectExecutorInfos executorInfos;
@@ -167,7 +170,7 @@ class SortedCollectExecutorTestRowsUpstream : public ::testing::Test {
   NoStats stats;
 
   SortedCollectExecutorTestRowsUpstream()
-      : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
+      : itemBlockManager(monitor, SerializationFormat::SHADOWROWS),
         server(),
         fakedQuery(server.createFakeQuery()),
         groupRegisters{std::make_pair<RegisterId, RegisterId>(1, 0)},
@@ -175,12 +178,12 @@ class SortedCollectExecutorTestRowsUpstream : public ::testing::Test {
         nrOutputRegister(3),
         expressionRegister(RegisterPlan::MaxRegisterId),
         expressionVariable(nullptr),
-        count(false),
         registerInfos(RegIdSet{0}, RegIdSet{1, 2}, 1 /*nrIn*/, 3 /*nrOut*/,
                       RegIdFlatSet{}, RegIdFlatSetStack{{}}),
-        executorInfos(std::move(groupRegisters), collectRegister, expressionRegister,
-                      expressionVariable, std::move(aggregateTypes),
-                      std::move(variables), std::move(aggregateRegisters), &VPackOptions::Defaults, count),
+        executorInfos(std::move(groupRegisters), collectRegister,
+                      expressionRegister, expressionVariable,
+                      std::move(aggregateTypes), std::move(variables),
+                      std::move(aggregateRegisters), &VPackOptions::Defaults),
         block(new AqlItemBlock(itemBlockManager, 1000, nrOutputRegister)) {}
 };
 
@@ -190,11 +193,12 @@ TEST_F(SortedCollectExecutorTestRowsUpstream, producer_1) {
       itemBlockManager, input->steal(), false);
   SortedCollectExecutor testee(fetcher, executorInfos);
 
-  SharedAqlItemBlockPtr inputBlock = buildBlock<1>(itemBlockManager, {{1}, {2}});
+  SharedAqlItemBlockPtr inputBlock =
+      buildBlock<1>(itemBlockManager, {{1}, {2}});
   AqlCall clientCall;
 
-  AqlItemBlockInputRange emptyInputRange(ExecutorState::HASMORE);
-  AqlItemBlockInputRange inputRange(ExecutorState::DONE, 0, inputBlock, 0);
+  AqlItemBlockInputRange emptyInputRange(MainQueryState::HASMORE);
+  AqlItemBlockInputRange inputRange(MainQueryState::DONE, 0, inputBlock, 0);
 
   SharedAqlItemBlockPtr outputBlock =
       itemBlockManager.requestBlock(2, registerInfos.numberOfOutputRegisters());
@@ -203,10 +207,12 @@ TEST_F(SortedCollectExecutorTestRowsUpstream, producer_1) {
                           registerInfos.registersToClear(), {});
 
   {
-    auto [state, stats, upstreamCall] = testee.produceRows(emptyInputRange, result);
+    auto [state, stats, upstreamCall] =
+        testee.produceRows(emptyInputRange, result);
     ASSERT_EQ(ExecutorState::HASMORE, state);
     ASSERT_FALSE(upstreamCall.hasHardLimit());
-    ASSERT_TRUE(std::holds_alternative<AqlCall::Infinity>(upstreamCall.softLimit));
+    ASSERT_TRUE(
+        std::holds_alternative<AqlCall::Infinity>(upstreamCall.softLimit));
     ASSERT_EQ(0, upstreamCall.offset);
     ASSERT_EQ(clientCall.fullCount, upstreamCall.fullCount);
     ASSERT_EQ(0, result.numRowsWritten());
@@ -237,24 +243,26 @@ TEST_F(SortedCollectExecutorTestRowsUpstream, producer_2) {
       itemBlockManager, input->steal(), false);
   SortedCollectExecutor testee(fetcher, executorInfos);
 
-  SharedAqlItemBlockPtr inputBlock = buildBlock<1>(itemBlockManager, {{1}, {2}, {3}});
+  SharedAqlItemBlockPtr inputBlock =
+      buildBlock<1>(itemBlockManager, {{1}, {2}, {3}});
   AqlCall clientCall;
 
-  AqlItemBlockInputRange emptyInputRange(ExecutorState::HASMORE);
-  AqlItemBlockInputRange inputRange(ExecutorState::DONE, 0, inputBlock, 0);
+  AqlItemBlockInputRange emptyInputRange(MainQueryState::HASMORE);
+  AqlItemBlockInputRange inputRange(MainQueryState::DONE, 0, inputBlock, 0);
 
-  SharedAqlItemBlockPtr outputBlock =
-      itemBlockManager.requestBlock(inputBlock->size(),
-                                    registerInfos.numberOfOutputRegisters());
+  SharedAqlItemBlockPtr outputBlock = itemBlockManager.requestBlock(
+      inputBlock->numRows(), registerInfos.numberOfOutputRegisters());
   OutputAqlItemRow result(outputBlock, registerInfos.getOutputRegisters(),
                           registerInfos.registersToKeep(),
                           registerInfos.registersToClear(), {});
 
   {
-    auto [state, stats, upstreamCall] = testee.produceRows(emptyInputRange, result);
+    auto [state, stats, upstreamCall] =
+        testee.produceRows(emptyInputRange, result);
     ASSERT_EQ(ExecutorState::HASMORE, state);
     ASSERT_FALSE(upstreamCall.hasHardLimit());
-    ASSERT_TRUE(std::holds_alternative<AqlCall::Infinity>(upstreamCall.softLimit));
+    ASSERT_TRUE(
+        std::holds_alternative<AqlCall::Infinity>(upstreamCall.softLimit));
     ASSERT_EQ(0, upstreamCall.offset);
     ASSERT_EQ(clientCall.fullCount, upstreamCall.fullCount);
     ASSERT_EQ(0, result.numRowsWritten());
@@ -265,7 +273,7 @@ TEST_F(SortedCollectExecutorTestRowsUpstream, producer_2) {
     auto [state, stats, upstreamCall] = testee.produceRows(inputRange, result);
     ASSERT_EQ(ExecutorState::DONE, state);
     ASSERT_EQ(clientCall.fullCount, upstreamCall.fullCount);
-    ASSERT_EQ(inputBlock->size(), result.numRowsWritten());
+    ASSERT_EQ(inputBlock->numRows(), result.numRowsWritten());
     ASSERT_FALSE(result.produced());
   }
 
@@ -293,21 +301,22 @@ TEST_F(SortedCollectExecutorTestRowsUpstream, producer_3) {
       buildBlock<1>(itemBlockManager, {{1}, {1}, {2}, {2}, {3}});
   AqlCall clientCall;
 
-  AqlItemBlockInputRange emptyInputRange(ExecutorState::HASMORE);
-  AqlItemBlockInputRange inputRange(ExecutorState::DONE, 0, inputBlock, 0);
+  AqlItemBlockInputRange emptyInputRange(MainQueryState::HASMORE);
+  AqlItemBlockInputRange inputRange(MainQueryState::DONE, 0, inputBlock, 0);
 
-  SharedAqlItemBlockPtr outputBlock =
-      itemBlockManager.requestBlock(inputBlock->size(),
-                                    registerInfos.numberOfOutputRegisters());
+  SharedAqlItemBlockPtr outputBlock = itemBlockManager.requestBlock(
+      inputBlock->numRows(), registerInfos.numberOfOutputRegisters());
   OutputAqlItemRow result(outputBlock, registerInfos.getOutputRegisters(),
                           registerInfos.registersToKeep(),
                           registerInfos.registersToClear(), {});
 
   {
-    auto [state, stats, upstreamCall] = testee.produceRows(emptyInputRange, result);
+    auto [state, stats, upstreamCall] =
+        testee.produceRows(emptyInputRange, result);
     ASSERT_EQ(ExecutorState::HASMORE, state);
     ASSERT_FALSE(upstreamCall.hasHardLimit());
-    ASSERT_TRUE(std::holds_alternative<AqlCall::Infinity>(upstreamCall.softLimit));
+    ASSERT_TRUE(
+        std::holds_alternative<AqlCall::Infinity>(upstreamCall.softLimit));
     ASSERT_EQ(0, upstreamCall.offset);
     ASSERT_EQ(clientCall.fullCount, upstreamCall.fullCount);
     ASSERT_EQ(0, result.numRowsWritten());
@@ -345,21 +354,22 @@ TEST_F(SortedCollectExecutorTestRowsUpstream, producer_4) {
       buildBlock<1>(itemBlockManager, {{1}, {1}, {2}, {2}});
   AqlCall clientCall;
 
-  AqlItemBlockInputRange emptyInputRange(ExecutorState::HASMORE);
-  AqlItemBlockInputRange inputRange(ExecutorState::DONE, 0, inputBlock, 0);
+  AqlItemBlockInputRange emptyInputRange(MainQueryState::HASMORE);
+  AqlItemBlockInputRange inputRange(MainQueryState::DONE, 0, inputBlock, 0);
 
-  SharedAqlItemBlockPtr outputBlock =
-      itemBlockManager.requestBlock(inputBlock->size(),
-                                    registerInfos.numberOfOutputRegisters());
+  SharedAqlItemBlockPtr outputBlock = itemBlockManager.requestBlock(
+      inputBlock->numRows(), registerInfos.numberOfOutputRegisters());
   OutputAqlItemRow result(outputBlock, registerInfos.getOutputRegisters(),
                           registerInfos.registersToKeep(),
                           registerInfos.registersToClear(), {});
 
   {
-    auto [state, stats, upstreamCall] = testee.produceRows(emptyInputRange, result);
+    auto [state, stats, upstreamCall] =
+        testee.produceRows(emptyInputRange, result);
     ASSERT_EQ(ExecutorState::HASMORE, state);
     ASSERT_FALSE(upstreamCall.hasHardLimit());
-    ASSERT_TRUE(std::holds_alternative<AqlCall::Infinity>(upstreamCall.softLimit));
+    ASSERT_TRUE(
+        std::holds_alternative<AqlCall::Infinity>(upstreamCall.softLimit));
     ASSERT_EQ(0, upstreamCall.offset);
     ASSERT_EQ(clientCall.fullCount, upstreamCall.fullCount);
     ASSERT_EQ(0, result.numRowsWritten());
@@ -385,11 +395,13 @@ TEST_F(SortedCollectExecutorTestRowsUpstream, producer_4) {
 }
 
 TEST(SortedCollectExecutorTestRowsUpstreamCount, test) {
-  ResourceMonitor monitor;
-  AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor monitor{global};
+  AqlItemBlockManager itemBlockManager{monitor,
+                                       SerializationFormat::SHADOWROWS};
 
   mocks::MockAqlServer server{};
-  std::unique_ptr<arangodb::aql::Query> fakedQuery = server.createFakeQuery();
+  std::shared_ptr<arangodb::aql::Query> fakedQuery = server.createFakeQuery();
 
   RegIdSet regToClear = {};
   RegIdSetStack regToKeep = {{}};
@@ -397,7 +409,7 @@ TEST(SortedCollectExecutorTestRowsUpstreamCount, test) {
 
   auto readableInputRegisters = RegIdSet{0};
   auto writeableOutputRegisters = RegIdSet{1, 2};
-  RegisterId nrOutputRegister = 3;
+  RegisterCount nrOutputRegister = 3;
 
   std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters;
   aggregateRegisters.emplace_back(std::make_pair<RegisterId, RegisterId>(2, 0));
@@ -409,24 +421,23 @@ TEST(SortedCollectExecutorTestRowsUpstreamCount, test) {
   Variable const* expressionVariable = nullptr;
   std::vector<std::pair<std::string, RegisterId>> variables;
 
-  auto registerInfos = RegisterInfos(std::move(readableInputRegisters),
-                                     std::move(writeableOutputRegisters), 1, nrOutputRegister,
-                                     std::move(regToClear), std::move(regToKeep));
-  auto executorInfos =
-      SortedCollectExecutorInfos(std::move(groupRegisters), collectRegister,
-                                 expressionRegister, expressionVariable,
-                                 std::move(aggregateTypes), std::move(variables),
-                                 std::move(aggregateRegisters), &VPackOptions::Defaults, false);
+  auto registerInfos = RegisterInfos(
+      std::move(readableInputRegisters), std::move(writeableOutputRegisters), 1,
+      nrOutputRegister, std::move(regToClear), std::move(regToKeep));
+  auto executorInfos = SortedCollectExecutorInfos(
+      std::move(groupRegisters), collectRegister, expressionRegister,
+      expressionVariable, std::move(aggregateTypes), std::move(variables),
+      std::move(aggregateRegisters), &VPackOptions::Defaults);
 
-  SharedAqlItemBlockPtr inputBlock = buildBlock<1>(itemBlockManager, {{1}, {2}});
+  SharedAqlItemBlockPtr inputBlock =
+      buildBlock<1>(itemBlockManager, {{1}, {2}});
   AqlCall clientCall;
 
-  AqlItemBlockInputRange emptyInputRange(ExecutorState::HASMORE);
-  AqlItemBlockInputRange inputRange(ExecutorState::DONE, 0, inputBlock, 0);
+  AqlItemBlockInputRange emptyInputRange(MainQueryState::HASMORE);
+  AqlItemBlockInputRange inputRange(MainQueryState::DONE, 0, inputBlock, 0);
 
-  SharedAqlItemBlockPtr outputBlock =
-      itemBlockManager.requestBlock(inputBlock->size(),
-                                    registerInfos.numberOfOutputRegisters());
+  SharedAqlItemBlockPtr outputBlock = itemBlockManager.requestBlock(
+      inputBlock->numRows(), registerInfos.numberOfOutputRegisters());
   OutputAqlItemRow result(outputBlock, registerInfos.getOutputRegisters(),
                           registerInfos.registersToKeep(),
                           registerInfos.registersToClear(), {});
@@ -437,10 +448,12 @@ TEST(SortedCollectExecutorTestRowsUpstreamCount, test) {
   SortedCollectExecutor testee(fetcher, executorInfos);
 
   {
-    auto [state, stats, upstreamCall] = testee.produceRows(emptyInputRange, result);
+    auto [state, stats, upstreamCall] =
+        testee.produceRows(emptyInputRange, result);
     ASSERT_EQ(ExecutorState::HASMORE, state);
     ASSERT_FALSE(upstreamCall.hasHardLimit());
-    ASSERT_TRUE(std::holds_alternative<AqlCall::Infinity>(upstreamCall.softLimit));
+    ASSERT_TRUE(
+        std::holds_alternative<AqlCall::Infinity>(upstreamCall.softLimit));
     ASSERT_EQ(0, upstreamCall.offset);
     ASSERT_EQ(clientCall.fullCount, upstreamCall.fullCount);
     ASSERT_EQ(0, result.numRowsWritten());
@@ -473,11 +486,13 @@ TEST(SortedCollectExecutorTestRowsUpstreamCount, test) {
 }
 
 TEST(SortedCollectExecutorTestRowsUpstreamCountStrings, test) {
-  ResourceMonitor monitor;
-  AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor monitor{global};
+  AqlItemBlockManager itemBlockManager{monitor,
+                                       SerializationFormat::SHADOWROWS};
 
   mocks::MockAqlServer server{};
-  std::unique_ptr<arangodb::aql::Query> fakedQuery = server.createFakeQuery();
+  std::shared_ptr<arangodb::aql::Query> fakedQuery = server.createFakeQuery();
 
   RegIdSet regToClear;
   RegIdSetStack regToKeep = {{}};
@@ -488,7 +503,7 @@ TEST(SortedCollectExecutorTestRowsUpstreamCountStrings, test) {
 
   auto writeableOutputRegisters = RegIdSet{1, 2};
 
-  RegisterId nrOutputRegister = 3;
+  RegisterCount nrOutputRegister = 3;
 
   std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters;
   aggregateRegisters.emplace_back(std::make_pair<RegisterId, RegisterId>(2, 0));
@@ -504,12 +519,13 @@ TEST(SortedCollectExecutorTestRowsUpstreamCountStrings, test) {
   auto registerInfos = RegisterInfos(std::move(readableInputRegisters),
                                      std::move(writeableOutputRegisters), 1,
                                      nrOutputRegister, regToClear, regToKeep);
-  auto executorInfos = SortedCollectExecutorInfos(std::move(groupRegisters), collectRegister,
-                                 expressionRegister, expressionVariable,
-                                 std::move(aggregateTypes), std::move(variables),
-                                 std::move(aggregateRegisters), &VPackOptions::Defaults, false);
+  auto executorInfos = SortedCollectExecutorInfos(
+      std::move(groupRegisters), collectRegister, expressionRegister,
+      expressionVariable, std::move(aggregateTypes), std::move(variables),
+      std::move(aggregateRegisters), &VPackOptions::Defaults);
 
-  SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, nrOutputRegister)};
+  SharedAqlItemBlockPtr block{
+      new AqlItemBlock(itemBlockManager, 1000, nrOutputRegister)};
 
   auto input = VPackParser::fromJson("[ [\"a\"], [\"aa\"], [\"aaa\"] ]");
   SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
@@ -520,21 +536,22 @@ TEST(SortedCollectExecutorTestRowsUpstreamCountStrings, test) {
       buildBlock<1>(itemBlockManager, {{"\"a\""}, {"\"aa\""}, {"\"aaa\""}});
   AqlCall clientCall;
 
-  AqlItemBlockInputRange emptyInputRange(ExecutorState::HASMORE);
-  AqlItemBlockInputRange inputRange(ExecutorState::DONE, 0, inputBlock, 0);
+  AqlItemBlockInputRange emptyInputRange(MainQueryState::HASMORE);
+  AqlItemBlockInputRange inputRange(MainQueryState::DONE, 0, inputBlock, 0);
 
-  SharedAqlItemBlockPtr outputBlock =
-      itemBlockManager.requestBlock(inputBlock->size(),
-                                    registerInfos.numberOfOutputRegisters());
+  SharedAqlItemBlockPtr outputBlock = itemBlockManager.requestBlock(
+      inputBlock->numRows(), registerInfos.numberOfOutputRegisters());
   OutputAqlItemRow result(outputBlock, registerInfos.getOutputRegisters(),
                           registerInfos.registersToKeep(),
                           registerInfos.registersToClear(), {});
 
   {
-    auto [state, stats, upstreamCall] = testee.produceRows(emptyInputRange, result);
+    auto [state, stats, upstreamCall] =
+        testee.produceRows(emptyInputRange, result);
     ASSERT_EQ(ExecutorState::HASMORE, state);
     ASSERT_FALSE(upstreamCall.hasHardLimit());
-    ASSERT_TRUE(std::holds_alternative<AqlCall::Infinity>(upstreamCall.softLimit));
+    ASSERT_TRUE(
+        std::holds_alternative<AqlCall::Infinity>(upstreamCall.softLimit));
     ASSERT_EQ(0, upstreamCall.offset);
     ASSERT_EQ(clientCall.fullCount, upstreamCall.fullCount);
     ASSERT_EQ(0, result.numRowsWritten());
@@ -582,17 +599,17 @@ TEST(SortedCollectExecutorTestRowsUpstreamCountStrings, test) {
 
 class SortedCollectExecutorTestSkip : public ::testing::Test {
  protected:
-  // ExecutionState state;
-  ResourceMonitor monitor;
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor monitor{global};
   AqlItemBlockManager itemBlockManager;
 
   mocks::MockAqlServer server;
-  std::unique_ptr<arangodb::aql::Query> fakedQuery;
+  std::shared_ptr<arangodb::aql::Query> fakedQuery;
 
   std::vector<std::pair<RegisterId, RegisterId>> groupRegisters;
   RegisterId collectRegister;
 
-  RegisterId nrOutputRegister;
+  RegisterCount nrOutputRegister;
 
   std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters;
   std::vector<std::string> aggregateTypes;
@@ -601,7 +618,6 @@ class SortedCollectExecutorTestSkip : public ::testing::Test {
   RegisterId expressionRegister;
   Variable const* expressionVariable;
   std::vector<std::pair<std::string, RegisterId>> variables;
-  bool count;
 
   RegisterInfos registerInfos;
   SortedCollectExecutorInfos executorInfos;
@@ -610,19 +626,19 @@ class SortedCollectExecutorTestSkip : public ::testing::Test {
   NoStats stats;
 
   SortedCollectExecutorTestSkip()
-      : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
+      : itemBlockManager(monitor, SerializationFormat::SHADOWROWS),
         fakedQuery(server.createFakeQuery()),
         groupRegisters{std::make_pair<RegisterId, RegisterId>(1, 0)},
         collectRegister(2),
         nrOutputRegister(3),
         expressionRegister(RegisterPlan::MaxRegisterId),
         expressionVariable(nullptr),
-        count(false),
         registerInfos(RegIdSet{0}, RegIdSet{1, 2}, 1, nrOutputRegister,
                       RegIdFlatSet{}, RegIdFlatSetStack{{}}),
-        executorInfos(std::move(groupRegisters), collectRegister, expressionRegister,
-                      expressionVariable, std::move(aggregateTypes), std::move(variables),
-                      std::move(aggregateRegisters), &VPackOptions::Defaults, count),
+        executorInfos(std::move(groupRegisters), collectRegister,
+                      expressionRegister, expressionVariable,
+                      std::move(aggregateTypes), std::move(variables),
+                      std::move(aggregateRegisters), &VPackOptions::Defaults),
         block(new AqlItemBlock(itemBlockManager, 1000, nrOutputRegister)) {}
 };
 
@@ -630,9 +646,10 @@ TEST_F(SortedCollectExecutorTestSkip, skip_1) {
   SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
       itemBlockManager, std::make_shared<VPackBuffer<uint8_t>>(), false);
 
-  SharedAqlItemBlockPtr inputBlock = buildBlock<1>(itemBlockManager, {{1}, {2}});
-  AqlItemBlockInputRange emptyInputRange(ExecutorState::HASMORE);
-  AqlItemBlockInputRange inputRange(ExecutorState::DONE, 0, inputBlock, 0);
+  SharedAqlItemBlockPtr inputBlock =
+      buildBlock<1>(itemBlockManager, {{1}, {2}});
+  AqlItemBlockInputRange emptyInputRange(MainQueryState::HASMORE);
+  AqlItemBlockInputRange inputRange(MainQueryState::DONE, 0, inputBlock, 0);
 
   SortedCollectExecutor testee(fetcher, executorInfos);
 
@@ -644,18 +661,21 @@ TEST_F(SortedCollectExecutorTestSkip, skip_1) {
         testee.skipRowsRange(emptyInputRange, clientCall);
     ASSERT_EQ(ExecutorState::HASMORE, state);
     ASSERT_FALSE(upstreamCall.hasHardLimit());
-    ASSERT_TRUE(std::holds_alternative<AqlCall::Infinity>(upstreamCall.softLimit));
+    ASSERT_TRUE(
+        std::holds_alternative<AqlCall::Infinity>(upstreamCall.softLimit));
     ASSERT_EQ(0, upstreamCall.offset);
     ASSERT_EQ(clientCall.fullCount, upstreamCall.fullCount);
     ASSERT_EQ(skipped, 0);
   }
+  clientCall.resetSkipCount();
 
   {
     auto [state, stats, skipped, upstreamCall] =
         testee.skipRowsRange(inputRange, clientCall);
     ASSERT_EQ(ExecutorState::DONE, state);
     ASSERT_FALSE(upstreamCall.hasHardLimit());
-    ASSERT_TRUE(std::holds_alternative<AqlCall::Infinity>(upstreamCall.softLimit));
+    ASSERT_TRUE(
+        std::holds_alternative<AqlCall::Infinity>(upstreamCall.softLimit));
     ASSERT_EQ(0, upstreamCall.offset);
     ASSERT_EQ(clientCall.fullCount, upstreamCall.fullCount);
     ASSERT_EQ(skipped, 2);
@@ -666,9 +686,10 @@ TEST_F(SortedCollectExecutorTestSkip, skip_2) {
   SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
       itemBlockManager, std::make_shared<VPackBuffer<uint8_t>>(), false);
 
-  SharedAqlItemBlockPtr inputBlock = buildBlock<1>(itemBlockManager, {{1}, {2}});
-  AqlItemBlockInputRange emptyInputRange(ExecutorState::HASMORE);
-  AqlItemBlockInputRange inputRange(ExecutorState::DONE, 0, inputBlock, 0);
+  SharedAqlItemBlockPtr inputBlock =
+      buildBlock<1>(itemBlockManager, {{1}, {2}});
+  AqlItemBlockInputRange emptyInputRange(MainQueryState::HASMORE);
+  AqlItemBlockInputRange inputRange(MainQueryState::DONE, 0, inputBlock, 0);
 
   SortedCollectExecutor testee(fetcher, executorInfos);
 
@@ -680,28 +701,31 @@ TEST_F(SortedCollectExecutorTestSkip, skip_2) {
         testee.skipRowsRange(emptyInputRange, clientCall);
     EXPECT_EQ(ExecutorState::HASMORE, state);
     EXPECT_FALSE(upstreamCall.hasHardLimit());
-    EXPECT_TRUE(std::holds_alternative<AqlCall::Infinity>(upstreamCall.softLimit));
+    EXPECT_TRUE(
+        std::holds_alternative<AqlCall::Infinity>(upstreamCall.softLimit));
     EXPECT_EQ(0, upstreamCall.offset);
     EXPECT_EQ(clientCall.fullCount, upstreamCall.fullCount);
     EXPECT_EQ(skipped, 0);
   }
+  clientCall.resetSkipCount();
 
   {
     auto [state, stats, skipped, upstreamCall] =
         testee.skipRowsRange(inputRange, clientCall);
     EXPECT_EQ(state, ExecutorState::HASMORE);
     EXPECT_FALSE(upstreamCall.hasHardLimit());
-    EXPECT_TRUE(std::holds_alternative<AqlCall::Infinity>(upstreamCall.softLimit));
+    EXPECT_TRUE(
+        std::holds_alternative<AqlCall::Infinity>(upstreamCall.softLimit));
     EXPECT_EQ(0, upstreamCall.offset);
     EXPECT_EQ(clientCall.fullCount, upstreamCall.fullCount);
     EXPECT_EQ(skipped, 1);
     EXPECT_EQ(inputRange.upstreamState(), ExecutorState::HASMORE);
   }
+  clientCall.resetSkipCount();
 
   {
-    SharedAqlItemBlockPtr outputBlock =
-        itemBlockManager.requestBlock(inputBlock->size(),
-                                      registerInfos.numberOfOutputRegisters());
+    SharedAqlItemBlockPtr outputBlock = itemBlockManager.requestBlock(
+        inputBlock->numRows(), registerInfos.numberOfOutputRegisters());
     OutputAqlItemRow result(outputBlock, registerInfos.getOutputRegisters(),
                             registerInfos.registersToKeep(),
                             registerInfos.registersToClear(), clientCall);
@@ -709,7 +733,8 @@ TEST_F(SortedCollectExecutorTestSkip, skip_2) {
     auto [state, stats, upstreamCall] = testee.produceRows(inputRange, result);
     EXPECT_EQ(ExecutorState::DONE, state);
     EXPECT_FALSE(upstreamCall.hasHardLimit());
-    EXPECT_TRUE(std::holds_alternative<AqlCall::Infinity>(upstreamCall.softLimit));
+    EXPECT_TRUE(
+        std::holds_alternative<AqlCall::Infinity>(upstreamCall.softLimit));
     EXPECT_EQ(0, upstreamCall.offset);
     EXPECT_EQ(clientCall.fullCount, upstreamCall.fullCount);
     EXPECT_EQ(1, result.numRowsWritten());
@@ -727,10 +752,11 @@ TEST_F(SortedCollectExecutorTestSkip, skip_3) {
   SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
       itemBlockManager, std::make_shared<VPackBuffer<uint8_t>>(), false);
 
-  SharedAqlItemBlockPtr inputBlock = buildBlock<1>(itemBlockManager, {{1}, {1}});
-  AqlItemBlockInputRange emptyInputRange(ExecutorState::HASMORE);
-  AqlItemBlockInputRange inputRange(ExecutorState::HASMORE, 0, inputBlock, 0);
-  AqlItemBlockInputRange emptyInputRangeDone(ExecutorState::DONE);
+  SharedAqlItemBlockPtr inputBlock =
+      buildBlock<1>(itemBlockManager, {{1}, {1}});
+  AqlItemBlockInputRange emptyInputRange(MainQueryState::HASMORE);
+  AqlItemBlockInputRange inputRange(MainQueryState::HASMORE, 0, inputBlock, 0);
+  AqlItemBlockInputRange emptyInputRangeDone(MainQueryState::DONE);
 
   SortedCollectExecutor testee(fetcher, executorInfos);
 
@@ -742,11 +768,13 @@ TEST_F(SortedCollectExecutorTestSkip, skip_3) {
         testee.skipRowsRange(emptyInputRange, clientCall);
     EXPECT_EQ(ExecutorState::HASMORE, state);
     EXPECT_FALSE(upstreamCall.hasHardLimit());
-    EXPECT_TRUE(std::holds_alternative<AqlCall::Infinity>(upstreamCall.softLimit));
+    EXPECT_TRUE(
+        std::holds_alternative<AqlCall::Infinity>(upstreamCall.softLimit));
     EXPECT_EQ(0, upstreamCall.offset);
     EXPECT_EQ(clientCall.fullCount, upstreamCall.fullCount);
     EXPECT_EQ(skipped, 0);
   }
+  clientCall.resetSkipCount();
 
   {
     auto [state, stats, skipped, upstreamCall] =
@@ -756,6 +784,7 @@ TEST_F(SortedCollectExecutorTestSkip, skip_3) {
     EXPECT_EQ(skipped, 0);
     EXPECT_EQ(inputRange.upstreamState(), ExecutorState::HASMORE);
   }
+  clientCall.resetSkipCount();
 
   {
     auto [state, stats, skipped, upstreamCall] =
@@ -771,13 +800,15 @@ TEST_F(SortedCollectExecutorTestSkip, skip_4) {
   SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
       itemBlockManager, std::make_shared<VPackBuffer<uint8_t>>(), false);
 
-  SharedAqlItemBlockPtr inputBlock = buildBlock<1>(itemBlockManager, {{1}, {1}});
-  AqlItemBlockInputRange emptyInputRange(ExecutorState::HASMORE);
-  AqlItemBlockInputRange inputRange(ExecutorState::HASMORE, 0, inputBlock, 0);
+  SharedAqlItemBlockPtr inputBlock =
+      buildBlock<1>(itemBlockManager, {{1}, {1}});
+  AqlItemBlockInputRange emptyInputRange(MainQueryState::HASMORE);
+  AqlItemBlockInputRange inputRange(MainQueryState::HASMORE, 0, inputBlock, 0);
 
   SharedAqlItemBlockPtr inputBlock2 = buildBlock<1>(itemBlockManager, {{2}});
-  AqlItemBlockInputRange inputRange2(ExecutorState::HASMORE, 0, inputBlock2, 0);
-  AqlItemBlockInputRange emptyInputRangeDone(ExecutorState::DONE);
+  AqlItemBlockInputRange inputRange2(MainQueryState::HASMORE, 0, inputBlock2,
+                                     0);
+  AqlItemBlockInputRange emptyInputRangeDone(MainQueryState::DONE);
 
   SortedCollectExecutor testee(fetcher, executorInfos);
 
@@ -789,11 +820,13 @@ TEST_F(SortedCollectExecutorTestSkip, skip_4) {
         testee.skipRowsRange(emptyInputRange, clientCall);
     EXPECT_EQ(ExecutorState::HASMORE, state);
     EXPECT_FALSE(upstreamCall.hasHardLimit());
-    EXPECT_TRUE(std::holds_alternative<AqlCall::Infinity>(upstreamCall.softLimit));
+    EXPECT_TRUE(
+        std::holds_alternative<AqlCall::Infinity>(upstreamCall.softLimit));
     EXPECT_EQ(0, upstreamCall.offset);
     EXPECT_EQ(clientCall.fullCount, upstreamCall.fullCount);
     EXPECT_EQ(skipped, 0);
   }
+  clientCall.resetSkipCount();
 
   {
     // 1, 1
@@ -804,6 +837,7 @@ TEST_F(SortedCollectExecutorTestSkip, skip_4) {
     EXPECT_EQ(skipped, 0);
     EXPECT_EQ(inputRange.upstreamState(), ExecutorState::HASMORE);
   }
+  clientCall.resetSkipCount();
 
   {
     // 2
@@ -814,11 +848,11 @@ TEST_F(SortedCollectExecutorTestSkip, skip_4) {
     EXPECT_EQ(skipped, 1);
     EXPECT_EQ(inputRange.upstreamState(), ExecutorState::HASMORE);
   }
+  clientCall.resetSkipCount();
 
   {
-    SharedAqlItemBlockPtr outputBlock =
-        itemBlockManager.requestBlock(inputBlock->size(),
-                                      registerInfos.numberOfOutputRegisters());
+    SharedAqlItemBlockPtr outputBlock = itemBlockManager.requestBlock(
+        inputBlock->numRows(), registerInfos.numberOfOutputRegisters());
     OutputAqlItemRow result(outputBlock, registerInfos.getOutputRegisters(),
                             registerInfos.registersToKeep(),
                             registerInfos.registersToClear(), clientCall);
@@ -828,16 +862,17 @@ TEST_F(SortedCollectExecutorTestSkip, skip_4) {
     EXPECT_EQ(result.numRowsWritten(), 0);
     EXPECT_FALSE(result.produced());
   }
+  clientCall.resetSkipCount();
 
   {
-    SharedAqlItemBlockPtr outputBlock =
-        itemBlockManager.requestBlock(inputBlock->size(),
-                                      registerInfos.numberOfOutputRegisters());
+    SharedAqlItemBlockPtr outputBlock = itemBlockManager.requestBlock(
+        inputBlock->numRows(), registerInfos.numberOfOutputRegisters());
     OutputAqlItemRow result(outputBlock, registerInfos.getOutputRegisters(),
                             registerInfos.registersToKeep(),
                             registerInfos.registersToClear(), clientCall);
 
-    auto [state, stats, upstreamCall] = testee.produceRows(emptyInputRangeDone, result);
+    auto [state, stats, upstreamCall] =
+        testee.produceRows(emptyInputRangeDone, result);
     EXPECT_EQ(state, ExecutorState::DONE);
     EXPECT_EQ(clientCall.fullCount, upstreamCall.fullCount);
     EXPECT_EQ(1, result.numRowsWritten());
@@ -854,9 +889,10 @@ TEST_F(SortedCollectExecutorTestSkip, skip_5) {
   SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
       itemBlockManager, std::make_shared<VPackBuffer<uint8_t>>(), false);
 
-  SharedAqlItemBlockPtr inputBlock = buildBlock<1>(itemBlockManager, {{1}, {1}, {2}});
-  AqlItemBlockInputRange emptyInputRange(ExecutorState::HASMORE);
-  AqlItemBlockInputRange inputRange(ExecutorState::DONE, 0, inputBlock, 0);
+  SharedAqlItemBlockPtr inputBlock =
+      buildBlock<1>(itemBlockManager, {{1}, {1}, {2}});
+  AqlItemBlockInputRange emptyInputRange(MainQueryState::HASMORE);
+  AqlItemBlockInputRange inputRange(MainQueryState::DONE, 0, inputBlock, 0);
 
   SortedCollectExecutor testee(fetcher, executorInfos);
 
@@ -868,11 +904,13 @@ TEST_F(SortedCollectExecutorTestSkip, skip_5) {
         testee.skipRowsRange(emptyInputRange, clientCall);
     EXPECT_EQ(ExecutorState::HASMORE, state);
     EXPECT_FALSE(upstreamCall.hasHardLimit());
-    EXPECT_TRUE(std::holds_alternative<AqlCall::Infinity>(upstreamCall.softLimit));
+    EXPECT_TRUE(
+        std::holds_alternative<AqlCall::Infinity>(upstreamCall.softLimit));
     EXPECT_EQ(0, upstreamCall.offset);
     EXPECT_EQ(clientCall.fullCount, upstreamCall.fullCount);
     EXPECT_EQ(skipped, 0);
   }
+  clientCall.resetSkipCount();
 
   {
     // 1, 1, 2
@@ -883,11 +921,11 @@ TEST_F(SortedCollectExecutorTestSkip, skip_5) {
     EXPECT_EQ(skipped, 1);
     EXPECT_EQ(inputRange.upstreamState(), ExecutorState::HASMORE);
   }
+  clientCall.resetSkipCount();
 
   {
-    SharedAqlItemBlockPtr outputBlock =
-        itemBlockManager.requestBlock(inputBlock->size(),
-                                      registerInfos.numberOfOutputRegisters());
+    SharedAqlItemBlockPtr outputBlock = itemBlockManager.requestBlock(
+        inputBlock->numRows(), registerInfos.numberOfOutputRegisters());
     OutputAqlItemRow result(outputBlock, registerInfos.getOutputRegisters(),
                             registerInfos.registersToKeep(),
                             registerInfos.registersToClear(), clientCall);
@@ -903,6 +941,7 @@ TEST_F(SortedCollectExecutorTestSkip, skip_5) {
       EXPECT_EQ(x.slice().getInt(), 2);
     }
   }
+  clientCall.resetSkipCount();
 }
 
 using SortedCollectTestHelper = ExecutorTestHelper<1, 1>;
@@ -911,11 +950,10 @@ using SortedCollectSplitType = SortedCollectTestHelper::SplitType;
 class SortedCollectExecutorTestSplit
     : public AqlExecutorTestCaseWithParam<std::tuple<SortedCollectSplitType>> {
  protected:
-
   std::vector<std::pair<RegisterId, RegisterId>> groupRegisters;
 
   RegisterId collectRegister;
-  RegisterId nrOutputRegister;
+  RegisterCount nrOutputRegister;
 
   std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters;
   std::vector<std::string> aggregateTypes;
@@ -924,7 +962,6 @@ class SortedCollectExecutorTestSplit
   RegisterId expressionRegister;
   Variable const* expressionVariable;
   std::vector<std::pair<std::string, RegisterId>> variables;
-  bool count;
 
   RegisterInfos registerInfos;
   SortedCollectExecutorInfos executorInfos;
@@ -935,20 +972,20 @@ class SortedCollectExecutorTestSplit
         nrOutputRegister(3),
         expressionRegister(RegisterPlan::MaxRegisterId),
         expressionVariable(nullptr),
-        count(false),
         registerInfos(RegIdSet{0}, RegIdSet{1, 2}, 1, nrOutputRegister,
                       RegIdFlatSet{}, RegIdFlatSetStack{{}}),
-        executorInfos(std::move(groupRegisters), collectRegister, expressionRegister,
-                      expressionVariable, std::move(aggregateTypes),
-                      std::move(variables), std::move(aggregateRegisters),
-                      &VPackOptions::Defaults, count) {}
+        executorInfos(std::move(groupRegisters), collectRegister,
+                      expressionRegister, expressionVariable,
+                      std::move(aggregateTypes), std::move(variables),
+                      std::move(aggregateRegisters), &VPackOptions::Defaults) {}
 };
 
 TEST_P(SortedCollectExecutorTestSplit, split_1) {
   auto [split] = GetParam();
 
   makeExecutorTestHelper()
-      .addConsumer<SortedCollectExecutor>(std::move(registerInfos), std::move(executorInfos))
+      .addConsumer<SortedCollectExecutor>(std::move(registerInfos),
+                                          std::move(executorInfos))
       .setInputValueList(1, 1, 1, 2, 3, 4, 4, 5)
       .setInputSplitType(split)
       .setCall(AqlCall{2, AqlCall::Infinity{}, 2u, true})
@@ -962,7 +999,8 @@ TEST_P(SortedCollectExecutorTestSplit, split_2) {
   auto [split] = GetParam();
 
   makeExecutorTestHelper()
-      .addConsumer<SortedCollectExecutor>(std::move(registerInfos), std::move(executorInfos))
+      .addConsumer<SortedCollectExecutor>(std::move(registerInfos),
+                                          std::move(executorInfos))
       .setInputValueList(1, 1, 1, 2, 3, 4, 4, 5)
       .setInputSplitType(split)
       .setCall(AqlCall{2, 2u, AqlCall::Infinity{}, false})
@@ -976,7 +1014,8 @@ TEST_P(SortedCollectExecutorTestSplit, split_3) {
   auto [split] = GetParam();
 
   makeExecutorTestHelper()
-      .addConsumer<SortedCollectExecutor>(std::move(registerInfos), std::move(executorInfos))
+      .addConsumer<SortedCollectExecutor>(std::move(registerInfos),
+                                          std::move(executorInfos))
       .setInputValueList(1, 2, 3, 4, 5)
       .setInputSplitType(split)
       .setCall(AqlCall{1, AqlCall::Infinity{}, 10u, true})
@@ -986,10 +1025,10 @@ TEST_P(SortedCollectExecutorTestSplit, split_3) {
       .run();
 }
 
-template <size_t... vs>
+template<size_t... vs>
 const SortedCollectSplitType splitIntoBlocks =
     SortedCollectSplitType{std::vector<std::size_t>{vs...}};
-template <size_t step>
+template<size_t step>
 const SortedCollectSplitType splitStep = SortedCollectSplitType{step};
 
 INSTANTIATE_TEST_CASE_P(SortedCollectExecutor, SortedCollectExecutorTestSplit,

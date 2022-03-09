@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -36,7 +37,6 @@
 #include <velocypack/Buffer.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <vector>
 
@@ -48,7 +48,8 @@ using namespace arangodb::rest;
 namespace arangodb {
 
 /// @brief get TTL statistics from all DBservers and aggregate them
-Result getTtlStatisticsFromAllDBServers(ClusterFeature& feature, TtlStatistics& out) {
+Result getTtlStatisticsFromAllDBServers(ClusterFeature& feature,
+                                        TtlStatistics& out) {
   ClusterInfo& ci = feature.clusterInfo();
 
   std::vector<ServerID> DBservers = ci.getCurrentDBServers();
@@ -58,21 +59,21 @@ Result getTtlStatisticsFromAllDBServers(ClusterFeature& feature, TtlStatistics& 
   std::vector<Future<network::Response>> futures;
   futures.reserve(DBservers.size());
   for (std::string const& server : DBservers) {
-    futures.emplace_back(
-        network::sendRequestRetry(pool, "server:" + server, fuerte::RestVerb::Get,
-                                  url, VPackBufferUInt8()));
+    futures.emplace_back(network::sendRequestRetry(pool, "server:" + server,
+                                                   fuerte::RestVerb::Get, url,
+                                                   VPackBufferUInt8()));
   }
 
   for (Future<network::Response>& f : futures) {
     network::Response const& r = f.get();
-    
+
     if (r.fail()) {
       return network::fuerteToArangoErrorCode(r);
     }
-    if (r.response->statusCode() == fuerte::StatusOK) {
+    if (r.statusCode() == fuerte::StatusOK) {
       out += r.slice().get("result");
     } else {
-      int code = network::errorCodeFromBody(r.slice());
+      auto code = network::errorCodeFromBody(r.slice());
       if (code != TRI_ERROR_NO_ERROR) {
         return code;
       }
@@ -82,7 +83,8 @@ Result getTtlStatisticsFromAllDBServers(ClusterFeature& feature, TtlStatistics& 
 }
 
 /// @brief get TTL properties from all DBservers
-Result getTtlPropertiesFromAllDBServers(ClusterFeature& feature, VPackBuilder& out) {
+Result getTtlPropertiesFromAllDBServers(ClusterFeature& feature,
+                                        VPackBuilder& out) {
   ClusterInfo& ci = feature.clusterInfo();
 
   std::vector<ServerID> DBservers = ci.getCurrentDBServers();
@@ -92,22 +94,22 @@ Result getTtlPropertiesFromAllDBServers(ClusterFeature& feature, VPackBuilder& o
   std::vector<Future<network::Response>> futures;
   futures.reserve(DBservers.size());
   for (std::string const& server : DBservers) {
-    futures.emplace_back(
-        network::sendRequestRetry(pool, "server:" + server, fuerte::RestVerb::Get,
-                                  url, VPackBufferUInt8()));
+    futures.emplace_back(network::sendRequestRetry(pool, "server:" + server,
+                                                   fuerte::RestVerb::Get, url,
+                                                   VPackBufferUInt8()));
   }
 
   for (Future<network::Response>& f : futures) {
     network::Response const& r = f.get();
-    
+
     if (r.fail()) {
       return network::fuerteToArangoErrorCode(r);
     }
-    if (r.response->statusCode() == fuerte::StatusOK) {
+    if (r.statusCode() == fuerte::StatusOK) {
       out.add(r.slice().get("result"));
       break;
     } else {
-      int code = network::errorCodeFromBody(r.slice());
+      auto code = network::errorCodeFromBody(r.slice());
       if (code != TRI_ERROR_NO_ERROR) {
         return code;
       }
@@ -118,7 +120,8 @@ Result getTtlPropertiesFromAllDBServers(ClusterFeature& feature, VPackBuilder& o
 
 /// @brief set TTL properties on all DBservers
 Result setTtlPropertiesOnAllDBServers(ClusterFeature& feature,
-                                      VPackSlice properties, VPackBuilder& out) {
+                                      VPackSlice properties,
+                                      VPackBuilder& out) {
   ClusterInfo& ci = feature.clusterInfo();
 
   std::vector<ServerID> DBservers = ci.getCurrentDBServers();
@@ -131,23 +134,22 @@ Result setTtlPropertiesOnAllDBServers(ClusterFeature& feature,
   VPackBufferUInt8 buffer;
   buffer.append(properties.begin(), properties.byteSize());
   for (std::string const& server : DBservers) {
-    futures.emplace_back(network::sendRequestRetry(pool, "server:" + server,
-                                                   fuerte::RestVerb::Put, url,
-                                                   buffer));
+    futures.emplace_back(network::sendRequestRetry(
+        pool, "server:" + server, fuerte::RestVerb::Put, url, buffer));
   }
 
   for (Future<network::Response>& f : futures) {
     network::Response const& r = f.get();
-    
+
     if (r.fail()) {
       return network::fuerteToArangoErrorCode(r);
     }
 
-    if (r.response->statusCode() == fuerte::StatusOK) {
+    if (r.statusCode() == fuerte::StatusOK) {
       out.add(r.slice().get("result"));
       break;
     } else {
-      int code = network::errorCodeFromBody(r.slice());
+      auto code = network::errorCodeFromBody(r.slice());
       if (code != TRI_ERROR_NO_ERROR) {
         return code;
       }

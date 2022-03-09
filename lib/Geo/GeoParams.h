@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GEO_GEO_PARAMS_H
-#define ARANGOD_GEO_GEO_PARAMS_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Basics/debugging.h"
@@ -31,7 +31,6 @@
 #include <s2/s2latlng.h>
 #include <s2/s2region_coverer.h>
 
-
 namespace arangodb {
 namespace velocypack {
 class Builder;
@@ -39,8 +38,8 @@ class Slice;
 }  // namespace velocypack
 namespace geo {
 constexpr double kPi = M_PI;
-// assume up to 16x machine epsilon in precision errors for radian calculations
-constexpr double kRadEps = 16 * std::numeric_limits<double>::epsilon();
+// assume up to 8x machine epsilon in precision errors for radian calculations
+constexpr double kRadEps = 8 * std::numeric_limits<double>::epsilon();
 constexpr double kMaxRadiansBetweenPoints = kPi + kRadEps;
 // Equatorial radius of earth.
 // Source: http://nssdc.gsfc.nasa.gov/planetary/factsheet/earthfact.html
@@ -48,7 +47,12 @@ constexpr double kMaxRadiansBetweenPoints = kPi + kRadEps;
 // constexpr double kEarthRadiusInMeters = (6378.137 * 1000);
 // Volumetric mean radius
 constexpr double kEarthRadiusInMeters = (6371.000 * 1000);
-constexpr double kMaxDistanceBetweenPoints = kMaxRadiansBetweenPoints * kEarthRadiusInMeters;
+constexpr double kMaxDistanceBetweenPoints =
+    kMaxRadiansBetweenPoints * kEarthRadiusInMeters;
+
+constexpr double metersToRadians(double distanceInMeters) noexcept {
+  return std::max(0.0, std::min(distanceInMeters / kEarthRadiusInMeters, M_PI));
+}
 
 enum class FilterType {
   // no filter, only useful on a near query
@@ -150,9 +154,25 @@ struct QueryParams {
   static constexpr int queryMaxCoverCells = 20;
   static constexpr int queryWorstLevel = 4;
   static constexpr int queryBestLevel = 23;  // about 1m
+
+  std::string toString() const {
+    auto t = [](bool x) -> std::string {
+      return x ? std::string("true") : std::string("false");
+    };
+    std::string res =
+        "minDistance: " + std::to_string(minDistance) +
+        " incl: " + t(minInclusive) +
+        " maxDistance: " + std::to_string(maxDistance) +
+        " incl: " + t(maxInclusive) + " sorted: " + t(sorted) +
+        " ascending: " + t(ascending) +
+        " origin: " + std::to_string(origin.lng().degrees()) + " , " +
+        std::to_string(origin.lat().degrees()) +
+        " pointsOnly: " + t(pointsOnly) + " limit: " + std::to_string(limit) +
+        " filterType: " + std::to_string(static_cast<int>(filterType)) +
+        " filterShape: " + std::to_string(static_cast<int>(filterShape.type()));
+    return res;
+  }
 };
 
 }  // namespace geo
 }  // namespace arangodb
-
-#endif

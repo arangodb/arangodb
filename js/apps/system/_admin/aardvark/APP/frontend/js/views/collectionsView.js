@@ -54,32 +54,9 @@
           });
 
           this.collection.each(function (model) {
-            if (!model.get('locked')) {
-              $('#collection_' + model.get('name')).find('.corneredBadge').removeClass('loaded unloaded');
-              $('#collection_' + model.get('name') + ' .corneredBadge').text(model.get('status'));
-              $('#collection_' + model.get('name') + ' .corneredBadge').addClass(model.get('status'));
-            }
-
-            if (model.get('locked') || model.get('status') === 'loading') {
-              $('#collection_' + model.get('name')).addClass('locked');
-              if (model.get('locked')) {
-                $('#collection_' + model.get('name')).find('.corneredBadge').removeClass('loaded unloaded');
-                $('#collection_' + model.get('name')).find('.corneredBadge').addClass('inProgress');
-                $('#collection_' + model.get('name') + ' .corneredBadge').text(model.get('desc'));
-              } else {
-                $('#collection_' + model.get('name') + ' .corneredBadge').text(model.get('status'));
-              }
-            } else {
-              $('#collection_' + model.get('name')).removeClass('locked');
-              $('#collection_' + model.get('name') + ' .corneredBadge').text(model.get('status'));
-              if ($('#collection_' + model.get('name') + ' .corneredBadge').hasClass('inProgress')) {
-                $('#collection_' + model.get('name') + ' .corneredBadge').text(model.get('status'));
-                $('#collection_' + model.get('name') + ' .corneredBadge').removeClass('inProgress');
-                $('#collection_' + model.get('name') + ' .corneredBadge').addClass('loaded');
-              }
-              if (model.get('status') === 'unloaded') {
-                $('#collection_' + model.get('name') + ' .icon_arangodb_info').addClass('disabled');
-              }
+            $('#collection_' + model.get('name')).removeClass('locked');
+            if ($('#collection_' + model.get('name') + ' .corneredBadge').hasClass('inProgress')) {
+              $('#collection_' + model.get('name') + ' .corneredBadge').removeClass('inProgress');
             }
           });
         }
@@ -164,8 +141,6 @@
       'change #searchInput': 'restrictToSearchPhrase',
       'click #searchSubmit': 'restrictToSearchPhrase',
       'click .checkSystemCollections': 'checkSystem',
-      'click #checkLoaded': 'checkLoaded',
-      'click #checkUnloaded': 'checkUnloaded',
       'click #checkDocument': 'checkDocument',
       'click #checkEdge': 'checkEdge',
       'click #sortName': 'sortName',
@@ -226,26 +201,6 @@
         this.render();
       }
     },
-    checkLoaded: function () {
-      var searchOptions = this.collection.searchOptions;
-      var oldValue = searchOptions.includeLoaded;
-
-      searchOptions.includeLoaded = ($('#checkLoaded').is(':checked') === true);
-
-      if (oldValue !== searchOptions.includeLoaded) {
-        this.render();
-      }
-    },
-    checkUnloaded: function () {
-      var searchOptions = this.collection.searchOptions;
-      var oldValue = searchOptions.includeUnloaded;
-
-      searchOptions.includeUnloaded = ($('#checkUnloaded').is(':checked') === true);
-
-      if (oldValue !== searchOptions.includeUnloaded) {
-        this.render();
-      }
-    },
     sortName: function () {
       var searchOptions = this.collection.searchOptions;
       var oldValue = searchOptions.sortBy;
@@ -276,8 +231,6 @@
 
     setFilterValues: function () {
       var searchOptions = this.collection.searchOptions;
-      $('#checkLoaded').attr('checked', searchOptions.includeLoaded);
-      $('#checkUnloaded').attr('checked', searchOptions.includeUnloaded);
       $('.checkSystemCollections').attr('checked', searchOptions.includeSystem);
       $('#checkEdge').attr('checked', searchOptions.includeEdge);
       $('#checkDocument').attr('checked', searchOptions.includeDocument);
@@ -592,25 +545,35 @@
             );
           
             if (window.App.isCluster) {
+              var minReplicationFactor = (this.minReplicationFactor ? this.minReplicationFactor : 1); 
+              var maxReplicationFactor = (this.maxReplicationFactor ? this.maxReplicationFactor : 10); 
+
+              // clamp replicationFactor between min & max allowed values
+              var replicationFactor = '';
+              if (properties.replicationFactor) {
+                replicationFactor = parseInt(properties.replicationFactor);
+                if (replicationFactor < minReplicationFactor) {
+                  replicationFactor = minReplicationFactor;
+                }
+                if (replicationFactor > maxReplicationFactor) {
+                  replicationFactor = maxReplicationFactor;
+                }
+              }
+
               tableContent.push(
                 window.modalView.createTextEntry(
                   'new-replication-factor',
                   'Replication factor',
-                  properties.replicationFactor ? properties.replicationFactor : '',
-                  'Numeric value. Must be between ' + 
-                  (this.minReplicationFactor ? this.minReplicationFactor : 1) + 
-                  ' and ' + 
-                  (this.maxReplicationFactor ? this.maxReplicationFactor : 10) +
-                  '. Total number of copies of the data in the cluster',
+                  String(replicationFactor),
+                  'Numeric value. Must be between ' + minReplicationFactor + ' and ' + 
+                  maxReplicationFactor + '. Total number of copies of the data in the cluster',
                   '',
                   false,
                   [
                     {
                       rule: Joi.string().allow('').optional().regex(/^[1-9][0-9]*$/),
-                      msg: 'Must be a number between ' + 
-                           (this.minReplicationFactor ? this.minReplicationFactor : 1) + 
-                           ' and ' + 
-                           (this.maxReplicationFactor ? this.maxReplicationFactor : 10) + '.'
+                      msg: 'Must be a number between ' + minReplicationFactor +  
+                           ' and ' + maxReplicationFactor + '.'
                     }
                   ]
                 )

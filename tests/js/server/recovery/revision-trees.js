@@ -87,10 +87,6 @@ function recoverySuite () {
     },
     tearDown: function () {},
 
-    // //////////////////////////////////////////////////////////////////////////////
-    // / @brief test whether we can restore the trx data
-    // //////////////////////////////////////////////////////////////////////////////
-
     testRevisionTreeCounts: function() {
       const c1 = db._collection(colName1);
       assertEqual(c1._revisionTreeSummary().count, c1.count());

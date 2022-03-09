@@ -1,0 +1,18 @@
+name: arangodb_maintenance_action_duplicate_total
+renamedFrom: arangodb_maintenance_action_duplicate_counter
+introducedIn: "3.8.0"
+help: |
+  Counter of actions that have been discarded because of a duplicate.
+unit: number
+type: counter
+category: Maintenance
+complexity: advanced
+exposedBy:
+  - dbserver
+description: |
+  Database servers execute reconciliation actions to let the cluster converge
+  to the desired state. Actions are created, registered, queued and executed.
+  Once they are done they will eventually be removed.
+
+  This metric counts the number of actions that have been created but found to
+  be a duplicate of a already queued action.

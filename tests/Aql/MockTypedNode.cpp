@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -30,7 +31,8 @@ using namespace arangodb::aql;
 using namespace arangodb::tests;
 using namespace arangodb::tests::aql;
 
-MockTypedNode::MockTypedNode(ExecutionPlan* plan, ExecutionNodeId id, NodeType type)
+MockTypedNode::MockTypedNode(ExecutionPlan* plan, ExecutionNodeId id,
+                             NodeType type)
     : ExecutionNode(plan, id), _mockedType(type) {}
 
 ExecutionNode* MockTypedNode::clone(ExecutionPlan* plan, bool withDependencies,
@@ -45,12 +47,13 @@ ExecutionNode* MockTypedNode::clone(ExecutionPlan* plan, bool withDependencies,
 
 std::unique_ptr<::arangodb::aql::ExecutionBlock> MockTypedNode::createBlock(
     ::arangodb::aql::ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ::arangodb::aql::ExecutionBlock*> const&) const {
+    std::unordered_map<ExecutionNode*, ::arangodb::aql::ExecutionBlock*> const&)
+    const {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-void MockTypedNode::toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
-                                       std::unordered_set<ExecutionNode const*>& seen) const {
+void MockTypedNode::doToVelocyPack(arangodb::velocypack::Builder&,
+                                   unsigned flags) const {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 

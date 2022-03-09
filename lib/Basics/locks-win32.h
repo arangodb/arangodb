@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_LOCKS__WIN32_H
-#define ARANGODB_BASICS_LOCKS__WIN32_H 1
+#pragma once
 
 #include "Basics/debugging.h"
 #include "Basics/operating-system.h"
@@ -35,7 +34,5 @@ struct TRI_condition_t {
   CRITICAL_SECTION _lockWaiters;
   CONDITION_VARIABLE _conditionVariable;
 };
-
-#endif
 
 #endif

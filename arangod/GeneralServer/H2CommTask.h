@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,27 +21,31 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GENERAL_SERVER_H2_COMM_TASK_H
-#define ARANGOD_GENERAL_SERVER_H2_COMM_TASK_H 1
+#pragma once
 
 #include "GeneralServer/AsioSocket.h"
 #include "GeneralServer/GeneralCommTask.h"
 
 #include <nghttp2/nghttp2.h>
-#include <velocypack/StringRef.h>
 #include <boost/lockfree/queue.hpp>
 #include <memory>
+#include <map>
 
 namespace arangodb {
 class HttpRequest;
-class HttpResponse;
+
+/// @brief maximum number of concurrent streams
+static constexpr uint32_t H2MaxConcurrentStreams = 32;
 
 namespace rest {
 
-template <SocketType T>
+struct H2Response;
+
+template<SocketType T>
 class H2CommTask final : public GeneralCommTask<T> {
  public:
-  H2CommTask(GeneralServer& server, ConnectionInfo, std::unique_ptr<AsioSocket<T>> so);
+  H2CommTask(GeneralServer& server, ConnectionInfo,
+             std::unique_ptr<AsioSocket<T>> so);
   ~H2CommTask() noexcept;
 
   void start() override;
@@ -48,53 +53,58 @@ class H2CommTask final : public GeneralCommTask<T> {
   void upgradeHttp1(std::unique_ptr<HttpRequest> req);
 
  protected:
-  // set a read timeout in asyncReadSome
-  bool enableReadTimeout() const override { return true; }
+  virtual bool readCallback(asio_ns::error_code ec) override;
+  virtual void setIOTimeout() override;
 
-  bool readCallback(asio_ns::error_code ec) override;
+  virtual void sendResponse(std::unique_ptr<GeneralResponse> response,
+                            RequestStatistics::Item stat) override;
 
-  void sendResponse(std::unique_ptr<GeneralResponse> response, RequestStatistics::Item stat) override;
-
-  std::unique_ptr<GeneralResponse> createResponse(rest::ResponseCode, uint64_t messageId) override;
+  virtual std::unique_ptr<GeneralResponse> createResponse(
+      rest::ResponseCode, uint64_t messageId) override;
 
  private:
   static int on_begin_headers(nghttp2_session* session,
                               const nghttp2_frame* frame, void* user_data);
   static int on_header(nghttp2_session* session, const nghttp2_frame* frame,
-                       const uint8_t* name, size_t namelen, const uint8_t* value,
-                       size_t valuelen, uint8_t flags, void* user_data);
+                       const uint8_t* name, size_t namelen,
+                       const uint8_t* value, size_t valuelen, uint8_t flags,
+                       void* user_data);
   static int on_frame_recv(nghttp2_session* session, const nghttp2_frame* frame,
                            void* user_data);
-  static int on_data_chunk_recv(nghttp2_session* session, uint8_t flags, int32_t stream_id,
-                                const uint8_t* data, size_t len, void* user_data);
+  static int on_data_chunk_recv(nghttp2_session* session, uint8_t flags,
+                                int32_t stream_id, const uint8_t* data,
+                                size_t len, void* user_data);
   static int on_stream_close(nghttp2_session* session, int32_t stream_id,
                              uint32_t error_code, void* user_data);
   static int on_frame_send(nghttp2_session* session, const nghttp2_frame* frame,
                            void* user_data);
 
-  static int on_frame_not_send(nghttp2_session* session, const nghttp2_frame* frame,
-                               int lib_error_code, void* user_data);
+  static int on_frame_not_send(nghttp2_session* session,
+                               const nghttp2_frame* frame, int lib_error_code,
+                               void* user_data);
 
  private:
   // ongoing Http2 stream
   struct Stream final {
-    explicit Stream(std::unique_ptr<HttpRequest> req) : request(std::move(req)) {}
-    
+    explicit Stream(std::unique_ptr<HttpRequest> req)
+        : request(std::move(req)) {}
+
     std::string origin;
 
     std::unique_ptr<HttpRequest> request;
-    std::unique_ptr<HttpResponse> response;
+    std::unique_ptr<H2Response> response;  // hold response memory
 
-    size_t headerBuffSize = 0; // total header size
-    size_t responseOffset = 0; // current offset in response body
-
-    RequestStatistics::Item statistics;
+    size_t headerBuffSize = 0;  // total header size
+    size_t responseOffset = 0;  // current offset in response body
   };
 
   /// init h2 session
   void initNgHttp2Session();
 
-  void processStream(Stream* strm);
+  /// handle stream request in arangodb
+  void processStream(Stream& strm);
+
+  void processRequest(Stream& stream, std::unique_ptr<HttpRequest> req);
 
   /// should close connection
   bool shouldStop() const;
@@ -106,25 +116,25 @@ class H2CommTask final : public GeneralCommTask<T> {
   void doWrite();
 
   Stream* createStream(int32_t sid, std::unique_ptr<HttpRequest>);
-  Stream* findStream(int32_t sid) const;
-
-  // may be used to signal a write from sendResponse
-  void signalWrite();
+  Stream* findStream(int32_t sid);
 
  private:
+  /// @brief used to generate the full url for debugging
+  std::string url(HttpRequest const* req) const;
+
   velocypack::Buffer<uint8_t> _outbuffer;
 
-  // no more than 64 streams allowed
-  boost::lockfree::queue<HttpResponse*, boost::lockfree::capacity<64>> _responses;
+  boost::lockfree::queue<H2Response*,
+                         boost::lockfree::capacity<H2MaxConcurrentStreams>>
+      _responses;
 
-  std::map<int32_t, std::unique_ptr<Stream>> _streams;
+  std::map<int32_t, Stream> _streams;
 
   nghttp2_session* _session = nullptr;
-  bool _writing = false;
 
-  std::atomic<bool> _signaledWrite = false;
+  std::atomic<unsigned> _numProcessing{0};
+
+  std::atomic<bool> _signaledWrite{false};
 };
 }  // namespace rest
 }  // namespace arangodb
-
-#endif

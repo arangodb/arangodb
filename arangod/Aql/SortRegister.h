@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,8 +22,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_SORT_REGISTER_H
-#define ARANGOD_AQL_SORT_REGISTER_H 1
+#pragma once
 
 #include "Aql/ExecutionNode.h"
 #include "types.h"
@@ -42,12 +42,11 @@ struct SortRegister {
 
   SortRegister(RegisterId reg, SortElement const& element) noexcept;
 
-  static void fill(ExecutionPlan const& /*execPlan*/, RegisterPlan const& regPlan,
+  static void fill(ExecutionPlan const& /*execPlan*/,
+                   RegisterPlan const& regPlan,
                    std::vector<SortElement> const& elements,
                    std::vector<SortRegister>& sortRegisters);
 };  // SortRegister
 
 }  // namespace aql
 }  // namespace arangodb
-
-#endif  // ARANGOD_AQL_SORT_REGISTER_H

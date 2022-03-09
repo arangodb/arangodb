@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,67 +26,100 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryCache.h"
 #include "Aql/QueryRegistry.h"
+#include "Basics/StaticStrings.h"
 #include "RestServer/QueryRegistryFeature.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb::aql;
 
-QueryOptions::QueryOptions(arangodb::QueryRegistryFeature& feature)
+size_t QueryOptions::defaultMemoryLimit = 0;
+size_t QueryOptions::defaultMaxNumberOfPlans = 128;
+#ifdef __APPLE__
+// On OSX the default stack size for worker threads (non-main thread) is 512kb
+// which is rather low, so we have to use a lower default
+size_t QueryOptions::defaultMaxNodesPerCallstack = 200;
+#else
+size_t QueryOptions::defaultMaxNodesPerCallstack = 250;
+#endif
+double QueryOptions::defaultMaxRuntime = 0.0;
+double QueryOptions::defaultTtl;
+bool QueryOptions::defaultFailOnWarning = false;
+bool QueryOptions::allowMemoryLimitOverride = true;
+
+QueryOptions::QueryOptions()
     : memoryLimit(0),
-      maxNumberOfPlans(0),
+      maxNumberOfPlans(QueryOptions::defaultMaxNumberOfPlans),
       maxWarningCount(10),
-      maxRuntime(0),
+      maxNodesPerCallstack(QueryOptions::defaultMaxNodesPerCallstack),
+      maxRuntime(0.0),
       satelliteSyncWait(60.0),
-      ttl(0),
-      profile(PROFILE_LEVEL_NONE),
+      ttl(QueryOptions::defaultTtl),  // get global default ttl
+      profile(ProfileLevel::None),
+      traversalProfile(TraversalProfileLevel::None),
       allPlans(false),
       verbosePlans(false),
+      explainInternals(true),
       stream(false),
       silent(false),
-      failOnWarning(false),
+      failOnWarning(
+          QueryOptions::defaultFailOnWarning),  // use global "failOnWarning"
+                                                // value
       cache(false),
       fullCount(false),
       count(false),
-      verboseErrors(false),
-      inspectSimplePlans(true)
-{
+      skipAudit(false),
+      explainRegisters(ExplainRegisterPlan::No) {
   // now set some default values from server configuration options
-  // use global memory limit value
-  uint64_t globalLimit = feature.queryMemoryLimit();
-  if (globalLimit > 0) {
-    memoryLimit = globalLimit;
+  {
+    // use global memory limit value
+    uint64_t globalLimit = QueryOptions::defaultMemoryLimit;
+    if (globalLimit > 0) {
+      memoryLimit = globalLimit;
+    }
   }
 
-  // get global default ttl
-  ttl = feature.registry()->defaultTTL();
-
-  // use global "failOnWarning" value
-  failOnWarning = feature.failOnWarning();
+  {
+    // use global max runtime value
+    double globalLimit = QueryOptions::defaultMaxRuntime;
+    if (globalLimit > 0.0) {
+      maxRuntime = globalLimit;
+    }
+  }
 
   // "cache" only defaults to true if query cache is turned on
   auto queryCacheMode = QueryCache::instance()->mode();
   cache = (queryCacheMode == CACHE_ALWAYS_ON);
 
-  maxNumberOfPlans = feature.maxQueryPlans();
   TRI_ASSERT(maxNumberOfPlans > 0);
 }
 
-void QueryOptions::fromVelocyPack(VPackSlice const& slice) {
+QueryOptions::QueryOptions(arangodb::velocypack::Slice const slice)
+    : QueryOptions() {
+  this->fromVelocyPack(slice);
+}
+
+void QueryOptions::fromVelocyPack(VPackSlice slice) {
   if (!slice.isObject()) {
     return;
   }
 
   VPackSlice value;
-  
+
+  // use global memory limit value first
+  if (QueryOptions::defaultMemoryLimit > 0) {
+    memoryLimit = QueryOptions::defaultMemoryLimit;
+  }
+
   // numeric options
   value = slice.get("memoryLimit");
   if (value.isNumber()) {
     size_t v = value.getNumber<size_t>();
-    if (v > 0) {
+    if (v > 0 && (allowMemoryLimitOverride || v < memoryLimit)) {
+      // only allow increasing the memory limit if the respective startup option
+      // is set. and if it is set, only allow decreasing the memory limit
       memoryLimit = v;
     }
   }
@@ -103,11 +136,15 @@ void QueryOptions::fromVelocyPack(VPackSlice const& slice) {
     maxWarningCount = value.getNumber<size_t>();
   }
 
+  value = slice.get("maxNodesPerCallstack");
+  if (value.isNumber()) {
+    maxNodesPerCallstack = value.getNumber<size_t>();
+  }
+
   value = slice.get("maxRuntime");
   if (value.isNumber()) {
     maxRuntime = value.getNumber<double>();
   }
-
 
   value = slice.get("satelliteSyncWait");
   if (value.isNumber()) {
@@ -122,59 +159,61 @@ void QueryOptions::fromVelocyPack(VPackSlice const& slice) {
   // boolean options
   value = slice.get("profile");
   if (value.isBool()) {
-    profile = value.getBool() ? PROFILE_LEVEL_BASIC : PROFILE_LEVEL_NONE;
+    profile = value.getBool() ? ProfileLevel::Basic : ProfileLevel::None;
   } else if (value.isNumber()) {
-    profile = static_cast<ProfileLevel>(value.getNumber<uint32_t>());
+    profile = static_cast<ProfileLevel>(value.getNumber<uint16_t>());
   }
 
-  value = slice.get("stream");
+  value = slice.get(StaticStrings::GraphTraversalProfileLevel);
   if (value.isBool()) {
-    stream = value.getBool();
+    traversalProfile = value.getBool() ? TraversalProfileLevel::Basic
+                                       : TraversalProfileLevel::None;
+  } else if (value.isNumber()) {
+    traversalProfile =
+        static_cast<TraversalProfileLevel>(value.getNumber<uint16_t>());
   }
 
-  value = slice.get("allPlans");
-  if (value.isBool()) {
+  if (value = slice.get("allPlans"); value.isBool()) {
     allPlans = value.getBool();
   }
-  value = slice.get("verbosePlans");
-  if (value.isBool()) {
+  if (value = slice.get("verbosePlans"); value.isBool()) {
     verbosePlans = value.getBool();
   }
-  value = slice.get("stream");
-  if (value.isBool()) {
+  if (value = slice.get("explainInternals"); value.isBool()) {
+    explainInternals = value.getBool();
+  }
+  if (value = slice.get("stream"); value.isBool()) {
     stream = value.getBool();
   }
-  value = slice.get("silent");
-  if (value.isBool()) {
+  if (value = slice.get("silent"); value.isBool()) {
     silent = value.getBool();
   }
-  value = slice.get("failOnWarning");
-  if (value.isBool()) {
+  if (value = slice.get("failOnWarning"); value.isBool()) {
     failOnWarning = value.getBool();
   }
-  value = slice.get("cache");
-  if (value.isBool()) {
+  if (value = slice.get("cache"); value.isBool()) {
     cache = value.getBool();
   }
-  value = slice.get("fullCount");
-  if (value.isBool()) {
+  if (value = slice.get("fullCount"); value.isBool()) {
     fullCount = value.getBool();
   }
-  value = slice.get("count");
-  if (value.isBool()) {
+  if (value = slice.get("count"); value.isBool()) {
     count = value.getBool();
   }
-  value = slice.get("verboseErrors");
-  if (value.isBool()) {
-    verboseErrors = value.getBool();
+  if (value = slice.get("explainRegisters"); value.isBool()) {
+    explainRegisters =
+        value.getBool() ? ExplainRegisterPlan::Yes : ExplainRegisterPlan::No;
+  }
+
+  // note: skipAudit is intentionally not read here.
+  // the end user cannot override this setting
+
+  if (value = slice.get("forceOneShardAttributeValue"); value.isString()) {
+    forceOneShardAttributeValue = value.copyString();
   }
 
   VPackSlice optimizer = slice.get("optimizer");
   if (optimizer.isObject()) {
-    value = optimizer.get("inspectSimplePlans");
-    if (value.isBool()) {
-      inspectSimplePlans = value.getBool();
-    }
     value = optimizer.get("rules");
     if (value.isArray()) {
       for (auto const& rule : VPackArrayIterator(value)) {
@@ -188,7 +227,7 @@ void QueryOptions::fromVelocyPack(VPackSlice const& slice) {
   if (value.isArray()) {
     VPackArrayIterator it(value);
     while (it.valid()) {
-      VPackSlice value = it.value();
+      value = it.value();
       if (value.isString()) {
         restrictToShards.emplace(value.copyString());
       }
@@ -201,7 +240,7 @@ void QueryOptions::fromVelocyPack(VPackSlice const& slice) {
   if (value.isArray()) {
     VPackArrayIterator it(value);
     while (it.valid()) {
-      VPackSlice value = it.value();
+      value = it.value();
       if (value.isString()) {
         inaccessibleCollections.emplace(value.copyString());
       }
@@ -209,38 +248,45 @@ void QueryOptions::fromVelocyPack(VPackSlice const& slice) {
     }
   }
 #endif
-  
-  value = slice.get("exportCollection");
-  if (value.isString()) {
-    exportCollection = value.copyString();
-  }
 
   // also handle transaction options
   transactionOptions.fromVelocyPack(slice);
 }
 
-void QueryOptions::toVelocyPack(VPackBuilder& builder, bool disableOptimizerRules) const {
+void QueryOptions::toVelocyPack(VPackBuilder& builder,
+                                bool disableOptimizerRules) const {
   builder.openObject();
 
   builder.add("memoryLimit", VPackValue(memoryLimit));
   builder.add("maxNumberOfPlans", VPackValue(maxNumberOfPlans));
   builder.add("maxWarningCount", VPackValue(maxWarningCount));
+  builder.add("maxNodesPerCallstack", VPackValue(maxNodesPerCallstack));
   builder.add("maxRuntime", VPackValue(maxRuntime));
   builder.add("satelliteSyncWait", VPackValue(satelliteSyncWait));
   builder.add("ttl", VPackValue(ttl));
   builder.add("profile", VPackValue(static_cast<uint32_t>(profile)));
+  builder.add(StaticStrings::GraphTraversalProfileLevel,
+              VPackValue(static_cast<uint32_t>(traversalProfile)));
   builder.add("allPlans", VPackValue(allPlans));
   builder.add("verbosePlans", VPackValue(verbosePlans));
+  builder.add("explainInternals", VPackValue(explainInternals));
   builder.add("stream", VPackValue(stream));
   builder.add("silent", VPackValue(silent));
   builder.add("failOnWarning", VPackValue(failOnWarning));
   builder.add("cache", VPackValue(cache));
   builder.add("fullCount", VPackValue(fullCount));
   builder.add("count", VPackValue(count));
-  builder.add("verboseErrors", VPackValue(verboseErrors));
+  if (!forceOneShardAttributeValue.empty()) {
+    builder.add("forceOneShardAttributeValue",
+                VPackValue(forceOneShardAttributeValue));
+  }
+
+  // note: skipAudit is intentionally not serialized here.
+  // the end user cannot override this setting anyway.
 
   builder.add("optimizer", VPackValue(VPackValueType::Object));
-  builder.add("inspectSimplePlans", VPackValue(inspectSimplePlans));
+  // hard-coded since 3.8, option will be removed in the future
+  builder.add("inspectSimplePlans", VPackValue(true));
   if (!optimizerRules.empty() || disableOptimizerRules) {
     builder.add("rules", VPackValue(VPackValueType::Array));
     if (disableOptimizerRules) {
@@ -272,8 +318,6 @@ void QueryOptions::toVelocyPack(VPackBuilder& builder, bool disableOptimizerRule
     builder.close();  // inaccessibleCollections
   }
 #endif
-  
-  // "exportCollection" is only used internally and not exposed via toVelocyPack
 
   // also handle transaction options
   transactionOptions.toVelocyPack(builder);

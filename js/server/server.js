@@ -31,21 +31,22 @@
 
 (function () {
   let internal = require('internal');
+  let ArangoError = require('@arangodb').ArangoError;
 
   // check if --server.rest-server is disabled
   // in this case we do not (and should not) initialize and start Foxx
   let options = internal.options();
   let restServer = true;
   if (options.hasOwnProperty("server.rest-server")) {
-   restServer = options["server.rest-server"];
+    restServer = options["server.rest-server"];
   }
-
-  // autoload all modules
-  internal.loadStartup('server/bootstrap/autoload.js').startup();
 
   // reload routing information
   if (restServer) {
-    internal.loadStartup('server/bootstrap/routing.js').startup();
+    // the function name reloadRouting is misleading here, as it actually
+    // only initializes/clears the local routing map, but doesn't rebuild
+    // it.
+    require('@arangodb/actions').reloadRouting();
   }
 
   // This script is also used by agents. Coords use a different script.
@@ -61,8 +62,12 @@
       try {
         require('@arangodb/foxx/queues/manager').run();
       } catch (err) {
-        require("console").warn("unable to start Foxx queues manager: " + String(err));
-        // continue with the startup!
+        // ignore any shutdown errors
+        if (!(err instanceof ArangoError) ||
+            err.errorNum !== internal.errors.ERROR_SHUTTING_DOWN.code) {
+          require("console").warn("unable to start Foxx queues manager: " + String(err));
+        }
+        // continue with the startup anyway!
       }
     }
 

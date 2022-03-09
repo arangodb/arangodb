@@ -30,44 +30,54 @@ var db = internal.db;
 
 var API = '/_api/control_pregel';
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief creates a new pregel execution
-// //////////////////////////////////////////////////////////////////////////////
-var startExecution = function(algo, second, params) {
-  if (typeof algo !== 'string' || !second) {
-    throw "Invalid parameters, either {vertexCollections:['',..], edgeCollections: ['',..]}" +
-          " or {graphName:'<graph>'} or graph name";
-  }
+let buildMessage = function(algo, second, params) {
+  let valid = false;
+  let message = { algorithm: algo };
 
-  var message = {};
-  var first = second.vertexCollections && second.vertexCollections instanceof Array
-  && second.edgeCollections && second.edgeCollections instanceof Array;
-  if (first) {// !first && !second && !third ||
-    message.algorithm = algo;
-    message.vertexCollections = second.vertexCollections;
-    message.edgeCollections = second.edgeCollections;
-  } else if (typeof second === 'object' && typeof second.graphName === 'string') {
-    message.algorithm = algo;
-    message.graphName = second.graphName;
-  } else if (typeof second === 'string' && typeof algo === 'string') {
-    message.algorithm = algo;
-    message.graphName = second;
-  } else {
-    throw "Invalid parameters, either {vertexCollections:['',..], edgeCollections: ['',..]}" +
-          " or {graphName:'<graph>'} or graph name";
+  if (typeof algo === 'string' && second) {
+    var first = second.vertexCollections && second.vertexCollections instanceof Array
+                && second.edgeCollections && second.edgeCollections instanceof Array;
+    if (first) {
+      message.vertexCollections = second.vertexCollections;
+      message.edgeCollections = second.edgeCollections;
+      valid = true;
+    } else if (typeof second === 'object' && typeof second.graphName === 'string') {
+      message.graphName = second.graphName;
+      valid = true;
+    } else if (typeof second === 'string' && typeof algo === 'string') {
+      message.graphName = second;
+      valid = true;
+    }
   }
+  
   if (params && typeof params === 'object') {
     message.params = params;
   }
 
-  var requestResult = db._connection.POST(API, message);
+  if (!valid) {
+    throw "Invalid parameters, either {vertexCollections:['',..], edgeCollections: ['',..]}" +
+          " or {graphName:'<graph>'} or graph name";
+  }
+
+  return message;
+};
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief creates a new pregel execution
+// //////////////////////////////////////////////////////////////////////////////
+var startExecution = function(algo, second, params) {
+  let message = buildMessage(algo, second, params);
+  let requestResult = db._connection.POST(API, message);
   arangosh.checkRequestResult(requestResult);
   return requestResult;
 };
 
 var getExecutionStatus = function (executionID) {
-  var URL = API + '/' + encodeURIComponent(executionID);
-  var requestResult = db._connection.GET(URL);
+  let URL = API;
+  if (executionID !== undefined) {
+    URL += '/' + encodeURIComponent(executionID);
+  }
+  let requestResult = db._connection.GET(URL);
   arangosh.checkRequestResult(requestResult);
   return requestResult;
 };
@@ -79,6 +89,7 @@ var cancelExecution = function (executionID) {
   return requestResult;
 };
 
+exports.buildMessage = buildMessage;
 exports.start = startExecution;
 exports.status = getExecutionStatus;
 exports.cancel = cancelExecution;

@@ -33,6 +33,16 @@ One or many vertex collections that can contain source vertices.
 @RESTBODYPARAM{to,array,required,string}
 One or many vertex collections that can contain target vertices.
 
+@RESTBODYPARAM{options,object,optional,post_api_edgedef_modify_opts}
+A JSON object to set options for modifying collections within this
+edge definition.
+
+@RESTSTRUCT{satellites,post_api_edgedef_modify_opts,array,optional,string}
+An array of collection names that will be used to create SatelliteCollections
+for a Hybrid (Disjoint) SmartGraph (Enterprise Edition only). Each array element
+must be a string and a valid collection name. The collection type cannot be
+modified later.
+
 @RESTRETURNCODES
 
 @RESTRETURNCODE{201}
@@ -62,8 +72,7 @@ The response code.
 The information about the modified graph.
 
 @RESTRETURNCODE{400}
-Returned if no edge definition with this name is found in the graph,
-or of the new definition is ill-formed and cannot be used.
+Returned if the new edge definition is ill-formed and cannot be used.
 
 @RESTREPLYBODY{error,boolean,required,}
 Flag if there was an error (true) or not (false).
@@ -97,7 +106,8 @@ ArangoDB error number for the error that occurred.
 A message created for this error.
 
 @RESTRETURNCODE{404}
-Returned if no graph with this name could be found.
+Returned if no graph with this name could be found, or if no edge definition
+with this name is found in the graph.
 
 @RESTREPLYBODY{error,boolean,required,}
 Flag if there was an error (true) or not (false).

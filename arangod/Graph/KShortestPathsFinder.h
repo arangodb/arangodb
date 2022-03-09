@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,22 +21,22 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_GRAPH_CONSTANT_WEIGHT_K_SHORTEST_PATHS_FINDER_H
-#define ARANGODB_GRAPH_CONSTANT_WEIGHT_K_SHORTEST_PATHS_FINDER_H 1
+#pragma once
 
 #include "Aql/AqlValue.h"
-#include "Basics/VelocyPackHelper.h"
+#include "Containers/HashSet.h"
+#include "Containers/FlatHashMap.h"
 #include "Graph/EdgeDocumentToken.h"
 #include "Graph/ShortestPathFinder.h"
 #include "Graph/ShortestPathPriorityQueue.h"
 
-#include <velocypack/StringRef.h>
-
 #include <list>
 #include <memory>
 #include <optional>
+#include <string_view>
 
 namespace arangodb {
+struct ResourceMonitor;
 
 namespace velocypack {
 class Slice;
@@ -53,8 +53,15 @@ struct ShortestPathOptions;
 class KShortestPathsFinder : public ShortestPathFinder {
  private:
   // Mainly for readability
-  typedef arangodb::velocypack::StringRef VertexRef;
+  typedef std::string_view VertexRef;
   typedef arangodb::graph::EdgeDocumentToken Edge;
+
+  typedef arangodb::containers::HashSet<VertexRef, std::hash<VertexRef>,
+                                        std::equal_to<VertexRef>>
+      VertexSet;
+  typedef arangodb::containers::HashSet<Edge, std::hash<Edge>,
+                                        std::equal_to<Edge>>
+      EdgeSet;
   enum Direction { FORWARD, BACKWARD };
 
   // TODO: This could be merged with ShortestPathResult
@@ -81,7 +88,23 @@ class KShortestPathsFinder : public ShortestPathFinder {
       _weight = 0;
       _branchpoint = 0;
     }
+
+    static constexpr size_t pathItemMemoryUsage() {
+      return sizeof(typename decltype(_vertices)::value_type) +
+             sizeof(typename decltype(_edges)::value_type) +
+             sizeof(typename decltype(_weights)::value_type);
+    }
+
+    size_t memoryUsage() const noexcept {
+      return sizeof(Path) +
+             _vertices.size() *
+                 sizeof(typename decltype(_vertices)::value_type) +
+             _edges.size() * sizeof(typename decltype(_edges)::value_type) +
+             _weights.size() * sizeof(typename decltype(_weights)::value_type);
+    }
+
     size_t length() const { return _vertices.size(); }
+
     void append(Path const& p, size_t a, size_t b) {
       if (this->length() == 0) {
         _vertices.emplace_back(p._vertices.at(a));
@@ -89,7 +112,7 @@ class KShortestPathsFinder : public ShortestPathFinder {
       }
       // Only append paths where the first vertex of p
       // is the same as the last vertex of this.
-      TRI_ASSERT((_vertices.back().equals(p._vertices.front())));
+      TRI_ASSERT((_vertices.back() == p._vertices.front()));
       TRI_ASSERT(!_weights.empty());
 
       double ew = _weights.back();
@@ -110,7 +133,7 @@ class KShortestPathsFinder : public ShortestPathFinder {
         return false;
       }
       for (size_t i = 0; i < _vertices.size(); ++i) {
-        if (!_vertices[i].equals(rhs._vertices[i])) {
+        if (_vertices[i] != rhs._vertices[i]) {
           return false;
         }
       }
@@ -142,8 +165,13 @@ class KShortestPathsFinder : public ShortestPathFinder {
     VertexRef getKey() const { return _vertex; }
     void setWeight(double weight) { _weight = weight; }
 
-    DijkstraInfo(VertexRef const& vertex, Edge const&& edge, VertexRef const& pred, double weight)
-        : _vertex(vertex), _edge(std::move(edge)), _pred(pred), _weight(weight), _done(false) {}
+    DijkstraInfo(VertexRef const& vertex, Edge const&& edge,
+                 VertexRef const& pred, double weight)
+        : _vertex(vertex),
+          _edge(std::move(edge)),
+          _pred(pred),
+          _weight(weight),
+          _done(false) {}
     explicit DijkstraInfo(VertexRef const& vertex)
         : _vertex(vertex), _weight(0), _done(true) {}
   };
@@ -153,23 +181,28 @@ class KShortestPathsFinder : public ShortestPathFinder {
   // Dijkstra is run using two Balls, one around the start vertex, one around
   // the end vertex
   struct Ball {
+    Direction const _direction;
     VertexRef _center;
-    Direction _direction;
     Frontier _frontier;
     // The distance of the last node that has been fully expanded
     // from _center
     double _closest;
 
-    Ball() {}
-    Ball(VertexRef const& center, Direction direction)
-        : _center(center), _direction(direction), _closest(0) {
+    explicit Ball(Direction direction) : _direction(direction), _closest(0) {}
+
+    void reset(VertexRef center) {
+      _center = center;
+      _frontier.clear();
       _frontier.insert(center, std::make_unique<DijkstraInfo>(center));
+      _closest = 0;
     }
-    ~Ball() = default;
-    const VertexRef center() const { return _center; };
-    bool done(std::optional<double> const currentBest) {
-      return _frontier.empty() || (currentBest.has_value() && currentBest.value() < _closest);
-    };
+
+    VertexRef center() const { return _center; }
+
+    bool done(std::optional<double> const& currentBest) {
+      return _frontier.empty() ||
+             (currentBest.has_value() && currentBest.value() < _closest);
+    }
   };
 
   //
@@ -199,16 +232,16 @@ class KShortestPathsFinder : public ShortestPathFinder {
     std::vector<Step> _outNeighbours;
     std::vector<Step> _inNeighbours;
 
-    std::vector<size_t> _paths;
-
     explicit FoundVertex(VertexRef const& vertex)
-        : _vertex(vertex), _hasCachedOutNeighbours(false), _hasCachedInNeighbours(false) {}
+        : _vertex(vertex),
+          _hasCachedOutNeighbours(false),
+          _hasCachedInNeighbours(false) {}
   };
   // Contains the vertices that were found while searching
   // for a shortest path between start and end together with
   // the number of paths leading to that vertex and information
   // how to trace paths from the vertex from start/to end.
-  typedef std::unordered_map<VertexRef, FoundVertex> FoundVertexCache;
+  typedef containers::FlatHashMap<VertexRef, FoundVertex> FoundVertexCache;
 
  public:
   explicit KShortestPathsFinder(ShortestPathOptions& options);
@@ -216,28 +249,33 @@ class KShortestPathsFinder : public ShortestPathFinder {
 
   // reset the traverser; this is mainly needed because the traverser is
   // part of the KShortestPathsExecutorInfos, and hence not recreated when
-  // a cursor is initialised.
+  // a cursor is initialized.
   void clear() override;
 
-  // This is here because we inherit from ShortestPathFinder (to get the destroyEngines function)
+  // This is here because we inherit from ShortestPathFinder (to get the
+  // destroyEngines function)
   // TODO: Remove
-  bool shortestPath(arangodb::velocypack::Slice const& start,
-                    arangodb::velocypack::Slice const& target,
+  bool shortestPath(arangodb::velocypack::Slice start,
+                    arangodb::velocypack::Slice target,
                     arangodb::graph::ShortestPathResult& result) override {
     TRI_ASSERT(false);
     return false;
   }
 
-  // initialise k Shortest Paths
-  TEST_VIRTUAL bool startKShortestPathsTraversal(arangodb::velocypack::Slice const& start,
-                                                 arangodb::velocypack::Slice const& end);
+  // initialize k Shortest Paths
+  TEST_VIRTUAL bool startKShortestPathsTraversal(
+      arangodb::velocypack::Slice const& start,
+      arangodb::velocypack::Slice const& end);
 
   // get the next available path as AQL value.
   TEST_VIRTUAL bool getNextPathAql(arangodb::velocypack::Builder& builder);
   // get the next available path as a ShortestPathResult
-  // TODO: this is only here to not break catch-tests and needs a cleaner solution.
+  // TODO: this is only here to not break catch-tests and needs a cleaner
+  // solution.
   //       probably by making ShortestPathResult versatile enough and using that
+#ifdef ARANGODB_USE_GOOGLE_TESTS
   bool getNextPathShortestPathResult(ShortestPathResult& path);
+#endif
   // get the next available path as a Path
   bool getNextPath(Path& path);
   TEST_VIRTUAL bool skipPath();
@@ -246,8 +284,8 @@ class KShortestPathsFinder : public ShortestPathFinder {
  private:
   // Compute the first shortest path
   bool computeShortestPath(VertexRef const& start, VertexRef const& end,
-                           std::unordered_set<VertexRef> const& forbiddenVertices,
-                           std::unordered_set<Edge> const& forbiddenEdges, Path& result);
+                           VertexSet const& forbiddenVertices,
+                           EdgeSet const& forbiddenEdges, Path& result);
   bool computeNextShortestPath(Path& result);
 
   void reconstructPath(Ball const& left, Ball const& right,
@@ -262,15 +300,23 @@ class KShortestPathsFinder : public ShortestPathFinder {
                                     std::vector<Step>& steps);
 
   void advanceFrontier(Ball& source, Ball const& target,
-                       std::unordered_set<VertexRef> const& forbiddenVertices,
-                       std::unordered_set<Edge> const& forbiddenEdges,
-                       VertexRef& join, std::optional<double>& currentBest);
+                       VertexSet const& forbiddenVertices,
+                       EdgeSet const& forbiddenEdges, VertexRef& join,
+                       std::optional<double>& currentBest);
+
+  // return the size of a map entry plus some assumed overhead
+  size_t vertexCacheEntryMemoryUsage() const noexcept;
 
  private:
+  arangodb::ResourceMonitor& _resourceMonitor;
+
   bool _traversalDone{true};
 
   VertexRef _start;
   VertexRef _end;
+
+  Ball _left;
+  Ball _right;
 
   FoundVertexCache _vertexCache;
 
@@ -280,8 +326,13 @@ class KShortestPathsFinder : public ShortestPathFinder {
 
   std::unique_ptr<EdgeCursor> _forwardCursor;
   std::unique_ptr<EdgeCursor> _backwardCursor;
+
+  // a temporary object that is reused for building results
+  Path _tempPath;
+
+  // a temporary object that is reused for building candidate results
+  Path _candidate;
 };
 
 }  // namespace graph
 }  // namespace arangodb
-#endif

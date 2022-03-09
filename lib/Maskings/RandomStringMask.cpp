@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -29,16 +30,19 @@
 using namespace arangodb;
 using namespace arangodb::maskings;
 
-ParseResult<AttributeMasking> RandomStringMask::create(Path path, Maskings* maskings,
+ParseResult<AttributeMasking> RandomStringMask::create(Path path,
+                                                       Maskings* maskings,
                                                        VPackSlice const&) {
-  return ParseResult<AttributeMasking>(AttributeMasking(path, new RandomStringMask(maskings)));
+  return ParseResult<AttributeMasking>(
+      AttributeMasking(path, new RandomStringMask(maskings)));
 }
 
 VPackValue RandomStringMask::mask(bool value, std::string&) const {
   return VPackValue(value);
 }
 
-VPackValue RandomStringMask::mask(std::string const& data, std::string& buffer) const {
+VPackValue RandomStringMask::mask(std::string const& data,
+                                  std::string& buffer) const {
   uint64_t len = data.size();
   uint64_t hash;
 

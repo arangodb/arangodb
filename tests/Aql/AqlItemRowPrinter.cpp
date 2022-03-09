@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -24,16 +25,18 @@
 
 #include "Aql/AqlItemBlockManager.h"
 #include "Aql/InputAqlItemRow.h"
-#include "Aql/ResourceUsage.h"
 #include "Aql/ShadowAqlItemRow.h"
+#include "Basics/GlobalResourceMonitor.h"
+#include "Basics/ResourceUsage.h"
 
 #include <velocypack/Slice.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
 
-template <class RowType, class>
-std::ostream& arangodb::aql::operator<<(std::ostream& stream, RowType const& row) {
+template<class RowType, class>
+std::ostream& arangodb::aql::operator<<(std::ostream& stream,
+                                        RowType const& row) {
   constexpr bool isInputRow = std::is_same<RowType, InputAqlItemRow>::value;
   static_assert(isInputRow || std::is_same<RowType, ShadowAqlItemRow>::value,
                 "RowType must be one of InputAqlItemRow or ShadowAqlItemRow");
@@ -46,8 +49,9 @@ std::ostream& arangodb::aql::operator<<(std::ostream& stream, RowType const& row
     }
   }
 
-  auto monitor = ResourceMonitor{};
-  auto manager = AqlItemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor monitor{global};
+  auto manager = AqlItemBlockManager{monitor, SerializationFormat::SHADOWROWS};
 
   struct {
     void operator()(std::ostream& stream, InputAqlItemRow const&) {
@@ -60,10 +64,10 @@ std::ostream& arangodb::aql::operator<<(std::ostream& stream, RowType const& row
   printHead(stream, row);
 
   stream << "{";
-  if (row.getNrRegisters() > 0) {
+  if (row.getNumRegisters() > 0) {
     stream << row.getValue(0).slice().toJson();
   }
-  for (RegisterId i = 1; i < row.getNrRegisters(); ++i) {
+  for (RegisterId::value_t i = 1; i < row.getNumRegisters(); ++i) {
     stream << ", ";
     stream << row.getValue(i).slice().toJson();
   }
@@ -71,7 +75,7 @@ std::ostream& arangodb::aql::operator<<(std::ostream& stream, RowType const& row
   return stream;
 }
 
-template std::ostream& arangodb::aql::operator<<<InputAqlItemRow>(std::ostream& stream,
-                                                                  InputAqlItemRow const& row);
-template std::ostream& arangodb::aql::operator<<<ShadowAqlItemRow>(std::ostream& stream,
-                                                                   ShadowAqlItemRow const& row);
+template std::ostream& arangodb::aql::operator<<<InputAqlItemRow>(
+    std::ostream& stream, InputAqlItemRow const& row);
+template std::ostream& arangodb::aql::operator<<<ShadowAqlItemRow>(
+    std::ostream& stream, ShadowAqlItemRow const& row);

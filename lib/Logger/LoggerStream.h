@@ -1,8 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_LOGGER_LOGGER_STREAM_H
-#define ARANGODB_LOGGER_LOGGER_STREAM_H 1
+#pragma once
 
 #include <cstddef>
 #include <sstream>
@@ -33,57 +32,42 @@
 #include "Logger/Logger.h"
 
 namespace arangodb {
-class LoggerStream {
+/// @brief base class for regular logging and audit logging streams.
+/// do _not_ add virtual methods here, as this will be bad for efficiency.
+class LoggerStreamBase {
  public:
-  LoggerStream(LoggerStream const&) = delete;
-  LoggerStream& operator=(LoggerStream const&) = delete;
+  LoggerStreamBase(LoggerStreamBase const&) = delete;
+  LoggerStreamBase& operator=(LoggerStreamBase const&) = delete;
 
-  LoggerStream()
-      : _topicId(LogTopic::MAX_LOG_TOPICS),
-        _level(LogLevel::DEFAULT),
-        _line(0),
-        _file(nullptr),
-        _function(nullptr) {}
+  LoggerStreamBase();
+  explicit LoggerStreamBase(bool enabled);
 
-  ~LoggerStream();
+  // intentionally not virtual, as such objects can be created _very_ often!
+  ~LoggerStreamBase() = default;
 
  public:
-  LoggerStream& operator<<(LogLevel const& level) {
-    _level = level;
-    return *this;
-  }
+  LoggerStreamBase& operator<<(LogLevel const& level) noexcept;
 
-  LoggerStream& operator<<(LogTopic const& topic) {
-    _topicId = topic.id();
-    _out << topic.displayName();
-    return *this;
-  }
+  LoggerStreamBase& operator<<(LogTopic const& topic) noexcept;
 
-  LoggerStream& operator<<(Logger::BINARY const& binary);
+  LoggerStreamBase& operator<<(Logger::BINARY const& binary) noexcept;
 
-  LoggerStream& operator<<(Logger::CHARS const& chars);
+  LoggerStreamBase& operator<<(Logger::CHARS const& chars) noexcept;
 
-  LoggerStream& operator<<(Logger::RANGE const& range);
+  LoggerStreamBase& operator<<(Logger::RANGE const& range) noexcept;
 
-  LoggerStream& operator<<(Logger::FIXED const& duration);
+  LoggerStreamBase& operator<<(Logger::FIXED const& duration) noexcept;
 
-  LoggerStream& operator<<(Logger::LINE const& line) {
-    _line = line._line;
-    return *this;
-  }
+  LoggerStreamBase& operator<<(Logger::LINE const& line) noexcept;
 
-  LoggerStream& operator<<(Logger::FILE const& file) {
-    _file = file._file;
-    return *this;
-  }
+  LoggerStreamBase& operator<<(Logger::FILE const& file) noexcept;
 
-  LoggerStream& operator<<(Logger::FUNCTION const& function) {
-    _function = function._function;
-    return *this;
-  }
+  LoggerStreamBase& operator<<(Logger::FUNCTION const& function) noexcept;
 
-  template <typename T>
-  LoggerStream& operator<<(T const& obj) {
+  LoggerStreamBase& operator<<(Logger::LOGID const& logid) noexcept;
+
+  template<typename T>
+  LoggerStreamBase& operator<<(T const& obj) noexcept {
     try {
       _out << obj;
     } catch (...) {
@@ -92,14 +76,26 @@ class LoggerStream {
     return *this;
   }
 
- private:
+ protected:
   std::stringstream _out;
   size_t _topicId;
   LogLevel _level;
   int _line;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  bool const _enabled;
+#endif
+  char const* _logid;
   char const* _file;
   char const* _function;
 };
-}  // namespace arangodb
 
+class LoggerStream : public LoggerStreamBase {
+ public:
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  explicit LoggerStream(bool enabled);
 #endif
+  LoggerStream();
+  ~LoggerStream();
+};
+
+}  // namespace arangodb

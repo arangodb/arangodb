@@ -1,0 +1,525 @@
+[/
+ /  Copyright (c) 2001 Jaakko Järvi
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See
+ / accompanying file LICENSE_1_0.txt or copy at
+ / http://www.boost.org/LICENSE_1_0.txt)
+ /]
+
+[library Boost.Tuple
+  [quickbook 1.6]
+  [id tuple]
+  [copyright 2001 Jaakko J\u00E4rvi]
+  [dirname tuple]
+  [license Distributed under the
+    [@http://boost.org/LICENSE_1_0.txt Boost Software License,
+      Version 1.0].
+  ]
+]
+
+[include tuple_advanced_interface.qbk]
+[include design_decisions_rationale.qbk]
+
+[template simplesect[title]
+[block '''<simplesect><title>'''[title]'''</title>''']]
+
+[template endsimplesect[]
+[block '''</simplesect>''']]
+
+A tuple (or n-tuple) is a fixed size collection of elements. Pairs, triples,
+quadruples etc. are tuples. In a programming language, a tuple is a data
+object containing other objects as elements. These element objects may be of
+different types.
+
+Tuples are convenient in many circumstances. For instance, tuples make it easy
+to define functions that return more than one value.
+
+Some programming languages, such as ML, Python and Haskell, have built-in
+tuple constructs. Unfortunately C++ does not. To compensate for this
+"deficiency", the Boost Tuple Library implements a tuple construct using
+templates.
+
+[section:using_library Using the Library]
+
+To use the library, just include:
+
+    #include "boost/tuple/tuple.hpp"
+
+Comparison operators can be included with:
+
+    #include "boost/tuple/tuple_comparison.hpp"
+
+To use tuple input and output operators,
+
+    #include "boost/tuple/tuple_io.hpp"
+
+Both `tuple_io.hpp` and `tuple_comparison.hpp` include `tuple.hpp`.
+
+All definitions are in namespace `::boost::tuples`, but the most common names
+are lifted to namespace `::boost` with using declarations. These names are:
+`tuple`, `make_tuple`, `tie` and `get`. Further, `ref` and `cref` are defined
+directly under the `::boost` namespace.
+
+[endsect]
+
+[section:tuple_types Tuple Types]
+
+A tuple type is an instantiation of the `tuple` template. The template
+parameters specify the types of the tuple elements. The current version
+supports tuples with 0-10 elements. If necessary, the upper limit can be
+increased up to, say, a few dozen elements. The data element can be any C++
+type. Note that `void` and plain function types are valid C++ types, but
+objects of such types cannot exist. Hence, if a tuple type contains such types
+as elements, the tuple type can exist, but not an object of that type. There
+are natural limitations for element types that cannot be copied, or that are
+not default constructible (see [link tuple.constructing_tuples 'Constructing tuples']
+below).
+
+For example, the following definitions are valid tuple instantiations (`A`,
+`B` and `C` are some user defined classes):
+
+    tuple<int>
+    tuple<double&, const double&, const double, double*, const double*>
+    tuple<A, int(*)(char, int), B(A::*)(C&), C>
+    tuple<std::string, std::pair<A, B> >
+    tuple<A*, tuple<const A*, const B&, C>, bool, void*>
+
+[endsect]
+
+[section:constructing_tuples Constructing Tuples]
+
+The tuple constructor takes the tuple elements as arguments. For an /n/-
+element tuple, the constructor can be invoked with /k/ arguments, where
+`0` <= /k/ <= /n/. For example:
+
+    tuple<int, double>()
+    tuple<int, double>(1)
+    tuple<int, double>(1, 3.14)
+
+If no initial value for an element is provided, it is default initialized
+(and hence must be default initializable). For example:
+
+    class X {
+      X();
+    public:
+      X(std::string);
+    };
+
+    tuple<X,X,X>()                                              // error: no default constructor for X
+    tuple<X,X,X>(string("Jaba"), string("Daba"), string("Duu")) // ok
+
+In particular, reference types do not have a default initialization:
+
+    tuple<double&>()                // error: reference must be
+                                    // initialized explicitly
+
+    double d = 5;
+    tuple<double&>(d)               // ok
+
+    tuple<double&>(d+3.14)          // error: cannot initialize
+                                    // non-const reference with a temporary
+
+    tuple<const double&>(d+3.14)    // ok, but dangerous:
+                                    // the element becomes a dangling reference
+
+Using an initial value for an element that cannot be copied, is a compile time
+error:
+
+    class Y {
+      Y(const Y&);
+    public:
+      Y();
+    };
+
+    char a[10];
+
+    tuple<char[10], Y>(a, Y()); // error, neither arrays nor Y can be copied
+    tuple<char[10], Y>();       // ok
+
+Note particularly that the following is perfectly ok:
+
+    Y y;
+    tuple<char(&)[10], Y&>(a, y);
+
+It is possible to come up with a tuple type that cannot be constructed. This
+occurs if an element that cannot be initialized has a lower index than an
+element that requires initialization. For example: `tuple<char[10], int&>`.
+
+In sum, the tuple construction is semantically just a group of individual
+elementary constructions.
+
+[section:make_tuple The `make_tuple` function]
+
+Tuples can also be constructed using the `make_tuple` (cf. `std::make_pair`)
+helper functions. This makes the construction more convenient, saving the
+programmer from explicitly specifying the element types:
+
+    tuple<int, int, double> add_multiply_divide(int a, int b) {
+      return make_tuple(a+b, a*b, double(a)/double(b));
+    }
+
+By default, the element types are deduced to the plain non-reference types.
+E.g.:
+
+    void foo(const A& a, B& b) {
+      ...
+      make_tuple(a, b);
+
+The `make_tuple` invocation results in a tuple of type `tuple<A, B>`.
+
+Sometimes the plain non-reference type is not desired, e.g. if the element
+type cannot be copied. Therefore, the programmer can control the type
+deduction and state that a reference to const or reference to non-const type
+should be used as the element type instead. This is accomplished with two
+helper template functions: [@boost:/libs/core/doc/html/core/ref.html `boost::ref`]
+and [@boost:/libs/core/doc/html/core/ref.html `boost::cref`]. Any argument can
+be wrapped with these functions to get the desired type. The mechanism does
+not compromise const correctness since a const object wrapped with ref results
+in a tuple element with const reference type (see the fifth example below).
+For example:
+
+    A a; B b; const A ca = a;
+    make_tuple(cref(a), b);      // creates tuple<const A&, B>
+    make_tuple(ref(a), b);       // creates tuple<A&, B>
+    make_tuple(ref(a), cref(b)); // creates tuple<A&, const B&>
+    make_tuple(cref(ca));        // creates tuple<const A&>
+    make_tuple(ref(ca));         // creates tuple<const A&>
+
+Array arguments to `make_tuple` functions are deduced to reference to const
+types by default; there is no need to wrap them with `cref`. For example:
+
+    make_tuple("Donald", "Daisy");
+
+This creates an object of type `tuple<const char (&)[7], const char (&)[6]>`
+(note that the type of a string literal is an array of const characters, not
+`const char*`). However, to get `make_tuple` to create a tuple with an element
+of a non-const array type one must use the `ref` wrapper.
+
+Function pointers are deduced to the plain non-reference type, that is, to
+plain function pointer. A tuple can also hold a reference to a function, but
+such a tuple cannot be constructed with `make_tuple` (a const qualified
+function type would result, which is illegal):
+
+    void f(int i);
+      ...
+    make_tuple(&f); // tuple<void (*)(int)>
+      ...
+    tuple<tuple<void (&)(int)> > a(f) // ok
+    make_tuple(f);                    // not ok
+
+[endsect]
+
+[endsect]
+
+[section:accessing_elements Accessing Tuple Elements]
+
+Tuple elements are accessed with the expression:
+
+    t.get<N>()
+
+or
+
+    get<N>(t)
+
+where `t`  is a tuple object and `N` is a constant integral expression
+specifying the index of the element to be accessed. Depending on whether `t`
+is const or not, `get` returns the `N`-th element as a reference to const or
+non-const type. The index of the first element is `0` and thus `N` must be
+between `0` and /k/`-1`, where /k/ is the number of elements in the tuple.
+Violations of these constraints are detected at compile time. Examples:
+
+    double d = 2.7; A a;
+    tuple<int, double&, const A&> t(1, d, a);
+    const tuple<int, double&, const A&> ct = t;
+      ...
+    int i = get<0>(t); i = t.get<0>();        // ok
+    int j = get<0>(ct);                       // ok
+    get<0>(t) = 5;                            // ok
+    get<0>(ct) = 5;                           // error, can't assign to const
+      ...
+    double e = get<1>(t); // ok
+    get<1>(t) = 3.14;     // ok
+    get<2>(t) = A();      // error, can't assign to const
+    A aa = get<3>(t);     // error: index out of bounds
+      ...
+    ++get<0>(t);  // ok, can be used as any variable
+
+/[Note:/ The member `get` functions are not supported with MS Visual C++
+compiler. Further, the compiler has trouble with finding the non-member `get`
+functions without an explicit namespace qualifier. Hence, all `get` calls
+should be qualified as `tuples::get<N>(a_tuple)` when writing code that should
+compile with MSVC++ 6.0./]/
+
+[endsect]
+
+[section:construction_and_assignment Copy Construction and Tuple Assignment]
+
+A tuple can be copy constructed from another tuple, provided that the element
+types are element-wise copy constructible. Analogously, a tuple can be
+assigned to another tuple, provided that the element types are element-wise
+assignable. For example:
+
+    class A {};
+    class B : public A {};
+    struct C { C(); C(const B&); };
+    struct D { operator C() const; };
+    tuple<char, B*, B, D> t;
+      ...
+    tuple<int, A*, C, C> a(t); // ok
+    a = t;                     // ok
+
+In both cases, the conversions performed are:
+
+* `char -> int`,
+* `B* -> A*` (derived class pointer to base class pointer),
+* `B -> C` (a user defined conversion), and
+* `D -> C` (a user defined conversion).
+
+Note that assignment is also defined from `std::pair` types:
+
+    tuple<float, int> a = std::make_pair(1, 'a');
+
+[endsect]
+
+[section:relational_operators Relational Operators]
+
+Tuples reduce the operators `==`, `!=`, `<`, `>`, `<=` and `>=` to the
+corresponding elementary operators. This means, that if any of these operators
+is defined between all elements of two tuples, then the same operator is
+defined between the tuples as well. The equality operators for two tuples `a`
+and `b` are defined as:
+
+* `a == b` iff for each `i`: `a`'''<subscript>i</subscript>'''` == b`'''<subscript>i</subscript>'''
+* `a != b` iff exists `i`: `a`'''<subscript>i</subscript>'''` != b`'''<subscript>i</subscript>'''
+
+The operators `<`, `>`, `<=` and `>=` implement a lexicographical ordering.
+
+Note that an attempt to compare two tuples of different lengths results in a
+compile time error. Also, the comparison operators are /"short-circuited"/:
+elementary comparisons start from the first elements and are performed only
+until the result is clear.
+
+Examples:
+
+    tuple<std::string, int, A> t1(std::string("same?"), 2, A());
+    tuple<std::string, long, A> t2(std::string("same?"), 2, A());
+    tuple<std::string, long, A> t3(std::string("different"), 3, A());
+
+    bool operator==(A, A) { std::cout << "All the same to me..."; return true; }
+
+    t1 == t2;               // true
+    t1 == t3;               // false, does not print "All the..."
+
+[endsect]
+
+[section:tiers Tiers]
+
+/Tiers/ are tuples, where all elements are of non-const reference types. They
+are constructed with a call to the `tie` function template (cf. `make_tuple`):
+
+    int i; char c; double d;
+      ...
+    tie(i, c, a);
+
+The above `tie` function creates a tuple of type `tuple<int&, char&, double&>`.
+The same result could be achieved with the call `make_tuple(ref(i), ref(c), ref(a))`.
+
+A tuple that contains non-const references as elements can be used to 'unpack'
+another tuple into variables. E.g.:
+
+    int i; char c; double d;
+    tie(i, c, d) = make_tuple(1,'a', 5.5);
+    std::cout << i << " " <<  c << " " << d;
+
+This code prints `1 a 5.5` to the standard output stream. A tuple unpacking
+operation like this is found for example in ML and Python. It is convenient
+when calling functions which return tuples.
+
+The tying mechanism works with `std::pair` templates as well:
+
+    int i; char c;
+    tie(i, c) = std::make_pair(1, 'a');
+
+[section Ignore]
+
+There is also an object called `ignore` which allows you to ignore an element
+assigned by a tuple. The idea is that a function may return a tuple, only part
+of which you are interested in. For example (note, that ignore is under the
+`tuples` subnamespace):
+
+    char c;
+    tie(tuples::ignore, c) = std::make_pair(1, 'a');
+
+[endsect]
+
+[endsect]
+
+[section:streaming Streaming]
+
+The global `operator<<` has been overloaded for `std::ostream` such that
+tuples are output by recursively calling `operator<<` for each element.
+
+Analogously, the global `operator>>` has been overloaded to extract tuples
+from `std::istream` by recursively calling `operator>>` for each element.
+
+The default delimiter between the elements is space, and the tuple is enclosed
+in parenthesis. For Example:
+
+    tuple<float, int, std::string> a(1.0f,  2, std::string("Howdy folks!");
+
+    cout << a;
+
+outputs the tuple as: `(1.0 2 Howdy folks!)`
+
+The library defines three manipulators for changing the default behavior:
+
+* `set_open(char)` defines the character that is output before the first element.
+* `set_close(char)` defines the character that is output after the last element.
+* `set_delimiter(char)` defines the delimiter character between elements.
+
+Note, that these manipulators are defined in the tuples subnamespace. For
+example:
+
+    cout << tuples::set_open('[') << tuples::set_close(']') << tuples::set_delimiter(',') << a;
+
+outputs the same tuple `a` as: `[1.0,2,Howdy folks!]`
+
+The same manipulators work with `operator>>` and `istream` as well. Suppose
+the `cin` stream contains the following data:
+
+    (1 2 3) [4:5]
+
+The code:
+
+    tuple<int, int, int> i;
+    tuple<int, int> j;
+
+    cin >> i;
+    cin >> tuples::set_open('[') >> tuples::set_close(']') >> tuples::set_delimiter(':');
+    cin >> j;
+
+reads the data into the tuples `i` and `j`.
+
+Note that extracting tuples with `std::string` or C-style string elements does
+not generally work, since the streamed tuple representation may not be
+unambiguously parseable.
+
+[endsect]
+
+[section:performance Performance]
+
+All tuple access and construction functions are small inlined one-liners.
+Therefore, a decent compiler can eliminate any extra cost of using tuples
+compared to using hand-written tuple like classes. Particularly, with a decent
+compiler there is no performance difference between this code:
+
+    class hand_made_tuple {
+      A a; B b; C c;
+    public:
+      hand_made_tuple(const A& aa, const B& bb, const C& cc)
+        : a(aa), b(bb), c(cc) {};
+      A& getA() { return a; };
+      B& getB() { return b; };
+      C& getC() { return c; };
+    };
+
+    hand_made_tuple hmt(A(), B(), C());
+    hmt.getA(); hmt.getB(); hmt.getC();
+
+and this code:
+
+    tuple<A, B, C> t(A(), B(), C());
+    t.get<0>(); t.get<1>(); t.get<2>();
+
+Note, that there are widely used compilers (e.g. bcc 5.5.1) which fail to
+optimize this kind of tuple usage.
+
+Depending on the optimizing ability of the compiler, the tier mechanism may
+have a small performance penalty compared to using non-const reference
+parameters as a mechanism for returning multiple values from a function. For
+example, suppose that the following functions `f1` and `f2` have equivalent
+functionalities:
+
+    void f1(int&, double&);
+    tuple<int, double> f2();
+
+Then, the call #1 may be slightly faster than #2 in the code below:
+
+    int i; double d;
+      ...
+    f1(i,d);         // #1
+    tie(i,d) = f2(); // #2
+
+See [[link publ_1 1], [link publ_2 2]] for more in-depth discussions about 
+efficiency.
+
+[section Effect on Compile Time]
+
+Compiling tuples can be slow due to the excessive amount of template
+instantiations. Depending on the compiler and the tuple length, it may be more
+than 10 times slower to compile a tuple construct, compared to compiling an
+equivalent explicitly written class, such as the `hand_made_tuple` class above.
+However, as a realistic program is likely to contain a lot of code in addition
+to tuple definitions, the difference is probably unnoticeable. Compile time
+increases between 5 and 10 percent were measured for programs which used tuples
+very frequently. With the same test programs, memory consumption of compiling
+increased between 22% to 27%. See [[link publ_1 1], [link publ_2 2]] for
+details.
+
+[endsect]
+
+[endsect]
+
+[section:portability Portability]
+
+The library code is(?) standard C++ and thus the library works with a standard
+conforming compiler. Below is a list of compilers and known problems with each
+compiler:
+
+[table
+    [[Compiler]        [Problems]]
+    [[gcc 2.95]        [-]]
+    [[edg 2.44]        [-]]
+    [[Borland 5.5]     [Can't use function pointers or member pointers as
+                       tuple elements]]
+    [[Metrowerks 6.2]  [Can't use `ref` and `cref` wrappers]]
+    [[MS Visual C++]   [No reference elements (`tie` still works). Can't use
+                       `ref` and `cref` wrappers]]
+]
+
+[endsect]
+
+[section:more_details More Details]
+
+[link tuple_advanced_interface Advanced features] (describes some metafunctions etc.).
+
+[link design_decisions_rationale Rationale behind some design/implementation decisions].
+
+[endsect]
+
+[section:thanks Acknowledgements]
+
+Gary Powell has been an indispensable helping hand. In particular, stream
+manipulators for tuples were his idea. Doug Gregor came up with a working
+version for MSVC, David Abrahams found a way to get rid of most of the
+restrictions for compilers not supporting partial specialization. Thanks to
+Jeremy Siek, William Kempf and Jens Maurer for their help and suggestions. The
+comments by Vesa Karvonen, John Max Skaller, Ed Brey, Beman Dawes, David
+Abrahams and Hartmut Kaiser helped to improve the library. The idea for the
+`tie` mechanism came from an old usenet article by Ian McCulloch, where he
+proposed something similar for `std::pair`s.
+
+[endsect]
+
+[section:references References]
+
+[#publ_1]
+[1] J\u00E4rvi J.: /Tuples and multiple return values in C++/, TUCS Technical Report No 249, 1999.
+
+[#publ_2]
+[2] J\u00E4rvi J.: /ML-Style Tuple Assignment in Standard C++ - Extending the Multiple Return Value Formalism/, TUCS Technical Report No 267, 1999.
+
+[#publ_3]
+[3] J\u00E4rvi J.: /Tuple Types and Multiple Return Values/, C/C++ Users Journal, August 2001.
+
+[endsect]

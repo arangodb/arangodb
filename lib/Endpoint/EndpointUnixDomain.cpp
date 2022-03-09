@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -32,6 +32,8 @@
 
 #include "Basics/FileUtils.h"
 #include "Basics/debugging.h"
+#include "Basics/error.h"
+#include "Basics/voc-errors.h"
 #include "Endpoint/Endpoint.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -52,7 +54,8 @@ EndpointUnixDomain::~EndpointUnixDomain() {
   }
 }
 
-TRI_socket_t EndpointUnixDomain::connect(double connectTimeout, double requestTimeout) {
+TRI_socket_t EndpointUnixDomain::connect(double connectTimeout,
+                                         double requestTimeout) {
   TRI_socket_t listenSocket;
   TRI_invalidatesocket(&listenSocket);
 
@@ -76,8 +79,8 @@ TRI_socket_t EndpointUnixDomain::connect(double connectTimeout, double requestTi
   snprintf(address.sun_path, 100, "%s", _path.c_str());
 
   if (_type == EndpointType::SERVER) {
-    int result =
-        TRI_bind(listenSocket, (struct sockaddr*)&address, (int)SUN_LEN(&address));
+    int result = TRI_bind(listenSocket, (struct sockaddr*)&address,
+                          (int)SUN_LEN(&address));
     if (result != 0) {
       // bind error
       LOG_TOPIC("56d98", ERR, arangodb::Logger::FIXME)
@@ -88,7 +91,8 @@ TRI_socket_t EndpointUnixDomain::connect(double connectTimeout, double requestTi
     }
 
     // listen for new connection, executed for server endpoints only
-    LOG_TOPIC("bf147", TRACE, arangodb::Logger::FIXME) << "using backlog size " << _listenBacklog;
+    LOG_TOPIC("bf147", TRACE, arangodb::Logger::FIXME)
+        << "using backlog size " << _listenBacklog;
     result = TRI_listen(listenSocket, _listenBacklog);
 
     if (result < 0) {
@@ -106,7 +110,8 @@ TRI_socket_t EndpointUnixDomain::connect(double connectTimeout, double requestTi
     // set timeout
     setTimeout(listenSocket, connectTimeout);
 
-    if (TRI_connect(listenSocket, (const struct sockaddr*)&address, SUN_LEN(&address)) != 0) {
+    if (TRI_connect(listenSocket, (const struct sockaddr*)&address,
+                    SUN_LEN(&address)) != 0) {
       TRI_CLOSE_SOCKET(listenSocket);
       TRI_invalidatesocket(&listenSocket);
       return listenSocket;
@@ -139,17 +144,13 @@ void EndpointUnixDomain::disconnect() {
     TRI_invalidatesocket(&_socket);
 
     if (_type == EndpointType::SERVER) {
-      int error = 0;
-      if (!FileUtils::remove(_path, &error)) {
+      if (FileUtils::remove(_path) != TRI_ERROR_NO_ERROR) {
         LOG_TOPIC("9a8d6", TRACE, arangodb::Logger::FIXME)
-            << "unable to remove socket file '" << _path << "'";
+            << "unable to remove socket file '" << _path
+            << "': " << TRI_last_error();
       }
     }
   }
-}
-
-bool EndpointUnixDomain::initIncoming(TRI_socket_t incoming) {
-  return setSocketFlags(incoming);
 }
 
 #endif

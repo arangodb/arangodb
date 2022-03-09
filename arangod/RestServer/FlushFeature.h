@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,15 +22,13 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REST_SERVER_FLUSH_FEATURE_H
-#define ARANGODB_REST_SERVER_FLUSH_FEATURE_H 1
+#pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/ReadWriteLock.h"
+#include "RestServer/arangod.h"
 #include "Utils/FlushThread.h"
 #include "VocBase/voc-types.h"
-
-#include <list>
 
 struct TRI_vocbase_t;
 
@@ -45,23 +44,28 @@ struct FlushSubscription {
   virtual TRI_voc_tick_t tick() const = 0;
 };
 
-class FlushFeature final : public application_features::ApplicationFeature {
+class FlushFeature final : public ArangodFeature {
  public:
   /// @brief handle a 'Flush' marker during recovery
   /// @param vocbase the vocbase the marker applies to
   /// @param slice the originally stored marker body
   /// @return success
-  typedef std::function<Result(TRI_vocbase_t const& vocbase, velocypack::Slice const& slice)> FlushRecoveryCallback;
+  using FlushRecoveryCallback = std::function<Result(
+      TRI_vocbase_t const& vocbase, velocypack::Slice const& slice)>;
 
-  explicit FlushFeature(application_features::ApplicationServer& server);
+  static constexpr std::string_view name() noexcept { return "Flush"; }
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions> options) override;
+  explicit FlushFeature(Server& server);
+
+  void collectOptions(
+      std::shared_ptr<options::ProgramOptions> options) override;
 
   /// @brief register a flush subscription that will ensure replay of all WAL
   ///        entries after the latter of registration or the last successful
   ///        token commit
   /// @param subscription to register
-  void registerFlushSubscription(const std::shared_ptr<FlushSubscription>& subscription);
+  void registerFlushSubscription(
+      const std::shared_ptr<FlushSubscription>& subscription);
 
   /// @brief release all ticks not used by the flush subscriptions
   /// @param 'count' a number of released subscriptions
@@ -73,7 +77,7 @@ class FlushFeature final : public application_features::ApplicationFeature {
   void start() override;
   void beginShutdown() override;
   void stop() override;
-  void unprepare() override { }
+  void unprepare() override {}
 
   static bool isRunning() { return _isRunning.load(); }
 
@@ -89,5 +93,3 @@ class FlushFeature final : public application_features::ApplicationFeature {
 };
 
 }  // namespace arangodb
-
-#endif

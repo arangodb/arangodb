@@ -35,10 +35,10 @@ if (getOptions === true) {
     'server.authentication': 'true',
     'server.jwt-secret': 'abc123',
     'javascript.harden' : 'true',
-    'javascript.files-whitelist' : [
+    'javascript.files-allowlist' : [
       '^$'
     ],
-    'javascript.endpoints-whitelist' : [
+    'javascript.endpoints-allowlist' : [
       'ssl://arangodb.com:443'
     ],
   };

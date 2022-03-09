@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,19 +21,19 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_GRAPH_SHORTEST_PATH_PRIORITY_QUEUE_H
-#define ARANGODB_GRAPH_SHORTEST_PATH_PRIORITY_QUEUE_H 1
+#pragma once
 
 #include <deque>
 #include <unordered_map>
 
 #include "Basics/Common.h"
 #include "Basics/debugging.h"
+#include "Containers/FlatHashMap.h"
 
 namespace arangodb {
 namespace graph {
 
-template <typename Key, typename Value, typename Weight>
+template<typename Key, typename Value, typename Weight>
 class ShortestPathPriorityQueue {
   // This class implements a data structure that is a key/value
   // store with the additional property that every Value has a
@@ -69,8 +69,15 @@ class ShortestPathPriorityQueue {
  public:
   ShortestPathPriorityQueue() : _popped(0), _isHeap(false), _maxWeight(0) {}
 
-  ~ShortestPathPriorityQueue() {
+  ~ShortestPathPriorityQueue() = default;
+
+  /// @brief clear the priority queue, so it can be reused
+  void clear() {
+    _popped = 0;
+    _lookup.clear();
+    _isHeap = false;
     _heap.clear();
+    _maxWeight = 0;
     _history.clear();
   }
 
@@ -92,43 +99,34 @@ class ShortestPathPriorityQueue {
   //////////////////////////////////////////////////////////////////////////////
 
   bool insert(Key const& k, std::unique_ptr<Value>&& v) {
-    auto it = _lookup.find(k);
-    if (it != _lookup.end()) {
+    auto it = _lookup.emplace(k, static_cast<ssize_t>(_heap.size() + _popped));
+    if (!it.second) {
+      // value already exists in the lookup table
       return false;
     }
 
     // Are we still in the simple case of a deque?
     if (!_isHeap) {
       Weight w = v->weight();
-      if (w < _maxWeight) {
+      if (w >= _maxWeight) {
+        _maxWeight = w;
+      } else {
         // Oh dear, we have to upgrade to heap:
         _isHeap = true;
-        // fall through intentionally
-      } else {
-        if (w > _maxWeight) {
-          _maxWeight = w;
-        }
-        _heap.push_back(std::move(v));
-        try {
-          _lookup.insert(std::make_pair(k, static_cast<ssize_t>(_heap.size() - 1 + _popped)));
-        } catch (...) {
-          _heap.pop_back();
-          throw;
-        }
-        return true;
       }
     }
-    // If we get here, we have to insert into a proper binary heap:
-    _heap.push_back(std::move(v));
+
     try {
-      size_t newpos = _heap.size() - 1;
-      _lookup.insert(std::make_pair(k, static_cast<ssize_t>(newpos + _popped)));
-      repairUp(newpos);
+      _heap.push_back(std::move(v));
+      if (_isHeap) {
+        // If we get here, we have to insert into a proper binary heap:
+        repairUp(_heap.size() - 1);
+      }
+      return true;
     } catch (...) {
-      _heap.pop_back();
+      _lookup.erase(it.first);
       throw;
     }
-    return true;
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -157,9 +155,7 @@ class ShortestPathPriorityQueue {
   //////////////////////////////////////////////////////////////////////////////
 
   bool lowerWeight(Key const& k, Weight newWeight) {
-    if (!_isHeap) {
-      _isHeap = true;
-    }
+    _isHeap = true;
     auto it = _lookup.find(k);
     if (it == _lookup.end()) {
       return false;
@@ -193,7 +189,8 @@ class ShortestPathPriorityQueue {
   /// @brief popMinimal, returns true if something was returned and false
   /// if the structure is empty. Key and Value are stored in k and v.
   /// This will keep the unique_ptr inside the history for further lookup.
-  /// In case you doe not want to lookup the value, you need to call stealMinimal
+  /// In case you doe not want to lookup the value, you need to call
+  /// stealMinimal
   //////////////////////////////////////////////////////////////////////////////
 
   bool popMinimal(Key& k, Value*& v) {
@@ -236,9 +233,8 @@ class ShortestPathPriorityQueue {
     }
     k = _heap[0]->getKey();
 
-    auto it = _lookup.find(k);
-    TRI_ASSERT(it != _lookup.end());
-    _lookup.erase(it);
+    size_t erased = _lookup.erase(k);
+    TRI_ASSERT(erased > 0);
 
     // Responsibility handed over to v
     // Note: _heap[0] is nullptr now.
@@ -390,7 +386,7 @@ class ShortestPathPriorityQueue {
   /// @brief _lookup, this provides O(1) lookup by Key
   //////////////////////////////////////////////////////////////////////////////
 
-  std::unordered_map<Key, ssize_t> _lookup;
+  containers::FlatHashMap<Key, ssize_t> _lookup;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief _isHeap, starts as false, in which case we only use a deque,
@@ -421,4 +417,3 @@ class ShortestPathPriorityQueue {
 
 }  // namespace graph
 }  // namespace arangodb
-#endif

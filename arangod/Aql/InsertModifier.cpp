@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,27 +24,19 @@
 #include "InsertModifier.h"
 
 #include "Aql/AqlValue.h"
-#include "Aql/Collection.h"
+#include "Aql/ModificationExecutor.h"
 #include "Aql/ModificationExecutorHelpers.h"
-#include "Aql/OutputAqlItemRow.h"
 #include "Basics/Common.h"
-#include "ModificationExecutor.h"
+#include "Basics/StaticStrings.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
-
-#include <velocypack/Collection.h>
-#include <velocypack/velocypack-aliases.h>
-
-#include "Logger/LogMacros.h"
-
-class CollectionNameResolver;
 
 using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::aql::ModificationExecutorHelpers;
 
-ModifierOperationType InsertModifierCompletion::accumulate(ModificationExecutorAccumulator& accu,
-                                                           InputAqlItemRow& row) {
+ModifierOperationType InsertModifierCompletion::accumulate(
+    ModificationExecutorAccumulator& accu, InputAqlItemRow& row) {
   RegisterId const inDocReg = _infos._input1RegisterId;
 
   // The document to be INSERTed
@@ -57,6 +50,7 @@ ModifierOperationType InsertModifierCompletion::accumulate(ModificationExecutorA
   }
 }
 
-OperationResult InsertModifierCompletion::transact(transaction::Methods& trx, VPackSlice const& data) {
-  return trx.insert(_infos._aqlCollection->name(), data, _infos._options);
+futures::Future<OperationResult> InsertModifierCompletion::transact(
+    transaction::Methods& trx, VPackSlice const& data) {
+  return trx.insertAsync(_infos._aqlCollection->name(), data, _infos._options);
 }

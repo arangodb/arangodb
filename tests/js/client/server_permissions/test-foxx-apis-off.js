@@ -45,6 +45,7 @@ if (runSetup === true) {
   users.grantDatabase("test_ro", "_system", "ro");
   return true;
 }
+
 var jsunity = require('jsunity');
 
 function testSuite() {

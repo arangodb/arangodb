@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GRAPH_SHORTEST_PATH_OPTIONS_H
-#define ARANGOD_GRAPH_SHORTEST_PATH_OPTIONS_H 1
+#pragma once
 
 #include <memory>
 #include "Graph/BaseOptions.h"
@@ -43,19 +42,17 @@ class EdgeCursor;
 
 struct ShortestPathOptions : public BaseOptions {
  public:
+  uint64_t minDepth;
+  uint64_t maxDepth;
   std::string start;
-  std::string direction;
-  std::string weightAttribute;
-  double defaultWeight;
+  std::string end;
   bool bidirectional;
   bool multiThreaded;
-  std::string end;
-  arangodb::velocypack::Builder startBuilder;
-  arangodb::velocypack::Builder endBuilder;
 
   explicit ShortestPathOptions(aql::QueryContext& query);
 
-  ShortestPathOptions(aql::QueryContext& query, arangodb::velocypack::Slice const& info);
+  ShortestPathOptions(aql::QueryContext& query,
+                      arangodb::velocypack::Slice const& info);
 
   // @brief DBServer-constructor used by TraverserEngines
   ShortestPathOptions(aql::QueryContext& query,
@@ -65,20 +62,16 @@ struct ShortestPathOptions : public BaseOptions {
 
   /// @brief This copy constructor is only working during planning phase.
   ///        After planning this node should not be copied anywhere.
-  ///        When allowAlreadyBuiltCopy is true, the constructor also works after
-  ///        the planning phase; however, the options have to be prepared again
-  ///        (see ShortestPathNode / KShortestPathsNode ::prepareOptions())
-  ShortestPathOptions(ShortestPathOptions const& other, bool allowAlreadyBuiltCopy = false);
+  ///        When allowAlreadyBuiltCopy is true, the constructor also works
+  ///        after the planning phase; however, the options have to be prepared
+  ///        again (see ShortestPathNode / KShortestPathsNode
+  ///        ::prepareOptions())
+  ShortestPathOptions(ShortestPathOptions const& other,
+                      bool allowAlreadyBuiltCopy = false);
 
   // Creates a complete Object containing all EngineInfo
   // in the given builder.
   void buildEngineInfo(arangodb::velocypack::Builder&) const override;
-
-  void setStart(std::string const&);
-  void setEnd(std::string const&);
-
-  arangodb::velocypack::Slice getStart() const;
-  arangodb::velocypack::Slice getEnd() const;
 
   std::unique_ptr<EdgeCursor> buildCursor(bool backward);
 
@@ -97,24 +90,31 @@ struct ShortestPathOptions : public BaseOptions {
 
   // Creates a complete Object containing all EngineInfo
   // in the given builder.
-  void addReverseLookupInfo(aql::ExecutionPlan* plan, std::string const& collectionName,
-                            std::string const& attributeName, aql::AstNode* condition);
+  void addReverseLookupInfo(aql::ExecutionPlan* plan,
+                            std::string const& collectionName,
+                            std::string const& attributeName,
+                            aql::AstNode* condition, bool onlyEdgeIndexes,
+                            TRI_edge_direction_e direction);
 
   // Compute the weight of the given edge
   double weightEdge(arangodb::velocypack::Slice const) const;
 
-  void fetchVerticesCoordinator(std::deque<arangodb::velocypack::StringRef> const& vertexIds);
-
-  void isQueryKilledCallback() const;
+  template<typename ListType>
+  void fetchVerticesCoordinator(ListType const& vertexIds);
 
   auto estimateDepth() const noexcept -> uint64_t override;
+
+  auto setWeightAttribute(std::string attribute) -> void;
+  auto getWeightAttribute() const& -> std::string;
+  auto setDefaultWeight(double weight) -> void;
+  auto getDefaultWeight() const -> double;
 
  private:
   /// @brief Lookup info to find all reverse edges.
   std::vector<LookupInfo> _reverseLookupInfos;
+  std::string _weightAttribute;
+  double _defaultWeight;
 };
 
 }  // namespace graph
 }  // namespace arangodb
-
-#endif

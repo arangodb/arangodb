@@ -1,0 +1,298 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE section PUBLIC "-//Boost//DTD BoostBook XML V1.1//EN"
+"http://www.boost.org/tools/boostbook/dtd/boostbook.dtd">
+<section id="safe_numerics.introduction">
+  <title>Introduction</title>
+
+  <?dbhtml stop-chunking?>
+
+  <para>This library is intended as a drop-in replacement for all built-in
+  integer types in any program which must:</para>
+
+  <itemizedlist>
+    <listitem>
+      <para>be demonstrably and verifiably correct.</para>
+    </listitem>
+
+    <listitem>
+      <para>detect every user error such as input, assignment, etc.</para>
+    </listitem>
+
+    <listitem>
+      <para>be efficient as possible subject to the constraints above.</para>
+    </listitem>
+  </itemizedlist>
+
+  <section id="safe_numerics.introduction.problem">
+    <title>Problem</title>
+
+    <para>Arithmetic operations in C/C++ are NOT guaranteed to yield a correct
+    mathematical result. This feature is inherited from the early days of C.
+    The behavior of <code>int</code>, <code>unsigned int</code> and others
+    were designed to map closely to the underlying hardware. Computer hardware
+    implements these types as a fixed number of bits. When the result of
+    arithmetic operations exceeds this number of bits, the result will not be
+    arithmetically correct. The following example illustrates just one example
+    where this causes problems.</para>
+
+    <programlisting>int f(int x, int y){
+    // this returns an invalid result for some legal values of x and y !
+    return x + y;
+}
+</programlisting>
+
+    <para>It is incumbent upon the C/C++ programmer to guarantee that this
+    behavior does not result in incorrect or unexpected operation of the
+    program. There are no language facilities which implement such a
+    guarantee. A programmer needs to examine each expression individually to
+    know that his program will not return an invalid result. There are a
+    number of ways to do this. In the above instance,
+    <citation>INT32-C</citation> seems to recommend the following
+    approach:</para>
+
+    <programlisting>int f(int x, int y){
+  if (((y &gt; 0) &amp;&amp; (x &gt; (INT_MAX - y))) 
+  || ((y &lt; 0) &amp;&amp; (x &lt; (INT_MIN - y)))) {
+    /* Handle error */
+  }
+  return x + y;
+}
+</programlisting>
+
+    <para>This will indeed trap the error. However, it would be tedious and
+    laborious for a programmer to alter his code in this manner. Altering code
+    in this way for all arithmetic operations would likely render the code
+    unreadable and add another source of potential programming errors. This
+    approach is clearly not functional when the expression is even a little
+    more complex as is shown in the following example.</para>
+
+    <programlisting>int f(int x, int y, int z){
+    // this returns an invalid result for some legal values of x and y !
+    return x + y * z;
+}
+</programlisting>
+
+    <para>This example addresses only the problem of undefined/erroneous
+    behavior related to overflow of the addition operation as applied to the
+    type <code>int</code>. Similar problems occur with other built-in integer
+    types such as <code>unsigned</code>, <code>long</code>, etc. And it also
+    applies to other operations such as subtraction, multiplication etc. .
+    C/C++ often automatically and silently converts some integer types to
+    others in the course of implementing binary operations. Sometimes such
+    conversions can silently change arithmetic values which inject errors. The
+    C/C++ standards designate some behavior such as right shifting a negative
+    number as "implementation defined behavior". These days machines usually
+    do what the programmer expects - but such behavior is not guaranteed.
+    Relying on such behavior will create a program which cannot be guaranteed
+    to be portable. And then there is undefined behavior. In this case,
+    compiler writer is under no obligation to do anything in particular.
+    Sometimes this will unexpectedly break the program. At the very least, the
+    program is rendered non-portable. Finally there is the case of behavior
+    that is arithmetically wrong to begin with - for example divide by zero.
+    Some runtime environments will just terminate the program, others may
+    throw some sort of exception. In any case, the execution has failed in a
+    manner from which there is no recovery.</para>
+
+    <para>All of the above conditions are obstacles to creation of a program
+    which will never fail. The Safe Numerics Library addresses all of these
+    conditions, at least as far as integer operations are concerned.</para>
+
+    <para>Since the problems and their solution are similar, we'll confine the
+    current discussion to just the one example shown above.</para>
+  </section>
+
+  <section id="safe_numerics.introduction.solution">
+    <title>Solution</title>
+
+    <para>This library implements special versions of <code>int</code>,
+    <code>unsigned</code>, etc. which behave exactly like the original ones
+    <emphasis role="bold">except</emphasis> that the results of these
+    operations are guaranteed to be either to be arithmetically correct or
+    invoke an error. Using this library, the above example would be rendered
+    as:</para>
+
+    <programlisting>#include &lt;boost/safe_numerics/safe_integer.hpp&gt;
+using namespace boost::safe_numerics;
+safe&lt;int&gt; f(safe&lt;int&gt; x, safe&lt;int&gt; y){
+  return x + y; // throw exception if correct result cannot be returned
+}
+</programlisting>
+
+    <para><note>
+        <para>Library code in this document resides in the namespace
+        <code>boost::safe_numerics</code>. This namespace has generally been
+        eliminated from text, code and examples in order to improve
+        readability of the text.</para>
+      </note>The addition expression is checked at runtime or (if possible) at
+    compile time to trap any possible errors resulting in incorrect arithmetic
+    behavior. Arithmetic expressions will not produce an erroneous result.
+    Instead, one and only one of the following is guaranteed to occur.</para>
+
+    <para><itemizedlist>
+        <listitem>
+          <para>the expression will yield the correct mathematical
+          result</para>
+        </listitem>
+
+        <listitem>
+          <para>the expression will emit a compilation error.</para>
+        </listitem>
+
+        <listitem>
+          <para>the expression will invoke a runtime exception.</para>
+        </listitem>
+      </itemizedlist></para>
+
+    <para>In other words, the <emphasis role="bold">library absolutely
+    guarantees that no integer arithmetic expression will yield incorrect
+    results</emphasis>.</para>
+  </section>
+
+  <section id="safe_numerics.introduction.implementation">
+    <title>How It Works</title>
+
+    <para>The library implements special versions of <code>int</code>,
+    <code>unsigned</code>, etc. Named <code>safe&lt;int&gt;</code>,
+    <code>safe&lt;unsigned int&gt;</code> etc. These behave exactly like the
+    underlying types <emphasis role="bold">except</emphasis> that expressions
+    using these types fulfill the above guarantee. These "safe" types are
+    meant to be "drop-in" replacements for the built-in types of the same
+    name. So things which are legal - such as assignment of a
+    <code>signed</code> to <code>unsigned</code> value - are not trapped at
+    compile time as they are legal C/C++ code. Instead, they are checked at
+    runtime to trap the case where this (legal) operation would lead to an
+    arithmetically incorrect result.</para>
+
+    <para>Note that the library addresses arithmetical errors generated by
+    straightforward C/C++ expressions. Some of these arithmetic errors are
+    defined as conforming to the C/C++ standards while others are not. So
+    characterizing this library as only addressing undefined behavior of C/C++
+    numeric expressions would be misleading.</para>
+
+    <para>Facilities particular to C++14 are employed to minimize any runtime
+    overhead. In many cases there is no runtime overhead at all. In other
+    cases, a program using the library can be slightly altered to achieve the
+    above guarantee without any runtime overhead.</para>
+  </section>
+
+  <section id="safe_numerics.introduction.additional_features">
+    <title>Additional Features</title>
+
+    <para>Operation of safe types is determined by template parameters which
+    specify a pair of <link linkend="safe_numerics.promotion_policies">policy
+    classes</link> which specify the behavior for type promotion and error
+    handling. In addition to the usage serving as a drop-in replacement for
+    standard integer types, users of the library can:</para>
+
+    <para><itemizedlist>
+        <listitem>
+          <para>Select or define an exception policy class to specify handling
+          of exceptions.<itemizedlist>
+              <listitem>
+                <para>Throw exception on runtime, trap at compile time if
+                possible.</para>
+              </listitem>
+
+              <listitem>
+                <para>Trap at compile time all operations which could possibly
+                fail at runtime.</para>
+              </listitem>
+
+              <listitem>
+                <para>Specify custom functions which should be called in case
+                errors are detected at runtime.</para>
+              </listitem>
+            </itemizedlist></para>
+        </listitem>
+
+        <listitem>
+          <para>Select or define a promotion policy class to alter the C/C++
+          type promotion rules. This can be used to <itemizedlist>
+              <listitem>
+                <para>Use C/C++ native type promotion rules so that, except
+                for throwing/trapping of exceptions on operations resulting in
+                incorrect arithmetic behavior, programs will operate
+                identically when using/not using safe types. This might be
+                used if safe types are only enabled during debug and
+                testing.</para>
+              </listitem>
+
+              <listitem>
+                <para>Replace C/C++ native promotion rules with ones which are
+                arithmetically equivalent but minimize the need for runtime
+                checking of arithmetic results. Such a policy will effectively
+                change the semantics of a C++ program. It's not really C++ any
+                more. The program cannot be expected to function the same as
+                when normal integer types are used.</para>
+              </listitem>
+
+              <listitem>
+                <para>Replace C/C++ native promotion rules with ones which
+                emulate other machine architectures. This is designed to
+                permit the testing of C/C++ code destined to be run on another
+                machine on one's development platform. Such a situation often
+                occurs while developing code for embedded systems.</para>
+              </listitem>
+            </itemizedlist></para>
+        </listitem>
+
+        <listitem>
+          <para>Enforce other program requirements using bounded integer
+          types. The library includes the types for ranges and literals.
+          Operations which violate these requirements will be trapped at
+          either compile time or runtime and not silently return invalid
+          values. These types can be used to improve program correctness and
+          performance.</para>
+        </listitem>
+      </itemizedlist></para>
+  </section>
+
+  <section id="safe_numerics.introduction.requirements">
+    <title>Requirements</title>
+
+    <para>This library is composed entirely of C++ Headers. It requires a
+    compiler compatible with the C++14 standard.</para>
+
+    <para>The following Boost Libraries must be installed in order to use this
+    library</para>
+
+    <para><itemizedlist>
+        <listitem>
+          <para>mp11</para>
+        </listitem>
+
+        <listitem>
+          <para>integer</para>
+        </listitem>
+
+        <listitem>
+          <para>config</para>
+        </listitem>
+
+        <listitem>
+          <para>tribool</para>
+        </listitem>
+
+        <listitem>
+          <para>enable_if</para>
+        </listitem>
+
+        <listitem>
+          <para>type_traits</para>
+        </listitem>
+      </itemizedlist>The Safe Numerics library is delivered with an exhaustive
+    suite of test programs.</para>
+  </section>
+
+  <section id="safe_numerics.introduction.scope">
+    <title>Scope</title>
+
+    <para>This library currently applies only to built-in integer types.
+    Analogous issues arise for floating point types but they are not currently
+    addressed by this version of the library. User or library defined types
+    such as arbitrary precision integers can also have this problem. Extension
+    of this library to these other types is not currently under development
+    but may be addressed in the future. This is one reason why the library
+    name is "safe numeric" rather than "safe integer" library.</para>
+  </section>
+</section>

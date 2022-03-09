@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -25,13 +26,12 @@
 
 #include "TestEmptyExecutorHelper.h"
 
-#include "Basics/Common.h"
-
 #include "Aql/AqlValue.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/RegisterInfos.h"
 #include "Aql/SingleRowFetcher.h"
-#include "Logger/LogMacros.h"
+#include "Basics/Common.h"
+#include "Basics/Exceptions.h"
 
 #include <utility>
 
@@ -40,7 +40,8 @@ using namespace arangodb::aql;
 
 TestEmptyExecutorHelper::TestEmptyExecutorHelper(Fetcher&, Infos&) {}
 
-std::pair<ExecutionState, FilterStats> TestEmptyExecutorHelper::produceRows(OutputAqlItemRow& output) {
+std::pair<ExecutionState, FilterStats> TestEmptyExecutorHelper::produceRows(
+    OutputAqlItemRow& output) {
   TRI_IF_FAILURE("TestEmptyExecutorHelper::produceRows") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_ROCKSDB_TTL_INDEX_H
-#define ARANGOD_ROCKSDB_ROCKSDB_TTL_INDEX_H 1
+#pragma once
 
 #include "RocksDBEngine/RocksDBSkiplistIndex.h"
 #include "VocBase/Identifiers/IndexId.h"
@@ -34,7 +33,7 @@ class RocksDBMethods;
 namespace velocypack {
 class Builder;
 class Slice;
-}
+}  // namespace velocypack
 
 class RocksDBTtlIndex final : public RocksDBSkiplistIndex {
  public:
@@ -44,33 +43,40 @@ class RocksDBTtlIndex final : public RocksDBSkiplistIndex {
   IndexType type() const override { return Index::TRI_IDX_TYPE_TTL_INDEX; }
 
   char const* typeName() const override { return "rocksdb-ttl"; }
-  
-  bool matchesDefinition(VPackSlice const&) const override;
-  
-  void toVelocyPack(arangodb::velocypack::Builder& builder,
-                    std::underlying_type<Index::Serialize>::type flags) const override;
-  
- protected:
-  // special override method that extracts a timestamp value from the index attribute
-  Result insert(transaction::Methods& trx, RocksDBMethods* methods,
-                LocalDocumentId const& documentId, velocypack::Slice const& doc,
-                OperationOptions& options) override;
 
-  // special override method that extracts a timestamp value from the index attribute
+  bool matchesDefinition(VPackSlice const&) const override;
+
+  void toVelocyPack(
+      arangodb::velocypack::Builder& builder,
+      std::underlying_type<Index::Serialize>::type flags) const override;
+
+  std::vector<std::vector<arangodb::basics::AttributeName>> const&
+  coveredFields() const override {
+    // index does not cover the ttl index attribute!
+    return Index::emptyCoveredFields;
+  }
+
+ protected:
+  // special override method that extracts a timestamp value from the index
+  // attribute
+  Result insert(transaction::Methods& trx, RocksDBMethods* methods,
+                LocalDocumentId const& documentId, velocypack::Slice doc,
+                OperationOptions const& options, bool performChecks) override;
+
+  // special override method that extracts a timestamp value from the index
+  // attribute
   Result remove(transaction::Methods& trx, RocksDBMethods* methods,
                 LocalDocumentId const& documentId,
-                velocypack::Slice const& doc, Index::OperationMode mode) override;
+                velocypack::Slice doc) override;
 
  private:
   /// @brief extract a timestamp value from the index attribute value
-  /// returns a negative timestamp if the index attribute value is not convertible
-  /// properly into a timestamp
+  /// returns a negative timestamp if the index attribute value is not
+  /// convertible properly into a timestamp
   double getTimestamp(arangodb::velocypack::Slice const& doc) const;
-  
+
  private:
   double const _expireAfter;
 };
 
-}
-
-#endif
+}  // namespace arangodb

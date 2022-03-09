@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,14 +21,13 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_FILES_H
-#define ARANGODB_BASICS_FILES_H 1
+#pragma once
 
 #ifdef _WIN32
 #include "Basics/win-utils.h"
 #endif
 
-#include <stddef.h>
+#include <cstddef>
 #include <functional>
 #include <string>
 #include <vector>
@@ -36,12 +35,14 @@
 #include <openssl/evp.h>
 
 #include "Basics/Common.h"
-#include "Basics/StringUtils.h"
+#include "Basics/Result.h"
 #include "Basics/debugging.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Encryption/EncryptionFeature.h"
 #endif
+
+struct stat;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the size of a file
@@ -79,7 +80,8 @@ bool TRI_IsSymbolicLink(char const* path);
 /// @brief resolves a symbolic link
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string TRI_ResolveSymbolicLink(std::string path, bool& hadError, bool recursive = true);
+std::string TRI_ResolveSymbolicLink(std::string path, bool& hadError,
+                                    bool recursive = true);
 std::string TRI_ResolveSymbolicLink(std::string path, bool recursive = true);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -92,45 +94,52 @@ bool TRI_ExistsFile(char const* path);
 /// @brief sets the desired mode on a file, returns errno on error.
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_ChMod(char const* path, long mode, std::string& err);
+ErrorCode TRI_ChMod(char const* path, long mode, std::string& err);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the last modification date of a file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_MTimeFile(char const* path, int64_t* mtime);
+ErrorCode TRI_MTimeFile(char const* path, int64_t* mtime);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a directory, recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_CreateRecursiveDirectory(char const* path, long& systemError,
-                                 std::string& systemErrorStr);
+ErrorCode TRI_CreateRecursiveDirectory(char const* path, long& systemError,
+                                       std::string& systemErrorStr);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a directory
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_CreateDirectory(char const* path, long& systemError, std::string& systemErrorStr);
+ErrorCode TRI_CreateDirectory(char const* path, long& systemError,
+                              std::string& systemErrorStr);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes an empty directory
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_RemoveEmptyDirectory(char const* filename);
+ErrorCode TRI_RemoveEmptyDirectory(char const* filename);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes a directory recursively, using file order provided by
 /// the file system
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_RemoveDirectory(char const* filename);
+ErrorCode TRI_RemoveDirectory(char const* filename);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes a directory recursively, using a deterministic order of files
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_RemoveDirectoryDeterministic(char const* filename);
+ErrorCode TRI_RemoveDirectoryDeterministic(char const* filename);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief normalizes path to only use the default directory separator
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_NormalizePath(std::string& path);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extracts the dirname
@@ -166,20 +175,21 @@ std::vector<std::string> TRI_FullTreeDirectory(char const* path);
 /// @brief renames a file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_RenameFile(char const* old, char const* filename, long* systemError = nullptr,
-                   std::string* systemErrorStr = nullptr);
+ErrorCode TRI_RenameFile(char const* old, char const* filename,
+                         long* systemError = nullptr,
+                         std::string* systemErrorStr = nullptr);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unlinks a file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_UnlinkFile(char const* filename);
+ErrorCode TRI_UnlinkFile(char const* filename);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads into a buffer from a file
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ReadPointer(int fd, void* buffer, size_t length);
+TRI_read_return_t TRI_ReadPointer(int fd, char* buffer, size_t length);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief writes buffer to a file
@@ -191,7 +201,7 @@ bool TRI_WritePointer(int fd, void const* buffer, size_t length);
 /// @brief saves data to a file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_WriteFile(char const*, char const*, size_t);
+ErrorCode TRI_WriteFile(char const* filename, char const* data, size_t length);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief fsyncs a file
@@ -209,7 +219,9 @@ char* TRI_SlurpFile(char const* filename, size_t* length);
 /// @brief read file and pass blocks to user function
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ProcessFile(char const* filename, std::function<bool(char const* block, size_t size)> const& reader);
+bool TRI_ProcessFile(
+    char const* filename,
+    std::function<bool(char const* block, size_t size)> const& reader);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief slurps in a file that is compressed and return uncompressed contents
@@ -222,7 +234,9 @@ char* TRI_SlurpGzipFile(char const* filename, size_t* length);
 /// @brief slurps in a file that is encrypted and return unencrypted contents
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_SlurpDecryptFile(arangodb::EncryptionFeature& encryptionFeature, char const* filename, char const * keyfile, size_t* length);
+char* TRI_SlurpDecryptFile(arangodb::EncryptionFeature& encryptionFeature,
+                           char const* filename, char const* keyfile,
+                           size_t* length);
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -242,7 +256,7 @@ char* TRI_SlurpDecryptFile(arangodb::EncryptionFeature& encryptionFeature, char 
 /// all open locks upon exit.
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_CreateLockFile(char const* filename);
+ErrorCode TRI_CreateLockFile(char const* filename);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief verifies a lock file based on the PID
@@ -260,13 +274,13 @@ int TRI_CreateLockFile(char const* filename);
 /// TRI_ERROR_NO_ERROR than the file is locked and the lock is valid.
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_VerifyLockFile(char const* filename);
+ErrorCode TRI_VerifyLockFile(char const* filename);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief releases a lock file based on the PID
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_DestroyLockFile(char const* filename);
+ErrorCode TRI_DestroyLockFile(char const* filename);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the filename component of a file (without path)
@@ -303,7 +317,8 @@ std::string TRI_LocateBinaryPath(char const* argv0);
 ///    /opt/usr/bin /usr/bin/ => /opt/
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string TRI_GetInstallRoot(std::string const& binaryPath, char const* installBinaryPath);
+std::string TRI_GetInstallRoot(std::string const& binaryPath,
+                               char const* installBinaryPath);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief locates the home directory
@@ -315,7 +330,7 @@ std::string TRI_HomeDirectory();
 /// @brief calculate the crc32 checksum of a file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_Crc32File(char const*, uint32_t*);
+ErrorCode TRI_Crc32File(char const* path, uint32_t* crc);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set the application's name
@@ -339,14 +354,23 @@ void TRI_SetTempPath(std::string const& path);
 /// @brief get a temporary file name
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_GetTempName(char const* directory, std::string& result, bool createFile,
-                    long& systemError, std::string& errorMessage);
+ErrorCode TRI_GetTempName(char const* directory, std::string& result,
+                          bool createFile, long& systemError,
+                          std::string& errorMessage);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief copies a file from source to dest.
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_CopyFile(std::string const& src, std::string const& dst, std::string& error);
+#ifdef _WIN32
+bool TRI_CopyFile(std::string const& src, std::string const& dst,
+                  std::string& error);
+#else
+// this API allows passing already retrieved stat info to the copy routine, in
+// order to avoid extra stat calls
+bool TRI_CopyFile(std::string const& src, std::string const& dst,
+                  std::string& error, struct stat* statbuf = nullptr);
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief copies the file Attributes from source to dest.
@@ -366,21 +390,22 @@ bool TRI_CopySymlink(std::string const& srcItem, std::string const& dstItem,
 /// @brief creates a symbolic link
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_CreateSymbolicLink(std::string const& target, std::string const& linkpath,
-                            std::string& error);
+bool TRI_CreateSymbolicLink(std::string const& target,
+                            std::string const& linkpath, std::string& error);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief copies the symlink from source to dest; will do nothing in Windows?
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_CreateHardlink(std::string const& existingFile, std::string const& newFile,
-                        std::string& error);
+bool TRI_CreateHardlink(std::string const& existingFile,
+                        std::string const& newFile, std::string& error);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief locate the installation directory
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string TRI_LocateInstallDirectory(char const* argv0, const char* binaryPath);
+std::string TRI_LocateInstallDirectory(char const* argv0,
+                                       const char* binaryPath);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief locate the configuration directory
@@ -388,15 +413,21 @@ std::string TRI_LocateInstallDirectory(char const* argv0, const char* binaryPath
 
 std::string TRI_LocateConfigDirectory(char const* binaryPath);
 
-/// @brief creates a new datafile
-/// returns the file descriptor or -1 if the file cannot be created
-int TRI_CreateDatafile(std::string const& filename, size_t maximalSize);
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks whether path is full qualified or relative
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_PathIsAbsolute(std::string const& path);
+
+/// @brief return the amount of total and free disk space for the given path
+arangodb::Result TRI_GetDiskSpaceInfo(std::string const& path,
+                                      uint64_t& totalSpace,
+                                      uint64_t& freeSpace);
+
+/// @brief return the amount of total and free inodes for the given path.
+/// always returns 0 on Windows!
+arangodb::Result TRI_GetINodesInfo(std::string const& path,
+                                   uint64_t& totalINodes, uint64_t& freeINodes);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads an environment variable. returns false if env var was not set.
@@ -414,10 +445,8 @@ struct TRI_SHA256Functor {
   ~TRI_SHA256Functor();
 
   bool operator()(char const* data, size_t size) noexcept;
-  
-  std::string finalize();
-  
-  EVP_MD_CTX* _context;
-};// struct TRI_SHA256Functor
 
-#endif
+  std::string finalize();
+
+  EVP_MD_CTX* _context;
+};  // struct TRI_SHA256Functor

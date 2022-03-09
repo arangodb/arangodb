@@ -24,14 +24,12 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-
 // contains common code for aql-profiler* tests
-const profHelper = require("@arangodb/aql-profiler-test-helper");
+const profHelper = require("@arangodb/testutils/aql-profiler-test-helper");
 
 const _ = require('lodash');
 const db = require('@arangodb').db;
 const jsunity = require("jsunity");
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite for AQL tracing/profiling: slow noncluster tests
@@ -53,25 +51,18 @@ function ahuacatlProfilerTestSuite () {
     EnumerateListNode, EnumerateViewNode, FilterNode, GatherNode, IndexNode,
     InsertNode, LimitNode, NoResultsNode, RemoteNode, RemoveNode, ReplaceNode,
     ReturnNode, ScatterNode, ShortestPathNode, SingletonNode, SortNode,
-    SubqueryNode, TraversalNode, UpdateNode, UpsertNode } = profHelper;
+    TraversalNode, UpdateNode, UpsertNode } = profHelper;
 
   const { CalculationBlock, CountCollectBlock, DistinctCollectBlock,
     EnumerateCollectionBlock, EnumerateListBlock, FilterBlock,
     HashedCollectBlock, IndexBlock, LimitBlock, NoResultsBlock, RemoteBlock,
     ReturnBlock, ShortestPathBlock, SingletonBlock, SortBlock,
-    SortedCollectBlock, SortingGatherBlock, SubqueryBlock, TraversalBlock,
+    SortedCollectBlock, SortingGatherBlock, TraversalBlock,
     UnsortingGatherBlock, RemoveBlock, InsertBlock, UpdateBlock, ReplaceBlock,
     UpsertBlock, ScatterBlock, DistributeBlock, IResearchViewUnorderedBlock,
     IResearchViewBlock, IResearchViewOrderedBlock } = profHelper;
 
   return {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
-
-    setUp : function () {
-    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tear down
@@ -92,7 +83,7 @@ function ahuacatlProfilerTestSuite () {
       const query = `FOR i IN 1..@listRows FOR d IN @@col RETURN d.value`;
 
       for (const collectionRows of collectionRowCounts) {
-        col.truncate();
+        col.truncate({ compact: false });
         col.insert(_.range(1, collectionRows + 1).map((i) => ({value: i})));
         for (const listRows of listRowCounts) {
           // forbid reordering of the enumeration nodes
@@ -133,16 +124,12 @@ function ahuacatlProfilerTestSuite () {
           let endBatches = optimalBatches;
 
           const expected = [
-            {type: SingletonBlock, items: 1, calls: 1},
-            {type: CalculationBlock, items: 1, calls: 1},
-            {type: EnumerateListBlock, items: listRows, calls: listBatches},
-            {
-              type: EnumerateCollectionBlock,
-              items: totalRows,
-              calls: enumerateCollectionBatches
-            },
-            {type: CalculationBlock, items: totalRows, calls: endBatches},
-            {type: ReturnBlock, items: totalRows, calls: endBatches}
+            {type: SingletonBlock, items: 1, calls: 1, filtered: 0},
+            {type: CalculationBlock, items: 1, calls: 1, filtered: 0},
+            {type: EnumerateListBlock, items: listRows, calls: listBatches, filtered: 0},
+            {type: EnumerateCollectionBlock, items: totalRows, calls: enumerateCollectionBatches, filtered: 0},
+            {type: CalculationBlock, items: totalRows, calls: endBatches, filtered: 0},
+            {type: ReturnBlock, items: totalRows, calls: endBatches, filtered: 0}
           ];
           const actual = profHelper.getCompactStatsNodes(profile);
 
@@ -162,7 +149,7 @@ function ahuacatlProfilerTestSuite () {
       const query = `FOR i IN 1..@listRows FOR k IN 1..@collectionRows FOR d IN @@col FILTER d.value == k RETURN d.value`;
 
       for (const collectionRows of collectionRowCounts) {
-        col.truncate();
+        col.truncate({ compact: false });
         col.insert(_.range(1, collectionRows + 1).map((i) => ({value: i})));
         for (const listRows of listRowCounts) {
           // forbid reordering of the enumeration nodes as well as removal
@@ -216,14 +203,14 @@ function ahuacatlProfilerTestSuite () {
           ];
 
           const expected = [
-            {type: SingletonBlock, calls: 1, items: 1},
-            {type: CalculationBlock, calls: 1, items: 1},
-            {type: CalculationBlock, calls: 1, items: 1},
-            {type: EnumerateListBlock, calls: listBatches, items: listRows},
-            {type: EnumerateListBlock, calls: indexCallsBatches, items: totalRows},
-            {type: IndexBlock, calls: indexBatches, items: totalRows},
-            {type: CalculationBlock, calls: indexBatches, items: totalRows},
-            {type: ReturnBlock, calls: indexBatches, items: totalRows}
+            {type: SingletonBlock, calls: 1, items: 1, filtered: 0},
+            {type: CalculationBlock, calls: 1, items: 1, filtered: 0},
+            {type: CalculationBlock, calls: 1, items: 1, filtered: 0},
+            {type: EnumerateListBlock, calls: listBatches, items: listRows, filtered: 0},
+            {type: EnumerateListBlock, calls: indexCallsBatches, items: totalRows, filtered: 0},
+            {type: IndexBlock, calls: indexBatches, items: totalRows, filtered: 0},
+            {type: CalculationBlock, calls: indexBatches, items: totalRows, filtered: 0},
+            {type: ReturnBlock, calls: indexBatches, items: totalRows, filtered: 0}
           ];
           const actual = profHelper.getCompactStatsNodes(profile);
 
@@ -266,15 +253,23 @@ function ahuacatlProfilerTestSuite () {
 
           const listBatches = Math.ceil(listRows / defaultBatchSize);
           const totalRows = listRows * collectionRows;
+          const calcOptBatches = () => {
+            const opt =  Math.ceil(totalRows / defaultBatchSize);
+            if (totalRows % defaultBatchSize === 0) {
+              // In this case the traversal may, or may not know that there is more data.
+              return [opt, opt + 1];
+            }
+            return opt;
+          };
 
-          const optimalBatches = Math.ceil(totalRows / defaultBatchSize);
+          const optimalBatches = calcOptBatches();
 
           const expected = [
-            {type: SingletonBlock, calls: 1, items: 1},
-            {type: CalculationBlock, calls: 1, items: 1},
-            {type: EnumerateListBlock, calls: listBatches, items: listRows},
-            {type: TraversalBlock, calls: optimalBatches, items: totalRows},
-            {type: ReturnBlock, calls: optimalBatches, items: totalRows}
+            {type: SingletonBlock, calls: 1, items: 1, filtered: 0},
+            {type: CalculationBlock, calls: 1, items: 1, filtered: 0},
+            {type: EnumerateListBlock, calls: listBatches, items: listRows, filtered: 0},
+            {type: TraversalBlock, calls: optimalBatches, items: totalRows, filtered: 0},
+            {type: ReturnBlock, calls: optimalBatches, items: totalRows, filtered: 0}
           ];
           const actual = profHelper.getCompactStatsNodes(profile);
 

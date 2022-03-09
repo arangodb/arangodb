@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REPLICATION_REPLICATION_TRANSACTION_H
-#define ARANGOD_REPLICATION_REPLICATION_TRANSACTION_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "StorageEngine/TransactionState.h"
@@ -38,10 +37,11 @@ class ReplicationTransaction : public transaction::Methods {
  public:
   /// @brief create the transaction
   explicit ReplicationTransaction(TRI_vocbase_t& vocbase)
-      : transaction::Methods(transaction::StandaloneContext::Create(vocbase), transaction::Options::replicationDefaults()),
+      : transaction::Methods(transaction::StandaloneContext::Create(vocbase),
+                             transaction::Options::replicationDefaults()),
         _guard(vocbase) {
-    TRI_ASSERT(_state != nullptr);
-    _state->setExclusiveAccessType();
+    TRI_ASSERT(state() != nullptr);
+    state()->setExclusiveAccessType();
   }
 
  private:
@@ -49,5 +49,3 @@ class ReplicationTransaction : public transaction::Methods {
 };
 
 }  // namespace arangodb
-
-#endif

@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,8 +21,7 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_REMOTE_EXECUTOR_H
-#define ARANGOD_AQL_REMOTE_EXECUTOR_H
+#pragma once
 
 #include "Aql/AqlExecuteResult.h"
 #include "Aql/ClusterNodes.h"
@@ -49,54 +49,48 @@ class RemoteExecutor final {};
 /**
  * @brief See ExecutionBlockImpl.h for documentation.
  */
-template <>
+template<>
 class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
  public:
-  using Api = ::arangodb::aql::RemoteNode::Api;
-
   // TODO Even if it's not strictly necessary here, for consistency's sake the
   // non-standard arguments (server, ownName and queryId) should probably be
   // moved into some RemoteExecutorInfos class.
   ExecutionBlockImpl(ExecutionEngine* engine, RemoteNode const* node,
                      RegisterInfos&& infos, std::string const& server,
-                     std::string const& distributeId, std::string const& queryId, Api);
+                     std::string const& distributeId,
+                     std::string const& queryId);
 
   ~ExecutionBlockImpl() override = default;
 
-  std::pair<ExecutionState, Result> initializeCursor(InputAqlItemRow const& input) override;
+  std::pair<ExecutionState, Result> initializeCursor(
+      InputAqlItemRow const& input) override;
 
-  std::pair<ExecutionState, Result> shutdown(int errorCode) override;
+  std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> execute(
+      AqlCallStack const& stack) override;
 
-  std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> execute(AqlCallStack stack) override;
+  std::string const& distributeId() const { return _distributeId; }
 
-  [[nodiscard]] auto api() const noexcept -> Api;
+  std::string const& server() const { return _server; }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // only for asserts:
  public:
-  std::string const& server() const { return _server; }
-  std::string const& distributeId() const { return _distributeId; }
   std::string const& queryId() const { return _queryId; }
 #endif
 
  private:
-  std::pair<ExecutionState, SharedAqlItemBlockPtr> getSomeWithoutTrace(size_t atMost);
+  std::pair<ExecutionState, SharedAqlItemBlockPtr> getSomeWithoutTrace(
+      size_t atMost);
 
   std::pair<ExecutionState, size_t> skipSomeWithoutTrace(size_t atMost);
 
-  auto executeWithoutTrace(AqlCallStack stack)
-      -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>;
-
-  auto executeViaOldApi(AqlCallStack stack)
-      -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>;
-
-  auto executeViaNewApi(AqlCallStack stack)
+  auto executeWithoutTrace(AqlCallStack const& stack)
       -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>;
 
   [[nodiscard]] auto deserializeExecuteCallResultBody(velocypack::Slice) const
       -> ResultT<AqlExecuteResult>;
-  [[nodiscard]] auto serializeExecuteCallBody(AqlCallStack const& callStack) const
-      -> velocypack::Buffer<uint8_t>;
+  [[nodiscard]] auto serializeExecuteCallBody(
+      AqlCallStack const& callStack) const -> velocypack::Buffer<uint8_t>;
 
   RegisterInfos const& registerInfos() const { return _registerInfos; }
 
@@ -104,21 +98,22 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
 
   /// @brief internal method to send a request. Will register a callback to be
   /// reactivated
-  arangodb::Result sendAsyncRequest(fuerte::RestVerb type, std::string const& urlPart,
+  arangodb::Result sendAsyncRequest(fuerte::RestVerb type,
+                                    std::string const& urlPart,
                                     velocypack::Buffer<uint8_t>&& body);
 
   // _communicationMutex *must* be locked for this!
   unsigned generateRequestTicket();
 
-  void traceExecuteRequest(velocypack::Slice slice, AqlCallStack const& callStack);
+  void traceExecuteRequest(velocypack::Slice slice,
+                           AqlCallStack const& callStack);
   void traceGetSomeRequest(velocypack::Slice slice, size_t atMost);
   void traceSkipSomeRequest(velocypack::Slice slice, size_t atMost);
   void traceInitializeCursorRequest(velocypack::Slice slice);
-  void traceShutdownRequest(velocypack::Slice slice, int errorCode);
-  void traceRequest(const char* rpc, velocypack::Slice slice, std::string const& args);
+  void traceRequest(char const* rpc, velocypack::Slice slice,
+                    std::string const& args);
 
  private:
-
   RegisterInfos _registerInfos;
 
   QueryContext const& _query;
@@ -133,10 +128,6 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
   /// @brief the ID of the query on the server as a string
   std::string const _queryId;
 
-  /// @brief whether or not this block will forward initialize,
-  /// initializeCursor or shutDown requests
-  bool const _isResponsibleForInitializeCursor;
-
   std::mutex _communicationMutex;
 
   /// @brief the last unprocessed result. Make sure to reset it
@@ -146,17 +137,13 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
   /// @brief the last remote response Result object, may contain an error.
   arangodb::Result _lastError;
 
-  unsigned _lastTicket;  /// used to check for canceled requests
+  /// @brief whether or not this block will forward initialize,
+  /// initializeCursor requests
+  bool const _isResponsibleForInitializeCursor;
 
   bool _requestInFlight;
 
-  bool _hasTriggeredShutdown;
-
-  /// @brief Whether to use the pre-3.7 getSome/skipSome API, instead of the
-  ///        execute API. Used for rolling upgrades, so can be removed in 3.8.
-  Api _apiToUse = Api::EXECUTE;
+  unsigned _lastTicket;  /// used to check for canceled requests
 };
 
 }  // namespace arangodb::aql
-
-#endif  // ARANGOD_AQL_REMOTE_EXECUTOR_H

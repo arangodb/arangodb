@@ -1,0 +1,80 @@
+[/==============================================================================
+    Copyright (C) 2001-2015 Joel de Guzman
+    Copyright (C) 2001-2011 Hartmut Kaiser
+
+    Distributed under the Boost Software License, Version 1.0. (See accompanying
+    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+===============================================================================/]
+
+[section Complex - Our first complex parser]
+
+Well, not really a complex parser, but a parser that parses complex numbers.
+
+Here's a simple parser expression for complex numbers:
+
+        '(' >> double_ >> -(',' >> double_) >> ')'
+    |   double_
+
+What's new? Well, we have:
+
+# Alternates: e.g. `a | b`. Try `a` first. If it succeeds, good. If not, try the
+  next alternative, `b`.
+# Optionals: e.g. -p. Match the parser p zero or one time.
+
+The complex parser presented above reads as:
+
+* One or two real numbers in parentheses, separated by comma (the second number is optional)
+* *OR* a single real number.
+
+This parser can parse complex numbers of the form:
+
+    (123.45, 987.65)
+    (123.45)
+    123.45
+
+Here goes, this time with actions:
+
+    namespace client
+    {
+        template <typename Iterator>
+        bool parse_complex(Iterator first, Iterator last, std::complex<double>& c)
+        {
+            using boost::spirit::x3::double_;
+            using boost::spirit::x3::_attr;
+            using boost::spirit::x3::phrase_parse;
+            using boost::spirit::x3::ascii::space;
+
+            double rN = 0.0;
+            double iN = 0.0;
+            auto fr = [&](auto& ctx){ rN = _attr(ctx); };
+            auto fi = [&](auto& ctx){ iN = _attr(ctx); };
+
+            bool r = phrase_parse(first, last,
+
+                //  Begin grammar
+                (
+                        '(' >> double_[fr]
+                            >> -(',' >> double_[fi]) >> ')'
+                    |   double_[fr]
+                ),
+                //  End grammar
+
+                space);
+
+            if (!r || first != last) // fail if we did not get a full match
+                return false;
+            c = std::complex<double>(rN, iN);
+            return r;
+        }
+    }
+
+The full cpp file for this example can be found here:
+[@../../../example/x3/complex_number.cpp complex_number.cpp]
+
+The `double_` parser attaches this action:
+
+    [&](auto& ctx){ n = _attr(ctx); }
+
+This assigns the parsed result (actually, the attribute of `double_`) to n.
+
+[endsect]

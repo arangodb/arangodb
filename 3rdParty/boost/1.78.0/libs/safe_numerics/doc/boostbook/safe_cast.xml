@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE section PUBLIC "-//Boost//DTD BoostBook XML V1.1//EN"
+"http://www.boost.org/tools/boostbook/dtd/boostbook.dtd">
+<section id="safe_numerics.safe_cast">
+  <title>safe_cast&lt;T, U&gt;</title>
+
+  <section>
+    <title>Synopsis</title>
+
+    <programlisting>template&lt;class T, class U&gt;
+T safe_cast(const U &amp; u);</programlisting>
+  </section>
+
+  <section>
+    <title>Description</title>
+
+    <para>Converts one <link linkend="safe_numerics.numeric">Numeric</link>
+    type to another. Throws an <code>std::out_of_range</code> exception if
+    such a conversion is not possible without changing the value. This
+    function is part of the implementation of the safe numerics library. It's
+    been made publicly because it might be useful in related contexts.</para>
+  </section>
+
+  <section>
+    <title>Type requirements</title>
+
+    <informaltable>
+      <tgroup cols="2">
+        <colspec align="left"/>
+
+        <colspec align="left" colwidth="3*"/>
+
+        <thead>
+          <row>
+            <entry align="left">Type</entry>
+
+            <entry align="left">Requirements</entry>
+          </row>
+        </thead>
+
+        <tbody>
+          <row>
+            <entry><code>T</code></entry>
+
+            <entry><link
+            linkend="safe_numerics.numeric">Numeric</link></entry>
+          </row>
+
+          <row>
+            <entry><code>U </code></entry>
+
+            <entry><link
+            linkend="safe_numerics.numeric">Numeric</link></entry>
+          </row>
+        </tbody>
+      </tgroup>
+    </informaltable>
+  </section>
+
+  <section>
+    <title>Preconditions</title>
+
+    <para>The value of u must be representable by the type <code>T</code>. If
+    this is not true, an <code>std::out_of_range</code> exception will be
+    thrown.</para>
+  </section>
+
+  <section>
+    <title>Header</title>
+
+    <para><filename><ulink url="../../include/safe_cast.hpp">#include
+    &lt;boost/numeric/safe_cast.hpp&gt; </ulink></filename></para>
+  </section>
+
+  <section>
+    <title>Example of use</title>
+
+    <programlisting>#include &lt;boost/numeric/safe_cast.hpp&gt; 
+#include &lt;boost/numeric/safe_integer.hpp&gt; 
+
+void f(){
+    safe_integer&lt;char&gt; i;
+    unsigned char j;
+    i = 1;
+    j = safe_cast&lt;unsigned char&gt;(i);  // ok
+    i = -1;
+    j = safe_cast&lt;unsigned char&gt;(i);  // throws std::out_of_range exception
+    i = 1024;
+    j = safe_cast&lt;unsigned char&gt;(i);  // throws std::out_of_range exception
+}</programlisting>
+  </section>
+</section>

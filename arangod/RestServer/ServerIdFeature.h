@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,19 +21,20 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REST_SERVER_SERVER_ID_FEATURE_H
-#define ARANGODB_REST_SERVER_SERVER_ID_FEATURE_H 1
+#pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/debugging.h"
 #include "ProgramOptions/ProgramOptions.h"
+#include "RestServer/arangod.h"
 #include "VocBase/Identifiers/ServerId.h"
 
 namespace arangodb {
 
-class ServerIdFeature final : public application_features::ApplicationFeature {
+class ServerIdFeature final : public ArangodFeature {
  public:
-  explicit ServerIdFeature(application_features::ApplicationServer& server);
+  static constexpr std::string_view name() noexcept { return "ServerId"; }
+
+  explicit ServerIdFeature(Server& server);
 
   void start() override final;
 
@@ -49,13 +51,13 @@ class ServerIdFeature final : public application_features::ApplicationFeature {
   void generateId();
 
   /// @brief reads server id from file
-  int readId();
+  ErrorCode readId();
 
   /// @brief writes server id to file
-  int writeId();
+  ErrorCode writeId();
 
   /// @brief read / create the server id on startup
-  int determineId(bool checkVersion);
+  ErrorCode determineId(bool checkVersion);
 
   std::string _idFilename;
 
@@ -63,5 +65,3 @@ class ServerIdFeature final : public application_features::ApplicationFeature {
 };
 
 }  // namespace arangodb
-
-#endif

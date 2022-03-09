@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,21 +21,25 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_SCHEDULER_SCHEDULER_FEATURE_H
-#define ARANGOD_SCHEDULER_SCHEDULER_FEATURE_H 1
+#pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/asio_ns.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SupervisedScheduler.h"
+#include "RestServer/arangod.h"
+
+#include <functional>
+#include <memory>
 
 namespace arangodb {
 
-class SchedulerFeature final : public application_features::ApplicationFeature {
+class SchedulerFeature final : public ArangodFeature {
  public:
+  static constexpr std::string_view name() noexcept { return "Scheduler"; }
+
   static SupervisedScheduler* SCHEDULER;
 
-  explicit SchedulerFeature(application_features::ApplicationServer& server);
+  explicit SchedulerFeature(Server& server);
   ~SchedulerFeature();
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -45,37 +49,33 @@ class SchedulerFeature final : public application_features::ApplicationFeature {
   void stop() override final;
   void unprepare() override final;
 
- private:
-  uint64_t _nrMinimalThreads = 2;
-  uint64_t _nrMaximalThreads = 0;
-  uint64_t _queueSize = 4096;
-  uint64_t _fifo1Size = 4096;
-  uint64_t _fifo2Size = 4096;
-
-  std::unique_ptr<Scheduler> _scheduler;
-
   // -------------------------------------------------------------------------
   // UNRELATED SECTION STARTS HERE: Signals and other things crept into Sched
   // -------------------------------------------------------------------------
-
- public:
   void buildControlCHandler();
   void buildHangupHandler();
 
  private:
-  void initV8Stuff();
-  void deinitV8Stuff();
   void signalStuffInit();
   void signalStuffDeinit();
 
-  std::function<void(const asio_ns::error_code&, int)> _signalHandler;
-  std::function<void(const asio_ns::error_code&, int)> _exitHandler;
+  uint64_t _nrMinimalThreads = 4;
+  uint64_t _nrMaximalThreads = 0;
+  uint64_t _queueSize = 4096;
+  uint64_t _fifo1Size = 4096;
+  uint64_t _fifo2Size = 4096;
+  uint64_t _fifo3Size = 4096;
+  double _ongoingLowPriorityMultiplier = 4.0;
+  double _unavailabilityQueueFillGrade = 0.75;
+
+  std::unique_ptr<Scheduler> _scheduler;
+
+  std::function<void(asio_ns::error_code const&, int)> _signalHandler;
+  std::function<void(asio_ns::error_code const&, int)> _exitHandler;
   std::shared_ptr<asio_ns::signal_set> _exitSignals;
 
-  std::function<void(const asio_ns::error_code&, int)> _hangupHandler;
+  std::function<void(asio_ns::error_code const&, int)> _hangupHandler;
   std::shared_ptr<asio_ns::signal_set> _hangupSignals;
 };
 
 }  // namespace arangodb
-
-#endif

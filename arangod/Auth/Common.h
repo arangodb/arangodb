@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,8 +22,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AUTHENTICATION_COMMON_H
-#define ARANGOD_AUTHENTICATION_COMMON_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include <velocypack/Slice.h>
@@ -42,5 +42,3 @@ std::string convertFromAuthLevel(auth::Level lvl);
 
 }  // namespace auth
 }  // namespace arangodb
-
-#endif

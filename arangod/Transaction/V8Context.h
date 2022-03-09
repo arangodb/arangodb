@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,13 +21,13 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_TRANSACTION_V8_CONTEXT_H
-#define ARANGOD_TRANSACTION_V8_CONTEXT_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Context.h"
 
 struct TRI_vocbase_t;
+struct TRI_v8_global_t;
 
 namespace arangodb {
 
@@ -41,35 +41,27 @@ class V8Context final : public Context {
   V8Context(TRI_vocbase_t& vocbase, bool embeddable);
 
   /// @brief destroy the context
-  ~V8Context() = default;
+  ~V8Context() noexcept;
 
   /// @brief order a custom type handler
-  arangodb::velocypack::CustomTypeHandler* orderCustomTypeHandler() override final;
+  arangodb::velocypack::CustomTypeHandler* orderCustomTypeHandler()
+      override final;
 
   /// @brief get transaction state, determine commit responsiblity
-  std::shared_ptr<TransactionState> acquireState(transaction::Options const& options,
-                                                 bool& responsibleForCommit) override;
-  
-  void enterV8Context(std::shared_ptr<TransactionState> const& state);
-  void exitV8Context();
+  std::shared_ptr<TransactionState> acquireState(
+      transaction::Options const& options, bool& responsibleForCommit) override;
 
-  /// @brief return the resolver
-  CollectionNameResolver const& resolver() override final;
+  void enterV8Context();
+  void exitV8Context() noexcept;
 
   /// @brief unregister the transaction from the context
   void unregisterTransaction() noexcept override;
-  
+
   std::shared_ptr<Context> clone() const override;
 
   /// @brief whether or not the transaction is embeddable
   bool isEmbeddable() const override;
 
-  /// @brief make this transaction context a global context
-  void makeGlobal();
-
-  /// @brief whether or not the transaction context is a global one
-  bool isGlobal() const;
-  
   virtual bool isV8Context() override { return true; }
 
   /// @brief return parent transaction state or none
@@ -79,19 +71,18 @@ class V8Context final : public Context {
   static bool isEmbedded();
 
   /// @brief create a context
-  static std::shared_ptr<transaction::V8Context> Create(TRI_vocbase_t& vocbase, bool embeddable);
+  static std::shared_ptr<transaction::V8Context> Create(TRI_vocbase_t& vocbase,
+                                                        bool embeddable);
 
   /// @brief create a V8 transaction context if we are in a V8 isolate, and a
   /// standlone transaction context otherwise
-  static std::shared_ptr<transaction::Context> CreateWhenRequired(TRI_vocbase_t& vocbase,
-                                                                  bool embeddable);
+  static std::shared_ptr<transaction::Context> CreateWhenRequired(
+      TRI_vocbase_t& vocbase, bool embeddable);
 
  private:
-  /// @brief the v8 thread-local "global" transaction context
-  transaction::V8Context* _sharedTransactionContext;
+  static TRI_v8_global_t* getV8State() noexcept;
 
-  transaction::V8Context* _mainScope;
-
+ private:
   /// @brief the currently ongoing transaction
   std::shared_ptr<TransactionState> _currentTransaction;
 
@@ -101,5 +92,3 @@ class V8Context final : public Context {
 
 }  // namespace transaction
 }  // namespace arangodb
-
-#endif

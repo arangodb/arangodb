@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_ENUM_ITERATOR_H
-#define ARANGODB_BASICS_ENUM_ITERATOR_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -35,7 +35,7 @@ namespace arangodb {
 /// @brief Iterator for an enum class type
 /// will work only when the enum values are unique, contiguous and
 /// sorted in order
-template <typename T, T beginValue, T endValue>
+template<typename T, T beginValue, T endValue>
 class EnumIterator {
   typedef typename std::underlying_type<T>::type ValueType;
 
@@ -67,5 +67,3 @@ class EnumIterator {
 };
 
 }  // namespace arangodb
-
-#endif

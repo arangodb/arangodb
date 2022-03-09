@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,6 +25,8 @@
 
 #include "Aql/AqlValue.h"
 #include "Aql/AqlValueMaterializer.h"
+#include "Aql/Functions.h"
+#include "Containers/FlatHashSet.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
@@ -33,7 +35,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <set>
 
@@ -51,8 +52,10 @@ constexpr bool internalOnly = false;
 
 /// @brief struct containing aggregator meta information
 struct AggregatorInfo {
-  /// @brief function to generate a new aggregator instance in a query
-  std::function<std::unique_ptr<Aggregator>(velocypack::Options const* opts)> generator;
+  /// @brief factory to create a new aggregator instance in a query
+  /// Note: this is a shared_ptr because a unique_ptr cannot be initialized via
+  /// initializer list
+  std::shared_ptr<Aggregator::Factory> factory;
 
   /// @brief whether or not the aggregator needs input
   /// note: currently this is false only for LENGTH/COUNT, for which the input
@@ -69,7 +72,7 @@ struct AggregatorInfo {
   /// be pushed executed on partial results on the DB server as SUM too however,
   /// the LENGTH aggregator needs to be pushed as LENGTH to the DB server, but
   /// the partial lengths need to be aggregated on the coordinator using SUM
-  std::string pushToDBServerAs;
+  std::string_view pushToDBServerAs;
 
   /// @brief under which name this aggregator is executed on a coordinator to
   /// aggregate partial results from the DB servers if parts of the aggregation
@@ -77,7 +80,7 @@ struct AggregatorInfo {
   /// pushed to the DB server as LENGTH, but on the coordinator the aggregator
   /// needs to be converted to SUM to sum up the partial lengths from the DB
   /// servers
-  std::string runOnCoordinatorAs;
+  std::string_view runOnCoordinatorAs;
 };
 
 /// @brief helper class for block-wise memory allocations
@@ -156,9 +159,8 @@ struct AggregatorLength final : public Aggregator {
 
   void reduce(AqlValue const&) override { ++count; }
 
-  AqlValue stealValue() override {
+  AqlValue get() const override {
     uint64_t value = count;
-    reset();
     return AqlValue(AqlValueHintUInt(value));
   }
 
@@ -174,8 +176,9 @@ struct AggregatorMin final : public Aggregator {
   void reset() override { value.erase(); }
 
   void reduce(AqlValue const& cmpValue) override {
-    if (!cmpValue.isNull(true) && (value.isEmpty() || 
-                                   AqlValue::Compare(_vpackOptions, value, cmpValue, true) > 0)) {
+    if (!cmpValue.isNull(true) &&
+        (value.isEmpty() ||
+         AqlValue::Compare(_vpackOptions, value, cmpValue, true) > 0)) {
       // the value `null` itself will not be used in MIN() to compare lower than
       // e.g. value `false`
       value.destroy();
@@ -183,13 +186,11 @@ struct AggregatorMin final : public Aggregator {
     }
   }
 
-  AqlValue stealValue() override {
+  AqlValue get() const override {
     if (value.isEmpty()) {
       return AqlValue(AqlValueHintNull());
     }
-    AqlValue copy = value;
-    value.erase();
-    return copy;
+    return value.clone();
   }
 
   AqlValue value;
@@ -204,19 +205,18 @@ struct AggregatorMax final : public Aggregator {
   void reset() override { value.erase(); }
 
   void reduce(AqlValue const& cmpValue) override {
-    if (value.isEmpty() || AqlValue::Compare(_vpackOptions, value, cmpValue, true) < 0) {
+    if (value.isEmpty() ||
+        AqlValue::Compare(_vpackOptions, value, cmpValue, true) < 0) {
       value.destroy();
       value = cmpValue.clone();
     }
   }
 
-  AqlValue stealValue() override {
+  AqlValue get() const override {
     if (value.isEmpty()) {
       return AqlValue(AqlValueHintNull());
     }
-    AqlValue copy = value;
-    value.erase();
-    return copy;
+    return value.clone();
   }
 
   AqlValue value;
@@ -233,8 +233,8 @@ struct AggregatorSum final : public Aggregator {
   }
 
   void reduce(AqlValue const& cmpValue) override {
-    invoked = true;
     if (!invalid) {
+      invoked = true;
       if (cmpValue.isNull(true)) {
         // ignore `null` values here
         return;
@@ -246,18 +246,17 @@ struct AggregatorSum final : public Aggregator {
           return;
         }
       }
+      invalid = true;
     }
-
-    invalid = true;
   }
 
-  AqlValue stealValue() override {
-    if (invalid || !invoked || std::isnan(sum) || sum == HUGE_VAL || sum == -HUGE_VAL) {
+  AqlValue get() const override {
+    if (invalid || !invoked || std::isnan(sum) || sum == HUGE_VAL ||
+        sum == -HUGE_VAL) {
       return AqlValue(AqlValueHintNull());
     }
 
     double v = sum;
-    reset();
     return AqlValue(AqlValueHintDouble(v));
   }
 
@@ -291,20 +290,19 @@ struct AggregatorAverage : public Aggregator {
           return;
         }
       }
+      invalid = true;
     }
-
-    invalid = true;
   }
 
-  virtual AqlValue stealValue() override {
-    if (invalid || count == 0 || std::isnan(sum) || sum == HUGE_VAL || sum == -HUGE_VAL) {
+  virtual AqlValue get() const override {
+    if (invalid || count == 0 || std::isnan(sum) || sum == HUGE_VAL ||
+        sum == -HUGE_VAL) {
       return AqlValue(AqlValueHintNull());
     }
 
     TRI_ASSERT(count > 0);
 
     double v = sum / count;
-    reset();
     return AqlValue(AqlValueHintDouble(v));
   }
 
@@ -319,10 +317,11 @@ struct AggregatorAverageStep1 final : public AggregatorAverage {
       : AggregatorAverage(opts) {}
 
   // special version that will produce an array with sum and count separately
-  AqlValue stealValue() override {
+  AqlValue get() const override {
     builder.clear();
     builder.openArray();
-    if (invalid || count == 0 || std::isnan(sum) || sum == HUGE_VAL || sum == -HUGE_VAL) {
+    if (invalid || count == 0 || std::isnan(sum) || sum == HUGE_VAL ||
+        sum == -HUGE_VAL) {
       builder.add(VPackValue(VPackValueType::Null));
       builder.add(VPackValue(VPackValueType::Null));
     } else {
@@ -331,12 +330,10 @@ struct AggregatorAverageStep1 final : public AggregatorAverage {
       builder.add(VPackValue(count));
     }
     builder.close();
-    AqlValue temp(builder.slice());
-    reset();
-    return temp;
+    return AqlValue(builder.slice());
   }
 
-  arangodb::velocypack::Builder builder;
+  mutable arangodb::velocypack::Builder builder;
 };
 
 /// @brief the coordinator variant of AVERAGE, aggregating partial sums and
@@ -374,7 +371,12 @@ struct AggregatorAverageStep2 final : public AggregatorAverage {
 /// @brief base functionality for VARIANCE
 struct AggregatorVarianceBase : public Aggregator {
   AggregatorVarianceBase(velocypack::Options const* opts, bool population)
-      : Aggregator(opts), population(population), count(0), sum(0.0), mean(0.0), invalid(false) {}
+      : Aggregator(opts),
+        count(0),
+        sum(0.0),
+        mean(0.0),
+        invalid(false),
+        population(population) {}
 
   void reset() override {
     count = 0;
@@ -399,16 +401,15 @@ struct AggregatorVarianceBase : public Aggregator {
           return;
         }
       }
+      invalid = true;
     }
-
-    invalid = true;
   }
 
-  bool const population;
   uint64_t count;
   double sum;
   double mean;
   bool invalid;
+  bool const population;
 };
 
 /// @brief the single server variant of VARIANCE
@@ -416,7 +417,7 @@ struct AggregatorVariance : public AggregatorVarianceBase {
   AggregatorVariance(velocypack::Options const* opts, bool population)
       : AggregatorVarianceBase(opts, population) {}
 
-  AqlValue stealValue() override {
+  AqlValue get() const override {
     if (invalid || count == 0 || (count == 1 && !population) ||
         std::isnan(sum) || sum == HUGE_VAL || sum == -HUGE_VAL) {
       return AqlValue(AqlValueHintNull());
@@ -432,7 +433,6 @@ struct AggregatorVariance : public AggregatorVarianceBase {
       v = sum / count;
     }
 
-    reset();
     return AqlValue(AqlValueHintDouble(v));
   }
 };
@@ -442,7 +442,7 @@ struct AggregatorVarianceBaseStep1 final : public AggregatorVarianceBase {
   AggregatorVarianceBaseStep1(velocypack::Options const* opts, bool population)
       : AggregatorVarianceBase(opts, population) {}
 
-  AqlValue stealValue() override {
+  AqlValue get() const override {
     builder.clear();
     builder.openArray();
     if (invalid || count == 0 || (count == 1 && !population) ||
@@ -459,12 +459,10 @@ struct AggregatorVarianceBaseStep1 final : public AggregatorVarianceBase {
     }
     builder.close();
 
-    AqlValue temp(builder.slice());
-    reset();
-    return temp;
+    return AqlValue(builder.slice());
   }
 
-  arangodb::velocypack::Builder builder;
+  mutable arangodb::velocypack::Builder builder;
 };
 
 /// @brief the coordinator variant of VARIANCE
@@ -488,7 +486,8 @@ struct AggregatorVarianceBaseStep2 : public AggregatorVarianceBase {
     AqlValue const& sumValue = cmpValue.at(1, mustDestroy, false);
     AqlValue const& meanValue = cmpValue.at(2, mustDestroy, false);
 
-    if (countValue.isNull(true) || sumValue.isNull(true) || meanValue.isNull(true)) {
+    if (countValue.isNull(true) || sumValue.isNull(true) ||
+        meanValue.isNull(true)) {
       invalid = true;
       return;
     }
@@ -516,7 +515,7 @@ struct AggregatorVarianceBaseStep2 : public AggregatorVarianceBase {
     values.emplace_back(std::make_tuple(v1 / c, v2, c));
   }
 
-  AqlValue stealValue() override {
+  AqlValue get() const override {
     if (invalid || count == 0 || (count == 1 && !population)) {
       return AqlValue(AqlValueHintNull());
     }
@@ -536,7 +535,6 @@ struct AggregatorVarianceBaseStep2 : public AggregatorVarianceBase {
     } else {
       v /= count;
     }
-    reset();
     return AqlValue(AqlValueHintDouble(v));
   }
 
@@ -548,7 +546,7 @@ struct AggregatorStddev : public AggregatorVarianceBase {
   AggregatorStddev(velocypack::Options const* opts, bool population)
       : AggregatorVarianceBase(opts, population) {}
 
-  AqlValue stealValue() override {
+  AqlValue get() const override {
     if (invalid || count == 0 || (count == 1 && !population) ||
         std::isnan(sum) || sum == HUGE_VAL || sum == -HUGE_VAL) {
       return AqlValue(AqlValueHintNull());
@@ -564,7 +562,6 @@ struct AggregatorStddev : public AggregatorVarianceBase {
       v = std::sqrt(sum / count);
     }
 
-    reset();
     return AqlValue(AqlValueHintDouble(v));
   }
 };
@@ -574,7 +571,7 @@ struct AggregatorStddevBaseStep2 final : public AggregatorVarianceBaseStep2 {
   AggregatorStddevBaseStep2(velocypack::Options const* opts, bool population)
       : AggregatorVarianceBaseStep2(opts, population) {}
 
-  AqlValue stealValue() override {
+  AqlValue get() const override {
     if (invalid || count == 0 || (count == 1 && !population)) {
       return AqlValue(AqlValueHintNull());
     }
@@ -596,7 +593,6 @@ struct AggregatorStddevBaseStep2 final : public AggregatorVarianceBaseStep2 {
     }
 
     v = std::sqrt(v);
-    reset();
     return AqlValue(AqlValueHintDouble(v));
   }
 };
@@ -609,9 +605,7 @@ struct AggregatorUnique : public Aggregator {
         seen(512, basics::VelocyPackHelper::VPackHash(),
              basics::VelocyPackHelper::VPackEqual(_vpackOptions)) {}
 
-  ~AggregatorUnique() {
-    reset();
-  }
+  ~AggregatorUnique() { reset(); }
 
   // cppcheck-suppress virtualCallInConstructor
   void reset() override final {
@@ -625,7 +619,7 @@ struct AggregatorUnique : public Aggregator {
 
     VPackSlice s = materializer.slice(cmpValue, true);
 
-    if (seen.find(s) != seen.end()) {
+    if (seen.contains(s)) {
       // already saw the same value
       return;
     }
@@ -639,7 +633,7 @@ struct AggregatorUnique : public Aggregator {
     builder.add(VPackSlice(reinterpret_cast<uint8_t const*>(pos)));
   }
 
-  AqlValue stealValue() override final {
+  AqlValue get() const override final {
     // if not yet an array, start one
     if (builder.isClosed()) {
       builder.openArray();
@@ -647,14 +641,15 @@ struct AggregatorUnique : public Aggregator {
 
     // always close the Builder
     builder.close();
-    AqlValue result(builder.slice());
-    reset();
-    return result;
+    return AqlValue(builder.slice());
   }
 
   MemoryBlockAllocator allocator;
-  std::unordered_set<velocypack::Slice, basics::VelocyPackHelper::VPackHash, basics::VelocyPackHelper::VPackEqual> seen;
-  arangodb::velocypack::Builder builder;
+  containers::FlatHashSet<velocypack::Slice,
+                          basics::VelocyPackHelper::VPackHash,
+                          basics::VelocyPackHelper::VPackEqual>
+      seen;
+  mutable arangodb::velocypack::Builder builder;
 };
 
 /// @brief the coordinator variant of UNIQUE
@@ -672,7 +667,7 @@ struct AggregatorUniqueStep2 final : public AggregatorUnique {
     }
 
     for (VPackSlice it : VPackArrayIterator(s)) {
-      if (seen.find(it) != seen.end()) {
+      if (seen.contains(it)) {
         // already saw the same value
         return;
       }
@@ -691,9 +686,7 @@ struct AggregatorUniqueStep2 final : public AggregatorUnique {
 /// @brief the single-server and DB server variant of SORTED_UNIQUE
 struct AggregatorSortedUnique : public Aggregator {
   explicit AggregatorSortedUnique(velocypack::Options const* opts)
-      : Aggregator(opts),
-        allocator(1024),
-        seen(_vpackOptions) {}
+      : Aggregator(opts), allocator(1024), seen(_vpackOptions) {}
 
   ~AggregatorSortedUnique() { reset(); }
 
@@ -718,7 +711,7 @@ struct AggregatorSortedUnique : public Aggregator {
     seen.emplace(reinterpret_cast<uint8_t const*>(pos));
   }
 
-  AqlValue stealValue() override final {
+  AqlValue get() const override final {
     builder.openArray();
     for (auto const& it : seen) {
       builder.add(it);
@@ -726,14 +719,12 @@ struct AggregatorSortedUnique : public Aggregator {
 
     // always close the Builder
     builder.close();
-    AqlValue result(builder.slice());
-    reset();
-    return result;
+    return AqlValue(builder.slice());
   }
 
   MemoryBlockAllocator allocator;
   std::set<velocypack::Slice, basics::VelocyPackHelper::VPackLess<true>> seen;
-  arangodb::velocypack::Builder builder;
+  mutable arangodb::velocypack::Builder builder;
 };
 
 /// @brief the coordinator variant of SORTED_UNIQUE
@@ -775,7 +766,6 @@ struct AggregatorCountDistinct : public Aggregator {
   void reset() override final {
     seen.clear();
     allocator.clear();
-    builder.clear();
   }
 
   void reduce(AqlValue const& cmpValue) override {
@@ -783,7 +773,7 @@ struct AggregatorCountDistinct : public Aggregator {
 
     VPackSlice s = materializer.slice(cmpValue, true);
 
-    if (seen.find(s) != seen.end()) {
+    if (seen.contains(s)) {
       // already saw the same value
       return;
     }
@@ -792,15 +782,46 @@ struct AggregatorCountDistinct : public Aggregator {
     seen.emplace(reinterpret_cast<uint8_t const*>(pos));
   }
 
-  AqlValue stealValue() override final {
+  AqlValue get() const override final {
     uint64_t value = seen.size();
-    reset();
     return AqlValue(AqlValueHintUInt(value));
   }
 
   MemoryBlockAllocator allocator;
-  std::unordered_set<velocypack::Slice, basics::VelocyPackHelper::VPackHash, basics::VelocyPackHelper::VPackEqual> seen;
-  arangodb::velocypack::Builder builder;
+  containers::FlatHashSet<velocypack::Slice,
+                          basics::VelocyPackHelper::VPackHash,
+                          basics::VelocyPackHelper::VPackEqual>
+      seen;
+};
+
+template<class T>
+struct GenericFactory : Aggregator::Factory {
+  virtual std::unique_ptr<Aggregator> operator()(
+      velocypack::Options const* opts) const override {
+    return std::make_unique<T>(opts);
+  }
+  void createInPlace(void* address,
+                     velocypack::Options const* opts) const override {
+    new (address) T(opts);
+  }
+  std::size_t getAggregatorSize() const override { return sizeof(T); }
+};
+
+template<class T>
+struct GenericVarianceFactory : Aggregator::Factory {
+  explicit GenericVarianceFactory(bool population) : population(population) {}
+
+  virtual std::unique_ptr<Aggregator> operator()(
+      velocypack::Options const* opts) const override {
+    return std::make_unique<T>(opts, population);
+  }
+  void createInPlace(void* address,
+                     velocypack::Options const* opts) const override {
+    new (address) T(opts, population);
+  }
+  std::size_t getAggregatorSize() const override { return sizeof(T); }
+
+  bool population;
 };
 
 /// @brief the coordinator variant of COUNT_DISTINCT
@@ -829,151 +850,193 @@ struct AggregatorCountDistinctStep2 final : public AggregatorCountDistinct {
   }
 };
 
+struct BitFunctionAnd {
+  uint64_t compute(uint64_t value1, uint64_t value2) noexcept {
+    return value1 & value2;
+  }
+};
+
+struct BitFunctionOr {
+  uint64_t compute(uint64_t value1, uint64_t value2) noexcept {
+    return value1 | value2;
+  }
+};
+
+struct BitFunctionXOr {
+  uint64_t compute(uint64_t value1, uint64_t value2) noexcept {
+    return value1 ^ value2;
+  }
+};
+
+template<typename BitFunction>
+struct AggregatorBitFunction : public Aggregator, BitFunction {
+  explicit AggregatorBitFunction(velocypack::Options const* opts)
+      : Aggregator(opts), result(0), invalid(false), invoked(false) {}
+
+  void reset() override {
+    result = 0;
+    invalid = false;
+    invoked = false;
+  }
+
+  void reduce(AqlValue const& cmpValue) override {
+    if (!invalid) {
+      if (cmpValue.isNull(true)) {
+        // ignore `null` values here
+        return;
+      }
+      if (cmpValue.isNumber()) {
+        double const number = cmpValue.toDouble();
+        if (!std::isnan(number) && number >= 0.0) {
+          int64_t value = cmpValue.toInt64();
+          if (value <=
+              static_cast<int64_t>(Functions::bitFunctionsMaxSupportedValue)) {
+            TRI_ASSERT(value >= 0 && value <= UINT32_MAX);
+            if (invoked) {
+              result = this->compute(result, static_cast<uint64_t>(value));
+            } else {
+              result = static_cast<uint64_t>(value);
+              invoked = true;
+            }
+            return;
+          }
+        }
+      }
+
+      invalid = true;
+    }
+  }
+
+  AqlValue get() const override {
+    if (invalid || !invoked) {
+      return AqlValue(AqlValueHintNull());
+    }
+
+    return AqlValue(AqlValueHintUInt(result));
+  }
+
+  uint64_t result;
+  bool invalid;
+  bool invoked;
+};
+
+struct AggregatorBitAnd : public AggregatorBitFunction<BitFunctionAnd> {
+  explicit AggregatorBitAnd(velocypack::Options const* opts)
+      : AggregatorBitFunction(opts) {}
+};
+
+struct AggregatorBitOr : public AggregatorBitFunction<BitFunctionOr> {
+  explicit AggregatorBitOr(velocypack::Options const* opts)
+      : AggregatorBitFunction(opts) {}
+};
+
+struct AggregatorBitXOr : public AggregatorBitFunction<BitFunctionXOr> {
+  explicit AggregatorBitXOr(velocypack::Options const* opts)
+      : AggregatorBitFunction(opts) {}
+};
+
 /// @brief all available aggregators with their meta data
-std::unordered_map<std::string, AggregatorInfo> const aggregators = {
+std::unordered_map<std::string_view, AggregatorInfo> const aggregators = {
     {"LENGTH",
-     {
-         [](velocypack::Options const* opts) {
-           return std::make_unique<AggregatorLength>(opts);
-         },
-         doesNotRequireInput, official, "LENGTH",
-         "SUM"  // we need to sum up the lengths from the DB servers
-     }},
+     {std::make_shared<GenericFactory<AggregatorLength>>(), doesNotRequireInput,
+      official, "LENGTH",
+      "SUM"}},  // we need to sum up the lengths from the DB servers
     {"MIN",
-     {
-         [](velocypack::Options const* opts) {
-           return std::make_unique<AggregatorMin>(opts);
-         },
-         doesRequireInput, official, "MIN",
-         "MIN"  // min is commutative
-     }},
+     {std::make_shared<GenericFactory<AggregatorMin>>(), doesRequireInput,
+      official, "MIN", "MIN"}},  // min is commutative
     {"MAX",
-     {
-         [](velocypack::Options const* opts) {
-           return std::make_unique<AggregatorMax>(opts);
-         },
-         doesRequireInput, official, "MAX",
-         "MAX"  // max is commutative
-     }},
+     {std::make_shared<GenericFactory<AggregatorMax>>(), doesRequireInput,
+      official, "MAX", "MAX"}},  // max is commutative
     {"SUM",
-     {
-         [](velocypack::Options const* opts) {
-           return std::make_unique<AggregatorSum>(opts);
-         },
-         doesRequireInput, official, "SUM",
-         "SUM"  // sum is commutative
-     }},
+     {std::make_shared<GenericFactory<AggregatorSum>>(), doesRequireInput,
+      official, "SUM", "SUM"}},  // sum is commutative
     {"AVERAGE",
-     {[](velocypack::Options const* opts) {
-        return std::make_unique<AggregatorAverage>(opts);
-      },
-      doesRequireInput, official, "AVERAGE_STEP1", "AVERAGE_STEP2"}},
+     {std::make_shared<GenericFactory<AggregatorAverage>>(), doesRequireInput,
+      official, "AVERAGE_STEP1", "AVERAGE_STEP2"}},
     {"AVERAGE_STEP1",
-     {[](velocypack::Options const* opts) {
-        return std::make_unique<AggregatorAverageStep1>(opts);
-      },
+     {std::make_shared<GenericFactory<AggregatorAverageStep1>>(),
       doesRequireInput, internalOnly, "", "AVERAGE_STEP1"}},
     {"AVERAGE_STEP2",
-     {[](velocypack::Options const* opts) {
-        return std::make_unique<AggregatorAverageStep2>(opts);
-      },
+     {std::make_shared<GenericFactory<AggregatorAverageStep2>>(),
       doesRequireInput, internalOnly, "", "AVERAGE_STEP2"}},
     {"VARIANCE_POPULATION",
-     {[](velocypack::Options const* opts) {
-        return std::make_unique<AggregatorVariance>(opts, true);
-      },
+     {std::make_shared<GenericVarianceFactory<AggregatorVariance>>(true),
       doesRequireInput, official, "VARIANCE_POPULATION_STEP1",
       "VARIANCE_POPULATION_STEP2"}},
     {"VARIANCE_POPULATION_STEP1",
-     {[](velocypack::Options const* opts) {
-        return std::make_unique<AggregatorVarianceBaseStep1>(opts, true);
-      },
+     {std::make_shared<GenericVarianceFactory<AggregatorVarianceBaseStep1>>(
+          true),
       doesRequireInput, internalOnly, "", "VARIANCE_POPULATION_STEP1"}},
     {"VARIANCE_POPULATION_STEP2",
-     {[](velocypack::Options const* opts) {
-        return std::make_unique<AggregatorVarianceBaseStep2>(opts, true);
-      },
+     {std::make_shared<GenericVarianceFactory<AggregatorVarianceBaseStep2>>(
+          true),
       doesRequireInput, internalOnly, "", "VARIANCE_POPULATION_STEP2"}},
     {"VARIANCE_SAMPLE",
-     {[](velocypack::Options const* opts) {
-        return std::make_unique<AggregatorVariance>(opts, false);
-      },
+     {std::make_shared<GenericVarianceFactory<AggregatorVariance>>(false),
       doesRequireInput, official, "VARIANCE_SAMPLE_STEP1",
       "VARIANCE_SAMPLE_STEP2"}},
     {"VARIANCE_SAMPLE_STEP1",
-     {[](velocypack::Options const* opts) {
-        return std::make_unique<AggregatorVarianceBaseStep1>(opts, false);
-      },
+     {std::make_shared<GenericVarianceFactory<AggregatorVarianceBaseStep1>>(
+          false),
       doesRequireInput, internalOnly, "", "VARIANCE_SAMPLE_STEP1"}},
     {"VARIANCE_SAMPLE_STEP2",
-     {[](velocypack::Options const* opts) {
-        return std::make_unique<AggregatorVarianceBaseStep2>(opts, false);
-      },
+     {std::make_shared<GenericVarianceFactory<AggregatorVarianceBaseStep2>>(
+          false),
       doesRequireInput, internalOnly, "", "VARIANCE_SAMPLE_STEP2"}},
     {"STDDEV_POPULATION",
-     {[](velocypack::Options const* opts) {
-        return std::make_unique<AggregatorStddev>(opts, true);
-      },
+     {std::make_shared<GenericVarianceFactory<AggregatorStddev>>(true),
       doesRequireInput, official, "STDDEV_POPULATION_STEP1",
       "STDDEV_POPULATION_STEP2"}},
     {"STDDEV_POPULATION_STEP1",
-     {[](velocypack::Options const* opts) {
-        return std::make_unique<AggregatorVarianceBaseStep1>(opts, true);
-      },
+     {std::make_shared<GenericVarianceFactory<AggregatorVarianceBaseStep1>>(
+          true),
       doesRequireInput, internalOnly, "", "STDDEV_POPULATION_STEP1"}},
     {"STDDEV_POPULATION_STEP2",
-     {[](velocypack::Options const* opts) {
-        return std::make_unique<AggregatorStddevBaseStep2>(opts, true);
-      },
+     {std::make_shared<GenericVarianceFactory<AggregatorStddevBaseStep2>>(true),
       doesRequireInput, internalOnly, "", "STDDEV_POPULATION_STEP2"}},
     {"STDDEV_SAMPLE",
-     {[](velocypack::Options const* opts) {
-        return std::make_unique<AggregatorStddev>(opts, false);
-      },
-      doesRequireInput, official, "STDDEV_SAMPLE_STEP1", "STDDEV_SAMPLE_STEP2"}},
+     {std::make_shared<GenericVarianceFactory<AggregatorStddev>>(false),
+      doesRequireInput, official, "STDDEV_SAMPLE_STEP1",
+      "STDDEV_SAMPLE_STEP2"}},
     {"STDDEV_SAMPLE_STEP1",
-     {[](velocypack::Options const* opts) {
-        return std::make_unique<AggregatorVarianceBaseStep1>(opts, false);
-      },
+     {std::make_shared<GenericVarianceFactory<AggregatorVarianceBaseStep1>>(
+          false),
       doesRequireInput, internalOnly, "", "STDDEV_SAMPLE_STEP1"}},
     {"STDDEV_SAMPLE_STEP2",
-     {[](velocypack::Options const* opts) {
-        return std::make_unique<AggregatorStddevBaseStep2>(opts, false);
-      },
+     {std::make_shared<GenericVarianceFactory<AggregatorStddevBaseStep2>>(
+          false),
       doesRequireInput, internalOnly, "", "STDDEV_SAMPLE_STEP2"}},
     {"UNIQUE",
-     {[](velocypack::Options const* opts) {
-        return std::make_unique<AggregatorUnique>(opts);
-      },
-      doesRequireInput, official, "UNIQUE", "UNIQUE_STEP2"}},
+     {std::make_shared<GenericFactory<AggregatorUnique>>(), doesRequireInput,
+      official, "UNIQUE", "UNIQUE_STEP2"}},
     {"UNIQUE_STEP2",
-     {[](velocypack::Options const* opts) {
-        return std::make_unique<AggregatorUniqueStep2>(opts);
-      },
+     {std::make_shared<GenericFactory<AggregatorUniqueStep2>>(),
       doesRequireInput, internalOnly, "", "UNIQUE_STEP2"}},
     {"SORTED_UNIQUE",
-     {[](velocypack::Options const* opts) {
-        return std::make_unique<AggregatorSortedUnique>(opts);
-      },
+     {std::make_shared<GenericFactory<AggregatorSortedUnique>>(),
       doesRequireInput, official, "SORTED_UNIQUE", "SORTED_UNIQUE_STEP2"}},
     {"SORTED_UNIQUE_STEP2",
-     {[](velocypack::Options const* opts) {
-        return std::make_unique<AggregatorSortedUniqueStep2>(opts);
-      },
+     {std::make_shared<GenericFactory<AggregatorSortedUniqueStep2>>(),
       doesRequireInput, internalOnly, "", "SORTED_UNIQUE_STEP2"}},
     {"COUNT_DISTINCT",
-     {[](velocypack::Options const* opts) {
-        return std::make_unique<AggregatorCountDistinct>(opts);
-      },
+     {std::make_shared<GenericFactory<AggregatorCountDistinct>>(),
       doesRequireInput, official, "UNIQUE", "COUNT_DISTINCT_STEP2"}},
     {"COUNT_DISTINCT_STEP2",
-     {[](velocypack::Options const* opts) {
-        return std::make_unique<AggregatorCountDistinctStep2>(opts);
-      },
-      doesRequireInput, internalOnly, "", "COUNT_DISTINCT_STEP2"}}};
+     {std::make_shared<GenericFactory<AggregatorCountDistinctStep2>>(),
+      doesRequireInput, internalOnly, "", "COUNT_DISTINCT_STEP2"}},
+    {"BIT_AND",
+     {std::make_shared<GenericFactory<AggregatorBitAnd>>(), doesRequireInput,
+      official, "BIT_AND", "BIT_AND"}},
+    {"BIT_OR",
+     {std::make_shared<GenericFactory<AggregatorBitOr>>(), doesRequireInput,
+      official, "BIT_OR", "BIT_OR"}},
+    {"BIT_XOR",
+     {std::make_shared<GenericFactory<AggregatorBitXOr>>(), doesRequireInput,
+      official, "BIT_XOR", "BIT_XOR"}},
+};
 
 /// @brief aliases (user-visible) for aggregation functions
-std::unordered_map<std::string, std::string> const aliases = {
+std::unordered_map<std::string_view, std::string_view> const aliases = {
     {"COUNT", "LENGTH"},                  // COUNT = LENGTH
     {"AVG", "AVERAGE"},                   // AVG = AVERAGE
     {"VARIANCE", "VARIANCE_POPULATION"},  // VARIANCE = VARIANCE_POPULATION
@@ -983,38 +1046,38 @@ std::unordered_map<std::string, std::string> const aliases = {
 
 }  // namespace
 
-std::unique_ptr<Aggregator> Aggregator::fromTypeString(velocypack::Options const* opts,
-                                                       std::string const& type) {
-  // will always return a valid generator function or throw an exception
-  auto generator = Aggregator::factoryFromTypeString(type);
-  TRI_ASSERT(generator != nullptr);
+std::unique_ptr<Aggregator> Aggregator::fromTypeString(
+    velocypack::Options const* opts, std::string_view type) {
+  // will always return a valid factory or throw an exception
+  auto& factory = Aggregator::factoryFromTypeString(type);
 
-  return (*generator)(opts);
+  return factory(opts);
 }
 
-std::unique_ptr<Aggregator> Aggregator::fromVPack(velocypack::Options const* opts,
-                                                  arangodb::velocypack::Slice const& slice,
-                                                  char const* nameAttribute) {
+std::unique_ptr<Aggregator> Aggregator::fromVPack(
+    velocypack::Options const* opts, arangodb::velocypack::Slice slice,
+    std::string_view nameAttribute) {
   VPackSlice variable = slice.get(nameAttribute);
 
   if (variable.isString()) {
-    return fromTypeString(opts, variable.copyString());
+    return fromTypeString(opts, variable.stringView());
   }
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid aggregator type");
 }
 
-Aggregator::Factory Aggregator::factoryFromTypeString(
-    std::string const& type) {
+Aggregator::Factory const& Aggregator::factoryFromTypeString(
+    std::string_view type) {
   auto it = ::aggregators.find(translateAlias(type));
 
   if (it != ::aggregators.end()) {
-    return &((*it).second.generator);
+    return *(it->second.factory);
   }
+
   // aggregator function name should have been validated before
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid aggregator type");
 }
 
-std::string Aggregator::translateAlias(std::string const& name) {
+std::string_view Aggregator::translateAlias(std::string_view name) {
   auto it = ::aliases.find(name);
 
   if (it != ::aliases.end()) {
@@ -1024,7 +1087,7 @@ std::string Aggregator::translateAlias(std::string const& name) {
   return name;
 }
 
-std::string Aggregator::pushToDBServerAs(std::string const& type) {
+std::string_view Aggregator::pushToDBServerAs(std::string_view type) {
   auto it = ::aggregators.find(translateAlias(type));
 
   if (it != ::aggregators.end()) {
@@ -1033,7 +1096,7 @@ std::string Aggregator::pushToDBServerAs(std::string const& type) {
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid aggregator type");
 }
 
-std::string Aggregator::runOnCoordinatorAs(std::string const& type) {
+std::string_view Aggregator::runOnCoordinatorAs(std::string_view type) {
   auto it = ::aggregators.find(translateAlias(type));
 
   if (it != ::aggregators.end()) {
@@ -1042,7 +1105,7 @@ std::string Aggregator::runOnCoordinatorAs(std::string const& type) {
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid aggregator type");
 }
 
-bool Aggregator::isValid(std::string const& type) {
+bool Aggregator::isValid(std::string_view type) {
   auto it = ::aggregators.find(translateAlias(type));
 
   if (it == ::aggregators.end()) {
@@ -1052,7 +1115,7 @@ bool Aggregator::isValid(std::string const& type) {
   return (*it).second.isOfficialAggregator;
 }
 
-bool Aggregator::requiresInput(std::string const& type) {
+bool Aggregator::requiresInput(std::string_view type) {
   auto it = ::aggregators.find(translateAlias(type));
 
   if (it != ::aggregators.end()) {

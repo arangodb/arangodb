@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,17 +21,18 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_HTTP_SERVER_REST_HANDLER_H
-#define ARANGOD_HTTP_SERVER_REST_HANDLER_H 1
+#pragma once
 
 #include "Basics/Common.h"
-
+#include "Basics/ResultT.h"
 #include "GeneralServer/RequestLane.h"
+#include "Logger/LogContext.h"
 #include "Rest/GeneralResponse.h"
 #include "Statistics/RequestStatistics.h"
 
-#include <Cluster/ResultT.h>
 #include <atomic>
+#include <memory>
+#include <string_view>
 #include <thread>
 
 namespace arangodb {
@@ -43,9 +44,9 @@ class Exception;
 }
 
 namespace futures {
-template <typename T>
+template<typename T>
 class Future;
-template <typename T>
+template<typename T>
 class Try;
 }  // namespace futures
 
@@ -63,16 +64,24 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   RestHandler& operator=(RestHandler const&) = delete;
 
  public:
-  static thread_local RestHandler const* CURRENT_HANDLER;
-
- public:
-  RestHandler(application_features::ApplicationServer&, GeneralRequest*, GeneralResponse*);
+  RestHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
   virtual ~RestHandler();
 
- public:
   void assignHandlerId();
   uint64_t handlerId() const { return _handlerId; }
   uint64_t messageId() const;
+
+  /// @brief called when the handler is queued for execution in the scheduler
+  void trackQueueStart() noexcept;
+
+  /// @brief called when the handler is dequeued in the scheduler
+  void trackQueueEnd() noexcept;
+
+  /// @brief called when the handler execution is started
+  void trackTaskStart() noexcept;
+
+  /// @brief called when the handler execution is finalized
+  void trackTaskEnd() noexcept;
 
   GeneralRequest const* request() const { return _request.get(); }
   GeneralResponse* response() const { return _response.get(); }
@@ -80,7 +89,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
     return std::move(_response);
   }
 
-  application_features::ApplicationServer& server() { return _server; };
+  ArangodServer& server() { return _server; }
 
   RequestStatistics::Item const& statistics() { return _statistics; }
   RequestStatistics::Item&& stealStatistics();
@@ -109,23 +118,14 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   // what lane to use for this request
   virtual RequestLane lane() const = 0;
 
-  RequestLane getRequestLane() {
-    bool found;
-    _request->header(StaticStrings::XArangoFrontend, found);
+  RequestLane determineRequestLane();
 
-    if (found) {
-      return RequestLane::CLIENT_UI;
-    }
-
-    return lane();
-  }
-
-  virtual void prepareExecute(bool isContinue) {}
+  virtual void prepareExecute(bool isContinue);
   virtual RestStatus execute() = 0;
   virtual RestStatus continueExecute() { return RestStatus::DONE; }
-  virtual void shutdownExecute(bool isFinalized) noexcept {}
+  virtual void shutdownExecute(bool isFinalized) noexcept;
 
-  // you might need to implment this in you handler
+  // you might need to implment this in your handler
   // if it will be executed in an async job
   virtual void cancel() { _canceled.store(true); }
 
@@ -147,29 +147,34 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
 
   void resetResponse(rest::ResponseCode);
 
-  void generateError(rest::ResponseCode, int, std::string const&);
+  void generateError(rest::ResponseCode code, ErrorCode errorNumber,
+                     std::string_view errorMessage);
 
   // generates an error
-  void generateError(rest::ResponseCode, int);
+  void generateError(rest::ResponseCode code, ErrorCode errorNumber);
 
   // generates an error
   void generateError(arangodb::Result const&);
 
-  template <typename T>
+  template<typename T>
   RestStatus waitForFuture(futures::Future<T>&& f) {
     if (f.isReady()) {             // fast-path out
       f.result().throwIfFailed();  // just throw the error upwards
       return RestStatus::DONE;
     }
     bool done = false;
-    std::move(f).thenFinal([self = shared_from_this(), &done](futures::Try<T>) -> void {
+    std::move(f).thenFinal(withLogContext([self = shared_from_this(),
+                                           &done](futures::Try<T>&& t) -> void {
       auto thisPtr = self.get();
+      if (t.hasException()) {
+        thisPtr->handleExceptionPtr(std::move(t).exception());
+      }
       if (std::this_thread::get_id() == thisPtr->_executionMutexOwner.load()) {
         done = true;
       } else {
         thisPtr->wakeupHandler();
       }
-    });
+    }));
     return done ? RestStatus::DONE : RestStatus::WAITING;
   }
 
@@ -198,9 +203,17 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   void compressResponse();
 
  protected:
+  // This alias allows the RestHandler and derived classes to add values to the
+  // LogContext. The intention behind RestHandler being a friend of
+  // LogContext::Accessor and defining this alias as protected is to restrict
+  // usage of ScopedValues to RestHandlers only in order to prevent ScopedValues
+  // to be created in some inner function where they might cause significant
+  // performance overhead.
+  using ScopedValue = LogContext::Accessor::ScopedValue;
+
   std::unique_ptr<GeneralRequest> _request;
   std::unique_ptr<GeneralResponse> _response;
-  application_features::ApplicationServer& _server;
+  ArangodServer& _server;
   RequestStatistics::Item _statistics;
 
  private:
@@ -213,6 +226,15 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   std::atomic<std::thread::id> _executionMutexOwner;
 
   HandlerState _state;
+  // whether or not we have tracked this task as ongoing.
+  // can only be true during handler execution, and only for
+  // low priority tasks
+  bool _trackedAsOngoingLowPrio;
+
+  RequestLane _lane;
+
+  std::shared_ptr<LogContext::Values> _logContextScopeValues;
+  LogContext::EntryPtr _logContextEntry;
 
  protected:
   std::atomic<bool> _canceled;
@@ -220,5 +242,3 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
 
 }  // namespace rest
 }  // namespace arangodb
-
-#endif

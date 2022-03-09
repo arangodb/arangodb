@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,15 +26,16 @@
 #include <cmath>
 #include <cstdint>
 #include <limits>
-#include <list>
 #include <thread>
 
 #include "Cache/Cache.h"
 
-#include "Basics/SharedPRNG.h"
+#include "RestServer/SharedPRNGFeature.h"
 #include "Basics/SpinLocker.h"
 #include "Basics/SpinUnlocker.h"
+#include "Basics/cpu-relax.h"
 #include "Basics/fasthash.h"
+#include "Basics/voc-errors.h"
 #include "Cache/CachedValue.h"
 #include "Cache/Common.h"
 #include "Cache/Manager.h"
@@ -47,46 +48,42 @@ namespace arangodb::cache {
 using SpinLocker = ::arangodb::basics::SpinLocker;
 using SpinUnlocker = ::arangodb::basics::SpinUnlocker;
 
-const std::uint64_t Cache::minSize = 16384;
-const std::uint64_t Cache::minLogSize = 14;
-
-std::uint64_t Cache::_findStatsCapacity = 16384;
-
-Cache::Cache(ConstructionGuard guard, Manager* manager, std::uint64_t id,
-             Metadata&& metadata, std::shared_ptr<Table> table, bool enableWindowedStats,
+Cache::Cache(Manager* manager, std::uint64_t id, Metadata&& metadata,
+             std::shared_ptr<Table> table, bool enableWindowedStats,
              std::function<Table::BucketClearer(Metadata*)> bucketClearer,
              std::size_t slotsPerBucket)
     : _taskLock(),
       _shutdown(false),
       _enableWindowedStats(enableWindowedStats),
-      _findStats(nullptr),
       _findHits(),
       _findMisses(),
       _manager(manager),
       _id(id),
       _metadata(std::move(metadata)),
-      _tableShrdPtr(std::move(table)),
-      _table(_tableShrdPtr.get()),
+      _table(std::move(table)),
       _bucketClearer(bucketClearer(&_metadata)),
       _slotsPerBucket(slotsPerBucket),
       _insertsTotal(),
       _insertEvictions(),
-      _migrateRequestTime(std::chrono::steady_clock::now().time_since_epoch().count()),
-      _resizeRequestTime(std::chrono::steady_clock::now().time_since_epoch().count()) {
-  _tableShrdPtr->setTypeSpecifics(_bucketClearer, _slotsPerBucket);
-  _tableShrdPtr->enable();
+      _migrateRequestTime(
+          std::chrono::steady_clock::now().time_since_epoch().count()),
+      _resizeRequestTime(
+          std::chrono::steady_clock::now().time_since_epoch().count()) {
+  TRI_ASSERT(_table != nullptr);
+  _table->setTypeSpecifics(_bucketClearer, _slotsPerBucket);
+  _table->enable();
   if (_enableWindowedStats) {
     try {
-      _findStats.reset(new StatBuffer(_findStatsCapacity));
+      _findStats = std::make_unique<StatBuffer>(manager->sharedPRNG(),
+                                                findStatsCapacity);
     } catch (std::bad_alloc const&) {
-      _findStats.reset(nullptr);
       _enableWindowedStats = false;
     }
   }
 }
 
 std::uint64_t Cache::size() const {
-  if (isShutdown()) {
+  if (ADB_UNLIKELY(isShutdown())) {
     return 0;
   }
 
@@ -95,7 +92,7 @@ std::uint64_t Cache::size() const {
 }
 
 std::uint64_t Cache::usageLimit() const {
-  if (isShutdown()) {
+  if (ADB_UNLIKELY(isShutdown())) {
     return 0;
   }
 
@@ -104,7 +101,7 @@ std::uint64_t Cache::usageLimit() const {
 }
 
 std::uint64_t Cache::usage() const {
-  if (isShutdown()) {
+  if (ADB_UNLIKELY(isShutdown())) {
     return false;
   }
 
@@ -113,7 +110,7 @@ std::uint64_t Cache::usage() const {
 }
 
 void Cache::sizeHint(uint64_t numElements) {
-  if (isShutdown()) {
+  if (ADB_UNLIKELY(isShutdown())) {
     return;
   }
 
@@ -121,7 +118,8 @@ void Cache::sizeHint(uint64_t numElements) {
       static_cast<double>(numElements) /
       (static_cast<double>(_slotsPerBucket) * Table::idealUpperRatio));
   std::uint32_t requestedLogSize = 0;
-  for (; (static_cast<std::uint64_t>(1) << requestedLogSize) < numBuckets; requestedLogSize++) {
+  for (; (static_cast<std::uint64_t>(1) << requestedLogSize) < numBuckets;
+       requestedLogSize++) {
   }
   requestMigrate(requestedLogSize);
 }
@@ -163,8 +161,8 @@ std::pair<double, double> Cache::hitRates() {
   return std::pair<double, double>(lifetimeRate, windowedRate);
 }
 
-bool Cache::isResizing() {
-  if (isShutdown()) {
+bool Cache::isResizing() const noexcept {
+  if (ADB_UNLIKELY(isShutdown())) {
     return false;
   }
 
@@ -172,8 +170,8 @@ bool Cache::isResizing() {
   return _metadata.isResizing();
 }
 
-bool Cache::isMigrating() {
-  if (isShutdown()) {
+bool Cache::isMigrating() const noexcept {
+  if (ADB_UNLIKELY(isShutdown())) {
     return false;
   }
 
@@ -181,13 +179,35 @@ bool Cache::isMigrating() {
   return _metadata.isMigrating();
 }
 
-bool Cache::isBusy() {
-  if (isShutdown()) {
+bool Cache::isBusy() const noexcept {
+  if (ADB_UNLIKELY(isShutdown())) {
     return false;
   }
 
   SpinLocker metaGuard(SpinLocker::Mode::Read, _metadata.lock());
   return _metadata.isResizing() || _metadata.isMigrating();
+}
+
+Cache::Inserter::Inserter(Cache& cache, void const* key, std::size_t keySize,
+                          void const* value, std::size_t valueSize,
+                          std::function<bool(Result const&)> const& retry) {
+  std::unique_ptr<CachedValue> cv{
+      CachedValue::construct(key, keySize, value, valueSize)};
+  if (ADB_LIKELY(cv)) {
+    do {
+      status = cache.insert(cv.get());
+      if (status.ok()) {
+        cv.release();
+        break;
+      }
+      if (!retry(status)) {
+        break;
+      }
+      basics::cpu_relax();
+    } while (true);
+  } else {
+    status.reset(TRI_ERROR_OUT_OF_MEMORY);
+  }
 }
 
 void Cache::destroy(std::shared_ptr<Cache> const& cache) {
@@ -198,8 +218,9 @@ void Cache::destroy(std::shared_ptr<Cache> const& cache) {
 
 void Cache::requestGrow() {
   // fail fast if inside banned window
-  if (isShutdown() || std::chrono::steady_clock::now().time_since_epoch().count() <=
-                          _resizeRequestTime.load()) {
+  if (isShutdown() ||
+      std::chrono::steady_clock::now().time_since_epoch().count() <=
+          _resizeRequestTime.load()) {
     return;
   }
 
@@ -223,15 +244,16 @@ void Cache::requestGrow() {
 
 void Cache::requestMigrate(std::uint32_t requestedLogSize) {
   // fail fast if inside banned window
-  if (isShutdown() || std::chrono::steady_clock::now().time_since_epoch().count() <=
-                          _migrateRequestTime.load()) {
+  if (isShutdown() ||
+      std::chrono::steady_clock::now().time_since_epoch().count() <=
+          _migrateRequestTime.load()) {
     return;
   }
 
   SpinLocker taskGuard(SpinLocker::Mode::Write, _taskLock);
   if (std::chrono::steady_clock::now().time_since_epoch().count() >
       _migrateRequestTime.load()) {
-    cache::Table* table = _table.load(std::memory_order_relaxed);
+    std::shared_ptr<cache::Table> table = this->table();
     TRI_ASSERT(table != nullptr);
 
     bool ok = false;
@@ -246,7 +268,7 @@ void Cache::requestMigrate(std::uint32_t requestedLogSize) {
   }
 }
 
-void Cache::freeValue(CachedValue* value) {
+void Cache::freeValue(CachedValue* value) noexcept {
   while (!value->isFreeable()) {
     std::this_thread::yield();
   }
@@ -260,12 +282,14 @@ bool Cache::reclaimMemory(std::uint64_t size) {
   return (_metadata.softUsageLimit >= _metadata.usage);
 }
 
-std::uint32_t Cache::hashKey(void const* key, std::size_t keySize) const {
-  return (std::max)(static_cast<std::uint32_t>(1), fasthash32(key, keySize, 0xdeadbeefUL));
+std::uint32_t Cache::hashKey(void const* key,
+                             std::size_t keySize) const noexcept {
+  return (std::max)(static_cast<std::uint32_t>(1),
+                    fasthash32(key, keySize, 0xdeadbeefUL));
 }
 
 void Cache::recordStat(Stat stat) {
-  if ((basics::SharedPRNG::rand() & static_cast<unsigned long>(7)) != 0) {
+  if ((_manager->sharedPRNG().rand() & static_cast<unsigned long>(7)) != 0) {
     return;
   }
 
@@ -286,7 +310,9 @@ void Cache::recordStat(Stat stat) {
       _manager->reportHitStat(Stat::findMiss);
       break;
     }
-    default: { break; }
+    default: {
+      break;
+    }
   }
 }
 
@@ -296,13 +322,14 @@ bool Cache::reportInsert(bool hadEviction) {
     _insertEvictions.add(1, std::memory_order_relaxed);
   }
   _insertsTotal.add(1, std::memory_order_relaxed);
-  if ((basics::SharedPRNG::rand() & _evictionMask) == 0) {
+  if ((_manager->sharedPRNG().rand() & _evictionMask) == 0) {
     std::uint64_t total = _insertsTotal.value(std::memory_order_relaxed);
     std::uint64_t evictions = _insertEvictions.value(std::memory_order_relaxed);
     if (total > 0 && total > evictions &&
-        ((static_cast<double>(evictions) / static_cast<double>(total)) > _evictionRateThreshold)) {
+        ((static_cast<double>(evictions) / static_cast<double>(total)) >
+         _evictionRateThreshold)) {
       shouldMigrate = true;
-      cache::Table* table = _table.load(std::memory_order_relaxed);
+      std::shared_ptr<cache::Table> table = this->table();
       TRI_ASSERT(table != nullptr);
       table->signalEvictions();
     }
@@ -316,7 +343,7 @@ bool Cache::reportInsert(bool hadEviction) {
 Metadata& Cache::metadata() { return _metadata; }
 
 std::shared_ptr<Table> Cache::table() const {
-  return std::atomic_load(&_tableShrdPtr);
+  return std::atomic_load_explicit(&_table, std::memory_order_acquire);
 }
 
 void Cache::shutdown() {
@@ -337,28 +364,30 @@ void Cache::shutdown() {
       std::this_thread::sleep_for(std::chrono::microseconds(10));
     }
 
-    cache::Table* table = _table.load(std::memory_order_relaxed);
+    std::shared_ptr<cache::Table> table = this->table();
     if (table != nullptr) {
-      std::shared_ptr<Table> extra = table->setAuxiliary(std::shared_ptr<Table>(nullptr));
+      std::shared_ptr<Table> extra =
+          table->setAuxiliary(std::shared_ptr<Table>());
       if (extra) {
         extra->clear();
-        _manager->reclaimTable(extra);
+        _manager->reclaimTable(extra, false);
       }
       table->clear();
+      _manager->reclaimTable(table, false);
     }
 
-    _manager->reclaimTable(std::atomic_load(&_tableShrdPtr));
     {
       SpinLocker metaGuard(SpinLocker::Mode::Write, _metadata.lock());
       _metadata.changeTable(0);
     }
     _manager->unregisterCache(_id);
-    _table.store(nullptr, std::memory_order_relaxed);
+    std::atomic_store_explicit(&_table, std::shared_ptr<cache::Table>(),
+                               std::memory_order_release);
   }
 }
 
 bool Cache::canResize() {
-  if (isShutdown()) {
+  if (ADB_UNLIKELY(isShutdown())) {
     return false;
   }
 
@@ -367,7 +396,7 @@ bool Cache::canResize() {
 }
 
 bool Cache::canMigrate() {
-  if (isShutdown()) {
+  if (ADB_UNLIKELY(isShutdown())) {
     return false;
   }
 
@@ -375,8 +404,20 @@ bool Cache::canMigrate() {
   return !_metadata.isMigrating();
 }
 
+/// TODO Improve freeing algorithm
+/// Currently we pick a bucket at random, free something if possible, then
+/// repeat. In a table with a low fill ratio, this will inevitably waste a lot
+/// of time visiting empty buckets. If we get unlucky, we can go an arbitrarily
+/// long time without fixing anything. We may wish to make the walk a bit more
+/// like visiting the buckets in the order of a fixed random permutation. This
+/// should be achievable by picking a random start bucket S, and a suitably
+/// large number P co-prime to the size of the table N to use as a constant
+/// offset for each subsequent step. (The sequence of numbers S, ((S + P) % N)),
+/// ((S + 2P) % N)... (S + (N-1)P) % N should form a permuation of [1, N].
+/// That way we still visit the buckets in a sufficiently random order, but we
+/// are guaranteed to make progress in a finite amount of time.
 bool Cache::freeMemory() {
-  if (isShutdown()) {
+  if (ADB_UNLIKELY(isShutdown())) {
     return false;
   }
 
@@ -407,35 +448,37 @@ bool Cache::freeMemory() {
 }
 
 bool Cache::migrate(std::shared_ptr<Table> newTable) {
-  if (isShutdown()) {
+  if (ADB_UNLIKELY(isShutdown())) {
     return false;
   }
 
   newTable->setTypeSpecifics(_bucketClearer, _slotsPerBucket);
   newTable->enable();
 
-  cache::Table* table = _table.load(std::memory_order_relaxed);
+  std::shared_ptr<cache::Table> table = this->table();
   TRI_ASSERT(table != nullptr);
   table->setAuxiliary(newTable);
 
   // do the actual migration
-  for (std::uint32_t i = 0; i < table->size(); i++) {
-    migrateBucket(table->primaryBucket(i), table->auxiliaryBuckets(i), newTable);
+  for (std::uint64_t i = 0; i < table->size();
+       i++) {  // need uint64 for end condition
+    migrateBucket(table->primaryBucket(static_cast<uint32_t>(i)),
+                  table->auxiliaryBuckets(static_cast<uint32_t>(i)), newTable);
   }
 
   // swap tables
   std::shared_ptr<Table> oldTable;
   {
     SpinLocker taskGuard(SpinLocker::Mode::Write, _taskLock);
-    _table.store(newTable.get(), std::memory_order_relaxed);
-    oldTable = std::atomic_exchange(&_tableShrdPtr, newTable);
-    std::shared_ptr<Table> confirm =
-        oldTable->setAuxiliary(std::shared_ptr<Table>(nullptr));
+    oldTable = this->table();
+    std::atomic_store_explicit(&_table, newTable, std::memory_order_release);
+    oldTable->setAuxiliary(std::shared_ptr<Table>());
   }
 
   // clear out old table and release it
+  TRI_ASSERT(oldTable != nullptr);
   oldTable->clear();
-  _manager->reclaimTable(oldTable);
+  _manager->reclaimTable(oldTable, false);
 
   // unmarking migrating flag
   {

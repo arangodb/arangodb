@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,8 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
-#ifndef ARANGODB_REST_COMMON_DEFINES_H
-#define ARANGODB_REST_COMMON_DEFINES_H 1
 
 #include <ostream>
 #include <string>
@@ -64,7 +62,8 @@ inline const char* requestToString(RequestType requestType) {
   }
 }
 
-inline std::ostream& operator<<(std::ostream& ostream, RequestType requestType) {
+inline std::ostream& operator<<(std::ostream& ostream,
+                                RequestType requestType) {
   return ostream << std::string(requestToString(requestType));
 }
 
@@ -81,12 +80,9 @@ enum class ContentType {
 std::string contentTypeToString(ContentType type);
 ContentType stringToContentType(std::string const& input, ContentType def);
 
-enum class EncodingType {
-  DEFLATE,
-  UNSET
-};
+enum class EncodingType { DEFLATE, UNSET };
 
-enum class AuthenticationMethod { BASIC, JWT, NONE };
+enum class AuthenticationMethod : uint8_t { BASIC = 1, JWT = 2, NONE = 0 };
 
 enum class ResponseCode {
   CONTINUE = 100,
@@ -126,6 +122,7 @@ enum class ResponseCode {
   REQUESTED_RANGE_NOT_SATISFIABLE = 416,
   EXPECTATION_FAILED = 417,
   I_AM_A_TEAPOT = 418,
+  MISDIRECTED_REQUEST = 421,
   UNPROCESSABLE_ENTITY = 422,
   LOCKED = 423,
   PRECONDITION_REQUIRED = 428,
@@ -137,6 +134,7 @@ enum class ResponseCode {
   NOT_IMPLEMENTED = 501,
   BAD_GATEWAY = 502,
   SERVICE_UNAVAILABLE = 503,
+  GATEWAY_TIMEOUT = 504,
   HTTP_VERSION_NOT_SUPPORTED = 505,
   BANDWIDTH_LIMIT_EXCEEDED = 509,
   NOT_EXTENDED = 510
@@ -212,6 +210,8 @@ inline const char* responseToString(ResponseCode responseCode) {
       return "417 EXPECTATION_FAILED";
     case ResponseCode::I_AM_A_TEAPOT:
       return "418 I_AM_A_TEAPOT";
+    case ResponseCode::MISDIRECTED_REQUEST:
+      return "421_MISDIRECTED_REQUEST";
     case ResponseCode::UNPROCESSABLE_ENTITY:
       return "422 UNPROCESSABLE_ENTITY";
     case ResponseCode::LOCKED:
@@ -232,20 +232,21 @@ inline const char* responseToString(ResponseCode responseCode) {
       return "502 BAD_GATEWAY";
     case ResponseCode::SERVICE_UNAVAILABLE:
       return "503 SERVICE_UNAVAILABLE";
+    case ResponseCode::GATEWAY_TIMEOUT:
+      return "504 GATEWAY_TIMEOUT";
     case ResponseCode::HTTP_VERSION_NOT_SUPPORTED:
       return "505 HTTP_VERSION_NOT_SUPPORTED";
     case ResponseCode::BANDWIDTH_LIMIT_EXCEEDED:
       return "509 BANDWIDTH_LIMIT_EXCEEDED";
     case ResponseCode::NOT_EXTENDED:
       return "510 NOT_EXTENDED";
-    default:
-      return "??? UNEXPECTED";
   }
+  return "??? UNEXPECTED";
 }
 
-inline std::ostream& operator<<(std::ostream& ostream, ResponseCode responseCode) {
+inline std::ostream& operator<<(std::ostream& ostream,
+                                ResponseCode responseCode) {
   return ostream << std::string(responseToString(responseCode));
 }
 }  // namespace rest
 }  // namespace arangodb
-#endif

@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -31,6 +32,8 @@
 #include "Aql/RegisterInfos.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
+#include "Basics/Exceptions.h"
+#include "Basics/ResourceUsage.h"
 #include "Logger/LogMacros.h"
 
 #include <utility>
@@ -40,16 +43,25 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-DistinctCollectExecutorInfos::DistinctCollectExecutorInfos(std::pair<RegisterId, RegisterId> groupRegister,
-                                                           velocypack::Options const* opts)
-    : _groupRegister(std::move(groupRegister)), _vpackOptions(opts) {}
+DistinctCollectExecutorInfos::DistinctCollectExecutorInfos(
+    std::pair<RegisterId, RegisterId> groupRegister,
+    velocypack::Options const* opts, arangodb::ResourceMonitor& resourceMonitor)
+    : _groupRegister(std::move(groupRegister)),
+      _vpackOptions(opts),
+      _resourceMonitor(resourceMonitor) {}
 
-std::pair<RegisterId, RegisterId> const& DistinctCollectExecutorInfos::getGroupRegister() const {
+std::pair<RegisterId, RegisterId> const&
+DistinctCollectExecutorInfos::getGroupRegister() const {
   return _groupRegister;
 }
 
 velocypack::Options const* DistinctCollectExecutorInfos::vpackOptions() const {
   return _vpackOptions;
+}
+
+arangodb::ResourceMonitor& DistinctCollectExecutorInfos::getResourceMonitor()
+    const {
+  return _resourceMonitor;
 }
 
 DistinctCollectExecutor::DistinctCollectExecutor(Fetcher&, Infos& infos)
@@ -62,8 +74,9 @@ DistinctCollectExecutor::~DistinctCollectExecutor() { destroyValues(); }
 void DistinctCollectExecutor::initializeCursor() { destroyValues(); }
 
 [[nodiscard]] auto DistinctCollectExecutor::expectedNumberOfRowsNew(
-    AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept -> size_t {
-  if (input.finalState() == ExecutorState::DONE) {
+    AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept
+    -> size_t {
+  if (input.finalState() == MainQueryState::DONE) {
     // Worst case assumption:
     // For every input row we have a new group.
     // We will never produce more then asked for
@@ -74,14 +87,18 @@ void DistinctCollectExecutor::initializeCursor() { destroyValues(); }
 }
 
 void DistinctCollectExecutor::destroyValues() {
+  size_t memoryUsage = 0;
   // destroy all AqlValues captured
   for (auto& value : _seen) {
+    memoryUsage += memoryUsageForGroup(value);
     const_cast<AqlValue*>(&value)->destroy();
   }
   _seen.clear();
+  _infos.getResourceMonitor().decreaseMemoryUsage(memoryUsage);
 }
 
-const DistinctCollectExecutor::Infos& DistinctCollectExecutor::infos() const noexcept {
+const DistinctCollectExecutor::Infos& DistinctCollectExecutor::infos()
+    const noexcept {
   return _infos;
 }
 
@@ -97,31 +114,37 @@ auto DistinctCollectExecutor::produceRows(AqlItemBlockInputRange& inputRange,
 
   INTERNAL_LOG_DC << output.getClientCall();
 
-  AqlValue groupValue;
-
   while (inputRange.hasDataRow()) {
-    INTERNAL_LOG_DC << "output.isFull() = " << std::boolalpha << output.isFull();
+    INTERNAL_LOG_DC << "output.isFull() = " << std::boolalpha
+                    << output.isFull();
 
     if (output.isFull()) {
       INTERNAL_LOG_DC << "output is full";
       break;
     }
 
-    std::tie(state, input) = inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
+    std::tie(state, input) =
+        inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
     INTERNAL_LOG_DC << "inputRange.nextDataRow() = " << state;
     TRI_ASSERT(input.isInitialized());
 
     // for hashing simply re-use the aggregate registers, without cloning
     // their contents
-    groupValue = input.getValue(_infos.getGroupRegister().second);
+    AqlValue groupValue = input.getValue(_infos.getGroupRegister().second);
 
     // now check if we already know this group
-    bool newGroup = _seen.find(groupValue) == _seen.end();
-    if (newGroup) {
+    if (!_seen.contains(groupValue)) {
+      size_t memoryUsage = memoryUsageForGroup(groupValue);
+      arangodb::ResourceUsageScope guard(_infos.getResourceMonitor(),
+                                         memoryUsage);
+
       output.cloneValueInto(_infos.getGroupRegister().first, input, groupValue);
       output.advanceRow();
 
       _seen.emplace(groupValue.clone());
+
+      // now we are responsible for memory tracking
+      guard.steal();
     }
   }
 
@@ -129,7 +152,8 @@ auto DistinctCollectExecutor::produceRows(AqlItemBlockInputRange& inputRange,
   return {inputRange.upstreamState(), {}, {}};
 }
 
-auto DistinctCollectExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call)
+auto DistinctCollectExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
+                                            AqlCall& call)
     -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
   TRI_IF_FAILURE("DistinctCollectExecutor::skipRowsRange") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -138,35 +162,51 @@ auto DistinctCollectExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, 
   InputAqlItemRow input{CreateInvalidInputRowHint{}};
   ExecutorState state = ExecutorState::HASMORE;
 
-  AqlValue groupValue;
   size_t skipped = 0;
 
   INTERNAL_LOG_DC << call;
 
   while (inputRange.hasDataRow()) {
-    INTERNAL_LOG_DC << "call.needSkipMore() = " << std::boolalpha << call.needSkipMore();
+    INTERNAL_LOG_DC << "call.needSkipMore() = " << std::boolalpha
+                    << call.needSkipMore();
 
     if (!call.needSkipMore()) {
       return {ExecutorState::HASMORE, {}, skipped, {}};
     }
 
-    std::tie(state, input) = inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
+    std::tie(state, input) =
+        inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
     INTERNAL_LOG_DC << "inputRange.nextDataRow() = " << state;
     TRI_ASSERT(input.isInitialized());
 
     // for hashing simply re-use the aggregate registers, without cloning
     // their contents
-    groupValue = input.getValue(_infos.getGroupRegister().second);
+    AqlValue groupValue = input.getValue(_infos.getGroupRegister().second);
 
     // now check if we already know this group
-    bool newGroup = _seen.find(groupValue) == _seen.end();
-    if (newGroup) {
+    if (!_seen.contains(groupValue)) {
       skipped += 1;
       call.didSkip(1);
 
+      size_t memoryUsage = memoryUsageForGroup(groupValue);
+      arangodb::ResourceUsageScope guard(_infos.getResourceMonitor(),
+                                         memoryUsage);
+
       _seen.emplace(groupValue.clone());
+
+      // now we are responsible for memory tracking
+      guard.steal();
     }
   }
 
   return {inputRange.upstreamState(), {}, skipped, {}};
+}
+
+size_t DistinctCollectExecutor::memoryUsageForGroup(
+    AqlValue const& value) const {
+  size_t memoryUsage = 3 * sizeof(void*) + sizeof(AqlValue);
+  if (value.requiresDestruction()) {
+    memoryUsage += value.memoryUsage();
+  }
+  return memoryUsage;
 }

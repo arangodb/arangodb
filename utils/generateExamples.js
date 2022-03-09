@@ -5,7 +5,7 @@
 const _ = require("lodash");
 const fs = require("fs");
 const internal = require("internal");
-const pu = require('@arangodb/process-utils');
+const pu = require('@arangodb/testutils/process-utils');
 const executeExternal = internal.executeExternal;
 const executeExternalAndWait = internal.executeExternalAndWait;
 const download = internal.download;
@@ -136,7 +136,7 @@ function findFreePort() {
 }
 
 function main(argv) {
-  let thePython = 'python';
+  let thePython = 'python3';
   if (fs.exists('build/CMakeCache.txt')) {
     let CMakeCache = fs.readFileSync('build/CMakeCache.txt');
     thePython = CMakeCache.toString().match(/^PYTHON_EXECUTABLE:FILEPATH=(.*)$/m)[1];

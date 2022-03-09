@@ -21,15 +21,6 @@ The name of the collection.
 If *true* then the data is synchronized to disk before returning from a
 document create, update, replace or removal operation. (default: false)
 
-@RESTBODYPARAM{doCompact,boolean,optional,}
-whether or not the collection will be compacted (default is *true*)
-This option is meaningful for the MMFiles storage engine only.
-
-@RESTBODYPARAM{journalSize,integer,optional,int64}
-The maximal size of a journal or datafile in bytes. The value
-must be at least `1048576` (1 MiB). (The default is a configuration parameter)
-This option is meaningful for the MMFiles storage engine only.
-
 @RESTBODYPARAM{isSystem,boolean,optional,}
 If *true*, create a  system collection. In this case *collection-name*
 should start with an underscore. End users should normally create non-system
@@ -37,34 +28,22 @@ collections only. API implementors may be required to create system
 collections in very special occasions, but normally a regular collection will do.
 (The default is *false*)
 
-@RESTBODYPARAM{isVolatile,boolean,optional,}
-If *true* then the collection data is kept in-memory only and not made persistent.
-Unloading the collection will cause the collection data to be discarded. Stopping
-or re-starting the server will also cause full loss of data in the
-collection. Setting this option will make the resulting collection be
-slightly faster than regular collections because ArangoDB does not
-enforce any synchronization to disk and does not calculate any CRC
-checksums for datafiles (as there are no datafiles). This option
-should therefore be used for cache-type collections only, and not
-for data that cannot be re-created otherwise.
-(The default is *false*)
-This option is meaningful for the MMFiles storage engine only.
+@RESTBODYPARAM{schema,object,optional,}
+Optional object that specifies the collection level schema for
+documents. The attribute keys `rule`, `level` and `message` must follow the
+rules documented in [Document Schema Validation](https://www.arangodb.com/docs/stable/document-schema-validation.html)
 
 @RESTBODYPARAM{keyOptions,object,optional,post_api_collection_opts}
 additional options for key generation. If specified, then *keyOptions*
-should be a JSON array containing the following attributes:
-
-@RESTBODYPARAM{schema,object,optional,post_api_collection_opts}
-Optional object that specifies the collection level schema for
-documents. The attribute keys `rule`, `level` and `message` must follow the
-rules documented in [Document Schema Validation](https://www.arangodb.com/docs/devel/document-schema-validation.html)
+should be a JSON object containing the following attributes:
 
 @RESTSTRUCT{type,post_api_collection_opts,string,required,string}
 specifies the type of the key generator. The currently available generators are
 *traditional*, *autoincrement*, *uuid* and *padded*.<br>
-The *traditional* key generator generates numerical keys in ascending order.
+The *traditional* key generator generates numerical keys in ascending order.<br>
 The *autoincrement* key generator generates numerical keys in ascending order,
-the initial offset and the spacing can be configured
+the initial offset and the spacing can be configured (**note**: *autoincrement* is currently only 
+supported for non-sharded collections).<br>
 The *padded* key generator generates keys of a fixed length (16 bytes) in
 ascending lexicographical sort order. This is ideal for usage with the _RocksDB_
 engine, which will slightly benefit keys that are inserted in lexicographically
@@ -91,8 +70,16 @@ Not used for other key generator types.
 @RESTBODYPARAM{type,integer,optional,int64}
 (The default is *2*): the type of the collection to create.
 The following values for *type* are valid:<br>
-- *2*: document collection
-- *3*: edge collection
+ - *2*: document collection
+ - *3*: edge collection
+
+@RESTBODYPARAM{cacheEnabled,boolean,optional,}
+Whether the in-memory hash cache for documents should be enabled for this
+collection (default: *true*). Can be controlled globally with the `--cache.size`
+startup option. The cache can speed up repeated reads of the same documents via
+their document keys. If the same documents are not fetched often or are
+modified frequently, then you may disable the cache to avoid the maintenance
+costs.
 
 @RESTBODYPARAM{numberOfShards,integer,optional,int64}
 (The default is *1*): in a cluster, this value determines the
@@ -113,7 +100,8 @@ and the hash value is used to determine the target shard.
 of each shard are kept on different DB-Servers. The value 1 means that only one
 copy (no synchronous replication) is kept. A value of k means that k-1 replicas
 are kept. It can also be the string `"satellite"` for a SatelliteCollection,
-where the replication factor is matched to the number of DB-Servers.
+where the replication factor is matched to the number of DB-Servers
+(Enterprise Edition only).
 
 Any two copies reside on different DB-Servers. Replication between them is
 synchronous, that is, every write operation to the "leader" copy will be replicated

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,14 +21,11 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_CACHE_PLAIN_CACHE_H
-#define ARANGODB_CACHE_PLAIN_CACHE_H
+#pragma once
 
-#include <atomic>
-#include <chrono>
 #include <cstdint>
-#include <list>
 
+#include "Basics/ErrorCode.h"
 #include "Cache/Cache.h"
 #include "Cache/CachedValue.h"
 #include "Cache/Common.h"
@@ -40,8 +37,7 @@
 #include "Cache/PlainBucket.h"
 #include "Cache/Table.h"
 
-namespace arangodb {
-namespace cache {
+namespace arangodb::cache {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief A simple, LRU-ish cache.
@@ -53,14 +49,14 @@ namespace cache {
 class PlainCache final : public Cache {
  public:
   PlainCache(Cache::ConstructionGuard guard, Manager* manager, std::uint64_t id,
-             Metadata&& metadata, std::shared_ptr<Table> table, bool enableWindowedStats);
+             Metadata&& metadata, std::shared_ptr<Table> table,
+             bool enableWindowedStats);
   ~PlainCache();
 
   PlainCache() = delete;
   PlainCache(PlainCache const&) = delete;
   PlainCache& operator=(PlainCache const&) = delete;
 
- public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Looks up the given key.
   ///
@@ -93,7 +89,7 @@ class PlainCache final : public Cache {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Does nothing; convenience method inheritance compliance
   //////////////////////////////////////////////////////////////////////////////
-  Result blacklist(void const* key, std::uint32_t keySize) override;
+  Result banish(void const* key, std::uint32_t keySize) override;
 
  private:
   // friend class manager and tasks
@@ -101,25 +97,29 @@ class PlainCache final : public Cache {
   friend class Manager;
   friend class MigrateTask;
 
- private:
-  static uint64_t allocationSize(bool enableWindowedStats);
+  static constexpr uint64_t allocationSize(bool enableWindowedStats) {
+    return sizeof(PlainCache) +
+           (enableWindowedStats
+                ? (sizeof(StatBuffer) +
+                   StatBuffer::allocationSize(findStatsCapacity))
+                : 0);
+  }
+
   static std::shared_ptr<Cache> create(Manager* manager, std::uint64_t id,
-                                       Metadata&& metadata, std::shared_ptr<Table> table,
+                                       Metadata&& metadata,
+                                       std::shared_ptr<Table> table,
                                        bool enableWindowedStats);
 
   virtual uint64_t freeMemoryFrom(std::uint32_t hash) override;
-  virtual void migrateBucket(void* sourcePtr, std::unique_ptr<Table::Subtable> targets,
+  virtual void migrateBucket(void* sourcePtr,
+                             std::unique_ptr<Table::Subtable> targets,
                              std::shared_ptr<Table> newTable) override;
 
   // helpers
-  std::pair<Result, Table::BucketLocker> getBucket(std::uint32_t hash, std::uint64_t maxTries,
-                                                   bool singleOperation = true);
-  uint32_t getIndex(std::uint32_t hash, bool useAuxiliary) const;
+  std::pair<::ErrorCode, Table::BucketLocker> getBucket(
+      std::uint32_t hash, std::uint64_t maxTries, bool singleOperation = true);
 
   static Table::BucketClearer bucketClearer(Metadata* metadata);
 };
 
-};  // end namespace cache
-};  // end namespace arangodb
-
-#endif
+}  // end namespace arangodb::cache

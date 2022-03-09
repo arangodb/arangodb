@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PROGRAM_OPTIONS_ARGUMENT_PARSER_H
-#define ARANGODB_PROGRAM_OPTIONS_ARGUMENT_PARSER_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -164,5 +164,3 @@ class ArgumentParser {
 };
 }  // namespace options
 }  // namespace arangodb
-
-#endif

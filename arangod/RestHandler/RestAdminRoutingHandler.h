@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Daniel H. Larkin
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_REST_ADMIN_ROUTING_HANDLER_H
-#define ARANGOD_REST_HANDLER_REST_ADMIN_ROUTING_HANDLER_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
@@ -30,8 +29,7 @@
 namespace arangodb {
 class RestAdminRoutingHandler : public RestVocbaseBaseHandler {
  public:
-  RestAdminRoutingHandler(application_features::ApplicationServer&,
-                          GeneralRequest*, GeneralResponse*);
+  RestAdminRoutingHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
 
  public:
   RestStatus execute() override final;
@@ -42,5 +40,3 @@ class RestAdminRoutingHandler : public RestVocbaseBaseHandler {
   void reloadRouting();
 };
 }  // namespace arangodb
-
-#endif

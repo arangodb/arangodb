@@ -33,8 +33,8 @@ const functionsDocumentation = {
 const optionsDocumentation = [
 ];
 
-const pu = require('@arangodb/process-utils');
-const tu = require('@arangodb/test-utils');
+const pu = require('@arangodb/testutils/process-utils');
+const tu = require('@arangodb/testutils/test-utils');
 const yaml = require('js-yaml');
 
 const testPaths = {
@@ -152,6 +152,15 @@ const impTodos = [{
   separator: ',',
   ignoreMissing: true
 }, {
+  id: 'csvconvert',
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-noconvert.csv')),
+  coll: 'UnitTestsImportCsvConvert',
+  type: 'csv',
+  create: 'true',
+  separator: ',',
+  convert: true,
+  backslash: true
+}, {
   id: 'csvnoconvert',
   data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-noconvert.csv')),
   coll: 'UnitTestsImportCsvNoConvert',
@@ -161,6 +170,73 @@ const impTodos = [{
   convert: false,
   backslash: true
 }, {
+  id: 'csvtypesboolean',
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-types.csv')),
+  coll: 'UnitTestsImportCsvTypesBoolean',
+  type: 'csv',
+  create: 'true',
+  separator: ',',
+  convert: false,
+  datatype: "value=boolean",
+}, {
+  id: 'csvtypesnumber',
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-types.csv')),
+  coll: 'UnitTestsImportCsvTypesNumber',
+  type: 'csv',
+  create: 'true',
+  separator: ',',
+  convert: false,
+  datatype: "value=number",
+}, {
+  id: 'csvtypesstring',
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-types.csv')),
+  coll: 'UnitTestsImportCsvTypesString',
+  type: 'csv',
+  create: 'true',
+  separator: ',',
+  convert: false,
+  datatype: "value=string",
+}, {
+  id: 'csvtypesprecedence',
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-types.csv')),
+  coll: 'UnitTestsImportCsvTypesPrecedence',
+  type: 'csv',
+  create: 'true',
+  separator: ',',
+  convert: true,
+  datatype: "value=string",
+}, {
+  id: 'csvmergeattributes',
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-merge-attrs.csv')),
+  coll: 'UnitTestsImportCsvMergeAttributes',
+  type: 'csv',
+  create: 'true',
+  separator: ',',
+  convert: true,
+  datatype: "value=string",
+  mergeAttributes: ["Id=[id]", "IdAndValue=[id]:[value]", "ValueAndId=value:[value]/id:[id]", "_key=[id][value]", "newAttr=[_key]"],
+}, {
+  id: 'csvmergeattributesInvalid',
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-merge-attrs.csv')),
+  coll: 'UnitTestsImportCsvMergeAttributesInvalid',
+  type: 'csv',
+  mergeAttributes: ["Id=[]"],
+  expectFailure: true,
+}, {
+  id: 'csvmergeattributesInvalid2',
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-merge-attrs.csv')),
+  coll: 'UnitTestsImportCsvMergeAttributesInvalid2',
+  type: 'csv',
+  mergeAttributes: ["idAndValue=[id[value]"],
+  expectFailure: true,
+}, {
+  id: 'csvmergeattributesInvalid3',
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-merge-attrs.csv')),
+  coll: 'UnitTestsImportCsvMergeAttributesInvalid3',
+  type: 'csv',
+  mergeAttributes: ["idAndValue=[idAndValue]"],
+  expectFailure: true,
+}, {
   id: 'csvnoeol',
   data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-noeol.csv')),
   coll: 'UnitTestsImportCsvNoEol',
@@ -168,6 +244,20 @@ const impTodos = [{
   create: 'true',
   separator: ',',
   backslash: true
+}, {
+  id: 'csvheaders',
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-data-without-headers.csv')),
+  headers: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-headers.csv')),
+  coll: 'UnitTestsImportCsvHeaders',
+  type: 'csv',
+  create: 'true',
+}, {
+  id: 'csvbrokenheaders',
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-data-without-headers.csv')),
+  headers: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-broken-headers.csv')),
+  coll: 'UnitTestsImportCsvBrokenHeaders',
+  type: 'csv',
+  create: 'true',
 }, {
   id: 'tsv1',
   data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-1.tsv')),
@@ -227,6 +317,66 @@ const impTodos = [{
   create: 'true',
   database: 'UnitTestImportCreateDatabase',
   createDatabase: 'true'
+}, {
+  id: 'importUnicode1',
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-1.json')),
+  coll: 'UnitTestsImportJson1',
+  type: 'json',
+  create: 'true',
+  database: 'maçã',
+}, {
+  id: 'importUnicode2',
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-1.json')),
+  coll: 'UnitTestsImportJson1',
+  type: 'json',
+  create: 'true',
+  database: '😀',
+}, {
+  id: 'createUnicode1',
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-1.json')),
+  coll: 'UnitTestsImportJson1',
+  type: 'json',
+  create: 'true',
+  database: 'ﻚﻠﺑ ﻞﻄﻴﻓ',
+  createDatabase: 'true'
+}, {
+  id: 'createUnicode2',
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-1.json')),
+  coll: 'UnitTestsImportJson1',
+  type: 'json',
+  create: 'true',
+  database: 'abc mötor !" \' & <>',
+  createDatabase: 'true'
+}, {
+  id: 'importDataBatchSizeWithoutHeaderFile',
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-data-with-header.csv')),
+  coll: 'UnitTestsImportDataBatchSizeWithoutHeaderFile',
+  type: 'csv',
+  create: 'true',
+  batchSize: 10,
+}, {
+  id: 'importDataBatchSizeWithoutHeaderFile2',
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-data-with-header.csv')),
+  coll: 'UnitTestsImportDataBatchSizeWithoutHeaderFile2',
+  type: 'csv',
+  create: 'true',
+  batchSize: 1000
+}, {
+  id: 'importDataBatchSizeWithHeaderFile',
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-data-without-headers.csv')),
+  headers: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-headers.csv')),
+  coll: 'UnitTestsImportDataBatchSizeWithHeaderFile',
+  type: 'csv',
+  create: 'true',
+  batchSize: 10,
+}, {
+  id: 'importDataBatchSizeWithHeaderFile2',
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-data-without-headers.csv')),
+  headers: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-headers.csv')),
+  coll: 'UnitTestsImportDataBatchSizeWithHeaderFile2',
+  type: 'csv',
+  create: 'true',
+  batchSize: 1000
 }];
 
 function importing (options) {
@@ -263,6 +413,12 @@ function importing (options) {
 
       result[impTodo.id] = pu.run.arangoImport(options, instanceInfo, impTodo, options.coreCheck);
       result[impTodo.id].failed = 0;
+
+      if (impTodo.expectFailure) {
+        // if status === false, we make true out of it
+        // if status === true, we make false out of it
+        result[impTodo.id].status = !result[impTodo.id].status;
+      }
 
       if (result[impTodo.id].status !== true && !options.force) {
         result[impTodo.id].failed = 1;

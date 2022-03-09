@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+ulimit -H -n 131072 || true
+ulimit -S -n 131072 || true
+
 function help() {
   echo "USAGE: scripts/startStandAloneAgency.sh [options]"
   echo ""
@@ -158,7 +161,7 @@ printf " start-delays: %s," "$START_DELAYS"
 printf " random-delays: %s," "$RANDOM_DELAYS"
 printf " gossip-mode: %s\n" "$GOSSIP_MODE"
 
-if [ ! -d arangod ] || [ ! -d arangosh ] || [ ! -d UnitTests ] ; then
+if [ ! -d arangod ] || [ ! -d client-tools ] || [ ! -d UnitTests ] ; then
   echo Must be started in the main ArangoDB source directory.
   exit 1
 fi
@@ -244,6 +247,7 @@ for aid in "${aaid[@]}"; do
     --log.force-direct false \
     $LOG_LEVEL \
     --log.use-microtime $USE_MICROTIME \
+    --server.descriptors-minimum 0 \
     --server.authentication false \
     --server.endpoint $TRANSPORT://[::]:$port \
     --server.statistics false \

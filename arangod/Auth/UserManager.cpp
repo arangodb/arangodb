@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,6 +26,7 @@
 #include "Agency/AgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
+#include "Aql/QueryOptions.h"
 #include "Aql/QueryString.h"
 #include "Auth/Handler.h"
 #include "Basics/ReadLocker.h"
@@ -52,7 +53,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 namespace {
 
@@ -60,10 +60,11 @@ namespace {
 /// @brief return a pointer to the system database or nullptr on error
 ////////////////////////////////////////////////////////////////////////////////
 arangodb::SystemDatabaseFeature::ptr getSystemDatabase(
-    arangodb::application_features::ApplicationServer& server) {
+    arangodb::ArangodServer& server) {
   if (!server.hasFeature<arangodb::SystemDatabaseFeature>()) {
     LOG_TOPIC("607b8", WARN, arangodb::Logger::AUTHENTICATION)
-        << "failure to find feature '" << arangodb::SystemDatabaseFeature::name()
+        << "failure to find feature '"
+        << arangodb::SystemDatabaseFeature::name()
         << "' while getting the system database";
 
     return nullptr;
@@ -83,16 +84,16 @@ static bool inline IsRole(std::string const& name) {
 }
 
 #ifndef USE_ENTERPRISE
-auth::UserManager::UserManager(application_features::ApplicationServer& server)
+auth::UserManager::UserManager(ArangodServer& server)
     : _server(server), _globalVersion(1), _internalVersion(0) {}
 #else
-auth::UserManager::UserManager(application_features::ApplicationServer& server)
+auth::UserManager::UserManager(ArangodServer& server)
     : _server(server),
       _globalVersion(1),
       _internalVersion(0),
       _authHandler(nullptr) {}
 
-auth::UserManager::UserManager(application_features::ApplicationServer& server,
+auth::UserManager::UserManager(ArangodServer& server,
                                std::unique_ptr<auth::Handler> handler)
     : _server(server),
       _globalVersion(1),
@@ -107,10 +108,10 @@ static auth::UserMap ParseUsers(VPackSlice const& slice) {
   for (VPackSlice const& authSlice : VPackArrayIterator(slice)) {
     VPackSlice s = authSlice.resolveExternal();
 
-    if (s.hasKey("source") && s.get("source").isString() &&
-        s.get("source").copyString() == "LDAP") {
+    if (s.get("source").isString() && s.get("source").stringView() == "LDAP") {
       LOG_TOPIC("18ee8", TRACE, arangodb::Logger::CONFIG)
-          << "LDAP: skip user in collection _users: " << s.get("user").copyString();
+          << "LDAP: skip user in collection _users: "
+          << s.get("user").copyString();
       continue;
     }
 
@@ -118,43 +119,55 @@ static auth::UserMap ParseUsers(VPackSlice const& slice) {
     // otherwise all following update/replace/remove operations on the
     // user will fail
     auth::User user = auth::User::fromDocument(s);
-    result.try_emplace(user.username(), std::move(user));
+    // intentional copy, as we are about to move-away from user
+    std::string username = user.username();
+    result.try_emplace(std::move(username), std::move(user));
   }
   return result;
 }
 
-static std::shared_ptr<VPackBuilder> QueryAllUsers(application_features::ApplicationServer& server) {
+static std::shared_ptr<VPackBuilder> QueryAllUsers(ArangodServer& server) {
+  TRI_IF_FAILURE("QueryAllUsers") {
+    // simulates the case that the _users collection is not yet available
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+  }
+
   auto vocbase = getSystemDatabase(server);
 
   if (vocbase == nullptr) {
     LOG_TOPIC("b8c47", DEBUG, arangodb::Logger::AUTHENTICATION)
         << "system database is unknown";
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "system database is unknown");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "system database is unknown");
   }
 
   // we cannot set this execution context, otherwise the transaction
   // will ask us again for permissions and we get a deadlock
   ExecContextSuperuserScope scope;
   std::string const queryStr("FOR user IN _users RETURN user");
-  auto emptyBuilder = std::make_shared<VPackBuilder>();
-  arangodb::aql::Query query(transaction::StandaloneContext::Create(*vocbase),
-                             arangodb::aql::QueryString(queryStr),
-                             emptyBuilder, emptyBuilder);
+  auto query = arangodb::aql::Query::create(
+      transaction::StandaloneContext::Create(*vocbase),
+      arangodb::aql::QueryString(queryStr), nullptr);
 
-  query.queryOptions().cache = false;
+  query->queryOptions().cache = false;
+  query->queryOptions().ttl = 30;
+  query->queryOptions().maxRuntime = 30;
+  query->queryOptions().skipAudit = true;
 
   LOG_TOPIC("f3eec", DEBUG, arangodb::Logger::AUTHENTICATION)
       << "starting to load authentication and authorization information";
 
-  aql::QueryResult queryResult = query.executeSync();
+  aql::QueryResult queryResult = query->executeSync();
 
   if (queryResult.result.fail()) {
     if (queryResult.result.is(TRI_ERROR_REQUEST_CANCELED) ||
         (queryResult.result.is(TRI_ERROR_QUERY_KILLED))) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_REQUEST_CANCELED);
     }
-    THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.result.errorNumber(),
-                                   "Error executing user query: " + queryResult.result.errorMessage());
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        queryResult.result.errorNumber(),
+        StringUtils::concatT("Error executing user query: ",
+                             queryResult.result.errorMessage()));
   }
 
   VPackSlice usersSlice = queryResult.data->slice();
@@ -180,7 +193,8 @@ static void ConvertLegacyFormat(VPackSlice doc, VPackBuilder& result) {
     result.add("user", doc.get("user"));
     result.add("active", authDataSlice.get("active"));
     VPackSlice extra = doc.get("userData");
-    result.add("extra", extra.isNone() ? VPackSlice::emptyObjectSlice() : extra);
+    result.add("extra",
+               extra.isNone() ? VPackSlice::emptyObjectSlice() : extra);
   }
 }
 
@@ -196,6 +210,13 @@ void auth::UserManager::loadFromDB() {
   uint64_t tmp = globalVersion();
   if (_internalVersion.load(std::memory_order_acquire) == tmp) {
     return;
+  }
+
+  TRI_IF_FAILURE("UserManager::performDBLookup") {
+    // Used in GTest. It is used to identify
+    // if the UserManager would have updated it's
+    // cache in a specific situation.
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
   try {
@@ -224,14 +245,15 @@ void auth::UserManager::loadFromDB() {
       _internalVersion.store(tmp);
     }
   } catch (basics::Exception const& ex) {
-    if (ex.code() != TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND ||
-        (_server.hasFeature<BootstrapFeature>() &&
-         _server.getFeature<BootstrapFeature>().isReady())) {
-      LOG_TOPIC("aa45c", WARN, Logger::AUTHENTICATION)
-          << "Exception when loading users from db: " << ex.what();
+    if (ex.code() == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND &&
+        _server.hasFeature<BootstrapFeature>() &&
+        !_server.getFeature<BootstrapFeature>().isReady()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_STARTING_UP,
+                                     "Cannot load users because the _users "
+                                     "collection is not yet available");
     }
-    // suppress log messgage if we get here during the normal course of an
-    // agency callback during bootstrapping and carry on
+    LOG_TOPIC("aa45c", WARN, Logger::AUTHENTICATION)
+        << "Exception when loading users from db: " << ex.what();
   } catch (std::exception const& ex) {
     LOG_TOPIC("b7342", WARN, Logger::AUTHENTICATION)
         << "Exception when loading users from db: " << ex.what();
@@ -243,7 +265,8 @@ void auth::UserManager::loadFromDB() {
 
 // private, must be called with _userCacheLock in write mode
 // this method can only be called by users with access to the _system collection
-Result auth::UserManager::storeUserInternal(auth::User const& entry, bool replace) {
+Result auth::UserManager::storeUserInternal(auth::User const& entry,
+                                            bool replace) {
   if (entry.source() != auth::Source::Local) {
     return Result(TRI_ERROR_USER_EXTERNAL);
   }
@@ -270,7 +293,8 @@ Result auth::UserManager::storeUserInternal(auth::User const& entry, bool replac
   // will ask us again for permissions and we get a deadlock
   ExecContextSuperuserScope scope;
   auto ctx = transaction::StandaloneContext::Create(*vocbase);
-  SingleCollectionTransaction trx(ctx, TRI_COL_NAME_USERS, AccessMode::Type::WRITE);
+  SingleCollectionTransaction trx(ctx, StaticStrings::UsersCollection,
+                                  AccessMode::Type::WRITE);
 
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
@@ -284,8 +308,9 @@ Result auth::UserManager::storeUserInternal(auth::User const& entry, bool replac
     opts.mergeObjects = false;
 
     OperationResult opres =
-        replace ? trx.replace(TRI_COL_NAME_USERS, data.slice(), opts)
-                : trx.insert(TRI_COL_NAME_USERS, data.slice(), opts);
+        replace
+            ? trx.replace(StaticStrings::UsersCollection, data.slice(), opts)
+            : trx.insert(StaticStrings::UsersCollection, data.slice(), opts);
 
     res = trx.finish(opres.result);
 
@@ -297,22 +322,25 @@ Result auth::UserManager::storeUserInternal(auth::User const& entry, bool replac
 
       // parse user including document _key
       auth::User created = auth::User::fromDocument(userDoc);
-      TRI_ASSERT(!created.key().empty() && created.rev() != 0);
+      TRI_ASSERT(!created.key().empty() && created.rev().isSet());
       TRI_ASSERT(created.username() == entry.username());
       TRI_ASSERT(created.isActive() == entry.isActive());
       TRI_ASSERT(created.passwordHash() == entry.passwordHash());
       TRI_ASSERT(!replace || created.key() == entry.key());
 
-      if (!_userCache.try_emplace(entry.username(), std::move(created)).second) {
+      if (!_userCache.try_emplace(entry.username(), std::move(created))
+               .second) {
         // insertion should always succeed, but...
         _userCache.erase(entry.username());
-        _userCache.try_emplace(entry.username(), auth::User::fromDocument(userDoc));
+        _userCache.try_emplace(entry.username(),
+                               auth::User::fromDocument(userDoc));
       }
 #ifdef USE_ENTERPRISE
       if (IsRole(entry.username())) {
         for (UserMap::value_type& pair : _userCache) {
           if (pair.second.source() != auth::Source::Local &&
-              pair.second.roles().find(entry.username()) != pair.second.roles().end()) {
+              pair.second.roles().find(entry.username()) !=
+                  pair.second.roles().end()) {
             pair.second._dbAccess.clear();
             applyRoles(pair.second);
           }
@@ -323,7 +351,7 @@ Result auth::UserManager::storeUserInternal(auth::User const& entry, bool replac
       // user was outdated, we should trigger a reload
       triggerLocalReload();
       LOG_TOPIC("cf922", DEBUG, Logger::AUTHENTICATION)
-      << "Cannot update user : '" << res.errorMessage() << "'";
+          << "Cannot update user : '" << res.errorMessage() << "'";
     }
   }
   return res;
@@ -341,11 +369,12 @@ void auth::UserManager::createRootUser() {
   WRITE_LOCKER(writeGuard, _userCacheLock);  // must be second
   UserMap::iterator const& it = _userCache.find("root");
   if (it != _userCache.end()) {
-    LOG_TOPIC("bbc97", TRACE, Logger::AUTHENTICATION) << "\"root\" already exists";
+    LOG_TOPIC("bbc97", TRACE, Logger::AUTHENTICATION)
+        << "\"root\" already exists";
     return;
   }
   TRI_ASSERT(_userCache.empty());
-  LOG_TOPIC("857d7", INFO, Logger::AUTHENTICATION) << "Creating user \"root\"";
+  LOG_TOPIC("857d7", DEBUG, Logger::AUTHENTICATION) << "Creating user \"root\"";
 
   try {
     // Attention:
@@ -353,8 +382,8 @@ void auth::UserManager::createRootUser() {
     // to the "_system" database, otherwise things break
     auto& initDatabaseFeature = _server.getFeature<InitDatabaseFeature>();
 
-    auth::User user = auth::User::newUser("root", initDatabaseFeature.defaultPassword(),
-                                          auth::Source::Local);
+    auth::User user = auth::User::newUser(
+        "root", initDatabaseFeature.defaultPassword(), auth::Source::Local);
     user.setActive(true);
     user.grantDatabase(StaticStrings::SystemDatabase, auth::Level::RW);
     user.grantCollection(StaticStrings::SystemDatabase, "*", auth::Level::RW);
@@ -366,7 +395,8 @@ void auth::UserManager::createRootUser() {
         << "unable to create user \"root\": " << ex.what();
   } catch (...) {
     // No action
-    LOG_TOPIC("268eb", ERR, Logger::AUTHENTICATION) << "unable to create user \"root\"";
+    LOG_TOPIC("268eb", ERR, Logger::AUTHENTICATION)
+        << "unable to create user \"root\"";
   }
 
   triggerGlobalReload();
@@ -406,13 +436,14 @@ void auth::UserManager::triggerGlobalReload() {
   // tell other coordinators to reload as well
   AgencyComm agency(_server);
 
-  AgencyWriteTransaction incrementVersion(
-      {AgencyOperation("Sync/UserVersion", AgencySimpleOperationType::INCREMENT_OP)});
+  AgencyWriteTransaction incrementVersion({AgencyOperation(
+      "Sync/UserVersion", AgencySimpleOperationType::INCREMENT_OP)});
 
   int maxTries = 10;
 
   while (maxTries-- > 0) {
-    AgencyCommResult result = agency.sendTransactionWithFailover(incrementVersion);
+    AgencyCommResult result =
+        agency.sendTransactionWithFailover(incrementVersion);
     if (result.successful()) {
       _globalVersion.fetch_add(1, std::memory_order_release);
       _internalVersion.fetch_add(1, std::memory_order_release);
@@ -425,7 +456,8 @@ void auth::UserManager::triggerGlobalReload() {
 }
 
 Result auth::UserManager::storeUser(bool replace, std::string const& username,
-                                    std::string const& pass, bool active, VPackSlice extras) {
+                                    std::string const& pass, bool active,
+                                    VPackSlice extras) {
   if (username.empty()) {
     return TRI_ERROR_USER_INVALID_NAME;
   }
@@ -441,7 +473,7 @@ Result auth::UserManager::storeUser(bool replace, std::string const& username,
   }
 
   std::string oldKey;  // will only be populated during replace
-  TRI_voc_rid_t oldRev = 0;
+  RevisionId oldRev = RevisionId::none();
   if (replace) {
     auth::User const& oldEntry = it->second;
     oldKey = oldEntry.key();
@@ -470,8 +502,8 @@ Result auth::UserManager::storeUser(bool replace, std::string const& username,
   return r;
 }
 
-Result auth::UserManager::enumerateUsers(std::function<bool(auth::User&)>&& func,
-                                         bool retryOnConflict) {
+Result auth::UserManager::enumerateUsers(
+    std::function<bool(auth::User&)>&& func, bool retryOnConflict) {
   loadFromDB();
 
   std::vector<auth::User> toUpdate;
@@ -482,26 +514,26 @@ Result auth::UserManager::enumerateUsers(std::function<bool(auth::User&)>&& func
         continue;
       }
       auth::User user = it.second;  // copy user object
-      TRI_ASSERT(!user.key().empty() && user.rev() != 0);
+      TRI_ASSERT(!user.key().empty() && user.rev().isSet());
       if (func(user)) {
         toUpdate.emplace_back(std::move(user));
       }
     }
   }
-  
+
   bool triggerUpdate = !toUpdate.empty();
-  
+
   Result res;
   do {
     auto it = toUpdate.begin();
-    while(it != toUpdate.end()) {
+    while (it != toUpdate.end()) {
       WRITE_LOCKER(writeGuard, _userCacheLock);
-      res = storeUserInternal(*it, /*replace*/true);
-      
+      res = storeUserInternal(*it, /*replace*/ true);
+
       if (res.is(TRI_ERROR_ARANGO_CONFLICT) && retryOnConflict) {
         res.reset();
         writeGuard.unlock();
-        loadFromDB(); // should be noop iff nothing changed
+        loadFromDB();  // should be noop iff nothing changed
         writeGuard.lock();
         UserMap::iterator it2 = _userCache.find(it->username());
         if (it2 != _userCache.end()) {
@@ -524,7 +556,8 @@ Result auth::UserManager::enumerateUsers(std::function<bool(auth::User&)>&& func
   return res;
 }
 
-Result auth::UserManager::updateUser(std::string const& name, UserCallback&& func) {
+Result auth::UserManager::updateUser(std::string const& name,
+                                     UserCallback&& func) {
   if (name.empty()) {
     return TRI_ERROR_USER_NOT_FOUND;
   }
@@ -543,7 +576,7 @@ Result auth::UserManager::updateUser(std::string const& name, UserCallback&& fun
 
   LOG_TOPIC("574c5", DEBUG, Logger::AUTHENTICATION) << "Updating user " << name;
   auth::User user = it->second;  // make a copy
-  TRI_ASSERT(!user.key().empty() && user.rev() != 0);
+  TRI_ASSERT(!user.key().empty() && user.rev().isSet());
   Result r = func(user);
   if (r.fail()) {
     return r;
@@ -560,7 +593,8 @@ Result auth::UserManager::updateUser(std::string const& name, UserCallback&& fun
   return r;
 }
 
-Result auth::UserManager::accessUser(std::string const& user, ConstUserCallback&& func) {
+Result auth::UserManager::accessUser(std::string const& user,
+                                     ConstUserCallback&& func) {
   if (user.empty()) {
     return TRI_ERROR_USER_NOT_FOUND;
   }
@@ -603,7 +637,7 @@ VPackBuilder auth::UserManager::serializeUser(std::string const& user) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_USER_NOT_FOUND);  // FIXME do not use
 }
 
-static Result RemoveUserInternal(application_features::ApplicationServer& server,
+static Result RemoveUserInternal(ArangodServer& server,
                                  auth::User const& entry) {
   TRI_ASSERT(!entry.key().empty());
   auto vocbase = getSystemDatabase(server);
@@ -623,15 +657,16 @@ static Result RemoveUserInternal(application_features::ApplicationServer& server
   // will ask us again for permissions and we get a deadlock
   ExecContextSuperuserScope scope;
   auto ctx = transaction::StandaloneContext::Create(*vocbase);
-  SingleCollectionTransaction trx(ctx, TRI_COL_NAME_USERS, AccessMode::Type::WRITE);
+  SingleCollectionTransaction trx(ctx, StaticStrings::UsersCollection,
+                                  AccessMode::Type::WRITE);
 
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
   Result res = trx.begin();
 
   if (res.ok()) {
-    OperationResult result =
-        trx.remove(TRI_COL_NAME_USERS, builder.slice(), OperationOptions());
+    OperationResult result = trx.remove(StaticStrings::UsersCollection,
+                                        builder.slice(), OperationOptions());
     res = trx.finish(result.result);
   }
 
@@ -652,7 +687,8 @@ Result auth::UserManager::removeUser(std::string const& user) {
   WRITE_LOCKER(writeGuard, _userCacheLock);
   UserMap::iterator const& it = _userCache.find(user);
   if (it == _userCache.end()) {
-    LOG_TOPIC("07aaf", TRACE, Logger::AUTHORIZATION) << "User not found: " << user;
+    LOG_TOPIC("07aaf", TRACE, Logger::AUTHORIZATION)
+        << "User not found: " << user;
     return TRI_ERROR_USER_NOT_FOUND;
   }
 
@@ -699,7 +735,8 @@ Result auth::UserManager::removeAllUsers() {
   return res;
 }
 
-bool auth::UserManager::checkPassword(std::string const& username, std::string const& password) {
+bool auth::UserManager::checkPassword(std::string const& username,
+                                      std::string const& password) {
   if (username.empty() || IsRole(username)) {
     return false;  // we cannot authenticate during bootstrap
   }
@@ -713,7 +750,8 @@ bool auth::UserManager::checkPassword(std::string const& username, std::string c
   AuthenticationFeature* af = AuthenticationFeature::instance();
   if (it != _userCache.end() && (it->second.source() == auth::Source::Local)) {
     if (af != nullptr && !af->localAuthentication()) {
-      LOG_TOPIC("d3220", DEBUG, Logger::AUTHENTICATION) << "Local users are forbidden";
+      LOG_TOPIC("d3220", DEBUG, Logger::AUTHENTICATION)
+          << "Local users are forbidden";
       return false;
     }
     auth::User const& user = it->second;
@@ -738,7 +776,8 @@ bool auth::UserManager::checkPassword(std::string const& username, std::string c
 }
 
 auth::Level auth::UserManager::databaseAuthLevel(std::string const& user,
-                                                 std::string const& dbname, bool configured) {
+                                                 std::string const& dbname,
+                                                 bool configured) {
   if (dbname.empty()) {
     return auth::Level::NONE;
   }
@@ -748,7 +787,8 @@ auth::Level auth::UserManager::databaseAuthLevel(std::string const& user,
 
   UserMap::iterator const& it = _userCache.find(user);
   if (it == _userCache.end()) {
-    LOG_TOPIC("aa27c", TRACE, Logger::AUTHORIZATION) << "User not found: " << user;
+    LOG_TOPIC("aa27c", TRACE, Logger::AUTHORIZATION)
+        << "User not found: " << user;
     return auth::Level::NONE;
   }
 
@@ -764,7 +804,8 @@ auth::Level auth::UserManager::databaseAuthLevel(std::string const& user,
 
 auth::Level auth::UserManager::collectionAuthLevel(std::string const& user,
                                                    std::string const& dbname,
-                                                   std::string const& coll, bool configured) {
+                                                   std::string const& coll,
+                                                   bool configured) {
   if (coll.empty()) {
     return auth::Level::NONE;
   }
@@ -774,14 +815,17 @@ auth::Level auth::UserManager::collectionAuthLevel(std::string const& user,
 
   UserMap::iterator const& it = _userCache.find(user);
   if (it == _userCache.end()) {
-    LOG_TOPIC("6d0d4", TRACE, Logger::AUTHORIZATION) << "User not found: " << user;
+    LOG_TOPIC("6d0d4", TRACE, Logger::AUTHORIZATION)
+        << "User not found: " << user;
     return auth::Level::NONE;  // no user found
   }
 
   TRI_ASSERT(!coll.empty());
   auth::Level level;
   if (coll[0] >= '0' && coll[0] <= '9') {
-    std::string tmpColl = DatabaseFeature::DATABASE->translateCollectionName(dbname, coll);
+    std::string tmpColl =
+        _server.getFeature<DatabaseFeature>().translateCollectionName(dbname,
+                                                                      coll);
     level = it->second.collectionAuthLevel(dbname, tmpColl);
   } else {
     level = it->second.collectionAuthLevel(dbname, coll);
@@ -797,6 +841,7 @@ auth::Level auth::UserManager::collectionAuthLevel(std::string const& user,
   return level;
 }
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
 /// Only used for testing
 void auth::UserManager::setAuthInfo(auth::UserMap const& newMap) {
   MUTEX_LOCKER(guard, _loadFromDBLock);      // must be first
@@ -804,3 +849,4 @@ void auth::UserManager::setAuthInfo(auth::UserMap const& newMap) {
   _userCache = newMap;
   _internalVersion.store(_globalVersion.load());
 }
+#endif

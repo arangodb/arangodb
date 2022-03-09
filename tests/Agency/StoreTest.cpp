@@ -1,11 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test case for CleanOutServer job
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -35,7 +32,6 @@ TEST(StoreTest, store_preconditions) {
   using namespace arangodb::consensus;
 
   Node node("node");
-  Node::Children& children = node.children();
   VPackBuilder foo, baz, pi;
   foo.add(VPackValue("bar"));
   baz.add(VPackValue(13));
@@ -47,12 +43,12 @@ TEST(StoreTest, store_preconditions) {
   *bazNode = baz.slice();
   *piNode = pi.slice();
 
-  children.insert(std::make_pair("foo", fooNode));
-  children.insert(std::make_pair("baz", bazNode));
-  children.insert(std::make_pair("pi", piNode));
-  children.insert(std::make_pair("foo1", fooNode));
-  children.insert(std::make_pair("baz1", bazNode));
-  children.insert(std::make_pair("pi1", piNode));
+  node.addChild("foo", fooNode);
+  node.addChild("baz", bazNode);
+  node.addChild("pi", piNode);
+  node.addChild("foo1", fooNode);
+  node.addChild("baz1", bazNode);
+  node.addChild("pi1", piNode);
 
   VPackOptions opts;
   opts.buildUnindexedObjects = true;
@@ -77,26 +73,32 @@ TEST(StoreTest, store_split) {
   ASSERT_EQ(std::vector<std::string>(), Store::split("/"));
   ASSERT_EQ(std::vector<std::string>(), Store::split("//"));
   ASSERT_EQ(std::vector<std::string>(), Store::split("///"));
-  
+
   ASSERT_EQ((std::vector<std::string>{"a"}), Store::split("a"));
   ASSERT_EQ((std::vector<std::string>{"a c"}), Store::split("a c"));
   ASSERT_EQ((std::vector<std::string>{"foobar"}), Store::split("foobar"));
   ASSERT_EQ((std::vector<std::string>{"foo bar"}), Store::split("foo bar"));
-  
+
   ASSERT_EQ((std::vector<std::string>{"a", "b", "c"}), Store::split("a/b/c"));
   ASSERT_EQ((std::vector<std::string>{"a", "b", "c"}), Store::split("/a/b/c"));
   ASSERT_EQ((std::vector<std::string>{"a", "b", "c"}), Store::split("/a/b/c/"));
   ASSERT_EQ((std::vector<std::string>{"a", "b", "c"}), Store::split("//a/b/c"));
-  ASSERT_EQ((std::vector<std::string>{"a", "b", "c"}), Store::split("//a/b/c/"));
+  ASSERT_EQ((std::vector<std::string>{"a", "b", "c"}),
+            Store::split("//a/b/c/"));
   ASSERT_EQ((std::vector<std::string>{"a", "b", "c"}), Store::split("a/b/c//"));
-  ASSERT_EQ((std::vector<std::string>{"a", "b", "c"}), Store::split("//a/b/c//"));
-  ASSERT_EQ((std::vector<std::string>{"a", "b", "c"}), Store::split("//a/b/c//"));
+  ASSERT_EQ((std::vector<std::string>{"a", "b", "c"}),
+            Store::split("//a/b/c//"));
+  ASSERT_EQ((std::vector<std::string>{"a", "b", "c"}),
+            Store::split("//a/b/c//"));
   ASSERT_EQ((std::vector<std::string>{"a"}), Store::split("//////a"));
   ASSERT_EQ((std::vector<std::string>{"a"}), Store::split("a//////////////"));
-  ASSERT_EQ((std::vector<std::string>{"a"}), Store::split("/////////////a//////////////"));
+  ASSERT_EQ((std::vector<std::string>{"a"}),
+            Store::split("/////////////a//////////////"));
   ASSERT_EQ((std::vector<std::string>{"foobar"}), Store::split("//////foobar"));
-  ASSERT_EQ((std::vector<std::string>{"foobar"}), Store::split("foobar//////////////"));
-  ASSERT_EQ((std::vector<std::string>{"foobar"}), Store::split("/////////////foobar//////////////"));
+  ASSERT_EQ((std::vector<std::string>{"foobar"}),
+            Store::split("foobar//////////////"));
+  ASSERT_EQ((std::vector<std::string>{"foobar"}),
+            Store::split("/////////////foobar//////////////"));
   ASSERT_EQ((std::vector<std::string>{"a", "c"}), Store::split("a/c"));
   ASSERT_EQ((std::vector<std::string>{"a", "c"}), Store::split("a//c"));
   ASSERT_EQ((std::vector<std::string>{"a", "c"}), Store::split("a///c"));
@@ -108,13 +110,68 @@ TEST(StoreTest, store_split) {
   ASSERT_EQ((std::vector<std::string>{"a", "c"}), Store::split("/a///c//"));
   ASSERT_EQ((std::vector<std::string>{"foo", "bar"}), Store::split("foo/bar"));
   ASSERT_EQ((std::vector<std::string>{"foo", "bar"}), Store::split("foo//bar"));
-  ASSERT_EQ((std::vector<std::string>{"foo", "bar"}), Store::split("foo///bar"));
-  ASSERT_EQ((std::vector<std::string>{"foo", "bar"}), Store::split("/foo//bar"));
-  ASSERT_EQ((std::vector<std::string>{"foo", "bar"}), Store::split("/foo//bar"));
-  ASSERT_EQ((std::vector<std::string>{"foo", "bar"}), Store::split("/foo///bar"));
-  ASSERT_EQ((std::vector<std::string>{"foo", "bar"}), Store::split("/foo//bar/"));
-  ASSERT_EQ((std::vector<std::string>{"foo", "bar"}), Store::split("/foo//bar//"));
-  ASSERT_EQ((std::vector<std::string>{"foo", "bar"}), Store::split("/foo///bar//"));
-  
-  ASSERT_EQ((std::vector<std::string>{"foo", "bar", "baz"}), Store::split("/foo///bar//baz"));
+  ASSERT_EQ((std::vector<std::string>{"foo", "bar"}),
+            Store::split("foo///bar"));
+  ASSERT_EQ((std::vector<std::string>{"foo", "bar"}),
+            Store::split("/foo//bar"));
+  ASSERT_EQ((std::vector<std::string>{"foo", "bar"}),
+            Store::split("/foo//bar"));
+  ASSERT_EQ((std::vector<std::string>{"foo", "bar"}),
+            Store::split("/foo///bar"));
+  ASSERT_EQ((std::vector<std::string>{"foo", "bar"}),
+            Store::split("/foo//bar/"));
+  ASSERT_EQ((std::vector<std::string>{"foo", "bar"}),
+            Store::split("/foo//bar//"));
+  ASSERT_EQ((std::vector<std::string>{"foo", "bar"}),
+            Store::split("/foo///bar//"));
+
+  ASSERT_EQ((std::vector<std::string>{"foo", "bar", "baz"}),
+            Store::split("/foo///bar//baz"));
+}
+
+TEST(StoreTest, store_normalize) {
+  using namespace arangodb::consensus;
+
+  EXPECT_EQ("/", Store::normalize(""));
+  EXPECT_EQ("/", Store::normalize("/"));
+  EXPECT_EQ("/", Store::normalize("//"));
+  EXPECT_EQ("/", Store::normalize("////"));
+  EXPECT_EQ("/a", Store::normalize("a"));
+  EXPECT_EQ("/a", Store::normalize("/a"));
+  EXPECT_EQ("/a", Store::normalize("/a/"));
+  EXPECT_EQ("/a", Store::normalize("//a/"));
+  EXPECT_EQ("/a", Store::normalize("//a//"));
+  EXPECT_EQ("/a/b", Store::normalize("a/b"));
+  EXPECT_EQ("/a/b", Store::normalize("a/b/"));
+  EXPECT_EQ("/a/b", Store::normalize("/a/b"));
+  EXPECT_EQ("/a/b", Store::normalize("//a/b"));
+  EXPECT_EQ("/a/b", Store::normalize("/a//b"));
+  EXPECT_EQ("/a/b", Store::normalize("/a/b/"));
+  EXPECT_EQ("/a/b", Store::normalize("/a/b//"));
+  EXPECT_EQ("/a/b", Store::normalize("//a//b//"));
+  EXPECT_EQ("/a/b/c", Store::normalize("a/b/c"));
+  EXPECT_EQ("/a/b/c", Store::normalize("a/b/c/"));
+  EXPECT_EQ("/a/b/c", Store::normalize("/a/b/c"));
+  EXPECT_EQ("/a/b/c", Store::normalize("a//b/c"));
+  EXPECT_EQ("/a/b/c", Store::normalize("a/b//c"));
+  EXPECT_EQ("/mutter", Store::normalize("mutter"));
+  EXPECT_EQ("/mutter", Store::normalize("/mutter"));
+  EXPECT_EQ("/mutter", Store::normalize("//mutter"));
+  EXPECT_EQ("/mutter", Store::normalize("mutter/"));
+  EXPECT_EQ("/mutter", Store::normalize("mutter//"));
+  EXPECT_EQ("/mutter", Store::normalize("/mutter//"));
+  EXPECT_EQ("/mutter", Store::normalize("//mutter//"));
+  EXPECT_EQ("/der/hund", Store::normalize("der/hund"));
+  EXPECT_EQ("/der/hund", Store::normalize("/der/hund"));
+  EXPECT_EQ("/der/hund", Store::normalize("der/hund/"));
+  EXPECT_EQ("/der/hund", Store::normalize("/der/hund/"));
+  EXPECT_EQ("/der/hund", Store::normalize("der/////hund"));
+  EXPECT_EQ("/der/hund", Store::normalize("der/hund/////"));
+  EXPECT_EQ("/der/hund", Store::normalize("////der/hund"));
+  EXPECT_EQ("/der/hund/der/schwitzt",
+            Store::normalize("der/hund/der/schwitzt"));
+  EXPECT_EQ("/der/hund/der/schwitzt",
+            Store::normalize("der/hund/der/schwitzt/"));
+  EXPECT_EQ("/der/hund/der/schwitzt",
+            Store::normalize("/der/hund/der/schwitzt/"));
 }

@@ -1,0 +1,15 @@
+name: arangodb_replication_dump_request_time_total
+renamedFrom: arangodb_replication_dump_request_time
+introducedIn: "3.8.0"
+help: |
+  Accumulated wait time for replication requests in initial asynchronous phase.
+unit: ms
+type: counter
+category: Replication
+complexity: medium
+exposedBy:
+  - dbserver
+description: |
+  During initial replication the existing data from the leader is copied asynchronously
+  over to new shards. The accumulated time the follower waited for the leader to send
+  the data is counted here.

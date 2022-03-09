@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,23 +21,33 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_NETWORK_NETWORK_FEATURE_H
-#define ARANGOD_NETWORK_NETWORK_FEATURE_H 1
-
-#include "ApplicationFeatures/ApplicationFeature.h"
-#include "Network/ConnectionPool.h"
-#include "Scheduler/Scheduler.h"
+#pragma once
 
 #include <atomic>
 #include <mutex>
 
-namespace arangodb {
+#include <fuerte/requests.h>
 
-class NetworkFeature final : public application_features::ApplicationFeature {
+#include "Network/ConnectionPool.h"
+#include "Metrics/Fwd.h"
+#include "RestServer/arangod.h"
+#include "Scheduler/Scheduler.h"
+
+namespace arangodb {
+namespace network {
+struct RequestOptions;
+}
+
+class NetworkFeature final : public ArangodFeature {
  public:
-  explicit NetworkFeature(application_features::ApplicationServer& server);
-  explicit NetworkFeature(application_features::ApplicationServer& server,
-                          network::ConnectionPool::Config);
+  using RequestCallback = std::function<void(
+      fuerte::Error err, std::unique_ptr<fuerte::Request> req,
+      std::unique_ptr<fuerte::Response> res, bool isFromPool)>;
+
+  static constexpr std::string_view name() noexcept { return "Network"; }
+
+  explicit NetworkFeature(Server& server);
+  NetworkFeature(Server& server, network::ConnectionPool::Config);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
@@ -45,6 +56,7 @@ class NetworkFeature final : public application_features::ApplicationFeature {
   void beginShutdown() override;
   void stop() override;
   void unprepare() override;
+  bool prepared() const;
 
   /// @brief global connection pool
   arangodb::network::ConnectionPool* pool() const;
@@ -53,12 +65,33 @@ class NetworkFeature final : public application_features::ApplicationFeature {
   void setPoolTesting(arangodb::network::ConnectionPool* pool);
 #endif
 
+  /// @brief increase the counter for forwarded requests
+  void trackForwardedRequest();
+
+  std::size_t requestsInFlight() const;
+
+  bool isCongested() const;  // in-flight above low-water mark
+  bool isSaturated() const;  // in-flight above high-water mark
+  void sendRequest(network::ConnectionPool& pool,
+                   network::RequestOptions const& options,
+                   std::string const& endpoint,
+                   std::unique_ptr<fuerte::Request>&& req,
+                   RequestCallback&& cb);
+
+ protected:
+  void prepareRequest(network::ConnectionPool const& pool,
+                      std::unique_ptr<fuerte::Request>& req);
+  void finishRequest(network::ConnectionPool const& pool, fuerte::Error err,
+                     std::unique_ptr<fuerte::Request> const& req,
+                     std::unique_ptr<fuerte::Response>& res);
+
  private:
   std::string _protocol;
   uint64_t _maxOpenConnections;
   uint64_t _idleTtlMilli;
   uint32_t _numIOThreads;
   bool _verifyHosts;
+  std::atomic<bool> _prepared;
 
   std::mutex _workItemMutex;
   Scheduler::WorkHandle _workItem;
@@ -67,8 +100,17 @@ class NetworkFeature final : public application_features::ApplicationFeature {
 
   std::unique_ptr<network::ConnectionPool> _pool;
   std::atomic<network::ConnectionPool*> _poolPtr;
+
+  /// @brief number of cluster-internal forwarded requests
+  /// (from one coordinator to another, in case load-balancing
+  /// is used)
+  metrics::Counter& _forwardedRequests;
+
+  std::uint64_t _maxInFlight;
+  metrics::Gauge<std::uint64_t>& _requestsInFlight;
+
+  metrics::Counter& _requestTimeouts;
+  metrics::Histogram<metrics::FixScale<double>>& _requestDurations;
 };
 
 }  // namespace arangodb
-
-#endif

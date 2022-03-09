@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,16 +21,14 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_DATABASE_HANDLER_H
-#define ARANGOD_REST_HANDLER_DATABASE_HANDLER_H 1
+#pragma once
 
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
 namespace arangodb {
 class RestDatabaseHandler : public arangodb::RestVocbaseBaseHandler {
  public:
-  RestDatabaseHandler(application_features::ApplicationServer&, GeneralRequest*,
-                      GeneralResponse*);
+  RestDatabaseHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
 
  public:
   char const* name() const override final { return "RestDatabaseHandler"; }
@@ -42,5 +41,3 @@ class RestDatabaseHandler : public arangodb::RestVocbaseBaseHandler {
   RestStatus deleteDatabase();
 };
 }  // namespace arangodb
-
-#endif

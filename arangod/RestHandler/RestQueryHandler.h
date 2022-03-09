@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_REST_QUERY_HANDLER_H
-#define ARANGOD_REST_HANDLER_REST_QUERY_HANDLER_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
@@ -31,8 +30,7 @@ namespace arangodb {
 
 class RestQueryHandler : public RestVocbaseBaseHandler {
  public:
-  RestQueryHandler(application_features::ApplicationServer&, GeneralRequest*,
-                   GeneralResponse*);
+  RestQueryHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
 
  public:
   char const* name() const override final { return "RestQueryHandler"; }
@@ -45,13 +43,13 @@ class RestQueryHandler : public RestVocbaseBaseHandler {
 
  protected:
   /// @brief returns the list of properties
-  bool readQueryProperties();
+  void readQueryProperties();
 
   /// @brief returns the list of slow queries
-  bool readQuery(bool slow);
+  void readQuery(bool slow);
 
   /// @brief returns AQL query tracking
-  bool readQuery();
+  void readQuery();
 
   /// @brief removes the slow log
   void deleteQuerySlow();
@@ -60,17 +58,15 @@ class RestQueryHandler : public RestVocbaseBaseHandler {
   void deleteQuery();
 
   /// @brief changes the settings
-  bool replaceProperties();
+  void replaceProperties();
 
   ResultT<std::pair<std::string, bool>> forwardingTarget() override;
-  
+
  private:
   /// @brief interrupts a named query
   void killQuery(std::string const& id);
-  
+
   /// @brief parses a query
-  bool parseQuery();
+  void parseQuery();
 };
 }  // namespace arangodb
-
-#endif

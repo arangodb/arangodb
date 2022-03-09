@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_ALGOS_ShoPath_H
-#define ARANGODB_PREGEL_ALGOS_ShoPath_H 1
+#pragma once
 
 #include "Pregel/Algorithm.h"
 
@@ -38,26 +38,25 @@ struct ShortestPathAlgorithm : public Algorithm<int64_t, int64_t, int64_t> {
   std::string _source, _target;
 
  public:
-  explicit ShortestPathAlgorithm(application_features::ApplicationServer& server,
-                                 VPackSlice userParams);
+  explicit ShortestPathAlgorithm(
+      application_features::ApplicationServer& server, VPackSlice userParams);
 
   bool supportsAsyncMode() const override { return true; }
-  bool supportsLazyLoading() const override { return true; }
 
   GraphFormat<int64_t, int64_t>* inputFormat() const override;
   MessageFormat<int64_t>* messageFormat() const override {
-    return new IntegerMessageFormat();
+    return new IntegerMessageFormat<int64_t>();
   }
 
   MessageCombiner<int64_t>* messageCombiner() const override {
     return new MinCombiner<int64_t>();
   }
 
-  VertexComputation<int64_t, int64_t, int64_t>* createComputation(WorkerConfig const* config) const override;
+  VertexComputation<int64_t, int64_t, int64_t>* createComputation(
+      WorkerConfig const* config) const override;
   IAggregator* aggregator(std::string const& name) const override;
   std::set<std::string> initialActiveSet() override;
 };
 }  // namespace algos
 }  // namespace pregel
 }  // namespace arangodb
-#endif

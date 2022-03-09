@@ -1,0 +1,167 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Benchmarks</title>
+<link rel="stylesheet" href="../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="Chapter 1. Boost.Histogram">
+<link rel="up" href="../index.html" title="Chapter 1. Boost.Histogram">
+<link rel="prev" href="guide.html" title="User guide">
+<link rel="next" href="concepts.html" title="Concepts">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="guide.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="concepts.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="histogram.benchmarks"></a><a class="link" href="benchmarks.html" title="Benchmarks">Benchmarks</a>
+</h2></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="benchmarks.html#histogram.benchmarks.fill_performance">Fill performance</a></span></dt>
+<dt><span class="section"><a href="benchmarks.html#histogram.benchmarks.iteration_performance">Iteration
+      performance</a></span></dt>
+</dl></div>
+<p>
+      The library is designed to be fast. When configured correctly, it is one of
+      the fastest libraries on the market. If you find a library that is faster than
+      Boost.Histogram, please submit an issue on Github. We care about performance.
+    </p>
+<p>
+      That being said, the time spend in filling the histogram is usually not the
+      bottleneck of an application. Only in processing of really large data sets
+      the performance of the histogram can be important.
+    </p>
+<p>
+      All benchmarks are compiled on a laptop with a 2,9 GHz Intel Core i5 processor
+      with Apple LLVM (clang-1001.0.46.4) and the flags <code class="computeroutput"><span class="special">-</span><span class="identifier">DNDEBUG</span> <span class="special">-</span><span class="identifier">O3</span> <span class="special">-</span><span class="identifier">funsafe</span><span class="special">-</span><span class="identifier">math</span><span class="special">-</span><span class="identifier">optimizations</span></code>. Adding <code class="computeroutput"><span class="special">-</span><span class="identifier">fno</span><span class="special">-</span><span class="identifier">exceptions</span>
+      <span class="special">-</span><span class="identifier">fno</span><span class="special">-</span><span class="identifier">rtti</span></code> would
+      increase the Boost.Histogram performance by another (10-20) %, but this is
+      not done here out of fairness, since the ROOT histograms do not compile with
+      these options.
+    </p>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="histogram.benchmarks.fill_performance"></a><a class="link" href="benchmarks.html#histogram.benchmarks.fill_performance" title="Fill performance">Fill performance</a>
+</h3></div></div></div>
+<p>
+        The fill performance of different configurations of Boost.Histogram are compared
+        with histogram classes and functions from other libraries. Random numbers
+        from a uniform and a normal distribution are filled into histograms with
+        1, 2, 3, and 6 axes. 100 bins per axis are used for 1, 2, 3 axes. 10 bins
+        per axis for the case with 6 axes. The histogram are filled with the call
+        operator <code class="computeroutput"><span class="keyword">operator</span><span class="special">()</span></code>
+        and the more efficient <code class="computeroutput"><span class="identifier">fill</span></code>-method,
+        which accepts large chunks of values at once. The GSL offers only 1D and
+        2D histograms, so there are no entries for the higher dimensional benchmarks.
+        Raw timing results are converted to average number of CPU cycles used per
+        input value.
+      </p>
+<p>
+        There is one bar for each benchmark and the upper end has a hatched part.
+        The full bar is the result when the histograms are filled with random normally
+        distributed data that falls outside of the axis domain in about 10 % of the
+        cases. This makes the branch predictors in the CPU fail every now and then,
+        which degrades performance. The bar without the hatched part is the result
+        when the histograms are filled with uniform random numbers which are always
+        inside the axis range.
+      </p>
+<p>
+        <span class="inlinemediaobject"><object type="image/svg+xml" data="../../fill_performance.svg" width="630" height="540"></object></span>
+      </p>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">ROOT 6</span></dt>
+<dd><p>
+              <a href="https://root.cern.ch" target="_top">ROOT classes</a> (<code class="computeroutput"><span class="identifier">TH1I</span></code> for 1D, <code class="computeroutput"><span class="identifier">TH2I</span></code>
+              for 2D, <code class="computeroutput"><span class="identifier">TH3I</span></code> for 3D
+              and <code class="computeroutput"><span class="identifier">THnI</span></code> for 6D)
+            </p></dd>
+<dt><span class="term">GSL</span></dt>
+<dd><p>
+              <a href="https://www.gnu.org/software/gsl/doc/html/histogram.html" target="_top">GSL
+              histograms</a> for 1D and 2D
+            </p></dd>
+<dt><span class="term">boost-sta</span></dt>
+<dd><p>
+              Histogram with <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">tuple</span><span class="special">&lt;</span><span class="identifier">axis</span><span class="special">::</span><span class="identifier">regular</span><span class="special">&lt;&gt;&gt;</span></code> and <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;</span></code> storage
+            </p></dd>
+<dt><span class="term">boost-dyn</span></dt>
+<dd><p>
+              Histogram with <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="identifier">axis</span><span class="special">::</span><span class="identifier">variant</span><span class="special">&lt;</span><span class="identifier">axis</span><span class="special">::</span><span class="identifier">regular</span><span class="special">&lt;&gt;&gt;&gt;</span></code> and <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;</span></code> storage
+            </p></dd>
+</dl>
+</div>
+<p>
+        Boost.Histogram is faster than other libraries. Simultaneously, it is much
+        more flexible, since the axis and storage types can be customized. When
+        <code class="computeroutput"><span class="keyword">operator</span><span class="special">()</span></code>
+        is used, a histogram with compile-time configured axes (boost-sta-...) is
+        always faster than the equivalent alternatives from other libraries. The
+        histogram with run-time configured axes (boost-dyn-...) is comparable or
+        slower than other libraries, but offers a run-time flexibility that the alternatives
+        do not. If the <code class="computeroutput"><span class="identifier">fill</span></code> method
+        is used, filling either type of histogram is much faster (up to a factor
+        6) than filling histograms in other libraries, and the performance difference
+        between compile-time and run-time configured axes is mostly vanishes.
+      </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="histogram.benchmarks.iteration_performance"></a><a class="link" href="benchmarks.html#histogram.benchmarks.iteration_performance" title="Iteration performance">Iteration
+      performance</a>
+</h3></div></div></div>
+<p>
+        Boost.Histogram provides the <code class="computeroutput"><a class="link" href="../boost/histogram/indexed_idm11941.html" title="Function template indexed">boost::histogram::indexed</a></code>
+        range generator for convenient iteration over the histogram cells. Using
+        the range generator is very convenient and it is faster than by writing nested
+        for-loops.
+      </p>
+<pre class="programlisting"><span class="comment">// nested for loops over 2d histogram</span>
+<span class="keyword">for</span> <span class="special">(</span><span class="keyword">int</span> <span class="identifier">i</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span> <span class="identifier">i</span> <span class="special">&lt;</span> <span class="identifier">h</span><span class="special">.</span><span class="identifier">axis</span><span class="special">(</span><span class="number">0</span><span class="special">).</span><span class="identifier">size</span><span class="special">();</span> <span class="special">++</span><span class="identifier">i</span><span class="special">)</span> <span class="special">{</span>
+  <span class="keyword">for</span> <span class="special">(</span><span class="keyword">int</span> <span class="identifier">j</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span> <span class="identifier">j</span> <span class="special">&lt;</span> <span class="identifier">h</span><span class="special">.</span><span class="identifier">axis</span><span class="special">(</span><span class="number">1</span><span class="special">).</span><span class="identifier">size</span><span class="special">();</span> <span class="special">++</span><span class="identifier">j</span><span class="special">)</span> <span class="special">{</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">i</span> <span class="special">&lt;&lt;</span> <span class="string">" "</span> <span class="special">&lt;&lt;</span> <span class="identifier">j</span> <span class="special">&lt;&lt;</span> <span class="string">" "</span> <span class="special">&lt;&lt;</span> <span class="identifier">h</span><span class="special">.</span><span class="identifier">at</span><span class="special">(</span><span class="identifier">i</span><span class="special">,</span> <span class="identifier">j</span><span class="special">)</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+  <span class="special">}</span>
+<span class="special">}</span>
+
+<span class="comment">// same, with indexed range generator</span>
+<span class="keyword">for</span> <span class="special">(</span><span class="keyword">auto</span><span class="special">&amp;&amp;</span> <span class="identifier">x</span> <span class="special">:</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">histogram</span><span class="special">::</span><span class="identifier">indexed</span><span class="special">(</span><span class="identifier">h</span><span class="special">))</span> <span class="special">{</span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">x</span><span class="special">.</span><span class="identifier">index</span><span class="special">(</span><span class="number">0</span><span class="special">)</span> <span class="special">&lt;&lt;</span> <span class="string">" "</span> <span class="special">&lt;&lt;</span> <span class="identifier">x</span><span class="special">.</span><span class="identifier">index</span><span class="special">(</span><span class="number">1</span><span class="special">)</span> <span class="special">&lt;&lt;</span> <span class="string">" "</span> <span class="special">&lt;&lt;</span> <span class="special">*</span><span class="identifier">x</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+<p>
+        The access time per bin is compared for these two iteration strategies for
+        histograms that hold the axes in a <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">tuple</span></code>
+        (tuple), in a <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span></code> (vector), and in a <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">histogram</span><span class="special">::</span><span class="identifier">axis</span><span class="special">::</span><span class="identifier">variant</span><span class="special">&gt;</span></code> (vector of variants). The access time
+        per bin is measured for axis with 4 to 128 bins per axis.
+      </p>
+<p>
+        <span class="inlinemediaobject"><object type="image/svg+xml" data="../../iteration_performance.svg" width="900" height="450"></object></span>
+      </p>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2016-2019 Hans
+      Dembinski<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="guide.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="concepts.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

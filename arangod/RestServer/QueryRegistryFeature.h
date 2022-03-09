@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,21 +21,23 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef APPLICATION_FEATURES_QUERY_REGISTRY_FEATUREx_H
-#define APPLICATION_FEATURES_QUERY_REGISTRY_FEATUREx_H 1
+#pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
+#include "RestServer/arangod.h"
 #include "Aql/QueryRegistry.h"
+#include "Metrics/Fwd.h"
 
 namespace arangodb {
 
-class QueryRegistryFeature final : public application_features::ApplicationFeature {
+class QueryRegistryFeature final : public ArangodFeature {
  public:
+  static constexpr std::string_view name() noexcept { return "QueryRegistry"; }
+
   static aql::QueryRegistry* registry() {
     return QUERY_REGISTRY.load(std::memory_order_acquire);
   }
 
-  explicit QueryRegistryFeature(application_features::ApplicationServer& server);
+  explicit QueryRegistryFeature(Server& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -44,31 +47,64 @@ class QueryRegistryFeature final : public application_features::ApplicationFeatu
   void stop() override final;
   void unprepare() override final;
 
+  void updateMetrics();
+
+  // tracks a query start
+  void trackQueryStart() noexcept;
+  // tracks a query completion, using execution time
+  void trackQueryEnd(double time);
+  // tracks a slow query, using execution time
+  void trackSlowQuery(double time);
+
+  bool trackingEnabled() const { return _trackingEnabled; }
   bool trackSlowQueries() const { return _trackSlowQueries; }
+  bool trackQueryString() const { return _trackQueryString; }
   bool trackBindVars() const { return _trackBindVars; }
+  bool trackDataSources() const { return _trackDataSources; }
   double slowQueryThreshold() const { return _slowQueryThreshold; }
   double slowStreamingQueryThreshold() const {
     return _slowStreamingQueryThreshold;
   }
   bool failOnWarning() const { return _failOnWarning; }
+  bool requireWith() const { return _requireWith; }
+#ifdef USE_ENTERPRISE
   bool smartJoins() const { return _smartJoins; }
   bool parallelizeTraversals() const { return _parallelizeTraversals; }
+#endif
+  bool allowCollectionsInExpressions() const {
+    return _allowCollectionsInExpressions;
+  }
+  uint64_t queryGlobalMemoryLimit() const { return _queryGlobalMemoryLimit; }
   uint64_t queryMemoryLimit() const { return _queryMemoryLimit; }
+  double queryMaxRuntime() const { return _queryMaxRuntime; }
   uint64_t maxQueryPlans() const { return _maxQueryPlans; }
   aql::QueryRegistry* queryRegistry() const { return _queryRegistry.get(); }
+  uint64_t maxParallelism() const { return _maxParallelism; }
 
  private:
+  bool _trackingEnabled;
   bool _trackSlowQueries;
+  bool _trackQueryString;
   bool _trackBindVars;
+  bool _trackDataSources;
   bool _failOnWarning;
+  bool _requireWith;
   bool _queryCacheIncludeSystem;
+  bool _queryMemoryLimitOverride;
+#ifdef USE_ENTERPRISE
   bool _smartJoins;
   bool _parallelizeTraversals;
+#endif
+  bool _allowCollectionsInExpressions;
+  uint64_t _queryGlobalMemoryLimit;
   uint64_t _queryMemoryLimit;
+  double _queryMaxRuntime;
   uint64_t _maxQueryPlans;
+  uint64_t _maxNodesPerCallstack;
   uint64_t _queryCacheMaxResultsCount;
   uint64_t _queryCacheMaxResultsSize;
   uint64_t _queryCacheMaxEntrySize;
+  uint64_t _maxParallelism;
   double _slowQueryThreshold;
   double _slowStreamingQueryThreshold;
   double _queryRegistryTTL;
@@ -78,8 +114,16 @@ class QueryRegistryFeature final : public application_features::ApplicationFeatu
   static std::atomic<aql::QueryRegistry*> QUERY_REGISTRY;
 
   std::unique_ptr<aql::QueryRegistry> _queryRegistry;
+
+  metrics::Histogram<metrics::LogScale<double>>& _queryTimes;
+  metrics::Histogram<metrics::LogScale<double>>& _slowQueryTimes;
+  metrics::Counter& _totalQueryExecutionTime;
+  metrics::Counter& _queriesCounter;
+  metrics::Gauge<uint64_t>& _runningQueries;
+  metrics::Gauge<uint64_t>& _globalQueryMemoryUsage;
+  metrics::Gauge<uint64_t>& _globalQueryMemoryLimit;
+  metrics::Counter& _globalQueryMemoryLimitReached;
+  metrics::Counter& _localQueryMemoryLimitReached;
 };
 
 }  // namespace arangodb
-
-#endif

@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -35,7 +36,7 @@ class AqlItemMatrixTest : public AqlExecutorTestCase<> {};
 TEST_F(AqlItemMatrixTest, should_forward_number_of_regs) {
   for (RegisterCount c = 1; c < 3; c++) {
     AqlItemMatrix testee(c);
-    EXPECT_EQ(testee.getNrRegisters(), c);
+    EXPECT_EQ(testee.getNumRegisters(), c);
   }
 }
 
@@ -43,30 +44,31 @@ TEST_F(AqlItemMatrixTest, expose_size_of_data_only) {
   auto& manager = this->manager();
 
   AqlItemMatrix testee(1);
-  EXPECT_TRUE(testee.empty());
+  EXPECT_TRUE(testee.blocksEmpty());
   {
     // 12
-    auto block =
-        buildBlock<1>(manager,
-                      {{1}, {2}, {3}, {4}, {1}, {2}, {3}, {4}, {1}, {2}, {3}, {4}});
+    auto block = buildBlock<1>(
+        manager, {{1}, {2}, {3}, {4}, {1}, {2}, {3}, {4}, {1}, {2}, {3}, {4}});
     testee.addBlock(block);
   }
-  EXPECT_FALSE(testee.empty());
+  EXPECT_FALSE(testee.blocksEmpty());
   ASSERT_EQ(testee.size(), 12);
   {
     // 8
-    auto block = buildBlock<1>(manager, {{1}, {2}, {3}, {4}, {1}, {2}, {3}, {4}});
+    auto block =
+        buildBlock<1>(manager, {{1}, {2}, {3}, {4}, {1}, {2}, {3}, {4}});
     testee.addBlock(block);
   }
-  EXPECT_FALSE(testee.empty());
+  EXPECT_FALSE(testee.blocksEmpty());
   ASSERT_EQ(testee.size(), 20);
 
   {
     // 9
-    auto block = buildBlock<1>(manager, {{1}, {2}, {3}, {4}, {1}, {2}, {3}, {4}, {1}});
+    auto block =
+        buildBlock<1>(manager, {{1}, {2}, {3}, {4}, {1}, {2}, {3}, {4}, {1}});
     testee.addBlock(block);
   }
-  EXPECT_FALSE(testee.empty());
+  EXPECT_FALSE(testee.blocksEmpty());
   ASSERT_EQ(testee.size(), 29);
 }
 
@@ -76,20 +78,21 @@ TEST_F(AqlItemMatrixTest, count_number_of_blocks) {
   AqlItemMatrix testee(1);
   ASSERT_EQ(testee.numberOfBlocks(), 0);
   {
-    auto block =
-        buildBlock<1>(manager,
-                      {{1}, {2}, {3}, {4}, {1}, {2}, {3}, {4}, {1}, {2}, {3}, {4}});
+    auto block = buildBlock<1>(
+        manager, {{1}, {2}, {3}, {4}, {1}, {2}, {3}, {4}, {1}, {2}, {3}, {4}});
     testee.addBlock(block);
   }
   ASSERT_EQ(testee.numberOfBlocks(), 1);
   {
-    auto block = buildBlock<1>(manager, {{1}, {2}, {3}, {4}, {1}, {2}, {3}, {4}});
+    auto block =
+        buildBlock<1>(manager, {{1}, {2}, {3}, {4}, {1}, {2}, {3}, {4}});
     testee.addBlock(block);
   }
   ASSERT_EQ(testee.numberOfBlocks(), 2);
 
   {
-    auto block = buildBlock<1>(manager, {{1}, {2}, {3}, {4}, {1}, {2}, {3}, {4}, {1}});
+    auto block =
+        buildBlock<1>(manager, {{1}, {2}, {3}, {4}, {1}, {2}, {3}, {4}, {1}});
     testee.addBlock(block);
   }
   ASSERT_EQ(testee.numberOfBlocks(), 3);
@@ -103,10 +106,9 @@ TEST_F(AqlItemMatrixTest, size_with_shadow_row_in_first_block) {
   AqlItemMatrix testee(1);
   ASSERT_EQ(testee.size(), 0);
   {
-    auto block =
-        buildBlock<1>(manager,
-                      {{1}, {2}, {3}, {4}, {1}, {2}, {3}, {4}, {1}, {2}, {3}, {4}},
-                      {{5, 0}});
+    auto block = buildBlock<1>(
+        manager, {{1}, {2}, {3}, {4}, {1}, {2}, {3}, {4}, {1}, {2}, {3}, {4}},
+        {{5, 0}});
     testee.addBlock(block);
   }
   EXPECT_TRUE(testee.stoppedOnShadowRow());
@@ -122,9 +124,9 @@ TEST_F(AqlItemMatrixTest, size_with_shadow_row_in_multiple_blocks) {
 
   AqlItemMatrix testee(1);
   ASSERT_EQ(testee.size(), 0);
-  testee.addBlock(
-      buildBlock<1>(manager, {{1}, {2}, {3}, {4}, {1}, {2}, {3}, {4}, {1}, {2}, {3}, {4}},
-                    {{5, 0}}));
+  testee.addBlock(buildBlock<1>(
+      manager, {{1}, {2}, {3}, {4}, {1}, {2}, {3}, {4}, {1}, {2}, {3}, {4}},
+      {{5, 0}}));
 
   EXPECT_TRUE(testee.stoppedOnShadowRow());
   EXPECT_EQ(testee.size(), 5);
@@ -134,11 +136,11 @@ TEST_F(AqlItemMatrixTest, size_with_shadow_row_in_multiple_blocks) {
   EXPECT_FALSE(testee.stoppedOnShadowRow());
   // We can only add more blocks, after we have removed the last shadowRow
 
-  testee.addBlock(
-      buildBlock<1>(manager, {{1}, {2}, {3}, {4}, {1}, {2}, {3}, {4}, {1}, {2}, {3}, {4}}));
-  testee.addBlock(
-      buildBlock<1>(manager, {{1}, {2}, {3}, {4}, {1}, {2}, {3}, {4}, {1}, {2}, {3}, {4}},
-                    {{2, 0}}));
+  testee.addBlock(buildBlock<1>(
+      manager, {{1}, {2}, {3}, {4}, {1}, {2}, {3}, {4}, {1}, {2}, {3}, {4}}));
+  testee.addBlock(buildBlock<1>(
+      manager, {{1}, {2}, {3}, {4}, {1}, {2}, {3}, {4}, {1}, {2}, {3}, {4}},
+      {{2, 0}}));
 
   EXPECT_TRUE(testee.stoppedOnShadowRow());
   EXPECT_EQ(testee.size(), 20);
@@ -154,10 +156,9 @@ TEST_F(AqlItemMatrixTest, size_with_multiple_shadow_row_in_first_block) {
   AqlItemMatrix testee(1);
   ASSERT_EQ(testee.size(), 0);
   {
-    auto block =
-        buildBlock<1>(manager,
-                      {{1}, {2}, {3}, {4}, {1}, {2}, {3}, {4}, {1}, {2}, {3}, {4}},
-                      {{3, 0}, {5, 0}, {11, 0}});
+    auto block = buildBlock<1>(
+        manager, {{1}, {2}, {3}, {4}, {1}, {2}, {3}, {4}, {1}, {2}, {3}, {4}},
+        {{3, 0}, {5, 0}, {11, 0}});
     testee.addBlock(block);
   }
   EXPECT_TRUE(testee.stoppedOnShadowRow());
@@ -185,10 +186,9 @@ TEST_F(AqlItemMatrixTest, rowIndexes_with_shadow_row_in_first_block) {
   AqlItemMatrix testee(1);
   ASSERT_EQ(testee.size(), 0);
   {
-    auto block =
-        buildBlock<1>(manager,
-                      {{1}, {2}, {3}, {4}, {1}, {2}, {3}, {4}, {1}, {2}, {3}, {4}},
-                      {{5, 0}});
+    auto block = buildBlock<1>(
+        manager, {{1}, {2}, {3}, {4}, {1}, {2}, {3}, {4}, {1}, {2}, {3}, {4}},
+        {{5, 0}});
     testee.addBlock(block);
   }
   EXPECT_TRUE(testee.stoppedOnShadowRow());
@@ -222,9 +222,9 @@ TEST_F(AqlItemMatrixTest, rowIndexes_with_shadow_row_in_multiple_blocks) {
   AqlItemMatrix testee(1);
 
   ASSERT_EQ(testee.size(), 0);
-  testee.addBlock(
-      buildBlock<1>(manager, {{1}, {2}, {3}, {4}, {1}, {2}, {3}, {4}, {1}, {2}, {3}, {4}},
-                    {{5, 0}}));
+  testee.addBlock(buildBlock<1>(
+      manager, {{1}, {2}, {3}, {4}, {1}, {2}, {3}, {4}, {1}, {2}, {3}, {4}},
+      {{5, 0}}));
 
   EXPECT_TRUE(testee.stoppedOnShadowRow());
   {
@@ -241,11 +241,11 @@ TEST_F(AqlItemMatrixTest, rowIndexes_with_shadow_row_in_multiple_blocks) {
   EXPECT_FALSE(testee.stoppedOnShadowRow());
   // We can only add more blocks, after we have removed the last shadowRow
 
-  testee.addBlock(
-      buildBlock<1>(manager, {{1}, {2}, {3}, {4}, {1}, {2}, {3}, {4}, {1}, {2}, {3}, {4}}));
-  testee.addBlock(
-      buildBlock<1>(manager, {{1}, {2}, {3}, {4}, {1}, {2}, {3}, {4}, {1}, {2}, {3}, {4}},
-                    {{2, 0}}));
+  testee.addBlock(buildBlock<1>(
+      manager, {{1}, {2}, {3}, {4}, {1}, {2}, {3}, {4}, {1}, {2}, {3}, {4}}));
+  testee.addBlock(buildBlock<1>(
+      manager, {{1}, {2}, {3}, {4}, {1}, {2}, {3}, {4}, {1}, {2}, {3}, {4}},
+      {{2, 0}}));
 
   EXPECT_TRUE(testee.stoppedOnShadowRow());
 
@@ -298,10 +298,9 @@ TEST_F(AqlItemMatrixTest, rowIndexes_with_multiple_shadow_row_in_first_block) {
   AqlItemMatrix testee(1);
   ASSERT_EQ(testee.size(), 0);
   {
-    auto block =
-        buildBlock<1>(manager,
-                      {{1}, {2}, {3}, {4}, {1}, {2}, {3}, {4}, {1}, {2}, {3}, {4}},
-                      {{3, 0}, {5, 0}, {11, 0}});
+    auto block = buildBlock<1>(
+        manager, {{1}, {2}, {3}, {4}, {1}, {2}, {3}, {4}, {1}, {2}, {3}, {4}},
+        {{3, 0}, {5, 0}, {11, 0}});
     testee.addBlock(block);
   }
   EXPECT_TRUE(testee.stoppedOnShadowRow());
@@ -357,16 +356,16 @@ TEST_F(AqlItemMatrixTest, getBlock_with_shadow_row_in_first_block) {
   auto& manager = this->manager();
   // We do not test skip and State logix for the Matrix, that
   // has to be handled by using Methods.
-  ExecutorState unusedState = ExecutorState::DONE;
+  MainQueryState unusedState = MainQueryState::DONE;
   size_t unusedSkip = 0;
 
   AqlItemMatrix testee(1);
   ASSERT_EQ(testee.size(), 0);
   {
-    auto block =
-        buildBlock<1>(manager,
-                      {{1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10}, {11}, {12}},
-                      {{5, 0}});
+    auto block = buildBlock<1>(
+        manager,
+        {{1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10}, {11}, {12}},
+        {{5, 0}});
     testee.addBlock(block);
   }
   EXPECT_TRUE(testee.stoppedOnShadowRow());
@@ -410,15 +409,15 @@ TEST_F(AqlItemMatrixTest, getBlock_with_shadow_row_in_multiple_blocks) {
   auto& manager = this->manager();
   // We do not test skip and State logix for the Matrix, that
   // has to be handled by using Methods.
-  ExecutorState unusedState = ExecutorState::DONE;
+  MainQueryState unusedState = MainQueryState::DONE;
   size_t unusedSkip = 0;
 
   AqlItemMatrix testee(1);
 
   ASSERT_EQ(testee.size(), 0);
-  testee.addBlock(
-      buildBlock<1>(manager, {{1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10}, {11}, {12}},
-                    {{5, 0}}));
+  testee.addBlock(buildBlock<1>(
+      manager, {{1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10}, {11}, {12}},
+      {{5, 0}}));
 
   EXPECT_TRUE(testee.stoppedOnShadowRow());
   {
@@ -441,10 +440,21 @@ TEST_F(AqlItemMatrixTest, getBlock_with_shadow_row_in_multiple_blocks) {
   EXPECT_FALSE(testee.stoppedOnShadowRow());
   // We can only add more blocks, after we have removed the last shadowRow
 
+  testee.addBlock(buildBlock<1>(manager, {{13},
+                                          {14},
+                                          {15},
+                                          {16},
+                                          {17},
+                                          {18},
+                                          {19},
+                                          {20},
+                                          {21},
+                                          {22},
+                                          {23},
+                                          {24}}));
   testee.addBlock(buildBlock<1>(
-      manager, {{13}, {14}, {15}, {16}, {17}, {18}, {19}, {20}, {21}, {22}, {23}, {24}}));
-  testee.addBlock(buildBlock<1>(
-      manager, {{25}, {26}, {27}, {28}, {29}, {30}, {31}, {32}, {33}, {34}, {35}, {36}},
+      manager,
+      {{25}, {26}, {27}, {28}, {29}, {30}, {31}, {32}, {33}, {34}, {35}, {36}},
       {{2, 0}}));
 
   EXPECT_TRUE(testee.stoppedOnShadowRow());
@@ -523,16 +533,16 @@ TEST_F(AqlItemMatrixTest, getBlock_with_multiple_shadow_row_in_first_block) {
   auto& manager = this->manager();
   // We do not test skip and State logix for the Matrix, that
   // has to be handled by using Methods.
-  ExecutorState unusedState = ExecutorState::DONE;
+  MainQueryState unusedState = MainQueryState::DONE;
   size_t unusedSkip = 0;
 
   AqlItemMatrix testee(1);
   ASSERT_EQ(testee.size(), 0);
   {
-    auto block =
-        buildBlock<1>(manager,
-                      {{1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10}, {11}, {12}},
-                      {{3, 0}, {5, 0}, {11, 0}});
+    auto block = buildBlock<1>(
+        manager,
+        {{1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10}, {11}, {12}},
+        {{3, 0}, {5, 0}, {11, 0}});
     testee.addBlock(block);
   }
   EXPECT_TRUE(testee.stoppedOnShadowRow());

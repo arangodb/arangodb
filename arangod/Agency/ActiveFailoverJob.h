@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CONSENSUS_ACTIVE_FAILOVER_JOB_H
-#define ARANGOD_CONSENSUS_ACTIVE_FAILOVER_JOB_H 1
+#pragma once
 
 #include "Job.h"
 #include "Supervision.h"
@@ -30,8 +30,9 @@ namespace arangodb {
 namespace consensus {
 
 struct ActiveFailoverJob final : public Job {
-  ActiveFailoverJob(Node const& snapshot, AgentInterface* agent, std::string const& jobId,
-                    std::string const& creator, std::string const& failed);
+  ActiveFailoverJob(Node const& snapshot, AgentInterface* agent,
+                    std::string const& jobId, std::string const& creator,
+                    std::string const& failed);
 
   ActiveFailoverJob(Node const& snapshot, AgentInterface* agent,
                     JOB_STATUS status, std::string const& jobId);
@@ -40,7 +41,8 @@ struct ActiveFailoverJob final : public Job {
 
   virtual JOB_STATUS status() override final;
   virtual void run(bool&) override final;
-  virtual bool create(std::shared_ptr<VPackBuilder> envelope = nullptr) override final;
+  virtual bool create(
+      std::shared_ptr<VPackBuilder> envelope = nullptr) override final;
   virtual bool start(bool&) override final;
   virtual Result abort(std::string const& reason) override final;
 
@@ -53,5 +55,3 @@ struct ActiveFailoverJob final : public Job {
 };
 }  // namespace consensus
 }  // namespace arangodb
-
-#endif

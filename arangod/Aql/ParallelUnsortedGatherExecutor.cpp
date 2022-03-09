@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -32,12 +33,13 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-ParallelUnsortedGatherExecutor::ParallelUnsortedGatherExecutor(Fetcher&, Infos& infos) {}
+ParallelUnsortedGatherExecutor::ParallelUnsortedGatherExecutor(Fetcher&,
+                                                               Infos& infos) {}
 
 ParallelUnsortedGatherExecutor::~ParallelUnsortedGatherExecutor() = default;
 
-auto ParallelUnsortedGatherExecutor::upstreamCallSkip(AqlCall const& clientCall) const
-    noexcept -> AqlCall {
+auto ParallelUnsortedGatherExecutor::upstreamCallSkip(
+    AqlCall const& clientCall) const noexcept -> AqlCall {
   TRI_ASSERT(clientCall.needSkipMore());
 
   // Only skip, don't ask for rows
@@ -55,15 +57,16 @@ auto ParallelUnsortedGatherExecutor::upstreamCallSkip(AqlCall const& clientCall)
   return clientCall;
 }
 
-auto ParallelUnsortedGatherExecutor::upstreamCallProduce(AqlCall const& clientCall) const
-    noexcept -> AqlCall {
+auto ParallelUnsortedGatherExecutor::upstreamCallProduce(
+    AqlCall const& clientCall) const noexcept -> AqlCall {
   TRI_ASSERT(clientCall.getOffset() == 0);
   return clientCall;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Guarantees requiredby this this block:
-///        1) For every dependency the input is sorted, according to the same strategy.
+///        1) For every dependency the input is sorted, according to the same
+///        strategy.
 ///
 ///        What this block does:
 ///        InitPhase:
@@ -75,8 +78,8 @@ auto ParallelUnsortedGatherExecutor::upstreamCallProduce(AqlCall const& clientCa
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-auto ParallelUnsortedGatherExecutor::produceRows(typename Fetcher::DataRange& input,
-                                                 OutputAqlItemRow& output)
+auto ParallelUnsortedGatherExecutor::produceRows(
+    typename Fetcher::DataRange& input, OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, Stats, AqlCallSet> {
   auto const& clientCall = output.getClientCall();
   TRI_ASSERT(clientCall.getOffset() == 0);
@@ -86,15 +89,18 @@ auto ParallelUnsortedGatherExecutor::produceRows(typename Fetcher::DataRange& in
   for (size_t dep = 0; dep < input.numberDependencies(); ++dep) {
     auto& range = input.rangeForDependency(dep);
     while (!output.isFull() && range.hasDataRow()) {
-      auto [state, row] = range.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
+      auto [state, row] =
+          range.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
       TRI_ASSERT(row);
       output.copyRow(row);
       output.advanceRow();
     }
-    // Produce a new call if necessary (we consumed all, and the state is still HASMORE)
-    if (!range.hasDataRow() && range.upstreamState() == ExecutorState::HASMORE) {
-      callSet.calls.emplace_back(
-          AqlCallSet::DepCallPair{dep, AqlCallList{upstreamCallProduce(clientCall)}});
+    // Produce a new call if necessary (we consumed all, and the state is still
+    // HASMORE)
+    if (!range.hasDataRow() &&
+        range.upstreamState() == ExecutorState::HASMORE) {
+      callSet.calls.emplace_back(AqlCallSet::DepCallPair{
+          dep, AqlCallList{upstreamCallProduce(clientCall)}});
     }
   }
 
@@ -104,8 +110,8 @@ auto ParallelUnsortedGatherExecutor::produceRows(typename Fetcher::DataRange& in
   return {input.state(), NoStats{}, callSet};
 }
 
-auto ParallelUnsortedGatherExecutor::skipRowsRange(typename Fetcher::DataRange& input,
-                                                   AqlCall& call)
+auto ParallelUnsortedGatherExecutor::skipRowsRange(
+    typename Fetcher::DataRange& input, AqlCall& call)
     -> std::tuple<ExecutorState, Stats, size_t, AqlCallSet> {
   // TODO skipping is currently not parallelized, but should be
   size_t waitingDep = input.numberDependencies();
@@ -130,6 +136,7 @@ auto ParallelUnsortedGatherExecutor::skipRowsRange(typename Fetcher::DataRange& 
         // By guarantee we will only see data, if
         // we are past the offset phase.
         TRI_ASSERT(call.getOffset() == 0);
+        call.didSkip(range.countAndSkipAllRemainingDataRows());
       } else {
         if (call.getOffset() > 0) {
           call.didSkip(range.skip(call.getOffset()));
@@ -140,17 +147,23 @@ auto ParallelUnsortedGatherExecutor::skipRowsRange(typename Fetcher::DataRange& 
       }
     }
   }
+  // We need to retain the skip,
+  // but are not allowed to hand it over to
+  // the callset.
+  // so copy it out and reset
+  size_t skipped = call.getSkipCount();
+  call.resetSkipCount();
   if (input.isDone()) {
     // We cannot have one that we are waiting on, if we are done.
     TRI_ASSERT(waitingDep == input.numberDependencies());
-    return {ExecutorState::DONE, NoStats{}, call.getSkipCount(), AqlCallSet{}};
+    return {ExecutorState::DONE, NoStats{}, skipped, AqlCallSet{}};
   }
   auto callSet = AqlCallSet{};
   if (call.needSkipMore()) {
     // We are not done with skipping.
     // Prepare next call.
-    callSet.calls.emplace_back(
-        AqlCallSet::DepCallPair{waitingDep, AqlCallList{upstreamCallSkip(call)}});
+    callSet.calls.emplace_back(AqlCallSet::DepCallPair{
+        waitingDep, AqlCallList{upstreamCallSkip(call)}});
   }
-  return {ExecutorState::HASMORE, NoStats{}, call.getSkipCount(), callSet};
+  return {ExecutorState::HASMORE, NoStats{}, skipped, callSet};
 }

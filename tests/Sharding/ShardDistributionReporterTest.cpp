@@ -1,11 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite for arangodb::cluster::ShardDistributionReporter
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -34,7 +31,6 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "IResearch/common.h"
 #include "Mocks/LogLevels.h"
@@ -44,6 +40,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "Futures/Utilities.h"
 #include "RestServer/DatabaseFeature.h"
+#include "Metrics/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "Sharding/ShardDistributionReporter.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
@@ -56,7 +53,7 @@ using namespace arangodb::cluster;
 using namespace arangodb::httpclient;
 
 static const VPackBuilder testDatabaseBuilder = dbArgsBuilder("testVocbase");
-static const VPackSlice   testDatabaseArgs = testDatabaseBuilder.slice();
+static const VPackSlice testDatabaseArgs = testDatabaseBuilder.slice();
 
 static void VerifyAttributes(VPackSlice result, std::string const& colName,
                              std::string const& sName) {
@@ -73,7 +70,8 @@ static void VerifyAttributes(VPackSlice result, std::string const& colName,
 }
 
 static void VerifyNumbers(VPackSlice result, std::string const& colName,
-                          std::string const& sName, uint64_t testTotal, uint64_t testCurrent) {
+                          std::string const& sName, uint64_t testTotal,
+                          uint64_t testCurrent, double testFollowerPercent) {
   ASSERT_TRUE(result.isObject());
 
   VPackSlice col = result.get(colName);
@@ -95,6 +93,14 @@ static void VerifyNumbers(VPackSlice result, std::string const& colName,
   VPackSlice current = progress.get("current");
   ASSERT_TRUE(current.isNumber());
   ASSERT_EQ(current.getNumber<uint64_t>(), testCurrent);
+
+  VPackSlice pct = progress.get("followerPercent");
+  if (testFollowerPercent >= 0.0) {
+    ASSERT_TRUE(pct.isNumber());
+    ASSERT_DOUBLE_EQ(pct.getDouble(), testFollowerPercent * double(100.0));
+  } else {
+    ASSERT_TRUE(pct.isNull());
+  }
 }
 
 static std::unique_ptr<fuerte::Response> generateCountResponse(uint64_t count) {
@@ -106,7 +112,8 @@ static std::unique_ptr<fuerte::Response> generateCountResponse(uint64_t count) {
 
   fuerte::ResponseHeader header;
   header.contentType(fuerte::ContentType::VPack);
-  std::unique_ptr<fuerte::Response> response(new fuerte::Response(std::move(header)));
+  std::unique_ptr<fuerte::Response> response(
+      new fuerte::Response(std::move(header)));
   response->setPayload(std::move(responseBuffer), /*offset*/ 0);
 
   TRI_ASSERT(!response->slices().empty());
@@ -116,11 +123,14 @@ static std::unique_ptr<fuerte::Response> generateCountResponse(uint64_t count) {
 
 class ShardDistributionReporterTest
     : public ::testing::Test,
-      public arangodb::tests::LogSuppressor<arangodb::Logger::CLUSTER, arangodb::LogLevel::FATAL> {
+      public arangodb::tests::LogSuppressor<arangodb::Logger::CLUSTER,
+                                            arangodb::LogLevel::FATAL> {
  protected:
-  arangodb::application_features::ApplicationServer server;
+  arangodb::ArangodServer server;
   StorageEngineMock engine;
-  std::vector<std::pair<arangodb::application_features::ApplicationFeature&, bool>> features;
+  std::vector<
+      std::pair<arangodb::application_features::ApplicationFeature&, bool>>
+      features;
 
   fakeit::Mock<ClusterInfo> infoMock;
   ClusterInfo& ci;
@@ -151,7 +161,7 @@ class ShardDistributionReporterTest
   std::unique_ptr<arangodb::LogicalCollection> col;
 
   // Fake the aliases
-  std::unordered_map<ServerID, std::string> aliases;
+  containers::FlatHashMap<ServerID, std::string> aliases;
 
   // Fake the shard map
   std::shared_ptr<ShardMap> shards;
@@ -184,10 +194,15 @@ class ShardDistributionReporterTest
     aliases[dbserver1] = dbserver1short;
     aliases[dbserver2] = dbserver2short;
     aliases[dbserver3] = dbserver3short;
-    arangodb::EngineSelectorFeature::ENGINE = &engine;
 
-    features.emplace_back(server.addFeature<arangodb::DatabaseFeature>(),
-                          false);  // required for TRI_vocbase_t::dropCollection(...)
+    features.emplace_back(
+        server.addFeature<arangodb::DatabaseFeature>(),
+        false);  // required for TRI_vocbase_t::dropCollection(...)
+    auto& selector = server.addFeature<arangodb::EngineSelectorFeature>();
+    features.emplace_back(selector, false);
+    selector.setEngineTesting(&engine);
+    features.emplace_back(
+        server.addFeature<arangodb::metrics::MetricsFeature>(), false);
     features.emplace_back(server.addFeature<arangodb::QueryRegistryFeature>(),
                           false);  // required for TRI_vocbase_t instantiation
 
@@ -195,35 +210,39 @@ class ShardDistributionReporterTest
       f.first.prepare();
     }
 
-    vocbase = std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                                              testDBInfo(server));
-    col = std::make_unique<arangodb::LogicalCollection>(*vocbase, json->slice(), true);
+    vocbase = std::make_unique<TRI_vocbase_t>(
+        TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server));
+    col = std::make_unique<arangodb::LogicalCollection>(*vocbase, json->slice(),
+                                                        true);
 
     col->setShardMap(shards);
 
     // Now we fake the calls
-    fakeit::When(Method(infoMock, getCollections)).AlwaysDo([&](DatabaseID const& dbId) {
-      EXPECT_TRUE(dbId == dbname);
-      return allCollections;
-    });
+    fakeit::When(Method(infoMock, getCollections))
+        .AlwaysDo([&](std::string_view dbId) {
+          EXPECT_TRUE(dbId == dbname);
+          return allCollections;
+        });
     // Now we fake the single collection call
-    fakeit::When(Method(infoMock, getCollection)).AlwaysDo([&](DatabaseID const& dbId, CollectionID const& colId) {
-      EXPECT_TRUE(dbId == dbname);
-      // EXPECT_TRUE(colId == colName);
-      EXPECT_TRUE(allCollections.size() > 0);
+    fakeit::When(Method(infoMock, getCollection))
+        .AlwaysDo([&](std::string_view dbId, std::string_view colId) {
+          EXPECT_TRUE(dbId == dbname);
+          // EXPECT_TRUE(colId == colName);
+          EXPECT_TRUE(allCollections.size() > 0);
 
-      for (auto const& c : allCollections) {
-        if (c->name() == colId) {
-          return c;
-        }
-      }
+          for (auto const& c : allCollections) {
+            if (c->name() == colId) {
+              return c;
+            }
+          }
 
-      EXPECT_TRUE(false);
-      return std::shared_ptr<LogicalCollection>(nullptr);
-    });
+          EXPECT_TRUE(false);
+          return std::shared_ptr<LogicalCollection>(nullptr);
+        });
     fakeit::When(Method(infoMock, getServerAliases)).AlwaysReturn(aliases);
-    fakeit::When(Method(infoMock, getCollectionCurrent).Using(dbname, cidString))
-        .AlwaysDo([&](DatabaseID const& dbId, CollectionID const& cId) {
+    fakeit::When(
+        Method(infoMock, getCollectionCurrent).Using(dbname, cidString))
+        .AlwaysDo([&](std::string_view dbId, std::string_view cId) {
           EXPECT_TRUE(dbId == dbname);
           EXPECT_TRUE(cId == cidString);
           return cic;
@@ -240,8 +259,9 @@ class ShardDistributionReporterTest
   }
 };
 
-TEST_F(ShardDistributionReporterTest,
-       a_healthy_instance_a_single_collection_of_three_shards_and_three_replicas) {
+TEST_F(
+    ShardDistributionReporterTest,
+    a_healthy_instance_a_single_collection_of_three_shards_and_three_replicas) {
   // Simlated situation:
   // s1 is in-sync: DBServer1 <- DBServer2, DBServer3
 
@@ -262,21 +282,24 @@ TEST_F(ShardDistributionReporterTest,
 
   col->setShardMap(shards);
 
-  currentShards.emplace(s1, std::vector<ServerID>{dbserver1, dbserver2, dbserver3});
+  currentShards.emplace(s1,
+                        std::vector<ServerID>{dbserver1, dbserver2, dbserver3});
   currentShards.emplace(s2, std::vector<ServerID>{dbserver2});
   currentShards.emplace(s3, std::vector<ServerID>{dbserver3, dbserver2});
 
   allCollections.emplace_back(
       std::shared_ptr<LogicalCollection>(col.get(), [](LogicalCollection*) {}));
 
-  fakeit::When(Method(infoCurrentMock, servers)).AlwaysDo([&](ShardID const& sid) {
-    EXPECT_TRUE(((sid == s1) || (sid == s2) || (sid == s3)));
-    return currentShards[sid];
-  });
+  fakeit::When(Method(infoCurrentMock, servers))
+      .AlwaysDo([&](std::string_view sid) {
+        EXPECT_TRUE(((sid == s1) || (sid == s2) || (sid == s3)));
+        return currentShards[sid];
+      });
 
   // Mocking sendRequest for count calls
   auto sender = [&, this](network::DestinationId const& destination,
-                          arangodb::fuerte::RestVerb reqType, std::string const& path,
+                          arangodb::fuerte::RestVerb reqType,
+                          std::string const& path,
                           velocypack::Buffer<uint8_t> body,
                           network::RequestOptions const& opts,
                           network::Headers headerFields) -> network::FutureRes {
@@ -293,27 +316,29 @@ TEST_F(ShardDistributionReporterTest,
     // '/_db/UnitTestDB/_api/collection/' + shard.shard + '/count'
     if (destination == "server:" + dbserver1) {
       // off-sync follows s2,s3
-      if (opts.database == "UnitTestDB" && path == "/_api/collection/" + s2 + "/count") {
-        response.response = generateCountResponse(shard2LowFollowerCount);
+      if (opts.database == "UnitTestDB" &&
+          path == "/_api/collection/" + s2 + "/count") {
+        response.setResponse(generateCountResponse(shard2LowFollowerCount));
       } else {
-        EXPECT_TRUE(opts.database == "UnitTestDB");
-        EXPECT_TRUE(path == "/_api/collection/" + s3 + "/count");
-        response.response = generateCountResponse(shard3FollowerCount);
+        EXPECT_EQ(opts.database, "UnitTestDB");
+        EXPECT_EQ(path, "/_api/collection/" + s3 + "/count");
+        response.setResponse(generateCountResponse(shard3FollowerCount));
       }
     } else if (destination == "server:" + dbserver2) {
       EXPECT_TRUE(opts.database == "UnitTestDB");
       // Leads s2
-      EXPECT_TRUE(path == "/_api/collection/" + s2 + "/count");
-      response.response = generateCountResponse(shard2LeaderCount);
+      EXPECT_EQ(path, "/_api/collection/" + s2 + "/count");
+      response.setResponse(generateCountResponse(shard2LeaderCount));
     } else if (destination == "server:" + dbserver3) {
       // Leads s3
       // off-sync follows s2
-      if (opts.database == "UnitTestDB" && path == "/_api/collection/" + s2 + "/count") {
-        response.response = generateCountResponse(shard2HighFollowerCount);
+      if (opts.database == "UnitTestDB" &&
+          path == "/_api/collection/" + s2 + "/count") {
+        response.setResponse(generateCountResponse(shard2HighFollowerCount));
       } else {
-        EXPECT_TRUE(opts.database == "UnitTestDB");
-        EXPECT_TRUE(path == "/_api/collection/" + s3 + "/count");
-        response.response = generateCountResponse(shard3LeaderCount);
+        EXPECT_EQ(opts.database, "UnitTestDB");
+        EXPECT_EQ(path, "/_api/collection/" + s3 + "/count");
+        response.setResponse(generateCountResponse(shard3LeaderCount));
       }
     } else {
       // Unknown Server!!
@@ -371,11 +396,11 @@ TEST_F(ShardDistributionReporterTest,
             ASSERT_TRUE(secondFollower.isString());
 
             // We do not guarentee any ordering here
-            if (arangodb::velocypack::StringRef(firstFollower) == dbserver2short) {
-              ASSERT_TRUE(secondFollower.copyString() == dbserver3short);
+            if (firstFollower.stringView() == dbserver2short) {
+              ASSERT_EQ(secondFollower.copyString(), dbserver3short);
             } else {
-              ASSERT_TRUE(firstFollower.copyString() == dbserver3short);
-              ASSERT_TRUE(secondFollower.copyString() == dbserver2short);
+              ASSERT_EQ(firstFollower.copyString(), dbserver3short);
+              ASSERT_EQ(secondFollower.copyString(), dbserver2short);
             }
           }
 
@@ -394,7 +419,7 @@ TEST_F(ShardDistributionReporterTest,
             VPackSlice leader = shard.get("leader");
 
             ASSERT_TRUE(leader.isString());
-            ASSERT_TRUE(leader.copyString() == dbserver2short);
+            ASSERT_EQ(leader.copyString(), dbserver2short);
           }
 
           {  // It should have the correct followers shortnames
@@ -409,11 +434,11 @@ TEST_F(ShardDistributionReporterTest,
             ASSERT_TRUE(secondFollower.isString());
 
             // We do not guarentee any ordering here
-            if (arangodb::velocypack::StringRef(firstFollower) == dbserver1short) {
-              ASSERT_TRUE(secondFollower.copyString() == dbserver3short);
+            if (firstFollower.stringView() == dbserver1short) {
+              ASSERT_EQ(secondFollower.copyString(), dbserver3short);
             } else {
-              ASSERT_TRUE(firstFollower.copyString() == dbserver3short);
-              ASSERT_TRUE(secondFollower.copyString() == dbserver1short);
+              ASSERT_EQ(firstFollower.copyString(), dbserver3short);
+              ASSERT_EQ(secondFollower.copyString(), dbserver1short);
             }
           }
 
@@ -447,11 +472,11 @@ TEST_F(ShardDistributionReporterTest,
             ASSERT_TRUE(secondFollower.isString());
 
             // We do not guarentee any ordering here
-            if (arangodb::velocypack::StringRef(firstFollower) == dbserver1short) {
-              ASSERT_TRUE(secondFollower.copyString() == dbserver2short);
+            if (firstFollower.stringView() == dbserver1short) {
+              ASSERT_EQ(secondFollower.copyString(), dbserver2short);
             } else {
-              ASSERT_TRUE(firstFollower.copyString() == dbserver2short);
-              ASSERT_TRUE(secondFollower.copyString() == dbserver1short);
+              ASSERT_EQ(firstFollower.copyString(), dbserver2short);
+              ASSERT_EQ(secondFollower.copyString(), dbserver1short);
             }
           }
 
@@ -492,12 +517,12 @@ TEST_F(ShardDistributionReporterTest,
             VPackSlice secondFollower = followers.at(1);
             ASSERT_TRUE(secondFollower.isString());
 
-            // We do not guarentee any ordering here
-            if (arangodb::velocypack::StringRef(firstFollower) == dbserver2short) {
-              ASSERT_TRUE(secondFollower.copyString() == dbserver3short);
+            // We do not guarantee any ordering here
+            if (firstFollower.stringView() == dbserver2short) {
+              ASSERT_EQ(secondFollower.copyString(), dbserver3short);
             } else {
-              ASSERT_TRUE(firstFollower.copyString() == dbserver3short);
-              ASSERT_TRUE(secondFollower.copyString() == dbserver2short);
+              ASSERT_EQ(firstFollower.copyString(), dbserver3short);
+              ASSERT_EQ(secondFollower.copyString(), dbserver2short);
             }
           }
         }
@@ -511,7 +536,7 @@ TEST_F(ShardDistributionReporterTest,
             VPackSlice leader = shard.get("leader");
 
             ASSERT_TRUE(leader.isString());
-            ASSERT_TRUE(leader.copyString() == dbserver2short);
+            ASSERT_EQ(leader.copyString(), dbserver2short);
           }
 
           {  // It should not have any followers
@@ -530,7 +555,7 @@ TEST_F(ShardDistributionReporterTest,
             VPackSlice leader = shard.get("leader");
 
             ASSERT_TRUE(leader.isString());
-            ASSERT_TRUE(leader.copyString() == dbserver3short);
+            ASSERT_EQ(leader.copyString(), dbserver3short);
           }
 
           {  // It should have the correct followers shortnames
@@ -540,7 +565,7 @@ TEST_F(ShardDistributionReporterTest,
 
             VPackSlice firstFollower = followers.at(0);
             ASSERT_TRUE(firstFollower.isString());
-            ASSERT_TRUE(firstFollower.copyString() == dbserver2short);
+            ASSERT_EQ(firstFollower.copyString(), dbserver2short);
           }
         }
       }
@@ -595,11 +620,11 @@ TEST_F(ShardDistributionReporterTest,
             ASSERT_TRUE(secondFollower.isString());
 
             // We do not guarentee any ordering here
-            if (arangodb::velocypack::StringRef(firstFollower) == dbserver2short) {
-              ASSERT_TRUE(secondFollower.copyString() == dbserver3short);
+            if (firstFollower.stringView() == dbserver2short) {
+              ASSERT_EQ(secondFollower.copyString(), dbserver3short);
             } else {
-              ASSERT_TRUE(firstFollower.copyString() == dbserver3short);
-              ASSERT_TRUE(secondFollower.copyString() == dbserver2short);
+              ASSERT_EQ(firstFollower.copyString(), dbserver3short);
+              ASSERT_EQ(secondFollower.copyString(), dbserver2short);
             }
           }
 
@@ -633,11 +658,11 @@ TEST_F(ShardDistributionReporterTest,
             ASSERT_TRUE(secondFollower.isString());
 
             // We do not guarentee any ordering here
-            if (arangodb::velocypack::StringRef(firstFollower) == dbserver1short) {
-              ASSERT_TRUE(secondFollower.copyString() == dbserver3short);
+            if (firstFollower.stringView() == dbserver1short) {
+              ASSERT_EQ(secondFollower.copyString(), dbserver3short);
             } else {
-              ASSERT_TRUE(firstFollower.copyString() == dbserver3short);
-              ASSERT_TRUE(secondFollower.copyString() == dbserver1short);
+              ASSERT_EQ(firstFollower.copyString(), dbserver3short);
+              ASSERT_EQ(secondFollower.copyString(), dbserver1short);
             }
           }
 
@@ -652,6 +677,12 @@ TEST_F(ShardDistributionReporterTest,
             VPackSlice current = progress.get("current");
             ASSERT_TRUE(current.isNumber());
             ASSERT_EQ(current.getNumber<uint64_t>(), shard2LowFollowerCount);
+
+            VPackSlice pct = progress.get("followerPercent");
+            ASSERT_TRUE(pct.isNumber());
+
+            VPackSlice syncing = progress.get("followersSyncing");
+            ASSERT_TRUE(syncing.isNumber());
           }
         }
 
@@ -664,7 +695,7 @@ TEST_F(ShardDistributionReporterTest,
             VPackSlice leader = shard.get("leader");
 
             ASSERT_TRUE(leader.isString());
-            ASSERT_TRUE(leader.copyString() == dbserver3short);
+            ASSERT_EQ(leader.copyString(), dbserver3short);
           }
 
           {  // It should have the correct followers shortnames
@@ -679,11 +710,11 @@ TEST_F(ShardDistributionReporterTest,
             ASSERT_TRUE(secondFollower.isString());
 
             // We do not guarentee any ordering here
-            if (arangodb::velocypack::StringRef(firstFollower) == dbserver1short) {
-              ASSERT_TRUE(secondFollower.copyString() == dbserver2short);
+            if (firstFollower.stringView() == dbserver1short) {
+              ASSERT_EQ(secondFollower.copyString(), dbserver2short);
             } else {
-              ASSERT_TRUE(firstFollower.copyString() == dbserver2short);
-              ASSERT_TRUE(secondFollower.copyString() == dbserver1short);
+              ASSERT_EQ(firstFollower.copyString(), dbserver2short);
+              ASSERT_EQ(secondFollower.copyString(), dbserver1short);
             }
           }
 
@@ -693,11 +724,17 @@ TEST_F(ShardDistributionReporterTest,
 
             VPackSlice total = progress.get("total");
             ASSERT_TRUE(total.isNumber());
-            ASSERT_TRUE(total.getNumber<uint64_t>() == shard3LeaderCount);
+            ASSERT_EQ(total.getNumber<uint64_t>(), shard3LeaderCount);
 
             VPackSlice current = progress.get("current");
             ASSERT_TRUE(current.isNumber());
-            ASSERT_TRUE(current.getNumber<uint64_t>() == shard3FollowerCount);
+            ASSERT_EQ(current.getNumber<uint64_t>(), shard3FollowerCount);
+
+            VPackSlice pct = progress.get("followerPercent");
+            ASSERT_TRUE(pct.isNumber());
+
+            VPackSlice syncing = progress.get("followersSyncing");
+            ASSERT_TRUE(syncing.isNumber());
           }
         }
       }
@@ -733,11 +770,11 @@ TEST_F(ShardDistributionReporterTest,
             ASSERT_TRUE(secondFollower.isString());
 
             // We do not guarentee any ordering here
-            if (arangodb::velocypack::StringRef(firstFollower) == dbserver2short) {
-              ASSERT_TRUE(secondFollower.copyString() == dbserver3short);
+            if (firstFollower.stringView() == dbserver2short) {
+              ASSERT_EQ(secondFollower.copyString(), dbserver3short);
             } else {
-              ASSERT_TRUE(firstFollower.copyString() == dbserver3short);
-              ASSERT_TRUE(secondFollower.copyString() == dbserver2short);
+              ASSERT_EQ(firstFollower.copyString(), dbserver3short);
+              ASSERT_EQ(secondFollower.copyString(), dbserver2short);
             }
           }
         }
@@ -770,7 +807,7 @@ TEST_F(ShardDistributionReporterTest,
             VPackSlice leader = shard.get("leader");
 
             ASSERT_TRUE(leader.isString());
-            ASSERT_TRUE(leader.copyString() == dbserver3short);
+            ASSERT_EQ(leader.copyString(), dbserver3short);
           }
 
           {  // It should have the correct followers shortnames
@@ -780,15 +817,16 @@ TEST_F(ShardDistributionReporterTest,
 
             VPackSlice firstFollower = followers.at(0);
             ASSERT_TRUE(firstFollower.isString());
-            ASSERT_TRUE(firstFollower.copyString() == dbserver2short);
+            ASSERT_EQ(firstFollower.copyString(), dbserver2short);
           }
         }
       }
     }
   }
 }
-TEST_F(ShardDistributionReporterTest,
-       testing_collection_distribution_for_database_a_single_collection_of_three_shards_and_three_replicas) {
+TEST_F(
+    ShardDistributionReporterTest,
+    testing_collection_distribution_for_database_a_single_collection_of_three_shards_and_three_replicas) {
   shards->emplace(s1, std::vector<ServerID>{dbserver1, dbserver2, dbserver3});
 
   col->setShardMap(shards);
@@ -798,10 +836,11 @@ TEST_F(ShardDistributionReporterTest,
   allCollections.emplace_back(
       std::shared_ptr<LogicalCollection>(col.get(), [](LogicalCollection*) {}));
 
-  fakeit::When(Method(infoCurrentMock, servers)).AlwaysDo([&](ShardID const& sid) {
-    EXPECT_TRUE(sid == s1);
-    return currentShards[sid];
-  });
+  fakeit::When(Method(infoCurrentMock, servers))
+      .AlwaysDo([&](std::string_view sid) {
+        EXPECT_TRUE(sid == s1);
+        return currentShards[sid];
+      });
 
   uint64_t leaderCount = 1337;
   uint64_t smallerFollowerCount = 456;
@@ -809,7 +848,8 @@ TEST_F(ShardDistributionReporterTest,
 
   // Mocking sendRequest for count calls
   auto sender = [&, this](network::DestinationId const& destination,
-                          arangodb::fuerte::RestVerb reqType, std::string const& path,
+                          arangodb::fuerte::RestVerb reqType,
+                          std::string const& path,
                           velocypack::Buffer<uint8_t> body,
                           network::RequestOptions const& reqOpts,
                           network::Headers headerFields) -> network::FutureRes {
@@ -821,11 +861,11 @@ TEST_F(ShardDistributionReporterTest,
     response.error = fuerte::Error::NoError;
 
     if (destination == "server:" + dbserver1) {
-      response.response = generateCountResponse(leaderCount);
+      response.setResponse(generateCountResponse(leaderCount));
     } else if (destination == "server:" + dbserver2) {
-      response.response = generateCountResponse(largerFollowerCount);
+      response.setResponse(generateCountResponse(largerFollowerCount));
     } else if (destination == "server:" + dbserver3) {
-      response.response = generateCountResponse(smallerFollowerCount);
+      response.setResponse(generateCountResponse(smallerFollowerCount));
     } else {
       EXPECT_TRUE(false);
     }
@@ -841,9 +881,13 @@ TEST_F(ShardDistributionReporterTest,
       {  // The minimum should be reported
         VPackBuilder resultBuilder;
         ShardDistributionReporter testee(&ci, sender);
-        testee.getCollectionDistributionForDatabase(dbname, colName, resultBuilder);
+        testee.getCollectionDistributionForDatabase(dbname, colName,
+                                                    resultBuilder);
 
-        VerifyNumbers(resultBuilder.slice(), colName, s1, leaderCount, smallerFollowerCount);
+        VerifyNumbers(resultBuilder.slice(), colName, s1, leaderCount,
+                      smallerFollowerCount,
+                      double(smallerFollowerCount + largerFollowerCount) /
+                          double(2.0) / double(leaderCount));
       }
     }
 
@@ -854,9 +898,12 @@ TEST_F(ShardDistributionReporterTest,
       {  // The maximum should be reported
         VPackBuilder resultBuilder;
         ShardDistributionReporter testee(&ci, sender);
-        testee.getCollectionDistributionForDatabase(dbname, colName, resultBuilder);
+        testee.getCollectionDistributionForDatabase(dbname, colName,
+                                                    resultBuilder);
 
-        VerifyNumbers(resultBuilder.slice(), colName, s1, leaderCount, largerFollowerCount);
+        // follower has more docs than leader. cap follower pct to 1.0
+        VerifyNumbers(resultBuilder.slice(), colName, s1, leaderCount,
+                      largerFollowerCount, 1.0);
       }
     }
 
@@ -867,16 +914,20 @@ TEST_F(ShardDistributionReporterTest,
       {  // The lesser should be reported
         VPackBuilder resultBuilder;
         ShardDistributionReporter testee(&ci, sender);
-        testee.getCollectionDistributionForDatabase(dbname, colName, resultBuilder);
+        testee.getCollectionDistributionForDatabase(dbname, colName,
+                                                    resultBuilder);
 
-        VerifyNumbers(resultBuilder.slice(), colName, s1, leaderCount, smallerFollowerCount);
+        // follower has more docs than leader. cap follower pct to 1.0
+        VerifyNumbers(resultBuilder.slice(), colName, s1, leaderCount,
+                      smallerFollowerCount, 1.0);
       }
     }
   }
 }
 
-TEST_F(ShardDistributionReporterTest,
-       testing_distribution_for_database_an_unhealthy_cluster_the_leader_doesnt_respond) {
+TEST_F(
+    ShardDistributionReporterTest,
+    testing_distribution_for_database_an_unhealthy_cluster_the_leader_doesnt_respond) {
   shards->emplace(s1, std::vector<ServerID>{dbserver1, dbserver2, dbserver3});
 
   col->setShardMap(shards);
@@ -886,14 +937,16 @@ TEST_F(ShardDistributionReporterTest,
   allCollections.emplace_back(
       std::shared_ptr<LogicalCollection>(col.get(), [](LogicalCollection*) {}));
 
-  fakeit::When(Method(infoCurrentMock, servers)).AlwaysDo([&](ShardID const& sid) {
-    EXPECT_TRUE(currentShards.find(sid) != currentShards.end());
-    return currentShards[sid];
-  });
+  fakeit::When(Method(infoCurrentMock, servers))
+      .AlwaysDo([&](std::string_view sid) {
+        EXPECT_TRUE(currentShards.find(sid) != currentShards.end());
+        return currentShards[sid];
+      });
 
   // Mocking sendRequest for count calls
   auto sender = [&, this](network::DestinationId const& destination,
-                          arangodb::fuerte::RestVerb reqType, std::string const& path,
+                          arangodb::fuerte::RestVerb reqType,
+                          std::string const& path,
                           velocypack::Buffer<uint8_t> body,
                           network::RequestOptions const& reqOpts,
                           network::Headers headerFields) -> network::FutureRes {
@@ -905,7 +958,7 @@ TEST_F(ShardDistributionReporterTest,
     response.error = fuerte::Error::NoError;
 
     if (destination == "server:" + dbserver1) {
-      response.error = fuerte::Error::Timeout;
+      response.error = fuerte::Error::RequestTimeout;
     } else if (destination == "server:" + dbserver2) {
     } else if (destination == "server:" + dbserver3) {
     } else {
@@ -923,8 +976,9 @@ TEST_F(ShardDistributionReporterTest,
   }
 }
 
-TEST_F(ShardDistributionReporterTest,
-       testing_distribution_for_database_an_unhealthy_cluster_one_follower_does_not_respond) {
+TEST_F(
+    ShardDistributionReporterTest,
+    testing_distribution_for_database_an_unhealthy_cluster_one_follower_does_not_respond) {
   shards->emplace(s1, std::vector<ServerID>{dbserver1, dbserver2, dbserver3});
 
   col->setShardMap(shards);
@@ -934,17 +988,19 @@ TEST_F(ShardDistributionReporterTest,
   allCollections.emplace_back(
       std::shared_ptr<LogicalCollection>(col.get(), [](LogicalCollection*) {}));
 
-  fakeit::When(Method(infoCurrentMock, servers)).AlwaysDo([&](ShardID const& sid) {
-    EXPECT_TRUE(currentShards.find(sid) != currentShards.end());
-    return currentShards[sid];
-  });
+  fakeit::When(Method(infoCurrentMock, servers))
+      .AlwaysDo([&](std::string_view sid) {
+        EXPECT_TRUE(currentShards.find(sid) != currentShards.end());
+        return currentShards[sid];
+      });
 
   uint64_t leaderCount = 1337;
   uint64_t largerFollowerCount = 1111;
 
   // Mocking sendRequest for count calls
   auto sender = [&, this](network::DestinationId const& destination,
-                          arangodb::fuerte::RestVerb reqType, std::string const& path,
+                          arangodb::fuerte::RestVerb reqType,
+                          std::string const& path,
                           velocypack::Buffer<uint8_t> body,
                           network::RequestOptions const& reqOpts,
                           network::Headers headerFields) -> network::FutureRes {
@@ -956,11 +1012,11 @@ TEST_F(ShardDistributionReporterTest,
     response.error = fuerte::Error::NoError;
 
     if (destination == "server:" + dbserver1) {
-      response.response = generateCountResponse(leaderCount);
+      response.setResponse(generateCountResponse(leaderCount));
     } else if (destination == "server:" + dbserver2) {
-      response.response = generateCountResponse(largerFollowerCount);
+      response.setResponse(generateCountResponse(largerFollowerCount));
     } else if (destination == "server:" + dbserver3) {
-      response.error = fuerte::Error::Timeout;
+      response.error = fuerte::Error::RequestTimeout;
     } else {
       EXPECT_TRUE(false);
     }
@@ -976,8 +1032,9 @@ TEST_F(ShardDistributionReporterTest,
   }
 }
 
-TEST_F(ShardDistributionReporterTest,
-       testing_distribution_for_database_an_unhealthy_cluster_no_follower_responds) {
+TEST_F(
+    ShardDistributionReporterTest,
+    testing_distribution_for_database_an_unhealthy_cluster_no_follower_responds) {
   shards->emplace(s1, std::vector<ServerID>{dbserver1, dbserver2, dbserver3});
 
   col->setShardMap(shards);
@@ -987,16 +1044,18 @@ TEST_F(ShardDistributionReporterTest,
   allCollections.emplace_back(
       std::shared_ptr<LogicalCollection>(col.get(), [](LogicalCollection*) {}));
 
-  fakeit::When(Method(infoCurrentMock, servers)).AlwaysDo([&](ShardID const& sid) {
-    EXPECT_TRUE(currentShards.find(sid) != currentShards.end());
-    return currentShards[sid];
-  });
+  fakeit::When(Method(infoCurrentMock, servers))
+      .AlwaysDo([&](std::string_view sid) {
+        EXPECT_TRUE(currentShards.find(sid) != currentShards.end());
+        return currentShards[sid];
+      });
 
   uint64_t leaderCount = 1337;
 
   // Mocking sendRequest for count calls
   auto sender = [&, this](network::DestinationId const& destination,
-                          arangodb::fuerte::RestVerb reqType, std::string const& path,
+                          arangodb::fuerte::RestVerb reqType,
+                          std::string const& path,
                           velocypack::Buffer<uint8_t> body,
                           network::RequestOptions const& reqOpts,
                           network::Headers headerFields) -> network::FutureRes {
@@ -1008,11 +1067,11 @@ TEST_F(ShardDistributionReporterTest,
     response.error = fuerte::Error::NoError;
 
     if (destination == "server:" + dbserver1) {
-      response.response = generateCountResponse(leaderCount);
+      response.setResponse(generateCountResponse(leaderCount));
     } else if (destination == "server:" + dbserver2) {
-      response.error = fuerte::Error::Timeout;
+      response.error = fuerte::Error::RequestTimeout;
     } else if (destination == "server:" + dbserver3) {
-      response.error = fuerte::Error::Timeout;
+      response.error = fuerte::Error::RequestTimeout;
     } else {
       EXPECT_TRUE(false);
     }
@@ -1028,8 +1087,9 @@ TEST_F(ShardDistributionReporterTest,
   }
 }
 
-TEST_F(ShardDistributionReporterTest,
-       testing_collection_distribution_for_database_an_unhealthy_cluster_the_leader_doesnt_respond) {
+TEST_F(
+    ShardDistributionReporterTest,
+    testing_collection_distribution_for_database_an_unhealthy_cluster_the_leader_doesnt_respond) {
   shards->emplace(s1, std::vector<ServerID>{dbserver1, dbserver2, dbserver3});
 
   col->setShardMap(shards);
@@ -1039,14 +1099,16 @@ TEST_F(ShardDistributionReporterTest,
   allCollections.emplace_back(
       std::shared_ptr<LogicalCollection>(col.get(), [](LogicalCollection*) {}));
 
-  fakeit::When(Method(infoCurrentMock, servers)).AlwaysDo([&](ShardID const& sid) {
-    EXPECT_TRUE(currentShards.find(sid) != currentShards.end());
-    return currentShards[sid];
-  });
+  fakeit::When(Method(infoCurrentMock, servers))
+      .AlwaysDo([&](std::string_view sid) {
+        EXPECT_TRUE(currentShards.find(sid) != currentShards.end());
+        return currentShards[sid];
+      });
 
   // Mocking sendRequest for count calls
   auto sender = [&, this](network::DestinationId const& destination,
-                          arangodb::fuerte::RestVerb reqType, std::string const& path,
+                          arangodb::fuerte::RestVerb reqType,
+                          std::string const& path,
                           velocypack::Buffer<uint8_t> body,
                           network::RequestOptions const& reqOpts,
                           network::Headers headerFields) -> network::FutureRes {
@@ -1058,7 +1120,7 @@ TEST_F(ShardDistributionReporterTest,
     response.error = fuerte::Error::NoError;
 
     if (destination == "server:" + dbserver1) {
-      response.error = fuerte::Error::Timeout;
+      response.error = fuerte::Error::RequestTimeout;
     } else if (destination == "server:" + dbserver2) {
     } else if (destination == "server:" + dbserver3) {
     } else {
@@ -1072,12 +1134,13 @@ TEST_F(ShardDistributionReporterTest,
     VPackBuilder resultBuilder;
     ShardDistributionReporter testee(&ci, sender);
     testee.getCollectionDistributionForDatabase(dbname, colName, resultBuilder);
-    VerifyNumbers(resultBuilder.slice(), colName, s1, 1, 0);
+    VerifyNumbers(resultBuilder.slice(), colName, s1, 1, 0, -1.0);
   }
 }
 
-TEST_F(ShardDistributionReporterTest,
-       testing_collection_distribution_for_database_an_unhealthy_cluster_one_follower_doesnt_respond) {
+TEST_F(
+    ShardDistributionReporterTest,
+    testing_collection_distribution_for_database_an_unhealthy_cluster_one_follower_doesnt_respond) {
   shards->emplace(s1, std::vector<ServerID>{dbserver1, dbserver2, dbserver3});
 
   col->setShardMap(shards);
@@ -1087,17 +1150,19 @@ TEST_F(ShardDistributionReporterTest,
   allCollections.emplace_back(
       std::shared_ptr<LogicalCollection>(col.get(), [](LogicalCollection*) {}));
 
-  fakeit::When(Method(infoCurrentMock, servers)).AlwaysDo([&](ShardID const& sid) {
-    EXPECT_TRUE(currentShards.find(sid) != currentShards.end());
-    return currentShards[sid];
-  });
+  fakeit::When(Method(infoCurrentMock, servers))
+      .AlwaysDo([&](std::string_view sid) {
+        EXPECT_TRUE(currentShards.find(sid) != currentShards.end());
+        return currentShards[sid];
+      });
 
   uint64_t leaderCount = 1337;
   uint64_t largerFollowerCount = 1111;
 
   // Mocking sendRequest for count calls
   auto sender = [&, this](network::DestinationId const& destination,
-                          arangodb::fuerte::RestVerb reqType, std::string const& path,
+                          arangodb::fuerte::RestVerb reqType,
+                          std::string const& path,
                           velocypack::Buffer<uint8_t> body,
                           network::RequestOptions const& reqOpts,
                           network::Headers headerFields) -> network::FutureRes {
@@ -1109,11 +1174,11 @@ TEST_F(ShardDistributionReporterTest,
     response.error = fuerte::Error::NoError;
 
     if (destination == "server:" + dbserver1) {
-      response.response = generateCountResponse(leaderCount);
+      response.setResponse(generateCountResponse(leaderCount));
     } else if (destination == "server:" + dbserver2) {
-      response.response = generateCountResponse(largerFollowerCount);
+      response.setResponse(generateCountResponse(largerFollowerCount));
     } else if (destination == "server:" + dbserver3) {
-      response.error = fuerte::Error::Timeout;
+      response.error = fuerte::Error::RequestTimeout;
     } else {
       EXPECT_TRUE(false);
     }
@@ -1125,12 +1190,15 @@ TEST_F(ShardDistributionReporterTest,
     VPackBuilder resultBuilder;
     ShardDistributionReporter testee(&ci, sender);
     testee.getCollectionDistributionForDatabase(dbname, colName, resultBuilder);
-    VerifyNumbers(resultBuilder.slice(), colName, s1, leaderCount, largerFollowerCount);
+    VerifyNumbers(resultBuilder.slice(), colName, s1, leaderCount,
+                  largerFollowerCount,
+                  double(largerFollowerCount) / 1.0 / double(leaderCount));
   }
 }
 
-TEST_F(ShardDistributionReporterTest,
-       testing_collection_distribution_for_database_an_unhealthy_cluster_no_follower_responds) {
+TEST_F(
+    ShardDistributionReporterTest,
+    testing_collection_distribution_for_database_an_unhealthy_cluster_no_follower_responds) {
   shards->emplace(s1, std::vector<ServerID>{dbserver1, dbserver2, dbserver3});
 
   col->setShardMap(shards);
@@ -1140,16 +1208,18 @@ TEST_F(ShardDistributionReporterTest,
   allCollections.emplace_back(
       std::shared_ptr<LogicalCollection>(col.get(), [](LogicalCollection*) {}));
 
-  fakeit::When(Method(infoCurrentMock, servers)).AlwaysDo([&](ShardID const& sid) {
-    EXPECT_TRUE(currentShards.find(sid) != currentShards.end());
-    return currentShards[sid];
-  });
+  fakeit::When(Method(infoCurrentMock, servers))
+      .AlwaysDo([&](std::string_view sid) {
+        EXPECT_TRUE(currentShards.find(sid) != currentShards.end());
+        return currentShards[sid];
+      });
 
   uint64_t leaderCount = 1337;
 
   // Mocking sendRequest for count calls
   auto sender = [&, this](network::DestinationId const& destination,
-                          arangodb::fuerte::RestVerb reqType, std::string const& path,
+                          arangodb::fuerte::RestVerb reqType,
+                          std::string const& path,
                           velocypack::Buffer<uint8_t> body,
                           network::RequestOptions const& reqOpts,
                           network::Headers headerFields) -> network::FutureRes {
@@ -1161,11 +1231,11 @@ TEST_F(ShardDistributionReporterTest,
     response.error = fuerte::Error::NoError;
 
     if (destination == "server:" + dbserver1) {
-      response.response = generateCountResponse(leaderCount);
+      response.setResponse(generateCountResponse(leaderCount));
     } else if (destination == "server:" + dbserver2) {
-      response.error = fuerte::Error::Timeout;
+      response.error = fuerte::Error::RequestTimeout;
     } else if (destination == "server:" + dbserver3) {
-      response.error = fuerte::Error::Timeout;
+      response.error = fuerte::Error::RequestTimeout;
     } else {
       EXPECT_TRUE(false);
     }
@@ -1177,6 +1247,6 @@ TEST_F(ShardDistributionReporterTest,
     VPackBuilder resultBuilder;
     ShardDistributionReporter testee(&ci, sender);
     testee.getCollectionDistributionForDatabase(dbname, colName, resultBuilder);
-    VerifyNumbers(resultBuilder.slice(), colName, s1, leaderCount, 0);
+    VerifyNumbers(resultBuilder.slice(), colName, s1, leaderCount, 0, -1.0);
   }
 }

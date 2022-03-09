@@ -36,6 +36,10 @@ const request = require('@arangodb/request');
 const crypto = require('@arangodb/crypto');
 const expect = require('chai').expect;
 const ERRORS = require('internal').errors;
+const { debugCanUseFailAt,
+    debugSetFailAt,
+    debugClearFailAt
+  } = require('@arangodb/test-helper');
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -72,6 +76,23 @@ function AuthSuite() {
     ////////////////////////////////////////////////////////////////////////////////
 
     tearDown: function () {
+      // our test temporarily disables access to the user collection,
+      // so our request to clear the failure points must be authenticated
+      // by a JWT.
+      const jwt = crypto.jwtEncode(jwtSecret, {
+        "server_id": "arangosh",
+        "iss": "arangodb", "exp": Math.floor(Date.now() / 1000) + 3600
+      }, 'HS256');
+      const res = request.delete({
+        url: baseUrl() + "/_admin/debug/failat",
+        auth: { bearer: jwt }
+      });
+
+      // in case of 404 we are running a release build
+      if (res.statusCode !== 200 && res.statusCode !== 404) {
+        throw "Error removing failure points";
+      }
+      
       arango.reconnect(arango.getEndpoint(), '_system', "root", "");
       try {
         users.remove(user);
@@ -190,6 +211,20 @@ function AuthSuite() {
 
       let result = arango.GET('/_api/user/noone');
       assertEqual(403, result.code);
+    },
+    
+    testAuthenticationErrorDuringStartup: function() {
+      if (!debugCanUseFailAt(arango.getEndpoint())) {
+        return;
+      }
+      debugSetFailAt(arango.getEndpoint(), "QueryAllUsers");
+      debugSetFailAt(arango.getEndpoint(), "BootstrapFeature_not_ready");
+      
+      users.reload();
+
+      const result = arango.GET('/_api/version');
+      require('internal').print(result);
+      assertEqual(503, result.code);
     },
     
     ////////////////////////////////////////////////////////////////////////////////

@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_REST_ADMIN_STATISTICS_HANDLER_H
-#define ARANGOD_REST_HANDLER_REST_ADMIN_STATISTICS_HANDLER_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "RestHandler/RestBaseHandler.h"
@@ -29,14 +29,15 @@
 namespace arangodb {
 class RestAdminStatisticsHandler : public RestBaseHandler {
  public:
-  RestAdminStatisticsHandler(application_features::ApplicationServer&,
-                             GeneralRequest*, GeneralResponse*);
+  RestAdminStatisticsHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
 
  public:
   char const* name() const override final {
     return "RestAdminStatisticsHandler";
   }
-  RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
+  /// @brief must be on fast lane so that statistics can always be retrieved,
+  /// even from otherwise totally busy servers
+  RequestLane lane() const override final { return RequestLane::CLIENT_FAST; }
   RestStatus execute() override final;
 
  private:
@@ -44,5 +45,3 @@ class RestAdminStatisticsHandler : public RestBaseHandler {
   void getStatisticsDescription();
 };
 }  // namespace arangodb
-
-#endif

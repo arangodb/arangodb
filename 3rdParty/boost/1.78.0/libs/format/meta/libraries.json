@@ -1,0 +1,17 @@
+{
+    "key": "format",
+    "name": "Format",
+    "authors": [
+        "Samuel Krempp"
+    ],
+    "description": "The format library provides a type-safe mechanism for formatting arguments according to a printf-like format-string.",
+    "category": [
+        "IO",
+        "String"
+    ],
+    "maintainers": [
+        "Samuel Krempp <krempp -at- crans.ens-cachan.fr>",
+        "James E. King III <jking -at- apache.org>"
+    ],
+    "cxxstd": "03"
+}

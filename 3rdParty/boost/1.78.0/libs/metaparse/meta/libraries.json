@@ -1,0 +1,9 @@
+{
+    "key": "metaparse",
+    "name": "Metaparse",
+    "authors": ["Abel Sinkovics"],
+    "description": "A library for generating compile time parsers parsing embedded DSL code as part of the C++ compilation process",
+    "category": ["Metaprogramming"],
+    "maintainers": ["Abel Sinkovics <abel -at- elte.hu>"],
+    "cxxstd": "03"
+}

@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,20 +21,20 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_APPLICATION_FEATURES_FINAL_FEATURE_PHASE_H
-#define ARANGODB_APPLICATION_FEATURES_FINAL_FEATURE_PHASE_H 1
+#pragma once
 
 #include "ApplicationFeatures/ApplicationFeaturePhase.h"
+#include "RestServer/arangod.h"
 
 namespace arangodb {
 namespace application_features {
 
 class FinalFeaturePhase : public ApplicationFeaturePhase {
  public:
-  explicit FinalFeaturePhase(ApplicationServer& server);
+  static constexpr std::string_view name() noexcept { return "FinalPhase"; }
+
+  explicit FinalFeaturePhase(ArangodServer& server);
 };
 
 }  // namespace application_features
 }  // namespace arangodb
-
-#endif

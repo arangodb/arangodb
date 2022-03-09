@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_REST_EDGES_HANDLER_H
-#define ARANGOD_REST_HANDLER_REST_EDGES_HANDLER_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
@@ -42,8 +41,7 @@ struct Variable;
 
 class RestEdgesHandler : public RestVocbaseBaseHandler {
  public:
-  explicit RestEdgesHandler(application_features::ApplicationServer&,
-                            GeneralRequest*, GeneralResponse*);
+  explicit RestEdgesHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
 
  public:
   RestStatus execute() override final;
@@ -67,9 +65,10 @@ class RestEdgesHandler : public RestVocbaseBaseHandler {
   /// @brief get all edges for a given vertex. Independent from the request
   //////////////////////////////////////////////////////////////////////////////
 
-  bool getEdgesForVertex(std::string const& id, TRI_voc_cid_t cid,
+  bool getEdgesForVertex(std::string const& id, DataSourceId cid,
                          std::string const& collectionName,
-                         TRI_edge_direction_e direction, transaction::Methods& trx,
+                         TRI_edge_direction_e direction,
+                         transaction::Methods& trx,
                          std::function<void(LocalDocumentId const&)> const& cb);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -85,5 +84,3 @@ class RestEdgesHandler : public RestVocbaseBaseHandler {
   bool validateCollection(std::string const& name);
 };
 }  // namespace arangodb
-
-#endif

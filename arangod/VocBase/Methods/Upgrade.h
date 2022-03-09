@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOC_BASE_API_UPGRADE_H
-#define ARANGOD_VOC_BASE_API_UPGRADE_H 1
+#pragma once
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -37,16 +37,18 @@ namespace methods {
 
 struct UpgradeResult {
   UpgradeResult() : type(VersionResult::INVALID), _result() {}
-  UpgradeResult(int err, VersionResult::StatusCode s) : type(s), _result(err) {}
-  UpgradeResult(int err, std::string const& msg, VersionResult::StatusCode s)
+  UpgradeResult(ErrorCode err, VersionResult::StatusCode s)
+      : type(s), _result(err) {}
+  UpgradeResult(ErrorCode err, std::string_view msg,
+                VersionResult::StatusCode s)
       : type(s), _result(err, msg) {}
   VersionResult::StatusCode type;
 
   // forwarded methods
   bool ok() const { return _result.ok(); }
   bool fail() const { return _result.fail(); }
-  int errorNumber() const { return _result.errorNumber(); }
-  std::string errorMessage() const { return _result.errorMessage(); }
+  ErrorCode errorNumber() const { return _result.errorNumber(); }
+  std::string_view errorMessage() const { return _result.errorMessage(); }
 
   // access methods
   Result const& result() const& { return _result; }
@@ -69,14 +71,18 @@ struct Upgrade {
     DATABASE_INIT = (1u << 3),
     DATABASE_UPGRADE = (1u << 4),
     DATABASE_EXISTING = (1u << 5),
+    DATABASE_ONLY_ONCE = (1u << 6),  // hint that task should be run on
+                                     // database only once. New databases
+                                     // should assume this task as executed
     // =============
-    CLUSTER_NONE = (1u << 6),
-    CLUSTER_LOCAL = (1u << 7),  // agency
-    CLUSTER_COORDINATOR_GLOBAL = (1u << 8),
-    CLUSTER_DB_SERVER_LOCAL = (1u << 9)
+    CLUSTER_NONE = (1u << 7),
+    CLUSTER_LOCAL = (1u << 8),  // agency
+    CLUSTER_COORDINATOR_GLOBAL = (1u << 9),
+    CLUSTER_DB_SERVER_LOCAL = (1u << 10)
   };
 
-  typedef std::function<bool(TRI_vocbase_t&, velocypack::Slice const&)> TaskFunction;
+  typedef std::function<bool(TRI_vocbase_t&, velocypack::Slice const&)>
+      TaskFunction;
   struct Task {
     std::string name;
     std::string description;
@@ -99,8 +105,9 @@ struct Upgrade {
   /// @brief executed on startup for non-coordinators
   /// @param upgrade  Perform an actual upgrade
   /// Corresponds to upgrade-database.js
-  static UpgradeResult startup(TRI_vocbase_t& vocbase, bool upgrade, bool ignoreFileErrors);
-  
+  static UpgradeResult startup(TRI_vocbase_t& vocbase, bool upgrade,
+                               bool ignoreFileErrors);
+
   /// @brief executed on startup for coordinators
   /// @param upgrade  Perform an actual upgrade
   /// Corresponds to upgrade-database.js
@@ -109,6 +116,13 @@ struct Upgrade {
  private:
   /// @brief register tasks, only run once on startup
   static void registerTasks(UpgradeFeature&);
+
+#ifdef USE_ENTERPRISE
+  // Like RegisterTasks, but only dedicated to enterprise based
+  // upgrade tasks. Implementation in closed Enterprise Source
+  static void registerTasksEE(UpgradeFeature&);
+#endif
+
   static UpgradeResult runTasks(TRI_vocbase_t& vocbase, VersionResult& vinfo,
                                 arangodb::velocypack::Slice const& params,
                                 uint32_t clusterFlag, uint32_t dbFlag);
@@ -138,5 +152,3 @@ struct Upgrade {
 
 }  // namespace methods
 }  // namespace arangodb
-
-#endif

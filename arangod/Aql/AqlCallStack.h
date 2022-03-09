@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,13 +21,12 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_AQL_CALLSTACK_H
-#define ARANGOD_AQL_AQL_CALLSTACK_H 1
+#pragma once
 
 #include "Aql/AqlCallList.h"
-#include "Cluster/ResultT.h"
+#include "Basics/ResultT.h"
 
-#include <stack>
+#include <vector>
 
 namespace arangodb {
 namespace velocypack {
@@ -40,10 +40,10 @@ namespace aql {
  *        Executor only, the AqlCallStack is used to transport information
  *        for outer subqueries.
  *        At the very beginning of the query this Stack has exactly one
- *        CallList entry, which defines what should be done on the outermost query.
- *        If we now enter a spliced subquery, there will be another CallList
- *        added on top of this stack. If we leave the spliced subquery, the topmost
- *        CallList will be removed.
+ *        CallList entry, which defines what should be done on the outermost
+ * query. If we now enter a spliced subquery, there will be another CallList
+ *        added on top of this stack. If we leave the spliced subquery, the
+ * topmost CallList will be removed.
  *
  *        Using this stack, we can transport all necessary calls from the outer
  *        subqueries to the Executors that need to produce data for them.
@@ -51,13 +51,15 @@ namespace aql {
 class AqlCallStack {
  public:
   // Initial
-  explicit AqlCallStack(AqlCallList call, bool compatibilityMode3_6 = false);
+  explicit AqlCallStack(AqlCallList call);
   // Used in subquery
   AqlCallStack(AqlCallStack const& other, AqlCallList call);
   // Used to pass between blocks
-  AqlCallStack(AqlCallStack const& other);
+  AqlCallStack(AqlCallStack const& other) = default;
+  AqlCallStack(AqlCallStack&& other) noexcept = default;
 
   AqlCallStack& operator=(AqlCallStack const& other) = default;
+  AqlCallStack& operator=(AqlCallStack&& other) noexcept = default;
 
   static auto fromVelocyPack(velocypack::Slice) -> ResultT<AqlCallStack>;
 
@@ -77,16 +79,11 @@ class AqlCallStack {
   // Put another call on top of the stack.
   void pushCall(AqlCallList const& call);
 
-  // TODO: Remove me again, only used to fake DONE
-  [[deprecated]] auto empty() const noexcept -> bool {
-    return _operations.empty();
-  }
+  auto empty() const noexcept -> bool { return _operations.empty(); }
 
   auto subqueryLevel() const noexcept -> size_t { return _operations.size(); }
 
   void toVelocyPack(velocypack::Builder& builder) const;
-
-  auto is36Compatible() const noexcept -> bool { return _compatibilityMode3_6; }
 
   /**
    * @brief Create an equivalent call stack that does a full-produce
@@ -133,6 +130,14 @@ class AqlCallStack {
   auto modifyCallListAtDepth(size_t depth) -> AqlCallList&;
 
   /**
+   * @brief Get a const reference to the call at the given shadowRowDepth
+   *
+   * @param depth ShadowRow depth we need to work on
+   * @return AqlCall& reference to the call, can be modified.
+   */
+  auto getCallAtDepth(size_t depth) const -> AqlCall const&;
+
+  /**
    * @brief Get a reference to the top most call.
    *        This is modifiable, but caller will not take
    *        responsibility.
@@ -166,25 +171,17 @@ class AqlCallStack {
   auto requestLessDataThan(AqlCallStack const& other) const noexcept -> bool;
 
  private:
-  explicit AqlCallStack(std::vector<AqlCallList>&& operations);
+  explicit AqlCallStack(std::vector<AqlCallList>&& operations) noexcept;
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  auto validateNoCallHasSkippedRows() -> void;
+#endif
 
  private:
-  // The list of operations, stacked by depth (e.g. bottom element is from main
-  // query) NOTE: This is only mutable on 3.6 compatibility mode. We need to
-  // inject an additional call in any const operation here just to pretend we
-  // are not empty. Can be removed after 3.7.
-  mutable std::vector<AqlCallList> _operations;
-
-  // This flag will be set if and only if
-  // we are called with the 3.6 and earlier API
-  // As we only support upgrades between 3.6.* -> 3.7.*
-  // and not 3.6.* -> 3.8.* we can savely remove
-  // this flag and all it's side effects on the
-  // version after 3.7.
-  bool _compatibilityMode3_6{false};
+  // The list of operations, stacked by depth (e.g. bottom element is from
+  // main query)
+  std::vector<AqlCallList> _operations;
 };
 
 }  // namespace aql
 }  // namespace arangodb
-
-#endif

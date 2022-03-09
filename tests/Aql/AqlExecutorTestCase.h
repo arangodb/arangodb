@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -17,10 +18,11 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
+/// @author Markus Pfeiffer
+/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TESTS_AQL_EXECUTORTESTCASE_H
-#define TESTS_AQL_EXECUTORTESTCASE_H
+#pragma once
 
 #include "gtest/gtest.h"
 
@@ -28,6 +30,8 @@
 
 #include "Aql/AqlItemBlockManager.h"
 #include "Aql/ExecutionNode.h"
+#include "Basics/GlobalResourceMonitor.h"
+#include "Basics/ResourceUsage.h"
 
 #include "Mocks/Servers.h"
 
@@ -46,11 +50,12 @@ namespace aql {
  *
  * @tparam enableQueryTrace Enable Aql Profile Trace logging
  */
-template <bool enableQueryTrace = false>
+template<bool enableQueryTrace = false>
 class AqlExecutorTestCase : public ::testing::Test {
  public:
   // Creating a server instance costs a lot of time, so do it only once.
-  // Note that newer version of gtest call these SetUpTestSuite/TearDownTestSuite
+  // Note that newer version of gtest call these
+  // SetUpTestSuite/TearDownTestSuite
   static void SetUpTestCase() {
     _server = std::make_unique<mocks::MockAqlServer>();
   }
@@ -67,14 +72,20 @@ class AqlExecutorTestCase : public ::testing::Test {
    *        These nodes can be used to create the Executors
    *        Caller does not need to manage the memory.
    *
-   * @return ExecutionNode* Pointer to a dummy ExecutionNode. Memory is managed, do not delete.
+   * @return ExecutionNode* Pointer to a dummy ExecutionNode. Memory is managed,
+   * do not delete.
    */
-  auto generateNodeDummy() -> ExecutionNode*;
+  auto generateNodeDummy(
+      ExecutionNode::NodeType type = ExecutionNode::NodeType::SINGLETON)
+      -> ExecutionNode*;
 
+  auto generateScatterNodeDummy() -> ScatterNode*;
 
-  template <std::size_t inputColumns = 1, std::size_t outputColumns = 1>
-  auto makeExecutorTestHelper() -> ExecutorTestHelper<inputColumns, outputColumns> {
-    return ExecutorTestHelper<inputColumns, outputColumns>(*fakedQuery, itemBlockManager);
+  template<std::size_t inputColumns = 1, std::size_t outputColumns = 1>
+  auto makeExecutorTestHelper()
+      -> ExecutorTestHelper<inputColumns, outputColumns> {
+    return ExecutorTestHelper<inputColumns, outputColumns>(*fakedQuery,
+                                                           itemBlockManager);
   }
 
  private:
@@ -83,9 +94,11 @@ class AqlExecutorTestCase : public ::testing::Test {
  protected:
   // available variables
   static inline std::unique_ptr<mocks::MockAqlServer> _server;
-  ResourceMonitor monitor{};
-  AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
-  std::unique_ptr<arangodb::aql::Query> fakedQuery;
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor monitor{global};
+  AqlItemBlockManager itemBlockManager{monitor,
+                                       SerializationFormat::SHADOWROWS};
+  std::shared_ptr<arangodb::aql::Query> fakedQuery;
 };
 
 /**
@@ -94,11 +107,11 @@ class AqlExecutorTestCase : public ::testing::Test {
  * @tparam T The Test Parameter used for gtest.
  * @tparam enableQueryTrace Enable Aql Profile Trace logging
  */
-template <typename T, bool enableQueryTrace = false>
-class AqlExecutorTestCaseWithParam : public AqlExecutorTestCase<enableQueryTrace>,
-                                     public ::testing::WithParamInterface<T> {};
+template<typename T, bool enableQueryTrace = false>
+class AqlExecutorTestCaseWithParam
+    : public AqlExecutorTestCase<enableQueryTrace>,
+      public ::testing::WithParamInterface<T> {};
 
 }  // namespace aql
 }  // namespace tests
 }  // namespace arangodb
-#endif

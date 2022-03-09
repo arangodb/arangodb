@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,13 +21,13 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOC_BASE_KEY_GENERATOR_H
-#define ARANGOD_VOC_BASE_KEY_GENERATOR_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "VocBase/vocbase.h"
 
 #include <array>
+#include <string>
 
 namespace arangodb {
 namespace application_features {
@@ -37,6 +37,12 @@ namespace velocypack {
 class Builder;
 class Slice;
 }  // namespace velocypack
+
+// static helper functions for key generators
+struct KeyGeneratorHelper {
+  static std::string encodePadded(uint64_t value);
+  static uint64_t decodePadded(char const* p, size_t length);
+};
 
 /// generic key generator interface
 ///
@@ -59,8 +65,7 @@ class KeyGenerator {
   virtual ~KeyGenerator() = default;
 
   /// @brief create a key generator based on the options specified
-  static KeyGenerator* factory(application_features::ApplicationServer&,
-                               arangodb::velocypack::Slice);
+  static KeyGenerator* factory(ArangodServer&, arangodb::velocypack::Slice);
 
   /// @brief whether or not the key generator has dynamic state
   /// that needs to be stored and recovered
@@ -72,7 +77,7 @@ class KeyGenerator {
   virtual std::string generate() = 0;
 
   /// @brief validate a key
-  virtual int validate(char const* p, size_t length, bool isRestore);
+  virtual ErrorCode validate(char const* p, size_t length, bool isRestore);
 
   /// @brief track usage of a key
   virtual void track(char const* p, size_t length) = 0;
@@ -84,20 +89,21 @@ class KeyGenerator {
   static bool validateKey(char const* key, size_t len);
 
   /// @brief validate a document id (collection name + / + document key)
-  static bool validateId(char const* key, size_t len, size_t* split = nullptr);
+  static bool validateId(char const* key, size_t len, bool extendedNames,
+                         size_t& split);
 
   /// @brief maximum length of a key in a collection
   static constexpr size_t maxKeyLength = 254;
 
  protected:
   /// @brief check global key attributes
-  int globalCheck(char const* p, size_t length, bool isRestore);
+  ErrorCode globalCheck(char const* p, size_t length, bool isRestore);
 
  protected:
   /// @brief whether or not the users can specify their own keys
   bool const _allowUserKeys;
+  /// @brief whether or not we are running on a DB server
+  bool const _isDBServer;
 };
 
 }  // namespace arangodb
-
-#endif

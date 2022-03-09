@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -32,7 +33,7 @@ using namespace arangodb::options;
 bool Section::hasOptions() const {
   if (!hidden) {
     for (auto const& it : options) {
-      if (!it.second.hasFlag(arangodb::options::Flags::Hidden)) {
+      if (!it.second.hasFlag(arangodb::options::Flags::Uncommon)) {
         return true;
       }
     }
@@ -42,21 +43,47 @@ bool Section::hasOptions() const {
 
 // print help for a section
 // the special search string "." will show help for all sections, even if hidden
-void Section::printHelp(std::string const& search, size_t tw, size_t ow, bool colors) const {
+void Section::printHelp(std::string const& search, size_t tw, size_t ow,
+                        bool colors) const {
   if (search != "." && (hidden || !hasOptions())) {
     return;
   }
 
-  if (colors) {
-    std::cout << "Section '" << ShellColorsFeature::SHELL_COLOR_BRIGHT
-              << displayName() << ShellColorsFeature::SHELL_COLOR_RESET << "' ("
-              << description << ")" << std::endl;
-  } else {
-    std::cout << "Section '" << displayName() << "' (" << description << ")" << std::endl;
+  std::cout << "Section '"
+            << (colors ? ShellColorsFeature::SHELL_COLOR_BRIGHT : "")
+            << displayName()
+            << (colors ? ShellColorsFeature::SHELL_COLOR_RESET : "")
+            << "' (configure " << description << ")";
+
+  if (!link.empty()) {
+    std::cout << " [";
+    if (colors) {
+      std::cout << ShellColorsFeature::SHELL_COLOR_LINK_START << link
+                << ShellColorsFeature::SHELL_COLOR_LINK_MIDDLE << link
+                << ShellColorsFeature::SHELL_COLOR_LINK_END;
+    } else {
+      std::cout << link;
+    }
+    std::cout << "]";
   }
+  std::cout << std::endl;
+
+  auto hl = headlines.begin();
 
   // propagate print command to options
   for (auto const& it : options) {
+    if (hl != headlines.end() && it.first >= (*hl).first) {
+      // must print a headline
+      std::cout << " # " << (*hl).second << std::endl;
+      ++hl;
+    }
+
+    if (it.second.hasFlag(arangodb::options::Flags::Obsolete)) {
+      // skip obsolete options
+      continue;
+    }
+
+    // print help for option
     it.second.printHelp(search, tw, ow, colors);
   }
 

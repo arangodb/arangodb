@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,8 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "VelocyPackHelper.h"
-
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -47,7 +46,7 @@ void arangodb::tests::VPackToAqlItemBlock(VPackSlice data, RegisterCount nrRegs,
                                           AqlItemBlock& block) {
   // coordinates in the matrix rowNr, entryNr
   size_t rowIndex = 0;
-  RegisterId entry = 0;
+  RegisterId::value_t entry = 0;
   for (auto const& row : VPackArrayIterator(data)) {
     // Walk through the rows
     TRI_ASSERT(row.isArray());
@@ -64,7 +63,7 @@ void arangodb::tests::VPackToAqlItemBlock(VPackSlice data, RegisterCount nrRegs,
 
 arangodb::aql::SharedAqlItemBlockPtr arangodb::tests::vPackBufferToAqlItemBlock(
     arangodb::aql::AqlItemBlockManager& manager, VPackBufferPtr const& buffer) {
-  if(VPackSlice(buffer->data()).isNone()) {
+  if (VPackSlice(buffer->data()).isNone()) {
     return nullptr;
   }
   return multiVPackBufferToAqlItemBlocks(manager, buffer)[0];

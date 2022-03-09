@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,14 +21,12 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PROGRAM_OPTIONS_PROGRAM_OPTIONS_H
-#define ARANGODB_PROGRAM_OPTIONS_PROGRAM_OPTIONS_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
 #include "ProgramOptions/Option.h"
 #include "ProgramOptions/Section.h"
-
 
 namespace arangodb {
 namespace velocypack {
@@ -86,7 +85,8 @@ class ProgramOptions {
   };
 
   // function type for determining the similarity between two strings
-  typedef std::function<int(std::string const&, std::string const&)> SimilarityFuncType;
+  typedef std::function<int(std::string const&, std::string const&)>
+      SimilarityFuncType;
 
   // no need to copy this
   ProgramOptions(ProgramOptions const&) = delete;
@@ -95,8 +95,11 @@ class ProgramOptions {
   ProgramOptions(char const* progname, std::string const& usage,
                  std::string const& more, char const* binaryPath);
 
+  std::string progname() const { return _progname; }
+
   // sets a value translator
-  void setTranslator(std::function<std::string(std::string const&, char const*)> const& translator);
+  void setTranslator(std::function<std::string(std::string const&,
+                                               char const*)> const& translator);
 
   // return a const reference to the processing result
   ProcessingResult const& processingResult() const { return _processingResult; }
@@ -119,10 +122,9 @@ class ProgramOptions {
   // set context for error reporting
   void setContext(std::string const& value) { _context = value; }
 
-  // sets a single old option and its replacement name
-  void addOldOption(std::string const& old, std::string const& replacement) {
-    _oldOptions[Option::stripPrefix(old)] = replacement;
-  }
+  // sets a single old option and its replacement name.
+  // to be used when an option is renamed to still support the original name
+  void addOldOption(std::string const& old, std::string const& replacement);
 
   // adds a section to the options
   auto addSection(Section const& section) {
@@ -141,30 +143,43 @@ class ProgramOptions {
   }
 
   // adds a (regular) section to the program options
-  auto addSection(std::string const& name, std::string const& description) {
-    return addSection(Section(name, description, "", false, false));
+  auto addSection(std::string const& name, std::string const& description,
+                  std::string const& link = "", bool hidden = false,
+                  bool obsolete = false) {
+    return addSection(Section(name, description, link, "", hidden, obsolete));
   }
 
   // adds an enterprise-only section to the program options
-  auto addEnterpriseSection(std::string const& name, std::string const& description) {
-    return addSection(EnterpriseSection(name, description, "", false, false));
+  auto addEnterpriseSection(std::string const& name,
+                            std::string const& description,
+                            std::string const& link = "", bool hidden = false,
+                            bool obsolete = false) {
+    return addSection(
+        EnterpriseSection(name, description, link, "", hidden, obsolete));
   }
 
   // adds an option to the program options
-  Option& addOption(std::string const& name, std::string const& description,
-                    Parameter* parameter,
-                    std::underlying_type<Flags>::type flags = makeFlags(Flags::Default)) {
+  Option& addOption(
+      std::string const& name, std::string const& description,
+      Parameter* parameter,
+      std::underlying_type<Flags>::type flags = makeFlags(Flags::Default)) {
     addOption(Option(name, description, parameter, flags));
     return getOption(name);
   }
 
-  // adds an obsolete and hidden option to the program options
+  // adds a deprecated option that has no effect to the program options to not
+  // throw an unrecognized startup option error after upgrades until fully
+  // removed. not listed by --help (uncommon option)
   Option& addObsoleteOption(std::string const& name,
-                            std::string const& description, bool requiresValue) {
+                            std::string const& description,
+                            bool requiresValue) {
     addOption(Option(name, description, new ObsoleteParameter(requiresValue),
-                     makeFlags(Flags::Hidden, Flags::Obsolete)));
+                     makeFlags(Flags::Uncommon, Flags::Obsolete)));
     return getOption(name);
   }
+
+  // adds a sub-headline for one option or a group of options
+  void addHeadline(std::string const& prefix, std::string const& description);
 
   // prints usage information
   void printUsage() const;
@@ -182,8 +197,9 @@ class ProgramOptions {
   // filters applied to filter out specific options.
   // the filter function is expected to return true
   // for any options that should become part of the result
-  arangodb::velocypack::Builder toVPack(bool onlyTouched, bool detailed,
-                                        std::function<bool(std::string const&)> const& filter) const;
+  arangodb::velocypack::Builder toVPack(
+      bool onlyTouched, bool detailed,
+      std::function<bool(std::string const&)> const& filter) const;
 
   // translate a shorthand option
   std::string translateShorthand(std::string const& name) const;
@@ -202,14 +218,14 @@ class ProgramOptions {
   void endPass();
 
   // check whether or not an option requires a value
-  bool requiresValue(std::string const& name) const;
+  bool requiresValue(std::string const& name);
 
   // returns the option by name. will throw if the option cannot be found
   Option& getOption(std::string const& name);
 
   // returns a pointer to an option value, specified by option name
   // returns a nullptr if the option is unknown
-  template <typename T>
+  template<typename T>
   T* get(std::string const& name) {
     auto parts = Option::splitName(name);
     auto it = _sections.find(parts.first);
@@ -243,9 +259,15 @@ class ProgramOptions {
   // add a positional argument (callback from parser)
   void addPositional(std::string const& value);
 
+  // return all auto-modernized options
+  std::unordered_map<std::string, std::string> modernizedOptions() const;
+
  private:
   // adds an option to the list of options
   void addOption(Option const& option);
+
+  // modernize an option name
+  std::string const& modernize(std::string const& name);
 
   // determine maximum width of all options labels
   size_t optionsWidth() const;
@@ -254,7 +276,8 @@ class ProgramOptions {
   void checkIfSealed() const;
 
   // get a list of similar options
-  std::vector<std::string> similar(std::string const& value, int cutOff, size_t maxResults);
+  std::vector<std::string> similar(std::string const& value, int cutOff,
+                                   size_t maxResults);
 
  private:
   // name of binary (i.e. argv[0])
@@ -267,6 +290,8 @@ class ProgramOptions {
   std::string _context;
   // already seen to flush program options
   std::unordered_set<std::string> _alreadyFlushed;
+  // already warned-about old, but modernized options
+  std::unordered_set<std::string> _alreadyModernized;
   // all sections
   std::map<std::string, Section> _sections;
   // shorthands for options, translating from short options to long option names
@@ -290,5 +315,3 @@ class ProgramOptions {
 };
 }  // namespace options
 }  // namespace arangodb
-
-#endif

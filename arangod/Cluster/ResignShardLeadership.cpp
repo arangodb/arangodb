@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,9 +29,11 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/FollowerInfo.h"
+#include "Cluster/MaintenanceFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "RestServer/DatabaseFeature.h"
 #include "Transaction/ClusterUtils.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
@@ -44,33 +46,31 @@
 #include <velocypack/Compare.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::maintenance;
 using namespace arangodb::methods;
 
+std::string const ResignShardLeadership::LeaderNotYetKnownString =
+    "LEADER_NOT_YET_KNOWN";
+
 ResignShardLeadership::ResignShardLeadership(MaintenanceFeature& feature,
                                              ActionDescription const& desc)
-    : ActionBase(feature, desc) {
+    : ActionBase(feature, desc),
+      ShardDefinition(desc.get(DATABASE), desc.get(SHARD)) {
   std::stringstream error;
 
   _labels.emplace(FAST_TRACK);
 
-  if (!desc.has(DATABASE)) {
-    error << "database must be specified";
+  if (!ShardDefinition::isValid()) {
+    error << "database and shard must be specified. ";
   }
-  TRI_ASSERT(desc.has(DATABASE));
-
-  if (!desc.has(SHARD)) {
-    error << "shard must be specified";
-  }
-  TRI_ASSERT(desc.has(SHARD));
 
   if (!error.str().empty()) {
-    LOG_TOPIC("2aa84", ERR, Logger::MAINTENANCE) << "ResignLeadership: " << error.str();
-    _result.reset(TRI_ERROR_INTERNAL, error.str());
+    LOG_TOPIC("2aa84", ERR, Logger::MAINTENANCE)
+        << "ResignLeadership: " << error.str();
+    result(TRI_ERROR_INTERNAL, error.str());
     setState(FAILED);
   }
 }
@@ -78,11 +78,12 @@ ResignShardLeadership::ResignShardLeadership(MaintenanceFeature& feature,
 ResignShardLeadership::~ResignShardLeadership() = default;
 
 bool ResignShardLeadership::first() {
-  std::string const& database = _description.get(DATABASE);
-  std::string const& collection = _description.get(SHARD);
+  std::string const& database = getDatabase();
+  std::string const& collection = getShard();
 
   LOG_TOPIC("14f43", DEBUG, Logger::MAINTENANCE)
-      << "trying to withdraw as leader of shard '" << database << "/" << collection;
+      << "trying to withdraw as leader of shard '" << database << "/"
+      << collection;
 
   // This starts a write transaction, just to wait for any ongoing
   // write transaction on this shard to terminate. We will then later
@@ -93,7 +94,8 @@ bool ResignShardLeadership::first() {
 
   try {
     // Guard database againts deletion for now
-    DatabaseGuard guard(database);
+    auto& df = _feature.server().getFeature<DatabaseFeature>();
+    DatabaseGuard guard(df, database);
     auto vocbase = &guard.database();
 
     auto col = vocbase->lookupCollection(collection);
@@ -101,14 +103,18 @@ bool ResignShardLeadership::first() {
       std::stringstream error;
       error << "Failed to lookup local collection " << collection
             << " in database " + database;
-      LOG_TOPIC("e06ca", ERR, Logger::MAINTENANCE) << "ResignLeadership: " << error.str();
-      _result.reset(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, error.str());
+      LOG_TOPIC("e06ca", ERR, Logger::MAINTENANCE)
+          << "ResignLeadership: " << error.str();
+      result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, error.str());
       return false;
     }
 
     // Get write transaction on collection
-    auto ctx = std::make_shared<transaction::StandaloneContext>(*vocbase);
-    SingleCollectionTransaction trx{ctx, *col, AccessMode::Type::EXCLUSIVE};
+    transaction::StandaloneContext ctx(*vocbase);
+    SingleCollectionTransaction trx{
+        std::shared_ptr<transaction::Context>(
+            std::shared_ptr<transaction::Context>(), &ctx),
+        *col, AccessMode::Type::EXCLUSIVE};
 
     Result res = trx.begin();
 
@@ -123,20 +129,25 @@ bool ResignShardLeadership::first() {
     // leader, until we have negotiated a deal with it. Then the actual
     // name of the leader will be set.
     col->followers()->setTheLeader(LeaderNotYetKnownString);  // resign
-    trx.abort(); // unlock
+    trx.abort();                                              // unlock
 
     transaction::cluster::abortLeaderTransactionsOnShard(col->id());
 
   } catch (std::exception const& e) {
     std::stringstream error;
     error << "exception thrown when resigning:" << e.what();
-    LOG_TOPIC("173dd", ERR, Logger::MAINTENANCE) << "ResignLeadership: " << error.str();
-    _result.reset(TRI_ERROR_INTERNAL, error.str());
+    LOG_TOPIC("173dd", ERR, Logger::MAINTENANCE)
+        << "ResignLeadership: " << error.str();
+    result(TRI_ERROR_INTERNAL, error.str());
     return false;
   }
 
-  notify();
   return false;
 }
 
-std::string const ResignShardLeadership::LeaderNotYetKnownString = "LEADER_NOT_YET_KNOWN";
+void ResignShardLeadership::setState(ActionState state) {
+  if ((COMPLETE == state || FAILED == state) && _state != state) {
+    _feature.unlockShard(getShard());
+  }
+  ActionBase::setState(state);
+}

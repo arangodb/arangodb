@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,90 +21,65 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef APPLICATION_FEATURES_GENERAL_SERVER_FEATURE_H
-#define APPLICATION_FEATURES_GENERAL_SERVER_FEATURE_H 1
+#pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
 #include "GeneralServer/AsyncJobManager.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/RestHandlerFactory.h"
+#include "Metrics/Counter.h"
+#include "Metrics/LogScale.h"
+#include "Metrics/Histogram.h"
+#include "RestServer/arangod.h"
 
 namespace arangodb {
 class RestServerThread;
 
-class GeneralServerFeature final : public application_features::ApplicationFeature {
+class GeneralServerFeature final : public ArangodFeature {
  public:
-  static rest::RestHandlerFactory* HANDLER_FACTORY;
-  static rest::AsyncJobManager* JOB_MANAGER;
+  static constexpr std::string_view name() noexcept { return "GeneralServer"; }
 
- public:
-  static double keepAliveTimeout() {
-    return GENERAL_SERVER != nullptr ? GENERAL_SERVER->_keepAliveTimeout : 300.0;
-  };
-
-  static bool hasProxyCheck() {
-    return GENERAL_SERVER != nullptr && GENERAL_SERVER->proxyCheck();
-  }
-
-  static std::vector<std::string> getTrustedProxies() {
-    if (GENERAL_SERVER == nullptr) {
-      return std::vector<std::string>();
-    }
-
-    return GENERAL_SERVER->trustedProxies();
-  }
-
-  static bool allowMethodOverride() {
-    if (GENERAL_SERVER == nullptr) {
-      return false;
-    }
-
-    return GENERAL_SERVER->_allowMethodOverride;
-  }
-
-  static std::vector<std::string> const& accessControlAllowOrigins() {
-    static std::vector<std::string> empty;
-
-    if (GENERAL_SERVER == nullptr) {
-      return empty;
-    }
-
-    return GENERAL_SERVER->_accessControlAllowOrigins;
-  }
-
-  static Result reloadTLS() {
-    return GENERAL_SERVER->reloadTLSInternal();
-  }
-
- private:
-  static GeneralServerFeature* GENERAL_SERVER;
-
- public:
-  explicit GeneralServerFeature(application_features::ApplicationServer& server);
+  explicit GeneralServerFeature(Server& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
   void start() override final;
+  void initiateSoftShutdown() override final;
   void beginShutdown() override final;
   void stop() override final;
   void unprepare() override final;
- 
-  bool proxyCheck() const { return _proxyCheck; }
-  std::vector<std::string> trustedProxies() const { return _trustedProxies; }
 
- private:
-  Result reloadTLSInternal() {  // reload TLS data from disk
-    Result res;
-    for (auto& up : _servers) {
-      Result res2 = up->reloadTLS();
-      if (!res2.fail()) {
-        res = res2;   // yes, we only report the last error if there is one
-      }
-    }
-    return res;
+  double keepAliveTimeout() const noexcept;
+  bool proxyCheck() const noexcept;
+  bool returnQueueTimeHeader() const noexcept;
+  std::vector<std::string> trustedProxies() const;
+  bool allowMethodOverride() const noexcept;
+  std::vector<std::string> const& accessControlAllowOrigins() const;
+  Result reloadTLS();
+  bool permanentRootRedirect() const noexcept;
+  std::string redirectRootTo() const;
+  std::string const& supportInfoApiPolicy() const noexcept;
+
+  rest::RestHandlerFactory& handlerFactory();
+  rest::AsyncJobManager& jobManager();
+
+  void countHttp1Request(uint64_t bodySize) {
+    _requestBodySizeHttp1.count(bodySize);
   }
 
+  void countHttp2Request(uint64_t bodySize) {
+    _requestBodySizeHttp2.count(bodySize);
+  }
+
+  void countVstRequest(uint64_t bodySize) {
+    _requestBodySizeVst.count(bodySize);
+  }
+
+  void countHttp2Connection() { _http2Connections.count(); }
+
+  void countVstConnection() { _vstConnections.count(); }
+
+ private:
   void buildServers();
   void defineHandlers();
 
@@ -111,14 +87,23 @@ class GeneralServerFeature final : public application_features::ApplicationFeatu
   double _keepAliveTimeout = 300.0;
   bool _allowMethodOverride;
   bool _proxyCheck;
+  bool _returnQueueTimeHeader;
+  bool _permanentRootRedirect;
   std::vector<std::string> _trustedProxies;
   std::vector<std::string> _accessControlAllowOrigins;
+  std::string _redirectRootTo;
+  std::string _supportInfoApiPolicy;
   std::unique_ptr<rest::RestHandlerFactory> _handlerFactory;
   std::unique_ptr<rest::AsyncJobManager> _jobManager;
   std::vector<std::unique_ptr<rest::GeneralServer>> _servers;
   uint64_t _numIoThreads;
+
+  // Some metrics about
+  metrics::Histogram<metrics::LogScale<uint64_t>>& _requestBodySizeHttp1;
+  metrics::Histogram<metrics::LogScale<uint64_t>>& _requestBodySizeHttp2;
+  metrics::Histogram<metrics::LogScale<uint64_t>>& _requestBodySizeVst;
+  metrics::Counter& _http2Connections;
+  metrics::Counter& _vstConnections;
 };
 
 }  // namespace arangodb
-
-#endif

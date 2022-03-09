@@ -61,7 +61,7 @@ there is no known download operation with the given `downloadId`.
 
 @EXAMPLES
 
-@EXAMPLE_ARANGOSH_RUN{RestBackupDownloadBackup_rocksdb}
+@EXAMPLE_ARANGOSH_RUN{RestBackupDownloadBackup}
     var hotbackup = require("@arangodb/hotbackup");
     try {
       require("fs").makeDirectory("/tmp/backups");
@@ -106,7 +106,7 @@ there is no known download operation with the given `downloadId`.
 The `result` object of the body holds the `downloadId` string attribute which
 can be used to follow the download process.
 
-@EXAMPLE_ARANGOSH_RUN{RestBackupDownloadBackupStarted_rocksdb}
+@EXAMPLE_ARANGOSH_RUN{RestBackupDownloadBackupStarted}
     var hotbackup = require("@arangodb/hotbackup");
     try {
       require("fs").makeDirectory("/tmp/backups");

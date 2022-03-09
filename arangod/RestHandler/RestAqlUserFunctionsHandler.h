@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,16 +21,15 @@
 /// @author Wilfried Goesgens
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_REST_AQL_USER_FUNCTIONS_HANDLER_H
-#define ARANGOD_REST_HANDLER_REST_AQL_USER_FUNCTIONS_HANDLER_H 1
+#pragma once
 
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
 namespace arangodb {
 class RestAqlUserFunctionsHandler : public arangodb::RestVocbaseBaseHandler {
  public:
-  RestAqlUserFunctionsHandler(application_features::ApplicationServer&,
-                              GeneralRequest*, GeneralResponse*);
+  RestAqlUserFunctionsHandler(ArangodServer&, GeneralRequest*,
+                              GeneralResponse*);
 
  public:
   char const* name() const override final {
@@ -40,5 +39,3 @@ class RestAqlUserFunctionsHandler : public arangodb::RestVocbaseBaseHandler {
   RestStatus execute() override;
 };
 }  // namespace arangodb
-
-#endif

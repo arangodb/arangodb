@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,8 +22,7 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REPLICATION_UTILITIES_H
-#define ARANGOD_REPLICATION_UTILITIES_H 1
+#pragma once
 
 #include <map>
 #include <mutex>
@@ -31,16 +30,15 @@
 #include <unordered_map>
 
 #include "Basics/Result.h"
+#include "SimpleHttpClient/ConnectionCache.h"
+#include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Identifiers/ServerId.h"
 #include "VocBase/ticks.h"
 
 #include <velocypack/Builder.h>
 
-struct TRI_vocbase_t;
-
 namespace arangodb {
 namespace httpclient {
-class GeneralClientConnection;
 class SimpleHttpClient;
 class SimpleHttpResult;
 }  // namespace httpclient
@@ -56,7 +54,8 @@ namespace replutils {
 extern std::string const ReplicationUrl;
 
 struct Connection {
-  Connection(Syncer* syncer, ReplicationApplierConfiguration const& applierConfig);
+  Connection(Syncer* syncer,
+             ReplicationApplierConfiguration const& applierConfig);
 
   /// @brief determine if the client connection is open and valid
   bool valid() const;
@@ -76,14 +75,16 @@ struct Connection {
   /// @brief Thread-safe check aborted
   bool isAborted() const;
 
+  void preventRecycling();
+
   /// @brief get an exclusive connection
-  template <typename F>
+  template<typename F>
   void lease(F&& func) & {
     std::lock_guard<std::mutex> guard(_mutex);
     std::forward<F>(func)(_client.get());
   }
 
-  template <typename F>
+  template<typename F>
   void lease(F&& func) const& {
     std::lock_guard<std::mutex> guard(_mutex);
     std::forward<F>(func)(_client.get());
@@ -93,6 +94,8 @@ struct Connection {
   std::string const _endpointString;
   std::string const _localServerId;
   std::string const _clientInfo;
+
+  httpclient::ConnectionLease _connectionLease;
 
   /// lock to protect client connection
   mutable std::mutex _mutex;
@@ -107,7 +110,8 @@ struct ProgressInfo {
   /// @brief progress message
   std::string message{"not started"};
   /// @brief collections synced
-  std::map<TRI_voc_cid_t, std::string> processedCollections{};  // TODO worker safety
+  std::map<DataSourceId, std::string>
+      processedCollections{};  // TODO worker safety
 
   // @brief constructor to optionally provide a setter/handler for messages
   explicit ProgressInfo(Setter);
@@ -121,27 +125,33 @@ struct ProgressInfo {
   Setter _setter;
 };
 
-struct BarrierInfo {
-  static constexpr double DefaultTimeout = 900.0;
-  /// @brief WAL barrier id
-  uint64_t id{0};
-  /// @brief ttl for WAL barrier
-  int ttl{static_cast<int>(DefaultTimeout)};
-  /// @brief WAL barrier last update time
-  double updateTime{0.0};
+struct LeaderInfo {
+ private:
+  LeaderInfo() = default;  // used only internally
 
-  /// @brief send a "create barrier" command
-  Result create(Connection&, TRI_voc_tick_t);
+ public:
+  std::string endpoint;
+  std::string engine;  // storage engine (optional)
+  ServerId serverId{0};
+  int majorVersion{0};
+  int minorVersion{0};
+  TRI_voc_tick_t lastLogTick{0};  // only used during initialSync
 
-  /// @brief send an "extend barrier" command
-  Result extend(Connection&, TRI_voc_tick_t = 0);  // TODO worker safety
+  explicit LeaderInfo(ReplicationApplierConfiguration const& applierConfig);
 
-  /// @brief send remove barrier command
-  Result remove(Connection&) noexcept;
+  static LeaderInfo createEmpty() { return LeaderInfo(); }
+
+  /// @brief returns major version number * 10000 + minor version number * 100
+  uint64_t version() const;
+
+  /// @brief get leader state
+  Result getState(Connection& connection, bool isChildSyncer,
+                  char const* context);
 };
 
 struct BatchInfo {
-  static constexpr double DefaultTimeout = 7200.0;
+  static constexpr double DefaultTimeout = 3600.0;
+  static constexpr double DefaultTimeoutForTailing = 1800.0;
 
   /// @brief dump batch id
   uint64_t id{0};
@@ -153,39 +163,18 @@ struct BatchInfo {
   /// @brief send a "start batch" command
   /// @param patchCount try to patch count of this collection
   ///        only effective with the incremental sync
-  Result start(Connection const& connection, ProgressInfo& progress,
-               SyncerId syncerId, std::string const& patchCount = "");
+  Result start(Connection& connection, ProgressInfo& progress,
+               LeaderInfo& leader, SyncerId const& syncerId,
+               char const* context, std::string const& patchCount = "");
 
   /// @brief send an "extend batch" command
-  Result extend(Connection const& connection, ProgressInfo& progress, SyncerId syncerId);
+  Result extend(Connection& connection, ProgressInfo& progress,
+                SyncerId syncerId);
 
   /// @brief send a "finish batch" command
   // TODO worker-safety
-  Result finish(Connection const& connection, ProgressInfo& progress, SyncerId syncerId);
-};
-
-struct MasterInfo {
-  std::string endpoint;
-  std::string engine;  // storage engine (optional)
-  ServerId serverId{0};
-  int majorVersion{0};
-  int minorVersion{0};
-  TRI_voc_tick_t lastLogTick{0};
-  TRI_voc_tick_t lastUncommittedLogTick{0};
-  bool active{false};
-
-  explicit MasterInfo(ReplicationApplierConfiguration const& applierConfig);
-
-  /// @brief get master state
-  Result getState(Connection& connection, bool isChildSyncer);
-
-  /// we need to act like a 3.2 client
-  bool simulate32Client() const;
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
- private:
-  bool _force32mode{false};  // force client to act like 3.2
-#endif
+  Result finish(Connection& connection, ProgressInfo& progress,
+                SyncerId syncerId) noexcept;
 };
 
 /// @brief generates basic source headers for ClusterComm requests
@@ -196,12 +185,10 @@ bool hasFailed(httpclient::SimpleHttpResult* response);
 
 /// @brief create an error result from a failed HTTP request/response
 Result buildHttpError(httpclient::SimpleHttpResult* response,
-                      std::string const& url, Connection const& connection);
+                      std::string const& url, Connection& connection);
 
 /// @brief parse a velocypack response
 Result parseResponse(velocypack::Builder&, httpclient::SimpleHttpResult const*);
 
 }  // namespace replutils
 }  // namespace arangodb
-
-#endif

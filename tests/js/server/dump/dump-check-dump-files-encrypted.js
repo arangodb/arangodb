@@ -32,7 +32,7 @@ let fs = require('fs');
 function dumpIntegrationSuite () {
   'use strict';
   const dumpDir = process.env['dump-directory'];
-  const cn = 'UnitTestsDumpKeygen';
+  const cn = 'UnitTestsDumpMany';
 
   return {
     testDumpCompressedEncrypted: function () {
@@ -40,7 +40,7 @@ function dumpIntegrationSuite () {
       assertNotEqual(-1, tree.indexOf("ENCRYPTION"));
       let data = fs.readFileSync(fs.join(dumpDir, "ENCRYPTION")).toString();
       assertEqual("aes-256-ctr", data);
-      const prefix = "UnitTestsDumpKeygen_24f160fff8671be21db71c5f77fd72ce";
+      const prefix = "UnitTestsDumpMany_13150d0bdc1db4344e331450dbe6cbde";
 
       let structure = prefix + ".structure.json";
       if (!fs.isFile(fs.join(dumpDir, structure))) {
@@ -53,6 +53,7 @@ function dumpIntegrationSuite () {
         JSON.parse(fs.readFileSync(fs.join(dumpDir, structure)));
         fail();
       } catch (err) {
+        assertTrue(err instanceof SyntaxError, err);
       }
       
       assertEqual(-1, tree.indexOf(prefix + ".data.json.gz"));
@@ -61,7 +62,9 @@ function dumpIntegrationSuite () {
         // cannot read encrypted file
         JSON.parse(fs.readFileSync(fs.join(dumpDir, prefix + ".data.json")));
         fail();
-      } catch (err) {}
+      } catch (err) {
+        assertTrue(err instanceof SyntaxError, err);
+      }
     }
   };
 }

@@ -34,7 +34,6 @@ const db = require('@arangodb').db;
 const actions = require('@arangodb/actions');
 const errors = require('@arangodb').errors;
 const ArangoError = require('@arangodb').ArangoError;
-const notifications = require('@arangodb/configuration').notifications;
 const examples = require('@arangodb/graph-examples/example-graph');
 const createRouter = require('@arangodb/foxx/router');
 const users = require('@arangodb/users');
@@ -48,8 +47,6 @@ const fs = require('fs');
 const _ = require('lodash');
 
 const ERROR_USER_NOT_FOUND = errors.ERROR_USER_NOT_FOUND.code;
-const API_DOCS = require(module.context.fileName('api-docs.json'));
-API_DOCS.basePath = `/_db/${encodeURIComponent(db._name())}`;
 
 const router = createRouter();
 module.exports = router;
@@ -89,13 +86,20 @@ router.get('/config.js', function (req, res) {
       isCluster: cluster.isCluster(),
       engine: db._engine().name,
       statisticsEnabled: internal.enabledStatistics(),
+      metricsEnabled: internal.enabledMetrics(),
+      statisticsInAllDatabases: internal.enabledStatisticsInAllDatabases(),
       foxxStoreEnabled: !internal.isFoxxStoreDisabled(),
       foxxApiEnabled: !internal.isFoxxApiDisabled(),
+      foxxAllowInstallFromRemote: internal.foxxAllowInstallFromRemote(),
+      clusterApiJwtPolicy: internal.clusterApiJwtPolicy(),
       minReplicationFactor: internal.minReplicationFactor,
       maxReplicationFactor: internal.maxReplicationFactor,
       defaultReplicationFactor: internal.defaultReplicationFactor,
       maxNumberOfShards: internal.maxNumberOfShards,
-      forceOneShard: internal.forceOneShard 
+      maxNumberOfMoveShards: internal.maxNumberOfMoveShards,
+      forceOneShard: internal.forceOneShard,
+      sessionTimeout: internal.sessionTimeout,
+      showMaintenanceStatus: true
     })}`
   );
 })
@@ -124,6 +128,8 @@ authRouter.use((req, res, next) => {
 
 router.get('/api/*', module.context.apiDocumentation({
   swaggerJson (req, res) {
+    const API_DOCS = require(module.context.fileName('api-docs.json'));
+    API_DOCS.basePath = `/_db/${encodeURIComponent(db._name())}`;
     res.json(API_DOCS);
   }
 }))
@@ -291,7 +297,8 @@ authRouter.get('/query/download/:user', function (req, res) {
     res.throw('not found');
   }
 
-  res.attachment(`queries-${db._name()}-${user.user}.json`);
+  const namePart = `${db._name()}-${user.user}`.replace(/[^-_a-z0-9]/gi, "_");
+  res.attachment(`queries-${namePart}.json`);
   res.json(user.extra.queries || []);
 })
 .pathParam('user', joi.string().required(), 'Username. Ignored if authentication is enabled.')
@@ -311,7 +318,8 @@ authRouter.get('/query/result/download/:query', function (req, res) {
   }
 
   const result = db._query(query.query, query.bindVars).toArray();
-  res.attachment(`results-${db._name()}.json`);
+  const namePart = `${db._name()}`.replace(/[^-_a-z0-9]/gi, "_");
+  res.attachment(`results-${namePart}.json`);
   res.json(result);
 })
 .pathParam('query', joi.string().required(), 'Base64 encoded query.')
@@ -324,7 +332,7 @@ authRouter.get('/query/result/download/:query', function (req, res) {
 authRouter.post('/graph-examples/create/:name', function (req, res) {
   const name = req.pathParams.name;
 
-  if (['knows_graph', 'social', 'routeplanner', 'traversalGraph', 'kShortestPathsGraph', 'mps_graph', 'worldCountry'].indexOf(name) === -1) {
+  if (['knows_graph', 'social', 'routeplanner', 'traversalGraph', 'kShortestPathsGraph', 'mps_graph', 'worldCountry', 'connectedComponentsGraph'].indexOf(name) === -1) {
     res.throw('not found');
   }
   if (generalGraph._list().indexOf(name) !== -1) {
@@ -363,11 +371,29 @@ authRouter.post('/job', function (req, res) {
 `);
 
 authRouter.delete('/job', function (req, res) {
+  let arr = [];
   let frontend = db._collection('_frontend');
+
   if (frontend) {
+    // get all job results and return before deletion
+    _.each(frontend.all().toArray(), function (job) {
+      let resp = request.put({
+        url: '/_api/job/' + encodeURIComponent(job.id),
+        json: true,
+        headers: {
+          'Authorization': req.headers.authorization
+        }
+      }).body;
+      try {
+        arr.push(JSON.parse(resp));
+      } catch (ignore) {
+      }
+    });
+
+    // actual deletion
     frontend.removeByExample({model: 'job'}, false);
   }
-  res.json(true);
+  res.json({result: arr});
 })
 .summary('Delete all jobs')
 .description(dd`
@@ -376,10 +402,25 @@ authRouter.delete('/job', function (req, res) {
 
 authRouter.delete('/job/:id', function (req, res) {
   let frontend = db._collection('_frontend');
+  let toReturn = {};
   if (frontend) {
+    // get the job result and return before deletion
+    let resp = request.put({
+      url: '/_db/' + encodeURIComponent(db._name()) + '/_api/job/' + encodeURIComponent(req.pathParams.id),
+      json: true,
+      headers: {
+        'Authorization': req.headers.authorization
+      }
+    }).body;
+    try {
+      toReturn = JSON.parse(resp);
+    } catch (ignore) {
+    }
+
+    // actual deletion
     frontend.removeByExample({id: req.pathParams.id}, false);
   }
-  res.json(true);
+  res.json(toReturn);
 })
 .summary('Delete a job id')
 .description(dd`
@@ -590,7 +631,7 @@ authRouter.get('/graph/:name', function (req, res) {
   };
 
   var multipleIds;
-  var startVertex; // will be "randomly" choosen if no start vertex is specified
+  var startVertex; // will be "randomly" chosen if no start vertex is specified
 
   if (config.nodeStart) {
     if (config.nodeStart.indexOf(' ') > -1) {
@@ -612,7 +653,7 @@ authRouter.get('/graph/:name', function (req, res) {
   var limit = 0;
   if (config.limit !== undefined) {
     if (config.limit.length > 0 && config.limit !== '0') {
-      limit = config.limit;
+      limit = parseInt(config.limit);
     }
   }
 
@@ -635,6 +676,8 @@ authRouter.get('/graph/:name', function (req, res) {
     var aqlQuery;
     var aqlQueries = [];
 
+    let depth = parseInt(config.depth);
+
     if (config.query) {
       aqlQuery = config.query;
     } else {
@@ -642,11 +685,11 @@ authRouter.get('/graph/:name', function (req, res) {
         /* TODO: uncomment after #75 fix
           aqlQuery =
             'FOR x IN ' + JSON.stringify(multipleIds) + ' ' +
-            'FOR v, e, p IN 1..' + (config.depth || '2') + ' ANY x GRAPH "' + name + '"';
+            'FOR v, e, p IN 1..' + (depth || '2') + ' ANY x GRAPH "' + name + '"';
         */
         _.each(multipleIds, function (nodeid) {
           aqlQuery =
-            'FOR v, e, p IN 1..' + (config.depth || '2') + ' ANY "' + nodeid + '" GRAPH "' + name + '"';
+            'FOR v, e, p IN 1..' + (depth || '2') + ' ANY ' + JSON.stringify(nodeid) + ' GRAPH ' + JSON.stringify(name);
           if (limit !== 0) {
             aqlQuery += ' LIMIT ' + limit;
           }
@@ -655,7 +698,7 @@ authRouter.get('/graph/:name', function (req, res) {
         });
       } else {
         aqlQuery =
-          'FOR v, e, p IN 1..' + (config.depth || '2') + ' ANY "' + startVertex._id + '" GRAPH "' + name + '"';
+          'FOR v, e, p IN 1..' + (depth || '2') + ' ANY ' + JSON.stringify(startVertex._id) + ' GRAPH ' + JSON.stringify(name);
         if (limit !== 0) {
           aqlQuery += ' LIMIT ' + limit;
         }
@@ -714,18 +757,23 @@ authRouter.get('/graph/:name', function (req, res) {
         }
       });
     } else {
-    // get all nodes and edges which are connected to the given start node
-      if (aqlQueries.length === 0) {
-        cursor = AQL_EXECUTE(aqlQuery);
-      } else {
-        var x;
-        cursor = AQL_EXECUTE(aqlQueries[0]);
-        for (var k = 1; k < aqlQueries.length; k++) {
-          x = AQL_EXECUTE(aqlQueries[k]);
-          _.each(x.json, function (val) {
-            cursor.json.push(val);
-          });
+      // get all nodes and edges which are connected to the given start node
+      try {
+        if (aqlQueries.length === 0) {
+          cursor = AQL_EXECUTE(aqlQuery);
+        } else {
+          var x;
+          cursor = AQL_EXECUTE(aqlQueries[0]);
+          for (var k = 1; k < aqlQueries.length; k++) {
+            x = AQL_EXECUTE(aqlQueries[k]);
+            _.each(x.json, function (val) {
+              cursor.json.push(val);
+            });
+          }
         }
+      } catch (e) {
+        const error = new ArangoError({errorNum: e.errorNum, errorMessage: e.errorMessage});
+        res.throw(actions.arangoErrorToHttpCode(e.errorNum), error);
       }
     }
 

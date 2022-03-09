@@ -59,6 +59,10 @@
       'row_general-writeConcern'
     ],
 
+    potentiallyNeededSmartGraphRows: [
+      'smartGraphInfoOneShard'
+    ],
+
     // rows that needs to be added while creating smarties
     neededSmartGraphRows: [
       'smartGraphInfo',
@@ -66,6 +70,7 @@
       'row_new-numberOfShards',
       'row_new-replicationFactor',
       'row_new-writeConcern',
+      'row_hybridSatelliteCollections',
       'row_new-isDisjoint'
     ],
 
@@ -73,6 +78,7 @@
     notNeededSatelliteGraphRows: [
       'row_general-numberOfShards',
       'row_general-replicationFactor',
+      'row_hybridSatelliteCollections',
       'row_general-writeConcern'
     ],
 
@@ -95,11 +101,36 @@
       });
     },
 
+    checkSmartGraphOneShardInfoHint: function () {
+      var self = this;
+
+      let showOneShardInfoHint = (result) => {
+        if (result.sharding === 'single') {
+          $('#' + self.potentiallyNeededSmartGraphRows[0]).show();
+        }
+      };
+
+      $.ajax({
+        type: 'GET',
+        cache: false,
+        url: arangoHelper.databaseUrl('/_api/database/current'),
+        contentType: 'application/json',
+        processData: false,
+        async: true,
+        success: function (data) {
+          showOneShardInfoHint(data.result);
+        },
+        error: function (ignore) {
+        }
+      });
+    },
+
     setSmartGraphRows: function (cache) {
       $('#createGraph').addClass('active');
       this.setCacheModeState(cache);
 
       this.hideGeneralGraphRows();
+      this.checkSmartGraphOneShardInfoHint();
       _.each(this.neededSmartGraphRows, function (rowId) {
         $('#' + rowId).show();
       });
@@ -107,6 +138,9 @@
 
     hideSmartGraphRows: function () {
       _.each(this.neededSmartGraphRows, function (rowId) {
+        $('#' + rowId).hide();
+      });
+      _.each(this.potentiallyNeededSmartGraphRows, function (rowId) {
         $('#' + rowId).hide();
       });
     },
@@ -190,7 +224,7 @@
     addNewGraph: function (e) {
       e.preventDefault();
       if (!this.readOnly) {
-        if (frontendConfig.isCluster && frontendConfig.isEnterprise) {
+        if (frontendConfig.isEnterprise) {
           this.createEditGraphModal();
         } else {
           this.createEditGraphModal();
@@ -208,15 +242,20 @@
       var name = $('#editGraphName')[0].value;
 
       if ($('#dropGraphCollections').is(':checked')) {
-        var callback = function (success) {
+        var callback = function (success, data) {
+          window.modalView.hide();
           if (success) {
             self.collection.remove(self.collection.get(name));
-            self.updateGraphManagementView();
-            window.modalView.hide();
           } else {
-            window.modalView.hide();
-            arangoHelper.arangoError('Graph', 'Could not delete Graph.');
+            if (data && data.error && data.errorMessage) {
+              arangoHelper.arangoError('Graph', data.errorMessage);
+            } else {
+              arangoHelper.arangoError('Graph', 'Could not delete Graph.');
+            }
           }
+          // trigger in success and error case
+          // e.g. graph deletion might work, but e.g. some collections could not be dropped (distributeShardsLike)
+          self.updateGraphManagementView();
         };
 
         this.collection.dropAndDeleteGraph(name, callback);
@@ -319,7 +358,8 @@
       var i;
       for (i = 0; i < this.counter; i++) {
         $('#newEdgeDefinitions' + i).select2({
-          tags: self.eCollList
+          tags: self.eCollList,
+          maximumSelectionSize: 1
         });
         $('#newEdgeDefinitions' + i).select2('data', self.cachedNewEdgeDefinitions);
         $('#newEdgeDefinitions' + i).attr('disabled', self.cachedNewEdgeDefinitionsState);
@@ -349,7 +389,8 @@
 
       for (i = 0; i < self.counter; i++) {
         $('#newEdgeDefinitions' + i).select2({
-          tags: []
+          tags: [],
+          maximumSelectionSize: 1
         });
         self.cachedNewEdgeDefinitions = $('#newEdgeDefinitions' + i).select2('data');
         self.cachedNewEdgeDefinitionsState = $('#newEdgeDefinitions' + i).attr('disabled');
@@ -386,7 +427,7 @@
     },
 
     setCacheModeState: function (forget) {
-      if (!frontendConfig.isCluster || !frontendConfig.isEnterprise) {
+      if (!frontendConfig.isEnterprise) {
         return;
       }
 
@@ -601,15 +642,24 @@
         }
       );
 
+      let edgeDefOptions = {};
+      let satellites = $('#s2id_new-hybridSatelliteCollections').select2('data');
+      if (satellites.length > 0) {
+        edgeDefOptions.satellites = [];
+        _.forEach(satellites, function(sat) {
+          edgeDefOptions.satellites.push(sat.id);
+        });
+      }
+
       newEDs.forEach(
         function (eD) {
-          graph.addEdgeDefinition(newEdgeDefinitions[eD]);
+          graph.addEdgeDefinition(newEdgeDefinitions[eD], edgeDefOptions);
         }
       );
 
       editedEDs.forEach(
         function (eD) {
-          graph.modifyEdgeDefinition(newEdgeDefinitions[eD]);
+          graph.modifyEdgeDefinition(newEdgeDefinitions[eD], edgeDefOptions);
         }
       );
 
@@ -732,7 +782,7 @@
         orphanCollections: vertexCollections
       };
 
-      // if SmartGraph
+      // SmartGraph enterprise area
       if ($('#tab-smartGraph').parent().hasClass('active')) {
         if ($('#new-numberOfShards').val() === '' || $('#new-smartGraphAttribute').val() === '') {
           arangoHelper.arangoError('SmartGraph creation', 'numberOfShards and/or smartGraphAttribute not set!');
@@ -746,13 +796,24 @@
             minReplicationFactor: parseInt($('#new-writeConcern').val()),
             isDisjoint: $('#new-isDisjoint').is(':checked')
           };
+
+          let satellites = $('#s2id_hybridSatelliteCollections').select2('data');
+          if (satellites.length > 0) {
+            let satelliteOptions = [];
+            _.forEach(satellites, function(sat) {
+              satelliteOptions.push(sat.id);
+            });
+            newCollectionObject.options.satellites = satelliteOptions;
+          }
         }
       } else if ($('#tab-satelliteGraph').parent().hasClass('active')) {
+        // SatelliteGraph enterprise area
         newCollectionObject.options = {
           replicationFactor: "satellite"
         };
       } else {
         if (frontendConfig.isCluster) {
+          // General graph community cluster area
           if ($('#general-numberOfShards').val().length > 0) {
             newCollectionObject.options = {
               numberOfShards: parseInt($('#general-numberOfShards').val())
@@ -803,6 +864,7 @@
       var self = this;
       var name = '';
       var edgeDefinitions = [{collection: '', from: '', to: ''}];
+      var hybridSatelliteCollections = '';
       var orphanCollections = '';
       var title;
       var sorter = function (l, r) {
@@ -916,6 +978,22 @@
               'Disjoint SmartGraph: Creating edges between different SmartGraph components is not allowed.',
             )
           );
+
+          tableContent.push(
+            window.modalView.createSelect2Entry(
+              'new-hybridSatelliteCollections',
+              'New Satellite collections',
+              hybridSatelliteCollections,
+              'Insert vertex collections here which are being used in new edge definitions (fromCollections, toCollections).' +
+              'Those defined collections will be created as SatelliteCollections, and therefore will be replicated to all DB-Servers.',
+              'New Satellite Collections',
+              false,
+              false,
+              false,
+              null,
+              collList.sort(sorter)
+            )
+          );
         }
 
         buttons.push(
@@ -947,7 +1025,8 @@
         );
       }
 
-      if (frontendConfig.isEnterprise === true && frontendConfig.isCluster && !graph) {
+      if (frontendConfig.isEnterprise === true && !graph) {
+        // Enterprise Graphs
         tableContent.push(
           window.modalView.createTextEntry(
             'new-numberOfShards',
@@ -1029,6 +1108,7 @@
       }
 
       if (frontendConfig.isCluster && !graph) {
+        // General Graphs Community
         tableContent.push(
           window.modalView.createTextEntry(
             'general-numberOfShards',
@@ -1075,6 +1155,21 @@
                 msg: 'Must be a number. Must be at least 1 and has to be smaller or equal compared to the replicationFactor.'
               }
             ]
+          )
+        );
+        tableContent.push(
+          window.modalView.createSelect2Entry(
+            'hybridSatelliteCollections',
+            'Satellite collections',
+            hybridSatelliteCollections,
+            'Insert vertex collections here which are being used in your edge definitions (fromCollections, toCollections).' +
+            'Those defined collections will be created as SatelliteCollections, and therefore will be replicated to all DB-Servers.',
+            'Satellite Collections',
+            false,
+            false,
+            false,
+            null,
+            collList.sort(sorter)
           )
         );
       }

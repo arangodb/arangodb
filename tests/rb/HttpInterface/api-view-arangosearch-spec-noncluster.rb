@@ -241,7 +241,7 @@ describe ArangoDB do
           doc3.headers['content-type'].should eq("application/json; charset=utf-8")
         end
 
-        it "duplicate name" do
+        it "ren duplicate name" do
           cmd1 = api
           body1 = <<-JSON
                  { "name": "dup",
@@ -509,7 +509,7 @@ describe ArangoDB do
         doc.parsed_response['links']['right'].should be_kind_of(Object)
       end
 
-      it "dropping a view" do
+      it "dropping a view with link" do
         cmd = api
         body = <<-JSON
                { "name": "abc",
@@ -537,7 +537,7 @@ describe ArangoDB do
       end
     end
 
-    context "retrieval:" do
+    context "retrieval with link" do
       after do
         ArangoDB.log_delete("#{prefix}-teardown", api + '/abc')
         ArangoDB.log_delete("#{prefix}-teardown", api + '/def')
@@ -590,7 +590,7 @@ describe ArangoDB do
         doc3.parsed_response['result'][1]['type'].should eq("arangosearch")
       end
 
-      it "individual views" do
+      it "individual views with link" do
         cmd1 = api
         body1 = <<-JSON
                { "name": "abc",

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,11 +21,9 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_CACHE_MANAGER_H
-#define ARANGODB_CACHE_MANAGER_H
+#pragma once
 
 #include "Basics/ReadWriteSpinLock.h"
-#include "Basics/SharedAtomic.h"
 #include "Basics/SharedCounter.h"
 #include "Basics/SpinLocker.h"
 #include "Cache/CachedValue.h"
@@ -47,12 +45,15 @@
 #include <utility>
 
 namespace arangodb {
-namespace cache {
+class SharedPRNGFeature;
+}
 
-class Cache;           // forward declaration
-class FreeMemoryTask;  // forward declaration
-class MigrateTask;     // forward declaration
-class Rebalancer;      // forward declaration
+namespace arangodb::cache {
+
+class Cache;
+class FreeMemoryTask;
+class MigrateTask;
+class Rebalancer;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Coordinates a system of caches all sharing a single memory pool.
@@ -69,7 +70,7 @@ class Rebalancer;      // forward declaration
 /// have more space.
 ///
 /// There should be a single Manager instance exposed via
-/// CacheManagerFeature::MANAGER --- use this unless you are very certain you
+/// CacheManagerFeature::manager() --- use this unless you are very certain you
 /// need a different instance.
 ////////////////////////////////////////////////////////////////////////////////
 class Manager {
@@ -77,7 +78,7 @@ class Manager {
   typedef std::function<bool(std::function<void()>)> PostFn;
 
  public:
-  static const std::uint64_t minSize;
+  static constexpr std::uint64_t minSize = 1024 * 1024;
   typedef FrequencyBuffer<uint64_t> AccessStatBuffer;
   typedef FrequencyBuffer<uint8_t> FindStatBuffer;
   typedef std::vector<std::pair<std::shared_ptr<Cache>&, double>> PriorityList;
@@ -88,7 +89,9 @@ class Manager {
   /// @brief Initialize the manager with a scheduler post method and global
   /// usage limit.
   //////////////////////////////////////////////////////////////////////////////
-  Manager(PostFn schedulerPost, std::uint64_t globalLimit, bool enableWindowedStats = true);
+  Manager(SharedPRNGFeature& sharedPRNG, PostFn schedulerPost,
+          std::uint64_t globalLimit, bool enableWindowedStats = true);
+
   ~Manager();
 
   //////////////////////////////////////////////////////////////////////////////
@@ -164,6 +167,8 @@ class Manager {
   //////////////////////////////////////////////////////////////////////////////
   bool post(std::function<void()> fn);
 
+  SharedPRNGFeature& sharedPRNG() const noexcept { return _sharedPRNG; }
+
  private:
   // use sizeof(uint64_t) + sizeof(std::shared_ptr<Cache>) + 64 for upper bound
   // on size of std::set<std::shared_ptr<Cache>> node -- should be valid for
@@ -175,6 +180,8 @@ class Manager {
       32 * 16 * sizeof(std::shared_ptr<Cache>);
   static constexpr std::uint64_t triesFast = 100;
   static constexpr std::uint64_t triesSlow = 1000;
+
+  SharedPRNGFeature& _sharedPRNG;
 
   // simple state variables
   basics::ReadWriteSpinLock _lock;
@@ -197,8 +204,10 @@ class Manager {
   std::uint64_t _nextCacheId;
 
   // actual tables to lease out
-
-  std::array<std::stack<std::shared_ptr<Table>>, 32> _tables;
+  std::array<
+      std::stack<std::shared_ptr<Table>, std::vector<std::shared_ptr<Table>>>,
+      32>
+      _tables;
 
   // global statistics
   std::uint64_t _globalSoftLimit;
@@ -215,9 +224,9 @@ class Manager {
   enum TaskEnvironment { none, rebalancing, resizing };
   PostFn _schedulerPost;
   std::uint64_t _resizeAttempt;
-  basics::SharedAtomic<std::uint64_t> _outstandingTasks;
-  basics::SharedAtomic<std::uint64_t> _rebalancingTasks;
-  basics::SharedAtomic<std::uint64_t> _resizingTasks;
+  std::atomic<std::uint64_t> _outstandingTasks;
+  std::atomic<std::uint64_t> _rebalancingTasks;
+  std::atomic<std::uint64_t> _resizingTasks;
   Manager::time_point _rebalanceCompleted;
 
   // friend class tasks and caches to allow access
@@ -231,13 +240,14 @@ class Manager {
 
  private:  // used by caches
   // register and unregister individual caches
-  std::tuple<bool, Metadata, std::shared_ptr<Table>> registerCache(std::uint64_t fixedSize,
-                                                                   std::uint64_t maxSize);
+  std::tuple<bool, Metadata, std::shared_ptr<Table>> registerCache(
+      std::uint64_t fixedSize, std::uint64_t maxSize);
   void unregisterCache(std::uint64_t id);
 
   // allow individual caches to request changes to their allocations
   std::pair<bool, Manager::time_point> requestGrow(Cache* cache);
-  std::pair<bool, Manager::time_point> requestMigrate(Cache* cache, uint32_t requestedLogSize);
+  std::pair<bool, Manager::time_point> requestMigrate(
+      Cache* cache, uint32_t requestedLogSize);
 
   // stat reporting
   void reportAccess(std::uint64_t id);
@@ -258,7 +268,7 @@ class Manager {
   void unprepareTask(TaskEnvironment environment);
 
   // periodically run to rebalance allocations globally
-  int rebalance(bool onlyCalculate = false);
+  ErrorCode rebalance(bool onlyCalculate = false);
 
   // helpers for global resizing
   void shrinkOvergrownCaches(TaskEnvironment environment);
@@ -271,20 +281,19 @@ class Manager {
   void migrateCache(TaskEnvironment environment, basics::SpinLocker&& metaGuard,
                     Cache* cache, std::shared_ptr<Table>& table);
   std::shared_ptr<Table> leaseTable(std::uint32_t logSize);
-  void reclaimTable(std::shared_ptr<Table> table, bool internal = false);
+  void reclaimTable(std::shared_ptr<Table> table, bool internal);
 
   // helpers for individual allocations
-  [[nodiscard]] bool increaseAllowed(uint64_t increase, bool privileged = false) const;
+  [[nodiscard]] bool increaseAllowed(uint64_t increase,
+                                     bool privileged = false) const;
 
   // helper for lr-accessed heuristics
   std::shared_ptr<PriorityList> priorityList();
 
   // helper for wait times
-  [[nodiscard]] static Manager::time_point futureTime(std::uint64_t millisecondsFromNow);
+  [[nodiscard]] static Manager::time_point futureTime(
+      std::uint64_t millisecondsFromNow);
   [[nodiscard]] bool pastRebalancingGracePeriod() const;
 };
 
-};  // end namespace cache
-};  // end namespace arangodb
-
-#endif
+}  // end namespace arangodb::cache

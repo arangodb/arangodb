@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -39,7 +40,8 @@ using NoResultsTestHelper = ExecutorTestHelper<1, 1>;
 using NoResultsSplitType = NoResultsTestHelper::SplitType;
 using NoResultsInputParam = std::tuple<NoResultsSplitType, AqlCall, size_t>;
 
-class NoResultsExecutorTest : public AqlExecutorTestCaseWithParam<NoResultsInputParam> {
+class NoResultsExecutorTest
+    : public AqlExecutorTestCaseWithParam<NoResultsInputParam> {
  protected:
   auto getSplit() -> NoResultsSplitType {
     auto const& [split, call, inputRows] = GetParam();
@@ -61,10 +63,10 @@ class NoResultsExecutorTest : public AqlExecutorTestCaseWithParam<NoResultsInput
   }
 };
 
-template <size_t... vs>
+template<size_t... vs>
 const NoResultsSplitType splitIntoBlocks =
     NoResultsSplitType{std::vector<std::size_t>{vs...}};
-template <size_t step>
+template<size_t step>
 const NoResultsSplitType splitStep = NoResultsSplitType{step};
 
 auto NoResultsInputSplits =
@@ -85,7 +87,8 @@ INSTANTIATE_TEST_CASE_P(NoResultsExecutorTest, NoResultsExecutorTest,
 TEST_P(NoResultsExecutorTest, do_never_ever_return_results) {
   ExecutionStats stats{};
   makeExecutorTestHelper<1, 1>()
-      .addConsumer<NoResultsExecutor>(makeInfos(), EmptyExecutorInfos{}, ExecutionNode::NORESULTS)
+      .addConsumer<NoResultsExecutor>(makeInfos(), EmptyExecutorInfos{},
+                                      ExecutionNode::NORESULTS)
       .setInputFromRowNum(getInput())
       .setInputSplitType(getSplit())
       .setCall(getCall())

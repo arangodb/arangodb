@@ -8,7 +8,7 @@
 Return availability information about a server.
 
 This is a public API so it does *not* require authentication. It is meant to be
-used only in the context of server monitoring only.
+used only in the context of server monitoring.
 
 @RESTRETURNCODES
 
@@ -20,4 +20,9 @@ in case of an active failover setup.
 @RESTRETURNCODE{503}
 HTTP 503 will be returned in case the server is during startup or during shutdown,
 is set to read-only mode or is currently a follower in an active failover setup.
+
+In addition, HTTP 503 will be returned in case the fill grade of the scheduler
+queue exceeds the configured high-water mark (adjustable via startup option
+`--server.unavailability-queue-fill-grade`), which by default is set to 75 % of
+the maximum queue length.
 @endDocuBlock

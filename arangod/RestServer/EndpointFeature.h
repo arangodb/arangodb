@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,10 +21,10 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_HTTP_SERVER_ENDPOINT_FEATURE_H
-#define ARANGOD_HTTP_SERVER_ENDPOINT_FEATURE_H 1
+#pragma once
 
 #include "ApplicationFeatures/HttpEndpointProvider.h"
+#include "RestServer/arangod.h"
 
 #include "Endpoint/EndpointList.h"
 
@@ -32,7 +32,9 @@ namespace arangodb {
 
 class EndpointFeature final : public HttpEndpointProvider {
  public:
-  explicit EndpointFeature(application_features::ApplicationServer& server);
+  static constexpr std::string_view name() noexcept { return "Endpoint"; }
+
+  explicit EndpointFeature(ArangodServer& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -55,5 +57,3 @@ class EndpointFeature final : public HttpEndpointProvider {
 };
 
 }  // namespace arangodb
-
-#endif

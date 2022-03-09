@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_META_UTILITY_H
-#define ARANGODB_META_UTILITY_H 1
+#pragma once
 
 #include <memory>
 
@@ -32,21 +31,21 @@ namespace meta {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adjusts constness of 'Out' according to 'In'
 ////////////////////////////////////////////////////////////////////////////////
-template <typename In, typename Out>
+template<typename In, typename Out>
 struct adjustConst {
   typedef Out value_type;
   typedef Out& reference;
   typedef Out* pointer;
 };
 
-template <typename In, typename Out>
+template<typename In, typename Out>
 struct adjustConst<const In, Out> {
   typedef const Out value_type;
   typedef const Out& reference;
   typedef const Out* pointer;
 };
 
-template <class T, class U = T>
+template<class T, class U = T>
 T exchange(T& obj, U&& new_value) {
   T old_value = std::move(obj);
   obj = std::forward<U>(new_value);
@@ -55,4 +54,3 @@ T exchange(T& obj, U&& new_value) {
 
 }  // namespace meta
 }  // namespace arangodb
-#endif

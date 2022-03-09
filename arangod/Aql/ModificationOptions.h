@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_MODIFICATION_OPTIONS_H
-#define ARANGOD_AQL_MODIFICATION_OPTIONS_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Utils/OperationOptions.h"
@@ -31,7 +30,7 @@ namespace arangodb {
 namespace velocypack {
 class Builder;
 class Slice;
-}
+}  // namespace velocypack
 
 namespace aql {
 
@@ -40,11 +39,10 @@ struct ModificationOptions : OperationOptions {
   /// @brief constructor, using default values
   explicit ModificationOptions(arangodb::velocypack::Slice const&);
 
-  ModificationOptions() 
+  ModificationOptions()
       : OperationOptions(),
         ignoreErrors(false),
         ignoreDocumentNotFound(false),
-        readCompleteInput(true),
         consultAqlWriteFilter(false),
         exclusive(false) {}
 
@@ -52,12 +50,9 @@ struct ModificationOptions : OperationOptions {
 
   bool ignoreErrors;
   bool ignoreDocumentNotFound;
-  bool readCompleteInput;
   bool consultAqlWriteFilter;
   bool exclusive;
 };
 
 }  // namespace aql
 }  // namespace arangodb
-
-#endif

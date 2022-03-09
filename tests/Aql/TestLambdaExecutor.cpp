@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -39,7 +40,8 @@ auto LambdaExecutorInfos::getProduceLambda() const -> ProduceCall const& {
 auto LambdaExecutorInfos::reset() -> void { _resetLambda(); }
 
 LambdaSkipExecutorInfos::LambdaSkipExecutorInfos(ProduceCall lambda,
-                                                 SkipCall skipLambda, ResetCall reset)
+                                                 SkipCall skipLambda,
+                                                 ResetCall reset)
     : _produceLambda(std::move(lambda)),
       _skipLambda(std::move(skipLambda)),
       _resetLambda(std::move(reset)) {}
@@ -60,7 +62,8 @@ TestLambdaExecutor::TestLambdaExecutor(Fetcher&, Infos& infos) : _infos(infos) {
 
 TestLambdaExecutor::~TestLambdaExecutor() {}
 
-auto TestLambdaExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
+auto TestLambdaExecutor::produceRows(AqlItemBlockInputRange& input,
+                                     OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, Stats, AqlCall> {
   return _infos.getProduceLambda()(input, output);
 }
@@ -72,12 +75,14 @@ TestLambdaSkipExecutor::TestLambdaSkipExecutor(Fetcher&, Infos& infos)
 
 TestLambdaSkipExecutor::~TestLambdaSkipExecutor() {}
 
-auto TestLambdaSkipExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
+auto TestLambdaSkipExecutor::produceRows(AqlItemBlockInputRange& input,
+                                         OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, Stats, AqlCall> {
   return _infos.getProduceLambda()(input, output);
 }
 
-auto TestLambdaSkipExecutor::skipRowsRange(AqlItemBlockInputRange& input, AqlCall& call)
+auto TestLambdaSkipExecutor::skipRowsRange(AqlItemBlockInputRange& input,
+                                           AqlCall& call)
     -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
   return _infos.getSkipLambda()(input, call);
 }

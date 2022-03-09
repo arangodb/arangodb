@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -73,14 +74,10 @@ struct NumberOfCoresCache {
 
 NumberOfCoresCache const cache;
 
-} // namespace
+}  // namespace
 
 /// @brief return number of cores from cache
-std::size_t arangodb::NumberOfCores::getValue() {
-  return ::cache.cachedValue;
-}
+std::size_t arangodb::NumberOfCores::getValue() { return ::cache.cachedValue; }
 
 /// @brief return if number of cores was overridden
-bool arangodb::NumberOfCores::overridden() {
-  return ::cache.overridden;
-}
+bool arangodb::NumberOfCores::overridden() { return ::cache.overridden; }

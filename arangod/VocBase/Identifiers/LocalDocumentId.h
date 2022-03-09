@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,19 +22,21 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOCBASE_IDENTIFIERS_LOCAL_DOCUMENT_ID_H
-#define ARANGOD_VOCBASE_IDENTIFIERS_LOCAL_DOCUMENT_ID_H 1
+#pragma once
 
 #include "Basics/Identifier.h"
 #include "VocBase/ticks.h"
 
 namespace arangodb {
+class RevisionId;
+
 /// @brief a LocalDocumentId is an identifier for storing and retrieving
 /// documents using a uint64_t value.
-class LocalDocumentId : public basics::Identifier {
+class LocalDocumentId final : public basics::Identifier {
  public:
   constexpr LocalDocumentId() noexcept : Identifier() {}
   constexpr explicit LocalDocumentId(BaseType id) noexcept : Identifier(id) {}
+  explicit LocalDocumentId(RevisionId id) noexcept;
 
   /// @brief whether or not the id is set (not 0)
   bool isSet() const noexcept;
@@ -47,19 +49,18 @@ class LocalDocumentId : public basics::Identifier {
   static constexpr LocalDocumentId none() { return LocalDocumentId(0); }
 
   /// @brief create a new document id
-  static LocalDocumentId create() {
-    return LocalDocumentId(TRI_HybridLogicalClock());
-  }
+  static LocalDocumentId create();
 
   /// @brief create a document id from an existing id
   static constexpr LocalDocumentId create(BaseType id) {
     return LocalDocumentId(id);
   }
 
+  /// @brief create a document id from an existing revision id
+  static LocalDocumentId create(RevisionId rid);
+
   /// @brief use to track an existing value in recovery to ensure no duplicates
-  static void track(LocalDocumentId const& id) {
-    TRI_HybridLogicalClock(id.id());
-  }
+  static void track(LocalDocumentId id);
 };
 
 // LocalDocumentId should not be bigger than the BaseType
@@ -69,5 +70,3 @@ static_assert(sizeof(LocalDocumentId) == sizeof(LocalDocumentId::BaseType),
 
 DECLARE_HASH_FOR_IDENTIFIER(arangodb::LocalDocumentId)
 DECLARE_EQUAL_FOR_IDENTIFIER(arangodb::LocalDocumentId)
-
-#endif

@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,21 +21,19 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_AGGREGATOR_HANDLER_H
-#define ARANGODB_PREGEL_AGGREGATOR_HANDLER_H 1
+#pragma once
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 #include <functional>
 #include <map>
 #include "Basics/ReadWriteLock.h"
+#include "Pregel/Aggregator.h"
 
 namespace arangodb {
 namespace pregel {
 
 struct IAlgorithm;
-class IAggregator;
 
 /// Thread safe wrapper around handles
 class AggregatorHandler {
@@ -71,4 +70,3 @@ class AggregatorHandler {
 };
 }  // namespace pregel
 }  // namespace arangodb
-#endif

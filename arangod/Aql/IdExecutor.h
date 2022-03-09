@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,13 +21,11 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_ID_EXECUTOR_H
-#define ARANGOD_AQL_ID_EXECUTOR_H
+#pragma once
 
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/RegisterInfos.h"
-#include "Aql/SharedAqlItemBlockPtr.h"
 #include "Aql/Stats.h"
 
 #include <tuple>
@@ -61,7 +60,8 @@ class OutputAqlItemRow;
 
 class IdExecutorInfos {
  public:
-  explicit IdExecutorInfos(bool doCount, RegisterId outputRegister = 0,
+  explicit IdExecutorInfos(bool doCount,
+                           RegisterId outputRegister = RegisterId(0),
                            std::string distributeId = {""},
                            bool isResponsibleForInitializeCursor = true);
 
@@ -74,27 +74,28 @@ class IdExecutorInfos {
 
   [[nodiscard]] auto getOutputRegister() const noexcept -> RegisterId;
 
-  [[nodiscard]] std::string const& distributeId();
+  [[nodiscard]] std::string const& distributeId() const noexcept;
 
-  [[nodiscard]] bool isResponsibleForInitializeCursor() const;
+  [[nodiscard]] bool isResponsibleForInitializeCursor() const noexcept;
 
  private:
   bool _doCount;
 
+  bool const _isResponsibleForInitializeCursor;
+
   RegisterId _outputRegister;
 
   std::string const _distributeId;
-
-  bool const _isResponsibleForInitializeCursor;
 };
 
-template <class UsedFetcher>
+template<class UsedFetcher>
 // cppcheck-suppress noConstructor
 class IdExecutor {
  public:
   struct Properties {
     static constexpr bool preservesOrder = true;
-    static constexpr BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Enable;
+    static constexpr BlockPassthrough allowsBlockPassthrough =
+        BlockPassthrough::Enable;
     static constexpr bool inputSizeRestrictsOutputSize = false;
   };
   // Only Supports SingleRowFetcher and ConstFetcher
@@ -108,7 +109,8 @@ class IdExecutor {
   /**
    * @brief produce the next Row of Aql Values.
    *
-   * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
+   * @return ExecutorState, the stats, and a new Call that needs to be send to
+   * upstream
    */
   auto produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
       -> std::tuple<ExecutorState, Stats, AqlCall>;
@@ -122,5 +124,3 @@ class IdExecutor {
 };
 }  // namespace aql
 }  // namespace arangodb
-
-#endif

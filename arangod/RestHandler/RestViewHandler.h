@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,8 +22,7 @@
 /// @author Daniel H. Larkin
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_REST_VIEW_HANDLER_H
-#define ARANGOD_REST_HANDLER_REST_VIEW_HANDLER_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
@@ -36,7 +35,7 @@ namespace arangodb {
 
 class RestViewHandler : public RestVocbaseBaseHandler {
  public:
-  RestViewHandler(application_features::ApplicationServer&, GeneralRequest*, GeneralResponse*);
+  RestViewHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
 
  public:
   char const* name() const override final { return "RestViewHandler"; }
@@ -52,5 +51,3 @@ class RestViewHandler : public RestVocbaseBaseHandler {
 };
 
 }  // namespace arangodb
-
-#endif

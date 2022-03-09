@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,11 +21,11 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_REST_TRANSACTION_HANDLER_H
-#define ARANGOD_REST_HANDLER_REST_TRANSACTION_HANDLER_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
+#include "Cluster/ServerState.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
 #include "Transaction/Status.h"
 
@@ -38,12 +38,26 @@ class RestTransactionHandler : public arangodb::RestVocbaseBaseHandler {
   basics::ReadWriteLock _lock;
 
  public:
-  RestTransactionHandler(application_features::ApplicationServer&,
-                         GeneralRequest*, GeneralResponse*);
+  RestTransactionHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
 
  public:
   char const* name() const override final { return "RestTransactionHandler"; }
-  RequestLane lane() const override final { return RequestLane::CLIENT_V8; }
+  RequestLane lane() const override final {
+    if (ServerState::instance()->isDBServer()) {
+      bool isSyncReplication = false;
+      // We do not care for the real value, enough if it is there.
+      std::ignore = _request->value(
+          StaticStrings::IsSynchronousReplicationString, isSyncReplication);
+      if (isSyncReplication) {
+        return RequestLane::SERVER_SYNCHRONOUS_REPLICATION;
+        // This leads to the high queue, we want replication requests (for
+        // commit or abort in the El Cheapo case) to be executed with a
+        // higher prio than leader requests, even if they are done from
+        // AQL.
+      }
+    }
+    return RequestLane::CLIENT_V8;
+  }
   RestStatus execute() override;
   void cancel() override final;
 
@@ -55,14 +69,10 @@ class RestTransactionHandler : public arangodb::RestVocbaseBaseHandler {
   void executeBegin();
   void executeCommit();
   void executeAbort();
-  void generateTransactionResult(rest::ResponseCode code, TRI_voc_tid_t tid,
+  void generateTransactionResult(rest::ResponseCode code, TransactionId tid,
                                  transaction::Status status);
 
   /// start a legacy JS transaction
   void executeJSTransaction();
-  /// return the currently used V8Context
-  void returnContext();
 };
 }  // namespace arangodb
-
-#endif

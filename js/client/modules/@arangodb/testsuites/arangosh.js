@@ -30,14 +30,16 @@ const time = require('internal').time;
 const fs = require('fs');
 const yaml = require('js-yaml');
 
-const pu = require('@arangodb/process-utils');
-const tu = require('@arangodb/test-utils');
+const pu = require('@arangodb/testutils/process-utils');
+const tu = require('@arangodb/testutils/test-utils');
+const internal = require('internal');
+const toArgv = internal.toArgv;
+const executeScript = internal.executeScript;
+const statusExternal = internal.statusExternal;
+const executeExternal = internal.executeExternal;
+const executeExternalAndWait = internal.executeExternalAndWait;
 
-const toArgv = require('internal').toArgv;
-const executeScript = require('internal').executeScript;
-const executeExternalAndWait = require('internal').executeExternalAndWait;
-
-const platform = require('internal').platform;
+const platform = internal.platform;
 
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
 const CYAN = require('internal').COLORS.COLOR_CYAN;
@@ -64,6 +66,8 @@ const testPaths = {
 function arangosh (options) {
   let ret = { failed: 0 };
   [
+    'testArangoshExitCodeConnectAny',
+    'testArangoshExitCodeConnectAnyIp6',
     'testArangoshExitCodeNoConnect',
     'testArangoshExitCodeSyntaxError',
     'testArangoshExitCodeSyntaxErrorInSubScript',
@@ -189,15 +193,27 @@ function arangosh (options) {
     process.env.TMPDIR = tmpPath;
     process.env.TEMP = tmpPath;
     process.env.TMP = tmpPath;
-
   }
+
+  runTest('testArangoshExitCodeConnectAny',
+          'Starting arangosh with failing connect:',
+          'db._databases();',
+          1,
+          {'server.endpoint': 'tcp://0.0.0.0:8529'});
+  print();
+  
+  runTest('testArangoshExitCodeConnectAnyIp6',
+          'Starting arangosh with failing connect:',
+          'db._databases();',
+          1,
+          {'server.endpoint': 'tcp://[::]:8529'});
+  print();
 
   runTest('testArangoshExitCodeNoConnect',
           'Starting arangosh with failing connect:',
           'db._databases();',
           1,
           {'server.endpoint': 'tcp://127.0.0.1:0'});
-
   print();
 
   runTest('testArangoshExitCodeSyntaxError',
@@ -243,6 +259,54 @@ function arangosh (options) {
           'q = `FOR i\nIN [1,2,3]\nRETURN i`;\nq += "abc"\n', 0, {'server.endpoint': 'none'});
   print();
 
+  print('\n--------------------------------------------------------------------------------');
+  print('pipe through external arangosh');
+  print('--------------------------------------------------------------------------------');
+  let section = "testArangoshPipeThrough";
+  let args = pu.makeArgs.arangosh(options);
+  args['javascript.execute-string'] = "print(require('internal').pollStdin())";
+
+  const startTime = time();
+  let res = executeExternal(pu.ARANGOSH_BIN, toArgv(args), true, 0 /*, coverageEnvironment() */);
+  const deltaTime = time() - startTime;
+
+  fs.writePipe(res.pid, "bla\n");
+  fs.closePipe(res.pid, false);
+  let output = fs.readPipe(res.pid);
+  // Arangosh will output a \n on its own, so we will get back 2:
+  let searchstring = "bla\n\n";
+  if (platform.substr(0, 3) === 'win') {
+    searchstring = "bla\r\n\r\n";
+  }
+  let success = output === searchstring;
+
+  let rc = statusExternal(res.pid, true);
+  let failSuccess = (rc.hasOwnProperty('exit') && rc.exit === 0);
+  failSuccess = failSuccess && success;
+  if (options.extremeVerbosity) {
+      print(toArgv(args));
+      print(rc);
+      print('pipe output: ' + output);
+  }
+  if (!failSuccess) {
+    ret.failed += 1;
+    ret[section] = {
+      'failed': 1,
+      'message': 'piping through "bla\\n" didn\'t work out, got: "' +
+        output + '"',
+      'total': 1
+    };
+  } else {
+    ret[section] = {
+      'failed': 0,
+      'total': 1,
+      'status': failSuccess
+    };
+  }
+
+  ret[section]['duration'] = time() - startTime;
+  print((failSuccess ? GREEN : RED) + 'Status: ' + (failSuccess ? 'SUCCESS' : 'FAIL') + RESET);
+  
   if (platform.substr(0, 3) !== 'win') {
     var echoSuccess = true;
     var deltaTime2 = 0;

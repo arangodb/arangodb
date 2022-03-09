@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,9 +21,9 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_ENGINE_WAL_ACCESS_H
-#define ARANGOD_ROCKSDB_ENGINE_WAL_ACCESS_H 1
+#pragma once
 
+#include "RocksDBEngine/RocksDBEngine.h"
 #include "StorageEngine/WalAccess.h"
 
 namespace arangodb {
@@ -32,11 +32,12 @@ namespace arangodb {
 /// TODO: add methods for _admin/wal/ and get rid of engine specific handlers
 class RocksDBWalAccess final : public WalAccess {
  public:
-  RocksDBWalAccess() {}
+  explicit RocksDBWalAccess(RocksDBEngine&);
   virtual ~RocksDBWalAccess() = default;
 
   /// {"tickMin":"123", "tickMax":"456", "version":"3.2", "serverId":"abc"}
-  Result tickRange(std::pair<TRI_voc_tick_t, TRI_voc_tick_t>& minMax) const override;
+  Result tickRange(
+      std::pair<TRI_voc_tick_t, TRI_voc_tick_t>& minMax) const override;
 
   /// {"lastTick":"123",
   ///  "version":"3.2",
@@ -47,16 +48,18 @@ class RocksDBWalAccess final : public WalAccess {
   ///
   TRI_voc_tick_t lastTick() const override;
 
-  /// should return the list of transactions started, but not committed in that
-  /// range (range can be adjusted)
-  WalAccessResult openTransactions(WalAccess::Filter const& filter,
-                                   TransactionCallback const&) const override;
-
   /// Tails the wall, this will already sanitize the
   WalAccessResult tail(WalAccess::Filter const& filter, size_t chunkSize,
-                       TRI_voc_tick_t barrierId, 
                        MarkerCallback const&) const override;
+
+ private:
+  /// @brief helper function to print WAL contents. this is only used for
+  /// debugging
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  void printWal(WalAccess::Filter const& filter, size_t chunkSize,
+                MarkerCallback const&) const;
+#endif
+
+  RocksDBEngine& _engine;
 };
 }  // namespace arangodb
-
-#endif

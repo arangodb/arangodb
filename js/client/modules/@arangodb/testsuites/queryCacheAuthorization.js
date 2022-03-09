@@ -32,7 +32,7 @@ const optionsDocumentation = [
   '   - `skipQueryCacheAuthorization` : if set to true the read only tests are skipped'
 ];
 
-const pu = require('@arangodb/process-utils');
+const pu = require('@arangodb/testutils/process-utils');
 const request = require('@arangodb/request');
 
 // const BLUE = require('internal').COLORS.COLOR_BLUE;

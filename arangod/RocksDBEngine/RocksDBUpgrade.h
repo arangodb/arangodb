@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,15 +21,19 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_ENGINE_ROCKSDB_UPGRADE_H
-#define ARANGOD_ROCKSDB_ENGINE_ROCKSDB_UPGRADE_H 1
+#pragma once
+
+#include "RestServer/arangod.h"
 
 namespace rocksdb {
 class TransactionDB;
 }
 
 namespace arangodb {
-void rocksdbStartupVersionCheck(rocksdb::TransactionDB*, bool dbExisted);
-}  // namespace arangodb
+namespace application_features {
+class ApplicationServer;
+}
 
-#endif
+void rocksdbStartupVersionCheck(ArangodServer& server, rocksdb::TransactionDB*,
+                                bool dbExisted);
+}  // namespace arangodb

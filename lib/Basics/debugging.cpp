@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,6 +25,7 @@
 #include <stdlib.h>
 #include <set>
 #include <string>
+#include <string_view>
 #include <type_traits>
 #include <utility>
 
@@ -34,32 +35,16 @@
 #include "Basics/ReadLocker.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/WriteLocker.h"
-#include "Basics/memory.h"
 #include "Logger/LogAppender.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 
-#ifdef TRI_HAVE_SIGNAL_H
-#include <signal.h>
-#endif
-
-#include <velocypack/StringRef.h>
+#include <velocypack/Builder.h>
+#include <velocypack/Value.h>
 
 #ifdef TRI_HAVE_UNISTD_H
 #include <unistd.h>
-#endif
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-#if ARANGODB_ENABLE_BACKTRACE
-#include <sstream>
-#ifdef _WIN32
-#include <DbgHelp.h>
-#else
-#include <cxxabi.h>
-#include <execinfo.h>
-#endif
-#endif
 #endif
 
 using namespace arangodb;
@@ -67,87 +52,81 @@ using namespace arangodb;
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
 
 namespace {
-/// @brief custom comparer for failure points. this allows an implicit
-/// conversion from char const* to arangodb::velocypack::StringRef in order to avoid memory
-/// allocations for temporary string values
-struct Comparer {
-  using is_transparent = std::true_type;
-  // implement comparison functions for various types
-  inline bool operator()(arangodb::velocypack::StringRef const& lhs, std::string const& rhs) const noexcept {
-    return lhs < arangodb::velocypack::StringRef(rhs);
-  }
-  inline bool operator()(std::string const& lhs, arangodb::velocypack::StringRef const& rhs) const noexcept {
-    return arangodb::velocypack::StringRef(lhs) < rhs;
-  }
-  inline bool operator()(std::string const& lhs, std::string const& rhs) const noexcept {
-    return lhs < rhs;
-  }
-};
-
-/// @brief custom comparer for failure points. allows avoiding memory allocations
-/// for temporary string objects
-Comparer const comparer;
+std::atomic<bool> hasFailurePoints{false};
 
 /// @brief a read-write lock for thread-safe access to the failure points set
 arangodb::basics::ReadWriteLock failurePointsLock;
 
 /// @brief a global set containing the currently registered failure points
-std::set<std::string, ::Comparer> failurePoints(comparer);
+std::set<std::string, std::less<>> failurePoints;
 }  // namespace
 
-/// @brief cause a segmentation violation
+/// @brief intentionally cause a segmentation violation or other failures
 /// this is used for crash and recovery tests
-void TRI_TerminateDebugging(char const* message) {
+void TRI_TerminateDebugging(std::string_view message) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   CrashHandler::setHardKill();
 
   // there are some reserved crash messages we use in testing the
   // crash handler
-  velocypack::StringRef const s(message);
-  if (s == "CRASH-HANDLER-TEST-ABORT") {
+  if (message == "CRASH-HANDLER-TEST-ABORT") {
     // intentionally crashes the program!
     std::abort();
-  } else if (s == "CRASH-HANDLER-TEST-TERMINATE") {
+  } else if (message == "CRASH-HANDLER-TEST-TERMINATE") {
     // intentionally crashes the program!
     std::terminate();
-  } else if (s == "CRASH-HANDLER-TEST-TERMINATE-ACTIVE") {
+  } else if (message == "CRASH-HANDLER-TEST-TERMINATE-ACTIVE") {
+    // intentionally crashes the program!
+    // note: when using ASan/UBSan, this actually does not crash
+    // the program but continues.
     auto f = []() noexcept {
       // intentionally crashes the program!
+      // cppcheck-suppress *
       return std::string(nullptr);
     };
     f();
+    // we will get here at least with ASan/UBSan.
     std::terminate();
-  } else if (s == "CRASH-HANDLER-TEST-SEGFAULT") {
+  } else if (message == "CRASH-HANDLER-TEST-SEGFAULT") {
     std::unique_ptr<int> x;
     // intentionally crashes the program!
+    // cppcheck-suppress *
     int a = *x;
+    // cppcheck-suppress *
     *x = 2;
     TRI_ASSERT(a == 1);
-  } else if (s == "CRASH-HANDLER-TEST-ASSERT") {
+  } else if (message == "CRASH-HANDLER-TEST-ASSERT") {
     int a = 1;
     // intentionally crashes the program!
     TRI_ASSERT(a == 2);
   }
 
 #endif
- 
+
   // intentional crash - no need for a backtrace here
   CrashHandler::disableBacktraces();
-  CrashHandler::crash(message);  
+  CrashHandler::crash(message);
 }
 
 /// @brief check whether we should fail at a specific failure point
-bool TRI_ShouldFailDebugging(char const* value) {
-  READ_LOCKER(readLocker, ::failurePointsLock);
-
-  return ::failurePoints.find(arangodb::velocypack::StringRef(value)) != ::failurePoints.end();
+bool TRI_ShouldFailDebugging(std::string_view value) noexcept {
+  if (::hasFailurePoints.load(std::memory_order_relaxed)) {
+    READ_LOCKER(readLocker, ::failurePointsLock);
+    return ::failurePoints.find(value) != ::failurePoints.end();
+  }
+  return false;
 }
 
 /// @brief add a failure point
-void TRI_AddFailurePointDebugging(char const* value) {
-  WRITE_LOCKER(writeLocker, ::failurePointsLock);
+void TRI_AddFailurePointDebugging(std::string_view value) {
+  bool added = false;
+  {
+    WRITE_LOCKER(writeLocker, ::failurePointsLock);
+    added = ::failurePoints.emplace(value).second;
+    ::hasFailurePoints.store(true, std::memory_order_relaxed);
+  }
 
-  if (::failurePoints.emplace(value).second) {
+  if (added) {
     LOG_TOPIC("d8a5f", WARN, arangodb::Logger::FIXME)
         << "activating intentional failure point '" << value
         << "'. the server will misbehave!";
@@ -155,162 +134,56 @@ void TRI_AddFailurePointDebugging(char const* value) {
 }
 
 /// @brief remove a failure point
-void TRI_RemoveFailurePointDebugging(char const* value) {
-  WRITE_LOCKER(writeLocker, ::failurePointsLock);
+void TRI_RemoveFailurePointDebugging(std::string_view value) {
+  size_t numRemoved = 0;
+  {
+    WRITE_LOCKER(writeLocker, ::failurePointsLock);
+    numRemoved = ::failurePoints.erase(std::string(value));
+    if (::failurePoints.size() == 0) {
+      ::hasFailurePoints.store(false, std::memory_order_relaxed);
+    }
+  }
 
-  ::failurePoints.erase(std::string(value));
+  if (numRemoved > 0) {
+    LOG_TOPIC("5aacb", INFO, arangodb::Logger::FIXME)
+        << "cleared failure point " << value;
+  }
 }
 
 /// @brief clear all failure points
-void TRI_ClearFailurePointsDebugging() {
-  WRITE_LOCKER(writeLocker, ::failurePointsLock);
+void TRI_ClearFailurePointsDebugging() noexcept {
+  size_t numExisting = 0;
+  {
+    WRITE_LOCKER(writeLocker, ::failurePointsLock);
+    numExisting = ::failurePoints.size();
+    ::failurePoints.clear();
+    ::hasFailurePoints.store(false, std::memory_order_relaxed);
+  }
 
-  ::failurePoints.clear();
+  if (numExisting > 0) {
+    LOG_TOPIC("ea4e7", INFO, arangodb::Logger::FIXME)
+        << "cleared " << numExisting << " failure point(s)";
+  }
 }
 
-#endif
-
-/// @brief appends a backtrace to the string provided
-void TRI_GetBacktrace(std::string& btstr) {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-#if ARANGODB_ENABLE_BACKTRACE
-#ifdef _WIN32
-  void* stack[100];
-  HANDLE process = GetCurrentProcess();
-
-  SymInitialize(process, nullptr, true);
-
-  unsigned short frames = CaptureStackBackTrace(0, 100, stack, nullptr);
-  SYMBOL_INFO* symbol =
-      (SYMBOL_INFO*)calloc(sizeof(SYMBOL_INFO) + 256 * sizeof(char), 1);
-
-  if (symbol == nullptr) {
-    // cannot allocate memory
-    return;
-  }
-
-  symbol->MaxNameLen = 255;
-  symbol->SizeOfStruct = sizeof(SYMBOL_INFO);
-  IMAGEHLP_LINE64 line;
-  line.SizeOfStruct = sizeof(IMAGEHLP_LINE64);
-  char address[64];
-  std::string fn;
-  std::string err;
-  DWORD dwDisplacement;
-  for (unsigned int i = 0; i < frames; i++) {
-    DWORD lineNumber;
-    fn.clear();
-    SymFromAddr(process, (DWORD64)stack[i], nullptr, symbol);
-    if (SymGetLineFromAddr64(process, (DWORD64)stack[i], &dwDisplacement, &line)) {
-      // SymGetLineFromAddr64 returned success
-      if (line.FileName != nullptr) {
-        fn = line.FileName;
-      }
-      lineNumber = line.LineNumber;
-      err.clear();
-    } else {
-      lineNumber = -1;
-      DWORD error = GetLastError();
-      err = std::string("SymGetLineFromAddr64 returned error: ") + std::to_string(error);
-    }
-    snprintf(address, sizeof(address), "0x%0X", (unsigned int)symbol->Address);
-    btstr += std::to_string(frames - i - 1) + std::string(": ") + symbol->Name +
-             std::string(" [") + address + std::string("] ") + fn +
-             std::string(":") + std::to_string(lineNumber) + err +
-             std::string("\n");
-  }
-
-  TRI_Free(symbol);
-
-#else
-  void* stack_frames[50];
-
-  size_t size = backtrace(stack_frames, sizeof(stack_frames) / sizeof(void*));
-  char** strings = backtrace_symbols(stack_frames, size);
-
-  for (size_t i = 0; i < size; i++) {
-    std::stringstream ss;
-    if (strings != nullptr) {
-      char *mangled_name = nullptr, *offset_begin = nullptr, *offset_end = nullptr;
-
-      // find parentheses and +address offset surrounding mangled name
-      for (char* p = strings[i]; *p; ++p) {
-        if (*p == '(') {
-          mangled_name = p;
-        } else if (*p == '+') {
-          offset_begin = p;
-        } else if (*p == ')') {
-          offset_end = p;
-          break;
-        }
-      }
-      if (mangled_name && offset_begin && offset_end && mangled_name < offset_begin) {
-        *mangled_name++ = '\0';
-        *offset_begin++ = '\0';
-        *offset_end++ = '\0';
-        int status = 0;
-        char* demangled_name = abi::__cxa_demangle(mangled_name, 0, 0, &status);
-
-        if (demangled_name != nullptr) {
-          if (status == 0) {
-            ss << stack_frames[i];
-            btstr += strings[i] + std::string("() [") + ss.str() +
-                     std::string("] ") + demangled_name + '\n';
-          } else {
-            btstr += strings[i];
-            btstr += '\n';
-          }
-          TRI_Free(demangled_name);
-        }
-      } else {
-        btstr += strings[i];
-        btstr += '\n';
-      }
-    } else {
-      ss << stack_frames[i];
-      btstr += ss.str() + '\n';
+/// @brief return all currently set failure points
+void TRI_GetFailurePointsDebugging(arangodb::velocypack::Builder& builder) {
+  builder.openArray();
+  {
+    READ_LOCKER(readLocker, ::failurePointsLock);
+    for (auto const& it : ::failurePoints) {
+      builder.add(arangodb::velocypack::Value(it));
     }
   }
-  if (strings != nullptr) {
-    TRI_Free(strings);
-  }
-#endif
-#endif
-#endif
+  builder.close();
 }
+#endif
 
-/// @brief prints a backtrace on stderr
-void TRI_PrintBacktrace() {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-#if ARANGODB_ENABLE_BACKTRACE
-  if (LogAppender::allowStdLogging()) {
-    std::string out;
-    TRI_GetBacktrace(out);
-    fprintf(stderr, "%s", out.c_str());
-  }
-#endif
-#if TRI_HAVE_PSTACK
-  char buf[64];
-  snprintf(buf, sizeof(buf), "/usr/bin/pstack %i", getpid());
-  system(buf);
-#endif
-#endif
-}
-
-/// @brief logs a backtrace in log level warning
-void TRI_LogBacktrace() {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-#if ARANGODB_ENABLE_BACKTRACE
-  std::string bt;
-  TRI_GetBacktrace(bt);
-  if (!bt.empty()) {
-    LOG_TOPIC("3945a", WARN, arangodb::Logger::FIXME) << bt;
-  }
-#endif
-#endif
-}
-
-template<> char const conpar<true>::open = '{';
-template<> char const conpar<true>::close = '}';
-template<> char const conpar<false>::open = '[';
-template<> char const conpar<false>::close = ']';
+template<>
+char const conpar<true>::open = '{';
+template<>
+char const conpar<true>::close = '}';
+template<>
+char const conpar<false>::open = '[';
+template<>
+char const conpar<false>::close = ']';

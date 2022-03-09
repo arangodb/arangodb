@@ -40,13 +40,13 @@ function runSetup () {
   db._drop('UnitTestsRecovery1');
   db._drop('UnitTestsRecovery2');
   c = db._create('UnitTestsRecovery1');
-  c.properties({ waitForSync: true, journalSize: 8 * 1024 * 1024, doCompact: false });
+  c.properties({ waitForSync: true });
   c.rename('UnitTestsRecovery2');
 
   db._drop('UnitTestsRecovery3');
   db._drop('UnitTestsRecovery4');
   c = db._create('UnitTestsRecovery3');
-  c.properties({ waitForSync: false, journalSize: 16 * 1024 * 1024, doCompact: true });
+  c.properties({ waitForSync: false });
   c.rename('UnitTestsRecovery4');
 
   db._drop('UnitTestsRecovery5');

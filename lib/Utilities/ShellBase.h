@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,8 +22,7 @@
 /// @author Esteban Lombeyda
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_UTILITIES_SHELL_BASE_H
-#define ARANGODB_UTILITIES_SHELL_BASE_H 1
+#pragma once
 
 #include <string>
 #include <vector>
@@ -68,7 +67,8 @@ class ShellBase {
   /// @brief line editor prompt
   //////////////////////////////////////////////////////////////////////////////
 
-  std::string prompt(std::string const& prompt, std::string const& begin, EofType& eof);
+  std::string prompt(std::string const& prompt, std::string const& begin,
+                     EofType& eof);
 
  public:
   //////////////////////////////////////////////////////////////////////////////
@@ -139,5 +139,3 @@ class ShellBase {
   Completer* _completer;
 };
 }  // namespace arangodb
-
-#endif

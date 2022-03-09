@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -30,7 +31,8 @@ auto aql::operator<<(std::ostream& out, AqlCallSet::DepCallPair const& callPair)
   return out << callPair.dependency << " => " << callPair.call;
 }
 
-auto aql::operator<<(std::ostream& out, AqlCallSet const& callSet) -> std::ostream& {
+auto aql::operator<<(std::ostream& out, AqlCallSet const& callSet)
+    -> std::ostream& {
   out << "[";
   auto first = true;
   for (auto const& it : callSet.calls) {

@@ -6,9 +6,34 @@ const router = createRouter();
 router.get('/header-echo', function (req, res) {
   res.json(req.headers);
 });
+router.post('/header-echo', function (req, res) {
+  res.json(req.headers);
+});
 
 router.all('/header-empty', function (req, res) {
   // do nothing
+});
+
+router.all('/encode-array-base64encode', function (req, res) {
+  res.body = "['this is an array']";
+  res.transformations('base64encode');
+  return res;
+});
+router.all('/encode-object-base64encode', function (req, res) {
+  res.body = '{"this": "is an object"}';
+  res.transformations('base64encode');
+  return res;
+});
+
+router.all('/encode-array-deflate', function (req, res) {
+  res.body = ['this is an array'];
+  res.transformations('deflate');
+  return res;
+});
+router.all('/encode-object-deflate', function (req, res) {
+  res.body = '{"this": "is an object"}';
+  res.transformations('deflate');
+  return res;
 });
 
 router.all('/header-automatic', function (req, res) {

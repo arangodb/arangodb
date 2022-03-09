@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,27 +23,23 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_MAINTENANCE_TAKEOVER_SHARD_LEADERSHIP_H
-#define ARANGODB_MAINTENANCE_TAKEOVER_SHARD_LEADERSHIP_H
+#pragma once
 
 #include "ActionBase.h"
 #include "ActionDescription.h"
 
-#include <chrono>
-
 namespace arangodb {
 namespace maintenance {
 
-class TakeoverShardLeadership : public ActionBase {
+class TakeoverShardLeadership : public ActionBase, public ShardDefinition {
  public:
   TakeoverShardLeadership(MaintenanceFeature&, ActionDescription const& d);
 
   virtual ~TakeoverShardLeadership();
 
   virtual bool first() override final;
+  void setState(ActionState state) override final;
 };
 
 }  // namespace maintenance
 }  // namespace arangodb
-
-#endif

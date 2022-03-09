@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,27 +21,23 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/Common.h"
+#include "RestServer/arangod.h"
 
-#include "Basics/directories.h"
-#include "Basics/tri-strings.h"
+#include <type_traits>
+#ifdef _WIN32
+#include <iostream>
+#endif
 
 #include "Actions/ActionFeature.h"
 #include "Agency/AgencyFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "ApplicationFeatures/ConfigFeature.h"
-#include "ApplicationFeatures/DaemonFeature.h"
-#include "ApplicationFeatures/EnvironmentFeature.h"
 #include "ApplicationFeatures/GreetingsFeature.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "ApplicationFeatures/LanguageFeature.h"
-#include "ApplicationFeatures/MaxMapCountFeature.h"
-#include "ApplicationFeatures/NonceFeature.h"
-#include "ApplicationFeatures/PrivilegeFeature.h"
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
-#include "ApplicationFeatures/SupervisorFeature.h"
 #include "ApplicationFeatures/TempFeature.h"
 #include "ApplicationFeatures/V8PlatformFeature.h"
 #include "ApplicationFeatures/V8SecurityFeature.h"
@@ -49,14 +45,20 @@
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Basics/ArangoGlobalContext.h"
+#include "Basics/Common.h"
 #include "Basics/CrashHandler.h"
 #include "Basics/FileUtils.h"
+#include "Basics/directories.h"
+#include "Basics/operating-system.h"
+#include "Basics/tri-strings.h"
 #include "Cache/CacheManagerFeature.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterUpgradeFeature.h"
 #include "Cluster/MaintenanceFeature.h"
+#include "Cluster/FailureOracleFeature.h"
 #include "Cluster/ReplicationTimeoutFeature.h"
 #include "Cluster/ServerState.h"
+#include "ClusterEngine/ClusterEngine.h"
 #include "FeaturePhases/AgencyFeaturePhase.h"
 #include "FeaturePhases/AqlFeaturePhase.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
@@ -70,20 +72,31 @@
 #include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/ServerSecurityFeature.h"
 #include "GeneralServer/SslServerFeature.h"
-#include "Logger/LogBufferFeature.h"
+#include "IResearch/IResearchAnalyzerFeature.h"
+#include "IResearch/IResearchFeature.h"
 #include "Logger/LoggerFeature.h"
+#include "Metrics/ClusterMetricsFeature.h"
+#include "Metrics/MetricsFeature.h"
 #include "Network/NetworkFeature.h"
 #include "Pregel/PregelFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Random/RandomFeature.h"
 #include "Replication/ReplicationFeature.h"
+#include "Replication/ReplicationMetricsFeature.h"
+#include "Replication2/ReplicatedLog/ReplicatedLogFeature.h"
+#include "Replication2/ReplicatedState/ReplicatedStateFeature.h"
+#include "Replication2/StateMachines/BlackHole/BlackHoleStateMachineFeature.h"
+#include "Replication2/StateMachines/Prototype/PrototypeStateMachineFeature.h"
 #include "RestServer/AqlFeature.h"
 #include "RestServer/BootstrapFeature.h"
 #include "RestServer/CheckVersionFeature.h"
 #include "RestServer/ConsoleFeature.h"
+#include "RestServer/CpuUsageFeature.h"
+#include "RestServer/DaemonFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/EndpointFeature.h"
+#include "RestServer/EnvironmentFeature.h"
 #include "RestServer/FileDescriptorsFeature.h"
 #include "RestServer/FlushFeature.h"
 #include "RestServer/FortuneFeature.h"
@@ -91,49 +104,72 @@
 #include "RestServer/InitDatabaseFeature.h"
 #include "RestServer/LanguageCheckFeature.h"
 #include "RestServer/LockfileFeature.h"
-#include "RestServer/MetricsFeature.h"
+#include "RestServer/LogBufferFeature.h"
+#include "RestServer/MaxMapCountFeature.h"
+#include "RestServer/NonceFeature.h"
+#include "RestServer/PrivilegeFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
+#include "RestServer/RestartAction.h"
 #include "RestServer/ScriptFeature.h"
 #include "RestServer/ServerFeature.h"
 #include "RestServer/ServerIdFeature.h"
+#include "RestServer/SharedPRNGFeature.h"
+#include "RestServer/SoftShutdownFeature.h"
+#include "RestServer/SupervisorFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
+#include "RestServer/TimeZoneFeature.h"
 #include "RestServer/TtlFeature.h"
 #include "RestServer/UpgradeFeature.h"
 #include "RestServer/ViewTypesFeature.h"
+#include "RocksDBEngine/RocksDBEngine.h"
+#include "RocksDBEngine/RocksDBOptionFeature.h"
+#include "RocksDBEngine/RocksDBRecoveryManager.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Sharding/ShardingFeature.h"
 #include "Ssl/SslFeature.h"
 #include "Statistics/StatisticsFeature.h"
+#include "Statistics/StatisticsWorker.h"
 #include "StorageEngine/EngineSelectorFeature.h"
-#include "StorageEngine/RocksDBOptionFeature.h"
 #include "StorageEngine/StorageEngineFeature.h"
 #include "Transaction/ManagerFeature.h"
-#include "V8Server/FoxxQueuesFeature.h"
+#include "V8Server/FoxxFeature.h"
 #include "V8Server/V8DealerFeature.h"
 
 #ifdef _WIN32
-#include "ApplicationFeatures/WindowsServiceFeature.h"
 #include "Basics/win-utils.h"
+#include "RestServer/WindowsServiceFeature.h"
 #endif
 
 #ifdef USE_ENTERPRISE
-#include "Enterprise/RestServer/arangodEE.h"
+#include "Enterprise/Audit/AuditFeature.h"
+#include "Enterprise/Encryption/EncryptionFeature.h"
+#include "Enterprise/Ldap/LdapFeature.h"
+#include "Enterprise/License/LicenseFeature.h"
+#include "Enterprise/RClone/RCloneFeature.h"
+#include "Enterprise/Ssl/SslServerFeatureEE.h"
+#include "Enterprise/StorageEngine/HotBackupFeature.h"
 #endif
-
-#include "IResearch/IResearchAnalyzerFeature.h"
-#include "IResearch/IResearchFeature.h"
-
-// storage engines
-#include "ClusterEngine/ClusterEngine.h"
-#include "RocksDBEngine/RocksDBEngine.h"
-
-#ifdef _WIN32
-#include <iostream>
-#endif
-
 
 using namespace arangodb;
 using namespace arangodb::application_features;
+
+constexpr auto kNonServerFeatures =
+    std::array{ArangodServer::id<ActionFeature>(),
+               ArangodServer::id<AgencyFeature>(),
+               ArangodServer::id<ClusterFeature>(),
+#ifdef ARANGODB_HAVE_FORK
+               ArangodServer::id<SupervisorFeature>(),
+               ArangodServer::id<DaemonFeature>(),
+#endif
+               ArangodServer::id<FoxxFeature>(),
+               ArangodServer::id<GeneralServerFeature>(),
+               ArangodServer::id<GreetingsFeature>(),
+               ArangodServer::id<HttpEndpointProvider>(),
+               ArangodServer::id<LogBufferFeature>(),
+               ArangodServer::id<pregel::PregelFeature>(),
+               ArangodServer::id<ServerFeature>(),
+               ArangodServer::id<SslServerFeature>(),
+               ArangodServer::id<StatisticsFeature>()};
 
 static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
   try {
@@ -141,130 +177,71 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
     std::string name = context.binaryName();
 
     auto options = std::make_shared<arangodb::options::ProgramOptions>(
-        argv[0], "Usage: " + name + " [<options>]", "For more information use:", SBIN_DIRECTORY);
+        argv[0], "Usage: " + name + " [<options>]",
+        "For more information use:", SBIN_DIRECTORY);
 
-    ApplicationServer server(options, SBIN_DIRECTORY);
-    ServerState state(server);
+    int ret{EXIT_FAILURE};
+    ArangodServer server{options, SBIN_DIRECTORY};
+    ServerState state{server};
 
-    std::vector<std::type_index> nonServerFeatures = {
-        std::type_index(typeid(ActionFeature)),
-        std::type_index(typeid(AgencyFeature)),
-        std::type_index(typeid(ClusterFeature)),
-        std::type_index(typeid(DaemonFeature)),
-        std::type_index(typeid(FoxxQueuesFeature)),
-        std::type_index(typeid(GeneralServerFeature)),
-        std::type_index(typeid(GreetingsFeature)),
-        std::type_index(typeid(HttpEndpointProvider)),
-        std::type_index(typeid(LogBufferFeature)),
-        std::type_index(typeid(pregel::PregelFeature)),
-        std::type_index(typeid(ServerFeature)),
-        std::type_index(typeid(SslServerFeature)),
-        std::type_index(typeid(StatisticsFeature)),
-        std::type_index(typeid(SupervisorFeature))};
+    server.addReporter(
+        {[&](ArangodServer::State state) {
+           if (state == ArangodServer::State::IN_START) {
+             // drop priveleges before starting features
+             server.getFeature<PrivilegeFeature>().dropPrivilegesPermanently();
+           }
+         },
+         {}});
 
-    int ret = EXIT_FAILURE;
-
-    // Adding the Phases
-    server.addFeature<AgencyFeaturePhase>();
-    server.addFeature<CommunicationFeaturePhase>();
-    server.addFeature<AqlFeaturePhase>();
-    server.addFeature<BasicFeaturePhaseServer>();
-    server.addFeature<ClusterFeaturePhase>();
-    server.addFeature<DatabaseFeaturePhase>();
-    server.addFeature<FinalFeaturePhase>();
-    server.addFeature<FoxxFeaturePhase>();
-    server.addFeature<GreetingsFeaturePhase>(false);
-    server.addFeature<ServerFeaturePhase>();
-    server.addFeature<V8FeaturePhase>();
-
-    // Adding the features
-    server.addFeature<ActionFeature>();
-    server.addFeature<AgencyFeature>();
-    server.addFeature<AqlFeature>();
-    server.addFeature<AuthenticationFeature>();
-    server.addFeature<BootstrapFeature>();
-    server.addFeature<CacheManagerFeature>();
-    server.addFeature<CheckVersionFeature>(&ret, nonServerFeatures);
-    server.addFeature<ClusterFeature>();
-    server.addFeature<ClusterUpgradeFeature>();
-    server.addFeature<ConfigFeature>(name);
-    server.addFeature<ConsoleFeature>();
-    server.addFeature<DatabaseFeature>();
-    server.addFeature<DatabasePathFeature>();
-    server.addFeature<EndpointFeature, HttpEndpointProvider>();
-    server.addFeature<EngineSelectorFeature>();
-    server.addFeature<EnvironmentFeature>();
-    server.addFeature<FileDescriptorsFeature>();
-    server.addFeature<FlushFeature>();
-    server.addFeature<FortuneFeature>();
-    server.addFeature<FoxxQueuesFeature>();
-    server.addFeature<FrontendFeature>();
-    server.addFeature<GeneralServerFeature>();
-    server.addFeature<GreetingsFeature>();
-    server.addFeature<InitDatabaseFeature>(nonServerFeatures);
-    server.addFeature<LanguageCheckFeature>();
-    server.addFeature<LanguageFeature>();
-    server.addFeature<LockfileFeature>();
-    server.addFeature<LogBufferFeature>();
-    server.addFeature<LoggerFeature>(true);
-    server.addFeature<MaintenanceFeature>();
-    server.addFeature<MaxMapCountFeature>();
-    server.addFeature<MetricsFeature>();
-    server.addFeature<NetworkFeature>();
-    server.addFeature<NonceFeature>();
-    server.addFeature<PrivilegeFeature>();
-    server.addFeature<QueryRegistryFeature>();
-    server.addFeature<RandomFeature>();
-    server.addFeature<ReplicationFeature>();
-    server.addFeature<ReplicationTimeoutFeature>();
-    server.addFeature<RocksDBOptionFeature>();
-    server.addFeature<SchedulerFeature>();
-    server.addFeature<ScriptFeature>(&ret);
-    server.addFeature<ServerFeature>(&ret);
-    server.addFeature<ServerIdFeature>();
-    server.addFeature<ServerSecurityFeature>();
-    server.addFeature<ShardingFeature>();
-    server.addFeature<ShellColorsFeature>();
-    server.addFeature<ShutdownFeature>(
-        std::vector<std::type_index>{std::type_index(typeid(ScriptFeature))});
-    server.addFeature<SslFeature>();
-    server.addFeature<StatisticsFeature>();
-    server.addFeature<StorageEngineFeature>();
-    server.addFeature<SystemDatabaseFeature>();
-    server.addFeature<TempFeature>(name);
-    server.addFeature<TtlFeature>();
-    server.addFeature<UpgradeFeature>(&ret, nonServerFeatures);
-    server.addFeature<V8DealerFeature>();
-    server.addFeature<V8PlatformFeature>();
-    server.addFeature<V8SecurityFeature>();
-    server.addFeature<transaction::ManagerFeature>();
-    server.addFeature<VersionFeature>();
-    server.addFeature<ViewTypesFeature>();
-    server.addFeature<aql::AqlFunctionFeature>();
-    server.addFeature<aql::OptimizerRulesFeature>();
-    server.addFeature<pregel::PregelFeature>();
-
-#ifdef ARANGODB_HAVE_FORK
-    server.addFeature<DaemonFeature>();
-    server.addFeature<SupervisorFeature>();
-#endif
-
-#ifdef _WIN32
-    server.addFeature<WindowsServiceFeature>();
-#endif
-
+    server.addFeatures(
+        Visitor{[]<typename T>(auto& server, TypeTag<T>) {
+                  return std::make_unique<T>(server);
+                },
+                [](auto& server, TypeTag<GreetingsFeaturePhase>) {
+                  return std::make_unique<GreetingsFeaturePhase>(
+                      server, std::false_type{});
+                },
+                [&ret](auto& server, TypeTag<CheckVersionFeature>) {
+                  return std::make_unique<CheckVersionFeature>(
+                      server, &ret, kNonServerFeatures);
+                },
+                [&name](auto& server, TypeTag<ConfigFeature>) {
+                  return std::make_unique<ConfigFeature>(server, name);
+                },
+                [](auto& server, TypeTag<InitDatabaseFeature>) {
+                  return std::make_unique<InitDatabaseFeature>(
+                      server, kNonServerFeatures);
+                },
+                [](auto& server, TypeTag<LoggerFeature>) {
+                  return std::make_unique<LoggerFeature>(server, true);
+                },
+                [&ret](auto& server, TypeTag<ScriptFeature>) {
+                  return std::make_unique<ScriptFeature>(server, &ret);
+                },
+                [&ret](auto& server, TypeTag<ServerFeature>) {
+                  return std::make_unique<ServerFeature>(server, &ret);
+                },
+                [](auto& server, TypeTag<ShutdownFeature>) {
+                  return std::make_unique<ShutdownFeature>(
+                      server, std::array{ArangodServer::id<ScriptFeature>()});
+                },
+                [&name](auto& server, TypeTag<TempFeature>) {
+                  return std::make_unique<TempFeature>(server, name);
+                },
+                [](auto& server, TypeTag<SslServerFeature>) {
 #ifdef USE_ENTERPRISE
-    setupServerEE(server);
+                  return std::make_unique<SslServerFeatureEE>(server);
 #else
-    server.addFeature<SslServerFeature>();
+                  return std::make_unique<SslServerFeature>(server);
 #endif
-
-    server.addFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
-    server.addFeature<arangodb::iresearch::IResearchFeature>();
-
-    // storage engines
-    server.addFeature<ClusterEngine>();
-    server.addFeature<RocksDBEngine>();
+                },
+                [&ret](auto& server, TypeTag<UpgradeFeature>) {
+                  return std::make_unique<UpgradeFeature>(server, &ret,
+                                                          kNonServerFeatures);
+                },
+                [](auto& server, TypeTag<HttpEndpointProvider>) {
+                  return std::make_unique<EndpointFeature>(server);
+                }});
 
     try {
       server.run(argc, argv);
@@ -304,7 +281,8 @@ static void WINAPI ServiceMain(DWORD dwArgc, LPSTR* lpszArgv) {
     return;
   }
   // register the service ctrl handler,  lpszArgv[0] contains service name
-  ServiceStatus = RegisterServiceCtrlHandlerA(lpszArgv[0], (LPHANDLER_FUNCTION)ServiceCtrl);
+  ServiceStatus =
+      RegisterServiceCtrlHandlerA(lpszArgv[0], (LPHANDLER_FUNCTION)ServiceCtrl);
 
   // set start pending
   SetServiceStatus(SERVICE_START_PENDING, 0, 1, 10000, 0);
@@ -320,30 +298,6 @@ static void WINAPI ServiceMain(DWORD dwArgc, LPSTR* lpszArgv) {
 
 #endif
 
-// The following is a global pointer which can be set from within the process
-// to configure a restart action which happens directly before main()
-// terminates. This is used for our hotbackup restore functionality.
-// See below in main() for details.
-
-namespace arangodb {
-  std::function<int()>* restartAction = nullptr;
-}
-
-// Here is a sample of how to use this:
-//
-// extern std::function<int()>* restartAction;
-//
-// static int myRestartAction() {
-//   std::cout << "Executing restart action..." << std::endl;
-//   return 0;
-// }
-//
-// And then in some function:
-//
-// restartAction = new std::function<int()>();
-// *restartAction = myRestartAction;
-// arangodb::ApplicationServer::server->beginShutdown();
-
 #ifdef __linux__
 
 // The following is a hack which is currently (September 2019) needed to
@@ -352,12 +306,9 @@ namespace arangodb {
 // See https://gcc.gnu.org/bugzilla/show_bug.cgi?id=91737 for developments
 // in gcc/libgcc to address this issue.
 
-static void* g(void *p) {
-  return p;
-}
+static void* g(void* p) { return p; }
 
-static void gg() {
-}
+static void gg() {}
 
 static void f() {
   pthread_t t;
@@ -372,15 +323,12 @@ static void f() {
 int main(int argc, char* argv[]) {
 #ifdef __linux__
   // Do not delete this! See above for an explanation.
-  if (argc >= 1 && strcmp(argv[0], "not a/valid name") == 0) { f(); }
+  if (argc >= 1 && strcmp(argv[0], "not a/valid name") == 0) {
+    f();
+  }
 #endif
 
   std::string workdir(arangodb::basics::FileUtils::currentDirectory().result());
-#ifdef __linux__
-#ifdef USE_ENTERPRISE
-  arangodb::checkLicenseKey();
-#endif
-#endif
 
   TRI_GET_ARGV(argc, argv);
 #if _WIN32
@@ -388,8 +336,9 @@ int main(int argc, char* argv[]) {
     ARGC = argc;
     ARGV = argv;
 
-    SERVICE_TABLE_ENTRY ste[] = {{TEXT(""), (LPSERVICE_MAIN_FUNCTION)ServiceMain},
-                                 {nullptr, nullptr}};
+    SERVICE_TABLE_ENTRY ste[] = {
+        {TEXT(const_cast<char*>("")), (LPSERVICE_MAIN_FUNCTION)ServiceMain},
+        {nullptr, nullptr}};
 
     if (!StartServiceCtrlDispatcher(ste)) {
       std::cerr << "FATAL: StartServiceCtrlDispatcher has failed with "
@@ -412,13 +361,13 @@ int main(int argc, char* argv[]) {
   }
   try {
     res = (*arangodb::restartAction)();
-  } catch(...) {
+  } catch (...) {
     res = -1;
   }
   delete arangodb::restartAction;
   if (res != 0) {
-    std::cerr << "FATAL: RestartAction returned non-zero exit status: "
-      << res << ", giving up." << std::endl;
+    std::cerr << "FATAL: RestartAction returned non-zero exit status: " << res
+              << ", giving up." << std::endl;
     return res;
   }
   // It is not clear if we want to do the following under Linux and OSX,
@@ -429,10 +378,12 @@ int main(int argc, char* argv[]) {
 #if defined(__linux__) || defined(__APPLE__)
   res = chdir(workdir.c_str());
   if (res != 0) {
-    std::cerr << "WARNING: could not change into directory '" << workdir << "'" << std::endl;
+    std::cerr << "WARNING: could not change into directory '" << workdir << "'"
+              << std::endl;
   }
   if (execvp(argv[0], argv) == -1) {
-    std::cerr << "WARNING: could not execvp ourselves, restore will not work!" << std::endl;
+    std::cerr << "WARNING: could not execvp ourselves, restore will not work!"
+              << std::endl;
   }
 #endif
 }

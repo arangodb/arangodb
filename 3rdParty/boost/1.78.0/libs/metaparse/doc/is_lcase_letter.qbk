@@ -1,0 +1,77 @@
+[#is_lcase_letter]
+[section is_lcase_letter]
+
+[h1 Synopsis]
+
+  namespace util
+  {
+    template <class C>
+    struct is_lcase_letter;
+  }
+
+This is a [link lazy_metafunction lazy template metafunction] that supports
+[link currying currying].
+
+[table Arguments
+  [[Name] [Type]]
+  [[`C`]  [[link boxed_value boxed] character value]]
+]
+
+[h1 Description]
+
+Checks if `C` is a lower case letter. Returns a boxed boolean value.
+
+[h1 Header]
+
+  #include <boost/metaparse/util/is_lcase_letter.hpp>
+
+[h1 Expression semantics]
+
+The following expressions are equivalent:
+
+  is_lcase_letter<>::apply<boost::mpl::char_<'a'>>::type
+  boost::mpl::true_
+
+  is_lcase_letter<>::apply<boost::mpl::char_<'z'>>::type
+  boost::mpl::true_
+
+  is_lcase_letter<>::apply<c>::type
+  boost::mpl::false_
+
+[h1 Example]
+
+  #include <boost/metaparse/util/is_lcase_letter.hpp>
+  
+  #include <type_traits>
+  
+  using namespace boost::metaparse;
+  
+  struct returns_char
+  {
+    using type = std::integral_constant<char, 'a'>;
+  };
+  
+  static_assert(
+    util::is_lcase_letter<std::integral_constant<char, 'a'>>::type::value,
+    "a should be a lower case letter"
+  );
+  
+  static_assert(
+    !util::is_lcase_letter<std::integral_constant<char, 'A'>>::type::value,
+    "A should not be a lower case letter"
+  );
+  
+  static_assert(
+    util::is_lcase_letter<>::type
+      ::apply<std::integral_constant<char, 'a'>>::type::value,
+    "it should support currying"
+  );
+  
+  static_assert(
+    util::is_lcase_letter<returns_char>::type::value,
+    "it should support lazy evaluation"
+  );
+  
+
+[endsect]
+

@@ -28,7 +28,7 @@
 
 // server is started in unicode directory
 
-const tu = require('@arangodb/test-utils');
+const tu = require('@arangodb/testutils/test-utils');
 const fs = require('fs');
 const _ = require('lodash');
 
@@ -56,6 +56,7 @@ function paths_server(options) {
   process.env.TMPDIR = tmpPath;
   process.env.TEMP = tmpPath;
   process.env.TMP = tmpPath;
+  options.cleanup = options.cleanup && opts.cleanup;
   return rc;
 }
 

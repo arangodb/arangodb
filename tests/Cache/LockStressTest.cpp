@@ -1,11 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite for arangodb::cache::TransactionalCache with backing store
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -60,7 +57,8 @@ TEST(CacheLockStressTest, test_transactionality_for_mixed_load) {
     store.insert(nullptr, TransactionalStore::Document(i));
   }
 
-  auto readWorker = [&store, totalDocuments, readBatchSize, numBatches]() -> void {
+  auto readWorker = [&store, totalDocuments, readBatchSize,
+                     numBatches]() -> void {
     for (std::uint64_t batch = 0; batch < numBatches; batch++) {
       auto tx = store.beginTransaction(true);
       for (std::uint64_t i = 0; i < readBatchSize; i++) {
@@ -92,7 +90,8 @@ TEST(CacheLockStressTest, test_transactionality_for_mixed_load) {
   }
 
   auto end = std::chrono::high_resolution_clock::now();
-  std::cout << "time: " << static_cast<double>((end - start).count()) / 1000000000
+  std::cout << "time: "
+            << static_cast<double>((end - start).count()) / 1000000000
             << std::endl;
 
   RandomGenerator::shutdown();

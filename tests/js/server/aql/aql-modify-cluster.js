@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertTrue, assertFalse, assertNull, assertMatch, fail, AQL_EXECUTE, AQL_EXPLAIN */
+/*global assertEqual, assertNotEqual, assertTrue, assertFalse, assertNull, assertMatch, fail, AQL_EXECUTE, AQL_EXPLAIN */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, bind parameters
@@ -40,6 +40,8 @@ var sanitizeStats = function (stats) {
   // for the comparisons
   delete stats.scannedFull;
   delete stats.scannedIndex;
+  delete stats.cursorsCreated;
+  delete stats.cursorsRearmed;
   delete stats.filtered;
   delete stats.executionTime;
   delete stats.httpRequests;
@@ -53,10 +55,11 @@ var sanitizeStats = function (stats) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function ahuacatlModifySuite () {
-  var errors = internal.errors;
-  var cn1 = "UnitTestsAhuacatlModify1";
-  var cn2 = "UnitTestsAhuacatlModify2";
-  var c1, c2;
+  const errors = internal.errors;
+  const cn1 = "UnitTestsAhuacatlModify1";
+  const cn2 = "UnitTestsAhuacatlModify2";
+
+  let c1, c2;
 
   return {
 
@@ -66,12 +69,13 @@ function ahuacatlModifySuite () {
 
     setUp : function () {
       db._drop(cn1);
-      db._drop(cn2);
       c1 = db._create(cn1, {numberOfShards:5});
-      c2 = db._create(cn2, {numberOfShards:5});
 
-      c1.save({ _key: "foo", a: 1 });
-      c2.save({ _key: "foo", b: 1 });
+      let docs = [];
+      for (let i = 0; i < 1000; ++i) {
+        docs.push({name: `test${i}`});
+      }
+      c1.insert(docs);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -108,6 +112,54 @@ function ahuacatlModifySuite () {
     testInvalidOptions : function () {
       assertQueryError(errors.ERROR_QUERY_PARSE.code, "FOR d IN @@cn REMOVE d IN @@cn OPTIONS 'foo'", { "@cn": cn1 });
     },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test upsert update with empty update object
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpsertUpdateEmpty: function () {
+      for (let i = 0; i < 5; ++i) {
+        const actual = AQL_EXECUTE(`UPSERT {name: "test1500"} INSERT {name: "test1500"} UPDATE {} IN ${cn1} OPTIONS { } RETURN { new: NEW, old: OLD }`);
+        const res = actual.json[0];
+        if (i > 0) {
+          assertEqual(res.old._rev, res.new._rev);
+          assertEqual(res.old.name, "test1500");
+          assertEqual(4, Object.keys(res.old).length);
+        }
+        assertEqual(1001, c1.count());
+        assertEqual(4, Object.keys(res.new).length);
+        assertEqual(res.new.name, "test1500");
+      }
+    },
+
+/////////////////////////////////////////////////////////////////////////////////
+/// @brief test upsert replace with empty replace object
+/// in 5 iterations, starting with size 1000:
+/// i = 0, document with name "test1500" doesn't exist, so inserts it size = 1001
+/// i = 1, document exists so replaces it with empty document  size = 1001
+/// i = 2, document with name "test1500" doesn't exist, so inserts it size = 1002
+/// i = 3, document exists so replaces it with empty document  size = 1002
+/// i = 4, document with name "test1500" doesn't exist, so inserts it size = 1003
+/////////////////////////////////////////////////////////////////////////////////
+
+    testUpsertReplaceEmpty: function () {
+      for (let i = 0; i < 5; ++i) {
+        const actual = AQL_EXECUTE(`UPSERT {name: "test1500"} INSERT {name: "test1500"} REPLACE {} IN ${cn1} OPTIONS { } RETURN { new: NEW, old: OLD }`);
+        const res = actual.json[0];
+        if (i % 2 !== 0) {
+          assertNotEqual(res.old._rev, res.new._rev);
+          assertEqual(res.old.name, "test1500");
+          assertEqual(4, Object.keys(res.old).length);
+          assertEqual(3, Object.keys(res.new).length);
+          assertFalse(res.new.hasOwnProperty("name"));
+          assertTrue(res.old.hasOwnProperty("name"));
+        } else {
+          assertEqual(4, Object.keys(res.new).length);
+        }
+      }
+      assertEqual(1003, c1.count());
+    },
+
   };
 }
 
@@ -116,11 +168,11 @@ function ahuacatlModifySuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function ahuacatlRemoveSuite () {
-  var errors = internal.errors;
-  var cn1 = "UnitTestsAhuacatlRemove1";
-  var cn2 = "UnitTestsAhuacatlRemove2";
-  var c1;
-  var c2;
+  const errors = internal.errors;
+  const cn1 = "UnitTestsAhuacatlRemove1";
+  const cn2 = "UnitTestsAhuacatlRemove2";
+  let c1;
+  let c2;
 
   return {
 
@@ -510,8 +562,8 @@ function ahuacatlInsertSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testInsertDouble : function () {
-      c1.truncate();
-      c2.truncate();
+      c1.truncate({ compact: false });
+      c2.truncate({ compact: false });
 
       const query = `LET d1 = {name : 'foo'}
                      LET d2 = {name : 'bar'}
@@ -531,8 +583,8 @@ function ahuacatlInsertSuite () {
     },
 
     testInsertTripleWithSub : function () {
-      c1.truncate();
-      c2.truncate();
+      c1.truncate({ compact: false });
+      c2.truncate({ compact: false });
 
       c3.drop();
       c3 = db._createEdgeCollection(cn3);
@@ -1079,7 +1131,7 @@ function ahuacatlInsertSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testInsertOverwrite : function () {
-      c1.truncate();
+      c1.truncate({ compact: false });
       assertEqual(0, c1.count());
 
       var rv1 = db._query(" INSERT { _key: '123', name: 'ulf' } IN @@cn OPTIONS { overwrite: false } RETURN NEW", { "@cn": cn1 });
@@ -1129,7 +1181,7 @@ function ahuacatlInsertSuite () {
     },
 
     testInsertOverwriteUpsert : function () {
-      c1.truncate();
+      c1.truncate({ compact: false });
       assertEqual(0, c1.count());
 
       var rv1 = db._query(" INSERT { _key: '123', name: 'ulf', drinks : { hard : 'korn' } } IN @@cn OPTIONS { overwrite: false } RETURN NEW", { "@cn": cn1 });
@@ -1184,11 +1236,9 @@ function ahuacatlUpdateSuite () {
       db._drop(cn1);
       db._drop(cn2);
       db._drop(cn3);
-      db._drop(cn4);
       c1 = db._create(cn1, {numberOfShards: 5});
       c2 = db._create(cn2, {numberOfShards: 5});
       c3 = db._create(cn3, {numberOfShards: 1});
-      c4 = db._create(cn4, {numberOfShards: 1});
 
       let docs = [];
       for (i = 0; i < 100; ++i) {
@@ -1196,8 +1246,8 @@ function ahuacatlUpdateSuite () {
       }
       c1.insert(docs);
       docs = [];
-      for (i = 0; i < 50; ++i) {
-        docs.push({ _key: "test" + i, value1: i, value2: "test" + i });
+      for (let i = 0; i < 1000; ++i) {
+        docs.push({name: `test${i}`});
       }
       c2.insert(docs);
       docs = [];
@@ -1205,11 +1255,6 @@ function ahuacatlUpdateSuite () {
         docs.push({ _key: "test" + i, value1: i, value2: "test" + i });
       }
       c3.insert(docs);
-      docs = [];
-      for (i = 0; i < 50; ++i) {
-        docs.push({ _key: "test" + i, value1: i, value2: "test" + i });
-      }
-      c4.insert(docs);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1220,11 +1265,9 @@ function ahuacatlUpdateSuite () {
       db._drop(cn1);
       db._drop(cn2);
       db._drop(cn3);
-      db._drop(cn4);
       c1 = null;
       c2 = null;
       c3 = null;
-      c4 = null;
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1369,6 +1412,20 @@ function ahuacatlUpdateSuite () {
       }
     },
 
+///////////////////////////////////////////////////////////////////////////////
+/// @brief test update with empty object
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpdateEmpty3: function () {
+      const actual = AQL_EXECUTE(`FOR doc IN ${cn2} UPDATE doc WITH {} IN ${cn2} RETURN {old: OLD, new: NEW}`);
+      const res = actual.json;
+      assertEqual(res.length, 1000);
+      for (let i = 0; i < res.length; ++i) {
+        assertEqual(res[i].old._rev, res[i].new._rev);
+        assertEqual(res[i].old.name, res[i].new.name);
+      }
+    },
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test update and return
 ////////////////////////////////////////////////////////////////////////////////
@@ -1455,7 +1512,7 @@ function ahuacatlUpdateSuite () {
 
     testUpdateKeepNullDefault : function () {
       var expected = { writesExecuted: 100, writesIgnored: 0 };
-      var actual = getModifyQueryResults("FOR d IN @@cn UPDATE d._key WITH { value1: null, value3: 'foobar', value9: null } INTO @@cn", { "@cn": cn1 });
+      var actual = getModifyQueryResults("FOR d IN @@cn UPDATE d._key WITH { value1: null, value3: 'foobar', value9: null, a: { b: null } } INTO @@cn", { "@cn": cn1 });
       assertEqual(expected, sanitizeStats(actual));
 
       for (var i = 0; i < 100; ++i) {
@@ -1463,7 +1520,11 @@ function ahuacatlUpdateSuite () {
         assertNull(doc.value1);
         assertEqual("test" + i, doc.value2);
         assertEqual("foobar", doc.value3);
+        assertTrue(doc.hasOwnProperty("value9"));
         assertNull(doc.value9);
+        assertTrue(doc.hasOwnProperty("a"));
+        assertNull(doc.a.b);
+        assertTrue(doc.a.hasOwnProperty("b"));
       }
     },
 
@@ -1473,7 +1534,7 @@ function ahuacatlUpdateSuite () {
 
     testUpdateKeepNullTrue : function () {
       var expected = { writesExecuted: 100, writesIgnored: 0 };
-      var actual = getModifyQueryResults("FOR d IN @@cn UPDATE d._key WITH { value1: null, value3: 'foobar', value9: null } INTO @@cn OPTIONS { keepNull: true }", { "@cn": cn1 });
+      var actual = getModifyQueryResults("FOR d IN @@cn UPDATE d._key WITH { value1: null, value3: 'foobar', value9: null, a: { b: null } } INTO @@cn OPTIONS { keepNull: true }", { "@cn": cn1 });
       assertEqual(expected, sanitizeStats(actual));
 
       for (var i = 0; i < 100; ++i) {
@@ -1481,7 +1542,11 @@ function ahuacatlUpdateSuite () {
         assertNull(doc.value1);
         assertEqual("test" + i, doc.value2);
         assertEqual("foobar", doc.value3);
+        assertTrue(doc.hasOwnProperty("value9"));
         assertNull(doc.value9);
+        assertTrue(doc.hasOwnProperty("a"));
+        assertNull(doc.a.b);
+        assertTrue(doc.a.hasOwnProperty("b"));
       }
     },
 
@@ -1491,7 +1556,7 @@ function ahuacatlUpdateSuite () {
 
     testUpdateKeepNullFalse : function () {
       var expected = { writesExecuted: 100, writesIgnored: 0 };
-      var actual = getModifyQueryResults("FOR d IN @@cn UPDATE d._key WITH { value1: null, value3: 'foobar', value9: null } INTO @@cn OPTIONS { keepNull: false }", { "@cn": cn1 });
+      var actual = getModifyQueryResults("FOR d IN @@cn UPDATE d._key WITH { value1: null, value3: 'foobar', value9: null, a: { b: null } } INTO @@cn OPTIONS { keepNull: false }", { "@cn": cn1 });
       assertEqual(expected, sanitizeStats(actual));
 
       for (var i = 0; i < 100; ++i) {
@@ -1500,6 +1565,8 @@ function ahuacatlUpdateSuite () {
         assertEqual("test" + i, doc.value2);
         assertEqual("foobar", doc.value3);
         assertFalse(doc.hasOwnProperty("value9"));
+        assertTrue(doc.hasOwnProperty("a"));
+        assertEqual({}, doc.a);
       }
     },
 
@@ -1560,6 +1627,103 @@ function ahuacatlUpdateSuite () {
         assertEqual(i, doc.value);
       }
     },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test update with search document
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpdateSubKeepNullFalse : function () {
+      let expected = { writesExecuted: 1, writesIgnored: 0 };
+      c1.truncate({ compact: false });
+      c1.insert({ _key: "foo" });
+
+      // Patch non-existing substructure:
+      var q = `FOR doc IN ${cn1}
+  UPDATE doc WITH { foo: {
+ bark: 'bart',
+ foxx: null,
+ a: null }}
+ IN ${cn1} OPTIONS { keepNull: false }
+ RETURN NEW`;
+      var actual = AQL_EXECUTE(q, {});
+      assertEqual(1, c1.count());
+      assertEqual(expected, sanitizeStats(actual.stats));
+      assertTrue(actual.json[0].hasOwnProperty("foo"));
+      assertFalse(actual.json[0].foo.hasOwnProperty("a"));
+      assertFalse(actual.json[0].foo.hasOwnProperty("foxx"));
+      assertTrue(actual.json[0].foo.hasOwnProperty("bark"));
+      assertEqual("bart", actual.json[0].foo.bark);
+
+      var doc = c1.toArray()[0];
+      assertEqual("foo", doc._key);
+      assertTrue(doc.hasOwnProperty("foo"));
+      assertFalse(doc.foo.hasOwnProperty("a"));
+      assertFalse(doc.foo.hasOwnProperty("foxx"));
+      assertEqual("bart", doc.foo.bark);
+
+      actual = AQL_EXECUTE(q, {});
+
+      assertEqual(1, c1.count());
+      assertEqual(expected, sanitizeStats(actual.stats));
+
+      doc = c1.toArray()[0];
+      assertEqual("foo", doc._key);
+      assertTrue(doc.hasOwnProperty("foo"));
+      assertFalse(doc.foo.hasOwnProperty("a"));
+      assertFalse(doc.foo.hasOwnProperty("foxx"));
+      assertEqual("bart", doc.foo.bark);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test update with search document
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpdateSubKeepNullArrayFalse : function () {
+      let expected = { writesExecuted: 1, writesIgnored: 0 };
+      c1.truncate({ compact: false });
+      c1.insert({ _key: "foo" });
+
+      // Patch non-existing substructure:
+      var q = `FOR doc IN ${cn1}
+  UPDATE doc WITH { foo: [{
+ bark: 'bart',
+ foxx: null,
+ a: null },
+null,
+"abc",
+false
+]}
+ IN ${cn1} OPTIONS { keepNull: false }
+ RETURN NEW`;
+      var actual = AQL_EXECUTE(q, {});
+      assertEqual(1, c1.count());
+      assertEqual(expected, sanitizeStats(actual.stats));
+      assertTrue(actual.json[0].hasOwnProperty("foo"));
+      assertFalse(actual.json[0].foo.hasOwnProperty("a"));
+      assertFalse(actual.json[0].foo.hasOwnProperty("foxx"));
+      assertFalse(actual.json[0].foo.hasOwnProperty("bark"));
+      assertEqual("bart", actual.json[0].foo[0].bark);
+
+      var doc = c1.toArray()[0];
+      assertEqual("foo", doc._key);
+      assertTrue(doc.hasOwnProperty("foo"));
+      assertFalse(doc.foo.hasOwnProperty("a"));
+      assertFalse(doc.foo.hasOwnProperty("foxx"));
+      assertEqual("bart", doc.foo[0].bark);
+
+      actual = AQL_EXECUTE(q, {});
+
+      assertEqual(1, c1.count());
+      assertEqual(expected, sanitizeStats(actual.stats));
+
+      doc = c1.toArray()[0];
+      assertEqual("foo", doc._key);
+      assertTrue(doc.hasOwnProperty("foo"));
+      assertFalse(doc.foo.hasOwnProperty("a"));
+      assertFalse(doc.foo.hasOwnProperty("foxx"));
+      assertEqual("bart", doc.foo[0].bark);
+    },
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test update
@@ -1763,7 +1927,24 @@ function ahuacatlUpdateSuite () {
 
       let rules = AQL_EXPLAIN(query, { "@cn": cn1 }).plan.rules;
       assertEqual(-1, rules.indexOf("restrict-to-single-shard"));
-    }
+    },
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief test replace with empty object
+/// replaces all documents with empty object, hence, the old documents would
+/// have the "name" key, as the new documents wouldn't
+////////////////////////////////////////////////////////////////////////////////
+
+    testReplaceEmpty: function () {
+      const actual = AQL_EXECUTE(`FOR doc IN ${cn2} REPLACE doc WITH {} IN ${cn2} RETURN {old: OLD, new: NEW}`);
+      const res = actual.json;
+      assertEqual(res.length, 1000);
+      for (let i = 0; i < res.length; ++i) {
+        assertNotEqual(res[i].old._rev, res[i].new._rev);
+        assertFalse(res[i].new.hasOwnProperty("name"));
+        assertTrue(res[i].old.hasOwnProperty("name"));
+      }
+    },
 
   };
 }

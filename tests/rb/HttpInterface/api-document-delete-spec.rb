@@ -33,7 +33,7 @@ describe ArangoDB do
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
       end
 
-      it "returns an error if document identifier is corrupted" do
+      it "returns an error if document identifier is corrupted 1" do
         cmd = "/_api/document/123456"
         doc = ArangoDB.log_delete("#{prefix}-bad-identifier", cmd)
 
@@ -44,7 +44,7 @@ describe ArangoDB do
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
       end
 
-      it "returns an error if document identifier is corrupted" do
+      it "returns an error if document identifier is corrupted 2" do
         cmd = "/_api/document//123456"
         doc = ArangoDB.log_delete("#{prefix}-bad-identifier2", cmd)
 

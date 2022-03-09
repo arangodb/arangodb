@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_DEADLOCK_DETECTOR_H
-#define ARANGODB_BASICS_DEADLOCK_DETECTOR_H 1
+#pragma once
 
 #include <unordered_map>
 #include <unordered_set>
@@ -37,7 +36,7 @@
 namespace arangodb {
 namespace basics {
 
-template <typename TID, typename T>
+template<typename TID, typename T>
 class DeadlockDetector {
  public:
   explicit DeadlockDetector(bool enabled) : _enabled(enabled) {}
@@ -103,7 +102,7 @@ class DeadlockDetector {
 
  private:
   /// @brief add a thread to the list of blocked threads
-  int detectDeadlockNoLock(TID tid, T const* value, bool isWrite) const {
+  ErrorCode detectDeadlockNoLock(TID tid, T const* value, bool isWrite) const {
     if (!_enabled) {
       return TRI_ERROR_NO_ERROR;
     }
@@ -158,7 +157,8 @@ class DeadlockDetector {
 
             if (it2 != _blocked.end()) {
               // writer thread is blocking...
-              stack.emplace_back(otherTid, (*it2).second.first, (*it).second.second);
+              stack.emplace_back(otherTid, (*it2).second.first,
+                                 (*it).second.second);
             }
           }
         }
@@ -172,14 +172,15 @@ class DeadlockDetector {
   }
 
   /// @brief add a thread to the list of blocked threads
-  int setBlocked(TID tid, T const* value, bool isWrite) {
+  ErrorCode setBlocked(TID tid, T const* value, bool isWrite) {
     MUTEX_LOCKER(mutexLocker, _lock);
 
     if (!_enabled) {
       return TRI_ERROR_NO_ERROR;
     }
 
-    bool const inserted = _blocked.emplace(tid, std::make_pair(value, isWrite)).second;
+    bool const inserted =
+        _blocked.emplace(tid, std::make_pair(value, isWrite)).second;
 
     if (!inserted) {
       // we're already blocking. should never happen
@@ -187,7 +188,7 @@ class DeadlockDetector {
     }
 
     try {
-      int res = detectDeadlockNoLock(tid, value, isWrite);
+      auto res = detectDeadlockNoLock(tid, value, isWrite);
 
       if (res != TRI_ERROR_NO_ERROR) {
         // clean up
@@ -218,8 +219,9 @@ class DeadlockDetector {
 
   /// @brief unregister a thread from the list of active threads
   void unsetActive(TID tid, T const* value, bool isWrite) {
-    MUTEX_LOCKER(mutexLocker,
-                 _lock);  // note: this lock is expensive when many threads compete
+    MUTEX_LOCKER(
+        mutexLocker,
+        _lock);  // note: this lock is expensive when many threads compete
 
     if (!_enabled) {
       return;
@@ -279,8 +281,9 @@ class DeadlockDetector {
 
   /// @brief add a reader/writer to the list of active threads
   void addActive(TID tid, T const* value, bool isWrite, bool wasBlockedBefore) {
-    MUTEX_LOCKER(mutexLocker,
-                 _lock);  // note: this lock is expensive when many threads compete
+    MUTEX_LOCKER(
+        mutexLocker,
+        _lock);  // note: this lock is expensive when many threads compete
 
     if (!_enabled) {
       return;
@@ -290,7 +293,8 @@ class DeadlockDetector {
 
     if (it == _active.end()) {
       // no one else there. simply register us
-      _active.emplace(value, std::make_pair(std::unordered_set<TID>({tid}), isWrite));
+      _active.emplace(value,
+                      std::make_pair(std::unordered_set<TID>({tid}), isWrite));
     } else {
       // someone else is already there
       // we're expecting one or many readers
@@ -319,7 +323,8 @@ class DeadlockDetector {
   std::unordered_map<TID, std::pair<T const*, bool>> _blocked;
 
   /// @brief threads currently holding locks
-  std::unordered_map<T const*, std::pair<std::unordered_set<TID>, bool>> _active;
+  std::unordered_map<T const*, std::pair<std::unordered_set<TID>, bool>>
+      _active;
 
   /// @brief whether or not the detector is enabled
   bool _enabled;
@@ -327,5 +332,3 @@ class DeadlockDetector {
 
 }  // namespace basics
 }  // namespace arangodb
-
-#endif

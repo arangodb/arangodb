@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_CLUSTER_TRANSACTION_COLLECTION_H
-#define ARANGOD_CLUSTER_CLUSTER_TRANSACTION_COLLECTION_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "StorageEngine/TransactionCollection.h"
@@ -37,7 +37,7 @@ class TransactionState;
 /// @brief collection used in a transaction
 class ClusterTransactionCollection final : public TransactionCollection {
  public:
-  ClusterTransactionCollection(TransactionState* trx, TRI_voc_cid_t cid,
+  ClusterTransactionCollection(TransactionState* trx, DataSourceId cid,
                                AccessMode::Type accessType);
   ~ClusterTransactionCollection();
 
@@ -59,5 +59,3 @@ class ClusterTransactionCollection final : public TransactionCollection {
   Result doUnlock(AccessMode::Type) override;
 };
 }  // namespace arangodb
-
-#endif

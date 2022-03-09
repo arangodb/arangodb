@@ -12,20 +12,21 @@ fi
 if [[ -n $* ]]; then
   files=( "$@" )
 else
-  files=( arangod/ arangosh/ lib/ enterprise/ )
+  files=( arangod/ client-tools/ lib/ enterprise/ )
 fi
 
 cppcheck "$@" \
   -j $threads \
   --xml --xml-version=2 \
   -I arangod \
-  -I arangosh \
+  -I client-tools \
   -I build/arangod \
-  -I build/arangosh \
+  -I build/client-tools \
   -I build/lib \
   -I enterprise \
   -I lib \
   -D USE_PLAN_CACHE \
+  -D DEFINE_FACTORY_DEFAULT \
   --std=c++17 \
   --enable=warning,performance,portability,missingInclude \
   --force \
@@ -46,6 +47,7 @@ cppcheck "$@" \
   --suppress="*:lib/V8/v8-json.ll" \
   --suppress="*:lib/Zip/*" \
   --suppress="constStatement" \
+  --suppress="cppcheckError" \
   --suppress="duplicateCondition" \
   --suppress="duplicateConditionalAssign" \
   --suppress="internalAstError" \

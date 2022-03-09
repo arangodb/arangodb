@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertUndefined, assertNotEqual, assertEqual, assertTrue, assertFalse, assertNotNull, fail, db._query */
+/*global assertUndefined, assertNotUndefined, assertNotEqual, assertEqual, assertTrue, assertFalse, assertNull, assertNotNull, fail, db._query */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
@@ -27,19 +27,31 @@
 var jsunity = require("jsunity");
 var db = require("@arangodb").db;
 var analyzers = require("@arangodb/analyzers");
+const _ = require("lodash");
 const arango = require('@arangodb').arango;
 const internal = require('internal');
 const isCluster = internal.isCluster();
+const isEnterprise = internal.isEnterprise();
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
 function iResearchFeatureAqlTestSuite () {
+  let cleanup = function() {
+    db._useDatabase("_system");
+    db._analyzers.toArray().forEach(function(analyzer) {
+      try { analyzers.remove(analyzer.name, true); } catch (err) {}
+    });
+    assertEqual(0, db._analyzers.count(), db._analyzers.toArray());
+  };
+
   return {
-    setUpAll : function () {
+    setUp : function () {
+      cleanup();
     },
 
-    tearDownAll : function () {
+    tearDown : function () {
+      cleanup();
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -47,226 +59,325 @@ function iResearchFeatureAqlTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     testAnalyzersCollectionPresent: function() {
       let dbName = "analyzersCollTestDb";
-      try { db._dropDatabase(dbName); } catch (e) {}
+      try { 
+        db._dropDatabase(dbName); 
+      } catch (e) {}
+
       db._createDatabase(dbName);
-      db._useDatabase(dbName);
-      assertTrue(null !== db._collection("_analyzers"));
-      db._useDatabase("_system");
-      db._dropDatabase(dbName);
+      try {
+        db._useDatabase(dbName);
+        assertNotNull(db._collection("_analyzers"));
+      } finally {
+        db._useDatabase("_system");
+        db._dropDatabase(dbName);
+      }
     },
 
     testAnalyzersInvalidPropertiesDiscarded : function() {
       {
         try {analyzers.remove("normPropAnalyzer"); } catch (e) {}
-        assertEqual(0, db._analyzers.count());
+        let oldCount = db._analyzers.count();
         let analyzer = analyzers.save("normPropAnalyzer", "norm", { "locale":"en", "invalid_param":true});
-        assertEqual(1, db._analyzers.count());
-        assertTrue(null != analyzer);
-        assertTrue(null == analyzer.properties.invalid_param);
-        analyzers.remove("normPropAnalyzer", true);
-        assertEqual(0, db._analyzers.count());
+        try {
+          assertEqual(oldCount + 1, db._analyzers.count());
+          assertNotNull(analyzer);
+          assertUndefined(analyzer.properties.invalid_param);
+        } finally {
+          analyzers.remove("normPropAnalyzer", true);
+        }
+        assertEqual(oldCount, db._analyzers.count());
       }
       {
         try {analyzers.remove("textPropAnalyzer"); } catch (e) {}
-        assertEqual(0, db._analyzers.count());
+        let oldCount = db._analyzers.count();
         let analyzer = analyzers.save("textPropAnalyzer", "text", {"stopwords" : [], "locale":"en", "invalid_param":true});
-        assertEqual(1, db._analyzers.count());
-        assertTrue(null != analyzer);
-        assertTrue(null == analyzer.properties.invalid_param);
-        analyzers.remove("textPropAnalyzer", true);
-        assertEqual(0, db._analyzers.count());
+        try {
+          assertEqual(oldCount + 1, db._analyzers.count());
+          assertNotNull(analyzer);
+          assertUndefined(analyzer.properties.invalid_param);
+        } finally {
+          analyzers.remove("textPropAnalyzer", true);
+        }
+        assertEqual(oldCount, db._analyzers.count());
       }
       {
-        try {analyzers.remove("textPropAnalyzerWithNGram"); } catch (e) {}
-        assertEqual(0, db._analyzers.count());
+        try {analyzers.remove("textPropAnalyzerWithNgram"); } catch (e) {}
+        let oldCount = db._analyzers.count();
         let analyzer = analyzers.save("textPropAnalyzerWithNgram", "text", {"stopwords" : [], "locale":"en", "edgeNgram" : { "min" : 2, "invalid_param":true}});
-        assertEqual(1, db._analyzers.count());
-        assertTrue(null != analyzer);
-        assertTrue(null == analyzer.properties.invalid_param);
-        analyzers.remove("textPropAnalyzerWithNgram", true);
-        assertEqual(0, db._analyzers.count());
+        try {
+          assertEqual(oldCount + 1, db._analyzers.count());
+          assertNotNull(analyzer);
+          assertUndefined(analyzer.properties.invalid_param);
+        } finally {
+          analyzers.remove("textPropAnalyzerWithNgram", true);
+        }
+        assertEqual(oldCount, db._analyzers.count());
       }
       {
         try {analyzers.remove("delimiterPropAnalyzer"); } catch (e) {}
-        assertEqual(0, db._analyzers.count());
+        let oldCount = db._analyzers.count();
         let analyzer = analyzers.save("delimiterPropAnalyzer", "delimiter", { "delimiter":"|", "invalid_param":true});
-        assertEqual(1, db._analyzers.count());
-        assertTrue(null != analyzer);
-        assertTrue(null == analyzer.properties.invalid_param);
-        analyzers.remove("delimiterPropAnalyzer", true);
-        assertEqual(0, db._analyzers.count());
+        try {
+          assertEqual(oldCount + 1, db._analyzers.count());
+          assertNotNull(analyzer);
+          assertUndefined(analyzer.properties.invalid_param);
+        } finally {
+          analyzers.remove("delimiterPropAnalyzer", true);
+        }
+        assertEqual(oldCount, db._analyzers.count());
       }
       {
         try {analyzers.remove("stemPropAnalyzer"); } catch (e) {}
-        assertEqual(0, db._analyzers.count());
+        let oldCount = db._analyzers.count();
         let analyzer = analyzers.save("stemPropAnalyzer", "stem", { "locale":"en", "invalid_param":true});
-        assertEqual(1, db._analyzers.count());
-        assertTrue(null != analyzer);
-        assertTrue(null == analyzer.properties.invalid_param);
-        analyzers.remove("stemPropAnalyzer", true);
-        assertEqual(0, db._analyzers.count());
+        try {
+          assertEqual(oldCount + 1, db._analyzers.count());
+          assertNotNull(analyzer);
+          assertUndefined(analyzer.properties.invalid_param);
+        } finally {
+          analyzers.remove("stemPropAnalyzer", true);
+        }
+        assertEqual(oldCount, db._analyzers.count());
       }
       {
         try {analyzers.remove("ngramPropAnalyzer"); } catch (e) {}
-        assertEqual(0, db._analyzers.count());
+        let oldCount = db._analyzers.count();
         let analyzer = analyzers.save("ngramPropAnalyzer", "ngram", { "min":1, "max":5, "preserveOriginal":true, "invalid_param":true});
-        assertEqual(1, db._analyzers.count());
-        assertTrue(null != analyzer);
-        assertTrue(null == analyzer.properties.invalid_param);
-        analyzers.remove("ngramPropAnalyzer", true);
-        assertEqual(0, db._analyzers.count());
+        try {
+          assertEqual(oldCount + 1, db._analyzers.count());
+          assertNotNull(analyzer);
+          assertUndefined(analyzer.properties.invalid_param);
+        } finally {
+          analyzers.remove("ngramPropAnalyzer", true);
+        }
+        assertEqual(oldCount, db._analyzers.count());
+      }
+      {
+        try {analyzers.remove("classificationPropAnalyzer"); } catch (e) {}
+        let oldCount = db._analyzers.count();
+        const filePath = require("fs").join(internal.pathForTesting('common'), 'aql', 'iresearch', `model_cooking.bin`);
+        const modelFile = require("path").resolve(filePath);
+        let analyzer = analyzers.save("classificationPropAnalyzer", "classification", { "model_location": modelFile, "invalid_param": true});
+        try {
+          assertEqual(oldCount + 1, db._analyzers.count());
+          assertNotNull(analyzer);
+          assertUndefined(analyzer.properties.invalid_param);
+        } finally {
+          analyzers.remove("classificationPropAnalyzer", true);
+        }
+        assertEqual(oldCount, db._analyzers.count());
+      }
+      {
+        try {analyzers.remove("nearestNeighborsPropAnalyzer"); } catch (e) {}
+        let oldCount = db._analyzers.count();
+        const filePath = require("fs").join(internal.pathForTesting('common'), 'aql', 'iresearch', `model_cooking.bin`);
+        const modelFile = require("path").resolve(filePath);
+        let analyzer = analyzers.save("nearestNeighborsPropAnalyzer", "nearest_neighbors", { "model_location": modelFile, "invalid_param": true});
+        try {
+          assertEqual(oldCount + 1, db._analyzers.count());
+          assertNotNull(analyzer);
+          assertUndefined(analyzer.properties.invalid_param);
+        } finally {
+          analyzers.remove("nearestNeighborsPropAnalyzer", true);
+        }
+        assertEqual(oldCount, db._analyzers.count());
       }
     },
+
     testAnalyzerRemovalWithDatabaseName_InSystem: function() {
       let dbName = "analyzerWrongDbName1";
-      db._useDatabase("_system");
       try { db._dropDatabase(dbName); } catch (e) {}
       db._createDatabase(dbName);
-      db._useDatabase(dbName);
-      analyzers.save("MyTrigram", "ngram", { min: 2, max: 3, preserveOriginal: true });
-      db._useDatabase("_system");
       try {
-        analyzers.remove(dbName + "::MyTrigram");
-        fail(); // removal with db name in wrong current used db should also fail
-      } catch(e) {
-        assertEqual(require("internal").errors.ERROR_FORBIDDEN .code,
-                       e.errorNum);
+        try {
+          db._useDatabase(dbName);
+          analyzers.save("MyTrigram", "ngram", { min: 2, max: 3, preserveOriginal: true });
+          db._useDatabase("_system");
+          analyzers.remove(dbName + "::MyTrigram");
+          fail(); // removal with db name in wrong current used db should also fail
+        } catch(e) {
+          assertEqual(require("internal").errors.ERROR_FORBIDDEN .code,
+                         e.errorNum);
+        } finally { 
+          db._useDatabase(dbName);
+          analyzers.remove(dbName + "::MyTrigram", true);
+        }
+      } finally {
+        db._useDatabase("_system");
+        db._dropDatabase(dbName);
       }
-      db._useDatabase(dbName);
-      analyzers.remove(dbName + "::MyTrigram", true);
-      db._useDatabase("_system");
-      db._dropDatabase(dbName);
     },
     testAnalyzerCreateRemovalWithDatabaseName_InDb: function() {
       let dbName = "analyzerWrongDbName2";
-      db._useDatabase("_system");
       try { db._dropDatabase(dbName); } catch (e) {}
       db._createDatabase(dbName);
       try {
-        analyzers.save(dbName + "::MyTrigram", "ngram", { min: 2, max: 3, preserveOriginal: true });
-        fail();
-      } catch(e) {
-        assertEqual(require("internal").errors.ERROR_FORBIDDEN.code,
-                       e.errorNum);
+        try {
+          analyzers.save(dbName + "::MyTrigram", "ngram", { min: 2, max: 3, preserveOriginal: true });
+          fail();
+        } catch(e) {
+          assertEqual(require("internal").errors.ERROR_FORBIDDEN.code,
+                         e.errorNum);
+        }
+        db._useDatabase(dbName);
+        analyzers.save(dbName + "::MyTrigram", "ngram", { min: 2, max: 3, preserveOriginal: true }); 
+        analyzers.remove(dbName + "::MyTrigram", true); 
+      } finally {
+        db._useDatabase("_system");
+        db._dropDatabase(dbName);
       }
-      db._useDatabase(dbName);
-      analyzers.save(dbName + "::MyTrigram", "ngram", { min: 2, max: 3, preserveOriginal: true }); 
-      analyzers.remove(dbName + "::MyTrigram", true); 
-      db._useDatabase("_system");
-      db._dropDatabase(dbName);
     },
     testAnalyzerUseOnDBServer_InDb: function() {
       let dbName = "analyzerUseOnDbServer";
-      db._useDatabase("_system");
       try { db._dropDatabase(dbName); } catch (e) {}
       db._createDatabase(dbName);
-      db._useDatabase(dbName);
-      analyzers.save("MyTrigram", "ngram", { min: 2, max: 3, preserveOriginal: true });
+      try {
+        db._useDatabase(dbName);
+        analyzers.save("MyTrigram", "ngram", { min: 2, max: 3, preserveOriginal: true });
 
-      // NOOPT guarantees that TOKENS function will be executed on DB server
-      let res = db._query("FOR d IN _analyzers FILTER NOOPT(LENGTH(TOKENS('foobar', 'MyTrigram')) > 0) RETURN d").toArray();
-      assertEqual(1, res.length);
-      assertEqual("_analyzers/MyTrigram", res[0]._id);
-      assertEqual("MyTrigram", res[0]._key);
-      assertEqual("MyTrigram", res[0].name);
-      assertEqual("ngram", res[0].type);
-      assertEqual(6, Object.keys(res[0].properties).length);
-      assertEqual("", res[0].properties.startMarker);
-      assertEqual("", res[0].properties.endMarker);
-      assertEqual("binary", res[0].properties.streamType);
-      assertEqual(2, res[0].properties.min);
-      assertEqual(3, res[0].properties.max);
-      assertTrue(res[0].properties.preserveOriginal);
-      assertTrue(Array === res[0].features.constructor);
-      assertEqual(0, res[0].features.length);
-      assertEqual([ ], res[0].features);
-
-      db._useDatabase("_system");
-      db._dropDatabase(dbName);
+        // NOOPT guarantees that TOKENS function will be executed on DB server
+        let res = db._query("FOR d IN _analyzers FILTER NOOPT(LENGTH(TOKENS('foobar', 'MyTrigram')) > 0) RETURN d").toArray();
+        assertEqual(1, res.length);
+        assertEqual("_analyzers/MyTrigram", res[0]._id);
+        assertEqual("MyTrigram", res[0]._key);
+        assertEqual("MyTrigram", res[0].name);
+        assertEqual("ngram", res[0].type);
+        assertEqual(6, Object.keys(res[0].properties).length);
+        assertEqual("", res[0].properties.startMarker);
+        assertEqual("", res[0].properties.endMarker);
+        assertEqual("binary", res[0].properties.streamType);
+        assertEqual(2, res[0].properties.min);
+        assertEqual(3, res[0].properties.max);
+        assertTrue(res[0].properties.preserveOriginal);
+        assertTrue(Array === res[0].features.constructor);
+        assertEqual(0, res[0].features.length);
+        assertEqual([ ], res[0].features);
+      } finally {
+        db._useDatabase("_system");
+        db._dropDatabase(dbName);
+      }
     },
     testAnalyzerCreateRemovalWithDatabaseName_InSystem: function() {
       let dbName = "analyzerWrongDbName3";
-      db._useDatabase("_system");
       try { db._dropDatabase(dbName); } catch (e) {}
       try { analyzers.remove("MyTrigram"); } catch (e) {}
       db._createDatabase(dbName);
-      db._useDatabase(dbName);
-      // cross-db request should fail
       try {
-        analyzers.save("::MyTrigram", "ngram", { min: 2, max: 3, preserveOriginal: true });
-        fail();
-      } catch(e) {
-        assertEqual(require("internal").errors.ERROR_FORBIDDEN.code,
-                       e.errorNum);
+        db._useDatabase(dbName);
+        // cross-db request should fail
+        try {
+          analyzers.save("::MyTrigram", "ngram", { min: 2, max: 3, preserveOriginal: true });
+          fail();
+        } catch(e) {
+          assertEqual(require("internal").errors.ERROR_FORBIDDEN.code,
+                         e.errorNum);
+        }
+        try {
+          analyzers.save("_system::MyTrigram", "ngram", { min: 2, max: 3, preserveOriginal: true });
+          fail();
+        } catch(e) {
+          assertEqual(require("internal").errors.ERROR_FORBIDDEN.code,
+                         e.errorNum);
+        }
+        // in _system db requests should be ok
+        db._useDatabase("_system");
+        analyzers.save("::MyTrigram", "ngram", { min: 2, max: 3, preserveOriginal: true }); 
+        analyzers.remove("::MyTrigram", true); 
+        analyzers.save("_system::MyTrigram", "ngram", { min: 2, max: 3, preserveOriginal: true }); 
+        analyzers.remove("_system::MyTrigram", true); 
+      } finally {
+        db._useDatabase("_system");
+        db._dropDatabase(dbName);
+        try {analyzers.remove("::MyTrigram", true); } catch (e) {} 
       }
-      try {
-        analyzers.save("_system::MyTrigram", "ngram", { min: 2, max: 3, preserveOriginal: true });
-        fail();
-      } catch(e) {
-        assertEqual(require("internal").errors.ERROR_FORBIDDEN.code,
-                       e.errorNum);
-      }
-      // in _system db requests should be ok
-      db._useDatabase("_system");
-      analyzers.save("::MyTrigram", "ngram", { min: 2, max: 3, preserveOriginal: true }); 
-      analyzers.remove("::MyTrigram", true); 
-      analyzers.save("_system::MyTrigram", "ngram", { min: 2, max: 3, preserveOriginal: true }); 
-      analyzers.remove("_system::MyTrigram", true); 
-      db._dropDatabase(dbName);
     },
     testAnalyzerInvalidName: function() {
       let dbName = "analyzerWrongDbName4";
-      db._useDatabase("_system");
       try { db._dropDatabase(dbName); } catch (e) {}
       db._createDatabase(dbName);
-      db._useDatabase(dbName);
       try {
-        // invalid ':' in name
-        analyzers.save(dbName + "::MyTr:igram", "ngram", { min: 2, max: 3, preserveOriginal: true });
-        fail();
-      } catch(e) {
-        assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
-                       e.errorNum);
+        db._useDatabase(dbName);
+        try {
+          // invalid ':' in name
+          analyzers.save(dbName + "::MyTr:igram", "ngram", { min: 2, max: 3, preserveOriginal: true });
+          fail();
+        } catch(e) {
+          assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
+                      e.errorNum);
+        }
+      } finally {
+        db._useDatabase("_system");
+        db._dropDatabase(dbName);
       }
-      db._useDatabase("_system");
-      db._dropDatabase(dbName);
     },
     testAnalyzerGetFromOtherDatabase: function() {
       let dbName = "analyzerDbName";
       let anotherDbName = "anotherDbName";
-      db._useDatabase("_system");
       try { db._dropDatabase(dbName); } catch (e) {}
       try { db._dropDatabase(anotherDbName); } catch (e) {}
       db._createDatabase(dbName);
-      db._createDatabase(anotherDbName);
-      db._useDatabase(dbName);
-      let analyzer = analyzers.save("MyTrigram", "ngram", { min: 2, max: 3, preserveOriginal: true });
-      assertNotNull(analyzer);
-      db._useDatabase(anotherDbName);
       try {
-        analyzers.analyzer(dbName + "::MyTrigram");
-        fail();
-      } catch(e) {
-        assertEqual(require("internal").errors.ERROR_FORBIDDEN .code,
-                       e.errorNum);
+        db._createDatabase(anotherDbName);
+        try {
+          db._useDatabase(dbName);
+          let analyzer = analyzers.save("MyTrigram", "ngram", { min: 2, max: 3, preserveOriginal: true });
+          assertNotNull(analyzer);
+          db._useDatabase(anotherDbName);
+          try {
+            analyzers.analyzer(dbName + "::MyTrigram");
+            fail();
+          } catch(e) {
+            assertEqual(require("internal").errors.ERROR_FORBIDDEN .code,
+                           e.errorNum);
+          }
+        } finally {
+          db._useDatabase("_system");
+          db._dropDatabase(anotherDbName);
+        }
+      } finally {
+        db._useDatabase("_system");
+        db._dropDatabase(dbName);
       }
-      db._useDatabase("_system");
-      db._dropDatabase(dbName);
-      db._dropDatabase(anotherDbName);
+    },
+    testAnalyzerGetFromSystemDatabaseDifferentRevision: function() {
+      if (!isCluster) { // only cluster has revisions. Do not waste time on single
+       return;
+      }
+      let dbName = "analyzerDbName";
+      let analyzerName = "my_identity";
+      try { db._dropDatabase(dbName); } catch (e) {}
+      try { analyzers.remove(analyzerName, true); } catch (e) {}
+      db._createDatabase(dbName, {sharding: "single"});
+      try {
+        let analyzer = analyzers.save(analyzerName, "identity", {}); // so system revision is at least 1
+        try {
+          db._useDatabase(dbName); // fresh database will have revision 0 ( 0 < 1 so using db revision for system analyzer will fail!)
+          db._create("test_coll"); 
+          db._createView("tv", "arangosearch", {links: { test_coll: { includeAllFields:true, analyzers:[ "::" + analyzerName ] } } });
+          db.test_coll.save({field: "value1"});
+          var res = db._query("FOR d IN tv SEARCH ANALYZER(d.field == 'value1', '::" + analyzerName + "') OPTIONS {waitForSync:true}  RETURN d");
+          assertEqual(1, res.toArray().length);
+        } finally {
+          db._useDatabase("_system");
+          analyzers.remove(analyzerName, true);
+        }
+      } finally {
+        db._useDatabase("_system");
+        db._dropDatabase(dbName);
+      }
     },
     testAnalyzers: function() {
       let oldList = analyzers.toArray();
       let oldListInCollection = db._analyzers.toArray();
       assertTrue(Array === oldList.constructor);
 
-      assertEqual(0, db._analyzers.count());
-
+      assertEqual(0, db._analyzers.count(), db._analyzers.toArray());
       // creation
       analyzers.save("testAnalyzer", "stem", { "locale":"en"}, [ "frequency" ]);
 
       // properties
       let analyzer = analyzers.analyzer(db._name() + "::testAnalyzer");
-      assertTrue(null !== analyzer);
+      assertNotNull(analyzer);
       assertEqual(db._name() + "::testAnalyzer", analyzer.name());
       assertEqual("stem", analyzer.type());
       assertEqual(1, Object.keys(analyzer.properties()).length);
@@ -276,15 +387,14 @@ function iResearchFeatureAqlTestSuite () {
       assertEqual([ "frequency" ], analyzer.features());
 
       // check persisted analyzer
-      assertEqual(1, db._analyzers.count());
       let savedAnalyzer = db._analyzers.toArray()[0];
-      assertTrue(null !== savedAnalyzer);
+      assertNotNull(savedAnalyzer);
       assertEqual(8, Object.keys(savedAnalyzer).length);
       assertEqual("_analyzers/testAnalyzer", savedAnalyzer._id);
       assertEqual("testAnalyzer", savedAnalyzer._key);
       assertEqual("testAnalyzer", savedAnalyzer.name);
       assertEqual("stem", savedAnalyzer.type);
-      assertTrue(undefined !== savedAnalyzer.revision);
+      assertNotUndefined(savedAnalyzer.revision);
       if(isCluster) {
         assertNotEqual(0, savedAnalyzer.revision); // we have added analyzer so revision should increment at least once
       } else {
@@ -326,23 +436,27 @@ function iResearchFeatureAqlTestSuite () {
 
       // removal
       analyzers.remove("testAnalyzer");
-      assertTrue(null === analyzers.analyzer(db._name() + "::testAnalyzer"));
+      assertNull(analyzers.analyzer(db._name() + "::testAnalyzer"));
       assertEqual(oldList.length, analyzers.toArray().length);
       // check the analyzers collection in database
       assertEqual(oldListInCollection.length, db._analyzers.toArray().length);
     },
 
-   testAnalyzersFeatures: function() {
+    testAnalyzersFeatures: function() {
       try {
-       analyzers.save("testAnalyzer", "identity", {}, [ "unknown" ]);
-       fail(); // unsupported feature
+        analyzers.save("testAnalyzer", "identity", {}, [ "unknown" ]);
+        fail(); // unsupported feature
       } catch(e) {
+        assertTrue(e instanceof TypeError ||
+                   require("internal").errors.ERROR_BAD_PARAMETER.code === e.errorNum);
       }
 
       try {
-       analyzers.save("testAnalyzer", "identity", {}, [ "position" ]);
-       fail(); // feature with dependency
+        analyzers.save("testAnalyzer", "identity", {}, [ "position" ]);
+        fail(); // feature with dependency
       } catch(e) {
+        assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
+                    e.errorNum);
       }
 
       // feature with dependency satisfied
@@ -352,63 +466,93 @@ function iResearchFeatureAqlTestSuite () {
 
     testAnalyzersPrefix: function() {
       let dbName = "TestDB";
-      db._useDatabase("_system");
       try { db._dropDatabase(dbName); } catch (e) {}
       db._createDatabase(dbName);
-      db._useDatabase(dbName);
+      try {
+        db._useDatabase(dbName);
 
-      let oldList = analyzers.toArray();
-      assertTrue(Array === oldList.constructor);
+        let oldList = analyzers.toArray();
+        assertTrue(Array === oldList.constructor);
 
-      // creation
-      db._useDatabase("_system");
-      analyzers.save("testAnalyzer", "identity", {}, [ "frequency" ]);
-      db._useDatabase(dbName);
-      analyzers.save("testAnalyzer", "identity", {}, [ "norm" ]);
+        // creation
+        db._useDatabase("_system");
+        analyzers.save("testAnalyzer", "identity", {}, [ "frequency" ]);
+        db._useDatabase(dbName);
+        analyzers.save("testAnalyzer", "identity", {}, [ "norm" ]);
 
-      // retrieval (dbName)
-      db._useDatabase(dbName);
+        // retrieval (dbName)
+        db._useDatabase(dbName);
 
-      {
-        let analyzer = analyzers.analyzer("testAnalyzer");
-        assertTrue(null !== analyzer);
-        assertEqual(db._name() + "::testAnalyzer", analyzer.name());
-        assertEqual("identity", analyzer.type());
-        assertEqual(0, Object.keys(analyzer.properties()).length);
-        assertTrue(Array === analyzer.features().constructor);
-        assertEqual(1, analyzer.features().length);
-        assertEqual([ "norm" ], analyzer.features());
+        {
+          let analyzer = analyzers.analyzer("testAnalyzer");
+          assertNotNull(analyzer);
+          assertEqual(db._name() + "::testAnalyzer", analyzer.name());
+          assertEqual("identity", analyzer.type());
+          assertEqual(0, Object.keys(analyzer.properties()).length);
+          assertTrue(Array === analyzer.features().constructor);
+          assertEqual(1, analyzer.features().length);
+          assertEqual([ "norm" ], analyzer.features());
+        }
+
+        {
+          let analyzer = analyzers.analyzer("::testAnalyzer");
+          assertNotNull(analyzer);
+          assertEqual("_system::testAnalyzer", analyzer.name());
+          assertEqual("identity", analyzer.type());
+          assertEqual(0, Object.keys(analyzer.properties()).length);
+          assertTrue(Array === analyzer.features().constructor);
+          assertEqual(1, analyzer.features().length);
+          assertEqual([ "frequency" ], analyzer.features());
+        }
+
+        // listing
+        let list = analyzers.toArray();
+        assertTrue(Array === list.constructor);
+        assertEqual(oldList.length + 2, list.length);
+
+        // removal
+        analyzers.remove("testAnalyzer", true);
+        assertNull(analyzers.analyzer("testAnalyzer"));
+        db._useDatabase("_system");
+        analyzers.remove("testAnalyzer", true);
+        db._useDatabase(dbName); // switch back to check analyzer with global name
+        assertNull(analyzers.analyzer("::testAnalyzer"));
+        assertEqual(oldList.length, analyzers.toArray().length);
+      } finally {
+        db._useDatabase(dbName);
+        try { analyzers.remove("testAnalyzer", true); } catch (e) {}
+        db._useDatabase("_system");
+        try { analyzers.remove("testAnalyzer", true); } catch (e) {}
+        db._dropDatabase(dbName);
       }
-
-      {
-        let analyzer = analyzers.analyzer("::testAnalyzer");
-        assertTrue(null !== analyzer);
-        assertEqual("_system::testAnalyzer", analyzer.name());
-        assertEqual("identity", analyzer.type());
-        assertEqual(0, Object.keys(analyzer.properties()).length);
-        assertTrue(Array === analyzer.features().constructor);
-        assertEqual(1, analyzer.features().length);
-        assertEqual([ "frequency" ], analyzer.features());
+    },
+////////////////////////////////////////////////////////////////////////////////
+/// @brief OneShard analyzers loading tests
+////////////////////////////////////////////////////////////////////////////////
+    testAnalyzerGetFromSameDatabaseOneShard: function() {
+      if (!isEnterprise || !isCluster) {
+       return;
       }
-
-      // listing
-      let list = analyzers.toArray();
-      assertTrue(Array === list.constructor);
-      assertEqual(oldList.length + 2, list.length);
-
-      // removal
-      analyzers.remove("testAnalyzer", true);
-      assertTrue(null === analyzers.analyzer("testAnalyzer"));
-      db._useDatabase("_system");
-      analyzers.remove("testAnalyzer", true);
-      db._useDatabase(dbName); // switch back to check analyzer with global name
-      assertTrue(null === analyzers.analyzer("::testAnalyzer"));
-      assertEqual(oldList.length, analyzers.toArray().length);
-
-      db._useDatabase("_system");
-      db._dropDatabase(dbName);
-   },
-
+      let dbName = "analyzerDbName";
+      let analyzerName = "my_identity";
+      try { db._dropDatabase(dbName); } catch (e) {}
+      db._createDatabase(dbName, {sharding: "single"});
+      try {
+        db._useDatabase(dbName);
+        let analyzer = analyzers.save(analyzerName, "identity", {});
+        db._create("test_coll");
+        db._createView("tv", "arangosearch", 
+                       {links: { test_coll: { includeAllFields:true,
+                                              analyzers:[ "" + analyzerName ] } } });
+        db.test_coll.save({"field": "value1"});
+        var res = db._query("FOR d IN tv SEARCH ANALYZER(d.field == 'value1', '" + analyzerName + 
+                            "') OPTIONS {waitForSync:true}  RETURN d");
+        assertEqual(1, res.toArray().length);
+      } finally {
+        db._useDatabase("_system");
+        db._dropDatabase(dbName);
+      }
+    },
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief IResearchFeature tests
 ////////////////////////////////////////////////////////////////////////////////
@@ -703,6 +847,23 @@ function iResearchFeatureAqlTestSuite () {
 
     },
 
+    testTokensFunctionWithNumberAnalyzer : function() {
+      let analyzer = analyzers.save("gd","aql",
+        { queryString: "RETURN @param",
+          returnType: "number"}, []);
+      assertNotNull(analyzer);
+      try {
+        let result = db._query("RETURN TOKENS('1', 'gd')").toArray();
+        assertEqual(1, result.length);
+        assertTrue(Array === result[0].constructor);
+        assertEqual(1, result[0].length);
+        assertEqual([["oL/wAAAAAAAA", "sL/wAAAAAA==", "wL/wAAA=", "0L/w"]],
+                    result[0]);
+      } finally {
+        analyzers.remove("gd", true);
+      }
+    },
+
     testDefaultAnalyzers : function() {
       // invalid
       {
@@ -908,101 +1069,115 @@ function iResearchFeatureAqlTestSuite () {
       // case upper
       {
         analyzers.save(analyzerName, "norm", { "locale" : "en", "case": "upper" });
-        let result = db._query(
-          "RETURN TOKENS('fOx', '" + analyzerName + "' )",
-          null,
-          { }
-        ).toArray();
-        assertEqual(1, result.length);
-        assertEqual(1, result[0].length);
-        assertEqual([ "FOX" ], result[0]);
-        analyzers.remove(analyzerName, true);
+        try {
+          let result = db._query(
+            "RETURN TOKENS('fOx', '" + analyzerName + "' )",
+            null,
+            { }
+          ).toArray();
+          assertEqual(1, result.length);
+          assertEqual(1, result[0].length);
+          assertEqual([ "FOX" ], result[0]);
+        } finally {
+          analyzers.remove(analyzerName, true);
+        }
       }
       // case lower
       {
         analyzers.save(analyzerName, "norm",  {  "locale" : "en", "case": "lower" });
-        let result = db._query(
-          "RETURN TOKENS('fOx', '" + analyzerName + "' )",
-          null,
-          { }
-        ).toArray();
-        assertEqual(1, result.length);
-        assertEqual(1, result[0].length);
-        assertEqual([ "fox" ], result[0]);
-        analyzers.remove(analyzerName, true);
+        try {
+          let result = db._query(
+            "RETURN TOKENS('fOx', '" + analyzerName + "' )",
+            null,
+            { }
+          ).toArray();
+          assertEqual(1, result.length);
+          assertEqual(1, result[0].length);
+          assertEqual([ "fox" ], result[0]);
+        } finally {
+          analyzers.remove(analyzerName, true);
+        }
       }
       // case none
       {
         analyzers.save(analyzerName, "norm", {  "locale" : "en", "case": "none" });
-        let result = db._query(
-          "RETURN TOKENS('fOx', '" + analyzerName + "' )",
-          null,
-          { }
-        ).toArray();
-        assertEqual(1, result.length);
-        assertEqual(1, result[0].length);
-        assertEqual([ "fOx" ], result[0]);
-        analyzers.remove(analyzerName, true);
+        try {
+          let result = db._query(
+            "RETURN TOKENS('fOx', '" + analyzerName + "' )",
+            null,
+            { }
+          ).toArray();
+          assertEqual(1, result.length);
+          assertEqual(1, result[0].length);
+          assertEqual([ "fOx" ], result[0]);
+        } finally {
+          analyzers.remove(analyzerName, true);
+        }
       }
        // accent removal
       {
         analyzers.save(analyzerName, "norm", {  "locale" : "de_DE.UTF8", "case": "none", "accent":false });
-        let result = db._query(
-          "RETURN TOKENS('\u00F6\u00F5', '" + analyzerName + "' )",
-          null,
-          { }
-        ).toArray();
-        assertEqual(1, result.length);
-        assertEqual(1, result[0].length);
-        assertEqual([ "\u006F\u006F" ], result[0]);
+        try {
+          let result = db._query(
+            "RETURN TOKENS('\u00F6\u00F5', '" + analyzerName + "' )",
+            null,
+            { }
+          ).toArray();
+          assertEqual(1, result.length);
+          assertEqual(1, result[0].length);
+          assertEqual([ "\u006F\u006F" ], result[0]);
+        } finally {
         analyzers.remove(analyzerName, true);
+        }
       }
        // accent leave
       {
         analyzers.save(analyzerName, "norm", {  "locale" : "de_DE.UTF8", "case": "none", "accent":true });
-        let result = db._query(
-          "RETURN TOKENS('\u00F6\u00F5', '" + analyzerName + "' )",
-          null,
-          { }
-        ).toArray();
-        assertEqual(1, result.length);
-        assertEqual(1, result[0].length);
-        assertEqual([ "\u00F6\u00F5" ], result[0]);
-        analyzers.remove(analyzerName, true);
+        try {
+          let result = db._query(
+            "RETURN TOKENS('\u00F6\u00F5', '" + analyzerName + "' )",
+            null,
+            { }
+          ).toArray();
+          assertEqual(1, result.length);
+          assertEqual(1, result[0].length);
+          assertEqual([ "\u00F6\u00F5" ], result[0]);
+        } finally {
+          analyzers.remove(analyzerName, true);
+        }
       }
       // no properties
       {
-        let created = false;
         try {
           analyzers.save(analyzerName, "norm");
-          analyzers.remove(analyzerName, true); // cleanup (should not get there)
-          created = true;
+          fail();
         } catch (err) {
           assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
                       err.errorNum);
         }
-        assertFalse(created);
       }
     },
     testCustomStemAnalyzer : function() {
       let analyzerName = "stemUnderTest";
       {
         analyzers.save(analyzerName, "stem", {  "locale" : "en"});
-        let result = db._query(
-          "RETURN TOKENS('jumps', '" + analyzerName + "' )",
-          null,
-          { }
-        ).toArray();
-        assertEqual(1, result.length);
-        assertEqual(1, result[0].length);
-        assertEqual([ "jump" ], result[0]);
-        analyzers.remove(analyzerName, true);
+        try {
+          let result = db._query(
+            "RETURN TOKENS('jumps', '" + analyzerName + "' )",
+            null,
+            { }
+          ).toArray();
+          assertEqual(1, result.length);
+          assertEqual(1, result[0].length);
+          assertEqual([ "jump" ], result[0]);
+        } finally {
+          analyzers.remove(analyzerName, true);
+        }
       }
       // no properties
       {
         try {
           analyzers.save(analyzerName, "stem");
-          analyzers.remove(analyzerName, true); // cleanup (should not get there)
           fail();
         } catch (err) {
           assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
@@ -1015,206 +1190,244 @@ function iResearchFeatureAqlTestSuite () {
       // case upper
       {
         analyzers.save(analyzerName, "text", { "locale" : "en", "case": "upper", "stopwords": [] });
-        let result = db._query(
-          "RETURN TOKENS('fOx', '" + analyzerName + "' )",
-          null,
-          { }
-        ).toArray();
-        assertEqual(1, result.length);
-        assertEqual(1, result[0].length);
-        assertEqual([ "FOX" ], result[0]);
-        analyzers.remove(analyzerName, true);
+        try {
+          let result = db._query(
+            "RETURN TOKENS('fOx', '" + analyzerName + "' )",
+            null,
+            { }
+          ).toArray();
+          assertEqual(1, result.length);
+          assertEqual(1, result[0].length);
+          assertEqual([ "FOX" ], result[0]);
+        } finally {
+          analyzers.remove(analyzerName, true);
+        }
       }
       // case lower
       {
         analyzers.save(analyzerName, "text", { "locale" : "en", "case": "lower", "stopwords": [] });
-        let result = db._query(
-          "RETURN TOKENS('fOx', '" + analyzerName + "' )",
-          null,
-          { }
-        ).toArray();
-        assertEqual(1, result.length);
-        assertEqual(1, result[0].length);
-        assertEqual([ "fox" ], result[0]);
-        analyzers.remove(analyzerName, true);
+        try {
+          let result = db._query(
+            "RETURN TOKENS('fOx', '" + analyzerName + "' )",
+            null,
+            { }
+          ).toArray();
+          assertEqual(1, result.length);
+          assertEqual(1, result[0].length);
+          assertEqual([ "fox" ], result[0]);
+        } finally {
+          analyzers.remove(analyzerName, true);
+        }
       }
       // case none
       {
         analyzers.save(analyzerName, "text", {  "locale" : "en", "case": "none", "stopwords": [] });
-        let result = db._query(
-          "RETURN TOKENS('fOx', '" + analyzerName + "' )",
-          null,
-          { }
-        ).toArray();
-        assertEqual(1, result.length);
-        assertEqual(1, result[0].length);
-        assertEqual([ "fOx" ], result[0]);
-        analyzers.remove(analyzerName, true);
+        try {
+          let result = db._query(
+            "RETURN TOKENS('fOx', '" + analyzerName + "' )",
+            null,
+            { }
+          ).toArray();
+          assertEqual(1, result.length);
+          assertEqual(1, result[0].length);
+          assertEqual([ "fOx" ], result[0]);
+        } finally {
+          analyzers.remove(analyzerName, true);
+        }
       }
        // accent removal
       {
         analyzers.save(analyzerName, "text", {  "locale" : "de_DE.UTF8", "case": "none", "accent":false, "stopwords": [], "stemming":false });
-        let result = db._query(
-          "RETURN TOKENS('\u00F6\u00F5', '" + analyzerName + "' )",
-          null,
-          { }
-        ).toArray();
-        assertEqual(1, result.length);
-        assertEqual(1, result[0].length);
-        assertEqual([ "\u006F\u006F" ], result[0]);
-        analyzers.remove(analyzerName, true);
+        try {
+          let result = db._query(
+            "RETURN TOKENS('\u00F6\u00F5', '" + analyzerName + "' )",
+            null,
+            { }
+          ).toArray();
+          assertEqual(1, result.length);
+          assertEqual(1, result[0].length);
+          assertEqual([ "\u006F\u006F" ], result[0]);
+        } finally {
+          analyzers.remove(analyzerName, true);
+        }
       }
        // accent leave
       {
         analyzers.save(analyzerName, "text", {  "locale" : "de_DE.UTF8", "case": "none", "accent":true, "stopwords": [], "stemming":false});
-        let result = db._query(
-          "RETURN TOKENS('\u00F6\u00F5', '" + analyzerName + "' )",
-          null,
-          { }
-        ).toArray();
-        assertEqual(1, result.length);
-        assertEqual(1, result[0].length);
-        assertEqual([ "\u00F6\u00F5" ], result[0]);
-        analyzers.remove(analyzerName, true);
+        try {
+          let result = db._query(
+            "RETURN TOKENS('\u00F6\u00F5', '" + analyzerName + "' )",
+            null,
+            { }
+          ).toArray();
+          assertEqual(1, result.length);
+          assertEqual(1, result[0].length);
+          assertEqual([ "\u00F6\u00F5" ], result[0]);
+        } finally {
+          analyzers.remove(analyzerName, true);
+        }
       }
 
       // no stemming
       {
         analyzers.save(analyzerName, "text", {  "locale" : "en", "case": "none", "stemming":false, "stopwords": [] });
-        let result = db._query(
-          "RETURN TOKENS('jumps', '" + analyzerName + "' )",
-          null,
-          { }
-        ).toArray();
-        assertEqual(1, result.length);
-        assertEqual(1, result[0].length);
-        assertEqual([ "jumps" ], result[0]);
-        analyzers.remove(analyzerName, true);
+        try {
+          let result = db._query(
+            "RETURN TOKENS('jumps', '" + analyzerName + "' )",
+            null,
+            { }
+          ).toArray();
+          assertEqual(1, result.length);
+          assertEqual(1, result[0].length);
+          assertEqual([ "jumps" ], result[0]);
+        } finally {
+          analyzers.remove(analyzerName, true);
+        }
       }
       // stemming
       {
         analyzers.save(analyzerName, "text", {  "locale" : "en", "case": "none", "stemming":true, "stopwords": [] });
-        let result = db._query(
-          "RETURN TOKENS('jumps', '" + analyzerName + "' )",
-          null,
-          { }
-        ).toArray();
-        assertEqual(1, result.length);
-        assertEqual(1, result[0].length);
-        assertEqual([ "jump" ], result[0]);
-        analyzers.remove(analyzerName, true);
+        try {
+          let result = db._query(
+            "RETURN TOKENS('jumps', '" + analyzerName + "' )",
+            null,
+            { }
+          ).toArray();
+          assertEqual(1, result.length);
+          assertEqual(1, result[0].length);
+          assertEqual([ "jump" ], result[0]);
+        } finally {
+          analyzers.remove(analyzerName, true);
+        }
       }
 
       // empty ngram object
       {
         analyzers.save(analyzerName, "text", {  "locale" : "en", "case": "none", "stemming":false, "stopwords": [], "edgeNgram":{} });
-        let props = analyzers.analyzer(analyzerName).properties().edgeNgram;
-        assertEqual(undefined, props);
-        let result = db._query(
-          "RETURN TOKENS('jumps', '" + analyzerName + "' )",
-          null,
-          { }
-        ).toArray();
-        assertEqual(1, result.length);
-        assertEqual(1, result[0].length);
-        assertEqual([ "jumps" ], result[0]);
-        analyzers.remove(analyzerName, true);
+        try {
+          let props = analyzers.analyzer(analyzerName).properties().edgeNgram;
+          assertEqual(undefined, props);
+          let result = db._query(
+            "RETURN TOKENS('jumps', '" + analyzerName + "' )",
+            null,
+            { }
+          ).toArray();
+          assertEqual(1, result.length);
+          assertEqual(1, result[0].length);
+          assertEqual([ "jumps" ], result[0]);
+        } finally {
+          analyzers.remove(analyzerName, true);
+        }
       }
 
       // non empty ngram object
       {
         analyzers.save(analyzerName, "text", {  "locale" : "en", "case": "none", "stemming":false, "stopwords": [], "edgeNgram":{ "min": 1, "max":2} });
-        let props = analyzers.analyzer(analyzerName).properties().edgeNgram;
-        assertNotEqual(undefined, props);
-        assertEqual(1, props.min);
-        assertEqual(2, props.max);
-        assertEqual(undefined, props.preserveOriginal);
-        let result = db._query(
-          "RETURN TOKENS('quick brown foxy', '" + analyzerName + "' )",
-          null,
-          { }
-        ).toArray();
-        assertEqual(1, result.length);
-        assertEqual(6, result[0].length);
-        assertEqual([ "q", "qu", "b", "br", "f", "fo" ], result[0]);
-        analyzers.remove(analyzerName, true);
+        try {
+          let props = analyzers.analyzer(analyzerName).properties().edgeNgram;
+          assertNotEqual(undefined, props);
+          assertEqual(1, props.min);
+          assertEqual(2, props.max);
+          assertEqual(undefined, props.preserveOriginal);
+          let result = db._query(
+            "RETURN TOKENS('quick brown foxy', '" + analyzerName + "' )",
+            null,
+            { }
+          ).toArray();
+          assertEqual(1, result.length);
+          assertEqual(6, result[0].length);
+          assertEqual([ "q", "qu", "b", "br", "f", "fo" ], result[0]);
+        } finally {
+          analyzers.remove(analyzerName, true);
+        }
       }
 
       // non empty ngram object
       {
         analyzers.save(analyzerName, "text", {  "locale" : "en", "case": "none", "stemming":false, "stopwords": [], "edgeNgram":{ "min": 1, "max":2, "preserveOriginal": true} });
-        let props = analyzers.analyzer(analyzerName).properties().edgeNgram;
-        assertNotEqual(undefined, props);
-        assertEqual(1, props.min);
-        assertEqual(2, props.max);
-        assertEqual(true, props.preserveOriginal);
-        let result = db._query(
-          "RETURN TOKENS('quick brown foxy', '" + analyzerName + "' )",
-          null,
-          { }
-        ).toArray();
-        assertEqual(1, result.length);
-        assertEqual(9, result[0].length);
-        assertEqual([ "q", "qu", "quick", "b", "br", "brown", "f", "fo", "foxy" ], result[0]);
-        analyzers.remove(analyzerName, true);
+        try {
+          let props = analyzers.analyzer(analyzerName).properties().edgeNgram;
+          assertNotEqual(undefined, props);
+          assertEqual(1, props.min);
+          assertEqual(2, props.max);
+          assertEqual(true, props.preserveOriginal);
+          let result = db._query(
+            "RETURN TOKENS('quick brown foxy', '" + analyzerName + "' )",
+            null,
+            { }
+          ).toArray();
+          assertEqual(1, result.length);
+          assertEqual(9, result[0].length);
+          assertEqual([ "q", "qu", "quick", "b", "br", "brown", "f", "fo", "foxy" ], result[0]);
+        } finally {
+          analyzers.remove(analyzerName, true);
+        }
       }
 
       // non empty ngram object
       {
         analyzers.save(analyzerName, "text", {  "locale" : "en", "case": "none", "stemming":false, "stopwords": [], "edgeNgram":{ "min": 1, "max":200, "preserveOriginal": false} });
-        let props = analyzers.analyzer(analyzerName).properties().edgeNgram;
-        assertNotEqual(undefined, props);
-        assertEqual(1, props.min);
-        assertEqual(200, props.max);
-        assertEqual(false, props.preserveOriginal);
-        let result = db._query(
-          "RETURN TOKENS('quick brown foxy', '" + analyzerName + "' )",
-          null,
-          { }
-        ).toArray();
-        assertEqual(1, result.length);
-        assertEqual(14, result[0].length);
-        assertEqual([ "q", "qu", "qui", "quic", "quick", "b", "br", "bro", "brow", "brown", "f", "fo", "fox", "foxy" ], result[0]);
-        analyzers.remove(analyzerName, true);
+        try {
+          let props = analyzers.analyzer(analyzerName).properties().edgeNgram;
+          assertNotEqual(undefined, props);
+          assertEqual(1, props.min);
+          assertEqual(200, props.max);
+          assertEqual(false, props.preserveOriginal);
+          let result = db._query(
+            "RETURN TOKENS('quick brown foxy', '" + analyzerName + "' )",
+            null,
+            { }
+          ).toArray();
+          assertEqual(1, result.length);
+          assertEqual(14, result[0].length);
+          assertEqual([ "q", "qu", "qui", "quic", "quick", "b", "br", "bro", "brow", "brown", "f", "fo", "fox", "foxy" ], result[0]);
+        } finally {
+          analyzers.remove(analyzerName, true);
+        }
       }
 
       // non empty ngram object with stemming
       {
         analyzers.save(analyzerName, "text", {  "locale" : "en", "case": "none", "stemming":true, "stopwords": [], "edgeNgram":{ "min": 1 } });
-        let props = analyzers.analyzer(analyzerName).properties().edgeNgram;
-        assertNotEqual(undefined, props);
-        assertEqual(1, props.min);
-        assertEqual(undefined, props.max);
-        assertEqual(undefined, props.preserveOriginal);
-        let result = db._query(
-          "RETURN TOKENS('quick brown foxy', '" + analyzerName + "' )",
-          null,
-          { }
-        ).toArray();
-        assertEqual(1, result.length);
-        assertEqual(14, result[0].length);
-        assertEqual([ "q", "qu", "qui", "quic", "quick", "b", "br", "bro", "brow", "brown", "f", "fo", "fox", "foxi" ], result[0]);
-        analyzers.remove(analyzerName, true);
+        try {
+          let props = analyzers.analyzer(analyzerName).properties().edgeNgram;
+          assertNotEqual(undefined, props);
+          assertEqual(1, props.min);
+          assertEqual(undefined, props.max);
+          assertEqual(undefined, props.preserveOriginal);
+          let result = db._query(
+            "RETURN TOKENS('quick brown foxy', '" + analyzerName + "' )",
+            null,
+            { }
+          ).toArray();
+          assertEqual(1, result.length);
+          assertEqual(14, result[0].length);
+          assertEqual([ "q", "qu", "qui", "quic", "quick", "b", "br", "bro", "brow", "brown", "f", "fo", "fox", "foxi" ], result[0]);
+        } finally {
+          analyzers.remove(analyzerName, true);
+        }
       }
       // Greek stemming - test for snowball 2.0
       {
         analyzers.save(analyzerName, "text", {  "locale" : "el_GR.UTF8", "case": "none", "stemming":true, "stopwords": [] });
-        let result = db._query(
-          "RETURN TOKENS('Αθλητές', '" + analyzerName + "' )",
-          null,
-          { }
-        ).toArray();
-        assertEqual(1, result.length);
-        assertEqual(1, result[0].length);
-        assertEqual([ "αθλητ" ], result[0]);
-        analyzers.remove(analyzerName, true);
+        try {
+          let result = db._query(
+            "RETURN TOKENS('Αθλητές', '" + analyzerName + "' )",
+            null,
+            { }
+          ).toArray();
+          assertEqual(1, result.length);
+          assertEqual(1, result[0].length);
+          assertEqual([ "αθλητ" ], result[0]);
+        } finally {
+          analyzers.remove(analyzerName, true);
+        }
       }
 
       // no properties
       {
         try {
           analyzers.save(analyzerName, "text");
-          analyzers.remove(analyzerName, true); // cleanup (should not get there)
           fail();
         } catch (err) {
           assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
@@ -1222,119 +1435,134 @@ function iResearchFeatureAqlTestSuite () {
         }
       }
     },
+
     testCustomNGramAnalyzer : function() {
       let analyzerName = "textUnderTest";
 
       // without preserveOriginal
       {
         analyzers.save(analyzerName, "ngram", { "min":1, "max":2, "preserveOriginal":false  });
-        let props = analyzers.analyzer(analyzerName).properties();
-        assertEqual(1, props.min);
-        assertEqual(2, props.max);
-        assertEqual(false, props.preserveOriginal);
-        assertEqual("", props.startMarker);
-        assertEqual("", props.endMarker);
-        assertEqual("binary", props.streamType);
-        let result = db._query(
-          "RETURN TOKENS('quick', '" + analyzerName + "' )",
-          null,
-          { }
-        ).toArray();
-        assertEqual(1, result.length);
-        assertEqual(9, result[0].length);
-        assertEqual([ "q", "qu", "u", "ui", "i", "ic", "c", "ck", "k"  ], result[0]);
-        analyzers.remove(analyzerName, true);
+        try {
+          let props = analyzers.analyzer(analyzerName).properties();
+          assertEqual(1, props.min);
+          assertEqual(2, props.max);
+          assertEqual(false, props.preserveOriginal);
+          assertEqual("", props.startMarker);
+          assertEqual("", props.endMarker);
+          assertEqual("binary", props.streamType);
+          let result = db._query(
+            "RETURN TOKENS('quick', '" + analyzerName + "' )",
+            null,
+            { }
+          ).toArray();
+          assertEqual(1, result.length);
+          assertEqual(9, result[0].length);
+          assertEqual([ "q", "qu", "u", "ui", "i", "ic", "c", "ck", "k"  ], result[0]);
+        } finally {
+          analyzers.remove(analyzerName, true);
+        }
       }
 
       // with preserveOriginal
       {
         analyzers.save(analyzerName, "ngram", { "min":1, "max":2, "preserveOriginal":true});
-        let props = analyzers.analyzer(analyzerName).properties();
-        assertEqual(1, props.min);
-        assertEqual(2, props.max);
-        assertEqual(true, props.preserveOriginal);
-        assertEqual("", props.startMarker);
-        assertEqual("", props.endMarker);
-        assertEqual("binary", props.streamType);
-        let result = db._query(
-          "RETURN TOKENS('quick', '" + analyzerName + "' )",
-          null,
-          { }
-        ).toArray();
-        assertEqual(1, result.length);
-        assertEqual(10, result[0].length);
-        assertEqual([ "q", "qu", "quick", "u", "ui", "i", "ic", "c", "ck", "k"  ], result[0]);
-        analyzers.remove(analyzerName, true);
+        try {
+          let props = analyzers.analyzer(analyzerName).properties();
+          assertEqual(1, props.min);
+          assertEqual(2, props.max);
+          assertEqual(true, props.preserveOriginal);
+          assertEqual("", props.startMarker);
+          assertEqual("", props.endMarker);
+          assertEqual("binary", props.streamType);
+          let result = db._query(
+            "RETURN TOKENS('quick', '" + analyzerName + "' )",
+            null,
+            { }
+          ).toArray();
+          assertEqual(1, result.length);
+          assertEqual(10, result[0].length);
+          assertEqual([ "q", "qu", "quick", "u", "ui", "i", "ic", "c", "ck", "k"  ], result[0]);
+        } finally {
+          analyzers.remove(analyzerName, true);
+        }
       }
 
       // with optional start marker
       {
         analyzers.save(analyzerName, "ngram", { "min":1, "max":2, "preserveOriginal":true, "startMarker":"$"});
-        let props = analyzers.analyzer(analyzerName).properties();
-        assertEqual(1, props.min);
-        assertEqual(2, props.max);
-        assertEqual(true, props.preserveOriginal);
-        assertEqual("$", props.startMarker);
-        assertEqual("", props.endMarker);
-        assertEqual("binary", props.streamType);
-        let result = db._query(
-          "RETURN TOKENS('quick', '" + analyzerName + "' )",
-          null,
-          { }
-        ).toArray();
-        assertEqual(1, result.length);
-        assertEqual(10, result[0].length);
-        assertEqual([ "$q", "$qu", "$quick", "u", "ui", "i", "ic", "c", "ck", "k"  ], result[0]);
-        analyzers.remove(analyzerName, true);
+        try {
+          let props = analyzers.analyzer(analyzerName).properties();
+          assertEqual(1, props.min);
+          assertEqual(2, props.max);
+          assertEqual(true, props.preserveOriginal);
+          assertEqual("$", props.startMarker);
+          assertEqual("", props.endMarker);
+          assertEqual("binary", props.streamType);
+          let result = db._query(
+            "RETURN TOKENS('quick', '" + analyzerName + "' )",
+            null,
+            { }
+          ).toArray();
+          assertEqual(1, result.length);
+          assertEqual(10, result[0].length);
+          assertEqual([ "$q", "$qu", "$quick", "u", "ui", "i", "ic", "c", "ck", "k"  ], result[0]);
+        } finally {
+          analyzers.remove(analyzerName, true);
+        }
       }
 
       // with optional end marker
       {
         analyzers.save(analyzerName, "ngram", { "min":1, "max":2, "preserveOriginal":true, "startMarker":"$", "endMarker":"^"});
-        let props = analyzers.analyzer(analyzerName).properties();
-        assertEqual(1, props.min);
-        assertEqual(2, props.max);
-        assertEqual(true, props.preserveOriginal);
-        assertEqual("$", props.startMarker);
-        assertEqual("^", props.endMarker);
-        assertEqual("binary", props.streamType);
-        let result = db._query(
-          "RETURN TOKENS('quick', '" + analyzerName + "' )",
-          null,
-          { }
-        ).toArray();
-        assertEqual(1, result.length);
-        assertEqual(11, result[0].length);
-        assertEqual([ "$q", "$qu", "$quick", "quick^", "u", "ui", "i", "ic", "c", "ck^", "k^" ], result[0]);
-        analyzers.remove(analyzerName, true);
+        try {
+          let props = analyzers.analyzer(analyzerName).properties();
+          assertEqual(1, props.min);
+          assertEqual(2, props.max);
+          assertEqual(true, props.preserveOriginal);
+          assertEqual("$", props.startMarker);
+          assertEqual("^", props.endMarker);
+          assertEqual("binary", props.streamType);
+          let result = db._query(
+            "RETURN TOKENS('quick', '" + analyzerName + "' )",
+            null,
+            { }
+          ).toArray();
+          assertEqual(1, result.length);
+          assertEqual(11, result[0].length);
+          assertEqual([ "$q", "$qu", "$quick", "quick^", "u", "ui", "i", "ic", "c", "ck^", "k^" ], result[0]);
+        } finally {
+          analyzers.remove(analyzerName, true);
+        }
       }
 
       // utf8 sequence
       {
         analyzers.save(analyzerName, "ngram", { "min":3, "max":2, "preserveOriginal":false, "streamType":"utf8"});
-        let props = analyzers.analyzer(analyzerName).properties();
-        assertEqual(3, props.min);
-        assertEqual(3, props.max);
-        assertEqual(false, props.preserveOriginal);
-        assertEqual("", props.startMarker);
-        assertEqual("", props.endMarker);
-        assertEqual("utf8", props.streamType);
-        let result = db._query(
-          "RETURN TOKENS('хорошо', '" + analyzerName + "' )",
-          null,
-          { }
-        ).toArray();
-        assertEqual(1, result.length);
-        assertEqual(4, result[0].length);
-        assertEqual([ "хор", "оро", "рош", "ошо"  ], result[0]);
-        analyzers.remove(analyzerName, true);
+        try {
+          let props = analyzers.analyzer(analyzerName).properties();
+          assertEqual(3, props.min);
+          assertEqual(3, props.max);
+          assertEqual(false, props.preserveOriginal);
+          assertEqual("", props.startMarker);
+          assertEqual("", props.endMarker);
+          assertEqual("utf8", props.streamType);
+          let result = db._query(
+            "RETURN TOKENS('хорошо', '" + analyzerName + "' )",
+            null,
+            { }
+          ).toArray();
+          assertEqual(1, result.length);
+          assertEqual(4, result[0].length);
+          assertEqual([ "хор", "оро", "рош", "ошо"  ], result[0]);
+        } finally {
+          analyzers.remove(analyzerName, true);
+        }
       }
 
       // invalid properties 
       {
         try {
           analyzers.save(analyzerName, "ngram", { "min":1, "max":2 } );
-          analyzers.remove(analyzerName, true); // cleanup (should not get there)
           fail();
         } catch (err) {
           assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
@@ -1346,7 +1574,6 @@ function iResearchFeatureAqlTestSuite () {
       {
         try {
           analyzers.save(analyzerName, "ngram", { "max":2, "preserveOriginal":false } );
-          analyzers.remove(analyzerName, true); // cleanup (should not get there)
           fail();
         } catch (err) {
           assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
@@ -1358,7 +1585,6 @@ function iResearchFeatureAqlTestSuite () {
       {
         try {
           analyzers.save(analyzerName, "ngram", { "min":2, "preserveOriginal":false } );
-          analyzers.remove(analyzerName, true); // cleanup (should not get there)
           fail();
         } catch (err) {
           assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
@@ -1370,7 +1596,6 @@ function iResearchFeatureAqlTestSuite () {
       {
         try {
           analyzers.save(analyzerName, "ngram", { "max":2, "min":2, "preserveOriginal":false, "streamType":"invalid" } );
-          analyzers.remove(analyzerName, true); // cleanup (should not get there)
           fail();
         } catch (err) {
           assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
@@ -1378,15 +1603,1153 @@ function iResearchFeatureAqlTestSuite () {
         }
       }
     },
+
+    testCustomClassificationAnalyzer : function() {
+      let analyzerName = "classificationUnderTest";
+      const filePath = require("fs").join(internal.pathForTesting('common'), 'aql', 'iresearch', `model_cooking.bin`);
+      const modelFile = require("path").resolve(filePath);
+
+      // all defaults
+      {
+        analyzers.save(analyzerName, "classification", { "model_location": modelFile });
+        try {
+          let props = analyzers.analyzer(analyzerName).properties();
+          assertEqual(1, props.top_k);
+          assertEqual(0.0, props.threshold);
+          let result = db._query(
+              "RETURN TOKENS('baking', '" + analyzerName + "' )",
+              null,
+              { }
+          ).toArray();
+          assertEqual(1, result.length);
+          assertEqual(1, result[0].length);
+          assertEqual([ "__label__baking" ], result[0]);
+        } finally {
+          analyzers.remove(analyzerName, true);
+        }
+      }
+
+      // With top_k
+      {
+        analyzers.save(analyzerName, "classification", { "model_location": modelFile, "top_k": 2 });
+        try {
+          let props = analyzers.analyzer(analyzerName).properties();
+          assertEqual(2, props.top_k);
+          assertEqual(0.0, props.threshold);
+          let result = db._query(
+              "RETURN TOKENS('Which baking dish is best to bake a banana bread ?', '" + analyzerName + "' )",
+              null,
+              { }
+          ).toArray();
+          assertEqual(1, result.length);
+          assertEqual(2, result[0].length);
+          assertEqual([ "__label__baking", "__label__bananas" ], result[0]);
+        } finally {
+          analyzers.remove(analyzerName, true);
+        }
+      }
+
+      // With multiple lines
+      {
+        analyzers.save(analyzerName, "classification", { "model_location": modelFile, "top_k": 1 });
+        try {
+          let props = analyzers.analyzer(analyzerName).properties();
+          assertEqual(1, props.top_k);
+          assertEqual(0.0, props.threshold);
+          let result = db._query(
+              "RETURN TOKENS('Which baking dish is best to bake\na banana bread ?', '" + analyzerName + "' )",
+              null,
+              { }
+          ).toArray();
+          assertEqual(1, result.length);
+          assertEqual(1, result[0].length);
+          assertEqual([ "__label__baking" ], result[0]);
+        } finally {
+          analyzers.remove(analyzerName, true);
+        }
+      }
+
+      // Invalid model location
+      {
+        try {
+          analyzers.save(analyzerName, "classification", { "model_location": "this path does not exist" } );
+          fail();
+        } catch (err) {
+          assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
+              err.errorNum);
+        }
+      }
+      // Missing model location
+      {
+        try {
+          analyzers.save(analyzerName, "classification", {} );
+          fail();
+        } catch (err) {
+          assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
+              err.errorNum);
+        }
+      }
+      // Invalid top_k
+      {
+        try {
+          analyzers.save(analyzerName, "classification", { "model_location": modelFile, "top_k": -1 } );
+          fail();
+        } catch (err) {
+          assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
+              err.errorNum);
+        }
+      }
+      // Invalid threshold
+      {
+        try {
+          analyzers.save(analyzerName, "classification", { "model_location": modelFile, "threshold": 2.0 } );
+          fail();
+        } catch (err) {
+          assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
+              err.errorNum);
+        }
+      }
+    },
+
+    testCustomNearestNeighborsAnalyzer: function() {
+      let analyzerName = "nearestNeighborsUnderTest";
+      const filePath = require("fs").join(internal.pathForTesting('common'), 'aql', 'iresearch', `model_cooking.bin`);
+      const modelFile = require("path").resolve(filePath);
+
+
+      // all defaults
+      {
+        analyzers.save(analyzerName, "nearest_neighbors", { "model_location": modelFile });
+        try {
+          let props = analyzers.analyzer(analyzerName).properties();
+          assertEqual(1, props.top_k);
+          let result = db._query(
+              "RETURN TOKENS('salt', '" + analyzerName + "' )",
+              null,
+              { }
+          ).toArray();
+          assertEqual(1, result.length);
+          assertEqual(1, result[0].length);
+          assertEqual([ "homogenized" ], result[0]);
+        } finally {
+          analyzers.remove(analyzerName, true);
+        }
+      }
+
+      // With top_k
+      {
+        analyzers.save(analyzerName, "nearest_neighbors", { "model_location": modelFile, "top_k": 2 });
+        try {
+          let props = analyzers.analyzer(analyzerName).properties();
+          assertEqual(2, props.top_k);
+          let result = db._query(
+              "RETURN TOKENS('pizza', '" + analyzerName + "' )",
+              null,
+              { }
+          ).toArray();
+          assertEqual(1, result.length);
+          assertEqual(2, result[0].length);
+          assertEqual([ "\"prepared\"", "tinfoil" ], result[0]);
+        } finally {
+          analyzers.remove(analyzerName, true);
+        }
+      }
+
+      // With multiple words in string
+      {
+        analyzers.save(analyzerName, "nearest_neighbors", { "model_location": modelFile, "top_k": 2 });
+        try {
+          let props = analyzers.analyzer(analyzerName).properties();
+          assertEqual(2, props.top_k);
+          let result = db._query(
+              "RETURN TOKENS('salt oil', '" + analyzerName + "' )",
+              null,
+              { }
+          ).toArray();
+          assertEqual(1, result.length);
+          assertEqual(4, result[0].length);
+          assertEqual([ "homogenized", "teach", "tube\"", "\"breather" ], result[0]);
+        } finally {
+          analyzers.remove(analyzerName, true);
+        }
+      }
+
+      // Invalid model location
+      {
+        try {
+          analyzers.save(analyzerName, "nearest_neighbors", { "model_location": "this path does not exist" } );
+          fail();
+        } catch (err) {
+          assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
+              err.errorNum);
+        }
+      }
+      // Missing model location
+      {
+        try {
+          analyzers.save(analyzerName, "nearest_neighbors", {} );
+          fail();
+        } catch (err) {
+          assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
+              err.errorNum);
+        }
+      }
+      // Invalid top_k
+      {
+        try {
+          analyzers.save(analyzerName, "nearest_neighbors", { "model_location": modelFile, "top_k": -1 } );
+          fail();
+        } catch (err) {
+          assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
+              err.errorNum);
+        }
+      }
+    },
+
+    testCustomPipelineAnalyzer : function() {
+      let analyzerName = "pipeUnderTest";
+      try { analyzers.remove(analyzerName, true); } catch(e) {}
+      {
+        analyzers.save(analyzerName,"pipeline",
+                        {pipeline:[
+                          {type:"delimiter", properties:{delimiter:" "}},
+                          {type:"delimiter", properties:{delimiter:","}},
+                          {type:"norm", properties:{locale:"en", "case":"upper"}}
+                        ]}, ["position", "frequency"]);
+        try {
+          let result = db._query(
+            "RETURN TOKENS('Quick,BrOwn FoX', '" + analyzerName + "' )",
+            null,
+            { }
+          ).toArray();
+          assertEqual(1, result.length);
+          assertEqual(3, result[0].length);
+          assertEqual([ "QUICK", "BROWN", "FOX" ], result[0]);
+        } finally {
+          analyzers.remove(analyzerName, true);
+        }
+      }
+      // upper + ngram utf8 sequence
+      {
+        analyzers.save(analyzerName,"pipeline",
+                        {pipeline:[
+                          {type:"norm", properties:{locale:"ru_RU.UTF8", "case":"upper"}},
+                          {type:"ngram", properties: { "preserveOriginal":false, min:2, max:3, streamType:"utf8"}}]});
+       
+        try {
+          let props = analyzers.analyzer(analyzerName).properties();
+          assertEqual(2, props.pipeline[1].properties.min);
+          assertEqual(3, props.pipeline[1].properties.max);
+          assertEqual(false, props.pipeline[1].properties.preserveOriginal);
+          assertEqual("utf8", props.pipeline[1].properties.streamType);
+          assertEqual("upper", props.pipeline[0].properties["case"]);
+          assertEqual(true, props.pipeline[0].properties.accent);
+          let result = db._query(
+            "RETURN TOKENS('хорошо', '" + analyzerName + "' )",
+            null,
+            { }
+          ).toArray();
+          assertEqual(1, result.length);
+          assertEqual(9, result[0].length);
+          assertEqual([ "ХО", "ХОР", "ОР", "ОРО", "РО", "РОШ", "ОШ", "ОШО", "ШО" ], result[0]);
+        } finally {
+          analyzers.remove(analyzerName, true);
+        }
+      }
+      // check preserving output type of last pipe member
+      {
+        try {
+          analyzers.save(analyzerName, "pipeline", { pipeline:[
+            {type:"identity", properties:{}},
+            {type:"aql", properties:{queryString:"RETURN @param", returnType:"number"}},]});
+          let result = db._query(
+            "RETURN TOKENS('1', '" + analyzerName + "' )",
+            null,
+            { }
+          ).toArray();
+          assertEqual(1, result.length);
+          assertEqual(1, result[0].length);
+          assertEqual([["oL/wAAAAAAAA", "sL/wAAAAAA==", "wL/wAAA=", "0L/w"]], result[0]);
+        } finally {
+          try{analyzers.remove(analyzerName, true);} catch(e) {}
+        }
+      }
+      // with identity
+      {
+        try {
+          analyzers.save(analyzerName, "pipeline", { pipeline:[
+            {type:"aql", properties:{queryString:"RETURN '7'"}},
+            {type:"identity", properties:{}}]});
+          let result = db._query(
+            "RETURN TOKENS('хорошо', '" + analyzerName + "' )",
+            null,
+            { }
+          ).toArray();
+          assertEqual(1, result.length);
+          assertEqual(1, result[0].length);
+          assertEqual([ "7"], result[0]);
+        } finally {
+          try{analyzers.remove(analyzerName, true);} catch(e) {}
+        }
+      }
+      // incompatible pipeline members
+      {
+        try {
+          analyzers.save(analyzerName, "pipeline", { pipeline:[
+            {type:"aql", properties:{returnType:"number", queryString:"RETURN 7"}},
+            {type:"norm", properties:{locale:"ru_RU.UTF8", "case":"upper"}}]});
+          fail();
+        } catch (err) {
+          assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
+                      err.errorNum);
+        } finally {
+          try{analyzers.remove(analyzerName, true);} catch(e) {}
+        }
+      }
+      // incompatible pipeline members with geojson (non-primitive type acceptor)
+      {
+        try {
+          analyzers.save(analyzerName, "pipeline", { pipeline:[
+            {type:"aql", properties:{returnType:"number", queryString:"RETURN 7"}},
+            {type:"geojson", properties:{}}]});
+          fail();
+        } catch (err) {
+          assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
+                      err.errorNum);
+        } finally {
+          try{analyzers.remove(analyzerName, true);} catch(e) {}
+        }
+      }
+      // incompatible aql retval with identity
+      {
+        try {
+          analyzers.save(analyzerName, "pipeline", { pipeline:[
+            {type:"aql", properties:{returnType:"number", queryString:"RETURN 7"}},
+            {type:"identity", properties:{}}]});
+          fail();
+        } catch (err) {
+          assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
+                      err.errorNum);
+        } finally {
+          try{analyzers.remove(analyzerName, true);} catch(e) {}
+        }
+      }
+      // incompatible pipeline inside the pipeline aql retval with identity
+      {
+        try {
+          analyzers.save(analyzerName, "pipeline", { pipeline:[
+            {type:"pipeline", properties:{pipeline:[
+              {type:"aql", properties:{returnType:"number", queryString:"RETURN 7"}},
+              {type:"identity", properties:{}}]}}]});
+          fail();
+        } catch (err) {
+          assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
+                      err.errorNum);
+        } finally {
+          try{analyzers.remove(analyzerName, true);} catch(e) {}
+        }
+      }
+      // invalid pipeline properties
+      {
+        try {
+          analyzers.save(analyzerName, "pipeline", { pipeline:2 } );
+          fail();
+        } catch (err) {
+          assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
+                      err.errorNum);
+        }
+      }
+    },
+    
+    testCustomAqlAnalyzer : function() {
+      let analyzerName = "calcUnderTest";
+      try { analyzers.remove(analyzerName, true); } catch(e) {}
+      // soundex expression
+      {
+        analyzers.save(analyzerName,"aql",{queryString:"RETURN SOUNDEX(@param)"});
+        try {
+          let result = db._query(
+            "RETURN TOKENS(['Andrei', 'Andrey'], '" + analyzerName + "' )",
+            null,
+            { }
+          ).toArray();
+          assertEqual(1, result.length);
+          assertEqual(2, result[0].length);
+          assertEqual([ ["A536"], ["A536"] ], result[0]);
+        } finally {
+          analyzers.remove(analyzerName, true);
+        }
+      }
+      // datetime
+      {
+        analyzers.save(analyzerName,"aql",{queryString:"RETURN DATE_ISO8601(@param)"});
+        try {
+          let result = db._query(
+            "RETURN TOKENS('1974-06-09', '" + analyzerName + "' )",
+            null,
+            { }
+          ).toArray();
+          assertEqual(1, result.length);
+          assertEqual(1, result[0].length);
+          assertEqual([ '1974-06-09T00:00:00.000Z' ], result[0]);
+        } finally {
+          analyzers.remove(analyzerName, true);
+        }
+      }
+      // cycle
+      {
+        analyzers.save(analyzerName,"aql",{queryString:"FOR d IN 1..TO_NUMBER(@param) FILTER d%2==0 RETURN TO_STRING(d)"});
+        try {
+          let result = db._query(
+            "RETURN TOKENS('4', '" + analyzerName + "' )",
+            null,
+            { }
+          ).toArray();
+          assertEqual(1, result.length);
+          assertEqual(2, result[0].length);
+          assertEqual(['2', '4'], result[0]);
+        } finally {
+          analyzers.remove(analyzerName, true);
+        }
+      }
+      // pipeline for upper + ngram utf8 sequence
+      {
+        analyzers.save(analyzerName,"pipeline",
+                        {pipeline:[
+                          {type:"aql", properties:{queryString:"RETURN UPPER(@param)"}},
+                          {type:"ngram", properties: { "preserveOriginal":false, min:2, max:3, streamType:"utf8"}}]});
+       
+        try {
+          let result = db._query(
+            "RETURN TOKENS('хорошо', '" + analyzerName + "' )",
+            null,
+            { }
+          ).toArray();
+          assertEqual(1, result.length);
+          assertEqual(9, result[0].length);
+          assertEqual([ "ХО", "ХОР", "ОР", "ОРО", "РО", "РОШ", "ОШ", "ОШО", "ШО" ], result[0]);
+        } finally {
+          analyzers.remove(analyzerName, true);
+        }
+      }
+      // pipeline for ngram utf8 sequence + upper
+      {
+        analyzers.save(analyzerName,"pipeline",
+                        {pipeline:[
+                          {type:"ngram", properties: { "preserveOriginal":false, min:2, max:3, streamType:"utf8"}},
+                          {type:"aql", properties:{queryString:"RETURN UPPER(@param)"}}]});
+       
+        try {
+          let result = db._query(
+            "RETURN TOKENS('хорошо', '" + analyzerName + "' )",
+            null,
+            { }
+          ).toArray();
+          assertEqual(1, result.length);
+          assertEqual(9, result[0].length);
+          assertEqual([ "ХО", "ХОР", "ОР", "ОРО", "РО", "РОШ", "ОШ", "ОШО", "ШО" ], result[0]);
+        } finally {
+          analyzers.remove(analyzerName, true);
+        }
+      }
+      // invalid properties
+      {
+        try {
+          analyzers.save(analyzerName, "aql", { queryString:"" } );
+          fail();
+        } catch (err) {
+          assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
+                      err.errorNum);
+        }
+      }
+    },
+    
+    testCustomStopwordsAnalyzer : function() {
+      let analyzerName = "stopwordsUnderTest";
+      try { analyzers.remove(analyzerName, true); } catch(e) {}
+      {
+        analyzers.save(analyzerName,"stopwords",
+                        {stopwords:["QWE", "qwe", "qqq", "abcd"]}, ["position", "frequency"]);
+        try {
+          let result = db._query(
+            "RETURN TOKENS(['QWE', 'qqq', 'aaa', 'qWe', 'abcd'], '" + analyzerName + "' )",
+            null,
+            { }
+          ).toArray();
+          assertEqual(1, result.length);
+          assertEqual(5, result[0].length);
+          assertEqual([ ], result[0][0]);
+          assertEqual([ ], result[0][1]);
+          assertEqual([ "aaa" ], result[0][2]);
+          assertEqual([ "qWe" ], result[0][3]);
+          assertEqual([ ], result[0][4]);
+        } finally {
+          analyzers.remove(analyzerName, true);
+        }
+      }
+      try { analyzers.remove(analyzerName, true); } catch(e) {}
+      {
+        analyzers.save(analyzerName,"stopwords",
+                        {stopwords:["515745", "717765", "717171"], hex:true}, ["position", "frequency"]);
+        try {
+          let result = db._query(
+            "RETURN TOKENS(['QWE', 'qqq', 'aaa', 'qWe'], '" + analyzerName + "' )",
+            null,
+            { }
+          ).toArray();
+          assertEqual(1, result.length);
+          assertEqual(4, result[0].length);
+          assertEqual([ ], result[0][0]);
+          assertEqual([ ], result[0][1]);
+          assertEqual([ "aaa" ], result[0][2]);
+          assertEqual([ "qWe" ], result[0][3]);
+        } finally {
+          analyzers.remove(analyzerName, true);
+        }
+      }
+    },
+
+    testCustomCollationAnalyzer : function() {
+      let analyzerName = "collationUnderTest";
+      try { analyzers.remove(analyzerName, true); } catch(e) {}
+      try { 
+        analyzers.save(analyzerName,"collation", {}, []);
+        assertTrue(false);
+      } catch (e) { }
+      {
+        analyzers.save(analyzerName,"collation", {locale:"ru_RU.UTf-8"}, []);
+        try {
+          let result = db._query(
+            "RETURN TOKENS('АрангоДБ', '" + analyzerName + "' )",
+            null,
+            { }).toArray();
+          assertEqual(1, result.length);
+          assertEqual(16, result[0][0].length);
+
+          const expected = [
+            39, 6,  1158, 6, 120, 16, 1090, 26, 12,
+            1, 12, 1, 1862, 1537, 1862, 1862];
+
+          assertTrue(
+            _.isEqual(expected, result[0][0].split('').map(c => c.charCodeAt(0))));
+        } finally {
+          analyzers.remove(analyzerName, true);
+        }
+      }
+    },
+    
+    // BTS-712
+    testCustomCollationUtf8Convertable : function() {
+      let analyzerName = "collationUnderTest";
+      let collectionName = "testBTS712";
+      let viewName = "viewTestBTS712";
+      try { analyzers.remove(analyzerName, true); } catch(e) {}
+      try { db._drop(collectionName); } catch(e) {}
+      try { db._dropView(viewName); } catch(e) {}
+      try { 
+        analyzers.save(analyzerName,"collation", {locale:"sv.utf-8"}, []);
+        let col = db._create(collectionName);
+        col.save([ { text: "a" }, { text: "\u00E5" }, { text: "b" }, { text: "z" }, ]);
+        db._createView(viewName, "arangosearch", {
+            links: { [collectionName] : { analyzers: ["collationUnderTest"], includeAllFields: true }}});
+      } catch (e) { }
+      {
+        try {
+          let result = db._query(
+            "FOR d IN " + viewName + " SEARCH ANALYZER(d.text <  TOKENS('Z', '" + analyzerName +
+            "' )[0], '" + analyzerName + "') OPTIONS {waitForSync:true}  RETURN d",
+            null,
+            { }).toArray();
+          assertEqual(3, result.length);
+        } finally {
+          db._dropView(viewName);
+          analyzers.remove(analyzerName, true);
+          db._drop(collectionName);
+        }
+      }
+    },
+
+    testCustomSegmentationAnalyzer : function() {
+      let analyzerName = "segmentationUnderTest";
+      try { analyzers.remove(analyzerName, true); } catch(e) {}
+      {
+        analyzers.save(analyzerName,"segmentation", {}, []);
+        try {
+          let result = db._query(
+            "RETURN TOKENS('Arango DB', '" + analyzerName + "' )",
+            null,
+            { }).toArray();
+          assertEqual(1, result.length);
+          assertTrue(_.isEqual([ "arango", "db" ], result[0]));
+        } finally {
+          analyzers.remove(analyzerName, true);
+        }
+      }
+    },
+
+    testCustomAqlAnalyzerInView : function() {
+      let dbName = "testDb";
+      let colName = "testCollection";
+      let viewName = "testView";
+      db._useDatabase("_system");
+      try { db._dropDatabase(dbName); } catch(e) {}
+      db._createDatabase(dbName);
+      try {
+        db._useDatabase(dbName);
+        let col = db._create(colName);
+        col.save({field:"andrey"});
+        col.save({field:"mike"});
+        col.save({field:"frank"});
+        analyzers.save("calcUnderTest","aql",{queryString:"RETURN SOUNDEX(@param)"});
+        db._createView(viewName, "arangosearch", 
+                                  {links: 
+                                    {[colName]: 
+                                      {storeValues: 'id', 
+                                       includeAllFields:true, 
+                                       analyzers:['calcUnderTest']}}});
+        assertEqual(2, db._query("FOR d IN @@v SEARCH ANALYZER(d.field != SOUNDEX('andrei'), 'calcUnderTest')" + 
+                                 "OPTIONS { waitForSync: true } RETURN d ",
+                                { '@v':viewName }).toArray().length);
+        assertEqual(1, db._query("FOR d IN @@v  " + 
+                                 "SEARCH ANALYZER(d.field == SOUNDEX('andrei'), 'calcUnderTest') OPTIONS { waitForSync: true } RETURN d ",
+                                { '@v':viewName }).toArray().length);
+      } finally {
+        db._useDatabase("_system");
+        db._dropDatabase(dbName);
+      }
+    },
+    
+    testCustomAqlAnalyzerNumericInView : function() {
+      let dbName = "testDb";
+      let colName = "testCollection";
+      let viewName = "testView";
+      db._useDatabase("_system");
+      try { db._dropDatabase(dbName); } catch(e) {}
+      db._createDatabase(dbName);
+      try {
+        db._useDatabase(dbName);
+        let col = db._create(colName);
+        col.save({field:"1"});
+        col.save({field:"2"});
+        col.save({field:"3"});
+        analyzers.save("calcUnderTest","aql",{queryString:"RETURN TO_NUMBER(@param)",
+                                              returnType:"number"});
+        db._createView(viewName, "arangosearch", 
+                                  {links: 
+                                    {[colName]: 
+                                      {storeValues: 'id', 
+                                       includeAllFields:true, 
+                                       analyzers:['calcUnderTest']}}});
+        let res1 = db._query("FOR d IN @@v SEARCH d.field < 2" + 
+                             "OPTIONS { waitForSync: true } RETURN d ",
+                             { '@v':viewName }).toArray();
+        assertEqual(1, res1.length);
+        assertEqual("1", res1[0].field);
+        let res3 = db._query("FOR d IN @@v  " + 
+                             "SEARCH d.field == 3 OPTIONS { waitForSync: true } RETURN d ",
+                             { '@v':viewName }).toArray();
+        assertEqual(1, res3.length);
+        assertEqual("3", res3[0].field);
+        let res23 = db._query("FOR d IN @@v SEARCH IN_RANGE(d.field, 2, 3, true, true) " + 
+                             "OPTIONS { waitForSync: true } SORT d.field ASC RETURN d ",
+                             { '@v':viewName }).toArray();
+        assertEqual(2, res23.length);
+        assertEqual("2", res23[0].field);
+        assertEqual("3", res23[1].field);
+      } finally {
+        db._useDatabase("_system");
+        db._dropDatabase(dbName);
+      }
+    },
+    
+    testCustomAqlAnalyzerNumericInViewStringRetval : function() {
+      let dbName = "testDb";
+      let colName = "testCollection";
+      let viewName = "testView";
+      db._useDatabase("_system");
+      try { db._dropDatabase(dbName); } catch(e) {}
+      db._createDatabase(dbName);
+      try {
+        db._useDatabase(dbName);
+        let col = db._create(colName);
+        col.save({field:"1"});
+        col.save({field:"2"});
+        col.save({field:"3"});
+        analyzers.save("calcUnderTest","aql",{queryString:"RETURN TO_STRING(@param)",
+                                              returnType:"number"});
+        db._createView(viewName, "arangosearch", 
+                                  {links: 
+                                    {[colName]: 
+                                      {storeValues: 'id', 
+                                       includeAllFields:true, 
+                                       analyzers:['calcUnderTest']}}});
+        let res1 = db._query("FOR d IN @@v SEARCH d.field < 2" + 
+                             "OPTIONS { waitForSync: true } RETURN d ",
+                             { '@v':viewName }).toArray();
+        assertEqual(1, res1.length);
+        assertEqual("1", res1[0].field);
+        let res3 = db._query("FOR d IN @@v  " + 
+                             "SEARCH d.field == 3 OPTIONS { waitForSync: true } RETURN d ",
+                             { '@v':viewName }).toArray();
+        assertEqual(1, res3.length);
+        assertEqual("3", res3[0].field);
+        let res23 = db._query("FOR d IN @@v SEARCH IN_RANGE(d.field, 2, 3, true, true) " + 
+                             "OPTIONS { waitForSync: true } SORT d.field ASC RETURN d ",
+                             { '@v':viewName }).toArray();
+        assertEqual(2, res23.length);
+        assertEqual("2", res23[0].field);
+        assertEqual("3", res23[1].field);
+      } finally {
+        db._useDatabase("_system");
+        db._dropDatabase(dbName);
+      }
+    },
+    
+    testCustomAqlAnalyzerNumericArrayInView : function() {
+      let dbName = "testDb";
+      let colName = "testCollection";
+      let viewName = "testView";
+      db._useDatabase("_system");
+      try { db._dropDatabase(dbName); } catch(e) {}
+      db._createDatabase(dbName);
+      try {
+        db._useDatabase(dbName);
+        let col = db._create(colName);
+        col.save({field:"1"});
+        col.save({field:"2"});
+        col.save({field:"3"});
+        analyzers.save("calcUnderTest","aql",{queryString:"FOR a IN 1..@param RETURN a",
+                                              returnType:"number"});
+        db._createView(viewName, "arangosearch", 
+                                  {links: 
+                                    {[colName]: 
+                                      {storeValues: 'id', 
+                                       includeAllFields:true, 
+                                       analyzers:['calcUnderTest']}}});
+        let res1 = db._query("FOR d IN @@v SEARCH d.field > 2" + 
+                             "OPTIONS { waitForSync: true } RETURN d ",
+                             { '@v':viewName }).toArray();
+        assertEqual(1, res1.length);
+        assertEqual("3", res1[0].field);
+        let res3 = db._query("FOR d IN @@v  " + 
+                             "SEARCH d.field == 2 OPTIONS { waitForSync: true } SORT d.field ASC RETURN d ",
+                             { '@v':viewName }).toArray();
+        assertEqual(2, res3.length);
+        assertEqual("2", res3[0].field);
+        assertEqual("3", res3[1].field);
+        let res23 = db._query("FOR d IN @@v SEARCH IN_RANGE(d.field, 2, 3, true, true) " + 
+                             "OPTIONS { waitForSync: true } SORT d.field ASC RETURN d ",
+                             { '@v':viewName }).toArray();
+        assertEqual(2, res23.length);
+        assertEqual("2", res23[0].field);
+        assertEqual("3", res23[1].field);
+      } finally {
+        db._useDatabase("_system");
+        db._dropDatabase(dbName);
+      }
+    },
+    
+    testCustomAqlAnalyzerNumericArrayInViewStringRetVal : function() {
+      let dbName = "testDb";
+      let colName = "testCollection";
+      let viewName = "testView";
+      db._useDatabase("_system");
+      try { db._dropDatabase(dbName); } catch(e) {}
+      db._createDatabase(dbName);
+      try {
+        db._useDatabase(dbName);
+        let col = db._create(colName);
+        col.save({field:"1"});
+        col.save({field:"2"});
+        col.save({field:"3"});
+        analyzers.save("calcUnderTest","aql",{queryString:"FOR a IN 1..@param RETURN TO_STRING(a)",
+                                              returnType:"number"});
+        db._createView(viewName, "arangosearch", 
+                                  {links: 
+                                    {[colName]: 
+                                      {storeValues: 'id', 
+                                       includeAllFields:true, 
+                                       analyzers:['calcUnderTest']}}});
+        let res1 = db._query("FOR d IN @@v SEARCH d.field > 2" + 
+                             "OPTIONS { waitForSync: true } RETURN d ",
+                             { '@v':viewName }).toArray();
+        assertEqual(1, res1.length);
+        assertEqual("3", res1[0].field);
+        let res3 = db._query("FOR d IN @@v  " + 
+                             "SEARCH d.field == 2 OPTIONS { waitForSync: true } SORT d.field ASC RETURN d ",
+                             { '@v':viewName }).toArray();
+        assertEqual(2, res3.length);
+        assertEqual("2", res3[0].field);
+        assertEqual("3", res3[1].field);
+        let res23 = db._query("FOR d IN @@v SEARCH IN_RANGE(d.field, 2, 3, true, true) " + 
+                             "OPTIONS { waitForSync: true } SORT d.field ASC RETURN d ",
+                             { '@v':viewName }).toArray();
+        assertEqual(2, res23.length);
+        assertEqual("2", res23[0].field);
+        assertEqual("3", res23[1].field);
+      } finally {
+        db._useDatabase("_system");
+        db._dropDatabase(dbName);
+      }
+    },
+    
+    testCustomAqlAnalyzerStringInView : function() {
+      let dbName = "testDb";
+      let colName = "testCollection";
+      let viewName = "testView";
+      db._useDatabase("_system");
+      try { db._dropDatabase(dbName); } catch(e) {}
+      db._createDatabase(dbName);
+      try {
+        db._useDatabase(dbName);
+        let col = db._create(colName);
+        col.save({field:"1"});
+        col.save({field:"2"});
+        col.save({field:"3"});
+        analyzers.save("calcUnderTest","aql",{queryString:"RETURN @param",
+                                              returnType:"string"});
+        db._createView(viewName, "arangosearch", 
+                                  {links: 
+                                    {[colName]: 
+                                      {storeValues: 'id', 
+                                       includeAllFields:true, 
+                                       analyzers:['calcUnderTest']}}});
+        let res1 = db._query("FOR d IN @@v SEARCH ANALYZER(d.field > '2', 'calcUnderTest')" +  
+                             "OPTIONS { waitForSync: true } RETURN d ",
+                             { '@v':viewName }).toArray();
+        assertEqual(1, res1.length);
+        assertEqual("3", res1[0].field);
+        let res3 = db._query("FOR d IN @@v  " + 
+                             "SEARCH ANALYZER(d.field == '2', 'calcUnderTest') " +
+                             " OPTIONS { waitForSync: true } SORT d.field ASC RETURN d ",
+                             { '@v':viewName }).toArray();
+        assertEqual(1, res3.length);
+        assertEqual("2", res3[0].field);
+        let res23 = db._query("FOR d IN @@v SEARCH ANALYZER(IN_RANGE(d.field, '2', '3', true, true) " +
+                              ", 'calcUnderTest') OPTIONS { waitForSync: true } SORT d.field ASC RETURN d ",
+                             { '@v':viewName }).toArray();
+        assertEqual(2, res23.length);
+        assertEqual("2", res23[0].field);
+        assertEqual("3", res23[1].field);
+      } finally {
+        db._useDatabase("_system");
+        db._dropDatabase(dbName);
+      }
+    },
+    
+    testCustomAqlAnalyzerStringInViewNumberRetVal : function() {
+      let dbName = "testDb";
+      let colName = "testCollection";
+      let viewName = "testView";
+      db._useDatabase("_system");
+      try { db._dropDatabase(dbName); } catch(e) {}
+      db._createDatabase(dbName);
+      try {
+        db._useDatabase(dbName);
+        let col = db._create(colName);
+        col.save({field:"1"});
+        col.save({field:"2"});
+        col.save({field:"3"});
+        analyzers.save("calcUnderTest","aql",{queryString:"RETURN TO_NUMBER(@param)",
+                                              returnType:"string"});
+        db._createView(viewName, "arangosearch", 
+                                  {links: 
+                                    {[colName]: 
+                                      {storeValues: 'id', 
+                                       includeAllFields:true, 
+                                       analyzers:['calcUnderTest']}}});
+        let res1 = db._query("FOR d IN @@v SEARCH ANALYZER(d.field > '2', 'calcUnderTest')" +  
+                             "OPTIONS { waitForSync: true } RETURN d ",
+                             { '@v':viewName }).toArray();
+        assertEqual(1, res1.length);
+        assertEqual("3", res1[0].field);
+        let res3 = db._query("FOR d IN @@v  " + 
+                             "SEARCH ANALYZER(d.field == '2', 'calcUnderTest') " +
+                             " OPTIONS { waitForSync: true } SORT d.field ASC RETURN d ",
+                             { '@v':viewName }).toArray();
+        assertEqual(1, res3.length);
+        assertEqual("2", res3[0].field);
+        let res23 = db._query("FOR d IN @@v SEARCH ANALYZER(IN_RANGE(d.field, '2', '3', true, true) " +
+                              ", 'calcUnderTest') OPTIONS { waitForSync: true } SORT d.field ASC RETURN d ",
+                             { '@v':viewName }).toArray();
+        assertEqual(2, res23.length);
+        assertEqual("2", res23[0].field);
+        assertEqual("3", res23[1].field);
+      } finally {
+        db._useDatabase("_system");
+        db._dropDatabase(dbName);
+      }
+    },
+    
+    testCustomAqlAnalyzerStringArrayInView : function() {
+      let dbName = "testDb";
+      let colName = "testCollection";
+      let viewName = "testView";
+      db._useDatabase("_system");
+      try { db._dropDatabase(dbName); } catch(e) {}
+      db._createDatabase(dbName);
+      try {
+        db._useDatabase(dbName);
+        let col = db._create(colName);
+        col.save({field:"1"});
+        col.save({field:"2"});
+        col.save({field:"3"});
+        analyzers.save("calcUnderTest","aql",{queryString:"FOR a IN 1..@param RETURN a",
+                                              returnType:"string"});
+        db._createView(viewName, "arangosearch", 
+                                  {links: 
+                                    {[colName]: 
+                                      {storeValues: 'id', 
+                                       includeAllFields:true, 
+                                       analyzers:['calcUnderTest']}}});
+        let res1 = db._query("FOR d IN @@v SEARCH ANALYZER(d.field > '2', 'calcUnderTest')" +  
+                             "OPTIONS { waitForSync: true } RETURN d ",
+                             { '@v':viewName }).toArray();
+        assertEqual(1, res1.length);
+        assertEqual("3", res1[0].field);
+        let res3 = db._query("FOR d IN @@v  " + 
+                             "SEARCH ANALYZER(d.field == '2', 'calcUnderTest') " +
+                             " OPTIONS { waitForSync: true } SORT d.field ASC RETURN d ",
+                             { '@v':viewName }).toArray();
+        assertEqual(2, res3.length);
+        assertEqual("2", res3[0].field);
+        assertEqual("3", res3[1].field);
+        let res23 = db._query("FOR d IN @@v SEARCH ANALYZER(IN_RANGE(d.field, '2', '3', true, true) " +
+                              ", 'calcUnderTest') OPTIONS { waitForSync: true } SORT d.field ASC RETURN d ",
+                             { '@v':viewName }).toArray();
+        assertEqual(2, res23.length);
+        assertEqual("2", res23[0].field);
+        assertEqual("3", res23[1].field);
+      } finally {
+        db._useDatabase("_system");
+        db._dropDatabase(dbName);
+      }
+    },
+    
+    testCustomAqlAnalyzerStringArrayInViewNumberRetVal : function() {
+      let dbName = "testDb";
+      let colName = "testCollection";
+      let viewName = "testView";
+      db._useDatabase("_system");
+      try { db._dropDatabase(dbName); } catch(e) {}
+      db._createDatabase(dbName);
+      try {
+        db._useDatabase(dbName);
+        let col = db._create(colName);
+        col.save({field:"1"});
+        col.save({field:"2"});
+        col.save({field:"3"});
+        analyzers.save("calcUnderTest","aql",{queryString:"FOR a IN 1..@param RETURN TO_NUMBER(a)",
+                                              returnType:"string"});
+        db._createView(viewName, "arangosearch", 
+                                  {links: 
+                                    {[colName]: 
+                                      {storeValues: 'id', 
+                                       includeAllFields:true, 
+                                       analyzers:['calcUnderTest']}}});
+        let res1 = db._query("FOR d IN @@v SEARCH ANALYZER(d.field > '2', 'calcUnderTest')" +  
+                             "OPTIONS { waitForSync: true } RETURN d ",
+                             { '@v':viewName }).toArray();
+        assertEqual(1, res1.length);
+        assertEqual("3", res1[0].field);
+        let res3 = db._query("FOR d IN @@v  " + 
+                             "SEARCH ANALYZER(d.field == '2', 'calcUnderTest') " +
+                             " OPTIONS { waitForSync: true } SORT d.field ASC RETURN d ",
+                             { '@v':viewName }).toArray();
+        assertEqual(2, res3.length);
+        assertEqual("2", res3[0].field);
+        assertEqual("3", res3[1].field);
+        let res23 = db._query("FOR d IN @@v SEARCH ANALYZER(IN_RANGE(d.field, '2', '3', true, true) " +
+                              ", 'calcUnderTest') OPTIONS { waitForSync: true } SORT d.field ASC RETURN d ",
+                             { '@v':viewName }).toArray();
+        assertEqual(2, res23.length);
+        assertEqual("2", res23[0].field);
+        assertEqual("3", res23[1].field);
+      } finally {
+        db._useDatabase("_system");
+        db._dropDatabase(dbName);
+      }
+    },
+    
+    testCustomAqlAnalyzerBoolInView : function() {
+      let dbName = "testDb";
+      let colName = "testCollection";
+      let viewName = "testView";
+      db._useDatabase("_system");
+      try { db._dropDatabase(dbName); } catch(e) {}
+      db._createDatabase(dbName);
+      try {
+        db._useDatabase(dbName);
+        let col = db._create(colName);
+        col.save({field:"1"});
+        col.save({field:"2"});
+        col.save({field:"3"});
+        analyzers.save("calcUnderTest","aql",{queryString:"RETURN TO_NUMBER(@param) == 2 ",
+                                              returnType:"bool"});
+        db._createView(viewName, "arangosearch", 
+                                  {links: 
+                                    {[colName]: 
+                                      {storeValues: 'id', 
+                                       includeAllFields:true, 
+                                       analyzers:['calcUnderTest']}}});
+        let res1 = db._query("FOR d IN @@v SEARCH d.field == true" + 
+                             " OPTIONS { waitForSync: true } RETURN d ",
+                             { '@v':viewName }).toArray();
+        assertEqual(1, res1.length);
+        assertEqual("2", res1[0].field);
+        let res3 = db._query("FOR d IN @@v  " + 
+                             "SEARCH d.field == false " +
+                             " OPTIONS { waitForSync: true } SORT d.field ASC RETURN d ",
+                             { '@v':viewName }).toArray();
+        assertEqual(2, res3.length);
+        assertEqual("1", res3[0].field);
+        assertEqual("3", res3[1].field);
+      } finally {
+        db._useDatabase("_system");
+        db._dropDatabase(dbName);
+      }
+    },
+    
+    testCustomAqlAnalyzerBoolInViewNumberRetVal : function() {
+      let dbName = "testDb";
+      let colName = "testCollection";
+      let viewName = "testView";
+      db._useDatabase("_system");
+      try { db._dropDatabase(dbName); } catch(e) {}
+      db._createDatabase(dbName);
+      try {
+        db._useDatabase(dbName);
+        let col = db._create(colName);
+        col.save({field:"1"});
+        col.save({field:"2"});
+        col.save({field:"3"});
+        analyzers.save("calcUnderTest","aql",{queryString:"RETURN TO_NUMBER(@param) == 2 ? 1 : 0 ",
+                                              returnType:"bool"});
+        db._createView(viewName, "arangosearch", 
+                                  {links: 
+                                    {[colName]: 
+                                      {storeValues: 'id', 
+                                       includeAllFields:true, 
+                                       analyzers:['calcUnderTest']}}});
+        let res1 = db._query("FOR d IN @@v SEARCH d.field == true" + 
+                             " OPTIONS { waitForSync: true } RETURN d ",
+                             { '@v':viewName }).toArray();
+        assertEqual(1, res1.length);
+        assertEqual("2", res1[0].field);
+        let res3 = db._query("FOR d IN @@v  " + 
+                             "SEARCH d.field == false " +
+                             " OPTIONS { waitForSync: true } SORT d.field ASC RETURN d ",
+                             { '@v':viewName }).toArray();
+        assertEqual(2, res3.length);
+        assertEqual("1", res3[0].field);
+        assertEqual("3", res3[1].field);
+      } finally {
+        db._useDatabase("_system");
+        db._dropDatabase(dbName);
+      }
+    },
+    
+    testCustomAqlAnalyzerBoolArrayInView : function() {
+      let dbName = "testDb";
+      let colName = "testCollection";
+      let viewName = "testView";
+      db._useDatabase("_system");
+      try { db._dropDatabase(dbName); } catch(e) {}
+      db._createDatabase(dbName);
+      try {
+        db._useDatabase(dbName);
+        let col = db._create(colName);
+        col.save({field:"1"});
+        col.save({field:"2"});
+        col.save({field:"3"});
+        analyzers.save("calcUnderTest","aql",{queryString:"FOR a IN 1..@param RETURN a == 2",
+                                              returnType:"bool"});
+        db._createView(viewName, "arangosearch", 
+                                  {links: 
+                                    {[colName]: 
+                                      {storeValues: 'id', 
+                                       includeAllFields:true, 
+                                       analyzers:['calcUnderTest']}}});
+        let res1 = db._query("FOR d IN @@v SEARCH d.field == true" + 
+                             " OPTIONS { waitForSync: true } RETURN d ",
+                             { '@v':viewName }).toArray();
+        assertEqual(2, res1.length);
+        assertEqual("2", res1[0].field);
+        assertEqual("3", res1[1].field);
+        let res3 = db._query("FOR d IN @@v  " + 
+                             "SEARCH d.field == false OPTIONS " +
+                             "{ waitForSync: true } SORT d.field ASC RETURN d ",
+                             { '@v':viewName }).toArray();
+        assertEqual(3, res3.length);
+        assertEqual("1", res3[0].field);
+        assertEqual("2", res3[1].field);
+        assertEqual("3", res3[2].field);
+      } finally {
+        db._useDatabase("_system");
+        db._dropDatabase(dbName);
+      }
+    },
+    
+    testCustomAqlAnalyzerBoolArrayInViewNumberRetVal : function() {
+      let dbName = "testDb";
+      let colName = "testCollection";
+      let viewName = "testView";
+      db._useDatabase("_system");
+      try { db._dropDatabase(dbName); } catch(e) {}
+      db._createDatabase(dbName);
+      try {
+        db._useDatabase(dbName);
+        let col = db._create(colName);
+        col.save({field:"1"});
+        col.save({field:"2"});
+        col.save({field:"3"});
+        analyzers.save("calcUnderTest","aql",{queryString:"FOR a IN 1..@param RETURN a == 2 ? 1 : 0",
+                                              returnType:"bool"});
+        db._createView(viewName, "arangosearch", 
+                                  {links: 
+                                    {[colName]: 
+                                      {storeValues: 'id', 
+                                       includeAllFields:true, 
+                                       analyzers:['calcUnderTest']}}});
+        let res1 = db._query("FOR d IN @@v SEARCH d.field == true" + 
+                             " OPTIONS { waitForSync: true } RETURN d ",
+                             { '@v':viewName }).toArray();
+        assertEqual(2, res1.length);
+        assertEqual("2", res1[0].field);
+        assertEqual("3", res1[1].field);
+        let res3 = db._query("FOR d IN @@v  " + 
+                             "SEARCH d.field == false OPTIONS " +
+                             "{ waitForSync: true } SORT d.field ASC RETURN d ",
+                             { '@v':viewName }).toArray();
+        assertEqual(3, res3.length);
+        assertEqual("1", res3[0].field);
+        assertEqual("2", res3[1].field);
+        assertEqual("3", res3[2].field);
+      } finally {
+        db._useDatabase("_system");
+        db._dropDatabase(dbName);
+      }
+    },
+    
+    testCustomAqlAnalyzerInvalidTypeInView : function() {
+      try {
+        let invalid  =  analyzers.save("calcUnderTest","aql",{queryString:"FOR a IN 1..@param RETURN a % 2 == 0",
+                                       returnType:"null"});
+        fail();                               
+      } catch(err) {
+        assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
+                    err.errorNum);
+      }
+    },
+    
     testInvalidTypeAnalyzer : function() {
       let analyzerName = "unknownUnderTest";
       try {
-          analyzers.save(analyzerName, "unknownAnalyzerType");
-          analyzers.remove(analyzerName, true); // cleanup (should not get there)
-          fail();
+        analyzers.save(analyzerName, "unknownAnalyzerType");
+        fail();
       } catch (err) {
-          assertEqual(require("internal").errors.ERROR_NOT_IMPLEMENTED.code,
-                      err.errorNum);
+        assertEqual(require("internal").errors.ERROR_NOT_IMPLEMENTED.code,
+                    err.errorNum);
       }
     },
     testDisjunctionWithExclude : function() {
@@ -1396,8 +2759,8 @@ function iResearchFeatureAqlTestSuite () {
       db._useDatabase("_system");
       try { db._dropDatabase(dbName); } catch(e) {}
       db._createDatabase(dbName);
-      db._useDatabase(dbName);
       try {
+        db._useDatabase(dbName);
         let col = db._create(colName);
         col.save({field:"value"});
         db._createView(viewName, "arangosearch", 
@@ -1419,6 +2782,64 @@ function iResearchFeatureAqlTestSuite () {
         let actual2 = db._createStatement({ "query": "FOR s IN `testView` SEARCH ANALYZER(s.field != 'nothing' "+ 
                                                      " OR (EXISTS(s.field) && true == false), 'identity') RETURN s.field" });
         assertEqual(1, actual2.execute().toArray().length);
+      } finally {
+        db._useDatabase("_system");
+        db._dropDatabase(dbName);
+      }
+    },
+    testRemoveAllInJustConsolidated : function() {
+      let dbName = "testDb";
+      let colName = "testCollection";
+      let viewName = "testView";
+      db._useDatabase("_system");
+      try { db._dropDatabase(dbName); } catch(e) {}
+      db._createDatabase(dbName);
+      try {
+        db._useDatabase(dbName);
+        let col = db._create(colName);
+        db._createView(viewName, "arangosearch", 
+                                  {consolidationIntervalMsec: 0, commitIntervalMsec: 0, links: 
+                                    {[colName]: 
+                                      {storeValues: 'id',
+                                       includeAllFields:true, 
+                                       analyzers:['identity']}}});
+        let docs = [];
+        for (let i = 0; i < 1000; ++i) {
+          docs.push({field: i});
+        }
+        col.insert(docs);
+        db._view(viewName).properties({commitIntervalMsec: 10});
+        let res1 = db._query("FOR doc IN " + viewName + " SEARCH doc.field >= 0 " 
+                            + " OPTIONS {waitForSync: true} COLLECT WITH COUNT INTO "
+                            + " length RETURN length").toArray();
+        assertEqual(1, res1.length);
+        assertEqual(1000, res1[0]);
+        db._view(viewName).properties({commitIntervalMsec: 0});
+
+        docs = [];
+        for (let i = 1000; i < 2000; ++i) {
+          docs.push({field: i});
+        }
+        col.insert(docs);
+        db._view(viewName).properties({commitIntervalMsec: 10});
+        let res2 = db._query("FOR doc IN " + viewName + " SEARCH doc.field >= 0 " 
+                            + " OPTIONS {waitForSync: true} COLLECT WITH COUNT INTO "
+                            + " length RETURN length").toArray();
+        assertEqual(1, res2.length);
+        assertEqual(2000, res2[0]);
+        db._view(viewName).properties({commitIntervalMsec: 0});
+        db._query("FOR t IN " + colName + " FILTER t.field < 1500 REMOVE t._key IN " + colName);
+        db._view(viewName).properties({consolidationIntervalMsec: 10});
+        internal.sleep(3); // give consolidation some time
+        col.truncate();
+        db._view(viewName).properties({commitIntervalMsec: 10});
+
+        // force sync
+        let res = db._query("FOR doc IN " + viewName + " SEARCH doc.field >= 0 " 
+                            + " OPTIONS {waitForSync: true} COLLECT WITH COUNT INTO "
+                            + " length RETURN length").toArray();
+        assertEqual(1, res.length);
+        assertEqual(0, res[0]);
       } finally {
         db._useDatabase("_system");
         db._dropDatabase(dbName);

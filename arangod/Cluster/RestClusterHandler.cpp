@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -36,19 +37,20 @@
 #include "Rest/Version.h"
 
 #include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestClusterHandler::RestClusterHandler(application_features::ApplicationServer& server,
-                                       GeneralRequest* request, GeneralResponse* response)
+RestClusterHandler::RestClusterHandler(ArangodServer& server,
+                                       GeneralRequest* request,
+                                       GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
 RestStatus RestClusterHandler::execute() {
   if (_request->requestType() != RequestType::GET) {
-    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED,
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED,
                   "only the GET method is allowed");
     return RestStatus::DONE;
   }
@@ -64,18 +66,23 @@ RestStatus RestClusterHandler::execute() {
     } else if (suffixes[0] == "agency-cache") {
       handleAgencyCache();
       return RestStatus::DONE;
+    } else if (suffixes[0] == "cluster-info") {
+      handleClusterInfo();
+      return RestStatus::DONE;
     }
   }
 
   generateError(
-    Result(TRI_ERROR_HTTP_NOT_FOUND, "expecting /_api/cluster/[endpoints,agency-dump,agency-cache]"));
+      Result(TRI_ERROR_HTTP_NOT_FOUND,
+             "expecting /_api/cluster/[endpoints,agency-dump,agency-cache]"));
 
   return RestStatus::DONE;
 }
 
 void RestClusterHandler::handleAgencyDump() {
   if (!ServerState::instance()->isCoordinator()) {
-    generateError(rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_NOT_IMPLEMENTED,
+    generateError(rest::ResponseCode::NOT_IMPLEMENTED,
+                  TRI_ERROR_NOT_IMPLEMENTED,
                   "only to be executed on coordinators");
     return;
   }
@@ -84,7 +91,8 @@ void RestClusterHandler::handleAgencyDump() {
   if (af->isActive() && !_request->user().empty()) {
     auth::Level lvl;
     if (af->userManager() != nullptr) {
-      lvl = af->userManager()->databaseAuthLevel(_request->user(), "_system", true);
+      lvl = af->userManager()->databaseAuthLevel(_request->user(), "_system",
+                                                 true);
     } else {
       lvl = auth::Level::RW;
     }
@@ -97,32 +105,59 @@ void RestClusterHandler::handleAgencyDump() {
 
   std::shared_ptr<VPackBuilder> body = std::make_shared<VPackBuilder>();
   auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
-  ci.agencyDump(body);
-  generateResult(rest::ResponseCode::OK, body->slice());
+  Result res = ci.agencyDump(body);
+  if (res.ok()) {
+    generateResult(rest::ResponseCode::OK, body->slice());
+  } else {
+    generateError(rest::ResponseCode::SERVICE_UNAVAILABLE, res.errorNumber(),
+                  res.errorMessage());
+  }
 }
 
 void RestClusterHandler::handleAgencyCache() {
-
   AuthenticationFeature* af = AuthenticationFeature::instance();
   if (af->isActive() && !_request->user().empty()) {
     auth::Level lvl;
     if (af->userManager() != nullptr) {
-      lvl = af->userManager()->databaseAuthLevel(_request->user(), "_system", true);
+      lvl = af->userManager()->databaseAuthLevel(_request->user(), "_system",
+                                                 true);
     } else {
       lvl = auth::Level::RW;
     }
     if (lvl < auth::Level::RW) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                    "you need admin rights to produce an agency dump");
+                    "you need admin rights to produce an agency cache dump");
       return;
     }
   }
 
   auto& ac = server().getFeature<ClusterFeature>().agencyCache();
   auto acb = ac.dump();
-  
-  generateResult(rest::ResponseCode::OK, acb->slice());
 
+  generateResult(rest::ResponseCode::OK, acb->slice());
+}
+
+void RestClusterHandler::handleClusterInfo() {
+  AuthenticationFeature* af = AuthenticationFeature::instance();
+  if (af->isActive() && !_request->user().empty()) {
+    auth::Level lvl;
+    if (af->userManager() != nullptr) {
+      lvl = af->userManager()->databaseAuthLevel(_request->user(), "_system",
+                                                 true);
+    } else {
+      lvl = auth::Level::RW;
+    }
+    if (lvl < auth::Level::RW) {
+      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                    "you need admin rights to produce a cluster info dump");
+      return;
+    }
+  }
+
+  auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+  auto dump = ci.toVelocyPack();
+
+  generateResult(rest::ResponseCode::OK, dump.slice());
 }
 
 /// @brief returns information about all coordinator endpoints
@@ -133,8 +168,9 @@ void RestClusterHandler::handleCommandEndpoints() {
   if (ServerState::instance()->isCoordinator()) {
     endpoints = ci.getCurrentCoordinators();
   } else if (ServerState::instance()->isSingleServer()) {
-    ReplicationFeature* replication = ReplicationFeature::INSTANCE;
-    if (!replication->isActiveFailoverEnabled() || !AsyncAgencyCommManager::isEnabled()) {
+    ReplicationFeature& replication = server().getFeature<ReplicationFeature>();
+    if (!replication.isActiveFailoverEnabled() ||
+        !AsyncAgencyCommManager::isEnabled()) {
       generateError(Result(TRI_ERROR_NOT_IMPLEMENTED,
                            "automatic failover is not enabled"));
       return;
@@ -146,8 +182,9 @@ void RestClusterHandler::handleCommandEndpoints() {
     std::string const healthPath = "Supervision/Health";
 
     auto& cache = server().getFeature<ClusterFeature>().agencyCache();
-    auto [acb, idx] = cache.read(std::vector<std::string>{
-        AgencyCommHelper::path(healthPath), AgencyCommHelper::path(leaderPath)});
+    auto [acb, idx] = cache.read(
+        std::vector<std::string>{AgencyCommHelper::path(healthPath),
+                                 AgencyCommHelper::path(leaderPath)});
     auto result = acb->slice();
 
     if (!result.isArray()) {
@@ -175,15 +212,18 @@ void RestClusterHandler::handleCommandEndpoints() {
     }
 
     // {"serverId" : {"Status" : "GOOD", ...}}
-    for (VPackObjectIterator::ObjectPair const& pair : VPackObjectIterator(healthMap)) {
+    for (VPackObjectIterator::ObjectPair const& pair :
+         VPackObjectIterator(healthMap)) {
       TRI_ASSERT(pair.key.isString() && pair.value.isObject());
       if (pair.key.compareString(leaderId) != 0) {
         VPackSlice status = pair.value.get("Status");
         TRI_ASSERT(status.isString());
 
-        if (status.compareString(consensus::Supervision::HEALTH_STATUS_GOOD) == 0) {
+        if (status.compareString(consensus::Supervision::HEALTH_STATUS_GOOD) ==
+            0) {
           endpoints.insert(endpoints.begin(), pair.key.copyString());
-        } else if (status.compareString(consensus::Supervision::HEALTH_STATUS_BAD) == 0) {
+        } else if (status.compareString(
+                       consensus::Supervision::HEALTH_STATUS_BAD) == 0) {
           endpoints.push_back(pair.key.copyString());
         }
       }

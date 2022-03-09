@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,18 +22,20 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_REST_REPLICATION_HANDLER_H
-#define ARANGOD_REST_HANDLER_REST_REPLICATION_HANDLER_H 1
+#pragma once
 
 #include "Aql/types.h"
 #include "Basics/Common.h"
 #include "Basics/Result.h"
 #include "Cluster/ClusterTypes.h"
-#include "Cluster/ResultT.h"
+#include "Basics/ResultT.h"
 #include "Replication/Syncer.h"
 #include "Replication/common-defines.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
 #include "StorageEngine/ReplicationIterator.h"
+
+#include <string>
+#include <unordered_set>
 
 namespace arangodb {
 class ClusterInfo;
@@ -52,28 +54,14 @@ class Methods;
 
 class RestReplicationHandler : public RestVocbaseBaseHandler {
  public:
-  RequestLane lane() const override final {
-    auto const& suffixes = _request->suffixes();
-
-    size_t const len = suffixes.size();
-    if (len >= 1) {
-      std::string const& command = suffixes[0];
-      if (command == AddFollower || command == HoldReadLockCollection ||
-          command == RemoveFollower || command == LoggerFollow) {
-        return RequestLane::SERVER_REPLICATION_CATCHUP;
-      }
-    }
-    return RequestLane::SERVER_REPLICATION;
-  }
+  RequestLane lane() const override final;
 
   RestStatus execute() override;
 
   // Never instantiate this.
   // Only specific implementations allowed
  protected:
-  RestReplicationHandler(application_features::ApplicationServer&,
-                         GeneralRequest*, GeneralResponse*);
-  ~RestReplicationHandler();
+  RestReplicationHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
 
  public:
   static std::string const Revisions;
@@ -89,7 +77,6 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   static std::string const LoggerTickRanges;
   static std::string const LoggerFirstTick;
   static std::string const LoggerFollow;
-  static std::string const OpenTransactions;
   static std::string const Batch;
   static std::string const Barrier;
   static std::string const Inventory;
@@ -100,7 +87,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   static std::string const RestoreData;
   static std::string const RestoreView;
   static std::string const Sync;
-  static std::string const MakeSlave;
+  static std::string const MakeFollower;
   static std::string const ServerId;
   static std::string const ApplierConfig;
   static std::string const ApplierStart;
@@ -123,10 +110,10 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   bool isCoordinatorError();
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief turn the server into a slave of another
+  /// @brief turn the server into a follower of another
   //////////////////////////////////////////////////////////////////////////////
 
-  void handleCommandMakeSlave();
+  void handleCommandMakeFollower();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief forward a command in the coordinator case
@@ -243,12 +230,6 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   void handleCommandHoldReadLockCollection();
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief check if we are holding a read lock on a collection
-  //////////////////////////////////////////////////////////////////////////////
-
-  void handleCommandCheckHoldReadLockCollection();
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief cancel holding a read lock on a collection
   //////////////////////////////////////////////////////////////////////////////
 
@@ -263,7 +244,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the state of the replication logger
   /// @route GET logger-state
-  /// @caller Syncer::getMasterState
+  /// @caller Syncer::getLeaderState
   /// @response VPackObject describing the ServerState in a certain point
   ///           * state (server state)
   ///           * server (version / id)
@@ -292,13 +273,6 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   void handleCommandLoggerTickRanges();
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief return the revision tree for a given collection, if available
-  /// @response serialized revision tree, binary
-  //////////////////////////////////////////////////////////////////////////////
-
-  void handleCommandRevisionTree();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief rebuild the revision tree for a given collection, if allowed
@@ -338,10 +312,10 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
   ReplicationApplier* getApplier(bool& global);
 
- private:
+ protected:
   struct RevisionOperationContext {
     uint64_t batchId;
-    TRI_voc_rid_t resume;
+    RevisionId resume;
     std::string cname;
     std::shared_ptr<LogicalCollection> collection;
     std::unique_ptr<ReplicationIterator> iter;
@@ -349,31 +323,40 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
 
   bool prepareRevisionOperation(RevisionOperationContext&);
 
+ private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief restores the structure of a collection
   //////////////////////////////////////////////////////////////////////////////
 
-  Result processRestoreCollection(VPackSlice const&, bool overwrite, bool force);
+  Result processRestoreCollection(VPackSlice const&, bool overwrite, bool force,
+                                  bool ignoreDistributeShardsLikeErrors);
+
+  /// @brief helper function for processRestoreCoordinatorAnalyzersBatch() and
+  /// processRestoreUsersBatch().
+  Result parseBatchForSystemCollection(
+      std::string const& collectionName, VPackBuilder& documentsToInsert,
+      std::unordered_set<std::string>& documentsToRemove,
+      bool generateNewRevisionIds);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief restores the structure of a collection, coordinator case
+  /// @brief restores the data of the _analyzers collection in cluster
   //////////////////////////////////////////////////////////////////////////////
 
-  Result processRestoreCollectionCoordinator(VPackSlice const& collection,
-                                             bool dropExisting, bool force,
-                                             bool ignoreDistributeShardsLikeErrors);
+  Result processRestoreCoordinatorAnalyzersBatch(bool generateNewRevisionIds);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief restores the data of the _users collection
   //////////////////////////////////////////////////////////////////////////////
 
-  Result processRestoreUsersBatch(std::string const& colName);
+  Result processRestoreUsersBatch(bool generateNewRevisionIds);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief restores the data of a collection
   //////////////////////////////////////////////////////////////////////////////
 
-  Result processRestoreDataBatch(transaction::Methods& trx, std::string const& colName, bool generateNewRevisionIds);
+  Result processRestoreDataBatch(transaction::Methods& trx,
+                                 std::string const& colName,
+                                 bool generateNewRevisionIds);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief restores the indexes of a collection
@@ -397,15 +380,17 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   /// @brief parse an input batch
   //////////////////////////////////////////////////////////////////////////////
 
-  Result parseBatch(std::string const& collectionName,
-                    std::unordered_map<std::string, VPackValueLength>& latest,
-                    VPackBuilder& allMarkers);
+  Result parseBatch(transaction::Methods& trx,
+                    std::string const& collectionName,
+                    VPackBuilder& documentToInsert,
+                    std::unordered_set<std::string>& documentsToRemove,
+                    bool generateNewRevisionIds);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates a collection, based on the VelocyPack provided
   //////////////////////////////////////////////////////////////////////////////
 
-  int createCollection(VPackSlice, arangodb::LogicalCollection**);
+  ErrorCode createCollection(VPackSlice slice);
 
  private:
   //////////////////////////////////////////////////////////////////////////////
@@ -440,7 +425,9 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   ///        before it was actually registered and therefor only seldomly
   //////////////////////////////////////////////////////////////////////////////
 
-  static std::unordered_map<std::string, std::chrono::time_point<std::chrono::steady_clock>> _tombstones;
+  static std::unordered_map<std::string,
+                            std::chrono::time_point<std::chrono::steady_clock>>
+      _tombstones;
 
  protected:
   //////////////////////////////////////////////////////////////////////////////
@@ -509,23 +496,30 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
 
   virtual void handleCommandDump() = 0;
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief return the revision tree for a given collection, if available
+  //////////////////////////////////////////////////////////////////////////////
+
+  virtual void handleCommandRevisionTree() = 0;
+
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Cleanup tombstones that have expired
   //////////////////////////////////////////////////////////////////////////////
   void timeoutTombstones() const;
 
-  bool isTombstoned(aql::QueryId id) const;
+  bool isTombstoned(TransactionId id) const;
 
-  void registerTombstone(aql::QueryId id) const;
+  void registerTombstone(TransactionId id) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Create a blocking transaction for the given collectionName,
   ///        It will be registered with the given id, and it will have
   ///        the given time to live.
   //////////////////////////////////////////////////////////////////////////////
-  Result createBlockingTransaction(TRI_voc_tid_t tid, LogicalCollection& col, double ttl,
-                                   AccessMode::Type access, RebootId const& rebootId,
+  Result createBlockingTransaction(TransactionId tid, LogicalCollection& col,
+                                   double ttl, AccessMode::Type access,
+                                   RebootId const& rebootId,
                                    std::string const& serverId);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -535,14 +529,14 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   ///        Will return error, if the lock has expired.
   //////////////////////////////////////////////////////////////////////////////
 
-  ResultT<bool> isLockHeld(TRI_voc_tick_t tid) const;
+  Result isLockHeld(TransactionId tid) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief compute a local checksum for the given collection
   ///        Will return error if the lock has expired.
   //////////////////////////////////////////////////////////////////////////////
 
-  ResultT<std::string> computeCollectionChecksum(aql::QueryId readLockId,
+  ResultT<std::string> computeCollectionChecksum(TransactionId readLockId,
                                                  LogicalCollection* col) const;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -552,7 +546,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   ///        Will return error if the lock has expired or is not found.
   //////////////////////////////////////////////////////////////////////////////
 
-  ResultT<bool> cancelBlockingTransaction(aql::QueryId id) const;
+  ResultT<bool> cancelBlockingTransaction(TransactionId id) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Validate that the requesting user has access rights to this route
@@ -562,4 +556,3 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   Result testPermissions();
 };
 }  // namespace arangodb
-#endif

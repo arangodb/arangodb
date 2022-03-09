@@ -4,12 +4,12 @@ import Specifics from './specifics';
 import styled from 'styled-components';
 import { ApplicationState } from '../../store';
 import { ClusterActions } from '../../store/cluster/types';
-import { rebalanceShards, fetchShardOverview } from '../../store/cluster/actions';
-import { taskRepeater, Task } from '../../actions/taskRepeater';
+import { fetchShardOverview, rebalanceShards } from '../../store/cluster/actions';
+import { Task, taskRepeater } from '../../actions/taskRepeater';
 
 type OverviewProps = {
   shards: Array<string>,
-  selected : string
+  selected: string
 };
 
 type OverviewActions = {
@@ -30,45 +30,55 @@ const mapStateToProps = (state : ApplicationState) : OverviewProps => {
   const shards = Object.keys(shardDistribution)
     /* .filter(name => name.charAt(0) !== '_') */
     .sort();
-  return { shards, selected };
+  return {
+    shards,
+    selected
+  };
 };
 
 const mapDispatch = (dispatch : Dispatch<ClusterActions>) : OverviewActions => {
   return {
-    rebalanceShards: () : void => { dispatch(rebalanceShards()); },
-    fetchShardOverview: () : void => { dispatch(fetchShardOverview()); }
+    rebalanceShards: (): void => {
+      dispatch(rebalanceShards());
+    },
+    fetchShardOverview: (): void => {
+      dispatch(fetchShardOverview());
+    }
   };
 };
 
 class ShardUpdateTask implements Task {
-  private call : () => void;
+  private readonly call: () => void;
 
-  constructor(call : () => void) {
-   this.call = call;
+  constructor (call: () => void) {
+    this.call = call;
   }
 
-  execute() {
+  execute () {
     return this.call();
   }
 }
 
 class Overview extends Component<OverviewPropsAndActions> {
 
-  componentWillMount() {
+  componentWillMount () {
     const { fetchShardOverview } = this.props;
     taskRepeater.registerTask("updateShardList", new ShardUpdateTask(fetchShardOverview));
   }
 
-  componentWillUnmount() {
+  componentWillUnmount () {
     taskRepeater.stopTask("updateShardList");
   }
 
-  render() {
+  render () {
     const { shards, selected } = this.props;
     return (
       <div>
-        { shards.map( name => <Specifics key={name} name={name} selected={selected === name} />) }
-        <SuccessButton onClick={ e => {e.preventDefault(); this.props.rebalanceShards()}} >
+        {shards.map(name => <Specifics key={name} name={name} selected={selected === name}/>)}
+        <SuccessButton onClick={e => {
+          e.preventDefault();
+          this.props.rebalanceShards();
+        }}>
           RebalanceShards
         </SuccessButton>
       </div>

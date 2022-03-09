@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PROGRAM_OPTIONS_SECTION_H
-#define ARANGODB_PROGRAM_OPTIONS_SECTION_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "ProgramOptions/Option.h"
@@ -36,9 +36,11 @@ struct Section {
   // sections are default copy-constructible and default movable
 
   Section(std::string const& name, std::string const& description,
-          std::string const& alias, bool hidden, bool obsolete)
+          std::string const& link, std::string const& alias, bool hidden,
+          bool obsolete)
       : name(name),
         description(description),
+        link(link),
         alias(alias),
         hidden(hidden),
         obsolete(obsolete),
@@ -53,13 +55,15 @@ struct Section {
   // print help for a section
   // the special search string "." will show help for all sections, even if
   // hidden
-  void printHelp(std::string const& search, size_t tw, size_t ow, bool colors) const;
+  void printHelp(std::string const& search, size_t tw, size_t ow,
+                 bool colors) const;
 
   // determine display width for a section
   size_t optionsWidth() const;
 
   std::string name;
   std::string description;
+  std::string link;
   std::string alias;
   bool hidden;
   bool obsolete;
@@ -67,19 +71,21 @@ struct Section {
 
   // program options of the section
   std::map<std::string, Option> options;
+
+  // sub-headlines
+  std::map<std::string, std::string> headlines;
 };
 
 /// @brief section only available in enterprise builds
 /// must have the same storage layout as struct Section
 struct EnterpriseSection : public Section {
   EnterpriseSection(std::string const& name, std::string const& description,
-                    std::string const& alias, bool hidden, bool obsolete)
-      : Section(name, description, alias, hidden, obsolete) {
+                    std::string const& link, std::string const& alias,
+                    bool hidden, bool obsolete)
+      : Section(name, description, link, alias, hidden, obsolete) {
     enterpriseOnly = true;
   }
 };
 
 }  // namespace options
 }  // namespace arangodb
-
-#endif

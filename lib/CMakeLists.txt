@@ -1,7 +1,5 @@
 # -*- mode: CMAKE; -*-
 
-include_directories(.)
-
 ################################################################################
 ## LIB_ARANGO
 ################################################################################
@@ -14,12 +12,9 @@ if (MSVC)
     Basics/threads-win32.cpp
     Basics/win-utils.cpp
     Zip/iowin32.cpp
-    ApplicationFeatures/WindowsServiceFeature.cpp
   )
 else ()
   set(LIB_ARANGO_POSIX
-    ApplicationFeatures/DaemonFeature.cpp
-    ApplicationFeatures/SupervisorFeature.cpp
     Basics/locks-posix.cpp
     Basics/memory-map-posix.cpp
     Basics/terminal-utils-posix.cpp
@@ -30,38 +25,16 @@ else ()
 endif ()
 
 set(LIB_ARANGO_LINENOISE
-  ${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/src/ConvertUTF.cpp
-  ${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/src/linenoise.cpp
-  ${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/src/wcwidth.cpp
   Utilities/LinenoiseShell.cpp
+  Utilities/LineEditor.cpp
+  Utilities/ShellBase.cpp
 )
 
-set(LIB_ARANGO_VPACK
-  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/AttributeTranslator.cpp
-  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Builder.cpp
-  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Collection.cpp
-  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Compare.cpp
-  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Dumper.cpp
-  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Exception.cpp
-  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/HexDump.cpp
-  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Iterator.cpp
-  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Options.cpp
-  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Parser.cpp
-  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Serializable.cpp
-  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Slice.cpp
-  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/SliceStaticData.cpp
-  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/StringRef.cpp
-  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Utf8Helper.cpp
-  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Value.cpp
-  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/ValueType.cpp
-  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Validator.cpp
-  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Version.cpp
-  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/asm-functions.cpp
-  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/asm-utf8check.cpp
-  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/fpconv.cpp
-  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/velocypack-common.cpp
-  ${PROJECT_SOURCE_DIR}/lib/Basics/xxhash.cpp
-  )
+set(LIB_ARANGO_DATE
+  ${PROJECT_SOURCE_DIR}/3rdParty/date/src/tz.cpp
+)
+add_definitions("-DHAS_REMOTE_API=0")
+
 
 add_definitions("-DARCHITECTURE_OPTIMIZATIONS=${ARCHITECTURE_OPTIMIZATIONS}")
 
@@ -88,7 +61,7 @@ add_library(arango STATIC
   ${LIB_ARANGO_MSVC}
   ${LIB_ARANGO_POSIX}
   ${LIB_ARANGO_LINENOISE}
-  ${LIB_ARANGO_VPACK}
+  ${LIB_ARANGO_DATE}
   ${LIB_CLOCK_GETTIME}
   ${LIB_ASM_SOURCES}
   ApplicationFeatures/ApplicationFeature.cpp
@@ -96,13 +69,8 @@ add_library(arango STATIC
   ApplicationFeatures/ApplicationServer.cpp
   ApplicationFeatures/ConfigFeature.cpp
   ApplicationFeatures/CommunicationFeaturePhase.cpp
-  ApplicationFeatures/EnvironmentFeature.cpp
   ApplicationFeatures/GreetingsFeature.cpp
-  ApplicationFeatures/GreetingsFeaturePhase.cpp
   ApplicationFeatures/LanguageFeature.cpp
-  ApplicationFeatures/MaxMapCountFeature.cpp
-  ApplicationFeatures/NonceFeature.cpp
-  ApplicationFeatures/PrivilegeFeature.cpp
   ApplicationFeatures/ShellColorsFeature.cpp
   ApplicationFeatures/ShutdownFeature.cpp
   ApplicationFeatures/TempFeature.cpp
@@ -112,12 +80,18 @@ add_library(arango STATIC
   Basics/AttributeNameParser.cpp
   Basics/ConditionLocker.cpp
   Basics/ConditionVariable.cpp
+  Basics/CpuUsageSnapshot.cpp
   Basics/CrashHandler.cpp
   Basics/DataProtector.cpp
+  Basics/DebugRaceController.cpp
   Basics/EncodingUtils.cpp
+  Basics/ErrorCode.cpp
+  Basics/FeatureFlags.cpp
+  Basics/ResultError.cpp
   Basics/Exceptions.cpp
   Basics/FileUtils.cpp
   Basics/FunctionUtils.cpp
+  Basics/GlobalResourceMonitor.cpp
   Basics/HybridLogicalClock.cpp
   Basics/LdapUrlParser.cpp
   Basics/LocalTaskQueue.cpp
@@ -132,16 +106,17 @@ add_library(arango STATIC
   Basics/Result.cpp
   Basics/FileResult.cpp
   Basics/Identifier.cpp
+  Basics/IndexIter.h
+  Basics/ResourceUsage.cpp
   Basics/RocksDBLogger.cpp
   Basics/RocksDBUtils.cpp
-  Basics/SharedPRNG.cpp
   Basics/StaticStrings.cpp
   Basics/StringBuffer.cpp
   Basics/StringHeap.cpp
   Basics/StringUtils.cpp
   Basics/Thread.cpp
+  Basics/UnshackledMutex.cpp
   Basics/Utf8Helper.cpp
-  Basics/VelocyPackDumper.cpp
   Basics/VelocyPackHelper.cpp
   Basics/application-exit.cpp
   Basics/CleanupFunctions.cpp
@@ -154,10 +129,8 @@ add_library(arango STATIC
   Basics/files.cpp
   Basics/fpconv.cpp
   Basics/hashes.cpp
-  Basics/json.cpp
   Basics/levenshtein.cpp
   Basics/memory.cpp
-  Basics/prime-numbers.cpp
   Basics/process-utils.cpp
   Basics/signals.cpp
   Basics/socket-utils.cpp
@@ -165,21 +138,20 @@ add_library(arango STATIC
   Basics/terminal-utils.cpp
   Basics/tri-strings.cpp
   Basics/tri-zip.cpp
-  Basics/vector.cpp
-  Basics/voc-errors.cpp
-  Basics/exitcodes.cpp
-  Basics/xxhash.cpp
   Containers/MerkleTree.cpp
+  Containers/MerkleTreeHelpers.cpp
+  Containers/ImmerMemoryPolicy.h
   Endpoint/Endpoint.cpp
   Endpoint/EndpointIp.cpp
   Endpoint/EndpointIpV4.cpp
   Endpoint/EndpointIpV6.cpp
   Endpoint/EndpointList.cpp
   Futures/Future.cpp
+  Logger/Escaper.cpp
   Logger/LogAppender.cpp
   Logger/LogAppenderFile.cpp
   Logger/LogAppenderSyslog.cpp
-  Logger/LogBufferFeature.cpp
+  Logger/LogContext.cpp
   Logger/LogLevel.cpp
   Logger/LogThread.cpp
   Logger/LogTopic.cpp
@@ -211,34 +183,86 @@ add_library(arango STATIC
   Rest/HttpResponse.cpp
   Rest/Version.cpp
   SimpleHttpClient/ClientConnection.cpp
+  SimpleHttpClient/ConnectionCache.cpp
   SimpleHttpClient/GeneralClientConnection.cpp
+  SimpleHttpClient/HttpResponseChecker.cpp
   SimpleHttpClient/SimpleHttpClient.cpp
   SimpleHttpClient/SimpleHttpResult.cpp
   SimpleHttpClient/SslClientConnection.cpp
   Ssl/SslFeature.cpp
   Ssl/SslInterface.cpp
   Ssl/ssl-helper.cpp
-  Utilities/LineEditor.cpp
   Utilities/ScriptLoader.cpp
-  Utilities/ShellBase.cpp
+  Utilities/IsArangoExecutable.cpp
+  Utilities/NameValidator.cpp
   Zip/ioapi.cpp
   Zip/unzip.cpp
   Zip/zip.cpp
   ${ADDITIONAL_LIB_ARANGO_SOURCES}
 )
 
+# The following is necessary to compile MerkleTree.cpp without RTTI.
+# RTTI needs to be disabled because the file contains a class that
+# is derived from some Snappy base class, which itself is compiled
+# with -fno-rtti. Mixing RTTI code and non-RTTI code can cause
+# problems during linking. Here is what "man g++" has to say:
+#     Mixing code compiled with -frtti with that compiled with
+#     -fno-rtti may not work. For example, programs may fail to
+#     link if a class compiled with -fno-rtti is used as a
+#     base for a class compiled with -frtti.
+if(MSVC)
+  set_source_files_properties(
+    Containers/MerkleTreeHelpers.cpp
+    PROPERTIES COMPILE_FLAGS "/GR-")
+else()
+  set_source_files_properties(
+    Containers/MerkleTreeHelpers.cpp
+    PROPERTIES COMPILE_FLAGS "-fno-rtti")
+endif()
+
+
 target_link_libraries(arango
   s2
   boost_system
   boost_boost
+  velocypack
+  linenoise-ng
+  date_interface
   ${V8_LIBS}
   ${SYSTEM_LIBRARIES}
+  ${ICU_LIBS}
 )
 
-add_dependencies(arango snappy-static)
+# this is "."
+target_include_directories(arango PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+
+# some auto-generated headers live here, like "Basics/build.h"
+target_include_directories(arango PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
+target_include_directories(arango PUBLIC ${BUILD_DIR})
+
+target_include_directories(arango SYSTEM PUBLIC ${PROJECT_SOURCE_DIR}/3rdParty/function2)
+target_include_directories(arango SYSTEM PUBLIC ${OPENSSL_INCLUDE_DIR})
+target_include_directories(arango SYSTEM PUBLIC ${ICU_INCLUDE_DIR})
+
+target_link_libraries(arango rocksdb_interface)
+target_link_libraries(arango zlib_interface)
+target_link_libraries(arango v8_interface)
+
+add_dependencies(arango v8_build)
+
+set(FROZEN_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/3rdParty/iresearch/external/frozen/include")
+set(ABSL_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/3rdParty/iresearch/external/absl")
+
+target_include_directories(arango
+  PUBLIC
+  ${FROZEN_INCLUDE_DIR}
+  ${ABSL_INCLUDE_DIR}
+)
+
+add_dependencies(arango snappy)
+target_link_libraries(arango snappy)
 
 set(SNAPPY_INCLUDE_DIR "${SNAPPY_SOURCE_DIR};${SNAPPY_BUILD_DIR}" CACHE PATH "relation to snappy")
-include_directories(${SNAPPY_INCLUDE_DIR})
 
 if (USE_LIBUNWIND)
   target_link_libraries(arango ${LIBUNWIND_LIB})
@@ -259,6 +283,29 @@ if (USE_ENTERPRISE)
   target_compile_definitions(arango PUBLIC "-DUSE_ENTERPRISE=1")
   target_include_directories(arango PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
 endif()
+
+
+################################################################################
+## LIB_ARANGO_AIR_SOURCES
+################################################################################
+
+set(LIB_ARANGO_AIR_SOURCES
+  Greenspun/Interpreter.cpp
+  Greenspun/Primitives.cpp
+  Greenspun/lib/DateTime.cpp
+  Greenspun/lib/Math.cpp
+  Greenspun/lib/Strings.cpp
+  Greenspun/lib/Lists.cpp
+  Greenspun/lib/Lists.h
+  Greenspun/lib/Dicts.cpp
+  Greenspun/lib/Dicts.h)
+
+add_library(arango_greenspun STATIC
+        ${LIB_ARANGO_AIR_SOURCES})
+
+target_link_libraries(arango_greenspun immer)
+target_link_libraries(arango_greenspun arango)
+target_link_libraries(arango_greenspun date_interface)
 
 ################################################################################
 ## LIB_ARANGO_GEO
@@ -283,7 +330,7 @@ target_link_libraries(arango_geo
   s2
 )
 
-if (WINDOWS)
+if (MSVC)
   target_compile_options(arango_geo PUBLIC "-J")
 endif()
 
@@ -319,14 +366,29 @@ add_library(arango_v8_no_deadline STATIC
   )
 
 target_link_libraries(arango_v8
-    boost_system
-    boost_boost
-)
+  boost_system
+  boost_boost
+  velocypack
+  )
+
+target_include_directories(arango_v8 PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(arango_v8 PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
+target_include_directories(arango_v8 SYSTEM PUBLIC ${OPENSSL_INCLUDE_DIR})
+target_include_directories(arango_v8 SYSTEM PUBLIC ${ICU_INCLUDE_DIR} ${ABSL_INCLUDE_DIR})
+target_include_directories(arango_v8_deadline PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${ABSL_INCLUDE_DIR})
+target_include_directories(arango_v8_no_deadline PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+
+target_link_libraries(arango_v8 v8_interface)
+target_link_libraries(arango_v8_deadline arango v8_interface)
+target_link_libraries(arango_v8_no_deadline v8_interface)
+
+target_link_libraries(arango_v8_deadline velocypack)
+target_link_libraries(arango_v8_no_deadline velocypack)
 
 # Enterprise
 if (USE_ENTERPRISE)
   target_compile_definitions(arango_v8 PUBLIC "-DUSE_ENTERPRISE=1")
-  target_include_directories(arango_v8 PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
+  target_include_directories(arango_v8 PRIVATE "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
 endif()
 
 if (USE_FAIL_ON_WARNINGS)
@@ -334,6 +396,12 @@ if (USE_FAIL_ON_WARNINGS)
     target_compile_options(arango_v8 PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
     target_compile_options(arango_geo PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS96)
     target_compile_options(arango PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+    if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang") # clang-cl.exe
+      # There's a warning about /MP being unused if compiling only a single file
+      target_compile_options(arango_v8 PRIVATE -Wno-unused-command-line-argument)
+      target_compile_options(arango_geo PRIVATE -Wno-unused-command-line-argument)
+      target_compile_options(arango PRIVATE -Wno-unused-command-line-argument)
+    endif()
   else ()
     target_compile_options(arango_v8 PRIVATE -Werror -Wno-error=deprecated-declarations)
     target_compile_options(arango_geo PRIVATE -Werror -Wno-error=deprecated-declarations)

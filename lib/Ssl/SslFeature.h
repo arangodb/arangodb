@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_APPLICATION_FEATURES_SSL_FEATURE_H
-#define ARANGODB_APPLICATION_FEATURES_SSL_FEATURE_H 1
+#pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
@@ -30,10 +30,20 @@
 #include "Basics/asio_ns.h"
 
 namespace arangodb {
+namespace application_features {
+class GreetingsFeaturePhase;
+}
 
 class SslFeature final : public application_features::ApplicationFeature {
  public:
-  explicit SslFeature(application_features::ApplicationServer& server);
+  static constexpr std::string_view name() noexcept { return "Ssl"; }
+
+  template<typename Server>
+  explicit SslFeature(Server& server)
+      : application_features::ApplicationFeature(server, *this) {
+    setOptional(true);
+    startsAfter<application_features::GreetingsFeaturePhase, Server>();
+  }
 
   void prepare() override final;
   void unprepare() override final;
@@ -43,5 +53,3 @@ class SslFeature final : public application_features::ApplicationFeature {
 };
 
 }  // namespace arangodb
-
-#endif

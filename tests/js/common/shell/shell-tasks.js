@@ -54,10 +54,10 @@ function TaskSuite () {
     });
   };
 
-  var getTasks = function () {
+  var getTasks = function (sortAttribute = 'id') {
     var sorter = function (l, r) {
-      if (l.id !== r.id) {
-        return (l.id < r.id ? -1 : 1);
+      if (l[sortAttribute] !== r[sortAttribute]) {
+        return (l[sortAttribute] < r[sortAttribute] ? -1 : 1);
       }
       return 0;
     };
@@ -302,7 +302,7 @@ function TaskSuite () {
         offset: 30
       });
 
-      var t = getTasks();
+      var t = getTasks('name');
 
       assertEqual(3, t.length);
       assertEqual(task1.id, t[0].id);
@@ -344,7 +344,7 @@ function TaskSuite () {
         period: 1
       });
 
-      var t = getTasks();
+      var t = getTasks('id');
 
       assertEqual(1, t.length);
       assertEqual(task1.id, t[0].id);
@@ -360,7 +360,7 @@ function TaskSuite () {
         period: 2
       });
 
-      t = getTasks();
+      t = getTasks('id');
 
       assertEqual(2, t.length);
       assertEqual(task1.id, t[0].id);
@@ -376,7 +376,7 @@ function TaskSuite () {
 
       tasks.unregister(task1);
 
-      t = getTasks();
+      t = getTasks('id');
 
       assertEqual(1, t.length);
       assertEqual(task2.id, t[0].id);
@@ -387,7 +387,7 @@ function TaskSuite () {
 
       tasks.unregister(task2);
 
-      t = getTasks();
+      t = getTasks('id');
 
       assertEqual(0, t.length);
     },

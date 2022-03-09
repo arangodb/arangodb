@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_FUNCTION_UTILS_H
-#define ARANGODB_BASICS_FUNCTION_UTILS_H 1
+#pragma once
 
 #include <algorithm>
 #include <chrono>
@@ -47,9 +46,10 @@ namespace function_utils {
  * If a given attempt fails, a log message will be made in the following form:
  * "Failed to " + message + ", waiting to retry..."
  */
-template <typename R>
+template<typename R>
 std::pair<bool, R> retryUntilTimeout(
-    std::function<std::pair<bool, R>()> fn, LogTopic& topic, std::string const& message,
+    std::function<std::pair<bool, R>()> fn, LogTopic& topic,
+    std::string const& message,
     std::chrono::nanoseconds retryInterval = std::chrono::seconds(1),
     std::chrono::nanoseconds timeout = std::chrono::minutes(5)) {
   auto start = std::chrono::steady_clock::now();
@@ -60,7 +60,8 @@ std::pair<bool, R> retryUntilTimeout(
     if (success) {
       break;
     }
-    LOG_TOPIC("18d0a", INFO, topic) << "Failed to " << message << ", waiting to retry...";
+    LOG_TOPIC("18d0a", INFO, topic)
+        << "Failed to " << message << ", waiting to retry...";
     std::this_thread::sleep_for(retryInterval);
   }
   return std::make_pair(success, value);
@@ -77,12 +78,11 @@ std::pair<bool, R> retryUntilTimeout(
  * If a given attempt fails, a log message will be made in the following form:
  * "Failed to " + message + ", waiting to retry..."
  */
-bool retryUntilTimeout(std::function<bool()> fn, LogTopic& topic, std::string const& message,
-                       std::chrono::nanoseconds retryInterval = std::chrono::seconds(1),
-                       std::chrono::nanoseconds timeout = std::chrono::minutes(5));
+bool retryUntilTimeout(
+    std::function<bool()> fn, LogTopic& topic, std::string const& message,
+    std::chrono::nanoseconds retryInterval = std::chrono::seconds(1),
+    std::chrono::nanoseconds timeout = std::chrono::minutes(5));
 
 }  // namespace function_utils
 }  // namespace basics
 }  // namespace arangodb
-
-#endif

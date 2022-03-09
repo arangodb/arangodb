@@ -1,5 +1,27 @@
-#ifndef ARANGOD_VOCBASE_METHODS_AQL_USER_FUNCTIONS_HANDLER_H
-#define ARANGOD_VOCBASE_METHODS_AQL_USER_FUNCTIONS_HANDLER_H 1
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+/// @author Wilfried Goesgens
+////////////////////////////////////////////////////////////////////////////////
+
+#pragma once
 
 #include "Basics/Result.h"
 
@@ -20,7 +42,8 @@ class Slice;
 // @param vocbase current database to work with
 // @param functionName the case insensitive name of the function to delete
 // @return success only on exact match
-Result unregisterUserFunction(TRI_vocbase_t& vocbase, std::string const& functionName);
+Result unregisterUserFunction(TRI_vocbase_t& vocbase,
+                              std::string const& functionName);
 
 // @brief locates a group of user functions matching functionFilterPrefix and
 //        removes them from _aqlFunctions
@@ -29,7 +52,8 @@ Result unregisterUserFunction(TRI_vocbase_t& vocbase, std::string const& functio
 // delete
 // @param deleteCount return the number of deleted functions, 0 is ok.
 // @return succeeds if >= 0 functions were successfully deleted.
-Result unregisterUserFunctionsGroup(TRI_vocbase_t& vocbase, std::string const& functionFilterPrefix,
+Result unregisterUserFunctionsGroup(TRI_vocbase_t& vocbase,
+                                    std::string const& functionFilterPrefix,
                                     int& deleteCount);
 
 // @brief registers an aql function with the current database
@@ -44,7 +68,8 @@ Result unregisterUserFunctionsGroup(TRI_vocbase_t& vocbase, std::string const& f
 // @param replaceExisting set to true if the function replaced a previously
 // existing one
 // @return result object
-Result registerUserFunction(TRI_vocbase_t& vocbase, velocypack::Slice userFunction,
+Result registerUserFunction(TRI_vocbase_t& vocbase,
+                            velocypack::Slice userFunction,
                             bool& replacedExisting);
 
 // @brief fetches [all functions | functions matching the functionFilterPrefix]
@@ -58,9 +83,8 @@ Result registerUserFunction(TRI_vocbase_t& vocbase, velocypack::Slice userFuncti
 //    isDeterministic: whether the function will return the same result on same
 //    params
 // @return result object
-Result toArrayUserFunctions(TRI_vocbase_t& vocbase, std::string const& functionFilterPrefix,
+Result toArrayUserFunctions(TRI_vocbase_t& vocbase,
+                            std::string const& functionFilterPrefix,
                             velocypack::Builder& result);
 
 }  // namespace arangodb
-
-#endif

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_ENDPOINT_ENDPOINT_LIST_H
-#define ARANGODB_ENDPOINT_ENDPOINT_LIST_H 1
+#pragma once
 
 #include <string>
 #include <vector>
@@ -55,5 +54,3 @@ class EndpointList {
   std::map<std::string, Endpoint*> _endpoints;
 };
 }  // namespace arangodb
-
-#endif

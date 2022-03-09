@@ -53,9 +53,8 @@ window.ArangoUsers = Backbone.Collection.extend({
         username: username,
         password: password
       }),
-      dataType: 'json'
-    }).success(
-      function (data) {
+      dataType: 'json',
+      success: function (data) {
         var jwtParts = data.jwt.split('.');
 
         if (!jwtParts[1]) {
@@ -76,14 +75,13 @@ window.ArangoUsers = Backbone.Collection.extend({
         }
 
         callback(false, self.activeUser);
-      }
-    ).error(
-      function () {
+      },
+      error: function () {
         arangoHelper.setCurrentJwt(null, null);
         self.activeUser = null;
         callback(true, null);
       }
-    );
+    });
   },
 
   setSortingDesc: function (yesno) {
@@ -96,10 +94,6 @@ window.ArangoUsers = Backbone.Collection.extend({
     this.reset();
     window.App.navigate('');
     window.location.reload();
-  },
-
-  setUserSettings: function (identifier, content) {
-    this.activeUserSettings.identifier = content;
   },
 
   loadUserSettings: function (callback) {
@@ -115,7 +109,6 @@ window.ArangoUsers = Backbone.Collection.extend({
     $.ajax({
       type: 'GET',
       cache: false,
-      // url: frontendConfig.basePath + "/_api/user/" + encodeURIComponent(self.activeUser),
       url: url,
       contentType: 'application/json',
       processData: false,
@@ -171,21 +164,23 @@ window.ArangoUsers = Backbone.Collection.extend({
       callback(false, this.activeUser);
       return;
     }
+
     var url = 'whoAmI?_=' + Date.now();
     if (frontendConfig.react) {
       url = arangoHelper.databaseUrl('/_admin/aardvark/' + url);
     }
-    $.ajax(url)
-      .success(
-        function (data) {
-          self.activeUser = data.user;
-          callback(false, data.user);
-        }
-      ).error(
-        function () {
-          callback(true, null);
-        }
-      );
+
+    $.ajax({
+      type: 'GET',
+      url: url,
+      success: function (data) {
+        self.activeUser = data.user;
+        callback(false, data.user);
+      },
+      error: function () {
+        callback(true, null);
+      }
+    });
   }
 
 });

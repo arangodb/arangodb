@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,11 +21,11 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GRAPH_EDGECURSOR_H
-#define ARANGOD_GRAPH_EDGECURSOR_H 1
+#pragma once
 
-#include <functional>
 #include <cstdint>
+#include <functional>
+#include <string_view>
 
 #include "Basics/Common.h"
 
@@ -33,7 +33,6 @@ namespace arangodb {
 
 namespace velocypack {
 class Slice;
-class StringRef;
 }
 
 namespace graph {
@@ -46,22 +45,23 @@ struct EdgeDocumentToken;
 
 class EdgeCursor {
  public:
-  EdgeCursor() {}
   virtual ~EdgeCursor() = default;
-  
-  using Callback =
-      std::function<void(EdgeDocumentToken&&, arangodb::velocypack::Slice, size_t)>;
 
-  virtual bool next(std::function<void(EdgeDocumentToken&&, arangodb::velocypack::Slice, size_t)> const& callback) = 0;
+  using Callback = std::function<void(EdgeDocumentToken&&,
+                                      arangodb::velocypack::Slice, size_t)>;
 
-  virtual void readAll(std::function<void(EdgeDocumentToken&&, arangodb::velocypack::Slice, size_t)> const& callback) = 0;
+  virtual bool next(
+      std::function<void(EdgeDocumentToken&&, arangodb::velocypack::Slice,
+                         size_t)> const& callback) = 0;
+
+  virtual void readAll(
+      std::function<void(EdgeDocumentToken&&, arangodb::velocypack::Slice,
+                         size_t)> const& callback) = 0;
 
   virtual size_t httpRequests() const = 0;
 
-  virtual void rearm(arangodb::velocypack::StringRef vid, uint64_t depth) = 0;
+  virtual void rearm(std::string_view vid, uint64_t depth) = 0;
 };
 
 }  // namespace graph
 }  // namespace arangodb
-
-#endif

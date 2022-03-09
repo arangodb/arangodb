@@ -1,8 +1,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Copyright 2020-2020 ArangoDB GmbH, Cologne, Germany
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
@@ -20,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_VAR_USAGE_FINDER_H
-#define ARANGOD_AQL_VAR_USAGE_FINDER_H 1
+#pragma once
 
 #include "Aql/Variable.h"
 #include "Aql/WalkerWorker.h"
@@ -37,13 +37,14 @@ class ExecutionNode;
 
 /// @brief helper struct for findVarUsage
 
-template <class T>
+template<class T>
 struct VarUsageFinderT;
 
 using VarUsageFinder = VarUsageFinderT<ExecutionNode>;
 
-template <class T>
-struct VarUsageFinderT final : public WalkerWorker<T> {
+template<class T>
+struct VarUsageFinderT final
+    : public WalkerWorker<T, WalkerUniqueness::NonUnique> {
   VarSetStack _usedLaterStack{VarSet{}};
   VarSetStack _varsValidStack{VarSet{}};
 
@@ -69,7 +70,7 @@ struct VarUsageFinderT final : public WalkerWorker<T> {
     }
   }
 
-  bool before(T* en) final;
+  bool before(T* en) override final;
 
   /*
    * o  set: x, z   valid = x, z  usedLater = (z, x)
@@ -88,9 +89,7 @@ struct VarUsageFinderT final : public WalkerWorker<T> {
 
   void after(T* en) override final;
 
-  bool enterSubquery(T*, T*) final;
+  bool enterSubquery(T*, T*) override final;
 };
 
 }  // namespace arangodb::aql
-
-#endif

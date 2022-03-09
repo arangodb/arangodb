@@ -32,8 +32,8 @@ const optionsDocumentation = [
 ];
 
 const fs = require('fs');
-const pu = require('@arangodb/process-utils');
-const tu = require('@arangodb/test-utils');
+const pu = require('@arangodb/testutils/process-utils');
+const tu = require('@arangodb/testutils/test-utils');
 const _ = require('lodash');
 
 const toArgv = require('internal').toArgv;
@@ -60,6 +60,20 @@ function runArangodRecovery (params) {
     }
   }
 
+  let additionalParams= {
+    'log.foreground-tty': 'true',
+    'database.ignore-datafile-errors': 'false', // intentionally false!
+  };
+
+  if (useEncryption) {
+    // randomly turn on or off hardware-acceleration for encryption for both
+    // setup and the actual test. given enough tests, this will ensure that we run
+    // a good mix of accelerated and non-accelerated encryption code. in addition,
+    // we shuffle between the setup and the test phase, so if there is any
+    // incompatibility between the two modes, this will likely find it
+    additionalParams['rocksdb.encryption-hardware-acceleration'] = (Math.random() * 100 >= 50) ? "true" : "false";
+  }
+
   let argv = [];
 
   let binary = pu.ARANGOD_BIN;
@@ -70,12 +84,14 @@ function runArangodRecovery (params) {
   let crashLog = fs.join(crashLogDir, 'crash.log');
 
   if (params.setup) {
+    additionalParams['javascript.script-parameter'] = 'setup';
     try {
       // clean up crash log before next test
       fs.remove(crashLog);
     } catch (err) {}
 
 
+    // special handling for crash-handler recovery tests
     if (params.script.match(/crash-handler/)) {
       // forcefully enable crash handler, even if turned off globally
       // during testing
@@ -110,47 +126,43 @@ function runArangodRecovery (params) {
     args['log.output'] = 'file://' + crashLog;
 
     if (useEncryption) {
-      const key = '01234567890123456789012345678901';
       let keyDir = fs.join(fs.getTempPath(), 'arango_encryption');
       if (!fs.exists(keyDir)) {  // needed on win32
         fs.makeDirectory(keyDir);
       }
       pu.cleanupDBDirectoriesAppend(keyDir);
-    
+        
+      const key = '01234567890123456789012345678901';
+      
       let keyfile = fs.join(keyDir, 'rocksdb-encryption-keyfile');
       fs.write(keyfile, key);
 
-      args['rocksdb.encryption-keyfile'] = keyfile;
-      process.env["rocksdb-encryption-keyfile"] = keyfile;
+      // special handling for encryption-keyfolder tests
+      if (params.script.match(/encryption-keyfolder/)) {
+        args['rocksdb.encryption-keyfolder'] = keyDir;
+        process.env["rocksdb-encryption-keyfolder"] = keyDir;
+      } else {
+        args['rocksdb.encryption-keyfile'] = keyfile;
+        process.env["rocksdb-encryption-keyfile"] = keyfile;
+      }
     }
 
     params.args = args;
 
-    argv = toArgv(
-      Object.assign(params.args,
-                    {
-                      'log.foreground-tty': 'true',
-                      'javascript.script-parameter': 'setup'
-                    }
-                   )
-    );
+    argv = toArgv(Object.assign(params.args, additionalParams));
   } else {
-    argv = toArgv(
-      Object.assign(params.args,
-                    {
-                      'log.foreground-tty': 'true',
-                      'database.ignore-datafile-errors': 'false', // intentionally false!
-                      'javascript.script-parameter': 'recovery'
-                    }
-                   )
-    );
+    additionalParams['javascript.script-parameter'] = 'recovery';
+    argv = toArgv(Object.assign(params.args, additionalParams));
+    
     if (params.options.rr) {
       binary = 'rr';
       argv.unshift(pu.ARANGOD_BIN);
     }
   }
-    
+  
+  process.env["state-file"] = params.stateFile;
   process.env["crash-log"] = crashLog;
+  process.env["isAsan"] = params.options.isAsan;
   params.instanceInfo.pid = pu.executeAndWait(
     binary,
     argv,
@@ -193,49 +205,68 @@ function recovery (options) {
 
     if (tu.filterTestcaseByOptions(test, options, filtered)) {
       count += 1;
-      ////////////////////////////////////////////////////////////////////////
-      print(BLUE + "running setup of test " + count + " - " + test + RESET);
-      let params = {
-        tempDir: tempDir,
-        instanceInfo: {
-          rootDir: fs.join(fs.getTempPath(), 'recovery', count.toString())
-        },
-        options: _.cloneDeep(options),
-        script: test,
-        setup: true,
-        count: count,
-        testDir: ""
-      };
-      runArangodRecovery(params);
+      let iteration = 0;
+      let stateFile = fs.getTempFile();
 
-      ////////////////////////////////////////////////////////////////////////
-      print(BLUE + "running recovery of test " + count + " - " + test + RESET);
-      params.options.disableMonitor = options.disableMonitor;
-      params.setup = false;
-      try {
-        tu.writeTestResult(params.args['temp.path'], {
-          failed: 1,
-          status: false, 
-          message: "unable to run recovery test " + test,
-          duration: -1
-        });
-      } catch (er) {}
-      runArangodRecovery(params);
+      while (true) {
+        ++iteration;
+        print(BLUE + "running setup #" + iteration + " of test " + count + " - " + test + RESET);
+        let params = {
+          tempDir: tempDir,
+          instanceInfo: {
+            rootDir: fs.join(fs.getTempPath(), 'recovery', count.toString())
+          },
+          options: _.cloneDeep(options),
+          script: test,
+          setup: true,
+          count: count,
+          testDir: "",
+          stateFile,
+        };
+        runArangodRecovery(params);
 
-      results[test] = tu.readTestResult(
-        params.args['temp.path'],
-        {
-          status: false
-        },
-        test
-      );
-      if (!results[test].status) {
-        print("Not cleaning up " + params.testDir);
-        results.status = false;
-      }
-      else {
+        ////////////////////////////////////////////////////////////////////////
+        print(BLUE + "running recovery #" + iteration + " of test " + count + " - " + test + RESET);
+        params.options.disableMonitor = options.disableMonitor;
+        params.setup = false;
+        try {
+          tu.writeTestResult(params.args['temp.path'], {
+            failed: 1,
+            status: false, 
+            message: "unable to run recovery test " + test,
+            duration: -1
+          });
+        } catch (er) {}
+        runArangodRecovery(params);
+
+        results[test] = tu.readTestResult(
+          params.args['temp.path'],
+          {
+            status: false
+          },
+          test
+        );
+        if (!results[test].status) {
+          print("Not cleaning up " + params.testDir);
+          results.status = false;
+          // end while loop
+          break;
+        } 
+
+        // check if the state file has been written by the test.
+        // if so, we will run another round of this test!
+        try {
+          if (String(fs.readFileSync(stateFile)).length) {
+            print('Going into next iteration of recovery test');
+            continue;
+          }
+        } catch (err) {
+        }
+        // last iteration. break out of while loop
         pu.cleanupLastDirectory(params.options);
+        break;
       }
+
     } else {
       if (options.extremeVerbosity) {
         print('Skipped ' + test + ' because of ' + filtered.filter);

@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,31 +21,33 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_REMOVE_MODIFIER_H
-#define ARANGOD_AQL_REMOVE_MODIFIER_H
+#pragma once
 
 #include "Aql/ModificationExecutor.h"
 #include "Aql/ModificationExecutorAccumulator.h"
 #include "Aql/ModificationExecutorInfos.h"
+#include "Futures/Future.h"
 
-namespace arangodb {
-namespace aql {
+#include <velocypack/Builder.h>
+
+namespace arangodb::aql {
 
 struct ModificationExecutorInfos;
 
 class RemoveModifierCompletion {
  public:
-  explicit RemoveModifierCompletion(ModificationExecutorInfos& infos) : _infos(infos) {}
+  explicit RemoveModifierCompletion(ModificationExecutorInfos& infos)
+      : _infos(infos) {}
   ~RemoveModifierCompletion() = default;
 
   ModifierOperationType accumulate(ModificationExecutorAccumulator& accu,
                                    InputAqlItemRow& row);
-  OperationResult transact(transaction::Methods& trx, VPackSlice const& data);
+  futures::Future<OperationResult> transact(transaction::Methods& trx,
+                                            VPackSlice const& data);
 
  private:
   ModificationExecutorInfos& _infos;
+  arangodb::velocypack::Builder _keyDocBuilder;
 };
 
-}  // namespace aql
-}  // namespace arangodb
-#endif
+}  // namespace arangodb::aql

@@ -1,5 +1,5 @@
 /* jshint unused: false */
-/* global Noty, Blob, window, Joi, sigma, $, tippy, document, _, arangoHelper, frontendConfig, arangoHelper, sessionStorage, localStorage, XMLHttpRequest */
+/* global Noty, Blob, window, atob, Joi, sigma, $, tippy, document, _, arangoHelper, frontendConfig, sessionStorage, localStorage, XMLHttpRequest */
 
 (function () {
   'use strict';
@@ -124,6 +124,65 @@
       });
     },
 
+    lastActivity: function () {
+      // return timestamp of last activity (only seconds part)
+      return sessionStorage.getItem('lastActivity') || 0;
+    },
+
+    noteActivity: function () {
+      // note timestamp of last activity (only seconds part)
+      sessionStorage.setItem('lastActivity', Date.now() / 1000);
+    },
+
+    renewJwt: function (callback) {
+      if (!window.atob) {
+        return;
+      }
+      var self = this;
+      var currentUser = self.getCurrentJwtUsername();
+      if (currentUser === undefined || currentUser === "") {
+        return;
+      }
+
+      $.ajax({
+        cache: false,
+        type: 'POST',
+        url: self.databaseUrl('/_open/auth/renew'),
+        data: JSON.stringify({ username: currentUser }),
+        contentType: 'application/json',
+        processData: false,
+        success: function (data) {
+          var updated = false;
+          if (data.jwt) {
+            try {
+              var jwtParts = data.jwt.split('.');
+              if (!jwtParts[1]) {
+                throw "invalid token!";
+              }
+              var payload = JSON.parse(atob(jwtParts[1]));
+              if (payload.preferred_username === currentUser) {
+                self.setCurrentJwt(data.jwt, currentUser);
+                updated = true;
+              }
+            } catch (err) {
+            }
+          }
+          if (updated) {
+            // success
+            callback();
+          }
+        },
+        error: function (data) {
+          // this function is triggered by a non-interactive
+          // background task. if it fails for whatever reason,
+          // we don't report this error.
+          // the worst thing that can happen is that the JWT
+          // is not renewed and thus the user eventually gets
+          // logged out
+        }
+      });
+    },
+
     getCoordinatorShortName: function (id) {
       var shortName;
       if (window.clusterHealth) {
@@ -160,11 +219,8 @@
         '_id': true,
         '_rev': true,
         '_key': true,
-        '_bidirectional': true,
-        '_vertices': true,
         '_from': true,
         '_to': true,
-        '$id': true
       };
     },
 
@@ -378,7 +434,7 @@
     },
 
     // object: {"name": "Menu 1", func: function(), active: true/false }
-    buildSubNavBar: function (menuItems) {
+    buildSubNavBar: function (menuItems, disabled) {
       $('#subNavigationBar .bottom').html('');
       var cssClass;
 
@@ -388,14 +444,14 @@
         if (menu.active) {
           cssClass += ' active';
         }
-        if (menu.disabled) {
+        if (menu.disabled || disabled) {
           cssClass += ' disabled';
         }
 
         $('#subNavigationBar .bottom').append(
           '<li class="subMenuEntry ' + cssClass + '"><a>' + name + '</a></li>'
         );
-        if (!menu.disabled) {
+        if (!menu.disabled && !disabled) {
           $('#subNavigationBar .bottom').children().last().bind('click', function () {
             window.App.navigate(menu.route, {trigger: true});
           });
@@ -449,6 +505,38 @@
       this.buildSubNavBar(menus);
     },
 
+    buildClusterSubNav: function (activeKey, disabled) {
+      let enableMaintenanceMode = false;
+      let enableDistribution = false;
+
+      if (frontendConfig.showMaintenanceStatus && frontendConfig.db === '_system') {
+        enableMaintenanceMode = true;
+      }
+      if (frontendConfig.db === '_system') {
+        enableDistribution = true;
+      }
+
+      var menus = {
+        Dashboard: {
+          route: '#cluster'
+        },
+        Distribution: {
+          route: '#distribution',
+          disabled: !enableDistribution
+        },
+        Maintenance: {
+          route: '#maintenance',
+          disabled: !enableMaintenanceMode
+        }
+      };
+
+      menus[activeKey].active = true;
+      if (disabled) {
+        menus[activeKey].disabled = true;
+      }
+      this.buildSubNavBar(menus, disabled);
+    },
+
     buildNodesSubNav: function (activeKey, disabled) {
       var menus = {
         Overview: {
@@ -456,14 +544,19 @@
         },
         Shards: {
           route: '#shards'
+        },
+        "Rebalance Shards": {
+          route: '#rebalanceShards'
         }
       };
 
       menus[activeKey].active = true;
       if (disabled) {
-        menus[disabled].disabled = true;
+        menus[activeKey].disabled = true;
       }
-      this.buildSubNavBar(menus);
+      menus["Rebalance Shards"].disabled = window.App.userCollection.authOptions.ro; // when user can't edit database,
+                                                                                     // the tab is not clickable
+      this.buildSubNavBar(menus, disabled);
     },
 
     buildServicesSubNav: function (activeKey, disabled) {
@@ -488,6 +581,10 @@
       if (!frontendConfig.foxxStoreEnabled) {
         delete menus.Store;
       }
+      
+      if (!frontendConfig.foxxAllowInstallFromRemote) {
+        delete menus.Remote;
+      }
 
       menus[activeKey].active = true;
       if (disabled) {
@@ -495,75 +592,6 @@
       }
       this.buildSubNavBar(menus);
     },
-
-    scaleability: undefined,
-
-    /*
-    //nav for cluster/nodes view
-    buildNodesSubNav: function(type) {
-
-      //if nothing is set, set default to coordinator
-      if (type === undefined) {
-        type = 'coordinator'
-      }
-
-      if (this.scaleability === undefined) {
-        var self = this
-
-        $.ajax({
-          type: "GET",
-          cache: false,
-          url: arangoHelper.databaseUrl("/_admin/cluster/numberOfServers"),
-          contentType: "application/json",
-          processData: false,
-          success: function(data) {
-            if (data.numberOfCoordinators !== null && data.numberOfDBServers !== null) {
-              self.scaleability = true
-              self.buildNodesSubNav(type)
-            }
-            else {
-              self.scaleability = false
-            }
-          }
-        })
-      }
-
-      var menus = {
-        Coordinators: {
-          route: '#cNodes'
-        },
-        DBServers: {
-          route: '#dNodes'
-        }
-      }
-
-      menus.Scale = {
-        route: '#sNodes',
-        disabled: true
-      }
-
-      if (type === 'coordinator') {
-        menus.Coordinators.active = true
-      }
-      else if (type === 'scale') {
-        if (this.scaleability === true) {
-          menus.Scale.active = true
-        }
-        else {
-          window.App.navigate('#nodes', {trigger: true})
-        }
-      }
-      else {
-        menus.DBServers.active = true
-      }
-
-      if (this.scaleability === true) {
-        menus.Scale.disabled = false
-      }
-
-      this.buildSubNavBar(menus)
-    },
-    */
 
     // nav for collection view
     buildCollectionSubNav: function (collectionName, activeKey) {
@@ -662,15 +690,10 @@
       docFrameView.render();
       docFrameView.setType(type);
 
-      /*
-      if (docFrameView.collection.toJSON().length === 0) {
-        this.closeDocEditor();
-        return;
-      }
-      */
-
       // remove header
       $('.arangoFrame .headerBar').remove();
+      // remove edge edit feature
+      $('.edge-edit-container').remove();
       // append close button
       $('.arangoFrame .outerDiv').prepend('<i class="fa fa-times"></i>');
       // add close events
@@ -705,7 +728,13 @@
       $('.arangoFrame #saveDocumentButton').click(function () {
         docFrameView.saveDocument();
       });
+
+      // custom css (embedded view)
       $('.arangoFrame #deleteDocumentButton').css('display', 'none');
+      $('.document-link').hover(function() {
+        $(this).css('cursor','default');
+        $(this).css('text-decoration','none');
+      });
     },
 
     closeDocEditor: function () {
@@ -742,6 +771,18 @@
         contentType: 'application/json',
         processData: false,
         success: function (data) {
+          // deleting a job that is not there anymore is intentionally not considered
+          // an error here. this is because in some other places we collect job data,
+          // which automatically leads to server-side deletion of the job. so just
+          // swallow 404 errors here, silently...
+          if (data && data.error && data.errorNum !== 404) {
+            if (data.errorNum && data.errorMessage) {
+              arangoHelper.arangoError(`Error ${data.errorNum}`, data.errorMessage);
+            } else {
+              arangoHelper.arangoError('Failure', 'Got unexpected server response: ' + JSON.stringify(data));
+            }
+            return;
+          }
           if (callback) {
             callback(false, data);
           }
@@ -762,6 +803,18 @@
         contentType: 'application/json',
         processData: false,
         success: function (data) {
+          if (data.result && data.result.length > 0) {
+            _.each(data.result, function (resp) {
+              if (resp.error) {
+                if (resp.errorNum && resp.errorMessage) {
+                  arangoHelper.arangoError(`Error ${resp.errorNum}`, resp.errorMessage);
+                } else {
+                  arangoHelper.arangoError('Failure', 'Got unexpected server response: ' + JSON.stringify(resp));
+                }
+                return;
+              }
+            });
+          }
           if (callback) {
             callback(false, data);
           }
@@ -880,7 +933,6 @@
       if (refresh || this.CollectionTypes[identifier] === undefined) {
         var callback = function (error, data, toRun) {
           if (error) {
-            arangoHelper.arangoError('Error', 'Could not detect collection type');
             if (toRun) {
               toRun(error);
             }
@@ -933,10 +985,16 @@
         pad(dt.getUTCDate()) + ' ' +
         pad(dt.getUTCHours()) + ':' +
         pad(dt.getUTCMinutes()) + ':' +
-        pad(dt.getUTCSeconds());
+        pad(dt.getUTCSeconds()) + 'Z';
+      // note: we need to append 'Z' so users from a different
+      // timezone can see that it is UTC time
     },
 
     escapeHtml: function (val) {
+      if (typeof val !== 'string') {
+        val = JSON.stringify(val, null, 2);
+      }
+
       // HTML-escape a string
       return String(val).replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
@@ -1032,23 +1090,28 @@
       } catch (ignore) {}
     },
 
-    downloadLocalBlob: function (obj, type) {
+    downloadLocalBlob: function (obj, type, filename) {
       var dlType;
       if (type === 'csv') {
         dlType = 'text/csv; charset=utf-8';
-      }
-      if (type === 'json') {
+      } else if (type === 'json') {
         dlType = 'application/json; charset=utf-8';
+      } else if (type === 'text') {
+        dlType = 'text/plain; charset=utf8';
       }
 
       if (dlType) {
-        var blob = new Blob([obj], {type: dlType});
+        var blob = new Blob([obj], { type: dlType });
         var blobUrl = window.URL.createObjectURL(blob);
         var a = document.createElement('a');
         document.body.appendChild(a);
         a.style = 'display: none';
         a.href = blobUrl;
-        a.download = 'results-' + window.frontendConfig.db + '.' + type;
+
+        a.download = (filename ? filename : 'results') + '-' +
+                     window.frontendConfig.db.replace(/[^-_a-z0-9]/gi, "_") +
+          '.' + type;
+
         a.click();
 
         window.setTimeout(function () {
@@ -1059,25 +1122,29 @@
     },
 
     download: function (url, callback) {
-      $.ajax(url).success(function (result, dummy, request) {
-        if (callback) {
-          callback(result);
-          return;
+      $.ajax({
+        type: 'GET',
+        url: url,
+        success: function (result, dummy, request) {
+          if (callback) {
+            callback(result);
+            return;
+          }
+
+          var blob = new Blob([JSON.stringify(result)], {type: request.getResponseHeader('Content-Type') || 'application/octet-stream'});
+          var blobUrl = window.URL.createObjectURL(blob);
+          var a = document.createElement('a');
+          document.body.appendChild(a);
+          a.style = 'display: none';
+          a.href = blobUrl;
+          a.download = request.getResponseHeader('Content-Disposition').replace(/.* filename="([^")]*)"/, '$1');
+          a.click();
+
+          window.setTimeout(function () {
+            window.URL.revokeObjectURL(blobUrl);
+            document.body.removeChild(a);
+          }, 500);
         }
-
-        var blob = new Blob([JSON.stringify(result)], {type: request.getResponseHeader('Content-Type') || 'application/octet-stream'});
-        var blobUrl = window.URL.createObjectURL(blob);
-        var a = document.createElement('a');
-        document.body.appendChild(a);
-        a.style = 'display: none';
-        a.href = blobUrl;
-        a.download = request.getResponseHeader('Content-Disposition').replace(/.* filename="([^")]*)"/, '$1');
-        a.click();
-
-        window.setTimeout(function () {
-          window.URL.revokeObjectURL(blobUrl);
-          document.body.removeChild(a);
-        }, 500);
       });
     },
 
@@ -1169,6 +1236,43 @@
           arangoHelper.arangoError('User', 'Could not fetch collection permissions.');
         }
       });
+    },
+
+    renderStatisticsBoxValue: function (id, value, error, warning) {
+      if (typeof value === 'number') {
+        $(id).html(value);
+      } else if ($.isArray(value)) {
+        var a = value[0];
+        var b = value[1];
+
+        var percent = 1 / (b / a) * 100;
+        if (percent > 90) {
+          error = true;
+        } else if (percent > 70 && percent < 90) {
+          warning = true;
+        }
+        if (isNaN(percent)) {
+          $(id).html('n/a');
+        } else {
+          $(id).html(percent.toFixed(1) + ' %');
+        }
+      } else if (typeof value === 'string') {
+        $(id).html(value);
+      }
+
+      if (error) {
+        $(id).addClass('negative');
+        $(id).removeClass('warning');
+        $(id).removeClass('positive');
+      } else if (warning) {
+        $(id).addClass('warning');
+        $(id).removeClass('positive');
+        $(id).removeClass('negative');
+      } else {
+        $(id).addClass('positive');
+        $(id).removeClass('negative');
+        $(id).removeClass('warning');
+      }
     },
 
     getFoxxFlags: function () {

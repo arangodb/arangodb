@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,9 +22,9 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#define MAKE_NOTIFY_OBSERVERS_PUBLIC
 #include "AgencyMock.h"
 
-#include <fuerte/connection.h>
 #include <fuerte/requests.h>
 
 #include "Agency/Store.h"
@@ -33,8 +34,6 @@
 #include "Basics/StringBuffer.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
-
-#include <velocypack/velocypack-aliases.h>
 
 #include <utility>
 
@@ -47,13 +46,13 @@ namespace arangodb::consensus {
 //            instance; we could solve this if we could have two
 //            ApplicationServers in the same instance, but too many things in
 //            the feature stack are static still to make the changes right now
-// FIXME TODO for some reason the implementation of this function is missing in the arangodb code
+// FIXME TODO for some reason the implementation of this function is missing in
+// the arangodb code
 void Store::notifyObservers() const {
   if (!_server.hasFeature<arangodb::ClusterFeature>()) {
     return;
   }
   auto& clusterFeature = _server.getFeature<arangodb::ClusterFeature>();
-
   auto* callbackRegistry = clusterFeature.agencyCallbackRegistry();
 
   if (!callbackRegistry) {
@@ -65,9 +64,9 @@ void Store::notifyObservers() const {
   {
     MUTEX_LOCKER(storeLocker, _storeLock);
 
-    for (auto& entry: _observerTable) {
+    for (auto& entry : _observerTable) {
       auto& key = entry.first;
-      auto pos = key.rfind("/"); // observer id is after the last '/'
+      auto pos = key.rfind("/");  // observer id is after the last '/'
 
       if (std::string::npos == pos) {
         continue;
@@ -76,8 +75,7 @@ void Store::notifyObservers() const {
       bool success;
       auto* idStr = &(key[pos + 1]);
       auto id = arangodb::NumberUtils::atoi<uint32_t>(
-        idStr, idStr + std::strlen(idStr), success
-      );
+          idStr, idStr + std::strlen(idStr), success);
 
       if (success) {
         callbackIds.emplace_back(id);
@@ -85,114 +83,116 @@ void Store::notifyObservers() const {
     }
   }
 
-  for (auto& id: callbackIds) {
+  for (auto& id : callbackIds) {
     try {
-      callbackRegistry->getCallback(id)->refetchAndUpdate(true, true);  // force a check
-    } catch(...) {
+      callbackRegistry->getCallback(id)->refetchAndUpdate(
+          true, true);  // force a check
+    } catch (...) {
       // ignore
     }
   }
 }
 
-} // arangodb
+}  // namespace arangodb::consensus
+
 using namespace arangodb;
 using namespace arangodb::network;
 
-struct AsyncAgencyStorePoolConnection final : public fuerte::Connection {
-  AsyncAgencyStorePoolConnection(AsyncAgencyStorePoolMock* mock, std::string endpoint)
-      : fuerte::Connection(fuerte::detail::ConnectionConfiguration()),
-        _mock(mock),
-        _endpoint(std::move(endpoint)) {}
+AsyncAgencyStorePoolConnection::AsyncAgencyStorePoolConnection(
+    AgencyCache& cache, std::string endpoint)
+    : fuerte::Connection(fuerte::detail::ConnectionConfiguration()),
+      _cache(cache),
+      _endpoint(std::move(endpoint)) {}
 
-  std::size_t requestsLeft() const override { return 1; }
-  State state() const override { return fuerte::Connection::State::Connected; }
+fuerte::Connection::State AsyncAgencyStorePoolConnection::state() const {
+  return fuerte::Connection::State::Connected;
+}
 
-  void cancel() override {}
-  void start() override {}
+auto AsyncAgencyStorePoolConnection::handleRead(VPackSlice body)
+    -> std::unique_ptr<fuerte::Response> {
+  fuerte::ResponseHeader header;
 
-  AsyncAgencyStorePoolMock* _mock;
-  std::string _endpoint;
-
-  auto handleRead(VPackSlice body) -> std::unique_ptr<fuerte::Response> {
-    auto* store = _mock->_store;
-
-    fuerte::ResponseHeader header;
-
-    auto bodyBuilder = std::make_shared<VPackBuilder>(body);
-    VPackBuffer<uint8_t> responseBuffer;
-    {
-      auto result = std::make_shared<arangodb::velocypack::Builder>(responseBuffer);
-      auto const success = store->read(bodyBuilder, result);
-      auto const code =
-          std::find(success.begin(), success.end(), false) == success.end()
-              ? fuerte::StatusOK
-              : fuerte::StatusBadRequest;
-
-      header.contentType(fuerte::ContentType::VPack);
-      header.responseCode = code;
-    }
-
-    auto response = std::make_unique<fuerte::Response>(std::move(header));
-    response->setPayload(std::move(responseBuffer), 0);
-
-    return response;
-  }
-
-  auto handleWrite(VPackSlice body) -> std::unique_ptr<fuerte::Response> {
-    auto* store = _mock->_store;
-    auto bodyBuilder = std::make_shared<VPackBuilder>(body);
-
-    auto const success = store->applyTransactions(bodyBuilder);
+  VPackBuffer<uint8_t> responseBuffer;
+  {
+    arangodb::velocypack::Builder result(responseBuffer);
+    auto const success = _cache.store().readMultiple(body, result);
     auto const code =
-        std::find_if(success.begin(), success.end(),
-                     [&](int i) -> bool { return i != 0; }) == success.end()
+        std::find(success.begin(), success.end(), false) == success.end()
             ? fuerte::StatusOK
-            : fuerte::StatusPreconditionFailed;
+            : fuerte::StatusBadRequest;
 
-    VPackBuffer<uint8_t> responseBody;
-    {
-      VPackBuilder bodyObj(responseBody);
-      bodyObj.openObject();
-      bodyObj.add("results", VPackValue(VPackValueType::Array));
-      bodyObj.close();
-      bodyObj.close();
-    }
-
-    fuerte::ResponseHeader header;
     header.contentType(fuerte::ContentType::VPack);
     header.responseCode = code;
-
-    auto response = std::make_unique<fuerte::Response>(std::move(header));
-    response->setPayload(std::move(responseBody), 0);
-
-    store->notifyObservers();
-
-    return response;
   }
 
-  void sendRequest(std::unique_ptr<fuerte::Request> req,
-                                fuerte::RequestCallback cb) override {
+  auto response = std::make_unique<fuerte::Response>(std::move(header));
+  response->setPayload(std::move(responseBuffer), 0);
 
-    std::unique_ptr<fuerte::Response> resp;
+  return response;
+}
 
-    if (req->header.restVerb == fuerte::RestVerb::Post) {
-      if (req->header.path.find("write") != std::string::npos) {
-        resp = handleWrite(req->slice());
-      } else if(req->header.path.find("read") != std::string::npos) {
-        resp = handleRead(req->slice());
-      } else {
-        throw std::logic_error("invalid operation");
+auto AsyncAgencyStorePoolConnection::handleWrite(VPackSlice body)
+    -> std::unique_ptr<fuerte::Response> {
+  auto [success, index] = _cache.applyTestTransaction(body);
+
+  auto const code =
+      std::find_if(success.begin(), success.end(),
+                   [&](int i) -> bool { return i != 0; }) == success.end()
+          ? fuerte::StatusOK
+          : fuerte::StatusPreconditionFailed;
+
+  VPackBuffer<uint8_t> responseBody;
+  VPackBuilder bodyObj(responseBody);
+  {
+    {
+      VPackObjectBuilder o(&bodyObj);
+      bodyObj.add("results", VPackValue(VPackValueType::Array));
+      for (auto const& s : success) {
+        bodyObj.add(
+            VPackValue((s == arangodb::consensus::APPLIED ? index : 0)));
       }
-    } else {
-      throw std::logic_error("only post requests for agency");
+      bodyObj.close();
     }
-
-    cb(fuerte::Error::NoError, std::move(req), std::move(resp));
   }
-};
 
-ConnectionPtr AsyncAgencyStorePoolMock::createConnection(fuerte::ConnectionBuilder& builder) {
-  return std::make_shared<AsyncAgencyStorePoolConnection>(this, builder.normalizedEndpoint());
+  fuerte::ResponseHeader header;
+  header.contentType(fuerte::ContentType::VPack);
+  header.responseCode = code;
+
+  auto response = std::make_unique<fuerte::Response>(std::move(header));
+  response->setPayload(std::move(responseBody), 0);
+
+  _cache.store().notifyObservers();
+
+  return response;
+}
+
+void AsyncAgencyStorePoolConnection::cancel(){};
+
+void AsyncAgencyStorePoolConnection::sendRequest(
+    std::unique_ptr<fuerte::Request> req, fuerte::RequestCallback cb) {
+  std::unique_ptr<fuerte::Response> resp;
+
+  if (req->header.restVerb == fuerte::RestVerb::Post) {
+    if (req->header.path.find("write") != std::string::npos) {
+      resp = handleWrite(req->slice());
+    } else if (req->header.path.find("read") != std::string::npos) {
+      resp = handleRead(req->slice());
+    } else {
+      throw std::logic_error("invalid operation");
+    }
+  } else {
+    throw std::logic_error("only post requests for agency");
+  }
+
+  cb(fuerte::Error::NoError, std::move(req), std::move(resp));
+}
+
+std::shared_ptr<fuerte::Connection> AsyncAgencyStorePoolMock::createConnection(
+    fuerte::ConnectionBuilder& builder) {
+  return std::make_shared<AsyncAgencyStorePoolConnection>(
+      _server.getFeature<ClusterFeature>().agencyCache(),
+      builder.normalizedEndpoint());
 }
 
 // -----------------------------------------------------------------------------

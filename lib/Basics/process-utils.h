@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Esteban Lombeyda
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_PROCESS__UTILS_H
-#define ARANGODB_BASICS_PROCESS__UTILS_H 1
+#pragma once
 
 #include <string>
 #include <vector>
@@ -86,12 +85,12 @@ struct ExternalId {
 };
 #else
 struct ExternalId {
-  DWORD _pid;
+  TRI_pid_t _pid;
   HANDLE _readPipe;
   HANDLE _writePipe;
 
   ExternalId();
-  virtual ~ExternalId() {}
+  virtual ~ExternalId() = default;
 };
 #endif
 
@@ -154,6 +153,12 @@ ProcessInfo TRI_ProcessInfoSelf(void);
 ProcessInfo TRI_ProcessInfo(TRI_pid_t pid);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up process in the process list
+////////////////////////////////////////////////////////////////////////////////
+
+ExternalProcess* TRI_LookupSpawnedProcess(TRI_pid_t pid);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the process name
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -165,20 +170,41 @@ void TRI_SetProcessTitle(char const* title);
 
 void TRI_CreateExternalProcess(char const* executable,
                                std::vector<std::string> const& arguments,
-                               std::vector<std::string> additionalEnv,
+                               std::vector<std::string> const& additionalEnv,
                                bool usePipes, ExternalId* pid);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Reads from the pipe of processes
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_ClosePipe(ExternalProcess* process, bool read);
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Reads from the pipe of processes
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_read_return_t TRI_ReadPipe(ExternalProcess const* process, char* buffer,
+                               size_t bufferSize);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Reads from the pipe of processes
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_WritePipe(ExternalProcess const* process, char const* buffer,
+                   size_t bufferSize);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the status of an external process
 ////////////////////////////////////////////////////////////////////////////////
 
-ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid, bool wait, uint32_t timeout);
+ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid, bool wait,
+                                               uint32_t timeout);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief kills an external process
 ////////////////////////////////////////////////////////////////////////////////
 
-ExternalProcessStatus TRI_KillExternalProcess(ExternalId pid, int signal, bool isTerminal);
+ExternalProcessStatus TRI_KillExternalProcess(ExternalId pid, int signal,
+                                              bool isTerminal);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief suspends an external process, only on Unix
@@ -197,5 +223,3 @@ bool TRI_ContinueExternalProcess(ExternalId pid);
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ShutdownProcess();
-
-#endif

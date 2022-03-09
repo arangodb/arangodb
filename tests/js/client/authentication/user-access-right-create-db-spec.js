@@ -32,7 +32,7 @@
 'use strict';
 
 const expect = require('chai').expect;
-const helper = require('@arangodb/user-helper');
+const helper = require('@arangodb/testutils/user-helper');
 const namePrefix = helper.namePrefix;
 const rightLevels = helper.rightLevels;
 const testDBName = `${namePrefix}DBNew`;
@@ -90,6 +90,7 @@ describe('User Rights Management', () => {
             };
 
             const rootDropDB = () => {
+              db._useDatabase('_system');
               if (rootTestDB(false)) {
                 db._dropDatabase(testDBName);
               }

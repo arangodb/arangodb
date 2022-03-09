@@ -1,7 +1,8 @@
-//////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 EMC Corporation
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -15,67 +16,44 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is EMC Corporation
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Andrey Abramov
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_IRESEARCH__IRESEARCH_LINK_H
-#define ARANGOD_IRESEARCH__IRESEARCH_LINK_H 1
+#pragma once
 
 #include "index/directory_reader.hpp"
 #include "index/index_writer.hpp"
 #include "store/directory.hpp"
 #include "utils/utf8_path.hpp"
 
+#include "IResearch/IResearchDataStore.h"
 #include "IResearch/IResearchLinkMeta.h"
 #include "IResearch/IResearchVPackComparer.h"
 #include "IResearch/IResearchViewMeta.h"
 #include "Indexes/Index.h"
+#include "Metrics/Fwd.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "Transaction/Status.h"
+#include "Utils/OperationOptions.h"
 #include "VocBase/Identifiers/IndexId.h"
 
-namespace arangodb {
-
-struct FlushSubscription;
-
-namespace iresearch {
-
-class AsyncMeta; // forward declaration
-class IResearchFeature; // forward declaration
-class IResearchView; // forward declaration
-template<typename T> class TypedResourceMutex; // forward declaration
+namespace arangodb::iresearch {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief common base class for functionality required to link an ArangoDB
 ///        LogicalCollection with an IResearchView
 ////////////////////////////////////////////////////////////////////////////////
-class IResearchLink {
+class IResearchLink : public IResearchDataStore {
  public:
-  typedef std::shared_ptr<TypedResourceMutex<IResearchLink>> AsyncLinkPtr;
+  IResearchLink(IResearchLink const&) = delete;
+  IResearchLink(IResearchLink&&) = delete;
+  IResearchLink& operator=(IResearchLink const&) = delete;
+  IResearchLink& operator=(IResearchLink&&) = delete;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief a snapshot representation of the data-store
-  ///        locked to prevent data store deallocation
-  //////////////////////////////////////////////////////////////////////////////
-  class Snapshot {
-   public:
-    Snapshot() noexcept {}  // non-default implementation required for MacOS
-    Snapshot(std::unique_lock<irs::async_utils::read_write_mutex::read_mutex>&& lock,
-             irs::directory_reader&& reader) noexcept
-        : _lock(std::move(lock)), _reader(std::move(reader)) {
-      TRI_ASSERT(_lock.owns_lock());
-    }
-    operator irs::directory_reader const&() const noexcept { return _reader; }
-
-   private:
-    std::unique_lock<irs::async_utils::read_write_mutex::read_mutex> _lock;  // lock preventing data store dealocation
-    const irs::directory_reader _reader;
-  };
-
-  virtual ~IResearchLink();
+  ~IResearchLink() override;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief does this IResearch Link reference the supplied view
@@ -93,36 +71,10 @@ class IResearchLink {
     return !(*this == meta);
   }
 
-  void afterTruncate(); // arangodb::Index override
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief insert a set of ArangoDB documents into an iResearch View using
-  ///        '_meta' params
-  /// @note arangodb::Index override
-  ////////////////////////////////////////////////////////////////////////////////
-  virtual void batchInsert(
-      transaction::Methods& trx,
-      std::vector<std::pair<LocalDocumentId, velocypack::Slice>> const& batch,
-      std::shared_ptr<basics::LocalTaskQueue> queue);
-
-  bool canBeDropped() const {
+  static bool canBeDropped() {
     // valid for a link to be dropped from an ArangoSearch view
     return true;
-  };
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @return the associated collection
-  /// @note arangodb::Index override
-  //////////////////////////////////////////////////////////////////////////////
-  LogicalCollection& collection() const noexcept {
-    return _collection;
   }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief mark the current data store state as the latest valid state
-  /// @param wait even if other thread is committing
-  //////////////////////////////////////////////////////////////////////////////
-  Result commit(bool wait = true);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief called when the iResearch Link is dropped
@@ -130,24 +82,8 @@ class IResearchLink {
   ////////////////////////////////////////////////////////////////////////////////
   Result drop();
 
-  bool hasSelectivityEstimate() const; // arangodb::Index override
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief the identifier for this link
-  //////////////////////////////////////////////////////////////////////////////
-  IndexId id() const noexcept { return _id; }
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief insert an ArangoDB document into an iResearch View using '_meta' params
-  /// @note arangodb::Index override
-  ////////////////////////////////////////////////////////////////////////////////
-  Result insert(transaction::Methods& trx,
-                LocalDocumentId const& documentId,
-                velocypack::Slice const& doc,
-                Index::OperationMode mode);
-
-  bool isHidden() const;  // arangodb::Index override
-  bool isSorted() const; // arangodb::Index override
+  static bool isHidden();  // arangodb::Index override
+  static bool isSorted();  // arangodb::Index override
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief called when the iResearch Link is loaded into memory
@@ -156,100 +92,80 @@ class IResearchLink {
   void load();
 
   ////////////////////////////////////////////////////////////////////////////////
-  /// @brief index comparator, used by the coordinator to detect if the specified
+  /// @brief index comparator, used by the coordinator to detect if the
+  /// specified
   ///        definition is the same as this link
   /// @note arangodb::Index override
   ////////////////////////////////////////////////////////////////////////////////
-  bool matchesDefinition(velocypack::Slice const& slice) const;
+  bool matchesDefinition(velocypack::Slice slice) const;
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief amount of memory in bytes occupied by this iResearch Link
-  /// @note arangodb::Index override
-  ////////////////////////////////////////////////////////////////////////////////
-  void toVelocyPackStats(VPackBuilder& builder) const;
-
+  using IResearchDataStore::properties;
   //////////////////////////////////////////////////////////////////////////////
   /// @brief fill and return a jSON description of a IResearchLink object
   ///        elements are appended to an existing object
   //////////////////////////////////////////////////////////////////////////////
   Result properties(velocypack::Builder& builder, bool forPersistence) const;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief update runtine data processing properties (not persisted)
-  /// @return success
-  //////////////////////////////////////////////////////////////////////////////
-  Result properties(IResearchViewMeta const& meta);
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief remove an ArangoDB document from an iResearch View
-  /// @note arangodb::Index override
-  ////////////////////////////////////////////////////////////////////////////////
-  Result remove(transaction::Methods& trx,
-                LocalDocumentId const& documentId,
-                velocypack::Slice const& doc,
-                Index::OperationMode mode);
-
-  ///////////////////////////////////////////////////////////////////////////////
-  /// @brief 'this' for the lifetime of the link data-store
-  ///        for use with asynchronous calls, e.g. callbacks, view
-  ///////////////////////////////////////////////////////////////////////////////
-  AsyncLinkPtr self() const { return _asyncSelf; }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @return pointer to an index reader containing the data store current
-  ///         record snapshot
-  ///         (nullptr == no data store snapshot availabe, e.g. error)
-  //////////////////////////////////////////////////////////////////////////////
-  Snapshot snapshot() const;
-
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief ArangoSearch Link index type enum value
   /// @note arangodb::Index override
   ////////////////////////////////////////////////////////////////////////////////
-  Index::IndexType type() const;
+  static Index::IndexType type();
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief ArangoSearch Link index type string value
   /// @note arangodb::Index override
   ////////////////////////////////////////////////////////////////////////////////
-  char const* typeName() const;
+  static char const* typeName();
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief called when the iResearch Link is unloaded from memory
   /// @note arangodb::Index override
   ////////////////////////////////////////////////////////////////////////////////
-  Result unload();
+  Result unload() noexcept;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief lookup referenced analyzer
   ////////////////////////////////////////////////////////////////////////////////
-  AnalyzerPool::ptr findAnalyzer(AnalyzerPool const& analyzer) const;
+  AnalyzerPool::ptr findAnalyzer(AnalyzerPool const& analyzer) const override;
 
-  typedef std::function<void(irs::directory&)> InitCallback;
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief initialize from the specified definition used in make(...)
   /// @return success
   ////////////////////////////////////////////////////////////////////////////////
-  Result init(velocypack::Slice const& definition,
-              InitCallback const& initCallback = {});
-              
+  Result init(velocypack::Slice definition, bool& pathExists,
+              InitCallback const& init = {});
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @return arangosearch internal format identifier
+  ////////////////////////////////////////////////////////////////////////////////
+  std::string_view format() const noexcept;
+
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief get stored values
   ////////////////////////////////////////////////////////////////////////////////
-  IResearchViewStoredValues const& storedValues() const;
+  IResearchViewStoredValues const& storedValues() const noexcept;
 
- protected:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief index stats
-  //////////////////////////////////////////////////////////////////////////////
-  struct Stats {
-    size_t docsCount{};       // total number of documents
-    size_t liveDocsCount{};   // number of live documents
-    size_t numBufferedDocs{}; // number of buffered docs
-    size_t indexSize{};       // size of the index in bytes
-    size_t numSegments{};     // number of segments
-    size_t numFiles{};        // number of files
-  };
+  /// @brief sets the _collectionName in Link meta. Used in cluster only to
+  /// store linked collection name (as shard name differs from the
+  /// cluster-wide collection name)
+  /// @param name collection to set. Should match existing value of the
+  /// _collectionName if it is not empty.
+  /// @return true if name not existed in link before and was actually set by
+  /// this call, false otherwise
+  bool setCollectionName(irs::string_ref name) noexcept;
+
+  /// @brief insert an ArangoDB document into an iResearch View using '_meta'
+  /// params
+  /// @note arangodb::Index override
+  ////////////////////////////////////////////////////////////////////////////////
+  Result insert(transaction::Methods& trx, LocalDocumentId documentId,
+                velocypack::Slice doc);
+
+  std::string const& getViewId() const noexcept;
+  std::string const& getDbName() const;
+  std::string const& getShardName() const noexcept;
+  std::string getCollectionName() const;
 
  protected:
   ////////////////////////////////////////////////////////////////////////////////
@@ -258,95 +174,25 @@ class IResearchLink {
   ////////////////////////////////////////////////////////////////////////////////
   IResearchLink(IndexId iid, LogicalCollection& collection);
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief link was created during recovery
-  ////////////////////////////////////////////////////////////////////////////////
-  bool createdInRecovery() const noexcept { return _createdInRecovery; }
+  void insertMetrics() final;
+  void removeMetrics() final;
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief get index stats for current snapshot
-  ////////////////////////////////////////////////////////////////////////////////
-  Stats stats() const;
+  void invalidateQueryCache(TRI_vocbase_t* vocbase) override;
 
  private:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief the underlying iresearch data store
-  //////////////////////////////////////////////////////////////////////////////
-  struct DataStore {
-    IResearchViewMeta _meta; // runtime meta for a data store (not persisted)
-    irs::directory::ptr _directory;
-    irs::async_utils::read_write_mutex _mutex; // for use with member '_meta'
-    irs::utf8_path _path;
-    irs::directory_reader _reader;
-    irs::index_writer::ptr _writer;
-    TRI_voc_tick_t _recoveryTick{ 0 }; // the tick at which data store was recovered
-    std::atomic<bool> _inRecovery{ false }; // data store is in recovery
-    operator bool() const noexcept { return _directory && _writer; }
+  template<typename T>
+  Result toView(std::shared_ptr<LogicalView> const& logical,
+                std::shared_ptr<T>& view);
+  Result initAndLink(bool& pathExists, InitCallback const& init,
+                     IResearchView* view);
 
-    void resetDataStore() noexcept { // reset all underlying readers to release file handles 
-      _reader.reset(); 
-      _writer.reset();
-      _directory.reset();
-    } 
-  };
+  Result initSingleServer(bool& pathExists, InitCallback const& init);
+  Result initCoordinator(InitCallback const& init);
+  Result initDBServer(bool& pathExists, InitCallback const& init);
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief run filesystem cleanup on the data store
-  /// @note assumes that '_asyncSelf' is read-locked (for use with async tasks)
-  //////////////////////////////////////////////////////////////////////////////
-  Result cleanupUnsafe();
+  IResearchLinkMeta _meta;
+  // the identifier of the desired view (read-only, set via init())
+  std::string _viewGuid;
+};
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief mark the current data store state as the latest valid state
-  /// @param wait even if other thread is committing
-  /// @note assumes that '_asyncSelf' is read-locked (for use with async tasks)
-  //////////////////////////////////////////////////////////////////////////////
-  Result commitUnsafe(bool wait);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief run segment consolidation on the data store
-  /// @note assumes that '_asyncSelf' is read-locked (for use with async tasks)
-  //////////////////////////////////////////////////////////////////////////////
-  Result consolidateUnsafe( // consolidate segments
-    IResearchViewMeta::ConsolidationPolicy const& policy, // policy to apply
-    irs::merge_writer::flush_progress_t const& progress // policy progress to use
-  );
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief initialize the data store with a new or from an existing directory
-  //////////////////////////////////////////////////////////////////////////////
-  Result initDataStore(
-    InitCallback const& initCallback, bool sorted,
-    std::vector<IResearchViewStoredValues::StoredColumn> const& storedColumns,
-    irs::type_info::type_id primarySortCompression);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief set up asynchronous maintenance tasks
-  //////////////////////////////////////////////////////////////////////////////
-  void setupMaintenance();
-
-  StorageEngine* _engine;
-  VPackComparer _comparer;
-  IResearchFeature* _asyncFeature; // the feature where async jobs were registered (nullptr == no jobs registered)
-  AsyncLinkPtr _asyncSelf; // 'this' for the lifetime of the link (for use with asynchronous calls)
-  std::atomic<bool> _asyncTerminate; // trigger termination of long-running async jobs
-  LogicalCollection& _collection; // the linked collection
-  DataStore _dataStore; // the iresearch data store, protected by _asyncSelf->mutex()
-  std::shared_ptr<FlushSubscription> _flushSubscription;
-  IndexId const _id;                 // the index identifier
-  TRI_voc_tick_t _lastCommittedTick; // protected by _commitMutex
-  IResearchLinkMeta const _meta; // how this collection should be indexed (read-only, set via init())
-  std::mutex _commitMutex; // prevents data store sequential commits
-  std::function<void(transaction::Methods& trx, transaction::Status status)> _trxCallback; // for insert(...)/remove(...)
-  irs::index_writer::before_commit_f _before_commit;
-  std::string const _viewGuid; // the identifier of the desired view (read-only, set via init())
-  bool _createdInRecovery; // link was created based on recovery marker
-};  // IResearchLink
-
-irs::utf8_path getPersistedPath(arangodb::DatabasePathFeature const& dbPathFeature,
-                                arangodb::iresearch::IResearchLink const& link);
-
-}  // namespace iresearch
-}  // namespace arangodb
-
-#endif
+}  // namespace arangodb::iresearch

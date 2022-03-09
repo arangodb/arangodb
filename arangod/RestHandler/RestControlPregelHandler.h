@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,16 +21,18 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_REST_CONTROL_PREGEL_HANDLER_H
-#define ARANGOD_REST_HANDLER_REST_CONTROL_PREGEL_HANDLER_H 1
+#pragma once
 
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
 namespace arangodb {
+
+namespace pregel {
+class PregelFeature;
+}
 class RestControlPregelHandler : public arangodb::RestVocbaseBaseHandler {
  public:
-  RestControlPregelHandler(application_features::ApplicationServer&,
-                           GeneralRequest*, GeneralResponse*);
+  RestControlPregelHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
 
  public:
   char const* name() const override final { return "RestControlPregelHandler"; }
@@ -44,7 +46,7 @@ class RestControlPregelHandler : public arangodb::RestVocbaseBaseHandler {
   void startExecution();
   void getExecutionStatus();
   void cancelExecution();
+
+  pregel::PregelFeature& _pregel;
 };
 }  // namespace arangodb
-
-#endif

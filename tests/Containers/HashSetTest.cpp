@@ -1,11 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite for HashSet class
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,7 +16,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
 /// @author Copyright 2007-2012, triAGENS GmbH, Cologne, Germany
@@ -139,7 +136,8 @@ TEST(HashSetTest, test_long_string) {
   for (size_t i = 0; i < 100; ++i) {
     EXPECT_EQ(values.size(), i);
     values.insert(
-        std::string("test-this-will-hopefully-disable-sso-everywhere") + std::to_string(i));
+        std::string("test-this-will-hopefully-disable-sso-everywhere") +
+        std::to_string(i));
     EXPECT_EQ(values.size(), i + 1);
     EXPECT_FALSE(values.empty());
   }
@@ -149,7 +147,8 @@ TEST(HashSetTest, test_long_string) {
 
   for (size_t i = 0; i < 100; ++i) {
     std::string value =
-        std::string("test-this-will-hopefully-disable-sso-everywhere") + std::to_string(i);
+        std::string("test-this-will-hopefully-disable-sso-everywhere") +
+        std::to_string(i);
     EXPECT_NE(values.find(value), values.end());
   }
 
@@ -394,7 +393,8 @@ TEST(HashSetTest, test_copy_construct_heap_huge) {
 
   for (int i = 0; i < 100; ++i) {
     values.insert(
-        std::string("test-this-will-hopefully-disable-sso-everywhere") + std::to_string(i));
+        std::string("test-this-will-hopefully-disable-sso-everywhere") +
+        std::to_string(i));
   }
 
   // copy
@@ -521,7 +521,8 @@ TEST(HashSetTest, test_copy_assign_heap_huge) {
 
   for (int i = 0; i < 100; ++i) {
     values.insert(
-        std::string("test-this-will-hopefully-disable-sso-everywhere") + std::to_string(i));
+        std::string("test-this-will-hopefully-disable-sso-everywhere") +
+        std::to_string(i));
   }
 
   // copy
@@ -624,7 +625,8 @@ TEST(HashSetTest, test_move_construct_heap_huge) {
 
   for (int i = 0; i < 100; ++i) {
     values.insert(
-        std::string("test-this-will-hopefully-disable-sso-everywhere") + std::to_string(i));
+        std::string("test-this-will-hopefully-disable-sso-everywhere") +
+        std::to_string(i));
   }
 
   // move
@@ -709,7 +711,8 @@ TEST(HashSetTest, test_move_assign_heap_huge) {
 
   for (int i = 0; i < 100; ++i) {
     values.insert(
-        std::string("test-this-will-hopefully-disable-sso-everywhere") + std::to_string(i));
+        std::string("test-this-will-hopefully-disable-sso-everywhere") +
+        std::to_string(i));
   }
 
   // move

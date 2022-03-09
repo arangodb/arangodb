@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -41,17 +42,20 @@
 #include "VocBase/ManagedDocumentResult.h"
 
 #include "velocypack/Builder.h"
+#include "velocypack/Collection.h"
 #include "velocypack/Slice.h"
-#include "velocypack/velocypack-aliases.h"
 
 #include "../IResearch/IResearchQueryCommon.h"
 #include "../Mocks/Servers.h"
+
+#include <string_view>
 
 using namespace arangodb::aql;
 using namespace arangodb::containers;
 
 namespace {
-struct Comparator final : public WalkerWorker<ExecutionNode> {
+struct Comparator final
+    : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
   Comparator(Comparator const&) = delete;
   Comparator& operator=(Comparator const&) = delete;
 
@@ -65,7 +69,7 @@ struct Comparator final : public WalkerWorker<ExecutionNode> {
            en->getType() == ExecutionNode::SINGLETON;
   }
 
-  bool before(ExecutionNode* en) final {
+  bool before(ExecutionNode* en) override final {
     std::set<ExecutionNodeId> depids, otherdepids;
 
     if (!isSubqueryRelated(en)) {
@@ -87,16 +91,17 @@ struct Comparator final : public WalkerWorker<ExecutionNode> {
 
         EXPECT_EQ(depids, otherdepids);
       } catch (...) {
-        EXPECT_TRUE(false) << "expected node with id " << en->id().id() << " of type "
-                           << en->getTypeString() << " to be present in optimized plan";
+        EXPECT_TRUE(false) << "expected node with id " << en->id().id()
+                           << " of type " << en->getTypeString()
+                           << " to be present in optimized plan";
       }
     }
     return false;
   }
 
-  void after(ExecutionNode* en) final {}
+  void after(ExecutionNode* en) override final {}
 
-  bool enterSubquery(ExecutionNode*, ExecutionNode* sub) final {
+  bool enterSubquery(ExecutionNode*, ExecutionNode* sub) override final {
     EXPECT_TRUE(_expectNormalSubqueries)
         << "Optimized plan must not contain SUBQUERY nodes";
     return false;
@@ -118,120 +123,74 @@ class SpliceSubqueryNodeOptimizerRuleTest : public ::testing::Test {
   mocks::MockAqlServer server;
   QueryRegistry* queryRegistry{QueryRegistryFeature::registry()};
 
-  std::shared_ptr<VPackBuilder> enableRuleOptions(const char* const additionalOptionsString) const {
-    auto const additionalOptions = VPackParser::fromJson(additionalOptionsString);
-    auto const enableRuleOptionString = R"({"optimizer": { "rules": [ "+splice-subqueries" ] } })";
-    return std::make_shared<VPackBuilder>(basics::VelocyPackHelper::merge(
-        VPackParser::fromJson(enableRuleOptionString)->slice(),
-        additionalOptions->slice(), false, false));
+  std::shared_ptr<VPackBuilder> ruleOptions(
+      char const* additionalOptionsString) const {
+    return VPackParser::fromJson(additionalOptionsString);
   }
 
-  std::shared_ptr<VPackBuilder> disableRuleOptions(const char* const additionalOptionsString) const {
-    auto const additionalOptions = VPackParser::fromJson(additionalOptionsString);
-    auto const disableRuleOptionString =
-        R"({"optimizer": { "rules": [ "-splice-subqueries" ] } })";
-    return std::make_shared<VPackBuilder>(basics::VelocyPackHelper::merge(
-        VPackParser::fromJson(disableRuleOptionString)->slice(),
-        additionalOptions->slice(), false, false));
-  }
-
-  // The last parameter, expectedNumberOfUnsplicedSubqueries, can be removed
-  // (and replaced with zero everywhere), as soon as the optimizer rule
-  // splice-subqueries is enabled for all subqueries, after the subquery
-  // implementation with shadow rows works with skipping, too.
   void verifySubquerySplicing(std::string const& querystring,
                               size_t const expectedNumberOfSplicedSubqueries,
-                              size_t const expectedNumberOfUnsplicedSubqueries = 0,
-                              const char* const bindParameters = "{}",
-                              const char* const additionalOptions = "{}") {
-    auto const expectedNumberOfSubqueries =
-        expectedNumberOfSplicedSubqueries + expectedNumberOfUnsplicedSubqueries;
+                              char const* bindParameters = "{}",
+                              char const* additionalOptions = "{}") {
+    auto const expectedNumberOfSubqueries = expectedNumberOfSplicedSubqueries;
     ASSERT_NE(queryRegistry, nullptr) << "query string: " << querystring;
-    ASSERT_EQ(queryRegistry->numberRegisteredQueries(), 0) << "query string: " << querystring;
+    ASSERT_EQ(queryRegistry->numberRegisteredQueries(), 0)
+        << "query string: " << querystring;
 
-    auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(server.getSystemDatabase());
+    auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(
+        server.getSystemDatabase());
     auto const bindParamVpack = VPackParser::fromJson(bindParameters);
-    arangodb::aql::Query notSplicedQuery(ctx,
-                                         arangodb::aql::QueryString(querystring), bindParamVpack,
-                                         disableRuleOptions(additionalOptions));
-    notSplicedQuery.prepareQuery(SerializationFormat::SHADOWROWS);
-    ASSERT_EQ(queryRegistry->numberRegisteredQueries(), 0) << "query string: " << querystring;
+    auto splicedQuery = arangodb::aql::Query::create(
+        ctx, arangodb::aql::QueryString(querystring), bindParamVpack,
+        arangodb::aql::QueryOptions(ruleOptions(additionalOptions)->slice()));
+    splicedQuery->prepareQuery(SerializationFormat::SHADOWROWS);
+    ASSERT_EQ(queryRegistry->numberRegisteredQueries(), 0)
+        << "query string: " << querystring;
 
-    auto notSplicedPlan = const_cast<arangodb::aql::ExecutionPlan*>(notSplicedQuery.plan());
-    ASSERT_NE(notSplicedPlan, nullptr) << "query string: " << querystring;
-
-    SmallVector<ExecutionNode*>::allocator_type::arena_type a;
-    SmallVector<ExecutionNode*> notSplicedSubqueryNodes{a};
-    SmallVector<ExecutionNode*> notSplicedSubqueryStartNodes{a};
-    SmallVector<ExecutionNode*> notSplicedSubqueryEndNodes{a};
-
-    notSplicedPlan->findNodesOfType(notSplicedSubqueryNodes, ExecutionNode::SUBQUERY, true);
-    notSplicedPlan->findNodesOfType(notSplicedSubqueryStartNodes,
-                                    ExecutionNode::SUBQUERY_START, true);
-    notSplicedPlan->findNodesOfType(notSplicedSubqueryEndNodes,
-                                    ExecutionNode::SUBQUERY_END, true);
-
-    auto ctx2 = std::make_shared<arangodb::transaction::StandaloneContext>(server.getSystemDatabase());
-    arangodb::aql::Query splicedQuery(ctx2, arangodb::aql::QueryString(querystring), bindParamVpack,
-                                      enableRuleOptions(additionalOptions));
-    splicedQuery.prepareQuery(SerializationFormat::SHADOWROWS);
-    ASSERT_EQ(queryRegistry->numberRegisteredQueries(), 0) << "query string: " << querystring;
-
-    auto splicedPlan = const_cast<arangodb::aql::ExecutionPlan*>(splicedQuery.plan());
+    auto splicedPlan =
+        const_cast<arangodb::aql::ExecutionPlan*>(splicedQuery->plan());
     ASSERT_NE(splicedPlan, nullptr) << "query string: " << querystring;
 
+    SmallVector<ExecutionNode*>::allocator_type::arena_type a;
     SmallVector<ExecutionNode*> splicedSubqueryNodes{a};
     SmallVector<ExecutionNode*> splicedSubqueryStartNodes{a};
     SmallVector<ExecutionNode*> splicedSubqueryEndNodes{a};
     SmallVector<ExecutionNode*> splicedSubquerySingletonNodes{a};
-    splicedPlan->findNodesOfType(splicedSubqueryNodes, ExecutionNode::SUBQUERY, true);
+    splicedPlan->findNodesOfType(splicedSubqueryNodes, ExecutionNode::SUBQUERY,
+                                 true);
     splicedPlan->findNodesOfType(splicedSubqueryStartNodes,
                                  ExecutionNode::SUBQUERY_START, true);
-    splicedPlan->findNodesOfType(splicedSubqueryEndNodes, ExecutionNode::SUBQUERY_END, true);
+    splicedPlan->findNodesOfType(splicedSubqueryEndNodes,
+                                 ExecutionNode::SUBQUERY_END, true);
 
     splicedPlan->findNodesOfType(splicedSubquerySingletonNodes,
                                  ExecutionNode::SINGLETON, true);
 
-    EXPECT_EQ(0, notSplicedSubqueryStartNodes.size()) << "query string: " << querystring;
-    EXPECT_EQ(0, notSplicedSubqueryEndNodes.size()) << "query string: " << querystring;
-
-    EXPECT_EQ(expectedNumberOfUnsplicedSubqueries, splicedSubqueryNodes.size())
-        << "query string: " << querystring;
-    EXPECT_EQ(expectedNumberOfSplicedSubqueries, splicedSubqueryStartNodes.size())
+    EXPECT_EQ(expectedNumberOfSplicedSubqueries,
+              splicedSubqueryStartNodes.size())
         << "query string: " << querystring;
     EXPECT_EQ(expectedNumberOfSplicedSubqueries, splicedSubqueryEndNodes.size())
         << "query string: " << querystring;
-    EXPECT_EQ(expectedNumberOfSubqueries, notSplicedSubqueryNodes.size())
-        << "query string: " << querystring;
 
-    EXPECT_EQ(splicedSubquerySingletonNodes.size(), 1 + expectedNumberOfUnsplicedSubqueries)
+    EXPECT_EQ(splicedSubquerySingletonNodes.size(), 1)
         << "query string: " << querystring;
 
     // Make sure no nodes got lost (currently does not check SubqueryNodes,
     // SubqueryStartNode, SubqueryEndNode correctness)
-    Comparator compare(notSplicedPlan, expectedNumberOfSubqueries > 0);
+    Comparator compare(splicedPlan, expectedNumberOfSubqueries > 0);
     splicedPlan->root()->walk(compare);
   }
 
   void verifyQueryResult(std::string const& query, VPackSlice const expected,
-                         const char* const bindParameters = "{}",
-                         const char* const additionalOptions = "{}") {
+                         char const* bindParameters = "{}",
+                         char const* additionalOptions = "{}") {
     auto const bindParamVPack = VPackParser::fromJson(bindParameters);
     SCOPED_TRACE("Query: " + query);
-    // First test original Query (rule-disabled)
-    {
-      auto queryResult =
-          arangodb::tests::executeQuery(server.getSystemDatabase(), query, bindParamVPack,
-                                        disableRuleOptions(additionalOptions)->toJson());
-      SCOPED_TRACE("rule was disabled");
-      AssertQueryResultToSlice(queryResult, expected);
-    }
 
-    // Second test optimized Query (rule-enabled)
     {
-      auto queryResult =
-          arangodb::tests::executeQuery(server.getSystemDatabase(), query, bindParamVPack,
-                                        enableRuleOptions(additionalOptions)->toJson());
+      auto queryResult = arangodb::tests::executeQuery(
+          server.getSystemDatabase(), query, bindParamVPack,
+          ruleOptions(additionalOptions)->toJson());
       SCOPED_TRACE("rule was enabled");
       AssertQueryResultToSlice(queryResult, expected);
     }
@@ -287,14 +246,16 @@ TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_subquery_in_subquery_plan) {
   verifyQueryResult(query, expected->slice());
 }
 
-TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_subquery_after_subquery_plan) {
+TEST_F(SpliceSubqueryNodeOptimizerRuleTest,
+       splice_subquery_after_subquery_plan) {
   auto query = R"aql(FOR d IN 1..2
                         LET first = (FOR e IN 1..2 FILTER d == e RETURN e)
                         LET second = (FOR e IN 1..2 FILTER d != e RETURN e)
                         RETURN [first, second])aql";
   verifySubquerySplicing(query, 2);
 
-  auto expected = arangodb::velocypack::Parser::fromJson(R"([[[1],[2]],[[2],[1]]])");
+  auto expected =
+      arangodb::velocypack::Parser::fromJson(R"([[[1],[2]],[[2],[1]]])");
   verifyQueryResult(query, expected->slice());
 }
 
@@ -310,11 +271,13 @@ TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_subquery_with_sort) {
       RETURN sorted)aql";
   verifySubquerySplicing(query, 1);
 
-  auto expected = arangodb::velocypack::Parser::fromJson(R"([[6,5,4,3,2,1], [12,10,8,6,4,2]])");
+  auto expected = arangodb::velocypack::Parser::fromJson(
+      R"([[6,5,4,3,2,1], [12,10,8,6,4,2]])");
   verifyQueryResult(query, expected->slice());
 }
 
-TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_subquery_with_skip__inner_limit_offset) {
+TEST_F(SpliceSubqueryNodeOptimizerRuleTest,
+       splice_subquery_with_skip__inner_limit_offset) {
   auto const queryString = R"aql(FOR i IN 0..2
     LET a = (FOR j IN 0..2 LIMIT 1, 1 RETURN 3*i + j)
     RETURN FIRST(a))aql";
@@ -325,7 +288,8 @@ TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_subquery_with_skip__inner_lim
   verifyQueryResult(queryString, expected->slice());
 }
 
-TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_subquery_with_skip__outer_limit_offset) {
+TEST_F(SpliceSubqueryNodeOptimizerRuleTest,
+       splice_subquery_with_skip__outer_limit_offset) {
   auto const queryString = R"aql(FOR i IN 0..2
     LET a = (FOR j IN 0..2 RETURN 3*i + j)
     LIMIT 1, 1
@@ -337,7 +301,8 @@ TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_subquery_with_skip__outer_lim
   verifyQueryResult(queryString, expected->slice());
 }
 
-TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_subquery_with_skip__inner_collect_count) {
+TEST_F(SpliceSubqueryNodeOptimizerRuleTest,
+       splice_subquery_with_skip__inner_collect_count) {
   auto const queryString = R"aql(FOR i IN 0..2
     LET a = (FOR j IN 0..i COLLECT WITH COUNT INTO n RETURN n)
     RETURN FIRST(a))aql";
@@ -348,7 +313,8 @@ TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_subquery_with_skip__inner_col
   verifyQueryResult(queryString, expected->slice());
 }
 
-TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_subquery_with_skip__outer_collect_count) {
+TEST_F(SpliceSubqueryNodeOptimizerRuleTest,
+       splice_subquery_with_skip__outer_collect_count) {
   // the RAND() is there to avoid the subquery being removed
   auto const queryString = R"aql(FOR i IN 0..2
     LET a = (FOR j IN 0..FLOOR(2*RAND()) RETURN 1)
@@ -361,9 +327,11 @@ TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_subquery_with_skip__outer_col
   verifyQueryResult(queryString, expected->slice());
 }
 
-// Must be changed as soon as the subquery implementation with shadow rows handle skipping,
-// and the splice-subqueries optimizer rule is changed to allow it.
-TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_subquery_with_skip__full_count) {
+// Must be changed as soon as the subquery implementation with shadow rows
+// handle skipping, and the splice-subqueries optimizer rule is changed to allow
+// it.
+TEST_F(SpliceSubqueryNodeOptimizerRuleTest,
+       splice_subquery_with_skip__full_count) {
   // the RAND() is there to avoid the subquery being removed
   auto const queryString = R"aql(FOR i IN 0..2
     LET a = (FOR j IN 0..FLOOR(2*RAND()) RETURN 1)
@@ -371,13 +339,15 @@ TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_subquery_with_skip__full_coun
     RETURN i)aql";
   auto const expectedString = R"res([0])res";
 
-  verifySubquerySplicing(queryString, 1, 0, "{}", R"opts({"fullCount": true})opts");
+  verifySubquerySplicing(queryString, 1, "{}",
+                         R"opts({"fullCount": true})opts");
   auto expected = arangodb::velocypack::Parser::fromJson(expectedString);
   verifyQueryResult(queryString, expected->slice());
 }
 
-// Must be changed as soon as the subquery implementation with shadow rows handle skipping,
-// and the splice-subqueries optimizer rule is changed to allow it.
+// Must be changed as soon as the subquery implementation with shadow rows
+// handle skipping, and the splice-subqueries optimizer rule is changed to allow
+// it.
 TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_nested_subquery) {
   auto const queryString = R"aql(
     FOR i IN 0..1
@@ -398,9 +368,11 @@ TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_nested_subquery) {
   verifyQueryResult(queryString, expected->slice());
 }
 
-// Must be changed as soon as the subquery implementation with shadow rows handle skipping,
-// and the splice-subqueries optimizer rule is changed to allow it.
-TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_nested_subquery_with_innermost_skip) {
+// Must be changed as soon as the subquery implementation with shadow rows
+// handle skipping, and the splice-subqueries optimizer rule is changed to allow
+// it.
+TEST_F(SpliceSubqueryNodeOptimizerRuleTest,
+       splice_nested_subquery_with_innermost_skip) {
   auto const queryString = R"aql(
     FOR i IN 0..1
     LET js = ( // this subquery should be spliced
@@ -425,22 +397,26 @@ TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_nested_subquery_with_innermos
 // handle skipping, and the splice-subqueries optimizer rule is changed to allow
 // it. This is a test for a specific problem where constant subqueries did not
 // work inside spliced subqueries correctly.
-TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_nested_subquery_with_innermost_constant_skip) {
+TEST_F(SpliceSubqueryNodeOptimizerRuleTest,
+       splice_nested_subquery_with_innermost_constant_skip) {
   auto const queryString = R"aql(
     FOR a IN 1..2
       LET b = (RETURN (FOR c IN 2..4 LIMIT 1, null RETURN c) )
     RETURN {a, b}
   )aql";
-  auto const expectedString = R"res([{"a": 1, "b": [[3, 4]]}, {"a": 2, "b": [[3, 4]]}])res";
+  auto const expectedString =
+      R"res([{"a": 1, "b": [[3, 4]]}, {"a": 2, "b": [[3, 4]]}])res";
 
   verifySubquerySplicing(queryString, 2);
   auto expected = arangodb::velocypack::Parser::fromJson(expectedString);
   verifyQueryResult(queryString, expected->slice());
 }
 
-// Must be changed as soon as the subquery implementation with shadow rows handle skipping,
-// and the splice-subqueries optimizer rule is changed to allow it.
-TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_nested_subquery_with_outermost_skip) {
+// Must be changed as soon as the subquery implementation with shadow rows
+// handle skipping, and the splice-subqueries optimizer rule is changed to allow
+// it.
+TEST_F(SpliceSubqueryNodeOptimizerRuleTest,
+       splice_nested_subquery_with_outermost_skip) {
   auto const queryString = R"aql(
     FOR i IN 0..2
     LET js = ( // this subquery should be spliced
@@ -461,9 +437,11 @@ TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_nested_subquery_with_outermos
   verifyQueryResult(queryString, expected->slice());
 }
 
-// Must be changed as soon as the subquery implementation with shadow rows handle skipping,
-// and the splice-subqueries optimizer rule is changed to allow it.
-TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_subquery_with_limit_and_no_offset) {
+// Must be changed as soon as the subquery implementation with shadow rows
+// handle skipping, and the splice-subqueries optimizer rule is changed to allow
+// it.
+TEST_F(SpliceSubqueryNodeOptimizerRuleTest,
+       splice_subquery_with_limit_and_no_offset) {
   auto query = R"aql(
     FOR i IN 2..4
       LET a = (FOR j IN [i, i+10, i+20] LIMIT 0, 1 RETURN j)
@@ -513,7 +491,7 @@ TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_subquery_with_upsert) {
   auto const bindString = R"bind({"key": "myKey"})bind";
   auto const expectedString = R"res([["UnitTestCollection/myKey"]])res";
 
-  verifySubquerySplicing(queryString, 2, 0, bindString);
+  verifySubquerySplicing(queryString, 2, bindString);
   auto expected = arangodb::velocypack::Parser::fromJson(expectedString);
   verifyQueryResult(queryString, expected->slice(), bindString);
 
@@ -521,17 +499,23 @@ TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_subquery_with_upsert) {
   auto const readCollection = std::vector<std::string>{"UnitTestCollection"};
   transaction::Options opts;
   auto ctx = transaction::StandaloneContext::Create(server.getSystemDatabase());
-  auto trx = std::make_unique<arangodb::transaction::Methods>(ctx, readCollection, noCollections,
-                                                              noCollections, opts);
-  ASSERT_EQ(1, collection->numberDocuments(trx.get(), transaction::CountType::Normal));
-  auto mdr = ManagedDocumentResult{};
-  auto result = collection->read(trx.get(), VPackStringRef{"myKey"}, mdr);
+  auto trx = std::make_unique<arangodb::transaction::Methods>(
+      ctx, readCollection, noCollections, noCollections, opts);
+  ASSERT_EQ(1, collection->numberDocuments(trx.get(),
+                                           transaction::CountType::Normal));
+  bool called = false;
+  auto result = collection->getPhysical()->read(
+      trx.get(), std::string_view{"myKey"},
+      [&](LocalDocumentId const&, VPackSlice document) {
+        called = true;
+        EXPECT_TRUE(document.isObject());
+        EXPECT_TRUE(document.get("_key").isString());
+        EXPECT_EQ(std::string{"myKey"}, document.get("_key").copyString());
+        return true;
+      },
+      arangodb::ReadOwnWrites::no);
+  ASSERT_TRUE(called);
   ASSERT_TRUE(result.ok());
-  ASSERT_NE(nullptr, mdr.vpack());
-  auto const document = VPackSlice{mdr.vpack()};
-  ASSERT_TRUE(document.isObject());
-  ASSERT_TRUE(document.get("_key").isString());
-  ASSERT_EQ(std::string{"myKey"}, document.get("_key").copyString());
 }
 
 // Regression test for https://github.com/arangodb/arangodb/issues/10896
@@ -548,7 +532,7 @@ TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_subquery_before_collect) {
 
   auto const expectedString = R"res([ {"tokens": ["some"]} ])res";
 
-  verifySubquerySplicing(queryString, 1, 0);
+  verifySubquerySplicing(queryString, 1);
   auto expected = arangodb::velocypack::Parser::fromJson(expectedString);
   verifyQueryResult(queryString, expected->slice());
 }
@@ -557,7 +541,8 @@ TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_subquery_before_collect) {
  * `COLLECT ... INTO group` should not collect any variables declared outside
  * its containing subquery, especially not from subqueries before it.
  */
-TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_subquery_with_collect_after_spliced_subquery) {
+TEST_F(SpliceSubqueryNodeOptimizerRuleTest,
+       splice_subquery_with_collect_after_spliced_subquery) {
   auto const queryString = R"aql(
     FOR x IN 0..2
       LET is = (FOR i IN 0..2 RETURN i + 3*x)
@@ -575,7 +560,7 @@ TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_subquery_with_collect_after_s
     {"ys": [ {"x": 2, "is": [6, 7, 8], "group": [{"y": 0}, {"y": 1}, {"y": 2}] } ] }
   ])res";
 
-  verifySubquerySplicing(queryString, 2, 0);
+  verifySubquerySplicing(queryString, 2);
   auto expected = arangodb::velocypack::Parser::fromJson(expectedString);
   verifyQueryResult(queryString, expected->slice());
 }
@@ -621,15 +606,17 @@ TEST_F(SpliceSubqueryNodeOptimizerRuleTest,
         }]}
   ])res";
 
-  verifySubquerySplicing(queryString, 2, 0);
+  verifySubquerySplicing(queryString, 2);
   auto expected = arangodb::velocypack::Parser::fromJson(expectedString);
   verifyQueryResult(queryString, expected->slice());
 }
 
 /*
- * Inside a subquery a relative top-level collect should behave correctly (and collect top level variables)
+ * Inside a subquery a relative top-level collect should behave correctly (and
+ * collect top level variables)
  */
-TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_subquery_with_relative_top_level_collect) {
+TEST_F(SpliceSubqueryNodeOptimizerRuleTest,
+       splice_subquery_with_relative_top_level_collect) {
   auto const queryString = R"aql(
     LET y = (
       LET x = 12
@@ -648,7 +635,7 @@ TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_subquery_with_relative_top_le
     ]
   ])res";
 
-  verifySubquerySplicing(queryString, 2, 0);
+  verifySubquerySplicing(queryString, 2);
   auto expected = arangodb::velocypack::Parser::fromJson(expectedString);
   verifyQueryResult(queryString, expected->slice());
 }
@@ -674,7 +661,7 @@ TEST_F(SpliceSubqueryNodeOptimizerRuleTest,
     }]
   ])res";
 
-  verifySubquerySplicing(queryString, 2, 0);
+  verifySubquerySplicing(queryString, 2);
   auto expected = arangodb::velocypack::Parser::fromJson(expectedString);
   verifyQueryResult(queryString, expected->slice());
 }
@@ -714,15 +701,17 @@ TEST_F(SpliceSubqueryNodeOptimizerRuleTest,
     ]]
   ])res";
 
-  verifySubquerySplicing(queryString, 4, 0);
+  verifySubquerySplicing(queryString, 4);
   auto expected = arangodb::velocypack::Parser::fromJson(expectedString);
   verifyQueryResult(queryString, expected->slice());
 }
 
 /*
- * A subquery with a collect should not affect a collect outside of that subquery.
+ * A subquery with a collect should not affect a collect outside of that
+ * subquery.
  */
-TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_subquery_with_collect_and_outside_collect) {
+TEST_F(SpliceSubqueryNodeOptimizerRuleTest,
+       splice_subquery_with_collect_and_outside_collect) {
   auto const queryString = R"aql(
     LET k = 12
     FOR x IN 0..5
@@ -740,7 +729,7 @@ TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_subquery_with_collect_and_out
     ]
   ])res";
 
-  verifySubquerySplicing(queryString, 1, 0);
+  verifySubquerySplicing(queryString, 1);
   auto expected = arangodb::velocypack::Parser::fromJson(expectedString);
   verifyQueryResult(queryString, expected->slice());
 }
@@ -748,7 +737,8 @@ TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_subquery_with_collect_and_out
 /*
  * A collect in a subquery should not collect top-level variables.
  */
-TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_subquery_with_collect_in_subquery) {
+TEST_F(SpliceSubqueryNodeOptimizerRuleTest,
+       splice_subquery_with_collect_in_subquery) {
   auto const queryString = R"aql(
     LET k = 14
     LET x = (
@@ -768,12 +758,13 @@ TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_subquery_with_collect_in_subq
     ]
   ])res";
 
-  verifySubquerySplicing(queryString, 2, 0);
+  verifySubquerySplicing(queryString, 2);
   auto expected = arangodb::velocypack::Parser::fromJson(expectedString);
   verifyQueryResult(queryString, expected->slice());
 }
 
-TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_subquery_with_limit_and_offset) {
+TEST_F(SpliceSubqueryNodeOptimizerRuleTest,
+       splice_subquery_with_limit_and_offset) {
   auto query = R"aql(
     FOR i IN 2..4
       LET a = (FOR j IN [0, i, i+10] LIMIT 1, 1 RETURN j)
@@ -784,7 +775,8 @@ TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_subquery_with_limit_and_offse
   verifyQueryResult(query, expected->slice());
 }
 
-TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_subquery_collect_within_empty_nested_subquery) {
+TEST_F(SpliceSubqueryNodeOptimizerRuleTest,
+       splice_subquery_collect_within_empty_nested_subquery) {
   auto query = R"aql(
     FOR k IN 1..2
       LET sub1 = (
@@ -798,7 +790,8 @@ TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_subquery_collect_within_empty
     RETURN [k, sub1])aql";
   verifySubquerySplicing(query, 2);
 
-  auto expected = arangodb::velocypack::Parser::fromJson(R"([[1, []], [2, []]])");
+  auto expected =
+      arangodb::velocypack::Parser::fromJson(R"([[1, []], [2, []]])");
   verifyQueryResult(query, expected->slice());
 }
 

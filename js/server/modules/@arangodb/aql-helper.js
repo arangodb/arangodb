@@ -247,21 +247,12 @@ function getCompactPlan (explainResult) {
   return out;
 }
 
-function findExecutionNodes (plan, nodetype) {
-  var matches = [];
-  var what = plan;
+function findExecutionNodes (plan, nodeType) {
+  let what = plan;
   if (plan.hasOwnProperty('plan')) {
     what = plan.plan;
   }
-  what.nodes.forEach(function(node) {
-    if (nodetype === undefined || node.type === nodetype) {
-      matches.push(node);
-    } else if (node.type === 'SubqueryNode') {
-      var subPlan = {'plan': node.subquery};
-      matches = matches.concat(findExecutionNodes(subPlan, nodetype));
-    }
-  });
-  return matches;
+  return what.nodes.filter((node) => nodeType === undefined || node.type === nodeType);
 }
 
 function findReferencedNodes (plan, testNode) {
@@ -346,6 +337,8 @@ function getQueryMultiplePlansAndExecutions (query, bindVars, testObject, debug)
     // ignore these statistics for comparisons
     delete results[i].stats.scannedFull;
     delete results[i].stats.scannedIndex;
+    delete results[i].stats.cursorsCreated;
+    delete results[i].stats.cursorsRearmed;
     delete results[i].stats.filtered;
     delete results[i].stats.executionTime;
     delete results[i].stats.httpRequests;
@@ -388,12 +381,11 @@ function removeCost (obj) {
   if (Array.isArray(obj)) {
     return obj.map(removeCost);
   } else if (typeof obj === 'object') {
-    var result = {};
+    let result = {};
     for (var key in obj) {
-      if (obj.hasOwnProperty(key)) {
-        if (key !== "estimatedCost" || key !== "selectivityEstimate") {
-          result[key] = removeCost(obj[key]);
-        }
+      if (obj.hasOwnProperty(key) &&
+          key !== "estimatedCost" && key !== "selectivityEstimate") {
+        result[key] = removeCost(obj[key]);
       }
     }
     return result;
@@ -401,7 +393,6 @@ function removeCost (obj) {
     return obj;
   }
 }
-
 
 exports.getParseResults = getParseResults;
 exports.assertParseError = assertParseError;

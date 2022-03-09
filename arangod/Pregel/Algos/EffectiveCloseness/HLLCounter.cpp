@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -54,7 +55,8 @@ inline uint8_t _get_leading_zero_count(uint32_t x, uint8_t b) {
 #endif /* defined(__GNUC__) */
 
 static uint32_t hashPregelId(PregelID const& pregelId) {
-  uint32_t h1 = fasthash32(pregelId.key.data(), pregelId.key.length(), 0xf007ba11UL);
+  uint32_t h1 =
+      fasthash32(pregelId.key.data(), pregelId.key.length(), 0xf007ba11UL);
   uint64_t h2 = fasthash64_uint64(pregelId.shard, 0xdefec7edUL);
   uint32_t h3 = (uint32_t)(h2 - (h2 >> 32));
   return h1 ^ (h3 << 1);

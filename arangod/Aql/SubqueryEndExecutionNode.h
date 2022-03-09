@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_SUBQUERY_END_EXECUTION_NODE_H
-#define ARANGOD_AQL_SUBQUERY_END_EXECUTION_NODE_H 1
+#pragma once
 
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionNodeId.h"
@@ -37,8 +36,8 @@ class SubqueryEndNode : public ExecutionNode {
  public:
   SubqueryEndNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
 
-  SubqueryEndNode(ExecutionPlan* plan, ExecutionNodeId id, Variable const* inVariable,
-                  Variable const* outVariable, bool isModificationSubquery);
+  SubqueryEndNode(ExecutionPlan* plan, ExecutionNodeId id,
+                  Variable const* inVariable, Variable const* outVariable);
 
   CostEstimate estimateCost() const override final;
 
@@ -48,19 +47,17 @@ class SubqueryEndNode : public ExecutionNode {
 
   Variable const* outVariable() const { return _outVariable; }
 
-  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
-                          std::unordered_set<ExecutionNode const*>& seen) const override final;
-
   std::unique_ptr<ExecutionBlock> createBlock(
       ExecutionEngine& engine,
-      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const override;
+      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&)
+      const override;
 
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final;
 
   bool isEqualTo(ExecutionNode const& other) const override final;
 
-  void getVariablesUsedHere(VarSet& usedVars) const final {
+  void getVariablesUsedHere(VarSet& usedVars) const override final {
     if (_inVariable != nullptr) {
       usedVars.emplace(_inVariable);
     }
@@ -71,15 +68,20 @@ class SubqueryEndNode : public ExecutionNode {
   }
 
   void replaceOutVariable(Variable const* var);
+
+  // We only override this to TRI_ASSERT(false), because
+  // noone should ever ask this node whether it is a modification
+  // node
   bool isModificationNode() const override;
+
+ protected:
+  void doToVelocyPack(arangodb::velocypack::Builder&,
+                      unsigned flags) const override final;
 
  private:
   Variable const* _inVariable;
   Variable const* _outVariable;
-  bool _isModificationSubquery;
 };
 
 }  // namespace aql
 }  // namespace arangodb
-
-#endif

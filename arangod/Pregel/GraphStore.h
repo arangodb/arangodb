@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,14 +21,14 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_GRAPH_STORE_H
-#define ARANGODB_PREGEL_GRAPH_STORE_H 1
+#pragma once
 
 #include "Cluster/ClusterInfo.h"
 #include "Pregel/Graph.h"
 #include "Pregel/GraphFormat.h"
 #include "Pregel/Iterators.h"
 #include "Pregel/TypedBuffer.h"
+#include "Pregel/Reports.h"
 #include "Utils/DatabaseGuard.h"
 
 #include <atomic>
@@ -45,26 +46,28 @@ namespace transaction {
 class Methods;
 }
 
+namespace traverser {
+class EdgeCollectionInfo;
+}
+
 namespace pregel {
 
-template <typename T>
+template<typename T>
 struct TypedBuffer;
 class WorkerConfig;
-template <typename V, typename E>
+template<typename V, typename E>
 struct GraphFormat;
-  
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief carry graph data for a worker job. NOT THREAD SAFE ON DOCUMENT LOADS
 ////////////////////////////////////////////////////////////////////////////////
-template <typename V, typename E>
+template<typename V, typename E>
 class GraphStore final {
  public:
-  GraphStore(TRI_vocbase_t& vocbase, GraphFormat<V, E>* graphFormat);
-  ~GraphStore();
+  GraphStore(TRI_vocbase_t& vocbase, uint64_t executionNumber,
+             GraphFormat<V, E>* graphFormat);
 
-  uint64_t numberVertexSegments() const {
-    return _vertices.size();
-  }
+  uint64_t numberVertexSegments() const { return _vertices.size(); }
   uint64_t localVertexCount() const { return _localVertexCount; }
   uint64_t localEdgeCount() const { return _localEdgeCount; }
   GraphFormat<V, E> const* graphFormat() { return _graphFormat.get(); }
@@ -73,47 +76,53 @@ class GraphStore final {
   void loadShards(WorkerConfig* state, std::function<void()> const&);
   void loadDocument(WorkerConfig* config, std::string const& documentID);
   void loadDocument(WorkerConfig* config, PregelShard sourceShard,
-                    velocypack::StringRef const& _key);
+                    std::string_view key);
   // ======================================================================
 
   // only thread safe if your threads coordinate access to memory locations
-  RangeIterator<Vertex<V,E>> vertexIterator();
+  RangeIterator<Vertex<V, E>> vertexIterator();
   /// j and j are the first and last index of vertex segments
-  RangeIterator<Vertex<V,E>> vertexIterator(size_t i, size_t j);
-  RangeIterator<Edge<E>> edgeIterator(Vertex<V,E> const* entry);
+  RangeIterator<Vertex<V, E>> vertexIterator(size_t i, size_t j);
+  RangeIterator<Edge<E>> edgeIterator(Vertex<V, E> const* entry);
 
   /// Write results to database
   void storeResults(WorkerConfig* config, std::function<void()>);
 
+  ReportManager* _reports;
+
  private:
-  
-  void _loadVertices(ShardID const& vertexShard,
-                     std::vector<ShardID> const& edgeShards);
-  void _loadEdges(transaction::Methods& trx, Vertex<V,E>& vertexEntry,
-                  ShardID const& edgeShard,
-                  std::string const& documentID,
-                  std::vector<std::unique_ptr<TypedBuffer<Edge<E>>>>&,
-                  std::vector<std::unique_ptr<TypedBuffer<char>>>&);
-  
-  void _storeVertices(std::vector<ShardID> const& globalShards,
-                      RangeIterator<Vertex<V,E>>& it);
-  
-  constexpr size_t vertexSegmentSize () const {
-    return 64 * 1024 * 1024 / sizeof(Vertex<V,E>);
+  void loadVertices(ShardID const& vertexShard,
+                    std::vector<ShardID> const& edgeShards);
+  void loadEdges(transaction::Methods& trx, Vertex<V, E>& vertex,
+                 ShardID const& edgeShard, std::string const& documentID,
+                 std::vector<std::unique_ptr<TypedBuffer<Edge<E>>>>& edges,
+                 std::vector<std::unique_ptr<TypedBuffer<char>>>& edgeKeys,
+                 uint64_t numVertices, traverser::EdgeCollectionInfo& info);
+
+  void storeVertices(std::vector<ShardID> const& globalShards,
+                     RangeIterator<Vertex<V, E>>& it, size_t threadNumber);
+
+  uint64_t determineVertexIdRangeStart(uint64_t numVertices);
+
+  constexpr size_t vertexSegmentSize() const {
+    return 64 * 1024 * 1024 / sizeof(Vertex<V, E>);
   }
+
   constexpr size_t edgeSegmentSize() const {
     return 64 * 1024 * 1024 / sizeof(Edge<E>);
   }
-  
- private:
 
+ private:
   DatabaseGuard _vocbaseGuard;
+  uint64_t const _executionNumber;
   const std::unique_ptr<GraphFormat<V, E>> _graphFormat;
   WorkerConfig* _config = nullptr;
 
+  std::atomic<uint64_t> _vertexIdRangeStart;
+
   /// Holds vertex keys, data and pointers to edges
   std::mutex _bufferMutex;
-  std::vector<std::unique_ptr<TypedBuffer<Vertex<V,E>>>> _vertices;
+  std::vector<std::unique_ptr<TypedBuffer<Vertex<V, E>>>> _vertices;
   std::vector<std::unique_ptr<TypedBuffer<char>>> _vertexKeys;
   std::vector<std::unique_ptr<TypedBuffer<Edge<E>>>> _edges;
   std::vector<TypedBuffer<Edge<E>>*> _nextEdgeBuffer;
@@ -121,15 +130,12 @@ class GraphStore final {
 
   // cache the amount of vertices
   std::set<ShardID> _loadedShards;
-  
+
   // actual count of loaded vertices / edges
   std::atomic<size_t> _localVertexCount;
   std::atomic<size_t> _localEdgeCount;
   std::atomic<uint32_t> _runningThreads;
-  bool _destroyed = false;
 };
 
 }  // namespace pregel
 }  // namespace arangodb
-
-#endif

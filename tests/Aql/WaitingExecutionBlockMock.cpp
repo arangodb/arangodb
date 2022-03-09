@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -31,24 +32,23 @@
 
 #include "Logger/LogMacros.h"
 
-#include <velocypack/velocypack-aliases.h>
-
 using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::tests;
 using namespace arangodb::tests::aql;
 
 namespace {
-static auto blocksToInfos(std::deque<SharedAqlItemBlockPtr> const& blocks) -> RegisterInfos {
+static auto blocksToInfos(std::deque<SharedAqlItemBlockPtr> const& blocks)
+    -> RegisterInfos {
   auto readInput = RegIdSet{};
   auto writeOutput = RegIdSet{};
   RegIdSet toClear{};
   RegIdSetStack toKeep{{}};
-  RegisterId regs = 1;
+  RegisterCount regs = 1;
   for (auto const& b : blocks) {
     if (b != nullptr) {
       // Find the first non-nullptr block
-      regs = b->getNrRegs();
+      regs = b->numRegisters();
 
       break;
     }
@@ -59,17 +59,16 @@ static auto blocksToInfos(std::deque<SharedAqlItemBlockPtr> const& blocks) -> Re
   // for the rime being no test is showing this behavior.
   // Consider adding data first if the test fails
 
-  for (RegisterId r = 0; r < regs; ++r) {
+  for (RegisterId::value_t r = 0; r < regs; ++r) {
     toKeep.back().emplace(r);
   }
   return {readInput, writeOutput, regs, regs, toClear, toKeep};
 }
 }  // namespace
-WaitingExecutionBlockMock::WaitingExecutionBlockMock(ExecutionEngine* engine,
-                                                     ExecutionNode const* node,
-                                                     std::deque<SharedAqlItemBlockPtr>&& data,
-                                                     WaitingBehaviour variant,
-                                                     size_t subqueryDepth)
+WaitingExecutionBlockMock::WaitingExecutionBlockMock(
+    ExecutionEngine* engine, ExecutionNode const* node,
+    std::deque<SharedAqlItemBlockPtr>&& data, WaitingBehaviour variant,
+    size_t subqueryDepth)
     : ExecutionBlock(engine, node),
       _hasWaited(false),
       _variant{variant},
@@ -96,7 +95,8 @@ WaitingExecutionBlockMock::WaitingExecutionBlockMock(ExecutionEngine* engine,
   }
 }
 
-std::pair<arangodb::aql::ExecutionState, arangodb::Result> WaitingExecutionBlockMock::initializeCursor(
+std::pair<arangodb::aql::ExecutionState, arangodb::Result>
+WaitingExecutionBlockMock::initializeCursor(
     arangodb::aql::InputAqlItemRow const& input) {
   if (!_hasWaited) {
     _hasWaited = true;
@@ -106,24 +106,20 @@ std::pair<arangodb::aql::ExecutionState, arangodb::Result> WaitingExecutionBlock
   return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
 }
 
-std::pair<arangodb::aql::ExecutionState, Result> WaitingExecutionBlockMock::shutdown(int errorCode) {
-  ExecutionState state;
-  Result res;
-  return std::make_pair(state, res);
-}
-
-std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> WaitingExecutionBlockMock::execute(AqlCallStack stack) {
+std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>
+WaitingExecutionBlockMock::execute(AqlCallStack const& stack) {
   traceExecuteBegin(stack);
   auto res = executeWithoutTrace(stack);
   traceExecuteEnd(res);
   return res;
 }
 
-std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> WaitingExecutionBlockMock::executeWithoutTrace(
-    AqlCallStack stack) {
+std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>
+WaitingExecutionBlockMock::executeWithoutTrace(AqlCallStack stack) {
   auto myCall = stack.peek();
 
-  TRI_ASSERT(!(myCall.getOffset() == 0 && myCall.softLimit == AqlCall::Limit{0u}));
+  TRI_ASSERT(
+      !(myCall.getOffset() == 0 && myCall.softLimit == AqlCall::Limit{0u}));
   TRI_ASSERT(!(myCall.hasSoftLimit() && myCall.fullCount));
   TRI_ASSERT(!(myCall.hasSoftLimit() && myCall.hasHardLimit()));
   if (_variant != WaitingBehaviour::NEVER && !_hasWaited) {
@@ -140,7 +136,8 @@ std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> WaitingExecutionBl
   }
   SkipResult localSkipped;
   while (true) {
-    auto [state, skipped, result] = _blockData.execute(stack, ExecutionState::DONE);
+    auto [state, skipped, result] =
+        _blockData.execute(stack, ExecutionState::DONE);
     // We loop here if we only skip
     localSkipped.merge(skipped, false);
     bool shouldReturn = state == ExecutionState::DONE || result != nullptr;
@@ -148,7 +145,7 @@ std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> WaitingExecutionBl
     if (result != nullptr && !result->hasShadowRows()) {
       // Count produced rows
       auto& modCall = stack.modifyTopCall();
-      modCall.didProduce(result->size());
+      modCall.didProduce(result->numRows());
     }
 
     if (!skipped.nothingSkipped()) {
@@ -182,10 +179,12 @@ std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> WaitingExecutionBl
           }
         }
       }
-      // We want to "lie" on upstream if we have hit a softLimit exactly on the last row
+      // We want to "lie" on upstream if we have hit a softLimit exactly on the
+      // last row
       if (state == ExecutionState::DONE && _shouldLieOnLastRow) {
         auto const& call = stack.peek();
-        if (call.hasSoftLimit() && call.getLimit() == 0 && call.getOffset() == 0) {
+        if (call.hasSoftLimit() && call.getLimit() == 0 &&
+            call.getOffset() == 0) {
           state = ExecutionState::HASMORE;
         }
       }

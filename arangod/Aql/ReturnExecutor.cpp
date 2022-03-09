@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -25,6 +26,7 @@
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Basics/Common.h"
+#include "Basics/Exceptions.h"
 
 #include <algorithm>
 
@@ -45,7 +47,8 @@ ReturnExecutor::ReturnExecutor(Fetcher& fetcher, ReturnExecutorInfos& infos)
 
 ReturnExecutor::~ReturnExecutor() = default;
 
-auto ReturnExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call)
+auto ReturnExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
+                                   AqlCall& call)
     -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
   TRI_IF_FAILURE("ReturnExecutor::produceRows") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -54,38 +57,23 @@ auto ReturnExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& 
   auto stats = Stats{};
   auto skippedUpstream = inputRange.skipAll();
   call.didSkip(skippedUpstream);
-  /*
-  if (_infos.doCount()) {
-    // TODO: do we need to include counted here?
-    stats.incrCounted(skippedUpstream);
-  }
-  */
 
-  while (inputRange.hasDataRow() && call.needSkipMore()) {
+  if (inputRange.hasDataRow() && call.needSkipMore()) {
     // I do not think that this is actually called.
     // It will be called first to get the upstream-Call
     // but this executor will always delegate the skipping
     // to upstream.
     TRI_ASSERT(false);
-    auto [state, input] = inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
-    TRI_ASSERT(input.isInitialized());
-    TRI_IF_FAILURE("ReturnBlock::getSome") {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-    }
-    call.didSkip(1);
-
-    /*
-    if (_infos.doCount()) {
-      // TODO: do we need to include counted here?
-      stats.incrCounted();
-    }
-    */
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        "ReturnExecutor::skipRowsRange shouldn't be called");
   }
 
   return {inputRange.upstreamState(), stats, call.getSkipCount(), call};
 }
 
-auto ReturnExecutor::produceRows(AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output)
+auto ReturnExecutor::produceRows(AqlItemBlockInputRange& inputRange,
+                                 OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, Stats, AqlCall> {
   TRI_IF_FAILURE("ReturnExecutor::produceRows") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -94,9 +82,11 @@ auto ReturnExecutor::produceRows(AqlItemBlockInputRange& inputRange, OutputAqlIt
   Stats stats{};
 
   while (inputRange.hasDataRow() && !output.isFull()) {
-    auto [state, input] = inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
+    auto [state, input] =
+        inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
     TRI_ASSERT(input.isInitialized());
-    // REMARK: it is called `getInputRegisterId` here but FilterExecutor calls it `getInputRegister`.
+    // REMARK: it is called `getInputRegisterId` here but FilterExecutor calls
+    // it `getInputRegister`.
     AqlValue val = input.stealValue(_infos.getInputRegisterId());
     AqlValueGuard guard(val, true);
     TRI_IF_FAILURE("ReturnBlock::getSome") {
@@ -112,10 +102,10 @@ auto ReturnExecutor::produceRows(AqlItemBlockInputRange& inputRange, OutputAqlIt
   return {inputRange.upstreamState(), stats, output.getClientCall()};
 }
 
-[[nodiscard]] auto ReturnExecutor::expectedNumberOfRowsNew(AqlItemBlockInputRange const& input,
-                                                           AqlCall const& call) const
-    noexcept -> size_t {
-  if (input.finalState() == ExecutorState::DONE) {
+[[nodiscard]] auto ReturnExecutor::expectedNumberOfRowsNew(
+    AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept
+    -> size_t {
+  if (input.finalState() == MainQueryState::DONE) {
     return input.countDataRows();
   }
   // Otherwise we do not know.

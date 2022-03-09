@@ -33,7 +33,6 @@ const arango = require("@arangodb").arango;
 const db = require("internal").db;
 const users = require("@arangodb/users");
 const request = require('@arangodb/request');
-const ERRORS = require('internal').errors;
 
 function AuthSuite() {
   'use strict';
@@ -52,31 +51,19 @@ function AuthSuite() {
   };
 
   let checkClusterNodeVersion = function() {
-    // this will just redirect to a new endpoint
-    let result = arango.GET('/_admin/clusterNodeVersion?ServerID=' + servers[0]);
-    assertEqual(308, result.code);
-    
-    result = arango.GET('/_admin/cluster/nodeVersion?ServerID=' + servers[0]);
+    let result = arango.GET('/_admin/cluster/nodeVersion?ServerID=' + servers[0]);
     assertTrue(result.hasOwnProperty('server'), result);
     assertTrue(result.hasOwnProperty('license'), result);
     assertTrue(result.hasOwnProperty('version'), result);
   };
 
   let checkClusterNodeEngine = function() {
-    // this will just redirect to a new endpoint
-    let result = arango.GET('/_admin/clusterNodeEngine?ServerID=' + servers[0]);
-    assertEqual(308, result.code);
-    
-    result = arango.GET('/_admin/cluster/nodeEngine?ServerID=' + servers[0]);
+    let result = arango.GET('/_admin/cluster/nodeEngine?ServerID=' + servers[0]);
     assertTrue(result.hasOwnProperty('name'), result);
   };
 
   let checkClusterNodeStats = function() {
-    // this will just redirect to a new endpoint
-    let result = arango.GET('/_admin/clusterNodeStats?ServerID=' + servers[0]);
-    assertEqual(308, result.code);
-    
-    result = arango.GET('/_admin/cluster/nodeStatistics?ServerID=' + servers[0]);
+    let result = arango.GET('/_admin/cluster/nodeStatistics?ServerID=' + servers[0]);
     assertTrue(result.hasOwnProperty('time'), result);
     assertTrue(result.hasOwnProperty('system'), result);
   };

@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -24,13 +25,13 @@
 /// e.g. define  set of cade that causes the process to crash.
 /// this could be used to validate that certain states are considered
 /// invalid in production code and not accidentially removed on refactorings.
-/// However every such death test will generate a core-dump, even if the test is successful
-/// This is inconvenient as it unnecessarily bloats up HDD usage and hides releveant coredumps
-/// So this thin macro wraps around the GTEST :: EXPECT_DEATH macro and disables coredumps
-/// only within the expected forked process
+/// However every such death test will generate a core-dump, even if the test is
+/// successful This is inconvenient as it unnecessarily bloats up HDD usage and
+/// hides releveant coredumps So this thin macro wraps around the GTEST ::
+/// EXPECT_DEATH macro and disables coredumps only within the expected forked
+/// process
 
-#ifndef ARANGODB_TESTS_MOCKS_DEATH_TEST_CHANGER_H
-#define ARANGODB_TESTS_MOCKS_DEATH_TEST_CHANGER_H 1
+#pragma once
 
 #ifndef _WIN32
 
@@ -38,13 +39,24 @@
 
 // Enabled on Linux and Mac
 
+inline void disableCoredump() {
+  auto core_limit = rlimit{};
+  core_limit.rlim_cur = 0;
+  core_limit.rlim_max = 0;
+  setrlimit(RLIMIT_CORE, &core_limit);
+}
+
 #define EXPECT_DEATH_CORE_FREE(func, assertion) \
   EXPECT_DEATH(                                 \
       [&]() {                                   \
-        rlimit core_limit;                      \
-        core_limit.rlim_cur = 0;                \
-        core_limit.rlim_max = 0;                \
-        setrlimit(RLIMIT_CORE, &core_limit);    \
+        disableCoredump();                      \
+        func;                                   \
+      }(),                                      \
+      assertion)
+#define ASSERT_DEATH_CORE_FREE(func, assertion) \
+  ASSERT_DEATH(                                 \
+      [&]() {                                   \
+        disableCoredump();                      \
         func;                                   \
       }(),                                      \
       assertion)
@@ -56,7 +68,6 @@
 // please feel free to fix it here.
 
 #define EXPECT_DEATH_CORE_FREE(func, assertion) EXPECT_TRUE(true)
-
-#endif
+#define ASSERT_DEATH_CORE_FREE(func, assertion) ASSERT_TRUE(true)
 
 #endif

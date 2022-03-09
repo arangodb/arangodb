@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,20 +21,21 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_TESTS_AQL_ITEM_BLOCK_HELPER_H
-#define ARANGOD_AQL_TESTS_AQL_ITEM_BLOCK_HELPER_H
+#pragma once
 
 #include <array>
 #include <memory>
 #include <variant>
 
 #include "Aql/AqlItemBlock.h"
-#include "Aql/ResourceUsage.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
+#include "Basics/ResourceUsage.h"
 #include "Basics/overload.h"
 
 #include "AqlHelper.h"
 #include "VelocyPackHelper.h"
+
+#include <velocypack/Slice.h>
 
 /* * * * * * * *
  * * SYNOPSIS  *
@@ -70,7 +72,8 @@ Also, print the block like this:
     { {10}, {11}, {12} },
   }, {{1,0},{2,1}});
 
-  would create a shadowrow on index 1 with depth 0 and a shadowrow of index 2 with depth 1
+  would create a shadowrow on index 1 with depth 0 and a shadowrow of index 2
+with depth 1
  */
 
 namespace arangodb {
@@ -81,15 +84,16 @@ struct NoneEntry {};
 
 using EntryBuilder = std::variant<NoneEntry, int, const char*>;
 
-template <::arangodb::aql::RegisterId columns>
+template<::arangodb::aql::RegisterId::value_t columns>
 using RowBuilder = std::array<EntryBuilder, columns>;
 
-template <::arangodb::aql::RegisterId columns>
+template<::arangodb::aql::RegisterId::value_t columns>
 using MatrixBuilder = std::vector<RowBuilder<columns>>;
 
-template <::arangodb::aql::RegisterId columns>
+template<::arangodb::aql::RegisterId::value_t columns>
 ::arangodb::aql::SharedAqlItemBlockPtr buildBlock(
-    ::arangodb::aql::AqlItemBlockManager& manager, MatrixBuilder<columns>&& matrix,
+    ::arangodb::aql::AqlItemBlockManager& manager,
+    MatrixBuilder<columns>&& matrix,
     std::vector<std::pair<size_t, uint64_t>> const& shadowRows = {});
 
 }  // namespace aql
@@ -102,35 +106,39 @@ namespace aql {
 
 using namespace ::arangodb::aql;
 
-template <RegisterId columns>
-SharedAqlItemBlockPtr buildBlock(AqlItemBlockManager& manager,
-                                 MatrixBuilder<columns>&& matrix,
-                                 std::vector<std::pair<size_t, uint64_t>> const& shadowRows) {
+template<RegisterId::value_t columns>
+SharedAqlItemBlockPtr buildBlock(
+    AqlItemBlockManager& manager, MatrixBuilder<columns>&& matrix,
+    std::vector<std::pair<size_t, uint64_t>> const& shadowRows) {
   if (matrix.size() == 0) {
     return nullptr;
   }
-  SharedAqlItemBlockPtr block{new AqlItemBlock(manager, matrix.size(), columns)};
+  SharedAqlItemBlockPtr block{
+      new AqlItemBlock(manager, matrix.size(), columns)};
 
-  for (size_t row = 0; row < matrix.size(); row++) {
-    for (RegisterId col = 0; col < columns; col++) {
-      auto const& entry = matrix[row][col];
-      auto value =
-          std::visit(overload{
-                         [](NoneEntry) { return AqlValue{}; },
-                         [](int i) { return AqlValue{AqlValueHintInt{i}}; },
-                         [](const char* json) {
-                           VPackBufferPtr tmpVpack = vpackFromJsonString(json);
-                           return AqlValue{AqlValueHintCopy{tmpVpack->data()}};
-                         },
-                     },
-                     entry);
-      block->setValue(row, col, value);
+  if constexpr (columns > 0) {
+    for (size_t row = 0; row < matrix.size(); row++) {
+      for (RegisterId::value_t col = 0; col < columns; col++) {
+        auto const& entry = matrix[row][col];
+        auto value = std::visit(
+            overload{
+                [](NoneEntry) { return AqlValue{}; },
+                [](int i) { return AqlValue{AqlValueHintInt{i}}; },
+                [](const char* json) {
+                  VPackBufferPtr tmpVpack = vpackFromJsonString(json);
+                  return AqlValue{
+                      AqlValueHintSliceCopy{VPackSlice(tmpVpack->data())}};
+                },
+            },
+            entry);
+        block->setValue(row, col, value);
+      }
     }
   }
 
   if (!shadowRows.empty()) {
     for (auto const& it : shadowRows) {
-      block->setShadowRowDepth(it.first, AqlValue(AqlValueHintUInt(it.second)));
+      block->makeShadowRow(it.first, it.second);
     }
   }
 
@@ -140,5 +148,3 @@ SharedAqlItemBlockPtr buildBlock(AqlItemBlockManager& manager,
 }  // namespace aql
 }  // namespace tests
 }  // namespace arangodb
-
-#endif  // ARANGOD_AQL_TESTS_AQL_ITEM_BLOCK_HELPER_H

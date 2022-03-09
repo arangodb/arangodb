@@ -1,0 +1,117 @@
+﻿////
+Copyright 2019 Peter Dimov
+Distributed under the Boost Software License, Version 1.0.
+http://www.boost.org/LICENSE_1_0.txt
+////
+
+[#description]
+# Description
+:toc:
+:toc-title:
+:idprefix:
+
+The header `<boost/throw_exception.hpp>` provides a common Boost infrastructure
+for throwing exceptions, in the form of a function `boost::throw_exception`
+and a macro `BOOST_THROW_EXCEPTION`.
+
+`boost::throw_exception(x);` is a replacement for `throw x;` that both
+degrades gracefully when exception handling support is not available, and
+integrates the thrown exception into facilities provided by
+link:../../../exception/index.html[Boost.Exception], such as automatically
+providing a base class of type `boost::exception` and support for
+`boost::exception_ptr`.
+
+When exception handling is not available, the function is only declared, but
+not defined. This allows users to provide their own definition.
+
+An overload for `boost::throw_exception` that takes a
+link:../../../assert/doc/html/assert.html#source_location_support[`boost::source_location`]
+is provided. It records the supplied source location into the `boost::exception`
+base class, from where it can later be retrieved when the exception is caught.
+link:../../../exception/doc/diagnostic_information.html[`boost::diagnostic_information`]
+automatically displays the stored source location.
+
+The macro `BOOST_THROW_EXCEPTION(x)` expands to
+`::boost::throw_exception(x, BOOST_CURRENT_LOCATION)`, passing the current source
+location.
+
+[#examples]
+# Examples
+:toc:
+:toc-title:
+:idprefix:
+
+## Using BOOST_THROW_EXCEPTION
+
+```
+#include <boost/throw_exception.hpp>
+#include <boost/exception/diagnostic_information.hpp>
+#include <stdexcept>
+#include <iostream>
+
+void f()
+{
+    BOOST_THROW_EXCEPTION( std::runtime_error( "Unspecified runtime error" ) );
+}
+
+int main()
+{
+    try
+    {
+        f();
+    }
+    catch( std::exception const & x )
+    {
+        std::cerr << boost::diagnostic_information( x ) << std::endl;
+    }
+}
+```
+
+## Using boost::throw_exception with a source location
+
+```
+#include <boost/throw_exception.hpp>
+#include <boost/lexical_cast.hpp>
+#include <boost/exception/diagnostic_information.hpp>
+#include <stdexcept>
+#include <cstddef>
+#include <iostream>
+
+void throw_index_error( std::size_t i, std::size_t n,
+  boost::source_location const & loc )
+{
+    std::string msg = "Index out of range: "
+      + boost::lexical_cast<std::string>( i ) + " >= "
+      + boost::lexical_cast<std::string>( n );
+
+    boost::throw_exception( std::out_of_range( msg ), loc );
+}
+
+void f1( std::size_t i, std::size_t n )
+{
+    if( i >= n )
+    {
+        throw_index_error( i, n, BOOST_CURRENT_LOCATION );
+    }
+}
+
+void f2( std::size_t i, std::size_t n )
+{
+    if( i >= n )
+    {
+        throw_index_error( i, n, BOOST_CURRENT_LOCATION );
+    }
+}
+
+int main()
+{
+    try
+    {
+        f1( 4, 3 );
+    }
+    catch( std::exception const & x )
+    {
+        std::cerr << boost::diagnostic_information( x ) << std::endl;
+    }
+}
+```

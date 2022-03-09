@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -87,17 +88,17 @@ IAggregator* RecoveringPageRank::aggregator(std::string const& name) const {
 struct RPRCompensation : public VertexCompensation<float, float, float> {
   RPRCompensation() {}
   void compensate(bool inLostPartition) override {
-    const uint32_t* step = getAggregatedValue<uint32_t>(kStep);
-    if (*step == 0 && !inLostPartition) {
+    auto const& step = getAggregatedValueRef<uint32_t>(kStep);
+    if (step == 0 && !inLostPartition) {
       uint32_t c = 1;
       aggregate(kNonFailedCount, c);
       aggregate(kRank, mutableVertexData());
-    } else if (*step == 1) {
+    } else if (step == 1) {
       float* data = mutableVertexData();
       if (inLostPartition) {
         *data = 1.0f / context()->vertexCount();
       } else {
-        const float* scale = getAggregatedValue<float>(kScale);
+        auto const& scale = &getAggregatedValueRef<float>(kScale);
         if (*scale != 0) {
           *data *= *scale;
         }
@@ -126,7 +127,8 @@ struct RPRMasterContext : public MasterContext {
 
   bool postGlobalSuperstep() override {
     const float* convergence = getAggregatedValue<float>(kConvergence);
-    LOG_TOPIC("60fab", DEBUG, Logger::PREGEL) << "Current convergence level" << *convergence;
+    LOG_TOPIC("60fab", DEBUG, Logger::PREGEL)
+        << "Current convergence level" << *convergence;
     totalRank = *getAggregatedValue<float>(kRank);
 
     float const* diff = getAggregatedValue<float>(kConvergence);
@@ -143,7 +145,8 @@ struct RPRMasterContext : public MasterContext {
       recoveryStep = 1;
 
       const float* remainingRank = getAggregatedValue<float>(kRank);
-      const uint32_t* nonfailedCount = getAggregatedValue<uint32_t>(kNonFailedCount);
+      const uint32_t* nonfailedCount =
+          getAggregatedValue<uint32_t>(kNonFailedCount);
       if (*remainingRank != 0 && *nonfailedCount != 0) {
         float scale = totalRank * (*nonfailedCount);
         scale /= this->vertexCount() * (*remainingRank);

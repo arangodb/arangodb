@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,18 +23,21 @@
 
 #include "RestActionHandler.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Actions/actions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Statistics/RequestStatistics.h"
+#include "GeneralServer/GeneralServerFeature.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestActionHandler::RestActionHandler(application_features::ApplicationServer& server,
-                                     GeneralRequest* request, GeneralResponse* response)
+RestActionHandler::RestActionHandler(ArangodServer& server,
+                                     GeneralRequest* request,
+                                     GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response),
       _action(TRI_LookupActionVocBase(request)),
       _data(nullptr) {}
@@ -81,19 +84,22 @@ void RestActionHandler::executeAction() {
   rest::RequestType type = _request->requestType();
   if (type == rest::RequestType::GET) {
     std::vector<std::string> const& suffixes = _request->decodedSuffixes();
-    if (suffixes.empty() ||
-        (suffixes.size() == 2 && suffixes[0] == "_admin" && suffixes[1] == "html")) {
+    if (suffixes.empty() || (suffixes.size() == 2 && suffixes[0] == "_admin" &&
+                             suffixes[1] == "html")) {
       // request to just /
-      _response->setResponseCode(rest::ResponseCode::MOVED_PERMANENTLY);
+      auto& gs = server().getFeature<GeneralServerFeature>();
+      _response->setResponseCode(gs.permanentRootRedirect()
+                                     ? rest::ResponseCode::MOVED_PERMANENTLY
+                                     : rest::ResponseCode::FOUND);
       _response->setHeaderNC(StaticStrings::Location,
-                             "/_db/" + StringUtils::encodeURIComponent(_vocbase.name()) +
-                                 "/_admin/aardvark/index.html");
+                             "/_db/" + StringUtils::urlEncode(_vocbase.name()) +
+                                 gs.redirectRootTo());
       return;
     }
   }
 
-  TRI_action_result_t result =
-      _action->execute(&_vocbase, _request.get(), _response.get(), &_dataLock, &_data);
+  TRI_action_result_t result = _action->execute(
+      &_vocbase, _request.get(), _response.get(), &_dataLock, &_data);
 
   if (!result.isValid) {
     if (result.canceled) {

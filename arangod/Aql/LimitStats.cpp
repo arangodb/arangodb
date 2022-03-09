@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -47,13 +48,14 @@ auto LimitStats::getFullCount() const noexcept -> std::size_t {
   return _fullCount;
 }
 
-auto aql::operator+=(ExecutionStats& executionStats, LimitStats const& limitStats) noexcept
-    -> ExecutionStats& {
+auto aql::operator+=(ExecutionStats& executionStats,
+                     LimitStats const& limitStats) noexcept -> ExecutionStats& {
   executionStats.fullCount += limitStats.getFullCount();
   return executionStats;
 }
 
-auto aql::operator==(LimitStats const& left, LimitStats const& right) noexcept -> bool {
+auto aql::operator==(LimitStats const& left, LimitStats const& right) noexcept
+    -> bool {
   // cppcheck-suppress *
   static_assert(
       sizeof(LimitStats) == sizeof(left.getFullCount()),

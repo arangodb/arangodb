@@ -80,7 +80,7 @@ function BabiesStandardShardingSuite () {
     },
     
     testInsertBabiesStandard : function () {
-      c.truncate();
+      c.truncate({ compact: false });
       let docs = [];
       for (let i = 0; i < n; ++i) {
         docs.push({ _key: "test" + i, value: i });
@@ -176,7 +176,7 @@ function BabiesCustomShardingSuite () {
     },
     
     testInsertBabiesCustom : function () {
-      c.truncate();
+      c.truncate({ compact: false });
       let docs = [];
       for (let i = 0; i < n; ++i) {
         docs.push({ value: i });

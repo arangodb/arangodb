@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,8 +24,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_DISTINCT_COLLECT_EXECUTOR_H
-#define ARANGOD_AQL_DISTINCT_COLLECT_EXECUTOR_H
+#pragma once
 
 #include "Aql/AqlCall.h"
 #include "Aql/AqlItemBlockInputRange.h"
@@ -34,10 +34,14 @@
 #include "Aql/RegisterInfos.h"
 #include "Aql/types.h"
 
+#include "Containers/FlatHashSet.h"
+
 #include <memory>
 #include <unordered_set>
 
 namespace arangodb {
+struct ResourceMonitor;
+
 namespace transaction {
 class Methods;
 }
@@ -47,13 +51,14 @@ class InputAqlItemRow;
 class OutputAqlItemRow;
 class NoStats;
 class RegisterInfos;
-template <BlockPassthrough>
+template<BlockPassthrough>
 class SingleRowFetcher;
 
 class DistinctCollectExecutorInfos {
  public:
   DistinctCollectExecutorInfos(std::pair<RegisterId, RegisterId> groupRegister,
-                               velocypack::Options const* opts);
+                               velocypack::Options const* opts,
+                               arangodb::ResourceMonitor& resourceMonitor);
 
   DistinctCollectExecutorInfos() = delete;
   DistinctCollectExecutorInfos(DistinctCollectExecutorInfos&&) = default;
@@ -61,8 +66,10 @@ class DistinctCollectExecutorInfos {
   ~DistinctCollectExecutorInfos() = default;
 
  public:
-  [[nodiscard]] std::pair<RegisterId, RegisterId> const& getGroupRegister() const;
+  [[nodiscard]] std::pair<RegisterId, RegisterId> const& getGroupRegister()
+      const;
   velocypack::Options const* vpackOptions() const;
+  arangodb::ResourceMonitor& getResourceMonitor() const;
 
  private:
   /// @brief pairs, consisting of out register and in register
@@ -70,6 +77,8 @@ class DistinctCollectExecutorInfos {
 
   /// @brief the transaction for this query
   velocypack::Options const* _vpackOptions;
+
+  arangodb::ResourceMonitor& _resourceMonitor;
 };
 
 /**
@@ -80,7 +89,8 @@ class DistinctCollectExecutor {
  public:
   struct Properties {
     static constexpr bool preservesOrder = false;
-    static constexpr BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Disable;
+    static constexpr BlockPassthrough allowsBlockPassthrough =
+        BlockPassthrough::Disable;
     static constexpr bool inputSizeRestrictsOutputSize = true;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
@@ -98,27 +108,31 @@ class DistinctCollectExecutor {
   /**
    * @brief produce the next Rows of Aql Values.
    *
-   * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
+   * @return ExecutorState, the stats, and a new Call that needs to be send to
+   * upstream
    */
-  [[nodiscard]] auto produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
+  [[nodiscard]] auto produceRows(AqlItemBlockInputRange& input,
+                                 OutputAqlItemRow& output)
       -> std::tuple<ExecutorState, Stats, AqlCall>;
 
-  [[nodiscard]] auto skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call)
+  [[nodiscard]] auto skipRowsRange(AqlItemBlockInputRange& inputRange,
+                                   AqlCall& call)
       -> std::tuple<ExecutorState, Stats, size_t, AqlCall>;
 
-  [[nodiscard]] auto expectedNumberOfRowsNew(AqlItemBlockInputRange const& input,
-                                             AqlCall const& call) const noexcept -> size_t;
+  [[nodiscard]] auto expectedNumberOfRowsNew(
+      AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept
+      -> size_t;
 
  private:
   Infos const& infos() const noexcept;
   void destroyValues();
+  size_t memoryUsageForGroup(AqlValue const& value) const;
 
  private:
   Infos const& _infos;
-  std::unordered_set<AqlValue, AqlValueGroupHash, AqlValueGroupEqual> _seen;
+  containers::FlatHashSet<AqlValue, AqlValueGroupHash, AqlValueGroupEqual>
+      _seen;
 };
 
 }  // namespace aql
 }  // namespace arangodb
-
-#endif

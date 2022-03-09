@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GRAPH_TRAVERSER_DOCUMENT_CACHE_H
-#define ARANGOD_GRAPH_TRAVERSER_DOCUMENT_CACHE_H 1
+#pragma once
 
 #include "Graph/TraverserCache.h"
 
@@ -36,8 +36,8 @@ namespace graph {
 
 class TraverserDocumentCache final : public TraverserCache {
  public:
-  TraverserDocumentCache(aql::QueryContext& query, 
-                         std::shared_ptr<arangodb::cache::Cache> cache, 
+  TraverserDocumentCache(aql::QueryContext& query,
+                         std::shared_ptr<arangodb::cache::Cache> cache,
                          BaseOptions*);
 
   ~TraverserDocumentCache();
@@ -52,7 +52,10 @@ class TraverserDocumentCache final : public TraverserCache {
                             arangodb::velocypack::Builder& builder) override;
 
   /// Looks up the document and inserts it into the builder
-  void insertVertexIntoResult(arangodb::velocypack::StringRef idString, arangodb::velocypack::Builder& builder) override;
+  bool appendVertex(std::string_view idString,
+                    arangodb::velocypack::Builder& result) override;
+  bool appendVertex(std::string_view idString,
+                    arangodb::aql::AqlValue& result) override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Return AQL value containing the result
@@ -62,8 +65,6 @@ class TraverserDocumentCache final : public TraverserCache {
 
   aql::AqlValue fetchEdgeAqlResult(graph::EdgeDocumentToken const&) override;
 
-  aql::AqlValue fetchVertexAqlResult(arangodb::velocypack::StringRef idString) override;
-
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Lookup a document by token in the cache.
@@ -71,20 +72,12 @@ class TraverserDocumentCache final : public TraverserCache {
   ///        stays valid. Finding should not be retained very long, if it is
   ///        needed for longer, copy the value.
   //////////////////////////////////////////////////////////////////////////////
-  cache::Finding lookup(arangodb::velocypack::StringRef idString);
+  cache::Finding lookup(std::string_view idString);
 
  private:
-  void insertIntoCache(arangodb::velocypack::StringRef id,
+  void insertIntoCache(std::string_view id,
                        arangodb::velocypack::Slice const& document);
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Lookup a document from the database and insert it into the cache.
-  ///        The Slice returned here is only valid until the NEXT call of this
-  ///        function.
-  //////////////////////////////////////////////////////////////////////////////
-
-  arangodb::velocypack::Slice lookupAndCache(arangodb::velocypack::StringRef idString);
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief The hash-cache that saves documents found in the Database
   //////////////////////////////////////////////////////////////////////////////
@@ -92,5 +85,3 @@ class TraverserDocumentCache final : public TraverserCache {
 };
 }  // namespace graph
 }  // namespace arangodb
-
-#endif

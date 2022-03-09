@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,8 +21,7 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_CONTAINERS_SMALL_UNORDERED_MAP_H
-#define ARANGODB_CONTAINERS_SMALL_UNORDERED_MAP_H 1
+#pragma once
 
 #include <unordered_map>
 
@@ -30,12 +30,11 @@
 namespace arangodb {
 namespace containers {
 
-template <class K, class V, std::size_t BufSize = 64,
-          std::size_t ElementAlignment = alignof(std::pair<const K, V>)>
-using SmallUnorderedMap =
-    std::unordered_map<K, V, std::hash<K>, std::equal_to<K>, short_alloc<std::pair<const K, V>, BufSize, ElementAlignment>>;
+template<class K, class V, std::size_t BufSize = 64,
+         std::size_t ElementAlignment = alignof(std::pair<const K, V>)>
+using SmallUnorderedMap = std::unordered_map<
+    K, V, std::hash<K>, std::equal_to<K>,
+    detail::short_alloc<std::pair<const K, V>, BufSize, ElementAlignment>>;
 
 }  // namespace containers
 }  // namespace arangodb
-
-#endif

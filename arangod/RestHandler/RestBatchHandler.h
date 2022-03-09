@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_REST_BATCH_HANDLER_H
-#define ARANGOD_REST_HANDLER_REST_BATCH_HANDLER_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
@@ -58,8 +57,7 @@ struct SearchHelper {
 
 class RestBatchHandler : public RestVocbaseBaseHandler {
  public:
-  RestBatchHandler(application_features::ApplicationServer&, GeneralRequest*,
-                   GeneralResponse*);
+  RestBatchHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
   ~RestBatchHandler();
 
  public:
@@ -67,7 +65,7 @@ class RestBatchHandler : public RestVocbaseBaseHandler {
   char const* name() const override final { return "RestBatchHandler"; }
   // be pessimistic about what this handler does... it may invoke V8
   // or not, but as we don't know where, we need to assume it
-  RequestLane lane() const override final { return RequestLane::CLIENT_FAST; }
+  RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
 
  private:
   RestStatus executeHttp();
@@ -94,5 +92,3 @@ class RestBatchHandler : public RestVocbaseBaseHandler {
   std::string _boundary;
 };
 }  // namespace arangodb
-
-#endif

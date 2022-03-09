@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -47,7 +48,7 @@ bool parseDirectionBool(arangodb::velocypack::Slice slice, bool& direction) {
 
 bool parseDirectionString(arangodb::velocypack::Slice slice, bool& direction) {
   if (slice.isString()) {
-    std::string value = arangodb::iresearch::getStringRef(slice);
+    std::string value = slice.copyString();
     arangodb::basics::StringUtils::tolowerInPlace(value);
 
     if (value == "asc") {
@@ -67,7 +68,7 @@ bool parseDirectionString(arangodb::velocypack::Slice slice, bool& direction) {
   return false;
 }
 
-}
+}  // namespace
 
 namespace arangodb {
 namespace iresearch {
@@ -78,7 +79,9 @@ bool IResearchViewSort::toVelocyPack(velocypack::Builder& builder) const {
   }
 
   std::string fieldName;
-  auto visitor = [&builder, &fieldName](std::vector<basics::AttributeName> const& field, bool direction) {
+  auto visitor = [&builder, &fieldName](
+                     std::vector<basics::AttributeName> const& field,
+                     bool direction) {
     fieldName.clear();
     basics::TRI_AttributeNamesToString(field, fieldName, true);
 
@@ -92,9 +95,8 @@ bool IResearchViewSort::toVelocyPack(velocypack::Builder& builder) const {
   return visit(visitor);
 }
 
-bool IResearchViewSort::fromVelocyPack(
-    velocypack::Slice slice,
-    std::string& error) {
+bool IResearchViewSort::fromVelocyPack(velocypack::Slice slice,
+                                       std::string& error) {
   static std::string const directionFieldName = "direction";
   static std::string const ascFieldName = "asc";
   static std::string const fieldName = "field";
@@ -138,8 +140,7 @@ bool IResearchViewSort::fromVelocyPack(
 
     try {
       arangodb::basics::TRI_ParseAttributeString(
-        arangodb::iresearch::getStringRef(fieldSlice), field,  false
-      );
+          arangodb::iresearch::getStringRef(fieldSlice), field, false);
     } catch (...) {
       // FIXME why doesn't 'TRI_ParseAttributeString' return bool?
       error = "[" + std::to_string(size()) + "]." + fieldName;
@@ -156,7 +157,7 @@ size_t IResearchViewSort::memory() const noexcept {
   size_t size = sizeof(IResearchViewSort);
 
   for (auto& field : _fields) {
-    size += sizeof(basics::AttributeName)*field.size();
+    size += sizeof(basics::AttributeName) * field.size();
     for (auto& entry : field) {
       size += entry.name.size();
     }
@@ -167,5 +168,5 @@ size_t IResearchViewSort::memory() const noexcept {
   return size;
 }
 
-} // iresearch
-} // arangodb
+}  // namespace iresearch
+}  // namespace arangodb

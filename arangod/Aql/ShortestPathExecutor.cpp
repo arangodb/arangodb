@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -33,8 +34,6 @@
 #include "Graph/ShortestPathResult.h"
 
 #include <velocypack/Builder.h>
-#include <velocypack/StringRef.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <utility>
 
@@ -45,14 +44,14 @@ using namespace arangodb::graph;
 namespace {
 static bool isValidId(VPackSlice id) {
   TRI_ASSERT(id.isString());
-  arangodb::velocypack::StringRef tester(id);
-  return tester.find('/') != std::string::npos;
+  return id.stringView().find('/') != std::string_view::npos;
 }
 }  // namespace
 
 ShortestPathExecutorInfos::ShortestPathExecutorInfos(
     std::unique_ptr<graph::ShortestPathFinder>&& finder,
-    std::unordered_map<OutputName, RegisterId, OutputNameHash>&& registerMapping,
+    std::unordered_map<OutputName, RegisterId, OutputNameHash>&&
+        registerMapping,
     InputVertex&& source, InputVertex&& target)
     : _finder(std::move(finder)),
       _registerMapping(std::move(registerMapping)),
@@ -96,11 +95,13 @@ bool ShortestPathExecutorInfos::usesOutputRegister(OutputName type) const {
   return _registerMapping.find(type) != _registerMapping.end();
 }
 
-ShortestPathExecutorInfos::InputVertex ShortestPathExecutorInfos::getSourceVertex() const noexcept {
+ShortestPathExecutorInfos::InputVertex
+ShortestPathExecutorInfos::getSourceVertex() const noexcept {
   return _source;
 }
 
-ShortestPathExecutorInfos::InputVertex ShortestPathExecutorInfos::getTargetVertex() const noexcept {
+ShortestPathExecutorInfos::InputVertex
+ShortestPathExecutorInfos::getTargetVertex() const noexcept {
   return _target;
 }
 
@@ -115,7 +116,8 @@ static std::string typeToString(ShortestPathExecutorInfos::OutputName type) {
   }
 }
 
-RegisterId ShortestPathExecutorInfos::findRegisterChecked(OutputName type) const {
+RegisterId ShortestPathExecutorInfos::findRegisterChecked(
+    OutputName type) const {
   auto const& it = _registerMapping.find(type);
   if (ADB_UNLIKELY(it == _registerMapping.end())) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -153,25 +155,21 @@ ShortestPathExecutor::ShortestPathExecutor(Fetcher&, Infos& infos)
   _finder.clear();
 }
 
-// Shutdown query
-std::pair<ExecutionState, Result> ShortestPathExecutor::shutdown(int errorCode) {
-  _finder.destroyEngines();
-  return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
-}
-
 auto ShortestPathExecutor::doOutputPath(OutputAqlItemRow& output) -> void {
   while (!output.isFull() && _posInPath < _path->length()) {
     if (_infos.usesOutputRegister(ShortestPathExecutorInfos::VERTEX)) {
       AqlValue vertex = _path->vertexToAqlValue(_infos.cache(), _posInPath);
       AqlValueGuard guard{vertex, true};
-      output.moveValueInto(_infos.getOutputRegister(ShortestPathExecutorInfos::VERTEX),
-                           _inputRow, guard);
+      output.moveValueInto(
+          _infos.getOutputRegister(ShortestPathExecutorInfos::VERTEX),
+          _inputRow, guard);
     }
     if (_infos.usesOutputRegister(ShortestPathExecutorInfos::EDGE)) {
       AqlValue edge = _path->edgeToAqlValue(_infos.cache(), _posInPath);
       AqlValueGuard guard{edge, true};
-      output.moveValueInto(_infos.getOutputRegister(ShortestPathExecutorInfos::EDGE),
-                           _inputRow, guard);
+      output.moveValueInto(
+          _infos.getOutputRegister(ShortestPathExecutorInfos::EDGE), _inputRow,
+          guard);
     }
     output.advanceRow();
     _posInPath++;
@@ -211,13 +209,17 @@ auto ShortestPathExecutor::fetchPath(AqlItemBlockInputRange& input) -> bool {
   while (input.hasDataRow()) {
     auto source = VPackSlice{};
     auto target = VPackSlice{};
-    std::tie(std::ignore, _inputRow) = input.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
+    std::tie(std::ignore, _inputRow) =
+        input.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
     TRI_ASSERT(_inputRow.isInitialized());
 
     // Ordering important here.
-    // Read source and target vertex, then try to find a shortest path (if both worked).
-    if (getVertexId(_infos.getSourceVertex(), _inputRow, _sourceBuilder, source) &&
-        getVertexId(_infos.getTargetVertex(), _inputRow, _targetBuilder, target) &&
+    // Read source and target vertex, then try to find a shortest path (if both
+    // worked).
+    if (getVertexId(_infos.getSourceVertex(), _inputRow, _sourceBuilder,
+                    source) &&
+        getVertexId(_infos.getTargetVertex(), _inputRow, _targetBuilder,
+                    target) &&
         _finder.shortestPath(source, target, *_path)) {
       return true;
     }
@@ -233,7 +235,8 @@ auto ShortestPathExecutor::pathLengthAvailable() -> size_t {
   return _path->length() - _posInPath;
 }
 
-auto ShortestPathExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
+auto ShortestPathExecutor::produceRows(AqlItemBlockInputRange& input,
+                                       OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, Stats, AqlCall> {
   while (true) {
     if (pathLengthAvailable() > 0) {
@@ -262,7 +265,8 @@ auto ShortestPathExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlI
   }
 }
 
-auto ShortestPathExecutor::skipRowsRange(AqlItemBlockInputRange& input, AqlCall& call)
+auto ShortestPathExecutor::skipRowsRange(AqlItemBlockInputRange& input,
+                                         AqlCall& call)
     -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
   auto skipped = size_t{0};
 
@@ -283,9 +287,9 @@ auto ShortestPathExecutor::skipRowsRange(AqlItemBlockInputRange& input, AqlCall&
   }
 }
 
-bool ShortestPathExecutor::getVertexId(ShortestPathExecutorInfos::InputVertex const& vertex,
-                                       InputAqlItemRow& row,
-                                       VPackBuilder& builder, VPackSlice& id) {
+bool ShortestPathExecutor::getVertexId(
+    ShortestPathExecutorInfos::InputVertex const& vertex, InputAqlItemRow& row,
+    VPackBuilder& builder, VPackSlice& id) {
   switch (vertex.type) {
     case ShortestPathExecutorInfos::InputVertex::Type::REGISTER: {
       AqlValue const& in = row.getValue(vertex.reg);

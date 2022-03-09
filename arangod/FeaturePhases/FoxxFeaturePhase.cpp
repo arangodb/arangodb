@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,24 +22,18 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "FoxxFeaturePhase.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 
-#include "FeaturePhases/ServerFeaturePhase.h"
-#include "RestServer/BootstrapFeature.h"
-#include "RestServer/FrontendFeature.h"
-#include "V8Server/FoxxQueuesFeature.h"
+namespace arangodb::application_features {
 
-namespace arangodb {
-namespace application_features {
-
-FoxxFeaturePhase::FoxxFeaturePhase(ApplicationServer& server)
-    : ApplicationFeaturePhase(server, "FoxxPhase") {
+FoxxFeaturePhase::FoxxFeaturePhase(ArangodServer& server)
+    : ApplicationFeaturePhase{server, *this} {
   setOptional(false);
-  startsAfter<ServerFeaturePhase>();
+  startsAfter<ServerFeaturePhase, ArangodServer>();
 
-  startsAfter<BootstrapFeature>();
-  startsAfter<FoxxQueuesFeature>();
-  startsAfter<FrontendFeature>();
+  startsAfter<BootstrapFeature, ArangodServer>();
+  startsAfter<FoxxFeature, ArangodServer>();
+  startsAfter<FrontendFeature, ArangodServer>();
 }
 
-}  // namespace application_features
-}  // namespace arangodb
+}  // namespace arangodb::application_features

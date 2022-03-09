@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_BLOCK_COLLECTOR_H
-#define ARANGOD_AQL_BLOCK_COLLECTOR_H 1
+#pragma once
 
 #include "Aql/SharedAqlItemBlockPtr.h"
 #include "Aql/types.h"
@@ -46,7 +45,7 @@ class BlockCollector {
   ~BlockCollector();
 
   size_t totalSize() const;
-  RegisterId nrRegs() const;
+  RegisterCount nrRegs() const;
 
   void clear();
 
@@ -62,5 +61,3 @@ class BlockCollector {
 
 }  // namespace aql
 }  // namespace arangodb
-
-#endif

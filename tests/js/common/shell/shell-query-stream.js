@@ -36,7 +36,7 @@ const aqlfunctions = require("@arangodb/aql/functions");
 /// @brief test suite: stream cursors
 ////////////////////////////////////////////////////////////////////////////////
 
-function StreamCursorSuite () {
+function StreamCursorSuite() {
   'use strict';
 
   const cn = "StreamCursorCollection";
@@ -53,47 +53,51 @@ function StreamCursorSuite () {
 
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief set up
+    ////////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
+    setUp: function () {
       c = db._create(cn);
-      c.ensureIndex({ type: 'skiplist', fields: ["value1"]});
-      c.ensureIndex({ type: 'skiplist', fields: ["value2"]});
+      c.ensureIndex({ type: 'skiplist', fields: ["value1"] });
+      c.ensureIndex({ type: 'skiplist', fields: ["value2"] });
 
+      let docs = [];
       for (let i = 0; i < 5000; i++) {
-        c.insert({value1: i % 10, value2: i % 25 , value3: i % 25 });
+        docs.push({ value1: i % 10, value2: i % 25, value3: i % 25 });
       }
- 
+      c.insert(docs);
+
       try {
         aqlfunctions.unregister("my::test");
-      } catch (err) {}
+      } catch (err) { }
 
-      aqlfunctions.register("my::test", function() { return 42; });
+      aqlfunctions.register("my::test", function () { return 42; });
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief tear down
+    ////////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
+    tearDown: function () {
       try {
         aqlfunctions.unregister("my::test");
-      } catch (err) {}
+      } catch (err) { }
 
       c.drop();
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test cursor
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test cursor
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testQueries : function () {
+    testQueries: function () {
       queries.forEach(q => {
-        let stmt = db._createStatement({ query: q,
+        let stmt = db._createStatement({
+          query: q,
           options: { stream: true },
-          batchSize: 1000});
+          batchSize: 1000
+        });
         let cursor = stmt.execute();
 
         try {
@@ -106,13 +110,15 @@ function StreamCursorSuite () {
         } finally {
           cursor.dispose();
         }
-      });      
+      });
     },
-    
-    testInfiniteAQL : function() {
-      let stmt = db._createStatement({ query: "FOR i IN 1..100000000000 RETURN i",
+
+    testInfiniteAQL: function () {
+      let stmt = db._createStatement({
+        query: "FOR i IN 1..100000000000 RETURN i",
         options: { stream: true },
-        batchSize: 1000});
+        batchSize: 1000
+      });
       let cursor = stmt.execute();
       try {
         assertUndefined(cursor.count());
@@ -127,8 +133,22 @@ function StreamCursorSuite () {
       }
     },
 
-    testUserDefinedFunction : function () {
-      let stmt = db._createStatement({ 
+    // Regression test, could fail in cluster (in 3.6)
+    testDisposeCursorWithCollection: function () {
+      let cursor = db._query("FOR doc IN @@cn RETURN doc", { "@cn": cn },
+        { stream: true, batchSize: 1000 });
+
+      assertUndefined(cursor.count());
+      let i = 10;
+      while (cursor.hasNext() && i-- > 0) {
+        cursor.next();
+      }
+
+      cursor.dispose();
+    },
+
+    testUserDefinedFunction: function () {
+      let stmt = db._createStatement({
         query: "FOR i IN 1..10000 RETURN my::test()",
         options: { stream: true },
         batchSize: 1000
@@ -149,6 +169,16 @@ function StreamCursorSuite () {
         cursor.dispose();
       }
     },
+
+    // Regression test, this led to an issue on shutdown
+    testNotCleaningUp: function () {
+      let cursor = db._query("FOR x IN 1..10 RETURN x", {}, { batchSize: 2, count: true, stream: true, ttl: 3 });
+      assertEqual(cursor.hasNext(), true);
+      if (cursor._hasMore) { // only exists in shell
+        assertEqual(cursor._hasMore, true);
+      }
+      require("internal").sleep(5);
+    }
   };
 }
 

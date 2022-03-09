@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_CACHE_MANAGER_TASKS_H
-#define ARANGODB_CACHE_MANAGER_TASKS_H
+#pragma once
 
 #include <atomic>
 #include <cstdint>
@@ -81,5 +80,3 @@ class MigrateTask : public std::enable_shared_from_this<MigrateTask> {
 
 };  // end namespace cache
 };  // end namespace arangodb
-
-#endif

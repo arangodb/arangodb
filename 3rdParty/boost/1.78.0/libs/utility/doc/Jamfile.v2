@@ -1,0 +1,445 @@
+# Copyright John Maddock 2005. Use, modification, and distribution are
+# subject to the Boost Software License, Version 1.0. (See accompanying
+# file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+
+import doxygen ;
+import quickbook ;
+
+project : requirements
+        # Path for links to Boost:
+        <xsl:param>boost.root=../../../..
+
+        # Some general style settings:
+        <xsl:param>table.footnote.number.format=1
+        <xsl:param>footnote.number.format=1
+
+        # HTML options first:
+        # Use graphics not text for navigation:
+        <xsl:param>navig.graphics=1
+        # PDF Options:
+        # TOC Generation: this is needed for FOP-0.9 and later:
+        <xsl:param>fop1.extensions=0
+        <xsl:param>xep.extensions=1
+        # TOC generation: this is needed for FOP 0.2, but must not be set to zero for FOP-0.9!
+        <xsl:param>fop.extensions=0
+        # No indent on body text:
+        <xsl:param>body.start.indent=0pt
+        # Margin size:
+        <xsl:param>page.margin.inner=0.5in
+        # Margin size:
+        <xsl:param>page.margin.outer=0.5in
+        # Paper type = A4
+        <xsl:param>paper.type=A4
+        # Yes, we want graphics for admonishments:
+        <xsl:param>admon.graphics=1
+        # Set this one for PDF generation *only*:
+        # default pnd graphics are awful in PDF form,
+        # better use SVG's instead:
+        <format>pdf:<xsl:param>admon.graphics.extension=".svg"
+        <format>pdf:<xsl:param>"admon.graphics.path=$(boost-images)/"
+        <format>pdf:<xsl:param>"boost.url.prefix=http://www.boost.org/doc/libs/release/libs/utility/doc/html"
+;
+
+path-constant boost-images : ../../../doc/src/images ;
+
+# Generate XML doxygen reference for base_from_member component in base_from_member_reference.xml
+doxygen base_from_member_reference
+  :
+    ../include/boost/utility/base_from_member.hpp
+  :
+    <location>tmp
+    <doxygen:param>ENABLE_PREPROCESSING=YES
+    <doxygen:param>EXPAND_ONLY_PREDEF=YES
+    <doxygen:param>EXTRACT_ALL=NO
+    <doxygen:param>EXTRACT_PRIVATE=NO
+    <doxygen:param>HIDE_UNDOC_MEMBERS=YES
+    <doxygen:param>MACRO_EXPANSION=YES
+    <doxygen:param>"PREDEFINED= \\
+                    BOOST_UTILITY_DOCS \\
+                    BOOST_SYMBOL_VISIBLE= \\
+                    BOOST_FORCEINLINE=inline \\
+                    BOOST_GPU_ENABLED= \\
+                    BOOST_STATIC_ASSERT(x)= \\
+                    BOOST_STATIC_ASSERT_MSG(x,y)= \\
+                    BOOST_STATIC_CONSTANT(x,y)=\"static constexpr x y\" \\
+                    BOOST_RV_REF(x)=\"x&&\" \\
+                    BOOST_NESTED_TEMPLATE=template \\
+                    BOOST_CONSTEXPR=constexpr \\
+                    BOOST_CXX14_CONSTEXPR=constexpr \\
+                    BOOST_OPERATORS_CONSTEXPR=constexpr \\
+                    BOOST_CONSTEXPR_OR_CONST=constexpr \\
+                    BOOST_NOEXCEPT=noexcept \\
+                    BOOST_NOEXCEPT_IF(x)=noexcept(x) \\
+                    BOOST_NOEXCEPT_OR_NOTHROW=noexcept \\
+                    BOOST_COPY_ASSIGN_REF(x)=\"x const&\" \\
+                    BOOST_DEFAULTED_FUNCTION(x,y)=\"x = default;\" \\
+                    BOOST_DELETED_FUNCTION(x)=\"x = delete;\" \\
+                    BOOST_EXPLICIT_OPERATOR_BOOL()=\"explicit operator bool() const;\" \\
+                    BOOST_REF_CONST=const"
+    <doxygen:param>"EXCLUDE_SYMBOLS= \\
+                    detail \\
+                    F \\
+                    result_of_has_result_type_impl \\
+                    conditional \\
+                    boost::operators_impl"
+    <xsl:param>"boost.doxygen.reftitle=Reference"
+    <xsl:param>"boost.doxygen.refid=base_from_member.reference"
+  ;
+
+# Generate XML doxygen reference for boost_binary component in boost_binary_reference.xml
+doxygen boost_binary_reference
+  :
+    ../include/boost/utility/binary.hpp
+  :
+    <location>tmp
+    <doxygen:param>ENABLE_PREPROCESSING=YES
+    <doxygen:param>EXPAND_ONLY_PREDEF=YES
+    <doxygen:param>EXTRACT_ALL=NO
+    <doxygen:param>EXTRACT_PRIVATE=NO
+    <doxygen:param>HIDE_UNDOC_MEMBERS=YES
+    <doxygen:param>MACRO_EXPANSION=YES
+    <doxygen:param>"PREDEFINED= \\
+                    BOOST_UTILITY_DOCS \\
+                    BOOST_SYMBOL_VISIBLE= \\
+                    BOOST_FORCEINLINE=inline \\
+                    BOOST_GPU_ENABLED= \\
+                    BOOST_STATIC_ASSERT(x)= \\
+                    BOOST_STATIC_ASSERT_MSG(x,y)= \\
+                    BOOST_STATIC_CONSTANT(x,y)=\"static constexpr x y\" \\
+                    BOOST_RV_REF(x)=\"x&&\" \\
+                    BOOST_NESTED_TEMPLATE=template \\
+                    BOOST_CONSTEXPR=constexpr \\
+                    BOOST_CXX14_CONSTEXPR=constexpr \\
+                    BOOST_OPERATORS_CONSTEXPR=constexpr \\
+                    BOOST_CONSTEXPR_OR_CONST=constexpr \\
+                    BOOST_NOEXCEPT=noexcept \\
+                    BOOST_NOEXCEPT_IF(x)=noexcept(x) \\
+                    BOOST_NOEXCEPT_OR_NOTHROW=noexcept \\
+                    BOOST_COPY_ASSIGN_REF(x)=\"x const&\" \\
+                    BOOST_DEFAULTED_FUNCTION(x,y)=\"x = default;\" \\
+                    BOOST_DELETED_FUNCTION(x)=\"x = delete;\" \\
+                    BOOST_EXPLICIT_OPERATOR_BOOL()=\"explicit operator bool() const;\" \\
+                    BOOST_REF_CONST=const"
+    <doxygen:param>"EXCLUDE_SYMBOLS= \\
+                    detail \\
+                    F \\
+                    result_of_has_result_type_impl \\
+                    conditional \\
+                    boost::operators_impl"
+    <xsl:param>"boost.doxygen.reftitle=Reference"
+    <xsl:param>"boost.doxygen.refid=boost_binary.reference"
+  ;
+
+# Generate XML doxygen reference for call_traits component in call_traits_reference.xml
+doxygen call_traits_reference
+  :
+    ../include/boost/call_traits.hpp
+    ../include/boost/detail/call_traits.hpp
+  :
+    <location>tmp
+    <doxygen:param>ENABLE_PREPROCESSING=YES
+    <doxygen:param>EXPAND_ONLY_PREDEF=YES
+    <doxygen:param>EXTRACT_ALL=NO
+    <doxygen:param>EXTRACT_PRIVATE=NO
+    <doxygen:param>HIDE_UNDOC_MEMBERS=YES
+    <doxygen:param>MACRO_EXPANSION=YES
+    <doxygen:param>"PREDEFINED= \\
+                    BOOST_UTILITY_DOCS \\
+                    BOOST_SYMBOL_VISIBLE= \\
+                    BOOST_FORCEINLINE=inline \\
+                    BOOST_GPU_ENABLED= \\
+                    BOOST_STATIC_ASSERT(x)= \\
+                    BOOST_STATIC_ASSERT_MSG(x,y)= \\
+                    BOOST_STATIC_CONSTANT(x,y)=\"static constexpr x y\" \\
+                    BOOST_RV_REF(x)=\"x&&\" \\
+                    BOOST_NESTED_TEMPLATE=template \\
+                    BOOST_CONSTEXPR=constexpr \\
+                    BOOST_CXX14_CONSTEXPR=constexpr \\
+                    BOOST_OPERATORS_CONSTEXPR=constexpr \\
+                    BOOST_CONSTEXPR_OR_CONST=constexpr \\
+                    BOOST_NOEXCEPT=noexcept \\
+                    BOOST_NOEXCEPT_IF(x)=noexcept(x) \\
+                    BOOST_NOEXCEPT_OR_NOTHROW=noexcept \\
+                    BOOST_COPY_ASSIGN_REF(x)=\"x const&\" \\
+                    BOOST_DEFAULTED_FUNCTION(x,y)=\"x = default;\" \\
+                    BOOST_DELETED_FUNCTION(x)=\"x = delete;\" \\
+                    BOOST_EXPLICIT_OPERATOR_BOOL()=\"explicit operator bool() const;\" \\
+                    BOOST_REF_CONST=const"
+    <doxygen:param>"EXCLUDE_SYMBOLS= \\
+                    detail \\
+                    F \\
+                    result_of_has_result_type_impl \\
+                    conditional \\
+                    boost::operators_impl"
+    <xsl:param>"boost.doxygen.reftitle=Reference"
+    <xsl:param>"boost.doxygen.refid=call_traits.reference"
+  ;
+
+# Generate XML doxygen reference for compressed_pair component in compressed_pair_reference.xml
+doxygen compressed_pair_reference
+  :
+    ../include/boost/compressed_pair.hpp
+    ../include/boost/detail/compressed_pair.hpp
+  :
+    <location>tmp
+    <doxygen:param>ENABLE_PREPROCESSING=YES
+    <doxygen:param>EXPAND_ONLY_PREDEF=YES
+    <doxygen:param>EXTRACT_ALL=NO
+    <doxygen:param>EXTRACT_PRIVATE=NO
+    <doxygen:param>HIDE_UNDOC_MEMBERS=YES
+    <doxygen:param>MACRO_EXPANSION=YES
+    <doxygen:param>"PREDEFINED= \\
+                    BOOST_UTILITY_DOCS \\
+                    BOOST_SYMBOL_VISIBLE= \\
+                    BOOST_FORCEINLINE=inline \\
+                    BOOST_GPU_ENABLED= \\
+                    BOOST_STATIC_ASSERT(x)= \\
+                    BOOST_STATIC_ASSERT_MSG(x,y)= \\
+                    BOOST_STATIC_CONSTANT(x,y)=\"static constexpr x y\" \\
+                    BOOST_RV_REF(x)=\"x&&\" \\
+                    BOOST_NESTED_TEMPLATE=template \\
+                    BOOST_CONSTEXPR=constexpr \\
+                    BOOST_CXX14_CONSTEXPR=constexpr \\
+                    BOOST_OPERATORS_CONSTEXPR=constexpr \\
+                    BOOST_CONSTEXPR_OR_CONST=constexpr \\
+                    BOOST_NOEXCEPT=noexcept \\
+                    BOOST_NOEXCEPT_IF(x)=noexcept(x) \\
+                    BOOST_NOEXCEPT_OR_NOTHROW=noexcept \\
+                    BOOST_COPY_ASSIGN_REF(x)=\"x const&\" \\
+                    BOOST_DEFAULTED_FUNCTION(x,y)=\"x = default;\" \\
+                    BOOST_DELETED_FUNCTION(x)=\"x = delete;\" \\
+                    BOOST_EXPLICIT_OPERATOR_BOOL()=\"explicit operator bool() const;\" \\
+                    BOOST_REF_CONST=const"
+    <doxygen:param>"EXCLUDE_SYMBOLS= \\
+                    detail \\
+                    F \\
+                    result_of_has_result_type_impl \\
+                    conditional \\
+                    boost::operators_impl"
+    <xsl:param>"boost.doxygen.reftitle=Reference"
+    <xsl:param>"boost.doxygen.refid=compressed_pair.reference"
+  ;
+
+# Generate XML doxygen reference for in_place_factory component in in_place_factory_reference.xml
+doxygen in_place_factory_reference
+  :
+    ../include/boost/utility/in_place_factory.hpp
+    ../include/boost/utility/typed_in_place_factory.hpp
+  :
+    <location>tmp
+    <doxygen:param>ENABLE_PREPROCESSING=YES
+    <doxygen:param>EXPAND_ONLY_PREDEF=YES
+    <doxygen:param>EXTRACT_ALL=NO
+    <doxygen:param>EXTRACT_PRIVATE=NO
+    <doxygen:param>HIDE_UNDOC_MEMBERS=YES
+    <doxygen:param>MACRO_EXPANSION=YES
+    <doxygen:param>"PREDEFINED= \\
+                    BOOST_UTILITY_DOCS \\
+                    BOOST_SYMBOL_VISIBLE= \\
+                    BOOST_FORCEINLINE=inline \\
+                    BOOST_GPU_ENABLED= \\
+                    BOOST_STATIC_ASSERT(x)= \\
+                    BOOST_STATIC_ASSERT_MSG(x,y)= \\
+                    BOOST_STATIC_CONSTANT(x,y)=\"static constexpr x y\" \\
+                    BOOST_RV_REF(x)=\"x&&\" \\
+                    BOOST_NESTED_TEMPLATE=template \\
+                    BOOST_CONSTEXPR=constexpr \\
+                    BOOST_CXX14_CONSTEXPR=constexpr \\
+                    BOOST_OPERATORS_CONSTEXPR=constexpr \\
+                    BOOST_CONSTEXPR_OR_CONST=constexpr \\
+                    BOOST_NOEXCEPT=noexcept \\
+                    BOOST_NOEXCEPT_IF(x)=noexcept(x) \\
+                    BOOST_NOEXCEPT_OR_NOTHROW=noexcept \\
+                    BOOST_COPY_ASSIGN_REF(x)=\"x const&\" \\
+                    BOOST_DEFAULTED_FUNCTION(x,y)=\"x = default;\" \\
+                    BOOST_DELETED_FUNCTION(x)=\"x = delete;\" \\
+                    BOOST_EXPLICIT_OPERATOR_BOOL()=\"explicit operator bool() const;\" \\
+                    BOOST_REF_CONST=const"
+    <doxygen:param>"EXCLUDE_SYMBOLS= \\
+                    detail \\
+                    F \\
+                    result_of_has_result_type_impl \\
+                    conditional \\
+                    boost::operators_impl"
+    <xsl:param>"boost.doxygen.reftitle=Reference"
+    <xsl:param>"boost.doxygen.refid=in_place_factory.reference"
+  ;
+
+# Generate XML doxygen reference for operators component in operators_reference.xml
+# we skip operators_reference because operators.hpp is not adapted for doxygen
+
+# Generate XML doxygen reference for result_of component in result_of_reference.xml
+doxygen result_of_reference
+  :
+    ../include/boost/utility/result_of.hpp
+  :
+    <location>tmp
+    <doxygen:param>ENABLE_PREPROCESSING=YES
+    <doxygen:param>EXPAND_ONLY_PREDEF=YES
+    <doxygen:param>EXTRACT_ALL=NO
+    <doxygen:param>EXTRACT_PRIVATE=NO
+    <doxygen:param>HIDE_UNDOC_MEMBERS=YES
+    <doxygen:param>MACRO_EXPANSION=YES
+    <doxygen:param>"PREDEFINED= \\
+                    BOOST_UTILITY_DOCS \\
+                    BOOST_SYMBOL_VISIBLE= \\
+                    BOOST_FORCEINLINE=inline \\
+                    BOOST_GPU_ENABLED= \\
+                    BOOST_STATIC_ASSERT(x)= \\
+                    BOOST_STATIC_ASSERT_MSG(x,y)= \\
+                    BOOST_STATIC_CONSTANT(x,y)=\"static constexpr x y\" \\
+                    BOOST_RV_REF(x)=\"x&&\" \\
+                    BOOST_NESTED_TEMPLATE=template \\
+                    BOOST_CONSTEXPR=constexpr \\
+                    BOOST_CXX14_CONSTEXPR=constexpr \\
+                    BOOST_OPERATORS_CONSTEXPR=constexpr \\
+                    BOOST_CONSTEXPR_OR_CONST=constexpr \\
+                    BOOST_NOEXCEPT=noexcept \\
+                    BOOST_NOEXCEPT_IF(x)=noexcept(x) \\
+                    BOOST_NOEXCEPT_OR_NOTHROW=noexcept \\
+                    BOOST_COPY_ASSIGN_REF(x)=\"x const&\" \\
+                    BOOST_DEFAULTED_FUNCTION(x,y)=\"x = default;\" \\
+                    BOOST_DELETED_FUNCTION(x)=\"x = delete;\" \\
+                    BOOST_EXPLICIT_OPERATOR_BOOL()=\"explicit operator bool() const;\" \\
+                    BOOST_REF_CONST=const"
+    <doxygen:param>"EXCLUDE_SYMBOLS= \\
+                    detail \\
+                    F \\
+                    result_of_has_result_type_impl \\
+                    conditional \\
+                    boost::operators_impl"
+    <xsl:param>"boost.doxygen.reftitle=Reference"
+    <xsl:param>"boost.doxygen.refid=result_of.reference"
+  ;
+
+# Generate XML doxygen reference for string_view component in string_view_reference.xml
+doxygen string_view_reference
+  :
+    ../include/boost/utility/string_view.hpp
+  :
+    <location>tmp
+    <doxygen:param>ENABLE_PREPROCESSING=YES
+    <doxygen:param>EXPAND_ONLY_PREDEF=YES
+    <doxygen:param>EXTRACT_ALL=NO
+    <doxygen:param>EXTRACT_PRIVATE=NO
+    <doxygen:param>HIDE_UNDOC_MEMBERS=YES
+    <doxygen:param>MACRO_EXPANSION=YES
+    <doxygen:param>"PREDEFINED= \\
+                    BOOST_UTILITY_DOCS \\
+                    BOOST_SYMBOL_VISIBLE= \\
+                    BOOST_FORCEINLINE=inline \\
+                    BOOST_GPU_ENABLED= \\
+                    BOOST_STATIC_ASSERT(x)= \\
+                    BOOST_STATIC_ASSERT_MSG(x,y)= \\
+                    BOOST_STATIC_CONSTANT(x,y)=\"static constexpr x y\" \\
+                    BOOST_RV_REF(x)=\"x&&\" \\
+                    BOOST_NESTED_TEMPLATE=template \\
+                    BOOST_CONSTEXPR=constexpr \\
+                    BOOST_CXX14_CONSTEXPR=constexpr \\
+                    BOOST_OPERATORS_CONSTEXPR=constexpr \\
+                    BOOST_CONSTEXPR_OR_CONST=constexpr \\
+                    BOOST_NOEXCEPT=noexcept \\
+                    BOOST_NOEXCEPT_IF(x)=noexcept(x) \\
+                    BOOST_NOEXCEPT_OR_NOTHROW=noexcept \\
+                    BOOST_COPY_ASSIGN_REF(x)=\"x const&\" \\
+                    BOOST_DEFAULTED_FUNCTION(x,y)=\"x = default;\" \\
+                    BOOST_DELETED_FUNCTION(x)=\"x = delete;\" \\
+                    BOOST_EXPLICIT_OPERATOR_BOOL()=\"explicit operator bool() const;\" \\
+                    BOOST_REF_CONST=const"
+    <doxygen:param>"EXCLUDE_SYMBOLS= \\
+                    detail \\
+                    F \\
+                    result_of_has_result_type_impl \\
+                    conditional \\
+                    boost::operators_impl"
+    <xsl:param>"boost.doxygen.reftitle=Reference"
+    <xsl:param>"boost.doxygen.refid=string_view.reference"
+  ;
+
+# Generate XML doxygen reference for value_init component in value_init_reference.xml
+doxygen value_init_reference
+  :
+    ../include/boost/utility/value_init.hpp
+  :
+    <location>tmp
+    <doxygen:param>ENABLE_PREPROCESSING=YES
+    <doxygen:param>EXPAND_ONLY_PREDEF=YES
+    <doxygen:param>EXTRACT_ALL=NO
+    <doxygen:param>EXTRACT_PRIVATE=NO
+    <doxygen:param>HIDE_UNDOC_MEMBERS=YES
+    <doxygen:param>MACRO_EXPANSION=YES
+    <doxygen:param>"PREDEFINED= \\
+                    BOOST_UTILITY_DOCS \\
+                    BOOST_SYMBOL_VISIBLE= \\
+                    BOOST_FORCEINLINE=inline \\
+                    BOOST_GPU_ENABLED= \\
+                    BOOST_STATIC_ASSERT(x)= \\
+                    BOOST_STATIC_ASSERT_MSG(x,y)= \\
+                    BOOST_STATIC_CONSTANT(x,y)=\"static constexpr x y\" \\
+                    BOOST_RV_REF(x)=\"x&&\" \\
+                    BOOST_NESTED_TEMPLATE=template \\
+                    BOOST_CONSTEXPR=constexpr \\
+                    BOOST_CXX14_CONSTEXPR=constexpr \\
+                    BOOST_OPERATORS_CONSTEXPR=constexpr \\
+                    BOOST_CONSTEXPR_OR_CONST=constexpr \\
+                    BOOST_NOEXCEPT=noexcept \\
+                    BOOST_NOEXCEPT_IF(x)=noexcept(x) \\
+                    BOOST_NOEXCEPT_OR_NOTHROW=noexcept \\
+                    BOOST_COPY_ASSIGN_REF(x)=\"x const&\" \\
+                    BOOST_DEFAULTED_FUNCTION(x,y)=\"x = default;\" \\
+                    BOOST_DELETED_FUNCTION(x)=\"x = delete;\" \\
+                    BOOST_EXPLICIT_OPERATOR_BOOL()=\"explicit operator bool() const;\" \\
+                    BOOST_REF_CONST=const"
+    <doxygen:param>"EXCLUDE_SYMBOLS= \\
+                    detail \\
+                    F \\
+                    result_of_has_result_type_impl \\
+                    conditional \\
+                    boost::operators_impl"
+    <xsl:param>"boost.doxygen.reftitle=Reference"
+    <xsl:param>"boost.doxygen.refid=value_init.reference"
+  ;
+
+# Generate main.xml boostbook documentation from main.qbk quickbook documentation
+xml main : main.qbk ;
+
+# Generate ./html documentation from main.xml boostbook documentation
+# Each doxygen reference in quickbook files with [xinclude tmp/<component>_reference.xml] becomes:
+# <xi:include href="../../../../libs/utility/doc/tmp/<component>_reference.xml"/>
+# in boostbook.
+# All of these <xi:include> commands give the reference the id "utility.reference"
+boostbook standalone_main
+    :
+        main
+    :
+        <dependency>base_from_member_reference
+        <dependency>boost_binary_reference
+        <dependency>call_traits_reference
+        <dependency>compressed_pair_reference
+        <dependency>in_place_factory_reference
+        <dependency>result_of_reference
+        <dependency>string_view_reference
+        <dependency>value_init_reference
+        # File name of HTML output:
+        # <xsl:param>root.filename=main
+        <xsl:param>boost.root=../../../..
+        <format>pdf:<xsl:param>"boost.url.prefix=http://www.boost.org/doc/libs/release/libs/utility/doc/html"
+        # How far down we chunk nested sections: no more than two so utility component pages include their reference
+        <xsl:param>chunk.section.depth=2 # 8
+        # Don't put the first section on the same page as the TOC:
+        <xsl:param>chunk.first.sections=1 # 1
+        # How far down sections get TOC: 2 so we show each Utility component in main page but no more than that
+        <xsl:param>toc.section.depth=2 # 2
+        # Max depth in each TOC: 2 so we show each Utility component in main page but no more than that
+        <xsl:param>toc.max.depth=2 # 2
+        # How far down we go with TOC's in main page: 2 so each Utility component page has 1 level TOC
+        <xsl:param>generate.section.toc.level=2 # 2
+     ;
+
+###############################################################################
+alias boostdoc ;
+explicit boostdoc ;
+
+alias boostrelease :
+    standalone_main ;
+explicit boostrelease ;

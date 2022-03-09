@@ -143,7 +143,7 @@ if (getOptions === true) {
 
   return {
     'temp.path': subInstanceTemp,     // Adjust the temp-path to match our current temp path
-    'javascript.files-whitelist': [
+    'javascript.files-allowlist': [
      fs.escapePath('^' + process.env['RESULT']),
      fs.escapePath('^' + topLevelAllowed),
      fs.escapePath('^' + subLevelAllowed),

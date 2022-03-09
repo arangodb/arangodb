@@ -1,0 +1,63 @@
+[#before_5_2_1]
+['Definitions before section 5.2.1.]
+
+  #include <boost/metaparse/string.hpp>
+  #include <boost/metaparse/int_.hpp>
+
+  #include <boost/metaparse/build_parser.hpp>
+
+  using namespace boost::metaparse;
+
+  using exp_parser1 = build_parser<int_>;
+  #include <boost/metaparse/entire_input.hpp>
+
+  using exp_parser2 = build_parser<entire_input<int_>>;
+  #include <boost/metaparse/token.hpp>
+
+  using exp_parser3 = build_parser<entire_input<token<int_>>>;
+  #include <boost/metaparse/lit_c.hpp>
+
+  #include <boost/metaparse/sequence.hpp>
+
+  using exp_parser4 = build_parser<sequence<token<int_>, token<lit_c<'+'>>, token<int_>>>;
+
+  #include <metashell/formatter.hpp>
+  
+  using int_token = token<int_>;
+
+  using plus_token = token<lit_c<'+'>>;
+
+  using exp_parser5 = build_parser<sequence<int_token, plus_token, int_token>>;
+  #include <boost/metaparse/transform.hpp>
+
+  #include <boost/mpl/plus.hpp>
+
+  #include <boost/mpl/at.hpp>
+
+  template <class Vector> 
+   struct eval_plus : 
+     boost::mpl::plus< 
+       typename boost::mpl::at_c<Vector, 0>::type, 
+       typename boost::mpl::at_c<Vector, 2>::type 
+     > {};
+
+  #include <boost/mpl/quote.hpp>
+
+  using exp_parser6 = 
+   build_parser< 
+     transform< 
+       sequence<int_token, plus_token, int_token>, 
+       boost::mpl::quote1<eval_plus> 
+     > 
+   >;
+  #include <boost/metaparse/any.hpp>
+
+  using exp_parser7 = 
+   build_parser< 
+     sequence< 
+       int_token,                                /* The first <number> */ 
+       repeated<sequence<plus_token, int_token>> /* The "+ <number>" elements */ 
+     > 
+   >;
+  using temp_result = exp_parser7::apply<BOOST_METAPARSE_STRING("1 + 2 + 3 + 4")>::type;
+

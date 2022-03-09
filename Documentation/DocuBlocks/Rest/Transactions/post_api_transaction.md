@@ -14,8 +14,6 @@ added lazily. The optional sub-attribute *allowImplicit* can be set to *false*
 to let transactions fail in case of undeclared collections for reading.
 Collections for reading should be fully declared if possible, to avoid
 deadlocks.
-See [locking and isolation](../../Manual/Transactions/LockingAndIsolation.html)
-for more information.
 
 @RESTBODYPARAM{action,string,required,string}
 the actual transaction operations to be executed, in the
@@ -43,7 +41,7 @@ not time out waiting for a lock.
 optional arguments passed to *action*.
 
 @RESTBODYPARAM{maxTransactionSize,integer,optional,int64}
-Transaction size limit in bytes. Honored by the RocksDB storage engine only.
+Transaction size limit in bytes.
 
 @RESTDESCRIPTION
 The transaction description must be passed in the body of the POST request.

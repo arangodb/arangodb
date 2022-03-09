@@ -1,0 +1,82 @@
+#metricContent {
+  .header {
+    color: #717d90;
+    font-weight: 600;
+    font-size: 12.5pt;
+    padding: 10px;
+
+    &.first {
+      border-bottom: 1px solid rgba(0, 0, 0, .3);
+    }
+
+    &.child {
+      padding-top: 20px;
+      padding-bottom: 20px;
+      border-top: 1px solid rgba(0, 0, 0, .3);
+    }
+  }
+
+  .tableHeader {
+    background: rgba(0,0,0,.1);
+    font-weight: 600;
+    font-size: 10pt;
+    padding: 10px;
+    text-align: center;
+    border-bottom: 2px solid rgba(0, 0, 0, .5);
+    margin-left: 10px;
+    margin-right: 10px;
+  }
+
+  pre {
+    border-radius: 0;
+    border: 0;
+    border-top: 1px solid rgba(0, 0, 0, .3);
+    background: #fff;
+  }
+}
+
+.pure-table-metrics-gauge,
+.pure-table-metrics-counter {
+  margin-top: -10px;
+}
+
+.pure-table-metrics-histogram,
+.pure-table-metrics-gauge,
+.pure-table-metrics-counter {
+  padding-left: 0;
+  padding-right: 0;
+  width: 100%;
+  display: inline-table;
+
+  thead {
+    th {
+      height: 20px;
+    }
+  }
+
+  tbody {
+    .emptySpanEntry {
+      font-weight: 200;
+      color: rgba(0, 0, 0, .2);
+    }
+
+    .alignRight {
+       text-align: right;
+    }
+  }
+
+}
+
+.pure-table-metrics-histogram {
+  border: 10px solid #fff;
+}
+
+.pure-table-metrics-counter {
+  thead {
+    width: 100%;
+  }
+
+  tbody {
+    width: 100%;
+  }
+}

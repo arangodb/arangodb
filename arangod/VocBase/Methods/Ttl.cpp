@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -29,7 +30,6 @@
 #include "RestServer/TtlFeature.h"
 
 #include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::methods;
@@ -57,7 +57,8 @@ Result Ttl::getProperties(TtlFeature& feature, VPackBuilder& out) {
   return Result();
 }
 
-Result Ttl::setProperties(TtlFeature& feature, VPackSlice properties, VPackBuilder& out) {
+Result Ttl::setProperties(TtlFeature& feature, VPackSlice properties,
+                          VPackBuilder& out) {
   if (ServerState::instance()->isCoordinator()) {
     auto& clusterFeature = feature.server().getFeature<ClusterFeature>();
     return setTtlPropertiesOnAllDBServers(clusterFeature, properties, out);

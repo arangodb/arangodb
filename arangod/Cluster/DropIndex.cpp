@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,9 +27,11 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/MaintenanceFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "RestServer/DatabaseFeature.h"
 #include "Utils/DatabaseGuard.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Databases.h"
@@ -44,10 +46,10 @@ DropIndex::DropIndex(MaintenanceFeature& feature, ActionDescription const& d)
     : ActionBase(feature, d) {
   std::stringstream error;
 
-  if (!d.has(COLLECTION)) {
-    error << "collection must be specified. ";
+  if (!d.has(SHARD)) {
+    error << "shard must be specified. ";
   }
-  TRI_ASSERT(d.has(COLLECTION));
+  TRI_ASSERT(d.has(SHARD));
 
   if (!d.has(DATABASE)) {
     error << "database must be specified. ";
@@ -60,8 +62,9 @@ DropIndex::DropIndex(MaintenanceFeature& feature, ActionDescription const& d)
   TRI_ASSERT(d.has(INDEX));
 
   if (!error.str().empty()) {
-    LOG_TOPIC("02662", ERR, Logger::MAINTENANCE) << "DropIndex: " << error.str();
-    _result.reset(TRI_ERROR_INTERNAL, error.str());
+    LOG_TOPIC("02662", ERR, Logger::MAINTENANCE)
+        << "DropIndex: " << error.str();
+    result(TRI_ERROR_INTERNAL, error.str());
     setState(FAILED);
   }
 }
@@ -70,40 +73,41 @@ DropIndex::~DropIndex() = default;
 
 bool DropIndex::first() {
   auto const& database = _description.get(DATABASE);
-  auto const& collection = _description.get(COLLECTION);
+  auto const& shard = _description.get(SHARD);
   auto const& id = _description.get(INDEX);
 
   VPackBuilder index;
   index.add(VPackValue(_description.get(INDEX)));
 
   try {
-    DatabaseGuard guard(database);
+    auto& df = _feature.server().getFeature<DatabaseFeature>();
+    DatabaseGuard guard(df, database);
     auto vocbase = &guard.database();
 
-    auto col = vocbase->lookupCollection(collection);
+    auto col = vocbase->lookupCollection(shard);
     if (col == nullptr) {
       std::stringstream error;
-      error << "failed to lookup local collection " << collection
-            << " in database " << database;
-      LOG_TOPIC("c593d", ERR, Logger::MAINTENANCE) << "DropIndex: " << error.str();
-      _result.reset(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, error.str());
+      error << "failed to lookup local collection " << shard << " in database "
+            << database;
+      LOG_TOPIC("c593d", ERR, Logger::MAINTENANCE)
+          << "DropIndex: " << error.str();
+      result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, error.str());
       return false;
     }
 
     LOG_TOPIC("837c5", DEBUG, Logger::MAINTENANCE)
-        << "Dropping local index " + collection + "/" + id;
-    _result = Indexes::drop(col.get(), index.slice());
+        << "Dropping local index " + shard + "/" + id;
+    result(Indexes::drop(col.get(), index.slice()));
 
   } catch (std::exception const& e) {
     std::stringstream error;
 
     error << "action " << _description << " failed with exception " << e.what();
     LOG_TOPIC("4ec0c", ERR, Logger::MAINTENANCE) << "DropIndex " << error.str();
-    _result.reset(TRI_ERROR_INTERNAL, error.str());
+    result(TRI_ERROR_INTERNAL, error.str());
 
     return false;
   }
 
-  notify();
   return false;
 }

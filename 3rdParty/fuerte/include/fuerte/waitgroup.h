@@ -89,9 +89,14 @@ class WaitGroup {
                                   [&] { return (_counter == 0); });
   }
 
+  unsigned counter() const {
+    std::unique_lock<std::mutex> lock(_mutex);
+    return _counter;
+  }
+
  private:
-  int _counter;
-  std::mutex _mutex;
+  unsigned _counter;
+  mutable std::mutex _mutex;
   std::condition_variable _conditionVar;
 };
 

@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,15 +21,13 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
+#pragma once
+
 #include <cstdint>
 #include <string>
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
-#include <velocypack/StringRef.h>
-
-#ifndef ARANGODB_PREGEL_AGGREGATOR_H
-#define ARANGODB_PREGEL_AGGREGATOR_H 1
 
 namespace arangodb {
 namespace pregel {
@@ -41,7 +40,7 @@ class IAggregator {
   IAggregator& operator=(const IAggregator&) = delete;
 
  public:
-  IAggregator() {}
+  IAggregator() = default;
   virtual ~IAggregator() = default;
 
   /// @brief Used when updating aggregator value locally
@@ -57,15 +56,19 @@ class IAggregator {
                          arangodb::velocypack::Builder& builder) const = 0;
 
   virtual void reset() = 0;
+
   virtual bool isConverging() const = 0;
 };
 
-template <typename T>
+template<typename T>
 struct NumberAggregator : public IAggregator {
   static_assert(std::is_arithmetic<T>::value, "Type must be numeric");
 
   NumberAggregator(T neutral, bool perm = false, bool conv = false)
-      : _value(neutral), _neutral(neutral), _permanent(perm), _converging(conv) {}
+      : _value(neutral),
+        _neutral(neutral),
+        _permanent(perm),
+        _converging(conv) {}
 
   void parseAggregate(arangodb::velocypack::Slice const& slice) override {
     T f = slice.getNumber<T>();
@@ -96,7 +99,7 @@ struct NumberAggregator : public IAggregator {
   bool _permanent, _converging;
 };
 
-template <typename T>
+template<typename T>
 struct MaxAggregator : public NumberAggregator<T> {
   explicit MaxAggregator(T init, bool perm = false)
       : NumberAggregator<T>(init, perm, true) {}
@@ -106,7 +109,7 @@ struct MaxAggregator : public NumberAggregator<T> {
   };
 };
 
-template <typename T>
+template<typename T>
 struct MinAggregator : public NumberAggregator<T> {
   explicit MinAggregator(T init, bool perm = false)
       : NumberAggregator<T>(init, perm, true) {}
@@ -116,7 +119,7 @@ struct MinAggregator : public NumberAggregator<T> {
   };
 };
 
-template <typename T>
+template<typename T>
 struct SumAggregator : public NumberAggregator<T> {
   explicit SumAggregator(T init, bool perm = false)
       : NumberAggregator<T>(init, perm, true) {}
@@ -135,7 +138,7 @@ struct SumAggregator : public NumberAggregator<T> {
 /// master.compute() or from a special vertex.
 /// In case multiple vertices write to this aggregator, its behavior is
 /// non-deterministic.
-template <typename T>
+template<typename T>
 struct OverwriteAggregator : public NumberAggregator<T> {
   explicit OverwriteAggregator(T val, bool perm = false)
       : NumberAggregator<T>(val, perm, true) {}
@@ -165,7 +168,8 @@ struct BoolOrAggregator : public IAggregator {
     _value = slice.getBool();
   }
 
-  void serialize( std::string const& key, arangodb::velocypack::Builder& builder) const override {
+  void serialize(std::string const& key,
+                 arangodb::velocypack::Builder& builder) const override {
     builder.add(key, arangodb::velocypack::Value(_value));
   };
 
@@ -182,4 +186,3 @@ struct BoolOrAggregator : public IAggregator {
 };
 }  // namespace pregel
 }  // namespace arangodb
-#endif

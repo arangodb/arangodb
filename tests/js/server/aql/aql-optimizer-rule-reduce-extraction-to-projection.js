@@ -1,10 +1,8 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertNotEqual, assertTrue, AQL_EXPLAIN, AQL_EXECUTE */
+/*global assertEqual, assertNotEqual, assertTrue, fail, AQL_EXPLAIN, AQL_EXECUTE */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for optimizer rules
-///
-/// @file
 ///
 /// DISCLAIMER
 ///
@@ -28,46 +26,35 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require("jsunity");
-var helper = require("@arangodb/aql-helper");
-var isEqual = helper.isEqual;
-var db = require("@arangodb").db;
-var ruleName = "reduce-extraction-to-projection";
+const jsunity = require("jsunity");
+const db = require("@arangodb").db;
+const errors = require("internal").errors;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
+const ruleName = "reduce-extraction-to-projection";
 
 function optimizerRuleTestSuite () {
-  var c = null;
-  var cn = "UnitTestsOptimizer";
+  let c = null;
+  const cn = "UnitTestsOptimizer";
 
   return {
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief set up
-    ////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
       db._drop(cn);
       c = db._create(cn, { numberOfShards: 4 });
 
+      let docs = [];
       for (var i = 0; i < 1000; ++i) {
-        c.insert({ value1: i, value2: "test" + i, foo: { bar: i } });
+        docs.push({ value1: i, value2: "test" + i, foo: { bar: i } });
       }
+      c.insert(docs);
     },
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief tear down
-    ////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
       db._drop(cn);
-      c = null;
     },
 
     testNotActive : function () {
-      var queries = [
+      const queries = [
         "FOR doc IN @@cn FILTER doc.value1 == 1 && doc.value2 == 1 && doc.value3 == 1 && doc.value4 == 1 && doc.value5 == 1 && doc.value6 == 1 RETURN doc",
         "FOR doc IN @@cn FILTER doc.value1 == 1 && doc.value2 == 1 RETURN doc",
         "FOR doc IN @@cn FILTER doc.value1 == 1 RETURN doc",
@@ -80,7 +67,7 @@ function optimizerRuleTestSuite () {
       ];
 
       queries.forEach(function(query) {
-        var result = AQL_EXPLAIN(query, { "@cn" : cn });
+        let result = AQL_EXPLAIN(query, { "@cn" : cn });
         assertEqual(-1, result.plan.rules.indexOf(ruleName), query);
       });
     },
@@ -88,26 +75,40 @@ function optimizerRuleTestSuite () {
     testNotActiveBecauseIndexHint : function () {
       // these queries may actually use projections, but they must not use the primary
       // index for scanning
-      var queries = [
-        "FOR doc IN @@cn OPTIONS { indexHint: 'aha', forceIndexHint: true } RETURN 1",
-        "FOR doc IN @@cn OPTIONS { indexHint: 'aha', forceIndexHint: true } RETURN doc",
-        "FOR doc IN @@cn OPTIONS { indexHint: 'aha', forceIndexHint: true } RETURN doc.value1",
-        "FOR doc IN @@cn OPTIONS { indexHint: 'aha', forceIndexHint: true } RETURN doc.value2",
-        "FOR doc IN @@cn OPTIONS { indexHint: 'aha', forceIndexHint: true } RETURN doc._key",
+      const queries = [
         "FOR doc IN @@cn OPTIONS { indexHint: 'primary' } RETURN doc",
         "FOR doc IN @@cn OPTIONS { indexHint: 'primary' } RETURN doc.value1",
         "FOR doc IN @@cn OPTIONS { indexHint: 'primary' } RETURN doc.value2",
       ];
 
       queries.forEach(function(query) {
-        var result = AQL_EXPLAIN(query, { "@cn" : cn }).plan;
+        let result = AQL_EXPLAIN(query, { "@cn" : cn }).plan;
         let nodeTypes = result.nodes.map(function(node) { return node.type; });
         assertEqual(-1, nodeTypes.indexOf("IndexNode"));
       });
     },
+    
+    testFailBecauseIndexHint : function () {
+      const queries = [
+        "FOR doc IN @@cn OPTIONS { indexHint: 'aha', forceIndexHint: true } RETURN 1",
+        "FOR doc IN @@cn OPTIONS { indexHint: 'aha', forceIndexHint: true } RETURN doc",
+        "FOR doc IN @@cn OPTIONS { indexHint: 'aha', forceIndexHint: true } RETURN doc.value1",
+        "FOR doc IN @@cn OPTIONS { indexHint: 'aha', forceIndexHint: true } RETURN doc.value2",
+        "FOR doc IN @@cn OPTIONS { indexHint: 'aha', forceIndexHint: true } RETURN doc._key",
+      ];
+
+      queries.forEach(function(query) {
+        try {
+          AQL_EXPLAIN(query, { "@cn" : cn }).plan;
+          fail();
+        } catch (err) {
+          assertEqual(errors.ERROR_QUERY_FORCED_INDEX_HINT_UNUSABLE.code, err.errorNum, query);
+        }
+      });
+    },
 
     testActive : function () {
-      var queries = [
+      const queries = [
         "FOR doc IN @@cn OPTIONS { indexHint: 'primary' } RETURN 1",
         "FOR doc IN @@cn OPTIONS { indexHint: 'primary' } RETURN doc._key",
         "FOR doc IN @@cn FILTER doc.value1 == 1 RETURN doc.value1",
@@ -138,19 +139,19 @@ function optimizerRuleTestSuite () {
       ];
       
       queries.forEach(function(query) {
-        var result = AQL_EXPLAIN(query, { "@cn" : cn });
+        let result = AQL_EXPLAIN(query, { "@cn" : cn });
         assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
       });
     },
     
     testActiveScanOnly : function () {
-      var queries = [
+      let queries = [
         "FOR doc IN @@cn RETURN 1",
         "FOR doc IN @@cn OPTIONS { indexHint: 'primary' } RETURN 1",
       ];
       
       queries.forEach(function(query) {
-        var result = AQL_EXPLAIN(query, { "@cn" : cn });
+        let result = AQL_EXPLAIN(query, { "@cn" : cn });
         assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
       });
     },
@@ -158,7 +159,7 @@ function optimizerRuleTestSuite () {
     testActiveWithIndex : function () {
       c.ensureIndex({ type: "skiplist", fields: ["value1"] });
 
-      var queries = [
+      let queries = [
         "FOR doc IN @@cn FILTER doc.value1 == 1 RETURN doc.value1",
         "FOR doc IN @@cn SORT doc.value1 RETURN doc.value1",
         "FOR doc IN @@cn COLLECT v = doc.value1 INTO g RETURN v", // g will be optimized away
@@ -169,7 +170,7 @@ function optimizerRuleTestSuite () {
       ];
       
       queries.forEach(function(query) {
-        var result = AQL_EXPLAIN(query, { "@cn" : cn });
+        let result = AQL_EXPLAIN(query, { "@cn" : cn });
         assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
       });
     },
@@ -177,7 +178,7 @@ function optimizerRuleTestSuite () {
     testActiveWithIndexMultiple : function () {
       c.ensureIndex({ type: "skiplist", fields: ["foo.bar"] });
 
-      var queries = [
+      let queries = [
         "FOR doc IN @@cn FILTER doc.foo.bar == 1 RETURN doc.foo.bar",
         "FOR doc IN @@cn SORT doc.foo.bar RETURN doc.foo.bar",
         "FOR doc IN @@cn COLLECT v = doc.foo.bar INTO g RETURN v", // g will be optimized away
@@ -188,7 +189,7 @@ function optimizerRuleTestSuite () {
       ];
       
       queries.forEach(function(query) {
-        var result = AQL_EXPLAIN(query, { "@cn" : cn });
+        let result = AQL_EXPLAIN(query, { "@cn" : cn });
         assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
       });
     },
@@ -202,7 +203,7 @@ function optimizerRuleTestSuite () {
       ];
       
       queries.forEach(function(query) {
-        var result = AQL_EXPLAIN(query[0], { "@cn" : cn });
+        let result = AQL_EXPLAIN(query[0], { "@cn" : cn });
         assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query[0]);
         
         result = AQL_EXECUTE(query[0], { "@cn" : cn });
@@ -211,7 +212,7 @@ function optimizerRuleTestSuite () {
     },
     
     testResultsMultiple : function () {
-      var queries = [
+      let queries = [
         [ "FOR doc IN @@cn FILTER doc.foo.bar == 1 RETURN 42", [ 42 ] ],
         [ "FOR doc IN @@cn FILTER doc.foo.bar == 1 RETURN doc.foo.bar", [ 1 ] ],
         [ "FOR doc IN @@cn FILTER doc.foo.bar <= 1 SORT doc.foo.bar RETURN doc.foo.bar", [ 0, 1 ] ],
@@ -219,7 +220,7 @@ function optimizerRuleTestSuite () {
       ];
       
       queries.forEach(function(query) {
-        var result = AQL_EXPLAIN(query[0], { "@cn" : cn });
+        let result = AQL_EXPLAIN(query[0], { "@cn" : cn });
         assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query[0]);
         
         result = AQL_EXECUTE(query[0], { "@cn" : cn });
@@ -238,7 +239,7 @@ function optimizerRuleTestSuite () {
       ];
       
       queries.forEach(function(query) {
-        var result = AQL_EXPLAIN(query[0], { "@cn" : cn });
+        let result = AQL_EXPLAIN(query[0], { "@cn" : cn });
         assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query[0]);
         
         result = AQL_EXECUTE(query[0], { "@cn" : cn });
@@ -249,7 +250,7 @@ function optimizerRuleTestSuite () {
     testResultsWithIndexMultiple : function () {
       c.ensureIndex({ type: "skiplist", fields: ["foo.bar"] });
 
-      var queries = [
+      let queries = [
         [ "FOR doc IN @@cn FILTER doc.foo.bar == 1 RETURN doc.foo.bar", [ 1 ] ],
         [ "FOR doc IN @@cn FILTER doc.foo.bar <= 1 SORT doc.foo.bar RETURN doc.foo.bar", [ 0, 1 ] ],
         [ "FOR doc IN @@cn FILTER doc.foo.bar >= 132 && doc.foo.bar <= 134 SORT doc.foo.bar RETURN doc.foo.bar", [ 132, 133, 134 ] ],
@@ -257,7 +258,7 @@ function optimizerRuleTestSuite () {
       ];
       
       queries.forEach(function(query) {
-        var result = AQL_EXPLAIN(query[0], { "@cn" : cn });
+        let result = AQL_EXPLAIN(query[0], { "@cn" : cn });
         assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query[0]);
         
         result = AQL_EXECUTE(query[0], { "@cn" : cn });
@@ -287,12 +288,52 @@ function optimizerRuleTestSuite () {
 
         assertEqual(2, found);
       });
-    }
-    
+    },
+
+    testBts562 : function () {
+      c.truncate();
+      c.insert({ foo: { attr: 1 }, bar: { attr: 2 } });
+
+      let result = AQL_EXECUTE(`FOR doc IN @@cn RETURN [ doc.foo.attr, doc.bar.attr ]`, { "@cn" : cn }).json; 
+      assertEqual(1, result.length);
+      assertEqual([ 1, 2 ], result[0]);
+
+      c.truncate();
+      c.insert({ foo: { attr: 1 }, bar: { attr: 2 }, baz: { attr: 3 } });
+      
+      result = AQL_EXECUTE(`FOR doc IN @@cn RETURN [ doc.foo.attr, doc.bar.attr, doc.baz.attr ]`, { "@cn" : cn }).json; 
+      assertEqual(1, result.length);
+      assertEqual([ 1, 2, 3 ], result[0]);
+
+      c.truncate();
+      c.insert({ result: {} });
+      c.insert({ result: { status: "ok" } });
+
+      result = AQL_EXECUTE(`FOR d IN @@cn COLLECT resultStatus = d.result.status, requestStatus = d.request.status WITH COUNT INTO count SORT resultStatus RETURN { resultStatus, requestStatus, count }`, { "@cn": cn }).json;
+
+      assertEqual(2, result.length);
+      assertEqual({ resultStatus: null, requestStatus: null, count: 1 }, result[0]);
+      assertEqual({ resultStatus: "ok", requestStatus: null, count: 1 }, result[1]);
+
+      result = AQL_EXECUTE(`FOR d IN @@cn COLLECT resultStatus = d.result.status, requestOther = d.request.other WITH COUNT INTO count SORT resultStatus RETURN { resultStatus, requestOther, count }`, { "@cn" : cn }).json;
+      assertEqual(2, result.length);
+      assertEqual({ resultStatus: null, requestOther: null, count: 1 }, result[0]);
+      assertEqual({ resultStatus: "ok", requestOther: null, count: 1 }, result[1]);
+
+      c.truncate();
+      c.insert({ result: { status: "ok" }, request: { status: "ok" } });
+      c.insert({ result: { status: "ok" }, request: { status: "blarg" } });
+
+      result = AQL_EXECUTE(`FOR d IN @@cn COLLECT resultStatus = d.result.status, requestStatus = d.request.status WITH COUNT INTO count SORT requestStatus RETURN { resultStatus, requestStatus, count }`, { "@cn" : cn }).json;
+
+      assertEqual(2, result.length);
+      assertEqual({ resultStatus: "ok", requestStatus: "blarg", count: 1 }, result[0]);
+      assertEqual({ resultStatus: "ok", requestStatus: "ok", count: 1 }, result[1]);
+    },
+
   };
 }
 
-/// @brief executes the test suite
 jsunity.run(optimizerRuleTestSuite);
 
 return jsunity.done();

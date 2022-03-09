@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,8 +21,7 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_TESTS_VELOCYPACK_HELPER_H
-#define ARANGOD_AQL_TESTS_VELOCYPACK_HELPER_H
+#pragma once
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/AqlItemBlockManager.h"
@@ -44,23 +44,26 @@ VPackBufferPtr vpackFromJsonString(char const* c);
 
 VPackBufferPtr operator"" _vpack(const char* json, size_t);
 
-void VPackToAqlItemBlock(velocypack::Slice data, arangodb::aql::RegisterCount nrRegs,
+void VPackToAqlItemBlock(velocypack::Slice data,
+                         arangodb::aql::RegisterCount nrRegs,
                          arangodb::aql::AqlItemBlock& block);
 
 // Convert a single VPackBuffer into an AqlItemBlock
 arangodb::aql::SharedAqlItemBlockPtr vPackBufferToAqlItemBlock(
-  arangodb::aql::AqlItemBlockManager& manager, VPackBufferPtr const& buffer);
+    arangodb::aql::AqlItemBlockManager& manager, VPackBufferPtr const& buffer);
 
 /**
  * @brief Convert a list of VPackBufferPtr to a vector of AqlItemBlocks.
  * Does no error handling but for maintainer mode assertions: It's meant for
  * tests with static input.
  */
-template <typename... Ts>
-std::vector<arangodb::aql::SharedAqlItemBlockPtr> multiVPackBufferToAqlItemBlocks(
-    arangodb::aql::AqlItemBlockManager& manager, Ts... vPackBuffers) {
+template<typename... Ts>
+std::vector<arangodb::aql::SharedAqlItemBlockPtr>
+multiVPackBufferToAqlItemBlocks(arangodb::aql::AqlItemBlockManager& manager,
+                                Ts... vPackBuffers) {
   std::vector<VPackBufferPtr> buffers({std::forward<Ts>(vPackBuffers)...});
-  arangodb::aql::RegisterCount const nrRegs = [&]() -> arangodb::aql::RegisterCount {
+  arangodb::aql::RegisterCount const nrRegs =
+      [&]() -> arangodb::aql::RegisterCount {
     if (buffers.empty()) {
       return 0;
     }
@@ -101,5 +104,3 @@ std::vector<arangodb::aql::SharedAqlItemBlockPtr> vPackToAqlItemBlocks(
 
 }  // namespace tests
 }  // namespace arangodb
-
-#endif  // ARANGOD_AQL_TESTS_VELOCYPACK_HELPER_H

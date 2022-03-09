@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_TRAVERSAL_CONDITION_FINDER_H
-#define ARANGOD_AQL_TRAVERSAL_CONDITION_FINDER_H 1
+#pragma once
 
 #include "Aql/Condition.h"
 #include "Aql/ExecutionNode.h"
@@ -32,7 +31,8 @@ namespace arangodb {
 namespace aql {
 
 /// @brief Traversal condition finder
-class TraversalConditionFinder : public WalkerWorker<ExecutionNode> {
+class TraversalConditionFinder final
+    : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
  public:
   TraversalConditionFinder(ExecutionPlan* plan, bool* planAltered);
 
@@ -53,5 +53,3 @@ class TraversalConditionFinder : public WalkerWorker<ExecutionNode> {
 };
 }  // namespace aql
 }  // namespace arangodb
-
-#endif

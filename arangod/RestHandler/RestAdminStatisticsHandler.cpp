@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +23,6 @@
 
 #include <velocypack/Buffer.h>
 #include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "RestAdminStatisticsHandler.h"
 
@@ -36,22 +36,23 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestAdminStatisticsHandler::RestAdminStatisticsHandler(application_features::ApplicationServer& server,
-                                                       GeneralRequest* request,
-                                                       GeneralResponse* response)
+RestAdminStatisticsHandler::RestAdminStatisticsHandler(
+    ArangodServer& server, GeneralRequest* request, GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
 RestStatus RestAdminStatisticsHandler::execute() {
   if (_request->requestType() != rest::RequestType::GET) {
-    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
     return RestStatus::DONE;
   }
 
-  ServerSecurityFeature& security = server().getFeature<ServerSecurityFeature>();
+  ServerSecurityFeature& security =
+      server().getFeature<ServerSecurityFeature>();
 
   if (!security.canAccessHardenedApi()) {
     // dont leak information about server internals here
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN); 
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
     return RestStatus::DONE;
   }
 
@@ -73,38 +74,39 @@ RestStatus RestAdminStatisticsHandler::execute() {
 }
 
 void RestAdminStatisticsHandler::getStatistics() {
-  stats::Descriptions const* desc = StatisticsFeature::descriptions();
-  if (!desc) {
+  StatisticsFeature& feature = server().getFeature<StatisticsFeature>();
+  if (!feature.isEnabled()) {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_DISABLED,
                   "statistics not enabled");
     return;
   }
+  stats::Descriptions const& desc = feature.descriptions();
 
   VPackBuffer<uint8_t> buffer;
   VPackBuilder tmp(buffer);
   tmp.add(VPackValue(VPackValueType::Object, true));
 
   tmp.add("time", VPackValue(TRI_microtime()));
-  tmp.add("enabled", VPackValue(StatisticsFeature::enabled()));
+  tmp.add("enabled", VPackValue(true));
 
   tmp.add("system", VPackValue(VPackValueType::Object, true));
-  desc->processStatistics(tmp);
+  desc.processStatistics(tmp);
   tmp.close();  // system
 
   tmp.add("client", VPackValue(VPackValueType::Object, true));
-  desc->clientStatistics(tmp, stats::RequestStatisticsSource::ALL);
+  desc.clientStatistics(tmp, stats::RequestStatisticsSource::ALL);
   tmp.close();  // client
 
   tmp.add("clientUser", VPackValue(VPackValueType::Object, true));
-  desc->clientStatistics(tmp, stats::RequestStatisticsSource::USER);
+  desc.clientStatistics(tmp, stats::RequestStatisticsSource::USER);
   tmp.close();  // clientUser
 
   tmp.add("http", VPackValue(VPackValueType::Object, true));
-  desc->httpStatistics(tmp);
+  desc.httpStatistics(tmp);
   tmp.close();  // http
 
   tmp.add("server", VPackValue(VPackValueType::Object, true));
-  desc->serverStatistics(tmp);
+  desc.serverStatistics(tmp);
   tmp.close();  // server
 
   tmp.add(StaticStrings::Error, VPackValue(false));
@@ -114,19 +116,20 @@ void RestAdminStatisticsHandler::getStatistics() {
 }
 
 void RestAdminStatisticsHandler::getStatisticsDescription() {
-  stats::Descriptions const* desc = StatisticsFeature::descriptions();
-  if (!desc) {
+  StatisticsFeature& feature = server().getFeature<StatisticsFeature>();
+  if (!feature.isEnabled()) {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_DISABLED,
                   "statistics not enabled");
     return;
   }
+  stats::Descriptions const& desc = feature.descriptions();
 
   VPackBuffer<uint8_t> buffer;
   VPackBuilder tmp(buffer);
   tmp.add(VPackValue(VPackValueType::Object));
 
   tmp.add("groups", VPackValue(VPackValueType::Array, true));
-  for (stats::Group const& group : desc->groups()) {
+  for (stats::Group const& group : desc.groups()) {
     tmp.openObject();
     group.toVPack(tmp);
     tmp.close();
@@ -134,7 +137,7 @@ void RestAdminStatisticsHandler::getStatisticsDescription() {
   tmp.close();  // groups
 
   tmp.add("figures", VPackValue(VPackValueType::Array, true));
-  for (stats::Figure const& figure : desc->figures()) {
+  for (stats::Figure const& figure : desc.figures()) {
     tmp.openObject();
     figure.toVPack(tmp);
     tmp.close();

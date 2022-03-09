@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,14 +21,15 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_LOGGER_LOGGER_FEATURE_H
-#define ARANGODB_LOGGER_LOGGER_FEATURE_H 1
+#pragma once
 
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <vector>
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include <velocypack/Builder.h>
 
 namespace arangodb {
 namespace application_features {
@@ -37,9 +39,20 @@ namespace options {
 class ProgramOptions;
 }
 
+class ShellColorsFeature;
+class VersionFeature;
+
 class LoggerFeature final : public application_features::ApplicationFeature {
  public:
-  LoggerFeature(application_features::ApplicationServer& server, bool threaded);
+  static constexpr std::string_view name() { return "Logger"; }
+
+  template<typename Server>
+  LoggerFeature(Server& server, bool threaded)
+      : LoggerFeature(server, Server::template id<LoggerFeature>(), threaded) {
+    startsAfter<ShellColorsFeature, Server>();
+    startsAfter<VersionFeature, Server>();
+  }
+
   ~LoggerFeature();
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -53,19 +66,31 @@ class LoggerFeature final : public application_features::ApplicationFeature {
   void disableThreaded() { _threaded = false; }
   void setSupervisor(bool supervisor) { _supervisor = supervisor; }
 
+  bool isAPIEnabled() const { return _apiEnabled; }
+  bool onlySuperUser() const { return _apiSwitch == "jwt"; }
+
  private:
+  LoggerFeature(application_features::ApplicationServer& server,
+                size_t registration, bool threaded);
+
   std::vector<std::string> _output;
   std::vector<std::string> _levels;
   std::string _prefix;
+  std::string _hostname;
   std::string _file;
   std::string _fileMode;
   std::string _fileGroup;
   std::string _timeFormatString;
+  std::vector<std::string> _structuredLogParams;
+  uint32_t _maxEntryLength = 128U * 1048576U;
+  bool _useJson = false;
   bool _useLocalTime = false;
   bool _useColor = true;
-  bool _useEscaped = true;
+  bool _useControlEscaped = true;
+  bool _useUnicodeEscaped = false;
   bool _lineNumber = false;
   bool _shortenFilenames = true;
+  bool _processId = true;
   bool _threadId = false;
   bool _threadName = false;
   bool _performance = false;
@@ -79,8 +104,8 @@ class LoggerFeature final : public application_features::ApplicationFeature {
   bool _supervisor = false;
   bool _backgrounded = false;
   bool _threaded = false;
+  std::string _apiSwitch = "true";
+  bool _apiEnabled = true;
 };
 
 }  // namespace arangodb
-
-#endif

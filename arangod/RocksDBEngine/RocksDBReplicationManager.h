@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,12 +21,11 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGO_ROCKSDB_ROCKSDB_REPLICATION_MANAGER_H
-#define ARANGO_ROCKSDB_ROCKSDB_REPLICATION_MANAGER_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
-#include "Cluster/ResultT.h"
+#include "Basics/ResultT.h"
 #include "Replication/utilities.h"
 #include "RocksDBEngine/RocksDBReplicationContext.h"
 #include "VocBase/Identifiers/ServerId.h"
@@ -43,7 +43,7 @@ class RocksDBReplicationManager {
   /// @brief create a contexts repository
   //////////////////////////////////////////////////////////////////////////////
 
-  explicit RocksDBReplicationManager();
+  explicit RocksDBReplicationManager(RocksDBEngine&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief destroy a contexts repository
@@ -58,7 +58,9 @@ class RocksDBReplicationManager {
   /// there are active contexts
   //////////////////////////////////////////////////////////////////////////////
 
-  RocksDBReplicationContext* createContext(double ttl, SyncerId syncerId, ServerId clientId);
+  RocksDBReplicationContext* createContext(RocksDBEngine&, double ttl,
+                                           SyncerId syncerId, ServerId clientId,
+                                           std::string const& patchCount);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief remove a context by id
@@ -74,8 +76,8 @@ class RocksDBReplicationManager {
   /// not
   //////////////////////////////////////////////////////////////////////////////
 
-  RocksDBReplicationContext* find(RocksDBReplicationId,
-                                  double ttl = replutils::BatchInfo::DefaultTimeout);
+  RocksDBReplicationContext* find(
+      RocksDBReplicationId, double ttl = replutils::BatchInfo::DefaultTimeout);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief find an existing context by id and extend lifetime
@@ -96,7 +98,7 @@ class RocksDBReplicationManager {
   //////////////////////////////////////////////////////////////////////////////
 
   void drop(TRI_vocbase_t*);
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief drop contexts by collection (at least mark them as deleted)
   //////////////////////////////////////////////////////////////////////////////
@@ -146,7 +148,8 @@ class RocksDBReplicationManager {
   /// @brief list of current contexts
   //////////////////////////////////////////////////////////////////////////////
 
-  std::unordered_map<RocksDBReplicationId, RocksDBReplicationContext*> _contexts;
+  std::unordered_map<RocksDBReplicationId, RocksDBReplicationContext*>
+      _contexts;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not a shutdown is in progress
@@ -165,7 +168,8 @@ class RocksDBReplicationContextGuard {
     }
   }
 
-  RocksDBReplicationContextGuard(RocksDBReplicationContextGuard&& other) noexcept
+  RocksDBReplicationContextGuard(
+      RocksDBReplicationContextGuard&& other) noexcept
       : _manager(other._manager), _ctx(other._ctx) {
     other._ctx = nullptr;
   }
@@ -182,5 +186,3 @@ class RocksDBReplicationContextGuard {
   RocksDBReplicationContext* _ctx;
 };
 }  // namespace arangodb
-
-#endif

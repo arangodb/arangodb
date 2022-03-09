@@ -19,14 +19,6 @@
         this.dbServers = options.dbServers;
         this.coordid = options.coordid;
         this.updateServerTime();
-
-        // start polling with interval
-        /*
-        window.setInterval(function () {
-          if (window.location.hash.indexOf('#node/') === 0) {
-          }
-        }, this.interval);
-       */
       }
     },
 

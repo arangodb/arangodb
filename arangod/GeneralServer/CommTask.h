@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,8 +22,7 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GENERAL_SERVER_COMM_TASK_H
-#define ARANGOD_GENERAL_SERVER_COMM_TASK_H 1
+#pragma once
 
 #include "Auth/TokenCache.h"
 #include "Endpoint/ConnectionInfo.h"
@@ -81,33 +80,30 @@ class CommTask : public std::enable_shared_from_this<CommTask> {
   CommTask const& operator=(CommTask const&) = delete;
 
  public:
-  CommTask(GeneralServer& server,
-           ConnectionInfo info);
+  CommTask(GeneralServer& server, ConnectionInfo info);
 
   virtual ~CommTask();
 
   // callable from any thread
   virtual void start() = 0;
   virtual void stop() = 0;
-  
-protected:
-  
-  virtual std::unique_ptr<GeneralResponse> createResponse(rest::ResponseCode,
-                                                          uint64_t messageId) = 0;
+
+ protected:
+  virtual std::unique_ptr<GeneralResponse> createResponse(
+      rest::ResponseCode, uint64_t messageId) = 0;
 
   /// @brief send the response to the client.
   virtual void sendResponse(std::unique_ptr<GeneralResponse>,
                             RequestStatistics::Item) = 0;
 
  protected:
-  
   enum class Flow : bool { Continue = true, Abort = false };
   static constexpr size_t MaximalBodySize = 1024 * 1024 * 1024;  // 1024 MB
 
   /// Must be called before calling executeRequest, will add an error
   /// response if execution is supposed to be aborted
   Flow prepareExecution(auth::TokenCache::Entry const&, GeneralRequest&);
-  
+
   /// Must be called from sendResponse, before response is rendered
   void finishExecution(GeneralResponse&, std::string const& cors) const;
 
@@ -118,52 +114,49 @@ protected:
   RequestStatistics::Item const& acquireStatistics(uint64_t);
   RequestStatistics::Item const& statistics(uint64_t);
   RequestStatistics::Item stealStatistics(uint64_t);
-  
-  /// @brief send simple response including response body
-  void addSimpleResponse(rest::ResponseCode, rest::ContentType, uint64_t messageId,
-                         velocypack::Buffer<uint8_t>&&);
 
   /// @brief send response including error response body
-  void addErrorResponse(rest::ResponseCode, rest::ContentType,
-                        uint64_t messageId, int errorNum,
-                        char const* errorMessage = nullptr);
-  
+  void sendErrorResponse(rest::ResponseCode, rest::ContentType,
+                         uint64_t messageId, ErrorCode errorNum,
+                         std::string_view errorMessage = {});
+
+  /// @brief send simple response including response body
+  void sendSimpleResponse(rest::ResponseCode, rest::ContentType,
+                          uint64_t messageId, velocypack::Buffer<uint8_t>&&);
+
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief checks the access rights for a specified path, includes automatic
   ///        exceptions for /_api/users to allow logins without authorization
   ////////////////////////////////////////////////////////////////////////////////
-  Flow canAccessPath(auth::TokenCache::Entry const&,
-                     GeneralRequest&) const;
-  
+  Flow canAccessPath(auth::TokenCache::Entry const&, GeneralRequest&) const;
+
   bool allowCorsCredentials(std::string const& origin) const;
-  
+
   /// handle an OPTIONS request, will send response
   void processCorsOptions(std::unique_ptr<GeneralRequest> req,
                           std::string const& origin);
-  
+
   /// check authentication headers
   auth::TokenCache::Entry checkAuthHeader(GeneralRequest& request);
-  
+
   /// decompress content
   bool handleContentEncoding(GeneralRequest&);
-  
+
  private:
   bool handleRequestSync(std::shared_ptr<RestHandler>);
-  bool handleRequestAsync(std::shared_ptr<RestHandler>, uint64_t* jobId = nullptr);
-  
+  bool handleRequestAsync(std::shared_ptr<RestHandler>,
+                          uint64_t* jobId = nullptr);
+
  protected:
-  
   GeneralServer& _server;
   ConnectionInfo _connectionInfo;
-  
+
   ConnectionStatistics::Item _connectionStatistics;
   std::chrono::milliseconds _keepAliveTimeout;
   AuthenticationFeature* _auth;
 
-  std::mutex _statisticsMutex;
+  mutable std::mutex _statisticsMutex;
   std::unordered_map<uint64_t, RequestStatistics::Item> _statisticsMap;
 };
 }  // namespace rest
 }  // namespace arangodb
-
-#endif

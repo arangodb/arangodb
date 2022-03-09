@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019-2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_SHADOW_AQL_ITEM_ROW_H
-#define ARANGOD_AQL_SHADOW_AQL_ITEM_ROW_H 1
+#pragma once
 
 #include "Aql/SharedAqlItemBlockPtr.h"
 
@@ -48,10 +48,11 @@ struct CreateInvalidShadowRowHint {
  * Note that this class will be copied a lot, and therefore should be small
  * and not do too complex things when copied!
  *
- * This row is used to indicate a separator between different executions of a subquery.
- * It will contain the data of the subquery input (former used in initializeCursor).
- * We can never write to ShadowRow again, only SubqueryEnd nodes are allowed transform
- * a ShadowRow into an AqlOutputRow again, and add the result of the subquery to it.
+ * This row is used to indicate a separator between different executions of a
+ * subquery. It will contain the data of the subquery input (former used in
+ * initializeCursor). We can never write to ShadowRow again, only SubqueryEnd
+ * nodes are allowed transform a ShadowRow into an AqlOutputRow again, and add
+ * the result of the subquery to it.
  */
 
 class ShadowAqlItemRow {
@@ -66,24 +67,28 @@ class ShadowAqlItemRow {
   /// @brief get the number of data registers in the underlying block.
   ///        Not all of these registers are necessarily filled by this
   ///        ShadowRow. There might be empty registers on deeper levels.
-  [[nodiscard]] RegisterCount getNrRegisters() const noexcept;
+  [[nodiscard]] RegisterCount getNumRegisters() const noexcept;
 
-  /// @brief a ShadowRow is relevant iff it indicates an end of subquery block on the subquery context
-  ///        we are in right now. This will only be of importance on nested subqueries.
-  ///        Within the inner subquery all shadowrows of this inner are relevant. All shadowRows
-  ///        of the outer subquery are NOT relevant
-  ///        Also note: There is a guarantee that a non-relevant shadowrow, can only be encountered
-  ///        right after a shadowrow. And only in descending nesting level. (eg 1. inner most, 2. inner, 3. outer most)
+  /// @brief a ShadowRow is relevant iff it indicates an end of subquery block
+  /// on the subquery context
+  ///        we are in right now. This will only be of importance on nested
+  ///        subqueries. Within the inner subquery all shadowrows of this inner
+  ///        are relevant. All shadowRows of the outer subquery are NOT relevant
+  ///        Also note: There is a guarantee that a non-relevant shadowrow, can
+  ///        only be encountered right after a shadowrow. And only in descending
+  ///        nesting level. (eg 1. inner most, 2. inner, 3. outer most)
   [[nodiscard]] bool isRelevant() const noexcept;
 
-  /// @brief Test if this shadow row is initialized, eg has a block and has a valid depth.
+  /// @brief Test if this shadow row is initialized, eg has a block and has a
+  /// valid depth.
   [[nodiscard]] bool isInitialized() const;
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   /**
    * @brief Compare the underlying block. Only for assertions.
    */
-  [[nodiscard]] bool internalBlockIs(SharedAqlItemBlockPtr const& other) const;
+  [[nodiscard]] bool internalBlockIs(SharedAqlItemBlockPtr const& other,
+                                     size_t index) const;
 #endif
 
   /**
@@ -97,17 +102,20 @@ class ShadowAqlItemRow {
 
   [[nodiscard]] AqlValue stealAndEraseValue(RegisterId registerId);
 
-  /// @brief get the depthValue of the shadow row as AqlValue
-  [[nodiscard]] AqlValue const& getShadowDepthValue() const;
+  /// @brief get the depthValue of the shadow row
+  [[nodiscard]] size_t getShadowDepthValue() const;
 
   /// @brief get the depthValue of the shadow row as int64_t >= 0
-  ///        NOTE: Innermost query will have depth 0. Outermost query wil have highest depth.
+  ///        NOTE: Innermost query will have depth 0. Outermost query wil have
+  ///        highest depth.
   [[nodiscard]] uint64_t getDepth() const;
 
   // Check whether the rows are *identical*, that is,
   // the same row in the same block.
-  [[nodiscard]] bool isSameBlockAndIndex(ShadowAqlItemRow const& other) const noexcept;
+  [[nodiscard]] bool isSameBlockAndIndex(
+      ShadowAqlItemRow const& other) const noexcept;
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
   // This checks whether the rows are equivalent, in the sense that they hold
   // the same number of registers and their entry-AqlValues compare equal,
   // plus their shadow-depth is the same.
@@ -117,6 +125,7 @@ class ShadowAqlItemRow {
   // Invalid rows are considered equivalent.
   [[nodiscard]] bool equates(ShadowAqlItemRow const& other,
                              velocypack::Options const* option) const noexcept;
+#endif
 
  private:
   [[nodiscard]] AqlItemBlock& block() noexcept;
@@ -137,5 +146,3 @@ class ShadowAqlItemRow {
 
 }  // namespace aql
 }  // namespace arangodb
-
-#endif

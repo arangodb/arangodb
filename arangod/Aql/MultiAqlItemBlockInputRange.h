@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,8 +21,7 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_MULTIAQLITEMBLOCKINPUTRANGE_H
-#define ARANGOD_AQL_MULTIAQLITEMBLOCKINPUTRANGE_H
+#pragma once
 
 #include "Aql/AqlItemBlockInputRange.h"
 #include "Aql/ExecutionState.h"
@@ -32,19 +32,13 @@ namespace arangodb::aql {
 
 class MultiAqlItemBlockInputRange {
  public:
-  explicit MultiAqlItemBlockInputRange(ExecutorState state, std::size_t skipped = 0,
+  explicit MultiAqlItemBlockInputRange(MainQueryState state,
+                                       std::size_t skipped = 0,
                                        std::size_t nrInputRanges = 1);
 
-  MultiAqlItemBlockInputRange(ExecutorState, std::size_t skipped,
-                              arangodb::aql::SharedAqlItemBlockPtr const&,
-                              std::size_t startIndex);
-
-  MultiAqlItemBlockInputRange(ExecutorState, std::size_t skipped,
-                              arangodb::aql::SharedAqlItemBlockPtr&&,
-                              std::size_t startIndex) noexcept;
-
   ExecutorState upstreamState(size_t const dependency) const noexcept;
-  bool upstreamHasMore(size_t const dependency) const noexcept;
+
+  bool hasValidRow() const noexcept;
 
   bool hasDataRow() const noexcept;
   bool hasDataRow(size_t const dependency) const noexcept;
@@ -54,15 +48,19 @@ class MultiAqlItemBlockInputRange {
    * NOTE: Modifing this range will modify the state of this class as well
    *
    * @param dependency index of the dependency
-   * @return AqlItemBlockInputRange& Modifyable reference to the input data stream
+   * @return AqlItemBlockInputRange& Modifyable reference to the input data
+   * stream
    */
   auto rangeForDependency(size_t const dependency) -> AqlItemBlockInputRange&;
 
-  std::pair<ExecutorState, arangodb::aql::InputAqlItemRow> peekDataRow(size_t const dependency) const;
-  std::pair<ExecutorState, arangodb::aql::InputAqlItemRow> nextDataRow(size_t const dependency);
+  std::pair<ExecutorState, arangodb::aql::InputAqlItemRow> peekDataRow(
+      size_t const dependency) const;
+  std::pair<ExecutorState, arangodb::aql::InputAqlItemRow> nextDataRow(
+      size_t const dependency);
   auto skipAll(size_t const dependency) noexcept -> std::size_t;
 
-  [[nodiscard]] auto skippedInFlight(size_t dependency) const noexcept -> std::size_t;
+  [[nodiscard]] auto skippedInFlight(size_t dependency) const noexcept
+      -> std::size_t;
 
   bool hasShadowRow() const noexcept;
 
@@ -72,14 +70,22 @@ class MultiAqlItemBlockInputRange {
   auto isDone() const -> bool;
   auto state() const -> ExecutorState;
 
-  auto resizeOnce(ExecutorState state, size_t skipped, size_t nrInputRanges) -> void;
+  auto resizeOnce(MainQueryState state, size_t skipped, size_t nrInputRanges)
+      -> void;
 
-  [[nodiscard]] auto getBlock(size_t dependency = 0) const noexcept -> SharedAqlItemBlockPtr;
+  [[nodiscard]] auto getBlock(size_t dependency = 0) const noexcept
+      -> SharedAqlItemBlockPtr;
 
-  auto setDependency(size_t dependency, AqlItemBlockInputRange const& range) -> void;
+  auto setDependency(size_t dependency, AqlItemBlockInputRange const& range)
+      -> void;
 
   // This discards all remaining data rows
   auto skipAllRemainingDataRows() -> size_t;
+
+  // Skips all ShadowRows of lower or equal depth then given in all
+  // locally known ranges. Reports the amount of skipped equal depth
+  // ShadowRows per depth.
+  auto skipAllShadowRowsOfDepth(size_t depth) -> std::vector<size_t>;
 
   // Subtract up to count rows from the local _skipped state
   auto skipForDependency(size_t const dependency, size_t count) -> size_t;
@@ -110,14 +116,15 @@ class MultiAqlItemBlockInputRange {
    * @brief The final State of all ranges. Combined
    *        Will be DONE only if all inputs are DONE
    *
-   * @return ExecutorState
+   * @return MainQueryState
    */
-  [[nodiscard]] auto finalState() const noexcept -> ExecutorState;
+  [[nodiscard]] auto finalState() const noexcept -> MainQueryState;
 
  private:
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  bool _dependenciesDontAgreeOnState{false};
+#endif
   std::vector<AqlItemBlockInputRange> _inputs;
 };
 
 }  // namespace arangodb::aql
-
-#endif

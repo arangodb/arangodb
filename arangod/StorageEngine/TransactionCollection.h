@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,13 +21,13 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_STORAGE_ENGINE_TRANSACTION_COLLECTION_H
-#define ARANGOD_STORAGE_ENGINE_TRANSACTION_COLLECTION_H 1
+#pragma once
 
 #include <memory>
 
 #include "Basics/Common.h"
 #include "VocBase/AccessMode.h"
+#include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
@@ -44,8 +44,7 @@ class TransactionCollection {
   TransactionCollection(TransactionCollection const&) = delete;
   TransactionCollection& operator=(TransactionCollection const&) = delete;
 
-  TransactionCollection(TransactionState* trx, 
-                        TRI_voc_cid_t cid, 
+  TransactionCollection(TransactionState* trx, DataSourceId cid,
                         AccessMode::Type accessType)
       : _transaction(trx),
         _cid(cid),
@@ -54,7 +53,7 @@ class TransactionCollection {
 
   virtual ~TransactionCollection();
 
-  inline TRI_voc_cid_t id() const { return _cid; }
+  inline DataSourceId id() const { return _cid; }
 
   std::shared_ptr<LogicalCollection> const& collection() const {
     return _collection;  // vocbase collection pointer
@@ -62,8 +61,8 @@ class TransactionCollection {
 
   std::string const& collectionName() const;
 
-  AccessMode::Type accessType() const { return _accessType; }
-  
+  AccessMode::Type accessType() const noexcept { return _accessType; }
+
   Result updateUsage(AccessMode::Type accessType);
 
   /// @brief check whether a collection is locked in a specific mode in a
@@ -83,7 +82,7 @@ class TransactionCollection {
 
  protected:
   TransactionState* _transaction;                  // the transaction state
-  TRI_voc_cid_t const _cid;                        // collection id
+  DataSourceId const _cid;                         // collection id
   std::shared_ptr<LogicalCollection> _collection;  // vocbase collection pointer
   AccessMode::Type _accessType;                    // access type (read|write)
   AccessMode::Type _lockType;                      // actual held lock type
@@ -95,5 +94,3 @@ class TransactionCollection {
 };
 
 }  // namespace arangodb
-
-#endif

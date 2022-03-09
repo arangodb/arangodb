@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,33 +21,45 @@
 /// @author Manuel Baesler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_DATETIME_H
-#define ARANGODB_BASICS_DATETIME_H 1
+#pragma once
 
 #include <chrono>
 #include <regex>
 #include <string>
+#include <string_view>
 
 #include "Basics/Common.h"
 
-#include <velocypack/StringRef.h>
+#include <date/date.h>
 
 namespace arangodb {
 
-using tp_sys_clock_ms =
-    std::chrono::time_point<std::chrono::system_clock, std::chrono::milliseconds>;
+using tp_sys_clock_ms = std::chrono::time_point<std::chrono::system_clock,
+                                                std::chrono::milliseconds>;
+
+using d_sys_clock_ms = std::chrono::duration<std::chrono::milliseconds>;
 
 namespace basics {
-bool parseDateTime(arangodb::velocypack::StringRef dateTime, 
-                   tp_sys_clock_ms& date_tp);
+bool parseDateTime(std::string_view dateTime, tp_sys_clock_ms& date_tp);
 
-bool regexIsoDuration(arangodb::velocypack::StringRef isoDuration, 
+bool regexIsoDuration(std::string_view isoDuration,
                       std::match_results<char const*>& durationParts);
 
 /// @brief formats a date(time) value according to formatString
 std::string formatDate(std::string const& formatString,
                        tp_sys_clock_ms const& dateValue);
+
+struct ParsedDuration {
+  int years = 0;
+  int months = 0;
+  int weeks = 0;
+  int days = 0;
+  int hours = 0;
+  int minutes = 0;
+  int seconds = 0;
+  int milliseconds = 0;
+};
+
+bool parseIsoDuration(std::string_view duration, ParsedDuration& output);
 }  // namespace basics
 }  // namespace arangodb
-
-#endif

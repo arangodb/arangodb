@@ -31,8 +31,8 @@
 if (getOptions === true) {
   return {
     'server.allow-use-database': 'false',
-    'javascript.endpoints-blacklist': '^.*$',
-    'javascript.files-whitelist': '^$',
+    'javascript.endpoints-denylist': '^.*$',
+    'javascript.files-allowlist': '^$',
     'runSetup': true
   };
 }

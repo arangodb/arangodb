@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,8 +21,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "GeneralServer/ServerSecurityFeature.h"
-#include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
@@ -31,39 +32,54 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
-ServerSecurityFeature::ServerSecurityFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "ServerSecurity"),
+ServerSecurityFeature::ServerSecurityFeature(Server& server)
+    : ArangodFeature{server, *this},
       _enableFoxxApi(true),
       _enableFoxxStore(true),
-      _hardenedRestApi(false) {
+      _hardenedRestApi(false),
+      _foxxAllowInstallFromRemote(false) {
   setOptional(false);
   startsAfter<application_features::GreetingsFeaturePhase>();
 }
 
-void ServerSecurityFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("server", "Server features");
-  options->addOption("--server.harden",
-                     "lock down REST APIs that reveal version information or server "
-                     "internals for non-admin users",
-                     new BooleanParameter(&_hardenedRestApi))
-                     .setIntroducedIn(30500);
+void ServerSecurityFeature::collectOptions(
+    std::shared_ptr<ProgramOptions> options) {
+  options
+      ->addOption(
+          "--server.harden",
+          "lock down REST APIs that reveal version information or server "
+          "internals for non-admin users",
+          new BooleanParameter(&_hardenedRestApi))
+      .setIntroducedIn(30500);
 
-  options->addSection("foxx", "Configure Foxx");
-  options->addOption("--foxx.api", "enables Foxx management REST APIs",
-                     new BooleanParameter(&_enableFoxxApi),
-                     arangodb::options::makeFlags(
-                     arangodb::options::Flags::DefaultNoComponents,
-                     arangodb::options::Flags::OnCoordinator,
-                     arangodb::options::Flags::OnSingle))
-                     .setIntroducedIn(30500);
-  options->addOption("--foxx.store", "enables Foxx store in web interface",
-                     new BooleanParameter(&_enableFoxxStore),
-                     arangodb::options::makeFlags(
-                     arangodb::options::Flags::DefaultNoComponents,
-                     arangodb::options::Flags::OnCoordinator,
-                     arangodb::options::Flags::OnSingle))
-                     .setIntroducedIn(30500);
+  options
+      ->addOption("--foxx.api", "enables Foxx management REST APIs",
+                  new BooleanParameter(&_enableFoxxApi),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnCoordinator,
+                      arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(30500);
 
+  options
+      ->addOption("--foxx.store", "enables Foxx store in web interface",
+                  new BooleanParameter(&_enableFoxxStore),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnCoordinator,
+                      arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(30500);
+
+  options
+      ->addOption(
+          "--foxx.allow-install-from-remote",
+          "allow installing Foxx apps from remote URLs other than Github",
+          new BooleanParameter(&_foxxAllowInstallFromRemote),
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnCoordinator,
+              arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(30805);
 }
 
 bool ServerSecurityFeature::isFoxxApiDisabled() const {
@@ -90,4 +106,8 @@ bool ServerSecurityFeature::canAccessHardenedApi() const {
     }
   }
   return allowAccess;
+}
+
+bool ServerSecurityFeature::foxxAllowInstallFromRemote() const {
+  return _foxxAllowInstallFromRemote;
 }

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,8 +22,7 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_ENDPOINT_CONNECTION_INFO_H
-#define ARANGODB_ENDPOINT_CONNECTION_INFO_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Endpoint/Endpoint.h"
@@ -61,14 +60,12 @@ struct ConnectionInfo {
   std::string serverAddress;
   std::string clientAddress;
   std::string endpoint;
-  
+
   int serverPort;
   int clientPort;
-  
+
   Endpoint::DomainType endpointType;
   Endpoint::EncryptionType encryptionType;
 };
 
 }  // namespace arangodb
-
-#endif

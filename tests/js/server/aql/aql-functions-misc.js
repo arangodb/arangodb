@@ -36,11 +36,19 @@ var assertQueryError = helper.assertQueryError;
 var assertQueryWarningAndNull = helper.assertQueryWarningAndNull;
 var db = require("org/arangodb").db;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
-
-function ahuacatlMiscFunctionsTestSuite () { return {
+function ahuacatlMiscFunctionsTestSuite () { 
+  return {
+    
+    testInternalFunction : function () {
+      try {
+        // an internal function cannot be used from a query directly.
+        // AQL will always pretend that the function does not exist.
+        db._query("RETURN INTERNAL()");
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_QUERY_FUNCTION_NAME_UNKNOWN.code, err.errorNum);
+      }
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test parse identifier function
@@ -461,6 +469,32 @@ function ahuacatlMiscFunctionsTestSuite () { return {
 
       internal.db._drop(cn);
     },
+    
+    testDocumentUseAfterModification : function () {
+      const cn = "UnitTestsAhuacatlFunctions";
+
+      let c = internal.db._create(cn);
+      try {
+        c.insert({ "title" : "123", "value" : 456 });
+        c.insert({ "title" : "nada", "value" : 123 });
+
+        let res = AQL_EXECUTE("FOR doc IN " + cn + " SORT doc.value RETURN DOCUMENT(doc._id).title");
+        assertEqual([ "nada", "123" ], res.json);
+        
+        try {
+          AQL_EXECUTE("FOR doc IN " + cn + " SORT doc.value REMOVE doc IN " + cn + " RETURN DOCUMENT(doc._id).title");
+          fail();
+        } catch (err) {
+          assertEqual(errors.ERROR_QUERY_ACCESS_AFTER_MODIFICATION.code, err.errorNum);
+        }
+      
+        res = AQL_EXECUTE("FOR doc IN " + cn + " SORT doc.value LET title = DOCUMENT(doc._id).title INSERT { title } INTO " + cn + " RETURN NEW");
+        assertEqual(2, res.json.length);
+        assertEqual(4, c.count());
+      } finally {
+        internal.db._drop(cn);
+      }
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test document function
@@ -699,11 +733,290 @@ function ahuacatlMiscFunctionsTestSuite () { return {
         assertEqual({ date: parts[1], count: parts[2] }, result[0], parts);
       });
     },
-};} // ahuacatlMiscFunctionsTestSuite
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
+    testShardId : function() {
+      const isCluster = require("@arangodb/cluster").isCluster();
+
+      var cl, sid, d, counts, val, vala, valb;
+
+      try {
+        cl = db._create("cl");
+        sid = db._query('RETURN SHARD_ID("cl", {})').toArray();
+        assertEqual(sid.length, 1);
+        if (!isCluster) {
+          assertEqual(sid[0], "cl");
+        } else {
+          assertEqual(sid[0], db.cl.shards()[0]);
+        }
+      } finally {
+        db.cl.drop();
+      }
+
+      try {
+        cl = db._create("cl", {numberOfShards:3, shardKeys:["a"]});
+        d = db.cl.insert({});
+        sid = db._query('RETURN SHARD_ID("cl", {"_key":@val})', {val: d._key}).toArray();
+        assertEqual(sid.length, 1);
+        if (!isCluster) {
+          assertEqual(sid[0], "cl");
+        } else {
+          counts = db.cl.count(true);
+          assertEqual(counts[sid[0]], 1);
+        }
+      } finally {
+        db.cl.drop();
+      }
+
+      try {
+        cl = db._create("cl", {numberOfShards:3, shardKeys:["a"]});
+        d = db.cl.insert({});
+        sid = db._query('RETURN SHARD_ID("cl", {})').toArray();
+        assertEqual(sid.length, 1);
+        if (!isCluster) {
+          assertEqual(sid[0], "cl");
+        } else {
+          counts = db.cl.count(true);
+          assertEqual(counts[sid[0]], 1);
+        }
+      } finally {
+        db.cl.drop();
+      }
+
+      try {
+        cl = db._create("cl", {numberOfShards:3, shardKeys:["a"]});
+        d = db.cl.insert({});
+        sid = db._query('RETURN SHARD_ID("cl", {a:@val})', {val:null}).toArray();
+        assertEqual(sid.length, 1);
+        if (!isCluster) {
+          assertEqual(sid[0], "cl");
+        } else {
+          counts = db.cl.count(true);
+          assertEqual(counts[sid[0]], 1);
+        }
+      } finally {
+        db.cl.drop();
+      }
+
+      try {
+        cl = db._create("cl", {numberOfShards:3, shardKeys:["a", "b"]});
+        d = db.cl.insert({});
+        sid = db._query('RETURN SHARD_ID("cl", {a:@val})', {val:null}).toArray();
+        assertEqual(sid.length, 1);
+        if (!isCluster) {
+          assertEqual(sid[0], "cl");
+        } else {
+          counts = db.cl.count(true);
+          assertEqual(counts[sid[0]], 1);
+        }
+      } finally {
+        db.cl.drop();
+      }
+
+      try {
+        cl = db._create("cl", {numberOfShards:3, shardKeys:["a", "b"]});
+        d = db.cl.insert({});
+        sid = db._query('RETURN SHARD_ID("cl", {"b":@val})', {val:null}).toArray();
+        assertEqual(sid.length, 1);
+        if (!isCluster) {
+          assertEqual(sid[0], "cl");
+        } else {
+          counts = db.cl.count(true);
+          assertEqual(counts[sid[0]], 1);
+        }
+      } finally {
+        db.cl.drop();
+      }
+
+      try {
+        cl = db._create("cl", {numberOfShards:3, shardKeys:["a", "b"]});
+        d = db.cl.insert({});
+        sid = db._query('RETURN SHARD_ID("cl", {"a":@vala,"b":@valb})', {vala:null, valb:null}).toArray();
+        assertEqual(sid.length, 1);
+        if (!isCluster) {
+          assertEqual(sid[0], "cl");
+        } else {
+          counts = db.cl.count(true);
+          assertEqual(counts[sid[0]], 1);
+        }
+      } finally {
+        db.cl.drop();
+      }
+
+      try {
+        cl = db._create("cl", {numberOfShards:3, shardKeys:["a"]});
+        val = 3;
+        d = db.cl.insert({"a":val});
+        sid = db._query('RETURN SHARD_ID("cl", {a:@val})', {val}).toArray();
+        assertEqual(sid.length, 1);
+        if (!isCluster) {
+          assertEqual(sid[0], "cl");
+        } else {
+          counts = db.cl.count(true);
+          assertEqual(counts[sid[0]], 1);
+        }
+      } finally {
+        db.cl.drop();
+      }
+
+      try {
+        cl = db._create("cl", {numberOfShards:3, shardKeys:["a"]});
+        val = "Pi";
+        d = db.cl.insert({"a":val});
+        sid = db._query('RETURN SHARD_ID("cl", {a:@val})', {val}).toArray();
+        assertEqual(sid.length, 1);
+        if (!isCluster) {
+          assertEqual(sid[0], "cl");
+        } else {
+          counts = db.cl.count(true);
+          assertEqual(counts[sid[0]], 1);
+        }
+      } finally {
+        db.cl.drop();
+      }
+
+      try {
+        cl = db._create("cl", {numberOfShards:3, shardKeys:["a"]});
+        // I know, this is way beyond double precision. But honestly who cares?
+        val = 3.1415926535897932384626433832795028841971693993751058209749445923078164062;
+        d = db.cl.insert({"a":val});
+        sid = db._query('RETURN SHARD_ID("cl", {a:@val})', {val}).toArray();
+        assertEqual(sid.length, 1);
+        if (!isCluster) {
+          assertEqual(sid[0], "cl");
+        } else {
+          counts = db.cl.count(true);
+          assertEqual(counts[sid[0]], 1);
+        }
+      } finally {
+        db.cl.drop();
+      }
+
+      try {
+        cl = db._create("cl", {numberOfShards:3, shardKeys:["a", "b"]});
+        val = 3;
+        d = db.cl.insert({"a":val});
+        sid = db._query('RETURN SHARD_ID("cl", {a:@val})', {val}).toArray();
+        assertEqual(sid.length, 1);
+        if (!isCluster) {
+          assertEqual(sid[0], "cl");
+        } else {
+          counts = db.cl.count(true);
+          assertEqual(counts[sid[0]], 1);
+        }
+      } finally {
+        db.cl.drop();
+      }
+
+      try {
+        cl = db._create("cl", {numberOfShards:3, shardKeys:["a", "b"]});
+        val = "Pi";
+        d = db.cl.insert({"a":val});
+        sid = db._query('RETURN SHARD_ID("cl", {a:@val})', {val}).toArray();
+        assertEqual(sid.length, 1);
+        if (!isCluster) {
+          assertEqual(sid[0], "cl");
+        } else {
+          counts = db.cl.count(true);
+          assertEqual(counts[sid[0]], 1);
+        }
+      } finally {
+        db.cl.drop();
+      }
+
+      try {
+        cl = db._create("cl", {numberOfShards:3, shardKeys:["a", "b"]});
+        val = 3.1415926535897932384626433832795028841971693993751058209749445923078164062;
+        d = db.cl.insert({"a":val});
+        sid = db._query('RETURN SHARD_ID("cl", {a:@val})', {val}).toArray();
+        assertEqual(sid.length, 1);
+        if (!isCluster) {
+          assertEqual(sid[0], "cl");
+        } else {
+          counts = db.cl.count(true);
+          assertEqual(counts[sid[0]], 1);
+        }
+      } finally {
+        db.cl.drop();
+      }
+
+      try {
+        cl = db._create("cl", {numberOfShards:3, shardKeys:["a", "b"]});
+        vala = 3;
+        valb = "Pi";
+        d = db.cl.insert({"a":vala,"b":valb});
+        sid = db._query('RETURN SHARD_ID("cl", {a:@vala, b:@valb})', {vala, valb}).toArray();
+        assertEqual(sid.length, 1);
+        if (!isCluster) {
+          assertEqual(sid[0], "cl");
+        } else {
+          counts = db.cl.count(true);
+          assertEqual(counts[sid[0]], 1);
+        }
+      } finally {
+        db.cl.drop();
+      }
+
+      try {
+        cl = db._create("cl", {numberOfShards:3, shardKeys:["a", "b"]});
+        vala = "Pi";
+        valb = 3.1415926535897932384626433832795028841971693993751058209749445923078164062;
+        d = db.cl.insert({"a":vala,"b":valb});
+        sid = db._query('RETURN SHARD_ID("cl", {a:@vala, b:@valb})', {vala, valb}).toArray();
+        assertEqual(sid.length, 1);
+        if (!isCluster) {
+          assertEqual(sid[0], "cl");
+        } else {
+          counts = db.cl.count(true);
+          assertEqual(counts[sid[0]], 1);
+        }
+      } finally {
+        db.cl.drop();
+      }
+
+      try {
+        cl = db._create("cl", {numberOfShards:3, shardKeys:["a", "b"]});
+        vala = 3.1415926535897932384626433832795028841971693993751058209749445923078164062;
+        valb = 3;
+        d = db.cl.insert({"a":vala,"b":valb});
+        sid = db._query('RETURN SHARD_ID("cl", {a:@vala, b:@valb})', {vala, valb}).toArray();
+        assertEqual(sid.length, 1);
+        if (!isCluster) {
+          assertEqual(sid[0], "cl");
+        } else {
+          counts = db.cl.count(true);
+          assertEqual(counts[sid[0]], 1);
+        }
+      } finally {
+        db.cl.drop();
+      }
+
+      // check that every document among 1000 went to the predicted shard
+      try {
+        cl = db._create("cl", {numberOfShards:3, shardKeys:["a", "b"]});
+        var docs = [];
+        var i, a, b, doc;
+        for (i = 0; i < 1000; ++i) {
+          a = Math.random().toString(36).replace(/[^a-z]+/g, '').substr(0, 5)+i;
+          b = Math.random().toString(36).replace(/[^a-z]+/g, '').substr(0, 5)+i;
+          doc = {a, b, i, d: db.cl.insert({a,i,b})};
+          docs.push(doc);
+        }
+        docs.forEach(function (doc) {
+          sid = db._query('RETURN SHARD_ID("cl", {a:@va, b:@vb})', {va:doc.a,vb:doc.b}).toArray();
+          assertEqual(sid.length, 1);
+          d = db._query('FOR j in cl FILTER j.i == @val RETURN j', {val:doc.i}, {shardIds: sid}).toArray();
+          assertEqual(d.length, 1);
+        });
+      } finally {
+        db.cl.drop();
+      }
+
+    },
+
+  };
+
+} // ahuacatlMiscFunctionsTestSuite
+
 
 function ahuacatlCollectionCountTestSuite () {
   var c;
@@ -736,8 +1049,7 @@ function ahuacatlCollectionCountTestSuite () {
       try {
         AQL_EXECUTE("RETURN LENGTH(" + cnot + ")");
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, err.errorNum);
       }
     },
@@ -766,17 +1078,21 @@ function ahuacatlCollectionCountTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test LENGTH(collection)
 ////////////////////////////////////////////////////////////////////////////////
+    
+    testLengthUseBeforeModification : function () {
+      let res = AQL_EXECUTE("FOR doc IN " + cn + " LET l = LENGTH(" + cn + ") REMOVE doc IN " + cn + " RETURN l");
+      assertEqual(Array(1000).fill(1000), res.json);
+    },
 
-    testLengthUseInModification : function () {
+    testLengthUseAfterModification : function () {
       try {
         AQL_EXECUTE("FOR doc IN " + cn + " REMOVE doc IN " + cn + " RETURN LENGTH(" + cn + ")");
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(errors.ERROR_QUERY_ACCESS_AFTER_MODIFICATION.code, err.errorNum);
       }
       assertEqual(1000, c.count());
-   },
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test COLLECTIONS()
@@ -787,10 +1103,6 @@ function ahuacatlCollectionCountTestSuite () {
     }
   };
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(ahuacatlMiscFunctionsTestSuite);
 jsunity.run(ahuacatlCollectionCountTestSuite);

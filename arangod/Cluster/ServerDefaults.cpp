@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -26,7 +27,7 @@
 
 using namespace arangodb;
 
-ServerDefaults::ServerDefaults(application_features::ApplicationServer& server) {
+ServerDefaults::ServerDefaults(ArangodServer& server) {
   auto const& cl = server.getFeature<ClusterFeature>();
   writeConcern = cl.writeConcern();
   replicationFactor = cl.defaultReplicationFactor();

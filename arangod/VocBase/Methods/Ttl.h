@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOC_BASE_API_TTL_H
-#define ARANGOD_VOC_BASE_API_TTL_H 1
+#pragma once
 
 #include "Basics/Result.h"
 
@@ -29,7 +29,7 @@ namespace arangodb {
 namespace velocypack {
 class Builder;
 class Slice;
-}
+}  // namespace velocypack
 class TtlFeature;
 
 namespace methods {
@@ -37,16 +37,17 @@ namespace methods {
 /// Common code for TTL statistics and mode
 struct Ttl {
   // return the TTL feature statistics
-  static arangodb::Result getStatistics(TtlFeature&, arangodb::velocypack::Builder& out);
+  static arangodb::Result getStatistics(TtlFeature&,
+                                        arangodb::velocypack::Builder& out);
 
   // return the TTL feature's current properties
-  static arangodb::Result getProperties(TtlFeature&, arangodb::velocypack::Builder& out);
+  static arangodb::Result getProperties(TtlFeature&,
+                                        arangodb::velocypack::Builder& out);
 
   // set the TTL feature's current properties
-  static arangodb::Result setProperties(TtlFeature&, arangodb::velocypack::Slice properties,
+  static arangodb::Result setProperties(TtlFeature&,
+                                        arangodb::velocypack::Slice properties,
                                         arangodb::velocypack::Builder& out);
 };
 }  // namespace methods
 }  // namespace arangodb
-
-#endif

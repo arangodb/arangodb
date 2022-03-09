@@ -73,7 +73,7 @@ function FileSystemSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
-      // some sanity check as we don't want to unintentionally remove "." or "/"
+      // some security check as we don't want to unintentionally remove "." or "/"
       if (tempDir.length > 5) {
         // remove our temporary directory with all its subdirectories
         // we created it, so we don't care what's in it
@@ -336,7 +336,7 @@ function FileSystemSuite () {
       // the subdirectory should now be there
       assertTrue(fs.exists(tempName));
 
-      // create a file in the subdirecory
+      // create a file in the subdirectory
       tempName = fs.join(tempDir, 'baz', 'foo', 'test');
       // write something to the file
       fs.write(tempName, "this is a test");

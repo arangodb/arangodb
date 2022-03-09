@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,22 +21,38 @@
 /// @author Andreas Streichardt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_CLUSTER_HELPERS_H
-#define ARANGOD_CLUSTER_CLUSTER_HELPERS_H 1
+#pragma once
 
-#include <velocypack/Slice.h>
 #include "Basics/Common.h"
+#include "Cluster/ClusterTypes.h"
+
+#include <string>
+#include <vector>
 
 namespace arangodb {
+namespace velocypack {
+class Slice;
+}
+
 class ClusterHelpers {
  public:
   static bool compareServerLists(arangodb::velocypack::Slice plan,
                                  arangodb::velocypack::Slice current);
 
-  // values are passed by value intentionally, as they will be sorted inside the
-  // function
-  static bool compareServerLists(std::vector<std::string>, std::vector<std::string>);
-};
-}  // namespace arangodb
+  // @brief Returns true if both vectors are not empty, the first elements are
+  // equal and the vectors are eqal as multisets (the same number of the same
+  // elements) values are passed by value intentionally, as they will be sorted
+  // inside the function
+  static bool compareServerLists(std::vector<std::string>,
+                                 std::vector<std::string>);
 
-#endif
+  /// @brief whether or not the passed in name is a coordinator server name,
+  /// i.e. "CRDN-..."
+  static bool isCoordinatorName(ServerID const& serverId);
+
+  /// @brief whether or not the passed in name is a DB server name, i.e.
+  /// "PRMR-..."
+  static bool isDBServerName(ServerID const& serverId);
+};
+
+}  // namespace arangodb

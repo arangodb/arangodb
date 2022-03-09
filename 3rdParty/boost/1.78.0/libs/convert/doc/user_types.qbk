@@ -1,0 +1,59 @@
+[/
+  Copyright (c) Vladimir Batov 2009-2020
+  Distributed under the Boost Software License, Version 1.0.
+  See copy at http://www.boost.org/LICENSE_1_0.txt.
+]
+
+[import ../test/strtol_converter.cpp]
+
+[section:integration_of_user_types Integration of User-Defined Types]
+
+Probably the most obvious way to support a new type is to write a converter (potentially by inheriting from an existing converter) that understands the type and implements whatever transformation functionality is required. That said, conversions to certain types are very common (for example, string\/text-related conversions) and, consequently, an ability to ['extend] support of an ['existing] converter onto a user-defined type might be the preferred option. The obvious example of such design might be the ['`std::iostream`] library and its type-integration mechanism based on
+
+ std::istream& operator>>(std::istream&, Type&);       // For input
+ std::ostream& operator<<(std::ostream&, Type const&); // For output
+
+Within the ['Boost.Convert] framework the integration and support of user-defined types is every converter's private business. Every converter is free to implement its own (or re-use an existing) user-type-integration mechanism. 
+
+[heading ['boost::cnv::stream et al.]]
+
+Unsurprisingly, the converters based on the ['`std::iostream`] library use the mechanism introduced and supported by that library. That is,
+
+* for output ['Type] needs to be ['Output Streamable];
+* for input ['Type] needs to be ['Input Streamable].
+
+which in practical terms means that the type needs to have the following operators defined:
+
+ std::istream& operator>>(std::istream&, Type&);       // For input
+ std::ostream& operator<<(std::ostream&, Type const&); // For output
+
+For example,
+
+[change_declaration]
+[change_stream_operators]
+
+That allows handling conversions of user-defined types with ['`std::iostream`]-based converters:
+
+[stream_example6]
+
+[heading ['boost::cnv::strtol et al.]]
+
+Other converters (based on `boost::cnv::cnvbase`) implement support for user types similarly but without the ['`std::iostream`]-related overhead (see [link boost_convert.performance.converters_compared Converters Compared]). Namely, new types are supported by the converters after the following is defined:
+
+ void operator>>(TypeIn const&, boost::optional<TypeOut>&);
+
+For example, the mentioned ['`change`] class is deployed with `boost::cnv::strol` after the following ['change-to-string] and ['string-to-change] conversions are defined:
+
+[change_convert_operators]
+
+which are not that dissimilar to (but considerably more efficient than) previously shown:
+
+ std::istream& operator>>(std::istream&, change&);
+ std::ostream& operator<<(std::ostream&, change const&);
+
+That allows handling conversions of user-defined types with `boost::cnv::strtol`:
+
+[strtol_user_type]
+
+[endsect]
+

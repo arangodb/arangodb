@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,14 +21,17 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_ROCKSDB_TRANSACTION_COLLECTION_H
-#define ARANGOD_ROCKSDB_ROCKSDB_TRANSACTION_COLLECTION_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/Identifiers/IndexId.h"
+#include "VocBase/Identifiers/RevisionId.h"
+#include "VocBase/Identifiers/TransactionId.h"
 #include "VocBase/voc-types.h"
+
+#include <rocksdb/types.h>
 
 namespace arangodb {
 struct RocksDBDocumentOperation;
@@ -38,9 +41,9 @@ class Methods;
 class TransactionState;
 
 /// @brief collection used in a transaction
-class RocksDBTransactionCollection final : public TransactionCollection {
+class RocksDBTransactionCollection : public TransactionCollection {
  public:
-  RocksDBTransactionCollection(TransactionState* trx, TRI_voc_cid_t cid,
+  RocksDBTransactionCollection(TransactionState* trx, DataSourceId cid,
                                AccessMode::Type accessType);
   ~RocksDBTransactionCollection();
 
@@ -51,7 +54,7 @@ class RocksDBTransactionCollection final : public TransactionCollection {
   Result lockUsage() override;
   void releaseUsage() override;
 
-  TRI_voc_rid_t revision() const { return _revision; }
+  RevisionId revision() const { return _revision; }
   uint64_t numberDocuments() const {
     return _initialNumberDocuments + _numInserts - _numRemoves;
   }
@@ -60,39 +63,39 @@ class RocksDBTransactionCollection final : public TransactionCollection {
   uint64_t numRemoves() const { return _numRemoves; }
 
   /// @brief add an operation for a transaction collection
-  void addOperation(TRI_voc_document_operation_e operationType, TRI_voc_rid_t revisionId);
+  void addOperation(TRI_voc_document_operation_e operationType,
+                    RevisionId revisionId);
 
   /**
    * @brief Prepare collection for commit by placing collection blockers
    * @param trxId    Active transaction ID
-   * @param beginSeq Current seq/tick on transaction begin
    */
-  void prepareTransaction(uint64_t trxId, uint64_t beginSeq);
+  rocksdb::SequenceNumber prepareTransaction(TransactionId trxId);
 
   /**
    * @brief Signal upstream abort/rollback to clean up index blockers
    * @param trxId Active transaction ID
    */
-  void abortCommit(uint64_t trxId);
+  void abortCommit(TransactionId trxId);
 
   /**
    * @brief Commit collection counts and buffer tracked index updates
    * @param trxId     Active transaction ID
    * @param commitSeq Seq/tick immediately after upstream commit
    */
-  void commitCounts(TRI_voc_tid_t trxId, uint64_t commitSeq);
+  void commitCounts(TransactionId trxId, uint64_t commitSeq);
 
   /// @brief Track documents inserted to the collection
   ///        Used to update the revision tree for replication after commit
-  void trackInsert(TRI_voc_rid_t rid);
+  void trackInsert(RevisionId rid);
 
   /// @brief Track documents removed from the collection
   ///        Used to update the revision tree for replication after commit
-  void trackRemove(TRI_voc_rid_t rid);
+  void trackRemove(RevisionId rid);
 
   struct TrackedOperations {
-    std::vector<std::size_t> inserts;
-    std::vector<std::size_t> removals;
+    std::vector<std::uint64_t> inserts;
+    std::vector<std::uint64_t> removals;
     bool empty() const { return inserts.empty() && removals.empty(); }
     void clear() {
       inserts.clear();
@@ -122,7 +125,8 @@ class RocksDBTransactionCollection final : public TransactionCollection {
     std::vector<uint64_t> inserts;
     std::vector<uint64_t> removals;
   };
-  using IndexOperationsMap = std::unordered_map<IndexId, TrackedIndexOperations>;
+  using IndexOperationsMap =
+      std::unordered_map<IndexId, TrackedIndexOperations>;
 
   /// @brief steal the tracked operations from the map
   IndexOperationsMap stealTrackedIndexOperations() {
@@ -141,9 +145,11 @@ class RocksDBTransactionCollection final : public TransactionCollection {
   /// @brief request an unlock for a collection
   Result doUnlock(AccessMode::Type) override;
 
+  Result ensureCollection();
+
  private:
   uint64_t _initialNumberDocuments;
-  TRI_voc_rid_t _revision;
+  RevisionId _revision;
   uint64_t _numInserts;
   uint64_t _numUpdates;
   uint64_t _numRemoves;
@@ -155,10 +161,8 @@ class RocksDBTransactionCollection final : public TransactionCollection {
   /// @brief A list where all indexes with estimates can store their operations
   ///        Will be applied to the inserter on commit and not applied on abort
   IndexOperationsMap _trackedIndexOperations;
-  
+
   bool _usageLocked;
   bool _exclusiveWrites;
 };
 }  // namespace arangodb
-
-#endif

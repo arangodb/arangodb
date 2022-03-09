@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,8 +24,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_TESTS_ROW_FETCHER_HELPER_H
-#define ARANGOD_AQL_TESTS_ROW_FETCHER_HELPER_H
+#pragma once
 
 #include "Aql/AllRowsFetcher.h"
 #include "Aql/AqlItemBlockManager.h"
@@ -32,11 +32,12 @@
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/InputAqlItemRow.h"
-#include "Aql/ResourceUsage.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/VelocyPackHelper.h"
+#include "Basics/Common.h"
+#include "Basics/GlobalResourceMonitor.h"
+#include "Basics/ResourceUsage.h"
 
-#include <Basics/Common.h>
 #include <velocypack/Buffer.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -56,7 +57,7 @@ namespace aql {
 /**
  * @brief Mock for SingleRowFetcher
  */
-template <::arangodb::aql::BlockPassthrough passBlocksThrough>
+template<::arangodb::aql::BlockPassthrough passBlocksThrough>
 class SingleRowFetcherHelper
     : public arangodb::aql::SingleRowFetcher<passBlocksThrough> {
  public:
@@ -65,27 +66,18 @@ class SingleRowFetcherHelper
                          arangodb::aql::SharedAqlItemBlockPtr input);
 
   // backwards compatible constructor
-  SingleRowFetcherHelper(arangodb::aql::AqlItemBlockManager& manager,
-                         std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> const& vPackBuffer,
-                         bool returnsWaiting);
+  SingleRowFetcherHelper(
+      arangodb::aql::AqlItemBlockManager& manager,
+      std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> const& vPackBuffer,
+      bool returnsWaiting);
 
   virtual ~SingleRowFetcherHelper();
-
-  // NOLINTNEXTLINE google-default-arguments
-  std::pair<arangodb::aql::ExecutionState, arangodb::aql::InputAqlItemRow> fetchRow(
-      size_t atMost = arangodb::aql::ExecutionBlock::DefaultBatchSize) override;
-
-  // NOLINTNEXTLINE google-default-arguments
-  std::pair<arangodb::aql::ExecutionState, arangodb::aql::ShadowAqlItemRow> fetchShadowRow(
-      size_t atMost = arangodb::aql::ExecutionBlock::DefaultBatchSize) override;
 
   uint64_t nrCalled() { return _nrCalled; }
   uint64_t nrReturned() { return _nrReturned; }
   uint64_t nrItems() { return _nrItems; }
 
   size_t totalSkipped() const { return _totalSkipped; }
-
-  std::pair<arangodb::aql::ExecutionState, arangodb::aql::SharedAqlItemBlockPtr> fetchBlock(size_t atMost) override;
 
   arangodb::aql::AqlItemBlockManager& itemBlockManager() {
     return _itemBlockManager;
@@ -131,40 +123,16 @@ class SingleRowFetcherHelper
   std::unordered_set<size_t> _didWaitAt;
   arangodb::aql::AqlItemBlockManager& _itemBlockManager;
   arangodb::aql::SharedAqlItemBlockPtr _itemBlock;
-  arangodb::aql::InputAqlItemRow _lastReturnedRow{arangodb::aql::CreateInvalidInputRowHint{}};
-};
-
-/**
- * @brief Mock for AllRowsFetcher
- */
-class AllRowsFetcherHelper : public arangodb::aql::AllRowsFetcher {
- public:
-  AllRowsFetcherHelper(std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> vPackBuffer,
-                       bool returnsWaiting);
-  ~AllRowsFetcherHelper();
-
-  std::pair<arangodb::aql::ExecutionState, arangodb::aql::AqlItemMatrix const*> fetchAllRows() override;
-
- private:
-  std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> _vPackBuffer;
-  arangodb::velocypack::Slice _data;
-  bool _returnedDone = false;
-  bool _returnsWaiting;
-  uint64_t _nrItems;
-  arangodb::aql::RegisterCount _nrRegs;
-  uint64_t _nrCalled;
-  arangodb::aql::ResourceMonitor _resourceMonitor;
-  arangodb::aql::AqlItemBlockManager _itemBlockManager;
-  std::unique_ptr<arangodb::aql::AqlItemMatrix> _matrix;
+  arangodb::aql::InputAqlItemRow _lastReturnedRow{
+      arangodb::aql::CreateInvalidInputRowHint{}};
 };
 
 class ConstFetcherHelper : public arangodb::aql::ConstFetcher {
  public:
-  ConstFetcherHelper(arangodb::aql::AqlItemBlockManager& itemBlockManager,
-                     std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> vPackBuffer);
+  ConstFetcherHelper(
+      arangodb::aql::AqlItemBlockManager& itemBlockManager,
+      std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> vPackBuffer);
   virtual ~ConstFetcherHelper();
-
-  std::pair<arangodb::aql::ExecutionState, arangodb::aql::InputAqlItemRow> fetchRow(size_t atMost = 1) override;
 
  private:
   std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> _vPackBuffer;
@@ -174,5 +142,3 @@ class ConstFetcherHelper : public arangodb::aql::ConstFetcher {
 }  // namespace aql
 }  // namespace tests
 }  // namespace arangodb
-
-#endif

@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,8 +21,7 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_TESTS_MOCKS_LOG_LEVEL_CHANGER_H
-#define ARANGODB_TESTS_MOCKS_LOG_LEVEL_CHANGER_H 1
+#pragma once
 
 #include "Logger/LogLevel.h"
 #include "Logger/LogTopic.h"
@@ -31,7 +31,7 @@ namespace tests {
 
 // sets specified topic to specified level in constructor, resets to previous
 // value in destructor
-template <arangodb::LogTopic& topic, arangodb::LogLevel level>
+template<arangodb::LogTopic& topic, arangodb::LogLevel level>
 class LogSuppressor {
  public:
   LogSuppressor() : _oldLevel(topic.level()) {
@@ -54,5 +54,3 @@ class IResearchLogSuppressor {
 
 }  // namespace tests
 }  // namespace arangodb
-
-#endif

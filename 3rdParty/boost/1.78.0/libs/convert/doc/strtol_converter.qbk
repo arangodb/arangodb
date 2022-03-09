@@ -1,0 +1,54 @@
+[/
+  Copyright (c) Vladimir Batov 2009-2020
+  Distributed under the Boost Software License, Version 1.0.
+  See copy at http://www.boost.org/LICENSE_1_0.txt.
+]
+
+[section:strtol_converter ['boost::cnv::strtol] Converter]
+
+The converter started as a deployment example (with the `std::strtol` family of functions as its conversion engine) and a part of the performance-test set. Surprisingly, the converter showed fairly decent all-around performance (see [link boost_convert.performance.converters_compared Converters Compared]) and, consequently, has been rewritten and extended to provide additional conversion support and formatting. At the moment it seems to be a good choice with moderate formatting facilities and adequate performance.
+
+It should be noted though that the converter is nowhere as mature as `boost::cnv::lexical_cast` or `boost::cnv::stream` and, therefore, bugs are to be expected.
+
+[section Basic Deployment]
+[strtol_basic_deployment_header]
+[strtol_basic_deployment]
+[endsect]
+
+[section Formatting Support]
+
+[section Numeric Base (bin, oct, dec, hex)]
+[strtol_numeric_base_header]
+[strtol_numeric_base]
+[wide_strtol_numeric_base]
+[endsect]
+
+[section Field Width, Fill Character and Adjustment]
+[strtol_width]
+[endsect]
+
+[section Leading Whitespace Characters]
+[strtol_skipws]
+[wide_strtol_skipws]
+[endsect]
+
+[section Floating-Point Precision]
+[strtol_precision]
+[endsect]
+[endsect]
+
+[section Supported String Types]
+
+[section Wide String]
+[wide_strtol_numeric_base]
+[wide_strtol_skipws]
+[endsect]
+
+[section Custom String Types]
+[my_string_declaration]
+[strtol_user_string]
+[endsect]
+
+[endsect]
+[endsect]
+

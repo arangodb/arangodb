@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,6 +24,7 @@
 
 #include "Action.h"
 
+#include "Basics/Exceptions.h"
 #include "Cluster/CreateCollection.h"
 #include "Cluster/CreateDatabase.h"
 #include "Cluster/DropCollection.h"
@@ -31,21 +32,25 @@
 #include "Cluster/DropIndex.h"
 #include "Cluster/EnsureIndex.h"
 #include "Cluster/MaintenanceStrings.h"
-#include "Cluster/NonAction.h"
 #include "Cluster/ResignShardLeadership.h"
 #include "Cluster/SynchronizeShard.h"
 #include "Cluster/TakeoverShardLeadership.h"
 #include "Cluster/UpdateCollection.h"
+#include "Cluster/UpdateReplicatedLogAction.h"
+#include "Cluster/UpdateReplicatedStateAction.h"
 
 #include "Logger/Logger.h"
+#include "Logger/LogMacros.h"
 
 using namespace arangodb;
 using namespace arangodb::maintenance;
 
 using factories_t =
-    std::unordered_map<std::string, std::function<std::unique_ptr<ActionBase>(MaintenanceFeature&, ActionDescription const&)>>;
+    std::unordered_map<std::string,
+                       std::function<std::unique_ptr<ActionBase>(
+                           MaintenanceFeature&, ActionDescription const&)>>;
 
-static factories_t const factories = factories_t{
+static factories_t factories = factories_t{
 
     {CREATE_COLLECTION,
      [](MaintenanceFeature& f, ActionDescription const& a) {
@@ -97,9 +102,19 @@ static factories_t const factories = factories_t{
        return std::unique_ptr<ActionBase>(new TakeoverShardLeadership(f, a));
      }},
 
+    {UPDATE_REPLICATED_LOG,
+     [](MaintenanceFeature& f, ActionDescription const& a) {
+       return std::make_unique<UpdateReplicatedLogAction>(f, a);
+     }},
+
+    {UPDATE_REPLICATED_STATE,
+     [](MaintenanceFeature& f, ActionDescription const& a) {
+       return std::make_unique<UpdateReplicatedStateAction>(f, a);
+     }},
 };
 
-Action::Action(MaintenanceFeature& feature, ActionDescription const& description)
+Action::Action(MaintenanceFeature& feature,
+               ActionDescription const& description)
     : _action(nullptr) {
   TRI_ASSERT(description.has(NAME));
   create(feature, description);
@@ -111,7 +126,8 @@ Action::Action(MaintenanceFeature& feature, ActionDescription&& description)
   create(feature, std::move(description));
 }
 
-Action::Action(MaintenanceFeature& feature, std::shared_ptr<ActionDescription> const& description)
+Action::Action(MaintenanceFeature& feature,
+               std::shared_ptr<ActionDescription> const& description)
     : _action(nullptr) {
   TRI_ASSERT(description->has(NAME));
   create(feature, *description);
@@ -122,12 +138,15 @@ Action::Action(std::unique_ptr<ActionBase> action)
 
 Action::~Action() = default;
 
-void Action::create(MaintenanceFeature& feature, ActionDescription const& description) {
+void Action::create(MaintenanceFeature& feature,
+                    ActionDescription const& description) {
   auto factory = factories.find(description.name());
 
-  _action = (factory != factories.end())
-                ? factory->second(feature, description)
-                : std::unique_ptr<ActionBase>(new NonAction(feature, description));
+  if (ADB_UNLIKELY(factory == factories.end())) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL, "invalid action type: " + description.name());
+  }
+  _action = factory->second(feature, description);
 }
 
 ActionDescription const& Action::describe() const {
@@ -162,11 +181,6 @@ bool Action::matches(std::unordered_set<std::string> const& labels) const {
 arangodb::Result Action::result() {
   TRI_ASSERT(_action != nullptr);
   return _action->result();
-}
-
-arangodb::Result Action::kill(Signal const& signal) {
-  TRI_ASSERT(_action != nullptr);
-  return _action->kill(signal);
 }
 
 arangodb::Result Action::progress(double& p) {
@@ -209,6 +223,15 @@ bool Action::operator<(Action const& other) const {
   }
   return false;
 }
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+void Action::addNewFactoryForTest(
+    std::string const& name,
+    std::function<std::unique_ptr<ActionBase>(
+        MaintenanceFeature&, ActionDescription const&)>&& factory) {
+  factories.emplace(name, std::move(factory));
+}
+#endif
 
 namespace std {
 ostream& operator<<(ostream& out, arangodb::maintenance::Action const& d) {

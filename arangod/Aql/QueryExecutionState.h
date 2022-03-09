@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_QUERY_EXECUTION_STATE_H
-#define ARANGOD_AQL_QUERY_EXECUTION_STATE_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -49,15 +48,13 @@ enum class ValueType {
   INVALID_STATE
 };
 
-QueryExecutionState::ValueType fromNumber(size_t value);
 size_t toNumber(QueryExecutionState::ValueType value);
-std::string toString(QueryExecutionState::ValueType state);
+std::string const& toString(QueryExecutionState::ValueType state);
 std::string toStringWithPrefix(QueryExecutionState::ValueType state);
 
 }  // namespace QueryExecutionState
 }  // namespace aql
 }  // namespace arangodb
 
-std::ostream& operator<<(std::ostream&, arangodb::aql::QueryExecutionState::ValueType);
-
-#endif
+std::ostream& operator<<(std::ostream&,
+                         arangodb::aql::QueryExecutionState::ValueType);

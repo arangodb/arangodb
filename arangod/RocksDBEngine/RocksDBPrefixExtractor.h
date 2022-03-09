@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,16 +23,13 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGO_ROCKSDB_ROCKSDB_PREFIX_EXTRACTOR_H
-#define ARANGO_ROCKSDB_ROCKSDB_PREFIX_EXTRACTOR_H 1
+#pragma once
 
 #include "Basics/Common.h"
+#include "Basics/debugging.h"
 
 #include <rocksdb/slice.h>
 #include <rocksdb/slice_transform.h>
-
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
 
@@ -40,7 +37,7 @@ namespace arangodb {
 /// dynamically length prefix spanning the indexed _from / _to string
 class RocksDBPrefixExtractor final : public rocksdb::SliceTransform {
  public:
-  RocksDBPrefixExtractor() {}
+  RocksDBPrefixExtractor() = default;
   ~RocksDBPrefixExtractor() = default;
 
   const char* Name() const override { return "RocksDBPrefixExtractor"; }
@@ -76,11 +73,6 @@ class RocksDBPrefixExtractor final : public rocksdb::SliceTransform {
   bool SameResultWhenAppended(rocksdb::Slice const& prefix) const override {
     return prefix.data()[prefix.size() - 1] == '\0';
   }
-
- private:
-  static const size_t _prefixLength[];
 };
 
 }  // namespace arangodb
-
-#endif

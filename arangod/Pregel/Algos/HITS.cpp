@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -54,7 +55,8 @@ struct HITSComputation
     : public VertexComputation<HITSValue, int8_t, SenderMessage<double>> {
   HITSComputation() {}
 
-  void compute(MessageIterator<SenderMessage<double>> const& messages) override {
+  void compute(
+      MessageIterator<SenderMessage<double>> const& messages) override {
     double auth = 0.0;
     double hub = 0.0;
     // we don't know our incoming neighbours in step 0, therfore we need step 0
@@ -63,7 +65,8 @@ struct HITSComputation
       auth = 1.0;
       hub = 1.0;
     } else {
-      HITSWorkerContext const* ctx = static_cast<HITSWorkerContext const*>(context());
+      HITSWorkerContext const* ctx =
+          static_cast<HITSWorkerContext const*>(context());
       for (SenderMessage<double> const* message : messages) {
         // we don't put a valid shard id into the messages FROM
         // our outgoing messages
@@ -94,8 +97,8 @@ struct HITSComputation
   }
 };
 
-VertexComputation<HITSValue, int8_t, SenderMessage<double>>* HITS::createComputation(
-    WorkerConfig const* config) const {
+VertexComputation<HITSValue, int8_t, SenderMessage<double>>*
+HITS::createComputation(WorkerConfig const* config) const {
   return new HITSComputation();
 }
 
@@ -106,23 +109,19 @@ struct HITSGraphFormat : public GraphFormat<HITSValue, int8_t> {
                            std::string const& result)
       : GraphFormat<HITSValue, int8_t>(server), _resultField(result) {}
 
-  size_t estimatedEdgeSize() const override { return 0; };
+  size_t estimatedEdgeSize() const override { return 0; }
 
-  void copyVertexData(std::string const& documentId, arangodb::velocypack::Slice document,
-                        HITSValue& targetPtr) override {}
-
-  void copyEdgeData(arangodb::velocypack::Slice document, int8_t& targetPtr) override {}
+  void copyVertexData(arangodb::velocypack::Options const&,
+                      std::string const& /*documentId*/,
+                      arangodb::velocypack::Slice /*document*/,
+                      HITSValue& /*targetPtr*/,
+                      uint64_t& /*vertexIdRange*/) override {}
 
   bool buildVertexDocument(arangodb::velocypack::Builder& b,
-                           const HITSValue* value, size_t size) const override {
+                           HITSValue const* value) const override {
     b.add(_resultField + "_auth", VPackValue(value->authorityScore));
     b.add(_resultField + "_hub", VPackValue(value->hubScore));
     return true;
-  }
-
-  bool buildEdgeDocument(arangodb::velocypack::Builder& b, const int8_t* ptr,
-                         size_t size) const override {
-    return false;
   }
 };
 

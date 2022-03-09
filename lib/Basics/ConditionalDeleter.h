@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_CONDITIONAL_DELETER_H
-#define ARANGODB_BASICS_CONDITIONAL_DELETER_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -31,7 +30,7 @@ namespace arangodb {
 /// @brief a custom deleter that deletes an object only if the condition is true
 /// to be used in conjunction with unique or shared ptrs when ownership needs to
 /// be transferred
-template <typename T>
+template<typename T>
 struct ConditionalDeleter {
   explicit ConditionalDeleter(bool& condition) : condition(condition) {}
   void operator()(T* object) {
@@ -44,5 +43,3 @@ struct ConditionalDeleter {
 };
 
 }  // namespace arangodb
-
-#endif

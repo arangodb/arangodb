@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -34,7 +34,6 @@
 #include "Aql/SubqueryStartExecutor.h"
 
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
 namespace aql {
@@ -43,25 +42,31 @@ SubqueryStartNode::SubqueryStartNode(ExecutionPlan* plan,
                                      arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base), _subqueryOutVariable(nullptr) {
   // On purpose exclude the _subqueryOutVariable
-  // A query cannot be explained after nodes have been serialized and deserialized
+  // A query cannot be explained after nodes have been serialized and
+  // deserialized
 }
 
 CostEstimate SubqueryStartNode::estimateCost() const {
   TRI_ASSERT(!_dependencies.empty());
 
   CostEstimate estimate = _dependencies.at(0)->getCost();
+
+  // Save the nrItems going into the subquery to restore later at the
+  // corresponding SubqueryEndNode.
+  estimate.saveEstimatedNrItems();
+
+  estimate.estimatedCost += estimate.estimatedNrItems;
+
   return estimate;
 }
 
-void SubqueryStartNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
-                                           std::unordered_set<ExecutionNode const*>& seen) const {
-  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags, seen);
+void SubqueryStartNode::doToVelocyPack(VPackBuilder& nodes,
+                                       unsigned flags) const {
   // We need this for the Explainer
   if (_subqueryOutVariable != nullptr) {
     nodes.add(VPackValue("subqueryOutVariable"));
     _subqueryOutVariable->toVelocyPack(nodes);
   }
-  nodes.close();
 }
 
 std::unique_ptr<ExecutionBlock> SubqueryStartNode::createBlock(
@@ -76,11 +81,12 @@ std::unique_ptr<ExecutionBlock> SubqueryStartNode::createBlock(
   auto registerInfos = createRegisterInfos({}, {});
 
   // On purpose exclude the _subqueryOutVariable
-  return std::make_unique<ExecutionBlockImpl<SubqueryStartExecutor>>(&engine, this, registerInfos,
-                                                                     RegisterInfos{registerInfos});
+  return std::make_unique<ExecutionBlockImpl<SubqueryStartExecutor>>(
+      &engine, this, registerInfos, RegisterInfos{registerInfos});
 }
 
-ExecutionNode* SubqueryStartNode::clone(ExecutionPlan* plan, bool withDependencies,
+ExecutionNode* SubqueryStartNode::clone(ExecutionPlan* plan,
+                                        bool withDependencies,
                                         bool withProperties) const {
   // On purpose exclude the _subqueryOutVariable
   auto c = std::make_unique<SubqueryStartNode>(plan, _id, nullptr);
@@ -89,12 +95,10 @@ ExecutionNode* SubqueryStartNode::clone(ExecutionPlan* plan, bool withDependenci
 
 bool SubqueryStartNode::isEqualTo(ExecutionNode const& other) const {
   // On purpose exclude the _subqueryOutVariable
-  try {
-    SubqueryStartNode const& p = dynamic_cast<SubqueryStartNode const&>(other);
-    return ExecutionNode::isEqualTo(p);
-  } catch (const std::bad_cast&) {
+  if (other.getType() != ExecutionNode::SUBQUERY_START) {
     return false;
   }
+  return ExecutionNode::isEqualTo(other);
 }
 
 }  // namespace aql

@@ -1,8 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_LOGGER_LOG_APPENDER_SYSLOG_H
-#define ARANGODB_LOGGER_LOG_APPENDER_SYSLOG_H 1
+#pragma once
 
 #include "Logger/LogAppender.h"
 
@@ -34,29 +33,16 @@ class LogAppenderSyslog final : public LogAppender {
   static void close();
 
  public:
-  LogAppenderSyslog(std::string const& facility, std::string const& name,
-                    std::string const& filter);
+  LogAppenderSyslog(std::string const& facility, std::string const& name);
 
   void logMessage(LogMessage const& message) override final;
 
   std::string details() const override final;
 
  private:
+  std::string const _sysname;
+
   static bool _opened;
 };
-
-#else
-
-class LogAppenderSyslog : public LogAppender {
- public:
-  static void close();
-
- public:
-  LogAppenderSyslog(std::string const& facility, std::string const& name,
-                    std::string const& filter);
-};
-
 #endif
 }  // namespace arangodb
-
-#endif

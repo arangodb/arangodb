@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,8 +22,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_QUERY_CURSOR_H
-#define ARANGOD_AQL_QUERY_CURSOR_H 1
+#pragma once
 
 #include "Aql/QueryResult.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
@@ -59,7 +58,8 @@ class QueryResultCursor final : public arangodb::Cursor {
 
   size_t count() const override final;
 
-  std::pair<aql::ExecutionState, Result> dump(velocypack::Builder& result) override final;
+  std::pair<aql::ExecutionState, Result> dump(
+      velocypack::Builder& result) override final;
 
   Result dumpSync(velocypack::Builder& result) override final;
 
@@ -84,18 +84,26 @@ class QueryResultCursor final : public arangodb::Cursor {
 /// cursor is deleted (or query exhausted)
 class QueryStreamCursor final : public arangodb::Cursor {
  public:
-  QueryStreamCursor(std::unique_ptr<aql::Query> q, size_t batchSize, double ttl);
+  QueryStreamCursor(std::shared_ptr<aql::Query> q, size_t batchSize,
+                    double ttl);
 
   ~QueryStreamCursor();
 
   void kill() override;
 
+  // Debug method to kill a query at a specific position
+  // during execution. It internally asserts that the query
+  // is actually visible through other APIS (e.g. current queries)
+  // so user actually has a chance to kill it here.
+  void debugKillQuery() override;
+
   size_t count() const override final { return 0; }
 
-  std::pair<ExecutionState, Result> dump(velocypack::Builder& result) override final;
+  std::pair<ExecutionState, Result> dump(
+      velocypack::Builder& result) override final;
 
   Result dumpSync(velocypack::Builder& result) override final;
-  
+
   /// Set wakeup callback on streaming cursor
   void setWakeupHandler(std::function<bool()> const& cb) override final;
   void resetWakeupHandler() override final;
@@ -107,26 +115,26 @@ class QueryStreamCursor final : public arangodb::Cursor {
   // _queryResults and sets _queryResultPos appropriately. Relies on the caller
   // to have fetched more than batchSize() result rows (if possible) in order to
   // set hasMore reliably.
-  Result writeResult(velocypack::Builder& builder);
+  ExecutionState writeResult(arangodb::velocypack::Builder& builder);
 
   ExecutionState prepareDump();
+  ExecutionState finalization();
 
   void cleanupStateCallback();
-  void cleanupResources();
 
  private:
-  std::deque<SharedAqlItemBlockPtr> _queryResults; /// buffered results
-  std::shared_ptr<transaction::Context> _ctx; /// cache context
-  std::unique_ptr<aql::Query> _query;
-
+  velocypack::UInt8Buffer _extrasBuffer;
+  std::deque<SharedAqlItemBlockPtr> _queryResults;  /// buffered results
+  std::shared_ptr<transaction::Context> _ctx;       /// cache context
+  std::shared_ptr<aql::Query> _query;
   /// index of the next to-be-returned row in _queryResults.front()
   size_t _queryResultPos;
-  int64_t _exportCount;  // used by RocksDBRestExportHandler (<0 is not used)
+
   /// used when cursor is owned by V8 transaction
   transaction::Methods::StatusChangeCallback _stateChangeCb;
+
+  bool _finalization;
 };
 
 }  // namespace aql
 }  // namespace arangodb
-
-#endif

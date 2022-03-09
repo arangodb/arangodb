@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -40,7 +40,6 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Value.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -50,9 +49,9 @@ CollectNode::CollectNode(
     Variable const* expressionVariable, Variable const* outVariable,
     std::vector<Variable const*> const& keepVariables,
     std::unordered_map<VariableId, std::string const> const& variableMap,
-    std::vector<std::pair<Variable const*, Variable const*>> const& groupVariables,
-    std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> const& aggregateVariables,
-    bool count, bool isDistinctCommand)
+    std::vector<GroupVarInfo> const& groupVariables,
+    std::vector<AggregateVarInfo> const& aggregateVariables,
+    bool isDistinctCommand)
     : ExecutionNode(plan, base),
       _options(base),
       _groupVariables(groupVariables),
@@ -61,18 +60,32 @@ CollectNode::CollectNode(
       _outVariable(outVariable),
       _keepVariables(keepVariables),
       _variableMap(variableMap),
-      _count(count),
+      _isDistinctCommand(isDistinctCommand),
+      _specialized(false) {}
+
+CollectNode::CollectNode(
+    ExecutionPlan* plan, ExecutionNodeId id, CollectOptions const& options,
+    std::vector<GroupVarInfo> const& groupVariables,
+    std::vector<AggregateVarInfo> const& aggregateVariables,
+    Variable const* expressionVariable, Variable const* outVariable,
+    std::vector<Variable const*> const& keepVariables,
+    std::unordered_map<VariableId, std::string const> const& variableMap,
+    bool isDistinctCommand)
+    : ExecutionNode(plan, id),
+      _options(options),
+      _groupVariables(groupVariables),
+      _aggregateVariables(aggregateVariables),
+      _expressionVariable(expressionVariable),
+      _outVariable(outVariable),
+      _keepVariables(keepVariables),
+      _variableMap(variableMap),
       _isDistinctCommand(isDistinctCommand),
       _specialized(false) {}
 
 CollectNode::~CollectNode() = default;
 
-/// @brief toVelocyPack, for CollectNode
-void CollectNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
-                                     std::unordered_set<ExecutionNode const*>& seen) const {
-  // call base class method
-  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags, seen);
-
+/// @brief doToVelocyPack, for CollectNode
+void CollectNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
   // group variables
   nodes.add(VPackValue("groups"));
   {
@@ -80,9 +93,9 @@ void CollectNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
     for (auto const& groupVariable : _groupVariables) {
       VPackObjectBuilder obj(&nodes);
       nodes.add(VPackValue("outVariable"));
-      groupVariable.first->toVelocyPack(nodes);
+      groupVariable.outVar->toVelocyPack(nodes);
       nodes.add(VPackValue("inVariable"));
-      groupVariable.second->toVelocyPack(nodes);
+      groupVariable.inVar->toVelocyPack(nodes);
     }
   }
 
@@ -93,10 +106,12 @@ void CollectNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
     for (auto const& aggregateVariable : _aggregateVariables) {
       VPackObjectBuilder obj(&nodes);
       nodes.add(VPackValue("outVariable"));
-      aggregateVariable.first->toVelocyPack(nodes);
-      nodes.add(VPackValue("inVariable"));
-      aggregateVariable.second.first->toVelocyPack(nodes);
-      nodes.add("type", VPackValue(aggregateVariable.second.second));
+      aggregateVariable.outVar->toVelocyPack(nodes);
+      if (aggregateVariable.inVar) {
+        nodes.add(VPackValue("inVariable"));
+        aggregateVariable.inVar->toVelocyPack(nodes);
+      }
+      nodes.add("type", VPackValue(aggregateVariable.type));
     }
   }
 
@@ -124,18 +139,15 @@ void CollectNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
     }
   }
 
-  nodes.add("count", VPackValue(_count));
   nodes.add("isDistinctCommand", VPackValue(_isDistinctCommand));
   nodes.add("specialized", VPackValue(_specialized));
   nodes.add(VPackValue("collectOptions"));
   _options.toVelocyPack(nodes);
-
-  // And close it:
-  nodes.close();
 }
 
-void CollectNode::calcExpressionRegister(arangodb::aql::RegisterId& expressionRegister,
-                                         RegIdSet& readableInputRegisters) const {
+void CollectNode::calcExpressionRegister(
+    arangodb::aql::RegisterId& expressionRegister,
+    RegIdSet& readableInputRegisters) const {
   if (_expressionVariable != nullptr) {
     auto it = getRegisterPlan()->varInfo.find(_expressionVariable->id);
     TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
@@ -144,56 +156,60 @@ void CollectNode::calcExpressionRegister(arangodb::aql::RegisterId& expressionRe
   }
 }
 
-void CollectNode::calcCollectRegister(arangodb::aql::RegisterId& collectRegister,
-                                      RegIdSet& writeableOutputRegisters) const {
+void CollectNode::calcCollectRegister(
+    arangodb::aql::RegisterId& collectRegister,
+    RegIdSet& writeableOutputRegisters) const {
   if (_outVariable != nullptr) {
     auto it = getRegisterPlan()->varInfo.find(_outVariable->id);
     TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
     collectRegister = (*it).second.registerId;
-    TRI_ASSERT(collectRegister < RegisterPlan::MaxRegisterId);
+    TRI_ASSERT(collectRegister.isValid());
     writeableOutputRegisters.insert((*it).second.registerId);
   }
 }
 
 void CollectNode::calcGroupRegisters(
-    std::vector<std::pair<arangodb::aql::RegisterId, arangodb::aql::RegisterId>>& groupRegisters,
-    RegIdSet& readableInputRegisters, RegIdSet& writeableOutputRegisters) const {
+    std::vector<std::pair<arangodb::aql::RegisterId,
+                          arangodb::aql::RegisterId>>& groupRegisters,
+    RegIdSet& readableInputRegisters,
+    RegIdSet& writeableOutputRegisters) const {
   for (auto const& p : _groupVariables) {
     // We know that planRegisters() has been run, so
     // getPlanNode()->_registerPlan is set up
-    auto itOut = getRegisterPlan()->varInfo.find(p.first->id);
+    auto itOut = getRegisterPlan()->varInfo.find(p.outVar->id);
     TRI_ASSERT(itOut != getRegisterPlan()->varInfo.end());
 
-    auto itIn = getRegisterPlan()->varInfo.find(p.second->id);
+    auto itIn = getRegisterPlan()->varInfo.find(p.inVar->id);
     TRI_ASSERT(itIn != getRegisterPlan()->varInfo.end());
 
     RegisterId inReg = itIn->second.registerId;
     RegisterId outReg = itOut->second.registerId;
-    TRI_ASSERT(inReg < RegisterPlan::MaxRegisterId);
-    TRI_ASSERT(outReg < RegisterPlan::MaxRegisterId);
+    TRI_ASSERT(inReg.isValid());
+    TRI_ASSERT(outReg.isValid());
     groupRegisters.emplace_back(outReg, inReg);
     writeableOutputRegisters.insert(outReg);
     readableInputRegisters.insert(inReg);
   }
 }
 
-void CollectNode::calcAggregateRegisters(std::vector<std::pair<RegisterId, RegisterId>>& aggregateRegisters,
-                                         RegIdSet& readableInputRegisters,
-                                         RegIdSet& writeableOutputRegisters) const {
+void CollectNode::calcAggregateRegisters(
+    std::vector<std::pair<RegisterId, RegisterId>>& aggregateRegisters,
+    RegIdSet& readableInputRegisters,
+    RegIdSet& writeableOutputRegisters) const {
   for (auto const& p : _aggregateVariables) {
     // We know that planRegisters() has been run, so
     // getPlanNode()->_registerPlan is set up
-    auto itOut = getRegisterPlan()->varInfo.find(p.first->id);
+    auto itOut = getRegisterPlan()->varInfo.find(p.outVar->id);
     TRI_ASSERT(itOut != getRegisterPlan()->varInfo.end());
     RegisterId outReg = itOut->second.registerId;
-    TRI_ASSERT(outReg < RegisterPlan::MaxRegisterId);
+    TRI_ASSERT(outReg.isValid());
 
-    RegisterId inReg = RegisterPlan::MaxRegisterId;
-    if (Aggregator::requiresInput(p.second.second)) {
-      auto itIn = getRegisterPlan()->varInfo.find(p.second.first->id);
+    RegisterId inReg{RegisterId::maxRegisterId};
+    if (Aggregator::requiresInput(p.type)) {
+      auto itIn = getRegisterPlan()->varInfo.find(p.inVar->id);
       TRI_ASSERT(itIn != getRegisterPlan()->varInfo.end());
       inReg = itIn->second.registerId;
-      TRI_ASSERT(inReg < RegisterPlan::MaxRegisterId);
+      TRI_ASSERT(inReg.isValid());
       readableInputRegisters.insert(inReg);
     }
     // else: no input variable required
@@ -204,14 +220,16 @@ void CollectNode::calcAggregateRegisters(std::vector<std::pair<RegisterId, Regis
   TRI_ASSERT(aggregateRegisters.size() == _aggregateVariables.size());
 }
 
-void CollectNode::calcAggregateTypes(std::vector<std::unique_ptr<Aggregator>>& aggregateTypes) const {
+void CollectNode::calcAggregateTypes(
+    std::vector<std::unique_ptr<Aggregator>>& aggregateTypes) const {
   for (auto const& p : _aggregateVariables) {
-    aggregateTypes.emplace_back(
-      Aggregator::fromTypeString(&_plan->getAst()->query().vpackOptions(), p.second.second));
+    aggregateTypes.emplace_back(Aggregator::fromTypeString(
+        &_plan->getAst()->query().vpackOptions(), p.type));
   }
 }
 
-std::vector<std::pair<std::string, RegisterId>> CollectNode::calcInputVariableNames() const {
+std::vector<std::pair<std::string, RegisterId>>
+CollectNode::calcInputVariableNames() const {
   std::vector<std::pair<std::string, RegisterId>> variableNames;
 
   if (_outVariable != nullptr) {
@@ -223,7 +241,8 @@ std::vector<std::pair<std::string, RegisterId>> CollectNode::calcInputVariableNa
       auto const it = varInfo.find(x->id);
 
       if (it != varInfo.end()) {
-        variableNames.emplace_back(std::make_pair(x->name, (*it).second.registerId));
+        variableNames.emplace_back(
+            std::make_pair(x->name, (*it).second.registerId));
       }
     }
   }
@@ -233,7 +252,8 @@ std::vector<std::pair<std::string, RegisterId>> CollectNode::calcInputVariableNa
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
-    ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
+    ExecutionEngine& engine,
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
   switch (aggregationMethod()) {
     case CollectOptions::CollectMethod::HASH: {
       ExecutionNode const* previousNode = getFirstDependency();
@@ -242,34 +262,37 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
       RegIdSet readableInputRegisters;
       RegIdSet writeableOutputRegisters;
 
-      RegisterId collectRegister = RegisterPlan::MaxRegisterId;
+      RegisterId collectRegister{RegisterId::maxRegisterId};
       calcCollectRegister(collectRegister, writeableOutputRegisters);
 
       // calculate the group registers
       std::vector<std::pair<RegisterId, RegisterId>> groupRegisters;
-      calcGroupRegisters(groupRegisters, readableInputRegisters, writeableOutputRegisters);
+      calcGroupRegisters(groupRegisters, readableInputRegisters,
+                         writeableOutputRegisters);
 
       // calculate the aggregate registers
       std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters;
-      calcAggregateRegisters(aggregateRegisters, readableInputRegisters, writeableOutputRegisters);
+      calcAggregateRegisters(aggregateRegisters, readableInputRegisters,
+                             writeableOutputRegisters);
 
       TRI_ASSERT(groupRegisters.size() == _groupVariables.size());
       TRI_ASSERT(aggregateRegisters.size() == _aggregateVariables.size());
 
-      auto registerInfos = createRegisterInfos(std::move(readableInputRegisters),
-                                               std::move(writeableOutputRegisters));
+      auto registerInfos =
+          createRegisterInfos(std::move(readableInputRegisters),
+                              std::move(writeableOutputRegisters));
 
       std::vector<std::string> aggregateTypes;
       std::transform(aggregateVariables().begin(), aggregateVariables().end(),
                      std::back_inserter(aggregateTypes),
-                     [](auto& it) { return it.second.second; });
+                     [](auto const& it) { return it.type; });
       TRI_ASSERT(aggregateTypes.size() == _aggregateVariables.size());
 
-      auto executorInfos =
-          HashedCollectExecutorInfos(std::move(groupRegisters), collectRegister,
-                                     std::move(aggregateTypes),
-                                     std::move(aggregateRegisters),
-                                     &_plan->getAst()->query().vpackOptions(), _count);
+      auto executorInfos = HashedCollectExecutorInfos(
+          std::move(groupRegisters), collectRegister, std::move(aggregateTypes),
+          std::move(aggregateRegisters),
+          &_plan->getAst()->query().vpackOptions(),
+          _plan->getAst()->query().resourceMonitor());
 
       return std::make_unique<ExecutionBlockImpl<HashedCollectExecutor>>(
           &engine, this, std::move(registerInfos), std::move(executorInfos));
@@ -281,22 +304,25 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
       RegIdSet readableInputRegisters;
       RegIdSet writeableOutputRegisters;
 
-      RegisterId collectRegister = RegisterPlan::MaxRegisterId;
+      RegisterId collectRegister{RegisterId::maxRegisterId};
       calcCollectRegister(collectRegister, writeableOutputRegisters);
 
-      RegisterId expressionRegister = RegisterPlan::MaxRegisterId;
+      RegisterId expressionRegister{RegisterId::maxRegisterId};
       calcExpressionRegister(expressionRegister, readableInputRegisters);
 
       // calculate the group registers
       std::vector<std::pair<RegisterId, RegisterId>> groupRegisters;
-      calcGroupRegisters(groupRegisters, readableInputRegisters, writeableOutputRegisters);
+      calcGroupRegisters(groupRegisters, readableInputRegisters,
+                         writeableOutputRegisters);
 
       // calculate the aggregate registers
       std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters;
-      calcAggregateRegisters(aggregateRegisters, readableInputRegisters, writeableOutputRegisters);
+      calcAggregateRegisters(aggregateRegisters, readableInputRegisters,
+                             writeableOutputRegisters);
 
-      auto registerInfos = createRegisterInfos(std::move(readableInputRegisters),
-                                               std::move(writeableOutputRegisters));
+      auto registerInfos =
+          createRegisterInfos(std::move(readableInputRegisters),
+                              std::move(writeableOutputRegisters));
 
       // calculate the aggregate type // TODO refactor nicely
       std::vector<std::unique_ptr<Aggregator>> aggregateValues;
@@ -311,25 +337,26 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
       std::vector<std::string> aggregateTypes;
       std::transform(aggregateVariables().begin(), aggregateVariables().end(),
                      std::back_inserter(aggregateTypes),
-                     [](auto& it) { return it.second.second; });
+                     [](auto const& it) { return it.type; });
       TRI_ASSERT(aggregateTypes.size() == _aggregateVariables.size());
 
-      auto executorInfos =
-          SortedCollectExecutorInfos(std::move(groupRegisters), collectRegister,
-                                     expressionRegister, _expressionVariable,
-                                     std::move(aggregateTypes), std::move(inputVariables),
-                                     std::move(aggregateRegisters),
-                                     &_plan->getAst()->query().vpackOptions(), _count);
+      auto executorInfos = SortedCollectExecutorInfos(
+          std::move(groupRegisters), collectRegister, expressionRegister,
+          _expressionVariable, std::move(aggregateTypes),
+          std::move(inputVariables), std::move(aggregateRegisters),
+          &_plan->getAst()->query().vpackOptions());
 
-      return std::make_unique<ExecutionBlockImpl<SortedCollectExecutor>>(&engine, this,
-                                                                         std::move(registerInfos),
-                                                                         std::move(executorInfos));
+      return std::make_unique<ExecutionBlockImpl<SortedCollectExecutor>>(
+          &engine, this, std::move(registerInfos), std::move(executorInfos));
     }
     case CollectOptions::CollectMethod::COUNT: {
+      TRI_ASSERT(aggregateVariables().size() == 1);
+      TRI_ASSERT(hasOutVariable() == false);
       ExecutionNode const* previousNode = getFirstDependency();
       TRI_ASSERT(previousNode != nullptr);
 
-      auto it = getRegisterPlan()->varInfo.find(_outVariable->id);
+      auto it =
+          getRegisterPlan()->varInfo.find(aggregateVariables()[0].outVar->id);
       TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
       RegisterId collectRegister = (*it).second.registerId;
 
@@ -349,14 +376,17 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
 
       std::vector<std::pair<RegisterId, RegisterId>> groupRegisters;
       // calculate the group registers
-      calcGroupRegisters(groupRegisters, readableInputRegisters, writeableOutputRegisters);
+      calcGroupRegisters(groupRegisters, readableInputRegisters,
+                         writeableOutputRegisters);
 
-      auto registerInfos = createRegisterInfos(std::move(readableInputRegisters),
-                                               std::move(writeableOutputRegisters));
+      auto registerInfos =
+          createRegisterInfos(std::move(readableInputRegisters),
+                              std::move(writeableOutputRegisters));
 
       TRI_ASSERT(groupRegisters.size() == 1);
-      auto executorInfos = DistinctCollectExecutorInfos(groupRegisters.front(),
-                                                        &_plan->getAst()->query().vpackOptions());
+      auto executorInfos = DistinctCollectExecutorInfos(
+          groupRegisters.front(), &_plan->getAst()->query().vpackOptions(),
+          _plan->getAst()->query().resourceMonitor());
 
       return std::make_unique<ExecutionBlockImpl<DistinctCollectExecutor>>(
           &engine, this, std::move(registerInfos), std::move(executorInfos));
@@ -378,7 +408,8 @@ ExecutionNode* CollectNode::clone(ExecutionPlan* plan, bool withDependencies,
 
   if (withProperties) {
     if (expressionVariable != nullptr) {
-      expressionVariable = plan->getAst()->variables()->createVariable(expressionVariable);
+      expressionVariable =
+          plan->getAst()->variables()->createVariable(expressionVariable);
     }
 
     if (outVariable != nullptr) {
@@ -389,25 +420,26 @@ ExecutionNode* CollectNode::clone(ExecutionPlan* plan, bool withDependencies,
     groupVariables.clear();
 
     for (auto& it : _groupVariables) {
-      auto out = plan->getAst()->variables()->createVariable(it.first);
-      auto in = plan->getAst()->variables()->createVariable(it.second);
-      groupVariables.emplace_back(std::make_pair(out, in));
+      auto out = plan->getAst()->variables()->createVariable(it.outVar);
+      auto in = plan->getAst()->variables()->createVariable(it.inVar);
+      groupVariables.emplace_back(GroupVarInfo{out, in});
     }
 
     aggregateVariables.clear();
 
     for (auto& it : _aggregateVariables) {
-      auto out = plan->getAst()->variables()->createVariable(it.first);
-      auto in = plan->getAst()->variables()->createVariable(it.second.first);
-      aggregateVariables.emplace_back(
-          std::make_pair(out, std::make_pair(in, it.second.second)));
+      auto out = plan->getAst()->variables()->createVariable(it.outVar);
+      auto in = it.inVar == nullptr
+                    ? nullptr
+                    : plan->getAst()->variables()->createVariable(it.inVar);
+      aggregateVariables.emplace_back(AggregateVarInfo{out, in, it.type});
     }
   }
 
   auto c = std::make_unique<CollectNode>(plan, _id, _options, groupVariables,
                                          aggregateVariables, expressionVariable,
-                                         outVariable, _keepVariables, _variableMap,
-                                         _count, _isDistinctCommand);
+                                         outVariable, _keepVariables,
+                                         _variableMap, _isDistinctCommand);
 
   // specialize the cloned node
   if (isSpecialized()) {
@@ -451,8 +483,9 @@ auto isStartNode(ExecutionNode const& node) -> bool {
     case ExecutionNode::SUBQUERY_END:
     case ExecutionNode::MATERIALIZE:
     case ExecutionNode::ASYNC:
+    case ExecutionNode::WINDOW:
       return false;
-    case ExecutionNode::MUTEX:
+    case ExecutionNode::MUTEX:  // should not appear here
     case ExecutionNode::MAX_NODE_TYPE_VALUE:
       break;
   }
@@ -494,8 +527,9 @@ auto isVariableInvalidatingNode(ExecutionNode const& node) -> bool {
     case ExecutionNode::SUBQUERY_END:
     case ExecutionNode::MATERIALIZE:
     case ExecutionNode::ASYNC:
+    case ExecutionNode::WINDOW:
       return false;
-    case ExecutionNode::MUTEX:
+    case ExecutionNode::MUTEX:  // should not appear here
     case ExecutionNode::MAX_NODE_TYPE_VALUE:
       break;
   }
@@ -537,8 +571,9 @@ auto isLoop(ExecutionNode const& node) -> bool {
     case ExecutionNode::SUBQUERY_END:
     case ExecutionNode::MATERIALIZE:
     case ExecutionNode::ASYNC:
+    case ExecutionNode::WINDOW:
       return false;
-    case ExecutionNode::MUTEX:
+    case ExecutionNode::MUTEX:  // should not appear here
     case ExecutionNode::MAX_NODE_TYPE_VALUE:
       break;
   }
@@ -550,14 +585,14 @@ namespace {
 
 // Get all variables that should be collected "INTO" the group variable.
 // Returns whether we are at the top level.
-// Gets passed whether we did encounter a loop "on the way" from the collect node.
+// Gets passed whether we did encounter a loop "on the way" from the collect
+// node.
 // TODO As this is now called in instantiateFromAst, thus earliest possible,
 //      the whole spliced subquery handling could be removed here to simplify
 //      the code.
-[[nodiscard]] auto calculateAccessibleUserVariables(ExecutionNode const& node,
-                                                    std::vector<Variable const*>& userVariables,
-                                                    bool const encounteredLoop,
-                                                    int const subqueryDepth) -> bool {
+[[nodiscard]] auto calculateAccessibleUserVariables(
+    ExecutionNode const& node, std::vector<Variable const*>& userVariables,
+    bool const encounteredLoop, int const subqueryDepth) -> bool {
   TRI_ASSERT(subqueryDepth >= 0);
   auto const recSubqueryDepth = [&]() {
     if (node.getType() == ExecutionNode::SUBQUERY_END) {
@@ -573,8 +608,8 @@ namespace {
   // Skip nodes inside a subquery, except for SUBQUERY_END!
   if (subqueryDepth > 0) {
     if (dep != nullptr) {
-      return calculateAccessibleUserVariables(*dep, userVariables,
-                                              encounteredLoop, recSubqueryDepth);
+      return calculateAccessibleUserVariables(
+          *dep, userVariables, encounteredLoop, recSubqueryDepth);
     } else {
       TRI_ASSERT(false);
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL_AQL,
@@ -614,27 +649,50 @@ namespace {
 
 }  // namespace
 
-void CollectNode::calculateAccessibleUserVariables(ExecutionNode const& node,
-                                                   std::vector<Variable const*>& userVariables) {
+void CollectNode::calculateAccessibleUserVariables(
+    ExecutionNode const& node, std::vector<Variable const*>& userVariables) {
   // This is just a wrapper around the static function with the same name:
-  std::ignore = ::calculateAccessibleUserVariables(node, userVariables, false, 0);
+  std::ignore =
+      ::calculateAccessibleUserVariables(node, userVariables, false, 0);
+}
+
+void CollectNode::replaceVariables(
+    std::unordered_map<VariableId, Variable const*> const& replacements) {
+  for (auto& variable : _groupVariables) {
+    variable.inVar = Variable::replace(variable.inVar, replacements);
+  }
+  for (auto& variable : _keepVariables) {
+    auto old = variable;
+    variable = Variable::replace(old, replacements);
+  }
+  for (auto& variable : _aggregateVariables) {
+    variable.inVar = Variable::replace(variable.inVar, replacements);
+  }
+  if (_expressionVariable != nullptr) {
+    _expressionVariable = Variable::replace(_expressionVariable, replacements);
+  }
+  for (auto const& it : replacements) {
+    _variableMap.try_emplace(it.second->id, it.second->name);
+  }
 }
 
 /// @brief getVariablesUsedHere, modifying the set in-place
 void CollectNode::getVariablesUsedHere(VarSet& vars) const {
   for (auto const& p : _groupVariables) {
-    vars.emplace(p.second);
+    vars.emplace(p.inVar);
   }
   for (auto const& p : _aggregateVariables) {
-    vars.emplace(p.second.first);
+    if (p.inVar) {
+      vars.emplace(p.inVar);
+    }
   }
 
   if (_expressionVariable != nullptr) {
     vars.emplace(_expressionVariable);
   }
 
-  // !_keepVariables.empty() => _outVariable != nullptr && !_count
-  TRI_ASSERT(_keepVariables.empty() || (_outVariable != nullptr && !_count));
+  // !_keepVariables.empty() => _outVariable != nullptr
+  TRI_ASSERT(_keepVariables.empty() || _outVariable != nullptr);
 
   // Note that the keep variables can either be user-supplied via KEEP,
   // or are calculated automatically in ExecutionPlan::fromNodeCollect
@@ -646,8 +704,8 @@ void CollectNode::getVariablesUsedHere(VarSet& vars) const {
 }
 
 void CollectNode::setAggregateVariables(
-    std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> const& aggregateVariables) {
-  _aggregateVariables = aggregateVariables;
+    std::vector<AggregateVarInfo>&& aggregateVariables) {
+  _aggregateVariables = std::move(aggregateVariables);
 }
 
 /// @brief estimateCost
@@ -671,34 +729,12 @@ CostEstimate CollectNode::estimateCost() const {
     if (estimate.estimatedNrItems >= 10) {
       // we assume that the collect will reduce the number of results at least
       // somewhat
-      estimate.estimatedNrItems = static_cast<size_t>(estimate.estimatedNrItems * 0.8);
+      estimate.estimatedNrItems =
+          static_cast<size_t>(estimate.estimatedNrItems * 0.8);
     }
   }
   estimate.estimatedCost += estimate.estimatedNrItems;
   return estimate;
-}
-
-CollectNode::CollectNode(
-    ExecutionPlan* plan, ExecutionNodeId id, CollectOptions const& options,
-    std::vector<std::pair<Variable const*, Variable const*>> const& groupVariables,
-    std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> const& aggregateVariables,
-    Variable const* expressionVariable, Variable const* outVariable,
-    std::vector<Variable const*> const& keepVariables,
-    std::unordered_map<VariableId, std::string const> const& variableMap,
-    bool count, bool isDistinctCommand)
-    : ExecutionNode(plan, id),
-      _options(options),
-      _groupVariables(groupVariables),
-      _aggregateVariables(aggregateVariables),
-      _expressionVariable(expressionVariable),
-      _outVariable(outVariable),
-      _keepVariables(keepVariables),
-      _variableMap(variableMap),
-      _count(count),
-      _isDistinctCommand(isDistinctCommand),
-      _specialized(false) {
-  // outVariable can be a nullptr, but only if _count is not set
-  TRI_ASSERT(!_count || _outVariable != nullptr);
 }
 
 ExecutionNode::NodeType CollectNode::getType() const { return COLLECT; }
@@ -719,14 +755,6 @@ void CollectNode::aggregationMethod(CollectOptions::CollectMethod method) {
 
 CollectOptions& CollectNode::getOptions() { return _options; }
 
-bool CollectNode::count() const { return _count; }
-
-void CollectNode::count(bool value) { _count = value; }
-
-bool CollectNode::hasOutVariableButNoCount() const {
-  return (_outVariable != nullptr && !_count);
-}
-
 bool CollectNode::hasOutVariable() const { return _outVariable != nullptr; }
 
 Variable const* CollectNode::outVariable() const { return _outVariable; }
@@ -734,20 +762,22 @@ Variable const* CollectNode::outVariable() const { return _outVariable; }
 void CollectNode::clearOutVariable() {
   TRI_ASSERT(_outVariable != nullptr);
   _outVariable = nullptr;
-  _count = false;
 }
 
-void CollectNode::clearKeepVariables() {
-  _keepVariables.clear();
-}
+void CollectNode::clearKeepVariables() { _keepVariables.clear(); }
 
 void CollectNode::clearAggregates(
-    std::function<bool(std::pair<Variable const*, std::pair<Variable const*, std::string>> const&)> cb) {
+    std::function<bool(AggregateVarInfo const&)> cb) {
   for (auto it = _aggregateVariables.begin(); it != _aggregateVariables.end();
        /* no hoisting */) {
     if (cb(*it)) {
       it = _aggregateVariables.erase(it);
     } else {
+      if (!Aggregator::requiresInput(it->type)) {
+        // aggregator has an input variable attached, but doesn't need it.
+        // remove the dependency, e.g.  COUNT(1) => COUNT()
+        it->inVar = nullptr;
+      }
       ++it;
     }
   }
@@ -768,36 +798,38 @@ std::vector<Variable const*> const& CollectNode::keepVariables() const {
   return _keepVariables;
 }
 
-void CollectNode::restrictKeepVariables(std::unordered_set<const Variable*> const& variables) {
+void CollectNode::restrictKeepVariables(
+    containers::HashSet<Variable const*> const& variables) {
   auto remainingKeepVariables = decltype(this->_keepVariables){};
-  remainingKeepVariables.reserve(std::min(_keepVariables.size(), variables.size()));
+  remainingKeepVariables.reserve(
+      std::min(_keepVariables.size(), variables.size()));
 
-  std::copy_if(_keepVariables.begin(), _keepVariables.end(),
-               std::back_inserter(remainingKeepVariables), [&](auto const& var) {
-                 return variables.find(var) != variables.end();
-               });
+  std::copy_if(
+      _keepVariables.begin(), _keepVariables.end(),
+      std::back_inserter(remainingKeepVariables),
+      [&](auto const& var) { return variables.find(var) != variables.end(); });
 
   _keepVariables = std::move(remainingKeepVariables);
 }
 
-std::unordered_map<VariableId, std::string const> const& CollectNode::variableMap() const {
+std::unordered_map<VariableId, std::string const> const&
+CollectNode::variableMap() const {
   return _variableMap;
 }
 
-std::vector<std::pair<Variable const*, Variable const*>> const& CollectNode::groupVariables() const {
+std::vector<GroupVarInfo> const& CollectNode::groupVariables() const {
   return _groupVariables;
 }
 
-void CollectNode::groupVariables(std::vector<std::pair<Variable const*, Variable const*>> const& vars) {
+void CollectNode::groupVariables(std::vector<GroupVarInfo> const& vars) {
   _groupVariables = vars;
 }
 
-std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> const&
-CollectNode::aggregateVariables() const {
+std::vector<AggregateVarInfo> const& CollectNode::aggregateVariables() const {
   return _aggregateVariables;
 }
 
-std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>>& CollectNode::aggregateVariables() {
+std::vector<AggregateVarInfo>& CollectNode::aggregateVariables() {
   return _aggregateVariables;
 }
 
@@ -807,10 +839,10 @@ std::vector<Variable const*> CollectNode::getVariablesSetHere() const {
             (_outVariable == nullptr ? 0 : 1));
 
   for (auto const& p : _groupVariables) {
-    v.emplace_back(p.first);
+    v.emplace_back(p.outVar);
   }
   for (auto const& p : _aggregateVariables) {
-    v.emplace_back(p.first);
+    v.emplace_back(p.outVar);
   }
   if (_outVariable != nullptr) {
     v.emplace_back(_outVariable);

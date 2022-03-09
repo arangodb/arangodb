@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -34,22 +34,21 @@
 #include "Pregel/PregelFeature.h"
 #include "Transaction/StandaloneContext.h"
 #include "V8/v8-vpack.h"
-#include "V8Server/V8DealerFeature.h"
 #include "VocBase/Methods/Tasks.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 namespace arangodb {
 
-RestControlPregelHandler::RestControlPregelHandler(application_features::ApplicationServer& server,
+RestControlPregelHandler::RestControlPregelHandler(ArangodServer& server,
                                                    GeneralRequest* request,
                                                    GeneralResponse* response)
-    : RestVocbaseBaseHandler(server, request, response) {}
+    : RestVocbaseBaseHandler(server, request, response),
+      _pregel(server.getFeature<pregel::PregelFeature>()) {}
 
 RestStatus RestControlPregelHandler::execute() {
   auto const type = _request->requestType();
@@ -68,14 +67,16 @@ RestStatus RestControlPregelHandler::execute() {
       break;
     }
     default: {
-      generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+      generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                    TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
     }
   }
   return RestStatus::DONE;
 }
 
 /// @brief returns the short id of the server which should handle this request
-ResultT<std::pair<std::string, bool>> RestControlPregelHandler::forwardingTarget() {
+ResultT<std::pair<std::string, bool>>
+RestControlPregelHandler::forwardingTarget() {
   auto base = RestVocbaseBaseHandler::forwardingTarget();
   if (base.ok() && !std::get<0>(base.get()).empty()) {
     return base;
@@ -128,6 +129,8 @@ void RestControlPregelHandler::startExecution() {
   // extract the collections
   std::vector<std::string> vertexCollections;
   std::vector<std::string> edgeCollections;
+  std::unordered_map<std::string, std::vector<std::string>>
+      edgeCollectionRestrictions;
   auto vc = body.get("vertexCollections");
   auto ec = body.get("edgeCollections");
   if (vc.isArray() && ec.isArray()) {
@@ -153,31 +156,54 @@ void RestControlPregelHandler::startExecution() {
     }
     std::unique_ptr<graph::Graph> graph = std::move(graphRes.get());
 
-    auto gv = graph->vertexCollections();
-    for (auto& v : gv) {
+    auto const& gv = graph->vertexCollections();
+    for (auto const& v : gv) {
       vertexCollections.push_back(v);
     }
 
-    auto ge = graph->edgeCollections();
-    for (auto& e : ge) {
+    auto const& ge = graph->edgeCollections();
+    for (auto const& e : ge) {
       edgeCollections.push_back(e);
+    }
+
+    auto const& ed = graph->edgeDefinitions();
+    for (auto const& e : ed) {
+      auto const& from = e.second.getFrom();
+      // intentionally create map entry
+      for (auto const& f : from) {
+        auto& restrictions = edgeCollectionRestrictions[f];
+        restrictions.push_back(e.second.getName());
+      }
     }
   }
 
-  auto res = pregel::PregelFeature::startExecution(_vocbase, algorithm, vertexCollections,
-                                                   edgeCollections, parameters);
+  auto res = _pregel.startExecution(_vocbase, algorithm, vertexCollections,
+                                    edgeCollections, edgeCollectionRestrictions,
+                                    parameters);
   if (res.first.fail()) {
     generateError(res.first);
     return;
   }
 
   VPackBuilder builder;
-  builder.add(VPackValue(res.second));
+  builder.add(VPackValue(std::to_string(res.second)));
   generateResult(rest::ResponseCode::OK, builder.slice());
 }
 
 void RestControlPregelHandler::getExecutionStatus() {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
+
+  if (suffixes.empty()) {
+    bool const allDatabases = _request->parsedValue("all", false);
+    bool const fanout = ServerState::instance()->isCoordinator() &&
+                        !_request->parsedValue("local", false);
+
+    VPackBuilder builder;
+    _pregel.toVelocyPack(_vocbase, builder, allDatabases, fanout);
+    generateResult(rest::ResponseCode::OK, builder.slice());
+    return;
+  }
+
   if (suffixes.size() != 1 || suffixes[0].empty()) {
     generateError(
         rest::ResponseCode::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
@@ -186,13 +212,7 @@ void RestControlPregelHandler::getExecutionStatus() {
   }
 
   uint64_t executionNumber = arangodb::basics::StringUtils::uint64(suffixes[0]);
-  std::shared_ptr<pregel::PregelFeature> pf = pregel::PregelFeature::instance();
-  if (!pf) {
-    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
-                  "pregel feature not available");
-    return;
-  }
-  auto c = pf->conductor(executionNumber);
+  auto c = _pregel.conductor(executionNumber);
 
   if (nullptr == c) {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_CURSOR_NOT_FOUND,
@@ -200,7 +220,8 @@ void RestControlPregelHandler::getExecutionStatus() {
     return;
   }
 
-  VPackBuilder builder = c->toVelocyPack();
+  VPackBuilder builder;
+  c->toVelocyPack(builder);
   generateResult(rest::ResponseCode::OK, builder.slice());
 }
 
@@ -212,15 +233,8 @@ void RestControlPregelHandler::cancelExecution() {
     return;
   }
 
-  std::shared_ptr<pregel::PregelFeature> pf = pregel::PregelFeature::instance();
-  if (nullptr == pf) {
-    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
-                  "pregel feature not available");
-    return;
-  }
-
   uint64_t executionNumber = arangodb::basics::StringUtils::uint64(suffixes[0]);
-  auto c = pf->conductor(executionNumber);
+  auto c = _pregel.conductor(executionNumber);
 
   if (nullptr == c) {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_CURSOR_NOT_FOUND,

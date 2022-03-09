@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Daniel Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_IRESEARCH_ROCKSDB_RECOVERY_HELPER_H
-#define ARANGOD_IRESEARCH_ROCKSDB_RECOVERY_HELPER_H 1
+#pragma once
 
 #include <cstdint>
 #include <set>
@@ -32,10 +31,15 @@
 
 #include "Basics/Identifier.h"
 #include "RocksDBEngine/RocksDBRecoveryHelper.h"
+#include "RestServer/arangod.h"
+#include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
 
 class DatabaseFeature;
 class RocksDBEngine;
@@ -46,30 +50,28 @@ class IResearchRocksDBRecoveryHelper final : public RocksDBRecoveryHelper {
  public:
   struct IndexId {
     TRI_voc_tick_t db;
-    TRI_voc_cid_t cid;
+    DataSourceId cid;
     arangodb::IndexId iid;
 
-    IndexId(TRI_voc_tick_t db, TRI_voc_cid_t cid, arangodb::IndexId iid) noexcept
+    IndexId(TRI_voc_tick_t db, DataSourceId cid, arangodb::IndexId iid) noexcept
         : db(db), cid(cid), iid(iid) {}
 
     bool operator<(IndexId const& rhs) const noexcept {
-      return db < rhs.db && cid < rhs.cid && iid < rhs.iid;
+      return (db < rhs.db) ||
+             (db == rhs.db &&
+              (cid < rhs.cid || (cid == rhs.cid && iid < rhs.iid)));
     }
   };
 
-  IResearchRocksDBRecoveryHelper() = default;
-
-  virtual ~IResearchRocksDBRecoveryHelper() override = default;
+  explicit IResearchRocksDBRecoveryHelper(ArangodServer&);
 
   virtual void prepare() override;
 
-  virtual void PutCF(uint32_t column_family_id,
-                     const rocksdb::Slice& key,
+  virtual void PutCF(uint32_t column_family_id, const rocksdb::Slice& key,
                      const rocksdb::Slice& value,
                      rocksdb::SequenceNumber tick) override;
 
-  virtual void DeleteCF(uint32_t column_family_id,
-                        const rocksdb::Slice& key,
+  virtual void DeleteCF(uint32_t column_family_id, const rocksdb::Slice& key,
                         rocksdb::SequenceNumber tick) override {
     handleDeleteCF(column_family_id, key, tick);
   }
@@ -84,10 +86,10 @@ class IResearchRocksDBRecoveryHelper final : public RocksDBRecoveryHelper {
                        rocksdb::SequenceNumber tick) override;
 
  private:
-  void handleDeleteCF(uint32_t column_family_id,
-                      const rocksdb::Slice& key,
+  void handleDeleteCF(uint32_t column_family_id, const rocksdb::Slice& key,
                       rocksdb::SequenceNumber tick);
 
+  ArangodServer& _server;
   std::set<IndexId> _recoveredIndexes;  // set of already recovered indexes
   DatabaseFeature* _dbFeature{};
   RocksDBEngine* _engine{};
@@ -96,5 +98,3 @@ class IResearchRocksDBRecoveryHelper final : public RocksDBRecoveryHelper {
 
 }  // end namespace iresearch
 }  // end namespace arangodb
-
-#endif

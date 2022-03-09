@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,13 +21,13 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_SOCKET__UTILS_H
-#define ARANGODB_BASICS_SOCKET__UTILS_H 1
+#pragma once
 
 #include <stddef.h>
 
 #include "Basics/Common.h"
 #include "Basics/operating-system.h"
+#include "ErrorCode.h"
 
 #ifdef TRI_HAVE_SYS_TYPES_H
 #include <sys/types.h>
@@ -42,7 +42,6 @@
 
 typedef long suseconds_t;
 #endif
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief socket types
@@ -90,7 +89,8 @@ static inline int TRI_listen(TRI_socket_t s, int backlog) {
 /// @brief bind abstraction for different OSes
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline int TRI_bind(TRI_socket_t s, const struct sockaddr* address, size_t addr_len) {
+static inline int TRI_bind(TRI_socket_t s, const struct sockaddr* address,
+                           size_t addr_len) {
 #ifdef _WIN32
   return bind(s.fileHandle, address, static_cast<int>(addr_len));
 #else
@@ -102,7 +102,8 @@ static inline int TRI_bind(TRI_socket_t s, const struct sockaddr* address, size_
 /// @brief connect abstraction for different OSes
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline int TRI_connect(TRI_socket_t s, const struct sockaddr* address, size_t addr_len) {
+static inline int TRI_connect(TRI_socket_t s, const struct sockaddr* address,
+                              size_t addr_len) {
 #ifdef _WIN32
   return connect(s.fileHandle, address, (int)addr_len);
 #else
@@ -114,7 +115,8 @@ static inline int TRI_connect(TRI_socket_t s, const struct sockaddr* address, si
 /// @brief send abstraction for different OSes
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline long TRI_send(TRI_socket_t s, const void* buffer, size_t length, int flags) {
+static inline long TRI_send(TRI_socket_t s, const void* buffer, size_t length,
+                            int flags) {
 #ifdef _WIN32
   return send(s.fileHandle, (char*)buffer, (int)length, flags);
 #else
@@ -208,9 +210,8 @@ static inline int TRI_get_fd_or_handle_of_socket(TRI_socket_t s) {
 
 int TRI_closesocket(TRI_socket_t);
 
-int TRI_readsocket(TRI_socket_t, void* buffer, size_t numBytesToRead, int flags);
-
-int TRI_writesocket(TRI_socket_t, const void* buffer, size_t numBytesToWrite, int flags);
+int TRI_readsocket(TRI_socket_t, void* buffer, size_t numBytesToRead,
+                   int flags);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets non-blocking mode for a socket
@@ -230,7 +231,7 @@ bool TRI_SetCloseOnExecSocket(TRI_socket_t);
 /// This code is copyright Internet Systems Consortium, Inc. ("ISC")
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_InetPton4(char const* src, unsigned char* dst);
+ErrorCode TRI_InetPton4(char const* src, unsigned char* dst);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief translates for IPv6 address
@@ -238,6 +239,4 @@ int TRI_InetPton4(char const* src, unsigned char* dst);
 /// This code is copyright Internet Systems Consortium, Inc. ("ISC")
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_InetPton6(char const* src, unsigned char* dst);
-
-#endif
+ErrorCode TRI_InetPton6(char const* src, unsigned char* dst);

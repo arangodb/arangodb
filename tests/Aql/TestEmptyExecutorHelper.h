@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,8 +24,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_EMPTY_TEST_EXECUTOR_H
-#define ARANGOD_AQL_EMPTY_TEST_EXECUTOR_H
+#pragma once
 
 #include "Aql/EmptyExecutorInfos.h"
 #include "Aql/ExecutionState.h"
@@ -39,14 +39,15 @@ namespace arangodb {
 namespace aql {
 
 class InputAqlItemRow;
-template <BlockPassthrough>
+template<BlockPassthrough>
 class SingleRowFetcher;
 
 class TestEmptyExecutorHelper {
  public:
   struct Properties {
     static const bool preservesOrder = true;
-    static const BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Disable;
+    static const BlockPassthrough allowsBlockPassthrough =
+        BlockPassthrough::Disable;
     static const bool inputSizeRestrictsOutputSize = false;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
@@ -69,5 +70,3 @@ class TestEmptyExecutorHelper {
 
 }  // namespace aql
 }  // namespace arangodb
-
-#endif

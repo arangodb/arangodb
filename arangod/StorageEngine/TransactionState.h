@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,34 +21,37 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_STORAGE_ENGINE_TRANSACTION_STATE_H
-#define ARANGOD_STORAGE_ENGINE_TRANSACTION_STATE_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Basics/Result.h"
-#include "Cluster/ServerState.h"
 #include "Cluster/ClusterTypes.h"
-#include "Containers/HashSet.h"
+#include "Cluster/ServerState.h"
+#include "Containers/FlatHashMap.h"
+#include "Containers/FlatHashSet.h"
 #include "Containers/SmallVector.h"
 #include "Transaction/Hints.h"
 #include "Transaction/Options.h"
 #include "Transaction/Status.h"
 #include "VocBase/AccessMode.h"
+#include "VocBase/Identifiers/DataSourceId.h"
+#include "VocBase/Identifiers/TransactionId.h"
 #include "VocBase/voc-types.h"
 
-#include <map>
+#include <string_view>
+#include <variant>
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 
-#define LOG_TRX(logid, llevel, trx)                \
+#define LOG_TRX(logid, llevel, trx)                        \
   LOG_TOPIC(logid, llevel, arangodb::Logger::TRANSACTIONS) \
-      << "#" << trx->id() << " ("         \
+      << "#" << trx->id().id() << " ("                     \
       << transaction::statusString(trx->status()) << "): "
 
 #else
 
 #define LOG_TRX(logid, llevel, ...) \
-  while (0) LOG_TOPIC(logid, llevel,  arangodb::Logger::TRANSACTIONS)
+  while (0) LOG_TOPIC(logid, llevel, arangodb::Logger::TRANSACTIONS)
 #endif
 
 struct TRI_vocbase_t;
@@ -61,6 +64,7 @@ struct Options;
 }  // namespace transaction
 
 class TransactionCollection;
+struct TransactionStatistics;
 
 /// @brief transaction type
 class TransactionState {
@@ -71,52 +75,77 @@ class TransactionState {
     virtual ~Cookie() = default;
   };
 
+  [[nodiscard]] static bool ServerIdLessThan(ServerID const& lhs,
+                                             ServerID const& rhs) {
+    return lhs < rhs;
+  }
+
   typedef std::function<void(TransactionState& state)> StatusChangeCallback;
 
   TransactionState() = delete;
   TransactionState(TransactionState const&) = delete;
   TransactionState& operator=(TransactionState const&) = delete;
 
-  TransactionState(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
+  TransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
                    transaction::Options const& options);
   virtual ~TransactionState();
 
   /// @return a cookie associated with the specified key, nullptr if none
-  Cookie* cookie(void const* key) noexcept;
+  [[nodiscard]] Cookie* cookie(void const* key) const noexcept;
 
   /// @brief associate the specified cookie with the specified key
   /// @return the previously associated cookie, if any
   Cookie::ptr cookie(void const* key, Cookie::ptr&& cookie);
 
-  bool isRunningInCluster() const {
+  [[nodiscard]] bool isRunningInCluster() const noexcept {
     return ServerState::isRunningInCluster(_serverRole);
   }
-  bool isDBServer() const { return ServerState::isDBServer(_serverRole); }
-  bool isCoordinator() const { return ServerState::isCoordinator(_serverRole); }
-  ServerState::RoleEnum serverRole() const { return _serverRole; }
+  [[nodiscard]] bool isDBServer() const noexcept {
+    return ServerState::isDBServer(_serverRole);
+  }
+  [[nodiscard]] bool isCoordinator() const noexcept {
+    return ServerState::isCoordinator(_serverRole);
+  }
+  [[nodiscard]] ServerState::RoleEnum serverRole() const noexcept {
+    return _serverRole;
+  }
 
-  inline transaction::Options& options() { return _options; }
-  inline transaction::Options const& options() const { return _options; }
-  inline TRI_vocbase_t& vocbase() const { return _vocbase; }
-  inline TRI_voc_tid_t id() const { return _id; }
-  inline transaction::Status status() const { return _status; }
-  inline bool isRunning() const {
+  [[nodiscard]] transaction::Options& options() noexcept { return _options; }
+  [[nodiscard]] transaction::Options const& options() const noexcept {
+    return _options;
+  }
+  [[nodiscard]] TRI_vocbase_t& vocbase() const noexcept { return _vocbase; }
+  [[nodiscard]] TransactionId id() const noexcept { return _id; }
+  [[nodiscard]] transaction::Status status() const noexcept { return _status; }
+  [[nodiscard]] bool isRunning() const noexcept {
     return _status == transaction::Status::RUNNING;
   }
   void setRegistered() noexcept { _registeredTransaction = true; }
-  bool wasRegistered() const noexcept { return _registeredTransaction; }
+  [[nodiscard]] bool wasRegistered() const noexcept {
+    return _registeredTransaction;
+  }
 
-  double lockTimeout() const { return _options.lockTimeout; }
+  /// @brief returns the name of the actor the transaction runs on:
+  /// - leader
+  /// - follower
+  /// - coordinator
+  /// - single
+  [[nodiscard]] char const* actorName() const noexcept;
+
+  /// @brief return a reference to the global transaction statistics/counters
+  TransactionStatistics& statistics() noexcept;
+
+  [[nodiscard]] double lockTimeout() const { return _options.lockTimeout; }
   void lockTimeout(double value) {
     if (value > 0.0) {
       _options.lockTimeout = value;
     }
   }
 
-  bool waitForSync() const { return _options.waitForSync; }
+  [[nodiscard]] bool waitForSync() const { return _options.waitForSync; }
   void waitForSync(bool value) { _options.waitForSync = value; }
 
-  bool allowImplicitCollectionsForRead() const {
+  [[nodiscard]] bool allowImplicitCollectionsForRead() const {
     return _options.allowImplicitCollectionsForRead;
   }
   void allowImplicitCollectionsForRead(bool value) {
@@ -124,36 +153,47 @@ class TransactionState {
   }
 
   /// @brief return the collection from a transaction
-  TransactionCollection* collection(TRI_voc_cid_t cid,
-                                    AccessMode::Type accessType) const;
-  
+  [[nodiscard]] TransactionCollection* collection(
+      DataSourceId cid, AccessMode::Type accessType) const;
+
   /// @brief return the collection from a transaction
-  TransactionCollection* collection(std::string const& name,
-                                    AccessMode::Type accessType) const;
+  [[nodiscard]] TransactionCollection* collection(
+      std::string const& name, AccessMode::Type accessType) const;
 
   /// @brief add a collection to a transaction
-  Result addCollection(TRI_voc_cid_t cid, std::string const& cname,
-                       AccessMode::Type accessType, bool lockUsage);
+  [[nodiscard]] Result addCollection(DataSourceId cid, std::string const& cname,
+                                     AccessMode::Type accessType,
+                                     bool lockUsage);
 
   /// @brief use all participating collections of a transaction
-  Result useCollections();
+  [[nodiscard]] Result useCollections();
 
   /// @brief run a callback on all collections of the transaction
-  void allCollections(std::function<bool(TransactionCollection&)> const& cb);
-  
+  template<typename F>
+  void allCollections(F&& cb) {
+    for (auto& trxCollection : _collections) {
+      TRI_ASSERT(trxCollection);  // ensured by addCollection(...)
+      if (!std::forward<F>(cb)(*trxCollection)) {  // abort early
+        return;
+      }
+    }
+  }
+
   /// @brief return the number of collections in the transaction
-  size_t numCollections() const { return _collections.size(); }
+  [[nodiscard]] size_t numCollections() const { return _collections.size(); }
 
   /// @brief whether or not a transaction consists of a single operation
-  bool isSingleOperation() const {
+  [[nodiscard]] bool isSingleOperation() const {
     return hasHint(transaction::Hints::Hint::SINGLE_OPERATION);
   }
 
   /// @brief update the status of a transaction
-  void updateStatus(transaction::Status status);
+  void updateStatus(transaction::Status status) noexcept;
 
   /// @brief whether or not a specific hint is set for the transaction
-  bool hasHint(transaction::Hints::Hint hint) const { return _hints.has(hint); }
+  [[nodiscard]] bool hasHint(transaction::Hints::Hint hint) const {
+    return _hints.has(hint);
+  }
 
   /// @brief begin a transaction
   virtual arangodb::Result beginTransaction(transaction::Hints hints) = 0;
@@ -164,110 +204,138 @@ class TransactionState {
   /// @brief abort a transaction
   virtual arangodb::Result abortTransaction(transaction::Methods* trx) = 0;
 
+  virtual arangodb::Result performIntermediateCommitIfRequired(
+      DataSourceId cid) = 0;
+
+  /// @brief return number of commits.
+  /// for cluster transactions on coordinator, this either returns 0 or 1.
+  /// for leader, follower or single-server transactions, this can include any
+  /// number, because it will also include intermediate commits.
+  virtual uint64_t numCommits() const = 0;
+
   virtual bool hasFailedOperations() const = 0;
 
-  TransactionCollection* findCollection(TRI_voc_cid_t cid) const;
+  virtual void beginQuery(bool /*isModificationQuery*/) {}
+  virtual void endQuery(bool /*isModificationQuery*/) noexcept {}
+
+  [[nodiscard]] TransactionCollection* findCollection(DataSourceId cid) const;
 
   /// @brief make a exclusive transaction, only valid before begin
   void setExclusiveAccessType();
 
   /// @brief whether or not a transaction is read-only
-  bool isReadOnlyTransaction() const {
-    return (_type == AccessMode::Type::READ);
+  [[nodiscard]] bool isReadOnlyTransaction() const noexcept {
+    return _type == AccessMode::Type::READ;
   }
 
-  /// @brief whether or not a transaction only has exculsive or read accesses
-  bool isOnlyExclusiveTransaction() const;
+  /// @brief whether or not a transaction is a follower transaction
+  [[nodiscard]] bool isFollowerTransaction() const {
+    return hasHint(transaction::Hints::Hint::IS_FOLLOWER_TRX);
+  }
 
   /// @brief servers already contacted
-  ::arangodb::containers::HashSet<std::string> const& knownServers() const {
+  [[nodiscard]] containers::FlatHashSet<ServerID> const& knownServers() const {
     return _knownServers;
   }
 
-  bool knowsServer(std::string const& uuid) const {
+  [[nodiscard]] bool knowsServer(std::string_view uuid) const {
     return _knownServers.find(uuid) != _knownServers.end();
   }
 
   /// @brief add a server to the known set
-  void addKnownServer(std::string const& uuid) {
-    _knownServers.emplace(uuid);
-  }
+  void addKnownServer(std::string_view uuid) { _knownServers.emplace(uuid); }
 
   /// @brief remove a server from the known set
-  void removeKnownServer(std::string const& uuid) {
-    _knownServers.erase(uuid);
-  }
+  void removeKnownServer(std::string_view uuid) { _knownServers.erase(uuid); }
 
-  void clearKnownServers() {
-    _knownServers.clear();
-  }
+  void clearKnownServers() { _knownServers.clear(); }
 
   /// @returns tick of last operation in a transaction
   /// @note the value is guaranteed to be valid only after
   ///       transaction is committed
-  TRI_voc_tick_t lastOperationTick() const noexcept {
-    return _lastWrittenOperationTick;
-  }
+  [[nodiscard]] virtual TRI_voc_tick_t lastOperationTick() const noexcept = 0;
 
-  void acceptAnalyzersRevision(AnalyzersRevision::Revision analyzersRevision) noexcept;
+  void acceptAnalyzersRevision(
+      QueryAnalyzerRevisions const& analyzersRevsion) noexcept;
 
-  AnalyzersRevision::Revision analyzersRevision() const noexcept {
+  [[nodiscard]] QueryAnalyzerRevisions const& analyzersRevision()
+      const noexcept {
     return _analyzersRevision;
   }
-  
-  #ifdef USE_ENTERPRISE
-    void addInaccessibleCollection(TRI_voc_cid_t cid, std::string const& cname);
-    bool isInaccessibleCollection(TRI_voc_cid_t cid);
-    bool isInaccessibleCollection(std::string const& cname);
-  #endif
+
+#ifdef USE_ENTERPRISE
+  void addInaccessibleCollection(DataSourceId cid, std::string const& cname);
+  [[nodiscard]] bool isInaccessibleCollection(DataSourceId cid);
+  [[nodiscard]] bool isInaccessibleCollection(std::string_view cname);
+#endif
+
+  /// @brief roll a new transaction ID on the coordintor. Use this method
+  /// with care, it should only be used when retrying in a synchronized
+  /// fashion after a fast-path locking detected a dead-lock situation.
+  /// Only allowed on coordinators.
+  void coordinatorRerollTransactionId();
 
  protected:
+  virtual std::unique_ptr<TransactionCollection> createTransactionCollection(
+      DataSourceId cid, AccessMode::Type accessType) = 0;
+
   /// @brief find a collection in the transaction's list of collections
-  TransactionCollection* findCollection(TRI_voc_cid_t cid, size_t& position) const;
+  struct CollectionNotFound {
+    std::size_t lowerBound;
+  };
+  struct CollectionFound {
+    TransactionCollection* collection;
+  };
+  [[nodiscard]] auto findCollectionOrPos(DataSourceId cid) const
+      -> std::variant<CollectionNotFound, CollectionFound>;
 
   /// @brief clear the query cache for all collections that were modified by
   /// the transaction
   void clearQueryCache();
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  // reset the internal Transaction ID to none.
+  // Only used in the Transaction Mock for internal reasons.
+  void resetTransactionId();
+#endif
+
  private:
   /// @brief check if current user can access this collection
-  Result checkCollectionPermission(TRI_voc_cid_t cid, std::string const& cname,
+  Result checkCollectionPermission(DataSourceId cid, std::string const& cname,
                                    AccessMode::Type);
-  
+
+  /// @brief helper function for addCollection
+  Result addCollectionInternal(DataSourceId cid, std::string const& cname,
+                               AccessMode::Type accessType, bool lockUsage);
+
  protected:
   TRI_vocbase_t& _vocbase;  /// @brief vocbase for this transaction
-  TRI_voc_tid_t const _id;  /// @brief local trx id
-
-  /// @brief tick of last added & written operation
-  TRI_voc_tick_t _lastWrittenOperationTick;
 
   /// @brief access type (read|write)
-  AccessMode::Type _type;
+  AccessMode::Type _type = AccessMode::Type::READ;
   /// @brief current status
-  transaction::Status _status;
+  transaction::Status _status = transaction::Status::CREATED;
 
-  using ListType = arangodb::containers::SmallVector<TransactionCollection*>;
-  ListType::allocator_type::arena_type _arena;  // memory for collections
-  ListType _collections;  // list of participating collections
+  arangodb::containers::SmallVectorWithArena<TransactionCollection*>
+      _collections;
 
-  transaction::Hints _hints;  // hints; set on _nestingLevel == 0
-
-  transaction::Options _options;
+  transaction::Hints _hints{};  // hints; set on _nestingLevel == 0
 
   ServerState::RoleEnum const _serverRole;  /// role of the server
 
+  transaction::Options _options;
+
  private:
+  TransactionId _id;  /// @brief local trx id
+
   /// a collection of stored cookies
-  std::map<void const*, Cookie::ptr> _cookies;
+  containers::FlatHashMap<void const*, Cookie::ptr> _cookies;
 
   /// @brief servers we already talked to for this transactions
-  ::arangodb::containers::HashSet<std::string> _knownServers;
+  containers::FlatHashSet<ServerID> _knownServers;
 
-  arangodb::AnalyzersRevision::Revision _analyzersRevision{ ::arangodb::AnalyzersRevision::MIN };
-
-  bool _registeredTransaction;
+  QueryAnalyzerRevisions _analyzersRevision;
+  bool _registeredTransaction = false;
 };
 
 }  // namespace arangodb
-
-#endif

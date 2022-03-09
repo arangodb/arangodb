@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global arangoHelper, Backbone, window, $, templateEngine, document, JSONEditor */
+/* global arangoHelper, Backbone, window, $, _, templateEngine, document, JSONEditor */
 
 (function () {
   'use strict';
@@ -25,6 +25,7 @@
       $(this.el).html(this.template.render({}));
       this.renderValidationEditor();
       this.getValidationProperties();
+      this.editor.focus();
     },
 
     resize: function () {
@@ -62,7 +63,7 @@
 
     breadcrumb: function () {
       $('#subNavigationBar .breadcrumb').html(
-        'Collection: ' + (this.collectionName.length > 64 ? this.collectionName.substr(0, 64) + "..." : this.collectionName)
+        'Collection: ' + _.escape(this.collectionName.length > 64 ? this.collectionName.substr(0, 64) + "..." : this.collectionName)
       );
     },
 
@@ -72,7 +73,7 @@
         if (error) {
           arangoHelper.arangoError('Error', 'Could not save schema.');
         } else {
-          var newprops;
+          var newprops = null;
           try {
             newprops = this.editor.get();
           } catch (ex) {
@@ -86,6 +87,7 @@
             } else {
               arangoHelper.arangoNotification('Saved schema for collection ' + this.model.get('name') + '.');
             }
+            this.editor.focus();
           });
 
         } // if error

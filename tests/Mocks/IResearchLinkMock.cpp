@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -37,8 +38,9 @@
 namespace arangodb {
 namespace iresearch {
 
-IResearchLinkMock::IResearchLinkMock(IndexId iid, arangodb::LogicalCollection& collection)
-    : Index(iid, collection, IResearchLinkHelper::emptyIndexSlice()),
+IResearchLinkMock::IResearchLinkMock(IndexId iid,
+                                     arangodb::LogicalCollection& collection)
+    : Index(iid, collection, IResearchLinkHelper::emptyIndexSlice(0).slice()),
       IResearchLink(iid, collection) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   _unique = false;  // cannot be unique since multiple fields are indexed
@@ -56,8 +58,8 @@ void IResearchLinkMock::toVelocyPack(
             std::to_string(arangodb::Index::id().id()) + "'"));
   }
 
-  auto forPersistence = // definition for persistence
-    arangodb::Index::hasFlag(flags, arangodb::Index::Serialize::Internals);
+  auto forPersistence =  // definition for persistence
+      arangodb::Index::hasFlag(flags, arangodb::Index::Serialize::Internals);
 
   builder.openObject();
 
@@ -78,17 +80,6 @@ void IResearchLinkMock::toVelocyPack(
   builder.close();
 }
 
-bool IResearchLinkMock::isPersistent() const {
-  auto* engine = arangodb::EngineSelectorFeature::ENGINE;
-
-  if (engine && engine->inRecovery()) {
-    return !IResearchLink::createdInRecovery();
-  }
-
-  return true;
-}
-
-
-std::function<void(irs::directory&)> IResearchLinkMock::InitCallback;
+std::function<irs::directory_attributes()> IResearchLinkMock::InitCallback;
 }  // namespace iresearch
 }  // namespace arangodb

@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,8 +24,9 @@
 #include "AqlExecuteResult.h"
 
 #include "Aql/AqlItemBlockManager.h"
+#include "Basics/Exceptions.h"
+#include "Basics/ResultT.h"
 #include "Basics/StaticStrings.h"
-#include "Cluster/ResultT.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 
@@ -32,6 +34,8 @@
 #include <velocypack/Iterator.h>
 
 #include <map>
+#include <string_view>
+#include <utility>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -39,14 +43,14 @@ using namespace arangodb::aql;
 namespace {
 // hack for MSVC
 auto getStringView(velocypack::Slice slice) -> std::string_view {
-  velocypack::StringRef ref = slice.stringRef();
+  std::string_view ref = slice.stringView();
   return std::string_view(ref.data(), ref.size());
 }
 }  // namespace
 
 AqlExecuteResult::AqlExecuteResult(ExecutionState state, SkipResult skipped,
                                    SharedAqlItemBlockPtr&& block)
-    : _state(state), _skipped(skipped), _block(std::move(block)) {
+    : _state(state), _skipped(std::move(skipped)), _block(std::move(block)) {
   // Make sure we only produce a valid response
   // The block should have checked as well.
   // We must return skipped and/or data when reporting HASMORE
@@ -54,7 +58,7 @@ AqlExecuteResult::AqlExecuteResult(ExecutionState state, SkipResult skipped,
   // noskip && no data => state != HASMORE
   // <=> skipped || data || state != HASMORE
   TRI_ASSERT(!_skipped.nothingSkipped() ||
-             (_block != nullptr && _block->numEntries() > 0) ||
+             (_block != nullptr && _block->numRows() > 0) ||
              _state != ExecutionState::HASMORE);
 }
 
@@ -70,8 +74,9 @@ auto AqlExecuteResult::block() const noexcept -> SharedAqlItemBlockPtr const& {
   return _block;
 }
 
-void AqlExecuteResult::toVelocyPack(velocypack::Builder& builder,
-                                    velocypack::Options const* const options) const {
+void AqlExecuteResult::toVelocyPack(
+    velocypack::Builder& builder,
+    velocypack::Options const* const options) const {
   using namespace arangodb::velocypack;
   auto const stateToValue = [](ExecutionState state) -> Value {
     switch (state) {
@@ -105,9 +110,10 @@ auto AqlExecuteResult::fromVelocyPack(velocypack::Slice const slice,
     -> ResultT<AqlExecuteResult> {
   if (ADB_UNLIKELY(!slice.isObject())) {
     using namespace std::string_literals;
-    return Result(TRI_ERROR_TYPE_ERROR,
-                  "When deserializating AqlExecuteResult: Expected object, got "s +
-                      slice.typeName());
+    return Result(
+        TRI_ERROR_TYPE_ERROR,
+        "When deserializating AqlExecuteResult: Expected object, got "s +
+            slice.typeName());
   }
 
   auto expectedPropertiesFound = std::map<std::string_view, bool>{};
@@ -119,10 +125,11 @@ auto AqlExecuteResult::fromVelocyPack(velocypack::Slice const slice,
   auto skipped = SkipResult{};
   auto block = SharedAqlItemBlockPtr{};
 
-  auto const readState = [](velocypack::Slice slice) -> ResultT<ExecutionState> {
+  auto const readState =
+      [](velocypack::Slice slice) -> ResultT<ExecutionState> {
     if (ADB_UNLIKELY(!slice.isString())) {
       auto message = std::string{
-          "When deserializating AqlExecuteResult: When reading state: "
+          "When deserializing AqlExecuteResult: When reading state: "
           "Unexpected type "};
       message += slice.typeName();
       return Result(TRI_ERROR_TYPE_ERROR, std::move(message));
@@ -134,7 +141,7 @@ auto AqlExecuteResult::fromVelocyPack(velocypack::Slice const slice,
       return ExecutionState::HASMORE;
     } else {
       auto message = std::string{
-          "When deserializating AqlExecuteResult: When reading state: "
+          "When deserializing AqlExecuteResult: When reading state: "
           "Unexpected value '"};
       message += value;
       message += "'";
@@ -142,7 +149,9 @@ auto AqlExecuteResult::fromVelocyPack(velocypack::Slice const slice,
     }
   };
 
-  auto const readBlock = [&itemBlockManager](velocypack::Slice slice) -> ResultT<SharedAqlItemBlockPtr> {
+  auto const readBlock =
+      [&itemBlockManager](
+          velocypack::Slice slice) -> ResultT<SharedAqlItemBlockPtr> {
     if (slice.isNull()) {
       return SharedAqlItemBlockPtr{nullptr};
     }
@@ -153,9 +162,8 @@ auto AqlExecuteResult::fromVelocyPack(velocypack::Slice const slice,
   for (auto const it : velocypack::ObjectIterator(slice)) {
     auto const keySlice = it.key;
     if (ADB_UNLIKELY(!keySlice.isString())) {
-      return Result(
-          TRI_ERROR_TYPE_ERROR,
-          "When deserializating AqlExecuteResult: Key is not a string");
+      return Result(TRI_ERROR_TYPE_ERROR,
+                    "When deserializing AqlExecuteResult: Key is not a string");
     }
     auto const key = getStringView(keySlice);
 
@@ -163,7 +171,7 @@ auto AqlExecuteResult::fromVelocyPack(velocypack::Slice const slice,
         ADB_LIKELY(propIt != expectedPropertiesFound.end())) {
       if (ADB_UNLIKELY(propIt->second)) {
         return Result(TRI_ERROR_TYPE_ERROR,
-                      "When deserializating AqlExecuteResult: "
+                      "When deserializing AqlExecuteResult: "
                       "Encountered duplicate key");
       }
       propIt->second = true;
@@ -189,7 +197,7 @@ auto AqlExecuteResult::fromVelocyPack(velocypack::Slice const slice,
       block = maybeBlock.get();
     } else {
       LOG_TOPIC("cc6f4", WARN, Logger::AQL)
-          << "When deserializating AqlExecuteResult: Encountered "
+          << "When deserializing AqlExecuteResult: Encountered "
              "unexpected "
              "key "
           << keySlice.toJson();
@@ -202,7 +210,7 @@ auto AqlExecuteResult::fromVelocyPack(velocypack::Slice const slice,
   for (auto const& it : expectedPropertiesFound) {
     if (ADB_UNLIKELY(!it.second)) {
       auto message =
-          std::string{"When deserializating AqlExecuteResult: missing key "};
+          std::string{"When deserializing AqlExecuteResult: missing key "};
       message += it.first;
       return Result(TRI_ERROR_TYPE_ERROR, std::move(message));
     }

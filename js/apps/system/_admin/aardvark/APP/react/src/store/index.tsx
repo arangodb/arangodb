@@ -1,7 +1,7 @@
-import { combineReducers, Reducer, applyMiddleware } from 'redux';
+import { applyMiddleware, combineReducers, Reducer } from 'redux';
 
 import { ClusterState } from './cluster/types';
-import clusterReducer, {initialState as clusterInitialState } from './cluster/reducer';
+import clusterReducer, { initialState as clusterInitialState } from './cluster/reducer';
 import clusterMiddleware from './cluster/middleware';
 import loggingMiddleware from './logging/middleware';
 

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REST_REQUEST_CONTEXT_H
-#define ARANGODB_REST_REQUEST_CONTEXT_H 1
+#pragma once
 
 namespace arangodb {
 class RequestContext {
@@ -34,5 +33,3 @@ class RequestContext {
   virtual ~RequestContext() = default;
 };
 }  // namespace arangodb
-
-#endif

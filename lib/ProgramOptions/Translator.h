@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,18 +21,15 @@
 /// @author Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PROGRAM_OPTIONS_TRANSLATOR_H
-#define ARANGODB_PROGRAM_OPTIONS_TRANSLATOR_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include <string>
 
-
 namespace arangodb {
 namespace options {
 void DefineEnvironment(std::string const& keyValue);
-std::string EnvironmentTranslator(std::string const& value, char const* binaryPath);
+std::string EnvironmentTranslator(std::string const& value,
+                                  char const* binaryPath);
 }  // namespace options
 }  // namespace arangodb
-
-#endif

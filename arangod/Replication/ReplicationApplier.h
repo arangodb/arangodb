@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REPLICATION_REPLICATION_APPLIER_H
-#define ARANGOD_REPLICATION_REPLICATION_APPLIER_H 1
+#pragma once
 
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
@@ -81,10 +80,10 @@ class ReplicationApplier {
   void startReplication();
 
   /// @brief switch to tailing mode, DO NOT USE EXTERNALLY
-  void continueTailing(TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId);
+  void continueTailing(TRI_voc_tick_t initialTick, bool useTick);
 
   /// @brief start the replication applier in tailing
-  void startTailing(TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId);
+  void startTailing(TRI_voc_tick_t initialTick, bool useTick);
 
   /// @brief stop the replication applier, resets the error message
   void stop();
@@ -101,7 +100,8 @@ class ReplicationApplier {
   bool sleepIfStillActive(uint64_t sleepTime);
 
   /// @brief configure the replication applier
-  virtual void reconfigure(ReplicationApplierConfiguration const& configuration);
+  virtual void reconfigure(
+      ReplicationApplierConfiguration const& configuration);
 
   /// @brief load the applier state from persistent storage
   bool loadState();
@@ -161,7 +161,7 @@ class ReplicationApplier {
 
   virtual std::shared_ptr<InitialSyncer> buildInitialSyncer() const = 0;
   virtual std::shared_ptr<TailingSyncer> buildTailingSyncer(
-      TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId) const = 0;
+      TRI_voc_tick_t initialTick, bool useTick) const = 0;
 
  protected:
   virtual std::string getStateFilename() const = 0;
@@ -178,7 +178,8 @@ class ReplicationApplier {
   void doStop(Result const& r, bool joinThread);
 
   static void readTick(arangodb::velocypack::Slice const& slice,
-                       char const* attributeName, TRI_voc_tick_t& dst, bool allowNull);
+                       char const* attributeName, TRI_voc_tick_t& dst,
+                       bool allowNull);
 
  protected:
   ReplicationApplierConfiguration _configuration;
@@ -193,5 +194,3 @@ class ReplicationApplier {
 };
 
 }  // namespace arangodb
-
-#endif

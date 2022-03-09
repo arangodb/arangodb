@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,20 +21,25 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef APPLICATION_FEATURES_CONSOLE_FEATURE_H
-#define APPLICATION_FEATURES_CONSOLE_FEATURE_H 1
+#pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "GeneralServer/OperationMode.h"
+#include "RestServer/arangod.h"
 #include "RestServer/ConsoleThread.h"
+
+#include <memory>
 
 namespace arangodb {
 
-class ConsoleFeature final : public application_features::ApplicationFeature {
+class ConsoleFeature final : public ArangodFeature {
  public:
-  explicit ConsoleFeature(application_features::ApplicationServer& server);
+  static constexpr std::string_view name() noexcept { return "Console"; }
+
+  explicit ConsoleFeature(Server& server);
 
   void start() override final;
+  void beginShutdown() override final;
   void unprepare() override final;
 
  private:
@@ -42,5 +48,3 @@ class ConsoleFeature final : public application_features::ApplicationFeature {
 };
 
 }  // namespace arangodb
-
-#endif

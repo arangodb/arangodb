@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,12 +21,10 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_TESTS_WAITING_EXECUTION_BLOCK_MOCK_H
-#define ARANGODB_TESTS_WAITING_EXECUTION_BLOCK_MOCK_H 1
+#pragma once
 
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionState.h"
-#include "Aql/ResourceUsage.h"
 #include "Aql/ScatterExecutor.h"
 
 #include <velocypack/Builder.h>
@@ -35,7 +34,6 @@ namespace aql {
 class AqlItemBlock;
 class ExecutionEngine;
 class ExecutionNode;
-struct ResourceMonitor;
 class SkipResult;
 }  // namespace aql
 
@@ -52,7 +50,8 @@ class WaitingExecutionBlockMock final : public arangodb::aql::ExecutionBlock {
    */
   enum WaitingBehaviour {
     NEVER,  // Never return WAITING
-    ONCE,  // Return WAITING on the first execute call, afterwards return all blocks
+    ONCE,   // Return WAITING on the first execute call, afterwards return all
+            // blocks
     ALWAYS  // Return WAITING once for every execute Call.
   };
 
@@ -62,15 +61,15 @@ class WaitingExecutionBlockMock final : public arangodb::aql::ExecutionBlock {
    * @param engine Required by API.
    * @param node Required by API.
    * @param data Must be a shared_ptr to an VPackArray.
-   * @param variant The waiting behaviour of this block (default ALWAYS), see WaitingBehaviour
+   * @param variant The waiting behaviour of this block (default ALWAYS), see
+   * WaitingBehaviour
    */
-  WaitingExecutionBlockMock(arangodb::aql::ExecutionEngine* engine,
-                            arangodb::aql::ExecutionNode const* node,
-                            std::deque<arangodb::aql::SharedAqlItemBlockPtr>&& data,
-                            WaitingBehaviour variant = WaitingBehaviour::ALWAYS,
-                            size_t subqueryDepth = 0);
-
-  virtual std::pair<arangodb::aql::ExecutionState, Result> shutdown(int errorCode) override;
+  WaitingExecutionBlockMock(
+      arangodb::aql::ExecutionEngine* engine,
+      arangodb::aql::ExecutionNode const* node,
+      std::deque<arangodb::aql::SharedAqlItemBlockPtr>&& data,
+      WaitingBehaviour variant = WaitingBehaviour::ALWAYS,
+      size_t subqueryDepth = 0);
 
   /**
    * @brief Initialize the cursor. Return values will be alternating.
@@ -84,12 +83,14 @@ class WaitingExecutionBlockMock final : public arangodb::aql::ExecutionBlock {
   std::pair<arangodb::aql::ExecutionState, arangodb::Result> initializeCursor(
       arangodb::aql::InputAqlItemRow const& input) override;
 
-  std::tuple<arangodb::aql::ExecutionState, arangodb::aql::SkipResult, arangodb::aql::SharedAqlItemBlockPtr> execute(
-      arangodb::aql::AqlCallStack stack) override;
+  std::tuple<arangodb::aql::ExecutionState, arangodb::aql::SkipResult,
+             arangodb::aql::SharedAqlItemBlockPtr>
+  execute(arangodb::aql::AqlCallStack const& stack) override;
 
  private:
   // Implementation of execute
-  std::tuple<arangodb::aql::ExecutionState, arangodb::aql::SkipResult, arangodb::aql::SharedAqlItemBlockPtr>
+  std::tuple<arangodb::aql::ExecutionState, arangodb::aql::SkipResult,
+             arangodb::aql::SharedAqlItemBlockPtr>
   executeWithoutTrace(arangodb::aql::AqlCallStack stack);
 
  private:
@@ -104,5 +105,3 @@ class WaitingExecutionBlockMock final : public arangodb::aql::ExecutionBlock {
 
 }  // namespace tests
 }  // namespace arangodb
-
-#endif

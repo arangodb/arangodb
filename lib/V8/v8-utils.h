@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,14 +21,15 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_V8_V8__UTILS_H
-#define ARANGODB_V8_V8__UTILS_H 1
+#pragma once
 
 #include <stddef.h>
 #include <cstdint>
 #include <string>
 
 #include <v8.h>
+
+#include "Basics/ErrorCode.h"
 
 namespace arangodb {
 class Result;
@@ -84,7 +85,7 @@ static int const SLOT_EXTERNAL = 2;
 /// @brief unwraps a C++ class given a v8::Object
 ////////////////////////////////////////////////////////////////////////////////
 
-template <class T>
+template<class T>
 static T* TRI_UnwrapClass(v8::Handle<v8::Object> obj, int32_t type,
                           v8::Handle<v8::Context> context) {
   if (obj->InternalFieldCount() <= SLOT_CLASS) {
@@ -121,12 +122,6 @@ void TRI_LogV8Exception(v8::Isolate* isolate, v8::TryCatch*);
 bool TRI_ExecuteGlobalJavaScriptFile(v8::Isolate* isolate, char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief executes all files from a directory in a local context
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_ExecuteLocalJavaScriptDirectory(v8::Isolate* isolate, char const*);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief parses a file
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -136,17 +131,16 @@ bool TRI_ParseJavaScriptFile(v8::Isolate* isolate, char const*);
 /// @brief executes a string within a V8 context, optionally print the result
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Value> TRI_ExecuteJavaScriptString(v8::Isolate* isolate,
-                                                  v8::Handle<v8::Context> context,
-                                                  v8::Handle<v8::String> const source,
-                                                  v8::Handle<v8::String> const name,
-                                                  bool printResult);
+v8::Handle<v8::Value> TRI_ExecuteJavaScriptString(
+    v8::Isolate* isolate, v8::Handle<v8::Context> context,
+    v8::Handle<v8::String> const source, v8::Handle<v8::String> const name,
+    bool printResult);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an error in a javascript object, based on error number only
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_CreateErrorObject(v8::Isolate* isolate, int errorNumber);
+// void TRI_CreateErrorObject(v8::Isolate* isolate, ErrorCode errorNumber);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an error in a javascript object, based on arangodb::Result
@@ -157,8 +151,8 @@ void TRI_CreateErrorObject(v8::Isolate* isolate, arangodb::Result const&);
 /// @brief creates an error in a javascript object
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_CreateErrorObject(v8::Isolate* isolate, int errorNumber,
-                           std::string const& message, bool autoPrepend);
+void TRI_CreateErrorObject(v8::Isolate* isolate, ErrorCode errorNumber,
+                           std::string_view message, bool autoPrepend);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief normalize a v8 object
@@ -184,11 +178,8 @@ void TRI_ClearObjectCacheV8(v8::Isolate*);
 /// @brief stores the V8 utils function inside the global variable
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitV8Utils(v8::Isolate* isolate,
-                     v8::Handle<v8::Context>,
+void TRI_InitV8Utils(v8::Isolate* isolate, v8::Handle<v8::Context>,
                      std::string const& startupPath,
                      std::string const& modules);
 
 void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args);
-
-#endif

@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,8 +22,7 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_MODIFICATION_EXECUTOR_INFOS_H
-#define ARANGOD_AQL_MODIFICATION_EXECUTOR_INFOS_H
+#pragma once
 
 #include "Aql/Collection.h"
 #include "Aql/RegisterInfos.h"
@@ -31,11 +31,11 @@
 #include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
 namespace aql {
 
+class ExecutionEngine;
 class QueryContext;
 
 struct BoolWrapper {
@@ -64,21 +64,26 @@ struct IgnoreDocumentNotFound : BoolWrapper {
 };
 
 struct ModificationExecutorInfos {
-  ModificationExecutorInfos(RegisterId input1RegisterId, RegisterId input2RegisterId,
-                            RegisterId input3RegisterId, RegisterId outputNewRegisterId,
-                            RegisterId outputOldRegisterId, RegisterId outputRegisterId,
-                            arangodb::aql::QueryContext& query, OperationOptions options,
-                            aql::Collection const* aqlCollection, ProducesResults producesResults,
-                            ConsultAqlWriteFilter consultAqlWriteFilter,
-                            IgnoreErrors ignoreErrors, DoCount doCount, IsReplace isReplace,
-                            IgnoreDocumentNotFound ignoreDocumentNotFound);
+  ModificationExecutorInfos(
+      ExecutionEngine* engine, RegisterId input1RegisterId,
+      RegisterId input2RegisterId, RegisterId input3RegisterId,
+      RegisterId outputNewRegisterId, RegisterId outputOldRegisterId,
+      RegisterId outputRegisterId, arangodb::aql::QueryContext& query,
+      OperationOptions options, aql::Collection const* aqlCollection,
+      ProducesResults producesResults,
+      ConsultAqlWriteFilter consultAqlWriteFilter, IgnoreErrors ignoreErrors,
+      DoCount doCount, IsReplace isReplace,
+      IgnoreDocumentNotFound ignoreDocumentNotFound);
 
   ModificationExecutorInfos() = delete;
   ModificationExecutorInfos(ModificationExecutorInfos&&) = default;
   ModificationExecutorInfos(ModificationExecutorInfos const&) = delete;
   ~ModificationExecutorInfos() = default;
 
+  ExecutionEngine* engine() const { return _engine; }
+
   /// @brief the variable produced by Return
+  arangodb::aql::ExecutionEngine* _engine;
   arangodb::aql::QueryContext& _query;
   OperationOptions _options;
   aql::Collection const* _aqlCollection;
@@ -104,5 +109,3 @@ struct ModificationExecutorInfos {
 
 }  // namespace aql
 }  // namespace arangodb
-
-#endif

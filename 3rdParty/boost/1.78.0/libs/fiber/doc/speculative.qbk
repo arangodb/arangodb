@@ -1,0 +1,53 @@
+[/
+          Copyright Oliver Kowalke 2017.
+ Distributed under the Boost Software License, Version 1.0.
+    (See accompanying file LICENSE_1_0.txt or copy at
+          http://www.boost.org/LICENSE_1_0.txt
+]
+
+[#speculation]
+[section:speculation Specualtive execution]
+
+[heading Hardware transactional memory]
+
+With help of hardware transactional memory multiple logical processors
+execute a critical region speculatively, e.g. without explicit
+synchronization.[br]
+If the transactional execution completes successfully, then all memory
+operations performed within the transactional region are commited without any
+inter-thread serialization.[br]
+When the optimistic execution fails, the processor aborts the transaction and
+discards all performed modifications.[br]
+In non-transactional code a single lock serializes the access to a critical
+region. With a transactional memory, multiple logical processor start a
+transaction and update the memory (the data) inside the ciritical region.
+Unless some logical processors try to update the same data, the transactions
+would always succeed.
+
+
+[heading Intel Transactional Synchronisation Extensions (TSX)]
+
+TSX is Intel's implementation of hardware transactional memory in modern Intel
+processors[footnote intel.com: [@https://software.intel.com/en-us/node/695149
+Intel Transactional Synchronization Extensions]].[br]
+In TSX the hardware keeps track of which cachelines have been read from and
+which have been written to in a transaction. The cache-line size (64-byte) and
+the n-way set associative cache determine the maximum size of memory in a
+transaction. For instance if a transaction modifies 9 cache-lines at a
+processor with a 8-way set associative cache, the transaction will always be
+aborted.
+
+[note TXS is enabled if property `htm=tsx` is specified at b2 command-line and
+`BOOST_USE_TSX` is applied to the compiler.]
+
+[note A TSX-transaction will be aborted if the floating point state is modified
+inside a critical region. As a consequence floating point operations, e.g.
+store/load of floating point related registers during a fiber (context) switch
+are disabled.]
+
+[important TSX can not be used together with MSVC at this time!] 
+
+Boost.Fiber uses TSX-enabled spinlocks to protect critical regions (see section
+[link tuning Tuning]).
+
+[endsect]

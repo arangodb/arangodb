@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_ALGOS_SSSP_H
-#define ARANGODB_PREGEL_ALGOS_SSSP_H 1
+#pragma once
 
 #include "Pregel/Algorithm.h"
 
@@ -36,7 +36,8 @@ class SSSPAlgorithm : public Algorithm<int64_t, int64_t, int64_t> {
   std::string _sourceDocumentId, _resultField = "result";
 
  public:
-  explicit SSSPAlgorithm(application_features::ApplicationServer& server, VPackSlice userParams)
+  explicit SSSPAlgorithm(application_features::ApplicationServer& server,
+                         VPackSlice userParams)
       : Algorithm(server, "SSSP") {
     if (!userParams.isObject() || !userParams.hasKey("source")) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -56,19 +57,21 @@ class SSSPAlgorithm : public Algorithm<int64_t, int64_t, int64_t> {
   GraphFormat<int64_t, int64_t>* inputFormat() const override;
 
   MessageFormat<int64_t>* messageFormat() const override {
-    return new IntegerMessageFormat();
+    return new IntegerMessageFormat<int64_t>();
   }
 
   MessageCombiner<int64_t>* messageCombiner() const override {
     return new MinCombiner<int64_t>();
   }
 
-  VertexComputation<int64_t, int64_t, int64_t>* createComputation(WorkerConfig const*) const override;
-  VertexCompensation<int64_t, int64_t, int64_t>* createCompensation(WorkerConfig const*) const override;
+  VertexComputation<int64_t, int64_t, int64_t>* createComputation(
+      WorkerConfig const*) const override;
+  VertexCompensation<int64_t, int64_t, int64_t>* createCompensation(
+      WorkerConfig const*) const override;
 
-  uint32_t messageBatchSize(WorkerConfig const& config, MessageStats const& stats) const override;
+  uint32_t messageBatchSize(WorkerConfig const& config,
+                            MessageStats const& stats) const override;
 };
 }  // namespace algos
 }  // namespace pregel
 }  // namespace arangodb
-#endif

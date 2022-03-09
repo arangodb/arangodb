@@ -1,0 +1,17 @@
+name: arangodb_maintenance_action_registered_total
+renamedFrom: arangodb_maintenance_action_registered_counter
+introducedIn: "3.8.0"
+help: |
+  Counter of actions that have been registered in the action registry.
+unit: number
+type: counter
+category: Maintenance
+complexity: simple
+exposedBy:
+  - dbserver
+description: |
+  Database servers execute reconciliation actions to let the cluster converge
+  to the desired state. Actions are created, registered, queued and executed.
+  Once they are done they will eventually be removed.
+
+  This metric counts the number of actions that are queued or active.

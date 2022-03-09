@@ -5,10 +5,10 @@
 const _ = require('lodash');
 const fs = require('fs');
 const internal = require('internal');
-const rp = require('@arangodb/result-processing');
+const rp = require('@arangodb/testutils/result-processing');
 const yaml = require('js-yaml');
 
-const optionsDefaults = require('@arangodb/testing').optionsDefaults;
+const optionsDefaults = require('@arangodb/testutils/testing').optionsDefaults;
 
 /* Constants: */
 const BLUE = internal.COLORS.COLOR_BLUE;
@@ -59,6 +59,15 @@ function main (argv) {
   } else {
     readFile = [ options.readFile ];
   }
+  let otherFile;
+  if (options.hasOwnProperty('otherFile')) {
+    if (Array.isArray(options.otherFile)) {
+      otherFile = options.otherFile;
+    } else {
+      otherFile = [ options.otherFile ];
+    }
+  }
+  let i = 0;
   let rc = readFile.forEach(file => {
     let ret = true;
     let resultsDump;
@@ -74,14 +83,34 @@ function main (argv) {
       results = JSON.parse(resultsDump);
     }
     catch (ex) {
-      print(RED + "Failed to parse " + options.readFile + " - " + ex.message + RESET + "\n");
+      print(RED + "Failed to parse " + file + " - " + ex.message + RESET + "\n");
       return false;
+    }
+
+    let otherResults;
+    if (otherFile !== undefined) {
+      let otherResultsDump;
+      let f = otherFile[i];
+      try {
+        otherResultsDump = fs.read(f);
+        i+=1;
+      } catch (ex) {
+        print(RED + "other File not found [" + f + "]: " + ex.message + RESET + "\n");
+        return false;
+      }
+      try {
+        otherResults = JSON.parse(otherResultsDump);
+      }
+      catch (ex) {
+        print(RED + "Failed to parse " + f + " - " + ex.message + RESET + "\n");
+        return false;
+      }
     }
     _.defaults(options, optionsDefaults);
     try {
       print(YELLOW + "Analyzing: " + file + RESET);
       ret = ret && analyzers.forEach(function(which) {
-        rp.analyze[which](options, results);
+        rp.analyze[which](options, results, otherResults);
       });
     } catch (ex) {
       print("Failed to analyze [" + file + "]: " + ex.message + RESET + "\n");

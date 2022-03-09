@@ -30,6 +30,7 @@
 
 if (getOptions === true) {
   return {
+    'cluster.default-replication-factor': 2,
     'cluster.max-number-of-shards': 3,
     'cluster.min-replication-factor': 2,
     'cluster.max-replication-factor': 3

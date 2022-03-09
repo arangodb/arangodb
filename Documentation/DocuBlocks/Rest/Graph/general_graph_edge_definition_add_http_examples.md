@@ -13,6 +13,8 @@ it is used with exactly the same definition. It is not possible to
 store a definition "e" from "v1" to "v2" in the one graph, and "e"
 from "v2" to "v1" in the other graph.
 
+Additionally, collection creation options can be set.
+
 @RESTURLPARAMETERS
 
 @RESTURLPARAM{graph,string,required}
@@ -26,6 +28,16 @@ One or many vertex collections that can contain source vertices.
 
 @RESTBODYPARAM{to,array,required,string}
 One or many vertex collections that can contain target vertices.
+
+@RESTBODYPARAM{options,object,optional,post_api_edgedef_create_opts}
+A JSON object to set options for creating collections within this
+edge definition.
+
+@RESTSTRUCT{satellites,post_api_edgedef_create_opts,array,optional,string}
+An array of collection names that will be used to create SatelliteCollections
+for a Hybrid (Disjoint) SmartGraph (Enterprise Edition only). Each array element
+must be a string and a valid collection name. The collection type cannot be
+modified later.
 
 @RESTRETURNCODES
 

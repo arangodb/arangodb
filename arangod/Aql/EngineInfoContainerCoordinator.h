@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_ENGINE_INFO_CONTAINER_COORDINATOR_H
-#define ARANGOD_AQL_ENGINE_INFO_CONTAINER_COORDINATOR_H 1
+#pragma once
 
 #include "Aql/types.h"
 #include "Aql/ExecutionEngine.h"
@@ -45,7 +44,7 @@ class EngineInfoContainerCoordinator {
  private:
   struct EngineInfo {
    public:
-    EngineInfo(QueryId id, ExecutionNodeId idOfRemoteNode);
+    EngineInfo(EngineId id, ExecutionNodeId idOfRemoteNode);
 
     // This container is not responsible for nodes, they are managed by the AST
     // somewhere else.
@@ -61,14 +60,15 @@ class EngineInfoContainerCoordinator {
     void addNode(ExecutionNode* en);
 
     Result buildEngine(Query& query, MapRemoteToSnippet const& dbServerQueryIds,
-                       bool isfirst, std::unique_ptr<ExecutionEngine>& engine) const;
+                       bool isfirst,
+                       std::unique_ptr<ExecutionEngine>& engine) const;
 
-    QueryId queryId() const;
+    EngineId engineId() const;
 
    private:
     // The generated id how we can find this query part
     // in the coordinators registry.
-    QueryId const _id;
+    EngineId const _id;
 
     // The nodes belonging to this plan.
     std::vector<ExecutionNode*> _nodes;
@@ -112,5 +112,3 @@ class EngineInfoContainerCoordinator {
 
 }  // namespace aql
 }  // namespace arangodb
-
-#endif

@@ -149,10 +149,6 @@
           arangoHelper.renderEmpty('Please wait. Requesting cluster information...', 'fa fa-spin fa-circle-o-notch');
         }
 
-        if (navi !== false) {
-          arangoHelper.buildNodesSubNav('Overview');
-        }
-
         var scalingFunc = function (nodes) {
           $.ajax({
             type: 'GET',
@@ -160,37 +156,52 @@
             contentType: 'application/json',
             success: function (data) {
               if (window.location.hash === '#nodes') {
+                arangoHelper.buildNodesSubNav('Overview', false);
                 self.continueRender(nodes, data);
               }
+            },
+            error: function (err) {
+              arangoHelper.buildNodesSubNav('Overview', true);
+              self.renderFailure(err);
             }
           });
         };
 
-        $.ajax({
-          type: 'GET',
-          cache: false,
-          url: arangoHelper.databaseUrl('/_admin/cluster/health'),
-          contentType: 'application/json',
-          processData: false,
-          async: true,
-          success: function (data) {
-            if (window.location.hash === '#nodes') {
-              scalingFunc(data.Health);
-            }
-          },
-          error: function () {
-            if (window.location.hash === '#nodes') {
-              arangoHelper.arangoError('Cluster', 'Could not fetch cluster information');
-            }
-          }
-        });
+        if (window.App && window.App.lastHealthCheckResult) {
+          scalingFunc(window.App.lastHealthCheckResult.Health);
+        }
       }
     },
 
+    renderFailure: function (err) {
+      var title = 'Unexpected Failure';
+      var msg = 'See the browser developer console for more details.';
+
+      $(this.el).html('');
+      if (err.responseJSON && err.responseJSON.code === 403) {
+        title = 'Forbidden';
+        msg = 'No access to read nodes data.';
+      } else if (err.responseJSON && err.responseJSON.code && err.responseJSON.errorMessage) {
+        title = 'Error code: ' + err.responseJSON.code;
+        msg = err.responseJSON.errorMessage;
+      } else {
+        console.log(err);
+      }
+
+      // render info text
+      $(this.el).append(
+        '<div class="infoBox errorBox" style="background: white;">' +
+        '<h4>' + title + '</h4>' +
+        '<p>' + msg + '</p>' +
+        '</div>'
+      );
+    },
+
     continueRender: function (nodes, scaling) {
-      var coords = [];
-      var dbs = [];
-      var scale = false;
+      let coords = [];
+      let dbs = [];
+      let agents = [];
+      let scale = false;
 
       _.each(nodes, function (node, name) {
         node.id = name;
@@ -198,6 +209,8 @@
           coords.push(node);
         } else if (node.Role === 'DBServer') {
           dbs.push(node);
+        } else if (node.Role === 'Agent') {
+          agents.push(node);
         }
       });
       coords = _.sortBy(coords, function (o) { return o.ShortName; });
@@ -211,11 +224,14 @@
         this.$el.html(this.template.render({
           coords: coords,
           dbs: dbs,
+          agents: agents,
           scaling: scale,
           scaleProperties: scaleProperties,
           plannedDBs: scaling.numberOfDBServers,
           plannedCoords: scaling.numberOfCoordinators
         }));
+
+        arangoHelper.createTooltips();
 
         if (!scale) {
           $('.title').css('position', 'relative');
@@ -329,12 +345,14 @@
       };
 
       var callbackFunction = function (nodes) {
-        var coordsErrors = 0;
-        var coords = 0;
-        var coordsPending = 0;
-        var dbs = 0;
-        var dbsErrors = 0;
-        var dbsPending = 0;
+        let coordsErrors = 0;
+        let coords = 0;
+        let coordsPending = 0;
+        let dbs = 0;
+        let dbsErrors = 0;
+        let dbsPending = 0;
+        let agents = 0;
+        let agentErrors = 0;
 
         _.each(nodes, function (node) {
           if (node.Role === 'Coordinator') {
@@ -348,6 +366,12 @@
               dbs++;
             } else {
               dbsErrors++;
+            }
+          } else if (node.Role === 'Agent') {
+            if (node.Status === 'GOOD') {
+              agents++;
+            } else {
+              agentErrors++;
             }
           }
         });
@@ -369,7 +393,9 @@
                 coordsErrors: coordsErrors,
                 dbsPending: dbsPending,
                 dbsOk: dbs,
-                dbsErrors: dbsErrors
+                dbsErrors: dbsErrors,
+                agentsOk: agents,
+                agentErrors: agentErrors
               });
             } else {
               renderFunc('#infoDBs', dbs, dbsPending, dbsErrors);
@@ -385,16 +411,9 @@
         });
       };
 
-      $.ajax({
-        type: 'GET',
-        cache: false,
-        url: arangoHelper.databaseUrl('/_admin/cluster/health'),
-        contentType: 'application/json',
-        processData: false,
-        success: function (data) {
-          callbackFunction(data.Health);
-        }
-      });
+      if (window.App && window.App.lastHealthCheckResult) {
+        callbackFunction(window.App.lastHealthCheckResult.Health);
+      }
     },
 
     isPlanFinished: function () {

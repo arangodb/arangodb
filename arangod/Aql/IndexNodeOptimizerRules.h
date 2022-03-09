@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,8 +21,7 @@
 /// @author Yuriy Popov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_INDEX_NODE_OPTIMIZER_RULES_H
-#define ARANGOD_AQL_INDEX_NODE_OPTIMIZER_RULES_H 1
+#pragma once
 
 #include <memory>
 
@@ -33,11 +33,10 @@ struct OptimizerRule;
 class ExecutionPlan;
 
 /// @brief moves document materialization from index nodes to materialize nodes
-void lateDocumentMaterializationRule(arangodb::aql::Optimizer* opt,
-                     std::unique_ptr<arangodb::aql::ExecutionPlan> plan,
-                     arangodb::aql::OptimizerRule const& rule);
+void lateDocumentMaterializationRule(
+    arangodb::aql::Optimizer* opt,
+    std::unique_ptr<arangodb::aql::ExecutionPlan> plan,
+    arangodb::aql::OptimizerRule const& rule);
 
 }  // namespace aql
 }  // namespace arangodb
-
-#endif  // ARANGOD_AQL_INDEX_NODE_OPTIMIZER_RULES_H

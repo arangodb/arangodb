@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,8 +22,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_CLUSTER_REST_REPLICATION_HANDLER_H
-#define ARANGOD_CLUSTER_CLUSTER_REST_REPLICATION_HANDLER_H 1
+#pragma once
 
 #include "RestHandler/RestReplicationHandler.h"
 
@@ -31,8 +31,8 @@ namespace arangodb {
 /// @brief replication request handler
 class ClusterRestReplicationHandler : public RestReplicationHandler {
  public:
-  ClusterRestReplicationHandler(application_features::ApplicationServer&,
-                                GeneralRequest*, GeneralResponse*);
+  ClusterRestReplicationHandler(ArangodServer&, GeneralRequest*,
+                                GeneralResponse*);
   ~ClusterRestReplicationHandler() = default;
 
  public:
@@ -71,7 +71,8 @@ class ClusterRestReplicationHandler : public RestReplicationHandler {
 
   /// @brief handle a dump command for a specific collection
   void handleCommandDump() override;
+
+  /// @brief return the revision tree for a given collection, if available
+  void handleCommandRevisionTree() override;
 };
 }  // namespace arangodb
-
-#endif

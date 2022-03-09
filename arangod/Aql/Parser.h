@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_PARSER_H
-#define ARANGOD_AQL_PARSER_H 1
+#pragma once
 
 #include "Aql/Ast.h"
 #include "Basics/Common.h"
@@ -102,16 +101,16 @@ class Parser {
   QueryResult parseWithDetails();
 
   /// @brief register a parse error, position is specified as line / column
-  void registerParseError(int, char const*, char const*, int, int);
+  void registerParseError(ErrorCode errorCode, char const* format,
+                          std::string_view data, int line, int column);
 
   /// @brief register a parse error, position is specified as line / column
-  void registerParseError(int, char const*, int, int);
-
-  /// @brief register a non-parse error
-  void registerError(int, char const* = nullptr);
+  void registerParseError(ErrorCode errorCode, std::string_view data, int line,
+                          int column);
 
   /// @brief register a warning
-  void registerWarning(int, char const*, int, int);
+  void registerWarning(ErrorCode errorCode, std::string_view data, int line,
+                       int column);
 
   /// @brief push an AstNode array element on top of the stack
   /// the array must be removed from the stack via popArray
@@ -143,13 +142,13 @@ class Parser {
   /// @brief a pointer to the start of the query string
   QueryString const& queryString() const { return _queryString; }
 
- private:
   /// @brief the query
   QueryContext& _query;
 
   /// @brief abstract syntax tree for the query, build during parsing
   Ast& _ast;
-  
+
+  /// @brief query string (non-owning!)
   QueryString& _queryString;
 
   /// @brief lexer / scanner used when parsing the query (Aql/tokens.ll)
@@ -186,5 +185,3 @@ int Aqllex_destroy(void*);
 
 /// @brief forward for the context function provided by the lexer (.l)
 void Aqlset_extra(arangodb::aql::Parser*, void*);
-
-#endif

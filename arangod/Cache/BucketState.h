@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,13 +21,13 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_CACHE_BUCKET_STATE_H
-#define ARANGODB_CACHE_BUCKET_STATE_H
+#pragma once
 
 #include <atomic>
 #include <cstdint>
 #include <functional>
 #include <limits>
+#include <type_traits>
 
 namespace arangodb {
 namespace cache {
@@ -44,8 +44,6 @@ namespace cache {
 /// via an enum and must correspond to exactly one set bit.
 ////////////////////////////////////////////////////////////////////////////////
 struct BucketState {
-  typedef std::function<void()> CallbackType;
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Flags which can be queried or toggled to reflect state.
   ///
@@ -57,7 +55,7 @@ struct BucketState {
   //////////////////////////////////////////////////////////////////////////////
   enum class Flag : std::uint32_t {
     locked = 0x00000001,
-    blacklisted = 0x00000002,
+    banished = 0x00000002,
     disabled = 0x00000004,
     evictions = 0x00000008,
     migrated = 0x00000010,
@@ -71,22 +69,22 @@ struct BucketState {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Initializes state with no flags set and unlocked
   //////////////////////////////////////////////////////////////////////////////
-  BucketState();
+  BucketState() noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Initializes state to match another
   //////////////////////////////////////////////////////////////////////////////
-  BucketState(BucketState const& other);
+  BucketState(BucketState const& other) noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Initializes state to match another
   //////////////////////////////////////////////////////////////////////////////
-  BucketState& operator=(BucketState const& other);
+  BucketState& operator=(BucketState const& other) noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Checks if state is locked.
   //////////////////////////////////////////////////////////////////////////////
-  bool isLocked() const;
+  bool isLocked() const noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Used to lock state. Returns true if locked, false otherwise.
@@ -97,29 +95,39 @@ struct BucketState {
   /// locked or not. The optional second parameter is a function which will be
   /// called upon successfully locking the state.
   //////////////////////////////////////////////////////////////////////////////
-  bool lock(std::uint64_t maxTries = std::numeric_limits<std::uint64_t>::max(),
-            BucketState::CallbackType cb = []() -> void {});
+  bool lock(std::uint64_t maxTries =
+                std::numeric_limits<std::uint64_t>::max()) noexcept;
+
+  template<typename F>
+  bool lock(std::uint64_t maxTries, F&& cb) noexcept {
+    static_assert(std::is_nothrow_invocable_r_v<void, F>);
+    bool success = this->lock(maxTries);
+    if (success) {
+      std::invoke(std::forward<F>(cb));
+    }
+    return success;
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Unlocks the state. Requires state to be locked.
   //////////////////////////////////////////////////////////////////////////////
-  void unlock();
+  void unlock() noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Checks whether the given flag is set. Requires state to be locked.
   //////////////////////////////////////////////////////////////////////////////
-  bool isSet(BucketState::Flag flag) const;
-  bool isSet(BucketState::Flag flag1, BucketState::Flag flag2) const;
+  bool isSet(BucketState::Flag flag) const noexcept;
+  bool isSet(BucketState::Flag flag1, BucketState::Flag flag2) const noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Toggles the given flag. Requires state to be locked.
   //////////////////////////////////////////////////////////////////////////////
-  void toggleFlag(BucketState::Flag flag);
+  void toggleFlag(BucketState::Flag flag) noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Unsets all flags besides Flag::locked. Requires state to be locked.
   //////////////////////////////////////////////////////////////////////////////
-  void clear();
+  void clear() noexcept;
 
  private:
   std::atomic<std::uint32_t> _state;
@@ -131,5 +139,3 @@ static_assert(sizeof(BucketState) == sizeof(std::uint32_t),
 
 };  // end namespace cache
 };  // end namespace arangodb
-
-#endif

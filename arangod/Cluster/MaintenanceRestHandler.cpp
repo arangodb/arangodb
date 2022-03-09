@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -35,14 +36,13 @@
 #include "Logger/LoggerStream.h"
 
 #include "velocypack/Iterator.h"
-#include "velocypack/velocypack-aliases.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-MaintenanceRestHandler::MaintenanceRestHandler(application_features::ApplicationServer& server,
+MaintenanceRestHandler::MaintenanceRestHandler(ArangodServer& server,
                                                GeneralRequest* request,
                                                GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
@@ -57,7 +57,7 @@ RestStatus MaintenanceRestHandler::execute() {
       getAction();
       break;
 
-    // administrative commands for hot restore 
+    // administrative commands for hot restore
     case rest::RequestType::POST:
       return postAction();
       break;
@@ -74,7 +74,7 @@ RestStatus MaintenanceRestHandler::execute() {
 
     default:
       generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
-                    (int)rest::ResponseCode::METHOD_NOT_ALLOWED);
+                    TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
       break;
   }  // switch
 
@@ -87,35 +87,36 @@ RestStatus MaintenanceRestHandler::postAction() {
   if (!parseSuccess) {  // error message generated in parseVPackBody
     return RestStatus::DONE;
   }
-  
-  LOG_TOPIC("a0212", DEBUG, Logger::MAINTENANCE) << "parsed post action " << body.toJson();
-  
+
+  LOG_TOPIC("a0212", DEBUG, Logger::MAINTENANCE)
+      << "parsed post action " << body.toJson();
+
   std::stringstream es;
 
   if (body.isObject()) {
     std::chrono::seconds dur(0);
-    if (body.hasKey("execute") && body.get("execute").isString()) {
+    if (body.get("execute").isString()) {
       // {"execute": "pause", "duration": 60} / {"execute": "proceed"}
       auto const ex = body.get("execute").copyString();
       if (ex == "pause") {
-        if (body.hasKey("duration") && body.get("duration").isNumber()) {
+        if (body.get("duration").isNumber()) {
           dur = std::chrono::seconds(body.get("duration").getNumber<int64_t>());
           if (dur.count() <= 0 || dur.count() > 300) {
             es << "invalid mainenance pause duration: " << dur.count()
-                  << " seconds";
+               << " seconds";
           }
           // Pause maintenance
           LOG_TOPIC("1ee7a", DEBUG, Logger::MAINTENANCE)
-            << "Maintenance is paused for " << dur.count() << " seconds";
+              << "Maintenance is paused for " << dur.count() << " seconds";
           server().getFeature<MaintenanceFeature>().pause(dur);
         }
       } else if (ex == "proceed") {
         LOG_TOPIC("6c38a", DEBUG, Logger::MAINTENANCE)
-          << "Maintenance is prceeded "  << dur.count() << " seconds";
+            << "Maintenance is prceeded " << dur.count() << " seconds";
         server().getFeature<MaintenanceFeature>().proceed();
       } else {
         es << "invalid POST command";
-          }
+      }
     } else {
       es << "invalid POST object";
     }
@@ -133,12 +134,12 @@ RestStatus MaintenanceRestHandler::postAction() {
     }
     generateResult(rest::ResponseCode::OK, ok.slice());
   } else {
-    LOG_TOPIC("9faa1", ERR, Logger::MAINTENANCE) << es.str(); 
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, es.str());
+    LOG_TOPIC("9faa1", ERR, Logger::MAINTENANCE) << es.str();
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  es.str());
   }
 
   return RestStatus::DONE;
-
 }
 
 void MaintenanceRestHandler::putAction() {
@@ -148,10 +149,10 @@ void MaintenanceRestHandler::putAction() {
   try {
     parameters = _request->payload();
   } catch (VPackException const& ex) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  std::string(
-                      "expecting a valid JSON object in the request. got: ") +
-                      ex.what());
+    generateError(
+        rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+        std::string("expecting a valid JSON object in the request. got: ") +
+            ex.what());
     good = false;
   }  // catch
 
@@ -166,18 +167,17 @@ void MaintenanceRestHandler::putAction() {
 
     // bad json
     if (!good) {
-      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                    std::string(
-                        "unable to parse JSON object into key/value pairs."));
+      generateError(
+          rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+          std::string("unable to parse JSON object into key/value pairs."));
     }  // if
   }    // if
 
   if (good) {
-    Result result;
-
     // build the action
+    TRI_ASSERT(_actionDesc != nullptr);
     auto& maintenance = server().getFeature<MaintenanceFeature>();
-    result = maintenance.addAction(_actionDesc);
+    Result result = maintenance.addAction(_actionDesc);
 
     if (!result.ok()) {
       // possible errors? TRI_ERROR_BAD_PARAMETER    TRI_ERROR_TASK_DUPLICATE_ID
@@ -195,6 +195,7 @@ bool MaintenanceRestHandler::parsePutBody(VPackSlice const& parameters) {
   std::map<std::string, std::string> desc;
   auto prop = std::make_shared<VPackBuilder>();
   int priority = 1;
+  bool forced = false;
 
   VPackObjectIterator it(parameters, true);
   for (; it.valid() && good; ++it) {
@@ -206,17 +207,23 @@ bool MaintenanceRestHandler::parsePutBody(VPackSlice const& parameters) {
     // attempt insert into map ... but needs to be unique
     if (key.isString() && value.isString()) {
       good = desc.insert({key.copyString(), value.copyString()}).second;
-    } else if (key.isString() && (key.copyString() == "properties") && value.isObject()) {
+    } else if (key.isString() && (key.stringView() == "properties") &&
+               value.isObject()) {
       // code here
       prop.reset(new VPackBuilder(value));
-    } else if (key.isString() && (key.copyString() == "priority") && value.isInteger()) {
+    } else if (key.isString() && (key.stringView() == "priority") &&
+               value.isInteger()) {
       priority = static_cast<int>(value.getInt());
+    } else if (key.isString() && (key.stringView() == "forced") &&
+               value.isBool()) {
+      forced = value.isTrue();
     } else {
       good = false;
     }  // else
   }    // for
 
-  _actionDesc = std::make_shared<maintenance::ActionDescription>(desc, priority, prop);
+  _actionDesc = std::make_shared<maintenance::ActionDescription>(
+      std::move(desc), priority, forced, std::move(prop));
 
   return good;
 
@@ -225,25 +232,13 @@ bool MaintenanceRestHandler::parsePutBody(VPackSlice const& parameters) {
 void MaintenanceRestHandler::getAction() {
   // build the action
   auto& maintenance = server().getFeature<MaintenanceFeature>();
-
-  bool found;
-  std::string const& detailsStr = _request->value("details", found);
-
   VPackBuilder builder;
   {
     VPackObjectBuilder o(&builder);
-    builder.add("status", VPackValue(maintenance.isPaused() ? "paused" : "running"));
+    builder.add("status",
+                VPackValue(maintenance.isPaused() ? "paused" : "running"));
     builder.add(VPackValue("registry"));
     maintenance.toVelocyPack(builder);
-    if (found && StringUtils::boolean(detailsStr)) {
-      builder.add(VPackValue("state"));
-
-      auto& cluster = server().getFeature<ClusterFeature>();
-      auto thread = cluster.heartbeatThread();
-      if (thread) {
-        thread->agencySync().getLocalCollections(builder);
-      }
-    }
   }
 
   generateResult(rest::ResponseCode::OK, builder.slice());

@@ -1,11 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite for arangodb::cache::BucketState
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -39,9 +36,13 @@ TEST(CacheBucketStateTest, test_lock_methods) {
 
   std::uint32_t outsideBucketState = 0;
 
-  auto cb1 = [&outsideBucketState]() -> void { outsideBucketState = 1; };
+  auto cb1 = [&outsideBucketState]() noexcept -> void {
+    outsideBucketState = 1;
+  };
 
-  auto cb2 = [&outsideBucketState]() -> void { outsideBucketState = 2; };
+  auto cb2 = [&outsideBucketState]() noexcept -> void {
+    outsideBucketState = 2;
+  };
 
   // check lock without contention
   ASSERT_FALSE(state.isLocked());

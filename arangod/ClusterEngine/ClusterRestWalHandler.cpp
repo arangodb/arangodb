@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -39,7 +40,7 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 
-ClusterRestWalHandler::ClusterRestWalHandler(application_features::ApplicationServer& server,
+ClusterRestWalHandler::ClusterRestWalHandler(ArangodServer& server,
                                              GeneralRequest* request,
                                              GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
@@ -76,7 +77,8 @@ RestStatus ClusterRestWalHandler::execute() {
     return RestStatus::DONE;
   }
 
-  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   return RestStatus::DONE;
 }
 
@@ -104,7 +106,6 @@ void ClusterRestWalHandler::flush() {
 
   bool waitForSync = false;
   bool waitForCollector = false;
-  double maxWaitTime = 300.0;
 
   if (slice.isObject()) {
     // got a request body
@@ -121,11 +122,6 @@ void ClusterRestWalHandler::flush() {
     } else if (value.isBoolean()) {
       waitForCollector = value.getBoolean();
     }
-
-    value = slice.get("maxWaitTime");
-    if (value.isNumber()) {
-      maxWaitTime = value.getNumericValue<double>();
-    }
   } else {
     // no request body
     bool found;
@@ -141,27 +137,23 @@ void ClusterRestWalHandler::flush() {
         waitForCollector = (v == "1" || v == "true");
       }
     }
-    {
-      std::string const& v = _request->value("maxWaitTime", found);
-      if (found) {
-        maxWaitTime = basics::StringUtils::doubleDecimal(v);
-      }
-    }
   }
 
   auto& feature = server().getFeature<ClusterFeature>();
-  int res = flushWalOnAllDBServers(feature, waitForSync, waitForCollector, maxWaitTime);
+  auto res = flushWalOnAllDBServers(feature, waitForSync, waitForCollector);
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
   }
-  generateResult(rest::ResponseCode::OK, arangodb::velocypack::Slice::emptyObjectSlice());
+  generateResult(rest::ResponseCode::OK,
+                 arangodb::velocypack::Slice::emptyObjectSlice());
 }
 
 void ClusterRestWalHandler::transactions() {
   auto* mngr = transaction::ManagerFeature::manager();
   VPackBuilder builder;
   builder.openObject();
-  builder.add("runningTransactions", VPackValue(mngr->getActiveTransactionCount()));
+  builder.add("runningTransactions",
+              VPackValue(mngr->getActiveTransactionCount()));
   builder.close();
   generateResult(rest::ResponseCode::NOT_IMPLEMENTED, builder.slice());
 }

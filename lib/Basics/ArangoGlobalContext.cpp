@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -33,13 +34,6 @@
 #include <unistd.h>
 #endif
 
-#ifdef _WIN32
-#include <DbgHelp.h>
-#if ARANGODB_ENABLE_BACKTRACE
-#include <iostream>
-#endif
-#endif
-
 #ifdef TRI_HAVE_SIGNAL_H
 #include <signal.h>
 #endif
@@ -68,7 +62,8 @@ inline void ADB_WindowsExitFunction(int, void*) {}
 // Disable a warning caused by the call to ADB_WindowsExitFunction() in
 // ~ArangoGlobalContext().
 #pragma warning(push)
-#pragma warning(disable : 4722)  // destructor never returns, potential memory leak
+#pragma warning( \
+    disable : 4722)  // destructor never returns, potential memory leak
 #endif
 
 using namespace arangodb;
@@ -79,70 +74,16 @@ namespace {
 #ifndef _WIN32
 static void ReopenLog(int) { LogAppender::reopen(); }
 #endif
-
-#ifdef _WIN32
-static std::string miniDumpFilename = "c:\\arangodpanic.dmp";
-
-LONG CALLBACK unhandledExceptionHandler(EXCEPTION_POINTERS* e) {
-#if ARANGODB_ENABLE_BACKTRACE
-
-  if ((e != nullptr) && (e->ExceptionRecord != nullptr)) {
-    LOG_FATAL_WINDOWS("Unhandled exception: %d", (int)e->ExceptionRecord->ExceptionCode);
-  } else {
-    LOG_FATAL_WINDOWS("Unhandled exception without ExceptionCode!");
-  }
-
-  std::string bt;
-  TRI_GetBacktrace(bt);
-  std::cerr << bt << std::endl;
-  LOG_FATAL_WINDOWS(bt.c_str());
-
-  HANDLE hFile = CreateFile(miniDumpFilename.c_str(), GENERIC_WRITE, FILE_SHARE_READ,
-                            0, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
-
-  if (hFile == INVALID_HANDLE_VALUE) {
-    LOG_FATAL_WINDOWS("could not open minidump file : %lu", GetLastError());
-    return EXCEPTION_CONTINUE_SEARCH;
-  }
-
-  MINIDUMP_EXCEPTION_INFORMATION exceptionInfo;
-  exceptionInfo.ThreadId = GetCurrentThreadId();
-  exceptionInfo.ExceptionPointers = e;
-  exceptionInfo.ClientPointers = FALSE;
-
-  MiniDumpWriteDump(GetCurrentProcess(), GetCurrentProcessId(), hFile,
-                    MINIDUMP_TYPE(MiniDumpWithIndirectlyReferencedMemory |
-                                  MiniDumpScanMemory | MiniDumpWithFullMemory),
-                    e ? &exceptionInfo : nullptr, nullptr, nullptr);
-
-  if (hFile) {
-    CloseHandle(hFile);
-    hFile = nullptr;
-  }
-
-  LOG_FATAL_WINDOWS("wrote minidump: %s", miniDumpFilename.c_str());
-#endif
-
-  if ((e != nullptr) && (e->ExceptionRecord != nullptr)) {
-    LOG_FATAL_WINDOWS("Unhandled exception: %d - will crash now.",
-                      (int)e->ExceptionRecord->ExceptionCode);
-  } else {
-    LOG_FATAL_WINDOWS(
-        "Unhandled exception without ExceptionCode - will crash now.!");
-  }
-
-  return EXCEPTION_CONTINUE_SEARCH;
-}
-#endif
-
 }  // namespace
 
 ArangoGlobalContext* ArangoGlobalContext::CONTEXT = nullptr;
 
-ArangoGlobalContext::ArangoGlobalContext(int /*argc*/, char* argv[], char const* installDirectory)
+ArangoGlobalContext::ArangoGlobalContext(int /*argc*/, char* argv[],
+                                         char const* installDirectory)
     : _binaryName(TRI_BinaryName(argv[0])),
       _binaryPath(TRI_LocateBinaryPath(argv[0])),
-      _runRoot(TRI_GetInstallRoot(TRI_LocateBinaryPath(argv[0]), installDirectory)),
+      _runRoot(
+          TRI_GetInstallRoot(TRI_LocateBinaryPath(argv[0]), installDirectory)),
       _ret(EXIT_FAILURE) {
 #ifndef _WIN32
 #ifndef __APPLE__
@@ -159,13 +100,7 @@ ArangoGlobalContext::ArangoGlobalContext(int /*argc*/, char* argv[], char const*
 
   ADB_WindowsEntryFunction();
 
-#ifdef _WIN32
-  // SetUnhandledExceptionFilter(unhandledExceptionHandler);
-#endif
-
   // global initialization
-  TRI_InitializeError();
-
   RandomGenerator::initialize(RandomGenerator::RandomType::MERSENNE);
 
   arangodb::rest::Version::initialize();
@@ -198,16 +133,6 @@ void ArangoGlobalContext::installHup() {
 #endif
 }
 
-// This function is called at end of TempFeature::start()
-void ArangoGlobalContext::createMiniDumpFilename() {
-#ifdef _WIN32
-  miniDumpFilename = TRI_GetTempPath();
-
-  miniDumpFilename +=
-      "\\minidump_" + std::to_string(GetCurrentProcessId()) + ".dmp";
-#endif
-}
-
 void ArangoGlobalContext::normalizePath(std::vector<std::string>& paths,
                                         char const* whichPath, bool fatal) {
   for (auto& path : paths) {
@@ -215,19 +140,22 @@ void ArangoGlobalContext::normalizePath(std::vector<std::string>& paths,
   }
 }
 
-void ArangoGlobalContext::normalizePath(std::string& path, char const* whichPath, bool fatal) {
+void ArangoGlobalContext::normalizePath(std::string& path,
+                                        char const* whichPath, bool fatal) {
   StringUtils::rTrimInPlace(path, TRI_DIR_SEPARATOR_STR);
 
   arangodb::basics::FileUtils::normalizePath(path);
   if (!arangodb::basics::FileUtils::exists(path)) {
-    std::string directory = arangodb::basics::FileUtils::buildFilename(_runRoot, path);
+    std::string directory =
+        arangodb::basics::FileUtils::buildFilename(_runRoot, path);
     if (!arangodb::basics::FileUtils::exists(directory)) {
       if (!fatal) {
         return;
       }
       LOG_TOPIC("3537a", FATAL, arangodb::Logger::FIXME)
-          << "failed to locate " << whichPath << " directory, its neither available in '"
-          << path << "' nor in '" << directory << "'";
+          << "failed to locate " << whichPath
+          << " directory, its neither available in '" << path << "' nor in '"
+          << directory << "'";
       FATAL_ERROR_EXIT();
     }
     arangodb::basics::FileUtils::normalizePath(directory);

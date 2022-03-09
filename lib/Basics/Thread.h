@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,8 +22,7 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_THREAD_H
-#define ARANGODB_BASICS_THREAD_H 1
+#pragma once
 
 #include <atomic>
 
@@ -56,13 +55,11 @@ class Thread {
 #endif
 
   enum class ThreadState { CREATED, STARTING, STARTED, STOPPING, STOPPED };
-  
-  std::string stringifyState() {
-    return stringify(state());
-  }
+
+  std::string stringifyState() { return stringify(state()); }
 
   static std::string stringify(ThreadState);
-  
+
   /// @brief returns the process id
   static TRI_pid_t currentProcessId();
 
@@ -85,8 +82,9 @@ class Thread {
   static TRI_tid_t currentThreadId();
 
  public:
-  Thread(application_features::ApplicationServer& server, std::string const& name,
-         bool deleteOnExit = false, std::uint32_t terminationTimeout = INFINITE);
+  Thread(application_features::ApplicationServer& server,
+         std::string const& name, bool deleteOnExit = false,
+         std::uint32_t terminationTimeout = INFINITE);
   virtual ~Thread();
 
   // whether or not the thread is allowed to start during prepare
@@ -96,7 +94,7 @@ class Thread {
   virtual bool isSilent() const { return false; }
 
   /// @brief the underlying application server
-  application_features::ApplicationServer& server() { return _server; }
+  application_features::ApplicationServer& server() noexcept { return _server; }
 
   /// @brief flags the thread as stopping
   /// Classes that override this function must ensure that they
@@ -108,29 +106,31 @@ class Thread {
   }
 
   /// @brief name of a thread
-  std::string const& name() const { return _name; }
+  std::string const& name() const noexcept { return _name; }
 
   /// @brief returns the thread number
   ///
   /// See currentThreadNumber().
-  uint64_t threadNumber() const { return _threadNumber; }
+  uint64_t threadNumber() const noexcept { return _threadNumber; }
 
   /// @brief false, if the thread is just created
-  bool hasStarted() const { return _state.load() != ThreadState::CREATED; }
+  bool hasStarted() const noexcept {
+    return _state.load() != ThreadState::CREATED;
+  }
 
   /// @brief true, if the thread is still running
-  bool isRunning() const {
+  bool isRunning() const noexcept {
     return _state.load(std::memory_order_relaxed) != ThreadState::STOPPED;
   }
 
   /// @brief checks if the current thread was asked to stop
-  bool isStopping() const;
+  bool isStopping() const noexcept;
 
   /// @brief starts the thread
   bool start(basics::ConditionVariable* _finishedCondition = nullptr);
-  
+
   /// @brief return the threads current state
-  ThreadState state() const {
+  ThreadState state() const noexcept {
     return _state.load(std::memory_order_relaxed);
   }
 
@@ -143,23 +143,23 @@ class Thread {
   /// class (potential race on the objects vtable). Usually the call to
   /// shutdown should be the very first thing in the destructor. Any access
   /// to members of the thread that happen before the call to shutdown must
-  /// be threadsafe!
+  /// be thread-safe!
   void shutdown();
 
  protected:
-  /// @brief the thread program
+  /// @brief the thread program. note that any implementation of run() is
+  /// responsible for handling its own exceptions inside run(). failure to do
+  /// so will lead to the thread being aborted, and the exception escaping
+  /// from  it!!
   virtual void run() = 0;
-
-  /// @brief optional notification call when thread gets unplanned exception
-  virtual void crashNotification(std::exception const&) {}
 
  private:
   /// @brief static started with access to the private variables
   static void startThread(void* arg);
-  void markAsStopped();
+  void markAsStopped() noexcept;
   void runMe();
-  void releaseRef();
- 
+  void releaseRef() noexcept;
+
  protected:
   application_features::ApplicationServer& _server;
 
@@ -176,15 +176,36 @@ class Thread {
 
   // The max timeout (in ms) to wait for the thread to terminate.
   // Failure to terminate within the specified time results in process abortion!
-  // The default value is INFINITE, i.e., we want to wait forever instead of aborting the process.
+  // The default value is INFINITE, i.e., we want to wait forever instead of
+  // aborting the process.
   std::uint32_t _terminationTimeout;
-  
+
   bool const _deleteOnExit;
 
   basics::ConditionVariable* _finishedCondition;
 
   std::atomic<ThreadState> _state;
 };
-}  // namespace arangodb
 
+template<typename ServerT>
+class ServerThread : public Thread {
+ public:
+  using Server = ServerT;
+
+  ServerThread(Server& server, std::string const& name,
+               bool deleteOnExit = false,
+               std::uint32_t terminationTimeout = INFINITE)
+      : Thread{server, name, deleteOnExit, terminationTimeout} {}
+
+  Server& server() noexcept {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    auto* p = dynamic_cast<Server*>(&Thread::server());
+    TRI_ASSERT(p);
+    return *p;
+#else
+    return static_cast<Server&>(Thread::server());
 #endif
+  }
+};
+
+}  // namespace arangodb

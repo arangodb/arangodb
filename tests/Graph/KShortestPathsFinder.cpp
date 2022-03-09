@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019-2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -47,7 +48,6 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 // test setup
 #include "../Mocks/Servers.h"
@@ -69,7 +69,7 @@ class KShortestPathsFinderTest : public ::testing::Test {
   GraphTestSetup s;
   MockGraphDatabase gdb;
 
-  std::unique_ptr<arangodb::aql::Query> query;
+  std::shared_ptr<arangodb::aql::Query> query;
   std::unique_ptr<arangodb::graph::ShortestPathOptions> spo;
 
   KShortestPathsFinder* finder;
@@ -127,7 +127,8 @@ TEST_F(KShortestPathsFinderTest, path_of_length_1) {
   finder->startKShortestPathsTraversal(start->slice(), end->slice());
 
   ASSERT_TRUE(finder->getNextPathShortestPathResult(result));
-  auto cpr = checkPath(spo.get(), result, {"1", "2"}, {{}, {"v/1", "v/2"}}, msgs);
+  auto cpr =
+      checkPath(spo.get(), result, {"1", "2"}, {{}, {"v/1", "v/2"}}, msgs);
   ASSERT_TRUE(cpr) << msgs;
 }
 
@@ -140,8 +141,9 @@ TEST_F(KShortestPathsFinderTest, path_of_length_4) {
   finder->startKShortestPathsTraversal(start->slice(), end->slice());
 
   ASSERT_TRUE(finder->getNextPathShortestPathResult(result));
-  auto cpr = checkPath(spo.get(), result, {"1", "2", "3", "4"},
-                       {{}, {"v/1", "v/2"}, {"v/2", "v/3"}, {"v/3", "v/4"}}, msgs);
+  auto cpr =
+      checkPath(spo.get(), result, {"1", "2", "3", "4"},
+                {{}, {"v/1", "v/2"}, {"v/2", "v/3"}, {"v/3", "v/4"}}, msgs);
   ASSERT_TRUE(cpr) << msgs;
 }
 
@@ -216,7 +218,7 @@ class KShortestPathsFinderTestWeights : public ::testing::Test {
   GraphTestSetup s;
   MockGraphDatabase gdb;
 
-  std::unique_ptr<arangodb::aql::Query> query;
+  std::shared_ptr<arangodb::aql::Query> query;
   std::unique_ptr<arangodb::graph::ShortestPathOptions> spo;
 
   KShortestPathsFinder* finder;
@@ -236,7 +238,7 @@ class KShortestPathsFinderTestWeights : public ::testing::Test {
     query = gdb.getQuery("RETURN 1", std::vector<std::string>{"v", "e"});
 
     spo = gdb.getShortestPathOptions(query.get());
-    spo->weightAttribute = "cost";
+    spo->setWeightAttribute("cost");
 
     finder = new KShortestPathsFinder(*spo);
   }

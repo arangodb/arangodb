@@ -1,0 +1,11 @@
+[chapter Release Notes
+    [quickbook 1.7]
+    [id rn]
+]
+
+[section Version 1.67]
+
+* The Boost.Python library names now contain the Python version suffix.
+  A variant compiled with Python 2.7 will thus produce library names
+  `boost_python27` and `boost_numpy27`, etc., making it possible to host
+  variants for multiple Python versions next to each other.

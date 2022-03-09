@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_LIB_ASIO_NS_H
-#define ARANGOD_LIB_ASIO_NS_H 1
+#pragma once
 
 // make sure that IOCP is used on windows
 #if defined(_WIN32) && !defined(_WIN32_WINNT)
@@ -67,7 +67,5 @@ using system_error = boost::system::system_error;
 }  // namespace boost
 
 namespace asio_ns = boost::asio;
-
-#endif
 
 #endif

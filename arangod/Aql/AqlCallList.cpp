@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -31,7 +32,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <iostream>
 #include <map>
@@ -43,15 +43,23 @@ using namespace arangodb::aql;
 namespace {
 // hack for MSVC
 auto getStringView(VPackSlice slice) -> std::string_view {
-  velocypack::StringRef ref = slice.stringRef();
+  std::string_view ref = slice.stringView();
   return std::string_view(ref.data(), ref.size());
 }
 }  // namespace
 
-AqlCallList::AqlCallList(AqlCall const& call) : _specificCalls{call} {}
+AqlCallList::AqlCallList(AqlCall const& call) : _specificCalls{call} {
+  // We can never create a new CallList with existing skipCounter
+  TRI_ASSERT(call.getSkipCount() == 0);
+}
 
-AqlCallList::AqlCallList(AqlCall const& specificCall, AqlCall const& defaultCall)
-    : _specificCalls{specificCall}, _defaultCall{defaultCall} {}
+AqlCallList::AqlCallList(AqlCall const& specificCall,
+                         AqlCall const& defaultCall)
+    : _specificCalls{specificCall}, _defaultCall{defaultCall} {
+  // We can never create a new CallList with existing skipCounter
+  TRI_ASSERT(specificCall.getSkipCount() == 0);
+  TRI_ASSERT(defaultCall.getSkipCount() == 0);
+}
 
 [[nodiscard]] auto AqlCallList::popNextCall() -> AqlCall {
   TRI_ASSERT(hasMoreCalls());
@@ -83,7 +91,7 @@ AqlCallList::AqlCallList(AqlCall const& specificCall, AqlCall const& defaultCall
 
 [[nodiscard]] auto AqlCallList::hasDefaultCalls() const noexcept -> bool {
   return _defaultCall.has_value();
-};
+}
 
 [[nodiscard]] auto AqlCallList::modifyNextCall() -> AqlCall& {
   TRI_ASSERT(hasMoreCalls());
@@ -117,7 +125,8 @@ auto AqlCallList::fromVelocyPack(VPackSlice slice) -> ResultT<AqlCallList> {
   expectedPropertiesFound.emplace(StaticStrings::AqlCallListSpecific, false);
   expectedPropertiesFound.emplace(StaticStrings::AqlCallListDefault, false);
 
-  auto const readSpecific = [](velocypack::Slice slice) -> ResultT<std::vector<AqlCall>> {
+  auto const readSpecific =
+      [](velocypack::Slice slice) -> ResultT<std::vector<AqlCall>> {
     if (ADB_UNLIKELY(!slice.isArray())) {
       auto message = std::string{"When deserializating AqlCall: When reading " +
                                  StaticStrings::AqlCallListSpecific +
@@ -128,13 +137,13 @@ auto AqlCallList::fromVelocyPack(VPackSlice slice) -> ResultT<AqlCallList> {
     }
     std::vector<AqlCall> res;
     res.reserve(slice.length());
-    for (auto const& c : VPackArrayIterator(slice)) {
+    for (VPackSlice const c : VPackArrayIterator(slice)) {
       auto maybeAqlCall = AqlCall::fromVelocyPack(c);
       if (ADB_UNLIKELY(maybeAqlCall.fail())) {
         auto message = std::string{"When deserializing AqlCallList: entry "};
         message += std::to_string(res.size());
         message += ": ";
-        message += std::move(maybeAqlCall).errorMessage();
+        message += maybeAqlCall.errorMessage();
         return Result(TRI_ERROR_TYPE_ERROR, std::move(message));
       }
       res.emplace_back(maybeAqlCall.get());
@@ -142,7 +151,8 @@ auto AqlCallList::fromVelocyPack(VPackSlice slice) -> ResultT<AqlCallList> {
     return res;
   };
 
-  auto const readDefault = [](velocypack::Slice slice) -> ResultT<std::optional<AqlCall>> {
+  auto const readDefault =
+      [](velocypack::Slice slice) -> ResultT<std::optional<AqlCall>> {
     if (ADB_UNLIKELY(!slice.isObject() && !slice.isNull())) {
       auto message =
           std::string{"When deserializating AqlCallList: When reading " +
@@ -158,7 +168,7 @@ auto AqlCallList::fromVelocyPack(VPackSlice slice) -> ResultT<AqlCallList> {
     auto maybeAqlCall = AqlCall::fromVelocyPack(slice);
     if (ADB_UNLIKELY(maybeAqlCall.fail())) {
       auto message = std::string{"When deserializing AqlCallList: default "};
-      message += std::move(maybeAqlCall).errorMessage();
+      message += maybeAqlCall.errorMessage();
       return Result(TRI_ERROR_TYPE_ERROR, std::move(message));
     }
     return {std::move(maybeAqlCall.get())};
@@ -198,7 +208,8 @@ auto AqlCallList::fromVelocyPack(VPackSlice slice) -> ResultT<AqlCallList> {
       result._defaultCall = maybeCall.get();
     } else {
       LOG_TOPIC("c30c1", WARN, Logger::AQL)
-          << "When deserializating AqlCallList: Encountered unexpected key " << key;
+          << "When deserializating AqlCallList: Encountered unexpected key "
+          << key;
       // If you run into this assertion during rolling upgrades after adding a
       // new attribute, remove it in the older version.
       TRI_ASSERT(false);
@@ -245,7 +256,8 @@ auto AqlCallList::toString() const -> std::string {
   return stream.str();
 }
 
-auto AqlCallList::requestLessDataThan(AqlCallList const& other) const noexcept -> bool {
+auto AqlCallList::requestLessDataThan(AqlCallList const& other) const noexcept
+    -> bool {
   if (other._defaultCall.has_value()) {
     // Let is straightly check the default call.
     // We do not know if we have already filled one specific call
@@ -266,7 +278,8 @@ auto AqlCallList::requestLessDataThan(AqlCallList const& other) const noexcept -
     return true;
   }
   if (_defaultCall.has_value()) {
-    // We cannot reach a state with default call, if the original does not have one
+    // We cannot reach a state with default call, if the original does not have
+    // one
     return false;
   }
   // NOTE: For simplicity we only implemented this for the single specific call
@@ -283,7 +296,8 @@ auto AqlCallList::requestLessDataThan(AqlCallList const& other) const noexcept -
   return true;
 }
 
-bool arangodb::aql::operator==(AqlCallList const& left, AqlCallList const& right) {
+bool arangodb::aql::operator==(AqlCallList const& left,
+                               AqlCallList const& right) {
   if (left._specificCalls.size() != right._specificCalls.size()) {
     return false;
   }
@@ -299,7 +313,8 @@ bool arangodb::aql::operator==(AqlCallList const& left, AqlCallList const& right
   return true;
 }
 
-auto arangodb::aql::operator<<(std::ostream& out, AqlCallList const& list) -> std::ostream& {
+auto arangodb::aql::operator<<(std::ostream& out, AqlCallList const& list)
+    -> std::ostream& {
   out << "{specific: [ ";
   for (auto const& [index, call] : enumerate(list._specificCalls)) {
     if (index > 0) {

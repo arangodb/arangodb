@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -43,7 +43,8 @@ inline static std::chrono::system_clock::duration secs_since_epoch() {
   return std::chrono::system_clock::now().time_since_epoch();
 }
 
-ActionBase::ActionBase(MaintenanceFeature& feature, ActionDescription const& desc)
+ActionBase::ActionBase(MaintenanceFeature& feature,
+                       ActionDescription const& desc)
     : _feature(feature),
       _description(desc),
       _state(READY),
@@ -102,7 +103,8 @@ bool ActionBase::fastTrack() const {
 /// @brief execution finished successfully or failed ... and race timer expired
 bool ActionBase::done() const {
   return (COMPLETE == _state || FAILED == _state) &&
-         _actionDone.load() + std::chrono::seconds(_feature.getSecondsActionsBlock()) <=
+         _actionDone.load() +
+                 std::chrono::seconds(_feature.getSecondsActionsBlock()) <=
              secs_since_epoch();
 
 }  // ActionBase::done
@@ -112,12 +114,14 @@ ActionDescription const& ActionBase::describe() const { return _description; }
 MaintenanceFeature& ActionBase::feature() const { return _feature; }
 
 VPackSlice const ActionBase::properties() const {
+  TRI_ASSERT(_description.properties() != nullptr);
   return _description.properties()->slice();
 }
 
 /// @brief Initiate a new action that will start immediately, pausing this
 /// action
-void ActionBase::createPreAction(std::shared_ptr<ActionDescription> const& description) {
+void ActionBase::createPreAction(
+    std::shared_ptr<ActionDescription> const& description) {
   _preAction = description;
   std::shared_ptr<Action> new_action = _feature.preAction(description);
 
@@ -126,19 +130,21 @@ void ActionBase::createPreAction(std::shared_ptr<ActionDescription> const& descr
   if (_preAction && new_action->ok()) {
     setState(WAITINGPRE);
   } else {
-    _result.reset(TRI_ERROR_BAD_PARAMETER, "preAction rejected parameters.");
+    result(TRI_ERROR_BAD_PARAMETER, "preAction rejected parameters.");
   }  // else
 
 }  // ActionBase::createPreAction
 
 /// @brief Retrieve pointer to action that should run before this one
 std::shared_ptr<Action> ActionBase::getPreAction() {
-  return (_preAction != nullptr) ? _feature.findFirstNotDoneAction(_preAction) : nullptr;
+  return (_preAction != nullptr) ? _feature.findFirstNotDoneAction(_preAction)
+                                 : nullptr;
 }
 
 /// @brief Retrieve pointer to action that should run after this one
 std::shared_ptr<Action> ActionBase::getPostAction() {
-  return (_postAction != nullptr) ? _feature.findFirstNotDoneAction(_postAction) : nullptr;
+  return (_postAction != nullptr) ? _feature.findFirstNotDoneAction(_postAction)
+                                  : nullptr;
 }
 
 // FIXMEMAINTENANCE: Code path could corrupt registry object because
@@ -146,14 +152,15 @@ std::shared_ptr<Action> ActionBase::getPostAction() {
 
 /// @brief Create a new action that will start after this action successfully
 /// completes
-void ActionBase::createPostAction(std::shared_ptr<ActionDescription> const& description) {
+void ActionBase::createPostAction(
+    std::shared_ptr<ActionDescription> const& description) {
   // postAction() sets up what we need
   _postAction = description;
   if (_postAction) {
     _feature.postAction(description);
   } else {
-    _result.reset(TRI_ERROR_BAD_PARAMETER,
-                  "postAction rejected parameters for _postAction.");
+    result(TRI_ERROR_BAD_PARAMETER,
+           "postAction rejected parameters for _postAction.");
   }
 }  // ActionBase::createPostAction
 
@@ -174,12 +181,21 @@ void ActionBase::endStats() {
 
 }  // ActionBase::endStats
 
-Result arangodb::actionError(int errorCode, std::string const& errorMessage) {
+ShardDefinition::ShardDefinition(std::string const& database,
+                                 std::string const& shard)
+    : _database(database), _shard(shard) {
+  TRI_ASSERT(!database.empty());
+  TRI_ASSERT(!shard.empty());
+}
+
+Result arangodb::actionError(ErrorCode errorCode,
+                             std::string const& errorMessage) {
   LOG_TOPIC("c889d", ERR, Logger::MAINTENANCE) << errorMessage;
   return Result(errorCode, errorMessage);
 }
 
-Result arangodb::actionWarn(int errorCode, std::string const& errorMessage) {
+Result arangodb::actionWarn(ErrorCode errorCode,
+                            std::string const& errorMessage) {
   LOG_TOPIC("abe54", WARN, Logger::MAINTENANCE) << errorMessage;
   return Result(errorCode, errorMessage);
 }
@@ -191,21 +207,30 @@ void ActionBase::toVelocyPack(VPackBuilder& builder) const {
   builder.add("state", VPackValue(_state));
   builder.add("progress", VPackValue(_progress));
 
-  builder.add("created", VPackValue(timepointToString(
-                             std::chrono::duration_cast<std::chrono::system_clock::duration>(
-                                 _actionCreated.load()))));
-  builder.add("started", VPackValue(timepointToString(
-                             std::chrono::duration_cast<std::chrono::system_clock::duration>(
-                                 _actionStarted.load()))));
-  builder.add("lastStat", VPackValue(timepointToString(
-                              std::chrono::duration_cast<std::chrono::system_clock::duration>(
-                                  _actionLastStat.load()))));
-  builder.add("done", VPackValue(timepointToString(
-                          std::chrono::duration_cast<std::chrono::system_clock::duration>(
-                              _actionDone.load()))));
-
-  builder.add("result", VPackValue(_result.errorNumber()));
-
+  builder.add(
+      "created",
+      VPackValue(timepointToString(
+          std::chrono::duration_cast<std::chrono::system_clock::duration>(
+              _actionCreated.load()))));
+  builder.add(
+      "started",
+      VPackValue(timepointToString(
+          std::chrono::duration_cast<std::chrono::system_clock::duration>(
+              _actionStarted.load()))));
+  builder.add(
+      "lastStat",
+      VPackValue(timepointToString(
+          std::chrono::duration_cast<std::chrono::system_clock::duration>(
+              _actionLastStat.load()))));
+  builder.add(
+      "done",
+      VPackValue(timepointToString(
+          std::chrono::duration_cast<std::chrono::system_clock::duration>(
+              _actionDone.load()))));
+  {
+    std::lock_guard<std::mutex> lock(resLock);
+    builder.add("result", VPackValue(_result.errorNumber()));
+  }
   builder.add(VPackValue("description"));
   {
     VPackObjectBuilder desc(&builder);
@@ -222,15 +247,34 @@ VPackBuilder ActionBase::toVelocyPack() const {
 
 ActionState ActionBase::getState() const { return _state; }
 
-void ActionBase::setState(ActionState state) { _state = state; }
+void ActionBase::setState(ActionState state) {
+  // We want to make sure that we get another maintenance run
+  // when we shift from any state to complete or failed
+  if ((COMPLETE == state || FAILED == state) && _state != state &&
+      _description.has(DATABASE)) {
+    _feature.addDirty(_description.get(DATABASE));
+    TRI_ASSERT(!_description.get(DATABASE).empty());
+  }
+  _state = state;
+}
 
-/**
- * kill() operation is an expected future feature.  Not supported in the
- *  original ActionBase derivatives
- */
-arangodb::Result ActionBase::kill(Signal const& signal) {
-  return actionError(TRI_ERROR_ACTION_OPERATION_UNABORTABLE,
-                     "Kill operation not supported on this action.");
+Result ActionBase::result() const {
+  Result result;
+  {
+    const std::lock_guard<std::mutex> lock(resLock);
+    result.reset(_result);
+  }
+  return result;
+}
+
+void ActionBase::result(Result const& result) {
+  const std::lock_guard<std::mutex> lock(resLock);
+  _result.reset(result);
+}
+
+void ActionBase::result(ErrorCode errorNumber, std::string const& errorString) {
+  const std::lock_guard<std::mutex> lock(resLock);
+  _result.reset(errorNumber, errorString);
 }
 
 /**
@@ -239,7 +283,11 @@ arangodb::Result ActionBase::kill(Signal const& signal) {
  */
 arangodb::Result ActionBase::progress(double& progress) {
   progress = 0.5;
-  return arangodb::Result(TRI_ERROR_NO_ERROR);
+  return {};
+}
+
+auto ActionBase::get(std::string const& key) const -> std::string const& {
+  return _description.get(key);
 }
 
 namespace std {

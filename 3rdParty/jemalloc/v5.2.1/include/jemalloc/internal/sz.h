@@ -22,6 +22,12 @@
  * size that would result from such an allocation.
  */
 
+/* Page size index type. */
+typedef unsigned pszind_t;
+
+/* Size class index type. */
+typedef unsigned szind_t;
+
 /*
  * sz_pind2sz_tab encodes the same information as could be computed by
  * sz_pind2sz_compute().
@@ -39,15 +45,13 @@ extern size_t sz_index2size_tab[SC_NSIZES];
  */
 extern uint8_t sz_size2index_tab[];
 
-static const size_t sz_large_pad =
-#ifdef JEMALLOC_CACHE_OBLIVIOUS
-    PAGE
-#else
-    0
-#endif
-    ;
+/*
+ * Padding for large allocations: PAGE when opt_cache_oblivious == true (to
+ * enable cache index randomization); 0 otherwise.
+ */
+extern size_t sz_large_pad;
 
-extern void sz_boot(const sc_data_t *sc_data);
+extern void sz_boot(const sc_data_t *sc_data, bool cache_oblivious);
 
 JEMALLOC_ALWAYS_INLINE pszind_t
 sz_psz2ind(size_t psz) {
@@ -152,10 +156,15 @@ sz_size2index_compute(size_t size) {
 }
 
 JEMALLOC_ALWAYS_INLINE szind_t
-sz_size2index_lookup(size_t size) {
+sz_size2index_lookup_impl(size_t size) {
 	assert(size <= SC_LOOKUP_MAXCLASS);
-	szind_t ret = (sz_size2index_tab[(size + (ZU(1) << SC_LG_TINY_MIN) - 1)
-					 >> SC_LG_TINY_MIN]);
+	return sz_size2index_tab[(size + (ZU(1) << SC_LG_TINY_MIN) - 1)
+	    >> SC_LG_TINY_MIN];
+}
+
+JEMALLOC_ALWAYS_INLINE szind_t
+sz_size2index_lookup(size_t size) {
+	szind_t ret = sz_size2index_lookup_impl(size);
 	assert(ret == sz_size2index_compute(size));
 	return ret;
 }
@@ -195,8 +204,13 @@ sz_index2size_compute(szind_t index) {
 }
 
 JEMALLOC_ALWAYS_INLINE size_t
+sz_index2size_lookup_impl(szind_t index) {
+	return sz_index2size_tab[index];
+}
+
+JEMALLOC_ALWAYS_INLINE size_t
 sz_index2size_lookup(szind_t index) {
-	size_t ret = (size_t)sz_index2size_tab[index];
+	size_t ret = sz_index2size_lookup_impl(index);
 	assert(ret == sz_index2size_compute(index));
 	return ret;
 }
@@ -205,6 +219,12 @@ JEMALLOC_ALWAYS_INLINE size_t
 sz_index2size(szind_t index) {
 	assert(index < SC_NSIZES);
 	return sz_index2size_lookup(index);
+}
+
+JEMALLOC_ALWAYS_INLINE void
+sz_size2index_usize_fastpath(size_t size, szind_t *ind, size_t *usize) {
+	*ind = sz_size2index_lookup_impl(size);
+	*usize = sz_index2size_lookup_impl(*ind);
 }
 
 JEMALLOC_ALWAYS_INLINE size_t
@@ -266,7 +286,7 @@ sz_sa2u(size_t size, size_t alignment) {
 	assert(alignment != 0 && ((alignment - 1) & alignment) == 0);
 
 	/* Try for a small size class. */
-	if (size <= SC_SMALL_MAXCLASS && alignment < PAGE) {
+	if (size <= SC_SMALL_MAXCLASS && alignment <= PAGE) {
 		/*
 		 * Round size up to the nearest multiple of alignment.
 		 *
@@ -314,5 +334,8 @@ sz_sa2u(size_t size, size_t alignment) {
 	}
 	return usize;
 }
+
+size_t sz_psz_quantize_floor(size_t size);
+size_t sz_psz_quantize_ceil(size_t size);
 
 #endif /* JEMALLOC_INTERNAL_SIZE_H */

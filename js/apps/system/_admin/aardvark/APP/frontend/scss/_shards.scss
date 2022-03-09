@@ -17,6 +17,10 @@
   .notInSync {
     color: $c-warning;
   }
+
+  .failed {
+    color: $c-negative;
+  }
 }
 
 .sectionShard {

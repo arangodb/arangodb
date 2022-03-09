@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,36 +23,52 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ActionDescription.h"
+#include "Basics/StaticStrings.h"
+#include "Basics/debugging.h"
+#include "Basics/voc-errors.h"
 
 #include <functional>
+#include <boost/functional/hash.hpp>
 
 using namespace arangodb;
 using namespace arangodb::maintenance;
 
 /// @brief ctor
-ActionDescription::ActionDescription(std::map<std::string, std::string> const& d,
-                                     int priority,
-                                     std::shared_ptr<VPackBuilder> const& p)
-    : _description(d), _properties(p), _priority(priority) {
-  TRI_ASSERT(d.find(NAME) != d.end());
-  TRI_ASSERT(p == nullptr || p->isEmpty() || p->slice().isObject());
+ActionDescription::ActionDescription(std::map<std::string, std::string> d,
+                                     int priority, bool runEvenIfDuplicate,
+                                     std::shared_ptr<VPackBuilder> p)
+    : _description(std::move(d)),
+      _properties(std::move(p)),
+      _priority(priority),
+      _runEvenIfDuplicate(runEvenIfDuplicate) {
+  TRI_ASSERT(_description.find(NAME) != _description.end());
+  TRI_ASSERT(_properties == nullptr || _properties->isEmpty() ||
+             _properties->slice().isObject());
 }
 
 /// @brief Default dtor
 ActionDescription::~ActionDescription() = default;
 
-/// @brief Does this description have a "p" parameter?
-bool ActionDescription::has(std::string const& p) const {
-  return _description.find(p) != _description.end();
+/// @brief Does this description have a "key" parameter?
+bool ActionDescription::has(std::string const& key) const noexcept {
+  return _description.find(key) != _description.end();
 }
 
-/// @brief Does this description have a "p" parameter?
+/// @brief Does this description have a "key" parameter and does it
+/// compare equal to "value"?
+bool ActionDescription::has(std::string const& key,
+                            std::string const& value) const noexcept {
+  auto it = _description.find(key);
+  return (it != _description.end() && (*it).second == value);
+}
+
+/// @brief Return value for "p" parameter
 std::string ActionDescription::operator()(std::string const& p) const {
   return _description.at(p);
 }
 
 /// @brief Does this description have a "p" parameter?
-std::string ActionDescription::get(std::string const& p) const {
+std::string const& ActionDescription::get(std::string const& p) const {
   return _description.at(p);
 }
 
@@ -69,20 +85,21 @@ Result ActionDescription::get(std::string const& p, std::string& r) const {
 }
 
 /// @brief Hash function
-std::size_t ActionDescription::hash() const {
-  std::string propstr;
-  for (auto const& i : _description) {
-    propstr += i.first + i.second;
-  }
-  return std::hash<std::string>{}(propstr);
+std::size_t ActionDescription::hash() const noexcept {
+  return hash(_description);
 }
 
-std::size_t ActionDescription::hash(std::map<std::string, std::string> const& desc) {
-  std::string propstr;
+/*static*/ std::size_t ActionDescription::hash(
+    std::map<std::string, std::string> const& desc) noexcept {
+  std::size_t hash = 0x0404b00b1e5;
+  auto hasher = std::hash<std::string>{};
   for (auto const& i : desc) {
-    propstr += i.first + i.second;
+    // order matters here, i.e. what we are hashing must be sorted
+    // - otherwise we would get different hashes!
+    boost::hash_combine(hash, hasher(i.first));
+    boost::hash_combine(hash, hasher(i.second));
   }
-  return std::hash<std::string>{}(propstr);
+  return hash;
 }
 
 /// @brief Equality operator
@@ -91,10 +108,9 @@ bool ActionDescription::operator==(ActionDescription const& other) const {
 }
 
 /// @brief Get action name. Cannot throw. See constructor
-std::string const& ActionDescription::name() const {
-  static const std::string EMPTY_STRING;
+std::string const& ActionDescription::name() const noexcept {
   auto const& it = _description.find(NAME);
-  return (it != _description.end()) ? it->second : EMPTY_STRING;
+  return (it != _description.end()) ? it->second : StaticStrings::Empty;
 }
 
 /// @brief summary to velocypack
@@ -130,11 +146,13 @@ std::shared_ptr<VPackBuilder> const ActionDescription::properties() const {
 
 /// @brief hash implementation for ActionRegistry
 namespace std {
-std::size_t hash<ActionDescription>::operator()(ActionDescription const& a) const noexcept {
+std::size_t hash<ActionDescription>::operator()(
+    ActionDescription const& a) const noexcept {
   return a.hash();
 }
 
-ostream& operator<<(ostream& out, arangodb::maintenance::ActionDescription const& d) {
+ostream& operator<<(ostream& out,
+                    arangodb::maintenance::ActionDescription const& d) {
   out << d.toJson() << " Priority: " << d.priority();
   return out;
 }

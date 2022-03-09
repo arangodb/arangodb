@@ -1,0 +1,48 @@
+////
+Copyright 2017 Peter Dimov
+
+Distributed under the Boost Software License, Version 1.0.
+
+See accompanying file LICENSE_1_0.txt or copy at
+http://www.boost.org/LICENSE_1_0.txt
+////
+
+[#integer_sequence]
+# Integer Sequences, <boost/mp11/integer_sequence.hpp>
+:toc:
+:toc-title:
+:idprefix:
+
+## integer_sequence<T, I...>
+
+    template<class T, T... I> struct integer_sequence
+    {
+    };
+
+`integer_sequence<T, I...>` holds a sequence of integers of type `T`. Same as C++14's `std::integer_sequence`.
+
+## make_integer_sequence<T, N>
+
+    template<class T, T N> using make_integer_sequence = /*...*/;
+
+`make_integer_sequence<T, N>` is `integer_sequence<T, 0, 1, ..., N-1>`. Same as C++14's `std::make_integer_sequence`.
+
+## index_sequence<I...>
+
+    template<std::size_t... I> using index_sequence = integer_sequence<std::size_t, I...>;
+
+`index_sequence<I...>` is an alias for `integer_sequence<size_t, I...>`. Same as C++14's `std::index_sequence`.
+
+## make_index_sequence<N>
+
+    template<std::size_t N> using make_index_sequence =
+        make_integer_sequence<std::size_t, N>;
+
+`make_index_sequence<N>` is `index_sequence<0, 1, ..., N-1>`. Same as C++14's `std::make_index_sequence`.
+
+## index_sequence_for<T...>
+
+    template<class... T> using index_sequence_for =
+        make_integer_sequence<std::size_t, sizeof...(T)>;
+
+`index_sequence_for<N>` is `make_index_sequence<sizeof...(T)>`. Same as C++14's `std::index_sequence_for`.

@@ -46,8 +46,7 @@
 namespace arangodb { namespace fuerte { inline namespace v1 {
 // Helper and Implementation
 
-std::unique_ptr<Request> createRequest(RestVerb verb,
-                                       ContentType contentType);
+std::unique_ptr<Request> createRequest(RestVerb verb, ContentType contentType);
 
 // For User
 std::unique_ptr<Request> createRequest(RestVerb verb, std::string const& path,

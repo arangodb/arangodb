@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_APPLICATION_FEATURES_COMM_FEATURE_PHASE_H
-#define ARANGODB_APPLICATION_FEATURES_COMM_FEATURE_PHASE_H 1
+#pragma once
 
 #include "ApplicationFeaturePhase.h"
 
@@ -30,7 +30,17 @@ namespace application_features {
 
 class CommunicationFeaturePhase : public ApplicationFeaturePhase {
  public:
-  explicit CommunicationFeaturePhase(ApplicationServer& server);
+  static constexpr std::string_view name() noexcept {
+    return "CommunicationPhase";
+  }
+
+  template<typename Server>
+  explicit CommunicationFeaturePhase(Server& server)
+      : ApplicationFeaturePhase(
+            server, Server::template id<CommunicationFeaturePhase>(), name()) {
+    setOptional(false);
+  }
+
   /**
    * @brief decide whether we may freely communicate or not.
    */
@@ -53,5 +63,3 @@ class CommunicationFeaturePhase : public ApplicationFeaturePhase {
 
 }  // namespace application_features
 }  // namespace arangodb
-
-#endif

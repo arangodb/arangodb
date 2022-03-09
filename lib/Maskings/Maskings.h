@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,8 +21,7 @@
 /// @author Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_MASKINGS_MASKINGS_H
-#define ARANGODB_MASKINGS_MASKINGS_H 1
+#pragma once
 
 #include <cstdint>
 #include <map>
@@ -32,7 +32,6 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "Basics/Common.h"
 #include "Maskings/Collection.h"
@@ -83,8 +82,10 @@ class Maskings {
                       std::vector<std::string>& path, VPackSlice const& data);
   void addMaskedObject(Collection& collection, VPackBuilder& builder,
                        std::vector<std::string>& path, VPackSlice const& data);
-  void addMasked(Collection& collection, VPackBuilder& builder, VPackSlice const& data);
-  void addMasked(Collection& collection, basics::StringBuffer& data, VPackSlice const& slice);
+  void addMasked(Collection& collection, VPackBuilder& builder,
+                 VPackSlice data);
+  void addMasked(Collection& collection, basics::StringBuffer& data,
+                 VPackSlice slice);
 
  private:
   std::map<std::string, Collection> _collections;
@@ -95,5 +96,3 @@ class Maskings {
 
 }  // namespace maskings
 }  // namespace arangodb
-
-#endif

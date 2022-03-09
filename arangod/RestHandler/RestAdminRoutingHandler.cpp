@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,6 +23,7 @@
 
 #include "RestAdminRoutingHandler.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
 
@@ -30,12 +31,19 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestAdminRoutingHandler::RestAdminRoutingHandler(application_features::ApplicationServer& server,
+RestAdminRoutingHandler::RestAdminRoutingHandler(ArangodServer& server,
                                                  GeneralRequest* request,
                                                  GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
 RestStatus RestAdminRoutingHandler::execute() {
+  if (!server().isEnabled<V8DealerFeature>()) {
+    generateError(rest::ResponseCode::NOT_IMPLEMENTED,
+                  TRI_ERROR_NOT_IMPLEMENTED,
+                  "JavaScript operations are disabled");
+    return RestStatus::DONE;
+  }
+
   std::vector<std::string> const& suffixes = _request->suffixes();
   if (suffixes.size() == 1 && suffixes[0] == "reload") {
     reloadRouting();
@@ -49,7 +57,8 @@ RestStatus RestAdminRoutingHandler::execute() {
 }
 
 void RestAdminRoutingHandler::reloadRouting() {
-  if (!V8DealerFeature::DEALER->addGlobalContextMethod("reloadRouting")) {
+  if (!server().getFeature<V8DealerFeature>().addGlobalContextMethod(
+          "reloadRouting")) {
     generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
                   "invalid action definition");
     return;

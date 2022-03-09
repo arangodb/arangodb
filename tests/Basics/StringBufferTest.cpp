@@ -1,11 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite for StringBuffer class
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,7 +16,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
 /// @author Copyright 2007-2012, triAGENS GmbH, Cologne, Germany
@@ -42,17 +39,17 @@ using namespace std;
 TEST(StringBufferTest, test_StringBuffer1) {
   StringBuffer buffer(true);
 
-  EXPECT_EQ(buffer.length(), (size_t) 0);
+  EXPECT_EQ(buffer.length(), (size_t)0);
   EXPECT_EQ(std::string(buffer.c_str()), "");
 
   buffer = "";
 
-  EXPECT_EQ(buffer.length(), (size_t) 0);
+  EXPECT_EQ(buffer.length(), (size_t)0);
   EXPECT_EQ(std::string(buffer.c_str()), "");
 
   buffer = "Hallo World!";
 
-  EXPECT_EQ(buffer.length(), (size_t) 12);
+  EXPECT_EQ(buffer.length(), (size_t)12);
   EXPECT_EQ(std::string(buffer.c_str()), "Hallo World!");
 }
 
@@ -63,14 +60,10 @@ TEST(StringBufferTest, test_StringBuffer1) {
 TEST(StringBufferTest, test_StringBuffer2) {
   StringBuffer buffer(true);
 
-  EXPECT_EQ(buffer.length(), (size_t) 0);
+  EXPECT_EQ(buffer.length(), (size_t)0);
   EXPECT_EQ(std::string(buffer.c_str()), "");
-  
+
   buffer.appendText("Hallo World");
-  EXPECT_EQ(buffer.length(), (size_t) 11);
+  EXPECT_EQ(buffer.length(), (size_t)11);
   EXPECT_EQ(std::string(buffer.c_str()), "Hallo World");
-  
-  buffer.appendInteger4(1234);
-  EXPECT_EQ(buffer.length(), (size_t) 15);
-  EXPECT_EQ(std::string(buffer.c_str()), "Hallo World1234");
 }

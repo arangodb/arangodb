@@ -1,3 +1,4 @@
 'use strict';
+const { context } = require('@arangodb/locals');
 <% _.each(routePaths, function (path) { %>
-module.context.use('/<%= path %>', require('./routes/<%= path %>'), '<%= path %>');<% }); %>
+context.use('/<%= path %>', require('./routes/<%= path %>'), '<%= path %>');<% }); %>

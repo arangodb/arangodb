@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,8 +21,7 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_AQLEXECUTERESULT_H
-#define ARANGOD_AQL_AQLEXECUTERESULT_H
+#pragma once
 
 #include "Aql/ExecutionState.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
@@ -30,7 +30,7 @@
 #include <utility>
 
 namespace arangodb {
-template <class T>
+template<class T>
 class ResultT;
 }
 
@@ -43,7 +43,8 @@ namespace arangodb::aql {
 
 class AqlExecuteResult {
  public:
-  AqlExecuteResult(ExecutionState state, SkipResult skipped, SharedAqlItemBlockPtr&& block);
+  AqlExecuteResult(ExecutionState state, SkipResult skipped,
+                   SharedAqlItemBlockPtr&& block);
 
   void toVelocyPack(velocypack::Builder&, velocypack::Options const*) const;
   static auto fromVelocyPack(velocypack::Slice, AqlItemBlockManager&)
@@ -63,5 +64,3 @@ class AqlExecuteResult {
 };
 
 }  // namespace arangodb::aql
-
-#endif  // ARANGOD_AQL_AQLEXECUTERESULT_H

@@ -1,0 +1,17 @@
+# boost/serialization/singleton.hpp:181:13: runtime error: reference binding to null pointer of type X
+src:../../boost/serialization/singleton.hpp
+
+# boost/archive/detail/interface_oarchive.hpp:47:16: runtime error: downcast of address X which does not point to an object of type Y
+src:../../boost/archive/detail/interface_oarchive.hpp
+
+# boost/archive/detail/interface_iarchive.hpp:46:16: runtime error: downcast of address X which does not point to an object of type Y
+src:../../boost/archive/detail/interface_iarchive.hpp
+
+# boost/archive/basic_binary_oprimitive.hpp:73:16: runtime error: downcast of address X which does not point to an object of type Y
+src:../../boost/archive/basic_binary_oprimitive.hpp
+
+# boost/archive/basic_binary_iprimitive.hpp:77:16: runtime error: downcast of address X which does not point to an object of type Y
+src:../../boost/archive/basic_binary_iprimitive.hpp
+
+# boost/archive/iterators/escape.hpp:85:12: runtime error: applying non-zero offset 1 to null pointer
+src:../../boost/archive/iterators/escape.hpp

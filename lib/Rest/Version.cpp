@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -36,8 +36,8 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Version.h>
-#include <velocypack/velocypack-aliases.h>
 
+#include "Basics/FeatureFlags.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/asio_ns.h"
@@ -46,13 +46,13 @@
 #include "Basics/conversions.h"
 #include "Basics/debugging.h"
 
-#include "3rdParty/iresearch/core/utils/version_defines.hpp"
+#include "../3rdParty/iresearch/core/utils/version_defines.hpp"
 
 using namespace arangodb::rest;
 
 std::map<std::string, std::string> Version::Values;
 
-/// @brief parse a version string into major, minor
+// parse a version string into major, minor
 /// returns -1, -1 when the version string has an invalid format
 /// returns major, -1 when only the major version can be determined
 std::pair<int, int> Version::parseVersionString(std::string const& str) {
@@ -84,7 +84,7 @@ std::pair<int, int> Version::parseVersionString(std::string const& str) {
   return result;
 }
 
-/// @brief initialize
+// initialize
 void Version::initialize() {
   if (!Values.empty()) {
     return;
@@ -106,7 +106,7 @@ void Version::initialize() {
 #else
   Values["debug"] = "false";
 #endif
-#ifdef ARANGODB_USE_IPO 
+#ifdef ARANGODB_USE_IPO
   Values["ipo"] = "true";
 #else
   Values["ipo"] = "false";
@@ -135,7 +135,7 @@ void Version::initialize() {
 #else
   Values["pie"] = "none";
 #endif
-  Values["platform"] = TRI_PLATFORM;
+  Values["platform"] = getPlatform();
   Values["reactor-type"] = getBoostReactorType();
   Values["server-version"] = getServerVersion();
   Values["sizeof int"] = arangodb::basics::StringUtils::itoa(sizeof(int));
@@ -159,6 +159,14 @@ void Version::initialize() {
 
 #if HAVE_ARANGODB_BUILD_REPOSITORY
   Values["build-repository"] = getBuildRepository();
+#endif
+
+#if HAVE_ENTERPRISE_BUILD_REPOSITORY
+  Values["enterprise-build-repository"] = getEnterpriseBuildRepository();
+#endif
+
+#if HAVE_OSKAR_BUILD_REPOSITORY
+  Values["oskar-build-repository"] = getOskarBuildRepository();
 #endif
 
   Values["curl-version"] = "none";
@@ -201,6 +209,12 @@ void Version::initialize() {
   Values["sse42"] = "false";
 #endif
 
+#ifdef __AVX__
+  Values["avx"] = "true";
+#else
+  Values["avx"] = "false";
+#endif
+
 #ifdef __AVX2__
   Values["avx2"] = "true";
 #else
@@ -225,6 +239,12 @@ void Version::initialize() {
   Values["jemalloc"] = "false";
 #endif
 
+#ifdef USE_MEMORY_PROFILE
+  Values["memory-profiler"] = "true";
+#else
+  Values["memory-profiler"] = "false";
+#endif
+
 #ifdef TRI_HAVE_POLL_H
   Values["fd-client-event-handler"] = "poll";
 #else
@@ -239,12 +259,18 @@ void Version::initialize() {
   Values["libunwind"] = "false";
 #endif
 
+  if (::arangodb::replication2::EnableReplication2) {
+    Values["replication2-enabled"] = "true";
+  } else {
+    Values["replication2-enabled"] = "false";
+  }
+
   for (auto& it : Values) {
     arangodb::basics::StringUtils::trimInPlace(it.second);
   }
 }
 
-/// @brief get numeric server version
+// get numeric server version
 int32_t Version::getNumericServerVersion() {
   char const* apiVersion = ARANGODB_VERSION;
   char const* p = apiVersion;
@@ -284,12 +310,12 @@ int32_t Version::getNumericServerVersion() {
   return (int32_t)(patch + minor * 100L + major * 10000L);
 }
 
-/// @brief get server version
+// get server version
 std::string Version::getServerVersion() {
   return std::string(ARANGODB_VERSION);
 }
 
-/// @brief get BOOST version
+// get BOOST version
 std::string Version::getBoostVersion() {
 #ifdef ARANGODB_BOOST_VERSION
   return std::string(ARANGODB_BOOST_VERSION);
@@ -298,7 +324,7 @@ std::string Version::getBoostVersion() {
 #endif
 }
 
-/// @brief get boost reactor type
+// get boost reactor type
 std::string Version::getBoostReactorType() {
 #if defined(BOOST_ASIO_HAS_IOCP)
   return std::string("iocp");
@@ -313,13 +339,13 @@ std::string Version::getBoostReactorType() {
 #endif
 }
 
-/// @brief get RocksDB version
+// get RocksDB version
 std::string Version::getRocksDBVersion() {
   return std::to_string(ROCKSDB_MAJOR) + "." + std::to_string(ROCKSDB_MINOR) +
          "." + std::to_string(ROCKSDB_PATCH);
 }
 
-/// @brief get V8 version
+// get V8 version
 std::string Version::getV8Version() {
 #ifdef ARANGODB_V8_VERSION
   return std::string(ARANGODB_V8_VERSION);
@@ -328,7 +354,7 @@ std::string Version::getV8Version() {
 #endif
 }
 
-/// @brief get OpenSSL version
+// get OpenSSL version
 std::string Version::getOpenSSLVersion(bool compileTime) {
   if (compileTime) {
 #ifdef OPENSSL_VERSION_TEXT
@@ -349,12 +375,12 @@ std::string Version::getOpenSSLVersion(bool compileTime) {
   }
 }
 
-/// @brief get vpack version
+// get vpack version
 std::string Version::getVPackVersion() {
   return arangodb::velocypack::Version::BuildVersion.toString();
 }
 
-/// @brief get zlib version
+// get zlib version
 std::string Version::getZLibVersion() {
 #ifdef ARANGODB_ZLIB_VERSION
   return std::string(ARANGODB_ZLIB_VERSION);
@@ -363,7 +389,7 @@ std::string Version::getZLibVersion() {
 #endif
 }
 
-/// @brief get ICU version
+// get ICU version
 std::string Version::getICUVersion() {
   UVersionInfo icuVersion;
   char icuVersionString[U_MAX_VERSION_STRING_LENGTH];
@@ -373,10 +399,10 @@ std::string Version::getICUVersion() {
   return icuVersionString;
 }
 
-/// @brief get IResearch version
+// get IResearch version
 std::string Version::getIResearchVersion() { return IResearch_version; }
 
-/// @brief get compiler
+// get compiler
 std::string Version::getCompiler() {
 #if defined(__clang__)
   return "clang [" + std::string(__VERSION__) + "]";
@@ -389,25 +415,32 @@ std::string Version::getCompiler() {
 #endif
 }
 
-/// @brief get endianness
+// get endianness
 std::string Version::getEndianness() {
   uint64_t value = 0x12345678abcdef99;
   static_assert(sizeof(value) == 8, "unexpected uint64_t size");
 
   unsigned char const* p = reinterpret_cast<unsigned char const*>(&value);
+
+  // cppcheck-suppress objectIndex
   if (p[0] == 0x12 && p[1] == 0x34 && p[2] == 0x56 && p[3] == 0x78 &&
+      // cppcheck-suppress objectIndex
       p[4] == 0xab && p[5] == 0xcd && p[6] == 0xef && p[7] == 0x99) {
     return "big";
   }
 
+  // cppcheck-suppress objectIndex
   if (p[0] == 0x99 && p[1] == 0xef && p[2] == 0xcd && p[3] == 0xab &&
+      // cppcheck-suppress objectIndex
       p[4] == 0x78 && p[5] == 0x56 && p[6] == 0x34 && p[7] == 0x12) {
     return "little";
   }
   return "unknown";
 }
 
-/// @brief get build date
+std::string Version::getPlatform() { return TRI_PLATFORM; }
+
+// get build date
 std::string Version::getBuildDate() {
 // the OpenSuSE build system does not like it, if __DATE__ is used
 #ifdef ARANGODB_BUILD_DATE
@@ -417,7 +450,7 @@ std::string Version::getBuildDate() {
 #endif
 }
 
-/// @brief get build repository
+// get build repository
 std::string Version::getBuildRepository() {
 #ifdef HAVE_ARANGODB_BUILD_REPOSITORY
   return std::string(ARANGODB_BUILD_REPOSITORY);
@@ -426,7 +459,23 @@ std::string Version::getBuildRepository() {
 #endif
 }
 
-/// @brief return a server version string
+std::string Version::getEnterpriseBuildRepository() {
+#ifdef HAVE_ENTERPRISE_BUILD_REPOSITORY
+  return std::string(ENTERPRISE_BUILD_REPOSITORY);
+#else
+  return std::string();
+#endif
+}
+
+std::string Version::getOskarBuildRepository() {
+#ifdef HAVE_OSKAR_BUILD_REPOSITORY
+  return std::string(OSKAR_BUILD_REPOSITORY);
+#else
+  return std::string();
+#endif
+}
+
+// return a server version string
 std::string Version::getVerboseVersionString() {
   std::ostringstream version;
 
@@ -460,7 +509,7 @@ std::string Version::getVerboseVersionString() {
   return version.str();
 }
 
-/// @brief get detailed version information as a (multi-line) string
+// get detailed version information as a (multi-line) string
 std::string Version::getDetailed() {
   std::string result;
 
@@ -482,7 +531,7 @@ std::string Version::getDetailed() {
   return result;
 }
 
-/// @brief VelocyPack all data
+// VelocyPack all data
 void Version::getVPack(VPackBuilder& dst) {
   TRI_ASSERT(!dst.isClosed());
 

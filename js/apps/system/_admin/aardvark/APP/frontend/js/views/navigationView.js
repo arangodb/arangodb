@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global Backbone, templateEngine, $, window, arangoHelper, _ */
+/* global Backbone, templateEngine, $, window, sessionStorage, Storage, arangoHelper, _ */
 (function () {
   'use strict';
   window.NavigationView = Backbone.View.extend({
@@ -12,9 +12,7 @@
       'click .tab': 'navigateByTab',
       'click li': 'switchTab',
       'click .arangodbLogo': 'selectMenuItem',
-      'mouseenter .dropdown > *': 'showDropdown',
-      'click .shortcut-icons p': 'showShortcutModal',
-      'mouseleave .dropdown': 'hideDropdown'
+      'click .shortcut-icons p': 'showShortcutModal'
     },
 
     renderFirst: true,
@@ -45,6 +43,7 @@
 
       this.isCluster = options.isCluster;
       this.foxxApiEnabled = options.foxxApiEnabled;
+      this.statisticsInAllDatabases = options.statisticsInAllDatabases;
 
       this.handleKeyboardHotkeys();
 
@@ -66,9 +65,13 @@
 
     render: function () {
       $(this.subEl).html(this.templateSub.render({
+        frontendConfig: window.frontendConfig,
         currentDB: this.currentDB.toJSON()
       }));
       arangoHelper.checkDatabasePermissions(this.continueRender.bind(this), this.continueRender.bind(this));
+      if (window.frontendConfig.isEnterprise === true) {
+        this.fetchServerTime();
+      }
     },
 
     continueRender: function (readOnly) {
@@ -76,6 +79,7 @@
 
       $(this.el).html(this.template.render({
         currentDB: this.currentDB,
+        statisticsInAllDatabases: this.statisticsInAllDatabases,
         isCluster: this.isCluster,
         foxxApiEnabled: this.foxxApiEnabled,
         readOnly: readOnly
@@ -125,11 +129,111 @@
       return this;
     },
 
+    fetchLicenseInfo: function (serverTime) {
+      const self = this;
+      const url = arangoHelper.databaseUrl('/_admin/license');
+
+      $.ajax({
+        type: "GET",
+        url: url,
+        success: function (licenseData) {
+          if (licenseData.status && licenseData.features && licenseData.features.expires) {
+            self.renderLicenseInfo(licenseData.status, licenseData.features.expires, serverTime);
+          } else {
+            self.showLicenseError();
+          }
+        },
+        error: function () {
+          self.showLicenseError();
+        }
+      });
+    },
+
+    fetchServerTime: function () {
+      const self = this;
+      const url = arangoHelper.databaseUrl('/_admin/time');
+
+      $.ajax({
+        type: "GET",
+        url: url,
+        success: function (timeData) {
+          if (!timeData.error && timeData.code === 200 && timeData.time) {
+            self.fetchLicenseInfo(timeData.time);
+          } else {
+            self.showGetTimeError();
+          }
+        },
+        error: function () {
+          self.showGetTimeError();
+        }
+      });
+    },
+
+    showLicenseError: function () {
+      const errorElement = '<div id="subNavLicenseInfo" class="alert alert-danger alert-license"><span><i class="fa fa-exclamation-triangle"></i></span> <span id="licenseInfoText">Error: Failed to fetch license information</span></div>';
+      $('#licenseInfoArea').append(errorElement);
+    },
+
+    showGetTimeError: function () {
+      const errorElement = '<div id="subNavLicenseInfo" class="alert alert-danger alert-license"><span><i class="fa fa-exclamation-triangle"></i></span> <span id="licenseInfoText">Error: Failed to fetch server time</span></div>';
+      $('#licenseInfoArea').append(errorElement);
+    },
+
+    renderLicenseInfo: function (status, expires, serverTime) {
+      if (status !== null && expires !== null) {
+        let infotext = '';
+        let daysInfo = '';
+        let alertClasses = 'alert alert-license';
+        switch (status) {
+        case 'expiring':
+          let remains = expires - Math.round(serverTime);
+          let daysInfo = Math.ceil(remains / (3600*24));
+          let hoursInfo = '';
+          let minutesInfo = '';
+          infotext = 'Your license is expiring in under ';
+          if (daysInfo > 1) {
+            infotext += daysInfo + ' days';
+          } else {
+            hoursInfo = Math.ceil(remains / 3600);
+            if (hoursInfo > 1) {
+              infotext += hoursInfo + ' hours';
+            } else {
+              minutesInfo = Math.ceil(remains / 60);
+              infotext += minutesInfo + ' minutes';
+            }
+
+          }
+          infotext += '. Please contact ArangoDB sales to extend your license urgently.';
+          this.appendLicenseInfoToUi(infotext, alertClasses);
+          break;
+        case 'expired':
+          daysInfo = Math.floor((Math.round(serverTime) - expires) / (3600*24));
+          infotext = 'Your license expired ' + daysInfo + ' days ago. New enterprise features cannot be created. Please contact ArangoDB sales immediately.';
+          alertClasses += ' alert-danger';
+          this.appendLicenseInfoToUi(infotext, alertClasses);
+          break;
+        case 'read-only':
+          infotext = 'Your license has expired. This installation has been restricted to read-only mode. Please contact ArangoDB sales immediately to extend your license.';
+          alertClasses += ' alert-danger';
+          this.appendLicenseInfoToUi(infotext, alertClasses);
+          break;
+        default:
+          break;
+        }
+      }
+    },
+
+    appendLicenseInfoToUi: function(infotext, alertClasses) {
+      var infoElement = '<div id="subNavLicenseInfo" class="' + alertClasses + '"><span><i class="fa fa-exclamation-triangle"></i></span> <span id="licenseInfoText">' + infotext + '</span></div>';
+      $('#licenseInfoArea').append(infoElement);
+    },
+
     resize: function () {
       // set menu sizes - responsive
-      var height = $(window).height() - $('.subMenuEntries').first().height();
-      $('#navigationBar').css('min-height', height);
-      $('#navigationBar').css('height', height);
+      const height = $(window).height() - $('.subMenuEntries').first().height();
+      const navBar = $('#navigationBar');
+      navBar.css('min-height', height);
+      navBar.css('height', height);
     },
 
     navigateBySelect: function () {
@@ -191,13 +295,6 @@
     },
 
     subMenuConfig: {
-      cluster: [
-        {
-          name: 'Dashboard',
-          view: undefined,
-          active: true
-        }
-      ],
       collections: [
         {
           name: '',
@@ -268,7 +365,7 @@
         });
       } else {
         $(self.subEl + ' .bottom').append(
-          '<li class="subMenuEntry</li>'
+          '<li class="subMenuEntry"></li>'
         );
       }
     },
@@ -280,6 +377,8 @@
           window.App[menu.route].resetState();
         }
         window.App[menu.route]();
+      } else if (menu.href) {
+        window.App.navigate(menu.href, {trigger: true});
       }
 
       // select active sub view entry
@@ -299,18 +398,6 @@
         this.selectMenuItem(id + '-menu');
       }
     },
-
-    /*
-    breadcrumb: function (name) {
-
-      if (window.location.hash.split('/')[0] !== '#collection') {
-        $('#subNavigationBar .breadcrumb').html(
-          '<a class="activeBread" href="#' + name + '">' + name + '</a>'
-        )
-      }
-
-    },
-    */
 
     selectMenuItem: function (menuItem, noMenuEntry) {
       if (menuItem === undefined) {
@@ -334,8 +421,6 @@
         this.renderSubMenu(menuItem);
       }
 
-      // this.breadcrumb(menuItem.split('-')[0])
-
       $('.navlist li').removeClass('active');
       if (typeof menuItem === 'string') {
         if (noMenuEntry) {
@@ -346,30 +431,6 @@
         }
       }
       arangoHelper.hideArangoNotifications();
-    },
-
-    showSubDropdown: function (e) {
-      $(e.currentTarget).find('.subBarDropdown').toggle();
-    },
-
-    showDropdown: function (e) {
-      var tab = e.target || e.srcElement;
-      var navigateTo = tab.id;
-      if (navigateTo === 'links' || navigateTo === 'link_dropdown' || e.currentTarget.id === 'links') {
-        $('#link_dropdown').fadeIn(1);
-      } else if (navigateTo === 'tools' || navigateTo === 'tools_dropdown' || e.currentTarget.id === 'tools') {
-        $('#tools_dropdown').fadeIn(1);
-      } else if (navigateTo === 'dbselection' || navigateTo === 'dbs_dropdown' || e.currentTarget.id === 'dbselection') {
-        $('#dbs_dropdown').fadeIn(1);
-      }
-    },
-
-    hideDropdown: function (e) {
-      // var tab = e.target || e.srcElement;
-      // tab = $(tab).parent();
-      $('#link_dropdown').fadeOut(1);
-      $('#tools_dropdown').fadeOut(1);
-      $('#dbs_dropdown').fadeOut(1);
     }
 
   });

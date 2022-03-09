@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,13 +21,12 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_FUTURES_PROMISE_INL_H
-#define ARANGOD_FUTURES_PROMISE_INL_H 1
+#pragma once
 
 namespace arangodb {
 namespace futures {
 
-template <class T>
+template<class T>
 Future<T> Promise<T>::getFuture() {
   if (_retrieved) {
     throw FutureException(ErrorCode::FutureAlreadyRetrieved);
@@ -37,5 +37,3 @@ Future<T> Promise<T>::getFuture() {
 
 }  // namespace futures
 }  // namespace arangodb
-
-#endif  // ARANGOD_FUTURES_PROMISE_INL_H

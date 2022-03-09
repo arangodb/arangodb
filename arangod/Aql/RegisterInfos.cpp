@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -26,7 +27,8 @@
 
 using namespace arangodb::aql;
 
-auto setStackToFlatSetStack(RegIdSetStack const& setStack) -> RegIdFlatSetStack {
+auto setStackToFlatSetStack(RegIdSetStack const& setStack)
+    -> RegIdFlatSetStack {
   auto flatSetStack = RegIdFlatSetStack{};
   flatSetStack.reserve(setStack.size());
 
@@ -47,31 +49,35 @@ RegisterInfos::RegisterInfos(
     RegIdSet const& registersToClear,
     // cppcheck-suppress passedByValue
     RegIdSetStack const& registersToKeep)
-    : RegisterInfos(std::move(readableInputRegisters),
-                    std::move(writeableOutputRegisters), nrInputRegisters, nrOutputRegisters,
-                    RegIdFlatSet{registersToClear.begin(), registersToClear.end()},
-                    setStackToFlatSetStack(registersToKeep)) {}
+    : RegisterInfos(
+          std::move(readableInputRegisters),
+          std::move(writeableOutputRegisters), nrInputRegisters,
+          nrOutputRegisters,
+          RegIdFlatSet{registersToClear.begin(), registersToClear.end()},
+          setStackToFlatSetStack(registersToKeep)) {}
 
-RegisterInfos::RegisterInfos(RegIdSet readableInputRegisters, RegIdSet writeableOutputRegisters,
-                             RegisterCount nrInputRegisters, RegisterCount nrOutputRegisters,
-                             RegIdFlatSet registersToClear, RegIdFlatSetStack registersToKeep)
+RegisterInfos::RegisterInfos(RegIdSet readableInputRegisters,
+                             RegIdSet writeableOutputRegisters,
+                             RegisterCount nrInputRegisters,
+                             RegisterCount nrOutputRegisters,
+                             RegIdFlatSet registersToClear,
+                             RegIdFlatSetStack registersToKeep)
     : _inRegs(std::move(readableInputRegisters)),
       _outRegs(std::move(writeableOutputRegisters)),
       _numInRegs(nrInputRegisters),
       _numOutRegs(nrOutputRegisters),
       _registersToKeep(std::move(registersToKeep)),
       _registersToClear(std::move(registersToClear)) {
-
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   for (RegisterId const inReg : _inRegs) {
-    TRI_ASSERT(inReg < nrInputRegisters);
+    TRI_ASSERT(inReg.isConstRegister() || inReg < nrInputRegisters);
   }
   for (RegisterId const outReg : _outRegs) {
-    TRI_ASSERT(outReg < nrOutputRegisters);
+    TRI_ASSERT(outReg.isConstRegister() || outReg < nrOutputRegisters);
   }
   for (RegisterId const regToClear : _registersToClear) {
     // sic: It's possible that a current output register is immediately cleared!
-    TRI_ASSERT(regToClear < nrInputRegisters);
+    TRI_ASSERT(regToClear < nrOutputRegisters);
     TRI_ASSERT(_registersToKeep.back().find(regToClear) ==
                _registersToKeep.back().end());
   }
@@ -84,15 +90,13 @@ RegisterInfos::RegisterInfos(RegIdSet readableInputRegisters, RegIdSet writeable
 #endif
 }
 
-RegIdSet const& RegisterInfos::getInputRegisters() const {
-  return _inRegs;
-}
+RegIdSet const& RegisterInfos::getInputRegisters() const { return _inRegs; }
 
-RegIdSet const& RegisterInfos::getOutputRegisters() const {
-  return _outRegs;
-}
+RegIdSet const& RegisterInfos::getOutputRegisters() const { return _outRegs; }
 
-RegisterCount RegisterInfos::numberOfInputRegisters() const { return _numInRegs; }
+RegisterCount RegisterInfos::numberOfInputRegisters() const {
+  return _numInRegs;
+}
 
 RegisterCount RegisterInfos::numberOfOutputRegisters() const {
   return _numOutRegs;

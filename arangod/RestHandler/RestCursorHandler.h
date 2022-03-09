@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_REST_CURSOR_HANDLER_H
-#define ARANGOD_REST_HANDLER_REST_CURSOR_HANDLER_H 1
+#pragma once
 
 #include "Aql/QueryResult.h"
 #include "Basics/Common.h"
@@ -31,7 +30,6 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "Scheduler/Scheduler.h"
 
@@ -54,8 +52,8 @@ class Cursor;
 
 class RestCursorHandler : public RestVocbaseBaseHandler {
  public:
-  RestCursorHandler(application_features::ApplicationServer&, GeneralRequest*,
-                    GeneralResponse*, arangodb::aql::QueryRegistry*);
+  RestCursorHandler(ArangodServer&, GeneralRequest*, GeneralResponse*,
+                    arangodb::aql::QueryRegistry*);
 
   ~RestCursorHandler();
 
@@ -68,7 +66,6 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   void shutdownExecute(bool isFinalized) noexcept override;
 
   void cancel() override final;
-  void handleError(basics::Exception const&) override;
 
  protected:
   //////////////////////////////////////////////////////////////////////////////
@@ -85,7 +82,7 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   /// in AQL we can post a handler calling this function again.
   //////////////////////////////////////////////////////////////////////////////
 
-  RestStatus processQuery(bool continuation);
+  RestStatus processQuery();
 
   /// @brief returns the short id of the server which should handle this request
   ResultT<std::pair<std::string, bool>> forwardingTarget() override;
@@ -94,7 +91,7 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   /// @brief unregister the currently running query
   //////////////////////////////////////////////////////////////////////////////
 
-  void unregisterQuery();
+  void unregisterQuery() noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief handle the result returned by the query. This function is
@@ -115,7 +112,7 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   /// @brief register the currently running query
   //////////////////////////////////////////////////////////////////////////////
 
-  void registerQuery(std::unique_ptr<arangodb::aql::Query> query);
+  void registerQuery(std::shared_ptr<arangodb::aql::Query> query);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief cancel the currently running query
@@ -161,7 +158,7 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   /// @brief currently running query
   //////////////////////////////////////////////////////////////////////////////
 
-  std::unique_ptr<arangodb::aql::Query> _query;
+  std::shared_ptr<arangodb::aql::Query> _query;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Reference to a queryResult, which is reused after waiting.
@@ -200,22 +197,9 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   bool _queryKilled;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief whether or not the finalize operation is allowed to further process
-  /// the request data. this will not work if the original request cannot be
-  /// parsed successfully. this is used by RestCursorHandler::finalizeExecute
-  //////////////////////////////////////////////////////////////////////////////
-
-  bool _isValidForFinalize;
-
-  /// @brief whether or not an audit message has already been logged
-  bool _auditLogged;
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief A shared pointer to the query options velocypack, s.t. we avoid
   ///        to reparse and set default options
   //////////////////////////////////////////////////////////////////////////////
   std::shared_ptr<arangodb::velocypack::Builder> _options;
 };
 }  // namespace arangodb
-
-#endif

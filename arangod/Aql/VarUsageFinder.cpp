@@ -1,9 +1,32 @@
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+/// @author Michael Hackstein
+/// @author Tobias Gödderz
+////////////////////////////////////////////////////////////////////////////////
+
 #include <Containers/HashSet.h>
 
 #include "Aql/VarUsageFinder.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
-
 
 #include <Logger/LogMacros.h>
 
@@ -33,9 +56,9 @@ auto mergeInto(VarSet& target, VarSet const& source) {
     target.emplace(varPtr);
   }
 }
-}
+}  // namespace
 
-template <class T>
+template<class T>
 bool VarUsageFinderT<T>::before(T* en) {
   // count the type of node found
   en->plan()->increaseCounter(en->getType());
@@ -70,7 +93,7 @@ bool VarUsageFinderT<T>::before(T* en) {
   return false;
 }
 
-template <class T>
+template<class T>
 void VarUsageFinderT<T>::after(T* en) {
   switch (en->getType()) {
     case ExecutionNode::SUBQUERY_START: {
@@ -98,7 +121,7 @@ void VarUsageFinderT<T>::after(T* en) {
   en->setVarUsageValid();
 }
 
-template <class T>
+template<class T>
 bool VarUsageFinderT<T>::enterSubquery(T*, T* subqueryRootNode) {
   VarUsageFinderT subfinder(_varSetBy);
   // The subquery needs only the topmost varsValid entry, it must not see

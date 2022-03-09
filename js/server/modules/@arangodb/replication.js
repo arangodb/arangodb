@@ -30,15 +30,6 @@
 
 const internal = require('internal');
 const rpc = require('@arangodb/replication-common');
-const ERRORS = internal.errors;
-const endpointToURL = require('@arangodb/cluster').endpointToURL;
-
-var request;
-if (ArangoServerState.role() === 'PRIMARY') {
-  request = require('@arangodb/request').clusterRequest;
-} else {
-  request = require('@arangodb/request').request;
-}
 
 let logger = { };
 let applier = { };

@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_MUTEX_EXECUTOR_H
-#define ARANGOD_AQL_MUTEX_EXECUTOR_H
+#pragma once
 
 #include "Aql/BlocksWithClients.h"
 #include "Aql/DistributeClientBlock.h"
@@ -57,22 +57,26 @@ class MutexExecutor {
   /**
    * @brief Distribute the rows of the given block into the blockMap
    *        NOTE: Has SideEffects
-   *        If the input value does not contain an object, it is modified inplace with
-   *        a new Object containing a key value!
-   *        Hence this method is not const ;(
+   *        If the input value does not contain an object, it is modified
+   * inplace with a new Object containing a key value! Hence this method is not
+   * const ;(
    *
    * @param block The block to be distributed
    * @param skipped The rows that have been skipped from upstream
-   * @param blockMap Map client => Data. Will provide the required data to the correct client.
+   * @param blockMap Map client => Data. Will provide the required data to the
+   * correct client.
    */
-  auto distributeBlock(SharedAqlItemBlockPtr block, SkipResult skipped,
-                       std::unordered_map<std::string, ClientBlockData>& blockMap) -> void;
-  
-  void acquireLock() {
+  auto distributeBlock(
+      SharedAqlItemBlockPtr const& block, SkipResult skipped,
+      std::unordered_map<std::string, ClientBlockData>& blockMap) -> void;
+
+  void acquireLock() noexcept {
+    // don't continue if locking fails
     _mutex.lock();
   }
 
-  void releaseLock() {
+  void releaseLock() noexcept {
+    // don't continue if locking fails
     _mutex.unlock();
   }
 
@@ -95,50 +99,16 @@ class MutexExecutor {
 /**
  * @brief See ExecutionBlockImpl.h for documentation.
  */
-template <>
+template<>
 class ExecutionBlockImpl<MutexExecutor>
     : public BlocksWithClientsImpl<MutexExecutor> {
  public:
   ExecutionBlockImpl(ExecutionEngine* engine, MutexNode const* node,
-                     RegisterInfos registerInfos, MutexExecutorInfos&& executorInfos);
+                     RegisterInfos registerInfos,
+                     MutexExecutorInfos&& executorInfos);
 
   ~ExecutionBlockImpl() override = default;
 };
 
-//
-//
-//// MutexExecutor is actually implemented by specializing ExecutionBlockImpl,
-//// so this class only exists to identify the specialization.
-//class MutexExecutor final {};
-//
-///**
-// * @brief See ExecutionBlockImpl.h for documentation.
-// */
-//template <>
-//class ExecutionBlockImpl<MutexExecutor> : public ExecutionBlock {
-// public:
-//  ExecutionBlockImpl(ExecutionEngine* engine, MutexNode const* node);
-//
-//  ~ExecutionBlockImpl() override = default;
-//
-//  std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> execute(AqlCallStack stack) override;
-//
-//  std::pair<ExecutionState, Result> initializeCursor(InputAqlItemRow const& input) override;
-//
-//  std::pair<ExecutionState, Result> shutdown(int errorCode) override;
-//
-// private:
-//  std::pair<ExecutionState, SharedAqlItemBlockPtr> getSomeWithoutTrace(size_t atMost);
-//
-//  std::pair<ExecutionState, size_t> skipSomeWithoutTrace(size_t atMost);
-//
-// private:
-//  std::mutex _mutex;
-//  bool _isShutdown;
-//};
-
-
 }  // namespace aql
 }  // namespace arangodb
-
-#endif

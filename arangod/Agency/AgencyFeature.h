@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,24 +21,25 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AGENCY_AGENCY_FEATURE_H
-#define ARANGOD_AGENCY_AGENCY_FEATURE_H 1
+#pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
+#include "Agency/Agent.h"
+#include "RestServer/arangod.h"
 
 namespace arangodb {
+namespace application_features {
+class FoxxFeaturePhase;
+}
 
 namespace consensus {
-
 class Agent;
 }
 
-class AgencyFeature : public application_features::ApplicationFeature {
+class AgencyFeature : public ArangodFeature {
  public:
-  static consensus::Agent* AGENT;
+  static constexpr std::string_view name() { return "Agency"; }
 
-  explicit AgencyFeature(application_features::ApplicationServer& server);
-  ~AgencyFeature();
+  explicit AgencyFeature(Server& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -46,6 +48,10 @@ class AgencyFeature : public application_features::ApplicationFeature {
   void beginShutdown() override final;
   void stop() override final;
   void unprepare() override final;
+
+  bool activated() const noexcept { return _activated; }
+
+  consensus::Agent* agent() const;
 
  private:
   bool _activated;
@@ -67,13 +73,7 @@ class AgencyFeature : public application_features::ApplicationFeature {
   bool _cmdLineTimings;
   std::string _recoveryId;
 
- public:
-  consensus::Agent* agent() const { return _agent.get(); }
-
- private:
   std::unique_ptr<consensus::Agent> _agent;
 };
 
 }  // namespace arangodb
-
-#endif

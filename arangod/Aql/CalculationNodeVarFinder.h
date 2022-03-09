@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,8 +21,7 @@
 /// @author Yuriy Popov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_CALCULATION_NODE_VAR_FINDER_H
-#define ARANGOD_AQL_CALCULATION_NODE_VAR_FINDER_H 1
+#pragma once
 
 #include "Aql/ExecutionNode.h"
 #include "Aql/WalkerWorker.h"
@@ -30,7 +30,8 @@
 namespace arangodb {
 namespace aql {
 
-class CalculationNodeVarFinder final : public WalkerWorker<ExecutionNode> {
+class CalculationNodeVarFinder final
+    : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
   Variable const* _lookingFor;
 
   ::arangodb::containers::SmallVector<ExecutionNode*>& _out;
@@ -38,12 +39,15 @@ class CalculationNodeVarFinder final : public WalkerWorker<ExecutionNode> {
   VarSet _currentUsedVars;
 
  public:
-  CalculationNodeVarFinder(Variable const* var, ::arangodb::containers::SmallVector<ExecutionNode*>& out) noexcept;
+  CalculationNodeVarFinder(
+      Variable const* var,
+      ::arangodb::containers::SmallVector<ExecutionNode*>& out) noexcept;
 
   bool before(ExecutionNode*) override final;
 };
 
-class CalculationNodeVarExistenceFinder final : public WalkerWorker<ExecutionNode> {
+class CalculationNodeVarExistenceFinder final
+    : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
   Variable const* _lookingFor;
 
   VarSet _currentUsedVars;
@@ -61,5 +65,3 @@ class CalculationNodeVarExistenceFinder final : public WalkerWorker<ExecutionNod
 };
 }  // namespace aql
 }  // namespace arangodb
-
-#endif // ARANGOD_AQL_CALCULATION_NODE_VAR_FINDER_H

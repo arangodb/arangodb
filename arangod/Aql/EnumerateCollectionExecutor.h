@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,8 +24,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_ENUMERATECOLLECTION_EXECUTOR_H
-#define ARANGOD_AQL_ENUMERATECOLLECTION_EXECUTOR_H
+#pragma once
 
 #include "Aql/DocumentProducingHelper.h"
 #include "Aql/ExecutionState.h"
@@ -54,48 +54,57 @@ class RegisterInfos;
 class Expression;
 class InputAqlItemRow;
 class OutputAqlItemRow;
+class Projections;
 class QueryContext;
 struct Variable;
 
-template <BlockPassthrough>
+template<BlockPassthrough>
 class SingleRowFetcher;
 
 class EnumerateCollectionExecutorInfos {
  public:
-  EnumerateCollectionExecutorInfos(RegisterId outputRegister, aql::QueryContext& query,
-                                   Collection const* collection, Variable const* outVariable,
-                                   bool produceResult, Expression* filter,
-                                   std::vector<std::string> const& projections,
-                                   std::vector<size_t> const& coveringIndexAttributePositions,
-                                   bool random, bool count);
+  EnumerateCollectionExecutorInfos(
+      RegisterId outputRegister, aql::QueryContext& query,
+      Collection const* collection, Variable const* outVariable,
+      bool produceResult, Expression* filter,
+      arangodb::aql::Projections projections,
+      std::vector<std::pair<VariableId, RegisterId>> filterVarsToRegs,
+      bool random, bool count, ReadOwnWrites readOwnWrites);
 
   EnumerateCollectionExecutorInfos() = delete;
-  EnumerateCollectionExecutorInfos(EnumerateCollectionExecutorInfos&&) = default;
-  EnumerateCollectionExecutorInfos(EnumerateCollectionExecutorInfos const&) = delete;
+  EnumerateCollectionExecutorInfos(EnumerateCollectionExecutorInfos&&) =
+      default;
+  EnumerateCollectionExecutorInfos(EnumerateCollectionExecutorInfos const&) =
+      delete;
   ~EnumerateCollectionExecutorInfos() = default;
 
   Collection const* getCollection() const;
   Variable const* getOutVariable() const;
   QueryContext& getQuery() const;
   Expression* getFilter() const noexcept;
-  std::vector<std::string> const& getProjections() const noexcept;
-  std::vector<size_t> const& getCoveringIndexAttributePositions() const noexcept;
+  arangodb::aql::Projections const& getProjections() const noexcept;
   bool getProduceResult() const noexcept;
   bool getRandom() const noexcept;
   bool getCount() const noexcept;
   RegisterId getOutputRegisterId() const;
+
+  std::vector<std::pair<VariableId, RegisterId>> const&
+  getFilterVarsToRegister() const noexcept;
+
+  ReadOwnWrites canReadOwnWrites() const noexcept { return _readOwnWrites; }
 
  private:
   aql::QueryContext& _query;
   Collection const* _collection;
   Variable const* _outVariable;
   Expression* _filter;
-  std::vector<std::string> const& _projections;
-  std::vector<size_t> const& _coveringIndexAttributePositions;
+  arangodb::aql::Projections _projections;
   RegisterId _outputRegisterId;
+  std::vector<std::pair<VariableId, RegisterId>> _filterVarsToRegs;
   bool _produceResult;
   bool _random;
   bool _count;
+  ReadOwnWrites const _readOwnWrites;
 };
 
 /**
@@ -105,7 +114,8 @@ class EnumerateCollectionExecutor {
  public:
   struct Properties {
     static constexpr bool preservesOrder = true;
-    static constexpr BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Disable;
+    static constexpr BlockPassthrough allowsBlockPassthrough =
+        BlockPassthrough::Disable;
     /* With some more modifications this could be turned to true. Actually the
    output of this block is input * itemsInCollection */
     static constexpr bool inputSizeRestrictsOutputSize = false;
@@ -123,20 +133,24 @@ class EnumerateCollectionExecutor {
   /**
    * @brief Will fetch a new InputRow if necessary and store their local state
    *
-   * @return bool done in case we do not have any input and upstreamState is done
+   * @return bool done in case we do not have any input and upstreamState is
+   * done
    */
   void initializeNewRow(AqlItemBlockInputRange& inputRange);
-  
+
   /**
-   * @brief This Executor in some cases knows how many rows it will produce and most by itself
+   * @brief This Executor in some cases knows how many rows it will produce and
+   * most by itself
    */
-  [[nodiscard]] auto expectedNumberOfRowsNew(AqlItemBlockInputRange const& input,
-                                             AqlCall const& call) const noexcept -> size_t;
+  [[nodiscard]] auto expectedNumberOfRowsNew(
+      AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept
+      -> size_t;
 
   /**
    * @brief produce the next Rows of Aql Values.
    *
-   * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
+   * @return ExecutorState, the stats, and a new Call that needs to be send to
+   * upstream
    */
   [[nodiscard]] std::tuple<ExecutorState, Stats, AqlCall> produceRows(
       AqlItemBlockInputRange& input, OutputAqlItemRow& output);
@@ -145,15 +159,13 @@ class EnumerateCollectionExecutor {
   /**
    * @brief skip the next Row of Aql Values.
    *
-   * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
+   * @return ExecutorState, the stats, and a new Call that needs to be send to
+   * upstream
    */
   [[nodiscard]] std::tuple<ExecutorState, Stats, size_t, AqlCall> skipRowsRange(
       AqlItemBlockInputRange& inputRange, AqlCall& call);
 
   void initializeCursor();
-
- private:
-  void setAllowCoveringIndexOptimization(bool allowCoveringIndexOptimization);
 
  private:
   transaction::Methods _trx;
@@ -165,11 +177,8 @@ class EnumerateCollectionExecutor {
   ExecutorState _executorState;
   bool _cursorHasMore;
   InputAqlItemRow _currentRow;
-  ExecutorState _currentRowState;
   std::unique_ptr<IndexIterator> _cursor;
 };
 
 }  // namespace aql
 }  // namespace arangodb
-
-#endif

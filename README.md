@@ -5,20 +5,19 @@ ArangoDB
 
 Slack: [![ArangoDB-Logo](https://slack.arangodb.com/badge.svg)](https://slack.arangodb.com)
 
-ArangoDB is a multi-model, open-source database with flexible data models for
-documents, graphs, and key-values. Build high performance applications using a
-convenient SQL-like query language or JavaScript extensions. Use ACID
-transactions if you require them. Scale horizontally with a few mouse clicks.
+ArangoDB is a scalable open-source multi-model database natively supporting graph, document and search. All supported data models & access patterns can be combined in queries allowing for maximal flexibility. ArangoDB runs on prem, in the cloud – anywhere.
 
-ArangoDB runs everywhere: On-prem, in the cloud and also on
-[ArangoDBs Cloud Service Oasis](https://cloud.arangodb.com/home).
+ArangoDB Cloud Service
+------------------------
 
-The supported data models can be mixed in queries and allow ArangoDB to be the
-aggregation point for your data.
+Oasis is the simplest way to run ArangoDB. Users can make deployments on all major cloud providers in many regions. Test [ArangoDBs Cloud Service Oasis](https://cloud.arangodb.com/home) for free.
 
-Check out our [training center](https://www.arangodb.com/arangodb-training-center/)
-to get started and see the full [documentation](https://www.arangodb.com/docs/stable/)
-to dive deeper.
+Getting Started
+------------------------
+
+- [Free Udemy Course](https://www.udemy.com/course/getting-started-with-arangodb)
+- [Training Center](https://www.arangodb.com/learn/)
+- [Documentation](https://www.arangodb.com/docs/stable/)
 
 For the impatient:
 
@@ -50,7 +49,7 @@ widely used in relational databases but lacking in many NoSQL products. However,
 there is no need to forgo them in ArangoDB. You decide how and when to use joins
 and strong consistency guarantees, without sacrificing performance and scalability. 
 
-Furthermore, ArangoDB offers a JavaScript framework called [Foxx](https://www.arangodb.com/foxx)
+Furthermore, ArangoDB offers a JavaScript framework called [Foxx](https://www.arangodb.com/community-server/foxx/)
 that is executed in the database server with direct access to the data. Build your
 own data-centric microservices with a few lines of code. By extending the HTTP API
 with user code written in JavaScript, ArangoDB can be turned into a strict
@@ -58,15 +57,13 @@ schema-enforcing persistence engine.
 
 Other features of ArangoDB include:
 
+- **Horizontal scalability**: ArangoDB will seamlessly shard your data horizontally across multiple machines.
 - Use a **data-centric microservices** approach with ArangoDB Foxx and fuse your
   application-logic and database together for maximal throughput
 - JavaScript for all: **no language zoo**, you can use one language from your
   browser to your back-end
 - **Flexible data modeling**: model your data as combination of key-value pairs,
   documents or graphs - perfect for social relations
-- Different **storage engines**: ArangoDB provides a storage engine for mostly
-  in-memory operations and an alternative storage engine based on RocksDB which 
-  handle datasets that are much bigger than RAM.
 - **Powerful query language** (AQL) to retrieve and modify data 
 - **Transactions**: run queries on multiple documents or collections with
   optional transactional consistency and isolation
@@ -113,7 +110,7 @@ issue tracker for reporting them:
 
 You can use our Google group for improvements, feature requests, comments:
 
-[https://www.arangodb.com/community](https://www.arangodb.com/community)
+[https://www.arangodb.com/community](https://www.arangodb.com/community/)
 
 StackOverflow is great for questions about AQL, usage scenarios etc.
 

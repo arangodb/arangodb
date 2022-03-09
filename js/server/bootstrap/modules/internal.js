@@ -32,7 +32,6 @@
   // //////////////////////////////////////////////////////////////////////////////
 
   var exports = require('internal');
-  var console = require('console');
   var fs = require('fs');
 
   // //////////////////////////////////////////////////////////////////////////////
@@ -62,6 +61,13 @@
 
   exports.ArangoView = global.ArangoView;
   delete global.ArangoView;
+
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief ArangoView
+  // //////////////////////////////////////////////////////////////////////////////
+
+  exports.ArangoReplicatedLog = global.ArangoReplicatedLog;
+  delete global.ArangoReplicatedLog;
 
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief ArangoUsers
@@ -182,25 +188,24 @@
   // / @brief expose configuration
   // //////////////////////////////////////////////////////////////////////////////
 
-
-  if (global.SYS_IS_FOXX_API_DISABLED) {
+  if (typeof global.SYS_IS_FOXX_API_DISABLED !== 'undefined') {
     exports.isFoxxApiDisabled = global.SYS_IS_FOXX_API_DISABLED;
     delete global.SYS_IS_FOXX_API_DISABLED;
   }
 
-  if (global.SYS_IS_FOXX_STORE_DISABLED) {
+  if (typeof global.SYS_IS_FOXX_STORE_DISABLED !== 'undefined') {
     exports.isFoxxStoreDisabled = global.SYS_IS_FOXX_STORE_DISABLED;
     delete global.SYS_IS_FOXX_STORE_DISABLED;
   }
+ 
+  if (typeof global.SYS_FOXX_ALLOW_INSTALL_FROM_REMOTE !== 'undefined') {
+    exports.foxxAllowInstallFromRemote = global.SYS_FOXX_ALLOW_INSTALL_FROM_REMOTE;
+    delete global.SYS_FOXX_ALLOW_INSTALL_FROM_REMOTE;
+  }
 
-
-  // //////////////////////////////////////////////////////////////////////////////
-  // / @brief throw-collection-not-loaded
-  // //////////////////////////////////////////////////////////////////////////////
-
-  if (global.THROW_COLLECTION_NOT_LOADED) {
-    exports.throwOnCollectionNotLoaded = global.THROW_COLLECTION_NOT_LOADED;
-    delete global.THROW_COLLECTION_NOT_LOADED;
+  if (global.SYS_CLUSTER_API_JWT_POLICY) {
+    exports.clusterApiJwtPolicy = global.SYS_CLUSTER_API_JWT_POLICY;
+    delete global.SYS_CLUSTER_API_JWT_POLICY;
   }
 
   // //////////////////////////////////////////////////////////////////////////////
@@ -208,52 +213,7 @@
   // //////////////////////////////////////////////////////////////////////////////
 
   // autoload specific modules
-  exports.autoloadModules = function () {
-    console.debug('autoloading actions');
-
-    try {
-      let modules = exports.db._collection('_modules');
-
-      if (modules === null) {
-        // _modules is an optional collection. if it does not exist,
-        // we can simply go on and ignore it
-        console.debug('autoloading actions finished, no _modules collection found');
-        return;
-      }
-
-      modules = modules.byExample({ autoload: true }).toArray();
-
-      modules.forEach(function (module) {
-        // this module is only meant to be executed in one thread
-        if (exports.threadNumber !== 0 && !module.perThread) {
-          return;
-        }
-
-        console.debug('autoloading module: %s', module.path);
-
-        try {
-          // require a module
-          if (module.path !== undefined) {
-            require(module.path);
-          }
-
-          // execute a user function
-          else if (module.func !== undefined) {
-            /*eslint-disable */
-            var func = new Function(module.func)
-            /*eslint-enable */
-            func();
-          }
-        } catch (err) {
-          console.error('error while loading startup module "%s": %s', module.name || module.path, String(err));
-        }
-      });
-    } catch (err) {
-      console.error('error while loading startup modules: %s', String(err));
-    }
-
-    console.debug('autoloading actions finished');
-  };
+  exports.autoloadModules = function () {};
 
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief serverStatistics
@@ -281,6 +241,20 @@
   if (global.SYS_ENABLED_STATISTICS) {
     exports.enabledStatistics = global.SYS_ENABLED_STATISTICS;
     delete global.SYS_ENABLED_STATISTICS;
+  }
+  
+  if (global.SYS_ENABLED_STATISTICS_ALL_DATABASES) {
+    exports.enabledStatisticsInAllDatabases = global.SYS_ENABLED_STATISTICS_ALL_DATABASES;
+    delete global.SYS_ENABLED_STATISTICS_ALL_DATABASES;
+  }
+
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief whether or not Metrics are enabled
+  // //////////////////////////////////////////////////////////////////////////////
+
+  if (global.SYS_ENABLED_METRICS) {
+    exports.enabledMetrics = global.SYS_ENABLED_METRICS;
+    delete global.SYS_ENABLED_METRICS;
   }
 
   // //////////////////////////////////////////////////////////////////////////////
@@ -320,19 +294,10 @@
   }
 
   // //////////////////////////////////////////////////////////////////////////////
-  // / @brief reloads the AQL user functions
+  // / @brief reloads the AQL user functions - does nothing anymore
   // //////////////////////////////////////////////////////////////////////////////
 
-  if (global.SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION) {
-    exports.reloadAqlFunctions = function () {
-      global.SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION('reloadAql');
-      require('@arangodb/aql').reload();
-    };
-  } else {
-    exports.reloadAqlFunctions = function () {
-      require('@arangodb/aql').reload();
-    };
-  }
+  exports.reloadAqlFunctions = function () {};
 
   // replication
   if (global.REPLICATION_LOGGER_STATE) {
@@ -583,9 +548,19 @@
     exports.maxNumberOfShards = global.MAX_NUMBER_OF_SHARDS;
     delete global.MAX_NUMBER_OF_SHARDS;
   }
+  if (typeof global.MAX_NUMBER_OF_MOVE_SHARDS === 'number') {
+    exports.maxNumberOfMoveShards = global.MAX_NUMBER_OF_MOVE_SHARDS;
+    delete global.MAX_NUMBER_OF_MOVE_SHARDS;
+  }
   if (global.FORCE_ONE_SHARD) {
     exports.forceOneShard = global.FORCE_ONE_SHARD;
     delete global.FORCE_ONE_SHARD;
+  }
+
+  // server session timeout (for web UI)
+  if (global.SESSION_TIMEOUT) {
+    exports.sessionTimeout = global.SESSION_TIMEOUT;
+    delete global.SESSION_TIMEOUT;
   }
 
   // /////////////////////////////////////////////////////////////////////////////
@@ -595,6 +570,11 @@
   exports.isCluster = function () {
     let role = global.ArangoServerState.role();
     return (role !== undefined && role !== 'SINGLE' && role !== 'AGENT');
+  };
+
+  if (global.SYS_CREATE_HOTBACKUP) {
+    exports.createHotbackup = global.SYS_CREATE_HOTBACKUP;
+    delete global.SYS_CREATE_HOTBACKUP;
   };
 
 }());

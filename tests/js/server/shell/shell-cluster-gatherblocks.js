@@ -159,13 +159,8 @@ function gatherBlocksTestSuite() {
                 rv = db._query(t.query , bindvars);
                 rv = rv.toArray().map(doc => { return doc.value; } );
                 time += (Date.now() - start);
-              }
-              catch (ex) {
-                print("Failed in " + t.query);
-                print(bindvars);
-                db._explain(t.query , bindvars);
-                print(ex);
-
+              } catch (ex) {
+                print("Failed in " + t.query, bindvars);
                 throw ex;
               }
               // check number of returned documents

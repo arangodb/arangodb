@@ -1,3 +1,4 @@
+/*global BigInt, FOXX_QUEUE_VERSION, FOXX_QUEUE_VERSION_BUMP */
 'use strict';
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -37,6 +38,16 @@ const coordinatorId = (
   : undefined
 );
 
+let ensureDefaultQueue = function () {
+  if (!global.KEY_GET('queue-control', 'default-queue')) {
+    try {
+      const queues = require('@arangodb/foxx/queues');
+      queues.create('default');
+      global.KEY_SET('queue-control', 'default-queue', 1);
+    } catch (err) {}
+  }
+};
+
 var runInDatabase = function () {
   var busy = false;
   db._executeTransaction({
@@ -60,8 +71,7 @@ var runInDatabase = function () {
           var now = Date.now();
           var max = queue.maxWorkers - numBusy;
           var queueName = queue._key;
-          var query = global.aqlQuery`
-          FOR job IN _jobs
+          var query = global.aqlQuery`/*findPendingJobs*/ FOR job IN _jobs
             FILTER ((job.queue      == ${queueName}) &&
                     (job.status     == 'pending') &&
                     (job.delayUntil <= ${now}))
@@ -83,7 +93,7 @@ var runInDatabase = function () {
             const updateQuery = global.aqlQuery`
             UPDATE ${job} WITH ${update} IN _jobs
             `;
-            updateQuery.options = { ttl: 5 };
+            updateQuery.options = { ttl: 5, maxRuntime: 5 };
 
             db._query(updateQuery);
             // db._jobs.update(job, update);
@@ -129,13 +139,12 @@ var runInDatabase = function () {
 //
 const resetDeadJobs = function () {
   const queues = require('@arangodb/foxx/queues');
-  var query = global.aqlQuery`
-      FOR doc IN _jobs
+  var query = global.aqlQuery`/*resetDeadJobs*/ FOR doc IN _jobs
         FILTER doc.status == 'progress'
           UPDATE doc
         WITH { status: 'pending' }
         IN _jobs`;
-  query.options = { ttl: 5 };
+  query.options = { ttl: 5, maxRuntime: 5 };
 
   const initialDatabase = db._name();
   db._databases().forEach(function (name) {
@@ -211,67 +220,90 @@ const resetDeadJobsOnFirstRun = function () {
 };
 
 exports.manage = function () {
+  ensureDefaultQueue();
+
   if (!global.ArangoServerState.isFoxxmaster()) {
+    if (isCluster) {
+      // publish our own queue updates to the agency even if we exit early.
+      // this coordinator, though not the Foxxmaster, could have been used
+      // for inserting new queue jobs
+      FOXX_QUEUE_VERSION_BUMP();
+    }
     return;
   }
 
   if (global.ArangoServerState.getFoxxmasterQueueupdate()) {
-    if (!isCluster) {
-      // On a Foxxmaster change FoxxmasterQueueupdate is set to true
-      // we use this to signify a Leader change to this server
-      foxxManager.healAll(true);
-    }
-    // Reset jobs before updating the queue delay. Don't continue on errors,
-    // but retry later.
-    resetDeadJobsOnFirstRun();
-    if (isCluster) {
-      var foxxQueues = require('@arangodb/foxx/queues');
-
-      foxxQueues._updateQueueDelay();
-    }
     // do not call again immediately
     global.ArangoServerState.setFoxxmasterQueueupdate(false);
+
+    try {
+      // Reset jobs before updating the queue delay. Don't continue on errors,
+      // but retry later.
+      resetDeadJobsOnFirstRun();
+      if (isCluster) {
+        let foxxQueues = require('@arangodb/foxx/queues');
+        foxxQueues._updateQueueDelay();
+      }
+    } catch (err) {
+      // an error occurred. we need to reinstantiate the queue
+      // update, so in the next round the code for the queue update
+      // will be run
+      global.ArangoServerState.setFoxxmasterQueueupdate(true);
+      if (err.errorNum === errors.ERROR_SHUTTING_DOWN.code) {
+        return;
+      }
+      throw err;
+    }
   }
 
-  var initialDatabase = db._name();
-  var now = Date.now();
+  db._useDatabase("_system");
+  
+  let recheckAllQueues = false;
+  let clusterQueueVersion = BigInt("0");
+  if (isCluster) {
+    // check the cluster-wide queue version
+    clusterQueueVersion = BigInt(FOXX_QUEUE_VERSION() || 0);
+    // compare to our locally stored version
+    let localQueueVersion = BigInt(global.KEY_GET('queue-control', 'version') || 0);
 
-  // fetch list of databases from cache
-  var databases = global.KEY_GET('queue-control', 'databases') || [];
-  var expires = global.KEY_GET('queue-control', 'databases-expire') || 0;
-
-  if (expires < now || databases.length === 0) {
-    databases = db._databases();
-    global.KEY_SET('queue-control', 'databases', databases);
-    // make list of databases expire in 30 seconds from now
-    global.KEY_SET('queue-control', 'databases-expire', Date.now() + 30 * 1000);
+    if (clusterQueueVersion > localQueueVersion) {
+      // queue was updated on another coordinator
+      recheckAllQueues = true;
+    }
   }
 
-  databases.forEach(function (database) {
+  db._databases().forEach(function (database) {
     try {
       db._useDatabase(database);
       global.KEYSPACE_CREATE('queue-control', 1, true);
-      var delayUntil = global.KEY_GET('queue-control', 'delayUntil') || 0;
+      let delayUntil = global.KEY_GET('queue-control', 'delayUntil') || 0;
 
-      if (delayUntil === -1 || delayUntil > Date.now()) {
+      if (!recheckAllQueues &&
+          (delayUntil === -1 || delayUntil > Date.now())) {
         return;
       }
 
-      var queues = db._collection('_queues');
-      var jobs = db._collection('_jobs');
+      const queues = db._collection('_queues');
+      const jobs = db._collection('_jobs');
 
-      if (!queues || !jobs || !queues.count() || !jobs.count()) {
+      if (!queues || !jobs) {
+        // _queues or _jobs collections do not exist
+        global.KEY_SET('queue-control', 'delayUntil', -1);
+      } else if (!recheckAllQueues && (!queues.count() || !jobs.count())) {
+        // _queues or _jobs collections do exist, but are empty
         global.KEY_SET('queue-control', 'delayUntil', -1);
       } else {
+        global.KEY_SET('queue-control', 'delayUntil', 0);
         runInDatabase();
       }
     } catch (e) {
       // it is possible that the underlying database is deleted while we are in here.
       // this is not an error
-      if (e.errorNum !== errors.ERROR_ARANGO_DATABASE_NOT_FOUND.code) {
-        warn("An exception occurred while setting up foxx queue handling in database '"
+      if (e.errorNum !== errors.ERROR_ARANGO_DATABASE_NOT_FOUND.code &&
+          e.errorNum !== errors.ERROR_SHUTTING_DOWN.code) {
+        warn("An exception occurred during Foxx queue handling in database '"
               + database + "' "
-              + e.message + " "
+              + e.message + ": "
               + JSON.stringify(e));
         // noop
       }
@@ -279,10 +311,17 @@ exports.manage = function () {
   });
 
   // switch back into previous database
-  try {
-    db._useDatabase(initialDatabase);
-  } catch (err) {
-    db._useDatabase('_system');
+  db._useDatabase('_system');
+
+  if (isCluster) {
+    if (recheckAllQueues) {
+      // once we have rechecked all queues, we can update our local queue version
+      // to the version we checked for
+      global.KEY_SET('queue-control', 'version', clusterQueueVersion.toString());
+    }
+
+    // publish our own queue updates to the agency
+    FOXX_QUEUE_VERSION_BUMP();
   }
 };
 
@@ -294,16 +333,19 @@ exports.run = function () {
     return;
   }
 
-  let queues = require('@arangodb/foxx/queues');
-  queues.create('default');
+  // this function is called at server startup. we must not do
+  // anything expensive here, or anything that could block the
+  // startup procedure
 
   // wakeup/poll interval for Foxx queues
   global.KEYSPACE_CREATE('queue-control', 1, true);
   if (!isCluster) {
+    ensureDefaultQueue();
     resetDeadJobs();
   }
 
   if (tasks.register !== undefined) {
+    // move the actual foxx queue operations execution to a background task
     tasks.register({
       command: function () {
         require('@arangodb/foxx/queues/manager').manage();

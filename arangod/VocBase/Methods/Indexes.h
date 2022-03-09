@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOC_BASE_API_INDEXES_H
-#define ARANGOD_VOC_BASE_API_INDEXES_H 1
+#pragma once
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -41,22 +41,24 @@ namespace methods {
 /// Common code for ensureIndexes and api-index.js
 struct Indexes {
   static arangodb::Result getIndex(LogicalCollection const* collection,
-                                   velocypack::Slice const& indexId, velocypack::Builder&,
+                                   velocypack::Slice indexId,
+                                   velocypack::Builder&,
                                    transaction::Methods* trx = nullptr);
 
   /// @brief get all indexes, skips view links
   static arangodb::Result getAll(LogicalCollection const* collection,
                                  std::underlying_type<Index::Serialize>::type,
-                                 bool withHidden, arangodb::velocypack::Builder&,
+                                 bool withHidden,
+                                 arangodb::velocypack::Builder&,
                                  transaction::Methods* trx = nullptr);
 
   static arangodb::Result createIndex(LogicalCollection*, Index::IndexType,
                                       std::vector<std::string> const&,
-                                      bool unique, bool sparse);
+                                      bool unique, bool sparse, bool estimates);
 
   static arangodb::Result ensureIndex(LogicalCollection* collection,
-                                      velocypack::Slice const& definition,
-                                      bool create, velocypack::Builder& output);
+                                      velocypack::Slice definition, bool create,
+                                      velocypack::Builder& output);
 
   static arangodb::Result drop(LogicalCollection* collection,
                                velocypack::Slice const& indexArg);
@@ -67,19 +69,18 @@ struct Indexes {
                                         IndexId& iid, std::string& name);
 
  private:
-  static arangodb::Result ensureIndexCoordinator(LogicalCollection const* collection,
-                                                 velocypack::Slice const& indexDef, bool create,
-                                                 velocypack::Builder& resultBuilder);
+  static arangodb::Result ensureIndexCoordinator(
+      LogicalCollection const* collection, velocypack::Slice const& indexDef,
+      bool create, velocypack::Builder& resultBuilder);
 
 #ifdef USE_ENTERPRISE
   static arangodb::Result ensureIndexCoordinatorEE(
-      arangodb::LogicalCollection const* collection, arangodb::velocypack::Slice const slice,
-      bool create, arangodb::velocypack::Builder& resultBuilder);
-  static arangodb::Result dropCoordinatorEE(arangodb::LogicalCollection const* collection,
-                                            IndexId const iid);
+      arangodb::LogicalCollection const* collection,
+      arangodb::velocypack::Slice const slice, bool create,
+      arangodb::velocypack::Builder& resultBuilder);
+  static arangodb::Result dropCoordinatorEE(
+      arangodb::LogicalCollection const* collection, IndexId const iid);
 #endif
 };
 }  // namespace methods
 }  // namespace arangodb
-
-#endif

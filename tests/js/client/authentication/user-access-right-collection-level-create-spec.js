@@ -33,7 +33,7 @@
 
 const expect = require('chai').expect;
 const users = require('@arangodb/users');
-const helper = require('@arangodb/user-helper');
+const helper = require('@arangodb/testutils/user-helper');
 const errors = require('@arangodb').errors;
 const dbName = helper.dbName;
 const colName = helper.colName;
@@ -44,7 +44,6 @@ const systemLevel = helper.systemLevel;
 const dbLevel = helper.dbLevel;
 const colLevel = helper.colLevel;
 
-// const arango = require('internal').arango;
 const db = require('internal').db;
 for (let l of rightLevels) {
   systemLevel[l] = new Set();

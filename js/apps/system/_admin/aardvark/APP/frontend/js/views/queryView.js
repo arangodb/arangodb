@@ -150,7 +150,7 @@
         }
         this.setCachedQuery(this.aqlEditor.getValue(), JSON.stringify(this.bindParamTableObj));
       } else {
-        arangoHelper.arangoError('Bind parameter', 'Could not parse bind parameter');
+        arangoHelper.arangoError('Bind parameters', 'Could not parse bind parameters');
       }
       this.resize();
     },
@@ -165,7 +165,11 @@
 
     initQueryImport: function () {
       var self = this;
-      self.allowUpload = false;
+
+      if (self.allowUpload) {
+        $('#confirmQueryImport').removeClass('disabled');
+      }
+
       $('#importQueries').change(function (e) {
         self.files = e.target.files || e.dataTransfer.files;
         self.file = self.files[0];
@@ -184,8 +188,6 @@
               self.updateLocalQueries();
               self.updateQueryTable();
               self.resize();
-              self.allowUpload = false;
-              $('#confirmQueryImport').addClass('disabled');
               $('#queryImportDialog').modal('hide');
             },
             error: function (data) {
@@ -244,20 +246,23 @@
     },
 
     exportCustomQueries: function () {
-      var name;
       var self = this;
 
-      $.ajax('whoAmI?_=' + Date.now()).success(function (data) {
-        name = data.user;
+      $.ajax({
+        type: 'GET',
+        url: 'whoAmI?_=' + Date.now(),
+        success: function (data) {
+          var name = data.user;
 
-        if (name === null || name === false) {
-          name = 'root';
-        }
-        if (frontendConfig.ldapEnabled) {
-          self.collection.downloadLocalQueries();
-        } else {
-          var url = 'query/download/' + encodeURIComponent(name);
-          arangoHelper.download(url);
+          if (name === null || name === false) {
+            name = 'root';
+          }
+          if (frontendConfig.ldapEnabled) {
+            self.collection.downloadLocalQueries();
+          } else {
+            var url = 'query/download/' + encodeURIComponent(name);
+            arangoHelper.download(url);
+          }
         }
       });
     },
@@ -2026,7 +2031,7 @@
             });
           }
 
-          // add active class to choosen display method
+          // add active class to chosen display method
           if (success !== false) {
             if (result.defaultType === 'geotable' || result.defaultType === 'geo') {
               $('#outputTable' + counter).hide();
@@ -2266,13 +2271,15 @@
 
       // check if async query is finished
       var checkQueryStatus = function (cursorID) {
+        var method = 'PUT';
         var url = arangoHelper.databaseUrl('/_api/job/' + encodeURIComponent(queryID));
         if (cursorID) {
+          method = 'POST';
           url = arangoHelper.databaseUrl('/_api/cursor/' + encodeURIComponent(cursorID));
         }
 
         $.ajax({
-          type: 'PUT',
+          type: method,
           url: url,
           contentType: 'application/json',
           processData: false,
@@ -2742,9 +2749,10 @@
       var pos = 0;
       _.each(data.original, function (obj) {
         if (first === true && obj) {
-          tableDescription.titles = Object.keys(obj);
-          tableDescription.titles.forEach(function (t) {
+          var titles = Object.keys(obj);
+          titles.forEach(function (t) {
             headers[String(t)] = pos++;
+            tableDescription.titles.push(_.escape(String(t)));
           });
           first = false;
         }

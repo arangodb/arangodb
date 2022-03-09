@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,23 +21,19 @@
 /// @author Daniel Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REST_SERVER_LANGUAGE_CHECK_FEATURE_H
-#define ARANGODB_REST_SERVER_LANGUAGE_CHECK_FEATURE_H 1
+#pragma once
 
-#include <unicode/locid.h>
-#include "ApplicationFeatures/ApplicationFeature.h"
+#include "RestServer/arangod.h"
 
 namespace arangodb {
 
-class LanguageCheckFeature final : public application_features::ApplicationFeature {
+class LanguageCheckFeature final : public ArangodFeature {
  public:
-  explicit LanguageCheckFeature(application_features::ApplicationServer& server);
-  ~LanguageCheckFeature();
+  static constexpr std::string_view name() noexcept { return "LanguageCheck"; }
 
-  static std::string const& name() noexcept;
+  explicit LanguageCheckFeature(Server& server);
+
   void start() override final;
 };
 
 }  // namespace arangodb
-
-#endif

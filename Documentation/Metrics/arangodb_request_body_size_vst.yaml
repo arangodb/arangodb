@@ -1,0 +1,16 @@
+name: arangodb_request_body_size_vst
+introducedIn: "3.7.15"
+help: |
+  Body size in bytes for VST requests.
+unit: bytes
+type: histogram
+category: Statistics
+complexity: medium
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+description: |
+  Histogram of the body sizes of the received VST requests in bytes.
+  Note that this does include the binary header.

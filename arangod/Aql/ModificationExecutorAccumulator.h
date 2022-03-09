@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,17 +21,15 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_MODIFICATION_EXECUTOR_ACCUMULATOR_H
-#define ARANGOD_AQL_MODIFICATION_EXECUTOR_ACCUMULATOR_H
+#pragma once
 
 #include "Basics/Common.h"
 #include "Basics/debugging.h"
 
-#include <velocypack/Collection.h>
-#include <velocypack/velocypack-aliases.h>
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
 
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
 
 // Hack-i-ty-hack
 //
@@ -41,10 +40,12 @@ namespace aql {
 //
 class ModificationExecutorAccumulator {
  public:
-  ModificationExecutorAccumulator() { _accumulator.openArray(); }
+  ModificationExecutorAccumulator() { reset(); }
 
-  VPackSlice closeAndGetContents() {
+  [[nodiscard]] VPackSlice closeAndGetContents() {
+    TRI_ASSERT(_accumulator.isOpenArray());
     _accumulator.close();
+    TRI_ASSERT(_accumulator.isClosed());
     return _accumulator.slice();
   }
 
@@ -53,13 +54,18 @@ class ModificationExecutorAccumulator {
     _accumulator.add(doc);
   }
 
-  size_t nrOfDocuments() const { return _accumulator.slice().length(); }
+  void reset() {
+    _accumulator.clear();
+    _accumulator.openArray();
+  }
+
+  [[nodiscard]] size_t nrOfDocuments() const {
+    TRI_ASSERT(_accumulator.isClosed());
+    return _accumulator.slice().length();
+  }
 
  private:
-  VPackBuilder _accumulator;
+  VPackBuilder _accumulator{};
 };
 
-}  // namespace aql
-}  // namespace arangodb
-
-#endif
+}  // namespace arangodb::aql

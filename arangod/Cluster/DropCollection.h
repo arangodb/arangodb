@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,27 +22,23 @@
 /// @author Matthew Von-Maszewski
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_MAINTENANCE_DROP_COLLECTION_H
-#define ARANGODB_MAINTENANCE_DROP_COLLECTION_H
+#pragma once
 
 #include "ActionBase.h"
 #include "ActionDescription.h"
 
-#include <chrono>
-
 namespace arangodb {
 namespace maintenance {
 
-class DropCollection : public ActionBase {
+class DropCollection : public ActionBase, ShardDefinition {
  public:
   DropCollection(MaintenanceFeature&, ActionDescription const&);
 
   virtual ~DropCollection();
 
   virtual bool first() override final;
+  void setState(ActionState state) override final;
 };
 
 }  // namespace maintenance
 }  // namespace arangodb
-
-#endif

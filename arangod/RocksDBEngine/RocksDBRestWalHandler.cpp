@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -41,7 +41,7 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 
-RocksDBRestWalHandler::RocksDBRestWalHandler(application_features::ApplicationServer& server,
+RocksDBRestWalHandler::RocksDBRestWalHandler(ArangodServer& server,
                                              GeneralRequest* request,
                                              GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
@@ -78,7 +78,8 @@ RestStatus RocksDBRestWalHandler::execute() {
     return RestStatus::DONE;
   }
 
-  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   return RestStatus::DONE;
 }
 
@@ -89,13 +90,9 @@ void RocksDBRestWalHandler::properties() {
 }
 
 void RocksDBRestWalHandler::flush() {
-  std::shared_ptr<VPackBuilder> parsedRequest;
-  VPackSlice slice;
-  try {
-    slice = _request->payload();
-  } catch (...) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "invalid body value. expecting object");
+  bool parseSuccess = true;
+  VPackSlice slice = this->parseVPackBody(parseSuccess);
+  if (!parseSuccess) {  // error already created
     return;
   }
   if (!slice.isObject() && !slice.isNone()) {
@@ -106,7 +103,6 @@ void RocksDBRestWalHandler::flush() {
 
   bool waitForSync = false;
   bool waitForCollector = false;
-  double maxWaitTime = 300.0;
 
   if (slice.isObject()) {
     // got a request body
@@ -123,60 +119,36 @@ void RocksDBRestWalHandler::flush() {
     } else if (value.isBoolean()) {
       waitForCollector = value.getBoolean();
     }
-
-    value = slice.get("maxWaitTime");
-    if (value.isNumber()) {
-      maxWaitTime = value.getNumericValue<double>();
-    }
   } else {
     // no request body
     waitForSync = _request->parsedValue("waitForSync", waitForSync);
-    waitForCollector = _request->parsedValue("waitForCollector", waitForCollector);
-    maxWaitTime = _request->parsedValue("maxWaitTime", maxWaitTime);
+    waitForCollector =
+        _request->parsedValue("waitForCollector", waitForCollector);
   }
 
-  int res = TRI_ERROR_NO_ERROR;
+  auto res = TRI_ERROR_NO_ERROR;
   if (ServerState::instance()->isCoordinator()) {
     auto& feature = server().getFeature<ClusterFeature>();
-    res = flushWalOnAllDBServers(feature, waitForSync, waitForCollector, maxWaitTime);
+    res = flushWalOnAllDBServers(feature, waitForSync, waitForCollector);
   } else {
     if (waitForSync) {
-      EngineSelectorFeature::ENGINE->flushWal();
+      server().getFeature<EngineSelectorFeature>().engine().flushWal();
     }
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
   }
-  generateResult(rest::ResponseCode::OK, arangodb::velocypack::Slice::emptyObjectSlice());
+  generateResult(rest::ResponseCode::OK,
+                 arangodb::velocypack::Slice::emptyObjectSlice());
 }
 
 void RocksDBRestWalHandler::transactions() {
   transaction::Manager* mngr = transaction::ManagerFeature::manager();
   VPackBuilder builder;
   builder.openObject();
-  builder.add("runningTransactions", VPackValue(mngr->getActiveTransactionCount()));
-
-  // lastCollectedId
-  /*{
-    auto value = std::get<1>(info);
-    if (value == UINT64_MAX) {
-      builder.add("minLastCollected", VPackValue(VPackValueType::Null));
-    } else {
-      builder.add("minLastCollected", VPackValue(value));
-    }
-  }
-
-  // lastSealedId
-  {
-    auto value = std::get<2>(info);
-    if (value == UINT64_MAX) {
-      builder.add("minLastSealed", VPackValue(VPackValueType::Null));
-    } else {
-      builder.add("minLastSealed", VPackValue(value));
-    }
-  }*/
-
+  builder.add("runningTransactions",
+              VPackValue(mngr->getActiveTransactionCount()));
   builder.close();
   generateResult(rest::ResponseCode::NOT_IMPLEMENTED, builder.slice());
 }

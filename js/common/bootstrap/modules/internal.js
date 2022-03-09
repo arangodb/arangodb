@@ -206,6 +206,16 @@ global.DEFINE_MODULE('internal', (function () {
   }
 
   // //////////////////////////////////////////////////////////////////////////////
+  // / @brief check if database name is allowed or invalid
+  // //////////////////////////////////////////////////////////////////////////////
+
+  if (global.IS_ALLOWED_DATABASE_NAME) {
+    exports.isAllowedDatabaseName = global.IS_ALLOWED_DATABASE_NAME;
+    delete global.IS_ALLOWED_DATABASE_NAME;
+  }
+
+
+  // //////////////////////////////////////////////////////////////////////////////
   // / @brief configureEndpoint
   // //////////////////////////////////////////////////////////////////////////////
 
@@ -257,10 +267,6 @@ global.DEFINE_MODULE('internal', (function () {
   if (global.SYS_DOWNLOAD) {
     exports.download = global.SYS_DOWNLOAD;
     delete global.SYS_DOWNLOAD;
-  }
-  if (global.SYS_CLUSTER_DOWNLOAD) {
-    exports.clusterDownload = global.SYS_CLUSTER_DOWNLOAD;
-    delete global.SYS_CLUSTER_DOWNLOAD;
   }
 
   // //////////////////////////////////////////////////////////////////////////////
@@ -486,6 +492,15 @@ global.DEFINE_MODULE('internal', (function () {
   if (global.SYS_SHA1) {
     exports.sha1 = global.SYS_SHA1;
     delete global.SYS_SHA1;
+  }
+
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief RSA sign with private key in PEM format
+  // //////////////////////////////////////////////////////////////////////////////
+
+  if (global.SYS_RSAPRIVSIGN) {
+    exports.rsaprivsign = global.SYS_RSAPRIVSIGN;
+    delete global.SYS_RSAPRIVSIGN;
   }
 
   // //////////////////////////////////////////////////////////////////////////////
@@ -1666,19 +1681,19 @@ global.DEFINE_MODULE('internal', (function () {
   // / @brief isArangod - find out if we are in arangod or arangosh
   // //////////////////////////////////////////////////////////////////////////////
   exports.isArangod = function() {
-    return (typeof ArangoClusterComm === "object");
+    return (typeof ArangoClusterInfo === "object");
   };
 
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief isArangod - find out if we are in a cluster setup or not
   // //////////////////////////////////////////////////////////////////////////////
   exports.isCluster = function() {
-    if(exports.isArangod()) {
+    if (exports.isArangod()) {
       return require("@arangodb/cluster").isCluster();
     } else {
       // ask remote it is a coordinator
       const response = exports.arango.GET('/_admin/server/role');
-      if(response.error === true) {
+      if (response.error === true) {
         throw new exports.ArangoError(response);
       }
       return (response.role === "COORDINATOR");

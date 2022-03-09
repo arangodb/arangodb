@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -35,10 +36,9 @@
 #include "RestServer/DatabasePathFeature.h"
 
 namespace {
-static std::string const FEATURE_NAME("LanguageCheck");
 
 /// @brief reads previous default langauge from file
-arangodb::Result readLanguage(arangodb::application_features::ApplicationServer& server,
+arangodb::Result readLanguage(arangodb::ArangodServer& server,
                               std::string& language) {
   auto& databasePath = server.getFeature<arangodb::DatabasePathFeature>();
   std::string filename = databasePath.subdirectoryName("LANGUAGE");
@@ -49,7 +49,8 @@ arangodb::Result readLanguage(arangodb::application_features::ApplicationServer&
 
   std::string found;
   try {
-    VPackBuilder builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(filename);
+    VPackBuilder builder =
+        arangodb::basics::VelocyPackHelper::velocyPackFromFile(filename);
     VPackSlice content = builder.slice();
     if (!content.isObject()) {
       return TRI_ERROR_INTERNAL;
@@ -65,14 +66,15 @@ arangodb::Result readLanguage(arangodb::application_features::ApplicationServer&
   }
 
   language = found;
-  LOG_TOPIC("c499e", TRACE, arangodb::Logger::CONFIG) << "using default language: " << found;
+  LOG_TOPIC("c499e", TRACE, arangodb::Logger::CONFIG)
+      << "using default language: " << found;
 
   return TRI_ERROR_NO_ERROR;
 }
 
 /// @brief writes the default language to file
-int writeLanguage(arangodb::application_features::ApplicationServer& server,
-                  std::string const& language) {
+ErrorCode writeLanguage(arangodb::ArangodServer& server,
+                        std::string const& language) {
   auto& databasePath = server.getFeature<arangodb::DatabasePathFeature>();
   std::string filename = databasePath.subdirectoryName("LANGUAGE");
 
@@ -85,15 +87,16 @@ int writeLanguage(arangodb::application_features::ApplicationServer& server,
   } catch (...) {
     // out of memory
     LOG_TOPIC("4fa50", ERR, arangodb::Logger::CONFIG)
-        << "cannot save default language in file '" << filename << "': out of memory";
+        << "cannot save default language in file '" << filename
+        << "': out of memory";
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
   // save json info to file
   LOG_TOPIC("08f3c", DEBUG, arangodb::Logger::CONFIG)
       << "Writing default language to file '" << filename << "'";
-  bool ok = arangodb::basics::VelocyPackHelper::velocyPackToFile(filename,
-                                                                 builder.slice(), true);
+  bool ok = arangodb::basics::VelocyPackHelper::velocyPackToFile(
+      filename, builder.slice(), true);
   if (!ok) {
     LOG_TOPIC("c2fd7", ERR, arangodb::Logger::CONFIG)
         << "could not save default language in file '" << filename
@@ -104,7 +107,7 @@ int writeLanguage(arangodb::application_features::ApplicationServer& server,
   return TRI_ERROR_NO_ERROR;
 }
 
-std::string getOrSetPreviousLanguage(arangodb::application_features::ApplicationServer& server,
+std::string getOrSetPreviousLanguage(arangodb::ArangodServer& server,
                                      std::string const& input) {
   std::string language;
   arangodb::Result res = ::readLanguage(server, language);
@@ -122,14 +125,12 @@ std::string getOrSetPreviousLanguage(arangodb::application_features::Application
 
 namespace arangodb {
 
-LanguageCheckFeature::LanguageCheckFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, ::FEATURE_NAME) {
+LanguageCheckFeature::LanguageCheckFeature(Server& server)
+    : ArangodFeature{server, *this} {
   setOptional(false);
   startsAfter<DatabasePathFeature>();
   startsAfter<LanguageFeature>();
 }
-
-LanguageCheckFeature::~LanguageCheckFeature() = default;
 
 void LanguageCheckFeature::start() {
   auto& feature = server().getFeature<LanguageFeature>();
@@ -144,11 +145,19 @@ void LanguageCheckFeature::start() {
   }
 
   if (language != previous) {
-    // current not empty and not the same as previous, get out!
-    LOG_TOPIC("7ef60", FATAL, arangodb::Logger::CONFIG)
-        << "specified language '" << language
-        << "' does not match previously used language '" << previous << "'";
-    FATAL_ERROR_EXIT();
+    if (feature.forceLanguageCheck()) {
+      // current not empty and not the same as previous, get out!
+      LOG_TOPIC("7ef60", FATAL, arangodb::Logger::CONFIG)
+          << "specified language '" << language
+          << "' does not match previously used language '" << previous << "'";
+      FATAL_ERROR_EXIT();
+    } else {
+      LOG_TOPIC("54a68", WARN, arangodb::Logger::CONFIG)
+          << "specified language '" << language
+          << "' does not match previously used language '" << previous
+          << "'. starting anyway due to --default-language-check=false "
+             "setting";
+    }
   }
 }
 

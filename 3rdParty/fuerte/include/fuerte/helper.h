@@ -23,14 +23,15 @@
 #ifndef ARANGO_CXX_DRIVER_HELPER
 #define ARANGO_CXX_DRIVER_HELPER
 
-#include <sstream>
-#include <string>
-#include <unordered_map>
-#include <vector>
-
 #include <fuerte/message.h>
 #include <fuerte/types.h>
 #include <velocypack/Slice.h>
+
+#include <sstream>
+#include <string>
+#include <string_view>
+#include <unordered_map>
+#include <vector>
 
 namespace arangodb { namespace fuerte { inline namespace v1 {
 
@@ -117,8 +118,6 @@ std::string encodeBase64U(std::string const&, bool pad);
 
 void toLowerInPlace(std::string& str);
 
-/// checks if connection was closed and returns
-fuerte::Error translateError(asio_ns::error_code e,
-                             fuerte::Error def);
+std::string extractPathParameters(std::string_view path, StringMap& params);
 }}}  // namespace arangodb::fuerte::v1
 #endif

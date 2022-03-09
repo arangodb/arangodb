@@ -624,7 +624,7 @@ describe ArangoDB do
 ## custom filter
 ################################################################################
       
-      it "visits nodes in a graph, own filter" do
+      it "visits nodes in a graph, own filter 1" do
         body = "{ \"edgeCollection\" : \"#{@ce}\", \"direction\" : \"outbound\", \"filter\" : \"if (vertex._id === '#{@cv}/World') { return 'prune'; }\", \"startVertex\" : \"#{@cv}/World\", \"visitor\" : \"result.visited.vertices.push(vertex._id); result.visited.paths.push(function() { var paths = [ ]; for (var i = 0; i < path.vertices.length; ++i) { paths.push(path.vertices[i]._id); } return paths;}());\", \"sort\" : \"if (l._key < r._key) { return -1; } else if (l._key > r._key) { return 1; } return 0;\" }"
         doc = ArangoDB.log_post("#{prefix}-visit-filter1", api, :body => body)
 
@@ -646,7 +646,7 @@ describe ArangoDB do
 ## custom filter
 ################################################################################
       
-      it "visits nodes in a graph, own filter" do
+      it "visits nodes in a graph, own filter 2" do
         body = "{ \"edgeCollection\" : \"#{@ce}\", \"direction\" : \"outbound\", \"filter\" : \"if (vertex._id === '#{@cv}/Europe' || vertex._id === '#{@cv}/US') { return [ 'prune', 'exclude' ]; }\", \"startVertex\" : \"#{@cv}/World\", \"visitor\" : \"result.visited.vertices.push(vertex._id);\", \"sort\" : \"if (l._key < r._key) { return -1; } else if (l._key > r._key) { return 1; } return 0;\" }"
         doc = ArangoDB.log_post("#{prefix}-visit-filter2", api, :body => body)
 

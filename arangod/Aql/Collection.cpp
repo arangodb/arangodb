@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,7 +24,6 @@
 #include "Collection.h"
 
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
@@ -33,8 +32,8 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "Indexes/Index.h"
 #include "Transaction/Methods.h"
-#include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 
@@ -42,10 +41,8 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 /// @brief create a collection wrapper
-Collection::Collection(std::string const& name, 
-                       TRI_vocbase_t* vocbase, 
-                       AccessMode::Type accessType,
-                       Hint hint)
+Collection::Collection(std::string const& name, TRI_vocbase_t* vocbase,
+                       AccessMode::Type accessType, Hint hint)
     : _collection(nullptr),
       _vocbase(vocbase),
       _name(name),
@@ -55,31 +52,32 @@ Collection::Collection(std::string const& name,
   TRI_ASSERT(_vocbase != nullptr);
 
   // _collection will only be populated here in the constructor, and not later.
-  // note that it will only be populated for "real" collections and shards though. 
-  // aql::Collection objects can also be created for views and for non-existing 
-  // collections. In these cases it is not possible to populate _collection, at all.
+  // note that it will only be populated for "real" collections and shards
+  // though. aql::Collection objects can also be created for views and for
+  // non-existing collections. In these cases it is not possible to populate
+  // _collection, at all.
   if (hint == Hint::Collection) {
     if (ServerState::instance()->isRunningInCluster()) {
-      auto& clusterInfo = _vocbase->server().getFeature<ClusterFeature>().clusterInfo();
+      auto& clusterInfo =
+          _vocbase->server().getFeature<ClusterFeature>().clusterInfo();
       _collection = clusterInfo.getCollection(_vocbase->name(), _name);
     } else {
       _collection = _vocbase->lookupCollection(_name);
-      //ensureCollection(); // will throw if collection does not exist
     }
   } else if (hint == Hint::Shard) {
     if (ServerState::instance()->isCoordinator()) {
-      auto& clusterInfo = _vocbase->server().getFeature<ClusterFeature>().clusterInfo();
+      auto& clusterInfo =
+          _vocbase->server().getFeature<ClusterFeature>().clusterInfo();
       _collection = clusterInfo.getCollection(_vocbase->name(), _name);
     } else {
       _collection = _vocbase->lookupCollection(_name);
-      //ensureCollection(); // will throw if collection does not exist
     }
   } else if (hint == Hint::None) {
     // nothing special to do here
   }
 
   // Whenever getCollection() is called later, _collection must have been set
-  // here to a non-nullptr, or an assertion will be triggered. 
+  // here to a non-nullptr, or an assertion will be triggered.
   // In non-maintainer mode an exception will be thrown.
 }
 
@@ -90,14 +88,16 @@ void Collection::setExclusiveAccess() {
 }
 
 /// @brief get the collection id
-TRI_voc_cid_t Collection::id() const { return getCollection()->id(); }
+DataSourceId Collection::id() const { return getCollection()->id(); }
 
 /// @brief collection type
 TRI_col_type_e Collection::type() const { return getCollection()->type(); }
 
 /// @brief count the number of documents in the collection
-size_t Collection::count(transaction::Methods* trx, transaction::CountType type) const {
-  OperationResult res = trx->count(_name, type); 
+size_t Collection::count(transaction::Methods* trx,
+                         transaction::CountType type) const {
+  OperationOptions options;  // TODO get from trx?
+  OperationResult res = trx->count(_name, type, options);
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res.result);
   }
@@ -106,7 +106,8 @@ size_t Collection::count(transaction::Methods* trx, transaction::CountType type)
 
 std::unordered_set<std::string> Collection::responsibleServers() const {
   std::unordered_set<std::string> result;
-  auto& clusterInfo = _vocbase->server().getFeature<ClusterFeature>().clusterInfo();
+  auto& clusterInfo =
+      _vocbase->server().getFeature<ClusterFeature>().clusterInfo();
 
   auto shardIds = this->shardIds();
   for (auto const& it : *shardIds) {
@@ -116,8 +117,10 @@ std::unordered_set<std::string> Collection::responsibleServers() const {
   return result;
 }
 
-size_t Collection::responsibleServers(std::unordered_set<std::string>& result) const {
-  auto& clusterInfo = _vocbase->server().getFeature<ClusterFeature>().clusterInfo();
+size_t Collection::responsibleServers(
+    std::unordered_set<std::string>& result) const {
+  auto& clusterInfo =
+      _vocbase->server().getFeature<ClusterFeature>().clusterInfo();
 
   size_t n = 0;
   auto shardIds = this->shardIds();
@@ -129,13 +132,14 @@ size_t Collection::responsibleServers(std::unordered_set<std::string>& result) c
   return n;
 }
 
-std::string Collection::distributeShardsLike() const {
+std::string const& Collection::distributeShardsLike() const {
   return getCollection()->distributeShardsLike();
 }
 
 /// @brief returns the shard ids of a collection
 std::shared_ptr<std::vector<std::string>> Collection::shardIds() const {
-  auto& clusterInfo = _vocbase->server().getFeature<ClusterFeature>().clusterInfo();
+  auto& clusterInfo =
+      _vocbase->server().getFeature<ClusterFeature>().clusterInfo();
   auto coll = getCollection();
   if (coll->isSmart() && coll->type() == TRI_COL_TYPE_EDGE) {
     auto names = coll->realNamesForRead();
@@ -143,7 +147,7 @@ std::shared_ptr<std::vector<std::string>> Collection::shardIds() const {
     for (auto const& n : names) {
       auto collectionInfo = clusterInfo.getCollection(_vocbase->name(), n);
       auto list = clusterInfo.getShardList(
-          arangodb::basics::StringUtils::itoa(collectionInfo->id()));
+          arangodb::basics::StringUtils::itoa(collectionInfo->id().id()));
       for (auto const& x : *list) {
         res->push_back(x);
       }
@@ -151,7 +155,8 @@ std::shared_ptr<std::vector<std::string>> Collection::shardIds() const {
     return res;
   }
 
-  return clusterInfo.getShardList(arangodb::basics::StringUtils::itoa(id()));
+  return clusterInfo.getShardList(
+      arangodb::basics::StringUtils::itoa(id().id()));
 }
 
 /// @brief returns the filtered list of shard ids of a collection
@@ -187,7 +192,7 @@ std::vector<std::string> Collection::shardKeys(bool normalize) const {
   if (normalize && coll->isSmart() && coll->type() == TRI_COL_TYPE_DOCUMENT) {
     // smart vertex collection always has ["_key:"] as shard keys
     TRI_ASSERT(originalKeys.size() == 1);
-    TRI_ASSERT(originalKeys[0] == "_key:");
+    TRI_ASSERT(originalKeys[0] == StaticStrings::PrefixOfKeyString);
     // now normalize it this to _key
     return std::vector<std::string>{StaticStrings::KeyString};
   }
@@ -239,16 +244,17 @@ std::string const& Collection::name() const {
 }
 
 // moved here from transaction::Methods::getIndexByIdentifier(..)
-std::shared_ptr<arangodb::Index> Collection::indexByIdentifier(std::string const& idxId) const {
-   if (idxId.empty()) {
-     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                    "The index id cannot be empty.");
-   }
+std::shared_ptr<arangodb::Index> Collection::indexByIdentifier(
+    std::string const& idxId) const {
+  if (idxId.empty()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   "The index id cannot be empty.");
+  }
 
-   if (!arangodb::Index::validateId(idxId.c_str())) {
-     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_INDEX_HANDLE_BAD);
-   }
-  
+  if (!idxId.empty() && !Index::validateId(idxId)) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_INDEX_HANDLE_BAD);
+  }
+
   auto iid = arangodb::IndexId{arangodb::basics::StringUtils::uint64(idxId)};
   auto idx = this->getCollection()->lookupIndex(iid);
 
@@ -258,18 +264,18 @@ std::shared_ptr<arangodb::Index> Collection::indexByIdentifier(std::string const
                                        "' in collection '" + this->name() +
                                        "'.");
   }
-  
+
   return idx;
 }
 
 std::vector<std::shared_ptr<arangodb::Index>> Collection::indexes() const {
   auto coll = this->getCollection();
-  
+
   // update selectivity estimates if they were expired
   if (ServerState::instance()->isCoordinator()) {
-    coll->clusterIndexEstimates(true); 
+    coll->clusterIndexEstimates(true);
   }
-  
+
   std::vector<std::shared_ptr<Index>> indexes = coll->getIndexes();
   indexes.erase(std::remove_if(indexes.begin(), indexes.end(),
                                [](std::shared_ptr<Index> const& x) {
@@ -279,13 +285,12 @@ std::vector<std::shared_ptr<arangodb::Index>> Collection::indexes() const {
   return indexes;
 }
 
-/// @brief use the already set collection 
+/// @brief use the already set collection
 std::shared_ptr<LogicalCollection> Collection::getCollection() const {
-  ensureCollection();
-  TRI_ASSERT(_collection != nullptr);
+  checkCollection();
   return _collection;
 }
-  
+
 /// @brief whether or not we have a collection object underneath (true for
 /// existing collections, false for non-existing collections and for views).
 bool Collection::hasCollectionObject() const noexcept {
@@ -293,9 +298,11 @@ bool Collection::hasCollectionObject() const noexcept {
 }
 
 /// @brief throw if the underlying collection has not been set
-void Collection::ensureCollection() const {
+void Collection::checkCollection() const {
   if (_collection == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                                   std::string(TRI_errno_string(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) + ": " + _name);
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+        std::string(TRI_errno_string(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) +
+            ": " + _name);
   }
 }

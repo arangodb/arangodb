@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,7 +24,7 @@
 #include "ClusterHelpers.h"
 
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
+#include <velocypack/Slice.h>
 
 using namespace arangodb;
 
@@ -32,25 +32,34 @@ bool ClusterHelpers::compareServerLists(VPackSlice plan, VPackSlice current) {
   if (!plan.isArray() || !current.isArray()) {
     return false;
   }
-  std::vector<std::string> planv, currv;
+  std::vector<std::string> p;
   for (VPackSlice srv : VPackArrayIterator(plan)) {
     if (srv.isString()) {
-      planv.push_back(srv.copyString());
+      p.push_back(srv.copyString());
     }
   }
+  std::vector<std::string> c;
   for (VPackSlice srv : VPackArrayIterator(current)) {
     if (srv.isString()) {
-      currv.push_back(srv.copyString());
+      c.push_back(srv.copyString());
     }
   }
-  return compareServerLists(planv, currv);
+  return compareServerLists(p, c);
 }
 
 bool ClusterHelpers::compareServerLists(std::vector<std::string> planned,
                                         std::vector<std::string> current) {
-  bool equalLeader =
-      !planned.empty() && !current.empty() && planned.front() == current.front();
+  bool equalLeader = !planned.empty() && !current.empty() &&
+                     planned.front() == current.front();
   std::sort(planned.begin(), planned.end());
   std::sort(current.begin(), current.end());
   return equalLeader && current == planned;
+}
+
+bool ClusterHelpers::isCoordinatorName(ServerID const& serverId) {
+  return serverId.compare(0, 5, "CRDN-", 5) == 0;
+}
+
+bool ClusterHelpers::isDBServerName(ServerID const& serverId) {
+  return serverId.compare(0, 5, "PRMR-", 5) == 0;
 }

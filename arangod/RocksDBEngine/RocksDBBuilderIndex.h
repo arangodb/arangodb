@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,15 +21,15 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_ENGINE_ROCKSDB_BUILDER_INDEX_H
-#define ARANGOD_ROCKSDB_ENGINE_ROCKSDB_BUILDER_INDEX_H 1
+#pragma once
 
 #include "RocksDBEngine/RocksDBIndex.h"
 
+#include <atomic>
 #include <mutex>
 
 namespace arangodb {
-  
+
 class RocksDBCollection;
 
 /// Dummy index class that contains the logic to build indexes
@@ -37,12 +37,12 @@ class RocksDBCollection;
 /// and adds some required synchronization logic on top
 class RocksDBBuilderIndex final : public arangodb::RocksDBIndex {
  public:
-  
   explicit RocksDBBuilderIndex(std::shared_ptr<arangodb::RocksDBIndex> const&);
-  
+
   /// @brief return a VelocyPack representation of the index
-  void toVelocyPack(velocypack::Builder& builder,
-                    std::underlying_type<Index::Serialize>::type) const override;
+  void toVelocyPack(
+      velocypack::Builder& builder,
+      std::underlying_type<Index::Serialize>::type) const override;
 
   char const* typeName() const override { return _wrapped->typeName(); }
 
@@ -68,8 +68,9 @@ class RocksDBBuilderIndex final : public arangodb::RocksDBIndex {
 
   Result drop() override { return _wrapped->drop(); }
 
-  void afterTruncate(TRI_voc_tick_t tick) override {
-    _wrapped->afterTruncate(tick);
+  void afterTruncate(TRI_voc_tick_t tick,
+                     arangodb::transaction::Methods* trx) override {
+    _wrapped->afterTruncate(tick, trx);
   }
 
   void load() override { _wrapped->load(); }
@@ -80,32 +81,37 @@ class RocksDBBuilderIndex final : public arangodb::RocksDBIndex {
   bool hasSelectivityEstimate() const override { return false; }
 
   /// insert index elements into the specified write batch.
-  Result insert(transaction::Methods& trx, RocksDBMethods*, LocalDocumentId const& documentId,
-                arangodb::velocypack::Slice const&, OperationOptions& options) override;
+  Result insert(transaction::Methods& trx, RocksDBMethods*,
+                LocalDocumentId const& documentId,
+                arangodb::velocypack::Slice slice,
+                OperationOptions const& options,
+                bool /*performChecks*/) override;
 
   /// remove index elements and put it in the specified write batch.
-  Result remove(transaction::Methods& trx, RocksDBMethods*, LocalDocumentId const& documentId,
-                arangodb::velocypack::Slice const&, OperationMode mode) override;
+  Result remove(transaction::Methods& trx, RocksDBMethods*,
+                LocalDocumentId const& documentId,
+                arangodb::velocypack::Slice slice) override;
 
   /// @brief get index estimator, optional
-  RocksDBCuckooIndexEstimator<uint64_t>* estimator() override {
+  RocksDBCuckooIndexEstimatorType* estimator() override {
     return _wrapped->estimator();
   }
-  void setEstimator(std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>>) override {
+  void setEstimator(std::unique_ptr<RocksDBCuckooIndexEstimatorType>) override {
     TRI_ASSERT(false);
   }
   void recalculateEstimates() override { _wrapped->recalculateEstimates(); }
 
   /// @brief assumes an exclusive lock on the collection
   Result fillIndexForeground();
-  
+
   struct Locker {
     explicit Locker(RocksDBCollection* c) : _collection(c), _locked(false) {}
     ~Locker() { unlock(); }
     bool lock();
     void unlock();
     bool isLocked() const { return _locked; }
-  private:
+
+   private:
     RocksDBCollection* const _collection;
     bool _locked;
   };
@@ -116,7 +122,6 @@ class RocksDBBuilderIndex final : public arangodb::RocksDBIndex {
 
  private:
   std::shared_ptr<arangodb::RocksDBIndex> _wrapped;
+  std::atomic<uint64_t> _docsProcessed;
 };
 }  // namespace arangodb
-
-#endif

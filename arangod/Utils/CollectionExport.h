@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_COLLECTION_EXPORT_H
-#define ARANGOD_COLLECTION_EXPORT_H 1
+#pragma once
 
 #include <unordered_set>
 
@@ -42,15 +41,20 @@ struct CollectionExport {
     Type type;
   };
 
-  static bool IncludeAttribute(CollectionExport::Restrictions::Type const restrictionType,
-                               std::unordered_set<std::string> const& fields,
-                               std::string const& key) {
-    if (restrictionType == CollectionExport::Restrictions::RESTRICTION_INCLUDE ||
-        restrictionType == CollectionExport::Restrictions::RESTRICTION_EXCLUDE) {
-      bool const keyContainedInRestrictions = (fields.find(key) != fields.end());
-      if ((restrictionType == CollectionExport::Restrictions::RESTRICTION_INCLUDE &&
+  static bool IncludeAttribute(
+      CollectionExport::Restrictions::Type const restrictionType,
+      std::unordered_set<std::string> const& fields, std::string const& key) {
+    if (restrictionType ==
+            CollectionExport::Restrictions::RESTRICTION_INCLUDE ||
+        restrictionType ==
+            CollectionExport::Restrictions::RESTRICTION_EXCLUDE) {
+      bool const keyContainedInRestrictions =
+          (fields.find(key) != fields.end());
+      if ((restrictionType ==
+               CollectionExport::Restrictions::RESTRICTION_INCLUDE &&
            !keyContainedInRestrictions) ||
-          (restrictionType == CollectionExport::Restrictions::RESTRICTION_EXCLUDE &&
+          (restrictionType ==
+               CollectionExport::Restrictions::RESTRICTION_EXCLUDE &&
            keyContainedInRestrictions)) {
         // exclude the field
         return false;
@@ -59,12 +63,11 @@ struct CollectionExport {
       return true;
     } else {
       // no restrictions
-      TRI_ASSERT(restrictionType == CollectionExport::Restrictions::RESTRICTION_NONE);
+      TRI_ASSERT(restrictionType ==
+                 CollectionExport::Restrictions::RESTRICTION_NONE);
       return true;
     }
     return true;
   }
 };
 }  // namespace arangodb
-
-#endif

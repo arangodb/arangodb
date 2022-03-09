@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_CONTAINER_ROLLING_VECTOR_H
-#define ARANGODB_CONTAINER_ROLLING_VECTOR_H 1
+#pragma once
 
 #include <type_traits>
 
@@ -39,7 +38,7 @@ namespace containers {
 /// the elements popped with pop_front() will also not be destructed when
 /// popped. this means this container can only be used for managing trivial
 /// types (e.g. integers or pointers) that do not require ad-hoc destruction
-template <typename T>
+template<typename T>
 class RollingVector {
  public:
   RollingVector() : _start(0) {}
@@ -155,5 +154,3 @@ class RollingVector {
 
 }  // namespace containers
 }  // namespace arangodb
-
-#endif

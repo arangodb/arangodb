@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,8 +21,9 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GENERAL_SERVER_LANE_H
-#define ARANGOD_GENERAL_SERVER_LANE_H 1
+#pragma once
+
+#include <iosfwd>
 
 namespace arangodb {
 enum class RequestLane {
@@ -61,10 +63,29 @@ enum class RequestLane {
   // V8 or having high priority.
   CLUSTER_INTERNAL,
 
-  // For requests from the DBserver to the Coordinator or
-  // from the Coordinator to the DBserver. Using AQL
-  // these have Medium priority.
+  // Internal AQL requests, or continuations. Low priority.
   CLUSTER_AQL,
+
+  // For requests from the DBserver to the Coordinator, and continuations on the
+  // Coordinator.
+  // These have medium priority. Because client requests made against the
+  // RestCursorHandler (with lane CLIENT_AQL) might block and need these to
+  // finish. Ongoing low priority requests can also prevent low priority lanes
+  // from being worked on, having the same effect.
+  CLUSTER_AQL_INTERNAL_COORDINATOR,
+
+  // Shutdown request for AQL queries, i.e. /_api/aql/finish/<id> on the
+  // DBserver. This calls have slightly higher priority than normal AQL requests
+  // because the query shutdown can release resources and unblock other
+  // operations.
+  CLUSTER_AQL_SHUTDOWN,
+
+  // DOCUMENT() requests inside cluster AQL queries, executed on DBservers.
+  // These requests will read a locally available document and do not depend
+  // on other requests. They can always make progress. They will be initiated
+  // on coordinators and handling them quickly may unblock the coordinator
+  // part of an AQL query.
+  CLUSTER_AQL_DOCUMENT,
 
   // For requests from the from the Coordinator to the
   // DBserver using V8.
@@ -84,12 +105,20 @@ enum class RequestLane {
   // in-sync mode (wal tailing)
   SERVER_REPLICATION_CATCHUP,
 
+  // For synchronous replication requests on the follower
+  SERVER_SYNCHRONOUS_REPLICATION,
+
   // For periodic or one-off V8-based tasks executed by the
   // Scheduler.
   TASK_V8,
 
   // Internal tasks with low priority
   INTERNAL_LOW,
+
+  // Default continuation lane for requests (e.g. after returning from a network
+  // call). Some requests, such as CLUSTER_AQL, will have a different
+  // continuation lane for more fine-grained control.
+  CONTINUATION,
 
   // Not yet used:
   // For requests which go from the agency back to coordinators or
@@ -99,18 +128,17 @@ enum class RequestLane {
 
   // Used by futures that have been delayed using Scheduler::delay.
   DELAYED_FUTURE,
+
+  // undefined request lane, used only in the beginning
+  UNDEFINED,
 };
 
-enum class RequestPriority {
-  HIGH = 0,
-  MED = 1,
-  LOW = 2
-};
+enum class RequestPriority { MAINTENANCE = 0, HIGH = 1, MED = 2, LOW = 3 };
 
-inline RequestPriority PriorityRequestLane(RequestLane lane) {
+constexpr inline RequestPriority PriorityRequestLane(RequestLane lane) {
   switch (lane) {
     case RequestLane::CLIENT_FAST:
-      return RequestPriority::HIGH;
+      return RequestPriority::MAINTENANCE;
     case RequestLane::CLIENT_AQL:
       return RequestPriority::LOW;
     case RequestLane::CLIENT_V8:
@@ -124,11 +152,17 @@ inline RequestPriority PriorityRequestLane(RequestLane lane) {
     case RequestLane::CLUSTER_INTERNAL:
       return RequestPriority::HIGH;
     case RequestLane::CLUSTER_AQL:
+      return RequestPriority::LOW;
+    case RequestLane::CLUSTER_AQL_INTERNAL_COORDINATOR:
+      return RequestPriority::MED;
+    case RequestLane::CLUSTER_AQL_SHUTDOWN:
+      return RequestPriority::MED;
+    case RequestLane::CLUSTER_AQL_DOCUMENT:
       return RequestPriority::MED;
     case RequestLane::CLUSTER_V8:
       return RequestPriority::LOW;
     case RequestLane::CLUSTER_ADMIN:
-      return RequestPriority::LOW;
+      return RequestPriority::HIGH;
     case RequestLane::SERVER_REPLICATION_CATCHUP:
       return RequestPriority::MED;
     case RequestLane::SERVER_REPLICATION:
@@ -141,10 +175,19 @@ inline RequestPriority PriorityRequestLane(RequestLane lane) {
       return RequestPriority::HIGH;
     case RequestLane::DELAYED_FUTURE:
       return RequestPriority::HIGH;
+    case RequestLane::SERVER_SYNCHRONOUS_REPLICATION:
+      return RequestPriority::HIGH;
+    case RequestLane::CONTINUATION:
+      return RequestPriority::MED;
+    case RequestLane::UNDEFINED:
+      // assume low priority for UNDEFINED. we should never get
+      // here under normal circumstances. if we do, returning the
+      // default shouldn't do any harm.
+      return RequestPriority::LOW;
   }
   return RequestPriority::LOW;
 }
 
-}  // namespace arangodb
+std::ostream& operator<<(std::ostream&, arangodb::RequestLane const& lane);
 
-#endif
+}  // namespace arangodb

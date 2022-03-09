@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_ALGOS_LABELPROP_H
-#define ARANGODB_PREGEL_ALGOS_LABELPROP_H 1
+#pragma once
 
 #include "Pregel/Algorithm.h"
 #include "Pregel/CommonFormats.h"
@@ -40,17 +40,19 @@ namespace algos {
 /// maximum superstep number.
 struct LabelPropagation : public SimpleAlgorithm<LPValue, int8_t, uint64_t> {
  public:
-  explicit LabelPropagation(application_features::ApplicationServer& server, VPackSlice userParams)
-      : SimpleAlgorithm<LPValue, int8_t, uint64_t>(server, "LabelPropagation", userParams) {}
+  explicit LabelPropagation(application_features::ApplicationServer& server,
+                            VPackSlice userParams)
+      : SimpleAlgorithm<LPValue, int8_t, uint64_t>(server, "LabelPropagation",
+                                                   userParams) {}
 
   GraphFormat<LPValue, int8_t>* inputFormat() const override;
   MessageFormat<uint64_t>* messageFormat() const override {
     return new NumberMessageFormat<uint64_t>();
   }
 
-  VertexComputation<LPValue, int8_t, uint64_t>* createComputation(WorkerConfig const*) const override;
+  VertexComputation<LPValue, int8_t, uint64_t>* createComputation(
+      WorkerConfig const*) const override;
 };
 }  // namespace algos
 }  // namespace pregel
 }  // namespace arangodb
-#endif

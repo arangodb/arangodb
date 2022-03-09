@@ -29,7 +29,7 @@
 
 (function () {
   'use strict';
-  var db = require("@arangodb").db;
+  let db = require("@arangodb").db;
 
   db._drop("UnitTestsImportCsvSkip");
   db._drop("UnitTestsImportJson1");
@@ -46,8 +46,20 @@
   db._drop("UnitTestsImportCsv4");
   db._drop("UnitTestsImportCsv5");
   db._drop("UnitTestsImportCsv6");
+  db._drop("UnitTestsImportCsvHeaders");
+  db._drop("UnitTestsImportCsvBrokenHeaders");
+  db._drop("UnitTestsImportCsvConvert");
   db._drop("UnitTestsImportCsvNoConvert");
+  db._drop("UnitTestsImportCsvTypesBoolean");
+  db._drop("UnitTestsImportCsvTypesNumber");
+  db._drop("UnitTestsImportCsvTypesString");
+  db._drop("UnitTestsImportCsvTypesPrecedence");
+  db._drop("UnitTestsImportCsvMergeAttributes");
   db._drop("UnitTestsImportCsvNoEol");
+  db._drop("UnitTestsImportDataBatchSizeWithoutHeaderFile");
+  db._drop("UnitTestsImportDataBatchSizeWithoutHeaderFile2");
+  db._drop("UnitTestsImportDataBatchSizeWithHeaderFile");
+  db._drop("UnitTestsImportDataBatchSizeWithHeaderFile2");
   db._drop("UnitTestsImportTsv1");
   db._drop("UnitTestsImportTsv1Gz");
   db._drop("UnitTestsImportTsv2");
@@ -56,9 +68,13 @@
   db._drop("UnitTestsImportEdgeGz");
   db._drop("UnitTestsImportIgnore");
   db._drop("UnitTestsImportUniqueConstraints");
-  try {
-    db._dropDatabase("UnitTestImportCreateDatabase");
-  } catch(err) {}
+  
+  let dbs = ["maçã", "😀", "ﻚﻠﺑ ﻞﻄﻴﻓ", "abc mötor !\" ' & <>", "UnitTestImportCreateDatabase"];
+  dbs.forEach((name) => {
+    try {
+      db._dropDatabase(name);
+    } catch(err) {}
+  });
 })();
 
 return {

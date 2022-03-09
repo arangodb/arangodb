@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REPLICATION_SYNCER_H
-#define ARANGOD_REPLICATION_SYNCER_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
@@ -38,8 +37,6 @@ struct TRI_vocbase_t;
 
 namespace arangodb {
 namespace httpclient {
-class GeneralClientConnection;
-class SimpleHttpClient;
 class SimpleHttpResult;
 }  // namespace httpclient
 
@@ -71,7 +68,9 @@ class Syncer : public std::enable_shared_from_this<Syncer> {
     bool gotResponse() const noexcept;
 
     /// @brief will be called whenever a response for the job comes in
-    void gotResponse(std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response, double time) noexcept;
+    void gotResponse(
+        std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response,
+        double time) noexcept;
 
     /// @brief will be called whenever an error occurred
     /// expects "res" to be an error!
@@ -79,7 +78,8 @@ class Syncer : public std::enable_shared_from_this<Syncer> {
 
     /// @brief the calling Syncer will call and block inside this function until
     /// there is a response or the syncer/server is shut down
-    arangodb::Result waitForResponse(std::unique_ptr<arangodb::httpclient::SimpleHttpResult>& response);
+    arangodb::Result waitForResponse(
+        std::unique_ptr<arangodb::httpclient::SimpleHttpResult>& response);
 
     /// @brief post an async request to the scheduler
     /// this will increase the number of inflight jobs, and count it down
@@ -92,7 +92,7 @@ class Syncer : public std::enable_shared_from_this<Syncer> {
     bool jobPosted();
 
     /// @brief notifies that a job was done
-    void jobDone();
+    void jobDone() noexcept;
 
     /// @brief checks if there are jobs in flight (can be 0 or 1 job only)
     bool hasJobInFlight() const noexcept;
@@ -132,9 +132,6 @@ class Syncer : public std::enable_shared_from_this<Syncer> {
     /// @brief configuration
     ReplicationApplierConfiguration applier;
 
-    /// @brief information about the replication barrier
-    replutils::BarrierInfo barrier{};
-
     /// @brief object holding the HTTP client and all connection machinery
     replutils::Connection connection;
 
@@ -157,8 +154,8 @@ class Syncer : public std::enable_shared_from_this<Syncer> {
     /// @brief local server id
     std::string localServerIdString{};
 
-    /// @brief information about the master state
-    replutils::MasterInfo master;
+    /// @brief information about the leader state
+    replutils::LeaderInfo leader;
 
     /// @brief lazy loaded list of vocbases
     std::unordered_map<std::string, DatabaseGuard> vocbases{};
@@ -176,9 +173,6 @@ class Syncer : public std::enable_shared_from_this<Syncer> {
   /// @brief request location rewriter (injects database name)
   static std::string rewriteLocation(void*, std::string const&);
 
-  /// @brief steal the barrier id from the syncer
-  TRI_voc_tick_t stealBarrier();
-
   void setLeaderId(std::string const& leaderId) { _state.leaderId = leaderId; }
 
   // TODO worker-safety
@@ -195,14 +189,20 @@ class Syncer : public std::enable_shared_from_this<Syncer> {
   void reloadUsers();
 
   /// @brief apply a single marker from the collection dump
+  /// If the returned Result is TRI_ERROR_ARANGO_TRY_AGAIN,
+  /// conflictingDocumentKey will be set to the key of the conflicting document.
+  /// Otherwise, it will be untouched.
   // TODO worker-safety
-  Result applyCollectionDumpMarker(transaction::Methods&, LogicalCollection* coll,
+  Result applyCollectionDumpMarker(transaction::Methods&,
+                                   LogicalCollection* coll,
                                    TRI_replication_operation_e,
-                                   arangodb::velocypack::Slice const&);
+                                   arangodb::velocypack::Slice const&,
+                                   std::string& conflictingDocumentKey);
 
   /// @brief creates a collection, based on the VelocyPack provided
   // TODO worker safety - create/drop phase
-  Result createCollection(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& slice,
+  Result createCollection(TRI_vocbase_t& vocbase,
+                          arangodb::velocypack::Slice const& slice,
                           arangodb::LogicalCollection** dst);
 
   /// @brief drops a collection, based on the VelocyPack provided
@@ -212,14 +212,17 @@ class Syncer : public std::enable_shared_from_this<Syncer> {
   /// @brief creates an index, based on the VelocyPack provided
   Result createIndex(arangodb::velocypack::Slice const&);
 
-  /// @brief creates an index, or returns the existing matching index if there is one
-  void createIndexInternal(arangodb::velocypack::Slice const&, LogicalCollection&);
+  /// @brief creates an index, or returns the existing matching index if there
+  /// is one
+  void createIndexInternal(arangodb::velocypack::Slice const&,
+                           LogicalCollection&);
 
   /// @brief drops an index, based on the VelocyPack provided
   Result dropIndex(arangodb::velocypack::Slice const&);
 
   /// @brief creates a view, based on the VelocyPack provided
-  Result createView(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& slice);
+  Result createView(TRI_vocbase_t& vocbase,
+                    arangodb::velocypack::Slice const& slice);
 
   /// @brief drops a view, based on the VelocyPack provided
   Result dropView(arangodb::velocypack::Slice const&, bool reportError);
@@ -228,8 +231,8 @@ class Syncer : public std::enable_shared_from_this<Syncer> {
   virtual TRI_vocbase_t* resolveVocbase(velocypack::Slice const&);
 
   // TODO worker safety
-  std::shared_ptr<LogicalCollection> resolveCollection(TRI_vocbase_t& vocbase,
-                                                       arangodb::velocypack::Slice const& slice);
+  std::shared_ptr<LogicalCollection> resolveCollection(
+      TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& slice);
 
   // TODO worker safety
   std::unordered_map<std::string, DatabaseGuard> const& vocbases() const {
@@ -242,5 +245,3 @@ class Syncer : public std::enable_shared_from_this<Syncer> {
 };
 
 }  // namespace arangodb
-
-#endif

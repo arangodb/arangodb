@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,32 +21,36 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_MFORMAT_H
-#define ARANGODB_PREGEL_MFORMAT_H 1
+#pragma once
 
 #include <cstddef>
 #include "Basics/Common.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
 namespace pregel {
 
-template <typename M>
+template<typename M>
 struct MessageFormat {
   virtual ~MessageFormat() = default;
   virtual void unwrapValue(VPackSlice body, M& value) const = 0;
   virtual void addValue(VPackBuilder& arrayBuilder, M const& val) const = 0;
 };
 
-struct IntegerMessageFormat : public MessageFormat<int64_t> {
+template<typename T>
+struct IntegerMessageFormat : public MessageFormat<T> {
+  static_assert(std::is_integral<T>::value, "");
   IntegerMessageFormat() {}
-  void unwrapValue(VPackSlice s, int64_t& value) const override {
-    value = s.getInt();
+  void unwrapValue(VPackSlice s, T& value) const override {
+    if constexpr (std::is_signed<T>::value) {
+      value = s.getInt();
+    } else {
+      value = s.getUInt();
+    }
   }
-  void addValue(VPackBuilder& arrayBuilder, int64_t const& val) const override {
+  void addValue(VPackBuilder& arrayBuilder, T const& val) const override {
     arrayBuilder.add(VPackValue(val));
   }
 };
@@ -71,7 +76,7 @@ struct FloatMessageFormat : public MessageFormat<float> {
   }
 };*/
 
-template <typename M>
+template<typename M>
 struct NumberMessageFormat : public MessageFormat<M> {
   static_assert(std::is_arithmetic<M>::value, "Message type must be numeric");
   NumberMessageFormat() {}
@@ -84,4 +89,3 @@ struct NumberMessageFormat : public MessageFormat<M> {
 };
 }  // namespace pregel
 }  // namespace arangodb
-#endif
