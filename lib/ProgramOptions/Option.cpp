@@ -113,7 +113,7 @@ std::string Option::deprecatedInString() const {
 // the special search string "." will show help for all sections, even if hidden
 void Option::printHelp(std::string const& search, size_t tw, size_t ow,
                        bool) const {
-  if (search == "." || !hasFlag(arangodb::options::Flags::Hidden)) {
+  if (search == "." || !hasFlag(arangodb::options::Flags::Uncommon)) {
     std::cout << "  " << pad(nameWithType(), ow) << "   ";
 
     std::string value = description;
@@ -152,7 +152,7 @@ void Option::printHelp(std::string const& search, size_t tw, size_t ow,
 
 // determine the width of an option help string
 size_t Option::optionsWidth() const {
-  if (hasFlag(arangodb::options::Flags::Hidden)) {
+  if (hasFlag(arangodb::options::Flags::Uncommon)) {
     return 0;
   }
 
