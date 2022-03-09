@@ -77,7 +77,8 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
       const override;
 
   LocalDocumentId lookupKey(transaction::Methods* trx, std::string_view key,
-                            ReadOwnWrites readOwnWrites) const;
+                            ReadOwnWrites readOwnWrites,
+                            bool& foundInCache) const;
 
   /// @brief reads a revision id from the primary index
   /// if the document does not exist, this function will return false

@@ -306,14 +306,14 @@ void DocumentProducingFunctionContext::incrFiltered() noexcept {
   ++_numFiltered;
 }
 
-size_t DocumentProducingFunctionContext::getAndResetNumScanned() noexcept {
-  size_t const numScanned = _numScanned;
+uint64_t DocumentProducingFunctionContext::getAndResetNumScanned() noexcept {
+  uint64_t const numScanned = _numScanned;
   _numScanned = 0;
   return numScanned;
 }
 
-size_t DocumentProducingFunctionContext::getAndResetNumFiltered() noexcept {
-  size_t const numFiltered = _numFiltered;
+uint64_t DocumentProducingFunctionContext::getAndResetNumFiltered() noexcept {
+  uint64_t const numFiltered = _numFiltered;
   _numFiltered = 0;
   return numFiltered;
 }

@@ -266,6 +266,7 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
           auto finding =
               _cache->find(fromTo.data(), static_cast<uint32_t>(fromTo.size()));
           if (finding.found()) {
+            incrCacheHits();
             needRocksLookup = false;
             // We got sth. in the cache
             VPackSlice cachedData(finding.value()->value());
@@ -303,6 +304,7 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
           if (finding.result() != TRI_ERROR_LOCK_TIMEOUT) {
             // We really have not found an entry.
             // Otherwise we do not know yet
+            incrCacheMisses();
             break;
           }
           cpu_relax();

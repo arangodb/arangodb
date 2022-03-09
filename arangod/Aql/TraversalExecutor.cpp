@@ -306,7 +306,7 @@ arangodb::aql::QueryWarnings& TraversalExecutorInfos::getWarnings() {
 std::pair<arangodb::graph::VertexUniquenessLevel,
           arangodb::graph::EdgeUniquenessLevel>
 TraversalExecutorInfos::convertUniquenessLevels() const {
-  // TODO [GraphRefactor]: This should be a temoporary function as we remove
+  // TODO [GraphRefactor]: This should be a temporary function as we remove
   // TraverserOptions in total after the graph refactor is done.
   auto vertexUniquenessLevel = graph::VertexUniquenessLevel::NONE;
   auto edgeUniquenessLevel = graph::EdgeUniquenessLevel::NONE;
@@ -943,10 +943,9 @@ auto TraversalExecutor::doSkip(AqlCall& call) -> size_t {
 auto TraversalExecutor::produceRows(AqlItemBlockInputRange& input,
                                     OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, Stats, AqlCall> {
-  TraversalStats oldStats;
-  ExecutorState state{ExecutorState::HASMORE};
-
   if (!_infos.isRefactor()) {
+    ExecutorState state{ExecutorState::HASMORE};
+    TraversalStats oldStats;
     while (true) {
       if (_traverser.hasMore()) {
         TRI_ASSERT(_inputRow.isInitialized());
@@ -969,9 +968,12 @@ auto TraversalExecutor::produceRows(AqlItemBlockInputRange& input,
       }
     }
 
-    oldStats.addFiltered(_traverser.getAndResetFilteredPaths());
-    oldStats.addScannedIndex(_traverser.getAndResetReadDocuments());
-    oldStats.addHttpRequests(_traverser.getAndResetHttpRequests());
+    oldStats.incrScannedIndex(_traverser.getAndResetReadDocuments());
+    oldStats.incrFiltered(_traverser.getAndResetFiltered());
+    oldStats.incrHttpRequests(_traverser.getAndResetHttpRequests());
+    // note: deprecated.
+    // cursorsCreated, cursorsRearmed, cacheHits, cacheMisses are
+    // intentionally not added here.
 
     return {state, oldStats, AqlCall{}};
   } else {
@@ -998,16 +1000,19 @@ auto TraversalExecutor::produceRows(AqlItemBlockInputRange& input,
 auto TraversalExecutor::skipRowsRange(AqlItemBlockInputRange& input,
                                       AqlCall& call)
     -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
-  TraversalStats oldStats{};
   auto skipped = size_t{0};
 
   if (!_infos.isRefactor()) {
+    TraversalStats oldStats{};
     while (true) {
       skipped += doSkip(call);
 
-      oldStats.addFiltered(_traverser.getAndResetFilteredPaths());
-      oldStats.addScannedIndex(_traverser.getAndResetReadDocuments());
-      oldStats.addHttpRequests(_traverser.getAndResetHttpRequests());
+      oldStats.incrScannedIndex(_traverser.getAndResetReadDocuments());
+      oldStats.incrFiltered(_traverser.getAndResetFiltered());
+      oldStats.incrHttpRequests(_traverser.getAndResetHttpRequests());
+      // note: deprecated.
+      // cursorsCreated, cursorsRearmed, cacheHits, cacheMisses are
+      // intentionally not added here.
 
       if (!_traverser.hasMore()) {
         if (!initTraverser(input)) {

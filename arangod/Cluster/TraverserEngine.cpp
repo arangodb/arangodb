@@ -304,8 +304,7 @@ void BaseTraverserEngine::getEdges(VPackSlice vertex, size_t depth,
   builder.close();
   builder.add("readIndex",
               VPackValue(_opts->cache()->getAndResetInsertedDocuments()));
-  builder.add("filtered",
-              VPackValue(_opts->cache()->getAndResetFilteredDocuments()));
+  builder.add("filtered", VPackValue(_opts->cache()->getAndResetFiltered()));
   builder.close();
 }
 

@@ -129,13 +129,6 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
                _cache->hasher().name() == "VPackKeyHasher");
   }
 
-  ~RocksDBVPackUniqueIndexIterator() {
-    LOG_DEVEL << "UNIQUE CACHE - LOOKUP HITS: " << _lookupHits
-              << ", MISSES: " << _lookupMisses
-              << ", ROCKSDB LOOKUPS: " << _lookupRocksDB
-              << ", CACHE: " << (_cache != nullptr);
-  }
-
  public:
   char const* typeName() const override {
     return "rocksdb-unique-index-iterator";
@@ -259,7 +252,7 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
         auto finding =
             _cache->find(key.data(), static_cast<uint32_t>(key.size()));
         if (finding.found()) {
-          ++_lookupHits;
+          incrCacheHits();
           // We got sth. in the cache
           VPackSlice cachedData(finding.value()->value());
           if (!cachedData.isEmptyArray()) {
@@ -269,14 +262,13 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
         }  // finding found
 
         if (finding.result() != TRI_ERROR_LOCK_TIMEOUT) {
+          incrCacheMisses();
           break;
         }
         // enhance our calm...
         basics::cpu_relax();
       }  // attempts
     }
-
-    ++_lookupRocksDB;
 
     rocksdb::PinnableSlice ps;
     RocksDBMethods* mthds =
@@ -346,10 +338,6 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
   std::shared_ptr<cache::TransactionalCache<cache::VPackKeyHasher>> _cache;
   RocksDBKeyLeaser _key;
   bool _done;
-
-  size_t _lookupHits = 0;
-  size_t _lookupMisses = 0;
-  size_t _lookupRocksDB = 0;
 };
 
 /// @brief Iterator structure for RocksDB. We require a start and stop node
@@ -398,13 +386,6 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
     }
-  }
-
-  ~RocksDBVPackIndexIterator() {
-    LOG_DEVEL << "NON-UNIQUE CACHE - LOOKUP HITS: " << _lookupHits
-              << ", MISSES: " << _lookupMisses
-              << ", ROCKSDB LOOKUPS: " << _lookupRocksDB
-              << ", CACHE: " << (_cache != nullptr);
   }
 
  public:
@@ -671,7 +652,6 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
         TRI_ASSERT(!_resultIterator.valid());
 
         // look up the value in RocksDB
-        ++_lookupRocksDB;
         ensureIterator();
         TRI_ASSERT(_iterator != nullptr);
 
@@ -701,7 +681,6 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
     TRI_ASSERT(!_resultIterator.valid());
 
     // look up the value in RocksDB
-    ++_lookupRocksDB;
     ensureIterator();
     TRI_ASSERT(_iterator != nullptr);
 
@@ -804,7 +783,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
       auto finding =
           _cache->find(key.data(), static_cast<uint32_t>(key.size()));
       if (finding.found()) {
-        ++_lookupHits;
+        incrCacheHits();
         // We got sth. in the cache
         VPackSlice cachedData(finding.value()->value());
         TRI_ASSERT(cachedData.isArray());
@@ -830,6 +809,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
       }  // finding found
 
       if (finding.result() != TRI_ERROR_LOCK_TIMEOUT) {
+        incrCacheMisses();
         break;
       }
       // enhance our calm...
@@ -931,9 +911,6 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
   RocksDBVPackIndexSearchValueFormat const _format;
   bool const _mustCheckBounds;
   bool _mustSeek;
-  size_t _lookupHits = 0;
-  size_t _lookupMisses = 0;
-  size_t _lookupRocksDB = 0;
 };
 
 }  // namespace arangodb

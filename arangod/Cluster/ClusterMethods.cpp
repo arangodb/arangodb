@@ -2161,8 +2161,8 @@ Result fetchEdgesFromEngines(
     std::string_view vertexId, size_t depth, std::vector<VPackSlice>& result) {
   auto const* engines = travCache.engines();
   auto& cache = travCache.cache();
-  size_t& filtered = travCache.filteredDocuments();
-  size_t& read = travCache.insertedDocuments();
+  uint64_t& filtered = travCache.filteredDocuments();
+  uint64_t& read = travCache.insertedDocuments();
 
   // TODO map id => ServerID if possible
   // And go fast-path
@@ -2265,7 +2265,7 @@ Result fetchEdgesFromEngines(
 Result fetchEdgesFromEngines(transaction::Methods& trx,
                              graph::ClusterTraverserCache& travCache,
                              VPackSlice vertexId, bool backward,
-                             std::vector<VPackSlice>& result, size_t& read) {
+                             std::vector<VPackSlice>& result, uint64_t& read) {
   auto const* engines = travCache.engines();
   auto& cache = travCache.cache();
   // TODO map id => ServerID if possible

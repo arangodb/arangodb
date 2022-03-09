@@ -986,7 +986,9 @@ Result RocksDBCollection::read(transaction::Methods* trx, std::string_view key,
   Result res;
   LocalDocumentId documentId;
   do {
-    documentId = primaryIndex()->lookupKey(trx, key, readOwnWrites);
+    [[maybe_unused]] bool foundInCache;
+    documentId =
+        primaryIndex()->lookupKey(trx, key, readOwnWrites, foundInCache);
     if (!documentId.isSet()) {
       res.reset(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
       return res;
@@ -1184,8 +1186,9 @@ Result RocksDBCollection::performUpdateOrReplace(
 
   // modifications always need to observe all changes in order to validate
   // uniqueness constraints
+  [[maybe_unused]] bool foundInCache;
   auto const oldDocumentId =
-      primaryIndex()->lookupKey(trx, keyStr, ReadOwnWrites::yes);
+      primaryIndex()->lookupKey(trx, keyStr, ReadOwnWrites::yes, foundInCache);
   if (!oldDocumentId.isSet()) {
     return res.reset(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
   }
@@ -1334,8 +1337,9 @@ Result RocksDBCollection::remove(transaction::Methods& trx,
 
   // modifications always need to observe all changes in order to validate
   // uniqueness constraints
+  [[maybe_unused]] bool foundInCache;
   auto const documentId =
-      primaryIndex()->lookupKey(&trx, keyStr, ReadOwnWrites::yes);
+      primaryIndex()->lookupKey(&trx, keyStr, ReadOwnWrites::yes, foundInCache);
   if (!documentId.isSet()) {
     return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
   }

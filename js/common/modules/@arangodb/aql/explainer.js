@@ -299,17 +299,20 @@ function printStats(stats) {
   var maxSFLen = String('Scan Full').length;
   var maxSILen = String('Scan Index').length;
   var maxFLen = String('Filtered').length;
+  var maxCHMLen = String('Cache Hits/Misses').length;
   var maxMem = String('Peak Mem [b]').length;
   var maxETen = String('Exec Time [s]').length;
   stats.executionTime = stats.executionTime.toFixed(5);
   stringBuilder.appendLine(' ' + header('Writes Exec') + '   ' + header('Writes Ign') + '   ' + header('Scan Full') + '   ' +
-    header('Scan Index') + '   ' + header('Filtered') + '   ' + header('Peak Mem [b]') + '   ' + header('Exec Time [s]'));
+    header('Scan Index') + '   ' + header('Filtered') + '   ' + header('Cache Hits/Misses') + '   ' + header('Peak Mem [b]') + '   ' + 
+    header('Exec Time [s]'));
 
   stringBuilder.appendLine(' ' + pad(1 + maxWELen - String(stats.writesExecuted).length) + value(stats.writesExecuted) + '   ' +
     pad(1 + maxWILen - String(stats.writesIgnored).length) + value(stats.writesIgnored) + '   ' +
     pad(1 + maxSFLen - String(stats.scannedFull).length) + value(stats.scannedFull) + '   ' +
     pad(1 + maxSILen - String(stats.scannedIndex).length) + value(stats.scannedIndex) + '   ' +
-    pad(1 + maxFLen - String(stats.filtered).length) + value(stats.filtered) + '   ' +
+    pad(1 + maxFLen - String(stats.filtered || 0).length) + value(stats.filtered || 0) + '   ' +
+    pad(1 + maxCHMLen - (String(stats.cacheHits || 0) + ' / ' + String(stats.cacheMisses || 0)).length) + value(stats.cacheHits || 0) + ' / ' + value(stats.cacheMisses || 0) + '   ' +
     pad(1 + maxMem - String(stats.peakMemoryUsage).length) + value(stats.peakMemoryUsage) + '   ' +
     pad(1 + maxETen - String(stats.executionTime).length) + value(stats.executionTime));
   stringBuilder.appendLine();
@@ -2124,11 +2127,11 @@ function processQuery(query, explain, planIndex) {
 
   printRules(plan.rules, explain.stats);
   printModificationFlags(modificationFlags);
-  printWarnings(explain.warnings);
   if (profileMode) {
     printStats(explain.stats);
     printProfile(explain.profile);
   }
+  printWarnings(explain.warnings);
 }
 
 /* the exposed explain function */

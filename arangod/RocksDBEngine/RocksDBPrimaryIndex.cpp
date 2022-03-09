@@ -133,10 +133,15 @@ class RocksDBPrimaryIndexEqIterator final : public IndexIterator {
     }
 
     _done = true;
-    LocalDocumentId documentId =
-        _index->lookupKey(_trx, _key.slice().stringView(), canReadOwnWrites());
+
+    bool foundInCache = false;
+    LocalDocumentId documentId = _index->lookupKey(
+        _trx, _key.slice().stringView(), canReadOwnWrites(), foundInCache);
     if (documentId.isSet()) {
       cb(documentId);
+    }
+    if (_index->hasCache()) {
+      incrCacheStats(foundInCache);
     }
     return false;
   }
@@ -151,11 +156,16 @@ class RocksDBPrimaryIndexEqIterator final : public IndexIterator {
     }
 
     _done = true;
-    LocalDocumentId documentId =
-        _index->lookupKey(_trx, _key.slice().stringView(), canReadOwnWrites());
+
+    bool foundInCache = false;
+    LocalDocumentId documentId = _index->lookupKey(
+        _trx, _key.slice().stringView(), canReadOwnWrites(), foundInCache);
     if (documentId.isSet()) {
       auto data = SliceCoveringData(_key.slice());
       cb(documentId, data);
+    }
+    if (_index->hasCache()) {
+      incrCacheStats(foundInCache);
     }
     return false;
   }
@@ -220,11 +230,15 @@ class RocksDBPrimaryIndexInIterator final : public IndexIterator {
     while (limit > 0) {
       // This is an in-iterator, and "in"-checks never need to observe own
       // writes.
-      LocalDocumentId documentId =
-          _index->lookupKey(_trx, (*_iterator).stringView(), ReadOwnWrites::no);
+      bool foundInCache = false;
+      LocalDocumentId documentId = _index->lookupKey(
+          _trx, (*_iterator).stringView(), ReadOwnWrites::no, foundInCache);
       if (documentId.isSet()) {
         cb(documentId);
         --limit;
+      }
+      if (_index->hasCache()) {
+        incrCacheStats(foundInCache);
       }
 
       _iterator.next();
@@ -246,12 +260,16 @@ class RocksDBPrimaryIndexInIterator final : public IndexIterator {
     while (limit > 0) {
       // This is an in-iterator, and "in"-checks never need to observe own
       // writes.
-      LocalDocumentId documentId =
-          _index->lookupKey(_trx, (*_iterator).stringView(), ReadOwnWrites::no);
+      bool foundInCache = false;
+      LocalDocumentId documentId = _index->lookupKey(
+          _trx, (*_iterator).stringView(), ReadOwnWrites::no, foundInCache);
       if (documentId.isSet()) {
         auto data = SliceCoveringData(*_iterator);
         cb(documentId, data);
         --limit;
+      }
+      if (_index->hasCache()) {
+        incrCacheStats(foundInCache);
       }
 
       _iterator.next();
@@ -564,12 +582,14 @@ void RocksDBPrimaryIndex::toVelocyPack(
   builder.close();
 }
 
-LocalDocumentId RocksDBPrimaryIndex::lookupKey(
-    transaction::Methods* trx, std::string_view keyRef,
-    ReadOwnWrites readOwnWrites) const {
+LocalDocumentId RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
+                                               std::string_view keyRef,
+                                               ReadOwnWrites readOwnWrites,
+                                               bool& foundInCache) const {
   RocksDBKeyLeaser key(trx);
   key->constructPrimaryIndexValue(objectId(), keyRef);
 
+  foundInCache = false;
   bool lockTimeout = false;
   if (hasCache()) {
     TRI_ASSERT(_cache != nullptr);
@@ -577,6 +597,7 @@ LocalDocumentId RocksDBPrimaryIndex::lookupKey(
     auto f = _cache->find(key->string().data(),
                           static_cast<uint32_t>(key->string().size()));
     if (f.found()) {
+      foundInCache = true;
       rocksdb::Slice s(reinterpret_cast<char const*>(f.value()->value()),
                        f.value()->valueSize());
       return RocksDBValue::documentId(s);
