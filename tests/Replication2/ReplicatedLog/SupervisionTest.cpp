@@ -324,3 +324,46 @@ TEST_F(SupervisionLogTest, test_log_present) {
   EXPECT_TRUE(std::holds_alternative<CreateInitialTermAction>(r))
       << to_string(r);
 }
+
+struct LogSupervisionTest : ::testing::Test {};
+
+TEST_F(LogSupervisionTest, test_leader_not_failed) {
+  // Leader is not failed and the reboot id is as expected
+  auto const leader = LogPlanTermSpecification::Leader{"A", RebootId{1}};
+  auto const health = ParticipantsHealth{
+      ._health = {{"A", ParticipantHealth{.rebootId = RebootId{1},
+                                          .notIsFailed = true}}}};
+
+  auto r = isLeaderFailed(leader, health);
+  EXPECT_FALSE(r);
+}
+
+TEST_F(LogSupervisionTest, test_leader_failed) {
+  auto const leader = LogPlanTermSpecification::Leader{"A", RebootId{1}};
+  auto const health = ParticipantsHealth{
+      ._health = {{"A", ParticipantHealth{.rebootId = RebootId{1},
+                                          .notIsFailed = false}}}};
+
+  auto r = isLeaderFailed(leader, health);
+  EXPECT_TRUE(r);
+}
+
+TEST_F(LogSupervisionTest, test_leader_wrong_reboot_id) {
+  auto const leader = LogPlanTermSpecification::Leader{"A", RebootId{1}};
+  auto const health = ParticipantsHealth{
+      ._health = {{"A", ParticipantHealth{.rebootId = RebootId{15},
+                                          .notIsFailed = false}}}};
+
+  auto r = isLeaderFailed(leader, health);
+  EXPECT_TRUE(r);
+}
+
+TEST_F(LogSupervisionTest, test_leader_not_known_in_health) {
+  auto const leader = LogPlanTermSpecification::Leader{"A", RebootId{1}};
+  auto const health = ParticipantsHealth{
+      ._health = {{"B", ParticipantHealth{.rebootId = RebootId{15},
+                                          .notIsFailed = false}}}};
+
+  auto r = isLeaderFailed(leader, health);
+  EXPECT_TRUE(r);
+}
