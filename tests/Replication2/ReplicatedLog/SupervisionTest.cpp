@@ -413,3 +413,47 @@ TEST_F(LogSupervisionTest, test_no_participant_removed) {
   auto r = getRemovedParticipant(targetParticipants, planParticipants);
   EXPECT_FALSE(r);
 }
+
+TEST_F(LogSupervisionTest, test_no_flags_changed) {
+  auto const targetParticipants = ParticipantsFlagsMap{
+      {"A", ParticipantFlags{.forced = false, .excluded = false}}};
+
+  auto const planParticipants = ParticipantsFlagsMap{
+      {"A", ParticipantFlags{.forced = false, .excluded = false}}};
+
+  auto r = getParticipantWithUpdatedFlags(targetParticipants, planParticipants,
+                                          std::nullopt, "A");
+  EXPECT_FALSE(r);
+}
+
+TEST_F(LogSupervisionTest, test_flags_changed) {
+  auto const targetParticipants = ParticipantsFlagsMap{
+      {"A", ParticipantFlags{.forced = false, .excluded = true}}};
+
+  auto const planParticipants = ParticipantsFlagsMap{
+      {"A", ParticipantFlags{.forced = false, .excluded = false}}};
+
+  auto r = getParticipantWithUpdatedFlags(targetParticipants, planParticipants,
+                                          std::nullopt, "A");
+  EXPECT_TRUE(r);
+  EXPECT_EQ(r->first, "A");
+  EXPECT_EQ(r->second, (ParticipantFlags{.forced = false, .excluded = true}));
+}
+
+TEST_F(LogSupervisionTest, test_leader_changed) {
+  auto const targetParticipants = ParticipantsFlagsMap{
+      {"A", ParticipantFlags{.forced = false, .excluded = false}},
+      {"B", ParticipantFlags{.forced = false, .excluded = false}}};
+
+  auto const planParticipants = ParticipantsFlagsMap{
+      {"A", ParticipantFlags{.forced = false, .excluded = false}},
+      {"B", ParticipantFlags{.forced = false, .excluded = false}}};
+
+  auto r = getParticipantWithUpdatedFlags(targetParticipants, planParticipants,
+                                          "B", "A");
+  EXPECT_TRUE(r);
+
+  // IF the leader is changed via target, expect it to be forced first
+  EXPECT_EQ(r->first, "B");
+  EXPECT_EQ(r->second, (ParticipantFlags{.forced = true, .excluded = false}));
+}
