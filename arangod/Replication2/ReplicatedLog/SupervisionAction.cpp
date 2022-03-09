@@ -49,11 +49,15 @@ void Executor::operator()(ErrorAction const& action) {
 }
 
 void Executor::operator()(AddLogToPlanAction const& action) {
+  auto spec = LogPlanSpecification(
+      log, std::nullopt,
+      ParticipantsConfig{.generation = 1,
+                         .participants = action._participants});
+
   envelope = envelope.write()
-                 .emplace_object(planPath->str(),
-                                 [&](VPackBuilder& builder) {
-                                   action._spec.toVelocyPack(builder);
-                                 })
+                 .emplace_object(
+                     planPath->str(),
+                     [&](VPackBuilder& builder) { spec.toVelocyPack(builder); })
                  .inc(paths::plan()->version()->str())
                  .precs()
                  .isEmpty(planPath->str())
@@ -72,11 +76,13 @@ void Executor::operator()(AddParticipantsToTargetAction const& action) {
 }
 
 void Executor::operator()(CreateInitialTermAction const& action) {
+  auto term =
+      LogPlanTermSpecification(LogTerm{1}, action._config, std::nullopt);
+
   envelope = envelope.write()
-                 .emplace_object(planPath->currentTerm()->str(),
-                                 [&](VPackBuilder& builder) {
-                                   action._term.toVelocyPack(builder);
-                                 })
+                 .emplace_object(
+                     planPath->currentTerm()->str(),
+                     [&](VPackBuilder& builder) { term.toVelocyPack(builder); })
                  .inc(paths::plan()->version()->str())
                  .precs()
                  .isEmpty(planPath->currentTerm()->str())
@@ -98,25 +104,56 @@ void Executor::operator()(DictateLeaderAction const& action) {
                  .end();
 }
 
-void Executor::operator()(EvictLeaderAction const& action) {
+void Executor::operator()(DictateLeaderFailedAction const& action) {
   envelope = envelope.write()
-                 .emplace_object(planPath->participantsConfig()
-                                     ->participants()
-                                     ->server(action._leader)
-                                     ->str(),
+                 .emplace_object(currentPath->supervision()->error()->str(),
                                  [&](VPackBuilder& builder) {
-                                   action._flags.toVelocyPack(builder);
+                                   builder.add(VPackValue(action._message));
                                  })
-                 .emplace_object(planPath->currentTerm()->str(),
-                                 [&](VPackBuilder& builder) {
-                                   action._newTerm.toVelocyPack(builder);
-                                 })
-                 .inc(planPath->participantsConfig()->generation()->str())
-                 .inc(paths::plan()->version()->str())
-                 .precs()
-                 .isEqual(planPath->participantsConfig()->generation()->str(),
-                          action._generation)
+                 .inc(paths::current()->version()->str())
                  .end();
+}
+
+void Executor::operator()(CurrentNotAvailableAction const& action) {
+  envelope =
+      envelope.write()
+          .emplace_object(
+              currentPath->supervision()->str(),
+              [&](VPackBuilder& builder) {
+                auto ob = VPackObjectBuilder(&builder);
+
+                builder.add("message", VPackValue("Current not available yet"));
+              })
+          .inc(paths::plan()->version()->str())
+          .precs()
+          .isEmpty(currentPath->supervision()->str())
+          .end();
+}
+
+void Executor::operator()(EvictLeaderAction const& action) {
+  auto newFlags = action._flags;
+  newFlags.excluded = true;
+  auto newTerm = action._currentTerm;
+  newTerm.term = LogTerm{newTerm.term.value + 1};
+  newTerm.leader.reset();
+
+  envelope =
+      envelope.write()
+          .emplace_object(
+              planPath->participantsConfig()
+                  ->participants()
+                  ->server(action._leader)
+                  ->str(),
+              [&](VPackBuilder& builder) { newFlags.toVelocyPack(builder); })
+          .emplace_object(
+              planPath->currentTerm()->str(),
+              [&](VPackBuilder& builder) { newTerm.toVelocyPack(builder); })
+          .inc(planPath->participantsConfig()->generation()->str())
+          .inc(paths::plan()->version()->str())
+          .precs()
+          .isEqual(planPath->participantsConfig()->generation()->str(),
+                   action._generation)
+          .end();
 }
 
 void Executor::operator()(UpdateTermAction const& action) {
@@ -124,6 +161,20 @@ void Executor::operator()(UpdateTermAction const& action) {
                  .emplace_object(planPath->currentTerm()->str(),
                                  [&](VPackBuilder& builder) {
                                    action._newTerm.toVelocyPack(builder);
+                                 })
+                 .inc(paths::plan()->version()->str())
+                 .end();
+}
+
+void Executor::operator()(WriteEmptyTermAction const& action) {
+  auto newTerm = action._term;
+  newTerm.term = LogTerm{action._term.term.value + 1};
+  newTerm.leader.reset();
+
+  envelope = envelope.write()
+                 .emplace_object(planPath->currentTerm()->str(),
+                                 [&](VPackBuilder& builder) {
+                                   newTerm.toVelocyPack(builder);
                                  })
                  .inc(paths::plan()->version()->str())
                  .end();
@@ -222,6 +273,8 @@ void Executor::operator()(UpdateLogConfigAction const& action) {
   TRI_ASSERT(false);
 }
 
+void Executor::operator()(ConvergedToTargetAction const& action) {}
+
 auto to_string(Action const& action) -> std::string_view {
   return std::visit([](auto&& arg) { return arg.name; }, action);
 }
@@ -254,12 +307,25 @@ void VelocyPacker::operator()(CreateInitialTermAction const& action) {
   builder.add(VPackValue(action.name));
 }
 
+void VelocyPacker::operator()(CurrentNotAvailableAction const& action) {
+  builder.add(VPackValue("type"));
+  builder.add(VPackValue(action.name));
+}
+
 void VelocyPacker::operator()(DictateLeaderAction const& action) {
   builder.add(VPackValue("type"));
   builder.add(VPackValue(action.name));
 
   builder.add(VPackValue("newTerm"));
   action._term.toVelocyPack(builder);
+}
+
+void VelocyPacker::operator()(DictateLeaderFailedAction const& action) {
+  builder.add(VPackValue("type"));
+  builder.add(VPackValue(action.name));
+
+  builder.add(VPackValue("message"));
+  builder.add(VPackValue(action._message));
 }
 
 void VelocyPacker::operator()(EvictLeaderAction const& action) {
@@ -273,6 +339,14 @@ void VelocyPacker::operator()(UpdateTermAction const& action) {
 
   builder.add(VPackValue("newTerm"));
   action._newTerm.toVelocyPack(builder);
+}
+
+void VelocyPacker::operator()(WriteEmptyTermAction const& action) {
+  builder.add(VPackValue("type"));
+  builder.add(VPackValue(action.name));
+
+  builder.add(VPackValue("previousTerm"));
+  action._term.toVelocyPack(builder);
 }
 
 void VelocyPacker::operator()(LeaderElectionAction const& action) {
@@ -308,6 +382,11 @@ void VelocyPacker::operator()(RemoveParticipantFromPlanAction const& action) {
 }
 
 void VelocyPacker::operator()(UpdateLogConfigAction const& action) {
+  builder.add(VPackValue("type"));
+  builder.add(VPackValue(action.name));
+}
+
+void VelocyPacker::operator()(ConvergedToTargetAction const& action) {
   builder.add(VPackValue("type"));
   builder.add(VPackValue(action.name));
 }
