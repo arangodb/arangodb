@@ -8,10 +8,12 @@ devel
   did not work as expected, the graph visualization properties did not get
   persisted as well. This is now resolved.
 
+* Turn off sending "Server" HTTP response header on DB servers if not 
+  explicitly requested. This saves a tiny bit of traffic on each response
+  from a DB server.
+
 * Fix null pointer access when using WINDOW operation with a COUNT/LENGTH
   aggregate function without any arguments.
-
-* Bugfix: DC-2-DC Disjoint-SmartGraphs and Hybrid-SmartGraphs are now
 
 * Enable range deletions in the WAL for truncate operationns in the cluster, 
   too. This can speed up truncate operations for large collections/shards.
