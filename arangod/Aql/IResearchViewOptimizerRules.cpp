@@ -217,6 +217,83 @@ bool optimizeSearchCondition(IResearchViewNode& viewNode,
   return true;
 }
 
+bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
+  auto current = static_cast<ExecutionNode*>(&viewNode);
+  auto const& scorers = viewNode.scorers();
+  SortNode* sortNode = nullptr;
+  LimitNode const* limitNode = nullptr;
+  while (current = current->getFirstParent()) {
+    if (current->getType() == ExecutionNode::ENUMERATE_IRESEARCH_VIEW ||
+        current->getType() == ExecutionNode::ENUMERATE_COLLECTION ||
+        current->getType() == ExecutionNode::TRAVERSAL ||
+        current->getType() == ExecutionNode::SHORTEST_PATH ||
+        current->getType() == ExecutionNode::K_SHORTEST_PATHS ||
+        current->getType() == ExecutionNode::INDEX ||
+        current->getType() == ExecutionNode::COLLECT) {
+      // any of these node types will lead to more/less results in the output,
+      // and may as well change the sort order, so let's better abort here
+      return false;
+    }
+
+    if (current->getType() == ExecutionNode::SORT) {
+      // we stop on first sort 
+      sortNode = ExecutionNode::castTo<SortNode*>(current);
+    }
+
+    if (current->getType() == ExecutionNode::LIMIT) {
+      // we always check only first limit
+      limitNode = ExecutionNode::castTo<LimitNode*>(current);
+      break;
+    }
+
+  }
+  if (!sortNode || !limitNode) {
+    return false;
+  }
+  // we've found all we need
+  auto const& sortElements = sortNode->elements();
+  std::vector<std::pair<size_t, bool>> scorersSort;
+  for (auto const& sort : sortElements) {
+    /// TODO  - extract as func?
+    TRI_ASSERT(sort.var);
+    auto varSetBy = plan->getVarSetBy(sort.var->id);
+    TRI_ASSERT(varSetBy);
+    arangodb::aql::Variable const* sortVariable;
+    if (varSetBy->getType() == ExecutionNode::CALCULATION) {
+      auto* calc = ExecutionNode::castTo<CalculationNode*>(varSetBy);
+      TRI_ASSERT(calc->expression());
+      auto astCalcNode = calc->expression()->node();
+      if (!astCalcNode ||
+          astCalcNode->type != AstNodeType::NODE_TYPE_REFERENCE) {
+        // Not a reference?  Seems that ScorerReplacer has failed.
+        // e.g. it is expected to be LET sortVar = scoreVar;
+        return false;
+      }
+      sortVariable = reinterpret_cast<arangodb::aql::Variable const*>(
+          astCalcNode->getData());
+      TRI_ASSERT(sortVariable);
+    }
+    /// end of func extract
+    auto s = std::find_if(scorers.begin(), scorers.end(),
+                          [sortVariable](Scorer const& t) {
+                            return t.var->id == sortVariable->id;
+                          });
+    if (s == scorers.end()) {
+      return false;
+    }
+    scorersSort.emplace_back(std::distance(scorers.begin(), s), sort.ascending);
+  }
+  // all sort elements are covered by view's scorers
+  viewNode.setScorersSort(std::move(scorersSort), limitNode->offset() + limitNode->limit());
+  sortNode->_reinsertInCluster = false;
+  if (!arangodb::ServerState::instance()->isCoordinator()) {
+    // in cluster node will be unlinked later by 'distributeSortToClusterRule'
+    plan->unlinkNode(sortNode);
+  }
+  // TODO (Dronplane) check fullCount!
+  return true;
+}
+
 bool optimizeSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
   TRI_ASSERT(viewNode.view());
   auto& primarySort = ::primarySort(*viewNode.view());
@@ -743,6 +820,13 @@ void handleViewsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
     // find scorers that have to be evaluated by a view
     scorerReplacer.extract(viewNode, scorers);
     viewNode.scorers(std::move(scorers));
+
+    if (!viewNode.scorers().empty()  && !viewNode.isInInnerLoop()) {
+      // check if we can optimize away a sort that follows the EnumerateView
+      // node this is only possible if the view node itself is not contained in
+      // another loop
+      modified |= optimizeScoreSort(viewNode, plan.get());
+    }
 
     if (!optimizeSearchCondition(viewNode, query, *plan)) {
       continue;

@@ -1782,7 +1782,8 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
         getDepth(),
         std::move(outNonMaterializedViewRegs),
         _options.countApproximate,
-        filterOptimization()};
+        filterOptimization(),
+        _scorersSort, _scorersSortLimit};
 
     return std::make_tuple(materializeType, std::move(executorInfos),
                            std::move(registerInfos));
@@ -1805,6 +1806,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
   TRI_ASSERT(_sort.first == nullptr ||
              !_sort.first->empty());  // guaranteed by optimizer rule
   bool const ordered = !_scorers.empty();
+  bool const sorted = _sort.first != nullptr;
 #ifdef USE_ENTERPRISE
   auto& engineSelectorFeature =
       _view->vocbase().server().getFeature<EngineSelectorFeature>();
@@ -1817,16 +1819,16 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     case MaterializeType::NotMaterialize:
       return ::executors<false,
                          MaterializeType::NotMaterialize>[getExecutorIndex(
-          _sort.first != nullptr, ordered)](
+          sorted, ordered)](
           &engine, this, std::move(registerInfos), std::move(executorInfos));
     case MaterializeType::LateMaterialize:
       return ::executors<false,
                          MaterializeType::LateMaterialize>[getExecutorIndex(
-          _sort.first != nullptr, ordered)](
+          sorted, ordered)](
           &engine, this, std::move(registerInfos), std::move(executorInfos));
     case MaterializeType::Materialize:
       return ::executors<false, MaterializeType::Materialize>[getExecutorIndex(
-          _sort.first != nullptr, ordered)](
+          sorted, ordered)](
           &engine, this, std::move(registerInfos), std::move(executorInfos));
     case MaterializeType::NotMaterialize | MaterializeType::UseStoredValues:
 #ifdef USE_ENTERPRISE
@@ -1834,20 +1836,20 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
         return ::executors<
             true, MaterializeType::NotMaterialize |
                       MaterializeType::UseStoredValues>[getExecutorIndex(
-            _sort.first != nullptr, ordered)](
+            sorted, ordered)](
             &engine, this, std::move(registerInfos), std::move(executorInfos));
       } else {
         return ::executors<
             false, MaterializeType::NotMaterialize |
                        MaterializeType::UseStoredValues>[getExecutorIndex(
-            _sort.first != nullptr, ordered)](
+            sorted, ordered)](
             &engine, this, std::move(registerInfos), std::move(executorInfos));
       }
 #else
       return ::executors<false,
                          MaterializeType::NotMaterialize |
                              MaterializeType::UseStoredValues>[getExecutorIndex(
-          _sort.first != nullptr, ordered)](
+          sorted, ordered)](
           &engine, this, std::move(registerInfos), std::move(executorInfos));
 #endif
     case MaterializeType::LateMaterialize | MaterializeType::UseStoredValues:
@@ -1856,20 +1858,20 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
         return ::executors<
             true, MaterializeType::LateMaterialize |
                       MaterializeType::UseStoredValues>[getExecutorIndex(
-            _sort.first != nullptr, ordered)](
+            sorted, ordered)](
             &engine, this, std::move(registerInfos), std::move(executorInfos));
       } else {
         return ::executors<
             false, MaterializeType::LateMaterialize |
                        MaterializeType::UseStoredValues>[getExecutorIndex(
-            _sort.first != nullptr, ordered)](
+            sorted, ordered)](
             &engine, this, std::move(registerInfos), std::move(executorInfos));
       }
 #else
       return ::executors<false,
                          MaterializeType::LateMaterialize |
                              MaterializeType::UseStoredValues>[getExecutorIndex(
-          _sort.first != nullptr, ordered)](
+          _sorted, ordered)](
           &engine, this, std::move(registerInfos), std::move(executorInfos));
 #endif
     default:

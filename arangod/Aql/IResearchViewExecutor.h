@@ -93,7 +93,8 @@ class IResearchViewExecutorInfos {
       VarInfoMap const& varInfoMap, int depth,
       iresearch::IResearchViewNode::ViewValuesRegisters&&
           outNonMaterializedViewRegs,
-      iresearch::CountApproximate, iresearch::FilterOptimization);
+      iresearch::CountApproximate, iresearch::FilterOptimization,
+      std::vector<std::pair<size_t, bool>> scorersSort, size_t scorersSortLimit);
 
   auto getDocumentRegister() const noexcept -> RegisterId;
   auto getCollectionRegister() const noexcept -> RegisterId;
@@ -130,6 +131,14 @@ class IResearchViewExecutorInfos {
 
   iresearch::IResearchViewStoredValues const& storedValues() const noexcept;
 
+  size_t scorersSortLimit() const noexcept {
+    return _scorersSortLimit;
+  }
+
+   std::vector<std::pair<size_t, bool>> const& scorersSort() const noexcept {
+    return _scorersSort;
+  }
+
  private:
   aql::RegisterId _documentOutReg;
   aql::RegisterId _collectionPointerReg;
@@ -150,6 +159,8 @@ class IResearchViewExecutorInfos {
   iresearch::CountApproximate _countApproximate;
   bool _filterConditionIsEmpty;
   iresearch::FilterOptimization _filterOptimization;
+  std::vector<std::pair<size_t, bool>> _scorersSort;
+  size_t _scorersSortLimit;
 };  // IResearchViewExecutorInfos
 
 class IResearchViewStats {

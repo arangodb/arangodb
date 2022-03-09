@@ -203,6 +203,11 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   ///       sort condition
   std::pair<bool, bool> volatility(bool force = false) const;
 
+  void setScorersSort(std::vector<std::pair<size_t, bool>>&& sort, size_t limit) {
+    _scorersSort = sort;
+    _scorersSortLimit = limit;
+  }
+
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<aql::ExecutionBlock> createBlock(
       aql::ExecutionEngine& engine,
@@ -355,6 +360,11 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
 
   /// @brief IResearchViewNode options
   Options _options;
+
+
+  /// @brief internal order for scorers
+  std::vector<std::pair<size_t, bool>> _scorersSort;
+  size_t _scorersSortLimit;
 };  // IResearchViewNode
 
 }  // namespace iresearch

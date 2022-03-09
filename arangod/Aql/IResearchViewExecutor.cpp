@@ -156,7 +156,8 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
     IResearchViewExecutorInfos::VarInfoMap const& varInfoMap, int depth,
     IResearchViewNode::ViewValuesRegisters&& outNonMaterializedViewRegs,
     iresearch::CountApproximate countApproximate,
-    iresearch::FilterOptimization filterOptimization)
+    iresearch::FilterOptimization filterOptimization,
+    std::vector<std::pair<size_t, bool>> scorersSort, size_t scorersSortLimit)
     : _scoreRegisters(std::move(scoreRegisters)),
       _reader(std::move(reader)),
       _query(query),
@@ -174,7 +175,8 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
       _outNonMaterializedViewRegs(std::move(outNonMaterializedViewRegs)),
       _countApproximate(countApproximate),
       _filterConditionIsEmpty(::filterConditionIsEmpty(&_filterCondition)),
-      _filterOptimization(filterOptimization) {
+      _filterOptimization(filterOptimization), _scorersSort(std::move(scorersSort)),
+      _scorersSortLimit(scorersSortLimit) {
   TRI_ASSERT(_reader != nullptr);
   std::tie(_documentOutReg, _collectionPointerReg) = std::visit(
       overload{
