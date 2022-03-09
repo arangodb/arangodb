@@ -391,10 +391,6 @@ arangodb::Result fetchRevisions(
           << config.leader.serverId << " at " << config.leader.endpoint
           << " for collection " << leader
           << " queue length: " << futures.size();
-      res = trx.state()->performIntermediateCommitIfRequired(collection.id());
-      if (res.fail()) {
-        return res;
-      }
     }
   }
 
