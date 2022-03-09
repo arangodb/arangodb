@@ -250,6 +250,11 @@ arangodb::Result fetchRevisions(
       futures.emplace_back(std::move(f));
       shoppingLists.emplace_back(std::move(shoppingList));
       ++stats.numDocsRequests;
+      LOG_TOPIC("eda42", DEBUG, arangodb::Logger::REPLICATION)
+          << "Have requested a chunk of 5000 revisions from "
+          << config.leader.serverId << " at " << config.leader.endpoint
+          << " for collection " << leader
+          << " length of queue: " << futures.size();
     }
 
     if (!futures.empty()) {
@@ -383,9 +388,19 @@ arangodb::Result fetchRevisions(
         futures.emplace_back(std::move(f));
         shoppingLists.emplace_back(std::move(newList));
         ++stats.numDocsRequests;
+        LOG_TOPIC("eda45", DEBUG, arangodb::Logger::REPLICATION)
+            << "Have re-requested a chunk of " << newList.size()
+            << " revisions from " << config.leader.serverId << " at "
+            << config.leader.endpoint << " for collection " << leader
+            << " queue length: " << futures.size();
       }
       futures.pop_front();
       shoppingLists.pop_front();
+      LOG_TOPIC("eda44", DEBUG, arangodb::Logger::REPLICATION)
+          << "Have applied a chunk of " << docs.length() << " documents from "
+          << config.leader.serverId << " at " << config.leader.endpoint
+          << " for collection " << leader
+          << " queue length: " << futures.size();
       res = trx.state()->performIntermediateCommitIfRequired(collection.id());
       if (res.fail()) {
         return res;
