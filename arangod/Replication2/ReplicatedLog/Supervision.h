@@ -52,6 +52,13 @@ auto getRemovedParticipant(ParticipantsFlagsMap const& target,
                            ParticipantsFlagsMap const& plan)
     -> std::optional<std::pair<ParticipantId, ParticipantFlags>>;
 
+auto getParticipantWithUpdatedFlags(
+    ParticipantsFlagsMap const& targetParticipants,
+    ParticipantsFlagsMap const& planParticipants,
+    std::optional<ParticipantId> const& targetLeader,
+    ParticipantId const& currentTermLeader)
+    -> std::optional<std::pair<ParticipantId, ParticipantFlags>>;
+
 auto computeReason(LogCurrentLocalState const& status, bool healthy,
                    bool excluded, LogTerm term)
     -> LogCurrentSupervisionElection::ErrorCode;

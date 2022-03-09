@@ -62,7 +62,7 @@ auto isLeaderFailed(LogPlanTermSpecification::Leader const& leader,
  * with a new one (gracefully); this is as opposed to just
  * rip out the old leader and waiting for failover to occur
  *
- * */
+ */
 auto dictateLeader(LogTarget const& target, LogPlanSpecification const& plan,
                    LogCurrent const& current, ParticipantsHealth const& health)
     -> Action {
@@ -288,35 +288,37 @@ auto doLeadershipElection(LogPlanSpecification const& plan,
   }
 }
 
-auto desiredParticipantFlags(LogTarget const& target,
-                             LogPlanSpecification const& plan,
-                             ParticipantId const& participant)
+auto desiredParticipantFlags(std::optional<ParticipantId> const& targetLeader,
+                             ParticipantId const& currentTermLeader,
+                             ParticipantId const& targetParticipant,
+                             ParticipantFlags const& targetFlags)
     -> ParticipantFlags {
-  if (participant == target.leader and
-      participant != plan.currentTerm->leader->serverId) {
-    auto flags = target.participants.at(participant);
+  if (targetParticipant == targetLeader and
+      targetParticipant != currentTermLeader) {
+    auto flags = targetFlags;
     if (!flags.excluded) {
       flags.forced = true;
     }
     return flags;
   }
-  return target.participants.at(participant);
+  return targetFlags;
 }
 
-auto getParticipantWithUpdatedFlags(LogTarget const& target,
-                                    LogPlanSpecification const& plan)
+auto getParticipantWithUpdatedFlags(
+    ParticipantsFlagsMap const& targetParticipants,
+    ParticipantsFlagsMap const& planParticipants,
+    std::optional<ParticipantId> const& targetLeader,
+    ParticipantId const& currentTermLeader)
     -> std::optional<std::pair<ParticipantId, ParticipantFlags>> {
-  auto const& tps = target.participants;
-  auto const& pps = plan.participantsConfig.participants;
-
-  for (auto const& [targetParticipant, targetFlags] : tps) {
-    if (auto const& planParticipant = pps.find(targetParticipant);
-        planParticipant != pps.end()) {
+  for (auto const& [targetParticipant, targetFlags] : targetParticipants) {
+    if (auto const& planParticipant = planParticipants.find(targetParticipant);
+        planParticipant != std::end(planParticipants)) {
       // participant is in plan, check whether flags are the same
-      auto const df = desiredParticipantFlags(target, plan, targetParticipant);
-      if (df != planParticipant->second) {
+      auto const desiredFlags = desiredParticipantFlags(
+          targetLeader, currentTermLeader, targetParticipant, targetFlags);
+      if (desiredFlags != planParticipant->second) {
         // Flags changed, so we need to commit new flags for this participant
-        return std::make_pair(targetParticipant, df);
+        return std::make_pair(targetParticipant, desiredFlags);
       }
     }
   }
@@ -413,7 +415,9 @@ auto checkReplicatedLog(Log const& log, ParticipantsHealth const& health)
 
   // If flags for a participant differ between target
   // and plan, apply that change to plan.
-  if (auto participantFlags = getParticipantWithUpdatedFlags(target, plan)) {
+  if (auto participantFlags = getParticipantWithUpdatedFlags(
+          target.participants, plan.participantsConfig.participants,
+          target.leader, leader.serverId)) {
     return UpdateParticipantFlagsAction(participantFlags->first,
                                         participantFlags->second,
                                         plan.participantsConfig.generation);
