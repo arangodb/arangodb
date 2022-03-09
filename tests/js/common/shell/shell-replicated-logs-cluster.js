@@ -151,7 +151,7 @@ function ReplicatedLogsWriteSuite () {
       assertEqual(leaderStatus.local.commitIndex, 1);
       let globalStatus = log.globalStatus();
       let status = log.status();
-      assertEqual(status, globalStatus);
+      assertEqual(Object.keys(status).sort(), Object.keys(globalStatus).sort());
     },
 
     testInsert : function() {
