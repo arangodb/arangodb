@@ -394,13 +394,13 @@ arangodb::Result fetchRevisions(
             << config.leader.endpoint << " for collection " << leader
             << " queue length: " << futures.size();
       }
-      futures.pop_front();
-      shoppingLists.pop_front();
       LOG_TOPIC("eda44", DEBUG, arangodb::Logger::REPLICATION)
           << "Have applied a chunk of " << docs.length() << " documents from "
           << config.leader.serverId << " at " << config.leader.endpoint
           << " for collection " << leader
           << " queue length: " << futures.size();
+      futures.pop_front();
+      shoppingLists.pop_front();
       res = trx.state()->performIntermediateCommitIfRequired(collection.id());
       if (res.fail()) {
         return res;
