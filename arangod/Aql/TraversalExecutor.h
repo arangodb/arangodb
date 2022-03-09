@@ -110,8 +110,8 @@ class TraversalExecutorInfos {
   ~TraversalExecutorInfos() = default;
 
   [[nodiscard]] auto traversalEnumerator() const
-      -> arangodb::graph::TraversalEnumerator&;
-  traverser::Traverser* traverser();
+      -> arangodb::graph::TraversalEnumerator*;
+  auto traverser() -> traverser::Traverser*;
 
   bool usesOutputRegister(TraversalExecutorInfosHelper::OutputName type) const;
 
@@ -241,6 +241,12 @@ class TraversalExecutor {
 
   [[nodiscard]] auto stats() -> Stats;
 
+  // OLD (non refactor)
+  auto traverser() -> traverser::Traverser*;
+
+  // NEW (refactor)
+  auto traversalEnumerator() -> arangodb::graph::TraversalEnumerator*;
+
  private:
   Infos& _infos;
   InputAqlItemRow _inputRow;
@@ -249,7 +255,7 @@ class TraversalExecutor {
                                      // removed after refactor is done!
 
   /// @brief the refactored finder variant.
-  arangodb::graph::TraversalEnumerator& _traversalEnumerator;
+  arangodb::graph::TraversalEnumerator* _traversalEnumerator;
 };
 
 }  // namespace aql
