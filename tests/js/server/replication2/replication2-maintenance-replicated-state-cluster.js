@@ -1,4 +1,5 @@
 /*jshint strict: true */
+/*global assertTrue */
 'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -114,6 +115,20 @@ const replicatedStateSuite = function () {
       const leader = servers[0];
       createReplicatedState(database, logId, servers, leader);
       LH.waitFor(spreds.replicatedStateIsReady(database, logId, servers));
+    },
+
+    testCheckTimestampSnapshotStatus: function () {
+      const logId = LH.nextUniqueLogId();
+      const servers = _.sampleSize(LH.dbservers, 3);
+      const leader = servers[0];
+      createReplicatedState(database, logId, servers, leader);
+      LH.waitFor(spreds.replicatedStateIsReady(database, logId, servers));
+      {
+        const {current} = SH.readReplicatedStateAgency(database, logId);
+        for (const p of servers) {
+          assertTrue(current.participants[p].snapshot.timestamp !== undefined);
+        }
+      }
     },
 
     testReplicatedStateUpdateParticipantGeneration: function () {
