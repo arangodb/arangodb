@@ -121,10 +121,10 @@ class RequestFuzzer {
       {RequestType::kPost, "POST"},      {RequestType::kPatch, "PATCH"},
       {RequestType::kDelete, "DELETE"},  {RequestType::kHead, "HEAD"}};
 
-  static constexpr uint32_t _maxNestedRoutes = 4;
-  static constexpr uint32_t _maxDepth = 4;
-  static constexpr uint32_t _objNumMembers = 4;
-  static constexpr uint32_t _arrayNumMembers = 4;
+  static constexpr uint32_t kMaxNestedRoutes = 4;
+  static constexpr uint32_t kMaxDepth = 4;
+  static constexpr uint32_t kObjNumMembers = 4;
+  static constexpr uint32_t kArrayNumMembers = 4;
   uint32_t _recursionDepth = 0;
   std::vector<std::unordered_set<std::string>> _tempObjectKeys;
 
