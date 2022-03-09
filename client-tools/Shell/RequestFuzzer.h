@@ -64,7 +64,7 @@ enum BodyOperation { kAddArray = 0, kAddObject, kAddCharSeq, kMaxBodyOpValue };
 
 class RequestFuzzer {
   struct RandContext {
-    RandContext(uint32_t seed) : mt(seed) {}
+    explicit RandContext(uint32_t seed) : mt(seed) {}
 
     std::mt19937 mt;
     static constexpr uint32_t maxRandAsciiStringLength = 50;
