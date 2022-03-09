@@ -44,6 +44,14 @@ using LogCurrentLocalStates =
 auto isLeaderFailed(LogPlanTermSpecification::Leader const& leader,
                     ParticipantsHealth const& health) -> bool;
 
+auto getAddedParticipant(ParticipantsFlagsMap const& target,
+                         ParticipantsFlagsMap const& plan)
+    -> std::optional<std::pair<ParticipantId, ParticipantFlags>>;
+
+auto getRemovedParticipant(ParticipantsFlagsMap const& target,
+                           ParticipantsFlagsMap const& plan)
+    -> std::optional<std::pair<ParticipantId, ParticipantFlags>>;
+
 auto computeReason(LogCurrentLocalState const& status, bool healthy,
                    bool excluded, LogTerm term)
     -> LogCurrentSupervisionElection::ErrorCode;

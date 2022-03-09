@@ -367,3 +367,49 @@ TEST_F(LogSupervisionTest, test_leader_not_known_in_health) {
   auto r = isLeaderFailed(leader, health);
   EXPECT_TRUE(r);
 }
+
+TEST_F(LogSupervisionTest, test_participant_added) {
+  auto const targetParticipants = ParticipantsFlagsMap{
+      {"A", ParticipantFlags{.forced = false, .excluded = false}}};
+
+  auto const planParticipants = ParticipantsFlagsMap{};
+
+  auto r = getAddedParticipant(targetParticipants, planParticipants);
+  EXPECT_TRUE(r);
+
+  EXPECT_EQ(r->first, "A");
+  EXPECT_EQ(r->second, (ParticipantFlags{.forced = false, .excluded = false}));
+}
+
+TEST_F(LogSupervisionTest, test_no_participant_added) {
+  auto const targetParticipants = ParticipantsFlagsMap{
+      {"A", ParticipantFlags{.forced = false, .excluded = false}}};
+
+  auto const planParticipants = targetParticipants;
+
+  auto r = getAddedParticipant(targetParticipants, planParticipants);
+  EXPECT_FALSE(r);
+}
+
+TEST_F(LogSupervisionTest, test_participant_removed) {
+  auto const targetParticipants = ParticipantsFlagsMap{};
+
+  auto const planParticipants = ParticipantsFlagsMap{
+      {"A", ParticipantFlags{.forced = false, .excluded = false}}};
+
+  auto r = getRemovedParticipant(targetParticipants, planParticipants);
+  EXPECT_TRUE(r);
+
+  EXPECT_EQ(r->first, "A");
+}
+
+TEST_F(LogSupervisionTest, test_no_participant_removed) {
+  auto const targetParticipants = ParticipantsFlagsMap{
+      {"A", ParticipantFlags{.forced = false, .excluded = false}}};
+
+  auto const planParticipants = ParticipantsFlagsMap{
+      {"A", ParticipantFlags{.forced = false, .excluded = false}}};
+
+  auto r = getRemovedParticipant(targetParticipants, planParticipants);
+  EXPECT_FALSE(r);
+}

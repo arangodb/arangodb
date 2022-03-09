@@ -325,33 +325,26 @@ auto getParticipantWithUpdatedFlags(LogTarget const& target,
   return std::nullopt;
 }
 
-auto getAddedParticipant(LogTarget const& target,
-                         LogPlanSpecification const& plan)
+auto getAddedParticipant(ParticipantsFlagsMap const& targetParticipants,
+                         ParticipantsFlagsMap const& planParticipants)
     -> std::optional<std::pair<ParticipantId, ParticipantFlags>> {
-  auto tps = target.participants;
-  auto pps = plan.participantsConfig.participants;
-
-  // is adding a participant or updating flags somehow the same action?
-  for (auto const& [targetParticipant, targetFlags] : tps) {
-    if (auto const& planParticipant = pps.find(targetParticipant);
-        planParticipant == pps.end()) {
-      // Here's a participant that is not in plan yet; we add it
+  for (auto const& [targetParticipant, targetFlags] : targetParticipants) {
+    if (auto const& planParticipant = planParticipants.find(targetParticipant);
+        planParticipant == planParticipants.end()) {
       return std::make_pair(targetParticipant, targetFlags);
     }
   }
   return std::nullopt;
 }
 
-auto getRemovedParticipant(LogTarget const& target,
-                           LogPlanSpecification const& plan)
+auto getRemovedParticipant(ParticipantsFlagsMap const& targetParticipants,
+                           ParticipantsFlagsMap const& planParticipants)
     -> std::optional<std::pair<ParticipantId, ParticipantFlags>> {
-  for (auto const& [planParticipant, flags] :
-       plan.participantsConfig.participants) {
-    if (!target.participants.contains(planParticipant)) {
+  for (auto const& [planParticipant, flags] : planParticipants) {
+    if (!targetParticipants.contains(planParticipant)) {
       return std::make_pair(planParticipant, flags);
     }
   }
-
   return std::nullopt;
 }
 
@@ -428,7 +421,8 @@ auto checkReplicatedLog(Log const& log, ParticipantsHealth const& health)
 
   // If a participant exists in Target, but not in Plan,
   // add that participant to Plan.
-  if (auto participant = getAddedParticipant(log.target, plan)) {
+  if (auto participant = getAddedParticipant(
+          target.participants, plan.participantsConfig.participants)) {
     return AddParticipantToPlanAction(participant->first, participant->second,
                                       plan.participantsConfig.generation);
   }
@@ -445,7 +439,8 @@ auto checkReplicatedLog(Log const& log, ParticipantsHealth const& health)
 
   // If a participant is in Plan but not in Target, gracefully
   // remove them
-  if (auto maybeParticipant = getRemovedParticipant(target, plan)) {
+  if (auto maybeParticipant = getRemovedParticipant(
+          target.participants, plan.participantsConfig.participants)) {
     auto const& [participantId, flags] = *maybeParticipant;
     // The removed participant is currently the leader
     if (participantId == leader.serverId) {
