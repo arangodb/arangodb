@@ -85,6 +85,7 @@
 #include "RestHandler/RestPregelHandler.h"
 #include "RestHandler/RestQueryCacheHandler.h"
 #include "RestHandler/RestQueryHandler.h"
+#include "RestHandler/RestPrototypeStateHandler.h"
 #include "RestHandler/RestReplicatedStateHandler.h"
 #include "RestHandler/RestShutdownHandler.h"
 #include "RestHandler/RestSimpleHandler.h"
@@ -551,6 +552,9 @@ void GeneralServerFeature::defineHandlers() {
     _handlerFactory->addPrefixHandler(
         std::string{StaticStrings::ApiReplicatedStateExternal},
         RestHandlerCreator<RestReplicatedStateHandler>::createNoData);
+    _handlerFactory->addPrefixHandler(
+        "/_api/prototype-state",
+        RestHandlerCreator<RestPrototypeStateHandler>::createNoData);
   }
 
   // This is the only handler were we need to inject
