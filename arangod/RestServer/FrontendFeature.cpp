@@ -49,7 +49,7 @@ void FrontendFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                          arangodb::options::Flags::DefaultNoComponents,
                          arangodb::options::Flags::OnCoordinator,
                          arangodb::options::Flags::OnSingle,
-                         arangodb::options::Flags::Hidden));
+                         arangodb::options::Flags::Uncommon));
 }
 
 void FrontendFeature::prepare() {

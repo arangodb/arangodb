@@ -67,7 +67,8 @@ using namespace arangodb::methods;
 using namespace arangodb::basics::StringUtils;
 
 static std::unordered_set<std::string> const alwaysRemoveProperties({ID, NAME});
-
+static std::unordered_set<std::string> const selectivityEstimates(
+    {SELECTIVITY_ESTIMATE});
 static VPackValue const VP_DELETE("delete");
 static VPackValue const VP_SET("set");
 
@@ -113,14 +114,12 @@ static std::shared_ptr<VPackBuilder> compareRelevantProps(
   return result;
 }
 
-static VPackBuilder compareIndexes(StorageEngine& engine,
-                                   std::string const& dbname,
-                                   std::string const& collname,
-                                   std::string const& shname,
-                                   VPackSlice const& plan,
-                                   VPackSlice const& local,
-                                   MaintenanceFeature::errors_t const& errors,
-                                   std::unordered_set<std::string>& indis) {
+static VPackBuilder compareIndexes(
+    StorageEngine& engine, std::string const& dbname,
+    std::string const& collname, std::string const& shname,
+    VPackSlice const& plan, VPackSlice const& local,
+    MaintenanceFeature::errors_t const& errors,
+    containers::FlatHashSet<std::string>& indis) {
   TRI_ASSERT(plan.isArray());
 
   VPackBuilder builder;
@@ -229,8 +228,8 @@ static void handlePlanShard(
     VPackSlice const& ldb, std::string const& dbname,
     std::string const& colname, std::string const& shname,
     std::string const& serverId, std::string const& leaderId,
-    std::unordered_set<std::string>& commonShrds,
-    std::unordered_set<std::string>& indis,
+    containers::FlatHashSet<std::string>& commonShrds,
+    containers::FlatHashSet<std::string>& indis,
     MaintenanceFeature::errors_t& errors,
     containers::FlatHashSet<DatabaseID>& makeDirty, bool& callNotify,
     std::vector<std::shared_ptr<ActionDescription>>& actions,
@@ -268,7 +267,7 @@ static void handlePlanShard(
       if (shards.isObject()) {
         VPackSlice planServers = shards.get(shname);
         if (planServers.isArray()) {
-          std::unordered_set<std::string> followersToDrop;
+          containers::FlatHashSet<std::string> followersToDrop;
           // Now we have two server lists (servers and
           // failoverCandidates, we are looking for a server which
           // occurs in either of them but not in the plan
@@ -408,8 +407,8 @@ static void handlePlanShard(
 static void handleLocalShard(
     std::string const& dbname, std::string const& colname,
     VPackSlice const& cprops, VPackSlice const& shardMap,
-    std::unordered_set<std::string>& commonShrds,
-    std::unordered_set<std::string>& indis, std::string const& serverId,
+    containers::FlatHashSet<std::string>& commonShrds,
+    containers::FlatHashSet<std::string>& indis, std::string const& serverId,
     std::vector<std::shared_ptr<ActionDescription>>& actions,
     containers::FlatHashSet<DatabaseID>& makeDirty, bool& callNotify,
     MaintenanceFeature::ShardActionMap const& shardActionMap) {
@@ -426,8 +425,7 @@ static void handleLocalShard(
 
   std::shared_ptr<ActionDescription> description;
 
-  std::unordered_set<std::string>::const_iterator it =
-      commonShrds.find(colname);
+  auto it = commonShrds.find(colname);
 
   auto localLeader = cprops.get(THE_LEADER).stringView();
   bool const isLeading = localLeader.empty();
@@ -749,9 +747,10 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
   // Vous entrez dans le secteur fonctionel.
   // Sie betreten den funktionalen Sektor.
   arangodb::Result result;
-  std::unordered_set<std::string>
-      commonShrds;                        // Intersection collections plan&local
-  std::unordered_set<std::string> indis;  // Intersection indexes plan&local
+  containers::FlatHashSet<std::string>
+      commonShrds;  // Intersection collections plan&local
+  containers::FlatHashSet<std::string>
+      indis;  // Intersection indexes plan&local
 
   // Plan to local mismatch ----------------------------------------------------
   // Create or modify if local databases are affected
@@ -1071,7 +1070,7 @@ arangodb::Result arangodb::maintenance::executePlan(
     containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
         current,
     uint64_t currentIndex, containers::FlatHashSet<std::string> const& dirty,
-    std::unordered_set<std::string> const& moreDirt,
+    containers::FlatHashSet<std::string> const& moreDirt,
     containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
         local,
     std::string const& serverId, arangodb::MaintenanceFeature& feature,
@@ -1213,8 +1212,8 @@ void addDatabaseToTransactions(std::string const& name,
 
 /// @brief report local to current
 arangodb::Result arangodb::maintenance::diffLocalCurrent(
-
-    std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& local,
+    containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
+        local,
     VPackSlice const& current, std::string const& serverId,
     Transactions& transactions,
     MaintenanceFeature::ShardActionMap const& shardActionMap) {
@@ -1240,7 +1239,7 @@ arangodb::Result arangodb::maintenance::phaseOne(
     containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
         current,
     uint64_t currentIndex, containers::FlatHashSet<std::string> const& dirty,
-    std::unordered_set<std::string> const& moreDirt,
+    containers::FlatHashSet<std::string> const& moreDirt,
     containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
         local,
     std::string const& serverId, MaintenanceFeature& feature,
@@ -1285,8 +1284,7 @@ arangodb::Result arangodb::maintenance::phaseOne(
 
 static VPackBuilder removeSelectivityEstimate(VPackSlice const& index) {
   TRI_ASSERT(index.isObject());
-  return arangodb::velocypack::Collection::remove(
-      index, std::unordered_set<std::string>({SELECTIVITY_ESTIMATE}));
+  return arangodb::velocypack::Collection::remove(index, selectivityEstimates);
 }
 
 static std::tuple<VPackBuilder, bool, bool> assembleLocalCollectionInfo(
@@ -1335,7 +1333,7 @@ static std::tuple<VPackBuilder, bool, bool> assembleLocalCollectionInfo(
         VPackArrayBuilder ixs(&ret);
         if (info.get(INDEXES).isArray()) {
           auto it1 = allErrors.indexes.find(errorKey);
-          std::unordered_set<std::string> indexesDone;
+          containers::FlatHashSet<std::string> indexesDone;
           // First the indexes as they are in Local, potentially replaced
           // by an error:
           for (auto const& index : VPackArrayIterator(info.get(INDEXES))) {
@@ -2245,8 +2243,7 @@ void arangodb::maintenance::syncReplicatedShardsWithLeaders(
         local,
     std::string const& serverId, MaintenanceFeature& feature,
     MaintenanceFeature::ShardActionMap const& shardActionMap,
-    containers::FlatHashSet<std::string>& makeDirty,
-    std::unordered_set<std::string> const& failedServers) {
+    containers::FlatHashSet<std::string>& makeDirty) {
   for (auto const& dbname : dirty) {
     auto pit = plan.find(dbname);
     VPackSlice pdb;
@@ -2391,8 +2388,7 @@ arangodb::Result arangodb::maintenance::phaseTwo(
     VPackBuilder& report,
     MaintenanceFeature::ShardActionMap const& shardActionMap,
     ReplicatedLogStatusMapByDatabase const& localLogs,
-    ReplicatedStateStatusMapByDatabase const& localStates,
-    std::unordered_set<std::string> const& failedServers) {
+    ReplicatedStateStatusMapByDatabase const& localStates) {
   auto start = std::chrono::steady_clock::now();
 
   MaintenanceFeature::errors_t allErrors;
@@ -2427,8 +2423,7 @@ arangodb::Result arangodb::maintenance::phaseTwo(
       try {
         containers::FlatHashSet<std::string> makeDirty;
         syncReplicatedShardsWithLeaders(plan, dirty, cur, local, serverId,
-                                        feature, shardActionMap, makeDirty,
-                                        failedServers);
+                                        feature, shardActionMap, makeDirty);
         feature.addDirty(makeDirty, false);
       } catch (std::exception const& e) {
         LOG_TOPIC("7e286", ERR, Logger::MAINTENANCE)

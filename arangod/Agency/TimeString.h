@@ -45,21 +45,25 @@ inline std::string timepointToString(
 }
 
 inline std::chrono::system_clock::time_point stringToTimepoint(
-    std::string const& s) {
+    std::string_view s) {
+  auto const strvtoi = [](std::string_view sv) -> int {
+    return static_cast<int>(std::strtol(sv.data(), nullptr, 10));
+  };
+
   if (!s.empty()) {
     try {
-      std::tm tt;
-      tt.tm_year = std::stoi(s.substr(0, 4)) - 1900;
-      tt.tm_mon = std::stoi(s.substr(5, 2)) - 1;
-      tt.tm_mday = std::stoi(s.substr(8, 2));
-      tt.tm_hour = std::stoi(s.substr(11, 2));
-      tt.tm_min = std::stoi(s.substr(14, 2));
-      tt.tm_sec = std::stoi(s.substr(17, 2));
+      std::tm tt{};
+      tt.tm_year = strvtoi(s.substr(0, 4)) - 1900;
+      tt.tm_mon = strvtoi(s.substr(5, 2)) - 1;
+      tt.tm_mday = strvtoi(s.substr(8, 2));
+      tt.tm_hour = strvtoi(s.substr(11, 2));
+      tt.tm_min = strvtoi(s.substr(14, 2));
+      tt.tm_sec = strvtoi(s.substr(17, 2));
       tt.tm_isdst = 0;
       auto time_c = TRI_timegm(&tt);
       return std::chrono::system_clock::from_time_t(time_c);
     } catch (...) {
     }
   }
-  return std::chrono::time_point<std::chrono::system_clock>();
+  return {};
 }

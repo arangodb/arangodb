@@ -44,7 +44,7 @@ void ActionFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "allow change of database in REST actions, only needed for "
       "unittests",
       new BooleanParameter(&_allowUseDatabase),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 }
 
 void ActionFeature::unprepare() { TRI_CleanupActions(); }

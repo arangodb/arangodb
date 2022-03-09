@@ -28,7 +28,6 @@ const arangodb = require("@arangodb");
 const _ = require('lodash');
 const {sleep} = require('internal');
 const db = arangodb.db;
-const ERRORS = arangodb.errors;
 const helper = require("@arangodb/testutils/replicated-logs-helper");
 
 const {
@@ -43,33 +42,10 @@ const {
   replicatedLogLeaderEstablished,
   replicatedLogUpdateTargetParticipants,
   replicatedLogParticipantsFlag,
+  waitForReplicatedLogAvailable,
 } = helper;
 
 const database = "replication2_supervision_test_db";
-
-const waitForReplicatedLogAvailable = function (id) {
-  while (true) {
-    try {
-      let status = db._replicatedLog(id).status();
-      const leaderId = status.leaderId;
-      if (leaderId !== undefined && status.participants !== undefined &&
-          status.participants[leaderId].connection.errorCode === 0 && status.participants[leaderId].response.role === "leader") {
-        break;
-      }
-      console.info("replicated log not yet available");
-    } catch (err) {
-      const errors = [
-        ERRORS.ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED.code,
-        ERRORS.ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND.code
-      ];
-      if (errors.indexOf(err.errorNum) === -1) {
-        throw err;
-      }
-    }
-
-    sleep(1);
-  }
-};
 
 const replicatedLogLeaderElectionFailed = function (database, logId, term, servers) {
   return function () {
@@ -273,7 +249,7 @@ const replicatedLogSuite = function () {
         //  3. update participant flags with leader.forced = false
         {
           const action = _.nth(actions, -3).desc;
-          assertEqual(action.type, 'UpdateParticipantFlags');
+          assertEqual(action.type, 'UpdateParticipantFlagsAction');
           assertEqual(action.participant, newLeader);
           assertEqual(action.flags, {excluded: false, forced: true});
         }
@@ -284,7 +260,7 @@ const replicatedLogSuite = function () {
         }
         {
           const action = _.nth(actions, -1).desc;
-          assertEqual(action.type, 'UpdateParticipantFlags');
+          assertEqual(action.type, 'UpdateParticipantFlagsAction');
           assertEqual(action.participant, newLeader);
           assertEqual(action.flags, {excluded: false, forced: false});
         }

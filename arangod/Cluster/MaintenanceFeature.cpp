@@ -191,7 +191,8 @@ void MaintenanceFeature::collectOptions(
       arangodb::options::makeFlags(
           arangodb::options::Flags::DefaultNoComponents,
           arangodb::options::Flags::OnDBServer,
-          arangodb::options::Flags::Hidden, arangodb::options::Flags::Dynamic));
+          arangodb::options::Flags::Uncommon,
+          arangodb::options::Flags::Dynamic));
 
   options
       ->addOption("--server.maintenance-slow-threads",
@@ -201,7 +202,7 @@ void MaintenanceFeature::collectOptions(
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnDBServer,
-                      arangodb::options::Flags::Hidden,
+                      arangodb::options::Flags::Uncommon,
                       arangodb::options::Flags::Dynamic))
       .setIntroducedIn(30803);
 
@@ -212,7 +213,7 @@ void MaintenanceFeature::collectOptions(
       arangodb::options::makeFlags(
           arangodb::options::Flags::DefaultNoComponents,
           arangodb::options::Flags::OnDBServer,
-          arangodb::options::Flags::Hidden));
+          arangodb::options::Flags::Uncommon));
 
   options->addOption(
       "--server.maintenance-actions-linger",
@@ -221,7 +222,7 @@ void MaintenanceFeature::collectOptions(
       arangodb::options::makeFlags(
           arangodb::options::Flags::DefaultNoComponents,
           arangodb::options::Flags::OnDBServer,
-          arangodb::options::Flags::Hidden));
+          arangodb::options::Flags::Uncommon));
 
   options->addOption(
       "--cluster.resign-leadership-on-shutdown",
@@ -230,7 +231,7 @@ void MaintenanceFeature::collectOptions(
       arangodb::options::makeFlags(
           arangodb::options::Flags::DefaultNoComponents,
           arangodb::options::Flags::OnDBServer,
-          arangodb::options::Flags::Hidden));
+          arangodb::options::Flags::Uncommon));
 
 }  // MaintenanceFeature::collectOptions
 
@@ -1187,14 +1188,15 @@ void MaintenanceFeature::addDirty(
   server().getFeature<ClusterFeature>().addDirty(databases, callNotify);
 }
 
-std::unordered_set<std::string> MaintenanceFeature::pickRandomDirty(size_t n) {
+containers::FlatHashSet<std::string> MaintenanceFeature::pickRandomDirty(
+    size_t n) {
   size_t left = _databasesToCheck.size();
   bool more = false;
   if (n >= left) {
     n = left;
     more = true;
   }
-  std::unordered_set<std::string> ret(
+  containers::FlatHashSet<std::string> ret(
       std::make_move_iterator(_databasesToCheck.end() - n),
       std::make_move_iterator(_databasesToCheck.end()));
   _databasesToCheck.erase(_databasesToCheck.end() - n, _databasesToCheck.end());

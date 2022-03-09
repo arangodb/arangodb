@@ -67,7 +67,8 @@ void SingleServerProvider<Step>::addEdgeIDToBuilder(
 
 template<class Step>
 SingleServerProvider<Step>::SingleServerProvider(
-    arangodb::aql::QueryContext& queryContext, BaseProviderOptions opts,
+    arangodb::aql::QueryContext& queryContext,
+    SingleServerBaseProviderOptions opts,
     arangodb::ResourceMonitor& resourceMonitor)
     : _trx(std::make_unique<arangodb::transaction::Methods>(
           queryContext.newTrxContext())),
@@ -159,6 +160,9 @@ auto SingleServerProvider<Step>::expand(
 
         callback(Step{id, std::move(eid), previous, step.getDepth() + 1,
                       _opts.weightEdge(step.getWeight(), edge), cursorID});
+        // TODO [GraphRefactor]: Why is cursorID set, but never used?
+        // Note: There is one implementation that used, it, but there is a high
+        // probability we do not need it anymore after refactoring is complete.
       });
 }
 
@@ -212,7 +216,7 @@ SingleServerProvider<Step>::buildCursor(
   return std::make_unique<RefactoredSingleServerEdgeCursor<Step>>(
       trx(), _opts.tmpVar(), _opts.indexInformations().first,
       _opts.indexInformations().second, expressionContext,
-      _opts.hasWeightMethod());
+      _opts.hasWeightMethod() /*, requiresFullDocument*/);
 }
 
 template<class Step>
