@@ -70,6 +70,8 @@ class Pregel3Feature final : public ArangodFeature {
     return it->second;
   }
 
+  auto getAllQueryIds() -> std::vector<std::string_view>;
+
  private:
   std::unordered_map<pregel3::QueryId, std::shared_ptr<pregel3::Query>>
       _queries;

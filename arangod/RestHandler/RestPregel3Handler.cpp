@@ -57,7 +57,12 @@ auto RestPregel3Handler::_generateErrorWrongInput(std::string const& info)
     -> void {
   generateError(rest::ResponseCode::BAD, ErrorCode(TRI_ERROR_BAD_PARAMETER),
                 Utils::wrongRequestBody + std::string(" ") + info);
-};
+}
+
+auto RestPregel3Handler::_answerFailed(std::string const& info) -> void {
+  generateError(rest::ResponseCode::BAD, ErrorCode(TRI_ERROR_FAILED),
+                std::string(" ") + info);
+}
 
 auto RestPregel3Handler::executeByMethod(Pregel3Methods const& methods)
     -> RestStatus {
@@ -178,11 +183,25 @@ auto RestPregel3Handler::handlePostRequest(
 auto RestPregel3Handler::handleGetRequest(
     const pregel3::Pregel3Methods& methods) -> RestStatus {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
-  if (suffixes.size() < 2 || suffixes.size() > 3 || suffixes[0] != "queries") {
+  if (suffixes.size() < 1 || suffixes[0] != "queries") {
     _generateErrorWrongInput("Call with .../_api/pregel3/queries/...");
     return RestStatus::DONE;
   }
 
+  if (suffixes.size() == 1) {  // suffixes == ["queries"], getting all query ids
+    auto ids = _pregel3Feature.getAllQueryIds();
+    VPackBuilder builder;
+    {
+      VPackArrayBuilder ab(&builder);
+      for (auto const& id : ids) {
+        builder.add(VPackValue(id));
+      }
+    }
+    generateOk(rest::ResponseCode::OK, builder.slice());
+    return RestStatus::DONE;
+  }
+
+  // suffixes == ["queries", "<queryId>", ...]
   auto queryId = suffixes[1];
   if (!_pregel3Feature.hasQueryId(queryId)) {
     _generateErrorWrongInput("This query id is not known.");
@@ -190,13 +209,12 @@ auto RestPregel3Handler::handleGetRequest(
   }
   auto query = _pregel3Feature.getQuery(queryId);
 
-  if (suffixes.size() == 2) {
+  if (suffixes.size() == 2) {  // suffixes == ["queries", "<queryId>"]
     // get the status: currently, only the status and graph specification
     VPackBuilder builder;
     {
       VPackObjectBuilder ob(&builder);
-      builder.add(Utils::state,
-                  VPackValue(static_cast<uint8_t>(query->getState())));
+      builder.add(Utils::state, VPackValue(query->getStateName()));
       VPackBuilder graphSpecBuilder;
       query->getGraphSpecification().toVelocyPack(graphSpecBuilder);
       builder.add(Utils::graphSpec, graphSpecBuilder.slice());
@@ -205,19 +223,29 @@ auto RestPregel3Handler::handleGetRequest(
     return RestStatus::DONE;
   }
 
-  // now suffixes.size() == 3
-  if (suffixes[2] == "loadGraph") {
+  // // suffixes == ["queries", "<queryId>", "<request>"]
+  const std::string_view request = suffixes[2];
+  if (request == "loadGraph") {
+    if (query->graphIsLoaded()) {
+      _answerFailed("The graph is already loaded.");
+      return RestStatus::DONE;
+    }
     query->setState(Query::State::LOADING);
     query->loadGraph();
-  } else if (suffixes[2] == "getGraph") {
+    query->setState(Query::State::LOADED);
+  } else if (request == "getGraph") {
     VPackBuilder builder;
     query->getGraph(builder);
+    if (builder.isEmpty()) {
+      _answerFailed("The graph is not loaded.");
+      return RestStatus::DONE;
+    }
     generateOk(rest::ResponseCode::OK, builder.slice());
     return RestStatus::DONE;
-  } else if (suffixes[2] == "start") {
+  } else if (request == "start") {
     query->setState(Query::State::RUNNING);
     // todo
-  } else if (suffixes[2] == "store") {
+  } else if (request == "store") {
     query->setState(Query::State::STORING);
     // todo
   } else {

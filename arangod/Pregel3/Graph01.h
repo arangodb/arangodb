@@ -15,7 +15,7 @@ struct Vertex {
   std::vector<size_t> inEdges;
   VertexProperties props;
 
-  void toVelocyPack(VPackBuilder& builder);
+  void toVelocyPack(VPackBuilder& builder, std::string_view id, size_t idx);
 
   size_t degree() { return outEdges.size() + inEdges.size(); }
 
@@ -26,7 +26,8 @@ struct Vertex {
 
 struct EmptyVertexProperties {
   virtual ~EmptyVertexProperties() = default;
-  static void toVelocyPack(VPackBuilder& builder);
+  static void toVelocyPack(VPackBuilder& builder, std::string_view id,
+                           size_t idx);
 };
 using VertexWithEmptyProps = Vertex<EmptyVertexProperties>;
 
@@ -35,7 +36,7 @@ struct MinCutVertex : public Vertex<EmptyVertexProperties> {
   double excess;
   bool isLeaf = false;
 
-  void toVelocyPack(VPackBuilder& builder);
+  void toVelocyPack(VPackBuilder& builder, std::string_view id, size_t idx);
 };
 
 template<class EdgeProperties>
@@ -110,6 +111,8 @@ struct Graph : BaseGraph {
                   // vertices
 
   ~Graph() override = default;
+  auto numVertices() -> size_t { return vertices.size(); }
+  auto numEdges() -> size_t { return edges.size(); }
   void toVelocyPack(VPackBuilder& builder) override;
 };
 
@@ -119,8 +122,9 @@ void Graph<V, E>::toVelocyPack(VPackBuilder& builder) {
   builder.add(VPackValue("vertices"));
   {
     VPackArrayBuilder ab(&builder);
-    for (auto& v : vertices) {
-      v.toVelocyPack(builder);
+    for (size_t i = 0; i < vertices.size(); ++i) {
+      auto& v = vertices.at(i);
+      v.toVelocyPack(builder, vertexIds.at(i), i);
     }
   }
   {

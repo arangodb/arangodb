@@ -10,9 +10,12 @@ using namespace arangodb::pregel3;
 using namespace arangodb::velocypack;
 
 template<class VertexProperties>
-void Vertex<VertexProperties>::toVelocyPack(VPackBuilder& builder) {
+void Vertex<VertexProperties>::toVelocyPack(VPackBuilder& builder,
+                                            std::string_view id, size_t idx) {
   VPackObjectBuilder ob(&builder);
 
+  builder.add("id", VPackValue(id));
+  builder.add("idx", VPackValue(idx));
   builder.add(VPackValue("outEdges"));
   {
     VPackArrayBuilder ab(&builder);
@@ -39,22 +42,27 @@ void Edge<EdgeProperties>::toVelocyPack(VPackBuilder& builder) {
   props.toVelocyPack(builder);
 }
 
-void MinCutVertex::toVelocyPack(VPackBuilder& builder) {
+void MinCutVertex::toVelocyPack(VPackBuilder& builder, std::string_view id,
+                                size_t idx) {
   VPackObjectBuilder ob(&builder);
+  builder.add("id", VPackValue(id));
+  builder.add("idx", VPackValue(idx));
   builder.add("label", VPackValue(label));
   builder.add("excess", VPackValue(excess));
   builder.add("isLeaf", VPackValue(isLeaf));
 }
 void MinCutEdge::toVelocyPack(VPackBuilder& builder) {
   VPackObjectBuilder ob(&builder);
-
+  builder.add("from", VPackValue(from));
+  builder.add("to", VPackValue(to));
   builder.add("capacity", VPackValue(capacity));
   builder.add("flow", VPackValue(flow));
   if (edgeRev.has_value()) {
     builder.add("edgeRev", VPackValue(edgeRev.value()));
   }
 }
-void EmptyVertexProperties::toVelocyPack(VPackBuilder& builder) {
+void EmptyVertexProperties::toVelocyPack(VPackBuilder& builder,
+                                         std::string_view id, size_t idx) {
   VPackObjectBuilder ob(&builder);
 }
 

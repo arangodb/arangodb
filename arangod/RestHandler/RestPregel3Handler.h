@@ -63,5 +63,6 @@ class RestPregel3Handler : public arangodb::RestVocbaseBaseHandler {
                       pregel3::Pregel3Methods const& methods,
                       std::string& queryId);
   bool _getPostBody(VPackSlice& body);
+  void _answerFailed(const std::string& info);
 };
 }  // namespace arangodb

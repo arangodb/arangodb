@@ -62,10 +62,38 @@ struct Query : std::enable_shared_from_this<Query> {
 
   void getGraph(VPackBuilder& builder);
 
-  enum class State { CREATED, LOADING, RUNNING, STORING, ERROR, DONE };
+  auto graphIsLoaded() -> bool;
+
+  enum class State { CREATED, LOADING, LOADED, RUNNING, STORING, ERROR, DONE };
 
   auto getState() const -> State { return _state; }
   void setState(State state) { _state = state; }
+  std::string_view getStateName() {
+    switch (_state) {
+      case State::CREATED:
+        return "created";
+        break;
+      case State::LOADING:
+        return "loading";
+        break;
+      case State::LOADED:
+        return "loaded";
+        break;
+      case State::RUNNING:
+        return "running";
+        break;
+      case State::STORING:
+        return "storing";
+        break;
+      case State::ERROR:
+        return "error";
+        break;
+      case State::DONE:
+        return "done";
+        break;
+    }
+    return "NOT IMPLEMENTED STATE";
+  }
   auto getGraphSpecification() const -> GraphSpecification {
     return _graphSpec;
   }
@@ -81,7 +109,7 @@ struct Query : std::enable_shared_from_this<Query> {
   // (must be a member variable because used in callback lambda functions and
   // we do not have any influence on the parameters of those functions:
   // addVertex, addSingleEdge)
-  std::unordered_map<std::string_view, size_t> _vertexIdToIdx;
+  containers::FlatHashMap<std::string, size_t> _vertexIdToIdx;
   containers::FlatHashMap<std::pair<size_t, size_t>, size_t>
       _vertexVertexToEdge;
   double _defaultCapacity = 0.0;

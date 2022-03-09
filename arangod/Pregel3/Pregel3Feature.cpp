@@ -72,7 +72,13 @@ void Pregel3Feature::createQuery(
     TRI_vocbase_t& vocbase, std::string queryId,
     const pregel3::GraphSpecification& graphSpec,
     const pregel3::AlgorithmSpecification& algSpec) {
-
   _queries.emplace(
       queryId, std::make_shared<Query>(vocbase, queryId, graphSpec, algSpec));
+}
+auto Pregel3Feature::getAllQueryIds() -> std::vector<std::string_view> {
+  std::vector<std::string_view> res;
+  for (auto const& [id, _] : _queries) {
+    res.push_back(id);
+  }
+  return res;
 }

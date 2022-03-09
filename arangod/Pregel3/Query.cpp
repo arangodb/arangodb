@@ -40,9 +40,12 @@ ResultT<double> getCapacity(VPackSlice slice) {
                                     "Capacity should be a double.");
     }
   } else {
+    std::string from = slice.get("_from").copyString();
+    std::string to = slice.get("_to").copyString();
+
     return ResultT<double>::error(
         TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE,
-        "Edge has no capacity: " + slice.copyString());
+        "Edge (" + from + "," + to + ") has no capacity.");
   }
 }
 
@@ -216,6 +219,10 @@ void Query::getGraph(VPackBuilder& builder) {
     LOG_DEVEL << "_graph not empty";
     _graph->toVelocyPack(builder);
   }
+}
+auto Query::graphIsLoaded() -> bool {
+  return _state == State::DONE || _state == State::LOADED ||
+         _state == State::STORING || _state == State::RUNNING;
 }
 
 }  // namespace arangodb::pregel3
