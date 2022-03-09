@@ -2,13 +2,11 @@
 /* global db */
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief AQL user functions management
+// / @brief AQL WebAssembly user functions management
 // /
 // / @file
 // /
 // / DISCLAIMER
-// /
-// / Copyright 2012 triagens GmbH, Cologne, Germany
 // /
 // / Licensed under the Apache License, Version 2.0 (the "License")
 // / you may not use this file except in compliance with the License.
@@ -22,32 +20,31 @@
 // / See the License for the specific language governing permissions and
 // / limitations under the License.
 // /
-// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
 // / @author Julia Volmer
-// / @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+// / @author Copyright 2022, ArangoDB GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 var internal = require('internal');
 var arangosh = require('@arangodb/arangosh');
+var fs = require('fs');
 
 var ArangoError = require('@arangodb').ArangoError;
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief eventually convert function to string
+// / @brief encode data in file with base64 
 // //////////////////////////////////////////////////////////////////////////////
 
-var stringifyFunction = function (code, name) {
+var base64 = function (file) {
   'use strict';
 
-  if (typeof code === 'function') {
-    code = String(code) + '\n';
-  }
-  return code;
+    var buffer = fs.readFileSync(file);
+    return buffer.toString('base64');
 };
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock wasmFunctionsUnregister
+// / @brief was docuBlock delete a user-defined webassembly function by name
 // //////////////////////////////////////////////////////////////////////////////
 
 var unregisterFunction = function (name) {
@@ -60,16 +57,17 @@ var unregisterFunction = function (name) {
 };
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock wasmFunctionsRegister
+// / @brief was docuBlock add a user-defined webassembly function.
+//                        codefile is the path to the webassembly code file
 // //////////////////////////////////////////////////////////////////////////////
 
-var registerFunction = function (name, code, isDeterministic = false) {
+var registerFunction = function (name, codefile, isDeterministic = false) {
   var db = internal.db;
 
   var requestResult = db._connection.POST('/_api/wasm/',
                                           {
                                             name: name,
-                                            code: stringifyFunction(code),
+                                            code: base64(codefile),
                                             isDeterministic: isDeterministic
                                           });
   
@@ -78,7 +76,7 @@ var registerFunction = function (name, code, isDeterministic = false) {
 };
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock wasmFunctionsToArray
+// / @brief was docuBlock get all user-defined webassembly functions
 // //////////////////////////////////////////////////////////////////////////////
 
 var toArrayFunctions = function () {
