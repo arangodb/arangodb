@@ -898,12 +898,11 @@ auto replicated_log::LogLeader::GuardedLeaderData::getCommittedLogIterator(
  * the lowest acknowledged index of all followers.
  * No followers are filtered out at this step.
  */
-auto replicated_log::LogLeader::GuardedLeaderData::collectFollowerIndexes()
-    const
-    -> std::pair<LogIndex, std::vector<algorithms::ParticipantStateTuple>> {
+auto replicated_log::LogLeader::GuardedLeaderData::collectFollowerStates() const
+    -> std::pair<LogIndex, std::vector<algorithms::ParticipantState>> {
   auto largestCommonIndex = _commitIndex;
-  std::vector<algorithms::ParticipantStateTuple> indexes;
-  indexes.reserve(_follower.size());
+  std::vector<algorithms::ParticipantState> participantStates;
+  participantStates.reserve(_follower.size());
   for (auto const& [pid, follower] : _follower) {
     // The lastAckedEntry is the last index/term pair that we sent that this
     // follower acknowledged - means we sent it. And we must not have entries
@@ -914,7 +913,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::collectFollowerIndexes()
     auto flags = activeParticipantsConfig->participants.find(pid);
     TRI_ASSERT(flags != std::end(activeParticipantsConfig->participants));
 
-    indexes.emplace_back(algorithms::ParticipantStateTuple{
+    participantStates.emplace_back(algorithms::ParticipantState{
         .lastAckedEntry = follower->lastAckedEntry,
         .id = pid,
         .failed = _self._failureOracle->isServerFailed(pid),
@@ -924,12 +923,12 @@ auto replicated_log::LogLeader::GuardedLeaderData::collectFollowerIndexes()
         std::min(largestCommonIndex, follower->lastAckedCommitIndex);
   }
 
-  return {largestCommonIndex, std::move(indexes)};
+  return {largestCommonIndex, std::move(participantStates)};
 }
 
 auto replicated_log::LogLeader::GuardedLeaderData::checkCommitIndex()
     -> ResolvedPromiseSet {
-  auto [largestCommonIndex, indexes] = collectFollowerIndexes();
+  auto [largestCommonIndex, indexes] = collectFollowerStates();
 
   if (largestCommonIndex > _lowestIndexToKeep) {
     LOG_CTX("851bb", TRACE, _self._logContext)
