@@ -219,7 +219,7 @@ arangodb::Result fetchRevisions(
   std::size_t queueSize = 10;
   if ((config.leader.majorVersion == 3 && config.leader.minorVersion < 9) ||
       (config.leader.majorVersion == 3 && config.leader.minorVersion == 9 &&
-       config.leader.patchVersion < 2)) {
+       config.leader.patchVersion < 1)) {
     queueSize = 1;
   }
   while (current < toFetch.size() || !futures.empty()) {
