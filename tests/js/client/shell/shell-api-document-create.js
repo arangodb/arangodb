@@ -139,28 +139,7 @@ function error_handlingSuite () {
       } finally {
         db._drop(cn);
       }
-    },
-
-//    test_returns_an_error_if_an_string_attribute_in_the_JSON_body_is_corrupted: function() {
-//      let cn = "UnitTestsCollectionBasics";
-//      let id = db._create(cn, {waitForSync: true});
-//      try {
-//        let cmd = `/_api/document?collection=${id._id}`;
-//        let body = "{ \"foo\" : \"bar\xff\" }";
-//        let doc = arango.POST_RAW(cmd, body);
-//
-//        assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code, doc);
-//        assertTrue(doc.parsedBody['error']);
-//        assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_HTTP_CORRUPTED_JSON.code);
-//        assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
-//        assertEqual(doc.headers['content-type'], contentType);
-//
-//        assertEqual(db[cn].count(), 0);
-//
-//      } finally {
-//        db._drop(cn);
-//      }
-//    } unable to create invalid json this way?
+    }
   };
 }
 
