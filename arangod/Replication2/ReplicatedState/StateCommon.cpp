@@ -28,6 +28,7 @@
 
 #include "Basics/debugging.h"
 #include "Basics/StaticStrings.h"
+#include "Agency/TimeString.h"
 
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_state;
@@ -38,6 +39,7 @@ auto const String_Completed = std::string_view{"Completed"};
 auto const String_Failed = std::string_view{"Failed"};
 auto const String_Uninitialized = std::string_view{"Uninitialized"};
 auto const String_Status = std::string_view{"status"};
+auto const String_Timestamp = std::string_view{"timestamp"};
 }  // namespace
 
 StateGeneration::operator arangodb::velocypack::Value() const noexcept {
@@ -103,12 +105,14 @@ auto replicated_state::snapshotStatusFromString(
 void SnapshotInfo::toVelocyPack(velocypack::Builder& builder) const {
   velocypack::ObjectBuilder ob(&builder);
   TRI_ASSERT(!error.has_value());  // error not yet implemented
-  // TODO timestamp
+  builder.add(String_Timestamp,
+              velocypack::Value(timepointToString(timestamp)));
   builder.add(String_Status, velocypack::Value(to_string(status)));
 }
 
 auto SnapshotInfo::fromVelocyPack(velocypack::Slice slice) -> SnapshotInfo {
   SnapshotInfo info;
   info.status = snapshotStatusFromString(slice.get(String_Status).stringView());
+  info.timestamp = stringToTimepoint(slice.get(String_Timestamp).stringView());
   return info;
 }
