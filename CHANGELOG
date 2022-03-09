@@ -1,6 +1,9 @@
 v3.7.17 (2022-01-25)
 --------------------
 
+* Harden validator for binary VelocyPack against additional types of malicious
+  inputs.
+
 * Fix creation of satellite graphs with a `numberOfShards` value != 1.
 
 * Fixed a bug that hotbackup upload could miss files (fixes BTS-734).
