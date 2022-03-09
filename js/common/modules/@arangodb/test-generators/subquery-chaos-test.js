@@ -327,7 +327,7 @@ function runQuery(query, queryOptions, testOptions) {
   /* Run query with all optimizations */
   const result = db._query(query.queryString, {}, queryOptions).toArray();
 
-  for (cn of query.collectionNames) {
+  for (const cn of query.collectionNames) {
     db._drop(cn);
   }
 

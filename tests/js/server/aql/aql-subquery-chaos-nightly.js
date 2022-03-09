@@ -61,7 +61,7 @@ const randomDepth = () => {
     return 6;
   }
   return 7;
-}
+};
 
 const randomModificationDepth = () => {
   const val = Math.random();
@@ -71,7 +71,7 @@ const randomModificationDepth = () => {
   }
   // 30% depth 3
   return 3;
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite for cross-collection queries
