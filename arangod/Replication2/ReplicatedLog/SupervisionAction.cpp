@@ -131,24 +131,29 @@ void Executor::operator()(CurrentNotAvailableAction const& action) {
 }
 
 void Executor::operator()(EvictLeaderAction const& action) {
-  envelope = envelope.write()
-                 .emplace_object(planPath->participantsConfig()
-                                     ->participants()
-                                     ->server(action._leader)
-                                     ->str(),
-                                 [&](VPackBuilder& builder) {
-                                   action._flags.toVelocyPack(builder);
-                                 })
-                 .emplace_object(planPath->currentTerm()->str(),
-                                 [&](VPackBuilder& builder) {
-                                   action._newTerm.toVelocyPack(builder);
-                                 })
-                 .inc(planPath->participantsConfig()->generation()->str())
-                 .inc(paths::plan()->version()->str())
-                 .precs()
-                 .isEqual(planPath->participantsConfig()->generation()->str(),
-                          action._generation)
-                 .end();
+  auto newFlags = action._flags;
+  newFlags.excluded = true;
+  auto newTerm = action._currentTerm;
+  newTerm.term = LogTerm{newTerm.term.value + 1};
+  newTerm.leader.reset();
+
+  envelope =
+      envelope.write()
+          .emplace_object(
+              planPath->participantsConfig()
+                  ->participants()
+                  ->server(action._leader)
+                  ->str(),
+              [&](VPackBuilder& builder) { newFlags.toVelocyPack(builder); })
+          .emplace_object(
+              planPath->currentTerm()->str(),
+              [&](VPackBuilder& builder) { newTerm.toVelocyPack(builder); })
+          .inc(planPath->participantsConfig()->generation()->str())
+          .inc(paths::plan()->version()->str())
+          .precs()
+          .isEqual(planPath->participantsConfig()->generation()->str(),
+                   action._generation)
+          .end();
 }
 
 void Executor::operator()(UpdateTermAction const& action) {

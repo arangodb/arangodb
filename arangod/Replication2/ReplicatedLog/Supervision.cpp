@@ -446,19 +446,15 @@ auto checkReplicatedLog(Log const& log, ParticipantsHealth const& health)
 
   // If a participant is in Plan but not in Target, gracefully
   // remove them
-  if (auto participant = getRemovedParticipant(target, plan)) {
+  if (auto maybeParticipant = getRemovedParticipant(target, plan)) {
+    auto const& [participantId, flags] = *maybeParticipant;
     // The removed participant is currently the leader
-    if (participant->first == plan.currentTerm->leader->serverId) {
-      auto desiredFlags = participant->second;
-      desiredFlags.excluded = false;
-      auto newTerm = *plan.currentTerm;
-      newTerm.term = LogTerm{newTerm.term.value + 1};
-      newTerm.leader.reset();
-      return EvictLeaderAction(participant->first, desiredFlags, newTerm,
+    if (participantId == leader.serverId) {
+      return EvictLeaderAction(participantId, flags, currentTerm,
                                plan.participantsConfig.generation);
     } else {
       return RemoveParticipantFromPlanAction(
-          participant->first, plan.participantsConfig.generation);
+          participantId, plan.participantsConfig.generation);
     }
   }
 

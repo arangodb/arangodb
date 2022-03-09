@@ -96,16 +96,16 @@ struct EvictLeaderAction {
   static constexpr std::string_view name = "EvictLeaderAction";
 
   EvictLeaderAction(ParticipantId const& leader, ParticipantFlags const& flags,
-                    LogPlanTermSpecification const& newTerm,
+                    LogPlanTermSpecification const& currentTerm,
                     std::size_t generation)
       : _leader{leader},
         _flags{flags},
-        _newTerm{newTerm},
+        _currentTerm{currentTerm},
         _generation{generation} {};
 
   ParticipantId _leader;
   ParticipantFlags _flags;
-  LogPlanTermSpecification _newTerm;
+  LogPlanTermSpecification _currentTerm;
   std::size_t _generation;
 };
 
