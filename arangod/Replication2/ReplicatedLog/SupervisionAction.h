@@ -182,14 +182,17 @@ struct UpdateLogConfigAction {
   LogConfig _config;
 };
 
-using Action =
-    std::variant<EmptyAction, ErrorAction, AddLogToPlanAction,
-                 AddParticipantsToTargetAction, CreateInitialTermAction,
-                 CurrentNotAvailableAction, DictateLeaderAction,
-                 DictateLeaderFailedAction, EvictLeaderAction, UpdateTermAction,
-                 WriteEmptyTermAction, LeaderElectionAction,
-                 UpdateParticipantFlagsAction, AddParticipantToPlanAction,
-                 RemoveParticipantFromPlanAction, UpdateLogConfigAction>;
+struct ConvergedToTargetAction {
+  static constexpr std::string_view name = "ConvergedToTargetAction";
+};
+
+using Action = std::variant<
+    EmptyAction, ErrorAction, AddLogToPlanAction, AddParticipantsToTargetAction,
+    CreateInitialTermAction, CurrentNotAvailableAction, DictateLeaderAction,
+    DictateLeaderFailedAction, EvictLeaderAction, UpdateTermAction,
+    WriteEmptyTermAction, LeaderElectionAction, UpdateParticipantFlagsAction,
+    AddParticipantToPlanAction, RemoveParticipantFromPlanAction,
+    UpdateLogConfigAction, ConvergedToTargetAction>;
 
 using namespace arangodb::cluster::paths;
 
@@ -246,6 +249,7 @@ struct Executor {
   void operator()(AddParticipantToPlanAction const& action);
   void operator()(RemoveParticipantFromPlanAction const& action);
   void operator()(UpdateLogConfigAction const& action);
+  void operator()(ConvergedToTargetAction const& action);
 };
 
 struct VelocyPacker {
@@ -270,6 +274,7 @@ struct VelocyPacker {
   void operator()(AddParticipantToPlanAction const& action);
   void operator()(RemoveParticipantFromPlanAction const& action);
   void operator()(UpdateLogConfigAction const& action);
+  void operator()(ConvergedToTargetAction const& action);
 };
 
 auto execute(Action const& action, DatabaseID const& dbName, LogId const& log,

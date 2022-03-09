@@ -56,17 +56,12 @@ if (log.target.participants.empty()) {
   return AddParticipantsToTargetAction(newTarget);
 #endif
 
-auto isLeaderFailed(LogPlanSpecification const& plan,
+auto isLeaderFailed(LogPlanTermSpecification::Leader const& leader,
                     ParticipantsHealth const& health) -> bool {
-  // TODO: if we assert this here, we assume we're always called
-  //       with non std::nullopt currentTerm and leader
-  TRI_ASSERT(plan.currentTerm != std::nullopt);
-  TRI_ASSERT(plan.currentTerm->leader != std::nullopt);
-
-  if (health.notIsFailed(plan.currentTerm->leader->serverId) &&
-      health.validRebootId(plan.currentTerm->leader->serverId,
-                           plan.currentTerm->leader->rebootId)) {
-    // Current leader is all healthy so nothing to do.
+  // TODO: less obscure with fewer negations
+  // TODO: write test first
+  if (health.notIsFailed(leader.serverId) &&
+      health.validRebootId(leader.serverId, leader.rebootId)) {
     return false;
   } else {
     return true;
@@ -88,12 +83,14 @@ auto isLeaderFailed(LogPlanSpecification const& plan,
  * */
 auto dictateLeader(LogTarget const& target, LogPlanSpecification const& plan,
                    LogCurrent const& current, ParticipantsHealth const& health)
-    -> std::optional<Action> {
+    -> Action {
   // TODO: integrate
   if (!current.leader || !current.leader->committedParticipantsConfig ||
       current.leader->committedParticipantsConfig->generation !=
           plan.participantsConfig.generation) {
-    return std::nullopt;
+    return DictateLeaderFailedAction{
+        "No leader in current, current participants config not committed, or "
+        "wrong generation"};
   }
 
   // A participant is acceptable if it is neither excluded nor
@@ -376,48 +373,6 @@ auto getRemovedParticipant(LogTarget const& target,
   return std::nullopt;
 }
 
-auto checkLogTargetParticipantRemoved(LogTarget const& target,
-                                      LogPlanSpecification const& plan)
-    -> Action {
-  auto tps = target.participants;
-  auto pps = plan.participantsConfig.participants;
-
-  // Check whether a participant has been removed
-  for (auto const& [planParticipant, flags] : pps) {
-    if (!tps.contains(planParticipant)) {
-      if (plan.currentTerm && plan.currentTerm->leader &&
-          plan.currentTerm->leader->serverId == planParticipant) {
-        auto desiredFlags = flags;
-        desiredFlags.excluded = true;
-        auto newTerm = *plan.currentTerm;
-        newTerm.term = LogTerm{newTerm.term.value + 1};
-        newTerm.leader.reset();
-        return EvictLeaderAction(planParticipant, desiredFlags, newTerm,
-                                 plan.participantsConfig.generation);
-      } else {
-        return RemoveParticipantFromPlanAction(
-            planParticipant, plan.participantsConfig.generation);
-      }
-    }
-  }
-  return EmptyAction();
-}
-
-// Check whether the Target configuration differs from Plan
-// and do a validity check on the new config
-auto checkLogTargetConfig(LogTarget const& target,
-                          LogPlanSpecification const& plan) -> Action {
-  if (plan.currentTerm && target.config != plan.currentTerm->config) {
-    // TODO: validity Check on target config
-    return UpdateLogConfigAction(target.config);
-  }
-  return EmptyAction();
-}
-
-auto isEmptyAction(Action& action) {
-  return std::holds_alternative<EmptyAction>(action);
-}
-
 // The main function
 auto checkReplicatedLog(Log const& log, ParticipantsHealth const& health)
     -> Action {
@@ -426,102 +381,97 @@ auto checkReplicatedLog(Log const& log, ParticipantsHealth const& health)
   if (!log.plan) {
     // The log is not planned right now, so we create it
     return AddLogToPlanAction(log.target.participants);
-  } else {
-    // plan now exists
-    auto const& plan = *log.plan;
+  }
 
-    if (!plan.currentTerm) {
-      return CreateInitialTermAction{._config = target.config};
+  // plan now exists
+  auto const& plan = *log.plan;
+
+  if (!plan.currentTerm) {
+    return CreateInitialTermAction{._config = target.config};
+  }
+
+  auto const& currentTerm = *plan.currentTerm;
+
+  if (!log.current) {
+    // As long as we don't  have current, we cannot progress with
+    // establishing leadership
+    return CurrentNotAvailableAction{};
+  }
+  auto const& current = *log.current;
+
+  if (!plan.currentTerm->leader) {
+    return doLeadershipElection(plan, current, health);
+  }
+
+  auto const& leader = *plan.currentTerm->leader;
+
+  // If the leader is unhealthy, we need to create a new term that
+  // does not have a leader; in the next round we should be electing
+  // a new leader above
+  if (isLeaderFailed(leader, health)) {
+    return WriteEmptyTermAction{._term = currentTerm};
+  }
+
+  // Check whether the participant entry for the current
+  // leader has been removed from target; this means we have
+  // to gracefully remove this leader
+  if (!target.participants.contains(currentTerm.leader->serverId)) {
+    return dictateLeader(target, plan, *log.current, health);
+  }
+
+  // If flags for a participant differ between target
+  // and plan, apply that change to plan.
+  if (auto participantFlags = getParticipantWithUpdatedFlags(target, plan)) {
+    return UpdateParticipantFlagsAction(participantFlags->first,
+                                        participantFlags->second,
+                                        plan.participantsConfig.generation);
+  }
+
+  // If a participant exists in Target, but not in Plan,
+  // add that participant to Plan.
+  if (auto participant = getAddedParticipant(log.target, plan)) {
+    return AddParticipantToPlanAction(participant->first, participant->second,
+                                      plan.participantsConfig.generation);
+  }
+
+  // A specific participant is configured in Target to become the
+  // leader.
+  if (target.leader) {
+    if (auto action = leaderInTarget(*target.leader, plan, current, health)) {
+      return *action;
     } else {
-      auto const& currentTerm = *plan.currentTerm;
-
-      if (!log.current) {
-        // As long as we don't  have current, we cannot progress with
-        // establishing leadership
-        return CurrentNotAvailableAction{};
-      } else {
-        auto const& current = *log.current;
-
-        if (plan.currentTerm->leader) {
-          //          auto const& leader = plan.currentTerm->leader;
-
-          // If the leader is unhealthy, we need to create a new term that
-          // does not have a leader; in the next round we should be electing
-          // a new leader above
-
-          if (isLeaderFailed(plan, health)) {
-            return WriteEmptyTermAction{._term = currentTerm};
-          } else {
-            // Check whether the participant entry for the current
-            // leader has been removed from target; this means we have
-            // to gracefully remove this leader
-            if (!target.participants.contains(currentTerm.leader->serverId)) {
-              if (auto dictatedLeader =
-                      dictateLeader(target, plan, *log.current, health)) {
-                return *dictatedLeader;
-              }
-            }
-
-            // Check whether the flags for a participant differ between target
-            // and plan if so, transfer that change to them
-            if (auto participantFlags =
-                    getParticipantWithUpdatedFlags(target, plan)) {
-              return UpdateParticipantFlagsAction(
-                  participantFlags->first, participantFlags->second,
-                  plan.participantsConfig.generation);
-            }
-
-            // Check whether a participant has been added to Target that is not
-            // Planned yet
-            if (auto participant = getAddedParticipant(log.target, plan)) {
-              return AddParticipantToPlanAction(
-                  participant->first, participant->second,
-                  plan.participantsConfig.generation);
-            }
-
-            // Handle the case of the user putting a *specific* participant into
-            // target to become leader
-            if (log.target.leader) {
-              if (auto action = leaderInTarget(*log.target.leader, *log.plan,
-                                               *log.current, health)) {
-                return *action;
-              }
-            }
-
-            // Check whether a participant that is in Plan is not in Target
-            // (i.e. has been removed)
-            if (auto participant = getRemovedParticipant(target, plan)) {
-              if (participant->first == plan.currentTerm->leader->serverId) {
-                auto desiredFlags = participant->second;
-                desiredFlags.excluded = false;
-                auto newTerm = *plan.currentTerm;
-                newTerm.term = LogTerm{newTerm.term.value + 1};
-                newTerm.leader.reset();
-                return EvictLeaderAction(participant->first, desiredFlags,
-                                         newTerm,
-                                         plan.participantsConfig.generation);
-              } else {
-                return RemoveParticipantFromPlanAction(
-                    participant->first, plan.participantsConfig.generation);
-              }
-            }
-
-            // Check whether the configuration of the replicated log has been
-            // changed
-            if (target.config != currentTerm.config) {
-              return UpdateLogConfigAction(target.config);
-            }
-          }
-        } else {
-          // We do not have a leader so we'll run an election
-          // this cannot return EmptyAction
-          return doLeadershipElection(plan, current, health);
-        }
-      }
+      // TODO!
     }
   }
-  // Nothing todo
-  return EmptyAction();
+
+  // If a participant is in Plan but not in Target, gracefully
+  // remove them
+  if (auto participant = getRemovedParticipant(target, plan)) {
+    // The removed participant is currently the leader
+    if (participant->first == plan.currentTerm->leader->serverId) {
+      auto desiredFlags = participant->second;
+      desiredFlags.excluded = false;
+      auto newTerm = *plan.currentTerm;
+      newTerm.term = LogTerm{newTerm.term.value + 1};
+      newTerm.leader.reset();
+      return EvictLeaderAction(participant->first, desiredFlags, newTerm,
+                               plan.participantsConfig.generation);
+    } else {
+      return RemoveParticipantFromPlanAction(
+          participant->first, plan.participantsConfig.generation);
+    }
+  }
+
+  // If the configuration differs between Target and Plan,
+  // apply the new configuration.
+  //
+  // TODO: This has not been implemented yet!
+  if (target.config != currentTerm.config) {
+    return UpdateLogConfigAction(target.config);
+  }
+
+  // Here we are converged and can hence signal so
+  return ConvergedToTargetAction{};
 }
 
 }  // namespace arangodb::replication2::replicated_log

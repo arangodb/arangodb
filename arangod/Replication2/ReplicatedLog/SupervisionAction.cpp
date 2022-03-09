@@ -268,6 +268,8 @@ void Executor::operator()(UpdateLogConfigAction const& action) {
   TRI_ASSERT(false);
 }
 
+void Executor::operator()(ConvergedToTargetAction const& action) {}
+
 auto to_string(Action const& action) -> std::string_view {
   return std::visit([](auto&& arg) { return arg.name; }, action);
 }
@@ -375,6 +377,11 @@ void VelocyPacker::operator()(RemoveParticipantFromPlanAction const& action) {
 }
 
 void VelocyPacker::operator()(UpdateLogConfigAction const& action) {
+  builder.add(VPackValue("type"));
+  builder.add(VPackValue(action.name));
+}
+
+void VelocyPacker::operator()(ConvergedToTargetAction const& action) {
   builder.add(VPackValue("type"));
   builder.add(VPackValue(action.name));
 }

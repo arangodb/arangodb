@@ -41,15 +41,7 @@ namespace arangodb::replication2::replicated_log {
 using LogCurrentLocalStates =
     std::unordered_map<ParticipantId, LogCurrentLocalState>;
 
-// Check whether a log has been added to target
-auto checkLogAdded(Log const& log, ParticipantsHealth const& health) -> Action;
-
-//
-auto checkLeaderPresent(LogPlanSpecification const& plan,
-                        LogCurrent const& current,
-                        ParticipantsHealth const& health) -> Action;
-
-auto isLeaderFailed(LogPlanSpecification const& plan,
+auto isLeaderFailed(LogPlanTermSpecification::Leader const& leader,
                     ParticipantsHealth const& health) -> bool;
 
 auto computeReason(LogCurrentLocalState const& status, bool healthy,
@@ -64,19 +56,6 @@ auto runElectionCampaign(LogCurrentLocalStates const& states,
 auto doLeadershipElection(LogPlanSpecification const& plan,
                           LogCurrent const& current,
                           ParticipantsHealth const& health) -> Action;
-
-auto checkLogTargetParticipantFlags(LogTarget const& target,
-                                    LogPlanSpecification const& plan) -> Action;
-
-auto checkLogTargetParticipantAdded(LogTarget const& target,
-                                    LogPlanSpecification const& plan) -> Action;
-
-auto checkLogTargetParticipantRemoved(LogTarget const& target,
-                                      LogPlanSpecification const& plan)
-    -> Action;
-
-auto checkLogTargetConfig(LogTarget const& target,
-                          LogPlanSpecification const& plan) -> Action;
 
 // Actions capture entries in log, so they have to stay
 // valid until the returned action has been executed (or discarded)

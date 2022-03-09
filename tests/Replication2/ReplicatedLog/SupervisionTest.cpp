@@ -214,7 +214,8 @@ TEST_F(LeaderStateMachineTest, test_election_fails) {
                   {"C", ParticipantHealth{.rebootId = RebootId{14},
                                           .notIsFailed = true}}}};
 
-  auto r = isLeaderFailed(plan, health);
+  // TODO: This doesn't test what it claims to
+  auto r = isLeaderFailed(*plan.currentTerm->leader, health);
 
   EXPECT_TRUE(r);
 }
@@ -280,7 +281,7 @@ TEST_F(LeaderStateMachineTest, test_leader_intact) {
                   {"C", ParticipantHealth{.rebootId = RebootId{1},
                                           .notIsFailed = true}}}};
 
-  auto r = isLeaderFailed(plan, health);
+  auto r = isLeaderFailed(*plan.currentTerm->leader, health);
   EXPECT_FALSE(r);
 }
 
