@@ -357,7 +357,11 @@ static void JS_GlobalStatus(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   auto result =
-      ReplicatedLogMethods::createInstance(vocbase)->getGlobalStatus(id).get();
+      ReplicatedLogMethods::createInstance(vocbase)
+          ->getGlobalStatus(
+              id,
+              replicated_log::GlobalStatus::SpecificationSource::kRemoteAgency)
+          .get();
   VPackBuilder response;
   result.toVelocyPack(response);
   TRI_V8_RETURN(TRI_VPackToV8(isolate, response.slice()));

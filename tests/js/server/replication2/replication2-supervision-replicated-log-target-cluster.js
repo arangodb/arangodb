@@ -418,7 +418,7 @@ const replicatedLogSuite = function () {
       waitFor(replicatedLogParticipantsFlag(database, logId, {
         [newServer]: {excluded: true, forced: false},
       }));
-	   
+
       // now remove the excluded flag
       replicatedLogUpdateTargetParticipants(database, logId, {
         [newServer]: {excluded: false},
@@ -558,6 +558,10 @@ const replicatedLogSuite = function () {
         if (!_.isEqual(election, supervisionData.response.election)) {
           return Error('Coordinator not reporting latest state from supervision' +
               `found = ${globalStatus.supervision.election}; expected = ${election}`);
+        }
+
+        if (globalStatus.specification.source !== "RemoteAgency") {
+          return Error(`Specification source is ${globalStatus.specification.source}, expected RemoteAgency`);
         }
 
         return true;
