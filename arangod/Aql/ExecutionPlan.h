@@ -308,6 +308,7 @@ class ExecutionPlan {
 
   /// @brief registers a warning for an invalid OPTIONS attribute
   static void invalidOptionAttribute(QueryContext& query,
+                                     char const* errorReason,
                                      char const* operationName,
                                      char const* name, size_t length);
 
