@@ -4,6 +4,15 @@ v3.7.18 (XXXX-XX-XX)
 * Bug-Fix: Resolve BTS-673/Issue #15107, a spliced subquery could return too few
   results.
 
+* Log a better startup error in case an ArangoDB 3.7 is started on a too new
+  database directory (3.9 or higher).
+
+* Fix counts and file size sum in hotbackup META files. Do no longer count
+  directories.
+
+* Harden validator for binary VelocyPack against additional types of malicious
+  inputs.
+
 
 v3.7.17 (2022-01-25)
 --------------------
