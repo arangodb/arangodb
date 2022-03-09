@@ -838,11 +838,13 @@ void MockDBServer::createShard(std::string const& dbName, std::string shardName,
     props->add(StaticStrings::DataSourceType,
                VPackValue(clusterCollection.type()));
     props->add(StaticStrings::DataSourceName, VPackValue(shardName));
-    // We need to set a value for CE testing here (default of 0 will be invalid
-    // in CE)
-#ifndef USE_ENTERPRISE
-    props->add(StaticStrings::ReplicationFactor, VPackValue(1));
-#endif
+    // We are in SingleMachine test code. Setting a replicationFactor > 2 here
+    // Would cause us to get stuck on writes.
+    // We may allow this for tests that do not write documents into the
+    // collection.
+    TRI_ASSERT(clusterCollection.replicationFactor() < 2);
+    props->add(StaticStrings::ReplicationFactor,
+               VPackValue(clusterCollection.replicationFactor()));
     props->add(StaticStrings::InternalValidatorTypes,
                VPackValue(clusterCollection.getInternalValidatorTypes()));
   }
