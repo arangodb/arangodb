@@ -38,24 +38,6 @@ using namespace arangodb::replication2::agency;
 
 namespace arangodb::replication2::replicated_log {
 
-#if 0
-// TODO: this is a temporary hack/
-// TODO: see whether we still need it
-if (log.target.participants.empty()) {
-  auto newTarget = log.target;
-
-  for (auto const& [pid, health] : health._health) {
-    if (health.notIsFailed) {
-      newTarget.participants.emplace(pid, ParticipantFlags{});
-    }
-    if (newTarget.participants.size() == log.target.config.replicationFactor) {
-      break;
-    }
-  }
-
-  return AddParticipantsToTargetAction(newTarget);
-#endif
-
 auto isLeaderFailed(LogPlanTermSpecification::Leader const& leader,
                     ParticipantsHealth const& health) -> bool {
   // TODO: less obscure with fewer negations
@@ -377,6 +359,23 @@ auto getRemovedParticipant(LogTarget const& target,
 auto checkReplicatedLog(Log const& log, ParticipantsHealth const& health)
     -> Action {
   auto const& target = log.target;
+
+  // TODO: this is a temporary hack/
+  // TODO: see whether we still need it
+  if (target.participants.empty()) {
+    auto newTarget = log.target;
+
+    for (auto const& [pid, health] : health._health) {
+      if (health.notIsFailed) {
+        newTarget.participants.emplace(pid, ParticipantFlags{});
+      }
+      if (newTarget.participants.size() ==
+          log.target.config.replicationFactor) {
+        break;
+      }
+    }
+    return AddParticipantsToTargetAction(newTarget);
+  }
 
   if (!log.plan) {
     // The log is not planned right now, so we create it
