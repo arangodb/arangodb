@@ -239,7 +239,7 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
           arangodb::options::Flags::DefaultNoComponents,
           arangodb::options::Flags::OnCoordinator,
           arangodb::options::Flags::OnDBServer,
-          arangodb::options::Flags::Hidden));
+          arangodb::options::Flags::Uncommon));
 
   options->addOption(
       "--cluster.index-create-timeout",
@@ -249,7 +249,7 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       arangodb::options::makeFlags(
           arangodb::options::Flags::DefaultNoComponents,
           arangodb::options::Flags::OnCoordinator,
-          arangodb::options::Flags::Hidden));
+          arangodb::options::Flags::Uncommon));
 
   options
       ->addOption(

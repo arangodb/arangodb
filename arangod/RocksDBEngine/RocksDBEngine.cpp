@@ -397,7 +397,7 @@ void RocksDBEngine::collectOptions(
               arangodb::options::Flags::DefaultNoComponents,
               arangodb::options::Flags::OnDBServer,
               arangodb::options::Flags::OnSingle,
-              arangodb::options::Flags::Hidden))
+              arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30608)
       .setIntroducedIn(30705);
 
@@ -418,7 +418,7 @@ void RocksDBEngine::collectOptions(
           arangodb::options::Flags::DefaultNoComponents,
           arangodb::options::Flags::OnDBServer,
           arangodb::options::Flags::OnSingle,
-          arangodb::options::Flags::Hidden));
+          arangodb::options::Flags::Uncommon));
 
   options->addOption("--rocksdb.throttle", "enable write-throttling",
                      new BooleanParameter(&_useThrottle),
@@ -436,7 +436,7 @@ void RocksDBEngine::collectOptions(
               arangodb::options::Flags::DefaultNoComponents,
               arangodb::options::Flags::OnDBServer,
               arangodb::options::Flags::OnSingle,
-              arangodb::options::Flags::Hidden))
+              arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30805);
 
   options
@@ -447,7 +447,7 @@ void RocksDBEngine::collectOptions(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnDBServer,
                       arangodb::options::Flags::OnSingle,
-                      arangodb::options::Flags::Hidden))
+                      arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30805);
 
   options
@@ -458,7 +458,7 @@ void RocksDBEngine::collectOptions(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnDBServer,
                       arangodb::options::Flags::OnSingle,
-                      arangodb::options::Flags::Hidden))
+                      arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30805);
 
   options
@@ -470,7 +470,7 @@ void RocksDBEngine::collectOptions(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnDBServer,
                       arangodb::options::Flags::OnSingle,
-                      arangodb::options::Flags::Hidden))
+                      arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30805);
 
   options
@@ -483,7 +483,7 @@ void RocksDBEngine::collectOptions(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnDBServer,
                       arangodb::options::Flags::OnSingle,
-                      arangodb::options::Flags::Hidden))
+                      arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30805);
 
   options
@@ -495,7 +495,7 @@ void RocksDBEngine::collectOptions(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnDBServer,
                       arangodb::options::Flags::OnSingle,
-                      arangodb::options::Flags::Hidden))
+                      arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30805);
 
 #ifdef USE_ENTERPRISE
@@ -517,7 +517,7 @@ void RocksDBEngine::collectOptions(
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnDBServer,
-                      arangodb::options::Flags::Hidden))
+                      arangodb::options::Flags::Uncommon))
       .setIntroducedIn(31000);
 
   options->addOption("--rocksdb.debug-logging",
@@ -527,7 +527,7 @@ void RocksDBEngine::collectOptions(
                          arangodb::options::Flags::DefaultNoComponents,
                          arangodb::options::Flags::OnDBServer,
                          arangodb::options::Flags::OnSingle,
-                         arangodb::options::Flags::Hidden));
+                         arangodb::options::Flags::Uncommon));
 
   options
       ->addOption("--rocksdb.edge-cache", "use in-memory cache for edges",
@@ -536,7 +536,7 @@ void RocksDBEngine::collectOptions(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnDBServer,
                       arangodb::options::Flags::OnSingle,
-                      arangodb::options::Flags::Hidden))
+                      arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30604);
 
   options->addOption(
@@ -547,7 +547,7 @@ void RocksDBEngine::collectOptions(
           arangodb::options::Flags::DefaultNoComponents,
           arangodb::options::Flags::OnDBServer,
           arangodb::options::Flags::OnSingle,
-          arangodb::options::Flags::Hidden));
+          arangodb::options::Flags::Uncommon));
 
 #ifdef USE_ENTERPRISE
   collectEnterpriseOptions(options);
