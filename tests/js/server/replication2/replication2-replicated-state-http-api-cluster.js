@@ -77,7 +77,9 @@ const replicatedStateSuite = function () {
         assertEqual(status.manager.managerState, "ServiceAvailable");
 
         assertEqual(status.snapshot.status, "Completed");
+        assertTrue(status.snapshot.timestamp !== undefined);
         assertEqual(status.generation, 1);
+
       }
 
       for (const server of followers) {
@@ -85,6 +87,7 @@ const replicatedStateSuite = function () {
         assertEqual(status.role, "follower");
         assertEqual(status.manager.managerState, "NothingToApply");
         assertEqual(status.snapshot.status, "Completed");
+        assertTrue(status.snapshot.timestamp !== undefined);
         assertEqual(status.generation, 1);
       }
     },

@@ -248,6 +248,7 @@ class StaticStrings {
   static std::string const ReplicationVersion;
   static std::string const ReplicatedLogs;
   static std::string_view const SoftWriteConcern;
+  static std::string_view const EffectiveWriteConcern;
 
   // graph attribute names
   static std::string const GraphCollection;
