@@ -34,7 +34,8 @@
 
 #include "Basics/VelocyPackHelper.h"
 
-namespace arangodd::fuzzer {
+namespace arangodb {
+namespace fuzzer {
 
 enum CharOperation { kAddString = 0, kAddInt32, kMaxCharOpValue };
 
@@ -161,4 +162,5 @@ class RequestFuzzer {
        "Www-authenticate",
        "random"}};
 };
-}  // namespace arangodd::fuzzer
+}  // namespace fuzzer
+}  // namespace arangodb

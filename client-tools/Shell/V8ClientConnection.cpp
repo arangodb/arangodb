@@ -2311,7 +2311,7 @@ v8::Local<v8::Value> V8ClientConnection::requestFuzz(
   if (rc == fu::Error::ConnectionClosed) {
     // connection = acquireConnection();
     v8::Local<v8::Object> result = v8::Object::New(isolate);
-    setResultMessage(isolate, context, false, _fuzzClosedConnectionCode,
+    setResultMessage(isolate, context, false, kFuzzClosedConnectionCode,
                      result);
     return result;
     // return v8::Undefined(isolate);

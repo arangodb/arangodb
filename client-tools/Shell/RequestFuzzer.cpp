@@ -121,29 +121,31 @@ void RequestFuzzer::randomizeHeader(std::string& header,
   }
   std::string firstLine;
   if (generateRandNumWithinRange<uint32_t>(0, 99) > 0) {
-    rest::RequestType randReqType = static_cast<RequestType>(
-        _randContext.mt() % rest::RequestType::ILLEGAL);
-    firstLine.append(rest::contentTypeToString(randReqType));
+    rest::RequestType randReqType = static_cast<rest::RequestType>(
+        _randContext.mt() %
+        static_cast<std::underlying_type<rest::RequestType>::type>(
+            rest::RequestType::ILLEGAL));
+    firstLine.append(rest::requestToString(randReqType));
   } else {
-    randomizeCharOperation(firstLine);
+    randomizeCharOperation(firstLine, 1);
   }
   firstLine.append(" ");
   uint32_t numNestedRoutes =
-      generateRandNumWithinRange<uint32_t>(1, _maxNestedRoutes);
+      generateRandNumWithinRange<uint32_t>(1, kMaxNestedRoutes);
   for (uint32_t i = 0; i < numNestedRoutes; ++i) {
     uint32_t routePos =
         generateRandNumWithinRange<uint32_t>(0, _wordListForRoute.size() - 1);
     if (!(_wordListForRoute[routePos] == "random")) {
       firstLine.append(_wordListForRoute[routePos]);
     } else {
-      randomizeCharOperation(firstLine);
+      randomizeCharOperation(firstLine, 1);
     }
   }
   firstLine.append(" ");
   if (generateRandNumWithinRange<uint32_t>(0, 99) > 0) {
     firstLine.append(" HTTP/");
   } else {
-    randomizeCharOperation(firstLine);
+    randomizeCharOperation(firstLine, 1);
   }
   if (generateRandNumWithinRange<uint32_t>(0, 99) > 3) {
     firstLine.append("1.1");
@@ -181,13 +183,13 @@ void RequestFuzzer::randomizeBodyInternal(velocypack::Builder& builder) {
   while (true) {
     BodyOperation bodyOp = static_cast<BodyOperation>(
         _randContext.mt() % BodyOperation::kMaxBodyOpValue);
-    if (_recursionDepth > _maxDepth && bodyOp <= BodyOperation::kAddObject) {
+    if (_recursionDepth > kMaxDepth && bodyOp <= BodyOperation::kAddObject) {
       continue;
     }
     switch (bodyOp) {
       case kAddArray: {
         builder.openArray(_randContext.mt() % 2 ? true : false);
-        uint32_t numMembers = _randContext.mt() % _arrayNumMembers;
+        uint32_t numMembers = _randContext.mt() % kArrayNumMembers;
         for (uint32_t i = 0; i < numMembers; ++i) {
           ++_recursionDepth;
           randomizeBodyInternal(builder);
@@ -198,7 +200,7 @@ void RequestFuzzer::randomizeBodyInternal(velocypack::Builder& builder) {
       }
       case kAddObject: {
         builder.openObject(_randContext.mt() % 2 ? true : false);
-        uint32_t numMembers = _randContext.mt() % _objNumMembers;
+        uint32_t numMembers = _randContext.mt() % kObjNumMembers;
         if (_tempObjectKeys.size() <= _recursionDepth) {
           _tempObjectKeys.resize(_recursionDepth + 1);
         } else {
