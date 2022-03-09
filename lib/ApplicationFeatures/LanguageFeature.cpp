@@ -98,11 +98,11 @@ void LanguageFeature::collectOptions(
   options->addOption(
       "--default-language", "ISO-639 language code",
       new StringParameter(&_defaultLanguage),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options->addOption(
       "--icu-language", "ICU language", new StringParameter(&_icuLanguage),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options
       ->addOption("--default-language-check",
