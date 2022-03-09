@@ -52,6 +52,13 @@ TEST_F(WasmFunctionCreation, WasmFunction_is_created_from_velocypack) {
       WasmFunction{"Anne", {1, 2, 255}, true});
 }
 
+TEST_F(WasmFunctionCreation,
+       WasmFunction_is_created_from_velocypack_with_base64_string) {
+  expectWasmFunction(
+      R"({"name": "Anne", "code": "AQL/", "isDeterministic": true})",
+      WasmFunction{"Anne", {1, 2, 255}, true});
+}
+
 TEST_F(WasmFunctionCreation, uses_false_as_isDeterministic_default) {
   expectWasmFunction(R"({"name": "Anne", "code": [43, 8]})",
                      WasmFunction{"Anne", {43, 8}, false});
@@ -75,8 +82,8 @@ TEST_F(WasmFunctionCreation, expects_name_as_string) {
   expectError(R"({"name": 1, "code": [0]})");
 }
 
-TEST_F(WasmFunctionCreation, expects_code_as_string) {
-  expectError(R"({"name": "some_function", "code": "some string"})");
+TEST_F(WasmFunctionCreation, expects_code_not_to_be_a_number) {
+  expectError(R"({"name": "some_function", "code": 1})");
 }
 
 TEST_F(WasmFunctionCreation, expects_isDeterministic_as_string) {

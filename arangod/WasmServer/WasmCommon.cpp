@@ -1,5 +1,9 @@
+#include <boost/archive/iterators/binary_from_base64.hpp>
+#include <boost/archive/iterators/remove_whitespace.hpp>
+#include <boost/archive/iterators/transform_width.hpp>
 #include <string>
 #include <set>
+#include "Basics/StringUtils.h"
 #include "WasmCommon.h"
 #include "velocypack/Builder.h"
 #include "velocypack/Iterator.h"
@@ -9,6 +13,7 @@
 #include "velocypack/vpack.h"
 #include "Basics/ResultT.h"
 #include "Basics/Result.h"
+#include <iostream>
 
 using namespace arangodb;
 using namespace arangodb::wasm;
@@ -106,18 +111,23 @@ auto WasmFunction::requiredCodeField(std::string const&& fieldname, Slice slice)
         TRI_ERROR_BAD_PARAMETER, "Required field " + fieldname + " is missing");
   }
   if (auto field = slice.get(fieldname); field.isArray()) {
-    // if field is base64: arangodb::baseics::StringUtils::encodeBase64(field)
     std::vector<uint8_t> code;
     for (auto const& p : velocypack::ArrayIterator(field)) {
       // TODO check that p is of byte type
       code.emplace_back(p.getInt());
     }
     return code;
-    // } else if (field.isString()) {
+  } else if (field.isString()) {
+    // TODO check if is actually is base64
+    auto string = field.copyString();
+    auto decodedString =
+        arangodb::basics::StringUtils::decodeBase64(field.copyString());
+    std::vector<uint8_t> vec(decodedString.begin(), decodedString.end());
+    return vec;
   } else {
     return ResultT<std::vector<uint8_t>>::error(
         TRI_ERROR_BAD_PARAMETER,
-        "Field " + fieldname + " should be a byte array");
+        "Field " + fieldname + " should be a byte array or base64 string");
   }
 }
 
