@@ -2,7 +2,10 @@
 #include <set>
 #include "WasmCommon.h"
 #include "velocypack/Builder.h"
+#include "velocypack/Iterator.h"
 #include "velocypack/Slice.h"
+#include "velocypack/Value.h"
+#include "velocypack/ValueType.h"
 #include "velocypack/vpack.h"
 #include "Basics/ResultT.h"
 #include "Basics/Result.h"
@@ -11,7 +14,7 @@ using namespace arangodb;
 using namespace arangodb::wasm;
 using namespace arangodb::velocypack;
 
-WasmFunction::WasmFunction(std::string name, std::string code,
+WasmFunction::WasmFunction(std::string name, std::vector<uint8_t> code,
                            bool isDeterministic = false)
     : _name{std::move(name)},
       _code{std::move(code)},
@@ -20,7 +23,14 @@ WasmFunction::WasmFunction(std::string name, std::string code,
 void WasmFunction::toVelocyPack(VPackBuilder& builder) const {
   auto ob = VPackObjectBuilder(&builder);
   builder.add("name", VPackValue(_name));
-  builder.add("code", VPackValue(_code));
+  VPackBuilder arrayBuilder;
+  {
+    auto ab = VPackArrayBuilder(&arrayBuilder);
+    for (auto const& entry : _code) {
+      arrayBuilder.add(VPackValue(entry));
+    }
+  }
+  builder.add("code", arrayBuilder.slice());
   builder.add("isDeterministic", VPackValue(_isDeterministic));
 }
 
@@ -39,32 +49,28 @@ auto WasmFunction::fromVelocyPack(Slice slice) -> ResultT<WasmFunction> {
         check.errorNumber(), functionName + std::move(check).errorMessage());
   }
 
-  auto nameField = requiredStringField("name", slice);
-  if (!nameField.ok()) {
+  auto name = requiredStringField("name", slice);
+  if (!name.ok()) {
     return ResultT<WasmFunction>::error(
-        nameField.errorNumber(),
-        functionName + std::move(nameField).errorMessage());
+        name.errorNumber(), functionName + std::move(name).errorMessage());
   }
-  auto name = nameField.get().copyString();
 
-  auto codeField = requiredStringField("code", slice);
+  auto codeField = requiredCodeField("code", slice);
   if (!codeField.ok()) {
     return ResultT<WasmFunction>::error(
         codeField.errorNumber(),
         functionName + std::move(codeField).errorMessage());
   }
-  auto code = codeField.get().copyString();
 
-  auto isDeterministicField =
-      optionalBoolField("isDeterministic", false, slice);
-  if (!isDeterministicField.ok()) {
+  auto isDeterministic = optionalBoolField("isDeterministic", false, slice);
+  if (!isDeterministic.ok()) {
     return ResultT<WasmFunction>::error(
-        isDeterministicField.errorNumber(),
-        functionName + std::move(isDeterministicField).errorMessage());
+        isDeterministic.errorNumber(),
+        functionName + std::move(isDeterministic).errorMessage());
   }
-  auto isDeterministic = isDeterministicField.get();
 
-  return ResultT<WasmFunction>(WasmFunction{name, code, isDeterministic});
+  return ResultT<WasmFunction>(
+      WasmFunction{name.get(), {codeField.get()}, isDeterministic.get()});
 }
 
 auto WasmFunction::checkOnlyValidFieldnamesAreIncluded(
@@ -80,16 +86,38 @@ auto WasmFunction::checkOnlyValidFieldnamesAreIncluded(
 }
 
 auto WasmFunction::requiredStringField(std::string const&& fieldname,
-                                       Slice slice) -> ResultT<Slice> {
+                                       Slice slice) -> ResultT<std::string> {
   if (!slice.hasKey(fieldname)) {
-    return ResultT<Slice>::error(TRI_ERROR_BAD_PARAMETER,
-                                 "Required field " + fieldname + " is missing");
+    return ResultT<std::string>::error(
+        TRI_ERROR_BAD_PARAMETER, "Required field " + fieldname + " is missing");
   }
   if (auto field = slice.get(fieldname); field.isString()) {
-    return field;
+    return field.copyString();
   } else {
-    return ResultT<Slice>::error(TRI_ERROR_BAD_PARAMETER,
-                                 "Field " + fieldname + " should be a string");
+    return ResultT<std::string>::error(
+        TRI_ERROR_BAD_PARAMETER, "Field " + fieldname + " should be a string");
+  }
+}
+
+auto WasmFunction::requiredCodeField(std::string const&& fieldname, Slice slice)
+    -> ResultT<std::vector<uint8_t>> {
+  if (!slice.hasKey(fieldname)) {
+    return ResultT<std::vector<uint8_t>>::error(
+        TRI_ERROR_BAD_PARAMETER, "Required field " + fieldname + " is missing");
+  }
+  if (auto field = slice.get(fieldname); field.isArray()) {
+    // if field is base64: arangodb::baseics::StringUtils::encodeBase64(field)
+    std::vector<uint8_t> code;
+    for (auto const& p : velocypack::ArrayIterator(field)) {
+      // TODO check that p is of byte type
+      code.emplace_back(p.getInt());
+    }
+    return code;
+    // } else if (field.isString()) {
+  } else {
+    return ResultT<std::vector<uint8_t>>::error(
+        TRI_ERROR_BAD_PARAMETER,
+        "Field " + fieldname + " should be a byte array");
   }
 }
 

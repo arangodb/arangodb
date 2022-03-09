@@ -51,7 +51,8 @@ auto WasmServerFeature::loadFunction(std::string const& name)
         }
       });
   if (function.has_value()) {
-    return environment.parse_module(function->code.code, function->code.length);
+    return environment.parse_module(function.value()._code.data(),
+                                    function.value()._code.size());
   } else {
     // TODO
     return std::nullopt;
@@ -68,6 +69,7 @@ auto WasmServerFeature::executeFunction(std::string const& name, uint64_t a,
     return function.call<uint64_t>(a, b);
   } else {
     // TODO
+    return std::nullopt;
   }
 }
 

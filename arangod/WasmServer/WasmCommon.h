@@ -32,19 +32,17 @@
 
 namespace arangodb::wasm {
 
-struct WasmContainer {
-  uint8_t* code;
-  size_t length;
-};
-
 class WasmFunction {
- private:
+ public:
   std::string _name;
-  WasmContainer _code;
+  std::vector<uint8_t> _code;
   bool _isDeterministic;
   static auto requiredStringField(std::string const&& fieldName,
                                   velocypack::Slice slice)
-      -> ResultT<velocypack::Slice>;
+      -> ResultT<std::string>;
+  static auto requiredCodeField(std::string const&& fieldName,
+                                velocypack::Slice slice)
+      -> ResultT<std::vector<uint8_t>>;
   static auto optionalBoolField(std::string const&& fieldName,
                                 bool defaultValue, velocypack::Slice slice)
       -> arangodb::ResultT<bool>;
@@ -53,7 +51,8 @@ class WasmFunction {
       -> arangodb::Result;
 
  public:
-  WasmFunction(std::string name, std::string code, bool isDeterministic);
+  WasmFunction(std::string name, std::vector<uint8_t> code,
+               bool isDeterministic);
   auto name() const -> std::string { return _name; };
   static auto fromVelocyPack(arangodb::velocypack::Slice slice)
       -> ResultT<WasmFunction>;

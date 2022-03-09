@@ -34,7 +34,8 @@ struct WasmFunctionCreation : public ::testing::Test {
   void expectWasmFunction(std::string&& string, WasmFunction&& wasmFunction) {
     auto result =
         WasmFunction::fromVelocyPack(VPackParser::fromJson(string)->slice());
-    EXPECT_EQ(result, ResultT<WasmFunction>{wasmFunction});
+    EXPECT_TRUE(result.ok());
+    EXPECT_EQ(result.get(), wasmFunction);
   }
 
   void expectError(std::string&& string) {
@@ -47,17 +48,17 @@ struct WasmFunctionCreation : public ::testing::Test {
 
 TEST_F(WasmFunctionCreation, WasmFunction_is_created_from_velocypack) {
   expectWasmFunction(
-      R"({"name": "Anne", "code": "ABC", "isDeterministic": true})",
-      WasmFunction{"Anne", "ABC", true});
+      R"({"name": "Anne", "code": [1, 2, 255], "isDeterministic": true})",
+      WasmFunction{"Anne", {1, 2, 255}, true});
 }
 
 TEST_F(WasmFunctionCreation, uses_false_as_isDeterministic_default) {
-  expectWasmFunction(R"({"name": "Anne", "code": "ABC"})",
-                     WasmFunction{"Anne", "ABC", false});
+  expectWasmFunction(R"({"name": "Anne", "code": [43, 8]})",
+                     WasmFunction{"Anne", {43, 8}, false});
 }
 
 TEST_F(WasmFunctionCreation, requires_name_field) {
-  expectError(R"({"code": "ABC"})");
+  expectError(R"({"code": [43, 8]})");
 }
 
 TEST_F(WasmFunctionCreation, requires_code_field) {
@@ -67,27 +68,30 @@ TEST_F(WasmFunctionCreation, requires_code_field) {
 TEST_F(WasmFunctionCreation, requires_json_object) { expectError(R"([])"); }
 
 TEST_F(WasmFunctionCreation, gives_error_for_unknown_key) {
-  expectError(R"({"name": "test", "code": "ABC", "banane": 5})");
+  expectError(R"({"name": "test", "code": [8, 9, 0], "banane": 5})");
 }
 
 TEST_F(WasmFunctionCreation, expects_name_as_string) {
-  expectError(R"({"name": 1, "code": "ysww"})");
+  expectError(R"({"name": 1, "code": [0]})");
 }
 
 TEST_F(WasmFunctionCreation, expects_code_as_string) {
-  expectError(R"({"name": "some_function", "code": 1})");
+  expectError(R"({"name": "some_function", "code": "some string"})");
 }
 
 TEST_F(WasmFunctionCreation, expects_isDeterministic_as_string) {
   expectError(
-      R"({"name": "some_function", "code": "some code", "isDeterministic": "ABC"})");
+      R"({"name": "some_function", "code": [0, 1], "isDeterministic":
+      "ABC"})");
 }
 
 TEST(WasmFunctionConversion, converts_to_velocypack) {
   auto velocypack = VPackBuilder();
-  WasmFunction{"function_name", "test code", false}.toVelocyPack(velocypack);
-  EXPECT_TRUE(velocypack.slice().binaryEquals(
+  WasmFunction{"function_name", {3, 233}, false}.toVelocyPack(velocypack);
+  EXPECT_EQ(
+      velocypack.slice().toJson(),
       VPackParser::fromJson(
-          R"({"name": "function_name", "code": "test code", "isDeterministic": false})")
-          ->slice()));
+          R"({"name": "function_name", "code": [3, 233], "isDeterministic": false})")
+          ->slice()
+          .toJson());
 }
