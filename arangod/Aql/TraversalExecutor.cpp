@@ -799,15 +799,17 @@ auto TraversalExecutorInfos::parseTraversalEnumeratorCluster(
 TraversalExecutor::TraversalExecutor(Fetcher& fetcher, Infos& infos)
     : _infos(infos),
       _inputRow{CreateInvalidInputRowHint{}},
-      _traverser(infos.traverser()),
-      _traversalEnumerator(infos.traversalEnumerator()) {
+      _traverser(nullptr),
+      _traversalEnumerator(nullptr) {
   // reset the traverser, so that no residual state is left in it. This is
   // important because the TraversalExecutor is sometimes reconstructed (in
   // place) with the same TraversalExecutorInfos as before. Those
   // infos contain the traverser which might contain state from a previous run.
   if (infos.isRefactor()) {
+    _traversalEnumerator = infos.traversalEnumerator();
     traversalEnumerator()->clear(false);
   } else {
+    _traverser = infos.traverser();
     traverser()->done();
   }
 }
