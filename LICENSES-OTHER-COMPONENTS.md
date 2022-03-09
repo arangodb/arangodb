@@ -95,6 +95,16 @@ _Enterprise Edition only_
 * License Name: MIT License
 * License Id: MIT
 
+### fmt
+
+* Name: {fmt}
+* Version: 8.0.1
+* Date: 2021-07-03 
+* Project Home: https://github.com/fmtlib/fmt 
+* License: https://github.com/fmtlib/fmt/blob/master/LICENSE.rst
+* License Name: MIT License
+* License Id: MIT
+
 ### function2
 
 * Name: function2
