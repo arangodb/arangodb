@@ -1,6 +1,9 @@
 v3.9.1 (XXXX-XX-XX)
 -------------------
 
+* Speed up initial sync (in case there is already data present) by prefetching
+  data from leader.
+
 * Added `disableIndex` index hint for AQL FOR loops. This index hint disables
   the usage of any index (except geo or full text indexes) and will cause a full
   scan over the collection.
