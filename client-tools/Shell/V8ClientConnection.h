@@ -26,7 +26,9 @@
 
 #include "Basics/Common.h"
 #include "Shell/arangosh.h"
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
 #include "Shell/RequestFuzzer.h"
+#endif
 
 #include <fuerte/connection.h>
 #include <fuerte/loop.h>
@@ -137,8 +139,10 @@ class V8ClientConnection {
       std::unordered_map<std::string, std::string> const& headerFields,
       bool raw);
 
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
   v8::Local<v8::Value> requestFuzz(v8::Isolate* isolate,
                                    fuzzer::RequestFuzzer* fuzzer);
+#endif
 
   void initServer(v8::Isolate*, v8::Handle<v8::Context> context);
 
@@ -192,8 +196,10 @@ class V8ClientConnection {
   bool _forceJson;
   std::atomic<bool> _setCustomError;
 
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
   std::unique_ptr<fuzzer::RequestFuzzer> _fuzzer = nullptr;
   static constexpr uint32_t _fuzzClosedConnectionCode = 1000;
+#endif
 
   // a per-endpoint, per-user cache for connections. whenever we reconnect
   // to another endpoint, we can put the old connection into this cache,

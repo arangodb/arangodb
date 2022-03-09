@@ -987,6 +987,7 @@ static void ClientConnection_httpPostRaw(
   ClientConnection_httpPostAny(args, true);
 }
 
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ClientConnection method wrap single fuzz request
 ////////////////////////////////////////////////////////////////////////////////
@@ -1066,19 +1067,32 @@ static void ClientConnection_httpFuzzRequests(
 
   std::string statistics =
       "Fuzzer statistics:    Total requests=" + std::to_string(numReqs);
+  VPackBuilder builder;
+  builder.openObject();
+  builder.add("seed", velocypack::Value(fuzzer->getSeed()));
+  builder.add("total-requests", velocypack::Value(numReqs));
+  builder.add(velocypack::Value("return-codes"));
+  builder.openObject();
   for (auto const& [returnCode, count] : fuzzReturnCodesCount) {
     if (returnCode == 1000) {
       statistics.append(",  Closed Connection=" + std::to_string(count));
+      builder.add("Closed-connection", velocypack::Value(count));
     } else {
       statistics.append(",  " + std::to_string(returnCode) + "=" +
                         std::to_string(count));
+      builder.add(std::to_string(returnCode), velocypack::Value(count));
     }
   }
+  builder.close();
+  builder.close();
 
   LOG_TOPIC("871a6", INFO, arangodb::Logger::COMMUNICATION) << statistics;
 
+  TRI_V8_RETURN(TRI_VPackToV8(isolate, builder.slice()));
+
   TRI_V8_TRY_CATCH_END
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ClientConnection method "PUT" helper
@@ -2253,6 +2267,7 @@ void setResultMessage(v8::Isolate* isolate, v8::Local<v8::Context> context,
   }
 }
 
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
 v8::Local<v8::Value> V8ClientConnection::requestFuzz(
     v8::Isolate* isolate, fuzzer::RequestFuzzer* fuzzer) {
   auto req = std::make_unique<fu::Request>();
@@ -2344,6 +2359,7 @@ v8::Local<v8::Value> V8ClientConnection::requestFuzz(
     return result;
   }
 }
+#endif
 
 v8::Local<v8::Value> V8ClientConnection::requestData(
     v8::Isolate* isolate, fu::RestVerb method, std::string_view location,
@@ -2589,9 +2605,11 @@ void V8ClientConnection::initServer(v8::Isolate* isolate,
       isolate, "SEND_FILE",
       v8::FunctionTemplate::New(isolate, ClientConnection_httpSendFile));
 
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
   connection_proto->Set(
       isolate, "fuzzRequests",
       v8::FunctionTemplate::New(isolate, ClientConnection_httpFuzzRequests));
+#endif
 
   connection_proto->Set(isolate, "getEndpoint",
                         v8::FunctionTemplate::New(

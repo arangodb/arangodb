@@ -28,19 +28,18 @@
 
 #include <Logger/LogMacros.h>
 
-namespace arangodb {
-namespace fuzzer {
+namespace arangodb::fuzzer {
 
 void RequestFuzzer::randomizeCharOperation(std::string& input,
                                            uint32_t numIts) {
   while (numIts--) {
     CharOperation charOp = static_cast<CharOperation>(
-        _randContext.mt() % CharOperation::MAX_CHAR_OP_VALUE);
+        _randContext.mt() % CharOperation::kMaxCharOpValue);
     switch (charOp) {
-      case CharOperation::ADD_STRING:
+      case CharOperation::kAddString:
         generateRandReadableAsciiString(input);
         break;
-      case CharOperation::ADD_INT_32: {
+      case CharOperation::kAddInt32: {
         input.append(std::to_string(generateRandInt32()));
         break;
       }
@@ -54,9 +53,9 @@ void RequestFuzzer::randomizeLineOperation(uint32_t numIts) {
   uint32_t its = numIts;
   while (its--) {
     LineOperation lineOp = static_cast<LineOperation>(
-        _randContext.mt() % LineOperation::MAX_LINE_OP_VALUE);
+        _randContext.mt() % LineOperation::kMaxLineOpValue);
     switch (lineOp) {
-      case LineOperation::INJECT_RAND_BYTE_IN_LINE: {
+      case LineOperation::kInjectRandByteInLine: {
         if (_stringLines.size() > 1) {
           uint32_t initLinePos;
           if (generateRandNumWithinRange<uint32_t>(0, 99) > 0) {
@@ -77,7 +76,7 @@ void RequestFuzzer::randomizeLineOperation(uint32_t numIts) {
         }
         break;
       }
-      case LineOperation::COPY_LINE: {
+      case LineOperation::kCopyLine: {
         if (_stringLines.size() > 1) {
           _stringLines.emplace_back(
               _stringLines.at(generateRandNumWithinRange<uint32_t>(
@@ -85,7 +84,7 @@ void RequestFuzzer::randomizeLineOperation(uint32_t numIts) {
         }
         break;
       }
-      case LineOperation::ADD_LINE: {
+      case LineOperation::kAddLine: {
         uint32_t numHeaderFields =
             generateRandNumWithinRange<uint32_t>(0, _wordListForKeys.size());
         for (uint32_t i = 0; i < numHeaderFields; ++i) {
@@ -124,8 +123,8 @@ void RequestFuzzer::randomizeHeader(std::string& header,
   }
   std::string firstLine;
   if (generateRandNumWithinRange<uint32_t>(0, 99) > 0) {
-    RequestType randReqType = static_cast<RequestType>(
-        _randContext.mt() % RequestType::MAX_REQ_VALUE);
+    RequestType randReqType =
+        static_cast<RequestType>(_randContext.mt() % RequestType::kMaxReqValue);
     firstLine.append(_requestTypes.at(randReqType));
   } else {
     randomizeCharOperation(firstLine);
@@ -183,12 +182,12 @@ std::optional<std::string> RequestFuzzer::randomizeBody() {
 void RequestFuzzer::randomizeBodyInternal(velocypack::Builder& builder) {
   while (true) {
     BodyOperation bodyOp = static_cast<BodyOperation>(
-        _randContext.mt() % BodyOperation::MAX_BODY_OP_VALUE);
-    if (_recursionDepth > _maxDepth && bodyOp <= BodyOperation::ADD_OBJECT) {
+        _randContext.mt() % BodyOperation::kMaxBodyOpValue);
+    if (_recursionDepth > _maxDepth && bodyOp <= BodyOperation::kAddObject) {
       continue;
     }
     switch (bodyOp) {
-      case ADD_ARRAY: {
+      case kAddArray: {
         builder.openArray(_randContext.mt() % 2 ? true : false);
         uint32_t numMembers = _randContext.mt() % _arrayNumMembers;
         for (uint32_t i = 0; i < numMembers; ++i) {
@@ -199,7 +198,7 @@ void RequestFuzzer::randomizeBodyInternal(velocypack::Builder& builder) {
         builder.close();
         break;
       }
-      case ADD_OBJECT: {
+      case kAddObject: {
         builder.openObject(_randContext.mt() % 2 ? true : false);
         uint32_t numMembers = _randContext.mt() % _objNumMembers;
         if (_tempObjectKeys.size() <= _recursionDepth) {
@@ -226,7 +225,7 @@ void RequestFuzzer::randomizeBodyInternal(velocypack::Builder& builder) {
         builder.close();
         break;
       }
-      case ADD_CHAR_SEQ: {
+      case kAddCharSeq: {
         _tempStr.clear();
         generateRandReadableAsciiString(_tempStr);
         builder.add(velocypack::Value(_tempStr));
@@ -274,5 +273,4 @@ void RequestFuzzer::logStart() {
   LOG_TOPIC("871a6", INFO, arangodb::Logger::COMMUNICATION)
       << "Started fuzzing... Seed: " << _seed;
 }
-}  // namespace fuzzer
-};  // namespace arangodb
+};  // namespace arangodb::fuzzer

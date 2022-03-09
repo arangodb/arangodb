@@ -39,32 +39,28 @@
 namespace arangodb {
 namespace fuzzer {
 
-enum CharOperation { ADD_STRING, ADD_INT_32, MAX_CHAR_OP_VALUE };
+enum CharOperation { kAddString = 0, kAddInt32, kMaxCharOpValue };
 
 enum LineOperation {
-  COPY_LINE,
-  INJECT_RAND_BYTE_IN_LINE,
-  ADD_LINE,
-  MAX_LINE_OP_VALUE
+  kCopyLine = 0,
+  kInjectRandByteInLine,
+  kAddLine,
+  kMaxLineOpValue
 };
 
 enum RequestType {
-  GET,
-  PUT,
-  PUT_RAW,
-  OPTIONS,
-  POST,
-  PATCH,
-  DELETE,
-  HEAD,
-  MAX_REQ_VALUE
+  kGet = 0,
+  kPut,
+  kPutRaw,
+  kOptions,
+  kPost,
+  kPatch,
+  kDelete,
+  kHead,
+  kMaxReqValue
 };
 
-enum BodyOperation { ADD_ARRAY, ADD_OBJECT, ADD_CHAR_SEQ, MAX_BODY_OP_VALUE };
-
-enum class HttpWord { HTTP, RAND_HTTP_WORD, MAX_VALUE };
-
-enum class HttpVersion { ACTUAL, RAND_HTTP_VERSION, MAX_VALUE };
+enum BodyOperation { kAddArray = 0, kAddObject, kAddCharSeq, kMaxBodyOpValue };
 
 class RequestFuzzer {
   struct RandContext {
@@ -93,6 +89,7 @@ class RequestFuzzer {
   void randomizeBodyInternal(velocypack::Builder& builder);
   // void randomizeReq(std::string& body, std::string& header, bool& hasBody);
   void logStart();
+  uint32_t getSeed() { return _seed; }
 
  private:
   void randomizeCharOperation(std::string& input, uint32_t numIts = 1);
@@ -119,10 +116,10 @@ class RequestFuzzer {
   size_t _reqBodySize;
 
   const std::unordered_map<RequestType, std::string> _requestTypes = {
-      {RequestType::GET, "GET"},         {RequestType::PUT, "PUT"},
-      {RequestType::PUT_RAW, "PUT_RAW"}, {RequestType::OPTIONS, "OPTIONS"},
-      {RequestType::POST, "POST"},       {RequestType::PATCH, "PATCH"},
-      {RequestType::DELETE, "DELETE"},   {RequestType::HEAD, "HEAD"}};
+      {RequestType::kGet, "GET"},        {RequestType::kPut, "PUT"},
+      {RequestType::kPutRaw, "PUT_RAW"}, {RequestType::kOptions, "OPTIONS"},
+      {RequestType::kPost, "POST"},      {RequestType::kPatch, "PATCH"},
+      {RequestType::kDelete, "DELETE"},  {RequestType::kHead, "HEAD"}};
 
   static constexpr uint32_t _maxNestedRoutes = 4;
   static constexpr uint32_t _maxDepth = 4;
