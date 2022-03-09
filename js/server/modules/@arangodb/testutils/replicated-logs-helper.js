@@ -104,7 +104,7 @@ const dbservers = (function () {
   return global.ArangoClusterInfo.getDBServers().map((x) => x.serverId);
 }());
 const coordinators = (function () {
-  return global.ArangoClusterInfo.getCoordinators().map((x) => x.serverId);
+  return global.ArangoClusterInfo.getCoordinators();
 }());
 
 

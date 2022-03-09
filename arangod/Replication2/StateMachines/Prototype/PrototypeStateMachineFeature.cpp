@@ -18,37 +18,23 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
+/// @author Alexandru Petenchea
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ActionFeature.h"
-
+#include "PrototypeStateMachineFeature.h"
+#include "PrototypeStateMachine.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Actions/actions.h"
-#include "ProgramOptions/ProgramOptions.h"
+#include "Replication2/ReplicatedState/ReplicatedStateFeature.h"
 
-using namespace arangodb::application_features;
-using namespace arangodb::options;
+using namespace arangodb;
+using namespace arangodb::replication2;
+using namespace arangodb::replication2::replicated_state;
+using namespace arangodb::replication2::replicated_state::prototype;
 
-namespace arangodb {
-
-ActionFeature::ActionFeature(Server& server)
-    : ArangodFeature{server, *this}, _allowUseDatabase(false) {
-  setOptional(true);
-  startsAfter<application_features::ClusterFeaturePhase>();
+void PrototypeStateMachineFeature::start() {
+  auto& feature = server().getFeature<ReplicatedStateAppFeature>();
+  feature.registerStateType<PrototypeState>("prototype");
 }
 
-void ActionFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addOption(
-      "--server.allow-use-database",
-      "allow change of database in REST actions, only needed for "
-      "unittests",
-      new BooleanParameter(&_allowUseDatabase),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
-}
-
-void ActionFeature::unprepare() { TRI_CleanupActions(); }
-
-bool ActionFeature::allowUseDatabase() const { return _allowUseDatabase; }
-
-}  // namespace arangodb
+PrototypeStateMachineFeature::PrototypeStateMachineFeature(Server& server)
+    : ArangodFeature{server, *this} {}
