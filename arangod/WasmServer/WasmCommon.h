@@ -32,32 +32,29 @@
 
 namespace arangodb::wasm {
 
-class WasmFunction {
- public:
-  std::string _name;
-  std::vector<uint8_t> _code;
-  bool _isDeterministic;
-  static auto requiredStringField(std::string const&& fieldName,
-                                  velocypack::Slice slice)
-      -> ResultT<std::string>;
-  static auto requiredCodeField(std::string const&& fieldName,
-                                velocypack::Slice slice)
-      -> ResultT<std::vector<uint8_t>>;
-  static auto optionalBoolField(std::string const&& fieldName,
-                                bool defaultValue, velocypack::Slice slice)
-      -> arangodb::ResultT<bool>;
-  static auto checkOnlyValidFieldnamesAreIncluded(
-      std::set<std::string>&& validFieldnames, velocypack::Slice slice)
-      -> arangodb::Result;
+struct Code {
+  std::vector<uint8_t> bytes;
+  auto operator==(const Code& function) const -> bool = default;
+};
 
- public:
-  WasmFunction(std::string name, std::vector<uint8_t> code,
-               bool isDeterministic);
-  auto name() const -> std::string { return _name; };
-  static auto fromVelocyPack(arangodb::velocypack::Slice slice)
-      -> ResultT<WasmFunction>;
-  void toVelocyPack(VPackBuilder& builder) const;
+struct WasmFunction {
+  std::string name;
+  Code code;
+  bool isDeterministic;
   auto operator==(const WasmFunction& function) const -> bool = default;
 };
+
+auto velocypack2WasmFunction(arangodb::velocypack::Slice slice)
+    -> ResultT<WasmFunction>;
+auto checkVelocypack2WasmFunctionIsPossible(velocypack::Slice slice)
+    -> arangodb::Result;
+auto velocypack2Name(arangodb::velocypack::Slice slice) -> ResultT<std::string>;
+auto velocypack2Code(arangodb::velocypack::Slice slice) -> ResultT<Code>;
+auto velocypack2IsDeterministic(
+    std::optional<arangodb::velocypack::Slice> slice) -> ResultT<bool>;
+
+void wasmFunction2Velocypack(WasmFunction const& wasmFunction,
+                             VPackBuilder& builder);
+void code2Velocypack(Code const& code, VPackBuilder& builder);
 
 }  // namespace arangodb::wasm
