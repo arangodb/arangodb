@@ -147,7 +147,7 @@ function randomCollectWithCount(generator, indent, bias) {
 
 function randomUpsert(generator, indent, bias, variables, collectionName) {
   if (coinToss(generator, bias)) {
-    const variable =  pickRandomElement(generator, variables)
+    const variable = pickRandomElement(generator, variables);
     return `${indent} UPSERT { value: ${variable}.value } INSERT { value: ${variable}.value } UPDATE {updated: true} IN ${collectionName}\n`;
   } else {
     return "";
@@ -197,7 +197,7 @@ function createChaosQuery(seed, numberSubqueries) {
 
     my_query = my_query + randomLimit(randomGenerator, indent, 0.7);
 
-    collect = randomCollectWithCount(randomGenerator, indent, 0.1);
+    var collect = randomCollectWithCount(randomGenerator, indent, 0.1);
     if (collect !== "") {
       my_query = my_query + collect;
       variables = { forVariables: [], subqueryVariables: ["counter"] };
@@ -281,7 +281,7 @@ function createModifyingChaosQuery(seed, numberSubqueries) {
 
     my_query = my_query + randomLimit(randomGenerator, indent, 0.7);
 
-    collect = randomCollectWithCount(randomGenerator, indent, 0.1);
+    var collect = randomCollectWithCount(randomGenerator, indent, 0.1);
     if (collect !== "") {
       my_query = my_query + collect;
       variables = {
@@ -314,7 +314,7 @@ function createModifyingChaosQuery(seed, numberSubqueries) {
 
 function runQuery(query, queryOptions, testOptions) {
   /* Create collections required for this query */
-  for (cn of query.collectionNames) {
+  for (const cn of query.collectionNames) {
     db._drop(cn);
     db._createDocumentCollection(cn);
     db._query(`FOR i IN 1..10 INSERT { value: i } INTO ${cn}`);
@@ -338,7 +338,7 @@ function runQuery(query, queryOptions, testOptions) {
 function testQuery(query, testOptions) {
   /* Print query string */
   if (testOptions.printQuery === true) {
-    print(`testing query: ${query.queryString}`);
+    console.log(`testing query: ${query.queryString}`);
   }
 
   /* Run query with all optimizations */
@@ -363,14 +363,14 @@ function testQuery(query, testOptions) {
     if (testOptions.throwOnMismatch) {
       throw msg;
     } else {
-      print(msg);
+      console.log(msg);
     }
   }
 }
 
 function testQueryWithSeed(testOptions) {
   if (testOptions.showReproduce) {
-    print(
+    console.log(
       `require("@arangodb/test-generators/subquery-chaos-test").testQueryWithSeed(${JSON.stringify(
         testOptions
       )});`
@@ -386,7 +386,7 @@ function testQueryWithSeed(testOptions) {
 
 function testModifyingQueryWithSeed(testOptions) {
   if (testOptions.showReproduce) {
-    print(
+    console.log(
       `require("@arangodb/test-generators/subquery-chaos-test").testModifyingQueryWithSeed(${JSON.stringify(
         testOptions
       )});`
