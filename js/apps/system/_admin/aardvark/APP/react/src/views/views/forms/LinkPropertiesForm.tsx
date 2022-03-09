@@ -99,6 +99,8 @@ const LinkPropertiesForm = ({
           disabled={disabled}
         />
       )}
+
+      {show === "ViewField" && <h4>Field shown</h4>}
       {/* {map(links, (properties, coll) => {
           return properties ? (
             <tr key={coll} style={{ borderBottom: "1px  solid #DDD" }}>

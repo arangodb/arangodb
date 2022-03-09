@@ -1,8 +1,8 @@
-import React, { Dispatch, useState } from "react";
+import React, { Dispatch } from "react";
 import { DispatchArgs } from "../../../utils/constants";
 import { LinkProperties } from "../constants";
 import { map } from "lodash";
-import LinkPropertiesInput from "../forms/inputs/LinkPropertiesInput";
+// import LinkPropertiesInput from "../forms/inputs/LinkPropertiesInput";
 import {
   ArangoTable,
   ArangoTD,
@@ -16,17 +16,16 @@ type FieldListProps = {
   disabled: boolean | undefined;
   dispatch: Dispatch<DispatchArgs<LinkProperties>>;
   basePath: string;
-  viewField: (field: string | number) => void;
+  viewField: any;
 };
 
 const FieldView: React.FC<FieldListProps> = ({
   fields,
   disabled,
   dispatch,
-  basePath
+  basePath,
+  viewField
 }) => {
-  const [showField, setShowField] = useState(false);
-
   const removeField = (field: string | number) => {
     dispatch({
       type: "unsetField",
@@ -39,11 +38,6 @@ const FieldView: React.FC<FieldListProps> = ({
 
   const getFieldRemover = (field: string | number) => () => {
     removeField(field);
-  };
-
-  const viewFieled = (field: string | number) => {
-    console.log(field);
-    setShowField(!showField);
   };
 
   return (
@@ -69,7 +63,7 @@ const FieldView: React.FC<FieldListProps> = ({
             <ArangoTD seq={disabled ? 0 : 1}>{fld}</ArangoTD>
             <ArangoTD seq={disabled ? 1 : 2}>
               {properties && map(properties.analyzers, a => <Badge name={a} />)}
-              {showField && (
+              {/* {showField && (
                 <LinkPropertiesInput
                   formState={properties}
                   disabled={disabled}
@@ -80,7 +74,7 @@ const FieldView: React.FC<FieldListProps> = ({
                     >
                   }
                 />
-              )}
+              )} */}
             </ArangoTD>
             {disabled ? null : (
               <ArangoTD seq={0} valign={"middle"}>
@@ -90,9 +84,9 @@ const FieldView: React.FC<FieldListProps> = ({
                   onClick={getFieldRemover(fld)}
                 />
                 <IconButton
-                  icon={!showField ? "edit" : "close"}
+                  icon={"edit"}
                   type={"warning"}
-                  onClick={() => viewFieled(fld)}
+                  onClick={() => viewField(fld)}
                 />
               </ArangoTD>
             )}

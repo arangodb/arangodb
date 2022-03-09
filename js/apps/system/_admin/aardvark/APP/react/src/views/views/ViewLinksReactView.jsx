@@ -71,6 +71,9 @@ const ViewLinksReactView = ({ name }) => {
     setShow("ViewChild");
   };
 
+  const handleShowChild = () => {
+    setShow("ViewField");
+  };
   return (
     <div className={"centralContent"} id={"content"}>
       {show === "LinkList" && (
@@ -100,6 +103,7 @@ const ViewLinksReactView = ({ name }) => {
                   view={name}
                   show={show}
                   showLink={handleShowLink}
+                  showField={handleShowChild}
                 />
               </div>
             </div>

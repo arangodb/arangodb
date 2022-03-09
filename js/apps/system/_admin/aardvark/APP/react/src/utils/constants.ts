@@ -23,7 +23,7 @@ export type DispatchArgs<FormState> = {
   formState?: FormState;
 };
 
-export type RenderView = "LinkList" | "AddNew" | "ViewParent" | "ViewChild";
+export type RenderView = "LinkList" | "AddNew" | "ViewParent" | "ViewChild" | "ViewField";
 
 export type FormProps<FormState> = {
   formState: FormState;
@@ -32,5 +32,6 @@ export type FormProps<FormState> = {
   view?: string;
   show?: RenderView;
   showLink?: any;
+  showField?: any;
 };
 

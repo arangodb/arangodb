@@ -49,7 +49,7 @@ const LinkPropertiesInput = ({
   const [showField, setShowField] = useState(false);
 
   const toggleShowField = () => {
-    setShowField(!showField);
+    setShowField(true);
   };
 
   const ShowField = (field: string | number) => {
@@ -66,8 +66,6 @@ const LinkPropertiesInput = ({
 
   const handleShowField = (field: string | number) => {
     toggleShowField();
-    // console.log(field);
-    // console.log(showField);
     if (showField !== false) {
       ShowField(field);
     }
