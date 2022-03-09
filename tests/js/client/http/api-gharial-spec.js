@@ -2442,6 +2442,10 @@ describe('_api/gharial', () => {
     });
 
     it('global checksum must be equal no matter how graphs are being sorted', () => {
+      if (!isEnterprise) {
+        // Hybrid Smart Graphs feature only available in enterprise edition.
+        return;
+      }
       const noOrphans = [];
       const relationA = gM._relation("Unittest_edgesA", ["Unittest_A"], ["Unittest_B"]);
       const relationB = gM._relation("Unittest_edgesB", ["Unittest_C"], ["Unittest_D"]);
