@@ -1,7 +1,7 @@
 devel
 -----
 
-* Added an http fuzzer that will fizz requests (the header for the actual
+* Added an HTTP fuzzer that will fuzz requests (the header for the actual
   moment) and send to the server. The amount of requests sent is provided 
   by one of the parameters of the function `fuzzRequests()` in arangosh.
   The optional parameters that can be supplied are: 
