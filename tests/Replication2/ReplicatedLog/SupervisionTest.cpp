@@ -162,7 +162,7 @@ TEST_F(LeaderStateMachineTest, test_election_success) {
                   {"C", ParticipantHealth{.rebootId = RebootId{1},
                                           .notIsFailed = true}}}};
 
-  auto r = tryLeadershipElection(plan, current, health);
+  auto r = doLeadershipElection(plan, current, health);
   EXPECT_TRUE(std::holds_alternative<LeaderElectionAction>(r));
 
   auto& action = std::get<LeaderElectionAction>(r);
@@ -214,15 +214,10 @@ TEST_F(LeaderStateMachineTest, test_election_fails) {
                   {"C", ParticipantHealth{.rebootId = RebootId{14},
                                           .notIsFailed = true}}}};
 
-  auto r = checkLeaderFailed(plan, health);
+  // TODO: This doesn't test what it claims to
+  auto r = isLeaderFailed(*plan.currentTerm->leader, health);
 
-  EXPECT_TRUE(std::holds_alternative<UpdateTermAction>(r));
-
-  auto& action = std::get<UpdateTermAction>(r);
-
-  // TODO: Friend op == for newTerm
-  EXPECT_EQ(action._newTerm.term, LogTerm{plan.currentTerm->term.value + 1});
-  EXPECT_EQ(action._newTerm.leader, std::nullopt);
+  EXPECT_TRUE(r);
 }
 
 TEST_F(LeaderStateMachineTest, test_election_leader_with_higher_term) {
@@ -258,7 +253,7 @@ TEST_F(LeaderStateMachineTest, test_election_leader_with_higher_term) {
                   {"C", ParticipantHealth{.rebootId = RebootId{14},
                                           .notIsFailed = true}}}};
 
-  auto r = tryLeadershipElection(plan, current, health);
+  auto r = doLeadershipElection(plan, current, health);
 
   EXPECT_TRUE(std::holds_alternative<LeaderElectionAction>(r));
 
@@ -286,8 +281,8 @@ TEST_F(LeaderStateMachineTest, test_leader_intact) {
                   {"C", ParticipantHealth{.rebootId = RebootId{1},
                                           .notIsFailed = true}}}};
 
-  auto r = checkLeaderFailed(plan, health);
-  EXPECT_TRUE(std::holds_alternative<EmptyAction>(r));
+  auto r = isLeaderFailed(*plan.currentTerm->leader, health);
+  EXPECT_FALSE(r);
 }
 
 struct SupervisionLogTest : ::testing::Test {};
@@ -300,20 +295,16 @@ TEST_F(SupervisionLogTest, test_log_created) {
 
       {"C", ParticipantFlags{.forced = false, .excluded = false}}};
 
-  auto r =
-      checkLogAdded(Log{.target = LogTarget(LogId{44}, participants, config),
-                        .plan = std::nullopt,
-                        .current = std::nullopt},
-                    ParticipantsHealth{});
+  auto r = checkReplicatedLog(
+      Log{.target = LogTarget(LogId{44}, participants, config),
+          .plan = std::nullopt,
+          .current = std::nullopt},
+      ParticipantsHealth{});
 
   EXPECT_TRUE(std::holds_alternative<AddLogToPlanAction>(r));
 
   auto& action = std::get<AddLogToPlanAction>(r);
-  EXPECT_EQ(
-      action._spec.participantsConfig,
-      (ParticipantsConfig{.generation = 1, .participants = participants}));
-
-  // TODO check that the plan spec contains the required info
+  EXPECT_EQ(action._participants, participants);
 }
 
 TEST_F(SupervisionLogTest, test_log_present) {
@@ -324,54 +315,55 @@ TEST_F(SupervisionLogTest, test_log_present) {
 
       {"C", ParticipantFlags{.forced = false, .excluded = false}}};
 
-  auto r =
-      checkLogAdded(Log{.target = LogTarget(LogId(44), participants, config),
-                        .plan = LogPlanSpecification(),
-                        .current = std::nullopt},
-                    ParticipantsHealth());
+  auto r = checkReplicatedLog(
+      Log{.target = LogTarget(LogId(44), participants, config),
+          .plan = LogPlanSpecification(),
+          .current = std::nullopt},
+      ParticipantsHealth());
 
-  EXPECT_TRUE(std::holds_alternative<EmptyAction>(r));
+  EXPECT_TRUE(std::holds_alternative<CreateInitialTermAction>(r))
+      << to_string(r);
 }
 
-TEST_F(SupervisionLogTest, test_checkleader_present) {
-  // We have no leader, so we have to first run a leadership campaign and then
-  // select a leader.
-  auto const& config = LogConfig(3, 3, 3, true);
+struct LogSupervisionTest : ::testing::Test {};
 
-  auto current = LogCurrent();
-  current.localState = std::unordered_map<ParticipantId, LogCurrentLocalState>(
-      {{"A", LogCurrentLocalState(LogTerm{1},
-                                  TermIndexPair{LogTerm{1}, LogIndex{1}})},
-       {"B", LogCurrentLocalState(LogTerm{1},
-                                  TermIndexPair{LogTerm{1}, LogIndex{1}})},
-       {"C", LogCurrentLocalState(LogTerm{1},
-                                  TermIndexPair{LogTerm{1}, LogIndex{1}})}});
-  current.supervision = LogCurrentSupervision{};
-  current.leader = LogCurrent::Leader{};  // it doesn't matter that the leader
-                                          // is empty since we only check for
-                                          // the presence of a value
-
-  auto plan = LogPlanSpecification(
-      LogId{1},
-      LogPlanTermSpecification(
-          LogTerm{1}, config,
-          LogPlanTermSpecification::Leader{"A", RebootId{1}}),
-      ParticipantsConfig{
-          .generation = 1,
-          .participants = {
-              {"A", ParticipantFlags{.forced = false, .excluded = false}},
-              {"B", ParticipantFlags{.forced = false, .excluded = false}},
-
-              {"C", ParticipantFlags{.forced = false, .excluded = false}}}});
-
-  auto health = ParticipantsHealth{
+TEST_F(LogSupervisionTest, test_leader_not_failed) {
+  // Leader is not failed and the reboot id is as expected
+  auto const leader = LogPlanTermSpecification::Leader{"A", RebootId{1}};
+  auto const health = ParticipantsHealth{
       ._health = {{"A", ParticipantHealth{.rebootId = RebootId{1},
-                                          .notIsFailed = true}},
-                  {"B", ParticipantHealth{.rebootId = RebootId{1},
-                                          .notIsFailed = true}},
-                  {"C", ParticipantHealth{.rebootId = RebootId{1},
                                           .notIsFailed = true}}}};
 
-  auto r = checkLeaderPresent(plan, current, health);
-  EXPECT_TRUE(std::holds_alternative<EmptyAction>(r));
+  auto r = isLeaderFailed(leader, health);
+  EXPECT_FALSE(r);
+}
+
+TEST_F(LogSupervisionTest, test_leader_failed) {
+  auto const leader = LogPlanTermSpecification::Leader{"A", RebootId{1}};
+  auto const health = ParticipantsHealth{
+      ._health = {{"A", ParticipantHealth{.rebootId = RebootId{1},
+                                          .notIsFailed = false}}}};
+
+  auto r = isLeaderFailed(leader, health);
+  EXPECT_TRUE(r);
+}
+
+TEST_F(LogSupervisionTest, test_leader_wrong_reboot_id) {
+  auto const leader = LogPlanTermSpecification::Leader{"A", RebootId{1}};
+  auto const health = ParticipantsHealth{
+      ._health = {{"A", ParticipantHealth{.rebootId = RebootId{15},
+                                          .notIsFailed = false}}}};
+
+  auto r = isLeaderFailed(leader, health);
+  EXPECT_TRUE(r);
+}
+
+TEST_F(LogSupervisionTest, test_leader_not_known_in_health) {
+  auto const leader = LogPlanTermSpecification::Leader{"A", RebootId{1}};
+  auto const health = ParticipantsHealth{
+      ._health = {{"B", ParticipantHealth{.rebootId = RebootId{15},
+                                          .notIsFailed = false}}}};
+
+  auto r = isLeaderFailed(leader, health);
+  EXPECT_TRUE(r);
 }

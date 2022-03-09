@@ -150,8 +150,11 @@ function ReplicatedLogsWriteSuite () {
       let leaderStatus = getLeaderStatus(logId);
       assertEqual(leaderStatus.local.commitIndex, 1);
       let globalStatus = log.globalStatus();
+      assertEqual(globalStatus.specification.source, "RemoteAgency");
       let status = log.status();
       assertEqual(Object.keys(status).sort(), Object.keys(globalStatus).sort());
+      let localGlobalStatus = log.globalStatus({useLocalCache: true});
+      assertEqual(localGlobalStatus.specification.source, "LocalCache");
     },
 
     testInsert : function() {
