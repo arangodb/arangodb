@@ -197,8 +197,7 @@ class V8ClientConnection {
   std::atomic<bool> _setCustomError;
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
-  std::unique_ptr<fuzzer::RequestFuzzer> _fuzzer = nullptr;
-  static constexpr uint32_t _fuzzClosedConnectionCode = 1000;
+  static constexpr uint32_t kFuzzClosedConnectionCode = 1000;
 #endif
 
   // a per-endpoint, per-user cache for connections. whenever we reconnect

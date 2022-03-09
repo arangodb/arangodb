@@ -34,8 +34,7 @@
 
 #include "Basics/VelocyPackHelper.h"
 
-namespace arangodb {
-namespace fuzzer {
+namespace arangodd::fuzzer {
 
 enum CharOperation { kAddString = 0, kAddInt32, kMaxCharOpValue };
 
@@ -50,7 +49,7 @@ enum BodyOperation { kAddArray = 0, kAddObject, kAddCharSeq, kMaxBodyOpValue };
 
 class RequestFuzzer {
   struct RandContext {
-    RandContext(uint32_t seed) : mt(seed) {}
+    explicit RandContext(uint32_t seed) : mt(seed) {}
 
     std::mt19937 mt;
     static constexpr uint32_t maxRandAsciiStringLength = 50;
@@ -99,10 +98,11 @@ class RequestFuzzer {
   std::string _reqBody;
   size_t _reqBodySize;
 
-  static constexpr uint32_t _maxNestedRoutes = 4;
-  static constexpr uint32_t _maxDepth = 4;
-  static constexpr uint32_t _objNumMembers = 4;
-  static constexpr uint32_t _arrayNumMembers = 4;
+  static constexpr uint32_t kMaxNestedRoutes = 4;
+  static constexpr uint32_t kMaxDepth = 4;
+  static constexpr uint32_t kObjNumMembers = 4;
+  static constexpr uint32_t kArrayNumMembers = 4;
+
   uint32_t _recursionDepth = 0;
   std::vector<std::unordered_set<std::string>> _tempObjectKeys;
 
@@ -161,5 +161,4 @@ class RequestFuzzer {
        "Www-authenticate",
        "random"}};
 };
-}  // namespace fuzzer
-}  // namespace arangodb
+}  // namespace arangodd::fuzzer
