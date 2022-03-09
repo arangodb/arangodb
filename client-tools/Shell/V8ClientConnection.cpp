@@ -988,21 +988,6 @@ static void ClientConnection_httpPostRaw(
 }
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
-////////////////////////////////////////////////////////////////////////////////
-/// @brief ClientConnection method wrap single fuzz request
-////////////////////////////////////////////////////////////////////////////////
-
-static void httpFuzzRequest(V8ClientConnection* v8connection,
-                            v8::Isolate* isolate,
-                            v8::FunctionCallbackInfo<v8::Value> const& args,
-                            fuzzer::RequestFuzzer* fuzzer) {
-  v8::HandleScope scope(isolate);
-  if (isExecutionDeadlineReached(isolate)) {
-    return;
-  }
-
-  TRI_V8_RETURN(v8connection->requestFuzz(isolate, fuzzer));
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ClientConnection method "fuzzRequests"
@@ -1054,13 +1039,15 @@ static void ClientConnection_httpFuzzRequests(
         "fuzzRequests(<numRequests>, <numIterations>, <seed>). "
         "(numIterations and numRequests must be > 0).");
   }
-  auto fuzzer = std::make_unique<fuzzer::RequestFuzzer>(numIts, seed);
+  fuzzer::RequestFuzzer fuzzer(numIts, seed);
   std::unordered_map<unsigned, uint32_t> fuzzReturnCodesCount;
 
   for (uint32_t i = 0; i < numReqs; ++i) {
-    httpFuzzRequest(v8connection, isolate, args, fuzzer.get());
+    // httpFuzzRequest(v8connection, isolate, args, fuzzer.get());
     velocypack::Builder builder;
-    TRI_V8ToVPack(isolate, builder, args.GetReturnValue().Get(), false);
+    TRI_V8ToVPack(isolate, builder, v8connection->requestFuzz(isolate, fuzzer),
+                  false);
+    LOG_DEVEL << "response " << builder.slice().toJson();
     fuzzReturnCodesCount[builder.slice().get("code").getUInt()]++;
   }
 
@@ -1068,7 +1055,7 @@ static void ClientConnection_httpFuzzRequests(
       "Fuzzer statistics:    Total requests=" + std::to_string(numReqs);
   VPackBuilder builder;
   builder.openObject();
-  builder.add("seed", velocypack::Value(fuzzer->getSeed()));
+  builder.add("seed", velocypack::Value(fuzzer.getSeed()));
   builder.add("total-requests", velocypack::Value(numReqs));
   builder.add(velocypack::Value("return-codes"));
   builder.openObject();
@@ -2266,7 +2253,7 @@ void setResultMessage(v8::Isolate* isolate, v8::Local<v8::Context> context,
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
 v8::Local<v8::Value> V8ClientConnection::requestFuzz(
-    v8::Isolate* isolate, fuzzer::RequestFuzzer* fuzzer) {
+    v8::Isolate* isolate, fuzzer::RequestFuzzer& fuzzer) {
   auto req = std::make_unique<fu::Request>();
 
   std::shared_ptr<fu::Connection> connection = acquireConnection();
@@ -2276,26 +2263,34 @@ v8::Local<v8::Value> V8ClientConnection::requestFuzz(
     return v8::Undefined(isolate);
   }
 
-  auto body = fuzzer->randomizeBody();
+  auto body = fuzzer.randomizeBody();
+  if (body.has_value()) {
+    LOG_DEVEL << "requestFuzz body " << body.value();
+  } else {
+    LOG_DEVEL << "NO BODY";
+  }
   std::string header;
   if (body.has_value()) {
-    v8::Local<v8::Value> bodyAsV8;
-    if (body.value()[0] == '{') {
-      VPackParser fuzzParser;
-      fuzzParser.parse(body.value().data(), body.value().size());
-      auto parsedBody = fuzzParser.builder();
-      bodyAsV8 = TRI_VPackToV8(isolate, parsedBody.slice());
-    } else {
-      bodyAsV8 = TRI_V8_STD_STRING(isolate, body.value());
+    fuzzer.randomizeHeader(header, req->payloadSize());
+    if (fuzzer.getHasBody()) {
+      v8::Local<v8::Value> bodyAsV8;
+      if (body.value()[0] == '{') {
+        VPackParser fuzzParser;
+        fuzzParser.parse(body.value().data(), body.value().size());
+        auto parsedBody = fuzzParser.builder();
+        bodyAsV8 = TRI_VPackToV8(isolate, parsedBody.slice());
+      } else {
+        bodyAsV8 = TRI_V8_STD_STRING(isolate, body.value());
+      }
+      if (!setPostBody(*req, isolate, bodyAsV8, _vpackOptions, _forceJson,
+                       false)) {
+        return v8::Undefined(isolate);
+      }
     }
-    if (!setPostBody(*req, isolate, bodyAsV8, _vpackOptions, _forceJson,
-                     false)) {
-      return v8::Undefined(isolate);
-    }
-    fuzzer->randomizeHeader(header, req->payloadSize());
   } else {
-    fuzzer->randomizeHeader(header, std::nullopt);
+    fuzzer.randomizeHeader(header, std::nullopt);
   }
+  LOG_DEVEL << "requestFuzz header " << header;
 
   fu::Error rc = fu::Error::NoError;
   std::unique_ptr<fu::Response> response;

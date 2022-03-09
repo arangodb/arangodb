@@ -24,6 +24,8 @@
 #include "RequestFuzzer.h"
 #include <Rest/CommonDefines.h>
 
+#include "Logger/LogMacros.h"
+
 namespace rest = arangodb::rest;
 
 namespace arangodb::fuzzer {
@@ -54,57 +56,45 @@ void RequestFuzzer::randomizeLineOperation(uint32_t numIts) {
         _randContext.mt() % LineOperation::kMaxLineOpValue);
     switch (lineOp) {
       case LineOperation::kInjectRandByteInLine: {
-        if (_stringLines.size() > 1) {
+        if (_headerSplitInLines.size() > 1) {
           uint32_t initLinePos;
           if (generateRandNumWithinRange<uint32_t>(0, 99) > 0) {
             initLinePos = 1;
           } else {
             initLinePos = 0;
           }
-          uint32_t randPos;
-          randPos = generateRandNumWithinRange<uint32_t>(
-              initLinePos, _stringLines.size() - 1);
-          if (_stringLines[randPos].find("Content-length") ==
-                  std::string::npos &&
-              _reqHasBody) {
-            _stringLines.emplace_back("Content-length:" +
-                                      std::to_string(_reqBodySize));
-          }
-          generateRandAsciiChar(_stringLines[randPos]);
+          uint32_t randPos = generateRandNumWithinRange<uint32_t>(
+              initLinePos, _headerSplitInLines.size() - 1);
+          generateRandAsciiChar(_headerSplitInLines[randPos]);
         }
         break;
       }
       case LineOperation::kCopyLine: {
-        if (_stringLines.size() > 1) {
-          _stringLines.emplace_back(
-              _stringLines.at(generateRandNumWithinRange<uint32_t>(
-                  1, _stringLines.size() - 1)));
+        if (_headerSplitInLines.size() > 1) {
+          uint32_t index = generateRandNumWithinRange<uint32_t>(
+              1, _headerSplitInLines.size() - 1);
+          _headerSplitInLines.emplace_back(_headerSplitInLines.at(index));
         }
         break;
       }
       case LineOperation::kAddLine: {
-        uint32_t numHeaderFields =
-            generateRandNumWithinRange<uint32_t>(0, _wordListForKeys.size());
-        for (uint32_t i = 0; i < numHeaderFields; ++i) {
-          uint32_t keyPos = generateRandNumWithinRange<uint32_t>(
-              0, _wordListForKeys.size() - 1);
+        if (_usedKeys.size() <= _wordListForKeys.size() - 5) {
           std::string keyName;
           std::string value;
-          if (!(_wordListForKeys[keyPos] == "random") &&
-              !(_wordListForKeys[keyPos] == "Content-length")) {
-            keyName = _wordListForKeys[keyPos];
-          } else {
-            randomizeCharOperation(keyName, 1);
-          }
+          do {
+            uint32_t keyPos = generateRandNumWithinRange<uint32_t>(
+                0, _wordListForKeys.size() - 1);
+            if (_wordListForKeys[keyPos] != "random") {
+              keyName = _wordListForKeys[keyPos];
+            } else {
+              keyName.clear();
+              randomizeCharOperation(keyName, 1);
+            }
+          } while (!_usedKeys.emplace(keyName).second);
+
           randomizeCharOperation(value, 1);
-          _keysAndValues[keyName] = value;
-        }
-        if (_reqHasBody) {
-          _keysAndValues.try_emplace("Content-length",
-                                     std::to_string(_reqBodySize));
-        }
-        for (auto const& [key, value] : _keysAndValues) {
-          _stringLines.emplace_back(std::move(key) + ":" + std::move(value));
+          _headerSplitInLines.emplace_back(std::move(keyName) + ":" +
+                                           std::move(value));
         }
         break;
       }
@@ -118,13 +108,24 @@ void RequestFuzzer::randomizeHeader(std::string& header,
                                     std::optional<size_t> const payloadSize) {
   if (payloadSize.has_value()) {
     _reqBodySize = payloadSize.value();
+  } else {
+    _reqBodySize = 0;
   }
   std::string firstLine;
   if (generateRandNumWithinRange<uint32_t>(0, 99) > 0) {
-    rest::RequestType randReqType = static_cast<rest::RequestType>(
-        _randContext.mt() %
-        static_cast<std::underlying_type<rest::RequestType>::type>(
-            rest::RequestType::ILLEGAL));
+    rest::RequestType randReqType;
+    using rt = rest::RequestType;
+    do {
+      randReqType = static_cast<rest::RequestType>(
+          _randContext.mt() %
+          static_cast<std::underlying_type<rest::RequestType>::type>(
+              rest::RequestType::ILLEGAL));
+    } while (randReqType == rt::HEAD);
+    if (randReqType == rt::GET || randReqType == rt::HEAD ||
+        randReqType == rt::OPTIONS) {
+      _reqHasBody = false;
+      _reqBodySize = 0;
+    }
     firstLine.append(rest::requestToString(randReqType));
   } else {
     randomizeCharOperation(firstLine, 1);
@@ -135,7 +136,8 @@ void RequestFuzzer::randomizeHeader(std::string& header,
   for (uint32_t i = 0; i < numNestedRoutes; ++i) {
     uint32_t routePos =
         generateRandNumWithinRange<uint32_t>(0, _wordListForRoute.size() - 1);
-    if (!(_wordListForRoute[routePos] == "random")) {
+    if (!(_wordListForRoute[routePos] == "random") ||
+        generateRandNumWithinRange<uint32_t>(0, 99) > 20) {
       firstLine.append(_wordListForRoute[routePos]);
     } else {
       randomizeCharOperation(firstLine, 1);
@@ -147,7 +149,7 @@ void RequestFuzzer::randomizeHeader(std::string& header,
   } else {
     randomizeCharOperation(firstLine, 1);
   }
-  if (generateRandNumWithinRange<uint32_t>(0, 99) > 3) {
+  if (generateRandNumWithinRange<uint32_t>(0, 99) > 2) {
     firstLine.append("1.1");
   } else {
     if (_randContext.mt() % 2 == 0) {
@@ -158,15 +160,22 @@ void RequestFuzzer::randomizeHeader(std::string& header,
       firstLine.append(std::to_string(generateRandInt32()));
     }
   }
-  _stringLines.emplace_back(firstLine);
+  _headerSplitInLines.emplace_back(firstLine);
   randomizeLineOperation(_numIterations);
-  for (uint32_t i = 0; i < _stringLines.size(); ++i) {
-    header.append(_stringLines[i] + "\r\n");
+  if (_reqBodySize) {
+    _headerSplitInLines.emplace_back("Content-length:" +
+                                     std::to_string(_reqBodySize));
+  }
+  TRI_ASSERT(header.empty());
+  for (uint32_t i = 0; i < _headerSplitInLines.size(); ++i) {
+    header.append(_headerSplitInLines[i] + "\r\n");
   }
   header.append("\r\n");  // new line for the end of the header
 }
 
 std::optional<std::string> RequestFuzzer::randomizeBody() {
+  _reqHasBody = false;
+  _headerSplitInLines.clear();
   if (generateRandNumWithinRange<uint32_t>(0, 99) > 30) {
     velocypack::Builder builder;
     randomizeBodyInternal(builder);

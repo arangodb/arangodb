@@ -141,7 +141,7 @@ class V8ClientConnection {
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   v8::Local<v8::Value> requestFuzz(v8::Isolate* isolate,
-                                   fuzzer::RequestFuzzer* fuzzer);
+                                   fuzzer::RequestFuzzer& fuzzer);
 #endif
 
   void initServer(v8::Isolate*, v8::Handle<v8::Context> context);

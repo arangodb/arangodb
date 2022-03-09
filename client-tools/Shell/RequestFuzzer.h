@@ -33,6 +33,7 @@
 #include <unordered_set>
 
 #include "Basics/VelocyPackHelper.h"
+#include <fuerte/message.h>
 
 namespace arangodb {
 namespace fuzzer {
@@ -66,7 +67,7 @@ class RequestFuzzer {
       : _numIterations(numIt.value_or(limitNumIterations)),
         _seed(seed.value_or(std::random_device()())),
         _randContext{_seed},
-        _stringLines{},
+        _headerSplitInLines{},
         _keysAndValues{},
         _reqHasBody(false) {}
 
@@ -74,6 +75,9 @@ class RequestFuzzer {
   std::optional<std::string> randomizeBody();
   void randomizeBodyInternal(velocypack::Builder& builder);
   uint32_t getSeed() { return _seed; }
+
+  bool getHasBody() { return _reqHasBody; }
+  std::unique_ptr<fuerte::Request> createRequest();
 
  private:
   void randomizeCharOperation(std::string& input, uint32_t numIts);
@@ -92,7 +96,7 @@ class RequestFuzzer {
   uint32_t _numIterations;
   uint32_t _seed;
   RandContext _randContext;
-  std::vector<std::string> _stringLines;
+  std::vector<std::string> _headerSplitInLines;
   std::unordered_map<std::string, std::string> _keysAndValues;
   std::string _tempStr;
   bool _reqHasBody;
@@ -106,6 +110,7 @@ class RequestFuzzer {
 
   uint32_t _recursionDepth = 0;
   std::vector<std::unordered_set<std::string>> _tempObjectKeys;
+  std::unordered_set<std::string> _usedKeys;
 
   static constexpr std::array<std::string_view, 13> _wordListForRoute = {
       {"/_db", "/_admin", "/_api", "/_system", "/_cursor", "/version",
@@ -125,7 +130,6 @@ class RequestFuzzer {
        "Connection",
        "Content-encoding",
        "Content-language",
-       "Content-length",
        "Content-location",
        "Content-MD5",
        "Content-range",
