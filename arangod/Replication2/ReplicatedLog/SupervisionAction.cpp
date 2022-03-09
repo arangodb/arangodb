@@ -64,17 +64,6 @@ void Executor::operator()(AddLogToPlanAction const& action) {
                  .end();
 }
 
-void Executor::operator()(AddParticipantsToTargetAction const& action) {
-  envelope = envelope.write()
-                 .emplace_object(targetPath->str(),
-                                 [&](VPackBuilder& builder) {
-                                   action._spec.toVelocyPack(builder);
-                                 })
-                 .inc(paths::plan()->version()->str())
-                 .precs()
-                 .end();
-}
-
 void Executor::operator()(CreateInitialTermAction const& action) {
   auto term =
       LogPlanTermSpecification(LogTerm{1}, action._config, std::nullopt);
@@ -293,11 +282,6 @@ void VelocyPacker::operator()(ErrorAction const& action) {
 }
 
 void VelocyPacker::operator()(AddLogToPlanAction const& action) {
-  builder.add(VPackValue("type"));
-  builder.add(VPackValue(action.name));
-}
-
-void VelocyPacker::operator()(AddParticipantsToTargetAction const& action) {
   builder.add(VPackValue("type"));
   builder.add(VPackValue(action.name));
 }

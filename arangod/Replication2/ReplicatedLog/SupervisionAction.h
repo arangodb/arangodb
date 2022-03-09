@@ -58,13 +58,6 @@ struct AddLogToPlanAction {
   LogTarget::Participants const _participants;
 };
 
-struct AddParticipantsToTargetAction {
-  static constexpr std::string_view name = "AddParticipantsToTargetAction";
-
-  AddParticipantsToTargetAction(LogTarget const& spec) : _spec(spec){};
-  LogTarget const _spec;
-};
-
 struct CreateInitialTermAction {
   static constexpr std::string_view name = "CreateIntialTermAction";
 
@@ -186,13 +179,14 @@ struct ConvergedToTargetAction {
   static constexpr std::string_view name = "ConvergedToTargetAction";
 };
 
-using Action = std::variant<
-    EmptyAction, ErrorAction, AddLogToPlanAction, AddParticipantsToTargetAction,
-    CreateInitialTermAction, CurrentNotAvailableAction, DictateLeaderAction,
-    DictateLeaderFailedAction, EvictLeaderAction, UpdateTermAction,
-    WriteEmptyTermAction, LeaderElectionAction, UpdateParticipantFlagsAction,
-    AddParticipantToPlanAction, RemoveParticipantFromPlanAction,
-    UpdateLogConfigAction, ConvergedToTargetAction>;
+using Action =
+    std::variant<EmptyAction, ErrorAction, AddLogToPlanAction,
+                 CreateInitialTermAction, CurrentNotAvailableAction,
+                 DictateLeaderAction, DictateLeaderFailedAction,
+                 EvictLeaderAction, UpdateTermAction, WriteEmptyTermAction,
+                 LeaderElectionAction, UpdateParticipantFlagsAction,
+                 AddParticipantToPlanAction, RemoveParticipantFromPlanAction,
+                 UpdateLogConfigAction, ConvergedToTargetAction>;
 
 using namespace arangodb::cluster::paths;
 
@@ -236,7 +230,6 @@ struct Executor {
   void operator()(EmptyAction const& action);
   void operator()(ErrorAction const& action);
   void operator()(AddLogToPlanAction const& action);
-  void operator()(AddParticipantsToTargetAction const& action);
   void operator()(CreateInitialTermAction const& action);
   void operator()(DictateLeaderAction const& action);
   void operator()(DictateLeaderFailedAction const& action);
@@ -261,7 +254,6 @@ struct VelocyPacker {
   void operator()(EmptyAction const& action);
   void operator()(ErrorAction const& action);
   void operator()(AddLogToPlanAction const& action);
-  void operator()(AddParticipantsToTargetAction const& action);
   void operator()(CreateInitialTermAction const& action);
   void operator()(CurrentNotAvailableAction const& action);
   void operator()(DictateLeaderAction const& action);

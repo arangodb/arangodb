@@ -198,14 +198,15 @@ RestStatus RestLogHandler::handlePost(ReplicatedLogMethods const& methods,
   // create a new log
   replication2::agency::LogTarget spec(replication2::agency::from_velocypack,
                                        specSlice);
-  return waitForFuture(
-      methods.createReplicatedLog(spec).thenValue([this](Result&& result) {
-        if (result.ok()) {
-          generateOk(rest::ResponseCode::OK, VPackSlice::emptyObjectSlice());
-        } else {
-          generateError(result);
-        }
-      }));
+  return waitForFuture(methods.createReplicatedLog(std::move(spec))
+                           .thenValue([this](Result&& result) {
+                             if (result.ok()) {
+                               generateOk(rest::ResponseCode::OK,
+                                          VPackSlice::emptyObjectSlice());
+                             } else {
+                               generateError(result);
+                             }
+                           }));
 }
 
 RestStatus RestLogHandler::handleGetRequest(
