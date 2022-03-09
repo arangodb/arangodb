@@ -440,7 +440,7 @@ RestStatus RestLogHandler::handleGetGlobalStatus(
   }
 
   auto specSource = std::invoke([&] {
-    auto isLocal = _request->parsedValue<bool>("local").value_or(false);
+    auto isLocal = _request->parsedValue<bool>("useLocalCache").value_or(false);
     if (isLocal) {
       return replicated_log::GlobalStatus::SpecificationSource::kLocalCache;
     }
