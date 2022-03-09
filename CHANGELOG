@@ -1,4 +1,4 @@
-v3.7.17 (2022-01-25)
+v3.7.18 (XXXX-XX-XX)
 --------------------
 
 * Log a better startup error in case an ArangoDB 3.7 is started on a too new
@@ -6,6 +6,10 @@ v3.7.17 (2022-01-25)
 
 * Harden validator for binary VelocyPack against additional types of malicious
   inputs.
+
+
+v3.7.17 (2022-01-25)
+--------------------
 
 * Fix creation of satellite graphs with a `numberOfShards` value != 1.
 
