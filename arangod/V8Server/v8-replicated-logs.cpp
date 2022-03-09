@@ -356,8 +356,27 @@ static void JS_GlobalStatus(v8::FunctionCallbackInfo<v8::Value> const& args) {
         std::string("No access to replicated log '") + to_string(id) + "'");
   }
 
-  auto result =
-      ReplicatedLogMethods::createInstance(vocbase)->getGlobalStatus(id).get();
+  bool isLocal = std::invoke([&] {
+    if (args.Length() > 0) {
+      auto builder = VPackBuilder();
+      TRI_V8ToVPack(isolate, builder, args[0], false, false);
+      auto const options = builder.slice();
+      if (auto slice = options.get("useLocalCache"); slice.isTrue()) {
+        return true;
+      }
+    }
+
+    return false;
+  });
+
+  auto source =
+      isLocal
+          ? replicated_log::GlobalStatus::SpecificationSource::kLocalCache
+          : replicated_log::GlobalStatus::SpecificationSource::kRemoteAgency;
+
+  auto result = ReplicatedLogMethods::createInstance(vocbase)
+                    ->getGlobalStatus(id, source)
+                    .get();
   VPackBuilder response;
   result.toVelocyPack(response);
   TRI_V8_RETURN(TRI_VPackToV8(isolate, response.slice()));
