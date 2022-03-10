@@ -85,7 +85,7 @@ struct DictateLeaderAction {
 };
 
 struct DictateLeaderFailedAction {
-  static constexpr std::string_view name = "DictateLeaderAction";
+  static constexpr std::string_view name = "DictateLeaderFailedAction";
 
   DictateLeaderFailedAction(std::string const& message) : _message{message} {};
 
