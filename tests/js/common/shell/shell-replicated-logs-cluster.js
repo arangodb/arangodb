@@ -152,7 +152,11 @@ function ReplicatedLogsWriteSuite () {
       let globalStatus = log.globalStatus();
       assertEqual(globalStatus.specification.source, "RemoteAgency");
       let status = log.status();
+      
+      // Make sure that coordinator/status and coordinator/global-status return the same thing.
+      // We should avoid comparing timestamps, so comparing only the keys of these objects will suffice.
       assertEqual(Object.keys(status).sort(), Object.keys(globalStatus).sort());
+      
       let localGlobalStatus = log.globalStatus({useLocalCache: true});
       assertEqual(localGlobalStatus.specification.source, "LocalCache");
     },
