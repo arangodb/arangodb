@@ -55,6 +55,12 @@ struct WasmVmMethodsSingleServer final
     return vocbase.server().getFeature<WasmServerFeature>().getAllFunctions();
   }
 
+  auto executeWasmUdf(std::string const& name, uint64_t a, uint64_t b) const
+      -> futures::Future<std::optional<uint64_t>> override {
+    return vocbase.server().getFeature<WasmServerFeature>().executeFunction(
+        name, a, b);
+  }
+
   TRI_vocbase_t& vocbase;
 };
 

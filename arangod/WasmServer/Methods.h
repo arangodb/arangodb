@@ -45,6 +45,9 @@ struct WasmVmMethods {
       -> futures::Future<Result> = 0;
   virtual auto getAllWasmUdfs() const
       -> futures::Future<std::unordered_map<std::string, WasmFunction>> = 0;
+  virtual auto executeWasmUdf(std::string const& name, uint64_t a,
+                              uint64_t b) const
+      -> futures::Future<std::optional<uint64_t>> = 0;
   static auto createInstance(TRI_vocbase_t& vocbase)
       -> std::shared_ptr<WasmVmMethods>;
 };

@@ -25,6 +25,7 @@
 
 #include "RestHandler/RestVocbaseBaseHandler.h"
 #include "WasmServer/Methods.h"
+#include "velocypack/Slice.h"
 
 namespace arangodb {
 using namespace wasm;

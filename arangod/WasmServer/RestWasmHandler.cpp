@@ -39,6 +39,7 @@
 #include "WasmServer/WasmCommon.h"
 #include "Basics/ResultT.h"
 #include "Futures/Future.h"
+#include "velocypack/Slice.h"
 
 using namespace arangodb;
 using namespace arangodb::wasm;
@@ -110,6 +111,46 @@ auto RestWasmHandler::handleDeleteRequest(WasmVmMethods const& methods)
   return RestStatus::DONE;
 }
 
+auto addWasmFunction(VPackSlice slice, wasm::WasmVmMethods const& methods,
+                     VPackBuilder& response) -> Result {
+  ResultT<WasmFunction> function =
+      arangodb::wasm::velocypackToWasmFunction(slice);
+  if (function.fail()) {
+    return Result{function.errorNumber(), function.errorMessage()};
+  }
+
+  auto create = methods.createWasmUdf(function.get());
+
+  {
+    VPackObjectBuilder ob1(&response);
+    response.add(VPackValue("installed"));
+    arangodb::wasm::wasmFunctionToVelocypack(function.get(), response);
+  }
+  return Result{};
+}
+
+auto executeWasmFunction(std::string const& functionname, VPackSlice slice,
+                         wasm::WasmVmMethods const& methods,
+                         VPackBuilder& response) -> Result {
+  auto parameters = arangodb::wasm::velocypackToParameters(slice);
+  if (!parameters.ok()) {
+    return Result{parameters.errorNumber(), parameters.errorMessage()};
+  }
+  auto [a, b] = parameters.get();
+
+  auto result = methods.executeWasmUdf(functionname, a, b).get();
+  if (!result.has_value()) {
+    return Result{TRI_ERROR_BAD_PARAMETER,
+                  "Function '" + functionname + "' cannot be found"};
+  }
+
+  {
+    VPackObjectBuilder ob(&response);
+    response.add("result", VPackValue(result.value()));
+  }
+  return Result{};
+}
+
 auto RestWasmHandler::handlePostRequest(WasmVmMethods const& methods)
     -> RestStatus {
   auto success = bool{};
@@ -117,22 +158,30 @@ auto RestWasmHandler::handlePostRequest(WasmVmMethods const& methods)
   if (!success) {
     return RestStatus::DONE;
   }
-  ResultT<WasmFunction> function =
-      arangodb::wasm::velocypackToWasmFunction(slice);
-  if (function.fail()) {
-    generateError(ResponseCode::BAD, function.errorNumber(),
-                  function.errorMessage());
-    return RestStatus::DONE;
-  }
 
-  auto create = methods.createWasmUdf(function.get());
-
-  VPackBuilder builder;
-  {
-    VPackObjectBuilder ob1(&builder);
-    builder.add(VPackValue("installed"));
-    arangodb::wasm::wasmFunctionToVelocypack(function.get(), builder);
+  std::vector<std::string> const& suffixes = _request->decodedSuffixes();
+  VPackBuilder response;
+  if (suffixes.size() == 0) {
+    auto result = addWasmFunction(slice, methods, response);
+    if (result.fail()) {
+      generateError(ResponseCode::BAD, result.errorNumber(),
+                    result.errorMessage());
+    } else {
+      generateOk(rest::ResponseCode::CREATED, response.slice());
+    }
+  } else if (suffixes.size() == 1) {
+    auto result = executeWasmFunction(suffixes[0], slice, methods, response);
+    if (result.fail()) {
+      generateError(ResponseCode::BAD, result.errorNumber(),
+                    result.errorMessage());
+    } else {
+      generateOk(rest::ResponseCode::OK, response.slice());
+    }
+  } else {
+    generateError(
+        ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+        "POST without suffix to add a function, POST with functionname as "
+        "suffix to exectue the function. More than one suffix is not allowed");
   }
-  generateOk(rest::ResponseCode::CREATED, builder.slice());
   return RestStatus::DONE;
 }
