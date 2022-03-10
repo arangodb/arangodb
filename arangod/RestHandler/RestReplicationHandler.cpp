@@ -3319,36 +3319,20 @@ void RestReplicationHandler::handleCommandRevisionDocuments() {
 
     for (VPackSlice entry : VPackArrayIterator(body)) {
       RevisionId rev = RevisionId::fromSlice(entry);
-      if (!it.hasMore()) {
-        // If the iterator is exhausted, let's try to seek, this can happen
-        // if the client has jumped back. Normally, the iterator will never
-        // be exhausted, but we must check, since we are not even allowed
-        // to call it.revision() if the iterator is exhausted!
-        it.seek(rev);
-      } else if (it.revision() < rev) {
-        // This is the normal case, in most cases, the client will ask for
-        // a whole range of adjacent revisions, so we optimize the fast
-        // path for this, so we try it.next() first, since this is cheaper
-        // than a seek:
+      // We assume that the rev is actually present, otherwise it would not
+      // have been ordered. But we want this code to work if revisions in
+      // the list arrive in some arbitrary order. However, in most cases
+      // the list will contain adjacent revs in ascending order. Therefore,
+      // we want to try a next() on the iterator first (if this makes sense).
+      // However, if we then still have not found the right revision, we need
+      // to seek. If the rev exists, the iterator will then point to the right
+      // document:
+      if (it.hasMore() && it.revision() < rev) {
         it.next();
-        if (!it.hasMore() || it.revision() != rev) {
-          // If we did not find what we want with it.next(), then we try
-          // an it.seek(rev) next and that is our last try:
-          it.seek(rev);
-        }
-      } else if (it.revision() > rev) {
-        // This is the case that the iterator is not exhausted, but is
-        // already further than the client. This happens, if the client
-        // "jumps back". Note that his can happen, since the client
-        // might not have got all ordered documents due to the chunkSize
-        // limit. It will then later go back to the same place to get more
-        // documents.
+      }
+      if (!it.hasMore() || it.revision() != rev) {
         it.seek(rev);
-      }  // if we fall through here, we are already sitting on the right
-         // revision by accident.
-      // Whatever has happened, if the revision rev exists in the database,
-      // then we are sitting on it. If not, the iterator might be exhausted
-      // or might point to a different revision.
+      }
       VPackSlice res = it.hasMore() && it.revision() == rev
                            ? it.document()
                            : velocypack::Slice::emptyObjectSlice();
