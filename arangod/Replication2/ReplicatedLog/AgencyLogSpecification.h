@@ -37,6 +37,9 @@ namespace arangodb::replication2::agency {
 struct from_velocypack_t {};
 inline constexpr auto from_velocypack = from_velocypack_t{};
 
+using ParticipantsFlagsMap =
+    std::unordered_map<ParticipantId, ParticipantFlags>;
+
 struct LogPlanTermSpecification {
   LogTerm term;
   LogConfig config;

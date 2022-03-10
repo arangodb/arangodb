@@ -205,6 +205,20 @@ auto PrototypeFollowerState::resign() && noexcept
   });
 }
 
+auto PrototypeFollowerState::get(std::string key)
+    -> std::optional<std::string> {
+  return guardedData.doUnderLock(
+      [key = std::move(key)](auto& core) -> std::optional<std::string> {
+        if (!core) {
+          return std::nullopt;
+        }
+        if (auto it = core->store.find(key); it != nullptr) {
+          return *it;
+        }
+        return std::nullopt;
+      });
+}
+
 auto PrototypeFactory::constructFollower(std::unique_ptr<PrototypeCore> core)
     -> std::shared_ptr<PrototypeFollowerState> {
   return std::make_shared<PrototypeFollowerState>(std::move(core));
@@ -260,23 +274,22 @@ operator()(
   std::visit(overload{
                  [&b](PrototypeLogEntry::DeleteOperation const& op) {
                    VPackObjectBuilder ob(&b);
-                   b.add("type", VPackValue("delete"));
-                   b.add("key", VPackValue(op.key));
+                   b.add("type", "delete");
+                   b.add("key", op.key);
                  },
                  [&b](PrototypeLogEntry::InsertOperation const& op) {
                    VPackObjectBuilder ob(&b);
-                   b.add("type", VPackValue("insert"));
+                   b.add("type", "insert");
                    {
                      VPackObjectBuilder ob2(&b, "entries");
                      for (auto const& [key, value] : op.entries) {
-                       b.add("key", VPackValue(key));
-                       b.add("value", VPackValue(value));
+                       b.add(key, value);
                      }
                    }
                  },
                  [&b](PrototypeLogEntry::BulkDeleteOperation const& op) {
                    VPackObjectBuilder ob(&b);
-                   b.add("type", VPackValue("bulkDelete"));
+                   b.add("type", "bulkDelete");
                    {
                      VPackArrayBuilder ob2(&b, "keys");
                      for (auto const& it : op.keys) {
