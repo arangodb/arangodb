@@ -92,8 +92,9 @@ bool IndexIterator::rearm(arangodb::aql::AstNode const* node,
 
 /// @brief returns cache hits (first) and misses (second) statistics, and
 /// resets their values to 0
-std::pair<uint64_t, uint64_t> IndexIterator::getAndResetCacheStats() noexcept {
-  std::pair<uint64_t, uint64_t> result{_cacheHits, _cacheMisses};
+std::pair<std::uint64_t, std::uint64_t>
+IndexIterator::getAndResetCacheStats() noexcept {
+  std::pair<std::uint64_t, std::uint64_t> result{_cacheHits, _cacheMisses};
   _cacheHits = 0;
   _cacheMisses = 0;
   return result;

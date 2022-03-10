@@ -49,6 +49,8 @@
 #include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/vocbase.h"
 
+#include <cstdint>
+
 namespace arangodb {
 class Index;
 class LogicalCollection;
@@ -238,7 +240,7 @@ class IndexIterator {
 
   /// @brief returns cache hits (first) and misses (second) statistics, and
   /// resets their values to 0
-  std::pair<uint64_t, uint64_t> getAndResetCacheStats() noexcept;
+  std::pair<std::uint64_t, std::uint64_t> getAndResetCacheStats() noexcept;
 
  protected:
   ReadOwnWrites canReadOwnWrites() const noexcept { return _readOwnWrites; }
@@ -257,9 +259,11 @@ class IndexIterator {
 
   virtual void skipImpl(uint64_t count, uint64_t& skipped);
 
-  void incrCacheHits(uint64_t value = 1) noexcept { _cacheHits += value; }
-  void incrCacheMisses(uint64_t value = 1) noexcept { _cacheMisses += value; }
-  void incrCacheStats(bool found, uint64_t value = 1) noexcept {
+  void incrCacheHits(std::uint64_t value = 1) noexcept { _cacheHits += value; }
+  void incrCacheMisses(std::uint64_t value = 1) noexcept {
+    _cacheMisses += value;
+  }
+  void incrCacheStats(bool found, std::uint64_t value = 1) noexcept {
     if (found) {
       _cacheHits += value;
     } else {
@@ -271,8 +275,8 @@ class IndexIterator {
   transaction::Methods* _trx;
 
   // statistics
-  uint64_t _cacheHits;
-  uint64_t _cacheMisses;
+  std::uint64_t _cacheHits;
+  std::uint64_t _cacheMisses;
 
   bool _hasMore;
 
