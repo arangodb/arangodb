@@ -34,6 +34,7 @@
 
 #include "Basics/VelocyPackHelper.h"
 #include <fuerte/message.h>
+#include <Rest/CommonDefines.h>
 
 namespace arangodb {
 namespace fuzzer {
@@ -68,18 +69,17 @@ class RequestFuzzer {
         _seed(seed.value_or(std::random_device()())),
         _randContext{_seed},
         _headerSplitInLines{},
-        _keysAndValues{},
-        _reqHasBody(false) {}
+        _keysAndValues{} {}
 
-  void randomizeHeader(std::string& header, std::optional<size_t> payloadSize);
-  std::optional<std::string> randomizeBody();
-  void randomizeBodyInternal(velocypack::Builder& builder);
   uint32_t getSeed() { return _seed; }
 
-  bool getHasBody() { return _reqHasBody; }
   std::unique_ptr<fuerte::Request> createRequest();
 
  private:
+  void generateHeader(std::string& header);
+
+  void generateBody(velocypack::Builder& builder);
+
   void randomizeCharOperation(std::string& input, uint32_t numIts);
 
   void randomizeLineOperation(uint32_t numIts);
@@ -87,8 +87,9 @@ class RequestFuzzer {
   template<typename T>
   T generateRandNumWithinRange(T min, T max);
 
-  void generateRandReadableAsciiString(std::string& input);
+  void generateRandAlphaNumericString(std::string& input);
   void generateRandAsciiChar(std::string& input);
+  void generateRandAlphaNumericChar(std::string& input);
 
   int32_t generateRandInt32();
 
@@ -99,23 +100,24 @@ class RequestFuzzer {
   std::vector<std::string> _headerSplitInLines;
   std::unordered_map<std::string, std::string> _keysAndValues;
   std::string _tempStr;
-  bool _reqHasBody;
-  std::string _reqBody;
-  size_t _reqBodySize;
+  rest::RequestType _randReqType;
 
   static constexpr uint32_t kMaxNestedRoutes = 4;
   static constexpr uint32_t kMaxDepth = 4;
   static constexpr uint32_t kObjNumMembers = 4;
   static constexpr uint32_t kArrayNumMembers = 4;
+  static constexpr char _alphaNumericChars[] =
+      "0123456789"
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+      "abcdefghijklmnopqrstuvwxyz";
 
   uint32_t _recursionDepth = 0;
   std::vector<std::unordered_set<std::string>> _tempObjectKeys;
   std::unordered_set<std::string> _usedKeys;
 
-  static constexpr std::array<std::string_view, 13> _wordListForRoute = {
+  static constexpr std::array<std::string_view, 12> _wordListForRoute = {
       {"/_db", "/_admin", "/_api", "/_system", "/_cursor", "/version",
-       "/status", "/license", "/collection", "/database", "/current", "/log",
-       "random"}};
+       "/status", "/license", "/collection", "/database", "/current", "/log"}};
 
   static constexpr std::array<std::string_view, 48> _wordListForKeys = {
       {"Accept",

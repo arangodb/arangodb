@@ -1047,7 +1047,6 @@ static void ClientConnection_httpFuzzRequests(
     velocypack::Builder builder;
     TRI_V8ToVPack(isolate, builder, v8connection->requestFuzz(isolate, fuzzer),
                   false);
-    LOG_DEVEL << "response " << builder.slice().toJson();
     fuzzReturnCodesCount[builder.slice().get("code").getUInt()]++;
   }
 
@@ -2254,8 +2253,6 @@ void setResultMessage(v8::Isolate* isolate, v8::Local<v8::Context> context,
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
 v8::Local<v8::Value> V8ClientConnection::requestFuzz(
     v8::Isolate* isolate, fuzzer::RequestFuzzer& fuzzer) {
-  auto req = std::make_unique<fu::Request>();
-
   std::shared_ptr<fu::Connection> connection = acquireConnection();
   if (!connection || connection->state() == fu::Connection::State::Closed) {
     TRI_V8_SET_EXCEPTION_MESSAGE(TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT,
@@ -2263,39 +2260,11 @@ v8::Local<v8::Value> V8ClientConnection::requestFuzz(
     return v8::Undefined(isolate);
   }
 
-  auto body = fuzzer.randomizeBody();
-  if (body.has_value()) {
-    LOG_DEVEL << "requestFuzz body " << body.value();
-  } else {
-    LOG_DEVEL << "NO BODY";
-  }
-  std::string header;
-  if (body.has_value()) {
-    fuzzer.randomizeHeader(header, req->payloadSize());
-    if (fuzzer.getHasBody()) {
-      v8::Local<v8::Value> bodyAsV8;
-      if (body.value()[0] == '{') {
-        VPackParser fuzzParser;
-        fuzzParser.parse(body.value().data(), body.value().size());
-        auto parsedBody = fuzzParser.builder();
-        bodyAsV8 = TRI_VPackToV8(isolate, parsedBody.slice());
-      } else {
-        bodyAsV8 = TRI_V8_STD_STRING(isolate, body.value());
-      }
-      if (!setPostBody(*req, isolate, bodyAsV8, _vpackOptions, _forceJson,
-                       false)) {
-        return v8::Undefined(isolate);
-      }
-    }
-  } else {
-    fuzzer.randomizeHeader(header, std::nullopt);
-  }
-  LOG_DEVEL << "requestFuzz header " << header;
+  auto req = fuzzer.createRequest();
 
   fu::Error rc = fu::Error::NoError;
   std::unique_ptr<fu::Response> response;
   try {
-    req->setFuzzReqHeader(header);
     response = connection->sendRequest(std::move(req));
   } catch (fu::Error const& ec) {
     rc = ec;
