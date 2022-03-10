@@ -212,7 +212,7 @@ struct ReplicatedLogMethodsCoordinator final
                                    });
 
       std::shuffle(dbservers.begin(), newEnd,
-                   RandomGenerator::UniformRandomGenerator<std::size_t>{});
+                   RandomGenerator::UniformRandomGenerator<std::uint32_t>{});
       auto iter = dbservers.begin();
       while (spec.participants.size() < spec.config.replicationFactor) {
         TRI_ASSERT(iter != newEnd);
@@ -709,7 +709,7 @@ struct ReplicatedStateCoordinatorMethods
                                    });
 
       std::shuffle(dbservers.begin(), newEnd,
-                   RandomGenerator::UniformRandomGenerator<std::size_t>{});
+                   RandomGenerator::UniformRandomGenerator<std::uint32_t>{});
       auto iter = dbservers.begin();
       while (spec.participants.size() < spec.config.replicationFactor) {
         TRI_ASSERT(iter != newEnd);
