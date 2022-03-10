@@ -1,8 +1,12 @@
-v3.8.6 (XXXX-XX-XX)
+v3.8.7 (XXXX-XX-XX)
 -------------------
 
-* Bugfix: DC-2-DC Disjoint-SmartGraphs and Hybrid-SmartGraphs are now
-  replicated to the follower data-center keeping their sharding intact.
+* Bugfix: DC-2-DC Disjoint-SmartGraphs and Hybrid-SmartGraphs are now replicated
+  to the follower data-center keeping their sharding intact.
+
+
+v3.8.6 (XXXX-XX-XX)
+-------------------
 
 * Replaced internal JS dependency xmldom with @xmldom/xmldom.
 
