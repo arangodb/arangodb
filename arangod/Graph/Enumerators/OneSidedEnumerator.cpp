@@ -199,8 +199,7 @@ auto OneSidedEnumerator<Configuration>::getNextPath()
     if (!_results.empty()) {
       auto step = std::move(_results.back());
       _results.pop_back();
-      return std::make_unique<ResultPathType>(std::move(step), _provider,
-                                              _interior);
+      return std::make_unique<ResultPathType>(step, _provider, _interior);
     }
   }
   return nullptr;
