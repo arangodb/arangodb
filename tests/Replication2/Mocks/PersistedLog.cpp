@@ -9,7 +9,7 @@ using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_log;
 using namespace arangodb::replication2::test;
 
-auto MockLog::insert(PersistedLogIterator& iter, WriteOptions const&)
+auto MockLog::insert(PersistedLogIterator& iter, WriteOptions const& opts)
     -> arangodb::Result {
   auto lastIndex = LogIndex{0};
 
@@ -19,6 +19,9 @@ auto MockLog::insert(PersistedLogIterator& iter, WriteOptions const&)
 
     TRI_ASSERT(entry->logIndex() > lastIndex);
     lastIndex = entry->logIndex();
+    if (opts.waitForSync) {
+      _writtenWithWaitForSync.insert(entry->logIndex());
+    }
   }
 
   return {};

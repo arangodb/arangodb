@@ -28,6 +28,8 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "Containers/FlatHashMap.h"
+#include "Containers/FlatHashSet.h"
 #include "Network/NetworkFeature.h"
 #include "Metrics/Fwd.h"
 
@@ -134,10 +136,10 @@ class ClusterFeature : public ArangodFeature {
    * @brief Add databases to dirty list
    */
   void addDirty(std::string const& database);
-  void addDirty(std::unordered_set<std::string> const& databases,
+  void addDirty(containers::FlatHashSet<std::string> const& databases,
                 bool callNotify);
   void addDirty(
-      std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const&
+      containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
           changeset);
   std::unordered_set<std::string> allDatabases() const;
 
@@ -146,7 +148,7 @@ class ClusterFeature : public ArangodFeature {
    *        This method must not be called by any other mechanism than
    *        the very start of a single maintenance run.
    */
-  std::unordered_set<std::string> dirty();
+  containers::FlatHashSet<std::string> dirty();
 
   /**
    * @brief Check database for dirtyness
@@ -233,7 +235,7 @@ class ClusterFeature : public ArangodFeature {
   /// @brief lock for dirty database list
   mutable arangodb::Mutex _dirtyLock;
   /// @brief dirty databases, where a job could not be posted)
-  std::unordered_set<std::string> _dirtyDatabases;
+  containers::FlatHashSet<std::string> _dirtyDatabases;
 };
 
 }  // namespace arangodb

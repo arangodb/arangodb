@@ -50,8 +50,8 @@ Debug32/
 Release64/
 Release32/
 WindowsLibraries/
-cluster/**
-cluster-init*/**
+cluster/
+cluster-init*/
 p/
 
 /core

@@ -229,8 +229,7 @@ class RocksDBCollection final : public RocksDBMetaCollection {
   mutable std::shared_ptr<cache::Cache> _cache;
 
   std::atomic<bool> _cacheEnabled;
-  /// @brief number of index creations in progress
-  std::atomic<int> _numIndexCreations;
+
   arangodb::TransactionStatistics& _statistics;
 };
 

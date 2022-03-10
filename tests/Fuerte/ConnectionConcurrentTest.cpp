@@ -24,7 +24,6 @@
 #include <fuerte/loop.h>
 #include <fuerte/helper.h>
 #include <thread>
-#include <velocypack/velocypack-aliases.h>
 
 #include "gtest/gtest.h"
 #include "ConnectionTest.h"

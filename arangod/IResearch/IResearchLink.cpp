@@ -21,18 +21,18 @@
 /// @author Andrey Abramov
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
+#include "IResearchLink.h"
+
 #include <index/column_info.hpp>
 #include <utils/singleton.hpp>
 
-#include "IResearchDocument.h"
-#include "IResearchLink.h"
-
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryCache.h"
-#include "Basics/StaticStrings.h"
 #include "Basics/DownCast.h"
+#include "Basics/StaticStrings.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
+#include "IResearchDocument.h"
 #ifdef USE_ENTERPRISE
 #include "Cluster/ClusterMethods.h"
 #endif
@@ -40,12 +40,14 @@
 #include "IResearch/IResearchCompression.h"
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchLinkHelper.h"
+#include "IResearch/IResearchMetricStats.h"
 #include "IResearch/IResearchPrimaryKeyFilter.h"
 #include "IResearch/IResearchView.h"
 #include "IResearch/IResearchViewCoordinator.h"
 #include "IResearch/VelocyPackHelper.h"
-#include "Metrics/BatchBuilder.h"
+#include "Metrics/Batch.h"
 #include "Metrics/GaugeBuilder.h"
+#include "Metrics/Guard.h"
 #include "Metrics/MetricsFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
@@ -113,17 +115,23 @@ DECLARE_GAUGE(arangodb_search_consolidation_time, uint64_t,
   checkFieldFeatures(meta, checkFieldFeatures);
 }
 
-constexpr std::string_view arangosearch_link_stats_name =
-    "arangosearch_link_stats";
+constexpr std::string_view kSearchStats = "arangodb_search_link_stats";
 
 template<typename T>
-T getMetric(const IResearchLink& link) {
+T getMetric(IResearchLink const& link) {
   T metric;
+  metric.addLabel("db", link.getDbName());
   metric.addLabel("view", link.getViewId());
   metric.addLabel("collection", link.getCollectionName());
   metric.addLabel("shard", link.getShardName());
-  metric.addLabel("db", link.getDbName());
   return metric;
+}
+
+std::string getLabels(IResearchLink const& link) {
+  return "db=\"" + link.getDbName() +                     //
+         "\",view=\"" + link.getViewId() +                //
+         "\",collection=\"" + link.getCollectionName() +  //
+         "\",shard=\"" + link.getShardName() + "\"";
 }
 
 void initCollectionName(LogicalCollection const& collection, ClusterInfo* ci,
@@ -198,24 +206,24 @@ Result IResearchLink::toView(std::shared_ptr<LogicalView> const& logical,
   return {};
 }
 
-Result IResearchLink::initAndLink(InitCallback const& init,
+Result IResearchLink::initAndLink(bool& pathExists, InitCallback const& init,
                                   IResearchView* view) {
-  auto r = initDataStore(init, _meta._version, !_meta._sort.empty(),
+  auto r = initDataStore(pathExists, init, _meta._version, !_meta._sort.empty(),
                          _meta._storedValues.columns(), _meta._sortCompression);
   if (r.ok() && view) {
     r = view->link(_asyncSelf);
-    // TODO(MBkkt) Should we remove directory if we create it?
   }
   return r;
 }
 
-Result IResearchLink::initSingleServer(InitCallback const& init) {
+Result IResearchLink::initSingleServer(bool& pathExists,
+                                       InitCallback const& init) {
   std::shared_ptr<IResearchView> view;
   auto r = toView(_collection.vocbase().lookupView(_viewGuid), view);
   if (!r.ok()) {
     return r;
   }
-  return initAndLink(init, view.get());
+  return initAndLink(pathExists, init, view.get());
 }
 
 Result IResearchLink::initCoordinator(InitCallback const& init) {
@@ -228,7 +236,7 @@ Result IResearchLink::initCoordinator(InitCallback const& init) {
   return view->link(*this);
 }
 
-Result IResearchLink::initDBServer(InitCallback const& init) {
+Result IResearchLink::initDBServer(bool& pathExists, InitCallback const& init) {
   auto& vocbase = _collection.vocbase();
   auto& server = vocbase.server();
   bool const clusterEnabled = server.getFeature<ClusterFeature>().isEnabled();
@@ -261,11 +269,11 @@ Result IResearchLink::initDBServer(InitCallback const& init) {
         " Please rollback the updated arangodb binary and"
         " finish the recovery first.");
   }
-  return initAndLink(init, view.get());
+  return initAndLink(pathExists, init, view.get());
 }
 
 IResearchLink::IResearchLink(IndexId iid, LogicalCollection& collection)
-    : IResearchDataStore(iid, collection), _linkStats{nullptr} {}
+    : IResearchDataStore(iid, collection) {}
 
 IResearchLink::~IResearchLink() {
   Result res;
@@ -325,7 +333,7 @@ Result IResearchLink::drop() {
   return deleteDataStore();
 }
 
-Result IResearchLink::init(velocypack::Slice definition,
+Result IResearchLink::init(velocypack::Slice definition, bool& pathExists,
                            InitCallback const& init) {
   auto& vocbase = _collection.vocbase();
   auto& server = vocbase.server();
@@ -354,11 +362,11 @@ Result IResearchLink::init(velocypack::Slice definition,
   _viewGuid = definition.get(StaticStrings::ViewIdField).stringView();
   Result r;
   if (isSingleServer) {
-    r = initSingleServer(init);
+    r = initSingleServer(pathExists, init);
   } else if (ServerState::instance()->isCoordinator()) {
     r = initCoordinator(init);
   } else if (ServerState::instance()->isDBServer()) {
-    r = initDBServer(init);
+    r = initDBServer(pathExists, init);
   } else {
     TRI_ASSERT(false);
     return r;
@@ -450,19 +458,18 @@ bool IResearchLink::setCollectionName(irs::string_ref name) noexcept {
   return false;
 }
 
-Result IResearchLink::unload() {
-  // this code is used by the MMFilesEngine
-  // if the collection is in the process of being removed then drop it from the
-  // view
-  // FIXME TODO remove once LogicalCollection::drop(...) will drop its indexes
-  // explicitly
+Result IResearchLink::unload() noexcept {
+  // TODO(MBkkt) It's true? Now it's just a guess.
+  // This is necessary because the removal of the collection can be parallel
+  // with the removal of the link: when we decided whether to drop the link,
+  // the collection was still there. But when we did an unload link,
+  // the collection was already lazily deleted.
   if (_collection.deleted()  // collection deleted
-      || TRI_vocbase_col_status_e::TRI_VOC_COL_STATUS_DELETED ==
-             _collection.status()) {
+      || _collection.status() == TRI_VOC_COL_STATUS_DELETED) {
     return drop();
   }
-
-  return shutdownDataStore();
+  shutdownDataStore();
+  return {};
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -520,20 +527,9 @@ std::string IResearchLink::getCollectionName() const {
   return {};
 }
 
-IResearchLink::LinkStats IResearchLink::stats() const {
-  return LinkStats(statsSynced());
-}
-
-void IResearchLink::updateStats(IResearchDataStore::Stats const& stats) {
-  _linkStats->store(IResearchLink::LinkStats(stats));
-}
-
-void IResearchLink::insertStats() {
+void IResearchLink::insertMetrics() {
   auto& metric =
       _collection.vocbase().server().getFeature<metrics::MetricsFeature>();
-  auto builder = getMetric<metrics::BatchBuilder<LinkStats>>(*this);
-  builder.setName(arangosearch_link_stats_name);
-  _linkStats = &metric.add(std::move(builder));
   _numFailedCommits =
       &metric.add(getMetric<arangodb_search_num_failed_commits>(*this));
   _numFailedCleanups =
@@ -545,79 +541,44 @@ void IResearchLink::insertStats() {
       &metric.add(getMetric<arangodb_search_cleanup_time>(*this));
   _avgConsolidationTimeMs =
       &metric.add(getMetric<arangodb_search_consolidation_time>(*this));
+  _metricStats = &metric.batchAdd<MetricStats>(kSearchStats, getLabels(*this));
 }
 
-void IResearchLink::removeStats() {
-  auto& metricFeature =
+void IResearchLink::removeMetrics() {
+  auto& metric =
       _collection.vocbase().server().getFeature<metrics::MetricsFeature>();
-  if (_linkStats) {
-    _linkStats = nullptr;
-    auto builder = getMetric<metrics::BatchBuilder<LinkStats>>(*this);
-    builder.setName(arangosearch_link_stats_name);
-    metricFeature.remove(std::move(builder));
-  }
   if (_numFailedCommits) {
     _numFailedCommits = nullptr;
-    metricFeature.remove(getMetric<arangodb_search_num_failed_commits>(*this));
+    metric.remove(getMetric<arangodb_search_num_failed_commits>(*this));
   }
   if (_numFailedCleanups) {
     _numFailedCleanups = nullptr;
-    metricFeature.remove(getMetric<arangodb_search_num_failed_cleanups>(*this));
+    metric.remove(getMetric<arangodb_search_num_failed_cleanups>(*this));
   }
   if (_numFailedConsolidations) {
     _numFailedConsolidations = nullptr;
-    metricFeature.remove(
-        getMetric<arangodb_search_num_failed_consolidations>(*this));
+    metric.remove(getMetric<arangodb_search_num_failed_consolidations>(*this));
   }
   if (_avgCommitTimeMs) {
     _avgCommitTimeMs = nullptr;
-    metricFeature.remove(getMetric<arangodb_search_commit_time>(*this));
+    metric.remove(getMetric<arangodb_search_commit_time>(*this));
   }
   if (_avgCleanupTimeMs) {
     _avgCleanupTimeMs = nullptr;
-    metricFeature.remove(getMetric<arangodb_search_cleanup_time>(*this));
+    metric.remove(getMetric<arangodb_search_cleanup_time>(*this));
   }
   if (_avgConsolidationTimeMs) {
     _avgConsolidationTimeMs = nullptr;
-    metricFeature.remove(getMetric<arangodb_search_consolidation_time>(*this));
+    metric.remove(getMetric<arangodb_search_consolidation_time>(*this));
+  }
+  if (_metricStats) {
+    _metricStats = nullptr;
+    metric.batchRemove(kSearchStats, getLabels(*this));
   }
 }
 
 void IResearchLink::invalidateQueryCache(TRI_vocbase_t* vocbase) {
   aql::QueryCache::instance()->invalidate(vocbase, _viewGuid);
-}
-
-void IResearchLink::LinkStats::toPrometheus(std::string& result, bool first,
-                                            std::string_view globals,
-                                            std::string_view labels) const {
-  auto writeAnnotation = [&] {
-    (result += '{') += globals;
-    if (!labels.empty()) {
-      if (!globals.empty()) {
-        result += ',';
-      }
-      result += labels;
-    }
-    result += '}';
-  };
-  auto writeMetric = [&](std::string_view name, std::string_view help,
-                         size_t value) {
-    if (first) {
-      (result.append("# HELP ").append(name) += ' ').append(help) += '\n';
-      result.append("# TYPE ").append(name) += " gauge\n";
-    }
-    result.append(name);
-    writeAnnotation();
-    result.append(std::to_string(value)) += '\n';
-  };
-  writeMetric(arangodb_search_num_docs::kName, "Number of documents", numDocs);
-  writeMetric(arangodb_search_num_live_docs::kName, "Number of live documents",
-              numLiveDocs);
-  writeMetric(arangodb_search_num_segments::kName, "Number of segments",
-              numSegments);
-  writeMetric(arangodb_search_num_files::kName, "Number of files", numFiles);
-  writeMetric(arangodb_search_index_size::kName, "Size of the index in bytes",
-              indexSize);
 }
 
 }  // namespace arangodb::iresearch

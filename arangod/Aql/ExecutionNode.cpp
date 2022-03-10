@@ -73,7 +73,6 @@
 #include "Transaction/Methods.h"
 
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <algorithm>
 
@@ -1021,13 +1020,6 @@ void ExecutionNode::planRegisters(ExplainRegisterPlan explainRegisterPlan) {
   // from each depth. this is a completely optional performance
   // optimization. turning it off should not affect correctness,
   // only performance.
-  // note: we are intentionally not performing this optimization
-  // in case the query still contains old style subqueries.
-  // in that case, the register planning optimization would be slightly
-  // more complex to perform. 99.99% of queries should not be affected
-  // by this optimization being turned off, because old-style subqueries
-  // are only around in case except someone intentionally turned off
-  // subquery optimizations.
   v->shrink(this);
 }
 
@@ -1580,14 +1572,32 @@ std::unique_ptr<ExecutionBlock> EnumerateCollectionNode::createBlock(
                                        " did not come into sync in time (" +
                                        std::to_string(maxWait) + ")");
   }
+
+  // check which variables are used by the node's post-filter
+  std::vector<std::pair<VariableId, RegisterId>> filterVarsToRegs;
+
+  if (hasFilter()) {
+    VarSet inVars;
+    filter()->variables(inVars);
+
+    filterVarsToRegs.reserve(inVars.size());
+
+    for (auto& var : inVars) {
+      TRI_ASSERT(var != nullptr);
+      auto regId = variableToRegisterId(var);
+      filterVarsToRegs.emplace_back(var->id, regId);
+    }
+  }
+
   auto const produceResult =
       this->isVarUsedLater(_outVariable) || this->_filter != nullptr;
   auto outputRegister = variableToRegisterId(_outVariable);
   auto registerInfos = createRegisterInfos({}, RegIdSet{outputRegister});
   auto executorInfos = EnumerateCollectionExecutorInfos(
       outputRegister, engine.getQuery(), collection(), _outVariable,
-      produceResult, this->_filter.get(), this->projections(), this->_random,
-      this->doCount(), this->canReadOwnWrites());
+      produceResult, this->_filter.get(), this->projections(),
+      std::move(filterVarsToRegs), this->_random, this->doCount(),
+      this->canReadOwnWrites());
   return std::make_unique<ExecutionBlockImpl<EnumerateCollectionExecutor>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));
 }
@@ -1612,10 +1622,28 @@ ExecutionNode* EnumerateCollectionNode::clone(ExecutionPlan* plan,
   return cloneHelper(std::move(c), withDependencies, withProperties);
 }
 
+/// @brief replaces variables in the internals of the execution node
+/// replacements are { old variable id => new variable }
+void EnumerateCollectionNode::replaceVariables(
+    std::unordered_map<VariableId, Variable const*> const& replacements) {
+  DocumentProducingNode::replaceVariables(replacements);
+}
+
 void EnumerateCollectionNode::setRandom() { _random = true; }
 
 bool EnumerateCollectionNode::isDeterministic() {
   return !_random && (canReadOwnWrites() == ReadOwnWrites::no);
+}
+
+void EnumerateCollectionNode::getVariablesUsedHere(VarSet& vars) const {
+  if (hasFilter()) {
+    Ast::getReferencedVariables(filter()->node(), vars);
+    // need to unset the output variable that we produce ourselves,
+    // otherwise the register planning runs into trouble. the register
+    // planning's assumption is that all variables that are used in a
+    // node must also be used later.
+    vars.erase(outVariable());
+  }
 }
 
 std::vector<Variable const*> EnumerateCollectionNode::getVariablesSetHere()

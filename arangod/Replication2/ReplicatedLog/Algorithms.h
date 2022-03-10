@@ -32,6 +32,10 @@
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 
+namespace arangodb::cluster {
+struct IFailureOracle;
+}
+
 namespace arangodb::replication2::algorithms {
 
 struct ParticipantRecord {
@@ -66,12 +70,13 @@ struct LogActionContext {
       -> std::shared_ptr<replication2::replicated_log::AbstractFollower> = 0;
 };
 
-auto updateReplicatedLog(LogActionContext& ctx, ServerID const& myServerId,
-                         RebootId myRebootId, LogId logId,
-                         agency::LogPlanSpecification const* spec) noexcept
+auto updateReplicatedLog(
+    LogActionContext& ctx, ServerID const& myServerId, RebootId myRebootId,
+    LogId logId, agency::LogPlanSpecification const* spec,
+    std::shared_ptr<cluster::IFailureOracle const> failureOracle) noexcept
     -> futures::Future<arangodb::Result>;
 
-struct ParticipantStateTuple {
+struct ParticipantState {
   TermIndexPair lastAckedEntry;
   ParticipantId id;
   bool failed = false;
@@ -84,16 +89,15 @@ struct ParticipantStateTuple {
   [[nodiscard]] auto lastTerm() const noexcept -> LogTerm;
   [[nodiscard]] auto lastIndex() const noexcept -> LogIndex;
 
-  friend auto operator<=>(ParticipantStateTuple const&,
-                          ParticipantStateTuple const&) noexcept;
-  friend auto operator<<(std::ostream& os,
-                         ParticipantStateTuple const& p) noexcept
+  friend auto operator<=>(ParticipantState const&,
+                          ParticipantState const&) noexcept;
+  friend auto operator<<(std::ostream& os, ParticipantState const& p) noexcept
       -> std::ostream&;
 };
 
-auto operator<=>(ParticipantStateTuple const& left,
-                 ParticipantStateTuple const& right) noexcept;
-auto operator<<(std::ostream& os, ParticipantStateTuple const& p) noexcept
+auto operator<=>(ParticipantState const& left,
+                 ParticipantState const& right) noexcept;
+auto operator<<(std::ostream& os, ParticipantState const& p) noexcept
     -> std::ostream&;
 
 struct CalculateCommitIndexOptions {
@@ -104,7 +108,7 @@ struct CalculateCommitIndexOptions {
                               std::size_t softWriteConcern);
 };
 
-auto calculateCommitIndex(std::vector<ParticipantStateTuple> const& indexes,
+auto calculateCommitIndex(std::vector<ParticipantState> const& participants,
                           CalculateCommitIndexOptions opt,
                           LogIndex currentCommitIndex,
                           TermIndexPair lastTermIndex)

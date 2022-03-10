@@ -108,8 +108,6 @@ stringdef DZ '{U+095D}' // ≡ {D}{Z}
 stringdef PZ '{U+095E}' // ≡ {P}{Z}
 stringdef yZ '{U+095F}' // ≡ {y}{Z}
 
-integers ( p )
-
 groupings ( consonant )
 
 routines ( CONSONANT )
@@ -129,15 +127,17 @@ define consonant '{k}{K}{g}{G}{f}' +
 backwardmode ( define CONSONANT as ( consonant ) )
 
 define stem as (
-    test ( next setmark p )
+    // We assume in this implementation that the whole word doesn't count
+    // as a valid suffix to remove, so we remove the longest suffix from
+    // the list which leaves at least one character.  This change affects
+    // 47 words out of the 65,140 in the sample vocabulary from Hindi
+    // wikipedia.
+    //
+    // The trick here is we use `next` in forward mode to advance the cursor
+    // to the second character, then `backwards` swaps the cursor and limit.
+    next
     backwards (
-        // We assume in this implementation that the whole word doesn't count
-        // as a valid suffix to remove, so we remove the longest suffix from
-        // the list which leaves at least one character.  This change affects
-        // 47 words out of the 65,140 in the sample vocabulary from Hindi
-        // wikipedia.
-        setlimit tomark p for ([substring])
-        among (
+        [substring] among (
             // The list below is derived from figure 3 in the paper.
             //
             // We perform the stemming on the Devanagari characters rather than

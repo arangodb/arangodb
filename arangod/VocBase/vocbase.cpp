@@ -37,7 +37,6 @@
 #include <velocypack/Utf8Helper.h>
 #include <velocypack/Value.h>
 #include <velocypack/ValueType.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/PlanCache.h"
@@ -72,6 +71,7 @@
 #include "Replication2/ReplicatedLog/LogFollower.h"
 #include "Replication2/ReplicatedLog/LogLeader.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
+#include "Replication2/ReplicatedLog/LogUnconfiguredParticipant.h"
 #include "Replication2/ReplicatedLog/PersistedLog.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogFeature.h"
@@ -280,7 +280,9 @@ struct arangodb::VocBaseLogManager {
         [&](GuardedData& data)
             -> ResultT<std::shared_ptr<
                 replication2::replicated_state::ReplicatedStateBase>> {
-          auto state = data.createReplicatedState(id, type, userData, feature);
+          auto state = data.createReplicatedState(
+              id, type, userData, feature,
+              _logContext.withTopic(Logger::REPLICATED_STATE));
           LOG_CTX("2bf8d", DEBUG, _logContext)
               << "Created replicated state " << id << " impl = " << type
               << " data = " << userData.toJson();
@@ -304,7 +306,9 @@ struct arangodb::VocBaseLogManager {
             return iter->second;
           }
 
-          auto state = data.createReplicatedState(id, type, userData, feature);
+          auto state = data.createReplicatedState(
+              id, type, userData, feature,
+              _logContext.withTopic(Logger::REPLICATED_STATE));
           LOG_CTX("2bf5d", DEBUG, _logContext)
               << "Created replicated state " << id << " impl = " << type
               << " data = " << userData.toJson();
@@ -330,7 +334,8 @@ struct arangodb::VocBaseLogManager {
     auto createReplicatedState(
         replication2::LogId id, std::string_view type,
         velocypack::Slice userData,
-        replication2::replicated_state::ReplicatedStateAppFeature& feature)
+        replication2::replicated_state::ReplicatedStateAppFeature& feature,
+        LoggerContext const& logContext)
         -> ResultT<std::shared_ptr<
             replication2::replicated_state::ReplicatedStateBase>> {
       auto iter = states.find(id);
@@ -343,7 +348,8 @@ struct arangodb::VocBaseLogManager {
         return {TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND};
       }
 
-      auto state = feature.createReplicatedState(type, logIter->second);
+      auto state =
+          feature.createReplicatedState(type, logIter->second, logContext);
       states.emplace(id, state);
       return state;
     }
