@@ -32,7 +32,6 @@
 #include "fakeit.hpp"
 
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <typeinfo>
 

@@ -101,7 +101,7 @@ struct DocIdScorer : public irs::sort {
     return "test_doc_id";
   }
 
-  static ptr make(const irs::string_ref&) {
+  static ptr make(irs::string_ref) {
     PTR_NAMED(DocIdScorer, ptr);
     return ptr;
   }
@@ -2763,7 +2763,9 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
     Link(arangodb::IndexId id, arangodb::LogicalCollection& col)
         : IResearchLink(id, col) {
       auto json = VPackParser::fromJson(R"({ "view": "42" })");
-      EXPECT_TRUE(init(json->slice()).ok());
+      bool pathExists = false;
+      EXPECT_TRUE(init(json->slice(), pathExists).ok());
+      EXPECT_TRUE(pathExists);
     }
   };
 

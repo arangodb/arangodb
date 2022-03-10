@@ -117,7 +117,7 @@ void SupervisorFeature::collectOptions(
   options->addOption(
       "--supervisor", "background the server, starts a supervisor",
       new BooleanParameter(&_supervisor),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 }
 
 void SupervisorFeature::validateOptions(

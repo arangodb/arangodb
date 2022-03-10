@@ -55,11 +55,25 @@ struct SingleServerEdgeDocumentToken;
 
 class SingleServerEdgeCursor final : public EdgeCursor {
  private:
+  struct CursorInfo {
+    std::unique_ptr<IndexIterator> cursor;
+    uint16_t coveringIndexPosition;
+
+    CursorInfo(std::unique_ptr<IndexIterator> cursor,
+               uint16_t coveringIndexPosition) noexcept
+        : cursor(std::move(cursor)),
+          coveringIndexPosition(coveringIndexPosition) {}
+
+    CursorInfo(CursorInfo const&) = delete;
+    CursorInfo& operator=(CursorInfo const&) = delete;
+    CursorInfo(CursorInfo&&) noexcept = default;
+    CursorInfo& operator=(CursorInfo&&) noexcept = default;
+  };
+
   BaseOptions const* _opts;
   transaction::Methods* _trx;
   aql::Variable const* _tmpVar;
-  // TODO: make this a flat vector
-  std::vector<std::vector<std::unique_ptr<IndexIterator>>> _cursors;
+  std::vector<std::vector<CursorInfo>> _cursors;
   size_t _currentCursor;
   size_t _currentSubCursor;
   std::vector<LocalDocumentId> _cache;
@@ -87,7 +101,7 @@ class SingleServerEdgeCursor final : public EdgeCursor {
  private:
   // returns false if cursor can not be further advanced
   bool advanceCursor(IndexIterator*& cursor,
-                     std::vector<std::unique_ptr<IndexIterator>>*& cursorSet);
+                     std::vector<CursorInfo>*& cursorSet);
 
   void getDocAndRunCallback(IndexIterator*,
                             EdgeCursor::Callback const& callback);

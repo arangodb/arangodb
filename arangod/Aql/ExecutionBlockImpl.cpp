@@ -86,7 +86,6 @@
 #include "Graph/algorithm-aliases.h"
 
 #include <velocypack/Dumper.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <type_traits>
 

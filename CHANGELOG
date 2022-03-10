@@ -1,6 +1,85 @@
 devel
 -----
 
+* Turn off sending "Server" HTTP response header on DB servers if not 
+  explicitly requested. This saves a tiny bit of traffic on each response
+  from a DB server.
+
+* Fix null pointer access when using WINDOW operation with a COUNT/LENGTH
+  aggregate function without any arguments.
+
+* Enable range deletions in the WAL for truncate operationns in the cluster, 
+  too. This can speed up truncate operations for large collections/shards.
+
+* Set max recursion depth for VelocyPack, JSON and JavaScript arrays and 
+  objects to about 200.
+
+* Updated snowball to version 2.2.0
+
+* Fixed: Deadlock created by high load and a follower trying to get into sync.
+  In the final synchronization phase the follower needs to temporarily block writes
+  on the leader so we have a reliable point in time where we can prove that the data is consistent.
+  If the leader at this point is flooded with write requests to that shard there is a chance
+  that all worker threads only pick up those writes, which cannot make any progress until the
+  lock is cleared. However, the process to clear the lock was on the same priority as those writes.
+  Hence this lock clear operations could not bypass the writes. Now we moved every follow up request
+  after the lock to HIGH lanes, which will allow them to bypass all non-internal operations.
+
+* arangosh now uses the same header the UI uses to gain higher priority on initial connection.
+  This will increase the chance for an arangosh to connect to a server under very high load.
+
+* Removed internal JavaScript dependencies "mocha" and "chalk". We recommend
+  always bundling your own copy of third-party modules, even ones listed as
+  public.
+
+* Bugfix: DC2DC Disjoint-SmartGraphs and Hybrid-SmartGraphs are now
+  replicated to the follower data-center keeping their sharding intact.
+
+* Optimize further RocksDB throttle to allow for no change on any
+  given calculation cycle.
+
+* Added a log message that appears upon starting arangod that shows the number 
+  of the parent process id and, if able to acknowledge it, the name of the 
+  parent process.
+
+* Avoid multiple parallel SIGHUP requests to be handled at the same time.
+  Now collapse multiple incoming SIGHUP requests into a single one, which can
+  be executed race-free.
+
+* Parallelize applying of revision tree changes with fetching next revision
+  tree range in incremental collection replication for collections created 
+  with ArangoDB 3.8 and higher.
+
+* Support JSON schema objects for documenting Foxx endpoints.
+
+* Internal refactoring of IndexIterator APIs.
+
+* Sorted out various geo problems:
+
+  - No more special detection of "latitude-longitude rectangles" is done,
+    since this is in conflict with the definition of polygon boundaries to
+    be geodesics.
+  - Linear rings in polygons are no longer automatically "normalized", so
+    now it is possible to have polygons which cover more than half of the
+    Earth.
+  - Rules for polygons and multigons have been clarified and are now properly
+    enforced for the `GEO_POLYGON` and `GEO_MULTIPOLYGON` AQL functions.
+  - Introduced `legacyPolygon` flag for geo indexes to continue to support
+    the old behaviour in existing geo indexes.
+  - Added lots of additional tests, thereby fixing several bugs in geo index
+    lookup.
+  - Use a faster algorithm for pure `GEO_CONTAINS` and `GEO_INTERSECTS`
+    queries.
+
+* Fix counts and file size sum in hotbackup META files. Do no longer count
+  directories.
+
+* Fixed an assertion failure which could occur when there was an error in
+  the HTTP header, so that the message body was not actually read.
+
+* Fixed a crash which could occur when there was an error in the HTTP
+  header parsing).
+
 * Added back the optimization for empty document update operations (i.e. update
   requests in which no attributes were specified to be updated), handling them 
   in a special way without performing any writes, also excluding such special 
@@ -83,10 +162,11 @@ devel
 * Fix potential access to dangling reference in cancellation of shard
   synchronization.
 
-* Limited module resolution in arangosh to the path from which arangosh is invoked.
+* Limited module resolution in arangosh to the path from which arangosh is
+  invoked.
 
-* Fixed BTS-621 Fixed rare case of segfault in cluster during database recovery if DBServer is
-  in upgrade mode in the same time.
+* Fixed BTS-621 Fixed rare case of segfault in cluster during database recovery
+  if DBServer is in upgrade mode in the same time.
 
 * Changed default value of startup option 
   `--rocksdb.cache-index-and-filter-blocks` from `false` to `true`.

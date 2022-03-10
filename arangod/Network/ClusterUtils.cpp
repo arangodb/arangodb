@@ -29,8 +29,6 @@
 
 #include "Logger/LogMacros.h"
 
-#include <velocypack/velocypack-aliases.h>
-
 namespace arangodb {
 namespace network {
 

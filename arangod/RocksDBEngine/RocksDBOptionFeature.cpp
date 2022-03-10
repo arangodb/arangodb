@@ -277,7 +277,7 @@ void RocksDBOptionFeature::collectOptions(
       "have surpassed a certain number of level-0 files and need to slowdown "
       "writes",
       new UInt64Parameter(&_delayedWriteRate),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
   options->addOldOption("rocksdb.delayed_write_rate",
                         "rocksdb.delayed-write-rate");
 
@@ -335,7 +335,7 @@ void RocksDBOptionFeature::collectOptions(
       "that there are very few misses or the performance in the case of "
       "misses is not important",
       new BooleanParameter(&_optimizeFiltersForHits),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
 #ifdef __linux__
   options->addOption(
@@ -343,7 +343,7 @@ void RocksDBOptionFeature::collectOptions(
       new BooleanParameter(&_useDirectReads),
       arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs,
                                    arangodb::options::Flags::OsLinux,
-                                   arangodb::options::Flags::Hidden));
+                                   arangodb::options::Flags::Uncommon));
 
   options->addOption(
       "--rocksdb.use-direct-io-for-flush-and-compaction",
@@ -351,7 +351,7 @@ void RocksDBOptionFeature::collectOptions(
       new BooleanParameter(&_useDirectIoForFlushAndCompaction),
       arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs,
                                    arangodb::options::Flags::OsLinux,
-                                   arangodb::options::Flags::Hidden));
+                                   arangodb::options::Flags::Uncommon));
 #endif
 
   options->addOption(
@@ -359,13 +359,13 @@ void RocksDBOptionFeature::collectOptions(
       "issue an fsync when writing to disk (set to true "
       "for issuing fdatasync only)",
       new BooleanParameter(&_useFSync),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options->addOption(
       "--rocksdb.max-background-jobs",
       "Maximum number of concurrent background jobs (compactions and flushes)",
       new Int32Parameter(&_maxBackgroundJobs),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden,
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon,
                                           arangodb::options::Flags::Dynamic));
 
   options->addOption("--rocksdb.max-subcompactions",
@@ -435,7 +435,8 @@ void RocksDBOptionFeature::collectOptions(
           "if turned on, the RocksDB block cache quota will also include "
           "RocksDB memtable sizes",
           new BooleanParameter(&_cacheIndexAndFilterBlocks),
-          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+          arangodb::options::makeDefaultFlags(
+              arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30701);
 
   options
@@ -446,7 +447,8 @@ void RocksDBOptionFeature::collectOptions(
           "making index and filter blocks be less likely to be evicted than "
           "data blocks",
           new BooleanParameter(&_cacheIndexAndFilterBlocksWithHighPriority),
-          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+          arangodb::options::makeDefaultFlags(
+              arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30701);
 
   options
@@ -456,7 +458,8 @@ void RocksDBOptionFeature::collectOptions(
           "filter and index blocks are pinned and only evicted from cache when "
           "the table reader is freed",
           new BooleanParameter(&_pinl0FilterAndIndexBlocksInCache),
-          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+          arangodb::options::makeDefaultFlags(
+              arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30701);
 
   options
@@ -466,7 +469,8 @@ void RocksDBOptionFeature::collectOptions(
           "the top-level index of partitioned filter and index blocks are "
           "pinned and only evicted from cache when the table reader is freed",
           new BooleanParameter(&_pinTopLevelIndexAndFilter),
-          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+          arangodb::options::makeDefaultFlags(
+              arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30701);
 
   options->addOption(
@@ -478,7 +482,7 @@ void RocksDBOptionFeature::collectOptions(
       "--rocksdb.recycle-log-file-num",
       "if true, keep a pool of log files around for recycling",
       new BooleanParameter(&_recycleLogFileNum),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options->addOption(
       "--rocksdb.compaction-read-ahead-size",
@@ -492,30 +496,30 @@ void RocksDBOptionFeature::collectOptions(
       "--rocksdb.use-file-logging",
       "use a file-base logger for RocksDB's own logs",
       new BooleanParameter(&_useFileLogging),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options->addOption(
       "--rocksdb.wal-recovery-skip-corrupted",
       "skip corrupted records in WAL recovery",
       new BooleanParameter(&_skipCorrupted),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options
-      ->addOption(
-          "--rocksdb.limit-open-files-at-startup",
-          "limit the amount of .sst files RocksDB will inspect at "
-          "startup, in order to reduce startup IO",
-          new BooleanParameter(&_limitOpenFilesAtStartup),
-          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+      ->addOption("--rocksdb.limit-open-files-at-startup",
+                  "limit the amount of .sst files RocksDB will inspect at "
+                  "startup, in order to reduce startup IO",
+                  new BooleanParameter(&_limitOpenFilesAtStartup),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30405);
 
   options
-      ->addOption(
-          "--rocksdb.allow-fallocate",
-          "if true, allow RocksDB to use fallocate calls. if false, "
-          "fallocate calls are bypassed",
-          new BooleanParameter(&_allowFAllocate),
-          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+      ->addOption("--rocksdb.allow-fallocate",
+                  "if true, allow RocksDB to use fallocate calls. if false, "
+                  "fallocate calls are bypassed",
+                  new BooleanParameter(&_allowFAllocate),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30405);
   options
       ->addOption(
@@ -526,7 +530,8 @@ void RocksDBOptionFeature::collectOptions(
           "engine, "
           "but will inhibit concurrent write operations",
           new BooleanParameter(&_exclusiveWrites),
-          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+          arangodb::options::makeDefaultFlags(
+              arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30504)
       .setDeprecatedIn(30800);
 
@@ -557,7 +562,7 @@ void RocksDBOptionFeature::collectOptions(
                             name + " column family",
                         new UInt64Parameter(&_maxWriteBufferNumberCf[index]),
                         arangodb::options::makeDefaultFlags(
-                            arangodb::options::Flags::Hidden))
+                            arangodb::options::Flags::Uncommon))
             .setIntroducedIn(30800);
       };
   for (auto family : families) {

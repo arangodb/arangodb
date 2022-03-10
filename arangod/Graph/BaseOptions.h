@@ -79,6 +79,7 @@ struct BaseOptions {
     std::vector<transaction::Methods::IndexHandle> idxHandles;
     std::unique_ptr<aql::Expression> expression;
     aql::AstNode* indexCondition;
+    TRI_edge_direction_e direction;
     // Flag if we have to update _from / _to in the index search condition
     bool conditionNeedUpdate;
     // Position of _from / _to in the index search condition
@@ -86,14 +87,14 @@ struct BaseOptions {
 
     aql::NonConstExpressionContainer _nonConstContainer;
 
-    LookupInfo();
+    explicit LookupInfo(TRI_edge_direction_e direction);
     ~LookupInfo();
 
     LookupInfo(LookupInfo const&);
     LookupInfo& operator=(LookupInfo const&) = delete;
 
-    LookupInfo(arangodb::aql::QueryContext&, arangodb::velocypack::Slice const&,
-               arangodb::velocypack::Slice const&);
+    LookupInfo(arangodb::aql::QueryContext&, arangodb::velocypack::Slice info,
+               arangodb::velocypack::Slice shards);
 
     void initializeNonConstExpressions(
         aql::Ast* ast,
@@ -138,7 +139,7 @@ struct BaseOptions {
   void addLookupInfo(aql::ExecutionPlan* plan,
                      std::string const& collectionName,
                      std::string const& attributeName, aql::AstNode* condition,
-                     bool onlyEdgeIndexes = false);
+                     bool onlyEdgeIndexes, TRI_edge_direction_e direction);
 
   void clearVariableValues() noexcept;
 
@@ -240,8 +241,8 @@ struct BaseOptions {
                               aql::ExecutionPlan* plan,
                               std::string const& collectionName,
                               std::string const& attributeName,
-                              aql::AstNode* condition,
-                              bool onlyEdgeIndexes = false);
+                              aql::AstNode* condition, bool onlyEdgeIndexes,
+                              TRI_edge_direction_e direction);
 
   void injectTestCache(std::unique_ptr<TraverserCache>&& cache);
 

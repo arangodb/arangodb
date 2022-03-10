@@ -338,15 +338,11 @@ IndexExecutor::CursorReader::CursorReader(
           transaction::Methods::kNoMutableConditionIdx)),
       _context(context),
       _cursorStats(cursorStats),
-      _type(
-          infos.getCount()             ? Type::Count
-          : infos.isLateMaterialized() ? Type::LateMaterialized
-          : !infos.getProduceResult()  ? Type::NoResult
-          : _cursor->hasCovering() &&  // if change see
-                                       // IndexNode::canApplyLateDocumentMaterializationRule()
-                  infos.getProjections().supportsCoveringIndex()
-              ? Type::Covering
-              : Type::Document),
+      _type(infos.getCount()             ? Type::Count
+            : infos.isLateMaterialized() ? Type::LateMaterialized
+            : !infos.getProduceResult()  ? Type::NoResult
+            : infos.getProjections().usesCoveringIndex(index) ? Type::Covering
+                                                              : Type::Document),
       _checkUniqueness(checkUniqueness) {
   // for the initial cursor created in the initializer list
   _cursorStats.incrCreated();

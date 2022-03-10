@@ -40,7 +40,6 @@
 #include "FixedOutputExecutionBlockMock.h"
 
 #include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <chrono>
 #include <functional>

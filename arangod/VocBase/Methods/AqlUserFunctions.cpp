@@ -45,7 +45,6 @@
 #include <v8.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 #include <regex>
 
 using namespace arangodb;

@@ -122,6 +122,7 @@ struct AsyncOperationMarker {
     TRI_ASSERT(triggered);
     TRI_ASSERT(promise->isFulfilled());
     triggered = false;
+    in.reset();
     promise.reset();
   }
 

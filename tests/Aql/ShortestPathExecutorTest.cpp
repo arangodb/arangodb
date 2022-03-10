@@ -25,7 +25,6 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "Aql/RowFetcherHelper.h"
 #include "Mocks/LogLevels.h"
