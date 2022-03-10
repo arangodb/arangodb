@@ -63,7 +63,7 @@ struct ReplicatedLogMethods {
                    replication2::replicated_log::GlobalStatus>;
 
   virtual ~ReplicatedLogMethods() = default;
-  virtual auto createReplicatedLog(agency::LogTarget const& spec) const
+  virtual auto createReplicatedLog(agency::LogTarget spec) const
       -> futures::Future<Result> = 0;
   virtual auto deleteReplicatedLog(LogId id) const
       -> futures::Future<Result> = 0;
@@ -117,9 +117,8 @@ struct ReplicatedLogMethods {
 struct ReplicatedStateMethods {
   virtual ~ReplicatedStateMethods() = default;
 
-  virtual auto createReplicatedState(
-      replicated_state::agency::Target const& spec) const
-      -> futures::Future<Result> = 0;
+  virtual auto createReplicatedState(replicated_state::agency::Target spec)
+      const -> futures::Future<Result> = 0;
   virtual auto deleteReplicatedLog(LogId id) const
       -> futures::Future<Result> = 0;
 
