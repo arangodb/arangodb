@@ -651,7 +651,11 @@ Result DatabaseInitialSyncer::parseCollectionDump(transaction::Methods& trx,
   if (found && cType == StaticStrings::MimeTypeVPack) {
     LOG_TOPIC("b9f4d", DEBUG, Logger::REPLICATION) << "using vpack for chunk contents";
 
-    VPackValidator validator(&basics::VelocyPackHelper::strictRequestValidationOptions);
+    // intentional copy
+    auto options = basics::VelocyPackHelper::strictRequestValidationOptions;
+    // allow custom types being sent here
+    options.disallowCustom = false;
+    VPackValidator validator(&options);
 
     try {
       while (p < end) {

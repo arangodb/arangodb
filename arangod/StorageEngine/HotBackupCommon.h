@@ -55,6 +55,7 @@ struct BackupMeta {
   bool _potentiallyInconsistent;
   bool _isAvailable;
   unsigned int _nrPiecesPresent;
+  bool _countIncludesFilesOnly;
 
   static constexpr const char *ID = "id";
   static constexpr const char *VERSION = "version";
@@ -67,6 +68,8 @@ struct BackupMeta {
   static constexpr const char *POTENTIALLYINCONSISTENT = "potentiallyInconsistent";
   static constexpr const char *AVAILABLE = "available";
   static constexpr const char *NRPIECESPRESENT = "nrPiecesPresent";
+  static constexpr const char *COUNTINCLUDESFILESONLY =
+      "countIncludesFilesOnly";
 
 
   void toVelocyPack(VPackBuilder &builder) const {
@@ -93,6 +96,7 @@ struct BackupMeta {
         builder.add(NRPIECESPRESENT, VPackValue(_nrPiecesPresent));
       }
       builder.add(POTENTIALLYINCONSISTENT, VPackValue(_potentiallyInconsistent));
+      builder.add(COUNTINCLUDESFILESONLY, VPackValue(_countIncludesFilesOnly));
     }
   }
 
@@ -122,6 +126,8 @@ struct BackupMeta {
       meta._isAvailable = basics::VelocyPackHelper::getBooleanValue(slice, AVAILABLE, true);
       meta._nrPiecesPresent = basics::VelocyPackHelper::getNumericValue<unsigned int>(
           slice, NRPIECESPRESENT, 1);
+      meta._countIncludesFilesOnly = basics::VelocyPackHelper::getBooleanValue(
+          slice, COUNTINCLUDESFILESONLY, false);
       return meta;
     } catch (std::exception const& e) {
       return ResultT<BackupMeta>::error(TRI_ERROR_BAD_PARAMETER, e.what());
@@ -133,7 +139,7 @@ struct BackupMeta {
              size_t nrFiles, unsigned int nrDBServers, std::string const& serverId, bool potentiallyInconsistent) :
     _id(id), _version(version), _datetime(datetime), _userSecretHashes(hashes),
     _sizeInBytes(sizeInBytes), _nrFiles(nrFiles), _nrDBServers(nrDBServers),
-    _serverId(serverId), _potentiallyInconsistent(potentiallyInconsistent),_isAvailable(true), _nrPiecesPresent(1) {}
+    _serverId(serverId), _potentiallyInconsistent(potentiallyInconsistent),_isAvailable(true), _nrPiecesPresent(1), _countIncludesFilesOnly(true) {}
 
 private:
   BackupMeta() {}

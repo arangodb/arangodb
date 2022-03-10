@@ -1,8 +1,33 @@
-v3.8.6 (XXXX-XX-XX)
+v3.8.7 (XXXX-XX-XX)
 -------------------
 
-* Bug-Fix: Resolve BTS-673/Issue #15107, a spliced subquery could return
-  too few results
+* Bug-Fix: Resolve BTS-673/Issue #15107, a spliced subquery could return too few
+  results.
+
+* Bugfix: DC-2-DC Disjoint-SmartGraphs and Hybrid-SmartGraphs are now replicated
+  to the follower data-center keeping their sharding intact.
+
+* Fix counts and file size sum in hotbackup META files. Do no longer count
+  directories.
+
+* Log a better startup error in case an ArangoDB 3.8 is started on a too new
+  database directory (3.9 or higher).
+
+* Harden validator for binary VelocyPack against additional types of malicious
+  inputs.
+
+
+v3.8.6 (2022-02-16)
+-------------------
+
+* Replaced internal JS dependency xmldom with @xmldom/xmldom.
+
+* Replaced internal JS dependency ansi-html with ansi-html-community.
+
+* Upgraded JavaScript "i" module from 0.3.6 to 0.3.7.
+
+* Optimize further RocksDB throttle to allow for no change on any given
+  calculation cycle.
 
 * As we are now in constant stall regime, stall onset and warnings are demoted
   to DEBUG.
