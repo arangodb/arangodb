@@ -362,11 +362,18 @@ arangodb::Result fetchRevisions(
       if (!sl.empty()) {
         // Take out the nonempty list:
         std::unordered_set<arangodb::RevisionId> newList = std::move(sl);
+        // Sort in ascending order to speed up iterator lookup on leader:
+        std::vector<arangodb::RevisionId> v;
+        v.reserve(newList.size());
+        for (auto it = newList.begin(); it != newList.end(); ++it) {
+          v.push_back(*it);
+        }
+        std::sort(v.begin(), v.end());
         VPackBuilder requestBuilder;
         {
           VPackArrayBuilder list(&requestBuilder);
-          for (auto it = newList.begin(); it != newList.end(); ++it) {
-            requestBuilder.add(it->toValuePair(ridBuffer));
+          for (auto const& r : v) {
+            requestBuilder.add(r.toValuePair(ridBuffer));
           }
         }
 
