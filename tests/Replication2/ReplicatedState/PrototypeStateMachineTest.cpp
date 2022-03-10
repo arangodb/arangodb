@@ -57,18 +57,25 @@ TEST_F(PrototypeStateMachineTest, simple_operations) {
 
   leader->triggerAsyncReplication();
 
-  auto replicatedState =
+  auto leaderReplicatedState =
       std::dynamic_pointer_cast<ReplicatedState<PrototypeState>>(
           feature->createReplicatedState("prototype-state", leaderLog));
-  ASSERT_NE(replicatedState, nullptr);
-
-  replicatedState->start(
+  ASSERT_NE(leaderReplicatedState, nullptr);
+  leaderReplicatedState->start(
       std::make_unique<ReplicatedStateToken>(StateGeneration{1}));
-
   follower->runAllAsyncAppendEntries();
 
-  auto leaderState = replicatedState->getLeader();
+  auto followerReplicatedState =
+      std::dynamic_pointer_cast<ReplicatedState<PrototypeState>>(
+          feature->createReplicatedState("prototype-state", followerLog));
+  ASSERT_NE(leaderReplicatedState, nullptr);
+  followerReplicatedState->start(
+      std::make_unique<ReplicatedStateToken>(StateGeneration{1}));
+
+  auto leaderState = leaderReplicatedState->getLeader();
+  auto followerState = followerReplicatedState->getFollower();
   ASSERT_NE(leaderState, nullptr);
+  ASSERT_NE(followerState, nullptr);
 
   {
     auto entries = std::unordered_map<std::string, std::string>{{"foo", "bar"}};
@@ -82,6 +89,11 @@ TEST_F(PrototypeStateMachineTest, simple_operations) {
     auto result = leaderState->get("foo");
     ASSERT_EQ(result, "bar");
     result = leaderState->get("baz");
+    ASSERT_EQ(result, std::nullopt);
+
+    result = followerState->get("foo");
+    ASSERT_EQ(result, "bar");
+    result = followerState->get("baz");
     ASSERT_EQ(result, std::nullopt);
   }
 
@@ -100,6 +112,7 @@ TEST_F(PrototypeStateMachineTest, simple_operations) {
         leaderState->get(entries.begin(), entries.end());
     ASSERT_EQ(result.size(), 3);
     ASSERT_EQ(result["foo1"], "bar1");
+    ASSERT_EQ(followerState->get("foo1"), "bar1");
   }
 
   {
@@ -118,6 +131,8 @@ TEST_F(PrototypeStateMachineTest, simple_operations) {
     ASSERT_EQ(index, 5);
     ASSERT_EQ(leaderState->get("foo2"), std::nullopt);
     ASSERT_EQ(leaderState->get("foo3"), "bar3");
+    ASSERT_EQ(followerState->get("foo2"), std::nullopt);
+    ASSERT_EQ(followerState->get("foo3"), "bar3");
   }
 
   {
@@ -127,6 +142,8 @@ TEST_F(PrototypeStateMachineTest, simple_operations) {
     auto expected = std::unordered_map<std::string, std::string>{
         {"foo", "bar"}, {"foo3", "bar3"}};
     ASSERT_EQ(map, expected);
+    ASSERT_EQ(followerState->get("foo"), "bar");
+    ASSERT_EQ(followerState->get("foo3"), "bar3");
   }
 
   {

@@ -218,6 +218,8 @@ struct PrototypeFollowerState : IReplicatedFollowerState<PrototypeState> {
   auto applyEntries(std::unique_ptr<EntryIterator> ptr) noexcept
       -> futures::Future<Result> override;
 
+  auto get(std::string key) -> std::optional<std::string>;
+
   Guarded<std::unique_ptr<PrototypeCore>, basics::UnshackledMutex> guardedData;
 };
 
