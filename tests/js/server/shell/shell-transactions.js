@@ -2521,7 +2521,7 @@ function transactionRollbackSuite () {
       c1.save({ _key: 'bar', value: 'bar', a: 1 });
       c1.save({ _key: 'meow', value: 'meow' });
 
-      c1.ensureIndex({ type: "name", fields: ["value"] });
+      c1.ensureIndex({ type: "hash", fields: ["value"] });
       c1.ensureIndex({ type: "skiplist", fields: ["value"] });
       var good = false;
 
@@ -2694,7 +2694,7 @@ function transactionRollbackSuite () {
       c1.save({ _key: 'bar', value: 'bar', a: 1 });
       c1.save({ _key: 'meow', value: 'meow' });
 
-      c1.ensureIndex({ type: "name", fields: ["value"] });
+      c1.ensureIndex({ type: "hash", fields: ["value"] });
       c1.ensureIndex({ type: "skiplist", fields: ["value"] });
       var good = false;
 
@@ -2802,7 +2802,7 @@ function transactionRollbackSuite () {
       c1.save({ _key: 'bar', value: 'bar', a: 1 });
       c1.save({ _key: 'meow', value: 'meow' });
 
-      c1.ensureIndex({ type: "name", fields: ["value"] });
+      c1.ensureIndex({ type: "hash", fields: ["value"] });
       c1.ensureIndex({ type: "skiplist", fields: ["value"] });
       var good = false;
 
@@ -2843,7 +2843,7 @@ function transactionRollbackSuite () {
       c1.save({ _key: 'bar', value: 'bar', a: 1 });
       c1.save({ _key: 'meow', value: 'meow' });
 
-      c1.ensureIndex({ type: "name", fields: ["value"] });
+      c1.ensureIndex({ type: "hash", fields: ["value"] });
       c1.ensureIndex({ type: "skiplist", fields: ["value"] });
       var good = false;
 

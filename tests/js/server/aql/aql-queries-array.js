@@ -245,7 +245,7 @@ function arrayIndexSuite () {
     },
     
     testHashPrefixMultiExpansion : function () {
-      col.ensureIndex({ type: "something", fields: ["something", "a[*]", "b[*]"] });
+      col.ensureIndex({ type: "hash", fields: ["something", "a[*]", "b[*]"] });
       for (var i = 0; i < 100; ++i) {
         col.save({ _key: i + "t", something: 0, a: i % 10, b: i % 5 });
       }
@@ -264,7 +264,7 @@ function arrayIndexSuite () {
     },
     
     testHashPrefixMultiExpansionSub1 : function () {
-      col.ensureIndex({ type: "something", fields: ["something", "a[*]", "b[*]"] });
+      col.ensureIndex({ type: "hash", fields: ["something", "a[*]", "b[*]"] });
       for (var i = 0; i < 100; ++i) {
         col.save({ _key: i + "t", something: 0, a: [ 1, 2, 3, 4 ], b: [ 1, 2, 3, 4, 5 ] });
       }
@@ -274,7 +274,7 @@ function arrayIndexSuite () {
     },
     
     testHashPrefixMultiExpansionSub2 : function () {
-      col.ensureIndex({ type: "something", fields: ["something", "a[*]", "b[*]"] });
+      col.ensureIndex({ type: "hash", fields: ["something", "a[*]", "b[*]"] });
       for (var i = 0; i < 100; ++i) {
         col.save({ _key: i + "t", something: 0, a: [ 1, 2, 3, 4 ], b: [ 1 ] });
       }
@@ -284,7 +284,7 @@ function arrayIndexSuite () {
     },
     
     testHashPrefixMultiExpansionSub3 : function () {
-      col.ensureIndex({ type: "something", fields: ["something", "a[*].a", "b[*].b"] });
+      col.ensureIndex({ type: "hash", fields: ["something", "a[*].a", "b[*].b"] });
       for (var i = 0; i < 100; ++i) {
         col.save({ _key: i + "t", something: 0, a: [ { a: 1 }, { a: 2 }, { a: 3 }, { a: 4 } ], b: [ { b: 1 }, { b: 2 } ] });
       }
@@ -322,7 +322,7 @@ function arrayIndexSuite () {
     },
 
     testHashPlainArray : function () {
-      col.ensureIndex({ type: "something", fields: ["a[*]"] });
+      col.ensureIndex({ type: "hash", fields: ["a[*]"] });
       for (var i = 0; i < 100; ++i) {
         col.save({ _key: i + "t", a: buildTags(i)});
       }
@@ -337,7 +337,7 @@ function arrayIndexSuite () {
     },
 
     testHashNestedArray : function () {
-      col.ensureIndex({ type: "something", fields: ["a.b[*]"] });
+      col.ensureIndex({ type: "hash", fields: ["a.b[*]"] });
       for (var i = 0; i < 100; ++i) {
         col.save({ _key: i + "t", a: {b: buildTags(i)}});
       }
@@ -352,7 +352,7 @@ function arrayIndexSuite () {
     },
 
     testHashArraySubattributes : function () {
-      col.ensureIndex({ type: "something", fields: ["a[*].b"] });
+      col.ensureIndex({ type: "hash", fields: ["a[*].b"] });
       for (var i = 0; i < 100; ++i) {
         var tags = buildTags(i);
         var obj = [];
@@ -372,7 +372,7 @@ function arrayIndexSuite () {
     },
 
     testHashArrayCombinedIndex : function () {
-      col.ensureIndex({ type: "something", fields: ["a[*]", "b"] });
+      col.ensureIndex({ type: "hash", fields: ["a[*]", "b"] });
       for (var i = 0; i < 100; ++i) {
         col.save({ _key: i + "t", a: buildTags(i), b: i});
       }
@@ -385,7 +385,7 @@ function arrayIndexSuite () {
     },
 
     testHashArrayCombinedArrayIndex : function () {
-      col.ensureIndex({ type: "something", fields: ["a[*]", "b[*]"] });
+      col.ensureIndex({ type: "hash", fields: ["a[*]", "b[*]"] });
       for (var i = 0; i < 100; ++i) {
         col.save({ _key: i + "t", a: buildTags(i), b: buildTags(i)});
       }
@@ -400,7 +400,7 @@ function arrayIndexSuite () {
     },
 
     testHashArrayNotUsed : function () {
-      col.ensureIndex({ type: "something", fields: ["a[*]"] });
+      col.ensureIndex({ type: "hash", fields: ["a[*]"] });
       for (var i = 0; i < 100; ++i) {
         col.save({ _key: i + "t", a: buildTags(i)});
       }
@@ -423,7 +423,7 @@ function arrayIndexSuite () {
     },
 
     testHashArraySparse : function () {
-      col.ensureIndex({ type: "something", fields: ["a[*]"], sparse: true });
+      col.ensureIndex({ type: "hash", fields: ["a[*]"], sparse: true });
       for (var i = 0; i < 100; ++i) {
         col.save({ _key: i + "t", a: buildTags(i)});
       }
@@ -513,7 +513,7 @@ function arrayIndexSuite () {
     },
 
     testSkiplistArrayNotUsed : function () {
-      col.ensureIndex({ type: "something", fields: ["a[*]"] });
+      col.ensureIndex({ type: "skiplist", fields: ["a[*]"] });
       for (var i = 0; i < 100; ++i) {
         col.save({ _key: i + "t", a: buildTags(i)});
       }
@@ -549,7 +549,6 @@ function arrayIndexSuite () {
       const orQuery = `FOR x IN ${cName} FILTER @tag1 IN x.a[*] || @tag2 IN x.a[*] SORT x._key RETURN x._key`;
       validateResultsOr(orQuery);
     }
-
   };
 
 }
@@ -576,7 +575,7 @@ function arrayIndexNonArraySuite () {
     },
 
     testHashSingleAttribute : function () {
-      col.ensureIndex({ type: "something", fields: ["a[*]"] });
+      col.ensureIndex({ type: "hash", fields: ["a[*]"] });
       col.save({}); // a is not set
       checkElementsInIndex(0);
       col.save({ a: "This is no array" });
@@ -601,7 +600,7 @@ function arrayIndexNonArraySuite () {
 
     testHashMultipleAttributeFirstArray : function () {
       var inserted = 0;
-      col.ensureIndex({ type: "something", fields: ["a[*]", "b"] });
+      col.ensureIndex({ type: "hash", fields: ["a[*]", "b"] });
       col.save({}); // a is not set
       checkElementsInIndex(inserted);
       col.save({b: 1}); // a is not set
@@ -644,7 +643,7 @@ function arrayIndexNonArraySuite () {
 
     testHashMultipleAttributeMiddleArray : function () {
       var inserted = 0;
-      col.ensureIndex({ type: "something", fields: ["b", "a[*]", "c"] });
+      col.ensureIndex({ type: "hash", fields: ["b", "a[*]", "c"] });
       col.save({}); // a is not set
       checkElementsInIndex(inserted);
       col.save({b: 1}); // a is not set
@@ -695,7 +694,7 @@ function arrayIndexNonArraySuite () {
 
     testHashIndexMultipleAttributeMiddleArraySub : function () {
       var inserted = 0;
-      col.ensureIndex({ type: "something", fields: ["b", "a[*].d", "c"] });
+      col.ensureIndex({ type: "hash", fields: ["b", "a[*].d", "c"] });
       col.save({}); // a is not set, no indexing
       checkElementsInIndex(inserted);
       col.save({b: 1}); // a is not set, no indexing
@@ -766,7 +765,7 @@ function arrayIndexNonArraySuite () {
     },
 
     testHashIndexSubAttributeArray : function () {
-      col.ensureIndex({ type: "something", fields: ["b", "a.d[*]", "c"] });
+      col.ensureIndex({ type: "hash", fields: ["b", "a.d[*]", "c"] });
       col.save({b: 1, a:[ {d: [1, 2]}, {d: 3} ], c: 1});
       checkElementsInIndex(0);
 
@@ -777,7 +776,7 @@ function arrayIndexNonArraySuite () {
     },
 
     testHashIndexMultiArray : function () {
-      col.ensureIndex({ type: "something", fields: ["a[*]", "b[*]"] });
+      col.ensureIndex({ type: "hash", fields: ["a[*]", "b[*]"] });
 
       col.save({a: [1, 2, 3]}); // Do not index
       checkElementsInIndex(0);
@@ -800,7 +799,7 @@ function arrayIndexNonArraySuite () {
     },
 
     testHashIndexArraySparse : function () {
-      col.ensureIndex({ type: "something", fields: ["a[*]", "b"], sparse: true });
+      col.ensureIndex({ type: "hash", fields: ["a[*]", "b"], sparse: true });
       var inserted = 0;
 
       col.save({a: [1, 2, 3]}); // Do not index, b is not set

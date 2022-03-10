@@ -2654,7 +2654,7 @@ function optimizerIndexesModifyTestSuite () {
       c.dropIndex(c.getIndexes()[1]);
 
       // create an alternative index
-      c.ensureIndex({ type: "skiplist", fields: ["value2", "value3"] });
+      c.ensureIndex({ type: "skiplist", fields: ["value", "value3"] });
 
       // value2 is not indexed
       AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value } IN " + c.name());
@@ -2691,7 +2691,7 @@ function optimizerIndexesModifyTestSuite () {
 
     testIndexAndAlternativeSkiplistPartialIndexedNonIndexed : function () {
       // create a competitor index
-      c.ensureIndex({ type: "skiplist", fields: ["value2", "value3"] });
+      c.ensureIndex({ type: "skiplist", fields: ["value", "value3"] });
 
       // value2 is not indexed
       AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value } IN " + c.name());

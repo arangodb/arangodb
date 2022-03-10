@@ -335,7 +335,7 @@ function HashIndexSuite() {
       assertEqual(["a","b"].sort(), idx.fields.sort());
       assertTrue(idx.isNewlyCreated);
 
-      idx = collection.ensureIndex({ type: "hash", fields: ["a", "b"] });
+      idx = collection.ensureIndex({ type: "hash", fields: ["b", "a"] });
 
       assertEqual("hash", idx.type);
       assertFalse(idx.unique);

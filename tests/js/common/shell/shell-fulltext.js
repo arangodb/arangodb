@@ -258,8 +258,8 @@ function fulltextCreateSuite () {
 
     testCreateMultipleIndexes : function () {
       var idx1 = c.ensureIndex({ type: "fulltext", fields: ["attr1"] });
-      var idx2 = c.ensureIndex({ type: "fulltext", fields: ["attr2"] });
-      var idx3 = c.ensureIndex({ type: "fulltext", fields: ["attr3"] });
+      var idx2 = c.ensureIndex({ type: "fulltext", fields: ["attr1"] });
+      var idx3 = c.ensureIndex({ type: "fulltext", fields: ["attr2"] });
 
       var indexes = c.getIndexes();
       for (var i = 0; i < indexes.length; ++i) {
@@ -340,8 +340,8 @@ function fulltextCreateSuite () {
 
     testDropIndexes : function () {
       var idx1 = c.ensureIndex({ type: "fulltext", fields: ["attr1"] });
-      var idx2 = c.ensureIndex({ type: "fulltext", fields: ["attr2"] });
-      var idx3 = c.ensureIndex({ type: "fulltext", fields: ["attr3"] });
+      var idx2 = c.ensureIndex({ type: "fulltext", fields: ["attr1"] });
+      var idx3 = c.ensureIndex({ type: "fulltext", fields: ["attr2"] });
 
       assertTrue(c.dropIndex(idx1));
       assertFalse(c.dropIndex(idx2)); // already deleted

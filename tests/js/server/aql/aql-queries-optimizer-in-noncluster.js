@@ -1086,7 +1086,7 @@ function ahuacatlQueryOptimizerInTestSuite () {
 
     testNestedOrHashIndex : function () {
       let docs = [];
-      for (let i = 1; i < 100; ++i) {
+      for (let i = 1; i < 5; ++i) {
         docs.push({ value: i });
       }
       c.insert(docs);
