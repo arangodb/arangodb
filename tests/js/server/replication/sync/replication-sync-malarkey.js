@@ -73,7 +73,7 @@ function BaseTestConfig () {
       // count returns a stored value, and doesn't iterate over the documents in the collection
       assertEqual(expected, c.count(), figures);
       // iterate the documents in the collection, but don't return them in full (too expensive)
-      assertEqual(expected, db._query("FOR doc IN ${c.name()} RETURN 1").toArray().length, figures);
+      assertEqual(expected, db._query(`FOR doc IN ${c.name()} RETURN 1`).toArray().length, figures);
       assertEqual(expected, figures.documents, figures);
       assertEqual("primary", figures.indexes[0].type, figures);
       figures.indexes.forEach((idx) => {
