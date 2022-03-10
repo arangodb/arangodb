@@ -88,7 +88,7 @@ auto checkSnapshotComplete(
     // TODO generation?
     for (auto const& [participant, flags] :
          log.plan->participantsConfig.participants) {
-      if (flags.excluded) {
+      if (!flags.allowedAsLeader || !flags.allowedInQuorum) {
         auto const& plannedGeneration =
             state.plan->participants.at(participant).generation;
 
@@ -100,7 +100,8 @@ auto checkSnapshotComplete(
                   SnapshotStatus::kCompleted and
               participantStatus.generation == plannedGeneration) {
             auto newFlags = flags;
-            newFlags.excluded = false;
+            newFlags.allowedInQuorum = true;
+            newFlags.allowedAsLeader = true;
             return ModifyParticipantFlagsAction{participant, newFlags};
           }
         }
