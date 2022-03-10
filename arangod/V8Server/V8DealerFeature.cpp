@@ -26,9 +26,10 @@
 #include <regex>
 #include <thread>
 
-#include "Actions/ActionFeature.h"
 #include "Actions/actions.h"
 #include "Agency/v8-agency.h"
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/HttpEndpointProvider.h"
 #include "ApplicationFeatures/V8PlatformFeature.h"
 #include "ApplicationFeatures/V8SecurityFeature.h"
 #include "Basics/ArangoGlobalContext.h"
@@ -43,7 +44,6 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/v8-cluster.h"
-#include "FeaturePhases/ClusterFeaturePhase.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -120,9 +120,8 @@ DECLARE_COUNTER(arangodb_v8_context_enter_failures_total,
 DECLARE_COUNTER(arangodb_v8_context_entered_total, "V8 context enter events");
 DECLARE_COUNTER(arangodb_v8_context_exited_total, "V8 context exit events");
 
-V8DealerFeature::V8DealerFeature(
-    application_features::ApplicationServer& server)
-    : application_features::ApplicationFeature(server, "V8Dealer"),
+V8DealerFeature::V8DealerFeature(Server& server)
+    : ArangodFeature{server, *this},
       _gcFrequency(60.0),
       _gcInterval(2000),
       _maxContextAge(60.0),
@@ -151,6 +150,9 @@ V8DealerFeature::V8DealerFeature(
           arangodb_v8_context_exited_total{})),
       _contextsEnterFailures(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_v8_context_enter_failures_total{})) {
+  static_assert(
+      Server::isCreatedAfter<V8DealerFeature, metrics::MetricsFeature>());
+
   setOptional(true);
   startsAfter<ClusterFeaturePhase>();
 
@@ -170,7 +172,7 @@ void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
           arangodb::options::Flags::DefaultNoComponents,
           arangodb::options::Flags::OnCoordinator,
           arangodb::options::Flags::OnSingle,
-          arangodb::options::Flags::Hidden));
+          arangodb::options::Flags::Uncommon));
 
   options->addOption(
       "--javascript.gc-interval",
@@ -180,7 +182,7 @@ void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
           arangodb::options::Flags::DefaultNoComponents,
           arangodb::options::Flags::OnCoordinator,
           arangodb::options::Flags::OnSingle,
-          arangodb::options::Flags::Hidden));
+          arangodb::options::Flags::Uncommon));
 
   options->addOption("--javascript.app-path", "directory for Foxx applications",
                      new StringParameter(&_appPath),
@@ -205,7 +207,7 @@ void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                          arangodb::options::Flags::DefaultNoComponents,
                          arangodb::options::Flags::OnCoordinator,
                          arangodb::options::Flags::OnSingle,
-                         arangodb::options::Flags::Hidden));
+                         arangodb::options::Flags::Uncommon));
 
   options->addOption(
       "--javascript.copy-installation",
@@ -242,7 +244,7 @@ void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
           arangodb::options::Flags::DefaultNoComponents,
           arangodb::options::Flags::OnCoordinator,
           arangodb::options::Flags::OnSingle,
-          arangodb::options::Flags::Hidden));
+          arangodb::options::Flags::Uncommon));
 
   options->addOption(
       "--javascript.v8-contexts-max-age",
@@ -252,7 +254,7 @@ void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
           arangodb::options::Flags::DefaultNoComponents,
           arangodb::options::Flags::OnCoordinator,
           arangodb::options::Flags::OnSingle,
-          arangodb::options::Flags::Hidden));
+          arangodb::options::Flags::Uncommon));
 
   options->addOption(
       "--javascript.allow-admin-execute",
@@ -262,7 +264,7 @@ void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
           arangodb::options::Flags::DefaultNoComponents,
           arangodb::options::Flags::OnCoordinator,
           arangodb::options::Flags::OnSingle,
-          arangodb::options::Flags::Hidden));
+          arangodb::options::Flags::Uncommon));
 
   options
       ->addOption("--javascript.transactions", "enable JavaScript transactions",
@@ -288,7 +290,7 @@ void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                          arangodb::options::Flags::DefaultNoComponents,
                          arangodb::options::Flags::OnCoordinator,
                          arangodb::options::Flags::OnSingle,
-                         arangodb::options::Flags::Hidden));
+                         arangodb::options::Flags::Uncommon));
 }
 
 void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
@@ -314,12 +316,11 @@ void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 
   if (!_enableJS) {
     disable();
+
     server().disableFeatures(
-        std::vector<std::type_index>{std::type_index(typeid(V8PlatformFeature)),
-                                     std::type_index(typeid(ActionFeature)),
-                                     std::type_index(typeid(ScriptFeature)),
-                                     std::type_index(typeid(FoxxFeature)),
-                                     std::type_index(typeid(FrontendFeature))});
+        std::array{Server::id<V8PlatformFeature>(), Server::id<ActionFeature>(),
+                   Server::id<ScriptFeature>(), Server::id<FoxxFeature>(),
+                   Server::id<FrontendFeature>()});
     return;
   }
 
@@ -1552,7 +1553,7 @@ V8Context* V8DealerFeature::buildContext(TRI_vocbase_t* vocbase, size_t id) {
     {
       v8::Context::Scope contextScope(localContext);
 
-      TRI_v8_global_t* v8g = TRI_CreateV8Globals(server(), isolate, id);
+      auto* v8g = CreateV8Globals(server(), isolate, id);
       context->_context.Reset(context->_isolate, localContext);
 
       if (context->_context.IsEmpty()) {

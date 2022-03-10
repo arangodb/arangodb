@@ -58,7 +58,6 @@
 #include "VocBase/ticks.h"
 
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -84,7 +83,7 @@ static constexpr char const* currentServersRegisteredPref =
 
 static ServerState* Instance = nullptr;
 
-ServerState::ServerState(application_features::ApplicationServer& server)
+ServerState::ServerState(ArangodServer& server)
     : _server(server),
       _role(RoleEnum::ROLE_UNDEFINED),
       _shortId(0),
@@ -657,9 +656,6 @@ std::string ServerState::getPersistedId() {
 
 /// @brief check equality of engines with other registered servers
 bool ServerState::checkEngineEquality(AgencyComm& comm) {
-  std::string engineName =
-      _server.getFeature<EngineSelectorFeature>().engineName();
-
   AgencyCommResult result = comm.getValues(currentServersRegisteredPref);
   if (result.successful()) {  // no error if we cannot reach agency directly
 
@@ -671,6 +667,9 @@ bool ServerState::checkEngineEquality(AgencyComm& comm) {
 
     for (VPackObjectIterator::ObjectPair pair : VPackObjectIterator(servers)) {
       if (pair.value.isObject()) {
+        std::string_view const engineName =
+            _server.getFeature<EngineSelectorFeature>().engineName();
+
         VPackSlice engineStr = pair.value.get("engine");
         if (engineStr.isString() && !engineStr.isEqualString(engineName)) {
           return false;

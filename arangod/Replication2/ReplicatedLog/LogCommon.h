@@ -50,6 +50,7 @@
 #include <velocypack/Slice.h>
 
 #include <Basics/Identifier.h>
+#include <Containers/FlatHashMap.h>
 #include <Containers/ImmerMemoryPolicy.h>
 
 namespace arangodb::velocypack {
@@ -146,111 +147,7 @@ auto operator<<(std::ostream& os, LogRange const& r) -> std::ostream&;
 auto intersect(LogRange a, LogRange b) noexcept -> LogRange;
 auto to_string(LogRange const&) -> std::string;
 
-struct LogPayload {
-  explicit LogPayload(velocypack::UInt8Buffer dummy);
-
-  // Named constructors, have to make copies.
-  [[nodiscard]] static auto createFromSlice(velocypack::Slice slice)
-      -> LogPayload;
-  [[nodiscard]] static auto createFromString(std::string_view string)
-      -> LogPayload;
-
-  friend auto operator==(LogPayload const&, LogPayload const&) -> bool;
-
-  [[nodiscard]] auto byteSize() const noexcept -> std::size_t;
-  [[nodiscard]] auto slice() const noexcept -> velocypack::Slice;
-
-  // just a placeholder for now
-  velocypack::UInt8Buffer dummy;
-};
-
-auto operator==(LogPayload const&, LogPayload const&) -> bool;
-
 using ParticipantId = std::string;
-
-class PersistingLogEntry {
- public:
-  PersistingLogEntry(LogTerm, LogIndex, std::optional<LogPayload>);
-  PersistingLogEntry(TermIndexPair, std::optional<LogPayload>);
-  PersistingLogEntry(LogIndex, velocypack::Slice persisted);
-
-  [[nodiscard]] auto logTerm() const noexcept -> LogTerm;
-  [[nodiscard]] auto logIndex() const noexcept -> LogIndex;
-  [[nodiscard]] auto logPayload() const noexcept
-      -> std::optional<LogPayload> const&;
-  [[nodiscard]] auto logTermIndexPair() const noexcept -> TermIndexPair;
-  [[nodiscard]] auto approxByteSize() const noexcept -> std::size_t;
-
-  class OmitLogIndex {};
-  constexpr static auto omitLogIndex = OmitLogIndex();
-  void toVelocyPack(velocypack::Builder& builder) const;
-  void toVelocyPack(velocypack::Builder& builder, OmitLogIndex) const;
-  static auto fromVelocyPack(velocypack::Slice slice) -> PersistingLogEntry;
-
-  friend auto operator==(PersistingLogEntry const&,
-                         PersistingLogEntry const&) noexcept -> bool = default;
-
- private:
-  void entriesWithoutIndexToVelocyPack(velocypack::Builder& builder) const;
-
-  LogTerm _logTerm{};
-  LogIndex _logIndex{};
-  // TODO It seems impractical to not copy persisting log entries, so we should
-  //      probably make this a shared_ptr (or immer::box).
-  std::optional<LogPayload> _payload;
-
-  // TODO this is a magic constant "measuring" the size of
-  //      of the non-payload data in a PersistingLogEntry
-  static inline constexpr auto approxMetaDataSize = std::size_t{42};
-};
-
-// A log entry, enriched with non-persisted metadata, to be stored in an
-// InMemoryLog.
-class InMemoryLogEntry {
- public:
-  using clock = std::chrono::steady_clock;
-
-  explicit InMemoryLogEntry(PersistingLogEntry entry, bool waitForSync = false);
-
-  [[nodiscard]] auto insertTp() const noexcept -> clock::time_point;
-  void setInsertTp(clock::time_point) noexcept;
-  [[nodiscard]] auto entry() const noexcept -> PersistingLogEntry const&;
-  [[nodiscard]] bool getWaitForSync() const noexcept { return _waitForSync; }
-
- private:
-  bool _waitForSync;
-  // Immutable box that allows sharing, i.e. cheap copying.
-  ::immer::box<PersistingLogEntry, ::arangodb::immer::arango_memory_policy>
-      _logEntry;
-  // Timepoint at which the insert was started (not the point in time where it
-  // was committed)
-  clock::time_point _insertTp{};
-};
-
-// A log entry as visible to the user of a replicated log.
-// Does thus always contain a payload: only internal log entries are without
-// payload, which aren't visible to the user. User-defined log entries always
-// contain a payload.
-// The term is not of interest, and therefore not part of this struct.
-// Note that when these entries are visible, they are already committed.
-// It does not own the payload, so make sure it is still valid when using it.
-class LogEntryView {
- public:
-  LogEntryView() = delete;
-  LogEntryView(LogIndex index, LogPayload const& payload) noexcept;
-  LogEntryView(LogIndex index, velocypack::Slice payload) noexcept;
-
-  [[nodiscard]] auto logIndex() const noexcept -> LogIndex;
-  [[nodiscard]] auto logPayload() const noexcept -> velocypack::Slice;
-  [[nodiscard]] auto clonePayload() const -> LogPayload;
-
-  void toVelocyPack(velocypack::Builder& builder) const;
-  static auto fromVelocyPack(velocypack::Slice slice) -> LogEntryView;
-
- private:
-  LogIndex _index;
-  velocypack::Slice _payload;
-};
 
 class LogId : public arangodb::basics::Identifier {
  public:
@@ -262,29 +159,6 @@ class LogId : public arangodb::basics::Identifier {
 };
 
 auto to_string(LogId logId) -> std::string;
-
-template<typename T>
-struct TypedLogIterator {
-  virtual ~TypedLogIterator() = default;
-  // The returned view is guaranteed to stay valid until a successive next()
-  // call (only).
-  virtual auto next() -> std::optional<T> = 0;
-};
-
-template<typename T>
-struct TypedLogRangeIterator : TypedLogIterator<T> {
-  // returns the index interval [from, to)
-  // Note that this does not imply that all indexes in the range [from, to)
-  // are returned. Hence (to - from) is only an upper bound on the number of
-  // entries returned.
-  [[nodiscard]] virtual auto range() const noexcept -> LogRange = 0;
-};
-
-using LogIterator = TypedLogIterator<LogEntryView>;
-using LogRangeIterator = TypedLogRangeIterator<LogEntryView>;
-
-// ReplicatedLog-internal iterator over PersistingLogEntries
-struct PersistedLogIterator : TypedLogIterator<PersistingLogEntry> {};
 
 struct LogConfig {
   std::size_t writeConcern = 1;
@@ -368,9 +242,21 @@ struct CommitFailReason {
         -> bool = default;
   };
   struct QuorumSizeNotReached {
+    struct ParticipantInfo {
+      bool isFailed{};
+      bool isExcluded{};
+      TermIndexPair lastAcknowledged;
+      static auto fromVelocyPack(velocypack::Slice) -> ParticipantInfo;
+      void toVelocyPack(velocypack::Builder& builder) const;
+      friend auto operator==(ParticipantInfo const& left,
+                             ParticipantInfo const& right) noexcept
+          -> bool = default;
+    };
+    using who_type = containers::FlatHashMap<ParticipantId, ParticipantInfo>;
     static auto fromVelocyPack(velocypack::Slice) -> QuorumSizeNotReached;
     void toVelocyPack(velocypack::Builder& builder) const;
-    ParticipantId who;
+    who_type who;
+    TermIndexPair spearhead;
     friend auto operator==(QuorumSizeNotReached const& left,
                            QuorumSizeNotReached const& right) noexcept
         -> bool = default;
@@ -387,7 +273,6 @@ struct CommitFailReason {
   struct NonEligibleServerRequiredForQuorum {
     enum Why {
       kExcluded,
-      kFailed,
       // WrongTerm might be misleading, because the follower might be in the
       // right term, it just never has acked an entry of the current term.
       kWrongTerm,
@@ -406,18 +291,37 @@ struct CommitFailReason {
         NonEligibleServerRequiredForQuorum const& right) noexcept
         -> bool = default;
   };
+  struct FewerParticipantsThanWriteConcern {
+    std::size_t writeConcern{};
+    std::size_t softWriteConcern{};
+    std::size_t effectiveWriteConcern{};
+    std::size_t numParticipants{};
+    static auto fromVelocyPack(velocypack::Slice)
+        -> FewerParticipantsThanWriteConcern;
+    void toVelocyPack(velocypack::Builder& builder) const;
+    friend auto operator==(
+        FewerParticipantsThanWriteConcern const& left,
+        FewerParticipantsThanWriteConcern const& right) noexcept
+        -> bool = default;
+  };
   std::variant<NothingToCommit, QuorumSizeNotReached,
-               ForcedParticipantNotInQuorum, NonEligibleServerRequiredForQuorum>
+               ForcedParticipantNotInQuorum, NonEligibleServerRequiredForQuorum,
+               FewerParticipantsThanWriteConcern>
       value;
 
   static auto withNothingToCommit() noexcept -> CommitFailReason;
-  static auto withQuorumSizeNotReached(ParticipantId who) noexcept
+  static auto withQuorumSizeNotReached(QuorumSizeNotReached::who_type who,
+                                       TermIndexPair spearhead) noexcept
       -> CommitFailReason;
   static auto withForcedParticipantNotInQuorum(ParticipantId who) noexcept
       -> CommitFailReason;
   static auto withNonEligibleServerRequiredForQuorum(
       NonEligibleServerRequiredForQuorum::CandidateMap) noexcept
       -> CommitFailReason;
+  // This would have too many `std::size_t` arguments to not be confusing,
+  // so taking the full object instead.
+  static auto withFewerParticipantsThanWriteConcern(
+      FewerParticipantsThanWriteConcern) -> CommitFailReason;
 
   static auto fromVelocyPack(velocypack::Slice) -> CommitFailReason;
   void toVelocyPack(velocypack::Builder& builder) const;
@@ -429,6 +333,10 @@ struct CommitFailReason {
   template<typename... Args>
   explicit CommitFailReason(std::in_place_t, Args&&... args) noexcept;
 };
+
+auto operator<<(std::ostream&,
+                CommitFailReason::QuorumSizeNotReached::ParticipantInfo)
+    -> std::ostream&;
 
 auto to_string(CommitFailReason const&) -> std::string;
 }  // namespace replicated_log

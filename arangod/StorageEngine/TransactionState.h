@@ -27,7 +27,8 @@
 #include "Basics/Result.h"
 #include "Cluster/ClusterTypes.h"
 #include "Cluster/ServerState.h"
-#include "Containers/HashSet.h"
+#include "Containers/FlatHashMap.h"
+#include "Containers/FlatHashSet.h"
 #include "Containers/SmallVector.h"
 #include "Transaction/Hints.h"
 #include "Transaction/Options.h"
@@ -37,7 +38,7 @@
 #include "VocBase/Identifiers/TransactionId.h"
 #include "VocBase/voc-types.h"
 
-#include <map>
+#include <string_view>
 #include <variant>
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -96,23 +97,27 @@ class TransactionState {
   /// @return the previously associated cookie, if any
   Cookie::ptr cookie(void const* key, Cookie::ptr&& cookie);
 
-  [[nodiscard]] bool isRunningInCluster() const {
+  [[nodiscard]] bool isRunningInCluster() const noexcept {
     return ServerState::isRunningInCluster(_serverRole);
   }
-  [[nodiscard]] bool isDBServer() const {
+  [[nodiscard]] bool isDBServer() const noexcept {
     return ServerState::isDBServer(_serverRole);
   }
-  [[nodiscard]] bool isCoordinator() const {
+  [[nodiscard]] bool isCoordinator() const noexcept {
     return ServerState::isCoordinator(_serverRole);
   }
-  [[nodiscard]] ServerState::RoleEnum serverRole() const { return _serverRole; }
+  [[nodiscard]] ServerState::RoleEnum serverRole() const noexcept {
+    return _serverRole;
+  }
 
-  [[nodiscard]] transaction::Options& options() { return _options; }
-  [[nodiscard]] transaction::Options const& options() const { return _options; }
-  [[nodiscard]] TRI_vocbase_t& vocbase() const { return _vocbase; }
-  [[nodiscard]] TransactionId id() const { return _id; }
+  [[nodiscard]] transaction::Options& options() noexcept { return _options; }
+  [[nodiscard]] transaction::Options const& options() const noexcept {
+    return _options;
+  }
+  [[nodiscard]] TRI_vocbase_t& vocbase() const noexcept { return _vocbase; }
+  [[nodiscard]] TransactionId id() const noexcept { return _id; }
   [[nodiscard]] transaction::Status status() const noexcept { return _status; }
-  [[nodiscard]] bool isRunning() const {
+  [[nodiscard]] bool isRunning() const noexcept {
     return _status == transaction::Status::RUNNING;
   }
   void setRegistered() noexcept { _registeredTransaction = true; }
@@ -229,20 +234,19 @@ class TransactionState {
   }
 
   /// @brief servers already contacted
-  [[nodiscard]] ::arangodb::containers::HashSet<std::string> const&
-  knownServers() const {
+  [[nodiscard]] containers::FlatHashSet<ServerID> const& knownServers() const {
     return _knownServers;
   }
 
-  [[nodiscard]] bool knowsServer(std::string const& uuid) const {
+  [[nodiscard]] bool knowsServer(std::string_view uuid) const {
     return _knownServers.find(uuid) != _knownServers.end();
   }
 
   /// @brief add a server to the known set
-  void addKnownServer(std::string const& uuid) { _knownServers.emplace(uuid); }
+  void addKnownServer(std::string_view uuid) { _knownServers.emplace(uuid); }
 
   /// @brief remove a server from the known set
-  void removeKnownServer(std::string const& uuid) { _knownServers.erase(uuid); }
+  void removeKnownServer(std::string_view uuid) { _knownServers.erase(uuid); }
 
   void clearKnownServers() { _knownServers.clear(); }
 
@@ -262,7 +266,7 @@ class TransactionState {
 #ifdef USE_ENTERPRISE
   void addInaccessibleCollection(DataSourceId cid, std::string const& cname);
   [[nodiscard]] bool isInaccessibleCollection(DataSourceId cid);
-  [[nodiscard]] bool isInaccessibleCollection(std::string const& cname);
+  [[nodiscard]] bool isInaccessibleCollection(std::string_view cname);
 #endif
 
   /// @brief roll a new transaction ID on the coordintor. Use this method
@@ -325,10 +329,10 @@ class TransactionState {
   TransactionId _id;  /// @brief local trx id
 
   /// a collection of stored cookies
-  std::map<void const*, Cookie::ptr> _cookies;
+  containers::FlatHashMap<void const*, Cookie::ptr> _cookies;
 
   /// @brief servers we already talked to for this transactions
-  ::arangodb::containers::HashSet<std::string> _knownServers;
+  containers::FlatHashSet<ServerID> _knownServers;
 
   QueryAnalyzerRevisions _analyzersRevision;
   bool _registeredTransaction = false;

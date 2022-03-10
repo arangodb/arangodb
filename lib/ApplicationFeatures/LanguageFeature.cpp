@@ -21,12 +21,10 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <stdlib.h>
-
 #include "LanguageFeature.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/GreetingsFeaturePhase.h"
+#include <stdlib.h>
+
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/FileUtils.h"
 #include "Basics/Utf8Helper.h"
@@ -88,17 +86,6 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-LanguageFeature::LanguageFeature(
-    application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Language"),
-      _locale(),
-      _binaryPath(server.getBinaryPath()),
-      _icuDataPtr(nullptr),
-      _forceLanguageCheck(true) {
-  setOptional(false);
-  startsAfter<application_features::GreetingsFeaturePhase>();
-}
-
 LanguageFeature::~LanguageFeature() {
   if (_icuDataPtr != nullptr) {
     TRI_Free(_icuDataPtr);
@@ -110,14 +97,14 @@ void LanguageFeature::collectOptions(
   options->addOption(
       "--default-language", "ISO-639 language code",
       new StringParameter(&_language),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options
-      ->addOption(
-          "--default-language-check",
-          "check if default language matches stored language",
-          new BooleanParameter(&_forceLanguageCheck),
-          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+      ->addOption("--default-language-check",
+                  "check if default language matches stored language",
+                  new BooleanParameter(&_forceLanguageCheck),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30800);
 }
 

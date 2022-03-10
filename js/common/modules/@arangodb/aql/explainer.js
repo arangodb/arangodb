@@ -752,6 +752,7 @@ function processQuery(query, explain, planIndex) {
     maxEstimateLen = String('Est.').length,
     maxCallsLen = String('Calls').length,
     maxItemsLen = String('Items').length,
+    maxFilteredLen = String('Filtered').length,
     maxRuntimeLen = String('Runtime [s]').length,
     stats = explain.stats;
 
@@ -810,6 +811,7 @@ function processQuery(query, explain, planIndex) {
       if (nodes.hasOwnProperty(n.id)) {
         nodes[n.id].calls = (n.calls === undefined ? "n/a" : n.calls);
         nodes[n.id].items = (n.items === undefined ? "n/a" : n.items);
+        nodes[n.id].filtered = (n.filtered === undefined ? "n/a" : n.filtered);
         nodes[n.id].runtime = (n.runtime === undefined ? "n/a" : n.runtime);
 
         if (String(nodes[n.id].calls).length > maxCallsLen) {
@@ -817,6 +819,9 @@ function processQuery(query, explain, planIndex) {
         }
         if (String(nodes[n.id].items).length > maxItemsLen) {
           maxItemsLen = String(nodes[n.id].items).length;
+        }
+        if (String(nodes[n.id].filtered).length > maxFilteredLen) {
+          maxFilteredLen = String(nodes[n.id].filtered).length;
         }
         let l;
         if (typeof nodes[n.id].runtime === 'number') {
@@ -1800,7 +1805,7 @@ function processQuery(query, explain, planIndex) {
             collectionVariables[node.outVariable.id] = node.collection;
             let indexRef = `${variable(JSON.stringify(node.key))}`;
             node.indexes.forEach(function (idx, i) { iterateIndexes(idx, i, node, types, indexRef); });
-            return `${keyword('FOR')} ${variableName(node.outVariable)} ${keyword('IN')} ${collection(node.collection)} ${keyword('FILTER')} ${variable('_key')} == ${indexRef} ${annotation(`/* primary index scan */`)}`;
+            return `${keyword('FOR')} ${variableName(node.outVariable)} ${keyword('IN')} ${collection(node.collection)} ${keyword('FILTER')} ${variableName(node.outVariable)}.${attribute('_key')} == ${indexRef} ${annotation(`/* primary index scan */`)}`;
             // `
           }
           case 'InsertNode': {
@@ -1823,9 +1828,9 @@ function processQuery(query, explain, planIndex) {
             let keyCondition = "";
             let filterCondition;
             if (node.hasOwnProperty('key')) {
-              keyCondition = `{ _key: ${variable(JSON.stringify(node.key))} } `;
+              keyCondition = `{ ${value('_key')} : ${variable(JSON.stringify(node.key))} } `;
               indexRef = `${variable(JSON.stringify(node.key))} `;
-              filterCondition = `${variable('doc._key')} == ${variable(JSON.stringify(node.key))}`;
+              filterCondition = `${variable('doc')}.${attribute('_key')} == ${variable(JSON.stringify(node.key))}`;
             } else if (node.hasOwnProperty('inVariable')) {
               keyCondition = `${variableName(node.inVariable)} `;
               indexRef = `${variableName(node.inVariable)}`;
@@ -1854,9 +1859,9 @@ function processQuery(query, explain, planIndex) {
             let keyCondition = "";
             let filterCondition;
             if (node.hasOwnProperty('key')) {
-              keyCondition = `{ _key: ${variable(JSON.stringify(node.key))} } `;
+              keyCondition = `{ ${value('_key')} : ${variable(JSON.stringify(node.key))} } `;
               indexRef = `${variable(JSON.stringify(node.key))}`;
-              filterCondition = `${variable('doc._key')} == ${variable(JSON.stringify(node.key))}`;
+              filterCondition = `${variable('doc')}.${attribute('_key')} == ${variable(JSON.stringify(node.key))}`;
             } else if (node.hasOwnProperty('inVariable')) {
               keyCondition = `${variableName(node.inVariable)} `;
               indexRef = `${variableName(node.inVariable)}`;
@@ -1883,9 +1888,9 @@ function processQuery(query, explain, planIndex) {
             let keyCondition;
             let filterCondition;
             if (node.hasOwnProperty('key')) {
-              keyCondition = `{ _key: ${variable(JSON.stringify(node.key))} } `;
+              keyCondition = `{ ${value('_key')} : ${variable(JSON.stringify(node.key))} } `;
               indexRef = `${variable(JSON.stringify(node.key))}`;
-              filterCondition = `${variable('doc._key')} == ${variable(JSON.stringify(node.key))}`;
+              filterCondition = `${variable('doc')}.${attribute('_key')} == ${variable(JSON.stringify(node.key))}`;
             } else if (node.hasOwnProperty('inVariable')) {
               keyCondition = `${variableName(node.inVariable)} `;
               indexRef = `${variableName(node.inVariable)}`;
@@ -2041,6 +2046,9 @@ function processQuery(query, explain, planIndex) {
       if (node.items === undefined) {
         node.items = 'n/a';
       }
+      if (node.filtered === undefined) {
+        node.filtered = 'n/a';
+      }
       let runtime = node.runtime;
       if (runtime === undefined) {
         runtime = 'n/a';
@@ -2050,6 +2058,7 @@ function processQuery(query, explain, planIndex) {
 
       line += pad(1 + maxCallsLen - String(node.calls).length) + value(node.calls) + '   ' +
         pad(1 + maxItemsLen - String(node.items).length) + value(node.items) + '   ' +
+        pad(1 + maxFilteredLen - String(node.filtered).length) + value(node.filtered) + '   ' +
         pad(1 + maxRuntimeLen - runtime.length) + value(runtime) + '   ' +
         indent(level, node.type === 'SingletonNode') + label(node) + callstackSplit(node);
     } else {
@@ -2081,6 +2090,7 @@ function processQuery(query, explain, planIndex) {
   if (profileMode) {
     line += pad(1 + maxCallsLen - String('Calls').length) + header('Calls') + '   ' +
       pad(1 + maxItemsLen - String('Items').length) + header('Items') + '   ' +
+      pad(1 + maxFilteredLen - String('Filtered').length) + header('Filtered') + '   ' +
       pad(1 + maxRuntimeLen - String('Runtime [s]').length) + header('Runtime [s]') + '   ' +
       header('Comment');
   } else {

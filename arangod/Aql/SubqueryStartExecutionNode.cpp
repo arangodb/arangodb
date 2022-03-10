@@ -34,7 +34,6 @@
 #include "Aql/SubqueryStartExecutor.h"
 
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
 namespace aql {

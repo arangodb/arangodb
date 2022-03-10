@@ -31,14 +31,12 @@
 #include "Basics/application-exit.h"
 #include "Basics/encoding.h"
 #include "Cluster/ServerState.h"
-#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
-#include "StorageEngine/StorageEngineFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Utils/FlushThread.h"
 
@@ -50,10 +48,8 @@ namespace arangodb {
 
 std::atomic<bool> FlushFeature::_isRunning(false);
 
-FlushFeature::FlushFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Flush"),
-      _flushInterval(1000000),
-      _stopped(false) {
+FlushFeature::FlushFeature(Server& server)
+    : ArangodFeature{server, *this}, _flushInterval(1000000), _stopped(false) {
   setOptional(true);
   startsAfter<BasicFeaturePhaseServer>();
 
@@ -64,7 +60,7 @@ void FlushFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption(
       "--server.flush-interval", "interval (in microseconds) for flushing data",
       new UInt64Parameter(&_flushInterval),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 }
 
 void FlushFeature::registerFlushSubscription(
@@ -134,7 +130,7 @@ arangodb::Result FlushFeature::releaseUnusedTicks(size_t& count,
 }
 
 void FlushFeature::validateOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
+    std::shared_ptr<options::ProgramOptions> /*options*/) {
   if (_flushInterval < 1000) {
     // do not go below 1000 microseconds
     _flushInterval = 1000;

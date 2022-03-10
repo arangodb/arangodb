@@ -12,7 +12,7 @@ func_to_hook(int arg1, int arg2) {
 	return arg1 + arg2;
 }
 
-#define func_to_hook JEMALLOC_HOOK(func_to_hook, test_hooks_libc_hook)
+#define func_to_hook JEMALLOC_TEST_HOOK(func_to_hook, test_hooks_libc_hook)
 
 TEST_BEGIN(unhooked_call) {
 	test_hooks_libc_hook = NULL;

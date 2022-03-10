@@ -29,7 +29,7 @@
 
 #include "Replication2/ReplicatedState/ReplicatedState.h"
 #include "Replication2/ReplicatedState/ReplicatedStateTraits.h"
-#include "ApplicationFeatures/ApplicationFeature.h"
+#include "RestServer/arangod.h"
 
 namespace arangodb::replication2::replicated_log {
 struct ReplicatedLog;
@@ -69,6 +69,11 @@ struct ReplicatedStateFeature {
                              std::shared_ptr<replicated_log::ReplicatedLog> log)
       -> std::shared_ptr<ReplicatedStateBase>;
 
+  auto createReplicatedState(std::string_view name,
+                             std::shared_ptr<replicated_log::ReplicatedLog> log,
+                             LoggerContext const&)
+      -> std::shared_ptr<ReplicatedStateBase>;
+
   template<typename S>
   auto createReplicatedStateAs(
       std::string_view name, std::shared_ptr<replicated_log::ReplicatedLog> log)
@@ -83,7 +88,7 @@ struct ReplicatedStateFeature {
       : std::enable_shared_from_this<InternalFactoryBase> {
     virtual ~InternalFactoryBase() = default;
     virtual auto createReplicatedState(
-        std::shared_ptr<replicated_log::ReplicatedLog>)
+        std::shared_ptr<replicated_log::ReplicatedLog>, LoggerContext)
         -> std::shared_ptr<ReplicatedStateBase> = 0;
   };
 
@@ -102,10 +107,11 @@ struct ReplicatedStateFeature::InternalFactory : InternalFactoryBase,
   explicit InternalFactory(std::in_place_t, Args&&... args)
       : Factory(std::forward<Args>(args)...) {}
 
-  auto createReplicatedState(std::shared_ptr<replicated_log::ReplicatedLog> log)
+  auto createReplicatedState(std::shared_ptr<replicated_log::ReplicatedLog> log,
+                             LoggerContext loggerContext)
       -> std::shared_ptr<ReplicatedStateBase> override {
-    return std::make_shared<ReplicatedState<S>>(std::move(log),
-                                                getStateFactory());
+    return std::make_shared<ReplicatedState<S>>(
+        std::move(log), getStateFactory(), std::move(loggerContext));
   }
 
   auto getStateFactory() -> std::shared_ptr<Factory> {
@@ -113,10 +119,12 @@ struct ReplicatedStateFeature::InternalFactory : InternalFactoryBase,
   }
 };
 
-struct ReplicatedStateAppFeature : application_features::ApplicationFeature,
-                                   ReplicatedStateFeature {
-  explicit ReplicatedStateAppFeature(
-      application_features::ApplicationServer& server);
+struct ReplicatedStateAppFeature : ArangodFeature, ReplicatedStateFeature {
+  static constexpr std::string_view name() noexcept {
+    return "ReplicatedState";
+  }
+
+  explicit ReplicatedStateAppFeature(Server& server);
 };
 
 }  // namespace arangodb::replication2::replicated_state

@@ -49,9 +49,9 @@ class LogicalViewImpl : public arangodb::LogicalView {
   LogicalViewImpl(TRI_vocbase_t& vocbase,
                   arangodb::velocypack::Slice const& definition)
       : LogicalView(*this, vocbase, definition) {}
-  virtual arangodb::Result appendVelocyPackImpl(arangodb::velocypack::Builder&,
-                                                Serialization) const override {
-    return arangodb::Result();
+  arangodb::Result appendVPackImpl(arangodb::velocypack::Builder&,
+                                   Serialization, bool) const override {
+    return {};
   }
   virtual arangodb::Result dropImpl() override { return arangodb::Result(); }
   virtual void open() override {}
@@ -74,7 +74,7 @@ class LogicalViewImpl : public arangodb::LogicalView {
 class LogicalDataSourceTest : public ::testing::Test {
  protected:
   StorageEngineMock engine;
-  arangodb::application_features::ApplicationServer server;
+  arangodb::ArangodServer server;
   std::vector<
       std::pair<arangodb::application_features::ApplicationFeature&, bool>>
       features;

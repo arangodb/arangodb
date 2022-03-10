@@ -39,7 +39,6 @@
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 #include <limits.h>
 
 #include <regex>
@@ -50,8 +49,7 @@ namespace {
 using namespace arangodb;
 
 struct InvalidIndexFactory : public IndexTypeFactory {
-  InvalidIndexFactory(application_features::ApplicationServer& server)
-      : IndexTypeFactory(server) {}
+  InvalidIndexFactory(ArangodServer& server) : IndexTypeFactory(server) {}
 
   bool equal(velocypack::Slice, velocypack::Slice,
              std::string const&) const override {
@@ -79,9 +77,7 @@ struct InvalidIndexFactory : public IndexTypeFactory {
 
 namespace arangodb {
 
-IndexTypeFactory::IndexTypeFactory(
-    application_features::ApplicationServer& server)
-    : _server(server) {}
+IndexTypeFactory::IndexTypeFactory(ArangodServer& server) : _server(server) {}
 
 bool IndexTypeFactory::equal(Index::IndexType type, velocypack::Slice lhs,
                              velocypack::Slice rhs,
@@ -179,7 +175,7 @@ bool IndexTypeFactory::equal(Index::IndexType type, velocypack::Slice lhs,
   return true;
 }
 
-IndexFactory::IndexFactory(application_features::ApplicationServer& server)
+IndexFactory::IndexFactory(ArangodServer& server)
     : _server(server),
       _factories(),
       _invalid(std::make_unique<InvalidIndexFactory>(server)) {}
@@ -578,6 +574,15 @@ void IndexFactory::processIndexGeoJsonFlag(VPackSlice definition,
   }
 }
 
+/// @brief process the legacyPolygons flag and add it to the json
+void IndexFactory::processIndexLegacyPolygonsFlag(VPackSlice definition,
+                                                  VPackBuilder& builder) {
+  bool legacyPolygons = basics::VelocyPackHelper::getBooleanValue(
+      definition, StaticStrings::IndexLegacyPolygons, false);
+
+  builder.add(StaticStrings::IndexLegacyPolygons, VPackValue(legacyPolygons));
+}
+
 /// @brief enhances the json of a persistent index (hash and skiplist are
 /// aliases for this too)
 Result IndexFactory::enhanceJsonIndexGeneric(VPackSlice definition,
@@ -648,6 +653,7 @@ Result IndexFactory::enhanceJsonIndexGeo(VPackSlice definition,
     builder.add(StaticStrings::IndexSparse, velocypack::Value(true));
     builder.add(StaticStrings::IndexUnique, velocypack::Value(false));
     IndexFactory::processIndexGeoJsonFlag(definition, builder);
+    IndexFactory::processIndexLegacyPolygonsFlag(definition, builder);
 
     processIndexInBackground(definition, builder);
   }

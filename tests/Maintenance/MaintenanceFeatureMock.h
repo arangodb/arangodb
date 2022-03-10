@@ -24,19 +24,18 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <thread>
+#include <iostream>
 
 #include "Basics/ConditionLocker.h"
 #include "Basics/ConditionVariable.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Cluster/MaintenanceFeature.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
-//
 // structure used to store expected states of action properties
-//
 struct Expected {
   int _id;
   int _result;
@@ -46,9 +45,7 @@ struct Expected {
 
 typedef std::vector<Expected> ExpectedVec_t;
 
-//
 // TestProgressHandler lets us know once ApplicationServer is ready
-//
 class TestProgressHandler : public arangodb::application_features::
                                 ApplicationServer::ProgressHandler {
  public:
@@ -74,7 +71,7 @@ class TestProgressHandler : public arangodb::application_features::
 
   void FeatureChange(
       arangodb::application_features::ApplicationServer::State newState,
-      std::string const&) {}
+      std::string_view) {}
 
   arangodb::basics::ConditionVariable _serverReadyCond;
   std::atomic_bool _serverReady;
@@ -91,7 +88,7 @@ using namespace arangodb::maintenance;
 //
 class TestMaintenanceFeature : public arangodb::MaintenanceFeature {
  public:
-  TestMaintenanceFeature(arangodb::application_features::ApplicationServer& as)
+  TestMaintenanceFeature(arangodb::ArangodServer& as)
       : arangodb::MaintenanceFeature(as) {
     // force activation of the feature, even in agency/single-server mode
     // (the catch tests use single-server mode)

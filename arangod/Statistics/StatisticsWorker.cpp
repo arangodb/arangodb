@@ -28,7 +28,6 @@
 #include "StatisticsFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/CpuUsageFeature.h"
 #include "Aql/Query.h"
 #include "Aql/QueryString.h"
 #include "Basics/ConditionLocker.h"
@@ -44,6 +43,7 @@
 #include "Random/RandomGenerator.h"
 #include "Metrics/Counter.h"
 #include "Metrics/MetricsFeature.h"
+#include "RestServer/CpuUsageFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/TtlFeature.h"
 #include "Scheduler/Scheduler.h"
@@ -59,7 +59,6 @@
 
 #include <velocypack/Exception.h>
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 namespace {
 std::string const garbageCollectionQuery(
@@ -96,7 +95,7 @@ using namespace arangodb;
 using namespace arangodb::statistics;
 
 StatisticsWorker::StatisticsWorker(TRI_vocbase_t& vocbase)
-    : Thread(vocbase.server(), "StatisticsWorker"),
+    : ServerThread<ArangodServer>(vocbase.server(), "StatisticsWorker"),
       _gcTask(GC_STATS),
       _vocbase(vocbase) {
   _bytesSentDistribution.openArray();
@@ -1009,8 +1008,8 @@ void StatisticsWorker::generateRawStatistics(VPackBuilder& builder,
   V8DealerFeature::Statistics v8Counters{};
   // std::vector<V8DealerFeature::MemoryStatistics> memoryStatistics;
   // V8 may be turned off on a server
-  if (_server.hasFeature<V8DealerFeature>()) {
-    V8DealerFeature& dealer = _server.getFeature<V8DealerFeature>();
+  if (server().hasFeature<V8DealerFeature>()) {
+    V8DealerFeature& dealer = server().getFeature<V8DealerFeature>();
     if (dealer.isEnabled()) {
       v8Counters = dealer.getCurrentContextNumbers();
       // see below: memoryStatistics = dealer.getCurrentMemoryDetails();
@@ -1046,7 +1045,7 @@ void StatisticsWorker::generateRawStatistics(VPackBuilder& builder,
   builder.close();
 
   // export ttl statistics
-  TtlFeature& ttlFeature = _server.getFeature<TtlFeature>();
+  TtlFeature& ttlFeature = server().getFeature<TtlFeature>();
   builder.add(VPackValue("ttl"));
   ttlFeature.statsToVelocyPack(builder);
 

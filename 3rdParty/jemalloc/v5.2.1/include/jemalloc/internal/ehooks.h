@@ -63,6 +63,8 @@ bool ehooks_default_merge(extent_hooks_t *extent_hooks, void *addr_a,
     unsigned arena_ind);
 bool ehooks_default_merge_impl(tsdn_t *tsdn, void *addr_a, void *addr_b);
 void ehooks_default_zero_impl(void *addr, size_t size);
+void ehooks_default_guard_impl(void *guard1, void *guard2);
+void ehooks_default_unguard_impl(void *guard1, void *guard2);
 
 /*
  * We don't officially support reentrancy from wtihin the extent hooks.  But
@@ -137,6 +139,15 @@ ehooks_split_will_fail(ehooks_t *ehooks) {
 static inline bool
 ehooks_merge_will_fail(ehooks_t *ehooks) {
 	return ehooks_get_extent_hooks_ptr(ehooks)->merge == NULL;
+}
+
+static inline bool
+ehooks_guard_will_fail(ehooks_t *ehooks) {
+	/*
+	 * Before the guard hooks are officially introduced, limit the use to
+	 * the default hooks only.
+	 */
+	return !ehooks_are_default(ehooks);
 }
 
 /*
@@ -366,6 +377,36 @@ ehooks_zero(tsdn_t *tsdn, ehooks_t *ehooks, void *addr, size_t size) {
 		 */
 		memset(addr, 0, size);
 	}
+}
+
+static inline bool
+ehooks_guard(tsdn_t *tsdn, ehooks_t *ehooks, void *guard1, void *guard2) {
+	bool err;
+	extent_hooks_t *extent_hooks = ehooks_get_extent_hooks_ptr(ehooks);
+
+	if (extent_hooks == &ehooks_default_extent_hooks) {
+		ehooks_default_guard_impl(guard1, guard2);
+		err = false;
+	} else {
+		err = true;
+	}
+
+	return err;
+}
+
+static inline bool
+ehooks_unguard(tsdn_t *tsdn, ehooks_t *ehooks, void *guard1, void *guard2) {
+	bool err;
+	extent_hooks_t *extent_hooks = ehooks_get_extent_hooks_ptr(ehooks);
+
+	if (extent_hooks == &ehooks_default_extent_hooks) {
+		ehooks_default_unguard_impl(guard1, guard2);
+		err = false;
+	} else {
+		err = true;
+	}
+
+	return err;
 }
 
 #endif /* JEMALLOC_INTERNAL_EHOOKS_H */

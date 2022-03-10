@@ -255,7 +255,7 @@ struct BoostScorer : public irs::sort {
     }
   };  // namespace
 
-  static irs::sort::ptr make(irs::string_ref const&) {
+  static irs::sort::ptr make(irs::string_ref) {
     return std::make_unique<BoostScorer>();
   }
 
@@ -327,7 +327,7 @@ struct CustomScorer : public irs::sort {
     float_t i;
   };
 
-  static irs::sort::ptr make(irs::string_ref const& args) {
+  static irs::sort::ptr make(irs::string_ref args) {
     if (args.null()) {
       return std::make_unique<CustomScorer>(0u);
     }
@@ -449,7 +449,7 @@ void v8Init() {
 
 bool assertRules(
     TRI_vocbase_t& vocbase, std::string const& queryString,
-    std::vector<int> expectedRulesIds,
+    std::vector<int> const& expectedRulesIds,
     std::shared_ptr<arangodb::velocypack::Builder> bindVars /* = nullptr */,
     std::string const& optionsString /*= "{}"*/
 ) {
@@ -474,11 +474,12 @@ bool assertRules(
     arangodb::velocypack::ArrayIterator rules(explanation.get("rules"));
 
     for (auto const& rule : rules) {
-      auto const strRule = rule.copyString();
-      expectedRules.erase(strRule);
+      expectedRules.erase(rule.copyString());
     }
   }
 
+  // note: expectedRules may also not be empty because the query failed.
+  // assertRules does not report failed queries so far.
   return expectedRules.empty();
 }
 
@@ -558,8 +559,7 @@ std::shared_ptr<arangodb::aql::Query> prepareQuery(
   return query;
 }
 
-uint64_t getCurrentPlanVersion(
-    arangodb::application_features::ApplicationServer& server) {
+uint64_t getCurrentPlanVersion(arangodb::ArangodServer& server) {
   auto const result = arangodb::AgencyComm(server).getValues("Plan");
   auto const planVersionSlice = result.slice()[0].get<std::string>(
       {arangodb::AgencyCommHelper::path(), "Plan", "Version"});
@@ -1089,9 +1089,8 @@ VPackBuilder getInvertedIndexPropertiesSlice(
   return vpack;
 }
 
-arangodb::CreateDatabaseInfo createInfo(
-    arangodb::application_features::ApplicationServer& server,
-    std::string const& name, uint64_t id) {
+arangodb::CreateDatabaseInfo createInfo(arangodb::ArangodServer& server,
+                                        std::string const& name, uint64_t id) {
   arangodb::CreateDatabaseInfo info(server, arangodb::ExecContext::current());
   auto rv = info.load(name, id);
   if (rv.fail()) {
@@ -1100,24 +1099,19 @@ arangodb::CreateDatabaseInfo createInfo(
   return info;
 }
 
-arangodb::CreateDatabaseInfo systemDBInfo(
-    arangodb::application_features::ApplicationServer& server,
-    std::string const& name, uint64_t id) {
+arangodb::CreateDatabaseInfo systemDBInfo(arangodb::ArangodServer& server,
+                                          std::string const& name,
+                                          uint64_t id) {
   return createInfo(server, name, id);
 }
 
-arangodb::CreateDatabaseInfo testDBInfo(
-    arangodb::application_features::ApplicationServer& server,
-    std::string const& name, uint64_t id) {
+arangodb::CreateDatabaseInfo testDBInfo(arangodb::ArangodServer& server,
+                                        std::string const& name, uint64_t id) {
   return createInfo(server, name, id);
 }
 
-arangodb::CreateDatabaseInfo unknownDBInfo(
-    arangodb::application_features::ApplicationServer& server,
-    std::string const& name, uint64_t id) {
+arangodb::CreateDatabaseInfo unknownDBInfo(arangodb::ArangodServer& server,
+                                           std::string const& name,
+                                           uint64_t id) {
   return createInfo(server, name, id);
 }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

@@ -28,6 +28,7 @@
 #include "Aql/Variable.h"
 #include "Aql/types.h"
 
+#include <functional>
 #include <vector>
 
 namespace arangodb {
@@ -48,9 +49,11 @@ class ExecutorExpressionContext final : public QueryExpressionContext {
   AqlValue getVariableValue(Variable const* variable, bool doCopy,
                             bool& mustDestroy) const override;
 
+  void adjustInputRow(InputAqlItemRow const& inputRow) noexcept;
+
  private:
   /// @brief temporary storage for expression data context
-  InputAqlItemRow const& _inputRow;
+  std::reference_wrapper<InputAqlItemRow const> _inputRow;
   std::vector<std::pair<VariableId, RegisterId>> const& _varsToRegister;
 };
 

@@ -33,7 +33,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "SimpleHttpClient.h"
 
@@ -81,9 +80,7 @@ SimpleHttpClient::SimpleHttpClient(GeneralClientConnection* connection,
       _nextChunkedSize(0),
       _method(rest::RequestType::GET),
       _aborted(false),
-      _comm(
-          _connection->server()
-              .getFeature<application_features::CommunicationFeaturePhase>()) {
+      _comm(_connection->comm()) {
   TRI_ASSERT(connection != nullptr);
 
   if (_connection->isConnected()) {

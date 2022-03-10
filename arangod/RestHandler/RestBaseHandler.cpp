@@ -26,7 +26,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Options.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
@@ -38,9 +37,8 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestBaseHandler::RestBaseHandler(
-    application_features::ApplicationServer& server, GeneralRequest* request,
-    GeneralResponse* response)
+RestBaseHandler::RestBaseHandler(ArangodServer& server, GeneralRequest* request,
+                                 GeneralResponse* response)
     : RestHandler(server, request, response) {}
 
 ////////////////////////////////////////////////////////////////////////////////

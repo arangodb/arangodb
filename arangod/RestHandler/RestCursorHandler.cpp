@@ -41,15 +41,14 @@
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Value.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 RestCursorHandler::RestCursorHandler(
-    application_features::ApplicationServer& server, GeneralRequest* request,
-    GeneralResponse* response, arangodb::aql::QueryRegistry* queryRegistry)
+    ArangodServer& server, GeneralRequest* request, GeneralResponse* response,
+    arangodb::aql::QueryRegistry* queryRegistry)
     : RestVocbaseBaseHandler(server, request, response),
       _query(nullptr),
       _queryResult(),

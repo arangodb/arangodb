@@ -65,13 +65,6 @@ function ahuacatlProfilerTestSuite () {
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
-
-    setUp : function () {
-    },
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief tear down
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -131,16 +124,12 @@ function ahuacatlProfilerTestSuite () {
           let endBatches = optimalBatches;
 
           const expected = [
-            {type: SingletonBlock, items: 1, calls: 1},
-            {type: CalculationBlock, items: 1, calls: 1},
-            {type: EnumerateListBlock, items: listRows, calls: listBatches},
-            {
-              type: EnumerateCollectionBlock,
-              items: totalRows,
-              calls: enumerateCollectionBatches
-            },
-            {type: CalculationBlock, items: totalRows, calls: endBatches},
-            {type: ReturnBlock, items: totalRows, calls: endBatches}
+            {type: SingletonBlock, items: 1, calls: 1, filtered: 0},
+            {type: CalculationBlock, items: 1, calls: 1, filtered: 0},
+            {type: EnumerateListBlock, items: listRows, calls: listBatches, filtered: 0},
+            {type: EnumerateCollectionBlock, items: totalRows, calls: enumerateCollectionBatches, filtered: 0},
+            {type: CalculationBlock, items: totalRows, calls: endBatches, filtered: 0},
+            {type: ReturnBlock, items: totalRows, calls: endBatches, filtered: 0}
           ];
           const actual = profHelper.getCompactStatsNodes(profile);
 
@@ -214,14 +203,14 @@ function ahuacatlProfilerTestSuite () {
           ];
 
           const expected = [
-            {type: SingletonBlock, calls: 1, items: 1},
-            {type: CalculationBlock, calls: 1, items: 1},
-            {type: CalculationBlock, calls: 1, items: 1},
-            {type: EnumerateListBlock, calls: listBatches, items: listRows},
-            {type: EnumerateListBlock, calls: indexCallsBatches, items: totalRows},
-            {type: IndexBlock, calls: indexBatches, items: totalRows},
-            {type: CalculationBlock, calls: indexBatches, items: totalRows},
-            {type: ReturnBlock, calls: indexBatches, items: totalRows}
+            {type: SingletonBlock, calls: 1, items: 1, filtered: 0},
+            {type: CalculationBlock, calls: 1, items: 1, filtered: 0},
+            {type: CalculationBlock, calls: 1, items: 1, filtered: 0},
+            {type: EnumerateListBlock, calls: listBatches, items: listRows, filtered: 0},
+            {type: EnumerateListBlock, calls: indexCallsBatches, items: totalRows, filtered: 0},
+            {type: IndexBlock, calls: indexBatches, items: totalRows, filtered: 0},
+            {type: CalculationBlock, calls: indexBatches, items: totalRows, filtered: 0},
+            {type: ReturnBlock, calls: indexBatches, items: totalRows, filtered: 0}
           ];
           const actual = profHelper.getCompactStatsNodes(profile);
 
@@ -276,11 +265,11 @@ function ahuacatlProfilerTestSuite () {
           const optimalBatches = calcOptBatches();
 
           const expected = [
-            {type: SingletonBlock, calls: 1, items: 1},
-            {type: CalculationBlock, calls: 1, items: 1},
-            {type: EnumerateListBlock, calls: listBatches, items: listRows},
-            {type: TraversalBlock, calls: optimalBatches, items: totalRows},
-            {type: ReturnBlock, calls: optimalBatches, items: totalRows}
+            {type: SingletonBlock, calls: 1, items: 1, filtered: 0},
+            {type: CalculationBlock, calls: 1, items: 1, filtered: 0},
+            {type: EnumerateListBlock, calls: listBatches, items: listRows, filtered: 0},
+            {type: TraversalBlock, calls: optimalBatches, items: totalRows, filtered: 0},
+            {type: ReturnBlock, calls: optimalBatches, items: totalRows, filtered: 0}
           ];
           const actual = profHelper.getCompactStatsNodes(profile);
 

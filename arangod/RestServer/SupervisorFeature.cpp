@@ -30,7 +30,6 @@
 #include "SupervisorFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/application-exit.h"
 #include "Basics/debugging.h"
@@ -106,11 +105,8 @@ static void HUPHandler(int) {
   }
 }
 
-SupervisorFeature::SupervisorFeature(
-    application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Supervisor"),
-      _supervisor(false),
-      _clientPid(0) {
+SupervisorFeature::SupervisorFeature(Server& server)
+    : ArangodFeature{server, *this}, _supervisor(false), _clientPid(0) {
   setOptional(true);
   startsAfter<GreetingsFeaturePhase>();
   startsAfter<DaemonFeature>();
@@ -121,7 +117,7 @@ void SupervisorFeature::collectOptions(
   options->addOption(
       "--supervisor", "background the server, starts a supervisor",
       new BooleanParameter(&_supervisor),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 }
 
 void SupervisorFeature::validateOptions(

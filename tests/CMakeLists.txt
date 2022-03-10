@@ -101,6 +101,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/AqlItemRowTest.cpp
   Aql/AqlShadowRowTest.cpp
   Aql/AqlValueMemoryLayoutTest.cpp
+  Aql/AstResourcesTest.cpp
   Aql/AttributeNamePathTest.cpp
   Aql/BitFunctionsTest.cpp
   Aql/BlockCollector.cpp
@@ -311,6 +312,8 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/Mocks/AsyncFollower.h
   Replication2/Mocks/AsyncLeader.cpp
   Replication2/Mocks/FakeAbstractFollower.h
+  Replication2/Mocks/FakeFailureOracle.h
+  Replication2/Mocks/FakeFailureOracle.cpp
   Replication2/Mocks/FakeReplicatedLog.cpp
   Replication2/Mocks/FakeReplicatedLog.h
   Replication2/Mocks/FakeReplicatedState.cpp
@@ -329,6 +332,7 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/ReplicatedLog/FollowerWaitFor.cpp
   Replication2/ReplicatedLog/InMemoryLogTest.cpp
   Replication2/ReplicatedLog/LeaderAppendEntriesTest.cpp
+  Replication2/ReplicatedLog/LogParticipantWaitForResignTests.cpp
   Replication2/ReplicatedLog/LogReclaimTest.cpp
   Replication2/ReplicatedLog/MaintenanceTests.cpp
   Replication2/ReplicatedLog/MultiTermTest.cpp
@@ -336,6 +340,7 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/ReplicatedLog/RewriteLogTest.cpp
   Replication2/ReplicatedLog/RocksDBLogTest.cpp
   Replication2/ReplicatedLog/SimpleInsertTests.cpp
+  Replication2/ReplicatedLog/SupervisionTest.cpp
   Replication2/ReplicatedLog/TestHelper.cpp
   Replication2/ReplicatedLog/UpdateParticipantsFlags.cpp
   Replication2/ReplicatedLog/UpdateReplicatedLogTests.cpp
@@ -343,15 +348,17 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/ReplicatedLog/InMemoryLogTest.cpp
   Replication2/ReplicatedState/AbstractStateMachinePollTest.cpp
   Replication2/ReplicatedState/FollowerSnapshotTest.cpp
+  Replication2/ReplicatedState/FollowerWaitForTest.cpp
   Replication2/ReplicatedState/LeaderRecoveryTest.cpp
+  Replication2/ReplicatedState/PrototypeStateMachineTest.cpp
   Replication2/ReplicatedState/ReplicatedStateFeatureTest.cpp
   Replication2/ReplicatedState/ReplicatedStateTest.cpp
   Replication2/ReplicatedState/StateMachineTestHelper.cpp
   Replication2/ReplicatedState/StateMachineTestHelper.h
-  Replication2/ReplicatedState/SupervisionTest.cpp
   Replication2/ReplicatedState/StateMachines/MyStateMachine.cpp
   Replication2/Mocks/PersistedLog.cpp
   Replication2/Mocks/PersistedLog.h
+  Replication2/Serialization/AgencyLogSpecificationTest.cpp
   Replication2/Serialization/LogCommonTest.cpp
   Replication2/Serialization/LogStatusTest.cpp
   Replication2/Streams/LogMultiplexerTest.cpp
@@ -365,14 +372,12 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/Mocks/FakeFollower.h
   Replication2/ReplicatedLog/WaitForSyncTest.cpp
   Replication2/ReplicatedLog/CalcCommitIndexTest.cpp
-  Replication2/Serialization/LogStatusTest.cpp
   Replication2/ReplicatedLog/EstablishLeadershipTest.cpp
   Replication2/ReplicatedState/ReplicatedStateTest.cpp
   Replication2/ReplicatedState/StateMachines/MyStateMachine.cpp
   Replication2/ReplicatedState/ReplicatedStateFeatureTest.cpp
   Replication2/ReplicatedState/LeaderRecoveryTest.cpp
   Replication2/ReplicatedLog/UpdateParticipantsFlags.cpp
-  Replication2/Serialization/LogCommonTest.cpp
   Replication2/ReplicatedLog/AppendEntriesErrorReasonTest.cpp
   Replication2/Mocks/AsyncLeader.cpp
   Replication2/ReplicatedLog/LogStatusTest.cpp
@@ -467,6 +472,13 @@ if(MSVC AND USE_FAIL_ON_WARNINGS)
   target_compile_options(arangodbtests PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
   if (USE_SEPARATE_REPLICATION2_TESTS_BINARY)
     target_compile_options(arangodbtests_replication2 PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+  endif()
+  if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang") # clang-cl.exe
+    # There's a warning about /MP being unused if compiling only a single file
+    target_compile_options(arangodbtests PRIVATE -Wno-unused-command-line-argument)
+    if (USE_SEPARATE_REPLICATION2_TESTS_BINARY)
+      target_compile_options(arangodbtests_replication2 PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+    endif()
   endif()
 endif()
 

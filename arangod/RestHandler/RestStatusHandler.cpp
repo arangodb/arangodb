@@ -32,7 +32,6 @@
 #endif
 
 #include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "Agency/AgencyComm.h"
 #include "Agency/AgencyFeature.h"
@@ -59,9 +58,9 @@ using namespace arangodb::rest;
 /// @brief ArangoDB server
 ////////////////////////////////////////////////////////////////////////////////
 
-RestStatusHandler::RestStatusHandler(
-    application_features::ApplicationServer& server, GeneralRequest* request,
-    GeneralResponse* response)
+RestStatusHandler::RestStatusHandler(ArangodServer& server,
+                                     GeneralRequest* request,
+                                     GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
 RestStatus RestStatusHandler::execute() {

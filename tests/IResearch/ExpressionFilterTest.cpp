@@ -102,7 +102,7 @@ struct custom_sort : public irs::sort {
         }
       }
 
-      virtual void collect(const irs::bytes_ref& in) override {}
+      virtual void collect(irs::bytes_ref in) override {}
 
       virtual void reset() override {}
 
@@ -124,7 +124,7 @@ struct custom_sort : public irs::sort {
         }
       }
 
-      virtual void collect(const irs::bytes_ref& in) override {}
+      virtual void collect(irs::bytes_ref in) override {}
 
       virtual void reset() override {}
 
@@ -273,7 +273,7 @@ struct IResearchExpressionFilterTest
       public arangodb::tests::LogSuppressor<arangodb::iresearch::TOPIC,
                                             arangodb::LogLevel::FATAL>,
       public arangodb::tests::IResearchLogSuppressor {
-  arangodb::application_features::ApplicationServer server;
+  arangodb::ArangodServer server;
   StorageEngineMock engine;
   std::unique_ptr<TRI_vocbase_t> system;
   std::vector<

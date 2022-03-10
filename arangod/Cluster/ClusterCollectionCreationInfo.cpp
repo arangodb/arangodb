@@ -28,7 +28,6 @@
 #include "Cluster/ClusterTypes.h"
 
 #include <velocypack/Collection.h>
-#include <velocypack/velocypack-aliases.h>
 #include <utility>
 
 using namespace arangodb;
@@ -73,6 +72,19 @@ ClusterCollectionCreationInfo::ClusterCollectionCreationInfo(
     _isBuildingJson = VPackCollection::merge(json, tmp.slice(), true, false);
   }
 }
+
+ClusterCollectionCreationInfo::ClusterCollectionCreationInfo(
+    ClusterCollectionCreationInfo const& r)
+    : collectionID(r.collectionID),
+      numberOfShards(r.numberOfShards),
+      replicationFactor(r.replicationFactor),
+      writeConcern(r.writeConcern),
+      waitForReplication(r.waitForReplication),
+      json(r.json),
+      name(r.name),
+      state(r.state.load(std::memory_order_relaxed)),
+      creator(r.creator),
+      _isBuildingJson(r._isBuildingJson) {}
 
 VPackSlice ClusterCollectionCreationInfo::isBuildingSlice() const {
   if (needsBuildingFlag()) {

@@ -12,7 +12,8 @@ TEST_BEGIN(test_rtree_read_empty) {
 
 	tsdn = tsdn_fetch();
 
-	base_t *base = base_new(tsdn, 0, &ehooks_default_extent_hooks);
+	base_t *base = base_new(tsdn, 0, &ehooks_default_extent_hooks,
+	    /* metadata_use_hooks */ true);
 	expect_ptr_not_null(base, "Unexpected base_new failure");
 
 	rtree_t *rtree = &test_rtree;
@@ -52,7 +53,8 @@ TEST_BEGIN(test_rtree_extrema) {
 
 	tsdn_t *tsdn = tsdn_fetch();
 
-	base_t *base = base_new(tsdn, 0, &ehooks_default_extent_hooks);
+	base_t *base = base_new(tsdn, 0, &ehooks_default_extent_hooks,
+	    /* metadata_use_hooks */ true);
 	expect_ptr_not_null(base, "Unexpected base_new failure");
 
 	rtree_t *rtree = &test_rtree;
@@ -103,7 +105,8 @@ TEST_END
 
 TEST_BEGIN(test_rtree_bits) {
 	tsdn_t *tsdn = tsdn_fetch();
-	base_t *base = base_new(tsdn, 0, &ehooks_default_extent_hooks);
+	base_t *base = base_new(tsdn, 0, &ehooks_default_extent_hooks,
+	    /* metadata_use_hooks */ true);
 	expect_ptr_not_null(base, "Unexpected base_new failure");
 
 	uintptr_t keys[] = {PAGE, PAGE + 1,
@@ -152,7 +155,8 @@ TEST_BEGIN(test_rtree_random) {
 	sfmt_t *sfmt = init_gen_rand(SEED);
 	tsdn_t *tsdn = tsdn_fetch();
 
-	base_t *base = base_new(tsdn, 0, &ehooks_default_extent_hooks);
+	base_t *base = base_new(tsdn, 0, &ehooks_default_extent_hooks,
+	    /* metadata_use_hooks */ true);
 	expect_ptr_not_null(base, "Unexpected base_new failure");
 
 	uintptr_t keys[NSET];
@@ -250,7 +254,8 @@ test_rtree_range_write(tsdn_t *tsdn, rtree_t *rtree, uintptr_t start,
 
 TEST_BEGIN(test_rtree_range) {
 	tsdn_t *tsdn = tsdn_fetch();
-	base_t *base = base_new(tsdn, 0, &ehooks_default_extent_hooks);
+	base_t *base = base_new(tsdn, 0, &ehooks_default_extent_hooks,
+	    /* metadata_use_hooks */ true);
 	expect_ptr_not_null(base, "Unexpected base_new failure");
 
 	rtree_t *rtree = &test_rtree;

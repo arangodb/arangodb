@@ -24,11 +24,23 @@
 #include "StateCommon.h"
 
 #include <velocypack/Value.h>
+#include <velocypack/Builder.h>
 
 #include "Basics/debugging.h"
+#include "Basics/StaticStrings.h"
+#include "Agency/TimeString.h"
 
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_state;
+
+namespace {
+auto const String_InProgress = std::string_view{"InProgress"};
+auto const String_Completed = std::string_view{"Completed"};
+auto const String_Failed = std::string_view{"Failed"};
+auto const String_Uninitialized = std::string_view{"Uninitialized"};
+auto const String_Status = std::string_view{"status"};
+auto const String_Timestamp = std::string_view{"timestamp"};
+}  // namespace
 
 StateGeneration::operator arangodb::velocypack::Value() const noexcept {
   return arangodb::velocypack::Value(value);
@@ -53,28 +65,54 @@ auto replicated_state::operator<<(std::ostream& os, StateGeneration g)
 
 auto replicated_state::operator<<(std::ostream& os, SnapshotStatus const& ss)
     -> std::ostream& {
-  return os << "[" << to_string(ss.status) << "@" << ss.generation << "]";
+  return os << to_string(ss);
 }
 
-void SnapshotStatus::updateStatus(Status s, std::optional<Result> newError) {
-  TRI_ASSERT((s == kFailed) == (error.has_value()));
+void SnapshotInfo::updateStatus(SnapshotStatus s) noexcept {
   status = s;
-  error = std::move(newError);
-  lastChange = clock::now();
+  timestamp = clock::now();
 }
 
-auto replicated_state::to_string(SnapshotStatus::Status s) noexcept
+auto replicated_state::to_string(SnapshotStatus s) noexcept
     -> std::string_view {
   switch (s) {
     case SnapshotStatus::kUninitialized:
-      return "Uninitialized";
-    case SnapshotStatus::kInitiated:
-      return "Initiated";
+      return String_Uninitialized;
+    case SnapshotStatus::kInProgress:
+      return String_InProgress;
     case SnapshotStatus::kCompleted:
-      return "Completed";
+      return String_Completed;
     case SnapshotStatus::kFailed:
-      return "Failed";
+      return String_Failed;
     default:
       return "(unknown snapshot status)";
   }
+}
+
+auto replicated_state::snapshotStatusFromString(
+    std::string_view string) noexcept -> SnapshotStatus {
+  if (string == String_InProgress) {
+    return SnapshotStatus::kInProgress;
+  } else if (string == String_Completed) {
+    return SnapshotStatus::kCompleted;
+  } else if (string == String_Failed) {
+    return SnapshotStatus::kFailed;
+  } else {
+    return SnapshotStatus::kUninitialized;
+  }
+}
+
+void SnapshotInfo::toVelocyPack(velocypack::Builder& builder) const {
+  velocypack::ObjectBuilder ob(&builder);
+  TRI_ASSERT(!error.has_value());  // error not yet implemented
+  builder.add(String_Timestamp,
+              velocypack::Value(timepointToString(timestamp)));
+  builder.add(String_Status, velocypack::Value(to_string(status)));
+}
+
+auto SnapshotInfo::fromVelocyPack(velocypack::Slice slice) -> SnapshotInfo {
+  SnapshotInfo info;
+  info.status = snapshotStatusFromString(slice.get(String_Status).stringView());
+  info.timestamp = stringToTimepoint(slice.get(String_Timestamp).stringView());
+  return info;
 }

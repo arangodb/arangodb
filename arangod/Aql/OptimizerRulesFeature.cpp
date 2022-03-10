@@ -22,18 +22,17 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "OptimizerRulesFeature.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/IResearchViewOptimizerRules.h"
 #include "Aql/IndexNodeOptimizerRules.h"
 #include "Aql/OptimizerRules.h"
 #include "Basics/Exceptions.h"
 #include "Cluster/ServerState.h"
-#include "FeaturePhases/V8FeaturePhase.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "RestServer/AqlFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 
@@ -48,10 +47,8 @@ std::vector<OptimizerRule> OptimizerRulesFeature::_rules;
 // @brief lookup from rule name to rule level
 std::unordered_map<std::string_view, int> OptimizerRulesFeature::_ruleLookup;
 
-OptimizerRulesFeature::OptimizerRulesFeature(
-    arangodb::application_features::ApplicationServer& server)
-    : application_features::ApplicationFeature(server, "OptimizerRules"),
-      _parallelizeGatherWrites(true) {
+OptimizerRulesFeature::OptimizerRulesFeature(Server& server)
+    : ArangodFeature{server, *this}, _parallelizeGatherWrites(true) {
   setOptional(false);
   startsAfter<V8FeaturePhase>();
 
@@ -61,13 +58,13 @@ OptimizerRulesFeature::OptimizerRulesFeature(
 void OptimizerRulesFeature::collectOptions(
     std::shared_ptr<arangodb::options::ProgramOptions> options) {
   options
-      ->addOption(
-          "--query.optimizer-rules",
-          "enable or disable specific optimizer rules (use rule name "
-          "prefixed with '-' for disabling, '+' for enabling)",
-          new arangodb::options::VectorParameter<
-              arangodb::options::StringParameter>(&_optimizerRules),
-          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+      ->addOption("--query.optimizer-rules",
+                  "enable or disable specific optimizer rules (use rule name "
+                  "prefixed with '-' for disabling, '+' for enabling)",
+                  new arangodb::options::VectorParameter<
+                      arangodb::options::StringParameter>(&_optimizerRules),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30600);
 
   options

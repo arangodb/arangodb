@@ -34,7 +34,6 @@
 #include "Basics/PhysicalMemory.h"
 #include "Basics/application-exit.h"
 #include "Cluster/ServerState.h"
-#include "FeaturePhases/V8FeaturePhase.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -147,8 +146,6 @@ DECLARE_COUNTER(arangodb_aql_all_query_total,
                 "Total number of AQL queries finished");
 DECLARE_HISTOGRAM(arangodb_aql_query_time, QueryTimeScale,
                   "Execution time histogram for all AQL queries [s]");
-DECLARE_LEGACY_COUNTER(arangodb_aql_slow_query_total,
-                       "Total number of slow AQL queries finished");
 DECLARE_HISTOGRAM(arangodb_aql_slow_query_time, SlowQueryTimeScale,
                   "Execution time histogram for slow AQL queries [s]");
 DECLARE_COUNTER(arangodb_aql_total_query_time_msec_total,
@@ -166,9 +163,8 @@ DECLARE_COUNTER(arangodb_aql_global_query_memory_limit_reached_total,
 DECLARE_COUNTER(arangodb_aql_local_query_memory_limit_reached_total,
                 "Number of local AQL query memory limit violations");
 
-QueryRegistryFeature::QueryRegistryFeature(
-    application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "QueryRegistry"),
+QueryRegistryFeature::QueryRegistryFeature(Server& server)
+    : ArangodFeature{server, *this},
       _trackingEnabled(true),
       _trackSlowQueries(true),
       _trackQueryString(true),
@@ -206,8 +202,6 @@ QueryRegistryFeature::QueryRegistryFeature(
           arangodb_aql_total_query_time_msec_total{})),
       _queriesCounter(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_aql_all_query_total{})),
-      _slowQueriesCounter(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_aql_slow_query_total{})),
       _runningQueries(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_aql_current_query{})),
       _globalQueryMemoryUsage(server.getFeature<metrics::MetricsFeature>().add(
@@ -220,6 +214,9 @@ QueryRegistryFeature::QueryRegistryFeature(
       _localQueryMemoryLimitReached(
           server.getFeature<metrics::MetricsFeature>().add(
               arangodb_aql_local_query_memory_limit_reached_total{})) {
+  static_assert(
+      Server::isCreatedAfter<QueryRegistryFeature, metrics::MetricsFeature>());
+
   setOptional(false);
   startsAfter<V8FeaturePhase>();
 
@@ -346,12 +343,12 @@ void QueryRegistryFeature::collectOptions(
                      new UInt64Parameter(&_maxQueryPlans));
 
   options
-      ->addOption(
-          "--query.max-nodes-per-callstack",
-          "maximum number execution nodes on the callstack before "
-          "splitting the remaining nodes into a separate thread",
-          new UInt64Parameter(&_maxNodesPerCallstack),
-          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+      ->addOption("--query.max-nodes-per-callstack",
+                  "maximum number execution nodes on the callstack before "
+                  "splitting the remaining nodes into a separate thread",
+                  new UInt64Parameter(&_maxNodesPerCallstack),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30900);
 
   options->addOption(
@@ -360,14 +357,14 @@ void QueryRegistryFeature::collectOptions(
       "seconds); if <= 0, value will default to 30 for "
       "single-server instances or 600 for coordinator instances",
       new DoubleParameter(&_queryRegistryTTL),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
 #ifdef USE_ENTERPRISE
   options
       ->addOption("--query.smart-joins", "enable SmartJoins query optimization",
                   new BooleanParameter(&_smartJoins),
                   arangodb::options::makeDefaultFlags(
-                      arangodb::options::Flags::Hidden,
+                      arangodb::options::Flags::Uncommon,
                       arangodb::options::Flags::Enterprise))
       .setIntroducedIn(30405);
 
@@ -376,7 +373,7 @@ void QueryRegistryFeature::collectOptions(
                   "enable traversal parallelization",
                   new BooleanParameter(&_parallelizeTraversals),
                   arangodb::options::makeDefaultFlags(
-                      arangodb::options::Flags::Hidden,
+                      arangodb::options::Flags::Uncommon,
                       arangodb::options::Flags::Enterprise))
       .setIntroducedIn(30701);
 
@@ -390,17 +387,17 @@ void QueryRegistryFeature::collectOptions(
           "actual query execution may use less depending on various factors",
           new UInt64Parameter(&_maxParallelism),
           arangodb::options::makeDefaultFlags(
-              arangodb::options::Flags::Hidden,
+              arangodb::options::Flags::Uncommon,
               arangodb::options::Flags::Enterprise))
       .setIntroducedIn(30701);
 #endif
 
   options
-      ->addOption(
-          "--query.allow-collections-in-expressions",
-          "allow full collections to be used in AQL expressions",
-          new BooleanParameter(&_allowCollectionsInExpressions),
-          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+      ->addOption("--query.allow-collections-in-expressions",
+                  "allow full collections to be used in AQL expressions",
+                  new BooleanParameter(&_allowCollectionsInExpressions),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30800)
       .setDeprecatedIn(30900);
 }
@@ -536,7 +533,6 @@ void QueryRegistryFeature::trackQueryEnd(double time) {
 void QueryRegistryFeature::trackSlowQuery(double time) {
   // query is already counted here as normal query, so don't count it
   // again in _queryTimes or _totalQueryExecutionTime
-  ++_slowQueriesCounter;
   _slowQueryTimes.count(time);
 }
 

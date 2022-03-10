@@ -168,8 +168,8 @@ class DatabaseInitialSyncer : public InitialSyncer {
     _onSuccess = cb;
   }
 
-  void setAbortionCheckCallback(std::function<bool()> const& cb) {
-    _checkAbortion = cb;
+  void setCancellationCheckCallback(std::function<bool()> const& cb) {
+    _checkCancellation = cb;
   }
 
  private:
@@ -229,6 +229,12 @@ class DatabaseInitialSyncer : public InitialSyncer {
                                    std::string const& leaderColl,
                                    TRI_voc_tick_t);
 
+  void fetchRevisionsChunk(
+      std::shared_ptr<Syncer::JobSynchronizer> sharedStatus,
+      std::string const& baseUrl, arangodb::LogicalCollection* coll,
+      std::string const& leaderColl, std::string const& requestPayload,
+      RevisionId requestResume);
+
   /// @brief incrementally fetch data from a collection using revisions as the
   /// primary document identifier, not supported by all engines/collections
   // TODO worker safety
@@ -278,11 +284,11 @@ class DatabaseInitialSyncer : public InitialSyncer {
   // custom callback executed when synchronization was completed successfully
   std::function<Result(DatabaseInitialSyncer&)> _onSuccess;
 
-  // custom callback to check if the sync should be aborted
-  std::function<bool()> _checkAbortion;
+  // custom callback to check if the sync should be cancelled
+  std::function<bool()> _checkCancellation;
 
-  // point in time when we last executed the _checkAbortion callback
-  mutable std::chrono::steady_clock::time_point _lastAbortionCheck;
+  // point in time when we last executed the _checkCancellation callback
+  mutable std::chrono::steady_clock::time_point _lastCancellationCheck;
 
   /// @brief whether or not we are a coordinator/dbserver
   bool const _isClusterRole;

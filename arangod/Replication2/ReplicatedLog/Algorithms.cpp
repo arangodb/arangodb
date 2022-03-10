@@ -28,6 +28,7 @@
 #include "Basics/application-exit.h"
 #include "Logger/LogMacros.h"
 #include "Random/RandomGenerator.h"
+#include "Cluster/FailureOracle.h"
 
 #include <algorithm>
 #include <type_traits>
@@ -39,259 +40,6 @@ using namespace arangodb::replication2;
 using namespace arangodb::replication2::agency;
 using namespace arangodb::replication2::algorithms;
 using namespace arangodb::replication2::replicated_log;
-
-namespace {
-auto createFirstTerm(
-    DatabaseID const& database, LogPlanSpecification const& spec,
-    std::unordered_map<ParticipantId, ParticipantRecord> const& info)
-    -> LogPlanTermSpecification {
-  // Should neither have participants, a generation, nor a term yet.
-  // Currently, we assume the participants are already there before the first
-  // term is created. If that's changed later so they're set at the same time,
-  // that's fine; however, imho there should not be a term *before* participants
-  // are set.
-  TRI_ASSERT(!spec.participantsConfig.participants.empty());
-  TRI_ASSERT(spec.participantsConfig.generation > 0);
-  TRI_ASSERT(!spec.currentTerm.has_value());
-
-  LogPlanTermSpecification newTermSpec;
-  newTermSpec.term = LogTerm{1};
-  newTermSpec.config = spec.targetConfig;
-
-  return newTermSpec;
-}
-
-auto checkCurrentTerm(
-    DatabaseID const& database, LogPlanSpecification const& spec,
-    LogCurrent const& current,
-    std::unordered_map<ParticipantId, ParticipantRecord> const& info)
-    -> std::variant<std::monostate, agency::LogPlanTermSpecification,
-                    agency::LogCurrentSupervisionElection> {
-  auto const verifyServerRebootId = [&](ParticipantId const& id,
-                                        RebootId rebootId) -> bool {
-    if (auto it = info.find(id); it != std::end(info)) {
-      return it->second.rebootId == rebootId;
-    }
-
-    return false;
-  };
-
-  auto const isServerHealthy = [&](ParticipantId const& id) -> bool {
-    if (auto it = info.find(id); it != std::end(info)) {
-      return it->second.isHealthy;
-    }
-
-    return false;
-  };
-
-  auto const& term = spec.currentTerm;
-  if (auto const& leader = term->leader; leader) {
-    // check if leader is still valid
-    if (false == verifyServerRebootId(leader->serverId, leader->rebootId)) {
-      // create a new term with no leader
-      LogPlanTermSpecification newTermSpec = *term;
-      newTermSpec.leader = std::nullopt;
-      newTermSpec.term.value += 1;
-      LOG_TOPIC("bc357", WARN, Logger::REPLICATION2)
-          << "replicated log " << database << "/" << spec.id
-          << " - leader gone " << term->leader->serverId;
-      return newTermSpec;
-    }
-  } else {
-    // check if we can find a new leader
-    // wait for enough servers to report the current term
-    // a server is counted if:
-    //    - its reported term is the current term
-    //    - it is seen as healthy by the supervision
-
-    // if enough servers are found, declare the server with
-    // the "best" log as leader in a new term
-    agency::LogCurrentSupervisionElection election;
-    election.term = spec.currentTerm ? spec.currentTerm->term : LogTerm{0};
-
-    auto newLeaderSet = std::vector<replication2::ParticipantId>{};
-    auto bestTermIndex = replication2::TermIndexPair{};
-    auto numberOfAvailableParticipants = std::size_t{0};
-
-    for (auto const& [participant, status] : current.localState) {
-      auto error =
-          std::invoke([&, &status = status, &participant = participant] {
-            bool const isHealthy = isServerHealthy(participant);
-            if (!isHealthy) {
-              return agency::LogCurrentSupervisionElection::ErrorCode::
-                  SERVER_NOT_GOOD;
-            } else if (status.term != spec.currentTerm->term) {
-              return agency::LogCurrentSupervisionElection::ErrorCode::
-                  TERM_NOT_CONFIRMED;
-            } else {
-              return agency::LogCurrentSupervisionElection::ErrorCode::OK;
-            }
-          });
-
-      election.detail.emplace(participant, error);
-      if (error != agency::LogCurrentSupervisionElection::ErrorCode::OK) {
-        continue;
-      }
-
-      numberOfAvailableParticipants += 1;
-      if (status.spearhead >= bestTermIndex) {
-        if (status.spearhead != bestTermIndex) {
-          newLeaderSet.clear();
-        }
-        newLeaderSet.push_back(participant);
-        bestTermIndex = status.spearhead;
-      }
-    }
-
-    auto const numParticipants = spec.participantsConfig.participants.size();
-    auto const writeConcern = spec.currentTerm->config.writeConcern;
-    auto const requiredNumberOfAvailableParticipants =
-        numParticipants - writeConcern + 1;
-
-    LOG_TOPIC("8a53d", TRACE, Logger::REPLICATION2)
-        << "participant size = " << numParticipants
-        << " writeConcern = " << writeConcern
-        << " requiredNumberOfAvailableParticipants = "
-        << requiredNumberOfAvailableParticipants;
-
-    TRI_ASSERT(requiredNumberOfAvailableParticipants > 0);
-
-    election.participantsRequired = requiredNumberOfAvailableParticipants;
-    election.participantsAvailable = numberOfAvailableParticipants;
-
-    if (numberOfAvailableParticipants >=
-        requiredNumberOfAvailableParticipants) {
-      auto const numParticipants = newLeaderSet.size();
-      if (ADB_UNLIKELY(numParticipants == 0 ||
-                       numParticipants >
-                           std::numeric_limits<uint16_t>::max())) {
-        abortOrThrow(
-            TRI_ERROR_NUMERIC_OVERFLOW,
-            basics::StringUtils::concatT(
-                "Number of participants out of range, should be between ", 1,
-                " and ", std::numeric_limits<uint16_t>::max(), ", but is ",
-                numParticipants),
-            ADB_HERE);
-      }
-      auto const maxIdx = static_cast<uint16_t>(numParticipants - 1);
-      // Randomly select one of the best participants
-      auto const& newLeader =
-          newLeaderSet.at(RandomGenerator::interval(maxIdx));
-      auto const& record = info.at(newLeader);
-
-      // we can elect a new leader
-      LogPlanTermSpecification newTermSpec = *spec.currentTerm;
-      newTermSpec.term.value += 1;
-      newTermSpec.leader =
-          LogPlanTermSpecification::Leader{newLeader, record.rebootId};
-      LOG_TOPIC("458ad", INFO, Logger::REPLICATION2)
-          << "declaring " << newLeader << " as new leader for log " << database
-          << "/" << spec.id;
-      return newTermSpec;
-
-    } else {
-      // Check if something has changed
-      if (!current.supervision || !current.supervision->election ||
-          election != current.supervision->election) {
-        LOG_TOPIC("57de2", WARN, Logger::REPLICATION2)
-            << "replicated log " << database << "/" << spec.id
-            << " not enough participants available for leader election "
-            << numberOfAvailableParticipants << "/"
-            << requiredNumberOfAvailableParticipants;
-        return election;
-      }
-    }
-  }
-
-  return std::monostate{};
-}
-
-auto sampleParticipants(
-    agency::LogPlanSpecification const& spec,
-    std::unordered_map<ParticipantId, ParticipantRecord> const& info)
-    -> std::optional<std::unordered_map<ParticipantId, ParticipantFlags>> {
-  std::vector<std::string_view> participantCandidates;
-  participantCandidates.reserve(info.size());
-  // where is std::transform_if ?
-  for (auto const& [name, record] : info) {
-    if (record.isHealthy) {
-      participantCandidates.emplace_back(name);
-    }
-  }
-
-  auto const replicationFactor = spec.targetConfig.replicationFactor;
-
-  if (participantCandidates.size() < replicationFactor) {
-    // not enough participantCandidates to form a term
-    return {};
-  }
-
-  std::vector<std::string_view> chosenParticipants;
-  chosenParticipants.reserve(replicationFactor);
-
-  auto urbg = RandomGenerator::UniformRandomGenerator<std::uint64_t>();
-  std::sample(participantCandidates.begin(), participantCandidates.end(),
-              std::back_inserter(chosenParticipants), replicationFactor, urbg);
-
-  auto participants = std::unordered_map<ParticipantId, ParticipantFlags>{};
-
-  for (auto const& participant : chosenParticipants) {
-    participants.emplace(ParticipantId{participant}, ParticipantFlags{});
-  }
-
-  return participants;
-}
-
-}  // namespace
-
-auto algorithms::checkReplicatedLog(
-    DatabaseID const& database, LogPlanSpecification const& spec,
-    LogCurrent const& current,
-    std::unordered_map<ParticipantId, ParticipantRecord> const& info)
-    -> std::variant<std::monostate, agency::LogPlanTermSpecification,
-                    agency::LogCurrentSupervisionElection> {
-  if (spec.participantsConfig.participants.empty()) {
-    // No participants yet
-    return std::monostate{};
-  } else if (spec.currentTerm.has_value()) {
-    return checkCurrentTerm(database, spec, current, info);
-  } else {
-    return createFirstTerm(database, spec, info);
-  }
-}
-
-auto algorithms::checkReplicatedLogParticipants(
-    DatabaseID const& database, LogPlanSpecification const& spec,
-    std::unordered_map<ParticipantId, ParticipantRecord> const& info)
-    -> std::variant<std::monostate, ParticipantsConfig> {
-  // The first term must not be set before there is a list of participants.
-  // Neither must be empty later.
-  // It'd be conceivable to set the participants in a separate step before the
-  // first term is set, but currently there's no reason for that.
-  TRI_ASSERT(!spec.currentTerm.has_value() ||
-             !spec.participantsConfig.participants.empty());
-  if (spec.participantsConfig.participants.empty()) {
-    TRI_ASSERT(spec.participantsConfig.generation == 0);
-    if (auto participants = sampleParticipants(spec, info);
-        participants.has_value()) {
-      auto const participantsConfig = ParticipantsConfig{
-          .generation = 1,
-          .participants = std::move(*participants),
-      };
-
-      LOG_TOPIC("36310", INFO, Logger::REPLICATION2)
-          << "Setting initial participants for replicated log " << database
-          << "/" << spec.id << " to " << participantsConfig.participants;
-
-      return participantsConfig;
-    } else {
-      // not enough participants to form a term
-      return std::monostate{};
-    }
-  } else {
-    return std::monostate{};
-  }
-}
 
 auto algorithms::to_string(ConflictReason r) noexcept -> std::string_view {
   switch (r) {
@@ -379,7 +127,8 @@ auto keySetDifference = [](auto const& left, auto const& right) {
 
 auto algorithms::updateReplicatedLog(
     LogActionContext& ctx, ServerID const& myServerId, RebootId myRebootId,
-    LogId logId, agency::LogPlanSpecification const* spec) noexcept
+    LogId logId, agency::LogPlanSpecification const* spec,
+    std::shared_ptr<cluster::IFailureOracle const> failureOracle) noexcept
     -> futures::Future<arangodb::Result> {
   auto result = basics::catchToResultT([&]() -> futures::Future<
                                                  arangodb::Result> {
@@ -443,7 +192,8 @@ auto algorithms::updateReplicatedLog(
       auto newLeader = log->becomeLeader(
           spec->currentTerm->config, myServerId, spec->currentTerm->term,
           followers,
-          std::make_shared<ParticipantsConfig>(spec->participantsConfig));
+          std::make_shared<ParticipantsConfig>(spec->participantsConfig),
+          std::move(failureOracle));
       newLeader->triggerAsyncReplication();  // TODO move this call into
                                              // becomeLeader?
       return newLeader->waitForLeadership().thenValue(
@@ -469,7 +219,7 @@ auto algorithms::updateReplicatedLog(
 }
 
 auto algorithms::operator<<(std::ostream& os,
-                            ParticipantStateTuple const& p) noexcept
+                            ParticipantState const& p) noexcept
     -> std::ostream& {
   os << '{' << p.id << ':' << p.lastAckedEntry << ", ";
   os << "failed = " << std::boolalpha << p.failed;
@@ -478,31 +228,29 @@ auto algorithms::operator<<(std::ostream& os,
   return os;
 }
 
-auto ParticipantStateTuple::isExcluded() const noexcept -> bool {
+auto ParticipantState::isExcluded() const noexcept -> bool {
   return flags.excluded;
 };
 
-auto ParticipantStateTuple::isForced() const noexcept -> bool {
+auto ParticipantState::isForced() const noexcept -> bool {
   return flags.forced;
 };
 
-auto ParticipantStateTuple::isFailed() const noexcept -> bool {
-  return failed;
-};
+auto ParticipantState::isFailed() const noexcept -> bool { return failed; };
 
-auto ParticipantStateTuple::lastTerm() const noexcept -> LogTerm {
+auto ParticipantState::lastTerm() const noexcept -> LogTerm {
   return lastAckedEntry.term;
 }
 
-auto ParticipantStateTuple::lastIndex() const noexcept -> LogIndex {
+auto ParticipantState::lastIndex() const noexcept -> LogIndex {
   return lastAckedEntry.index;
 }
 
-auto operator<=>(ParticipantStateTuple const& left,
-                 ParticipantStateTuple const& right) noexcept {
+auto operator<=>(ParticipantState const& left,
+                 ParticipantState const& right) noexcept {
   // return std::tie(left.index, left.id) <=> std::tie(right.index, right.id);
   // -- not supported by apple clang
-  if (auto c = left.lastIndex() <=> right.lastIndex(); c != nullptr) {
+  if (auto c = left.lastIndex() <=> right.lastIndex(); c != 0) {
     return c;
   }
   return left.id.compare(right.id) <=> 0;
@@ -513,41 +261,48 @@ algorithms::CalculateCommitIndexOptions::CalculateCommitIndexOptions(
     : _writeConcern(writeConcern), _softWriteConcern(softWriteConcern) {}
 
 auto algorithms::calculateCommitIndex(
-    std::vector<ParticipantStateTuple> const& indexes,
-    CalculateCommitIndexOptions const opt, LogIndex currentCommitIndex,
-    TermIndexPair lastTermIndex)
+    std::vector<ParticipantState> const& participants,
+    CalculateCommitIndexOptions const opt, LogIndex const currentCommitIndex,
+    TermIndexPair const lastTermIndex)
     -> std::tuple<LogIndex, CommitFailReason, std::vector<ParticipantId>> {
-  // We keep a vector of participants that are neither excluded nor have failed.
-  // All eligible participants have to be in the same term as the leader.
-  // Never commit log entries from older terms.
-  auto eligible = std::vector<ParticipantStateTuple>{};
-  eligible.reserve(indexes.size());
-  std::copy_if(std::begin(indexes), std::end(indexes),
-               std::back_inserter(eligible), [&](auto& p) {
-                 return !p.isFailed() && !p.isExcluded() &&
-                        p.lastTerm() == lastTermIndex.term;
+  // We keep a vector of eligible participants.
+  // To be eligible, a participant
+  //  - must not be excluded, and
+  //  - must be in the same term as the leader.
+  // This is because we must not include an excluded server in any quorum, and
+  // must never commit log entries from older terms.
+  auto eligible = std::vector<ParticipantState>{};
+  eligible.reserve(participants.size());
+  std::copy_if(std::begin(participants), std::end(participants),
+               std::back_inserter(eligible), [&](auto const& p) {
+                 return !p.isExcluded() && p.lastTerm() == lastTermIndex.term;
                });
 
+  // If servers are unavailable because they are either failed or excluded,
+  // the actualWriteConcern may be lowered from softWriteConcern down to at
+  // least writeConcern.
+  auto const numAvailableParticipants = std::size_t(std::count_if(
+      std::begin(participants), std::end(participants),
+      [](auto const& p) { return !p.isFailed() && !p.isExcluded(); }));
   // We write to at least writeConcern servers, ideally more if available.
-  auto actualWriteConcern = std::max(
-      opt._writeConcern, std::min(eligible.size(), opt._softWriteConcern));
+  auto const effectiveWriteConcern =
+      std::max(opt._writeConcern,
+               std::min(numAvailableParticipants, opt._softWriteConcern));
 
-  if (actualWriteConcern > indexes.size() &&
-      indexes.size() == eligible.size()) {
+  if (effectiveWriteConcern > participants.size() &&
+      participants.size() == eligible.size()) {
     // With WC greater than the number of participants, we cannot commit
     // anything, even if all participants are eligible.
-    TRI_ASSERT(!indexes.empty());
-    auto quorum = std::vector<ParticipantId>{};
-    quorum.reserve(eligible.size());
-    std::transform(std::begin(eligible), std::end(eligible),
-                   std::back_inserter(quorum), [](auto& p) { return p.id; });
-    auto const& who = std::min_element(
-        std::begin(eligible), std::end(eligible), [](auto& left, auto& right) {
-          return left.lastAckedEntry.index < right.lastAckedEntry.index;
-        });
+    TRI_ASSERT(!participants.empty());
+    TRI_ASSERT(opt._writeConcern == effectiveWriteConcern);
     return {currentCommitIndex,
-            CommitFailReason::withQuorumSizeNotReached(who->id),
-            std::move(quorum)};
+            CommitFailReason::withFewerParticipantsThanWriteConcern({
+                .writeConcern = opt._writeConcern,
+                .softWriteConcern = opt._softWriteConcern,
+                .effectiveWriteConcern = effectiveWriteConcern,
+                .numParticipants = participants.size(),
+            }),
+            {}};
   }
 
   auto const spearhead = lastTermIndex.index;
@@ -557,7 +312,7 @@ auto algorithms::calculateCommitIndex(
   // the spearhead (the furthest we could commit to).
   auto minForcedCommitIndex = spearhead;
   auto minForcedParticipantId = std::optional<ParticipantId>{};
-  for (auto const& pt : indexes) {
+  for (auto const& pt : participants) {
     if (pt.isForced()) {
       if (pt.lastTerm() != lastTermIndex.term) {
         // A forced participant has entries from a previous term. We can't use
@@ -566,28 +321,27 @@ auto algorithms::calculateCommitIndex(
                 CommitFailReason::withForcedParticipantNotInQuorum(pt.id),
                 {}};
       }
-      if (pt.lastAckedEntry.index < minForcedCommitIndex) {
-        minForcedCommitIndex = pt.lastAckedEntry.index;
+      if (pt.lastIndex() < minForcedCommitIndex) {
+        minForcedCommitIndex = pt.lastIndex();
         minForcedParticipantId = pt.id;
       }
     }
   }
 
-  // While actualWriteConcern == 0 is silly we still allow it.
-  if (actualWriteConcern == 0) {
+  // While effectiveWriteConcern == 0 is silly we still allow it.
+  if (effectiveWriteConcern == 0) {
     return {minForcedCommitIndex, CommitFailReason::withNothingToCommit(), {}};
   }
 
-  if (actualWriteConcern <= eligible.size()) {
+  if (effectiveWriteConcern <= eligible.size()) {
     auto nth = std::begin(eligible);
 
-    TRI_ASSERT(actualWriteConcern > 0);
-    std::advance(nth, actualWriteConcern - 1);
+    TRI_ASSERT(effectiveWriteConcern > 0);
+    std::advance(nth, effectiveWriteConcern - 1);
 
     std::nth_element(std::begin(eligible), nth, std::end(eligible),
                      [](auto& left, auto& right) {
-                       return left.lastAckedEntry.index >
-                              right.lastAckedEntry.index;
+                       return left.lastIndex() > right.lastIndex();
                      });
     auto const minNonExcludedCommitIndex = nth->lastIndex();
 
@@ -595,7 +349,8 @@ auto algorithms::calculateCommitIndex(
         std::min(minForcedCommitIndex, minNonExcludedCommitIndex);
 
     auto quorum = std::vector<ParticipantId>{};
-    quorum.reserve(actualWriteConcern);
+    quorum.reserve(effectiveWriteConcern);
+
     std::transform(std::begin(eligible), std::next(nth),
                    std::back_inserter(quorum), [](auto& p) { return p.id; });
 
@@ -614,10 +369,24 @@ auto algorithms::calculateCommitIndex(
                   minForcedParticipantId.value()),
               {}};
     } else {
-      // We commit as far away as we can get, but report the participant whose
-      // id is the furthest away from the spearhead.
-      auto const& who = nth->id;
-      return {commitIndex, CommitFailReason::withQuorumSizeNotReached(who),
+      // We commit as far away as we can get, but report all participants who
+      // can't be part of a quorum for the spearhead.
+      auto who = CommitFailReason::QuorumSizeNotReached::who_type();
+      for (auto const& participant : participants) {
+        if (participant.lastAckedEntry < lastTermIndex ||
+            participant.isExcluded()) {
+          who.try_emplace(
+              participant.id,
+              CommitFailReason::QuorumSizeNotReached::ParticipantInfo{
+                  .isFailed = participant.isFailed(),
+                  .isExcluded = participant.isExcluded(),
+                  .lastAcknowledged = participant.lastAckedEntry,
+              });
+        }
+      }
+      return {commitIndex,
+              CommitFailReason::withQuorumSizeNotReached(std::move(who),
+                                                         lastTermIndex),
               std::move(quorum)};
     }
   }
@@ -627,11 +396,8 @@ auto algorithms::calculateCommitIndex(
   // indexes cannot be empty because this particular case would've been handled
   // above by comparing actualWriteConcern to 0;
   CommitFailReason::NonEligibleServerRequiredForQuorum::CandidateMap candidates;
-  for (auto const& p : indexes) {
-    if (p.isFailed()) {
-      candidates.emplace(
-          p.id, CommitFailReason::NonEligibleServerRequiredForQuorum::kFailed);
-    } else if (p.isExcluded()) {
+  for (auto const& p : participants) {
+    if (p.isExcluded()) {
       candidates.emplace(
           p.id,
           CommitFailReason::NonEligibleServerRequiredForQuorum::kExcluded);
@@ -642,7 +408,7 @@ auto algorithms::calculateCommitIndex(
     }
   }
 
-  TRI_ASSERT(!indexes.empty());
+  TRI_ASSERT(!participants.empty());
   return {currentCommitIndex,
           CommitFailReason::withNonEligibleServerRequiredForQuorum(
               std::move(candidates)),

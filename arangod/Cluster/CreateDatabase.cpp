@@ -70,7 +70,7 @@ bool CreateDatabase::first() {
   VPackSlice users;
   auto database = _description.get(DATABASE);
 
-  LOG_TOPIC("953b1", INFO, Logger::MAINTENANCE)
+  LOG_TOPIC("953b1", DEBUG, Logger::MAINTENANCE)
       << "CreateDatabase: creating database " << database;
 
   TRI_IF_FAILURE("CreateDatabase::first") {
@@ -98,7 +98,7 @@ bool CreateDatabase::first() {
 
       _feature.storeDBError(database, res);
     } else {
-      LOG_TOPIC("997c8", INFO, Logger::MAINTENANCE)
+      LOG_TOPIC("997c8", DEBUG, Logger::MAINTENANCE)
           << "CreateDatabase: database  " << database << " created";
     }
   } catch (std::exception const& e) {

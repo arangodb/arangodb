@@ -171,13 +171,12 @@ class IResearchInvertedIndex : public IResearchDataStore {
 
   virtual ~IResearchInvertedIndex() = default;
 
-  void toVelocyPack(application_features::ApplicationServer& server,
-                    TRI_vocbase_t const* defaultVocbase,
+  void toVelocyPack(ArangodServer& server, TRI_vocbase_t const* defaultVocbase,
                     velocypack::Builder& builder, bool forPersistence) const;
 
   bool isSorted() const { return !_meta._sort.empty(); }
 
-  Result init(InitCallback const& initCallback = {});
+  Result init(bool& pathExists, InitCallback const& initCallback = {});
 
   static std::vector<std::vector<arangodb::basics::AttributeName>> fields(
       IResearchInvertedIndexMeta const& meta);
@@ -262,10 +261,6 @@ class IResearchInvertedClusterIndex : public IResearchInvertedIndex,
 
   bool covers(arangodb::aql::Projections& projections) const override {
     return IResearchInvertedIndex::covers(projections);
-  }
-
-  bool hasCoveringIterator() const override {
-    return !meta()._storedValues.empty() || !meta()._sort.empty();
   }
 
   Result drop() override { return {}; }

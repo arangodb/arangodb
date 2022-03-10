@@ -29,7 +29,6 @@
 #include "velocypack/Builder.h"
 #include "velocypack/Iterator.h"
 #include "velocypack/Parser.h"
-#include "velocypack/velocypack-aliases.h"
 
 #include "analysis/analyzers.hpp"
 #include "analysis/token_streams.hpp"
@@ -149,11 +148,11 @@ class EmptyAnalyzer : public irs::analysis::analyzer {
   static constexpr irs::string_ref type_name() noexcept {
     return "iresearch-document-empty";
   }
-  static ptr make(irs::string_ref const&) {
+  static ptr make(irs::string_ref) {
     PTR_NAMED(EmptyAnalyzer, ptr);
     return ptr;
   }
-  static bool normalize(irs::string_ref const&, std::string& out) {
+  static bool normalize(irs::string_ref, std::string& out) {
     out.resize(VPackSlice::emptyObjectSlice().byteSize());
     std::memcpy(&out[0], VPackSlice::emptyObjectSlice().begin(), out.size());
     return true;
@@ -168,7 +167,7 @@ class EmptyAnalyzer : public irs::analysis::analyzer {
     return nullptr;
   }
   virtual bool next() override { return false; }
-  virtual bool reset(irs::string_ref const& data) override { return true; }
+  virtual bool reset(irs::string_ref data) override { return true; }
 
  private:
   irs::frequency _attr;
@@ -182,11 +181,11 @@ class VPackAnalyzer : public irs::analysis::analyzer {
   static constexpr irs::string_ref type_name() noexcept {
     return "iresearch-vpack-analyzer";
   }
-  static ptr make(irs::string_ref const&) {
+  static ptr make(irs::string_ref) {
     PTR_NAMED(VPackAnalyzer, ptr);
     return ptr;
   }
-  static bool normalize(irs::string_ref const&, std::string& out) {
+  static bool normalize(irs::string_ref, std::string& out) {
     out.resize(VPackSlice::emptyObjectSlice().byteSize());
     std::memcpy(&out[0], VPackSlice::emptyObjectSlice().begin(), out.size());
     return true;
@@ -210,7 +209,7 @@ class VPackAnalyzer : public irs::analysis::analyzer {
     _term.value = irs::ref_cast<irs::byte_type>(_buf);
     return true;
   }
-  virtual bool reset(irs::string_ref const& data) override {
+  virtual bool reset(irs::string_ref data) override {
     _buf = arangodb::iresearch::slice(data).toString();
     _term.value = irs::bytes_ref::NIL;
     return true;
@@ -234,7 +233,7 @@ class InvalidAnalyzer : public irs::analysis::analyzer {
     return "iresearch-document-invalid";
   }
 
-  static ptr make(irs::string_ref const&) {
+  static ptr make(irs::string_ref) {
     if (returnNullFromMake) {
       return nullptr;
     }
@@ -243,7 +242,7 @@ class InvalidAnalyzer : public irs::analysis::analyzer {
     return ptr;
   }
 
-  static bool normalize(irs::string_ref const&, std::string& out) {
+  static bool normalize(irs::string_ref, std::string& out) {
     out.resize(VPackSlice::emptyObjectSlice().byteSize());
     std::memcpy(&out[0], VPackSlice::emptyObjectSlice().begin(), out.size());
     return !returnFalseFromToString;
@@ -259,7 +258,7 @@ class InvalidAnalyzer : public irs::analysis::analyzer {
     return nullptr;
   }
   virtual bool next() override { return false; }
-  virtual bool reset(irs::string_ref const& data) override { return true; }
+  virtual bool reset(irs::string_ref data) override { return true; }
 
  private:
   TestAttribute _attr;
@@ -277,17 +276,17 @@ class TypedAnalyzer : public irs::analysis::analyzer {
     return "iresearch-document-typed";
   }
 
-  static ptr make(irs::string_ref const& args) {
+  static ptr make(irs::string_ref args) {
     PTR_NAMED(TypedAnalyzer, ptr, args);
     return ptr;
   }
 
-  static bool normalize(irs::string_ref const& args, std::string& out) {
+  static bool normalize(irs::string_ref args, std::string& out) {
     out.assign(args.c_str(), args.size());
     return true;
   }
 
-  explicit TypedAnalyzer(irs::string_ref const& args)
+  explicit TypedAnalyzer(irs::string_ref args)
       : irs::analysis::analyzer(irs::type<TypedAnalyzer>::get()) {
     VPackSlice slice(irs::ref_cast<irs::byte_type>(args).c_str());
     if (slice.hasKey("type")) {
@@ -312,7 +311,7 @@ class TypedAnalyzer : public irs::analysis::analyzer {
     }
   }
 
-  virtual bool reset(irs::string_ref const& data) override {
+  virtual bool reset(irs::string_ref data) override {
     _resetted = true;
     return true;
   }
@@ -363,22 +362,22 @@ class TypedArrayAnalyzer : public irs::analysis::analyzer {
     return "iresearch-document-typed-array";
   }
 
-  static ptr make(irs::string_ref const& args) {
+  static ptr make(irs::string_ref args) {
     PTR_NAMED(TypedArrayAnalyzer, ptr, args);
     return ptr;
   }
 
-  static bool normalize(irs::string_ref const& args, std::string& out) {
+  static bool normalize(irs::string_ref args, std::string& out) {
     out.assign(args.c_str(), args.size());
     return true;
   }
 
-  explicit TypedArrayAnalyzer(irs::string_ref const&)
+  explicit TypedArrayAnalyzer(irs::string_ref)
       : irs::analysis::analyzer(irs::type<TypedArrayAnalyzer>::get()) {
     _returnType.value = arangodb::iresearch::AnalyzerValueType::Number;
   }
 
-  virtual bool reset(irs::string_ref const& data) override {
+  virtual bool reset(irs::string_ref data) override {
     auto value = std::string(data);
     _values.clear();
     _current = 0;

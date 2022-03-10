@@ -48,8 +48,7 @@ class IResearchQueryStringTermTest : public IResearchQueryTest {};
 TEST_P(IResearchQueryStringTermTest, test) {
   // ArangoDB specific string comparer
   struct StringComparer {
-    bool operator()(irs::string_ref const& lhs,
-                    irs::string_ref const& rhs) const {
+    bool operator()(irs::string_ref lhs, irs::string_ref rhs) const {
       return arangodb::basics::VelocyPackHelper::compareStringValues(
                  lhs.c_str(), lhs.size(), rhs.c_str(), rhs.size(), true) < 0;
     }

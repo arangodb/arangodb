@@ -48,12 +48,17 @@ class SingleProviderPathResult : public PathResultInterface {
   SingleProviderPathResult(Step step, ProviderType& provider,
                            PathStoreType& store);
   auto clear() -> void;
-  auto appendVertex(typename Step::Vertex v) -> void;
-  auto prependVertex(typename Step::Vertex v) -> void;
-  auto appendEdge(typename Step::Edge e) -> void;
-  auto prependEdge(typename Step::Edge e) -> void;
 
+  // Writing the full path to VelocyPack
   auto toVelocyPack(arangodb::velocypack::Builder& builder) -> void override;
+
+  // Writing last vertex of the path to VelocyPack
+  auto lastVertexToVelocyPack(arangodb::velocypack::Builder& builder)
+      -> void override;
+
+  // Writing last edge of the path to VelocyPack
+  auto lastEdgeToVelocyPack(arangodb::velocypack::Builder& builder)
+      -> void override;
 
   auto isEmpty() const -> bool;
   ProviderType* getProvider() { return &_provider; }
@@ -61,10 +66,24 @@ class SingleProviderPathResult : public PathResultInterface {
   Step& getStep() { return _step; }
 
  private:
+  auto appendVertex(typename Step::Vertex v) -> void;
+  auto prependVertex(typename Step::Vertex v) -> void;
+  auto prependWeight(double) -> void;
+  auto appendEdge(typename Step::Edge e) -> void;
+  auto prependEdge(typename Step::Edge e) -> void;
+
+  // Used to populate _vertices and _edges (by traversing the Schreier vector)
+  auto populatePath() -> void;
+  auto verticesToVelocyPack(arangodb::velocypack::Builder& builder) -> void;
+  auto edgesToVelocyPack(arangodb::velocypack::Builder& builder) -> void;
+  auto weightsToVelocyPack(arangodb::velocypack::Builder& builder) -> void;
+
+ private:
   Step _step;
 
   std::vector<typename Step::Vertex> _vertices;
   std::vector<typename Step::Edge> _edges;
+  std::vector<double> _weights;
 
   // Provider for the path
   ProviderType& _provider;

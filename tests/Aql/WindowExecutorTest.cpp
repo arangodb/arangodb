@@ -37,9 +37,9 @@
 #include "Mocks/Servers.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
+#include "FixedOutputExecutionBlockMock.h"
 
 #include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <chrono>
 #include <functional>
@@ -414,6 +414,164 @@ TEST_P(WindowExecutorTest, runAccuWindowExecutor) {
       .expectedState(ExecutionState::DONE)
       // .expectedStats(stats)
       .run(/*loop*/ true);
+}
+
+class WindowExecutorInSubqueryTest : public AqlExecutorTestCase<false> {
+ private:
+  // Hardcode to preceeding: 1, lookahead: 1, and SUM method
+  WindowBounds _preOnePostOne{WindowBounds::Type::Range,
+                              AqlValue(AqlValueHintInt(1)),
+                              AqlValue(AqlValueHintInt(1))};
+
+ protected:
+  auto buildRegisterInfos() -> RegisterInfos {
+    RegisterCount nrInputRegisters = 1;
+    RegisterCount nrOutputRegisters = 2;
+    RegIdSet registersToClear{};
+    RegIdSetStack registersToKeep{{}};
+    auto readableInputRegisters = RegIdSet{};
+    auto writeableOutputRegisters = RegIdSet{};
+
+    RegIdSet toKeep;
+    for (RegisterId::value_t i = 0; i < nrInputRegisters; ++i) {
+      // All registers need to be kept!
+      toKeep.emplace(i);
+    }
+    registersToKeep.emplace_back(toKeep);
+    registersToKeep.emplace_back(std::move(toKeep));
+    // Allow to read and write to register 0
+    readableInputRegisters.emplace(0);
+    writeableOutputRegisters.emplace(1);
+
+    return RegisterInfos{std::move(readableInputRegisters),
+                         std::move(writeableOutputRegisters),
+                         nrInputRegisters,
+                         nrOutputRegisters,
+                         registersToClear,
+                         registersToKeep};
+  };
+
+  auto buildExecutorInfos() -> WindowExecutorInfos {
+    std::vector<std::string> aggregateTypes{"SUM"};
+    std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters{{1, 0}};
+
+    return WindowExecutorInfos(_preOnePostOne, 0, std::move(aggregateTypes),
+                               std::move(aggregateRegisters),
+                               fakedQuery->warnings(), &VPackOptions::Defaults);
+  };
+
+  auto splitBlock(SharedAqlItemBlockPtr block, std::vector<size_t> splitAt)
+      -> std::vector<SharedAqlItemBlockPtr> {
+    std::vector<SharedAqlItemBlockPtr> response;
+    // Start from first row
+    size_t from = 0;
+    for (size_t to : splitAt) {
+      // Cannot test assert here, only possible in void methods.
+      TRI_ASSERT(to < block->numRows());
+      TRI_ASSERT(from < to);
+      // Create a slice from->to.
+      response.emplace_back(block->slice(from, to));
+      // Start the next slice where we just stopped
+      from = to;
+    }
+    // Include the last slice
+    response.emplace_back(block->slice(from, block->numRows()));
+    return response;
+  }
+};
+
+/// @brief we test a couple of splitting combinations for input blocks.
+/// especially we test here that splitting in "dangerous" places around
+/// subqueries does not have an undesired effect.
+TEST_F(WindowExecutorInSubqueryTest, test_input_fragmentation_does_not_matter) {
+  auto buildTestInputBlock = [&]() -> SharedAqlItemBlockPtr {
+    return buildBlock<1>(manager(),
+                         {{1},
+                          {2},
+                          {3},
+                          {4},
+                          {NoneEntry{}},
+                          {5},
+                          {6},
+                          {7},
+                          {NoneEntry{}},
+                          {1},
+                          {2},
+                          {3},
+                          {4},
+                          {NoneEntry{}},
+                          {5},
+                          {6},
+                          {7},
+                          {NoneEntry{}}},
+                         {{4, 0}, {8, 0}, {13, 0}, {17, 0}});
+  };
+
+  auto buildTestExpectedOutputBlock = [&]() -> SharedAqlItemBlockPtr {
+    return buildBlock<2>(manager(),
+                         {{1, 3},
+                          {2, 6},
+                          {3, 9},
+                          {4, 7},
+                          {NoneEntry{}, NoneEntry{}},
+                          {5, 11},
+                          {6, 18},
+                          {7, 13},
+                          {NoneEntry{}, NoneEntry{}},
+                          {1, 3},
+                          {2, 6},
+                          {3, 9},
+                          {4, 7},
+                          {NoneEntry{}, NoneEntry{}},
+                          {5, 11},
+                          {6, 18},
+                          {7, 13},
+                          {NoneEntry{}, NoneEntry{}}},
+                         {{4, 0}, {8, 0}, {13, 0}, {17, 0}});
+  };
+
+  // Candidates to test here:
+  // a) First block has no shadow row,
+  // b) A sequence around a shadow row (2 before, 1 before, on the row, 1 after,
+  // 2 after)
+  for (size_t firstSplit : {2, 7, 8, 9, 10, 11}) {
+    // For the second split we try to split again before, on and after a shadow
+    // row
+    for (size_t secondSplit : {12, 13, 14}) {
+      std::deque<arangodb::aql::SharedAqlItemBlockPtr> inputData{};
+      {
+        auto input =
+            splitBlock(buildTestInputBlock(), {firstSplit, secondSplit});
+        for (auto const& it : input) {
+          inputData.push_back(it);
+        }
+      }
+
+      MockTypedNode inputNode{fakedQuery->plan(), ExecutionNodeId{1},
+                              ExecutionNode::FILTER};
+      FixedOutputExecutionBlockMock dependency{
+          fakedQuery->rootEngine(), &inputNode, std::move(inputData)};
+
+      MockTypedNode windowNode{fakedQuery->plan(), ExecutionNodeId{42},
+                               ExecutionNode::WINDOW};
+      ExecutionBlockImpl<WindowExecutor> testee{
+          fakedQuery->rootEngine(), &windowNode, buildRegisterInfos(),
+          buildExecutorInfos()};
+      testee.addDependency(&dependency);
+
+      // MainQuery fetch all
+      AqlCallStack callStack{AqlCallList{AqlCall{}}};
+      // Subquery fetch all
+      // We are only testing correctness of ShadowRowHandling here.
+      callStack.pushCall(AqlCallList{AqlCall{}, AqlCall{}});
+
+      // From the outside we will get away with a single call
+      auto [state, skipped, block] = testee.execute(callStack);
+      EXPECT_EQ(state, ExecutionState::DONE);
+      asserthelper::ValidateBlocksAreEqual(block,
+                                           buildTestExpectedOutputBlock());
+    }
+  }
 }
 
 }  // namespace aql

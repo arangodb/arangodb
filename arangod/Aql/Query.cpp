@@ -23,6 +23,7 @@
 
 #include "Query.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AqlCallList.h"
 #include "Aql/AqlCallStack.h"
 #include "Aql/AqlItemBlock.h"
@@ -1150,7 +1151,7 @@ void Query::init(bool createProfile) {
   TRI_ASSERT(_queryProfile == nullptr);
   // adds query to QueryList which is needed for /_api/query/current
   if (createProfile && !ServerState::instance()->isDBServer()) {
-    _queryProfile = std::make_unique<QueryProfile>(this);
+    _queryProfile = std::make_unique<QueryProfile>(*this);
   }
   enterState(QueryExecutionState::ValueType::INITIALIZATION);
 
@@ -1450,9 +1451,6 @@ futures::Future<Result> finishDBServerParts(Query& query, ErrorCode errorCode) {
 }  // namespace
 
 aql::ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
-  ScopeGuard endQueryGuard(
-      [this]() noexcept { unregisterQueryInTransactionState(); });
-
   ShutdownState exp = _shutdownState.load(std::memory_order_relaxed);
   if (exp == ShutdownState::Done) {
     return ExecutionState::DONE;
@@ -1465,6 +1463,9 @@ aql::ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
                                               std::memory_order_relaxed)) {
     return ExecutionState::WAITING;  // someone else got here
   }
+
+  ScopeGuard endQueryGuard(
+      [this]() noexcept { unregisterQueryInTransactionState(); });
 
   enterState(QueryExecutionState::ValueType::FINALIZATION);
 
@@ -1681,7 +1682,9 @@ void Query::debugKillQuery() {
     isInRegistry = registry->queryIsRegistered(vocbase().name(), _queryId);
   }
   TRI_ASSERT(isInList || isStreaming || isInRegistry ||
-             _execState == QueryExecutionState::ValueType::FINALIZATION);
+             _execState == QueryExecutionState::ValueType::FINALIZATION)
+      << "_execState " << (int)_execState.load() << " queryList->enabled() "
+      << queryList->enabled();
   kill();
 #endif
 }

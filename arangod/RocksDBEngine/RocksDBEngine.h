@@ -127,8 +127,10 @@ class RocksDBEngine final : public StorageEngine {
   friend class RocksDBFilePurgeEnabler;
 
  public:
+  static constexpr std::string_view name() noexcept { return "RocksDBEngine"; }
+
   // create the storage engine
-  explicit RocksDBEngine(application_features::ApplicationServer& server);
+  explicit RocksDBEngine(Server& server);
   ~RocksDBEngine();
 
   // inherited from ApplicationFeature
@@ -159,8 +161,8 @@ class RocksDBEngine final : public StorageEngine {
   std::unique_ptr<PhysicalCollection> createPhysicalCollection(
       LogicalCollection& collection, velocypack::Slice const& info) override;
 
-  void getStatistics(velocypack::Builder& builder, bool v2) const override;
-  void getStatistics(std::string& result, bool v2) const override;
+  void getStatistics(velocypack::Builder& builder) const override;
+  void getStatistics(std::string& result) const override;
 
   // inventory functionality
   // -----------------------
@@ -287,9 +289,7 @@ class RocksDBEngine final : public StorageEngine {
                                     LogicalCollection const& collection,
                                     std::string const& oldName) override;
 
-  arangodb::Result changeView(TRI_vocbase_t& vocbase,
-                              arangodb::LogicalView const& view,
-                              bool doSync) override;
+  Result changeView(LogicalView const& view, velocypack::Slice update) final;
 
   arangodb::Result createView(TRI_vocbase_t& vocbase, DataSourceId id,
                               arangodb::LogicalView const& view) override;
@@ -347,6 +347,9 @@ class RocksDBEngine final : public StorageEngine {
 
   double pruneWaitTimeInitial() const { return _pruneWaitTimeInitial; }
   bool useEdgeCache() const { return _useEdgeCache; }
+
+  // whether or not to issue range delete markers in the write-ahead log
+  bool useRangeDeleteInWal() const noexcept { return _useRangeDeleteInWal; }
 
   // management methods for synchronizing with external persistent stores
   virtual TRI_voc_tick_t currentTick() const override;
@@ -465,8 +468,7 @@ class RocksDBEngine final : public StorageEngine {
 #endif
 
  public:
-  static std::string const EngineName;
-  static std::string const FeatureName;
+  static constexpr std::string_view kEngineName = "rocksdb";
 
  private:
   /// single rocksdb database used in this storage engine
@@ -562,6 +564,9 @@ class RocksDBEngine final : public StorageEngine {
 
   /// @brief activate generation of SHA256 files to parallel .sst files
   bool _createShaFiles;
+
+  // whether or not to issue range delete markers in the write-ahead log
+  bool _useRangeDeleteInWal;
 
   /// @brief whether or not the last health check was successful.
   /// this is used to determine when to execute the potentially expensive

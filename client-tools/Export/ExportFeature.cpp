@@ -44,7 +44,6 @@
 #include <velocypack/Dumper.h>
 #include <velocypack/Slice.h>
 #include <velocypack/Sink.h>
-#include <velocypack/velocypack-aliases.h>
 #include <iostream>
 #include <regex>
 #include <sys/types.h>
@@ -66,9 +65,8 @@ constexpr double ttlValue = 1200.;
 
 namespace arangodb {
 
-ExportFeature::ExportFeature(application_features::ApplicationServer& server,
-                             int* result)
-    : ApplicationFeature(server, "Export"),
+ExportFeature::ExportFeature(Server& server, int* result)
+    : ArangoExportFeature{server, *this},
       _xgmmlLabelAttribute("label"),
       _typeExport("json"),
       _customQueryMaxRuntime(0.0),
@@ -244,7 +242,14 @@ void ExportFeature::validateOptions(
 }
 
 void ExportFeature::prepare() {
-  _directory = std::make_unique<ManagedDirectory>(server(), _outputDirectory,
+  EncryptionFeature* encryption{};
+  if constexpr (Server::contains<EncryptionFeature>()) {
+    if (server().hasFeature<EncryptionFeature>()) {
+      encryption = &server().getFeature<EncryptionFeature>();
+    }
+  }
+
+  _directory = std::make_unique<ManagedDirectory>(encryption, _outputDirectory,
                                                   !_overwrite, true, _useGzip);
   if (_directory->status().fail()) {
     switch (static_cast<int>(_directory->status().errorNumber())) {

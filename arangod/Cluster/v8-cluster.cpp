@@ -24,7 +24,6 @@
 #include "v8-cluster.h"
 
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "Agency/AgencyComm.h"
 #include "Agency/AsyncAgencyComm.h"
@@ -73,8 +72,8 @@ static void onlyInCluster() {
 }
 
 static void onlyInClusterOrActiveFailover(v8::Isolate* isolate) {
-  TRI_GET_GLOBALS();
-  auto& replicationFeature = v8g->_server.getFeature<ReplicationFeature>();
+  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  auto& replicationFeature = v8g->server().getFeature<ReplicationFeature>();
   if (replicationFeature.isActiveFailoverEnabled()) {
     // active failover enabled
     return;
@@ -143,8 +142,8 @@ static void JS_CasAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   onlyInClusterOrActiveFailover(isolate);
 
-  TRI_GET_GLOBALS();
-  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  V8SecurityFeature& v8security = v8g->server().getFeature<V8SecurityFeature>();
   if (!v8security.isInternalContext(isolate) &&
       !v8security.isAdminScriptContext(isolate)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -179,7 +178,7 @@ static void JS_CasAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
     shouldThrow = TRI_ObjectToBoolean(isolate, args[5]);
   }
 
-  AgencyComm comm(v8g->_server);
+  AgencyComm comm(v8g->server());
   AgencyCommResult result =
       comm.casValue(key, oldBuilder.slice(), newBuilder.slice(), ttl, timeout);
 
@@ -206,8 +205,8 @@ static void JS_CreateDirectoryAgency(
 
   onlyInClusterOrActiveFailover(isolate);
 
-  TRI_GET_GLOBALS();
-  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  V8SecurityFeature& v8security = v8g->server().getFeature<V8SecurityFeature>();
   if (!v8security.isInternalContext(isolate) &&
       !v8security.isAdminScriptContext(isolate)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -220,7 +219,7 @@ static void JS_CreateDirectoryAgency(
 
   std::string const key = TRI_ObjectToString(isolate, args[0]);
 
-  AgencyComm comm(v8g->_server);
+  AgencyComm comm(v8g->server());
   AgencyCommResult result = comm.createDirectory(key);
 
   if (!result.successful()) {
@@ -263,8 +262,8 @@ static void JS_IncreaseVersionAgency(
 
   onlyInClusterOrActiveFailover(isolate);
 
-  TRI_GET_GLOBALS();
-  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  V8SecurityFeature& v8security = v8g->server().getFeature<V8SecurityFeature>();
   if (!v8security.isInternalContext(isolate) &&
       !v8security.isAdminScriptContext(isolate)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -277,7 +276,7 @@ static void JS_IncreaseVersionAgency(
 
   std::string const key = TRI_ObjectToString(isolate, args[0]);
 
-  AgencyComm comm(v8g->_server);
+  AgencyComm comm(v8g->server());
   if (!comm.increaseVersion(key)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "unable to increase version");
@@ -298,8 +297,8 @@ static void JS_GetAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   onlyInClusterOrActiveFailover(isolate);
 
-  TRI_GET_GLOBALS();
-  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  V8SecurityFeature& v8security = v8g->server().getFeature<V8SecurityFeature>();
   if (!v8security.isInternalContext(isolate) &&
       !v8security.isAdminScriptContext(isolate)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -311,7 +310,7 @@ static void JS_GetAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   std::string const key = TRI_ObjectToString(isolate, args[0]);
-  AgencyComm comm(v8g->_server);
+  AgencyComm comm(v8g->server());
   AgencyCommResult result = comm.getValues(key);
 
   if (!result.successful()) {
@@ -350,8 +349,8 @@ static void JS_APIAgency(std::string const& envelope,
 
   onlyInClusterOrActiveFailover(isolate);
 
-  TRI_GET_GLOBALS();
-  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  V8SecurityFeature& v8security = v8g->server().getFeature<V8SecurityFeature>();
   if (!v8security.isInternalContext(isolate) &&
       !v8security.isAdminScriptContext(isolate)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -365,7 +364,7 @@ static void JS_APIAgency(std::string const& envelope,
   VPackBuilder builder;
   TRI_V8ToVPack(isolate, builder, args[0], false);
 
-  AgencyComm comm(v8g->_server);
+  AgencyComm comm(v8g->server());
   AgencyCommResult result = comm.sendWithFailover(
       arangodb::rest::RequestType::POST,
       AgencyCommHelper::CONNECTION_OPTIONS._requestTimeout,
@@ -412,8 +411,8 @@ static void JS_RemoveAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   onlyInClusterOrActiveFailover(isolate);
 
-  TRI_GET_GLOBALS();
-  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  V8SecurityFeature& v8security = v8g->server().getFeature<V8SecurityFeature>();
   if (!v8security.isInternalContext(isolate) &&
       !v8security.isAdminScriptContext(isolate)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -431,7 +430,7 @@ static void JS_RemoveAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
     recursive = TRI_ObjectToBoolean(isolate, args[1]);
   }
 
-  AgencyComm comm(v8g->_server);
+  AgencyComm comm(v8g->server());
   AgencyCommResult result = comm.removeValues(key, recursive);
 
   if (!result.successful()) {
@@ -452,8 +451,8 @@ static void JS_SetAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   onlyInClusterOrActiveFailover(isolate);
 
-  TRI_GET_GLOBALS();
-  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  V8SecurityFeature& v8security = v8g->server().getFeature<V8SecurityFeature>();
   if (!v8security.isInternalContext(isolate) &&
       !v8security.isAdminScriptContext(isolate)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -474,7 +473,7 @@ static void JS_SetAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
     ttl = TRI_ObjectToDouble(isolate, args[2]);
   }
 
-  AgencyComm comm(v8g->_server);
+  AgencyComm comm(v8g->server());
   AgencyCommResult result = comm.setValue(key, builder.slice(), ttl);
 
   if (!result.successful()) {
@@ -495,8 +494,8 @@ static void JS_Agency(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   onlyInClusterOrActiveFailover(isolate);
 
-  TRI_GET_GLOBALS();
-  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  V8SecurityFeature& v8security = v8g->server().getFeature<V8SecurityFeature>();
   if (!v8security.isInternalContext(isolate) &&
       !v8security.isAdminScriptContext(isolate)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -509,7 +508,7 @@ static void JS_Agency(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   VPackBuilder builder;
 
-  AgencyComm comm(v8g->_server);
+  AgencyComm comm(v8g->server());
   AgencyCommResult result = comm.sendWithFailover(
       arangodb::rest::RequestType::GET,
       AgencyCommHelper::CONNECTION_OPTIONS._requestTimeout,
@@ -536,8 +535,8 @@ static void JS_EndpointsAgency(
 
   onlyInClusterOrActiveFailover(isolate);
 
-  TRI_GET_GLOBALS();
-  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  V8SecurityFeature& v8security = v8g->server().getFeature<V8SecurityFeature>();
   if (!v8security.isInternalContext(isolate) &&
       !v8security.isAdminScriptContext(isolate)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -591,8 +590,8 @@ static void JS_UniqidAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   onlyInClusterOrActiveFailover(isolate);
 
-  TRI_GET_GLOBALS();
-  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  V8SecurityFeature& v8security = v8g->server().getFeature<V8SecurityFeature>();
   if (!v8security.isInternalContext(isolate) &&
       !v8security.isAdminScriptContext(isolate)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -617,7 +616,7 @@ static void JS_UniqidAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
     timeout = TRI_ObjectToDouble(isolate, args[1]);
   }
 
-  AgencyComm comm(v8g->_server);
+  AgencyComm comm(v8g->server());
   uint64_t result = comm.uniqid(count, timeout);
 
   std::string const value = StringUtils::itoa(result);
@@ -636,8 +635,8 @@ static void JS_VersionAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   onlyInClusterOrActiveFailover(isolate);
 
-  TRI_GET_GLOBALS();
-  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  V8SecurityFeature& v8security = v8g->server().getFeature<V8SecurityFeature>();
   if (!v8security.isInternalContext(isolate) &&
       !v8security.isAdminScriptContext(isolate)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -648,7 +647,7 @@ static void JS_VersionAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("version()");
   }
 
-  AgencyComm comm(v8g->_server);
+  AgencyComm comm(v8g->server());
   auto const version = comm.version();
 
   TRI_V8_RETURN_STD_STRING_VIEW(version);
@@ -670,8 +669,8 @@ static void JS_DoesDatabaseExistClusterInfo(
     TRI_V8_THROW_EXCEPTION_USAGE("doesDatabaseExist(<database-id>)");
   }
 
-  TRI_GET_GLOBALS();
-  auto& ci = v8g->_server.getFeature<ClusterFeature>().clusterInfo();
+  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  auto& ci = v8g->server().getFeature<ClusterFeature>().clusterInfo();
   bool const result =
       ci.doesDatabaseExist(TRI_ObjectToString(isolate, args[0]));
 
@@ -696,8 +695,8 @@ static void JS_Databases(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("databases()");
   }
 
-  TRI_GET_GLOBALS();
-  auto& ci = v8g->_server.getFeature<ClusterFeature>().clusterInfo();
+  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  auto& ci = v8g->server().getFeature<ClusterFeature>().clusterInfo();
   std::vector<DatabaseID> res = ci.databases();
   v8::Handle<v8::Array> a = v8::Array::New(isolate, (int)res.size());
   std::vector<DatabaseID>::iterator it;
@@ -721,8 +720,8 @@ static void JS_FlushClusterInfo(
 
   onlyInCluster();
 
-  TRI_GET_GLOBALS();
-  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  V8SecurityFeature& v8security = v8g->server().getFeature<V8SecurityFeature>();
   if (!v8security.isInternalContext(isolate) &&
       !v8security.isAdminScriptContext(isolate)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -733,7 +732,7 @@ static void JS_FlushClusterInfo(
     TRI_V8_THROW_EXCEPTION_USAGE("flush()");
   }
 
-  auto& ci = v8g->_server.getFeature<ClusterFeature>().clusterInfo();
+  auto& ci = v8g->server().getFeature<ClusterFeature>().clusterInfo();
   ci.flush();
 
   TRI_V8_RETURN_TRUE();
@@ -759,8 +758,8 @@ static void JS_GetCollectionInfoClusterInfo(
 
   auto databaseID = TRI_ObjectToString(isolate, args[0]);
   auto collectionID = TRI_ObjectToString(isolate, args[1]);
-  TRI_GET_GLOBALS();
-  auto& ci = v8g->_server.getFeature<ClusterFeature>().clusterInfo();
+  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  auto& ci = v8g->server().getFeature<ClusterFeature>().clusterInfo();
   std::shared_ptr<LogicalCollection> col =
       ci.getCollectionNT(databaseID, collectionID);
   if (col == nullptr) {
@@ -798,10 +797,11 @@ static void JS_GetCollectionInfoClusterInfo(
         if (t.at(0) == '_') {
           t = t.substr(1);
         }
-        shorts
-            ->Set(context, pos, TRI_V8_STD_STRING(isolate, serverAliases.at(t)))
-            .FromMaybe(false);
-        pos++;
+        if (auto it = serverAliases.find(t); it != serverAliases.end()) {
+          shorts->Set(context, pos, TRI_V8_STD_STRING(isolate, it->second))
+              .FromMaybe(false);
+          pos++;
+        }
       } catch (...) {
       }
     }
@@ -836,8 +836,8 @@ static void JS_GetCollectionInfoCurrentClusterInfo(
 
   auto databaseID = TRI_ObjectToString(isolate, args[0]);
   auto collectionID = TRI_ObjectToString(isolate, args[1]);
-  TRI_GET_GLOBALS();
-  auto& ci = v8g->_server.getFeature<ClusterFeature>().clusterInfo();
+  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  auto& ci = v8g->server().getFeature<ClusterFeature>().clusterInfo();
   std::shared_ptr<LogicalCollection> col =
       ci.getCollectionNT(databaseID, collectionID);
   if (col == nullptr) {
@@ -901,8 +901,10 @@ static void JS_GetCollectionInfoCurrentClusterInfo(
   uint32_t pos = 0;
   for (auto const& s : servers) {
     try {
-      shorts->Set(context, pos, TRI_V8_STD_STRING(isolate, serverAliases.at(s)))
-          .FromMaybe(false);
+      if (auto it = serverAliases.find(s); it != serverAliases.end()) {
+        shorts->Set(context, pos, TRI_V8_STD_STRING(isolate, it->second))
+            .FromMaybe(false);
+      }
     } catch (...) {
     }
     list->Set(context, pos, TRI_V8_STD_STRING(isolate, s)).FromMaybe(false);
@@ -943,8 +945,8 @@ static void JS_GetResponsibleServerClusterInfo(
     TRI_V8_THROW_EXCEPTION_USAGE("getResponsibleServer(<shard-id>)");
   }
 
-  TRI_GET_GLOBALS();
-  auto& ci = v8g->_server.getFeature<ClusterFeature>().clusterInfo();
+  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  auto& ci = v8g->server().getFeature<ClusterFeature>().clusterInfo();
   auto result = ci.getResponsibleServer(TRI_ObjectToString(isolate, args[0]));
   v8::Handle<v8::Array> list = v8::Array::New(isolate, (int)result->size());
   uint32_t count = 0;
@@ -972,7 +974,7 @@ static void JS_GetResponsibleServersClusterInfo(
     TRI_V8_THROW_EXCEPTION_USAGE("getResponsibleServers(<shard-ids>)");
   }
 
-  std::unordered_set<std::string> shardIds;
+  containers::FlatHashSet<std::string> shardIds;
   v8::Handle<v8::Array> array = v8::Handle<v8::Array>::Cast(args[0]);
 
   uint32_t const n = array->Length();
@@ -985,8 +987,8 @@ static void JS_GetResponsibleServersClusterInfo(
     TRI_V8_THROW_EXCEPTION_USAGE("getResponsibleServers(<shard-ids>)");
   }
 
-  TRI_GET_GLOBALS();
-  auto& ci = v8g->_server.getFeature<ClusterFeature>().clusterInfo();
+  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  auto& ci = v8g->server().getFeature<ClusterFeature>().clusterInfo();
   auto result = ci.getResponsibleServers(shardIds);
 
   v8::Handle<v8::Object> responsible = v8::Object::New(isolate);
@@ -1038,8 +1040,8 @@ static void JS_GetResponsibleShardClusterInfo(
   ShardID shardId;
   CollectionID collectionId = TRI_ObjectToString(isolate, args[0]);
   auto& vocbase = GetContextVocBase(isolate);
-  TRI_GET_GLOBALS();
-  auto& ci = v8g->_server.getFeature<ClusterFeature>().clusterInfo();
+  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  auto& ci = v8g->server().getFeature<ClusterFeature>().clusterInfo();
   auto collInfo = ci.getCollectionNT(vocbase.name(), collectionId);
   if (collInfo == nullptr) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
@@ -1087,8 +1089,8 @@ static void JS_GetServerEndpointClusterInfo(
     TRI_V8_THROW_EXCEPTION_USAGE("getServerEndpoint(<server-id>)");
   }
 
-  TRI_GET_GLOBALS();
-  auto& ci = v8g->_server.getFeature<ClusterFeature>().clusterInfo();
+  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  auto& ci = v8g->server().getFeature<ClusterFeature>().clusterInfo();
   std::string const result =
       ci.getServerEndpoint(TRI_ObjectToString(isolate, args[0]));
 
@@ -1111,8 +1113,8 @@ static void JS_GetServerNameClusterInfo(
     TRI_V8_THROW_EXCEPTION_USAGE("getServerName(<endpoint>)");
   }
 
-  TRI_GET_GLOBALS();
-  auto& ci = v8g->_server.getFeature<ClusterFeature>().clusterInfo();
+  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  auto& ci = v8g->server().getFeature<ClusterFeature>().clusterInfo();
   std::string const result =
       ci.getServerName(TRI_ObjectToString(isolate, args[0]));
 
@@ -1135,8 +1137,8 @@ static void JS_GetDBServers(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("getDBServers()");
   }
 
-  TRI_GET_GLOBALS();
-  auto& ci = v8g->_server.getFeature<ClusterFeature>().clusterInfo();
+  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  auto& ci = v8g->server().getFeature<ClusterFeature>().clusterInfo();
   auto DBServers = ci.getCurrentDBServers();
   auto serverAliases = ci.getServerAliases();
 
@@ -1188,8 +1190,8 @@ static void JS_GetCoordinators(
     TRI_V8_THROW_EXCEPTION_USAGE("getCoordinators()");
   }
 
-  TRI_GET_GLOBALS();
-  auto& ci = v8g->_server.getFeature<ClusterFeature>().clusterInfo();
+  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  auto& ci = v8g->server().getFeature<ClusterFeature>().clusterInfo();
   std::vector<std::string> coordinators = ci.getCurrentCoordinators();
 
   v8::Handle<v8::Array> l = v8::Array::New(isolate);
@@ -1214,8 +1216,8 @@ static void JS_UniqidClusterInfo(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  TRI_GET_GLOBALS();
-  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  V8SecurityFeature& v8security = v8g->server().getFeature<V8SecurityFeature>();
   if (!v8security.isInternalContext(isolate) &&
       !v8security.isAdminScriptContext(isolate)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -1235,7 +1237,7 @@ static void JS_UniqidClusterInfo(
     TRI_V8_THROW_EXCEPTION_PARAMETER("<count> is invalid");
   }
 
-  auto& ci = v8g->_server.getFeature<ClusterFeature>().clusterInfo();
+  auto& ci = v8g->server().getFeature<ClusterFeature>().clusterInfo();
   uint64_t value = ci.uniqid(count);
 
   if (value == 0) {
@@ -1333,8 +1335,8 @@ static void JS_setFoxxmasterQueueupdate(
   ServerState::instance()->setFoxxmasterQueueupdate(value);
 
   if (AsyncAgencyCommManager::isEnabled()) {
-    TRI_GET_GLOBALS();
-    AgencyComm comm(v8g->_server);
+    TRI_GET_SERVER_GLOBALS(ArangodServer);
+    AgencyComm comm(v8g->server());
     std::string key = "Current/FoxxmasterQueueupdate";
     VPackSlice val = value ? VPackSlice::trueSlice() : VPackSlice::falseSlice();
     AgencyCommResult result = comm.setValue(key, val, 0.0);
@@ -1342,7 +1344,7 @@ static void JS_setFoxxmasterQueueupdate(
       result = comm.increment("Current/Version");
     }
     if (!result.successful() && result.errorCode() != TRI_ERROR_SHUTTING_DOWN &&
-        !v8g->_server.isStopping()) {
+        !v8g->server().isStopping()) {
       // gracefully ignore any shutdown errors here
       THROW_AGENCY_EXCEPTION(result);
     }
@@ -1543,8 +1545,8 @@ static void JS_GetAnalyzersRevision(
 
   auto const databaseID = TRI_ObjectToString(isolate, args[0]);
 
-  TRI_GET_GLOBALS();
-  auto& ci = v8g->_server.getFeature<ClusterFeature>().clusterInfo();
+  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  auto& ci = v8g->server().getFeature<ClusterFeature>().clusterInfo();
   auto const analyzerRevision = ci.getAnalyzersRevision(databaseID);
 
   if (!analyzerRevision) {

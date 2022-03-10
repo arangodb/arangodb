@@ -24,6 +24,7 @@
 
 #include "RocksDBEngine.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/LanguageFeature.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
 #include "Basics/NumberOfCores.h"
@@ -42,7 +43,6 @@
 #include "Cache/Manager.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
-#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "GeneralServer/RestHandlerFactory.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -59,6 +59,7 @@
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/MetricsFeature.h"
+#include "RestServer/LanguageCheckFeature.h"
 #include "RestServer/ServerIdFeature.h"
 #include "RocksDBEngine/Listeners/RocksDBBackgroundErrorListener.h"
 #include "RocksDBEngine/Listeners/RocksDBMetricsListener.h"
@@ -113,7 +114,6 @@
 #include <rocksdb/write_batch.h>
 
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <iomanip>
 #include <limits>
@@ -144,9 +144,6 @@ DECLARE_COUNTER(arangodb_revision_tree_hibernations_total,
                 "Number of revision tree hibernations");
 DECLARE_COUNTER(arangodb_revision_tree_resurrections_total,
                 "Number of revision tree resurrections");
-
-std::string const RocksDBEngine::EngineName("rocksdb");
-std::string const RocksDBEngine::FeatureName("RocksDBEngine");
 
 // global flag to cancel all compactions. will be flipped to true on shutdown
 static std::atomic<bool> cancelCompactions{false};
@@ -204,8 +201,8 @@ RocksDBFilePurgeEnabler::RocksDBFilePurgeEnabler(
 }
 
 // create the storage engine
-RocksDBEngine::RocksDBEngine(application_features::ApplicationServer& server)
-    : StorageEngine(server, EngineName, FeatureName,
+RocksDBEngine::RocksDBEngine(Server& server)
+    : StorageEngine(server, kEngineName, name(), Server::id<RocksDBEngine>(),
                     std::make_unique<RocksDBIndexFactory>(server)),
       _db(nullptr),
       _walAccess(std::make_unique<RocksDBWalAccess>(*this)),
@@ -232,6 +229,7 @@ RocksDBEngine::RocksDBEngine(application_features::ApplicationServer& server)
 #else
       _createShaFiles(false),
 #endif
+      _useRangeDeleteInWal(true),
       _lastHealthCheckSuccessful(false),
       _dbExisted(false),
       _runningRebuilds(0),
@@ -258,15 +256,12 @@ RocksDBEngine::RocksDBEngine(application_features::ApplicationServer& server)
       _metricsTreeResurrections(
           server.getFeature<metrics::MetricsFeature>().add(
               arangodb_revision_tree_resurrections_total{})) {
-
-  server.addFeature<RocksDBOptionFeature>();
-
   startsAfter<BasicFeaturePhaseServer>();
   // inherits order from StorageEngine but requires "RocksDBOption" that is used
   // to configure this engine
   startsAfter<RocksDBOptionFeature>();
-
-  server.addFeature<RocksDBRecoveryManager>();
+  startsAfter<LanguageFeature>();
+  startsAfter<LanguageCheckFeature>();
 }
 
 RocksDBEngine::~RocksDBEngine() { shutdownRocksDBInstance(); }
@@ -402,7 +397,7 @@ void RocksDBEngine::collectOptions(
               arangodb::options::Flags::DefaultNoComponents,
               arangodb::options::Flags::OnDBServer,
               arangodb::options::Flags::OnSingle,
-              arangodb::options::Flags::Hidden))
+              arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30608)
       .setIntroducedIn(30705);
 
@@ -423,7 +418,7 @@ void RocksDBEngine::collectOptions(
           arangodb::options::Flags::DefaultNoComponents,
           arangodb::options::Flags::OnDBServer,
           arangodb::options::Flags::OnSingle,
-          arangodb::options::Flags::Hidden));
+          arangodb::options::Flags::Uncommon));
 
   options->addOption("--rocksdb.throttle", "enable write-throttling",
                      new BooleanParameter(&_useThrottle),
@@ -441,7 +436,7 @@ void RocksDBEngine::collectOptions(
               arangodb::options::Flags::DefaultNoComponents,
               arangodb::options::Flags::OnDBServer,
               arangodb::options::Flags::OnSingle,
-              arangodb::options::Flags::Hidden))
+              arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30805);
 
   options
@@ -452,7 +447,7 @@ void RocksDBEngine::collectOptions(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnDBServer,
                       arangodb::options::Flags::OnSingle,
-                      arangodb::options::Flags::Hidden))
+                      arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30805);
 
   options
@@ -463,7 +458,7 @@ void RocksDBEngine::collectOptions(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnDBServer,
                       arangodb::options::Flags::OnSingle,
-                      arangodb::options::Flags::Hidden))
+                      arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30805);
 
   options
@@ -475,7 +470,7 @@ void RocksDBEngine::collectOptions(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnDBServer,
                       arangodb::options::Flags::OnSingle,
-                      arangodb::options::Flags::Hidden))
+                      arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30805);
 
   options
@@ -488,7 +483,7 @@ void RocksDBEngine::collectOptions(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnDBServer,
                       arangodb::options::Flags::OnSingle,
-                      arangodb::options::Flags::Hidden))
+                      arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30805);
 
   options
@@ -500,7 +495,7 @@ void RocksDBEngine::collectOptions(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnDBServer,
                       arangodb::options::Flags::OnSingle,
-                      arangodb::options::Flags::Hidden))
+                      arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30805);
 
 #ifdef USE_ENTERPRISE
@@ -514,6 +509,17 @@ void RocksDBEngine::collectOptions(
                          arangodb::options::Flags::Enterprise));
 #endif
 
+  options
+      ->addOption("--rocksdb.use-range-delete-in-wal",
+                  "enable range delete markers in the write-ahead log (WAL). "
+                  "potentially incompatible with older arangosync versions",
+                  new BooleanParameter(&_useRangeDeleteInWal),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnDBServer,
+                      arangodb::options::Flags::Uncommon))
+      .setIntroducedIn(31000);
+
   options->addOption("--rocksdb.debug-logging",
                      "true to enable rocksdb debug logging",
                      new BooleanParameter(&_debugLogging),
@@ -521,7 +527,7 @@ void RocksDBEngine::collectOptions(
                          arangodb::options::Flags::DefaultNoComponents,
                          arangodb::options::Flags::OnDBServer,
                          arangodb::options::Flags::OnSingle,
-                         arangodb::options::Flags::Hidden));
+                         arangodb::options::Flags::Uncommon));
 
   options
       ->addOption("--rocksdb.edge-cache", "use in-memory cache for edges",
@@ -530,7 +536,7 @@ void RocksDBEngine::collectOptions(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnDBServer,
                       arangodb::options::Flags::OnSingle,
-                      arangodb::options::Flags::Hidden))
+                      arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30604);
 
   options->addOption(
@@ -541,7 +547,7 @@ void RocksDBEngine::collectOptions(
           arangodb::options::Flags::DefaultNoComponents,
           arangodb::options::Flags::OnDBServer,
           arangodb::options::Flags::OnSingle,
-          arangodb::options::Flags::Hidden));
+          arangodb::options::Flags::Uncommon));
 
 #ifdef USE_ENTERPRISE
   collectEnterpriseOptions(options);
@@ -1131,8 +1137,7 @@ void RocksDBEngine::start() {
   _replicationManager = std::make_unique<RocksDBReplicationManager>(*this);
 
   struct SchedulerExecutor : RocksDBLogPersistor::Executor {
-    explicit SchedulerExecutor(
-        arangodb::application_features::ApplicationServer& server)
+    explicit SchedulerExecutor(ArangodServer& server)
         : _scheduler(server.getFeature<SchedulerFeature>().SCHEDULER) {}
 
     void operator()(fu2::unique_function<void() noexcept> func) override {
@@ -2140,13 +2145,6 @@ arangodb::Result RocksDBEngine::dropView(TRI_vocbase_t const& vocbase,
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   LOG_TOPIC("fa6e5", DEBUG, Logger::ENGINES) << "RocksDBEngine::dropView";
 #endif
-  VPackBuilder builder;
-
-  builder.openObject();
-  view.properties(builder,
-                  LogicalDataSource::Serialization::PersistenceWithInProgress);
-  builder.close();
-
   auto logValue =
       RocksDBLogValue::ViewDrop(vocbase.id(), view.id(), view.guid());
 
@@ -2166,10 +2164,8 @@ arangodb::Result RocksDBEngine::dropView(TRI_vocbase_t const& vocbase,
   return rocksutils::convertStatus(res);
 }
 
-Result RocksDBEngine::changeView(TRI_vocbase_t& vocbase,
-                                 arangodb::LogicalView const& view,
-                                 bool /*doSync*/
-) {
+Result RocksDBEngine::changeView(LogicalView const& view,
+                                 velocypack::Slice update) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   LOG_TOPIC("405da", DEBUG, Logger::ENGINES) << "RocksDBEngine::changeView";
 #endif
@@ -2177,20 +2173,13 @@ Result RocksDBEngine::changeView(TRI_vocbase_t& vocbase,
     // nothing to do
     return {};
   }
+  auto& vocbase = view.vocbase();
 
   RocksDBKey key;
-
   key.constructView(vocbase.id(), view.id());
 
-  VPackBuilder infoBuilder;
-
-  infoBuilder.openObject();
-  view.properties(infoBuilder,
-                  LogicalDataSource::Serialization::PersistenceWithInProgress);
-  infoBuilder.close();
-
   RocksDBLogValue log = RocksDBLogValue::ViewChange(vocbase.id(), view.id());
-  RocksDBValue const value = RocksDBValue::View(infoBuilder.slice());
+  RocksDBValue const value = RocksDBValue::View(update);
 
   rocksdb::WriteBatch batch;
   rocksdb::WriteOptions wo;  // TODO: check which options would make sense
@@ -3040,9 +3029,9 @@ DECLARE_GAUGE(rocksdb_engine_throttle_bps, uint64_t,
               "rocksdb_engine_throttle_bps");
 DECLARE_GAUGE(rocksdb_read_only, uint64_t, "rocksdb_read_only");
 
-void RocksDBEngine::getStatistics(std::string& result, bool v2) const {
+void RocksDBEngine::getStatistics(std::string& result) const {
   VPackBuilder stats;
-  getStatistics(stats, v2);
+  getStatistics(stats);
   VPackSlice sslice = stats.slice();
   TRI_ASSERT(sslice.isObject());
   for (auto const& a : VPackObjectIterator(sslice)) {
@@ -3051,7 +3040,7 @@ void RocksDBEngine::getStatistics(std::string& result, bool v2) const {
       std::replace(name.begin(), name.end(), '.', '_');
       std::replace(name.begin(), name.end(), '-', '_');
       if (name.front() != 'r') {
-        name = EngineName + "_" + name;
+        name = std::string{kEngineName}.append("_").append(name);
       }
       result += "\n# HELP " + name + " " + name + "\n# TYPE " + name +
                 " gauge\n" + name + " " +
@@ -3060,7 +3049,7 @@ void RocksDBEngine::getStatistics(std::string& result, bool v2) const {
   }
 }
 
-void RocksDBEngine::getStatistics(VPackBuilder& builder, bool v2) const {
+void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
   // add int properties
   auto addInt = [&](std::string const& s) {
     std::string v;
@@ -3228,13 +3217,8 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder, bool v2) const {
   builder.close();
 
   if (_throttleListener) {
-    if (v2) {
-      builder.add("rocksdb_engine.throttle.bps",
-                  VPackValue(_throttleListener->GetThrottle()));
-    } else {
-      builder.add("rocksdbengine.throttle.bps",
-                  VPackValue(_throttleListener->GetThrottle()));
-    }
+    builder.add("rocksdb_engine.throttle.bps",
+                VPackValue(_throttleListener->GetThrottle()));
   }  // if
 
   {
@@ -3311,7 +3295,7 @@ Result RocksDBEngine::createLoggerState(TRI_vocbase_t* vocbase,
   builder.add("version", VPackValue(ARANGODB_VERSION));
   builder.add("serverId",
               VPackValue(std::to_string(ServerIdFeature::getId().id())));
-  builder.add("engine", VPackValue(EngineName));  // "rocksdb"
+  builder.add("engine", VPackValue(kEngineName));  // "rocksdb"
   builder.close();
 
   // "clients" part

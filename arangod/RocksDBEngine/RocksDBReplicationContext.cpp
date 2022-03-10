@@ -24,6 +24,7 @@
 
 #include "RocksDBReplicationContext.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
@@ -55,7 +56,6 @@
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Dumper.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::rocksutils;

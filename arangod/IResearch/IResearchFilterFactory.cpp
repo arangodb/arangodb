@@ -21,6 +21,7 @@
 /// @author Andrey Abramov
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
+#include "Basics/DownCast.h"
 
 // otherwise define conflict between 3rdParty\date\include\date\date.h and
 // 3rdParty\iresearch\core\shared.hpp
@@ -278,13 +279,7 @@ bool setupGeoFilter(FieldMeta::Analyzer const& a,
     if (!stream) {
       return false;
     }
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    auto& impl = dynamic_cast<GeoAnalyzer const&>(*stream);
-#else
-    auto& impl = static_cast<GeoAnalyzer const&>(*stream);
-#endif
-
+    auto const& impl = basics::downCast<GeoAnalyzer>(*stream);
     impl.prepare(opts);
     return true;
   }
@@ -383,7 +378,7 @@ Result getLatLong(ScopedAqlValue const& value, S2LatLng& point,
       if (json.isArray() && json.length() >= 2) {
         res = shape.parseCoordinates(json, /*GeoJson*/ true);
       } else {
-        res = geo::geojson::parseRegion(json, shape);
+        res = geo::geojson::parseRegion(json, shape, false);
       }
       if (res.fail()) {
         return res;
@@ -514,7 +509,7 @@ Result filter(irs::boolean_filter* filter, QueryContext const& queryctx,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief appends value tokens to a phrase filter
 ////////////////////////////////////////////////////////////////////////////////
-void appendTerms(irs::by_phrase& filter, irs::string_ref const& value,
+void appendTerms(irs::by_phrase& filter, irs::string_ref value,
                  irs::analysis::analyzer& stream, size_t firstOffset) {
   // reset stream
   stream.reset(value);
@@ -4061,7 +4056,7 @@ Result fromFuncGeoContainsIntersect(char const* funcName,
 
     Result res;
     if (shapeValue.isObject()) {
-      res = geo::geojson::parseRegion(shapeValue.slice(), shape);
+      res = geo::geojson::parseRegion(shapeValue.slice(), shape, false);
     } else if (shapeValue.isArray()) {
       auto const slice = shapeValue.slice();
 

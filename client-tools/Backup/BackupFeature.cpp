@@ -45,9 +45,6 @@
 
 namespace {
 
-/// @brief name of the feature to report to application server
-constexpr auto FeatureName = "Backup";
-
 constexpr auto OperationCreate = "create";
 constexpr auto OperationDelete = "delete";
 constexpr auto OperationList = "list";
@@ -686,17 +683,17 @@ arangodb::Result executeTransfer(
 
 namespace arangodb {
 
-BackupFeature::BackupFeature(application_features::ApplicationServer& server,
-                             int& exitCode)
-    : ApplicationFeature(server, BackupFeature::featureName()),
-      _clientManager{server, Logger::BACKUP},
+BackupFeature::BackupFeature(Server& server, int& exitCode)
+    : ArangoBackupFeature{server, *this},
+      _clientManager{server.getFeature<HttpEndpointProvider, ClientFeature>(),
+                     Logger::BACKUP},
       _exitCode{exitCode} {
+  static_assert(Server::isCreatedAfter<BackupFeature, HttpEndpointProvider>());
+
   requiresElevatedPrivileges(false);
   setOptional(false);
-  startsAfter<ClientFeature>();
+  startsAfter<HttpEndpointProvider>();
 }
-
-std::string BackupFeature::featureName() { return ::FeatureName; }
 
 std::string BackupFeature::operationList(std::string const& separator) {
   TRI_ASSERT(::Operations.size() > 0);
@@ -725,7 +722,7 @@ void BackupFeature::collectOptions(
       "argument without '--operation')",
       new DiscreteValuesParameter<StringParameter>(&_options.operation,
                                                    ::Operations),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options->addOption(
       "--allow-inconsistent",

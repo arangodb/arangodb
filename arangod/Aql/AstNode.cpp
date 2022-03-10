@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AstNode.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/Arithmetic.h"
 #include "Aql/Ast.h"
@@ -47,7 +48,6 @@
 #include <velocypack/Sink.h>
 #include <velocypack/Slice.h>
 #include <velocypack/ValueType.h>
-#include <velocypack/velocypack-aliases.h>
 #include <array>
 
 using namespace arangodb;

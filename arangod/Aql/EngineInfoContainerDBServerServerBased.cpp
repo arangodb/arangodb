@@ -23,6 +23,7 @@
 
 #include "EngineInfoContainerDBServerServerBased.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Ast.h"
 #include "Aql/GraphNode.h"
 #include "Aql/TraverserEngineShardLists.h"
@@ -808,7 +809,7 @@ void EngineInfoContainerDBServerServerBased::addSnippetPart(
 std::vector<bool>
 EngineInfoContainerDBServerServerBased::addTraversalEnginesPart(
     arangodb::velocypack::Builder& infoBuilder,
-    std::unordered_map<ShardID, ServerID> const& shardMapping,
+    containers::FlatHashMap<ShardID, ServerID> const& shardMapping,
     ServerID const& server) const {
   std::vector<bool> result;
   if (_graphNodes.empty()) {

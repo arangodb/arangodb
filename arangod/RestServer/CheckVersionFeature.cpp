@@ -28,7 +28,6 @@
 #include "Basics/application-exit.h"
 #include "Basics/exitcodes.h"
 #include "Cluster/ServerState.h"
-#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerFeature.h"
@@ -39,9 +38,6 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/EnvironmentFeature.h"
-#include "RestServer/ServerIdFeature.h"
-#include "RestServer/SystemDatabaseFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/Methods/Version.h"
 #include "VocBase/vocbase.h"
 
@@ -52,9 +48,8 @@ using namespace arangodb::options;
 namespace arangodb {
 
 CheckVersionFeature::CheckVersionFeature(
-    application_features::ApplicationServer& server, int* result,
-    std::vector<std::type_index> const& nonServerFeatures)
-    : ApplicationFeature(server, "CheckVersion"),
+    Server& server, int* result, std::span<const size_t> nonServerFeatures)
+    : ArangodFeature{server, *this},
       _checkVersion(false),
       _result(result),
       _nonServerFeatures(nonServerFeatures) {
@@ -76,7 +71,7 @@ void CheckVersionFeature::collectOptions(
       "--database.check-version",
       "checks the versions of the database and exit",
       new BooleanParameter(&_checkVersion),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden,
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon,
                                           arangodb::options::Flags::Command));
 }
 
@@ -104,8 +99,7 @@ void CheckVersionFeature::validateOptions(
 
   // we can turn off all warnings about environment here, because they
   // wil show up on a regular start later anyway
-  server().disableFeatures(std::vector<std::type_index>{
-      std::type_index(typeid(EnvironmentFeature))});
+  server().disableFeatures(std::array{ArangodServer::id<EnvironmentFeature>()});
 }
 
 void CheckVersionFeature::start() {
