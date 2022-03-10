@@ -135,7 +135,8 @@ struct PrototypeLeaderState
   template<class Iterator>
   auto get(Iterator begin, Iterator end)
       -> std::unordered_map<std::string, std::string>;
-  auto getSnapshot() -> ResultT<std::unordered_map<std::string, std::string>>;
+  auto getSnapshot(LogIndex waitForIndex)
+      -> futures::Future<ResultT<std::unordered_map<std::string, std::string>>>;
 
   Guarded<std::unique_ptr<PrototypeCore>, basics::UnshackledMutex> guardedData;
 };

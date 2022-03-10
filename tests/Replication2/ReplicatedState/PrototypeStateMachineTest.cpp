@@ -65,9 +65,7 @@ TEST_F(PrototypeStateMachineTest, simple_operations) {
   replicatedState->start(
       std::make_unique<ReplicatedStateToken>(StateGeneration{1}));
 
-  while (follower->hasPendingAppendEntries()) {
-    follower->runAsyncAppendEntries();
-  }
+  follower->runAllAsyncAppendEntries();
 
   auto leaderState = replicatedState->getLeader();
   ASSERT_NE(leaderState, nullptr);
@@ -75,9 +73,7 @@ TEST_F(PrototypeStateMachineTest, simple_operations) {
   {
     auto entries = std::unordered_map<std::string, std::string>{{"foo", "bar"}};
     auto result = leaderState->set(entries);
-    while (follower->hasPendingAppendEntries()) {
-      follower->runAsyncAppendEntries();
-    }
+    follower->runAllAsyncAppendEntries();
     auto index = result.get()->value;
     ASSERT_EQ(index, 2);
   }
@@ -93,9 +89,7 @@ TEST_F(PrototypeStateMachineTest, simple_operations) {
     std::initializer_list<std::pair<std::string, std::string>> values1{
         {"foo1", "bar1"}, {"foo2", "bar2"}, {"foo3", "bar3"}};
     auto result = leaderState->set(values1.begin(), values1.end());
-    while (follower->hasPendingAppendEntries()) {
-      follower->runAsyncAppendEntries();
-    }
+    follower->runAllAsyncAppendEntries();
     auto index = result.get()->value;
     ASSERT_EQ(index, 3);
   }
@@ -110,9 +104,7 @@ TEST_F(PrototypeStateMachineTest, simple_operations) {
 
   {
     auto result = leaderState->remove("foo1");
-    while (follower->hasPendingAppendEntries()) {
-      follower->runAsyncAppendEntries();
-    }
+    follower->runAllAsyncAppendEntries();
     auto index = result.get()->value;
     ASSERT_EQ(index, 4);
     ASSERT_EQ(leaderState->get("foo1"), std::nullopt);
@@ -121,9 +113,7 @@ TEST_F(PrototypeStateMachineTest, simple_operations) {
   {
     std::vector<std::string> entries = {"nofoo", "foo2"};
     auto result = leaderState->remove(entries);
-    while (follower->hasPendingAppendEntries()) {
-      follower->runAsyncAppendEntries();
-    }
+    follower->runAllAsyncAppendEntries();
     auto index = result.get()->value;
     ASSERT_EQ(index, 5);
     ASSERT_EQ(leaderState->get("foo2"), std::nullopt);
@@ -131,11 +121,28 @@ TEST_F(PrototypeStateMachineTest, simple_operations) {
   }
 
   {
-    auto result = leaderState->getSnapshot();
-    ASSERT_TRUE(result.ok());
+    auto result = leaderState->getSnapshot(LogIndex{3});
+    ASSERT_TRUE(result.isReady());
     auto map = result.get();
     auto expected = std::unordered_map<std::string, std::string>{
         {"foo", "bar"}, {"foo3", "bar3"}};
+    ASSERT_EQ(map, expected);
+  }
+
+  {
+    auto result = leaderState->getSnapshot(LogIndex{7});
+    ASSERT_FALSE(result.isReady());
+    leaderState->set({{"foo4", "bar4"}});
+    follower->runAllAsyncAppendEntries();
+    ASSERT_FALSE(result.isReady());
+    leaderState->set({{"foo5", "bar5"}});
+    follower->runAllAsyncAppendEntries();
+    ASSERT_TRUE(result.isReady());
+    auto map = result.get().get();
+    auto expected = std::unordered_map<std::string, std::string>{
+        {"foo", "bar"}, {"foo3", "bar3"}, {"foo4", "bar4"}, {"foo5", "bar5"}};
+    result = leaderState->getSnapshot(LogIndex{7});
+    map = result.get().get();
     ASSERT_EQ(map, expected);
   }
 }

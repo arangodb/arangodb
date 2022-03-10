@@ -161,17 +161,22 @@ auto PrototypeLeaderState::get(std::string key) -> std::optional<std::string> {
       });
 }
 
-auto PrototypeLeaderState::getSnapshot()
-    -> ResultT<std::unordered_map<std::string, std::string>> {
-  return guardedData.doUnderLock(
-      [](auto& core) -> ResultT<std::unordered_map<std::string, std::string>> {
-        if (!core) {
-          return ResultT<std::unordered_map<std::string, std::string>>::error(
-              TRI_ERROR_CLUSTER_NOT_LEADER);
-        }
-        std::unordered_map<std::string, std::string> result{core->store.begin(),
-                                                            core->store.end()};
-        return result;
+auto PrototypeLeaderState::getSnapshot(LogIndex waitForIndex)
+    -> futures::Future<ResultT<std::unordered_map<std::string, std::string>>> {
+  auto stream = getStream();
+  return stream->waitFor(waitForIndex)
+      .thenValue([self = shared_from_this()](auto&& res) {
+        return self->guardedData.doUnderLock(
+            [](auto& core)
+                -> ResultT<std::unordered_map<std::string, std::string>> {
+              if (!core) {
+                return ResultT<std::unordered_map<std::string, std::string>>::
+                    error(TRI_ERROR_CLUSTER_NOT_LEADER);
+              }
+              std::unordered_map<std::string, std::string> result{
+                  core->store.begin(), core->store.end()};
+              return result;
+            });
       });
 }
 
