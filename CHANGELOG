@@ -4,8 +4,17 @@ v3.8.7 (XXXX-XX-XX)
 * Bugfix: DC-2-DC Disjoint-SmartGraphs and Hybrid-SmartGraphs are now replicated
   to the follower data-center keeping their sharding intact.
 
+* Fix counts and file size sum in hotbackup META files. Do no longer count
+  directories.
 
-v3.8.6 (XXXX-XX-XX)
+* Log a better startup error in case an ArangoDB 3.8 is started on a too new
+  database directory (3.9 or higher).
+
+* Harden validator for binary VelocyPack against additional types of malicious
+  inputs.
+
+
+v3.8.6 (2022-02-16)
 -------------------
 
 * Replaced internal JS dependency xmldom with @xmldom/xmldom.

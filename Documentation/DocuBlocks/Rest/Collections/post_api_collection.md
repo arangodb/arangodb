@@ -172,14 +172,14 @@ collection, the value stored in the *smartJoinAttribute* must be a string.
 
 @RESTQUERYPARAMETERS
 
-@RESTQUERYPARAM{waitForSyncReplication,integer,optional}
-Default is *1* which means the server will only report success back to the
-client if all replicas have created the collection. Set to *0* if you want
+@RESTQUERYPARAM{waitForSyncReplication,boolean,optional}
+Default is *true* which means the server will only report success back to the
+client if all replicas have created the collection. Set to *false* if you want
 faster server responses and don't care about full replication.
 
-@RESTQUERYPARAM{enforceReplicationFactor,integer,optional}
-Default is *1* which means the server will check if there are enough replicas
-available at creation time and bail out otherwise. Set to *0* to disable
+@RESTQUERYPARAM{enforceReplicationFactor,boolean,optional}
+Default is *true* which means the server will check if there are enough replicas
+available at creation time and bail out otherwise. Set to *false* to disable
 this extra check.
 
 @RESTRETURNCODES
