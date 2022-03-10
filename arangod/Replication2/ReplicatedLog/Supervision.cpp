@@ -62,7 +62,23 @@ auto isLeaderFailed(LogPlanTermSpecification::Leader const& leader,
  * with a new one (gracefully); this is as opposed to just
  * rip out the old leader and waiting for failover to occur
  *
- * */
+ */
+
+auto getParticipantsAcceptableAsLeaders(
+    ParticipantId const& currentLeader,
+    ParticipantsFlagsMap const& participants) -> std::vector<ParticipantId> {
+  // A participant is acceptable if it is neither excluded nor
+  // already the leader
+  auto acceptableLeaderSet = std::vector<ParticipantId>{};
+  for (auto const& [participant, flags] : participants) {
+    if (participant != currentLeader and (not flags.excluded)) {
+      acceptableLeaderSet.emplace_back(participant);
+    }
+  }
+
+  return acceptableLeaderSet;
+}
+
 auto dictateLeader(LogTarget const& target, LogPlanSpecification const& plan,
                    LogCurrent const& current, ParticipantsHealth const& health)
     -> Action {
@@ -75,15 +91,9 @@ auto dictateLeader(LogTarget const& target, LogPlanSpecification const& plan,
         "wrong generation"};
   }
 
-  // A participant is acceptable if it is neither excluded nor
-  // already the leader
-  auto acceptableLeaderSet = std::vector<ParticipantId>{};
-  for (auto const& [participant, flags] :
-       current.leader->committedParticipantsConfig->participants) {
-    if (participant != current.leader->serverId and (not flags.excluded)) {
-      acceptableLeaderSet.emplace_back(participant);
-    }
-  }
+  auto const acceptableLeaderSet = getParticipantsAcceptableAsLeaders(
+      current.leader->serverId,
+      current.leader->committedParticipantsConfig->participants);
 
   //  Check whether we already have a participant that is
   //  acceptable and forced
@@ -288,35 +298,37 @@ auto doLeadershipElection(LogPlanSpecification const& plan,
   }
 }
 
-auto desiredParticipantFlags(LogTarget const& target,
-                             LogPlanSpecification const& plan,
-                             ParticipantId const& participant)
+auto desiredParticipantFlags(std::optional<ParticipantId> const& targetLeader,
+                             ParticipantId const& currentTermLeader,
+                             ParticipantId const& targetParticipant,
+                             ParticipantFlags const& targetFlags)
     -> ParticipantFlags {
-  if (participant == target.leader and
-      participant != plan.currentTerm->leader->serverId) {
-    auto flags = target.participants.at(participant);
+  if (targetParticipant == targetLeader and
+      targetParticipant != currentTermLeader) {
+    auto flags = targetFlags;
     if (!flags.excluded) {
       flags.forced = true;
     }
     return flags;
   }
-  return target.participants.at(participant);
+  return targetFlags;
 }
 
-auto getParticipantWithUpdatedFlags(LogTarget const& target,
-                                    LogPlanSpecification const& plan)
+auto getParticipantWithUpdatedFlags(
+    ParticipantsFlagsMap const& targetParticipants,
+    ParticipantsFlagsMap const& planParticipants,
+    std::optional<ParticipantId> const& targetLeader,
+    ParticipantId const& currentTermLeader)
     -> std::optional<std::pair<ParticipantId, ParticipantFlags>> {
-  auto const& tps = target.participants;
-  auto const& pps = plan.participantsConfig.participants;
-
-  for (auto const& [targetParticipant, targetFlags] : tps) {
-    if (auto const& planParticipant = pps.find(targetParticipant);
-        planParticipant != pps.end()) {
+  for (auto const& [targetParticipant, targetFlags] : targetParticipants) {
+    if (auto const& planParticipant = planParticipants.find(targetParticipant);
+        planParticipant != std::end(planParticipants)) {
       // participant is in plan, check whether flags are the same
-      auto const df = desiredParticipantFlags(target, plan, targetParticipant);
-      if (df != planParticipant->second) {
+      auto const desiredFlags = desiredParticipantFlags(
+          targetLeader, currentTermLeader, targetParticipant, targetFlags);
+      if (desiredFlags != planParticipant->second) {
         // Flags changed, so we need to commit new flags for this participant
-        return std::make_pair(targetParticipant, df);
+        return std::make_pair(targetParticipant, desiredFlags);
       }
     }
   }
@@ -325,33 +337,26 @@ auto getParticipantWithUpdatedFlags(LogTarget const& target,
   return std::nullopt;
 }
 
-auto getAddedParticipant(LogTarget const& target,
-                         LogPlanSpecification const& plan)
+auto getAddedParticipant(ParticipantsFlagsMap const& targetParticipants,
+                         ParticipantsFlagsMap const& planParticipants)
     -> std::optional<std::pair<ParticipantId, ParticipantFlags>> {
-  auto tps = target.participants;
-  auto pps = plan.participantsConfig.participants;
-
-  // is adding a participant or updating flags somehow the same action?
-  for (auto const& [targetParticipant, targetFlags] : tps) {
-    if (auto const& planParticipant = pps.find(targetParticipant);
-        planParticipant == pps.end()) {
-      // Here's a participant that is not in plan yet; we add it
+  for (auto const& [targetParticipant, targetFlags] : targetParticipants) {
+    if (auto const& planParticipant = planParticipants.find(targetParticipant);
+        planParticipant == planParticipants.end()) {
       return std::make_pair(targetParticipant, targetFlags);
     }
   }
   return std::nullopt;
 }
 
-auto getRemovedParticipant(LogTarget const& target,
-                           LogPlanSpecification const& plan)
+auto getRemovedParticipant(ParticipantsFlagsMap const& targetParticipants,
+                           ParticipantsFlagsMap const& planParticipants)
     -> std::optional<std::pair<ParticipantId, ParticipantFlags>> {
-  for (auto const& [planParticipant, flags] :
-       plan.participantsConfig.participants) {
-    if (!target.participants.contains(planParticipant)) {
+  for (auto const& [planParticipant, flags] : planParticipants) {
+    if (!targetParticipants.contains(planParticipant)) {
       return std::make_pair(planParticipant, flags);
     }
   }
-
   return std::nullopt;
 }
 
@@ -359,23 +364,6 @@ auto getRemovedParticipant(LogTarget const& target,
 auto checkReplicatedLog(Log const& log, ParticipantsHealth const& health)
     -> Action {
   auto const& target = log.target;
-
-  // TODO: this is a temporary hack/
-  // TODO: see whether we still need it
-  if (target.participants.empty()) {
-    auto newTarget = log.target;
-
-    for (auto const& [pid, health] : health._health) {
-      if (health.notIsFailed) {
-        newTarget.participants.emplace(pid, ParticipantFlags{});
-      }
-      if (newTarget.participants.size() ==
-          log.target.config.replicationFactor) {
-        break;
-      }
-    }
-    return AddParticipantsToTargetAction(newTarget);
-  }
 
   if (!log.plan) {
     // The log is not planned right now, so we create it
@@ -420,7 +408,9 @@ auto checkReplicatedLog(Log const& log, ParticipantsHealth const& health)
 
   // If flags for a participant differ between target
   // and plan, apply that change to plan.
-  if (auto participantFlags = getParticipantWithUpdatedFlags(target, plan)) {
+  if (auto participantFlags = getParticipantWithUpdatedFlags(
+          target.participants, plan.participantsConfig.participants,
+          target.leader, leader.serverId)) {
     return UpdateParticipantFlagsAction(participantFlags->first,
                                         participantFlags->second,
                                         plan.participantsConfig.generation);
@@ -428,7 +418,8 @@ auto checkReplicatedLog(Log const& log, ParticipantsHealth const& health)
 
   // If a participant exists in Target, but not in Plan,
   // add that participant to Plan.
-  if (auto participant = getAddedParticipant(log.target, plan)) {
+  if (auto participant = getAddedParticipant(
+          target.participants, plan.participantsConfig.participants)) {
     return AddParticipantToPlanAction(participant->first, participant->second,
                                       plan.participantsConfig.generation);
   }
@@ -445,7 +436,8 @@ auto checkReplicatedLog(Log const& log, ParticipantsHealth const& health)
 
   // If a participant is in Plan but not in Target, gracefully
   // remove them
-  if (auto maybeParticipant = getRemovedParticipant(target, plan)) {
+  if (auto maybeParticipant = getRemovedParticipant(
+          target.participants, plan.participantsConfig.participants)) {
     auto const& [participantId, flags] = *maybeParticipant;
     // The removed participant is currently the leader
     if (participantId == leader.serverId) {

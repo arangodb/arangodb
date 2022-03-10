@@ -188,13 +188,17 @@ TraversalExecutorInfos::TraversalExecutorInfos(
 }
 
 // REFACTOR
-arangodb::graph::TraversalEnumerator&
+arangodb::graph::TraversalEnumerator*
 TraversalExecutorInfos::traversalEnumerator() const {
-  return *_traversalEnumerator;
+  TRI_ASSERT(_traversalEnumerator != nullptr);
+  return _traversalEnumerator.get();
 }
 
 // OLD
-Traverser& TraversalExecutorInfos::traverser() { return *_traverser; }
+Traverser* TraversalExecutorInfos::traverser() {
+  TRI_ASSERT(_traverser != nullptr);
+  return _traverser.get();
+}
 
 bool TraversalExecutorInfos::usesOutputRegister(
     TraversalExecutorInfosHelper::OutputName type) const {
@@ -795,22 +799,24 @@ auto TraversalExecutorInfos::parseTraversalEnumeratorCluster(
 TraversalExecutor::TraversalExecutor(Fetcher& fetcher, Infos& infos)
     : _infos(infos),
       _inputRow{CreateInvalidInputRowHint{}},
-      _traverser(infos.traverser()),
-      _traversalEnumerator(infos.traversalEnumerator()) {
+      _traverser(nullptr),
+      _traversalEnumerator(nullptr) {
   // reset the traverser, so that no residual state is left in it. This is
   // important because the TraversalExecutor is sometimes reconstructed (in
   // place) with the same TraversalExecutorInfos as before. Those
   // infos contain the traverser which might contain state from a previous run.
   if (infos.isRefactor()) {
-    _traversalEnumerator.clear(false);
+    _traversalEnumerator = infos.traversalEnumerator();
+    traversalEnumerator()->clear(false);
   } else {
-    _traverser.done();
+    _traverser = infos.traverser();
+    traverser()->done();
   }
 }
 
 TraversalExecutor::~TraversalExecutor() {
   if (!_infos.isRefactor()) {
-    auto opts = _traverser.options();
+    auto opts = traverser()->options();
     if (opts != nullptr) {
       // The InAndOutRowExpressionContext in the PruneExpressionEvaluator
       // holds an InputAqlItemRow. As the Plan holds the
@@ -832,30 +838,30 @@ TraversalExecutor::~TraversalExecutor() {
       }
     }
   } else {
-    _traversalEnumerator.clear(false);
-    _traversalEnumerator.unprepareValidatorContext();
+    traversalEnumerator()->clear(false);
+    traversalEnumerator()->unprepareValidatorContext();
   }
 }
 
 auto TraversalExecutor::doOutput(OutputAqlItemRow& output) -> void {
   if (!_infos.isRefactor()) {
-    while (!output.isFull() && _traverser.hasMore() && _traverser.next()) {
+    while (!output.isFull() && traverser()->hasMore() && traverser()->next()) {
       TRI_ASSERT(_inputRow.isInitialized());
 
       // traverser now has next v, e, p values
       if (_infos.useVertexOutput()) {
-        AqlValue vertex = _traverser.lastVertexToAqlValue();
+        AqlValue vertex = traverser()->lastVertexToAqlValue();
         AqlValueGuard guard{vertex, true};
         output.moveValueInto(_infos.vertexRegister(), _inputRow, guard);
       }
       if (_infos.useEdgeOutput()) {
-        AqlValue edge = _traverser.lastEdgeToAqlValue();
+        AqlValue edge = traverser()->lastEdgeToAqlValue();
         AqlValueGuard guard{edge, true};
         output.moveValueInto(_infos.edgeRegister(), _inputRow, guard);
       }
       if (_infos.usePathOutput()) {
-        transaction::BuilderLeaser tmp(_traverser.trx());
-        AqlValue path = _traverser.pathToAqlValue(*tmp.builder());
+        transaction::BuilderLeaser tmp(traverser()->trx());
+        AqlValue path = traverser()->pathToAqlValue(*tmp.builder());
         AqlValueGuard guard{path, true};
         output.moveValueInto(_infos.pathRegister(), _inputRow, guard);
       }
@@ -871,7 +877,7 @@ auto TraversalExecutor::doOutput(OutputAqlItemRow& output) -> void {
     }
   } else {
     // Refactored variant
-    auto currentPath = _traversalEnumerator.getNextPath();
+    auto currentPath = traversalEnumerator()->getNextPath();
     if (currentPath != nullptr) {
       TRI_ASSERT(_inputRow.isInitialized());
 
@@ -921,7 +927,7 @@ auto TraversalExecutor::doSkip(AqlCall& call) -> size_t {
   auto skip = size_t{0};
 
   if (!_infos.isRefactor()) {
-    while (call.shouldSkip() && _traverser.hasMore() && _traverser.next()) {
+    while (call.shouldSkip() && traverser()->hasMore() && traverser()->next()) {
       TRI_ASSERT(_inputRow.isInitialized());
       skip++;
       call.didSkip(1);
@@ -929,7 +935,7 @@ auto TraversalExecutor::doSkip(AqlCall& call) -> size_t {
   } else {
     // refactored variant
     while (call.shouldSkip()) {
-      if (_traversalEnumerator.skipPath()) {
+      if (traversalEnumerator()->skipPath()) {
         TRI_ASSERT(_inputRow.isInitialized());
         skip++;
         call.didSkip(1);
@@ -947,12 +953,12 @@ auto TraversalExecutor::produceRows(AqlItemBlockInputRange& input,
     ExecutorState state{ExecutorState::HASMORE};
     TraversalStats oldStats;
     while (true) {
-      if (_traverser.hasMore()) {
+      if (traverser()->hasMore()) {
         TRI_ASSERT(_inputRow.isInitialized());
         doOutput(output);
 
         if (output.isFull()) {
-          if (_traverser.hasMore()) {
+          if (traverser()->hasMore()) {
             state = ExecutorState::HASMORE;
           } else {
             state = input.upstreamState();
@@ -968,9 +974,9 @@ auto TraversalExecutor::produceRows(AqlItemBlockInputRange& input,
       }
     }
 
-    oldStats.incrScannedIndex(_traverser.getAndResetReadDocuments());
-    oldStats.incrFiltered(_traverser.getAndResetFiltered());
-    oldStats.incrHttpRequests(_traverser.getAndResetHttpRequests());
+    oldStats.incrScannedIndex(traverser()->getAndResetReadDocuments());
+    oldStats.incrFiltered(traverser()->getAndResetFiltered());
+    oldStats.incrHttpRequests(traverser()->getAndResetHttpRequests());
     // note: deprecated.
     // cursorsCreated, cursorsRearmed, cacheHits, cacheMisses are
     // intentionally not added here.
@@ -979,7 +985,7 @@ auto TraversalExecutor::produceRows(AqlItemBlockInputRange& input,
   } else {
     // refactored variant
     while (!output.isFull()) {
-      if (_traversalEnumerator.isDone()) {
+      if (traversalEnumerator()->isDone()) {
         if (!initTraverser(input)) {  // will set a new start vertex
           TRI_ASSERT(!input.hasDataRow());
           return {input.upstreamState(), stats(), AqlCall{}};
@@ -989,7 +995,7 @@ auto TraversalExecutor::produceRows(AqlItemBlockInputRange& input,
       }
     }
 
-    if (_traversalEnumerator.isDone()) {
+    if (traversalEnumerator()->isDone()) {
       return {input.upstreamState(), stats(), AqlCall{}};
     } else {
       return {ExecutorState::HASMORE, stats(), AqlCall{}};
@@ -1007,14 +1013,14 @@ auto TraversalExecutor::skipRowsRange(AqlItemBlockInputRange& input,
     while (true) {
       skipped += doSkip(call);
 
-      oldStats.incrScannedIndex(_traverser.getAndResetReadDocuments());
-      oldStats.incrFiltered(_traverser.getAndResetFiltered());
-      oldStats.incrHttpRequests(_traverser.getAndResetHttpRequests());
+      oldStats.incrScannedIndex(traverser()->getAndResetReadDocuments());
+      oldStats.incrFiltered(traverser()->getAndResetFiltered());
+      oldStats.incrHttpRequests(traverser()->getAndResetHttpRequests());
       // note: deprecated.
       // cursorsCreated, cursorsRearmed, cacheHits, cacheMisses are
       // intentionally not added here.
 
-      if (!_traverser.hasMore()) {
+      if (!traverser()->hasMore()) {
         if (!initTraverser(input)) {
           return {input.upstreamState(), oldStats, skipped, AqlCall{}};
         }
@@ -1026,20 +1032,20 @@ auto TraversalExecutor::skipRowsRange(AqlItemBlockInputRange& input,
   } else {
     // refactored variant
     while (call.shouldSkip()) {
-      if (_traversalEnumerator.isDone()) {
+      if (traversalEnumerator()->isDone()) {
         if (!initTraverser(input)) {
           TRI_ASSERT(!input.hasDataRow());
           return {input.upstreamState(), stats(), skipped, AqlCall{}};
         }
       } else {
-        if (_traversalEnumerator.skipPath()) {
+        if (traversalEnumerator()->skipPath()) {
           skipped++;
           call.didSkip(1);
         }
       }
     }
 
-    if (_traversalEnumerator.isDone()) {
+    if (traversalEnumerator()->isDone()) {
       return {input.upstreamState(), stats(), skipped, AqlCall{}};
     } else {
       return {ExecutorState::HASMORE, stats(), skipped, AqlCall{}};
@@ -1057,8 +1063,8 @@ auto TraversalExecutor::skipRowsRange(AqlItemBlockInputRange& input,
 // TODO: this is quite a big function, refactor
 bool TraversalExecutor::initTraverser(AqlItemBlockInputRange& input) {
   if (!_infos.isRefactor()) {
-    _traverser.clear();
-    auto opts = _traverser.options();
+    traverser()->clear();
+    auto opts = traverser()->options();
     opts->clearVariableValues();
 
     // Now reset the traverser
@@ -1103,7 +1109,7 @@ bool TraversalExecutor::initTraverser(AqlItemBlockInputRange& input) {
         if (in.isObject()) {
           try {
             sourceString =
-                _traverser.options()->trx()->extractIdString(in.slice());
+                traverser()->options()->trx()->extractIdString(in.slice());
           } catch (...) {
             // on purpose ignore this error.
           }
@@ -1115,13 +1121,13 @@ bool TraversalExecutor::initTraverser(AqlItemBlockInputRange& input) {
       auto pos = sourceString.find('/');
 
       if (pos == std::string::npos) {
-        _traverser.options()->query().warnings().registerWarning(
+        traverser()->options()->query().warnings().registerWarning(
             TRI_ERROR_BAD_PARAMETER,
             "Invalid input for traversal: Only "
             "id strings or objects with _id are "
             "allowed");
       } else {
-        _traverser.setStartVertex(sourceString);
+        traverser()->setStartVertex(sourceString);
         TRI_ASSERT(_inputRow.isInitialized());
         return true;
       }
@@ -1129,7 +1135,7 @@ bool TraversalExecutor::initTraverser(AqlItemBlockInputRange& input) {
     return false;
   } else {
     // refactored variant
-    TRI_ASSERT(_traversalEnumerator.isDone());
+    TRI_ASSERT(traversalEnumerator()->isDone());
 
     while (input.hasDataRow()) {
       std::tie(std::ignore, _inputRow) = input.nextDataRow();
@@ -1137,8 +1143,8 @@ bool TraversalExecutor::initTraverser(AqlItemBlockInputRange& input) {
       std::string sourceString;
       TRI_ASSERT(_inputRow.isInitialized());
 
-      _traversalEnumerator.unprepareValidatorContext();
-      _traversalEnumerator.setValidatorContext(_inputRow);
+      traversalEnumerator()->unprepareValidatorContext();
+      traversalEnumerator()->setValidatorContext(_inputRow);
 
       if (_infos.usesFixedSource()) {
         sourceString = _infos.getFixedSource();
@@ -1165,10 +1171,10 @@ bool TraversalExecutor::initTraverser(AqlItemBlockInputRange& input) {
             "allowed");
       } else {
         // prepare index
-        _traversalEnumerator.prepareIndexExpressions(_infos.getAst());
+        traversalEnumerator()->prepareIndexExpressions(_infos.getAst());
 
         // start actual search
-        _traversalEnumerator.reset(toHashedStringRef(
+        traversalEnumerator()->reset(toHashedStringRef(
             sourceString));  // TODO [GraphRefactor]: check sourceString memory
         TRI_ASSERT(_inputRow.isInitialized());
         return true;
@@ -1183,6 +1189,15 @@ bool TraversalExecutor::initTraverser(AqlItemBlockInputRange& input) {
     // No Stats available on original variant
     return TraversalStats{};
   } else {
-    return _traversalEnumerator.stealStats();
+    return traversalEnumerator()->stealStats();
   }
+}
+traverser::Traverser* TraversalExecutor::traverser() {
+  TRI_ASSERT(_traverser != nullptr);
+  return _traverser;
+}
+
+arangodb::graph::TraversalEnumerator* TraversalExecutor::traversalEnumerator() {
+  TRI_ASSERT(_traversalEnumerator != nullptr);
+  return _traversalEnumerator;
 }
