@@ -24,6 +24,7 @@
 
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/LogEntries.h"
+#include "Replication2/ReplicatedLog/LogStatus.h"
 #include "Replication2/ReplicatedState/AgencySpecification.h"
 
 #include <variant>
@@ -43,8 +44,6 @@ struct LogTarget;
 }
 
 namespace replicated_log {
-struct LogStatus;
-struct GlobalStatus;
 struct AppendEntriesRequest;
 struct AppendEntriesResult;
 struct WaitForResult;
@@ -64,7 +63,7 @@ struct ReplicatedLogMethods {
                    replication2::replicated_log::GlobalStatus>;
 
   virtual ~ReplicatedLogMethods() = default;
-  virtual auto createReplicatedLog(agency::LogTarget const& spec) const
+  virtual auto createReplicatedLog(agency::LogTarget spec) const
       -> futures::Future<Result> = 0;
   virtual auto deleteReplicatedLog(LogId id) const
       -> futures::Future<Result> = 0;
@@ -73,7 +72,8 @@ struct ReplicatedLogMethods {
                                             replicated_log::LogStatus>> = 0;
   virtual auto getLocalStatus(LogId) const
       -> futures::Future<replication2::replicated_log::LogStatus> = 0;
-  virtual auto getGlobalStatus(LogId) const
+  virtual auto getGlobalStatus(
+      LogId, replicated_log::GlobalStatus::SpecificationSource) const
       -> futures::Future<replication2::replicated_log::GlobalStatus> = 0;
   virtual auto getStatus(LogId) const -> futures::Future<GenericLogStatus> = 0;
 
@@ -117,9 +117,8 @@ struct ReplicatedLogMethods {
 struct ReplicatedStateMethods {
   virtual ~ReplicatedStateMethods() = default;
 
-  virtual auto createReplicatedState(
-      replicated_state::agency::Target const& spec) const
-      -> futures::Future<Result> = 0;
+  virtual auto createReplicatedState(replicated_state::agency::Target spec)
+      const -> futures::Future<Result> = 0;
   virtual auto deleteReplicatedLog(LogId id) const
       -> futures::Future<Result> = 0;
 
