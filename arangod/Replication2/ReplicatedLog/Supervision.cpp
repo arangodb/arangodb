@@ -63,6 +63,22 @@ auto isLeaderFailed(LogPlanTermSpecification::Leader const& leader,
  * rip out the old leader and waiting for failover to occur
  *
  */
+
+auto getParticipantsAcceptableAsLeaders(
+    ParticipantId const& currentLeader,
+    ParticipantsFlagsMap const& participants) -> std::vector<ParticipantId> {
+  // A participant is acceptable if it is neither excluded nor
+  // already the leader
+  auto acceptableLeaderSet = std::vector<ParticipantId>{};
+  for (auto const& [participant, flags] : participants) {
+    if (participant != currentLeader and (not flags.excluded)) {
+      acceptableLeaderSet.emplace_back(participant);
+    }
+  }
+
+  return acceptableLeaderSet;
+}
+
 auto dictateLeader(LogTarget const& target, LogPlanSpecification const& plan,
                    LogCurrent const& current, ParticipantsHealth const& health)
     -> Action {
@@ -75,15 +91,9 @@ auto dictateLeader(LogTarget const& target, LogPlanSpecification const& plan,
         "wrong generation"};
   }
 
-  // A participant is acceptable if it is neither excluded nor
-  // already the leader
-  auto acceptableLeaderSet = std::vector<ParticipantId>{};
-  for (auto const& [participant, flags] :
-       current.leader->committedParticipantsConfig->participants) {
-    if (participant != current.leader->serverId and (not flags.excluded)) {
-      acceptableLeaderSet.emplace_back(participant);
-    }
-  }
+  auto const acceptableLeaderSet = getParticipantsAcceptableAsLeaders(
+      current.leader->serverId,
+      current.leader->committedParticipantsConfig->participants);
 
   //  Check whether we already have a participant that is
   //  acceptable and forced

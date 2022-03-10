@@ -72,6 +72,14 @@ auto doLeadershipElection(LogPlanSpecification const& plan,
                           LogCurrent const& current,
                           ParticipantsHealth const& health) -> Action;
 
+auto getParticipantsAcceptableAsLeaders(
+    ParticipantId const& currentLeader,
+    ParticipantsFlagsMap const& participants) -> std::vector<ParticipantId>;
+
+auto dictateLeader(LogTarget const& target, LogPlanSpecification const& plan,
+                   LogCurrent const& current, ParticipantsHealth const& health)
+    -> Action;
+
 // Actions capture entries in log, so they have to stay
 // valid until the returned action has been executed (or discarded)
 auto checkReplicatedLog(Log const& log, ParticipantsHealth const& health)

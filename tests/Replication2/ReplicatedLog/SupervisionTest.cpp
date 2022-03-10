@@ -457,3 +457,22 @@ TEST_F(LogSupervisionTest, test_leader_changed) {
   EXPECT_EQ(r->first, "B");
   EXPECT_EQ(r->second, (ParticipantFlags{.forced = true, .excluded = false}));
 }
+
+TEST_F(LogSupervisionTest, test_acceptable_leader_set) {
+  auto const participants = ParticipantsFlagsMap{
+      {"A", ParticipantFlags{.forced = false, .excluded = false}},
+      {"B", ParticipantFlags{.forced = false, .excluded = false}},
+      {"C", ParticipantFlags{.forced = false, .excluded = false}},
+      {"D", ParticipantFlags{.forced = false, .excluded = false}}};
+
+  auto r = getParticipantsAcceptableAsLeaders("A", participants);
+
+  auto expectedAcceptable = std::set<ParticipantId>{"B", "C", "D"};
+  auto acceptable = std::set<ParticipantId>{};
+  std::copy(std::begin(r), std::end(r),
+            std::inserter(acceptable, std::begin(acceptable)));
+  EXPECT_EQ(acceptable, expectedAcceptable);
+
+  // IF the leader is changed via target, expect it to be forced first
+  EXPECT_EQ(expectedAcceptable, acceptable);
+}
