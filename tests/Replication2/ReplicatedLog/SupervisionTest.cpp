@@ -462,12 +462,12 @@ TEST_F(LogSupervisionTest, test_acceptable_leader_set) {
   auto const participants = ParticipantsFlagsMap{
       {"A", ParticipantFlags{.forced = false, .excluded = false}},
       {"B", ParticipantFlags{.forced = false, .excluded = false}},
-      {"C", ParticipantFlags{.forced = false, .excluded = false}},
+      {"C", ParticipantFlags{.forced = false, .excluded = true}},
       {"D", ParticipantFlags{.forced = false, .excluded = false}}};
 
   auto r = getParticipantsAcceptableAsLeaders("A", participants);
 
-  auto expectedAcceptable = std::set<ParticipantId>{"B", "C", "D"};
+  auto expectedAcceptable = std::set<ParticipantId>{"B", "D"};
   auto acceptable = std::set<ParticipantId>{};
   std::copy(std::begin(r), std::end(r),
             std::inserter(acceptable, std::begin(acceptable)));
