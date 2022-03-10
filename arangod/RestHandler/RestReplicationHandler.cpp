@@ -3323,7 +3323,7 @@ void RestReplicationHandler::handleCommandRevisionDocuments() {
         // This is the case that the iterator is not exhausted, but is
         // already further than the client. This happens, if the client
         // "jumps back". Note that his can happen, since the client
-        // might not have got all ordered documeuts due to the chunkSize
+        // might not have got all ordered documents due to the chunkSize
         // limit. It will then later go back to the same place to get more
         // documents.
         it.seek(rev);
