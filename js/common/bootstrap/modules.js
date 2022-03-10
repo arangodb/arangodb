@@ -117,9 +117,6 @@
     this.exports = {};
     this.require = createRequire(this);
     this.parent = parent;
-    if (parent && parent.children) {
-      parent.children.push(this);
-    }
 
     Object.defineProperty(this, $_MODULE_CONTEXT, {
       value: {
@@ -135,6 +132,7 @@
     });
 
     if (parent) {
+      parent.children.push(this);
       this.context = parent.context;
       this.require.cache = parent.require.cache;
       this.require.aliases = parent.require.aliases;
@@ -551,19 +549,15 @@
       Module._extensions[extension](this, filename);
     } catch (e) {
       if (e.errorNum !== internal.errors.ERROR_MODULE_FAILURE.code) {
-        let msg = `${internal.errors.ERROR_MODULE_FAILURE.message}\nReason: ${e}`;
-
-        if (e.fileName !== undefined) {
-          msg += `\nFile: ${e.fileName}`;
-        } else {
-          msg += `\nFile: ${filename}`;
-        }
+        let msg = internal.errors.ERROR_MODULE_FAILURE.message;
+        msg += `\nFile: ${e.fileName || filename}`;
         if (e.lineNumber !== undefined) {
           msg += `\nLine: ${e.lineNumber}`;
         }
         if (e.columnNumber !== undefined) {
           msg += `\nColumn: ${e.columnNumber}`;
         }
+        msg += `\nReason: ${e.stack || e}`;
         throw Object.assign(
           new internal.ArangoError({
             errorNum: internal.errors.ERROR_MODULE_FAILURE.code,

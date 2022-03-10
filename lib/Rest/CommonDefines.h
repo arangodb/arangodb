@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,8 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
-#ifndef ARANGODB_REST_COMMON_DEFINES_H
-#define ARANGODB_REST_COMMON_DEFINES_H 1
 
 #include <ostream>
 #include <string>
@@ -64,7 +62,8 @@ inline const char* requestToString(RequestType requestType) {
   }
 }
 
-inline std::ostream& operator<<(std::ostream& ostream, RequestType requestType) {
+inline std::ostream& operator<<(std::ostream& ostream,
+                                RequestType requestType) {
   return ostream << std::string(requestToString(requestType));
 }
 
@@ -81,10 +80,7 @@ enum class ContentType {
 std::string contentTypeToString(ContentType type);
 ContentType stringToContentType(std::string const& input, ContentType def);
 
-enum class EncodingType {
-  DEFLATE,
-  UNSET
-};
+enum class EncodingType { DEFLATE, UNSET };
 
 enum class AuthenticationMethod : uint8_t { BASIC = 1, JWT = 2, NONE = 0 };
 
@@ -126,6 +122,7 @@ enum class ResponseCode {
   REQUESTED_RANGE_NOT_SATISFIABLE = 416,
   EXPECTATION_FAILED = 417,
   I_AM_A_TEAPOT = 418,
+  MISDIRECTED_REQUEST = 421,
   UNPROCESSABLE_ENTITY = 422,
   LOCKED = 423,
   PRECONDITION_REQUIRED = 428,
@@ -213,6 +210,8 @@ inline const char* responseToString(ResponseCode responseCode) {
       return "417 EXPECTATION_FAILED";
     case ResponseCode::I_AM_A_TEAPOT:
       return "418 I_AM_A_TEAPOT";
+    case ResponseCode::MISDIRECTED_REQUEST:
+      return "421_MISDIRECTED_REQUEST";
     case ResponseCode::UNPROCESSABLE_ENTITY:
       return "422 UNPROCESSABLE_ENTITY";
     case ResponseCode::LOCKED:
@@ -245,9 +244,9 @@ inline const char* responseToString(ResponseCode responseCode) {
   return "??? UNEXPECTED";
 }
 
-inline std::ostream& operator<<(std::ostream& ostream, ResponseCode responseCode) {
+inline std::ostream& operator<<(std::ostream& ostream,
+                                ResponseCode responseCode) {
   return ostream << std::string(responseToString(responseCode));
 }
 }  // namespace rest
 }  // namespace arangodb
-#endif

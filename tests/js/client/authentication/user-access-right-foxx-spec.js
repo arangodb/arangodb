@@ -56,8 +56,6 @@ for (let l of rightLevels) {
   colLevel[l] = new Set();
 }
 
-require("@arangodb/test-helper").waitForFoxxInitialized();
-
 helper.switchUser('root', '_system');
 helper.removeAllUsers();
 helper.generateAllUsers();

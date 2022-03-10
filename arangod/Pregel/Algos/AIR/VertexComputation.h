@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,8 +23,7 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_ALGOS_ACCUMULATORS_VERTEXCOMPUTATION_H
-#define ARANGODB_PREGEL_ALGOS_ACCUMULATORS_VERTEXCOMPUTATION_H 1
+#pragma once
 
 #include "AIR.h"
 
@@ -53,7 +52,8 @@ class VertexComputation : public vertex_computation {
 
  private:
   greenspun::EvalResult clearAllVertexAccumulators();
-  greenspun::EvalResultT<bool> processIncomingMessages(MessageIterator<MessageData> const& incomingMessages);
+  greenspun::EvalResultT<bool> processIncomingMessages(
+      MessageIterator<MessageData> const& incomingMessages);
   void traceMessage(MessageData const*);
 
   greenspun::EvalResult runProgram(greenspun::Machine& ctx, VPackSlice program);
@@ -62,42 +62,57 @@ class VertexComputation : public vertex_computation {
 
   // Local functions
   greenspun::EvalResult air_accumRef(greenspun::Machine& ctx,
-                                     VPackSlice const params, VPackBuilder& result);
+                                     VPackSlice const params,
+                                     VPackBuilder& result);
   greenspun::EvalResult air_accumSet(greenspun::Machine& ctx,
-                                     VPackSlice const params, VPackBuilder& result);
+                                     VPackSlice const params,
+                                     VPackBuilder& result);
   greenspun::EvalResult air_accumClear(greenspun::Machine& ctx,
-                                       VPackSlice const params, VPackBuilder& result);
+                                       VPackSlice const params,
+                                       VPackBuilder& result);
 
   greenspun::EvalResult air_sendToAccum(greenspun::Machine& ctx,
-                                        VPackSlice const params, VPackBuilder& result);
-  greenspun::EvalResult air_sendToAllNeighbors(greenspun::Machine& ctx, VPackSlice const params,
+                                        VPackSlice const params,
+                                        VPackBuilder& result);
+  greenspun::EvalResult air_sendToAllNeighbors(greenspun::Machine& ctx,
+                                               VPackSlice const params,
                                                VPackBuilder& result);
 
-  greenspun::EvalResult air_globalAccumRef(greenspun::Machine& ctx, VPackSlice const params,
+  greenspun::EvalResult air_globalAccumRef(greenspun::Machine& ctx,
+                                           VPackSlice const params,
                                            VPackBuilder& result);
-  greenspun::EvalResult air_sendToGlobalAccum(greenspun::Machine& ctx, VPackSlice const params,
+  greenspun::EvalResult air_sendToGlobalAccum(greenspun::Machine& ctx,
+                                              VPackSlice const params,
                                               VPackBuilder& result);
 
   greenspun::EvalResult air_outboundEdges(greenspun::Machine& ctx,
-                                          VPackSlice const params, VPackBuilder& result);
+                                          VPackSlice const params,
+                                          VPackBuilder& result);
   greenspun::EvalResult air_numberOutboundEdges(greenspun::Machine& ctx,
                                                 VPackSlice const params,
                                                 VPackBuilder& result);
-  greenspun::EvalResult air_numberOfVertices(greenspun::Machine& ctx, VPackSlice const params,
+  greenspun::EvalResult air_numberOfVertices(greenspun::Machine& ctx,
+                                             VPackSlice const params,
                                              VPackBuilder& result);
   greenspun::EvalResult air_bindRef(greenspun::Machine& ctx,
-                                    VPackSlice const params, VPackBuilder& result);
+                                    VPackSlice const params,
+                                    VPackBuilder& result);
 
   greenspun::EvalResult air_thisDoc(greenspun::Machine& ctx,
-                                    VPackSlice const params, VPackBuilder& result);
+                                    VPackSlice const params,
+                                    VPackBuilder& result);
   greenspun::EvalResult air_thisVertexId(greenspun::Machine& ctx,
-                                         VPackSlice const params, VPackBuilder& result);
+                                         VPackSlice const params,
+                                         VPackBuilder& result);
   greenspun::EvalResult air_thisUniqueId(greenspun::Machine& ctx,
-                                         VPackSlice const params, VPackBuilder& result);
+                                         VPackSlice const params,
+                                         VPackBuilder& result);
   greenspun::EvalResult air_thisPregelId(greenspun::Machine& ctx,
-                                         VPackSlice const params, VPackBuilder& result);
+                                         VPackSlice const params,
+                                         VPackBuilder& result);
 
-  greenspun::EvalResult air_globalSuperstep(greenspun::Machine& ctx, VPackSlice const params,
+  greenspun::EvalResult air_globalSuperstep(greenspun::Machine& ctx,
+                                            VPackSlice const params,
                                             VPackBuilder& result);
 
  private:
@@ -109,4 +124,3 @@ class VertexComputation : public vertex_computation {
 }  // namespace algos
 }  // namespace pregel
 }  // namespace arangodb
-#endif

@@ -10,11 +10,11 @@ complexity: medium
 exposedBy:
   - agent
 description: |
-  Total number of agency write operations with no leader or on followers.
+  Total number of Agency write operations with no leader or on followers.
 threshold: |
-  This should normally not happen. If it happens regularly, the agency
+  This should normally not happen. If it happens regularly, the Agency
   is reelecting its leader often.
 troubleshoot: |
-  The latency of the network between the agents might be too high or
-  the agents may be overloaded. It might help to move agent instances
+  The latency of the network between the Agents might be too high or
+  the Agents may be overloaded. It might help to move Agent instances
   to separate machines.

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_CACHE_TABLE_H
-#define ARANGODB_CACHE_TABLE_H
+#pragma once
 
 #include "Basics/ReadWriteSpinLock.h"
 #include "Cache/BucketState.h"
@@ -54,7 +53,8 @@ class Table : public std::enable_shared_from_this<Table> {
  private:
   struct GenericBucket {
     BucketState _state;
-    static constexpr std::size_t paddingSize = BUCKET_SIZE - sizeof(BucketState);
+    static constexpr std::size_t paddingSize =
+        BUCKET_SIZE - sizeof(BucketState);
     std::uint8_t _padding[paddingSize];
     GenericBucket();
     bool lock(std::uint64_t maxTries);
@@ -84,7 +84,7 @@ class Table : public std::enable_shared_from_this<Table> {
 
     Table* source() const;
 
-    template <typename BucketType>
+    template<typename BucketType>
     BucketType& bucket() const;
 
     void release();
@@ -104,19 +104,19 @@ class Table : public std::enable_shared_from_this<Table> {
   struct Subtable {
     Subtable(std::shared_ptr<Table> source, GenericBucket* buckets,
              std::uint64_t size, std::uint32_t mask, std::uint32_t shift);
-    void* fetchBucket(std::uint32_t hash);
+    void* fetchBucket(std::uint32_t hash) noexcept;
 
     std::vector<BucketLocker> lockAllBuckets();
 
-    template <typename BucketType>
+    template<typename BucketType>
     bool applyToAllBuckets(std::function<bool(BucketType&)> cb);
 
    private:
     std::shared_ptr<Table> _source;
     GenericBucket* _buckets;
-    std::uint64_t _size;
-    std::uint32_t _mask;
-    std::uint32_t _shift;
+    std::uint64_t const _size;
+    std::uint32_t const _mask;
+    std::uint32_t const _shift;
   };
 
  public:
@@ -163,8 +163,9 @@ class Table : public std::enable_shared_from_this<Table> {
   /// the auxiliary table. The second member of the returned pair is the source
   /// table for the bucket returned as the first member.
   //////////////////////////////////////////////////////////////////////////////
-  BucketLocker fetchAndLockBucket(std::uint32_t hash,
-                                  std::uint64_t maxTries = std::numeric_limits<std::uint64_t>::max());
+  BucketLocker fetchAndLockBucket(
+      std::uint32_t hash,
+      std::uint64_t maxTries = std::numeric_limits<std::uint64_t>::max());
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Sets the auxiliary table.
@@ -210,7 +211,12 @@ class Table : public std::enable_shared_from_this<Table> {
   /// value will be true, and the cache should request migration to a larger
   /// table.
   //////////////////////////////////////////////////////////////////////////////
-  bool slotFilled();
+  bool slotFilled() noexcept;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Report that multiple slots were filled
+  //////////////////////////////////////////////////////////////////////////////
+  void slotsFilled(std::uint64_t numSlots) noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Report that a slot was emptied.
@@ -219,7 +225,12 @@ class Table : public std::enable_shared_from_this<Table> {
   /// return value will be true, and the cache should request migration to a
   /// smaller table.
   //////////////////////////////////////////////////////////////////////////////
-  bool slotEmptied();
+  bool slotEmptied() noexcept;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Report that multiple slots were emptied
+  //////////////////////////////////////////////////////////////////////////////
+  void slotsEmptied(std::uint64_t numSlots) noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Report that there have been too many evictions.
@@ -260,5 +271,3 @@ class Table : public std::enable_shared_from_this<Table> {
 
 };  // end namespace cache
 };  // end namespace arangodb
-
-#endif

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Dr. Oreste Costa-Panaia
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_MEMORY__MAP__WIN32_H
-#define ARANGODB_BASICS_MEMORY__MAP__WIN32_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -76,5 +75,3 @@
 #define TRI_MADVISE_WILLNEED 0
 #define TRI_MADVISE_DONTNEED 0
 #define TRI_MADVISE_DONTDUMP 0
-
-#endif

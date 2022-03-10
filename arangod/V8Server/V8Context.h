@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_V8_SERVER_V8_CONTEXT_H
-#define ARANGOD_V8_SERVER_V8_CONTEXT_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -114,7 +113,7 @@ class V8Context {
   double const _creationStamp;
   /// @brief timestamp of when the context was last entered
   double _acquired;
-  /// @brief description of what the context is doing. pointer must be valid 
+  /// @brief description of what the context is doing. pointer must be valid
   /// through the entire program lifetime
   char const* _description;
   double _lastGcStamp;
@@ -143,5 +142,3 @@ class V8ContextEntryGuard {
 };
 
 }  // namespace arangodb
-
-#endif

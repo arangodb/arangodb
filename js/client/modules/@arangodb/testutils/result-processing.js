@@ -989,7 +989,12 @@ function dumpAllResults(options, results) {
 
 
 function addFailRunsMessage(testcase, message) {
-  failedRuns[testcase] = message;
+  if (!failedRuns.hasOwnProperty(testcase)) {
+    failedRuns[testcase] = '';
+  } else if (failedRuns[testcase].length > 0) {
+    failedRuns[testcase] += '\n';
+  }
+  failedRuns[testcase] += message;
 }
 
 function yamlDumpResults(options, results) {

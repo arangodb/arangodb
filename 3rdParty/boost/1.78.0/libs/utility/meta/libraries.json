@@ -1,0 +1,135 @@
+[
+    {
+        "key": "utility",
+        "name": "Utility",
+        "authors": [
+            "Dave Abrahams and others"
+        ],
+        "description": "Class noncopyable plus checked_delete(), checked_array_delete(), next(), prior() function templates, plus base-from-member idiom.",
+        "documentation": "utility.htm",
+        "category": [
+            "Algorithms",
+            "Function-objects",
+            "Memory",
+            "Miscellaneous",
+            "Patterns"
+        ],
+        "cxxstd": "03"
+    },
+    {
+        "key": "utility/call_traits",
+        "name": "Call Traits",
+        "authors": [
+            "John Maddock, Howard Hinnant, et al"
+        ],
+        "description": "Defines types for passing parameters.",
+        "documentation": "call_traits.htm",
+        "category": [
+            "Generic"
+        ],
+        "cxxstd": "03"
+    },
+    {
+        "key": "utility/compressed_pair",
+        "name": "Compressed Pair",
+        "authors": [
+            "John Maddock, Howard Hinnant, et al"
+        ],
+        "description": "Empty member optimization.",
+        "documentation": "compressed_pair.htm",
+        "category": [
+            "Data",
+            "Patterns"
+        ],
+        "cxxstd": "03"
+    },
+    {
+        "key": "utility/identity_type",
+        "name": "Identity Type",
+        "authors": [
+            "Lorenzo Caminiti"
+        ],
+        "description": "Wrap types within round parenthesis so they can always be passed as macro parameters.",
+        "documentation": "identity_type/",
+        "category": [
+            "Preprocessor"
+        ],
+        "maintainers": [
+            "Lorenzo Caminiti <lorcaminiti -at- gmail.com>"
+        ],
+        "cxxstd": "03"
+    },
+    {
+        "key": "utility/in_place_factories",
+        "name": "In Place Factory, Typed In Place Factory",
+        "authors": [
+            "Fernando Cacciola"
+        ],
+        "description": "Generic in-place construction of contained objects with a variadic argument-list.",
+        "documentation": "in_place_factories.html",
+        "category": [
+            "Generic"
+        ],
+        "cxxstd": "03"
+    },
+    {
+        "key": "utility/operators",
+        "name": "Operators",
+        "authors": [
+            "Dave Abrahams",
+            "Jeremy Siek"
+        ],
+        "description": "Templates ease arithmetic classes and iterators.",
+        "documentation": "operators.htm",
+        "category": [
+            "Generic",
+            "Iterators",
+            "Math"
+        ],
+        "maintainers": [
+            "Daniel Frey <d.frey -at- gmx.de>"
+        ],
+        "cxxstd": "03"
+    },
+    {
+        "key": "utility/result_of",
+        "name": "Result Of",
+        "description": "Determines the type of a function call expression.",
+        "documentation": "utility.htm#result_of",
+        "category": [
+            "Function-objects"
+        ],
+        "authors": "",
+        "maintainers": [
+            "Daniel Walker <daniel.j.walker -at- gmail.com>"
+        ],
+        "cxxstd": "03"
+    },
+    {
+        "key": "utility/string_ref",
+        "name": "string_ref",
+        "description": "String view templates.",
+        "documentation": "doc/html/string_ref.html",
+        "category": [
+            "Containers"
+        ],
+        "authors": "Marshall Clow",
+        "maintainers": [
+            "Marshall Clow <marshall -at- idio.com>"
+        ],
+        "cxxstd": "03"
+    },
+    {
+        "key": "utility/value_initialized",
+        "name": "Value Initialized",
+        "authors": [
+            "Fernando Cacciola"
+        ],
+        "description": "Wrapper for uniform-syntax value initialization, based on the original idea of David Abrahams.",
+        "documentation": "value_init.htm",
+        "category": [
+            "Miscellaneous"
+        ],
+        "cxxstd": "03"
+    }
+]

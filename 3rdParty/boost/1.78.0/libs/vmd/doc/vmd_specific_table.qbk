@@ -1,0 +1,28 @@
+[/ 
+  (C) Copyright Edward Diener 2020
+  Distributed under the Boost Software License, Version 1.0.
+  (See accompanying file LICENSE_1_0.txt or copy at
+  http://www.boost.org/LICENSE_1_0.txt).
+]
+
+[section:vmd_sptable Summing up the specific VMD macros]
+
+The VMD specific identifying macros test the input for VMD data types. The macros are represented by this table:
+
+[table:tspecm Specific identifying macros
+[[Name][Function]]
+[[BOOST_VMD_IS_EMPTY][Tests if the input is empty]]
+[[BOOST_VMD_IS_GENERAL_IDENTIFIER][Tests if the input has the general VMD identifier syntax]]
+[[BOOST_VMD_IS_IDENTIFIER][Tests if the input is a specific VMD identifier]]
+[[BOOST_VMD_IS_NUMBER][Tests if the input is a VMD number]]
+[[BOOST_VMD_IS_TYPE][Tests if the input is a VMD type]]
+[[BOOST_VMD_IS_ARRAY][Tests if the input is a Boost PP array]]
+[[BOOST_VMD_IS_LIST][Tests if the input is a Boost PP list]]
+[[BOOST_VMD_IS_SEQ][Tests if the input is a Boost PP seq]]
+[[BOOST_VMD_IS_TUPLE][Tests if the input is a Boost PP tuple]]
+[[BOOST_VMD_IS_EMPTY_ARRAY][Tests if the input is a Boost PP empty array]]
+[[BOOST_VMD_IS_EMPTY_LIST][Tests if the input is a Boost PP empty list]]
+[[BOOST_VMD_IS_PARENS_EMPTY][Tests if the input is empty parenthesis]]
+]
+
+[endsect]

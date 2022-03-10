@@ -6,6 +6,12 @@
 
 @HINTS
 {% hint 'warning' %}
+The load function is deprecated from version 3.8.0 onwards and is a no-op 
+from version 3.9.0 onwards. It should no longer be used, as it may be removed
+in a future version of ArangoDB.
+{% endhint %}
+
+{% hint 'warning' %}
 Accessing collections by their numeric ID is deprecated from version 3.4.0 on.
 You should reference them via their names instead.
 {% endhint %}
@@ -16,7 +22,8 @@ You should reference them via their names instead.
 The name of the collection.
 
 @RESTDESCRIPTION
-Loads a collection into memory. Returns the collection on success.
+Since ArangoDB version 3.9.0 this API does nothing. Previously it used to
+load a collection into memory. 
 
 The request body object might optionally contain the following attribute:
 
@@ -25,7 +32,8 @@ The request body object might optionally contain the following attribute:
   *false* may speed up loading a collection. The default value for
   *count* is *true*.
 
-On success an object with the following attributes is returned:
+A call to this API returns an object with the following attributes for
+compatibility reasons:
 
 - *id*: The identifier of the collection.
 
@@ -39,7 +47,7 @@ On success an object with the following attributes is returned:
 
 - *type*: The collection type. Valid types are:
   - 2: document collection
-  - 3: edges collection
+  - 3: edge collection
 
 - *isSystem*: If *true* then the collection is a system collection.
 

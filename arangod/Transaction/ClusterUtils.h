@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_TRANSACTION_CLUSTER_UTILS_H
-#define ARANGOD_TRANSACTION_CLUSTER_UTILS_H 1
+#pragma once
 
 #include "VocBase/Identifiers/DataSourceId.h"
 
@@ -32,7 +31,7 @@ class LogicalCollection;
 
 namespace transaction {
 namespace cluster {
-  
+
 void abortTransactions(LogicalCollection& coll);
 void abortLeaderTransactionsOnShard(DataSourceId cid);
 void abortFollowerTransactionsOnShard(DataSourceId cid);
@@ -41,5 +40,3 @@ void abortTransactionsWithFailedServers(ClusterInfo&);
 }  // namespace cluster
 }  // namespace transaction
 }  // namespace arangodb
-
-#endif

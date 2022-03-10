@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_INTERNAL_REST_HANDLER_INTERNAL_TRAVERSER_HANDLER_H
-#define ARANGOD_INTERNAL_REST_HANDLER_INTERNAL_TRAVERSER_HANDLER_H 1
+#pragma once
 
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
@@ -33,9 +32,8 @@ class QueryRegistry;
 
 class InternalRestTraverserHandler : public RestVocbaseBaseHandler {
  public:
-  explicit InternalRestTraverserHandler(application_features::ApplicationServer&,
-                                        GeneralRequest*, GeneralResponse*,
-                                        aql::QueryRegistry*);
+  explicit InternalRestTraverserHandler(ArangodServer&, GeneralRequest*,
+                                        GeneralResponse*, aql::QueryRegistry*);
 
  public:
   RestStatus execute() override final;
@@ -58,4 +56,3 @@ class InternalRestTraverserHandler : public RestVocbaseBaseHandler {
   aql::QueryRegistry* _registry;
 };
 }  // namespace arangodb
-#endif

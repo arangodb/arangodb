@@ -1,7 +1,7 @@
 name: arangodb_process_statistics_number_of_threads
 introducedIn: "3.6.1"
 help: |
-  Number of threads
+  Number of threads.
 unit: number
 type: gauge
 category: Statistics

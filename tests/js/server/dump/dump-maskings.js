@@ -37,12 +37,6 @@ function dumpMaskingSuite () {
   var db = internal.db;
 
   return {
-    setUp : function () {
-    },
-
-    tearDown : function () {
-    },
-
     testGeneral : function () {
       var c = db._collection("maskings1");
       var d = c.document("1");

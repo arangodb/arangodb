@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GRAPH_SHORTEST_PATH_TYPE_H
-#define ARANGOD_GRAPH_SHORTEST_PATH_TYPE_H 1
+#pragma once
 
 namespace arangodb {
 namespace graph {
@@ -42,5 +41,3 @@ struct ShortestPathType {
 
 }  // namespace graph
 }  // namespace arangodb
-
-#endif

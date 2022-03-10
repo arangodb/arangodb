@@ -1,0 +1,17 @@
+{
+    "key": "uuid",
+    "name": "Uuid",
+    "authors": [
+        "Andy Tompkins"
+    ],
+    "description": "A universally unique identifier.",
+    "category": [
+        "Data",
+        "Domain"
+    ],
+    "maintainers": [
+        "Andy Tompkins <atompkins -at- fastmail.fm>",
+        "James E. King III <jking -at- apache.org>"
+    ],
+    "cxxstd": "03"
+}

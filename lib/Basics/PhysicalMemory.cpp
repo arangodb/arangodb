@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -114,14 +114,10 @@ struct PhysicalMemoryCache {
 
 PhysicalMemoryCache const cache;
 
-} // namespace
+}  // namespace
 
 /// @brief return physical memory size from cache
-uint64_t arangodb::PhysicalMemory::getValue() {
-  return ::cache.cachedValue;
-}
+uint64_t arangodb::PhysicalMemory::getValue() { return ::cache.cachedValue; }
 
 /// @brief return if physical memory size was overridden
-bool arangodb::PhysicalMemory::overridden() {
-  return ::cache.overridden;
-}
+bool arangodb::PhysicalMemory::overridden() { return ::cache.overridden; }

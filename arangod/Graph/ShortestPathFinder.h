@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_GRAPH_SHORTEST_PATH_FINDER_H
-#define ARANGODB_GRAPH_SHORTEST_PATH_FINDER_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -40,8 +39,8 @@ class ShortestPathFinder {
  public:
   virtual ~ShortestPathFinder() = default;
 
-  virtual bool shortestPath(arangodb::velocypack::Slice const& start,
-                            arangodb::velocypack::Slice const& target,
+  virtual bool shortestPath(arangodb::velocypack::Slice start,
+                            arangodb::velocypack::Slice target,
                             arangodb::graph::ShortestPathResult& result) = 0;
 
   void destroyEngines();
@@ -73,5 +72,3 @@ class ShortestPathFinder {
 
 }  // namespace graph
 }  // namespace arangodb
-
-#endif

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,8 +22,7 @@
 /// @author Matthew Von-Maszewski
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_CLUSTER_MAINTENANCE_ACTION_H
-#define ARANGODB_CLUSTER_MAINTENANCE_ACTION_H
+#pragma once
 
 #include "ActionBase.h"
 #include "ActionDescription.h"
@@ -186,14 +185,25 @@ class Action {
   }
 
   /// @brief fastTrack
-  bool fastTrack() const {
-    return _action->fastTrack();
-  }
+  bool fastTrack() const { return _action->fastTrack(); }
 
   /// @brief priority
-  int priority() const {
-    return _action->priority();
-  }
+  int priority() const { return _action->priority(); }
+
+  bool requeueRequested() const { return _action->requeueRequested(); }
+
+  int requeuePriority() const { return _action->requeuePriority(); }
+
+  void requeueMe(int requeuePriority) { _action->requeueMe(requeuePriority); }
+
+  void setPriority(int newPriority) { _action->setPriority(newPriority); }
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  static void addNewFactoryForTest(
+      std::string const& name,
+      std::function<std::unique_ptr<ActionBase>(
+          MaintenanceFeature&, ActionDescription const&)>&& factory);
+#endif
 
  private:
   /// @brief actually create the concrete action
@@ -209,4 +219,3 @@ class Action {
 namespace std {
 ostream& operator<<(ostream& o, arangodb::maintenance::Action const& d);
 }
-#endif

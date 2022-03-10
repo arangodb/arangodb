@@ -2,7 +2,7 @@ name: arangodb_replication_initial_insert_apply_time_total
 renamedFrom: arangodb_replication_initial_insert_apply_time
 introducedIn: "3.8.0"
 help: |
-  Accumulated time needed to apply replication initial sync insertions
+  Accumulated time needed to apply replication initial sync insertions.
 unit: ms
 type: counter
 category: Replication

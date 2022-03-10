@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,18 +21,18 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef APPLICATION_FEATURES_DATABASE_PATH_FEATURE_H
-#define APPLICATION_FEATURES_DATABASE_PATH_FEATURE_H 1
+#pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "RestServer/arangod.h"
 
 namespace arangodb {
 
-class DatabasePathFeature final : public application_features::ApplicationFeature {
+class DatabasePathFeature final : public ArangodFeature {
  public:
-  explicit DatabasePathFeature(application_features::ApplicationServer& server);
+  static constexpr std::string_view name() { return "DatabasePath"; }
 
-  static constexpr const char* name() { return "DatabasePath"; }
+  explicit DatabasePathFeature(Server& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -54,5 +54,3 @@ class DatabasePathFeature final : public application_features::ApplicationFeatur
 };
 
 }  // namespace arangodb
-
-#endif

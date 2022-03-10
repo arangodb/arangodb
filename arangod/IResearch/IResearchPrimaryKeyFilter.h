@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,8 +22,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_IRESEARCH__IRESEARCH_PRIMARY_KEY_FILTER_H
-#define ARANGOD_IRESEARCH__IRESEARCH_PRIMARY_KEY_FILTER_H 1
+#pragma once
 
 #include "IResearchDocument.h"
 #include "VocBase/voc-types.h"
@@ -39,9 +38,8 @@ namespace iresearch {
 /// @class PrimaryKeyFilter
 /// @brief iresearch filter optimized for filtering on primary keys
 ///////////////////////////////////////////////////////////////////////////////
-class PrimaryKeyFilter final
-    : public irs::filter,
-    public irs::filter::prepared {
+class PrimaryKeyFilter final : public irs::filter,
+                               public irs::filter::prepared {
  public:
   static constexpr irs::string_ref type_name() noexcept {
     return "arangodb::iresearch::PrimaryKeyFilter";
@@ -49,7 +47,8 @@ class PrimaryKeyFilter final
 
   static irs::type_info type(StorageEngine& engine);
 
-  PrimaryKeyFilter(StorageEngine& engine, arangodb::LocalDocumentId const& value) noexcept
+  PrimaryKeyFilter(StorageEngine& engine,
+                   arangodb::LocalDocumentId const& value) noexcept
       : irs::filter(PrimaryKeyFilter::type(engine)),
         _pk(DocumentPrimaryKey::encode(value)),
         _pkSeen(false) {}
@@ -59,8 +58,7 @@ class PrimaryKeyFilter final
   // ----------------------------------------------------------------------------
 
   virtual irs::doc_iterator::ptr execute(
-      irs::sub_reader const& segment,
-      irs::order::prepared const& /*order*/,
+      irs::sub_reader const& segment, irs::order::prepared const& /*order*/,
       irs::attribute_provider const* /*ctx*/) const override;
 
   // ----------------------------------------------------------------------------
@@ -71,10 +69,9 @@ class PrimaryKeyFilter final
 
   using irs::filter::prepare;
   virtual filter::prepared::ptr prepare(
-    irs::index_reader const& index,
-    irs::order::prepared const& /*ord*/,
-    irs::boost_t /*boost*/,
-    irs::attribute_provider const* /*ctx*/) const override;
+      irs::index_reader const& index, irs::order::prepared const& /*ord*/,
+      irs::boost_t /*boost*/,
+      irs::attribute_provider const* /*ctx*/) const override;
 
  protected:
   bool equals(filter const& rhs) const noexcept override;
@@ -97,7 +94,8 @@ class PrimaryKeyFilter final
 
     virtual irs::doc_id_t value() const noexcept override { return _doc; }
 
-    virtual irs::attribute* get_mutable(irs::type_info::type_id) noexcept override {
+    virtual irs::attribute* get_mutable(
+        irs::type_info::type_id) noexcept override {
       return nullptr;
     }
 
@@ -127,12 +125,12 @@ class PrimaryKeyFilterContainer final : public irs::filter {
   }
 
   PrimaryKeyFilterContainer()
-    : irs::filter(irs::type<PrimaryKeyFilterContainer>::get()) {
-  }
+      : irs::filter(irs::type<PrimaryKeyFilterContainer>::get()) {}
   PrimaryKeyFilterContainer(PrimaryKeyFilterContainer&&) = default;
   PrimaryKeyFilterContainer& operator=(PrimaryKeyFilterContainer&&) = default;
 
-  PrimaryKeyFilter& emplace(StorageEngine& engine, arangodb::LocalDocumentId const& value) {
+  PrimaryKeyFilter& emplace(StorageEngine& engine,
+                            arangodb::LocalDocumentId const& value) {
     _filters.emplace_back(engine, value);
 
     return _filters.back();
@@ -143,10 +141,8 @@ class PrimaryKeyFilterContainer final : public irs::filter {
   void clear() noexcept { _filters.clear(); }
 
   virtual filter::prepared::ptr prepare(
-    irs::index_reader const& rdr,
-    irs::order::prepared const& ord,
-    irs::boost_t boost,
-    irs::attribute_provider const* ctx) const override;
+      irs::index_reader const& rdr, irs::order::prepared const& ord,
+      irs::boost_t boost, irs::attribute_provider const* ctx) const override;
 
  private:
   std::deque<PrimaryKeyFilter> _filters;  // pointers remain valid
@@ -154,5 +150,3 @@ class PrimaryKeyFilterContainer final : public irs::filter {
 
 }  // namespace iresearch
 }  // namespace arangodb
-
-#endif  // ARANGOD_IRESEARCH__IRESEARCH_PRIMARY_KEY_FILTER_H

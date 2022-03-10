@@ -36,18 +36,9 @@ const jsunity = require('jsunity');
 const errors = require('@arangodb').errors;
 const cn = "UnitTestsCollection";
 const db = require('internal').db;
+const getMetric = require('@arangodb/test-helper').getMetricSingle;
 
 function testSuite() {
-  let getMetric = function(name) {
-    let res = arango.GET_RAW("/_admin/metrics/v2").body.toString();
-    let re = new RegExp("^" + name + "\\{");
-    let matches = res.split('\n').filter((line) => !line.match(/^#/)).filter((line) => line.match(re));
-    if (!matches.length) {
-      throw "Metric " + name + " not found";
-    }
-    return Number(matches[0].replace(/^.*?\} (\d+)$/, '$1'));
-  };
-
   return {
     testQueryBelowLimit: function() {
       let result = db._query("FOR i IN 1..1000 RETURN i").toArray();
@@ -55,7 +46,7 @@ function testSuite() {
     },
     
     testQueryAboveLimit: function() {
-      const previousValue = getMetric("arangodb_aql_local_query_memory_limit_reached");
+      const previousValue = getMetric("arangodb_aql_local_query_memory_limit_reached_total");
       try {
         // we expect this query here to violate the memory limit
         db._query("LET testi = (FOR i IN 1..10000 FOR j IN 1..100 RETURN CONCAT('testmann-der-fuxxx', i, j)) RETURN testi");
@@ -65,7 +56,7 @@ function testSuite() {
         assertNotMatch(/global/, err.errorMessage);
       }
       
-      const currentValue = getMetric("arangodb_aql_local_query_memory_limit_reached");
+      const currentValue = getMetric("arangodb_aql_local_query_memory_limit_reached_total");
       assertTrue(currentValue > previousValue);
     },
     

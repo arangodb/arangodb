@@ -1,7 +1,7 @@
 name: arangodb_v8_context_free
 introducedIn: "3.6.7"
 help: |
-  Number of V8 contexts currently free
+  Number of V8 contexts currently free.
 unit: number
 type: gauge
 category: Statistics

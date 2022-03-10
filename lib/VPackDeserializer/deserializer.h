@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,8 +20,8 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
-#ifndef VELOCYPACK_DESERIALIZER_H
-#define VELOCYPACK_DESERIALIZER_H
+
+#pragma once
 
 #include <unordered_set>
 
@@ -42,5 +42,3 @@
 #include "validate.h"
 #include "value-reader.h"
 #include "values.h"
-
-#endif  // VELOCYPACK_DESERIALIZER_H

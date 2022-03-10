@@ -1,0 +1,14 @@
+name: arangodb_replication2_replicated_log_inserts_bytes
+introducedIn: "3.9.0"
+help: |
+  Number of bytes inserted into replicated logs.
+unit: bytes
+type: histogram
+category: Replication
+complexity: medium
+exposedBy:
+  - dbserver
+  - single
+description: |
+  For all replicated logs this server is a leader of, this counts the number
+  of bytes of raw payload inserted into it.

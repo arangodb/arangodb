@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -102,7 +102,10 @@ int32_t RandomDevice::random(int32_t left, int32_t right) {
 
   TRI_ASSERT(right > left);
   int64_t r = static_cast<int64_t>(right) - static_cast<int64_t>(left) + 1;
-  TRI_ASSERT(r >= 0 && r <= UINT32_MAX);
+
+  // r must be at least 2, because right > left
+  // r must be strictly less UINT32_MAX, because we checked MIN & MAX
+  TRI_ASSERT(r > 1 && r < UINT32_MAX);
   uint32_t range = static_cast<uint32_t>(r);
 
   switch (range) {
@@ -201,10 +204,11 @@ int32_t RandomDevice::other(int32_t left, uint32_t range) {
 
   r %= range;
 
-  int32_t result = left + static_cast<int32_t>(r);
-  TRI_ASSERT(result >= left);
-  TRI_ASSERT(result < left + static_cast<int64_t>(range));
-  return result;
+  int64_t result = static_cast<int64_t>(left) + static_cast<int64_t>(r);
+  TRI_ASSERT(result >= static_cast<int64_t>(left));
+  TRI_ASSERT(result < static_cast<int64_t>(left) + static_cast<int64_t>(range));
+  TRI_ASSERT(result <= static_cast<int64_t>(INT32_MAX));
+  return static_cast<int32_t>(result);
 }
 
 // -----------------------------------------------------------------------------
@@ -214,7 +218,7 @@ int32_t RandomDevice::other(int32_t left, uint32_t range) {
 #ifndef _WIN32
 
 namespace {
-template <int N>
+template<int N>
 class RandomDeviceDirect : public RandomDevice {
  public:
   explicit RandomDeviceDirect(std::string const& path) : fd(-1), pos(0) {
@@ -284,7 +288,7 @@ class RandomDeviceDirect : public RandomDevice {
 #ifndef _WIN32
 
 namespace {
-template <int N>
+template<int N>
 class RandomDeviceCombined : public RandomDevice {
  public:
   explicit RandomDeviceCombined(std::string const& path)
@@ -357,7 +361,8 @@ class RandomDeviceCombined : public RandomDevice {
 
       rseed = buffer[0];
 
-      LOG_TOPIC("6a060", TRACE, arangodb::Logger::FIXME) << "using seed " << rseed;
+      LOG_TOPIC("6a060", TRACE, arangodb::Logger::FIXME)
+          << "using seed " << rseed;
     }
 
     if (0 < n) {
@@ -408,7 +413,7 @@ class RandomDeviceMersenne : public RandomDevice {
 #ifdef _WIN32
 
 namespace {
-template <int N>
+template<int N>
 class RandomDeviceWin32 : public RandomDevice {
  public:
   RandomDeviceWin32() : cryptoHandle(0), pos(0) {
@@ -517,17 +522,19 @@ void RandomGenerator::ensureDeviceIsInitialized() {
 
 void RandomGenerator::shutdown() {
   // nothing to do...
-  // thread-local devices will be released when their respective threads terminate.
-  // however, we want to reset the device for testing
+  // thread-local devices will be released when their respective threads
+  // terminate. however, we want to reset the device for testing
   _device.reset();
 }
-  
+
 int16_t RandomGenerator::interval(int16_t left, int16_t right) {
-  return static_cast<int16_t>(interval(static_cast<int32_t>(left), static_cast<int32_t>(right)));
+  return static_cast<int16_t>(
+      interval(static_cast<int32_t>(left), static_cast<int32_t>(right)));
 }
 
 int32_t RandomGenerator::interval(int32_t left, int32_t right) {
-  return static_cast<int32_t>(interval(static_cast<int64_t>(left), static_cast<int64_t>(right)));
+  return static_cast<int32_t>(
+      interval(static_cast<int64_t>(left), static_cast<int64_t>(right)));
 }
 
 int64_t RandomGenerator::interval(int64_t left, int64_t right) {
@@ -561,6 +568,7 @@ uint64_t RandomGenerator::interval(uint64_t right) {
   if (right == 0) {
     return 0;
   }
+  ensureDeviceIsInitialized();
   uint64_t value;
 
   if (right == UINT64_MAX) {
@@ -586,9 +594,17 @@ uint64_t RandomGenerator::interval(uint64_t right) {
   return value;
 }
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+int32_t RandomGenerator::random(int32_t left, int32_t right) {
+  ensureDeviceIsInitialized();
+  return _device->random(left, right);
+}
+#endif
+
 void RandomGenerator::seed(uint64_t seed) {
   ensureDeviceIsInitialized();
-  if (RandomDeviceMersenne* dev = dynamic_cast<RandomDeviceMersenne*>(_device.get())) {
+  if (RandomDeviceMersenne* dev =
+          dynamic_cast<RandomDeviceMersenne*>(_device.get())) {
     dev->seed(seed);
     return;
   }

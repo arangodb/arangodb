@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,16 +21,20 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef APPLICATION_FEATURES_ACTION_FEATURE_H
-#define APPLICATION_FEATURES_ACTION_FEATURE_H 1
+#pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
+#include "RestServer/arangod.h"
 
 namespace arangodb {
+namespace application_features {
+class ClusterFeaturePhase;
+}
 
-class ActionFeature final : public application_features::ApplicationFeature {
+class ActionFeature final : public ArangodFeature {
  public:
-  explicit ActionFeature(application_features::ApplicationServer& server);
+  static constexpr std::string_view name() noexcept { return "Action"; }
+
+  explicit ActionFeature(Server& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void unprepare() override final;
@@ -42,5 +46,3 @@ class ActionFeature final : public application_features::ApplicationFeature {
 };
 
 }  // namespace arangodb
-
-#endif

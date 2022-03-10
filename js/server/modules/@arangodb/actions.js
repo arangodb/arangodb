@@ -1012,24 +1012,6 @@ function buildRouting (dbname, internalRoute) {
   // compute all necessary routes
   let routes = [];
 
-  if (!internalRoute) {
-    if (global.USE_OLD_SYSTEM_COLLECTIONS) {
-      let routing = arangodb.db._collection('_routing');
-      if (routing !== null && routing.count() > 0) {
-        let i = routing.all();
- 
-        while (i.hasNext()) {
-          var n = i.next();
-          var c = Object.assign({}, n);
- 
-          c.name = '_routing.document("' + c._key + '")';
-
-          routes.push(c);
-        }
-      }
-    }
-  }
-
   // install the Foxx routes
   var mountPoints = FoxxManager._mountPoints(internalRoute);
 

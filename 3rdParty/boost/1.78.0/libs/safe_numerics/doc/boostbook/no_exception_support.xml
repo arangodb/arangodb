@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE section PUBLIC "-//Boost//DTD BoostBook XML V1.1//EN"
+"http://www.boost.org/tools/boostbook/dtd/boostbook.dtd">
+<section id="safe_numerics.exception_policies.no_exception_support">
+  <title>no_exception_support&lt;NoError, UnInitalized, Overflow, Underflow,
+  Range, Domain&gt;</title>
+
+  <section>
+    <title>Description</title>
+
+    <para>This exception policy can be used in an environment where one cannot
+    or does not want to use exceptions.</para>
+
+    <para>Parameters are pointers to static functions which are invoked for
+    each kind of error encountered in the library. The function signature of
+    these functions are <code>void function(const char * message)</code> where
+    <code>message</code> is the address of a literal string with information
+    regarding the error.</para>
+  </section>
+
+  <section>
+    <title>Template Parameters</title>
+
+    <para>Function objects to be invoked are specified for each error
+    condition via template parameters.</para>
+
+    <informaltable>
+      <tgroup cols="4">
+        <colspec align="left"/>
+
+        <colspec align="left" colwidth="3*"/>
+
+        <colspec align="left" colwidth="6*"/>
+
+        <thead>
+          <row>
+            <entry align="left">Parameter</entry>
+
+            <entry align="left">Type Requirements</entry>
+
+            <entry>Description</entry>
+          </row>
+        </thead>
+
+        <tbody>
+          <row>
+            <entry><code>NoError</code></entry>
+
+            <entry><code>void (*NoError)(const char *)</code></entry>
+
+            <entry><para>Function to call on when an operation is invoked
+            which COULD throw but does not.</para></entry>
+          </row>
+
+          <row>
+            <entry><code>UnInitalized</code></entry>
+
+            <entry><code>void (*UnInitalizized)(const char *)</code></entry>
+
+            <entry><para>Function to call on when value is
+            uninitialized</para></entry>
+          </row>
+
+          <row>
+            <entry><code>Overflow</code></entry>
+
+            <entry><code>void (*Overflow)(const char *)</code></entry>
+
+            <entry><para>Function to call on overflow error</para></entry>
+          </row>
+
+          <row>
+            <entry><code>Overflow</code></entry>
+
+            <entry><code>void (*Overflow)(const char *)</code></entry>
+
+            <entry><para>Function to call on overflow error</para></entry>
+          </row>
+
+          <row>
+            <entry><code>Underflow</code></entry>
+
+            <entry><code>void (*Underflow)(const char *)</code></entry>
+
+            <entry><para>Function to call on underflow error</para></entry>
+          </row>
+
+          <row>
+            <entry><code>Range</code></entry>
+
+            <entry><code>void (*Range)(const char *)</code></entry>
+
+            <entry><para>Function to call on range error</para></entry>
+          </row>
+
+          <row>
+            <entry><code>Domain</code></entry>
+
+            <entry><code>void (*Domain)(const char *)</code></entry>
+
+            <entry>Function to call on domain error</entry>
+          </row>
+        </tbody>
+      </tgroup>
+    </informaltable>
+  </section>
+
+  <section>
+    <title>Model of</title>
+
+    <para><link
+    linkend="safe_numerics.promotion_policy">ExceptionPolicy</link></para>
+  </section>
+
+  <section>
+    <title>Header</title>
+
+    <para><code><ulink url="../../include/exception_policy.hpp"><code>#include
+    &lt;boost/safe_numerics/exception_policy.hpp&gt;
+    </code></ulink></code></para>
+  </section>
+
+  <section>
+    <title>Example of use</title>
+
+    <para>[A code fragment involving the type.]</para>
+
+    <programlisting>void no_error(const char * msg);
+void uninitialize(const char * msg);
+void overflow(const char * msg);
+void underflow(const char * msg);
+void range_error(const char * msg);
+void domain_error(const char * msg);
+
+using ep = ignore_exception&lt;
+    no_error,
+    uninitialized,
+    overflow,
+    underflow,
+    range_error,
+    domain_error
+&gt;;
+
+safe&lt;int, native, ep&gt; st(4);</programlisting>
+  </section>
+</section>

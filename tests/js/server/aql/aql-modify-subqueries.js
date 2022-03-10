@@ -52,6 +52,8 @@ var sanitizeStats = function (stats) {
   // for the comparisons
   delete stats.scannedFull;
   delete stats.scannedIndex;
+  delete stats.cursorsCreated;
+  delete stats.cursorsRearmed;
   delete stats.filtered;
   delete stats.executionTime;
   delete stats.httpRequests;
@@ -1623,7 +1625,6 @@ function ahuacatlModifySuite () {
         c2.truncate({ compact: false });
       }
     },
-
   };
 }
 
@@ -1746,6 +1747,14 @@ function ahuacatlModifySkipSuite () {
 
       assertEqual(1000, db[cn].count());
     },
+
+    testSubqueryFullCount : function () {
+      const query = "LET sub = NOOPT(FOR doc IN " + cn + " REMOVE doc IN " + cn + " RETURN OLD) COLLECT WITH COUNT INTO l RETURN l"; 
+      let result = AQL_EXECUTE(query, null, { optimizer: { rules: ["-all"] } });
+      assertEqual(1, result.json.length);
+      assertEqual(1, result.json[0]);
+    },
+
   };
 }
 
@@ -1898,7 +1907,7 @@ function ahuacatlGeneratedSuite() {
       assertEqual(10, res.toArray().length);
     }
   };
-};
+}
 
 jsunity.run(ahuacatlModifySuite);
 jsunity.run(ahuacatlModifySkipSuite);

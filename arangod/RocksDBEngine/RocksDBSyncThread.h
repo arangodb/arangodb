@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_ENGINE_SYNC_THREAD_H
-#define ARANGOD_ROCKSDB_ENGINE_SYNC_THREAD_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
@@ -43,8 +42,7 @@ class RocksDBEngine;
 
 class RocksDBSyncThread final : public Thread {
  public:
-  RocksDBSyncThread(RocksDBEngine& engine, 
-                    std::chrono::milliseconds interval,
+  RocksDBSyncThread(RocksDBEngine& engine, std::chrono::milliseconds interval,
                     std::chrono::milliseconds delayThreshold);
 
   ~RocksDBSyncThread();
@@ -84,5 +82,3 @@ class RocksDBSyncThread final : public Thread {
   arangodb::basics::ConditionVariable _condition;
 };
 }  // namespace arangodb
-
-#endif

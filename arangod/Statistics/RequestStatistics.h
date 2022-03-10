@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_STATISTICS_REQUEST_STATISTICS_H
-#define ARANGOD_STATISTICS_REQUEST_STATISTICS_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -158,7 +157,7 @@ class RequestStatistics {
 
     double ELAPSED_WHILE_QUEUED() const {
       if (_stat != nullptr) {
-        return  _stat->_queueEnd - _stat->_queueStart;
+        return _stat->_queueEnd - _stat->_queueStart;
       } else {
         return 0.0;
       }
@@ -173,7 +172,7 @@ class RequestStatistics {
     std::string timingsCsv() const;
 
    private:
-     RequestStatistics* _stat;
+    RequestStatistics* _stat;
   };
 
   static Item acquire();
@@ -186,7 +185,8 @@ class RequestStatistics {
     statistics::Distribution bytesReceived;
   };
 
-  static void getSnapshot(Snapshot& snapshot, stats::RequestStatisticsSource source);
+  static void getSnapshot(Snapshot& snapshot,
+                          stats::RequestStatisticsSource source);
 
  private:
   static void process(RequestStatistics*);
@@ -236,5 +236,3 @@ class RequestStatistics {
   bool _superuser;
 };
 }  // namespace arangodb
-
-#endif

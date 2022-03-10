@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_ALGOS_LINERANK_H
-#define ARANGODB_PREGEL_ALGOS_LINERANK_H 1
+#pragma once
 
 #include <velocypack/Slice.h>
 #include "Pregel/Algorithm.h"
@@ -57,11 +56,11 @@ struct LineRank : public SimpleAlgorithm<float, float, float> {
   WorkerContext* workerContext(velocypack::Slice params) const override;
   MasterContext* masterContext(velocypack::Slice) const override;
 
-  VertexComputation<float, float, float>* createComputation(WorkerConfig const*) const override;
+  VertexComputation<float, float, float>* createComputation(
+      WorkerConfig const*) const override;
 
   IAggregator* aggregator(std::string const& name) const override;
 };
 }  // namespace algos
 }  // namespace pregel
 }  // namespace arangodb
-#endif

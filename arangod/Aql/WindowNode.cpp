@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -38,67 +38,87 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Value.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
 
-WindowBounds::WindowBounds(Type type,
-                           AqlValue&& preceding,
+WindowBounds::WindowBounds(Type type, AqlValue&& preceding,
                            AqlValue&& following)
     : _type(type) {
-  auto g = scopeGuard([&] {
+  auto g = scopeGuard([&]() noexcept {
     preceding.destroy();
     following.destroy();
   });
-        
+
   if (Type::Row == type) {
     auto validate = [&](AqlValue& val) -> int64_t {
       if (val.isNumber()) {
         int64_t v = val.toInt64();
-        if (v < 0) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                         "WINDOW row spec is invalid");
+        if (v >= 0) {
+          return v;
         }
-        return v;
-      }
-      if (val.isString() && (val.slice().isEqualString("unbounded") ||
-                             val.slice().isEqualString("inf"))) {
+      } else if (val.isString() && (val.slice().isEqualString("unbounded") ||
+                                    val.slice().isEqualString("inf"))) {
         return std::numeric_limits<int64_t>::max();
-      }
-      if (val.isNone()) {
+      } else if (val.isNone()) {
         return 0;
       }
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                     "WINDOW row spec is invalid");
+                                     "WINDOW row spec is invalid; bounds must "
+                                     "be positive integers or \"unbounded\"");
     };
     _numPrecedingRows = validate(preceding);
     _numFollowingRows = validate(following);
     return;
   }
-      
+
   if (Type::Range == type) {
-    if (!(preceding.isString() && following.isString()) &&
-        !(preceding.isNumber() && following.isNumber())) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
-                                     "WINDOW range spec is invalid");
+    auto checkType = [](AqlValue const& val) {
+      if (!val.isString() && !val.isNumber() && !val.isNone()) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                       "WINDOW range spec is invalid");
+      }
+    };
+    checkType(preceding);
+    checkType(following);
+
+    if ((preceding.isNone() == following.isNone()) &&
+        (preceding.isString() != following.isString())) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_BAD_PARAMETER,
+          "WINDOW range spec is invalid; bounds must be of the same type - "
+          "either both are numeric values, or both are ISO 8601 duration "
+          "strings");
     }
 
-    if (preceding.isString()) {
+    if (preceding.isString() || following.isString()) {
       _rangeType = RangeType::Date;
-      TRI_ASSERT(following.isString());
-      if (!basics::parseIsoDuration(preceding.slice().stringRef(), _precedingDuration)) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                       "WINDOW bound 'preceding' is not a "
-                                       "valid ISO 8601 duration string");
+      if (preceding.isString()) {
+        if (!basics::parseIsoDuration(preceding.slice().stringView(),
+                                      _precedingDuration)) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+              TRI_ERROR_BAD_PARAMETER,
+              "WINDOW range spec is invalid; 'preceding' is not a "
+              "valid ISO 8601 duration string");
+        }
+      } else {
+        TRI_ASSERT(preceding.isNone());
       }
-      if (!basics::parseIsoDuration(following.slice().stringRef(), _followingDuration)) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                       "WINDOW bound 'following' is not a "
-                                       "valid ISO 8601 duration string");
+
+      if (following.isString()) {
+        if (!basics::parseIsoDuration(following.slice().stringView(),
+                                      _followingDuration)) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+              TRI_ERROR_BAD_PARAMETER,
+              "WINDOW range spec is invalid; 'following' is not a "
+              "valid ISO 8601 duration string");
+        }
+      } else {
+        TRI_ASSERT(following.isNone());
       }
       return;
     }
+
     _rangeType = RangeType::Numeric;
     _precedingNumber = preceding.toDouble();
     _followingNumber = following.toDouble();
@@ -106,8 +126,8 @@ WindowBounds::WindowBounds(Type type,
 }
 
 WindowBounds::WindowBounds(Type t, VPackSlice slice)
-  : WindowBounds(t, AqlValue(slice.get("following")),
-                 AqlValue(slice.get("preceding"))) {}
+    : WindowBounds(t, AqlValue(slice.get("following")),
+                   AqlValue(slice.get("preceding"))) {}
 
 WindowBounds::~WindowBounds() = default;
 
@@ -139,7 +159,7 @@ bool WindowBounds::needsFollowingRows() const {
            _followingDuration.minutes > 0 || _followingDuration.seconds > 0 ||
            _followingDuration.milliseconds > 0;
   }
-  TRI_ASSERT(_rangeType == RangeType::Numeric)
+  TRI_ASSERT(_rangeType == RangeType::Numeric);
   return _followingNumber > 0.0;
 }
 
@@ -162,7 +182,7 @@ bool parameterToTimePoint(AqlValue const& value, QueryWarnings& warnings,
   }
   // TODO is there a way to properly support ISO datestrings ?
   /*else if (value.isString()) {
-    if (!basics::parseDateTime(value.slice().stringRef(), tp)) {
+    if (!basics::parseDateTime(value.slice().stringView(), tp)) {
       q.warnings().registerWarning(TRI_ERROR_QUERY_INVALID_DATE_VALUE,
                                    "range value is not a valid ISO 8601 date
   time string"); return false;
@@ -173,9 +193,9 @@ bool parameterToTimePoint(AqlValue const& value, QueryWarnings& warnings,
   return false;
 }
 
-tp_sys_clock_ms addOrSubtractDate(tp_sys_clock_ms tp,
-                                  arangodb::basics::ParsedDuration const& parsed,
-                                  bool isSubtract) {
+tp_sys_clock_ms addOrSubtractDate(
+    tp_sys_clock_ms tp, arangodb::basics::ParsedDuration const& parsed,
+    bool isSubtract) {
   date::year_month_day ymd{date::floor<date::days>(tp)};
   auto day_time = date::make_time(tp - date::sys_days(ymd));
 
@@ -207,7 +227,8 @@ tp_sys_clock_ms addOrSubtractDate(tp_sys_clock_ms tp,
 }
 }  // namespace
 
-WindowBounds::Row WindowBounds::calcRow(AqlValue const& input, QueryWarnings& w) const {
+WindowBounds::Row WindowBounds::calcRow(AqlValue const& input,
+                                        QueryWarnings& w) const {
   using namespace date;
   TRI_ASSERT(_type == Type::Range);
 
@@ -218,11 +239,14 @@ WindowBounds::Row WindowBounds::calcRow(AqlValue const& input, QueryWarnings& w)
     }
 
     auto lowerTP = addOrSubtractDate(tp, _precedingDuration, /*subtract*/ true);
-    auto upperTP = addOrSubtractDate(tp, _followingDuration, /*subtract*/ false);
+    auto upperTP =
+        addOrSubtractDate(tp, _followingDuration, /*subtract*/ false);
 
     auto val = std::chrono::duration<double>(tp.time_since_epoch()).count();
-    auto low = std::chrono::duration<double>(lowerTP.time_since_epoch()).count();
-    auto upper = std::chrono::duration<double>(upperTP.time_since_epoch()).count();
+    auto low =
+        std::chrono::duration<double>(lowerTP.time_since_epoch()).count();
+    auto upper =
+        std::chrono::duration<double>(upperTP.time_since_epoch()).count();
 
     return {val, low, upper, /*valid*/ true};
   }
@@ -241,26 +265,55 @@ WindowBounds::Row WindowBounds::calcRow(AqlValue const& input, QueryWarnings& w)
 
 void WindowBounds::toVelocyPack(VPackBuilder& b) const {
   switch (_type) {
-    case Type::Row:
-      b.add("preceding", VPackValue(_numPrecedingRows));
-      b.add("following", VPackValue(_numFollowingRows));
+    case Type::Row: {
+      auto translate = [](int64_t v) {
+        if (v == std::numeric_limits<int64_t>::max()) {
+          return VPackValue("unbounded");
+        }
+        return VPackValue(v);
+      };
+      b.add("preceding", translate(_numPrecedingRows));
+      b.add("following", translate(_numFollowingRows));
       break;
-      
+    }
     case Type::Range:
       if (_rangeType == RangeType::Numeric) {
         b.add("preceding", VPackValue(_precedingNumber));
         b.add("following", VPackValue(_followingNumber));
       } else {
         auto makeDuration = [](basics::ParsedDuration const& duration) {
-          std::string p = "P";
-          p.append(std::to_string(duration.years)).append("Y");
-          p.append(std::to_string(duration.months)).append("M");
-          p.append(std::to_string(duration.days)).append("DT");
-          p.append(std::to_string(duration.hours)).append("H");
-          p.append(std::to_string(duration.minutes)).append("M");
-          p.append(std::to_string(duration.seconds)).append(".");
-          p.append(std::to_string(duration.milliseconds)).append("S");
-          return p;
+          std::string result = "P";
+          auto append = [&result](int v, char suffix) {
+            if (v != 0) {
+              result.append(std::to_string(v)).push_back(suffix);
+            }
+          };
+          append(duration.years, 'Y');
+          append(duration.months, 'M');
+          append(duration.weeks, 'W');
+          append(duration.days, 'D');
+          if (duration.hours != 0 || duration.minutes != 0 ||
+              duration.seconds != 0 || duration.milliseconds != 0) {
+            result.push_back('T');
+            append(duration.hours, 'H');
+            append(duration.minutes, 'M');
+            if (duration.milliseconds == 0) {
+              append(duration.seconds, 'S');
+            } else {
+              result.append(std::to_string(duration.seconds)).push_back('.');
+              auto ms = std::to_string(duration.milliseconds);
+              // parseIsoDuration already limits the number of decimals in
+              // milliseconds
+              TRI_ASSERT(ms.size() <= 3);
+              result.append(3 - ms.size(), '0').append(ms).push_back('S');
+            }
+          }
+          if (result == "P") {
+            // we have an "empty" duration
+            // -> create the shortest ISO string representing such
+            result.append("0D");
+          }
+          return result;
         };
         b.add("preceding", VPackValue(makeDuration(_precedingDuration)));
         b.add("following", VPackValue(makeDuration(_followingDuration)));
@@ -277,7 +330,8 @@ WindowNode::WindowNode(ExecutionPlan* plan, ExecutionNodeId id,
       _rangeVariable(rangeVariable),
       _aggregateVariables(aggregateVariables) {}
 
-WindowNode::WindowNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base,
+WindowNode::WindowNode(ExecutionPlan* plan,
+                       arangodb::velocypack::Slice const& base,
                        WindowBounds&& b, Variable const* rangeVariable,
                        std::vector<AggregateVarInfo> const& aggregateVariables)
     : ExecutionNode(plan, base),
@@ -287,12 +341,7 @@ WindowNode::WindowNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& b
 
 WindowNode::~WindowNode() = default;
 
-/// @brief toVelocyPack, for CollectNode
-void WindowNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
-                                    std::unordered_set<ExecutionNode const*>& seen) const {
-  // call base class method
-  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags, seen);
-
+void WindowNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
   if (_rangeVariable) {
     nodes.add(VPackValue("rangeVariable"));
     _rangeVariable->toVelocyPack(nodes);
@@ -306,21 +355,21 @@ void WindowNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
       VPackObjectBuilder obj(&nodes);
       nodes.add(VPackValue("outVariable"));
       aggregateVariable.outVar->toVelocyPack(nodes);
-      nodes.add(VPackValue("inVariable"));
-      aggregateVariable.inVar->toVelocyPack(nodes);
+      if (aggregateVariable.inVar) {
+        nodes.add(VPackValue("inVariable"));
+        aggregateVariable.inVar->toVelocyPack(nodes);
+      }
       nodes.add("type", VPackValue(aggregateVariable.type));
     }
   }
 
   _bounds.toVelocyPack(nodes);
-
-  // And close it:
-  nodes.close();
 }
 
-void WindowNode::calcAggregateRegisters(std::vector<std::pair<RegisterId, RegisterId>>& aggregateRegisters,
-                                        RegIdSet& readableInputRegisters,
-                                        RegIdSet& writeableOutputRegisters) const {
+void WindowNode::calcAggregateRegisters(
+    std::vector<std::pair<RegisterId, RegisterId>>& aggregateRegisters,
+    RegIdSet& readableInputRegisters,
+    RegIdSet& writeableOutputRegisters) const {
   for (auto const& p : _aggregateVariables) {
     // We know that planRegisters() has been run, so
     // getPlanNode()->_registerPlan is set up
@@ -345,16 +394,18 @@ void WindowNode::calcAggregateRegisters(std::vector<std::pair<RegisterId, Regist
   TRI_ASSERT(aggregateRegisters.size() == _aggregateVariables.size());
 }
 
-void WindowNode::calcAggregateTypes(std::vector<std::unique_ptr<Aggregator>>& aggregateTypes) const {
+void WindowNode::calcAggregateTypes(
+    std::vector<std::unique_ptr<Aggregator>>& aggregateTypes) const {
   for (auto const& p : _aggregateVariables) {
-    aggregateTypes.emplace_back(
-        Aggregator::fromTypeString(&_plan->getAst()->query().vpackOptions(), p.type));
+    aggregateTypes.emplace_back(Aggregator::fromTypeString(
+        &_plan->getAst()->query().vpackOptions(), p.type));
   }
 }
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> WindowNode::createBlock(
-    ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
+    ExecutionEngine& engine,
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
 
@@ -372,7 +423,8 @@ std::unique_ptr<ExecutionBlock> WindowNode::createBlock(
 
   // calculate the aggregate registers
   std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters;
-  calcAggregateRegisters(aggregateRegisters, readableInputRegisters, writeableOutputRegisters);
+  calcAggregateRegisters(aggregateRegisters, readableInputRegisters,
+                         writeableOutputRegisters);
 
   TRI_ASSERT(aggregateRegisters.size() == _aggregateVariables.size());
 
@@ -382,21 +434,20 @@ std::unique_ptr<ExecutionBlock> WindowNode::createBlock(
   std::vector<std::string> aggregateTypes;
   std::transform(_aggregateVariables.begin(), _aggregateVariables.end(),
                  std::back_inserter(aggregateTypes),
-                 [](auto& it) { return it.type; });
+                 [](auto const& it) { return it.type; });
   TRI_ASSERT(aggregateTypes.size() == _aggregateVariables.size());
 
-  auto executorInfos =
-      WindowExecutorInfos(_bounds, rangeRegister, std::move(aggregateTypes),
-                          std::move(aggregateRegisters), engine.getQuery().warnings(),
-                          &_plan->getAst()->query().vpackOptions());
+  auto executorInfos = WindowExecutorInfos(
+      _bounds, rangeRegister, std::move(aggregateTypes),
+      std::move(aggregateRegisters), engine.getQuery().warnings(),
+      &_plan->getAst()->query().vpackOptions());
 
   if (_rangeVariable == nullptr && _bounds.unboundedPreceding()) {
     return std::make_unique<ExecutionBlockImpl<AccuWindowExecutor>>(
         &engine, this, std::move(registerInfos), std::move(executorInfos));
   }
-  return std::make_unique<ExecutionBlockImpl<WindowExecutor>>(&engine, this,
-                                                              std::move(registerInfos),
-                                                              std::move(executorInfos));
+  return std::make_unique<ExecutionBlockImpl<WindowExecutor>>(
+      &engine, this, std::move(registerInfos), std::move(executorInfos));
 }
 
 /// @brief clone ExecutionNode recursively
@@ -411,7 +462,9 @@ ExecutionNode* WindowNode::clone(ExecutionPlan* plan, bool withDependencies,
 
     for (auto& it : _aggregateVariables) {
       auto out = plan->getAst()->variables()->createVariable(it.outVar);
-      auto in = plan->getAst()->variables()->createVariable(it.inVar);
+      auto in = it.inVar == nullptr
+                    ? nullptr
+                    : plan->getAst()->variables()->createVariable(it.inVar);
       aggregateVariables.emplace_back(AggregateVarInfo{out, in, it.type});
     }
   }
@@ -422,17 +475,30 @@ ExecutionNode* WindowNode::clone(ExecutionPlan* plan, bool withDependencies,
   return cloneHelper(std::move(c), withDependencies, withProperties);
 }
 
+/// @brief replaces variables in the internals of the execution node
+/// replacements are { old variable id => new variable }
+void WindowNode::replaceVariables(
+    std::unordered_map<VariableId, Variable const*> const& replacements) {
+  _rangeVariable = Variable::replace(_rangeVariable, replacements);
+  for (auto& variable : _aggregateVariables) {
+    variable.inVar = Variable::replace(variable.inVar, replacements);
+  }
+}
+
 /// @brief getVariablesUsedHere, modifying the set in-place
 void WindowNode::getVariablesUsedHere(VarSet& vars) const {
   if (_rangeVariable) {
     vars.emplace(_rangeVariable);
   }
   for (auto const& p : _aggregateVariables) {
-    vars.emplace(p.inVar);
+    if (p.inVar) {
+      vars.emplace(p.inVar);
+    }
   }
 }
 
-void WindowNode::setAggregateVariables(std::vector<AggregateVarInfo> const& aggregateVariables) {
+void WindowNode::setAggregateVariables(
+    std::vector<AggregateVarInfo> const& aggregateVariables) {
   _aggregateVariables = aggregateVariables;
 }
 
@@ -441,8 +507,16 @@ CostEstimate WindowNode::estimateCost() const {
   // we never return more rows than above
   CostEstimate estimate = _dependencies.at(0)->getCost();
   if (_rangeVariable == nullptr) {
-    int64_t numRows = 1 + _bounds.numPrecedingRows() + _bounds.numFollowingRows();
-    estimate.estimatedCost += double(numRows * numRows) * _aggregateVariables.size();
+    uint64_t numRows = 1;
+    if (_bounds.unboundedPreceding()) {
+      numRows += estimate.estimatedNrItems;
+    } else {
+      numRows += std::min<uint64_t>(estimate.estimatedNrItems,
+                                    _bounds.numPrecedingRows());
+    }
+    numRows += _bounds.numFollowingRows();
+    estimate.estimatedCost +=
+        double(numRows) * double(numRows) * _aggregateVariables.size();
   } else {  // guestimate
     estimate.estimatedCost += 4 * _aggregateVariables.size();
   }

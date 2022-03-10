@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,30 +21,31 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_IRESEARCH__IRESEARCH_IDENTITY_ANALYZER
-#define ARANGODB_IRESEARCH__IRESEARCH_IDENTITY_ANALYZER 1
+#pragma once
 
 #include "analysis/analyzer.hpp"
 #include "analysis/token_attributes.hpp"
 #include "velocypack/Slice.h"
-#include "velocypack/velocypack-aliases.h"
 
 namespace arangodb {
 namespace iresearch {
 
 class IdentityAnalyzer final : public irs::analysis::analyzer {
  public:
-  static constexpr irs::string_ref type_name() noexcept {
-    return "identity";
-  }
+  static constexpr irs::string_ref type_name() noexcept { return "identity"; }
 
-  static bool normalize(const irs::string_ref& /*args*/, std::string& out);
+  static bool normalize(irs::string_ref /*args*/, std::string& out);
 
-  static ptr make(irs::string_ref const& /*args*/);
+  static ptr make(irs::string_ref /*args*/);
+
+  static bool normalize_json(irs::string_ref /*args*/, std::string& out);
+
+  static ptr make_json(irs::string_ref /*args*/);
 
   IdentityAnalyzer() noexcept;
 
-  virtual irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override;
+  virtual irs::attribute* get_mutable(
+      irs::type_info::type_id type) noexcept override;
 
   virtual bool next() noexcept override {
     auto const empty = _empty;
@@ -54,7 +55,7 @@ class IdentityAnalyzer final : public irs::analysis::analyzer {
     return !empty;
   }
 
-  virtual bool reset(irs::string_ref const& data) noexcept override {
+  virtual bool reset(irs::string_ref data) noexcept override {
     _empty = false;
     _term.value = irs::ref_cast<irs::byte_type>(data);
 
@@ -65,10 +66,7 @@ class IdentityAnalyzer final : public irs::analysis::analyzer {
   irs::term_attribute _term;
   irs::increment _inc;
   bool _empty;
-}; // IdentityAnalyzer
+};  // IdentityAnalyzer
 
-} // iresearch
-} // arangodb
-
-#endif // ARANGODB_IRESEARCH__IRESEARCH_IDENTITY_ANALYZER
-
+}  // namespace iresearch
+}  // namespace arangodb

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,16 +21,25 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_APPLICATION_FEATURES_TEMP_FEATURE_H
-#define ARANGODB_APPLICATION_FEATURES_TEMP_FEATURE_H 1
+#pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
+namespace application_features {
+class GreetingsFeaturePhase;
+}
 
 class TempFeature final : public application_features::ApplicationFeature {
  public:
-  TempFeature(application_features::ApplicationServer& server, std::string const& appname);
+  static constexpr std::string_view name() noexcept { return "Temp"; }
+
+  template<typename Server>
+  TempFeature(Server& server, std::string const& appname)
+      : ApplicationFeature{server, *this}, _path(), _appname(appname) {
+    setOptional(false);
+    startsAfter<application_features::GreetingsFeaturePhase, Server>();
+  }
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -45,5 +54,3 @@ class TempFeature final : public application_features::ApplicationFeature {
 };
 
 }  // namespace arangodb
-
-#endif

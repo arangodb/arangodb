@@ -22,8 +22,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_TEST_ICU_HELPER
-#define ARANGODB_TEST_ICU_HELPER 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -36,5 +35,3 @@ struct IcuInitializer {
   static void* icuDataPtr;
   static bool initialized;
 };
-
-#endif

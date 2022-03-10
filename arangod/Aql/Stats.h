@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,8 +24,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_STATS_H
-#define ARANGOD_AQL_STATS_H 1
+#pragma once
 
 #include "Aql/ExecutionStats.h"
 
@@ -37,7 +36,7 @@ namespace aql {
 // no-op statistics for all Executors that don't have custom stats.
 class NoStats {
  public:
-  void operator+= (NoStats const&) {}
+  void operator+=(NoStats const&) noexcept {}
 };
 
 inline ExecutionStats& operator+=(ExecutionStats& stats, NoStats const&) {
@@ -55,10 +54,8 @@ class CountStats {
   void incrCounted() noexcept { _counted++; }
 
   std::size_t getCounted() const noexcept { return _counted; }
-  
-  void operator+= (CountStats const& stats) {
-    _counted += stats._counted;
-  }
+
+  void operator+=(CountStats const& stats) { _counted += stats._counted; }
 
  private:
   std::size_t _counted;
@@ -81,8 +78,8 @@ class FilterStats {
   void incrFiltered() noexcept { _filtered++; }
 
   std::size_t getFiltered() const noexcept { return _filtered; }
-  
-  void operator+= (FilterStats const& stats) {
+
+  void operator+=(FilterStats const& stats) noexcept {
     _filtered += stats._filtered;
   }
 
@@ -96,18 +93,21 @@ inline ExecutionStats& operator+=(ExecutionStats& executionStats,
   return executionStats;
 }
 
+// MaterializeExecutor only tracks the number of filtered rows, so we
+// can reuse the FilterStats for it.
+using MaterializeStats = FilterStats;
+
 class EnumerateCollectionStats {
  public:
-  EnumerateCollectionStats() noexcept 
-    : _scannedFull(0), _filtered(0) {}
+  EnumerateCollectionStats() noexcept : _scannedFull(0), _filtered(0) {}
 
   void incrScanned(size_t scanned) noexcept { _scannedFull += scanned; }
   void incrFiltered(size_t filtered) noexcept { _filtered += filtered; }
 
   std::size_t getScanned() const noexcept { return _scannedFull; }
   std::size_t getFiltered() const noexcept { return _filtered; }
-  
-  void operator+= (EnumerateCollectionStats const& stats) {
+
+  void operator+=(EnumerateCollectionStats const& stats) noexcept {
     _scannedFull += stats._scannedFull;
     _filtered += stats._filtered;
   }
@@ -117,8 +117,9 @@ class EnumerateCollectionStats {
   std::size_t _filtered;
 };
 
-inline ExecutionStats& operator+=(ExecutionStats& executionStats,
-                                  EnumerateCollectionStats const& enumerateCollectionStats) noexcept {
+inline ExecutionStats& operator+=(
+    ExecutionStats& executionStats,
+    EnumerateCollectionStats const& enumerateCollectionStats) noexcept {
   executionStats.scannedFull += enumerateCollectionStats.getScanned();
   executionStats.filtered += enumerateCollectionStats.getFiltered();
   return executionStats;
@@ -126,31 +127,46 @@ inline ExecutionStats& operator+=(ExecutionStats& executionStats,
 
 class IndexStats {
  public:
-  IndexStats() noexcept : _scannedIndex(0), _filtered(0) {}
+  IndexStats() noexcept
+      : _scannedIndex(0),
+        _filtered(0),
+        _cursorsCreated(0),
+        _cursorsRearmed(0) {}
 
   void incrScanned() noexcept { _scannedIndex++; }
   void incrScanned(size_t value) noexcept { _scannedIndex += value; }
-  
+
   void incrFiltered() noexcept { _filtered++; }
   void incrFiltered(size_t value) noexcept { _filtered += value; }
 
+  void incrCursorsCreated(size_t value) noexcept { _cursorsCreated += value; }
+  void incrCursorsRearmed(size_t value) noexcept { _cursorsRearmed += value; }
+
   std::size_t getScanned() const noexcept { return _scannedIndex; }
   std::size_t getFiltered() const noexcept { return _filtered; }
-  
-  void operator+= (IndexStats const& stats) {
+  std::size_t getCursorsCreated() const noexcept { return _cursorsCreated; }
+  std::size_t getCursorsRearmed() const noexcept { return _cursorsRearmed; }
+
+  void operator+=(IndexStats const& stats) noexcept {
     _scannedIndex += stats._scannedIndex;
     _filtered += stats._filtered;
+    _cursorsCreated += stats._cursorsCreated;
+    _cursorsRearmed += stats._cursorsRearmed;
   }
 
  private:
   std::size_t _scannedIndex;
   std::size_t _filtered;
+  std::size_t _cursorsCreated;
+  std::size_t _cursorsRearmed;
 };
 
 inline ExecutionStats& operator+=(ExecutionStats& executionStats,
                                   IndexStats const& indexStats) noexcept {
   executionStats.scannedIndex += indexStats.getScanned();
   executionStats.filtered += indexStats.getFiltered();
+  executionStats.cursorsCreated += indexStats.getCursorsCreated();
+  executionStats.cursorsRearmed += indexStats.getCursorsRearmed();
   return executionStats;
 }
 
@@ -175,8 +191,8 @@ class ModificationStats {
   }
   void incrWritesIgnored() noexcept { _writesIgnored++; }
   std::size_t getWritesIgnored() const noexcept { return _writesIgnored; }
-  
-  void operator+= (ModificationStats const& stats) {
+
+  void operator+=(ModificationStats const& stats) noexcept {
     _writesExecuted += stats._writesExecuted;
     _writesIgnored += stats._writesIgnored;
   }
@@ -186,8 +202,9 @@ class ModificationStats {
   std::size_t _writesIgnored;
 };
 
-inline ExecutionStats& operator+=(ExecutionStats& executionStats,
-                                  ModificationStats const& filterStats) noexcept {
+inline ExecutionStats& operator+=(
+    ExecutionStats& executionStats,
+    ModificationStats const& filterStats) noexcept {
   executionStats.writesExecuted += filterStats.getWritesExecuted();
   executionStats.writesIgnored += filterStats.getWritesIgnored();
   return executionStats;
@@ -224,8 +241,8 @@ class SingleRemoteModificationStats {
   }
   void incrScannedIndex() noexcept { _scannedIndex++; }
   std::size_t getScannedIndex() const noexcept { return _scannedIndex; }
-  
-  void operator+= (SingleRemoteModificationStats const& stats) {
+
+  void operator+=(SingleRemoteModificationStats const& stats) noexcept {
     _writesExecuted += stats._writesExecuted;
     _writesIgnored += stats._writesIgnored;
     _scannedIndex += stats._scannedIndex;
@@ -237,8 +254,9 @@ class SingleRemoteModificationStats {
   std::size_t _scannedIndex;
 };
 
-inline ExecutionStats& operator+=(ExecutionStats& executionStats,
-                                  SingleRemoteModificationStats const& filterStats) noexcept {
+inline ExecutionStats& operator+=(
+    ExecutionStats& executionStats,
+    SingleRemoteModificationStats const& filterStats) noexcept {
   executionStats.writesExecuted += filterStats.getWritesExecuted();
   executionStats.writesIgnored += filterStats.getWritesIgnored();
   executionStats.scannedIndex += filterStats.getScannedIndex();
@@ -247,4 +265,3 @@ inline ExecutionStats& operator+=(ExecutionStats& executionStats,
 
 }  // namespace aql
 }  // namespace arangodb
-#endif

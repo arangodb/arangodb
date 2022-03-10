@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_ALGOS_SCC_H
-#define ARANGODB_PREGEL_ALGOS_SCC_H 1
+#pragma once
 
 #include "Pregel/Algorithm.h"
 #include "Pregel/CommonFormats.h"
@@ -47,17 +46,18 @@ namespace algos {
 
 struct SCC : public SimpleAlgorithm<SCCValue, int8_t, SenderMessage<uint64_t>> {
  public:
-  explicit SCC(application_features::ApplicationServer& server, VPackSlice userParams)
-      : SimpleAlgorithm<SCCValue, int8_t, SenderMessage<uint64_t>>(server, "SCC", userParams) {
-  }
+  explicit SCC(application_features::ApplicationServer& server,
+               VPackSlice userParams)
+      : SimpleAlgorithm<SCCValue, int8_t, SenderMessage<uint64_t>>(
+            server, "SCC", userParams) {}
 
   GraphFormat<SCCValue, int8_t>* inputFormat() const override;
   MessageFormat<SenderMessage<uint64_t>>* messageFormat() const override {
     return new SenderMessageFormat<uint64_t>();
   }
 
-  VertexComputation<SCCValue, int8_t, SenderMessage<uint64_t>>* createComputation(
-      WorkerConfig const*) const override;
+  VertexComputation<SCCValue, int8_t, SenderMessage<uint64_t>>*
+  createComputation(WorkerConfig const*) const override;
 
   MasterContext* masterContext(VPackSlice userParams) const override;
 
@@ -66,4 +66,3 @@ struct SCC : public SimpleAlgorithm<SCCValue, int8_t, SenderMessage<uint64_t>> {
 }  // namespace algos
 }  // namespace pregel
 }  // namespace arangodb
-#endif

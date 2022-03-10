@@ -11,4 +11,4 @@ exposedBy:
   - dbserver
 description: |
   The amount of document removal based marker operations on a
-  follower dbserver.
+  follower DB-Server.

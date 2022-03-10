@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,15 +21,14 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_TTL_HANDLER_H
-#define ARANGOD_REST_HANDLER_TTL_HANDLER_H 1
+#pragma once
 
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
 namespace arangodb {
 class RestTtlHandler : public arangodb::RestVocbaseBaseHandler {
  public:
-  RestTtlHandler(application_features::ApplicationServer&, GeneralRequest*, GeneralResponse*);
+  RestTtlHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
 
  public:
   char const* name() const override final { return "RestTtlHandler"; }
@@ -41,5 +40,3 @@ class RestTtlHandler : public arangodb::RestVocbaseBaseHandler {
   RestStatus handleProperties();
 };
 }  // namespace arangodb
-
-#endif

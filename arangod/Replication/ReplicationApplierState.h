@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REPLICATION_REPLICATION_APPLIER_STATE_H
-#define ARANGOD_REPLICATION_REPLICATION_APPLIER_STATE_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Basics/StaticStrings.h"
@@ -33,7 +32,6 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Value.h>
-#include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
 
@@ -75,7 +73,8 @@ struct ReplicationApplierState {
 
   /// performs initial sync or running tailing syncer
   bool isActive() const {
-    return (_phase == ActivityPhase::INITIAL || _phase == ActivityPhase::TAILING);
+    return (_phase == ActivityPhase::INITIAL ||
+            _phase == ActivityPhase::TAILING);
   }
 
   /// performs initial sync or running tailing syncer
@@ -155,5 +154,3 @@ struct ReplicationApplierState {
 };
 
 }  // namespace arangodb
-
-#endif

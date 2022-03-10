@@ -41,7 +41,7 @@ not time out waiting for a lock.
 optional arguments passed to *action*.
 
 @RESTBODYPARAM{maxTransactionSize,integer,optional,int64}
-Transaction size limit in bytes. Honored by the RocksDB storage engine only.
+Transaction size limit in bytes.
 
 @RESTDESCRIPTION
 The transaction description must be passed in the body of the POST request.

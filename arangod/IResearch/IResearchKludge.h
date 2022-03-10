@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,21 +22,18 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_IRESEARCH__IRESEARCH_KLUDGE_H
-#define ARANGOD_IRESEARCH__IRESEARCH_KLUDGE_H 1
+#pragma once
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief common place for all kludges and temporary workarounds required for
 ///        integration if the IResearch library with ArangoDB
-///        NOTE1: all functionality in this file is not nesesarily optimal
+///        NOTE1: all functionality in this file is not necessarily optimal
 ///        NOTE2: all functionality in this file is to be considered deprecated
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IResearchLinkMeta.h"
 
-namespace arangodb {
-namespace iresearch {
-namespace kludge {
+namespace arangodb::iresearch::kludge {
 
 void mangleType(std::string& name);
 void mangleAnalyzer(std::string& name);
@@ -44,13 +41,9 @@ void mangleAnalyzer(std::string& name);
 void mangleNull(std::string& name);
 void mangleBool(std::string& name);
 void mangleNumeric(std::string& name);
+void mangleString(std::string& name);
 
-void mangleField(
-  std::string& name,
-  iresearch::FieldMeta::Analyzer const& analyzer);
+void mangleField(std::string& name, bool isSearchFilter,
+                 iresearch::FieldMeta::Analyzer const& analyzer);
 
-}  // namespace kludge
-}  // namespace iresearch
-}  // namespace arangodb
-
-#endif
+}  // namespace arangodb::iresearch::kludge

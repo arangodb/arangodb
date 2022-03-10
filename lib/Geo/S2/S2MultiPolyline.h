@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef UTIL_GEOMETRY_S2MULTIPOLYLINE_H__
-#define UTIL_GEOMETRY_S2MULTIPOLYLINE_H__
+#pragma once
 
 #include <s2/s2polyline.h>
 #include <s2/s2region.h>
@@ -79,5 +78,3 @@ class S2MultiPolyline : public S2Region {
   // would be relatively expensive (due to division by sizeof(S2Point) == 24).
   std::vector<S2Polyline> lines_;
 };
-
-#endif  // UTIL_GEOMETRY_S2POLYLINE_H__

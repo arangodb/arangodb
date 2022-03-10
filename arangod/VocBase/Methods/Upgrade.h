@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOC_BASE_API_UPGRADE_H
-#define ARANGOD_VOC_BASE_API_UPGRADE_H 1
+#pragma once
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -40,7 +39,8 @@ struct UpgradeResult {
   UpgradeResult() : type(VersionResult::INVALID), _result() {}
   UpgradeResult(ErrorCode err, VersionResult::StatusCode s)
       : type(s), _result(err) {}
-  UpgradeResult(ErrorCode err, std::string_view msg, VersionResult::StatusCode s)
+  UpgradeResult(ErrorCode err, std::string_view msg,
+                VersionResult::StatusCode s)
       : type(s), _result(err, msg) {}
   VersionResult::StatusCode type;
 
@@ -81,7 +81,8 @@ struct Upgrade {
     CLUSTER_DB_SERVER_LOCAL = (1u << 10)
   };
 
-  typedef std::function<bool(TRI_vocbase_t&, velocypack::Slice const&)> TaskFunction;
+  typedef std::function<bool(TRI_vocbase_t&, velocypack::Slice const&)>
+      TaskFunction;
   struct Task {
     std::string name;
     std::string description;
@@ -104,7 +105,8 @@ struct Upgrade {
   /// @brief executed on startup for non-coordinators
   /// @param upgrade  Perform an actual upgrade
   /// Corresponds to upgrade-database.js
-  static UpgradeResult startup(TRI_vocbase_t& vocbase, bool upgrade, bool ignoreFileErrors);
+  static UpgradeResult startup(TRI_vocbase_t& vocbase, bool upgrade,
+                               bool ignoreFileErrors);
 
   /// @brief executed on startup for coordinators
   /// @param upgrade  Perform an actual upgrade
@@ -114,6 +116,13 @@ struct Upgrade {
  private:
   /// @brief register tasks, only run once on startup
   static void registerTasks(UpgradeFeature&);
+
+#ifdef USE_ENTERPRISE
+  // Like RegisterTasks, but only dedicated to enterprise based
+  // upgrade tasks. Implementation in closed Enterprise Source
+  static void registerTasksEE(UpgradeFeature&);
+#endif
+
   static UpgradeResult runTasks(TRI_vocbase_t& vocbase, VersionResult& vinfo,
                                 arangodb::velocypack::Slice const& params,
                                 uint32_t clusterFlag, uint32_t dbFlag);
@@ -143,5 +152,3 @@ struct Upgrade {
 
 }  // namespace methods
 }  // namespace arangodb
-
-#endif

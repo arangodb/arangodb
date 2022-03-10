@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,12 +31,12 @@
 
 namespace arangodb::cache {
 
-BucketState::BucketState() : _state(0) {}
+BucketState::BucketState() noexcept : _state(0) {}
 
-BucketState::BucketState(BucketState const& other)
+BucketState::BucketState(BucketState const& other) noexcept
     : _state(other._state.load()) {}
 
-BucketState& BucketState::operator=(BucketState const& other) {
+BucketState& BucketState::operator=(BucketState const& other) noexcept {
   if (this != &other) {
     _state = other._state.load();
   }
@@ -44,23 +44,24 @@ BucketState& BucketState::operator=(BucketState const& other) {
   return *this;
 }
 
-bool BucketState::isLocked() const {
+bool BucketState::isLocked() const noexcept {
   return ((_state.load() & static_cast<std::uint32_t>(Flag::locked)) > 0);
 }
 
-bool BucketState::lock(std::uint64_t maxTries, BucketState::CallbackType cb) {
+bool BucketState::lock(std::uint64_t maxTries) noexcept {
   uint64_t attempt = 0;
   while (attempt < maxTries) {
     // expect unlocked, but need to preserve migrating status
     std::uint32_t current = _state.load(std::memory_order_relaxed);
-    std::uint32_t expected = current & (~static_cast<std::uint32_t>(Flag::locked));
+    std::uint32_t expected =
+        current & (~static_cast<std::uint32_t>(Flag::locked));
     if (current == expected) {
       uint32_t desired = expected | static_cast<std::uint32_t>(Flag::locked);
       // try to lock
-      bool success = _state.compare_exchange_strong(expected, desired, std::memory_order_acq_rel,
+      bool success = _state.compare_exchange_strong(expected, desired,
+                                                    std::memory_order_acq_rel,
                                                     std::memory_order_relaxed);
       if (success) {
-        cb();
         return true;
       }
     }
@@ -72,29 +73,31 @@ bool BucketState::lock(std::uint64_t maxTries, BucketState::CallbackType cb) {
   return false;
 }
 
-void BucketState::unlock() {
+void BucketState::unlock() noexcept {
   TRI_ASSERT(isLocked());
-  _state.fetch_and(~static_cast<std::uint32_t>(Flag::locked), std::memory_order_release);
+  _state.fetch_and(~static_cast<std::uint32_t>(Flag::locked),
+                   std::memory_order_release);
 }
 
-bool BucketState::isSet(BucketState::Flag flag) const {
+bool BucketState::isSet(BucketState::Flag flag) const noexcept {
   TRI_ASSERT(isLocked());
   return ((_state.load() & static_cast<std::uint32_t>(flag)) > 0);
 }
 
-bool BucketState::isSet(BucketState::Flag flag1, BucketState::Flag flag2) const {
+bool BucketState::isSet(BucketState::Flag flag1,
+                        BucketState::Flag flag2) const noexcept {
   TRI_ASSERT(isLocked());
   return ((_state.load() & (static_cast<std::uint32_t>(flag1) |
                             static_cast<std::uint32_t>(flag2))) > 0);
 }
 
-void BucketState::toggleFlag(BucketState::Flag flag) {
+void BucketState::toggleFlag(BucketState::Flag flag) noexcept {
   TRI_ASSERT(isLocked());
   _state ^= static_cast<std::uint32_t>(flag);
 }
 
-void BucketState::clear() {
+void BucketState::clear() noexcept {
   TRI_ASSERT(isLocked());
   _state = static_cast<std::uint32_t>(Flag::locked);
 }
-}
+}  // namespace arangodb::cache

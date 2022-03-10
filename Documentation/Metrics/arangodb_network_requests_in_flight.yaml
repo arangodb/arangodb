@@ -12,7 +12,7 @@ exposedBy:
   - agent
 description: |
   Number of outgoing internal requests in flight. This metric is increased
-  whenever any cluster-internal request is about to be sent via the underlying 
+  whenever any cluster-internal request is about to be sent via the underlying
   connection pool, and is decreased whenever a response for such a request is
   received or the request runs into a timeout.
   This metric provides an estimate of the fan-out of operations. For example,

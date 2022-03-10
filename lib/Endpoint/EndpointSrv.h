@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,8 +22,7 @@
 /// @author Copyright 2016, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_ENDPOINT_ENDPOINT_SRV_H
-#define ARANGODB_ENDPOINT_ENDPOINT_SRV_H 1
+#pragma once
 
 #include <memory>
 #include <string>
@@ -51,5 +50,3 @@ class EndpointSrv final : public Endpoint {
   std::unique_ptr<Endpoint> _endpoint;
 };
 }  // namespace arangodb
-
-#endif

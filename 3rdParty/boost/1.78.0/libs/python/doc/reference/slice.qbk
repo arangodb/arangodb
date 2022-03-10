@@ -1,0 +1,128 @@
+[section boost/python/slice.hpp]
+[section Introduction]
+Exposes a [link concepts.objectwrapper.typewrapper_concept_requirements TypeWrapper] for the Python [@http://www.python.org/doc/2.3.3/api/slice-objects.html `slice`] type.
+[endsect]
+[section Class `slice`]
+Exposes the extended slicing protocol by wrapping the built-in slice type. The semantics of the constructors and member functions defined below can be fully understood by reading the [link concepts.objectwrapper.typewrapper_concept_requirements TypeWrapper] concept definition. Since `slice` is publicly derived from [link object_wrappers.boost_python_object_hpp.class_object `object`], the public `object` interface applies to `slice` instances as well.
+``
+namespace boost { namespace python
+{
+  class slice : public object
+  {
+   public:
+      slice(); // create an empty slice, equivalent to [::]
+
+      template <typename Int1, typename Int2>
+      slice(Int1 start, Int2 stop);
+
+      template <typename Int1, typename Int2, typename Int3>
+      slice(Int1 start, Int2 stop, Int3 step);
+
+      // Access the parameters this slice was created with.
+      object start();
+      object stop();
+      object step();
+
+      // The return type of slice::get_indices()
+      template <typename RandomAccessIterator>
+      struct range
+      {
+          RandomAccessIterator start;
+          RandomAccessIterator stop;
+          int step;
+      };
+
+      template <typename RandomAccessIterator>
+      range<RandomAccessIterator>
+      get_indices(
+          RandomAccessIterator const& begin, 
+          RandomAccessIterator const& end);
+  };
+}}
+``
+[endsect]
+[section Class `slice` constructors]
+``slice();``
+[variablelist
+[[Effects][constructs a slice with default stop, start, and step values.  Equivalent to the slice object created as part of the Python expression `base[::]`.]]
+[[Throws][nothing]]
+]
+``
+template <typename Int1, typename Int2>
+slice(Int1 start, Int2 stop);
+``
+[variablelist
+[[Requires][`start`, `stop`, and `step` are of type `slice_nil` or convertible to type `object`.]]
+[[Effects][constructs a new slice with default step value and the provided start and stop values.  Equivalent to the slice object created by the built-in Python function `slice(start,stop)`, or as part of the Python expression `base[start:stop]`.]]
+[[Throws][`error_already_set` and sets a Python TypeError exception if no conversion is possible from the arguments to type object.]]
+]
+``
+template <typename Int1, typename Int2, typename Int3>
+slice(Int1 start, Int2 stop, Int3 step);
+``
+[variablelist
+[[Requires][`start`, `stop`, and `step` are `slice_nil` or convertible to type `object`.]]
+[[Effects][constructs a new slice with start stop and step values.  Equivalent to the slice object created by the built-in Python function `slice(start,stop,step)`, or as part of the Python expression `base[start:stop:step]`.]]
+[[Throws][`error_already_set` and sets a Python TypeError exception if no conversion is possible from the arguments to type object.]]
+]
+[endsect]
+[section Class `slice` observer functions]
+``
+object slice::start() const;
+object slice::stop() const;
+object slice::step() const;
+``
+[variablelist
+[[Effects][None]]
+[[Throws][nothing]]
+[[Returns][the parameter that the slice was created with. If the parameter was omitted or `slice_nil` was used when the slice was created, than that parameter will be a reference to `PyNone` and compare equal to a default-constructed object.  In principal, any object may be used when creating a slice object, but in practice they are usually integers.]]
+]
+``
+template <typename RandomAccessIterator>
+slice::range<RandomAccessIterator>
+slice::get_indices( 
+    RandomAccessIterator const& begin, 
+    RandomAccessIterator const& end) const;
+``
+[variablelist
+[[Arguments][A pair of STL-conforming Random Access Iterators that form a half-open range.]]
+[[Effects][Create a RandomAccessIterator pair that defines a fully-closed range within the `[begin,end)` range of its arguments.  This function translates this slice's indices while accounting for the effects of any PyNone or negative indices, and non-singular step sizes.]]
+[[Returns][a `slice::range` that has been initialized with a non-zero value of step and a pair of RandomAccessIterators that point within the range of this functions arguments and define a closed interval.]]
+[[Throws][Raises a Python TypeError exception if any of this slice's arguments are neither references to PyNone nor convertible to int.  Throws `std::invalid_argument` if the resulting range would be empty.  You should always wrap calls to `slice::get_indices()` within `try { ...; } catch (std::invalid_argument) {}` to handle this case and take appropriate action.]]
+[[Rationale][closed-interval: If an open interval were used, then for step size other than 1, the required state for the end iterator would point beyond the one-past-the-end position or before the beginning of the specified range.
+exceptions on empty slice: It is impossible to define a closed interval over an empty range, so some other form of error checking would have to be used to prevent undefined behavior. In the case where the exception is not caught, it will simply be translated to Python by the default exception handling mechanisms. ]]
+]
+[endsect]
+[section Example]
+``
+using namespace boost::python;
+
+// Perform an extended slice of a Python list.
+// Warning: extended slicing was not supported for built-in types prior 
+// to Python 2.3
+list odd_elements(list l)
+{
+    return l[slice(_,_,2)];
+}
+
+// Perform a summation over a slice of a std::vector.
+double partial_sum(std::vector<double> const& Foo, const slice index)
+{
+    slice::range<std::vector<double>::const_iterator> bounds;
+    try {
+        bounds = index.get_indices<>(Foo.begin(), Foo.end());
+    }
+    catch (std::invalid_argument) {
+        return 0.0;
+    }
+    double sum = 0.0;
+    while (bounds.start != bounds.stop) {
+        sum += *bounds.start;
+        std::advance( bounds.start, bounds.step);
+    }
+    sum += *bounds.start;
+    return sum;
+}
+``
+[endsect]
+[endsect]

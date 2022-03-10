@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,16 +21,27 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_APPLICATION_FEATURES_VERSION_FEATURE_H
-#define ARANGODB_APPLICATION_FEATURES_VERSION_FEATURE_H 1
+#pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
 
+class ShellColorsFeature;
+
 class VersionFeature final : public application_features::ApplicationFeature {
  public:
-  explicit VersionFeature(application_features::ApplicationServer& server);
+  static constexpr std::string_view name() noexcept { return "Version"; }
+
+  template<typename Server>
+  explicit VersionFeature(Server& server)
+      : application_features::ApplicationFeature{server, *this},
+        _printVersion(false),
+        _printVersionJson(false) {
+    setOptional(false);
+
+    startsAfter<ShellColorsFeature, Server>();
+  }
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -39,8 +50,7 @@ class VersionFeature final : public application_features::ApplicationFeature {
 
  private:
   bool _printVersion;
+  bool _printVersionJson;
 };
 
 }  // namespace arangodb
-
-#endif

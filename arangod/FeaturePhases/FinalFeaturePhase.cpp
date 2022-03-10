@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,24 +22,19 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "FinalFeaturePhase.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 
-#include "ApplicationFeatures/ShutdownFeature.h"
-#include "FeaturePhases/AgencyFeaturePhase.h"
-#include "RestServer/ConsoleFeature.h"
-#include "RestServer/ScriptFeature.h"
+namespace arangodb::application_features {
 
-namespace arangodb {
-namespace application_features {
-
-FinalFeaturePhase::FinalFeaturePhase(ApplicationServer& server)
-    : ApplicationFeaturePhase(server, "FinalPhase") {
+FinalFeaturePhase::FinalFeaturePhase(ArangodServer& server)
+    : ApplicationFeaturePhase{server, *this} {
   setOptional(false);
-  startsAfter<AgencyFeaturePhase>();
+  startsAfter<AgencyFeaturePhase, ArangodServer>();
 
-  startsAfter<ConsoleFeature>();
-  startsAfter<ScriptFeature>();
-  startsAfter<ShutdownFeature>();
+  startsAfter<ConsoleFeature, ArangodServer>();
+  startsAfter<ScriptFeature, ArangodServer>();
+  startsAfter<ShutdownFeature, ArangodServer>();
+  startsAfter<SoftShutdownFeature, ArangodServer>();
 }
 
-}  // namespace application_features
-}  // namespace arangodb
+}  // namespace arangodb::application_features

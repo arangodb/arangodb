@@ -42,6 +42,7 @@
     var cg;
     var vg;
     var meta;
+    const longValue  = "VeryLongValueToNotFitIntoSSOAndTriggerBufferCopyingIssuesIfAnyBlaBlaBla";
 
     function getNodes(query, type, bindVars, options) {
       let stmt = db._createStatement(query);
@@ -81,7 +82,6 @@
         arrayCol.save({ c: 0, a: ['foo', 'bar', 'baz']});
         // this will allow to catch if accidentally "all" filter will be used
         arrayCol.save({ c: 1, a: ['afoo', 'abar', 'abaz']});
-
         db._dropView("UnitTestsView");
         v = db._createView("UnitTestsView", "arangosearch", {});
         meta = {
@@ -177,6 +177,13 @@
         mfc.save({field1:"1value1", field2:"2value1", field3: 2, field4: 11112, field5: 2, field6: 2});
         mfc.save({field1:"1value2", field2:"2value2", field3: 3, field4: 11113, field5: 3, field6: 3});
         mfc.save({field1:"1value3", field2:"2value3", field3: 4, field4: 11114, field5: 4, field6: 4});
+        db._drop("TestsCollectionWithLongFields");
+        let longData = [];
+        let lfc = db._create("TestsCollectionWithLongFields");
+        for (let k = 0; k < 1500; ++k) {
+          longData.push({field1:longValue + k, field2:longValue, field3: k});
+        }
+        lfc.save(longData);
         
         try { analyzers.remove("customAnalyzer", true); } catch(err) {}
         analyzers.save("customAnalyzer", "text",  {"locale": "en.utf-8",
@@ -204,6 +211,25 @@
                                   field5: {},
                                   field6: {},
                                   _key: {}}}}});
+        let wsv = db._createView("WithStoredValues", "arangosearch", 
+                               {storedValues: [["field1"], ["field2"], ["field3"]]});
+        wsv.properties({links:{TestsCollectionWithLongFields: {
+                              storeValues: "id",
+                              analyzers: ["customAnalyzer"],
+                              fields: {
+                                field1: {},
+                                field2: {},
+                                field3: {}}}}});
+        let wpsl = db._createView("WithLongPrimarySort", "arangosearch", 
+                               {primarySort: [{field: "field1", direction: "asc"}],
+                                storedValues: [["field2"], ["field3"]]});
+        wpsl.properties({links:{TestsCollectionWithLongFields: {
+                              storeValues: "id",
+                              analyzers: ["customAnalyzer"],
+                              fields: {
+                                field1: {},
+                                field2: {},
+                                field3: {}}}}});
       },
 
       tearDownAll : function () {
@@ -227,6 +253,9 @@
         db._drop("UnitTestsWithArrayCollection");
         db._dropView("WithPrimarySort");
         db._drop("TestsCollectionWithManyFields");
+        db._dropView("WithStoredValues");
+        db._dropView("WithLongPrimarySort");
+        db._drop("TestsCollectionWithLongFields");
         analyzers.remove("customAnalyzer", true);
       },
 
@@ -1942,8 +1971,8 @@
               " OPTIONS { waitForSync : true} SORT BM25(d) DESC RETURN d").toArray();
             assertEqual(3, res.length);  
             assertEqual('1', res[0].value1);
-            assertEqual('3', res[1].value1);
-            assertEqual('2', res[2].value1);
+            assertEqual('2', res[1].value1);
+            assertEqual('3', res[2].value1);
           }
           {
             let res = db._query("FOR d IN " + queryView  + 
@@ -2462,6 +2491,31 @@
           db._drop(queryColl);
           db._dropView(queryView);
           analyzers.remove(queryAnalyzer, true);
+        }
+      },
+
+      testReadPrimarySortStoredValues : function() {
+        var result = db._query("FOR doc IN WithLongPrimarySort SEARCH doc.field3 > 0 OPTIONS { waitForSync : true } SORT doc.field1 ASC " +
+                              " RETURN {f1:doc.field1, f2: doc.field2, f3: doc.field3}").toArray();
+        assertEqual(1499, result.length);
+        let expected = [];
+        for (let k = 1; k < 1500; ++k) {
+          expected.push(longValue + k);
+        }
+        expected.sort();
+        for (let k = 0; k < 1499; ++k) {
+          assertEqual(expected[k], result[k].f1);
+        }
+      },
+
+      testReadStoredValues : function() {
+        var result = db._query("FOR doc IN WithStoredValues SEARCH doc.field3 > 0 OPTIONS { waitForSync : true } SORT doc.field3 ASC " +
+                             " RETURN {f1:doc.field1, f2: doc.field2, f3: doc.field3}").toArray();
+        assertEqual(1499, result.length);
+        for (let k = 0; k < 1499; ++k) {
+          assertEqual(k + 1, result[k].f3);
+          assertEqual(longValue + (k + 1), result[k].f1);
+          assertEqual(longValue, result[k].f2);
         }
       }
     };

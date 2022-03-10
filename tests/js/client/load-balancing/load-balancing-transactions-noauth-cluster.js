@@ -297,7 +297,7 @@ function TransactionsSuite () {
       }
     },
     
-    testUseTransactionCursorIncremental: function () {
+    testUseTransactionCursorIncrementalPut: function () {
       let trx;
       try {
         const obj = { collections: { read: cn } };
@@ -322,6 +322,44 @@ function TransactionsSuite () {
           for (let i = 0; i < 9; ++i) {
             let same = i % 2 === 0;
             result = sendRequest('PUT', "/_api/cursor/" + cursor, {}, { "x-arango-trx-id": trx }, same);
+            assertEqual(same, !result.headers.hasOwnProperty("x-arango-request-forwarded-to"));
+            assertFalse(result.body.error);
+            assertEqual(1, result.body.result.length);
+            assertEqual(i < 8, result.body.hasMore);
+          }
+        } finally {
+          sendRequest('DELETE', '/_api/cursor/' + encodeURIComponent(cursor), {}, { "x-arango-trx-id": trx }, true);
+        }
+      } finally {
+        sendRequest('DELETE', '/_api/transaction/' + encodeURIComponent(trx), {}, {}, true);
+      }
+    },
+    
+    testUseTransactionCursorIncrementalPost: function () {
+      let trx;
+      try {
+        const obj = { collections: { read: cn } };
+        let result = sendRequest('POST', "/_api/transaction/begin", obj, {}, true);
+        assertEqual(result.status, 201);
+        assertNotUndefined(result.body.result.id);
+        trx = result.body.result.id;
+        
+        // use trx on different coord to run a query
+        const query = `FOR doc IN ${cn} RETURN doc`;
+        let cursor;
+        result = sendRequest('POST', "/_api/cursor", { query, batchSize: 1 }, { "x-arango-trx-id": trx }, false);
+        try {
+          cursor = result.body.id;
+          assertTrue(cursor);
+          // request must have been forwarded
+          assertTrue(result.headers.hasOwnProperty("x-arango-request-forwarded-to"));
+          assertFalse(result.body.error);
+          assertEqual(1, result.body.result.length);
+          assertTrue(result.body.hasMore);
+
+          for (let i = 0; i < 9; ++i) {
+            let same = i % 2 === 0;
+            result = sendRequest('POST', "/_api/cursor/" + cursor, {}, { "x-arango-trx-id": trx }, same);
             assertEqual(same, !result.headers.hasOwnProperty("x-arango-request-forwarded-to"));
             assertFalse(result.body.error);
             assertEqual(1, result.body.result.length);

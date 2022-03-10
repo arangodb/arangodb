@@ -127,16 +127,26 @@ macro(AutodetectHostArchitecture)
          # 4E | Skylake Client
          # 3C | Broadwell (likely a bug in the SDE)
          # 3C | Haswell
-         if(_cpu_model EQUAL 87) # 57
-            set(TARGET_ARCHITECTURE "knl")  # Knights Landing
+         if(_cpu_model EQUAL 165) # Comet lake. Use skylake, the closest march supported by GCC.
+            set(TARGET_ARCHITECTURE "skylake")
+         elseif(_cpu_model EQUAL 167)
+            set(TARGET_ARCHITECTURE "rocketlake")
+         elseif(_cpu_model EQUAL 151 OR _cpu_model EQUAL 154)
+            set(TARGET_ARCHITECTURE "alderlake")
+         elseif(_cpu_model EQUAL 141 OR _cpu_model EQUAL 140)
+            set(TARGET_ARCHITECTURE "tigerlake")
+         elseif(_cpu_model EQUAL 126 OR _cpu_model EQUAL 125)
+            set(TARGET_ARCHITECTURE "icelake-client")
+         elseif(_cpu_model EQUAL 142 OR _cpu_model EQUAL 158) # 8E, 9E
+            set(TARGET_ARCHITECTURE "kaby-lake")
+         elseif(_cpu_model EQUAL 102)
+            set(TARGET_ARCHITECTURE "cannonlake")
          elseif(_cpu_model EQUAL 92)
             set(TARGET_ARCHITECTURE "goldmont")
          elseif(_cpu_model EQUAL 90 OR _cpu_model EQUAL 76)
             set(TARGET_ARCHITECTURE "silvermont")
-         elseif(_cpu_model EQUAL 102)
-            set(TARGET_ARCHITECTURE "cannonlake")
-         elseif(_cpu_model EQUAL 142 OR _cpu_model EQUAL 158) # 8E, 9E
-            set(TARGET_ARCHITECTURE "kaby-lake")
+         elseif(_cpu_model EQUAL 87) # 57
+            set(TARGET_ARCHITECTURE "knl")  # Knights Landing
          elseif(_cpu_model EQUAL 85) # 55
             set(TARGET_ARCHITECTURE "skylake-avx512")
          elseif(_cpu_model EQUAL 78 OR _cpu_model EQUAL 94) # 4E, 5E
@@ -149,24 +159,14 @@ macro(AutodetectHostArchitecture)
             set(TARGET_ARCHITECTURE "ivy-bridge")
          elseif(_cpu_model EQUAL 42 OR _cpu_model EQUAL 45)
             set(TARGET_ARCHITECTURE "sandy-bridge")
-         elseif(_cpu_model EQUAL 37 OR _cpu_model EQUAL 44 OR _cpu_model EQUAL 47)
-            set(TARGET_ARCHITECTURE "westmere")
-         elseif(_cpu_model EQUAL 26 OR _cpu_model EQUAL 30 OR _cpu_model EQUAL 31 OR _cpu_model EQUAL 46)
-            set(TARGET_ARCHITECTURE "nehalem")
-         elseif(_cpu_model EQUAL 23 OR _cpu_model EQUAL 29)
-            set(TARGET_ARCHITECTURE "penryn")
-         elseif(_cpu_model EQUAL 15)
-            set(TARGET_ARCHITECTURE "merom")
-         elseif(_cpu_model EQUAL 28)
-            set(TARGET_ARCHITECTURE "atom")
-         elseif(_cpu_model EQUAL 14)
-            set(TARGET_ARCHITECTURE "core")
-         elseif(_cpu_model LESS 14)
-            message(WARNING "Your CPU (family ${_cpu_family}, model ${_cpu_model}) is not known. Auto-detection of optimization flags failed and will use the generic CPU settings with SSE2.")
+         elseif(_cpu_model GREATER 42)
+            message(WARNING "Your CPU (family ${_cpu_family}, model ${_cpu_model}) is not known. Auto-detection of optimization flags failed and will use the minimum required microarchitecture(sandy-bridge).")
+            set(TARGET_ARCHITECTURE "sandy-bridge")
+         elseif(NOT ASM_OPTIMIZATIONS)
+            message(WARNING "Your CPU (family ${_cpu_family}, model ${_cpu_model}) is not known. This is not fatal because ASM_OPTIMIZATIONS are disabled. If you want to use ASM_OPTIMIZATIONS make sure you have a compliant CPU(sandy-bridge or newer) and review the \"cmake/OptimizeForArchitecture.cmake\" script.")
             set(TARGET_ARCHITECTURE "generic")
          else()
-            message(WARNING "Your CPU (family ${_cpu_family}, model ${_cpu_model}) is not known. Auto-detection of optimization flags failed and will use the 65nm Core 2 CPU settings.")
-            set(TARGET_ARCHITECTURE "merom")
+            message(FATAL_ERROR "Your CPU (family ${_cpu_family}, model ${_cpu_model}) is not known. This is fatal, because ASM_OPTIMIZATIONS are ON. If your CPU microarchitecture is sandy-bridge or newer, please review the \"cmake/OptimizeForArchitecture.cmake\" script. If you have an older CPU, use -DASM_OPTIMIZATIONS=Off.")
          endif()
       elseif(_cpu_family EQUAL 7) # Itanium (not supported)
          message(WARNING "Your CPU (Itanium: family ${_cpu_family}, model ${_cpu_model}) is not supported by OptimizeForArchitecture.cmake.")
@@ -203,25 +203,7 @@ macro(AutodetectHostArchitecture)
    endif(_vendor_id STREQUAL "GenuineIntel")
 endmacro()
 
-macro(OptimizeForArchitecture)
-   set(TARGET_ARCHITECTURE "auto" CACHE STRING "CPU architecture to optimize for. \
-Using an incorrect setting here can result in crashes of the resulting binary because of invalid instructions used. \
-Setting the value to \"auto\" will try to optimize for the architecture where cmake is called. \
-Other supported values are: \"none\", \"generic\", \"core\", \"merom\" (65nm Core2), \
-\"penryn\" (45nm Core2), \"nehalem\", \"westmere\", \"sandy-bridge\", \"ivy-bridge\", \
-\"haswell\", \"broadwell\", \"skylake\", \"skylake-xeon\", \"kaby-lake\", \"cannonlake\", \"silvermont\", \
-\"goldmont\", \"knl\" (Knights Landing), \"atom\", \"k8\", \"k8-sse3\", \"barcelona\", \
-\"istanbul\", \"magny-cours\", \"bulldozer\", \"interlagos\", \"piledriver\", \
-\"AMD 14h\", \"AMD 16h\", \"zen\", \"zen3\".")
-   set(_force)
-   if(NOT _last_target_arch STREQUAL "${TARGET_ARCHITECTURE}")
-      message(STATUS "target changed from \"${_last_target_arch}\" to \"${TARGET_ARCHITECTURE}\"")
-      set(_force FORCE)
-   endif()
-   set(_last_target_arch "${TARGET_ARCHITECTURE}" CACHE STRING "" FORCE)
-   mark_as_advanced(_last_target_arch)
-   string(TOLOWER "${TARGET_ARCHITECTURE}" TARGET_ARCHITECTURE)
-
+macro(OptimizeForArchitectureX86)
    set(_march_flag_list)
    set(_available_vector_units_list)
 
@@ -276,6 +258,23 @@ Other supported values are: \"none\", \"generic\", \"core\", \"merom\" (65nm Cor
       _skylake_avx512()
       list(APPEND _available_vector_units_list "avx512ifma" "avx512vbmi")
    endmacro()
+   macro(_icelake_client)
+      list(APPEND _march_flag_list "icelake-client")
+      _cannonlake()
+      list(APPEND _available_vector_units_list "avx512bw" "avx512vl")
+   endmacro()
+   macro(_tigerlake)
+      list(APPEND _march_flag_list "tigerlake")
+      _cannonlake()
+   endmacro()
+   macro(_alderlake)
+      list(APPEND _march_flag_list "alderlake")
+      _tigerlake()
+   endmacro()
+   macro(_rocketlake)
+      list(APPEND _march_flag_list "rocketlake")
+      _alderlake()
+   endmacro()
    macro(_knightslanding)
       list(APPEND _march_flag_list "knl")
       _broadwell()
@@ -313,6 +312,14 @@ Other supported values are: \"none\", \"generic\", \"core\", \"merom\" (65nm Cor
       _knightslanding()
    elseif(TARGET_ARCHITECTURE STREQUAL "cannonlake")
       _cannonlake()
+   elseif(TARGET_ARCHITECTURE STREQUAL "rocketlake")
+      _rocketlake()
+   elseif(TARGET_ARCHITECTURE STREQUAL "alderlake")
+      _alderlake()
+   elseif(TARGET_ARCHITECTURE STREQUAL "tigerlake")
+      _tigerlake()
+   elseif(TARGET_ARCHITECTURE STREQUAL "icelake-client")
+      _icelake_client()
    elseif(TARGET_ARCHITECTURE STREQUAL "kaby-lake")
       _skylake()
    elseif(TARGET_ARCHITECTURE STREQUAL "skylake-xeon" OR TARGET_ARCHITECTURE STREQUAL "skylake-avx512")
@@ -570,5 +577,50 @@ Other supported values are: \"none\", \"generic\", \"core\", \"merom\" (65nm Cor
             AddCompilerFlag("-mno-${_flag}" CXX_FLAGS Vc_ARCHITECTURE_FLAGS)
          endforeach(_flag)
       endif()
+   endif()
+endmacro(OptimizeForArchitectureX86)
+
+macro(OptimizeForArchitectureArm)
+  if(TARGET_ARCHITECTURE STREQUAL "auto")
+     message(WARNING "Architecture auto-detection for CMAKE_SYSTEM_PROCESSOR '${CMAKE_SYSTEM_PROCESSOR}' is not supported by OptimizeForArchitecture.cmake on ARM")
+  elseif(TARGET_ARCHITECTURE STREQUAL "neon")
+    AddCompilerFlag(-mfloat-abi=softfp CXX_FLAGS Vc_ARCHITECTURE_FLAGS) # FIXME(gnusi): check
+    AddCompilerFlag(-mfpu=neon CXX_FLAGS Vc_ARCHITECTURE_FLAGS)
+  else()
+    message(FATAL_ERROR "Unknown target architecture: \"${TARGET_ARCHITECTURE}\". Please set TARGET_ARCHITECTURE to a supported value.")
+  endif()
+endmacro(OptimizeForArchitectureArm)
+
+macro(OptimizeForArchitecture)
+ if("${CMAKE_SYSTEM_PROCESSOR}" MATCHES "(arm|aarch32|aarch64)")
+   set(TARGET_ARCHITECTURE "auto" CACHE STRING "CPU architecture to optimize for. \
+Using an incorrect setting here can result in crashes of the resulting binary because of invalid instructions used. \
+Setting the value to \"auto\" will try to optimize for the architecture where cmake is called. \
+Other supported values are: \"neon\".")
+  else()
+   set(TARGET_ARCHITECTURE "auto" CACHE STRING "CPU architecture to optimize for. \
+Using an incorrect setting here can result in crashes of the resulting binary because of invalid instructions used. \
+Setting the value to \"auto\" will try to optimize for the architecture where cmake is called. \
+Other supported values are: \"none\", \"generic\", \"core\", \"merom\" (65nm Core2), \
+\"penryn\" (45nm Core2), \"nehalem\", \"westmere\", \"sandy-bridge\", \"ivy-bridge\", \
+\"haswell\", \"broadwell\", \"skylake\", \"skylake-xeon\", \"kaby-lake\", \"cannonlake\", \"silvermont\", \
+\"goldmont\", \"knl\" (Knights Landing), \"atom\", \"k8\", \"k8-sse3\", \"barcelona\", \
+\"istanbul\", \"magny-cours\", \"bulldozer\", \"interlagos\", \"piledriver\", \
+\"AMD 14h\", \"AMD 16h\", \"zen\", \"zen3\".")
+  endif()
+
+   set(_force)
+   if(NOT _last_target_arch STREQUAL "${TARGET_ARCHITECTURE}")
+      message(STATUS "target changed from \"${_last_target_arch}\" to \"${TARGET_ARCHITECTURE}\"")
+      set(_force FORCE)
+   endif()
+   set(_last_target_arch "${TARGET_ARCHITECTURE}" CACHE STRING "" FORCE)
+   mark_as_advanced(_last_target_arch)
+   string(TOLOWER "${TARGET_ARCHITECTURE}" TARGET_ARCHITECTURE)
+
+   if("${CMAKE_SYSTEM_PROCESSOR}" MATCHES "(arm|aarch32|aarch64)")
+      OptimizeForArchitectureArm()
+   else()
+      OptimizeForArchitectureX86()
    endif()
 endmacro(OptimizeForArchitecture)

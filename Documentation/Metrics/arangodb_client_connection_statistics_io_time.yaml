@@ -1,7 +1,7 @@
 name: arangodb_client_connection_statistics_io_time
 introducedIn: "3.8.0"
 help: |
-  I/O time needed to answer a request
+  I/O time needed to answer a request.
 unit: number
 type: histogram
 category: Statistics

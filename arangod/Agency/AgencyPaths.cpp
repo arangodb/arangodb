@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AgencyPaths.h"
+#include <Replication2/ReplicatedLog/LogCommon.h>
 
 using namespace arangodb;
 using namespace arangodb::cluster;
@@ -30,6 +31,8 @@ using namespace arangodb::cluster::paths;
 auto paths::root() -> std::shared_ptr<Root const> {
   return Root::make_shared();
 }
+
+auto paths::to_string(Path const& path) -> std::string { return path.str(); }
 
 auto aliases::arango() -> std::shared_ptr<Root::Arango const> {
   return root()->arango();
@@ -47,6 +50,37 @@ auto aliases::target() -> std::shared_ptr<Root::Arango::Target const> {
   return root()->arango()->target();
 }
 
-auto aliases::supervision() -> std::shared_ptr<Root::Arango::Supervision const> {
+auto aliases::supervision()
+    -> std::shared_ptr<Root::Arango::Supervision const> {
   return root()->arango()->supervision();
+}
+
+auto Root::Arango::Target::ReplicatedLogs::Database::log(
+    replication2::LogId id) const -> std::shared_ptr<const Log> {
+  return Log::make_shared(shared_from_this(), std::to_string(id.id()));
+}
+
+auto Root::Arango::Plan::ReplicatedLogs::Database::log(
+    replication2::LogId id) const -> std::shared_ptr<const Log> {
+  return Log::make_shared(shared_from_this(), std::to_string(id.id()));
+}
+
+auto Root::Arango::Plan::ReplicatedStates::Database::state(
+    replication2::LogId id) const -> std::shared_ptr<const State> {
+  return State::make_shared(shared_from_this(), std::to_string(id.id()));
+}
+
+auto Root::Arango::Current::ReplicatedLogs::Database::log(
+    replication2::LogId id) const -> std::shared_ptr<const Log> {
+  return Log::make_shared(shared_from_this(), std::to_string(id.id()));
+}
+
+auto Root::Arango::Current::ReplicatedStates::Database::state(
+    replication2::LogId id) const -> std::shared_ptr<const State> {
+  return State::make_shared(shared_from_this(), std::to_string(id.id()));
+}
+
+auto Root::Arango::Target::ReplicatedStates::Database::state(
+    replication2::LogId id) const -> std::shared_ptr<const State> {
+  return State::make_shared(shared_from_this(), std::to_string(id.id()));
 }

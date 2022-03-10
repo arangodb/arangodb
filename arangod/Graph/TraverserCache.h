@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GRAPH_TRAVERSER_CACHE_H
-#define ARANGOD_GRAPH_TRAVERSER_CACHE_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Basics/StringHeap.h"
@@ -30,6 +29,7 @@
 
 #include <velocypack/HashedStringRef.h>
 
+#include <string_view>
 #include <unordered_set>
 
 namespace arangodb {
@@ -40,7 +40,6 @@ class Methods;
 
 namespace velocypack {
 class Builder;
-class StringRef;
 class Slice;
 }  // namespace velocypack
 
@@ -59,7 +58,6 @@ struct EdgeDocumentToken;
 /// the single server / db server can just work with raw
 /// document tokens and retrieve documents as needed
 struct BaseOptions;
-
 
 class TraverserCache {
  public:
@@ -87,8 +85,10 @@ class TraverserCache {
   /// @brief Append the vertex for the given id
   ///        The document will be looked up in the StorageEngine
   //////////////////////////////////////////////////////////////////////////////
-  virtual bool appendVertex(arangodb::velocypack::StringRef idString, arangodb::velocypack::Builder& result);
-  virtual bool appendVertex(arangodb::velocypack::StringRef idString, arangodb::aql::AqlValue& result);
+  virtual bool appendVertex(std::string_view idString,
+                            arangodb::velocypack::Builder& result);
+  virtual bool appendVertex(std::string_view idString,
+                            arangodb::aql::AqlValue& result);
 
   size_t getAndResetInsertedDocuments() {
     size_t tmp = _insertedDocuments;
@@ -106,9 +106,10 @@ class TraverserCache {
   /// @brief Persist the given id string. The return value is guaranteed to
   ///        stay valid as long as this cache is valid
   //////////////////////////////////////////////////////////////////////////////
-  arangodb::velocypack::StringRef persistString(arangodb::velocypack::StringRef idString);
-  
-  arangodb::velocypack::HashedStringRef persistString(arangodb::velocypack::HashedStringRef idString);
+  std::string_view persistString(std::string_view idString);
+
+  arangodb::velocypack::HashedStringRef persistString(
+      arangodb::velocypack::HashedStringRef idString);
 
   void increaseFilterCounter() { _filteredDocuments++; }
 
@@ -157,9 +158,11 @@ class TraverserCache {
   std::unordered_set<arangodb::velocypack::HashedStringRef> _persistedStrings;
 
   BaseOptions const* _baseOptions;
+
+  /// @brief whether or not to allow adding of previously unknown collections
+  /// during the traversal
+  bool const _allowImplicitCollections;
 };
 
 }  // namespace graph
 }  // namespace arangodb
-
-#endif

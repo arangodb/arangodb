@@ -1,7 +1,7 @@
 name: rocksdb_is_write_stopped
 introducedIn: "3.6.1"
 help: |
-  RocksDB metric "rocksdb-is-write-stopped"
+  Whether RocksDB writes are stopped.
 unit: number
 type: gauge
 category: RocksDB

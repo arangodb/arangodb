@@ -1,7 +1,7 @@
 name: rocksdb_is_file_deletions_enabled
 introducedIn: "3.6.1"
 help: |
-  RocksDB metric "rocksdb-is-file-deletions-enabled"
+  Whether RocksDB file deletion is enabled.
 unit: number
 type: gauge
 category: RocksDB

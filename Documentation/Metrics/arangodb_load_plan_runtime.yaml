@@ -13,9 +13,9 @@ description: |
   Histogram of `Plan` loading runtimes, i.e. the runtimes
   of the `ClusterInfo::loadPlan` internal method. Provides a
   distribution of all loading times for the `Plan`
-  section of the agency data. The `Plan` section normally gets
-  loaded on server startup, and then gets reloaded on servers 
-  only for any databases in which there have been recent structural 
+  section of the Agency data. The `Plan` section normally gets
+  loaded on server startup, and then gets reloaded on servers
+  only for any databases in which there have been recent structural
   changes (i.e. DDL changes).
 troubleshoot: |
   In case this histogram contains very high loading times, this

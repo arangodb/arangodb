@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -42,24 +42,25 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::httpclient;
 using namespace arangodb::rest;
 
-GlobalInitialSyncer::GlobalInitialSyncer(ReplicationApplierConfiguration const& configuration)
+GlobalInitialSyncer::GlobalInitialSyncer(
+    ReplicationApplierConfiguration const& configuration)
     : InitialSyncer(configuration) {
   // has to be set here, otherwise broken
   _state.databaseName = StaticStrings::SystemDatabase;
 }
 
-std::shared_ptr<GlobalInitialSyncer> GlobalInitialSyncer::create(ReplicationApplierConfiguration const& configuration) {
+std::shared_ptr<GlobalInitialSyncer> GlobalInitialSyncer::create(
+    ReplicationApplierConfiguration const& configuration) {
   // enable make_shared on a class with a private constructor
   struct Enabler final : public GlobalInitialSyncer {
     explicit Enabler(ReplicationApplierConfiguration const& configuration)
-      : GlobalInitialSyncer(configuration) {}
+        : GlobalInitialSyncer(configuration) {}
   };
 
   return std::make_shared<Enabler>(configuration);
@@ -82,11 +83,13 @@ Result GlobalInitialSyncer::run(bool incremental, char const* context) {
   } catch (arangodb::basics::Exception const& ex) {
     return Result(ex.code(),
                   std::string("initial synchronization for database '") +
-                      _state.databaseName + "' failed with exception: " + ex.what());
+                      _state.databaseName +
+                      "' failed with exception: " + ex.what());
   } catch (std::exception const& ex) {
     return Result(TRI_ERROR_INTERNAL,
                   std::string("initial synchronization for database '") +
-                      _state.databaseName + "' failed with exception: " + ex.what());
+                      _state.databaseName +
+                      "' failed with exception: " + ex.what());
   } catch (...) {
     return Result(TRI_ERROR_INTERNAL,
                   std::string("initial synchronization for database '") +
@@ -105,8 +108,10 @@ Result GlobalInitialSyncer::runInternal(bool incremental, char const* context) {
 
   setAborted(false);
 
-  LOG_TOPIC("23d92", DEBUG, Logger::REPLICATION) << "client: getting leader state";
-  Result r = _state.leader.getState(_state.connection, _state.isChildSyncer, context);
+  LOG_TOPIC("23d92", DEBUG, Logger::REPLICATION)
+      << "client: getting leader state";
+  Result r =
+      _state.leader.getState(_state.connection, _state.isChildSyncer, context);
   if (r.fail()) {
     return r;
   }
@@ -121,28 +126,37 @@ Result GlobalInitialSyncer::runInternal(bool incremental, char const* context) {
   if (!_state.isChildSyncer) {
     // start batch is required for the inventory request
     LOG_TOPIC("0da14", DEBUG, Logger::REPLICATION) << "sending start batch";
-    r = _batch.start(_state.connection, _progress, _state.leader, _state.syncerId, nullptr);
+    r = _batch.start(_state.connection, _progress, _state.leader,
+                     _state.syncerId, nullptr);
     if (r.fail()) {
       return r;
     }
 
     startRecurringBatchExtension();
   }
-  TRI_DEFER(if (!_state.isChildSyncer) {
-    _batchPingTimer.reset();
-    _batch.finish(_state.connection, _progress, _state.syncerId);
+  auto sg = ScopeGuard([&]() noexcept {
+    if (!_state.isChildSyncer) {
+      {
+        std::lock_guard<std::mutex> guard(_batchPingMutex);
+        _batchPingTimer.reset();
+      }
+      std::ignore =
+          _batch.finish(_state.connection, _progress, _state.syncerId);
+    }
   });
   LOG_TOPIC("62fb5", DEBUG, Logger::REPLICATION) << "sending start batch done";
 
   VPackBuilder builder;
   LOG_TOPIC("c7021", DEBUG, Logger::REPLICATION) << "fetching inventory";
   r = fetchInventory(builder);
-  LOG_TOPIC("1fe0b", DEBUG, Logger::REPLICATION) << "inventory done: " << r.errorNumber();
+  LOG_TOPIC("1fe0b", DEBUG, Logger::REPLICATION)
+      << "inventory done: " << r.errorNumber();
   if (r.fail()) {
     return r;
   }
 
-  LOG_TOPIC("1bd5b", DEBUG, Logger::REPLICATION) << "inventory: " << builder.slice().toJson();
+  LOG_TOPIC("1bd5b", DEBUG, Logger::REPLICATION)
+      << "inventory: " << builder.slice().toJson();
   VPackSlice const databases = builder.slice().get("databases");
   VPackSlice const state = builder.slice().get("state");
   if (!databases.isObject() || !state.isObject()) {
@@ -152,7 +166,8 @@ Result GlobalInitialSyncer::runInternal(bool incremental, char const* context) {
   }
 
   if (!_state.applier._skipCreateDrop) {
-    LOG_TOPIC("af241", DEBUG, Logger::REPLICATION) << "updating server inventory";
+    LOG_TOPIC("af241", DEBUG, Logger::REPLICATION)
+        << "updating server inventory";
     r = updateServerInventory(databases);
     if (r.fail()) {
       LOG_TOPIC("5fc1c", DEBUG, Logger::REPLICATION)
@@ -161,7 +176,8 @@ Result GlobalInitialSyncer::runInternal(bool incremental, char const* context) {
     }
   }
 
-  LOG_TOPIC("d7e85", DEBUG, Logger::REPLICATION) << "databases: " << databases.toJson();
+  LOG_TOPIC("d7e85", DEBUG, Logger::REPLICATION)
+      << "databases: " << databases.toJson();
 
   try {
     // actually sync the database
@@ -181,7 +197,8 @@ Result GlobalInitialSyncer::runInternal(bool incremental, char const* context) {
       VPackSlice const nameSlice = dbInventory.get("name");
       VPackSlice const idSlice = dbInventory.get("id");
       VPackSlice const collections = dbInventory.get("collections");
-      if (!nameSlice.isString() || !idSlice.isString() || !collections.isArray()) {
+      if (!nameSlice.isString() || !idSlice.isString() ||
+          !collections.isArray()) {
         return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                       "database declaration is invalid in response");
       }
@@ -199,7 +216,8 @@ Result GlobalInitialSyncer::runInternal(bool incremental, char const* context) {
       configurationCopy._database = nameSlice.copyString();
 
       auto syncer = DatabaseInitialSyncer::create(*vocbase, configurationCopy);
-      syncer->useAsChildSyncer(_state.leader, _state.syncerId, _batch.id, _batch.updateTime);
+      syncer->useAsChildSyncer(_state.leader, _state.syncerId, _batch.id,
+                               _batch.updateTime);
 
       // run the syncer with the supplied inventory collections
       r = syncer->runWithInventory(incremental, dbInventory);
@@ -215,9 +233,13 @@ Result GlobalInitialSyncer::runInternal(bool incremental, char const* context) {
       }
     }
   } catch (arangodb::basics::Exception const& ex) {
-    return Result(ex.code(), std::string("syncer caught an unexpected exception: ") + ex.what());
+    return Result(
+        ex.code(),
+        std::string("syncer caught an unexpected exception: ") + ex.what());
   } catch (std::exception const& ex) {
-    return Result(TRI_ERROR_INTERNAL, std::string("syncer caught an unexpected exception: ") + ex.what());
+    return Result(
+        TRI_ERROR_INTERNAL,
+        std::string("syncer caught an unexpected exception: ") + ex.what());
   } catch (...) {
     return Result(TRI_ERROR_INTERNAL, "syncer caught an unexpected exception");
   }
@@ -227,11 +249,14 @@ Result GlobalInitialSyncer::runInternal(bool incremental, char const* context) {
 
 /// @brief add or remove databases such that the local inventory
 /// mirrors the leader's
-Result GlobalInitialSyncer::updateServerInventory(VPackSlice const& leaderDatabases) {
+Result GlobalInitialSyncer::updateServerInventory(
+    VPackSlice const& leaderDatabases) {
   std::set<std::string> existingDBs;
   auto& server = _state.applier._server;
   server.getFeature<DatabaseFeature>().enumerateDatabases(
-      [&](TRI_vocbase_t& vocbase) -> void { existingDBs.insert(vocbase.name()); });
+      [&](TRI_vocbase_t& vocbase) -> void {
+        existingDBs.insert(vocbase.name());
+      });
 
   for (auto const& database : VPackObjectIterator(leaderDatabases)) {
     VPackSlice it = database.value;
@@ -244,7 +269,8 @@ Result GlobalInitialSyncer::updateServerInventory(VPackSlice const& leaderDataba
     VPackSlice const nameSlice = it.get("name");
     VPackSlice const idSlice = it.get("id");
     VPackSlice const collections = it.get("collections");
-    if (!nameSlice.isString() || !idSlice.isString() || !collections.isArray()) {
+    if (!nameSlice.isString() || !idSlice.isString() ||
+        !collections.isArray()) {
       return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                     "database declaration is invalid in response");
     }
@@ -254,10 +280,9 @@ Result GlobalInitialSyncer::updateServerInventory(VPackSlice const& leaderDataba
 
     if (vocbase == nullptr) {
       // database is missing. we need to create it now
-      Result r = methods::Databases::create(_state.applier._server,
-                                            ExecContext::current(), dbName,
-                                            VPackSlice::emptyArraySlice(),
-                                            VPackSlice::emptyObjectSlice());
+      Result r = methods::Databases::create(
+          _state.applier._server, ExecContext::current(), dbName,
+          VPackSlice::emptyArraySlice(), VPackSlice::emptyObjectSlice());
       if (r.fail()) {
         LOG_TOPIC("cf124", WARN, Logger::REPLICATION)
             << "Creating the db failed on replicant";
@@ -290,22 +315,23 @@ Result GlobalInitialSyncer::updateServerInventory(VPackSlice const& leaderDataba
       std::vector<arangodb::LogicalCollection*> toDrop;
 
       // drop all collections that do not exist (anymore) on the leader
-      vocbase->processCollections(
-          [&survivingCollections, &toDrop](arangodb::LogicalCollection* collection) {
-            if (survivingCollections.find(collection->guid()) !=
-                survivingCollections.end()) {
-              // collection should surive
-              return;
-            }
-            if (!collection->system()) {  // we will not drop system collections here
-              toDrop.emplace_back(collection);
-            }
-          },
-          false);
+      vocbase->processCollections([&survivingCollections, &toDrop](
+                                      arangodb::LogicalCollection* collection) {
+        if (survivingCollections.find(collection->guid()) !=
+            survivingCollections.end()) {
+          // collection should surive
+          return;
+        }
+        if (!collection
+                 ->system()) {  // we will not drop system collections here
+          toDrop.emplace_back(collection);
+        }
+      });
 
       for (auto const& collection : toDrop) {
         try {
-          auto res = vocbase->dropCollection(collection->id(), false, -1.0).errorNumber();
+          auto res = vocbase->dropCollection(collection->id(), false, -1.0)
+                         .errorNumber();
 
           if (res != TRI_ERROR_NO_ERROR) {
             LOG_TOPIC("f04bb", ERR, Logger::REPLICATION)
@@ -330,17 +356,20 @@ Result GlobalInitialSyncer::updateServerInventory(VPackSlice const& leaderDataba
   for (std::string const& dbname : existingDBs) {
     _state.vocbases.erase(dbname);  // make sure to release the db first
 
-    auto r = _state.applier._server.hasFeature<arangodb::SystemDatabaseFeature>()
-                 ? methods::Databases::drop(ExecContext::current(),
-                                            _state.applier._server
-                                                .getFeature<arangodb::SystemDatabaseFeature>()
-                                                .use()
-                                                .get(),
-                                            dbname)
-                 : arangodb::Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+    auto r =
+        _state.applier._server.hasFeature<arangodb::SystemDatabaseFeature>()
+            ? methods::Databases::drop(
+                  ExecContext::current(),
+                  _state.applier._server
+                      .getFeature<arangodb::SystemDatabaseFeature>()
+                      .use()
+                      .get(),
+                  dbname)
+            : arangodb::Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
 
     if (r.fail()) {
-      LOG_TOPIC("0a282", WARN, Logger::REPLICATION) << "Dropping db failed on replicant";
+      LOG_TOPIC("0a282", WARN, Logger::REPLICATION)
+          << "Dropping db failed on replicant";
       return r;
     }
 
@@ -360,12 +389,15 @@ Result GlobalInitialSyncer::getInventory(VPackBuilder& builder) {
     return Result(TRI_ERROR_SHUTTING_DOWN);
   }
 
-  auto r = _batch.start(_state.connection, _progress, _state.leader, _state.syncerId, nullptr);
+  auto r = _batch.start(_state.connection, _progress, _state.leader,
+                        _state.syncerId, nullptr);
   if (r.fail()) {
     return r;
   }
 
-  TRI_DEFER(_batch.finish(_state.connection, _progress, _state.syncerId));
+  auto sg = arangodb::scopeGuard([&]() noexcept {
+    std::ignore = _batch.finish(_state.connection, _progress, _state.syncerId);
+  });
 
   // caller did not supply an inventory, we need to fetch it
   return fetchInventory(builder);
@@ -386,7 +418,8 @@ Result GlobalInitialSyncer::fetchInventory(VPackBuilder& builder) {
   std::unique_ptr<httpclient::SimpleHttpResult> response;
   _state.connection.lease([&](httpclient::SimpleHttpClient* client) {
     auto headers = replutils::createHeaders();
-    response.reset(client->retryRequest(rest::RequestType::GET, url, nullptr, 0, headers));
+    response.reset(
+        client->retryRequest(rest::RequestType::GET, url, nullptr, 0, headers));
   });
 
   if (replutils::hasFailed(response.get())) {
@@ -401,7 +434,8 @@ Result GlobalInitialSyncer::fetchInventory(VPackBuilder& builder) {
   if (r.fail()) {
     return Result(
         r.errorNumber(),
-        std::string("got invalid response from leader at ") + _state.leader.endpoint +
+        std::string("got invalid response from leader at ") +
+            _state.leader.endpoint +
             ": invalid response type for initial data. expecting array");
   }
 

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,6 +25,7 @@
 #include <stdlib.h>
 #include <set>
 #include <string>
+#include <string_view>
 #include <type_traits>
 #include <utility>
 
@@ -39,7 +40,8 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 
-#include <velocypack/StringRef.h>
+#include <velocypack/Builder.h>
+#include <velocypack/Value.h>
 
 #ifdef TRI_HAVE_UNISTD_H
 #include <unistd.h>
@@ -50,91 +52,78 @@ using namespace arangodb;
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
 
 namespace {
-/// @brief custom comparer for failure points. this allows an implicit
-/// conversion from char const* to arangodb::velocypack::StringRef in order to avoid memory
-/// allocations for temporary string values
-struct Comparer {
-  using is_transparent = std::true_type;
-  // implement comparison functions for various types
-  inline bool operator()(arangodb::velocypack::StringRef const& lhs, std::string const& rhs) const noexcept {
-    return lhs < arangodb::velocypack::StringRef(rhs);
-  }
-  inline bool operator()(std::string const& lhs, arangodb::velocypack::StringRef const& rhs) const noexcept {
-    return arangodb::velocypack::StringRef(lhs) < rhs;
-  }
-  inline bool operator()(std::string const& lhs, std::string const& rhs) const noexcept {
-    return lhs < rhs;
-  }
-};
-
-/// @brief custom comparer for failure points. allows avoiding memory allocations
-/// for temporary string objects
-Comparer const comparer;
+std::atomic<bool> hasFailurePoints{false};
 
 /// @brief a read-write lock for thread-safe access to the failure points set
 arangodb::basics::ReadWriteLock failurePointsLock;
 
 /// @brief a global set containing the currently registered failure points
-std::set<std::string, ::Comparer> failurePoints(comparer);
+std::set<std::string, std::less<>> failurePoints;
 }  // namespace
 
 /// @brief intentionally cause a segmentation violation or other failures
 /// this is used for crash and recovery tests
-void TRI_TerminateDebugging(char const* message) {
+void TRI_TerminateDebugging(std::string_view message) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   CrashHandler::setHardKill();
 
   // there are some reserved crash messages we use in testing the
   // crash handler
-  velocypack::StringRef const s(message);
-  if (s == "CRASH-HANDLER-TEST-ABORT") {
+  if (message == "CRASH-HANDLER-TEST-ABORT") {
     // intentionally crashes the program!
     std::abort();
-  } else if (s == "CRASH-HANDLER-TEST-TERMINATE") {
+  } else if (message == "CRASH-HANDLER-TEST-TERMINATE") {
     // intentionally crashes the program!
     std::terminate();
-  } else if (s == "CRASH-HANDLER-TEST-TERMINATE-ACTIVE") {
+  } else if (message == "CRASH-HANDLER-TEST-TERMINATE-ACTIVE") {
     // intentionally crashes the program!
     // note: when using ASan/UBSan, this actually does not crash
     // the program but continues.
     auto f = []() noexcept {
       // intentionally crashes the program!
+      // cppcheck-suppress *
       return std::string(nullptr);
     };
     f();
     // we will get here at least with ASan/UBSan.
     std::terminate();
-  } else if (s == "CRASH-HANDLER-TEST-SEGFAULT") {
+  } else if (message == "CRASH-HANDLER-TEST-SEGFAULT") {
     std::unique_ptr<int> x;
     // intentionally crashes the program!
+    // cppcheck-suppress *
     int a = *x;
+    // cppcheck-suppress *
     *x = 2;
     TRI_ASSERT(a == 1);
-  } else if (s == "CRASH-HANDLER-TEST-ASSERT") {
+  } else if (message == "CRASH-HANDLER-TEST-ASSERT") {
     int a = 1;
     // intentionally crashes the program!
     TRI_ASSERT(a == 2);
   }
 
 #endif
- 
+
   // intentional crash - no need for a backtrace here
   CrashHandler::disableBacktraces();
-  CrashHandler::crash(message);  
+  CrashHandler::crash(message);
 }
 
 /// @brief check whether we should fail at a specific failure point
-bool TRI_ShouldFailDebugging(char const* value) {
-  READ_LOCKER(readLocker, ::failurePointsLock);
-  return ::failurePoints.find(arangodb::velocypack::StringRef(value)) != ::failurePoints.end();
+bool TRI_ShouldFailDebugging(std::string_view value) noexcept {
+  if (::hasFailurePoints.load(std::memory_order_relaxed)) {
+    READ_LOCKER(readLocker, ::failurePointsLock);
+    return ::failurePoints.find(value) != ::failurePoints.end();
+  }
+  return false;
 }
 
 /// @brief add a failure point
-void TRI_AddFailurePointDebugging(char const* value) {
+void TRI_AddFailurePointDebugging(std::string_view value) {
   bool added = false;
   {
     WRITE_LOCKER(writeLocker, ::failurePointsLock);
     added = ::failurePoints.emplace(value).second;
+    ::hasFailurePoints.store(true, std::memory_order_relaxed);
   }
 
   if (added) {
@@ -145,19 +134,56 @@ void TRI_AddFailurePointDebugging(char const* value) {
 }
 
 /// @brief remove a failure point
-void TRI_RemoveFailurePointDebugging(char const* value) {
-  WRITE_LOCKER(writeLocker, ::failurePointsLock);
-  ::failurePoints.erase(std::string(value));
+void TRI_RemoveFailurePointDebugging(std::string_view value) {
+  size_t numRemoved = 0;
+  {
+    WRITE_LOCKER(writeLocker, ::failurePointsLock);
+    numRemoved = ::failurePoints.erase(std::string(value));
+    if (::failurePoints.size() == 0) {
+      ::hasFailurePoints.store(false, std::memory_order_relaxed);
+    }
+  }
+
+  if (numRemoved > 0) {
+    LOG_TOPIC("5aacb", INFO, arangodb::Logger::FIXME)
+        << "cleared failure point " << value;
+  }
 }
 
 /// @brief clear all failure points
-void TRI_ClearFailurePointsDebugging() {
-  WRITE_LOCKER(writeLocker, ::failurePointsLock);
-  ::failurePoints.clear();
+void TRI_ClearFailurePointsDebugging() noexcept {
+  size_t numExisting = 0;
+  {
+    WRITE_LOCKER(writeLocker, ::failurePointsLock);
+    numExisting = ::failurePoints.size();
+    ::failurePoints.clear();
+    ::hasFailurePoints.store(false, std::memory_order_relaxed);
+  }
+
+  if (numExisting > 0) {
+    LOG_TOPIC("ea4e7", INFO, arangodb::Logger::FIXME)
+        << "cleared " << numExisting << " failure point(s)";
+  }
+}
+
+/// @brief return all currently set failure points
+void TRI_GetFailurePointsDebugging(arangodb::velocypack::Builder& builder) {
+  builder.openArray();
+  {
+    READ_LOCKER(readLocker, ::failurePointsLock);
+    for (auto const& it : ::failurePoints) {
+      builder.add(arangodb::velocypack::Value(it));
+    }
+  }
+  builder.close();
 }
 #endif
 
-template<> char const conpar<true>::open = '{';
-template<> char const conpar<true>::close = '}';
-template<> char const conpar<false>::open = '[';
-template<> char const conpar<false>::close = ']';
+template<>
+char const conpar<true>::open = '{';
+template<>
+char const conpar<true>::close = '}';
+template<>
+char const conpar<false>::open = '[';
+template<>
+char const conpar<false>::close = ']';

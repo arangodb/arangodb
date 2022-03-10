@@ -72,8 +72,7 @@ def genCHeaderFile(errors):
        + "\n\n"
 
   header = """
-#ifndef ARANGODB_BASICS_VOC_ERRORS_H
-#define ARANGODB_BASICS_VOC_ERRORS_H 1
+#pragma once
 
 #include "Basics/ErrorCode.h"
 
@@ -86,18 +85,14 @@ def genCHeaderFile(errors):
            + "/// " + e[1] + ": " + e[0] + "\n"\
            + wrap(e[2], 80, 0, 0, "/// \"") + "\"\n"\
            + wrap(e[3], 80, 0, 0, "/// ") + "\n"\
-           + "constexpr auto " + errorName(e).ljust(65) + " = ErrorCode{" + e[1] + "};\n"\
+           + "#define " + errorName(e).ljust(65) + " (::ErrorCode{" + e[1] + "})\n"\
            + "\n"
-
-  header = header\
-         + "#endif\n"
 
   return header
 
 def genErrorRegistryHeaderFile(errors):
     template = """
-#ifndef ARANGODB_BASICS_ERROR_REGISTRY_H
-#define ARANGODB_BASICS_ERROR_REGISTRY_H
+#pragma once
 
 #include "Basics/voc-errors.h"
 
@@ -112,13 +107,14 @@ struct elsa<ErrorCode> {{
 
 #include <frozen/unordered_map.h>
 
+// for format macro constants, e.g. PRId64
+#include <cinttypes>
+
 namespace arangodb::error {{
 constexpr static frozen::unordered_map<ErrorCode, const char*, {numErrorMessages}> ErrorMessages = {{
 {initializerList}
 }};
 }}
-
-#endif  // ARANGODB_BASICS_ERROR_REGISTRY_H
 """
     initializerList = '\n'.join([
         "    {" + errorName(e) + ",  // " + e[1] + "\n" + \

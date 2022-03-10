@@ -89,7 +89,6 @@ is returned when an invalid HTTP method is used.
 is returned if an error occurred while assembling the response.
 
 @RESTRETURNCODE{501}
-is returned if called with mmfiles or on a collection which doesn't support
-sync-by-revision
+is returned if called on a collection which doesn't support sync-by-revision
 
 @endDocuBlock

@@ -1,0 +1,244 @@
+<?xml version="1.0" encoding="utf-8"?>
+<explicit-failures-markup xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+ xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/boostorg/boost/master/status/explicit-failures.xsd">
+    <!-- type_traits -->
+    <library name="type_traits">
+       <mark-expected-failures>
+          <test name="is_virtual_base_of_test"/>
+          <toolset name="gcc-3.4.6"/>
+          <note author="John Maddock">
+             Type Traits tests are run with warnings-as-errors and GCC 3.x emits warnings with this test
+             that I haven't been able to suppress.
+          </note>
+       </mark-expected-failures>
+       <mark-expected-failures>
+          <test name="has_operator_new_test"/>
+          <test name="make_signed_test"/>
+          <test name="make_unsigned_test"/>
+          <toolset name="msvc-7.1"/>
+          <note author="John Maddock">
+             Apparently the compiler can't cope with these - later versions are fine though.
+             Probably work-round-able if someone would care to look into these.
+          </note>
+       </mark-expected-failures>
+        <mark-expected-failures>
+            <test name="function_traits_test"/>
+            <test name="remove_bounds_test"/>
+            <test name="remove_const_test"/>
+            <test name="remove_cv_test"/>
+            <test name="remove_pointer_test"/>
+            <test name="remove_reference_test"/>
+            <test name="remove_volatile_test"/>
+            <test name="decay_test"/>
+            <test name="extent_test"/>
+            <test name="remove_extent_test"/>
+            <test name="remove_all_extents_test"/>
+            <test name="rank_test"/>
+            <test name="is_unsigned_test"/>
+            <toolset name="msvc-6.5*"/>
+            <toolset name="msvc-7.0"/>
+            <note author="Aleksey Gurtovoy">
+                This failure is caused by the lack of compiler support for class template
+                partial specialization. A limited subset of the tested functionality is
+                available on the compiler through a user-side workaround (see
+                <a href="http://www.boost.org/libs/type_traits/index.html#transformations">
+                http://www.boost.org/libs/type_traits/index.html#transformations</a> for
+                details).
+            </note>
+        </mark-expected-failures>
+        <mark-expected-failures>
+            <test name="decay_test"/>
+            <test name="extent_test"/>
+            <test name="is_base_and_derived_test"/>
+            <test name="is_base_of_test"/>
+            <test name="is_convertible_test"/>
+            <test name="rank_test"/>
+            <test name="remove_all_extents_test"/>
+            <test name="remove_bounds_test"/>
+            <test name="remove_const_test"/>
+            <test name="remove_extent_test"/>
+            <test name="remove_pointer_test"/>
+            <test name="remove_volatile_test"/>
+            <test name="tricky_add_pointer_test"/>
+            <test name="tricky_function_type_test"/>
+            <test name="tricky_incomplete_type_test"/>
+            <test name="make_signed_test"/>
+            <test name="make_unsigned_test"/>
+            <toolset name="borland-5.6*"/>
+            <toolset name="borland-5.8*"/>
+            <toolset name="borland-5.9*"/>
+            <note author="John Maddock" refid="2"/>
+        </mark-expected-failures>
+        <mark-expected-failures>
+            <test name="promote_basic_test"/>
+            <test name="promote_enum_test"/>
+            <test name="promote_mpl_test"/>
+            <test name="tricky_partial_spec_test"/>
+            <toolset name="borland-5.6*"/>
+            <toolset name="borland-5.8*"/>
+            <toolset name="borland-5.9*"/>
+            <note author="AlisdairM" refid="2"/>
+        </mark-expected-failures>
+        <mark-expected-failures>
+            <test name="promote_enum_msvc_bug_test"/>
+            <toolset name="msvc-7.1*"/>
+            <toolset name="msvc-8.0*"/>
+            <toolset name="msvc-9.0*"/>
+            <toolset name="msvc-10.0*"/>
+            <toolset name="msvc-11.0*"/>
+            <toolset name="msvc-12.0*"/>
+            <toolset name="msvc-14.0*"/>
+            <toolset name="msvc-14.1*"/>
+            <toolset name="msvc-14.2*"/>
+            <note author="Alexander Nasonov">
+                See bug 99776 'enum UIntEnum { value = UINT_MAX } is promoted to int'
+                http://lab.msdn.microsoft.com/ProductFeedback/viewfeedback.aspx?feedbackid=22b0a6b7-120f-4ca0-9136-fa1b25b26efe
+                https://developercommunity.visualstudio.com/content/problem/490264/standard-violation-enum-underlying-type-cannot-rep.html
+	    </note>
+        </mark-expected-failures>
+        <test name="tricky_is_enum_test">
+            <mark-failure>
+                <toolset name="borland-5.6*"/>
+                <toolset name="borland-5.8*"/>
+                <toolset name="borland-5.9*"/>
+                <toolset name="msvc-6.5*"/>
+                <toolset name="gcc-2.95.3-*"/>
+            </mark-failure>
+        </test>
+        <test name="tricky_incomplete_type_test">
+            <mark-failure>
+                <toolset name="iw-7_1*"/>
+                <note author="John Maddock" refid="2"/>
+            </mark-failure>
+        </test>
+        <test name="is_abstract_test">
+            <mark-failure>
+                <toolset name="borland-5.6*"/>
+                <toolset name="borland-5.8*"/>
+                <toolset name="borland-5.9*"/>
+                <toolset name="cw-8.3*"/>
+                <toolset name="cw-9.3*"/>
+                <toolset name="cw-9.4"/>
+                <toolset name="cw-9.5"/>
+                <toolset name="msvc-6.5*"/>
+                <toolset name="msvc-7.0"/>
+                <toolset name="mingw-3_3*"/>
+                <toolset name="gcc-2*"/>
+                <toolset name="gcc-3.2*"/>
+                <toolset name="gcc-3.3*"/>
+                <toolset name="qcc-3.3*"/>
+                <toolset name="sunpro-5_3-sunos"/>
+                <toolset name="hp_cxx-65*"/>
+                <toolset name="darwin"/>
+                <toolset name="mingw"/>
+                <note author="Aleksey Gurtovoy">
+                    This functionality is available only on compilers that implement C++ Core Language
+                    <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/cwg_defects.html#337">Defect Report 337</a>.
+                </note>
+            </mark-failure>
+        </test>
+
+        <mark-expected-failures>
+          <test name="is_polymorphic_test"/>
+          <toolset name="gcc-2.95.3-stlport-*"/>
+          <note author="Doug Gregor" refid="3"/>
+        </mark-expected-failures>
+
+        <mark-expected-failures>
+            <test name="decay_test"/>
+            <test name="extent_test"/>
+            <test name="has_nothrow_assign_test"/>
+            <test name="has_nothrow_constr_test"/>
+            <test name="has_nothrow_copy_test"/>
+            <test name="has_trivial_assign_test"/>
+            <test name="has_trivial_constr_test"/>
+            <test name="has_trivial_copy_test"/>
+            <test name="has_trivial_destructor_test"/>
+            <test name="is_array_test"/>
+            <test name="is_base_and_derived_test"/>
+            <test name="is_base_of_test"/>
+            <test name="is_class_test"/>
+            <test name="is_convertible_test"/>
+            <test name="is_object_test"/>
+            <test name="is_pod_test"/>
+            <test name="is_polymorphic_test"/>
+            <test name="rank_test"/>
+            <test name="remove_all_extents_test"/>
+            <test name="remove_bounds_test"/>
+            <test name="remove_extent_test"/>
+            <toolset name="sunpro-5_3-sunos"/>
+
+            <note author="John Maddock">
+                The Type Traits library is broken when used with Sunpro-5.3 and the
+                argument to the template is an array or function type.  Most other argument types
+                do work as expected: in other words the functionality is limited
+                with this compiler, but not so much as to render the library unuseable.
+            </note>
+        </mark-expected-failures>
+        <mark-expected-failures>
+            <test name="is_empty_test"/>
+            <test name="is_function_test"/>
+            <test name="is_member_func_test"/>
+            <test name="is_member_obj_test"/>
+            <test name="is_reference_test"/>
+            <test name="tricky_function_type_test"/>
+            <test name="tricky_incomplete_type_test"/>
+            <test name="tricky_is_enum_test"/>
+            <toolset name="sunpro-5_3-sunos"/>
+            <note author="John Maddock" refid="2"/>
+        </mark-expected-failures>
+       <mark-expected-failures>
+          <test name="decay_test"/>
+          <test name="extent_test"/>
+          <test name="is_abstract_test"/>
+          <test name="is_empty_test"/>
+          <test name="is_function_test"/>
+          <test name="is_member_func_test"/>
+          <test name="is_member_obj_test"/>
+          <test name="is_object_test"/>
+          <test name="is_reference_test"/>
+          <test name="rank_test"/>
+          <test name="tricky_function_type_test"/>
+          <toolset name="sun-5.8"/>
+
+          <note author="John Maddock">
+             The Type Traits library is broken when used with Sunpro-5.8 and the
+             argument to the template is a function type.  Most other argument types
+             do work as expected: in other words the functionality is limited
+             with this compiler, but not so much as to render the library unuseable.
+          </note>
+       </mark-expected-failures>
+       <mark-expected-failures>
+          <test name="tricky_partial_spec_test"/>
+          <toolset name="sun-5.9"/>
+          <note author="John Maddock">
+             This fails with an internal compiler error,
+             there is no workaround as yet.
+          </note>
+       </mark-expected-failures>
+       <mark-expected-failures>
+            <test name="tricky_function_type_test"/>
+            <test name="is_const_test"/>
+            <test name="is_volatile_test"/>
+            <test name="is_convertible_test"/>
+            <toolset name="gcc-2*"/>
+            <note author="John Maddock" refid="2"/>
+        </mark-expected-failures>
+        <mark-expected-failures>
+            <test name="aligned_storage_test"/>
+            <toolset name="cw-8.3"/>
+            <note author="John Maddock">
+               Older versions of MWCW incorrectly align pointers to member functions
+               (they use 12-byte boundaries, rather than a power-of-2 boundary),
+               leading to alignment_of / aligned_storage
+               to fail with these types on this compiler.
+            </note>
+        </mark-expected-failures>
+    </library>
+</explicit-failures-markup>
+<!--
+(C) Copyright Nikita Kniazev 2019.
+Use, modification and distribution are subject to the 
+Boost Software License, Version 1.0. (See accompanying file 
+LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+-->

@@ -36,6 +36,9 @@ const isEqual = helper.isEqual;
 const graphModule = require('@arangodb/general-graph');
 const graphName = 'myUnittestGraph';
 const db = require('internal').db;
+const {getCompactStatsNodes, TraversalBlock } = require("@arangodb/testutils/aql-profiler-test-helper");
+
+
 let graph;
 let edgeKey;
 
@@ -478,6 +481,90 @@ describe('Rule optimize-traversals', () => {
 
       result = AQL_EXECUTE(query, bindVars).json;
       expect(result.length).to.equal(4);
+    });
+
+    it('should optimize when filtered on v', () => {
+      let query = `
+        FOR v,e,p IN 2 OUTBOUND @start GRAPH @graph
+        FILTER v.label == '4'
+        RETURN p
+      `;
+      const bindVars = {
+        start: 'circles/A',
+        graph: graphName
+      };
+
+      let plan = AQL_EXPLAIN(query, bindVars, paramEnabled);
+      // expect(plan.plan.rules.indexOf(ruleName)).to.equal(-1, query);
+
+      const profile = db._query(query, bindVars, {profile: 2}).getExtra();
+      const result = getCompactStatsNodes(profile).filter(n => n.type === TraversalBlock);
+      // We only have one TraversalBlock
+      expect(result.length).to.equal(1);
+      // The traversal shall only output a single Path.
+      expect(result[0].items).to.equal(1);
+    });
+
+    it('should optimize when filtered on v - BFS', () => {
+      let query = `
+        FOR v,e,p IN 2 OUTBOUND @start GRAPH @graph
+        OPTIONS {bfs: true}
+        FILTER v.label == '4'
+        RETURN p
+      `;
+      const bindVars = {
+        start: 'circles/A',
+        graph: graphName
+      };
+
+      const profile = db._query(query, bindVars, {profile: 2}).getExtra();
+      const result = getCompactStatsNodes(profile).filter(n => n.type === TraversalBlock);
+      // We only have one TraversalBlock
+      expect(result.length).to.equal(1);
+      // The traversal shall only output a single Path.
+      expect(result[0].items).to.equal(1);
+    });
+
+    it('should optimize when filtered on e', () => {
+      let query = `
+        FOR v,e,p IN 2 OUTBOUND @start GRAPH @graph
+        FILTER e.label == 'schubi'
+        RETURN p
+      `;
+      const bindVars = {
+        start: 'circles/A',
+        graph: graphName
+      };
+
+      let plan = AQL_EXPLAIN(query, bindVars, paramEnabled);
+      // expect(plan.plan.rules.indexOf(ruleName)).to.equal(-1, query);
+
+      const profile = db._query(query, bindVars, {profile: 2}).getExtra();
+      const result = getCompactStatsNodes(profile).filter(n => n.type === TraversalBlock);
+      // We only have one TraversalBlock
+      expect(result.length).to.equal(1);
+      // The traversal shall only output a single Path.
+      expect(result[0].items).to.equal(1);
+    });
+
+    it('should optimize when filtered on e - BFS', () => {
+      let query = `
+        FOR v,e,p IN 2 OUTBOUND @start GRAPH @graph
+        OPTIONS {bfs: true}
+        FILTER e.label == 'schubi'
+        RETURN p
+      `;
+      const bindVars = {
+        start: 'circles/A',
+        graph: graphName
+      };
+
+      const profile = db._query(query, bindVars, {profile: 2}).getExtra();
+      const result = getCompactStatsNodes(profile).filter(n => n.type === TraversalBlock);
+      // We only have one TraversalBlock
+      expect(result.length).to.equal(1);
+      // The traversal shall only output a single Path.
+      expect(result[0].items).to.equal(1);
     });
   });
 

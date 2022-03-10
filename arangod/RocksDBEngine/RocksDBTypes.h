@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,8 +22,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGO_ROCKSDB_ROCKSDB_TYPES_H
-#define ARANGO_ROCKSDB_ROCKSDB_TYPES_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -53,7 +52,13 @@ enum class RocksDBEntryType : char {
   KeyGeneratorValue = '=',
   View = '>',
   GeoIndexValue = '?',
-  RevisionTreeValue = '@'
+  LogEntry = 'L',
+  // RevisionTreeValue = '@', // pre-3.8 GA revision trees. do not use or reuse!
+  // RevisionTreeValue = '/', // pre-3.8 GA revision trees. do not use or reuse!
+  RevisionTreeValue = '*',
+  ReplicatedLog = 'l',
+  ZkdIndexValue = 'z',
+  UniqueZkdIndexValue = 'Z',
 };
 
 char const* rocksDBEntryTypeName(RocksDBEntryType);
@@ -86,7 +91,7 @@ enum class RocksDBLogType : char {
   DocumentRemoveV2 = 'E',
   SingleRemoveV2 = 'F',
   CollectionTruncate = 'G',
-  FlushSync = 'H', // @see FlushFeature
+  FlushSync = 'H',  // @see FlushFeature
   TrackedDocumentInsert = 'I',
   TrackedDocumentRemove = 'J',
 };
@@ -96,7 +101,8 @@ enum class RocksDBSettingsType : char {
   Invalid = 0,
   Version = 'V',
   ServerTick = 'S',
-  Endianness = 'E'
+  Endianness = 'E',
+  ExtendedDatabaseNames = 'X',
 };
 
 /// @brief endianess value
@@ -108,5 +114,3 @@ char rocksDBFormatVersion();
 char const* rocksDBLogTypeName(RocksDBLogType);
 rocksdb::Slice const& rocksDBSlice(RocksDBEntryType const& type);
 }  // namespace arangodb
-
-#endif

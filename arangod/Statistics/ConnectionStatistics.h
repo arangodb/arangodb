@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_STATISTICS_CONNECTION_STATISTICS_H
-#define ARANGOD_STATISTICS_CONNECTION_STATISTICS_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -33,7 +32,7 @@ namespace arangodb {
 class ConnectionStatistics {
  public:
   static void initialize();
-  
+
   class Item {
    public:
     Item() : _stat(nullptr) {}
@@ -72,13 +71,13 @@ class ConnectionStatistics {
         _stat->_connEnd = StatisticsFeature::time();
       }
     }
-    
+
     void SET_HTTP();
 
    private:
     ConnectionStatistics* _stat;
   };
-  
+
   static Item acquire();
 
   struct Snapshot {
@@ -113,5 +112,3 @@ class ConnectionStatistics {
   bool _error;
 };
 }  // namespace arangodb
-
-#endif

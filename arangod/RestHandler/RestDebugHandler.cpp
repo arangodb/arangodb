@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,8 +29,9 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestDebugHandler::RestDebugHandler(application_features::ApplicationServer& server,
-                                   GeneralRequest* request, GeneralResponse* response)
+RestDebugHandler::RestDebugHandler(ArangodServer& server,
+                                   GeneralRequest* request,
+                                   GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
 RestStatus RestDebugHandler::execute() {
@@ -41,7 +42,8 @@ RestStatus RestDebugHandler::execute() {
 
   if (len == 0 || len > 2) {
     generateNotImplemented(
-        "ILLEGAL /_admin/debug/failat or /_admin/debug/raceControl or /_admin/debug/crash");
+        "ILLEGAL /_admin/debug/failat or /_admin/debug/raceControl or "
+        "/_admin/debug/crash");
     return RestStatus::DONE;
   }
 
@@ -50,7 +52,13 @@ RestStatus RestDebugHandler::execute() {
     switch (type) {
       case rest::RequestType::GET: {
         VPackBuilder result;
-        result.add(VPackValue(TRI_CanUseFailurePointsDebugging()));
+        if (len == 2 && suffixes[1] == "all") {
+          // return all currently set failure points
+          TRI_GetFailurePointsDebugging(result);
+        } else {
+          // return whether we can use failure points or not
+          result.add(VPackValue(TRI_CanUseFailurePointsDebugging()));
+        }
         generateResult(rest::ResponseCode::OK, result.slice());
         return RestStatus::DONE;
       }
@@ -119,6 +127,7 @@ RestStatus RestDebugHandler::execute() {
     }
   }
   generateNotImplemented(
-      "ILLEGAL /_admin/debug/failat or /_admin/debug/raceControl or /_admin/debug/crash");
+      "ILLEGAL /_admin/debug/failat or /_admin/debug/raceControl or "
+      "/_admin/debug/crash");
   return RestStatus::DONE;
 }

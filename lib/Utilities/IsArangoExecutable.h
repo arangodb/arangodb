@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,12 +21,9 @@
 /// @author Wilfried Goesgens
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_UTILITIES_IS_EXECUTABLE_H
-#define ARANGODB_UTILITIES_IS_EXECUTABLE_H 1
+#pragma once
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief tell whether str contains a string matching one of our executables
 //////////////////////////////////////////////////////////////////////////////
 std::string extractShellExecutableName(std::string const& input);
-
-#endif

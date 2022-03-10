@@ -2,7 +2,7 @@ name: arangodb_replication_initial_sync_docs_inserted_total
 renamedFrom: arangodb_replication_initial_sync_docs_inserted
 introducedIn: "3.8.0"
 help: |
-  Number of documents inserted by replication initial sync
+  Number of documents inserted by replication initial sync.
 unit: number
 type: counter
 category: Replication

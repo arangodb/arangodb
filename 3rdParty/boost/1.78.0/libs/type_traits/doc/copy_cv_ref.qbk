@@ -1,0 +1,65 @@
+[/
+Copyright 2019 Glen Joseph Fernandes
+(glenjofe@gmail.com)
+
+Distributed under the Boost Software License,
+Version 1.0. (See accompanying file LICENSE_1_0.txt
+or copy at http://www.boost.org/LICENSE_1_0.txt).
+]
+
+[section:copy_cv_ref copy_cv_ref]
+
+    template<class T, class U>
+    struct copy_cv_ref
+    {
+        typedef __below type;
+    };
+
+    template<class T, class U>
+    using copy_cv_ref_t = typename copy_cv_ref<T, U>::type;
+
+__type [^T /cvref/], where /cvref/ are the cvref-qualifiers of `U`.
+
+__header `#include <boost/type_traits/copy_cv_ref.hpp>` or
+`#include <boost/type_traits.hpp>>`
+
+[table Examples
+
+[[Expression] [Result Type]]
+
+[[`copy_cv_ref<int, const char>::type`][`const int`]]
+
+[[`copy_cv_ref<int, volatile char>::type`][`volatile int`]]
+
+[[`copy_cv_ref<int, const volatile char>::type`][`const volatile int`]]
+
+[[`copy_cv_ref<int, char&>::type`][`int&`]]
+
+[[`copy_cv_ref<int, const char&>::type`][`const int&`]]
+
+[[`copy_cv_ref<int, volatile char&>::type`][`volatile int&`]]
+
+[[`copy_cv_ref<int, const volatile char&>::type`][`const volatile int&`]]
+
+[[`copy_cv_ref<int, char&&>::type`][`int&&`]]
+
+[[`copy_cv_ref<int, const char&&>::type`][`const int&&`]]
+
+[[`copy_cv_ref<int, volatile char&&>::type`][`volatile int&&`]]
+
+[[`copy_cv_ref<int, const volatile char&&>::type`][`const volatile int&&`]]
+
+[[`copy_cv_ref<int&&, char&>::type`][`int&`]]
+
+[[`copy_cv_ref<int&, const char>::type`][`int&`]]
+
+[[`copy_cv_ref<int&, volatile char&>::type`][`int&`]]
+
+[[`copy_cv_ref<int&, const volatile char&&>::type`][`int&`]]
+
+]
+
+[all_compilers] The type alias `copy_cv_ref_t` is only available if the compiler
+supports template aliases.
+
+[endsect]

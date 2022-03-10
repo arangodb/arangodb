@@ -7,7 +7,8 @@
 @HINTS
 {% hint 'warning' %}
 This route should no longer be used.
-It is considered as deprecated from version 3.4.0 on.
+It is considered as deprecated from version 3.4.0 on. Client applications
+should use the REST API endpoint `/_api/wal/tail` instead.
 {% endhint %}
 
 @RESTQUERYPARAMETERS

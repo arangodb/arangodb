@@ -1,0 +1,39 @@
+[/
+ / Copyright (c) 2003-2021 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See accompanying
+ / file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+ /]
+
+[section:asynchronous_socket_operations Requirements on asynchronous socket operations]
+
+In this library, ['asynchronous socket operations] are those member functions
+having prefix `async_`.
+
+For an object `s`, a program may initiate asynchronous socket operations such
+that there are multiple simultaneously outstanding asynchronous operations.
+
+When there are multiple outstanding asynchronous [link
+boost_asio.reference.read_write_operations read operations] on `s`:
+
+[mdash] having no argument `flags` of type `socket_base::message_flags`, or
+
+[mdash] having an argument `flags` of type `socket_base::message_flags` but
+where `(flags & socket_base::message_out_of_band) == 0`
+
+then the `buffers` are filled in the order in which these operations were
+issued. The order of invocation of the completion handlers for these operations
+is unspecified.
+
+When there are multiple outstanding asynchronous [link
+boost_asio.reference.read_write_operations read operations] on `s` having an argument
+`flags` of type `socket_base::message_flags` where `(flags &
+socket_base::message_out_of_band) != 0` then the `buffers` are filled in the
+order in which these operations were issued.
+
+When there are multiple outstanding asynchronous [link
+boost_asio.reference.read_write_operations write operations] on `s`, the `buffers`
+are transmitted in the order in which these operations were issued. The order
+of invocation of the completion handlers for these operations is unspecified.
+
+[endsect]

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,12 +23,10 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_ALGOS_VERTEX_ACCUMULATOR_OPTIONS_H
-#define ARANGODB_PREGEL_ALGOS_VERTEX_ACCUMULATOR_OPTIONS_H 1
+#pragma once
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 #include <map>
 #include <unordered_set>
 #include <string>
@@ -98,9 +96,11 @@ struct CustomAccumulatorDefinition {
 
 // An accumulator declaration consists of a unique name
 // and a struct of options
-using AccumulatorsDeclaration = std::unordered_map<std::string, AccumulatorOptions>;
+using AccumulatorsDeclaration =
+    std::unordered_map<std::string, AccumulatorOptions>;
 using BindingDeclarations = std::unordered_map<std::string, VPackBuilder>;
-using CustomAccumulatorDefinitions = std::unordered_map<std::string, CustomAccumulatorDefinition>;
+using CustomAccumulatorDefinitions =
+    std::unordered_map<std::string, CustomAccumulatorDefinition>;
 using DataAccessDefinitions = DataAccessDefinition;
 
 struct AlgorithmPhase {
@@ -126,7 +126,8 @@ struct TraceMessagesOptions {
   std::optional<TraceMessagesFilterOptions> filter;
 };
 
-using TraceMessageVertexList = std::unordered_map<std::string, TraceMessagesOptions>;
+using TraceMessageVertexList =
+    std::unordered_map<std::string, TraceMessagesOptions>;
 
 struct DebugInformation {
   TraceMessageVertexList traceMessages;
@@ -150,12 +151,14 @@ std::ostream& operator<<(std::ostream&, AccumulatorOptions const&);
 std::ostream& operator<<(std::ostream&, DataAccessDefinition const&);
 std::ostream& operator<<(std::ostream&, AccumulatorValueType const&);
 
-deserializer_result<DataAccessDefinition> parseDataAccessOptions(VPackSlice slice);
-deserializer_result<AccumulatorOptions> parseAccumulatorOptions(VPackSlice slice);
-deserializer_result<VertexAccumulatorOptions> parseVertexAccumulatorOptions(VPackSlice slice);
+deserializer_result<DataAccessDefinition> parseDataAccessOptions(
+    VPackSlice slice);
+deserializer_result<AccumulatorOptions> parseAccumulatorOptions(
+    VPackSlice slice);
+deserializer_result<VertexAccumulatorOptions> parseVertexAccumulatorOptions(
+    VPackSlice slice);
 
 }  // namespace accumulators
 }  // namespace algos
 }  // namespace pregel
 }  // namespace arangodb
-#endif

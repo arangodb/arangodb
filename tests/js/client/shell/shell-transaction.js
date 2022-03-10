@@ -28,14 +28,16 @@
 
 // tests for streaming transactions
 
-var jsunity = require('jsunity');
-var internal = require('internal');
-var arangodb = require('@arangodb');
-var db = arangodb.db;
-var testHelper = require('@arangodb/test-helper').Helper;
-var analyzers = require("@arangodb/analyzers");
-let ArangoTransaction = require('@arangodb/arango-transaction').ArangoTransaction;
+const jsunity = require('jsunity');
+const internal = require('internal');
+const arangodb = require('@arangodb');
+const db = arangodb.db;
+const testHelper = require('@arangodb/test-helper').Helper;
+const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
+const analyzers = require("@arangodb/analyzers");
+const ArangoTransaction = require('@arangodb/arango-transaction').ArangoTransaction;
 const isCluster = internal.isCluster();
+const isReplication2Enabled = require('internal').db._version(true).details['replication2-enabled'] === 'true';
 
 var compareStringIds = function (l, r) {
   'use strict';
@@ -66,12 +68,22 @@ var sortedKeys = function (col) {
   return keys;
 };
 
-function transactionRevisionsSuite () {
+function transactionRevisionsSuite (dbParams) {
   'use strict';
+  const dbn = 'UnitTestsTransactionDatabase';
   var cn = 'UnitTestsTransaction';
   var c = null;
 
   return {
+    setUpAll: function () {
+      db._createDatabase(dbn, dbParams);
+      db._useDatabase(dbn);
+    },
+
+    tearDownAll: function () {
+      db._useDatabase("_system");
+      db._dropDatabase(dbn);
+    },
 
     setUp: function () {
       db._drop(cn);
@@ -88,6 +100,30 @@ function transactionRevisionsSuite () {
       internal.wait(0);
     },
 
+    testInsertAndRead: function () {
+      let trx = db._createTransaction({ 
+        collections: { write: c.name()  }
+      });
+      try {
+        let tc = trx.collection(c.name());
+        tc.insert({ _key: 'test1', value: 1 });
+        tc.insert([{ _key: 'test2', value: 2 }, { _key: 'test3', value: 3 }]);
+
+        assertEqual(3, tc.count());
+        assertEqual(1, tc.document("test1").value);
+        assertEqual(2, tc.document("test2").value);
+        assertEqual(3, tc.document("test3").value);
+
+        const values = trx.query(`FOR d IN @@col SORT d._key RETURN {_key: d._key, value: d.value}`, { '@col': c.name() }).toArray();
+        assertEqual(3, values.length);
+        assertEqual({ _key: 'test1', value: 1 }, values[0]);
+        assertEqual({ _key: 'test2', value: 2 }, values[1]);
+        assertEqual({ _key: 'test3', value: 3 }, values[2]);
+      } finally {
+        trx.abort(); // otherwise drop hangs
+      }
+    },
+    
     testInsertUniqueFailing: function () {
       c.insert({ _key: 'test', value: 1 });
 
@@ -294,8 +330,9 @@ function transactionRevisionsSuite () {
 // / @brief test suite
 // //////////////////////////////////////////////////////////////////////////////
 
-function transactionInvocationSuite () {
+function transactionInvocationSuite (dbParams) {
   'use strict';
+  const dbn = 'UnitTestsTransactionDatabase';
   const cn = "UnitTestsCollection";
   
   let assertInList = function(list, trx) {
@@ -309,6 +346,15 @@ function transactionInvocationSuite () {
   };
 
   return {
+    setUpAll: function () {
+      db._createDatabase(dbn, dbParams);
+      db._useDatabase(dbn);
+    },
+
+    tearDownAll: function () {
+      db._useDatabase("_system");
+      db._dropDatabase(dbn);
+    },
 
     // //////////////////////////////////////////////////////////////////////////////
     // / @brief set up
@@ -772,8 +818,9 @@ function transactionInvocationSuite () {
 // / @brief test suite
 // //////////////////////////////////////////////////////////////////////////////
 
-function transactionCollectionsSuite () {
+function transactionCollectionsSuite (dbParams) {
   'use strict';
+  const dbn = 'UnitTestsTransactionDatabase';
   var cn1 = 'UnitTestsTransaction1';
   var cn2 = 'UnitTestsTransaction2';
 
@@ -781,6 +828,15 @@ function transactionCollectionsSuite () {
   var c2 = null;
 
   return {
+    setUpAll: function () {
+      db._createDatabase(dbn, dbParams);
+      db._useDatabase(dbn);
+    },
+
+    tearDownAll: function () {
+      db._useDatabase("_system");
+      db._dropDatabase(dbn);
+    },
 
     // //////////////////////////////////////////////////////////////////////////////
     // / @brief set up
@@ -1570,8 +1626,9 @@ function transactionCollectionsSuite () {
 // / @brief test suite
 // //////////////////////////////////////////////////////////////////////////////
 
-function transactionOperationsSuite () {
+function transactionOperationsSuite (dbParams) {
   'use strict';
+  const dbn = 'UnitTestsTransactionDatabase';
   var cn1 = 'UnitTestsTransaction1';
   var cn2 = 'UnitTestsTransaction2';
 
@@ -1579,6 +1636,15 @@ function transactionOperationsSuite () {
   var c2 = null;
 
   return {
+    setUpAll: function () {
+      db._createDatabase(dbn, dbParams);
+      db._useDatabase(dbn);
+    },
+
+    tearDownAll: function () {
+      db._useDatabase("_system");
+      db._dropDatabase(dbn);
+    },
 
     // //////////////////////////////////////////////////////////////////////////////
     // / @brief set up
@@ -2185,8 +2251,9 @@ function transactionOperationsSuite () {
 // / @brief test suite
 // //////////////////////////////////////////////////////////////////////////////
 
-function transactionBarriersSuite () {
+function transactionBarriersSuite (dbParams) {
   'use strict';
+  const dbn = 'UnitTestsTransactionDatabase';
   var cn1 = 'UnitTestsTransaction1';
   var cn2 = 'UnitTestsTransaction2';
 
@@ -2194,6 +2261,15 @@ function transactionBarriersSuite () {
   var c2 = null;
 
   return {
+    setUpAll: function () {
+      db._createDatabase(dbn, dbParams);
+      db._useDatabase(dbn);
+    },
+
+    tearDownAll: function () {
+      db._useDatabase("_system");
+      db._dropDatabase(dbn);
+    },
 
     // //////////////////////////////////////////////////////////////////////////////
     // / @brief set up
@@ -2322,14 +2398,23 @@ function transactionBarriersSuite () {
 // / @brief test suite
 // //////////////////////////////////////////////////////////////////////////////
 
-function transactionRollbackSuite () {
+function transactionRollbackSuite (dbParams) {
   'use strict';
+  const dbn = 'UnitTestsTransactionDatabase';
   var cn1 = 'UnitTestsTransaction1';
-
   var c1 = null;
 
   return {
+    setUpAll: function () {
+      db._createDatabase(dbn, dbParams);
+      db._useDatabase(dbn);
+    },
 
+    tearDownAll: function () {
+      db._useDatabase("_system");
+      db._dropDatabase(dbn);
+    },
+      
     // //////////////////////////////////////////////////////////////////////////////
     // / @brief set up
     // //////////////////////////////////////////////////////////////////////////////
@@ -3386,13 +3471,23 @@ function transactionRollbackSuite () {
 // / @brief test suite
 // //////////////////////////////////////////////////////////////////////////////
 
-function transactionCountSuite () {
+function transactionCountSuite (dbParams) {
   'use strict';
+  const dbn = 'UnitTestsTransactionDatabase';
   var cn1 = 'UnitTestsTransaction1';
 
   var c1 = null;
 
   return {
+    setUpAll: function () {
+      db._createDatabase(dbn, dbParams);
+      db._useDatabase(dbn);
+    },
+
+    tearDownAll: function () {
+      db._useDatabase("_system");
+      db._dropDatabase(dbn);
+    },
 
     // //////////////////////////////////////////////////////////////////////////////
     // / @brief set up
@@ -3592,8 +3687,9 @@ function transactionCountSuite () {
 // / @brief test suite
 // //////////////////////////////////////////////////////////////////////////////
 
-function transactionCrossCollectionSuite () {
+function transactionCrossCollectionSuite (dbParams) {
   'use strict';
+  const dbn = 'UnitTestsTransactionDatabase';
   var cn1 = 'UnitTestsTransaction1';
   var cn2 = 'UnitTestsTransaction2';
 
@@ -3601,6 +3697,15 @@ function transactionCrossCollectionSuite () {
   var c2 = null;
 
   return {
+    setUpAll: function () {
+      db._createDatabase(dbn, dbParams);
+      db._useDatabase(dbn);
+    },
+
+    tearDownAll: function () {
+      db._useDatabase("_system");
+      db._dropDatabase(dbn);
+    },
 
     // //////////////////////////////////////////////////////////////////////////////
     // / @brief set up
@@ -3946,11 +4051,21 @@ function transactionCrossCollectionSuite () {
 // / @brief test suite
 // //////////////////////////////////////////////////////////////////////////////
 
-function transactionTraversalSuite () {
+function transactionTraversalSuite (dbParams) {
   'use strict';
+  const dbn = 'UnitTestsTransactionDatabase';
   var cn = 'UnitTestsTransaction';
 
   return {
+    setUpAll: function () {
+      db._createDatabase(dbn, dbParams);
+      db._useDatabase(dbn);
+    },
+
+    tearDownAll: function () {
+      db._useDatabase("_system");
+      db._dropDatabase(dbn);
+    },
 
     // //////////////////////////////////////////////////////////////////////////////
     // / @brief set up
@@ -4066,12 +4181,22 @@ function transactionTraversalSuite () {
 // / @brief test suite
 // //////////////////////////////////////////////////////////////////////////////
 
-function transactionAQLStreamSuite () {
+function transactionAQLStreamSuite (dbParams) {
   'use strict';
+  const dbn = 'UnitTestsTransactionDatabase';
   const cn = 'UnitTestsTransaction';
   let c;
 
   return {
+    setUpAll: function () {
+      db._createDatabase(dbn, dbParams);
+      db._useDatabase(dbn);
+    },
+
+    tearDownAll: function () {
+      db._useDatabase("_system");
+      db._dropDatabase(dbn);
+    },
 
     // //////////////////////////////////////////////////////////////////////////////
     // / @brief set up
@@ -4303,64 +4428,85 @@ function transactionAQLStreamSuite () {
 // / @brief test suite
 // //////////////////////////////////////////////////////////////////////////////
 
-function transactionTTLStreamSuite () {
+function transactionTTLStreamSuite (dbParams) {
   'use strict';
+  const dbn = 'UnitTestsTransactionDatabase';
   const cn = 'UnitTestsTransaction';
   let c;
 
   return {
+    setUpAll: function () {
+      db._createDatabase(dbn, dbParams);
+      db._useDatabase(dbn);
+    },
 
-    // //////////////////////////////////////////////////////////////////////////////
-    // / @brief set up
-    // //////////////////////////////////////////////////////////////////////////////
+    tearDownAll: function () {
+      db._useDatabase("_system");
+      db._dropDatabase(dbn);
+    },
 
     setUp: function () {
       db._drop(cn);
       c = db._create(cn, {numberOfShards: 2, replicationFactor: 2});
     },
 
-    // //////////////////////////////////////////////////////////////////////////////
-    // / @brief tear down
-    // //////////////////////////////////////////////////////////////////////////////
-
     tearDown: function () {
       db._drop(cn);
     },
-
 
     // //////////////////////////////////////////////////////////////////////////////
     // / @brief test: abort idle transactions
     // //////////////////////////////////////////////////////////////////////////////
 
     testAbortIdleTrx: function () {
-      let trx = db._createTransaction({
-        collections: { write: cn }
-      });
+      try {
+        internal.debugSetFailAt("lowStreamingIdleTimeout");
+      } catch (err) {}
 
-      trx.collection(cn).save({value:'val'});
+      try {
+        let trx = db._createTransaction({
+          collections: { write: cn }
+        });
 
-      let x = 60;
-      do {
-        internal.sleep(1);
+        trx.collection(cn).save({value:'val'});
 
-        if (trx.status().status === "aborted") {
-          return;
+        let x = 60;
+        do {
+          internal.sleep(1);
+
+          if (trx.status().status === "aborted") {
+            return;
+          }
+
+        } while(--x > 0);
+        if (x <= 0) {
+          fail(); // should not be reached
         }
-
-      } while(--x > 0);
-      if (x <= 0) {
-        fail(); // should not be reached
+      } finally {
+        try {
+          internal.debugRemoveFailAt("lowStreamingIdleTimeout");
+        } catch (err) {}
       }
     }
   };
 }
 
-function transactionIteratorSuite() {
+function transactionIteratorSuite(dbParams) {
   'use strict';
-  var cn = 'UnitTestsTransaction';
-  var c = null;
+  const dbn = 'UnitTestsTransactionDatabase';
+  let cn = 'UnitTestsTransaction';
+  let c;
 
   return {
+    setUpAll: function () {
+      db._createDatabase(dbn, dbParams);
+      db._useDatabase(dbn);
+    },
+
+    tearDownAll: function () {
+      db._useDatabase("_system");
+      db._dropDatabase(dbn);
+    },
 
     setUp: function () {
       db._drop(cn);
@@ -4394,10 +4540,20 @@ function transactionIteratorSuite() {
         docs.push({ value1: i, value2: (100 - i) });
       }
       tc.save(docs);
+      
+      // full scan 
+      let cur = trx.query('FOR doc IN @@c RETURN doc', { '@c': cn });
+      let half = cur.toArray();
+      assertEqual(half.length, 100);
+      
+      // full scan using primary index 
+      cur = trx.query('FOR doc IN @@c SORT doc._key ASC RETURN doc._key', { '@c': cn });
+      half = cur.toArray();
+      assertEqual(half.length, 100);
 
-      const cur = trx.query('FOR doc IN @@c SORT doc.value1 ASC RETURN doc', { '@c': cn });
-
-      const half = cur.toArray();
+      // full scan using secondary index 
+      cur = trx.query('FOR doc IN @@c SORT doc.value1 ASC RETURN doc', { '@c': cn });
+      half = cur.toArray();
       assertEqual(half.length, 100);
 
       trx.commit();
@@ -4427,9 +4583,19 @@ function transactionIteratorSuite() {
       }
       tc.save(docs);
 
-      const cur = trx.query('FOR doc IN @@c SORT doc.value2 DESC RETURN doc', { '@c': cn });
+      // full scan 
+      let cur = trx.query('FOR doc IN @@c SORT doc.value2 DESC RETURN doc', { '@c': cn });
+      let half = cur.toArray();
+      assertEqual(half.length, 100);
+      
+      // full scan using primary index 
+      cur = trx.query('FOR doc IN @@c SORT doc._key DESC RETURN doc._key', { '@c': cn });
+      half = cur.toArray();
+      assertEqual(half.length, 100);
 
-      const half = cur.toArray();
+      // full scan using secondary index 
+      cur = trx.query('FOR doc IN @@c SORT doc.value1 DESC RETURN doc', { '@c': cn });
+      half = cur.toArray();
       assertEqual(half.length, 100);
 
       trx.commit();
@@ -4438,11 +4604,21 @@ function transactionIteratorSuite() {
   };
 }
 
-function transactionOverlapSuite() {
+function transactionOverlapSuite(dbParams) {
   'use strict';
+  const dbn = 'UnitTestsTransactionDatabase';
   const cn = 'UnitTestsTransaction';
 
   return {
+    setUpAll: function () {
+      db._createDatabase(dbn, dbParams);
+      db._useDatabase(dbn);
+    },
+
+    tearDownAll: function () {
+      db._useDatabase("_system");
+      db._dropDatabase(dbn);
+    },
 
     setUp: function () {
       db._drop(cn);
@@ -4698,19 +4874,85 @@ function transactionDatabaseSuite() {
   };
 }
 
-jsunity.run(transactionRevisionsSuite);
-jsunity.run(transactionRollbackSuite);
-jsunity.run(transactionInvocationSuite);
-jsunity.run(transactionCollectionsSuite);
-jsunity.run(transactionOperationsSuite);
-jsunity.run(transactionBarriersSuite);
-jsunity.run(transactionCountSuite);
-jsunity.run(transactionCrossCollectionSuite);
-jsunity.run(transactionTraversalSuite);
-jsunity.run(transactionAQLStreamSuite);
-jsunity.run(transactionTTLStreamSuite);
-jsunity.run(transactionIteratorSuite);
-jsunity.run(transactionOverlapSuite);
+function makeTestSuites(testSuite) {
+  let suiteV1 = {};
+  let suiteV2 = {};
+  deriveTestSuite(testSuite({}), suiteV1, "_V1");
+  // For databases with replicationVersion 2 we internally use a ReplicatedRocksDBTransactionState
+  // for the transaction. Since this class is currently not covered by unittests, these tests are
+  // parameterized to cover both cases.
+  deriveTestSuite(testSuite({replicationVersion: "2"}), suiteV2, "_V2");
+  return [suiteV1, suiteV2];
+}
+
+function transactionRevisionsSuiteV1() { return makeTestSuites(transactionRevisionsSuite)[0]; }
+function transactionRevisionsSuiteV2() { return makeTestSuites(transactionRevisionsSuite)[1]; }
+
+function transactionRollbackSuiteV1() { return makeTestSuites(transactionRollbackSuite)[0]; }
+function transactionRollbackSuiteV2() { return makeTestSuites(transactionRollbackSuite)[1]; }
+
+function transactionInvocationSuiteV1() { return makeTestSuites(transactionInvocationSuite)[0]; }
+function transactionInvocationSuiteV2() { return makeTestSuites(transactionInvocationSuite)[1]; }
+
+function transactionCollectionsSuiteV1() { return makeTestSuites(transactionCollectionsSuite)[0]; }
+function transactionCollectionsSuiteV2() { return makeTestSuites(transactionCollectionsSuite)[1]; }
+
+function transactionOperationsSuiteV1() { return makeTestSuites(transactionOperationsSuite)[0]; }
+function transactionOperationsSuiteV2() { return makeTestSuites(transactionOperationsSuite)[1]; }
+
+function transactionBarriersSuiteV1() { return makeTestSuites(transactionBarriersSuite)[0]; }
+function transactionBarriersSuiteV2() { return makeTestSuites(transactionBarriersSuite)[1]; }
+
+function transactionCountSuiteV1() { return makeTestSuites(transactionCountSuite)[0]; }
+function transactionCountSuiteV2() { return makeTestSuites(transactionCountSuite)[1]; }
+
+function transactionCrossCollectionSuiteV1() { return makeTestSuites(transactionCrossCollectionSuite)[0]; }
+function transactionCrossCollectionSuiteV2() { return makeTestSuites(transactionCrossCollectionSuite)[1]; }
+
+function transactionTraversalSuiteV1() { return makeTestSuites(transactionTraversalSuite)[0]; }
+function transactionTraversalSuiteV2() { return makeTestSuites(transactionTraversalSuite)[1]; }
+
+function transactionAQLStreamSuiteV1() { return makeTestSuites(transactionAQLStreamSuite)[0]; }
+function transactionAQLStreamSuiteV2() { return makeTestSuites(transactionAQLStreamSuite)[1]; }
+
+function transactionTTLStreamSuiteV1() { return makeTestSuites(transactionTTLStreamSuite)[0]; }
+function transactionTTLStreamSuiteV2() { return makeTestSuites(transactionTTLStreamSuite)[1]; }
+
+function transactionIteratorSuiteV1() { return makeTestSuites(transactionIteratorSuite)[0]; }
+function transactionIteratorSuiteV2() { return makeTestSuites(transactionIteratorSuite)[1]; }
+
+function transactionOverlapSuiteV1() { return makeTestSuites(transactionOverlapSuite)[0]; }
+function transactionOverlapSuiteV2() { return makeTestSuites(transactionOverlapSuite)[1]; }
+
+jsunity.run(transactionRevisionsSuiteV1);
+jsunity.run(transactionRollbackSuiteV1);
+jsunity.run(transactionInvocationSuiteV1);
+jsunity.run(transactionCollectionsSuiteV1);
+jsunity.run(transactionOperationsSuiteV1);
+jsunity.run(transactionBarriersSuiteV1);
+jsunity.run(transactionCountSuiteV1);
+jsunity.run(transactionCrossCollectionSuiteV1);
+jsunity.run(transactionTraversalSuiteV1);
+jsunity.run(transactionAQLStreamSuiteV1);
+jsunity.run(transactionTTLStreamSuiteV1);
+jsunity.run(transactionIteratorSuiteV1);
+jsunity.run(transactionOverlapSuiteV1);
 jsunity.run(transactionDatabaseSuite);
+
+if (isReplication2Enabled) {
+  jsunity.run(transactionRevisionsSuiteV2);
+  jsunity.run(transactionRollbackSuiteV2);
+  jsunity.run(transactionInvocationSuiteV2);
+  jsunity.run(transactionCollectionsSuiteV2);
+  jsunity.run(transactionOperationsSuiteV2);
+  jsunity.run(transactionBarriersSuiteV2);
+  jsunity.run(transactionCountSuiteV2);
+  jsunity.run(transactionCrossCollectionSuiteV2);
+  jsunity.run(transactionTraversalSuiteV2);
+  jsunity.run(transactionAQLStreamSuiteV2);
+  jsunity.run(transactionTTLStreamSuiteV2);
+  jsunity.run(transactionIteratorSuiteV2);
+  jsunity.run(transactionOverlapSuiteV2);
+}
 
 return jsunity.done();

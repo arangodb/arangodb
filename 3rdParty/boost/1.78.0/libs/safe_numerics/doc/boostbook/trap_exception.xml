@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE section PUBLIC "-//Boost//DTD BoostBook XML V1.1//EN"
+"http://www.boost.org/tools/boostbook/dtd/boostbook.dtd">
+<section id="safe_numerics.exception_policies.trap_exception">
+  <title>trap_exception</title>
+
+  <section>
+    <title>Description</title>
+
+    <para>This exception policy will trap at compile time any operation that
+    <emphasis><emphasis role="bold">COULD</emphasis></emphasis> result in a
+    runtime exception. It can be used in an environment which can tolerate
+    neither arithmetic errors nor runtime overhead. Usage of this policy will
+    almost always require altering one's program to avoid exceptions.</para>
+  </section>
+
+  <section>
+    <title>Model of</title>
+
+    <para><link
+    linkend="safe_numerics.promotion_policy">ExceptionPolicy</link></para>
+  </section>
+
+  <section>
+    <title>Header</title>
+
+    <para><code><ulink url="../../include/exception_policy.hpp"><code>#include
+    &lt;boost/safe_numerics/exception_policy.hpp&gt;
+    </code></ulink></code></para>
+  </section>
+
+  <section>
+    <title>Example of use</title>
+
+    <programlisting>#include "../../include/safe_integer.hpp"
+#include "../../include/automatic.hpp"
+#include "../../include/exception_policies.hpp"
+
+int main(){
+    using namespace boost::numeric;
+    safe&lt;char, automatic, trap_exception&gt; x, y;
+    y = x * x; // compile error here !!!
+    auto z = x * x; // compile OK
+    return 0;
+}</programlisting>
+  </section>
+</section>

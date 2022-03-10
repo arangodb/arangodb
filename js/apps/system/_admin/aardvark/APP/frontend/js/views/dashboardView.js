@@ -496,7 +496,7 @@
           'values': [
             {
               label: 'used',
-              value: newData.residentSizePercent * 100
+              value: parseFloat((newData.residentSizePercent * 100).toFixed(2))
             }
           ]
         },
@@ -506,7 +506,7 @@
           'values': [
             {
               label: 'used',
-              value: 100 - newData.residentSizePercent * 100
+              value: parseFloat((100 - newData.residentSizePercent * 100).toFixed(2))
             }
           ]
         }
@@ -693,7 +693,7 @@
         $.ajax({
           type: 'GET',
           cache: false,
-          url: arangoHelper.databaseUrl('/_admin/cluster/nodeVersion?ServerID=' + this.serverInfo.target),
+          url: arangoHelper.databaseUrl('/_admin/cluster/nodeVersion?ServerID=' + encodeURIComponent(this.serverInfo.target)),
           contentType: 'application/json',
           processData: false,
           success: function (data) {
@@ -710,7 +710,7 @@
         $.ajax({
           type: 'GET',
           cache: false,
-          url: arangoHelper.databaseUrl('/_admin/cluster/nodeEngine?ServerID=' + this.serverInfo.target),
+          url: arangoHelper.databaseUrl('/_admin/cluster/nodeEngine?ServerID=' + encodeURIComponent(this.serverInfo.target)),
           contentType: 'application/json',
           processData: false,
           success: function (data) {
@@ -725,7 +725,7 @@
         $.ajax({
           type: 'GET',
           cache: false,
-          url: arangoHelper.databaseUrl('/_admin/cluster/nodeStatistics?ServerID=' + this.serverInfo.target),
+          url: arangoHelper.databaseUrl('/_admin/cluster/nodeStatistics?ServerID=' + encodeURIComponent(this.serverInfo.target)),
           contentType: 'application/json',
           processData: false,
           success: function (data) {
@@ -898,7 +898,11 @@
               return d + '%';
             })
             .showMaxMin(false);
-          self.residentChart.xAxis.showMaxMin(false);
+          self.residentChart.xAxis
+            .tickFormat(function () {
+              return "";
+            })
+            .showMaxMin(false);
 
           d3.select('#residentSizeChart svg')
             .datum(self.history[self.server].residentSizeChart)

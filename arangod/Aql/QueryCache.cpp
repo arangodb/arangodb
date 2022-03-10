@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -32,12 +32,12 @@
 #include "Basics/fasthash.h"
 #include "Basics/system-functions.h"
 #include "Utils/ExecContext.h"
+#include "Utilities/NameValidator.h"
 #include "VocBase/LogicalDataSource.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb::aql;
 
@@ -49,28 +49,33 @@ static arangodb::aql::QueryCache instance;
 static std::atomic<arangodb::aql::QueryCacheMode> mode(CACHE_ON_DEMAND);
 
 /// @brief maximum number of results in each per-database cache
-static std::atomic<size_t> maxResultsCount(128);  // default value. can be changed later
+static std::atomic<size_t> maxResultsCount(
+    128);  // default value. can be changed later
 
 /// @brief maximum cumulated size of results in each per-database cache
-static std::atomic<size_t> maxResultsSize(256 * 1024 * 1024);  // default value. can be changed later
+static std::atomic<size_t> maxResultsSize(
+    256 * 1024 * 1024);  // default value. can be changed later
 
 /// @brief maximum size of an individual cache entry
-static std::atomic<size_t> maxEntrySize(16 * 1024 * 1024);  // default value. can be changed later
+static std::atomic<size_t> maxEntrySize(
+    16 * 1024 * 1024);  // default value. can be changed later
 
 /// @brief whether or not to include results of system collections
-static std::atomic<bool> includeSystem(false);  // default value. can be changed later
+static std::atomic<bool> includeSystem(
+    false);  // default value. can be changed later
 
 /// @brief whether or not the query cache will return bind vars in its list of
 /// cached results
-static bool showBindVars = true;  // will be set once on startup. cannot be changed at runtime
+static bool showBindVars =
+    true;  // will be set once on startup. cannot be changed at runtime
 }  // namespace
 
 /// @brief create a cache entry
-QueryCacheResultEntry::QueryCacheResultEntry(uint64_t hash, QueryString const& queryString,
-                                             std::shared_ptr<VPackBuilder> const& queryResult,
-                                             std::shared_ptr<VPackBuilder> const& bindVars,
-                                             std::unordered_map<std::string, std::string>&& dataSources
-)
+QueryCacheResultEntry::QueryCacheResultEntry(
+    uint64_t hash, QueryString const& queryString,
+    std::shared_ptr<VPackBuilder> const& queryResult,
+    std::shared_ptr<VPackBuilder> const& bindVars,
+    std::unordered_map<std::string, std::string>&& dataSources)
     : _hash(hash),
       _queryString(queryString.data(), queryString.size()),
       _queryResult(queryResult),
@@ -176,13 +181,17 @@ bool QueryCacheResultEntry::currentUserHasPermissions() const {
       }
     }
   }
-  
+
   return true;
 }
 
 /// @brief create a database-specific cache
 QueryCacheDatabaseEntry::QueryCacheDatabaseEntry()
-    : _entriesByHash(), _head(nullptr), _tail(nullptr), _numResults(0), _sizeResults(0) {
+    : _entriesByHash(),
+      _head(nullptr),
+      _tail(nullptr),
+      _numResults(0),
+      _sizeResults(0) {
   _entriesByHash.reserve(128);
   _entriesByDataSourceGuid.reserve(16);
 }
@@ -218,7 +227,8 @@ std::shared_ptr<QueryCacheResultEntry> QueryCacheDatabaseEntry::lookup(
   auto entry = (*it).second.get();
 
   if (queryString.size() != entry->_queryString.size() ||
-      memcmp(queryString.data(), entry->_queryString.data(), queryString.size()) != 0) {
+      memcmp(queryString.data(), entry->_queryString.data(),
+             queryString.size()) != 0) {
     // found something, but obviously the result of a different query with the
     // same hash
     return nullptr;
@@ -243,7 +253,8 @@ std::shared_ptr<QueryCacheResultEntry> QueryCacheDatabaseEntry::lookup(
       return nullptr;
     }
 
-    if (!basics::VelocyPackHelper::equal(entryBindVars, lookupBindVars, false)) {
+    if (!basics::VelocyPackHelper::equal(entryBindVars, lookupBindVars,
+                                         false)) {
       // different bind variables
       return nullptr;
     }
@@ -257,13 +268,14 @@ std::shared_ptr<QueryCacheResultEntry> QueryCacheDatabaseEntry::lookup(
 }
 
 /// @brief store a query result in the database-specific cache
-void QueryCacheDatabaseEntry::store(std::shared_ptr<QueryCacheResultEntry>&& entry,
-                                    size_t allowedMaxResultsCount,
-                                    size_t allowedMaxResultsSize) {
+void QueryCacheDatabaseEntry::store(
+    std::shared_ptr<QueryCacheResultEntry>&& entry,
+    size_t allowedMaxResultsCount, size_t allowedMaxResultsSize) {
   auto* e = entry.get();
 
   // make room in the cache so the new entry will definitely fit
-  enforceMaxResults(allowedMaxResultsCount - 1, allowedMaxResultsSize - e->_size);
+  enforceMaxResults(allowedMaxResultsCount - 1,
+                    allowedMaxResultsSize - e->_size);
 
   // insert entry into the cache
   uint64_t hash = e->_hash;
@@ -281,7 +293,7 @@ void QueryCacheDatabaseEntry::store(std::shared_ptr<QueryCacheResultEntry>&& ent
   try {
     for (auto const& it : e->_dataSources) {
       auto& ref = _entriesByDataSourceGuid[it.first];
-      ref.first = TRI_vocbase_t::IsSystemName(it.second);
+      ref.first = NameValidator::isSystemName(it.second);
       ref.second.emplace(hash);
     }
   } catch (...) {
@@ -313,8 +325,9 @@ void QueryCacheDatabaseEntry::store(std::shared_ptr<QueryCacheResultEntry>&& ent
 
 /// @brief invalidate all entries for the given data sources in the
 /// database-specific cache
-void QueryCacheDatabaseEntry::invalidate(std::vector<std::string> const& dataSourceGuids) {
-  for (auto const& it: dataSourceGuids) {
+void QueryCacheDatabaseEntry::invalidate(
+    std::vector<std::string> const& dataSourceGuids) {
+  for (auto const& it : dataSourceGuids) {
     invalidate(it);
   }
 }
@@ -346,7 +359,8 @@ void QueryCacheDatabaseEntry::invalidate(std::string const& dataSourceGuid) {
 
 /// @brief enforce maximum number of results
 /// must be called under the shard's lock
-void QueryCacheDatabaseEntry::enforceMaxResults(size_t numResults, size_t sizeResults) {
+void QueryCacheDatabaseEntry::enforceMaxResults(size_t numResults,
+                                                size_t sizeResults) {
   while (_numResults > numResults || _sizeResults > sizeResults) {
     // too many elements. now wipe the first element from the list
 
@@ -381,8 +395,8 @@ void QueryCacheDatabaseEntry::enforceMaxEntrySize(size_t value) {
 /// @brief exclude all data from system collections
 /// must be called under the shard's lock
 void QueryCacheDatabaseEntry::excludeSystem() {
-  for (auto itr = _entriesByDataSourceGuid.begin(); // setup
-       itr != _entriesByDataSourceGuid.end(); // condition
+  for (auto itr = _entriesByDataSourceGuid.begin();  // setup
+       itr != _entriesByDataSourceGuid.end();        // condition
        /* no hoisting */) {
     if (!itr->second.first) {
       // not a system collection
@@ -403,7 +417,8 @@ void QueryCacheDatabaseEntry::excludeSystem() {
   }
 }
 
-void QueryCacheDatabaseEntry::removeDatasources(QueryCacheResultEntry const* e) {
+void QueryCacheDatabaseEntry::removeDatasources(
+    QueryCacheResultEntry const* e) {
   for (auto const& it : e->_dataSources) {
     auto itr = _entriesByDataSourceGuid.find(it.first);
 
@@ -622,7 +637,8 @@ std::shared_ptr<QueryCacheResultEntry> QueryCache::lookup(
 }
 
 /// @brief store a query in the cache
-void QueryCache::store(TRI_vocbase_t* vocbase, std::shared_ptr<QueryCacheResultEntry> entry) {
+void QueryCache::store(TRI_vocbase_t* vocbase,
+                       std::shared_ptr<QueryCacheResultEntry> entry) {
   TRI_ASSERT(entry != nullptr);
   auto* e = entry.get();
 
@@ -635,7 +651,7 @@ void QueryCache::store(TRI_vocbase_t* vocbase, std::shared_ptr<QueryCacheResultE
     // check if we need to exclude the entry because it refers to system
     // collections
     for (auto const& it : e->_dataSources) {
-      if (TRI_vocbase_t::IsSystemName(it.second)) {
+      if (NameValidator::isSystemName(it.second)) {
         // refers to a system collection...
         return;
       }
@@ -661,18 +677,20 @@ void QueryCache::store(TRI_vocbase_t* vocbase, std::shared_ptr<QueryCacheResultE
   // get the right part of the cache to store the result in
   auto const part = getPart(vocbase);
   WRITE_LOCKER(writeLocker, _entriesLock[part]);
-  auto it = _entries[part].try_emplace(
-      vocbase, 
-      arangodb::lazyConstruct([&]{
-        return std::make_unique<QueryCacheDatabaseEntry>();
-      })
-  ).first;
+  auto it =
+      _entries[part]
+          .try_emplace(vocbase, arangodb::lazyConstruct([&] {
+                         return std::make_unique<QueryCacheDatabaseEntry>();
+                       }))
+          .first;
   // store cache entry
-  (*it).second->store(std::move(entry), allowedMaxResultsCount, allowedMaxResultsSize);
+  (*it).second->store(std::move(entry), allowedMaxResultsCount,
+                      allowedMaxResultsSize);
 }
 
 /// @brief invalidate all queries for the given data sources
-void QueryCache::invalidate(TRI_vocbase_t* vocbase, std::vector<std::string> const& dataSourceGuids) {
+void QueryCache::invalidate(TRI_vocbase_t* vocbase,
+                            std::vector<std::string> const& dataSourceGuids) {
   auto const part = getPart(vocbase);
   WRITE_LOCKER(writeLocker, _entriesLock[part]);
 
@@ -688,7 +706,8 @@ void QueryCache::invalidate(TRI_vocbase_t* vocbase, std::vector<std::string> con
 }
 
 /// @brief invalidate all queries for a particular data source
-void QueryCache::invalidate(TRI_vocbase_t* vocbase, std::string const& dataSourceGuid) {
+void QueryCache::invalidate(TRI_vocbase_t* vocbase,
+                            std::string const& dataSourceGuid) {
   auto const part = getPart(vocbase);
   WRITE_LOCKER(writeLocker, _entriesLock[part]);
 
@@ -742,7 +761,8 @@ void QueryCache::invalidate() {
 }
 
 /// @brief return the query cache contents
-void QueryCache::queriesToVelocyPack(TRI_vocbase_t* vocbase, VPackBuilder& builder) const {
+void QueryCache::queriesToVelocyPack(TRI_vocbase_t* vocbase,
+                                     VPackBuilder& builder) const {
   builder.openArray();
 
   {
@@ -800,7 +820,8 @@ void QueryCache::excludeSystem() {
 /// @brief determine which lock to use for the cache entries
 unsigned int QueryCache::getPart(TRI_vocbase_t const* vocbase) const {
   uint64_t v = uintptr_t(vocbase);
-  return static_cast<int>(fasthash64_uint64(v, 0xf12345678abcdef) % numberOfParts);
+  return static_cast<int>(fasthash64_uint64(v, 0xf12345678abcdef) %
+                          numberOfParts);
 }
 
 /// @brief invalidate all entries in the cache part

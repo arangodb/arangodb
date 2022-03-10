@@ -40,7 +40,6 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -72,27 +71,31 @@ class GeoConstructorTest : public ::testing::Test {
     fakeit::When(Method(trxMock, transactionContextPtr)).AlwaysReturn(&context);
     fakeit::When(Method(trxMock, vpackOptions)).AlwaysReturn(options);
     fakeit::When(Method(contextMock, getVPackOptions)).AlwaysReturn(&options);
-    fakeit::When(Method(contextMock, leaseBuilder)).AlwaysDo([]() { return new arangodb::velocypack::Builder(); });
-    fakeit::When(Method(contextMock, returnBuilder)).AlwaysDo([](arangodb::velocypack::Builder* b) { delete b; });
-    fakeit::When(Method(expressionContextMock, trx)).AlwaysDo([&]() -> transaction::Methods& { return this->trx; });
+    fakeit::When(Method(contextMock, leaseBuilder)).AlwaysDo([]() {
+      return new arangodb::velocypack::Builder();
+    });
+    fakeit::When(Method(contextMock, returnBuilder))
+        .AlwaysDo([](arangodb::velocypack::Builder* b) { delete b; });
+    fakeit::When(Method(expressionContextMock, trx))
+        .AlwaysDo([&]() -> transaction::Methods& { return this->trx; });
   }
 };
 
 namespace geo_point {
 class GeoPointTest : public GeoConstructorTest {
  protected:
-  GeoPointTest() 
+  GeoPointTest()
       : GeoConstructorTest(),
         fun("GEO_POINT", &Functions::GeoPoint),
         funNode(NODE_TYPE_FCALL) {
-
     funNode.setData(static_cast<void const*>(&fun));
 
-    fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* msg) -> void {
-      ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-    });
+    fakeit::When(Method(expressionContextMock, registerWarning))
+        .Do([&](ErrorCode code, char const* msg) -> void {
+          ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+        });
   }
-    
+
   arangodb::aql::Function fun;
   arangodb::aql::AstNode funNode;
 };
@@ -344,9 +347,10 @@ TEST_F(GeoPointTest, checking_bool_and_negative_double) {
 
 TEST_F(GeoPointTest, checking_array_and_positive_double) {
   VPackBuilder foo;
-  foo(VPackValue(VPackValueType::Object))("array", VPackValue(VPackValueType::Array))(
-      VPackValue(1.0))(VPackValue(2))(VPackValue(
-      -3.3))()("coords", VPackValue(VPackValueType::Array))(VPackValue(2.2))()();
+  foo(VPackValue(VPackValueType::Object))(
+      "array", VPackValue(VPackValueType::Array))(VPackValue(1.0))(
+      VPackValue(2))(VPackValue(-3.3))()(
+      "coords", VPackValue(VPackValueType::Array))(VPackValue(2.2))()();
 
   params.emplace_back(foo.slice().get("array"));
   params.emplace_back(foo.slice().get("coords").at(0));
@@ -361,9 +365,10 @@ TEST_F(GeoPointTest, checking_array_and_positive_double) {
 
 TEST_F(GeoPointTest, checking_negative_double_and_array) {
   VPackBuilder foo;
-  foo(VPackValue(VPackValueType::Object))("array", VPackValue(VPackValueType::Array))(
-      VPackValue(1.0))(VPackValue(2))(VPackValue(
-      -3.3))()("coords", VPackValue(VPackValueType::Array))(VPackValue(-2.2))()();
+  foo(VPackValue(VPackValueType::Object))(
+      "array", VPackValue(VPackValueType::Array))(VPackValue(1.0))(
+      VPackValue(2))(VPackValue(-3.3))()(
+      "coords", VPackValue(VPackValueType::Array))(VPackValue(-2.2))()();
 
   params.emplace_back(foo.slice().get("coords").at(0));
   params.emplace_back(foo.slice().get("array"));
@@ -474,9 +479,8 @@ TEST_F(GeoPointTest, checking_array_and_object) {
 
 TEST_F(GeoPointTest, checking_bool_and_bool) {
   VPackBuilder foo;
-  foo(VPackValue(VPackValueType::Object))("boolone",
-                                          VPackValue(true))("booltwo",
-                                                            VPackValue(false))();
+  foo(VPackValue(VPackValueType::Object))("boolone", VPackValue(true))(
+      "booltwo", VPackValue(false))();
 
   params.emplace_back(foo.slice().get("boolone"));
   params.emplace_back(foo.slice().get("booltwo"));
@@ -542,11 +546,10 @@ TEST_F(GeoPointTest, checking_object_and_object) {
 
 namespace geo_multipoint {
 struct GeoMultipointTest : public GeoConstructorTest {
-  GeoMultipointTest() 
+  GeoMultipointTest()
       : GeoConstructorTest(),
         fun("GEO_MULTIPOINT", &Functions::GeoMultiPoint),
         funNode(NODE_TYPE_FCALL) {
-
     funNode.setData(static_cast<void const*>(&fun));
   }
 
@@ -608,9 +611,10 @@ TEST_F(GeoMultipointTest, checking_points_representing_points_in_cologne) {
   }
 }
 TEST_F(GeoMultipointTest, checking_array_with_1_position) {
-  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* msg) -> void {
-    ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-  });
+  fakeit::When(Method(expressionContextMock, registerWarning))
+      .Do([&](ErrorCode code, char const* msg) -> void {
+        ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+      });
 
   char const* p = "[[1.0, 2.0]]";
   size_t l = strlen(p);
@@ -629,9 +633,10 @@ TEST_F(GeoMultipointTest, checking_array_with_1_position) {
 }
 
 TEST_F(GeoMultipointTest, checking_array_with_positions_and_invalid_bool) {
-  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* msg) -> void {
-    ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-  });
+  fakeit::When(Method(expressionContextMock, registerWarning))
+      .Do([&](ErrorCode code, char const* msg) -> void {
+        ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+      });
 
   char const* p = "[[1.0, 2.0], [1.0, 2.0], [1.0, 2.0], [1.0, 2.0], false]";
   size_t l = strlen(p);
@@ -650,9 +655,10 @@ TEST_F(GeoMultipointTest, checking_array_with_positions_and_invalid_bool) {
 }
 
 TEST_F(GeoMultipointTest, checking_array_with_positions_and_invalid_bool_2) {
-  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* msg) -> void {
-    ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-  });
+  fakeit::When(Method(expressionContextMock, registerWarning))
+      .Do([&](ErrorCode code, char const* msg) -> void {
+        ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+      });
 
   char const* p = "[true, [1.0, 2.0], [1.0, 2.0], [1.0, 2.0], [1.0, 2.0]]";
   size_t l = strlen(p);
@@ -671,9 +677,10 @@ TEST_F(GeoMultipointTest, checking_array_with_positions_and_invalid_bool_2) {
 }
 
 TEST_F(GeoMultipointTest, checking_array_with_0_positions_nested) {
-  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* msg) -> void {
-    ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-  });
+  fakeit::When(Method(expressionContextMock, registerWarning))
+      .Do([&](ErrorCode code, char const* msg) -> void {
+        ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+      });
 
   char const* p = "[[]]";
   size_t l = strlen(p);
@@ -692,9 +699,10 @@ TEST_F(GeoMultipointTest, checking_array_with_0_positions_nested) {
 }
 
 TEST_F(GeoMultipointTest, checking_array_with_0_positions) {
-  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* msg) -> void {
-    ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-  });
+  fakeit::When(Method(expressionContextMock, registerWarning))
+      .Do([&](ErrorCode code, char const* msg) -> void {
+        ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+      });
 
   char const* p = "[]";
   size_t l = strlen(p);
@@ -713,9 +721,10 @@ TEST_F(GeoMultipointTest, checking_array_with_0_positions) {
 }
 
 TEST_F(GeoMultipointTest, checking_bool) {
-  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* msg) -> void {
-    ASSERT_EQ(code, TRI_ERROR_QUERY_ARRAY_EXPECTED);
-  });
+  fakeit::When(Method(expressionContextMock, registerWarning))
+      .Do([&](ErrorCode code, char const* msg) -> void {
+        ASSERT_EQ(code, TRI_ERROR_QUERY_ARRAY_EXPECTED);
+      });
 
   char const* p = "true";
   size_t l = strlen(p);
@@ -734,9 +743,10 @@ TEST_F(GeoMultipointTest, checking_bool) {
 }
 
 TEST_F(GeoMultipointTest, checking_number) {
-  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* msg) -> void {
-    ASSERT_EQ(code, TRI_ERROR_QUERY_ARRAY_EXPECTED);
-  });
+  fakeit::When(Method(expressionContextMock, registerWarning))
+      .Do([&](ErrorCode code, char const* msg) -> void {
+        ASSERT_EQ(code, TRI_ERROR_QUERY_ARRAY_EXPECTED);
+      });
 
   char const* p = "123";
   size_t l = strlen(p);
@@ -759,9 +769,10 @@ TEST_F(GeoMultipointTest, checking_number) {
 }
 
 TEST_F(GeoMultipointTest, checking_object) {
-  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* msg) -> void {
-    ASSERT_EQ(code, TRI_ERROR_QUERY_ARRAY_EXPECTED);
-  });
+  fakeit::When(Method(expressionContextMock, registerWarning))
+      .Do([&](ErrorCode code, char const* msg) -> void {
+        ASSERT_EQ(code, TRI_ERROR_QUERY_ARRAY_EXPECTED);
+      });
 
   char const* p = "{\"Hello\": true, \"Hellox\": 123}";
   size_t l = strlen(p);
@@ -787,7 +798,7 @@ TEST_F(GeoMultipointTest, checking_object) {
 namespace geo_polygon {
 class GeoPolygonTest : public GeoConstructorTest {
  protected:
-  GeoPolygonTest() 
+  GeoPolygonTest()
       : GeoConstructorTest(),
         fun("GEO_POLYGON", &Functions::GeoPolygon),
         funNode(NODE_TYPE_FCALL) {
@@ -799,6 +810,11 @@ class GeoPolygonTest : public GeoConstructorTest {
 };
 
 TEST_F(GeoPolygonTest, checking_polygon_with_3_positive_tuples) {
+  fakeit::When(Method(expressionContextMock, registerWarning))
+      .Do([&](ErrorCode code, char const* msg) -> void {
+        ASSERT_EQ(code, TRI_ERROR_BAD_PARAMETER);
+      });
+
   char const* p = "[[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]]";
   size_t l = strlen(p);
 
@@ -807,20 +823,7 @@ TEST_F(GeoPolygonTest, checking_polygon_with_3_positive_tuples) {
   params.emplace_back(json);
 
   AqlValue res = Functions::GeoPolygon(&expressionContext, funNode, params);
-  EXPECT_TRUE(res.isObject());
-  EXPECT_TRUE(res.slice().get("coordinates").isArray());
-  EXPECT_EQ(res.slice().get("coordinates").at(0).length(), 3);
-  EXPECT_TRUE(res.slice().get("coordinates").at(0).at(0).isArray());
-  EXPECT_TRUE(res.slice().get("coordinates").at(0).at(1).isArray());
-  EXPECT_TRUE(res.slice().get("coordinates").at(0).at(2).isArray());
-  EXPECT_EQ(res.slice().get("coordinates").at(0).at(0).at(0).getDouble(), 1.0);
-  EXPECT_EQ(res.slice().get("coordinates").at(0).at(0).at(1).getDouble(), 2.0);
-  EXPECT_EQ(res.slice().get("coordinates").at(0).at(1).at(0).getDouble(), 3.0);
-  EXPECT_EQ(res.slice().get("coordinates").at(0).at(1).at(1).getDouble(), 4.0);
-  EXPECT_EQ(res.slice().get("coordinates").at(0).at(2).at(0).getDouble(), 5.0);
-  EXPECT_EQ(res.slice().get("coordinates").at(0).at(2).at(1).getDouble(), 6.0);
-  EXPECT_TRUE(res.slice().get("type").isString());
-  EXPECT_EQ(res.slice().get("type").copyString(), "Polygon");
+  EXPECT_TRUE(res.isNull(false));
   res.destroy();
   // Free input parameters
   for (auto& it : params) {
@@ -858,6 +861,11 @@ TEST_F(GeoPolygonTest, checking_polygon_representing_cologne) {
 }
 
 TEST_F(GeoPolygonTest, checking_polygon_with_3_negative_positions) {
+  fakeit::When(Method(expressionContextMock, registerWarning))
+      .Do([&](ErrorCode code, char const* msg) -> void {
+        ASSERT_EQ(code, TRI_ERROR_BAD_PARAMETER);
+      });
+
   char const* p = "[[-1.0, -2.0], [-3.0, -4.0], [-5.0, -6.0]]";
   size_t l = strlen(p);
 
@@ -866,24 +874,7 @@ TEST_F(GeoPolygonTest, checking_polygon_with_3_negative_positions) {
   params.emplace_back(json);
 
   AqlValue res = Functions::GeoPolygon(&expressionContext, funNode, params);
-  EXPECT_TRUE(res.isObject());
-  EXPECT_TRUE(res.slice().get("coordinates").isArray());
-  EXPECT_TRUE(res.slice().get("coordinates").at(0).isArray());
-  EXPECT_EQ(res.slice().get("coordinates").at(0).length(), 3);
-  EXPECT_EQ(res.slice().get("coordinates").at(0).at(0).length(), 2);
-  EXPECT_EQ(res.slice().get("coordinates").at(0).at(1).length(), 2);
-  EXPECT_EQ(res.slice().get("coordinates").at(0).at(2).length(), 2);
-  EXPECT_TRUE(res.slice().get("coordinates").at(0).at(0).isArray());
-  EXPECT_TRUE(res.slice().get("coordinates").at(0).at(1).isArray());
-  EXPECT_TRUE(res.slice().get("coordinates").at(0).at(2).isArray());
-  EXPECT_EQ(res.slice().get("coordinates").at(0).at(0).at(0).getDouble(), -1.0);
-  EXPECT_EQ(res.slice().get("coordinates").at(0).at(0).at(1).getDouble(), -2.0);
-  EXPECT_EQ(res.slice().get("coordinates").at(0).at(1).at(0).getDouble(), -3.0);
-  EXPECT_EQ(res.slice().get("coordinates").at(0).at(1).at(1).getDouble(), -4.0);
-  EXPECT_EQ(res.slice().get("coordinates").at(0).at(2).at(0).getDouble(), -5.0);
-  EXPECT_EQ(res.slice().get("coordinates").at(0).at(2).at(1).getDouble(), -6.0);
-  EXPECT_TRUE(res.slice().get("type").isString());
-  EXPECT_EQ(res.slice().get("type").copyString(), "Polygon");
+  EXPECT_TRUE(res.isNull(false));
   res.destroy();
   // Free input parameters
   for (auto& it : params) {
@@ -892,6 +883,11 @@ TEST_F(GeoPolygonTest, checking_polygon_with_3_negative_positions) {
 }
 
 TEST_F(GeoPolygonTest, checking_polygons_with_2x3_negative_positions) {
+  fakeit::When(Method(expressionContextMock, registerWarning))
+      .Do([&](ErrorCode code, char const* msg) -> void {
+        ASSERT_EQ(code, TRI_ERROR_BAD_PARAMETER);
+      });
+
   char const* p =
       "[ [[-1.0, -2.0], [-3.0, -4.0], [-5.0, -6.0]], [[-1.0, -2.0], [-3.0, "
       "-4.0], [-5.0, -6.0]] ]";
@@ -903,23 +899,7 @@ TEST_F(GeoPolygonTest, checking_polygons_with_2x3_negative_positions) {
 
   // TODO check also at 1 position
   AqlValue res = Functions::GeoPolygon(&expressionContext, funNode, params);
-  EXPECT_TRUE(res.isObject());
-  EXPECT_TRUE(res.slice().get("coordinates").isArray());
-  EXPECT_TRUE(res.slice().get("coordinates").at(0).isArray());
-  EXPECT_EQ(res.slice().get("coordinates").at(0).length(), 3);
-  EXPECT_TRUE(res.slice().get("coordinates").at(1).isArray());
-  EXPECT_EQ(res.slice().get("coordinates").at(1).length(), 3);
-  EXPECT_TRUE(res.slice().get("coordinates").at(0).at(0).isArray());
-  EXPECT_TRUE(res.slice().get("coordinates").at(0).at(1).isArray());
-  EXPECT_TRUE(res.slice().get("coordinates").at(0).at(2).isArray());
-  EXPECT_EQ(res.slice().get("coordinates").at(0).at(0).at(0).getDouble(), -1.0);
-  EXPECT_EQ(res.slice().get("coordinates").at(0).at(0).at(1).getDouble(), -2.0);
-  EXPECT_EQ(res.slice().get("coordinates").at(0).at(1).at(0).getDouble(), -3.0);
-  EXPECT_EQ(res.slice().get("coordinates").at(0).at(1).at(1).getDouble(), -4.0);
-  EXPECT_EQ(res.slice().get("coordinates").at(0).at(2).at(0).getDouble(), -5.0);
-  EXPECT_EQ(res.slice().get("coordinates").at(0).at(2).at(1).getDouble(), -6.0);
-  EXPECT_TRUE(res.slice().get("type").isString());
-  EXPECT_EQ(res.slice().get("type").copyString(), "Polygon");
+  EXPECT_TRUE(res.isNull(false));
   res.destroy();
   // Free input parameters
   for (auto& it : params) {
@@ -928,9 +908,10 @@ TEST_F(GeoPolygonTest, checking_polygons_with_2x3_negative_positions) {
 }
 
 TEST_F(GeoPolygonTest, checking_polygon_with_1_positive_position) {
-  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* msg) -> void {
-    ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-  });
+  fakeit::When(Method(expressionContextMock, registerWarning))
+      .Do([&](ErrorCode code, char const* msg) -> void {
+        ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+      });
 
   char const* p = "[[1.0, 2.0]]";
   size_t l = strlen(p);
@@ -949,9 +930,10 @@ TEST_F(GeoPolygonTest, checking_polygon_with_1_positive_position) {
 }
 
 TEST_F(GeoPolygonTest, checking_polygon_with_1_negative_position) {
-  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* msg) -> void {
-    ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-  });
+  fakeit::When(Method(expressionContextMock, registerWarning))
+      .Do([&](ErrorCode code, char const* msg) -> void {
+        ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+      });
 
   char const* p = "[[-1.0, -2.0]]";
   size_t l = strlen(p);
@@ -970,9 +952,10 @@ TEST_F(GeoPolygonTest, checking_polygon_with_1_negative_position) {
 }
 
 TEST_F(GeoPolygonTest, checking_polygon_with_2_positive_tuples) {
-  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* msg) -> void {
-    ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-  });
+  fakeit::When(Method(expressionContextMock, registerWarning))
+      .Do([&](ErrorCode code, char const* msg) -> void {
+        ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+      });
 
   char const* p = "[[1.0, 2.0], [3.0, 4.0]]";
   size_t l = strlen(p);
@@ -991,9 +974,10 @@ TEST_F(GeoPolygonTest, checking_polygon_with_2_positive_tuples) {
 }
 
 TEST_F(GeoPolygonTest, checking_polygon_with_2_negative_tuples) {
-  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* msg) -> void {
-    ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-  });
+  fakeit::When(Method(expressionContextMock, registerWarning))
+      .Do([&](ErrorCode code, char const* msg) -> void {
+        ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+      });
 
   char const* p = "[[-1.0, -2.0], [-3.0, -4.0]]";
   size_t l = strlen(p);
@@ -1012,9 +996,10 @@ TEST_F(GeoPolygonTest, checking_polygon_with_2_negative_tuples) {
 }
 
 TEST_F(GeoPolygonTest, checking_polygon_with_empty_input) {
-  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* msg) -> void {
-    ASSERT_EQ(code, TRI_ERROR_QUERY_ARRAY_EXPECTED);
-  });
+  fakeit::When(Method(expressionContextMock, registerWarning))
+      .Do([&](ErrorCode code, char const* msg) -> void {
+        ASSERT_EQ(code, TRI_ERROR_QUERY_ARRAY_EXPECTED);
+      });
 
   char const* p = "\"\"";
   size_t l = strlen(p);
@@ -1033,9 +1018,10 @@ TEST_F(GeoPolygonTest, checking_polygon_with_empty_input) {
 }
 
 TEST_F(GeoPolygonTest, checking_polygon_with_boolean) {
-  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* msg) -> void {
-    ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-  });
+  fakeit::When(Method(expressionContextMock, registerWarning))
+      .Do([&](ErrorCode code, char const* msg) -> void {
+        ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+      });
 
   char const* p = "[true]";
   size_t l = strlen(p);
@@ -1054,9 +1040,10 @@ TEST_F(GeoPolygonTest, checking_polygon_with_boolean) {
 }
 
 TEST_F(GeoPolygonTest, checking_polygon_with_booleans) {
-  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* msg) -> void {
-    ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-  });
+  fakeit::When(Method(expressionContextMock, registerWarning))
+      .Do([&](ErrorCode code, char const* msg) -> void {
+        ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+      });
 
   char const* p = "[true, false]";
   size_t l = strlen(p);
@@ -1075,9 +1062,10 @@ TEST_F(GeoPolygonTest, checking_polygon_with_booleans) {
 }
 
 TEST_F(GeoPolygonTest, checking_polygon_with_nested_booleans) {
-  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* msg) -> void {
-    ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-  });
+  fakeit::When(Method(expressionContextMock, registerWarning))
+      .Do([&](ErrorCode code, char const* msg) -> void {
+        ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+      });
 
   char const* p = "[[true], [false], [true], [false]]";
   size_t l = strlen(p);
@@ -1096,9 +1084,10 @@ TEST_F(GeoPolygonTest, checking_polygon_with_nested_booleans) {
 }
 
 TEST_F(GeoPolygonTest, checking_object_with_single_boolean) {
-  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* msg) -> void {
-    ASSERT_EQ(code, TRI_ERROR_QUERY_ARRAY_EXPECTED);
-  });
+  fakeit::When(Method(expressionContextMock, registerWarning))
+      .Do([&](ErrorCode code, char const* msg) -> void {
+        ASSERT_EQ(code, TRI_ERROR_QUERY_ARRAY_EXPECTED);
+      });
 
   char const* p = "true";
   size_t l = strlen(p);
@@ -1117,9 +1106,10 @@ TEST_F(GeoPolygonTest, checking_object_with_single_boolean) {
 }
 
 TEST_F(GeoPolygonTest, checking_object_with_single_number) {
-  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* msg) -> void {
-    ASSERT_EQ(code, TRI_ERROR_QUERY_ARRAY_EXPECTED);
-  });
+  fakeit::When(Method(expressionContextMock, registerWarning))
+      .Do([&](ErrorCode code, char const* msg) -> void {
+        ASSERT_EQ(code, TRI_ERROR_QUERY_ARRAY_EXPECTED);
+      });
 
   char const* p = "123";
   size_t l = strlen(p);
@@ -1138,9 +1128,10 @@ TEST_F(GeoPolygonTest, checking_object_with_single_number) {
 }
 
 TEST_F(GeoPolygonTest, checking_object_with_string) {
-  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* msg) -> void {
-    ASSERT_EQ(code, TRI_ERROR_QUERY_ARRAY_EXPECTED);
-  });
+  fakeit::When(Method(expressionContextMock, registerWarning))
+      .Do([&](ErrorCode code, char const* msg) -> void {
+        ASSERT_EQ(code, TRI_ERROR_QUERY_ARRAY_EXPECTED);
+      });
 
   char const* p = "\"hallowelt\"";
   size_t l = strlen(p);
@@ -1159,9 +1150,10 @@ TEST_F(GeoPolygonTest, checking_object_with_string) {
 }
 
 TEST_F(GeoPolygonTest, checking_object_with_null) {
-  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* msg) -> void {
-    ASSERT_EQ(code, TRI_ERROR_QUERY_ARRAY_EXPECTED);
-  });
+  fakeit::When(Method(expressionContextMock, registerWarning))
+      .Do([&](ErrorCode code, char const* msg) -> void {
+        ASSERT_EQ(code, TRI_ERROR_QUERY_ARRAY_EXPECTED);
+      });
 
   char const* p = "null";
   size_t l = strlen(p);
@@ -1180,9 +1172,10 @@ TEST_F(GeoPolygonTest, checking_object_with_null) {
 }
 
 TEST_F(GeoPolygonTest, checking_object_with_some_data) {
-  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* msg) -> void {
-    ASSERT_EQ(code, TRI_ERROR_QUERY_ARRAY_EXPECTED);
-  });
+  fakeit::When(Method(expressionContextMock, registerWarning))
+      .Do([&](ErrorCode code, char const* msg) -> void {
+        ASSERT_EQ(code, TRI_ERROR_QUERY_ARRAY_EXPECTED);
+      });
 
   char const* p = "{\"Hello\": true, \"Hellox\": 123}";
   size_t l = strlen(p);
@@ -1209,7 +1202,7 @@ struct GeoLinestringTest : public GeoConstructorTest {
         funNode(NODE_TYPE_FCALL) {
     funNode.setData(static_cast<void const*>(&fun));
   }
-  
+
   arangodb::aql::Function fun;
   arangodb::aql::AstNode funNode;
 };
@@ -1269,9 +1262,10 @@ TEST_F(GeoLinestringTest, checking_linestring_representing_cologne) {
 }
 
 TEST_F(GeoLinestringTest, checking_array_with_1_position) {
-  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* msg) -> void {
-    ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-  });
+  fakeit::When(Method(expressionContextMock, registerWarning))
+      .Do([&](ErrorCode code, char const* msg) -> void {
+        ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+      });
 
   char const* p = "[[1.0, 2.0]]";
   size_t l = strlen(p);
@@ -1290,9 +1284,10 @@ TEST_F(GeoLinestringTest, checking_array_with_1_position) {
 }
 
 TEST_F(GeoLinestringTest, checking_array_with_positions_and_invalid_bool) {
-  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* msg) -> void {
-    ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-  });
+  fakeit::When(Method(expressionContextMock, registerWarning))
+      .Do([&](ErrorCode code, char const* msg) -> void {
+        ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+      });
 
   char const* p = "[[1.0, 2.0], [1.0, 2.0], [1.0, 2.0], [1.0, 2.0], false]";
   size_t l = strlen(p);
@@ -1311,9 +1306,10 @@ TEST_F(GeoLinestringTest, checking_array_with_positions_and_invalid_bool) {
 }
 
 TEST_F(GeoLinestringTest, checking_array_with_positions_and_invalid_bool_2) {
-  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* msg) -> void {
-    ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-  });
+  fakeit::When(Method(expressionContextMock, registerWarning))
+      .Do([&](ErrorCode code, char const* msg) -> void {
+        ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+      });
 
   char const* p = "[true, [1.0, 2.0], [1.0, 2.0], [1.0, 2.0], [1.0, 2.0]]";
   size_t l = strlen(p);
@@ -1332,9 +1328,10 @@ TEST_F(GeoLinestringTest, checking_array_with_positions_and_invalid_bool_2) {
 }
 
 TEST_F(GeoLinestringTest, checking_empty_nested_array) {
-  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* msg) -> void {
-    ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-  });
+  fakeit::When(Method(expressionContextMock, registerWarning))
+      .Do([&](ErrorCode code, char const* msg) -> void {
+        ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+      });
 
   char const* p = "[[]]";
   size_t l = strlen(p);
@@ -1353,9 +1350,10 @@ TEST_F(GeoLinestringTest, checking_empty_nested_array) {
 }
 
 TEST_F(GeoLinestringTest, checking_empty_array) {
-  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* msg) -> void {
-    ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-  });
+  fakeit::When(Method(expressionContextMock, registerWarning))
+      .Do([&](ErrorCode code, char const* msg) -> void {
+        ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+      });
 
   char const* p = "[]";
   size_t l = strlen(p);
@@ -1374,9 +1372,10 @@ TEST_F(GeoLinestringTest, checking_empty_array) {
 }
 
 TEST_F(GeoLinestringTest, checking_bool) {
-  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* msg) -> void {
-    ASSERT_EQ(code, TRI_ERROR_QUERY_ARRAY_EXPECTED);
-  });
+  fakeit::When(Method(expressionContextMock, registerWarning))
+      .Do([&](ErrorCode code, char const* msg) -> void {
+        ASSERT_EQ(code, TRI_ERROR_QUERY_ARRAY_EXPECTED);
+      });
 
   char const* p = "true";
   size_t l = strlen(p);
@@ -1395,9 +1394,10 @@ TEST_F(GeoLinestringTest, checking_bool) {
 }
 
 TEST_F(GeoLinestringTest, checking_number) {
-  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* msg) -> void {
-    ASSERT_EQ(code, TRI_ERROR_QUERY_ARRAY_EXPECTED);
-  });
+  fakeit::When(Method(expressionContextMock, registerWarning))
+      .Do([&](ErrorCode code, char const* msg) -> void {
+        ASSERT_EQ(code, TRI_ERROR_QUERY_ARRAY_EXPECTED);
+      });
 
   char const* p = "123";
   size_t l = strlen(p);
@@ -1416,9 +1416,10 @@ TEST_F(GeoLinestringTest, checking_number) {
 }
 
 TEST_F(GeoLinestringTest, checking_object) {
-  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* msg) -> void {
-    ASSERT_EQ(code, TRI_ERROR_QUERY_ARRAY_EXPECTED);
-  });
+  fakeit::When(Method(expressionContextMock, registerWarning))
+      .Do([&](ErrorCode code, char const* msg) -> void {
+        ASSERT_EQ(code, TRI_ERROR_QUERY_ARRAY_EXPECTED);
+      });
 
   char const* p = "{\"Hello\": true, \"Hellox\": 123}";
   size_t l = strlen(p);
@@ -1439,7 +1440,7 @@ TEST_F(GeoLinestringTest, checking_object) {
 
 namespace geo_multilinestring {
 struct GeoMultilinestringTest : public GeoConstructorTest {
-  GeoMultilinestringTest() 
+  GeoMultilinestringTest()
       : GeoConstructorTest(),
         fun("GEO_MULTILINESTRING", &Functions::GeoMultiLinestring),
         funNode(NODE_TYPE_FCALL) {
@@ -1458,7 +1459,8 @@ TEST_F(GeoMultilinestringTest, checking_multilinestrings_with_2x2_positions) {
   VPackSlice json = builder->slice();
   params.emplace_back(json);
 
-  AqlValue res = Functions::GeoMultiLinestring(&expressionContext, funNode, params);
+  AqlValue res =
+      Functions::GeoMultiLinestring(&expressionContext, funNode, params);
   EXPECT_TRUE(res.isObject());
   EXPECT_TRUE(res.slice().get("coordinates").isArray());
   EXPECT_EQ(res.slice().get("coordinates").length(), 2);
@@ -1492,7 +1494,8 @@ TEST_F(GeoMultilinestringTest, checking_multilinestrings_with_2x2_positions_2) {
   VPackSlice json = builder->slice();
   params.emplace_back(json);
 
-  AqlValue res = Functions::GeoMultiLinestring(&expressionContext, funNode, params);
+  AqlValue res =
+      Functions::GeoMultiLinestring(&expressionContext, funNode, params);
   EXPECT_TRUE(res.isObject());
   EXPECT_TRUE(res.slice().get("coordinates").isArray());
   EXPECT_EQ(res.slice().get("coordinates").length(), 2);
@@ -1518,9 +1521,10 @@ TEST_F(GeoMultilinestringTest, checking_multilinestrings_with_2x2_positions_2) {
 }
 
 TEST_F(GeoMultilinestringTest, checking_object) {
-  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* msg) -> void {
-    ASSERT_EQ(code, TRI_ERROR_QUERY_ARRAY_EXPECTED);
-  });
+  fakeit::When(Method(expressionContextMock, registerWarning))
+      .Do([&](ErrorCode code, char const* msg) -> void {
+        ASSERT_EQ(code, TRI_ERROR_QUERY_ARRAY_EXPECTED);
+      });
 
   char const* p = "{\"Hello\": true, \"Hellox\": 123}";
   size_t l = strlen(p);
@@ -1529,7 +1533,8 @@ TEST_F(GeoMultilinestringTest, checking_object) {
   VPackSlice json = builder->slice();
   params.emplace_back(json);
 
-  AqlValue res = Functions::GeoMultiLinestring(&expressionContext, funNode, params);
+  AqlValue res =
+      Functions::GeoMultiLinestring(&expressionContext, funNode, params);
   EXPECT_TRUE(res.slice().isNull());
   res.destroy();
   // Free input parameters
@@ -1539,9 +1544,10 @@ TEST_F(GeoMultilinestringTest, checking_object) {
 }
 
 TEST_F(GeoMultilinestringTest, checking_polygon_with_0_positions_nested) {
-  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* msg) -> void {
-    ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-  });
+  fakeit::When(Method(expressionContextMock, registerWarning))
+      .Do([&](ErrorCode code, char const* msg) -> void {
+        ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+      });
 
   char const* p = "[[]]";
   size_t l = strlen(p);
@@ -1550,7 +1556,8 @@ TEST_F(GeoMultilinestringTest, checking_polygon_with_0_positions_nested) {
   VPackSlice json = builder->slice();
   params.emplace_back(json);
 
-  AqlValue res = Functions::GeoMultiLinestring(&expressionContext, funNode, params);
+  AqlValue res =
+      Functions::GeoMultiLinestring(&expressionContext, funNode, params);
   EXPECT_TRUE(res.slice().isNull());
   res.destroy();
   // Free input parameters
@@ -1560,9 +1567,10 @@ TEST_F(GeoMultilinestringTest, checking_polygon_with_0_positions_nested) {
 }
 
 TEST_F(GeoMultilinestringTest, checking_polygon_with_0_positions) {
-  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* msg) -> void {
-    ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-  });
+  fakeit::When(Method(expressionContextMock, registerWarning))
+      .Do([&](ErrorCode code, char const* msg) -> void {
+        ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+      });
 
   char const* p = "[]";
   size_t l = strlen(p);
@@ -1571,7 +1579,8 @@ TEST_F(GeoMultilinestringTest, checking_polygon_with_0_positions) {
   VPackSlice json = builder->slice();
   params.emplace_back(json);
 
-  AqlValue res = Functions::GeoMultiLinestring(&expressionContext, funNode, params);
+  AqlValue res =
+      Functions::GeoMultiLinestring(&expressionContext, funNode, params);
   EXPECT_TRUE(res.slice().isNull());
   res.destroy();
   // Free input parameters
@@ -1581,9 +1590,10 @@ TEST_F(GeoMultilinestringTest, checking_polygon_with_0_positions) {
 }
 
 TEST_F(GeoMultilinestringTest, checking_bool) {
-  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* msg) -> void {
-    ASSERT_EQ(code, TRI_ERROR_QUERY_ARRAY_EXPECTED);
-  });
+  fakeit::When(Method(expressionContextMock, registerWarning))
+      .Do([&](ErrorCode code, char const* msg) -> void {
+        ASSERT_EQ(code, TRI_ERROR_QUERY_ARRAY_EXPECTED);
+      });
 
   char const* p = "true";
   size_t l = strlen(p);
@@ -1592,7 +1602,8 @@ TEST_F(GeoMultilinestringTest, checking_bool) {
   VPackSlice json = builder->slice();
   params.emplace_back(json);
 
-  AqlValue res = Functions::GeoMultiLinestring(&expressionContext, funNode, params);
+  AqlValue res =
+      Functions::GeoMultiLinestring(&expressionContext, funNode, params);
   EXPECT_TRUE(res.slice().isNull());
   res.destroy();
   // Free input parameters
@@ -1602,9 +1613,10 @@ TEST_F(GeoMultilinestringTest, checking_bool) {
 }
 
 TEST_F(GeoMultilinestringTest, checking_number) {
-  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* msg) -> void {
-    ASSERT_EQ(code, TRI_ERROR_QUERY_ARRAY_EXPECTED);
-  });
+  fakeit::When(Method(expressionContextMock, registerWarning))
+      .Do([&](ErrorCode code, char const* msg) -> void {
+        ASSERT_EQ(code, TRI_ERROR_QUERY_ARRAY_EXPECTED);
+      });
 
   char const* p = "123";
   size_t l = strlen(p);
@@ -1613,7 +1625,8 @@ TEST_F(GeoMultilinestringTest, checking_number) {
   VPackSlice json = builder->slice();
   params.emplace_back(json);
 
-  AqlValue res = Functions::GeoMultiLinestring(&expressionContext, funNode, params);
+  AqlValue res =
+      Functions::GeoMultiLinestring(&expressionContext, funNode, params);
   EXPECT_TRUE(res.slice().isNull());
   res.destroy();
   // Free input parameters

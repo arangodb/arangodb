@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_ENDPOINT_ENDPOINT_IP_V4_H
-#define ARANGODB_ENDPOINT_ENDPOINT_IP_V4_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Basics/StringUtils.h"
@@ -44,5 +43,3 @@ class EndpointIpV4 final : public EndpointIp {
   }
 };
 }  // namespace arangodb
-
-#endif

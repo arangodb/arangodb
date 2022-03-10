@@ -31,11 +31,11 @@ collections in very special occasions, but normally a regular collection will do
 @RESTBODYPARAM{schema,object,optional,}
 Optional object that specifies the collection level schema for
 documents. The attribute keys `rule`, `level` and `message` must follow the
-rules documented in [Document Schema Validation](https://www.arangodb.com/docs/devel/document-schema-validation.html)
+rules documented in [Document Schema Validation](https://www.arangodb.com/docs/stable/document-schema-validation.html)
 
 @RESTBODYPARAM{keyOptions,object,optional,post_api_collection_opts}
 additional options for key generation. If specified, then *keyOptions*
-should be a JSON array containing the following attributes:
+should be a JSON object containing the following attributes:
 
 @RESTSTRUCT{type,post_api_collection_opts,string,required,string}
 specifies the type of the key generator. The currently available generators are
@@ -70,8 +70,16 @@ Not used for other key generator types.
 @RESTBODYPARAM{type,integer,optional,int64}
 (The default is *2*): the type of the collection to create.
 The following values for *type* are valid:<br>
-- *2*: document collection
-- *3*: edge collection
+ - *2*: document collection
+ - *3*: edge collection
+
+@RESTBODYPARAM{cacheEnabled,boolean,optional,}
+Whether the in-memory hash cache for documents should be enabled for this
+collection (default: *true*). Can be controlled globally with the `--cache.size`
+startup option. The cache can speed up repeated reads of the same documents via
+their document keys. If the same documents are not fetched often or are
+modified frequently, then you may disable the cache to avoid the maintenance
+costs.
 
 @RESTBODYPARAM{numberOfShards,integer,optional,int64}
 (The default is *1*): in a cluster, this value determines the
@@ -164,14 +172,14 @@ collection, the value stored in the *smartJoinAttribute* must be a string.
 
 @RESTQUERYPARAMETERS
 
-@RESTQUERYPARAM{waitForSyncReplication,integer,optional}
-Default is *1* which means the server will only report success back to the
-client if all replicas have created the collection. Set to *0* if you want
+@RESTQUERYPARAM{waitForSyncReplication,boolean,optional}
+Default is *true* which means the server will only report success back to the
+client if all replicas have created the collection. Set to *false* if you want
 faster server responses and don't care about full replication.
 
-@RESTQUERYPARAM{enforceReplicationFactor,integer,optional}
-Default is *1* which means the server will check if there are enough replicas
-available at creation time and bail out otherwise. Set to *0* to disable
+@RESTQUERYPARAM{enforceReplicationFactor,boolean,optional}
+Default is *true* which means the server will check if there are enough replicas
+available at creation time and bail out otherwise. Set to *false* to disable
 this extra check.
 
 @RESTRETURNCODES

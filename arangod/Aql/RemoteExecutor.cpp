@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -36,7 +36,6 @@
 #include "Aql/SharedQueryState.h"
 #include "Aql/SkipResult.h"
 #include "Basics/MutexLocker.h"
-#include "Basics/StringBuffer.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
@@ -51,7 +50,6 @@
 #include <fuerte/requests.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -64,25 +62,29 @@ constexpr std::chrono::seconds kDefaultTimeOutSecs(3600);
 }  // namespace
 
 ExecutionBlockImpl<RemoteExecutor>::ExecutionBlockImpl(
-    ExecutionEngine* engine, RemoteNode const* node, RegisterInfos&& registerInfos,
-    std::string const& server, std::string const& distributeId,
-    std::string const& queryId)
+    ExecutionEngine* engine, RemoteNode const* node,
+    RegisterInfos&& registerInfos, std::string const& server,
+    std::string const& distributeId, std::string const& queryId)
     : ExecutionBlock(engine, node),
       _registerInfos(std::move(registerInfos)),
       _query(engine->getQuery()),
       _server(server),
       _distributeId(distributeId),
       _queryId(queryId),
-      _isResponsibleForInitializeCursor(node->isResponsibleForInitializeCursor()),
       _lastError(TRI_ERROR_NO_ERROR),
-      _lastTicket(0),
-      _requestInFlight(false) {
+      _isResponsibleForInitializeCursor(
+          node->isResponsibleForInitializeCursor()),
+      _requestInFlight(false),
+      _lastTicket(0) {
   TRI_ASSERT(!queryId.empty());
-  TRI_ASSERT((arangodb::ServerState::instance()->isCoordinator() && distributeId.empty()) ||
-             (!arangodb::ServerState::instance()->isCoordinator() && !distributeId.empty()));
+  TRI_ASSERT((arangodb::ServerState::instance()->isCoordinator() &&
+              distributeId.empty()) ||
+             (!arangodb::ServerState::instance()->isCoordinator() &&
+              !distributeId.empty()));
 }
 
-std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<RemoteExecutor>::getSomeWithoutTrace(size_t atMost) {
+std::pair<ExecutionState, SharedAqlItemBlockPtr>
+ExecutionBlockImpl<RemoteExecutor>::getSomeWithoutTrace(size_t atMost) {
   // silence tests -- we need to introduce new failure tests for fetchers
   TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome1") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -126,17 +128,16 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<RemoteExecut
 
     VPackSlice responseBody = response->slice();
 
+    if (!responseBody.hasKey("data")) {
+      return {ExecutionState::DONE, nullptr};
+    }
+
     ExecutionState state = ExecutionState::HASMORE;
     if (VelocyPackHelper::getBooleanValue(responseBody, "done", true)) {
       state = ExecutionState::DONE;
     }
-    if (responseBody.hasKey("data")) {
-      SharedAqlItemBlockPtr r =
-          _engine->itemBlockManager().requestAndInitBlock(responseBody);
-
-      return {state, std::move(r)};
-    }
-    return {ExecutionState::DONE, nullptr};
+    return {state,
+            _engine->itemBlockManager().requestAndInitBlock(responseBody)};
   }
 
   // We need to send a request here
@@ -149,7 +150,8 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<RemoteExecut
     traceGetSomeRequest(builder.slice(), atMost);
   }
 
-  auto res = sendAsyncRequest(fuerte::RestVerb::Put, "/_api/aql/getSome", std::move(buffer));
+  auto res = sendAsyncRequest(fuerte::RestVerb::Put, "/_api/aql/getSome",
+                              std::move(buffer));
 
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
@@ -158,7 +160,8 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<RemoteExecut
   return {ExecutionState::WAITING, nullptr};
 }
 
-std::pair<ExecutionState, size_t> ExecutionBlockImpl<RemoteExecutor>::skipSomeWithoutTrace(size_t atMost) {
+std::pair<ExecutionState, size_t>
+ExecutionBlockImpl<RemoteExecutor>::skipSomeWithoutTrace(size_t atMost) {
   std::unique_lock<std::mutex> guard(_communicationMutex);
 
   if (_requestInFlight) {
@@ -191,7 +194,8 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<RemoteExecutor>::skipSomeWi
 
     VPackSlice slice = response->slice();
 
-    if (!slice.hasKey(StaticStrings::Error) || slice.get(StaticStrings::Error).getBoolean()) {
+    if (!slice.hasKey(StaticStrings::Error) ||
+        slice.get(StaticStrings::Error).getBoolean()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_AQL_COMMUNICATION);
     }
     size_t skipped = 0;
@@ -232,8 +236,8 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<RemoteExecutor>::skipSomeWi
   return {ExecutionState::WAITING, 0};
 }
 
-std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::initializeCursor(
-    InputAqlItemRow const& input) {
+std::pair<ExecutionState, Result> ExecutionBlockImpl<
+    RemoteExecutor>::initializeCursor(InputAqlItemRow const& input) {
   // For every call we simply forward via HTTP
 
   if (!_isResponsibleForInitializeCursor) {
@@ -314,7 +318,7 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::initialize
   return {ExecutionState::WAITING, TRI_ERROR_NO_ERROR};
 }
 
-auto ExecutionBlockImpl<RemoteExecutor>::execute(AqlCallStack stack)
+auto ExecutionBlockImpl<RemoteExecutor>::execute(AqlCallStack const& stack)
     -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> {
   traceExecuteBegin(stack);
   auto res = executeWithoutTrace(stack);
@@ -328,12 +332,8 @@ auto ExecutionBlockImpl<RemoteExecutor>::execute(AqlCallStack stack)
   return res;
 }
 
-auto ExecutionBlockImpl<RemoteExecutor>::executeWithoutTrace(AqlCallStack stack)
-    -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> {
-  return executeViaNewApi(stack);
-}
-
-auto ExecutionBlockImpl<RemoteExecutor>::executeViaNewApi(AqlCallStack callStack)
+auto ExecutionBlockImpl<RemoteExecutor>::executeWithoutTrace(
+    AqlCallStack const& stack)
     -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> {
   // silence tests -- we need to introduce new failure tests for fetchers
   TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome1") {
@@ -388,11 +388,12 @@ auto ExecutionBlockImpl<RemoteExecutor>::executeViaNewApi(AqlCallStack callStack
   }
 
   // We need to send a request here
-  auto buffer = serializeExecuteCallBody(callStack);
-  this->traceExecuteRequest(VPackSlice(buffer.data()), callStack);
+  auto buffer = serializeExecuteCallBody(stack);
+  this->traceExecuteRequest(VPackSlice(buffer.data()), stack);
 
-  auto res = sendAsyncRequest(fuerte::RestVerb::Put,
-                              RestAqlHandler::Route::execute(), std::move(buffer));
+  auto res =
+      sendAsyncRequest(fuerte::RestVerb::Put, RestAqlHandler::Route::execute(),
+                       std::move(buffer));
 
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
@@ -401,17 +402,18 @@ auto ExecutionBlockImpl<RemoteExecutor>::executeViaNewApi(AqlCallStack callStack
   return {ExecutionState::WAITING, SkipResult{}, nullptr};
 }
 
-auto ExecutionBlockImpl<RemoteExecutor>::deserializeExecuteCallResultBody(VPackSlice const slice) const
-    -> ResultT<AqlExecuteResult> {
+auto ExecutionBlockImpl<RemoteExecutor>::deserializeExecuteCallResultBody(
+    VPackSlice const slice) const -> ResultT<AqlExecuteResult> {
   // Errors should have been caught earlier
   TRI_ASSERT(TRI_ERROR_NO_ERROR ==
-             VelocyPackHelper::getNumericValue<ErrorCode>(slice, StaticStrings::Code,
-                                                          TRI_ERROR_INTERNAL));
+             VelocyPackHelper::getNumericValue<ErrorCode>(
+                 slice, StaticStrings::Code, TRI_ERROR_INTERNAL));
 
   if (ADB_UNLIKELY(!slice.isObject())) {
     using namespace std::string_literals;
     return Result{TRI_ERROR_TYPE_ERROR,
-                  "When parsing execute result: expected object, got "s + slice.typeName()};
+                  "When parsing execute result: expected object, got "s +
+                      slice.typeName()};
   }
 
   if (auto value = slice.get(StaticStrings::AqlRemoteResult); !value.isNone()) {
@@ -422,8 +424,8 @@ auto ExecutionBlockImpl<RemoteExecutor>::deserializeExecuteCallResultBody(VPackS
                 "When parsing execute result: field result missing"};
 }
 
-auto ExecutionBlockImpl<RemoteExecutor>::serializeExecuteCallBody(AqlCallStack const& callStack) const
-    -> VPackBuffer<uint8_t> {
+auto ExecutionBlockImpl<RemoteExecutor>::serializeExecuteCallBody(
+    AqlCallStack const& callStack) const -> VPackBuffer<uint8_t> {
   VPackBuffer<uint8_t> buffer;
   {
     VPackBuilder builder(buffer);
@@ -462,11 +464,11 @@ Result handleErrorResponse(network::EndpointSpec const& spec, fuerte::Error err,
     if (slice.isObject()) {
       VPackSlice errSlice = slice.get(StaticStrings::Error);
       if (errSlice.isBool() && errSlice.getBool()) {
-        res = VelocyPackHelper::getNumericValue<ErrorCode>(slice, StaticStrings::ErrorNum, res);
-        VPackStringRef ref =
-            VelocyPackHelper::getStringRef(slice, StaticStrings::ErrorMessage,
-                                           VPackStringRef(
-                                               "(no valid error in response)"));
+        res = VelocyPackHelper::getNumericValue<ErrorCode>(
+            slice, StaticStrings::ErrorNum, res);
+        std::string_view ref = VelocyPackHelper::getStringView(
+            slice, StaticStrings::ErrorMessage,
+            std::string_view("(no valid error in response)"));
         msg.append(ref.data(), ref.size());
       }
     }
@@ -476,11 +478,11 @@ Result handleErrorResponse(network::EndpointSpec const& spec, fuerte::Error err,
 }
 }  // namespace
 
-Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(fuerte::RestVerb type,
-                                                            std::string const& urlPart,
-                                                            VPackBuffer<uint8_t>&& body) {
+Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(
+    fuerte::RestVerb type, std::string const& urlPart,
+    VPackBuffer<uint8_t>&& body) {
   NetworkFeature const& nf =
-    _engine->getQuery().vocbase().server().getFeature<NetworkFeature>();
+      _engine->getQuery().vocbase().server().getFeature<NetworkFeature>();
   network::ConnectionPool* pool = nf.pool();
   if (!pool) {
     // nullptr only happens on controlled shutdown
@@ -489,7 +491,7 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(fuerte::RestVerb typ
 
   arangodb::network::EndpointSpec spec;
   auto res = network::resolveDestination(nf, _server, spec);
-  if (res != TRI_ERROR_NO_ERROR) { 
+  if (res != TRI_ERROR_NO_ERROR) {
     return Result(res);
   }
   TRI_ASSERT(!spec.endpoint.empty());
@@ -512,37 +514,40 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(fuerte::RestVerb typ
       << req->header.path << "'";
 
   bool isFromPool;
-  network::ConnectionPtr conn = pool->leaseConnection(spec.endpoint, isFromPool);
+  network::ConnectionPtr conn =
+      pool->leaseConnection(spec.endpoint, isFromPool);
 
   _requestInFlight = true;
   auto ticket = generateRequestTicket();
-  conn->sendRequest(std::move(req), [this, ticket, spec, sqs = _engine->sharedState()](
-                                        fuerte::Error err, std::unique_ptr<fuerte::Request> req,
-                                        std::unique_ptr<fuerte::Response> res) {
-    // `this` is only valid as long as sharedState is valid.
-    // So we must execute this under sharedState's mutex.
-    sqs->executeAndWakeup([&] {
-      std::lock_guard<std::mutex> guard(_communicationMutex);
-      if (_lastTicket == ticket) {
-        if (err != fuerte::Error::NoError || res->statusCode() >= 400) {
-          _lastError = handleErrorResponse(spec, err, res.get());
-        } else {
-          _lastResponse = std::move(res);
-        }
-        _requestInFlight = false;
-        return true;
-      }
-      return false;
-    });
-  });
-  
+  conn->sendRequest(
+      std::move(req),
+      [this, ticket, spec, sqs = _engine->sharedState()](
+          fuerte::Error err, std::unique_ptr<fuerte::Request> req,
+          std::unique_ptr<fuerte::Response> res) {
+        // `this` is only valid as long as sharedState is valid.
+        // So we must execute this under sharedState's mutex.
+        sqs->executeAndWakeup([&] {
+          std::lock_guard<std::mutex> guard(_communicationMutex);
+          if (_lastTicket == ticket) {
+            if (err != fuerte::Error::NoError || res->statusCode() >= 400) {
+              _lastError = handleErrorResponse(spec, err, res.get());
+            } else {
+              _lastResponse = std::move(res);
+            }
+            _requestInFlight = false;
+            return true;
+          }
+          return false;
+        });
+      });
+
   _engine->getQuery().incHttpRequests(unsigned(1));
 
   return {TRI_ERROR_NO_ERROR};
 }
 
-void ExecutionBlockImpl<RemoteExecutor>::traceExecuteRequest(VPackSlice const slice,
-                                                             AqlCallStack const& callStack) {
+void ExecutionBlockImpl<RemoteExecutor>::traceExecuteRequest(
+    VPackSlice slice, AqlCallStack const& callStack) {
   if (_profileLevel == ProfileLevel::TraceOne ||
       _profileLevel == ProfileLevel::TraceTwo) {
     // only stringify if profile level requires us
@@ -551,8 +556,8 @@ void ExecutionBlockImpl<RemoteExecutor>::traceExecuteRequest(VPackSlice const sl
   }
 }
 
-void ExecutionBlockImpl<RemoteExecutor>::traceGetSomeRequest(VPackSlice const slice,
-                                                             size_t const atMost) {
+void ExecutionBlockImpl<RemoteExecutor>::traceGetSomeRequest(VPackSlice slice,
+                                                             size_t atMost) {
   if (_profileLevel == ProfileLevel::TraceOne ||
       _profileLevel == ProfileLevel::TraceTwo) {
     // only stringify if profile level requires us
@@ -561,8 +566,8 @@ void ExecutionBlockImpl<RemoteExecutor>::traceGetSomeRequest(VPackSlice const sl
   }
 }
 
-void ExecutionBlockImpl<RemoteExecutor>::traceSkipSomeRequest(VPackSlice const slice,
-                                                              size_t const atMost) {
+void ExecutionBlockImpl<RemoteExecutor>::traceSkipSomeRequest(VPackSlice slice,
+                                                              size_t atMost) {
   if (_profileLevel == ProfileLevel::TraceOne ||
       _profileLevel == ProfileLevel::TraceTwo) {
     // only stringify if profile level requires us
@@ -571,7 +576,8 @@ void ExecutionBlockImpl<RemoteExecutor>::traceSkipSomeRequest(VPackSlice const s
   }
 }
 
-void ExecutionBlockImpl<RemoteExecutor>::traceInitializeCursorRequest(VPackSlice const slice) {
+void ExecutionBlockImpl<RemoteExecutor>::traceInitializeCursorRequest(
+    VPackSlice slice) {
   if (_profileLevel == ProfileLevel::TraceOne ||
       _profileLevel == ProfileLevel::TraceTwo) {
     // only stringify if profile level requires us
@@ -580,8 +586,8 @@ void ExecutionBlockImpl<RemoteExecutor>::traceInitializeCursorRequest(VPackSlice
   }
 }
 
-void ExecutionBlockImpl<RemoteExecutor>::traceRequest(char const* const rpc,
-                                                      VPackSlice const slice,
+void ExecutionBlockImpl<RemoteExecutor>::traceRequest(char const* rpc,
+                                                      VPackSlice slice,
                                                       std::string const& args) {
   if (_profileLevel == ProfileLevel::TraceOne ||
       _profileLevel == ProfileLevel::TraceTwo) {
@@ -590,7 +596,8 @@ void ExecutionBlockImpl<RemoteExecutor>::traceRequest(char const* const rpc,
     LOG_TOPIC("92c71", INFO, Logger::QUERIES)
         << "[query#" << queryId << "] remote request sent: " << rpc
         << (args.empty() ? "" : " ") << args << " registryId=" << remoteQueryId;
-    LOG_TOPIC_IF("e0ae6", INFO, Logger::QUERIES, _profileLevel == ProfileLevel::TraceTwo)
+    LOG_TOPIC_IF("e0ae6", INFO, Logger::QUERIES,
+                 _profileLevel == ProfileLevel::TraceTwo)
         << "[query#" << queryId << "] data: " << slice.toJson();
   }
 }

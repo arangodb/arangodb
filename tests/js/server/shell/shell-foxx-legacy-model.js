@@ -32,8 +32,6 @@ var _ = require("lodash"),
   joi = require("joi"),
   jsunity = require("jsunity");
 
-require("@arangodb/test-helper").waitForFoxxInitialized();
-
 function ModelSpec () {
   'use strict';
   var FoxxModel, instance;

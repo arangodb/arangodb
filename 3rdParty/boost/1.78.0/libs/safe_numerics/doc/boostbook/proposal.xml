@@ -1,0 +1,613 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE article PUBLIC "-//OASIS//DTD DocBook XML V4.5//EN"
+"http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd">
+<article>
+  <articleinfo>
+    <abstract>
+      <para><informaltable>
+          <tgroup cols="2">
+            <colspec colwidth="1*"/>
+
+            <colspec colwidth="2*"/>
+
+            <tbody>
+              <row>
+                <entry>Document number:</entry>
+
+                <entry>P0228R2</entry>
+              </row>
+
+              <row>
+                <entry>Project:</entry>
+
+                <entry>Programming Language C++</entry>
+              </row>
+
+              <row>
+                <entry>Audience:</entry>
+
+                <entry>SG-6</entry>
+              </row>
+
+              <row>
+                <entry>Author:</entry>
+
+                <entry>Robert Ramey</entry>
+              </row>
+
+              <row>
+                <entry>Contact:</entry>
+
+                <entry>ramey@rrsd.com</entry>
+              </row>
+
+              <row>
+                <entry>Date:</entry>
+
+                <entry>2016-02-16</entry>
+              </row>
+            </tbody>
+          </tgroup>
+        </informaltable></para>
+    </abstract>
+
+    <title>A Proposal to Add Safe Integer Types to the Standard
+    Library</title>
+  </articleinfo>
+
+  <section>
+    <title>Motivation</title>
+
+    <para>Arithmetic operations in C++ are NOT guaranteed to yield a correct
+    mathematical result. This feature is inherited from the early days of C.
+    The behavior of <code>int</code>, <code>unsigned int</code> and others
+    were designed to map closely to the underlying hardware. Computer hardware
+    implements these types as a fixed number of bits. When the result of
+    arithmetic operations exceeds this number of bits, the result will not be
+    arithmetically correct. The following example illustrates this
+    problem.</para>
+
+    <programlisting>int f(int x, int y){
+    // this returns an invalid result for some legal values of x and y !
+    return x + y;
+}
+</programlisting>
+  </section>
+
+  <section>
+    <title>Impact On the Standard</title>
+
+    <para>This proposal is a pure library extension. It does not require
+    changes to any standard classes, functions or headers. It might benefit
+    from relaxing some of the conditions on aggregate types. It has been
+    implemented in and requires standard C++/14.</para>
+  </section>
+
+  <section>
+    <title>Design Decisions</title>
+
+    <para>The template class is designed to function as closely as possible as
+    a drop-in replacement for corresponding built-in integer types.</para>
+
+    <orderedlist>
+      <listitem>
+        <para>"Drop In Replacement for Any Integer Type"</para>
+
+        <para>The template class is designed to function as closely as
+        possible as a drop-in replacement for corresponding built-in integer
+        types. Ideally, one should be able to just substitute safe&lt;T&gt;
+        for all instances of T in any program and expect it compile and
+        execute as before with no other changes.</para>
+
+        <para>Since C++ permits freely mixing signed and unsigned integer
+        types in expressions, safe versions of these types can also be. This
+        complicates the implementation of the library to significant
+        degree.</para>
+      </listitem>
+
+      <listitem>
+        <para>"Return No Incorrect Results"</para>
+
+        <para>Usage of a safe type in a binary expression is guaranteed to
+        either return an arithmetically correct result or throw a standard
+        exception.</para>
+      </listitem>
+
+      <listitem>
+        <para>"Automatically Inter operate with built-in integer types"</para>
+
+        <para>The usage of a safe type in binary expression "infects" the
+        expression by returning another safe type. This is designed to avoid
+        accidentally losing the safety of the expression.</para>
+      </listitem>
+
+      <listitem>
+        <para>"Uses &lt;limits&gt; instead of type traits"</para>
+
+        <para>Implementation of a library such as this necessarily keeps track
+        of the types of data objects. The most common way to do this is using
+        type_traits such as <code>std::is_integral</code>,
+        <code>std::is_unsigned</code>, <code>std::is_arithmetic</code>, etc.
+        This doesn't work very well for a few reasons:<simplelist>
+            <member>These are defined by the standard to apply only to
+            built-in types. Specializing these traits for new types such as
+            safe&lt;int&gt; would conflict with the standard.</member>
+          </simplelist></para>
+
+        <para><simplelist>
+            <member>We are allowed to create specialization of
+            std::numeric_limits for our own types - including safe&lt;T&gt;.
+            So this works well for us.</member>
+          </simplelist></para>
+
+        <para><simplelist>
+            <member>safe&lt;T&gt; might be implemented in such as way that it
+            would work for unforeseen integer-like types such as "money".
+            Numeric limits has more complete information about these types
+            which might make it easier to extend the library.</member>
+          </simplelist></para>
+      </listitem>
+
+      <listitem>
+        <para>"Performance"</para>
+
+        <para>Performance will depend on the implementation and subject to the
+        constraints above. This design will permit the usage of template
+        meta-programming to eliminate runtime performance penalties in some
+        cases. In the following example, there is no runtime penalty required
+        to guarantee that incorrect results will never be generated.</para>
+
+        <programlisting>#include &lt;cstdint&gt;
+#include &lt;safe&gt;
+
+using namespace std;
+
+int f(safe&lt;int8_t&gt; i){
+    // C++ promotion rules make overflow on multiplication impossible!
+    // cannot fail on return
+    // zero performance penalty
+    return i * i;      
+}
+
+int8_t f(safe&lt;int8_t&gt; i){
+    // C++ promotion rules make overflow on multiplication impossible!
+    // but result could be truncated on return
+    // so result must be checked at runtime incurring a runtime penalty
+    return i * i;      // cannot overflow on multiplication, 
+}</programlisting>
+
+        <para>Some processors have the ability to detect erroneous results but
+        the C++ language doesn't include the ability to exploit these
+        features. Implementor's of this library will have the option to
+        exploit these features to diminish or eliminate runtime costs.</para>
+
+        <para>If all else fails and the runtime cost is deemed too large for
+        the program to bear, users will have the option of creating their own
+        aliases for the types the program uses and assign them according to
+        the whether they are building a "Debug" or "Release" version. This is
+        not ideal, but would still be preferable to the current approach which
+        generally consists of ignoring the possibility that C++ numeric
+        operations may produce arithmetically incorrect results.</para>
+      </listitem>
+
+      <listitem>
+        <para>"No Extra Parameters"</para>
+
+        <para>An alternative to this proposal would be a policy based design
+        which would permit users to select or define actions to be taken in
+        the case of errors. This is quite possible and likely useful. However,
+        the simplicity usage of the current proposal is an important feature.
+        So I decided not to include it.</para>
+      </listitem>
+
+      <listitem>
+        <para>"No other safe types"</para>
+
+        <para>Other ideas come to mind such as <code>safe&lt;Min,
+        Max&gt;</code>, <code>safe_literal&lt;Value&gt;</code>, and others. I
+        excluded these in the spirit of following the controlling purpose of
+        making a "drop in replacement". Once one included these types into a
+        program, they change the semantics of the program so that it's not
+        really C++ any more. There is a place for these ideas, (see below),
+        but I don't think the standard library is that place.</para>
+      </listitem>
+    </orderedlist>
+  </section>
+
+  <section>
+    <title>Existing Implementations</title>
+
+    <para>This proposal is a simpler version / subset of the Safe Numerics
+    library in development by Robert Ramey on the <ulink
+    url="http://rrsd.com/blincubator.com/bi_library/safe-numerics/?gform_post_id=426?">Boost
+    Library Incubator</ulink>. It is compatible with this proposal but it also
+    includes:<simplelist>
+        <member>Policy classes for error handling</member>
+      </simplelist></para>
+
+    <para><simplelist>
+        <member>Policy classes for type promotion. These permit substitution
+        of C++ standard type promotion rules with other ones which can reduce
+        or eliminate the need for runtime error checking code.</member>
+      </simplelist></para>
+
+    <para><simplelist>
+        <member>Other safe types such as safe_integer_range&lt;Min,
+        Max&gt;.</member>
+      </simplelist></para>
+
+    <para><simplelist>
+        <member>Complete documentation including internal operation</member>
+      </simplelist></para>
+
+    <para>Without comment, here are implementations of libraries which are in
+    some way similar to this proposal:<itemizedlist>
+        <listitem>
+          <para><ulink url="https://github.com/RobertLeahy/Safe">Robert Leahy,
+          Safe integer utilities for C++11</ulink></para>
+        </listitem>
+
+        <listitem>
+          <para><ulink url="http://safeint.codeplex.com">David LeBlanc,
+          SafeInt</ulink></para>
+        </listitem>
+
+        <listitem>
+          <para><ulink url="http://safeint.codeplex.com">David Stone, Bounded
+          Integer</ulink></para>
+        </listitem>
+      </itemizedlist></para>
+  </section>
+
+  <section>
+    <title>Technical Specifications</title>
+
+    <section>
+      <title>Type Requirements</title>
+
+      <xi:include href="numeric_concept.xml" xpointer="element(/1)"
+                  xmlns:xi="http://www.w3.org/2001/XInclude"/>
+
+      <xi:include href="integer_concept.xml" xpointer="element(/1)"
+                  xmlns:xi="http://www.w3.org/2001/XInclude"/>
+
+      <xi:include href="safe_numeric_concept.xml" xpointer="element(/1)"
+                  xmlns:xi="http://www.w3.org/2001/XInclude"/>
+    </section>
+  </section>
+
+  <section>
+    <title>Types</title>
+
+    <section id="safe_numerics.safe">
+      <title>safe&lt;T&gt;</title>
+
+      <section>
+        <title>Description</title>
+
+        <para>A <code>safe&lt;T&gt;</code> can be used anywhere a type T can
+        be used. Any expression which uses this type is guaranteed to return
+        an arithmetically correct value or trap in some way.</para>
+      </section>
+
+      <section>
+        <title>Notation</title>
+
+        <informaltable>
+          <tgroup cols="2">
+            <colspec align="left" colwidth="1*"/>
+
+            <colspec align="left" colwidth="10*"/>
+
+            <thead>
+              <row>
+                <entry align="left">Symbol</entry>
+
+                <entry align="left">Description</entry>
+              </row>
+            </thead>
+
+            <tbody>
+              <row>
+                <entry><code>T</code></entry>
+
+                <entry>Underlying type from which a safe type is being
+                derived</entry>
+              </row>
+            </tbody>
+          </tgroup>
+        </informaltable>
+      </section>
+
+      <section>
+        <title>Template Parameters</title>
+
+        <informaltable>
+          <tgroup cols="3">
+            <colspec colwidth="1*"/>
+
+            <colspec align="left" colwidth="3*"/>
+
+            <colspec align="left" colwidth="7*"/>
+
+            <thead>
+              <row>
+                <entry align="left">Parameter</entry>
+
+                <entry align="left">Type Requirements</entry>
+
+                <entry>Description</entry>
+              </row>
+            </thead>
+
+            <tbody>
+              <row>
+                <entry><code>T</code></entry>
+
+                <entry><ulink
+                url="http://en.cppreference.com/w/cpp/types/is_integral">Integer</ulink></entry>
+
+                <entry><para>The underlying type. Currently only integer types
+                supported</para></entry>
+              </row>
+            </tbody>
+          </tgroup>
+        </informaltable>
+
+        <para>See examples below.</para>
+      </section>
+
+      <section>
+        <title>Model of</title>
+
+        <para><link linkend="safe_numerics.numeric">Integer</link></para>
+
+        <para><link
+        linkend="safe_numerics.safe_numeric_concept">SafeNumeric</link></para>
+      </section>
+
+      <section>
+        <title>Valid Expressions</title>
+
+        <para>Implements all expressions defined by the <link
+        linkend="safe_numerics.safe_numeric_concept">SafeNumeric</link> type
+        requirements.</para>
+
+        <para><code>safe&lt;T&gt;</code> is meant to be a "drop-in"
+        replacement of the intrinsic integer types.</para>
+
+        <para>The type of an expression of type safe&lt;T&gt; op safe&lt;U&gt;
+        will be safe&lt;R&gt; where R would be the same as the type of the
+        expression T op U.That is, expressions involving these types will be
+        evaluated into result types which reflect the standard rules for
+        evaluation of C++ expressions. Should it occur that such evaluation
+        cannot return a correct result, an std::exception will be
+        thrown.</para>
+      </section>
+
+      <section>
+        <title>Header</title>
+
+        <para><filename><ulink url="../../include/safe_integer.hpp">#include
+        &lt;safe&gt;</ulink></filename></para>
+      </section>
+
+      <section>
+        <title>Example of use</title>
+
+        <para><code>safe&lt;T&gt;</code> is meant to be a "drop-in"
+        replacement of the intrinsic integer types. That is, expressions
+        involving these types will be evaluated into result types which
+        reflect the standard rules for evaluation of C++ expressions. Should
+        it occur that such evaluation cannot return a correct result, an
+        exception will be thrown.The following program will throw an exception
+        and emit a error message at runtime if any of several events result in
+        an incorrect arithmetic type. Behavior of this program could vary
+        according to the machine architecture in question.</para>
+
+        <programlisting>#include &lt;exception&gt;
+#include &lt;iostream&gt;
+#include &lt;safe&gt;
+
+void f(){
+    using namespace std;
+    safe&lt;int&gt; j;
+    try {
+        safe&lt;int&gt; i;
+        cin &gt;&gt; i;       // could throw overflow !
+        j = i * i;      // could throw overflow
+    }
+    catch(std::exception &amp; e){
+       std::cout &lt;&lt; e.what() &lt;&lt; endl;
+    }
+    std::cout &lt;&lt; j;
+}</programlisting>
+      </section>
+    </section>
+  </section>
+
+  <section>
+    <title>Acknowledgements</title>
+
+    <para>This proposal is a simplified version of Safe Numeics library
+    proposed for Boost. This effort was inspired by <ulink
+    url="http://safeint.codeplex.com">David LeBlanc's SafeInt Library</ulink>
+    .</para>
+  </section>
+
+  <section id="safe_numerics.bibliography">
+    <title>References</title>
+
+    <biblioentry>
+      <author>
+        <surname>Omer Katz</surname>
+      </author>
+
+      <title>
+        <ulink url="http://www.cert.org/secure-coding/publications/books/secure-coding-c-c-second-edition.cfm?">
+          <ulink
+          url="http://boost.2283326.n4.nabble.com/SafeInt-code-proposal-td2663669.html">SafeInt
+          code proposal</ulink>
+        </ulink>
+      </title>
+
+      <publishername>
+        <ulink
+        url="https://groups.google.com/a/isocpp.org/forum/?fromgroups#!forum/std-proposals">Boost
+        Developer's List</ulink>
+      </publishername>
+
+      <abbrev>Katz</abbrev>
+
+      <abstract>
+        <para>Posts of various authors regarding a proposed SafeInt library
+        for boost</para>
+      </abstract>
+    </biblioentry>
+
+    <biblioentry>
+      <author>
+        <surname>David LeBlanc</surname>
+      </author>
+
+      <title>
+        <ulink
+        url="https://msdn.microsoft.com/en-us/library/ms972705.aspx">Integer
+        Handling with the C++ SafeInt Class</ulink>
+      </title>
+
+      <publishername>
+        <ulink url="https://www.cert.org">Microsoft Developer Network</ulink>
+      </publishername>
+
+      <date>January 7, 2004</date>
+
+      <abbrev>LeBlanc</abbrev>
+    </biblioentry>
+
+    <biblioentry>
+      <author>
+        <surname>David LeBlanc</surname>
+      </author>
+
+      <title>
+        <ulink url="https://safeint.codeplex.com">SafeInt</ulink>
+      </title>
+
+      <publishername>
+        <ulink url="https://www.cert.org">CodePlex</ulink>
+      </publishername>
+
+      <date>Dec 3, 2014</date>
+
+      <abbrev>LeBlanc</abbrev>
+    </biblioentry>
+
+    <biblioentry>
+      <author>
+        <surname>Jacques-Louis Lions</surname>
+      </author>
+
+      <title>
+        <ulink
+        url="https://en.wikisource.org/wiki/Ariane_501_Inquiry_Board_report">Ariane
+        501 Inquiry Board report</ulink>
+      </title>
+
+      <publishername>
+        <ulink
+        url="https://en.wikisource.org/wiki/Main_Page">Wikisource</ulink>
+      </publishername>
+
+      <date>July 19, 1996</date>
+
+      <abbrev>Lions</abbrev>
+    </biblioentry>
+
+    <biblioentry>
+      <author>
+        <surname>Daniel Plakosh</surname>
+      </author>
+
+      <title>
+        <ulink
+        url="https://buildsecurityin.us-cert.gov/bsi/articles/knowledge/coding/312-BSI.html">Safe
+        Integer Operations</ulink>
+      </title>
+
+      <publishername>
+        <ulink url="https://buildsecurityin.us-cert.gov">U.S. Department of
+        Homeland Security</ulink>
+      </publishername>
+
+      <date>May 10, 2013</date>
+
+      <abbrev>Plakosh</abbrev>
+    </biblioentry>
+
+    <biblioentry id="Seacord">
+      <author>
+        <surname>Robert C. Seacord</surname>
+      </author>
+
+      <title>
+        <ulink
+        url="http://www.cert.org/secure-coding/publications/books/secure-coding-c-c-second-edition.cfm?">Secure
+        Coding in C and C++</ulink>
+      </title>
+
+      <edition>2nd Edition</edition>
+
+      <publishername>Addison-Wesley Professional</publishername>
+
+      <date>April 12, 2013</date>
+
+      <isbn>978-0321822130</isbn>
+
+      <abbrev>Seacord</abbrev>
+    </biblioentry>
+
+    <biblioentry>
+      <author>
+        <surname>Robert C. Seacord</surname>
+      </author>
+
+      <title>
+        <ulink
+        url="https://www.securecoding.cert.org/confluence/display/seccode/INT32-C.+Ensure+that+operations+on+signed+integers+do+not+result+in+overflow?showComments=false">INT30-C.
+        Ensure that operations on unsigned integers do not wrap</ulink>
+      </title>
+
+      <publishername>
+        <ulink url="https://www.cert.org">Software Engineering Institute,
+        Carnegie Mellon University</ulink>
+      </publishername>
+
+      <date>August 17, 2014</date>
+
+      <abbrev>INT30-C</abbrev>
+    </biblioentry>
+
+    <biblioentry>
+      <author>
+        <surname id="INT32-C">Robert C. Seacord</surname>
+      </author>
+
+      <title>
+        <ulink
+        url="https://www.securecoding.cert.org/confluence/display/c/INT32-C.+Ensure+that+operations+on+signed+integers+do+not+result+in+overflow">INT32-C.
+        Ensure that operations on signed integers do not result in
+        overflow</ulink>
+      </title>
+
+      <publishername>
+        <ulink url="https://www.cert.org">Software Engineering Institute,
+        Carnegie Mellon University</ulink>
+      </publishername>
+
+      <date>August 17, 2014</date>
+
+      <abbrev>INT32-C</abbrev>
+    </biblioentry>
+  </section>
+</article>

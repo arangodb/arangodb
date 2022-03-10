@@ -1,0 +1,85 @@
+[#repeated_reject_incomplete1]
+[section repeated_reject_incomplete1]
+
+[h1 Synopsis]
+
+  template <class P>
+  struct repeated_reject_incomplete1;
+
+This is a [link parser_combinator parser combinator].
+
+[table Arguments
+  [[Name] [Type]]
+  [[`P`]  [[link parser parser]]]
+]
+
+[h1 Description]
+
+The same as [link repeated1 `repeated1`], but once `P` rejects the input,
+`repeated_reject_incomplete1` checks if `P` consumes any characters before
+rejecting the input. If so, `repeated_reject_incomplete1` rejects the input with
+the same error message this last application of `P` returned. Otherwise
+_reject_incomplete`repeated1` accepts the input and gives the same result as
+[link repeated1 `repeated1`].
+
+[h1 Header]
+
+  #include <boost/metaparse/repeated_reject_incomplete1.hpp>
+
+[h1 Expression semantics]
+
+For any  `p` parser, `s` compile-time string and `pos` source position
+ 
+  repeated_reject_incomplete1<p>::apply<s, pos>
+
+is equivalent to
+
+  first_of<repeated1<p>, fail_at_first_char_expected<p> >::apply<s, pos>
+
+[h1 Example]
+
+  #include <boost/metaparse/repeated_reject_incomplete1.hpp>
+  #include <boost/metaparse/lit_c.hpp>
+  #include <boost/metaparse/last_of.hpp>
+  #include <boost/metaparse/token.hpp>
+  #include <boost/metaparse/int_.hpp>
+  #include <boost/metaparse/string.hpp>
+  #include <boost/metaparse/start.hpp>
+  #include <boost/metaparse/get_result.hpp>
+  #include <boost/metaparse/is_error.hpp>
+  
+  #include <boost/mpl/equal.hpp>
+  #include <boost/mpl/vector_c.hpp>
+  
+  using namespace boost::metaparse;
+  
+  using int_token = token<int_>;
+  using plus_token = token<lit_c<'+'>>;
+  using plus_int = last_of<plus_token, int_token>;
+  
+  using ints = repeated_reject_incomplete1<plus_int>;
+  
+  static_assert(
+    boost::mpl::equal<
+      boost::mpl::vector_c<int, 13, 3, 21>,
+      get_result<
+        ints::apply<BOOST_METAPARSE_STRING("+ 13 + 3 + 21"), start>
+      >::type
+    >::type::value,
+    "ints should parse the numbers"
+  );
+  
+  static_assert(
+    is_error<
+      ints::apply<BOOST_METAPARSE_STRING("+ 13 + 3 +"), start>
+    >::type::value,
+    "when the last number is missing, it should be an error"
+  );
+  
+  static_assert(
+    is_error<ints::apply<BOOST_METAPARSE_STRING(""), start>>::type::value,
+    "when no numbers are provided, it should be an error"
+  );
+
+[endsect]
+

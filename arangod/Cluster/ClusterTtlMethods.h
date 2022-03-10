@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_CLUSTER_TTL_METHODS_H
-#define ARANGOD_CLUSTER_CLUSTER_TTL_METHODS_H 1
+#pragma once
 
 #include "Basics/Result.h"
 
@@ -40,7 +39,8 @@ struct TtlStatistics;
 Result getTtlStatisticsFromAllDBServers(ClusterFeature&, TtlStatistics& out);
 
 /// @brief get TTL properties from all DBservers
-Result getTtlPropertiesFromAllDBServers(ClusterFeature&, arangodb::velocypack::Builder& out);
+Result getTtlPropertiesFromAllDBServers(ClusterFeature&,
+                                        arangodb::velocypack::Builder& out);
 
 /// @brief set TTL properties on all DBservers
 Result setTtlPropertiesOnAllDBServers(ClusterFeature&,
@@ -48,5 +48,3 @@ Result setTtlPropertiesOnAllDBServers(ClusterFeature&,
                                       arangodb::velocypack::Builder& out);
 
 }  // namespace arangodb
-
-#endif

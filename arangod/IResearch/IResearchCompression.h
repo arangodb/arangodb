@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,8 +20,8 @@
 ///
 /// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
-#ifndef ARANGOD_IRESEARCH__IRESEARCH_COMPRESSION_H
-#define ARANGOD_IRESEARCH__IRESEARCH_COMPRESSION_H 1
+
+#pragma once
 
 #include "utils/string.hpp"
 #include <utils/compression.hpp>
@@ -29,10 +29,9 @@
 namespace arangodb {
 namespace iresearch {
 
-irs::string_ref columnCompressionToString(irs::type_info::type_id type) noexcept;
-irs::type_info::type_id columnCompressionFromString(irs::string_ref const& c) noexcept;
+irs::string_ref columnCompressionToString(
+    irs::type_info::type_id type) noexcept;
+irs::type_info::type_id columnCompressionFromString(irs::string_ref c) noexcept;
 irs::type_info::type_id getDefaultCompression() noexcept;
-} // iresearch
-} // arangodb
-
-#endif // ARANGOD_IRESEARCH__IRESEARCH_COMPRESSION_H
+}  // namespace iresearch
+}  // namespace arangodb

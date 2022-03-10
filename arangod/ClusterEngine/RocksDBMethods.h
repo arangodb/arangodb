@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,10 +21,10 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_ENGINE_ROCKSDB_METHODS_H
-#define ARANGOD_CLUSTER_ENGINE_ROCKSDB_METHODS_H 1
+#pragma once
 
 #include "Basics/Result.h"
+#include "RestServer/arangod.h"
 
 namespace arangodb {
 namespace application_features {
@@ -35,7 +35,7 @@ namespace rocksdb {
 /// @brief recalculate collection count on all DBServers
 ////////////////////////////////////////////////////////////////////////////////
 
-Result recalculateCountsOnAllDBServers(application_features::ApplicationServer& server,
+Result recalculateCountsOnAllDBServers(ArangodServer& server,
                                        std::string const& dbname,
                                        std::string const& collname);
 
@@ -46,5 +46,3 @@ Result recalculateCountsOnAllDBServers(application_features::ApplicationServer& 
 Result waitForEstimatorSync();
 }  // namespace rocksdb
 }  // namespace arangodb
-
-#endif

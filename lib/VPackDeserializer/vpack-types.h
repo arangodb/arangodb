@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,8 +20,8 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
-#ifndef DESERIALIZE_VPACK_TYPES_H
-#define DESERIALIZE_VPACK_TYPES_H
+
+#pragma once
 
 #ifndef DESERIALIZER_NO_VPACK_TYPES
 #include "velocypack/Iterator.h"
@@ -39,5 +39,3 @@ using builder_type = arangodb::velocypack::Builder;
 }  // namespace velocypack
 }  // namespace arangodb
 #endif  // DESERIALIZER_NO_VPACK_TYPES
-
-#endif  // DESERIALIZE_VPACK_TYPES_H

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_ENGINE_ROCKSDB_INDEX_H
-#define ARANGOD_ROCKSDB_ENGINE_ROCKSDB_INDEX_H 1
+#pragma once
 
 #include <rocksdb/status.h>
 
@@ -37,24 +36,25 @@
 namespace rocksdb {
 class Comparator;
 class ColumnFamilyHandle;
-}
+}  // namespace rocksdb
 
 namespace arangodb {
 namespace cache {
 class Cache;
-}
+class Manager;
+}  // namespace cache
 
 class LogicalCollection;
+class RocksDBEngine;
 class RocksDBMethods;
 struct OperationOptions;
 
 class RocksDBIndex : public Index {
  protected:
-  
   // This is the number of distinct elements the index estimator can reliably
   // store
   // This correlates directly with the memory of the estimator:
-  // memory == ESTIMATOR_SIZE * 6 bytes. 
+  // memory == ESTIMATOR_SIZE * 6 bytes.
   // note: if this is ever adjusted, it will break the stored estimator data!
   static constexpr uint64_t ESTIMATOR_SIZE = 4096;
 
@@ -63,8 +63,9 @@ class RocksDBIndex : public Index {
   void toVelocyPackFigures(velocypack::Builder& builder) const override;
 
   /// @brief return a VelocyPack representation of the index
-  void toVelocyPack(velocypack::Builder& builder,
-                    std::underlying_type<Index::Serialize>::type) const override;
+  void toVelocyPack(
+      velocypack::Builder& builder,
+      std::underlying_type<Index::Serialize>::type) const override;
 
   uint64_t objectId() const { return _objectId.load(); }
 
@@ -102,12 +103,13 @@ class RocksDBIndex : public Index {
                              LocalDocumentId const& documentId,
                              arangodb::velocypack::Slice doc,
                              OperationOptions const& options);
-  
-  /// performs a preflight check for an update/replace operation, not carrying out any
-  /// modifications to the index.
-  /// the default implementation does nothing. indexes can override this and
-  /// perform useful checks (uniqueness checks etc.) here
-  virtual Result checkReplace(transaction::Methods& trx, RocksDBMethods* methods,
+
+  /// performs a preflight check for an update/replace operation, not carrying
+  /// out any modifications to the index. the default implementation does
+  /// nothing. indexes can override this and perform useful checks (uniqueness
+  /// checks etc.) here
+  virtual Result checkReplace(transaction::Methods& trx,
+                              RocksDBMethods* methods,
                               LocalDocumentId const& documentId,
                               arangodb::velocypack::Slice doc,
                               OperationOptions const& options);
@@ -116,7 +118,8 @@ class RocksDBIndex : public Index {
   virtual Result insert(transaction::Methods& trx, RocksDBMethods* methods,
                         LocalDocumentId const& documentId,
                         arangodb::velocypack::Slice doc,
-                        OperationOptions const& options) = 0;
+                        OperationOptions const& options,
+                        bool performChecks) = 0;
 
   /// remove index elements and put it in the specified write batch.
   virtual Result remove(transaction::Methods& trx, RocksDBMethods* methods,
@@ -128,7 +131,7 @@ class RocksDBIndex : public Index {
                         arangodb::velocypack::Slice oldDoc,
                         LocalDocumentId const& newDocumentId,
                         velocypack::Slice newDoc,
-                        OperationOptions const& options);
+                        OperationOptions const& options, bool performChecks);
 
   rocksdb::ColumnFamilyHandle* columnFamily() const { return _cf; }
 
@@ -140,7 +143,8 @@ class RocksDBIndex : public Index {
 
   RocksDBKeyBounds getBounds() const { return getBounds(_objectId); }
 
-  static RocksDBKeyBounds getBounds(Index::IndexType type, uint64_t objectId, bool unique);
+  static RocksDBKeyBounds getBounds(Index::IndexType type, uint64_t objectId,
+                                    bool unique);
 
   /// @brief get index estimator, optional
   virtual RocksDBCuckooIndexEstimatorType* estimator();
@@ -148,20 +152,35 @@ class RocksDBIndex : public Index {
   virtual void recalculateEstimates();
 
  protected:
-  RocksDBIndex(IndexId id, LogicalCollection& collection, std::string const& name,
-               std::vector<std::vector<arangodb::basics::AttributeName>> const& attributes,
+  RocksDBIndex(IndexId id, LogicalCollection& collection,
+               std::string const& name,
+               std::vector<std::vector<arangodb::basics::AttributeName>> const&
+                   attributes,
                bool unique, bool sparse, rocksdb::ColumnFamilyHandle* cf,
                uint64_t objectId, bool useCache);
 
   RocksDBIndex(IndexId id, LogicalCollection& collection,
-               arangodb::velocypack::Slice const& info,
+               std::string const& name,
+               std::vector<std::vector<arangodb::basics::AttributeName>> const&
+                   attributes,
+               bool unique, bool sparse, rocksdb::ColumnFamilyHandle* cf,
+               uint64_t objectId, bool useCache, cache::Manager* cacheManager,
+               RocksDBEngine& engine);
+
+  RocksDBIndex(IndexId id, LogicalCollection& collection,
+               arangodb::velocypack::Slice info,
                rocksdb::ColumnFamilyHandle* cf, bool useCache);
 
+  RocksDBIndex(IndexId id, LogicalCollection& collection,
+               arangodb::velocypack::Slice const& info,
+               rocksdb::ColumnFamilyHandle* cf, bool useCache,
+               cache::Manager* cacheManager, RocksDBEngine& engine);
+
   inline bool useCache() const { return (_cacheEnabled && _cache); }
-  
+
   void invalidateCacheEntry(char const* data, std::size_t len);
-  
-  void invalidateCacheEntry(arangodb::velocypack::StringRef& ref) {
+
+  void invalidateCacheEntry(std::string_view ref) {
     invalidateCacheEntry(ref.data(), ref.size());
   }
 
@@ -172,8 +191,10 @@ class RocksDBIndex : public Index {
   bool _cacheEnabled;
 
  private:
+  // we have to store references to the cacheManager and engine because the
+  // vocbase might already be destroyed at the time the desctructor is executed
+  cache::Manager* _cacheManager;
+  RocksDBEngine& _engine;
   std::atomic<uint64_t> _objectId;
 };
 }  // namespace arangodb
-
-#endif

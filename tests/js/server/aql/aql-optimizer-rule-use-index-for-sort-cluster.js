@@ -288,7 +288,6 @@ function optimizerRuleTestSuite() {
       let plan = AQL_EXPLAIN(query).plan;
       let nodes = plan.nodes.filter(function(n) { return n.type === 'CollectNode'; });
 
-      require("console").log(nodes);
       assertEqual(2, nodes.length);
       assertEqual(1, nodes[0].aggregates.length);
       assertEqual("LENGTH", nodes[0].aggregates[0].type);

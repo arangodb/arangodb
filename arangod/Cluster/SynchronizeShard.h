@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,8 +22,7 @@
 /// @author Matthew Von-Maszewski
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_MAINTENANCE_SYNCHRONIZE_SHARD_H
-#define ARANGODB_MAINTENANCE_SYNCHRONIZE_SHARD_H
+#pragma once
 
 #include "Basics/ResultT.h"
 #include "Cluster/ActionBase.h"
@@ -32,18 +31,22 @@
 #include "VocBase/voc-types.h"
 
 #include <chrono>
+#include <memory>
+
+struct TRI_vocbase_t;
 
 namespace arangodb {
 namespace network {
 class ConnectionPool;
 }
 
+class DatabaseTailingSyncer;
 class LogicalCollection;
 struct SyncerId;
 
 namespace maintenance {
 
-class SynchronizeShard : public ActionBase {
+class SynchronizeShard : public ActionBase, public ShardDefinition {
  public:
   SynchronizeShard(MaintenanceFeature&, ActionDescription const& d);
 
@@ -55,40 +58,47 @@ class SynchronizeShard : public ActionBase {
 
   std::string const& clientInfoString() const;
 
-  arangodb::replutils::LeaderInfo const& leaderInfo() const;
-  void setLeaderInfo(arangodb::replutils::LeaderInfo const& leaderInfo);
-
  private:
+  arangodb::Result collectionCountOnLeader(std::string const& endpoint,
+                                           uint64_t& c);
+
   arangodb::Result getReadLock(network::ConnectionPool* pool,
-                               std::string const& endpoint, std::string const& database,
-                               std::string const& collection, std::string const& clientId,
-                               uint64_t rlid, bool soft, double timeout = 300.0);
+                               std::string const& endpoint,
+                               std::string const& collection,
+                               std::string const& clientId, uint64_t rlid,
+                               bool soft, double timeout);
 
   arangodb::Result startReadLockOnLeader(std::string const& endpoint,
-                                         std::string const& database,
                                          std::string const& collection,
-                                         std::string const& clientId, uint64_t& rlid,
-                                         bool soft, double timeout = 300.0);
+                                         std::string const& clientId,
+                                         uint64_t& rlid, bool soft,
+                                         double timeout = 300.0);
 
   arangodb::ResultT<TRI_voc_tick_t> catchupWithReadLock(
-      std::string const& ep, std::string const& database, LogicalCollection const& collection,
-      std::string const& clientId, std::string const& shard,
-      std::string const& leader, TRI_voc_tick_t lastLogTick, VPackBuilder& builder);
+      std::string const& ep, LogicalCollection const& collection,
+      std::string const& clientId, std::string const& leader,
+      TRI_voc_tick_t lastLogTick,
+      std::shared_ptr<DatabaseTailingSyncer> tailingSyncer);
 
   arangodb::Result catchupWithExclusiveLock(
-      std::string const& ep, std::string const& database,
-      LogicalCollection& collection, std::string const& clientId,
-      std::string const& shard, std::string const& leader, SyncerId syncerId,
-      TRI_voc_tick_t lastLogTick, VPackBuilder& builder);
+      std::string const& ep, LogicalCollection& collection,
+      std::string const& clientId, std::string const& leader, SyncerId syncerId,
+      TRI_voc_tick_t lastLogTick,
+      std::shared_ptr<DatabaseTailingSyncer> tailingSyncer);
 
-  /// @brief Short, informative description of the replication client, passed to the server
+  std::shared_ptr<DatabaseTailingSyncer> buildTailingSyncer(
+      TRI_vocbase_t& vocbase, std::string const& endpoint);
+
+  /// @brief Short, informative description of the replication client, passed to
+  /// the server
   std::string _clientInfoString;
 
-  /// @brief information about the leader, reused across multiple replication steps
-  arangodb::replutils::LeaderInfo _leaderInfo;
+  uint64_t _followingTermId;
+
+  /// @brief maximum tick until which we need to run WAL tailing for. 0 means
+  /// "no restriction"
+  uint64_t _tailingUpperBoundTick;
 };
 
 }  // namespace maintenance
 }  // namespace arangodb
-
-#endif

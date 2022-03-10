@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,8 +23,7 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_ALGOS_ACCUMULATORS_VERTEXDATA_H
-#define ARANGODB_PREGEL_ALGOS_ACCUMULATORS_VERTEXDATA_H 1
+#pragma once
 
 #include "Pregel/Algos/AIR/AbstractAccumulator.h"
 #include "Pregel/Algos/AIR/AccumulatorOptions.h"
@@ -32,7 +31,6 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
 namespace pregel {
@@ -44,12 +42,15 @@ class VertexData {
  public:
   void reset(AccumulatorsDeclaration const& vertexAccumulatorsDeclaration,
              CustomAccumulatorDefinitions const& customDefinitions,
-             std::string documentId, VPackSlice const& doc, std::size_t vertexId);
+             std::string documentId, VPackSlice const& doc,
+             std::size_t vertexId);
 
-  std::unique_ptr<AccumulatorBase> const& accumulatorByName(std::string_view name) const;
+  std::unique_ptr<AccumulatorBase> const& accumulatorByName(
+      std::string_view name) const;
 
   // The vertex accumulators are *not* reset automatically
-  std::map<std::string, std::unique_ptr<AccumulatorBase>, std::less<>> _vertexAccumulators;
+  std::map<std::string, std::unique_ptr<AccumulatorBase>, std::less<>>
+      _vertexAccumulators;
 
   std::string _documentId;
   // FIXME: YOLO. we copy the whole document, which is
@@ -64,4 +65,3 @@ std::ostream& operator<<(std::ostream&, VertexData const&);
 }  // namespace algos
 }  // namespace pregel
 }  // namespace arangodb
-#endif

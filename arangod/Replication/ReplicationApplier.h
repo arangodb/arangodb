@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REPLICATION_REPLICATION_APPLIER_H
-#define ARANGOD_REPLICATION_REPLICATION_APPLIER_H 1
+#pragma once
 
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
@@ -101,7 +100,8 @@ class ReplicationApplier {
   bool sleepIfStillActive(uint64_t sleepTime);
 
   /// @brief configure the replication applier
-  virtual void reconfigure(ReplicationApplierConfiguration const& configuration);
+  virtual void reconfigure(
+      ReplicationApplierConfiguration const& configuration);
 
   /// @brief load the applier state from persistent storage
   bool loadState();
@@ -178,7 +178,8 @@ class ReplicationApplier {
   void doStop(Result const& r, bool joinThread);
 
   static void readTick(arangodb::velocypack::Slice const& slice,
-                       char const* attributeName, TRI_voc_tick_t& dst, bool allowNull);
+                       char const* attributeName, TRI_voc_tick_t& dst,
+                       bool allowNull);
 
  protected:
   ReplicationApplierConfiguration _configuration;
@@ -193,5 +194,3 @@ class ReplicationApplier {
 };
 
 }  // namespace arangodb
-
-#endif

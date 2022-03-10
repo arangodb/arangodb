@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,20 +21,19 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_REPLICATION_TIMEOUT_FEATURE_H
-#define ARANGOD_CLUSTER_REPLICATION_TIMEOUT_FEATURE_H 1
+#pragma once
 
 #include "Basics/Common.h"
-#include "RestServer/Metrics.h"
 
-#include "ApplicationFeatures/ApplicationFeature.h"
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/arangod.h"
 
 namespace arangodb {
 
-class ReplicationTimeoutFeature : public application_features::ApplicationFeature {
+class ReplicationTimeoutFeature : public ArangodFeature {
  public:
-  explicit ReplicationTimeoutFeature(application_features::ApplicationServer& server);
+  static const std::string_view name() noexcept { return "ReplicationTimeout"; }
+
+  explicit ReplicationTimeoutFeature(Server& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -46,5 +45,3 @@ class ReplicationTimeoutFeature : public application_features::ApplicationFeatur
 };
 
 }  // namespace arangodb
-
-#endif

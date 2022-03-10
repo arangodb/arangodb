@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen : 4000 */
-/* global assertEqual */
+/* global assertEqual, assertTrue */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief tests for dump/reload
@@ -64,7 +64,7 @@ function dumpTestSuite () {
       var e = db._collection('knows');
       var v = db._collection('persons');
 
-      assertEqual(1, g.count());
+      assertTrue(!!g.exists('knows_graph'));
 
       assertEqual(3, e.type()); // edge
       assertEqual(2, e.getIndexes().length);

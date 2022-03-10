@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,7 +24,6 @@
 #include "Helpers.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/StringBuffer.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/encoding.h"
 #include "Transaction/Context.h"
@@ -64,33 +63,42 @@ VPackSlice transaction::helpers::extractKeyFromDocument(VPackSlice slice) {
 }
 
 /// @brief extract the _key attribute from a slice
-arangodb::velocypack::StringRef transaction::helpers::extractKeyPart(VPackSlice slice) {
+std::string_view transaction::helpers::extractKeyPart(VPackSlice slice) {
   slice = slice.resolveExternal();
 
   // extract _key
   if (slice.isObject()) {
     VPackSlice k = slice.get(StaticStrings::KeyString);
     if (!k.isString()) {
-      return arangodb::velocypack::StringRef();  // fail
+      return std::string_view();  // fail
     }
-    return arangodb::velocypack::StringRef(k);
+    return k.stringView();
   }
   if (slice.isString()) {
-    arangodb::velocypack::StringRef key(slice);
+    std::string_view key = slice.stringView();
     size_t pos = key.find('/');
     if (pos == std::string::npos) {
       return key;
     }
     return key.substr(pos + 1);
   }
-  return arangodb::velocypack::StringRef();
+  return std::string_view();
+}
+
+/// @brief extract the _key attribute from a string view
+std::string_view transaction::helpers::extractKeyPart(std::string_view key) {
+  size_t pos = key.find('/');
+  if (pos == std::string::npos) {
+    return key;
+  }
+  return key.substr(pos + 1);
 }
 
 /// @brief extract the _id attribute from a slice, and convert it into a
 /// string, static method
-std::string transaction::helpers::extractIdString(CollectionNameResolver const* resolver,
-                                                  VPackSlice slice,
-                                                  VPackSlice const& base) {
+std::string transaction::helpers::extractIdString(
+    CollectionNameResolver const* resolver, VPackSlice slice,
+    VPackSlice const& base) {
   VPackSlice id;
 
   slice = slice.resolveExternal();
@@ -255,8 +263,8 @@ VPackSlice transaction::helpers::extractToFromDocument(VPackSlice slice) {
 /// @brief extract _key and _rev from a document, in one go
 /// this is an optimized version used when loading collections, WAL
 /// collection and compaction
-void transaction::helpers::extractKeyAndRevFromDocument(VPackSlice slice, VPackSlice& keySlice,
-                                                        RevisionId& revisionId) {
+void transaction::helpers::extractKeyAndRevFromDocument(
+    VPackSlice slice, VPackSlice& keySlice, RevisionId& revisionId) {
   slice = slice.resolveExternal();
   TRI_ASSERT(slice.isObject());
   TRI_ASSERT(slice.length() >= 2);
@@ -340,13 +348,14 @@ VPackSlice transaction::helpers::extractRevSliceFromDocument(VPackSlice slice) {
   return slice.get(StaticStrings::RevString);
 }
 
-velocypack::StringRef transaction::helpers::extractCollectionFromId(velocypack::StringRef id) {
+std::string_view transaction::helpers::extractCollectionFromId(
+    std::string_view id) {
   std::size_t index = id.find('/');
   if (index == std::string::npos) {
     // can't find the '/' to split, bail out with only logical response
     return id;
   }
-  return velocypack::StringRef(id.data(), index);
+  return std::string_view(id.data(), index);
 }
 
 OperationResult transaction::helpers::buildCountResult(
@@ -375,20 +384,21 @@ OperationResult transaction::helpers::buildCountResult(
 }
 
 /// @brief creates an id string from a custom _id value and the _key string
-std::string transaction::helpers::makeIdFromCustom(CollectionNameResolver const* resolver,
-                                                   VPackSlice const& id,
-                                                   VPackSlice const& key) {
+std::string transaction::helpers::makeIdFromCustom(
+    CollectionNameResolver const* resolver, VPackSlice const& id,
+    VPackSlice const& key) {
   TRI_ASSERT(id.isCustom() && id.head() == 0xf3);
   TRI_ASSERT(key.isString());
 
-  DataSourceId cid{encoding::readNumber<uint64_t>(id.begin() + 1, sizeof(uint64_t))};
+  DataSourceId cid{
+      encoding::readNumber<uint64_t>(id.begin() + 1, sizeof(uint64_t))};
   return makeIdFromParts(resolver, cid, key);
 }
 
 /// @brief creates an id string from a collection name and the _key string
-std::string transaction::helpers::makeIdFromParts(CollectionNameResolver const* resolver,
-                                                  DataSourceId const& cid,
-                                                  VPackSlice const& key) {
+std::string transaction::helpers::makeIdFromParts(
+    CollectionNameResolver const* resolver, DataSourceId const& cid,
+    VPackSlice const& key) {
   TRI_ASSERT(key.isString());
 
   std::string resolved = resolver->getCollectionNameCluster(cid);
@@ -412,32 +422,16 @@ std::string transaction::helpers::makeIdFromParts(CollectionNameResolver const* 
   return resolved;
 }
 
-// ============== StringBufferLeaser ==============
-
-/// @brief constructor, leases a StringBuffer
-transaction::StringBufferLeaser::StringBufferLeaser(transaction::Methods* trx)
-    : _transactionContext(trx->transactionContextPtr()),
-      _stringBuffer(_transactionContext->leaseStringBuffer(32)) {}
-
-/// @brief constructor, leases a StringBuffer
-transaction::StringBufferLeaser::StringBufferLeaser(transaction::Context* transactionContext)
-    : _transactionContext(transactionContext),
-      _stringBuffer(_transactionContext->leaseStringBuffer(32)) {}
-
-/// @brief destructor
-transaction::StringBufferLeaser::~StringBufferLeaser() {
-  _transactionContext->returnStringBuffer(_stringBuffer);
-}
-
 // ============== StringLeaser ==============
 
-/// @brief constructor, leases a std::string
+/// @brief constructor, leases an std::string
 transaction::StringLeaser::StringLeaser(transaction::Methods* trx)
     : _transactionContext(trx->transactionContextPtr()),
       _string(_transactionContext->leaseString()) {}
 
-/// @brief constructor, leases a StringBuffer
-transaction::StringLeaser::StringLeaser(transaction::Context* transactionContext)
+/// @brief constructor, leases an std::string
+transaction::StringLeaser::StringLeaser(
+    transaction::Context* transactionContext)
     : _transactionContext(transactionContext),
       _string(_transactionContext->leaseString()) {}
 
@@ -449,18 +443,15 @@ transaction::StringLeaser::~StringLeaser() {
 // ============== BuilderLeaser ==============
 
 /// @brief constructor, leases a builder
-transaction::BuilderLeaser::BuilderLeaser(transaction::Methods* trx)
-    : _transactionContext(trx->transactionContextPtr()),
-      _builder(_transactionContext->leaseBuilder()) {
-  TRI_ASSERT(_builder != nullptr);
-}
-
-/// @brief constructor, leases a builder
-transaction::BuilderLeaser::BuilderLeaser(transaction::Context* transactionContext)
+transaction::BuilderLeaser::BuilderLeaser(
+    transaction::Context* transactionContext)
     : _transactionContext(transactionContext),
       _builder(_transactionContext->leaseBuilder()) {
   TRI_ASSERT(_builder != nullptr);
 }
+
+transaction::BuilderLeaser::BuilderLeaser(transaction::Methods* trx)
+    : BuilderLeaser(trx->transactionContextPtr()) {}
 
 /// @brief destructor
 transaction::BuilderLeaser::~BuilderLeaser() {

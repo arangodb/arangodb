@@ -1,7 +1,7 @@
 name: rocksdb_num_immutable_mem_table_flushed
 introducedIn: "3.6.1"
 help: |
-  RocksDB metric "num-immutable-mem-table-flushed" - sum over column families
+  Number of flushed immutable RocksDB memtables.
 unit: number
 type: gauge
 category: RocksDB
@@ -11,7 +11,7 @@ exposedBy:
   - agent
   - single
 description: |
-  This metric exhibits the RocksDB metric "num-immutable-mem-table-flushed", 
+  This metric exhibits the RocksDB metric "num-immutable-mem-table-flushed",
   which shows the number of immutable memtables that have already been
   flushed. This value is the sum over all column families.
 

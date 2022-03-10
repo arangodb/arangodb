@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_ROCKSDB_INDEX_FACTORY_H
-#define ARANGOD_ROCKSDB_ROCKSDB_INDEX_FACTORY_H 1
+#pragma once
 
 #include "Indexes/IndexFactory.h"
 
@@ -30,22 +29,21 @@ namespace arangodb {
 
 class RocksDBIndexFactory final : public IndexFactory {
  public:
-  explicit RocksDBIndexFactory(application_features::ApplicationServer&);
-  ~RocksDBIndexFactory() = default;
+  explicit RocksDBIndexFactory(ArangodServer&);
 
-  /// @brief index name aliases (e.g. "persistent" => "hash", "skiplist" => "hash")
-  /// used to display storage engine capabilities
+  /// @brief index name aliases (e.g. "persistent" => "hash", "skiplist" =>
+  /// "hash") used to display storage engine capabilities
   std::unordered_map<std::string, std::string> indexAliases() const override;
 
   /// @brief create initial system indexes
-  void fillSystemIndexes(arangodb::LogicalCollection& col,
-                         std::vector<std::shared_ptr<arangodb::Index>>& systemIndexes) const override;
+  void fillSystemIndexes(
+      LogicalCollection& col,
+      std::vector<std::shared_ptr<Index>>& systemIndexes) const override;
 
   /// @brief create indexes from a list of index definitions
-  void prepareIndexes(LogicalCollection& col, arangodb::velocypack::Slice const& indexesSlice,
-                      std::vector<std::shared_ptr<arangodb::Index>>& indexes) const override;
+  void prepareIndexes(
+      LogicalCollection& col, velocypack::Slice indexesSlice,
+      std::vector<std::shared_ptr<Index>>& indexes) const override;
 };
 
 }  // namespace arangodb
-
-#endif

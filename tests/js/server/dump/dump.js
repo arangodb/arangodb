@@ -47,7 +47,10 @@ jsunity.run(function dump_single_testsuite() {
     baseTests(),
     suite,
     "_single",
-    [
+    [ // <-- Blacklisted Tests
+      // Magic Hint: Those tests are tests which you need to additional blacklist in case they are not supported
+      // in that specific environment. Those blacklist is separately and manually maintained per test-suite.
+
       "testUsers",
       // cluster tests:
       "testDatabaseProperties",
@@ -73,6 +76,17 @@ jsunity.run(function dump_single_testsuite() {
       "testSmartGraphSharding",
       "testViewOnSmartEdgeCollection",
       "testSmartGraphAttribute",
+
+      // enterprise sharded graphs on single server tests
+      "testEmptySmartGraph",
+      "testEmptySatelliteGraph",
+      "testEmptyDisjointGraph",
+      "testSmartGraphWithoutData",
+      "testSmartGraphSingleServer",
+      "testSatelliteSmartGraphSingleServer",
+      "testDisjointGraphSingleServer",
+      "testHybridSmartGraphSingleServer",
+      "testHybridDisjointSmartGraphSingleServer",
 
       // Hotbackup tests:
       "testLatestId"

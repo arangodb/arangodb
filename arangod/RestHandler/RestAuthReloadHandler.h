@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,16 +21,14 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_REST_AUTH_RELOAD_HANDLER_H
-#define ARANGOD_REST_HANDLER_REST_AUTH_RELOAD_HANDLER_H 1
+#pragma once
 
 #include "RestHandler/RestBaseHandler.h"
 
 namespace arangodb {
 class RestAuthReloadHandler : public arangodb::RestBaseHandler {
  public:
-  RestAuthReloadHandler(application_features::ApplicationServer&,
-                        GeneralRequest*, GeneralResponse*);
+  RestAuthReloadHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
 
  public:
   char const* name() const override final { return "RestAuthReloadHandler"; }
@@ -38,5 +36,3 @@ class RestAuthReloadHandler : public arangodb::RestBaseHandler {
   RestStatus execute() override;
 };
 }  // namespace arangodb
-
-#endif

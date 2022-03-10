@@ -2,7 +2,7 @@ name: arangodb_http_request_statistics_user_requests_total
 renamedFrom: arangodb_http_request_statistics_user_requests
 introducedIn: "3.8.0"
 help: |
-  Total number of HTTP requests executed by user clients
+  Total number of HTTP requests executed by user clients.
 unit: number
 type: counter
 category: Statistics

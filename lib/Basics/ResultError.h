@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,9 +21,7 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-// Note that error.h uses ARANGODB_BASICS_ERROR_H!
-#ifndef ARANGODB_BASICS_RESULT_ERROR_H
-#define ARANGODB_BASICS_RESULT_ERROR_H
+#pragma once
 
 #include <string>
 #include <string_view>
@@ -36,19 +34,20 @@ namespace arangodb::result {
 
 class Error final {
  public:
-  explicit Error(ErrorCode errorNumber) noexcept(noexcept(std::string::allocator_type()));
+  explicit Error(ErrorCode errorNumber) noexcept(
+      noexcept(std::string::allocator_type()));
 
   Error(ErrorCode errorNumber, std::string_view errorMessage);
   [[nodiscard]] auto errorNumber() const noexcept -> ErrorCode;
   [[nodiscard]] auto errorMessage() const& noexcept -> std::string_view;
   [[nodiscard]] auto errorMessage() && noexcept -> std::string;
 
-  template <typename S>
+  template<typename S>
   void resetErrorMessage(S&& msg) {
     _errorMessage = std::forward<S>(msg);
   }
 
-  template <typename S>
+  template<typename S>
   void appendErrorMessage(S&& msg) {
     if (_errorMessage.empty()) {
       _errorMessage += errorMessage();
@@ -62,5 +61,3 @@ class Error final {
 };
 
 }  // namespace arangodb::result
-
-#endif  // ARANGODB_BASICS_RESULT_ERROR_H

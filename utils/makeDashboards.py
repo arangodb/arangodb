@@ -33,7 +33,7 @@ def print_usage():
 
 # Check that we are in the right place:
 LS_HERE = os.listdir(".")
-if not("arangod" in LS_HERE and "arangosh" in LS_HERE and \
+if not("arangod" in LS_HERE and "client-tools" in LS_HERE and \
         "Documentation" in LS_HERE and "CMakeLists.txt" in LS_HERE):
     print("Please execute me in the main source dir!", file=sys.stderr)
     sys.exit(1)
@@ -310,7 +310,7 @@ for c in CATEGORYNAMES:
                     if met["type"] == "counter":
                         panel["type"] = "graph"
                         panel["targets"] = [{"expr": "rate(" + met["name"] + \
-                                                     "[1m])", \
+                                                     "[3m])", \
                             "legendFormat": "{{instance}}:{{shortname}}"}]
                         POSX, POSY = incxy(POSX, POSY)
                         PANELS.append(panel)
@@ -325,7 +325,7 @@ for c in CATEGORYNAMES:
                         panel["legend"] = {"show": False}
                         panel["targets"] = [\
                             {"expr": "histogram_quantile(0.95, sum(rate(" + \
-                             met["name"] + "_bucket[60s])) by (le))", \
+                             met["name"] + "_bucket[3m])) by (le))", \
                              "format": "heatmap", \
                              "legendFormat": ""}]
                         POSX, POSY = incxy(POSX, POSY)
@@ -334,7 +334,7 @@ for c in CATEGORYNAMES:
                         panel["title"] = panel["title"] + " (count of events per second)"
                         panel["type"] = "graph"
                         panel["targets"] = [\
-                            {"expr": "rate(" + met["name"] + "_count[60s])", \
+                            {"expr": "rate(" + met["name"] + "_count[3m])", \
                              "legendFormat": "{{instance}}:{{shortname}}"}]
                         POSX, POSY = incxy(POSX, POSY)
                         PANELS.append(panel)
@@ -342,8 +342,8 @@ for c in CATEGORYNAMES:
                         panel["title"] = panel["title"] + " (average per second)"
                         panel["type"] = "graph"
                         panel["targets"] = [\
-                            {"expr": "rate(" + met["name"] + "_sum[60s])" + \
-                                      " / rate(" + met["name"] + "_count[60s])", \
+                            {"expr": "rate(" + met["name"] + "_sum[3m])" + \
+                                      " / rate(" + met["name"] + "_count[3m])", \
                               "legendFormat": "{{instance}}:{{shortname}}"}]
                         POSX, POSY = incxy(POSX, POSY)
                         PANELS.append(panel)

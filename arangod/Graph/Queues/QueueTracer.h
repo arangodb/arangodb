@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,11 +21,11 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GRAPH_QUEUE_TRACER_H
-#define ARANGOD_GRAPH_QUEUE_TRACER_H 1
+#pragma once
 
 #include "Graph/Helpers/TraceEntry.h"
 #include "Basics/ResourceUsage.h"
+#include "Containers/FlatHashMap.h"
 
 #include <unordered_map>
 #include <vector>
@@ -33,12 +33,12 @@
 namespace arangodb {
 namespace graph {
 
-template <class QueueImpl>
+template<class QueueImpl>
 class QueueTracer {
   using Step = typename QueueImpl::Step;
 
  public:
-  QueueTracer(arangodb::ResourceMonitor& resourceMonitor);
+  explicit QueueTracer(arangodb::ResourceMonitor& resourceMonitor);
   ~QueueTracer();
 
   void clear();
@@ -55,10 +55,8 @@ class QueueTracer {
 
   // Mapping MethodName => Statistics
   // We make this mutable to not violate the captured API
-  mutable std::unordered_map<std::string, TraceEntry> _stats;
+  mutable containers::FlatHashMap<std::string, TraceEntry> _stats;
 };
 
 }  // namespace graph
 }  // namespace arangodb
-
-#endif

@@ -1,0 +1,100 @@
+[#foldl_start_with_parser]
+[section foldl_start_with_parser]
+
+[h1 Synopsis]
+
+  template <class P, class StateP, class ForwardOp>
+  struct foldl_start_with_parser;
+
+This is a [link parser_combinator parser combinator].
+
+[table Arguments
+  [[Name]        [Type]]
+  [[`P`]         [[link parser parser]]]
+  [[`StateP`]    [[link parser parser]]]
+  [[`ForwardOp`] [[link metafunction_class template metafunction class] taking two arguments]]
+]
+
+[h1 Description]
+
+The same as [link foldl `foldl`], but before folding it applies a parser,
+`StateP` on the input. If it fails, `foldl_start_with_parser` fails. If it
+succeeds, `foldl_start_with_parser` works as `foldl` taking the result of
+`StateP` as the initial state.
+
+Here is a diagram showing how `foldl_start_with_parser` works by example:
+
+  using int_token = token<int_>;
+  using plus_token = token<lit_c<'+'>>;
+  using plus_int = last_of<plus_token, int_token>;
+  using sum_op = mpl::lambda<mpl::plus<mpl::_1, mpl::_2>>::type;
+
+[$images/metaparse/foldl_start_with_parser_diag1.png [width 70%]]
+
+Further details can be found in the
+[link introducing-foldl_start_with_parser Introducing foldl_start_with_parser]
+section of the [link manual User Manual].
+
+[h1 Header]
+
+  #include <boost/metaparse/foldl_start_with_parser.hpp>
+
+[h1 Expression semantics]
+
+For any `p` parser, `pt` class, `f` metafunction class taking two arguments,
+`s` compile-time string and `pos` source position
+
+  foldl_start_with_parser<p, pt, f>::apply<s, pos>
+
+is equivalent to
+
+  pt::apply<s, pos>
+
+when the above expression returns a parsing error. It is
+
+  foldl<p, get_result<pt::apply<s, pos>>::type, f>::apply<
+    get_remaining<pt::apply<s, pos>>::type,
+    get_position<pt::apply<s, pos>>::type
+  >
+
+otherwise.
+
+[h1 Example]
+
+  #include <boost/metaparse/foldl_start_with_parser.hpp>
+  #include <boost/metaparse/lit_c.hpp>
+  #include <boost/metaparse/last_of.hpp>
+  #include <boost/metaparse/token.hpp>
+  #include <boost/metaparse/int_.hpp>
+  #include <boost/metaparse/string.hpp>
+  #include <boost/metaparse/start.hpp>
+  #include <boost/metaparse/get_result.hpp>
+  #include <boost/metaparse/is_error.hpp>
+  
+  #include <boost/mpl/lambda.hpp>
+  #include <boost/mpl/plus.hpp>
+  
+  using namespace boost::metaparse;
+  
+  using int_token = token<int_>;
+  using plus_token = token<lit_c<'+'>>;
+  using plus_int = last_of<plus_token, int_token>;
+  using sum_op =
+    boost::mpl::lambda<boost::mpl::plus<boost::mpl::_1, boost::mpl::_2>>::type;
+  
+  using ints = foldl_start_with_parser<plus_int, int_token, sum_op>;
+  
+  static_assert(
+    get_result<
+      ints::apply<BOOST_METAPARSE_STRING("11 + 13 + 3 + 21"), start>
+    >::type::value == 48,
+    "ints should sum the numbers"
+  );
+  
+  static_assert(
+    is_error<ints::apply<BOOST_METAPARSE_STRING(""), start>>::type::value,
+    "when no numbers are provided, it should be an error"
+  );
+
+[endsect]
+

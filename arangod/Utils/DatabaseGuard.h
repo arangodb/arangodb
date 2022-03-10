@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_UTILS_DATABASE_GUARD_H
-#define ARANGOD_UTILS_DATABASE_GUARD_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "VocBase/vocbase.h"
@@ -62,5 +61,3 @@ class DatabaseGuard {
 };
 
 }  // namespace arangodb
-
-#endif

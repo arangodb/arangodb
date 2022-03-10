@@ -2,7 +2,7 @@ name: arangodb_http_request_statistics_http_get_requests_total
 renamedFrom: arangodb_http_request_statistics_http_get_requests
 introducedIn: "3.8.0"
 help: |
-  Number of HTTP GET requests
+  Number of HTTP GET requests.
 unit: number
 type: counter
 category: Statistics
@@ -13,7 +13,7 @@ exposedBy:
   - agent
   - single
 description: |
-  This counter reflects the total number of HTTP (or VST) **GET** 
+  This counter reflects the total number of HTTP (or VST) **GET**
   requests which have hit this particular instance of `arangod`.
   
   Note that this counter is ever growing during the lifetime of the

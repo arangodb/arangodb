@@ -36,6 +36,51 @@ function adminLogSuite() {
     setUp : function() {
       arango.DELETE("/_admin/log");
     },
+    
+    testPutAdminSetAllLevels: function () {
+      let previous = arango.GET("/_admin/log/level");
+      try {
+        // set all log levels to trace
+        let res = arango.PUT("/_admin/log/level", { all: "trace" });
+        Object.keys(res).forEach((topic) => {
+          assertEqual(res[topic], "TRACE");
+        });
+      
+        // delete all exiting log messages
+        arango.DELETE("/_admin/log");
+      
+        log("trace");
+        // wait until we have at least 5 log messages (should not
+        // take long with all log levels set to trace)
+        let tries = 0;
+        while (++tries < 120) {
+          // note: the returned log messages can have TRACE, DEBUG,
+          // INFO, ... levels
+          res = arango.GET("/_admin/log/entries?upto=trace");
+          if (res.total >= 5) {
+            break;
+          }
+          require("internal").sleep(0.5);
+        }
+        assertTrue(res.total >= 5);
+
+        res = arango.GET("/_admin/log/level");
+        Object.keys(res).forEach((topic) => {
+          assertEqual(res[topic], "TRACE");
+        });
+        res = arango.PUT("/_admin/log/level", { all: "info", syscall: "trace" });
+        Object.keys(res).forEach((topic) => {
+          if (topic === "syscall") {
+            assertEqual(res[topic], "TRACE");
+          } else {
+            assertEqual(res[topic], "INFO");
+          }
+        });
+      } finally {
+        // cleanup
+        arango.PUT("/_admin/log/level", previous);
+      }
+    },
 
     testGetAdminLogOldFormat: function () {
       log("warn");

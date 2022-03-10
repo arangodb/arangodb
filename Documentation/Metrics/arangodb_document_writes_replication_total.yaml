@@ -15,5 +15,5 @@ description: |
   `--server.export-read-write-metrics` is set to `true`.
   Total number of document write operations (insert, update, replace, remove)
   executed by the synchronous replication on followers.
-  This metric is only present if the option `--server.export-read-write-metrics` 
+  This metric is only present if the option `--server.export-read-write-metrics`
   is set to `true`.

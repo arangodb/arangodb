@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,58 +22,35 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "DatabaseFeaturePhase.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 
-#include "Cache/CacheManagerFeature.h"
-#include "FeaturePhases/BasicFeaturePhaseServer.h"
-#include "GeneralServer/AuthenticationFeature.h"
-#include "Replication/ReplicationFeature.h"
-#include "RestServer/CheckVersionFeature.h"
-#include "RestServer/DatabaseFeature.h"
-#include "RestServer/FlushFeature.h"
-#include "RestServer/InitDatabaseFeature.h"
-#include "RestServer/LockfileFeature.h"
-#include "RestServer/ServerIdFeature.h"
-#include "RestServer/SystemDatabaseFeature.h"
-#include "RestServer/ViewTypesFeature.h"
-#include "RocksDBEngine/RocksDBEngine.h"
-#include "RocksDBEngine/RocksDBRecoveryManager.h"
-#include "StorageEngine/EngineSelectorFeature.h"
-#include "StorageEngine/StorageEngineFeature.h"
-#include "Transaction/ManagerFeature.h"
+namespace arangodb::application_features {
 
-#ifdef USE_ENTERPRISE
-#include "Enterprise/Ldap/LdapFeature.h"
-#endif
-
-namespace arangodb {
-namespace application_features {
-
-DatabaseFeaturePhase::DatabaseFeaturePhase(ApplicationServer& server)
-    : ApplicationFeaturePhase(server, "DatabasePhase") {
+DatabaseFeaturePhase::DatabaseFeaturePhase(ArangodServer& server)
+    : ApplicationFeaturePhase{server, *this} {
   setOptional(false);
-  startsAfter<BasicFeaturePhaseServer>();
+  startsAfter<BasicFeaturePhaseServer, ArangodServer>();
 
-  startsAfter<AuthenticationFeature>();
-  startsAfter<CacheManagerFeature>();
-  startsAfter<CheckVersionFeature>();
-  startsAfter<DatabaseFeature>();
-  startsAfter<EngineSelectorFeature>();
-  startsAfter<FlushFeature>();
-  startsAfter<InitDatabaseFeature>();
-  startsAfter<LockfileFeature>();
-  startsAfter<ReplicationFeature>();
-  startsAfter<RocksDBEngine>();
-  startsAfter<RocksDBRecoveryManager>();
-  startsAfter<ServerIdFeature>();
-  startsAfter<StorageEngineFeature>();
-  startsAfter<SystemDatabaseFeature>();
-  startsAfter<transaction::ManagerFeature>();
-  startsAfter<ViewTypesFeature>();
+  startsAfter<AuthenticationFeature, ArangodServer>();
+  startsAfter<CacheManagerFeature, ArangodServer>();
+  startsAfter<CheckVersionFeature, ArangodServer>();
+  startsAfter<DatabaseFeature, ArangodServer>();
+  startsAfter<EngineSelectorFeature, ArangodServer>();
+  startsAfter<FlushFeature, ArangodServer>();
+  startsAfter<InitDatabaseFeature, ArangodServer>();
+  startsAfter<LockfileFeature, ArangodServer>();
+  startsAfter<ReplicationFeature, ArangodServer>();
+  startsAfter<RocksDBEngine, ArangodServer>();
+  startsAfter<RocksDBRecoveryManager, ArangodServer>();
+  startsAfter<ServerIdFeature, ArangodServer>();
+  startsAfter<StorageEngineFeature, ArangodServer>();
+  startsAfter<SystemDatabaseFeature, ArangodServer>();
+  startsAfter<transaction::ManagerFeature, ArangodServer>();
+  startsAfter<ViewTypesFeature, ArangodServer>();
 
-#ifdef USE_ENTERPRISE
-  startsAfter<LdapFeature>();
-#endif
+  if constexpr (ArangodServer::contains<LdapFeature>()) {
+    startsAfter<LdapFeature, ArangodServer>();
+  }
 }
 
-}  // namespace application_features
-}  // namespace arangodb
+}  // namespace arangodb::application_features

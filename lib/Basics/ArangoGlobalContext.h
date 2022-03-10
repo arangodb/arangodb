@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_ARANGO_GLOBAL_CONTEXT_H
-#define ARANGODB_BASICS_ARANGO_GLOBAL_CONTEXT_H 1
+#pragma once
 
 #include <string>
 #include <vector>
@@ -39,9 +38,10 @@ class ArangoGlobalContext {
   ~ArangoGlobalContext();
 
  public:
-  std::string binaryName() const { return _binaryName; }
-  std::string runRoot() const { return _runRoot; }
-  void normalizePath(std::vector<std::string>& path, char const* whichPath, bool fatal);
+  std::string const& binaryName() const { return _binaryName; }
+  std::string const& runRoot() const { return _runRoot; }
+  void normalizePath(std::vector<std::string>& path, char const* whichPath,
+                     bool fatal);
   void normalizePath(std::string& path, char const* whichPath, bool fatal);
   std::string const& getBinaryPath() const { return _binaryPath; }
   int exit(int ret);
@@ -54,5 +54,3 @@ class ArangoGlobalContext {
   int _ret;
 };
 }  // namespace arangodb
-
-#endif

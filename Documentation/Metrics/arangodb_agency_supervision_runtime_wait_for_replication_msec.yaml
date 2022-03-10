@@ -9,7 +9,7 @@ complexity: medium
 exposedBy:
   - agent
 description: |
-  Agency supervision replication time histogram. Whenever the agency
-  supervision carries out changes, it will write them to the leader's log 
+  Agency supervision replication time histogram. Whenever the Agency
+  supervision carries out changes, it will write them to the leader's log
   and replicate the changes to followers. This metric provides a histogram
   of the time it took to replicate the supervision changes to followers.

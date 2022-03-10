@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,23 +21,23 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_EXECUTION_NODE_STATS_H
-#define ARANGOD_AQL_EXECUTION_NODE_STATS_H 1
+#pragma once
 
 #include <cstdint>
 
 /// @brief statistics per ExecutionNode
 struct ExecutionNodeStats {
-  size_t calls = 0;
-  size_t items = 0;
+  uint64_t calls = 0;
+  uint64_t items = 0;
+  // filtered is only populated by some nodes
+  uint64_t filtered = 0;
   double runtime = 0.0;
 
   ExecutionNodeStats& operator+=(ExecutionNodeStats const& other) {
     calls += other.calls;
     items += other.items;
+    filtered += other.filtered;
     runtime += other.runtime;
     return *this;
   }
 };
-
-#endif

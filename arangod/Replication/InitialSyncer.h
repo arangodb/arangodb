@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REPLICATION_INITIAL_SYNCER_H
-#define ARANGOD_REPLICATION_INITIAL_SYNCER_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Basics/Result.h"
@@ -33,14 +32,17 @@
 
 #include <velocypack/Slice.h>
 
+#include <mutex>
+
 struct TRI_vocbase_t;
 
 namespace arangodb {
 
 class InitialSyncer : public Syncer {
  public:
-  explicit InitialSyncer(ReplicationApplierConfiguration const&,
-                         replutils::ProgressInfo::Setter s = [](std::string const&) -> void {});
+  explicit InitialSyncer(
+      ReplicationApplierConfiguration const&,
+      replutils::ProgressInfo::Setter s = [](std::string const&) -> void {});
 
   ~InitialSyncer();
 
@@ -64,10 +66,9 @@ class InitialSyncer : public Syncer {
  protected:
   replutils::BatchInfo _batch;
   replutils::ProgressInfo _progress;
-  
+
   /// recurring task to keep the batch alive
+  std::mutex _batchPingMutex;
   Scheduler::WorkHandle _batchPingTimer;
 };
 }  // namespace arangodb
-
-#endif

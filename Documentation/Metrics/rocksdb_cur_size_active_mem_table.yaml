@@ -1,7 +1,7 @@
 name: rocksdb_cur_size_active_mem_table
 introducedIn: "3.6.1"
 help: |
-  RocksDB metric "rocksdb-cur-size-active-mem-table" - sum over column families
+  Approximate size of RocksDB's active memtable.
 unit: bytes
 type: gauge
 category: RocksDB

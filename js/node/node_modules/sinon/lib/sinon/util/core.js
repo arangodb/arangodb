@@ -103,7 +103,8 @@
 
             // IE 8 does not support hasOwnProperty on the window object and Firefox has a problem
             // when using hasOwn.call on objects from other frames.
-            var owned = object.hasOwnProperty ? object.hasOwnProperty(property) : hasOwn.call(object, property);
+            var owned = (object.hasOwnProperty && object.hasOwnProperty === hasOwn) ?
+                object.hasOwnProperty(property) : hasOwn.call(object, property);
 
             if (hasES5Support) {
                 var methodDesc = (typeof method === "function") ? {value: method} : method;
@@ -167,9 +168,17 @@
                     Object.defineProperty(object, property, wrappedMethodDesc);
                 }
 
+                // this only supports ES5 getter/setter, for ES3.1 and lower
+                // __lookupSetter__ / __lookupGetter__ should be integrated
+                if (hasES5Support) {
+                    var checkDesc = sinon.getPropertyDescriptor(object, property);
+                    if (checkDesc.value === method) {
+                        object[property] = wrappedMethod;
+                    }
+
                 // Use strict equality comparison to check failures then force a reset
                 // via direct assignment.
-                if (object[property] === method) {
+                } else if (object[property] === method) {
                     object[property] = wrappedMethod;
                 }
             };

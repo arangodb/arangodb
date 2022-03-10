@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,8 +23,7 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_AQLVALUEMATERIALIZER_H
-#define ARANGOD_AQL_AQLVALUEMATERIALIZER_H
+#pragma once
 
 #include "Aql/AqlValue.h"
 
@@ -57,7 +56,8 @@ struct AqlValueMaterializer {
 
   ~AqlValueMaterializer();
 
-  arangodb::velocypack::Slice slice(arangodb::aql::AqlValue const& value, bool resolveExternals);
+  arangodb::velocypack::Slice slice(arangodb::aql::AqlValue const& value,
+                                    bool resolveExternals);
 
   arangodb::velocypack::Options const* options;
   arangodb::aql::AqlValue materialized;
@@ -66,5 +66,3 @@ struct AqlValueMaterializer {
 
 }  // namespace aql
 }  // namespace arangodb
-
-#endif  // ARANGOD_AQL_AQLVALUEMATERIALIZER_H

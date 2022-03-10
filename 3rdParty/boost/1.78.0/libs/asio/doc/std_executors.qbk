@@ -1,0 +1,216 @@
+[/
+ / Copyright (c) 2003-2021 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See accompanying
+ / file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+ /]
+
+[section:std_executors Proposed Standard Executors]
+
+Boost.Asio provides a complete implementation of the proposed standard executors, as
+described in [@http://wg21.link/P0443r13 P0443r13], [@http://wg21.link/P1348r0
+P1348r0], and [@http://wg21.link/P1393r0 P1393r0].
+
+Just as with executors under the Networking TS model, a standard executor
+represents a policy as to how, when, and where a piece of code should be
+executed. Most existing code should continue to work with little or no change.
+
+[heading Standard Executor Implementations in Boost.Asio]
+
+The [link boost_asio.reference.io_context.executor_type `io_context::executor_type`],
+[link boost_asio.reference.thread_pool.executor_type `thread_pool::executor_type`],
+[link boost_asio.reference.system_executor `system_executor`], and [link
+boost_asio.reference.strand `strand`] executors meet the requirements for the
+proposed standard executors. For compatibility, these classes also meet the
+requirements for the Networking TS model of executors.
+
+[heading Standard Executor Use in Boost.Asio]
+
+All I/O objects such as [link boost_asio.reference.ip__tcp.socket `ip::tcp::socket`],
+asynchronous operations, and utilities including [link boost_asio.reference.dispatch
+`dispatch`], [link boost_asio.reference.post `post`], [link boost_asio.reference.defer
+`defer`], [link boost_asio.reference.get_associated_executor
+`get_associated_executor`], [link boost_asio.reference.bind_executor
+`bind_executor`], [link boost_asio.reference.make_work_guard `make_work_guard`],
+[link boost_asio.reference.spawn `spawn`], [link boost_asio.reference.co_spawn `co_spawn`],
+[link boost_asio.reference.async_compose `async_compose`], [link
+boost_asio.reference.use_future `use_future`], etc., can interoperate with both
+proposed standard executors, and with Networking TS executors. Boost.Asio's
+implementation determines at compile time which model a particular executor
+meets; the proposed standard executor model is used in preference if both are
+detected.
+
+Support for the existing Networking TS model of executors can be disabled
+by defining `BOOST_ASIO_NO_TS_EXECUTORS`.
+
+[heading Polymorphic I/O Executor]
+
+The [link boost_asio.reference.any_io_executor `any_io_executor`] type alias is the
+default runtime-polymorphic executor for all I/O objects. This type alias
+points to the [link boost_asio.reference.execution__any_executor
+`execution::any_executor<>`] template with a set of supportable properties
+specified for use with I/O.
+
+This new name may break existing code that directly uses the old polymorphic
+wrapper, [link boost_asio.reference.executor `executor`]. If required for backward
+compatibility, `BOOST_ASIO_USE_TS_EXECUTOR_AS_DEFAULT` can be defined, which changes
+the `any_io_executor` type alias to instead point to the `executor` polymorphic
+wrapper.
+
+[heading Implementing a Minimal I/O Executor]
+
+Standard executor properties make what were previously hard requirements on an
+executor (such as work counting, or the ability to distinguish between `post`,
+`dispatch`, and `defer`) into optional facilities. With this relaxation, the
+minimal requirements for an I/O executor are:
+
+* Conformance to the [link boost_asio.reference.Executor1.standard_executors
+  `executor`] concept.
+
+* The ability to query the [link boost_asio.reference.execution__context
+  `execution::context`] property, with the result being [link
+  boost_asio.reference.execution_context `execution_context&`] or a reference to a
+  class that is derived from `execution_context`.
+
+* The `execute` operation having, at minimum, the [link
+  boost_asio.reference.execution__blocking_t.never `execution::blocking.never`]
+  semantic.
+
+The following example shows a minimal I/O executor. Given a queue submission
+operation implemented elsewhere:
+
+```
+queue_t queue_create();
+template <typename F> void queue_submit(queue_t q, F f);
+```
+
+the executor may be defined as follows:
+
+```
+struct minimal_io_executor
+{
+  boost::asio::execution_context* context_;
+  queue_t queue_;
+
+  bool operator==(const minimal_io_executor& other) const noexcept
+  {
+    return context_ == other.context_ && queue_ == other.queue_;
+  }
+
+  bool operator!=(const minimal_io_executor& other) const noexcept
+  {
+    return !(*this == other);
+  }
+
+  boost::asio::execution_context& query(
+      boost::asio::execution::context_t) const noexcept
+  {
+    return *context_;
+  }
+
+  static constexpr boost::asio::execution::blocking_t::never_t query(
+      boost::asio::execution::blocking_t) noexcept
+  {
+    // This executor always has blocking.never semantics.
+    return boost::asio::execution::blocking.never;
+  }
+
+  template <class F>
+  void execute(F f) const
+  {
+    queue_submit(queue_, std::move(f));
+  }
+};
+```
+
+This executor may be created as follows:
+
+```
+boost::asio::execution_context context;
+queue_t queue = queue_create();
+minimal_io_executor executor{&context, queue};
+```
+
+and then used with I/O objects:
+
+```
+boost::asio::ip::tcp::acceptor acceptor(executor);
+```
+
+or assigned into the [link boost_asio.reference.any_io_executor `any_io_executor`]
+polymorphic wrapper:
+
+```
+boost::asio::any_io_executor poly_executor = executor;
+```
+
+[heading Traits for Deducing Conformance to the Executor Concept]
+
+Older C++ standards and compilers require some assistance to determine whether
+an executor implementation conforms to the `executor` concept and type
+requirements. This is achieved through specialisation of traits. The following
+code shows a specialisation of these traits for the `minimal_io_executor`
+example from above:
+
+```
+namespace boost { namespace asio {
+namespace traits {
+
+#if !defined(BOOST_ASIO_HAS_DEDUCED_EXECUTE_MEMBER_TRAIT)
+
+template <typename F>
+struct execute_member<minimal_io_executor, F>
+{
+  static constexpr bool is_valid = true;
+  static constexpr bool is_noexcept = true;
+  typedef void result_type;
+};
+
+#endif // !defined(BOOST_ASIO_HAS_DEDUCED_EXECUTE_MEMBER_TRAIT)
+#if !defined(BOOST_ASIO_HAS_DEDUCED_EQUALITY_COMPARABLE_TRAIT)
+
+template <>
+struct equality_comparable<minimal_io_executor>
+{
+  static constexpr bool is_valid = true;
+  static constexpr bool is_noexcept = true;
+};
+
+#endif // !defined(BOOST_ASIO_HAS_DEDUCED_EQUALITY_COMPARABLE_TRAIT)
+#if !defined(BOOST_ASIO_HAS_DEDUCED_QUERY_MEMBER_TRAIT)
+
+template <>
+struct query_member<minimal_io_executor,
+    boost::asio::execution::context_t>
+{
+  static constexpr bool is_valid = true;
+  static constexpr bool is_noexcept = true;
+  typedef boost::asio::execution_context& result_type;
+};
+
+#endif // !defined(BOOST_ASIO_HAS_DEDUCED_QUERY_MEMBER_TRAIT)
+#if !defined(BOOST_ASIO_HAS_DEDUCED_QUERY_STATIC_CONSTEXPR_MEMBER_TRAIT)
+
+template <typename Property>
+struct query_static_constexpr_member<minimal_io_executor, Property,
+    typename enable_if<
+      std::is_convertible<Property, boost::asio::execution::blocking_t>::value
+    >::type>
+{
+  static constexpr bool is_valid = true;
+  static constexpr bool is_noexcept = true;
+  typedef boost::asio::execution::blocking_t::never_t result_type;
+  static constexpr result_type value() noexcept { return result_type(); }
+};
+
+#endif // !defined(BOOST_ASIO_HAS_DEDUCED_QUERY_STATIC_CONSTEXPR_MEMBER_TRAIT)
+
+} // namespace traits
+} } // namespace boost::asio
+```
+
+Boost.Asio uses an extensive set of traits to implement all of the proposed standard
+executor functionality on older C++ standards. These traits may be found under
+the [^boost/asio/traits] include directory.
+
+[endsect]

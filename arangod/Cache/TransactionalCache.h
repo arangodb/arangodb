@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,14 +21,11 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_CACHE_TRANSACTIONAL_CACHE_H
-#define ARANGODB_CACHE_TRANSACTIONAL_CACHE_H
+#pragma once
 
-#include <atomic>
-#include <chrono>
 #include <cstdint>
-#include <list>
 
+#include "Basics/ErrorCode.h"
 #include "Cache/Cache.h"
 #include "Cache/CachedValue.h"
 #include "Cache/Common.h"
@@ -40,8 +37,7 @@
 #include "Cache/Table.h"
 #include "Cache/TransactionalBucket.h"
 
-namespace arangodb {
-namespace cache {
+namespace arangodb::cache {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief A transactional, LRU-ish cache.
@@ -58,6 +54,7 @@ namespace cache {
 /// values and allow for clients to fall through to the backing transactional
 /// store.
 ////////////////////////////////////////////////////////////////////////////////
+
 class TransactionalCache final : public Cache {
  public:
   TransactionalCache(Cache::ConstructionGuard guard, Manager* manager,
@@ -69,7 +66,6 @@ class TransactionalCache final : public Cache {
   TransactionalCache(TransactionalCache const&) = delete;
   TransactionalCache& operator=(TransactionalCache const&) = delete;
 
- public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Looks up the given key.
   ///
@@ -118,25 +114,29 @@ class TransactionalCache final : public Cache {
   friend class Manager;
   friend class MigrateTask;
 
- private:
-  static uint64_t allocationSize(bool enableWindowedStats);
+  static constexpr uint64_t allocationSize(bool enableWindowedStats) {
+    return sizeof(TransactionalCache) +
+           (enableWindowedStats
+                ? (sizeof(StatBuffer) +
+                   StatBuffer::allocationSize(findStatsCapacity))
+                : 0);
+  }
+
   static std::shared_ptr<Cache> create(Manager* manager, std::uint64_t id,
-                                       Metadata&& metadata, std::shared_ptr<Table> table,
+                                       Metadata&& metadata,
+                                       std::shared_ptr<Table> table,
                                        bool enableWindowedStats);
 
   virtual uint64_t freeMemoryFrom(std::uint32_t hash) override;
-  virtual void migrateBucket(void* sourcePtr, std::unique_ptr<Table::Subtable> targets,
+  virtual void migrateBucket(void* sourcePtr,
+                             std::unique_ptr<Table::Subtable> targets,
                              std::shared_ptr<Table> newTable) override;
 
   // helpers
-  std::tuple<Result, Table::BucketLocker> getBucket(std::uint32_t hash, std::uint64_t maxTries,
-                                                    bool singleOperation = true);
-  std::uint32_t getIndex(uint32_t hash, bool useAuxiliary) const;
+  std::tuple<::ErrorCode, Table::BucketLocker> getBucket(
+      std::uint32_t hash, std::uint64_t maxTries, bool singleOperation = true);
 
   static Table::BucketClearer bucketClearer(Metadata* metadata);
 };
 
-};  // end namespace cache
-};  // end namespace arangodb
-
-#endif
+}  // end namespace arangodb::cache

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -55,8 +55,7 @@
 /// POSSIBILITY OF SUCH DAMAGE.
 //////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_LRUCACHE_H
-#define ARANGODB_LRUCACHE_H 1
+#pragma once
 
 #include <cstddef>
 #include <list>
@@ -66,7 +65,7 @@
 namespace arangodb {
 namespace basics {
 
-template <typename key_t, typename value_t>
+template<typename key_t, typename value_t>
 class LruCache {
  public:
   typedef typename std::pair<key_t, value_t> key_value_pair_t;
@@ -96,7 +95,8 @@ class LruCache {
     if (it == _cache_items_map.end()) {
       return nullptr;
     } else {
-      _cache_items_list.splice(_cache_items_list.begin(), _cache_items_list, it->second);
+      _cache_items_list.splice(_cache_items_list.begin(), _cache_items_list,
+                               it->second);
       return &it->second->second;
     }
   }
@@ -131,5 +131,3 @@ class LruCache {
 
 }  // namespace basics
 }  // namespace arangodb
-
-#endif

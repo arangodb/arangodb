@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,14 +22,12 @@
 /// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_GRAPH_OPTIONS_GRAPH_OPTIONS_H
-#define ARANGODB_GRAPH_OPTIONS_GRAPH_OPTIONS_H 1
+#pragma once
 
 #include <numeric>
 #include <cstddef>
 
 namespace arangodb {
-
 namespace graph {
 
 struct TwoSidedEnumeratorOptions {
@@ -38,8 +36,8 @@ struct TwoSidedEnumeratorOptions {
 
   ~TwoSidedEnumeratorOptions();
 
-  size_t getMinDepth() const;
-  size_t getMaxDepth() const;
+  [[nodiscard]] size_t getMinDepth() const;
+  [[nodiscard]] size_t getMaxDepth() const;
 
  private:
   size_t _minDepth;
@@ -47,5 +45,3 @@ struct TwoSidedEnumeratorOptions {
 };
 }  // namespace graph
 }  // namespace arangodb
-
-#endif

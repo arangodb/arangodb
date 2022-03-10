@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,26 +29,24 @@
 
 namespace arangodb::cache {
 
-Finding::Finding() : _value(nullptr), _result(TRI_ERROR_NO_ERROR) {}
+Finding::Finding() noexcept : _value(nullptr), _result(TRI_ERROR_NO_ERROR) {}
 
-Finding::Finding(CachedValue* v) : _value(v), _result(TRI_ERROR_NO_ERROR) {
+Finding::Finding(CachedValue* v) noexcept : Finding(v, TRI_ERROR_NO_ERROR) {}
+
+Finding::Finding(CachedValue* v, ::ErrorCode r) noexcept
+    : _value(v), _result(r) {
   if (_value != nullptr) {
     _value->lease();
   }
 }
 
-Finding::Finding(CachedValue* v, Result const& r) : _value(v), _result(r) {
-  if (_value != nullptr) {
-    _value->lease();
-  }
-}
-
-Finding::Finding(Finding&& other)
-    : _value(other._value), _result(std::move(other._result)) {
+Finding::Finding(Finding&& other) noexcept
+    : _value(other._value), _result(other._result) {
   other._value = nullptr;
+  other._result = TRI_ERROR_NO_ERROR;
 }
 
-Finding& Finding::operator=(Finding&& other) {
+Finding& Finding::operator=(Finding&& other) noexcept {
   if (&other == this) {
     return *this;
   }
@@ -60,7 +58,8 @@ Finding& Finding::operator=(Finding&& other) {
   _value = other._value;
   other._value = nullptr;
 
-  _result = std::move(other._result);
+  _result = other._result;
+  other._result = TRI_ERROR_NO_ERROR;
 
   return *this;
 }
@@ -71,7 +70,7 @@ Finding::~Finding() {
   }
 }
 
-void Finding::release() {
+void Finding::release() noexcept {
   if (_value != nullptr) {
     _value->release();
     // reset value so we do not unintentionally release multiple times
@@ -79,7 +78,7 @@ void Finding::release() {
   }
 }
 
-void Finding::set(CachedValue* v) {
+void Finding::set(CachedValue* v) noexcept {
   TRI_ASSERT(_value == nullptr);
   _value = v;
   if (v != nullptr) {
@@ -87,7 +86,7 @@ void Finding::set(CachedValue* v) {
   }
 }
 
-void Finding::reset(CachedValue* v) {
+void Finding::reset(CachedValue* v) noexcept {
   if (_value != nullptr) {
     _value->release();
   }
@@ -98,16 +97,16 @@ void Finding::reset(CachedValue* v) {
   }
 }
 
-void Finding::reportError(Result const& r) { _result = r; }
+void Finding::reportError(::ErrorCode r) noexcept { _result = r; }
 
-bool Finding::found() const { return (_value != nullptr); }
+bool Finding::found() const noexcept { return (_value != nullptr); }
 
-CachedValue const* Finding::value() const { return _value; }
+CachedValue const* Finding::value() const noexcept { return _value; }
 
 CachedValue* Finding::copy() const {
   return ((_value == nullptr) ? nullptr : _value->copy());
 }
 
-Result const& Finding::result() const { return _result; }
+::ErrorCode Finding::result() const noexcept { return _result; }
 
 }  // namespace arangodb::cache

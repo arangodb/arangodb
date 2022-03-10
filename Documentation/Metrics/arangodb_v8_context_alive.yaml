@@ -1,7 +1,7 @@
 name: arangodb_v8_context_alive
 introducedIn: "3.6.7"
 help: |
-  Number of V8 contexts currently alive
+  Number of V8 contexts currently alive.
 unit: number
 type: gauge
 category: Statistics
@@ -12,8 +12,8 @@ exposedBy:
   - agent
   - single
 description: |
-  Number of V8 contexts currently alive. Normally, only coordinators and
-  single servers should have V8 contexts, for dbservers and agents the
+  Number of V8 contexts currently alive. Normally, only Coordinators and
+  single servers should have V8 contexts, for DB-Servers and Agents the
   value is always zero.
 threshold: |
   If this number is close to the maximum allowed number of V8 contexts,

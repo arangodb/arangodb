@@ -61,7 +61,8 @@ exports.reconnectRetry = function(endpoint, databaseName, user, password) {
     try {
       arango.reconnect(endpoint, databaseName, user, password);
       return;
-    } catch (ex) {
+    } catch (e) {
+      ex = e;
       print(RED + "connecting " + endpoint + " failed - retrying (" + ex.message + ")" + RESET);
     }
     sleepTime *= 2;

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,12 +21,10 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOCBASE_METHODS_TRANSACTIONS_HANDLER_H
-#define ARANGOD_VOCBASE_METHODS_TRANSACTIONS_HANDLER_H 1
+#pragma once
 
 #include <v8.h>
 #include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
 #include "VocBase/vocbase.h"
@@ -35,10 +33,10 @@ namespace arangodb {
 
 Result executeTransaction(v8::Isolate*, basics::ReadWriteLock& cancelLock,
                           std::atomic<bool>& canceled, VPackSlice transaction,
-                          std::string const& requestPortType, VPackBuilder& result);
+                          std::string const& requestPortType,
+                          VPackBuilder& result);
 
 Result executeTransactionJS(v8::Isolate*, v8::Handle<v8::Value> const& arg,
                             v8::Handle<v8::Value>& result, v8::TryCatch&);
 
 }  // namespace arangodb
-#endif

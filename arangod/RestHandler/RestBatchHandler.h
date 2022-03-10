@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_REST_BATCH_HANDLER_H
-#define ARANGOD_REST_HANDLER_REST_BATCH_HANDLER_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
@@ -58,8 +57,7 @@ struct SearchHelper {
 
 class RestBatchHandler : public RestVocbaseBaseHandler {
  public:
-  RestBatchHandler(application_features::ApplicationServer&, GeneralRequest*,
-                   GeneralResponse*);
+  RestBatchHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
   ~RestBatchHandler();
 
  public:
@@ -94,5 +92,3 @@ class RestBatchHandler : public RestVocbaseBaseHandler {
   std::string _boundary;
 };
 }  // namespace arangodb
-
-#endif

@@ -43,7 +43,7 @@ create a non-unique index.
 the *unique* attribute with these types may lead to an error:
 
 - geo indexes
-- fulltext indexes
+- fulltext indexes (deprecated from ArangoDB 3.10 onwards)
 
 **Note**: Unique indexes on non-shard keys are not supported in a
 cluster.
@@ -73,6 +73,9 @@ The *estimates* attribute is optional and defaults to *true* if not set. It will
 have no effect on indexes other than *persistent* (with *hash* and *skiplist*
 being mere aliases for *persistent* nowadays).
 
+The optional attribute **inBackground** can be set to *true* to create the index
+in the background, which will not write-lock the underlying collection for
+as long as if the index is built in the foreground.
 @RESTRETURNCODES
 
 @RESTRETURNCODE{200}

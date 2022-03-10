@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_ALGOS_PAGERANK_H
-#define ARANGODB_PREGEL_ALGOS_PAGERANK_H 1
+#pragma once
 
 #include <velocypack/Slice.h>
 #include "Pregel/Algorithm.h"
@@ -46,7 +45,8 @@ struct PageRank : public SimpleAlgorithm<float, float, float> {
     return new SumCombiner<float>();
   }
 
-  VertexComputation<float, float, float>* createComputation(WorkerConfig const*) const override;
+  VertexComputation<float, float, float>* createComputation(
+      WorkerConfig const*) const override;
 
   WorkerContext* workerContext(VPackSlice userParams) const override;
 
@@ -60,4 +60,3 @@ struct PageRank : public SimpleAlgorithm<float, float, float> {
 }  // namespace algos
 }  // namespace pregel
 }  // namespace arangodb
-#endif

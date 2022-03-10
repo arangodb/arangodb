@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_AQL_CALLSTACK_H
-#define ARANGOD_AQL_AQL_CALLSTACK_H 1
+#pragma once
 
 #include "Aql/AqlCallList.h"
 #include "Basics/ResultT.h"
@@ -41,10 +40,10 @@ namespace aql {
  *        Executor only, the AqlCallStack is used to transport information
  *        for outer subqueries.
  *        At the very beginning of the query this Stack has exactly one
- *        CallList entry, which defines what should be done on the outermost query.
- *        If we now enter a spliced subquery, there will be another CallList
- *        added on top of this stack. If we leave the spliced subquery, the topmost
- *        CallList will be removed.
+ *        CallList entry, which defines what should be done on the outermost
+ * query. If we now enter a spliced subquery, there will be another CallList
+ *        added on top of this stack. If we leave the spliced subquery, the
+ * topmost CallList will be removed.
  *
  *        Using this stack, we can transport all necessary calls from the outer
  *        subqueries to the Executors that need to produce data for them.
@@ -57,10 +56,10 @@ class AqlCallStack {
   AqlCallStack(AqlCallStack const& other, AqlCallList call);
   // Used to pass between blocks
   AqlCallStack(AqlCallStack const& other) = default;
-  AqlCallStack(AqlCallStack&& other) = default;
+  AqlCallStack(AqlCallStack&& other) noexcept = default;
 
   AqlCallStack& operator=(AqlCallStack const& other) = default;
-  AqlCallStack& operator=(AqlCallStack&& other) = default;
+  AqlCallStack& operator=(AqlCallStack&& other) noexcept = default;
 
   static auto fromVelocyPack(velocypack::Slice) -> ResultT<AqlCallStack>;
 
@@ -80,9 +79,7 @@ class AqlCallStack {
   // Put another call on top of the stack.
   void pushCall(AqlCallList const& call);
 
-  auto empty() const noexcept -> bool {
-    return _operations.empty();
-  }
+  auto empty() const noexcept -> bool { return _operations.empty(); }
 
   auto subqueryLevel() const noexcept -> size_t { return _operations.size(); }
 
@@ -174,7 +171,7 @@ class AqlCallStack {
   auto requestLessDataThan(AqlCallStack const& other) const noexcept -> bool;
 
  private:
-  explicit AqlCallStack(std::vector<AqlCallList>&& operations);
+  explicit AqlCallStack(std::vector<AqlCallList>&& operations) noexcept;
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   auto validateNoCallHasSkippedRows() -> void;
@@ -188,5 +185,3 @@ class AqlCallStack {
 
 }  // namespace aql
 }  // namespace arangodb
-
-#endif

@@ -26,16 +26,14 @@
 #include <fuerte/loop.h>
 #include <fuerte/message.h>
 #include <fuerte/types.h>
-#include <velocypack/velocypack-aliases.h>
 
-#include <regex>
+#include <string_view>
 
 #include "debugging.h"
 
 namespace arangodb { namespace fuerte { inline namespace v1 { namespace http {
 namespace fu = arangodb::fuerte::v1;
 using arangodb::fuerte::v1::SocketType;
-using arangodb::velocypack::StringRef;
 
 template <SocketType T>
 /*static*/ int H2Connection<T>::on_begin_headers(nghttp2_session* session,
@@ -85,18 +83,19 @@ template <SocketType T>
 
   // handle pseudo headers
   // https://http2.github.io/http2-spec/#rfc.section.8.1.2.3
-  StringRef field(reinterpret_cast<const char*>(name), namelen);
-  StringRef val(reinterpret_cast<const char*>(value), valuelen);
+  std::string_view field(reinterpret_cast<char const*>(name), namelen);
+  std::string_view val(reinterpret_cast<char const*>(value), valuelen);
 
-  if (StringRef(":status") == field) {
-    strm->response->header.responseCode =
-        (StatusCode)std::stoul(val.toString());
+  if (field == ":status") {
+    std::string v(val);
+    strm->response->header.responseCode = (StatusCode)std::stoul(v);
   } else if (field == fu_content_length_key) {
-    size_t len = std::min<size_t>(std::stoul(val.toString()), 1024 * 1024 * 64);
+    std::string v(val);
+    size_t len = std::min<size_t>(std::stoul(v), 1024 * 1024 * 64);
     strm->data.reserve(len);
-    strm->response->header.addMeta(field.toString(), val.toString());
+    strm->response->header.addMeta(std::string(field), std::move(val));
   } else {  // fall through
-    strm->response->header.addMeta(field.toString(), val.toString());
+    strm->response->header.addMeta(std::string(field), std::string(val));
     // TODO limit max header size ??
   }
 
@@ -294,11 +293,11 @@ void H2Connection<T>::initNgHttp2Session() {
   }
 
   rv = nghttp2_session_client_new(&_session, callbacks, /*args*/ this);
+  nghttp2_session_callbacks_del(callbacks);
+
   if (rv != 0) {
-    nghttp2_session_callbacks_del(callbacks);
     throw std::runtime_error("out ouf memory");
   }
-  nghttp2_session_callbacks_del(callbacks);
 }
 
 // -----------------------------------------------------------------------------
@@ -333,6 +332,51 @@ void H2Connection<T>::finishConnect() {
 
   this->asyncReadSome();  // start reading
   doWrite();              // start writing
+}
+
+template <>
+void H2Connection<SocketType::Tcp>::readSwitchingProtocolsResponse() {
+  FUERTE_LOG_HTTPTRACE << "readSwitchingProtocolsResponse)\n";
+
+  auto self = Connection::shared_from_this();
+  this->_proto.timer.expires_after(std::chrono::seconds(5));
+  this->_proto.timer.async_wait([self](auto ec) {
+    if (!ec) {
+      self->cancel();
+    }
+  });
+  // read until we find end of http header
+  asio_ns::async_read_until(
+      this->_proto.socket, this->_receiveBuffer, "\r\n\r\n",
+      [self](asio_ns::error_code const& ec, size_t nread) {
+        auto& me = static_cast<H2Connection<SocketType::Tcp>&>(*self);
+        me._proto.timer.cancel();
+        if (ec) {
+          me.shutdownConnection(Error::ReadError,
+                                "error reading upgrade response");
+          return;
+        }
+
+        // server should respond with 101 and "Upgrade: h2c"
+        auto it = asio_ns::buffers_begin(me._receiveBuffer.data());
+        std::string header(it, it + static_cast<ptrdiff_t>(nread));
+        if (header.compare(0, 12, "HTTP/1.1 101") == 0 &&
+            header.find("Upgrade: h2c\r\n") != std::string::npos) {
+          FUERTE_ASSERT(nread == header.size());
+          me._receiveBuffer.consume(nread);
+          me._state.store(Connection::State::Connected);
+
+          // submit a ping so the connection is not closed right away
+          me.startPing();
+
+          me.asyncReadSome();
+          me.doWrite();
+        } else {
+          FUERTE_ASSERT(false);
+          me.shutdownConnection(Error::ProtocolError,
+                                "illegal upgrade response");
+        }
+      });
 }
 
 template <>
@@ -381,51 +425,6 @@ void H2Connection<SocketType::Tcp>::sendHttp1UpgradeRequest() {
       });
 }
 
-template <>
-void H2Connection<SocketType::Tcp>::readSwitchingProtocolsResponse() {
-  FUERTE_LOG_HTTPTRACE << "readSwitchingProtocolsResponse)\n";
-
-  auto self = Connection::shared_from_this();
-  this->_proto.timer.expires_after(std::chrono::seconds(5));
-  this->_proto.timer.async_wait([self](auto ec) {
-    if (!ec) {
-      self->cancel();
-    }
-  });
-  // read until we find end of http header
-  asio_ns::async_read_until(
-      this->_proto.socket, this->_receiveBuffer, "\r\n\r\n",
-      [self](asio_ns::error_code const& ec, size_t nread) {
-        auto& me = static_cast<H2Connection<SocketType::Tcp>&>(*self);
-        me._proto.timer.cancel();
-        if (ec) {
-          me.shutdownConnection(Error::ReadError,
-                                "error reading upgrade response");
-          return;
-        }
-
-        // server should respond with 101 and "Upgrade: h2c"
-        auto it = asio_ns::buffers_begin(me._receiveBuffer.data());
-        std::string header(it, it + static_cast<ptrdiff_t>(nread));
-        if (header.compare(0, 12, "HTTP/1.1 101") == 0 &&
-            header.find("Upgrade: h2c\r\n") != std::string::npos) {
-          FUERTE_ASSERT(nread == header.size());
-          me._receiveBuffer.consume(nread);
-          me._state.store(Connection::State::Connected);
-
-          // submit a ping so the connection is not closed right away
-          me.startPing();
-
-          me.asyncReadSome();
-          me.doWrite();
-        } else {
-          FUERTE_ASSERT(false);
-          me.shutdownConnection(Error::ProtocolError,
-                                "illegal upgrade response");
-        }
-      });
-}
-
 // socket connection is up (with optional SSL), now initiate the VST protocol.
 template <>
 void H2Connection<SocketType::Ssl>::finishConnect() {
@@ -465,7 +464,7 @@ void H2Connection<SocketType::Ssl>::finishConnect() {
 // queue the response onto the session, call only on IO thread
 template <SocketType T>
 void H2Connection<T>::queueHttp2Requests() {
-  int numQueued = 0;  // make sure we do send too many request
+  int numQueued = 0;  // make sure we do not send too many request
 
   Stream* tmp = nullptr;
   while (numQueued++ < 4 && this->_queue.pop(tmp)) {
@@ -723,7 +722,7 @@ template <SocketType T>
 void H2Connection<T>::abortRequests(fuerte::Error err, Clock::time_point now) {
   auto it = this->_streams.begin();
   while (it != this->_streams.end()) {
-    if (it->second->expires < now) {
+    if (it->second->expires <= now) {
       it->second->invokeOnError(err);
 
       if (now == Clock::time_point::max()) {

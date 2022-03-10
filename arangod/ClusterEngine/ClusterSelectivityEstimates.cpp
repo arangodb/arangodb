@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,31 +30,24 @@
 #include "Indexes/Index.h"
 #include "VocBase/LogicalCollection.h"
 
-using namespace arangodb;
-      
-ClusterSelectivityEstimates::ClusterSelectivityEstimates(LogicalCollection& collection)
-    : _collection(collection),
-      _updating(false) {}
+namespace arangodb {
+
+ClusterSelectivityEstimates::ClusterSelectivityEstimates(
+    LogicalCollection& collection)
+    : _collection(collection) {}
 
 void ClusterSelectivityEstimates::flush() {
-  // wait until we ourselves are able to set the _updating flag
-  while (_updating.load(std::memory_order_relaxed) || _updating.exchange(true, std::memory_order_acquire)) {
-    std::this_thread::yield();
-  }
-
-  auto guard = scopeGuard([this]() {
-    _updating.store(false, std::memory_order_release);
-  });
-  
+  std::lock_guard guard{_update};
   std::atomic_store(&_data, std::shared_ptr<InternalData>());
 }
 
-IndexEstMap ClusterSelectivityEstimates::get(bool allowUpdating, TransactionId tid) {
-  auto data = std::atomic_load<ClusterSelectivityEstimates::InternalData>(&_data);
-
-  if (allowUpdating) {
+IndexEstMap ClusterSelectivityEstimates::get(bool allowUpdate,
+                                             TransactionId tid) {
+  auto data =
+      std::atomic_load<ClusterSelectivityEstimates::InternalData>(&_data);
+  std::unique_lock guard{_update, std::defer_lock};
+  if (allowUpdate) {
     double const now = TRI_microtime();
-
     bool useExpired = false;
     int tries = 0;
     do {
@@ -62,63 +55,57 @@ IndexEstMap ClusterSelectivityEstimates::get(bool allowUpdating, TransactionId t
         auto const& estimates = data->estimates;
         if (!estimates.empty() && (data->expireStamp > now || useExpired)) {
           // already have an estimate, and it is not yet expired
-          // or, we have an expired estimate, and another thread is currently updating it
+          // or, we have an expired estimate, and another thread is currently
+          // updating it
           return estimates;
         }
       }
-
-      // only one thread is allowed to fetch the estimates from the DB servers at any given time
-      if (_updating.load(std::memory_order_relaxed) || _updating.exchange(true, std::memory_order_acquire)) {
+      if (!guard.try_lock()) {
+        // only one thread is allowed to fetch the estimates from the DB servers
+        // at any given time
         useExpired = true;
       } else {
-        auto guard = scopeGuard([this]() {
-          _updating.store(false, std::memory_order_release);
-        });
-
-        // must fetch estimates from coordinator
-        IndexEstMap estimates;
-        Result res = selectivityEstimatesOnCoordinator(
-            _collection.vocbase().server().getFeature<ClusterFeature>(),
-            _collection.vocbase().name(), _collection.name(), estimates, tid);
-
-        if (res.ok()) {
-          // store the updated estimates and return them
+        IndexEstMap estimates;  // must fetch estimates from coordinator
+        if (selectivityEstimatesOnCoordinator(
+                _collection.vocbase().server().getFeature<ClusterFeature>(),
+                _collection.vocbase().name(), _collection.name(), estimates,
+                tid)
+                .ok()) {  // store the updated estimates and return them
           set(estimates);
           return estimates;
         }
+        guard.unlock();
       }
-      
-      data = std::atomic_load<ClusterSelectivityEstimates::InternalData>(&_data);
-    } while (++tries <= 3);
+      data = std::atomic_load<InternalData>(&_data);
+    } while (++tries <= 3);  // give up!
   }
 
-  // give up!
   if (data) {
-    // we have got some estimates before
-    return data->estimates;
+    return data->estimates;  // we have got some estimates before
   }
-  // return an empty map!
-  return IndexEstMap();
+  return {};  // return an empty map!
 }
 
-void ClusterSelectivityEstimates::set(IndexEstMap const& estimates) {
+void ClusterSelectivityEstimates::set(IndexEstMap estimates) {
   // push new selectivity values into indexes' cache
   auto indexes = _collection.getIndexes();
 
-  for (std::shared_ptr<Index>& idx : indexes) {
+  for (auto& idx : indexes) {
     auto it = estimates.find(std::to_string(idx->id().id()));
-
     if (it != estimates.end()) {
       idx->updateClusterSelectivityEstimate(it->second);
     }
   }
-  
+
   double ttl = defaultTtl;
-  // let selectivity estimates expire less seldomly for system collections
+  // let selectivity estimates expire less often for system collections
   if (!_collection.name().empty() && _collection.name()[0] == '_') {
     ttl = systemCollectionTtl;
   }
 
   // finally update the cache
-  std::atomic_store(&_data, std::make_shared<ClusterSelectivityEstimates::InternalData>(estimates, ttl));
+  std::atomic_store(&_data, std::make_shared<InternalData>(
+                                std::move(estimates), TRI_microtime() + ttl));
 }
+
+}  // namespace arangodb

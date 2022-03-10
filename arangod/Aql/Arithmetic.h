@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_ARITHMETIC_H
-#define ARANGOD_AQL_ARITHMETIC_H 1
+#pragma once
 
 #include <string>
 
@@ -31,19 +30,17 @@ namespace aql {
 
 double stringToNumber(std::string const& value, bool& failed) noexcept;
 
-template <typename T>
+template<typename T>
 bool isUnsafeAddition(T l, T r);
 
-template <typename T>
+template<typename T>
 bool isUnsafeSubtraction(T l, T r);
 
-template <typename T>
+template<typename T>
 bool isUnsafeMultiplication(T l, T r);
 
-template <typename T>
+template<typename T>
 bool isUnsafeDivision(T l, T r);
 
 }  // namespace aql
 }  // namespace arangodb
-
-#endif

@@ -2,7 +2,7 @@ name: arangodb_v8_context_enter_failures_total
 renamedFrom: arangodb_v8_context_enter_failures
 introducedIn: "3.8.0"
 help: |
-  Total number of V8 context enter failures
+  Total number of V8 context enter failures.
 unit: number
 type: counter
 category: V8

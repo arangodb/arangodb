@@ -1,0 +1,18 @@
+name: arangodb_scheduler_handler_tasks_created_total
+introducedIn: "3.8.2"
+help: |
+  Total number of REST handler tasks created for the scheduler.
+unit: number
+type: counter
+category: Scheduler
+complexity: advanced
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+description: |
+  Total number of REST handler tasks that were created for execution
+  via the scheduler. This counter is increased for each incoming
+  request for which a REST handler mapping exists and that does not
+  need to be forwarded to another coordinator in the cluster.

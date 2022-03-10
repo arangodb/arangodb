@@ -1,7 +1,7 @@
 name: rocksdb_num_deletes_active_mem_table
 introducedIn: "3.6.1"
 help: |
-  RocksDB metric "rocksdb-num-deletes-active-mem-table" - sum over column families
+  Number of deletes in active RocksDB memtable.
 unit: number
 type: gauge
 category: RocksDB
@@ -15,4 +15,3 @@ description: |
   "rocksdb-num-deletes-active-mem-table".
   It shows the total number of delete entries in the active memtable,
   summed over all column families.
-

@@ -29,6 +29,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace arangodb { namespace fuerte { inline namespace v1 {
@@ -53,6 +54,7 @@ StatusCode constexpr StatusMethodNotAllowed = 405;
 StatusCode constexpr StatusNotAcceptable = 406;
 StatusCode constexpr StatusConflict = 409;
 StatusCode constexpr StatusPreconditionFailed = 412;
+StatusCode constexpr StatusMisdirectedRequest = 421;
 StatusCode constexpr StatusInternalError = 500;
 StatusCode constexpr StatusServiceUnavailable = 503;
 StatusCode constexpr StatusVersionNotSupported = 505;
@@ -116,7 +118,8 @@ enum class RestVerb {
   Options = 6
 };
 std::string to_string(RestVerb type);
-RestVerb from_string(std::string const&);
+RestVerb from_string(std::string_view type);
+RestVerb from_string(std::string const& type);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       MessageType
@@ -167,7 +170,7 @@ enum class ContentType : uint8_t {
   BatchPart,
   FormData
 };
-ContentType to_ContentType(std::string const& val);
+ContentType to_ContentType(std::string_view val);
 std::string to_string(ContentType type);
 
 // -----------------------------------------------------------------------------
@@ -177,9 +180,10 @@ std::string to_string(ContentType type);
 enum class ContentEncoding : uint8_t {
   Identity = 0,
   Deflate = 1,
-  Gzip = 2
+  Gzip = 2,
+  Custom = 3
 };
-ContentEncoding to_ContentEncoding(std::string const& val);
+ContentEncoding to_ContentEncoding(std::string_view val);
 std::string to_string(ContentEncoding type);
 
 // -----------------------------------------------------------------------------

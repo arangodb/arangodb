@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,13 +21,11 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_REPORTS_H
-#define ARANGODB_PREGEL_REPORTS_H
+#pragma once
 #include <sstream>
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 #include "Pregel/Graph.h"
 
 namespace arangodb::pregel {
@@ -51,13 +49,13 @@ struct Report {
 struct ReportManager;
 
 struct ReportBuilder {
-  template <typename T>
+  template<typename T>
   ReportBuilder& operator<<(T&& t) {
     ss << t;
     return *this;
   }
 
-  template <typename T>
+  template<typename T>
   ReportBuilder& with(std::string_view name, T&& value) {
     VPackBuilder builder;
     using base_type = std::decay_t<T>;
@@ -104,5 +102,3 @@ struct ReportManager {
   std::vector<Report> _reports;
 };
 }  // namespace arangodb::pregel
-
-#endif

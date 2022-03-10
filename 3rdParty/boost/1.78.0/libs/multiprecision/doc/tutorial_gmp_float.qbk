@@ -1,0 +1,71 @@
+[/
+  Copyright 2011 - 2020 John Maddock.
+  Copyright 2013 - 2019 Paul A. Bristow.
+  Copyright 2013 Christopher Kormanyos.
+
+  Distributed under the Boost Software License, Version 1.0.
+  (See accompanying file LICENSE_1_0.txt or copy at
+  http://www.boost.org/LICENSE_1_0.txt).
+]
+
+[section:gmp_float gmp_float]
+
+`#include <boost/multiprecision/gmp.hpp>`
+
+   namespace boost{ namespace multiprecision{
+
+   template <unsigned Digits10>
+   class gmp_float;
+
+   typedef number<gmp_float<50> >    mpf_float_50;
+   typedef number<gmp_float<100> >   mpf_float_100;
+   typedef number<gmp_float<500> >   mpf_float_500;
+   typedef number<gmp_float<1000> >  mpf_float_1000;
+   typedef number<gmp_float<0> >     mpf_float;
+
+   }} // namespaces
+
+The `gmp_float` back-end is used in conjunction with `number` : it acts as a thin wrapper around the [gmp] `mpf_t`
+to provide an real-number type that is a drop-in replacement for the native C++ floating-point types, but with
+much greater precision.
+
+Type `gmp_float` can be used at fixed precision by specifying a non-zero `Digits10` template parameter, or
+at variable precision by setting the template argument to zero.  The typedefs mpf_float_50, mpf_float_100,
+mpf_float_500, mpf_float_1000 provide arithmetic types at 50, 100, 500 and 1000 decimal digits precision
+respectively.  The typedef mpf_float provides a variable precision type whose precision can be controlled via the
+`number`s member functions.
+
+[note This type only provides standard library and `numeric_limits` support when the precision is fixed at compile time.]
+
+As well as the usual conversions from arithmetic and string types, instances of `number<mpf_float<N> >` are
+copy constructible and assignable from:
+
+* The [gmp] native types `mpf_t`, `mpz_t`, `mpq_t`.
+* The `number` wrappers around those types: `number<mpf_float<M> >`, `number<gmp_int>`, `number<gmp_rational>`.
+
+It's also possible to access the underlying `mpf_t` via the `data()` member function of `gmp_float`.
+
+Things you should know when using this type:
+
+* Default constructed `gmp_float`s have the value zero (this is the [gmp] library's default behavior).
+* No changes are made to the [gmp] library's global settings, so this type can be safely mixed with
+existing [gmp] code.
+* This backend supports rvalue-references and is move-aware, making instantiations of `number` on this backend move aware.
+* It is not possible to round-trip objects of this type to and from a string and get back
+exactly the same value.  This appears to be a limitation of [gmp].
+* Since the underlying [gmp] types have no notion of infinities or NaNs, care should be taken
+to avoid numeric overflow or division by zero.  That latter will result in a std::overflow_error being thrown,
+while generating excessively large exponents may result in instability of the underlying [gmp]
+library (in testing, converting a number with an excessively large or small exponent
+to a string caused [gmp] to segfault).
+* This type can equally be used with [mpir] as the underlying implementation - indeed that is
+the recommended option on Win32.
+* Conversion from a string results in a `std::runtime_error` being thrown if the string can not be interpreted
+as a valid floating-point number.
+* Division by zero results in a `std::overflow_error` being thrown.
+
+[h5 [gmp] example:]
+
+[mpf_eg]
+
+[endsect]

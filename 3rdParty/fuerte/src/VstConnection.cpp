@@ -28,7 +28,6 @@
 #include <fuerte/loop.h>
 #include <fuerte/message.h>
 #include <fuerte/types.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "debugging.h"
 
@@ -378,7 +377,7 @@ void VstConnection<ST>::abortRequests(
 
   auto it = this->_streams.begin();
   while (it != this->_streams.end()) {
-    if (it->second->expires < now) {
+    if (it->second->expires <= now) {
       FUERTE_LOG_DEBUG << "VST-Request timeout\n";
       it->second->invokeOnError(err);
       it = this->_streams.erase(it);

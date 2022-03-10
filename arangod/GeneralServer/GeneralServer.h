@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,8 +23,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GENERAL_SERVER_GENERAL_SERVER_H
-#define ARANGOD_GENERAL_SERVER_GENERAL_SERVER_H 1
+#pragma once
 
 #include "Basics/Result.h"
 #include "Basics/Thread.h"
@@ -32,6 +31,7 @@
 #include "GeneralServer/SslServerFeature.h"
 
 #include <mutex>
+#include <map>
 
 namespace arangodb {
 namespace application_features {
@@ -57,16 +57,16 @@ class GeneralServer {
   void registerTask(std::shared_ptr<rest::CommTask>);
   void unregisterTask(rest::CommTask*);
   void setEndpointList(EndpointList const* list);
-  void startListening(); /// start accepting connections
-  void stopListening(); /// stop accepting new connections
-  void stopConnections(); /// stop connections
+  void startListening();   /// start accepting connections
+  void stopListening();    /// stop accepting new connections
+  void stopConnections();  /// stop connections
   void stopWorking();
 
   IoContext& selectIoContext();
   SslServerFeature::SslContextList sslContexts();
   SSL_CTX* getSSL_CTX(size_t index);
 
-  application_features::ApplicationServer& server() const;
+  ArangodServer& server() const;
 
   Result reloadTLS();
 
@@ -89,5 +89,3 @@ class GeneralServer {
 };
 }  // namespace rest
 }  // namespace arangodb
-
-#endif

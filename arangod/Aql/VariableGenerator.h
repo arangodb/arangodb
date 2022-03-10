@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_VARIABLE_GENERATOR_H
-#define ARANGOD_AQL_VARIABLE_GENERATOR_H 1
+#pragma once
 
 #include "Aql/Variable.h"
 #include "Aql/types.h"
@@ -31,13 +30,14 @@
 #include <functional>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 
 namespace arangodb {
 namespace velocypack {
 class Builder;
 class Slice;
-}
+}  // namespace velocypack
 
 namespace aql {
 
@@ -54,13 +54,14 @@ class VariableGenerator {
 
  public:
   /// @brief visit all variables
-  void visit(std::function<void(Variable*)> const&); 
+  void visit(std::function<void(Variable*)> const&);
 
   /// @brief return a map of all variable ids with their names
-  std::unordered_map<VariableId, std::string const> variables(bool includeTemporaries) const;
+  std::unordered_map<VariableId, std::string const> variables(
+      bool includeTemporaries) const;
 
   /// @brief generate a variable
-  Variable* createVariable(std::string name, bool isUserDefined);
+  Variable* createVariable(std::string_view name, bool isUserDefined);
 
   /// @brief generate a variable from VelocyPack
   Variable* createVariable(arangodb::velocypack::Slice);
@@ -89,6 +90,13 @@ class VariableGenerator {
   /// @brief import from VelocyPack
   void fromVelocyPack(arangodb::velocypack::Slice const allVariablesList);
 
+  /// @brief validate a variable name
+  static bool isValidName(char const* p, char const* end) noexcept;
+
+  static bool isValidName(std::string_view name) noexcept {
+    return isValidName(name.data(), name.data() + name.size());
+  }
+
  private:
   /// @brief returns the next variable id
   VariableId nextId() noexcept;
@@ -102,5 +110,3 @@ class VariableGenerator {
 };
 }  // namespace aql
 }  // namespace arangodb
-
-#endif

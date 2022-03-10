@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_MODIFICATION_NODES_H
-#define ARANGOD_AQL_MODIFICATION_NODES_H 1
+#pragma once
 
 #include "Aql/Ast.h"
 #include "Aql/CollectionAccessingNode.h"
@@ -47,9 +46,11 @@ class ModificationNode : public ExecutionNode, public CollectionAccessingNode {
 
   /// @brief constructor with a vocbase and a collection and options
  protected:
-  ModificationNode(ExecutionPlan* plan, ExecutionNodeId id, Collection const* collection,
+  ModificationNode(ExecutionPlan* plan, ExecutionNodeId id,
+                   Collection const* collection,
                    ModificationOptions const& options,
-                   Variable const* outVariableOld, Variable const* outVariableNew)
+                   Variable const* outVariableOld,
+                   Variable const* outVariableNew)
       : ExecutionNode(plan, id),
         CollectionAccessingNode(collection),
         _options(options),
@@ -59,10 +60,6 @@ class ModificationNode : public ExecutionNode, public CollectionAccessingNode {
         _producesResults(true) {}
 
   ModificationNode(ExecutionPlan*, arangodb::velocypack::Slice const& slice);
-
-  /// @brief export to VelocyPack
-  virtual void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
-                                  std::unordered_set<ExecutionNode const*>& seen) const override;
 
  public:
   /// @brief estimateCost
@@ -129,6 +126,10 @@ class ModificationNode : public ExecutionNode, public CollectionAccessingNode {
   void disableStatistics() { _countStats = false; }
 
  protected:
+  /// @brief export to VelocyPack
+  void doToVelocyPack(arangodb::velocypack::Builder&,
+                      unsigned flags) const override;
+
   void cloneCommon(ModificationNode*) const;
 
  protected:
@@ -153,13 +154,13 @@ class ModificationNode : public ExecutionNode, public CollectionAccessingNode {
 class RemoveNode : public ModificationNode {
   friend class ExecutionNode;
   friend class ExecutionBlock;
-  friend class RedundantCalculationsReplacer;
 
  public:
-  RemoveNode(ExecutionPlan* plan, ExecutionNodeId id, Collection const* collection,
-             ModificationOptions const& options, Variable const* inVariable,
-             Variable const* outVariableOld)
-      : ModificationNode(plan, id, collection, options, outVariableOld, nullptr),
+  RemoveNode(ExecutionPlan* plan, ExecutionNodeId id,
+             Collection const* collection, ModificationOptions const& options,
+             Variable const* inVariable, Variable const* outVariableOld)
+      : ModificationNode(plan, id, collection, options, outVariableOld,
+                         nullptr),
         _inVariable(inVariable) {
     TRI_ASSERT(_inVariable != nullptr);
   }
@@ -169,18 +170,18 @@ class RemoveNode : public ModificationNode {
   /// @brief return the type of the node
   NodeType getType() const override final { return REMOVE; }
 
-  /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
-                          std::unordered_set<ExecutionNode const*>& seen) const override final;
-
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
       ExecutionEngine& engine,
-      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const override;
+      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&)
+      const override;
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final;
+
+  void replaceVariables(std::unordered_map<VariableId, Variable const*> const&
+                            replacements) override;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
   void getVariablesUsedHere(VarSet& vars) const override final {
@@ -190,6 +191,11 @@ class RemoveNode : public ModificationNode {
   void setInVariable(Variable const* var) { _inVariable = var; }
 
   Variable const* inVariable() const { return _inVariable; }
+
+ protected:
+  /// @brief export to VelocyPack
+  void doToVelocyPack(arangodb::velocypack::Builder&,
+                      unsigned flags) const override final;
 
  private:
   /// @brief input variable
@@ -200,13 +206,14 @@ class RemoveNode : public ModificationNode {
 class InsertNode : public ModificationNode {
   friend class ExecutionNode;
   friend class ExecutionBlock;
-  friend class RedundantCalculationsReplacer;
 
  public:
-  InsertNode(ExecutionPlan* plan, ExecutionNodeId id, Collection const* collection,
-             ModificationOptions const& options, Variable const* inVariable,
-             Variable const* outVariableOld, Variable const* outVariableNew)
-      : ModificationNode(plan, id, collection, options, outVariableOld, outVariableNew),
+  InsertNode(ExecutionPlan* plan, ExecutionNodeId id,
+             Collection const* collection, ModificationOptions const& options,
+             Variable const* inVariable, Variable const* outVariableOld,
+             Variable const* outVariableNew)
+      : ModificationNode(plan, id, collection, options, outVariableOld,
+                         outVariableNew),
         _inVariable(inVariable) {
     TRI_ASSERT(_inVariable != nullptr);
     // _outVariable might be a nullptr
@@ -217,18 +224,18 @@ class InsertNode : public ModificationNode {
   /// @brief return the type of the node
   NodeType getType() const override final { return INSERT; }
 
-  /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
-                          std::unordered_set<ExecutionNode const*>& seen) const override final;
-
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
       ExecutionEngine& engine,
-      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const override;
+      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&)
+      const override;
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final;
+
+  void replaceVariables(std::unordered_map<VariableId, Variable const*> const&
+                            replacements) override;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
   void getVariablesUsedHere(VarSet& vars) const override final {
@@ -239,6 +246,11 @@ class InsertNode : public ModificationNode {
 
   void setInVariable(Variable const* var) { _inVariable = var; }
 
+ protected:
+  /// @brief export to VelocyPack
+  void doToVelocyPack(arangodb::velocypack::Builder&,
+                      unsigned flags) const override final;
+
  private:
   /// @brief input variable
   Variable const* _inVariable;
@@ -247,14 +259,17 @@ class InsertNode : public ModificationNode {
 class UpdateReplaceNode : public ModificationNode {
   friend class ExecutionNode;
   friend class ExecutionBlock;
-  friend class RedundantCalculationsReplacer;
 
  public:
-  UpdateReplaceNode(ExecutionPlan* plan, ExecutionNodeId id, Collection const* collection,
+  UpdateReplaceNode(ExecutionPlan* plan, ExecutionNodeId id,
+                    Collection const* collection,
                     ModificationOptions const& options,
-                    Variable const* inDocVariable, Variable const* inKeyVariable,
-                    Variable const* outVariableOld, Variable const* outVariableNew)
-      : ModificationNode(plan, id, collection, options, outVariableOld, outVariableNew),
+                    Variable const* inDocVariable,
+                    Variable const* inKeyVariable,
+                    Variable const* outVariableOld,
+                    Variable const* outVariableNew)
+      : ModificationNode(plan, id, collection, options, outVariableOld,
+                         outVariableNew),
         _inDocVariable(inDocVariable),
         _inKeyVariable(inKeyVariable) {
     TRI_ASSERT(_inDocVariable != nullptr);
@@ -262,10 +277,6 @@ class UpdateReplaceNode : public ModificationNode {
   }
 
   UpdateReplaceNode(ExecutionPlan*, arangodb::velocypack::Slice const&);
-
-  /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
-                          std::unordered_set<ExecutionNode const*>& seen) const override;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
   void getVariablesUsedHere(VarSet& vars) const override final {
@@ -275,6 +286,9 @@ class UpdateReplaceNode : public ModificationNode {
       vars.emplace(_inKeyVariable);
     }
   }
+
+  void replaceVariables(std::unordered_map<VariableId, Variable const*> const&
+                            replacements) override;
 
   /// @brief set the input key variable
   void setInKeyVariable(Variable const* var) { _inKeyVariable = var; }
@@ -287,6 +301,10 @@ class UpdateReplaceNode : public ModificationNode {
   Variable const* inDocVariable() const { return _inDocVariable; }
 
  protected:
+  /// @brief export to VelocyPack
+  void doToVelocyPack(arangodb::velocypack::Builder&,
+                      unsigned flags) const override;
+
   /// @brief input variable for documents
   Variable const* _inDocVariable;
 
@@ -298,14 +316,13 @@ class UpdateReplaceNode : public ModificationNode {
 class UpdateNode : public UpdateReplaceNode {
   friend class ExecutionNode;
   friend class ExecutionBlock;
-  friend class RedundantCalculationsReplacer;
 
   /// @brief constructor with a vocbase and a collection name
  public:
-  UpdateNode(ExecutionPlan* plan, ExecutionNodeId id, Collection const* collection,
-             ModificationOptions const& options, Variable const* inDocVariable,
-             Variable const* inKeyVariable, Variable const* outVariableOld,
-             Variable const* outVariableNew)
+  UpdateNode(ExecutionPlan* plan, ExecutionNodeId id,
+             Collection const* collection, ModificationOptions const& options,
+             Variable const* inDocVariable, Variable const* inKeyVariable,
+             Variable const* outVariableOld, Variable const* outVariableNew)
       : UpdateReplaceNode(plan, id, collection, options, inDocVariable,
                           inKeyVariable, outVariableOld, outVariableNew) {}
 
@@ -314,14 +331,11 @@ class UpdateNode : public UpdateReplaceNode {
   /// @brief return the type of the node
   NodeType getType() const override final { return UPDATE; }
 
-  /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
-                          std::unordered_set<ExecutionNode const*>& seen) const override final;
-
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
       ExecutionEngine& engine,
-      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const override;
+      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&)
+      const override;
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
@@ -332,14 +346,13 @@ class UpdateNode : public UpdateReplaceNode {
 class ReplaceNode : public UpdateReplaceNode {
   friend class ExecutionNode;
   friend class ExecutionBlock;
-  friend class RedundantCalculationsReplacer;
 
   /// @brief constructor with a vocbase and a collection name
  public:
-  ReplaceNode(ExecutionPlan* plan, ExecutionNodeId id, Collection const* collection,
-              ModificationOptions const& options, Variable const* inDocVariable,
-              Variable const* inKeyVariable, Variable const* outVariableOld,
-              Variable const* outVariableNew)
+  ReplaceNode(ExecutionPlan* plan, ExecutionNodeId id,
+              Collection const* collection, ModificationOptions const& options,
+              Variable const* inDocVariable, Variable const* inKeyVariable,
+              Variable const* outVariableOld, Variable const* outVariableNew)
       : UpdateReplaceNode(plan, id, collection, options, inDocVariable,
                           inKeyVariable, outVariableOld, outVariableNew) {}
 
@@ -348,14 +361,11 @@ class ReplaceNode : public UpdateReplaceNode {
   /// @brief return the type of the node
   NodeType getType() const override final { return REPLACE; }
 
-  /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
-                          std::unordered_set<ExecutionNode const*>& seen) const override final;
-
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
       ExecutionEngine& engine,
-      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const override;
+      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&)
+      const override;
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
@@ -366,15 +376,16 @@ class ReplaceNode : public UpdateReplaceNode {
 class UpsertNode : public ModificationNode {
   friend class ExecutionNode;
   friend class ExecutionBlock;
-  friend class RedundantCalculationsReplacer;
 
   /// @brief constructor with a vocbase and a collection name
  public:
-  UpsertNode(ExecutionPlan* plan, ExecutionNodeId id, Collection const* collection,
-             ModificationOptions const& options, Variable const* inDocVariable,
-             Variable const* insertVariable, Variable const* updateVariable,
-             Variable const* outVariableNew, bool isReplace)
-      : ModificationNode(plan, id, collection, options, nullptr, outVariableNew),
+  UpsertNode(ExecutionPlan* plan, ExecutionNodeId id,
+             Collection const* collection, ModificationOptions const& options,
+             Variable const* inDocVariable, Variable const* insertVariable,
+             Variable const* updateVariable, Variable const* outVariableNew,
+             bool isReplace)
+      : ModificationNode(plan, id, collection, options, nullptr,
+                         outVariableNew),
         _inDocVariable(inDocVariable),
         _insertVariable(insertVariable),
         _updateVariable(updateVariable),
@@ -391,18 +402,18 @@ class UpsertNode : public ModificationNode {
   /// @brief return the type of the node
   NodeType getType() const override final { return UPSERT; }
 
-  /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
-                          std::unordered_set<ExecutionNode const*>& seen) const override final;
-
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
       ExecutionEngine& engine,
-      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const override;
+      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&)
+      const override;
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final;
+
+  void replaceVariables(std::unordered_map<VariableId, Variable const*> const&
+                            replacements) override;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
   void getVariablesUsedHere(VarSet& vars) const override final {
@@ -423,6 +434,11 @@ class UpsertNode : public ModificationNode {
 
   void setIsReplace(bool var) { _isReplace = var; }
 
+ protected:
+  /// @brief export to VelocyPack
+  void doToVelocyPack(arangodb::velocypack::Builder&,
+                      unsigned flags) const override final;
+
  private:
   /// @brief input variable for the search document
   Variable const* _inDocVariable;
@@ -439,5 +455,3 @@ class UpsertNode : public ModificationNode {
 
 }  // namespace aql
 }  // namespace arangodb
-
-#endif

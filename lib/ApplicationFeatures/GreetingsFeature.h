@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,19 +21,24 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_APPLICATION_FEATURES_GREETINGS_FEATURE_H
-#define ARANGODB_APPLICATION_FEATURES_GREETINGS_FEATURE_H 1
+#pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
-namespace application_features {
-class ApplicationServer;
-}
+
+class LoggerFeature;
 
 class GreetingsFeature final : public application_features::ApplicationFeature {
  public:
-  explicit GreetingsFeature(application_features::ApplicationServer& server);
+  static constexpr std::string_view name() noexcept { return "Greetings"; }
+
+  template<typename Server>
+  explicit GreetingsFeature(Server& server)
+      : ApplicationFeature{server, *this} {
+    setOptional(false);
+    startsAfter<LoggerFeature, Server>();
+  }
 
  public:
   void prepare() override final;
@@ -41,5 +46,3 @@ class GreetingsFeature final : public application_features::ApplicationFeature {
 };
 
 }  // namespace arangodb
-
-#endif

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_V8_JAVASCRIPT_SECURITY_CONTEXT_H
-#define ARANGODB_V8_JAVASCRIPT_SECURITY_CONTEXT_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -40,8 +39,7 @@ class JavaScriptSecurityContext {
     RestAdminScriptAction
   };
 
-  explicit JavaScriptSecurityContext(Type type)
-      : _type(type) {}
+  explicit JavaScriptSecurityContext(Type type) : _type(type) {}
 
   ~JavaScriptSecurityContext() = default;
 
@@ -53,12 +51,14 @@ class JavaScriptSecurityContext {
 
   /// @brief whether or not the context is an internal context
   bool isInternal() const { return _type == Type::Internal; }
-  
+
   /// @brief whether or not the context is an admin script
   bool isAdminScript() const { return _type == Type::AdminScript; }
-  
+
   /// @brief whether or not the context is an admin script
-  bool isRestAdminScript() const { return _type == Type::RestAdminScriptAction; }
+  bool isRestAdminScript() const {
+    return _type == Type::RestAdminScriptAction;
+  }
 
   /// @brief whether or not db._useDatabase(...) is allowed
   bool canUseDatabase() const { return _canUseDatabase; }
@@ -97,11 +97,13 @@ class JavaScriptSecurityContext {
   static JavaScriptSecurityContext createTaskContext(bool allowUseDatabase);
 
   /// @brief create a security context for REST actions
-  static JavaScriptSecurityContext createRestActionContext(bool allowUseDatabase);
-  
+  static JavaScriptSecurityContext createRestActionContext(
+      bool allowUseDatabase);
+
   /// @brief create a security context for admin script operations running
   /// via POST /_admin/execute
-  static JavaScriptSecurityContext createRestAdminScriptActionContext(bool allowUseDatabase);
+  static JavaScriptSecurityContext createRestAdminScriptActionContext(
+      bool allowUseDatabase);
 
  private:
   Type _type;
@@ -109,5 +111,3 @@ class JavaScriptSecurityContext {
 };
 
 }  // namespace arangodb
-
-#endif

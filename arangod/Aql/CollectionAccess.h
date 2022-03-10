@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_COLLECTIONACCESS_H
-#define ARANGOD_AQL_COLLECTIONACCESS_H
+#pragma once
 
 #include <memory>
 #include <optional>
@@ -74,10 +73,10 @@ class CollectionAccess {
 
   /// @brief Get the CollectionAccess of which *this* collection access is a
   /// satellite of, if any.
-  /// This will make a recursive lookup, so if A isSatelliteOf B, and B isSatelliteOf C,
-  /// A.getSatelliteOf() will return C.
-  auto getSatelliteOf(std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById) const
-      -> ExecutionNode*;
+  /// This will make a recursive lookup, so if A isSatelliteOf B, and B
+  /// isSatelliteOf C, A.getSatelliteOf() will return C.
+  auto getSatelliteOf(std::unordered_map<ExecutionNodeId, ExecutionNode*> const&
+                          nodesById) const -> ExecutionNode*;
 
   auto getRawSatelliteOf() const -> std::optional<ExecutionNodeId>;
 
@@ -94,5 +93,3 @@ class CollectionAccess {
 };
 
 }  // namespace arangodb::aql
-
-#endif  // ARANGOD_AQL_COLLECTIONACCESS_H

@@ -74,7 +74,6 @@ var createBaseGraph = function() {
     isSmartChild: false,
     isSystem: false,
     keyOptions: { allowUserKeys: true, type: "traditional", lastValue: 0 },
-    minRevision: 1661521530573553700,
     objectId: "167",
     statusString: "loaded",
     usesRevisionsAsDocumentIds: true,

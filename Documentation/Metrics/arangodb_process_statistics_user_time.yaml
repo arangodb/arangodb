@@ -1,7 +1,7 @@
 name: arangodb_process_statistics_user_time
 introducedIn: "3.6.1"
 help: |
-  Process user time
+  Process user time.
 unit: s
 type: gauge
 category: Statistics

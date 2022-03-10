@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_ERROR_H
-#define ARANGODB_BASICS_ERROR_H 1
+#pragma once
 
 #include <string_view>
 
@@ -39,5 +38,3 @@ ErrorCode TRI_set_errno(ErrorCode);
 
 /// @brief return an error message for an error code
 std::string_view TRI_errno_string(ErrorCode code) noexcept;
-
-#endif

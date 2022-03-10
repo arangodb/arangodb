@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GRAPH_TRAVERSER_CACHE_FACTORY_H
-#define ARANGOD_GRAPH_TRAVERSER_CACHE_FACTORY_H 1
+#pragma once
 
 #include "Aql/types.h"
 #include "Basics/Common.h"
@@ -39,11 +38,11 @@ class TraverserCache;
 struct BaseOptions;
 
 namespace CacheFactory {
-TraverserCache* CreateCache(arangodb::aql::QueryContext& query, bool activateDocumentCache,
-                            std::unordered_map<ServerID, aql::EngineId> const* engines,
-                            BaseOptions* opts);
+TraverserCache* CreateCache(
+    arangodb::aql::QueryContext& query, bool activateDocumentCache,
+    std::unordered_map<ServerID, aql::EngineId> const* engines,
+    BaseOptions* opts);
 
 }  // namespace CacheFactory
 }  // namespace graph
 }  // namespace arangodb
-#endif

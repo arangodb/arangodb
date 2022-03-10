@@ -5,6 +5,7 @@
 # ------------------------------------------------------------------------------
 
 include(ExternalProject)
+include(UpdateModule)
 
 remove_definitions("-DUSE_ENTERPRISE=1")
 
@@ -26,6 +27,8 @@ endif ()
 
 set(SKIP_INSTALL_ALL ON)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/zlib/zlib-1.2.11)
+add_library(zlib_interface INTERFACE)
+target_include_directories(zlib_interface SYSTEM INTERFACE ${ZLIB_INCLUDE_DIR})
 
 ################################################################################
 ## SNAPPY
@@ -34,23 +37,24 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/zlib/zlib-1.2.11)
 function (add_snappy)
     # use the function to open a scope so CMAKE_CXX_FLAGS is only changed for
     # snappy
-    if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-suggest-override -Wno-sign-compare")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-suggest-override -Wno-sign-compare")
-    endif()
-    set(SNAPPY_VERSION "1.1.8")
+    add_c_flags_if_supported(CMAKE_C_FLAGS -Wno-suggest-override -Wno-sign-compare)
+    add_cxx_flags_if_supported(CMAKE_CXX_FLAGS -Wno-suggest-override -Wno-sign-compare)
+    set(SNAPPY_VERSION "1.1.9")
     set(SNAPPY_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/snappy/snappy-${SNAPPY_VERSION}")
     set(SNAPPY_SOURCE_DIR "${SNAPPY_SOURCE_DIR}" PARENT_SCOPE)
     set(SNAPPY_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/snappy/snappy-${SNAPPY_VERSION}" PARENT_SCOPE)
-    set(SNAPPY_LIB "snappy" PARENT_SCOPE)
-    set(SNAPPY_BUILD_TESTS OFF CACHE BOOL "disable Snappy tests")
+    set(SNAPPY_LIB "snappy")
+    set(SNAPPY_FUZZING_BUILD OFF CACHE BOOL "build Snappy for fuzzing")
+    set(SNAPPY_BUILD_TESTS OFF CACHE BOOL "disable Snappy tests" FORCE)
+    set(SNAPPY_BUILD_BENCHMARKS OFF CACHE BOOL "disable Snappy benchmarks" FORCE)
     set(SNAPPY_INSTALL OFF CACHE BOOL "disable Snappy installation")
+    set(SNAPPY_REQUIRE_AVX ON CACHE BOOL "target processors with AVX support" FORCE)
+    set(SNAPPY_REQUIRE_AVX2 OFF CACHE BOOL "target processors with AVX2 support" FORCE)
     add_subdirectory(${SNAPPY_SOURCE_DIR} EXCLUDE_FROM_ALL)
 endfunction ()
 add_snappy()
 set(SNAPPY_SOURCE_DIR "${SNAPPY_SOURCE_DIR}" PARENT_SCOPE)
 set(SNAPPY_BUILD_DIR "${SNAPPY_BUILD_DIR}" PARENT_SCOPE)
-set(SNAPPY_LIB "${SNAPPY_LIB}" PARENT_SCOPE)
 
 ################################################################################
 ## LIBUNWIND
@@ -91,6 +95,9 @@ set(V8_VERSION
 set(V8_SUB_DIR "v${V8_VERSION}")
 set(V8_VERSION ${V8_VERSION} PARENT_SCOPE)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/V8)
+add_library(v8_interface INTERFACE)
+target_include_directories(v8_interface SYSTEM INTERFACE ${V8_INCLUDE_DIR})
+
 set(ICU_DT "${ICU_DT}" PARENT_SCOPE)
 set(ICU_DT_DEST "${ICU_DT_DEST}" PARENT_SCOPE)
 set(ICU_LIBRARY_DIR "${ICU_LIBRARY_DIR}" PARENT_SCOPE)
@@ -104,13 +111,6 @@ add_subdirectory(s2geometry)
 set(ARANGO_S2GEOMETRY_VERSION "${ARANGO_S2GEOMETRY_VERSION}" PARENT_SCOPE)
 
 ################################################################################
-## Googletest
-################################################################################
-
-#add_subdirectory(googletest)
-#set(ARANGO_GOOGLETEST_VERSION "${ARANGO_GOOGLETEST_VERSION}" PARENT_SCOPE)
-
-################################################################################
 ## BOOST
 ################################################################################
 
@@ -121,8 +121,12 @@ set(BOOST_VERSION ${BOOST_VERSION} PARENT_SCOPE)
 ## Velocypack
 ################################################################################
 
+UpdateModule(${GIT_EXECUTABLE} "velocypack" ${CMAKE_CURRENT_SOURCE_DIR} "README.md")
+
+set(HashType "xxhash" CACHE STRING "Hash type (fasthash, xxhash)" FORCE)
 set(BuildVelocyPackExamples OFF CACHE BOOL "Build VelocyPack Examples" FORCE)
 set(BuildTools OFF CACHE BOOL "Build VelocyPack Tools" FORCE)
+set(UseIPO ${IPO_ENABLED} CACHE STRING "Use interprocedural optimization: ON, OFF or AUTO")
 
 add_subdirectory(velocypack EXCLUDE_FROM_ALL)
 
@@ -157,10 +161,25 @@ set(LZ4_INCLUDE_DIR "${LZ4_ROOT}/lib" PARENT_SCOPE)
 set(SNOWBALL_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/snowball")
 set(UNWIND_ROOT "invalid")
 set(BFD_ROOT "invalid")
-find_package(IResearch REQUIRED) # set IRESEARCH_BUILD_DIR
+set(IRESEARCH_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/iresearch")
+set(IRESEARCH_BUILD_DIR "${CMAKE_BINARY_DIR}/3rdParty/iresearch")
+
+unset(IRESEARCH_INCLUDE)
+list(APPEND IRESEARCH_INCLUDE
+  "${IRESEARCH_ROOT}/core"
+  "${IRESEARCH_ROOT}/external"
+  "${IRESEARCH_BUILD_DIR}/core"
+)
+
+UpdateModule(${GIT_EXECUTABLE} "iresearch" ${CMAKE_CURRENT_SOURCE_DIR} "README.md")
+
+mark_as_advanced(
+  IRESEARCH_BUILD_DIR
+  IRESEARCH_INCLUDE
+  IRESEARCH_ROOT
+)
 
 set(CMAKE_MACOSX_RPATH ON) # suppress cmake warning (use same value as cmake default)
-set(CMAKE_MODULE_PATH_ORIGINAL ${CMAKE_MODULE_PATH}) # remember CMAKE_MODULE_PATH
 list(APPEND CMAKE_MODULE_PATH
   "${CMAKE_CURRENT_SOURCE_DIR}/cmake" # cmake overrides (must be first)
   "${IRESEARCH_ROOT}/cmake" # to find iResearch dependencies
@@ -174,7 +193,6 @@ foreach(ELEMENT ${IRESEARCH_PREBUILT})
 endforeach()
 
 add_subdirectory("${IRESEARCH_ROOT}" "${IRESEARCH_BUILD_DIR}" EXCLUDE_FROM_ALL) # do not build unused targets
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH_ORIGINAL}) # restore CMAKE_MODULE_PATH
 unset(BUILD_SHARED_LIBS) # otherwise ZLib (below) does not build on win32
 unset(BUILD_SHARED_LIBS CACHE) # otherwise ZLib (below) does not build on win32
 
@@ -183,8 +201,26 @@ unset(BUILD_SHARED_LIBS CACHE) # otherwise ZLib (below) does not build on win32
 ################################################################################
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/rocksdb)
-include_directories(${ROCKSDB_INCLUDE_DIR})
 set(ARANGO_ROCKSDB_VERSION "${ARANGO_ROCKSDB_VERSION}" PARENT_SCOPE)
+add_library(rocksdb_interface INTERFACE)
+target_include_directories(rocksdb_interface SYSTEM INTERFACE ${PROJECT_SOURCE_DIR}/3rdParty/rocksdb/${ARANGO_ROCKSDB_VERSION}/include)
+target_include_directories(rocksdb_interface SYSTEM INTERFACE ${PROJECT_SOURCE_DIR}/3rdParty/rocksdb/${ARANGO_ROCKSDB_VERSION})
+
+################################################################################
+# llhttp
+################################################################################
+
+SET(LLHTTP_SOURCES
+  ${CMAKE_CURRENT_SOURCE_DIR}/llhttp/src/api.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/llhttp/src/http.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/llhttp/src/llhttp.c
+)
+
+add_library(llhttp STATIC
+  ${LLHTTP_SOURCES}
+)
+
+target_include_directories(llhttp PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/llhttp/include")
 
 ################################################################################
 ## NGHTTP2
@@ -196,8 +232,31 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/nghttp2/)
 ## IMMER
 ################################################################################
 
-set(IMMER_VERSION "0.6.2")
+set(IMMER_VERSION "0.7.0")
+set(immer_BUILD_EXAMPLES    OFF CACHE BOOL "don't build examples")
+set(immer_BUILD_EXTRAS    OFF CACHE BOOL "don't build extras")
+set(immer_BUILD_TESTS OFF CACHE BOOL "don't build tests")
+set(immer_BUILD_DOCS OFF CACHE BOOL "don't docs")
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/immer/v${IMMER_VERSION} EXCLUDE_FROM_ALL)
+
+################################################################################
+## DATE
+################################################################################
+
+add_library(date_interface INTERFACE)
+target_include_directories(date_interface SYSTEM INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/date/include)
+
+################################################################################
+## Linenoise
+################################################################################
+
+add_library(linenoise-ng STATIC
+  ${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/src/ConvertUTF.cpp
+  ${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/src/linenoise.cpp
+  ${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/src/wcwidth.cpp)
+
+target_include_directories(linenoise-ng SYSTEM PUBLIC
+  ${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/include)
 
 ################################################################################
 ## LINK_DIRECTORIES
@@ -249,10 +308,12 @@ add_library(fuerte STATIC
     ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/vst.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/VstConnection.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/connection.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/http_parser/http_parser.c
   )
 
-target_link_libraries(fuerte nghttp2)
+target_link_libraries(fuerte PUBLIC nghttp2)
+target_link_libraries(fuerte PUBLIC llhttp)
+target_link_libraries(fuerte PUBLIC boost_system)
+target_link_libraries(fuerte PUBLIC velocypack)
 
 include(CheckTypeSize)
 check_type_size("ssize_t" SIZEOF_SSIZE_T)
@@ -262,10 +323,8 @@ if(SIZEOF_SSIZE_T STREQUAL "")
   target_compile_definitions(fuerte PRIVATE ssize_t=int)
 endif()
 
-target_include_directories(fuerte SYSTEM PRIVATE
-  "${Boost_INCLUDE_DIRS}/"
-  "${CMAKE_CURRENT_SOURCE_DIR}/velocypack/include"
-  "${CMAKE_CURRENT_SOURCE_DIR}/fuerte/include")
+target_include_directories(fuerte SYSTEM PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/fuerte/include")
+target_include_directories(fuerte SYSTEM PUBLIC "${OPENSSL_INCLUDE_DIR}")
 
 set(V8_INTERNAL_INCLUDE_DIR ${V8_INTERNAL_INCLUDE_DIR} PARENT_SCOPE)
 

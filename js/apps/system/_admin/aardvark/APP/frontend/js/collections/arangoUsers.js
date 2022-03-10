@@ -96,10 +96,6 @@ window.ArangoUsers = Backbone.Collection.extend({
     window.location.reload();
   },
 
-  setUserSettings: function (identifier, content) {
-    this.activeUserSettings.identifier = content;
-  },
-
   loadUserSettings: function (callback) {
     var self = this;
 
@@ -113,7 +109,6 @@ window.ArangoUsers = Backbone.Collection.extend({
     $.ajax({
       type: 'GET',
       cache: false,
-      // url: frontendConfig.basePath + "/_api/user/" + encodeURIComponent(self.activeUser),
       url: url,
       contentType: 'application/json',
       processData: false,

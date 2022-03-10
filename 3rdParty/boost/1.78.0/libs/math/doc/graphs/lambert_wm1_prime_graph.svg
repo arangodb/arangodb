@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg width="400" height ="300" version="1.1"
+xmlns:svg ="http://www.w3.org/2000/svg"
+xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+xmlns:cc="http://web.resource.org/cc/"
+xmlns:dc="http://purl.org/dc/elements/1.1/"
+xmlns ="http://www.w3.org/2000/svg"
+>
+<!-- SVG plot written using Boost.Plot program (Creator Jacob Voytko) --> 
+<!-- Use, modification and distribution of Boost.Plot subject to the --> 
+<!-- Boost Software License, Version 1.0.--> 
+<!-- (See accompanying file LICENSE_1_0.txt --> 
+<!-- or copy at http://www.boost.org/LICENSE_1_0.txt) --> 
+
+<!-- SVG Plot Copyright Paul A. Bristow 2018 --> 
+<meta name="copyright" content="Paul A. Bristow" />
+<meta name="date" content="2018" />
+<clipPath id="plot_window"><rect x="85.2" y="54" width="287.8" height="204"/></clipPath>
+<g id="imageBackground" stroke="rgb(255,255,0)" fill="rgb(255,255,255)" stroke-width="2"><rect x="0" y="0" width="400" height="300"/></g>
+<g id="plotBackground" stroke="rgb(119,136,153)" fill="rgb(255,255,255)" stroke-width="2"><rect x="84.2" y="53" width="289.8" height="206"/></g>
+<g id="yMinorGrid" stroke="rgb(200,220,255)" stroke-width="0.5"></g>
+<g id="yMajorGrid" stroke="rgb(200,220,255)" stroke-width="1"><path d="M86.2,53 L372,53 M86.2,121.7 L372,121.7 M86.2,190.3 L372,190.3 M86.2,259 L372,259 " fill="none"/></g>
+<g id="xMinorGrid" stroke="rgb(200,220,255)" stroke-width="0.5"></g>
+<g id="xMajorGrid" stroke="rgb(200,220,255)" stroke-width="1"><path d="M366.9,53 L366.9,259 M366.9,53 L366.9,259 M296.2,53 L296.2,259 M225.6,53 L225.6,259 M154.9,53 L154.9,259 M84.2,53 L84.2,259 " fill="none"/></g>
+<g id="yAxis" stroke="rgb(0,0,0)" stroke-width="1"><line x1="366.9" y1="53" x2="366.9" y2="259"/><line x1="84.2" y1="53" x2="84.2" y2="259"/></g>
+<g id="xAxis" stroke="rgb(0,0,0)" stroke-width="1"><line x1="84.2" y1="53" x2="374" y2="53"/></g>
+<g id="yMinorTicks" stroke="rgb(0,0,0)" stroke-width="1"><path d="M82.2,66.73 L84.2,66.73 M82.2,80.47 L84.2,80.47 M82.2,94.2 L84.2,94.2 M82.2,107.9 L84.2,107.9 M82.2,121.7 L84.2,121.7 M82.2,135.4 L84.2,135.4 M82.2,149.1 L84.2,149.1 M82.2,162.9 L84.2,162.9 M82.2,176.6 L84.2,176.6 M82.2,190.3 L84.2,190.3 M82.2,204.1 L84.2,204.1 M82.2,217.8 L84.2,217.8 M82.2,231.5 L84.2,231.5 M82.2,245.3 L84.2,245.3 M82.2,259 L84.2,259 " fill="none"/></g>
+<g id="xMinorTicks" stroke="rgb(0,0,0)" stroke-width="1"><path d="M352.8,53 L352.8,55 M338.7,53 L338.7,55 M324.5,53 L324.5,55 M310.4,53 L310.4,55 M282.1,53 L282.1,55 M268,53 L268,55 M253.8,53 L253.8,55 M239.7,53 L239.7,55 M211.4,53 L211.4,55 M197.3,53 L197.3,55 M183.2,53 L183.2,55 M169,53 L169,55 M140.7,53 L140.7,55 M126.6,53 L126.6,55 M112.5,53 L112.5,55 M98.34,53 L98.34,55 " fill="none"/></g>
+<g id="yMajorTicks" stroke="rgb(0,0,0)" stroke-width="2"><path d="M79.2,53 L84.2,53 M79.2,121.7 L84.2,121.7 M79.2,190.3 L84.2,190.3 M79.2,259 L84.2,259 " fill="none"/></g>
+<g id="xMajorTicks" stroke="rgb(0,0,0)" stroke-width="2"><path d="M366.9,53 L366.9,58 M366.9,53 L366.9,58 M296.2,53 L296.2,58 M225.6,53 L225.6,58 M154.9,53 L154.9,58 M84.2,53 L84.2,58 " fill="none"/></g>
+<g id="xTicksValues">
+<text x="366.9" y="73.6" text-anchor="middle" font-size="12" font-family="Lucida Sans Unicode">0</text>
+<text x="366.9" y="73.6" text-anchor="middle" font-size="12" font-family="Lucida Sans Unicode">0</text>
+<text x="296.2" y="73.6" text-anchor="middle" font-size="12" font-family="Lucida Sans Unicode">-0.1</text>
+<text x="225.6" y="73.6" text-anchor="middle" font-size="12" font-family="Lucida Sans Unicode">-0.2</text>
+<text x="154.9" y="73.6" text-anchor="middle" font-size="12" font-family="Lucida Sans Unicode">-0.3</text>
+<text x="84.2" y="73.6" text-anchor="middle" font-size="12" font-family="Lucida Sans Unicode">-0.4</text></g>
+<g id="yTicksValues">
+<text x="73.2" y="55.4" text-anchor="end" font-size="12" font-family="Lucida Sans Unicode">-5</text>
+<text x="73.2" y="124.1" text-anchor="end" font-size="12" font-family="Lucida Sans Unicode">-10</text>
+<text x="73.2" y="192.7" text-anchor="end" font-size="12" font-family="Lucida Sans Unicode">-15</text>
+<text x="73.2" y="261.4" text-anchor="end" font-size="12" font-family="Lucida Sans Unicode">-20</text></g>
+<g id="yLabel">
+<text x="42.9" y="156" text-anchor="middle" transform = "rotate(-90 42.9 156 )" font-size="14" font-family="Lucida Sans Unicode">W-1'</text></g>
+<g id="xLabel">
+<text x="229.1" y="282.8" text-anchor="middle" font-size="14" font-family="Lucida Sans Unicode">z</text></g>
+<g id="plotLines" stroke-width="2"><g clip-path="url(#plot_window)" stroke="rgb(0,0,255)" stroke-width="1"><path d="M110.5,237.1 L110.5,237.1 L111.2,218.1 L111.9,203.4 L112.6,191.5 L113.3,181.7 L114,173.5 L114.7,166.4 L115.4,160.2 L116.1,154.8 L116.9,150 L117.6,145.7 L118.3,141.9 L119,138.3 L119.7,135.2 L120.4,132.2 L121.1,129.5 L121.8,127.1 L122.5,124.8 L123.2,122.7 L123.9,120.7 L124.6,118.8 L125.3,117.1 L126,115.5 L126.8,113.9 L127.5,112.5 L128.2,111.2 L128.9,109.9 L129.6,108.7 L130.3,107.5 L131,106.5 L131.7,105.4 L132.4,104.5 L133.1,103.5 L133.8,102.7 L134.5,101.8 L135.2,101 L135.9,100.3 L136.6,99.54 L137.4,98.85 L138.1,98.19 L138.8,97.56 L139.5,96.95 L140.2,96.38 L140.9,95.82 L141.6,95.3 L142.3,94.79 L143,94.31 L143.7,93.85 L144.4,93.4 L145.1,92.98 L145.8,92.57 L146.5,92.18 L147.2,91.81 L148,91.46 L148.7,91.12 L149.4,90.79 L150.1,90.48 L150.8,90.18 L151.5,89.9 L152.2,89.63 L152.9,89.37 L153.6,89.12 L154.3,88.88 L155,88.66 L155.7,88.44 L156.4,88.24 L157.1,88.04 L157.9,87.86 L158.6,87.68 L159.3,87.52 L160,87.36 L160.7,87.22 L161.4,87.08 L162.1,86.95 L162.8,86.82 L163.5,86.71 L164.2,86.6 L164.9,86.5 L165.6,86.41 L166.3,86.32 L167,86.25 L167.7,86.17 L168.5,86.11 L169.2,86.05 L169.9,86 L170.6,85.96 L171.3,85.92 L172,85.88 L172.7,85.86 L173.4,85.84 L174.1,85.82 L174.8,85.81 L175.5,85.81 L176.2,85.81 L176.9,85.82 L177.6,85.83 L178.3,85.85 L179.1,85.87 L179.8,85.9 L180.5,85.94 L181.2,85.98 L181.9,86.02 L182.6,86.07 L183.3,86.12 L184,86.18 L184.7,86.24 L185.4,86.31 L186.1,86.38 L186.8,86.46 L187.5,86.54 L188.2,86.63 L189,86.72 L189.7,86.82 L190.4,86.92 L191.1,87.02 L191.8,87.13 L192.5,87.25 L193.2,87.37 L193.9,87.49 L194.6,87.62 L195.3,87.75 L196,87.88 L196.7,88.02 L197.4,88.17 L198.1,88.32 L198.8,88.47 L199.6,88.63 L200.3,88.79 L201,88.96 L201.7,89.13 L202.4,89.3 L203.1,89.48 L203.8,89.66 L204.5,89.85 L205.2,90.04 L205.9,90.24 L206.6,90.44 L207.3,90.65 L208,90.86 L208.7,91.07 L209.5,91.29 L210.2,91.51 L210.9,91.74 L211.6,91.97 L212.3,92.21 L213,92.45 L213.7,92.69 L214.4,92.94 L215.1,93.2 L215.8,93.45 L216.5,93.72 L217.2,93.99 L217.9,94.26 L218.6,94.54 L219.3,94.82 L220.1,95.11 L220.8,95.4 L221.5,95.69 L222.2,96 L222.9,96.3 L223.6,96.61 L224.3,96.93 L225,97.25 L225.7,97.58 L226.4,97.91 L227.1,98.25 L227.8,98.59 L228.5,98.94 L229.2,99.29 L229.9,99.65 L230.7,100 L231.4,100.4 L232.1,100.8 L232.8,101.1 L233.5,101.5 L234.2,101.9 L234.9,102.3 L235.6,102.7 L236.3,103.1 L237,103.5 L237.7,104 L238.4,104.4 L239.1,104.8 L239.8,105.3 L240.6,105.7 L241.3,106.2 L242,106.6 L242.7,107.1 L243.4,107.6 L244.1,108 L244.8,108.5 L245.5,109 L246.2,109.5 L246.9,110 L247.6,110.6 L248.3,111.1 L249,111.6 L249.7,112.2 L250.4,112.7 L251.2,113.3 L251.9,113.8 L252.6,114.4 L253.3,115 L254,115.6 L254.7,116.2 L255.4,116.8 L256.1,117.4 L256.8,118 L257.5,118.6 L258.2,119.3 L258.9,119.9 L259.6,120.6 L260.3,121.3 L261,122 L261.8,122.6 L262.5,123.3 L263.2,124.1 L263.9,124.8 L264.6,125.5 L265.3,126.3 L266,127 L266.7,127.8 L267.4,128.6 L268.1,129.4 L268.8,130.2 L269.5,131 L270.2,131.8 L270.9,132.7 L271.7,133.6 L272.4,134.4 L273.1,135.3 L273.8,136.2 L274.5,137.1 L275.2,138.1 L275.9,139 L276.6,140 L277.3,141 L278,142 L278.7,143 L279.4,144 L280.1,145.1 L280.8,146.1 L281.5,147.2 L282.3,148.3 L283,149.4 L283.7,150.6 L284.4,151.8 L285.1,152.9 L285.8,154.2 L286.5,155.4 L287.2,156.6 L287.9,157.9 L288.6,159.2 L289.3,160.5 L290,161.9 L290.7,163.3 L291.4,164.7 L292.1,166.1 L292.9,167.5 L293.6,169 L294.3,170.5 L295,172.1 L295.7,173.7 L296.4,175.3 L297.1,176.9 L297.8,178.6 L298.5,180.3 L299.2,182.1 L299.9,183.8 L300.6,185.7 L301.3,187.5 L302,189.4 L302.8,191.4 L303.5,193.4 L304.2,195.4 L304.9,197.5 L305.6,199.6 L306.3,201.8 L307,204.1 L307.7,206.3 L308.4,208.7 L309.1,211.1 L309.8,213.5 L310.5,216.1 L311.2,218.7 L311.9,221.3 L312.6,224 L313.4,226.8 L314.1,229.7 L314.8,232.7 L315.5,235.7 L316.2,238.8 L316.9,242 L317.6,245.3 L318.3,248.7 L319,252.2 L319.7,255.8 L320.4,259.5 " fill="none"/></g>
+</g>
+<g id="plotPoints" clip-path="url(#plot_window)"></g>
+<g id="title">
+<text x="200" y="36" text-anchor="middle" font-size="18" font-family="Lucida Sans Unicode">Lambert W-1 prime function.</text></g>
+<g id="plotXValues"></g>
+<g id="plotYValues"></g>
+</svg>

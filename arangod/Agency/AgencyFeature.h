@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,21 +21,25 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AGENCY_AGENCY_FEATURE_H
-#define ARANGOD_AGENCY_AGENCY_FEATURE_H 1
+#pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
+#include "Agency/Agent.h"
+#include "RestServer/arangod.h"
 
 namespace arangodb {
+namespace application_features {
+class FoxxFeaturePhase;
+}
 
 namespace consensus {
 class Agent;
 }
 
-class AgencyFeature : public application_features::ApplicationFeature {
+class AgencyFeature : public ArangodFeature {
  public:
-  explicit AgencyFeature(application_features::ApplicationServer& server);
-  ~AgencyFeature();
+  static constexpr std::string_view name() { return "Agency"; }
+
+  explicit AgencyFeature(Server& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -73,5 +77,3 @@ class AgencyFeature : public application_features::ApplicationFeature {
 };
 
 }  // namespace arangodb
-
-#endif

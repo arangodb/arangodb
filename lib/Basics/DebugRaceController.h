@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef BASICS_DEBUG_RACE_CONTROLLER_H
-#define BASICS_DEBUG_RACE_CONTROLLER_H 1
+#pragma once
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 
@@ -59,8 +58,9 @@ class DebugRaceController {
   // Caller is required to COPY the data to store here.
   // Otherwise a concurrent thread might try to read it,
   // after the caller has freed the memory.
-  void waitForOthers(size_t numberOfThreadsToWaitFor, std::any myData,
-                     arangodb::application_features::ApplicationServer const& server);
+  void waitForOthers(
+      size_t numberOfThreadsToWaitFor, std::any myData,
+      arangodb::application_features::ApplicationServer const& server);
 
  private:
   bool _didTrigger{false};
@@ -72,7 +72,5 @@ class DebugRaceController {
 }  // namespace arangodb
 // This are used to synchronize parallel locking of two shards
 // in our tests. Do NOT include in production.
-
-#endif
 
 #endif

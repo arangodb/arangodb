@@ -317,24 +317,13 @@ ArangoCollection.prototype.name = function () {
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.status = function () {
-  if (this._status === null ||
-      this._status === ArangoCollection.STATUS_UNLOADING ||
-      this._status === ArangoCollection.STATUS_UNLOADED) {
+  if (this._status === null) {
     this._status = null;
     this.refresh();
   }
 
   // save original status
-  var result = this._status;
-
-  if (this._status === ArangoCollection.STATUS_UNLOADING ||
-      this._status === ArangoCollection.STATUS_UNLOADED) {
-    // if collection is currently unloading, we must not cache this info
-    this._status = null;
-  }
-
-  // return the correct result
-  return result;
+  return this._status;
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -372,6 +361,7 @@ ArangoCollection.prototype.properties = function (properties) {
     'cacheEnabled': true,
     'syncByRevision': true,
     'schema' : true,
+    'isDisjoint': true,
   };
   var a;
 
@@ -1524,6 +1514,34 @@ ArangoCollection.prototype.loadIndexesIntoMemory = function () {
   var requestResult = this._database._connection.PUT(this._baseurl('loadIndexesIntoMemory'), null);
   this._status = null;
 
+  arangosh.checkRequestResult(requestResult);
+  return { result: true };
+};
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief MerkleTreeVerification
+//////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype._revisionTreeVerification = function() {
+  var batch = this._database._connection.POST(this._prefixurl('/_api/replication/batch'), {ttl : 3600});
+  if (!batch.hasOwnProperty("id")) {
+    throw "Could not create batch!";
+  }
+  var requestResult = this._database._connection.GET(this._prefixurl(
+    `/_api/replication/revisions/tree?collection=${encodeURIComponent(this._name)}&verification=true&batchId=${batch.id}`));
+  this._database._connection.DELETE(this._prefixurl(
+    `/_api/replication/batch/${batch.id}`));
+  return requestResult;
+};
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief MerkleTreeRebuilding
+//////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype._revisionTreeRebuild = function() {
+  // For some reason we need a batch ID here, which is not used!
+  let requestResult = this._database._connection.POST(this._prefixurl(
+    `/_api/replication/revisions/tree?collection=${encodeURIComponent(this._name)}&batchId=42`), {});
   arangosh.checkRequestResult(requestResult);
   return { result: true };
 };

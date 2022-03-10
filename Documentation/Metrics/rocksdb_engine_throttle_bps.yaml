@@ -2,7 +2,7 @@ name: rocksdb_engine_throttle_bps
 renamedFrom: rocksdbengine_throttle_bps
 introducedIn: "3.8.0"
 help: |
-  Current rate of the RocksDB throttle in bytes per second
+  Current rate of the RocksDB throttle in bytes per second.
 unit: bytes per second
 type: gauge
 category: RocksDB
@@ -18,5 +18,5 @@ description: |
   fall behind too much, since this would in the end lead to nasty
   write stops in RocksDB and incur considerable delays. If 0 is
   shown, no throttling happens, otherwise, you see the current
-  write rate limit in bytes per second. See 
-  [the manual](https://www.arangodb.com/docs/stable/programs-arangod-options.html#rocksdb) for details.
+  write rate limit in bytes per second. Also see the `--rocksdb.*`
+  startup options.

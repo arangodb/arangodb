@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Daniel H. Larkin
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_LOCAL_TASK_QUEUE_H
-#define ARANGODB_BASICS_LOCAL_TASK_QUEUE_H 1
+#pragma once
 
 #include <atomic>
 #include <condition_variable>
@@ -51,7 +50,7 @@ class LocalTask : public std::enable_shared_from_this<LocalTask> {
   virtual ~LocalTask();
 
   virtual void run() = 0;
-  bool dispatch();
+  void dispatch();
 
  protected:
   /// @brief the underlying queue
@@ -73,13 +72,14 @@ class LocalTaskQueue {
   friend class LocalTask;
 
  public:
-  typedef std::function<bool(std::function<void()>)> PostFn;
+  typedef std::function<void(std::function<void()>)> PostFn;
 
   LocalTaskQueue() = delete;
   LocalTaskQueue(LocalTaskQueue const&) = delete;
   LocalTaskQueue& operator=(LocalTaskQueue const&) = delete;
 
-  explicit LocalTaskQueue(application_features::ApplicationServer& server, PostFn poster);
+  explicit LocalTaskQueue(application_features::ApplicationServer& server,
+                          PostFn poster);
 
   ~LocalTaskQueue();
 
@@ -97,7 +97,7 @@ class LocalTaskQueue {
   /// by task dispatch.
   //////////////////////////////////////////////////////////////////////////////
 
-  bool post(std::function<bool()>&& fn);
+  void post(std::function<bool()>&& fn);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief dispatch all tasks, including those that are queued while running,
@@ -182,5 +182,3 @@ class LocalTaskQueue {
 
 }  // namespace basics
 }  // namespace arangodb
-
-#endif

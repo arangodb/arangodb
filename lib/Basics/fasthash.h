@@ -23,8 +23,7 @@
    SOFTWARE.
 */
 
-#ifndef LIB_BASICS_FASTHASH_H
-#define LIB_BASICS_FASTHASH_H 1
+#pragma once
 
 #include <cstdint>
 #include <cstdlib>
@@ -42,9 +41,10 @@ constexpr uint64_t fasthash_mix(uint64_t h) {
 }
 
 constexpr uint64_t fasthash64_uint64(uint64_t value, uint64_t seed) {
-  uint64_t h = seed ^ 4619197404915747624ULL;  // this is h = seed ^ (sizeof(uint64_t) *
-                                               // m), but prevents VS warning C4307:
-                                               // integral constant overflow
+  uint64_t h =
+      seed ^ 4619197404915747624ULL;  // this is h = seed ^ (sizeof(uint64_t) *
+                                      // m), but prevents VS warning C4307:
+                                      // integral constant overflow
   h ^= fasthash_mix(value);
   h *= fasthash_m;
 
@@ -66,5 +66,3 @@ uint32_t fasthash32(const void* buf, size_t len, uint32_t seed);
  * @seed: the seed
  */
 uint64_t fasthash64(const void* buf, size_t len, uint64_t seed);
-
-#endif

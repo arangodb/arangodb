@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,21 +21,20 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_TRYEMPLACEHELPER_H
-#define ARANGODB_BASICS_TRYEMPLACEHELPER_H 1
+#pragma once
 
 #include <type_traits>
 #include <memory>
 
 namespace arangodb {
-template <class Lambda>
+template<class Lambda>
 struct lazyConstruct {
   using type = std::invoke_result_t<const Lambda&>;
   constexpr lazyConstruct(Lambda&& factory) : factory_(std::move(factory)) {}
-  constexpr operator type() const noexcept(std::is_nothrow_invocable_v<const Lambda&>) {
+  constexpr operator type() const
+      noexcept(std::is_nothrow_invocable_v<const Lambda&>) {
     return factory_();
   }
   Lambda factory_;
 };
-}
-#endif
+}  // namespace arangodb

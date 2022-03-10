@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,67 +24,57 @@
 #include "locks.h"
 
 /// @brief initializes a new condition variable
-void TRI_InitCondition(TRI_condition_t* cond) {
+void TRI_InitCondition(TRI_condition_t* cond) noexcept {
   InitializeCriticalSection(&cond->_lockWaiters);
   InitializeConditionVariable(&cond->_conditionVariable);
 }
 
 /// @brief destroys a condition variable
-void TRI_DestroyCondition(TRI_condition_t* cond) {
+void TRI_DestroyCondition(TRI_condition_t* cond) noexcept {
   DeleteCriticalSection(&cond->_lockWaiters);
 }
 
 /// @brief signals a condition variable
 ///
 /// Note that you must hold the lock.
-void TRI_SignalCondition(TRI_condition_t* cond) {
+void TRI_SignalCondition(TRI_condition_t* cond) noexcept {
   WakeConditionVariable(&cond->_conditionVariable);
 }
 
 /// @brief broad casts a condition variable
 ///
 /// Note that you must hold the lock.
-void TRI_BroadcastCondition(TRI_condition_t* cond) {
+void TRI_BroadcastCondition(TRI_condition_t* cond) noexcept {
   WakeAllConditionVariable(&cond->_conditionVariable);
 }
 
 /// @brief waits for a signal on a condition variable
 ///
 /// Note that you must hold the lock.
-void TRI_WaitCondition(TRI_condition_t* cond) {
-  SleepConditionVariableCS(&cond->_conditionVariable, &cond->_lockWaiters, INFINITE);
+void TRI_WaitCondition(TRI_condition_t* cond) noexcept {
+  SleepConditionVariableCS(&cond->_conditionVariable, &cond->_lockWaiters,
+                           INFINITE);
 }
 
 /// @brief waits for a signal with a timeout in micro-seconds
 ///
 /// Note that you must hold the lock.
-bool TRI_TimedWaitCondition(TRI_condition_t* cond, uint64_t delay) {
+bool TRI_TimedWaitCondition(TRI_condition_t* cond, uint64_t delay) noexcept {
   // ...........................................................................
   // The POSIX threads function pthread_cond_timedwait accepts microseconds
   // while the Windows function accepts milliseconds
   // ...........................................................................
   delay = delay / 1000;
-
-  if (SleepConditionVariableCS(&cond->_conditionVariable, &cond->_lockWaiters,
-                               (DWORD)delay) != 0) {
-    return true;
-  }
-
-  DWORD res = GetLastError();
-
-  if (res == ERROR_TIMEOUT) {
-    return false;
-  }
-
-  return false;
+  return SleepConditionVariableCS(&cond->_conditionVariable,
+                                  &cond->_lockWaiters, (DWORD)delay) != 0;
 }
 
 /// @brief locks the mutex of a condition variable
-void TRI_LockCondition(TRI_condition_t* cond) {
+void TRI_LockCondition(TRI_condition_t* cond) noexcept {
   EnterCriticalSection(&cond->_lockWaiters);
 }
 
 /// @brief unlocks the mutex of a condition variable
-void TRI_UnlockCondition(TRI_condition_t* cond) {
+void TRI_UnlockCondition(TRI_condition_t* cond) noexcept {
   LeaveCriticalSection(&cond->_lockWaiters);
 }

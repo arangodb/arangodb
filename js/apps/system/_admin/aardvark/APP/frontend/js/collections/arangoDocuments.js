@@ -42,7 +42,7 @@
       $.ajax({
         cache: false,
         type: 'GET',
-        url: arangoHelper.databaseUrl('/_api/collection/' + this.collectionID + '/count'),
+        url: arangoHelper.databaseUrl('/_api/collection/' + encodeURIComponent(this.collectionID) + '/count'),
         contentType: 'application/json',
         processData: false,
         success: function (data) {
@@ -141,32 +141,21 @@
     },
 
     moveDocument: function (key, fromCollection, toCollection, callback) {
-      var querySave;
-      var queryRemove;
-      var bindVars = {
-        '@collection': fromCollection,
-        'filterid': key
-      };
-      var queryObj1;
-      var queryObj2;
-
-      querySave = 'FOR x IN @@collection';
-      querySave += ' FILTER x._key == @filterid';
-      querySave += ' INSERT x IN ';
-      querySave += toCollection;
-
-      queryRemove = 'FOR x in @@collection';
-      queryRemove += ' FILTER x._key == @filterid';
-      queryRemove += ' REMOVE x IN @@collection';
-
-      queryObj1 = {
-        query: querySave,
-        bindVars: bindVars
+      var queryObj1 = {
+        query: 'FOR x IN @@fromCollection FILTER x._key == @filterid INSERT x IN @@toCollection',
+        bindVars: {
+          '@fromCollection': fromCollection,
+          '@toCollection': toCollection,
+          'filterid': key
+        }
       };
 
-      queryObj2 = {
-        query: queryRemove,
-        bindVars: bindVars
+      var queryObj2 = {
+        query: 'FOR x in @@collection FILTER x._key == @filterid REMOVE x IN @@collection',
+        bindVars: {
+          '@collection': fromCollection,
+          'filterid': key
+        }
       };
 
       window.progressView.show();

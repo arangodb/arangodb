@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,8 +23,7 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_ALGOS_ACCUMULATORS_GRAPHFORMAT_H
-#define ARANGODB_PREGEL_ALGOS_ACCUMULATORS_GRAPHFORMAT_H 1
+#pragma once
 
 #include "AIR.h"
 
@@ -54,7 +53,8 @@ struct GraphFormat final : public graph_format {
   size_t estimatedEdgeSize() const override;
 
   void copyVertexData(arangodb::velocypack::Options const& vpackOptions,
-                      std::string const& documentId, arangodb::velocypack::Slice rawDocument,
+                      std::string const& documentId,
+                      arangodb::velocypack::Slice rawDocument,
                       ProgrammablePregelAlgorithm::vertex_type& targetPtr,
                       uint64_t& vertexIdRange) override;
 
@@ -63,7 +63,8 @@ struct GraphFormat final : public graph_format {
                     ProgrammablePregelAlgorithm::edge_type& targetPtr) override;
 
   greenspun::EvalResult buildVertexDocumentWithResult(
-      arangodb::velocypack::Builder& b, const ProgrammablePregelAlgorithm::vertex_type* ptr) const override;
+      arangodb::velocypack::Builder& b,
+      const ProgrammablePregelAlgorithm::vertex_type* ptr) const override;
 
   bool buildVertexDocument(arangodb::velocypack::Builder& b,
                            VertexData const* targetPtr) const override {
@@ -79,4 +80,3 @@ struct GraphFormat final : public graph_format {
 }  // namespace algos
 }  // namespace pregel
 }  // namespace arangodb
-#endif

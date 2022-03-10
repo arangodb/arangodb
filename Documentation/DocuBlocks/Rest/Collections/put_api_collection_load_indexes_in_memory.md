@@ -24,17 +24,14 @@ All lookups that could be found in the cache are much faster
 than lookups not stored in the cache so you get a nice performance boost.
 It is also guaranteed that the cache is consistent with the stored data.
 
-For the time being this function is only useful on RocksDB storage engine,
-as in MMFiles engine all indexes are in memory anyways.
-
-On RocksDB this function honors all memory limits, if the indexes you want
+This function honors all memory limits, if the indexes you want
 to load are smaller than your memory limit this function guarantees that most
 index values are cached.
 If the index is larger than your memory limit this function will fill up values
 up to this limit and for the time being there is no way to control which indexes
 of the collection should have priority over others.
 
-On sucess this function returns an object with attribute `result` set to `true`
+On success this function returns an object with attribute `result` set to `true`
 
 @RESTRETURNCODES
 

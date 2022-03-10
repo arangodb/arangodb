@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,13 +22,11 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_V8_SERVER_V8_DISPATCHER_H
-#define ARANGOD_V8_SERVER_V8_DISPATCHER_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
 #include <v8.h>
 
-void TRI_InitV8Dispatcher(v8::Isolate* isolate, v8::Handle<v8::Context> context);
-
-#endif
+void TRI_InitV8Dispatcher(v8::Isolate* isolate,
+                          v8::Handle<v8::Context> context);

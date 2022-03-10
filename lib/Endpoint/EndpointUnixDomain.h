@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_ENDPOINT_ENDPOINT_UNIX_DOMAIN_H
-#define ARANGODB_ENDPOINT_ENDPOINT_UNIX_DOMAIN_H 1
+#pragma once
 
 #include "Basics/operating-system.h"
 #include "Basics/socket-utils.h"
@@ -58,7 +57,7 @@ class EndpointUnixDomain final : public Endpoint {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief disconnect the endpoint
   //////////////////////////////////////////////////////////////////////////////
-  
+
   // cppcheck-suppress virtualCallInConstructor; bogus
   void disconnect() override;
 
@@ -72,7 +71,5 @@ class EndpointUnixDomain final : public Endpoint {
   std::string const _path;
 };
 }  // namespace arangodb
-
-#endif
 
 #endif

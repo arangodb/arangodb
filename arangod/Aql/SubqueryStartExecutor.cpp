@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -35,7 +35,8 @@ using namespace arangodb::aql;
 
 SubqueryStartExecutor::SubqueryStartExecutor(Fetcher&, Infos&) {}
 
-auto SubqueryStartExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
+auto SubqueryStartExecutor::produceRows(AqlItemBlockInputRange& input,
+                                        OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, Stats, AqlCall> {
   if (_inputRow.isInitialized()) {
     // We have not been able to report the ShadowRow.
@@ -53,7 +54,8 @@ auto SubqueryStartExecutor::produceRows(AqlItemBlockInputRange& input, OutputAql
   return {input.upstreamState(), NoStats{}, AqlCall{}};
 }
 
-auto SubqueryStartExecutor::skipRowsRange(AqlItemBlockInputRange& input, AqlCall& call)
+auto SubqueryStartExecutor::skipRowsRange(AqlItemBlockInputRange& input,
+                                          AqlCall& call)
     -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
   TRI_ASSERT(call.shouldSkip());
   if (_inputRow.isInitialized()) {
@@ -91,11 +93,13 @@ auto SubqueryStartExecutor::produceShadowRow(AqlItemBlockInputRange& input,
 }
 
 [[nodiscard]] auto SubqueryStartExecutor::expectedNumberOfRowsNew(
-    AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept -> size_t {
+    AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept
+    -> size_t {
   // The DataRow is consumed after a shadowRow is produced.
   // So if there is no datarow in the input we will not create a data or a
-  // shadowRow, we might be off by one, if we get asked this and have written the
-  // last dataRow. However, as we only overallocate a single row then, this is not too bad.
+  // shadowRow, we might be off by one, if we get asked this and have written
+  // the last dataRow. However, as we only overallocate a single row then, this
+  // is not too bad.
   if (input.countDataRows() > 0) {
     // We will write one ShadowRow
     if (call.getLimit() > 0) {

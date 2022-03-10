@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_CACHE_FREQUENCY_BUFFER_H
-#define ARANGODB_CACHE_FREQUENCY_BUFFER_H
+#pragma once
 
 #include <algorithm>
 #include <atomic>
@@ -32,7 +31,7 @@
 #include <utility>
 #include <vector>
 
-#include "ApplicationFeatures/SharedPRNGFeature.h"
+#include "RestServer/SharedPRNGFeature.h"
 #include "Basics/debugging.h"
 
 namespace arangodb {
@@ -46,7 +45,8 @@ namespace cache {
 /// occurrences of each within a certain time-frame. Will write to randomized
 /// memory location inside the frequency buffer
 ////////////////////////////////////////////////////////////////////////////////
-template <class T, class Comparator = std::equal_to<T>, class Hasher = std::hash<T>>
+template<class T, class Comparator = std::equal_to<T>,
+         class Hasher = std::hash<T>>
 class FrequencyBuffer {
  public:
   typedef std::vector<std::pair<T, uint64_t>> stats_t;
@@ -89,7 +89,7 @@ class FrequencyBuffer {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Reports the hidden allocation size (not captured by sizeof).
   //////////////////////////////////////////////////////////////////////////////
-  static std::size_t allocationSize(std::size_t capacity) {
+  static constexpr std::size_t allocationSize(std::size_t capacity) {
     return capacity * sizeof(T);
   }
 
@@ -105,7 +105,8 @@ class FrequencyBuffer {
   //////////////////////////////////////////////////////////////////////////////
   void insertRecord(T record) {
     // we do not care about the order in which threads insert their values
-    _buffer[_sharedPRNG.rand() & _mask].store(record, std::memory_order_relaxed);
+    _buffer[_sharedPRNG.rand() & _mask].store(record,
+                                              std::memory_order_relaxed);
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -115,7 +116,8 @@ class FrequencyBuffer {
     for (std::size_t i = 0; i < _capacity; i++) {
       auto tmp = _buffer[i].load(std::memory_order_relaxed);
       if (_cmp(tmp, record)) {
-        _buffer[i].compare_exchange_strong(tmp, _empty, std::memory_order_relaxed);
+        _buffer[i].compare_exchange_strong(tmp, _empty,
+                                           std::memory_order_relaxed);
       }
     }
   }
@@ -141,7 +143,8 @@ class FrequencyBuffer {
       data.emplace_back(std::pair<T, std::size_t>(f.first, f.second));
     }
     std::sort(data.begin(), data.end(),
-              [](std::pair<T, std::uint64_t> const& left, std::pair<T, std::size_t> const& right) {
+              [](std::pair<T, std::uint64_t> const& left,
+                 std::pair<T, std::size_t> const& right) {
                 return left.second < right.second;
               });
 
@@ -160,5 +163,3 @@ class FrequencyBuffer {
 
 };  // end namespace cache
 };  // end namespace arangodb
-
-#endif

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_VAR_USAGE_FINDER_H
-#define ARANGOD_AQL_VAR_USAGE_FINDER_H 1
+#pragma once
 
 #include "Aql/Variable.h"
 #include "Aql/WalkerWorker.h"
@@ -38,13 +37,14 @@ class ExecutionNode;
 
 /// @brief helper struct for findVarUsage
 
-template <class T>
+template<class T>
 struct VarUsageFinderT;
 
 using VarUsageFinder = VarUsageFinderT<ExecutionNode>;
 
-template <class T>
-struct VarUsageFinderT final : public WalkerWorker<T, WalkerUniqueness::NonUnique> {
+template<class T>
+struct VarUsageFinderT final
+    : public WalkerWorker<T, WalkerUniqueness::NonUnique> {
   VarSetStack _usedLaterStack{VarSet{}};
   VarSetStack _varsValidStack{VarSet{}};
 
@@ -93,5 +93,3 @@ struct VarUsageFinderT final : public WalkerWorker<T, WalkerUniqueness::NonUniqu
 };
 
 }  // namespace arangodb::aql
-
-#endif

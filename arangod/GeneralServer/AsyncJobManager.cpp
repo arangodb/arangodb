@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,13 +27,16 @@
 #include "Basics/WriteLocker.h"
 #include "Basics/system-functions.h"
 #include "Basics/voc-errors.h"
+#include "Cluster/ServerState.h"
 #include "GeneralServer/RestHandler.h"
 #include "Logger/Logger.h"
 #include "Rest/GeneralResponse.h"
+#include "RestServer/SoftShutdownFeature.h"
 #include "Utils/ExecContext.h"
 
 namespace {
-bool authorized(std::pair<std::string, arangodb::rest::AsyncJobResult> const& job) {
+bool authorized(
+    std::pair<std::string, arangodb::rest::AsyncJobResult> const& job) {
   arangodb::ExecContext const& exec = arangodb::ExecContext::current();
   if (exec.isSuperuser()) {
     return true;
@@ -60,7 +63,8 @@ AsyncJobResult::AsyncJobResult(IdType jobId, Status status,
 
 AsyncJobResult::~AsyncJobResult() = default;
 
-AsyncJobManager::AsyncJobManager() : _lock(), _jobs() {}
+AsyncJobManager::AsyncJobManager()
+    : _lock(), _jobs(), _softShutdownOngoing(false) {}
 
 AsyncJobManager::~AsyncJobManager() {
   // remove all results that haven't been fetched
@@ -189,7 +193,7 @@ Result AsyncJobManager::cancelJob(AsyncJobResult::IdType jobId) {
   if (handler != nullptr) {
     handler->cancel();
   }
-  
+
   // simon: handlers running async tasks use shared_ptr to keep alive
   it->second.second._handler = nullptr;
 
@@ -229,8 +233,8 @@ std::vector<AsyncJobResult::IdType> AsyncJobManager::done(size_t maxCount) {
 /// @brief returns the list of jobs by status
 ////////////////////////////////////////////////////////////////////////////////
 
-std::vector<AsyncJobResult::IdType> AsyncJobManager::byStatus(AsyncJobResult::Status status,
-                                                              size_t maxCount) {
+std::vector<AsyncJobResult::IdType> AsyncJobManager::byStatus(
+    AsyncJobResult::Status status, size_t maxCount) {
   std::vector<AsyncJobResult::IdType> jobs;
 
   {
@@ -257,8 +261,29 @@ std::vector<AsyncJobResult::IdType> AsyncJobManager::byStatus(AsyncJobResult::St
   return jobs;
 }
 
+//////////////////////////////////////////////////////////////////////////////
+/// @brief get numbers of pending and done jobs.
+//////////////////////////////////////////////////////////////////////////////
+//
+std::pair<uint64_t, uint64_t> AsyncJobManager::getNrPendingAndDone() {
+  uint64_t pending{0};
+  uint64_t done{0};
+  {
+    READ_LOCKER(readLocker, _lock);
+    for (auto const& j : _jobs) {
+      if (j.second.second._status == AsyncJobResult::JOB_PENDING) {
+        ++pending;
+      } else if (j.second.second._status == AsyncJobResult::JOB_DONE) {
+        ++done;
+      }
+    }
+  }
+  return std::pair(pending, done);
+}
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initializes an async job
+/// @brief initializes an async job, throws if soft shutdown is already
+/// ongoing.
 ////////////////////////////////////////////////////////////////////////////////
 
 void AsyncJobManager::initAsyncJob(std::shared_ptr<RestHandler> handler) {
@@ -269,6 +294,11 @@ void AsyncJobManager::initAsyncJob(std::shared_ptr<RestHandler> handler) {
   AsyncJobResult ajr(jobId, AsyncJobResult::JOB_PENDING, std::move(handler));
 
   WRITE_LOCKER(writeLocker, _lock);
+
+  if (_softShutdownOngoing.load(std::memory_order_relaxed)) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_SHUTTING_DOWN,
+                                   "Soft shutdown ongoing.");
+  }
 
   _jobs.try_emplace(jobId, std::move(user), std::move(ajr));
 }

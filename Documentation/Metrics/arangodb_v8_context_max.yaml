@@ -1,7 +1,7 @@
 name: arangodb_v8_context_max
 introducedIn: "3.6.7"
 help: |
-  Maximum number of concurrent V8 contexts
+  Maximum number of concurrent V8 contexts.
 unit: number
 type: gauge
 category: Statistics

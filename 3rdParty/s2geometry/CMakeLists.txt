@@ -3,10 +3,8 @@
 set (PYTHON_INCLUDE_DIR "")
 project(s2-geometry C CXX)
 
-if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-sign-compare -Wno-unused-const-variable -Wno-mismatched-tags -Wno-unused-function")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-sign-compare -Wno-unused-const-variable -Wno-mismatched-tags -Wno-unused-function")
-endif()
+add_c_flags_if_supported(CMAKE_C_FLAGS -Wno-sign-compare -Wno-unused-const-variable -Wno-mismatched-tags -Wno-unused-function)
+add_cxx_flags_if_supported(CMAKE_CXX_FLAGS -Wno-sign-compare -Wno-unused-const-variable -Wno-mismatched-tags -Wno-unused-function)
 
 set(FAIL_ON_WARNINGS OFF CACHE BOOL "do not enable -Werror")
 

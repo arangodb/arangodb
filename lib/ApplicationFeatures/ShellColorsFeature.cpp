@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -64,17 +64,6 @@ char const* ShellColorsFeature::SHELL_COLOR_LINK_START = NoColor;
 char const* ShellColorsFeature::SHELL_COLOR_LINK_MIDDLE = NoColor;
 char const* ShellColorsFeature::SHELL_COLOR_LINK_END = NoColor;
 
-ShellColorsFeature::ShellColorsFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "ShellColors"), _initialized(false) {
-  setOptional(false);
-
-  // it's admittedly a hack that we already call prepare here...
-  // however, setting the colors is one of the first steps we need to do,
-  // and we do not want to wait for the application server to have successfully
-  // parsed options etc. before we initialize the shell colors
-  prepare();
-}
-
 void ShellColorsFeature::prepare() {
   // prevent duplicate invocation of prepare
   if (_initialized) {
@@ -134,6 +123,10 @@ bool ShellColorsFeature::prepareConsole() {
   if (!SetConsoleMode(hStdout, handleMode)) {
     return false;
   }
+
+  // Set the codepage for the console output to UTF-8 so that unicode characters
+  // are displayed correctly.
+  SetConsoleOutputCP(CP_UTF8);
   return true;
 }
 #endif

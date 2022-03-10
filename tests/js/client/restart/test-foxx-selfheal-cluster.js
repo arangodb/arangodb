@@ -159,7 +159,6 @@ function testSuite() {
         assertTrue(shutdownStatus);
 
         let extraOptions = {
-          "database.old-system-collections": "false",
           "foxx.force-update-on-startup": "false",
           "foxx.queues": "false",
           "server.jwt-secret": jwtSecret
@@ -211,7 +210,6 @@ function testSuite() {
       assertTrue(shutdownStatus);
 
       let extraOptions = {
-        "database.old-system-collections": "false",
         "foxx.force-update-on-startup": "false",
         "foxx.queues": "false",
         "server.jwt-secret": jwtSecret
@@ -256,7 +254,6 @@ function testSuite() {
       assertTrue(shutdownStatus);
 
       let extraOptions = {
-        "database.old-system-collections": "false",
         "foxx.force-update-on-startup": "true",
         "foxx.queues": "false",
         "server.jwt-secret": jwtSecret

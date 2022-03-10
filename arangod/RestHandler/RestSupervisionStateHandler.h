@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_REST_SUPERVISION_STATE_HANDLER_H
-#define ARANGOD_REST_HANDLER_REST_SUPERVISION_STATE_HANDLER_H 1
+#pragma once
 
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
@@ -30,15 +29,15 @@ namespace arangodb {
 
 class RestSupervisionStateHandler : public RestVocbaseBaseHandler {
  public:
-  RestSupervisionStateHandler(application_features::ApplicationServer&, GeneralRequest*, GeneralResponse*);
+  RestSupervisionStateHandler(ArangodServer&, GeneralRequest*,
+                              GeneralResponse*);
   ~RestSupervisionStateHandler() = default;
 
  public:
   RestStatus execute() override;
-  char const* name() const override final { return "RestSupervisionStateHandler"; }
+  char const* name() const override final {
+    return "RestSupervisionStateHandler";
+  }
   RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
-
 };
 }  // namespace arangodb
-
-#endif

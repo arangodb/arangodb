@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,8 +24,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_REGISTERINFOS_H
-#define ARANGOD_AQL_REGISTERINFOS_H 1
+#pragma once
 
 #include "Aql/types.h"
 
@@ -46,8 +45,8 @@ namespace aql {
 class RegisterInfos {
  public:
   /**
-   * @brief Generic register information for ExecutionBlocks and related classes,
-   *        like OutputAqlItemRow.
+   * @brief Generic register information for ExecutionBlocks and related
+   * classes, like OutputAqlItemRow.
    * @param readableInputRegisters Registers the Block may use as input
    * @param writeableOutputRegisters Registers the Block writes into
    * @param nrInputRegisters Width of input AqlItemBlocks
@@ -65,13 +64,17 @@ class RegisterInfos {
    *   RegisterId register = it->second.registerId;
    */
 
-  RegisterInfos(RegIdSet readableInputRegisters, RegIdSet writeableOutputRegisters,
+  RegisterInfos(RegIdSet readableInputRegisters,
+                RegIdSet writeableOutputRegisters,
                 RegisterCount nrInputRegisters, RegisterCount nrOutputRegisters,
-                RegIdSet const& registersToClear, RegIdSetStack const& registersToKeep);
+                RegIdSet const& registersToClear,
+                RegIdSetStack const& registersToKeep);
 
-  RegisterInfos(RegIdSet readableInputRegisters, RegIdSet writeableOutputRegisters,
+  RegisterInfos(RegIdSet readableInputRegisters,
+                RegIdSet writeableOutputRegisters,
                 RegisterCount nrInputRegisters, RegisterCount nrOutputRegisters,
-                RegIdFlatSet registersToClear, RegIdFlatSetStack registersToKeep);
+                RegIdFlatSet registersToClear,
+                RegIdFlatSetStack registersToKeep);
 
   RegisterInfos(RegisterInfos&&) = default;
   RegisterInfos(RegisterInfos const&) = default;
@@ -132,5 +135,3 @@ class RegisterInfos {
 
 }  // namespace aql
 }  // namespace arangodb
-
-#endif   // ARANGOD_AQL_REGISTERINFOS_H

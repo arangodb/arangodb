@@ -38,6 +38,19 @@ General as well as algorithm-specific options.
 The most important general option is "store", which controls whether the results
 computed by the Pregel job are written back into the source collections or not.
 
+Another important general option is "parallelism", which controls the number of
+parallel threads that will work on the Pregel job at most. If "parallelism" is not
+specified, a default value may be used. In addition, the value of "parallelism"
+may be effectively capped at some server-specific value.
+
+The option "useMemoryMaps" controls whether to use disk based files to store
+temporary results. This might make the computation disk-bound, but allows you to
+run computations which would not fit into main memory. It is recommended to set
+this flag for larger datasets.
+
+The attribute "shardKeyAttribute" specifies the shard key that edge collections are
+sharded after (default: `"vertex"`).
+
 @RESTDESCRIPTION
 To start an execution you need to specify the algorithm name and a named graph
 (SmartGraph in cluster). Alternatively you can specify the vertex and edge

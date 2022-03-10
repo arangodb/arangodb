@@ -30,11 +30,9 @@ const functionsDocumentation = {
   'replication_random': 'replication randomized tests for transactions',
   'replication_aql': 'replication AQL tests',
   'replication_ongoing': 'replication ongoing tests',
-  'replication_ongoing_32': 'replication ongoing "32" tests',
   'replication_ongoing_global': 'replication ongoing "global" tests',
   'replication_ongoing_global_spec': 'replication ongoing "global-spec" tests',
   'replication_ongoing_frompresent': 'replication ongoing "frompresent" tests',
-  'replication_ongoing_frompresent_32': 'replication ongoing "frompresent-32" tests',
   'replication_static': 'replication static tests',
   'replication_sync': 'replication sync tests',
   'shell_replication': 'shell replication tests'
@@ -52,11 +50,9 @@ const testPaths = {
   'replication_fuzz': [tu.pathForTesting('server/replication/fuzz')],
   'replication_random': [tu.pathForTesting('server/replication/random')],
   'replication_ongoing': [tu.pathForTesting('server/replication/ongoing')],
-  'replication_ongoing_32': [tu.pathForTesting('server/replication/ongoing/32')],
   'replication_ongoing_global': [tu.pathForTesting('server/replication/ongoing/global')],
   'replication_ongoing_global_spec': [tu.pathForTesting('server/replication/ongoing/global/spec')],
   'replication_ongoing_frompresent': [tu.pathForTesting('server/replication/ongoing/frompresent')],
-  'replication_ongoing_frompresent_32': [tu.pathForTesting('server/replication/ongoing/frompresent/32')],
   'replication_static': [tu.pathForTesting('server/replication/static')],
   'replication_sync': [tu.pathForTesting('server/replication/sync')]
 };
@@ -399,11 +395,9 @@ var _replicationOngoing = function(path) {
 };
 
 const replicationOngoing = (new _replicationOngoing('replication_ongoing')).func;
-const replicationOngoing32 = (new _replicationOngoing('replication_ongoing_32')).func;
 const replicationOngoingGlobal = (new _replicationOngoing('replication_ongoing_global')).func;
 const replicationOngoingGlobalSpec = (new _replicationOngoing('replication_ongoing_global_spec')).func;
 const replicationOngoingFrompresent = (new _replicationOngoing('replication_ongoing_frompresent')).func;
-const replicationOngoingFrompresent32 = (new _replicationOngoing('replication_ongoing_frompresent_32')).func;
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief TEST: replication_static
@@ -617,11 +611,9 @@ exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTest
   testFns['replication_fuzz'] = replicationFuzz;
   testFns['replication_random'] = replicationRandom;
   testFns['replication_ongoing'] = replicationOngoing;
-  testFns['replication_ongoing_32'] = replicationOngoing32;
   testFns['replication_ongoing_global'] = replicationOngoingGlobal;
   testFns['replication_ongoing_global_spec'] = replicationOngoingGlobalSpec;
   testFns['replication_ongoing_frompresent'] = replicationOngoingFrompresent;
-  testFns['replication_ongoing_frompresent_32'] = replicationOngoingFrompresent32;
   testFns['replication_static'] = replicationStatic;
   testFns['replication_sync'] = replicationSync;
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }

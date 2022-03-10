@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,15 +21,16 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef APPLICATION_FEATURES_FORTUNE_FEATURE_H
-#define APPLICATION_FEATURES_FORTUNE_FEATURE_H 1
+#pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
+#include "RestServer/arangod.h"
 
 namespace arangodb {
-class FortuneFeature final : public application_features::ApplicationFeature {
+class FortuneFeature final : public ArangodFeature {
  public:
-  explicit FortuneFeature(application_features::ApplicationServer&);
+  static constexpr std::string_view name() noexcept { return "Fortune"; }
+
+  explicit FortuneFeature(Server& server);
 
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -39,5 +40,3 @@ class FortuneFeature final : public application_features::ApplicationFeature {
   bool _fortune;
 };
 }  // namespace arangodb
-
-#endif

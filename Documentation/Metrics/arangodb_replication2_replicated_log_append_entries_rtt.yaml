@@ -1,0 +1,17 @@
+name: arangodb_replication2_replicated_log_append_entries_rtt
+introducedIn: "3.9.0"
+help: |
+  Histogram of the RTT of appendEntries requests in microseconds.
+unit: us
+type: histogram
+category: Replication
+complexity: medium
+exposedBy:
+  - dbserver
+  - single
+description: |
+  The leader of a replicated log replicates the log entries by sending
+  appendEntries requests to its followers.
+  This is a histogram keeping track of the number of such requests this
+  server sends (for any log it is a leader of), as well as their respective
+  round-trip times in microseconds.

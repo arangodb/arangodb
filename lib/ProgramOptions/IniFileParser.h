@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PROGRAM_OPTIONS_INI_FILE_PARSER_H
-#define ARANGODB_PROGRAM_OPTIONS_INI_FILE_PARSER_H 1
+#pragma once
 
 #include <regex>
 #include <set>
@@ -43,7 +42,8 @@ class IniFileParser {
   // parse a config file, with the contents already read into <buf>.
   // returns true if all is well, false otherwise
   // errors that occur during parse are reported to _options
-  bool parseContent(std::string const& filename, std::string const& buf, bool endPassAfterwards);
+  bool parseContent(std::string const& filename, std::string const& buf,
+                    bool endPassAfterwards);
 
  private:
   ProgramOptions* _options;
@@ -60,5 +60,3 @@ class IniFileParser {
 };
 }  // namespace options
 }  // namespace arangodb
-
-#endif

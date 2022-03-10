@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,8 +22,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_REGISTER_PLAN_H
-#define ARANGOD_AQL_REGISTER_PLAN_H 1
+#pragma once
 
 #include "Aql/ExecutionNode.h"
 #include "Aql/WalkerWorker.h"
@@ -45,7 +44,6 @@ class Slice;
 namespace arangodb::aql {
 
 class ExecutionNode;
-class ExecutionPlan;
 struct Variable;
 
 /// @brief static analysis, walker class and information collector
@@ -57,7 +55,7 @@ struct VarInfo {
   VarInfo(unsigned int depth, RegisterId registerId);
 };
 
-template <typename T>
+template<typename T>
 struct RegisterPlanT;
 
 using RegVarMap = std::unordered_map<RegisterId, Variable const*>;
@@ -78,12 +76,14 @@ using RegVarMapStack = std::vector<RegVarMap>;
 ///       marked as unused registers outside the subquery (i.e. on the stack
 ///       level below it). It would of course suffice when this would be done
 ///       at the SubqueryEndNode.
-template <typename T>
-struct RegisterPlanWalkerT final : public WalkerWorker<T, WalkerUniqueness::NonUnique> {
+template<typename T>
+struct RegisterPlanWalkerT final
+    : public WalkerWorker<T, WalkerUniqueness::NonUnique> {
   using RegisterPlan = RegisterPlanT<T>;
 
-  explicit RegisterPlanWalkerT(std::shared_ptr<RegisterPlan> plan,
-                               ExplainRegisterPlan explainRegisterPlan = ExplainRegisterPlan::No)
+  explicit RegisterPlanWalkerT(
+      std::shared_ptr<RegisterPlan> plan,
+      ExplainRegisterPlan explainRegisterPlan = ExplainRegisterPlan::No)
       : plan(std::move(plan)),
         explain(explainRegisterPlan == ExplainRegisterPlan::Yes) {}
   virtual ~RegisterPlanWalkerT() noexcept = default;
@@ -104,8 +104,9 @@ struct RegisterPlanWalkerT final : public WalkerWorker<T, WalkerUniqueness::NonU
   RegVarMapStack regVarMappingStack{{}};
 };
 
-template <typename T>
-struct RegisterPlanT final : public std::enable_shared_from_this<RegisterPlanT<T>> {
+template<typename T>
+struct RegisterPlanT final
+    : public std::enable_shared_from_this<RegisterPlanT<T>> {
   friend struct RegisterPlanWalkerT<T>;
   // The following are collected for global usage in the ExecutionBlock,
   // although they are stored here in the node:
@@ -121,12 +122,10 @@ struct RegisterPlanT final : public std::enable_shared_from_this<RegisterPlanT<T
 
   RegisterCount nrConstRegs = 0;
 
-  // We collect the subquery nodes to deal with them at the end:
-  std::vector<T*> subqueryNodes;
-
   /// @brief maximum register id that can be assigned, plus one.
   /// this is used for assertions
-  static constexpr RegisterId MaxRegisterId = RegisterId(RegisterId::maxRegisterId);
+  static constexpr RegisterId MaxRegisterId =
+      RegisterId(RegisterId::maxRegisterId);
   // TODO - remove MaxRegisterId in favor of RegisterId::maxRegisterId
 
   /// @brief Only used when the register plan is being explained
@@ -137,16 +136,14 @@ struct RegisterPlanT final : public std::enable_shared_from_this<RegisterPlanT<T
  public:
   RegisterPlanT();
   RegisterPlanT(arangodb::velocypack::Slice slice, unsigned int depth);
-  // Copy constructor used for a subquery:
-  RegisterPlanT(RegisterPlan const& v, unsigned int newdepth);
   ~RegisterPlanT() = default;
 
   std::shared_ptr<RegisterPlanT> clone();
 
-  RegisterId registerVariable(Variable const* v, std::set<RegisterId>& unusedRegisters);
+  RegisterId registerVariable(Variable const* v,
+                              std::set<RegisterId>& unusedRegisters);
   void increaseDepth();
   auto addRegister() -> RegisterId;
-  void addSubqueryNode(T* subquery);
   void shrink(T* start);
 
   void toVelocyPack(arangodb::velocypack::Builder& builder) const;
@@ -155,16 +152,16 @@ struct RegisterPlanT final : public std::enable_shared_from_this<RegisterPlanT<T
   auto variableToRegisterId(Variable const* variable) const -> RegisterId;
   auto variableToOptionalRegisterId(VariableId varId) const -> RegisterId;
 
-  auto calcRegsToKeep(VarSetStack const& varsUsedLaterStack, VarSetStack const& varsValidStack,
-                      std::vector<Variable const*> const& varsSetHere) const -> RegIdSetStack;
+  auto calcRegsToKeep(VarSetStack const& varsUsedLaterStack,
+                      VarSetStack const& varsValidStack,
+                      std::vector<Variable const*> const& varsSetHere) const
+      -> RegIdSetStack;
 
  private:
   unsigned int depth;
 };
 
-template <typename T>
+template<typename T>
 std::ostream& operator<<(std::ostream& os, RegisterPlanT<T> const& r);
 
 }  // namespace arangodb::aql
-
-#endif

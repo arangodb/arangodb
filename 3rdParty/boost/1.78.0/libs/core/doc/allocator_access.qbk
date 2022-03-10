@@ -1,0 +1,243 @@
+[/
+Copyright 2020 Glen Joseph Fernandes
+(glenjofe@gmail.com)
+
+Distributed under the Boost Software License, Version 1.0.
+(http://www.boost.org/LICENSE_1_0.txt)
+]
+
+[section Allocator Access]
+
+[simplesect Authors]
+
+* Glen Fernandes
+
+[endsimplesect]
+
+[section Overview]
+
+The header `<boost/core/allocator_access.hpp>` provides the class and function
+templates to simplify allocator use. It provides the same functionality as the
+C++ standard library `std::allocator_traits` but with individual templates for
+each allocator feature.
+
+These facilities also simplify existing libraries by avoiding having to check
+for `BOOST_NO_CXX11_ALLOCATOR` and conditionally use `std::allocator_traits`.
+
+[endsect]
+
+[section Examples]
+
+The following example shows these utilities used in the definition of
+an allocator-aware container class:
+
+```
+template<class T, class A = boost::default_allocator<T> >
+class container
+    : boost::empty_value<typename boost::allocator_rebind<A, T>::type> {
+public:
+    typedef T value_type;
+    typedef A allocator_type;
+    typedef typename boost::allocator_size_type<A>::type size_type;
+    typedef typename boost::allocator_difference_type<A>::type difference_type;
+    typedef value_type& reference;
+    typedef const value_type& const_reference;
+    typedef typename boost::allocator_pointer<A>::type pointer;
+    typedef typename boost::allocator_const_pointer<A>::type const_pointer;
+    // ...
+};
+```
+
+In C++11 or above, aliases such as `boost::allocator_pointer_t<A>` can be used
+instead of `typename boost::allocator_pointer<A>::type`.
+
+[endsect]
+
+[section Reference]
+
+```
+namespace boost {
+
+template<class A>
+struct allocator_value_type;
+
+template<class A>
+using allocator_value_type_t = typename allocator_value_type<A>::type;
+
+template<class A>
+struct allocator_pointer;
+
+template<class A>
+using allocator_pointer_t = typename allocator_pointer<A>::type;
+
+template<class A>
+struct allocator_const_pointer;
+
+template<class A>
+using allocator_const_pointer_t = typename allocator_const_pointer<A>::type;
+
+template<class A>
+struct allocator_void_pointer;
+
+template<class A>
+using allocator_void_pointer_t = typename allocator_void_pointer<A>::type;
+
+template<class A>
+struct allocator_const_void_pointer;
+
+template<class A>
+using allocator_const_void_pointer_t =
+    typename allocator_const_void_pointer<A>::type;
+
+template<class A>
+struct allocator_difference_type;
+
+template<class A>
+using allocator_difference_type_t =
+    typename allocator_difference_type<A>::type;
+
+template<class A>
+struct allocator_size_type;
+
+template<class A>
+using allocator_size_type_t = typename allocator_size_type<A>::type;
+
+template<class A>
+struct allocator_propagate_on_container_copy_assignment;
+
+template<class A>
+using allocator_propagate_on_container_copy_assignment_t =
+    typename allocator_propagate_on_container_copy_assignment<A>::type;
+
+template<class A>
+struct allocator_propagate_on_container_move_assignment;
+
+template<class A>
+using allocator_propagate_on_container_move_assignment_t =
+    typename allocator_propagate_on_container_move_assignment<A>::type;
+
+template<class A>
+struct allocator_propagate_on_container_swap;
+
+template<class A>
+using allocator_propagate_on_container_swap_t =
+    typename allocator_propagate_on_container_swap<A>::type;
+
+template<class A>
+struct allocator_is_always_equal;
+
+template<class A>
+using allocator_is_always_equal_t =
+    typename allocator_is_always_equal<A>::type;
+
+template<class A, class T>
+struct allocator_rebind;
+
+template<class A, class T>
+using allocator_rebind_t = typename allocator_rebind<A, T>::type;
+
+template<class A>
+allocator_pointer_t<A> allocator_allocate(A& a, allocator_size_type_t<A> n);
+
+template<class A>
+allocator_pointer_t<A> allocator_allocate(A& a, allocator_size_type_t<A> n,
+    allocator_const_void_pointer_t<A> h);
+
+template<class A>
+void allocator_deallocate(A& a, allocator_pointer_t<A> p,
+    allocator_size_type_t<A> n);
+
+template<class A, class T, class... Args>
+void allocator_construct(A& a, T* p, Args&&... args);
+
+template<class A, class T>
+void allocator_destroy(A& a, T* p);
+
+template<class A>
+allocator_size_type_t<A> allocator_max_size(const A& a);
+
+template<class A>
+A allocator_select_on_container_copy_construction(const A& a);
+
+} // boost
+```
+
+[section Types]
+
+[variablelist
+[[`template<class A> struct allocator_value_type;`]
+[The member `type` is `A::value_type`.]]
+[[`template<class A> struct allocator_pointer;`]
+[The member `type` is `A::pointer` if valid, otherwise `A::value_type*`.]]
+[[`template<class A> struct allocator_const_pointer;`]
+[The member `type` is `A::const_pointer` if valid, otherwise
+`pointer_traits<allocator_pointer_t<A> >::rebind<const
+allocator_value_type_t<A> >`.]]
+[[`template<class A> struct allocator_void_pointer;`]
+[The member `type` is `A::void_pointer` if valid, otherwise
+`pointer_traits<allocator_pointer_t<A> >::rebind<void>`.]]
+[[`template<class A> struct allocator_const_void_pointer;`]
+[The member `type` is `A::const_void_pointer` if valid, otherwise
+`pointer_traits<allocator_pointer_t<A> >::rebind<const void>`.]]
+[[`template<class A> struct allocator_difference_type;`]
+[The member `type` is `A::difference_type` if valid, otherwise
+`pointer_traits<allocator_pointer_t<A> >::difference_type`.]]
+[[`template<class A> struct allocator_size_type;`]
+[The member `type` is `A::size_type` if valid, otherwise
+`std::make_unsigned_t<allocator_difference_type_t<A> >`.]]
+[[`template<class A> struct allocator_propagate_on_container_copy_assignment;`]
+[The member `type` is `A::propagate_on_container_copy_assignment` if valid,
+otherwise `std::false_type`.]]
+[[`template<class A> struct allocator_propagate_on_container_move_assignment;`]
+[The member `type` is `A::propagate_on_container_move_assignment` if valid,
+otherwise `std::false_type`.]]
+[[`template<class A> struct allocator_propagate_on_container_swap;`]
+[The member `type` is `A::propagate_on_container_swap` if valid, otherwise
+`std::false_type`.]]
+[[`template<class A> struct allocator_is_always_equal;`]
+[The member `type` is `A::is_always_equal` if valid, otherwise
+`std::is_empty<A>::type`.]]
+[[`template<class A, class T> struct allocator_rebind;`]
+[The member `type` is `A::rebind<T>::other` if valid, otherwise `A<T, Args>`
+if this `A` is `A<U, Args>`.]]]
+
+[endsect]
+
+[section Functions]
+
+[variablelist
+[[`template<class A>
+allocator_pointer_t<A> allocator_allocate(A& a, allocator_size_type_t<A> n);`]
+[Calls `a.allocate(n)`.]]
+[[`template<class A> allocator_pointer_t<A> allocator_allocate(A& a,
+allocator_size_type_t<A> n, allocator_const_void_pointer_t<A> hint);`]
+[Calls `a.allocate(n, hint)` if valid, otherwise calls `a.allocate(n)`.]]
+[[`template<class A> void allocator_deallocate(A& a, allocator_pointer_t<A> p,
+allocator_size_type_t<A> n);`]
+[Calls `a.deallocate(p, n)`.]]
+[[`template<class A, class T, class... Args>
+void allocator_construct(A& a, T*p, Args&&... args);`]
+[Calls `a.construct(p, std::forward<Args>(args)...)` if valid, otherwise calls
+`::new(static_cast<void*>(p)) T(std::forward<Args>(args)...)`.]]
+[[`template<class A, class T> void allocator_destroy(A& a, T* p);`]
+[Calls `a.destroy(p)` if valid, otherwise calls `p->~T()`.]]
+[[`template<class A> allocator_size_type_t<A> allocator_max_size(const A& a);`]
+[Returns `a.max_size()` if valid, otherwise returns
+`std::numeric_limits<allocator_size_type_t<A> >::max() /
+sizeof(A::value_type)`.]]
+[[`template<class A> A allocator_select_on_container_copy_construction(const
+A& a);`]
+[Returns `a.select_on_container_copy_construction()` if valid, otherwise
+returns `a`.]]]
+
+[endsect]
+
+[endsect]
+
+[section Acknowledgments]
+
+Glen Fernandes implemented the allocator access utilities.
+
+[endsect]
+
+[endsect]

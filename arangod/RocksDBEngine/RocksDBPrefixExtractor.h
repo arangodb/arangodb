@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,10 +23,10 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGO_ROCKSDB_ROCKSDB_PREFIX_EXTRACTOR_H
-#define ARANGO_ROCKSDB_ROCKSDB_PREFIX_EXTRACTOR_H 1
+#pragma once
 
 #include "Basics/Common.h"
+#include "Basics/debugging.h"
 
 #include <rocksdb/slice.h>
 #include <rocksdb/slice_transform.h>
@@ -76,5 +76,3 @@ class RocksDBPrefixExtractor final : public rocksdb::SliceTransform {
 };
 
 }  // namespace arangodb
-
-#endif

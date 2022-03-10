@@ -1,0 +1,19 @@
+[#accept_tag]
+[section accept_tag]
+
+[h1 Synopsis]
+
+  struct accept_tag;
+
+This is a [link tag tag].
+
+[h1 Description]
+
+This is the tag of the values returned by a parser when parsing was successful.
+
+[h1 Header]
+
+  #include <boost/metaparse/accept_tag.hpp>
+
+[endsect]
+

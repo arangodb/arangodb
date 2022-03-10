@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,8 +22,7 @@
 /// @author Matthew Von-Maszewski
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_MAINTENANCE_REST_HANDLER
-#define ARANGOD_CLUSTER_MAINTENANCE_REST_HANDLER 1
+#pragma once
 
 #include "Cluster/Action.h"
 #include "RestHandler/RestBaseHandler.h"
@@ -36,15 +35,12 @@ namespace arangodb {
 
 class MaintenanceRestHandler : public RestBaseHandler {
  public:
-  MaintenanceRestHandler(application_features::ApplicationServer&,
-                         GeneralRequest*, GeneralResponse*);
+  MaintenanceRestHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
 
  public:
   char const* name() const override { return "MaintenanceRestHandler"; }
 
-  RequestLane lane() const override final {
-    return RequestLane::CLIENT_FAST;
-  }
+  RequestLane lane() const override final { return RequestLane::CLIENT_FAST; }
 
   /// @brief Performs routing of request to appropriate subroutines
   RestStatus execute() override;
@@ -85,5 +81,3 @@ class MaintenanceRestHandler : public RestBaseHandler {
   std::shared_ptr<maintenance::ActionDescription> _actionDesc;
 };
 }  // namespace arangodb
-
-#endif

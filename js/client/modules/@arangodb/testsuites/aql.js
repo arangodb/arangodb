@@ -58,6 +58,16 @@ function ensureServers(options, numServers) {
   return options;
 }
 
+/// ensure that we have enough coordinators in cluster tests
+function ensureCoordinators(options, numServers) {
+  if (options.cluster && options.coordinators < numServers) {
+    let localOptions = _.clone(options);
+    localOptions.coordinators = numServers;
+    return localOptions;
+  }
+  return options;
+}
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief TEST: shell_client
 // //////////////////////////////////////////////////////////////////////////////
@@ -67,8 +77,13 @@ function shellClient (options) {
 
   testCases = tu.splitBuckets(options, testCases);
 
-  let opts = ensureServers(options, 3);
-  let rc = tu.performTests(opts, testCases, 'shell_client', tu.runInLocalArangosh);
+  var opts = ensureServers(options, 3);
+  opts = ensureCoordinators(opts, 2);
+  // increase timeouts after which servers count as BAD/FAILED.
+  // we want this to ensure that in an overload situation we do not
+  // get random failedLeader / failedFollower jobs during our tests.
+  let moreOptions = { "agency.supervision-ok-threshold" : "15", "agency.supervision-grace-period" : "30" };
+  let rc = tu.performTests(opts, testCases, 'shell_client', tu.runInLocalArangosh, moreOptions);
   options.cleanup = options.cleanup && opts.cleanup;
   return rc;
 }

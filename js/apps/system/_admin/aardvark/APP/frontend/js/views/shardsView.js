@@ -10,13 +10,13 @@
     interval: 10000,
     knownServers: [],
     pending: false,
-    visibleCollection: null,
+    visibleCollections: [],
 
     events: {
+      'click #toggleAllShards': 'toggleAllShards',
       'click #shardsContent .shardLeader span': 'moveShard',
       'click #shardsContent .shardFollowers span': 'moveShardFollowers',
-      'click #rebalanceShards': 'rebalanceShards',
-      'click .sectionHeader': 'toggleSections'
+      'click .sectionHeader': 'toggleSection'
     },
 
     initialize: function (options) {
@@ -45,20 +45,48 @@
       delete this.el;
       return this;
     },
+    
+    toggleAllShards: function () {
+      var wasVisible = (this.visibleCollections.length > 0);
+      var self = this;
+      this.visibleCollections = [];
 
-    renderArrows: function (e) {
-      $('#shardsContent .fa-arrow-down').removeClass('fa-arrow-down').addClass('fa-arrow-right');
-      $(e.currentTarget).find('.fa-arrow-right').removeClass('fa-arrow-right').addClass('fa-arrow-down');
+      _.each($('.sectionShard'), function (elem) {
+        var colName = $(elem).attr('id');
+
+        if (wasVisible) {
+          // hide
+          $(elem).next().hide();
+          $(elem).find('.fa-arrow-down').removeClass('fa-arrow-down').addClass('fa-arrow-right');
+        } else {
+          // show
+          self.visibleCollections.push(colName);
+          $(elem).next().show();
+          $(elem).find('.fa-arrow-right').removeClass('fa-arrow-right').addClass('fa-arrow-down');
+        }
+      });
+            
+      self.render(false);
     },
 
-    toggleSections: function (e) {
+    toggleSection: function (e) {
       var colName = $(e.currentTarget).parent().attr('id');
-      this.visibleCollection = colName;
-      $('.sectionShardContent').hide();
-      $(e.currentTarget).next().show();
-      this.renderArrows(e);
-
-      this.getShardDetails(colName);
+      var wasVisible = (this.visibleCollections.indexOf(colName) !== -1);
+      if (wasVisible) {
+        // remove the collection from the array
+        this.visibleCollections = this.visibleCollections.filter(function(c) { return c !== colName; });
+        // hide it
+        $(e.currentTarget).next().hide();
+        $(e.currentTarget).find('.fa-arrow-down').removeClass('fa-arrow-down').addClass('fa-arrow-right');
+      } else {
+        // add the collection to the array
+        this.visibleCollections.push(colName);
+        // show it
+        $(e.currentTarget).next().show();
+        $(e.currentTarget).find('.fa-arrow-right').removeClass('fa-arrow-right').addClass('fa-arrow-down');
+      
+        this.getShardDetails(colName);
+      }
     },
 
     renderShardDetail: function (collection, data) {
@@ -100,7 +128,7 @@
             shardProgress = percentify(value.progress.current / value.progress.total * 100);
           }
           if (shardProgress === '' || followersSyncing === '') {
-            shardProgress = 'waiting for slot...';
+            shardProgress = 'waiting for follower...';
           }
 
           shardProgress = '<span>' + arangoHelper.escapeHtml(shardProgress) + '</span>';
@@ -193,10 +221,7 @@
             }
           }
         });
-
-        if (navi !== false) {
-          arangoHelper.buildNodesSubNav('Shards');
-        }
+        arangoHelper.buildNodesSubNav('Shards');
       }
     },
 
@@ -236,10 +261,6 @@
                 label: db.get('name')
               };
             }
-          });
-
-          _.each(self.shardDistribution[collectionName].Plan[shardName].followers, function (follower) {
-            delete obj[follower];
           });
 
           if (from) {
@@ -321,33 +342,6 @@
       window.modalView.hide();
     },
 
-    rebalanceShards: function () {
-      var self = this;
-
-      $.ajax({
-        type: 'POST',
-        cache: false,
-        url: arangoHelper.databaseUrl('/_admin/cluster/rebalanceShards'),
-        contentType: 'application/json',
-        processData: false,
-        data: JSON.stringify({}),
-        async: true,
-        success: function (data) {
-          if (data === true) {
-            window.setTimeout(function () {
-              self.render(false);
-            }, 3000);
-            arangoHelper.arangoNotification('Started rebalance process.');
-          }
-        },
-        error: function () {
-          arangoHelper.arangoError('Could not start rebalance process.');
-        }
-      });
-
-      window.modalView.hide();
-    },
-
     continueRender: function (collections) {
       delete collections.code;
       delete collections.error;
@@ -401,9 +395,18 @@
         ordered[key] = collections[key];
       });
 
+      var serversFailed = {};
+      var healthData = window.App.lastHealthCheckResult;
+      if (healthData && healthData.Health) {
+        Object.keys(healthData.Health).forEach(function(id) {
+          serversFailed[healthData.Health[id].ShortName] = healthData.Health[id].Status === 'FAILED';
+        });
+      }
+        
       this.$el.html(this.template.render({
         collections: ordered,
-        visible: this.visibleCollection
+        visible: this.visibleCollections,
+        serversFailed: serversFailed,
       }));
 
       // if we have only one collection to show, automatically open the entry

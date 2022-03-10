@@ -106,23 +106,13 @@ FunctionEnd
 
   return impl.replace("\r", "\r\n")
 
-# generate C implementation file from errors
-def genCFile(errors, filename):
-
-  headerfile = os.path.splitext(filename)[0] + ".h"
-
-  impl = prologue\
-         + "#include \"Basics/exitcodes.h\"\n"
-  return impl
-
 
 # generate C header file from errors
 def genCHeaderFile(errors):
   wiki = "/// Exit codes and meanings\n"\
        + "/// The following codes might be returned when exiting ArangoDB:\n"
 
-  header =   "#ifndef ARANGODB_BASICS_EXIT_CODES_H\n"\
-           + "#define ARANGODB_BASICS_EXIT_CODES_H 1\n"\
+  header =   "#pragma once\n"\
            + "\n"\
            + "#include \"Basics/error.h\"\n"\
            + "\n"\
@@ -139,8 +129,6 @@ def genCHeaderFile(errors):
            + "\n"
 
   header = header\
-         + "\n"\
-         + "#endif\n"\
          + "\n"
 
   return header
@@ -189,8 +177,6 @@ if extension == ".js":
   out = genJsFile(errorsList)
 elif extension == ".h":
   out = genCHeaderFile(errorsList)
-elif extension == ".cpp":
-  out = genCFile(errorsList, filename)
 elif extension == ".nsh":
   out = genNSISFile(errorsList, filename)
 else:

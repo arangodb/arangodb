@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,8 +22,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_ROCKSDB_INDEX_ESTIMATOR_H
-#define ARANGOD_ROCKSDB_ROCKSDB_INDEX_ESTIMATOR_H 1
+#pragma once
 
 #include <cstddef>
 #include <cstdint>
@@ -38,7 +37,6 @@
 #include "Basics/fasthash.h"
 
 #include <rocksdb/types.h>
-#include <velocypack/StringRef.h>
 
 // In the following template:
 //   Key is the key type, it must be copyable and movable, furthermore, Key
@@ -55,7 +53,7 @@
 namespace arangodb {
 
 // C++ wrapper for the hash function:
-template <class T, uint64_t Seed>
+template<class T, uint64_t Seed>
 class HashWithSeed {
  public:
   uint64_t operator()(T const& t) const noexcept {
@@ -66,7 +64,7 @@ class HashWithSeed {
   }
 };
 
-template <class Key>
+template<class Key>
 class RocksDBCuckooIndexEstimator {
   // Note that the following has to be a power of two and at least 4!
   static constexpr uint32_t kSlotsPerBucket = 4;
@@ -143,25 +141,26 @@ class RocksDBCuckooIndexEstimator {
  public:
   explicit RocksDBCuckooIndexEstimator(uint64_t size);
 
-  explicit RocksDBCuckooIndexEstimator(arangodb::velocypack::StringRef serialized);
+  explicit RocksDBCuckooIndexEstimator(std::string_view serialized);
 
   ~RocksDBCuckooIndexEstimator();
 
   RocksDBCuckooIndexEstimator(RocksDBCuckooIndexEstimator const&) = delete;
-  RocksDBCuckooIndexEstimator& operator=(RocksDBCuckooIndexEstimator const&) = delete;
-  
+  RocksDBCuckooIndexEstimator& operator=(RocksDBCuckooIndexEstimator const&) =
+      delete;
+
   enum SerializeFormat : char {
     // Estimators are serialized in the following way:
     // - the first 8 bytes contain the applied seq number, little endian
-    // - the next byte contains the serialization format, which is one of the 
+    // - the next byte contains the serialization format, which is one of the
     //   values from this enum
     // - the following bytes are format-specific payload
     //
     //   appliedSeq|format|payload
 
     // To describe formats we use | as a seperator for readability, but it
-    // is NOT a printed character in the serialized string. 
-    
+    // is NOT a printed character in the serialized string.
+
     // UNCOMPRESSED:
     // serializes all instance members in a simple way, writing them all out
     // one after another. the values are not compressed and will use a lot of
@@ -170,7 +169,7 @@ class RocksDBCuckooIndexEstimator {
     //   size|nrUsed|nrCuckood|nrTotal|niceSize|logSize|base|counters
     UNCOMPRESSED = '1',
 
-    // COMPRESSED: 
+    // COMPRESSED:
     // first serializes everything using the UNCOMPRESSED format, and then
     // compressed it with Snappy compression into a shorter equivalent.
     // after compression, we only have a size of the compressed blob, and
@@ -182,8 +181,8 @@ class RocksDBCuckooIndexEstimator {
     // serialized data structure
     COMPRESSED = '2',
   };
-  
-  static bool isFormatSupported(arangodb::velocypack::StringRef serialized);
+
+  static bool isFormatSupported(std::string_view serialized);
 
   /**
    * @brief Serialize estimator for persistence, applying any buffered updates
@@ -199,10 +198,9 @@ class RocksDBCuckooIndexEstimator {
    * @param  commitSeq  Above that are still uncommited operations
    * @param  format     The serialization format to use
    */
-  void serialize(std::string& serialized, 
-                 rocksdb::SequenceNumber maxCommitSeq, 
+  void serialize(std::string& serialized, rocksdb::SequenceNumber maxCommitSeq,
                  SerializeFormat format);
-  
+
   /// @brief only call directly during startup/recovery; otherwise buffer
   void clear();
 
@@ -245,8 +243,7 @@ class RocksDBCuckooIndexEstimator {
    * @param  removals Vector of hashes to remove
    * @return          May return error if any functions throw (e.g. alloc)
    */
-  Result bufferUpdates(rocksdb::SequenceNumber seq, 
-                       std::vector<Key>&& inserts,
+  Result bufferUpdates(rocksdb::SequenceNumber seq, std::vector<Key>&& inserts,
                        std::vector<Key>&& removals);
 
   /**
@@ -285,10 +282,12 @@ class RocksDBCuckooIndexEstimator {
   rocksdb::SequenceNumber applyUpdates(rocksdb::SequenceNumber commitSeq);
 
   uint64_t memoryUsage() const {
-    return sizeof(RocksDBCuckooIndexEstimator) + _slotAllocSize + _counterAllocSize;
+    return sizeof(RocksDBCuckooIndexEstimator) + _slotAllocSize +
+           _counterAllocSize;
   }
 
-  Slot findSlotNoCuckoo(uint64_t pos1, uint64_t pos2, uint16_t fp, bool& found) const {
+  Slot findSlotNoCuckoo(uint64_t pos1, uint64_t pos2, uint16_t fp,
+                        bool& found) const {
     found = false;
     Slot s = findSlotNoCuckoo(pos1, fp, found);
     if (found) {
@@ -445,7 +444,8 @@ class RocksDBCuckooIndexEstimator {
   }
 
   uint32_t* findCounter(uint64_t pos, uint64_t slot) const {
-    TRI_ASSERT(kCounterSize * (pos * kSlotsPerBucket + slot) <= _counterAllocSize);
+    TRI_ASSERT(kCounterSize * (pos * kSlotsPerBucket + slot) <=
+               _counterAllocSize);
     char* address = _counters + kCounterSize * (pos * kSlotsPerBucket + slot);
     return reinterpret_cast<uint32_t*>(address);
   }
@@ -458,7 +458,8 @@ class RocksDBCuckooIndexEstimator {
   uint16_t keyToFingerprint(Key const& k) const {
     uint64_t hashfp = _fingerprint(k);
     uint16_t fingerprint =
-        (uint16_t)((hashfp ^ (hashfp >> 16) ^ (hashfp >> 32) ^ (hashfp >> 48)) & 0xFFFF);
+        (uint16_t)((hashfp ^ (hashfp >> 16) ^ (hashfp >> 32) ^ (hashfp >> 48)) &
+                   0xFFFF);
     return (fingerprint ? fingerprint : 1);
   }
 
@@ -471,9 +472,9 @@ class RocksDBCuckooIndexEstimator {
     return static_cast<uint8_t>((_randState >> 37) & 0xff);
   }
 
-  void deserialize(arangodb::velocypack::StringRef serialized);
+  void deserialize(std::string_view serialized);
 
-  void deserializeUncompressedBody(arangodb::velocypack::StringRef serialized);
+  void deserializeUncompressedBody(std::string_view serialized);
 
   void initializeDefault();
 
@@ -509,7 +510,7 @@ class RocksDBCuckooIndexEstimator {
 
   // Instance to compute the first hash function
   HashWithSeed<Key, 0xdeadbeefdeadbeefULL> _hasherKey;
-  
+
   // Instance to compute a fingerprint of a key
   HashWithSeed<Key, 0xabcdefabcdef1234ULL> _fingerprint;
 
@@ -517,10 +518,8 @@ class RocksDBCuckooIndexEstimator {
   HashWithSeed<uint16_t, 0xfedcbafedcba4321ULL> _hasherShort;
 
   arangodb::basics::ReadWriteLock mutable _lock;
-}; 
+};
 
 using RocksDBCuckooIndexEstimatorType = RocksDBCuckooIndexEstimator<uint64_t>;
 
 }  // namespace arangodb
-
-#endif

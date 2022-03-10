@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,28 +28,19 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb::transaction;
 
-uint64_t Options::defaultMaxTransactionSize = UINT64_MAX;
-uint64_t Options::defaultIntermediateCommitSize = 512 * 1024 * 1024;
-uint64_t Options::defaultIntermediateCommitCount = 1 * 1000 * 1000;
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
+uint64_t Options::defaultMaxTransactionSize =
+    std::numeric_limits<decltype(Options::defaultMaxTransactionSize)>::max();
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
+uint64_t Options::defaultIntermediateCommitSize =
+    std::uint64_t{512} * 1024 * 1024;  // 1 << 29
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
+uint64_t Options::defaultIntermediateCommitCount = 1'000'000;
 
-Options::Options()
-    : lockTimeout(defaultLockTimeout),
-      maxTransactionSize(defaultMaxTransactionSize),
-      intermediateCommitSize(defaultIntermediateCommitSize),
-      intermediateCommitCount(defaultIntermediateCommitCount),
-      allowImplicitCollectionsForRead(true),
-      allowImplicitCollectionsForWrite(false),
-#ifdef USE_ENTERPRISE
-      skipInaccessibleCollections(false),
-#endif
-      waitForSync(false),
-      isFollowerTransaction(false),
-      origin("", arangodb::RebootId(0)) {
-
+Options::Options() {
   // if we are a coordinator, fill in our own server id/reboot id.
   // the data is passed to DB servers when the transaction is started
   // there. the DB servers use this data to abort the transaction
@@ -60,9 +51,8 @@ Options::Options()
   if (ServerState::instance()->isCoordinator()) {
     // cluster transactions always originate on a coordinator
     origin = arangodb::cluster::RebootTracker::PeerState(
-        ServerState::instance()->getId(), 
-        ServerState::instance()->getRebootId()
-    );
+        ServerState::instance()->getId(),
+        ServerState::instance()->getRebootId());
   }
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
@@ -70,7 +60,7 @@ Options::Options()
   adjustIntermediateCommitCount(*this);
 #endif
 }
-  
+
 Options Options::replicationDefaults() {
   Options options;
   // this is important, because when we get a "transaction begin" marker
@@ -80,11 +70,17 @@ Options Options::replicationDefaults() {
   return options;
 }
 
-void Options::setLimits(uint64_t maxTransactionSize, uint64_t intermediateCommitSize,
+void Options::setLimits(uint64_t maxTransactionSize,
+                        uint64_t intermediateCommitSize,
                         uint64_t intermediateCommitCount) {
   defaultMaxTransactionSize = maxTransactionSize;
   defaultIntermediateCommitSize = intermediateCommitSize;
   defaultIntermediateCommitCount = intermediateCommitCount;
+}
+
+bool Options::isIntermediateCommitEnabled() const noexcept {
+  return intermediateCommitSize != UINT64_MAX ||
+         intermediateCommitCount != UINT64_MAX;
 }
 
 void Options::fromVelocyPack(arangodb::velocypack::Slice const& slice) {
@@ -121,7 +117,11 @@ void Options::fromVelocyPack(arangodb::velocypack::Slice const& slice) {
   if (value.isBool()) {
     waitForSync = value.getBool();
   }
-  
+  value = slice.get("fillBlockCache");
+  if (value.isBool()) {
+    fillBlockCache = value.getBool();
+  }
+
   if (!ServerState::instance()->isSingleServer()) {
     value = slice.get("isFollowerTransaction");
     if (value.isBool()) {
@@ -137,7 +137,7 @@ void Options::fromVelocyPack(arangodb::velocypack::Slice const& slice) {
   }
   // we are intentionally *not* reading allowImplicitCollectionForWrite here.
   // this is an internal option only used in replication
-  
+
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   // patch intermediateCommitCount for testing
   adjustIntermediateCommitCount(*this);
@@ -154,16 +154,18 @@ void Options::toVelocyPack(arangodb::velocypack::Builder& builder) const {
   builder.add("intermediateCommitCount", VPackValue(intermediateCommitCount));
   builder.add("allowImplicit", VPackValue(allowImplicitCollectionsForRead));
 #ifdef USE_ENTERPRISE
-  builder.add("skipInaccessibleCollections", VPackValue(skipInaccessibleCollections));
+  builder.add("skipInaccessibleCollections",
+              VPackValue(skipInaccessibleCollections));
 #endif
   builder.add("waitForSync", VPackValue(waitForSync));
+  builder.add("fillBlockCache", VPackValue(fillBlockCache));
   // we are intentionally *not* writing allowImplicitCollectionForWrite here.
   // this is an internal option only used in replication
 
   // serialize data for cluster-wide collections
   if (!ServerState::instance()->isSingleServer()) {
     builder.add("isFollowerTransaction", VPackValue(isFollowerTransaction));
-    
+
     // serialize the server id/reboot id of the originating server (which must
     // be a coordinator id if set)
     if (!origin.serverId().empty()) {

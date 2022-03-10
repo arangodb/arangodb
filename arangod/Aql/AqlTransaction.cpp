@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,6 +26,7 @@
 #include "Aql/Collection.h"
 #include "Aql/Collections.h"
 #include "StorageEngine/TransactionState.h"
+#include "Transaction/Context.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -47,23 +48,28 @@ std::unique_ptr<AqlTransaction> AqlTransaction::create(
         std::move(inaccessibleCollections));
   }
 #endif
-  return std::make_unique<AqlTransaction>(transactionContext, collections, options);
+  return std::make_unique<AqlTransaction>(transactionContext, collections,
+                                          options);
 }
 
 AqlTransaction::AqlTransaction(
     std::shared_ptr<transaction::Context> const& transactionContext,
     transaction::Options const& options)
     : transaction::Methods(transactionContext, options) {
-  addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
+  if (options.isIntermediateCommitEnabled()) {
+    addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
+  }
 }
 
-  /// protected so we can create different subclasses
+/// protected so we can create different subclasses
 AqlTransaction::AqlTransaction(
     std::shared_ptr<transaction::Context> const& transactionContext,
-    aql::Collections const& collections,
-    transaction::Options const& options)
-    : transaction::Methods(transactionContext, options) { 
-  addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
+    aql::Collections const& collections, transaction::Options const& options)
+    : transaction::Methods(transactionContext, options) {
+  TRI_ASSERT(state() != nullptr);
+  if (options.isIntermediateCommitEnabled()) {
+    addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
+  }
 
   collections.visit([this](std::string const&, aql::Collection& collection) {
     Result res = processCollection(collection);

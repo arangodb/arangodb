@@ -29,9 +29,6 @@
       } else {
         $(this.el).removeClass('locked');
       }
-      if (this.model.get('status') === 'loading' || this.model.get('status') === 'unloading') {
-        $(this.el).addClass('locked');
-      }
       $(this.el).html(this.template.render({
         model: this.model
       }));
@@ -64,66 +61,17 @@
       if (this.model.get('locked')) {
         return 0;
       }
-      if (this.model.get('status') === 'loading') {
-        return 0;
-      }
       if (this.model.get('status') === 'corrupted') {
         return 0;
       }
 
-      if (this.model.get('status') === 'unloaded') {
-        this.loadCollection();
-      } else {
-        window.App.navigate(
-          'collection/' + encodeURIComponent(this.model.get('name')) + '/documents/1', {trigger: true}
-        );
-      }
+      window.App.navigate(
+        'collection/' + encodeURIComponent(this.model.get('name')) + '/documents/1', {trigger: true}
+      );
     },
 
     noop: function (event) {
       event.stopPropagation();
-    },
-
-    unloadCollection: function () {
-      var unloadCollectionCallback = function (error) {
-        if (error) {
-          arangoHelper.arangoError('Collection error', this.model.get('name') + ' could not be unloaded.');
-        } else if (error === undefined) {
-          this.model.set('status', 'unloading');
-          this.render();
-        } else {
-          if (window.location.hash === '#collections') {
-            this.model.set('status', 'unloaded');
-            this.render();
-          } else {
-            arangoHelper.arangoNotification('Collection ' + this.model.get('name') + ' unloaded.');
-          }
-        }
-      }.bind(this);
-
-      this.model.unloadCollection(unloadCollectionCallback);
-      window.modalView.hide();
-    },
-
-    loadCollection: function () {
-      var loadCollectionCallback = function (error) {
-        if (error) {
-          arangoHelper.arangoError('Collection error', this.model.get('name') + ' could not be loaded.');
-        } else if (error === undefined) {
-          this.model.set('status', 'loading');
-          this.render();
-        } else {
-          if (window.location.hash === '#collections') {
-            this.model.set('status', 'loaded');
-            this.render();
-          } else {
-            arangoHelper.arangoNotification('Collection ' + this.model.get('name') + ' loaded.');
-          }
-        }
-      }.bind(this);
-
-      this.model.loadCollection(loadCollectionCallback);
-      window.modalView.hide();
     },
 
     truncateCollection: function () {
@@ -161,56 +109,34 @@
           } else {
             newname = $('#change-collection-name').val();
           }
-          var status = this.model.get('status');
 
-          if (status === 'loaded') {
-            var callbackChange = function (error) {
-              if (error) {
-                arangoHelper.arangoError('Collection error: ' + error.responseText);
-              } else {
-                this.collectionsView.render();
-                window.modalView.hide();
-              }
-            }.bind(this);
-
-            var callbackRename = function (error) {
-              if (error) {
-                arangoHelper.arangoError('Collection error: ' + error.responseText);
-              } else {
-                var wfs = $('#change-collection-sync').val();
-                var replicationFactor;
-                if (frontendConfig.isCluster) {
-                  replicationFactor = $('#change-replication-factor').val();
-                }
-
-                this.model.changeCollection(wfs, replicationFactor, callbackChange);
-              }
-            }.bind(this);
-
-            if (frontendConfig.isCluster === false) {
-              this.model.renameCollection(newname, callbackRename);
+          var callbackChange = function (error) {
+            if (error) {
+              arangoHelper.arangoError('Collection error: ' + error.responseText);
             } else {
-              callbackRename();
-            }
-          } else if (status === 'unloaded') {
-            if (this.model.get('name') !== newname) {
-              var callbackRename2 = function (error, data) {
-                if (error) {
-                  arangoHelper.arangoError('Collection error: ' + data.responseText);
-                } else {
-                  this.collectionsView.render();
-                  window.modalView.hide();
-                }
-              }.bind(this);
-
-              if (frontendConfig.isCluster === false) {
-                this.model.renameCollection(newname, callbackRename2);
-              } else {
-                callbackRename2();
-              }
-            } else {
+              this.collectionsView.render();
               window.modalView.hide();
             }
+          }.bind(this);
+
+          var callbackRename = function (error) {
+            if (error) {
+              arangoHelper.arangoError('Collection error: ' + error.responseText);
+            } else {
+              var wfs = $('#change-collection-sync').val();
+              var replicationFactor;
+              if (frontendConfig.isCluster) {
+                replicationFactor = $('#change-replication-factor').val();
+              }
+
+              this.model.changeCollection(wfs, replicationFactor, callbackChange);
+            }
+          }.bind(this);
+
+          if (frontendConfig.isCluster === false) {
+            this.model.renameCollection(newname, callbackRename);
+          } else {
+            callbackRename();
           }
         }
       }.bind(this);
@@ -223,11 +149,6 @@
         if (error) {
           arangoHelper.arangoError('Error', 'Could not get coordinator info');
         } else {
-          var collectionIsLoaded = false;
-
-          if (this.model.get('status') === 'loaded') {
-            collectionIsLoaded = true;
-          }
 
           var buttons = [];
           var tableContent = [];
@@ -296,21 +217,6 @@
                 )
               );
             }
-            if (collectionIsLoaded) {
-              buttons.push(
-                window.modalView.createNotificationButton(
-                  'Unload',
-                  this.unloadCollection.bind(this)
-                )
-              );
-            } else {
-              buttons.push(
-                window.modalView.createNotificationButton(
-                  'Load',
-                  this.loadCollection.bind(this)
-                )
-              );
-            }
 
             buttons.push(
               window.modalView.createSuccessButton(
@@ -330,37 +236,29 @@
               this.events, null,
               tabBar
             );
-            if (this.model.get('status') === 'loaded') {
-              this.getIndex();
-            } else {
-              $($('#infoTab').children()[1]).remove();
-            }
+            this.getIndex();
           }.bind(this);
 
-          if (collectionIsLoaded) {
-            var callback2 = function (error, data) {
-              if (error) {
-                arangoHelper.arangoError('Collection', 'Could not fetch properties');
-              } else {
-                var wfs = data.waitForSync;
+          var callback2 = function (error, data) {
+            if (error) {
+              arangoHelper.arangoError('Collection', 'Could not fetch properties');
+            } else {
+              var wfs = data.waitForSync;
 
-                // prevent "unexpected sync method error"
-                tableContent.push(
-                  window.modalView.createSelectEntry(
-                    'change-collection-sync',
-                    'Wait for sync',
-                    wfs,
-                    'Synchronize to disk before returning from a create or update of a document.',
-                    [{value: false, label: 'No'}, {value: true, label: 'Yes'}])
-                );
-              }
-              after();
-            };
-
-            this.model.getProperties(callback2);
-          } else {
+              // prevent "unexpected sync method error"
+              tableContent.push(
+                window.modalView.createSelectEntry(
+                  'change-collection-sync',
+                  'Wait for sync',
+                  wfs,
+                  'Synchronize to disk before returning from a create or update of a document.',
+                  [{value: false, label: 'No'}, {value: true, label: 'Yes'}])
+              );
+            }
             after();
-          }
+          };
+
+          this.model.getProperties(callback2);
         }
       }.bind(this);
       window.isCoordinator(callback);

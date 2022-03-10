@@ -57,7 +57,8 @@ TEST(CacheLockStressTest, test_transactionality_for_mixed_load) {
     store.insert(nullptr, TransactionalStore::Document(i));
   }
 
-  auto readWorker = [&store, totalDocuments, readBatchSize, numBatches]() -> void {
+  auto readWorker = [&store, totalDocuments, readBatchSize,
+                     numBatches]() -> void {
     for (std::uint64_t batch = 0; batch < numBatches; batch++) {
       auto tx = store.beginTransaction(true);
       for (std::uint64_t i = 0; i < readBatchSize; i++) {
@@ -89,7 +90,8 @@ TEST(CacheLockStressTest, test_transactionality_for_mixed_load) {
   }
 
   auto end = std::chrono::high_resolution_clock::now();
-  std::cout << "time: " << static_cast<double>((end - start).count()) / 1000000000
+  std::cout << "time: "
+            << static_cast<double>((end - start).count()) / 1000000000
             << std::endl;
 
   RandomGenerator::shutdown();

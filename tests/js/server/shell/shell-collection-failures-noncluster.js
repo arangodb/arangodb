@@ -28,11 +28,254 @@
 /// @author Copyright 2018, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require("jsunity");
-var arangodb = require("@arangodb");
-var db = arangodb.db;
+const jsunity = require("jsunity");
+const arangodb = require("@arangodb");
+const db = arangodb.db;
 const internal = require("internal");
-var ERRORS = arangodb.errors;
+const ERRORS = arangodb.errors;
+
+function DocumentOperationsFailuresSuite() {
+  'use strict';
+  const cn = "UnitTestsDocuments";
+
+  return {
+
+    setUp: function () {
+      internal.debugClearFailAt();
+    },
+    
+    tearDown: function () {
+      internal.debugClearFailAt();
+      db._drop(cn);
+    },
+    
+    testInsertSizeLimit: function () {
+      let c = db._create(cn);
+
+      internal.debugSetFailAt("addOperationSizeError");
+
+      try {
+        c.insert({ _key: "testi" });
+        fail();
+      } catch (e) {
+        // Validate that we died with debug
+        assertEqual(e.errorNum, ERRORS.ERROR_RESOURCE_LIMIT.code);
+      }
+
+      assertEqual(0, c.count());
+    
+      internal.debugClearFailAt();
+
+      c.insert({ _key: "testi" });
+      assertEqual(1, c.count());
+    },
+
+    testInsertFailure1: function () {
+      let c = db._create(cn);
+
+      internal.debugSetFailAt("RocksDBCollection::insertFail1Always");
+
+      try {
+        c.insert({ _key: "testi" });
+        fail();
+      } catch (e) {
+        // Validate that we died with debug
+        assertEqual(e.errorNum, ERRORS.ERROR_DEBUG.code);
+      }
+
+      assertEqual(0, c.count());
+    
+      internal.debugClearFailAt();
+
+      c.insert({ _key: "testi" });
+      assertEqual(1, c.count());
+    },
+    
+    testInsertFailure2: function () {
+      let c = db._create(cn);
+
+      internal.debugSetFailAt("RocksDBCollection::insertFail2Always");
+
+      try {
+        c.insert({ _key: "testi" });
+        fail();
+      } catch (e) {
+        // Validate that we died with debug
+        assertEqual(e.errorNum, ERRORS.ERROR_DEBUG.code);
+      }
+
+      assertEqual(0, c.count());
+    
+      internal.debugClearFailAt();
+
+      c.insert({ _key: "testi" });
+      assertEqual(1, c.count());
+    },
+    
+    testRemoveSizeLimit: function () {
+      let c = db._create(cn);
+      c.insert({ _key: "testi" });
+
+      internal.debugSetFailAt("addOperationSizeError");
+
+      try {
+        c.remove("testi");
+        fail();
+      } catch (e) {
+        // Validate that we died with debug
+        assertEqual(e.errorNum, ERRORS.ERROR_RESOURCE_LIMIT.code);
+      }
+
+      assertEqual(1, c.count());
+    
+      internal.debugClearFailAt();
+
+      c.remove("testi");
+      assertEqual(0, c.count());
+    },
+    
+    testRemoveFailure1: function () {
+      let c = db._create(cn);
+      c.insert({ _key: "testi" });
+
+      internal.debugSetFailAt("RocksDBCollection::removeFail1Always");
+
+      try {
+        c.remove("testi");
+        fail();
+      } catch (e) {
+        // Validate that we died with debug
+        assertEqual(e.errorNum, ERRORS.ERROR_DEBUG.code);
+      }
+
+      assertEqual(1, c.count());
+    
+      internal.debugClearFailAt();
+
+      c.remove("testi");
+      assertEqual(0, c.count());
+    },
+    
+    testRemoveFailure2: function () {
+      let c = db._create(cn);
+      c.insert({ _key: "testi" });
+
+      internal.debugSetFailAt("RocksDBCollection::removeFail2Always");
+
+      try {
+        c.remove("testi");
+        fail();
+      } catch (e) {
+        // Validate that we died with debug
+        assertEqual(e.errorNum, ERRORS.ERROR_DEBUG.code);
+      }
+
+      assertEqual(1, c.count());
+    
+      internal.debugClearFailAt();
+
+      c.remove("testi");
+      assertEqual(0, c.count());
+    },
+    
+    testModifySizeLimit: function () {
+      let c = db._create(cn);
+      c.insert({ _key: "testi", value: 1 });
+
+      internal.debugSetFailAt("addOperationSizeError");
+
+      try {
+        c.update("testi", { value: 2 });
+        fail();
+      } catch (e) {
+        // Validate that we died with debug
+        assertEqual(e.errorNum, ERRORS.ERROR_RESOURCE_LIMIT.code);
+      }
+
+      assertEqual(1, c.count());
+      assertEqual(1, c.document("testi").value);
+    
+      internal.debugClearFailAt();
+
+      c.update("testi", { value: 3 });
+      assertEqual(1, c.count());
+      assertEqual(3, c.document("testi").value);
+    },
+    
+    testModifyFailure1: function () {
+      let c = db._create(cn);
+      c.insert({ _key: "testi", value: 1 });
+
+      internal.debugSetFailAt("RocksDBCollection::modifyFail1Always");
+
+      try {
+        c.update("testi", { value: 2 });
+        fail();
+      } catch (e) {
+        // Validate that we died with debug
+        assertEqual(e.errorNum, ERRORS.ERROR_DEBUG.code);
+      }
+
+      assertEqual(1, c.count());
+      assertEqual(1, c.document("testi").value);
+    
+      internal.debugClearFailAt();
+
+      c.update("testi", { value: 3 });
+      assertEqual(1, c.count());
+      assertEqual(3, c.document("testi").value);
+    },
+    
+    testModifyFailure2: function () {
+      let c = db._create(cn);
+      c.insert({ _key: "testi", value: 1 });
+
+      internal.debugSetFailAt("RocksDBCollection::modifyFail2Always");
+
+      try {
+        c.update("testi", { value: 2 });
+        fail();
+      } catch (e) {
+        // Validate that we died with debug
+        assertEqual(e.errorNum, ERRORS.ERROR_DEBUG.code);
+      }
+
+      assertEqual(1, c.count());
+      assertEqual(1, c.document("testi").value);
+    
+      internal.debugClearFailAt();
+
+      c.update("testi", { value: 3 });
+      assertEqual(1, c.count());
+      assertEqual(3, c.document("testi").value);
+    },
+    
+    testModifyFailure3: function () {
+      let c = db._create(cn);
+      c.insert({ _key: "testi", value: 1 });
+
+      internal.debugSetFailAt("RocksDBCollection::modifyFail3Always");
+
+      try {
+        c.update("testi", { value: 2 });
+        fail();
+      } catch (e) {
+        // Validate that we died with debug
+        assertEqual(e.errorNum, ERRORS.ERROR_DEBUG.code);
+      }
+
+      assertEqual(1, c.count());
+      assertEqual(1, c.document("testi").value);
+    
+      internal.debugClearFailAt();
+
+      c.update("testi", { value: 3 });
+      assertEqual(1, c.count());
+      assertEqual(3, c.document("testi").value);
+    },
+  };
+}
+
 
 function CollectionTruncateFailuresSuite() {
   'use strict';
@@ -52,8 +295,6 @@ function CollectionTruncateFailuresSuite() {
 
   return {
 
-    tearDown: cleanUp,
-
     setUp: function () {
       cleanUp();
       c = db._create(cn);
@@ -62,9 +303,11 @@ function CollectionTruncateFailuresSuite() {
 
       // Add two packs of 10.000 Documents.
       // Intermediate commits will commit after 10.000 removals
-      c.save(docs);
-      c.save(docs);
+      c.insert(docs);
+      c.insert(docs);
     },
+    
+    tearDown: cleanUp,
 
     testTruncateFailsAfterAllCommits: function () {
       internal.debugSetFailAt("FailAfterAllCommits");
@@ -382,12 +625,9 @@ function IntermediateCommitFailureSuite() {
 
   };
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suites
-////////////////////////////////////////////////////////////////////////////////
-
+    
 if (internal.debugCanUseFailAt()) {
+  jsunity.run(DocumentOperationsFailuresSuite);
   jsunity.run(CollectionTruncateFailuresSuite);
   jsunity.run(IntermediateCommitFailureSuite);
 }

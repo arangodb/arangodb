@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,15 +21,13 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_GRAPH_FORMAT_H
-#define ARANGODB_PREGEL_GRAPH_FORMAT_H 1
+#pragma once
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 #include <cstddef>
 #include <type_traits>
 
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Common.h"
 #include "Cluster/ClusterFeature.h"
 #include "Pregel/Graph.h"
@@ -42,9 +40,8 @@ class ApplicationServer;
 }
 namespace pregel {
 
-template <typename V, typename E>
+template<typename V, typename E>
 struct GraphFormat {
-
   explicit GraphFormat(application_features::ApplicationServer& server)
       : _server(server) {}
   virtual ~GraphFormat() = default;
@@ -57,24 +54,26 @@ struct GraphFormat {
                               arangodb::velocypack::Slice document,
                               V& targetPtr, uint64_t& vertexIdRange) = 0;
 
-
-  // the default implementation is to do nothing. only few algorithms actually override
-  // this with a more specific behavior
+  // the default implementation is to do nothing. only few algorithms actually
+  // override this with a more specific behavior
   virtual void copyEdgeData(arangodb::velocypack::Options const& vpackOptions,
-                            arangodb::velocypack::Slice edgeDocument, E& targetPtr) {}
+                            arangodb::velocypack::Slice edgeDocument,
+                            E& targetPtr) {}
 
-  virtual bool buildVertexDocument(arangodb::velocypack::Builder& b, V const* targetPtr) const = 0;
+  virtual bool buildVertexDocument(arangodb::velocypack::Builder& b,
+                                   V const* targetPtr) const = 0;
 
-  virtual greenspun::EvalResult buildVertexDocumentWithResult(arangodb::velocypack::Builder& b,
-                                                              V const* targetPtr) const {
+  virtual greenspun::EvalResult buildVertexDocumentWithResult(
+      arangodb::velocypack::Builder& b, V const* targetPtr) const {
     buildVertexDocument(b, targetPtr);
     return {};
   }
+
  private:
   application_features::ApplicationServer& _server;
 };
 
-template <typename V, typename E>
+template<typename V, typename E>
 class NumberGraphFormat : public GraphFormat<V, E> {
   static_assert(std::is_arithmetic<V>::value, "Vertex type must be numeric");
   static_assert(std::is_arithmetic<E>::value, "Edge type must be numeric");
@@ -94,7 +93,8 @@ class NumberGraphFormat : public GraphFormat<V, E> {
         _vDefault(vertexNull),
         _eDefault(edgeNull) {}
 
-  void copyVertexData(arangodb::velocypack::Options const&, std::string const& documentId,
+  void copyVertexData(arangodb::velocypack::Options const&,
+                      std::string const& documentId,
                       arangodb::velocypack::Slice document, V& targetPtr,
                       uint64_t& /*vertexIdRange*/) override {
     arangodb::velocypack::Slice val = document.get(_sourceField);
@@ -110,7 +110,8 @@ class NumberGraphFormat : public GraphFormat<V, E> {
   }
 
   void copyEdgeData(arangodb::velocypack::Options const&,
-                    arangodb::velocypack::Slice document, E& targetPtr) override {
+                    arangodb::velocypack::Slice document,
+                    E& targetPtr) override {
     arangodb::velocypack::Slice val = document.get(_sourceField);
     if (std::is_integral<E>::value) {
       if (std::is_signed<E>::value) {  // getNumber does range checks
@@ -123,13 +124,14 @@ class NumberGraphFormat : public GraphFormat<V, E> {
     }
   }
 
-  bool buildVertexDocument(arangodb::velocypack::Builder& b, V const* ptr) const override {
+  bool buildVertexDocument(arangodb::velocypack::Builder& b,
+                           V const* ptr) const override {
     b.add(_resultField, arangodb::velocypack::Value(*ptr));
     return true;
   }
 };
 
-template <typename V, typename E>
+template<typename V, typename E>
 class InitGraphFormat : public GraphFormat<V, E> {
  protected:
   const std::string _resultField;
@@ -147,22 +149,25 @@ class InitGraphFormat : public GraphFormat<V, E> {
   virtual void copyVertexData(arangodb::velocypack::Options const&,
                               std::string const& /*documentId*/,
                               arangodb::velocypack::Slice /*document*/,
-                              V& targetPtr, uint64_t& /*vertexIdRange*/) override {
+                              V& targetPtr,
+                              uint64_t& /*vertexIdRange*/) override {
     targetPtr = _vDefault;
   }
 
   virtual void copyEdgeData(arangodb::velocypack::Options const&,
-                            arangodb::velocypack::Slice /*document*/, E& targetPtr) override {
+                            arangodb::velocypack::Slice /*document*/,
+                            E& targetPtr) override {
     targetPtr = _eDefault;
   }
 
-  virtual bool buildVertexDocument(arangodb::velocypack::Builder& b, V const* ptr) const override {
+  virtual bool buildVertexDocument(arangodb::velocypack::Builder& b,
+                                   V const* ptr) const override {
     b.add(_resultField, arangodb::velocypack::Value(*ptr));
     return true;
   }
 };
 
-template <typename V, typename E>
+template<typename V, typename E>
 class VertexGraphFormat : public GraphFormat<V, E> {
  protected:
   const std::string _resultField;
@@ -171,22 +176,25 @@ class VertexGraphFormat : public GraphFormat<V, E> {
  public:
   VertexGraphFormat(application_features::ApplicationServer& server,
                     std::string const& result, V vertexNull)
-      : GraphFormat<V, E>(server), _resultField(result), _vDefault(vertexNull) {}
+      : GraphFormat<V, E>(server),
+        _resultField(result),
+        _vDefault(vertexNull) {}
 
   size_t estimatedVertexSize() const override { return sizeof(V); }
   virtual size_t estimatedEdgeSize() const override { return 0; }
 
-  void copyVertexData(arangodb::velocypack::Options const&, std::string const& /*documentId*/,
+  void copyVertexData(arangodb::velocypack::Options const&,
+                      std::string const& /*documentId*/,
                       arangodb::velocypack::Slice /*document*/, V& targetPtr,
                       uint64_t& /*vertexIdRange*/) override {
     targetPtr = _vDefault;
   }
 
-  bool buildVertexDocument(arangodb::velocypack::Builder& b, V const* ptr) const override {
+  bool buildVertexDocument(arangodb::velocypack::Builder& b,
+                           V const* ptr) const override {
     b.add(_resultField, arangodb::velocypack::Value(*ptr));
     return true;
   }
 };
 }  // namespace pregel
 }  // namespace arangodb
-#endif

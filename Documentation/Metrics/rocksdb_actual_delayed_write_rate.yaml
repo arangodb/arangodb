@@ -1,7 +1,7 @@
 name: rocksdb_actual_delayed_write_rate
 introducedIn: "3.6.1"
 help: |
-  RocksDB metric "rocksdb-actual-delayed-write-rate"
+  Actual delayed RocksDB write rate.
 unit: number
 type: gauge
 category: RocksDB

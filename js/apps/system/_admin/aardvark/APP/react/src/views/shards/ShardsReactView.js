@@ -1,17 +1,15 @@
-import React, { Component } from 'react';
-import ReactDOM from 'react-dom';
-import Overview from './overview';
-import jQuery from 'jquery';
+import React from 'react';
 
 import { Provider } from 'react-redux';
-import store from "../../configureStore";
+import store from '../../configureStore';
+import Overview from './overview';
 
 class ShardsReactView {
   render () {
-    ReactDOM.render(<Provider store={store}>
-        <Overview />
-      </Provider>, document.getElementById("content"));
+    return <Provider store={store}>
+      <Overview/>
+    </Provider>;
   }
-};
+}
 
-window.ShardsReactView = new ShardsReactView();
+window.ShardsReactView = ShardsReactView;

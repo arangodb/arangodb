@@ -1,0 +1,133 @@
+﻿[/
+ /  Copyright (c) 2001, 2002 Peter Dimov and Multi Media Ltd.
+ /  Copyright (c) 2003-2005 Peter Dimov
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See
+ / accompanying file LICENSE_1_0.txt or copy at
+ / http://www.boost.org/LICENSE_1_0.txt)
+ /]
+
+[section:interface Interface]
+
+[section:synopsys Synopsis]
+
+    namespace boost
+    {
+        template<class T> T * ``[link get_pointer_1 `get_pointer`]``(T * p);
+
+        template<class R, class T> ``/unspecified-1/`` ``[link mem_fn_1 `mem_fn`]``(R (T::*pmf) ());
+
+        template<class R, class T> ``/unspecified-2/`` ``[link mem_fn_2 `mem_fn`]``(R (T::*pmf) () const);
+
+        template<class R, class T> ``/unspecified-2-1/`` ``[link mem_fn_2_1 `mem_fn`]``(R T::*pm);
+
+        template<class R, class T, class A1> ``/unspecified-3/`` ``[link mem_fn_3 `mem_fn`]``(R (T::*pmf) (A1));
+
+        template<class R, class T, class A1> ``/unspecified-4/`` ``[link mem_fn_4 `mem_fn`]``(R (T::*pmf) (A1) const);
+
+        template<class R, class T, class A1, class A2> ``/unspecified-5/`` ``[link mem_fn_5 `mem_fn`]``(R (T::*pmf) (A1, A2));
+
+        template<class R, class T, class A1, class A2> ``/unspecified-6/`` ``[link mem_fn_6 `mem_fn`]``(R (T::*pmf) (A1, A2) const);
+
+        // implementation defined number of additional overloads for more arguments
+    }
+
+[endsect]
+
+[section Common requirements]
+
+All /unspecified-N/ types mentioned in the Synopsis are /CopyConstructible/
+and /Assignable/. Their copy constructors and assignment operators do not
+throw exceptions. /unspecified-N/`::result_type` is defined as the return type
+of the member function pointer passed as an argument to `mem_fn` (`R` in the
+Synopsis.) /unspecified-2-1/`::result_type` is defined as `R`.
+
+[endsect]
+
+[section `get_pointer`]
+
+[#get_pointer_1]
+
+    template<class T> T * get_pointer(T * p)
+
+* /Returns:/ `p`.
+
+* /Throws:/ Nothing.
+
+[endsect]
+
+[section `mem_fn`]
+
+[#mem_fn_1]
+
+    template<class R, class T> ``/unspecified-1/`` mem_fn(R (T::*pmf) ())
+
+* /Returns:/ a function object \u03DD such that the expression \u03DD`(t)` is
+equivalent to `(t.*pmf)()` when `t` is an l-value of type `T` or derived,
+`(get_pointer(t)->*pmf)()` otherwise.
+
+* /Throws:/ Nothing.
+
+[#mem_fn_2]
+
+    template<class R, class T> ``/unspecified-2/`` mem_fn(R (T::*pmf) () const)
+
+* /Returns:/ a function object \u03DD such that the expression \u03DD`(t)` is
+equivalent to `(t.*pmf)()` when `t` is of type `T` /[/`const`/]/ or derived,
+`(get_pointer(t)->*pmf)()` otherwise.
+
+* /Throws:/ Nothing.
+
+[#mem_fn_2_1]
+
+    template<class R, class T> ``/unspecified-2-1/`` mem_fn(R T::*pm)
+
+* /Returns:/ a function object \u03DD such that the expression \u03DD`(t)` is
+equivalent to `t.*pm` when `t` is of type `T` /[/`const`/]/ or derived,
+`get_pointer(t)->*pm` otherwise.
+
+* /Throws:/ Nothing.
+
+[#mem_fn_3]
+
+    template<class R, class T, class A1> ``/unspecified-3/`` mem_fn(R (T::*pmf) (A1))
+
+* /Returns:/ a function object \u03DD such that the expression \u03DD`(t, a1)`
+is equivalent to `(t.*pmf)(a1)` when `t` is an l-value of type `T` or derived,
+`(get_pointer(t)->*pmf)(a1)` otherwise.
+
+* /Throws:/ Nothing.
+
+[#mem_fn_4]
+
+    template<class R, class T, class A1> ``/unspecified-4/`` mem_fn(R (T::*pmf) (A1) const)
+
+* /Returns:/ a function object \u03DD such that the expression \u03DD`(t, a1)`
+is equivalent to `(t.*pmf)(a1)` when `t` is of type `T` /[/`const`/]/ or derived,
+`(get_pointer(t)->*pmf)(a1)` otherwise.
+
+* /Throws:/ Nothing.
+
+[#mem_fn_5]
+
+    template<class R, class T, class A1, class A2> ``/unspecified-5/`` mem_fn(R (T::*pmf) (A1, A2))
+
+* /Returns:/ a function object \u03DD such that the expression \u03DD`(t, a1, a2)`
+is equivalent to `(t.*pmf)(a1, a2)` when `t` is an l-value of type `T` or derived,
+`(get_pointer(t)->*pmf)(a1, a2)` otherwise.
+
+* /Throws:/ Nothing.
+
+[#mem_fn_6]
+
+    template<class R, class T, class A1, class A2> ``/unspecified-6/`` mem_fn(R (T::*pmf) (A1, A2) const)
+
+* /Returns:/ a function object \u03DD such that the expression \u03DD`(t, a1, a2)`
+is equivalent to `(t.*pmf)(a1, a2)` when `t` is of type `T` /[/`const`/]/ or derived,
+`(get_pointer(t)->*pmf)(a1, a2)` otherwise.
+
+* /Throws:/ Nothing.
+
+[endsect]
+
+[endsect]

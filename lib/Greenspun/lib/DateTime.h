@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,14 +23,12 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_GREENSPUN_DATETIME_H
-#define ARANGODB_PREGEL_GREENSPUN_DATETIME_H 1
+#pragma once
 
 #include <Greenspun/Interpreter.h>
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
 namespace greenspun {
@@ -39,5 +37,3 @@ void RegisterAllDateTimeFunctions(Machine& ctx);
 
 }  // namespace greenspun
 }  // namespace arangodb
-
-#endif

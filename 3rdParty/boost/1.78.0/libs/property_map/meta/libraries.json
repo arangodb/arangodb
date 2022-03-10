@@ -1,0 +1,16 @@
+{
+    "key": "property_map",
+    "name": "Property Map",
+    "authors": [
+        "Jeremy Siek"
+    ],
+    "description": "Concepts defining interfaces which map key objects to value objects.",
+    "category": [
+        "Containers",
+        "Generic"
+    ],
+    "maintainers": [
+        "Douglas Gregor <dgregor -at- cs.indiana.edu>"
+    ],
+    "cxxstd": "03"
+}

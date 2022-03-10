@@ -1,7 +1,7 @@
 name: rocksdb_num_files_at_level3
 introducedIn: "3.6.1"
 help: |
-  RocksDB metric "num-files-at-level3"
+  Number of RocksDB files at level 3.
 unit: number
 type: gauge
 category: RocksDB
@@ -11,5 +11,5 @@ exposedBy:
   - agent
   - single
 description: |
-    This metric reports the number of files at level 3 in the log structured
-    merge tree of RocksDB.
+  This metric reports the number of files at level 3 in the log structured
+  merge tree of RocksDB.

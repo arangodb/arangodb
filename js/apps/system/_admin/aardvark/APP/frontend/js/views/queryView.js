@@ -2031,7 +2031,7 @@
             });
           }
 
-          // add active class to choosen display method
+          // add active class to chosen display method
           if (success !== false) {
             if (result.defaultType === 'geotable' || result.defaultType === 'geo') {
               $('#outputTable' + counter).hide();
@@ -2271,13 +2271,15 @@
 
       // check if async query is finished
       var checkQueryStatus = function (cursorID) {
+        var method = 'PUT';
         var url = arangoHelper.databaseUrl('/_api/job/' + encodeURIComponent(queryID));
         if (cursorID) {
+          method = 'POST';
           url = arangoHelper.databaseUrl('/_api/cursor/' + encodeURIComponent(cursorID));
         }
 
         $.ajax({
-          type: 'PUT',
+          type: method,
           url: url,
           contentType: 'application/json',
           processData: false,
@@ -2747,9 +2749,10 @@
       var pos = 0;
       _.each(data.original, function (obj) {
         if (first === true && obj) {
-          tableDescription.titles = Object.keys(obj);
-          tableDescription.titles.forEach(function (t) {
+          var titles = Object.keys(obj);
+          titles.forEach(function (t) {
             headers[String(t)] = pos++;
+            tableDescription.titles.push(_.escape(String(t)));
           });
           first = false;
         }

@@ -16,50 +16,50 @@ You should reference them via their names instead.
 The name of the collection.
 
 @RESTDESCRIPTION
-Changes the properties of a collection. Expects an object with the
-attribute(s)
+Changes the properties of a collection. Only the provided attributes are
+updated. Collection properties **cannot be changed** once a collection is
+created except for the listed properties, as well as the collection name via
+the rename endpoint (but not in clusters).
 
-- *waitForSync*: If *true* then creating or changing a
-  document will wait until the data has been synchronized to disk.
+@RESTBODYPARAM{waitForSync,boolean,optional,}
+If *true* then the data is synchronized to disk before returning from a
+document create, update, replace or removal operation. (default: false)
 
-- *schema*: Object that specifies the collection level schema 
-  for documents. The attribute keys `rule`, `level` and `message` must follow
-  the rules documented in [Document Schema Validation](https://www.arangodb.com/docs/devel/document-schema-validation.html)
+@RESTBODYPARAM{cacheEnabled,boolean,optional,}
+Whether the in-memory hash cache for documents should be enabled for this
+collection (default: *true*). Can be controlled globally with the `--cache.size`
+startup option. The cache can speed up repeated reads of the same documents via
+their document keys. If the same documents are not fetched often or are
+modified frequently, then you may disable the cache to avoid the maintenance
+costs.
 
-On success an object with the following attributes is returned:
+@RESTBODYPARAM{schema,object,optional,}
+Optional object that specifies the collection level schema for
+documents. The attribute keys `rule`, `level` and `message` must follow the
+rules documented in [Document Schema Validation](https://www.arangodb.com/docs/stable/document-schema-validation.html)
 
-- *id*: The identifier of the collection.
+@RESTBODYPARAM{replicationFactor,integer,optional,int64}
+(The default is *1*): in a cluster, this attribute determines how many copies
+of each shard are kept on different DB-Servers. The value 1 means that only one
+copy (no synchronous replication) is kept. A value of k means that k-1 replicas
+are kept. It can also be the string `"satellite"` for a SatelliteCollection,
+where the replication factor is matched to the number of DB-Servers
+(Enterprise Edition only).
 
-- *name*: The name of the collection.
+Any two copies reside on different DB-Servers. Replication between them is
+synchronous, that is, every write operation to the "leader" copy will be replicated
+to all "follower" replicas, before the write operation is reported successful.
 
-- *waitForSync*: The new value.
+If a server fails, this is detected automatically and one of the servers holding
+copies take over, usually without an error being reported.
 
-- *status*: The status of the collection as number.
-
-- *type*: The collection type. Valid types are:
-  - 2: document collection
-  - 3: edges collection
-
-- *isSystem*: If *true* then the collection is a system collection.
-
-- *keyOptions*: JSON object which contains key generation options:
-  - *type*: specifies the type of the key generator. The currently
-    available generators are *traditional*, *autoincrement*, *uuid*
-    and *padded*.
-  - *allowUserKeys*: if set to *true*, then it is allowed to supply
-    own key values in the *_key* attribute of a document. If set to
-    *false*, then the key generator is solely responsible for
-    generating keys and supplying own key values in the *_key* attribute
-    of documents is considered an error.
-
-* *schema* (optional, default is *null*):
-  Object that specifies the collection level schema for documents.
-  The attribute keys `rule`, `level` and `message` must follow the rules
-  documented in [Document Schema Validation](https://www.arangodb.com/docs/devel/document-schema-validation.html)
-
-**Note**: except for *waitForSync* and *name*, collection
-properties **cannot be changed** once a collection is created. To rename
-a collection, the rename endpoint must be used.
+@RESTBODYPARAM{writeConcern,integer,optional,int64}
+Write concern for this collection (default: 1).
+It determines how many copies of each shard are required to be
+in sync on the different DB-Servers. If there are less then these many copies
+in the cluster a shard will refuse to write. Writes to shards with enough
+up-to-date copies will succeed at the same time however. The value of
+*writeConcern* can not be larger than *replicationFactor*. _(cluster only)_
 
 @RESTRETURNCODES
 

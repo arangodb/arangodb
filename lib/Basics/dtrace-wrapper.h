@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_DTRACE_WRAPPER_H
-#define ARANGODB_DTRACE_WRAPPER_H 1
+#pragma once
 
 #ifdef USE_DTRACE
 
@@ -30,9 +29,11 @@
 
 #else
 
-#define DTRACE_PROBE1(a, b, c) do { } while (0);
-#define DTRACE_PROBE2(a, b, c, d) do { } while (0);
-
-#endif
+#define DTRACE_PROBE1(a, b, c) \
+  do {                         \
+  } while (0);
+#define DTRACE_PROBE2(a, b, c, d) \
+  do {                            \
+  } while (0);
 
 #endif

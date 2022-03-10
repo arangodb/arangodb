@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,31 +26,35 @@
 
 #include "Basics/StaticStrings.h"
 
-#include <velocypack/velocypack-aliases.h>
-
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::graph;
 
 namespace {
-constexpr size_t costPerPersistedString = sizeof(void*) + sizeof(arangodb::velocypack::HashedStringRef);
-constexpr size_t costPerVertexOrEdgeStringRefSlice = sizeof(velocypack::Slice) + sizeof(arangodb::velocypack::HashedStringRef);
+constexpr size_t costPerPersistedString =
+    sizeof(void*) + sizeof(arangodb::velocypack::HashedStringRef);
+constexpr size_t costPerVertexOrEdgeStringRefSlice =
+    sizeof(velocypack::Slice) + sizeof(arangodb::velocypack::HashedStringRef);
 constexpr size_t heapBlockSize = 4096;
-};
+};  // namespace
 
-RefactoredClusterTraverserCache::RefactoredClusterTraverserCache(ResourceMonitor& resourceMonitor)
+RefactoredClusterTraverserCache::RefactoredClusterTraverserCache(
+    ResourceMonitor& resourceMonitor)
     : _resourceMonitor{resourceMonitor},
-      _stringHeap(resourceMonitor, heapBlockSize), /* arbitrary block-size may be adjusted for performance */
+      _stringHeap(resourceMonitor,
+                  heapBlockSize), /* arbitrary block-size may be adjusted for
+                                     performance */
       _datalake(resourceMonitor) {}
 
-RefactoredClusterTraverserCache::~RefactoredClusterTraverserCache() {
-  clear();
-}
+RefactoredClusterTraverserCache::~RefactoredClusterTraverserCache() { clear(); }
 
 void RefactoredClusterTraverserCache::clear() {
-  _resourceMonitor.decreaseMemoryUsage(_persistedStrings.size() * ::costPerPersistedString);
-  _resourceMonitor.decreaseMemoryUsage(_vertexData.size() * ::costPerVertexOrEdgeStringRefSlice);
-  _resourceMonitor.decreaseMemoryUsage(_edgeData.size() * ::costPerVertexOrEdgeStringRefSlice);
+  _resourceMonitor.decreaseMemoryUsage(_persistedStrings.size() *
+                                       ::costPerPersistedString);
+  _resourceMonitor.decreaseMemoryUsage(_vertexData.size() *
+                                       ::costPerVertexOrEdgeStringRefSlice);
+  _resourceMonitor.decreaseMemoryUsage(_edgeData.size() *
+                                       ::costPerVertexOrEdgeStringRefSlice);
   _stringHeap.clear();
   _persistedStrings.clear();
   _vertexData.clear();
@@ -58,61 +62,76 @@ void RefactoredClusterTraverserCache::clear() {
 }
 
 auto RefactoredClusterTraverserCache::cacheVertex(VertexType const& vertexId,
-                                                  velocypack::Slice vertexSlice) -> void {
+                                                  velocypack::Slice vertexSlice)
+    -> void {
+  ResourceUsageScope guard(_resourceMonitor,
+                           ::costPerVertexOrEdgeStringRefSlice);
   auto [it, inserted] = _vertexData.try_emplace(vertexId, vertexSlice);
+
   if (inserted) {
     // If we have added something into the cache, we need to account for it.
-    _resourceMonitor.increaseMemoryUsage(costPerVertexOrEdgeStringRefSlice);
+    guard.steal();
   }
 }
 
-auto RefactoredClusterTraverserCache::isVertexCached(VertexType const& vertexKey) const
-    -> bool {
-  return _vertexData.find(vertexKey) != _vertexData.end();
+auto RefactoredClusterTraverserCache::isVertexCached(
+    VertexType const& vertexKey) const -> bool {
+  return _vertexData.contains(vertexKey);
 }
 
-auto RefactoredClusterTraverserCache::isEdgeCached(EdgeType const& edgeKey) const -> bool {
+auto RefactoredClusterTraverserCache::isEdgeCached(
+    EdgeType const& edgeKey) const -> bool {
   return _edgeData.find(edgeKey) != _edgeData.end();
 }
 
-auto RefactoredClusterTraverserCache::getCachedVertex(VertexType const& vertex) const -> VPackSlice {
-  if (!isVertexCached(vertex)) {
+auto RefactoredClusterTraverserCache::getCachedVertex(
+    VertexType const& vertex) const -> VPackSlice {
+  auto it = _vertexData.find(vertex);
+  if (it == _vertexData.end()) {
     return VPackSlice::nullSlice();
   }
-  return _vertexData.at(vertex);
+  return it->second;
 }
 
 auto RefactoredClusterTraverserCache::getCachedEdge(EdgeType const& edge) const
     -> VPackSlice {
-  if (!isEdgeCached(edge)) {
+  auto it = _edgeData.find(edge);
+  if (it == _edgeData.end()) {
     return VPackSlice::nullSlice();
   }
-  return _edgeData.at(edge);
+  return it->second;
 }
 
-auto RefactoredClusterTraverserCache::persistString(arangodb::velocypack::HashedStringRef idString) -> arangodb::velocypack::HashedStringRef {
+auto RefactoredClusterTraverserCache::persistString(
+    arangodb::velocypack::HashedStringRef idString)
+    -> arangodb::velocypack::HashedStringRef {
   auto it = _persistedStrings.find(idString);
   if (it != _persistedStrings.end()) {
     return *it;
   }
   auto res = _stringHeap.registerString(idString);
-  {
-    ResourceUsageScope guard(_resourceMonitor, ::costPerPersistedString);
-   
-    _persistedStrings.emplace(res);
-    
-    // now make the TraverserCache responsible for memory tracking
-    guard.steal();
-  }
+  ResourceUsageScope guard(_resourceMonitor, ::costPerPersistedString);
+
+  auto [itx, inserted] = _persistedStrings.emplace(res);
+  TRI_ASSERT(inserted);
+
+  // now make the TraverserCache responsible for memory tracking
+  guard.steal();
   return res;
 }
 
-auto RefactoredClusterTraverserCache::persistEdgeData(velocypack::Slice edgeSlice)
-    -> std::pair<velocypack::Slice, bool> {
-  arangodb::velocypack::HashedStringRef edgeIdRef(edgeSlice.get(StaticStrings::IdString));
+auto RefactoredClusterTraverserCache::persistEdgeData(
+    velocypack::Slice edgeSlice) -> std::pair<velocypack::Slice, bool> {
+  arangodb::velocypack::HashedStringRef edgeIdRef(
+      edgeSlice.get(StaticStrings::IdString));
+
+  ResourceUsageScope guard(_resourceMonitor,
+                           ::costPerVertexOrEdgeStringRefSlice);
+
   auto const [it, inserted] = _edgeData.try_emplace(edgeIdRef, edgeSlice);
   if (inserted) {
-    _resourceMonitor.increaseMemoryUsage(costPerVertexOrEdgeStringRefSlice);
+    // now make the TraverserCache responsible for memory tracking
+    guard.steal();
   }
   return std::make_pair(it->second, inserted);
 }

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOC_BASE_MANAGED_DOCUMENT_RESULT_H
-#define ARANGOD_VOC_BASE_MANAGED_DOCUMENT_RESULT_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
@@ -39,7 +38,8 @@ class ManagedDocumentResult {
   ManagedDocumentResult() : _revisionId(0) {}
 
   ManagedDocumentResult(ManagedDocumentResult const& other) = default;
-  ManagedDocumentResult& operator=(ManagedDocumentResult const& other) = default;
+  ManagedDocumentResult& operator=(ManagedDocumentResult const& other) =
+      default;
 
   ManagedDocumentResult& operator=(ManagedDocumentResult&& other) noexcept {
     _string = std::move(other._string);
@@ -49,8 +49,7 @@ class ManagedDocumentResult {
   }
 
   ManagedDocumentResult(ManagedDocumentResult&& other) noexcept
-      : _string(std::move(other._string)),
-        _revisionId(other._revisionId) {
+      : _string(std::move(other._string)), _revisionId(other._revisionId) {
     other.clear();
   }
 
@@ -66,24 +65,19 @@ class ManagedDocumentResult {
 
   inline RevisionId revisionId() const noexcept { return _revisionId; }
   void setRevisionId(RevisionId rid) noexcept { _revisionId = rid; }
-  void setRevisionId() noexcept;
 
-  void clearData() noexcept {
-    _string.clear();
-  }
-  
+  void clearData() noexcept { _string.clear(); }
+
   void clear() noexcept {
     clearData();
     _revisionId = RevisionId::none();
   }
-  
+
   inline uint8_t const* vpack() const noexcept {
     return reinterpret_cast<uint8_t const*>(_string.data());
   }
 
-  inline bool empty() const noexcept {
-    return _string.empty();
-  }
+  inline bool empty() const noexcept { return _string.empty(); }
 
   void addToBuilder(velocypack::Builder& builder) const;
 
@@ -93,5 +87,3 @@ class ManagedDocumentResult {
 };
 
 }  // namespace arangodb
-
-#endif

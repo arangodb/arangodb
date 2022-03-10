@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,8 +22,7 @@
 /// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GRAPH_HELPERS_TRACE_ENTRY_H
-#define ARANGOD_GRAPH_HELPERS_TRACE_ENTRY_H 1
+#pragma once
 
 #include <limits>
 #include <numeric>
@@ -37,9 +36,10 @@ class TraceEntry {
   TraceEntry();
   ~TraceEntry();
 
-  void addTiming(double timeTaken);
+  void addTiming(double timeTaken) noexcept;
 
-  friend auto operator<<(std::ostream& out, TraceEntry const& entry) -> std::ostream&;
+  friend auto operator<<(std::ostream& out, TraceEntry const& entry)
+      -> std::ostream&;
 
  private:
   double _min{std::numeric_limits<double>::max()};
@@ -50,5 +50,3 @@ class TraceEntry {
 
 }  // namespace graph
 }  // namespace arangodb
-
-#endif

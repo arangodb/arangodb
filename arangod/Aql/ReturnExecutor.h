@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_RETURN_EXECUTOR_H
-#define ARANGOD_AQL_RETURN_EXECUTOR_H
+#pragma once
 
 #include "Aql/ExecutionState.h"
 #include "Aql/InputAqlItemRow.h"
@@ -66,10 +65,10 @@ class ReturnExecutorInfos {
  * @brief Implementation of Return Node
  *
  *
- * The return executor projects some column, given by _infos.getInputRegisterId(),
- * to the first and only column in the output. This is used for return nodes
- * in subqueries.
- * Return nodes on the top level use the IdExecutor instead.
+ * The return executor projects some column, given by
+ * _infos.getInputRegisterId(), to the first and only column in the output. This
+ * is used for return nodes in subqueries. Return nodes on the top level use the
+ * IdExecutor instead.
  */
 class ReturnExecutor {
  public:
@@ -78,7 +77,8 @@ class ReturnExecutor {
     // The return executor is now only used for projecting some register to
     // register 0. So it does not pass through, but copy one column into a new
     // block with only this column.
-    static constexpr BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Disable;
+    static constexpr BlockPassthrough allowsBlockPassthrough =
+        BlockPassthrough::Disable;
     static constexpr bool inputSizeRestrictsOutputSize = true;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
@@ -91,7 +91,8 @@ class ReturnExecutor {
   /**
    * @brief skip the next Rows of Aql Values.
    *
-   * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
+   * @return ExecutorState, the stats, and a new Call that needs to be send to
+   * upstream
    */
   [[nodiscard]] auto skipRowsRange(AqlItemBlockInputRange& input, AqlCall& call)
       -> std::tuple<ExecutorState, Stats, size_t, AqlCall>;
@@ -99,18 +100,19 @@ class ReturnExecutor {
   /**
    * @brief produce the next Rows of Aql Values.
    *
-   * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
+   * @return ExecutorState, the stats, and a new Call that needs to be send to
+   * upstream
    */
-  [[nodiscard]] auto produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
+  [[nodiscard]] auto produceRows(AqlItemBlockInputRange& input,
+                                 OutputAqlItemRow& output)
       -> std::tuple<ExecutorState, Stats, AqlCall>;
 
-  [[nodiscard]] auto expectedNumberOfRowsNew(AqlItemBlockInputRange const& input,
-                                             AqlCall const& call) const noexcept -> size_t;
+  [[nodiscard]] auto expectedNumberOfRowsNew(
+      AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept
+      -> size_t;
 
  private:
   ReturnExecutorInfos& _infos;
 };
 }  // namespace aql
 }  // namespace arangodb
-
-#endif

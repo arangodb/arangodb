@@ -4,6 +4,13 @@
 
 @RESTHEADER{GET /_admin/metrics, Read the metrics, getMetrics}
 
+@HINTS
+{% hint 'warning' %}
+This endpoint should no longer be used. It is deprecated from version 3.8.0 on.
+Use `/_admin/metrics/v2` instead, which provides the data exposed by this API
+and a lot more.
+{% endhint %}
+
 @RESTQUERYPARAMETERS
 
 @RESTQUERYPARAM{serverId,string,optional}

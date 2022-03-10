@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,29 +33,31 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
-#include <velocypack/StringRef.h>
 #include <velocypack/Value.h>
 #include <velocypack/ValueType.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb::aql;
 
 namespace {
-arangodb::velocypack::StringRef const filterKey("filter");
-arangodb::velocypack::StringRef const producesResultKey("producesResult");
-}
+std::string_view const filterKey("filter");
+std::string_view const maxProjectionsKey("maxProjections");
+std::string_view const producesResultKey("producesResult");
+}  // namespace
 
 DocumentProducingNode::DocumentProducingNode(Variable const* outVariable)
     : _outVariable(outVariable),
-      _count(false) {
+      _count(false),
+      _maxProjections(kMaxProjections) {
   TRI_ASSERT(_outVariable != nullptr);
 }
 
 DocumentProducingNode::DocumentProducingNode(ExecutionPlan* plan,
                                              arangodb::velocypack::Slice slice)
-    : _outVariable(Variable::varFromVPack(plan->getAst(), slice, "outVariable")),
+    : _outVariable(
+          Variable::varFromVPack(plan->getAst(), slice, "outVariable")),
       _projections(arangodb::aql::Projections::fromVelocyPack(slice)),
-      _count(false) {
+      _count(false),
+      _maxProjections(kMaxProjections) {
   TRI_ASSERT(_outVariable != nullptr);
 
   VPackSlice p = slice.get(::filterKey);
@@ -65,14 +67,35 @@ DocumentProducingNode::DocumentProducingNode(ExecutionPlan* plan,
     setFilter(std::make_unique<Expression>(ast, ast->createNode(p)));
   }
 
-  _count = arangodb::basics::VelocyPackHelper::getBooleanValue(slice, "count", false);
+  _count = arangodb::basics::VelocyPackHelper::getBooleanValue(slice, "count",
+                                                               false);
+  _readOwnWrites = arangodb::basics::VelocyPackHelper::getBooleanValue(
+                       slice, "readOwnWrites", false)
+                       ? ReadOwnWrites::yes
+                       : ReadOwnWrites::no;
+
+  p = slice.get(::maxProjectionsKey);
+  if (!p.isNone()) {
+    setMaxProjections(p.getNumber<size_t>());
+  }
 }
-  
-void DocumentProducingNode::cloneInto(ExecutionPlan* plan, DocumentProducingNode& c) const {
+
+void DocumentProducingNode::cloneInto(ExecutionPlan* plan,
+                                      DocumentProducingNode& c) const {
   if (_filter != nullptr) {
-    c.setFilter(std::unique_ptr<Expression>(_filter->clone(plan->getAst())));
+    c.setFilter(
+        std::unique_ptr<Expression>(_filter->clone(plan->getAst(), true)));
   }
   c.copyCountFlag(this);
+  c.setCanReadOwnWrites(canReadOwnWrites());
+  c.setMaxProjections(maxProjections());
+}
+
+void DocumentProducingNode::replaceVariables(
+    std::unordered_map<VariableId, Variable const*> const& replacements) {
+  if (hasFilter()) {
+    _filter->replaceVariables(replacements);
+  }
 }
 
 void DocumentProducingNode::toVelocyPack(arangodb::velocypack::Builder& builder,
@@ -81,9 +104,9 @@ void DocumentProducingNode::toVelocyPack(arangodb::velocypack::Builder& builder,
   _outVariable->toVelocyPack(builder);
 
   _projections.toVelocyPack(builder);
-  
+
   if (_filter != nullptr) {
-    builder.add(VPackValuePair(::filterKey.data(), ::filterKey.size(), VPackValueType::String));
+    builder.add(VPackValue(filterKey));
     _filter->toVelocyPack(builder, flags);
   }
 
@@ -93,20 +116,29 @@ void DocumentProducingNode::toVelocyPack(arangodb::velocypack::Builder& builder,
     TRI_ASSERT(_filter == nullptr);
     builder.add(::producesResultKey, VPackValue(false));
   } else {
-    builder.add(::producesResultKey, VPackValue(_filter != nullptr || dynamic_cast<ExecutionNode const*>(this)->isVarUsedLater(_outVariable)));
+    builder.add(
+        ::producesResultKey,
+        VPackValue(_filter != nullptr ||
+                   dynamic_cast<ExecutionNode const*>(this)->isVarUsedLater(
+                       _outVariable)));
   }
+  builder.add("readOwnWrites",
+              VPackValue(_readOwnWrites == ReadOwnWrites::yes));
+
+  builder.add(::maxProjectionsKey, VPackValue(maxProjections()));
 }
 
 Variable const* DocumentProducingNode::outVariable() const {
   return _outVariable;
 }
-  
+
 /// @brief remember the condition to execute for early filtering
 void DocumentProducingNode::setFilter(std::unique_ptr<Expression> filter) {
   _filter = std::move(filter);
 }
 
-arangodb::aql::Projections const& DocumentProducingNode::projections() const noexcept {
+arangodb::aql::Projections const& DocumentProducingNode::projections()
+    const noexcept {
   return _projections;
 }
 
@@ -114,10 +146,11 @@ arangodb::aql::Projections& DocumentProducingNode::projections() noexcept {
   return _projections;
 }
 
-void DocumentProducingNode::setProjections(arangodb::aql::Projections projections) {
+void DocumentProducingNode::setProjections(
+    arangodb::aql::Projections projections) {
   _projections = std::move(projections);
 }
 
 bool DocumentProducingNode::doCount() const {
-  return _count && (_filter == nullptr); 
+  return _count && (_filter == nullptr);
 }

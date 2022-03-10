@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOC_BASE_KEY_GENERATOR_H
-#define ARANGOD_VOC_BASE_KEY_GENERATOR_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "VocBase/vocbase.h"
@@ -66,8 +65,7 @@ class KeyGenerator {
   virtual ~KeyGenerator() = default;
 
   /// @brief create a key generator based on the options specified
-  static KeyGenerator* factory(application_features::ApplicationServer&,
-                               arangodb::velocypack::Slice);
+  static KeyGenerator* factory(ArangodServer&, arangodb::velocypack::Slice);
 
   /// @brief whether or not the key generator has dynamic state
   /// that needs to be stored and recovered
@@ -91,7 +89,8 @@ class KeyGenerator {
   static bool validateKey(char const* key, size_t len);
 
   /// @brief validate a document id (collection name + / + document key)
-  static bool validateId(char const* key, size_t len, size_t* split = nullptr);
+  static bool validateId(char const* key, size_t len, bool extendedNames,
+                         size_t& split);
 
   /// @brief maximum length of a key in a collection
   static constexpr size_t maxKeyLength = 254;
@@ -108,5 +107,3 @@ class KeyGenerator {
 };
 
 }  // namespace arangodb
-
-#endif

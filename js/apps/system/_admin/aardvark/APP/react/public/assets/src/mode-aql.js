@@ -139,6 +139,12 @@ var AqlHighlightRules = function() {
             token : "string",           // ` string
             regex : "`.*?`"
         }, {
+            token : "constant.numeric", // binary integer
+            regex : "0[bB][01]+\\b"
+        }, {
+            token : "constant.numeric", // hexadecimal integer
+            regex : "0[xX][0-9a-fA-F]+\\b"
+        }, {
             token : "constant.numeric", // float
             regex : "[+-]?\\d+(?:(?:\\.\\d*)?(?:[eE][+-]?\\d+)?)?\\b"
         }, {

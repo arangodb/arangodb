@@ -243,7 +243,7 @@ function componentsTestSuite() {
 
       while (true) {
         var status = pregel.status(handle);
-        if (status.state !== 'running') {
+        if (status.state !== 'running' && status.state !== 'storing') {
           console.log(status);
           break;
         } else {
@@ -269,5 +269,149 @@ function componentsTestSuite() {
   };
 }
 
+function wccRegressionTestSuite() {
+  'use strict';
+
+  const makeEdge = (from, to) => {
+    return {_from: `${vColl}/${from}`, _to: `${vColl}/${to}`, vertex: `${from}`};
+  };
+  return {
+
+    setUp: function() {
+      db._create(vColl, { numberOfShards: 4 });
+      db._createEdgeCollection(eColl, {
+        numberOfShards: 4,
+        replicationFactor: 1,
+        shardKeys: ["vertex"],
+        distributeShardsLike: vColl
+      });
+
+      graph_module._create(graphName, [graph_module._relation(eColl, vColl, vColl)], []);
+    },
+
+    tearDown: function() {
+      graph_module._drop(graphName, true);
+    },
+
+    testWCCLineComponent: function() {
+      const vertices = [];
+      const edges = [];
+
+      // We create one forward path 100 -> 120 (100 will be component ID, and needs to be propagated outbound)
+      for (let i = 100; i < 120; ++i) {
+        vertices.push({_key: `${i}`});
+        if (i > 100) {
+          edges.push(makeEdge(i-1, i));
+        }
+      }
+
+      // We create one backward path 200 <- 220 (200 will be component ID, and needs to be propagated inbound)
+      for (let i = 200; i < 220; ++i) {
+        vertices.push({_key: `${i}`});
+        if (i > 200) {
+          edges.push(makeEdge(i, i - 1));
+        }
+      }
+      db[vColl].save(vertices);
+      db[eColl].save(edges);
+
+      const pid = pregel.start("wcc", graphName, { resultField: "result", store: true });
+      const maxWaitTimeSecs = 120;
+      const sleepIntervalSecs = 0.2;
+      let wakeupsLeft = maxWaitTimeSecs / sleepIntervalSecs;
+      while (pregel.status(pid).state !== "done" && wakeupsLeft > 0) {
+        wakeupsLeft--;
+        internal.sleep(0.2);
+      }
+      const status = pregel.status(pid);
+      assertEqual(status.state, "done", "Pregel Job did never succeed.");
+
+      // Now test the result.
+      // We expect two components
+      const query = `
+        FOR v IN ${vColl}
+          COLLECT component = v.result WITH COUNT INTO size
+          RETURN {component, size}
+      `;
+      const computedComponents = db._query(query).toArray();
+      assertEqual(computedComponents.length, 2, `We expected 2 components instead got ${JSON.stringify(computedComponents)}`);
+      // Both have 20 elements
+      assertEqual(computedComponents[0].size, 20);
+      assertEqual(computedComponents[1].size, 20);
+    },
+
+    testWCCLostBackwardsConnection: function() {
+      const vertices = [];
+      const edges = [];
+
+      /*
+       * This test's background is a bit tricky and tests a deep technical
+       * detail.
+       * The idea in this test is the following:
+       * We have two Subgroups A and B where there are only OUTBOUND
+       * Edges from A to B.
+       * In total and ignoring those edges A has a higher ComponentID then B.
+       * Now comes the Tricky Part: 
+       * 1) The Smallest ID in B, needs to have a a long Distance to all contact points to A.
+       * 2) The ContactPoints A -> B need to have the second Smallest IDs
+       * This now creates the following Effect:
+       * The contact points only communitcate in the beginning, as they will not see smaller IDs
+       * until the SmallestID arrives.
+       * In the implementation showing this Bug, the INBOUND connection was not retained,
+       * so as soon as the Smallest ID arrived at B it was not communicated back into the A
+       * Cluster, which resulted in two components instead of a single one.
+       */
+
+      // We create 20 vertices
+      for (let i = 1; i <= 20; ++i) {
+        vertices.push({_key: `${i}`});
+      }
+      // By convention the lowest keys will have the Lowest ids.
+      // We need to pick two second lowest Vertices as the ContactPoints of our two clusters:
+      edges.push(makeEdge(2, 3));
+      // Generate the A side
+      edges.push(makeEdge(4,2));
+      edges.push(makeEdge(4,5));
+      edges.push(makeEdge(5,2));
+      // Generate the B side with a Long path to 3
+      // A path 6->7->...->20 (the 6 is already low, so not much updates happing)
+      for (let i = 7; i <= 20; ++i) {
+        edges.push(makeEdge(i - 1, i));
+      }
+      // Now connect 3 -> 6 and 20 -> 1
+      edges.push(makeEdge(3, 6));
+      edges.push(makeEdge(20, 1));
+      
+      db[vColl].save(vertices);
+      db[eColl].save(edges);
+
+      const pid = pregel.start("wcc", graphName, { resultField: "result", store: true });
+      const maxWaitTimeSecs = 120;
+      const sleepIntervalSecs = 0.2;
+      let wakeupsLeft = maxWaitTimeSecs / sleepIntervalSecs;
+      while (pregel.status(pid).state !== "done" && wakeupsLeft > 0) {
+        wakeupsLeft--;
+        internal.sleep(0.2);
+      }
+      const status = pregel.status(pid);
+      assertEqual(status.state, "done", "Pregel Job did never succeed.");
+
+      // Now test the result.
+      // We expect two components
+      const query = `
+        FOR v IN ${vColl}
+          COLLECT component = v.result WITH COUNT INTO size
+          RETURN {component, size}
+      `;
+      const computedComponents = db._query(query).toArray();
+      assertEqual(computedComponents.length, 1, `We expected 1 component instead got ${JSON.stringify(computedComponents)}`);
+      // we have all 20 elements
+      assertEqual(computedComponents[0].size, 20);
+    },
+
+  };
+}
+
 jsunity.run(componentsTestSuite);
+jsunity.run(wccRegressionTestSuite);
 return jsunity.done();

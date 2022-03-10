@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,12 +30,12 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Logger/Logger.h"
+#include "Random/RandomGenerator.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
-#include "RocksDBEngine/RocksDBEdgeIndex.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
@@ -53,11 +53,11 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 namespace {
-arangodb::Result writeSettings(arangodb::StorageEngine& engine, rocksdb::WriteBatch& batch,
-                               VPackBuilder& b, uint64_t seqNumber) {
+arangodb::Result writeSettings(arangodb::StorageEngine& engine,
+                               rocksdb::WriteBatch& batch, VPackBuilder& b,
+                               uint64_t seqNumber) {
   using arangodb::EngineSelectorFeature;
   using arangodb::Logger;
   using arangodb::Result;
@@ -76,17 +76,20 @@ arangodb::Result writeSettings(arangodb::StorageEngine& engine, rocksdb::WriteBa
   b.close();
 
   VPackSlice slice = b.slice();
-  LOG_TOPIC("f5e34", DEBUG, Logger::ENGINES) << "writing settings: " << slice.toJson();
+  LOG_TOPIC("f5e34", DEBUG, Logger::ENGINES)
+      << "writing settings: " << slice.toJson();
 
   RocksDBKey key;
   key.constructSettingsValue(RocksDBSettingsType::ServerTick);
   rocksdb::Slice value(slice.startAs<char>(), slice.byteSize());
 
   rocksdb::Status s =
-      batch.Put(RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions),
+      batch.Put(RocksDBColumnFamilyManager::get(
+                    RocksDBColumnFamilyManager::Family::Definitions),
                 key.string(), value);
   if (!s.ok()) {
-    LOG_TOPIC("140ec", WARN, Logger::ENGINES) << "writing settings failed: " << s.ToString();
+    LOG_TOPIC("140ec", WARN, Logger::ENGINES)
+        << "writing settings failed: " << s.ToString();
     return arangodb::rocksutils::convertStatus(s);
   }
 
@@ -115,8 +118,8 @@ bool RocksDBSettingsManager::lockForSync(bool force) {
   if (force) {
     while (true) {
       bool expected = false;
-      bool res = _syncing.compare_exchange_strong(expected, true, std::memory_order_acquire,
-                                                  std::memory_order_relaxed);
+      bool res = _syncing.compare_exchange_strong(
+          expected, true, std::memory_order_acquire, std::memory_order_relaxed);
       if (res) {
         break;
       }
@@ -125,7 +128,8 @@ bool RocksDBSettingsManager::lockForSync(bool force) {
   } else {
     bool expected = false;
 
-    if (!_syncing.compare_exchange_strong(expected, true, std::memory_order_acquire,
+    if (!_syncing.compare_exchange_strong(expected, true,
+                                          std::memory_order_acquire,
                                           std::memory_order_relaxed)) {
       return false;
     }
@@ -148,8 +152,8 @@ Result RocksDBSettingsManager::sync(bool force) {
   // only one thread can enter here at a time
 
   // make sure we give up our lock when we exit this function
-  auto guard =
-      scopeGuard([this]() { _syncing.store(false, std::memory_order_release); });
+  auto guard = scopeGuard(
+      [this]() noexcept { _syncing.store(false, std::memory_order_release); });
 
   // need superuser scope to ensure we can sync all collections and keep seq
   // numbers in sync; background index creation will call this function as user,
@@ -160,6 +164,7 @@ Result RocksDBSettingsManager::sync(bool force) {
   // any subsequent updates in the WAL to replay if we crash in the middle
   auto const maxSeqNr = _db->GetLatestSequenceNumber();
   auto minSeqNr = maxSeqNr;
+  TRI_ASSERT(minSeqNr > 0);
 
   rocksdb::TransactionOptions opts;
   opts.lock_timeout = 50;  // do not wait for locking keys
@@ -173,8 +178,10 @@ Result RocksDBSettingsManager::sync(bool force) {
 
   bool didWork = false;
   auto mappings = _engine.collectionMappings();
-  std::string scratch;
-  scratch.reserve(10485760);  // reserve 10MB of scratch space to work with
+
+  // reserve 1MB of scratch space to work with
+  _scratch.reserve(10485760);
+
   for (auto const& pair : mappings) {
     TRI_voc_tick_t dbid = pair.first;
     DataSourceId cid = pair.second;
@@ -183,7 +190,7 @@ Result RocksDBSettingsManager::sync(bool force) {
       continue;
     }
     TRI_ASSERT(!vocbase->isDangling());
-    TRI_DEFER(vocbase->release());
+    auto sg = arangodb::scopeGuard([&]() noexcept { vocbase->release(); });
 
     std::shared_ptr<LogicalCollection> coll;
     try {
@@ -191,18 +198,25 @@ Result RocksDBSettingsManager::sync(bool force) {
     } catch (...) {
       // will fail if collection does not exist
     }
-    if (!coll) {
+    // Collections which are marked as isAStub are not allowed to have
+    // physicalCollections. Therefore, we cannot continue serializing in that
+    // case.
+    if (!coll || coll->isAStub()) {
       continue;
     }
-    TRI_DEFER(vocbase->releaseCollection(coll.get()));
+    auto sg2 = arangodb::scopeGuard(
+        [&]() noexcept { vocbase->releaseCollection(coll.get()); });
 
     LOG_TOPIC("afb17", TRACE, Logger::ENGINES)
         << "syncing metadata for collection '" << coll->name() << "'";
 
+    // clear our scratch buffer for this round
+    _scratch.clear();
+
     auto* rcoll = static_cast<RocksDBCollection*>(coll->getPhysical());
     rocksdb::SequenceNumber appliedSeq = maxSeqNr;
     Result res = rcoll->meta().serializeMeta(batch, *coll, force, _tmpBuilder,
-                                             appliedSeq, scratch);
+                                             appliedSeq, _scratch);
     minSeqNr = std::min(minSeqNr, appliedSeq);
 
     const std::string err = "could not sync metadata for collection '";
@@ -222,11 +236,27 @@ Result RocksDBSettingsManager::sync(bool force) {
     batch.Clear();
   }
 
+  if (_scratch.capacity() >= 32 * 1024 * 1024) {
+    // much data in _scratch, let's shrink it to save memory
+    _scratch.clear();
+    _scratch.shrink_to_fit();
+  }
+
   auto const lastSync = _lastSync.load();
+
+  LOG_TOPIC("53e4c", TRACE, Logger::ENGINES)
+      << "about to store lastSync. previous value: " << lastSync
+      << ", current value: " << minSeqNr;
+
   if (minSeqNr < lastSync) {
-    LOG_TOPIC("1038e", ERR, Logger::ENGINES) << "min tick is smaller than "
-    "safe delete tick (minSeqNr: " << minSeqNr << ") < (lastSync = " << lastSync << ")";
-    return Result(); // do not move backwards in time
+    if (minSeqNr != 0) {
+      LOG_TOPIC("1038e", ERR, Logger::ENGINES)
+          << "min tick is smaller than "
+             "safe delete tick (minSeqNr: "
+          << minSeqNr << ") < (lastSync = " << lastSync << ")";
+      TRI_ASSERT(false);
+    }
+    return Result();  // do not move backwards in time
   }
   TRI_ASSERT(lastSync <= minSeqNr);
   if (!didWork) {
@@ -234,6 +264,11 @@ Result RocksDBSettingsManager::sync(bool force) {
         << "no collection data to serialize, updating lastSync to " << minSeqNr;
     _lastSync.store(minSeqNr);
     return Result();  // nothing was written
+  }
+
+  TRI_IF_FAILURE("TransactionChaos::randomSleep") {
+    std::this_thread::sleep_for(
+        std::chrono::milliseconds(RandomGenerator::interval(uint32_t(2000))));
   }
 
   _tmpBuilder.clear();
@@ -245,10 +280,12 @@ Result RocksDBSettingsManager::sync(bool force) {
     return res;
   }
 
-  // we have to commit all counters in one batch
+  // make sure everything is synced properly when we are done
+  wo.sync = true;
   auto s = _db->Write(wo, &batch);
   if (s.ok()) {
-    LOG_TOPIC("103ae", TRACE, Logger::ENGINES) << "updating lastSync to " << minSeqNr;
+    LOG_TOPIC("103ae", TRACE, Logger::ENGINES)
+        << "updating lastSync to " << minSeqNr;
     _lastSync.store(std::max(_lastSync.load(), minSeqNr));
   }
 
@@ -262,41 +299,48 @@ void RocksDBSettingsManager::loadSettings() {
   rocksdb::PinnableSlice result;
   rocksdb::Status status =
       _db->Get(rocksdb::ReadOptions(),
-               RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions),
+               RocksDBColumnFamilyManager::get(
+                   RocksDBColumnFamilyManager::Family::Definitions),
                key.string(), &result);
   if (status.ok()) {
     // key may not be there, so don't fail when not found
-    VPackSlice slice = VPackSlice(reinterpret_cast<uint8_t const*>(result.data()));
+    VPackSlice slice =
+        VPackSlice(reinterpret_cast<uint8_t const*>(result.data()));
     TRI_ASSERT(slice.isObject());
-    LOG_TOPIC("7458b", TRACE, Logger::ENGINES) << "read initial settings: " << slice.toJson();
+    LOG_TOPIC("7458b", TRACE, Logger::ENGINES)
+        << "read initial settings: " << slice.toJson();
 
     if (!result.empty()) {
       try {
         if (slice.hasKey("tick")) {
           uint64_t lastTick =
               basics::VelocyPackHelper::stringUInt64(slice.get("tick"));
-          LOG_TOPIC("369d3", TRACE, Logger::ENGINES) << "using last tick: " << lastTick;
+          LOG_TOPIC("369d3", TRACE, Logger::ENGINES)
+              << "using last tick: " << lastTick;
           TRI_UpdateTickServer(lastTick);
         }
 
         if (slice.hasKey("hlc")) {
           uint64_t lastHlc =
               basics::VelocyPackHelper::stringUInt64(slice.get("hlc"));
-          LOG_TOPIC("647a8", TRACE, Logger::ENGINES) << "using last hlc: " << lastHlc;
+          LOG_TOPIC("647a8", TRACE, Logger::ENGINES)
+              << "using last hlc: " << lastHlc;
           TRI_HybridLogicalClock(lastHlc);
         }
 
         if (slice.hasKey("releasedTick")) {
           _initialReleasedTick =
               basics::VelocyPackHelper::stringUInt64(slice.get("releasedTick"));
-          LOG_TOPIC("e13f4", TRACE, Logger::ENGINES) << "using released tick: " << _initialReleasedTick;
+          LOG_TOPIC("e13f4", TRACE, Logger::ENGINES)
+              << "using released tick: " << _initialReleasedTick;
           _engine.releaseTick(_initialReleasedTick);
         }
 
         if (slice.hasKey("lastSync")) {
           _lastSync =
               basics::VelocyPackHelper::stringUInt64(slice.get("lastSync"));
-          LOG_TOPIC("9e695", TRACE, Logger::ENGINES) << "last background settings sync: " << _lastSync;
+          LOG_TOPIC("9e695", TRACE, Logger::ENGINES)
+              << "last background settings sync: " << _lastSync;
         }
       } catch (...) {
         LOG_TOPIC("1b3de", WARN, Logger::ENGINES)

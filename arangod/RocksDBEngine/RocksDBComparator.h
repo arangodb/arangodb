@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,8 +22,7 @@
 /// @author Daniel H. Larkin
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGO_ROCKSDB_ROCKSDB_COMPARATOR_H
-#define ARANGO_ROCKSDB_ROCKSDB_COMPARATOR_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -41,25 +40,27 @@ class RocksDBVPackComparator final : public rocksdb::Comparator {
   /// returns  < 0 if lhs < rhs
   ///          > 0 if lhs > rhs
   ///            0 if lhs == rhs
-  int Compare(rocksdb::Slice const& lhs, rocksdb::Slice const& rhs) const override {
+  int Compare(rocksdb::Slice const& lhs,
+              rocksdb::Slice const& rhs) const override {
     return compareIndexValues(lhs, rhs);
   }
 
-  bool Equal(rocksdb::Slice const& lhs, rocksdb::Slice const& rhs) const override {
+  bool Equal(rocksdb::Slice const& lhs,
+             rocksdb::Slice const& rhs) const override {
     return (compareIndexValues(lhs, rhs) == 0);
   }
 
   // SECTION: API compatibility
   char const* Name() const override { return "RocksDBVPackComparator"; }
-  void FindShortestSeparator(std::string*, rocksdb::Slice const&) const override {}
+  void FindShortestSeparator(std::string*,
+                             rocksdb::Slice const&) const override {}
   void FindShortSuccessor(std::string*) const override {}
 
  private:
   /// @brief Compares two IndexValue keys or two UniqueIndexValue keys
   /// (containing VelocyPack data and more).
-  int compareIndexValues(rocksdb::Slice const& lhs, rocksdb::Slice const& rhs) const;
+  int compareIndexValues(rocksdb::Slice const& lhs,
+                         rocksdb::Slice const& rhs) const;
 };
 
 }  // namespace arangodb
-
-#endif

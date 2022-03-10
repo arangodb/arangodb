@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_AQL_VALUE_GROUP_H
-#define ARANGOD_AQL_AQL_VALUE_GROUP_H 1
+#pragma once
 
 #include "Aql/AqlValue.h"
 #include "Basics/Common.h"
@@ -58,15 +57,14 @@ struct AqlValueGroupHash {
 struct AqlValueGroupEqual {
   explicit AqlValueGroupEqual(velocypack::Options const*);
 
-  bool operator()(std::vector<AqlValue> const& lhs, std::vector<AqlValue> const& rhs) const;
+  bool operator()(std::vector<AqlValue> const& lhs,
+                  std::vector<AqlValue> const& rhs) const;
   bool operator()(AqlValue const& lhs, AqlValue const& rhs) const;
-  bool operator()(HashedAqlValueGroup const& lhs, HashedAqlValueGroup const& rhs) const;
+  bool operator()(HashedAqlValueGroup const& lhs,
+                  HashedAqlValueGroup const& rhs) const;
 
   velocypack::Options const* _vpackOptions;
 };
 
-
 }  // namespace aql
 }  // namespace arangodb
-
-#endif

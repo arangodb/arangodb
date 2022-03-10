@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,13 +21,11 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOCBASE_IDENTIFIERS_REVISION_ID_H
-#define ARANGOD_VOCBASE_IDENTIFIERS_REVISION_ID_H 1
+#pragma once
 
 #include <velocypack/Slice.h>
 #include <velocypack/Value.h>
 
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/HybridLogicalClock.h"
 #include "Basics/Identifier.h"
 
@@ -36,11 +34,11 @@ class ClusterInfo;
 class LocalDocumentId;
 
 /// @brief server id type
-class RevisionId : public arangodb::basics::Identifier {
+class RevisionId final : public arangodb::basics::Identifier {
  public:
   constexpr RevisionId() noexcept : Identifier() {}
   constexpr explicit RevisionId(BaseType id) noexcept : Identifier(id) {}
-  explicit RevisionId(LocalDocumentId const& id);
+  explicit RevisionId(LocalDocumentId id);
 
   /// @brief whether or not the id is set (not 0)
   bool isSet() const noexcept;
@@ -82,6 +80,9 @@ class RevisionId : public arangodb::basics::Identifier {
     return RevisionId{std::numeric_limits<std::uint64_t>::max()};
   }
 
+  /// @brief create a revision id with a lower-bound HLC value
+  static RevisionId lowerBound();
+
   /// @brief create a revision id using an HLC value
   static RevisionId create();
 
@@ -92,17 +93,19 @@ class RevisionId : public arangodb::basics::Identifier {
   static RevisionId fromString(std::string const& ridStr);
 
   /// @brief Convert a string into a revision ID, returns none() if invalid
-  static RevisionId fromString(std::string const& ridStr, bool& isOld, bool warn);
+  static RevisionId fromString(std::string const& ridStr, bool& isOld,
+                               bool warn);
 
   /// @brief Convert a string into a revision ID, no check variant
   static RevisionId fromString(char const* p, size_t len, bool warn);
 
   /// @brief Convert a string into a revision ID, returns none() if invalid
-  static RevisionId fromString(char const* p, size_t len, bool& isOld, bool warn);
+  static RevisionId fromString(char const* p, size_t len, bool& isOld,
+                               bool warn);
 
   /// @brief extract revision from slice; expects either an integer or string,
   /// or an object with a string or integer _rev attribute
-  static RevisionId fromSlice(velocypack::Slice const slice);
+  static RevisionId fromSlice(velocypack::Slice slice);
 
   /// @brief extract revision from persistent storage (proper endianness)
   static RevisionId fromPersistent(char const* data);
@@ -114,5 +117,3 @@ static_assert(sizeof(RevisionId) == sizeof(RevisionId::BaseType),
 
 DECLARE_HASH_FOR_IDENTIFIER(arangodb::RevisionId)
 DECLARE_EQUAL_FOR_IDENTIFIER(arangodb::RevisionId)
-
-#endif

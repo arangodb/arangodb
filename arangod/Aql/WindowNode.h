@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_WINDOW_NODE_H
-#define ARANGOD_AQL_WINDOW_NODE_H 1
+#pragma once
 
 #include "Aql/AqlValue.h"
 #include "Aql/CollectOptions.h"
@@ -60,14 +59,11 @@ class WindowBounds final {
     bool valid;
   };
 
-  WindowBounds(Type type,
-               AqlValue&& preceding,
-               AqlValue&& following);
+  WindowBounds(Type type, AqlValue&& preceding, AqlValue&& following);
   WindowBounds(Type type, velocypack::Slice slice);
   ~WindowBounds();
 
  public:
-
   int64_t numPrecedingRows() const;
   int64_t numFollowingRows() const;
 
@@ -99,7 +95,6 @@ class WindowBounds final {
 class WindowNode : public ExecutionNode {
   friend class ExecutionNode;
   friend class ExecutionBlock;
-  friend class RedundantCalculationsReplacer;  // TODO: remove
 
  public:
   WindowNode(ExecutionPlan* plan, ExecutionNodeId id, WindowBounds&& b,
@@ -115,21 +110,20 @@ class WindowNode : public ExecutionNode {
   /// @brief return the type of the node
   NodeType getType() const override final;
 
-  /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
-                          std::unordered_set<ExecutionNode const*>& seen) const override final;
-
   /// @brief calculate the aggregate registers
-  void calcAggregateRegisters(std::vector<std::pair<RegisterId, RegisterId>>& aggregateRegisters,
-                              RegIdSet& readableInputRegisters,
-                              RegIdSet& writeableOutputRegisters) const;
+  void calcAggregateRegisters(
+      std::vector<std::pair<RegisterId, RegisterId>>& aggregateRegisters,
+      RegIdSet& readableInputRegisters,
+      RegIdSet& writeableOutputRegisters) const;
 
-  void calcAggregateTypes(std::vector<std::unique_ptr<Aggregator>>& aggregateTypes) const;
+  void calcAggregateTypes(
+      std::vector<std::unique_ptr<Aggregator>>& aggregateTypes) const;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
       ExecutionEngine& engine,
-      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const override;
+      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&)
+      const override;
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
@@ -138,7 +132,11 @@ class WindowNode : public ExecutionNode {
   /// @brief estimateCost
   CostEstimate estimateCost() const override final;
 
-  void setAggregateVariables(std::vector<AggregateVarInfo> const& aggregateVariables);
+  void setAggregateVariables(
+      std::vector<AggregateVarInfo> const& aggregateVariables);
+
+  void replaceVariables(std::unordered_map<VariableId, Variable const*> const&
+                            replacements) override;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
   void getVariablesUsedHere(VarSet& vars) const override final;
@@ -148,6 +146,11 @@ class WindowNode : public ExecutionNode {
 
   // does this WINDOW need to look at rows following the current one
   bool needsFollowingRows() const;
+
+ protected:
+  /// @brief export to VelocyPack
+  void doToVelocyPack(arangodb::velocypack::Builder&,
+                      unsigned flags) const override final;
 
  private:
   WindowBounds _bounds;
@@ -160,5 +163,3 @@ class WindowNode : public ExecutionNode {
 
 }  // namespace aql
 }  // namespace arangodb
-
-#endif

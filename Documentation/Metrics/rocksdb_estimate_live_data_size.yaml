@@ -1,7 +1,7 @@
 name: rocksdb_estimate_live_data_size
 introducedIn: "3.6.1"
 help: |
-  RocksDB metric "rocksdb-estimate-live-data-size" - sum over all column families
+  Estimated amount of live RocksDB data.
 unit: bytes
 type: gauge
 category: RocksDB

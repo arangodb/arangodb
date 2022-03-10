@@ -1,0 +1,34 @@
+[/
+  Copyright 2011 - 2020 John Maddock.
+  Copyright 2013 - 2019 Paul A. Bristow.
+  Copyright 2013 Christopher Kormanyos.
+
+  Distributed under the Boost Software License, Version 1.0.
+  (See accompanying file LICENSE_1_0.txt or copy at
+  http://www.boost.org/LICENSE_1_0.txt).
+]
+
+[section:rounding Rounding Rules for Conversions]
+
+As a general rule, all conversions between unrelated types are performed using basic arithmetic operations, therefore
+conversions are either exact, or follow the same rounding rules as arithmetic for the type in question.
+
+The following table summarises the situation for conversions from native types:
+
+[table
+[[Backend][Rounding Rules]]
+[[__cpp_int][Conversions from integer types are exact if the target has sufficient precision, otherwise they
+            truncate to the first 2^MaxBits bits (modulo arithmetic).  Conversions from floating-point types
+            are truncating to the nearest integer.]]
+[[__gmp_int][Conversions are performed by the GMP library except for conversion from `long double` which is truncating.]]
+[[__tom_int][Conversions from floating-point types are truncating, all others are performed by libtommath and are exact.]]
+[[__gmp_float][Conversions are performed by the GMP library except for conversion from `long double` which should be exact
+            provided the target type has as much precision as a `long double`.]]
+[[__mpfr_float_backend][All conversions are performed by the underlying MPFR library.]]
+[[__cpp_dec_float][All conversions are performed using basic arithmetic operations and are truncating.]]
+[[__gmp_rational][See __gmp_int]]
+[[__cpp_rational][See __cpp_int]]
+[[__tommath_rational][See __tom_int]]
+]
+
+[endsect] [/section:rounding Rounding Rules for Conversions]

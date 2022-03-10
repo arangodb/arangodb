@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_CLUSTER_EDGE_CURSOR_H
-#define ARANGOD_CLUSTER_CLUSTER_EDGE_CURSOR_H 1
+#pragma once
 
 #include "Graph/EdgeCursor.h"
 #include "Graph/TraverserOptions.h"
@@ -62,20 +61,19 @@ class ClusterEdgeCursor : public graph::EdgeCursor {
 
 class ClusterTraverserEdgeCursor final : public ClusterEdgeCursor {
  public:
-
   explicit ClusterTraverserEdgeCursor(traverser::TraverserOptions const* opts);
-  
-  void rearm(arangodb::velocypack::StringRef vid, uint64_t depth) override;
+
+  void rearm(std::string_view vid, uint64_t depth) override;
 
   traverser::TraverserOptions const* traverserOptions() const;
 };
 
 class ClusterShortestPathEdgeCursor final : public ClusterEdgeCursor {
  public:
+  explicit ClusterShortestPathEdgeCursor(graph::BaseOptions const* opts,
+                                         bool backward);
 
-  explicit ClusterShortestPathEdgeCursor(graph::BaseOptions const* opts, bool backward);
-  
-  void rearm(arangodb::velocypack::StringRef vid, uint64_t depth) override;
+  void rearm(std::string_view vid, uint64_t depth) override;
 
  private:
   bool const _backward;
@@ -83,5 +81,3 @@ class ClusterShortestPathEdgeCursor final : public ClusterEdgeCursor {
 
 }  // namespace traverser
 }  // namespace arangodb
-
-#endif

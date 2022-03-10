@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,12 +21,12 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CONSENSUS_STORE_H
-#define ARANGOD_CONSENSUS_STORE_H 1
+#pragma once
 
 #include "AgentInterface.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Mutex.h"
+#include "RestServer/arangod.h"
 #include "Node.h"
 #include <map>
 
@@ -71,11 +71,11 @@ class Agent;
 class Store {
  public:
   /// @brief Construct with name
-  explicit Store(application_features::ApplicationServer& server, Agent* agent,
+  explicit Store(arangodb::ArangodServer& server, Agent* agent,
                  std::string const& name = "root");
 
   /// @brief Destruct
-  virtual ~Store();
+  ~Store();
 
   /// @brief Copy constructor
   Store(Store const& other);
@@ -93,40 +93,31 @@ class Store {
   /// transactions that are in turn arrays with 1, 2 or 3 entries as described
   /// in the next method.
   std::vector<apply_ret_t> applyTransactions(
-      query_t const& query,
+      arangodb::velocypack::Slice query,
       AgentInterface::WriteMode const& wmode = AgentInterface::WriteMode());
 
   index_t applyTransactions(std::vector<log_t> const& queries);
-
-
 
   /// @brief Apply single transaction in query, here query is an array and the
   /// first entry is a write transaction (i.e. an array of length 1, 2 or 3),
   /// if present, the second entry is a precondition, and the third
   /// entry, if present, is a uuid:
-  check_ret_t applyTransaction(Slice const& query);
+  check_ret_t applyTransaction(Slice query);
 
   /// @brief Apply log entries in query, also process callbacks
   std::vector<bool> applyLogEntries(arangodb::velocypack::Builder const& query,
                                     index_t index, term_t term, bool inform);
 
-  /// @brief Read specified query from store
-  std::vector<bool> read(query_t const& query, query_t& result) const;
-
-  /// @brief Read specified query from store
-  void read(query_t const& query, std::unordered_map<std::string,query_t>& result) const;
+  /// @brief Read multiple entries from store
+  std::vector<bool> readMultiple(arangodb::velocypack::Slice query,
+                                 arangodb::velocypack::Builder& result) const;
 
   /// @brief Read individual entry specified in slice into builder
-  bool read(arangodb::velocypack::Slice const&, arangodb::velocypack::Builder&) const;
+  bool read(arangodb::velocypack::Slice query,
+            arangodb::velocypack::Builder& result) const;
 
   /// @brief Dump everything to builder
   void dumpToBuilder(Builder&) const;
-
-  /// @brief Notify observers
-  void notifyObservers() const;
-
-  /// @brief See how far the path matches anything in store
-  size_t matchPath(std::vector<std::string> const& pv) const;
 
   Store& operator=(VPackSlice const& slice);
 
@@ -138,7 +129,8 @@ class Store {
   Node const* nodePtr(std::string const& path = std::string("/")) const;
 
   /// @brief Get node at path under mutex and store it in velocypack
-  void get(std::string const& path, arangodb::velocypack::Builder& b, bool showHidden) const;
+  void get(std::string const& path, arangodb::velocypack::Builder& b,
+           bool showHidden) const;
 
   /// @brief Copy out a node
   Node get(std::string const& path = std::string("/")) const;
@@ -150,21 +142,15 @@ class Store {
 
   void clear();
 
-  /// @brief Apply single slice
-  bool applies(arangodb::velocypack::Slice const&);
-
   /// @brief Remove time to live entries for uri
   void removeTTL(std::string const&);
 
-  std::multimap<TimePoint, std::string>& timeTable();
-  std::multimap<TimePoint, std::string> const& timeTable() const;
-  std::unordered_multimap<std::string, std::string>& observerTable();
-  std::unordered_multimap<std::string, std::string> const& observerTable() const;
   std::unordered_multimap<std::string, std::string>& observedTable();
-  std::unordered_multimap<std::string, std::string> const& observedTable() const;
-  
+  std::unordered_multimap<std::string, std::string> const& observedTable()
+      const;
+
   static std::string normalize(char const* key, size_t length);
-  
+
   /// @brief Normalize node URIs
   static std::string normalize(std::string const& key) {
     return normalize(key.data(), key.size());
@@ -174,16 +160,30 @@ class Store {
   /// and ignoring multiple subsequent forward slashes
   static std::vector<std::string> split(std::string const& str);
 
+#if !defined(MAKE_NOTIFY_OBSERVERS_PUBLIC)
  private:
+#endif  // defined(MAKE_NOTIFY_OBSERVERS_PUBLIC)
+
+  /// @brief Notify observers
+  void notifyObservers() const;
+
+ private:
+  /// @brief Apply single slice
+  bool applies(arangodb::velocypack::Slice const&);
+
+  friend class consensus::Node;
+  std::multimap<TimePoint, std::string>& timeTable();
+  std::multimap<TimePoint, std::string> const& timeTable() const;
   /// @brief Check precondition
-  check_ret_t check(arangodb::velocypack::Slice const&, CheckMode = FIRST_FAIL) const;
+  check_ret_t check(arangodb::velocypack::Slice slice,
+                    CheckMode = FIRST_FAIL) const;
 
   /// @brief Clear entries, whose time to live has expired
   query_t clearExpired() const;
 
  private:
   /// @brief underlying application server, needed for testing code
-  application_features::ApplicationServer& _server;
+  arangodb::ArangodServer& _server;
 
   /// @brief Condition variable guarding removal of expired entries
   mutable arangodb::basics::ConditionVariable _cv;
@@ -212,5 +212,3 @@ inline std::ostream& operator<<(std::ostream& o, Store const& store) {
 
 }  // namespace consensus
 }  // namespace arangodb
-
-#endif

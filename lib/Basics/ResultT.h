@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_RESULT_T_H
-#define ARANGODB_BASICS_RESULT_T_H
+#pragma once
 
 #include <type_traits>
 
@@ -32,6 +31,11 @@
 #include "Basics/Result.h"
 #include "Basics/debugging.h"
 #include "Basics/voc-errors.h"
+
+#if defined(__GNUC__) && !defined(__clang__) && (__GNUC__ < 11)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
 
 namespace arangodb {
 
@@ -61,7 +65,7 @@ namespace arangodb {
 //   return result;
 // .
 // Some implicit conversions are disabled when they could cause ambiguity.
-template <typename T>
+template<typename T>
 class ResultT {
  public:
   ResultT static success(T const& val) {
@@ -76,7 +80,8 @@ class ResultT {
     return ResultT(std::nullopt, errorNumber);
   }
 
-  ResultT static error(ErrorCode errorNumber, std::string_view const& errorMessage) {
+  ResultT static error(ErrorCode errorNumber,
+                       std::string_view const& errorMessage) {
     return ResultT(std::nullopt, errorNumber, errorMessage);
   }
 
@@ -101,7 +106,8 @@ class ResultT {
   // This is disabled if U is implicitly convertible to Result
   // (e.g., if U = int) to avoid ambiguous construction.
   // Use ::success() or ::error() instead in that case.
-  template <typename U = T, typename = std::enable_if_t<!std::is_convertible<U, Result>::value>>
+  template<typename U = T,
+           typename = std::enable_if_t<!std::is_convertible<U, Result>::value>>
   // This is not explicit on purpose
   // NOLINTNEXTLINE(google-explicit-constructor)
   // cppcheck-suppress noExplicitConstructor
@@ -114,7 +120,8 @@ class ResultT {
   // This is disabled if U is implicitly convertible to Result
   // (e.g., if U = int) to avoid ambiguous construction.
   // Use ::success() or ::error() instead in that case.
-  template <typename U = T, typename = std::enable_if_t<!std::is_convertible<U, Result>::value>>
+  template<typename U = T,
+           typename = std::enable_if_t<!std::is_convertible<U, Result>::value>>
   // This is not explicit on purpose
   // NOLINTNEXTLINE(google-explicit-constructor)
   // cppcheck-suppress noExplicitConstructor
@@ -127,16 +134,19 @@ class ResultT {
   // This is disabled if U is implicitly convertible to Result
   // (e.g., if U = int) to avoid ambiguous construction.
   // Use ::success() or ::error() instead in that case.
-  template <typename U = T, typename = std::enable_if_t<!std::is_convertible<U, Result>::value>>
+  template<typename U = T,
+           typename = std::enable_if_t<!std::is_convertible<U, Result>::value>>
   // This is not explicit on purpose
   // NOLINTNEXTLINE(google-explicit-constructor)
   // cppcheck-suppress noExplicitConstructor
-  /* implicit */ ResultT(T&& val) : ResultT(std::move(val), TRI_ERROR_NO_ERROR) {}
+  /* implicit */ ResultT(T&& val)
+      : ResultT(std::move(val), TRI_ERROR_NO_ERROR) {}
 
   // This is disabled if U is implicitly convertible to Result
   // (e.g., if U = int) to avoid ambiguous construction.
   // Use ::success() or ::error() instead in that case.
-  template <typename U = T, typename = std::enable_if_t<!std::is_convertible<U, Result>::value>>
+  template<typename U = T,
+           typename = std::enable_if_t<!std::is_convertible<U, Result>::value>>
   // This is not explicit on purpose
   // NOLINTNEXTLINE(google-explicit-constructor)
   // cppcheck-suppress noExplicitConstructor
@@ -168,7 +178,7 @@ class ResultT {
 
   T const& operator*() const& { return get(); }
 
-  T&& operator*() && { return get(); }
+  T&& operator*() && { return std::move(get()); }
 
   T const&& operator*() const&& { return get(); }
 
@@ -179,7 +189,8 @@ class ResultT {
   // with
   //   if (res.get())
   // .
-  template <typename U = T, typename = std::enable_if_t<!std::is_same<U, bool>::value>>
+  template<typename U = T,
+           typename = std::enable_if_t<!std::is_same<U, bool>::value>>
   explicit operator bool() const {
     return ok();
   }
@@ -208,7 +219,7 @@ class ResultT {
     return false;
   }
 
-  template <typename U>
+  template<typename U>
   bool operator==(ResultT<U> const& other) const {
     if (this->fail() && other.fail()) {
       return this->errorNumber() == other.errorNumber() &&
@@ -223,8 +234,12 @@ class ResultT {
   bool fail() const { return _result.fail(); }
   bool is(ErrorCode code) { return _result.is(code); }
   ErrorCode errorNumber() const { return _result.errorNumber(); }
-  [[nodiscard]] std::string_view errorMessage() const& { return _result.errorMessage(); }
-  [[nodiscard]] std::string errorMessage() && { return std::move(_result).errorMessage(); }
+  [[nodiscard]] std::string_view errorMessage() const& {
+    return _result.errorMessage();
+  }
+  [[nodiscard]] std::string errorMessage() && {
+    return std::move(_result).errorMessage();
+  }
 
   // access methods
   Result const& result() const& { return _result; }
@@ -237,22 +252,27 @@ class ResultT {
   ResultT(std::optional<T>&& val_, ErrorCode errorNumber)
       : _result(errorNumber), _val(std::move(val_)) {}
 
-  ResultT(std::optional<T>&& val_, ErrorCode errorNumber, std::string_view const& errorMessage)
-      : _result(errorNumber, errorMessage), _val(val_) {}
+  ResultT(std::optional<T>&& val_, ErrorCode errorNumber,
+          std::string_view const& errorMessage)
+      : _result(errorNumber, errorMessage), _val(std::move(val_)) {}
 
-  ResultT(std::optional<T>&& val_, ErrorCode errorNumber, std::string&& errorMessage)
-      : _result(errorNumber, std::move(errorMessage)), _val(val_) {}
+  ResultT(std::optional<T>&& val_, ErrorCode errorNumber,
+          std::string&& errorMessage)
+      : _result(errorNumber, std::move(errorMessage)), _val(std::move(val_)) {}
 
-  ResultT(std::optional<T>&& val_, ErrorCode errorNumber, const char* errorMessage)
-      : _result(errorNumber, errorMessage), _val(val_) {}
+  ResultT(std::optional<T>&& val_, ErrorCode errorNumber,
+          const char* errorMessage)
+      : _result(errorNumber, errorMessage), _val(std::move(val_)) {}
 
   ResultT(std::optional<T> const& val_, ErrorCode errorNumber)
       : _result(errorNumber), _val(std::move(val_)) {}
 
-  ResultT(std::optional<T> const& val_, ErrorCode errorNumber, std::string_view const& errorMessage)
+  ResultT(std::optional<T> const& val_, ErrorCode errorNumber,
+          std::string_view const& errorMessage)
       : _result(errorNumber, errorMessage), _val(val_) {}
 
-  ResultT(std::optional<T> const& val_, ErrorCode errorNumber, std::string&& errorMessage)
+  ResultT(std::optional<T> const& val_, ErrorCode errorNumber,
+          std::string&& errorMessage)
       : _result(errorNumber, std::move(errorMessage)), _val(val_) {}
 
   ResultT(std::optional<T>&& val_, Result const& result)
@@ -264,4 +284,6 @@ class ResultT {
 
 }  // namespace arangodb
 
-#endif  // ARANGODB_BASICS_RESULT_T_H
+#if defined(__GNUC__) && !defined(__clang__) && (__GNUC__ < 11)
+#pragma GCC diagnostic pop
+#endif

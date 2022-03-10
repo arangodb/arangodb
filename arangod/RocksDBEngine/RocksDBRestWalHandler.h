@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_ROCKSDB_REST_WAL_HANDLER_H
-#define ARANGOD_ROCKSDB_ROCKSDB_REST_WAL_HANDLER_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "RestHandler/RestBaseHandler.h"
@@ -31,8 +30,7 @@ namespace arangodb {
 
 class RocksDBRestWalHandler : public RestBaseHandler {
  public:
-  RocksDBRestWalHandler(application_features::ApplicationServer&,
-                        GeneralRequest*, GeneralResponse*);
+  RocksDBRestWalHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
 
  public:
   RequestLane lane() const override final {
@@ -47,5 +45,3 @@ class RocksDBRestWalHandler : public RestBaseHandler {
   void properties();
 };
 }  // namespace arangodb
-
-#endif

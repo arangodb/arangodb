@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,16 +21,18 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef APPLICATION_FEATURES_AQL_FEATURE_H
-#define APPLICATION_FEATURES_AQL_FEATURE_H 1
+#pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "RestServer/arangod.h"
 
 namespace arangodb {
 
-class AqlFeature final : public application_features::ApplicationFeature {
+class AqlFeature final : public ArangodFeature {
  public:
-  explicit AqlFeature(application_features::ApplicationServer& server);
+  static constexpr std::string_view name() noexcept { return "Aql"; }
+
+  explicit AqlFeature(ArangodServer& server);
   ~AqlFeature();
 
   static bool lease() noexcept;
@@ -40,5 +42,3 @@ class AqlFeature final : public application_features::ApplicationFeature {
 };
 
 }  // namespace arangodb
-
-#endif

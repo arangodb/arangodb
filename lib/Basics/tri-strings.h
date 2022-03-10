@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_TRI__STRINGS_H
-#define ARANGODB_BASICS_TRI__STRINGS_H 1
+#pragma once
 
 #include <cstdint>
 #include <cstdlib>
@@ -102,7 +101,7 @@ void TRI_CopyString(char* dst, char const* src, size_t length);
 /// @brief frees a string
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeString(char*);
+void TRI_FreeString(char*) noexcept;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sha256 of a string
@@ -111,31 +110,14 @@ void TRI_FreeString(char*);
 char* TRI_SHA256String(char const* source, size_t sourceLen, size_t* dstLen);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the maximum result length for an escaped string
-/// (4 * inLength) + 2 bytes!
-////////////////////////////////////////////////////////////////////////////////
-
-constexpr size_t TRI_MaxLengthEscapeControlsCString(size_t inLength) {
-  return (4 * inLength) + 2;  // for newline and 0 byte
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief escapes special characters using C escapes
-/// the target buffer must have been allocated already and big enough to hold
-/// the result of at most (4 * inLength) + 2 bytes!
-////////////////////////////////////////////////////////////////////////////////
-
-char* TRI_EscapeControlsCString(char const* in, size_t inLength, char* out,
-                                size_t* outLength, bool appendNewline);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief unescapes unicode escape sequences
 ///
 /// This method decodes a UTF-8 character string by replacing the \\uXXXX
 /// sequence by unicode characters and representing them as UTF-8 sequences.
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_UnescapeUtf8String(char const* in, size_t inLength, size_t* outLength, bool normalize);
+char* TRI_UnescapeUtf8String(char const* in, size_t inLength, size_t* outLength,
+                             bool normalize);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unescapes unicode escape sequences into buffer "buffer".
@@ -144,7 +126,8 @@ char* TRI_UnescapeUtf8String(char const* in, size_t inLength, size_t* outLength,
 /// byte
 ////////////////////////////////////////////////////////////////////////////////
 
-size_t TRI_UnescapeUtf8StringInPlace(char* buffer, char const* in, size_t inLength);
+size_t TRI_UnescapeUtf8StringInPlace(char* buffer, char const* in,
+                                     size_t inLength);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief determine the number of characters in a UTF-8 string
@@ -160,5 +143,3 @@ size_t TRI_CharLengthUtf8String(char const*, size_t);
 ////////////////////////////////////////////////////////////////////////////////
 
 char* TRI_PrefixUtf8String(char const*, const uint32_t);
-
-#endif

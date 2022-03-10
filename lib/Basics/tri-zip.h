@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_TRI__ZIP_H
-#define ARANGODB_BASICS_TRI__ZIP_H 1
+#pragma once
 
 #ifdef _WIN32
 #include "Basics/win-utils.h"
@@ -42,13 +41,13 @@ ErrorCode TRI_Adler32(char const* filename, uint32_t& checksum);
 ////////////////////////////////////////////////////////////////////////////////
 
 ErrorCode TRI_ZipFile(char const* filename, char const* dir,
-                      std::vector<std::string> const& files, char const* password);
+                      std::vector<std::string> const& files,
+                      char const* password);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unzips a file
 ////////////////////////////////////////////////////////////////////////////////
 
-ErrorCode TRI_UnzipFile(char const* filename, char const* outPath, bool skipPaths,
-                        bool overwrite, char const* password, std::string& errorMessage);
-
-#endif
+ErrorCode TRI_UnzipFile(char const* filename, char const* outPath,
+                        bool skipPaths, bool overwrite, char const* password,
+                        std::string& errorMessage);

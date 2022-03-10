@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,8 +22,7 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_ENGINE_ROCKSDB_COLUMN_FAMILY_MANAGER_H
-#define ARANGOD_ROCKSDB_ENGINE_ROCKSDB_COLUMN_FAMILY_MANAGER_H 1
+#pragma once
 
 #include "RocksDBEngine/RocksDBCommon.h"
 #include <rocksdb/db.h>
@@ -46,6 +45,8 @@ struct RocksDBColumnFamilyManager {
     VPackIndex = 4,  // persistent, "skiplist", "hash"
     GeoIndex = 5,
     FulltextIndex = 6,
+    ReplicatedLogs = 7,
+    ZkdIndex = 8,
 
     Invalid = 1024  // special placeholder
   };
@@ -56,7 +57,7 @@ struct RocksDBColumnFamilyManager {
   };
 
   static constexpr size_t minNumberOfColumnFamilies = 7;
-  static constexpr size_t numberOfColumnFamilies = 7;
+  static constexpr size_t numberOfColumnFamilies = 9;
 
   static void initialize();
 
@@ -67,15 +68,15 @@ struct RocksDBColumnFamilyManager {
   static char const* name(rocksdb::ColumnFamilyHandle* handle,
                           NameMode mode = NameMode::External);
 
-  static std::array<rocksdb::ColumnFamilyHandle*, numberOfColumnFamilies> const& allHandles();
+  static std::array<rocksdb::ColumnFamilyHandle*, numberOfColumnFamilies> const&
+  allHandles();
 
  private:
   static std::array<char const*, numberOfColumnFamilies> _internalNames;
   static std::array<char const*, numberOfColumnFamilies> _externalNames;
-  static std::array<rocksdb::ColumnFamilyHandle*, numberOfColumnFamilies> _handles;
+  static std::array<rocksdb::ColumnFamilyHandle*, numberOfColumnFamilies>
+      _handles;
   static rocksdb::ColumnFamilyHandle* _defaultHandle;
 };
 
 }  // namespace arangodb
-
-#endif
