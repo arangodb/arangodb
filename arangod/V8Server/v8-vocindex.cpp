@@ -262,7 +262,7 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
                                        enforceReplicationFactor);
   }
 
-  VPackBuilder filtered = methods::Collections::filterInput(propSlice);
+  VPackBuilder filtered = methods::Collections::filterInput(propSlice, false);
   propSlice = filtered.slice();
 
   v8::Handle<v8::Value> result;

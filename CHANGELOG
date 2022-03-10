@@ -1,6 +1,9 @@
 v3.8.7 (XXXX-XX-XX)
 -------------------
 
+* Bugfix: DC-2-DC Disjoint-SmartGraphs and Hybrid-SmartGraphs are now replicated
+  to the follower data-center keeping their sharding intact.
+
 * Fix counts and file size sum in hotbackup META files. Do no longer count
   directories.
 
