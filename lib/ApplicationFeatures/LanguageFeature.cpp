@@ -80,6 +80,21 @@ void setLocale(icu::Locale& locale) {
   LOG_TOPIC("f6e04", DEBUG, arangodb::Logger::CONFIG)
       << "using default language '" << languageName << "'";
 }
+
+arangodb::LanguageType getLanguageType(std::string_view default_lang,
+                                       std::string_view icu_lang) {
+  bool isDefaultSet = !default_lang.empty();
+  bool isIcuSet = !icu_lang.empty();
+
+  if (isDefaultSet && isIcuSet) {
+    return arangodb::LanguageType::INVALID;
+  } else if (isIcuSet) {
+    return arangodb::LanguageType::ICU;
+  } else {
+    return arangodb::LanguageType::DEFAULT;
+  }
+}
+
 }  // namespace
 
 using namespace arangodb::basics;
@@ -192,19 +207,17 @@ void LanguageFeature::prepare() {
   _icuDataPtr = LanguageFeature::prepareIcu(_binaryPath, binaryExecutionPath, p,
                                             binaryName);
 
-  bool isDefaultSet = !_defaultLanguage.empty();
-  bool isIcuSet = !_icuLanguage.empty();
+  _langType = ::getLanguageType(_defaultLanguage, _icuLanguage);
 
-  if (isDefaultSet && isIcuSet) {
+  if (LanguageType::INVALID == _langType) {
     LOG_TOPIC("d8a99", FATAL, arangodb::Logger::CONFIG)
         << "Only one parameter from --default-language and --icu-language "
            "should be specified";
     FATAL_ERROR_EXIT();
   }
 
-  ::setCollator(isIcuSet ? _icuLanguage : _defaultLanguage, _icuDataPtr,
-                !isIcuSet);  // if _defaultLanguage is empty,
-                             // we will work with _icuLanguage
+  ::setCollator(_langType == LanguageType::ICU ? _icuLanguage : _defaultLanguage, _icuDataPtr,
+                _langType == LanguageType::DEFAULT);
 }
 
 void LanguageFeature::start() { ::setLocale(_locale); }
@@ -213,6 +226,10 @@ icu::Locale& LanguageFeature::getLocale() { return _locale; }
 
 std::string_view LanguageFeature::getDefaultLanguage() const {
   return _defaultLanguage;
+}
+
+LanguageType LanguageFeature::getLanguageType() const {
+  return _langType;
 }
 
 std::string_view LanguageFeature::getIcuLanguage() const {
@@ -237,6 +254,7 @@ std::string LanguageFeature::getCollatorLanguage() const {
 void LanguageFeature::resetDefaultLanguage(std::string_view language) {
   _icuLanguage.clear();
   _defaultLanguage = language;
+  _langType = LanguageType::DEFAULT;
   ::setCollator(_defaultLanguage, _icuDataPtr, true);
   ::setLocale(_locale);
 }
@@ -244,6 +262,7 @@ void LanguageFeature::resetDefaultLanguage(std::string_view language) {
 void LanguageFeature::resetIcuLanguage(std::string_view language) {
   _defaultLanguage.clear();
   _icuLanguage = language;
+  _langType = LanguageType::ICU;
   ::setCollator(_icuLanguage, _icuDataPtr, false);
   ::setLocale(_locale);
 }

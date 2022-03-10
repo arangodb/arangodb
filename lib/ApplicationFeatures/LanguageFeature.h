@@ -37,6 +37,12 @@ namespace options {
 class ProgramOptions;
 }
 
+enum class LanguageType {
+  INVALID = -1,
+  DEFAULT = 0,
+  ICU     = 1
+};
+
 class LanguageFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Language"; }
@@ -65,6 +71,7 @@ class LanguageFeature final : public application_features::ApplicationFeature {
   std::string_view getIcuLanguage() const;
   bool forceLanguageCheck() const;
   std::string getCollatorLanguage() const;
+  LanguageType getLanguageType() const;
   void resetDefaultLanguage(std::string_view language);
   void resetIcuLanguage(std::string_view language);
 
@@ -72,6 +79,7 @@ class LanguageFeature final : public application_features::ApplicationFeature {
   icu::Locale _locale;
   std::string _defaultLanguage;
   std::string _icuLanguage;
+  LanguageType _langType;
   char const* _binaryPath;
   void* _icuDataPtr;
   bool _forceLanguageCheck;
