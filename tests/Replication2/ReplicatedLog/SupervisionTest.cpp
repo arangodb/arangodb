@@ -367,3 +367,238 @@ TEST_F(LogSupervisionTest, test_leader_not_known_in_health) {
   auto r = isLeaderFailed(leader, health);
   EXPECT_TRUE(r);
 }
+
+TEST_F(LogSupervisionTest, test_participant_added) {
+  auto const targetParticipants = ParticipantsFlagsMap{
+      {"A", ParticipantFlags{.forced = false, .excluded = false}}};
+
+  auto const planParticipants = ParticipantsFlagsMap{};
+
+  auto r = getAddedParticipant(targetParticipants, planParticipants);
+  EXPECT_TRUE(r);
+
+  EXPECT_EQ(r->first, "A");
+  EXPECT_EQ(r->second, (ParticipantFlags{.forced = false, .excluded = false}));
+}
+
+TEST_F(LogSupervisionTest, test_no_participant_added) {
+  auto const targetParticipants = ParticipantsFlagsMap{
+      {"A", ParticipantFlags{.forced = false, .excluded = false}}};
+
+  auto const planParticipants = targetParticipants;
+
+  auto r = getAddedParticipant(targetParticipants, planParticipants);
+  EXPECT_FALSE(r);
+}
+
+TEST_F(LogSupervisionTest, test_participant_removed) {
+  auto const targetParticipants = ParticipantsFlagsMap{};
+
+  auto const planParticipants = ParticipantsFlagsMap{
+      {"A", ParticipantFlags{.forced = false, .excluded = false}}};
+
+  auto r = getRemovedParticipant(targetParticipants, planParticipants);
+  EXPECT_TRUE(r);
+
+  EXPECT_EQ(r->first, "A");
+}
+
+TEST_F(LogSupervisionTest, test_no_participant_removed) {
+  auto const targetParticipants = ParticipantsFlagsMap{
+      {"A", ParticipantFlags{.forced = false, .excluded = false}}};
+
+  auto const planParticipants = ParticipantsFlagsMap{
+      {"A", ParticipantFlags{.forced = false, .excluded = false}}};
+
+  auto r = getRemovedParticipant(targetParticipants, planParticipants);
+  EXPECT_FALSE(r);
+}
+
+TEST_F(LogSupervisionTest, test_no_flags_changed) {
+  auto const targetParticipants = ParticipantsFlagsMap{
+      {"A", ParticipantFlags{.forced = false, .excluded = false}}};
+
+  auto const planParticipants = ParticipantsFlagsMap{
+      {"A", ParticipantFlags{.forced = false, .excluded = false}}};
+
+  auto r = getParticipantWithUpdatedFlags(targetParticipants, planParticipants,
+                                          std::nullopt, "A");
+  EXPECT_FALSE(r);
+}
+
+TEST_F(LogSupervisionTest, test_flags_changed) {
+  auto const targetParticipants = ParticipantsFlagsMap{
+      {"A", ParticipantFlags{.forced = false, .excluded = true}}};
+
+  auto const planParticipants = ParticipantsFlagsMap{
+      {"A", ParticipantFlags{.forced = false, .excluded = false}}};
+
+  auto r = getParticipantWithUpdatedFlags(targetParticipants, planParticipants,
+                                          std::nullopt, "A");
+  EXPECT_TRUE(r);
+  EXPECT_EQ(r->first, "A");
+  EXPECT_EQ(r->second, (ParticipantFlags{.forced = false, .excluded = true}));
+}
+
+TEST_F(LogSupervisionTest, test_leader_changed) {
+  auto const targetParticipants = ParticipantsFlagsMap{
+      {"A", ParticipantFlags{.forced = false, .excluded = false}},
+      {"B", ParticipantFlags{.forced = false, .excluded = false}}};
+
+  auto const planParticipants = ParticipantsFlagsMap{
+      {"A", ParticipantFlags{.forced = false, .excluded = false}},
+      {"B", ParticipantFlags{.forced = false, .excluded = false}}};
+
+  auto r = getParticipantWithUpdatedFlags(targetParticipants, planParticipants,
+                                          "B", "A");
+  EXPECT_TRUE(r);
+
+  // IF the leader is changed via target, expect it to be forced first
+  EXPECT_EQ(r->first, "B");
+  EXPECT_EQ(r->second, (ParticipantFlags{.forced = true, .excluded = false}));
+}
+
+TEST_F(LogSupervisionTest, test_acceptable_leader_set) {
+  auto const participants = ParticipantsFlagsMap{
+      {"A", ParticipantFlags{.forced = false, .excluded = false}},
+      {"B", ParticipantFlags{.forced = false, .excluded = false}},
+      {"C", ParticipantFlags{.forced = false, .excluded = true}},
+      {"D", ParticipantFlags{.forced = false, .excluded = false}}};
+
+  auto r = getParticipantsAcceptableAsLeaders("A", participants);
+
+  auto expectedAcceptable = std::set<ParticipantId>{"B", "D"};
+  auto acceptable = std::set<ParticipantId>{};
+  std::copy(std::begin(r), std::end(r),
+            std::inserter(acceptable, std::begin(acceptable)));
+  EXPECT_EQ(acceptable, expectedAcceptable);
+
+  // IF the leader is changed via target, expect it to be forced first
+  EXPECT_EQ(expectedAcceptable, acceptable);
+}
+
+TEST_F(LogSupervisionTest, test_dictate_leader_no_current) {
+  auto const& logId = LogId{44};
+  auto const& config = LogConfig(3, 3, 3, true);
+  auto const& participants = ParticipantsFlagsMap{};
+  auto const& target = LogTarget(logId, participants, config);
+
+  auto const& plan = LogPlanSpecification(
+      logId, LogPlanTermSpecification(LogTerm{1}, config, std::nullopt),
+      ParticipantsConfig{.generation = 1, .participants = participants});
+
+  auto const& current = LogCurrent{};
+
+  auto const& health = ParticipantsHealth{._health = {}};
+
+  auto r = dictateLeader(target, plan, current, health);
+
+  ASSERT_TRUE(std::holds_alternative<DictateLeaderFailedAction>(r))
+      << to_string(r);
+}
+
+TEST_F(LogSupervisionTest, test_dictate_leader_force_first) {
+  auto const& logId = LogId{44};
+  auto const& config = LogConfig(3, 3, 3, true);
+
+  auto const& participants = ParticipantsFlagsMap{
+      {"A", ParticipantFlags{.forced = false, .excluded = false}},
+      {"B", ParticipantFlags{.forced = false, .excluded = false}},
+      {"C", ParticipantFlags{.forced = false, .excluded = true}},
+      {"D", ParticipantFlags{.forced = false, .excluded = false}}};
+
+  auto const& target = LogTarget(logId, participants, config);
+
+  auto const& participantsConfig =
+      ParticipantsConfig{.generation = 1, .participants = participants};
+
+  auto const& plan = LogPlanSpecification(
+      logId,
+      LogPlanTermSpecification(
+          LogTerm{1}, config,
+          LogPlanTermSpecification::Leader{"A", RebootId{42}}),
+      participantsConfig);
+
+  auto current = LogCurrent();
+  current.leader = LogCurrent::Leader{
+      .serverId = "A", .committedParticipantsConfig = participantsConfig};
+
+  auto const& health = ParticipantsHealth{
+      ._health = {
+          {"A",
+           ParticipantHealth{.rebootId = RebootId{43}, .notIsFailed = true}},
+          {"B",
+           ParticipantHealth{.rebootId = RebootId{14}, .notIsFailed = true}},
+          {"C",
+           ParticipantHealth{.rebootId = RebootId{14}, .notIsFailed = true}},
+          {"D",
+           ParticipantHealth{.rebootId = RebootId{14}, .notIsFailed = true}}}};
+
+  auto r = dictateLeader(target, plan, current, health);
+
+  // Should get an UpdateParticipantsFlagAction for one of the
+  // acceptable participants that are acceptable as leaders to
+  // become forced
+  ASSERT_TRUE(std::holds_alternative<UpdateParticipantFlagsAction>(r))
+      << to_string(r);
+
+  auto action = std::get<UpdateParticipantFlagsAction>(r);
+  auto acceptableParticipants =
+      getParticipantsAcceptableAsLeaders("A", participants);
+
+  ASSERT_EQ(action._generation, 1);
+  ASSERT_NE(std::find(std::begin(acceptableParticipants),
+                      std::end(acceptableParticipants), action._participant),
+            std::end(acceptableParticipants));
+
+  ASSERT_TRUE(action._flags.forced);
+}
+
+TEST_F(LogSupervisionTest, test_dictate_leader_success) {
+  auto const& logId = LogId{44};
+  auto const& config = LogConfig(3, 3, 3, true);
+
+  auto const& participants = ParticipantsFlagsMap{
+      {"A", ParticipantFlags{.forced = false, .excluded = false}},
+      {"B", ParticipantFlags{.forced = false, .excluded = false}},
+      {"C", ParticipantFlags{.forced = false, .excluded = true}},
+      {"D", ParticipantFlags{.forced = true, .excluded = false}}};
+
+  auto const& target = LogTarget(logId, participants, config);
+
+  auto const& participantsConfig =
+      ParticipantsConfig{.generation = 1, .participants = participants};
+
+  auto const& plan = LogPlanSpecification(
+      logId,
+      LogPlanTermSpecification(
+          LogTerm{1}, config,
+          LogPlanTermSpecification::Leader{"A", RebootId{42}}),
+      participantsConfig);
+
+  auto current = LogCurrent();
+  current.leader = LogCurrent::Leader{
+      .serverId = "A", .committedParticipantsConfig = participantsConfig};
+
+  auto const& health = ParticipantsHealth{
+      ._health = {
+          {"A",
+           ParticipantHealth{.rebootId = RebootId{43}, .notIsFailed = true}},
+          {"B",
+           ParticipantHealth{.rebootId = RebootId{14}, .notIsFailed = true}},
+          {"C",
+           ParticipantHealth{.rebootId = RebootId{14}, .notIsFailed = true}},
+          {"D",
+           ParticipantHealth{.rebootId = RebootId{14}, .notIsFailed = true}}}};
+
+  auto r = dictateLeader(target, plan, current, health);
+
+  // Should get an UpdateParticipantsFlagAction for one of the
+  // acceptable participants that are acceptable as leaders to
+  // become forced
+  ASSERT_TRUE(std::holds_alternative<DictateLeaderAction>(r)) << to_string(r);
+
+  auto action = std::get<DictateLeaderAction>(r);
+
+  ASSERT_EQ(action._term.leader->serverId, "D");
+}

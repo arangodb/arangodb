@@ -44,6 +44,21 @@ using LogCurrentLocalStates =
 auto isLeaderFailed(LogPlanTermSpecification::Leader const& leader,
                     ParticipantsHealth const& health) -> bool;
 
+auto getAddedParticipant(ParticipantsFlagsMap const& target,
+                         ParticipantsFlagsMap const& plan)
+    -> std::optional<std::pair<ParticipantId, ParticipantFlags>>;
+
+auto getRemovedParticipant(ParticipantsFlagsMap const& target,
+                           ParticipantsFlagsMap const& plan)
+    -> std::optional<std::pair<ParticipantId, ParticipantFlags>>;
+
+auto getParticipantWithUpdatedFlags(
+    ParticipantsFlagsMap const& targetParticipants,
+    ParticipantsFlagsMap const& planParticipants,
+    std::optional<ParticipantId> const& targetLeader,
+    ParticipantId const& currentTermLeader)
+    -> std::optional<std::pair<ParticipantId, ParticipantFlags>>;
+
 auto computeReason(LogCurrentLocalState const& status, bool healthy,
                    bool excluded, LogTerm term)
     -> LogCurrentSupervisionElection::ErrorCode;
@@ -56,6 +71,14 @@ auto runElectionCampaign(LogCurrentLocalStates const& states,
 auto doLeadershipElection(LogPlanSpecification const& plan,
                           LogCurrent const& current,
                           ParticipantsHealth const& health) -> Action;
+
+auto getParticipantsAcceptableAsLeaders(
+    ParticipantId const& currentLeader,
+    ParticipantsFlagsMap const& participants) -> std::vector<ParticipantId>;
+
+auto dictateLeader(LogTarget const& target, LogPlanSpecification const& plan,
+                   LogCurrent const& current, ParticipantsHealth const& health)
+    -> Action;
 
 // Actions capture entries in log, so they have to stay
 // valid until the returned action has been executed (or discarded)
