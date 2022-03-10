@@ -253,6 +253,12 @@ Ast::Ast(QueryContext& query,
 /// @brief destroy the AST
 Ast::~Ast() = default;
 
+// frees all data
+void Ast::clear() noexcept { _resources.clear(); }
+
+// frees most data (keeps a bit of memory around to avoid later re-allocations)
+void Ast::clearMost() noexcept { _resources.clearMost(); }
+
 /// @brief convert the AST into VelocyPack
 void Ast::toVelocyPack(VPackBuilder& builder, bool verbose) const {
   {

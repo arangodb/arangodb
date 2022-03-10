@@ -992,15 +992,6 @@ License Id: Apache-2.0
 #### ansi-regex
 
 Name: ansi-regex
-Version: 2.1.1
-Project Home: sindresorhus.com
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/chalk/node_modules/ansi-regex/license
-License Name: MIT License
-License Id: MIT
-
-#### ansi-regex
-
-Name: ansi-regex
 Version: 3.0.0
 Project Home: sindresorhus.com
 License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/ansi-regex/license
@@ -1013,15 +1004,6 @@ Name: ansi-regex
 Version: 4.1.0
 Project Home: sindresorhus.com
 License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/inquirer/node_modules/ansi-regex/license
-License Name: MIT License
-License Id: MIT
-
-#### ansi-styles
-
-Name: ansi-styles
-Version: 2.2.1
-Project Home: sindresorhus.com
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/chalk/node_modules/ansi-styles/license
 License Name: MIT License
 License Id: MIT
 
@@ -1121,15 +1103,6 @@ Name: chai
 Version: 3.5.0
 Project Home: https://github.com/chaijs/chai
 License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/chai/README.md
-License Name: MIT License
-License Id: MIT
-
-#### chalk
-
-Name: chalk
-Version: 1.1.3
-Project Home: https://github.com/chalk/chalk
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/chalk/license
 License Name: MIT License
 License Id: MIT
 
@@ -1292,15 +1265,6 @@ Name: error-stack-parser
 Version: 2.0.2
 Project Home: https://github.com/stacktracejs/error-stack-parser
 License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/error-stack-parser/LICENSE
-License Name: MIT License
-License Id: MIT
-
-#### escape-string-regexp
-
-Name: escape-string-regexp
-Version: 1.0.5
-Project Home: sindresorhus.com
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/chalk/node_modules/escape-string-regexp/license
 License Name: MIT License
 License Id: MIT
 
@@ -1546,15 +1510,6 @@ Project Home: https://github.com/graphql/graphql-js
 License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/graphql-sync/node_modules/graphql/LICENSE
 License Name: BSD 3-clause "New" or "Revised" License
 License Id: BSD-3-Clause
-
-#### has-ansi
-
-Name: has-ansi
-Version: 2.0.0
-Project Home: sindresorhus.com
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/chalk/node_modules/has-ansi/license
-License Name: MIT License
-License Id: MIT
 
 #### has-flag
 
@@ -2234,15 +2189,6 @@ License Id: MIT
 #### strip-ansi
 
 Name: strip-ansi
-Version: 3.0.1
-Project Home: sindresorhus.com
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/chalk/node_modules/strip-ansi/license
-License Name: MIT License
-License Id: MIT
-
-#### strip-ansi
-
-Name: strip-ansi
 Version: 4.0.0
 Project Home: sindresorhus.com
 License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/strip-ansi/license
@@ -2264,15 +2210,6 @@ Name: strip-json-comments
 Version: 2.0.1
 Project Home: sindresorhus.com
 License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/strip-json-comments/license
-License Name: MIT License
-License Id: MIT
-
-#### supports-color
-
-Name: supports-color
-Version: 2.0.0
-Project Home: sindresorhus.com
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/chalk/node_modules/supports-color/license
 License Name: MIT License
 License Id: MIT
 

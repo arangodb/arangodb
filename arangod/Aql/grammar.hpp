@@ -134,7 +134,7 @@ typedef enum yytokentype yytoken_kind_t;
 /* Value type.  */
 #if !defined YYSTYPE && !defined YYSTYPE_IS_DECLARED
 union YYSTYPE {
-#line 40 "Aql/grammar.y"
+#line 41 "Aql/grammar.y"
 
   arangodb::aql::AstNode* node;
   struct {
