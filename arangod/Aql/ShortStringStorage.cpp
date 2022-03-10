@@ -31,7 +31,7 @@
 
 using namespace arangodb::aql;
 
-/// @brief create a short string storage instance
+// create a short string storage instance
 ShortStringStorage::ShortStringStorage(
     arangodb::ResourceMonitor& resourceMonitor, size_t blockSize)
     : _resourceMonitor(resourceMonitor),
@@ -41,12 +41,35 @@ ShortStringStorage::ShortStringStorage(
   TRI_ASSERT(blockSize >= 64);
 }
 
-/// @brief destroy a short string storage instance
+// destroy a short string storage instance
 ShortStringStorage::~ShortStringStorage() {
   _resourceMonitor.decreaseMemoryUsage(_blocks.size() * _blockSize);
 }
 
-/// @brief register a short string
+// frees all blocks
+void ShortStringStorage::clear() noexcept {
+  _resourceMonitor.decreaseMemoryUsage(_blocks.size() * _blockSize);
+  _blocks.clear();
+  _current = nullptr;
+  _end = nullptr;
+}
+
+// free all blocks but the first one. we keep one block to avoid
+// later memory re-allocations.
+void ShortStringStorage::clearMost() noexcept {
+  if (_blocks.empty()) {
+    return;
+  }
+
+  _resourceMonitor.decreaseMemoryUsage(_blockSize * (_blocks.size() - 1));
+  _blocks.resize(1);
+  TRI_ASSERT(!_blocks.empty());
+  // reset _current and _end
+  _current = _blocks.back().get();
+  _end = _current + _blockSize;
+}
+
+// register a short string
 char* ShortStringStorage::registerString(char const* p, size_t length) {
   TRI_ASSERT(length <= maxStringLength);
 
@@ -68,7 +91,7 @@ char* ShortStringStorage::registerString(char const* p, size_t length) {
   return position;
 }
 
-/// @brief register a short string, unescaping it
+// register a short string, unescaping it
 char* ShortStringStorage::unescape(char const* p, size_t length,
                                    size_t* outLength) {
   TRI_ASSERT(length <= maxStringLength);
@@ -91,7 +114,7 @@ char* ShortStringStorage::unescape(char const* p, size_t length,
   return position;
 }
 
-/// @brief allocate a new block of memory
+// allocate a new block of memory
 void ShortStringStorage::allocateBlock() {
   {
     ResourceUsageScope scope(_resourceMonitor, _blockSize);

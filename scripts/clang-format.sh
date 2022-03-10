@@ -18,7 +18,8 @@ pushd "$adb_path" > /dev/null
 
 changed_files_filename=".clang-format-$$.changed.tmp"
 # clean up after ourselves
-trap "rm -f $changed_files_filename $changed_files_filename.sorted" EXIT SIGINT SIGTERM SIGHUP
+trap "rm -f $changed_files_filename $changed_files_filename.sorted" EXIT 
+trap "rm -f $changed_files_filename $changed_files_filename.sorted; exit" SIGINT SIGTERM SIGHUP
 
 if [[ "$#" -gt 0 ]]
 then
@@ -55,14 +56,14 @@ else
 fi
 
 if [ -s "$changed_files_filename" ]; then
-  sort "$changed_files_filename" | grep -E "\.\(ipp|tpp|cpp|hpp|cc|c|h\)$" | uniq > "$changed_files_filename.sorted"
+  sort "$changed_files_filename" | grep -e '\.ipp$' -e '\.tpp$' -e '\.cpp$' -e '\.hpp$' -e '\.cc$' -e '\.c$' -e '\.h$' | uniq > "$changed_files_filename.sorted"
 
   echo 
   echo "About to run formatting on the following files:"
   cat -n "$changed_files_filename.sorted"
   echo
 
-  docker run --rm -u "$(id -u):$(id -g)" --mount type=bind,source="$adb_path",target=/usr/src/arangodb arangodb/clang-format:1.1 "format" "$changed_files_filename.sorted" 
+  docker run --rm -u "$(id -u):$(id -g)" --mount type=bind,source="$adb_path",target=/usr/src/arangodb arangodb/clang-format:1.2 "format" "$changed_files_filename.sorted" 
 fi
 status=$?
 
