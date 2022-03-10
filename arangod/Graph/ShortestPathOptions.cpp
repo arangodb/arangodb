@@ -246,6 +246,24 @@ auto ShortestPathOptions::getWeightAttribute() const& -> std::string {
   return _weightAttribute;
 }
 
+auto ShortestPathOptions::getEdgeDestination(arangodb::velocypack::Slice edge,
+                                             std::string_view origin) const
+    -> std::string_view {
+  if (edge.isString()) {
+    return edge.stringView();
+  }
+
+  TRI_ASSERT(edge.isObject());
+  auto from = edge.get(arangodb::StaticStrings::FromString);
+  TRI_ASSERT(from.isString());
+  if (from.stringView() == origin) {
+    auto to = edge.get(arangodb::StaticStrings::ToString);
+    TRI_ASSERT(to.isString());
+    return to.stringView();
+  }
+  return from.stringView();
+}
+
 ShortestPathOptions::ShortestPathOptions(ShortestPathOptions const& other,
                                          bool const allowAlreadyBuiltCopy)
     : BaseOptions(other, allowAlreadyBuiltCopy),
@@ -260,6 +278,19 @@ ShortestPathOptions::ShortestPathOptions(ShortestPathOptions const& other,
       _defaultWeight{other._defaultWeight} {
   TRI_ASSERT(other._defaultWeight >= 0.);
 }
+
+#ifndef USE_ENTERPRISE
+auto ShortestPathOptions::setDisjoint() -> void { return; }
+
+auto ShortestPathOptions::isDisjoint() const -> bool { return false; }
+
+auto ShortestPathOptions::isSatelliteLeader() const -> bool {
+  // Can only be called in Enterprise code.
+  // Return false as security net.
+  TRI_ASSERT(false);
+  return false;
+}
+#endif
 
 template void
 ShortestPathOptions::fetchVerticesCoordinator<std::deque<std::string_view>>(

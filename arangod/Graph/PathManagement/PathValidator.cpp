@@ -74,9 +74,11 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
 #ifdef USE_ENTERPRISE
   if (isDisjoint()) {
     auto validDisjPathRes = checkValidDisjointPath(step);
-    if (validDisjPathRes == ValidationResult::Type::FILTER_AND_PRUNE ||
-        validDisjPathRes == ValidationResult::Type::FILTER) {
-      res.combine(validDisjPathRes);
+    if (validDisjPathRes.isFiltered() && validDisjPathRes.isPruned()) {
+      res.combine(ValidationResult::Type::FILTER_AND_PRUNE);
+      return res;
+    } else if (validDisjPathRes.isFiltered()) {
+      res.combine(ValidationResult::Type::FILTER);
       return res;
     }
   }
@@ -143,6 +145,35 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
                  PathValidator<ProviderType, PathStore, vertexUniqueness,
                                edgeUniqueness> const& otherValidator)
         -> ValidationResult {
+  ValidationResult res(ValidationResult::Type::TAKE);
+#ifdef USE_ENTERPRISE
+  if (isDisjoint()) {
+    // left-part of the full path
+    auto leftResult = checkValidDisjointPath(step);
+    if (leftResult.isPruned() && leftResult.isFiltered()) {
+      // quick exit if already left part is violated
+      return leftResult;
+    } else if (leftResult.isFiltered()) {
+      res = ValidationResult(ValidationResult::Type::FILTER);
+    }
+
+    auto rightResult = checkValidDisjointPath(step);
+    if (rightResult.isPruned() && rightResult.isFiltered()) {
+      // quick exit if already left part is violated
+      return rightResult;
+    } else if (rightResult.isFiltered()) {
+      res = ValidationResult(ValidationResult::Type::FILTER);
+    }
+
+    // right-part of the full path
+    if (leftResult.hasSmartValue() && rightResult.hasSmartValue()) {
+      if (leftResult.getSmartValue() != rightResult.getSmartValue()) {
+        return ValidationResult{ValidationResult::Type::FILTER_AND_PRUNE};
+      }
+    }
+  }
+#endif
+
   if constexpr (vertexUniqueness == VertexUniquenessLevel::PATH) {
     // For PATH: take _uniqueVertices of otherValidator, and run Visitor of
     // other side, check if one vertex is duplicate.
@@ -178,7 +209,7 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
   }
 
   // For NONE: ignoreOtherValidator return TAKE
-  return ValidationResult{ValidationResult::Type::TAKE};
+  return res;
 }
 
 template<class ProviderType, class PathStore,
@@ -431,10 +462,15 @@ template<class Provider, class PathStore,
          VertexUniquenessLevel vertexUniqueness,
          EdgeUniquenessLevel edgeUniqueness>
 auto PathValidator<Provider, PathStore, vertexUniqueness, edgeUniqueness>::
-    checkValidDisjointPath(typename PathStore::Step const& lastStep)
-        -> arangodb::graph::ValidationResult::Type {
+    checkValidDisjointPath(typename PathStore::Step const& lastStep) const
+    -> arangodb::graph::ValidationResult::Type {
   return ValidationResult::Type::TAKE;
 }
+template<class Provider, class PathStore,
+         VertexUniquenessLevel vertexUniqueness,
+         EdgeUniquenessLevel edgeUniqueness>
+auto PathValidator<Provider, PathStore, vertexUniqueness,
+                   edgeUniqueness>::setSmartValue(std::string_view) -> void {}
 #endif
 
 namespace arangodb::graph {

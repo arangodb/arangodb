@@ -87,7 +87,8 @@ class TwoSidedEnumerator {
                    PathResult<ProviderType, Step>& path) -> void;
 
     auto matchResultsInShell(Step const& match, ResultList& results,
-                             PathValidatorType const& otherSideValidator)
+                             PathValidatorType const& otherSideValidator,
+                             std::optional<std::string_view> smartValue)
         -> void;
     auto computeNeighbourhoodOfNextVertex(Ball& other, ResultList& results)
         -> void;

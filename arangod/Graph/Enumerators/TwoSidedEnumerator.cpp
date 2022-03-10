@@ -225,7 +225,16 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
       // For GLOBAL: We ignore otherValidator, On FIRST match: Add this match as
       // result, clear both sides. => This will give the shortest path.
       // TODO: Check if the GLOBAL holds true for weightedEdges
-      other.matchResultsInShell(n, results, _validator);
+
+#ifdef USE_ENTERPRISE
+      if (res.hasSmartValue()) {
+        other.matchResultsInShell(n, results, _validator, res.getSmartValue());
+      } else {
+        other.matchResultsInShell(n, results, _validator, std::nullopt);
+      }
+#else
+      other.matchResultsInShell(n, results, _validator, std::nullopt);
+#endif
     }
     if (!res.isPruned()) {
       // Add the step to our shell
@@ -239,7 +248,7 @@ template<class QueueType, class PathStoreType, class ProviderType,
 void TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
     Ball::testDepthZero(Ball& other, ResultList& results) {
   for (auto const& step : _shell) {
-    other.matchResultsInShell(step, results, _validator);
+    other.matchResultsInShell(step, results, _validator, std::nullopt);
   }
 }
 
@@ -247,8 +256,16 @@ template<class QueueType, class PathStoreType, class ProviderType,
          class PathValidator>
 auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
     Ball::matchResultsInShell(Step const& match, ResultList& results,
-                              PathValidator const& otherSideValidator) -> void {
+                              PathValidator const& otherSideValidator,
+                              std::optional<std::string_view> smartValue)
+        -> void {
   auto [first, last] = _shell.equal_range(match);
+#ifdef USE_ENTERPRISE
+  if (smartValue.has_value()) {
+    _validator.setSmartValue(smartValue.value());
+  }
+#endif
+
   if (_direction == FORWARD) {
     while (first != last) {
       auto res = _validator.validatePath(*first, otherSideValidator);

@@ -49,6 +49,8 @@ struct ShortestPathOptions : public BaseOptions {
   bool bidirectional;
   bool multiThreaded;
 
+  bool _isDisjoint = false;
+
   explicit ShortestPathOptions(aql::QueryContext& query);
 
   ShortestPathOptions(aql::QueryContext& query,
@@ -108,6 +110,16 @@ struct ShortestPathOptions : public BaseOptions {
   auto getWeightAttribute() const& -> std::string;
   auto setDefaultWeight(double weight) -> void;
   auto getDefaultWeight() const -> double;
+
+  auto setDisjoint() -> void;
+  auto isDisjoint() const -> bool;
+
+  auto isSatelliteLeader() const -> bool;
+
+  bool checkSmartDestination(VPackSlice edge,
+                             std::string_view sourceVertex) const;
+  auto getEdgeDestination(arangodb::velocypack::Slice edge,
+                          std::string_view origin) const -> std::string_view;
 
  private:
   /// @brief Lookup info to find all reverse edges.

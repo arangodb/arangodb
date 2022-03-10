@@ -246,10 +246,8 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
 
     // First determine whether all edge collections are smart and sharded
     // like a common collection:
-    if (ServerState::instance()->isRunningInCluster()) {
-      _isSmart = _graphObj->isSmart();
-      _isDisjoint = _graphObj->isDisjoint();
-    }
+    _isSmart = _graphObj->isSmart();
+    _isDisjoint = _graphObj->isDisjoint();
 
     for (const auto& n : eColls) {
       if (_options->shouldExcludeEdgeCollection(n)) {

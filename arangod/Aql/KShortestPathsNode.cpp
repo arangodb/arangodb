@@ -368,10 +368,27 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
 #endif
 
   if (shortestPathType() == arangodb::graph::ShortestPathType::Type::KPaths) {
+    if (isDisjoint()) {
+      opts->setDisjoint();
+    }
     arangodb::graph::TwoSidedEnumeratorOptions enumeratorOptions{
         opts->minDepth, opts->maxDepth};
-    PathValidatorOptions validatorOptions(opts->tmpVar(),
-                                          opts->getExpressionCtx());
+    /*
+     * PathValidator Disjoint Helper (TODO [GraphRefactor]: Copy from
+     * TraversalNode::createBlock) Clean this up as soon we clean up the whole
+     * TraversalNode as well (export somewhere globally as a Helper).
+     */
+    auto generateDisjointPathValidatorOptions = [&]() -> std::pair<bool, bool> {
+      bool isSatLeader = false;
+      if (isDisjoint()) {
+        isSatLeader = opts->isSatelliteLeader();
+      }
+      return {isDisjoint(), isSatLeader};
+    };
+    auto isDisjointIsSat = generateDisjointPathValidatorOptions();
+    PathValidatorOptions validatorOptions(
+        opts->tmpVar(), opts->getExpressionCtx(), isDisjointIsSat.first,
+        isDisjointIsSat.second);
 
     if (!ServerState::instance()->isCoordinator()) {
       // Create IndexAccessor for BaseProviderOptions (TODO: Location need to

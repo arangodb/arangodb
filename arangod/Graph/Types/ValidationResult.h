@@ -24,9 +24,9 @@
 #pragma once
 
 #include <iosfwd>
+#include <string>
 
-namespace arangodb {
-namespace graph {
+namespace arangodb::graph {
 
 class ValidationResult {
  public:
@@ -36,17 +36,28 @@ class ValidationResult {
   enum class Type { TAKE, PRUNE, FILTER, FILTER_AND_PRUNE };
 
   explicit ValidationResult(Type type) : _type(type) {}
+#ifdef USE_ENTERPRISE
+  explicit ValidationResult(Type type, std::string_view smartValue)
+      : _type(type), _smartValue(smartValue) {}
+#endif
 
-  bool isPruned() const noexcept;
-  bool isFiltered() const noexcept;
+  [[nodiscard]] bool isPruned() const noexcept;
+  [[nodiscard]] bool isFiltered() const noexcept;
+
+  [[nodiscard]] auto hasSmartValue() const noexcept -> bool;
+  [[nodiscard]] auto getSmartValue() const noexcept -> std::string_view;
+#ifdef USE_ENTERPRISE
+  auto setSmartValue(
+      std::string_view smartValue);  // TODO: might be removed again
+#endif
 
   void combine(Type t) noexcept;
 
  private:
   Type _type;
+  std::string _smartValue;
 };
 
 std::ostream& operator<<(std::ostream& stream, ValidationResult const& res);
 
-}  // namespace graph
-}  // namespace arangodb
+}  // namespace arangodb::graph
