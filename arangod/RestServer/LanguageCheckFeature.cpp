@@ -37,6 +37,9 @@
 
 namespace {
 
+constexpr std::string_view defaultLangKey = "default";
+constexpr std::string_view icuLangKey = "icu-language";
+
 /// @brief reads previous default langauge from file
 arangodb::Result readLanguage(arangodb::ArangodServer& server,
                               std::string& defaultLanguage,
@@ -55,11 +58,13 @@ arangodb::Result readLanguage(arangodb::ArangodServer& server,
     if (!content.isObject()) {
       return TRI_ERROR_INTERNAL;
     }
-    VPackSlice defaultSlice = content.get("default");
-    VPackSlice icuSlice = content.get("icu-language");
+    VPackSlice defaultSlice = content.get(defaultLangKey);
+    VPackSlice icuSlice = content.get(icuLangKey);
 
     // both languages are specified in files
     if (defaultSlice.isString() && icuSlice.isString()) {
+      LOG_TOPIC("4fa52", ERR, arangodb::Logger::CONFIG)
+          << "Only one language should be specified";
       return TRI_ERROR_INTERNAL;
     }
 
@@ -98,9 +103,9 @@ ErrorCode writeLanguage(arangodb::ArangodServer& server,
   try {
     builder.openObject();
     if (isDefaultLang) {
-      builder.add("default", VPackValue(lang));
+      builder.add(defaultLangKey, VPackValue(lang));
     } else {
-      builder.add("icu-language", VPackValue(lang));
+      builder.add(icuLangKey, VPackValue(lang));
     }
 
     builder.close();
