@@ -69,8 +69,8 @@ ArangoReplicatedLog.prototype.status = function() {
   return requestResult.result;
 };
 
-ArangoReplicatedLog.prototype.globalStatus = function () {
-  let query = '/global-status';
+ArangoReplicatedLog.prototype.globalStatus = function ({useLocalCache = false} = {}) {
+  let query = `/global-status?useLocalCache=${useLocalCache}`;
   let requestResult = this._database._connection.GET(this._baseurl() + query);
   arangosh.checkRequestResult(requestResult);
   return requestResult.result;
