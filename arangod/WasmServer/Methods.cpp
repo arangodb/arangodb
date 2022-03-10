@@ -47,7 +47,12 @@ struct WasmVmMethodsSingleServer final
       -> futures::Future<Result> override {
     vocbase.server().getFeature<WasmServerFeature>().deleteFunction(
         functionName);
-    return Result{};
+    return Result{TRI_ERROR_NO_ERROR};
+  }
+
+  auto getAllWasmUdfs() const -> futures::Future<
+      std::unordered_map<std::string, WasmFunction>> override {
+    return vocbase.server().getFeature<WasmServerFeature>().getAllFunctions();
   }
 
   TRI_vocbase_t& vocbase;

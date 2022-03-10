@@ -23,6 +23,7 @@
 #pragma once
 
 #include <s2/base/integral_types.h>
+#include <unordered_map>
 #include "RestServer/arangod.h"
 #include "WasmCommon.h"
 #include "Basics/Guarded.h"
@@ -45,6 +46,8 @@ class WasmServerFeature final : public ArangodFeature {
   auto loadFunction(std::string const& name) -> std::optional<wasm3::module>;
   auto executeFunction(std::string const& name) -> std::optional<uint64_t>;
   void deleteFunction(std::string const& functionName);
+  auto getAllFunctions() const
+      -> std::unordered_map<std::string, wasm::WasmFunction>;
 
  private:
   struct GuardedFunctions {

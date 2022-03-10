@@ -57,7 +57,7 @@ class WasmFunction {
   auto name() const -> std::string { return _name; };
   static auto fromVelocyPack(arangodb::velocypack::Slice slice)
       -> ResultT<WasmFunction>;
-  void toVelocyPack(VPackBuilder& builder);
+  void toVelocyPack(VPackBuilder& builder) const;
   auto operator==(const WasmFunction& function) const -> bool = default;
 };
 
