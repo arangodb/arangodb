@@ -59,10 +59,10 @@ function error_handlingSuite () {
       let cmd = "/_api/document/123456";
       let doc = arango.GET_RAW(cmd);
 
-      assertEqual(doc.code, 404);
+      assertEqual(doc.code, internal.errors.ERROR_HTTP_NOT_FOUND.code);
       assertTrue(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['errorNum'], 1203);
-      assertEqual(doc.parsedBody['code'], 404);
+      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
+      assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_NOT_FOUND.code);
       assertEqual(doc.headers['content-type'], contentType);
     },
 
@@ -70,10 +70,10 @@ function error_handlingSuite () {
       let cmd = "/_api/document//123456";
       let doc = arango.GET_RAW(cmd);
 
-      assertEqual(doc.code, 404);
+      assertEqual(doc.code, internal.errors.ERROR_HTTP_NOT_FOUND.code);
       assertTrue(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['errorNum'], 1203);
-      assertEqual(doc.parsedBody['code'], 404);
+      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
+      assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_NOT_FOUND.code);
       assertEqual(doc.headers['content-type'], contentType);
     },
 
@@ -81,10 +81,10 @@ function error_handlingSuite () {
       let cmd = "/_api/document/123456/234567";
       let doc = arango.GET_RAW(cmd);
 
-      assertEqual(doc.code, 404);
+      assertEqual(doc.code, internal.errors.ERROR_HTTP_NOT_FOUND.code);
       assertTrue(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['errorNum'], 1203);
-      assertEqual(doc.parsedBody['code'], 404);
+      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
+      assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_NOT_FOUND.code);
       assertEqual(doc.headers['content-type'], contentType);
     },
 
@@ -92,10 +92,10 @@ function error_handlingSuite () {
       let cmd = `/_api/document/${cid._id}/234567`;
       let doc = arango.GET_RAW(cmd);
 
-      assertEqual(doc.code, 404);
+      assertEqual(doc.code, internal.errors.ERROR_HTTP_NOT_FOUND.code);
       assertTrue(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['errorNum'], 1202, doc);
-      assertEqual(doc.parsedBody['code'], 404);
+      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, doc);
+      assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_NOT_FOUND.code);
       assertEqual(doc.headers['content-type'], contentType);
 
       assertEqual(cid.count(), 0);
