@@ -282,7 +282,7 @@ function HashIndexSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCreationUniqueConstraint : function () {
-      var idx = collection.ensureHashIndex("a");
+      var idx = collection.ensureIndex({ type: "hash", fields: ["a"] });
       var id = idx.id;
 
       assertNotEqual(0, id);
@@ -292,7 +292,7 @@ function HashIndexSuite() {
       assertEqual(["a"], idx.fields);
       assertEqual(true, idx.isNewlyCreated);
 
-      idx = collection.ensureHashIndex("a");
+      idx = collection.ensureIndex({ type: "hash", fields: ["a"] });
 
       assertEqual(id, idx.id);
       assertEqual("hash", idx.type);
@@ -301,7 +301,7 @@ function HashIndexSuite() {
       assertEqual(["a"], idx.fields);
       assertEqual(false, idx.isNewlyCreated);
 
-      idx = collection.ensureHashIndex("a", { sparse: true });
+      idx = collection.ensureIndex({ type: "hash", fields: ["a"], sparse: true });
 
       assertNotEqual(id, idx.id);
       assertEqual("hash", idx.type);
@@ -311,7 +311,7 @@ function HashIndexSuite() {
       assertEqual(true, idx.isNewlyCreated);
       id = idx.id;
 
-      idx = collection.ensureHashIndex("a", { sparse: true });
+      idx = collection.ensureIndex({ type: "hash", fields: ["a"], sparse: true });
 
       assertEqual(id, idx.id);
       assertEqual("hash", idx.type);
@@ -326,7 +326,7 @@ function HashIndexSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCreationPermutedUniqueConstraint : function () {
-      var idx = collection.ensureHashIndex("a", "b");
+      var idx = collection.ensureIndex({ type: "hash", fields: ["a", "b"] });
       var id = idx.id;
 
       assertNotEqual(0, id);
@@ -335,7 +335,7 @@ function HashIndexSuite() {
       assertEqual(["a","b"].sort(), idx.fields.sort());
       assertTrue(idx.isNewlyCreated);
 
-      idx = collection.ensureHashIndex("b", "a");
+      idx = collection.ensureIndex({ type: "hash", fields: ["a", "b"] });
 
       assertEqual("hash", idx.type);
       assertFalse(idx.unique);
@@ -349,7 +349,7 @@ function HashIndexSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUniqueDocuments : function () {
-      var idx = collection.ensureHashIndex("a", "b");
+      var idx = collection.ensureIndex({ type: "hash", fields: ["a", "b"] });
 
       assertEqual("hash", idx.type);
       assertEqual(false, idx.unique);
@@ -372,7 +372,7 @@ function HashIndexSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUniqueDocumentsSparseIndex : function () {
-      var idx = collection.ensureHashIndex("a", "b", { sparse: true });
+      var idx = collection.ensureIndex({ type: "hash", fields: ["a", "b"], sparse: true });
 
       assertEqual("hash", idx.type);
       assertEqual(false, idx.unique);
@@ -395,8 +395,8 @@ function HashIndexSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testMultiIndexViolation1 : function () {
-      collection.ensureUniqueConstraint("a");
-      collection.ensureSkiplist("b");
+      collection.ensureIndex({ type: "hash", fields: ["a"], unique: true });
+      collection.ensureIndex({ type: "skiplist", fields: ["b"] });
 
       collection.save({ a : "test1", b : 1});
       try {
@@ -425,8 +425,8 @@ function HashIndexSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testMultiIndexViolationSparse1 : function () {
-      collection.ensureUniqueConstraint("a", { sparse: true });
-      collection.ensureSkiplist("b", { sparse: true });
+      collection.ensureIndex({ type: "hash", fields: ["a"], unique: true, sparse: true });
+      collection.ensureIndex({ type: "skiplist", fields: ["b"], sparse: true });
 
       collection.save({ a : "test1", b : 1});
       try {
@@ -455,8 +455,8 @@ function HashIndexSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testMultiIndexViolation2 : function () {
-      collection.ensureUniqueSkiplist("a");
-      collection.ensureHashIndex("b");
+      collection.ensureIndex({ type: "skiplist", fields: ["a"], unique: true });
+      collection.ensureIndex({ type: "hash", fields: ["b"] });
 
       collection.save({ a : "test1", b : 1});
       try {
@@ -485,8 +485,8 @@ function HashIndexSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testMultiIndexViolationSparse2 : function () {
-      collection.ensureUniqueSkiplist("a", { sparse: true });
-      collection.ensureHashIndex("b", { sparse: true });
+      collection.ensureIndex({ type: "skiplist", fields: ["a"], unique: true, sparse: true });
+      collection.ensureIndex({ type: "hash", fields: ["b"], sparse: true });
 
       collection.save({ a : "test1", b : 1});
       try {

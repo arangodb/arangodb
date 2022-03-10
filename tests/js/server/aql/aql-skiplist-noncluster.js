@@ -54,13 +54,13 @@ function ahuacatlSkiplistTestSuite () {
       internal.db._drop("UnitTestsAhuacatlSkiplist");
       skiplist = internal.db._create("UnitTestsAhuacatlSkiplist");
 
-      for (var i = 1; i <= 5; ++i) {
-        for (var j = 1; j <= 5; ++j) {
+      for (let i = 1; i <= 5; ++i) {
+        for (let j = 1; j <= 5; ++j) {
           skiplist.save({ "a" : i, "b": j });
         }
       }
 
-      skiplist.ensureSkiplist("a", "b");
+      skiplist.ensureIndex({ type: "skiplist", fields: ["a", "b"] });
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1055,8 +1055,8 @@ function ahuacatlSkiplistTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRefFilterSame : function () {
-      skiplist.ensureSkiplist("c");
-      skiplist.ensureSkiplist("d");
+      skiplist.ensureIndex({ type: "skiplist", fields: ["c"] });
+      skiplist.ensureIndex({ type: "skiplist", fields: ["d"] });
 
       skiplist.truncate({ compact: false });
 

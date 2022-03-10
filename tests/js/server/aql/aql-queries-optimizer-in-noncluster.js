@@ -235,11 +235,13 @@ function ahuacatlQueryOptimizerInTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testInHashConst : function () {
-      c.save({ code: "test0" });
-      for (var i = 1; i < 100; ++i) {
-        c.save({ code: "test" + i, parent: "test" + (i - 1), parents: [ "test" + (i - 1) ] });
+      let docs = [];
+      docs.push({ code: "test0" });
+      for (let i = 1; i < 100; ++i) {
+        docs.push({ code: "test" + i, parent: "test" + (i - 1), parents: [ "test" + (i - 1) ] });
       }
-      c.ensureUniqueConstraint("code");
+      c.insert(docs);
+      c.ensureIndex({ type: "hash", fields: ["code"], unique: true });
 
       var expected = [ 'test5', 'test7' ];
       var query = "LET parents = [ 'test5', 'test7' ] FOR c IN " + cn + " FILTER c.code IN parents SORT c.code RETURN c.code";
@@ -254,11 +256,13 @@ function ahuacatlQueryOptimizerInTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testInHashDynamic : function () {
-      c.save({ code: "test0" });
-      for (var i = 1; i < 100; ++i) {
-        c.save({ code: "test" + i, parent: "test" + (i - 1), parents: [ "test" + (i - 1) ] });
+      let docs = [];
+      docs.push({ code: "test0" });
+      for (let i = 1; i < 100; ++i) {
+        docs.push({ code: "test" + i, parent: "test" + (i - 1), parents: [ "test" + (i - 1) ] });
       }
-      c.ensureUniqueConstraint("code");
+      c.insert(docs);
+      c.ensureIndex({ type: "hash", fields: ["code"], unique: true });
 
       var expected = [ 'test5', 'test7' ];
       var query = "LET parents = (FOR c IN " + cn + " FILTER c.code IN [ 'test5', 'test7' ] RETURN c.code) FOR c IN " + cn + " FILTER c.code IN parents SORT c.code RETURN c.code";
@@ -273,11 +277,13 @@ function ahuacatlQueryOptimizerInTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testInHashDynamicRef : function () {
-      c.save({ code: "test0" });
-      for (var i = 1; i < 100; ++i) {
-        c.save({ code: "test" + i, parent: "test" + (i - 1), parents: [ "test" + (i - 1) ] });
+      let docs = [];
+      docs.push({ code: "test0" });
+      for (let i = 1; i < 100; ++i) {
+        docs.push({ code: "test" + i, parent: "test" + (i - 1), parents: [ "test" + (i - 1) ] });
       }
-      c.ensureUniqueConstraint("code");
+      c.insert(docs);
+      c.ensureIndex({ type: "hash", fields: ["code"], unique: true });
 
       var expected = [ { keys: [ 'test4' ] }, { keys: [ 'test6' ] } ];
       var actual = getQueryResults("FOR c IN " + cn + " FILTER c.code IN [ 'test5', 'test7' ] SORT c.code RETURN { keys: (FOR c2 IN " + cn + " FILTER c2.code IN [ c.parent ] RETURN c2.code) }");
@@ -289,11 +295,13 @@ function ahuacatlQueryOptimizerInTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testInHashRef1 : function () {
-      c.save({ _key: "test0" });
-      for (var i = 1; i < 100; ++i) {
-        c.save({ _key: "test" + i, parent: "test" + (i - 1), parents: [ "test" + (i - 1) ] });
+      let docs = [];
+      docs.push({ _key: "test0" });
+      for (let i = 1; i < 100; ++i) {
+        docs.push({ _key: "test" + i, parent: "test" + (i - 1), parents: [ "test" + (i - 1) ] });
       }
-      c.ensureHashIndex("parent");
+      c.insert(docs);
+      c.ensureIndex({ type: "hash", fields: ["parent"] });
 
       var expected = [ 'test2' ];
       var query = "LET parents = [ DOCUMENT('" + cn + "/test2').parent ] FOR c IN " + cn + " FILTER c.parent IN parents RETURN c._key";
@@ -306,11 +314,13 @@ function ahuacatlQueryOptimizerInTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testInHashRef2 : function () {
-      c.save({ _key: "test0" });
-      for (var i = 1; i < 100; ++i) {
-        c.save({ _key: "test" + i, parent: "test" + (i - 1), parents: [ "test" + (i - 1) ] });
+      let docs = [];
+      docs.push({ _key: "test0" });
+      for (let i = 1; i < 100; ++i) {
+        docs.push({ _key: "test" + i, parent: "test" + (i - 1), parents: [ "test" + (i - 1) ] });
       }
-      c.ensureHashIndex("parent");
+      c.insert(docs);
+      c.ensureIndex({ type: "hash", fields: ["parent"] });
 
       var expected = [ 'test2' ];
       var query = "LET parents = DOCUMENT('" + cn + "/test2').parent FOR c IN " + cn + " FILTER c.parent IN [ parents ] RETURN c._key";
@@ -323,11 +333,13 @@ function ahuacatlQueryOptimizerInTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testInHashRef : function () {
-      c.save({ code: "test0" });
-      for (var i = 1; i < 100; ++i) {
-        c.save({ code: "test" + i, parent: "test" + (i - 1), parents: [ "test" + (i - 1) ] });
+      let docs = [];
+      docs.push({ _key: "test0" });
+      for (let i = 1; i < 100; ++i) {
+        docs.push({ code: "test" + i, parent: "test" + (i - 1), parents: [ "test" + (i - 1) ] });
       }
-      c.ensureUniqueConstraint("code");
+      c.insert(docs);
+      c.ensureIndex({ type: "hash", fields: ["code"], unique: true });
 
       var expected = [ { keys: [ 'test4' ] }, { keys: [ 'test6' ] } ];
       var actual = getQueryResults("FOR c IN " + cn + " FILTER c.code IN [ 'test5', 'test7' ] SORT c.code RETURN { keys: (FOR c2 IN " + cn + " FILTER c2.code IN c.parents SORT c2.code RETURN c2.code) }");
@@ -339,11 +351,13 @@ function ahuacatlQueryOptimizerInTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testInSkipConst : function () {
-      c.save({ code: "test0" });
-      for (var i = 1; i < 100; ++i) {
-        c.save({ code: "test" + i, parent: "test" + (i - 1), parents: [ "test" + (i - 1) ] });
+      let docs = [];
+      docs.push({ _key: "test0" });
+      for (let i = 1; i < 100; ++i) {
+        docs.push({ code: "test" + i, parent: "test" + (i - 1), parents: [ "test" + (i - 1) ] });
       }
-      c.ensureUniqueSkiplist("code");
+      c.insert(docs);
+      c.ensureIndex({ type: "skiplist", fields: ["code"], unique: true });
 
       var expected = [ 'test5', 'test7' ];
       var query = "LET parents = [ 'test5', 'test7' ] FOR c IN " + cn + " FILTER c.code IN parents SORT c.code RETURN c.code";
@@ -358,11 +372,13 @@ function ahuacatlQueryOptimizerInTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testInSkipDynamic : function () {
-      c.save({ code: "test0" });
-      for (var i = 1; i < 100; ++i) {
-        c.save({ code: "test" + i, parent: "test" + (i - 1), parents: [ "test" + (i - 1) ] });
+      let docs = [];
+      docs.push({ code: "test0" });
+      for (let i = 1; i < 100; ++i) {
+        docs.push({ code: "test" + i, parent: "test" + (i - 1), parents: [ "test" + (i - 1) ] });
       }
-      c.ensureUniqueSkiplist("code");
+      c.insert(docs);
+      c.ensureIndex({ type: "skiplist", fields: ["code"], unique: true });
 
       var expected = [ 'test5', 'test7' ];
       var query = "LET parents = (FOR c IN " + cn + " FILTER c.code IN [ 'test5', 'test7' ] RETURN c.code) FOR c IN " + cn + " FILTER c.code IN parents SORT c.code RETURN c.code";
@@ -377,11 +393,13 @@ function ahuacatlQueryOptimizerInTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testInSkipDynamicRef : function () {
-      c.save({ code: "test0" });
-      for (var i = 1; i < 100; ++i) {
-        c.save({ code: "test" + i, parent: "test" + (i - 1), parents: [ "test" + (i - 1) ] });
+      let docs = [];
+      docs.push({ code: "test0" });
+      for (let i = 1; i < 100; ++i) {
+        docs.push({ code: "test" + i, parent: "test" + (i - 1), parents: [ "test" + (i - 1) ] });
       }
-      c.ensureUniqueSkiplist("code");
+      c.insert(docs);
+      c.ensureIndex({ type: "skiplist", fields: ["code"], unique: true });
 
       var expected = [ { keys: [ 'test4' ] }, { keys: [ 'test6' ] } ];
       var actual = getQueryResults("FOR c IN " + cn + " FILTER c.code IN [ 'test5', 'test7' ] SORT c.code RETURN { keys: (FOR c2 IN " + cn + " FILTER c2.code IN [ c.parent ] RETURN c2.code) }");
@@ -393,11 +411,13 @@ function ahuacatlQueryOptimizerInTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testInSkipRef : function () {
-      c.save({ code: "test0" });
-      for (var i = 1; i < 100; ++i) {
-        c.save({ code: "test" + i, parent: "test" + (i - 1), parents: [ "test" + (i - 1) ] });
+      let docs = [];
+      docs.push({ code: "test0" });
+      for (let i = 1; i < 100; ++i) {
+        docs.push({ code: "test" + i, parent: "test" + (i - 1), parents: [ "test" + (i - 1) ] });
       }
-      c.ensureUniqueSkiplist("code");
+      c.insert(docs);
+      c.ensureIndex({ type: "skiplist", fields: ["code"], unique: true });
 
       var expected = [ { keys: [ 'test4' ] }, { keys: [ 'test6' ] } ];
       var actual = getQueryResults("FOR c IN " + cn + " FILTER c.code IN [ 'test5', 'test7' ] SORT c.code RETURN { keys: (FOR c2 IN " + cn + " FILTER c2.code IN c.parents SORT c2.code RETURN c2.code) }");
@@ -673,10 +693,12 @@ function ahuacatlQueryOptimizerInTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testInListHashIndex : function () {
-      for (var i = 1; i < 100; ++i) {
-        c.save({ value: i });
+      let docs = [];
+      for (let i = 1; i < 100; ++i) {
+        docs.push({ value: i });
       }
-      c.ensureHashIndex("value");
+      c.insert(docs);
+      c.ensureIndex({ type: "hash", fields: ["value"] });
       var query = "FOR x IN " + cn + " FILTER x.value IN [3,35,90] RETURN x.value";
       var expected = [ 3, 35, 90 ];
       var actual = getQueryResults(query);
@@ -685,10 +707,12 @@ function ahuacatlQueryOptimizerInTestSuite () {
     },
 
     testInListSkiplist : function () {
-      for (var i = 1; i < 100; ++i) {
-        c.save({ value: i });
+      let docs = [];
+      for (let i = 1; i < 100; ++i) {
+        docs.push({ value: i });
       }
-      c.ensureSkiplist("value");
+      c.insert(docs);
+      c.ensureIndex({ type: "skiplist", fields: ["value"] });
       var query = "FOR x IN " + cn + " FILTER x.value IN [3,35,90] RETURN x.value";
       var expected = [ 3, 35, 90 ];
       var actual = getQueryResults(query);
@@ -697,9 +721,11 @@ function ahuacatlQueryOptimizerInTestSuite () {
     },
 
     testInListPrimaryIndex : function () {
-      for (var i = 1; i < 100; ++i) {
-        c.save({ _key: "a" + i });
+      let docs = [];
+      for (let i = 1; i < 100; ++i) {
+        docs.push({ _key: "a" + i });
       }
+      c.insert(docs);
       var query = "FOR x IN " + cn + " FILTER x._key IN ['a3', 'a35', 'a90'] RETURN x._key";
       var expected = [ "a3", "a35", "a90" ];
       var actual = getQueryResults(query);
@@ -712,10 +738,12 @@ function ahuacatlQueryOptimizerInTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testOverlappingInListHashIndex1 : function () {
-      for (var i = 1; i < 100; ++i) {
-        c.save({ value: i });
+      let docs = [];
+      for (let i = 1; i < 100; ++i) {
+        docs.push({ value: i });
       }
-      c.ensureHashIndex("value");
+      c.insert(docs);
+      c.ensureIndex({ type: "hash", fields: ["value"] });
       var query = "FOR x IN " + cn + " FILTER x.value IN [3,35,90] && x.value > 3 RETURN x.value";
       var expected = [ 35, 90 ];
       var actual = getQueryResults(query);
@@ -724,10 +752,12 @@ function ahuacatlQueryOptimizerInTestSuite () {
     },
 
     testOverlappingInListSkiplist1 : function () {
-      for (var i = 1; i < 100; ++i) {
-        c.save({ value: i });
+      let docs = [];
+      for (let i = 1; i < 100; ++i) {
+        docs.push({ value: i });
       }
-      c.ensureSkiplist("value");
+      c.insert(docs);
+      c.ensureIndex({ type: "skiplist", fields: ["value"] });
       var query = "FOR x IN " + cn + " FILTER x.value IN [3,35,90] && x.value > 3 RETURN x.value";
       var expected = [ 35, 90 ];
       var actual = getQueryResults(query);
@@ -736,10 +766,12 @@ function ahuacatlQueryOptimizerInTestSuite () {
     },
 
     testOverlappingInListSkiplist1Rev : function () {
-      for (var i = 1; i < 100; ++i) {
-        c.save({ value: i });
+      let docs = [];
+      for (let i = 1; i < 100; ++i) {
+        docs.push({ value: i });
       }
-      c.ensureSkiplist("value");
+      c.insert(docs);
+      c.ensureIndex({ type: "skiplist", fields: ["value"] });
       var query = "FOR x IN " + cn + " FILTER x.value IN [3,35,90] && x.value > 3 SORT x.value DESC RETURN x.value";
       var expected = [ 90, 35 ];
       var actual = getQueryResults(query);
@@ -748,10 +780,12 @@ function ahuacatlQueryOptimizerInTestSuite () {
     },
 
     testOverlappingInListHashIndex2 : function () {
-      for (var i = 1; i < 100; ++i) {
-        c.save({ value: i });
+      let docs = [];
+      for (let i = 1; i < 100; ++i) {
+        docs.push({ value: i });
       }
-      c.ensureHashIndex("value");
+      c.insert(docs);
+      c.ensureIndex({ type: "hash", fields: ["value"] });
       var query = "FOR x IN " + cn + " FILTER x.value > 3 &&  x.value IN [3,35,90] RETURN x.value";
       var expected = [ 35, 90 ];
       var actual = getQueryResults(query);
@@ -760,10 +794,12 @@ function ahuacatlQueryOptimizerInTestSuite () {
     },
 
     testOverlappingInListSkiplist2 : function () {
-      for (var i = 1; i < 100; ++i) {
-        c.save({ value: i });
+      let docs = [];
+      for (let i = 1; i < 100; ++i) {
+        docs.push({ value: i });
       }
-      c.ensureSkiplist("value");
+      c.insert(docs);
+      c.ensureIndex({ type: "skiplist", fields: ["value"] });
       var query = "FOR x IN " + cn + " FILTER x.value > 3 &&  x.value IN [3,35,90] RETURN x.value";
       var expected = [ 35, 90 ];
       var actual = getQueryResults(query);
@@ -772,10 +808,12 @@ function ahuacatlQueryOptimizerInTestSuite () {
     },
 
     testOverlappingInListSkiplist2Rev : function () {
-      for (var i = 1; i < 100; ++i) {
-        c.save({ value: i });
+      let docs = [];
+      for (let i = 1; i < 100; ++i) {
+        docs.push({ value: i });
       }
-      c.ensureSkiplist("value");
+      c.insert(docs);
+      c.ensureIndex({ type: "skiplist", fields: ["value"] });
       var query = "FOR x IN " + cn + " FILTER x.value > 3 &&  x.value IN [3,35,90] SORT x.value DESC RETURN x.value";
       var expected = [ 90, 35 ];
       var actual = getQueryResults(query);
@@ -784,10 +822,12 @@ function ahuacatlQueryOptimizerInTestSuite () {
     },
 
     testOverlappingInListHashIndex3 : function () {
-      for (var i = 1; i < 100; ++i) {
-        c.save({ value: i });
+      let docs = [];
+      for (let i = 1; i < 100; ++i) {
+        docs.push({ value: i });
       }
-      c.ensureHashIndex("value");
+      c.insert(docs);
+      c.ensureIndex({ type: "hash", fields: ["value"] });
       var query = "FOR x IN " + cn + " FILTER (x.value > 3 || x.value == 1) && x.value IN [1,3,35,90] SORT x.value RETURN x.value";
       var expected = [ 1, 35, 90 ];
       var actual = getQueryResults(query);
@@ -796,10 +836,12 @@ function ahuacatlQueryOptimizerInTestSuite () {
     },
 
     testOverlappingInListSkiplist3 : function () {
-      for (var i = 1; i < 100; ++i) {
-        c.save({ value: i });
+      let docs = [];
+      for (let i = 1; i < 100; ++i) {
+        docs.push({ value: i });
       }
-      c.ensureSkiplist("value");
+      c.insert(docs);
+      c.ensureIndex({ type: "skiplist", fields: ["value"] });
       var query = "FOR x IN " + cn + " FILTER (x.value > 3 || x.value == 1) && x.value IN [1,3,35,90] SORT x.value RETURN x.value";
       var expected = [ 1, 35, 90 ];
       var actual = getQueryResults(query);
@@ -808,10 +850,12 @@ function ahuacatlQueryOptimizerInTestSuite () {
     },
 
     testOverlappingInListSkiplist3Rev : function () {
-      for (var i = 1; i < 100; ++i) {
-        c.save({ value: i });
+      let docs = [];
+      for (let i = 1; i < 100; ++i) {
+        docs.push({ value: i });
       }
-      c.ensureSkiplist("value");
+      c.insert(docs);
+      c.ensureIndex({ type: "skiplist", fields: ["value"] });
       var query = "FOR x IN " + cn + " FILTER (x.value > 3 || x.value == 1) && x.value IN [1,3,35,90] SORT x.value DESC RETURN x.value";
       var expected = [ 90, 35, 1 ];
       var actual = getQueryResults(query);
@@ -820,10 +864,12 @@ function ahuacatlQueryOptimizerInTestSuite () {
     },
 
     testOverlappingInListHashIndex4 : function () {
-      for (var i = 1; i < 100; ++i) {
-        c.save({ value: i });
+      let docs = [];
+      for (let i = 1; i < 100; ++i) {
+        docs.push({ value: i });
       }
-      c.ensureHashIndex("value");
+      c.insert(docs);
+      c.ensureIndex({ type: "hash", fields: ["value"] });
       var query = "FOR x IN " + cn + " FILTER (x.value IN [3,35,90] || x.value IN [3, 90]) SORT x.value RETURN x.value";
       var expected = [ 3, 35, 90 ];
       var actual = getQueryResults(query);
@@ -832,10 +878,12 @@ function ahuacatlQueryOptimizerInTestSuite () {
     },
 
     testOverlappingInListSkiplist4 : function () {
-      for (var i = 1; i < 100; ++i) {
-        c.save({ value: i });
+      let docs = [];
+      for (let i = 1; i < 100; ++i) {
+        docs.push({ value: i });
       }
-      c.ensureSkiplist("value");
+      c.insert(docs);
+      c.ensureIndex({ type: "skiplist", fields: ["value"] });
       var query = "FOR x IN " + cn + " FILTER (x.value IN [3,35,90] || x.value IN [3, 90]) RETURN x.value";
       var expected = [ 3, 35, 90 ];
       var actual = getQueryResults(query);
@@ -844,10 +892,12 @@ function ahuacatlQueryOptimizerInTestSuite () {
     },
 
     testOverlappingInListSkiplist4Rev : function () {
-      for (var i = 1; i < 100; ++i) {
-        c.save({ value: i });
+      let docs = [];
+      for (let i = 1; i < 100; ++i) {
+        docs.push({ value: i });
       }
-      c.ensureSkiplist("value");
+      c.insert(docs);
+      c.ensureIndex({ type: "skiplist", fields: ["value"] });
       var query = "FOR x IN " + cn + " FILTER (x.value IN [3,35,90] || x.value IN [3, 90]) SORT x.value DESC RETURN x.value";
       var expected = [ 90, 35, 3 ];
       var actual = getQueryResults(query);
@@ -856,10 +906,12 @@ function ahuacatlQueryOptimizerInTestSuite () {
     },
 
     testDuplicatesListHashIndex : function () {
-      for (var i = 1; i < 100; ++i) {
-        c.save({ value: i });
+      let docs = [];
+      for (let i = 1; i < 100; ++i) {
+        docs.push({ value: i });
       }
-      c.ensureHashIndex("value");
+      c.insert(docs);
+      c.ensureIndex({ type: "hash", fields: ["value"] });
       var query = "FOR x IN " + cn + " FILTER x.value IN [3,3,3] RETURN x.value";
       var expected = [ 3 ];
       var actual = getQueryResults(query);
@@ -868,10 +920,12 @@ function ahuacatlQueryOptimizerInTestSuite () {
     },
 
     testDuplicatesListSkiplist : function () {
-      for (var i = 1; i < 100; ++i) {
-        c.save({ value: i });
+      let docs = [];
+      for (let i = 1; i < 100; ++i) {
+        docs.push({ value: i });
       }
-      c.ensureSkiplist("value");
+      c.insert(docs);
+      c.ensureIndex({ type: "skiplist", fields: ["value"] });
       var query = "FOR x IN " + cn + " FILTER x.value IN [3,3,3] RETURN x.value";
       var expected = [ 3 ];
       var actual = getQueryResults(query);
@@ -880,10 +934,12 @@ function ahuacatlQueryOptimizerInTestSuite () {
     },
 
     testDuplicatesOrHashIndex : function () {
-      for (var i = 1; i < 100; ++i) {
-        c.save({ value: i });
+      let docs = [];
+      for (let i = 1; i < 100; ++i) {
+        docs.push({ value: i });
       }
-      c.ensureHashIndex("value");
+      c.insert(docs);
+      c.ensureIndex({ type: "hash", fields: ["value"] });
       var query = "FOR x IN " + cn + " FILTER x.value == 3 || x.value == 3 || x.value == 3 RETURN x.value";
       var expected = [ 3 ];
       var actual = getQueryResults(query);
@@ -892,10 +948,12 @@ function ahuacatlQueryOptimizerInTestSuite () {
     },
 
     testDuplicatesOrSkiplist : function () {
-      for (var i = 1; i < 100; ++i) {
-        c.save({ value: i });
+      let docs = [];
+      for (let i = 1; i < 100; ++i) {
+        docs.push({ value: i });
       }
-      c.ensureSkiplist("value");
+      c.insert(docs);
+      c.ensureIndex({ type: "skiplist", fields: ["value"] });
       var query = "FOR x IN " + cn + " FILTER x.value == 3 || x.value == 3 || x.value == 3 RETURN x.value";
       var expected = [ 3 ];
       var actual = getQueryResults(query);
@@ -904,10 +962,12 @@ function ahuacatlQueryOptimizerInTestSuite () {
     },
 
     testDuplicatesListHashIndexDynamic : function () {
-      for (var i = 1; i < 100; ++i) {
-        c.save({ value: i });
+      let docs = [];
+      for (let i = 1; i < 100; ++i) {
+        docs.push({ value: i });
       }
-      c.ensureHashIndex("value");
+      c.insert(docs);
+      c.ensureIndex({ type: "hash", fields: ["value"] });
       var query = "FOR x IN " + cn + " FILTER x.value IN [3,3,PASSTHRU(3)] RETURN x.value";
       var expected = [ 3 ];
       var actual = getQueryResults(query);
@@ -916,10 +976,12 @@ function ahuacatlQueryOptimizerInTestSuite () {
     },
 
     testDuplicatesListSkiplistDynamic : function () {
-      for (var i = 1; i < 100; ++i) {
-        c.save({ value: i });
+      let docs = [];
+      for (let i = 1; i < 100; ++i) {
+        docs.push({ value: i });
       }
-      c.ensureSkiplist("value");
+      c.insert(docs);
+      c.ensureIndex({ type: "skiplist", fields: ["value"] });
       var query = "FOR x IN " + cn + " FILTER x.value IN [PASSTHRU(3),3,PASSTHRU(3)] RETURN x.value";
       var expected = [ 3 ];
       var actual = getQueryResults(query);
@@ -928,10 +990,12 @@ function ahuacatlQueryOptimizerInTestSuite () {
     },
 
     testDuplicatesOrHashIndexDynamic : function () {
-      for (var i = 1; i < 100; ++i) {
-        c.save({ value: i });
+      let docs = [];
+      for (let i = 1; i < 100; ++i) {
+        docs.push({ value: i });
       }
-      c.ensureHashIndex("value");
+      c.insert(docs);
+      c.ensureIndex({ type: "hash", fields: ["value"] });
       var query = "FOR x IN " + cn + " FILTER x.value == PASSTHRU(3) || x.value == PASSTHRU(3) || x.value == 3 RETURN x.value";
       var expected = [ 3 ];
       var actual = getQueryResults(query);
@@ -940,10 +1004,12 @@ function ahuacatlQueryOptimizerInTestSuite () {
     },
 
     testDuplicatesOrSkiplistDynamic : function () {
-      for (var i = 1; i < 100; ++i) {
-        c.save({ value: i });
+      let docs = [];
+      for (let i = 1; i < 100; ++i) {
+        docs.push({ value: i });
       }
-      c.ensureSkiplist("value");
+      c.insert(docs);
+      c.ensureIndex({ type: "skiplist", fields: ["value"] });
       var query = "FOR x IN " + cn + " FILTER x.value == 3 || x.value == PASSTHRU(3) || x.value == 3 RETURN x.value";
       var expected = [ 3 ];
       var actual = getQueryResults(query);
@@ -952,13 +1018,15 @@ function ahuacatlQueryOptimizerInTestSuite () {
     },
 
     testOverlappingRangesListSkiplist1 : function () {
-      for (var i = 1; i < 100; ++i) {
-        c.save({ value: i });
+      let docs = [];
+      for (let i = 1; i < 100; ++i) {
+        docs.push({ value: i });
       }
-      c.ensureSkiplist("value");
+      c.insert(docs);
+      c.ensureIndex({ type: "skiplist", fields: ["value"] });
       var query = "FOR x IN " + cn + " FILTER (x.value > 3 || x.value < 90) SORT x.value RETURN x.value";
       var expected = [ ];
-      for (i = 1; i < 100; i++) {
+      for (let i = 1; i < 100; i++) {
         expected.push(i);
       }
       var actual = getQueryResults(query);
@@ -967,19 +1035,23 @@ function ahuacatlQueryOptimizerInTestSuite () {
     },
 
     testOverlappingRangesListHashIndex1 : function () {
-      for (var i = 1; i < 100; ++i) {
-        c.save({ value: i });
+      let docs = [];
+      for (let i = 1; i < 100; ++i) {
+        docs.push({ value: i });
       }
-      c.ensureHashIndex("value");
+      c.insert(docs);
+      c.ensureIndex({ type: "hash", fields: ["value"] });
       var query = "FOR x IN " + cn + " FILTER (x.value > 3 || x.value < 90) RETURN x.value";
       ruleIsUsed(query);
     },
 
     testOverlappingRangesListSkiplist2 : function () {
-      for (var i = 1; i < 100; ++i) {
-        c.save({ value: i });
+      let docs = [];
+      for (let i = 1; i < 100; ++i) {
+        docs.push({ value: i });
       }
-      c.ensureSkiplist("value");
+      c.insert(docs);
+      c.ensureIndex({ type: "skiplist", fields: ["value"] });
       var query = "FOR i IN " + cn + " FILTER i.value == 8 || i.value <= 7 SORT i.value DESC RETURN i.value";
       var expected = [ 8, 7, 6, 5, 4, 3, 2, 1 ];
       var actual = getQueryResults(query);
@@ -988,10 +1060,12 @@ function ahuacatlQueryOptimizerInTestSuite () {
     },
 
     testOverlappingRangesListSkiplist2Rev : function () {
-      for (var i = 1; i < 100; ++i) {
-        c.save({ value: i });
+      let docs = [];
+      for (let i = 1; i < 100; ++i) {
+        docs.push({ value: i });
       }
-      c.ensureSkiplist("value");
+      c.insert(docs);
+      c.ensureIndex({ type: "skiplist", fields: ["value"] });
       var query = "FOR i IN " + cn + " FILTER i.value == 8 || i.value <= 7 SORT i.value RETURN i.value";
       var expected = [ 1, 2, 3, 4, 5, 6, 7, 8 ];
       var actual = getQueryResults(query);
@@ -1000,19 +1074,23 @@ function ahuacatlQueryOptimizerInTestSuite () {
     },
 
     testOverlappingRangesListHashIndex2 : function () {
-      for (var i = 1; i < 100; ++i) {
-        c.save({ value: i });
+      let docs = [];
+      for (let i = 1; i < 100; ++i) {
+        docs.push({ value: i });
       }
-      c.ensureHashIndex("value");
+      c.insert(docs);
+      c.ensureIndex({ type: "hash", fields: ["value"] });
       var query = "FOR i IN " + cn + " FILTER i.value == 8 || i.value <= 7 RETURN i.value";
       ruleIsUsed(query);
     },
 
     testNestedOrHashIndex : function () {
-      for (var i = 1; i < 5; ++i) {
-        c.save({ value: i });
+      let docs = [];
+      for (let i = 1; i < 100; ++i) {
+        docs.push({ value: i });
       }
-      c.ensureHashIndex("value");
+      c.insert(docs);
+      c.ensureIndex({ type: "hash", fields: ["value"] });
       var query = "FOR j IN [1,2,3] FOR i IN " + cn + " FILTER i.value == j || i.value == j + 1 || i.value == j + 2 RETURN i.value";
       var expected = [ 1, 2, 3, 2, 3, 4, 3, 4 ];
       var actual = getQueryResults(query);
@@ -1024,7 +1102,7 @@ function ahuacatlQueryOptimizerInTestSuite () {
       for (var i = 1; i < 5; ++i) {
         c.save({ value: i });
       }
-      c.ensureSkiplist("value");
+      c.ensureIndex({ type: "skiplist", fields: ["value"] });
       var query = "FOR j IN [1,2,3] FOR i IN " + cn + " FILTER i.value == j || i.value == j + 1 || i.value == j + 2 RETURN i.value";
       var expected = [ 1, 2, 3, 2, 3, 4, 3, 4 ];
       var actual = getQueryResults(query);
@@ -1036,7 +1114,7 @@ function ahuacatlQueryOptimizerInTestSuite () {
       for (var i = 1; i < 5; ++i) {
         c.save({ value: i });
       }
-      c.ensureSkiplist("value");
+      c.ensureIndex({ type: "skiplist", fields: ["value"] });
       var query = "FOR j IN [1,2,3] FOR i IN " + cn + " FILTER i.value == j || i.value == j + 1 || i.value == j + 2 SORT i.value RETURN i.value";
       var expected = [ 1, 2, 2, 3, 3, 3, 4, 4 ];
       var actual = getQueryResults(query);
@@ -1048,7 +1126,7 @@ function ahuacatlQueryOptimizerInTestSuite () {
       for (var i = 1; i < 5; ++i) {
         c.save({ value: i });
       }
-      c.ensureSkiplist("value");
+      c.ensureIndex({ type: "skiplist", fields: ["value"] });
       var query = "FOR j IN [1,2,3] FOR i IN " + cn + " FILTER i.value == j || i.value == j + 1 || i.value == j + 2 SORT i.value DESC RETURN i.value";
       var expected = [ 4, 4, 3, 3, 3, 2, 2, 1 ];
       var actual = getQueryResults(query);
@@ -1060,7 +1138,7 @@ function ahuacatlQueryOptimizerInTestSuite () {
       for (var i = 1; i < 5; ++i) {
         c.save({ value1: i, value2: i + 5 });
       }
-      c.ensureSkiplist("value1");
+      c.ensureIndex({ type: "skiplist", fields: ["value1"] });
       var query = "FOR i IN " + cn + " FILTER i.value1 == 1 || i.value2 == 8 || i.value1 == 2 SORT i.value1 LIMIT 2 RETURN i.value1";
       var expected = [ 1, 2 ];
       var actual = getQueryResults(query);
@@ -1072,7 +1150,7 @@ function ahuacatlQueryOptimizerInTestSuite () {
       for (var i = 1; i <= 5; ++i) {
         c.save({ value1: i, value2: i + 5 });
       }
-      c.ensureSkiplist("value1");
+      c.ensureIndex({ type: "skiplist", fields: ["value1"] });
       var query = "FOR x IN " + cn + " FILTER x.value1 IN [PASSTHRU(3),PASSTHRU(3),PASSTHRU(3), 4] || x.value1 in [3,4,5,9] RETURN x.value1";
       var expected = [ 3, 4, 5 ];
       var actual = getQueryResults(query);
@@ -1086,8 +1164,7 @@ function ahuacatlQueryOptimizerInTestSuite () {
           c.save({value1 : i, value2: j});
         }
       }
-      c.ensureSkiplist("value1", "value2");
-
+      c.ensureIndex({ type: "skiplist", fields: ["value1", "value2"] });
       var query = "FOR x in " + cn + " FILTER (x.value1 in [4,5] && x.value2 <= 2) || (x.value1 in [1,6] && x.value2 == 9) RETURN x.value1";
       var expected = [ 1, 4, 4, 5, 5, 6 ];
       var actual = getQueryResults(query);
@@ -1106,7 +1183,7 @@ function ahuacatlQueryOptimizerInTestSuite () {
           c.save({value1 : i, value2: j});
         }
       }
-      c.ensureSkiplist("value1", "value2");
+      c.ensureIndex({ type: "skiplist", fields: ["value1", "value2"] });
 
       var query = "FOR x in " + cn + " FILTER (x.value1 in [4,5] && x.value2 <= 2) || (x.value1 in [1,6] && x.value2 == 9) SORT x.value1 DESC RETURN x.value1";
       var expected = [ 6, 5, 5, 4, 4, 1 ];
@@ -1121,7 +1198,7 @@ function ahuacatlQueryOptimizerInTestSuite () {
           c.save({value1 : i, value2: j});
         }
       }
-      c.ensureSkiplist("value1", "value2");
+      c.ensureIndex({ type: "skiplist", fields: ["value1", "value2"] });
 
       var query = "FOR x in " + cn + " FILTER (x.value1 in [4,5] && x.value2 <= PASSTHRU(2)) || (x.value1 in [1,6] && x.value2 == 9) RETURN x.value1";
       var expected = [ 1, 4, 4, 5, 5, 6 ];
@@ -1141,7 +1218,7 @@ function ahuacatlQueryOptimizerInTestSuite () {
           c.save({value1 : i, value2: j});
         }
       }
-      c.ensureSkiplist("value1", "value2");
+      c.ensureIndex({ type: "skiplist", fields: ["value1", "value2"] });
 
       var query = "FOR x in " + cn + " FILTER (x.value1 in [4,5] && x.value2 <= PASSTHRU(2)) || (x.value1 in [1,6] && x.value2 == 9) SORT x.value1 DESC RETURN x.value1";
       var expected = [ 6, 5, 5, 4, 4, 1 ];
@@ -1156,7 +1233,7 @@ function ahuacatlQueryOptimizerInTestSuite () {
           c.save({value1 : i, value2: j});
         }
       }
-      c.ensureSkiplist("value1", "value2");
+      c.ensureIndex({ type: "skiplist", fields: ["value1", "value2"] });
 
       var query = "FOR x in " + cn + " FILTER (x.value1 in [4,5] && x.value2 <= PASSTHRU(2)) || (x.value1 in [PASSTHRU(1),6] && x.value2 == 9) RETURN x.value1";
       var expected = [ 1, 4, 4, 5, 5, 6 ];
@@ -1178,7 +1255,7 @@ function ahuacatlQueryOptimizerInTestSuite () {
         }
       }
 
-      c.ensureSkiplist("value1", "value2", "value3", "value4");
+      c.ensureIndex({ type: "skiplist", fields: ["value1", "value2", "value3", "value4"] });
 
       var query = "FOR x IN " + cn + " FILTER (x.value1 IN [1, 2, 3] && x.value1 IN [2, 3, 4] && x.value2 == 10 && x.value3 <= 20) || (x.value1 == 1 && x.value2 == 2 && x.value3 >= 0 && x.value3 <= 6 && x.value4 in ['somethings2', 'somethings4'] ) RETURN [x.value1, x.value2, x.value3, x.value4]";
       var expected = [
@@ -1207,7 +1284,7 @@ function ahuacatlQueryOptimizerInTestSuite () {
         }
       }
 
-      c.ensureSkiplist("value1", "value2", "value3", "value4");
+      c.ensureIndex({ type: "skiplist", fields: ["value1", "value2", "value3", "value4"] });
 
       var query = "FOR x IN " + cn + " FILTER (x.value1 IN [1, 2, 3] && x.value1 IN [2, 3, 4] && x.value2 == 10 && x.value3 <= 20) || (x.value1 == 1 && x.value2 == 2 && x.value3 >= 0 && x.value3 <= 6 && x.value4 in ['somethings2', 'somethings4'] ) SORT x.value1 DESC RETURN [x.value1, x.value2, x.value3, x.value4]";
       var expected = [
@@ -1231,7 +1308,7 @@ function ahuacatlQueryOptimizerInTestSuite () {
         }
       }
 
-      c.ensureSkiplist("value1", "value2", "value3", "value4");
+      c.ensureIndex({ type: "skiplist", fields: ["value1", "value2", "value3", "value4"] });
 
       var query = "FOR x IN " + cn + " FILTER (x.value1 IN [PASSTHRU(1), PASSTHRU(2), PASSTHRU(3)] && x.value1 IN [2, 3, 4] && x.value2 == PASSTHRU(10) && x.value3 <= 2) || (x.value1 == 1 && x.value2 == 2 && x.value3 >= 0 && x.value3 == PASSTHRU(6) && x.value4 in ['somethings2', PASSTHRU('somethings4')] ) RETURN [x.value1, x.value2, x.value3, x.value4]";
       var expected = [
@@ -1265,7 +1342,7 @@ function ahuacatlQueryOptimizerInTestSuite () {
         }
       }
 
-      c.ensureSkiplist("value1", "value2", "value3", "value4");
+      c.ensureIndex({ type: "skiplist", fields: ["value1", "value2", "value3", "value4"] });
 
       var query = "FOR x IN " + cn + " FILTER (x.value1 IN [PASSTHRU(1), PASSTHRU(2), PASSTHRU(3)] && x.value1 IN [2, 3, 4] && x.value2 == PASSTHRU(10) && x.value3 <= 2) || (x.value1 == 1 && x.value2 == 2 && x.value3 >= 0 && x.value3 == PASSTHRU(6) && x.value4 in ['somethings2', PASSTHRU('somethings4')] ) SORT x.value1 DESC RETURN [x.value1, x.value2, x.value3, x.value4]";
       var expected = [
@@ -1291,7 +1368,7 @@ function ahuacatlQueryOptimizerInTestSuite () {
         }
       }
 
-      c.ensureSkiplist("value1", "value2", "value3", "value4");
+      c.ensureIndex({ type: "skiplist", fields: ["value1", "value2", "value3", "value4"] });
 
       var query = "FOR x IN " + cn + " FILTER (x.value1 IN [PASSTHRU(1), PASSTHRU(2), PASSTHRU(3)] && x.value1 IN PASSTHRU([2, 3, 4]) && x.value2 == PASSTHRU(10) && x.value3 <= 2) || (x.value1 == 1 && x.value2 == 2 && x.value3 >= 0 && x.value3 == PASSTHRU(6) && x.value4 in ['somethings2', PASSTHRU('somethings4')] ) RETURN [x.value1, x.value2, x.value3, x.value4]";
       var expected = [
@@ -1327,18 +1404,10 @@ function ahuacatlQueryOptimizerInWithLongArraysTestSuite () {
 
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
-
     setUp : function () {
       internal.db._drop(cn);
       c = internal.db._create(cn);
     },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
       internal.db._drop(cn);
