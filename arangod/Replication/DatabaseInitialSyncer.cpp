@@ -207,7 +207,8 @@ arangodb::Result fetchRevisions(
   arangodb::network::ConnectionPool* pool = netFeature.pool();
 
   std::size_t queueSize = 10;
-  if ((config.leader.majorVersion == 3 && config.leader.minorVersion < 9) ||
+  if ((config.leader.majorVersion < 3) ||
+      (config.leader.majorVersion == 3 && config.leader.minorVersion < 9) ||
       (config.leader.majorVersion == 3 && config.leader.minorVersion == 9 &&
        config.leader.patchVersion < 1)) {
     queueSize = 1;
@@ -217,12 +218,14 @@ arangodb::Result fetchRevisions(
     while (futures.size() < queueSize && current < toFetch.size()) {
       VPackBuilder requestBuilder;
       std::unordered_set<arangodb::RevisionId> shoppingList;
+      uint64_t count = 0;
       {
         VPackArrayBuilder list(&requestBuilder);
         std::size_t i;
         for (i = 0; i < 5000 && current + i < toFetch.size(); ++i) {
           requestBuilder.add(toFetch[current + i].toValuePair(ridBuffer));
           shoppingList.insert(toFetch[current + i]);
+          ++count;
         }
         current += i;
       }
@@ -241,7 +244,7 @@ arangodb::Result fetchRevisions(
       shoppingLists.emplace_back(std::move(shoppingList));
       ++stats.numDocsRequests;
       LOG_TOPIC("eda42", DEBUG, arangodb::Logger::REPLICATION)
-          << "Have requested a chunk of 5000 revisions from "
+          << "Have requested a chunk of " << count << " revisions from "
           << config.leader.serverId << " at " << config.leader.endpoint
           << " for collection " << leader
           << " length of queue: " << futures.size();
@@ -371,6 +374,7 @@ arangodb::Result fetchRevisions(
             .param("serverId", state.localServerIdString)
             .param("batchId", std::to_string(config.batch.id));
         reqOptions.timeout = arangodb::network::Timeout(25.0);
+        reqOptions.database = config.vocbase.name();
         auto buffer = requestBuilder.steal();
         auto f = arangodb::network::sendRequestRetry(
             pool, config.leader.endpoint, arangodb::fuerte::RestVerb::Put, path,
@@ -379,7 +383,7 @@ arangodb::Result fetchRevisions(
         shoppingLists.emplace_back(std::move(newList));
         ++stats.numDocsRequests;
         LOG_TOPIC("eda45", DEBUG, arangodb::Logger::REPLICATION)
-            << "Have re-requested a chunk of " << newList.size()
+            << "Have re-requested a chunk of " << shoppingLists.back().size()
             << " revisions from " << config.leader.serverId << " at "
             << config.leader.endpoint << " for collection " << leader
             << " queue length: " << futures.size();
