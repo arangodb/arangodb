@@ -50,10 +50,10 @@ function ahuacatlSkiplistOverlappingTestSuite () {
     setUp : function () {
       internal.db._drop("UnitTestsAhuacatlSkiplist");
       skiplist = internal.db._create("UnitTestsAhuacatlSkiplist");
-      skiplist.ensureSkiplist("a");
+      skiplist.ensureIndex({ type: "skiplist", fields: ["a"] });
 
       let docs = [];
-      for (var i = 0; i < 10000; ++i) {
+      for (let i = 0; i < 10000; ++i) {
         docs.push({a: i});
       }
       skiplist.insert(docs);

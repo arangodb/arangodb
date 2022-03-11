@@ -47,28 +47,20 @@ function ahuacatlHashTestSuite () {
 
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
-
     setUpAll : function () {
       internal.db._drop("UnitTestsAhuacatlHash");
 
       hash = internal.db._create("UnitTestsAhuacatlHash");
 
-      for (var i = 1; i <= 5; ++i) {
-        for (var j = 1; j <= 5; ++j) {
+      for (let i = 1; i <= 5; ++i) {
+        for (let j = 1; j <= 5; ++j) {
           hash.save({ "a" : i, "b": j, "c" : i });
         }
       }
 
-      hash.ensureHashIndex("a", "b");
-      hash.ensureHashIndex("c");
+      hash.ensureIndex({ type: "hash", fields: ["a", "b"] });
+      hash.ensureIndex({ type: "hash", fields: ["c"] });
     },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
 
     tearDownAll : function () {
       internal.db._drop("UnitTestsAhuacatlHash");
