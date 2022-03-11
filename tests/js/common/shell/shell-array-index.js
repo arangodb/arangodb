@@ -29,47 +29,36 @@
 
 "use strict";
 
-var jsunity = require("jsunity");
-var internal = require("internal");
-var errors = internal.errors;
+const jsunity = require("jsunity");
+const internal = require("internal");
+const errors = internal.errors;
 
-function arrayHashIndexSuite () {
-
-  var cn = "UnitTestsCollectionIdx";
-  var collection = null;
+function arrayIndexSuite () {
+  const cn = "UnitTestsCollectionIdx";
+  let collection = null;
 
   return {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
-
     setUp : function () {
       internal.db._drop(cn);
       collection = internal.db._create(cn);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
-
     tearDown : function () {
       internal.db._drop(cn);
       collection = null;
-      internal.wait(0.0);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test: create an array index
 ////////////////////////////////////////////////////////////////////////////////
 
-    testCreateHashIndex : function () {
+    testCreateIndex : function () {
       var indexes = collection.getIndexes();
       
       assertEqual(1, indexes.length);
 
-      collection.ensureIndex({ type: "hash", fields: ["a[*]"] });
-      collection.ensureIndex({ type: "hash", fields: ["b[*]"], unique: true });
+      collection.ensureIndex({ type: "persistent", fields: ["a[*]"] });
+      collection.ensureIndex({ type: "persistent", fields: ["b[*]"], unique: true });
 
       indexes = collection.getIndexes();
 
@@ -80,8 +69,8 @@ function arrayHashIndexSuite () {
 /// @brief test: get index
 ////////////////////////////////////////////////////////////////////////////////
 
-    testHashIndex : function () {
-      var id = collection.ensureIndex({ type: "hash", fields: ["a[*]"] });
+    testIndex : function () {
+      var id = collection.ensureIndex({ type: "persistent", fields: ["a[*]"] });
 
       var idx = collection.index(id.id);
       assertEqual(id.id, idx.id);
@@ -100,8 +89,8 @@ function arrayHashIndexSuite () {
 /// @brief test: Multiple identical elements in unique array 
 ////////////////////////////////////////////////////////////////////////////////
 
-    testHashInsertAndReadArrayCombinedUnique : function () {
-      collection.ensureIndex({ type: "hash", fields: ["a[*]", "b[*]"], unique: true });
+    testInsertAndReadArrayCombinedUnique : function () {
+      collection.ensureIndex({ type: "persistent", fields: ["a[*]", "b[*]"], unique: true });
 
       collection.save({a: [1, 2], b: ["a", "b"]});
 
@@ -124,15 +113,14 @@ function arrayHashIndexSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testInsertAndReadArrayUnique : function () {
-      collection.ensureIndex({ type: "hash", fields: ["a[*]"], unique: true });
+      collection.ensureIndex({ type: "persistent", fields: ["a[*]"], unique: true });
 
       collection.save({a: [1, 2]});
 
       try {
         collection.save({a: [1, 4]});
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, err.errorNum);
       }
     },
@@ -141,16 +129,15 @@ function arrayHashIndexSuite () {
 /// @brief test: Multiple identical elements in array with unique constraint
 ////////////////////////////////////////////////////////////////////////////////
 
-    testHashInsertAndReadArrayIdenticalElementsUnique : function () {
-      collection.ensureIndex({ type: "hash", fields: ["a[*]"], unique: true });
+    testInsertAndReadArrayIdenticalElementsUnique : function () {
+      collection.ensureIndex({ type: "persistent", fields: ["a[*]"], unique: true });
 
       collection.save({a: [1, 2, 1, 3, 1]});
 
       try {
         collection.save({a: [4, 1]});
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, err.errorNum);
       }
     },
@@ -159,134 +146,90 @@ function arrayHashIndexSuite () {
 /// @brief test: Multiple index batch inserts
 ////////////////////////////////////////////////////////////////////////////////
 
-/*
-    testHashInsertBatches : function () {
-      // this really needs to be 1,000,000 documents to reproduce a bug that
-      // occurred with exactly this value and no others
-      for (var i = 0; i < 1000 * 1000; ++i) {
-        collection.insert({ a: [ "foo", "bar" ] });  
+    testInsertBatches : function () {
+      const n = 1000;
+
+      let docs = [];
+      for (let i = 0; i < n; ++i) {
+        docs.push({ a: [ "foo", "bar" ] }); 
       }
+      collection.insert(docs);
 
       // this is expected to just work and not fail
-      collection.ensureIndex({ type: "hash", fields: ["a[*]"] }); 
-      collection.ensureIndex({ type: "hash", fields: ["a[*]", "b[*]"] });
+      collection.ensureIndex({ type: "persistent", fields: ["a[*]"] }); 
+      collection.ensureIndex({ type: "persistent", fields: ["a[*]", "b[*]"] });
 
-      assertEqual(1000 * 1000, collection.count());
+      assertEqual(n, collection.count());
       assertEqual(3, collection.getIndexes().length);
-    }
-*/
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: Test update of an array index where entries are removed:
+////////////////////////////////////////////////////////////////////////////////
+
+    testArrayIndexUpdates : function () {
+      collection.ensureIndex({type:"persistent", fields: ["a[*].b"], unique: true});
+
+      let meta = collection.insert({a: [{b:"xyz"}]});
+
+      try {
+        collection.insert({a: [{b:"xyz"}]});
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, err.errorNum);
+      }
+
+      collection.update(meta._key, {a: []});
+
+      let meta2 = collection.insert({a: [{b:"xyz"}]});  // must work again
+
+      try {
+        collection.insert({a: [{b:"xyz"}]});
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, err.errorNum);
+      }
+
+      collection.replace(meta2._key, {a: []});
+
+      collection.insert({a: [{b:"xyz"}]});  // must work again
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: Test update of an array index where entries are changed:
+////////////////////////////////////////////////////////////////////////////////
+
+    testArrayIndexUpdates2 : function () {
+      collection.ensureIndex({type:"persistent", fields: ["a[*].b"], unique: true});
+
+      let meta = collection.insert({a: [{b:"xyz"}]});
+
+      try {
+        collection.insert({a: [{b:"xyz"}]});
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, err.errorNum);
+      }
+
+      collection.update(meta._key, {a: [{b:"123"}]});
+
+      let meta2 = collection.insert({a: [{b:"xyz"}]});  // must work again
+
+      try {
+        collection.insert({a: [{b:"xyz"}]});
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, err.errorNum);
+      }
+
+      collection.replace(meta2._key, {a: [{b:"456"}]});
+
+      collection.insert({a: [{b:"xyz"}]});  // must work again
+    },
 
   };
 }
 
-function arraySkiplistIndexSuite () {
-
-  var cn = "UnitTestsCollectionIdx";
-  var collection = null;
-
-  return {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
-
-    setUp : function () {
-      internal.db._drop(cn);
-      collection = internal.db._create(cn);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
-
-    tearDown : function () {
-      internal.db._drop(cn);
-      collection = null;
-      internal.wait(0.0);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: create an array index
-////////////////////////////////////////////////////////////////////////////////
-
-    testCreateSkiplistIndex : function () {
-      var indexes = collection.getIndexes();
-      
-      assertEqual(1, indexes.length);
-
-      collection.ensureIndex({ type: "skiplist", fields: ["a[*]"] });
-      collection.ensureIndex({ type: "skiplist", fields: ["b[*]"], unique: true });
-
-      indexes = collection.getIndexes();
-
-      assertEqual(3, indexes.length);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: get index
-////////////////////////////////////////////////////////////////////////////////
-
-    testSkipIndex : function () {
-      var id = collection.ensureIndex({ type: "skiplist", fields: ["a[*]"] });
-
-      var idx = collection.index(id.id);
-      assertEqual(id.id, idx.id);
-
-      idx = collection.index(id);
-      assertEqual(id.id, idx.id);
-
-      idx = internal.db._index(id.id);
-      assertEqual(id.id, idx.id);
-
-      idx = internal.db._index(id);
-      assertEqual(id.id, idx.id);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: Unique index insertion and reading
-////////////////////////////////////////////////////////////////////////////////
-
-    testSkipInsertAndReadArrayUnique : function () {
-      collection.ensureIndex({ type: "skiplist", fields: ["a[*]"], unique: true });
-
-      collection.save({a: [1, 2]});
-
-      try {
-        collection.save({a: [1, 4]});
-        fail();
-      }
-      catch (err) {
-        assertEqual(errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, err.errorNum);
-      }
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: Multiple identical elements in array with unique constraint
-////////////////////////////////////////////////////////////////////////////////
-
-    testSkipInsertAndReadArrayIdenticalElementsUnique : function () {
-      collection.ensureIndex({ type: "skiplist", fields: ["a[*]"], unique: true });
-
-      collection.save({a: [1, 2, 1, 3, 1]});
-
-      try {
-        collection.save({a: [4, 1]});
-        fail();
-      }
-      catch (err) {
-        assertEqual(errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, err.errorNum);
-      }
-    }
-
-  };
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suites
-////////////////////////////////////////////////////////////////////////////////
-
-jsunity.run(arrayHashIndexSuite);
-jsunity.run(arraySkiplistIndexSuite);
+jsunity.run(arrayIndexSuite);
 
 return jsunity.done();
-
