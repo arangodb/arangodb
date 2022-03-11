@@ -97,7 +97,8 @@ const replicatedLogEntrySuite = function () {
       });
       lh.waitFor(lh.replicatedLogParticipantsFlag(database, logId, {
         [follower]: {
-          excluded: false,
+          allowedInQuorum: true,
+          allowedAsLeader: true,
           forced: true
         }
       }));

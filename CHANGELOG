@@ -10,6 +10,9 @@ devel
   perform its random actions on the header, and seed is for the seed that is 
   used for randomizing. 
 
+* Escape each key in attribute paths of nested attributes in the query explain
+  output for SEARCH queries that utilize the primary sort order.
+
 * Turn off sending "Server" HTTP response header on DB servers if not 
   explicitly requested. This saves a tiny bit of traffic on each response
   from a DB server.

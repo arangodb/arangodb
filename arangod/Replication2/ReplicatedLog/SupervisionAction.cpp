@@ -121,7 +121,7 @@ void Executor::operator()(CurrentNotAvailableAction const& action) {
 
 void Executor::operator()(EvictLeaderAction const& action) {
   auto newFlags = action._flags;
-  newFlags.excluded = true;
+  newFlags.allowedAsLeader = false;
   auto newTerm = action._currentTerm;
   newTerm.term = LogTerm{newTerm.term.value + 1};
   newTerm.leader.reset();
