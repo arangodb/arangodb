@@ -3319,11 +3319,23 @@ void RestReplicationHandler::handleCommandRevisionDocuments() {
 
     for (VPackSlice entry : VPackArrayIterator(body)) {
       RevisionId rev = RevisionId::fromSlice(entry);
+      // We assume that the rev is actually present, otherwise it would not
+      // have been ordered. But we want this code to work if revisions in
+      // the list arrive in some arbitrary order. However, in most cases
+      // the list will contain adjacent revs in ascending order. Therefore,
+      // we want to try a next() on the iterator first (if this makes sense).
+      // However, if we then still have not found the right revision, we need
+      // to seek. If the rev exists, the iterator will then point to the right
+      // document:
       if (it.hasMore() && it.revision() < rev) {
+        it.next();
+      }
+      if (!it.hasMore() || it.revision() != rev) {
         it.seek(rev);
       }
-      VPackSlice res =
-          it.hasMore() ? it.document() : velocypack::Slice::emptyObjectSlice();
+      VPackSlice res = it.hasMore() && it.revision() == rev
+                           ? it.document()
+                           : velocypack::Slice::emptyObjectSlice();
 
       auto byteSize = res.byteSize();
       if (size + byteSize > chunkSize && size > 0) {

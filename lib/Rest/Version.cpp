@@ -84,6 +84,53 @@ std::pair<int, int> Version::parseVersionString(std::string const& str) {
   return result;
 }
 
+/// parse a full version string into major, minor, patch
+/// returns -1, -1, -1 when the version string has an invalid format
+/// returns major, -1, -1 when only the major version can be determined,
+/// returns major, minor, -1 when only the major and minor version can be
+/// determined.
+FullVersion Version::parseFullVersionString(std::string const& str) {
+  FullVersion result{-1, -1, -1};
+  int tmp;
+
+  if (!str.empty()) {
+    char const* p = str.c_str();
+    char const* q = p;
+    tmp = 0;
+    while (*q >= '0' && *q <= '9') {
+      tmp = tmp * 10 + *q++ - '0';
+    }
+    if (p != q) {
+      result.major = tmp;
+      tmp = 0;
+
+      if (*q == '.') {
+        ++q;
+      }
+      p = q;
+      while (*q >= '0' && *q <= '9') {
+        tmp = tmp * 10 + *q++ - '0';
+      }
+      if (p != q) {
+        result.minor = tmp;
+        tmp = 0;
+        if (*q == '.') {
+          ++q;
+        }
+        p = q;
+        while (*q >= '0' && *q <= '9') {
+          tmp = tmp * 10 + *q++ - '0';
+        }
+        if (p != q) {
+          result.patch = tmp;
+        }
+      }
+    }
+  }
+
+  return result;
+}
+
 // initialize
 void Version::initialize() {
   if (!Values.empty()) {
