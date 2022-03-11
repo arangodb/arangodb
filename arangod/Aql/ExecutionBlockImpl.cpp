@@ -357,13 +357,17 @@ ExecutionBlockImpl<Executor>::execute(AqlCallStack stack) {
     TRI_ASSERT(_firstFailure.ok());
     // store only the first failure we got
     _firstFailure = {ex.code(), ex.what()};
-    LOG_QUERY("7289a", DEBUG) << printBlockInfo() << " local statemachine failed with exception: " << ex.what();
+    LOG_QUERY("7289a", DEBUG)
+        << printBlockInfo()
+        << " local statemachine failed with exception: " << ex.what();
     throw;
   } catch (std::exception const& ex) {
     TRI_ASSERT(_firstFailure.ok());
     // store only the first failure we got
     _firstFailure = {TRI_ERROR_INTERNAL, ex.what()};
-    LOG_QUERY("2bbd5", DEBUG) << printBlockInfo() << " local statemachine failed with exception: " << ex.what();
+    LOG_QUERY("2bbd5", DEBUG)
+        << printBlockInfo()
+        << " local statemachine failed with exception: " << ex.what();
     // Rewire the error, to be consistent with potentially next caller.
     THROW_ARANGO_EXCEPTION(_firstFailure);
   }
@@ -585,9 +589,9 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
       useExecutor ==
           (is_one_of_v<
               Executor, FilterExecutor, ShortestPathExecutor, ReturnExecutor,
-              KShortestPathsExecutor<graph::KShortestPathsFinder>,
-              KShortestPathsExecutor<KPathRefactored>, KShortestPathsExecutor<KPathRefactoredTracer>,
-              KShortestPathsExecutor<KPathRefactoredCluster>, KShortestPathsExecutor<KPathRefactoredClusterTracer>, ParallelUnsortedGatherExecutor,
+              KShortestPathsExecutor<graph::KShortestPathsFinder>, KShortestPathsExecutor<KPathRefactored>,
+              KShortestPathsExecutor<KPathRefactoredTracer>, KShortestPathsExecutor<KPathRefactoredCluster>,
+              KShortestPathsExecutor<KPathRefactoredClusterTracer>, ParallelUnsortedGatherExecutor,
               IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>, IdExecutor<ConstFetcher>, HashedCollectExecutor,
               AccuWindowExecutor, WindowExecutor, IndexExecutor, EnumerateCollectionExecutor, DistinctCollectExecutor,
               ConstrainedSortExecutor, CountCollectExecutor, SubqueryExecutor<true>,
@@ -838,6 +842,11 @@ auto ExecutionBlockImpl<SubqueryStartExecutor>::shadowRowForwarding(AqlCallStack
     TRI_ASSERT(_outputItemRow->produced());
     _outputItemRow->advanceRow();
 
+    // Count that we have now produced a row in the new depth.
+    // Note: We need to increment the depth by one, as the we have increased
+    // it while writing into the output by one as well.
+    countShadowRowProduced(stack, shadowRow.getDepth() + 1);
+
     if (_lastRange.hasShadowRow()) {
       return ExecState::SHADOWROWS;
     }
@@ -888,6 +897,7 @@ auto ExecutionBlockImpl<SubqueryEndExecutor>::shadowRowForwarding(AqlCallStack& 
   _outputItemRow->advanceRow();
   // The stack in used here contains all calls for within the subquery.
   // Hence any inbound subquery needs to be counted on its level
+
   countShadowRowProduced(stack, shadowRow.getDepth());
 
   if (state == ExecutorState::DONE) {
@@ -1679,9 +1689,9 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
           // which implies we're using a MultiDependencyRowFetcher.
           // Imagine the following situation:
           // In case the last subquery ended, at least for one dependency, on an
-          // item block-boundary. But the next row in this dependency - and thus,
-          // all other dependencies - is a non-relevant shadow row. Then the
-          // executor will have been called by now, possibly multiple times,
+          // item block-boundary. But the next row in this dependency - and
+          // thus, all other dependencies - is a non-relevant shadow row. Then
+          // the executor will have been called by now, possibly multiple times,
           // until all dependencies have some input and thus arrived at this
           // particular shadow row. So now the condition of this if-branch is
           // true.
@@ -1744,6 +1754,14 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
         // For this executor the input of the next run will be injected and it can continue to work.
         LOG_QUERY("0ca35", DEBUG)
             << printTypeInfo() << " ShadowRows moved, continue with next subquery.";
+
+        if (!stack.hasAllValidCalls()) {
+          // We can only continue if we still have a valid call
+          // on all levels
+          _execState = ExecState::DONE;
+          break;
+        }
+
         if constexpr (std::is_same_v<Executor, SubqueryStartExecutor>) {
           auto currentSubqueryCall = stack.peek();
           if (currentSubqueryCall.getLimit() == 0 && currentSubqueryCall.hasSoftLimit()) {
@@ -1753,12 +1771,6 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
             break;
           }
           // Otherwise just check like the other blocks
-        }
-        if (!stack.hasAllValidCalls()) {
-          // We can only continue if we still have a valid call
-          // on all levels
-          _execState = ExecState::DONE;
-          break;
         }
 
         if (clientCallList.hasMoreCalls()) {

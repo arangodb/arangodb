@@ -1,6 +1,9 @@
 v3.8.7 (XXXX-XX-XX)
 -------------------
 
+* Bug-Fix: Resolve BTS-673/Issue #15107, a spliced subquery could return too few
+  results.
+
 * Fixed ES-1078: The REST API endpoint for handling `/_api/user/${user}/config`
   did not work properly. The supplied data by sending a PUT request has not been
   stored to the correct location. The Web UI uses this endpoint to store its
