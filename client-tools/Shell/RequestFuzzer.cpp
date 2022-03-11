@@ -23,8 +23,6 @@
 
 #include "RequestFuzzer.h"
 
-#include "Logger/LogMacros.h"
-
 using rt = arangodb::rest::RequestType;
 
 namespace arangodb::fuzzer {
