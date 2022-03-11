@@ -41,12 +41,12 @@ struct WasmVmMethods {
   virtual ~WasmVmMethods() = default;
   virtual auto addModule(Module const& module) const
       -> futures::Future<Result> = 0;
-  virtual auto deleteModule(std::string const& name) const
+  virtual auto deleteModule(ModuleName const& name) const
       -> futures::Future<Result> = 0;
   virtual auto allModules() const
       -> futures::Future<std::unordered_map<std::string, Module>> = 0;
-  virtual auto executeFunction(std::string const& moduleName,
-                               std::string const& functionName,
+  virtual auto executeFunction(ModuleName const& moduleName,
+                               FunctionName const& functionName,
                                FunctionParameters const& parameters) const
       -> futures::Future<std::optional<uint64_t>> = 0;
   static auto createInstance(TRI_vocbase_t& vocbase)

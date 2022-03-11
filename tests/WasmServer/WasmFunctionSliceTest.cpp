@@ -49,18 +49,18 @@ struct WasmModuleCreation : public ::testing::Test {
 TEST_F(WasmModuleCreation, module_is_created_from_velocypack_with_byte_array) {
   expectModule(
       R"({"name": "Anne", "code": [1, 2, 255], "isDeterministic": true})",
-      Module{"Anne", {{1, 2, 255}}, true});
+      Module{{"Anne"}, {{1, 2, 255}}, true});
 }
 
 TEST_F(WasmModuleCreation,
        module_is_created_from_velocypack_with_base64_string) {
   expectModule(R"({"name": "Anne", "code": "AQL/", "isDeterministic": true})",
-               Module{"Anne", {{1, 2, 255}}, true});
+               Module{{"Anne"}, {{1, 2, 255}}, true});
 }
 
 TEST_F(WasmModuleCreation, uses_false_as_isDeterministic_default) {
   expectModule(R"({"name": "Anne", "code": [43, 8]})",
-               Module{"Anne", {{43, 8}}, false});
+               Module{{"Anne"}, {{43, 8}}, false});
 }
 
 TEST_F(WasmModuleCreation, returns_error_when_name_is_not_given) {
@@ -105,7 +105,7 @@ TEST_F(WasmModuleCreation, gives_error_when_isDeterministic_is_not_a_boolean) {
 
 TEST(WasmModuleConversion, converts_module_to_velocypack) {
   VPackBuilder velocypackBuilder;
-  arangodb::wasm::moduleToVelocypack(Module{"module_name", {{3, 233}}, false},
+  arangodb::wasm::moduleToVelocypack(Module{{"module_name"}, {{3, 233}}, false},
                                      velocypackBuilder);
   EXPECT_EQ(
       velocypackBuilder.toJson(),

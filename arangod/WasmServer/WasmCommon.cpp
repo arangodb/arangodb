@@ -27,7 +27,7 @@ void codeToVelocypack(Code const& code, VPackBuilder& builder) {
 void arangodb::wasm::moduleToVelocypack(Module const& module,
                                         VPackBuilder& builder) {
   auto ob = VPackObjectBuilder(&builder);
-  builder.add("name", VPackValue(module.name));
+  builder.add("name", VPackValue(module.name.string));
   builder.add(VPackValue("code"));
   codeToVelocypack(module.code, builder);
   builder.add("isDeterministic", VPackValue(module.isDeterministic));
@@ -139,7 +139,7 @@ auto arangodb::wasm::velocypackToModule(Slice slice) -> ResultT<Module> {
   }
 
   return ResultT<Module>(
-      Module{name.get(), {codeField.get()}, isDeterministic.get()});
+      Module{{name.get()}, {codeField.get()}, isDeterministic.get()});
 }
 
 auto uint64FromSlice(Slice slice) -> std::optional<uint64_t> {

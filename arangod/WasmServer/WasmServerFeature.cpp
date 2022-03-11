@@ -8,6 +8,7 @@
 #include "WasmServer/WasmCommon.h"
 
 using namespace arangodb;
+using namespace arangodb::wasm;
 
 WasmServerFeature::WasmServerFeature(Server& server)
     : ArangodFeature{server, *this} {
@@ -31,17 +32,17 @@ void WasmServerFeature::collectOptions(
 void WasmServerFeature::validateOptions(
     std::shared_ptr<options::ProgramOptions>) {}
 
-void WasmServerFeature::addModule(wasm::Module const& module) {
+void WasmServerFeature::addModule(Module const& module) {
   _guardedModules.doUnderLock([&module](GuardedModules& guardedModules) {
-    guardedModules._modules.insert_or_assign(module.name, module);
+    guardedModules._modules.insert_or_assign(module.name.string, module);
   });
 }
 
-auto WasmServerFeature::loadModule(std::string const& name)
+auto WasmServerFeature::loadModule(ModuleName const& name)
     -> std::optional<wasm3::module> {
   auto module = _guardedModules.doUnderLock(
-      [&name](GuardedModules& guardedModules) -> std::optional<wasm::Module> {
-        auto maybef = guardedModules._modules.find(name);
+      [&name](GuardedModules& guardedModules) -> std::optional<Module> {
+        auto maybef = guardedModules._modules.find(name.string);
         if (maybef == std::end(guardedModules._modules)) {
           return std::nullopt;
         } else {
@@ -57,7 +58,7 @@ auto WasmServerFeature::loadModule(std::string const& name)
 }
 
 auto WasmServerFeature::executeFunction(
-    std::string const& moduleName, std::string const& functionName,
+    ModuleName const& moduleName, FunctionName const& functionName,
     wasm::FunctionParameters const& parameters) -> std::optional<uint64_t> {
   auto module = loadModule(moduleName);
   auto runtime = environment.new_runtime(1024);
@@ -66,7 +67,7 @@ auto WasmServerFeature::executeFunction(
   }
 
   runtime.load(module.value());
-  auto function = runtime.find_function(functionName.c_str());
+  auto function = runtime.find_function(functionName.string.c_str());
   if (function.fail()) {
     return std::nullopt;
   }
@@ -74,14 +75,14 @@ auto WasmServerFeature::executeFunction(
   return function.get().call<uint64_t>(parameters.a, parameters.b);
 }
 
-void WasmServerFeature::deleteModule(std::string const& name) {
+void WasmServerFeature::deleteModule(ModuleName const& name) {
   _guardedModules.doUnderLock([&name](GuardedModules& guardedModules) {
-    guardedModules._modules.erase(name);
+    guardedModules._modules.erase(name.string);
   });
 }
 
 auto WasmServerFeature::allModules() const
-    -> std::unordered_map<std::string, wasm::Module> {
+    -> std::unordered_map<std::string, Module> {
   return _guardedModules.doUnderLock([&](GuardedModules const& guardedModules) {
     return guardedModules._modules;
   });

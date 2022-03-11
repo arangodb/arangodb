@@ -100,7 +100,7 @@ auto RestWasmHandler::handleDeleteRequest(WasmVmMethods const& methods)
         "RestWasmHandler Expects name of removable function as string");
   }
 
-  methods.deleteModule(slice.copyString());
+  methods.deleteModule(ModuleName{slice.copyString()});
 
   VPackBuilder builder;
   {
@@ -128,8 +128,8 @@ auto addWasmModule(VPackSlice slice, wasm::WasmVmMethods const& methods,
   return Result{};
 }
 
-auto executeWasmFunction(std::string const& moduleName,
-                         std::string const& functionName, VPackSlice slice,
+auto executeWasmFunction(ModuleName const& moduleName,
+                         FunctionName const& functionName, VPackSlice slice,
                          wasm::WasmVmMethods const& methods,
                          VPackBuilder& response) -> Result {
   auto functionParameters =
@@ -144,9 +144,9 @@ auto executeWasmFunction(std::string const& moduleName,
           .executeFunction(moduleName, functionName, functionParameters.get())
           .get();
   if (!result.has_value()) {
-    return Result{TRI_ERROR_BAD_PARAMETER, "Function '" + functionName +
-                                               "' in module '" + moduleName +
-                                               "' cannot be found"};
+    return Result{TRI_ERROR_BAD_PARAMETER,
+                  "Function '" + functionName.string + "' in module '" +
+                      moduleName.string + "' cannot be found"};
   }
 
   {
@@ -176,7 +176,8 @@ auto RestWasmHandler::handlePostRequest(WasmVmMethods const& methods)
     }
   } else if (suffixes.size() == 2) {
     auto result =
-        executeWasmFunction(suffixes[0], suffixes[1], slice, methods, response);
+        executeWasmFunction(ModuleName{suffixes[0]}, FunctionName{suffixes[1]},
+                            slice, methods, response);
     if (result.fail()) {
       generateError(ResponseCode::BAD, result.errorNumber(),
                     result.errorMessage());

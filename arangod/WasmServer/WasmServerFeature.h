@@ -43,12 +43,12 @@ class WasmServerFeature final : public ArangodFeature {
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override;
   void addModule(wasm::Module const& module);
-  auto loadModule(std::string const& name) -> std::optional<wasm3::module>;
-  auto executeFunction(std::string const& moduleName,
-                       std::string const& functionName,
+  auto loadModule(wasm::ModuleName const& name) -> std::optional<wasm3::module>;
+  auto executeFunction(wasm::ModuleName const& moduleName,
+                       wasm::FunctionName const& functionName,
                        wasm::FunctionParameters const& parameters)
       -> std::optional<uint64_t>;
-  void deleteModule(std::string const& name);
+  void deleteModule(wasm::ModuleName const& name);
   auto allModules() const -> std::unordered_map<std::string, wasm::Module>;
 
  private:
