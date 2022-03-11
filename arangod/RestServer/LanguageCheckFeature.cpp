@@ -150,7 +150,7 @@ ErrorCode writeLanguage(arangodb::ArangodServer& server, std::string_view lang,
   return TRI_ERROR_NO_ERROR;
 }
 
-std::tuple<std::string_view, LanguageType> getOrSetPreviousLanguage(
+std::tuple<std::string, LanguageType> getOrSetPreviousLanguage(
     arangodb::ArangodServer& server, std::string_view collatorLang,
     LanguageType currLangType) {
   std::string prevLanguage;
@@ -165,7 +165,7 @@ std::tuple<std::string_view, LanguageType> getOrSetPreviousLanguage(
   // okay, we didn't find it, let's write out the input instead
   ::writeLanguage(server, collatorLang, currLangType);
 
-  return {collatorLang, currLangType};
+  return {std::string{collatorLang}, currLangType};
 }
 }  // namespace
 
