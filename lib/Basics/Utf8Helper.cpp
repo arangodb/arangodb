@@ -235,9 +235,11 @@ std::string Utf8Helper::getCollatorLanguage() {
   return "";
 }
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
 icu::Collator* Utf8Helper::getCollator() const { return _coll; }
 
 void Utf8Helper::setCollator(icu::Collator* coll) { _coll = coll; }
+#endif
 
 std::string Utf8Helper::getCollatorCountry() {
   if (_coll) {
