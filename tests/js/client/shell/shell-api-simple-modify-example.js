@@ -99,7 +99,7 @@ function by_example_querySuite () {
       assertEqual(doc.parsedBody['count'], 4);
 
       let ids = [];
-      doc.parsedBody['result'].forEach(oneDoc => { ids.push(oneDoc['_id']); })
+      doc.parsedBody['result'].forEach(oneDoc => { ids.push(oneDoc['_id']); });
       assertEqual(ids.sort(), [d1,d2,d3,d4].sort());
 
       cmd = api + "/by-example";
@@ -114,7 +114,7 @@ function by_example_querySuite () {
       assertEqual(doc.parsedBody['result'].length, 1);
       assertEqual(doc.parsedBody['count'], 1);
       ids = [];
-      doc.parsedBody['result'].forEach(oneDoc => { ids.push(oneDoc['_id']); })
+      doc.parsedBody['result'].forEach(oneDoc => { ids.push(oneDoc['_id']); });
       assertEqual(ids.sort(), [d2].sort());
 
       cmd = api + "/by-example";
@@ -129,7 +129,7 @@ function by_example_querySuite () {
       assertEqual(doc.parsedBody['result'].length, 2);
       assertEqual(doc.parsedBody['count'], 2);
       ids = [];
-      doc.parsedBody['result'].forEach(oneDoc => { ids.push(oneDoc['_id']); })
+      doc.parsedBody['result'].forEach(oneDoc => { ids.push(oneDoc['_id']); });
       assertEqual(ids.sort(), [d2,d3].sort());
 
       cmd = api + "/first-example";
