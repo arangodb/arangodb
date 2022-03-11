@@ -199,7 +199,7 @@ function dealing_with_unique_constraintsSuite () {
       body = { "a" : 1, "b" : 2 };
       doc = arango.POST_RAW(cmd1, body);
 
-      assertEqual(doc.code, 409);
+      assertEqual(doc.code, internal.errors.ERROR_HTTP_CONFLICT.code);
 
       // check it again;
       doc = arango.GET_RAW(cmd2);
@@ -214,7 +214,7 @@ function dealing_with_unique_constraintsSuite () {
       body = { "a" : 1, "b" : 3 };
       doc = arango.POST_RAW(cmd1, body);
 
-      assertEqual(doc.code, 409);
+      assertEqual(doc.code, internal.errors.ERROR_HTTP_CONFLICT.code);
 
       // check it again;
       doc = arango.GET_RAW(cmd2);
@@ -262,7 +262,7 @@ function dealing_with_unique_constraintsSuite () {
       body = { "a" : 1, "b" : 2 };
       doc = arango.POST_RAW(cmd1, body);
 
-      assertEqual(doc.code, 409);
+      assertEqual(doc.code, internal.errors.ERROR_HTTP_CONFLICT.code);
 
       // check it again;
       doc = arango.GET_RAW(cmd2);
@@ -277,7 +277,7 @@ function dealing_with_unique_constraintsSuite () {
       body = { "a" : 1, "b" : 3 };
       doc = arango.POST_RAW(cmd1, body);
 
-      assertEqual(doc.code, 409);
+      assertEqual(doc.code, internal.errors.ERROR_HTTP_CONFLICT.code);
 
       // check it again;
       doc = arango.GET_RAW(cmd2);
@@ -353,7 +353,7 @@ function dealing_with_unique_constraintsSuite2 () {
       body = { "a" : 2, "b" : 3 };
       doc = arango.PUT_RAW(cmd2, body);
 
-      assertEqual(doc.code, 409);
+      assertEqual(doc.code, internal.errors.ERROR_HTTP_CONFLICT.code);
 
       // check first document again;
       doc = arango.GET_RAW(cmd2);
@@ -381,7 +381,7 @@ function dealing_with_unique_constraintsSuite2 () {
       body = { "a" : 2, "b" : 4 };
       doc = arango.PUT_RAW(cmd2, body);
 
-      assertEqual(doc.code, 409);
+      assertEqual(doc.code, internal.errors.ERROR_HTTP_CONFLICT.code);
 
       // check the first document again;
       doc = arango.GET_RAW(cmd2);
@@ -442,7 +442,7 @@ function dealing_with_unique_constraintsSuite2 () {
       body = { "a" : 2, "b" : 3 };
       doc = arango.PUT_RAW(cmd2, body);
 
-      assertEqual(doc.code, 409);
+      assertEqual(doc.code, internal.errors.ERROR_HTTP_CONFLICT.code);
 
       // check first document again;
       doc = arango.GET_RAW(cmd2);
@@ -470,7 +470,7 @@ function dealing_with_unique_constraintsSuite2 () {
       body = { "a" : 2, "b" : 4 };
       doc = arango.PUT_RAW(cmd2, body);
 
-      assertEqual(doc.code, 409);
+      assertEqual(doc.code, internal.errors.ERROR_HTTP_CONFLICT.code);
 
       // check the first document again;
       doc = arango.GET_RAW(cmd2);

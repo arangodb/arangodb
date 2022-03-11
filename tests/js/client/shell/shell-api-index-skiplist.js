@@ -67,10 +67,10 @@ function creating_skip_list_index_dealing_with_unique_constraints_violationSuite
       body = { "type" : "skiplist", "unique" : true, "fields" : [ "a" ] };
       doc = arango.POST_RAW(cmd, body);
 
-      assertEqual(doc.code, 400);
+      assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
       assertTrue(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['code'], 400);
-      assertEqual(doc.parsedBody['errorNum'], 1210);
+      assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
+      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code);
     },
 
     test_does_not_create_the_index_in_case_of_violation__null_attributes: function() {
@@ -92,10 +92,10 @@ function creating_skip_list_index_dealing_with_unique_constraints_violationSuite
       body = { "type" : "skiplist", "unique" : true, "fields" : [ "a" ] };
       doc = arango.POST_RAW(cmd, body);
 
-      assertEqual(doc.code, 400);
+      assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
       assertTrue(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['code'], 400);
-      assertEqual(doc.parsedBody['errorNum'], 1210);
+      assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
+      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code);
     },
 
     test_does_not_create_the_index_in_case_of_violation__sparse_index: function() {
@@ -117,10 +117,10 @@ function creating_skip_list_index_dealing_with_unique_constraints_violationSuite
       body = { "type" : "skiplist", "unique" : true, "fields" : [ "a" ], "sparse" : true };
       doc = arango.POST_RAW(cmd, body);
 
-      assertEqual(doc.code, 400);
+      assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
       assertTrue(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['code'], 400);
-      assertEqual(doc.parsedBody['errorNum'], 1210);
+      assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
+      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code);
     },
 
     test_creates_the_index_in_case_of_null_attributes__sparse_index: function() {
@@ -198,7 +198,7 @@ function creating_documents_dealing_with_unique_constraintsSuite () {
       body = { "a" : 1, "b" : 2 };
       doc = arango.POST_RAW(cmd1, body);
 
-      assertEqual(doc.code, 409);
+      assertEqual(doc.code, internal.errors.ERROR_HTTP_CONFLICT.code);
 
       // check it again;
       doc = arango.GET_RAW(cmd2);
@@ -213,7 +213,7 @@ function creating_documents_dealing_with_unique_constraintsSuite () {
       body = { "a" : 1, "b" : 3 };
       doc = arango.POST_RAW(cmd1, body);
 
-      assertEqual(doc.code, 409);
+      assertEqual(doc.code, internal.errors.ERROR_HTTP_CONFLICT.code);
 
       // check it again;
       doc = arango.GET_RAW(cmd2);
@@ -261,7 +261,7 @@ function creating_documents_dealing_with_unique_constraintsSuite () {
       body = { "a" : 1, "b" : 2 };
       doc = arango.POST_RAW(cmd1, body);
 
-      assertEqual(doc.code, 409);
+      assertEqual(doc.code, internal.errors.ERROR_HTTP_CONFLICT.code);
 
       // check it again;
       doc = arango.GET_RAW(cmd2);
@@ -276,7 +276,7 @@ function creating_documents_dealing_with_unique_constraintsSuite () {
       body = { "a" : 1, "b" : 3 };
       doc = arango.POST_RAW(cmd1, body);
 
-      assertEqual(doc.code, 409);
+      assertEqual(doc.code, internal.errors.ERROR_HTTP_CONFLICT.code);
 
       // check it again;
       doc = arango.GET_RAW(cmd2);
@@ -352,7 +352,7 @@ function updating_documents_dealing_with_unique_constraintsSuite () {
       body = { "a" : 2, "b" : 3 };
       doc = arango.PUT_RAW(cmd2, body);
 
-      assertEqual(doc.code, 409);
+      assertEqual(doc.code, internal.errors.ERROR_HTTP_CONFLICT.code);
 
       // check first document again;
       doc = arango.GET_RAW(cmd2);
@@ -380,7 +380,7 @@ function updating_documents_dealing_with_unique_constraintsSuite () {
       body = { "a" : 2, "b" : 4 };
       doc = arango.PUT_RAW(cmd2, body);
 
-      assertEqual(doc.code, 409);
+      assertEqual(doc.code, internal.errors.ERROR_HTTP_CONFLICT.code);
 
       // check the first document again;
       doc = arango.GET_RAW(cmd2);
@@ -441,7 +441,7 @@ function updating_documents_dealing_with_unique_constraintsSuite () {
       body = { "a" : 2, "b" : 3 };
       doc = arango.PUT_RAW(cmd2, body);
 
-      assertEqual(doc.code, 409);
+      assertEqual(doc.code, internal.errors.ERROR_HTTP_CONFLICT.code);
 
       // check first document again;
       doc = arango.GET_RAW(cmd2);
@@ -469,7 +469,7 @@ function updating_documents_dealing_with_unique_constraintsSuite () {
       body = { "a" : 2, "b" : 4 };
       doc = arango.PUT_RAW(cmd2, body);
 
-      assertEqual(doc.code, 409);
+      assertEqual(doc.code, internal.errors.ERROR_HTTP_CONFLICT.code);
 
       // check the first document again;
       doc = arango.GET_RAW(cmd2);
