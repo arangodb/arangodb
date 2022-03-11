@@ -24,16 +24,16 @@ void codeToVelocypack(Code const& code, VPackBuilder& builder) {
   }
 }
 
-void arangodb::wasm::wasmFunctionToVelocypack(WasmFunction const& wasmFunction,
-                                              VPackBuilder& builder) {
+void arangodb::wasm::moduleToVelocypack(Module const& module,
+                                        VPackBuilder& builder) {
   auto ob = VPackObjectBuilder(&builder);
-  builder.add("name", VPackValue(wasmFunction.name));
+  builder.add("name", VPackValue(module.name));
   builder.add(VPackValue("code"));
-  codeToVelocypack(wasmFunction.code, builder);
-  builder.add("isDeterministic", VPackValue(wasmFunction.isDeterministic));
+  codeToVelocypack(module.code, builder);
+  builder.add("isDeterministic", VPackValue(module.isDeterministic));
 }
 
-auto checkVelocypackToWasmFunctionIsPossible(Slice slice) -> Result {
+auto checkVelocypackToModuleIsPossible(Slice slice) -> Result {
   if (!slice.isObject()) {
     return Result{TRI_ERROR_BAD_PARAMETER, "Can only parse an object"};
   }
@@ -105,28 +105,26 @@ auto velocypackToIsDeterministic(std::optional<Slice> slice) -> ResultT<bool> {
   }
 }
 
-auto arangodb::wasm::velocypackToWasmFunction(Slice slice)
-    -> ResultT<WasmFunction> {
-  std::string functionName = "velocypack2WasmFunction";
+auto arangodb::wasm::velocypackToModule(Slice slice) -> ResultT<Module> {
+  std::string functionName = "wasm::velocypackToModule";
 
-  if (auto check = checkVelocypackToWasmFunctionIsPossible(slice);
-      check.fail()) {
-    return ResultT<WasmFunction>::error(
+  if (auto check = checkVelocypackToModuleIsPossible(slice); check.fail()) {
+    return ResultT<Module>::error(
         check.errorNumber(), functionName + std::move(check).errorMessage());
   }
 
   auto name = velocypackToName(slice.get("name"));
   if (!name.ok()) {
-    return ResultT<WasmFunction>::error(
+    return ResultT<Module>::error(
         name.errorNumber(),
         functionName + ": Field 'name': " + std::move(name).errorMessage());
   }
 
   auto codeField = velocypackToCode(slice.get("code"));
   if (!codeField.ok()) {
-    return ResultT<WasmFunction>::error(
-        codeField.errorNumber(), functionName + ": Field 'code': " +
-                                     std::move(codeField).errorMessage());
+    return ResultT<Module>::error(codeField.errorNumber(),
+                                  functionName + ": Field 'code': " +
+                                      std::move(codeField).errorMessage());
   }
 
   auto isDeterministicSlice = slice.hasKey("isDeterministic")
@@ -134,14 +132,14 @@ auto arangodb::wasm::velocypackToWasmFunction(Slice slice)
                                   : std::nullopt;
   auto isDeterministic = velocypackToIsDeterministic(isDeterministicSlice);
   if (!isDeterministic.ok()) {
-    return ResultT<WasmFunction>::error(
+    return ResultT<Module>::error(
         isDeterministic.errorNumber(),
         functionName + ": Field 'isDeterministic': " +
             std::move(isDeterministic).errorMessage());
   }
 
-  return ResultT<WasmFunction>(
-      WasmFunction{name.get(), {codeField.get()}, isDeterministic.get()});
+  return ResultT<Module>(
+      Module{name.get(), {codeField.get()}, isDeterministic.get()});
 }
 
 auto uint64FromSlice(Slice slice) -> std::optional<uint64_t> {
@@ -157,29 +155,29 @@ auto uint64FromSlice(Slice slice) -> std::optional<uint64_t> {
   return std::nullopt;
 }
 
-auto arangodb::wasm::velocypackToParameters(Slice slice)
-    -> ResultT<Parameters> {
+auto arangodb::wasm::velocypackToFunctionParameters(Slice slice)
+    -> ResultT<FunctionParameters> {
   if (!slice.isObject()) {
-    return ResultT<Parameters>::error(TRI_ERROR_BAD_PARAMETER,
-                                      "Can only parse an object");
+    return ResultT<FunctionParameters>::error(TRI_ERROR_BAD_PARAMETER,
+                                              "Can only parse an object");
   }
   if (!slice.hasKey("a")) {
-    return ResultT<Parameters>::error(TRI_ERROR_BAD_PARAMETER,
-                                      "Required field 'a' is missing");
+    return ResultT<FunctionParameters>::error(TRI_ERROR_BAD_PARAMETER,
+                                              "Required field 'a' is missing");
   }
   if (!slice.hasKey("b")) {
-    return ResultT<Parameters>::error(TRI_ERROR_BAD_PARAMETER,
-                                      "Required field 'b' is missing");
+    return ResultT<FunctionParameters>::error(TRI_ERROR_BAD_PARAMETER,
+                                              "Required field 'b' is missing");
   }
   auto a = uint64FromSlice(slice.get("a"));
   if (!a.has_value()) {
-    return ResultT<Parameters>::error(TRI_ERROR_BAD_PARAMETER,
-                                      "Field a: Should be an unsigned integer");
+    return ResultT<FunctionParameters>::error(
+        TRI_ERROR_BAD_PARAMETER, "Field a: Should be an unsigned integer");
   }
   auto b = uint64FromSlice(slice.get("b"));
   if (!b.has_value()) {
-    return ResultT<Parameters>::error(TRI_ERROR_BAD_PARAMETER,
-                                      "Field b: Should be an unsigned integer");
+    return ResultT<FunctionParameters>::error(
+        TRI_ERROR_BAD_PARAMETER, "Field b: Should be an unsigned integer");
   }
-  return Parameters{a.value(), b.value()};
+  return FunctionParameters{a.value(), b.value()};
 }

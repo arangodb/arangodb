@@ -39,14 +39,15 @@ namespace arangodb::wasm {
 
 struct WasmVmMethods {
   virtual ~WasmVmMethods() = default;
-  virtual auto createWasmUdf(WasmFunction const& function) const
+  virtual auto addModule(Module const& module) const
       -> futures::Future<Result> = 0;
-  virtual auto deleteWasmUdf(std::string const& functionName) const
+  virtual auto deleteModule(std::string const& name) const
       -> futures::Future<Result> = 0;
-  virtual auto getAllWasmUdfs() const
-      -> futures::Future<std::unordered_map<std::string, WasmFunction>> = 0;
-  virtual auto executeWasmUdf(std::string const& name, uint64_t a,
-                              uint64_t b) const
+  virtual auto allModules() const
+      -> futures::Future<std::unordered_map<std::string, Module>> = 0;
+  virtual auto executeFunction(std::string const& moduleName,
+                               std::string const& functionName,
+                               FunctionParameters const& parameters) const
       -> futures::Future<std::optional<uint64_t>> = 0;
   static auto createInstance(TRI_vocbase_t& vocbase)
       -> std::shared_ptr<WasmVmMethods>;

@@ -31,61 +31,58 @@ void WasmServerFeature::collectOptions(
 void WasmServerFeature::validateOptions(
     std::shared_ptr<options::ProgramOptions>) {}
 
-void WasmServerFeature::addFunction(wasm::WasmFunction const& function) {
-  _guardedFunctions.doUnderLock(
-      [&function](GuardedFunctions& guardedFunctions) {
-        guardedFunctions._functions.insert_or_assign(function.name, function);
-      });
+void WasmServerFeature::addModule(wasm::Module const& module) {
+  _guardedModules.doUnderLock([&module](GuardedModules& guardedModules) {
+    guardedModules._modules.insert_or_assign(module.name, module);
+  });
 }
 
-auto WasmServerFeature::loadFunction(std::string const& name)
+auto WasmServerFeature::loadModule(std::string const& name)
     -> std::optional<wasm3::module> {
-  auto function =
-      _guardedFunctions.doUnderLock([&name](GuardedFunctions& guardedFunctions)
-                                        -> std::optional<wasm::WasmFunction> {
-        auto maybef = guardedFunctions._functions.find(name);
-        if (maybef == std::end(guardedFunctions._functions)) {
+  auto module = _guardedModules.doUnderLock(
+      [&name](GuardedModules& guardedModules) -> std::optional<wasm::Module> {
+        auto maybef = guardedModules._modules.find(name);
+        if (maybef == std::end(guardedModules._modules)) {
           return std::nullopt;
         } else {
           return maybef->second;
         }
       });
-  if (function.has_value()) {
-    return environment.parse_module(function.value().code.bytes.data(),
-                                    function.value().code.bytes.size());
+  if (module.has_value()) {
+    return environment.parse_module(module.value().code.bytes.data(),
+                                    module.value().code.bytes.size());
   } else {
     return std::nullopt;
   }
 }
 
-auto WasmServerFeature::executeFunction(std::string const& name, uint64_t a,
-                                        uint64_t b) -> std::optional<uint64_t> {
-  auto module = loadFunction(name);
+auto WasmServerFeature::executeFunction(
+    std::string const& moduleName, std::string const& functionName,
+    wasm::FunctionParameters const& parameters) -> std::optional<uint64_t> {
+  auto module = loadModule(moduleName);
   auto runtime = environment.new_runtime(1024);
   if (!module.has_value()) {
     return std::nullopt;
   }
 
   runtime.load(module.value());
-  auto function = runtime.find_function(name.c_str());
+  auto function = runtime.find_function(functionName.c_str());
   if (function.fail()) {
     return std::nullopt;
   }
 
-  return function.get().call<uint64_t>(a, b);
+  return function.get().call<uint64_t>(parameters.a, parameters.b);
 }
 
-void WasmServerFeature::deleteFunction(std::string const& functionName) {
-  _guardedFunctions.doUnderLock(
-      [&functionName](GuardedFunctions& guardedFunctions) {
-        guardedFunctions._functions.erase(functionName);
-      });
+void WasmServerFeature::deleteModule(std::string const& name) {
+  _guardedModules.doUnderLock([&name](GuardedModules& guardedModules) {
+    guardedModules._modules.erase(name);
+  });
 }
 
-auto WasmServerFeature::getAllFunctions() const
-    -> std::unordered_map<std::string, wasm::WasmFunction> {
-  return _guardedFunctions.doUnderLock(
-      [&](GuardedFunctions const& guardedFunctions) {
-        return guardedFunctions._functions;
-      });
+auto WasmServerFeature::allModules() const
+    -> std::unordered_map<std::string, wasm::Module> {
+  return _guardedModules.doUnderLock([&](GuardedModules const& guardedModules) {
+    return guardedModules._modules;
+  });
 }

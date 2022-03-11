@@ -74,13 +74,13 @@ auto RestWasmHandler::executeByMethod(WasmVmMethods const& methods)
 
 auto RestWasmHandler::handleGetRequest(WasmVmMethods const& methods)
     -> RestStatus {
-  auto allFunctions = methods.getAllWasmUdfs().get();
+  auto savedModules = methods.allModules().get();
 
   VPackBuilder builder;
   {
     VPackArrayBuilder ob(&builder);
-    for (auto const& function : allFunctions) {
-      arangodb::wasm::wasmFunctionToVelocypack(function.second, builder);
+    for (auto const& function : savedModules) {
+      arangodb::wasm::moduleToVelocypack(function.second, builder);
     }
   }
   generateOk(rest::ResponseCode::OK, builder.slice());
@@ -100,7 +100,7 @@ auto RestWasmHandler::handleDeleteRequest(WasmVmMethods const& methods)
         "RestWasmHandler Expects name of removable function as string");
   }
 
-  methods.deleteWasmUdf(slice.copyString());
+  methods.deleteModule(slice.copyString());
 
   VPackBuilder builder;
   {
@@ -111,37 +111,42 @@ auto RestWasmHandler::handleDeleteRequest(WasmVmMethods const& methods)
   return RestStatus::DONE;
 }
 
-auto addWasmFunction(VPackSlice slice, wasm::WasmVmMethods const& methods,
-                     VPackBuilder& response) -> Result {
-  ResultT<WasmFunction> function =
-      arangodb::wasm::velocypackToWasmFunction(slice);
-  if (function.fail()) {
-    return Result{function.errorNumber(), function.errorMessage()};
+auto addWasmModule(VPackSlice slice, wasm::WasmVmMethods const& methods,
+                   VPackBuilder& response) -> Result {
+  ResultT<Module> module = arangodb::wasm::velocypackToModule(slice);
+  if (module.fail()) {
+    return Result{module.errorNumber(), module.errorMessage()};
   }
 
-  auto create = methods.createWasmUdf(function.get());
+  auto create = methods.addModule(module.get());
 
   {
     VPackObjectBuilder ob1(&response);
     response.add(VPackValue("installed"));
-    arangodb::wasm::wasmFunctionToVelocypack(function.get(), response);
+    arangodb::wasm::moduleToVelocypack(module.get(), response);
   }
   return Result{};
 }
 
-auto executeWasmFunction(std::string const& functionname, VPackSlice slice,
+auto executeWasmFunction(std::string const& moduleName,
+                         std::string const& functionName, VPackSlice slice,
                          wasm::WasmVmMethods const& methods,
                          VPackBuilder& response) -> Result {
-  auto parameters = arangodb::wasm::velocypackToParameters(slice);
-  if (!parameters.ok()) {
-    return Result{parameters.errorNumber(), parameters.errorMessage()};
+  auto functionParameters =
+      arangodb::wasm::velocypackToFunctionParameters(slice);
+  if (!functionParameters.ok()) {
+    return Result{functionParameters.errorNumber(),
+                  functionParameters.errorMessage()};
   }
-  auto [a, b] = parameters.get();
 
-  auto result = methods.executeWasmUdf(functionname, a, b).get();
+  auto result =
+      methods
+          .executeFunction(moduleName, functionName, functionParameters.get())
+          .get();
   if (!result.has_value()) {
-    return Result{TRI_ERROR_BAD_PARAMETER,
-                  "Function '" + functionname + "' cannot be found"};
+    return Result{TRI_ERROR_BAD_PARAMETER, "Function '" + functionName +
+                                               "' in module '" + moduleName +
+                                               "' cannot be found"};
   }
 
   {
@@ -162,15 +167,16 @@ auto RestWasmHandler::handlePostRequest(WasmVmMethods const& methods)
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
   VPackBuilder response;
   if (suffixes.size() == 0) {
-    auto result = addWasmFunction(slice, methods, response);
+    auto result = addWasmModule(slice, methods, response);
     if (result.fail()) {
       generateError(ResponseCode::BAD, result.errorNumber(),
                     result.errorMessage());
     } else {
       generateOk(rest::ResponseCode::CREATED, response.slice());
     }
-  } else if (suffixes.size() == 1) {
-    auto result = executeWasmFunction(suffixes[0], slice, methods, response);
+  } else if (suffixes.size() == 2) {
+    auto result =
+        executeWasmFunction(suffixes[0], suffixes[1], slice, methods, response);
     if (result.fail()) {
       generateError(ResponseCode::BAD, result.errorNumber(),
                     result.errorMessage());
@@ -178,10 +184,10 @@ auto RestWasmHandler::handlePostRequest(WasmVmMethods const& methods)
       generateOk(rest::ResponseCode::OK, response.slice());
     }
   } else {
-    generateError(
-        ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
-        "POST without suffix to add a function, POST with functionname as "
-        "suffix to exectue the function. More than one suffix is not allowed");
+    generateError(ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+                  "Use POST without suffix to add a function, POST with "
+                  "modulename and functionname as "
+                  "suffixes to exectue the function.");
   }
   return RestStatus::DONE;
 }

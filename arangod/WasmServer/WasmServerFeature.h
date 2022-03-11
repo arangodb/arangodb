@@ -42,19 +42,20 @@ class WasmServerFeature final : public ArangodFeature {
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override;
-  void addFunction(wasm::WasmFunction const& function);
-  auto loadFunction(std::string const& name) -> std::optional<wasm3::module>;
-  auto executeFunction(std::string const& name, uint64_t a, uint64_t b)
+  void addModule(wasm::Module const& module);
+  auto loadModule(std::string const& name) -> std::optional<wasm3::module>;
+  auto executeFunction(std::string const& moduleName,
+                       std::string const& functionName,
+                       wasm::FunctionParameters const& parameters)
       -> std::optional<uint64_t>;
-  void deleteFunction(std::string const& functionName);
-  auto getAllFunctions() const
-      -> std::unordered_map<std::string, wasm::WasmFunction>;
+  void deleteModule(std::string const& name);
+  auto allModules() const -> std::unordered_map<std::string, wasm::Module>;
 
  private:
-  struct GuardedFunctions {
-    std::unordered_map<std::string, wasm::WasmFunction> _functions;
+  struct GuardedModules {
+    std::unordered_map<std::string, wasm::Module> _modules;
   };
-  Guarded<GuardedFunctions> _guardedFunctions;
+  Guarded<GuardedModules> _guardedModules;
 
   wasm3::environment environment;
 };

@@ -37,28 +37,29 @@ struct WasmVmMethodsSingleServer final
   explicit WasmVmMethodsSingleServer(TRI_vocbase_t& vocbase)
       : vocbase(vocbase){};
 
-  auto createWasmUdf(WasmFunction const& function) const
+  auto addModule(Module const& module) const
       -> futures::Future<Result> override {
-    vocbase.server().getFeature<WasmServerFeature>().addFunction(function);
+    vocbase.server().getFeature<WasmServerFeature>().addModule(module);
     return Result{TRI_ERROR_NO_ERROR};
   }
 
-  auto deleteWasmUdf(std::string const& functionName) const
+  auto deleteModule(std::string const& name) const
       -> futures::Future<Result> override {
-    vocbase.server().getFeature<WasmServerFeature>().deleteFunction(
-        functionName);
+    vocbase.server().getFeature<WasmServerFeature>().deleteModule(name);
     return Result{TRI_ERROR_NO_ERROR};
   }
 
-  auto getAllWasmUdfs() const -> futures::Future<
-      std::unordered_map<std::string, WasmFunction>> override {
-    return vocbase.server().getFeature<WasmServerFeature>().getAllFunctions();
+  auto allModules() const
+      -> futures::Future<std::unordered_map<std::string, Module>> override {
+    return vocbase.server().getFeature<WasmServerFeature>().allModules();
   }
 
-  auto executeWasmUdf(std::string const& name, uint64_t a, uint64_t b) const
+  auto executeFunction(std::string const& moduleName,
+                       std::string const& functionName,
+                       FunctionParameters const& parameters) const
       -> futures::Future<std::optional<uint64_t>> override {
     return vocbase.server().getFeature<WasmServerFeature>().executeFunction(
-        name, a, b);
+        moduleName, functionName, parameters);
   }
 
   TRI_vocbase_t& vocbase;

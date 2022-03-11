@@ -38,24 +38,22 @@ struct Code {
   auto operator==(Code const& function) const -> bool = default;
 };
 
-struct WasmFunction {
+struct Module {
   std::string name;
   Code code;
   bool isDeterministic;
-  auto operator==(WasmFunction const& function) const -> bool = default;
+  auto operator==(Module const& function) const -> bool = default;
 };
 
-struct Parameters {
+struct FunctionParameters {
   uint64_t a;
   uint64_t b;
-  auto operator==(Parameters const& parameters) const -> bool = default;
+  auto operator==(FunctionParameters const& parameters) const -> bool = default;
 };
 
-auto velocypackToWasmFunction(arangodb::velocypack::Slice slice)
-    -> ResultT<WasmFunction>;
-void wasmFunctionToVelocypack(WasmFunction const& wasmFunction,
-                              VPackBuilder& builder);
-auto velocypackToParameters(arangodb::velocypack::Slice slice)
-    -> ResultT<Parameters>;
+auto velocypackToModule(arangodb::velocypack::Slice slice) -> ResultT<Module>;
+void moduleToVelocypack(Module const& wasmFunction, VPackBuilder& builder);
+auto velocypackToFunctionParameters(arangodb::velocypack::Slice slice)
+    -> ResultT<FunctionParameters>;
 
 }  // namespace arangodb::wasm
