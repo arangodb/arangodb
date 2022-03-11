@@ -71,7 +71,7 @@ auto getParticipantsAcceptableAsLeaders(
   // already the leader
   auto acceptableLeaderSet = std::vector<ParticipantId>{};
   for (auto const& [participant, flags] : participants) {
-    if (participant != currentLeader and (not flags.excluded)) {
+    if (participant != currentLeader and flags.allowedAsLeader) {
       acceptableLeaderSet.emplace_back(participant);
     }
   }
@@ -177,7 +177,7 @@ auto leaderInTarget(ParticipantId const& targetLeader,
     auto const& planLeaderConfig =
         plan.participantsConfig.participants.at(targetLeader);
 
-    if (planLeaderConfig.forced != true || planLeaderConfig.excluded == true) {
+    if (planLeaderConfig.forced != true || !planLeaderConfig.allowedAsLeader) {
       return ErrorAction(LogCurrentSupervisionError::TARGET_LEADER_EXCLUDED);
     }
 
@@ -222,7 +222,7 @@ auto runElectionCampaign(LogCurrentLocalStates const& states,
   for (auto const& [participant, status] : states) {
     auto const excluded =
         participantsConfig.participants.contains(participant) and
-        participantsConfig.participants.at(participant).excluded;
+        not participantsConfig.participants.at(participant).allowedAsLeader;
     auto const healthy = health.notIsFailed(participant);
     auto reason = computeReason(status, healthy, excluded, term);
     election.detail.emplace(participant, reason);
@@ -306,7 +306,7 @@ auto desiredParticipantFlags(std::optional<ParticipantId> const& targetLeader,
   if (targetParticipant == targetLeader and
       targetParticipant != currentTermLeader) {
     auto flags = targetFlags;
-    if (!flags.excluded) {
+    if (flags.allowedAsLeader) {
       flags.forced = true;
     }
     return flags;

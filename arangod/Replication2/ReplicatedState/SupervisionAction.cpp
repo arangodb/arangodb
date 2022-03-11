@@ -47,11 +47,12 @@ void Executor::operator()(AddParticipantAction const& action) {
       statePlanPath->participants()->participant(action.participant);
 
   envelope = envelope.write()
-                 .emplace_object(
-                     logTargetParticipantPath->str(),
-                     [&](VPackBuilder& builder) {
-                       ParticipantFlags{.excluded = true}.toVelocyPack(builder);
-                     })
+                 .emplace_object(logTargetParticipantPath->str(),
+                                 [&](VPackBuilder& builder) {
+                                   ParticipantFlags{.allowedInQuorum = false,
+                                                    .allowedAsLeader = false}
+                                       .toVelocyPack(builder);
+                                 })
                  .emplace_object(statePlanParticipantPath->str(),
                                  [&](VPackBuilder& builder) {
                                    agency::Plan::Participant{

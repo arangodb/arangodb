@@ -70,11 +70,13 @@ TEST(AgencyLogSpecificationTest, log_plan_term_specification) {
       "participants": {
         "p1": {
           "forced": true,
-          "excluded": false
+          "allowedInQuorum": false,
+          "allowedAsLeader": true
         },
         "p2": {
           "forced": false,
-          "excluded": false
+          "allowedInQuorum": true,
+          "allowedAsLeader": true
         }
       }
     }
