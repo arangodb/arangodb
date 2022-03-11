@@ -106,7 +106,7 @@ class Utf8Helper {
   /// collation?
   //////////////////////////////////////////////////////////////////////////////
 
-  bool setCollatorLanguage(std::string const& lang, void* icuDataPointer,
+  bool setCollatorLanguage(std::string_view lang, void* icuDataPointer,
                            LanguageType langType);
 
   //////////////////////////////////////////////////////////////////////////////

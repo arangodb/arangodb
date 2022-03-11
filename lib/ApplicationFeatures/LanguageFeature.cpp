@@ -83,15 +83,12 @@ void setLocale(icu::Locale& locale) {
 
 arangodb::basics::LanguageType getLanguageType(std::string_view default_lang,
                                                std::string_view icu_lang) {
-  bool isDefaultSet = !default_lang.empty();
-  bool isIcuSet = !icu_lang.empty();
-
-  if (isDefaultSet && isIcuSet) {
-    return arangodb::basics::LanguageType::INVALID;
-  } else if (isIcuSet) {
+  if (icu_lang.empty()) {
+    return arangodb::basics::LanguageType::DEFAULT;
+  } else if (default_lang.empty()) {
     return arangodb::basics::LanguageType::ICU;
   } else {
-    return arangodb::basics::LanguageType::DEFAULT;
+    return arangodb::basics::LanguageType::INVALID;
   }
 }
 
@@ -260,13 +257,18 @@ void LanguageFeature::resetLanguage(std::string_view language,
   _langType = type;
   _defaultLanguage.clear();
   _icuLanguage.clear();
-  if (LanguageType::DEFAULT == _langType) {
-    _defaultLanguage = language;
-  } else if (LanguageType::ICU == _langType) {
-    _icuLanguage = language;
-  } else {
-    TRI_ASSERT(false);
-    return;
+  switch(_langType) {
+    case LanguageType::DEFAULT:
+      _defaultLanguage = language;
+      break;
+
+    case LanguageType::ICU:
+      _defaultLanguage = language;
+      break;
+
+    case LanguageType::INVALID:
+      TRI_ASSERT(false);
+      return;
   }
 
   ::setCollator(language.data(), _icuDataPtr, _langType);

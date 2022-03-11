@@ -105,10 +105,18 @@ ErrorCode writeLanguage(arangodb::ArangodServer& server, std::string_view lang,
   VPackBuilder builder;
   try {
     builder.openObject();
-    if (LanguageType::DEFAULT == currLangType) {
-      builder.add(kDefaultLangKey, VPackValue(lang));
-    } else {
-      builder.add(kIcuLangKey, VPackValue(lang));
+    switch(currLangType) {
+      case LanguageType::DEFAULT:
+        builder.add(kDefaultLangKey, VPackValue(lang));
+        break;
+
+      case LanguageType::ICU:
+        builder.add(kIcuLangKey, VPackValue(lang));
+        break;
+
+      case LanguageType::INVALID:
+        TRI_ASSERT(false);
+        break;
     }
 
     builder.close();
@@ -142,8 +150,8 @@ ErrorCode writeLanguage(arangodb::ArangodServer& server, std::string_view lang,
   return TRI_ERROR_NO_ERROR;
 }
 
-std::tuple<std::string, LanguageType> getOrSetPreviousLanguage(
-    arangodb::ArangodServer& server, std::string collatorLang,
+std::tuple<std::string_view, LanguageType> getOrSetPreviousLanguage(
+    arangodb::ArangodServer& server, std::string_view collatorLang,
     LanguageType currLangType) {
   std::string prevLanguage;
   LanguageType prevType;
@@ -174,15 +182,10 @@ void LanguageCheckFeature::start() {
   using namespace arangodb::basics;
 
   auto& feature = server().getFeature<LanguageFeature>();
-  std::string_view currLang;
-  LanguageType currLangType;
-  std::tie(currLang, currLangType) = feature.getLanguage();
+  auto [currLang, currLangType] = feature.getLanguage();
   auto collatorLang = feature.getCollatorLanguage();
 
-  std::string prevLang;
-  LanguageType prevLangType = LanguageType::INVALID;  // default value
-  std::tie(prevLang, prevLangType) =
-      ::getOrSetPreviousLanguage(server(), collatorLang, currLangType);
+  auto [prevLang, prevLangType] = ::getOrSetPreviousLanguage(server(), collatorLang, currLangType);
 
   if (LanguageType::INVALID == currLangType) {
     LOG_TOPIC("7ef61", FATAL, arangodb::Logger::CONFIG)

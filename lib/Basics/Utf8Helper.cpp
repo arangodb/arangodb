@@ -145,7 +145,7 @@ int Utf8Helper::compareUtf16(uint16_t const* left, size_t leftLength,
                         (const UChar*)right, (int32_t)rightLength);
 }
 
-bool Utf8Helper::setCollatorLanguage(std::string const& lang,
+bool Utf8Helper::setCollatorLanguage(std::string_view lang,
                                      void* icuDataPointer,
                                      LanguageType langType) {
   if (icuDataPointer == nullptr) {
@@ -180,7 +180,7 @@ bool Utf8Helper::setCollatorLanguage(std::string const& lang,
     // get default collator for empty language
     coll = icu::Collator::createInstance(status);
   } else {
-    icu::Locale locale(lang.c_str());
+    icu::Locale locale(lang.data());
     coll = icu::Collator::createInstance(locale, status);
   }
 
