@@ -335,10 +335,18 @@ Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(Step* step) {
     if (res.fail()) {
       return res;
     }
-    _stats.incrFiltered(
-        Helper::getNumericValue<size_t>(resSlice, "filtered", 0));
     _stats.incrScannedIndex(
         Helper::getNumericValue<size_t>(resSlice, "readIndex", 0));
+    _stats.incrFiltered(
+        Helper::getNumericValue<size_t>(resSlice, "filtered", 0));
+    _stats.incrCursorsCreated(
+        Helper::getNumericValue<size_t>(resSlice, "cursorsCreated", 0));
+    _stats.incrCursorsRearmed(
+        Helper::getNumericValue<size_t>(resSlice, "cursorsRearmed", 0));
+    _stats.incrCacheHits(
+        Helper::getNumericValue<size_t>(resSlice, "cacheHits", 0));
+    _stats.incrCacheMisses(
+        Helper::getNumericValue<size_t>(resSlice, "cacheMisses", 0));
 
     bool allCached = true;
     VPackSlice edges = resSlice.get("edges");
@@ -346,7 +354,7 @@ Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(Step* step) {
       VPackSlice id = e.get(StaticStrings::IdString);
       if (!id.isString()) {
         // invalid id type
-        LOG_TOPIC("eb7cd", ERR, Logger::GRAPHS)
+        LOG_TOPIC("eb7cd", WARN, Logger::GRAPHS)
             << "got invalid edge id type: " << id.typeName();
         continue;
       }
