@@ -1,8 +1,86 @@
 v3.9.1 (XXXX-XX-XX)
 -------------------
 
-* Bug-Fix: Resolve BTS-673/Issue #15107, a spliced subquery could return
-  too few results
+* Bug-Fix: Resolve BTS-673/Issue #15107, a spliced subquery could return too few
+  results.
+
+* Fix UI to only fetch license info as admin user.
+
+* Added `disableIndex` index hint for AQL FOR loops. This index hint disables
+  the usage of any index (except geo or full text indexes) and will cause a full
+  scan over the collection.
+  In some circumstances a full scan can be more efficient than an index scan,
+  for example if the index scan produces many matches (close to the number of
+  documents in the collection) and the index is not fully covering the query.
+  The `disableIndex` hint can be given per FOR loop in the query, e.g.:
+
+      FOR doc IN collection OPTIONS { disableIndex: true }
+        RETURN doc.value
+
+  The default value of `disableIndex` is `false`.
+  In case a different index hint is provided, `disableIndex: true` takes
+  precendence and produces a warning about the ambiguous settings.
+
+* Added `maxProjections` hint for AQL FOR loops. This hint can be used to set
+  the maximum number of document attributes that are taken into account for
+  using projections.
+
+  For example, in the following query, no projections will be used because the
+  number of potential projection attributes (`value1`, value2`, `value3`) is
+  higher than the maximum number of projection attributes set via the
+  `maxProjections` option:
+
+      FOR doc IN collection OPTIONS { maxProjections: 2 }
+        RETURN [ doc.value1, doc.value2, doc.value3 ]
+
+  The default value for `maxProjections` is `5`, which is compatible with the
+  previous hard-coded default value.
+
+* Avoid a deadlock in agency, when Inception::gossip() acquired a mutex, then
+  could call Agent under the mutex, and Agent could finally could call
+  Inception::signalConditionVar(), which would try to acquire the mutex again.
+
+* Avoid multiple parallel SIGHUP requests to be handled at the same time.
+  Now collapse multiple incoming SIGHUP requests into a single one, which can be
+  executed race-free.
+
+* Upgraded JavaScript "i" module from 0.3.6 to 0.3.7.
+
+* Removed internal JavaScript dependencies "mocha" and "chalk". We recommend
+  always bundling your own copy of third-party modules, even ones listed as
+  public.
+
+* Reduce memory usage of inner joins if they were performed by the IndexExecutor
+  with dynamic index lookup expressions that needed to be recomputed for input
+  from the outer loop.
+
+  For example, in the query
+  ```
+  FOR i IN 1..1000
+    FOR doc IN collection
+      FILTER doc.indexAttribute == i
+      RETURN doc
+  ```
+  the inner loop will be executed 1000 times. The IndexExecutor in the inner
+  loop needed to rebuild the index lookup attribute from the value of `i` 1000
+  times as well. The memory for index lookup attributes came from the Ast's
+  memory allocator and was not freed until the end of the query. In this query,
+  it would mean that up to 1000 lookup values were held in memory. With larger
+  inputs even more memory would be used.
+
+  Now the memory for index lookup values is freed when a new lookup value is
+  computed, i.e. only a single lookup value is held in memory.
+  This drastically reduces peak memory usage for queries that use index lookups
+  in inner loops and that get lots of different inputs from outer loops.
+
+* Harden validator for binary VelocyPack against additional types of malicious
+  inputs.
+
+* Bugfix: DC-2-DC Disjoint-SmartGraphs and Hybrid-SmartGraphs are now replicated
+  to the follower data-center keeping their sharding intact.
+
+* As we are now in constant stall regime, stall onset and warnings are demoted
+  to DEBUG.
 
 * Shorten the license grace period to the documented 3 hours.
 
