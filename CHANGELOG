@@ -1,6 +1,8 @@
 devel
 -----
 
+* Updated arangosync to 2.9.0.
+
 * Speed up initial sync (in case there is already data present) by prefetching
   data from leader.
 
