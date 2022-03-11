@@ -32,14 +32,9 @@ const internal = require('internal');
 ////////////////////////////////////////////////////////////////////////////////
 function httpRequestsFuzzerTestSuite() {
     return {
-        // TO BE ADDED IF MUST PREPARE OR CLEANUP SOMETHING
-        setUpAll: function () {
+        setUpAll: function () {},
 
-        },
-
-        tearDownAll: function () {
-
-        },
+        tearDownAll: function () {},
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief CoordinatorMetricsTestSuite tests
@@ -47,27 +42,24 @@ function httpRequestsFuzzerTestSuite() {
         testRandReqs: function () {
             for (let i = 0; i < 15; ++i) {
                 let response;
-                try {
-                    response = arango.fuzzRequests(200000, i);
-                } finally {
-                    assertTrue(response.hasOwnProperty("seed"));
-                    assertTrue(response.hasOwnProperty("total-requests"));
-                    let numReqs = response["total-requests"];
-                    let tempSum = 0;
-                    //let keys = Object.keys(response);
-                    for (const [key, value] of Object.entries(response)) {
-                        if (key !== "total-requests" && key !== "seed") {
-                            if (key == "return-codes") {
-                                for (const [, innerValue] of Object.entries(response[key])) {
-                                    tempSum += innerValue;
-                                }
-                            } else {
-                                tempSum += value;
+                response = arango.fuzzRequests(200000, i);
+                assertTrue(response.hasOwnProperty("seed"));
+                assertTrue(response.hasOwnProperty("total-requests"));
+                let numReqs = response["total-requests"];
+                let tempSum = 0;
+                //let keys = Object.keys(response);
+                for (const [key, value] of Object.entries(response)) {
+                    if (key !== "total-requests" && key !== "seed") {
+                        if (key === "return-codes") {
+                            for (const [, innerValue] of Object.entries(response[key])) {
+                                tempSum += innerValue;
                             }
+                        } else {
+                            tempSum += value;
                         }
                     }
-                    assertEqual(numReqs, tempSum);
                 }
+                assertEqual(numReqs, tempSum);
             }
         },
 

@@ -1044,7 +1044,6 @@ static void ClientConnection_httpFuzzRequests(
 
   uint32_t reqsWithoutCode = 0;
   for (uint32_t i = 0; i < numReqs; ++i) {
-    // httpFuzzRequest(v8connection, isolate, args, fuzzer.get());
     velocypack::Builder builder;
     TRI_V8ToVPack(isolate, builder, v8connection->requestFuzz(isolate, fuzzer),
                   false);
