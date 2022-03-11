@@ -1,6 +1,9 @@
 devel
 -----
 
+* Speed up initial sync (in case there is already data present) by prefetching
+  data from leader.
+
 * Escape each key in attribute paths of nested attributes in the query explain
   output for SEARCH queries that utilize the primary sort order.
 
