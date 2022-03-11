@@ -91,7 +91,78 @@ function CreateSuite () {
   };
 }
 
-function VPackIndexCacheSuite (type, unique, cacheEnabled) {
+function VPackIndexCacheModifySuite (unique) {
+  const internal = require('internal');
+  const canUseFailAt =  internal.debugCanUseFailAt();
+
+  const cn = "UnitTestsCollection";
+  const n = 10000;
+  
+  let setFailurePointForPointLookup = () => {
+    if (canUseFailAt) {
+      internal.debugSetFailAt("VPackIndexFailWithoutCache");
+    }
+  };
+
+  let insertDocuments = () => {
+    let c = db._collection(cn);
+    let docs = [];
+    for (let i = 0; i < n; ++i) {
+      docs.push({ _key: "test" + i, value: i });
+      if (docs.length === 1000) {
+        c.insert(docs);
+        docs = [];
+      }
+    }
+  };
+
+  return {
+    setUp: function () {
+      db._drop(cn);
+      let c = db._create(cn);
+
+      insertDocuments();
+      
+      if (canUseFailAt) {
+        internal.debugClearFailAt();
+      }
+
+      c.ensureIndex({ type: "persistent", fields: ["value"], name: "UnitTestsIndex", unique, cacheEnabled: true });
+    },
+    
+    tearDown: function () {
+      if (canUseFailAt) {
+        internal.debugClearFailAt();
+      }
+      db._drop(cn);
+    },
+
+    testPointLookupAndTruncate: function () {
+      setFailurePointForPointLookup();
+
+      for (let tries = 0; tries < 3; ++tries) {
+        if (tries !== 0) {
+          db[cn].truncate();
+          insertDocuments();
+        }
+        let qres = db._query(`FOR i IN 0..999 FOR doc IN ${cn} FILTER doc.value == i RETURN doc`);
+        let result = qres.toArray();
+        assertEqual(1000, result.length, tries);
+        for (let i = 0; i < result.length; ++i) {
+          const doc = result[i];
+          assertEqual("test" + i, doc._key);
+          assertEqual(i, doc.value);
+        }
+        let stats = qres.getExtra().stats;
+        assertEqual(0, stats.cacheHits, stats);
+        assertEqual(1000, stats.cacheMisses, stats);
+      }
+    },
+
+  };
+}
+
+function VPackIndexCacheReadOnlySuite (unique, cacheEnabled) {
   const internal = require('internal');
   const canUseFailAt =  internal.debugCanUseFailAt();
 
@@ -114,7 +185,9 @@ function VPackIndexCacheSuite (type, unique, cacheEnabled) {
   };
 
   return {
-    setUpAll: function () {
+    // we can't use setUpAll here because we need new cache instances for
+    // the collection for each test case.
+    setUp: function () {
       db._drop(cn);
       let c = db._create(cn);
 
@@ -126,26 +199,21 @@ function VPackIndexCacheSuite (type, unique, cacheEnabled) {
           docs = [];
         }
       }
-
-      c.ensureIndex({ type, fields: ["value1", "value2"], name: "UnitTestsIndex", unique, cacheEnabled });
-    },
-    
-    tearDownAll: function () {
-      db._drop(cn);
-    },
-
-    setUp: function () {
+      
       if (canUseFailAt) {
         internal.debugClearFailAt();
       }
-    },
 
+      c.ensureIndex({ type: "persistent", fields: ["value1", "value2"], name: "UnitTestsIndex", unique, cacheEnabled });
+    },
+    
     tearDown: function () {
       if (canUseFailAt) {
         internal.debugClearFailAt();
       }
+      db._drop(cn);
     },
-    
+
     testFailurePoints: function () {
       if (canUseFailAt) {
         // test opposite failure point
@@ -156,7 +224,7 @@ function VPackIndexCacheSuite (type, unique, cacheEnabled) {
         }
 
         try {
-          db._query(`FOR doc IN ${cn} FILTER doc.value1 == 123 RETURN doc`);
+          db._query(`FOR doc IN ${cn} FILTER doc.value1 == 123 && doc.value2 == 'testmann00123' RETURN doc`);
           fail();
         } catch (err) {
           assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
@@ -188,8 +256,9 @@ function VPackIndexCacheSuite (type, unique, cacheEnabled) {
       for (let i = 0; i < n; ++i) {
         assertEqual(i, result[i]);
       }
-      assertEqual(0, qres.getExtra().stats.cacheHits);
-      assertEqual(0, qres.getExtra().stats.cacheMisses);
+      let stats = qres.getExtra().stats;
+      assertEqual(0, stats.cacheHits, stats);
+      assertEqual(0, stats.cacheMisses, stats);
     },
     
     testRangeScanNonCovering: function () {
@@ -205,8 +274,9 @@ function VPackIndexCacheSuite (type, unique, cacheEnabled) {
         assertEqual(i + 10, doc.value1);
         assertEqual("testmann" + String(i + 10).padStart(5, "0"), doc.value2);
       }
-      assertEqual(0, qres.getExtra().stats.cacheHits);
-      assertEqual(0, qres.getExtra().stats.cacheMisses);
+      let stats = qres.getExtra().stats;
+      assertEqual(0, stats.cacheHits, stats);
+      assertEqual(0, stats.cacheMisses, stats);
     },
     
     testRangeScanCovering: function () {
@@ -219,36 +289,53 @@ function VPackIndexCacheSuite (type, unique, cacheEnabled) {
       for (let i = 0; i < result.length; ++i) {
         assertEqual(i + 10, result[i]);
       }
-      assertEqual(0, qres.getExtra().stats.cacheHits);
-      assertEqual(0, qres.getExtra().stats.cacheMisses);
+      let stats = qres.getExtra().stats;
+      assertEqual(0, stats.cacheHits, stats);
+      assertEqual(0, stats.cacheMisses, stats);
     },
     
-    testPointLookupNonCovering1: function () {
+    testPointLookupOnlyMissesPartialCoverage: function () {
+      setFailurePointIfCacheUsed();
+
+      for (let tries = 0; tries < (cacheEnabled ? 10 : 1); ++tries) {
+        let qres = db._query(`FOR i IN 0..999 FOR doc IN ${cn} FILTER doc.value1 == 50000 + i RETURN doc`);
+        let result = qres.toArray();
+        assertEqual(0, result.length);
+        let stats = qres.getExtra().stats;
+        assertEqual(0, stats.cacheHits, stats);
+        assertEqual(0, stats.cacheMisses, stats);
+      }
+    },
+    
+    testPointLookupOnlyMissesFullCoverage: function () {
       setFailurePointForPointLookup();
 
-      for (let tries = 0; tries < (cacheEnabled ? 3 : 1); ++tries) {
-        let qres = db._query(`FOR i IN 0..999 FOR doc IN ${cn} FILTER doc.value1 == i RETURN doc`);
+      for (let tries = 0; tries < (cacheEnabled ? 10 : 1); ++tries) {
+        let qres = db._query(`FOR i IN 0..999 FOR doc IN ${cn} FILTER doc.value1 == i && doc.value2 == CONCAT('testmann', SUBSTRING('00000', 0, 5 - LENGTH(TO_STRING(50000 + i))), i) RETURN doc`);
         let result = qres.toArray();
-        assertEqual(1000, result.length);
-        for (let i = 0; i < result.length; ++i) {
-          const doc = result[i];
-          assertEqual("test" + i, doc._key);
-          assertEqual(i, doc.value1);
-          assertEqual("testmann" + String(i).padStart(5, "0"), doc.value2);
-        }
+        assertEqual(0, result.length);
+        let stats = qres.getExtra().stats;
         if (cacheEnabled) {
-          assertEqual(1000, qres.getExtra().stats.cacheHits + qres.getExtra().stats.cacheMisses);
+          if (tries === 0) {
+            assertEqual(0, stats.cacheHits, stats);
+            assertEqual(1000, stats.cacheMisses, stats);
+          } else {
+            assertEqual(1000, stats.cacheHits + stats.cacheMisses, stats);
+            if (stats.cacheHits > 0) {
+              break;
+            }
+          }
         } else {
-          assertEqual(0, qres.getExtra().stats.cacheHits);
-          assertEqual(0, qres.getExtra().stats.cacheMisses);
+          assertEqual(0, stats.cacheHits, stats);
+          assertEqual(0, stats.cacheMisses, stats);
         }
       }
     },
-
-    testPointLookupNonCovering2: function () {
+    
+    testPointLookupNonCovering: function () {
       setFailurePointForPointLookup();
 
-      for (let tries = 0; tries < (cacheEnabled ? 3 : 1); ++tries) {
+      for (let tries = 0; tries < (cacheEnabled ? 10 : 1); ++tries) {
         let qres = db._query(`FOR i IN 0..999 FOR doc IN ${cn} FILTER doc.value1 == i && doc.value2 == CONCAT('testmann', SUBSTRING('00000', 0, 5 - LENGTH(TO_STRING(i))), i) RETURN doc`);
         let result = qres.toArray();
         assertEqual(1000, result.length);
@@ -258,30 +345,48 @@ function VPackIndexCacheSuite (type, unique, cacheEnabled) {
           assertEqual(i, doc.value1);
           assertEqual("testmann" + String(i).padStart(5, "0"), doc.value2);
         }
+        let stats = qres.getExtra().stats;
         if (cacheEnabled) {
-          assertEqual(1000, qres.getExtra().stats.cacheHits + qres.getExtra().stats.cacheMisses);
+          if (tries === 0) {
+            assertEqual(0, stats.cacheHits, stats);
+            assertEqual(1000, stats.cacheMisses, stats);
+          } else {
+            assertEqual(1000, stats.cacheHits + stats.cacheMisses, stats);
+            if (stats.cacheHits > 0) {
+              break;
+            }
+          }
         } else {
-          assertEqual(0, qres.getExtra().stats.cacheHits);
-          assertEqual(0, qres.getExtra().stats.cacheMisses);
+          assertEqual(0, stats.cacheHits, stats);
+          assertEqual(0, stats.cacheMisses, stats);
         }
       }
     },
-    
+
     testPointLookupCovering1: function () {
       setFailurePointForPointLookup();
 
-      for (let tries = 0; tries < (cacheEnabled ? 3 : 1); ++tries) {
-        let qres = db._query(`FOR i IN 0..999 FOR doc IN ${cn} FILTER doc.value1 == i RETURN doc.value1`);
+      for (let tries = 0; tries < (cacheEnabled ? 10 : 1); ++tries) {
+        let qres = db._query(`FOR i IN 0..999 FOR doc IN ${cn} FILTER doc.value1 == i && doc.value2 == CONCAT('testmann', SUBSTRING('00000', 0, 5 - LENGTH(TO_STRING(i))), i) RETURN doc.value1`);
         let result = qres.toArray();
         assertEqual(1000, result.length);
         for (let i = 0; i < result.length; ++i) {
           assertEqual(i, result[i]);
         }
+        let stats = qres.getExtra().stats;
         if (cacheEnabled) {
-          assertEqual(1000, qres.getExtra().stats.cacheHits + qres.getExtra().stats.cacheMisses);
+          if (tries === 0) {
+            assertEqual(0, stats.cacheHits, stats);
+            assertEqual(1000, stats.cacheMisses, stats);
+          } else {
+            assertEqual(1000, stats.cacheHits + stats.cacheMisses, stats);
+            if (stats.cacheHits > 0) {
+              break;
+            }
+          }
         } else {
-          assertEqual(0, qres.getExtra().stats.cacheHits);
-          assertEqual(0, qres.getExtra().stats.cacheMisses);
+          assertEqual(0, stats.cacheHits, stats);
+          assertEqual(0, stats.cacheMisses, stats);
         }
       }
     },
@@ -289,8 +394,8 @@ function VPackIndexCacheSuite (type, unique, cacheEnabled) {
     testPointLookupCovering2: function () {
       setFailurePointForPointLookup();
 
-      for (let tries = 0; tries < (cacheEnabled ? 3 : 1); ++tries) {
-        let qres = db._query(`FOR i IN 0..999 FOR doc IN ${cn} FILTER doc.value1 == i RETURN [doc.value1, doc.value2]`);
+      for (let tries = 0; tries < (cacheEnabled ? 10 : 1); ++tries) {
+        let qres = db._query(`FOR i IN 0..999 FOR doc IN ${cn} FILTER doc.value1 == i && doc.value2 == CONCAT('testmann', SUBSTRING('00000', 0, 5 - LENGTH(TO_STRING(i))), i) RETURN [doc.value1, doc.value2]`);
         let result = qres.toArray();
         assertEqual(1000, result.length);
         for (let i = 0; i < result.length; ++i) {
@@ -298,11 +403,20 @@ function VPackIndexCacheSuite (type, unique, cacheEnabled) {
           assertEqual(i, doc[0]);
           assertEqual("testmann" + String(i).padStart(5, "0"), doc[1]);
         }
+        let stats = qres.getExtra().stats;
         if (cacheEnabled) {
-          assertEqual(1000, qres.getExtra().stats.cacheHits + qres.getExtra().stats.cacheMisses);
+          if (tries === 0) {
+            assertEqual(0, stats.cacheHits, stats);
+            assertEqual(1000, stats.cacheMisses, stats);
+          } else {
+            assertEqual(1000, stats.cacheHits + stats.cacheMisses, stats);
+            if (stats.cacheHits > 0) {
+              break;
+            }
+          }
         } else {
-          assertEqual(0, qres.getExtra().stats.cacheHits);
-          assertEqual(0, qres.getExtra().stats.cacheMisses);
+          assertEqual(0, stats.cacheHits, stats);
+          assertEqual(0, stats.cacheMisses, stats);
         }
       }
     },
@@ -319,8 +433,178 @@ function VPackIndexCacheSuite (type, unique, cacheEnabled) {
         assertEqual(i, doc.value1);
         assertEqual("testmann" + String(i).padStart(5, "0"), doc.value2);
       }
-      assertEqual(0, qres.getExtra().stats.cacheHits);
-      assertEqual(0, qres.getExtra().stats.cacheMisses);
+      let stats = qres.getExtra().stats;
+      assertEqual(0, stats.cacheHits, stats);
+      assertEqual(0, stats.cacheMisses, stats);
+    },
+
+  };
+}
+
+function VPackIndexCacheReadOnlyStoredValuesSuite (unique) {
+  const internal = require('internal');
+  const canUseFailAt =  internal.debugCanUseFailAt();
+
+  const cn = "UnitTestsCollection";
+  const n = 10000;
+  
+  let setFailurePointIfCacheUsed = () => {
+    if (canUseFailAt) {
+      // fails whenever the cache is used
+      internal.debugSetFailAt("VPackIndexFailWithCache");
+    }
+  };
+
+  let setFailurePointForPointLookup = () => {
+    if (canUseFailAt) {
+      internal.debugSetFailAt("VPackIndexFailWithoutCache");
+    }
+  };
+
+  return {
+    // we can't use setUpAll here because we need new cache instances for
+    // the collection for each test case.
+    setUp: function () {
+      db._drop(cn);
+      let c = db._create(cn);
+
+      let docs = [];
+      for (let i = 0; i < n; ++i) {
+        docs.push({ _key: "test" + i, value1: i, value2: "testmann" + String(i).padStart(5, "0"), value3: i, value4: "test" + i });
+        if (docs.length === 1000) {
+          c.insert(docs);
+          docs = [];
+        }
+      }
+      
+      if (canUseFailAt) {
+        internal.debugClearFailAt();
+      }
+
+      c.ensureIndex({ type: "persistent", fields: ["value1", "value2"], storedValues: ["value3", "value4"], name: "UnitTestsIndex", unique, cacheEnabled: true });
+    },
+    
+    tearDown: function () {
+      if (canUseFailAt) {
+        internal.debugClearFailAt();
+      }
+      db._drop(cn);
+    },
+
+    testFullScanCovering: function () {
+      // full scan must never used the cache
+      setFailurePointIfCacheUsed();
+
+      let qres = db._query(`FOR doc IN ${cn} SORT doc.value1 RETURN doc.value3`);
+      let result = qres.toArray();
+      assertEqual(n, result.length);
+      for (let i = 0; i < n; ++i) {
+        assertEqual(i, result[i]);
+      }
+      let stats = qres.getExtra().stats;
+      assertEqual(0, stats.cacheHits, stats);
+      assertEqual(0, stats.cacheMisses, stats);
+    },
+    
+    testFullScanCoveringMultiple: function () {
+      // full scan must never used the cache
+      setFailurePointIfCacheUsed();
+
+      let qres = db._query(`FOR doc IN ${cn} SORT doc.value1 RETURN [doc.value1, doc.value2, doc.value3, doc.value4]`);
+      let result = qres.toArray();
+      assertEqual(n, result.length);
+      for (let i = 0; i < n; ++i) {
+        assertEqual(i, result[i][0]);
+        assertEqual("testmann" + String(i).padStart(5, "0"), result[i][1]);
+        assertEqual(i, result[i][2]);
+        assertEqual("test" + i, result[i][3]);
+      }
+      let stats = qres.getExtra().stats;
+      assertEqual(0, stats.cacheHits, stats);
+      assertEqual(0, stats.cacheMisses, stats);
+    },
+    
+    testRangeScanCovering: function () {
+      // full scan must never used the cache
+      setFailurePointIfCacheUsed();
+
+      let qres = db._query(`FOR doc IN ${cn} FILTER doc.value1 >= 10 && doc.value1 < 1000 SORT doc.value1 RETURN doc.value3`);
+      let result = qres.toArray();
+      assertEqual(990, result.length);
+      for (let i = 0; i < result.length; ++i) {
+        assertEqual(i + 10, result[i]);
+      }
+      let stats = qres.getExtra().stats;
+      assertEqual(0, stats.cacheHits, stats);
+      assertEqual(0, stats.cacheMisses, stats);
+    },
+    
+    testRangeScanCoveringMultiple: function () {
+      // full scan must never used the cache
+      setFailurePointIfCacheUsed();
+
+      let qres = db._query(`FOR doc IN ${cn} FILTER doc.value1 >= 10 && doc.value1 < 1000 SORT doc.value1 RETURN [doc.value1, doc.value2, doc.value3, doc.value4]`);
+      let result = qres.toArray();
+      assertEqual(990, result.length);
+      for (let i = 0; i < result.length; ++i) {
+        assertEqual(i + 10, result[i][0]);
+        assertEqual("testmann" + String(i + 10).padStart(5, "0"), result[i][1]);
+        assertEqual(i + 10, result[i][2]);
+        assertEqual("test" + (i + 10), result[i][3]);
+      }
+      let stats = qres.getExtra().stats;
+      assertEqual(0, stats.cacheHits, stats);
+      assertEqual(0, stats.cacheMisses, stats);
+    },
+    
+    testPointLookupCovering1: function () {
+      setFailurePointForPointLookup();
+
+      for (let tries = 0; tries < 10; ++tries) {
+        let qres = db._query(`FOR i IN 0..999 FOR doc IN ${cn} FILTER doc.value1 == i && doc.value2 == CONCAT('testmann', SUBSTRING('00000', 0, 5 - LENGTH(TO_STRING(i))), i) RETURN doc.value3`);
+        let result = qres.toArray();
+        assertEqual(1000, result.length);
+        for (let i = 0; i < result.length; ++i) {
+          assertEqual(i, result[i]);
+        }
+        let stats = qres.getExtra().stats;
+        if (tries === 0) {
+          assertEqual(0, stats.cacheHits, stats);
+          assertEqual(1000, stats.cacheMisses, stats);
+        } else {
+          assertEqual(1000, stats.cacheHits + stats.cacheMisses, stats);
+          if (stats.cacheHits > 0) {
+            break;
+          }
+        }
+      }
+    },
+
+    testPointLookupCovering2: function () {
+      setFailurePointForPointLookup();
+
+      for (let tries = 0; tries < 10; ++tries) {
+        let qres = db._query(`FOR i IN 0..999 FOR doc IN ${cn} FILTER doc.value1 == i && doc.value2 == CONCAT('testmann', SUBSTRING('00000', 0, 5 - LENGTH(TO_STRING(i))), i) RETURN [doc.value1, doc.value2, doc.value3, doc.value4]`);
+        let result = qres.toArray();
+        assertEqual(1000, result.length);
+        for (let i = 0; i < result.length; ++i) {
+          const doc = result[i];
+          assertEqual(i, doc[0]);
+          assertEqual("testmann" + String(i).padStart(5, "0"), doc[1]);
+          assertEqual(i, doc[2]);
+          assertEqual("test" + i, doc[3]);
+        }
+        let stats = qres.getExtra().stats;
+        if (tries === 0) {
+          assertEqual(0, stats.cacheHits, stats);
+          assertEqual(1000, stats.cacheMisses, stats);
+        } else {
+          assertEqual(1000, stats.cacheHits + stats.cacheMisses, stats);
+          if (stats.cacheHits > 0) {
+            break;
+          }
+        }
+      }
     },
 
   };
@@ -393,40 +677,63 @@ function OtherIndexesSuite () {
   };
 }
 
-
-function PersistentIndexNonUniqueCacheDisabledSuite() {
+function PersistentIndexNonUniqueModifySuite() {
   'use strict';
   let suite = {};
-  deriveTestSuite(VPackIndexCacheSuite("persistent", /*unique*/ false, /*cacheEnabled*/ false), suite, '_persistent_cacheDisabled');
+  deriveTestSuite(VPackIndexCacheModifySuite(/*unique*/ false), suite, '_nonUnique');
   return suite;
 }
 
-function PersistentIndexNonUniqueCacheEnabledSuite() {
+function PersistentIndexNonUniqueReadOnlyCacheDisabledSuite() {
   'use strict';
   let suite = {};
-  deriveTestSuite(VPackIndexCacheSuite("persistent", /*unique*/ false, /*cacheEnabled*/ true), suite, '_persistent_cacheEnabled');
+  deriveTestSuite(VPackIndexCacheReadOnlySuite(/*unique*/ false, /*cacheEnabled*/ false), suite, '_nonUnique_cacheDisabled');
   return suite;
 }
 
-function PersistentIndexUniqueCacheDisabledSuite() {
+function PersistentIndexNonUniqueReadOnlyCacheEnabledSuite() {
   'use strict';
   let suite = {};
-  deriveTestSuite(VPackIndexCacheSuite("persistent", /*unique*/ true, /*cacheEnabled*/ false), suite, '_persistent_unique_cacheDisabled');
+  deriveTestSuite(VPackIndexCacheReadOnlySuite(/*unique*/ false, /*cacheEnabled*/ true), suite, '_nonUnique_cacheEnabled');
   return suite;
 }
 
-function PersistentIndexUniqueCacheEnabledSuite() {
+function PersistentIndexNonUniqueReadOnlyStoredValuesSuite() {
   'use strict';
   let suite = {};
-  deriveTestSuite(VPackIndexCacheSuite("persistent", /*unique*/ true, /*cacheEnabled*/ true), suite, '_persistent_unique_cacheEnabled');
+  deriveTestSuite(VPackIndexCacheReadOnlyStoredValuesSuite(/*unique*/ false), suite, '_nonUnique_storedValues');
+  return suite;
+}
+
+function PersistentIndexUniqueReadOnlyCacheDisabledSuite() {
+  'use strict';
+  let suite = {};
+  deriveTestSuite(VPackIndexCacheReadOnlySuite(/*unique*/ true, /*cacheEnabled*/ false), suite, '_unique_cacheDisabled');
+  return suite;
+}
+
+function PersistentIndexUniqueReadOnlyCacheEnabledSuite() {
+  'use strict';
+  let suite = {};
+  deriveTestSuite(VPackIndexCacheReadOnlySuite(/*unique*/ true, /*cacheEnabled*/ true), suite, '_unique_cacheEnabled');
+  return suite;
+}
+
+function PersistentIndexUniqueReadOnlyStoredValuesSuite() {
+  'use strict';
+  let suite = {};
+  deriveTestSuite(VPackIndexCacheReadOnlyStoredValuesSuite(/*unique*/ true), suite, '_unique_storedValues');
   return suite;
 }
 
 jsunity.run(CreateSuite);
-jsunity.run(PersistentIndexNonUniqueCacheDisabledSuite);
-jsunity.run(PersistentIndexNonUniqueCacheEnabledSuite);
-jsunity.run(PersistentIndexUniqueCacheDisabledSuite);
-jsunity.run(PersistentIndexUniqueCacheEnabledSuite);
+jsunity.run(PersistentIndexNonUniqueModifySuite);
+jsunity.run(PersistentIndexNonUniqueReadOnlyCacheDisabledSuite);
+jsunity.run(PersistentIndexNonUniqueReadOnlyCacheEnabledSuite);
+jsunity.run(PersistentIndexNonUniqueReadOnlyStoredValuesSuite);
+jsunity.run(PersistentIndexUniqueReadOnlyCacheDisabledSuite);
+jsunity.run(PersistentIndexUniqueReadOnlyCacheEnabledSuite);
+jsunity.run(PersistentIndexUniqueReadOnlyStoredValuesSuite);
 jsunity.run(OtherIndexesSuite);
 
 return jsunity.done();
