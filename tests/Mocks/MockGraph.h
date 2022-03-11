@@ -68,6 +68,8 @@ class MockGraph {
       return "<EdgeDef>(_from: " + _from + ", to: " + _to + ")";
     }
 
+    std::string generateId() const;
+
     void addToBuilder(arangodb::velocypack::Builder& builder) const;
   };
 

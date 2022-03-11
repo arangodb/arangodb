@@ -60,7 +60,8 @@ void MockGraph::EdgeDef::addToBuilder(
     arangodb::velocypack::Builder& builder) const {
   std::string fromId = _from;
   std::string toId = _to;
-  std::string keyId = _from.substr(2) + "-" + _to.substr(2);
+  std::string keyId =
+      _from.substr(_from.find('/') + 1) + "-" + _to.substr(_to.find("/") + 1);
 
   builder.openObject();
   builder.add(StaticStrings::IdString, VPackValue(_eCol + "/" + keyId));
@@ -69,6 +70,12 @@ void MockGraph::EdgeDef::addToBuilder(
   builder.add(StaticStrings::ToString, VPackValue(toId));
   builder.add("weight", VPackValue(_weight));
   builder.close();
+}
+
+std::string MockGraph::EdgeDef::generateId() const {
+  std::string keyId =
+      _from.substr(_from.find('/') + 1) + "-" + _to.substr(_to.find("/") + 1);
+  return _eCol + "/" + keyId;
 }
 
 void MockGraph::VertexDef::addToBuilder(
