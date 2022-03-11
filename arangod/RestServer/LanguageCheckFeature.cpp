@@ -181,22 +181,25 @@ void LanguageCheckFeature::start() {
   std::tie(prevLang, prevLangType) =
       ::getOrSetPreviousLanguage(server(), collatorLang, currLangType);
 
-  // we found something in LANGUAGE file
-  if (currDefaultLang.empty() && currIcuLang.empty() &&
-      prevLangType == LanguageType::DEFAULT && !prevLang.empty()) {
-    // override the empty current setting for default with the previous one
-    feature.resetDefaultLanguage(prevLang);
-    return;
+  if (currDefaultLang.empty() && currIcuLang.empty() && !prevLang.empty()) {
+    // we found something in LANGUAGE file
+    if (prevLangType == LanguageType::DEFAULT) {
+      // override the empty current setting for default with the previous one
+      feature.resetDefaultLanguage(prevLang);
+      return;
+    } else if (prevLangType == LanguageType::ICU) {
+      // override the empty current setting for icu-lang with the previous one
+      feature.resetIcuLanguage(prevLang);
+      return;
+    } else {
+      LOG_TOPIC("7ef61", FATAL, arangodb::Logger::CONFIG)
+          << "Specified language '" << collatorLang << " has invalid type";
+      FATAL_ERROR_EXIT();
+    }
   }
   // we found something in LANGUAGE file
-  if (currDefaultLang.empty() && currIcuLang.empty() &&
-      prevLangType == LanguageType::ICU && !prevLang.empty()) {
-    // override the empty current setting for icu-lang with the previous one
-    feature.resetIcuLanguage(prevLang);
-    return;
-  }
 
-  if (collatorLang != prevLang || prevLangType != currLangType) {
+  if (collatorLang != prevLang) {
     if (feature.forceLanguageCheck()) {
       // current not empty and not the same as previous, get out!
       LOG_TOPIC("7ef60", FATAL, arangodb::Logger::CONFIG)
@@ -207,6 +210,22 @@ void LanguageCheckFeature::start() {
       LOG_TOPIC("54a68", WARN, arangodb::Logger::CONFIG)
           << "Specified language '" << collatorLang
           << "' does not match previously used language '" << prevLang
+          << "'. starting anyway due to --default-language-check=false "
+             "setting";
+    }
+  }
+
+  if (prevLangType != currLangType) {
+    if (feature.forceLanguageCheck()) {
+      // current not empty and not the same as previous, get out!
+      LOG_TOPIC("7ef60", FATAL, arangodb::Logger::CONFIG)
+          << "Specified language type does not match previously used language "
+             "type";
+      FATAL_ERROR_EXIT();
+    } else {
+      LOG_TOPIC("54a68", WARN, arangodb::Logger::CONFIG)
+          << "Specified language type does not match previously used language "
+             "type"
           << "'. starting anyway due to --default-language-check=false "
              "setting";
     }
