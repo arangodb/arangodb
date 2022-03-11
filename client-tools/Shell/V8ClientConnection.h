@@ -140,8 +140,10 @@ class V8ClientConnection {
       bool raw);
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
-  v8::Local<v8::Value> requestFuzz(v8::Isolate* isolate,
-                                   fuzzer::RequestFuzzer& fuzzer);
+  uint32_t requestFuzz(fuzzer::RequestFuzzer& fuzzer);
+  static constexpr uint32_t _kFuzzClosedConnectionCode = 1000;
+  static constexpr uint32_t _kFuzzNoResponseCode = 1001;
+  static constexpr uint32_t _kFuzzNotConnected = 1002;
 #endif
 
   void initServer(v8::Isolate*, v8::Handle<v8::Context> context);
@@ -195,10 +197,6 @@ class V8ClientConnection {
   velocypack::Options _vpackOptions;
   bool _forceJson;
   std::atomic<bool> _setCustomError;
-
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
-  static constexpr uint32_t kFuzzClosedConnectionCode = 1000;
-#endif
 
   // a per-endpoint, per-user cache for connections. whenever we reconnect
   // to another endpoint, we can put the old connection into this cache,

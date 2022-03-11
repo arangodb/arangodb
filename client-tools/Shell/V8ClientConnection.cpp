@@ -1040,37 +1040,42 @@ static void ClientConnection_httpFuzzRequests(
         "(numIterations and numRequests must be > 0).");
   }
   fuzzer::RequestFuzzer fuzzer(numIts, seed);
-  std::unordered_map<unsigned, uint32_t> fuzzReturnCodesCount;
+  std::unordered_map<uint32_t, uint32_t> fuzzReturnCodesCount;
 
-  uint32_t reqsWithoutCode = 0;
   for (uint32_t i = 0; i < numReqs; ++i) {
-    velocypack::Builder builder;
-    TRI_V8ToVPack(isolate, builder, v8connection->requestFuzz(isolate, fuzzer),
-                  false);
-
-    if (!builder.slice().get("code").isNone()) {
-      fuzzReturnCodesCount[builder.slice().get("code").getUInt()]++;
-    } else {
-      reqsWithoutCode++;
-    }
+    uint32_t returnCode = v8connection->requestFuzz(fuzzer);
+    fuzzReturnCodesCount[returnCode]++;
   }
-
   VPackBuilder builder;
   builder.openObject();
   builder.add("seed", velocypack::Value(fuzzer.getSeed()));
   builder.add("total-requests", velocypack::Value(numReqs));
-  if (reqsWithoutCode != 0) {
-    builder.add("requests without return code",
-                velocypack::Value(reqsWithoutCode));
-  }
-  if (fuzzReturnCodesCount.find(1000) != fuzzReturnCodesCount.end()) {
+  if (fuzzReturnCodesCount.find(v8connection->_kFuzzClosedConnectionCode) !=
+      fuzzReturnCodesCount.end()) {
     builder.add("Closed-connection",
-                velocypack::Value(fuzzReturnCodesCount.at(1000)));
+                velocypack::Value(fuzzReturnCodesCount.at(
+                    v8connection->_kFuzzClosedConnectionCode)));
   }
+
+  if (fuzzReturnCodesCount.find(v8connection->_kFuzzNoResponseCode) !=
+      fuzzReturnCodesCount.end()) {
+    builder.add("no response from serer",
+                velocypack::Value(fuzzReturnCodesCount.at(
+                    v8connection->_kFuzzNoResponseCode)));
+  }
+
+  if (fuzzReturnCodesCount.find(v8connection->_kFuzzNotConnected) !=
+      fuzzReturnCodesCount.end()) {
+    builder.add("not connected", velocypack::Value(fuzzReturnCodesCount.at(
+                                     v8connection->_kFuzzNotConnected)));
+  }
+
   builder.add(velocypack::Value("return-codes"));
   builder.openObject();
   for (auto const& [returnCode, count] : fuzzReturnCodesCount) {
-    if (returnCode != 1000) {
+    if (returnCode != v8connection->_kFuzzClosedConnectionCode &&
+        returnCode != v8connection->_kFuzzNoResponseCode &&
+        returnCode != v8connection->_kFuzzNotConnected) {
       builder.add(std::to_string(returnCode), velocypack::Value(count));
     }
   }
@@ -2257,13 +2262,10 @@ void setResultMessage(v8::Isolate* isolate, v8::Local<v8::Context> context,
 }
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
-v8::Local<v8::Value> V8ClientConnection::requestFuzz(
-    v8::Isolate* isolate, fuzzer::RequestFuzzer& fuzzer) {
+uint32_t V8ClientConnection::requestFuzz(fuzzer::RequestFuzzer& fuzzer) {
   std::shared_ptr<fu::Connection> connection = acquireConnection();
   if (!connection || connection->state() == fu::Connection::State::Closed) {
-    TRI_V8_SET_EXCEPTION_MESSAGE(TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT,
-                                 "not connected");
-    return v8::Undefined(isolate);
+    return _kFuzzNotConnected;
   }
 
   auto req = fuzzer.createRequest();
@@ -2276,54 +2278,19 @@ v8::Local<v8::Value> V8ClientConnection::requestFuzz(
     rc = ec;
   }
 
-  auto context = TRI_IGETC;
-
   if (rc == fu::Error::ConnectionClosed) {
-    // connection = acquireConnection();
-    v8::Local<v8::Object> result = v8::Object::New(isolate);
-    setResultMessage(isolate, context, false, kFuzzClosedConnectionCode,
-                     result);
-    return result;
-    // return v8::Undefined(isolate);
+    return _kFuzzClosedConnectionCode;
   }
 
   // not complete
   if (!response) {
-    v8::Local<v8::Object> result = v8::Object::New(isolate);
-    auto errorNumber = fuerteToArangoErrorCode(rc);
-    _lastErrorMessage = fu::to_string(rc);
-    _lastHttpReturnCode = static_cast<int>(rest::ResponseCode::SERVER_ERROR);
-
-    setResultMessage(isolate, context, true, errorNumber, _lastErrorMessage,
-                     result);
-    result
-        ->Set(context, TRI_V8_ASCII_STRING(isolate, "code"),
-              v8::Integer::New(
-                  isolate, static_cast<int>(rest::ResponseCode::SERVER_ERROR)))
-        .FromMaybe(false);
-
-    return result;
+    return _kFuzzNoResponseCode;
   }
 
   TRI_ASSERT(response != nullptr);
 
   // complete
-  _lastHttpReturnCode = response->statusCode();
-
-  // got a body
-  if (canParseResponse(*response)) {
-    return parseReplyBodyToV8(*response, isolate);
-  }
-
-  auto payloadSize = response->payload().size();
-  if (payloadSize > 0) {
-    return translateResultBodyToV8(*response, isolate);
-  } else {
-    // no body
-    v8::Local<v8::Object> result = v8::Object::New(isolate);
-    setResultMessage(isolate, context, false, _lastHttpReturnCode, result);
-    return result;
-  }
+  return response->statusCode();
 }
 #endif
 
