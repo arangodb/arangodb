@@ -198,14 +198,15 @@ RestStatus RestLogHandler::handlePost(ReplicatedLogMethods const& methods,
   // create a new log
   replication2::agency::LogTarget spec(replication2::agency::from_velocypack,
                                        specSlice);
-  return waitForFuture(
-      methods.createReplicatedLog(spec).thenValue([this](Result&& result) {
-        if (result.ok()) {
-          generateOk(rest::ResponseCode::OK, VPackSlice::emptyObjectSlice());
-        } else {
-          generateError(result);
-        }
-      }));
+  return waitForFuture(methods.createReplicatedLog(std::move(spec))
+                           .thenValue([this](Result&& result) {
+                             if (result.ok()) {
+                               generateOk(rest::ResponseCode::OK,
+                                          VPackSlice::emptyObjectSlice());
+                             } else {
+                               generateError(result);
+                             }
+                           }));
 }
 
 RestStatus RestLogHandler::handleGetRequest(
@@ -439,12 +440,20 @@ RestStatus RestLogHandler::handleGetGlobalStatus(
     return RestStatus::DONE;
   }
 
-  return waitForFuture(
-      methods.getGlobalStatus(logId).thenValue([this](auto&& status) {
-        VPackBuilder buffer;
-        status.toVelocyPack(buffer);
-        generateOk(rest::ResponseCode::OK, buffer.slice());
-      }));
+  auto specSource = std::invoke([&] {
+    auto isLocal = _request->parsedValue<bool>("useLocalCache").value_or(false);
+    if (isLocal) {
+      return replicated_log::GlobalStatus::SpecificationSource::kLocalCache;
+    }
+    return replicated_log::GlobalStatus::SpecificationSource::kRemoteAgency;
+  });
+
+  return waitForFuture(methods.getGlobalStatus(logId, specSource)
+                           .thenValue([this](auto&& status) {
+                             VPackBuilder buffer;
+                             status.toVelocyPack(buffer);
+                             generateOk(rest::ResponseCode::OK, buffer.slice());
+                           }));
 }
 
 RestStatus RestLogHandler::handleGetEntry(ReplicatedLogMethods const& methods,
