@@ -520,8 +520,12 @@ TEST_F(LogSupervisionTest, test_dictate_leader_force_first) {
       participantsConfig);
 
   auto current = LogCurrent();
-  current.leader = LogCurrent::Leader{
-      .serverId = "A", .committedParticipantsConfig = participantsConfig};
+  current.leader =
+      LogCurrent::Leader{.serverId = "A",
+                         .term = LogTerm{1},
+                         .committedParticipantsConfig = participantsConfig,
+                         .leadershipEstablished = true,
+                         .commitStatus = std::nullopt};
 
   auto const& health = ParticipantsHealth{
       ._health = {
@@ -577,8 +581,12 @@ TEST_F(LogSupervisionTest, test_dictate_leader_success) {
       participantsConfig);
 
   auto current = LogCurrent();
-  current.leader = LogCurrent::Leader{
-      .serverId = "A", .committedParticipantsConfig = participantsConfig};
+  current.leader =
+      LogCurrent::Leader{.serverId = "A",
+                         .term = LogTerm{1},
+                         .committedParticipantsConfig = participantsConfig,
+                         .leadershipEstablished = true,
+                         .commitStatus = std::nullopt};
 
   auto const& health = ParticipantsHealth{
       ._health = {
