@@ -432,6 +432,6 @@ LogTarget::LogTarget(from_velocypack_t, VPackSlice slice) {
   }
 }
 
-LogTarget::LogTarget(LogId id, Participants const& participants,
+LogTarget::LogTarget(LogId id, ParticipantsFlagsMap const& participants,
                      LogConfig const& config)
     : id{id}, participants{participants}, config(config) {}

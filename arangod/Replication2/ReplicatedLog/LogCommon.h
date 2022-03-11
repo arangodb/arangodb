@@ -193,9 +193,12 @@ struct ParticipantFlags {
 
 auto operator<<(std::ostream&, ParticipantFlags const&) -> std::ostream&;
 
+using ParticipantsFlagsMap =
+    std::unordered_map<ParticipantId, ParticipantFlags>;
+
 struct ParticipantsConfig {
   std::size_t generation = 0;
-  std::unordered_map<ParticipantId, ParticipantFlags> participants;
+  ParticipantsFlagsMap participants;
 
   void toVelocyPack(velocypack::Builder&) const;
   static auto fromVelocyPack(velocypack::Slice) -> ParticipantsConfig;
