@@ -23,11 +23,12 @@
 
 #pragma once
 
-#include <unicode/locid.h>
 #include <memory>
 #include <string>
+#include <unicode/locid.h>
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "Basics/Utf8Helper.h"
 
 namespace arangodb {
 namespace application_features {
@@ -37,8 +38,6 @@ namespace options {
 class ProgramOptions;
 }
 
-enum class LanguageType { INVALID = -1, DEFAULT = 0, ICU = 1 };
-
 class LanguageFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Language"; }
@@ -47,6 +46,7 @@ class LanguageFeature final : public application_features::ApplicationFeature {
   explicit LanguageFeature(Server& server)
       : application_features::ApplicationFeature{server, *this},
         _locale(),
+        _langType(basics::LanguageType::INVALID),
         _binaryPath(server.getBinaryPath()),
         _icuDataPtr(nullptr),
         _forceLanguageCheck(true) {
@@ -63,19 +63,19 @@ class LanguageFeature final : public application_features::ApplicationFeature {
                           std::string const& binaryExecutionPath,
                           std::string& path, std::string const& binaryName);
   icu::Locale& getLocale();
-  std::string_view getDefaultLanguage() const;
-  std::string_view getIcuLanguage() const;
+  std::tuple<std::string_view, arangodb::basics::LanguageType> getLanguage()
+      const;
   bool forceLanguageCheck() const;
   std::string getCollatorLanguage() const;
-  LanguageType getLanguageType() const;
-  void resetDefaultLanguage(std::string_view language);
-  void resetIcuLanguage(std::string_view language);
+  arangodb::basics::LanguageType getLanguageType() const;
+  void resetLanguage(std::string_view language,
+                     arangodb::basics::LanguageType type);
 
  private:
   icu::Locale _locale;
   std::string _defaultLanguage;
   std::string _icuLanguage;
-  LanguageType _langType;
+  arangodb::basics::LanguageType _langType;
   char const* _binaryPath;
   void* _icuDataPtr;
   bool _forceLanguageCheck;

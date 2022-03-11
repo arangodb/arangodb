@@ -30,6 +30,7 @@
 #include "Basics/application-exit.h"
 #include "Basics/directories.h"
 #include "Basics/files.h"
+#include "Basics/Utf8Helper.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -37,13 +38,14 @@
 
 namespace {
 
+using namespace arangodb::basics;
+
 constexpr std::string_view kDefaultLangKey = "default";
 constexpr std::string_view kIcuLangKey = "icu-language";
 
 /// @brief reads previous default langauge from file
 arangodb::Result readLanguage(arangodb::ArangodServer& server,
-                              std::string& language,
-                              arangodb::LanguageType& type) {
+                              std::string& language, LanguageType& type) {
   auto& databasePath = server.getFeature<arangodb::DatabasePathFeature>();
   std::string filename = databasePath.subdirectoryName("LANGUAGE");
 
@@ -52,8 +54,7 @@ arangodb::Result readLanguage(arangodb::ArangodServer& server,
   }
 
   try {
-    VPackBuilder builder =
-        arangodb::basics::VelocyPackHelper::velocyPackFromFile(filename);
+    VPackBuilder builder = VelocyPackHelper::velocyPackFromFile(filename);
     VPackSlice content = builder.slice();
     if (!content.isObject()) {
       return TRI_ERROR_INTERNAL;
@@ -70,10 +71,10 @@ arangodb::Result readLanguage(arangodb::ArangodServer& server,
 
     if (defaultSlice.isString()) {
       language = defaultSlice.stringView();
-      type = arangodb::LanguageType::DEFAULT;
+      type = LanguageType::DEFAULT;
     } else if (icuSlice.isString()) {
       language = icuSlice.stringView();
-      type = arangodb::LanguageType::ICU;
+      type = LanguageType::ICU;
     } else {
       return TRI_ERROR_INTERNAL;
     }
@@ -83,7 +84,7 @@ arangodb::Result readLanguage(arangodb::ArangodServer& server,
     return TRI_ERROR_INTERNAL;
   }
 
-  if (arangodb::LanguageType::DEFAULT == type) {
+  if (LanguageType::DEFAULT == type) {
     LOG_TOPIC("c499e", TRACE, arangodb::Logger::CONFIG)
         << "using default language: " << language;
   } else {
@@ -96,7 +97,7 @@ arangodb::Result readLanguage(arangodb::ArangodServer& server,
 
 /// @brief writes the default language to file
 ErrorCode writeLanguage(arangodb::ArangodServer& server, std::string_view lang,
-                        arangodb::LanguageType currLangType) {
+                        LanguageType currLangType) {
   auto& databasePath = server.getFeature<arangodb::DatabasePathFeature>();
   std::string filename = databasePath.subdirectoryName("LANGUAGE");
 
@@ -104,7 +105,7 @@ ErrorCode writeLanguage(arangodb::ArangodServer& server, std::string_view lang,
   VPackBuilder builder;
   try {
     builder.openObject();
-    if (arangodb::LanguageType::DEFAULT == currLangType) {
+    if (LanguageType::DEFAULT == currLangType) {
       builder.add(kDefaultLangKey, VPackValue(lang));
     } else {
       builder.add(kIcuLangKey, VPackValue(lang));
@@ -113,7 +114,7 @@ ErrorCode writeLanguage(arangodb::ArangodServer& server, std::string_view lang,
     builder.close();
   } catch (...) {
     // out of memory
-    if (arangodb::LanguageType::DEFAULT == currLangType) {
+    if (LanguageType::DEFAULT == currLangType) {
       LOG_TOPIC("4fa50", ERR, arangodb::Logger::CONFIG)
           << "cannot save default language in file '" << filename
           << "': out of memory";
@@ -141,11 +142,11 @@ ErrorCode writeLanguage(arangodb::ArangodServer& server, std::string_view lang,
   return TRI_ERROR_NO_ERROR;
 }
 
-std::tuple<std::string, arangodb::LanguageType> getOrSetPreviousLanguage(
+std::tuple<std::string, LanguageType> getOrSetPreviousLanguage(
     arangodb::ArangodServer& server, std::string collatorLang,
-    arangodb::LanguageType currLangType) {
+    LanguageType currLangType) {
   std::string prevLanguage;
-  arangodb::LanguageType prevType;
+  LanguageType prevType;
   arangodb::Result res = ::readLanguage(server, prevLanguage, prevType);
 
   if (res.ok()) {
@@ -170,10 +171,12 @@ LanguageCheckFeature::LanguageCheckFeature(Server& server)
 }
 
 void LanguageCheckFeature::start() {
+  using namespace arangodb::basics;
+
   auto& feature = server().getFeature<LanguageFeature>();
-  auto currDefaultLang = feature.getDefaultLanguage();
-  auto currIcuLang = feature.getIcuLanguage();
-  auto currLangType = feature.getLanguageType();
+  std::string_view currLang;
+  LanguageType currLangType;
+  std::tie(currLang, currLangType) = feature.getLanguage();
   auto collatorLang = feature.getCollatorLanguage();
 
   std::string prevLang;
@@ -181,50 +184,37 @@ void LanguageCheckFeature::start() {
   std::tie(prevLang, prevLangType) =
       ::getOrSetPreviousLanguage(server(), collatorLang, currLangType);
 
-  if (currDefaultLang.empty() && currIcuLang.empty() && !prevLang.empty()) {
-    // we found something in LANGUAGE file
-    if (prevLangType == LanguageType::DEFAULT) {
-      // override the empty current setting for default with the previous one
-      feature.resetDefaultLanguage(prevLang);
-      return;
-    } else if (prevLangType == LanguageType::ICU) {
-      // override the empty current setting for icu-lang with the previous one
-      feature.resetIcuLanguage(prevLang);
-      return;
-    } else {
-      LOG_TOPIC("7ef61", FATAL, arangodb::Logger::CONFIG)
-          << "Specified language '" << collatorLang << " has invalid type";
-      FATAL_ERROR_EXIT();
-    }
+  if (LanguageType::INVALID == currLangType) {
+    LOG_TOPIC("7ef61", FATAL, arangodb::Logger::CONFIG)
+        << "Specified language '" << collatorLang << " has invalid type";
+    FATAL_ERROR_EXIT();
   }
 
-  if (collatorLang != prevLang) {
+  if (currLang.empty() && LanguageType::DEFAULT == currLangType &&
+      !prevLang.empty()) {
+    // we found something in LANGUAGE file
+    // override the empty current setting for default with the previous one
+    feature.resetLanguage(prevLang, prevLangType);
+    return;
+  }
+
+  if (collatorLang != prevLang || prevLangType != currLangType) {
     if (feature.forceLanguageCheck()) {
       // current not empty and not the same as previous, get out!
       LOG_TOPIC("7ef60", FATAL, arangodb::Logger::CONFIG)
-          << "Specified language '" << collatorLang
-          << "' does not match previously used language '" << prevLang << "'";
+          << "Specified language '" << collatorLang << "' with type '"
+          << (currLangType == LanguageType::DEFAULT ? kDefaultLangKey
+                                                    : kIcuLangKey)
+          << "' does not match previously used language '" << prevLang
+          << "' with type '"
+          << (prevLangType == LanguageType::DEFAULT ? kDefaultLangKey
+                                                    : kIcuLangKey)
+          << "'";
       FATAL_ERROR_EXIT();
     } else {
       LOG_TOPIC("54a68", WARN, arangodb::Logger::CONFIG)
           << "Specified language '" << collatorLang
           << "' does not match previously used language '" << prevLang
-          << "'. starting anyway due to --default-language-check=false "
-             "setting";
-    }
-  }
-
-  if (prevLangType != currLangType) {
-    if (feature.forceLanguageCheck()) {
-      // current not empty and not the same as previous, get out!
-      LOG_TOPIC("7ef40", FATAL, arangodb::Logger::CONFIG)
-          << "Specified language type does not match previously used language "
-             "type";
-      FATAL_ERROR_EXIT();
-    } else {
-      LOG_TOPIC("54a40", WARN, arangodb::Logger::CONFIG)
-          << "Specified language type does not match previously used language "
-             "type"
           << "'. starting anyway due to --default-language-check=false "
              "setting";
     }

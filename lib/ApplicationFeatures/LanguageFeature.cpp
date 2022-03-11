@@ -27,7 +27,6 @@
 
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/FileUtils.h"
-#include "Basics/Utf8Helper.h"
 #include "Basics/application-exit.h"
 #include "Basics/directories.h"
 #include "Basics/error.h"
@@ -43,10 +42,11 @@
 
 namespace {
 void setCollator(std::string const& language, void* icuDataPtr,
-                 bool isDefaultLanguage) {
+                 arangodb::basics::LanguageType type) {
   using arangodb::basics::Utf8Helper;
+
   if (!Utf8Helper::DefaultUtf8Helper.setCollatorLanguage(language, icuDataPtr,
-                                                         isDefaultLanguage)) {
+                                                         type)) {
     LOG_TOPIC("01490", FATAL, arangodb::Logger::FIXME)
         << "error setting collator language to '" << language << "'. "
         << "The icudtl.dat file might be of the wrong version. "
@@ -81,17 +81,17 @@ void setLocale(icu::Locale& locale) {
       << "using default language '" << languageName << "'";
 }
 
-arangodb::LanguageType getLanguageType(std::string_view default_lang,
-                                       std::string_view icu_lang) {
+arangodb::basics::LanguageType getLanguageType(std::string_view default_lang,
+                                               std::string_view icu_lang) {
   bool isDefaultSet = !default_lang.empty();
   bool isIcuSet = !icu_lang.empty();
 
   if (isDefaultSet && isIcuSet) {
-    return arangodb::LanguageType::INVALID;
+    return arangodb::basics::LanguageType::INVALID;
   } else if (isIcuSet) {
-    return arangodb::LanguageType::ICU;
+    return arangodb::basics::LanguageType::ICU;
   } else {
-    return arangodb::LanguageType::DEFAULT;
+    return arangodb::basics::LanguageType::DEFAULT;
   }
 }
 
@@ -218,22 +218,27 @@ void LanguageFeature::prepare() {
 
   ::setCollator(
       _langType == LanguageType::ICU ? _icuLanguage : _defaultLanguage,
-      _icuDataPtr, _langType == LanguageType::DEFAULT);
+      _icuDataPtr, _langType);
 }
 
 void LanguageFeature::start() { ::setLocale(_locale); }
 
 icu::Locale& LanguageFeature::getLocale() { return _locale; }
 
-std::string_view LanguageFeature::getDefaultLanguage() const {
-  return _defaultLanguage;
+std::tuple<std::string_view, LanguageType> LanguageFeature::getLanguage()
+    const {
+  if (LanguageType::DEFAULT == _langType) {
+    return {_defaultLanguage, _langType};
+  } else if (LanguageType::ICU == _langType) {
+    return {_icuLanguage, _langType};
+  } else {
+    TRI_ASSERT(false);
+    // Its invalid type. Just returning defaultLanguge
+    return {_defaultLanguage, _langType};
+  }
 }
 
 LanguageType LanguageFeature::getLanguageType() const { return _langType; }
-
-std::string_view LanguageFeature::getIcuLanguage() const {
-  return _icuLanguage;
-}
 
 bool LanguageFeature::forceLanguageCheck() const { return _forceLanguageCheck; }
 
@@ -250,19 +255,21 @@ std::string LanguageFeature::getCollatorLanguage() const {
   return languageName;
 }
 
-void LanguageFeature::resetDefaultLanguage(std::string_view language) {
-  _icuLanguage.clear();
-  _defaultLanguage = language;
-  _langType = LanguageType::DEFAULT;
-  ::setCollator(_defaultLanguage, _icuDataPtr, true);
-  ::setLocale(_locale);
-}
-
-void LanguageFeature::resetIcuLanguage(std::string_view language) {
+void LanguageFeature::resetLanguage(std::string_view language,
+                                    arangodb::basics::LanguageType type) {
+  _langType = type;
   _defaultLanguage.clear();
-  _icuLanguage = language;
-  _langType = LanguageType::ICU;
-  ::setCollator(_icuLanguage, _icuDataPtr, false);
+  _icuLanguage.clear();
+  if (LanguageType::DEFAULT == _langType) {
+    _defaultLanguage = language;
+  } else if (LanguageType::ICU == _langType) {
+    _icuLanguage = language;
+  } else {
+    TRI_ASSERT(false);
+    return;
+  }
+
+  ::setCollator(language.data(), _icuDataPtr, _langType);
   ::setLocale(_locale);
 }
 

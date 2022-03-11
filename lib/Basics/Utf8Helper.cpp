@@ -22,6 +22,8 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Utf8Helper.h"
+
 #include <string.h>
 #include <memory>
 
@@ -42,8 +44,7 @@
 #include <unicode/ustring.h>
 #include <unicode/utypes.h>
 
-#include "Utf8Helper.h"
-
+#include "ApplicationFeatures/LanguageFeature.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/debugging.h"
@@ -95,7 +96,7 @@ Utf8Helper Utf8Helper::DefaultUtf8Helper(nullptr);
 
 Utf8Helper::Utf8Helper(std::string const& lang, void* icuDataPtr)
     : _coll(nullptr) {
-  setCollatorLanguage(lang, icuDataPtr, false);
+  setCollatorLanguage(lang, icuDataPtr, LanguageType::DEFAULT);
 }
 
 Utf8Helper::Utf8Helper(void* icuDataPtr) : Utf8Helper("", icuDataPtr) {}
@@ -146,7 +147,7 @@ int Utf8Helper::compareUtf16(uint16_t const* left, size_t leftLength,
 
 bool Utf8Helper::setCollatorLanguage(std::string const& lang,
                                      void* icuDataPointer,
-                                     bool isDefaultLanguage) {
+                                     LanguageType langType) {
   if (icuDataPointer == nullptr) {
     return false;
   }
@@ -193,7 +194,7 @@ bool Utf8Helper::setCollatorLanguage(std::string const& lang,
     return false;
   }
 
-  if (isDefaultLanguage) {
+  if (LanguageType::DEFAULT == langType) {
     // set the default attributes for sorting:
     coll->setAttribute(UCOL_CASE_FIRST, UCOL_UPPER_FIRST, status);  // A < a
     coll->setAttribute(UCOL_NORMALIZATION_MODE, UCOL_OFF,

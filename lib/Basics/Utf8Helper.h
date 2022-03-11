@@ -50,6 +50,8 @@ std::string fromWString(wchar_t const* validUTF16String, std::size_t size);
 std::string fromWString(std::wstring const& validUTF16String);
 #endif
 
+enum class LanguageType { INVALID = -1, DEFAULT = 0, ICU = 1 };
+
 class Utf8Helper {
   Utf8Helper(Utf8Helper const&) = delete;
   Utf8Helper& operator=(Utf8Helper const&) = delete;
@@ -100,12 +102,12 @@ class Utf8Helper {
   /// @param lang   Lowercase two-letter or three-letter ISO-639 code.
   ///     This parameter can instead be an ICU style C locale (e.g. "en_US")
   /// @param icuDataPointer data file to be loaded by the application
-  /// @param isDefaultLanguage is language should support old style of
+  /// @param langType type of language. Now supports DEFAULT and ICU only
   /// collation?
   //////////////////////////////////////////////////////////////////////////////
 
   bool setCollatorLanguage(std::string const& lang, void* icuDataPointer,
-                           bool isDefaultLanguage);
+                           LanguageType langType);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get current collator
