@@ -92,15 +92,16 @@ auto arangodb::RestReplicatedStateHandler::handlePostRequest(
     return RestStatus::DONE;
   }
 
-  // create a new log
+  // create a new state
   auto spec =
       replication2::replicated_state::agency::Target::fromVelocyPack(body);
-  return waitForFuture(
-      methods.createReplicatedState(spec).thenValue([this](auto&& result) {
-        if (result.ok()) {
-          generateOk(rest::ResponseCode::OK, VPackSlice::emptyObjectSlice());
-        } else {
-          generateError(result);
-        }
-      }));
+  return waitForFuture(methods.createReplicatedState(std::move(spec))
+                           .thenValue([this](auto&& result) {
+                             if (result.ok()) {
+                               generateOk(rest::ResponseCode::OK,
+                                          VPackSlice::emptyObjectSlice());
+                             } else {
+                               generateError(result);
+                             }
+                           }));
 }

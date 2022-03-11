@@ -1966,7 +1966,7 @@ arangodb::Result RocksDBCollection::lookupDocumentVPack(
       // TODO we could potentially use the PinSlice method ?!
       return res;  // all good
     }
-    if (f.result().errorNumber() == TRI_ERROR_LOCK_TIMEOUT) {
+    if (f.result() == TRI_ERROR_LOCK_TIMEOUT) {
       // assuming someone is currently holding a write lock, which
       // is why we cannot access the TransactionalBucket.
       lockTimeout = true;  // we skip the insert in this case

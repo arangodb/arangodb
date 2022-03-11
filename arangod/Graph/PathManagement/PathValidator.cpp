@@ -38,6 +38,9 @@
 #include "Enterprise/Graph/Steps/SmartGraphStep.h"
 #include "Enterprise/Graph/Steps/SmartGraphCoordinatorStep.h"
 #include "Enterprise/Graph/Providers/SmartGraphProvider.h"
+
+// For additional information, please read PathValidatorEE.cpp
+#include "Enterprise/Graph/PathValidatorEE.cpp"
 #endif
 
 #include "Basics/Exceptions.h"
@@ -70,6 +73,17 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
     // Can give up here. This Value is not used
     return res;
   }
+
+#ifdef USE_ENTERPRISE
+  if (isDisjoint()) {
+    auto validDisjPathRes = checkValidDisjointPath(step);
+    if (validDisjPathRes == ValidationResult::Type::FILTER_AND_PRUNE ||
+        validDisjPathRes == ValidationResult::Type::FILTER) {
+      res.combine(validDisjPathRes);
+      return res;
+    }
+  }
+#endif
 
   if constexpr (vertexUniqueness == VertexUniquenessLevel::PATH) {
     reset();
@@ -245,7 +259,8 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
       // initialize PathResultInterface. II. I don't want to distinguish between
       // different ProviderTypes here if possible (best case).
       if (std::is_same_v<ProviderType,
-                         SingleServerProvider<SingleServerProviderStep>>) {
+                         SingleServerProvider<SingleServerProviderStep>> ||
+          std::is_same_v<ProviderType, ClusterProvider<ClusterProviderStep>>) {
         using ResultPathType =
             SingleProviderPathResult<ProviderType, PathStore, Step>;
         std::unique_ptr<PathResultInterface> currentPath =
@@ -413,6 +428,17 @@ void PathValidator<ProviderType, PathStore, vertexUniqueness,
   TRI_ASSERT(_options.usesPostFilter());
   _options.unpreparePostFilterContext();
 }
+
+#ifndef USE_ENTERPRISE
+template<class Provider, class PathStore,
+         VertexUniquenessLevel vertexUniqueness,
+         EdgeUniquenessLevel edgeUniqueness>
+auto PathValidator<Provider, PathStore, vertexUniqueness, edgeUniqueness>::
+    checkValidDisjointPath(typename PathStore::Step const& lastStep)
+        -> arangodb::graph::ValidationResult::Type {
+  return ValidationResult::Type::TAKE;
+}
+#endif
 
 namespace arangodb::graph {
 

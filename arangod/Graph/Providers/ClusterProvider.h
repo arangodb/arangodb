@@ -90,6 +90,7 @@ class ClusterProvider {
                           arangodb::velocypack::Builder& builder);
   void addEdgeToBuilder(typename Step::Edge const& edge,
                         arangodb::velocypack::Builder& builder);
+  VPackSlice readEdge(EdgeType const& edgeID);
 
   void addEdgeIDToBuilder(typename Step::Edge const& edge,
                           arangodb::velocypack::Builder& builder);
@@ -101,7 +102,7 @@ class ClusterProvider {
                                 std::vector<Step*>& result) -> void;
 
   // fetch edges and store in cache
-  auto fetchEdgesFromEngines(VertexType const& vertexId) -> Result;
+  auto fetchEdgesFromEngines(Step* step) -> Result;
 
   void destroyEngines();
 
@@ -111,9 +112,8 @@ class ClusterProvider {
 
   aql::TraversalStats stealStats();
 
-  // TODO: This may need to be implemented.
-  void prepareContext(aql::InputAqlItemRow input){};
-  void unPrepareContext(){};
+  void prepareContext(aql::InputAqlItemRow input);
+  void unPrepareContext();
 
  private:
   // Unique_ptr to have this class movable, and to keep reference of trx()
@@ -129,6 +129,7 @@ class ClusterProvider {
   arangodb::aql::TraversalStats _stats;
 
   /// @brief vertex reference to all connected edges including the edges target
+  // Info: SourceVertex -> [[ConnectedEdge, TargetVertex], ...]
   containers::FlatHashMap<VertexType,
                           std::vector<std::pair<EdgeType, VertexType>>>
       _vertexConnectedEdges;

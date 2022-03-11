@@ -245,10 +245,23 @@ BaseTraverserEngine::~BaseTraverserEngine() = default;
 
 graph::EdgeCursor* BaseTraverserEngine::getCursor(std::string_view nextVertex,
                                                   uint64_t currentDepth) {
-  if (currentDepth >= _cursors.size()) {
-    _cursors.emplace_back(_opts->buildCursor(currentDepth));
+  graph::EdgeCursor* cursor = nullptr;
+  if (_opts->hasSpecificCursorForDepth(currentDepth)) {
+    if (_depthSpecificCursors.find(currentDepth) ==
+        _depthSpecificCursors.end()) {
+      _depthSpecificCursors.emplace(currentDepth,
+                                    _opts->buildCursor(currentDepth));
+    }
+    cursor = _depthSpecificCursors.find(currentDepth)->second.get();
+  } else {
+    if (_generalCursor == nullptr) {
+      _generalCursor = _opts->buildCursor(currentDepth);
+      TRI_ASSERT(_generalCursor != nullptr);
+    }
+    cursor = _generalCursor.get();
   }
-  graph::EdgeCursor* cursor = _cursors.at(currentDepth).get();
+  TRI_ASSERT(cursor != nullptr);
+
   cursor->rearm(nextVertex, currentDepth);
   return cursor;
 }

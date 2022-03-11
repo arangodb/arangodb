@@ -326,7 +326,7 @@ void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "default wait-for-sync behavior, can be overwritten "
       "when creating a collection",
       new BooleanParameter(&_defaultWaitForSync),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options->addOption(
       "--database.force-sync-properties",
@@ -334,20 +334,20 @@ void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "will use waitForSync value of collection when "
       "turned off",
       new BooleanParameter(&_forceSyncProperties),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options->addOption(
       "--database.ignore-datafile-errors",
       "load collections even if datafiles may contain errors",
       new BooleanParameter(&_ignoreDatafileErrors),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options
       ->addOption("--database.extended-names-databases",
                   "allow extended characters in database names",
                   new BooleanParameter(&_extendedNamesForDatabases),
                   arangodb::options::makeDefaultFlags(
-                      arangodb::options::Flags::Hidden,
+                      arangodb::options::Flags::Uncommon,
                       arangodb::options::Flags::Experimental))
       .setIntroducedIn(30900);
 

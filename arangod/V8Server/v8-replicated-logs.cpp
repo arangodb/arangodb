@@ -33,6 +33,7 @@
 
 #include "velocypack/Iterator.h"
 
+#include "Basics/StaticStrings.h"
 #include "Replication2/Methods.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
@@ -185,6 +186,30 @@ static void JS_Drop(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
+namespace {
+// Parse common options of JS_Insert and JS_MultiInsert.
+auto parseInsertOptionsAt(v8::Isolate* isolate,
+                          v8::FunctionCallbackInfo<v8::Value> const& args,
+                          int pos) -> std::pair<bool, bool> {
+  auto waitForSync = false;
+  auto dontWaitForCommit = false;
+  if (args.Length() > pos) {
+    auto builder = VPackBuilder();
+    TRI_V8ToVPack(isolate, builder, args[pos], false, false);
+    auto const options = builder.slice();
+    if (auto slice = options.get(arangodb::StaticStrings::WaitForSyncString);
+        !slice.isNone()) {
+      waitForSync = slice.getBool();
+    }
+    if (auto slice = options.get(arangodb::StaticStrings::DontWaitForCommit);
+        !slice.isNone()) {
+      dontWaitForCommit = slice.getBool();
+    }
+  }
+  return {waitForSync, dontWaitForCommit};
+}
+}  // namespace
+
 static void JS_Insert(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
@@ -197,25 +222,44 @@ static void JS_Insert(v8::FunctionCallbackInfo<v8::Value> const& args) {
         std::string("No access to replicated log '") + to_string(id) + "'");
   }
 
-  if (args.Length() != 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("insert(<payload>)");
+  if (args.Length() < 1 || args.Length() > 2) {
+    TRI_V8_THROW_EXCEPTION_USAGE(
+        "insert(<payload> [, {waitForSync, dontWaitForCommit}])");
   }
+
+  auto const [waitForSync, dontWaitForCommit] =
+      parseInsertOptionsAt(isolate, args, 1);
 
   VPackBuilder builder;
   TRI_V8ToVPack(isolate, builder, args[0], false, false);
 
-  auto result = ReplicatedLogMethods::createInstance(vocbase)
-                    ->insert(id, LogPayload::createFromSlice(builder.slice()))
-                    .get();
-  VPackBuilder response;
-  {
-    VPackObjectBuilder ob(&response);
-    response.add("index", VPackValue(result.first));
-    response.add(VPackValue("result"));
-    result.second.toVelocyPack(response);
+  if (dontWaitForCommit) {
+    auto const logIndex =
+        ReplicatedLogMethods::createInstance(vocbase)
+            ->insertWithoutCommit(
+                id, LogPayload::createFromSlice(builder.slice()), waitForSync)
+            .get();
+    VPackBuilder response;
+    {
+      VPackObjectBuilder ob(&response);
+      response.add("index", VPackValue(logIndex));
+    }
+    TRI_V8_RETURN(TRI_VPackToV8(isolate, response.slice()));
+  } else {
+    auto result = ReplicatedLogMethods::createInstance(vocbase)
+                      ->insert(id, LogPayload::createFromSlice(builder.slice()),
+                               waitForSync)
+                      .get();
+    VPackBuilder response;
+    {
+      VPackObjectBuilder ob(&response);
+      response.add("index", VPackValue(result.first));
+      response.add(VPackValue("result"));
+      result.second.toVelocyPack(response);
+    }
+    TRI_V8_RETURN(TRI_VPackToV8(isolate, response.slice()));
   }
 
-  TRI_V8_RETURN(TRI_VPackToV8(isolate, response.slice()));
   TRI_V8_TRY_CATCH_END
 }
 
@@ -231,36 +275,49 @@ static void JS_MultiInsert(v8::FunctionCallbackInfo<v8::Value> const& args) {
         std::string("No access to replicated log '") + to_string(id) + "'");
   }
 
-  if (args.Length() != 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("multiInsert(<payload>)");
+  if (args.Length() < 1 || args.Length() > 2) {
+    TRI_V8_THROW_EXCEPTION_USAGE(
+        "multiInsert(<payload> [, {waitForSync, dontWaitForCommit}])");
   }
+
+  auto const [waitForSync, dontWaitForCommit] =
+      parseInsertOptionsAt(isolate, args, 1);
 
   VPackBufferUInt8 payload;
   VPackBuilder builder(payload);
   TRI_V8ToVPack(isolate, builder, args[0], false, false);
   auto slice = builder.slice();
   if (!slice.isArray()) {
-    TRI_V8_THROW_EXCEPTION_USAGE("multiInsert(<payload>) expects array");
+    TRI_V8_THROW_EXCEPTION_USAGE(
+        "multiInsert(<payload> [, {waitForSync, dontWaitForCommit}]) expects "
+        "array");
   }
 
-  replicated_log::VPackArrayToLogPayloadIterator iter{slice};
-  auto result =
-      ReplicatedLogMethods::createInstance(vocbase)->insert(id, iter).get();
+  if (dontWaitForCommit) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+        TRI_ERROR_NOT_IMPLEMENTED,
+        "dontWaitForCommit is not implemented for multiple inserts");
+  } else {
+    replicated_log::VPackArrayToLogPayloadIterator iter{slice};
+    auto result = ReplicatedLogMethods::createInstance(vocbase)
+                      ->insert(id, iter, waitForSync)
+                      .get();
 
-  VPackBuilder response;
-  {
-    VPackObjectBuilder ob(&response);
+    VPackBuilder response;
     {
-      VPackArrayBuilder ab{&response, "indexes"};
-      for (auto const logIndex : result.first) {
-        response.add(VPackValue(logIndex));
+      VPackObjectBuilder ob(&response);
+      {
+        VPackArrayBuilder ab{&response, "indexes"};
+        for (auto const logIndex : result.first) {
+          response.add(VPackValue(logIndex));
+        }
       }
+      response.add(VPackValue("result"));
+      result.second.toVelocyPack(response);
     }
-    response.add(VPackValue("result"));
-    result.second.toVelocyPack(response);
+    TRI_V8_RETURN(TRI_VPackToV8(isolate, response.slice()));
   }
 
-  TRI_V8_RETURN(TRI_VPackToV8(isolate, response.slice()));
   TRI_V8_TRY_CATCH_END
 }
 
@@ -299,8 +356,27 @@ static void JS_GlobalStatus(v8::FunctionCallbackInfo<v8::Value> const& args) {
         std::string("No access to replicated log '") + to_string(id) + "'");
   }
 
-  auto result =
-      ReplicatedLogMethods::createInstance(vocbase)->getGlobalStatus(id).get();
+  bool isLocal = std::invoke([&] {
+    if (args.Length() > 0) {
+      auto builder = VPackBuilder();
+      TRI_V8ToVPack(isolate, builder, args[0], false, false);
+      auto const options = builder.slice();
+      if (auto slice = options.get("useLocalCache"); slice.isTrue()) {
+        return true;
+      }
+    }
+
+    return false;
+  });
+
+  auto source =
+      isLocal
+          ? replicated_log::GlobalStatus::SpecificationSource::kLocalCache
+          : replicated_log::GlobalStatus::SpecificationSource::kRemoteAgency;
+
+  auto result = ReplicatedLogMethods::createInstance(vocbase)
+                    ->getGlobalStatus(id, source)
+                    .get();
   VPackBuilder response;
   result.toVelocyPack(response);
   TRI_V8_RETURN(TRI_VPackToV8(isolate, response.slice()));

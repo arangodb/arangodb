@@ -36,17 +36,20 @@
 #include "Graph/Steps/SingleServerProviderStep.h"
 #include "Graph/Types/ValidationResult.h"
 #include "Graph/algorithm-aliases.h"
-
 #ifdef USE_ENTERPRISE
+<<<<<<< HEAD
 #include "Enterprise/Graph/algorithm-aliases-ee.h"
 #include "Enterprise/Graph/Providers/SmartGraphProvider.h"
 #include "Enterprise/Graph/Steps/SmartGraphCoordinatorStep.h"
-#endif
+=======
+#include "Enterprise/Graph/Steps/SmartGraphStep.h"
+>>>>>>> origin
+    #endif
 
 #include <Logger/LogMacros.h>
 #include <velocypack/Builder.h>
 
-using namespace arangodb;
+    using namespace arangodb;
 using namespace arangodb::graph;
 
 template<class Configuration>
@@ -358,217 +361,12 @@ using SingleServerProviderStep = ::arangodb::graph::SingleServerProviderStep;
   MAKE_ONE_SIDED_ENUMERATORS_UNIQUENESS(provider, DFSConfiguration) \
   MAKE_ONE_SIDED_ENUMERATORS_UNIQUENESS(provider, WeightedConfiguration)
 
-// Breadth First Search
-template class ::arangodb::graph::OneSidedEnumerator<BFSConfiguration<
-    SingleServerProvider<SingleServerProviderStep>, VertexUniquenessLevel::PATH,
-    EdgeUniquenessLevel::PATH, false>>;
-template class ::arangodb::graph::OneSidedEnumerator<BFSConfiguration<
-    SingleServerProvider<SingleServerProviderStep>, VertexUniquenessLevel::PATH,
-    EdgeUniquenessLevel::PATH, true>>;
-template class ::arangodb::graph::OneSidedEnumerator<BFSConfiguration<
-    SingleServerProvider<SingleServerProviderStep>, VertexUniquenessLevel::NONE,
-    EdgeUniquenessLevel::NONE, false>>;
-template class ::arangodb::graph::OneSidedEnumerator<BFSConfiguration<
-    SingleServerProvider<SingleServerProviderStep>, VertexUniquenessLevel::NONE,
-    EdgeUniquenessLevel::NONE, true>>;
-template class ::arangodb::graph::OneSidedEnumerator<BFSConfiguration<
-    SingleServerProvider<SingleServerProviderStep>, VertexUniquenessLevel::NONE,
-    EdgeUniquenessLevel::PATH, false>>;
-template class ::arangodb::graph::OneSidedEnumerator<BFSConfiguration<
-    SingleServerProvider<SingleServerProviderStep>, VertexUniquenessLevel::NONE,
-    EdgeUniquenessLevel::PATH, true>>;
-template class ::arangodb::graph::OneSidedEnumerator<BFSConfiguration<
-    SingleServerProvider<SingleServerProviderStep>,
-    VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH, false>>;
-template class ::arangodb::graph::OneSidedEnumerator<BFSConfiguration<
-    SingleServerProvider<SingleServerProviderStep>,
-    VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH, true>>;
-
-// Depth First Search
-template class ::arangodb::graph::OneSidedEnumerator<DFSConfiguration<
-    SingleServerProvider<SingleServerProviderStep>, VertexUniquenessLevel::NONE,
-    EdgeUniquenessLevel::NONE, false>>;
-template class ::arangodb::graph::OneSidedEnumerator<DFSConfiguration<
-    SingleServerProvider<SingleServerProviderStep>, VertexUniquenessLevel::NONE,
-    EdgeUniquenessLevel::NONE, true>>;
-template class ::arangodb::graph::OneSidedEnumerator<DFSConfiguration<
-    SingleServerProvider<SingleServerProviderStep>, VertexUniquenessLevel::PATH,
-    EdgeUniquenessLevel::PATH, false>>;
-template class ::arangodb::graph::OneSidedEnumerator<DFSConfiguration<
-    SingleServerProvider<SingleServerProviderStep>, VertexUniquenessLevel::PATH,
-    EdgeUniquenessLevel::PATH, true>>;
-template class ::arangodb::graph::OneSidedEnumerator<DFSConfiguration<
-    SingleServerProvider<SingleServerProviderStep>, VertexUniquenessLevel::NONE,
-    EdgeUniquenessLevel::PATH, false>>;
-template class ::arangodb::graph::OneSidedEnumerator<DFSConfiguration<
-    SingleServerProvider<SingleServerProviderStep>, VertexUniquenessLevel::NONE,
-    EdgeUniquenessLevel::PATH, true>>;
-template class ::arangodb::graph::OneSidedEnumerator<DFSConfiguration<
-    SingleServerProvider<SingleServerProviderStep>,
-    VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH, false>>;
-template class ::arangodb::graph::OneSidedEnumerator<DFSConfiguration<
-    SingleServerProvider<SingleServerProviderStep>,
-    VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH, true>>;
-
-// Weighted Traversal Search
-template class ::arangodb::graph::OneSidedEnumerator<WeightedConfiguration<
-    SingleServerProvider<SingleServerProviderStep>, VertexUniquenessLevel::NONE,
-    EdgeUniquenessLevel::NONE, false>>;
-template class ::arangodb::graph::OneSidedEnumerator<WeightedConfiguration<
-    SingleServerProvider<SingleServerProviderStep>, VertexUniquenessLevel::NONE,
-    EdgeUniquenessLevel::NONE, true>>;
-template class ::arangodb::graph::OneSidedEnumerator<WeightedConfiguration<
-    SingleServerProvider<SingleServerProviderStep>, VertexUniquenessLevel::PATH,
-    EdgeUniquenessLevel::PATH, false>>;
-template class ::arangodb::graph::OneSidedEnumerator<WeightedConfiguration<
-    SingleServerProvider<SingleServerProviderStep>, VertexUniquenessLevel::PATH,
-    EdgeUniquenessLevel::PATH, true>>;
-template class ::arangodb::graph::OneSidedEnumerator<WeightedConfiguration<
-    SingleServerProvider<SingleServerProviderStep>, VertexUniquenessLevel::NONE,
-    EdgeUniquenessLevel::PATH, false>>;
-template class ::arangodb::graph::OneSidedEnumerator<WeightedConfiguration<
-    SingleServerProvider<SingleServerProviderStep>, VertexUniquenessLevel::NONE,
-    EdgeUniquenessLevel::PATH, true>>;
-template class ::arangodb::graph::OneSidedEnumerator<WeightedConfiguration<
-    SingleServerProvider<SingleServerProviderStep>,
-    VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH, false>>;
-template class ::arangodb::graph::OneSidedEnumerator<WeightedConfiguration<
-    SingleServerProvider<SingleServerProviderStep>,
-    VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH, true>>;
-
+MAKE_ONE_SIDED_ENUMERATORS_CONFIGURATION(
+    SingleServerProvider<SingleServerProviderStep>)
+MAKE_ONE_SIDED_ENUMERATORS_CONFIGURATION(ClusterProvider<ClusterProviderStep>)
 #ifdef USE_ENTERPRISE
-// Depth First Search
-template class ::arangodb::graph::OneSidedEnumerator<
-    arangodb::graph::enterprise::DFSConfigurationEE<
-        SingleServerProvider<enterprise::SmartGraphStep>,
-        arangodb::graph::VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH,
-        false>>;
-template class ::arangodb::graph::OneSidedEnumerator<
-    arangodb::graph::enterprise::DFSConfigurationEE<
-        SingleServerProvider<enterprise::SmartGraphStep>,
-        arangodb::graph::VertexUniquenessLevel::NONE, EdgeUniquenessLevel::NONE,
-        false>>;
-template class ::arangodb::graph::OneSidedEnumerator<
-    arangodb::graph::enterprise::DFSConfigurationEE<
-        SingleServerProvider<enterprise::SmartGraphStep>,
-        arangodb::graph::VertexUniquenessLevel::NONE, EdgeUniquenessLevel::PATH,
-        false>>;
-template class ::arangodb::graph::OneSidedEnumerator<
-    arangodb::graph::enterprise::DFSConfigurationEE<
-        SingleServerProvider<enterprise::SmartGraphStep>,
-        arangodb::graph::VertexUniquenessLevel::GLOBAL,
-        EdgeUniquenessLevel::PATH, false>>;
-
-// DFS Tracing
-template class ::arangodb::graph::OneSidedEnumerator<
-    arangodb::graph::enterprise::DFSConfigurationEE<
-        SingleServerProvider<enterprise::SmartGraphStep>,
-        arangodb::graph::VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH,
-        true>>;
-template class ::arangodb::graph::OneSidedEnumerator<
-    arangodb::graph::enterprise::DFSConfigurationEE<
-        SingleServerProvider<enterprise::SmartGraphStep>,
-        arangodb::graph::VertexUniquenessLevel::NONE, EdgeUniquenessLevel::NONE,
-        true>>;
-template class ::arangodb::graph::OneSidedEnumerator<
-    arangodb::graph::enterprise::DFSConfigurationEE<
-        SingleServerProvider<enterprise::SmartGraphStep>,
-        arangodb::graph::VertexUniquenessLevel::NONE, EdgeUniquenessLevel::PATH,
-        true>>;
-template class ::arangodb::graph::OneSidedEnumerator<
-    arangodb::graph::enterprise::DFSConfigurationEE<
-        SingleServerProvider<enterprise::SmartGraphStep>,
-        arangodb::graph::VertexUniquenessLevel::GLOBAL,
-        EdgeUniquenessLevel::PATH, true>>;
-
-// Breath First Search
-template class ::arangodb::graph::OneSidedEnumerator<
-    arangodb::graph::enterprise::BFSConfigurationEE<
-        SingleServerProvider<enterprise::SmartGraphStep>,
-        arangodb::graph::VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH,
-        false>>;
-template class ::arangodb::graph::OneSidedEnumerator<
-    arangodb::graph::enterprise::BFSConfigurationEE<
-        SingleServerProvider<enterprise::SmartGraphStep>,
-        arangodb::graph::VertexUniquenessLevel::NONE, EdgeUniquenessLevel::NONE,
-        false>>;
-template class ::arangodb::graph::OneSidedEnumerator<
-    arangodb::graph::enterprise::BFSConfigurationEE<
-        SingleServerProvider<enterprise::SmartGraphStep>,
-        arangodb::graph::VertexUniquenessLevel::NONE, EdgeUniquenessLevel::PATH,
-        false>>;
-template class ::arangodb::graph::OneSidedEnumerator<
-    arangodb::graph::enterprise::BFSConfigurationEE<
-        SingleServerProvider<enterprise::SmartGraphStep>,
-        arangodb::graph::VertexUniquenessLevel::GLOBAL,
-        EdgeUniquenessLevel::PATH, false>>;
-
-// BFS Tracing
-template class ::arangodb::graph::OneSidedEnumerator<
-    arangodb::graph::enterprise::BFSConfigurationEE<
-        SingleServerProvider<enterprise::SmartGraphStep>,
-        arangodb::graph::VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH,
-        true>>;
-template class ::arangodb::graph::OneSidedEnumerator<
-    arangodb::graph::enterprise::BFSConfigurationEE<
-        SingleServerProvider<enterprise::SmartGraphStep>,
-        arangodb::graph::VertexUniquenessLevel::NONE, EdgeUniquenessLevel::NONE,
-        true>>;
-template class ::arangodb::graph::OneSidedEnumerator<
-    arangodb::graph::enterprise::BFSConfigurationEE<
-        SingleServerProvider<enterprise::SmartGraphStep>,
-        arangodb::graph::VertexUniquenessLevel::NONE, EdgeUniquenessLevel::PATH,
-        true>>;
-template class ::arangodb::graph::OneSidedEnumerator<
-    arangodb::graph::enterprise::BFSConfigurationEE<
-        SingleServerProvider<enterprise::SmartGraphStep>,
-        arangodb::graph::VertexUniquenessLevel::GLOBAL,
-        EdgeUniquenessLevel::PATH, true>>;
-
-// Weighted Search
-template class ::arangodb::graph::OneSidedEnumerator<
-    arangodb::graph::enterprise::WeightedConfigurationEE<
-        SingleServerProvider<enterprise::SmartGraphStep>,
-        arangodb::graph::VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH,
-        false>>;
-template class ::arangodb::graph::OneSidedEnumerator<
-    arangodb::graph::enterprise::WeightedConfigurationEE<
-        SingleServerProvider<enterprise::SmartGraphStep>,
-        arangodb::graph::VertexUniquenessLevel::NONE, EdgeUniquenessLevel::NONE,
-        false>>;
-template class ::arangodb::graph::OneSidedEnumerator<
-    arangodb::graph::enterprise::WeightedConfigurationEE<
-        SingleServerProvider<enterprise::SmartGraphStep>,
-        arangodb::graph::VertexUniquenessLevel::NONE, EdgeUniquenessLevel::PATH,
-        false>>;
-template class ::arangodb::graph::OneSidedEnumerator<
-    arangodb::graph::enterprise::WeightedConfigurationEE<
-        SingleServerProvider<enterprise::SmartGraphStep>,
-        arangodb::graph::VertexUniquenessLevel::GLOBAL,
-        EdgeUniquenessLevel::PATH, false>>;
-
-// Weighted Tracing
-template class ::arangodb::graph::OneSidedEnumerator<
-    arangodb::graph::enterprise::WeightedConfigurationEE<
-        SingleServerProvider<enterprise::SmartGraphStep>,
-        arangodb::graph::VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH,
-        true>>;
-template class ::arangodb::graph::OneSidedEnumerator<
-    arangodb::graph::enterprise::WeightedConfigurationEE<
-        SingleServerProvider<enterprise::SmartGraphStep>,
-        arangodb::graph::VertexUniquenessLevel::NONE, EdgeUniquenessLevel::NONE,
-        true>>;
-template class ::arangodb::graph::OneSidedEnumerator<
-    arangodb::graph::enterprise::WeightedConfigurationEE<
-        SingleServerProvider<enterprise::SmartGraphStep>,
-        arangodb::graph::VertexUniquenessLevel::NONE, EdgeUniquenessLevel::PATH,
-        true>>;
-template class ::arangodb::graph::OneSidedEnumerator<
-    arangodb::graph::enterprise::WeightedConfigurationEE<
-        SingleServerProvider<enterprise::SmartGraphStep>,
-        arangodb::graph::VertexUniquenessLevel::GLOBAL,
-        EdgeUniquenessLevel::PATH, true>>;
-
+MAKE_ONE_SIDED_ENUMERATORS_CONFIGURATION(
+    SingleServerProvider<arangodb::graph::enterprise::SmartGraphStep>)
 MAKE_ONE_SIDED_ENUMERATORS_CONFIGURATION(
     arangodb::graph::enterprise::SmartGraphProvider<
         arangodb::graph::enterprise::SmartGraphCoordinatorStep>)
