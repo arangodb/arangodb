@@ -218,12 +218,12 @@ void LanguageCheckFeature::start() {
   if (prevLangType != currLangType) {
     if (feature.forceLanguageCheck()) {
       // current not empty and not the same as previous, get out!
-      LOG_TOPIC("7ef60", FATAL, arangodb::Logger::CONFIG)
+      LOG_TOPIC("7ef40", FATAL, arangodb::Logger::CONFIG)
           << "Specified language type does not match previously used language "
              "type";
       FATAL_ERROR_EXIT();
     } else {
-      LOG_TOPIC("54a68", WARN, arangodb::Logger::CONFIG)
+      LOG_TOPIC("54a40", WARN, arangodb::Logger::CONFIG)
           << "Specified language type does not match previously used language "
              "type"
           << "'. starting anyway due to --default-language-check=false "
