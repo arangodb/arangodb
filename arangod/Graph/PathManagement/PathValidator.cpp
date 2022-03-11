@@ -146,33 +146,6 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
                                edgeUniqueness> const& otherValidator)
         -> ValidationResult {
   ValidationResult res(ValidationResult::Type::TAKE);
-#ifdef USE_ENTERPRISE
-  if (isDisjoint()) {
-    // left-part of the full path
-    auto leftResult = checkValidDisjointPath(step);
-    if (leftResult.isPruned() && leftResult.isFiltered()) {
-      // quick exit if already left part is violated
-      return leftResult;
-    } else if (leftResult.isFiltered()) {
-      res = ValidationResult(ValidationResult::Type::FILTER);
-    }
-
-    auto rightResult = checkValidDisjointPath(step);
-    if (rightResult.isPruned() && rightResult.isFiltered()) {
-      // quick exit if already left part is violated
-      return rightResult;
-    } else if (rightResult.isFiltered()) {
-      res = ValidationResult(ValidationResult::Type::FILTER);
-    }
-
-    // right-part of the full path
-    if (leftResult.hasSmartValue() && rightResult.hasSmartValue()) {
-      if (leftResult.getSmartValue() != rightResult.getSmartValue()) {
-        return ValidationResult{ValidationResult::Type::FILTER_AND_PRUNE};
-      }
-    }
-  }
-#endif
 
   if constexpr (vertexUniqueness == VertexUniquenessLevel::PATH) {
     // For PATH: take _uniqueVertices of otherValidator, and run Visitor of
@@ -187,6 +160,25 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
             return true;
           }
 
+#ifdef USE_ENTERPRISE
+          if (isDisjoint()) {
+            std::string_view otherSmartValue = otherValidator._smartValue;
+            if (!otherSmartValue.empty()) {
+              auto res = SmartValidationResult::validateVertexId(
+                  innerStep.getVertex().getID().stringView());
+              if (!res.fail()) {
+                auto keyPart = res.get();
+                TRI_ASSERT(!keyPart.empty());
+                if (keyPart != otherSmartValue) {
+                  // Will end up in: FILTER_AND_PRUNE state
+                  return false;
+                }
+              }
+              // Note: If res has failed here, we do not have a smartGraphKey.
+            }
+          }
+#endif
+
           // If otherUniqueVertices has our step, we will return false and
           // abort. Otherwise we'll return true here. This guarantees we have no
           // vertex on both sides of the path twice.
@@ -199,6 +191,9 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
     return ValidationResult{ValidationResult::Type::TAKE};
   }
   if constexpr (vertexUniqueness == VertexUniquenessLevel::GLOBAL) {
+    // TODO [GraphRefactor]: Double-check this section. This might be unused
+    // in TwoSidedEnumerators.
+    TRI_ASSERT(false);
     auto const& [unused, added] =
         _uniqueVertices.emplace(step.getVertexIdentifier());
     // If this add fails, we need to exclude this path
@@ -403,6 +398,10 @@ void PathValidator<ProviderType, PathStore, vertexUniqueness,
   if constexpr (edgeUniqueness != EdgeUniquenessLevel::NONE) {
     _uniqueEdges.clear();
   }
+
+#ifdef USE_ENTERPRISE
+  _smartValue = std::string_view{};
+#endif
 }
 
 template<class ProviderType, class PathStore,
@@ -462,15 +461,10 @@ template<class Provider, class PathStore,
          VertexUniquenessLevel vertexUniqueness,
          EdgeUniquenessLevel edgeUniqueness>
 auto PathValidator<Provider, PathStore, vertexUniqueness, edgeUniqueness>::
-    checkValidDisjointPath(typename PathStore::Step const& lastStep) const
-    -> arangodb::graph::ValidationResult {
+    checkValidDisjointPath(typename PathStore::Step const& lastStep)
+        -> arangodb::graph::ValidationResult {
   return ValidationResult(ValidationResult::Type::TAKE);
 }
-template<class Provider, class PathStore,
-         VertexUniquenessLevel vertexUniqueness,
-         EdgeUniquenessLevel edgeUniqueness>
-auto PathValidator<Provider, PathStore, vertexUniqueness,
-                   edgeUniqueness>::setSmartValue(std::string_view) -> void {}
 #endif
 
 namespace arangodb::graph {

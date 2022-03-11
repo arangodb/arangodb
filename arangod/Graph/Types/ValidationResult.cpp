@@ -39,21 +39,6 @@ bool ValidationResult::isFiltered() const noexcept {
   return _type == Type::FILTER || _type == Type::FILTER_AND_PRUNE;
 }
 
-auto ValidationResult::hasSmartValue() const noexcept -> bool {
-  return _smartValue.empty() ? false : true;
-}
-
-auto ValidationResult::getSmartValue() const noexcept -> std::string_view {
-  TRI_ASSERT(hasSmartValue());
-  return std::string_view(_smartValue);
-}
-
-#ifdef USE_ENTERPRISE
-auto ValidationResult::setSmartValue(std::string_view smartValue) {
-  _smartValue = smartValue;
-}
-#endif
-
 void ValidationResult::combine(Type t) noexcept {
   switch (t) {
     case Type::TAKE:

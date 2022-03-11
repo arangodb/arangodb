@@ -91,8 +91,6 @@ class PathValidator {
   void unpreparePruneContext();
   void unpreparePostFilterContext();
 
-  auto setSmartValue(std::string_view smartValue) -> void;
-
  private:
   // TODO [GraphRefactor]: const of _store has been removed as it is now
   // necessary to build a PathResult in place. Please double check if we find a
@@ -115,11 +113,9 @@ class PathValidator {
       _uniqueEdges;
 
   PathValidatorOptions _options;
-  arangodb::velocypack::Builder
-      _tmpObjectBuilder;  // TODO [GraphRefactor]: Check if being used
 
 #ifdef USE_ENTERPRISE
-  std::string_view _smartValue;  // TODO [GraphRefactor]: Check if being used
+  std::string_view _smartValue;
 #endif
 
  private:
@@ -134,7 +130,7 @@ class PathValidator {
   auto evaluateVertexExpression(arangodb::aql::Expression* expression,
                                 arangodb::velocypack::Slice value) -> bool;
 
-  auto checkValidDisjointPath(typename PathStore::Step const& lastStep) const
+  auto checkValidDisjointPath(typename PathStore::Step const& lastStep)
       -> arangodb::graph::ValidationResult;
 
   auto isDisjoint() const { return _options.isDisjoint(); }
