@@ -37,11 +37,7 @@ namespace options {
 class ProgramOptions;
 }
 
-enum class LanguageType {
-  INVALID = -1,
-  DEFAULT = 0,
-  ICU     = 1
-};
+enum class LanguageType { INVALID = -1, DEFAULT = 0, ICU = 1 };
 
 class LanguageFeature final : public application_features::ApplicationFeature {
  public:

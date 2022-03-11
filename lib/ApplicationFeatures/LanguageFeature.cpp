@@ -216,8 +216,9 @@ void LanguageFeature::prepare() {
     FATAL_ERROR_EXIT();
   }
 
-  ::setCollator(_langType == LanguageType::ICU ? _icuLanguage : _defaultLanguage, _icuDataPtr,
-                _langType == LanguageType::DEFAULT);
+  ::setCollator(
+      _langType == LanguageType::ICU ? _icuLanguage : _defaultLanguage,
+      _icuDataPtr, _langType == LanguageType::DEFAULT);
 }
 
 void LanguageFeature::start() { ::setLocale(_locale); }
@@ -228,9 +229,7 @@ std::string_view LanguageFeature::getDefaultLanguage() const {
   return _defaultLanguage;
 }
 
-LanguageType LanguageFeature::getLanguageType() const {
-  return _langType;
-}
+LanguageType LanguageFeature::getLanguageType() const { return _langType; }
 
 std::string_view LanguageFeature::getIcuLanguage() const {
   return _icuLanguage;

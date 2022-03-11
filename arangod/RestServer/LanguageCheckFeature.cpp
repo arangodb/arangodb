@@ -37,8 +37,8 @@
 
 namespace {
 
-constexpr std::string_view defaultLangKey = "default";
-constexpr std::string_view icuLangKey = "icu-language";
+constexpr std::string_view kDefaultLangKey = "default";
+constexpr std::string_view kIcuLangKey = "icu-language";
 
 /// @brief reads previous default langauge from file
 arangodb::Result readLanguage(arangodb::ArangodServer& server,
@@ -58,8 +58,8 @@ arangodb::Result readLanguage(arangodb::ArangodServer& server,
     if (!content.isObject()) {
       return TRI_ERROR_INTERNAL;
     }
-    VPackSlice defaultSlice = content.get(defaultLangKey);
-    VPackSlice icuSlice = content.get(icuLangKey);
+    VPackSlice defaultSlice = content.get(kDefaultLangKey);
+    VPackSlice icuSlice = content.get(kIcuLangKey);
 
     // both languages are specified in files
     if (defaultSlice.isString() && icuSlice.isString()) {
@@ -95,8 +95,8 @@ arangodb::Result readLanguage(arangodb::ArangodServer& server,
 }
 
 /// @brief writes the default language to file
-ErrorCode writeLanguage(arangodb::ArangodServer& server,
-                        std::string_view lang, arangodb::LanguageType currLangType) {
+ErrorCode writeLanguage(arangodb::ArangodServer& server, std::string_view lang,
+                        arangodb::LanguageType currLangType) {
   auto& databasePath = server.getFeature<arangodb::DatabasePathFeature>();
   std::string filename = databasePath.subdirectoryName("LANGUAGE");
 
@@ -105,9 +105,9 @@ ErrorCode writeLanguage(arangodb::ArangodServer& server,
   try {
     builder.openObject();
     if (arangodb::LanguageType::DEFAULT == currLangType) {
-      builder.add(defaultLangKey, VPackValue(lang));
+      builder.add(kDefaultLangKey, VPackValue(lang));
     } else {
-      builder.add(icuLangKey, VPackValue(lang));
+      builder.add(kIcuLangKey, VPackValue(lang));
     }
 
     builder.close();
@@ -142,7 +142,8 @@ ErrorCode writeLanguage(arangodb::ArangodServer& server,
 }
 
 std::tuple<std::string, arangodb::LanguageType> getOrSetPreviousLanguage(
-    arangodb::ArangodServer& server, std::string collatorLang, arangodb::LanguageType currLangType) {
+    arangodb::ArangodServer& server, std::string collatorLang,
+    arangodb::LanguageType currLangType) {
   std::string prevLanguage;
   arangodb::LanguageType prevType;
   arangodb::Result res = ::readLanguage(server, prevLanguage, prevType);
@@ -153,13 +154,6 @@ std::tuple<std::string, arangodb::LanguageType> getOrSetPreviousLanguage(
   }
 
   // okay, we didn't find it, let's write out the input instead
-
-  // if no parameters are specified,
-  // treat language as default-language
-//  if (!isDefaultLangSet && !isIcuLangSet) {
-//    isDefaultLangSet = true;
-//  }
-
   ::writeLanguage(server, collatorLang, currLangType);
 
   return {collatorLang, currLangType};
@@ -183,9 +177,9 @@ void LanguageCheckFeature::start() {
   auto collatorLang = feature.getCollatorLanguage();
 
   std::string prevLang;
-  LanguageType prevLangType = LanguageType::INVALID; // default value
-  std::tie(prevLang, prevLangType) = ::getOrSetPreviousLanguage(
-      server(), collatorLang, currLangType);
+  LanguageType prevLangType = LanguageType::INVALID;  // default value
+  std::tie(prevLang, prevLangType) =
+      ::getOrSetPreviousLanguage(server(), collatorLang, currLangType);
 
   // we found something in LANGUAGE file
   if (currDefaultLang.empty() && currIcuLang.empty() &&
@@ -202,14 +196,12 @@ void LanguageCheckFeature::start() {
     return;
   }
 
-  if (collatorLang != prevLang ||
-      prevLangType != currLangType) {
+  if (collatorLang != prevLang || prevLangType != currLangType) {
     if (feature.forceLanguageCheck()) {
       // current not empty and not the same as previous, get out!
       LOG_TOPIC("7ef60", FATAL, arangodb::Logger::CONFIG)
           << "Specified language '" << collatorLang
-          << "' does not match previously used language '" << prevLang
-          << "'";
+          << "' does not match previously used language '" << prevLang << "'";
       FATAL_ERROR_EXIT();
     } else {
       LOG_TOPIC("54a68", WARN, arangodb::Logger::CONFIG)
