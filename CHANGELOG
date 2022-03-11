@@ -1,6 +1,8 @@
 v3.9.1 (XXXX-XX-XX)
 -------------------
 
+* Updated arangosync to 2.9.0.
+
 * Optimize further RocksDB throttle to allow for no change on any given
   calculation cycle.
 
