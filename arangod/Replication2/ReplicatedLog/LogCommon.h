@@ -178,7 +178,8 @@ struct LogConfig {
 
 struct ParticipantFlags {
   bool forced = false;
-  bool excluded = false;
+  bool allowedInQuorum = true;
+  bool allowedAsLeader = true;
 
   friend auto operator==(ParticipantFlags const& left,
                          ParticipantFlags const& right) noexcept
@@ -244,7 +245,7 @@ struct CommitFailReason {
   struct QuorumSizeNotReached {
     struct ParticipantInfo {
       bool isFailed{};
-      bool isExcluded{};
+      bool isAllowedInQuorum{};
       TermIndexPair lastAcknowledged;
       static auto fromVelocyPack(velocypack::Slice) -> ParticipantInfo;
       void toVelocyPack(velocypack::Builder& builder) const;
@@ -272,7 +273,7 @@ struct CommitFailReason {
   };
   struct NonEligibleServerRequiredForQuorum {
     enum Why {
-      kExcluded,
+      kNotAllowedInQuorum,
       // WrongTerm might be misleading, because the follower might be in the
       // right term, it just never has acked an entry of the current term.
       kWrongTerm,

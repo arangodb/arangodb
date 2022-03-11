@@ -228,8 +228,8 @@ auto algorithms::operator<<(std::ostream& os,
   return os;
 }
 
-auto ParticipantState::isExcluded() const noexcept -> bool {
-  return flags.excluded;
+auto ParticipantState::isAllowedInQuorum() const noexcept -> bool {
+  return flags.allowedInQuorum;
 };
 
 auto ParticipantState::isForced() const noexcept -> bool {
@@ -275,7 +275,8 @@ auto algorithms::calculateCommitIndex(
   eligible.reserve(participants.size());
   std::copy_if(std::begin(participants), std::end(participants),
                std::back_inserter(eligible), [&](auto const& p) {
-                 return !p.isExcluded() && p.lastTerm() == lastTermIndex.term;
+                 return p.isAllowedInQuorum() &&
+                        p.lastTerm() == lastTermIndex.term;
                });
 
   // If servers are unavailable because they are either failed or excluded,
@@ -283,7 +284,7 @@ auto algorithms::calculateCommitIndex(
   // least writeConcern.
   auto const numAvailableParticipants = std::size_t(std::count_if(
       std::begin(participants), std::end(participants),
-      [](auto const& p) { return !p.isFailed() && !p.isExcluded(); }));
+      [](auto const& p) { return !p.isFailed() && p.isAllowedInQuorum(); }));
   // We write to at least writeConcern servers, ideally more if available.
   auto const effectiveWriteConcern =
       std::max(opt._writeConcern,
@@ -374,12 +375,12 @@ auto algorithms::calculateCommitIndex(
       auto who = CommitFailReason::QuorumSizeNotReached::who_type();
       for (auto const& participant : participants) {
         if (participant.lastAckedEntry < lastTermIndex ||
-            participant.isExcluded()) {
+            !participant.isAllowedInQuorum()) {
           who.try_emplace(
               participant.id,
               CommitFailReason::QuorumSizeNotReached::ParticipantInfo{
                   .isFailed = participant.isFailed(),
-                  .isExcluded = participant.isExcluded(),
+                  .isAllowedInQuorum = participant.isAllowedInQuorum(),
                   .lastAcknowledged = participant.lastAckedEntry,
               });
         }
@@ -397,10 +398,10 @@ auto algorithms::calculateCommitIndex(
   // above by comparing actualWriteConcern to 0;
   CommitFailReason::NonEligibleServerRequiredForQuorum::CandidateMap candidates;
   for (auto const& p : participants) {
-    if (p.isExcluded()) {
-      candidates.emplace(
-          p.id,
-          CommitFailReason::NonEligibleServerRequiredForQuorum::kExcluded);
+    if (!p.isAllowedInQuorum()) {
+      candidates.emplace(p.id,
+                         CommitFailReason::NonEligibleServerRequiredForQuorum::
+                             kNotAllowedInQuorum);
     } else if (p.lastTerm() != lastTermIndex.term) {
       candidates.emplace(
           p.id,
