@@ -149,8 +149,8 @@ TEST_F(UpdateParticipantsFlagsTest, wc2_but_server_excluded) {
     auto newConfig = std::make_shared<ParticipantsConfig>(oldConfig);
     newConfig->generation = 2;
     // make follower1 excluded
-    newConfig->participants["follower1"] =
-        replication2::ParticipantFlags{false, true};
+    newConfig->participants["follower1"] = replication2::ParticipantFlags{
+        .forced = false, .allowedInQuorum = false};
     leader->updateParticipantsConfig(newConfig, oldConfig.generation, {}, {});
   }
 
@@ -194,7 +194,7 @@ TEST_F(UpdateParticipantsFlagsTest,
     newConfig->generation = 2;
     // make follower1 excluded
     newConfig->participants["follower1"] =
-        replication2::ParticipantFlags{.excluded = true};
+        replication2::ParticipantFlags{.allowedInQuorum = false};
     leader->updateParticipantsConfig(newConfig, oldConfig.generation, {}, {});
   }
 
@@ -442,7 +442,7 @@ TEST_F(UpdateParticipantsFlagsTest, wc2_remove_exclude_flag) {
     newConfig->generation = 2;
     // exclude follower3
     newConfig->participants["follower3"] =
-        replication2::ParticipantFlags{.excluded = true};
+        replication2::ParticipantFlags{.allowedInQuorum = false};
 
     // note that this adds a new log entry
     leader->updateParticipantsConfig(newConfig, oldConfig.generation,
@@ -486,7 +486,7 @@ TEST_F(UpdateParticipantsFlagsTest, wc2_remove_exclude_flag) {
     // exclude follower3
     auto& flags = (newConfig->participants["follower3"] =
                        oldConfig.participants.at("follower3"));
-    flags.excluded = false;
+    flags.allowedInQuorum = true;
 
     leader->updateParticipantsConfig(newConfig, oldConfig.generation, {}, {});
   }
