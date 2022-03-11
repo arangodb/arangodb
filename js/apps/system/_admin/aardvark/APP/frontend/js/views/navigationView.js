@@ -157,10 +157,12 @@
         type: "GET",
         url: url,
         success: function (timeData) {
-          if (!timeData.error && timeData.code === 200 && timeData.time) {
-            self.fetchLicenseInfo(timeData.time);
-          } else {
-            self.showGetTimeError();  
+          if (self.currentDB.get('name') === '_system') {
+            if (!timeData.error && timeData.code === 200 && timeData.time) {
+              self.fetchLicenseInfo(timeData.time);
+            } else {
+              self.showGetTimeError();
+            }
           }
         },
         error: function () {
