@@ -113,7 +113,7 @@ function ahuacatlQueryOptimizerSortTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSkiplist1 : function () {
-      collection.ensureSkiplist("value");
+      collection.ensureIndex({ type: "skiplist", fields: ["value"] });
 
       var query = "FOR c IN " + cn + " SORT c.value RETURN c";
 
@@ -135,7 +135,7 @@ function ahuacatlQueryOptimizerSortTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSkiplist2 : function () {
-      collection.ensureSkiplist("value");
+      collection.ensureIndex({ type: "skiplist", fields: ["value"] });
 
       var query = "FOR c IN " + cn + " FILTER c.value >= 15 SORT c.value RETURN c";
 
@@ -156,7 +156,7 @@ function ahuacatlQueryOptimizerSortTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSkiplist3 : function () {
-      collection.ensureSkiplist("value");
+      collection.ensureIndex({ type: "skiplist", fields: ["value"] });
 
       var query = "FOR c IN " + cn + " FILTER c.value >= 15 SORT c.value DESC RETURN c";
 
@@ -177,7 +177,7 @@ function ahuacatlQueryOptimizerSortTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testMultipleSorts1 : function () {
-      collection.ensureSkiplist("value");
+      collection.ensureIndex({ type: "skiplist", fields: ["value"] });
 
       var query = "FOR c IN " + cn + " FILTER c.value >= 0 SORT c.value SORT c.value RETURN c";
 
@@ -199,7 +199,7 @@ function ahuacatlQueryOptimizerSortTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testMultipleSorts2 : function () {
-      collection.ensureSkiplist("value");
+      collection.ensureIndex({ type: "skiplist", fields: ["value"] });
 
       var query = "FOR c IN " + cn + " FILTER c.value >= 0 SORT c.value SORT c.value DESC RETURN c";
 
@@ -221,7 +221,7 @@ function ahuacatlQueryOptimizerSortTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testMultipleSorts3 : function () {
-      collection.ensureSkiplist("value");
+      collection.ensureIndex({ type: "skiplist", fields: ["value"] });
 
       var query = "FOR c IN " + cn + " FILTER c.value >= 0 SORT c.value DESC SORT c.value RETURN c";
 
@@ -243,7 +243,7 @@ function ahuacatlQueryOptimizerSortTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testMultipleFields1 : function () {
-      collection.ensureSkiplist("value", "value2");
+      collection.ensureIndex({ type: "skiplist", fields: ["value", "value2"] });
 
       var query = "FOR c IN " + cn + " FILTER c.value >= 0 SORT c.value RETURN c";
 
@@ -273,7 +273,7 @@ function ahuacatlQueryOptimizerSortTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testMultipleFields2 : function () {
-      collection.ensureSkiplist("value", "value2");
+      collection.ensureIndex({ type: "skiplist", fields: ["value", "value2"] });
 
       var query = "FOR c IN " + cn + " FILTER c.value >= 0 SORT c.value, c.value2 RETURN c";
 
@@ -303,7 +303,7 @@ function ahuacatlQueryOptimizerSortTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testMultipleFields3 : function () {
-      collection.ensureSkiplist("value", "value2");
+      collection.ensureIndex({ type: "skiplist", fields: ["value", "value2"] });
 
       var query = "FOR c IN " + cn + " FILTER c.value2 >= 0 SORT c.value RETURN c";
 
@@ -325,7 +325,7 @@ function ahuacatlQueryOptimizerSortTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testMultipleFields4 : function () {
-      collection.ensureSkiplist("value", "value2");
+      collection.ensureIndex({ type: "skiplist", fields: ["value", "value2"] });
 
       var query = "FOR c IN " + cn + " FILTER c.value >= 0 && c.value2 >= 0 SORT c.value RETURN c";
 
@@ -347,7 +347,7 @@ function ahuacatlQueryOptimizerSortTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testMultipleFields5 : function () {
-      collection.ensureSkiplist("value2", "value");
+      collection.ensureIndex({ type: "skiplist", fields: ["value2", "value"] });
 
       var query = "FOR c IN " + cn + " FILTER c.value >= 0 SORT c.value RETURN c";
 
@@ -369,7 +369,7 @@ function ahuacatlQueryOptimizerSortTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testNonFieldSort1 : function () {
-      collection.ensureSkiplist("value");
+      collection.ensureIndex({ type: "skiplist", fields: ["value"] });
 
       var query = "FOR c IN " + cn + " FILTER c.value >= 0 SORT c.value + 1 RETURN c";
 
@@ -391,7 +391,7 @@ function ahuacatlQueryOptimizerSortTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testNonFieldSort2 : function () {
-      collection.ensureSkiplist("value");
+      collection.ensureIndex({ type: "skiplist", fields: ["value"] });
 
       var query = "FOR c IN " + cn + " FILTER c.value >= 0 SORT 1 + c.value RETURN c";
 
@@ -413,7 +413,7 @@ function ahuacatlQueryOptimizerSortTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testNonFieldSort3 : function () {
-      collection.ensureSkiplist("value");
+      collection.ensureIndex({ type: "skiplist", fields: ["value"] });
 
       var query = "FOR c IN " + cn + " FILTER c.value >= 0 SORT c.value * 2 RETURN c";
 
