@@ -41,20 +41,15 @@ function withinRectangleSuite () {
 
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
-
     setUpAll : function () {
       db._drop("geo");
       db._drop("geo2");
 
-      var i, j ;
       db._create("geo");
-      indexId = db.geo.ensureGeoIndex("lat", "lon");
+      indexId = db.geo.ensureIndex({ type: "geo", fields: ["lat", "lon"] });
       let geodocs = [];
-      for (i = -40; i < 40; ++i) {
-        for (j = -40; j < 40; ++j) {
+      for (let i = -40; i < 40; ++i) {
+        for (let j = -40; j < 40; ++j) {
           geodocs.push({ lat: i, lon: j });
         }
       }
@@ -62,20 +57,15 @@ function withinRectangleSuite () {
       geodocs = [];
 
       db._create("geo2");
-      indexId = db.geo2.ensureGeoIndex("pos");
+      indexId = db.geo2.ensureIndex({ type: "geo", fields: ["pos"] });
 
-      for (i = -40; i < 40; ++i) {
-        for (j = -40; j < 40; ++j) {
+      for (let i = -40; i < 40; ++i) {
+        for (let j = -40; j < 40; ++j) {
           geodocs.push({ pos : [i, j] });
         }
       }
       db.geo2.insert(geodocs);
-
     },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
 
     tearDownAll : function () {
       db._drop("geo");

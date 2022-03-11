@@ -31,7 +31,6 @@
 var jsunity = require("jsunity");
 var internal = require("internal");
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite: Unique Hash Index
 ////////////////////////////////////////////////////////////////////////////////
@@ -43,20 +42,12 @@ function UniqueHashIndexFailuresSuite () {
 
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
-
     setUp : function () {
       internal.db._drop(cn);
       internal.debugClearFailAt();
       collection = internal.db._create(cn);
-      collection.ensureUniqueConstraint("a");
+      collection.ensureIndex({ type: "hash", fields: ["a"], unique: true });
     },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
       internal.debugClearFailAt();
@@ -111,20 +102,12 @@ function HashIndexMultiFailuresSuite () {
 
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
-
     setUp : function () {
       internal.debugClearFailAt();
       internal.db._drop(cn);
       collection = internal.db._create(cn);
-      collection.ensureHashIndex("a");
+      collection.ensureIndex({ type: "hash", fields: ["a"] });
     },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
       internal.debugClearFailAt();
@@ -136,7 +119,7 @@ function HashIndexMultiFailuresSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testMultiFailCreateIndexElementOOM : function () {
-      collection.ensureUniqueConstraint("a");
+      collection.ensureIndex({ type: "hash", fields: ["a"], unique: true });
       internal.debugSetFailAt("FillElementOOM");
       try {
         collection.save({a: 1});
@@ -154,7 +137,7 @@ function HashIndexMultiFailuresSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testMultiFailCreateIndexElementOOMOther : function () {
-      collection.ensureUniqueConstraint("a");
+      collection.ensureIndex({ type: "hash", fields: ["a"], unique: true });
       internal.debugSetFailAt("FillElementOOM2");
       try {
         collection.save({a: 1});
