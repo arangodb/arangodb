@@ -80,8 +80,8 @@ auto velocypackToCode(Slice slice) -> ResultT<Code> {
     return Code{code};
   } else if (slice.isString()) {
     auto string = slice.copyString();
-    if (!regex_match(string, std::regex("^([A-Za-z0-9+/]{4})*([A-Za-z0-9+/"
-                                        "]{3}=|[A-Za-z0-9+/]{2}==)?$"))) {
+    if (!regex_match(string,
+                     std::regex(arangodb::basics::StringUtils::base64Regex))) {
       return ResultT<Code>::error(TRI_ERROR_BAD_PARAMETER,
                                   "String should be a base64 string.");
     }
@@ -91,7 +91,7 @@ auto velocypackToCode(Slice slice) -> ResultT<Code> {
     return Code{vec};
   } else {
     return ResultT<Code>::error(TRI_ERROR_BAD_PARAMETER,
-                                "Sould be a byte array or base64 string");
+                                "Should be a byte array or base64 string");
   }
 }
 
@@ -102,7 +102,7 @@ auto velocypackToIsDeterministic(std::optional<Slice> slice) -> ResultT<bool> {
   if (auto value = slice.value(); value.isBool()) {
     return value.getBool();
   } else {
-    return ResultT<bool>::error(TRI_ERROR_BAD_PARAMETER, "Sould be a boolean");
+    return ResultT<bool>::error(TRI_ERROR_BAD_PARAMETER, "Should be a boolean");
   }
 }
 
