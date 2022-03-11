@@ -73,7 +73,7 @@ function SkipListSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCreation : function () {
-      var idx = collection.ensureSkiplist("a");
+      var idx = collection.ensureIndex({ type: "skiplist", fields: ["a"] });
       var id = idx.id;
 
       assertNotEqual(0, id);
@@ -83,7 +83,7 @@ function SkipListSuite() {
       assertEqual(["a"], idx.fields);
       assertEqual(true, idx.isNewlyCreated);
 
-      idx = collection.ensureSkiplist("a");
+      idx = collection.ensureIndex({ type: "skiplist", fields: ["a"] });
 
       assertEqual(id, idx.id);
       assertEqual("skiplist", idx.type);
@@ -98,7 +98,7 @@ function SkipListSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCreationSparseUniqueSkiplist : function () {
-      var idx = collection.ensureSkiplist("a", { sparse: true });
+      var idx = collection.ensureIndex({ type: "skiplist", fields: ["a"], sparse: true });
       var id = idx.id;
 
       assertNotEqual(0, id);
@@ -108,7 +108,7 @@ function SkipListSuite() {
       assertEqual(["a"], idx.fields);
       assertEqual(true, idx.isNewlyCreated);
 
-      idx = collection.ensureSkiplist("a", { sparse: true });
+      idx = collection.ensureIndex({ type: "skiplist", fields: ["a"], sparse: true });
 
       assertEqual(id, idx.id);
       assertEqual("skiplist", idx.type);
@@ -123,7 +123,7 @@ function SkipListSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCreationSkiplistMixedSparsity : function () {
-      var idx = collection.ensureSkiplist("a", { sparse: true });
+      var idx = collection.ensureIndex({ type: "skiplist", fields: ["a"], sparse: true });
       var id = idx.id;
 
       assertNotEqual(0, id);
@@ -133,7 +133,7 @@ function SkipListSuite() {
       assertEqual(["a"], idx.fields);
       assertEqual(true, idx.isNewlyCreated);
 
-      idx = collection.ensureSkiplist("a", { sparse: false });
+      idx = collection.ensureIndex({ type: "skiplist", fields: ["a"], sparse: false });
 
       assertNotEqual(id, idx.id);
       assertEqual("skiplist", idx.type);
@@ -143,7 +143,7 @@ function SkipListSuite() {
       assertEqual(true, idx.isNewlyCreated);
       id = idx.id;
 
-      idx = collection.ensureSkiplist("a", { sparse: false });
+      idx = collection.ensureIndex({ type: "skiplist", fields: ["a"], sparse: false });
 
       assertEqual(id, idx.id);
       assertEqual("skiplist", idx.type);
@@ -158,7 +158,7 @@ function SkipListSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCreationPermutedSkiplist : function () {
-      var idx = collection.ensureSkiplist("a", "b");
+      var idx = collection.ensureIndex({ type: "skiplist", fields: ["a", "b"] });
       var id = idx.id;
 
       assertNotEqual(0, id);
@@ -168,7 +168,7 @@ function SkipListSuite() {
       assertEqual(["a","b"], idx.fields);
       assertEqual(true, idx.isNewlyCreated);
 
-      idx = collection.ensureSkiplist("b", "a");
+      idx = collection.ensureIndex({ type: "skiplist", fields: ["b", "a"] });
 
       assertNotEqual(id, idx.id);
       assertEqual("skiplist", idx.type);

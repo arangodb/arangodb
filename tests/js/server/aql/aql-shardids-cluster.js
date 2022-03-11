@@ -244,7 +244,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
 
     testRestrictOnShardKeyHashIndex : function () {
       dropIndexes(collectionByKey);
-      collectionByKey.ensureHashIndex(shardKey);
+      collectionByKey.ensureIndex({ type: "hash", fields: [shardKey] });
 
       for (let i = 0; i < 25; ++i) {
         const query = `
@@ -262,7 +262,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
 
     testRestrictOnShardKeySkiplist : function () {
       dropIndexes(collectionByKey);
-      collectionByKey.ensureSkiplist(shardKey);
+      collectionByKey.ensureIndex({ type: "skiplist", fields: [shardKey] });
 
       for (let i = 0; i < 25; ++i) {
         const query = `
@@ -280,7 +280,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
 
     testRestrictMultipleShards : function () {
       dropIndexes(collectionByKey);
-      collectionByKey.ensureHashIndex(shardKey);
+      collectionByKey.ensureIndex({ type: "hash", fields: [shardKey] });
 
       for (let i = 0; i < 25; ++i) {
         const query = `
@@ -305,7 +305,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
 
     testRestrictMultipleShardsStringKeys : function () {
       dropIndexes(collectionByKey);
-      collectionByKey.ensureHashIndex(shardKey);
+      collectionByKey.ensureIndex({ type: "hash", fields: [shardKey] });
 
       for (let i = 0; i < 25; ++i) {
         const query = `
@@ -428,7 +428,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
 
     testMultipleKeysSameFilter: function () {
       dropIndexes(collectionByKey);
-      collectionByKey.ensureHashIndex(shardKey);
+      collectionByKey.ensureIndex({ type: "hash", fields: [shardKey] });
 
       for (let i = 0; i < 24; ++i) {
         const query = `
@@ -469,7 +469,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
 
     testMultipleKeysDifferentFilter: function () {
       dropIndexes(collectionByKey);
-      collectionByKey.ensureHashIndex(shardKey);
+      collectionByKey.ensureIndex({ type: "hash", fields: [shardKey] });
 
       for (let i = 0; i < 24; ++i) {
         const query = `
@@ -512,7 +512,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
 
     testMultipleShardsOr : function () {
       dropIndexes(collectionByKey);
-      collectionByKey.ensureHashIndex(shardKey);
+      collectionByKey.ensureIndex({ type: "hash", fields: [shardKey] });
 
       for (let i = 0; i < 24; ++i) {
         const query = `
@@ -576,7 +576,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
 
     testInnerOuterSameIndex1 : function () {
       dropIndexes(collectionByKey);
-      collectionByKey.ensureHashIndex(shardKey);
+      collectionByKey.ensureIndex({ type: "hash", fields: [shardKey] });
 
       for (let i = 0; i < 24; ++i) {
         const query = `
@@ -624,7 +624,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
 
     testInnerOuterSameIndex2 : function () {
       dropIndexes(collectionByKey);
-      collectionByKey.ensureHashIndex(shardKey);
+      collectionByKey.ensureIndex({ type: "hash", fields: [shardKey] });
 
       for (let i = 0; i < 24; ++i) {
         const query = `
@@ -676,7 +676,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
 
     testInnerOuterSameIndex3 : function () {
       dropIndexes(collectionByKey);
-      collectionByKey.ensureHashIndex(shardKey);
+      collectionByKey.ensureIndex({ type: "hash", fields: [shardKey] });
 
       for (let i = 0; i < 24; ++i) {
         const query = `
@@ -724,7 +724,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
 
     testInnerOuterSameIndex4 : function () {
       dropIndexes(collectionByKey);
-      collectionByKey.ensureHashIndex(shardKey);
+      collectionByKey.ensureIndex({ type: "hash", fields: [shardKey] });
 
       for (let i = 0; i < 24; ++i) {
         const query = `
@@ -771,7 +771,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
 
     testInnerOuterSameIndex5 : function () {
       dropIndexes(collectionByKey);
-      collectionByKey.ensureHashIndex(shardKey);
+      collectionByKey.ensureIndex({ type: "hash", fields: [shardKey] });
 
       for (let i = 0; i < 24; ++i) {
         const query = `
@@ -822,7 +822,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
 
     testInnerOuterSameIndex6 : function () {
       dropIndexes(collectionByKey);
-      collectionByKey.ensureHashIndex(shardKey);
+      collectionByKey.ensureIndex({ type: "hash", fields: [shardKey] });
 
       for (let i = 0; i < 24; ++i) {
         const query = `
@@ -871,7 +871,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
 
     testInnerOuterSameIndex7 : function () {
       dropIndexes(collectionByKey);
-      collectionByKey.ensureHashIndex(shardKey);
+      collectionByKey.ensureIndex({ type: "hash", fields: [shardKey] });
 
       for (let i = 0; i < 24; ++i) {
         const query = `
@@ -919,7 +919,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
 
     testInnerOuterSameIndex8 : function () {
       dropIndexes(collectionByKey);
-      collectionByKey.ensureHashIndex(shardKey);
+      collectionByKey.ensureIndex({ type: "hash", fields: [shardKey] });
 
       for (let i = 0; i < 24; ++i) {
         const query = `
@@ -970,7 +970,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
 
     testInnerOuterSameIndex9 : function () {
       dropIndexes(collectionByKey);
-      collectionByKey.ensureHashIndex(shardKey);
+      collectionByKey.ensureIndex({ type: "hash", fields: [shardKey] });
 
       for (let i = 0; i < 24; ++i) {
         const query = `
@@ -1018,7 +1018,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
 
     testInnerOuterSameIndex10 : function () {
       dropIndexes(collectionByKey);
-      collectionByKey.ensureHashIndex(shardKey);
+      collectionByKey.ensureIndex({ type: "hash", fields: [shardKey] });
 
       for (let i = 0; i < 24; ++i) {
         const query = `
@@ -1065,7 +1065,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
 
     testInnerOuterSameIndex11 : function () {
       dropIndexes(collectionByKey);
-      collectionByKey.ensureHashIndex(shardKey);
+      collectionByKey.ensureIndex({ type: "hash", fields: [shardKey] });
 
       for (let i = 0; i < 24; ++i) {
         const query = `
@@ -1116,7 +1116,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
 
     testInnerOuterSameIndex12 : function () {
       dropIndexes(collectionByKey);
-      collectionByKey.ensureHashIndex(shardKey);
+      collectionByKey.ensureIndex({ type: "hash", fields: [shardKey] });
 
       for (let i = 0; i < 24; ++i) {
         const query = `
@@ -1164,7 +1164,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
 
     testInnerOuterSameIndex13 : function () {
       dropIndexes(collectionByKey);
-      collectionByKey.ensureHashIndex(shardKey);
+      collectionByKey.ensureIndex({ type: "hash", fields: [shardKey] });
 
       for (let i = 0; i < 24; ++i) {
         const query = `
@@ -1215,7 +1215,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
 
     testInnerOuterSameIndex14 : function () {
       dropIndexes(collectionByKey);
-      collectionByKey.ensureHashIndex(shardKey);
+      collectionByKey.ensureIndex({ type: "hash", fields: [shardKey] });
 
       for (let i = 0; i < 24; ++i) {
         const query = `
@@ -1263,7 +1263,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
 
     testInnerOuterSameIndex15 : function () {
       dropIndexes(collectionByKey);
-      collectionByKey.ensureHashIndex(shardKey);
+      collectionByKey.ensureIndex({ type: "hash", fields: [shardKey] });
 
       for (let i = 0; i < 24; ++i) {
         const query = `
@@ -1310,7 +1310,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
 
     testInnerOuterSameIndex16 : function () {
       dropIndexes(collectionByKey);
-      collectionByKey.ensureHashIndex(shardKey);
+      collectionByKey.ensureIndex({ type: "hash", fields: [shardKey] });
 
       for (let i = 0; i < 24; ++i) {
         const query = `
@@ -1361,7 +1361,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
 
     testInnerOuterSameIndex17 : function () {
       dropIndexes(collectionByKey);
-      collectionByKey.ensureHashIndex(shardKey);
+      collectionByKey.ensureIndex({ type: "hash", fields: [shardKey] });
 
       for (let i = 0; i < 24; ++i) {
         const query = `
@@ -1411,7 +1411,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
 
     testInnerOuterSameIndex18 : function () {
       dropIndexes(collectionByKey);
-      collectionByKey.ensureHashIndex(shardKey);
+      collectionByKey.ensureIndex({ type: "hash", fields: [shardKey] });
 
       const i = 18;
       const query = `
@@ -1459,7 +1459,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
 
     testInnerOuterSameIndex19 : function () {
       dropIndexes(collectionByKey);
-      collectionByKey.ensureHashIndex(shardKey);
+      collectionByKey.ensureIndex({ type: "hash", fields: [shardKey] });
 
       const i = 19;
       const query = `
@@ -1508,7 +1508,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
 
     testInnerOuterSameIndex20 : function () {
       dropIndexes(collectionByKey);
-      collectionByKey.ensureHashIndex(shardKey);
+      collectionByKey.ensureIndex({ type: "hash", fields: [shardKey] });
 
       const i = 20;
       const query = `
@@ -1557,7 +1557,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
 
     testInnerOuterSameIndex21 : function () {
       dropIndexes(collectionByKey);
-      collectionByKey.ensureHashIndex(shardKey);
+      collectionByKey.ensureIndex({ type: "hash", fields: [shardKey] });
 
       const i = 21;
       const query = `
@@ -1602,7 +1602,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
 
     testInnerOuterSameIndex22 : function () {
       dropIndexes(collectionByKey);
-      collectionByKey.ensureHashIndex(shardKey);
+      collectionByKey.ensureIndex({ type: "hash", fields: [shardKey] });
 
       const i = 22;
       const query = `
@@ -1647,7 +1647,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
 
     testInnerOuterSameIndex23 : function () {
       dropIndexes(collectionByKey);
-      collectionByKey.ensureHashIndex(shardKey);
+      collectionByKey.ensureIndex({ type: "hash", fields: [shardKey] });
 
       for (let i = 0; i < 24; ++i) {
         const query = `
@@ -1697,8 +1697,8 @@ function ahuacatlShardIdsOptimizationTestSuite() {
     testInnerOuterDifferentIndex1 : function () {
       dropIndexes(collectionByKey1);
       dropIndexes(collectionByKey2);
-      collectionByKey1.ensureHashIndex(shardKey1);
-      collectionByKey2.ensureHashIndex(shardKey2);
+      collectionByKey1.ensureIndex({ type: "hash", fields: [shardKey1] });
+      collectionByKey2.ensureIndex({ type: "hash", fields: [shardKey2] });
 
       for (let i = 0; i < 24; ++i) {
         const query = `
@@ -1750,8 +1750,8 @@ function ahuacatlShardIdsOptimizationTestSuite() {
     testInnerOuterDifferentIndex2 : function () {
       dropIndexes(collectionByKey1);
       dropIndexes(collectionByKey2);
-      collectionByKey1.ensureHashIndex(shardKey1);
-      collectionByKey2.ensureHashIndex(shardKey2);
+      collectionByKey1.ensureIndex({ type: "hash", fields: [shardKey1] });
+      collectionByKey2.ensureIndex({ type: "hash", fields: [shardKey2] });
 
       for (let i = 0; i < 24; ++i) {
         const query = `
@@ -1807,8 +1807,8 @@ function ahuacatlShardIdsOptimizationTestSuite() {
     testInnerOuterDifferentIndex3 : function () {
       dropIndexes(collectionByKey1);
       dropIndexes(collectionByKey2);
-      collectionByKey1.ensureHashIndex(shardKey1);
-      collectionByKey2.ensureHashIndex(shardKey2);
+      collectionByKey1.ensureIndex({ type: "hash", fields: [shardKey1] });
+      collectionByKey2.ensureIndex({ type: "hash", fields: [shardKey2] });
 
       for (let i = 0; i < 24; ++i) {
         const query = `
@@ -1860,8 +1860,8 @@ function ahuacatlShardIdsOptimizationTestSuite() {
     testInnerOuterDifferentIndex4 : function () {
       dropIndexes(collectionByKey1);
       dropIndexes(collectionByKey2);
-      collectionByKey1.ensureHashIndex(shardKey1);
-      collectionByKey2.ensureHashIndex(shardKey2);
+      collectionByKey1.ensureIndex({ type: "hash", fields: [shardKey1] });
+      collectionByKey2.ensureIndex({ type: "hash", fields: [shardKey2] });
 
       for (let i = 0; i < 24; ++i) {
         const query = `
@@ -1912,8 +1912,8 @@ function ahuacatlShardIdsOptimizationTestSuite() {
     testInnerOuterDifferentIndex5 : function () {
       dropIndexes(collectionByKey1);
       dropIndexes(collectionByKey2);
-      collectionByKey1.ensureHashIndex(shardKey1);
-      collectionByKey2.ensureHashIndex(shardKey2);
+      collectionByKey1.ensureIndex({ type: "hash", fields: [shardKey1] });
+      collectionByKey2.ensureIndex({ type: "hash", fields: [shardKey2] });
 
       for (let i = 0; i < 24; ++i) {
         const query = `
@@ -1968,8 +1968,8 @@ function ahuacatlShardIdsOptimizationTestSuite() {
     testInnerOuterDifferentIndex6 : function () {
       dropIndexes(collectionByKey1);
       dropIndexes(collectionByKey2);
-      collectionByKey1.ensureHashIndex(shardKey1);
-      collectionByKey2.ensureHashIndex(shardKey2);
+      collectionByKey1.ensureIndex({ type: "hash", fields: [shardKey1] });
+      collectionByKey2.ensureIndex({ type: "hash", fields: [shardKey2] });
 
       for (let i = 0; i < 24; ++i) {
         const query = `
@@ -2021,8 +2021,8 @@ function ahuacatlShardIdsOptimizationTestSuite() {
     testInnerOuterDifferentIndex7 : function () {
       dropIndexes(collectionByKey1);
       dropIndexes(collectionByKey2);
-      collectionByKey1.ensureHashIndex(shardKey1);
-      collectionByKey2.ensureHashIndex(shardKey2);
+      collectionByKey1.ensureIndex({ type: "hash", fields: [shardKey1] });
+      collectionByKey2.ensureIndex({ type: "hash", fields: [shardKey2] });
 
       for (let i = 0; i < 24; ++i) {
         const query = `
@@ -2077,8 +2077,8 @@ function ahuacatlShardIdsOptimizationTestSuite() {
     testInnerOuterDifferentIndex8 : function () {
       dropIndexes(collectionByKey1);
       dropIndexes(collectionByKey2);
-      collectionByKey1.ensureHashIndex(shardKey1);
-      collectionByKey2.ensureHashIndex(shardKey2);
+      collectionByKey1.ensureIndex({ type: "hash", fields: [shardKey1] });
+      collectionByKey2.ensureIndex({ type: "hash", fields: [shardKey2] });
 
       for (let i = 0; i < 24; ++i) {
         const query = `
@@ -2130,8 +2130,8 @@ function ahuacatlShardIdsOptimizationTestSuite() {
     testInnerOuterDifferentIndex9 : function () {
       dropIndexes(collectionByKey1);
       dropIndexes(collectionByKey2);
-      collectionByKey1.ensureHashIndex(shardKey1);
-      collectionByKey2.ensureHashIndex(shardKey2);
+      collectionByKey1.ensureIndex({ type: "hash", fields: [shardKey1] });
+      collectionByKey2.ensureIndex({ type: "hash", fields: [shardKey2] });
 
       for (let i = 0; i < 24; ++i) {
         const query = `
@@ -2182,8 +2182,8 @@ function ahuacatlShardIdsOptimizationTestSuite() {
     testInnerOuterDifferentIndex10 : function () {
       dropIndexes(collectionByKey1);
       dropIndexes(collectionByKey2);
-      collectionByKey1.ensureHashIndex(shardKey1);
-      collectionByKey2.ensureHashIndex(shardKey2);
+      collectionByKey1.ensureIndex({ type: "hash", fields: [shardKey1] });
+      collectionByKey2.ensureIndex({ type: "hash", fields: [shardKey2] });
 
       for (let i = 0; i < 24; ++i) {
         const query = `
@@ -2238,8 +2238,8 @@ function ahuacatlShardIdsOptimizationTestSuite() {
     testInnerOuterDifferentIndex11 : function () {
       dropIndexes(collectionByKey1);
       dropIndexes(collectionByKey2);
-      collectionByKey1.ensureHashIndex(shardKey1);
-      collectionByKey2.ensureHashIndex(shardKey2);
+      collectionByKey1.ensureIndex({ type: "hash", fields: [shardKey1] });
+      collectionByKey2.ensureIndex({ type: "hash", fields: [shardKey2] });
 
       for (let i = 0; i < 24; ++i) {
         const query = `
@@ -2291,8 +2291,8 @@ function ahuacatlShardIdsOptimizationTestSuite() {
     testInnerOuterDifferentIndex12 : function () {
       dropIndexes(collectionByKey1);
       dropIndexes(collectionByKey2);
-      collectionByKey1.ensureHashIndex(shardKey1);
-      collectionByKey2.ensureHashIndex(shardKey2);
+      collectionByKey1.ensureIndex({ type: "hash", fields: [shardKey1] });
+      collectionByKey2.ensureIndex({ type: "hash", fields: [shardKey2] });
 
       for (let i = 0; i < 24; ++i) {
         const query = `
@@ -2347,8 +2347,8 @@ function ahuacatlShardIdsOptimizationTestSuite() {
     testInnerOuterDifferentIndex13 : function () {
       dropIndexes(collectionByKey1);
       dropIndexes(collectionByKey2);
-      collectionByKey1.ensureHashIndex(shardKey1);
-      collectionByKey2.ensureHashIndex(shardKey2);
+      collectionByKey1.ensureIndex({ type: "hash", fields: [shardKey1] });
+      collectionByKey2.ensureIndex({ type: "hash", fields: [shardKey2] });
 
       for (let i = 0; i < 24; ++i) {
         const query = `
@@ -2400,8 +2400,8 @@ function ahuacatlShardIdsOptimizationTestSuite() {
     testInnerOuterDifferentIndex14 : function () {
       dropIndexes(collectionByKey1);
       dropIndexes(collectionByKey2);
-      collectionByKey1.ensureHashIndex(shardKey1);
-      collectionByKey2.ensureHashIndex(shardKey2);
+      collectionByKey1.ensureIndex({ type: "hash", fields: [shardKey1] });
+      collectionByKey2.ensureIndex({ type: "hash", fields: [shardKey2] });
 
       for (let i = 0; i < 24; ++i) {
         const query = `
@@ -2452,8 +2452,8 @@ function ahuacatlShardIdsOptimizationTestSuite() {
     testInnerOuterDifferentIndex15 : function () {
       dropIndexes(collectionByKey1);
       dropIndexes(collectionByKey2);
-      collectionByKey1.ensureHashIndex(shardKey1);
-      collectionByKey2.ensureHashIndex(shardKey2);
+      collectionByKey1.ensureIndex({ type: "hash", fields: [shardKey1] });
+      collectionByKey2.ensureIndex({ type: "hash", fields: [shardKey2] });
 
       for (let i = 0; i < 24; ++i) {
         const query = `
@@ -2508,8 +2508,8 @@ function ahuacatlShardIdsOptimizationTestSuite() {
     testInnerOuterDifferentIndex16 : function () {
       dropIndexes(collectionByKey1);
       dropIndexes(collectionByKey2);
-      collectionByKey1.ensureHashIndex(shardKey1);
-      collectionByKey2.ensureHashIndex(shardKey2);
+      collectionByKey1.ensureIndex({ type: "hash", fields: [shardKey1] });
+      collectionByKey2.ensureIndex({ type: "hash", fields: [shardKey2] });
 
       for (let i = 0; i < 24; ++i) {
         const query = `
@@ -2562,8 +2562,8 @@ function ahuacatlShardIdsOptimizationTestSuite() {
     testInnerOuterDifferentIndex17 : function () {
       dropIndexes(collectionByKey1);
       dropIndexes(collectionByKey2);
-      collectionByKey1.ensureHashIndex(shardKey1);
-      collectionByKey2.ensureHashIndex(shardKey2);
+      collectionByKey1.ensureIndex({ type: "hash", fields: [shardKey1] });
+      collectionByKey2.ensureIndex({ type: "hash", fields: [shardKey2] });
 
       const i = 17;
       const query = `
@@ -2614,8 +2614,8 @@ function ahuacatlShardIdsOptimizationTestSuite() {
     testInnerOuterDifferentIndex18 : function () {
       dropIndexes(collectionByKey1);
       dropIndexes(collectionByKey2);
-      collectionByKey1.ensureHashIndex(shardKey1);
-      collectionByKey2.ensureHashIndex(shardKey2);
+      collectionByKey1.ensureIndex({ type: "hash", fields: [shardKey1] });
+      collectionByKey2.ensureIndex({ type: "hash", fields: [shardKey2] });
 
       const i = 18;
       const query = `
@@ -2666,8 +2666,8 @@ function ahuacatlShardIdsOptimizationTestSuite() {
     testInnerOuterDifferentIndex19 : function () {
       dropIndexes(collectionByKey1);
       dropIndexes(collectionByKey2);
-      collectionByKey1.ensureHashIndex(shardKey1);
-      collectionByKey2.ensureHashIndex(shardKey2);
+      collectionByKey1.ensureIndex({ type: "hash", fields: [shardKey1] });
+      collectionByKey2.ensureIndex({ type: "hash", fields: [shardKey2] });
 
       const i = 19;
       const query = `
@@ -2718,8 +2718,8 @@ function ahuacatlShardIdsOptimizationTestSuite() {
     testInnerOuterDifferentIndex20 : function () {
       dropIndexes(collectionByKey1);
       dropIndexes(collectionByKey2);
-      collectionByKey1.ensureHashIndex(shardKey1);
-      collectionByKey2.ensureHashIndex(shardKey2);
+      collectionByKey1.ensureIndex({ type: "hash", fields: [shardKey1] });
+      collectionByKey2.ensureIndex({ type: "hash", fields: [shardKey2] });
 
       const i = 20;
       const query = `
@@ -2766,8 +2766,8 @@ function ahuacatlShardIdsOptimizationTestSuite() {
     testInnerOuterDifferentIndex21 : function () {
       dropIndexes(collectionByKey1);
       dropIndexes(collectionByKey2);
-      collectionByKey1.ensureHashIndex(shardKey1);
-      collectionByKey2.ensureHashIndex(shardKey2);
+      collectionByKey1.ensureIndex({ type: "hash", fields: [shardKey1] });
+      collectionByKey2.ensureIndex({ type: "hash", fields: [shardKey2] });
 
       const i = 21;
       const query = `
@@ -2817,8 +2817,8 @@ function ahuacatlShardIdsOptimizationTestSuite() {
     testSeparateLoopsIndex : function () {
       dropIndexes(collectionByKey1);
       dropIndexes(collectionByKey2);
-      collectionByKey1.ensureHashIndex(shardKey1);
-      collectionByKey2.ensureHashIndex(shardKey2);
+      collectionByKey1.ensureIndex({ type: "hash", fields: [shardKey1] });
+      collectionByKey2.ensureIndex({ type: "hash", fields: [shardKey2] });
 
       for (let i = 0; i < 24; ++i) {
         const query = `
