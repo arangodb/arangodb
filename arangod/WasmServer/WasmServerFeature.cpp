@@ -65,7 +65,10 @@ auto WasmServerFeature::executeFunction(std::string const& name, uint64_t a,
   if (module.has_value()) {
     runtime.load(module.value());
     auto function = runtime.find_function(name.c_str());
-    return function.call<uint64_t>(a, b);
+    if (function.fail()) {
+      return std::nullopt;
+    }
+    return function.get().call<uint64_t>(a, b);
   } else {
     // TODO
     return std::nullopt;
