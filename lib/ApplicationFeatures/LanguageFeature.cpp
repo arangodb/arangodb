@@ -257,7 +257,7 @@ void LanguageFeature::resetLanguage(std::string_view language,
   _langType = type;
   _defaultLanguage.clear();
   _icuLanguage.clear();
-  switch(_langType) {
+  switch (_langType) {
     case LanguageType::DEFAULT:
       _defaultLanguage = language;
       break;

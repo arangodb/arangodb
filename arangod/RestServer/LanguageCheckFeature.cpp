@@ -105,7 +105,7 @@ ErrorCode writeLanguage(arangodb::ArangodServer& server, std::string_view lang,
   VPackBuilder builder;
   try {
     builder.openObject();
-    switch(currLangType) {
+    switch (currLangType) {
       case LanguageType::DEFAULT:
         builder.add(kDefaultLangKey, VPackValue(lang));
         break;
@@ -185,7 +185,8 @@ void LanguageCheckFeature::start() {
   auto [currLang, currLangType] = feature.getLanguage();
   auto collatorLang = feature.getCollatorLanguage();
 
-  auto [prevLang, prevLangType] = ::getOrSetPreviousLanguage(server(), collatorLang, currLangType);
+  auto [prevLang, prevLangType] =
+      ::getOrSetPreviousLanguage(server(), collatorLang, currLangType);
 
   if (LanguageType::INVALID == currLangType) {
     LOG_TOPIC("7ef61", FATAL, arangodb::Logger::CONFIG)
