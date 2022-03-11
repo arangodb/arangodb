@@ -34,6 +34,7 @@ const forceJson = internal.options().hasOwnProperty('server.force-json') && inte
 const contentType = forceJson ? "application/json; charset=utf-8" :  "application/x-velocypack";
 const jsunity = require("jsunity");
 
+
 let api = "/_api/simple";
 
 ////////////////////////////////////////////////////////////////////////////////;
@@ -43,7 +44,9 @@ function by_example_querySuite () {
   let cn = "UnitTestsCollectionByExample";
   return {
     setUp: function() {
-      let cid = db._create(cn);
+      let body = { "name" : cn, "numberOfShards" : 8 };
+      let doc = arango.POST_RAW("/_api/collection", body);
+      assertEqual(doc.code, 200);
     },
 
     tearDown: function() {
@@ -97,9 +100,8 @@ function by_example_querySuite () {
       assertFalse(doc.parsedBody['hasMore']);
       assertEqual(doc.parsedBody['result'].length, 4);
       assertEqual(doc.parsedBody['count'], 4);
-
       let ids = [];
-      doc.parsedBody['result'].forEach(oneDoc => { ids.push(oneDoc['_id']); })
+      doc.parsedBody['result'].forEach(oneDoc => { ids.push(oneDoc['_id']); });
       assertEqual(ids.sort(), [d1,d2,d3,d4].sort());
 
       cmd = api + "/by-example";
@@ -114,7 +116,7 @@ function by_example_querySuite () {
       assertEqual(doc.parsedBody['result'].length, 1);
       assertEqual(doc.parsedBody['count'], 1);
       ids = [];
-      doc.parsedBody['result'].forEach(oneDoc => { ids.push(oneDoc['_id']); })
+      doc.parsedBody['result'].forEach(oneDoc => { ids.push(oneDoc['_id']); });
       assertEqual(ids.sort(), [d2].sort());
 
       cmd = api + "/by-example";
@@ -129,7 +131,7 @@ function by_example_querySuite () {
       assertEqual(doc.parsedBody['result'].length, 2);
       assertEqual(doc.parsedBody['count'], 2);
       ids = [];
-      doc.parsedBody['result'].forEach(oneDoc => { ids.push(oneDoc['_id']); })
+      doc.parsedBody['result'].forEach(oneDoc => { ids.push(oneDoc['_id']); });
       assertEqual(ids.sort(), [d2,d3].sort());
 
       cmd = api + "/first-example";
@@ -173,7 +175,9 @@ function by_example_query_with_skipSuite () {
   let cn = "UnitTestsCollectionByExample";
   return {
     setUp: function() {
-      db._create(cn);
+      let body = { "name" : cn, "numberOfShards" : 8 };
+      let doc = arango.POST_RAW("/_api/collection", body);
+      assertEqual(doc.code, 200);
     },
 
     tearDown: function() {
@@ -244,12 +248,15 @@ function remove_by_example_querySuite () {
   let cn = "UnitTestsCollectionByExample";
   return {
     setUp: function() {
-      let c = db._create(cn);
+      let body = { "name" : cn, "numberOfShards" : 8 };
+      let doc = arango.POST_RAW("/_api/collection", body);
+      assertEqual(doc.code, 200);
+
       let docs = [];
       for (let i = 0; i < 20; i++) {
         docs.push({ "value" : i, "value2" : 99 });
       }
-      c.save(docs);
+      db[cn].save(docs);
     },
 
     tearDown: function() {
@@ -346,7 +353,7 @@ function remove_by_example_querySuite () {
         docs.push({ "value99" : 7, "value98" : 1 });
       }
       db[cn].save(docs);
-
+ 
       // miss them;
       body = { "collection" : cn, "example" : { "value99" : 7, "value98" : 2} };
       doc = arango.PUT_RAW(cmd, body);
@@ -388,29 +395,11 @@ function remove_by_example_querySuite () {
       let body = { "collection" : cn, "example" : { "value2" : 99 }, "limit" : 5 };
       let doc = arango.PUT_RAW(cmd, body);
 
-      // remove some;
-      assertEqual(doc.code, 200);
+      assertEqual(doc.code, 501);
       assertEqual(doc.headers['content-type'], contentType);
-      assertFalse(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['code'], 200);
-      assertEqual(doc.parsedBody['deleted'], 5);
-
-      // remove some more;
-      doc = arango.PUT_RAW(cmd, body);
-      assertEqual(doc.code, 200);
-      assertEqual(doc.headers['content-type'], contentType);
-      assertFalse(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['code'], 200);
-      assertEqual(doc.parsedBody['deleted'], 5);
-
-      // remove the rest;
-      body = { "collection" : cn, "example" : { "value2" : 99 }, "limit" : 50 };
-      doc = arango.PUT_RAW(cmd, body);
-      assertEqual(doc.code, 200);
-      assertEqual(doc.headers['content-type'], contentType);
-      assertFalse(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['code'], 200);
-      assertEqual(doc.parsedBody['deleted'], 10);
+      assertTrue(doc.parsedBody['error']);
+      assertEqual(doc.parsedBody['code'], 501);
+      assertEqual(doc.parsedBody['errorNum'], 1470);
     }
   };
 }
@@ -422,12 +411,14 @@ function replace_by_example_querySuite () {
   let cn = "UnitTestsCollectionByExample";
   return {
     setUp: function() {
-      let c = db._create(cn);
+      let body = { "name" : cn, "numberOfShards" : 8 };
+      let doc = arango.POST_RAW("/_api/collection", body);
+      assertEqual(doc.code, 200);
       let docs = [];
       for (let i = 0; i < 20; i++) {
         docs.push({ "value" : i, "value2" : 99 });
       }
-      c.save(docs);
+      db[cn].save(docs);
     },
 
     tearDown: function() {
@@ -483,29 +474,11 @@ function replace_by_example_querySuite () {
       let body = { "collection" : cn, "example" : { "value2" : 99 }, "newValue" : { "foo" : "bar" }, "limit" : 5 };
       let doc = arango.PUT_RAW(cmd, body);
 
-      // replace some;
-      assertEqual(doc.code, 200);
+      assertEqual(doc.code, 501);
       assertEqual(doc.headers['content-type'], contentType);
-      assertFalse(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['code'], 200);
-      assertEqual(doc.parsedBody['replaced'], 5);
-
-      // replace some more;
-      doc = arango.PUT_RAW(cmd, body);
-      assertEqual(doc.code, 200);
-      assertEqual(doc.headers['content-type'], contentType);
-      assertFalse(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['code'], 200);
-      assertEqual(doc.parsedBody['replaced'], 5);
-
-      // replace the rest;
-      body = { "collection" : cn, "example" : { "value2" : 99 }, "newValue" : { "fox" : "box" }, "limit" : 50 };
-      doc = arango.PUT_RAW(cmd, body);
-      assertEqual(doc.code, 200);
-      assertEqual(doc.headers['content-type'], contentType);
-      assertFalse(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['code'], 200);
-      assertEqual(doc.parsedBody['replaced'], 10);
+      assertTrue(doc.parsedBody['error']);
+      assertEqual(doc.parsedBody['code'], 501);
+      assertEqual(doc.parsedBody['errorNum'], 1470);
     }
   };
 }
@@ -517,12 +490,14 @@ function update_by_example_querySuite () {
   let cn = "UnitTestsCollectionByExample";
   return {
     setUp: function() {
-      let c = db._create(cn);
+      let body = { "name" : cn, "numberOfShards" : 8 };
+      let doc = arango.POST_RAW("/_api/collection", body);
+      assertEqual(doc.code, 200);
       let docs = [];
       for (let i = 0; i < 20; i++) {
         docs.push({ "value" : i, "value2" : 99 });
       }
-      c.save(docs);
+      db[cn].save(docs);
     },
 
     tearDown: function() {
@@ -596,169 +571,11 @@ function update_by_example_querySuite () {
       let body = { "collection" : cn, "example" : { "value2" : 99 }, "newValue" : { "foo" : "bar", "value2" : 17 }, "limit" : 5 };
       let doc = arango.PUT_RAW(cmd, body);
 
-      // update some;
-      assertEqual(doc.code, 200);
+      assertEqual(doc.code, 501);
       assertEqual(doc.headers['content-type'], contentType);
-      assertFalse(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['code'], 200);
-      assertEqual(doc.parsedBody['updated'], 5);
-
-      // update some more;
-      doc = arango.PUT_RAW(cmd, body);
-      assertEqual(doc.code, 200);
-      assertEqual(doc.headers['content-type'], contentType);
-      assertFalse(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['code'], 200);
-      assertEqual(doc.parsedBody['updated'], 5);
-
-      // update the rest;
-      body = { "collection" : cn, "example" : { "value2" : 99 }, "newValue" : { "fox" : "box" }, "limit" : 50 };
-      doc = arango.PUT_RAW(cmd, body);
-      assertEqual(doc.code, 200);
-      assertEqual(doc.headers['content-type'], contentType);
-      assertFalse(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['code'], 200);
-      assertEqual(doc.parsedBody['updated'], 10);
-    }
-  };
-}
-
-////////////////////////////////////////////////////////////////////////////////;
-// update-by-example query;
-////////////////////////////////////////////////////////////////////////////////;
-function update_by_example_query__mergeObjectsSuite () {
-  let cn = "UnitTestsCollectionByExample";
-  return {
-    setUp: function() {
-      let c = db._create(cn);
-      c.save({ "_key" : "one", "value" : "test" });
-      c.save({ "_key" : "two", "value" : { "test" : "foo" } });
-    },
-
-    tearDown: function() {
-      db._drop(cn);
-    },
-
-    test_updates_the_example__empty_update_value: function() {
-      let cmd = api + "/update-by-example";
-
-      // update two;
-      let body = { "collection" : cn, "example" : { "value" : { "test" : "foo" } }, "newValue" : { "value" : { } } };
-      let doc = arango.PUT_RAW(cmd, body);
-
-      assertEqual(doc.code, 200);
-      assertEqual(doc.headers['content-type'], contentType);
-      assertFalse(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['code'], 200);
-      assertEqual(doc.parsedBody['updated'], 1);
-
-      doc = arango.GET_RAW(`/_api/document/${cn}/two`, "");
-      assertEqual(doc.parsedBody['value'], { "test": "foo" });
-
-      // update with mergeObjects = false;
-      body = { "collection" : cn, "example" : { "value" : { "test" : "foo" } }, "mergeObjects" : false, "newValue" : { "value" : { } } };
-      doc = arango.PUT_RAW(cmd, body);
-
-      assertEqual(doc.code, 200);
-      assertEqual(doc.headers['content-type'], contentType);
-      assertFalse(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['code'], 200);
-      assertEqual(doc.parsedBody['updated'], 1);
-
-      doc = arango.GET_RAW(`/_api/document/${cn}/two`, "");
-      assertEqual(doc.parsedBody['value'], { });
-    },
-
-    test_updates_the_example__mergeObjects_not_specified: function() {
-      let cmd = api + "/update-by-example";
-
-      // update one;
-      let body = { "collection" : cn, "example" : { "value" : "test" }, "newValue" : { "value" : { "foo" : "bar" } } };
-      let doc = arango.PUT_RAW(cmd, body);
-
-      assertEqual(doc.code, 200);
-      assertEqual(doc.headers['content-type'], contentType);
-      assertFalse(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['code'], 200);
-      assertEqual(doc.parsedBody['updated'], 1);
-
-      // this will simply overwrite the value;
-      doc = arango.GET_RAW(`/_api/document/${cn}/one`);
-      assertEqual(doc.parsedBody['value'], { "foo": "bar" });
-
-      // update two  ;
-      body = { "collection" : cn, "example" : { "value" : { "test" : "foo" } }, "mergeObjects" : true, "newValue" : { "value" : { "bark" : "bart" } } };
-      doc = arango.PUT_RAW(cmd, body);
-
-      assertEqual(doc.code, 200);
-      assertEqual(doc.headers['content-type'], contentType);
-      assertFalse(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['code'], 200);
-      assertEqual(doc.parsedBody['updated'], 1);
-
-      doc = arango.GET_RAW(`/_api/document/${cn}/two`);
-      assertEqual(doc.parsedBody['value'], { "test": "foo", "bark": "bart" });
-    },
-
-    test_updates_the_example__mergeObjects_EQ_true: function() {
-      let cmd = api + "/update-by-example";
-
-      // update one;
-      let body = { "collection" : cn, "example" : { "value" : "test" }, "mergeObjects" : true, "newValue" : { "value" : { "foo" : "bar" } } };
-      let doc = arango.PUT_RAW(cmd, body);
-
-      assertEqual(doc.code, 200);
-      assertEqual(doc.headers['content-type'], contentType);
-      assertFalse(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['code'], 200);
-      assertEqual(doc.parsedBody['updated'], 1);
-
-      // this will simply overwrite the value;
-      doc = arango.GET_RAW(`/_api/document/${cn}/one`);
-      assertEqual(doc.parsedBody['value'], { "foo": "bar" });
-
-      // update two  ;
-      body = { "collection" : cn, "example" : { "value" : { "test" : "foo" } }, "mergeObjects" : true, "newValue" : { "value" : { "bark" : "bart" } } };
-      doc = arango.PUT_RAW(cmd, body);
-
-      assertEqual(doc.code, 200);
-      assertEqual(doc.headers['content-type'], contentType);
-      assertFalse(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['code'], 200);
-      assertEqual(doc.parsedBody['updated'], 1);
-
-      doc = arango.GET_RAW(`/_api/document/${cn}/two`);
-      assertEqual(doc.parsedBody['value'], { "test": "foo", "bark": "bart" });
-    },
-
-    test_updates_the_example__mergeObjects_EQ_false: function() {
-      let cmd = api + "/update-by-example";
-
-      // update one;
-      let body = { "collection" : cn, "example" : { "value" : "test" }, "mergeObjects" : false, "newValue" : { "value" : { "foo" : "bar" } } };
-      let doc = arango.PUT_RAW(cmd, body);
-
-      assertEqual(doc.code, 200);
-      assertEqual(doc.headers['content-type'], contentType);
-      assertFalse(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['code'], 200);
-      assertEqual(doc.parsedBody['updated'], 1);
-
-      doc = arango.GET_RAW(`/_api/document/${cn}/one`);
-      assertEqual(doc.parsedBody['value'], { "foo": "bar" });
-
-      // update two  ;
-      body = { "collection" : cn, "example" : { "value" : { "test" : "foo" } }, "mergeObjects" : true, "newValue" : { "value" : { "bark" : "bart" } } };
-      doc = arango.PUT_RAW(cmd, body);
-
-      assertEqual(doc.code, 200);
-      assertEqual(doc.headers['content-type'], contentType);
-      assertFalse(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['code'], 200);
-      assertEqual(doc.parsedBody['updated'], 1);
-
-      doc = arango.GET_RAW(`/_api/document/${cn}/two`);
-      assertEqual(doc.parsedBody['value'], { "test": "foo", "bark": "bart" });
+      assertTrue(doc.parsedBody['error']);
+      assertEqual(doc.parsedBody['code'], 501);
+      assertEqual(doc.parsedBody['errorNum'], 1470);
     }
   };
 }
@@ -768,5 +585,4 @@ jsunity.run(by_example_query_with_skipSuite);
 jsunity.run(remove_by_example_querySuite);
 jsunity.run(replace_by_example_querySuite);
 jsunity.run(update_by_example_querySuite);
-jsunity.run(update_by_example_query__mergeObjectsSuite);
 return jsunity.done();
