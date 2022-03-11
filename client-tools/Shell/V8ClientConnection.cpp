@@ -1042,29 +1042,36 @@ static void ClientConnection_httpFuzzRequests(
   fuzzer::RequestFuzzer fuzzer(numIts, seed);
   std::unordered_map<unsigned, uint32_t> fuzzReturnCodesCount;
 
+  uint32_t reqsWithoutCode = 0;
   for (uint32_t i = 0; i < numReqs; ++i) {
     // httpFuzzRequest(v8connection, isolate, args, fuzzer.get());
     velocypack::Builder builder;
     TRI_V8ToVPack(isolate, builder, v8connection->requestFuzz(isolate, fuzzer),
                   false);
-    fuzzReturnCodesCount[builder.slice().get("code").getUInt()]++;
+
+    if (!builder.slice().get("code").isNone()) {
+      fuzzReturnCodesCount[builder.slice().get("code").getUInt()]++;
+    } else {
+      reqsWithoutCode++;
+    }
   }
 
-  std::string statistics =
-      "Fuzzer statistics:    Total requests=" + std::to_string(numReqs);
   VPackBuilder builder;
   builder.openObject();
   builder.add("seed", velocypack::Value(fuzzer.getSeed()));
   builder.add("total-requests", velocypack::Value(numReqs));
+  if (reqsWithoutCode != 0) {
+    builder.add("requests without return code",
+                velocypack::Value(reqsWithoutCode));
+  }
+  if (fuzzReturnCodesCount.find(1000) != fuzzReturnCodesCount.end()) {
+    builder.add("Closed-connection",
+                velocypack::Value(fuzzReturnCodesCount.at(1000)));
+  }
   builder.add(velocypack::Value("return-codes"));
   builder.openObject();
   for (auto const& [returnCode, count] : fuzzReturnCodesCount) {
-    if (returnCode == 1000) {
-      statistics.append(",  Closed Connection=" + std::to_string(count));
-      builder.add("Closed-connection", velocypack::Value(count));
-    } else {
-      statistics.append(",  " + std::to_string(returnCode) + "=" +
-                        std::to_string(count));
+    if (returnCode != 1000) {
       builder.add(std::to_string(returnCode), velocypack::Value(count));
     }
   }
