@@ -197,7 +197,6 @@ void LanguageCheckFeature::start() {
       FATAL_ERROR_EXIT();
     }
   }
-  // we found something in LANGUAGE file
 
   if (collatorLang != prevLang) {
     if (feature.forceLanguageCheck()) {
