@@ -228,9 +228,9 @@ function renamingSuite () {
       cmd = api + "/" + cn;
       doc = arango.GET_RAW(cmd);
 
-      assertEqual(doc.code, 404);
+      assertEqual(doc.code, internal.errors.ERROR_HTTP_NOT_FOUND.code);
       assertTrue(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['errorNum'], 1203);
+      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
 
       cmd = api + "/" + cn2;
       doc = arango.GET_RAW(cmd);
@@ -264,11 +264,11 @@ function renamingSuite () {
       let cmd = api + "/" + cn + "/rename";
       let doc = arango.PUT_RAW(cmd, body);
 
-      assertEqual(doc.code, 409);
+      assertEqual(doc.code, internal.errors.ERROR_HTTP_CONFLICT.code);
       assertEqual(doc.headers['content-type'], contentType);
       assertTrue(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['code'], 409);
-      assertEqual(doc.parsedBody['errorNum'], 1207);
+      assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_CONFLICT.code);
+      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_ARANGO_DUPLICATE_NAME.code);
 
       assertEqual(db[cn].count(), 10);
       assertEqual(cid.count(), 10);
@@ -292,9 +292,9 @@ function renamingSuite () {
       cmd = api + "/" + cn;
       doc = arango.GET_RAW(cmd);
 
-      assertEqual(doc.code, 404);
+      assertEqual(doc.code, internal.errors.ERROR_HTTP_NOT_FOUND.code);
       assertTrue(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['errorNum'], 1203);
+      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
 
       cmd = api + "/" + cn2;
       doc = arango.GET_RAW(cmd);
@@ -311,11 +311,11 @@ function renamingSuite () {
       let cmd = api + "/" + cn + "/rename";
       let doc = arango.PUT_RAW(cmd, body);
 
-      assertEqual(doc.code, 409);
+      assertEqual(doc.code, internal.errors.ERROR_HTTP_CONFLICT.code);
       assertEqual(doc.headers['content-type'], contentType);
       assertTrue(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['code'], 409);
-      assertEqual(doc.parsedBody['errorNum'], 1207);
+      assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_CONFLICT.code);
+      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_ARANGO_DUPLICATE_NAME.code);
     }
   };
 }
