@@ -463,8 +463,8 @@ template<class Provider, class PathStore,
          EdgeUniquenessLevel edgeUniqueness>
 auto PathValidator<Provider, PathStore, vertexUniqueness, edgeUniqueness>::
     checkValidDisjointPath(typename PathStore::Step const& lastStep) const
-    -> arangodb::graph::ValidationResult::Type {
-  return ValidationResult::Type::TAKE;
+    -> arangodb::graph::ValidationResult {
+  return ValidationResult(ValidationResult::Type::TAKE);
 }
 template<class Provider, class PathStore,
          VertexUniquenessLevel vertexUniqueness,
