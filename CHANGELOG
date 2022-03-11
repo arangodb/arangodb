@@ -1,6 +1,15 @@
 devel
 -----
 
+* Fixed ES-1078: The REST API endpoint for handling `/_api/user/${user}/config`
+  did not work properly. The supplied data by sending a PUT request has not been
+  stored to the correct location. The Web UI uses this endpoint to store its
+  graph properties for storing the visualization properties. As this endpoint
+  did not work as expected, the graph visualization properties did not get
+  persisted as well. This is now resolved.
+
+* Updated arangosync to 2.9.0.
+
 * Speed up initial sync (in case there is already data present) by prefetching
   data from leader.
 
