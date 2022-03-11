@@ -68,6 +68,17 @@
 
 using namespace arangodb;
 
+namespace {
+
+inline rocksdb::Slice lookupValueFromSlice(rocksdb::Slice data) noexcept {
+  // remove object id prefix (8 bytes)
+  TRI_ASSERT(data.size() > sizeof(uint64_t));
+  data.remove_prefix(sizeof(uint64_t));
+  return data;
+}
+
+}  // namespace
+
 // .............................................................................
 // recall for all of the following comparison functions:
 //
@@ -127,6 +138,17 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
     // if the cache is enabled, it must use the VPackKeyHasher!
     TRI_ASSERT(_cache == nullptr ||
                _cache->hasher().name() == "VPackKeyHasher");
+
+    TRI_IF_FAILURE("VPackIndexFailWithoutCache") {
+      if (_cache == nullptr) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
+    }
+    TRI_IF_FAILURE("VPackIndexFailWithCache") {
+      if (_cache != nullptr) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
+    }
   }
 
  public:
@@ -327,10 +349,7 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
 
   rocksdb::Slice lookupValueForCache() const noexcept {
     // use bounds start value
-    rocksdb::Slice lookupValue = _key->string();
-    // remove object id prefix
-    return rocksdb::Slice(lookupValue.data() + sizeof(uint64_t),
-                          lookupValue.size() - sizeof(uint64_t));
+    return ::lookupValueFromSlice(_key->string());
   }
 
   arangodb::RocksDBVPackIndex const* _index;
@@ -756,18 +775,8 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
   }
 
   rocksdb::Slice lookupValueForCache() const noexcept {
-    // TODO!
-    /*
-    VPackSlice s(reinterpret_cast<uint8_t const*>(_bounds.start().data() +
-    sizeof(uint64_t))); s = s.at(0); return rocksdb::Slice(s.startAs<char>(),
-    s.byteSize());
-    */
-
     // use bounds start value
-    rocksdb::Slice lookupValue = _bounds.start();
-    // remove object id prefix
-    return rocksdb::Slice(lookupValue.data() + sizeof(uint64_t),
-                          lookupValue.size() - sizeof(uint64_t));
+    return ::lookupValueFromSlice(_bounds.start());
   }
 
   // look up a value in the in-memory hash cache
@@ -1466,7 +1475,7 @@ Result RocksDBVPackIndex::insert(transaction::Methods& trx,
     // unique indexes have a different key structure
     for (RocksDBKey const& key : elements) {
       // banish key in in-memory cache
-      invalidateCacheEntry(key.string());
+      invalidateCacheEntry(::lookupValueFromSlice(key.string()));
 
       if (performChecks) {
         s = mthds->GetForUpdate(_cf, key.string(), &existing);
@@ -1546,7 +1555,7 @@ Result RocksDBVPackIndex::insert(transaction::Methods& trx,
     rocksdb::Status s;
     for (RocksDBKey const& key : elements) {
       // banish key in in-memory cache
-      invalidateCacheEntry(key.string());
+      invalidateCacheEntry(::lookupValueFromSlice(key.string()));
 
       TRI_ASSERT(key.containsLocalDocumentId(documentId));
       s = mthds->PutUntracked(_cf, key, value.string());
@@ -1675,7 +1684,7 @@ Result RocksDBVPackIndex::update(
   RocksDBValue value = RocksDBValue::UniqueVPackIndexValue(newDocumentId);
   for (auto const& key : elements) {
     // banish key in in-memory cache
-    invalidateCacheEntry(key.string());
+    invalidateCacheEntry(::lookupValueFromSlice(key.string()));
 
     rocksdb::Status s =
         mthds->Put(_cf, key, value.string(), /*assume_tracked*/ false);
@@ -1729,7 +1738,7 @@ Result RocksDBVPackIndex::remove(transaction::Methods& trx,
   if (_unique) {
     for (size_t i = 0; i < count; ++i) {
       // banish key in in-memory cache
-      invalidateCacheEntry(elements[i].string());
+      invalidateCacheEntry(::lookupValueFromSlice(elements[i].string()));
 
       s = mthds->Delete(_cf, elements[i]);
 
@@ -1745,7 +1754,7 @@ Result RocksDBVPackIndex::remove(transaction::Methods& trx,
     // non-unique index contain the unique objectID written exactly once
     for (size_t i = 0; i < count; ++i) {
       // banish key in in-memory cache
-      invalidateCacheEntry(elements[i].string());
+      invalidateCacheEntry(::lookupValueFromSlice(elements[i].string()));
 
       s = mthds->SingleDelete(_cf, elements[i]);
 
@@ -1807,8 +1816,10 @@ std::unique_ptr<IndexIterator> RocksDBVPackIndex::buildIterator(
     leftSearch->add(eq);
   }
 
-  if (_unique && lastNonEq.isNone() &&
-      searchValues.length() == _fields.size()) {
+  // all index fields covered by equality lookups.
+  bool allEq = lastNonEq.isNone() && it.size() == _fields.size();
+
+  if (_unique && allEq) {
     // unique index and we only have equality lookups
     leftSearch->close();
 
@@ -1823,7 +1834,7 @@ std::unique_ptr<IndexIterator> RocksDBVPackIndex::buildIterator(
   buildIndexRangeBounds(trx, searchValues, *leftSearch, lastNonEq, bounds);
 
   return buildIteratorFromBounds(trx, reverse, readOwnWrites, std::move(bounds),
-                                 format, /*useCache*/ lastNonEq.isNone());
+                                 format, /*useCache*/ allEq);
 }
 
 std::unique_ptr<IndexIterator> RocksDBVPackIndex::buildIteratorFromBounds(
@@ -2203,11 +2214,9 @@ void RocksDBVPackIndex::buildSearchValues(
 
 void RocksDBVPackIndex::afterTruncate(TRI_voc_tick_t tick,
                                       arangodb::transaction::Methods* trx) {
-  if (unique() || _estimator == nullptr) {
-    return;
+  if (_estimator != nullptr) {
+    _estimator->bufferTruncate(tick);
   }
-  TRI_ASSERT(_estimator != nullptr);
-  _estimator->bufferTruncate(tick);
   RocksDBIndex::afterTruncate(tick, trx);
 }
 

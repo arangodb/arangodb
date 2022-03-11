@@ -334,7 +334,8 @@ void RocksDBIndex::invalidateCacheEntry(char const* data, std::size_t len) {
       auto status = _cache->banish(data, static_cast<uint32_t>(len));
       if (status.ok()) {
         break;
-      } else if (status.errorNumber() == TRI_ERROR_SHUTTING_DOWN) {
+      }
+      if (ADB_UNLIKELY(status.errorNumber() == TRI_ERROR_SHUTTING_DOWN)) {
         destroyCache();
         break;
       }

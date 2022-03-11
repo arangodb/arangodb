@@ -947,13 +947,10 @@ void RocksDBEdgeIndex::handleValNode(
 
 void RocksDBEdgeIndex::afterTruncate(TRI_voc_tick_t tick,
                                      arangodb::transaction::Methods* trx) {
-  if (unique() || _estimator == nullptr) {
-    // the edge index is never unique - however, this extra check will not do
-    // any harm
-    return;
+  TRI_ASSERT(!unique());
+  if (_estimator != nullptr) {
+    _estimator->bufferTruncate(tick);
   }
-  TRI_ASSERT(_estimator != nullptr);
-  _estimator->bufferTruncate(tick);
   RocksDBIndex::afterTruncate(tick, trx);
 }
 
