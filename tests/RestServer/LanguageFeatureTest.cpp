@@ -164,7 +164,8 @@ class ArangoLanguageFeatureTest
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
 
-TEST_F(ArangoLanguageFeatureTest, test_both_arguments_specified_lang_check_true) {
+TEST_F(ArangoLanguageFeatureTest,
+       test_both_arguments_specified_lang_check_true) {
   // Specify both language arguments and get server failure
 
   auto& langFeature = server.addFeatureUntracked<arangodb::LanguageFeature>();
@@ -192,7 +193,8 @@ TEST_F(ArangoLanguageFeatureTest, test_both_arguments_specified_lang_check_true)
   EXPECT_DEATH(langFeature.prepare(), "");
 }
 
-TEST_F(ArangoLanguageFeatureTest, test_both_arguments_specified_lang_check_false) {
+TEST_F(ArangoLanguageFeatureTest,
+       test_both_arguments_specified_lang_check_false) {
   // Specify both language arguments and get server failure
 
   auto& langFeature = server.addFeatureUntracked<arangodb::LanguageFeature>();
