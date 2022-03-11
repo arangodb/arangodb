@@ -65,21 +65,21 @@ function error_handlingSuite () {
     test_use_non_system_database: function() {
       let doc = arango.GET_RAW(`/_db/${name}${api}`);
 
-      assertEqual(doc.code, 403);
+      assertEqual(doc.code, internal.errors.ERROR_HTTP_FORBIDDEN.code);
       assertEqual(doc.headers['content-type'], contentType);
       let response = doc.parsedBody;
       assertTrue(response["error"]);
-      assertEqual(response["errorNum"], 1230);
+      assertEqual(response["errorNum"], internal.errors.ERROR_ARANGO_USE_SYSTEM_DATABASE.code);
     },
 
     test_use_non_existent_database: function() {
       let doc = arango.GET_RAW("/_db/foobar${api}");
 
-      assertEqual(doc.code, 404);
+      assertEqual(doc.code, internal.errors.ERROR_HTTP_NOT_FOUND.code);
       assertEqual(doc.headers['content-type'], contentType);
       let response = doc.parsedBody;
       assertTrue(response["error"]);
-      assertEqual(response["errorNum"], 1228);
+      assertEqual(response["errorNum"], internal.errors.ERROR_ARANGO_DATABASE_NOT_FOUND.code);
     },
 
   };
