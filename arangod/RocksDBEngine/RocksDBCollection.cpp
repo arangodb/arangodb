@@ -226,16 +226,18 @@ void reportPrimaryIndexInconsistency(arangodb::Result const& res,
 namespace arangodb {
 
 RocksDBCollection::RocksDBCollection(LogicalCollection& collection,
-                                     arangodb::velocypack::Slice const& info)
+                                     arangodb::velocypack::Slice info)
     : RocksDBMetaCollection(collection, info),
       _primaryIndex(nullptr),
-      _cacheEnabled(!collection.system() &&
+      _cacheManager(collection.vocbase()
+                        .server()
+                        .getFeature<CacheManagerFeature>()
+                        .manager()),
+      _cacheEnabled(_cacheManager != nullptr && !collection.system() &&
+                    !collection.isAStub() &&
+                    !ServerState::instance()->isCoordinator() &&
                     basics::VelocyPackHelper::getBooleanValue(
-                        info, StaticStrings::CacheEnabled, false) &&
-                    collection.vocbase()
-                            .server()
-                            .getFeature<CacheManagerFeature>()
-                            .manager() != nullptr),
+                        info, StaticStrings::CacheEnabled, false)),
       _statistics(collection.vocbase()
                       .server()
                       .getFeature<metrics::MetricsFeature>()
@@ -251,12 +253,14 @@ RocksDBCollection::RocksDBCollection(LogicalCollection& collection,
                                      PhysicalCollection const* physical)
     : RocksDBMetaCollection(collection, VPackSlice::emptyObjectSlice()),
       _primaryIndex(nullptr),
+      _cacheManager(collection.vocbase()
+                        .server()
+                        .getFeature<CacheManagerFeature>()
+                        .manager()),
       _cacheEnabled(
-          static_cast<RocksDBCollection const*>(physical)->_cacheEnabled &&
-          collection.vocbase()
-                  .server()
-                  .getFeature<CacheManagerFeature>()
-                  .manager() != nullptr),
+          _cacheManager != nullptr && !collection.system() &&
+          !collection.isAStub() && !ServerState::instance()->isCoordinator() &&
+          static_cast<RocksDBCollection const*>(physical)->_cacheEnabled),
       _statistics(collection.vocbase()
                       .server()
                       .getFeature<metrics::MetricsFeature>()
@@ -279,15 +283,11 @@ RocksDBCollection::~RocksDBCollection() {
 
 Result RocksDBCollection::updateProperties(VPackSlice const& slice,
                                            bool doSync) {
-  auto isSys = _logicalCollection.system();
-
-  _cacheEnabled = !isSys &&
+  _cacheEnabled = _cacheManager != nullptr && !_logicalCollection.system() &&
+                  !_logicalCollection.isAStub() &&
+                  !ServerState::instance()->isCoordinator() &&
                   basics::VelocyPackHelper::getBooleanValue(
-                      slice, StaticStrings::CacheEnabled, _cacheEnabled) &&
-                  _logicalCollection.vocbase()
-                          .server()
-                          .getFeature<CacheManagerFeature>()
-                          .manager() != nullptr;
+                      slice, StaticStrings::CacheEnabled, _cacheEnabled);
   primaryIndex()->setCacheEnabled(_cacheEnabled);
 
   if (_cacheEnabled) {
@@ -297,7 +297,7 @@ Result RocksDBCollection::updateProperties(VPackSlice const& slice,
     // will do nothing if cache is not present
     destroyCache();
     primaryIndex()->destroyCache();
-    TRI_ASSERT(_cache.get() == nullptr);
+    TRI_ASSERT(_cache == nullptr);
   }
 
   // nothing else to do
@@ -2065,40 +2065,30 @@ Result RocksDBCollection::lookupDocumentVPack(
 }
 
 void RocksDBCollection::createCache() const {
-  if (!_cacheEnabled || _cache || _logicalCollection.isAStub() ||
-      ServerState::instance()->isCoordinator()) {
-    // we leave this if we do not need the cache
-    // or if cache already created
+  if (_cacheManager == nullptr || !_cacheEnabled) {
+    // if we cannot have a cache, return immediately
     return;
   }
 
-  TRI_ASSERT(_cacheEnabled);
-  TRI_ASSERT(_cache == nullptr);
-  auto* manager = _logicalCollection.vocbase()
-                      .server()
-                      .getFeature<CacheManagerFeature>()
-                      .manager();
-  TRI_ASSERT(manager != nullptr);
-  LOG_TOPIC("f5df2", DEBUG, Logger::CACHE) << "Creating document cache";
-  _cache = manager->createCache(cache::CacheType::Transactional,
-                                cache::BinaryKeyHasher{});
-  TRI_ASSERT(_cacheEnabled);
+  // there will never be a cache on the coordinator. this should be handled
+  // by _cacheEnabled already.
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
+
+  if (_cache == nullptr) {
+    TRI_ASSERT(_cacheManager != nullptr);
+    LOG_TOPIC("f5df2", DEBUG, Logger::CACHE) << "Creating document cache";
+    _cache = _cacheManager->createCache(cache::CacheType::Transactional,
+                                        cache::BinaryKeyHasher{});
+  }
 }
 
 void RocksDBCollection::destroyCache() const {
-  if (!_cache) {
-    return;
+  if (_cache != nullptr) {
+    TRI_ASSERT(_cacheManager != nullptr);
+    LOG_TOPIC("7137b", DEBUG, Logger::CACHE) << "Destroying document cache";
+    _cacheManager->destroyCache(_cache);
+    _cache.reset();
   }
-  auto* manager = _logicalCollection.vocbase()
-                      .server()
-                      .getFeature<CacheManagerFeature>()
-                      .manager();
-  TRI_ASSERT(manager != nullptr);
-  // must have a cache...
-  TRI_ASSERT(_cache.get() != nullptr);
-  LOG_TOPIC("7137b", DEBUG, Logger::CACHE) << "Destroying document cache";
-  manager->destroyCache(_cache);
-  _cache.reset();
 }
 
 // banish given key from transactional cache

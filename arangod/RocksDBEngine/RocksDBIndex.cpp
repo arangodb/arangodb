@@ -176,6 +176,11 @@ void RocksDBIndex::createCache() {
     // if we cannot have a cache, return immediately
     return;
   }
+
+  // there will never be a cache on the coordinator. this should be handled
+  // by _cacheEnabled already.
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
+
   if (_cache == nullptr) {
     TRI_ASSERT(_cacheManager != nullptr);
     LOG_TOPIC("49e6c", DEBUG, Logger::CACHE) << "Creating index cache";
@@ -185,14 +190,13 @@ void RocksDBIndex::createCache() {
 }
 
 void RocksDBIndex::destroyCache() {
-  if (_cache == nullptr) {
-    return;
+  if (_cache != nullptr) {
+    TRI_ASSERT(_cacheManager != nullptr);
+    // must have a cache...
+    LOG_TOPIC("b5d85", DEBUG, Logger::CACHE) << "Destroying index cache";
+    _cacheManager->destroyCache(_cache);
+    _cache.reset();
   }
-  TRI_ASSERT(_cacheManager != nullptr);
-  // must have a cache...
-  LOG_TOPIC("b5d85", DEBUG, Logger::CACHE) << "Destroying index cache";
-  _cacheManager->destroyCache(_cache);
-  _cache.reset();
 }
 
 Result RocksDBIndex::drop() {

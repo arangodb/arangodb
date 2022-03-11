@@ -184,7 +184,7 @@ class RocksDBIndex : public Index {
 
   rocksdb::ColumnFamilyHandle* _cf;
 
-  // we have to store references to the cacheManager and engine because the
+  // we have to store the cacheManager's pointer here because the
   // vocbase might already be destroyed at the time the destructor is executed
   cache::Manager* _cacheManager;
 
@@ -196,6 +196,8 @@ class RocksDBIndex : public Index {
   // _cacheManager != nullptr.
   mutable std::shared_ptr<cache::Cache> _cache;
 
+  // we have to store references to the engine because the
+  // vocbase might already be destroyed at the time the destructor is executed
   RocksDBEngine& _engine;
 
  private:
