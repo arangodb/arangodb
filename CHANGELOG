@@ -1,6 +1,9 @@
 v3.9.1 (XXXX-XX-XX)
 -------------------
 
+* Optimize further RocksDB throttle to allow for no change on any given
+  calculation cycle.
+
 * Fix UI to only fetch license info as admin user.
 
 * Added `disableIndex` index hint for AQL FOR loops. This index hint disables
