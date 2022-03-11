@@ -79,7 +79,7 @@ auto RestWasmHandler::handleGetRequest(WasmVmMethods const& methods)
   {
     VPackArrayBuilder ob(&builder);
     for (auto const& function : allFunctions) {
-      arangodb::wasm::wasmFunction2Velocypack(function.second, builder);
+      arangodb::wasm::wasmFunctionToVelocypack(function.second, builder);
     }
   }
   generateOk(rest::ResponseCode::OK, builder.slice());
@@ -118,7 +118,7 @@ auto RestWasmHandler::handlePostRequest(WasmVmMethods const& methods)
     return RestStatus::DONE;
   }
   ResultT<WasmFunction> function =
-      arangodb::wasm::velocypack2WasmFunction(slice);
+      arangodb::wasm::velocypackToWasmFunction(slice);
   if (function.fail()) {
     generateError(ResponseCode::BAD, function.errorNumber(),
                   function.errorMessage());
@@ -131,7 +131,7 @@ auto RestWasmHandler::handlePostRequest(WasmVmMethods const& methods)
   {
     VPackObjectBuilder ob1(&builder);
     builder.add(VPackValue("installed"));
-    arangodb::wasm::wasmFunction2Velocypack(function.get(), builder);
+    arangodb::wasm::wasmFunctionToVelocypack(function.get(), builder);
   }
   generateOk(rest::ResponseCode::CREATED, builder.slice());
   return RestStatus::DONE;

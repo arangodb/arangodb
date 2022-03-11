@@ -32,14 +32,14 @@ using namespace arangodb::wasm;
 
 struct WasmFunctionCreation : public ::testing::Test {
   void expectWasmFunction(std::string&& string, WasmFunction&& wasmFunction) {
-    auto result = arangodb::wasm::velocypack2WasmFunction(
+    auto result = arangodb::wasm::velocypackToWasmFunction(
         VPackParser::fromJson(string)->slice());
     EXPECT_TRUE(result.ok());
     EXPECT_EQ(result.get(), wasmFunction);
   }
 
   void expectError(std::string&& string) {
-    auto result = arangodb::wasm::velocypack2WasmFunction(
+    auto result = arangodb::wasm::velocypackToWasmFunction(
         VPackParser::fromJson(string)->slice());
     EXPECT_TRUE(result.fail());
     EXPECT_EQ(result.errorNumber(), TRI_ERROR_BAD_PARAMETER);
@@ -108,7 +108,7 @@ TEST_F(WasmFunctionCreation,
 
 TEST(WasmFunctionConversion, converts_wasm_function_to_velocypack) {
   VPackBuilder velocypackBuilder;
-  arangodb::wasm::wasmFunction2Velocypack(
+  arangodb::wasm::wasmFunctionToVelocypack(
       WasmFunction{"function_name", {{3, 233}}, false}, velocypackBuilder);
   EXPECT_EQ(
       velocypackBuilder.toJson(),

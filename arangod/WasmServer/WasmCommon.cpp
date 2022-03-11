@@ -18,65 +18,23 @@ using namespace arangodb;
 using namespace arangodb::wasm;
 using namespace arangodb::velocypack;
 
-void arangodb::wasm::wasmFunction2Velocypack(WasmFunction const& wasmFunction,
-                                             VPackBuilder& builder) {
-  auto ob = VPackObjectBuilder(&builder);
-  builder.add("name", VPackValue(wasmFunction.name));
-  builder.add(VPackValue("code"));
-  arangodb::wasm::code2Velocypack(wasmFunction.code, builder);
-  builder.add("isDeterministic", VPackValue(wasmFunction.isDeterministic));
-}
-
-void arangodb::wasm::code2Velocypack(Code const& code, VPackBuilder& builder) {
+void codeToVelocypack(Code const& code, VPackBuilder& builder) {
   auto ab = VPackArrayBuilder(&builder);
   for (auto const& entry : code.bytes) {
     builder.add(VPackValue(entry));
   }
 }
 
-auto arangodb::wasm::velocypack2WasmFunction(Slice slice)
-    -> ResultT<WasmFunction> {
-  std::string functionName = "velocypack2WasmFunction";
-
-  if (auto check =
-          arangodb::wasm::checkVelocypack2WasmFunctionIsPossible(slice);
-      check.fail()) {
-    return ResultT<WasmFunction>::error(
-        check.errorNumber(), functionName + std::move(check).errorMessage());
-  }
-
-  auto name = arangodb::wasm::velocypack2Name(slice.get("name"));
-  if (!name.ok()) {
-    return ResultT<WasmFunction>::error(
-        name.errorNumber(),
-        functionName + ": Field 'name': " + std::move(name).errorMessage());
-  }
-
-  auto codeField = arangodb::wasm::velocypack2Code(slice.get("code"));
-  if (!codeField.ok()) {
-    return ResultT<WasmFunction>::error(
-        codeField.errorNumber(), functionName + ": Field 'code': " +
-                                     std::move(codeField).errorMessage());
-  }
-
-  auto isDeterministicSlice = slice.hasKey("isDeterministic")
-                                  ? std::optional(slice.get("isDeterministic"))
-                                  : std::nullopt;
-  auto isDeterministic =
-      arangodb::wasm::velocypack2IsDeterministic(isDeterministicSlice);
-  if (!isDeterministic.ok()) {
-    return ResultT<WasmFunction>::error(
-        isDeterministic.errorNumber(),
-        functionName + ": Field 'isDeterministic': " +
-            std::move(isDeterministic).errorMessage());
-  }
-
-  return ResultT<WasmFunction>(
-      WasmFunction{name.get(), {codeField.get()}, isDeterministic.get()});
+void arangodb::wasm::wasmFunctionToVelocypack(WasmFunction const& wasmFunction,
+                                              VPackBuilder& builder) {
+  auto ob = VPackObjectBuilder(&builder);
+  builder.add("name", VPackValue(wasmFunction.name));
+  builder.add(VPackValue("code"));
+  codeToVelocypack(wasmFunction.code, builder);
+  builder.add("isDeterministic", VPackValue(wasmFunction.isDeterministic));
 }
 
-auto arangodb::wasm::checkVelocypack2WasmFunctionIsPossible(Slice slice)
-    -> Result {
+auto checkVelocypackToWasmFunctionIsPossible(Slice slice) -> Result {
   if (!slice.isObject()) {
     return Result{TRI_ERROR_BAD_PARAMETER, "Can only parse an object"};
   }
@@ -99,7 +57,7 @@ auto arangodb::wasm::checkVelocypack2WasmFunctionIsPossible(Slice slice)
   return Result{};
 }
 
-auto arangodb::wasm::velocypack2Name(Slice slice) -> ResultT<std::string> {
+auto velocypackToName(Slice slice) -> ResultT<std::string> {
   if (slice.isString()) {
     return slice.copyString();
   } else {
@@ -108,7 +66,7 @@ auto arangodb::wasm::velocypack2Name(Slice slice) -> ResultT<std::string> {
   }
 }
 
-auto arangodb::wasm::velocypack2Code(Slice slice) -> ResultT<Code> {
+auto velocypackToCode(Slice slice) -> ResultT<Code> {
   if (slice.isArray()) {
     std::vector<uint8_t> code;
     for (auto const& p : velocypack::ArrayIterator(slice)) {
@@ -137,8 +95,7 @@ auto arangodb::wasm::velocypack2Code(Slice slice) -> ResultT<Code> {
   }
 }
 
-auto arangodb::wasm::velocypack2IsDeterministic(std::optional<Slice> slice)
-    -> ResultT<bool> {
+auto velocypackToIsDeterministic(std::optional<Slice> slice) -> ResultT<bool> {
   if (!slice) {
     return false;
   }
@@ -147,4 +104,43 @@ auto arangodb::wasm::velocypack2IsDeterministic(std::optional<Slice> slice)
   } else {
     return ResultT<bool>::error(TRI_ERROR_BAD_PARAMETER, "Sould be a boolean");
   }
+}
+
+auto arangodb::wasm::velocypackToWasmFunction(Slice slice)
+    -> ResultT<WasmFunction> {
+  std::string functionName = "velocypack2WasmFunction";
+
+  if (auto check = checkVelocypackToWasmFunctionIsPossible(slice);
+      check.fail()) {
+    return ResultT<WasmFunction>::error(
+        check.errorNumber(), functionName + std::move(check).errorMessage());
+  }
+
+  auto name = velocypackToName(slice.get("name"));
+  if (!name.ok()) {
+    return ResultT<WasmFunction>::error(
+        name.errorNumber(),
+        functionName + ": Field 'name': " + std::move(name).errorMessage());
+  }
+
+  auto codeField = velocypackToCode(slice.get("code"));
+  if (!codeField.ok()) {
+    return ResultT<WasmFunction>::error(
+        codeField.errorNumber(), functionName + ": Field 'code': " +
+                                     std::move(codeField).errorMessage());
+  }
+
+  auto isDeterministicSlice = slice.hasKey("isDeterministic")
+                                  ? std::optional(slice.get("isDeterministic"))
+                                  : std::nullopt;
+  auto isDeterministic = velocypackToIsDeterministic(isDeterministicSlice);
+  if (!isDeterministic.ok()) {
+    return ResultT<WasmFunction>::error(
+        isDeterministic.errorNumber(),
+        functionName + ": Field 'isDeterministic': " +
+            std::move(isDeterministic).errorMessage());
+  }
+
+  return ResultT<WasmFunction>(
+      WasmFunction{name.get(), {codeField.get()}, isDeterministic.get()});
 }

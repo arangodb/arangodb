@@ -44,17 +44,9 @@ struct WasmFunction {
   auto operator==(const WasmFunction& function) const -> bool = default;
 };
 
-auto velocypack2WasmFunction(arangodb::velocypack::Slice slice)
+auto velocypackToWasmFunction(arangodb::velocypack::Slice slice)
     -> ResultT<WasmFunction>;
-auto checkVelocypack2WasmFunctionIsPossible(velocypack::Slice slice)
-    -> arangodb::Result;
-auto velocypack2Name(arangodb::velocypack::Slice slice) -> ResultT<std::string>;
-auto velocypack2Code(arangodb::velocypack::Slice slice) -> ResultT<Code>;
-auto velocypack2IsDeterministic(
-    std::optional<arangodb::velocypack::Slice> slice) -> ResultT<bool>;
-
-void wasmFunction2Velocypack(WasmFunction const& wasmFunction,
-                             VPackBuilder& builder);
-void code2Velocypack(Code const& code, VPackBuilder& builder);
+void wasmFunctionToVelocypack(WasmFunction const& wasmFunction,
+                              VPackBuilder& builder);
 
 }  // namespace arangodb::wasm
