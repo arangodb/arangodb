@@ -77,8 +77,8 @@ function indexSuite() {
 
       assertEqual(1, res.length);
 
-      collection.ensureGeoIndex("a");
-      collection.ensureGeoIndex("a", "b");
+      collection.ensureIndex({ type: "geo", fields: ["a"] });
+      collection.ensureIndex({ type: "geo", fields: ["a", "b"] });
 
       res = collection.indexes();
 
@@ -94,8 +94,8 @@ function indexSuite() {
 
       assertEqual(1, res.length);
 
-      collection.ensureGeoIndex("a");
-      collection.ensureGeoIndex("a", "b");
+      collection.ensureIndex({ type: "geo", fields: ["a"] });
+      collection.ensureIndex({ type: "geo", fields: ["a", "b"] });
 
       res = collection.getIndexes();
 
@@ -107,7 +107,7 @@ function indexSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIndex : function () {
-      var id = collection.ensureGeoIndex("a");
+      var id = collection.ensureIndex({ type: "geo", fields: ["a"] });
 
       var idx = collection.index(id.id);
       assertEqual(id.id, idx.id);
@@ -127,7 +127,7 @@ function indexSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIndexByName : function () {
-      var id = collection.ensureGeoIndex("a");
+      var id = collection.ensureIndex({ type: "geo", fields: ["a"] });
 
       var idx = collection.index(id.name);
       assertEqual(id.id, idx.id);
@@ -148,21 +148,21 @@ function indexSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testDropIndex : function () {
-      var id = collection.ensureGeoIndex("a");
+      var id = collection.ensureIndex({ type: "geo", fields: ["a"] });
       var res = collection.dropIndex(id.id);
       assertTrue(res);
 
       res = collection.dropIndex(id.id);
       assertFalse(res);
 
-      id = collection.ensureGeoIndex("a");
+      id = collection.ensureIndex({ type: "geo", fields: ["a"] });
       res = collection.dropIndex(id);
       assertTrue(res);
 
       res = collection.dropIndex(id);
       assertFalse(res);
 
-      id = collection.ensureGeoIndex("a");
+      id = collection.ensureIndex({ type: "geo", fields: ["a"] });
       res = internal.db._dropIndex(id);
       assertTrue(res);
 
@@ -176,21 +176,21 @@ function indexSuite() {
 
     testDropIndexString : function () {
       // pick up the numeric part (starts after the slash)
-      var id = collection.ensureGeoIndex("a").id.substr(cn.length + 1);
+      var id = collection.ensureIndex({ type: "geo", fields: ["a"] }).id.substr(cn.length + 1);
       var res = collection.dropIndex(collection.name() + "/" + id);
       assertTrue(res);
 
       res = collection.dropIndex(collection.name() + "/" + id);
       assertFalse(res);
 
-      id = collection.ensureGeoIndex("a").id.substr(cn.length + 1);
+      id = collection.ensureIndex({ type: "geo", fields: ["a"] }).id.substr(cn.length + 1);
       res = collection.dropIndex(parseInt(id, 10));
       assertTrue(res);
 
       res = collection.dropIndex(parseInt(id, 10));
       assertFalse(res);
 
-      id = collection.ensureGeoIndex("a").id.substr(cn.length + 1);
+      id = collection.ensureIndex({ type: "geo", fields: ["a"] }).id.substr(cn.length + 1);
       res = internal.db._dropIndex(collection.name() + "/" + id);
       assertTrue(res);
 
@@ -204,21 +204,21 @@ function indexSuite() {
 
     testDropIndexByName : function () {
       // pick up the numeric part (starts after the slash)
-      var name = collection.ensureGeoIndex("a").name;
+      var name = collection.ensureIndex({ type: "geo", fields: ["a"] }).name;
       var res = collection.dropIndex(collection.name() + "/" + name);
       assertTrue(res);
 
       res = collection.dropIndex(collection.name() + "/" + name);
       assertFalse(res);
 
-      name = collection.ensureGeoIndex("a").name;
+      name = collection.ensureIndex({ type: "geo", fields: ["a"] }).name;
       res = collection.dropIndex(name);
       assertTrue(res);
 
       res = collection.dropIndex(name);
       assertFalse(res);
 
-      name = collection.ensureGeoIndex("a").name;
+      name = collection.ensureIndex({ type: "geo", fields: ["a"] }).name;
       res = internal.db._dropIndex(collection.name() + "/" + name);
       assertTrue(res);
 
@@ -246,7 +246,7 @@ function indexSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testGetIndexUnloaded : function () {
-      var idx = collection.ensureHashIndex("test");
+      var idx = collection.ensureIndex({ type: "hash", fields: ["test"] });
 
       testHelper.waitUnload(collection);
 
@@ -259,7 +259,7 @@ function indexSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testGetIndexDropped : function () {
-      var idx = collection.ensureHashIndex("test");
+      var idx = collection.ensureIndex({ type: "hash", fields: ["test"] });
 
       collection.drop();
 
@@ -333,7 +333,7 @@ function getIndexesSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testGetHashUnique1 : function () {
-      collection.ensureUniqueConstraint("value");
+      collection.ensureIndex({ type: "hash", fields: ["value"], unique: true });
       var res = collection.getIndexes();
 
       assertEqual(2, res.length);
@@ -350,7 +350,7 @@ function getIndexesSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testGetHashUnique2 : function () {
-      collection.ensureUniqueConstraint("value1", "value2");
+      collection.ensureIndex({ type: "hash", fields: ["value1", "value2"], unique: true });
       var res = collection.getIndexes();
 
       assertEqual(2, res.length);
@@ -367,7 +367,7 @@ function getIndexesSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testGetSparseHashUnique1 : function () {
-      collection.ensureUniqueConstraint("value", { sparse: true });
+      collection.ensureIndex({ type: "hash", fields: ["value"], unique: true, sparse: true });
       var res = collection.getIndexes();
 
       assertEqual(2, res.length);
@@ -384,7 +384,7 @@ function getIndexesSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testGetSparseHashUnique2 : function () {
-      collection.ensureUniqueConstraint("value1", "value2", { sparse: true });
+      collection.ensureIndex({ type: "hash", fields: ["value1", "value2"], unique: true, sparse: true });
       var res = collection.getIndexes();
 
       assertEqual(2, res.length);
@@ -401,7 +401,7 @@ function getIndexesSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testGetHashNonUnique1 : function () {
-      collection.ensureHashIndex("value");
+      collection.ensureIndex({ type: "hash", fields: ["value"] });
       var res = collection.getIndexes();
 
       assertEqual(2, res.length);
@@ -418,7 +418,7 @@ function getIndexesSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testGetHashNonUnique2 : function () {
-      collection.ensureHashIndex("value1", "value2");
+      collection.ensureIndex({ type: "hash", fields: ["value1", "value2"] });
       var res = collection.getIndexes();
 
       assertEqual(2, res.length);
@@ -435,7 +435,7 @@ function getIndexesSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testGetSparseHashNonUnique1 : function () {
-      collection.ensureHashIndex("value", { sparse: true });
+      collection.ensureIndex({ type: "hash", fields: ["value"], sparse: true });
       var res = collection.getIndexes();
 
       assertEqual(2, res.length);
@@ -452,7 +452,7 @@ function getIndexesSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testGetSparseHashNonUnique2 : function () {
-      collection.ensureHashIndex("value1", "value2", { sparse: true });
+      collection.ensureIndex({ type: "hash", fields: ["value1", "value2"], sparse: true });
       var res = collection.getIndexes();
 
       assertEqual(2, res.length);
@@ -469,7 +469,7 @@ function getIndexesSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testGetSkiplistUnique1 : function () {
-      collection.ensureUniqueSkiplist("value");
+      collection.ensureIndex({ type: "skiplist", fields: ["value"], unique: true });
       var res = collection.getIndexes();
 
       assertEqual(2, res.length);
@@ -486,7 +486,7 @@ function getIndexesSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testGetSkiplistUnique2 : function () {
-      collection.ensureUniqueSkiplist("value1", "value2");
+      collection.ensureIndex({ type: "skiplist", fields: ["value1", "value2"], unique: true });
       var res = collection.getIndexes();
 
       assertEqual(2, res.length);
@@ -503,7 +503,7 @@ function getIndexesSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testGetSparseSkiplistUnique1 : function () {
-      collection.ensureUniqueSkiplist("value", { sparse: true });
+      collection.ensureIndex({ type: "skiplist", fields: ["value"], unique: true, sparse: true });
       var res = collection.getIndexes();
 
       assertEqual(2, res.length);
@@ -520,7 +520,7 @@ function getIndexesSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testGetSparseSkiplistUnique2 : function () {
-      collection.ensureUniqueSkiplist("value1", "value2", { sparse: true });
+      collection.ensureIndex({ type: "skiplist", fields: ["value1", "value2"], unique: true, sparse: true });
       var res = collection.getIndexes();
 
       assertEqual(2, res.length);
@@ -537,7 +537,7 @@ function getIndexesSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testGetSkiplistNonUnique1 : function () {
-      collection.ensureSkiplist("value");
+      collection.ensureIndex({ type: "skiplist", fields: ["value"] });
       var res = collection.getIndexes();
 
       assertEqual(2, res.length);
@@ -554,7 +554,7 @@ function getIndexesSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testGetSkiplistNonUnique2 : function () {
-      collection.ensureSkiplist("value1", "value2");
+      collection.ensureIndex({ type: "skiplist", fields: ["value1", "value2"] });
       var res = collection.getIndexes();
 
       assertEqual(2, res.length);
@@ -571,7 +571,7 @@ function getIndexesSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testGetSparseSkiplistNonUnique1 : function () {
-      collection.ensureSkiplist("value", { sparse: true });
+      collection.ensureIndex({ type: "skiplist", fields: ["value"], sparse: true });
       var res = collection.getIndexes();
 
       assertEqual(2, res.length);
@@ -588,7 +588,7 @@ function getIndexesSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testGetSparseSkiplistNonUnique2 : function () {
-      collection.ensureSkiplist("value1", "value2", { sparse: true });
+      collection.ensureIndex({ type: "skiplist", fields: ["value1", "value2"], sparse: true });
       var res = collection.getIndexes();
 
       assertEqual(2, res.length);
@@ -605,7 +605,7 @@ function getIndexesSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testGetFulltext: function () {
-      collection.ensureFulltextIndex("value");
+      collection.ensureIndex({ type: "fulltext", fields: ["value"] });
       var res = collection.getIndexes();
 
       assertEqual(2, res.length);
@@ -824,7 +824,7 @@ function getIndexesEdgesSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testEdgeGetGeoConstraint1 : function () {
-      collection.ensureGeoConstraint("lat", "lon", false);
+      collection.ensureIndex({ type: "geo", fields: ["lat", "lon"], geoJson: false });
       var res = collection.getIndexes();
 
       assertEqual(3, res.length);
@@ -844,7 +844,7 @@ function getIndexesEdgesSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testEdgeGetGeoConstraint2 : function () {
-      collection.ensureGeoConstraint("lat", "lon", true);
+      collection.ensureIndex({ type: "geo", fields: ["lat", "lon"], geoJson: true });
       var res = collection.getIndexes();
 
       assertEqual(3, res.length);
@@ -864,7 +864,7 @@ function getIndexesEdgesSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testEdgeGetGeoConstraint3 : function () {
-      collection.ensureGeoConstraint("lat", true, true);
+      collection.ensureIndex({ type: "geo", fields: ["lat"], geoJson: true, sparse: true });
       var res = collection.getIndexes();
 
       assertEqual(3, res.length);
@@ -885,7 +885,7 @@ function getIndexesEdgesSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testEdgeGetGeoIndex1 : function () {
-      collection.ensureGeoIndex("lat", true, true);
+      collection.ensureIndex({ type: "geo", fields: ["lat"], geoJson: true, sparse: true });
       var res = collection.getIndexes();
 
       assertEqual(3, res.length);
@@ -906,7 +906,7 @@ function getIndexesEdgesSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testEdgeGetGeoIndex2 : function () {
-      collection.ensureGeoIndex("lat", "lon");
+      collection.ensureIndex({ type: "geo", fields: ["lat", "lon"] });
       var res = collection.getIndexes();
 
       assertEqual(3, res.length);
@@ -926,7 +926,7 @@ function getIndexesEdgesSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testEdgeGetHashUnique : function () {
-      collection.ensureUniqueConstraint("value");
+      collection.ensureIndex({ type: "hash", fields: ["value"], unique: true });
       var res = collection.getIndexes();
 
       assertEqual(3, res.length);
@@ -946,7 +946,7 @@ function getIndexesEdgesSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testEdgeGetSparseHashUnique : function () {
-      collection.ensureUniqueConstraint("value", { sparse: true });
+      collection.ensureIndex({ type: "hash", fields: ["value"], unique: true, sparse: true });
       var res = collection.getIndexes();
 
       assertEqual(3, res.length);
@@ -966,7 +966,7 @@ function getIndexesEdgesSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testEdgeGetHash : function () {
-      collection.ensureHashIndex("value");
+      collection.ensureIndex({ type: "hash", fields: ["value"] });
       var res = collection.getIndexes();
 
       assertEqual(3, res.length);
@@ -986,7 +986,7 @@ function getIndexesEdgesSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testEdgeGetSparseHash : function () {
-      collection.ensureHashIndex("value", { sparse: true });
+      collection.ensureIndex({ type: "hash", fields: ["value"], sparse: true });
       var res = collection.getIndexes();
 
       assertEqual(3, res.length);
@@ -1006,7 +1006,7 @@ function getIndexesEdgesSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testEdgeGetSkiplistUnique : function () {
-      collection.ensureUniqueSkiplist("value");
+      collection.ensureIndex({ type: "skiplist", fields: ["value"], unique: true });
       var res = collection.getIndexes();
 
       assertEqual(3, res.length);
@@ -1026,7 +1026,7 @@ function getIndexesEdgesSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testEdgeGetSparseSkiplistUnique : function () {
-      collection.ensureUniqueSkiplist("value", { sparse: true });
+      collection.ensureIndex({ type: "skiplist", fields: ["value"], unique: true, sparse: true });
       var res = collection.getIndexes();
 
       assertEqual(3, res.length);
@@ -1046,7 +1046,7 @@ function getIndexesEdgesSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testEdgeGetSkiplist : function () {
-      collection.ensureSkiplist("value");
+      collection.ensureIndex({ type: "skiplist", fields: ["value"] });
       var res = collection.getIndexes();
 
       assertEqual(3, res.length);
@@ -1065,7 +1065,7 @@ function getIndexesEdgesSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testEdgeGetSparseSkiplist : function () {
-      collection.ensureSkiplist("value", { sparse: true });
+      collection.ensureIndex({ type: "skiplist", fields: ["value"], sparse: true });
       var res = collection.getIndexes();
 
       assertEqual(3, res.length);
@@ -1085,7 +1085,7 @@ function getIndexesEdgesSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testEdgeGetFulltext: function () {
-      collection.ensureFulltextIndex("value");
+      collection.ensureIndex({ type: "fulltext", fields: ["value"] });
       var res = collection.getIndexes();
 
       assertEqual(3, res.length);

@@ -82,7 +82,7 @@ struct ParticipantState {
   bool failed = false;
   ParticipantFlags flags{};
 
-  [[nodiscard]] auto isExcluded() const noexcept -> bool;
+  [[nodiscard]] auto isAllowedInQuorum() const noexcept -> bool;
   [[nodiscard]] auto isForced() const noexcept -> bool;
   [[nodiscard]] auto isFailed() const noexcept -> bool;
 
