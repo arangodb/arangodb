@@ -1647,6 +1647,9 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
   });
   std::unique_ptr<arangodb::SingleCollectionTransaction> trx;
   transaction::Options options;
+  // We do intermediate commits relatively frequently, since this is good
+  // for performance, and we actually have no transactional needs here.
+  options.intermediateCommitCount = 10000;
   TRI_IF_FAILURE("IncrementalReplicationFrequentIntermediateCommit") {
     options.intermediateCommitCount = 1000;
   }
