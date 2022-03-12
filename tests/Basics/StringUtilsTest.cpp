@@ -487,3 +487,28 @@ TEST_F(StringUtilsTest, formatSize) {
   EXPECT_EQ("1.0 TB", StringUtils::formatSize(1000000000000ULL));
   EXPECT_EQ("1.9 TB", StringUtils::formatSize(1900000000000ULL));
 }
+
+TEST_F(StringUtilsTest, base64) {
+  EXPECT_EQ(StringUtils::decodeBase64(StringUtils::encodeBase64("ABCDEFG")),
+            "ABCDEFG");
+  EXPECT_EQ(StringUtils::encodeBase64("ABCDEFG"), "QUJDREVGRw==");
+
+  EXPECT_EQ(StringUtils::decodeBase64(StringUtils::encodeBase64("Man")), "Man");
+  EXPECT_EQ(StringUtils::encodeBase64("Man"), "TWFu");
+
+  EXPECT_EQ(StringUtils::decodeBase64(StringUtils::encodeBase64("Ma")), "Ma");
+  EXPECT_EQ(StringUtils::encodeBase64("Ma"), "TWE=");
+
+  EXPECT_EQ(StringUtils::decodeBase64(StringUtils::encodeBase64("M")), "M");
+  EXPECT_EQ(StringUtils::encodeBase64("M"), "TQ==");
+
+  EXPECT_EQ(StringUtils::decodeBase64(StringUtils::encodeBase64("A\0B"s)),
+            "A\0B"s);
+  EXPECT_EQ(StringUtils::encodeBase64("A\0B"s), "QQBC");
+
+  EXPECT_EQ(StringUtils::decodeBase64(StringUtils::encodeBase64("A\1B")),
+            "A\1B");
+  EXPECT_EQ(StringUtils::encodeBase64("A\1B"), "QQFC");
+
+  EXPECT_EQ(StringUtils::decodeBase64("$ABC"), "");
+}
