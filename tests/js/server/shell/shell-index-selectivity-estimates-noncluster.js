@@ -33,7 +33,9 @@ const internal = require("internal");
 
 function SelectivityIndexSuite() {
   'use strict';
-  const cn = "UnitTestsCollectionPersistent";
+
+  const cn = "UnitTestsCollection";
+
   let collection = null;
 
   return {
@@ -44,12 +46,7 @@ function SelectivityIndexSuite() {
     },
 
     tearDown : function () {
-      // try...catch is necessary as some tests delete the collection itself!
-      try {
-        collection.drop();
-      } catch (err) {
-      }
-
+      collection = internal.db._drop(cn);
       collection = null;
     },
 
@@ -172,14 +169,14 @@ function SelectivityIndexSuite() {
         internal.db._executeTransaction({
           collections: {write: cn},
           action: function () {
-            const cn = "UnitTestsCollectionPersistent";
+            const cn = "UnitTestsCollection";
             let docs = [];
             for (let i = 0; i < 1000; ++i) {
               docs.push({value: 1});
             }
             // This should significantly modify the estimate
             // if successful
-            require('@arangodb').db[cn].save(docs);
+            require('@arangodb').db[cn].insert(docs);
             throw "banana";
           }
         });

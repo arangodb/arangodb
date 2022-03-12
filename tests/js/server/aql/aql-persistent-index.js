@@ -2,7 +2,7 @@
 /*global assertEqual, AQL_EXECUTE, AQL_EXPLAIN */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for Ahuacatl, collection index queries
+/// @brief tests for AQL, persistent index
 ///
 /// DISCLAIMER
 ///
@@ -30,6 +30,12 @@ const internal = require("internal");
 const jsunity = require("jsunity");
 const helper = require("@arangodb/aql-helper");
 const getQueryResults = helper.getQueryResults;
+  
+const cn = "UnitTestsCollection";
+  
+let explain = function (query, params) {
+  return helper.removeClusterNodes(helper.getCompactPlan(AQL_EXPLAIN(query, params, { optimizer: { rules: [ "-all", "+use-indexes" ] } })).map(function(node) { return node.type; }));
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -38,15 +44,11 @@ const getQueryResults = helper.getQueryResults;
 function PersistentIndexTestSuite () {
   let collection;
       
-  let explain = function (query, params) {
-    return helper.removeClusterNodes(helper.getCompactPlan(AQL_EXPLAIN(query, params, { optimizer: { rules: [ "-all", "+use-indexes" ] } })).map(function(node) { return node.type; }));
-  };
-
   return {
 
     setUp : function () {
-      internal.db._drop("UnitTestsAhuacatlSkiplist");
-      collection = internal.db._create("UnitTestsAhuacatlSkiplist");
+      internal.db._drop(cn);
+      collection = internal.db._create(cn);
 
       let docs = [];
       for (let i = 1; i <= 5; ++i) {
@@ -60,8 +62,7 @@ function PersistentIndexTestSuite () {
     },
 
     tearDown : function () {
-      internal.db._drop("UnitTestsAhuacatlSkiplist");
-      collection = null;
+      internal.db._drop(cn);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1209,6 +1210,350 @@ function PersistentIndexTestSuite () {
   };
 }
 
+function PersistentIndexMultipleIndexesTestSuite () {
+  let collection;
+  
+  return {
+
+    setUpAll : function () {
+      internal.db._drop(cn);
+
+      collection = internal.db._create(cn);
+
+      let docs = [];
+      for (let i = 1; i <= 5; ++i) {
+        for (let j = 1; j <= 5; ++j) {
+          docs.push({ "a" : i, "b": j, "c" : i });
+        }
+      }
+      collection.insert(docs);
+
+      collection.ensureIndex({ type: "persistent", fields: ["a", "b"] });
+      collection.ensureIndex({ type: "persistent", fields: ["c"] });
+    },
+
+    tearDownAll : function () {
+      internal.db._drop(cn);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test the single field index with equality
+////////////////////////////////////////////////////////////////////////////////
+
+    testMultiEqSingle1 : function () {
+      var query = "FOR v IN " + cn + " FILTER v.c == 1 SORT v.b RETURN [ v.b ]";
+      var expected = [ [ 1 ], [ 2 ], [ 3 ], [ 4 ], [ 5 ] ];
+      var actual = getQueryResults(query);
+
+      assertEqual(expected, actual);
+      
+      assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test the single field index with equality
+////////////////////////////////////////////////////////////////////////////////
+
+    testMultiEqSingle2 : function () {
+      var query = "FOR v IN " + cn + " FILTER 1 == v.c SORT v.b RETURN [ v.b ]";
+      var expected = [ [ 1 ], [ 2 ], [ 3 ], [ 4 ], [ 5 ] ];
+      var actual = getQueryResults(query);
+
+      assertEqual(expected, actual);
+      
+      assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test the first index field with equality
+////////////////////////////////////////////////////////////////////////////////
+
+    testMultiEqSingle3 : function () {
+      var expected = [ [ 1, 4 ], [ 2, 4 ], [ 3, 4 ], [ 4, 4 ], [ 5, 4 ] ];
+      var actual = getQueryResults("FOR v IN " + cn + " FILTER v.c == 4 SORT v.b RETURN [ v.b, v.c ]");
+
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test the first index field with equality
+////////////////////////////////////////////////////////////////////////////////
+
+    testMultiEqSingle4 : function () {
+      var expected = [ [ 1, 4 ], [ 2, 4 ], [ 3, 4 ], [ 4, 4 ], [ 5, 4 ] ];
+      var actual = getQueryResults("FOR v IN " + cn + " FILTER 4 == v.c SORT v.b RETURN [ v.b, v.c ]");
+
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test multiple fields with multiple operators
+////////////////////////////////////////////////////////////////////////////////
+
+    testMultiEqMultiAll1 : function () {
+      for (let i = 1; i <= 5; ++i) {
+        for (let j = 1; j <= 5; ++j) {
+          var query = "FOR v IN " + cn + " FILTER v.a == @a && v.b == @b RETURN [ v.a, v.b ]";
+          var expected = [ [ i, j ] ];
+          var actual = getQueryResults(query, { "a": i, "b": j });
+
+          assertEqual(expected, actual);
+      
+          assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "ReturnNode" ], explain(query, { a: i, b: j }));
+        }
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test multiple fields with multiple operators
+////////////////////////////////////////////////////////////////////////////////
+
+    testMultiEqMultiAll2 : function () {
+      for (let i = 1; i <= 5; ++i) {
+        for (let j = 1; j <= 5; ++j) {
+          var query = "FOR v IN " + cn + " FILTER @a == v.a && @b == v.b RETURN [ v.a, v.b ]";
+          var expected = [ [ i, j ] ];
+          var actual = getQueryResults(query, { "a": i, "b": j });
+
+          assertEqual(expected, actual);
+          
+          assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "ReturnNode" ], explain(query, { a: i, b: j }));
+        }
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test references with constants
+////////////////////////////////////////////////////////////////////////////////
+
+    testMultiRefConst1 : function () {
+      var query = "LET x = 4 FOR v IN " + cn + " FILTER v.c == x SORT v.b RETURN [ v.b, v.c ]";
+      var expected = [ [ 1, 4 ], [ 2, 4 ], [ 3, 4 ], [ 4, 4 ], [ 5, 4 ] ];
+      var actual = getQueryResults(query);
+
+      assertEqual(expected, actual);
+      
+      assertEqual([ "SingletonNode", "CalculationNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test references with constants
+////////////////////////////////////////////////////////////////////////////////
+
+    testMultiRefConst2 : function () {
+      var expected = [ [ 3, 5 ] ];
+      var actual = getQueryResults("LET x = 3 LET y = 5 FOR v IN " + cn + " FILTER v.a == x && v.b == y RETURN [ v.a, v.b ]");
+
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test ref access
+////////////////////////////////////////////////////////////////////////////////
+
+    testMultiRefSingle1 : function () {
+      for (let i = 1; i <= 5; ++i) {
+        var expected = [ [ i, i ] ];
+        var actual = getQueryResults("FOR v1 IN " + cn + " FOR v2 IN " + cn + " FILTER v1.c == @c && v1.b == 1 && v2.c == v1.c && v2.b == 1 RETURN [ v1.c, v2.c ]", { "c" : i });
+
+        assertEqual(expected, actual);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test ref access
+////////////////////////////////////////////////////////////////////////////////
+
+    testMultiRefSingle2 : function () {
+      for (let i = 1; i <= 5; ++i) {
+        var expected = [ [ i, i ] ];
+        var actual = getQueryResults("FOR v1 IN " + cn + " FOR v2 IN " + cn + " FILTER v1.c == @c && v1.b == 1 && v2.c == v1.c && v2.b == v1.b RETURN [ v1.c, v2.c ]", { "c" : i });
+
+        assertEqual(expected, actual);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test ref access
+////////////////////////////////////////////////////////////////////////////////
+
+    testMultiRefSingle3 : function () {
+      for (let i = 1; i <= 5; ++i) {
+        var expected = [ [ i, i ] ];
+        var actual = getQueryResults("FOR v1 IN " + cn + " FOR v2 IN " + cn + " FILTER @c == v1.c && 1 == v1.b && v1.c == v2.c && v1.b == v2.b RETURN [ v1.c, v2.c ]", { "c" : i });
+
+        assertEqual(expected, actual);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test ref access
+////////////////////////////////////////////////////////////////////////////////
+
+    testMultiRefMulti1 : function () {
+      for (let i = 1; i <= 5; ++i) {
+        var expected = [ [ i, 1 ] ];
+        var actual = getQueryResults("FOR v1 IN " + cn + " FOR v2 IN " + cn + " FILTER v1.c == @a && v1.b == 1 && v2.c == v1.c && v2.b == v1.b RETURN [ v1.a, v1.b ]", { "a" : i });
+
+        assertEqual(expected, actual);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test ref access
+////////////////////////////////////////////////////////////////////////////////
+
+    testMultiRefMulti2 : function () {
+      for (let i = 1; i <= 5; ++i) {
+        var expected = [ [ i, 1 ] ];
+        var actual = getQueryResults("FOR v1 IN " + cn + " FOR v2 IN " + cn + " FILTER @a == v1.c && 1 == v1.b && v1.c == v2.c && v1.b == v2.b RETURN [ v1.a, v1.b ]", { "a" : i });
+
+        assertEqual(expected, actual);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test ref access
+////////////////////////////////////////////////////////////////////////////////
+
+    testMultiRefMulti3 : function () {
+      var query = "FOR v1 IN " + cn + " FILTER @a == v1.a && @b == v1.b RETURN [ v1.a, v1.b ]";
+      var expected = [ [ 2, 3 ] ];
+      var actual = getQueryResults(query, { "a": 2, "b": 3 });
+
+      assertEqual(expected, actual);
+
+      assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "ReturnNode" ], explain(query, { a: 2, b: 3 }));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test ref access with filters on the same attribute
+////////////////////////////////////////////////////////////////////////////////
+
+    testMultiRefFilterSame1 : function () {
+      var query = "FOR a IN " + cn + " FILTER a.a == a.a SORT a.a RETURN a.a";
+      var expected = [ 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5 ];
+      var actual = getQueryResults(query);
+      
+      assertEqual(expected, actual);
+
+      assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test ref access with filters on the same attribute
+////////////////////////////////////////////////////////////////////////////////
+
+    testMultiRefFilterSame2 : function () {
+      var query = "FOR a IN " + cn + " FILTER a.a == a.c SORT a.a RETURN a.a";
+      var expected = [ 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5 ];
+      var actual = getQueryResults(query);
+      
+      assertEqual(expected, actual);
+
+      assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test ref access with filters on the same attribute
+////////////////////////////////////////////////////////////////////////////////
+
+    testMultiRefNon1 : function () {
+      var query = "FOR a IN " + cn + " FILTER a.a == 1 RETURN a.a";
+      var expected = [ 1, 1, 1, 1, 1 ]; 
+      var actual = getQueryResults(query);
+      
+      assertEqual(expected, actual);
+
+      assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "ReturnNode" ], explain(query));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test ref access with filters on the same attribute
+////////////////////////////////////////////////////////////////////////////////
+
+    testMultiRefNon2 : function () {
+      var query = "FOR a IN " + cn + " FILTER a.d == a.a SORT a.a RETURN a.a";
+      var expected = [ ];
+      var actual = getQueryResults(query);
+      
+      assertEqual(expected, actual);
+
+      // RocksDB uses Index For sort
+      assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test ref access with filters on the same attribute
+////////////////////////////////////////////////////////////////////////////////
+
+    testMultiRefNon3 : function () {
+      var query = "FOR a IN " + cn + " FILTER a.d == 1 SORT a.a RETURN a.a";
+      var expected = [ ];
+      var actual = getQueryResults(query);
+      
+      assertEqual(expected, actual);
+      assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
+    },
+
+    testMultiInvalidValuesinList : function () {
+      var query = "FOR x IN @list FOR i IN " + cn + " FILTER i.c == x SORT i.c RETURN i.c";
+      var bindParams = {
+        list: [
+          null,
+          1, // Find this
+          "blub/bla",
+          "noKey",
+          2, // And this
+          123456,
+          { "the": "foxx", "is": "wrapped", "in":"objects"},
+          [15, "man", "on", "the", "dead", "mans", "chest"],
+          3 // And this
+        ]
+      };
+      assertEqual([ 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3], AQL_EXECUTE(query, bindParams).json);
+    }
+
+  };
+}
+
+function PersistentIndexOverlappingSuite () {
+  const rulesDisabled = {optimizer: {rules: ["-all"]}};
+  const rulesEnabled = {optimizer: {rules: ["+all"]}};
+
+  return {
+
+    setUp : function () {
+      internal.db._drop(cn);
+      let c = internal.db._create(cn);
+      c.ensureIndex({ type: "persistent", fields: ["a"] });
+
+      let docs = [];
+      for (let i = 0; i < 10000; ++i) {
+        docs.push({a: i});
+      }
+      c.insert(docs);
+    },
+
+    tearDown : function () {
+      internal.db._drop(cn);
+    },
+
+    testLargeOverlappingRanges : function () {
+      let query = `FOR x IN @@cn FILTER (1000 <= x.a && x.a < 2500) 
+                                     || (1500 <= x.a && x.a < 3000)
+                                     RETURN x`;
+
+      let bindVars = {"@cn": cn};
+      assertEqual(2000, AQL_EXECUTE(query, bindVars, rulesDisabled).json.length);
+      assertEqual(2000, AQL_EXECUTE(query, bindVars, rulesEnabled).json.length);
+    }
+
+  };
+}
+
 jsunity.run(PersistentIndexTestSuite);
+jsunity.run(PersistentIndexMultipleIndexesTestSuite);
+jsunity.run(PersistentIndexOverlappingSuite);
 
 return jsunity.done();
