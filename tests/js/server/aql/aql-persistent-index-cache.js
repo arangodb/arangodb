@@ -96,7 +96,7 @@ function VPackIndexCacheModifySuite (unique) {
   const canUseFailAt =  internal.debugCanUseFailAt();
 
   const cn = "UnitTestsCollection";
-  const n = 10000;
+  const n = 2000;
   
   let setFailurePointForPointLookup = () => {
     if (canUseFailAt) {
@@ -156,6 +156,104 @@ function VPackIndexCacheModifySuite (unique) {
         let stats = qres.getExtra().stats;
         assertEqual(0, stats.cacheHits, stats);
         assertEqual(1000, stats.cacheMisses, stats);
+        
+        // query again (may hit the cache)
+        qres = db._query(`FOR i IN 0..999 FOR doc IN ${cn} FILTER doc.value == i RETURN doc`);
+        result = qres.toArray();
+        assertEqual(1000, result.length, tries);
+        for (let i = 0; i < result.length; ++i) {
+          const doc = result[i];
+          assertEqual("test" + i, doc._key);
+          assertEqual(i, doc.value);
+        }
+        stats = qres.getExtra().stats;
+        assertEqual(1000, stats.cacheHits + stats.cacheMisses, stats);
+      }
+    },
+    
+    testPointLookupAndRemove: function () {
+      setFailurePointForPointLookup();
+
+      let keys = [];
+      for (let i = 0; i < n; ++i) {
+        keys.push("test" + i);
+      }
+      for (let tries = 0; tries < 3; ++tries) {
+        if (tries !== 0) {
+          db[cn].remove(keys);
+          insertDocuments();
+        }
+        let qres = db._query(`FOR i IN 0..999 FOR doc IN ${cn} FILTER doc.value == i RETURN doc`);
+        let result = qres.toArray();
+        assertEqual(1000, result.length, tries);
+        for (let i = 0; i < result.length; ++i) {
+          const doc = result[i];
+          assertEqual("test" + i, doc._key);
+          assertEqual(i, doc.value);
+        }
+        let stats = qres.getExtra().stats;
+        assertEqual(0, stats.cacheHits, stats);
+        assertEqual(1000, stats.cacheMisses, stats);
+        
+        // query again (may hit the cache)
+        qres = db._query(`FOR i IN 0..999 FOR doc IN ${cn} FILTER doc.value == i RETURN doc`);
+        result = qres.toArray();
+        assertEqual(1000, result.length, tries);
+        for (let i = 0; i < result.length; ++i) {
+          const doc = result[i];
+          assertEqual("test" + i, doc._key);
+          assertEqual(i, doc.value);
+        }
+        stats = qres.getExtra().stats;
+        assertEqual(1000, stats.cacheHits + stats.cacheMisses, stats);
+      }
+    },
+    
+    testPointLookupAndUpdate: function () {
+      setFailurePointForPointLookup();
+
+      let keys = [];
+      for (let i = 0; i < n; ++i) {
+        keys.push("test" + i);
+      }
+      for (let tries = 0; tries < 3; ++tries) {
+        if (tries !== 0) {
+          let updates = [];
+          for (let i = 0; i < n; ++i) {
+            updates.push({ updated: i + tries });
+          }
+          db[cn].update(keys, updates);
+          insertDocuments();
+        }
+        let qres = db._query(`FOR i IN 0..999 FOR doc IN ${cn} FILTER doc.value == i RETURN doc`);
+        let result = qres.toArray();
+        assertEqual(1000, result.length, tries);
+        for (let i = 0; i < result.length; ++i) {
+          const doc = result[i];
+          assertEqual("test" + i, doc._key);
+          assertEqual(i, doc.value);
+          if (tries > 0) {
+            assertEqual(i + tries, doc.updated);
+          }
+        }
+        let stats = qres.getExtra().stats;
+        assertEqual(0, stats.cacheHits, stats);
+        assertEqual(1000, stats.cacheMisses, stats);
+        
+        // query again (may hit the cache)
+        qres = db._query(`FOR i IN 0..999 FOR doc IN ${cn} FILTER doc.value == i RETURN doc`);
+        result = qres.toArray();
+        assertEqual(1000, result.length, tries);
+        for (let i = 0; i < result.length; ++i) {
+          const doc = result[i];
+          assertEqual("test" + i, doc._key);
+          assertEqual(i, doc.value);
+          if (tries > 0) {
+            assertEqual(i + tries, doc.updated);
+          }
+        }
+        stats = qres.getExtra().stats;
+        assertEqual(1000, stats.cacheHits + stats.cacheMisses, stats);
       }
     },
 
@@ -167,7 +265,7 @@ function VPackIndexCacheReadOnlySuite (unique, cacheEnabled) {
   const canUseFailAt =  internal.debugCanUseFailAt();
 
   const cn = "UnitTestsCollection";
-  const n = 10000;
+  const n = 5000;
   
   let setFailurePointIfCacheUsed = () => {
     if (canUseFailAt) {
@@ -684,6 +782,13 @@ function PersistentIndexNonUniqueModifySuite() {
   return suite;
 }
 
+function PersistentIndexUniqueModifySuite() {
+  'use strict';
+  let suite = {};
+  deriveTestSuite(VPackIndexCacheModifySuite(/*unique*/ true), suite, '_unique');
+  return suite;
+}
+
 function PersistentIndexNonUniqueReadOnlyCacheDisabledSuite() {
   'use strict';
   let suite = {};
@@ -728,6 +833,7 @@ function PersistentIndexUniqueReadOnlyStoredValuesSuite() {
 
 jsunity.run(CreateSuite);
 jsunity.run(PersistentIndexNonUniqueModifySuite);
+jsunity.run(PersistentIndexUniqueModifySuite);
 jsunity.run(PersistentIndexNonUniqueReadOnlyCacheDisabledSuite);
 jsunity.run(PersistentIndexNonUniqueReadOnlyCacheEnabledSuite);
 jsunity.run(PersistentIndexNonUniqueReadOnlyStoredValuesSuite);

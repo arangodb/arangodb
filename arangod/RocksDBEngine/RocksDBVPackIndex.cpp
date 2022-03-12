@@ -149,6 +149,9 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
     }
+
+    // search key _key is fine here and can be used for cache lookups
+    // without any transformation!
   }
 
  public:
@@ -379,6 +382,10 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
         _cache(std::static_pointer_cast<
                cache::TransactionalCache<cache::VPackKeyHasher>>(
             std::move(cache))),
+        _builderOptions(VPackOptions::Defaults),
+        _cacheKeyBuilder(&_builderOptions),
+        _cacheKeyBuilderSize(0),
+        _resultBuilder(&_builderOptions),
         _resultIterator(VPackArrayIterator(VPackArrayIterator::Empty{})),
         _bounds(std::move(bounds)),
         _rangeBound(reverse ? _bounds.start() : _bounds.end()),
@@ -404,6 +411,18 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
       if (_cache != nullptr) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
+    }
+
+    if (_cache != nullptr) {
+      // don't care about initial padding, to avoid later memmove
+      _builderOptions.paddingBehavior =
+          VPackOptions::PaddingBehavior::UsePadding;
+
+      // in case we can use the hash cache for looking up data, we need to
+      // extract a useful lookup value from _bounds.start() first. this is
+      // because the lookup value for RocksDB contains a "min key" vpack
+      // value as its last element
+      rebuildCacheLookupValue();
     }
   }
 
@@ -479,6 +498,11 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
       _index->buildIndexRangeBounds(_trx, searchSlice, *leftSearch, lastNonEq,
                                     _bounds);
       _rangeBound = reverse ? _bounds.start() : _bounds.end();
+
+      // need to rebuild lookup value for cache as well
+      if (_cache != nullptr) {
+        rebuildCacheLookupValue();
+      }
     }
     // if l == 0, there must also be no cache
     TRI_ASSERT(l > 0 || _cache == nullptr);
@@ -616,6 +640,28 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
   }
 
  private:
+  void rebuildCacheLookupValue() {
+    TRI_ASSERT(_cache != nullptr);
+
+    // strip the object id from the lookup value
+    rocksdb::Slice b = ::lookupValueFromSlice(_bounds.start());
+    VPackSlice s(reinterpret_cast<uint8_t const*>(b.data()));
+    TRI_ASSERT(s.isArray());
+
+    _cacheKeyBuilder.clear();
+    _cacheKeyBuilder.openArray(true);
+    for (auto const& it : VPackArrayIterator(s)) {
+      // don't include "min key" or "max key" here!
+      if (it.type() == VPackValueType::MinKey ||
+          it.type() == VPackValueType::MaxKey) {
+        break;
+      }
+      _cacheKeyBuilder.add(it);
+    }
+    _cacheKeyBuilder.close();
+    _cacheKeyBuilderSize = _cacheKeyBuilder.slice().byteSize();
+  }
+
   enum class CacheLookupResult {
     kNotInCache,
     kInCacheAndFullyHandled,
@@ -774,23 +820,24 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
     storeInCache(_resultBuilder.slice());
   }
 
-  rocksdb::Slice lookupValueForCache() const noexcept {
-    // use bounds start value
-    return ::lookupValueFromSlice(_bounds.start());
-  }
-
   // look up a value in the in-memory hash cache
   template<typename F>
   inline CacheLookupResult lookupInCache(F&& cb, size_t& limit) {
     TRI_ASSERT(_cache != nullptr);
 
+    // key too large to be cached. should almost never happen
+    if (ADB_UNLIKELY(_cacheKeyBuilderSize) >
+        std::numeric_limits<uint32_t>::max()) {
+      return CacheLookupResult::kNotInCache;
+    }
+
     size_t const numFields = _index->hasStoredValues() ? 3 : 2;
-    rocksdb::Slice key = lookupValueForCache();
+    VPackSlice key = _cacheKeyBuilder.slice();
 
     for (size_t attempts = 0; attempts < 10; ++attempts) {
       // Try to read from cache
-      auto finding =
-          _cache->find(key.data(), static_cast<uint32_t>(key.size()));
+      auto finding = _cache->find(key.start(),
+                                  static_cast<uint32_t>(_cacheKeyBuilderSize));
       if (finding.found()) {
         incrCacheHits();
         // We got sth. in the cache
@@ -831,11 +878,17 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
   void storeInCache(VPackSlice slice) {
     TRI_ASSERT(_cache != nullptr);
 
+    // key too large to be cached. should almost never happen
+    if (ADB_UNLIKELY(_cacheKeyBuilderSize) >
+        std::numeric_limits<uint32_t>::max()) {
+      return;
+    }
+
     size_t attempts = 0;
-    rocksdb::Slice key = lookupValueForCache();
+    VPackSlice key = _cacheKeyBuilder.slice();
     cache::Cache::Inserter inserter(
-        *_cache, key.data(), static_cast<uint32_t>(key.size()), slice.start(),
-        static_cast<uint64_t>(slice.byteSize()),
+        *_cache, key.start(), static_cast<uint32_t>(_cacheKeyBuilderSize),
+        slice.start(), static_cast<uint64_t>(slice.byteSize()),
         [&attempts](Result const& res) -> bool {
           return res.is(TRI_ERROR_LOCK_TIMEOUT) && ++attempts <= 10;
         });
@@ -912,7 +965,20 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
   RocksDBVPackComparator const* _cmp;
   std::unique_ptr<rocksdb::Iterator> _iterator;
   std::shared_ptr<cache::TransactionalCache<cache::VPackKeyHasher>> _cache;
+  // VPackOptions for _cacheKeyBuilder and _resultBuilder. only used when
+  // _cache is set
+  arangodb::velocypack::Options _builderOptions;
+  // Builder that holds the cache lookup value. only used when _cache is set
+  arangodb::velocypack::Builder _cacheKeyBuilder;
+  // Amount of data (in bytes) in _cacheKeyBuilder. stored in a separate
+  // variable so that we can avoid repeated calls to _resultBuilder.byteSize(),
+  // which can be expensive
+  size_t _cacheKeyBuilderSize;
+  // Builder with cache lookup results (an array of 0..n index entries).
+  // only used when _cache is set
   arangodb::velocypack::Builder _resultBuilder;
+  // Iterator into cache lookup results, pointing into _resultBuilder. only
+  // set when _cache is set
   arangodb::velocypack::ArrayIterator _resultIterator;
   RocksDBKeyBounds _bounds;
   // used for iterate_upper_bound iterate_lower_bound
@@ -1772,7 +1838,7 @@ Result RocksDBVPackIndex::remove(transaction::Methods& trx,
           state->findCollection(_collection.id()));
       TRI_ASSERT(trxc != nullptr);
       for (uint64_t hash : hashes) {
-        // The estimator is only useful if we are in a non-unique indexes
+        // The estimator is only useful if we are in a non-unique index
         TRI_ASSERT(!_unique);
         trxc->trackIndexRemove(id(), hash);
       }
