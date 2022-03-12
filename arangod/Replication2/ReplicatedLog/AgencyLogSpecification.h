@@ -196,10 +196,8 @@ struct LogCurrent {
 };
 
 struct LogTarget {
-  using Participants = std::unordered_map<ParticipantId, ParticipantFlags>;
-
   LogId id;
-  Participants participants;
+  ParticipantsFlagsMap participants;
   LogConfig config;
 
   std::optional<ParticipantId> leader;
@@ -224,7 +222,7 @@ struct LogTarget {
   LogTarget(from_velocypack_t, VPackSlice);
   LogTarget() = default;
 
-  LogTarget(LogId id, Participants const& participants,
+  LogTarget(LogId id, ParticipantsFlagsMap const& participants,
             LogConfig const& config);
 };
 
