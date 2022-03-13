@@ -63,15 +63,15 @@ function SkiplistIndexSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSelectivityAfterAbortion : function () {
-      let idx = collection.ensureSkiplist("value");
+      let idx = collection.ensureIndex({ type: "skiplist", fields: ["value"] });
       let docs = [];
       for (let i = 0; i < 1000; ++i) {
         docs.push({value: i % 100});
       }
       collection.save(docs);
-      idx = collection.ensureSkiplist("value");
+      idx = collection.ensureIndex({ type: "skiplist", fields: ["value"] });
       internal.waitForEstimatorSync(); // make sure estimates are consistent
-      idx = collection.ensureSkiplist("value"); // fetch new estimates
+      idx = collection.ensureIndex({ type: "skiplist", fields: ["value"] }); // fetch new estimates
       let oldEstimate = idx.selectivityEstimate;
 
       assertTrue(oldEstimate >= 0);
@@ -96,7 +96,7 @@ function SkiplistIndexSuite() {
         assertEqual(e.errorMessage, "banana");
         // Insert failed.
         // Validate that estimate is non-modified
-        idx = collection.ensureSkiplist("value");
+        idx = collection.ensureIndex({ type: "skiplist", fields: ["value"] });
         internal.waitForEstimatorSync(); // make sure estimates are consistent
         assertEqual(idx.selectivityEstimate, oldEstimate);
       }

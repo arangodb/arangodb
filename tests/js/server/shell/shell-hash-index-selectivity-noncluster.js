@@ -28,45 +28,29 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require("jsunity");
-var internal = require("internal");
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite: Creation
-////////////////////////////////////////////////////////////////////////////////
+const jsunity = require("jsunity");
+const internal = require("internal");
 
 function HashIndexSuite() {
   'use strict';
-  var cn = "UnitTestsCollectionHash";
-  var collection = null;
+  const cn = "UnitTestsCollectionHash";
+  let collection = null;
 
   return {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
       internal.db._drop(cn);
       collection = internal.db._create(cn);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
-
     tearDown : function () {
       // try...catch is necessary as some tests delete the collection itself!
       try {
-        collection.unload();
         collection.drop();
-      }
-      catch (err) {
+      } catch (err) {
       }
 
       collection = null;
-      internal.wait(0.0);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -74,23 +58,23 @@ function HashIndexSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSelectivityEstimateUnique : function () {
-      var i;
-
-      var idx = collection.ensureUniqueConstraint("value");
-      for (i = 0; i < 1000; ++i) {
-        collection.save({ _key: "test" + i, value: i });
+      let idx = collection.ensureIndex({ type: "hash", fields: ["value"], unique: true });
+      let docs = [];
+      for (let i = 0; i < 1000; ++i) {
+        docs.push({ _key: "test" + i, value: i });
       }
+      collection.insert(docs);
 
       internal.waitForEstimatorSync(); // make sure estimates are consistent
-      idx = collection.ensureUniqueConstraint("value");
+      idx = collection.ensureIndex({ type: "hash", fields: ["value"], unique: true });
       assertEqual(1, idx.selectivityEstimate);
 
-      for (i = 0; i < 50; ++i) {
+      for (let i = 0; i < 50; ++i) {
         collection.remove("test" + i);
       }
 
       internal.waitForEstimatorSync(); // make sure estimates are consistent
-      idx = collection.ensureUniqueConstraint("value");
+      idx = collection.ensureIndex({ type: "hash", fields: ["value"], unique: true });
       assertEqual(1, idx.selectivityEstimate);
     },
 
@@ -99,31 +83,35 @@ function HashIndexSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSelectivityEstimateNonUnique : function () {
-      var i;
-
-      var idx = collection.ensureHashIndex("value");
-      for (i = 0; i < 1000; ++i) {
-        collection.save({ value: i });
+      let idx = collection.ensureIndex({ type: "hash", fields: ["value"] });
+      let docs = [];
+      for (let i = 0; i < 1000; ++i) {
+        docs.push({ value: i });
       }
+      collection.insert(docs);
 
       internal.waitForEstimatorSync(); // make sure estimates are consistent
-      idx = collection.ensureHashIndex("value");
+      idx = collection.ensureIndex({ type: "hash", fields: ["value"] });
       assertEqual(1, idx.selectivityEstimate);
 
-      for (i = 0; i < 1000; ++i) {
-        collection.save({ value: i });
+      docs = [];
+      for (let i = 0; i < 1000; ++i) {
+        docs.push({ value: i });
       }
+      collection.insert(docs);
 
       internal.waitForEstimatorSync(); // make sure estimates are consistent
-      idx = collection.ensureHashIndex("value");
+      idx = collection.ensureIndex({ type: "hash", fields: ["value"] });
       assertTrue(idx.selectivityEstimate >= 0.45 && idx.selectivityEstimate <= 0.55);
 
-      for (i = 0; i < 1000; ++i) {
-        collection.save({ value: i });
+      docs = [];
+      for (let i = 0; i < 1000; ++i) {
+        docs.push({ value: i });
       }
+      collection.insert(docs);
 
       internal.waitForEstimatorSync(); // make sure estimates are consistent
-      idx = collection.ensureHashIndex("value");
+      idx = collection.ensureIndex({ type: "hash", fields: ["value"] });
       assertTrue(idx.selectivityEstimate >= 0.3 && idx.selectivityEstimate <= 0.36);
     },
 
@@ -132,31 +120,35 @@ function HashIndexSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSelectivityEstimateAllIdentical : function () {
-      var i;
-
-      var idx = collection.ensureHashIndex("value");
-      for (i = 0; i < 1000; ++i) {
-        collection.save({ value: 1 });
+      let docs = [];
+      let idx = collection.ensureIndex({ type: "hash", fields: ["value"] });
+      for (let i = 0; i < 1000; ++i) {
+        docs.push({ value: 1 });
       }
+      collection.insert(docs);
 
       internal.waitForEstimatorSync(); // make sure estimates are consistent
-      idx = collection.ensureHashIndex("value");
+      idx = collection.ensureIndex({ type: "hash", fields: ["value"] });
       assertTrue(idx.selectivityEstimate <= ((1 / 1000) + 0.0001));
 
-      for (i = 0; i < 1000; ++i) {
-        collection.save({ value: 1 });
+      docs = [];
+      for (let i = 0; i < 1000; ++i) {
+        docs.push({ value: 1 });
       }
+      collection.insert(docs);
 
       internal.waitForEstimatorSync(); // make sure estimates are consistent
-      idx = collection.ensureHashIndex("value");
+      idx = collection.ensureIndex({ type: "hash", fields: ["value"] });
       assertTrue(idx.selectivityEstimate <= ((2 / 2000) + 0.0001));
 
-      for (i = 0; i < 1000; ++i) {
-        collection.save({ value: 1 });
+      docs = [];
+      for (let i = 0; i < 1000; ++i) {
+        docs.push({ value: 1 });
       }
+      collection.insert(docs);
 
       internal.waitForEstimatorSync(); // make sure estimates are consistent
-      idx = collection.ensureHashIndex("value");
+      idx = collection.ensureIndex({ type: "hash", fields: ["value"] });
       assertTrue(idx.selectivityEstimate <= ((2 / 3000) + 0.0001));
     },
 
@@ -166,14 +158,14 @@ function HashIndexSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSelectivityAfterAbortion : function () {
-      let idx = collection.ensureHashIndex("value");
+      let idx = collection.ensureIndex({ type: "hash", fields: ["value"] });
       let docs = [];
       for (let i = 0; i < 1000; ++i) {
         docs.push({value: i % 100});
       }
-      collection.save(docs);
+      collection.insert(docs);
       internal.waitForEstimatorSync(); // make sure estimates are consistent
-      idx = collection.ensureHashIndex("value");
+      idx = collection.ensureIndex({ type: "hash", fields: ["value"] });
 
       assertEqual(idx.selectivityEstimate, 100 / 1000);
       try {
@@ -197,18 +189,13 @@ function HashIndexSuite() {
         // Insert failed.
         // Validate that estimate is non modified
         internal.waitForEstimatorSync(); // make sure estimates are consistent
-        idx = collection.ensureHashIndex("value");
+        idx = collection.ensureIndex({ type: "hash", fields: ["value"] });
         assertEqual(idx.selectivityEstimate, 100 / 1000);
       }
     },
 
   };
 }
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suites
-////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(HashIndexSuite);
 

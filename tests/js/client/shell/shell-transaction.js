@@ -2573,8 +2573,8 @@ function transactionRollbackSuite (dbParams) {
       c1.save({ _key: 'bar', value: 'bar', a: 1 });
       c1.save({ _key: 'meow', value: 'meow' });
 
-      c1.ensureHashIndex('value');
-      c1.ensureSkiplist('value');
+      c1.ensureIndex({ type: "hash", fields: ["value"] });
+      c1.ensureIndex({ type: "skiplist", fields: ["value"] });
       let good = false;
 
       let obj = {
@@ -2618,8 +2618,8 @@ function transactionRollbackSuite (dbParams) {
       let d2 = c1.save({ value: 'bar', a: 1 });
       let d3 = c1.save({ value: 'meow' });
 
-      c1.ensureHashIndex('value');
-      c1.ensureSkiplist('value');
+      c1.ensureIndex({ type: "hash", fields: ["value"] });
+      c1.ensureIndex({ type: "skiplist", fields: ["value"] });
       let good = false;
 
       let obj = {
@@ -2886,8 +2886,8 @@ function transactionRollbackSuite (dbParams) {
       c1.save({ _key: 'bar', value: 'bar', a: 1 });
       c1.save({ _key: 'meow', value: 'meow' });
 
-      c1.ensureHashIndex('value');
-      c1.ensureSkiplist('value');
+      c1.ensureIndex({ type: "hash", fields: ["value"] });
+      c1.ensureIndex({ type: "skiplist", fields: ["value"] });
       let good = false;
 
       let obj = {
@@ -3067,8 +3067,8 @@ function transactionRollbackSuite (dbParams) {
       c1.save({ _key: 'bar', value: 'bar', a: 1 });
       c1.save({ _key: 'meow', value: 'meow' });
 
-      c1.ensureHashIndex('value');
-      c1.ensureSkiplist('value');
+      c1.ensureIndex({ type: "hash", fields: ["value"] });
+      c1.ensureIndex({ type: "skiplist", fields: ["value"] });
       var good = false;
 
       let obj = {
@@ -3109,8 +3109,8 @@ function transactionRollbackSuite (dbParams) {
       c1.save({ _key: 'bar', value: 'bar', a: 1 });
       c1.save({ _key: 'meow', value: 'meow' });
 
-      c1.ensureHashIndex('value');
-      c1.ensureSkiplist('value');
+      c1.ensureIndex({ type: "hash", fields: ["value"] });
+      c1.ensureIndex({ type: "skiplist", fields: ["value"] });
       let good = false;
 
       let obj = {
@@ -3253,7 +3253,7 @@ function transactionRollbackSuite (dbParams) {
 
     testRollbackUniqueSecondary: function () {
       c1 = db._create(cn1, {numberOfShards: 1, replicationFactor: 2});
-      c1.ensureUniqueConstraint('name');
+      c1.ensureIndex({ type: "hash", fields: ["name"], unique: true });
       let d1 = c1.save({ name: 'foo' });
 
       let obj = {
@@ -3291,7 +3291,7 @@ function transactionRollbackSuite (dbParams) {
 
     testRollbackUniqueSecondaryCustomShard: function () {
       c1 = db._create(cn1, {numberOfShards: 2, replicationFactor: 2, shardKeys:['name']});
-      c1.ensureUniqueConstraint('name');
+      c1.ensureIndex({ type: "hash", fields: ["name"], unique: true });
       let d1 = c1.save({ name: 'foo' });
 
       let obj = {

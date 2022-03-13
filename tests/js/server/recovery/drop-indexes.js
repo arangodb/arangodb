@@ -35,21 +35,21 @@ var jsunity = require('jsunity');
 function runSetup () {
   'use strict';
   internal.debugClearFailAt();
-  var i, j, c;
-  for (i = 0; i < 5; ++i) {
+  for (let i = 0; i < 5; ++i) {
     db._drop('UnitTestsRecovery' + i);
-    c = db._create('UnitTestsRecovery' + i);
+    let c = db._create('UnitTestsRecovery' + i);
     c.save({ _key: 'foo', value1: 'foo', value2: 'bar' });
 
-    c.ensureHashIndex('value1');
-    c.ensureSkiplist('value2');
+    c.ensureIndex({ type: "hash", fields: ["value1"] });
+    c.ensureIndex({ type: "skiplist", fields: ["value2"] });
   }
 
   // drop all indexes but primary
-  for (i = 0; i < 4; ++i) {
+  let c;
+  for (let i = 0; i < 4; ++i) {
     c = db._collection('UnitTestsRecovery' + i);
-    var idx = c.getIndexes();
-    for (j = 0; j < idx.length; ++j) {
+    let idx = c.getIndexes();
+    for (let j = 0; j < idx.length; ++j) {
       c.dropIndex(idx[j].id);
     }
   }

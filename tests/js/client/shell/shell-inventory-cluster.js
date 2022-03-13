@@ -157,21 +157,19 @@ function clusterInventorySuite () {
 
       db._useDatabase("UnitTestsDumpSrc");
 
-      db._create("UnitTestsDumpEmpty", { waitForSync: true, indexBuckets: 256 });
+      db._create("UnitTestsDumpEmpty", { waitForSync: true });
 
       db._createEdgeCollection("UnitTestsDumpEdges");
 
-      let c = db._create("UnitTestsDumpIndexes", { indexBuckets: 32 });
-      c.ensureUniqueConstraint("a_uc");
-      c.ensureSkiplist("a_s1", "a_s2");
-
-      c.ensureHashIndex("a_h1", "a_h2");
-      c.ensureUniqueSkiplist("a_su");
-      c.ensureHashIndex("a_hs1", "a_hs2", { sparse: true });
-      c.ensureSkiplist("a_ss1", "a_ss2", { sparse: true });
-      c.ensureFulltextIndex("a_f");
-
-      c.ensureGeoIndex("a_la", "a_lo");
+      let c = db._create("UnitTestsDumpIndexes");
+      c.ensureIndex({ type: "hash", fields: ["a_uc"], unique: true });
+      c.ensureIndex({ type: "skiplist", fields: ["a_s1", "a_s2"] });
+      c.ensureIndex({ type: "hash", fields: ["a_h1", "a_h2"] });
+      c.ensureIndex({ type: "skiplist", fields: ["a_su"], unique: true });
+      c.ensureIndex({ type: "hash", fields: ["a_hs1", "a_hs2"], sparse: true });
+      c.ensureIndex({ type: "skiplist", fields: ["a_ss1", "a_ss2"], sparse: true });
+      c.ensureIndex({ type: "fulltext", fields: ["a_f"] });
+      c.ensureIndex({ type: "geo", fields: ["a_la", "a_lo"] });
       
       let analyzer = analyzers.save("custom", "delimiter", { delimiter : " " }, [ "frequency" ]);
 

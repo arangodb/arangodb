@@ -53,9 +53,9 @@ struct ErrorAction {
 struct AddLogToPlanAction {
   static constexpr std::string_view name = "AddLogToPlanAction";
 
-  AddLogToPlanAction(LogTarget::Participants const& participants)
+  AddLogToPlanAction(ParticipantsFlagsMap const& participants)
       : _participants(participants){};
-  LogTarget::Participants const _participants;
+  ParticipantsFlagsMap const _participants;
 };
 
 struct CreateInitialTermAction {
@@ -78,7 +78,7 @@ struct DictateLeaderAction {
 };
 
 struct DictateLeaderFailedAction {
-  static constexpr std::string_view name = "DictateLeaderAction";
+  static constexpr std::string_view name = "DictateLeaderFailedAction";
 
   DictateLeaderFailedAction(std::string const& message) : _message{message} {};
 
