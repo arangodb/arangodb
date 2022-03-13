@@ -1,3 +1,11 @@
+v3.6.13.2 (XXXX-XX-XX)
+----------------------
+
+* Fix a crash in the error handling code of AQL initializeCursor requests in
+  cluster AQL queries. The crash could occur if a DB server sent an error back
+  in response to an initializeCursor request.
+
+
 v3.6.13.1 (2021-09-08)
 ----------------------
 
