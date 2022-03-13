@@ -292,10 +292,9 @@ struct SupervisionLogTest : ::testing::Test {};
 
 TEST_F(SupervisionLogTest, test_log_created) {
   auto const config = LogConfig(3, 2, 3, true);
-  auto const participants = LogTarget::Participants{
+  auto const participants = ParticipantsFlagsMap{
       {"A", ParticipantFlags{.forced = false, .allowedAsLeader = true}},
       {"B", ParticipantFlags{.forced = false, .allowedAsLeader = true}},
-
       {"C", ParticipantFlags{.forced = false, .allowedAsLeader = true}}};
 
   auto r = checkReplicatedLog(
@@ -312,10 +311,9 @@ TEST_F(SupervisionLogTest, test_log_created) {
 
 TEST_F(SupervisionLogTest, test_log_present) {
   auto const config = LogConfig(3, 2, 3, true);
-  auto const participants = LogTarget::Participants{
+  auto const participants = ParticipantsFlagsMap{
       {"A", ParticipantFlags{.forced = false, .allowedAsLeader = true}},
       {"B", ParticipantFlags{.forced = false, .allowedAsLeader = true}},
-
       {"C", ParticipantFlags{.forced = false, .allowedAsLeader = true}}};
 
   auto r = checkReplicatedLog(
