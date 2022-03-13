@@ -1,4 +1,4 @@
-v3.6.13.1 (XXXX-XX-XX)
+v3.6.13.2 (XXXX-XX-XX)
 ----------------------
 
 * Fix a crash in the error handling code of AQL initializeCursor requests in
