@@ -207,7 +207,7 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
           LocalDocumentId documentId{it.value().getNumericValue<uint64_t>()};
           cb(documentId);
         },
-        [&cb, this](rocksdb::PinnableSlice& ps) {
+        [&cb](rocksdb::PinnableSlice& ps) {
           LocalDocumentId documentId = RocksDBValue::documentId(ps);
           cb(documentId);
         },
@@ -515,9 +515,9 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
     return nextImplementation(
         [&cb, this]() {
           // read LocalDocumentId
-          TRI_ASSERT(_resultIterator.value().isNumber());
-          LocalDocumentId documentId{
-              _resultIterator.value().getNumericValue<uint64_t>()};
+          VPackSlice value = _resultIterator.value();
+          TRI_ASSERT(value.isNumber());
+          LocalDocumentId documentId{value.getNumericValue<uint64_t>()};
           _resultIterator.next();
 
           // skip over key
@@ -548,14 +548,14 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
     return nextImplementation(
         [&cb, this]() {
           // read LocalDocumentId
-          TRI_ASSERT(_resultIterator.value().isNumber());
-          LocalDocumentId documentId{
-              _resultIterator.value().getNumericValue<uint64_t>()};
+          VPackSlice value = _resultIterator.value();
+          TRI_ASSERT(value.isNumber());
+          LocalDocumentId documentId{value.getNumericValue<uint64_t>()};
           _resultIterator.next();
 
           // read actual index value
           TRI_ASSERT(_resultIterator.valid());
-          VPackSlice key = _resultIterator.value();
+          value = _resultIterator.value();
           _resultIterator.next();
 
           if (_index->hasStoredValues()) {
@@ -563,10 +563,10 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
             VPackSlice storedValues = _resultIterator.value();
             _resultIterator.next();
 
-            auto data = SliceCoveringDataWithStoredValues(key, storedValues);
+            auto data = SliceCoveringDataWithStoredValues(value, storedValues);
             cb(documentId, data);
           } else {
-            auto data = SliceCoveringData(key);
+            auto data = SliceCoveringData(value);
             cb(documentId, data);
           }
         },
