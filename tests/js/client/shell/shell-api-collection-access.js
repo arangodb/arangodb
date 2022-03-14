@@ -31,7 +31,7 @@
 const internal = require('internal');
 const sleep = internal.sleep;
 const forceJson = internal.options().hasOwnProperty('server.force-json') && internal.options()['server.force-json'];
-const contentType = forceJson ? "application/json; charset=utf-8" :  "application/x-velocypack";
+const contentType = forceJson ? "application/json" :  "application/x-velocypack";
 const jsunity = require("jsunity");
 
 let api = "/_api/collection";

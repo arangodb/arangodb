@@ -33,7 +33,7 @@ const jsunity = require("jsunity");
 const internal = require('internal');
 const sleep = internal.sleep;
 const forceJson = internal.options().hasOwnProperty('server.force-json') && internal.options()['server.force-json'];
-const contentType = forceJson ? "application/json; charset=utf-8" :  "application/x-velocypack";
+const contentType = forceJson ? "application/json" :  "application/x-velocypack";
 
 let rePath = /^\/_db\/[^/]+\/_api\/document\/[a-zA-Z0-9_let :\.\-]+\/\d+$/;
 let reFull = /^[a-zA-Z0-9_\-]+\/\d+$/;
