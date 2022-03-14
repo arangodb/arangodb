@@ -235,7 +235,6 @@ class Request final : public Message {
  private:
   velocypack::Buffer<uint8_t> _payload;
   std::chrono::milliseconds _timeout;
-  bool _isFuzzerReq = false;
   std::optional<std::string> _fuzzReqHeader = std::nullopt;
 };
 
