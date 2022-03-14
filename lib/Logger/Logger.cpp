@@ -796,19 +796,21 @@ void Logger::log(char const* logid, char const* function, char const* file,
   auto msg = std::make_unique<LogMessage>(function, file, line, level, topicId,
                                           std::move(out), offset, shrunk);
 
-  append(defaultLogGroup(), msg, false,
-         [level, topicId](std::unique_ptr<LogMessage>& msg) -> void {
+  append(defaultLogGroup(), std::move(msg), false,
+         [level, topicId](LogMessage const& msg) -> void {
            LogAppenderStdStream::writeLogMessage(
                STDERR_FILENO, (isatty(STDERR_FILENO) == 1), level, topicId,
-               msg->_message.data(), msg->_message.size(), true);
+               msg._message.data(), msg._message.size(), true);
          });
 } catch (...) {
   // logging itself must never cause an exeption to escape
 }
 
-void Logger::append(
-    LogGroup& group, std::unique_ptr<LogMessage>& msg, bool forceDirect,
-    std::function<void(std::unique_ptr<LogMessage>&)> const& inactive) {
+void Logger::append(LogGroup& group, std::unique_ptr<LogMessage> msg,
+                    bool forceDirect,
+                    std::function<void(LogMessage const&)> const& inactive) {
+  TRI_ASSERT(msg != nullptr);
+
   // check if we need to shrink the message here
   if (!msg->shrunk()) {
     msg->shrink(group.maxLogEntryLength());
@@ -822,7 +824,7 @@ void Logger::append(
 
   if (!_active.load(std::memory_order_acquire)) {
     // logging is still turned off. now use hard-coded to-stderr logging
-    inactive(msg);
+    inactive(*msg);
   } else {
     // now either queue or output the message
     bool handled = false;
