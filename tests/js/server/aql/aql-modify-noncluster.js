@@ -2316,7 +2316,7 @@ function ahuacatlUpdateSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUpdateUniqueConstraint1 : function () {
-      c1.ensureUniqueConstraint("value1");
+      c1.ensureIndex({ type: "hash", fields: ["value1"], unique: true });
       assertQueryError(errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, "FOR d IN @@cn UPDATE d._key WITH { value1: 1 } IN @@cn", { "@cn": cn1 });
     },
 
@@ -2325,7 +2325,7 @@ function ahuacatlUpdateSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUpdateUniqueConstraint2 : function () {
-      c1.ensureUniqueConstraint("value3", { sparse: true });
+      c1.ensureIndex({ type: "hash", fields: ["value3"], unique: true, sparse: true });
       assertQueryError(errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, "FOR d IN @@cn UPDATE d._key WITH { value3: 1 } IN @@cn", { "@cn": cn1 });
     },
 
@@ -2334,7 +2334,7 @@ function ahuacatlUpdateSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUpdateIgnore1 : function () {
-      c1.ensureUniqueConstraint("value3", { sparse: true });
+      c1.ensureIndex({ type: "hash", fields: ["value3"], unique: true, sparse: true });
       const expected = { writesExecuted: 1, writesIgnored: 99 };
       const actual = getModifyQueryResults("FOR d IN @@cn UPDATE d WITH { value3: 1 } IN @@cn OPTIONS { ignoreErrors: true }", { "@cn": cn1 });
 
@@ -2346,7 +2346,7 @@ function ahuacatlUpdateSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUpdateIgnore2 : function () {
-      c1.ensureUniqueConstraint("value1", { sparse: true });
+      c1.ensureIndex({ type: "hash", fields: ["value1"], unique: true, sparse: true });
       const expected = { writesExecuted: 0, writesIgnored: 51 };
       const actual = getModifyQueryResults("FOR i IN 50..100 UPDATE { _key: CONCAT('test', TO_STRING(i)), value1: 1 } IN @@cn OPTIONS { ignoreErrors: true }", { "@cn": cn1 });
 

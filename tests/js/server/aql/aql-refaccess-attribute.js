@@ -59,12 +59,12 @@ function ahuacatlRefAccessAttributeTestSuite () {
       collection = internal.db._create("UnitTestsAhuacatlRefAccess");
 
       let docs = [];
-      for (var i = 1; i <= 10; ++i) {
+      for (let i = 1; i <= 10; ++i) {
         docs.push({ "val" : i });
       }
       collection.insert(docs);
 
-      collection.ensureSkiplist("val");
+      collection.ensureIndex({ type: "skiplist", fields: ["val"] });
     },
 
 ////////////////////////////////////////////////////////////////////////////////

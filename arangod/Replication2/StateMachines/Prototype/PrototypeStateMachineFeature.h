@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -17,36 +18,21 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Lars Maier
+/// @author Alexandru Petenchea
 ////////////////////////////////////////////////////////////////////////////////
-
 #pragma once
 
-#include <memory>
-#include <string>
+#include "RestServer/arangod.h"
 
-#include <gtest/gtest.h>
+namespace arangodb::replication2::replicated_state::prototype {
 
-#include "Replication2/ReplicatedLog/ReplicatedLog.h"
+struct PrototypeStateMachineFeature : public ArangodFeature {
+  static constexpr std::string_view name() noexcept {
+    return "PrototypeStateMachine";
+  }
 
-namespace arangodb {
-
-namespace velocypack {
-class Builder;
-class Slice;
-}  // namespace velocypack
-
-struct StateMachineTest : ::testing::Test {
-  // returns two replicated logs, the seconds is the leader of the first
-  static auto createReplicatedLog()
-      -> std::shared_ptr<replication2::replicated_log::ReplicatedLog>;
+  explicit PrototypeStateMachineFeature(Server& server);
+  void start() override;
 };
 
-struct TestLogEntry {
-  explicit TestLogEntry(std::string payload) : payload(std::move(payload)) {}
-  static auto fromVelocyPack(velocypack::Slice slice) -> TestLogEntry;
-  void toVelocyPack(velocypack::Builder& builder) const;
-  std::string payload;
-};
-
-}  // namespace arangodb
+}  // namespace arangodb::replication2::replicated_state::prototype

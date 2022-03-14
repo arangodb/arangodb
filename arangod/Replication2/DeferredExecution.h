@@ -33,7 +33,7 @@ namespace arangodb {
  * @brief Just to move callable stuff around without allocations and exceptions
  */
 struct DeferredAction {
-  static constexpr std::size_t alloc_size = 24;
+  static constexpr std::size_t alloc_size = 32;
   DeferredAction() = default;
 
   DeferredAction(DeferredAction&& other) noexcept { *this = std::move(other); }

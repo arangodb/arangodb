@@ -75,7 +75,7 @@ void UpgradeFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption(
       "--database.upgrade-check", "skip a database upgrade",
       new BooleanParameter(&_upgradeCheck),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 }
 
 #ifndef _WIN32

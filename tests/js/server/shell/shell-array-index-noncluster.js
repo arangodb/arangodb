@@ -57,7 +57,6 @@ function arrayHashIndexSuite () {
     tearDown : function () {
       internal.db._drop(cn);
       collection = null;
-      internal.wait(0.0);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -69,8 +68,8 @@ function arrayHashIndexSuite () {
       
       assertEqual(1, indexes.length);
 
-      collection.ensureHashIndex("a[*]");
-      collection.ensureUniqueConstraint("b[*]");
+      collection.ensureIndex({ type: "hash", fields: ["a[*]"] });
+      collection.ensureIndex({ type: "hash", fields: ["b[*]"], unique: true });
 
       indexes = collection.getIndexes();
 
@@ -82,7 +81,7 @@ function arrayHashIndexSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testHashIndex : function () {
-      var id = collection.ensureHashIndex("a[*]");
+      var id = collection.ensureIndex({ type: "hash", fields: ["a[*]"] });
 
       var idx = collection.index(id.id);
       assertEqual(id.id, idx.id);
@@ -102,7 +101,7 @@ function arrayHashIndexSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testInsertAndReadArrayCombinedUnique : function () {
-      collection.ensureHashIndex("a[*]", "b[*]", {unique: true});
+      collection.ensureIndex({ type: "hash", fields: ["a[*]", "b[*]"], unique: true });
 
       collection.save({a: [1, 2], b: ["a", "b"]});
 
@@ -125,7 +124,7 @@ function arrayHashIndexSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testInsertAndReadArrayUnique : function () {
-      collection.ensureUniqueConstraint("a[*]");
+      collection.ensureIndex({ type: "hash", fields: ["a[*]"], unique: true });
 
       collection.save({a: [1, 2]});
 
@@ -143,7 +142,7 @@ function arrayHashIndexSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testInsertAndReadArrayIdenticalElementsUnique : function () {
-      collection.ensureUniqueConstraint("a[*]");
+      collection.ensureIndex({ type: "hash", fields: ["a[*]"], unique: true });
 
       collection.save({a: [1, 2, 1, 3, 1]});
 
@@ -213,8 +212,8 @@ function arraySkiplistIndexSuite () {
       
       assertEqual(1, indexes.length);
 
-      collection.ensureSkiplist("a[*]");
-      collection.ensureUniqueSkiplist("b[*]");
+      collection.ensureIndex({ type: "skiplist", fields: ["a[*]"] });
+      collection.ensureIndex({ type: "skiplist", fields: ["b[*]"], unique: true });
 
       indexes = collection.getIndexes();
 
@@ -226,7 +225,7 @@ function arraySkiplistIndexSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSkiplistIndex : function () {
-      var id = collection.ensureSkiplist("a[*]");
+      var id = collection.ensureIndex({ type: "skiplist", fields: ["a[*]"] });
 
       var idx = collection.index(id.id);
       assertEqual(id.id, idx.id);
@@ -246,7 +245,7 @@ function arraySkiplistIndexSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSkipListInsertAndReadArrayUnique : function () {
-      collection.ensureUniqueSkiplist("a[*]");
+      collection.ensureIndex({ type: "skiplist", fields: ["a[*]"], unique: true });
 
       collection.save({a: [1, 2]});
 
@@ -264,7 +263,7 @@ function arraySkiplistIndexSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSkipListInsertAndReadArrayIdenticalElementsUnique : function () {
-      collection.ensureUniqueSkiplist("a[*]");
+      collection.ensureIndex({ type: "skiplist", fields: ["a[*]"], unique: true });
 
       collection.save({a: [1, 2, 1, 3, 1]});
 

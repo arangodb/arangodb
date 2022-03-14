@@ -32,6 +32,7 @@ const internal = require("internal");
 const errors = internal.errors;
 const jsunity = require("jsunity");
 const db = require("@arangodb").db;
+const isCluster = require('@arangodb/cluster').isCluster();
 
 function ahuacatlMemoryLimitStaticQueriesTestSuite () {
   return {
@@ -299,9 +300,17 @@ function ahuacatlMemoryLimitGraphQueriesTestSuite () {
 
     testTraversal : function () {
       const query = "WITH " + vn + " FOR v, e, p IN 1..@maxDepth OUTBOUND '" + vn + "/test0' " + en + " RETURN v";
-      
-      let actual = AQL_EXECUTE(query, { maxDepth: 2 }, { memoryLimit: 20 * 1000 * 1000 }).json;
-      assertEqual(79800, actual.length);
+
+      if (isCluster) {
+        // TODO [GraphRefactor]: Refactored variant uses now more memory. Check if we can improve here.
+        // [GraphRefactor] Note: Related to #GORDO-1361
+        let actual = AQL_EXECUTE(query, { maxDepth: 2 }, { memoryLimit: 27 * 1000 * 1000 }).json;
+        assertEqual(79800, actual.length);
+      } else {
+        let actual = AQL_EXECUTE(query, { maxDepth: 2 }, { memoryLimit: 20 * 1000 * 1000 }).json;
+        assertEqual(79800, actual.length);
+      }
+
       
       try {
         // run query with same depth, but lower mem limit

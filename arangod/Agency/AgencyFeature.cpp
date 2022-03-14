@@ -151,13 +151,13 @@ void AgencyFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
           arangodb::options::Flags::DefaultNoComponents,
           arangodb::options::Flags::OnAgent));
 
-  options->addOption(
-      "--agency.compaction-step-size",
-      "step size between state machine compactions",
-      new UInt64Parameter(&_compactionStepSize),
-      arangodb::options::makeFlags(
-          arangodb::options::Flags::DefaultNoComponents,
-          arangodb::options::Flags::Hidden, arangodb::options::Flags::OnAgent));
+  options->addOption("--agency.compaction-step-size",
+                     "step size between state machine compactions",
+                     new UInt64Parameter(&_compactionStepSize),
+                     arangodb::options::makeFlags(
+                         arangodb::options::Flags::DefaultNoComponents,
+                         arangodb::options::Flags::Uncommon,
+                         arangodb::options::Flags::OnAgent));
 
   options->addOption("--agency.compaction-keep-size",
                      "keep as many indices before compaction point",
@@ -166,31 +166,31 @@ void AgencyFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                          arangodb::options::Flags::DefaultNoComponents,
                          arangodb::options::Flags::OnAgent));
 
-  options->addOption(
-      "--agency.wait-for-sync",
-      "wait for hard disk syncs on every persistence call "
-      "(required in production)",
-      new BooleanParameter(&_waitForSync),
-      arangodb::options::makeFlags(
-          arangodb::options::Flags::DefaultNoComponents,
-          arangodb::options::Flags::Hidden, arangodb::options::Flags::OnAgent));
+  options->addOption("--agency.wait-for-sync",
+                     "wait for hard disk syncs on every persistence call "
+                     "(required in production)",
+                     new BooleanParameter(&_waitForSync),
+                     arangodb::options::makeFlags(
+                         arangodb::options::Flags::DefaultNoComponents,
+                         arangodb::options::Flags::Uncommon,
+                         arangodb::options::Flags::OnAgent));
 
-  options->addOption(
-      "--agency.max-append-size",
-      "maximum size of appendEntries document (# log entries)",
-      new UInt64Parameter(&_maxAppendSize),
-      arangodb::options::makeFlags(
-          arangodb::options::Flags::DefaultNoComponents,
-          arangodb::options::Flags::Hidden, arangodb::options::Flags::OnAgent));
+  options->addOption("--agency.max-append-size",
+                     "maximum size of appendEntries document (# log entries)",
+                     new UInt64Parameter(&_maxAppendSize),
+                     arangodb::options::makeFlags(
+                         arangodb::options::Flags::DefaultNoComponents,
+                         arangodb::options::Flags::Uncommon,
+                         arangodb::options::Flags::OnAgent));
 
-  options->addOption(
-      "--agency.disaster-recovery-id",
-      "allows for specification of the id for this agent; "
-      "dangerous option for disaster recover only!",
-      new StringParameter(&_recoveryId),
-      arangodb::options::makeFlags(
-          arangodb::options::Flags::DefaultNoComponents,
-          arangodb::options::Flags::Hidden, arangodb::options::Flags::OnAgent));
+  options->addOption("--agency.disaster-recovery-id",
+                     "allows for specification of the id for this agent; "
+                     "dangerous option for disaster recover only!",
+                     new StringParameter(&_recoveryId),
+                     arangodb::options::makeFlags(
+                         arangodb::options::Flags::DefaultNoComponents,
+                         arangodb::options::Flags::Uncommon,
+                         arangodb::options::Flags::OnAgent));
 }
 
 void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
