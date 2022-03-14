@@ -37,7 +37,6 @@ struct Graph : BaseGraph {
   void addVertex(V&& v) { vertices.emplace(std::move(v)); }
   void addVertex() { vertices.emplace_back(); }
   std::pair<size_t, bool> addEdge(size_t from, size_t to);
-  void removeVertex(Vertex& v) { vertices.erase(v); }
 
   void addEdge(E&& e) { edges.insert(std::move(e)); }
 

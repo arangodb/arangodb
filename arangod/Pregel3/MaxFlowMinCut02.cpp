@@ -120,7 +120,7 @@ void MaxFlowMinCut::removeLeavesRecursively() {
   if (tmpVertex) {
     _g->removeEdge(edge(_target, _g->numVertices() - 1));
     _g->removeEdge(edge(_g->numVertices() - 1, _target));
-    _g->removeVertex(vertex(_g->numVertices() - 1));
+    _g->vertices.pop_back();
   }
 }
 void MaxFlowMinCut::initialize() {
