@@ -107,4 +107,5 @@ class RequestFuzzer {
   std::vector<std::unordered_set<std::string>> _tempObjectKeys;
   std::unordered_set<std::string> _usedKeys;
 };
+
 }  // namespace arangodb::fuzzer

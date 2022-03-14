@@ -1021,62 +1021,61 @@ static void ClientConnection_httpFuzzRequests(
         "instance.");
   }
 
+  if (args.Length() < 2 || args.Length() > 3) {
+    TRI_V8_THROW_EXCEPTION_USAGE(
+        "fuzzRequests(<numRequests>, <numIterations> [, <seed>])");
+  }
+
   // arg0 = number of requests, arg1 = number of iterations, arg2 = seed for
   // rand
-  uint32_t numReqs;
-  std::optional<uint32_t> numIts;
+  uint32_t numReqs = TRI_ObjectToUInt64(isolate, args[0], false);
+  uint32_t numIts = TRI_ObjectToUInt64(isolate, args[1], false);
+
   std::optional<uint32_t> seed;
-  if (args.Length() > 0) {
-    if (!args[0]->IsUint32()) {
-      TRI_V8_THROW_EXCEPTION_USAGE("<numRequests> must be an unsigned int.");
-    }
-    numReqs = TRI_ObjectToUInt64(isolate, args[0], false);
-  }
-  if (args.Length() > 1) {
-    if (!args[1]->IsUint32()) {
-      TRI_V8_THROW_EXCEPTION_USAGE("<numIts> must be an unsigned int.");
-    }
-    numIts = TRI_ObjectToUInt64(isolate, args[1], false);
-  }
   if (args.Length() > 2) {
     if (!args[2]->IsUint32()) {
       TRI_V8_THROW_EXCEPTION_USAGE("<seed> must be an unsigned int.");
     }
     seed = TRI_ObjectToUInt64(isolate, args[2], false);
   }
-  if (args.Length() > 3) {
-    TRI_V8_THROW_EXCEPTION_USAGE(
-        "fuzzRequests(<numRequests>, <numIterations>, <seed>). "
-        "(numIterations and numRequests must be > 0).");
-  }
+
   fuzzer::RequestFuzzer fuzzer(numIts, seed);
+  if (!seed.has_value()) {
+    // log the random seed value for later reproducibility.
+    // log level must be warning here because log levels < WARN are suppressed
+    // during testing.
+    LOG_TOPIC("39e50", WARN, arangodb::Logger::FIXME)
+        << "fuzzer producing " << numReqs << " requests(s) with " << numIts
+        << " iteration(s) each, using seed " << fuzzer.getSeed();
+  }
   std::unordered_map<uint32_t, uint32_t> fuzzReturnCodesCount;
 
   for (uint32_t i = 0; i < numReqs; ++i) {
     uint32_t returnCode = v8connection->requestFuzz(fuzzer);
     fuzzReturnCodesCount[returnCode]++;
   }
+
   VPackBuilder builder;
   builder.openObject();
   builder.add("seed", velocypack::Value(fuzzer.getSeed()));
-  builder.add("total-requests", velocypack::Value(numReqs));
+  builder.add("totalRequests", velocypack::Value(numReqs));
 
   if (auto it = fuzzReturnCodesCount.find(kFuzzClosedConnectionCode);
       it != fuzzReturnCodesCount.end()) {
-    builder.add("Closed-connection", velocypack::Value(it->second));
+    builder.add("connectionClosed", velocypack::Value(it->second));
   }
 
   if (auto it = fuzzReturnCodesCount.find(kFuzzNoResponseCode);
       it != fuzzReturnCodesCount.end()) {
-    builder.add("no response from server", velocypack::Value(it->second));
+    builder.add("noResponse", velocypack::Value(it->second));
   }
 
   if (auto it = fuzzReturnCodesCount.find(kFuzzNotConnected);
       it != fuzzReturnCodesCount.end()) {
-    builder.add("not connected", velocypack::Value(it->second));
+    builder.add("notConnected", velocypack::Value(it->second));
   }
 
-  builder.add(velocypack::Value("return-codes"));
+  builder.add(velocypack::Value("returnCodes"));
   builder.openObject();
   for (auto const& [returnCode, count] : fuzzReturnCodesCount) {
     if (returnCode != kFuzzClosedConnectionCode &&

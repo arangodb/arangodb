@@ -23,8 +23,6 @@
 
 #include "RequestFuzzer.h"
 
-#include "Rest/CommonDefines.h"
-
 namespace {
 
 static constexpr char alphaNumericChars[] =
@@ -32,9 +30,9 @@ static constexpr char alphaNumericChars[] =
     "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
     "abcdefghijklmnopqrstuvwxyz";
 
-static constexpr std::array<std::string_view, 12> wordListForRoute = {
+static constexpr std::array<std::string_view, 13> wordListForRoute = {
     {"/_db", "/_admin", "/_api", "/_system", "/_cursor", "/version", "/status",
-     "/license", "/collection", "/database", "/current", "/log"}};
+     "/license", "/collection", "/database", "/current", "/log", "/"}};
 
 static constexpr std::array<std::string_view, 48> wordListForKeys = {
     {"Accept",
@@ -137,7 +135,6 @@ void RequestFuzzer::randomizeLineOperation(uint32_t numIts) {
       case LineOperation::kAddLine: {
         if (_usedKeys.size() <= wordListForKeys.size() - 5) {
           std::string keyName;
-          std::string value;
           do {
             uint32_t keyPos = generateRandNumWithinRange<uint32_t>(
                 0, static_cast<uint32_t>(wordListForKeys.size()) - 1);
@@ -149,6 +146,16 @@ void RequestFuzzer::randomizeLineOperation(uint32_t numIts) {
             }
           } while (!_usedKeys.emplace(keyName).second);
 
+          std::string value;
+          if (keyName == "Authorization") {
+            // add random HTTP header authorization data in some cases
+            uint32_t v = generateRandNumWithinRange<uint32_t>(0, 99);
+            if (v >= 75) {
+              value = "Basic ";
+            } else if (v >= 50) {
+              value = "Bearer ";
+            }
+          }
           randomizeCharOperation(value, 1);
           _headerSplitInLines.emplace_back(std::move(keyName) + ":" +
                                            std::move(value));
@@ -322,38 +329,32 @@ int32_t RequestFuzzer::generateRandInt32() {
 
 void RequestFuzzer::generateRandAsciiChar(std::string& input) {
   TRI_ASSERT(!input.empty());
-  if (input.size() == 1 && input[0] == ':') {
-    // prevent endless hang
-    return;
-  }
-
+  // abort loop after x many tries, in case we only have ':' chars
+  size_t triesLeft = 10;
   uint32_t randPos;
   do {
     randPos = generateRandNumWithinRange<uint32_t>(
         0, static_cast<uint32_t>(input.size()) - 1);
-  } while (input[randPos] == ':');
+  } while (input[randPos] == ':' && triesLeft-- > 0);
   input[randPos] = generateRandNumWithinRange<uint32_t>(0x0, 0x7F);
 }
 
 void RequestFuzzer::generateRandAlphaNumericChar(std::string& input) {
   TRI_ASSERT(!input.empty());
-  if (input.size() == 1 && input[0] == ':') {
-    // prevent endless hang
-    return;
-  }
-
+  // abort loop after x many tries, in case we only have ':' chars
+  size_t triesLeft = 10;
   uint32_t randPos;
   do {
     randPos = generateRandNumWithinRange<uint32_t>(
         0, static_cast<uint32_t>(input.size()) - 1);
-  } while (input[randPos] == ':');
+  } while (input[randPos] == ':' && triesLeft-- > 0);
   input[randPos] =
       alphaNumericChars[_randContext.mt() % (sizeof(alphaNumericChars) - 1)];
 }
 
 void RequestFuzzer::generateRandAlphaNumericString(std::string& input) {
   uint32_t randStrLength = generateRandNumWithinRange<uint32_t>(
-      0, _randContext.maxRandAsciiStringLength);
+      1, _randContext.maxRandAsciiStringLength);
 
   input.reserve(input.size() + randStrLength);
   for (uint32_t i = 0; i < randStrLength; ++i) {
@@ -362,4 +363,4 @@ void RequestFuzzer::generateRandAlphaNumericString(std::string& input) {
   }
 }
 
-};  // namespace arangodb::fuzzer
+}  // namespace arangodb::fuzzer

@@ -35,14 +35,14 @@ function httpRequestsFuzzerTestSuite() {
     testRandReqs: function () {
       // main expectation here is that the server does not crash!
       for (let i = 0; i < 15; ++i) {
-        let response = arango.fuzzRequests(20000, i);
+        let response = arango.fuzzRequests(25000, i);
         assertTrue(response.hasOwnProperty("seed"));
-        assertTrue(response.hasOwnProperty("total-requests"));
-        let numReqs = response["total-requests"];
+        assertTrue(response.hasOwnProperty("totalRequests"));
+        let numReqs = response["totalRequests"];
         let tempSum = 0;
         for (const [key, value] of Object.entries(response)) {
-          if (key !== "total-requests" && key !== "seed") {
-            if (key === "return-codes") {
+          if (key !== "totalRequests" && key !== "seed") {
+            if (key === "returnCodes") {
               for (const [, innerValue] of Object.entries(response[key])) {
                 tempSum += innerValue;
               }
@@ -61,13 +61,13 @@ function httpRequestsFuzzerTestSuite() {
         let response = arango.fuzzRequests(1, 10);
         assertTrue(response.hasOwnProperty("seed"));
         let seed = response["seed"];
-        assertTrue(response.hasOwnProperty("total-requests"));
-        let numReqs = response["total-requests"];
+        assertTrue(response.hasOwnProperty("totalRequests"));
+        let numReqs = response["totalRequests"];
         let tempSum = 0;
         let keysAndValues1 = new Map();
         for (const [key, value] of Object.entries(response)) {
-          if (key !== "total-requests" && key !== "seed") {
-            if (key === "return-codes") {
+          if (key !== "totalRequests" && key !== "seed") {
+            if (key === "returnCodes") {
               for (const [innerKey, innerValue] of Object.entries(response[key])) {
                 keysAndValues1.set(innerKey, innerValue);
                 tempSum += innerValue;
@@ -83,12 +83,12 @@ function httpRequestsFuzzerTestSuite() {
         let newResponse = arango.fuzzRequests(1, 10, seed);
         assertEqual(response, newResponse);
         assertTrue(response.hasOwnProperty("seed"));
-        assertTrue(response.hasOwnProperty("total-requests"));
-        let numReqs2 = response["total-requests"];
+        assertTrue(response.hasOwnProperty("totalRequests"));
+        let numReqs2 = response["totalRequests"];
         let tempSum2 = 0;
         for (const [key, value] of Object.entries(response)) {
-          if (key !== "total-requests" && key !== "seed") {
-            if (key === "return-codes") {
+          if (key !== "totalRequests" && key !== "seed") {
+            if (key === "returnCodes") {
               for (const [innerKey, innerValue] of Object.entries(response[key])) {
                 tempSum2 += innerValue;
                 assertEqual(keysAndValues1.get(innerKey), innerValue);
