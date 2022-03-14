@@ -176,8 +176,6 @@ TEST_F(ArangoLanguageFeatureTest, test_reset_language_default) {
       ->set(language1.data());
   langFeature.validateOptions(server.server().options());
 
-  { EXPECT_DEATH(langFeature.getLanguage(), ""); }
-
   langFeature.prepare();
   {
     auto [lang, type] = langFeature.getLanguage();
@@ -198,10 +196,6 @@ TEST_F(ArangoLanguageFeatureTest, test_reset_language_default) {
     ASSERT_EQ(lang, language1);
     ASSERT_EQ(type, arangodb::basics::LanguageType::DEFAULT);
   }
-
-  EXPECT_DEATH(langFeature.resetLanguage(
-                   language2, arangodb::basics::LanguageType::INVALID),
-               "");
 }
 
 TEST_F(ArangoLanguageFeatureTest, test_reset_language_icu) {
@@ -215,8 +209,6 @@ TEST_F(ArangoLanguageFeatureTest, test_reset_language_icu) {
       ->get<StringParameter>("icu-language")
       ->set(language1.data());
   langFeature.validateOptions(server.server().options());
-
-  { EXPECT_DEATH(langFeature.getLanguage(), ""); }
 
   langFeature.prepare();
   {
@@ -238,10 +230,6 @@ TEST_F(ArangoLanguageFeatureTest, test_reset_language_icu) {
     ASSERT_EQ(lang, language1);
     ASSERT_EQ(type, arangodb::basics::LanguageType::ICU);
   }
-
-  EXPECT_DEATH(langFeature.resetLanguage(
-                   language2, arangodb::basics::LanguageType::INVALID),
-               "");
 }
 
 TEST_F(ArangoLanguageFeatureTest,
