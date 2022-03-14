@@ -169,7 +169,6 @@ void RequestFuzzer::generateHeader(std::string& header) {
   for (uint32_t i = 0; i < _headerSplitInLines.size(); ++i) {
     header.append(_headerSplitInLines[i] + "\r\n");
   }
-  // header.append("\r\n");  // new line for the end of the header
 }
 
 void RequestFuzzer::generateBody(velocypack::Builder& builder) {
