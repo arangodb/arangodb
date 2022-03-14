@@ -117,7 +117,7 @@ void RequestFuzzer::randomizeLineOperation(uint32_t numIts) {
       case LineOperation::kInjectRandByteInLine: {
         if (_headerSplitInLines.size() > 1) {
           uint32_t randPos = generateRandNumWithinRange<uint32_t>(
-              1, _headerSplitInLines.size() - 1);
+              1, static_cast<uint32_t>(_headerSplitInLines.size()) - 1);
           if (generateRandNumWithinRange<uint32_t>(0, 99) < 10) {
             generateRandAsciiChar(_headerSplitInLines[randPos]);
           } else {
