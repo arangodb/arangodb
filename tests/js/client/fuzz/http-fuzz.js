@@ -33,6 +33,7 @@ const internal = require('internal');
 function httpRequestsFuzzerTestSuite() {
   return {
     testRandReqs: function () {
+      // main expectation here is that the server does not crash!
       for (let i = 0; i < 15; ++i) {
         let response = arango.fuzzRequests(20000, i);
         assertTrue(response.hasOwnProperty("seed"));
@@ -55,6 +56,7 @@ function httpRequestsFuzzerTestSuite() {
     },
 
     testReqWithSameSeed: function () {
+      // main expectation here is that the server does not crash!
       for (let i = 0; i < 10; ++i) {
         let response = arango.fuzzRequests(1, 10);
         assertTrue(response.hasOwnProperty("seed"));
