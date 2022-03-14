@@ -27,6 +27,16 @@
 namespace arangodb::pregel3 {
 
 void MaxFlowMinCut::removeLeavesRecursively() {
+  // make _target non-leaf
+  bool tmpVertex = false;
+  if (vertex(_target).outDegree() == 0) {
+    tmpVertex = true;
+    size_t tmpVertexIdx = _g->numVertices();
+    _g->addVertex();
+    _g->addEdge(_target, tmpVertexIdx);
+    _g->addEdge(tmpVertexIdx, _target);
+  }
+
   std::vector<size_t> currentLeaves;
   std::vector<size_t> numSucc(_g->numVertices());
   // compute initial leaves and number of successors for each vertex
@@ -105,6 +115,12 @@ void MaxFlowMinCut::removeLeavesRecursively() {
     // and the outer while loop terminates
     i++;
     j++;
+  }
+
+  if (tmpVertex) {
+    _g->removeEdge(edge(_target, _g->numVertices() - 1));
+    _g->removeEdge(edge(_g->numVertices() - 1, _target));
+    _g->removeVertex(vertex(_g->numVertices() - 1));
   }
 }
 void MaxFlowMinCut::initialize() {

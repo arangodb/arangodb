@@ -34,10 +34,10 @@ template<class V, class E>
 }
 
 template<class V, class E>
-void Graph<V, E>::removeEdge(E& e) {
-  size_t idx = e.idx;
-  vertices[e.to].outEdges.erase(idx);
-  vertices[e.from].inEdges.erase(idx);
+void Graph<V, E>::removeEdge(E* e) {
+  size_t idx = e->idx;
+  vertices[e->to].outEdges.erase(idx);
+  vertices[e->from].inEdges.erase(idx);
   if (idx < edges.size() - 1) {
     holes.push_back(idx);
   }

@@ -41,7 +41,7 @@ struct Graph : BaseGraph {
 
   void addEdge(E&& e) { edges.insert(std::move(e)); }
 
-  void removeEdge(E& e);
+  void removeEdge(E* e);
 
   V& vertex(size_t vIdx) {
     TRI_ASSERT(vIdx < numVertices());
