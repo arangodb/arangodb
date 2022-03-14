@@ -436,6 +436,30 @@ target_link_libraries(arangodbtests
   boost_boost
 )
 
+set(ARANGODB_SEPP_SOURCES
+  sepp/main.cpp
+  sepp/Server.cpp
+  sepp/Benchmark.cpp
+)
+
+add_executable(
+  sepp
+  ${ARANGODB_SEPP_SOURCES}
+)
+
+target_link_libraries(sepp
+  arango_rocksdb
+  arangoserver
+  rocksdb
+  snappy
+  boost_boost
+)
+
+target_include_directories(sepp PRIVATE
+  ${PROJECT_SOURCE_DIR}/arangod
+)
+
+
 if (USE_SEPARATE_REPLICATION2_TESTS_BINARY)
   target_link_libraries(arangodbtests_replication2
     gtest
