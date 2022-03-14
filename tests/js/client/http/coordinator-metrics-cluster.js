@@ -98,7 +98,6 @@ function CoordinatorMetricsTestSuite() {
 ////////////////////////////////////////////////////////////////////////////////
     testIResearchJsonMetrics: function () {
       let dbservers = getEndpointsByType("dbserver");
-      require('internal').sleep(2);
       let metrics = {};
       for (let i = 0; i < dbservers.length; i++) {
         let dbserver = dbservers[i];
@@ -148,10 +147,8 @@ function CoordinatorMetricsTestSuite() {
 
     testIResearchMetricStats: function () {
       let coordinators = getEndpointsByType("coordinator");
-      for (let i = 0; i < coordinators.length; i++) { // make metrics actual
-        let c = coordinators[i];
-        getMetricRaw(c, '');
-      }
+      let c = coordinators[coordinators.length - 1];
+      getMetricRaw(c, '');
       require('internal').sleep(5);
       for (let i = 0; i < coordinators.length; i++) {
         let c = coordinators[i];

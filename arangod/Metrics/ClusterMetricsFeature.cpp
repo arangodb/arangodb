@@ -67,7 +67,14 @@ void ClusterMetricsFeature::validateOptions(
   }
 }
 
-void ClusterMetricsFeature::start() { asyncUpdate(); }
+void ClusterMetricsFeature::start() {
+  if (_count.load(std::memory_order_acquire) % 2 == kStop) {
+    return;
+  }
+  auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+  ci.initMetrics();
+  asyncUpdate();
+}
 
 void ClusterMetricsFeature::beginShutdown() {
   _count.store(kStop, std::memory_order_release);
@@ -77,13 +84,13 @@ void ClusterMetricsFeature::beginShutdown() {
 void ClusterMetricsFeature::asyncUpdate() {
   if (_count.load(std::memory_order_acquire) % 2 != kStop &&
       _count.fetch_add(kUpdate, std::memory_order_acq_rel) == 0) {
-    scheduleUpdate();
+    rescheduleUpdate(_timeout);
   }
 }
 
-void ClusterMetricsFeature::scheduleUpdate() noexcept {
+void ClusterMetricsFeature::rescheduleUpdate(uint32_t timeout) noexcept {
   auto now = std::chrono::steady_clock::now();
-  auto next = _lastUpdate + std::chrono::seconds{_timeout};
+  auto next = _lastUpdate + std::chrono::seconds{timeout};
   _handle = SchedulerFeature::SCHEDULER->queueDelayed(
       RequestLane::CLUSTER_INTERNAL, (now < next ? next - now : 0ns),
       [this](bool canceled) {
@@ -100,28 +107,59 @@ void ClusterMetricsFeature::scheduleUpdate() noexcept {
         try {
           update();
         } catch (...) {
-          repeatUpdate();
+          rescheduleUpdate(std::max(_timeout, uint32_t{1}));
         }
       });
 }
 
 void ClusterMetricsFeature::update() {
-  auto& nf = server().getFeature<NetworkFeature>();
+  // We want more time than _timeout should expire
+  // after last try cross cluster communication
+  _lastUpdate = std::chrono::steady_clock::now();
   auto& cf = server().getFeature<ClusterFeature>();
-  // TODO try get from agency
+  auto data = std::atomic_load_explicit(&_data, std::memory_order_acquire);
+  auto r = cf.clusterInfo().startCollectMetrics(data);
+  if (data) {
+    std::atomic_store_explicit(&_data, std::move(data),
+                               std::memory_order_release);
+  }
+
+  _lastUpdate = std::chrono::steady_clock::now();
+  if (r == ClusterInfo::MetricsResult::Repeat) {
+    return repeatUpdate();
+  }
+  if (r == ClusterInfo::MetricsResult::Reschedule) {
+    return rescheduleUpdate(std::max(_timeout, uint32_t{1}));
+  }
+
+  auto& nf = server().getFeature<NetworkFeature>();
   metricsOnCoordinator(nf, cf).thenFinal(
-      [this](futures::Try<RawDBServers>&& metrics) mutable {
-        // We want more time than kTimeout should expire
-        // after last try cross cluster communication
+      [this](futures::Try<RawDBServers>&& raw) mutable {
         _lastUpdate = std::chrono::steady_clock::now();
-        if (!metrics.hasValue()) {
-          scheduleUpdate();
-          return;
+        if (!raw.hasValue()) {
+          return rescheduleUpdate(std::max(_timeout, uint32_t{1}));
         }
+
         try {
-          set(std::move(*metrics));
+          auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+          auto metrics = parse(std::move(*raw));
+          if (metrics.empty()) {
+            ci.endCollectMetrics(VPackSlice::noneSlice());  // unlock
+            return repeatUpdate();
+          }
+          VPackBuilder builder;
+          metrics::ClusterMetricsFeature::Data::toVPack(metrics, builder);
+          auto version = ci.endCollectMetrics(builder.slice());
+          if (version == 0) {
+            return rescheduleUpdate(_timeout);
+          }
+          std::atomic_store_explicit(
+              &_data, std::make_shared<Data>(version, std::move(metrics)),
+              std::memory_order_release);
         } catch (...) {
+          return rescheduleUpdate(std::max(_timeout, uint32_t{1}));
         }
+
         repeatUpdate();
       });
 }
@@ -129,11 +167,12 @@ void ClusterMetricsFeature::update() {
 void ClusterMetricsFeature::repeatUpdate() noexcept {
   auto count = _count.fetch_sub(kUpdate, std::memory_order_acq_rel);
   if (count % 2 != kStop && count > kUpdate) {
-    scheduleUpdate();
+    rescheduleUpdate(_timeout);
   }
 }
 
-void ClusterMetricsFeature::set(RawDBServers&& raw) const {
+ClusterMetricsFeature::Metrics ClusterMetricsFeature::parse(
+    RawDBServers&& raw) const {
   Metrics metrics;
   for (std::shared_lock lock{_m}; auto const& payload : raw) {
     TRI_ASSERT(payload);
@@ -151,11 +190,7 @@ void ClusterMetricsFeature::set(RawDBServers&& raw) const {
       }
     }
   }
-
-  auto data = std::make_shared<Data>(std::move(metrics));
-  std::atomic_store_explicit(&_data, data, std::memory_order_release);
-  // TODO(MBkkt) serialize to velocypack array
-  // TODO(MBkkt) set to agency
+  return metrics;
 }
 
 void ClusterMetricsFeature::add(std::string_view metric,
@@ -187,8 +222,8 @@ void ClusterMetricsFeature::toPrometheus(std::string& result,
   if (!data) {
     return;
   }
-  std::shared_lock lock{_m};
   std::string_view metricName;
+  std::shared_lock lock{_m};
   auto it = _toPrometheus.end();
   for (auto const& [key, value] : data->metrics) {
     if (metricName != key.first) {
@@ -203,6 +238,47 @@ void ClusterMetricsFeature::toPrometheus(std::string& result,
       it->second(result, globals, key, value);
     }
   }
+}
+
+std::shared_ptr<ClusterMetricsFeature::Data>
+ClusterMetricsFeature::Data::fromVPack(VPackSlice slice) {
+  auto metrics = slice.get("Data");
+  auto version = slice.get("Version").getUInt();
+  if (!metrics.isArray()) {
+    TRI_ASSERT(false);
+    return {};
+  }
+  auto const size = metrics.length();
+  if (size % 3 != 0) {
+    TRI_ASSERT(false);
+    return {};
+  }
+  auto data = std::make_shared<Data>(version);
+  for (size_t i = 0; i != size; i += 3) {
+    auto name = metrics.at(i).stringView();
+    auto labels = metrics.at(i + 1).stringView();
+    auto type = metrics.at(i + 2).type();
+    MetricValue value;
+    if (type == VPackValueType::UInt || type == VPackValueType::SmallInt) {
+      value = metrics.at(i + 2).getUInt();
+    } else {
+      TRI_ASSERT(false);
+      return {};
+    }
+    data->metrics.emplace(MetricKey{name, labels}, value);
+  }
+  return data;
+}
+
+void ClusterMetricsFeature::Data::toVPack(Metrics const& metrics,
+                                          VPackBuilder& builder) {
+  builder.openArray();
+  for (auto const& [key, value] : metrics) {
+    builder.add(VPackValue{key.first});
+    builder.add(VPackValue{key.second});
+    std::visit([&](auto&& v) { builder.add(VPackValue{v}); }, value);
+  }
+  builder.close();
 }
 
 }  // namespace arangodb::metrics

@@ -48,6 +48,7 @@
 #include "Futures/Future.h"
 #include "Network/types.h"
 #include "Metrics/Fwd.h"
+#include "Metrics/ClusterMetricsFeature.h"
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/VocbaseInfo.h"
@@ -777,6 +778,17 @@ class ClusterInfo final {
 
   Result finishModifyingAnalyzerCoordinator(std::string_view databaseId,
                                             bool restore);
+  void initMetrics();
+
+  enum class MetricsResult {
+    Repeat,
+    Reschedule,
+    Update,
+  };
+  [[nodiscard]] MetricsResult startCollectMetrics(
+      std::shared_ptr<metrics::ClusterMetricsFeature::Data>& data);
+
+  uint64_t endCollectMetrics(velocypack::Slice data);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Creates cleanup transaction for first found dangling operation

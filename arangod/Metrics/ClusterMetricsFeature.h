@@ -63,9 +63,14 @@ class ClusterMetricsFeature final : public ArangodFeature {
   using Metrics = std::map<MetricKey, MetricValue>;
 
   struct Data {
-    Data() = default;
-    explicit Data(Metrics&& m) : metrics{std::move(m)} {}
+    explicit Data(uint64_t v) : version{v} {}
+    explicit Data(uint64_t v, Metrics&& m)
+        : version{v}, metrics{std::move(m)} {}
 
+    static std::shared_ptr<Data> fromVPack(VPackSlice slice);
+    static void toVPack(Metrics const& metrics, VPackBuilder& builder);
+
+    uint64_t version{0};
     Metrics metrics;
   };
 
@@ -122,13 +127,13 @@ class ClusterMetricsFeature final : public ArangodFeature {
   containers::FlatHashMap<std::string_view, ToCoordinator> _toCoordinator;
   containers::FlatHashMap<std::string_view, ToPrometheus> _toPrometheus;
 
-  void scheduleUpdate() noexcept;
   void update();
   void repeatUpdate() noexcept;
+  void rescheduleUpdate(uint32_t timeout) noexcept;
 
-  void set(RawDBServers&& metrics) const;
+  Metrics parse(RawDBServers&& metrics) const;
 
-  mutable std::shared_ptr<Data> _data;
+  std::shared_ptr<Data> _data;
   Scheduler::WorkHandle _handle;
   std::chrono::time_point<std::chrono::steady_clock> _lastUpdate{};
   uint32_t _timeout{0};
