@@ -129,7 +129,7 @@ void RequestFuzzer::randomizeLineOperation(uint32_t numIts) {
       case LineOperation::kCopyLine: {
         if (_headerSplitInLines.size() > 5) {
           uint32_t index = generateRandNumWithinRange<uint32_t>(
-              1, _headerSplitInLines.size() - 1);
+              1, static_cast<uint32_t>(_headerSplitInLines.size()) - 1);
           _headerSplitInLines.emplace_back(_headerSplitInLines.at(index));
         }
         break;
@@ -140,7 +140,7 @@ void RequestFuzzer::randomizeLineOperation(uint32_t numIts) {
           std::string value;
           do {
             uint32_t keyPos = generateRandNumWithinRange<uint32_t>(
-                0, wordListForKeys.size() - 1);
+                0, static_cast<uint32_t>(wordListForKeys.size()) - 1);
             if (wordListForKeys[keyPos] != "random") {
               keyName = wordListForKeys[keyPos];
             } else {
@@ -213,8 +213,8 @@ fuerte::RestVerb RequestFuzzer::generateHeader(std::string& header) {
   uint32_t numNestedRoutes =
       generateRandNumWithinRange<uint32_t>(1, kMaxNestedRoutes);
   for (uint32_t i = 0; i < numNestedRoutes; ++i) {
-    uint32_t routePos =
-        generateRandNumWithinRange<uint32_t>(0, wordListForRoute.size() - 1);
+    uint32_t routePos = generateRandNumWithinRange<uint32_t>(
+        0, static_cast<uint32_t>(wordListForRoute.size()) - 1);
     if (generateRandNumWithinRange<uint32_t>(0, 99) > 10) {
       firstLine.append(wordListForRoute[routePos]);
     } else {
@@ -242,7 +242,7 @@ fuerte::RestVerb RequestFuzzer::generateHeader(std::string& header) {
   _headerSplitInLines.emplace_back(firstLine);
   randomizeLineOperation(_numIterations);
   TRI_ASSERT(header.empty());
-  for (uint32_t i = 0; i < _headerSplitInLines.size(); ++i) {
+  for (size_t i = 0; i < _headerSplitInLines.size(); ++i) {
     header.append(_headerSplitInLines[i] + "\r\n");
   }
 
@@ -329,7 +329,8 @@ void RequestFuzzer::generateRandAsciiChar(std::string& input) {
 
   uint32_t randPos;
   do {
-    randPos = generateRandNumWithinRange<uint32_t>(0, input.size() - 1);
+    randPos = generateRandNumWithinRange<uint32_t>(
+        0, static_cast<uint32_t>(input.size()) - 1);
   } while (input[randPos] == ':');
   input[randPos] = generateRandNumWithinRange<uint32_t>(0x0, 0x7F);
 }
@@ -343,7 +344,8 @@ void RequestFuzzer::generateRandAlphaNumericChar(std::string& input) {
 
   uint32_t randPos;
   do {
-    randPos = generateRandNumWithinRange<uint32_t>(0, input.size() - 1);
+    randPos = generateRandNumWithinRange<uint32_t>(
+        0, static_cast<uint32_t>(input.size()) - 1);
   } while (input[randPos] == ':');
   input[randPos] =
       alphaNumericChars[_randContext.mt() % (sizeof(alphaNumericChars) - 1)];
