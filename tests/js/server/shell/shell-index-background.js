@@ -2,9 +2,7 @@
 /*global fail, assertEqual, assertNotEqual, assertTrue, assertFalse, assertNotUndefined */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test the index
-///
-/// @file
+/// @brief test indexes
 ///
 /// DISCLAIMER
 ///
@@ -103,7 +101,7 @@ function backgroundIndexSuite() {
       }
 
       // create the index on the main thread
-      c.ensureIndex({type: 'hash', fields: ['value'], unique: false, inBackground: true});
+      c.ensureIndex({type: 'persistent', fields: ['value'], unique: false, inBackground: true});
 
       // wait for insertion tasks to complete
       waitForTasks();
@@ -121,7 +119,7 @@ function backgroundIndexSuite() {
         switch (i.type) {
           case 'primary':
             break;
-          case 'hash':
+          case 'persistent':
             assertEqual(i.selectivityEstimate, 0.01);
             break;
           default:
@@ -147,7 +145,7 @@ function backgroundIndexSuite() {
       for (let i = 0; i < n; ++i) {
         if (i === 6) { // create the index in a task
           let command = `const c = require("internal").db._collection("${cn}"); 
-          c.ensureIndex({type: 'hash', fields: ['value'], unique: false, inBackground: true});`;
+          c.ensureIndex({type: 'persistent', fields: ['value'], unique: false, inBackground: true});`;
           tasks.register({ name: "UnitTestsIndexCreateIDX" + i, command: command });
         }
         let command = `const c = require("internal").db._collection("${cn}"); 
@@ -179,7 +177,7 @@ function backgroundIndexSuite() {
         switch (i.type) {
           case 'primary':
             break;
-          case 'hash':
+          case 'persistent':
             assertEqual(i.selectivityEstimate, 0.01);
             break;
           default:
@@ -200,7 +198,7 @@ function backgroundIndexSuite() {
         c.save(docs);
       }
 
-      const idxDef = {type: 'skiplist', fields: ['value'], unique: true, inBackground: true};
+      const idxDef = {type: 'persistent', fields: ['value'], unique: true, inBackground: true};
       // lets insert the rest via tasks
       for (let i = 1; i < 5; ++i) {
         if (i === 2) { // create the index in a task
@@ -245,7 +243,7 @@ function backgroundIndexSuite() {
         switch (i.type) {
           case 'primary':
             break;
-          case 'skiplist':
+          case 'persistent':
             assertEqual(i.selectivityEstimate, 1.0);
             break;
           default:
@@ -285,7 +283,7 @@ function backgroundIndexSuite() {
 
       try {
         // create the index on the main thread
-        c.ensureIndex({type: 'hash', fields: ['value'], unique: true, inBackground: true});
+        c.ensureIndex({type: 'persistent', fields: ['value'], unique: true, inBackground: true});
         fail();
       } catch(err) {
         assertEqual(errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, err.errorNum, err);
@@ -317,7 +315,7 @@ function backgroundIndexSuite() {
       for (let i = 0; i < 10; ++i) {
         if (i === 3) { // create the index in a task
           let command = `const c = require("internal").db._collection("${cn}"); 
-          c.ensureIndex({type: 'hash', fields: ['value'], unique: false, inBackground: true});`;
+          c.ensureIndex({type: 'persistent', fields: ['value'], unique: false, inBackground: true});`;
           tasks.register({ name: "UnitTestsIndexCreateIDX" + i, command: command });
         }
 
@@ -371,7 +369,7 @@ function backgroundIndexSuite() {
         switch (i.type) {
           case 'primary':
             break;
-          case 'hash':
+          case 'persistent':
             assertTrue(Math.abs(i.selectivityEstimate - 1.0) < 0.005, i);
             break;
           default:
@@ -399,7 +397,7 @@ function backgroundIndexSuite() {
       for (let i = 0; i < 10; ++i) {
         if (i === 5) { // create the index in a task
           let command = `const c = require("internal").db._collection("${cn}"); 
-          c.ensureIndex({type: 'skiplist', fields: ['value'], unique: false, inBackground: true});`;
+          c.ensureIndex({type: 'persistent', fields: ['value'], unique: false, inBackground: true});`;
           tasks.register({ name: "UnitTestsIndexCreateIDX" + i, command: command });
         }
         let command = `const c = require("internal").db._collection("${cn}"); 
@@ -443,7 +441,7 @@ function backgroundIndexSuite() {
         switch (i.type) {
           case 'primary':
             break;
-          case 'skiplist':
+          case 'persistent':
             assertTrue(Math.abs(i.selectivityEstimate - 1.0) < 0.005, i);
           break;
           default:
@@ -467,7 +465,7 @@ function backgroundIndexSuite() {
       
       assertEqual(c.count(), 25000);
 
-      const idxDef = {type: 'skiplist', fields: ['value'], unique: false, inBackground: true};
+      const idxDef = {type: 'persistent', fields: ['value'], unique: false, inBackground: true};
       let idx = c.ensureIndex(idxDef);
 
       assertEqual(c.getIndexes().length, 2);
@@ -491,7 +489,7 @@ function backgroundIndexSuite() {
         switch (i.type) {
           case 'primary':
             break;
-          case 'skiplist':
+          case 'persistent':
             assertTrue(1.0, i);
           break;
           default:
@@ -501,7 +499,6 @@ function backgroundIndexSuite() {
     },
 
   };
-
   
 }
 

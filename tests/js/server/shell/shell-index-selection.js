@@ -31,7 +31,7 @@ const jsunity = require("jsunity");
 const internal = require("internal");
 const db = internal.db;
 
-function indexSelectivitySuite() {
+function IndexSelectionSuite() {
   'use strict';
   const cn = "UnitTestsCollectionIdx";
 
@@ -56,13 +56,15 @@ function indexSelectivitySuite() {
     
     testTwoIndexesSingleField: function () {
       let c = db._collection(cn);
-      c.ensureIndex({ type: "hash", fields: ["a"] });
-      c.ensureIndex({ type: "hash", fields: ["b"] });
+      c.ensureIndex({ type: "persistent", fields: ["a"] });
+      c.ensureIndex({ type: "persistent", fields: ["b"] });
 
       // index on "a" has lower selectivity than index on "b"
+      let docs = [];
       for (let i = 0; i < 1000; ++i) {
-        c.insert({ a: (i < 100 ? i : 100), b: (i < 200 ? i : 200), c: i });
+        docs.push({ a: (i < 100 ? i : 100), b: (i < 200 ? i : 200), c: i });
       }
+      c.insert(docs);
 
       internal.waitForEstimatorSync();
       let indexes = c.indexes();
@@ -83,13 +85,15 @@ function indexSelectivitySuite() {
     
     testTwoIndexesMultipleFields: function () {
       let c = db._collection(cn);
-      c.ensureIndex({ type: "hash", fields: ["a"] });
-      c.ensureIndex({ type: "hash", fields: ["b"] });
+      c.ensureIndex({ type: "persistent", fields: ["a"] });
+      c.ensureIndex({ type: "persistent", fields: ["b"] });
 
       // index on "a" has lower selectivity than index on "b"
+      let docs = [];
       for (let i = 0; i < 1000; ++i) {
-        c.insert({ a: (i < 100 ? i : 100), b: (i < 200 ? i : 200), c: i });
+        docs.push({ a: (i < 100 ? i : 100), b: (i < 200 ? i : 200), c: i });
       }
+      c.insert(docs);
 
       internal.waitForEstimatorSync();
       let indexes = c.indexes();
@@ -110,13 +114,15 @@ function indexSelectivitySuite() {
     
     testTwoIndexesMultipleFieldsOtherIndexCreationOrder: function () {
       let c = db._collection(cn);
-      c.ensureIndex({ type: "hash", fields: ["b"] });
-      c.ensureIndex({ type: "hash", fields: ["a"] });
+      c.ensureIndex({ type: "persistent", fields: ["b"] });
+      c.ensureIndex({ type: "persistent", fields: ["a"] });
 
       // index on "a" has lower selectivity than index on "b"
+      let docs = [];
       for (let i = 0; i < 1000; ++i) {
-        c.insert({ a: (i < 100 ? i : 100), b: (i < 200 ? i : 200), c: i });
+        docs.push({ a: (i < 100 ? i : 100), b: (i < 200 ? i : 200), c: i });
       }
+      c.insert(docs);
 
       internal.waitForEstimatorSync();
       let indexes = c.indexes();
@@ -137,13 +143,15 @@ function indexSelectivitySuite() {
     
     testTwoCompositeIndexesMultipleFields: function () {
       let c = db._collection(cn);
-      c.ensureIndex({ type: "hash", fields: ["a", "b"] });
-      c.ensureIndex({ type: "hash", fields: ["a", "b", "c"] });
+      c.ensureIndex({ type: "persistent", fields: ["a", "b"] });
+      c.ensureIndex({ type: "persistent", fields: ["a", "b", "c"] });
 
       // index on "a" has lower selectivity than index on "b"
+      let docs = [];
       for (let i = 0; i < 1000; ++i) {
-        c.insert({ a: (i < 100 ? i : 100), b: (i < 200 ? i : 200), c: i });
+        docs.push({ a: (i < 100 ? i : 100), b: (i < 200 ? i : 200), c: i });
       }
+      c.insert(docs);
 
       internal.waitForEstimatorSync();
       let indexes = c.indexes();
@@ -160,13 +168,15 @@ function indexSelectivitySuite() {
     
     testTwoCompositeIndexesMultipleFieldsOtherIndexCreationOrder: function () {
       let c = db._collection(cn);
-      c.ensureIndex({ type: "hash", fields: ["a", "b", "c"] });
-      c.ensureIndex({ type: "hash", fields: ["a", "b"] });
+      c.ensureIndex({ type: "persistent", fields: ["a", "b", "c"] });
+      c.ensureIndex({ type: "persistent", fields: ["a", "b"] });
 
       // index on "a" has lower selectivity than index on "b"
+      let docs = [];
       for (let i = 0; i < 1000; ++i) {
-        c.insert({ a: (i < 100 ? i : 100), b: (i < 200 ? i : 200), c: i });
+        docs.push({ a: (i < 100 ? i : 100), b: (i < 200 ? i : 200), c: i });
       }
+      c.insert(docs);
 
       internal.waitForEstimatorSync();
       let indexes = c.indexes();
@@ -183,13 +193,15 @@ function indexSelectivitySuite() {
     
     testTwoCompositeIndexesMultipleFieldsPartialLookup: function () {
       let c = db._collection(cn);
-      c.ensureIndex({ type: "hash", fields: ["a", "b"] });
-      c.ensureIndex({ type: "hash", fields: ["a", "b", "c"] });
+      c.ensureIndex({ type: "persistent", fields: ["a", "b"] });
+      c.ensureIndex({ type: "persistent", fields: ["a", "b", "c"] });
 
       // index on "a" has lower selectivity than index on "b"
+      let docs = [];
       for (let i = 0; i < 1000; ++i) {
-        c.insert({ a: (i < 100 ? i : 100), b: (i < 200 ? i : 200), c: i });
+        docs.push({ a: (i < 100 ? i : 100), b: (i < 200 ? i : 200), c: i });
       }
+      c.insert(docs);
 
       internal.waitForEstimatorSync();
       let indexes = c.indexes();
@@ -206,13 +218,15 @@ function indexSelectivitySuite() {
     
     testTwoCompositeIndexesMultipleFieldsPartialLookupOtherIndexCreationOrder: function () {
       let c = db._collection(cn);
-      c.ensureIndex({ type: "hash", fields: ["a", "b", "c"] });
-      c.ensureIndex({ type: "hash", fields: ["a", "b"] });
+      c.ensureIndex({ type: "persistent", fields: ["a", "b", "c"] });
+      c.ensureIndex({ type: "persistent", fields: ["a", "b"] });
 
       // index on "a" has lower selectivity than index on "b"
+      let docs = [];
       for (let i = 0; i < 1000; ++i) {
-        c.insert({ a: (i < 100 ? i : 100), b: (i < 200 ? i : 200), c: i });
+        docs.push({ a: (i < 100 ? i : 100), b: (i < 200 ? i : 200), c: i });
       }
+      c.insert(docs);
 
       internal.waitForEstimatorSync();
       let indexes = c.indexes();
@@ -231,6 +245,6 @@ function indexSelectivitySuite() {
 
 }
 
-jsunity.run(indexSelectivitySuite);
+jsunity.run(IndexSelectionSuite);
 
 return jsunity.done();

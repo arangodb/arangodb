@@ -2,7 +2,7 @@
 /*global assertEqual, assertTrue, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test the hash index, selectivity estimates
+/// @brief test the persistent index, selectivity estimates
 ///
 /// @file
 ///
@@ -31,9 +31,11 @@
 const jsunity = require("jsunity");
 const internal = require("internal");
 
-function HashIndexSuite() {
+function SelectivityIndexSuite() {
   'use strict';
-  const cn = "UnitTestsCollectionHash";
+
+  const cn = "UnitTestsCollection";
+
   let collection = null;
 
   return {
@@ -44,21 +46,16 @@ function HashIndexSuite() {
     },
 
     tearDown : function () {
-      // try...catch is necessary as some tests delete the collection itself!
-      try {
-        collection.drop();
-      } catch (err) {
-      }
-
+      collection = internal.db._drop(cn);
       collection = null;
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief hash index selectivity
+/// @brief persistent index selectivity
 ////////////////////////////////////////////////////////////////////////////////
 
     testSelectivityEstimateUnique : function () {
-      let idx = collection.ensureIndex({ type: "hash", fields: ["value"], unique: true });
+      let idx = collection.ensureIndex({ type: "persistent", fields: ["value"], unique: true });
       let docs = [];
       for (let i = 0; i < 1000; ++i) {
         docs.push({ _key: "test" + i, value: i });
@@ -66,7 +63,7 @@ function HashIndexSuite() {
       collection.insert(docs);
 
       internal.waitForEstimatorSync(); // make sure estimates are consistent
-      idx = collection.ensureIndex({ type: "hash", fields: ["value"], unique: true });
+      idx = collection.ensureIndex({ type: "persistent", fields: ["value"], unique: true });
       assertEqual(1, idx.selectivityEstimate);
 
       for (let i = 0; i < 50; ++i) {
@@ -74,16 +71,16 @@ function HashIndexSuite() {
       }
 
       internal.waitForEstimatorSync(); // make sure estimates are consistent
-      idx = collection.ensureIndex({ type: "hash", fields: ["value"], unique: true });
+      idx = collection.ensureIndex({ type: "persistent", fields: ["value"], unique: true });
       assertEqual(1, idx.selectivityEstimate);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief multi hash index selectivity
+/// @brief multi persistent index selectivity
 ////////////////////////////////////////////////////////////////////////////////
 
     testSelectivityEstimateNonUnique : function () {
-      let idx = collection.ensureIndex({ type: "hash", fields: ["value"] });
+      let idx = collection.ensureIndex({ type: "persistent", fields: ["value"] });
       let docs = [];
       for (let i = 0; i < 1000; ++i) {
         docs.push({ value: i });
@@ -91,7 +88,7 @@ function HashIndexSuite() {
       collection.insert(docs);
 
       internal.waitForEstimatorSync(); // make sure estimates are consistent
-      idx = collection.ensureIndex({ type: "hash", fields: ["value"] });
+      idx = collection.ensureIndex({ type: "persistent", fields: ["value"] });
       assertEqual(1, idx.selectivityEstimate);
 
       docs = [];
@@ -101,7 +98,7 @@ function HashIndexSuite() {
       collection.insert(docs);
 
       internal.waitForEstimatorSync(); // make sure estimates are consistent
-      idx = collection.ensureIndex({ type: "hash", fields: ["value"] });
+      idx = collection.ensureIndex({ type: "persistent", fields: ["value"] });
       assertTrue(idx.selectivityEstimate >= 0.45 && idx.selectivityEstimate <= 0.55);
 
       docs = [];
@@ -111,24 +108,24 @@ function HashIndexSuite() {
       collection.insert(docs);
 
       internal.waitForEstimatorSync(); // make sure estimates are consistent
-      idx = collection.ensureIndex({ type: "hash", fields: ["value"] });
+      idx = collection.ensureIndex({ type: "persistent", fields: ["value"] });
       assertTrue(idx.selectivityEstimate >= 0.3 && idx.selectivityEstimate <= 0.36);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief multi hash index selectivity
+/// @brief multi persistent index selectivity
 ////////////////////////////////////////////////////////////////////////////////
 
     testSelectivityEstimateAllIdentical : function () {
       let docs = [];
-      let idx = collection.ensureIndex({ type: "hash", fields: ["value"] });
+      let idx = collection.ensureIndex({ type: "persistent", fields: ["value"] });
       for (let i = 0; i < 1000; ++i) {
         docs.push({ value: 1 });
       }
       collection.insert(docs);
 
       internal.waitForEstimatorSync(); // make sure estimates are consistent
-      idx = collection.ensureIndex({ type: "hash", fields: ["value"] });
+      idx = collection.ensureIndex({ type: "persistent", fields: ["value"] });
       assertTrue(idx.selectivityEstimate <= ((1 / 1000) + 0.0001));
 
       docs = [];
@@ -138,7 +135,7 @@ function HashIndexSuite() {
       collection.insert(docs);
 
       internal.waitForEstimatorSync(); // make sure estimates are consistent
-      idx = collection.ensureIndex({ type: "hash", fields: ["value"] });
+      idx = collection.ensureIndex({ type: "persistent", fields: ["value"] });
       assertTrue(idx.selectivityEstimate <= ((2 / 2000) + 0.0001));
 
       docs = [];
@@ -148,7 +145,7 @@ function HashIndexSuite() {
       collection.insert(docs);
 
       internal.waitForEstimatorSync(); // make sure estimates are consistent
-      idx = collection.ensureIndex({ type: "hash", fields: ["value"] });
+      idx = collection.ensureIndex({ type: "persistent", fields: ["value"] });
       assertTrue(idx.selectivityEstimate <= ((2 / 3000) + 0.0001));
     },
 
@@ -157,29 +154,29 @@ function HashIndexSuite() {
 ///        is aborted.
 ////////////////////////////////////////////////////////////////////////////////
 
-    testSelectivityAfterAbortion : function () {
-      let idx = collection.ensureIndex({ type: "hash", fields: ["value"] });
+    testSelectivityAfterCancelation : function () {
+      let idx = collection.ensureIndex({ type: "persistent", fields: ["value"] });
       let docs = [];
       for (let i = 0; i < 1000; ++i) {
         docs.push({value: i % 100});
       }
       collection.insert(docs);
       internal.waitForEstimatorSync(); // make sure estimates are consistent
-      idx = collection.ensureIndex({ type: "hash", fields: ["value"] });
+      idx = collection.ensureIndex({ type: "persistent", fields: ["value"] });
 
       assertEqual(idx.selectivityEstimate, 100 / 1000);
       try {
         internal.db._executeTransaction({
           collections: {write: cn},
           action: function () {
-            const cn = "UnitTestsCollectionHash";
+            const cn = "UnitTestsCollection";
             let docs = [];
             for (let i = 0; i < 1000; ++i) {
               docs.push({value: 1});
             }
             // This should significantly modify the estimate
             // if successful
-            require('@arangodb').db[cn].save(docs);
+            require('@arangodb').db[cn].insert(docs);
             throw "banana";
           }
         });
@@ -189,7 +186,7 @@ function HashIndexSuite() {
         // Insert failed.
         // Validate that estimate is non modified
         internal.waitForEstimatorSync(); // make sure estimates are consistent
-        idx = collection.ensureIndex({ type: "hash", fields: ["value"] });
+        idx = collection.ensureIndex({ type: "persistent", fields: ["value"] });
         assertEqual(idx.selectivityEstimate, 100 / 1000);
       }
     },
@@ -197,6 +194,6 @@ function HashIndexSuite() {
   };
 }
 
-jsunity.run(HashIndexSuite);
+jsunity.run(SelectivityIndexSuite);
 
 return jsunity.done();
