@@ -12,7 +12,6 @@
 #include "velocypack/vpack.h"
 #include "Basics/ResultT.h"
 #include "Basics/Result.h"
-#include <iostream>
 
 using namespace arangodb;
 using namespace arangodb::wasm;

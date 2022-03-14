@@ -12,7 +12,6 @@
 #include <cassert>
 #include "Basics/ResultT.h"
 
-#include "m3_function.h"
 #include "wasm3.h"
 
 using namespace arangodb;
@@ -337,10 +336,10 @@ class function {
     /* std::enable_if above checks that all argument types are convertible const
      * char* */
     const char* argv[] = {args...};
-    M3Result res = m3_CallArgv(&m_func, sizeof...(args), argv);
+    M3Result res = m3_CallArgv(m_func, sizeof...(args), argv);
     detail::check_error(res);
     Ret ret;
-    res = m3_GetResults(&m_func, 1, &ret);
+    res = m3_GetResults(m_func, 1, &ret);
     detail::check_error(res);
     return ret;
   }
@@ -356,11 +355,11 @@ class function {
   template<typename Ret, typename... Args>
   Ret call(Args... args) {
     const void* arg_ptrs[] = {reinterpret_cast<const void*>(&args)...};
-    M3Result res = m3_Call(&m_func, sizeof...(args), arg_ptrs);
+    M3Result res = m3_Call(m_func, sizeof...(args), arg_ptrs);
     detail::check_error(res);
     Ret ret;
     const void* ret_ptrs[] = {&ret};
-    res = m3_GetResults(&m_func, 1, ret_ptrs);
+    res = m3_GetResults(m_func, 1, ret_ptrs);
     detail::check_error(res);
     return ret;
   }
@@ -368,11 +367,11 @@ class function {
  protected:
   friend class runtime;
 
-  function(M3Function&& function) : m_func{function} {
+  function(M3Function* function) : m_func{function} {
     assert(m_func != nullptr);
   }
 
-  M3Function m_func;
+  M3Function* m_func;
 };
 
 inline runtime environment::new_runtime(size_t stack_size_bytes) {
@@ -392,11 +391,11 @@ inline void runtime::load(module& mod) { mod.load_into(m_runtime.get()); }
 inline ResultT<function> runtime::find_function(const char* name) {
   M3Function* m_func = nullptr;
   M3Result err = m3_FindFunction(&m_func, m_runtime.get(), name);
-  if (err != m3Err_none) {
+  if (err != m3Err_none or m_func == nullptr) {
     return ResultT<function>::error(TRI_ERROR_BAD_PARAMETER,
                                     "Function not found");
   }
-  return function(std::move(*m_func));
+  return function(m_func);
 }
 
 template<typename Func>
