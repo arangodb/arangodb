@@ -33,7 +33,7 @@ const _ = require('lodash');
 const tu = require('@arangodb/testutils/test-utils');
 
 const testPaths = {
-  'shell_fuzzer': [ tu.pathForTesting('client/shell'), tu.pathForTesting('client/http'), tu.pathForTesting('client/shell') ]
+  'shell_fuzzer': [ tu.pathForTesting('client/shell') ]
 };
 
 
