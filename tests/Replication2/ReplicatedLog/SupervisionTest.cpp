@@ -614,3 +614,176 @@ TEST_F(LogSupervisionTest, test_dictate_leader_success) {
 
   ASSERT_EQ(action._term.leader->serverId, "D");
 }
+
+TEST_F(LogSupervisionTest, test_remove_participant_action) {
+  auto const& logId = LogId{44};
+  auto const& config = LogConfig(3, 3, 3, true);
+
+  // Server D is missing in target
+  auto const& target =
+      LogTarget(logId,
+                ParticipantsFlagsMap{{"A", ParticipantFlags{}},
+                                     {"B", ParticipantFlags{}},
+                                     {"C", ParticipantFlags{}}},
+                config);
+
+  auto const& participantsConfig = ParticipantsConfig{
+      .generation = 1,
+      .participants = ParticipantsFlagsMap{{"A", ParticipantFlags{}},
+                                           {"B", ParticipantFlags{}},
+                                           {"C", ParticipantFlags{}},
+                                           {"D", ParticipantFlags{}}}};
+
+  auto const& plan = LogPlanSpecification(
+      logId,
+      LogPlanTermSpecification(
+          LogTerm{1}, config,
+          LogPlanTermSpecification::Leader{"A", RebootId{42}}),
+      participantsConfig);
+
+  auto current = LogCurrent();
+  current.leader =
+      LogCurrent::Leader{.serverId = "A",
+                         .term = LogTerm{1},
+                         .committedParticipantsConfig = participantsConfig,
+                         .leadershipEstablished = true,
+                         .commitStatus = std::nullopt};
+
+  auto const& health = ParticipantsHealth{
+      ._health = {
+          {"A",
+           ParticipantHealth{.rebootId = RebootId{42}, .notIsFailed = true}},
+          {"B",
+           ParticipantHealth{.rebootId = RebootId{14}, .notIsFailed = true}},
+          {"C",
+           ParticipantHealth{.rebootId = RebootId{14}, .notIsFailed = true}},
+          {"D",
+           ParticipantHealth{.rebootId = RebootId{14}, .notIsFailed = true}}}};
+
+  auto r = checkReplicatedLog(Log{target, plan, current}, health);
+  // We expect a UpdateParticipantsFlagsAction to unset the allowedInQuorum flag
+  // for d
+  ASSERT_TRUE(std::holds_alternative<UpdateParticipantFlagsAction>(r))
+      << to_string(r);
+
+  auto action = std::get<UpdateParticipantFlagsAction>(r);
+  ASSERT_EQ(action._participant, "D");
+  ASSERT_EQ(action._flags, (ParticipantFlags{.forced = false,
+                                             .allowedInQuorum = false,
+                                             .allowedAsLeader = true}));
+}
+
+TEST_F(LogSupervisionTest, test_remove_participant_action_wait_for_committed) {
+  auto const& logId = LogId{44};
+  auto const& config = LogConfig(3, 3, 3, true);
+
+  // Server D is missing in target and has set the allowedInQuorum flag to false
+  // but the config is not yet committed
+  auto const& target =
+      LogTarget(logId,
+                ParticipantsFlagsMap{{"A", ParticipantFlags{}},
+                                     {"B", ParticipantFlags{}},
+                                     {"C", ParticipantFlags{}}},
+                config);
+
+  auto const& participantsConfig = ParticipantsConfig{
+      .generation = 2,
+      .participants = ParticipantsFlagsMap{
+          {"A", ParticipantFlags{}},
+          {"B", ParticipantFlags{}},
+          {"C", ParticipantFlags{}},
+          {"D", ParticipantFlags{.allowedInQuorum = false}}}};
+
+  auto const& plan = LogPlanSpecification(
+      logId,
+      LogPlanTermSpecification(
+          LogTerm{1}, config,
+          LogPlanTermSpecification::Leader{"A", RebootId{42}}),
+      participantsConfig);
+
+  auto const& participantsConfigOld = ParticipantsConfig{
+      .generation = 1,
+      .participants = ParticipantsFlagsMap{{"A", ParticipantFlags{}},
+                                           {"B", ParticipantFlags{}},
+                                           {"C", ParticipantFlags{}},
+                                           {"D", ParticipantFlags{}}}};
+
+  auto current = LogCurrent();
+  current.leader =
+      LogCurrent::Leader{.serverId = "A",
+                         .term = LogTerm{1},
+                         .committedParticipantsConfig = participantsConfigOld,
+                         .leadershipEstablished = true,
+                         .commitStatus = std::nullopt};
+
+  auto const& health = ParticipantsHealth{
+      ._health = {
+          {"A",
+           ParticipantHealth{.rebootId = RebootId{42}, .notIsFailed = true}},
+          {"B",
+           ParticipantHealth{.rebootId = RebootId{14}, .notIsFailed = true}},
+          {"C",
+           ParticipantHealth{.rebootId = RebootId{14}, .notIsFailed = true}},
+          {"D",
+           ParticipantHealth{.rebootId = RebootId{14}, .notIsFailed = true}}}};
+
+  auto r = checkReplicatedLog(Log{target, plan, current}, health);
+  // We expect an EmptyAction
+  ASSERT_TRUE(std::holds_alternative<EmptyAction>(r)) << to_string(r);
+}
+
+TEST_F(LogSupervisionTest, test_remove_participant_action_committed) {
+  auto const& logId = LogId{44};
+  auto const& config = LogConfig(3, 3, 3, true);
+
+  // Server D is missing in target and has set the allowedInQuorum flag to false
+  // but the config is not yet committed
+  auto const& target =
+      LogTarget(logId,
+                ParticipantsFlagsMap{{"A", ParticipantFlags{}},
+                                     {"B", ParticipantFlags{}},
+                                     {"C", ParticipantFlags{}}},
+                config);
+
+  auto const& participantsConfig = ParticipantsConfig{
+      .generation = 2,
+      .participants = ParticipantsFlagsMap{
+          {"A", ParticipantFlags{}},
+          {"B", ParticipantFlags{}},
+          {"C", ParticipantFlags{}},
+          {"D", ParticipantFlags{.allowedInQuorum = false}}}};
+
+  auto const& plan = LogPlanSpecification(
+      logId,
+      LogPlanTermSpecification(
+          LogTerm{1}, config,
+          LogPlanTermSpecification::Leader{"A", RebootId{42}}),
+      participantsConfig);
+
+  auto current = LogCurrent();
+  current.leader =
+      LogCurrent::Leader{.serverId = "A",
+                         .term = LogTerm{1},
+                         .committedParticipantsConfig = participantsConfig,
+                         .leadershipEstablished = true,
+                         .commitStatus = std::nullopt};
+
+  auto const& health = ParticipantsHealth{
+      ._health = {
+          {"A",
+           ParticipantHealth{.rebootId = RebootId{42}, .notIsFailed = true}},
+          {"B",
+           ParticipantHealth{.rebootId = RebootId{14}, .notIsFailed = true}},
+          {"C",
+           ParticipantHealth{.rebootId = RebootId{14}, .notIsFailed = true}},
+          {"D",
+           ParticipantHealth{.rebootId = RebootId{14}, .notIsFailed = true}}}};
+
+  auto r = checkReplicatedLog(Log{target, plan, current}, health);
+  // We expect an RemoveParticipantFromPlanAction to finally remove D
+  ASSERT_TRUE(std::holds_alternative<RemoveParticipantFromPlanAction>(r))
+      << to_string(r);
+
+  auto action = std::get<RemoveParticipantFromPlanAction>(r);
+  ASSERT_EQ(action._participant, "D");
+}
