@@ -387,9 +387,6 @@ add_executable(${BIN_ARANGOSH}
   ${FUZZER}
 )
 
-
-
-
 target_include_directories(${BIN_ARANGOSH} PRIVATE ${PROJECT_SOURCE_DIR}/client-tools)
 
 target_link_libraries(${BIN_ARANGOSH}
