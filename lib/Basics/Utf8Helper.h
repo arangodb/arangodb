@@ -50,6 +50,8 @@ std::string fromWString(wchar_t const* validUTF16String, std::size_t size);
 std::string fromWString(std::wstring const& validUTF16String);
 #endif
 
+enum class LanguageType { INVALID, DEFAULT, ICU };
+
 class Utf8Helper {
   Utf8Helper(Utf8Helper const&) = delete;
   Utf8Helper& operator=(Utf8Helper const&) = delete;
@@ -100,9 +102,26 @@ class Utf8Helper {
   /// @param lang   Lowercase two-letter or three-letter ISO-639 code.
   ///     This parameter can instead be an ICU style C locale (e.g. "en_US")
   /// @param icuDataPointer data file to be loaded by the application
+  /// @param langType type of language. Now supports DEFAULT and ICU only
+  /// collation?
   //////////////////////////////////////////////////////////////////////////////
 
-  bool setCollatorLanguage(std::string const& lang, void* icuDataPointer);
+  bool setCollatorLanguage(std::string_view lang, LanguageType langType,
+                           void* icuDataPointer);
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief get current collator
+  //////////////////////////////////////////////////////////////////////////////
+
+  icu::Collator* getCollator() const;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief set collator
+  //////////////////////////////////////////////////////////////////////////////
+
+  void setCollator(icu::Collator* coll);
+#endif
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get collator language
