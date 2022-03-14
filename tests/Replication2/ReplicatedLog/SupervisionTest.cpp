@@ -292,10 +292,9 @@ struct SupervisionLogTest : ::testing::Test {};
 
 TEST_F(SupervisionLogTest, test_log_created) {
   auto const config = LogConfig(3, 2, 3, true);
-  auto const participants = LogTarget::Participants{
+  auto const participants = ParticipantsFlagsMap{
       {"A", ParticipantFlags{.forced = false, .allowedAsLeader = true}},
       {"B", ParticipantFlags{.forced = false, .allowedAsLeader = true}},
-
       {"C", ParticipantFlags{.forced = false, .allowedAsLeader = true}}};
 
   auto r = checkReplicatedLog(
@@ -312,10 +311,9 @@ TEST_F(SupervisionLogTest, test_log_created) {
 
 TEST_F(SupervisionLogTest, test_log_present) {
   auto const config = LogConfig(3, 2, 3, true);
-  auto const participants = LogTarget::Participants{
+  auto const participants = ParticipantsFlagsMap{
       {"A", ParticipantFlags{.forced = false, .allowedAsLeader = true}},
       {"B", ParticipantFlags{.forced = false, .allowedAsLeader = true}},
-
       {"C", ParticipantFlags{.forced = false, .allowedAsLeader = true}}};
 
   auto r = checkReplicatedLog(
@@ -526,8 +524,12 @@ TEST_F(LogSupervisionTest, test_dictate_leader_force_first) {
       participantsConfig);
 
   auto current = LogCurrent();
-  current.leader = LogCurrent::Leader{
-      .serverId = "A", .committedParticipantsConfig = participantsConfig};
+  current.leader =
+      LogCurrent::Leader{.serverId = "A",
+                         .term = LogTerm{1},
+                         .committedParticipantsConfig = participantsConfig,
+                         .leadershipEstablished = true,
+                         .commitStatus = std::nullopt};
 
   auto const& health = ParticipantsHealth{
       ._health = {
@@ -583,8 +585,12 @@ TEST_F(LogSupervisionTest, test_dictate_leader_success) {
       participantsConfig);
 
   auto current = LogCurrent();
-  current.leader = LogCurrent::Leader{
-      .serverId = "A", .committedParticipantsConfig = participantsConfig};
+  current.leader =
+      LogCurrent::Leader{.serverId = "A",
+                         .term = LogTerm{1},
+                         .committedParticipantsConfig = participantsConfig,
+                         .leadershipEstablished = true,
+                         .commitStatus = std::nullopt};
 
   auto const& health = ParticipantsHealth{
       ._health = {

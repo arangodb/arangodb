@@ -62,7 +62,7 @@ function ahuacatlSkiplistTestSuite () {
       }
       skiplist.insert(docs);
 
-      skiplist.ensureSkiplist("a", "b");
+      skiplist.ensureIndex({ type: "skiplist", fields: ["a", "b"] });
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1070,8 +1070,8 @@ function ahuacatlSkiplistTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRefFilterSame : function () {
-      skiplist.ensureSkiplist("c");
-      skiplist.ensureSkiplist("d");
+      skiplist.ensureIndex({ type: "skiplist", fields: ["c"] });
+      skiplist.ensureIndex({ type: "skiplist", fields: ["d"] });
 
       skiplist.truncate({ compact: false });
 

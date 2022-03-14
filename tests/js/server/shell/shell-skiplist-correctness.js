@@ -77,7 +77,7 @@ function SkipListCorrSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCorrectnessNonUnique : function () {
-      coll.ensureSkiplist("v");
+      coll.ensureIndex({ type: "skiplist", fields: ["v"] });
 
       coll.save({a:1,_key:"1",v:1});
       coll.save({a:17,_key:"2",v:2});
@@ -147,7 +147,7 @@ function SkipListCorrSuite() {
     },
 
     testCorrectnessUnique : function () {
-      coll.ensureUniqueSkiplist("v");
+      coll.ensureIndex({ type: "skiplist", fields: ["v"], unique: true });
 
       coll.save({a:1,_key:"1",v:1});
       coll.save({a:17,_key:"2",v:2});
@@ -217,7 +217,7 @@ function SkipListCorrSuite() {
     },
 
     testCorrectnessSparse : function () {
-      coll.ensureUniqueSkiplist("v", { sparse: true });
+      coll.ensureIndex({ type: "skiplist", fields: ["v"], unique: true, sparse: true });
 
       coll.save({a:1,_key:"1",v:1});
       coll.save({a:17,_key:"2",v:2});
@@ -289,15 +289,15 @@ function SkipListCorrSuite() {
     // RoccksDB engine will use fillIndex outside of transactions
     // we need to test this with >5000 documents
     testFillIndex: function() {
-      var arr = [];
-      for(var i = 0; i < 10001; i++) {
+      let arr = [];
+      for(let i = 0; i < 10001; i++) {
         arr.push({_key: "" + i, v:i});
       }
       coll.insert(arr);
       assertEqual(10001, coll.count());
       
-      coll.ensureUniqueSkiplist("v");
-      // let's test random thins
+      coll.ensureIndex({ type: "skiplist", fields: ["v"], unique: true });
+      // let's test random things
       assertEqual(getQueryResults(
                                   "FOR x IN " + cn + " FILTER x.v == 3 RETURN x").length, 1);
       assertEqual(getQueryResults(
@@ -319,7 +319,7 @@ function SkipListCorrSuite() {
       assertEqual(coll.getIndexes().length, 1);
 
       try {
-        coll.ensureUniqueSkiplist("v");
+        coll.ensureIndex({ type: "skiplist", fields: ["v"], unique: true });
         fail();
       } catch (e) {
         assertEqual(internal.errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, e.errorNum);

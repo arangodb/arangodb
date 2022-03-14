@@ -125,7 +125,7 @@ function ahuacatlQueryOptimizerRefTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRefAccessIndex1 : function () {
-      users.ensureHashIndex("name");
+      users.ensureIndex({ type: "hash", fields: ["name"] });
 
       var expected = [ { "name" : "John" }, { "name" : "Fred" }, { "name" : "Jacob" }, { "name" : "Ethan" }, { "name" : "Michael" }, { "name" : "Alexander" }, { "name" : "Daniel" }, { "name" : "Anthony" }, { "name" : "Jim"} , { "name" : "Diego" } ];
       var actual = getQueryResults("FOR u1 IN " + cn + " FOR u2 IN " + cn + " FILTER u1.name == u2.name SORT u1.id RETURN { \"name\" : u1.name }");
@@ -138,7 +138,7 @@ function ahuacatlQueryOptimizerRefTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRefAccessIndex2 : function () {
-      users.ensureHashIndex("name");
+      users.ensureIndex({ type: "hash", fields: ["name"] });
 
       var expected = [ { "name" : "John" }, { "name" : "Fred" }, { "name" : "Jacob" }, { "name" : "Ethan" }, { "name" : "Michael" }, { "name" : "Alexander" }, { "name" : "Daniel" }, { "name" : "Anthony" }, { "name" : "Jim"} , { "name" : "Diego" } ];
       var actual = getQueryResults("FOR u1 IN " + cn + " FOR u2 IN " + cn + " FILTER u2.name == u1.name SORT u1.id RETURN { \"name\" : u1.name }");
@@ -151,7 +151,7 @@ function ahuacatlQueryOptimizerRefTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRefAccessIndex3 : function () {
-      users.ensureHashIndex("name");
+      users.ensureIndex({ type: "hash", fields: ["name"] });
 
       var expected = [ { "name" : "John" }, { "name" : "Fred" }, { "name" : "Jacob" }, { "name" : "Ethan" }, { "name" : "Michael" }, { "name" : "Alexander" }, { "name" : "Daniel" }, { "name" : "Anthony" }, { "name" : "Jim"} , { "name" : "Diego" } ];
       var actual = getQueryResults("FOR u1 IN " + cn + " FOR u2 IN " + cn + " FILTER u2.name == u1.name && u1.name == u2.name SORT u1.id RETURN { \"name\" : u1.name }");
@@ -164,7 +164,7 @@ function ahuacatlQueryOptimizerRefTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRefAccessIndex4 : function () {
-      users.ensureHashIndex("name");
+      users.ensureIndex({ type: "hash", fields: ["name"] });
 
       var expected = [ { "name" : "John" }, { "name" : "Fred" }, { "name" : "Jacob" }, { "name" : "Ethan" }, { "name" : "Michael" }, { "name" : "Alexander" }, { "name" : "Daniel" }, { "name" : "Anthony" }, { "name" : "Jim"} , { "name" : "Diego" } ];
       var actual = getQueryResults("FOR u1 IN " + cn + " FOR u2 IN " + cn + " FILTER u2.name == u1.name && u1.name == u2.name && u2.name == u1.name && u1._id == u2._id SORT u1.id RETURN { \"name\" : u1.name }");
@@ -177,7 +177,7 @@ function ahuacatlQueryOptimizerRefTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRefAccessIndexBind1 : function () {
-      users.ensureHashIndex("name");
+      users.ensureIndex({ type: "hash", fields: ["name"] });
 
       var expected = [ 28 ];
       var query = "FOR u IN " + cn + " FILTER u.@att == 'Diego' RETURN u.@what";
