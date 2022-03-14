@@ -7,14 +7,13 @@ import useSWR from "swr";
 import { getApiRouteForCurrentDB } from "../../../utils/arangoClient";
 import NewLink from "../Components/NewLink";
 import LinkView from "../Components/LinkView";
+import { useShow, useShowUpdate } from "../Contexts/LinkContext";
 
 const LinkPropertiesForm = ({
   formState,
   dispatch,
   disabled,
-  view,
-  show,
-  showLink
+  view
 }: FormProps<FormState>) => {
   const [collection, setCollection, addDisabled, links] = useLinkState(
     formState,
@@ -25,6 +24,8 @@ const LinkPropertiesForm = ({
   );
   const [options, setOptions] = useState<string[]>([]);
   const [link, setLink] = useState<string>();
+  const show = useShow();
+  const setShow = useShowUpdate();
 
   useEffect(() => {
     if (data) {
@@ -58,7 +59,7 @@ const LinkPropertiesForm = ({
     });
 
     setCollection("");
-    showLink();
+    setShow("ViewChild");
     setLink(collection);
   };
 

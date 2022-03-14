@@ -22,7 +22,7 @@ import useSWR from "swr";
 import { getApiRouteForCurrentDB } from "../../../../utils/arangoClient";
 import FieldList from "../../Components/FieldList";
 import FieldView from "../../Components/FieldView";
-
+import { useShow, useShowUpdate } from "../../Contexts/LinkContext";
 type LinkPropertiesInputProps = FormProps<LinkProperties> & {
   basePath: string;
 };
@@ -47,12 +47,13 @@ const LinkPropertiesInput = ({
     formState.analyzers
   ]);
 
-  const [showChild, setShowChild] = useState(false);
   const [fieldName, setFieldName] = useState<string>();
   const [childBasePath, setBasePath] = useState("");
+  const show = useShow();
+  const setShow = useShowUpdate();
 
   const handleShowField = (field: string, basePath: string) => {
-    setShowChild(true);
+    setShow("ViewField");
     setFieldName(field);
     setBasePath(basePath);
   };
@@ -138,7 +139,7 @@ const LinkPropertiesInput = ({
 
   return (
     <Grid>
-      {!showChild && (
+      {show !== "ViewField" && (
         <>
           <Cell size={"1-1"}>
             <Grid>
@@ -238,7 +239,7 @@ const LinkPropertiesInput = ({
       )}
 
       <Cell size={"1"}>
-        {!showChild && (
+        {show !== "ViewField" && (
           <Fieldset legend={"Fields"}>
             <>
               {disabled && isEmpty(fields) ? null : (
@@ -292,7 +293,7 @@ const LinkPropertiesInput = ({
               );
             })} */}
 
-        {showChild && fieldName !== undefined && (
+        {show === "ViewField" && fieldName !== undefined && (
           <FieldView
             view={view}
             fields={fields}

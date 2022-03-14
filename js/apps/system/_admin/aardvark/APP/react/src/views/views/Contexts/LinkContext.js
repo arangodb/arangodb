@@ -3,15 +3,15 @@ import React, { useState, useContext } from "react";
 const LinkContext = React.createContext();
 const ShowContext = React.createContext();
 
-export const useShow = () => {
+export function useShow() {
   return useContext(LinkContext);
 }
 
-export const useShowUpdate = () => {
+export function useShowUpdate() {
   return useContext(ShowContext);
 }
 
-export const LinkProvider = ({ children }) => {
+export function LinkProvider({ children }) {
   const [show, setShow] = useState("LinkList");
 
   const handleShowState = (str) => {
@@ -26,5 +26,3 @@ export const LinkProvider = ({ children }) => {
     </LinkContext.Provider>
   )
 }
-
-export default LinkProvider;
