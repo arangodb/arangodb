@@ -53,6 +53,10 @@ class MaxFlowMinCut {
   MaxFlowMinCut(MinCutGraph* g, size_t source, size_t target)
       : _source(source), _target(target), _g(g) {}
 
+  /**
+   * Check that _source and _target are, indeed, indexes of existing vertices
+   * @return
+   */
   Result verifyInput() {
     if (_source >= _g->numVertices())
       return {Result(TRI_ERROR_BAD_PARAMETER,
@@ -66,14 +70,6 @@ class MaxFlowMinCut {
                   std::to_string(_g->numVertices()) + " vertices."};
     }
   }
-  /**
-   * If the input is correct, compute a maximum flow and the corresponding
-   * mincut. Otherwise return TRI_ERROR_BAD_PARAMETER.
-   * @param g
-   * @param sourceIdx
-   * @param targetIdx
-   * @return
-   */
 
   MaxFlowMinCutResult run();
   void push(size_t a, size_t b);
@@ -113,7 +109,7 @@ class MaxFlowMinCut {
 
   double getCapacity(size_t e) const {
     TRI_ASSERT(e < _g->numEdges());
-    return _g->edges[e].capacity;
+    return edge(e)->capacity;
   }
 
   //  void setCapacity(size_t u, size_t idxNeighbor, size_t idxEdge, double val)
@@ -161,71 +157,43 @@ class MaxFlowMinCut {
   //    return _g->edges.at(edgeIdx).flow;
   //  }
 
-  double flow(size_t eIdx) { return _g->edges.at(eIdx).flow; }
-
-  //  size_t getEdge(size_t u, size_t idxNeighbor, size_t idxEdge) const {
-  //    return _g->vertexProperties.at(u).outEdges.at(idxNeighbor).at(idxEdge);
-  //  }
-
-  //  size_t getEdge(size_t u, size_t idxNeighbor) const {
-  //    return _g->vertexProperties.at(u).outEdges.at(idxNeighbor).back();
-  //  }
-
-  //  double getFlowNeighb(size_t u, size_t idxNeighb) const {
-  //    return _g->edgeProperties.at(getEdge(u, idxNeighb)).flow;
-  //  }
-
-  //  double residualNeighb(size_t u, size_t idxNeighbor, size_t idxEdge) const
-  //  {
-  //    TRI_ASSERT(u < _g->numVertices());
-  //    TRI_ASSERT(_g->vertexProperties.at(u).outEdges.size() > idxNeighbor);
-  //    TRI_ASSERT(_g->vertexProperties.at(u).outEdges.at(idxNeighbor).size() >
-  //               idxEdge);
-  //
-  //    size_t const edgeIdx = getEdge(u, idxNeighbor, idxEdge);
-  //    return _g->edgeProperties.at(edgeIdx).capacity -
-  //           _g->edgeProperties.at(edgeIdx).flow;
-  //  }
+  double flow(size_t eIdx) {
+    TRI_ASSERT(_g->edges.contains(eIdx));
+    return edge(eIdx)->flow;
+  }
 
   double residual(size_t eIdx) {
     TRI_ASSERT(eIdx < _g->numEdges());
-    auto const& e = _g->edges[eIdx];
+    auto const& e = edge(eIdx);
     return residual(e);
   }
 
-  double residual(MinCutEdge e) {
+  static double residual(MinCutEdge* e) {
+    TRI_ASSERT(e->capacity >= e->flow);
+    return e->capacity - e->flow;
+  }
+
+  static double residual(MinCutEdge const& e) {
     TRI_ASSERT(e.capacity >= e.flow);
     return e.capacity - e.flow;
   }
 
-  //  size_t neighbToIdx(size_t u, size_t idxNeighb) const {
-  //    return _g->vertexProperties.at(u).neighborsReverse.at(idxNeighb);
-  //  }
-  //
-  //  double residualNeighb(size_t u, size_t idxNeighbor) const {
-  //    TRI_ASSERT(u < _g->numVertices());
-  //    TRI_ASSERT(_g->vertexProperties.at(u).outEdges.size() > idxNeighbor);
-  //
-  //    size_t const edgeIdx = getEdge(u, idxNeighbor);
-  //    return _g->edgeProperties.at(edgeIdx).capacity -
-  //           _g->edgeProperties.at(edgeIdx).flow;
-  //  }
-  //
-  //  double residual(size_t u, size_t v) {
-  //    size_t const idxNeighb =
-  //    _g->vertexProperties.at(u).neighborsReverse.at(v); return
-  //    residualNeighb(u, idxNeighb);
-  //  }
+  double residual(size_t uIdx, size_t vIdx) const {
+    return residual(edge(uIdx, vIdx));
+  }
 
   void increaseFlow(size_t eIdx, double val) {
     TRI_ASSERT(eIdx < _g->numEdges());
-    _g->edges[eIdx].increaseFlow(val);
+    increaseFlow(edge(eIdx), val);
   }
+
+  void increaseFlow(MinCutEdge* e, double val) { e->increaseFlow(val); }
 
   void decreaseFlow(size_t eIdx, double val) {
     TRI_ASSERT(eIdx < _g->numEdges());
-    _g->edges[eIdx].flow -= val;
-    TRI_ASSERT(_g->edges[eIdx].flow >= 0);
+    auto e = edge(eIdx);
+    e->flow -= val;
+    TRI_ASSERT(e->flow >= 0);
   }
 
   //  void increaseFlowNeighb(size_t u, size_t idxNeighbor, double val) {
@@ -241,7 +209,7 @@ class MaxFlowMinCut {
   void setFlow(size_t eIdx, double val) {
     TRI_ASSERT(eIdx < _g->numEdges());
     TRI_ASSERT(val >= 0);
-    _g->edges[eIdx].flow = val;
+    edge(eIdx)->flow = val;
   }
 
   void increaseExcess(size_t u, double val) {
@@ -257,23 +225,6 @@ class MaxFlowMinCut {
     TRI_ASSERT(_g->vertices[u].excess >= 0);
   }
 
-  bool isLeaf(size_t u) const {
-    TRI_ASSERT(u < _g->numVertices());
-    return _g->vertices.at(u).isLeaf;
-  }
-  bool isLeaf(MinCutVertex v) const { return v.isLeaf; }
-  // todo: iterator over non-leaf neighbors
-
-  void setLeaf(size_t u) {
-    TRI_ASSERT(u < _g->numVertices());
-    _g->vertices[u].isLeaf = true;
-  }
-
-  void unsetLeaf(size_t u) {
-    TRI_ASSERT(u < _g->numVertices());
-    _g->vertices[u].isLeaf = false;
-  }
-
   size_t outDegree(size_t u) const {
     TRI_ASSERT(u < _g->numVertices());
     return _g->vertices[u].outDegree();
@@ -282,8 +233,11 @@ class MaxFlowMinCut {
   MinCutVertex& vertex(size_t vIdx) { return _g->vertex(vIdx); }
   MinCutVertex& vertex(size_t vIdx) const { return _g->vertex(vIdx); }
 
-  MinCutEdge& edge(size_t eIdx) { return _g->edge(eIdx); }
-  MinCutEdge& edge(size_t eIdx) const { return _g->edge(eIdx); }
+  MinCutEdge* edge(size_t eIdx) { return _g->edge(eIdx); }
+  MinCutEdge* edge(size_t eIdx) const { return _g->edge(eIdx); }
+  MinCutEdge* edge(size_t uIdx, size_t vIdx) const {
+    return _g->edge(uIdx, vIdx);
+  }
 
  private:
   size_t _source;
@@ -302,6 +256,7 @@ class MaxFlowMinCut {
   void relabel(size_t uIdx);
   // unknown getNeighborByIdx(size_t u, size_t idxNeighb);
   void updateRelabable(MinCutVertex const& u, size_t oldLabel);
+  void removeLeavesRecursively();
 };
 
 }  // namespace arangodb::pregel3

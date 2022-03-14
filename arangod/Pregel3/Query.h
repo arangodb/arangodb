@@ -33,7 +33,7 @@
 #include "Utils.h"
 #include "GraphSpecification.h"
 #include "Utils/DatabaseGuard.h"
-#include "Graph01.h"
+#include "Graph02.h"
 #include "AlgorithmSpecification.h"
 #include "Containers/FlatHashMap.h"
 
@@ -110,8 +110,6 @@ struct Query : std::enable_shared_from_this<Query> {
   // we do not have any influence on the parameters of those functions:
   // addVertex, addSingleEdge)
   containers::FlatHashMap<std::string, size_t> _vertexIdToIdx;
-  containers::FlatHashMap<std::pair<size_t, size_t>, size_t>
-      _vertexVertexToEdge;
   double _defaultCapacity = 0.0;
 };
 }  // namespace arangodb::pregel3

@@ -6,13 +6,14 @@
 #include <unordered_map>
 #include "Basics/debugging.h"
 #include "velocypack/Builder.h"
+#include "Containers/FlatHashSet.h"
 
 namespace arangodb::pregel3 {
 
 template<class VertexProperties>
 struct Vertex {
-  std::vector<size_t> outEdges;
-  std::vector<size_t> inEdges;
+  std::unordered_set<size_t> outEdges;
+  std::unordered_set<size_t> inEdges;
   VertexProperties props;
 
   void toVelocyPack(VPackBuilder& builder, std::string_view id, size_t idx);
@@ -37,6 +38,17 @@ struct MinCutVertex : public Vertex<EmptyVertexProperties> {
   bool isLeaf = false;
 
   void toVelocyPack(VPackBuilder& builder, std::string_view id, size_t idx);
+
+  void increaseExcess(double val) {
+    TRI_ASSERT(val > 0);
+    excess += val;
+  }
+
+  void decreaseExcess(double val) {
+    TRI_ASSERT(val > 0);
+    excess -= val;
+    TRI_ASSERT(excess >= 0);
+  }
 };
 
 template<class EdgeProperties>
@@ -114,6 +126,13 @@ struct Graph : BaseGraph {
   auto numVertices() -> size_t { return vertices.size(); }
   auto numEdges() -> size_t { return edges.size(); }
   void toVelocyPack(VPackBuilder& builder) override;
+
+  V& vertex(size_t vIdx) { return vertices[vIdx]; }
+
+  V& vertex(size_t vIdx) const { return vertices[vIdx]; }
+
+  E& edge(size_t eIdx) { return edges[eIdx]; }
+  E& edge(size_t eIdx) const { return edges[eIdx]; }
 };
 
 template<class V, class E>

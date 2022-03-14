@@ -114,9 +114,6 @@ void Query::loadGraph() {
     if (_algSpec.algName == "MinCut") {
       // todo the graph is casted each time a vertex is inserted
       auto graph = dynamic_cast<MinCutGraph*>(_graph.get());
-      size_t const edgeIdx = graph->edges.size();
-      // for the reverse edge (if any)
-      _vertexVertexToEdge[std::make_pair(toIdx, fromIdx)] = edgeIdx;
       // get the capacity
       double capacity = _defaultCapacity;
       auto resCapacity = getCapacity(slice);
@@ -126,19 +123,28 @@ void Query::loadGraph() {
         capacity = resCapacity.get();
       }
 
-      auto revEdge = _vertexVertexToEdge.find(std::make_pair(toIdx, fromIdx));
-      if (revEdge != _vertexVertexToEdge.end()) {
-        graph->edges.emplace_back(fromIdx, toIdx, capacity, revEdge->second);
-      } else {
-        graph->edges.emplace_back(fromIdx, toIdx, capacity);
-      }
+      size_t eIdx = graph->edges.size();
+      // create the edge as the value of graph->edges[eIdx]
+      auto const& [eIt, _] = graph->edges.emplace(
+          std::piecewise_construct, std::forward_as_tuple(eIdx),
+          std::forward_as_tuple(fromIdx, toIdx, capacity));
+
+      graph->vertices[fromIdx].outEdges[toIdx] =
+          reinterpret_cast<MinCutEdge*>(&(*eIt));
+      graph->vertices[toIdx].inEdges[fromIdx] =
+          reinterpret_cast<MinCutEdge*>(&*eIt);
     } else {
       auto graph = dynamic_cast<EmptyPropertiesGraph*>(_graph.get());
-      size_t const edgeIdx = graph->edges.size();
-      // for the reverse edge (if any)
-      _vertexVertexToEdge[std::make_pair(toIdx, fromIdx)] = edgeIdx;
-      graph->edges.emplace_back(fromIdx, toIdx);
+      size_t const eIdx = graph->edges.size();
+      auto const& [eIt, _] = graph->edges.emplace(
+          std::piecewise_construct, std::forward_as_tuple(eIdx),
+          std::forward_as_tuple(fromIdx, toIdx));
+      graph->vertices[fromIdx].outEdges[toIdx] =
+          reinterpret_cast<Edge<EmptyEdgeProperties>*>(&(*eIt));
+      graph->vertices[toIdx].outEdges[fromIdx] =
+          reinterpret_cast<Edge<EmptyEdgeProperties>*>(&(*eIt));
     }
+
     return true;
   };
 
