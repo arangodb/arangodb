@@ -2,9 +2,7 @@
 /*global fail, assertEqual, assertTrue */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief tests failure cases in HashIndex
-///
-/// @file
+/// @brief tests failure cases in index
 ///
 /// DISCLAIMER
 ///
@@ -28,17 +26,13 @@
 /// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require("jsunity");
-var internal = require("internal");
+const jsunity = require("jsunity");
+const internal = require("internal");
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite: Unique Hash Index
-////////////////////////////////////////////////////////////////////////////////
-
-function UniqueHashIndexFailuresSuite () {
+function UniqueIndexFailuresSuite () {
   'use strict';
-  var cn = "UnitTestsCollectionHash";
-  var collection = null;
+  const cn = "UnitTestsCollection";
+  let collection = null;
 
   return {
 
@@ -46,7 +40,7 @@ function UniqueHashIndexFailuresSuite () {
       internal.db._drop(cn);
       internal.debugClearFailAt();
       collection = internal.db._create(cn);
-      collection.ensureIndex({ type: "hash", fields: ["a"], unique: true });
+      collection.ensureIndex({ type: "persistent", fields: ["a"], unique: true });
     },
 
     tearDown : function () {
@@ -55,7 +49,7 @@ function UniqueHashIndexFailuresSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test: unique hash index fill element oom
+/// @brief test: unique index fill element oom
 ////////////////////////////////////////////////////////////////////////////////
 
     testCreateIndexElementOOM : function () {
@@ -72,7 +66,7 @@ function UniqueHashIndexFailuresSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test: unique hash index fill element oom, other position
+/// @brief test: unique index fill element oom, other position
 ////////////////////////////////////////////////////////////////////////////////
 
     testCreateIndexElementOOMOther : function () {
@@ -92,13 +86,13 @@ function UniqueHashIndexFailuresSuite () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite: Hash Index Multi
+/// @brief test suite: index multi
 ////////////////////////////////////////////////////////////////////////////////
 
-function HashIndexMultiFailuresSuite () {
+function IndexMultiFailuresSuite () {
   'use strict';
-  var cn = "UnitTestsCollectionHash";
-  var collection = null;
+  const cn = "UnitTestsCollection";
+  let collection = null;
 
   return {
 
@@ -106,7 +100,7 @@ function HashIndexMultiFailuresSuite () {
       internal.debugClearFailAt();
       internal.db._drop(cn);
       collection = internal.db._create(cn);
-      collection.ensureIndex({ type: "hash", fields: ["a"] });
+      collection.ensureIndex({ type: "persistent", fields: ["a"] });
     },
 
     tearDown : function () {
@@ -115,11 +109,11 @@ function HashIndexMultiFailuresSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test: hash index multi fill element oom
+/// @brief test: index multi fill element oom
 ////////////////////////////////////////////////////////////////////////////////
 
     testMultiFailCreateIndexElementOOM : function () {
-      collection.ensureIndex({ type: "hash", fields: ["a"], unique: true });
+      collection.ensureIndex({ type: "persistent", fields: ["a"], unique: true });
       internal.debugSetFailAt("FillElementOOM");
       try {
         collection.save({a: 1});
@@ -133,11 +127,11 @@ function HashIndexMultiFailuresSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test: hash index multi fill element oom, other position
+/// @brief test: index multi fill element oom, other position
 ////////////////////////////////////////////////////////////////////////////////
 
     testMultiFailCreateIndexElementOOMOther : function () {
-      collection.ensureIndex({ type: "hash", fields: ["a"], unique: true });
+      collection.ensureIndex({ type: "persistent", fields: ["a"], unique: true });
       internal.debugSetFailAt("FillElementOOM2");
       try {
         collection.save({a: 1});
@@ -153,32 +147,24 @@ function HashIndexMultiFailuresSuite () {
   };
 }
 
-function HashIndexMultiBugsSuite() {
+function IndexMultiBugsSuite() {
   'use strict';
-  var cn = "UnitTestsCollectionBugHash";
-  var collection = null;
+  const cn = "UnitTestsCollectionBug";
+  let collection = null;
 
   return {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
       internal.db._drop(cn);
       collection = internal.db._create(cn);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
-
     tearDown : function () {
       internal.db._drop(cn);
     },
 
-    testHashCollisionFail: function() {
-      collection.ensureIndex({"type" : "hash", "fields" : ["ipList[*].ip"],"unique" : false, "sparse" : false });
+    testCollisionFail: function() {
+      collection.ensureIndex({"type" : "persistent", "fields" : ["ipList[*].ip"],"unique" : false, "sparse" : false });
       collection.insert({
         "_key" : "233808782_Et0;0.32", 
         "_id" : "copy/233808782_Et0;0.32", 
@@ -277,15 +263,10 @@ function HashIndexMultiBugsSuite() {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suites
-////////////////////////////////////////////////////////////////////////////////
-
 if (internal.debugCanUseFailAt()) {
-  jsunity.run(UniqueHashIndexFailuresSuite);
-  jsunity.run(HashIndexMultiFailuresSuite);
+  jsunity.run(UniqueIndexFailuresSuite);
+  jsunity.run(IndexMultiFailuresSuite);
 }
-jsunity.run(HashIndexMultiBugsSuite);
+jsunity.run(IndexMultiBugsSuite);
 
 return jsunity.done();
-

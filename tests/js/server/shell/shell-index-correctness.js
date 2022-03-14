@@ -2,9 +2,7 @@
 /*global assertEqual, assertTrue, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test the correctness of a skip-list index
-///
-/// @file
+/// @brief test the correctness of an index
 ///
 /// DISCLAIMER
 ///
@@ -28,56 +26,35 @@
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require("jsunity");
-var internal = require("internal");
+const jsunity = require("jsunity");
+const internal = require("internal");
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite: Creation
-////////////////////////////////////////////////////////////////////////////////
-
-function SkipListCorrSuite() {
+function IndexCorrectnessSuite() {
   'use strict';
-  var cn = "UnitTestsCollectionSkiplistCorr";
-  var coll = null;
-  var helper = require("@arangodb/aql-helper");
-  var getQueryResults = helper.getQueryResults;
+  const cn = "UnitTestsCollection";
+  const helper = require("@arangodb/aql-helper");
+  const getQueryResults = helper.getQueryResults;
+  
+  let coll = null;
 
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
-
     setUp : function () {
-      internal.debugClearFailAt();
       internal.db._drop(cn);
       coll = internal.db._create(cn);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
-
     tearDown : function () {
-      // try...catch is necessary as some tests delete the collection itself!
-      try {
-        coll.unload();
-        coll.drop();
-      }
-      catch (err) {
-      }
-
+      internal.db._drop(cn);
       coll = null;
-      internal.wait(0.0);
-      internal.debugClearFailAt();
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test: performance of deletion with skip-list index
+/// @brief test: correctness of deletion with persistent index
 ////////////////////////////////////////////////////////////////////////////////
 
     testCorrectnessNonUnique : function () {
-      coll.ensureIndex({ type: "skiplist", fields: ["v"] });
+      coll.ensureIndex({ type: "persistent", fields: ["v"] });
 
       coll.save({a:1,_key:"1",v:1});
       coll.save({a:17,_key:"2",v:2});
@@ -147,7 +124,7 @@ function SkipListCorrSuite() {
     },
 
     testCorrectnessUnique : function () {
-      coll.ensureIndex({ type: "skiplist", fields: ["v"], unique: true });
+      coll.ensureIndex({ type: "persistent", fields: ["v"], unique: true });
 
       coll.save({a:1,_key:"1",v:1});
       coll.save({a:17,_key:"2",v:2});
@@ -217,7 +194,7 @@ function SkipListCorrSuite() {
     },
 
     testCorrectnessSparse : function () {
-      coll.ensureIndex({ type: "skiplist", fields: ["v"], unique: true, sparse: true });
+      coll.ensureIndex({ type: "persistent", fields: ["v"], unique: true, sparse: true });
 
       coll.save({a:1,_key:"1",v:1});
       coll.save({a:17,_key:"2",v:2});
@@ -290,13 +267,13 @@ function SkipListCorrSuite() {
     // we need to test this with >5000 documents
     testFillIndex: function() {
       let arr = [];
-      for(let i = 0; i < 10001; i++) {
+      for (let i = 0; i < 10001; i++) {
         arr.push({_key: "" + i, v:i});
       }
       coll.insert(arr);
       assertEqual(10001, coll.count());
       
-      coll.ensureIndex({ type: "skiplist", fields: ["v"], unique: true });
+      coll.ensureIndex({ type: "persistent", fields: ["v"], unique: true });
       // let's test random things
       assertEqual(getQueryResults(
                                   "FOR x IN " + cn + " FILTER x.v == 3 RETURN x").length, 1);
@@ -319,7 +296,7 @@ function SkipListCorrSuite() {
       assertEqual(coll.getIndexes().length, 1);
 
       try {
-        coll.ensureIndex({ type: "skiplist", fields: ["v"], unique: true });
+        coll.ensureIndex({ type: "persistent", fields: ["v"], unique: true });
         fail();
       } catch (e) {
         assertEqual(internal.errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, e.errorNum);
@@ -333,10 +310,6 @@ function SkipListCorrSuite() {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suites
-////////////////////////////////////////////////////////////////////////////////
-
-jsunity.run(SkipListCorrSuite);
+jsunity.run(IndexCorrectnessSuite);
 
 return jsunity.done();
