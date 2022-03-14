@@ -1059,7 +1059,7 @@ static void ClientConnection_httpFuzzRequests(
 
   if (fuzzReturnCodesCount.find(v8connection->_kFuzzNoResponseCode) !=
       fuzzReturnCodesCount.end()) {
-    builder.add("no response from serer",
+    builder.add("no response from server",
                 velocypack::Value(fuzzReturnCodesCount.at(
                     v8connection->_kFuzzNoResponseCode)));
   }
