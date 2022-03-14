@@ -36,8 +36,7 @@
 #include <fuerte/message.h>
 #include <Rest/CommonDefines.h>
 
-namespace arangodb {
-namespace fuzzer {
+namespace arangodb::fuzzer {
 
 enum CharOperation { kAddString = 0, kAddInt32, kMaxCharOpValue };
 
