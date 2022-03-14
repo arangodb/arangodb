@@ -31,7 +31,8 @@ const LinkPropertiesInput = ({
   formState,
   dispatch,
   disabled,
-  basePath
+  basePath,
+  view
 }: LinkPropertiesInputProps) => {
   const [field, setField, addDisabled, fields] = useLinkState(
     formState,
@@ -46,29 +47,14 @@ const LinkPropertiesInput = ({
     formState.analyzers
   ]);
 
-  const [showField, setShowField] = useState(false);
+  const [showChild, setShowChild] = useState(false);
+  const [fieldName, setFieldName] = useState<string>();
+  const [childBasePath, setBasePath] = useState("");
 
-  const toggleShowField = () => {
-    setShowField(true);
-  };
-
-  const ShowField = (field: string | number) => {
-    return (
-      <FieldView
-        fields={field}
-        disabled={disabled}
-        dispatch={dispatch}
-        basePath={`fields[${field}]`}
-        viewField={handleShowField}
-      />
-    );
-  };
-
-  const handleShowField = (field: string | number) => {
-    toggleShowField();
-    if (showField !== false) {
-      ShowField(field);
-    }
+  const handleShowField = (field: string, basePath: string) => {
+    setShowChild(true);
+    setFieldName(field);
+    setBasePath(basePath);
   };
 
   useEffect(() => {
@@ -152,7 +138,7 @@ const LinkPropertiesInput = ({
 
   return (
     <Grid>
-      {!showField && (
+      {!showChild && (
         <>
           <Cell size={"1-1"}>
             <Grid>
@@ -252,8 +238,8 @@ const LinkPropertiesInput = ({
       )}
 
       <Cell size={"1"}>
-        <Fieldset legend={"Fields"}>
-          {!showField && (
+        {!showChild && (
+          <Fieldset legend={"Fields"}>
             <>
               {disabled && isEmpty(fields) ? null : (
                 <FieldList
@@ -269,9 +255,10 @@ const LinkPropertiesInput = ({
                 />
               )}
             </>
-          )}
+          </Fieldset>
+        )}
 
-          {/* {map(fields, (properties, fld) => {
+        {/* {map(fields, (properties, fld) => {
               return (
                 <tr key={fld} style={{ borderBottom: "1px  solid #DDD" }}>
                   <ArangoTD seq={disabled ? 0 : 1}>{fld}</ArangoTD>
@@ -305,8 +292,18 @@ const LinkPropertiesInput = ({
               );
             })} */}
 
-          {showField && handleShowField}
-        </Fieldset>
+        {showChild && fieldName !== undefined && (
+          <FieldView
+            view={view}
+            fields={fields}
+            disabled={disabled}
+            dispatch={dispatch}
+            basePath={childBasePath}
+            viewField={handleShowField}
+            fieldName={fieldName}
+            link={childBasePath.split("[")[1].replace("]", "")}
+          />
+        )}
       </Cell>
     </Grid>
   );

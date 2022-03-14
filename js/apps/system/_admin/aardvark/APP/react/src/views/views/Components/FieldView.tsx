@@ -5,11 +5,11 @@ import {
   ArangoTD,
   ArangoTH
 } from "../../../components/arango/table";
-import Badge from "../../../components/arango/badges";
+// import Badge from "../../../components/arango/badges";
 import { IconButton } from "../../../components/arango/buttons";
 import { DispatchArgs } from "../../../utils/constants";
 import { LinkProperties } from "../constants";
-import { map } from "lodash";
+// import { map } from "lodash";
 import LinkPropertiesInput from "../forms/inputs/LinkPropertiesInput";
 type FieldViewPprops = {
   fields: {};
@@ -18,7 +18,7 @@ type FieldViewPprops = {
   basePath: string;
   viewField: any;
   link?: string;
-  field?: string;
+  fieldName?: string;
   view?: string;
 };
 
@@ -28,9 +28,11 @@ const FieldView: React.FC<FieldViewPprops> = ({
   dispatch,
   basePath,
   viewField,
-  field
+  fieldName,
+  view,
+  link
 }) => {
-  const removeField = (field: string | number) => {
+  const removeField = (field: string | undefined) => {
     dispatch({
       type: "unsetField",
       field: {
@@ -40,13 +42,13 @@ const FieldView: React.FC<FieldViewPprops> = ({
     });
   };
 
-  const getFieldRemover = (field: string | number) => () => {
+  const getFieldRemover = (field: string | undefined) => () => {
     removeField(field);
   };
 
   const loopFields = (fields: any) => {
     for (const f in fields) {
-      if (field === f) {
+      if (fieldName === f) {
         const toReturn = fields[f];
         return toReturn;
       }
@@ -56,7 +58,7 @@ const FieldView: React.FC<FieldViewPprops> = ({
   const newField = loopFields(fields);
 
   return (
-    <ViewLayout disabled={disabled} field={field}>
+    <ViewLayout disabled={disabled} field={fieldName} view={view} link={link}>
       <ArangoTable style={{ marginLeft: 0 }}>
         <thead>
           <tr>
@@ -74,15 +76,15 @@ const FieldView: React.FC<FieldViewPprops> = ({
           </tr>
         </thead>
         <tbody>
-          <tr key={field} style={{ borderBottom: "1px  solid #DDD" }}>
-            <ArangoTD seq={disabled ? 0 : 1}>{field}</ArangoTD>
+          <tr key={fieldName} style={{ borderBottom: "1px  solid #DDD" }}>
+            <ArangoTD seq={disabled ? 0 : 1}>{fieldName}</ArangoTD>
             <ArangoTD seq={disabled ? 1 : 2}>
-              {newField &&
-                map(newField.analyzers, a => <Badge key={a} name={a} />)}
+              {/* {newField &&
+                 map(newField.analyzers, a => <Badge key={a} name={a} />)} */}
               <LinkPropertiesInput
                 formState={newField}
                 disabled={disabled}
-                basePath={`${basePath}.fields[${field}]`}
+                basePath={`${basePath}.fields[${fieldName}]`}
                 dispatch={
                   (dispatch as unknown) as Dispatch<
                     DispatchArgs<LinkProperties>
@@ -95,12 +97,12 @@ const FieldView: React.FC<FieldViewPprops> = ({
                 <IconButton
                   icon={"trash-o"}
                   type={"danger"}
-                  onClick={getFieldRemover(newField)}
+                  onClick={getFieldRemover(fieldName)}
                 />
                 <IconButton
                   icon={"eye"}
                   type={"warning"}
-                  onClick={() => viewField(newField)}
+                  onClick={() => viewField(fieldName)}
                 />
               </ArangoTD>
             )}

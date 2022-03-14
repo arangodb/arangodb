@@ -13,6 +13,7 @@ interface LinkViewProps {
   dispatch: Dispatch<DispatchArgs<LinkProperties>>;
   view?: string | undefined;
   link?: string;
+  field?: string;
 }
 
 const LinkView: React.FC<LinkViewProps> = ({
@@ -20,7 +21,8 @@ const LinkView: React.FC<LinkViewProps> = ({
   disabled,
   dispatch,
   view,
-  link
+  link,
+  field
 }) => {
   const removeLink = (collection: string | number) => {
     dispatch({
@@ -47,7 +49,7 @@ const LinkView: React.FC<LinkViewProps> = ({
   const newLink = loopLinks(links);
 
   return (
-    <ViewLayout view={view} disabled={disabled} link={link}>
+    <ViewLayout view={view} disabled={disabled} link={link} field={field}>
       <tr key={newLink} style={{ borderBottom: "1px  solid #DDD" }}>
         <ArangoTD seq={disabled ? 1 : 2}>
           <LinkPropertiesInput

@@ -11,7 +11,8 @@ import { buildSubNav, postProcessor, useView, useCollection } from "./helpers";
 import { ArangoTable, ArangoTH, ArangoTD } from "../../components/arango/table";
 import LinkList from "./Components/LinkList";
 import NewList from "./Components/NewLink";
-
+import { useShow, useShowUpdate } from "./Contexts/LinkContext";
+import LinkProvider from "./Contexts/LinkContext";
 const ViewLinksReactView = ({ name }) => {
   const initialState = useRef({
     formState: { name },
@@ -51,70 +52,75 @@ const ViewLinksReactView = ({ name }) => {
 
   const [viewLink, setViewLink] = useState(false);
   const [icon, setIcon] = useState("fa-plus-circle");
-  const [show, setShow] = useState("LinkList");
+  const show = useShow();
+  console.log(show);
+  const updateShow = useShowUpdate();
 
   const handleNewLinkClick = e => {
     e.preventDefault();
-    setShow("AddNew");
+    updateShow("AddNew");
   };
 
   const handleBackClick = e => {
     e.preventDefault();
-    setShow("LinkList");
+    updateShow("LinkList");
   };
 
   const handleViewLink = link => {
-    setShow("ViewParent");
+    updateShow("ViewParent");
   };
 
   const handleShowLink = () => {
-    setShow("ViewChild");
+    updateShow("ViewChild");
   };
 
   const handleShowChild = () => {
-    setShow("ViewField");
+    updateShow("ViewField");
   };
+
   return (
-    <div className={"centralContent"} id={"content"}>
-      {show === "LinkList" && (
-        <LinkList
-          links={links}
-          addClick={handleNewLinkClick}
-          viewLink={handleViewLink}
-          icon={icon}
-        />
-      )}
-      {show !== "LinkList" && (
-        <div
-          id={"modal-dialog"}
-          className={"createModalDialog"}
-          tabIndex={-1}
-          role={"dialog"}
-          aria-labelledby={"myModalLabel"}
-          aria-hidden={"true"}
-        >
-          <div className="modal-body" style={{ overflowY: "visible" }}>
-            <div className={"tab-content"}>
-              <div className="tab-pane tab-pane-modal active" id="Links">
-                <LinkPropertiesForm
-                  formState={formState}
-                  dispatch={dispatch}
-                  disabled={!isAdminUser}
-                  view={name}
-                  show={show}
-                  showLink={handleShowLink}
-                  showField={handleShowChild}
-                />
+    <LinkProvider>
+      <div className={"centralContent"} id={"content"}>
+        {show === "LinkList" && (
+          <LinkList
+            links={links}
+            addClick={handleNewLinkClick}
+            viewLink={handleViewLink}
+            icon={icon}
+          />
+        )}
+        {show !== "LinkList" && (
+          <div
+            id={"modal-dialog"}
+            className={"createModalDialog"}
+            tabIndex={-1}
+            role={"dialog"}
+            aria-labelledby={"myModalLabel"}
+            aria-hidden={"true"}
+          >
+            <div className="modal-body" style={{ overflowY: "visible" }}>
+              <div className={"tab-content"}>
+                <div className="tab-pane tab-pane-modal active" id="Links">
+                  <LinkPropertiesForm
+                    formState={formState}
+                    dispatch={dispatch}
+                    disabled={!isAdminUser}
+                    view={name}
+                    show={show}
+                    showLink={handleShowLink}
+                    showField={handleShowChild}
+                  />
+                </div>
               </div>
             </div>
+            <div className="modal-footer">
+              <BackButton buttonClick={handleBackClick} />
+              <SaveButton view={formState} oldName={name} />
+            </div>
           </div>
-          <div className="modal-footer">
-            <BackButton buttonClick={handleBackClick} />
-            <SaveButton view={formState} oldName={name} />
-          </div>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
+    </LinkProvider>
   );
 };
 

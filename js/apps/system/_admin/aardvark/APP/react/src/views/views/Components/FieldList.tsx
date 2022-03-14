@@ -12,7 +12,7 @@ import Badge from "../../../components/arango/badges";
 import { IconButton } from "../../../components/arango/buttons";
 
 type FieldListProps = {
-  fields: any;
+  fields: object | any;
   disabled: boolean | undefined;
   dispatch: Dispatch<DispatchArgs<LinkProperties>>;
   basePath: string;
@@ -86,7 +86,7 @@ const FieldView: React.FC<FieldListProps> = ({
                 <IconButton
                   icon={"edit"}
                   type={"warning"}
-                  onClick={() => viewField(fld)}
+                  onClick={() => viewField(fld, basePath)}
                 />
               </ArangoTD>
             )}

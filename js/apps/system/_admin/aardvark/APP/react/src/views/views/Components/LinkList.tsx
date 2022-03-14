@@ -30,16 +30,16 @@ const LinkList: React.FC<CollProps> = ({
   viewLink,
   dispatch
 }) => {
-  const checkLinks = () => {
-    if (links) {
-      console.log(Object.values(links));
-      Object.values(links).map((l, i) => {
-        console.log(
-          `Links: ${l.includeAllFields}, ${l.analyzers}, Index:  ${i}`
-        );
-      });
-    }
-  };
+  // const checkLinks = () => {
+  //   if (links) {
+  //     console.log(Object.values(links));
+  //     Object.values(links).map((l, i) => {
+  //       console.log(
+  //         `Links: ${l.includeAllFields}, ${l.analyzers}, Index:  ${i}`
+  //       );
+  //     });
+  //   }
+  // };
 
   const removeLink = (collection: string | number) => {
     dispatch({
@@ -55,7 +55,6 @@ const LinkList: React.FC<CollProps> = ({
     removeLink(collection);
   };
 
-  checkLinks();
   return (
     <div className="contentIn" id="indexHeaderContent">
       <ArangoTable className={"edit-index-table arango-table"}>
