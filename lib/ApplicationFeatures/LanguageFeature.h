@@ -67,7 +67,6 @@ class LanguageFeature final : public application_features::ApplicationFeature {
       const;
   bool forceLanguageCheck() const;
   std::string getCollatorLanguage() const;
-  arangodb::basics::LanguageType getLanguageType() const;
   void resetLanguage(std::string_view language,
                      arangodb::basics::LanguageType type);
 

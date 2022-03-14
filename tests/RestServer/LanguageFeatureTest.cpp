@@ -164,6 +164,86 @@ class ArangoLanguageFeatureTest
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
 
+TEST_F(ArangoLanguageFeatureTest, test_reset_language_default) {
+  auto& langFeature = server.addFeatureUntracked<arangodb::LanguageFeature>();
+  langFeature.collectOptions(server.server().options());
+  constexpr std::string_view language1 = "ru";
+  constexpr std::string_view language2 = "sv";
+
+  server.server()
+      .options()
+      ->get<StringParameter>("default-language")
+      ->set(language1.data());
+  langFeature.validateOptions(server.server().options());
+
+  { EXPECT_DEATH(langFeature.getLanguage(), ""); }
+
+  langFeature.prepare();
+  {
+    auto [lang, type] = langFeature.getLanguage();
+    ASSERT_EQ(lang, language1);
+    ASSERT_EQ(type, arangodb::basics::LanguageType::DEFAULT);
+  }
+
+  langFeature.resetLanguage(language2, arangodb::basics::LanguageType::ICU);
+  {
+    auto [lang, type] = langFeature.getLanguage();
+    ASSERT_EQ(lang, language2);
+    ASSERT_EQ(type, arangodb::basics::LanguageType::ICU);
+  }
+
+  langFeature.resetLanguage(language1, arangodb::basics::LanguageType::DEFAULT);
+  {
+    auto [lang, type] = langFeature.getLanguage();
+    ASSERT_EQ(lang, language1);
+    ASSERT_EQ(type, arangodb::basics::LanguageType::DEFAULT);
+  }
+
+  EXPECT_DEATH(langFeature.resetLanguage(
+                   language2, arangodb::basics::LanguageType::INVALID),
+               "");
+}
+
+TEST_F(ArangoLanguageFeatureTest, test_reset_language_icu) {
+  auto& langFeature = server.addFeatureUntracked<arangodb::LanguageFeature>();
+  langFeature.collectOptions(server.server().options());
+  constexpr std::string_view language1 = "ru";
+  constexpr std::string_view language2 = "sv";
+
+  server.server()
+      .options()
+      ->get<StringParameter>("icu-language")
+      ->set(language1.data());
+  langFeature.validateOptions(server.server().options());
+
+  { EXPECT_DEATH(langFeature.getLanguage(), ""); }
+
+  langFeature.prepare();
+  {
+    auto [lang, type] = langFeature.getLanguage();
+    ASSERT_EQ(lang, language1);
+    ASSERT_EQ(type, arangodb::basics::LanguageType::ICU);
+  }
+
+  langFeature.resetLanguage(language2, arangodb::basics::LanguageType::DEFAULT);
+  {
+    auto [lang, type] = langFeature.getLanguage();
+    ASSERT_EQ(lang, language2);
+    ASSERT_EQ(type, arangodb::basics::LanguageType::DEFAULT);
+  }
+
+  langFeature.resetLanguage(language1, arangodb::basics::LanguageType::ICU);
+  {
+    auto [lang, type] = langFeature.getLanguage();
+    ASSERT_EQ(lang, language1);
+    ASSERT_EQ(type, arangodb::basics::LanguageType::ICU);
+  }
+
+  EXPECT_DEATH(langFeature.resetLanguage(
+                   language2, arangodb::basics::LanguageType::INVALID),
+               "");
+}
+
 TEST_F(ArangoLanguageFeatureTest,
        test_both_arguments_specified_lang_check_true) {
   // Specify both language arguments and get server failure

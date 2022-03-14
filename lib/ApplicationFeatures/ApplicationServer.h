@@ -191,7 +191,7 @@ class ApplicationServer {
   }
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-  void setBinaryPath(std::string_view path) { _binaryPath = path.data(); }
+  void setBinaryPath(const char* path) { _binaryPath = path; }
 #endif
 
   char const* getBinaryPath() const { return _binaryPath; }

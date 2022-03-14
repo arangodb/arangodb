@@ -50,7 +50,7 @@ std::string fromWString(wchar_t const* validUTF16String, std::size_t size);
 std::string fromWString(std::wstring const& validUTF16String);
 #endif
 
-enum class LanguageType { INVALID = -1, DEFAULT = 0, ICU = 1 };
+enum class LanguageType { INVALID, DEFAULT, ICU };
 
 class Utf8Helper {
   Utf8Helper(Utf8Helper const&) = delete;
@@ -106,8 +106,8 @@ class Utf8Helper {
   /// collation?
   //////////////////////////////////////////////////////////////////////////////
 
-  bool setCollatorLanguage(std::string_view lang, void* icuDataPointer,
-                           LanguageType langType);
+  bool setCollatorLanguage(std::string_view lang, LanguageType langType,
+                           void* icuDataPointer);
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   //////////////////////////////////////////////////////////////////////////////

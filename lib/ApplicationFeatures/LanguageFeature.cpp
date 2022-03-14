@@ -41,12 +41,12 @@
 #include "ProgramOptions/ProgramOptions.h"
 
 namespace {
-void setCollator(std::string const& language, void* icuDataPtr,
+void setCollator(std::string_view language, void* icuDataPtr,
                  arangodb::basics::LanguageType type) {
   using arangodb::basics::Utf8Helper;
 
-  if (!Utf8Helper::DefaultUtf8Helper.setCollatorLanguage(language, icuDataPtr,
-                                                         type)) {
+  if (!Utf8Helper::DefaultUtf8Helper.setCollatorLanguage(language, type,
+                                                         icuDataPtr)) {
     LOG_TOPIC("01490", FATAL, arangodb::Logger::FIXME)
         << "error setting collator language to '" << language << "'. "
         << "The icudtl.dat file might be of the wrong version. "
@@ -224,18 +224,14 @@ icu::Locale& LanguageFeature::getLocale() { return _locale; }
 
 std::tuple<std::string_view, LanguageType> LanguageFeature::getLanguage()
     const {
-  if (LanguageType::DEFAULT == _langType) {
-    return {_defaultLanguage, _langType};
-  } else if (LanguageType::ICU == _langType) {
+  if (LanguageType::ICU == _langType) {
     return {_icuLanguage, _langType};
   } else {
-    TRI_ASSERT(false);
-    // Its invalid type. Just returning defaultLanguge
+    TRI_ASSERT(LanguageType::DEFAULT == _langType);
+    // If it is invalid type just returning _defaultLanguage
     return {_defaultLanguage, _langType};
   }
 }
-
-LanguageType LanguageFeature::getLanguageType() const { return _langType; }
 
 bool LanguageFeature::forceLanguageCheck() const { return _forceLanguageCheck; }
 
@@ -263,7 +259,7 @@ void LanguageFeature::resetLanguage(std::string_view language,
       break;
 
     case LanguageType::ICU:
-      _defaultLanguage = language;
+      _icuLanguage = language;
       break;
 
     case LanguageType::INVALID:
