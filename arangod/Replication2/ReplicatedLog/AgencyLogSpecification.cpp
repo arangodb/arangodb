@@ -371,8 +371,6 @@ void LogTarget::toVelocyPack(velocypack::Builder& builder) const {
     }
   }
 
-  builder.add(VPackValue("properties"));
-
   if (supervision.has_value()) {
     builder.add(VPackValue("supervision"));
     supervision->toVelocyPack(builder);
