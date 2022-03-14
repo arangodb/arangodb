@@ -23,7 +23,7 @@
 
 #include "RequestFuzzer.h"
 
-using rt = arangodb::rest::RequestType;
+#include "Rest/CommonDefines.h"
 
 namespace {
 
@@ -162,12 +162,20 @@ void RequestFuzzer::randomizeLineOperation(uint32_t numIts) {
 }
 
 std::unique_ptr<fuerte::Request> RequestFuzzer::createRequest() {
+  // reset internal state
   _headerSplitInLines.clear();
-  auto req = std::make_unique<fuerte::Request>();
+  _recursionDepth = 0;
+  _tempObjectKeys.clear();
+  _usedKeys.clear();
+
   std::string header;
-  generateHeader(header);
-  if (_randReqType != rt::GET && _randReqType != rt::HEAD &&
-      _randReqType != rt::OPTIONS) {
+  auto req = std::make_unique<fuerte::Request>();
+  fuerte::RestVerb requestType = generateHeader(header);
+  req->header.restVerb = requestType;
+
+  if (requestType != fuerte::RestVerb::Get &&
+      requestType != fuerte::RestVerb::Head &&
+      requestType != fuerte::RestVerb::Options) {
     velocypack::Builder builder;
     generateBody(builder);
     if (_randContext.mt() % 2 == 0) {
@@ -189,16 +197,15 @@ std::unique_ptr<fuerte::Request> RequestFuzzer::createRequest() {
   return req;  // for not preventing copy elision
 }
 
-void RequestFuzzer::generateHeader(std::string& header) {
+fuerte::RestVerb RequestFuzzer::generateHeader(std::string& header) {
+  fuerte::RestVerb requestType = fuerte::RestVerb::Illegal;
+
   std::string firstLine;
   if (generateRandNumWithinRange<uint32_t>(0, 99) > 0) {
-    do {
-      _randReqType = static_cast<rest::RequestType>(
-          _randContext.mt() %
-          static_cast<std::underlying_type<rest::RequestType>::type>(
-              rt::ILLEGAL));
-    } while (_randReqType == rt::HEAD);
-    firstLine.append(rest::requestToString(_randReqType));
+    requestType = static_cast<fuerte::RestVerb>(
+        _randContext.mt() %
+        (static_cast<uint32_t>(fuerte::RestVerb::Options) + 1));
+    firstLine.append(fuerte::to_string(requestType));
   } else {
     randomizeCharOperation(firstLine, 1);
   }
@@ -238,6 +245,8 @@ void RequestFuzzer::generateHeader(std::string& header) {
   for (uint32_t i = 0; i < _headerSplitInLines.size(); ++i) {
     header.append(_headerSplitInLines[i] + "\r\n");
   }
+
+  return requestType;
 }
 
 void RequestFuzzer::generateBody(velocypack::Builder& builder) {
@@ -312,6 +321,12 @@ int32_t RequestFuzzer::generateRandInt32() {
 }
 
 void RequestFuzzer::generateRandAsciiChar(std::string& input) {
+  TRI_ASSERT(!input.empty());
+  if (input.size() == 1 && input[0] == ':') {
+    // prevent endless hang
+    return;
+  }
+
   uint32_t randPos;
   do {
     randPos = generateRandNumWithinRange<uint32_t>(0, input.size() - 1);
@@ -320,6 +335,12 @@ void RequestFuzzer::generateRandAsciiChar(std::string& input) {
 }
 
 void RequestFuzzer::generateRandAlphaNumericChar(std::string& input) {
+  TRI_ASSERT(!input.empty());
+  if (input.size() == 1 && input[0] == ':') {
+    // prevent endless hang
+    return;
+  }
+
   uint32_t randPos;
   do {
     randPos = generateRandNumWithinRange<uint32_t>(0, input.size() - 1);
@@ -332,6 +353,7 @@ void RequestFuzzer::generateRandAlphaNumericString(std::string& input) {
   uint32_t randStrLength = generateRandNumWithinRange<uint32_t>(
       0, _randContext.maxRandAsciiStringLength);
 
+  input.reserve(input.size() + randStrLength);
   for (uint32_t i = 0; i < randStrLength; ++i) {
     input +=
         alphaNumericChars[_randContext.mt() % (sizeof(alphaNumericChars) - 1)];

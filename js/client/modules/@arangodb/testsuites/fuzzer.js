@@ -33,7 +33,7 @@ const _ = require('lodash');
 const tu = require('@arangodb/testutils/test-utils');
 
 const testPaths = {
-  'shell_fuzzer': [tu.pathForTesting('client/shell')]
+  'shell_fuzzer': [tu.pathForTesting('client/fuzz')]
 };
 
 
@@ -42,21 +42,29 @@ const testPaths = {
 // //////////////////////////////////////////////////////////////////////////////
 
 function shellFuzzer(options) {
+  if (!global.ARANGODB_CLIENT_VERSION(true)['failure-tests'] ||
+      global.ARANGODB_CLIENT_VERSION(true)['failure-tests'] === 'false') {
+    return {
+      recovery: {
+        status: false,
+        message: 'failure-tests not enabled. please recompile with -DUSE_FAILURE_TESTS=On'
+      },
+      status: false
+    };
+  }
+
   let testCases = tu.scanTestPaths(testPaths.shell_fuzzer, options);
-  testCases = testCases.filter(testCase => testCase.indexOf('fuzzer') !== -1);
 
   testCases = tu.splitBuckets(options, testCases);
   let rc = tu.performTests(options, testCases, 'shell_fuzzer', tu.runInLocalArangosh);
   return rc;
 }
 
-
 exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['shell_fuzzer'] = shellFuzzer;
 
   defaultFns.push('shell_fuzzer');
-
 
   for (var attrname in functionsDocumentation) {
     fnDocs[attrname] = functionsDocumentation[attrname];

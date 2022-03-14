@@ -33,8 +33,8 @@
 #include <unordered_set>
 
 #include "Basics/VelocyPackHelper.h"
+
 #include <fuerte/message.h>
-#include <Rest/CommonDefines.h>
 
 namespace arangodb::fuzzer {
 
@@ -67,15 +67,14 @@ class RequestFuzzer {
       : _numIterations(numIt.value_or(defaultNumIterations)),
         _seed(seed.value_or(std::random_device()())),
         _randContext{_seed},
-        _headerSplitInLines{},
-        _keysAndValues{} {}
+        _headerSplitInLines{} {}
 
   [[nodiscard]] uint32_t getSeed() const noexcept { return _seed; }
 
   std::unique_ptr<fuerte::Request> createRequest();
 
  private:
-  void generateHeader(std::string& header);
+  fuerte::RestVerb generateHeader(std::string& header);
 
   void generateBody(velocypack::Builder& builder);
 
@@ -97,9 +96,7 @@ class RequestFuzzer {
   uint32_t _seed;
   RandContext _randContext;
   std::vector<std::string> _headerSplitInLines;
-  std::unordered_map<std::string, std::string> _keysAndValues;
   std::string _tempStr;
-  rest::RequestType _randReqType;
 
   static constexpr uint32_t kMaxNestedRoutes = 4;
   static constexpr uint32_t kMaxDepth = 4;

@@ -95,11 +95,7 @@ class H1Connection final : public fuerte::GeneralConnection<ST, RequestItem> {
     if (req->getFuzzerReq()) {
       return std::make_unique<RequestItem>(
           std::move(req), std::move(cb), req->getFuzzReqHeader().value());
-    } else {
-      auto h = buildRequestHeader(*req);
-      return std::make_unique<RequestItem>(std::move(req), std::move(cb),
-                                           std::move(h));
-    }
+    } 
 #endif
     auto h = buildRequestHeader(*req);
     return std::make_unique<RequestItem>(std::move(req), std::move(cb),
