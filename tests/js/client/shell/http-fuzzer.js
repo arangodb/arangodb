@@ -43,7 +43,6 @@ function httpRequestsFuzzerTestSuite() {
         assertTrue(response.hasOwnProperty("total-requests"));
         let numReqs = response["total-requests"];
         let tempSum = 0;
-        //let keys = Object.keys(response);
         for (const [key, value] of Object.entries(response)) {
           if (key !== "total-requests" && key !== "seed") {
             if (key === "return-codes") {
