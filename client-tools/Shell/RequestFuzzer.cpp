@@ -25,6 +25,68 @@
 
 using rt = arangodb::rest::RequestType;
 
+namespace {
+
+static constexpr char alphaNumericChars[] =
+    "0123456789"
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    "abcdefghijklmnopqrstuvwxyz";
+
+static constexpr std::array<std::string_view, 12> wordListForRoute = {
+    {"/_db", "/_admin", "/_api", "/_system", "/_cursor", "/version", "/status",
+     "/license", "/collection", "/database", "/current", "/log"}};
+
+static constexpr std::array<std::string_view, 48> wordListForKeys = {
+    {"Accept",
+     "",
+     "Accept-Charset",
+     "Accept-Encoding",
+     "Accept-Language",
+     "Accept-Ranges",
+     "Allow",
+     "Authorization",
+     "Cache-control",
+     "Connection",
+     "Content-encoding",
+     "Content-language",
+     "Content-location",
+     "Content-MD5",
+     "Content-range",
+     "Content-type",
+     "Date",
+     "ETag",
+     "Expect",
+     "Expires",
+     "From",
+     "Host",
+     "If-Match",
+     "If-modified-since",
+     "If-none-match",
+     "If-range",
+     "If-unmodified-since",
+     "Last-modified",
+     "Location",
+     "Max-forwards",
+     "Pragma",
+     "Proxy-authenticate",
+     "Proxy-authorization",
+     "Range",
+     "Referer",
+     "Retry-after",
+     "Server",
+     "TE",
+     "Trailer",
+     "Transfer-encoding",
+     "Upgrade",
+     "User-agent",
+     "Vary",
+     "Via",
+     "Warning",
+     "Www-authenticate",
+     "random"}};
+
+}  // namespace
+
 namespace arangodb::fuzzer {
 
 void RequestFuzzer::randomizeCharOperation(std::string& input,
@@ -73,14 +135,14 @@ void RequestFuzzer::randomizeLineOperation(uint32_t numIts) {
         break;
       }
       case LineOperation::kAddLine: {
-        if (_usedKeys.size() <= _wordListForKeys.size() - 5) {
+        if (_usedKeys.size() <= wordListForKeys.size() - 5) {
           std::string keyName;
           std::string value;
           do {
             uint32_t keyPos = generateRandNumWithinRange<uint32_t>(
-                0, _wordListForKeys.size() - 1);
-            if (_wordListForKeys[keyPos] != "random") {
-              keyName = _wordListForKeys[keyPos];
+                0, wordListForKeys.size() - 1);
+            if (wordListForKeys[keyPos] != "random") {
+              keyName = wordListForKeys[keyPos];
             } else {
               keyName.clear();
               randomizeCharOperation(keyName, 1);
@@ -108,11 +170,18 @@ std::unique_ptr<fuerte::Request> RequestFuzzer::createRequest() {
       _randReqType != rt::OPTIONS) {
     velocypack::Builder builder;
     generateBody(builder);
-    std::string bodyAsStr = builder.slice().toString();
-    header.append("Content-length:" + std::to_string(bodyAsStr.size()) +
-                  "\r\n");
-    req->addBinary(reinterpret_cast<uint8_t const*>(&bodyAsStr[0]),
-                   bodyAsStr.length());
+    if (_randContext.mt() % 2 == 0) {
+      std::string bodyAsStr = builder.slice().toString();
+      header.append("Content-length:" + std::to_string(bodyAsStr.size()) +
+                    "\r\n");
+      req->addBinary(reinterpret_cast<uint8_t const*>(&bodyAsStr[0]),
+                     bodyAsStr.length());
+    } else {
+      req->addBinary(builder.slice().start(), builder.slice().byteSize());
+      header.append("Content-length:" +
+                    std::to_string(builder.slice().byteSize()) + "\r\n");
+      req->header.contentType(fuerte::ContentType::VPack);
+    }
   }
   header.append("\r\n");
   req->setFuzzReqHeader(std::move(header));
@@ -138,9 +207,9 @@ void RequestFuzzer::generateHeader(std::string& header) {
       generateRandNumWithinRange<uint32_t>(1, kMaxNestedRoutes);
   for (uint32_t i = 0; i < numNestedRoutes; ++i) {
     uint32_t routePos =
-        generateRandNumWithinRange<uint32_t>(0, _wordListForRoute.size() - 1);
+        generateRandNumWithinRange<uint32_t>(0, wordListForRoute.size() - 1);
     if (generateRandNumWithinRange<uint32_t>(0, 99) > 10) {
-      firstLine.append(_wordListForRoute[routePos]);
+      firstLine.append(wordListForRoute[routePos]);
     } else {
       firstLine.append("/");
       randomizeCharOperation(firstLine, 1);
@@ -256,7 +325,7 @@ void RequestFuzzer::generateRandAlphaNumericChar(std::string& input) {
     randPos = generateRandNumWithinRange<uint32_t>(0, input.size() - 1);
   } while (input[randPos] == ':');
   input[randPos] =
-      _alphaNumericChars[_randContext.mt() % (sizeof(_alphaNumericChars) - 1)];
+      alphaNumericChars[_randContext.mt() % (sizeof(alphaNumericChars) - 1)];
 }
 
 void RequestFuzzer::generateRandAlphaNumericString(std::string& input) {
@@ -264,8 +333,8 @@ void RequestFuzzer::generateRandAlphaNumericString(std::string& input) {
       0, _randContext.maxRandAsciiStringLength);
 
   for (uint32_t i = 0; i < randStrLength; ++i) {
-    input += _alphaNumericChars[_randContext.mt() %
-                                (sizeof(_alphaNumericChars) - 1)];
+    input +=
+        alphaNumericChars[_randContext.mt() % (sizeof(alphaNumericChars) - 1)];
   }
 }
 

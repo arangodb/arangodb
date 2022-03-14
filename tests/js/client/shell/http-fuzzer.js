@@ -28,17 +28,13 @@ const jsunity = require("jsunity");
 const internal = require('internal');
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
+/// @brief Http Request Fuzzer suite
 ////////////////////////////////////////////////////////////////////////////////
 function httpRequestsFuzzerTestSuite() {
   return {
-////////////////////////////////////////////////////////////////////////////////
-/// @brief CoordinatorMetricsTestSuite tests
-////////////////////////////////////////////////////////////////////////////////
     testRandReqs: function () {
       for (let i = 0; i < 15; ++i) {
-        let response;
-        response = arango.fuzzRequests(200000, i);
+        let response = arango.fuzzRequests(20000, i);
         assertTrue(response.hasOwnProperty("seed"));
         assertTrue(response.hasOwnProperty("total-requests"));
         let numReqs = response["total-requests"];
@@ -59,52 +55,53 @@ function httpRequestsFuzzerTestSuite() {
     },
 
     testReqWithSameSeed: function () {
-      let response = arango.fuzzRequests(1, 10);
-      assertTrue(response.hasOwnProperty("seed"));
-      let seed = response["seed"];
-      assertTrue(response.hasOwnProperty("total-requests"));
-      let numReqs = response["total-requests"];
-      let tempSum = 0;
-      let keysAndValues1 = new Map();
-      for (const [key, value] of Object.entries(response)) {
-        if (key !== "total-requests" && key !== "seed") {
-          if (key === "return-codes") {
-            for (const [innerKey, innerValue] of Object.entries(response[key])) {
-              keysAndValues1.set(innerKey, innerValue);
-              tempSum += innerValue;
+      for (let i = 0; i < 10; ++i) {
+        let response = arango.fuzzRequests(1, 10);
+        assertTrue(response.hasOwnProperty("seed"));
+        let seed = response["seed"];
+        assertTrue(response.hasOwnProperty("total-requests"));
+        let numReqs = response["total-requests"];
+        let tempSum = 0;
+        let keysAndValues1 = new Map();
+        for (const [key, value] of Object.entries(response)) {
+          if (key !== "total-requests" && key !== "seed") {
+            if (key === "return-codes") {
+              for (const [innerKey, innerValue] of Object.entries(response[key])) {
+                keysAndValues1.set(innerKey, innerValue);
+                tempSum += innerValue;
+              }
+            } else {
+              tempSum += value;
+              keysAndValues1.set(key, value);
             }
-          } else {
-            tempSum += value;
-            keysAndValues1.set(key, value);
           }
         }
-      }
-      assertEqual(numReqs, tempSum);
+        assertEqual(numReqs, tempSum);
 
-      let newResponse = arango.fuzzRequests(1, 10, seed);
-      assertEqual(response, newResponse);
-      assertTrue(response.hasOwnProperty("seed"));
-      assertTrue(response.hasOwnProperty("total-requests"));
-      let numReqs2 = response["total-requests"];
-      let tempSum2 = 0;
-      for (const [key, value] of Object.entries(response)) {
-        if (key !== "total-requests" && key !== "seed") {
-          if (key === "return-codes") {
-            for (const [innerKey, innerValue] of Object.entries(response[key])) {
-              tempSum2 += innerValue;
-              assertEqual(keysAndValues1.get(innerKey), innerValue);
+        let newResponse = arango.fuzzRequests(1, 10, seed);
+        assertEqual(response, newResponse);
+        assertTrue(response.hasOwnProperty("seed"));
+        assertTrue(response.hasOwnProperty("total-requests"));
+        let numReqs2 = response["total-requests"];
+        let tempSum2 = 0;
+        for (const [key, value] of Object.entries(response)) {
+          if (key !== "total-requests" && key !== "seed") {
+            if (key === "return-codes") {
+              for (const [innerKey, innerValue] of Object.entries(response[key])) {
+                tempSum2 += innerValue;
+                assertEqual(keysAndValues1.get(innerKey), innerValue);
+              }
+            } else {
+              tempSum2 += value;
+              assertEqual(keysAndValues1.get(key), value);
             }
-          } else {
-            tempSum2 += value;
-            assertEqual(keysAndValues1.get(key), value);
           }
         }
+        assertEqual(numReqs, numReqs2);
+        assertEqual(tempSum, tempSum2);
+        assertEqual(numReqs2, tempSum2);
       }
-      assertEqual(numReqs, numReqs2);
-      assertEqual(tempSum, tempSum2);
-      assertEqual(numReqs2, tempSum2);
     },
-
   };
 }
 

@@ -26,10 +26,6 @@
 
 #include "Basics/Common.h"
 #include "Shell/arangosh.h"
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
-#include "Shell/RequestFuzzer.h"
-#endif
-
 #include <fuerte/connection.h>
 #include <fuerte/loop.h>
 #include <fuerte/types.h>
@@ -46,6 +42,10 @@ class ClientFeature;
 
 namespace application_features {
 class ApplicationServer;
+}
+
+namespace fuzzer {
+class RequestFuzzer;
 }
 
 namespace httpclient {
@@ -139,12 +139,7 @@ class V8ClientConnection {
       std::unordered_map<std::string, std::string> const& headerFields,
       bool raw);
 
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
   uint32_t requestFuzz(fuzzer::RequestFuzzer& fuzzer);
-  static constexpr uint32_t _kFuzzClosedConnectionCode = 1000;
-  static constexpr uint32_t _kFuzzNoResponseCode = 1001;
-  static constexpr uint32_t _kFuzzNotConnected = 1002;
-#endif
 
   void initServer(v8::Isolate*, v8::Handle<v8::Context> context);
 

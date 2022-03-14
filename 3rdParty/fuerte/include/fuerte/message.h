@@ -197,7 +197,7 @@ class Request final : public Message {
 
   MessageType type() const override { return MessageType::Request; }
   MessageHeader const& messageHeader() const override { return header; }
-  void setFuzzReqHeader(std::string const& fuzzHeader) { _fuzzReqHeader = fuzzHeader; }
+  void setFuzzReqHeader(std::string fuzzHeader) { _fuzzReqHeader = std::move(fuzzHeader);}
   std::optional<std::string> getFuzzReqHeader() const { return _fuzzReqHeader; }
   bool getFuzzerReq() const noexcept { return _fuzzReqHeader.has_value(); }
 

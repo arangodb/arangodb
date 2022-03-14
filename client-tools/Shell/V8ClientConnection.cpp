@@ -42,6 +42,9 @@
 #include "Rest/GeneralResponse.h"
 #include "Rest/Version.h"
 #include "Shell/ClientFeature.h"
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+#include "Shell/RequestFuzzer.h"
+#endif
 #include "Shell/ShellConsoleFeature.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
@@ -79,6 +82,13 @@ std::string connectionIdentifier(fuerte::ConnectionBuilder& builder) {
          to_string(builder.authenticationType()) + "/" +
          to_string(builder.protocolType());
 }
+
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+static constexpr uint32_t kFuzzClosedConnectionCode = 1000;
+static constexpr uint32_t kFuzzNoResponseCode = 1001;
+static constexpr uint32_t kFuzzNotConnected = 1002;
+#endif
+
 }  // namespace
 
 V8ClientConnection::V8ClientConnection(ArangoshServer& server,
@@ -1011,9 +1021,9 @@ static void ClientConnection_httpFuzzRequests(
         "instance.");
   }
 
-  // arg0 = number of iterations, arg1 = number of requests, arg2 = seed for
+  // arg0 = number of requests, arg1 = number of iterations, arg2 = seed for
   // rand
-  uint32_t numReqs = 200;
+  uint32_t numReqs;
   std::optional<uint32_t> numIts;
   std::optional<uint32_t> seed;
   if (args.Length() > 0) {
@@ -1050,32 +1060,27 @@ static void ClientConnection_httpFuzzRequests(
   builder.openObject();
   builder.add("seed", velocypack::Value(fuzzer.getSeed()));
   builder.add("total-requests", velocypack::Value(numReqs));
-  if (fuzzReturnCodesCount.find(v8connection->_kFuzzClosedConnectionCode) !=
-      fuzzReturnCodesCount.end()) {
-    builder.add("Closed-connection",
-                velocypack::Value(fuzzReturnCodesCount.at(
-                    v8connection->_kFuzzClosedConnectionCode)));
+
+  if (auto it = fuzzReturnCodesCount.find(kFuzzClosedConnectionCode);
+      it != fuzzReturnCodesCount.end()) {
+    builder.add("Closed-connection", velocypack::Value(it->second));
   }
 
-  if (fuzzReturnCodesCount.find(v8connection->_kFuzzNoResponseCode) !=
-      fuzzReturnCodesCount.end()) {
-    builder.add("no response from server",
-                velocypack::Value(fuzzReturnCodesCount.at(
-                    v8connection->_kFuzzNoResponseCode)));
+  if (auto it = fuzzReturnCodesCount.find(kFuzzNoResponseCode);
+      it != fuzzReturnCodesCount.end()) {
+    builder.add("no response from server", velocypack::Value(it->second));
   }
 
-  if (fuzzReturnCodesCount.find(v8connection->_kFuzzNotConnected) !=
-      fuzzReturnCodesCount.end()) {
-    builder.add("not connected", velocypack::Value(fuzzReturnCodesCount.at(
-                                     v8connection->_kFuzzNotConnected)));
+  if (auto it = fuzzReturnCodesCount.find(kFuzzNotConnected);
+      it != fuzzReturnCodesCount.end()) {
+    builder.add("not connected", velocypack::Value(it->second));
   }
 
   builder.add(velocypack::Value("return-codes"));
   builder.openObject();
   for (auto const& [returnCode, count] : fuzzReturnCodesCount) {
-    if (returnCode != v8connection->_kFuzzClosedConnectionCode &&
-        returnCode != v8connection->_kFuzzNoResponseCode &&
-        returnCode != v8connection->_kFuzzNotConnected) {
+    if (returnCode != kFuzzClosedConnectionCode &&
+        returnCode != kFuzzNoResponseCode && returnCode != kFuzzNotConnected) {
       builder.add(std::to_string(returnCode), velocypack::Value(count));
     }
   }
@@ -2265,7 +2270,7 @@ void setResultMessage(v8::Isolate* isolate, v8::Local<v8::Context> context,
 uint32_t V8ClientConnection::requestFuzz(fuzzer::RequestFuzzer& fuzzer) {
   std::shared_ptr<fu::Connection> connection = acquireConnection();
   if (!connection || connection->state() == fu::Connection::State::Closed) {
-    return _kFuzzNotConnected;
+    return kFuzzNotConnected;
   }
 
   auto req = fuzzer.createRequest();
@@ -2279,12 +2284,12 @@ uint32_t V8ClientConnection::requestFuzz(fuzzer::RequestFuzzer& fuzzer) {
   }
 
   if (rc == fu::Error::ConnectionClosed) {
-    return _kFuzzClosedConnectionCode;
+    return kFuzzClosedConnectionCode;
   }
 
   // not complete
   if (!response) {
-    return _kFuzzNoResponseCode;
+    return kFuzzNoResponseCode;
   }
 
   TRI_ASSERT(response != nullptr);

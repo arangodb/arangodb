@@ -64,13 +64,13 @@ class RequestFuzzer {
 
  public:
   RequestFuzzer(std::optional<uint32_t> numIt, std::optional<uint32_t> seed)
-      : _numIterations(numIt.value_or(limitNumIterations)),
+      : _numIterations(numIt.value_or(defaultNumIterations)),
         _seed(seed.value_or(std::random_device()())),
         _randContext{_seed},
         _headerSplitInLines{},
         _keysAndValues{} {}
 
-  uint32_t getSeed() { return _seed; }
+  [[nodiscard]] uint32_t getSeed() const noexcept { return _seed; }
 
   std::unique_ptr<fuerte::Request> createRequest();
 
@@ -92,7 +92,7 @@ class RequestFuzzer {
 
   int32_t generateRandInt32();
 
-  static constexpr size_t limitNumIterations = 10;
+  static constexpr size_t defaultNumIterations = 10;
   uint32_t _numIterations;
   uint32_t _seed;
   RandContext _randContext;
@@ -105,67 +105,9 @@ class RequestFuzzer {
   static constexpr uint32_t kMaxDepth = 4;
   static constexpr uint32_t kObjNumMembers = 4;
   static constexpr uint32_t kArrayNumMembers = 4;
-  static constexpr char _alphaNumericChars[] =
-      "0123456789"
-      "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-      "abcdefghijklmnopqrstuvwxyz";
 
   uint32_t _recursionDepth = 0;
   std::vector<std::unordered_set<std::string>> _tempObjectKeys;
   std::unordered_set<std::string> _usedKeys;
-
-  static constexpr std::array<std::string_view, 12> _wordListForRoute = {
-      {"/_db", "/_admin", "/_api", "/_system", "/_cursor", "/version",
-       "/status", "/license", "/collection", "/database", "/current", "/log"}};
-
-  static constexpr std::array<std::string_view, 48> _wordListForKeys = {
-      {"Accept",
-       "",
-       "Accept-Charset",
-       "Accept-Encoding",
-       "Accept-Language",
-       "Accept-Ranges",
-       "Allow",
-       "Authorization",
-       "Cache-control",
-       "Connection",
-       "Content-encoding",
-       "Content-language",
-       "Content-location",
-       "Content-MD5",
-       "Content-range",
-       "Content-type",
-       "Date",
-       "ETag",
-       "Expect",
-       "Expires",
-       "From",
-       "Host",
-       "If-Match",
-       "If-modified-since",
-       "If-none-match",
-       "If-range",
-       "If-unmodified-since",
-       "Last-modified",
-       "Location",
-       "Max-forwards",
-       "Pragma",
-       "Proxy-authenticate",
-       "Proxy-authorization",
-       "Range",
-       "Referer",
-       "Retry-after",
-       "Server",
-       "TE",
-       "Trailer",
-       "Transfer-encoding",
-       "Upgrade",
-       "User-agent",
-       "Vary",
-       "Via",
-       "Warning",
-       "Www-authenticate",
-       "random"}};
 };
-}  // namespace fuzzer
-}  // namespace arangodb
+}  // namespace arangodb::fuzzer

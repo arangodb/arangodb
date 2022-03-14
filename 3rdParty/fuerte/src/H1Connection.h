@@ -94,7 +94,7 @@ class H1Connection final : public fuerte::GeneralConnection<ST, RequestItem> {
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
     if (req->getFuzzerReq()) {
       return std::make_unique<RequestItem>(
-          std::move(req), std::move(cb), req->getFuzzReqHeader().value_or(""));
+          std::move(req), std::move(cb), req->getFuzzReqHeader().value());
     } else {
       auto h = buildRequestHeader(*req);
       return std::make_unique<RequestItem>(std::move(req), std::move(cb),
