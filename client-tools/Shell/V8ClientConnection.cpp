@@ -1028,18 +1028,22 @@ static void ClientConnection_httpFuzzRequests(
 
   // arg0 = number of requests, arg1 = number of iterations, arg2 = seed for
   // rand
-  uint32_t numReqs = TRI_ObjectToUInt64(isolate, args[0], false);
-  uint32_t numIts = TRI_ObjectToUInt64(isolate, args[1], false);
+  uint64_t numReqs = TRI_ObjectToUInt64(isolate, args[0], true);
+  uint64_t numIts = TRI_ObjectToUInt64(isolate, args[1], true);
+
+  if (numIts > 256) {
+    TRI_V8_THROW_EXCEPTION_USAGE("<numIterations> is expected to be <= 256");
+  }
 
   std::optional<uint32_t> seed;
   if (args.Length() > 2) {
     if (!args[2]->IsUint32()) {
       TRI_V8_THROW_EXCEPTION_USAGE("<seed> must be an unsigned int.");
     }
-    seed = TRI_ObjectToUInt64(isolate, args[2], false);
+    seed = static_cast<uint32_t>(TRI_ObjectToUInt64(isolate, args[2], false));
   }
 
-  fuzzer::RequestFuzzer fuzzer(numIts, seed);
+  fuzzer::RequestFuzzer fuzzer(static_cast<uint32_t>(numIts), seed);
   if (!seed.has_value()) {
     // log the random seed value for later reproducibility.
     // log level must be warning here because log levels < WARN are suppressed
@@ -1050,7 +1054,7 @@ static void ClientConnection_httpFuzzRequests(
   }
   std::unordered_map<uint32_t, uint32_t> fuzzReturnCodesCount;
 
-  for (uint32_t i = 0; i < numReqs; ++i) {
+  for (uint64_t i = 0; i < numReqs; ++i) {
     uint32_t returnCode = v8connection->requestFuzz(fuzzer);
     fuzzReturnCodesCount[returnCode]++;
   }
