@@ -115,7 +115,7 @@ std::unique_ptr<fuerte::Request> RequestFuzzer::createRequest() {
                    bodyAsStr.length());
   }
   header.append("\r\n");
-  req->setFuzzReqHeader(header);
+  req->setFuzzReqHeader(std::move(header));
 
   return req;  // for not preventing copy elision
 }
