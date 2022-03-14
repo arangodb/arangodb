@@ -202,12 +202,6 @@ struct LogTarget {
 
   std::optional<ParticipantId> leader;
 
-  struct Properties {
-    void toVelocyPack(velocypack::Builder&) const;
-    static auto fromVelocyPack(velocypack::Slice) -> Properties;
-  };
-  Properties properties;
-
   struct Supervision {
     std::size_t maxActionsTraceLength{0};
     auto toVelocyPack(velocypack::Builder&) const -> void;

@@ -372,21 +372,11 @@ void LogTarget::toVelocyPack(velocypack::Builder& builder) const {
   }
 
   builder.add(VPackValue("properties"));
-  properties.toVelocyPack(builder);
 
   if (supervision.has_value()) {
     builder.add(VPackValue("supervision"));
     supervision->toVelocyPack(builder);
   }
-}
-
-void LogTarget::Properties::toVelocyPack(velocypack::Builder& builder) const {
-  VPackObjectBuilder ob(&builder);
-}
-
-auto LogTarget::Properties::fromVelocyPack(velocypack::Slice s)
-    -> LogTarget::Properties {
-  return {};
 }
 
 auto LogTarget::Supervision::fromVelocyPack(velocypack::Slice s)
@@ -421,10 +411,6 @@ LogTarget::LogTarget(from_velocypack_t, VPackSlice slice) {
       participants.emplace(pid.copyString(),
                            ParticipantFlags::fromVelocyPack(flags));
     }
-  }
-
-  if (auto propSlice = slice.get("properties"); !propSlice.isNone()) {
-    properties = Properties::fromVelocyPack(propSlice);
   }
 
   if (auto supSlice = slice.get("supervision"); !supSlice.isNone()) {
