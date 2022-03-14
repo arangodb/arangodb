@@ -216,6 +216,7 @@ set(ARANGODB_TESTS_SOURCES
   Cache/Table.cpp
   Cache/TransactionalBucket.cpp
   Cache/TransactionalCache.cpp
+  Cache/TransactionalCacheVPackKeyHasher.cpp
   Cache/TransactionalStore.cpp
   Cache/TransactionManager.cpp
   Cache/TransactionsWithBackingStore.cpp
