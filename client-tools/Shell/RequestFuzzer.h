@@ -70,7 +70,7 @@ class RequestFuzzer {
         _headerSplitInLines{},
         _keysAndValues{} {}
 
-  uint32_t getSeed() { return _seed; }
+  uint32_t getSeed() const noexcept { return _seed; }
 
   std::unique_ptr<fuerte::Request> createRequest();
 
