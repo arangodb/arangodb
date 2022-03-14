@@ -48,6 +48,19 @@ struct PrototypeStateMachineTest : test::ReplicatedLogTest {
       std::make_shared<ReplicatedStateFeature>();
 };
 
+TEST_F(PrototypeStateMachineTest, prorotype_core_wait_for) {
+  auto core = PrototypeCore();
+  core.store = core.store.set("a", "b");
+  core.lastAppliedIndex = LogIndex{1};
+  auto f = core.waitForApplied(LogIndex{1});
+  ASSERT_TRUE(f.isReady());
+  f = core.waitForApplied(LogIndex{3});
+  ASSERT_FALSE(f.isReady());
+  core.lastAppliedIndex = LogIndex{3};
+  core.resolvePromises(LogIndex{3});
+  ASSERT_TRUE(f.isReady());
+}
+
 TEST_F(PrototypeStateMachineTest, simple_operations) {
   auto followerLog = makeReplicatedLog(LogId{1});
   auto follower = followerLog->becomeFollower("follower", LogTerm{1}, "leader");
@@ -145,21 +158,66 @@ TEST_F(PrototypeStateMachineTest, simple_operations) {
     ASSERT_EQ(followerState->get("foo"), "bar");
     ASSERT_EQ(followerState->get("foo3"), "bar3");
   }
+}
+
+TEST_F(PrototypeStateMachineTest, snapshot_transfer) {
+  auto followerLog = makeReplicatedLog(LogId{1});
+  auto follower = followerLog->becomeFollower("follower", LogTerm{1}, "leader");
+
+  auto leaderLog = makeReplicatedLog(LogId{1});
+  auto leader = leaderLog->becomeLeader("leader", LogTerm{1}, {follower}, 2);
+
+  leader->triggerAsyncReplication();
+
+  auto leaderReplicatedState =
+      std::dynamic_pointer_cast<ReplicatedState<PrototypeState>>(
+          feature->createReplicatedState("prototype-state", leaderLog));
+  ASSERT_NE(leaderReplicatedState, nullptr);
+  leaderReplicatedState->start(
+      std::make_unique<ReplicatedStateToken>(StateGeneration{1}));
+  follower->runAllAsyncAppendEntries();
+
+  auto followerReplicatedState =
+      std::dynamic_pointer_cast<ReplicatedState<PrototypeState>>(
+          feature->createReplicatedState("prototype-state", followerLog));
+  ASSERT_NE(leaderReplicatedState, nullptr);
+  followerReplicatedState->start(
+      std::make_unique<ReplicatedStateToken>(StateGeneration{1}));
+
+  auto leaderState = leaderReplicatedState->getLeader();
+  auto followerState = followerReplicatedState->getFollower();
+  ASSERT_NE(leaderState, nullptr);
+  ASSERT_NE(followerState, nullptr);
 
   {
-    auto result = leaderState->getSnapshot(LogIndex{7});
+    auto result = leaderState->getSnapshot(LogIndex{1});
     ASSERT_FALSE(result.isReady());
-    leaderState->set({{"foo4", "bar4"}});
+
+    auto entries = std::unordered_map<std::string, std::string>{
+        {"foo1", "bar1"}, {"foo2", "bar2"}, {"foo3", "bar3"}};
+    leaderState->set(entries);
     follower->runAllAsyncAppendEntries();
-    ASSERT_FALSE(result.isReady());
-    leaderState->set({{"foo5", "bar5"}});
-    follower->runAllAsyncAppendEntries();
+
     ASSERT_TRUE(result.isReady());
     auto map = result.get().get();
+    ASSERT_EQ(map, entries);
+  }
+
+  {
+    auto result = leaderState->getSnapshot(LogIndex{4});
+    ASSERT_FALSE(result.isReady());
+
+    auto fut1 = leaderState->set({{"foo4", "bar4"}});
+    auto fut2 = leaderState->remove("foo4");
+    follower->runAllAsyncAppendEntries();
+    fut1.wait();
+    fut2.wait();
+
+    ASSERT_TRUE(result.isReady());
+    auto map = result.get().get();
+
     auto expected = std::unordered_map<std::string, std::string>{
-        {"foo", "bar"}, {"foo3", "bar3"}, {"foo4", "bar4"}, {"foo5", "bar5"}};
-    result = leaderState->getSnapshot(LogIndex{7});
-    map = result.get().get();
+        {"foo1", "bar1"}, {"foo2", "bar2"}, {"foo3", "bar3"}};
     ASSERT_EQ(map, expected);
   }
 }

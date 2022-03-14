@@ -54,7 +54,31 @@ void PrototypeCore::applyEntries(std::unique_ptr<EntryIterator> ptr) {
                    },
                },
                logEntry.operation);
+    lastAppliedIndex = entry->first;
   }
+}
+
+/*
+ * Resolve waitForApplied promises up to and including appliedIndex.
+ */
+void PrototypeCore::resolvePromises(LogIndex appliedIndex) {
+  TRI_ASSERT(appliedIndex <= lastAppliedIndex);
+  auto const end = waitForAppliedQueue.upper_bound(appliedIndex);
+  for (auto it = waitForAppliedQueue.begin(); it != end; ++it) {
+    it->second.setValue();
+  }
+  waitForAppliedQueue.erase(waitForAppliedQueue.begin(), end);
+}
+
+auto PrototypeCore::waitForApplied(LogIndex index)
+    -> futures::Future<futures::Unit> {
+  if (lastAppliedIndex >= index) {
+    return futures::Future<futures::Unit>{std::in_place};
+  }
+  auto it = waitForAppliedQueue.emplace(index, WaitForAppliedPromise{});
+  auto f = it->second.getFuture();
+  TRI_ASSERT(f.valid());
+  return f;
 }
 
 PrototypeLeaderState::PrototypeLeaderState(std::unique_ptr<PrototypeCore> core)
@@ -99,6 +123,8 @@ auto PrototypeLeaderState::set(
               for (auto const& [key, value] : entries) {
                 core->store = core->store.set(key, value);
               }
+              core->lastAppliedIndex = idx;
+              core->resolvePromises(idx);
               return idx;
             });
       });
@@ -119,6 +145,8 @@ auto PrototypeLeaderState::remove(std::string key)
             return ResultT<LogIndex>::error(TRI_ERROR_CLUSTER_NOT_LEADER);
           }
           core->store = core->store.erase(key);
+          core->lastAppliedIndex = idx;
+          core->resolvePromises(idx);
           return idx;
         });
   });
@@ -143,6 +171,8 @@ auto PrototypeLeaderState::remove(std::vector<std::string> keys)
               for (auto it{entries.begin()}; it != entries.end(); ++it) {
                 core->store = core->store.erase(*it);
               }
+              core->lastAppliedIndex = idx;
+              core->resolvePromises(idx);
               return idx;
             });
       });
@@ -163,21 +193,29 @@ auto PrototypeLeaderState::get(std::string key) -> std::optional<std::string> {
 
 auto PrototypeLeaderState::getSnapshot(LogIndex waitForIndex)
     -> futures::Future<ResultT<std::unordered_map<std::string, std::string>>> {
-  auto stream = getStream();
-  return stream->waitFor(waitForIndex)
-      .thenValue([self = shared_from_this()](auto&& res) {
-        return self->guardedData.doUnderLock(
-            [](auto& core)
-                -> ResultT<std::unordered_map<std::string, std::string>> {
-              if (!core) {
-                return ResultT<std::unordered_map<std::string, std::string>>::
-                    error(TRI_ERROR_CLUSTER_NOT_LEADER);
-              }
-              std::unordered_map<std::string, std::string> result{
-                  core->store.begin(), core->store.end()};
-              return result;
-            });
-      });
+  return guardedData.doUnderLock([waitForIndex,
+                                  self = shared_from_this()](auto& core)
+                                     -> futures::Future<
+                                         ResultT<std::unordered_map<
+                                             std::string, std::string>>> {
+    if (!core) {
+      return ResultT<std::unordered_map<std::string, std::string>>::error(
+          TRI_ERROR_CLUSTER_NOT_LEADER);
+    }
+    return core->waitForApplied(waitForIndex)
+        .thenValue([&core, self](auto&& r)
+                       -> ResultT<
+                           std::unordered_map<std::string, std::string>> {
+          if (!core) {
+            return ResultT<std::unordered_map<std::string, std::string>>::error(
+                TRI_ERROR_CLUSTER_NOT_LEADER);
+          }
+          std::unordered_map<std::string, std::string> result{
+              core->store.begin(), core->store.end()};
+          return ResultT<std::unordered_map<std::string, std::string>>::success(
+              result);
+        });
+  });
 }
 
 PrototypeFollowerState::PrototypeFollowerState(

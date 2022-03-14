@@ -102,10 +102,18 @@ struct PrototypeLogEntry {
 
 struct PrototypeCore {
   using StorageType = ::immer::map<std::string, std::string>;
+  using WaitForAppliedPromise = futures::Promise<futures::Unit>;
+  using WaitForAppliedQueue = std::multimap<LogIndex, WaitForAppliedPromise>;
+
   StorageType store;
+  WaitForAppliedQueue waitForAppliedQueue;
+  LogIndex lastAppliedIndex;
 
   template<typename EntryIterator>
   void applyEntries(std::unique_ptr<EntryIterator> ptr);
+
+  void resolvePromises(LogIndex index);
+  auto waitForApplied(LogIndex index) -> futures::Future<futures::Unit>;
 };
 
 struct PrototypeLeaderState
@@ -178,6 +186,8 @@ auto PrototypeLeaderState::set(Iterator begin, Iterator end)
                 core->store = core->store.set(it->first, it->second);
               }
               return idx;
+              core->lastAppliedIndex = idx;
+              core->resolvePromises(idx);
             });
       });
 }
@@ -202,6 +212,8 @@ auto PrototypeLeaderState::remove(Iterator begin, Iterator end)
             core->store = core->store.erase(*it);
           }
           return idx;
+          core->lastAppliedIndex = idx;
+          core->resolvePromises(idx);
         });
   });
 }
