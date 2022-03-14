@@ -25,7 +25,7 @@
 #include "Basics/ResourceUsage.h"
 #include "Basics/ResultT.h"
 #include "Basics/StringUtils.h"
-#include "Graph/Providers/BaseStep.h"
+#include "Graph/Steps/BaseStep.h"
 #include "Graph/Queues/WeightedQueue.h"
 
 #include "gtest/gtest.h"

@@ -28,7 +28,7 @@
 #include "Graph/Cursors/RefactoredSingleServerEdgeCursor.h"
 #include "Graph/EdgeDocumentToken.h"
 #include "Graph/Providers/BaseProviderOptions.h"
-#include "Graph/Providers/BaseStep.h"
+#include "Graph/Steps/BaseStep.h"
 #include "Graph/Providers/TypeAliases.h"
 
 #include "Aql/TraversalStats.h"

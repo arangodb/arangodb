@@ -32,7 +32,7 @@
 #include "Basics/StringUtils.h"
 #include "Graph/PathManagement/PathStore.cpp"
 #include "Graph/PathManagement/PathValidator.cpp"
-#include "Graph/Providers/BaseStep.h"
+#include "Graph/Steps/BaseStep.h"
 #include "Graph/Types/UniquenessLevel.h"
 
 #include "./MockGraph.h"

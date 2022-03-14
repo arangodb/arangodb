@@ -34,7 +34,7 @@
 #include "Basics/voc-errors.h"
 #include "Transaction/Methods.h"
 
-#include "Graph/Providers/BaseStep.h"
+#include "Graph/Steps/BaseStep.h"
 
 #include <velocypack/HashedStringRef.h>
 

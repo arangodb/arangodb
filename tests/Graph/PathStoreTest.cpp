@@ -27,7 +27,7 @@
 #include "Basics/ResourceUsage.h"
 #include "Basics/StringUtils.h"
 #include "Graph/PathManagement/PathStore.cpp"
-#include "Graph/Providers/BaseStep.h"
+#include "Graph/Steps/BaseStep.h"
 
 #include <ostream>
 
