@@ -554,7 +554,7 @@ TEST_F(LogSupervisionTest, test_dictate_leader_force_first) {
   auto acceptableParticipants =
       getParticipantsAcceptableAsLeaders("A", participants);
 
-  ASSERT_EQ(action._generation, 1);
+  ASSERT_EQ(action._expectedGeneration, 1);
   ASSERT_NE(std::find(std::begin(acceptableParticipants),
                       std::end(acceptableParticipants), action._participant),
             std::end(acceptableParticipants));

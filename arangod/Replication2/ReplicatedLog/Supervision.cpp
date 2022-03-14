@@ -438,14 +438,25 @@ auto checkReplicatedLog(Log const& log, ParticipantsHealth const& health)
   // remove them
   if (auto maybeParticipant = getRemovedParticipant(
           target.participants, plan.participantsConfig.participants)) {
-    auto const& [participantId, flags] = *maybeParticipant;
+    auto const& [participantId, planFlags] = *maybeParticipant;
     // The removed participant is currently the leader
     if (participantId == leader.serverId) {
-      return EvictLeaderAction(participantId, flags, currentTerm,
+      return EvictLeaderAction(participantId, planFlags, currentTerm,
                                plan.participantsConfig.generation);
-    } else {
+    } else if (not planFlags.allowedInQuorum and
+               current.leader->committedParticipantsConfig->generation ==
+                   plan.participantsConfig.generation) {
       return RemoveParticipantFromPlanAction(
           participantId, plan.participantsConfig.generation);
+    } else if (planFlags.allowedInQuorum) {
+      // make this server not allowed in quorum. If the generation is committed
+      auto newFlags = planFlags;
+      newFlags.allowedInQuorum = false;
+      return UpdateParticipantFlagsAction(participantId, newFlags,
+                                          plan.participantsConfig.generation);
+    } else {
+      // still waiting
+      return EmptyAction("Waiting for participants config to be committed");
     }
   }
 
