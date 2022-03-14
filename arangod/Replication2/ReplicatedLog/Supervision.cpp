@@ -394,6 +394,13 @@ auto getRemovedParticipant(ParticipantsFlagsMap const& targetParticipants,
 // A ReplicatedLog has a Target, a Plan, and a Current subtree in the agency,
 // and these three subtrees are passed into checkReplicatedLog in the form
 // of C++ structs.
+//
+// The return value of this function is an Action, where the type Action is a
+// std::variant of all possible actions that we can perform as a result of
+// checkReplicatedLog.
+//
+// These actions are executes by using std::visit via an Executor struct that
+// contains the necessary context.
 auto checkReplicatedLog(Log const& log, ParticipantsHealth const& health)
     -> Action {
   auto const& target = log.target;
