@@ -55,7 +55,7 @@ RocksDBTransactionCollection::RocksDBTransactionCollection(
       _exclusiveWrites(trx->vocbase()
                            .server()
                            .getFeature<arangodb::RocksDBOptionFeature>()
-                           ._exclusiveWrites) {}
+                           .exclusiveWrites()) {}
 
 RocksDBTransactionCollection::~RocksDBTransactionCollection() = default;
 

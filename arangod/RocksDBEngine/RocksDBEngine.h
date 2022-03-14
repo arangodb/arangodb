@@ -39,6 +39,7 @@
 #include "Enterprise/RocksDBEngine/RocksDBEngineEE.h"
 #endif
 
+#include <rocksdb/db.h>
 #include <rocksdb/options.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -471,6 +472,9 @@ class RocksDBEngine final : public StorageEngine {
   static constexpr std::string_view kEngineName = "rocksdb";
 
  private:
+  bool checkExistingDB(
+      std::vector<rocksdb::ColumnFamilyDescriptor> const& cfFamilies);
+
   /// single rocksdb database used in this storage engine
   rocksdb::TransactionDB* _db;
   /// default read options
