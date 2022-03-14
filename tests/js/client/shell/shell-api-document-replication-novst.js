@@ -31,7 +31,7 @@
 const internal = require('internal');
 const sleep = internal.sleep;
 const forceJson = internal.options().hasOwnProperty('server.force-json') && internal.options()['server.force-json'];
-const contentType = forceJson ? "application/json; charset=utf-8" :  "application/x-velocypack";
+const contentType = forceJson ? "application/json" :  "application/x-velocypack";
 const jsunity = require("jsunity");
 
 
@@ -52,7 +52,7 @@ function import_handlingSuite () {
           "{ \"type\" : 2300, \"data\" : { \"_key\" : \"1234xxx2\",\"_rev\":\"_W2GDlX--_k\" , \"foo\" : \"bar1\" }}";
 
       try {
-        let doc = arango.PUT_RAW(cmd, body, { 'content-type': "application/json; charset=utf-8"} );
+        let doc = arango.PUT_RAW(cmd, body, { 'content-type': "application/json"} );
 
         assertEqual(doc.code, 200);
 
@@ -72,7 +72,7 @@ function import_handlingSuite () {
           "{ \"type\" : 2300, \"data\" : { \"_key\" : \"1234xxx3\",\"_rev\":\"_W2GDlX--_l\" , \"foo\" : \"duplicate\", \"foo\" : \"bar\xff\" }}";
 
       try {
-        let doc = arango.PUT_RAW(cmd, body, { 'content-type': "application/json; charset=utf-8"} );
+        let doc = arango.PUT_RAW(cmd, body, { 'content-type': "application/json"} );
 
         assertEqual(doc.code, 400, doc);
         assertTrue(doc.parsedBody['error']);

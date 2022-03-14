@@ -34,7 +34,7 @@ const sleep = internal.sleep;
 let api = "/_api/cursor";
 let reId = /^\d+$/;
 const forceJson = internal.options().hasOwnProperty('server.force-json') && internal.options()['server.force-json'];
-const contentType = forceJson ? "application/json; charset=utf-8" :  "application/x-velocypack";
+const contentType = forceJson ? "application/json" :  "application/x-velocypack";
 
 ////////////////////////////////////////////////////////////////////////////////;
 // error handling;
