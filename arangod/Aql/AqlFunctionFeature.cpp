@@ -498,6 +498,9 @@ void AqlFunctionFeature::addMiscFunctions() {
                            FF::CanRunOnDBServerOneShard),
        &Functions::CallGreenspun});
 
+  add({"CALL_WASM", ".,.,.,.", Function::makeFlags(FF::CanReadDocuments),
+       &Functions::CallWasm});
+
   // special flags:
   // deterministic, not cacheable. only on coordinator. not in analyzers
   add({"VERSION", "", Function::makeFlags(FF::Deterministic),

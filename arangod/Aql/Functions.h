@@ -545,6 +545,9 @@ struct Functions {
   static AqlValue CallGreenspun(arangodb::aql::ExpressionContext*,
                                 AstNode const&, VPackFunctionParameters const&);
 
+  static AqlValue CallWasm(arangodb::aql::ExpressionContext*, AstNode const&,
+                           VPackFunctionParameters const&);
+
   static AqlValue MakeDistributeInput(arangodb::aql::ExpressionContext*,
                                       AstNode const&,
                                       VPackFunctionParameters const&);

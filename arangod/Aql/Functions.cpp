@@ -80,6 +80,9 @@
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Validators.h"
 
+#include "WasmServer/Methods.h"
+#include "WasmServer/WasmCommon.h"
+#include "WasmServer/WasmServerFeature.h"
 #include "analysis/token_attributes.hpp"
 #include "utils/levenshtein_utils.hpp"
 #include "utils/ngram_match_utils.hpp"
@@ -9013,6 +9016,52 @@ AqlValue Functions::CallGreenspun(
   } else {
     auto msg = result.error().toString();
     expressionContext->registerError(TRI_ERROR_AIR_EXECUTION_ERROR, msg.data());
+    return AqlValue(AqlValueHintNull());
+  }
+}
+
+AqlValue Functions::CallWasm(ExpressionContext* expressionContext,
+                             AstNode const&,
+                             VPackFunctionParameters const& parameters) {
+  static char const* AFN = "WASM_RESULT";
+
+  AqlValue const& moduleName = extractFunctionParameterValue(parameters, 0);
+  if (!moduleName.isString()) {
+    THROW_ARANGO_EXCEPTION_PARAMS(
+        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, AFN);
+  }
+  AqlValue const& functionName = extractFunctionParameterValue(parameters, 1);
+  if (!functionName.isString()) {
+    THROW_ARANGO_EXCEPTION_PARAMS(
+        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, AFN);
+  }
+  AqlValue const& functionParameter1 =
+      extractFunctionParameterValue(parameters, 2);
+  AqlValue const& functionParameter2 =
+      extractFunctionParameterValue(parameters, 3);
+
+  auto& server = expressionContext->trx().vocbase().server();
+  if (!server.hasFeature<WasmServerFeature>()) {
+    registerWarning(expressionContext, AFN, TRI_ERROR_FAILED);
+    return AqlValue(AqlValueHintEmptyArray());
+  }
+  WasmServerFeature& feature = server.getFeature<WasmServerFeature>();
+  auto result = feature.executeFunction(
+      moduleName.slice().copyString(), functionName.slice().copyString(),
+      wasm::FunctionParameters{
+          static_cast<uint64_t>(functionParameter1.toInt64()),
+          static_cast<uint64_t>(functionParameter2.toInt64())});
+
+  if (result.has_value()) {
+    VPackBuilder builder;
+    {
+      VPackObjectBuilder ob(&builder);
+      builder.add("result", VPackValue(result.value()));
+    }
+    return AqlValue(builder.slice());
+  } else {
+    auto msg = "Cannot find function";
+    expressionContext->registerError(TRI_ERROR_AIR_EXECUTION_ERROR, msg);
     return AqlValue(AqlValueHintNull());
   }
 }
