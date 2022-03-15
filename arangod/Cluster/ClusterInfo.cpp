@@ -4744,6 +4744,9 @@ Result ClusterInfo::ensureIndexCoordinatorInner(
 
       {
         CONDITION_LOCKER(locker, agencyCallback->_cv);
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+        agencyCallback->refetchAndUpdate(false, true);  // Force a check
+#endif
         agencyCallback->executeByCallbackOrTimeout(interval);
       }
     }
@@ -4985,6 +4988,9 @@ Result ClusterInfo::dropIndexCoordinatorInner(std::string const& databaseName,
 
       {
         CONDITION_LOCKER(locker, agencyCallback->_cv);
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+        agencyCallback->refetchAndUpdate(false, true);  // Force a check
+#endif
         agencyCallback->executeByCallbackOrTimeout(interval);
       }
 
