@@ -7,7 +7,12 @@ import React, {
   useMemo,
   useState
 } from "react";
-import { useShow, useViewName } from "../../Contexts/LinkContext";
+import {
+  useShow,
+  useViewName,
+  useUpdateField,
+  useShowUpdate
+} from "../../Contexts/LinkContext";
 import { chain, isEmpty, without } from "lodash";
 import { Cell, Grid } from "../../../../components/pure-css/grid";
 import Checkbox from "../../../../components/pure-css/form/Checkbox";
@@ -49,12 +54,15 @@ const LinkPropertiesInput = ({
   const [fieldName, setFieldName] = useState<string>();
   const [childBasePath, setBasePath] = useState("");
   const show = useShow();
+  const setShow = useShowUpdate();
   const view = useViewName();
+  const setCurrentField = useUpdateField();
 
   const handleShowField = (field: string, basePath: string) => {
     setFieldName(field);
     setBasePath(basePath);
-    // setShow("ViewField");
+    setShow("ViewField");
+    setCurrentField({ field: field, basePath: basePath, fields: fields });
   };
 
   const getLink = (str: string) => {

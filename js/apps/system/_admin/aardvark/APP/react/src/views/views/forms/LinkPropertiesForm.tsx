@@ -7,7 +7,8 @@ import useSWR from "swr";
 import { getApiRouteForCurrentDB } from "../../../utils/arangoClient";
 import NewLink from "../Components/NewLink";
 import LinkView from "../Components/LinkView";
-import { useShow, useShowUpdate } from "../Contexts/LinkContext";
+import { useShow, useShowUpdate, useField } from "../Contexts/LinkContext";
+import FieldView from "../Components/FieldView";
 
 const LinkPropertiesForm = ({
   formState,
@@ -26,6 +27,7 @@ const LinkPropertiesForm = ({
   const [link, setLink] = useState<string>();
   const show = useShow();
   const setShow = useShowUpdate();
+  const setField = useField();
 
   useEffect(() => {
     if (data) {
@@ -49,6 +51,20 @@ const LinkPropertiesForm = ({
     setCollection(value);
   };
 
+  const getLink = (str: string) => {
+    let formatedStr;
+    if (str !== "") {
+      const toReturn = str.split("[")[1].replace("]", "");
+      if (toReturn.includes(".")) {
+        formatedStr = toReturn.split(".")[0];
+      } else {
+        formatedStr = toReturn;
+      }
+    }
+    return formatedStr;
+  };
+
+  const handleShowField = () => {};
   const addLink = () => {
     dispatch({
       type: "setField",
@@ -101,7 +117,20 @@ const LinkPropertiesForm = ({
         />
       )}
 
-      {/* {show === "ViewField" && <h4>Field shown</h4>} */}
+      {show === "ViewField" && setField !== null && (
+        <FieldView
+          view={view}
+          fields={setField.fields}
+          disabled={disabled}
+          dispatch={
+            (dispatch as unknown) as Dispatch<DispatchArgs<LinkProperties>>
+          }
+          basePath={setField.basePath}
+          viewField={handleShowField}
+          fieldName={setField.field}
+          link={getLink(setField.basePath)}
+        />
+      )}
       {/* {map(links, (properties, coll) => {
           return properties ? (
             <tr key={coll} style={{ borderBottom: "1px  solid #DDD" }}>
