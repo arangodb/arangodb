@@ -7,7 +7,7 @@ import React, {
   useMemo,
   useState
 } from "react";
-import { useShow } from "../../Contexts/LinkContext";
+import { useShow, useViewName } from "../../Contexts/LinkContext";
 import { chain, isEmpty, without } from "lodash";
 import { Cell, Grid } from "../../../../components/pure-css/grid";
 import Checkbox from "../../../../components/pure-css/form/Checkbox";
@@ -31,8 +31,7 @@ const LinkPropertiesInput = ({
   formState,
   dispatch,
   disabled,
-  basePath,
-  view
+  basePath
 }: LinkPropertiesInputProps) => {
   const [field, setField, addDisabled, fields] = useLinkState(
     formState,
@@ -50,11 +49,25 @@ const LinkPropertiesInput = ({
   const [fieldName, setFieldName] = useState<string>();
   const [childBasePath, setBasePath] = useState("");
   const show = useShow();
+  const view = useViewName();
 
   const handleShowField = (field: string, basePath: string) => {
     setFieldName(field);
     setBasePath(basePath);
     // setShow("ViewField");
+  };
+
+  const getLink = (str: string) => {
+    let formatedStr;
+    if (str !== "") {
+      const toReturn = str.split("[")[1].replace("]", "");
+      if (toReturn.includes(".")) {
+        formatedStr = toReturn.split(".")[0];
+      } else {
+        formatedStr = toReturn;
+      }
+    }
+    return formatedStr;
   };
 
   useEffect(() => {
@@ -301,7 +314,7 @@ const LinkPropertiesInput = ({
             basePath={childBasePath}
             viewField={handleShowField}
             fieldName={fieldName}
-            link={fieldName}
+            link={getLink(childBasePath)}
           />
         )}
       </Cell>

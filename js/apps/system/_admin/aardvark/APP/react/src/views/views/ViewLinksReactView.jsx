@@ -12,7 +12,7 @@ import { buildSubNav, postProcessor, useView, useCollection } from "./helpers";
 import { ArangoTable, ArangoTH, ArangoTD } from "../../components/arango/table";
 import LinkList from "./Components/LinkList";
 import NewList from "./Components/NewLink";
-import { useShow, useShowUpdate } from "./Contexts/LinkContext";
+import { useShow, useShowUpdate, useUpdateView } from "./Contexts/LinkContext";
 const ViewLinksReactView = ({ name }) => {
   const initialState = useRef({
     formState: { name },
@@ -28,6 +28,8 @@ const ViewLinksReactView = ({ name }) => {
   const [isAdminUser, setIsAdminUser] = useState(false);
   const show = useShow();
   const updateShow = useShowUpdate();
+  const updateView = useUpdateView();
+  updateView(name);
 
   useEffect(() => {
     initialState.current.formCache = cloneDeep(view);

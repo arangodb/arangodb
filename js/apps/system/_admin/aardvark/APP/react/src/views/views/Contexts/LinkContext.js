@@ -4,8 +4,8 @@ const LinkContext = React.createContext();
 const ShowContext = React.createContext();
 const FieldContext = React.createContext();
 const FieldUpdateContext = React.createContext();
-const PropertiesContext = React.createContext();
-const SetPropertiesContext = React.createContext();
+const ViewContext = React.createContext();
+const UpdateViewContext = React.createContext();
 
 export function useShow() {
   return useContext(LinkContext);
@@ -22,13 +22,16 @@ export const useUpdateField = () => {
   return useContext(FieldUpdateContext);
 }
 
-export const useProperties = () => {
-  return useContext(PropertiesContext);
+export const useViewName = () => {
+  return useContext(ViewContext);
+}
+export const useUpdateView = () => {
+  return useContext(UpdateViewContext);
 }
 export function LinkProvider({ children }) {
   const [show, setShow] = useState("LinkList");
   const [field, setShowField] = useState({});
-  const [properties, setProperties] = useState({});
+  const [view, setView] = useState("");
 
   const handleShowState = (str) => {
     setShow(str);
@@ -38,19 +41,19 @@ export function LinkProvider({ children }) {
     setShowField(f);
   }
 
-  const handleProperties = (p) => {
-    setProperties(p)
+  const handleView = (v) => {
+    setView(v)
   }
   return (
     <LinkContext.Provider value={show}>
       <ShowContext.Provider value={handleShowState}>
         <FieldContext.Provider value={field}>
           <FieldUpdateContext.Provider value={handleShowField}>
-            <PropertiesContext.Provider value={properties}>
-              <SetPropertiesContext.Provider value={handleProperties}>
+            <ViewContext.Provider value={view}>
+              <UpdateViewContext.Provider value={handleView}>
                 {children}
-              </SetPropertiesContext.Provider>
-            </PropertiesContext.Provider>
+              </UpdateViewContext.Provider>
+            </ViewContext.Provider>
           </FieldUpdateContext.Provider>
         </FieldContext.Provider>
       </ShowContext.Provider>
