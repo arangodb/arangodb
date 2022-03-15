@@ -4,8 +4,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, reference optimizer
 ///
-/// @file
-///
 /// DISCLAIMER
 ///
 /// Copyright 2010-2012 triagens GmbH, Cologne, Germany
@@ -28,49 +26,43 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require("jsunity");
-var internal = require("internal");
-var helper = require("@arangodb/aql-helper");
-var getQueryResults = helper.getQueryResults;
+const jsunity = require("jsunity");
+const internal = require("internal");
+const helper = require("@arangodb/aql-helper");
+const getQueryResults = helper.getQueryResults;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
 function ahuacatlQueryOptimizerRefTestSuite () {
-  var users = null;
-  var cn = "UnitTestsAhuacatlOptimizerRef";
+  const cn = "UnitTestsAhuacatlOptimizerRef";
+  let users = null;
   
-  var explain = function (query, params) {
-    return helper.getCompactPlan(AQL_EXPLAIN(query, params, { optimizer: { rules: [ "-all", "+use-indexes" ] } })).map(function(node) { return node.type; });
+  let explain = function (query, params) {
+    return helper.removeClusterNodes(helper.getCompactPlan(AQL_EXPLAIN(query, params, { optimizer: { rules: [ "-all", "+use-indexes" ] } })).map(function(node) { return node.type; }));
   };
 
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
-
-    setUp : function () {
+    setUpAll : function () {
       internal.db._drop(cn);
       users = internal.db._create(cn);
-      users.save({ "id" : 100, "name" : "John", "age" : 37, "active" : true, "gender" : "m" });
-      users.save({ "id" : 101, "name" : "Fred", "age" : 36, "active" : true, "gender" : "m" });
-      users.save({ "id" : 102, "name" : "Jacob", "age" : 35, "active" : false, "gender" : "m" });
-      users.save({ "id" : 103, "name" : "Ethan", "age" : 34, "active" : false, "gender" : "m" });
-      users.save({ "id" : 104, "name" : "Michael", "age" : 33, "active" : true, "gender" : "m" });
-      users.save({ "id" : 105, "name" : "Alexander", "age" : 32, "active" : true, "gender" : "m" });
-      users.save({ "id" : 106, "name" : "Daniel", "age" : 31, "active" : true, "gender" : "m" });
-      users.save({ "id" : 107, "name" : "Anthony", "age" : 30, "active" : true, "gender" : "m" });
-      users.save({ "id" : 108, "name" : "Jim", "age" : 29, "active" : true, "gender" : "m" });
-      users.save({ "id" : 109, "name" : "Diego", "age" : 28, "active" : true, "gender" : "m" });
+      users.insert([
+        { "id" : 100, "name" : "John", "age" : 37, "active" : true, "gender" : "m" },
+        { "id" : 101, "name" : "Fred", "age" : 36, "active" : true, "gender" : "m" },
+        { "id" : 102, "name" : "Jacob", "age" : 35, "active" : false, "gender" : "m" },
+        { "id" : 103, "name" : "Ethan", "age" : 34, "active" : false, "gender" : "m" },
+        { "id" : 104, "name" : "Michael", "age" : 33, "active" : true, "gender" : "m" },
+        { "id" : 105, "name" : "Alexander", "age" : 32, "active" : true, "gender" : "m" },
+        { "id" : 106, "name" : "Daniel", "age" : 31, "active" : true, "gender" : "m" },
+        { "id" : 107, "name" : "Anthony", "age" : 30, "active" : true, "gender" : "m" },
+        { "id" : 108, "name" : "Jim", "age" : 29, "active" : true, "gender" : "m" },
+        { "id" : 109, "name" : "Diego", "age" : 28, "active" : true, "gender" : "m" },
+      ]);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
-
-    tearDown : function () {
+    tearDownAll : function () {
       internal.db._drop(cn);
     },
 
@@ -123,7 +115,7 @@ function ahuacatlQueryOptimizerRefTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRefAccessIndex1 : function () {
-      users.ensureIndex({ type: "hash", fields: ["name"] });
+      users.ensureIndex({ type: "persistent", fields: ["name"] });
 
       var expected = [ { "name" : "John" }, { "name" : "Fred" }, { "name" : "Jacob" }, { "name" : "Ethan" }, { "name" : "Michael" }, { "name" : "Alexander" }, { "name" : "Daniel" }, { "name" : "Anthony" }, { "name" : "Jim"} , { "name" : "Diego" } ];
       var actual = getQueryResults("FOR u1 IN " + cn + " FOR u2 IN " + cn + " FILTER u1.name == u2.name SORT u1.id RETURN { \"name\" : u1.name }");
@@ -136,7 +128,7 @@ function ahuacatlQueryOptimizerRefTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRefAccessIndex2 : function () {
-      users.ensureIndex({ type: "hash", fields: ["name"] });
+      users.ensureIndex({ type: "persistent", fields: ["name"] });
 
       var expected = [ { "name" : "John" }, { "name" : "Fred" }, { "name" : "Jacob" }, { "name" : "Ethan" }, { "name" : "Michael" }, { "name" : "Alexander" }, { "name" : "Daniel" }, { "name" : "Anthony" }, { "name" : "Jim"} , { "name" : "Diego" } ];
       var actual = getQueryResults("FOR u1 IN " + cn + " FOR u2 IN " + cn + " FILTER u2.name == u1.name SORT u1.id RETURN { \"name\" : u1.name }");
@@ -149,7 +141,7 @@ function ahuacatlQueryOptimizerRefTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRefAccessIndex3 : function () {
-      users.ensureIndex({ type: "hash", fields: ["name"] });
+      users.ensureIndex({ type: "persistent", fields: ["name"] });
 
       var expected = [ { "name" : "John" }, { "name" : "Fred" }, { "name" : "Jacob" }, { "name" : "Ethan" }, { "name" : "Michael" }, { "name" : "Alexander" }, { "name" : "Daniel" }, { "name" : "Anthony" }, { "name" : "Jim"} , { "name" : "Diego" } ];
       var actual = getQueryResults("FOR u1 IN " + cn + " FOR u2 IN " + cn + " FILTER u2.name == u1.name && u1.name == u2.name SORT u1.id RETURN { \"name\" : u1.name }");
@@ -162,7 +154,7 @@ function ahuacatlQueryOptimizerRefTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRefAccessIndex4 : function () {
-      users.ensureIndex({ type: "hash", fields: ["name"] });
+      users.ensureIndex({ type: "persistent", fields: ["name"] });
 
       var expected = [ { "name" : "John" }, { "name" : "Fred" }, { "name" : "Jacob" }, { "name" : "Ethan" }, { "name" : "Michael" }, { "name" : "Alexander" }, { "name" : "Daniel" }, { "name" : "Anthony" }, { "name" : "Jim"} , { "name" : "Diego" } ];
       var actual = getQueryResults("FOR u1 IN " + cn + " FOR u2 IN " + cn + " FILTER u2.name == u1.name && u1.name == u2.name && u2.name == u1.name && u1._id == u2._id SORT u1.id RETURN { \"name\" : u1.name }");
@@ -175,7 +167,7 @@ function ahuacatlQueryOptimizerRefTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRefAccessIndexBind1 : function () {
-      users.ensureIndex({ type: "hash", fields: ["name"] });
+      users.ensureIndex({ type: "persistent", fields: ["name"] });
 
       var expected = [ 28 ];
       var query = "FOR u IN " + cn + " FILTER u.@att == 'Diego' RETURN u.@what";
@@ -204,11 +196,6 @@ function ahuacatlQueryOptimizerRefTestSuite () {
 
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
-
 jsunity.run(ahuacatlQueryOptimizerRefTestSuite);
 
 return jsunity.done();
-

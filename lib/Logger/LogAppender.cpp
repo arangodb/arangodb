@@ -23,15 +23,17 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <algorithm>
+#include <string>
+#include <string_view>
 #include <type_traits>
 
 #include "LogAppender.h"
 
-#include "ApplicationFeatures/ShellColorsFeature.h"
 #include "Basics/operating-system.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/voc-errors.h"
 #include "Logger/LogAppenderFile.h"
 #include "Logger/LogAppenderSyslog.h"
 #include "Logger/LogGroup.h"
@@ -42,6 +44,11 @@
 
 using namespace arangodb;
 using namespace arangodb::basics;
+
+namespace {
+constexpr std::string_view filePrefix("file://");
+constexpr std::string_view syslogPrefix("syslog://");
+}  // namespace
 
 arangodb::basics::ReadWriteLock LogAppender::_appendersLock;
 
@@ -78,8 +85,8 @@ void LogAppender::addAppender(LogGroup const& group,
   auto key = output;
 
 #ifdef ARANGODB_ENABLE_SYSLOG
-  if (StringUtils::isPrefix(output, "syslog://")) {
-    key = "syslog://";
+  if (output.starts_with(::syslogPrefix)) {
+    key = ::syslogPrefix;
   }
 #endif
 
@@ -119,8 +126,8 @@ std::shared_ptr<LogAppender> LogAppender::buildAppender(
     LogGroup const& group, std::string const& output) {
 #ifdef ARANGODB_ENABLE_SYSLOG
   // first handle syslog-logging
-  if (StringUtils::isPrefix(output, "syslog://")) {
-    auto s = StringUtils::split(output.substr(9), '/');
+  if (output.starts_with(::syslogPrefix)) {
+    auto s = StringUtils::split(output.substr(::syslogPrefix.size()), '/');
     TRI_ASSERT(s.size() == 1 || s.size() == 2);
 
     std::string identifier;
@@ -136,7 +143,7 @@ std::shared_ptr<LogAppender> LogAppender::buildAppender(
   if (output == "+" || output == "-") {
     for (auto const& it : _definition2appenders[group.id()]) {
       if (it.first == "+" || it.first == "-") {
-        // alreay got a logger for stderr/stdout
+        // already got a logger for stderr/stdout
         return nullptr;
       }
     }
@@ -149,8 +156,9 @@ std::shared_ptr<LogAppender> LogAppender::buildAppender(
     result = std::make_shared<LogAppenderStderr>();
   } else if (output == "-") {
     result = std::make_shared<LogAppenderStdout>();
-  } else if (StringUtils::isPrefix(output, "file://")) {
-    result = std::make_shared<LogAppenderFile>(output.substr(7));
+  } else if (output.starts_with(::filePrefix)) {
+    result =
+        std::make_shared<LogAppenderFile>(output.substr(::filePrefix.size()));
   }
 
   return result;
@@ -263,9 +271,9 @@ Result LogAppender::parseDefinition(std::string const& definition,
 
   bool handled = false;
 #ifdef ARANGODB_ENABLE_SYSLOG
-  if (StringUtils::isPrefix(output, "syslog://")) {
+  if (output.starts_with(::syslogPrefix)) {
     handled = true;
-    auto s = StringUtils::split(output.substr(9), '/');
+    auto s = StringUtils::split(output.substr(::syslogPrefix.size()), '/');
 
     if (s.size() < 1 || s.size() > 2) {
       return Result(TRI_ERROR_BAD_PARAMETER,
@@ -277,8 +285,7 @@ Result LogAppender::parseDefinition(std::string const& definition,
 
   if (!handled) {
     // not yet handled. must be a file-based logger now.
-    if (output != "+" && output != "-" &&
-        !StringUtils::isPrefix(output, "file://")) {
+    if (output != "+" && output != "-" && !output.starts_with(::filePrefix)) {
       return Result(TRI_ERROR_BAD_PARAMETER,
                     std::string("unknown output definition '") + output + "'");
     }

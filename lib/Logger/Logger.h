@@ -312,9 +312,9 @@ class Logger {
                   std::string const& message);
 
   static void append(
-      LogGroup&, std::unique_ptr<LogMessage>& msg, bool forceDirect,
-      std::function<void(std::unique_ptr<LogMessage>&)> const& inactive =
-          [](std::unique_ptr<LogMessage>&) -> void {});
+      LogGroup&, std::unique_ptr<LogMessage> msg, bool forceDirect,
+      std::function<void(LogMessage const&)> const& inactive =
+          [](LogMessage const&) -> void {});
 
   static bool isEnabled(LogLevel level) {
     return (int)level <= (int)_level.load(std::memory_order_relaxed);
