@@ -154,6 +154,35 @@ describe('FoxxApi commit', function () {
     });
   });
 
+  it('should redirect into aardvark', function() {
+    [ {
+      cmd: "/_admin/aardvark/index.html",
+      responseCode: 200
+    }, {
+      cmd: "/",
+      responseCode: 301,
+      location:  /^\/.*\/*_admin\/aardvark\/index.html$/
+    }, {
+      cmd: "/_admin/html",
+      responseCode: 301,
+      location: /\/_admin\/aardvark\/index.html$/
+    }, {
+      cmd: "/_admin/html/",
+      responseCode: 301,
+      location: /\/_admin\/aardvark\/index.html$/
+    }, {
+      cmd: "/_admin/aardvark/",
+      responseCode: 307,
+      location: /\/_admin\/aardvark\/index.html$/
+    }].forEach(test => {
+      let result = arango.GET_RAW(test.cmd);
+      expect(result.code).to.equal(test.responseCode);
+      if (test.hasOwnProperty('location') ) {
+        expect(result.headers['location']).to.match(test.location);
+      }
+    });
+  });
+
   it('should deliver compressed files according to accept-encoding', function() {
     // TODO: decompress body (if) and check for its content, so double-compression can be eradicted.
     let result;
