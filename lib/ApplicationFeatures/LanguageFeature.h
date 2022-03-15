@@ -43,17 +43,7 @@ class LanguageFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Language"; }
 
-  template<typename Server>
-  explicit LanguageFeature(Server& server)
-      : application_features::ApplicationFeature{server, "Language"},
-        _locale(),
-        _langType(basics::LanguageType::INVALID),
-        _binaryPath(server.getBinaryPath()),
-        _icuDataPtr(nullptr),
-        _forceLanguageCheck(true) {
-    setOptional(false);
-    startsAfter<application_features::GreetingsFeaturePhase>();
-  }
+  explicit LanguageFeature(application_features::ApplicationServer& server);
 
   ~LanguageFeature();
 
