@@ -363,6 +363,7 @@
     "ERROR_HOT_BACKUP_DBSERVERS_AWOL" : { "code" : 7012, "message" : "hot backup not all db servers reachable" },
     "ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN" : { "code" : 7021, "message" : "analyzers in plan could not be modified" },
     "ERROR_AIR_EXECUTION_ERROR"    : { "code" : 8001, "message" : "error during AIR execution" },
+    "ERROR_WASM_EXECUTION_ERROR"    : { "code" : 8002, "message" : "error during WASM execution" },
     "ERROR_LICENSE_EXPIRED_OR_INVALID" : { "code" : 9001, "message" : "license has expired or is invalid" },
     "ERROR_LICENSE_SIGNATURE_VERIFICATION" : { "code" : 9002, "message" : "license verification failed" },
     "ERROR_LICENSE_NON_MATCHING_ID" : { "code" : 9003, "message" : "non-matching license id" },

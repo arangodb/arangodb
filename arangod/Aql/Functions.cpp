@@ -9053,12 +9053,10 @@ AqlValue Functions::CallWasm(ExpressionContext* expressionContext,
           static_cast<uint64_t>(functionParameter2.toInt64())});
 
   if (result.has_value()) {
-    VPackBuilder builder;
-    {
-      VPackObjectBuilder ob(&builder);
-      builder.add("result", VPackValue(result.value()));
-    }
-    return AqlValue(builder.slice());
+    transaction::Methods* trx = &expressionContext->trx();
+    transaction::BuilderLeaser builder(trx);
+    builder->add(VPackValue(result.value()));
+    return AqlValue(builder->slice(), builder->size());
   } else {
     auto msg = "Cannot find function";
     expressionContext->registerError(TRI_ERROR_WASM_EXECUTION_ERROR, msg);
