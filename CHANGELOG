@@ -1,6 +1,9 @@
 devel
 -----
 
+* added new AQL function `KEEP_RECURSIVE` to recursively keep attritutes from
+  objects/documents, as a conterpart to `UNSET_RECURSIVE`
+
 * Added an HTTP fuzzer that will fuzz requests (the header for the actual
   moment) and send to the server. The amount of requests sent is provided 
   by one of the parameters of the function `fuzzRequests()` in arangosh.
