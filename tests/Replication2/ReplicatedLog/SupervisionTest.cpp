@@ -627,12 +627,12 @@ TEST_F(LogSupervisionTest, test_remove_participant_action) {
                                      {"C", ParticipantFlags{}}},
                 config);
 
-  auto const& participantsConfig = ParticipantsConfig{
-      .generation = 1,
-      .participants = ParticipantsFlagsMap{{"A", ParticipantFlags{}},
-                                           {"B", ParticipantFlags{}},
-                                           {"C", ParticipantFlags{}},
-                                           {"D", ParticipantFlags{}}}};
+  ParticipantsFlagsMap participantsFlags{{"A", ParticipantFlags{}},
+                                         {"B", ParticipantFlags{}},
+                                         {"C", ParticipantFlags{}},
+                                         {"D", ParticipantFlags{}}};
+  auto const& participantsConfig =
+      ParticipantsConfig{.generation = 1, .participants = participantsFlags};
 
   auto const& plan = LogPlanSpecification(
       logId,
@@ -686,13 +686,13 @@ TEST_F(LogSupervisionTest, test_remove_participant_action_wait_for_committed) {
                                      {"C", ParticipantFlags{}}},
                 config);
 
-  auto const& participantsConfig = ParticipantsConfig{
-      .generation = 2,
-      .participants = ParticipantsFlagsMap{
-          {"A", ParticipantFlags{}},
-          {"B", ParticipantFlags{}},
-          {"C", ParticipantFlags{}},
-          {"D", ParticipantFlags{.allowedInQuorum = false}}}};
+  ParticipantsFlagsMap participantsFlags{
+      {"A", ParticipantFlags{}},
+      {"B", ParticipantFlags{}},
+      {"C", ParticipantFlags{}},
+      {"D", ParticipantFlags{.allowedInQuorum = false}}};
+  auto const& participantsConfig =
+      ParticipantsConfig{.generation = 2, .participants = participantsFlags};
 
   auto const& plan = LogPlanSpecification(
       logId,
@@ -701,12 +701,12 @@ TEST_F(LogSupervisionTest, test_remove_participant_action_wait_for_committed) {
           LogPlanTermSpecification::Leader{"A", RebootId{42}}),
       participantsConfig);
 
-  auto const& participantsConfigOld = ParticipantsConfig{
-      .generation = 1,
-      .participants = ParticipantsFlagsMap{{"A", ParticipantFlags{}},
-                                           {"B", ParticipantFlags{}},
-                                           {"C", ParticipantFlags{}},
-                                           {"D", ParticipantFlags{}}}};
+  ParticipantsFlagsMap participantsFlagsOld{{"A", ParticipantFlags{}},
+                                            {"B", ParticipantFlags{}},
+                                            {"C", ParticipantFlags{}},
+                                            {"D", ParticipantFlags{}}};
+  auto const& participantsConfigOld =
+      ParticipantsConfig{.generation = 1, .participants = participantsFlagsOld};
 
   auto current = LogCurrent();
   current.leader =
@@ -745,13 +745,13 @@ TEST_F(LogSupervisionTest, test_remove_participant_action_committed) {
                                      {"C", ParticipantFlags{}}},
                 config);
 
-  auto const& participantsConfig = ParticipantsConfig{
-      .generation = 2,
-      .participants = ParticipantsFlagsMap{
-          {"A", ParticipantFlags{}},
-          {"B", ParticipantFlags{}},
-          {"C", ParticipantFlags{}},
-          {"D", ParticipantFlags{.allowedInQuorum = false}}}};
+  ParticipantsFlagsMap participantsFlags{
+      {"A", ParticipantFlags{}},
+      {"B", ParticipantFlags{}},
+      {"C", ParticipantFlags{}},
+      {"D", ParticipantFlags{.allowedInQuorum = false}}};
+   auto const& participantsConfig = ParticipantsConfig{
+      .generation = 2, .participants = participantsFlags};
 
   auto const& plan = LogPlanSpecification(
       logId,
