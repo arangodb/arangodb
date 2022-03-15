@@ -45,8 +45,9 @@ constexpr std::string_view kDefaultLangKey = "default";
 constexpr std::string_view kIcuLangKey = "icu-language";
 
 /// @brief reads previous default langauge from file
-arangodb::Result readLanguage(arangodb::application_features::ApplicationServer& server,
-                              std::string& language, LanguageType& type) {
+arangodb::Result readLanguage(
+    arangodb::application_features::ApplicationServer& server,
+    std::string& language, LanguageType& type) {
   auto& databasePath = server.getFeature<arangodb::DatabasePathFeature>();
   std::string filename = databasePath.subdirectoryName("LANGUAGE");
 
@@ -97,8 +98,9 @@ arangodb::Result readLanguage(arangodb::application_features::ApplicationServer&
 }
 
 /// @brief writes the default language to file
-ErrorCode writeLanguage(arangodb::application_features::ApplicationServer& server, std::string_view lang,
-                        LanguageType currLangType) {
+ErrorCode writeLanguage(
+    arangodb::application_features::ApplicationServer& server,
+    std::string_view lang, LanguageType currLangType) {
   auto& databasePath = server.getFeature<arangodb::DatabasePathFeature>();
   std::string filename = databasePath.subdirectoryName("LANGUAGE");
 
@@ -152,8 +154,8 @@ ErrorCode writeLanguage(arangodb::application_features::ApplicationServer& serve
 }
 
 std::tuple<std::string, LanguageType> getOrSetPreviousLanguage(
-    arangodb::application_features::ApplicationServer& server, std::string_view collatorLang,
-    LanguageType currLangType) {
+    arangodb::application_features::ApplicationServer& server,
+    std::string_view collatorLang, LanguageType currLangType) {
   std::string prevLanguage;
   LanguageType prevType;
   arangodb::Result res = ::readLanguage(server, prevLanguage, prevType);

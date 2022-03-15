@@ -34,7 +34,7 @@ namespace arangodb {
 namespace application_features {
 class ApplicationServer;
 class GreetingsFeaturePhase;
-}
+}  // namespace application_features
 namespace options {
 class ProgramOptions;
 }

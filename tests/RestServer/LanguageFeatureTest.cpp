@@ -87,10 +87,10 @@ void checkCollatorSettings(const std::string& language,
   delete expectedColl;
 }
 
-void checkLanguageFile(const arangodb::application_features::ApplicationServer& server,
-                       const std::string expectedLang,
-                       const std::string& expectedParameter,
-                       bool shouldBeEqual) {
+void checkLanguageFile(
+    const arangodb::application_features::ApplicationServer& server,
+    const std::string expectedLang, const std::string& expectedParameter,
+    bool shouldBeEqual) {
   std::string key = expectedParameter;
   if (key == "default-language") {
     // Because value for 'default-language' parameter store
@@ -127,7 +127,6 @@ void checkLanguageFile(const arangodb::application_features::ApplicationServer& 
   }
 }
 }  // namespace
-
 
 using namespace arangodb::options;
 
