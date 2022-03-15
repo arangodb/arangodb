@@ -42,6 +42,9 @@
 #include "Rest/GeneralResponse.h"
 #include "Rest/Version.h"
 #include "Shell/ClientFeature.h"
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+#include "Shell/RequestFuzzer.h"
+#endif
 #include "Shell/ShellConsoleFeature.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
@@ -79,6 +82,13 @@ std::string connectionIdentifier(fuerte::ConnectionBuilder& builder) {
          to_string(builder.authenticationType()) + "/" +
          to_string(builder.protocolType());
 }
+
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+static constexpr uint32_t kFuzzClosedConnectionCode = 1000;
+static constexpr uint32_t kFuzzNoResponseCode = 1001;
+static constexpr uint32_t kFuzzNotConnected = 1002;
+#endif
+
 }  // namespace
 
 V8ClientConnection::V8ClientConnection(ArangoshServer& server,
@@ -986,6 +996,105 @@ static void ClientConnection_httpPostRaw(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
   ClientConnection_httpPostAny(args, true);
 }
+
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ClientConnection method "fuzzRequests"
+////////////////////////////////////////////////////////////////////////////////
+
+static void ClientConnection_httpFuzzRequests(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+  if (isExecutionDeadlineReached(isolate)) {
+    return;
+  }
+
+  // get the connection
+  V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
+      args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
+
+  if (v8connection == nullptr) {
+    TRI_V8_THROW_EXCEPTION_INTERNAL(
+        "fuzzRequests() must be invoked on an arango connection object "
+        "instance.");
+  }
+
+  if (args.Length() < 2 || args.Length() > 3) {
+    TRI_V8_THROW_EXCEPTION_USAGE(
+        "fuzzRequests(<numRequests>, <numIterations> [, <seed>])");
+  }
+
+  // arg0 = number of requests, arg1 = number of iterations, arg2 = seed for
+  // rand
+  uint64_t numReqs = TRI_ObjectToUInt64(isolate, args[0], true);
+  uint64_t numIts = TRI_ObjectToUInt64(isolate, args[1], true);
+
+  if (numIts > 256) {
+    TRI_V8_THROW_EXCEPTION_USAGE("<numIterations> is expected to be <= 256");
+  }
+
+  std::optional<uint32_t> seed;
+  if (args.Length() > 2) {
+    if (!args[2]->IsUint32()) {
+      TRI_V8_THROW_EXCEPTION_USAGE("<seed> must be an unsigned int.");
+    }
+    seed = static_cast<uint32_t>(TRI_ObjectToUInt64(isolate, args[2], false));
+  }
+
+  fuzzer::RequestFuzzer fuzzer(static_cast<uint32_t>(numIts), seed);
+  if (!seed.has_value()) {
+    // log the random seed value for later reproducibility.
+    // log level must be warning here because log levels < WARN are suppressed
+    // during testing.
+    LOG_TOPIC("39e50", WARN, arangodb::Logger::FIXME)
+        << "fuzzer producing " << numReqs << " requests(s) with " << numIts
+        << " iteration(s) each, using seed " << fuzzer.getSeed();
+  }
+  std::unordered_map<uint32_t, uint32_t> fuzzReturnCodesCount;
+
+  for (uint64_t i = 0; i < numReqs; ++i) {
+    uint32_t returnCode = v8connection->requestFuzz(fuzzer);
+    fuzzReturnCodesCount[returnCode]++;
+  }
+
+  VPackBuilder builder;
+  builder.openObject();
+  builder.add("seed", velocypack::Value(fuzzer.getSeed()));
+  builder.add("totalRequests", velocypack::Value(numReqs));
+
+  if (auto it = fuzzReturnCodesCount.find(kFuzzClosedConnectionCode);
+      it != fuzzReturnCodesCount.end()) {
+    builder.add("connectionClosed", velocypack::Value(it->second));
+  }
+
+  if (auto it = fuzzReturnCodesCount.find(kFuzzNoResponseCode);
+      it != fuzzReturnCodesCount.end()) {
+    builder.add("noResponse", velocypack::Value(it->second));
+  }
+
+  if (auto it = fuzzReturnCodesCount.find(kFuzzNotConnected);
+      it != fuzzReturnCodesCount.end()) {
+    builder.add("notConnected", velocypack::Value(it->second));
+  }
+
+  builder.add(velocypack::Value("returnCodes"));
+  builder.openObject();
+  for (auto const& [returnCode, count] : fuzzReturnCodesCount) {
+    if (returnCode != kFuzzClosedConnectionCode &&
+        returnCode != kFuzzNoResponseCode && returnCode != kFuzzNotConnected) {
+      builder.add(std::to_string(returnCode), velocypack::Value(count));
+    }
+  }
+  builder.close();
+  builder.close();
+
+  TRI_V8_RETURN(TRI_VPackToV8(isolate, builder.slice()));
+
+  TRI_V8_TRY_CATCH_END
+}
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ClientConnection method "PUT" helper
@@ -2160,6 +2269,39 @@ void setResultMessage(v8::Isolate* isolate, v8::Local<v8::Context> context,
   }
 }
 
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+uint32_t V8ClientConnection::requestFuzz(fuzzer::RequestFuzzer& fuzzer) {
+  std::shared_ptr<fu::Connection> connection = acquireConnection();
+  if (!connection || connection->state() == fu::Connection::State::Closed) {
+    return kFuzzNotConnected;
+  }
+
+  auto req = fuzzer.createRequest();
+
+  fu::Error rc = fu::Error::NoError;
+  std::unique_ptr<fu::Response> response;
+  try {
+    response = connection->sendRequest(std::move(req));
+  } catch (fu::Error const& ec) {
+    rc = ec;
+  }
+
+  if (rc == fu::Error::ConnectionClosed) {
+    return kFuzzClosedConnectionCode;
+  }
+
+  // not complete
+  if (!response) {
+    return kFuzzNoResponseCode;
+  }
+
+  TRI_ASSERT(response != nullptr);
+
+  // complete
+  return response->statusCode();
+}
+#endif
+
 v8::Local<v8::Value> V8ClientConnection::requestData(
     v8::Isolate* isolate, fu::RestVerb method, std::string_view location,
     v8::Local<v8::Value> const& body,
@@ -2403,6 +2545,12 @@ void V8ClientConnection::initServer(v8::Isolate* isolate,
   connection_proto->Set(
       isolate, "SEND_FILE",
       v8::FunctionTemplate::New(isolate, ClientConnection_httpSendFile));
+
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  connection_proto->Set(
+      isolate, "fuzzRequests",
+      v8::FunctionTemplate::New(isolate, ClientConnection_httpFuzzRequests));
+#endif
 
   connection_proto->Set(isolate, "getEndpoint",
                         v8::FunctionTemplate::New(
