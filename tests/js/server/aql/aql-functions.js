@@ -1273,6 +1273,63 @@ function ahuacatlFunctionsTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test keep_recursive function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testKeepRecursiveInvalid : function () {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN KEEP_RECURSIVE()"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN KEEP_RECURSIVE({ })"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN KEEP_RECURSIVE(null, 1)"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN KEEP_RECURSIVE(false, 1)"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN KEEP_RECURSIVE(1, 1)"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN KEEP_RECURSIVE(1, 'foo')"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN KEEP_RECURSIVE('bar', 1)"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN KEEP_RECURSIVE('foo', 'bar')"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN KEEP_RECURSIVE([ ], 1)"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN KEEP_RECURSIVE('foo', 'foo')"); 
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test keep_recursive function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testKeepRecursive : function () {
+      var actual, expected;
+
+      expected = { };
+      actual = getQueryResults("RETURN KEEP_RECURSIVE({ foo: { bar: { baz: 1 }, baz: 2 }, baz: 3 }, 'moo')");
+      assertEqualObj(expected, actual[0]);
+
+      expected = { foo: { bar: { baz: 1 }, baz: 2 }, baz: 3 };
+      actual = getQueryResults("RETURN KEEP_RECURSIVE({ foo: { bar: { baz: 1 }, baz: 2 }, baz: 3 }, 'foo', 'bar', 'baz')");
+      assertEqualObj(expected, actual[0]);
+
+      expected = { foo: { } };
+      actual = getQueryResults("RETURN KEEP_RECURSIVE({ foo: { bar: { baz: 1 }, baz: 2 }, baz: 3 }, 'foo')");
+      assertEqualObj(expected, actual[0]);
+
+      expected = { };
+      actual = getQueryResults("RETURN KEEP_RECURSIVE({ foo: { bar: { baz: 1 }, baz: 2 }, baz: 3 }, 'bar')");
+      assertEqualObj(expected, actual[0]);
+
+      expected = { baz: 3 };
+      actual = getQueryResults("RETURN KEEP_RECURSIVE({ foo: { bar: { baz: 1 }, baz: 2 }, baz: 3 }, 'baz')");
+      assertEqualObj(expected, actual[0]);
+
+      expected = { foo: { foo: 2 } };
+      actual = getQueryResults("RETURN KEEP_RECURSIVE({ foo: { bar: { foo: 1 }, foo: 2 } }, 'foo')");
+      assertEqualObj(expected, actual[0]);
+
+      expected = { foo: { baz: 2 }, baz: 3 };
+      actual = getQueryResults("RETURN KEEP_RECURSIVE({ foo: { bar: { baz: 1 }, baz: 2 }, baz: 3 }, 'baz', 'foo')");
+      assertEqualObj(expected, actual[0]);
+
+      expected = { foo: { bar: { } } };
+      actual = getQueryResults("RETURN KEEP_RECURSIVE({ foo: { bar: { baz: 1 }, baz: 2 }, baz: 3 }, 'bar', 'foo')");
+      assertEqualObj(expected, actual[0]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test merge function
 ////////////////////////////////////////////////////////////////////////////////
     
