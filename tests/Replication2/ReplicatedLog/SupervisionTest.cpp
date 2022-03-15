@@ -750,8 +750,8 @@ TEST_F(LogSupervisionTest, test_remove_participant_action_committed) {
       {"B", ParticipantFlags{}},
       {"C", ParticipantFlags{}},
       {"D", ParticipantFlags{.allowedInQuorum = false}}};
-   auto const& participantsConfig = ParticipantsConfig{
-      .generation = 2, .participants = participantsFlags};
+  auto const& participantsConfig =
+      ParticipantsConfig{.generation = 2, .participants = participantsFlags};
 
   auto const& plan = LogPlanSpecification(
       logId,
