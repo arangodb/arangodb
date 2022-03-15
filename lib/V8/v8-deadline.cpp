@@ -20,6 +20,24 @@
 ///
 /// @author Wilfried Goesgens
 ////////////////////////////////////////////////////////////////////////////////
+
+
+#include <stddef.h>
+#include <cstdint>
+#include <type_traits>
+#include <utility>
+#include <vector>
+
+#include "Basics/Mutex.h"
+#include "Basics/MutexLocker.h"
+#include "Basics/debugging.h"
+#include "Basics/operating-system.h"
+#include "Basics/tri-strings.h"
+
+#ifdef TRI_HAVE_SIGNAL_H
+#include <signal.h>
+#endif
+
 #include "V8/v8-deadline.h"
 #include "Basics/system-functions.h"
 #include "v8-utils.h"
@@ -102,9 +120,65 @@ std::chrono::milliseconds correctTimeoutToExecutionDeadline(std::chrono::millise
 
 }
 
-void TRI_InitV8Deadline(v8::Isolate* isolate)
-{
-  TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING(isolate, "SYS_COMMUNICATE_SLEEP_DEADLINE"),
-                               JS_SetExecutionDeadlineTo);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief signal handler for CTRL-C
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef _WIN32
+
+static bool SignalHandler(DWORD eventType) {
+  switch (eventType) {
+    case CTRL_BREAK_EVENT:
+    case CTRL_C_EVENT:
+    case CTRL_CLOSE_EVENT:
+    case CTRL_LOGOFF_EVENT:
+    case CTRL_SHUTDOWN_EVENT: {
+      // Set the deadline to expired:
+      executionDeadline = 0.000001;
+      return true;
+    }
+    default: {
+      return true;
+    }
+  }
+}
+
+#else
+
+static void SignalHandler(int /*signal*/) {
+  // Set the deadline to expired:
+  executionDeadline = 0.000001;
+}
+
+#endif
+
+
+static void JS_RegisterExecutionDeadlineInterruptHandler(
+  v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+// handle control-c
+#ifdef _WIN32
+  int res = SetConsoleCtrlHandler((PHANDLER_ROUTINE)SignalHandler, true);
+
+#else
+  struct sigaction sa;
+  sa.sa_flags = 0;
+  sigemptyset(&sa.sa_mask);
+  sa.sa_handler = &SignalHandler;
+
+  int res = sigaction(SIGINT, &sa, nullptr);
+#endif
+  TRI_V8_RETURN_INTEGER(res);
+  TRI_V8_TRY_CATCH_END
+}
+
+void TRI_InitV8Deadline(v8::Isolate* isolate) {
+  TRI_AddGlobalFunctionVocbase(
+      isolate, TRI_V8_ASCII_STRING(isolate, "SYS_COMMUNICATE_SLEEP_DEADLINE"),
+      JS_SetExecutionDeadlineTo);
+  TRI_AddGlobalFunctionVocbase(
+      isolate, TRI_V8_ASCII_STRING(isolate, "SYS_INTERRUPT_TO_DEADLINE"),
+      JS_RegisterExecutionDeadlineInterruptHandler);
 }
