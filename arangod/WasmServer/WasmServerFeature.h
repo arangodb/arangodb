@@ -44,7 +44,8 @@ class WasmServerFeature final : public ArangodFeature {
   void prepare() override;
   void addFunction(wasm::WasmFunction const& function);
   auto loadFunction(std::string const& name) -> std::optional<wasm3::module>;
-  auto executeFunction(std::string const& name) -> std::optional<uint64_t>;
+  auto executeFunction(std::string const& name, uint64_t a, uint64_t b)
+      -> std::optional<uint64_t>;
   void deleteFunction(std::string const& functionName);
   auto getAllFunctions() const
       -> std::unordered_map<std::string, wasm::WasmFunction>;

@@ -32,33 +32,21 @@
 
 namespace arangodb::wasm {
 
-struct WasmContainer {
-  uint8_t* code;
-  size_t length;
+struct Code {
+  std::vector<uint8_t> bytes;
+  auto operator==(const Code& function) const -> bool = default;
 };
 
-class WasmFunction {
- private:
-  std::string _name;
-  WasmContainer _code;
-  bool _isDeterministic;
-  static auto requiredStringField(std::string const&& fieldName,
-                                  velocypack::Slice slice)
-      -> ResultT<velocypack::Slice>;
-  static auto optionalBoolField(std::string const&& fieldName,
-                                bool defaultValue, velocypack::Slice slice)
-      -> arangodb::ResultT<bool>;
-  static auto checkOnlyValidFieldnamesAreIncluded(
-      std::set<std::string>&& validFieldnames, velocypack::Slice slice)
-      -> arangodb::Result;
-
- public:
-  WasmFunction(std::string name, std::string code, bool isDeterministic);
-  auto name() const -> std::string { return _name; };
-  static auto fromVelocyPack(arangodb::velocypack::Slice slice)
-      -> ResultT<WasmFunction>;
-  void toVelocyPack(VPackBuilder& builder) const;
+struct WasmFunction {
+  std::string name;
+  Code code;
+  bool isDeterministic;
   auto operator==(const WasmFunction& function) const -> bool = default;
 };
+
+auto velocypackToWasmFunction(arangodb::velocypack::Slice slice)
+    -> ResultT<WasmFunction>;
+void wasmFunctionToVelocypack(WasmFunction const& wasmFunction,
+                              VPackBuilder& builder);
 
 }  // namespace arangodb::wasm

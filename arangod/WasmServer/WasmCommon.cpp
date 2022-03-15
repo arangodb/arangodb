@@ -1,8 +1,14 @@
+#include <optional>
+#include <regex>
 #include <string>
 #include <set>
+#include "Basics/StringUtils.h"
 #include "WasmCommon.h"
 #include "velocypack/Builder.h"
+#include "velocypack/Iterator.h"
 #include "velocypack/Slice.h"
+#include "velocypack/Value.h"
+#include "velocypack/ValueType.h"
 #include "velocypack/vpack.h"
 #include "Basics/ResultT.h"
 #include "Basics/Result.h"
@@ -11,98 +17,129 @@ using namespace arangodb;
 using namespace arangodb::wasm;
 using namespace arangodb::velocypack;
 
-WasmFunction::WasmFunction(std::string name, std::string code,
-                           bool isDeterministic = false)
-    : _name{std::move(name)},
-      _code{std::move(code)},
-      _isDeterministic{isDeterministic} {}
+void codeToVelocypack(Code const& code, VPackBuilder& builder) {
+  auto ab = VPackArrayBuilder(&builder);
+  for (auto const& entry : code.bytes) {
+    builder.add(VPackValue(entry));
+  }
+}
 
-void WasmFunction::toVelocyPack(VPackBuilder& builder) const {
+void arangodb::wasm::wasmFunctionToVelocypack(WasmFunction const& wasmFunction,
+                                              VPackBuilder& builder) {
   auto ob = VPackObjectBuilder(&builder);
-  builder.add("name", VPackValue(_name));
-  builder.add("code", VPackValue(_code));
-  builder.add("isDeterministic", VPackValue(_isDeterministic));
+  builder.add("name", VPackValue(wasmFunction.name));
+  builder.add(VPackValue("code"));
+  codeToVelocypack(wasmFunction.code, builder);
+  builder.add("isDeterministic", VPackValue(wasmFunction.isDeterministic));
 }
 
-auto WasmFunction::fromVelocyPack(Slice slice) -> ResultT<WasmFunction> {
-  std::string functionName = "WasmFunction::fromVelocyPack ";
-
+auto checkVelocypackToWasmFunctionIsPossible(Slice slice) -> Result {
   if (!slice.isObject()) {
-    return ResultT<WasmFunction>::error(
-        TRI_ERROR_BAD_PARAMETER, functionName + "Can only parse an object");
+    return Result{TRI_ERROR_BAD_PARAMETER, "Can only parse an object"};
   }
 
-  if (auto check = checkOnlyValidFieldnamesAreIncluded(
-          {"name", "code", "isDeterministic"}, slice);
-      check.fail()) {
-    return ResultT<WasmFunction>::error(
-        check.errorNumber(), functionName + std::move(check).errorMessage());
+  if (!slice.hasKey("name")) {
+    return Result{TRI_ERROR_BAD_PARAMETER, "Required field 'name' is missing"};
+  }
+  if (!slice.hasKey("code")) {
+    return Result{TRI_ERROR_BAD_PARAMETER, "Required field 'code' is missing"};
   }
 
-  auto nameField = requiredStringField("name", slice);
-  if (!nameField.ok()) {
-    return ResultT<WasmFunction>::error(
-        nameField.errorNumber(),
-        functionName + std::move(nameField).errorMessage());
-  }
-  auto name = nameField.get().copyString();
-
-  auto codeField = requiredStringField("code", slice);
-  if (!codeField.ok()) {
-    return ResultT<WasmFunction>::error(
-        codeField.errorNumber(),
-        functionName + std::move(codeField).errorMessage());
-  }
-  auto code = codeField.get().copyString();
-
-  auto isDeterministicField =
-      optionalBoolField("isDeterministic", false, slice);
-  if (!isDeterministicField.ok()) {
-    return ResultT<WasmFunction>::error(
-        isDeterministicField.errorNumber(),
-        functionName + std::move(isDeterministicField).errorMessage());
-  }
-  auto isDeterministic = isDeterministicField.get();
-
-  return ResultT<WasmFunction>(WasmFunction{name, code, isDeterministic});
-}
-
-auto WasmFunction::checkOnlyValidFieldnamesAreIncluded(
-    std::set<std::string>&& validFieldnames, Slice slice) -> Result {
+  std::set<std::string> validFields = {"name", "code", "isDeterministic"};
   for (const auto& field : ObjectIterator(slice)) {
     if (auto fieldname = field.key.copyString();
-        !(validFieldnames.contains(fieldname))) {
+        !(validFields.contains(fieldname))) {
       return Result{TRI_ERROR_BAD_PARAMETER,
-                    "Found unknown field " + fieldname};
+                    "Found unknown field '" + fieldname + "'"};
     }
   }
   return Result{};
 }
 
-auto WasmFunction::requiredStringField(std::string const&& fieldname,
-                                       Slice slice) -> ResultT<Slice> {
-  if (!slice.hasKey(fieldname)) {
-    return ResultT<Slice>::error(TRI_ERROR_BAD_PARAMETER,
-                                 "Required field " + fieldname + " is missing");
-  }
-  if (auto field = slice.get(fieldname); field.isString()) {
-    return field;
+auto velocypackToName(Slice slice) -> ResultT<std::string> {
+  if (slice.isString()) {
+    return slice.copyString();
   } else {
-    return ResultT<Slice>::error(TRI_ERROR_BAD_PARAMETER,
-                                 "Field " + fieldname + " should be a string");
+    return ResultT<std::string>::error(TRI_ERROR_BAD_PARAMETER,
+                                       "Should be a string");
   }
 }
 
-auto WasmFunction::optionalBoolField(std::string const&& fieldname,
-                                     bool defaultValue, Slice slice)
-    -> ResultT<bool> {
-  if (!slice.hasKey(fieldname)) {
-    return defaultValue;
-  }
-  if (auto field = slice.get(fieldname); field.isBool()) {
-    return field.getBool();
+auto velocypackToCode(Slice slice) -> ResultT<Code> {
+  if (slice.isArray()) {
+    std::vector<uint8_t> code;
+    for (auto const& p : velocypack::ArrayIterator(slice)) {
+      if (p.isInteger() and p.getInt() >= 0 and p.getInt() < 256) {
+        code.emplace_back(p.getInt());
+      } else {
+        return ResultT<Code>::error(TRI_ERROR_BAD_PARAMETER,
+                                    "Array should include only bytes");
+      }
+    }
+    return Code{code};
+  } else if (slice.isString()) {
+    auto string = slice.copyString();
+    if (!regex_match(string,
+                     std::regex(arangodb::basics::StringUtils::base64Regex))) {
+      return ResultT<Code>::error(TRI_ERROR_BAD_PARAMETER,
+                                  "String should be a base64 string.");
+    }
+    auto decodedString =
+        arangodb::basics::StringUtils::decodeBase64(slice.copyString());
+    std::vector<uint8_t> vec(decodedString.begin(), decodedString.end());
+    return Code{vec};
   } else {
-    return ResultT<bool>::error(TRI_ERROR_BAD_PARAMETER,
-                                "Field " + fieldname + " should be a boolean");
+    return ResultT<Code>::error(TRI_ERROR_BAD_PARAMETER,
+                                "Should be a byte array or base64 string");
   }
+}
+
+auto velocypackToIsDeterministic(std::optional<Slice> slice) -> ResultT<bool> {
+  if (!slice) {
+    return false;
+  }
+  if (auto value = slice.value(); value.isBool()) {
+    return value.getBool();
+  } else {
+    return ResultT<bool>::error(TRI_ERROR_BAD_PARAMETER, "Should be a boolean");
+  }
+}
+
+auto arangodb::wasm::velocypackToWasmFunction(Slice slice)
+    -> ResultT<WasmFunction> {
+  std::string functionName = "velocypack2WasmFunction";
+
+  if (auto check = checkVelocypackToWasmFunctionIsPossible(slice);
+      check.fail()) {
+    return ResultT<WasmFunction>::error(
+        check.errorNumber(), functionName + std::move(check).errorMessage());
+  }
+
+  auto name = velocypackToName(slice.get("name"));
+  if (!name.ok()) {
+    return ResultT<WasmFunction>::error(
+        name.errorNumber(),
+        functionName + ": Field 'name': " + std::move(name).errorMessage());
+  }
+
+  auto codeField = velocypackToCode(slice.get("code"));
+  if (!codeField.ok()) {
+    return ResultT<WasmFunction>::error(
+        codeField.errorNumber(), functionName + ": Field 'code': " +
+                                     std::move(codeField).errorMessage());
+  }
+
+  auto isDeterministicSlice = slice.hasKey("isDeterministic")
+                                  ? std::optional(slice.get("isDeterministic"))
+                                  : std::nullopt;
+  auto isDeterministic = velocypackToIsDeterministic(isDeterministicSlice);
+  if (!isDeterministic.ok()) {
+    return ResultT<WasmFunction>::error(
+        isDeterministic.errorNumber(),
+        functionName + ": Field 'isDeterministic': " +
+            std::move(isDeterministic).errorMessage());
+  }
+
+  return ResultT<WasmFunction>(
+      WasmFunction{name.get(), {codeField.get()}, isDeterministic.get()});
 }

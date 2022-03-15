@@ -10,8 +10,11 @@
 #include <string>
 #include <iterator>
 #include <cassert>
+#include "Basics/ResultT.h"
 
 #include "wasm3.h"
+
+using namespace arangodb;
 
 namespace wasm3 {
 /** @cond */
@@ -145,7 +148,7 @@ class error : public std::runtime_error {
 
 /** @cond */
 namespace detail {
-void check_error(M3Result err) {
+inline void check_error(M3Result err) {
   if (err != m3Err_none) {
     throw error(err);
   }
@@ -217,7 +220,7 @@ class runtime {
    * @param name  name of a function, c-string
    * @return function object
    */
-  function find_function(const char* name);
+  ResultT<function> find_function(const char* name);
 
  protected:
   friend class environment;
@@ -364,31 +367,35 @@ class function {
  protected:
   friend class runtime;
 
-  function(const std::shared_ptr<M3Runtime>& runtime, const char* name)
-      : m_runtime(runtime) {
-    M3Result err = m3_FindFunction(&m_func, runtime.get(), name);
-    detail::check_error(err);
+  function(M3Function* function) : m_func{function} {
     assert(m_func != nullptr);
   }
 
-  std::shared_ptr<M3Runtime> m_runtime;
-  M3Function* m_func = nullptr;
+  M3Function* m_func;
 };
 
-runtime environment::new_runtime(size_t stack_size_bytes) {
+inline runtime environment::new_runtime(size_t stack_size_bytes) {
   return runtime(m_env, stack_size_bytes);
 }
 
-module environment::parse_module(std::istream& in) { return module(m_env, in); }
+inline module environment::parse_module(std::istream& in) {
+  return module(m_env, in);
+}
 
-module environment::parse_module(const uint8_t* data, size_t size) {
+inline module environment::parse_module(const uint8_t* data, size_t size) {
   return module(m_env, data, size);
 }
 
-void runtime::load(module& mod) { mod.load_into(m_runtime.get()); }
+inline void runtime::load(module& mod) { mod.load_into(m_runtime.get()); }
 
-function runtime::find_function(const char* name) {
-  return function(m_runtime, name);
+inline ResultT<function> runtime::find_function(const char* name) {
+  M3Function* m_func = nullptr;
+  M3Result err = m3_FindFunction(&m_func, m_runtime.get(), name);
+  if (err != m3Err_none or m_func == nullptr) {
+    return ResultT<function>::error(TRI_ERROR_BAD_PARAMETER,
+                                    "Function not found");
+  }
+  return function(m_func);
 }
 
 template<typename Func>

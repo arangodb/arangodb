@@ -34,7 +34,7 @@ void WasmServerFeature::validateOptions(
 void WasmServerFeature::addFunction(wasm::WasmFunction const& function) {
   _guardedFunctions.doUnderLock(
       [&function](GuardedFunctions& guardedFunctions) {
-        guardedFunctions._functions.insert_or_assign(function.name(), function);
+        guardedFunctions._functions.insert_or_assign(function.name, function);
       });
 }
 
@@ -51,9 +51,9 @@ auto WasmServerFeature::loadFunction(std::string const& name)
         }
       });
   if (function.has_value()) {
-    return environment.parse_module(function->code.code, function->code.length);
+    return environment.parse_module(function.value().code.bytes.data(),
+                                    function.value().code.bytes.size());
   } else {
-    // TODO
     return std::nullopt;
   }
 }
@@ -65,9 +65,13 @@ auto WasmServerFeature::executeFunction(std::string const& name, uint64_t a,
   if (module.has_value()) {
     runtime.load(module.value());
     auto function = runtime.find_function(name.c_str());
-    return function.call<uint64_t>(a, b);
+    if (function.fail()) {
+      return std::nullopt;
+    }
+    return function.get().call<uint64_t>(a, b);
   } else {
     // TODO
+    return std::nullopt;
   }
 }
 

@@ -407,6 +407,10 @@ static bool toNumber(std::string const& key, T& val) noexcept {
 // BASE64
 // -----------------------------------------------------------------------------
 
+/// @brief regex for a base64 string
+constexpr const char* base64Regex =
+    "^([A-Za-z0-9+/]{4})*([A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{2}==)?$";
+
 /// @brief converts to base64
 std::string encodeBase64(char const* value, size_t length);
 std::string encodeBase64(std::string_view value);
