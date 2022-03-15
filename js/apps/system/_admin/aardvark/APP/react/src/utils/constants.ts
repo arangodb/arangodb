@@ -31,7 +31,5 @@ export type FormProps<FormState> = {
   disabled?: boolean;
   view?: string;
   show?: RenderView;
-  showLink?: any;
-  showField?: any;
 };
 

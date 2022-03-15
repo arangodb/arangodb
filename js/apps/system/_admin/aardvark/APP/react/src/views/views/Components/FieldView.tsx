@@ -1,10 +1,6 @@
 import React, { Dispatch } from "react";
 import ViewLayout from "./ViewLayout";
-import {
-  ArangoTable,
-  ArangoTD,
-  ArangoTH
-} from "../../../components/arango/table";
+import { ArangoTable, ArangoTD } from "../../../components/arango/table";
 // import Badge from "../../../components/arango/badges";
 import { IconButton } from "../../../components/arango/buttons";
 import { DispatchArgs } from "../../../utils/constants";
@@ -60,21 +56,6 @@ const FieldView: React.FC<FieldViewPprops> = ({
   return (
     <ViewLayout disabled={disabled} field={fieldName} view={view} link={link}>
       <ArangoTable style={{ marginLeft: 0 }}>
-        <thead>
-          <tr>
-            <ArangoTH seq={disabled ? 0 : 1} style={{ width: "8%" }}>
-              Field
-            </ArangoTH>
-            <ArangoTH seq={disabled ? 1 : 2} style={{ width: "72%" }}>
-              Analyzers
-            </ArangoTH>
-            {disabled ? null : (
-              <ArangoTH seq={0} style={{ width: "20%" }}>
-                Action
-              </ArangoTH>
-            )}
-          </tr>
-        </thead>
         <tbody>
           <tr key={fieldName} style={{ borderBottom: "1px  solid #DDD" }}>
             <ArangoTD seq={disabled ? 0 : 1}>{fieldName}</ArangoTD>

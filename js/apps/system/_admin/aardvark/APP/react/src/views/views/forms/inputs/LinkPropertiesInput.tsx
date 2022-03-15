@@ -7,6 +7,7 @@ import React, {
   useMemo,
   useState
 } from "react";
+import { useShow } from "../../Contexts/LinkContext";
 import { chain, isEmpty, without } from "lodash";
 import { Cell, Grid } from "../../../../components/pure-css/grid";
 import Checkbox from "../../../../components/pure-css/form/Checkbox";
@@ -22,7 +23,6 @@ import useSWR from "swr";
 import { getApiRouteForCurrentDB } from "../../../../utils/arangoClient";
 import FieldList from "../../Components/FieldList";
 import FieldView from "../../Components/FieldView";
-import { useShow, useShowUpdate } from "../../Contexts/LinkContext";
 type LinkPropertiesInputProps = FormProps<LinkProperties> & {
   basePath: string;
 };
@@ -50,12 +50,11 @@ const LinkPropertiesInput = ({
   const [fieldName, setFieldName] = useState<string>();
   const [childBasePath, setBasePath] = useState("");
   const show = useShow();
-  const setShow = useShowUpdate();
 
   const handleShowField = (field: string, basePath: string) => {
-    setShow("ViewField");
     setFieldName(field);
     setBasePath(basePath);
+    // setShow("ViewField");
   };
 
   useEffect(() => {
@@ -139,7 +138,7 @@ const LinkPropertiesInput = ({
 
   return (
     <Grid>
-      {show !== "ViewField" && (
+      {show !== "ViewField" && !fieldName && (
         <>
           <Cell size={"1-1"}>
             <Grid>
@@ -239,7 +238,7 @@ const LinkPropertiesInput = ({
       )}
 
       <Cell size={"1"}>
-        {show !== "ViewField" && (
+        {show !== "ViewField" && !fieldName && (
           <Fieldset legend={"Fields"}>
             <>
               {disabled && isEmpty(fields) ? null : (
@@ -293,7 +292,7 @@ const LinkPropertiesInput = ({
               );
             })} */}
 
-        {show === "ViewField" && fieldName !== undefined && (
+        {fieldName && (
           <FieldView
             view={view}
             fields={fields}
@@ -302,7 +301,7 @@ const LinkPropertiesInput = ({
             basePath={childBasePath}
             viewField={handleShowField}
             fieldName={fieldName}
-            link={childBasePath.split("[")[1].replace("]", "")}
+            link={fieldName}
           />
         )}
       </Cell>
