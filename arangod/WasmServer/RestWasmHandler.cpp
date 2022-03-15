@@ -89,23 +89,21 @@ auto RestWasmHandler::handleGetRequest(WasmVmMethods const& methods)
 
 auto RestWasmHandler::handleDeleteRequest(WasmVmMethods const& methods)
     -> RestStatus {
-  auto success = bool{};
-  auto slice = parseVPackBody(success);
-  if (!success) {
-    return RestStatus::DONE;
-  }
-  if (!slice.isString()) {
+  std::vector<std::string> const& suffixes = _request->decodedSuffixes();
+  if (suffixes.size() != 1) {
     generateError(
         ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
-        "RestWasmHandler Expects name of removable function as string");
+        "RestWasmHandler: Expects name of removable module as suffix.");
+    return RestStatus::DONE;
   }
+  auto const& name = suffixes[0];
 
-  methods.deleteModule(ModuleName{slice.copyString()});
+  methods.deleteModule(ModuleName{name});
 
   VPackBuilder builder;
   {
     VPackObjectBuilder ob(&builder);
-    builder.add("removed", VPackValue(true));
+    builder.add("removed", VPackValue(name));
   }
   generateOk(rest::ResponseCode::OK, builder.slice());
   return RestStatus::DONE;
@@ -185,10 +183,11 @@ auto RestWasmHandler::handlePostRequest(WasmVmMethods const& methods)
       generateOk(rest::ResponseCode::OK, response.slice());
     }
   } else {
-    generateError(ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
-                  "Use POST without suffix to add a function, POST with "
-                  "modulename and functionname as "
-                  "suffixes to exectue the function.");
+    generateError(
+        ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+        "RestWasmHandler: Use POST without suffix to add a function, POST with "
+        "modulename and functionname as "
+        "suffixes to exectue the function.");
   }
   return RestStatus::DONE;
 }

@@ -50,7 +50,7 @@ var base64 = function (file) {
 var unregisterFunction = function (name) {
   'use strict';
 
-  var requestResult = db._connection.DELETE('/_api/wasm/', { name });
+  var requestResult = db._connection.DELETE('/_api/wasm/' + name);
 
   arangosh.checkRequestResult(requestResult);
   return requestResult.result;
