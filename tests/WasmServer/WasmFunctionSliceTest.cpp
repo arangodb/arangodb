@@ -117,3 +117,10 @@ TEST(WasmFunctionConversion, converts_wasm_function_to_velocypack) {
           ->slice()
           .toJson());
 }
+
+TEST(ParameterCreation, extracts_parameters_from_velocypack) {
+  auto velocypack = VPackParser::fromJson(R"({"a": 3, "b": 982})")->slice();
+  auto result = arangodb::wasm::velocypackToParameters(velocypack);
+  EXPECT_TRUE(result.ok());
+  EXPECT_EQ(result.get(), (Parameters{3, 982}));
+}

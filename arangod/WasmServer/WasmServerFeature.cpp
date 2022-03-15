@@ -62,17 +62,17 @@ auto WasmServerFeature::executeFunction(std::string const& name, uint64_t a,
                                         uint64_t b) -> std::optional<uint64_t> {
   auto module = loadFunction(name);
   auto runtime = environment.new_runtime(1024);
-  if (module.has_value()) {
-    runtime.load(module.value());
-    auto function = runtime.find_function(name.c_str());
-    if (function.fail()) {
-      return std::nullopt;
-    }
-    return function.get().call<uint64_t>(a, b);
-  } else {
-    // TODO
+  if (!module.has_value()) {
     return std::nullopt;
   }
+
+  runtime.load(module.value());
+  auto function = runtime.find_function(name.c_str());
+  if (function.fail()) {
+    return std::nullopt;
+  }
+
+  return function.get().call<uint64_t>(a, b);
 }
 
 void WasmServerFeature::deleteFunction(std::string const& functionName) {

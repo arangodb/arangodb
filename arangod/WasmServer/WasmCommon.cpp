@@ -143,3 +143,43 @@ auto arangodb::wasm::velocypackToWasmFunction(Slice slice)
   return ResultT<WasmFunction>(
       WasmFunction{name.get(), {codeField.get()}, isDeterministic.get()});
 }
+
+auto uint64FromSlice(Slice slice) -> std::optional<uint64_t> {
+  if (slice.isSmallInt()) {
+    auto r = slice.getSmallInt();
+    if (r >= 0) {
+      return r;
+    }
+  }
+  if (slice.isUInt()) {
+    return slice.getUInt();
+  }
+  return std::nullopt;
+}
+
+auto arangodb::wasm::velocypackToParameters(Slice slice)
+    -> ResultT<Parameters> {
+  if (!slice.isObject()) {
+    return ResultT<Parameters>::error(TRI_ERROR_BAD_PARAMETER,
+                                      "Can only parse an object");
+  }
+  if (!slice.hasKey("a")) {
+    return ResultT<Parameters>::error(TRI_ERROR_BAD_PARAMETER,
+                                      "Required field 'a' is missing");
+  }
+  if (!slice.hasKey("b")) {
+    return ResultT<Parameters>::error(TRI_ERROR_BAD_PARAMETER,
+                                      "Required field 'b' is missing");
+  }
+  auto a = uint64FromSlice(slice.get("a"));
+  if (!a.has_value()) {
+    return ResultT<Parameters>::error(TRI_ERROR_BAD_PARAMETER,
+                                      "Field a: Should be an unsigned integer");
+  }
+  auto b = uint64FromSlice(slice.get("b"));
+  if (!b.has_value()) {
+    return ResultT<Parameters>::error(TRI_ERROR_BAD_PARAMETER,
+                                      "Field b: Should be an unsigned integer");
+  }
+  return Parameters{a.value(), b.value()};
+}

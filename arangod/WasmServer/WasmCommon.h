@@ -29,24 +29,33 @@
 #include "Basics/Result.h"
 #include "velocypack/Slice.h"
 #include <set>
+#include <tuple>
 
 namespace arangodb::wasm {
 
 struct Code {
   std::vector<uint8_t> bytes;
-  auto operator==(const Code& function) const -> bool = default;
+  auto operator==(Code const& function) const -> bool = default;
 };
 
 struct WasmFunction {
   std::string name;
   Code code;
   bool isDeterministic;
-  auto operator==(const WasmFunction& function) const -> bool = default;
+  auto operator==(WasmFunction const& function) const -> bool = default;
+};
+
+struct Parameters {
+  uint64_t a;
+  uint64_t b;
+  auto operator==(Parameters const& parameters) const -> bool = default;
 };
 
 auto velocypackToWasmFunction(arangodb::velocypack::Slice slice)
     -> ResultT<WasmFunction>;
 void wasmFunctionToVelocypack(WasmFunction const& wasmFunction,
                               VPackBuilder& builder);
+auto velocypackToParameters(arangodb::velocypack::Slice slice)
+    -> ResultT<Parameters>;
 
 }  // namespace arangodb::wasm
