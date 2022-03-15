@@ -105,6 +105,7 @@ LanguageFeature::LanguageFeature(
     application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Language"),
       _locale(),
+      _langType(LanguageType::INVALID),
       _binaryPath(server.getBinaryPath()),
       _icuDataPtr(nullptr),
       _forceLanguageCheck(true) {
