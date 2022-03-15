@@ -21,7 +21,6 @@
 /// @author Wilfried Goesgens
 ////////////////////////////////////////////////////////////////////////////////
 
-
 #include <stddef.h>
 #include <cstdint>
 #include <type_traits>
@@ -48,6 +47,7 @@
 /// @brief set a point in time after which we will abort certain operations
 ////////////////////////////////////////////////////////////////////////////////
 static double executionDeadline = 0.0;
+static arangodb::Mutex singletonDeadlineMutex;
 
 // arangosh only: set a deadline
 static void JS_SetExecutionDeadlineTo(v8::FunctionCallbackInfo<v8::Value> const& args) {
@@ -58,7 +58,7 @@ static void JS_SetExecutionDeadlineTo(v8::FunctionCallbackInfo<v8::Value> const&
   if (args.Length() != 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("SetGlobalExecutionDeadlineTo(<timeout>)");
   }
-
+  MUTEX_LOCKER(mutex, singletonDeadlineMutex);
   auto when = executionDeadline;
   auto now = TRI_microtime();
 
@@ -74,6 +74,7 @@ static void JS_SetExecutionDeadlineTo(v8::FunctionCallbackInfo<v8::Value> const&
 }
 
 bool isExecutionDeadlineReached(v8::Isolate* isolate) {
+  MUTEX_LOCKER(mutex, singletonDeadlineMutex);
   auto when = executionDeadline;
   if (when < 0.00001) {
     return false;
@@ -88,6 +89,7 @@ bool isExecutionDeadlineReached(v8::Isolate* isolate) {
 }
 
 double correctTimeoutToExecutionDeadlineS(double timeoutSeconds) {
+  MUTEX_LOCKER(mutex, singletonDeadlineMutex);
   auto when = executionDeadline;
   if (when < 0.00001) {
     return timeoutSeconds;
@@ -101,6 +103,8 @@ double correctTimeoutToExecutionDeadlineS(double timeoutSeconds) {
 }
 
 std::chrono::milliseconds correctTimeoutToExecutionDeadline(std::chrono::milliseconds timeout) {
+    std::chrono::milliseconds timeout) {
+  MUTEX_LOCKER(mutex, singletonDeadlineMutex);
   using namespace std::chrono;
 
   double epochDoubleWhen = executionDeadline;
@@ -135,7 +139,8 @@ static bool SignalHandler(DWORD eventType) {
     case CTRL_LOGOFF_EVENT:
     case CTRL_SHUTDOWN_EVENT: {
       // Set the deadline to expired:
-      executionDeadline = 0.000001;
+      MUTEX_LOCKER(mutex, singletonDeadlineMutex);
+      executionDeadline = TRI_microtime() - 100;
       return true;
     }
     default: {
@@ -148,14 +153,14 @@ static bool SignalHandler(DWORD eventType) {
 
 static void SignalHandler(int /*signal*/) {
   // Set the deadline to expired:
-  executionDeadline = 0.000001;
+  MUTEX_LOCKER(mutex, singletonDeadlineMutex);
+  executionDeadline = TRI_microtime() - 100;
 }
 
 #endif
 
-
 static void JS_RegisterExecutionDeadlineInterruptHandler(
-  v8::FunctionCallbackInfo<v8::Value> const& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 // handle control-c
