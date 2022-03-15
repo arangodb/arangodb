@@ -361,17 +361,17 @@ auto getRemovedParticipant(ParticipantsFlagsMap const& targetParticipants,
 }
 
 // The main function
-auto checkReplicatedLog(Log const& log, ParticipantsHealth const& health)
-    -> Action {
-  auto const& target = log.target;
-
-  if (!log.plan) {
+auto checkReplicatedLog(LogTarget const& target,
+                        std::optional<LogPlanSpecification> const& maybePlan,
+                        std::optional<LogCurrent> const& maybeCurrent,
+                        ParticipantsHealth const& health) -> Action {
+  if (!maybePlan) {
     // The log is not planned right now, so we create it
-    return AddLogToPlanAction(log.target.participants);
+    return AddLogToPlanAction(target.participants);
   }
 
   // plan now exists
-  auto const& plan = *log.plan;
+  auto const& plan = *maybePlan;
 
   if (!plan.currentTerm) {
     return CreateInitialTermAction{._config = target.config};
@@ -379,12 +379,12 @@ auto checkReplicatedLog(Log const& log, ParticipantsHealth const& health)
 
   auto const& currentTerm = *plan.currentTerm;
 
-  if (!log.current) {
+  if (!maybeCurrent) {
     // As long as we don't  have current, we cannot progress with
     // establishing leadership
     return CurrentNotAvailableAction{};
   }
-  auto const& current = *log.current;
+  auto const& current = *maybeCurrent;
 
   if (!plan.currentTerm->leader) {
     return doLeadershipElection(plan, current, health);
@@ -403,7 +403,7 @@ auto checkReplicatedLog(Log const& log, ParticipantsHealth const& health)
   // leader has been removed from target; this means we have
   // to gracefully remove this leader
   if (!target.participants.contains(currentTerm.leader->serverId)) {
-    return dictateLeader(target, plan, *log.current, health);
+    return dictateLeader(target, plan, current, health);
   }
 
   // If flags for a participant differ between target

@@ -297,11 +297,8 @@ TEST_F(SupervisionLogTest, test_log_created) {
       {"B", ParticipantFlags{.forced = false, .allowedAsLeader = true}},
       {"C", ParticipantFlags{.forced = false, .allowedAsLeader = true}}};
 
-  auto r = checkReplicatedLog(
-      Log{.target = LogTarget(LogId{44}, participants, config),
-          .plan = std::nullopt,
-          .current = std::nullopt},
-      ParticipantsHealth{});
+  auto r = checkReplicatedLog(LogTarget(LogId{44}, participants, config),
+                              std::nullopt, std::nullopt, ParticipantsHealth{});
 
   EXPECT_TRUE(std::holds_alternative<AddLogToPlanAction>(r));
 
@@ -316,11 +313,9 @@ TEST_F(SupervisionLogTest, test_log_present) {
       {"B", ParticipantFlags{.forced = false, .allowedAsLeader = true}},
       {"C", ParticipantFlags{.forced = false, .allowedAsLeader = true}}};
 
-  auto r = checkReplicatedLog(
-      Log{.target = LogTarget(LogId(44), participants, config),
-          .plan = LogPlanSpecification(),
-          .current = std::nullopt},
-      ParticipantsHealth());
+  auto r = checkReplicatedLog(LogTarget(LogId(44), participants, config),
+                              LogPlanSpecification(), std::nullopt,
+                              ParticipantsHealth());
 
   EXPECT_TRUE(std::holds_alternative<CreateInitialTermAction>(r))
       << to_string(r);

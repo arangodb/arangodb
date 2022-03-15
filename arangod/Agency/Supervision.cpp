@@ -2610,7 +2610,7 @@ void Supervision::checkReplicatedLogs() {
       auto maybeAction =
           std::invoke([&, &dbName = dbName]() -> std::optional<Action> {
             try {
-              return checkReplicatedLog(Log{target, plan, current}, info);
+              return checkReplicatedLog(target, plan, current, info);
             } catch (std::exception const& err) {
               LOG_TOPIC("576c1", ERR, Logger::REPLICATION2)
                   << "Supervision caught exception in checkReplicatedLog for "
