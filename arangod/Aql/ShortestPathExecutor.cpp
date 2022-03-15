@@ -221,6 +221,12 @@ auto ShortestPathExecutor::fetchPath(AqlItemBlockInputRange& input) -> bool {
         getVertexId(_infos.getTargetVertex(), _inputRow, _targetBuilder,
                     target) &&
         _finder.shortestPath(source, target, *_path)) {
+      //TODO: Write a test to check if only one DB server is invoked for a pure satellite graph.
+
+      // Checks:
+      // 1. If smart vertices are present, check that they all have the same smart attribute value (only for named disjoint smart graphs).
+      // 2. Else (only sat vertices), check if DB server is a sat leader (only for smart graphs).
+
       return true;
     }
   }
