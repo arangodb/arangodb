@@ -9061,7 +9061,7 @@ AqlValue Functions::CallWasm(ExpressionContext* expressionContext,
     return AqlValue(builder.slice());
   } else {
     auto msg = "Cannot find function";
-    expressionContext->registerError(TRI_ERROR_AIR_EXECUTION_ERROR, msg);
+    expressionContext->registerError(TRI_ERROR_WASM_EXECUTION_ERROR, msg);
     return AqlValue(AqlValueHintNull());
   }
 }

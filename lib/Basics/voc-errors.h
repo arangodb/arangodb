@@ -1931,6 +1931,11 @@
 /// During the execution of an AIR program an error occurred
 #define TRI_ERROR_AIR_EXECUTION_ERROR (::ErrorCode{8001})
 
+/// 8002: ERROR_WASM_EXECUTION_ERROR
+/// "error during WASM execution"
+/// An error occured during the execution of function in the WASM vm
+#define TRI_ERROR_WASM_EXECUTION_ERROR (::ErrorCode{8002})
+
 /// 9001: ERROR_LICENSE_EXPIRED_OR_INVALID
 /// "license has expired or is invalid"
 /// The license has expired or is invalid.
