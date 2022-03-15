@@ -1463,21 +1463,12 @@ Result selectivityEstimatesOnCoordinator(ClusterFeature& feature,
     network::Response const& r = f.get();
 
     if (r.fail()) {
-      return {network::fuerteToArangoErrorCode(r),
-              network::fuerteToArangoErrorMessage(r)};
+      return r.combinedResult();
     }
 
     VPackSlice answer = r.slice();
     if (!answer.isObject()) {
       return {TRI_ERROR_INTERNAL, "invalid response structure"};
-    }
-
-    if (answer.hasKey(StaticStrings::ErrorNum)) {
-      Result res = network::resultFromBody(answer, TRI_ERROR_NO_ERROR);
-
-      if (res.fail()) {
-        return res;
-      }
     }
 
     answer = answer.get("indexes");

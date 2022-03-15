@@ -1,5 +1,5 @@
 /*jshint globalstrict:true, strict:true, esnext: true */
-/*global assertEqual, assertTrue, assertFalse, fail */
+/*global assertEqual, assertNotEqual, assertTrue, assertFalse, fail */
 
 "use strict";
 
@@ -28,10 +28,11 @@
 const db = require('@arangodb').db;
 const jsunity = require("jsunity");
 const { deriveTestSuite } = require('@arangodb/test-helper');
+const isCluster = require('@arangodb/cluster').isCluster();
+  
+const cn = "UnitTestsCollection";
 
 function CreateSuite () {
-  const cn = "UnitTestsCollection";
-        
   let checkIndex = (options, cacheEnabled) => {
     if (cacheEnabled !== undefined) {
       options.cacheEnabled = cacheEnabled;
@@ -53,39 +54,103 @@ function CreateSuite () {
   };
 
   return {
-    testNonUniquePersistentIndex : function () {
+    testCreateNonUniquePersistentIndex : function () {
       [ false, true, undefined ].forEach((value) => {
         checkIndex({ type: "persistent", fields: ["value1"] }, value);
       });
     },
     
-    testUniquePersistentIndex : function () {
+    testCreateUniquePersistentIndex : function () {
       [ false, true, undefined ].forEach((value) => {
         checkIndex({ type: "persistent", fields: ["value1"], unique: true }, value);
       });
     },
-    
-    testNonUniqueHashIndex : function () {
-      [ false, true, undefined ].forEach((value) => {
-        checkIndex({ type: "hash", fields: ["value1"] }, value);
-      });
-    },
-    
-    testUniqueHashIndex : function () {
-      [ false, true, undefined ].forEach((value) => {
-        checkIndex({ type: "hash", fields: ["value1"], unique: true }, value);
-      });
-    },
+  };
+}
 
-    testNonUniqueSkiplistIndex : function () {
+function FiguresSuite () {
+  let docs = [];
+  for (let i = 0; i < 1000; ++i) {
+    docs.push({ value: i });
+  }
+
+  let checkIndex = (options, cacheEnabled) => {
+    options.name = "testCache";
+    if (cacheEnabled !== undefined) {
+      options.cacheEnabled = cacheEnabled;
+    }
+
+    let c = db._create(cn);
+    try {
+      let idx = c.ensureIndex(options);
+      assertEqual(options.type, idx.type);
+      assertTrue(idx.hasOwnProperty("cacheEnabled"));
+      assertEqual(Boolean(cacheEnabled), idx.cacheEnabled);
+
+      if (!isCluster) {
+        // cluster unfortunately does not report any index figures
+        // (and never did)
+        let figures = c.indexes(true).filter((idx) => idx.name === 'testCache')[0];
+        if (!cacheEnabled) {
+          assertFalse(figures.figures.cacheInUse, figures);
+          assertEqual(0, figures.figures.cacheSize, figures);
+          assertEqual(0, figures.figures.cacheUsage, figures);
+          assertFalse(figures.figures.hasOwnProperty("cacheLifeTimeHitRate"), figures);
+          assertFalse(figures.figures.hasOwnProperty("cacheWindowedTimeHitRate"), figures);
+          } else {
+          assertTrue(figures.figures.cacheInUse, figures);
+          assertNotEqual(0, figures.figures.cacheSize, figures);
+          assertEqual(0, figures.figures.cacheUsage, figures);
+          assertTrue(figures.figures.cacheSize > figures.figures.cacheUsage, figures);
+          assertTrue(figures.figures.hasOwnProperty("cacheLifeTimeHitRate"), figures);
+          assertTrue(figures.figures.hasOwnProperty("cacheWindowedHitRate"), figures);
+          assertEqual(0, figures.figures.cacheLifeTimeHitRate, figures);
+          assertEqual(0, figures.figures.cacheWindowedHitRate, figures);
+        }
+
+        if (cacheEnabled) {
+          c.insert(docs);
+      
+          // figures shouldn't have changed
+          let figures = c.indexes(true).filter((idx) => idx.name === 'testCache')[0];
+          assertTrue(figures.figures.cacheInUse, figures);
+          assertNotEqual(0, figures.figures.cacheSize, figures);
+          assertEqual(0, figures.figures.cacheUsage, figures);
+          assertTrue(figures.figures.hasOwnProperty("cacheLifeTimeHitRate"), figures);
+          assertTrue(figures.figures.hasOwnProperty("cacheWindowedHitRate"), figures);
+          assertEqual(0, figures.figures.cacheLifeTimeHitRate, figures);
+          assertEqual(0, figures.figures.cacheWindowedHitRate, figures);
+
+          // figures should now change due to reading the data into the cache
+          for (let i = 0; i < 5; ++i) {
+            db._query(`FOR i IN 1..1000 FOR doc IN ${cn} FILTER doc.value == i RETURN 1`);
+          }
+          
+          figures = c.indexes(true).filter((idx) => idx.name === 'testCache')[0];
+          assertNotEqual(0, figures.figures.cacheSize, figures);
+          assertNotEqual(0, figures.figures.cacheUsage, figures);
+          assertTrue(figures.figures.cacheSize > figures.figures.cacheUsage, figures);
+          assertTrue(figures.figures.hasOwnProperty("cacheLifeTimeHitRate"), figures);
+          assertTrue(figures.figures.hasOwnProperty("cacheWindowedHitRate"), figures);
+          assertNotEqual(0, figures.figures.cacheLifeTimeHitRate, figures);
+        }
+      }
+      
+    } finally {
+      db._drop(cn);
+    }
+  };
+
+  return {
+    testFiguresNonUniquePersistentIndex : function () {
       [ false, true, undefined ].forEach((value) => {
-        checkIndex({ type: "skiplist", fields: ["value1"] }, value);
+        checkIndex({ type: "persistent", fields: ["value"] }, value);
       });
     },
     
-    testUniqueSkiplistIndex : function () {
+    testFiguresUniquePersistentIndex : function () {
       [ false, true, undefined ].forEach((value) => {
-        checkIndex({ type: "skiplist", fields: ["value1"], unique: true }, value);
+        checkIndex({ type: "persistent", fields: ["value"], unique: true }, value);
       });
     },
   };
@@ -95,7 +160,6 @@ function VPackIndexCacheModifySuite (unique) {
   const internal = require('internal');
   const canUseFailAt =  internal.debugCanUseFailAt();
 
-  const cn = "UnitTestsCollection";
   const n = 2000;
   
   let setFailurePointForPointLookup = () => {
@@ -264,7 +328,6 @@ function VPackIndexCacheReadOnlySuite (unique, cacheEnabled) {
   const internal = require('internal');
   const canUseFailAt =  internal.debugCanUseFailAt();
 
-  const cn = "UnitTestsCollection";
   const n = 5000;
   
   let setFailurePointIfCacheUsed = () => {
@@ -543,7 +606,6 @@ function VPackIndexCacheReadOnlyStoredValuesSuite (unique) {
   const internal = require('internal');
   const canUseFailAt =  internal.debugCanUseFailAt();
 
-  const cn = "UnitTestsCollection";
   const n = 10000;
   
   let setFailurePointIfCacheUsed = () => {
@@ -709,8 +771,6 @@ function VPackIndexCacheReadOnlyStoredValuesSuite (unique) {
 }
 
 function OtherIndexesSuite () {
-  const cn = "UnitTestsCollection";
-        
   let checkIndex = (options, cacheEnabled) => {
     if (cacheEnabled !== undefined) {
       options.cacheEnabled = cacheEnabled;
@@ -832,6 +892,7 @@ function PersistentIndexUniqueReadOnlyStoredValuesSuite() {
 }
 
 jsunity.run(CreateSuite);
+jsunity.run(FiguresSuite);
 jsunity.run(PersistentIndexNonUniqueModifySuite);
 jsunity.run(PersistentIndexUniqueModifySuite);
 jsunity.run(PersistentIndexNonUniqueReadOnlyCacheDisabledSuite);
