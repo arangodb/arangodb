@@ -26,8 +26,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AqlCallStack.h"
 #include "Aql/AqlExecuteResult.h"
-#include "Aql/AqlItemBlock.h"
-#include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/BlocksWithClients.h"
 #include "Aql/ClusterQuery.h"
 #include "Aql/ExecutionBlock.h"
@@ -41,7 +39,6 @@
 #include "Basics/tri-strings.h"
 #include "Cluster/CallbackGuard.h"
 #include "Cluster/ClusterFeature.h"
-#include "Cluster/ClusterInfo.h"
 #include "Cluster/RebootTracker.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/TraverserEngine.h"
@@ -49,7 +46,6 @@
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
 #include "Transaction/Context.h"
-#include "Transaction/Methods.h"
 
 #include <velocypack/Iterator.h>
 
@@ -476,6 +472,18 @@ RestStatus RestAqlHandler::execute() {
 
       break;
     }
+    case rest::RequestType::GET: {
+      if (suffixes.size() != 1) {
+        std::string msg("Unknown GET API: ");
+        msg += arangodb::basics::StringUtils::join(suffixes, '/');
+        LOG_TOPIC("e99cf", ERR, arangodb::Logger::AQL) << msg;
+        generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
+                      std::move(msg));
+        return RestStatus::DONE;
+      }
+      handleAvailableOptimizerRules();
+      break;
+    }
 
     default: {
       generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
@@ -747,6 +755,18 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
   generateResult(rest::ResponseCode::OK, std::move(answerBuffer), opts);
 
   return RestStatus::DONE;
+}
+
+void RestAqlHandler::handleAvailableOptimizerRules() {
+  VPackBuilder builder;
+  builder.openObject();
+  auto const params = Logger::structuredLogParams();
+  for (auto const& param : params) {
+    builder.add(param, VPackValue(true));
+  }
+  builder.close();
+
+  generateResult(rest::ResponseCode::OK, builder.slice());
 }
 
 // handle query finalization for all engines

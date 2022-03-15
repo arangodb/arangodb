@@ -139,6 +139,8 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
   QueryRegistry* _queryRegistry;
 
   aql::ExecutionEngine* _engine;
+
+  void handleAvailableOptimizerRules();
 };
 }  // namespace aql
 }  // namespace arangodb
