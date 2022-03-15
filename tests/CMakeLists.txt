@@ -263,6 +263,13 @@ set(ARANGODB_TESTS_SOURCES
   Network/UtilsTest.cpp
   Pregel/typedbuffer.cpp
   Replication/ReplicationClientsProgressTrackerTest.cpp
+  RestHandler/RestAnalyzerHandler-test.cpp
+  RestHandler/RestDocumentHandler-test.cpp
+  RestHandler/RestUsersHandler-test.cpp
+  RestHandler/RestViewHandler-test.cpp
+  RestHandler/VstResponse-test.cpp
+  RestServer/FlushFeature-test.cpp
+  RocksDBEngine/Endian.cpp
   RestServer/LanguageFeatureTest.cpp
   RocksDBEngine/KeyTest.cpp
   RocksDBEngine/HotBackupTest.cpp
