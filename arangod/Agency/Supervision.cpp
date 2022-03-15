@@ -2647,7 +2647,7 @@ void Supervision::checkReplicatedLogs() {
                   .end();
         }
         envelope = arangodb::replication2::replicated_log::execute(
-            action, dbName, target.id, std::move(envelope));
+            action, dbName, target.id, plan, current, std::move(envelope));
       }
     }
   }

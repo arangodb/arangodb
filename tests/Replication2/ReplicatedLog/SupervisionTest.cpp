@@ -167,14 +167,10 @@ TEST_F(LeaderStateMachineTest, test_election_success) {
   EXPECT_TRUE(std::holds_alternative<LeaderElectionAction>(r));
 
   auto& action = std::get<LeaderElectionAction>(r);
-  EXPECT_EQ(action._election.outcome,
-            LogCurrentSupervisionElection::Outcome::SUCCESS);
 
   auto possibleLeaders = std::set<ParticipantId>{"A", "B", "C"};
-  EXPECT_TRUE(bool(action._newTerm));
-  EXPECT_TRUE(bool(action._newTerm->leader));
-  EXPECT_TRUE(possibleLeaders.contains(action._newTerm->leader->serverId));
-  EXPECT_EQ(action._newTerm->leader->rebootId, RebootId{1});
+  EXPECT_TRUE(possibleLeaders.contains(action._electedLeader.serverId));
+  EXPECT_EQ(action._electedLeader.rebootId, RebootId{1});
 }
 
 TEST_F(LeaderStateMachineTest, test_election_fails) {
@@ -261,10 +257,8 @@ TEST_F(LeaderStateMachineTest, test_election_leader_with_higher_term) {
   EXPECT_TRUE(std::holds_alternative<LeaderElectionAction>(r));
 
   auto& action = std::get<LeaderElectionAction>(r);
-  EXPECT_TRUE(bool(action._newTerm));
-  EXPECT_TRUE(bool(action._newTerm->leader));
-  EXPECT_EQ(action._newTerm->leader->serverId, "C");
-  EXPECT_EQ(action._newTerm->leader->rebootId, RebootId{14});
+  EXPECT_EQ(action._electedLeader.serverId, "C");
+  EXPECT_EQ(action._electedLeader.rebootId, RebootId{14});
 }
 
 TEST_F(LeaderStateMachineTest, test_leader_intact) {
@@ -549,7 +543,6 @@ TEST_F(LogSupervisionTest, test_dictate_leader_force_first) {
   auto acceptableParticipants =
       getParticipantsAcceptableAsLeaders("A", participants);
 
-  ASSERT_EQ(action._generation, 1);
   ASSERT_NE(std::find(std::begin(acceptableParticipants),
                       std::end(acceptableParticipants), action._participant),
             std::end(acceptableParticipants));
@@ -607,5 +600,5 @@ TEST_F(LogSupervisionTest, test_dictate_leader_success) {
 
   auto action = std::get<DictateLeaderAction>(r);
 
-  ASSERT_EQ(action._term.leader->serverId, "D");
+  ASSERT_EQ(action._leader.serverId, "D");
 }

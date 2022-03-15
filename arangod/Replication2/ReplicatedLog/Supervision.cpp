@@ -106,12 +106,8 @@ auto dictateLeader(LogTarget const& target, LogPlanSpecification const& plan,
 
     if (participant != current.leader->serverId and flags.forced) {
       auto const rebootId = health._health.at(participant).rebootId;
-      auto const term = LogTerm{plan.currentTerm->term.value + 1};
-      auto const termSpec = LogPlanTermSpecification(
-          term, plan.currentTerm->config,
-          LogPlanTermSpecification::Leader{participant, rebootId});
-
-      return DictateLeaderAction(termSpec);
+      return DictateLeaderAction(
+          LogPlanTermSpecification::Leader(participant, rebootId));
     }
   }
 
@@ -128,8 +124,7 @@ auto dictateLeader(LogTarget const& target, LogPlanSpecification const& plan,
 
     flags.forced = true;
 
-    return UpdateParticipantFlagsAction(chosenOne, flags,
-                                        plan.participantsConfig.generation);
+    return UpdateParticipantFlagsAction(chosenOne, flags);
   }
 
   // TODO: Better error message
@@ -188,12 +183,8 @@ auto leaderInTarget(ParticipantId const& targetLeader,
     };
 
     auto const rebootId = health._health.at(targetLeader).rebootId;
-    auto const term = LogTerm{plan.currentTerm->term.value + 1};
-    auto const termSpec = LogPlanTermSpecification(
-        term, plan.currentTerm->config,
+    return DictateLeaderAction(
         LogPlanTermSpecification::Leader{targetLeader, rebootId});
-
-    return DictateLeaderAction(termSpec);
   }
   return std::nullopt;
 }
@@ -249,10 +240,7 @@ auto doLeadershipElection(LogPlanSpecification const& plan,
 
   if (plan.participantsConfig.participants.size() + 1 <=
       plan.currentTerm->config.writeConcern) {
-    auto election = LogCurrentSupervisionElection();
-    election.term = plan.currentTerm->term;
-    election.outcome = LogCurrentSupervisionElection::Outcome::IMPOSSIBLE;
-    return LeaderElectionAction(election);
+    return LeaderElectionImpossibleAction();
   }
 
   TRI_ASSERT(plan.participantsConfig.participants.size() + 1 >
@@ -272,8 +260,7 @@ auto doLeadershipElection(LogPlanSpecification const& plan,
 
   if (numElectible == 0 ||
       numElectible > std::numeric_limits<uint16_t>::max()) {
-    election.outcome = LogCurrentSupervisionElection::Outcome::IMPOSSIBLE;
-    return LeaderElectionAction(election);
+    return LeaderElectionOutOfBoundsAction{._election = election};
   }
 
   if (election.participantsAvailable >= requiredNumberOfOKParticipants) {
@@ -283,18 +270,13 @@ auto doLeadershipElection(LogPlanSpecification const& plan,
         election.electibleLeaderSet.at(RandomGenerator::interval(maxIdx));
     auto const& newLeaderRebootId = health._health.at(newLeader).rebootId;
 
-    election.outcome = LogCurrentSupervisionElection::Outcome::SUCCESS;
     return LeaderElectionAction(
-        election,
-        LogPlanTermSpecification(
-            LogTerm{plan.currentTerm->term.value + 1}, plan.currentTerm->config,
-            LogPlanTermSpecification::Leader{.serverId = newLeader,
-                                             .rebootId = newLeaderRebootId}));
+        LogPlanTermSpecification::Leader(newLeader, newLeaderRebootId),
+        election);
   } else {
     // Not enough participants were available to form a quorum, so
     // we can't elect a leader
-    election.outcome = LogCurrentSupervisionElection::Outcome::FAILED;
-    return LeaderElectionAction(election);
+    return LeaderElectionQuorumNotReachedAction{election};
   }
 }
 
@@ -367,7 +349,7 @@ auto checkReplicatedLog(LogTarget const& target,
                         ParticipantsHealth const& health) -> Action {
   if (!maybePlan) {
     // The log is not planned right now, so we create it
-    return AddLogToPlanAction(target.participants);
+    return AddLogToPlanAction(target.id, target.participants);
   }
 
   // plan now exists
@@ -396,7 +378,7 @@ auto checkReplicatedLog(LogTarget const& target,
   // does not have a leader; in the next round we should be electing
   // a new leader above
   if (isLeaderFailed(leader, health)) {
-    return WriteEmptyTermAction{._term = currentTerm};
+    return WriteEmptyTermAction{};
   }
 
   // Check whether the participant entry for the current
@@ -412,16 +394,14 @@ auto checkReplicatedLog(LogTarget const& target,
           target.participants, plan.participantsConfig.participants,
           target.leader, leader.serverId)) {
     return UpdateParticipantFlagsAction(participantFlags->first,
-                                        participantFlags->second,
-                                        plan.participantsConfig.generation);
+                                        participantFlags->second);
   }
 
   // If a participant exists in Target, but not in Plan,
   // add that participant to Plan.
   if (auto participant = getAddedParticipant(
           target.participants, plan.participantsConfig.participants)) {
-    return AddParticipantToPlanAction(participant->first, participant->second,
-                                      plan.participantsConfig.generation);
+    return AddParticipantToPlanAction(participant->first, participant->second);
   }
 
   // A specific participant is configured in Target to become the
@@ -441,11 +421,9 @@ auto checkReplicatedLog(LogTarget const& target,
     auto const& [participantId, flags] = *maybeParticipant;
     // The removed participant is currently the leader
     if (participantId == leader.serverId) {
-      return EvictLeaderAction(participantId, flags, currentTerm,
-                               plan.participantsConfig.generation);
+      return EvictLeaderAction{};
     } else {
-      return RemoveParticipantFromPlanAction(
-          participantId, plan.participantsConfig.generation);
+      return RemoveParticipantFromPlanAction(participantId);
     }
   }
 
