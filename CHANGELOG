@@ -1,7 +1,12 @@
 v3.9.1 (XXXX-XX-XX)
 -------------------
 
-* Added new server option: --icu-language. 
+* Added new server option: --icu-language. Used instead of --default-language to set pure ICU collator.
+
+  For example, in Sweden language("sv") lowercase letters should precede uppercase ones. 
+  You can achieve it using following options when server starts
+
+    --icu-language sv
 
 * Speed up initial sync (in case there is already data present) by prefetching
   data from leader.
