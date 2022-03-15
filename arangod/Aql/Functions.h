@@ -274,8 +274,7 @@ struct Functions {
   static AqlValue Keep(arangodb::aql::ExpressionContext*, AstNode const&,
                        VPackFunctionParameters const&);
   static AqlValue KeepRecursive(arangodb::aql::ExpressionContext*,
-                                AstNode const&,
-                                VPackFunctionParameters const&);
+                                AstNode const&, VPackFunctionParameters const&);
   static AqlValue Translate(arangodb::aql::ExpressionContext*, AstNode const&,
                             VPackFunctionParameters const&);
   static AqlValue Merge(arangodb::aql::ExpressionContext*, AstNode const&,
