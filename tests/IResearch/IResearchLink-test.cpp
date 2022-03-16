@@ -1894,7 +1894,7 @@ class IResearchLinkInRecoveryDBServerOnUpgradeTest
   arangodb::tests::mocks::MockDBServer server;
   std::string testFilesystemPath;
 
-  IResearchLinkInRecoveryDBServerOnUpgradeTest() : server(false, true) {
+  IResearchLinkInRecoveryDBServerOnUpgradeTest() : server(false) {
     arangodb::tests::init();
 
     // ensure ArangoSearch start 1 maintenance for each group
@@ -1961,10 +1961,10 @@ TEST_F(IResearchLinkInRecoveryDBServerOnUpgradeTest,
 
     // no collections in view before
     {
-      std::set<arangodb::DataSourceId> actual;
+      std::set<TRI_voc_cid_t> actual;
 
       EXPECT_TRUE((logicalView->visitCollections(
-          [&actual](arangodb::DataSourceId cid) -> bool {
+          [&actual](TRI_voc_cid_t cid) -> bool {
             actual.emplace(cid);
             return true;
           })));
@@ -1978,10 +1978,10 @@ TEST_F(IResearchLinkInRecoveryDBServerOnUpgradeTest,
 
     // collection in view on destruct
     {
-      std::set<arangodb::DataSourceId> actual;
+      std::set<TRI_voc_cid_t> actual;
 
       EXPECT_TRUE((logicalView->visitCollections(
-          [&actual](arangodb::DataSourceId cid) -> bool {
+          [&actual](TRI_voc_cid_t cid) -> bool {
             actual.emplace(cid);
             return true;
           })));
@@ -2008,10 +2008,10 @@ TEST_F(IResearchLinkInRecoveryDBServerOnUpgradeTest,
 
     // no collections in view before
     {
-      std::set<arangodb::DataSourceId> actual;
+      std::set<TRI_voc_cid_t> actual;
 
       EXPECT_TRUE((logicalView->visitCollections(
-          [&actual](arangodb::DataSourceId cid) -> bool {
+          [&actual](TRI_voc_cid_t cid) -> bool {
             actual.emplace(cid);
             return true;
           })));
@@ -2025,10 +2025,10 @@ TEST_F(IResearchLinkInRecoveryDBServerOnUpgradeTest,
 
     // collection in view on destruct
     {
-      std::set<arangodb::DataSourceId> actual;
+      std::set<TRI_voc_cid_t> actual;
 
       EXPECT_TRUE((logicalView->visitCollections(
-          [&actual](arangodb::DataSourceId cid) -> bool {
+          [&actual](TRI_voc_cid_t cid) -> bool {
             actual.emplace(cid);
             return true;
           })));
@@ -2055,10 +2055,10 @@ TEST_F(IResearchLinkInRecoveryDBServerOnUpgradeTest,
 
     // no collections in view before
     {
-      std::set<arangodb::DataSourceId> actual;
+      std::set<TRI_voc_cid_t> actual;
 
       EXPECT_TRUE((logicalView->visitCollections(
-          [&actual](arangodb::DataSourceId cid) -> bool {
+          [&actual](TRI_voc_cid_t cid) -> bool {
             actual.emplace(cid);
             return true;
           })));
@@ -2072,10 +2072,10 @@ TEST_F(IResearchLinkInRecoveryDBServerOnUpgradeTest,
 
     // collection in view on destruct
     {
-      std::set<arangodb::DataSourceId> actual;
+      std::set<TRI_voc_cid_t> actual;
 
       EXPECT_TRUE((logicalView->visitCollections(
-          [&actual](arangodb::DataSourceId cid) -> bool {
+          [&actual](TRI_voc_cid_t cid) -> bool {
             actual.emplace(cid);
             return true;
           })));
@@ -2102,10 +2102,10 @@ TEST_F(IResearchLinkInRecoveryDBServerOnUpgradeTest,
 
     // no collections in view before
     {
-      std::set<arangodb::DataSourceId> actual;
+      std::set<TRI_voc_cid_t> actual;
 
       EXPECT_TRUE((logicalView->visitCollections(
-          [&actual](arangodb::DataSourceId cid) -> bool {
+          [&actual](TRI_voc_cid_t cid) -> bool {
             actual.emplace(cid);
             return true;
           })));
@@ -2123,10 +2123,10 @@ TEST_F(IResearchLinkInRecoveryDBServerOnUpgradeTest,
 
     // collection in view on destruct
     {
-      std::set<arangodb::DataSourceId> actual;
+      std::set<TRI_voc_cid_t> actual;
 
       EXPECT_TRUE((logicalView->visitCollections(
-          [&actual](arangodb::DataSourceId cid) -> bool {
+          [&actual](TRI_voc_cid_t cid) -> bool {
             actual.emplace(cid);
             return true;
           })));
@@ -2152,10 +2152,10 @@ TEST_F(IResearchLinkInRecoveryDBServerOnUpgradeTest, test_init_in_recovery) {
 
     // no collections in view before
     {
-      std::set<arangodb::DataSourceId> actual;
+      std::set<TRI_voc_cid_t> actual;
 
       EXPECT_TRUE((logicalView->visitCollections(
-          [&actual](arangodb::DataSourceId cid) -> bool {
+          [&actual](TRI_voc_cid_t cid) -> bool {
             actual.emplace(cid);
             return true;
           })));
@@ -2173,10 +2173,10 @@ TEST_F(IResearchLinkInRecoveryDBServerOnUpgradeTest, test_init_in_recovery) {
 
     // no collection in view after
     {
-      std::set<arangodb::DataSourceId> actual;
+      std::set<TRI_voc_cid_t> actual;
 
       EXPECT_TRUE((logicalView->visitCollections(
-          [&actual](arangodb::DataSourceId cid) -> bool {
+          [&actual](TRI_voc_cid_t cid) -> bool {
             actual.emplace(cid);
             return true;
           })));
@@ -2188,10 +2188,10 @@ TEST_F(IResearchLinkInRecoveryDBServerOnUpgradeTest, test_init_in_recovery) {
 
     // collection in view on destruct
     {
-      std::set<arangodb::DataSourceId> actual;
+      std::set<TRI_voc_cid_t> actual;
 
       EXPECT_TRUE((logicalView->visitCollections(
-          [&actual](arangodb::DataSourceId cid) -> bool {
+          [&actual](TRI_voc_cid_t cid) -> bool {
             actual.emplace(cid);
             return true;
           })));
