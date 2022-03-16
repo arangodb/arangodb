@@ -25,6 +25,8 @@
 
 #include <memory>
 
+#include "RocksDBOptions.h"
+
 namespace arangodb::sepp {
 
 struct Server;
@@ -36,6 +38,7 @@ struct Benchmark {
   void run(char const* exectuable);
 
  private:
+  RocksDBOptions _rocksdbOptions;
   std::unique_ptr<Server> _server;
 };
 }  // namespace arangodb::sepp

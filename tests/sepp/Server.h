@@ -24,12 +24,17 @@
 #pragma once
 
 #include <memory>
+
 #include "VocBase/vocbase.h"
+
+namespace arangodb {
+struct RocksDBOptionsProvider;
+}
 
 namespace arangodb::sepp {
 
 struct Server {
-  Server();
+  Server(arangodb::RocksDBOptionsProvider const& optionsProvider, std::string databaseDirectory);
   ~Server();
 
   void start(char const* exectuable);

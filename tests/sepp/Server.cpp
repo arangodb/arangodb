@@ -25,6 +25,7 @@
 
 #include <chrono>
 #include <cstdlib>
+#include <filesystem>
 #include <memory>
 #include <iostream>
 #include <stdexcept>
@@ -125,6 +126,7 @@
 #include "RestServer/TtlFeature.h"
 #include "RestServer/UpgradeFeature.h"
 #include "RestServer/ViewTypesFeature.h"
+#include "RestServer/arangod.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBOptionFeature.h"
 #include "RocksDBEngine/RocksDBRecoveryManager.h"
@@ -178,73 +180,13 @@ constexpr auto kNonServerFeatures =
                ArangodServer::id<SslServerFeature>(),
                ArangodServer::id<StatisticsFeature>()};
 
-void setupServer(ArangodServer& server, std::string const& name, int& result) {
-  server.addReporter(
-      {[&](ArangodServer::State state) {
-         if (state == ArangodServer::State::IN_START) {
-           // drop privileges before starting features
-           server.getFeature<PrivilegeFeature>().dropPrivilegesPermanently();
-         }
-       },
-       {}});
-
-  server.addFeatures(
-      Visitor{[]<typename T>(auto& server, TypeTag<T>) {
-                return std::make_unique<T>(server);
-              },
-              [](auto& server, TypeTag<GreetingsFeaturePhase>) {
-                return std::make_unique<GreetingsFeaturePhase>(
-                    server, std::false_type{});
-              },
-              [&result](auto& server, TypeTag<CheckVersionFeature>) {
-                return std::make_unique<CheckVersionFeature>(
-                    server, &result, kNonServerFeatures);
-              },
-              [&name](auto& server, TypeTag<ConfigFeature>) {
-                return std::make_unique<ConfigFeature>(server, name);
-              },
-              [](auto& server, TypeTag<InitDatabaseFeature>) {
-                return std::make_unique<InitDatabaseFeature>(
-                    server, kNonServerFeatures);
-              },
-              [](auto& server, TypeTag<LoggerFeature>) {
-                return std::make_unique<LoggerFeature>(server, true);
-              },
-              [&result](auto& server, TypeTag<ScriptFeature>) {
-                return std::make_unique<ScriptFeature>(server, &result);
-              },
-              [&result](auto& server, TypeTag<ServerFeature>) {
-                return std::make_unique<ServerFeature>(server, &result);
-              },
-              [](auto& server, TypeTag<ShutdownFeature>) {
-                return std::make_unique<ShutdownFeature>(
-                    server, std::array{ArangodServer::id<ScriptFeature>()});
-              },
-              [&name](auto& server, TypeTag<TempFeature>) {
-                return std::make_unique<TempFeature>(server, name);
-              },
-              [](auto& server, TypeTag<SslServerFeature>) {
-#ifdef USE_ENTERPRISE
-                return std::make_unique<SslServerFeatureEE>(server);
-#else
-                return std::make_unique<SslServerFeature>(server);
-#endif
-              },
-              [&result](auto& server, TypeTag<UpgradeFeature>) {
-                return std::make_unique<UpgradeFeature>(server, &result,
-                                                        kNonServerFeatures);
-              },
-              [](auto& server, TypeTag<HttpEndpointProvider>) {
-                return std::make_unique<EndpointFeature>(server);
-              }});
-}
-
 }  // namespace
 
 namespace arangodb::sepp {
 
 struct Server::Impl {
-  Impl();
+  Impl(RocksDBOptionsProvider const& optionsProvider,
+       std::string databaseDirectory);
   ~Impl();
 
   void start(char const* exectuable);
@@ -252,21 +194,27 @@ struct Server::Impl {
   TRI_vocbase_t* vocbase() { return _vocbase; }
 
  private:
-  static void runServer(::ArangodServer& server, char const* exectuable);
+  void setupServer(std::string const& name, int& result);
+  void runServer(char const* exectuable);
 
   std::shared_ptr<arangodb::options::ProgramOptions> _options;
+  RocksDBOptionsProvider const& _optionsProvider;
+  std::string _databaseDirectory;
   ::ArangodServer _server;
   std::thread _serverThread;
   TRI_vocbase_t* _vocbase = nullptr;
 };
 
-Server::Impl::Impl()
+Server::Impl::Impl(RocksDBOptionsProvider const& optionsProvider,
+                   std::string databaseDirectory)
     : _options(std::make_shared<arangodb::options::ProgramOptions>("sepp", "",
                                                                    "", "")),
+      _optionsProvider(optionsProvider),
+      _databaseDirectory(std::move(databaseDirectory)),
       _server(_options, "") {
   std::string name = "arangod";  // we simply reuse the arangod config
   int ret = EXIT_FAILURE;
-  ::setupServer(_server, name, ret);
+  setupServer(name, ret);
 }
 
 Server::Impl::~Impl() {
@@ -282,7 +230,7 @@ Server::Impl::~Impl() {
 }
 
 void Server::Impl::start(char const* exectuable) {
-  _serverThread = std::thread(&Impl::runServer, std::ref(_server), exectuable);
+  _serverThread = std::thread(&Impl::runServer, this, exectuable);
 
   // wait for server
   using arangodb::application_features::ApplicationServer;
@@ -302,20 +250,88 @@ void Server::Impl::start(char const* exectuable) {
   // TODO
 }
 
-void Server::Impl::runServer(::ArangodServer& server, char const* exectuable) {
+void Server::Impl::setupServer(std::string const& name, int& result) {
+  _server.addReporter(
+      {[&](ArangodServer::State state) {
+         if (state == ArangodServer::State::IN_START) {
+           // drop privileges before starting features
+           _server.getFeature<PrivilegeFeature>().dropPrivilegesPermanently();
+         }
+       },
+       {}});
+
+  _server.addFeatures(Visitor{
+      []<typename T>(auto& server, TypeTag<T>) {
+        return std::make_unique<T>(server);
+      },
+      [](auto& server, TypeTag<GreetingsFeaturePhase>) {
+        return std::make_unique<GreetingsFeaturePhase>(server,
+                                                       std::false_type{});
+      },
+      [&result](auto& server, TypeTag<CheckVersionFeature>) {
+        return std::make_unique<CheckVersionFeature>(server, &result,
+                                                     kNonServerFeatures);
+      },
+      [&name](auto& server, TypeTag<ConfigFeature>) {
+        return std::make_unique<ConfigFeature>(server, name);
+      },
+      [](auto& server, TypeTag<InitDatabaseFeature>) {
+        return std::make_unique<InitDatabaseFeature>(server,
+                                                     kNonServerFeatures);
+      },
+      [](auto& server, TypeTag<LoggerFeature>) {
+        return std::make_unique<LoggerFeature>(server, true);
+      },
+      [this](auto& server, TypeTag<RocksDBEngine>) {
+        return std::make_unique<RocksDBEngine>(server, _optionsProvider);
+      },
+      [&result](auto& server, TypeTag<ScriptFeature>) {
+        return std::make_unique<ScriptFeature>(server, &result);
+      },
+      [&result](auto& server, TypeTag<ServerFeature>) {
+        return std::make_unique<ServerFeature>(server, &result);
+      },
+      [](auto& server, TypeTag<ShutdownFeature>) {
+        return std::make_unique<ShutdownFeature>(
+            server, std::array{ArangodServer::id<ScriptFeature>()});
+      },
+      [&name](auto& server, TypeTag<TempFeature>) {
+        return std::make_unique<TempFeature>(server, name);
+      },
+      [](auto& server, TypeTag<SslServerFeature>) {
+#ifdef USE_ENTERPRISE
+        return std::make_unique<SslServerFeatureEE>(server);
+#else
+        return std::make_unique<SslServerFeature>(server);
+#endif
+      },
+      [&result](auto& server, TypeTag<UpgradeFeature>) {
+        return std::make_unique<UpgradeFeature>(server, &result,
+                                                kNonServerFeatures);
+      },
+      [](auto& server, TypeTag<HttpEndpointProvider>) {
+        return std::make_unique<EndpointFeature>(server);
+      }});
+}
+
+void Server::Impl::runServer(char const* exectuable) {
   int ret{EXIT_FAILURE};
 
   // TODO
-  std::vector<std::string> args{exectuable, "--database.directory", "/tmp/sepp",
-                                "--server.endpoint", "tcp://127.0.0.1:8530"};
+  std::string folder = "/tmp/sepp";
+  std::filesystem::remove_all(_databaseDirectory);
+
+  std::vector<std::string> args{exectuable, "--database.directory",
+                                _databaseDirectory, "--server.endpoint",
+                                "tcp://127.0.0.1:8530"};
   std::vector<char*> argv;
   for (auto& arg : args) {
     argv.push_back(arg.data());
   }
   ArangoGlobalContext context(argv.size(), argv.data(), "");
-  ServerState state{server};
+  ServerState state{_server};
   try {
-    server.run(argv.size(), argv.data());
+    _server.run(argv.size(), argv.data());
   } catch (std::exception const& ex) {
     LOG_TOPIC("5d508", ERR, arangodb::Logger::FIXME)
         << "sepp ArangodServer terminated because of an exception: "
@@ -330,7 +346,10 @@ void Server::Impl::runServer(::ArangodServer& server, char const* exectuable) {
   arangodb::Logger::flush();
 }
 
-Server::Server() : _impl(std::make_unique<Impl>()) {}
+Server::Server(arangodb::RocksDBOptionsProvider const& optionsProvider,
+               std::string databaseDirectory)
+    : _impl(std::make_unique<Impl>(optionsProvider,
+                                   std::move(databaseDirectory))) {}
 
 Server::~Server() = default;
 

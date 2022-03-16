@@ -440,6 +440,7 @@ set(ARANGODB_SEPP_SOURCES
   sepp/main.cpp
   sepp/Server.cpp
   sepp/Benchmark.cpp
+  sepp/RocksDBOptions.cpp
 )
 
 add_executable(

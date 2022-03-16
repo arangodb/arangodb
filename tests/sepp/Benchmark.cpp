@@ -24,6 +24,8 @@
 #include "Benchmark.h"
 
 #include <chrono>
+#include <filesystem>
+#include <numeric>
 #include <memory>
 #include <stdexcept>
 
@@ -36,9 +38,25 @@
 
 #include "Server.h"
 
+namespace {
+std::string databaseDirectory = "/tmp/sepp";
+
+std::size_t getFolderSize(std::string const& path) {
+  return std::accumulate(std::filesystem::recursive_directory_iterator(path),
+                         std::filesystem::recursive_directory_iterator(), 0ull,
+                         [](auto size, auto& path) {
+                           return std::filesystem::is_directory(path)
+                                      ? size
+                                      : size + std::filesystem::file_size(path);
+                         });
+}
+}  // namespace
+
 namespace arangodb::sepp {
 
-Benchmark::Benchmark() : _server(std::make_unique<Server>()) {}
+Benchmark::Benchmark()
+    : _rocksdbOptions(),
+      _server(std::make_unique<Server>(_rocksdbOptions, databaseDirectory)) {}
 
 Benchmark::~Benchmark() = default;
 
@@ -51,8 +69,8 @@ void Benchmark::run(char const* exectuable) {
 
   std::shared_ptr<LogicalCollection> collection;
   auto res = methods::Collections::create(
-      *_server->vocbase(),  // collection vocbase
-      {},
+      *_server->vocbase(),     // collection vocbase
+      {},                      // operation options
       "testcol",               // collection name
       TRI_COL_TYPE_DOCUMENT,   // collection type
       optionsBuilder.slice(),  // collection properties
@@ -61,7 +79,8 @@ void Benchmark::run(char const* exectuable) {
       false,                   // new Database?, here always false
       collection);
   if (!res.ok()) {
-    throw std::runtime_error("Failed to create collection: " + std::string(res.errorMessage()));
+    throw std::runtime_error("Failed to create collection: " +
+                             std::string(res.errorMessage()));
   }
 
   auto start = std::chrono::steady_clock::now();
@@ -86,8 +105,15 @@ void Benchmark::run(char const* exectuable) {
       stop = std::chrono::steady_clock::now() > end;
     }
   } while (!stop);
-  auto diff = std::chrono::steady_clock::now() - start;
-  LOG_DEVEL << "performed " << cnt << " operations in " << diff.count() << "s";
+  auto runtime = std::chrono::duration_cast<std::chrono::milliseconds>(
+                     std::chrono::steady_clock::now() - start)
+                     .count() /
+                 1000.0;
+
+  LOG_DEVEL << "performed " << cnt << " operations in " << runtime << "s";
+  LOG_DEVEL << "Throughput: " << cnt / runtime << "ops/s";
+  LOG_DEVEL << "Size of database: "
+            << getFolderSize(databaseDirectory) / (1024.0) << "kb";
 }
 
 }  // namespace arangodb::sepp
