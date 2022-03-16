@@ -44,10 +44,10 @@ var base64 = function (file) {
 };
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock delete a user-defined webassembly function by name
+// / @brief was docuBlock delete a user-defined webassembly module by name
 // //////////////////////////////////////////////////////////////////////////////
 
-var unregisterFunction = function (name) {
+var unregisterModule = function (name) {
   'use strict';
 
   var requestResult = db._connection.DELETE('/_api/wasm/' + name);
@@ -57,11 +57,11 @@ var unregisterFunction = function (name) {
 };
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock add a user-defined webassembly function.
+// / @brief was docuBlock add a user-defined webassembly module.
 //                        codefile is the path to the webassembly code file
 // //////////////////////////////////////////////////////////////////////////////
 
-var registerFunction = function (name, codefile, isDeterministic = false) {
+var registerModuleByFile = function (name, codefile, isDeterministic = false) {
   var db = internal.db;
 
   var requestResult = db._connection.POST('/_api/wasm/',
@@ -76,10 +76,29 @@ var registerFunction = function (name, codefile, isDeterministic = false) {
 };
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock get all user-defined webassembly functions
+// / @brief was docuBlock add a user-defined webassembly module.
+//                        codefile is the path to the webassembly code file
 // //////////////////////////////////////////////////////////////////////////////
 
-var toArrayFunctions = function () {
+var registerModuleByBase64 = function (name, base64code, isDeterministic = false) {
+  var db = internal.db;
+
+  var requestResult = db._connection.POST('/_api/wasm/',
+                                          {
+                                            name: name,
+                                            code: base64code,
+                                            isDeterministic: isDeterministic
+                                          });
+  
+  arangosh.checkRequestResult(requestResult);
+  return requestResult.result;
+};
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief was docuBlock get all user-defined webassembly modules
+// //////////////////////////////////////////////////////////////////////////////
+
+var toArrayModules = function () {
   'use strict';
 
     var requestResult = db._connection.GET('/_api/wasm/');
@@ -88,6 +107,7 @@ var toArrayFunctions = function () {
   return requestResult.result;
 };
 
-exports.unregister = unregisterFunction;
-exports.register = registerFunction;
-exports.toArray = toArrayFunctions;
+exports.unregister = unregisterModule;
+exports.registerByFile = registerModuleByFile;
+exports.register = registerModuleByBase64;
+exports.toArray = toArrayModules;
