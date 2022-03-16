@@ -1,9 +1,11 @@
 devel
 -----
-* Added new server option: --icu-language. Used instead of --default-language to set pure ICU collator.
 
-  For example, in Sweden language("sv") lowercase letters should precede uppercase ones. 
-  You can achieve it using following options when server starts
+* Added new server option: --icu-language. Used instead of --default-language 
+  to set pure ICU collator.
+
+  For example, in Sweden language("sv") lowercase letters should precede 
+  uppercase ones. You can achieve it using following options when server starts
 
     --icu-language sv
 
