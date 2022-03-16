@@ -153,10 +153,8 @@ auto addWasmModule(VPackSlice slice, wasm::WasmVmMethods const& methods,
 
   auto create = methods.addModule(module.get());
 
-  {
-    VPackObjectBuilder ob1(&response);
-    response.add("installed", VPackValue(module.get().name.string));
-  }
+  VPackObjectBuilder ob1(&response);
+  response.add("installed", VPackValue(module.get().name.string));
   return Result{};
 }
 
@@ -175,17 +173,12 @@ auto executeWasmFunction(ModuleName const& moduleName,
       methods
           .executeFunction(moduleName, functionName, functionParameters.get())
           .get();
-  if (!result.has_value()) {
-    return Result{TRI_ERROR_BAD_PARAMETER,
-                  "RestWasmHandler: Function '" + functionName.string +
-                      "' in module '" + moduleName.string +
-                      "' cannot be found"};
+  if (result.fail()) {
+    return Result{result.errorNumber(), result.errorMessage()};
   }
 
-  {
-    VPackObjectBuilder ob(&response);
-    response.add("result", VPackValue(result.value()));
-  }
+  VPackObjectBuilder ob(&response);
+  response.add("result", VPackValue(result.get()));
   return Result{};
 }
 

@@ -9052,16 +9052,15 @@ AqlValue Functions::CallWasm(ExpressionContext* expressionContext,
           static_cast<uint64_t>(functionParameter1.toInt64()),
           static_cast<uint64_t>(functionParameter2.toInt64())});
 
-  if (result.has_value()) {
-    transaction::Methods* trx = &expressionContext->trx();
-    transaction::BuilderLeaser builder(trx);
-    builder->add(VPackValue(result.value()));
-    return AqlValue(builder->slice(), builder->size());
-  } else {
-    auto msg = "Cannot find function";
-    expressionContext->registerError(TRI_ERROR_WASM_EXECUTION_ERROR, msg);
+  if (result.fail()) {
+    expressionContext->registerError(result.errorNumber(),
+                                     result.errorMessage().data());
     return AqlValue(AqlValueHintNull());
   }
+  transaction::Methods* trx = &expressionContext->trx();
+  transaction::BuilderLeaser builder(trx);
+  builder->add(VPackValue(result.get()));
+  return AqlValue(builder->slice(), builder->size());
 }
 
 static void buildKeyObject(VPackBuilder& builder, std::string_view key,

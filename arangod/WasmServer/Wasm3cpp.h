@@ -1,6 +1,7 @@
 // Taken from the wasm3 cpp platform example code
 #pragma once
 
+#include <optional>
 #include <tuple>
 #include <algorithm>
 #include <type_traits>
@@ -10,7 +11,6 @@
 #include <string>
 #include <iterator>
 #include <cassert>
-#include "Basics/ResultT.h"
 
 #include "wasm3.h"
 
@@ -220,7 +220,7 @@ class runtime {
    * @param name  name of a function, c-string
    * @return function object
    */
-  ResultT<function> find_function(const char* name);
+  std::optional<function> find_function(const char* name);
 
  protected:
   friend class environment;
@@ -388,12 +388,11 @@ inline module environment::parse_module(const uint8_t* data, size_t size) {
 
 inline void runtime::load(module& mod) { mod.load_into(m_runtime.get()); }
 
-inline ResultT<function> runtime::find_function(const char* name) {
+inline std::optional<function> runtime::find_function(const char* name) {
   M3Function* m_func = nullptr;
   M3Result err = m3_FindFunction(&m_func, m_runtime.get(), name);
   if (err != m3Err_none or m_func == nullptr) {
-    return ResultT<function>::error(TRI_ERROR_BAD_PARAMETER,
-                                    "Function not found");
+    return std::nullopt;
   }
   return function(m_func);
 }

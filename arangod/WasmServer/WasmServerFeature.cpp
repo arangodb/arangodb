@@ -1,4 +1,5 @@
 #include <unordered_map>
+#include "Basics/Result.h"
 #include "WasmServerFeature.h"
 #include <s2/base/integral_types.h>
 #include <optional>
@@ -38,8 +39,8 @@ void WasmServerFeature::addModule(Module const& module) {
   });
 }
 
-auto WasmServerFeature::loadModule(ModuleName const& name)
-    -> std::optional<wasm3::module> {
+auto WasmServerFeature::loadModuleIntoRuntime(ModuleName const& name)
+    -> Result {
   auto module = _guardedModules.doUnderLock(
       [&name](GuardedModules& guardedModules) -> std::optional<Module> {
         auto maybef = guardedModules._modules.find(name.string);
@@ -49,30 +50,37 @@ auto WasmServerFeature::loadModule(ModuleName const& name)
           return maybef->second;
         }
       });
-  if (module.has_value()) {
-    return environment.parse_module(module.value().code.bytes.data(),
-                                    module.value().code.bytes.size());
-  } else {
-    return std::nullopt;
+
+  if (!module.has_value()) {
+    return Result{TRI_ERROR_WASM_EXECUTION_ERROR,
+                  "WasmServerFeature: Module '" + name.string + "' not found"};
   }
+
+  auto wasm3Module = _environment.parse_module(
+      module.value().code.bytes.data(), module.value().code.bytes.size());
+  _runtime.load(wasm3Module);
+  _loadedModules.emplace(name.string);
+  return Result{};
 }
 
 auto WasmServerFeature::executeFunction(
     ModuleName const& moduleName, FunctionName const& functionName,
-    wasm::FunctionParameters const& parameters) -> std::optional<uint64_t> {
-  auto module = loadModule(moduleName);
-  auto runtime = environment.new_runtime(1024);
-  if (!module.has_value()) {
-    return std::nullopt;
+    wasm::FunctionParameters const& parameters) -> ResultT<uint64_t> {
+  if (!_loadedModules.contains(moduleName.string)) {
+    if (auto result = loadModuleIntoRuntime(moduleName); result.fail()) {
+      return ResultT<uint64_t>::error(result.errorNumber(),
+                                      result.errorMessage());
+    }
+  }
+  auto function = _runtime.find_function(functionName.string.c_str());
+  if (!function.has_value()) {
+    return ResultT<uint64_t>::error(TRI_ERROR_WASM_EXECUTION_ERROR,
+                                    "WasmServerFeature: Function '" +
+                                        functionName.string + "' in module '" +
+                                        moduleName.string + "' not found");
   }
 
-  runtime.load(module.value());
-  auto function = runtime.find_function(functionName.string.c_str());
-  if (function.fail()) {
-    return std::nullopt;
-  }
-
-  return function.get().call<uint64_t>(parameters.a, parameters.b);
+  return function.value().call<uint64_t>(parameters.a, parameters.b);
 }
 
 void WasmServerFeature::deleteModule(ModuleName const& name) {

@@ -50,7 +50,7 @@ struct WasmVmMethods {
   virtual auto executeFunction(ModuleName const& moduleName,
                                FunctionName const& functionName,
                                FunctionParameters const& parameters) const
-      -> futures::Future<std::optional<uint64_t>> = 0;
+      -> futures::Future<ResultT<uint64_t>> = 0;
   static auto createInstance(TRI_vocbase_t& vocbase)
       -> std::shared_ptr<WasmVmMethods>;
 };

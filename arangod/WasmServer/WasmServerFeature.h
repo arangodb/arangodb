@@ -28,6 +28,8 @@
 #include "WasmCommon.h"
 #include "Basics/Guarded.h"
 #include "Wasm3cpp.h"
+#include "Basics/ResultT.h"
+#include "Basics/Result.h"
 
 namespace arangodb {
 class WasmServerFeature final : public ArangodFeature {
@@ -43,11 +45,11 @@ class WasmServerFeature final : public ArangodFeature {
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override;
   void addModule(wasm::Module const& module);
-  auto loadModule(wasm::ModuleName const& name) -> std::optional<wasm3::module>;
+  auto loadModuleIntoRuntime(wasm::ModuleName const& name) -> Result;
   auto executeFunction(wasm::ModuleName const& moduleName,
                        wasm::FunctionName const& functionName,
                        wasm::FunctionParameters const& parameters)
-      -> std::optional<uint64_t>;
+      -> ResultT<uint64_t>;
   void deleteModule(wasm::ModuleName const& name);
   auto allModules() const -> std::unordered_map<std::string, wasm::Module>;
   auto module(wasm::ModuleName const& name) const
@@ -59,6 +61,9 @@ class WasmServerFeature final : public ArangodFeature {
   };
   Guarded<GuardedModules> _guardedModules;
 
-  wasm3::environment environment;
+  wasm3::environment _environment;
+  wasm3::runtime _runtime = _environment.new_runtime(1024);
+
+  std::set<std::string> _loadedModules;
 };
 }  // namespace arangodb

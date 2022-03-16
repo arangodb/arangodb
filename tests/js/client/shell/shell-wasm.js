@@ -50,6 +50,8 @@ return {
 
     tearDown : function () {
 	wasmmodules.unregister(modulename);
+	// Keep in mind that modules that are once loaded into the runtime (by trying to execute a function from it)
+	// will be in the runtime forever, they cannot be deleted from there. This will change with PREG-108.
     },
 
     test_modules_are_initially_empty : function () {
@@ -148,12 +150,15 @@ return {
     },
 
     test_wrong_code_cannot_be_executed : function () {
-	// TODO PREG-87 Return result from wasm3 and raise a different error in handler
+	wasmmodules.register("new_module", "AQL/");
+	// TODO PREG-108 Use modulename to make sure that it is unregistered after the test
+	// (cannot be done right, see reason in tearDown function)
 
-	wasmmodules.register(modulename, "AQL/");
+	// TODO PREG-87 Return result from wasm3 parse_module function
+	// and return ERROR_WASM_EXECUTION_ERROR in handler
 
 	try {
-	    const queryresult = db._query("RETURN CALL_WASM('" + modulename + "', 'function_not_inside_module', 1, 4)").toArray();
+	    const queryresult = db._query("RETURN CALL_WASM('new_module', 'function_not_inside_module', 1, 4)").toArray();
 	} catch (err) {
 	    assertEqual(err.errorNum, ERRORS.ERROR_INTERNAL.code);
 	}
