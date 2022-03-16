@@ -745,18 +745,6 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
   return RestStatus::DONE;
 }
 
-void RestAqlHandler::handleAvailableOptimizerRules() {
-  VPackBuilder builder;
-  builder.openObject();
-  auto const params = Logger::structuredLogParams();
-  for (auto const& param : params) {
-    builder.add(param, VPackValue(true));
-  }
-  builder.close();
-
-  generateResult(rest::ResponseCode::OK, builder.slice());
-}
-
 // handle query finalization for all engines
 RestStatus RestAqlHandler::handleFinishQuery(std::string const& idString) {
   auto qid = arangodb::basics::StringUtils::uint64(idString);
