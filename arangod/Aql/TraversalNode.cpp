@@ -1064,9 +1064,7 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
                                         isDisjointIsSat.first,
                                         isDisjointIsSat.second};
 
-  if (ServerState::instance()->isCoordinator() && !isSmart()) {
-    // Note: In case we're smart, we are NOT allowed to initialize the
-    // ClusterProvider.
+  if (ServerState::instance()->isCoordinator()) {
     auto clusterBaseProviderOptions =
         getClusterBaseProviderOptions(opts, filterConditionVariables);
 
@@ -1162,44 +1160,6 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
         auto expression =
             vertexExpressionPerDepth.second->clone(_plan->getAst());
         validatorOptions.setVertexExpression(depth, std::move(expression));
-      }
-      // TODO This is still hacekd, do not merge this back.
-      // First unify with ClusterProvider and then cleanup.
-      if (isSmart()) {
-        auto traverserCache = std::make_shared<RefactoredClusterTraverserCache>(
-            opts->query().resourceMonitor());
-        arangodb::graph::ClusterBaseProviderOptions baseProviderOptions{
-            traverserCache, engines(), false};
-        auto executorInfos = TraversalExecutorInfos(
-            nullptr, outputRegisterMapping, getStartVertex(), inputRegister,
-            std::move(filterConditionVariables), plan()->getAst(),
-            opts->uniqueVertices, opts->uniqueEdges, opts->mode,
-            opts->refactor(), opts->defaultWeight, opts->weightAttribute,
-            opts->trx(), opts->query(), std::move(baseProviderOptions),
-            std::move(validatorOptions),
-            //                                 arangodb::graph::OneSidedEnumeratorOptions{opts->minDepth,
-            //                                 opts->maxDepth});
-            std::move(options));
-
-        return std::make_unique<ExecutionBlockImpl<TraversalExecutor>>(
-            &engine, this, std::move(registerInfos), std::move(executorInfos));
-      } else {
-        arangodb::graph::BaseProviderOptions baseProviderOptions{
-            opts->tmpVar(), std::move(usedIndexes), opts->getExpressionCtx(),
-            filterConditionVariables, opts->collectionToShard()};
-        auto executorInfos = TraversalExecutorInfos(
-            nullptr, outputRegisterMapping, getStartVertex(), inputRegister,
-            std::move(filterConditionVariables), plan()->getAst(),
-            opts->uniqueVertices, opts->uniqueEdges, opts->mode,
-            opts->refactor(), opts->defaultWeight, opts->weightAttribute,
-            opts->trx(), opts->query(), std::move(baseProviderOptions),
-            std::move(validatorOptions),
-            //                                 arangodb::graph::OneSidedEnumeratorOptions{opts->minDepth,
-            //                                 opts->maxDepth});
-            std::move(options));
-
-        return std::make_unique<ExecutionBlockImpl<TraversalExecutor>>(
-            &engine, this, std::move(registerInfos), std::move(executorInfos));
       }
 
       /*

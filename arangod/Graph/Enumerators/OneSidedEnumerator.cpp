@@ -37,14 +37,10 @@
 #include "Graph/Types/ValidationResult.h"
 #include "Graph/algorithm-aliases.h"
 #ifdef USE_ENTERPRISE
-<<<<<<< HEAD
-#include "Enterprise/Graph/algorithm-aliases-ee.h"
 #include "Enterprise/Graph/Providers/SmartGraphProvider.h"
 #include "Enterprise/Graph/Steps/SmartGraphCoordinatorStep.h"
-=======
 #include "Enterprise/Graph/Steps/SmartGraphStep.h"
->>>>>>> origin
-    #endif
+#endif
 
 #include <Logger/LogMacros.h>
 #include <velocypack/Builder.h>
