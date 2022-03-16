@@ -7,12 +7,7 @@ import React, {
   useMemo,
   useState
 } from "react";
-import {
-  useShow,
-  useViewName,
-  useUpdateField,
-  useShowUpdate
-} from "../../Contexts/LinkContext";
+import { useUpdateField, useShowUpdate } from "../../Contexts/LinkContext";
 import { chain, isEmpty, without } from "lodash";
 import { Cell, Grid } from "../../../../components/pure-css/grid";
 import Checkbox from "../../../../components/pure-css/form/Checkbox";
@@ -27,7 +22,6 @@ import AutoCompleteMultiSelect from "../../../../components/pure-css/form/AutoCo
 import useSWR from "swr";
 import { getApiRouteForCurrentDB } from "../../../../utils/arangoClient";
 import FieldList from "../../Components/FieldList";
-import FieldView from "../../Components/FieldView";
 type LinkPropertiesInputProps = FormProps<LinkProperties> & {
   basePath: string;
 };
@@ -51,31 +45,12 @@ const LinkPropertiesInput = ({
     formState.analyzers
   ]);
 
-  const [fieldName, setFieldName] = useState<string>();
-  const [childBasePath, setBasePath] = useState("");
-  const show = useShow();
   const setShow = useShowUpdate();
-  const view = useViewName();
   const setCurrentField = useUpdateField();
 
   const handleShowField = (field: string, basePath: string) => {
-    setFieldName(field);
-    setBasePath(basePath);
     setShow("ViewField");
     setCurrentField({ field: field, basePath: basePath, fields: fields });
-  };
-
-  const getLink = (str: string) => {
-    let formatedStr;
-    if (str !== "") {
-      const toReturn = str.split("[")[1].replace("]", "");
-      if (toReturn.includes(".")) {
-        formatedStr = toReturn.split(".")[0];
-      } else {
-        formatedStr = toReturn;
-      }
-    }
-    return formatedStr;
   };
 
   useEffect(() => {
@@ -159,125 +134,119 @@ const LinkPropertiesInput = ({
 
   return (
     <Grid>
-      {show !== "ViewField" && !fieldName && (
-        <>
+      <Cell size={"1-1"}>
+        <Grid>
           <Cell size={"1-1"}>
-            <Grid>
-              <Cell size={"1-1"}>
-                {disabled ? null : (
-                  <>
-                    <ArangoTD seq={0} colSpan={2}>
-                      <Textbox
-                        type={"text"}
-                        placeholder={"Field"}
-                        onChange={updateField}
-                        value={field}
-                      />
-                    </ArangoTD>
-                    <ArangoTD seq={1}>
-                      <IconButton
-                        style={{ marginTop: "12px" }}
-                        icon={"plus"}
-                        type={"warning"}
-                        onClick={addField}
-                        disabled={addDisabled}
-                      >
-                        Add
-                      </IconButton>
-                    </ArangoTD>
-                  </>
-                )}
-              </Cell>
-            </Grid>
-          </Cell>
-
-          <Cell size={"1-1"}>
-            <Grid style={{ marginTop: 24 }}>
-              <Cell size={"1-3"}>
-                <AutoCompleteMultiSelect
-                  values={analyzers}
-                  onRemove={removeAnalyzer}
-                  onSelect={addAnalyzer}
-                  options={options}
-                  label={"Analyzers"}
-                  disabled={disabled}
-                />
-              </Cell>
-              <Cell size={hideInBackgroundField ? "1-5" : "1-6"}>
-                <Checkbox
-                  onChange={getBooleanFieldSetter(
-                    "includeAllFields",
-                    dispatch,
-                    basePath
-                  )}
-                  inline={true}
-                  label={"Include All Fields"}
-                  disabled={disabled}
-                  checked={formState.includeAllFields}
-                />
-              </Cell>
-              <Cell size={hideInBackgroundField ? "1-5" : "1-6"}>
-                <Checkbox
-                  onChange={getBooleanFieldSetter(
-                    "trackListPositions",
-                    dispatch,
-                    basePath
-                  )}
-                  label={"Track List Positions"}
-                  disabled={disabled}
-                  inline={true}
-                  checked={formState.trackListPositions}
-                />
-              </Cell>
-              <Cell size={hideInBackgroundField ? "1-5" : "1-6"}>
-                <Checkbox
-                  onChange={updateStoreValues}
-                  label={"Store ID Values"}
-                  disabled={disabled}
-                  inline={true}
-                  checked={storeIdValues}
-                />
-              </Cell>
-              {hideInBackgroundField ? null : (
-                <Cell size={"1-6"}>
-                  <Checkbox
-                    onChange={getBooleanFieldSetter(
-                      "inBackground",
-                      dispatch,
-                      basePath
-                    )}
-                    label={"In Background"}
-                    inline={true}
-                    disabled={disabled}
-                    checked={formState.inBackground}
+            {disabled ? null : (
+              <>
+                <ArangoTD seq={0} colSpan={2}>
+                  <Textbox
+                    type={"text"}
+                    placeholder={"Field"}
+                    onChange={updateField}
+                    value={field}
                   />
-                </Cell>
-              )}
-            </Grid>
+                </ArangoTD>
+                <ArangoTD seq={1}>
+                  <IconButton
+                    style={{ marginTop: "12px" }}
+                    icon={"plus"}
+                    type={"warning"}
+                    onClick={addField}
+                    disabled={addDisabled}
+                  >
+                    Add
+                  </IconButton>
+                </ArangoTD>
+              </>
+            )}
           </Cell>
-        </>
-      )}
+        </Grid>
+      </Cell>
+
+      <Cell size={"1-1"}>
+        <Grid style={{ marginTop: 24 }}>
+          <Cell size={"1-3"}>
+            <AutoCompleteMultiSelect
+              values={analyzers}
+              onRemove={removeAnalyzer}
+              onSelect={addAnalyzer}
+              options={options}
+              label={"Analyzers"}
+              disabled={disabled}
+            />
+          </Cell>
+          <Cell size={hideInBackgroundField ? "1-5" : "1-6"}>
+            <Checkbox
+              onChange={getBooleanFieldSetter(
+                "includeAllFields",
+                dispatch,
+                basePath
+              )}
+              inline={true}
+              label={"Include All Fields"}
+              disabled={disabled}
+              checked={formState.includeAllFields}
+            />
+          </Cell>
+          <Cell size={hideInBackgroundField ? "1-5" : "1-6"}>
+            <Checkbox
+              onChange={getBooleanFieldSetter(
+                "trackListPositions",
+                dispatch,
+                basePath
+              )}
+              label={"Track List Positions"}
+              disabled={disabled}
+              inline={true}
+              checked={formState.trackListPositions}
+            />
+          </Cell>
+          <Cell size={hideInBackgroundField ? "1-5" : "1-6"}>
+            <Checkbox
+              onChange={updateStoreValues}
+              label={"Store ID Values"}
+              disabled={disabled}
+              inline={true}
+              checked={storeIdValues}
+            />
+          </Cell>
+          {hideInBackgroundField ? null : (
+            <Cell size={"1-6"}>
+              <Checkbox
+                onChange={getBooleanFieldSetter(
+                  "inBackground",
+                  dispatch,
+                  basePath
+                )}
+                label={"In Background"}
+                inline={true}
+                disabled={disabled}
+                checked={formState.inBackground}
+              />
+            </Cell>
+          )}
+        </Grid>
+      </Cell>
 
       <Cell size={"1"}>
-        {show !== "ViewField" && !fieldName && (
-          <Fieldset legend={"Fields"}>
-            <>
-              {disabled && isEmpty(fields) ? null : (
-                <FieldList
-                  fields={fields}
-                  disabled={disabled}
-                  dispatch={
-                    (dispatch as unknown) as Dispatch<
-                      DispatchArgs<LinkProperties>
-                    >
-                  }
-                  basePath={basePath}
-                  viewField={handleShowField}
-                />
-              )}
-            </>
-          </Fieldset>
-        )}
+        <Fieldset legend={"Fields"}>
+          <>
+            {disabled && isEmpty(fields) ? null : (
+              <FieldList
+                fields={fields}
+                disabled={disabled}
+                dispatch={
+                  (dispatch as unknown) as Dispatch<
+                    DispatchArgs<LinkProperties>
+                  >
+                }
+                basePath={basePath}
+                viewField={handleShowField}
+              />
+            )}
+          </>
+        </Fieldset>
 
         {/* {map(fields, (properties, fld) => {
               return (
@@ -312,19 +281,6 @@ const LinkPropertiesInput = ({
                 </tr>
               );
             })} */}
-
-        {fieldName && (
-          <FieldView
-            view={view}
-            fields={fields}
-            disabled={disabled}
-            dispatch={dispatch}
-            basePath={childBasePath}
-            viewField={handleShowField}
-            fieldName={fieldName}
-            link={getLink(childBasePath)}
-          />
-        )}
       </Cell>
     </Grid>
   );
