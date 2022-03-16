@@ -56,7 +56,7 @@ const testPaths = {
   'replication_ongoing_frompresent': [tu.pathForTesting('server/replication/ongoing/frompresent')],
   'replication_static': [tu.pathForTesting('server/replication/static')],
   'replication_sync': [tu.pathForTesting('server/replication/sync')],
-  'http_replication': [tu.pathForTesting('server/replication/sync')]
+  'http_replication': [tu.pathForTesting('tests/js/common/replication_api')]
 };
 
 // //////////////////////////////////////////////////////////////////////////////
