@@ -1,6 +1,9 @@
 devel
 -----
 
+* Added AQL hint "useCache" for FOR loops, to explicitly disable the usage of 
+  in-memory caches for lookups.
+
 * When profiling an AQL query via `db._profileQuery(...)` or via the web UI,
   the query profile will now contain the number of index entries read from
   in-memory caches (usable for edge indexes and indexes of type "persistent",

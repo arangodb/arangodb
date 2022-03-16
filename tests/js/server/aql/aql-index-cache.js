@@ -582,6 +582,52 @@ function VPackIndexCacheReadOnlySuite (unique, cacheEnabled) {
       }
     },
     
+    testPointLookupCoveringCacheExplicitlyOn: function () {
+      setFailurePointForPointLookup();
+
+      for (let tries = 0; tries < (cacheEnabled ? 10 : 1); ++tries) {
+        let qres = db._query(`FOR i IN 0..999 FOR doc IN ${cn} OPTIONS { useCache: true } FILTER doc.value1 == i && doc.value2 == CONCAT('testmann', SUBSTRING('00000', 0, 5 - LENGTH(TO_STRING(i))), i) RETURN [doc.value1, doc.value2]`);
+        let result = qres.toArray();
+        assertEqual(1000, result.length);
+        for (let i = 0; i < result.length; ++i) {
+          const doc = result[i];
+          assertEqual(i, doc[0]);
+          assertEqual("testmann" + String(i).padStart(5, "0"), doc[1]);
+        }
+        let stats = qres.getExtra().stats;
+        if (cacheEnabled) {
+          if (tries === 0) {
+            assertEqual(0, stats.cacheHits, stats);
+            assertEqual(1000, stats.cacheMisses, stats);
+          } else {
+            assertEqual(1000, stats.cacheHits + stats.cacheMisses, stats);
+            if (stats.cacheHits > 0) {
+              break;
+            }
+          }
+        } else {
+          assertEqual(0, stats.cacheHits, stats);
+          assertEqual(0, stats.cacheMisses, stats);
+        }
+      }
+    },
+    
+    testPointLookupCoveringCacheDisabled: function () {
+      setFailurePointIfCacheUsed();
+
+      for (let tries = 0; tries < (cacheEnabled ? 10 : 1); ++tries) {
+        let qres = db._query(`FOR i IN 0..999 FOR doc IN ${cn} OPTIONS { useCache: false }FILTER doc.value1 == i && doc.value2 == CONCAT('testmann', SUBSTRING('00000', 0, 5 - LENGTH(TO_STRING(i))), i) RETURN doc.value1`);
+        let result = qres.toArray();
+        assertEqual(1000, result.length);
+        for (let i = 0; i < result.length; ++i) {
+          assertEqual(i, result[i]);
+        }
+        let stats = qres.getExtra().stats;
+        assertEqual(0, stats.cacheHits, stats);
+        assertEqual(0, stats.cacheMisses, stats);
+      }
+    },
+    
     testMixedLookupNonCovering: function () {
       setFailurePointIfCacheUsed();
 

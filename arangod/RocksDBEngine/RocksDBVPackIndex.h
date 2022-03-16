@@ -151,7 +151,7 @@ class RocksDBVPackIndex : public RocksDBIndex {
   // build an index iterator from a VelocyPack range description
   std::unique_ptr<IndexIterator> buildIterator(
       transaction::Methods* trx, arangodb::velocypack::Slice searchValues,
-      bool reverse, ReadOwnWrites readOwnWrites,
+      IndexIteratorOptions const& opts, ReadOwnWrites readOwnWrites,
       RocksDBVPackIndexSearchValueFormat format) const;
 
   // build bounds for an index range

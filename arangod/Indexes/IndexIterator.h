@@ -360,7 +360,7 @@ struct IndexIteratorOptions {
   /// Used when creating the condition required to build an iterator
   bool evaluateFCalls = true;
   /// @brief enable caching
-  bool enableCache = true;
+  bool useCache = true;
   /// @brief number of lookahead elements considered before computing the next
   /// intersection of the Z-curve with the search range
   size_t lookahead = 1;

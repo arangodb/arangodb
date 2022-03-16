@@ -155,6 +155,11 @@ class StaticStrings {
   static std::string const IndexHintOption;
   static std::string const IndexHintOptionForce;
 
+  // query options
+  static std::string const MaxProjections;
+  static std::string const ReadOwnWrites;
+  static std::string const UseCache;
+
   // HTTP headers
   static std::string const Accept;
   static std::string const AcceptEncoding;

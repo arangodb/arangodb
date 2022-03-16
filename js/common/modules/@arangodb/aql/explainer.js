@@ -360,6 +360,7 @@ function printIndexes(indexes) {
     var maxCollectionLen = String('Collection').length;
     var maxUniqueLen = String('Unique').length;
     var maxSparseLen = String('Sparse').length;
+    var maxCacheLen = String('Cache').length;
     var maxNameLen = String('Name').length;
     var maxTypeLen = String('Type').length;
     var maxSelectivityLen = String('Selectivity').length;
@@ -392,6 +393,7 @@ function printIndexes(indexes) {
       header('Collection') + pad(1 + maxCollectionLen - 'Collection'.length) + '   ' +
       header('Unique') + pad(1 + maxUniqueLen - 'Unique'.length) + '   ' +
       header('Sparse') + pad(1 + maxSparseLen - 'Sparse'.length) + '   ' +
+      header('Cache') + pad(1 + maxCacheLen - 'Cache'.length) + '   ' +
       header('Selectivity') + '   ' +
       header('Fields') + pad(1 + maxFieldsLen - 'Fields'.length) + '   ' +
       header('Ranges');
@@ -401,6 +403,7 @@ function printIndexes(indexes) {
     for (var i = 0; i < indexes.length; ++i) {
       var uniqueness = (indexes[i].unique ? 'true' : 'false');
       var sparsity = (indexes[i].hasOwnProperty('sparse') ? (indexes[i].sparse ? 'true' : 'false') : 'n/a');
+      var cache = (indexes[i].hasOwnProperty('cacheEnabled') && indexes[i].cacheEnabled ? 'true' : 'false');
       var fields = '[ ' + indexes[i].fields.map(indexFieldToName).map(attribute).join(', ') + ' ]';
       var fieldsLen = indexes[i].fields.map(indexFieldToName).map(attributeUncolored).join(', ').length + '[  ]'.length;
       var ranges;
@@ -427,6 +430,7 @@ function printIndexes(indexes) {
         collection(indexes[i].collection) + pad(1 + maxCollectionLen - indexes[i].collection.length) + '   ' +
         value(uniqueness) + pad(1 + maxUniqueLen - uniqueness.length) + '   ' +
         value(sparsity) + pad(1 + maxSparseLen - sparsity.length) + '   ' +
+        value(cache) + pad(1 + maxCacheLen - cache.length) + '   ' +
         pad(1 + maxSelectivityLen - estimate.length) + value(estimate) + '   ' +
         fields + pad(1 + maxFieldsLen - fieldsLen) + '   ' +
         ranges;

@@ -616,7 +616,7 @@ std::unique_ptr<IndexIterator> RocksDBEdgeIndex::iteratorForCondition(
 
   if (aap.opType == aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
     // a.b == value
-    return createEqIterator(trx, aap.attribute, aap.value, opts.enableCache,
+    return createEqIterator(trx, aap.attribute, aap.value, opts.useCache,
                             readOwnWrites);
   }
   if (aap.opType == aql::NODE_TYPE_OPERATOR_BINARY_IN) {
@@ -624,7 +624,7 @@ std::unique_ptr<IndexIterator> RocksDBEdgeIndex::iteratorForCondition(
     TRI_ASSERT(readOwnWrites == ReadOwnWrites::no);
     // a.b IN values
     if (aap.value->isArray()) {
-      return createInIterator(trx, aap.attribute, aap.value, opts.enableCache);
+      return createInIterator(trx, aap.attribute, aap.value, opts.useCache);
     }
 
     // a.b IN non-array

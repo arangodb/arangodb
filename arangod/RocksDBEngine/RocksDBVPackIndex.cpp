@@ -1850,11 +1850,14 @@ Result RocksDBVPackIndex::remove(transaction::Methods& trx,
 
 // build an index iterator from a VelocyPack range description
 std::unique_ptr<IndexIterator> RocksDBVPackIndex::buildIterator(
-    transaction::Methods* trx, VPackSlice searchValues, bool reverse,
-    ReadOwnWrites readOwnWrites,
+    transaction::Methods* trx, VPackSlice searchValues,
+    IndexIteratorOptions const& opts, ReadOwnWrites readOwnWrites,
     RocksDBVPackIndexSearchValueFormat format) const {
   TRI_ASSERT(searchValues.isArray());
   TRI_ASSERT(format != RocksDBVPackIndexSearchValueFormat::kDetect);
+
+  bool reverse = !opts.ascending;
+  bool useCache = opts.useCache;
 
   VPackArrayIterator it(searchValues);
 
@@ -1890,7 +1893,8 @@ std::unique_ptr<IndexIterator> RocksDBVPackIndex::buildIterator(
     leftSearch->close();
 
     return std::make_unique<RocksDBVPackUniqueIndexIterator>(
-        &_collection, trx, this, _cache, leftSearch->slice(), readOwnWrites);
+        &_collection, trx, this, useCache ? _cache : nullptr,
+        leftSearch->slice(), readOwnWrites);
   }
 
   // generic case: we have a non-unique index or have non-equality lookups
@@ -1900,7 +1904,7 @@ std::unique_ptr<IndexIterator> RocksDBVPackIndex::buildIterator(
   buildIndexRangeBounds(trx, searchValues, *leftSearch, lastNonEq, bounds);
 
   return buildIteratorFromBounds(trx, reverse, readOwnWrites, std::move(bounds),
-                                 format, /*useCache*/ allEq);
+                                 format, /*useCache*/ allEq && useCache);
 }
 
 std::unique_ptr<IndexIterator> RocksDBVPackIndex::buildIteratorFromBounds(
@@ -2047,7 +2051,7 @@ std::unique_ptr<IndexIterator> RocksDBVPackIndex::iteratorForCondition(
     iterators.reserve(values.size());
     for (VPackSlice val : values) {
       iterators.emplace_back(
-          buildIterator(trx, val, !opts.ascending, readOwnWrites, format));
+          buildIterator(trx, val, opts, readOwnWrites, format));
     }
 
     if (!opts.ascending) {
@@ -2061,8 +2065,7 @@ std::unique_ptr<IndexIterator> RocksDBVPackIndex::iteratorForCondition(
   VPackSlice searchSlice = searchValues->slice();
   TRI_ASSERT(searchSlice.length() == 1);
   searchSlice = searchSlice.at(0);
-  return buildIterator(trx, searchSlice, !opts.ascending, readOwnWrites,
-                       format);
+  return buildIterator(trx, searchSlice, opts, readOwnWrites, format);
 }
 
 void RocksDBVPackIndex::buildSearchValues(
