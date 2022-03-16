@@ -97,6 +97,8 @@ struct MyFactory {
       -> std::shared_ptr<MyFollowerState>;
   auto constructLeader(std::unique_ptr<MyCoreType>)
       -> std::shared_ptr<MyLeaderState>;
+  auto constructCore(LogId)
+  -> std::unique_ptr<MyCoreType>;
 };
 
 struct MyCoreType {};

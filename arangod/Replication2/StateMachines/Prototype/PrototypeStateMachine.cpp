@@ -229,6 +229,10 @@ auto PrototypeFactory::constructLeader(std::unique_ptr<PrototypeCore> core)
   return std::make_shared<PrototypeLeaderState>(std::move(core));
 }
 
+auto PrototypeFactory::constructCore(LogId) -> std::unique_ptr<PrototypeCore> {
+  return std::make_unique<PrototypeCore>();
+}
+
 auto replicated_state::EntryDeserializer<
     replicated_state::prototype::PrototypeLogEntry>::
 operator()(

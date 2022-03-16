@@ -227,6 +227,7 @@ struct PrototypeFactory {
       -> std::shared_ptr<PrototypeFollowerState>;
   auto constructLeader(std::unique_ptr<PrototypeCore> core)
       -> std::shared_ptr<PrototypeLeaderState>;
+  auto constructCore(LogId) -> std::unique_ptr<PrototypeCore>;
 };
 
 }  // namespace prototype

@@ -89,6 +89,7 @@ struct BlackHoleFactory {
       -> std::shared_ptr<BlackHoleFollowerState>;
   auto constructLeader(std::unique_ptr<BlackHoleCore> core)
       -> std::shared_ptr<BlackHoleLeaderState>;
+  auto constructCore(LogId) -> std::unique_ptr<BlackHoleCore>;
 };
 
 }  // namespace black_hole
