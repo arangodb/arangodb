@@ -27,7 +27,6 @@
 #include <string>
 #include <string_view>
 #include <vector>
-#include <ranges>
 
 using namespace arangodb;
 using namespace arangodb::rest;
@@ -68,36 +67,37 @@ TEST(PathMatch, test_suffixes_string_vector) {
                                        "baz_val"));
 }
 
-TEST(PathMatch, test_suffixes_string_view_range) {
-  auto const suffixes_vec = std::vector<std::string_view>{
-      "foo", "foo_val", "bar", "bar_val", "baz", "baz_val"};
-  {
-    auto const suffixes = std::views::all(suffixes_vec);
-    EXPECT_TRUE(Match(suffixes).against("foo", "foo_val", "bar", "bar_val",
-                                        "baz", "baz_val"));
-    // assign string_views
-    {
-      std::string_view foo, bar, baz;
-      // match against mixed components (string_view, string, const char*)
-      EXPECT_TRUE(
-          Match(suffixes).against("foo"sv, &foo, "bar"s, &bar, "baz", &baz));
-      EXPECT_EQ(foo, "foo_val");
-      EXPECT_EQ(bar, "bar_val");
-      EXPECT_EQ(baz, "baz_val");
-    }
-    // assign strings
-    {
-      std::string foo, bar, baz;
-      // match against mixed components (string_view, string, const char*)
-      EXPECT_TRUE(
-          Match(suffixes).against("foo"sv, &foo, "bar"s, &bar, "baz", &baz));
-      EXPECT_EQ(foo, "foo_val");
-      EXPECT_EQ(bar, "bar_val");
-      EXPECT_EQ(baz, "baz_val");
-    }
-  }
-  {
-    auto const suffixes = suffixes_vec | std::views::drop(2);
-    EXPECT_TRUE(Match(suffixes).against("bar", "bar_val", "baz", "baz_val"));
-  }
-}
+// TODO As soon as we have support for ranges, #include <ranges> and add this
+// test. TEST(PathMatch, test_suffixes_string_view_range) {
+//   auto const suffixes_vec = std::vector<std::string_view>{
+//       "foo", "foo_val", "bar", "bar_val", "baz", "baz_val"};
+//   {
+//     auto const suffixes = std::views::all(suffixes_vec);
+//     EXPECT_TRUE(Match(suffixes).against("foo", "foo_val", "bar", "bar_val",
+//                                         "baz", "baz_val"));
+//     // assign string_views
+//     {
+//       std::string_view foo, bar, baz;
+//       // match against mixed components (string_view, string, const char*)
+//       EXPECT_TRUE(
+//           Match(suffixes).against("foo"sv, &foo, "bar"s, &bar, "baz", &baz));
+//       EXPECT_EQ(foo, "foo_val");
+//       EXPECT_EQ(bar, "bar_val");
+//       EXPECT_EQ(baz, "baz_val");
+//     }
+//     // assign strings
+//     {
+//       std::string foo, bar, baz;
+//       // match against mixed components (string_view, string, const char*)
+//       EXPECT_TRUE(
+//           Match(suffixes).against("foo"sv, &foo, "bar"s, &bar, "baz", &baz));
+//       EXPECT_EQ(foo, "foo_val");
+//       EXPECT_EQ(bar, "bar_val");
+//       EXPECT_EQ(baz, "baz_val");
+//     }
+//   }
+//   {
+//     auto const suffixes = suffixes_vec | std::views::drop(2);
+//     EXPECT_TRUE(Match(suffixes).against("bar", "bar_val", "baz", "baz_val"));
+//   }
+// }
