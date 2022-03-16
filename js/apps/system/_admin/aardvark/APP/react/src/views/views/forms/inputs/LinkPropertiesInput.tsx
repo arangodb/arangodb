@@ -48,11 +48,6 @@ const LinkPropertiesInput = ({
   const setShow = useShowUpdate();
   const setCurrentField = useUpdateField();
 
-  const handleShowField = (field: string, basePath: string) => {
-    setShow("ViewField");
-    setCurrentField({ field: field, basePath: basePath, fields: fields });
-  };
-
   useEffect(() => {
     if (data) {
       const tempOptions = chain(data.body.result)
@@ -69,17 +64,30 @@ const LinkPropertiesInput = ({
   };
 
   const addField = () => {
-    dispatch({
-      type: "setField",
-      field: {
-        path: `fields[${field}]`,
-        value: {}
-      },
-      basePath
-    });
+    //let fld;
+    //let regx = /[\[\]']+/g;
+    if (basePath.includes(".fields")) {
+      //fld = basePath.split(".fields")[1].replace(regx, "");
+      dispatch({
+        type: "setField",
+        field: {
+          path: `fields[${field}]`,
+          value: {}
+        },
+        basePath
+      });
+    } else {
+      dispatch({
+        type: "setField",
+        field: {
+          path: `fields[${field}]`,
+          value: {}
+        },
+        basePath
+      });
+    }
     setField("");
   };
-
   const addAnalyzer = (analyzer: string | number) => {
     dispatch({
       type: "setField",
@@ -128,6 +136,10 @@ const LinkPropertiesInput = ({
   // const getFieldRemover = (field: string | number) => () => {
   //   removeField(field);
   // };
+  const handleShowField = (field: string) => {
+    setShow("ViewField");
+    setCurrentField({ field: field, basePath: basePath, fields: fields });
+  };
 
   const storeIdValues = formState.storeValues === "id";
   const hideInBackgroundField = disabled || basePath.includes(".fields");

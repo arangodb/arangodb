@@ -86,7 +86,7 @@ const FieldView: React.FC<FieldListProps> = ({
                 <IconButton
                   icon={"edit"}
                   type={"warning"}
-                  onClick={() => viewField(fld, basePath)}
+                  onClick={() => viewField(fld)}
                 />
               </ArangoTD>
             )}

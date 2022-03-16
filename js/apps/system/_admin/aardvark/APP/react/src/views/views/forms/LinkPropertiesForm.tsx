@@ -27,8 +27,9 @@ const LinkPropertiesForm = ({
   const [link, setLink] = useState<string>();
   const show = useShow();
   const setShow = useShowUpdate();
-  const setField = useField();
+  const field = useField();
 
+  console.log(field);
   useEffect(() => {
     if (data) {
       const linkKeys = chain(links)
@@ -117,18 +118,18 @@ const LinkPropertiesForm = ({
         />
       )}
 
-      {show === "ViewField" && setField !== null && (
+      {show === "ViewField" && field !== null && (
         <FieldView
           view={view}
-          fields={setField.fields}
+          fields={field.fields}
           disabled={disabled}
           dispatch={
             (dispatch as unknown) as Dispatch<DispatchArgs<LinkProperties>>
           }
-          basePath={setField.basePath}
+          basePath={field.basePath}
           viewField={handleShowField}
-          fieldName={setField.field}
-          link={getLink(setField.basePath)}
+          fieldName={field.field}
+          link={getLink(field.basePath)}
         />
       )}
       {/* {map(links, (properties, coll) => {

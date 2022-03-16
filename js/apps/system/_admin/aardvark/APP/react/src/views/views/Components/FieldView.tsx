@@ -28,8 +28,6 @@ const FieldView: React.FC<FieldViewPprops> = ({
   view,
   link
 }) => {
-  const path = `${basePath}.fields[${fieldName}]`;
-  console.log(path);
   const removeField = (field: string | undefined) => {
     dispatch({
       type: "unsetField",
@@ -67,7 +65,7 @@ const FieldView: React.FC<FieldViewPprops> = ({
               <LinkPropertiesInput
                 formState={newField}
                 disabled={disabled}
-                basePath={`${basePath}.fields[${fieldName}].fields[${fieldName}]`}
+                basePath={`${basePath}.fields[${fieldName}]`}
                 dispatch={
                   (dispatch as unknown) as Dispatch<
                     DispatchArgs<LinkProperties>
@@ -85,7 +83,7 @@ const FieldView: React.FC<FieldViewPprops> = ({
                 <IconButton
                   icon={"eye"}
                   type={"warning"}
-                  onClick={() => viewField(fieldName)}
+                  onClick={() => viewField(fieldName, basePath)}
                 />
               </ArangoTD>
             )}
