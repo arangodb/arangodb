@@ -32,6 +32,10 @@
 //      them.
 // TODO Restrict valid suffix types. Probably not before we have reasonable
 //      support for constraints & concepts.
+// TODO This could be extended further. The first useful thing that comes to
+//      mind is matching only a prefix, and get a range with the tail which
+//      can be used for further matching.
+// TODO Match could get an additional constructor with begin/end arguments.
 
 namespace arangodb::rest {
 
