@@ -4532,6 +4532,32 @@ AqlValue Functions::Keep(ExpressionContext* expressionContext, AstNode const&,
   return AqlValue(builder->slice(), builder->size());
 }
 
+/// @brief function KEEP_RECURSIVE
+AqlValue Functions::KeepRecursive(ExpressionContext* expressionContext,
+                                  AstNode const&,
+                                  VPackFunctionParameters const& parameters) {
+  static char const* AFN = "KEEP_RECURSIVE";
+
+  AqlValue const& value = extractFunctionParameterValue(parameters, 0);
+
+  if (!value.isObject()) {
+    registerInvalidArgumentWarning(expressionContext, AFN);
+    return AqlValue(AqlValueHintNull());
+  }
+
+  transaction::Methods* trx = &expressionContext->trx();
+  auto* vopts = &trx->vpackOptions();
+
+  containers::FlatHashSet<std::string> names;
+  ::extractKeys(names, expressionContext, vopts, parameters, 1, AFN);
+
+  AqlValueMaterializer materializer(vopts);
+  VPackSlice slice = materializer.slice(value, false);
+  transaction::BuilderLeaser builder(trx);
+  ::unsetOrKeep(trx, slice, names, false, true, *builder.get());
+  return AqlValue(builder->slice(), builder->size());
+}
+
 /// @brief function TRANSLATE
 AqlValue Functions::Translate(ExpressionContext* expressionContext,
                               AstNode const&,
