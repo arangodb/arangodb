@@ -1,5 +1,8 @@
 devel
 -----
+
+* Added GET request for displaying the available optimizer rules.
+
 * Added new server option: --icu-language. Used instead of --default-language to set pure ICU collator.
 
   For example, in Sweden language("sv") lowercase letters should precede uppercase ones. 
@@ -7,7 +10,8 @@ devel
 
     --icu-language sv
 
-* Added GET request for displaying the available optimizer rules.
+* Added new AQL function `KEEP_RECURSIVE` to recursively keep attritutes from
+  objects/documents, as a conterpart to `UNSET_RECURSIVE`.
 
 * Added an HTTP fuzzer that will fuzz requests (the header for the actual
   moment) and send to the server. The amount of requests sent is provided 
