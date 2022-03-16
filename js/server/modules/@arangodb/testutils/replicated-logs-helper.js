@@ -73,7 +73,7 @@ const getServerRebootId = function (serverId) {
 
 const getParticipantsObjectForServers = function (servers) {
   return _.reduce(servers, (a, v) => {
-    a[v] = {excluded: false, forced: false};
+    a[v] = {allowedInQuorum: true, allowedAsLeader: true, forced: false};
     return a;
   }, {});
 };

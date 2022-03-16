@@ -312,6 +312,50 @@ const replicatedLogSuite = function () {
       replicatedLogDeleteTarget(database, logId);
     },
 
+    // This test removes a participant from the replicated log
+    testRemoveFollowerParticipant: function () {
+      const {logId, servers, followers} = createReplicatedLogAndWaitForLeader(database);
+
+      // first add a new server, but with excluded flag
+      const newServer = _.sample(_.difference(dbservers, servers));
+      replicatedLogUpdateTargetParticipants(database, logId, {
+        [newServer]: {allowedInQuorum: true, allowedAsLeader: true},
+      });
+
+      waitFor(replicatedLogParticipantsFlag(database, logId, {
+        [newServer]: {allowedInQuorum: true, allowedAsLeader: true, forced: false},
+      }));
+
+      const removedServer = _.sample(followers);
+      replicatedLogUpdateTargetParticipants(database, logId, {
+        [removedServer]: null,
+      });
+
+      waitFor(replicatedLogParticipantsFlag(database, logId, {
+        [removedServer]: null,
+      }));
+
+      {
+        const {current} = readReplicatedLogAgency(database, logId);
+        const actions = current.supervision.actions;
+        // we expect the last actions to be
+        //  1. remove the server
+        //  2. dictate leadership with new leader
+        {
+          const action = _.nth(actions, -2).desc;
+          assertEqual(action.type, 'UpdateParticipantFlagsAction');
+          assertEqual(action.flags, {allowedAsLeader: true, allowedInQuorum: false, forced: false});
+        }
+        {
+          const action = _.nth(actions, -1).desc;
+          assertEqual(action.type, 'RemoveParticipantFromPlanAction');
+          assertEqual(action.participant, removedServer);
+        }
+      }
+
+      replicatedLogDeleteTarget(database, logId);
+    },
+
     // This test first makes a follower excluded and then asks for this follower
     // to become the leader. It then removed the excluded flag and expects the
     // leadership to be transferred.
