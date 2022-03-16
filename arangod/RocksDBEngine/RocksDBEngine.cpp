@@ -201,9 +201,11 @@ RocksDBFilePurgeEnabler::RocksDBFilePurgeEnabler(
 }
 
 // create the storage engine
-RocksDBEngine::RocksDBEngine(Server& server)
+RocksDBEngine::RocksDBEngine(Server& server,
+                             RocksDBOptionsProvider const& optionsProvider)
     : StorageEngine(server, kEngineName, name(), Server::id<RocksDBEngine>(),
                     std::make_unique<RocksDBIndexFactory>(server)),
+      _optionsProvider(optionsProvider),
       _db(nullptr),
       _walAccess(std::make_unique<RocksDBWalAccess>(*this)),
       _maxTransactionSize(transaction::Options::defaultMaxTransactionSize),
@@ -688,13 +690,10 @@ void RocksDBEngine::start() {
         << (100.0 * double(freeSpace) / double(totalSpace)) << "% free)";
   }
 
-  RocksDBOptionsProvider const& opts =
-      server().getFeature<arangodb::RocksDBOptionFeature>();
-
   rocksdb::TransactionDBOptions transactionOptions =
-      opts.getTransactionDBOptions();
+      _optionsProvider.getTransactionDBOptions();
 
-  _options = opts.getOptions();
+  _options = _optionsProvider.getOptions();
   if (_options.wal_dir.empty()) {
     _options.wal_dir = basics::FileUtils::buildFilename(_path, "journals");
   }
@@ -706,10 +705,12 @@ void RocksDBEngine::start() {
   configureEnterpriseRocksDBOptions(_options, createdEngineDir);
 #endif
 
-  _options.env->SetBackgroundThreads(static_cast<int>(opts.numThreadsHigh()),
-                                     rocksdb::Env::Priority::HIGH);
-  _options.env->SetBackgroundThreads(static_cast<int>(opts.numThreadsLow()),
-                                     rocksdb::Env::Priority::LOW);
+  _options.env->SetBackgroundThreads(
+      static_cast<int>(_optionsProvider.numThreadsHigh()),
+      rocksdb::Env::Priority::HIGH);
+  _options.env->SetBackgroundThreads(
+      static_cast<int>(_optionsProvider.numThreadsLow()),
+      rocksdb::Env::Priority::LOW);
 
   if (_debugLogging) {
     _options.info_log_level = rocksdb::InfoLogLevel::DEBUG_LEVEL;
@@ -717,7 +718,7 @@ void RocksDBEngine::start() {
 
   std::shared_ptr<RocksDBLogger> logger;
 
-  if (!opts.useFileLogging()) {
+  if (!_optionsProvider.useFileLogging()) {
     // if option "--rocksdb.use-file-logging" is set to false, we will use
     // our own logger that logs to ArangoDB's logfile
     logger = std::make_shared<RocksDBLogger>(_options.info_log_level);
@@ -774,10 +775,10 @@ void RocksDBEngine::start() {
 
   // create column families
   std::vector<rocksdb::ColumnFamilyDescriptor> cfFamilies;
-  auto addFamily = [&opts,
+  auto addFamily = [this,
                     &cfFamilies](RocksDBColumnFamilyManager::Family family) {
     rocksdb::ColumnFamilyOptions specialized =
-        opts.getColumnFamilyOptions(family);
+        _optionsProvider.getColumnFamilyOptions(family);
     std::string name = RocksDBColumnFamilyManager::name(family);
     cfFamilies.emplace_back(name, specialized);
   };
@@ -867,15 +868,15 @@ void RocksDBEngine::start() {
     logger->enable();
   }
 
-  if (opts.limitOpenFilesAtStartup()) {
+  if (_optionsProvider.limitOpenFilesAtStartup()) {
     _db->SetDBOptions({{"max_open_files", "-1"}});
   }
 
   // limit the total size of WAL files. This forces the flush of memtables of
   // column families still backed by WAL files. If we would not do this, WAL
   // files may linger around forever and will not get removed
-  _db->SetDBOptions(
-      {{"max_total_wal_size", std::to_string(opts.maxTotalWalSize())}});
+  _db->SetDBOptions({{"max_total_wal_size",
+                      std::to_string(_optionsProvider.maxTotalWalSize())}});
 
   {
     auto& feature = server().getFeature<FlushFeature>();

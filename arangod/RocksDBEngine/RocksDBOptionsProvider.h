@@ -35,11 +35,13 @@ class RocksDBVPackComparator;
 struct RocksDBOptionsProvider {
   RocksDBOptionsProvider();
   virtual ~RocksDBOptionsProvider() = default;
+
   virtual rocksdb::TransactionDBOptions getTransactionDBOptions() const = 0;
   virtual rocksdb::Options getOptions() const = 0;
   virtual rocksdb::BlockBasedTableOptions getTableOptions() const = 0;
   virtual rocksdb::ColumnFamilyOptions getColumnFamilyOptions(
       RocksDBColumnFamilyManager::Family family) const;
+
   virtual bool useFileLogging() const noexcept { return false; }
   virtual bool limitOpenFilesAtStartup() const noexcept { return false; }
   virtual uint64_t maxTotalWalSize() const noexcept = 0;
