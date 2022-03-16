@@ -1,6 +1,9 @@
 devel
 -----
 
+* No longer put document writes from replication into the audit log by
+  default. Same with low priority authentication.
+
 * Added an HTTP fuzzer that will fuzz requests (the header for the actual
   moment) and send to the server. The amount of requests sent is provided 
   by one of the parameters of the function `fuzzRequests()` in arangosh.
