@@ -24,11 +24,11 @@
 #include "RestQueryHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Aql/OptimizerRulesFeature.h"
 #include "Aql/Query.h"
 #include "Aql/QueryList.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
 #include "Transaction/Helpers.h"
@@ -55,9 +55,14 @@ RestStatus RestQueryHandler::execute() {
     case rest::RequestType::DELETE_REQ:
       deleteQuery();
       break;
-    case rest::RequestType::GET:
-      readQuery();
-      break;
+    case rest::RequestType::GET: {
+      auto const& suffixes = _request->suffixes();
+      if (suffixes.size() == 1 && suffixes[0] == "rules") {
+        handleAvailableOptimizerRules();
+      } else {
+        readQuery();
+      }
+    } break;
     case rest::RequestType::PUT:
       replaceProperties();
       break;
@@ -71,6 +76,35 @@ RestStatus RestQueryHandler::execute() {
 
   // this handler is done
   return RestStatus::DONE;
+}
+
+void RestQueryHandler::handleAvailableOptimizerRules() {
+  VPackBuilder builder;
+  builder.openArray();
+  auto& rules = OptimizerRulesFeature::rules();
+  for (auto const& myRule : rules) {
+    builder.openObject();
+    builder.add("name", VPackValue(myRule.name));
+    builder.add(velocypack::Value("flags"));
+    builder.openObject();
+    builder.add("hidden", VPackValue(myRule.isHidden() ? "true" : "false"));
+    builder.add("clusterOnly",
+                VPackValue(myRule.isClusterOnly() ? "true" : "false"));
+    builder.add("canBeDisabled",
+                VPackValue(myRule.canBeDisabled() ? "true" : "false"));
+    builder.add(
+        "canCreateAdditionalPlans",
+        VPackValue(myRule.canCreateAdditionalPlans() ? "true" : "false"));
+    builder.add("disabledByDefault",
+                VPackValue(myRule.isDisabledByDefault() ? "true" : "false"));
+    builder.add("enterpriseOnly",
+                VPackValue(myRule.isEnterpriseOnly() ? "true" : "false"));
+    builder.close();
+    builder.close();
+  }
+  builder.close();
+
+  generateResult(rest::ResponseCode::OK, builder.slice());
 }
 
 void RestQueryHandler::readQueryProperties() {

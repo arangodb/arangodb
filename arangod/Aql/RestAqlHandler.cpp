@@ -472,18 +472,6 @@ RestStatus RestAqlHandler::execute() {
 
       break;
     }
-    case rest::RequestType::GET: {
-      if (suffixes.size() != 1) {
-        std::string msg("Unknown GET API: ");
-        msg += arangodb::basics::StringUtils::join(suffixes, '/');
-        LOG_TOPIC("e99cf", ERR, arangodb::Logger::AQL) << msg;
-        generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
-                      std::move(msg));
-        return RestStatus::DONE;
-      }
-      handleAvailableOptimizerRules();
-      break;
-    }
 
     default: {
       generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
