@@ -193,7 +193,7 @@ std::shared_ptr<Cache> PlainCache<Hasher>::create(
     std::shared_ptr<Table> table, bool enableWindowedStats) {
   return std::make_shared<PlainCache<Hasher>>(
       Cache::ConstructionGuard(), manager, std::move(hasher), id,
-      std::move(metadata), table, enableWindowedStats);
+      std::move(metadata), std::move(table), enableWindowedStats);
 }
 
 template<typename Hasher>
@@ -202,8 +202,9 @@ PlainCache<Hasher>::PlainCache(Cache::ConstructionGuard /*guard*/,
                                std::uint64_t id, Metadata&& metadata,
                                std::shared_ptr<Table> table,
                                bool enableWindowedStats)
-    : Cache(manager, id, std::move(metadata), table, enableWindowedStats,
-            PlainCache::bucketClearer, PlainBucket::slotsData),
+    : Cache(manager, id, std::move(metadata), std::move(table),
+            enableWindowedStats, PlainCache::bucketClearer,
+            PlainBucket::slotsData),
       _hasher(std::move(hasher)) {}
 
 template<typename Hasher>
@@ -255,7 +256,7 @@ std::uint64_t PlainCache<Hasher>::freeMemoryFrom(std::uint32_t hash) {
 template<typename Hasher>
 void PlainCache<Hasher>::migrateBucket(void* sourcePtr,
                                        std::unique_ptr<Table::Subtable> targets,
-                                       std::shared_ptr<Table> newTable) {
+                                       std::shared_ptr<Table>& newTable) {
   // lock current bucket
   std::shared_ptr<Table> table = this->table();
 
@@ -267,6 +268,9 @@ void PlainCache<Hasher>::migrateBucket(void* sourcePtr,
     // lock target bucket(s)
     std::vector<Table::BucketLocker> targetGuards = targets->lockAllBuckets();
 
+    std::uint64_t totalSize = 0;
+    std::uint64_t filled = 0;
+    std::uint64_t emptied = 0;
     for (std::size_t j = 0; j < PlainBucket::slotsData; j++) {
       std::size_t k = PlainBucket::slotsData - (j + 1);
       if (source._cachedHashes[k] != 0) {
@@ -282,25 +286,28 @@ void PlainCache<Hasher>::migrateBucket(void* sourcePtr,
             targetBucket->evict(candidate, true);
             std::uint64_t size = candidate->size();
             freeValue(candidate);
-            reclaimMemory(size);
-            newTable->slotEmptied();
+            totalSize += size;
+            ++emptied;
           } else {
             haveSpace = false;
           }
         }
         if (haveSpace) {
           targetBucket->insert(hash, value);
-          newTable->slotFilled();
+          ++filled;
         } else {
           std::uint64_t size = value->size();
           freeValue(value);
-          reclaimMemory(size);
+          totalSize += size;
         }
 
         source._cachedHashes[k] = 0;
         source._cachedData[k] = nullptr;
       }
     }
+    reclaimMemory(totalSize);
+    newTable->slotsFilled(filled);
+    newTable->slotsEmptied(emptied);
   }
 
   // finish up this bucket's migration

@@ -90,6 +90,8 @@ Manager::Manager(SharedPRNGFeature& sharedPRNG, PostFn schedulerPost,
                        _accessStats.memoryUsage()),
       _spareTableAllocation(0),
       _globalAllocation(_fixedAllocation),
+      _activeTables(0),
+      _spareTables(0),
       _transactions(),
       _schedulerPost(std::move(schedulerPost)),
       _resizeAttempt(0),
@@ -242,14 +244,32 @@ bool Manager::resize(std::uint64_t newGlobalLimit) {
   return success;
 }
 
-std::uint64_t Manager::globalLimit() {
+std::uint64_t Manager::globalLimit() const noexcept {
   SpinLocker guard(SpinLocker::Mode::Read, _lock);
   return _resizing ? _globalSoftLimit : _globalHardLimit;
 }
 
-std::uint64_t Manager::globalAllocation() {
+std::uint64_t Manager::globalAllocation() const noexcept {
   SpinLocker guard(SpinLocker::Mode::Read, _lock);
   return _globalAllocation;
+}
+
+std::uint64_t Manager::spareAllocation() const noexcept {
+  SpinLocker guard(SpinLocker::Mode::Read, _lock);
+  return _spareTableAllocation;
+}
+
+Manager::MemoryStats Manager::memoryStats() const noexcept {
+  Manager::MemoryStats result;
+
+  SpinLocker guard(SpinLocker::Mode::Read, _lock);
+  result.globalLimit = _resizing ? _globalSoftLimit : _globalHardLimit;
+  result.globalAllocation = _globalAllocation;
+  result.spareAllocation = _spareTableAllocation;
+  result.activeTables = _activeTables;
+  result.spareTables = _spareTables;
+
+  return result;
 }
 
 std::pair<double, double> Manager::globalHitRates() {
@@ -328,7 +348,7 @@ std::tuple<bool, Metadata, std::shared_ptr<Table>> Manager::registerCache(
   }
 
   if (!ok && (table != nullptr)) {
-    reclaimTable(table, true);
+    reclaimTable(std::move(table), true);
     table.reset();
   }
 
@@ -434,7 +454,7 @@ std::pair<bool, Manager::time_point> Manager::requestMigrate(
         if (allowed) {
           nextRequest = std::chrono::steady_clock::now();
           migrateCache(TaskEnvironment::none, std::move(metaGuard), cache,
-                       table);  // unlocks metadata
+                       std::move(table));  // unlocks metadata
         }
       }
     }
@@ -443,13 +463,13 @@ std::pair<bool, Manager::time_point> Manager::requestMigrate(
   return std::make_pair(allowed, nextRequest);
 }
 
-void Manager::reportAccess(std::uint64_t id) {
+void Manager::reportAccess(std::uint64_t id) noexcept {
   if ((_sharedPRNG.rand() & static_cast<unsigned long>(7)) == 0) {
     _accessStats.insertRecord(id);
   }
 }
 
-void Manager::reportHitStat(Stat stat) {
+void Manager::reportHitStat(Stat stat) noexcept {
   switch (stat) {
     case Stat::findHit: {
       _findHits.add(1, std::memory_order_relaxed);
@@ -471,12 +491,12 @@ void Manager::reportHitStat(Stat stat) {
   }
 }
 
-bool Manager::isOperational() const {
+bool Manager::isOperational() const noexcept {
   TRI_ASSERT(_lock.isLocked());
   return (!_shutdown && !_shuttingDown);
 }
 
-bool Manager::globalProcessRunning() const {
+bool Manager::globalProcessRunning() const noexcept {
   TRI_ASSERT(_lock.isLocked());
   return (_rebalancing || _resizing);
 }
@@ -626,8 +646,13 @@ void Manager::freeUnusedTables() {
   for (std::size_t i = 0; i < tableEntries; i++) {
     while (!_tables[i].empty()) {
       auto table = std::move(_tables[i].top());
-      _globalAllocation -= table->memoryUsage();
+      std::uint64_t memoryUsage = table->memoryUsage();
+      _globalAllocation -= memoryUsage;
+
       TRI_ASSERT(_globalAllocation >= _fixedAllocation);
+      _spareTableAllocation -= memoryUsage;
+      TRI_ASSERT(_spareTables > 0);
+      --_spareTables;
       _tables[i].pop();
     }
   }
@@ -661,6 +686,7 @@ void Manager::resizeCache(Manager::TaskEnvironment environment,
     metaGuard.release();
     _globalAllocation -= oldLimit;
     _globalAllocation += newLimit;
+
     TRI_ASSERT(_globalAllocation >= _fixedAllocation);
     return;
   }
@@ -683,7 +709,7 @@ void Manager::resizeCache(Manager::TaskEnvironment environment,
 
 void Manager::migrateCache(Manager::TaskEnvironment environment,
                            SpinLocker&& metaGuard, Cache* cache,
-                           std::shared_ptr<Table>& table) {
+                           std::shared_ptr<Table> table) {
   TRI_ASSERT(_lock.isLockedWrite());
   TRI_ASSERT(metaGuard.isLocked());
   Metadata& metadata = cache->metadata();
@@ -692,13 +718,19 @@ void Manager::migrateCache(Manager::TaskEnvironment environment,
   metadata.toggleMigrating();
   metaGuard.release();
 
-  auto task = std::make_shared<MigrateTask>(environment, *this,
-                                            cache->shared_from_this(), table);
-  bool dispatched = task->dispatch();
+  bool dispatched;
+  try {
+    auto task = std::make_shared<MigrateTask>(environment, *this,
+                                              cache->shared_from_this(), table);
+    dispatched = task->dispatch();
+  } catch (...) {
+    dispatched = false;
+  }
+
   if (!dispatched) {
     // TODO: decide what to do if we don't have an io_service
     SpinLocker altMetaGuard(SpinLocker::Mode::Write, metadata.lock());
-    reclaimTable(table, true);
+    reclaimTable(std::move(table), true);
     metadata.toggleMigrating();
   }
 }
@@ -712,42 +744,64 @@ std::shared_ptr<Table> Manager::leaseTable(std::uint32_t logSize) {
     if (increaseAllowed(Table::allocationSize(logSize), true)) {
       try {
         table = std::make_shared<Table>(logSize);
+
         _globalAllocation += table->memoryUsage();
         TRI_ASSERT(_globalAllocation >= _fixedAllocation);
+        ++_activeTables;
       } catch (std::bad_alloc const&) {
+        // don't throw from here, but return a nullptr
         table.reset();
       }
     }
   } else {
-    table = _tables[logSize].top();
+    table = std::move(_tables[logSize].top());
     TRI_ASSERT(table != nullptr);
     _spareTableAllocation -= table->memoryUsage();
+    TRI_ASSERT(_spareTables > 0);
+    --_spareTables;
+    ++_activeTables;
     _tables[logSize].pop();
   }
 
   return table;
 }
 
-void Manager::reclaimTable(std::shared_ptr<Table> table, bool internal) {
+void Manager::reclaimTable(std::shared_ptr<Table>&& table, bool internal) {
   TRI_ASSERT(table != nullptr);
-  SpinLocker guard(SpinLocker::Mode::Write, _lock, !internal);
 
-  std::uint32_t logSize = table->logSize();
-  std::size_t maxTables =
-      (logSize < 18) ? (static_cast<std::size_t>(1) << (18 - logSize)) : 1;
-  if ((_tables[logSize].size() < maxTables) &&
-      ((table->memoryUsage() + _spareTableAllocation) <
-       ((_globalSoftLimit - _globalHighwaterMark) / 2))) {
-    _tables[logSize].emplace(table);
-    _spareTableAllocation += table->memoryUsage();
-  } else {
-    _globalAllocation -= table->memoryUsage();
-    TRI_ASSERT(_globalAllocation >= _fixedAllocation);
-    table.reset();
+  // max table size to keep around empty is 32 MB
+  constexpr std::uint64_t maxTableSize = std::uint64_t(32) << 20;
+
+  {
+    SpinLocker guard(SpinLocker::Mode::Write, _lock, !internal);
+
+    TRI_ASSERT(_activeTables > 0);
+    --_activeTables;
+
+    std::uint64_t memoryUsage = table->memoryUsage();
+    std::uint32_t logSize = table->logSize();
+    std::size_t maxTables =
+        (logSize < 18) ? (static_cast<std::size_t>(1) << (18 - logSize)) : 1;
+    if ((_tables[logSize].size() < maxTables) &&
+        (memoryUsage <= maxTableSize) && (_spareTables < maxSpareTablesTotal) &&
+        ((memoryUsage + _spareTableAllocation) <
+         ((_globalSoftLimit - _globalHighwaterMark) / 2))) {
+      _tables[logSize].emplace(std::move(table));
+      _spareTableAllocation += memoryUsage;
+      ++_spareTables;
+      TRI_ASSERT(_spareTables <= maxSpareTablesTotal);
+    } else {
+      _globalAllocation -= memoryUsage;
+      TRI_ASSERT(_globalAllocation >= _fixedAllocation);
+    }
   }
+
+  // reclaim space outside of the lock
+  table.reset();
 }
 
-bool Manager::increaseAllowed(std::uint64_t increase, bool privileged) const {
+bool Manager::increaseAllowed(std::uint64_t increase,
+                              bool privileged) const noexcept {
   TRI_ASSERT(_lock.isLocked());
   if (privileged) {
     if (_resizing && (_globalAllocation <= _globalSoftLimit)) {
@@ -786,7 +840,7 @@ std::shared_ptr<Manager::PriorityList> Manager::priorityList() {
   double remainingWeight =
       1.0 - (baseWeight * static_cast<double>(_caches.size()));
 
-  std::shared_ptr<PriorityList> list(new PriorityList());
+  auto list = std::make_shared<PriorityList>();
   list->reserve(_caches.size());
 
   // catalog accessed caches and count total accesses

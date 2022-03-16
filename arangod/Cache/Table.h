@@ -118,8 +118,6 @@ class Table : public std::enable_shared_from_this<Table> {
   };
 
  public:
-  Table() = delete;
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Construct a new table of size 2^(logSize) in disabled state.
   //////////////////////////////////////////////////////////////////////////////
@@ -130,7 +128,6 @@ class Table : public std::enable_shared_from_this<Table> {
   //////////////////////////////////////////////////////////////////////////////
   ~Table();
 
- public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns the memory usage for a table with specified logSize
   //////////////////////////////////////////////////////////////////////////////
@@ -182,7 +179,7 @@ class Table : public std::enable_shared_from_this<Table> {
   /// @brief Returns a pointer to the specified bucket in the primary table,
   /// regardless of migration status.
   //////////////////////////////////////////////////////////////////////////////
-  void* primaryBucket(std::uint64_t index);
+  void* primaryBucket(std::uint64_t index) noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns a subtable in the auxiliary index which corresponds to the
@@ -212,7 +209,7 @@ class Table : public std::enable_shared_from_this<Table> {
   /// value will be true, and the cache should request migration to a larger
   /// table.
   //////////////////////////////////////////////////////////////////////////////
-  bool slotFilled() noexcept;
+  [[nodiscard]] bool slotFilled() noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Report that multiple slots were filled
@@ -226,7 +223,7 @@ class Table : public std::enable_shared_from_this<Table> {
   /// return value will be true, and the cache should request migration to a
   /// smaller table.
   //////////////////////////////////////////////////////////////////////////////
-  bool slotEmptied() noexcept;
+  [[nodiscard]] bool slotEmptied() noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Report that multiple slots were emptied
@@ -238,7 +235,7 @@ class Table : public std::enable_shared_from_this<Table> {
   ///
   /// Will force a subsequent idealSize() call to return a larger table size.
   //////////////////////////////////////////////////////////////////////////////
-  void signalEvictions();
+  void signalEvictions() noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns the ideal size of the table based on fill ratio.
@@ -247,6 +244,10 @@ class Table : public std::enable_shared_from_this<Table> {
   uint32_t idealSize() noexcept;
 
  private:
+  void disable() noexcept;
+  bool isEnabled(std::uint64_t maxTries = triesGuarantee) noexcept;
+  static void defaultClearer(void* ptr);
+
   basics::ReadWriteSpinLock _lock;
   bool _disabled;
   bool _evictions;
@@ -264,11 +265,6 @@ class Table : public std::enable_shared_from_this<Table> {
 
   uint64_t _slotsTotal;
   std::atomic<std::uint64_t> _slotsUsed;
-
- private:
-  void disable() noexcept;
-  bool isEnabled(std::uint64_t maxTries = triesGuarantee) noexcept;
-  static void defaultClearer(void* ptr);
 };
 
 };  // end namespace arangodb::cache

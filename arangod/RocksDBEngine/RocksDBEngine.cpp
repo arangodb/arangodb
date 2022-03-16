@@ -3186,9 +3186,13 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
       server().getFeature<CacheManagerFeature>().manager();
   if (manager != nullptr) {
     // cache turned on
+    cache::Manager::MemoryStats stats = manager->memoryStats();
     auto rates = manager->globalHitRates();
-    builder.add("cache.limit", VPackValue(manager->globalLimit()));
-    builder.add("cache.allocated", VPackValue(manager->globalAllocation()));
+    builder.add("cache.limit", VPackValue(stats.globalLimit));
+    builder.add("cache.allocated", VPackValue(stats.globalAllocation));
+    builder.add("cache.activeTables", VPackValue(stats.activeTables));
+    builder.add("cache.unusedMemory", VPackValue(stats.spareAllocation));
+    builder.add("cache.unusedTables", VPackValue(stats.spareTables));
     // handle NaN
     builder.add("cache.hit-rate-lifetime",
                 VPackValue(rates.first >= 0.0 ? rates.first : 0.0));
@@ -3198,6 +3202,9 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
     // cache turned off
     builder.add("cache.limit", VPackValue(0));
     builder.add("cache.allocated", VPackValue(0));
+    builder.add("cache.activeTables", VPackValue(0));
+    builder.add("cache.unusedMemory", VPackValue(0));
+    builder.add("cache.unusedTables", VPackValue(0));
     // handle NaN
     builder.add("cache.hit-rate-lifetime", VPackValue(0));
     builder.add("cache.hit-rate-recent", VPackValue(0));

@@ -30,7 +30,6 @@
 
 #include "Cache/Cache.h"
 
-#include "RestServer/SharedPRNGFeature.h"
 #include "Basics/SpinLocker.h"
 #include "Basics/SpinUnlocker.h"
 #include "Basics/cpu-relax.h"
@@ -41,6 +40,7 @@
 #include "Cache/Metadata.h"
 #include "Cache/Table.h"
 #include "Random/RandomGenerator.h"
+#include "RestServer/SharedPRNGFeature.h"
 
 namespace arangodb::cache {
 
@@ -361,12 +361,12 @@ void Cache::shutdown() {
     if (table != nullptr) {
       std::shared_ptr<Table> extra =
           table->setAuxiliary(std::shared_ptr<Table>());
-      if (extra) {
+      if (extra != nullptr) {
         extra->clear();
-        _manager->reclaimTable(extra, false);
+        _manager->reclaimTable(std::move(extra), false);
       }
       table->clear();
-      _manager->reclaimTable(table, false);
+      _manager->reclaimTable(std::move(table), false);
     }
 
     {
@@ -450,7 +450,8 @@ bool Cache::migrate(std::shared_ptr<Table> newTable) {
 
   std::shared_ptr<cache::Table> table = this->table();
   TRI_ASSERT(table != nullptr);
-  table->setAuxiliary(newTable);
+  std::shared_ptr<Table> oldAuxiliary = table->setAuxiliary(newTable);
+  TRI_ASSERT(oldAuxiliary == nullptr);
 
   // do the actual migration
   for (std::uint64_t i = 0; i < table->size();
@@ -468,17 +469,18 @@ bool Cache::migrate(std::shared_ptr<Table> newTable) {
     oldTable->setAuxiliary(std::shared_ptr<Table>());
   }
 
-  // clear out old table and release it
   TRI_ASSERT(oldTable != nullptr);
-  oldTable->clear();
-  _manager->reclaimTable(oldTable, false);
 
   // unmarking migrating flag
   {
     SpinLocker metaGuard(SpinLocker::Mode::Write, _metadata.lock());
-    _metadata.changeTable(table->memoryUsage());
+    _metadata.changeTable(newTable->memoryUsage());
     _metadata.toggleMigrating();
   }
+
+  // clear out old table and release it
+  oldTable->clear();
+  _manager->reclaimTable(std::move(oldTable), false);
 
   return true;
 }

@@ -249,7 +249,7 @@ std::shared_ptr<Table> Table::setAuxiliary(
   if (table.get() != this) {
     SpinLocker guard(SpinLocker::Mode::Write, _lock);
     if (table == nullptr) {
-      result = _auxiliary;
+      result = std::move(_auxiliary);
       _auxiliary = table;
     } else if (_auxiliary == nullptr) {
       _auxiliary = table;
@@ -259,7 +259,7 @@ std::shared_ptr<Table> Table::setAuxiliary(
   return result;
 }
 
-void* Table::primaryBucket(uint64_t index) {
+void* Table::primaryBucket(uint64_t index) noexcept {
   if (!isEnabled()) {
     return nullptr;
   }
@@ -275,7 +275,7 @@ std::unique_ptr<Table::Subtable> Table::auxiliaryBuckets(std::uint32_t index) {
   std::uint32_t mask;
   std::uint32_t shift;
 
-  std::shared_ptr<Table> source = nullptr;
+  std::shared_ptr<Table> source;
   {
     SpinLocker guard(SpinLocker::Mode::Read, _lock);
     source = _auxiliary->shared_from_this();
@@ -295,7 +295,7 @@ std::unique_ptr<Table::Subtable> Table::auxiliaryBuckets(std::uint32_t index) {
     }
   }
 
-  return std::make_unique<Subtable>(source, base, size, mask, shift);
+  return std::make_unique<Subtable>(std::move(source), base, size, mask, shift);
 }
 
 void Table::setTypeSpecifics(BucketClearer clearer,
@@ -305,16 +305,17 @@ void Table::setTypeSpecifics(BucketClearer clearer,
 }
 
 void Table::clear() {
-  disable();
-  if (_auxiliary.get() != nullptr) {
+  TRI_ASSERT(_auxiliary == nullptr);
+  if (_auxiliary != nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "unexpected auxiliary state");
   }
+  disable();
   for (std::uint64_t i = 0; i < _size; i++) {
     _bucketClearer(&(_buckets[i]));
   }
-  _bucketClearer = Table::defaultClearer;
   _slotsUsed = 0;
+  _bucketClearer = Table::defaultClearer;
 }
 
 void Table::disable() noexcept {
@@ -356,7 +357,7 @@ void Table::slotsEmptied(std::uint64_t numSlots) noexcept {
   TRI_ASSERT(numSlots <= previous);
 }
 
-void Table::signalEvictions() {
+void Table::signalEvictions() noexcept {
   SpinLocker guard(SpinLocker::Mode::Write, _lock);
   _evictions = true;
 }
@@ -381,7 +382,7 @@ std::uint32_t Table::idealSize() noexcept {
                      : logSize()));
 }
 
-void Table::defaultClearer(void* ptr) {
+void Table::defaultClearer(void* /*ptr*/) {
   throw std::invalid_argument("must register a clearer");
 }
 

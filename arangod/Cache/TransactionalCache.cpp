@@ -240,7 +240,7 @@ std::shared_ptr<Cache> TransactionalCache<Hasher>::create(
     std::shared_ptr<Table> table, bool enableWindowedStats) {
   return std::make_shared<TransactionalCache<Hasher>>(
       Cache::ConstructionGuard(), manager, std::move(hasher), id,
-      std::move(metadata), table, enableWindowedStats);
+      std::move(metadata), std::move(table), enableWindowedStats);
 }
 
 template<typename Hasher>
@@ -248,8 +248,9 @@ TransactionalCache<Hasher>::TransactionalCache(
     Cache::ConstructionGuard /*guard*/, Manager* manager, Hasher hasher,
     std::uint64_t id, Metadata&& metadata, std::shared_ptr<Table> table,
     bool enableWindowedStats)
-    : Cache(manager, id, std::move(metadata), table, enableWindowedStats,
-            TransactionalCache::bucketClearer, TransactionalBucket::slotsData),
+    : Cache(manager, id, std::move(metadata), std::move(table),
+            enableWindowedStats, TransactionalCache::bucketClearer,
+            TransactionalBucket::slotsData),
       _hasher(std::move(hasher)) {}
 
 template<typename Hasher>
@@ -268,29 +269,28 @@ uint64_t TransactionalCache<Hasher>::freeMemoryFrom(std::uint32_t hash) {
   std::uint64_t reclaimed = 0;
   bool maybeMigrate = false;
 
-  Result status;
+  ::ErrorCode status = TRI_ERROR_NO_ERROR;
   {
     Table::BucketLocker guard;
     std::tie(status, guard) = getBucket(hash, Cache::triesFast, false);
-    if (status.fail()) {
+    if (status != TRI_ERROR_NO_ERROR) {
       return 0;
     }
 
     TransactionalBucket& bucket = guard.bucket<TransactionalBucket>();
     // evict LRU freeable value if exists
-    CachedValue* candidate = bucket.evictionCandidate();
+    reclaimed = bucket.evictCandidate();
 
-    if (candidate != nullptr) {
-      reclaimed = candidate->size();
-      bucket.evict(candidate);
-      freeValue(candidate);
+    if (reclaimed > 0) {
       maybeMigrate = guard.source()->slotEmptied();
     }
   }
 
   std::shared_ptr<cache::Table> table = this->table();
   if (table) {
-    std::int32_t size = table->idealSize();
+    // caution: calling idealSize() can have side effects
+    // and trigger a table growth!
+    std::uint32_t size = table->idealSize();
     if (maybeMigrate) {
       requestMigrate(size);
     }
@@ -302,7 +302,7 @@ uint64_t TransactionalCache<Hasher>::freeMemoryFrom(std::uint32_t hash) {
 template<typename Hasher>
 void TransactionalCache<Hasher>::migrateBucket(
     void* sourcePtr, std::unique_ptr<Table::Subtable> targets,
-    std::shared_ptr<Table> newTable) {
+    std::shared_ptr<Table>& newTable) {
   std::uint64_t term = _manager->_transactions.term();
 
   // lock current bucket
@@ -364,6 +364,9 @@ void TransactionalCache<Hasher>::migrateBucket(
     }
 
     // migrate actual values
+    std::uint64_t totalSize = 0;
+    std::uint64_t emptied = 0;
+    std::uint64_t filled = 0;
     for (std::size_t j = 0; j < TransactionalBucket::slotsData; j++) {
       std::size_t k = TransactionalBucket::slotsData - (j + 1);
       if (source._cachedData[k] != nullptr) {
@@ -375,28 +378,25 @@ void TransactionalCache<Hasher>::migrateBucket(
         if (targetBucket->isBanished(hash)) {
           std::uint64_t size = value->size();
           freeValue(value);
-          reclaimMemory(size);
+          totalSize += size;
         } else {
           bool haveSpace = true;
           if (targetBucket->isFull()) {
-            CachedValue* candidate = targetBucket->evictionCandidate();
-            if (candidate != nullptr) {
-              targetBucket->evict(candidate, true);
-              std::uint64_t size = candidate->size();
-              freeValue(candidate);
-              reclaimMemory(size);
-              newTable->slotEmptied();
+            std::size_t size = targetBucket->evictCandidate();
+            if (size > 0) {
+              totalSize += size;
+              ++emptied;
             } else {
               haveSpace = false;
             }
           }
           if (haveSpace) {
             targetBucket->insert(hash, value);
-            newTable->slotFilled();
+            ++filled;
           } else {
             std::uint64_t size = value->size();
             freeValue(value);
-            reclaimMemory(size);
+            totalSize += size;
           }
         }
 
@@ -404,6 +404,9 @@ void TransactionalCache<Hasher>::migrateBucket(
         source._cachedData[k] = nullptr;
       }
     }
+    reclaimMemory(totalSize);
+    newTable->slotsFilled(filled);
+    newTable->slotsEmptied(emptied);
   }
 
   // finish up this bucket's migration

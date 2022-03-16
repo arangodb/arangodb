@@ -78,19 +78,31 @@ class Manager {
   typedef std::function<bool(std::function<void()>)> PostFn;
 
  public:
+  struct MemoryStats {
+    std::uint64_t globalLimit = 0;
+    std::uint64_t globalAllocation = 0;
+    std::uint64_t spareAllocation = 0;
+    std::uint64_t activeTables = 0;
+    std::uint64_t spareTables = 0;
+  };
+
   static constexpr std::uint64_t minSize = 1024 * 1024;
+  static constexpr std::uint64_t maxSpareTablesTotal = 16;
+
   typedef FrequencyBuffer<uint64_t> AccessStatBuffer;
   typedef FrequencyBuffer<uint8_t> FindStatBuffer;
   typedef std::vector<std::pair<std::shared_ptr<Cache>&, double>> PriorityList;
   typedef std::chrono::time_point<std::chrono::steady_clock> time_point;
 
- public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Initialize the manager with a scheduler post method and global
   /// usage limit.
   //////////////////////////////////////////////////////////////////////////////
   Manager(SharedPRNGFeature& sharedPRNG, PostFn schedulerPost,
           std::uint64_t globalLimit, bool enableWindowedStats = true);
+
+  Manager(Manager const&) = delete;
+  Manager& operator=(Manager const&) = delete;
 
   ~Manager();
 
@@ -135,17 +147,28 @@ class Manager {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Report the current global usage limit.
   //////////////////////////////////////////////////////////////////////////////
-  std::uint64_t globalLimit();
+  std::uint64_t globalLimit() const noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Report the current amoutn of memory allocated to all caches.
+  /// @brief Report the current amount of memory allocated to all caches.
   ///
   /// This serves as an upper bound on the current memory usage of all caches.
   /// The actual global usage is not recorded, as this would require significant
   /// additional synchronization between the caches and slow things down
   /// considerably.
   //////////////////////////////////////////////////////////////////////////////
-  std::uint64_t globalAllocation();
+  std::uint64_t globalAllocation() const noexcept;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Report the current amount of allocated, but unused memory of all
+  /// caches.
+  //////////////////////////////////////////////////////////////////////////////
+  std::uint64_t spareAllocation() const noexcept;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Return some statistics about available caches
+  //////////////////////////////////////////////////////////////////////////////
+  MemoryStats memoryStats() const noexcept;
 
   std::pair<double, double> globalHitRates();
 
@@ -185,7 +208,7 @@ class Manager {
   SharedPRNGFeature& _sharedPRNG;
 
   // simple state variables
-  basics::ReadWriteSpinLock _lock;
+  mutable basics::ReadWriteSpinLock _lock;
   bool _shutdown;
   bool _shuttingDown;
   bool _resizing;
@@ -217,6 +240,8 @@ class Manager {
   std::uint64_t _fixedAllocation;
   std::uint64_t _spareTableAllocation;
   std::uint64_t _globalAllocation;
+  std::uint64_t _activeTables;
+  std::uint64_t _spareTables;
 
   // transaction management
   TransactionManager _transactions;
@@ -253,8 +278,8 @@ class Manager {
       Cache* cache, uint32_t requestedLogSize);
 
   // stat reporting
-  void reportAccess(std::uint64_t id);
-  void reportHitStat(Stat stat);
+  void reportAccess(std::uint64_t id) noexcept;
+  void reportHitStat(Stat stat) noexcept;
 
  private:  // used internally and by tasks
   static constexpr double highwaterMultiplier = 0.8;
@@ -262,9 +287,9 @@ class Manager {
   static const std::uint64_t minCacheAllocation;
 
   // check if shutdown or shutting down
-  [[nodiscard]] bool isOperational() const;
+  [[nodiscard]] bool isOperational() const noexcept;
   // check if there is already a global process running
-  [[nodiscard]] bool globalProcessRunning() const;
+  [[nodiscard]] bool globalProcessRunning() const noexcept;
 
   // coordinate state with task lifecycles
   void prepareTask(TaskEnvironment environment);
@@ -282,13 +307,13 @@ class Manager {
   void resizeCache(TaskEnvironment environment, basics::SpinLocker&& metaGuard,
                    Cache* cache, uint64_t newLimit);
   void migrateCache(TaskEnvironment environment, basics::SpinLocker&& metaGuard,
-                    Cache* cache, std::shared_ptr<Table>& table);
+                    Cache* cache, std::shared_ptr<Table> table);
   std::shared_ptr<Table> leaseTable(std::uint32_t logSize);
-  void reclaimTable(std::shared_ptr<Table> table, bool internal);
+  void reclaimTable(std::shared_ptr<Table>&& table, bool internal);
 
   // helpers for individual allocations
   [[nodiscard]] bool increaseAllowed(uint64_t increase,
-                                     bool privileged = false) const;
+                                     bool privileged = false) const noexcept;
 
   // helper for lr-accessed heuristics
   std::shared_ptr<PriorityList> priorityList();

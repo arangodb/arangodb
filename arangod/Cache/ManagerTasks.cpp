@@ -115,7 +115,8 @@ void MigrateTask::run() {
         TRI_ASSERT(metaGuard.isLocked());
         metadata.toggleMigrating();
       }
-      _manager.reclaimTable(_table, false);
+      _manager.reclaimTable(std::move(_table), false);
+      _table.reset();
     }
 
     _manager.unprepareTask(_environment);

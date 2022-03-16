@@ -91,7 +91,7 @@ CachedValue* TransactionalBucket::find(Hasher const& hasher, std::uint32_t hash,
         hasher.sameKey(_cachedData[i]->key(), _cachedData[i]->keySize(), key,
                        keySize)) {
       result = _cachedData[i];
-      if (moveToFront) {
+      if (moveToFront && i != 0) {
         moveSlot(i, true);
       }
       break;
@@ -124,12 +124,24 @@ CachedValue* TransactionalBucket::remove(Hasher const& hasher,
                                          std::uint32_t hash, void const* key,
                                          std::size_t keySize) noexcept {
   TRI_ASSERT(isLocked());
-  CachedValue* value = find(hasher, hash, key, keySize, false);
-  if (value != nullptr) {
-    evict(value, false);
+  CachedValue* result = nullptr;
+
+  for (std::size_t i = 0; i < slotsData; i++) {
+    if (_cachedData[i] == nullptr) {
+      break;
+    }
+    if (_cachedHashes[i] == hash &&
+        hasher.sameKey(_cachedData[i]->key(), _cachedData[i]->keySize(), key,
+                       keySize)) {
+      result = _cachedData[i];
+      _cachedHashes[i] = 0;
+      _cachedData[i] = nullptr;
+      moveSlot(i, false);
+      break;
+    }
   }
 
-  return value;
+  return result;
 }
 
 template<typename Hasher>
@@ -181,6 +193,28 @@ bool TransactionalBucket::isBanished(std::uint32_t hash) const noexcept {
   }
 
   return banished;
+}
+
+std::uint64_t TransactionalBucket::evictCandidate() noexcept {
+  TRI_ASSERT(isLocked());
+  for (std::size_t i = 0; i < slotsData; i++) {
+    std::size_t slot = slotsData - (i + 1);
+    if (_cachedData[slot] == nullptr) {
+      continue;
+    }
+    if (_cachedData[slot]->isFreeable()) {
+      std::uint64_t size = _cachedData[slot]->size();
+      // evict value. we checked that it is freeable
+      delete _cachedData[slot];
+      _cachedHashes[slot] = 0;
+      _cachedData[slot] = nullptr;
+      moveSlot(slot, true);
+      return size;
+    }
+  }
+
+  // nothing evicted
+  return 0;
 }
 
 CachedValue* TransactionalBucket::evictionCandidate(

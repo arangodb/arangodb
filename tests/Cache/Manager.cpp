@@ -45,7 +45,68 @@ using namespace arangodb;
 using namespace arangodb::cache;
 using namespace arangodb::tests::mocks;
 
-// long-running
+TEST(CacheManagerTest, test_create_and_destroy_caches) {
+  std::uint64_t requestLimit = 1024 * 1024;
+
+  MockMetricsServer server;
+  SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
+  auto postFn = [](std::function<void()>) -> bool { return false; };
+  Manager manager(sharedPRNG, postFn, requestLimit);
+
+  ASSERT_EQ(requestLimit, manager.globalLimit());
+
+  ASSERT_TRUE(0ULL < manager.globalAllocation());
+  ASSERT_TRUE(requestLimit > manager.globalAllocation());
+
+  BinaryKeyHasher hasher;
+  std::vector<std::shared_ptr<Cache>> caches;
+
+  for (size_t i = 0; i < 8; ++i) {
+    Manager::MemoryStats beforeStats = manager.memoryStats();
+    ASSERT_EQ(i, beforeStats.activeTables);
+
+    auto cache = manager.createCache(CacheType::Transactional, hasher);
+    ASSERT_NE(nullptr, cache);
+    ASSERT_GT(cache->size(), 80 * 1024);  // size of each cache is about 80kb
+
+    Manager::MemoryStats afterStats = manager.memoryStats();
+    ASSERT_EQ(beforeStats.globalAllocation + cache->size(),
+              afterStats.globalAllocation);
+    ASSERT_EQ(i + 1, afterStats.activeTables);
+
+    ASSERT_EQ(0, afterStats.spareAllocation);
+    ASSERT_EQ(0, afterStats.spareTables);
+
+    caches.emplace_back(std::move(cache));
+  }
+
+  std::uint64_t spareTables = 0;
+  while (!caches.empty()) {
+    Manager::MemoryStats beforeStats = manager.memoryStats();
+    ASSERT_EQ(spareTables, beforeStats.spareTables);
+
+    auto cache = caches.back();
+    std::uint64_t size = cache->size();
+    ASSERT_GT(size, 80 * 1024);  // size of each cache is about 80kb
+    manager.destroyCache(cache);
+
+    Manager::MemoryStats afterStats = manager.memoryStats();
+    if (afterStats.spareTables == beforeStats.spareTables) {
+      // table deleted
+      ASSERT_EQ(beforeStats.globalAllocation,
+                afterStats.globalAllocation + size);
+      ASSERT_EQ(spareTables, afterStats.spareTables);
+    } else {
+      // table recycled
+      ++spareTables;
+      // ASSERT_EQ(spareTables * 80 * 1024, afterStats.spareAllocation);
+      ASSERT_EQ(spareTables, afterStats.spareTables);
+    }
+    ASSERT_EQ(caches.size() - 1, afterStats.activeTables);
+
+    caches.pop_back();
+  }
+}
 
 TEST(CacheManagerTest, test_basic_constructor_function) {
   std::uint64_t requestLimit = 1024 * 1024;

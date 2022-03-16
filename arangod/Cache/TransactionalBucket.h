@@ -31,8 +31,7 @@
 #include "Cache/CachedValue.h"
 #include "Cache/Common.h"
 
-namespace arangodb {
-namespace cache {
+namespace arangodb::cache {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Bucket structure for TransactionalCache.
@@ -176,6 +175,13 @@ struct TransactionalBucket {
   CachedValue* evictionCandidate(bool ignoreRefCount = false) const noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief evicts a candidate in the bucket. Requires state to be locked.
+  /// Returns the size of the evicted value in case a value was evicted.
+  /// Returns 0 otherwise.
+  //////////////////////////////////////////////////////////////////////////////
+  std::uint64_t evictCandidate() noexcept;
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief Evicts the given value from the bucket. Requires state to be
   /// locked.
   ///
@@ -205,5 +211,4 @@ struct TransactionalBucket {
 static_assert(sizeof(TransactionalBucket) == BUCKET_SIZE,
               "Expected sizeof(TransactionalBucket) == BUCKET_SIZE.");
 
-};  // end namespace cache
-};  // end namespace arangodb
+};  // end namespace arangodb::cache
