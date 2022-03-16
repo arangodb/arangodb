@@ -31,30 +31,6 @@ namespace paths = arangodb::cluster::paths::aliases;
 
 using namespace arangodb::replication2;
 
-namespace {
-template<typename A, typename = void>
-struct action_has_update_log_target : std::false_type {};
-template<typename A>
-struct action_has_update_log_target<A,
-                                    std::void_t<decltype(&A::updateLogTarget)>>
-    : std::true_type {};
-template<typename A>
-inline constexpr auto action_has_update_log_target_v =
-    action_has_update_log_target<A>::value;
-template<typename A, typename = void>
-struct action_has_update_state_plan : std::false_type {};
-template<typename A>
-struct action_has_update_state_plan<A,
-                                    std::void_t<decltype(&A::updateStatePlan)>>
-    : std::true_type {};
-template<typename A>
-inline constexpr auto action_has_update_state_plan_v =
-    action_has_update_state_plan<A>::value;
-
-static_assert(
-    action_has_update_log_target_v<replicated_state::AddParticipantAction>);
-}  // namespace
-
 auto replicated_state::execute(
     LogId id, DatabaseID const& database, Action action,
     std::optional<agency::Plan> state,
@@ -65,37 +41,34 @@ auto replicated_state::execute(
   auto statePlanPath =
       paths::plan()->replicatedStates()->database(database)->state(id)->str();
 
-  return std::visit(
-      [&]<typename A>(A& action) {
-        if constexpr (!action_has_update_state_plan_v<A> &&
-                      !action_has_update_log_target_v<A>) {
-          static_assert(std::is_same_v<EmptyAction, A>);
-          return std::move(envelope);
-        } else {
-          auto writes = envelope.write();
-          if constexpr (action_has_update_log_target_v<A>) {
-            auto newTarget =
-                std::move(log).value_or(replication2::agency::LogTarget{});
-            action.updateLogTarget(newTarget);
-            writes = std::move(writes)
-                         .emplace_object(logTargetPath,
-                                         [&](VPackBuilder& builder) {
-                                           newTarget.toVelocyPack(builder);
-                                         })
-                         .inc(paths::target()->version()->str());
-          }
-          if constexpr (action_has_update_state_plan_v<A>) {
-            auto newState = std::move(state).value_or(agency::Plan{});
-            action.updateStatePlan(newState);
-            writes = std::move(writes)
-                         .emplace_object(statePlanPath,
-                                         [&](VPackBuilder& builder) {
-                                           newState.toVelocyPack(builder);
-                                         })
-                         .inc(paths::plan()->version()->str());
-          }
-          return std::move(writes).end();
-        }
-      },
-      action);
+  if (std::holds_alternative<EmptyAction>(action)) {
+    return envelope;
+  }
+
+  auto ctx = replicated_state::ActionContext{std::move(log), std::move(state)};
+  std::visit([&](auto& action) { action.execute(ctx); }, action);
+  if (!ctx.hasModification()) {
+    return envelope;
+  }
+
+  return envelope.write()
+      .cond(ctx.hasLogTargetModification(),
+            [&](arangodb::agency::envelope::write_trx&& trx) {
+              return std::move(trx)
+                  .emplace_object(logTargetPath,
+                                  [&](VPackBuilder& builder) {
+                                    ctx.getLogTarget().toVelocyPack(builder);
+                                  })
+                  .inc(paths::target()->version()->str());
+            })
+      .cond(ctx.hasStatePlanModification(),
+            [&](arangodb::agency::envelope::write_trx&& trx) {
+              return std::move(trx)
+                  .emplace_object(statePlanPath,
+                                  [&](VPackBuilder& builder) {
+                                    ctx.getStatePlan().toVelocyPack(builder);
+                                  })
+                  .inc(paths::plan()->version()->str());
+            })
+      .end();
 }

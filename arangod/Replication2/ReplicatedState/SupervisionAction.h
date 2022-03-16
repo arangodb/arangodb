@@ -23,6 +23,7 @@
 
 #pragma once
 #include <memory>
+#include <utility>
 
 #include "Agency/TransactionBuilder.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
@@ -31,20 +32,98 @@
 
 namespace arangodb::replication2::replicated_state {
 
-struct EmptyAction {};
+struct ActionContext {
+  using LogTarget = replication2::agency::LogTarget;
+  using StatePlan = agency::Plan;
+
+  ActionContext(std::optional<LogTarget> logTarget,
+                std::optional<StatePlan> statePlan)
+      : logTarget(std::move(logTarget)), statePlan(std::move(statePlan)) {}
+
+  template<typename F>
+  auto modifyLogTarget(F&& fn) {
+    static_assert(std::is_invocable_r_v<void, F, LogTarget&>);
+    TRI_ASSERT(logTarget.has_value())
+        << "modifying action expects target to be present";
+    modifiedTarget = true;
+    return std::invoke(std::forward<F>(fn), *logTarget);
+  }
+
+  template<typename F>
+  auto modifyStatePlan(F&& fn) {
+    static_assert(std::is_invocable_r_v<void, F, StatePlan&>);
+    TRI_ASSERT(statePlan.has_value())
+        << "modifying action expects target to be present";
+    modifiedPlan = true;
+    return std::invoke(std::forward<F>(fn), *statePlan);
+  }
+
+  template<typename F>
+  auto modifyBoth(F&& fn) {
+    static_assert(std::is_invocable_r_v<void, F, StatePlan&, LogTarget&>);
+    TRI_ASSERT(statePlan.has_value())
+        << "modifying action expects state plan to be present";
+    TRI_ASSERT(logTarget.has_value())
+        << "modifying action expects target to be present";
+    modifiedPlan = true;
+    modifiedTarget = true;
+    return std::invoke(std::forward<F>(fn), *statePlan, *logTarget);
+  }
+
+  void setLogTarget(LogTarget newTarget) {
+    logTarget.emplace(std::move(newTarget));
+    modifiedTarget = true;
+  }
+
+  void setStatePlan(StatePlan newPlan) {
+    statePlan.emplace(std::move(newPlan));
+    modifiedPlan = true;
+  }
+
+  auto hasModification() const noexcept -> bool {
+    return modifiedTarget || modifiedPlan;
+  }
+
+  auto hasLogTargetModification() const noexcept -> bool {
+    return modifiedTarget;
+  }
+
+  auto hasStatePlanModification() const noexcept -> bool {
+    return modifiedPlan;
+  }
+
+  auto getLogTarget() const noexcept -> LogTarget const& {
+    return logTarget.value();
+  }
+
+  auto getStatePlan() const noexcept -> StatePlan const& {
+    return statePlan.value();
+  }
+
+ private:
+  std::optional<LogTarget> logTarget;
+  bool modifiedTarget = false;
+  std::optional<StatePlan> statePlan;
+  bool modifiedPlan = false;
+};
+
+struct EmptyAction {
+  void execute(ActionContext&) {}
+};
 
 struct AddParticipantAction {
   ParticipantId participant;
   StateGeneration generation;
 
-  void updateLogTarget(arangodb::replication2::agency::LogTarget& logTarget) {
-    logTarget.participants[participant] =
-        ParticipantFlags{.allowedInQuorum = false, .allowedAsLeader = false};
-  }
+  void execute(ActionContext& ctx) {
+    ctx.modifyBoth([&](agency::Plan& plan,
+                       replication2::agency::LogTarget& logTarget) {
+      logTarget.participants[participant] =
+          ParticipantFlags{.allowedInQuorum = false, .allowedAsLeader = false};
 
-  void updateStatePlan(agency::Plan& plan) {
-    plan.participants[participant].generation = plan.generation;
-    plan.generation.value += 1;
+      plan.participants[participant].generation = plan.generation;
+      plan.generation.value += 1;
+    });
   }
 };
 
@@ -52,19 +131,20 @@ struct AddStateToPlanAction {
   replication2::agency::LogTarget logTarget;
   agency::Plan statePlan;
 
-  void updateLogTarget(arangodb::replication2::agency::LogTarget& target) {
-    target = logTarget;
+  void execute(ActionContext& ctx) {
+    ctx.setLogTarget(std::move(logTarget));
+    ctx.setStatePlan(std::move(statePlan));
   }
-
-  void updateStatePlan(agency::Plan& plan) { plan = statePlan; }
 };
 
 struct UpdateParticipantFlagsAction {
   ParticipantId participant;
   ParticipantFlags flags;
 
-  void updateLogTarget(arangodb::replication2::agency::LogTarget& target) {
-    target.participants.at(participant) = flags;
+  void execute(ActionContext& ctx) {
+    ctx.modifyLogTarget([&](replication2::agency::LogTarget& target) {
+      target.participants.at(participant) = flags;
+    });
   }
 };
 
