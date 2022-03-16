@@ -123,6 +123,10 @@ auto matches_impl(S const& suffixes, std::tuple<Ts...> components,
       return std::string_view(suffix) == std::string_view(component);
     } else {
       static_assert(match_variable_v<cur_type>);
+      static_assert(
+          std::is_assignable_v<decltype(*component), std::string_view>,
+          "Variable (pointer) argument is not assignable by a "
+          "std::string_view");
       *component = std::string_view(suffix);
       return true;
     }
