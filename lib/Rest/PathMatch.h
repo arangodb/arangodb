@@ -28,6 +28,48 @@
 #include <utility>
 #include <vector>
 
+/*
+ * SYNOPSIS
+ * rest::Match helps to match paths. Take for example
+ *
+ *   /_api/gharial/{graph}/vertex/{collection}/{vertex}
+ *
+ * . This is usually provided as a std::vector<std::string> by
+ * GeneralRequest::suffixes(), e.g.
+ *
+ *   auto const suffixes = _request->suffixes();
+ *
+ * . Note that usually some prefix of the complete path is already stripped, but
+ * for the sake of this example, let's assume we got the full path like
+ *
+ *   auto const suffixes = std::vector<std::string>{
+ *     "_api", "gharial", "MyGraph", "vertex", "SomeCollection", "vertexKey123"
+ *   };
+ *
+ * This can be matched like so:
+ *
+ *   if (std::string_view graph, collection, vertex;
+ *     Match(suffixes).against(
+ *       "_api", "gharial", &graph, "vertex", &collection, &vertex)) {
+ *     ... do something with graph, collection, and vertex ...
+ *   }
+ *
+ * It is always a complete match against the full path. It would be useful to
+ * have a prefix-match which also returns the remaining suffix, but it's not
+ * implemented (yet)
+ *
+ * The argument to Match must be an input range, which elements are convertible
+ * to string_views. So e.g. std::vector<std::string> or
+ * std::vector<std::string_view> are fine, or other ranges like `suffixes |
+ * std::views::drop(2)`.
+ *
+ * The arguments of against must either be match-constants or match-variables.
+ * A match-constant is something convertible to a std::string_view.
+ *   e.g. std::string, std::string_view, or const char*.
+ * A match-variable is a pointer to something which is assignable by a
+ * std::string_view. e.g. std::string_view*, or std::string*.
+ */
+
 // TODO Replace the SFINAE stuff with concepts, as soon as our compilers support
 //      them.
 // TODO Restrict valid suffix types. Probably not before we have reasonable
@@ -83,6 +125,10 @@ auto matches_impl(S const& suffixes, std::tuple<Ts...> components,
       return std::string_view(suffix) == std::string_view(component);
     } else {
       static_assert(match_variable_v<cur_type>);
+      static_assert(
+          std::is_assignable_v<decltype(*component), std::string_view>,
+          "Variable (pointer) argument is not assignable by a "
+          "std::string_view");
       *component = std::string_view(suffix);
       return true;
     }
