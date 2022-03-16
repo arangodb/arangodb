@@ -1,5 +1,14 @@
 devel
 -----
+* Added new server option: --icu-language. Used instead of --default-language to set pure ICU collator.
+
+  For example, in Sweden language("sv") lowercase letters should precede uppercase ones. 
+  You can achieve it using following options when server starts
+
+    --icu-language sv
+
+* Added new AQL function `KEEP_RECURSIVE` to recursively keep attritutes from
+  objects/documents, as a conterpart to `UNSET_RECURSIVE`.
 
 * Added AQL hint "useCache" for FOR loops, to explicitly disable the usage of 
   in-memory caches for lookups.
