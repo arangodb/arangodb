@@ -106,6 +106,7 @@ struct PrototypeCore {
   using WaitForAppliedQueue = std::multimap<LogIndex, WaitForAppliedPromise>;
 
   StorageType store;
+  // TODO move outside
   WaitForAppliedQueue waitForAppliedQueue;
   LogIndex lastAppliedIndex;
 
@@ -218,8 +219,23 @@ auto PrototypeLeaderState::remove(Iterator begin, Iterator end)
   });
 }
 
-struct PrototypeFollowerState : IReplicatedFollowerState<PrototypeState> {
-  explicit PrototypeFollowerState(std::unique_ptr<PrototypeCore> core);
+struct IPrototypeLeaderInterface {
+  virtual ~IPrototypeLeaderInterface() = default;
+  virtual auto getSnapshot(LogIndex waitForIndex) -> futures::Future<
+      ResultT<std::unordered_map<std::string, std::string>>> = 0;
+};
+
+struct IPrototypeNetworkInterface {
+  virtual ~IPrototypeNetworkInterface() = default;
+  virtual auto getLeaderInterface(ParticipantId id)
+      -> ResultT<std::shared_ptr<IPrototypeLeaderInterface>> = 0;
+};
+
+struct PrototypeFollowerState
+    : IReplicatedFollowerState<PrototypeState>,
+      std::enable_shared_from_this<PrototypeFollowerState> {
+  explicit PrototypeFollowerState(std::unique_ptr<PrototypeCore>,
+                                  std::shared_ptr<IPrototypeNetworkInterface>);
 
   [[nodiscard]] auto resign() && noexcept
       -> std::unique_ptr<PrototypeCore> override;
@@ -231,15 +247,21 @@ struct PrototypeFollowerState : IReplicatedFollowerState<PrototypeState> {
       -> futures::Future<Result> override;
 
   auto get(std::string key) -> std::optional<std::string>;
+  auto dumpContent() -> std::unordered_map<std::string, std::string>;
 
   Guarded<std::unique_ptr<PrototypeCore>, basics::UnshackledMutex> guardedData;
+  std::shared_ptr<IPrototypeNetworkInterface> const networkInterface;
 };
 
 struct PrototypeFactory {
+  PrototypeFactory(
+      std::shared_ptr<IPrototypeNetworkInterface> networkInterface);
   auto constructFollower(std::unique_ptr<PrototypeCore> core)
       -> std::shared_ptr<PrototypeFollowerState>;
   auto constructLeader(std::unique_ptr<PrototypeCore> core)
       -> std::shared_ptr<PrototypeLeaderState>;
+
+  std::shared_ptr<IPrototypeNetworkInterface> const networkInterface;
 };
 
 }  // namespace prototype

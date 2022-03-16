@@ -23,6 +23,7 @@
 #include <gtest/gtest.h>
 
 #include <array>
+#include <utility>
 
 #include "Replication2/ReplicatedLog/TestHelper.h"
 
@@ -39,13 +40,49 @@ using namespace arangodb::replication2::test;
 
 #include "Replication2/ReplicatedState/ReplicatedState.tpp"
 
+struct MockPrototypeLeaderInterface : public IPrototypeLeaderInterface {
+  explicit MockPrototypeLeaderInterface(
+      std::shared_ptr<PrototypeLeaderState> leaderState)
+      : leaderState(std::move(leaderState)) {}
+
+  auto getSnapshot(LogIndex waitForIndex) -> futures::Future<
+      ResultT<std::unordered_map<std::string, std::string>>> override {
+    return leaderState->getSnapshot(waitForIndex);
+  }
+
+  std::shared_ptr<PrototypeLeaderState> leaderState;
+};
+
+struct MockPrototypeNetworkInterface : public IPrototypeNetworkInterface {
+  auto getLeaderInterface(ParticipantId id)
+      -> ResultT<std::shared_ptr<IPrototypeLeaderInterface>> override {
+    if (auto leaderState = leaderStates.find(id);
+        leaderState != leaderStates.end()) {
+      return ResultT<std::shared_ptr<IPrototypeLeaderInterface>>::success(
+          std::make_shared<MockPrototypeLeaderInterface>(leaderState->second));
+    }
+    return {TRI_ERROR_CLUSTER_NOT_LEADER};
+  }
+
+  void addLeaderState(ParticipantId id,
+                      std::shared_ptr<PrototypeLeaderState> leaderState) {
+    leaderStates[std::move(id)] = std::move(leaderState);
+  }
+
+  std::unordered_map<ParticipantId, std::shared_ptr<PrototypeLeaderState>>
+      leaderStates;
+};
+
 struct PrototypeStateMachineTest : test::ReplicatedLogTest {
   PrototypeStateMachineTest() {
-    feature->registerStateType<prototype::PrototypeState>("prototype-state");
+    feature->registerStateType<prototype::PrototypeState>("prototype-state",
+                                                          networkMock);
   }
 
   std::shared_ptr<ReplicatedStateFeature> feature =
       std::make_shared<ReplicatedStateFeature>();
+  std::shared_ptr<MockPrototypeNetworkInterface> networkMock =
+      std::make_shared<MockPrototypeNetworkInterface>();
 };
 
 TEST_F(PrototypeStateMachineTest, prorotype_core_wait_for) {
@@ -78,16 +115,18 @@ TEST_F(PrototypeStateMachineTest, simple_operations) {
       std::make_unique<ReplicatedStateToken>(StateGeneration{1}));
   follower->runAllAsyncAppendEntries();
 
+  auto leaderState = leaderReplicatedState->getLeader();
+  ASSERT_NE(leaderState, nullptr);
+  networkMock->addLeaderState("leader", leaderState);
+
   auto followerReplicatedState =
       std::dynamic_pointer_cast<ReplicatedState<PrototypeState>>(
           feature->createReplicatedState("prototype-state", followerLog));
-  ASSERT_NE(leaderReplicatedState, nullptr);
+  ASSERT_NE(followerReplicatedState, nullptr);
   followerReplicatedState->start(
       std::make_unique<ReplicatedStateToken>(StateGeneration{1}));
 
-  auto leaderState = leaderReplicatedState->getLeader();
   auto followerState = followerReplicatedState->getFollower();
-  ASSERT_NE(leaderState, nullptr);
   ASSERT_NE(followerState, nullptr);
 
   {
@@ -161,11 +200,17 @@ TEST_F(PrototypeStateMachineTest, simple_operations) {
 }
 
 TEST_F(PrototypeStateMachineTest, snapshot_transfer) {
-  auto followerLog = makeReplicatedLog(LogId{1});
-  auto follower = followerLog->becomeFollower("follower", LogTerm{1}, "leader");
+  auto follower1Log = makeReplicatedLog(LogId{1});
+  auto follower1 =
+      follower1Log->becomeFollower("follower1", LogTerm{1}, "leader");
+
+  auto follower2Log = makeReplicatedLog(LogId{1});
+  auto follower2 =
+      follower2Log->becomeFollower("follower2", LogTerm{1}, "leader");
 
   auto leaderLog = makeReplicatedLog(LogId{1});
-  auto leader = leaderLog->becomeLeader("leader", LogTerm{1}, {follower}, 2);
+  auto leader =
+      leaderLog->becomeLeader("leader", LogTerm{1}, {follower1, follower2}, 2);
 
   leader->triggerAsyncReplication();
 
@@ -175,28 +220,31 @@ TEST_F(PrototypeStateMachineTest, snapshot_transfer) {
   ASSERT_NE(leaderReplicatedState, nullptr);
   leaderReplicatedState->start(
       std::make_unique<ReplicatedStateToken>(StateGeneration{1}));
-  follower->runAllAsyncAppendEntries();
-
-  auto followerReplicatedState =
-      std::dynamic_pointer_cast<ReplicatedState<PrototypeState>>(
-          feature->createReplicatedState("prototype-state", followerLog));
-  ASSERT_NE(leaderReplicatedState, nullptr);
-  followerReplicatedState->start(
-      std::make_unique<ReplicatedStateToken>(StateGeneration{1}));
+  follower1->runAllAsyncAppendEntries();
+  follower2->runAllAsyncAppendEntries();
 
   auto leaderState = leaderReplicatedState->getLeader();
-  auto followerState = followerReplicatedState->getFollower();
+  networkMock->addLeaderState("leader", leaderState);
   ASSERT_NE(leaderState, nullptr);
-  ASSERT_NE(followerState, nullptr);
+
+  auto followerReplicatedState1 =
+      std::dynamic_pointer_cast<ReplicatedState<PrototypeState>>(
+          feature->createReplicatedState("prototype-state", follower1Log));
+  ASSERT_NE(followerReplicatedState1, nullptr);
+  followerReplicatedState1->start(
+      std::make_unique<ReplicatedStateToken>(StateGeneration{1}));
+
+  auto followerState1 = followerReplicatedState1->getFollower();
+  ASSERT_NE(followerState1, nullptr);
 
   {
-    auto result = leaderState->getSnapshot(LogIndex{1});
+    auto result = leaderState->getSnapshot(LogIndex{2});
     ASSERT_FALSE(result.isReady());
 
     auto entries = std::unordered_map<std::string, std::string>{
         {"foo1", "bar1"}, {"foo2", "bar2"}, {"foo3", "bar3"}};
     leaderState->set(entries);
-    follower->runAllAsyncAppendEntries();
+    follower1->runAllAsyncAppendEntries();
 
     ASSERT_TRUE(result.isReady());
     auto map = result.get().get();
@@ -209,13 +257,30 @@ TEST_F(PrototypeStateMachineTest, snapshot_transfer) {
 
     auto fut1 = leaderState->set({{"foo4", "bar4"}});
     auto fut2 = leaderState->remove("foo4");
-    follower->runAllAsyncAppendEntries();
+    follower1->runAllAsyncAppendEntries();
     fut1.wait();
     fut2.wait();
 
     ASSERT_TRUE(result.isReady());
     auto map = result.get().get();
 
+    auto expected = std::unordered_map<std::string, std::string>{
+        {"foo1", "bar1"}, {"foo2", "bar2"}, {"foo3", "bar3"}};
+    ASSERT_EQ(map, expected);
+  }
+
+  auto followerReplicatedState2 =
+      std::dynamic_pointer_cast<ReplicatedState<PrototypeState>>(
+          feature->createReplicatedState("prototype-state", follower2Log));
+  ASSERT_NE(followerReplicatedState2, nullptr);
+  followerReplicatedState2->start(
+      std::make_unique<ReplicatedStateToken>(StateGeneration{1}));
+
+  follower2->runAllAsyncAppendEntries();
+  auto followerState2 = followerReplicatedState2->getFollower();
+  ASSERT_NE(followerState2, nullptr);
+  {
+    auto map = followerState2->dumpContent();
     auto expected = std::unordered_map<std::string, std::string>{
         {"foo1", "bar1"}, {"foo2", "bar2"}, {"foo3", "bar3"}};
     ASSERT_EQ(map, expected);

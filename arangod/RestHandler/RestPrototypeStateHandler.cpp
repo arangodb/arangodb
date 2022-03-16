@@ -249,8 +249,9 @@ RestStatus RestPrototypeStateHandler::handleGetSnapshot(
                                VPackBuilder result;
                                {
                                  VPackObjectBuilder ob(&result);
-                                 for (auto const& [key, value] : map)
+                                 for (auto const& [key, value] : map) {
                                    result.add(key, VPackValue(value));
+                                 }
                                }
                                generateOk(rest::ResponseCode::OK,
                                           result.slice());

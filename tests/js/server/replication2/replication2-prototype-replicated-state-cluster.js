@@ -99,7 +99,8 @@ const replicatedStateSuite = function () {
     tearDown: lh.registerAgencyTestEnd,
 
     testPrototypeReplicatedStateMethods: function() {
-      const stateId = lh.nextUniqueLogId();
+      // TODO use unique id
+      const stateId = 12; //lh.nextUniqueLogId();
 
       const servers = _.sampleSize(lh.dbservers, 3);
       let participants = {};

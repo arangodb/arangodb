@@ -29,6 +29,8 @@
 
 #include "PrototypeStateMachine.h"
 
+#include <utility>
+
 using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_state;
@@ -54,8 +56,8 @@ void PrototypeCore::applyEntries(std::unique_ptr<EntryIterator> ptr) {
                    },
                },
                logEntry.operation);
-    lastAppliedIndex = entry->first;
   }
+  resolvePromises(lastAppliedIndex);
 }
 
 /*
@@ -98,6 +100,7 @@ auto PrototypeLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
     if (!core) {
       return Result{TRI_ERROR_CLUSTER_NOT_LEADER};
     }
+    core->lastAppliedIndex = ptr->range().to.saturatedDecrement();
     core->applyEntries(std::move(ptr));
     return Result{TRI_ERROR_NO_ERROR};
   });
@@ -202,6 +205,7 @@ auto PrototypeLeaderState::getSnapshot(LogIndex waitForIndex)
       return ResultT<std::unordered_map<std::string, std::string>>::error(
           TRI_ERROR_CLUSTER_NOT_LEADER);
     }
+    // TODO use then
     return core->waitForApplied(waitForIndex)
         .thenValue([&core, self](auto&& r)
                        -> ResultT<
@@ -219,14 +223,33 @@ auto PrototypeLeaderState::getSnapshot(LogIndex waitForIndex)
 }
 
 PrototypeFollowerState::PrototypeFollowerState(
-    std::unique_ptr<PrototypeCore> core)
-    : guardedData(std::move(core)) {}
+    std::unique_ptr<PrototypeCore> core,
+    std::shared_ptr<IPrototypeNetworkInterface> networkInterface)
+    : guardedData(std::move(core)),
+      networkInterface(std::move(networkInterface)) {}
 
 auto PrototypeFollowerState::acquireSnapshot(ParticipantId const& destination,
-                                             LogIndex) noexcept
+                                             LogIndex waitForIndex) noexcept
     -> futures::Future<Result> {
-  // TODO
-  return {TRI_ERROR_NO_ERROR};
+  auto leader = networkInterface->getLeaderInterface(destination);
+  if (leader.fail()) {
+    return leader.result();
+  }
+  return leader.get()
+      ->getSnapshot(waitForIndex)
+      .thenValue([self = shared_from_this()](auto&& result) -> Result {
+        if (result.fail()) {
+          return result.result();
+        }
+
+        auto map = result.get();
+        self->guardedData.doUnderLock([self, map = std::move(map)](auto& core) {
+          for (auto& [k, v] : map) {
+            core->store = core->store.set(k, v);
+          }
+        });
+        return TRI_ERROR_NO_ERROR;
+      });
 }
 
 auto PrototypeFollowerState::applyEntries(
@@ -262,15 +285,29 @@ auto PrototypeFollowerState::get(std::string key)
       });
 }
 
+auto PrototypeFollowerState::dumpContent()
+    -> std::unordered_map<std::string, std::string> {
+  return guardedData.doUnderLock([](auto& core) {
+    TRI_ASSERT(core != nullptr);
+    std::unordered_map<std::string, std::string> map(core->store.begin(),
+                                                     core->store.end());
+    return map;
+  });
+}
+
 auto PrototypeFactory::constructFollower(std::unique_ptr<PrototypeCore> core)
     -> std::shared_ptr<PrototypeFollowerState> {
-  return std::make_shared<PrototypeFollowerState>(std::move(core));
+  return std::make_shared<PrototypeFollowerState>(std::move(core),
+                                                  networkInterface);
 }
 
 auto PrototypeFactory::constructLeader(std::unique_ptr<PrototypeCore> core)
     -> std::shared_ptr<PrototypeLeaderState> {
   return std::make_shared<PrototypeLeaderState>(std::move(core));
 }
+PrototypeFactory::PrototypeFactory(
+    std::shared_ptr<IPrototypeNetworkInterface> networkInterface)
+    : networkInterface(std::move(networkInterface)) {}
 
 auto replicated_state::EntryDeserializer<
     replicated_state::prototype::PrototypeLogEntry>::
