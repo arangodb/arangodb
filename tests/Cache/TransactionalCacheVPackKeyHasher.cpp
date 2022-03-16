@@ -68,7 +68,7 @@ TEST(CacheTransactionalCacheVPackKeyHasherTest,
     TRI_ASSERT(value != nullptr);
     auto status = cache->insert(value);
     if (status.ok()) {
-      auto f = cache->find(s.start(), s.byteSize());
+      auto f = cache->find(s.start(), static_cast<uint32_t>(s.byteSize()));
       ASSERT_TRUE(f.found());
       ASSERT_EQ(0, memcmp(f.value()->value(), s.start(), s.byteSize()));
     } else {
@@ -86,7 +86,7 @@ TEST(CacheTransactionalCacheVPackKeyHasherTest,
     TRI_ASSERT(value != nullptr);
     auto status = cache->insert(value);
     if (status.ok()) {
-      auto f = cache->find(s.start(), s.byteSize());
+      auto f = cache->find(s.start(), static_cast<uint32_t>(s.byteSize()));
       ASSERT_TRUE(f.found());
       ASSERT_EQ(0, memcmp(f.value()->value(), s.start(), s.byteSize()));
     } else {
@@ -133,7 +133,8 @@ TEST(CacheTransactionalCacheVPackKeyHasherTest,
     ASSERT_TRUE(builtSlice.isUInt());
 
     while (true) {
-      auto f = cache->find(builder.data(), builder.size());
+      auto f =
+          cache->find(builder.data(), static_cast<uint32_t>(builder.size()));
       if (!f.found() && f.result() != TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
         continue;
       }
@@ -163,7 +164,8 @@ TEST(CacheTransactionalCacheVPackKeyHasherTest,
     ASSERT_TRUE(builtSlice.isInt());
 
     while (true) {
-      auto f = cache->find(builder.data(), builder.size());
+      auto f =
+          cache->find(builder.data(), static_cast<uint32_t>(builder.size()));
       if (!f.found() && f.result() != TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
         continue;
       }
@@ -192,7 +194,8 @@ TEST(CacheTransactionalCacheVPackKeyHasherTest,
     ASSERT_TRUE(builtSlice.isDouble());
 
     while (true) {
-      auto f = cache->find(builder.data(), builder.size());
+      auto f =
+          cache->find(builder.data(), static_cast<uint32_t>(builder.size()));
       if (!f.found() && f.result() != TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
         continue;
       }
@@ -215,7 +218,8 @@ TEST(CacheTransactionalCacheVPackKeyHasherTest,
     ASSERT_TRUE(builtSlice.isSmallInt());
 
     while (true) {
-      auto f = cache->find(builder.data(), builder.size());
+      auto f =
+          cache->find(builder.data(), static_cast<uint32_t>(builder.size()));
       if (!f.found() && f.result() != TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
         continue;
       }
@@ -275,7 +279,8 @@ TEST(CacheTransactionalCacheVPackKeyHasherTest,
     ASSERT_TRUE(builtSlice.isInt());
 
     while (true) {
-      auto s = cache->remove(builder.data(), builder.size());
+      auto s =
+          cache->remove(builder.data(), static_cast<uint32_t>(builder.size()));
       if (s.fail() && s.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
         continue;
       }
@@ -293,7 +298,8 @@ TEST(CacheTransactionalCacheVPackKeyHasherTest,
     ASSERT_TRUE(builtSlice.isUInt());
 
     while (true) {
-      auto f = cache->find(builder.data(), builder.size());
+      auto f =
+          cache->find(builder.data(), static_cast<uint32_t>(builder.size()));
       if (i % 2 == 0) {
         ASSERT_FALSE(f.found());
       } else {
@@ -327,7 +333,8 @@ TEST(CacheTransactionalCacheVPackKeyHasherTest,
     ASSERT_TRUE(builtSlice.isInt());
 
     while (true) {
-      auto f = cache->find(builder.data(), builder.size());
+      auto f =
+          cache->find(builder.data(), static_cast<uint32_t>(builder.size()));
       if (i % 2 == 0) {
         ASSERT_FALSE(f.found());
       } else {
@@ -360,7 +367,8 @@ TEST(CacheTransactionalCacheVPackKeyHasherTest,
     ASSERT_TRUE(builtSlice.isDouble());
 
     while (true) {
-      auto f = cache->find(builder.data(), builder.size());
+      auto f =
+          cache->find(builder.data(), static_cast<uint32_t>(builder.size()));
       if (i % 2 == 0) {
         ASSERT_FALSE(f.found());
       } else {
@@ -387,7 +395,8 @@ TEST(CacheTransactionalCacheVPackKeyHasherTest,
     ASSERT_TRUE(builtSlice.isSmallInt());
 
     while (true) {
-      auto f = cache->find(builder.data(), builder.size());
+      auto f =
+          cache->find(builder.data(), static_cast<uint32_t>(builder.size()));
       if (i % 2 == 0) {
         ASSERT_FALSE(f.found());
       } else {
@@ -446,12 +455,12 @@ TEST(CacheTransactionalCacheVPackKeyHasherTest,
 
     Result status;
     do {
-      status = cache->banish(s.start(), s.byteSize());
+      status = cache->banish(s.start(), static_cast<uint32_t>(s.byteSize()));
     } while (!status.ok());
     ASSERT_TRUE(status.ok());
 
     while (true) {
-      auto f = cache->find(s.start(), s.byteSize());
+      auto f = cache->find(s.start(), static_cast<uint32_t>(s.byteSize()));
       if (!f.found() && f.result() != TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
         continue;
       }
@@ -472,7 +481,7 @@ TEST(CacheTransactionalCacheVPackKeyHasherTest,
     auto status = cache->insert(value);
     ASSERT_TRUE(status.fail());
     delete value;
-    auto f = cache->find(s.start(), s.byteSize());
+    auto f = cache->find(s.start(), static_cast<uint32_t>(s.byteSize()));
     ASSERT_FALSE(f.found());
   }
 
@@ -500,7 +509,7 @@ TEST(CacheTransactionalCacheVPackKeyHasherTest,
     s = builder.slice();
 
     while (true) {
-      auto f = cache->find(s.start(), s.byteSize());
+      auto f = cache->find(s.start(), static_cast<uint32_t>(s.byteSize()));
       if (!f.found() && f.result() != TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
         continue;
       }

@@ -2932,12 +2932,18 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
   }
 }
 
+DECLARE_GAUGE(rocksdb_cache_active_tables, uint64_t,
+              "rocksdb_cache_active_tables");
 DECLARE_GAUGE(rocksdb_cache_allocated, uint64_t, "rocksdb_cache_allocated");
 DECLARE_GAUGE(rocksdb_cache_hit_rate_lifetime, uint64_t,
               "rocksdb_cache_hit_rate_lifetime");
 DECLARE_GAUGE(rocksdb_cache_hit_rate_recent, uint64_t,
               "rocksdb_cache_hit_rate_recent");
 DECLARE_GAUGE(rocksdb_cache_limit, uint64_t, "rocksdb_cache_limit");
+DECLARE_GAUGE(rocksdb_cache_unused_memory, uint64_t,
+              "rocksdb_cache_unused_memory");
+DECLARE_GAUGE(rocksdb_cache_unused_tables, uint64_t,
+              "rocksdb_cache_unused_tables");
 DECLARE_GAUGE(rocksdb_actual_delayed_write_rate, uint64_t,
               "rocksdb_actual_delayed_write_rate");
 DECLARE_GAUGE(rocksdb_background_errors, uint64_t, "rocksdb_background_errors");
@@ -3190,9 +3196,9 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
     auto rates = manager->globalHitRates();
     builder.add("cache.limit", VPackValue(stats.globalLimit));
     builder.add("cache.allocated", VPackValue(stats.globalAllocation));
-    builder.add("cache.activeTables", VPackValue(stats.activeTables));
-    builder.add("cache.unusedMemory", VPackValue(stats.spareAllocation));
-    builder.add("cache.unusedTables", VPackValue(stats.spareTables));
+    builder.add("cache.active-tables", VPackValue(stats.activeTables));
+    builder.add("cache.unused-memory", VPackValue(stats.spareAllocation));
+    builder.add("cache.unused-tables", VPackValue(stats.spareTables));
     // handle NaN
     builder.add("cache.hit-rate-lifetime",
                 VPackValue(rates.first >= 0.0 ? rates.first : 0.0));
@@ -3202,9 +3208,9 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
     // cache turned off
     builder.add("cache.limit", VPackValue(0));
     builder.add("cache.allocated", VPackValue(0));
-    builder.add("cache.activeTables", VPackValue(0));
-    builder.add("cache.unusedMemory", VPackValue(0));
-    builder.add("cache.unusedTables", VPackValue(0));
+    builder.add("cache.active-tables", VPackValue(0));
+    builder.add("cache.unused-memory", VPackValue(0));
+    builder.add("cache.unused-tables", VPackValue(0));
     // handle NaN
     builder.add("cache.hit-rate-lifetime", VPackValue(0));
     builder.add("cache.hit-rate-recent", VPackValue(0));
