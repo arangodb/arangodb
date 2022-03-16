@@ -35,7 +35,8 @@ const functionsDocumentation = {
   'replication_ongoing_frompresent': 'replication ongoing "frompresent" tests',
   'replication_static': 'replication static tests',
   'replication_sync': 'replication sync tests',
-  'shell_replication': 'shell replication tests'
+  'shell_replication': 'shell replication tests',
+  'http_replication': 'client replication API tests'
 };
 const optionsDocumentation = [
 ];
@@ -54,7 +55,8 @@ const testPaths = {
   'replication_ongoing_global_spec': [tu.pathForTesting('server/replication/ongoing/global/spec')],
   'replication_ongoing_frompresent': [tu.pathForTesting('server/replication/ongoing/frompresent')],
   'replication_static': [tu.pathForTesting('server/replication/static')],
-  'replication_sync': [tu.pathForTesting('server/replication/sync')]
+  'replication_sync': [tu.pathForTesting('server/replication/sync')],
+  'http_replication': [tu.pathForTesting('server/replication/sync')]
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -70,6 +72,21 @@ function shellReplication (options) {
   _.defaults(opts, options);
 
   return tu.performTests(opts, testCases, 'shell_replication', tu.runThere);
+}
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief TEST: shell_replication
+// //////////////////////////////////////////////////////////////////////////////
+
+function shellClientReplication (options) {
+  let testCases = tu.scanTestPaths(testPaths.shell_replication, options);
+
+  var opts = {
+    'replication': true
+  };
+  _.defaults(opts, options);
+
+  return tu.performTests(opts, testCases, 'shell_replication', tu.runInLocalArangosh);
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -616,6 +633,7 @@ exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTest
   testFns['replication_ongoing_frompresent'] = replicationOngoingFrompresent;
   testFns['replication_static'] = replicationStatic;
   testFns['replication_sync'] = replicationSync;
+  testFns['http_replication'] = shellClientReplication;
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
   for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
 };
