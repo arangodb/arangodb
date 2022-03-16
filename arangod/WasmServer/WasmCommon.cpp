@@ -18,10 +18,9 @@ using namespace arangodb::wasm;
 using namespace arangodb::velocypack;
 
 void codeToVelocypack(Code const& code, VPackBuilder& builder) {
-  auto ab = VPackArrayBuilder(&builder);
-  for (auto const& entry : code.bytes) {
-    builder.add(VPackValue(entry));
-  }
+  std::string string(code.bytes.begin(), code.bytes.end());
+  auto encodedString = arangodb::basics::StringUtils::encodeBase64(string);
+  builder.add(VPackValue(encodedString));
 }
 
 void arangodb::wasm::moduleToVelocypack(Module const& module,

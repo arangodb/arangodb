@@ -50,6 +50,8 @@ class WasmServerFeature final : public ArangodFeature {
       -> std::optional<uint64_t>;
   void deleteModule(wasm::ModuleName const& name);
   auto allModules() const -> std::unordered_map<std::string, wasm::Module>;
+  auto module(wasm::ModuleName const& name) const
+      -> std::optional<wasm::Module>;
 
  private:
   struct GuardedModules {

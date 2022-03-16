@@ -83,7 +83,20 @@ void WasmServerFeature::deleteModule(ModuleName const& name) {
 
 auto WasmServerFeature::allModules() const
     -> std::unordered_map<std::string, Module> {
-  return _guardedModules.doUnderLock([&](GuardedModules const& guardedModules) {
+  return _guardedModules.doUnderLock([](GuardedModules const& guardedModules) {
     return guardedModules._modules;
   });
+}
+
+auto WasmServerFeature::module(ModuleName const& name) const
+    -> std::optional<Module> {
+  return _guardedModules.doUnderLock(
+      [&name](GuardedModules const& guardedModules) -> std::optional<Module> {
+        auto module = guardedModules._modules.find(name.string);
+        if (module == std::end(guardedModules._modules)) {
+          return std::nullopt;
+        } else {
+          return module->second;
+        }
+      });
 }

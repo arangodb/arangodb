@@ -45,6 +45,8 @@ struct WasmVmMethods {
       -> futures::Future<Result> = 0;
   virtual auto allModules() const
       -> futures::Future<std::unordered_map<std::string, Module>> = 0;
+  virtual auto module(ModuleName const& name) const
+      -> futures::Future<std::optional<Module>> = 0;
   virtual auto executeFunction(ModuleName const& moduleName,
                                FunctionName const& functionName,
                                FunctionParameters const& parameters) const

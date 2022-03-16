@@ -54,6 +54,11 @@ struct WasmVmMethodsSingleServer final
     return vocbase.server().getFeature<WasmServerFeature>().allModules();
   }
 
+  auto module(ModuleName const& name) const
+      -> futures::Future<std::optional<Module>> override {
+    return vocbase.server().getFeature<WasmServerFeature>().module(name);
+  }
+
   auto executeFunction(ModuleName const& moduleName,
                        FunctionName const& functionName,
                        FunctionParameters const& parameters) const

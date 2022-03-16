@@ -26,19 +26,16 @@
 // / @author Copyright 2022, ArangoDB GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
+'use strict';
 var internal = require('internal');
 var arangosh = require('@arangodb/arangosh');
 var fs = require('fs');
-
-var ArangoError = require('@arangodb').ArangoError;
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief encode data in file with base64 
 // //////////////////////////////////////////////////////////////////////////////
 
 var base64 = function (file) {
-  'use strict';
-
     var buffer = fs.readFileSync(file);
     return buffer.toString('base64');
 };
@@ -48,10 +45,7 @@ var base64 = function (file) {
 // //////////////////////////////////////////////////////////////////////////////
 
 var unregisterModule = function (name) {
-  'use strict';
-
   var requestResult = db._connection.DELETE('/_api/wasm/' + name);
-
   arangosh.checkRequestResult(requestResult);
   return requestResult.result;
 };
@@ -62,15 +56,12 @@ var unregisterModule = function (name) {
 // //////////////////////////////////////////////////////////////////////////////
 
 var registerModuleByFile = function (name, codefile, isDeterministic = false) {
-  var db = internal.db;
-
   var requestResult = db._connection.POST('/_api/wasm/',
                                           {
                                             name: name,
                                             code: base64(codefile),
                                             isDeterministic: isDeterministic
                                           });
-  
   arangosh.checkRequestResult(requestResult);
   return requestResult.result;
 };
@@ -81,15 +72,12 @@ var registerModuleByFile = function (name, codefile, isDeterministic = false) {
 // //////////////////////////////////////////////////////////////////////////////
 
 var registerModuleByBase64 = function (name, base64code, isDeterministic = false) {
-  var db = internal.db;
-
   var requestResult = db._connection.POST('/_api/wasm/',
                                           {
                                             name: name,
                                             code: base64code,
                                             isDeterministic: isDeterministic
                                           });
-  
   arangosh.checkRequestResult(requestResult);
   return requestResult.result;
 };
@@ -99,15 +87,23 @@ var registerModuleByBase64 = function (name, base64code, isDeterministic = false
 // //////////////////////////////////////////////////////////////////////////////
 
 var toArrayModules = function () {
-  'use strict';
-
-    var requestResult = db._connection.GET('/_api/wasm/');
-
+  var requestResult = db._connection.GET('/_api/wasm/');
   arangosh.checkRequestResult(requestResult);
   return requestResult.result;
 };
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief was docuBlock show detail information of user-defined webassembly module
+// //////////////////////////////////////////////////////////////////////////////
+
+var showModule = function (name) {
+  var requestResult = db._connection.GET('/_api/wasm/' + name);
+  arangosh.checkRequestResult(requestResult);
+  return requestResult.result;
+}
 
 exports.unregister = unregisterModule;
 exports.registerByFile = registerModuleByFile;
 exports.register = registerModuleByBase64;
 exports.toArray = toArrayModules;
+exports.show = showModule;

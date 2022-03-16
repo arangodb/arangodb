@@ -110,7 +110,7 @@ TEST(WasmModuleConversion, converts_module_to_velocypack) {
   EXPECT_EQ(
       velocypackBuilder.toJson(),
       VPackParser::fromJson(
-          R"({"name": "module_name", "code": [3, 233], "isDeterministic": false})")
+          R"({"name": "module_name", "code": "A+k=", "isDeterministic": false})")
           ->slice()
           .toJson());
 }

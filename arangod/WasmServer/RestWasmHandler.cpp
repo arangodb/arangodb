@@ -72,18 +72,53 @@ auto RestWasmHandler::executeByMethod(WasmVmMethods const& methods)
   return RestStatus::DONE;
 }
 
+auto showAllModules(WasmVmMethods const& methods, VPackBuilder& response)
+    -> void {
+  auto modules = methods.allModules().get();
+
+  VPackArrayBuilder ob(&response);
+  for (auto const& function : modules) {
+    response.add(VPackValue(function.first));
+  }
+}
+
+auto showModule(ModuleName const& name, WasmVmMethods const& methods,
+                VPackBuilder& response) -> Result {
+  auto module = methods.module(name).get();
+
+  if (!module.has_value()) {
+    return Result{
+        TRI_ERROR_BAD_PARAMETER,
+        "RestWasmHandler: Module " + name.string + " does not exist."};
+  }
+
+  VPackObjectBuilder ob(&response);
+  response.add(VPackValue("result"));
+  arangodb::wasm::moduleToVelocypack(module.value(), response);
+  return Result{};
+}
+
 auto RestWasmHandler::handleGetRequest(WasmVmMethods const& methods)
     -> RestStatus {
-  auto savedModules = methods.allModules().get();
+  std::vector<std::string> const& suffixes = _request->decodedSuffixes();
 
   VPackBuilder builder;
-  {
-    VPackArrayBuilder ob(&builder);
-    for (auto const& function : savedModules) {
-      arangodb::wasm::moduleToVelocypack(function.second, builder);
+  if (suffixes.size() == 0) {
+    showAllModules(methods, builder);
+    generateOk(rest::ResponseCode::OK, builder.slice());
+  } else if (suffixes.size() == 1) {
+    auto result = showModule(ModuleName{suffixes[0]}, methods, builder);
+    if (result.fail()) {
+      generateError(ResponseCode::BAD, result.errorNumber(),
+                    result.errorMessage());
+    } else {
+      generateOk(rest::ResponseCode::OK, builder.slice());
     }
+  } else {
+    generateError(ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+                  "RestWasmHandler: Expects name of module as suffix.");
+    return RestStatus::DONE;
   }
-  generateOk(rest::ResponseCode::OK, builder.slice());
   return RestStatus::DONE;
 }
 
@@ -120,8 +155,7 @@ auto addWasmModule(VPackSlice slice, wasm::WasmVmMethods const& methods,
 
   {
     VPackObjectBuilder ob1(&response);
-    response.add(VPackValue("installed"));
-    arangodb::wasm::moduleToVelocypack(module.get(), response);
+    response.add("installed", VPackValue(module.get().name.string));
   }
   return Result{};
 }
@@ -143,8 +177,9 @@ auto executeWasmFunction(ModuleName const& moduleName,
           .get();
   if (!result.has_value()) {
     return Result{TRI_ERROR_BAD_PARAMETER,
-                  "Function '" + functionName.string + "' in module '" +
-                      moduleName.string + "' cannot be found"};
+                  "RestWasmHandler: Function '" + functionName.string +
+                      "' in module '" + moduleName.string +
+                      "' cannot be found"};
   }
 
   {
