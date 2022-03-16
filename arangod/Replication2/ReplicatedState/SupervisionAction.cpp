@@ -29,92 +29,73 @@
 
 namespace paths = arangodb::cluster::paths::aliases;
 
-namespace arangodb::replication2::replicated_state {
+using namespace arangodb::replication2;
 
-void Executor::operator()(EmptyAction const&) {}
+namespace {
+template<typename A, typename = void>
+struct action_has_update_log_target : std::false_type {};
+template<typename A>
+struct action_has_update_log_target<A,
+                                    std::void_t<decltype(&A::updateLogTarget)>>
+    : std::true_type {};
+template<typename A>
+inline constexpr auto action_has_update_log_target_v =
+    action_has_update_log_target<A>::value;
+template<typename A, typename = void>
+struct action_has_update_state_plan : std::false_type {};
+template<typename A>
+struct action_has_update_state_plan<A,
+                                    std::void_t<decltype(&A::updateStatePlan)>>
+    : std::true_type {};
+template<typename A>
+inline constexpr auto action_has_update_state_plan_v =
+    action_has_update_state_plan<A>::value;
 
-void Executor::operator()(AddParticipantAction const& action) {
-  auto logTargetParticipantPath = paths::target()
-                                      ->replicatedLogs()
-                                      ->database(database)
-                                      ->log(id)
-                                      ->participants()
-                                      ->server(action.participant);
+static_assert(
+    action_has_update_log_target_v<replicated_state::AddParticipantAction>);
+}  // namespace
 
-  auto statePlanPath =
-      paths::plan()->replicatedStates()->database(database)->state(id);
-  auto statePlanParticipantPath =
-      statePlanPath->participants()->participant(action.participant);
-
-  envelope = envelope.write()
-                 .emplace_object(logTargetParticipantPath->str(),
-                                 [&](VPackBuilder& builder) {
-                                   ParticipantFlags{.allowedInQuorum = false,
-                                                    .allowedAsLeader = false}
-                                       .toVelocyPack(builder);
-                                 })
-                 .emplace_object(statePlanParticipantPath->str(),
-                                 [&](VPackBuilder& builder) {
-                                   agency::Plan::Participant{
-                                       .generation = action.generation}
-                                       .toVelocyPack(builder);
-                                 })
-                 .inc(paths::target()->version()->str())
-                 .inc(paths::plan()->version()->str())
-                 .inc(statePlanPath->generation()->str())
-                 .precs()
-                 .isEmpty(logTargetParticipantPath->str())
-                 .isEmpty(statePlanParticipantPath->str())
-                 .isEqual(statePlanPath->generation()->str(), action.generation)
-                 .end();
-}
-
-void Executor::operator()(AddStateToPlanAction const& action) {
+auto replicated_state::execute(
+    LogId id, DatabaseID const& database, Action action,
+    std::optional<agency::Plan> state,
+    std::optional<replication2::agency::LogTarget> log,
+    arangodb::agency::envelope envelope) -> arangodb::agency::envelope {
   auto logTargetPath =
       paths::target()->replicatedLogs()->database(database)->log(id)->str();
   auto statePlanPath =
       paths::plan()->replicatedStates()->database(database)->state(id)->str();
 
-  envelope = envelope.write()
-                 .emplace_object(logTargetPath,
-                                 [&](VPackBuilder& builder) {
-                                   action.logTarget.toVelocyPack(builder);
-                                 })
-                 .emplace_object(statePlanPath,
-                                 [&](VPackBuilder& builder) {
-                                   action.statePlan.toVelocyPack(builder);
-                                 })
-                 .inc(paths::target()->version()->str())
-                 .inc(paths::plan()->version()->str())
-                 .precs()
-                 .isEmpty(logTargetPath)
-                 .isEmpty(statePlanPath)
-                 .end();
+  return std::visit(
+      [&]<typename A>(A& action) {
+        if constexpr (!action_has_update_state_plan_v<A> &&
+                      !action_has_update_log_target_v<A>) {
+          static_assert(std::is_same_v<EmptyAction, A>);
+          return std::move(envelope);
+        } else {
+          auto writes = envelope.write();
+          if constexpr (action_has_update_log_target_v<A>) {
+            auto newTarget =
+                std::move(log).value_or(replication2::agency::LogTarget{});
+            action.updateLogTarget(newTarget);
+            writes = std::move(writes)
+                         .emplace_object(logTargetPath,
+                                         [&](VPackBuilder& builder) {
+                                           newTarget.toVelocyPack(builder);
+                                         })
+                         .inc(paths::target()->version()->str());
+          }
+          if constexpr (action_has_update_state_plan_v<A>) {
+            auto newState = std::move(state).value_or(agency::Plan{});
+            action.updateStatePlan(newState);
+            writes = std::move(writes)
+                         .emplace_object(statePlanPath,
+                                         [&](VPackBuilder& builder) {
+                                           newState.toVelocyPack(builder);
+                                         })
+                         .inc(paths::plan()->version()->str());
+          }
+          return std::move(writes).end();
+        }
+      },
+      action);
 }
-
-void Executor::operator()(ModifyParticipantFlagsAction const& action) {
-  auto logTargetPath = paths::target()
-                           ->replicatedLogs()
-                           ->database(database)
-                           ->log(id)
-                           ->participants()
-                           ->server(action.participant);
-
-  envelope = envelope.write()
-                 .emplace_object(logTargetPath->str(),
-                                 [&](VPackBuilder& builder) {
-                                   action.flags.toVelocyPack(builder);
-                                 })
-                 .inc(paths::target()->version()->str())
-                 .end();
-}
-
-auto execute(LogId id, DatabaseID const& database, Action const& action,
-             arangodb::agency::envelope envelope)
-    -> arangodb::agency::envelope {
-  auto executor = Executor{id, database, std::move(envelope)};
-  std::visit(executor, action);
-  return std::move(executor.envelope);
-}
-
-}  // namespace arangodb::replication2::replicated_state

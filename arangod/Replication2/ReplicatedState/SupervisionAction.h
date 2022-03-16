@@ -36,33 +36,44 @@ struct EmptyAction {};
 struct AddParticipantAction {
   ParticipantId participant;
   StateGeneration generation;
+
+  void updateLogTarget(arangodb::replication2::agency::LogTarget& logTarget) {
+    logTarget.participants[participant] =
+        ParticipantFlags{.allowedInQuorum = false, .allowedAsLeader = false};
+  }
+
+  void updateStatePlan(agency::Plan& plan) {
+    plan.participants[participant].generation = plan.generation;
+    plan.generation.value += 1;
+  }
 };
 
 struct AddStateToPlanAction {
   replication2::agency::LogTarget logTarget;
   agency::Plan statePlan;
+
+  void updateLogTarget(arangodb::replication2::agency::LogTarget& target) {
+    target = logTarget;
+  }
+
+  void updateStatePlan(agency::Plan& plan) { plan = statePlan; }
 };
 
-struct ModifyParticipantFlagsAction {
+struct UpdateParticipantFlagsAction {
   ParticipantId participant;
   ParticipantFlags flags;
+
+  void updateLogTarget(arangodb::replication2::agency::LogTarget& target) {
+    target.participants.at(participant) = flags;
+  }
 };
 
 using Action = std::variant<EmptyAction, AddParticipantAction,
-                            AddStateToPlanAction, ModifyParticipantFlagsAction>;
+                            AddStateToPlanAction, UpdateParticipantFlagsAction>;
 
-struct Executor {
-  LogId id;
-  DatabaseID const& database;
-  arangodb::agency::envelope envelope;
-
-  void operator()(EmptyAction const&);
-  void operator()(AddParticipantAction const&);
-  void operator()(AddStateToPlanAction const&);
-  void operator()(ModifyParticipantFlagsAction const&);
-};
-
-auto execute(LogId id, DatabaseID const& database, Action const& action,
+auto execute(LogId id, DatabaseID const& database, Action action,
+             std::optional<agency::Plan> state,
+             std::optional<replication2::agency::LogTarget> log,
              arangodb::agency::envelope envelope) -> arangodb::agency::envelope;
 
 }  // namespace arangodb::replication2::replicated_state

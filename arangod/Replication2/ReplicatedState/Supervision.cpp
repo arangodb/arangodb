@@ -102,7 +102,7 @@ auto checkSnapshotComplete(
             auto newFlags = flags;
             newFlags.allowedInQuorum = true;
             newFlags.allowedAsLeader = true;
-            return ModifyParticipantFlagsAction{participant, newFlags};
+            return UpdateParticipantFlagsAction{participant, newFlags};
           }
         }
       }
