@@ -29,7 +29,6 @@ const LinkPropertiesForm = ({
   const setShow = useShowUpdate();
   const field = useField();
 
-  console.log(field);
   useEffect(() => {
     if (data) {
       const linkKeys = chain(links)
@@ -80,6 +79,7 @@ const LinkPropertiesForm = ({
     setLink(collection);
   };
 
+  console.log(links);
   return disabled && isEmpty(links) ? (
     <span>No links found.</span>
   ) : (

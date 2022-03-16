@@ -6,6 +6,8 @@ const FieldContext = React.createContext();
 const FieldUpdateContext = React.createContext();
 const ViewContext = React.createContext();
 const UpdateViewContext = React.createContext();
+const StoreLinksContext = React.createContext();
+const UpdateLinksStoreContext = React.createContext();
 
 export function useShow() {
   return useContext(LinkContext);
@@ -28,10 +30,19 @@ export const useViewName = () => {
 export const useUpdateView = () => {
   return useContext(UpdateViewContext);
 }
+
+export const useLinks = () => {
+  return useContext(StoreLinksContext);
+}
+export const useUpdateLinks = () => {
+  return useContext(UpdateLinksStoreContext);
+}
 export function LinkProvider({ children }) {
   const [show, setShow] = useState("LinkList");
   const [field, setShowField] = useState({});
   const [view, setView] = useState("");
+  const [links, setLinks] = useState([]);
+
 
   const handleShowState = (str) => {
     setShow(str);
@@ -44,18 +55,26 @@ export function LinkProvider({ children }) {
   const handleView = (v) => {
     setView(v)
   }
+
+  const handleStoreLinks = (l) => {
+    setLinks(links.push(l));
+  }
   return (
     <LinkContext.Provider value={show}>
       <ShowContext.Provider value={handleShowState}>
-        <FieldContext.Provider value={field}>
-          <FieldUpdateContext.Provider value={handleShowField}>
-            <ViewContext.Provider value={view}>
-              <UpdateViewContext.Provider value={handleView}>
-                {children}
-              </UpdateViewContext.Provider>
-            </ViewContext.Provider>
-          </FieldUpdateContext.Provider>
-        </FieldContext.Provider>
+        <StoreLinksContext.Provider value={links}>
+          <UpdateLinksStoreContext.Provider>
+            <FieldContext.Provider value={field}>
+              <FieldUpdateContext.Provider value={handleShowField}>
+                <ViewContext.Provider value={view}>
+                  <UpdateViewContext.Provider value={handleView}>
+                    {children}
+                  </UpdateViewContext.Provider>
+                </ViewContext.Provider>
+              </FieldUpdateContext.Provider>
+            </FieldContext.Provider>
+          </UpdateLinksStoreContext.Provider>
+        </StoreLinksContext.Provider>
       </ShowContext.Provider>
     </LinkContext.Provider>
   )
