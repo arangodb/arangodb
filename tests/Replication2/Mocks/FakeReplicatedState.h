@@ -234,7 +234,7 @@ struct RecordingFactory {
     return ptr;
   }
 
-  auto constructCore(LogId) -> std::unique_ptr<CoreType> {
+  auto constructCore(GlobalLogIdentifier const&) -> std::unique_ptr<CoreType> {
     return std::make_unique<CoreType>();
   }
 

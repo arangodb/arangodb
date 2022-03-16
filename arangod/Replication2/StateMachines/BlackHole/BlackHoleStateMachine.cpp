@@ -77,7 +77,8 @@ auto BlackHoleFactory::constructLeader(std::unique_ptr<BlackHoleCore> core)
   return std::make_shared<BlackHoleLeaderState>(std::move(core));
 }
 
-auto BlackHoleFactory::constructCore(LogId) -> std::unique_ptr<BlackHoleCore> {
+auto BlackHoleFactory::constructCore(GlobalLogIdentifier const&)
+    -> std::unique_ptr<BlackHoleCore> {
   return std::make_unique<BlackHoleCore>();
 }
 

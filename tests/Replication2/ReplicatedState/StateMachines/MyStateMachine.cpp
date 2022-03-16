@@ -77,7 +77,8 @@ auto MyFactory::constructFollower(std::unique_ptr<MyCoreType> core)
   return std::make_shared<MyFollowerState>(std::move(core));
 }
 
-auto MyFactory::constructCore(LogId) -> std::unique_ptr<MyCoreType> {
+auto MyFactory::constructCore(GlobalLogIdentifier const&)
+    -> std::unique_ptr<MyCoreType> {
   return std::make_unique<MyCoreType>();
 }
 

@@ -153,7 +153,7 @@ void ReplicatedState<S>::forceRebuild() {
 
 template<typename S>
 void ReplicatedState<S>::start(std::unique_ptr<ReplicatedStateToken> token) {
-  auto core = factory->constructCore(log->getId());
+  auto core = factory->constructCore(log->getGlobalLogId());
   auto deferred =
       guardedData.getLockedGuard()->rebuild(std::move(core), std::move(token));
   // execute *after* the lock has been released

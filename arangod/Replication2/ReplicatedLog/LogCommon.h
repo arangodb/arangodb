@@ -160,6 +160,14 @@ class LogId : public arangodb::basics::Identifier {
 
 auto to_string(LogId logId) -> std::string;
 
+struct GlobalLogIdentifier {
+  GlobalLogIdentifier(std::string database, LogId id);
+  std::string database;
+  LogId id;
+};
+
+auto to_string(GlobalLogIdentifier const&) -> std::string;
+
 struct LogConfig {
   std::size_t writeConcern = 1;
   std::size_t softWriteConcern = 1;
