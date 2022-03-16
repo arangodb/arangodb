@@ -578,7 +578,7 @@ void histogram_test(Scale const& scale) {
 
   // dump
   std::string s;
-  h.toPrometheus(s, "", "");
+  h.toPrometheus(s, "");
 }
 
 TEST(MetricsTest, test_double_histogram) {

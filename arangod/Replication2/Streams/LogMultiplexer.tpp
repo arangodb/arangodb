@@ -380,10 +380,9 @@ struct LogMultiplexerImplementation
            typename T = stream_descriptor_type_t<StreamDescriptor>>
   auto insertInternal(T const& t) -> LogIndex {
     auto serialized = std::invoke([&] {
-      velocypack::UInt8Buffer buffer;
-      velocypack::Builder builder(buffer);
+      velocypack::Builder builder;
       MultiplexedValues::toVelocyPack<StreamDescriptor>(t, builder);
-      return buffer;
+      return LogPayload::createFromSlice(builder.slice());
     });
 
     // we have to lock before we insert, otherwise we could mess up the order
@@ -393,7 +392,7 @@ struct LogMultiplexerImplementation
           // First write to replicated log - note that insert could trigger a
           // waitFor to be resolved. Therefore, we should hold the lock.
           auto insertIndex = _interface->insert(
-              LogPayload(std::move(serialized)), false,
+              serialized, false,
               replicated_log::LogLeader::doNotTriggerAsyncReplication);
           TRI_ASSERT(insertIndex > self._lastIndex);
           self._lastIndex = insertIndex;

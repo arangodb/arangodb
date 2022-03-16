@@ -40,7 +40,7 @@ namespace {
 
 std::tuple<size_t, size_t, double, double> analyzeConditions(
     arangodb::Index const* idx,
-    std::unordered_map<
+    arangodb::containers::FlatHashMap<
         size_t, std::vector<arangodb::aql::AstNode const*>> const& found) {
   size_t attributesCovered = 0;
   size_t attributesCoveredByEquality = 0;
@@ -105,11 +105,11 @@ bool SortedIndexAttributeMatcher::accessFitsIndex(
     arangodb::aql::AstNode const*
         op,  // binary operation that is parent of access and other
     arangodb::aql::Variable const* reference,  // variable used in access(es)
-    std::unordered_map<
+    arangodb::containers::FlatHashMap<
         size_t /*offset in idx->fields()*/,
         std::vector<arangodb::aql::AstNode const*> /*conjunct - operation*/>&
         found,  // marks operations covered by index-fields
-    std::unordered_set<std::string>&
+    arangodb::containers::FlatHashSet<std::string>&
         nonNullAttributes,  // set of stringified op-children (access other)
                             // that may not be null
     bool isExecution        // skip usage check in execution phase
@@ -219,9 +219,10 @@ bool SortedIndexAttributeMatcher::accessFitsIndex(
 void SortedIndexAttributeMatcher::matchAttributes(
     arangodb::Index const* idx, arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference,
-    std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>>&
-        found,
-    size_t& values, std::unordered_set<std::string>& nonNullAttributes,
+    arangodb::containers::FlatHashMap<
+        size_t, std::vector<arangodb::aql::AstNode const*>>& found,
+    size_t& values,
+    arangodb::containers::FlatHashSet<std::string>& nonNullAttributes,
     bool isExecution) {
   // assert we have a properly formed condition - nary conjunction
   TRI_ASSERT(node->type == arangodb::aql::NODE_TYPE_OPERATOR_NARY_AND);
@@ -284,8 +285,10 @@ Index::FilterCosts SortedIndexAttributeMatcher::supportsFilterCondition(
     }
   }
 
-  std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>> found;
-  std::unordered_set<std::string> nonNullAttributes;
+  arangodb::containers::FlatHashMap<size_t,
+                                    std::vector<arangodb::aql::AstNode const*>>
+      found;
+  arangodb::containers::FlatHashSet<std::string> nonNullAttributes;
   size_t values = 0;
   matchAttributes(idx, node, reference, found, values, nonNullAttributes,
                   false);
@@ -385,8 +388,8 @@ Index::FilterCosts SortedIndexAttributeMatcher::supportsFilterCondition(
             // the other index is a full prefix of our own index.
             // now check if the other index actually satisfies the filter
             // condition
-            std::unordered_map<size_t,
-                               std::vector<arangodb::aql::AstNode const*>>
+            arangodb::containers::FlatHashMap<
+                size_t, std::vector<arangodb::aql::AstNode const*>>
                 foundOther;
             [[maybe_unused]] size_t valuesOther = 0;  // ignored here
             matchAttributes(otherIdx.get(), node, reference, foundOther,
@@ -491,8 +494,10 @@ arangodb::aql::AstNode* SortedIndexAttributeMatcher::specializeCondition(
     }
   }
 
-  std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>> found;
-  std::unordered_set<std::string> nonNullAttributes;
+  arangodb::containers::FlatHashMap<size_t,
+                                    std::vector<arangodb::aql::AstNode const*>>
+      found;
+  arangodb::containers::FlatHashSet<std::string> nonNullAttributes;
   [[maybe_unused]] size_t values = 0;  // ignored here
   matchAttributes(idx, node, reference, found, values, nonNullAttributes,
                   false);

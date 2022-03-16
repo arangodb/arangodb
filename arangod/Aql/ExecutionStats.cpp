@@ -28,7 +28,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Value.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb::aql;
 
@@ -40,6 +39,8 @@ void ExecutionStats::toVelocyPack(VPackBuilder& builder,
   builder.add("writesIgnored", VPackValue(writesIgnored));
   builder.add("scannedFull", VPackValue(scannedFull));
   builder.add("scannedIndex", VPackValue(scannedIndex));
+  builder.add("cursorsCreated", VPackValue(cursorsCreated));
+  builder.add("cursorsRearmed", VPackValue(cursorsRearmed));
   builder.add("filtered", VPackValue(filtered));
   builder.add("httpRequests", VPackValue(requests));
   if (reportFullCount) {
@@ -72,6 +73,8 @@ void ExecutionStats::add(ExecutionStats const& summand) {
   writesIgnored += summand.writesIgnored;
   scannedFull += summand.scannedFull;
   scannedIndex += summand.scannedIndex;
+  cursorsCreated += summand.cursorsCreated;
+  cursorsRearmed += summand.cursorsRearmed;
   filtered += summand.filtered;
   requests += summand.requests;
   if (summand.fullCount > 0) {
@@ -128,6 +131,8 @@ ExecutionStats::ExecutionStats()
       writesIgnored(0),
       scannedFull(0),
       scannedIndex(0),
+      cursorsCreated(0),
+      cursorsRearmed(0),
       filtered(0),
       requests(0),
       fullCount(0),
@@ -135,7 +140,7 @@ ExecutionStats::ExecutionStats()
       executionTime(0.0),
       peakMemoryUsage(0) {}
 
-ExecutionStats::ExecutionStats(VPackSlice const& slice) : ExecutionStats() {
+ExecutionStats::ExecutionStats(VPackSlice slice) : ExecutionStats() {
   if (!slice.isObject()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "stats is not an object");
@@ -147,26 +152,35 @@ ExecutionStats::ExecutionStats(VPackSlice const& slice) : ExecutionStats() {
   scannedIndex = slice.get("scannedIndex").getNumber<int64_t>();
   filtered = slice.get("filtered").getNumber<int64_t>();
 
-  if (slice.hasKey("httpRequests")) {
-    requests = slice.get("httpRequests").getNumber<int64_t>();
+  if (VPackSlice s = slice.get("httpRequests"); s.isNumber()) {
+    requests = s.getNumber<int64_t>();
   }
 
-  if (slice.hasKey("peakMemoryUsage")) {
-    peakMemoryUsage = std::max<size_t>(
-        peakMemoryUsage, slice.get("peakMemoryUsage").getNumber<int64_t>());
+  if (VPackSlice s = slice.get("peakMemoryUsage"); s.isNumber()) {
+    peakMemoryUsage = std::max<size_t>(peakMemoryUsage, s.getNumber<int64_t>());
+  }
+
+  // cursorsCreated and cursorsRearmed are optional attributes.
+  // the attributes are currently not shown in profile outputs,
+  // but are rather used for testing purposes.
+  if (VPackSlice s = slice.get("cursorsCreated"); s.isNumber()) {
+    cursorsCreated = s.getNumber<int64_t>();
+  }
+  if (VPackSlice s = slice.get("cursorsRearmed"); s.isNumber()) {
+    cursorsRearmed = s.getNumber<int64_t>();
   }
 
   // note: fullCount is an optional attribute!
-  if (slice.hasKey("fullCount")) {
-    fullCount = slice.get("fullCount").getNumber<int64_t>();
+  if (VPackSlice s = slice.get("fullCount"); s.isNumber()) {
+    fullCount = s.getNumber<int64_t>();
   } else {
     fullCount = count;
   }
 
   // note: node stats are optional
-  if (slice.hasKey("nodes")) {
+  if (VPackSlice s = slice.get("nodes"); s.isArray()) {
     ExecutionNodeStats node;
-    for (VPackSlice val : VPackArrayIterator(slice.get("nodes"))) {
+    for (VPackSlice val : VPackArrayIterator(s)) {
       auto nid =
           ExecutionNodeId{val.get("id").getNumber<ExecutionNodeId::BaseType>()};
       node.calls = val.get("calls").getNumber<uint64_t>();
@@ -195,6 +209,8 @@ void ExecutionStats::clear() {
   writesIgnored = 0;
   scannedFull = 0;
   scannedIndex = 0;
+  cursorsCreated = 0;
+  cursorsRearmed = 0;
   filtered = 0;
   requests = 0;
   fullCount = 0;

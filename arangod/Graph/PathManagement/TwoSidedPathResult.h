@@ -55,6 +55,8 @@ class TwoSidedPathResult : public PathResultInterface {
       -> void override;
   auto lastEdgeToVelocyPack(arangodb::velocypack::Builder& builder)
       -> void override;
+  auto lastVertexToVelocyPack(arangodb::velocypack::Builder& builder) -> void;
+  auto lastEdgeToVelocyPack(arangodb::velocypack::Builder& builder) -> void;
 
   [[nodiscard]] auto isEmpty() const -> bool;
 

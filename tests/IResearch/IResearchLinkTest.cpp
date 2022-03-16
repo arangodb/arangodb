@@ -34,11 +34,11 @@
 #include <filesystem>
 #include <regex>
 
-#include "Aql/QueryRegistry.h"
 #include "Basics/files.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchLink.h"
+#include "IResearch/IResearchMetricStats.h"
 #include "IResearch/IResearchView.h"
 #include "IResearch/common.h"
 #include "IResearchTestCompressor.h"
@@ -251,9 +251,6 @@ TEST_F(IResearchLinkTest, test_defaults) {
     EXPECT_TRUE(figuresSlice.hasKey("numLiveDocs"));
     EXPECT_TRUE(figuresSlice.get("numLiveDocs").isNumber());
     EXPECT_EQ(0, figuresSlice.get("numLiveDocs").getNumber<size_t>());
-    EXPECT_TRUE(figuresSlice.hasKey("numBufferedDocs"));
-    EXPECT_TRUE(figuresSlice.get("numBufferedDocs").isNumber());
-    EXPECT_EQ(0, figuresSlice.get("numBufferedDocs").getNumber<size_t>());
     EXPECT_TRUE(figuresSlice.hasKey("numSegments"));
     EXPECT_TRUE(figuresSlice.get("numSegments").isNumber());
     EXPECT_EQ(0, figuresSlice.get("numSegments").getNumber<size_t>());
@@ -328,9 +325,6 @@ TEST_F(IResearchLinkTest, test_defaults) {
     EXPECT_TRUE(figuresSlice.hasKey("numLiveDocs"));
     EXPECT_TRUE(figuresSlice.get("numLiveDocs").isNumber());
     EXPECT_EQ(0, figuresSlice.get("numLiveDocs").getNumber<size_t>());
-    EXPECT_TRUE(figuresSlice.hasKey("numBufferedDocs"));
-    EXPECT_TRUE(figuresSlice.get("numBufferedDocs").isNumber());
-    EXPECT_EQ(0, figuresSlice.get("numBufferedDocs").getNumber<size_t>());
     EXPECT_TRUE(figuresSlice.hasKey("numSegments"));
     EXPECT_TRUE(figuresSlice.get("numSegments").isNumber());
     EXPECT_EQ(0, figuresSlice.get("numSegments").getNumber<size_t>());
@@ -402,9 +396,6 @@ TEST_F(IResearchLinkTest, test_defaults) {
       EXPECT_TRUE(figuresSlice.hasKey("numLiveDocs"));
       EXPECT_TRUE(figuresSlice.get("numLiveDocs").isNumber());
       EXPECT_EQ(0, figuresSlice.get("numLiveDocs").getNumber<size_t>());
-      EXPECT_TRUE(figuresSlice.hasKey("numBufferedDocs"));
-      EXPECT_TRUE(figuresSlice.get("numBufferedDocs").isNumber());
-      EXPECT_EQ(0, figuresSlice.get("numBufferedDocs").getNumber<size_t>());
       EXPECT_TRUE(figuresSlice.hasKey("numSegments"));
       EXPECT_TRUE(figuresSlice.get("numSegments").isNumber());
       EXPECT_EQ(0, figuresSlice.get("numSegments").getNumber<size_t>());
@@ -433,9 +424,6 @@ TEST_F(IResearchLinkTest, test_defaults) {
       EXPECT_TRUE(figuresSlice.hasKey("numLiveDocs"));
       EXPECT_TRUE(figuresSlice.get("numLiveDocs").isNumber());
       EXPECT_EQ(0, figuresSlice.get("numLiveDocs").getNumber<size_t>());
-      EXPECT_TRUE(figuresSlice.hasKey("numBufferedDocs"));
-      EXPECT_TRUE(figuresSlice.get("numBufferedDocs").isNumber());
-      EXPECT_EQ(0, figuresSlice.get("numBufferedDocs").getNumber<size_t>());
       EXPECT_TRUE(figuresSlice.hasKey("numSegments"));
       EXPECT_TRUE(figuresSlice.get("numSegments").isNumber());
       EXPECT_EQ(0, figuresSlice.get("numSegments").getNumber<size_t>());
@@ -2202,10 +2190,10 @@ void getStatsFromFolder(std::string_view path, uint64_t& indexSize,
   iresearch::file_utils::visit_directory(utf8Path.c_str(), visitor, false);
 }
 
-using LinkStats = arangodb::iresearch::IResearchLink::LinkStats;
+using LinkStats = arangodb::iresearch::IResearchDataStore::Stats;
+using arangodb::iresearch::MetricStats;
 
 bool operator==(const LinkStats& lhs, const LinkStats& rhs) noexcept {
-  // ignore numBufferedDocs
   return lhs.numDocs == rhs.numDocs && lhs.numLiveDocs == rhs.numLiveDocs &&
          lhs.numSegments == rhs.numSegments && lhs.numFiles == rhs.numFiles &&
          lhs.indexSize == rhs.indexSize;
@@ -2247,9 +2235,8 @@ class IResearchLinkMetricsTest : public IResearchLinkTest {
 
   bool checkMetricExist(std::string_view name, std::string_view label) const {
     arangodb::metrics::MetricKey key(name, label);
-    auto* metric =
-        _vocbase.server().getFeature<arangodb::metrics::MetricsFeature>().get(
-            key);
+    auto& f = _vocbase.server().getFeature<arangodb::metrics::MetricsFeature>();
+    auto* metric = f.get(key);
     return metric != nullptr;
   }
 
@@ -2288,14 +2275,13 @@ class IResearchLinkMetricsTest : public IResearchLinkTest {
     EXPECT_TRUE(created);
     EXPECT_NE(_link, nullptr);
     auto label = getLinkMetricLabel();
-    EXPECT_TRUE(checkMetricExist("arangosearch_link_stats", label));
-    EXPECT_TRUE(checkMetricExist("arangosearch_num_failed_commits", label));
-    EXPECT_TRUE(checkMetricExist("arangosearch_num_failed_cleanups", label));
+    EXPECT_TRUE(checkMetricExist("arangodb_search_num_failed_commits", label));
+    EXPECT_TRUE(checkMetricExist("arangodb_search_num_failed_cleanups", label));
     EXPECT_TRUE(
-        checkMetricExist("arangosearch_num_failed_consolidations", label));
-    EXPECT_TRUE(checkMetricExist("arangosearch_commit_time", label));
-    EXPECT_TRUE(checkMetricExist("arangosearch_cleanup_time", label));
-    EXPECT_TRUE(checkMetricExist("arangosearch_consolidation_time", label));
+        checkMetricExist("arangodb_search_num_failed_consolidations", label));
+    EXPECT_TRUE(checkMetricExist("arangodb_search_commit_time", label));
+    EXPECT_TRUE(checkMetricExist("arangodb_search_cleanup_time", label));
+    EXPECT_TRUE(checkMetricExist("arangodb_search_consolidation_time", label));
   }
 
   void resetLink() {
@@ -2315,22 +2301,18 @@ class IResearchLinkMetricsTest : public IResearchLinkTest {
   std::string getLinkMetricLabel() {
     auto* l = getLink();
     std::string label;
+    label += "db=\"" + l->getDbName() + "\",";
     label += "view=\"" + l->getViewId() + "\",";
     label += "collection=\"" + l->getCollectionName() + "\",";
-    label += "shard=\"" + l->getShardName() + "\",";
-    label += "db=\"" + l->getDbName() + "\"";
+    label += "shard=\"" + l->getShardName() + "\"";
     return label;
   }
 
   void getPrometheusStr(std::string& result) {
-    auto label = getLinkMetricLabel();
-    arangodb::metrics::MetricKey key("arangosearch_link_stats", label);
-    auto* metric =
-        _vocbase.server().getFeature<arangodb::metrics::MetricsFeature>().get(
-            key);
-    if (metric != nullptr) {
-      metric->toPrometheus(result, false, "");
-    }
+    auto& f = _vocbase.server().getFeature<arangodb::metrics::MetricsFeature>();
+    auto [lock, batch] = f.getBatch("arangodb_search_link_stats");
+    EXPECT_TRUE(batch != nullptr);
+    batch->toPrometheus(result, "");
   }
 
   double insert(uint64_t begin, uint64_t end, size_t docId,
@@ -2481,14 +2463,13 @@ TEST_F(IResearchLinkMetricsTest, RemoveMetrics) {
   setLink();
   auto label = getLinkMetricLabel();
   resetLink();
-  EXPECT_FALSE(checkMetricExist("arangosearch_link_stats", label));
-  EXPECT_FALSE(checkMetricExist("arangosearch_num_failed_commits", label));
-  EXPECT_FALSE(checkMetricExist("arangosearch_num_failed_cleanups", label));
+  EXPECT_FALSE(checkMetricExist("arangodb_search_num_failed_commits", label));
+  EXPECT_FALSE(checkMetricExist("arangodb_search_num_failed_cleanups", label));
   EXPECT_FALSE(
-      checkMetricExist("arangosearch_num_failed_consolidations", label));
-  EXPECT_FALSE(checkMetricExist("arangosearch_commit_time", label));
-  EXPECT_FALSE(checkMetricExist("arangosearch_cleanup_time", label));
-  EXPECT_FALSE(checkMetricExist("arangosearch_consolidation_time", label));
+      checkMetricExist("arangodb_search_num_failed_consolidations", label));
+  EXPECT_FALSE(checkMetricExist("arangodb_search_commit_time", label));
+  EXPECT_FALSE(checkMetricExist("arangodb_search_cleanup_time", label));
+  EXPECT_FALSE(checkMetricExist("arangodb_search_consolidation_time", label));
 }
 
 TEST_F(IResearchLinkMetricsTest, CreateSameLink) {
@@ -2500,41 +2481,51 @@ TEST_F(IResearchLinkMetricsTest, WriteAndMetrics1) {
   setLink();
   auto* l = getLink();
   auto dataPath = _dirPath.string();
-  LinkStats expectedStat;
+  LinkStats expectedStats;
   {
     insert(1, 2, 0);
-    ++expectedStat.numDocs;
-    ++expectedStat.numLiveDocs;
+    ++expectedStats.numDocs;
+    ++expectedStats.numLiveDocs;
     insert(2, 3, 1);
-    ++expectedStat.numDocs;
-    ++expectedStat.numLiveDocs;
+    ++expectedStats.numDocs;
+    ++expectedStats.numLiveDocs;
     insert(3, 4, 2);
-    ++expectedStat.numDocs;
-    ++expectedStat.numLiveDocs;
+    ++expectedStats.numDocs;
+    ++expectedStats.numLiveDocs;
   }
   {
-    LinkStats actualStat = l->stats();
-    std::string realStr;
-    l->stats().toPrometheus(realStr, false, "", "");
-    std::string expectedStr;
-    expectedStr.reserve(1024);
-
-    expectedStr += "arangosearch_num_buffered_docs{}0\n";
-    expectedStr += "arangosearch_num_docs{}3\n";
-    expectedStr += "arangosearch_num_live_docs{}3\n";
-    expectedStr += "arangosearch_num_segments{}3\n";
-    expectedStr += "arangosearch_num_files{}16\n";
-    expectedStr += "arangosearch_index_size{}2054\n";
-
-    EXPECT_EQ(realStr, expectedStr);
+    auto cid = static_cast<unsigned long long>(_logicalCollection->id().id());
+    char expectedData[1000];  // clang-format off
+    std::sprintf(expectedData,
+      "# HELP arangodb_search_num_docs Number of documents\n"
+      "# TYPE arangodb_search_num_docs gauge\n"
+      "arangodb_search_num_docs{db=\"testVocbase\",view=\"h3039/42\",collection=\"%llu\",shard=\"\"}3\n"
+      "# HELP arangodb_search_num_live_docs Number of live documents\n"
+      "# TYPE arangodb_search_num_live_docs gauge\n"
+      "arangodb_search_num_live_docs{db=\"testVocbase\",view=\"h3039/42\",collection=\"%llu\",shard=\"\"}3\n"
+      "# HELP arangodb_search_num_segments Number of segments\n"
+      "# TYPE arangodb_search_num_segments gauge\n"
+      "arangodb_search_num_segments{db=\"testVocbase\",view=\"h3039/42\",collection=\"%llu\",shard=\"\"}3\n"
+      "# HELP arangodb_search_num_files Number of files\n"
+      "# TYPE arangodb_search_num_files gauge\n"
+      "arangodb_search_num_files{db=\"testVocbase\",view=\"h3039/42\",collection=\"%llu\",shard=\"\"}16\n"
+      "# HELP arangodb_search_index_size Size of the index in bytes\n"
+      "# TYPE arangodb_search_index_size gauge\n"
+      "arangodb_search_index_size{db=\"testVocbase\",view=\"h3039/42\",collection=\"%llu\",shard=\"\"}2054\n"
+    , cid, cid, cid, cid, cid);  // clang-format on
+    std::string actual;
+    getPrometheusStr(actual);
+    EXPECT_EQ(actual, std::string{expectedData});
     // get other stats
-    getStatsFromFolder(dataPath, expectedStat.indexSize, expectedStat.numFiles);
+    getStatsFromFolder(dataPath, expectedStats.indexSize,
+                       expectedStats.numFiles);
 
-    expectedStat.numSegments = 3;
+    expectedStats.numSegments = 3;
     // should increase numFiles in expected stat
-    ++expectedStat.numFiles;
+    ++expectedStats.numFiles;
 
-    EXPECT_TRUE(expectedStat == actualStat);
+    LinkStats actualStats = l->stats();
+    EXPECT_TRUE(expectedStats == actualStats);
   }
   {
     auto numFailed = l->numFailed();
@@ -2560,7 +2551,6 @@ TEST_F(IResearchLinkMetricsTest, WriteAndMetrics2) {
     ++expectedStats.numFiles;
     expectedStats.numSegments = 1;
     LinkStats actualStats = l->stats();
-
     EXPECT_TRUE(expectedStats == actualStats);
   }
   {
@@ -2575,27 +2565,34 @@ TEST_F(IResearchLinkMetricsTest, WriteAndMetrics2) {
     ++expectedStats.numFiles;
     expectedStats.numSegments = 2;
     LinkStats actualStats = l->stats();
-
     EXPECT_TRUE(expectedStats == actualStats);
   }
   {
-    std::string realStr;
-    l->stats().toPrometheus(realStr, false, "", "");
-    std::string expectedStr;
-    expectedStr.reserve(1024);
-
-    expectedStr += "arangosearch_num_buffered_docs{}0\n";
-    expectedStr += "arangosearch_num_docs{}3\n";
-    expectedStr += "arangosearch_num_live_docs{}3\n";
-    expectedStr += "arangosearch_num_segments{}2\n";
-    expectedStr += "arangosearch_num_files{}11\n";
-    expectedStr += "arangosearch_index_size{}1513\n";
-
-    EXPECT_EQ(realStr, expectedStr);
+    auto cid = static_cast<unsigned long long>(_logicalCollection->id().id());
+    char expectedData[1000];  // clang-format off
+    std::sprintf(expectedData,
+      "# HELP arangodb_search_num_docs Number of documents\n"
+      "# TYPE arangodb_search_num_docs gauge\n"
+      "arangodb_search_num_docs{db=\"testVocbase\",view=\"h3039/42\",collection=\"%llu\",shard=\"\"}3\n"
+      "# HELP arangodb_search_num_live_docs Number of live documents\n"
+      "# TYPE arangodb_search_num_live_docs gauge\n"
+      "arangodb_search_num_live_docs{db=\"testVocbase\",view=\"h3039/42\",collection=\"%llu\",shard=\"\"}3\n"
+      "# HELP arangodb_search_num_segments Number of segments\n"
+      "# TYPE arangodb_search_num_segments gauge\n"
+      "arangodb_search_num_segments{db=\"testVocbase\",view=\"h3039/42\",collection=\"%llu\",shard=\"\"}2\n"
+      "# HELP arangodb_search_num_files Number of files\n"
+      "# TYPE arangodb_search_num_files gauge\n"
+      "arangodb_search_num_files{db=\"testVocbase\",view=\"h3039/42\",collection=\"%llu\",shard=\"\"}11\n"
+      "# HELP arangodb_search_index_size Size of the index in bytes\n"
+      "# TYPE arangodb_search_index_size gauge\n"
+      "arangodb_search_index_size{db=\"testVocbase\",view=\"h3039/42\",collection=\"%llu\",shard=\"\"}1513\n"
+    , cid, cid, cid, cid, cid);  // clang-format on
+    std::string actual;
+    getPrometheusStr(actual);
+    EXPECT_EQ(actual, std::string{expectedData});
   }
   {
     remove(1, 2);  // delete second doc from second segment, commit
-    LinkStats actualStats = l->stats();
 
     // check link metrics
     LinkStats expectedStats;
@@ -2605,33 +2602,32 @@ TEST_F(IResearchLinkMetricsTest, WriteAndMetrics2) {
     expectedStats.numSegments = 2;  // we have 2 segments
     expectedStats.indexSize = 1561;
 
+    LinkStats actualStats = l->stats();
     EXPECT_TRUE(expectedStats == actualStats);
   }
   {
-    std::string realStr;
-    l->stats().toPrometheus(realStr, false, "test",
-                            R"(view="foo",collection="bar","shard"="s0001")");
-    std::string expectedStr;
-    expectedStr +=
-        "arangosearch_num_buffered_docs{test,view=\"foo\","
-        "collection=\"bar\",\"shard\"=\"s0001\"}0\n";
-    expectedStr +=
-        "arangosearch_num_docs{test,view=\"foo\","
-        "collection=\"bar\",\"shard\"=\"s0001\"}3\n";
-    expectedStr +=
-        "arangosearch_num_live_docs{test,view=\"foo\","
-        "collection=\"bar\",\"shard\"=\"s0001\"}2\n";
-    expectedStr +=
-        "arangosearch_num_segments{test,view=\"foo\","
-        "collection=\"bar\",\"shard\"=\"s0001\"}2\n";
-    expectedStr +=
-        "arangosearch_num_files{test,view=\"foo\","
-        "collection=\"bar\",\"shard\"=\"s0001\"}12\n";
-    expectedStr +=
-        "arangosearch_index_size{test,view=\"foo\","
-        "collection=\"bar\",\"shard\"=\"s0001\"}1561\n";
-
-    EXPECT_EQ(realStr, expectedStr);
+    auto cid = static_cast<unsigned long long>(_logicalCollection->id().id());
+    char expectedData[1000];  // clang-format off
+    std::sprintf(expectedData,
+      "# HELP arangodb_search_num_docs Number of documents\n"
+      "# TYPE arangodb_search_num_docs gauge\n"
+      "arangodb_search_num_docs{db=\"testVocbase\",view=\"h3039/42\",collection=\"%llu\",shard=\"\"}3\n"
+      "# HELP arangodb_search_num_live_docs Number of live documents\n"
+      "# TYPE arangodb_search_num_live_docs gauge\n"
+      "arangodb_search_num_live_docs{db=\"testVocbase\",view=\"h3039/42\",collection=\"%llu\",shard=\"\"}2\n"
+      "# HELP arangodb_search_num_segments Number of segments\n"
+      "# TYPE arangodb_search_num_segments gauge\n"
+      "arangodb_search_num_segments{db=\"testVocbase\",view=\"h3039/42\",collection=\"%llu\",shard=\"\"}2\n"
+      "# HELP arangodb_search_num_files Number of files\n"
+      "# TYPE arangodb_search_num_files gauge\n"
+      "arangodb_search_num_files{db=\"testVocbase\",view=\"h3039/42\",collection=\"%llu\",shard=\"\"}12\n"
+      "# HELP arangodb_search_index_size Size of the index in bytes\n"
+      "# TYPE arangodb_search_index_size gauge\n"
+      "arangodb_search_index_size{db=\"testVocbase\",view=\"h3039/42\",collection=\"%llu\",shard=\"\"}1561\n"
+    , cid, cid, cid, cid, cid);  // clang-format on
+    std::string actual;
+    getPrometheusStr(actual);
+    EXPECT_EQ(actual, std::string{expectedData});
   }
   {
     auto numFailed = l->numFailed();
@@ -2647,90 +2643,56 @@ TEST_F(IResearchLinkMetricsTest, LinkAndMetics) {
   auto dataPath = _dirPath.string();
   {
     insert(1, 2, 0);
-    std::string collection = l->getCollectionName();
 
-    std::string expected;
-
-    expected +=
-        R"(arangosearch_num_buffered_docs{view="h3039/42",collection=")";
-    expected += collection;
-    expected += R"(",shard="",db="testVocbase"}0)";
-    expected += "\n";
-
-    expected += R"(arangosearch_num_docs{view="h3039/42",collection=")";
-    expected += collection;
-    expected += R"(",shard="",db="testVocbase"}1)";
-    expected += "\n";
-
-    expected += R"(arangosearch_num_live_docs{view="h3039/42",collection=")";
-    expected += collection;
-    expected += R"(",shard="",db="testVocbase"}1)";
-    expected += "\n";
-
-    expected += R"(arangosearch_num_segments{view="h3039/42",collection=")";
-    expected += collection;
-    expected += R"(",shard="",db="testVocbase"}1)";
-    expected += "\n";
-
-    expected += R"(arangosearch_num_files{view="h3039/42",collection=")";
-    expected += collection;
-    expected += R"(",shard="",db="testVocbase"}6)";
-    expected += "\n";
-
-    expected += R"(arangosearch_index_size{view="h3039/42",collection=")";
-    expected += collection;
-    expected += R"(",shard="",db="testVocbase"}681)";
-    expected += "\n";
-
+    auto cid = static_cast<unsigned long long>(_logicalCollection->id().id());
+    char expectedData[1000];  // clang-format off
+    std::sprintf(expectedData,
+      "# HELP arangodb_search_num_docs Number of documents\n"
+      "# TYPE arangodb_search_num_docs gauge\n"
+      "arangodb_search_num_docs{db=\"testVocbase\",view=\"h3039/42\",collection=\"%llu\",shard=\"\"}1\n"
+      "# HELP arangodb_search_num_live_docs Number of live documents\n"
+      "# TYPE arangodb_search_num_live_docs gauge\n"
+      "arangodb_search_num_live_docs{db=\"testVocbase\",view=\"h3039/42\",collection=\"%llu\",shard=\"\"}1\n"
+      "# HELP arangodb_search_num_segments Number of segments\n"
+      "# TYPE arangodb_search_num_segments gauge\n"
+      "arangodb_search_num_segments{db=\"testVocbase\",view=\"h3039/42\",collection=\"%llu\",shard=\"\"}1\n"
+      "# HELP arangodb_search_num_files Number of files\n"
+      "# TYPE arangodb_search_num_files gauge\n"
+      "arangodb_search_num_files{db=\"testVocbase\",view=\"h3039/42\",collection=\"%llu\",shard=\"\"}6\n"
+      "# HELP arangodb_search_index_size Size of the index in bytes\n"
+      "# TYPE arangodb_search_index_size gauge\n"
+      "arangodb_search_index_size{db=\"testVocbase\",view=\"h3039/42\",collection=\"%llu\",shard=\"\"}681\n"
+    , cid, cid, cid, cid, cid);  // clang-format on
     std::string actual;
     getPrometheusStr(actual);
-
-    EXPECT_EQ(actual, expected);
+    EXPECT_EQ(actual, std::string{expectedData});
   }
-
   {
     insert(1, 2, 1, false);
     insert(2, 3, 2);
 
-    std::string collection = l->getCollectionName();
-
-    std::string expected;
-
-    expected +=
-        R"(arangosearch_num_buffered_docs{view="h3039/42",collection=")";
-    expected += collection;
-    expected += R"(",shard="",db="testVocbase"}0)";
-    expected += "\n";
-
-    expected += R"(arangosearch_num_docs{view="h3039/42",collection=")";
-    expected += collection;
-    expected += R"(",shard="",db="testVocbase"}3)";
-    expected += "\n";
-
-    expected += R"(arangosearch_num_live_docs{view="h3039/42",collection=")";
-    expected += collection;
-    expected += R"(",shard="",db="testVocbase"}3)";
-    expected += "\n";
-
-    expected += R"(arangosearch_num_segments{view="h3039/42",collection=")";
-    expected += collection;
-    expected += R"(",shard="",db="testVocbase"}2)";
-    expected += "\n";
-
-    expected += R"(arangosearch_num_files{view="h3039/42",collection=")";
-    expected += collection;
-    expected += R"(",shard="",db="testVocbase"}11)";
-    expected += "\n";
-
-    expected += R"(arangosearch_index_size{view="h3039/42",collection=")";
-    expected += collection;
-    expected += R"(",shard="",db="testVocbase"}1513)";
-    expected += "\n";
-
+    auto cid = static_cast<unsigned long long>(_logicalCollection->id().id());
+    char expectedData[1000];  // clang-format off
+    std::sprintf(expectedData,
+      "# HELP arangodb_search_num_docs Number of documents\n"
+      "# TYPE arangodb_search_num_docs gauge\n"
+      "arangodb_search_num_docs{db=\"testVocbase\",view=\"h3039/42\",collection=\"%llu\",shard=\"\"}3\n"
+      "# HELP arangodb_search_num_live_docs Number of live documents\n"
+      "# TYPE arangodb_search_num_live_docs gauge\n"
+      "arangodb_search_num_live_docs{db=\"testVocbase\",view=\"h3039/42\",collection=\"%llu\",shard=\"\"}3\n"
+      "# HELP arangodb_search_num_segments Number of segments\n"
+      "# TYPE arangodb_search_num_segments gauge\n"
+      "arangodb_search_num_segments{db=\"testVocbase\",view=\"h3039/42\",collection=\"%llu\",shard=\"\"}2\n"
+      "# HELP arangodb_search_num_files Number of files\n"
+      "# TYPE arangodb_search_num_files gauge\n"
+      "arangodb_search_num_files{db=\"testVocbase\",view=\"h3039/42\",collection=\"%llu\",shard=\"\"}11\n"
+      "# HELP arangodb_search_index_size Size of the index in bytes\n"
+      "# TYPE arangodb_search_index_size gauge\n"
+      "arangodb_search_index_size{db=\"testVocbase\",view=\"h3039/42\",collection=\"%llu\",shard=\"\"}1513\n"
+    , cid, cid, cid, cid, cid);  // clang-format on
     std::string actual;
     getPrometheusStr(actual);
-
-    EXPECT_EQ(actual, expected);
+    EXPECT_EQ(actual, std::string{expectedData});
   }
   {
     auto numFailed = l->numFailed();

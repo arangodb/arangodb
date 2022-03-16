@@ -25,7 +25,7 @@
 
 #include "Replication2/DeferredExecution.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
-#include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
+#include "Replication2/ReplicatedLog/LogEntries.h"
 #include "Replication2/ReplicatedLog/types.h"
 
 #include <Futures/Future.h>
@@ -54,7 +54,7 @@ struct WaitForResult {
 
   WaitForResult(LogIndex index, std::shared_ptr<QuorumData const> quorum);
   WaitForResult() = default;
-  WaitForResult(velocypack::Slice);
+  explicit WaitForResult(velocypack::Slice);
 
   void toVelocyPack(velocypack::Builder&) const;
 };
@@ -82,6 +82,8 @@ struct ILogParticipant {
   [[nodiscard]] virtual auto waitFor(LogIndex index) -> WaitForFuture = 0;
   [[nodiscard]] virtual auto waitForIterator(LogIndex index)
       -> WaitForIteratorFuture = 0;
+  [[nodiscard]] virtual auto waitForResign()
+      -> futures::Future<futures::Unit> = 0;
   [[nodiscard]] virtual auto getTerm() const noexcept -> std::optional<LogTerm>;
   [[nodiscard]] virtual auto getCommitIndex() const noexcept -> LogIndex = 0;
 
@@ -93,7 +95,7 @@ struct ILogParticipant {
  * if they want to refer to a LogFollower instance.
  */
 struct ILogFollower : ILogParticipant, AbstractFollower {
-  virtual auto waitForLeaderAcked() -> WaitForFuture = 0;
+  [[nodiscard]] virtual auto waitForLeaderAcked() -> WaitForFuture = 0;
   [[nodiscard]] virtual auto getLeader() const noexcept
       -> std::optional<ParticipantId> const& = 0;
 };
@@ -114,34 +116,8 @@ struct ILogLeader : ILogParticipant {
 
   [[nodiscard]] virtual auto isLeadershipEstablished() const noexcept
       -> bool = 0;
-  virtual auto waitForLeadership() -> WaitForFuture = 0;
+  [[nodiscard]] virtual auto waitForLeadership() -> WaitForFuture = 0;
   [[nodiscard]] virtual auto copyInMemoryLog() const -> InMemoryLog = 0;
 };
 
-/**
- * @brief Unconfigured log participant, i.e. currently neither a leader nor
- * follower. Holds a LogCore, does nothing else.
- */
-struct LogUnconfiguredParticipant final
-    : std::enable_shared_from_this<LogUnconfiguredParticipant>,
-      ILogParticipant {
-  ~LogUnconfiguredParticipant() override;
-  explicit LogUnconfiguredParticipant(
-      std::unique_ptr<LogCore> logCore,
-      std::shared_ptr<ReplicatedLogMetrics> logMetrics);
-
-  [[nodiscard]] auto getStatus() const -> LogStatus override;
-  [[nodiscard]] auto getQuickStatus() const -> QuickLogStatus override;
-  auto
-  resign() && -> std::tuple<std::unique_ptr<LogCore>, DeferredAction> override;
-  [[nodiscard]] auto waitFor(LogIndex) -> WaitForFuture override;
-  [[nodiscard]] auto release(LogIndex doneWithIdx) -> Result override;
-  [[nodiscard]] auto waitForIterator(LogIndex index)
-      -> WaitForIteratorFuture override;
-  [[nodiscard]] auto getCommitIndex() const noexcept -> LogIndex override;
-
- private:
-  std::unique_ptr<LogCore> _logCore;
-  std::shared_ptr<ReplicatedLogMetrics> const _logMetrics;
-};
 }  // namespace arangodb::replication2::replicated_log

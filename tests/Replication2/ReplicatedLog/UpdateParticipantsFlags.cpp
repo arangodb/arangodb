@@ -149,8 +149,8 @@ TEST_F(UpdateParticipantsFlagsTest, wc2_but_server_excluded) {
     auto newConfig = std::make_shared<ParticipantsConfig>(oldConfig);
     newConfig->generation = 2;
     // make follower1 excluded
-    newConfig->participants["follower1"] =
-        replication2::ParticipantFlags{false, true};
+    newConfig->participants["follower1"] = replication2::ParticipantFlags{
+        .forced = false, .allowedInQuorum = false};
     leader->updateParticipantsConfig(newConfig, oldConfig.generation, {}, {});
   }
 
@@ -194,7 +194,7 @@ TEST_F(UpdateParticipantsFlagsTest,
     newConfig->generation = 2;
     // make follower1 excluded
     newConfig->participants["follower1"] =
-        replication2::ParticipantFlags{.excluded = true};
+        replication2::ParticipantFlags{.allowedInQuorum = false};
     leader->updateParticipantsConfig(newConfig, oldConfig.generation, {}, {});
   }
 
@@ -442,7 +442,7 @@ TEST_F(UpdateParticipantsFlagsTest, wc2_remove_exclude_flag) {
     newConfig->generation = 2;
     // exclude follower3
     newConfig->participants["follower3"] =
-        replication2::ParticipantFlags{.excluded = true};
+        replication2::ParticipantFlags{.allowedInQuorum = false};
 
     // note that this adds a new log entry
     leader->updateParticipantsConfig(newConfig, oldConfig.generation,
@@ -486,7 +486,7 @@ TEST_F(UpdateParticipantsFlagsTest, wc2_remove_exclude_flag) {
     // exclude follower3
     auto& flags = (newConfig->participants["follower3"] =
                        oldConfig.participants.at("follower3"));
-    flags.excluded = false;
+    flags.allowedInQuorum = true;
 
     leader->updateParticipantsConfig(newConfig, oldConfig.generation, {}, {});
   }
@@ -694,4 +694,64 @@ TEST_F(UpdateParticipantsFlagsTest, wc2_add_mismatching_config_should_fail) {
   EXPECT_EQ(leader->getCommitIndex(), LogIndex{2});
   EXPECT_EQ(leader->getParticipantConfigGenerations(),
             (std::pair<std::size_t, std::optional<std::size_t>>(2, 2)));
+}
+
+TEST_F(UpdateParticipantsFlagsTest, check_update_participants_meta_entry) {
+  // This test creates three participants with wc = 2.
+  // Then it establishes leadership. After that, it updates the
+  // participant configuration such that follower2 is forced.
+  // After that we only run the leader and follower1 and expect
+  // the log entry not to be committed.
+
+  leader->triggerAsyncReplication();
+  runAllAsyncAppendEntries();
+  ASSERT_TRUE(leader->isLeadershipEstablished());
+
+  {
+    auto [accepted, committed] = leader->getParticipantConfigGenerations();
+    EXPECT_EQ(accepted, 1);
+    EXPECT_EQ(committed, 1);
+  }
+
+  auto idx = leader->insert(LogPayload::createFromString("entry #1"));
+  EXPECT_EQ(idx, LogIndex{2});
+  runAllAsyncAppendEntries();
+
+  auto oldConfig =
+      leader->getStatus().asLeaderStatus()->activeParticipantsConfig;
+  auto newConfig = std::make_shared<ParticipantsConfig>(oldConfig);
+  {
+    newConfig->generation = 2;
+    // make follower2 forced
+    newConfig->participants["follower2"] =
+        replication2::ParticipantFlags{true, false};
+    leader->updateParticipantsConfig(newConfig, oldConfig.generation, {}, {});
+  }
+
+  // commit this configuration
+  runAllAsyncAppendEntries();
+  {
+    auto [accepted, committed] = leader->getParticipantConfigGenerations();
+    EXPECT_EQ(accepted, 2);
+    EXPECT_EQ(committed, 2);
+  }
+
+  ASSERT_EQ(leader->getCommitIndex(), LogIndex{3});
+
+  // check the log for the meta log entry
+  {
+    auto log = leader->copyInMemoryLog();
+    auto entry = log.getEntryByIndex(LogIndex{3});
+    ASSERT_NE(entry, std::nullopt);
+    auto const& persenty = entry->entry();
+    EXPECT_TRUE(persenty.hasMeta());
+    ASSERT_NE(persenty.meta(), nullptr);
+    auto const& meta = *persenty.meta();
+    ASSERT_TRUE(
+        std::holds_alternative<LogMetaPayload::UpdateParticipantsConfig>(
+            meta.info));
+    auto const& info =
+        std::get<LogMetaPayload::UpdateParticipantsConfig>(meta.info);
+    EXPECT_EQ(info.participants, *newConfig);
+  }
 }

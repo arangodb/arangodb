@@ -28,7 +28,6 @@
 #include <thread>
 
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "Agency/Agent.h"
 #include "ApplicationFeatures/ApplicationServer.h"

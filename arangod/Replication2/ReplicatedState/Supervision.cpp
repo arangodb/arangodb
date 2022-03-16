@@ -32,8 +32,8 @@ using namespace arangodb;
 
 namespace arangodb::replication2::replicated_state {
 
-auto checkStateAdded(replication2::replicated_state::agency::State const &state)
-    -> std::unique_ptr<Action> {
+auto checkStateAdded(replication2::replicated_state::agency::State const& state)
+    -> Action {
   auto id = state.target.id;
 
   if (!state.plan) {
@@ -46,79 +46,78 @@ auto checkStateAdded(replication2::replicated_state::agency::State const &state)
     auto logTarget =
         replication2::agency::LogTarget(id, {}, state.target.config);
 
-    for (auto const &[participantId, _] : state.target.participants) {
+    for (auto const& [participantId, _] : state.target.participants) {
       logTarget.participants.emplace(participantId, ParticipantFlags{});
       statePlan.participants.emplace(
           participantId,
           agency::Plan::Participant{.generation = StateGeneration{1}});
     }
 
-    return std::make_unique<AddStateToPlanAction>(logTarget, statePlan);
+    return AddStateToPlanAction{logTarget, statePlan};
   } else {
-    return std::make_unique<EmptyAction>();
+    return EmptyAction();
   }
 }
 
 auto checkParticipantAdded(
-    arangodb::replication2::agency::Log const &log,
-    replication2::replicated_state::agency::State const &state)
-    -> std::unique_ptr<Action> {
-  auto const &targetParticipants = state.target.participants;
+    arangodb::replication2::agency::Log const& log,
+    replication2::replicated_state::agency::State const& state) -> Action {
+  auto const& targetParticipants = state.target.participants;
 
   if (!state.plan) {
-    return std::make_unique<EmptyAction>();
+    return EmptyAction();
   }
 
-  auto const &planParticipants = state.plan->participants;
+  auto const& planParticipants = state.plan->participants;
 
-  for (auto const &[participant, flags] : targetParticipants) {
+  for (auto const& [participant, flags] : targetParticipants) {
     if (!planParticipants.contains(participant)) {
-      return std::make_unique<AddParticipantAction>(
-          log.plan->id, participant,
-          StateGeneration{state.plan->generation.value});
+      return AddParticipantAction{
+          participant, StateGeneration{state.plan->generation.value}};
     }
   }
-  return std::make_unique<EmptyAction>();
+  return EmptyAction();
 }
 
 /* Check whether there is a participant that is excluded but reported snapshot
  * complete */
 auto checkSnapshotComplete(
-    arangodb::replication2::agency::Log const &log,
-    replication2::replicated_state::agency::State const &state)
-    -> std::unique_ptr<Action> {
+    arangodb::replication2::agency::Log const& log,
+    replication2::replicated_state::agency::State const& state) -> Action {
   if (state.current and log.plan) {
     // TODO generation?
-    for (auto const &[participant, flags] :
+    for (auto const& [participant, flags] :
          log.plan->participantsConfig.participants) {
-      if (flags.excluded) {
-        auto const &plannedGeneration =
+      if (!flags.allowedAsLeader || !flags.allowedInQuorum) {
+        auto const& plannedGeneration =
             state.plan->participants.at(participant).generation;
 
-        if (auto const &status = state.current->participants.find(participant);
+        if (auto const& status = state.current->participants.find(participant);
             status != std::end(state.current->participants)) {
-          auto const &participantStatus = status->second;
+          auto const& participantStatus = status->second;
 
           if (participantStatus.snapshot.status ==
                   SnapshotStatus::kCompleted and
               participantStatus.generation == plannedGeneration) {
-            return std::make_unique<UnExcludeParticipantAction>(state.plan->id,
-                                                                participant);
+            auto newFlags = flags;
+            newFlags.allowedInQuorum = true;
+            newFlags.allowedAsLeader = true;
+            return ModifyParticipantFlagsAction{participant, newFlags};
           }
         }
       }
     }
   }
-  return std::make_unique<EmptyAction>();
+  return EmptyAction();
 }
-auto isEmptyAction(std::unique_ptr<Action> &action) {
-  return action->type() == Action::ActionType::EmptyAction;
+
+auto isEmptyAction(Action const& action) {
+  return std::holds_alternative<EmptyAction>(action);
 }
 
 auto checkReplicatedState(
-    std::optional<arangodb::replication2::agency::Log> const &log,
-    replication2::replicated_state::agency::State const &state)
-    -> std::unique_ptr<Action> {
+    std::optional<arangodb::replication2::agency::Log> const& log,
+    replication2::replicated_state::agency::State const& state) -> Action {
   if (auto action = checkStateAdded(state); !isEmptyAction(action)) {
     return action;
   }
@@ -127,7 +126,7 @@ auto checkReplicatedState(
   // It will need to be observable in future that we are doing nothing because
   // weŕe waiting for the log to appear.
   if (!log) {
-    return std::make_unique<EmptyAction>();
+    return EmptyAction();
   }
   // TODO: check for healthy leader?
   // TODO: is there something to be checked here?
@@ -142,7 +141,7 @@ auto checkReplicatedState(
     return action;
   }
 
-  return std::make_unique<EmptyAction>();
-};
+  return EmptyAction();
+}
 
 }  // namespace arangodb::replication2::replicated_state

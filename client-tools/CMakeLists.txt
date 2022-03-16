@@ -370,6 +370,10 @@ if (MSVC AND NOT(SKIP_PACKAGING))
   )
 endif ()
 
+set(FUZZER "")
+if (USE_FAILURE_TESTS)
+    set(FUZZER "Shell/RequestFuzzer.cpp")
+endif()
 add_executable(${BIN_ARANGOSH}
   ${ProductVersionFiles_arangosh}
   ../cmake/activeCodePage.manifest
@@ -380,7 +384,9 @@ add_executable(${BIN_ARANGOSH}
   Shell/V8ClientConnection.cpp
   Shell/V8ShellFeature.cpp
   Shell/arangosh.cpp
+  ${FUZZER}
 )
+
 target_include_directories(${BIN_ARANGOSH} PRIVATE ${PROJECT_SOURCE_DIR}/client-tools)
 
 target_link_libraries(${BIN_ARANGOSH}

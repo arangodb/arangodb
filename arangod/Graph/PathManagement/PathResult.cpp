@@ -22,7 +22,7 @@
 /// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "./TwoSidedPathResult.h"
+#include "./PathResult.h"
 #include "Basics/StaticStrings.h"
 
 #include "Graph/Providers/ClusterProvider.h"
@@ -36,7 +36,6 @@
 #endif
 
 #include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::graph;
@@ -75,12 +74,18 @@ auto TwoSidedPathResult<ProviderType, Step>::appendEdge(typename Step::Edge e)
 template<class ProviderType, class Step>
 auto TwoSidedPathResult<ProviderType, Step>::prependEdge(typename Step::Edge e)
     -> void {
-  _sourceEdges.push_back(std::move(e));
+  _numEdgesFromSourceProvider++;
+  _edges.insert(_edges.begin(), std::move(e));
 }
+
+// NOTE:
+// Potential optimization: Instead of counting on each append
+// We can do a size call to the vector when switching the Provider.
 
 template<class ProviderType, class Step>
 auto TwoSidedPathResult<ProviderType, Step>::toVelocyPack(
     arangodb::velocypack::Builder& builder) -> void {
+  TRI_ASSERT(_numVerticesFromSourceProvider <= _vertices.size());
   VPackObjectBuilder path{&builder};
   {
     builder.add(VPackValue(StaticStrings::GraphQueryVertices));
@@ -138,6 +143,18 @@ auto TwoSidedPathResult<ProviderType, Step>::lastEdgeToVelocyPack(
   } else {
     _sourceProvider.addEdgeToBuilder(_targetEdges.back(), builder);
   }
+}
+
+template<class ProviderType, class Step>
+auto PathResult<ProviderType, Step>::lastVertexToVelocyPack(
+    arangodb::velocypack::Builder& builder) -> void {
+  _sourceProvider.addVertexToBuilder(_vertices.back(), builder);
+}
+
+template<class ProviderType, class Step>
+auto PathResult<ProviderType, Step>::lastEdgeToVelocyPack(
+    arangodb::velocypack::Builder& builder) -> void {
+  _sourceProvider.addEdgeToBuilder(_edges.back(), builder);
 }
 
 template<class ProviderType, class Step>

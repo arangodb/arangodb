@@ -122,7 +122,7 @@ class IResearchLink : public IResearchDataStore {
   /// @brief called when the iResearch Link is unloaded from memory
   /// @note arangodb::Index override
   ////////////////////////////////////////////////////////////////////////////////
-  Result unload();
+  Result unload() noexcept;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief lookup referenced analyzer
@@ -133,7 +133,8 @@ class IResearchLink : public IResearchDataStore {
   /// @brief initialize from the specified definition used in make(...)
   /// @return success
   ////////////////////////////////////////////////////////////////////////////////
-  Result init(velocypack::Slice definition, InitCallback const& init = {});
+  Result init(velocypack::Slice definition, bool& pathExists,
+              InitCallback const& init = {});
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @return arangosearch internal format identifier
@@ -146,8 +147,8 @@ class IResearchLink : public IResearchDataStore {
   IResearchViewStoredValues const& storedValues() const noexcept;
 
   /// @brief sets the _collectionName in Link meta. Used in cluster only to
-  /// store linked collection name (as shard name differs from the cluster-wide
-  /// collection name)
+  /// store linked collection name (as shard name differs from the
+  /// cluster-wide collection name)
   /// @param name collection to set. Should match existing value of the
   /// _collectionName if it is not empty.
   /// @return true if name not existed in link before and was actually set by
@@ -166,19 +167,6 @@ class IResearchLink : public IResearchDataStore {
   std::string const& getShardName() const noexcept;
   std::string getCollectionName() const;
 
-  // TODO: Generalize for Link/Index
-  struct LinkStats : Stats {
-    LinkStats() = default;
-    explicit LinkStats(Stats const& storeStats) : Stats(storeStats) {}
-    void toPrometheus(std::string& result, bool first, std::string_view globals,
-                      std::string_view labels) const;
-  };
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief get index stats for current snapshot
-  ////////////////////////////////////////////////////////////////////////////////
-  LinkStats stats() const;
-
  protected:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief construct an uninitialized IResearch link, must call init(...)
@@ -186,22 +174,22 @@ class IResearchLink : public IResearchDataStore {
   ////////////////////////////////////////////////////////////////////////////////
   IResearchLink(IndexId iid, LogicalCollection& collection);
 
-  void updateStats(Stats const& stats) override;
+  void insertMetrics() final;
+  void removeMetrics() final;
 
-  void insertStats() override;
-  void removeStats() override;
   void invalidateQueryCache(TRI_vocbase_t* vocbase) override;
 
  private:
   template<typename T>
-  Result getView(LogicalView* logical, T*& view);
-  Result initAndLink(InitCallback const& init, IResearchView* view);
+  Result toView(std::shared_ptr<LogicalView> const& logical,
+                std::shared_ptr<T>& view);
+  Result initAndLink(bool& pathExists, InitCallback const& init,
+                     IResearchView* view);
 
-  Result initSingleServer(InitCallback const& init);
+  Result initSingleServer(bool& pathExists, InitCallback const& init);
   Result initCoordinator(InitCallback const& init);
-  Result initDBServer(InitCallback const& init);
+  Result initDBServer(bool& pathExists, InitCallback const& init);
 
-  metrics::Batch<LinkStats>* _linkStats;
   IResearchLinkMeta _meta;
   // the identifier of the desired view (read-only, set via init())
   std::string _viewGuid;

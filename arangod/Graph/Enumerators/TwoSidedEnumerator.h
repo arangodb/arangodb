@@ -124,6 +124,7 @@ class TwoSidedEnumerator {
     size_t _searchIndex{std::numeric_limits<size_t>::max()};
     Direction _direction;
     size_t _minDepth{0};
+    GraphOptions _graphOptions;
   };
 
  public:

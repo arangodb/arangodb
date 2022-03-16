@@ -23,7 +23,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 const _ = require("lodash");
 const LH = require("@arangodb/testutils/replicated-logs-helper");
-
+const request = require('@arangodb/request');
+const spreds = require("@arangodb/testutils/replicated-state-predicates");
 
 const readReplicatedStateAgency = function (database, logId) {
   let target =  LH.readAgencyValueAt(`Target/ReplicatedStates/${database}/${logId}`);
@@ -47,5 +48,53 @@ const updateReplicatedStatePlan = function (database, logId, callback) {
   global.ArangoAgency.increaseVersion(`Plan/Version`);
 };
 
+const getLocalStatus = function (serverId, database, logId) {
+  let url = LH.getServerUrl(serverId);
+  const res = request.get(`${url}/_db/${database}/_api/replicated-state/${logId}/local-status`);
+  LH.checkRequestResult(res);
+  return res.json.result;
+};
+
+const updateReplicatedStateTarget = function (database, stateId, callback) {
+  let {target: targetState} = readReplicatedStateAgency(database, stateId);
+
+  const state = callback(targetState);
+
+  global.ArangoAgency.set(`Target/ReplicatedStates/${database}/${stateId}`, state);
+  global.ArangoAgency.increaseVersion(`Target/Version`);
+};
+
+const createReplicatedStateTarget = function (database, targetConfig, type) {
+  const stateId = LH.nextUniqueLogId();
+
+  const servers = _.sampleSize(LH.dbservers, targetConfig.replicationFactor);
+  let participants = {};
+  for (const server of servers) {
+    participants[server] = {};
+  }
+
+  updateReplicatedStateTarget(database, stateId,
+      function () {
+        return {
+          id: stateId,
+          participants: participants,
+          config: targetConfig,
+          properties: {
+            implementation: {
+              type: type
+            }
+          }
+        };
+      });
+
+  LH.waitFor(spreds.replicatedStateIsReady(database, stateId, servers));
+  const leader = LH.getReplicatedLogLeaderPlan(database, stateId).leader;
+  const followers = _.difference(servers, [leader]);
+  return {stateId, servers, leader, followers};
+};
+
 exports.readReplicatedStateAgency = readReplicatedStateAgency;
 exports.updateReplicatedStatePlan = updateReplicatedStatePlan;
+exports.getLocalStatus = getLocalStatus;
+exports.createReplicatedStateTarget = createReplicatedStateTarget;
+exports.updateReplicatedStateTarget = updateReplicatedStateTarget;

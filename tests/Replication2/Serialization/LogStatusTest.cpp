@@ -76,7 +76,12 @@ TEST(LogStatusTest, commit_fail_reason) {
       << "expected " << jsonSlice.toJson() << " found " << slice.toJson();
 
   builder.clear();
-  reason = CommitFailReason::withQuorumSizeNotReached("PRMR-1234");
+  reason = CommitFailReason::withQuorumSizeNotReached(
+      {{"PRMR-1234",
+        {.isFailed = true,
+         .isAllowedInQuorum = true,
+         .lastAcknowledged = TermIndexPair(LogTerm(1), LogIndex(2))}}},
+      TermIndexPair(LogTerm(3), LogIndex(4)));
   reason.toVelocyPack(builder);
   slice = builder.slice();
   fromVPack = CommitFailReason::fromVelocyPack(slice);
@@ -166,7 +171,7 @@ TEST(LogStatusTest, leader_status) {
   statistics.firstIndex = LogIndex{1};
   leaderStatus.local = statistics;
   leaderStatus.term = LogTerm{2};
-  leaderStatus.largestCommonIndex = LogIndex{1};
+  leaderStatus.lowestIndexToKeep = LogIndex{1};
   leaderStatus.activeParticipantsConfig.generation = 14;
   leaderStatus.committedParticipantsConfig = ParticipantsConfig{};
   leaderStatus.committedParticipantsConfig->generation = 18;
@@ -207,7 +212,7 @@ TEST(LogStatusTest, follower_status) {
     "role": "follower",
     "leader": "PRMR-d2a1b29e-ff75-412e-8b97-f3bfbf464fab",
     "term": 2,
-    "largestCommonIndex": 3,
+    "lowestIndexToKeep": 3,
     "local": {
       "commitIndex": 4,
       "firstIndex": 1,
@@ -235,7 +240,7 @@ TEST(LogStatusTest, follower_status) {
   jsonBuffer = R"({
     "role": "follower",
     "term": 2,
-    "largestCommonIndex": 3,
+    "lowestIndexToKeep": 3,
     "local": {
       "commitIndex": 4,
       "firstIndex": 1,

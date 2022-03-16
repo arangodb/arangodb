@@ -36,6 +36,8 @@
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Graph/Steps/SmartGraphStep.h"
+// For additional information, please read PathValidatorEE.cpp
+#include "Enterprise/Graph/PathValidatorEE.cpp"
 #endif
 
 #include "Basics/Exceptions.h"
@@ -63,18 +65,25 @@ template<class ProviderType, class PathStore,
          EdgeUniquenessLevel edgeUniqueness>
 auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
     validatePath(typename PathStore::Step const& step) -> ValidationResult {
-  auto ctx = _options.getExpressionContext();
-  // Reset variables
-  ctx.clearVariableValues();
   auto res = evaluateVertexCondition(step);
   if (res.isFiltered() && res.isPruned()) {
     // Can give up here. This Value is not used
     return res;
   }
 
+#ifdef USE_ENTERPRISE
+  if (isDisjoint()) {
+    auto validDisjPathRes = checkValidDisjointPath(step);
+    if (validDisjPathRes == ValidationResult::Type::FILTER_AND_PRUNE ||
+        validDisjPathRes == ValidationResult::Type::FILTER) {
+      res.combine(validDisjPathRes);
+      return res;
+    }
+  }
+#endif
+
   if constexpr (vertexUniqueness == VertexUniquenessLevel::PATH) {
-    _uniqueVertices.clear();
-    _uniqueEdges.clear();
+    reset();
     // Reserving here is pointless, we will test paths that increase by at most
     // 1 entry.
 
@@ -82,7 +91,6 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
         step, [&](typename PathStore::Step const& step) -> bool {
           auto const& [unusedV, addedVertex] =
               _uniqueVertices.emplace(step.getVertexIdentifier());
-
 
           // If this add fails, we need to exclude this path
           return addedVertex;
@@ -104,7 +112,7 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
   if constexpr (vertexUniqueness == VertexUniquenessLevel::NONE &&
                 edgeUniqueness == EdgeUniquenessLevel::PATH) {
     if (step.getDepth() > 1) {
-      _uniqueEdges.clear();
+      reset();
 
       bool edgeSuccess = _store.visitReversePath(
           step, [&](typename PathStore::Step const& step) -> bool {
@@ -339,9 +347,12 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
   TRI_ASSERT(value.isObject() || value.isNull());
   auto tmpVar = _options.getTempVar();
   bool mustDestroy = false;
-  auto ctx = _options.getExpressionContext();
+  // node: for expression evaluation, the same expression context
+  // instance is used repeatedly.
+  auto& ctx = _options.getExpressionContext();
   ctx.setVariableValue(tmpVar,
                        aql::AqlValue{aql::AqlValueHintSliceNoCopy{value}});
+  // make sure we clean up after ourselves
   ScopeGuard defer([&]() noexcept { ctx.clearVariableValue(tmpVar); });
   aql::AqlValue res = expression->execute(&ctx, mustDestroy);
   aql::AqlValueGuard guard{res, mustDestroy};
@@ -414,6 +425,17 @@ void PathValidator<ProviderType, PathStore, vertexUniqueness,
   TRI_ASSERT(_options.usesPostFilter());
   _options.unpreparePostFilterContext();
 }
+
+#ifndef USE_ENTERPRISE
+template<class Provider, class PathStore,
+         VertexUniquenessLevel vertexUniqueness,
+         EdgeUniquenessLevel edgeUniqueness>
+auto PathValidator<Provider, PathStore, vertexUniqueness, edgeUniqueness>::
+    checkValidDisjointPath(typename PathStore::Step const& lastStep)
+        -> arangodb::graph::ValidationResult::Type {
+  return ValidationResult::Type::TAKE;
+}
+#endif
 
 namespace arangodb::graph {
 

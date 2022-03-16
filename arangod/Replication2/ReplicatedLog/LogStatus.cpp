@@ -29,7 +29,6 @@
 #include <Logger/LogMacros.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "LogStatus.h"
 
@@ -71,7 +70,7 @@ void FollowerStatus::toVelocyPack(velocypack::Builder& builder) const {
     builder.add(StaticStrings::Leader, VPackValue(*leader));
   }
   builder.add(StaticStrings::Term, VPackValue(term.value));
-  builder.add("largestCommonIndex", VPackValue(largestCommonIndex.value));
+  builder.add("lowestIndexToKeep", VPackValue(lowestIndexToKeep.value));
   builder.add(VPackValue("local"));
   local.toVelocyPack(builder);
 }
@@ -80,8 +79,7 @@ auto FollowerStatus::fromVelocyPack(velocypack::Slice slice) -> FollowerStatus {
   TRI_ASSERT(slice.get("role").isEqualString(StaticStrings::Follower));
   FollowerStatus status;
   status.term = slice.get(StaticStrings::Term).extract<LogTerm>();
-  status.largestCommonIndex =
-      slice.get("largestCommonIndex").extract<LogIndex>();
+  status.lowestIndexToKeep = slice.get("lowestIndexToKeep").extract<LogIndex>();
   status.local = LogStatistics::fromVelocyPack(slice.get("local"));
   if (auto leader = slice.get(StaticStrings::Leader); !leader.isNone()) {
     status.leader = leader.copyString();
@@ -93,7 +91,7 @@ void LeaderStatus::toVelocyPack(velocypack::Builder& builder) const {
   VPackObjectBuilder ob(&builder);
   builder.add("role", VPackValue(StaticStrings::Leader));
   builder.add(StaticStrings::Term, VPackValue(term.value));
-  builder.add("largestCommonIndex", VPackValue(largestCommonIndex.value));
+  builder.add("lowestIndexToKeep", VPackValue(lowestIndexToKeep.value));
   builder.add("commitLagMS", VPackValue(commitLagMS.count()));
   builder.add("leadershipEstablished", VPackValue(leadershipEstablished));
   builder.add(VPackValue("local"));
@@ -122,8 +120,7 @@ auto LeaderStatus::fromVelocyPack(velocypack::Slice slice) -> LeaderStatus {
   LeaderStatus status;
   status.term = slice.get(StaticStrings::Term).extract<LogTerm>();
   status.local = LogStatistics::fromVelocyPack(slice.get("local"));
-  status.largestCommonIndex =
-      slice.get("largestCommonIndex").extract<LogIndex>();
+  status.lowestIndexToKeep = slice.get("lowestIndexToKeep").extract<LogIndex>();
   status.leadershipEstablished = slice.get("leadershipEstablished").isTrue();
   status.commitLagMS = std::chrono::duration<double, std::milli>{
       slice.get("commitLagMS").extract<double>()};

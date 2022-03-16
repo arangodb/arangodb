@@ -229,6 +229,12 @@ class DatabaseInitialSyncer : public InitialSyncer {
                                    std::string const& leaderColl,
                                    TRI_voc_tick_t);
 
+  void fetchRevisionsChunk(
+      std::shared_ptr<Syncer::JobSynchronizer> sharedStatus,
+      std::string const& baseUrl, arangodb::LogicalCollection* coll,
+      std::string const& leaderColl, std::string const& requestPayload,
+      RevisionId requestResume);
+
   /// @brief incrementally fetch data from a collection using revisions as the
   /// primary document identifier, not supported by all engines/collections
   // TODO worker safety

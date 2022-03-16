@@ -53,7 +53,7 @@ class IResearchRocksDBInvertedIndex final : public IResearchInvertedIndex,
       VPackBuilder& builder,
       std::underlying_type<Index::Serialize>::type flags) const override;
 
-  size_t memory() const override { return statsSynced().indexSize; }
+  size_t memory() const override { return stats().indexSize; }
 
   bool isHidden() const override { return false; }
 
@@ -71,10 +71,6 @@ class IResearchRocksDBInvertedIndex final : public IResearchInvertedIndex,
 
   bool covers(arangodb::aql::Projections& projections) const override {
     return IResearchInvertedIndex::covers(projections);
-  }
-
-  bool hasCoveringIterator() const override {
-    return !meta()._storedValues.empty() || !meta()._sort.empty();
   }
 
   Result drop() override;

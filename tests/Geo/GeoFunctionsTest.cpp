@@ -40,7 +40,6 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -320,8 +319,8 @@ TEST_F(GeoEqualsPolygonTest, checking_two_unequal_polygons) {
 
 TEST_F(GeoEqualsPolygonTest, checking_two_nested_equal_polygons) {
   char const* polyA =
-      "[[[35, 10], [45, 45], [15, 40], [10, 20], [35, 10]],[[20, 30], [35, "
-      "35], [30, 20], [20, 30]]]";
+      "[[[35, 10], [45, 45], [15, 40], [10, 20], [35, 10]],[[20, 30], [30, "
+      "20], [35, 35], [20, 30]]]";
   size_t lA = strlen(polyA);
 
   std::shared_ptr<VPackBuilder> builderA = VPackParser::fromJson(polyA, lA);
@@ -343,12 +342,12 @@ TEST_F(GeoEqualsPolygonTest, checking_two_nested_equal_polygons) {
 TEST_F(GeoEqualsPolygonTest,
        checking_two_unequal_nested_polygons_outer_loop_difference) {
   char const* polyA =
-      "[[[30, 10], [45, 45], [15, 40], [10, 20], [30, 10]],[[20, 30], [35, "
-      "35], [30, 20], [20, 30]]]";
+      "[[[30, 10], [45, 45], [15, 40], [10, 20], [30, 10]],[[20, 30], [30, "
+      "20], [35, 35], [20, 30]]]";
   size_t lA = strlen(polyA);
   char const* polyB =
-      "[[[35, 10], [45, 45], [15, 40], [10, 20], [35, 10]],[[20, 30], [35, "
-      "35], [30, 20], [20, 30]]]";
+      "[[[35, 10], [45, 45], [15, 40], [10, 20], [35, 10]],[[20, 30], [30, "
+      "20], [35, 35], [20, 30]]]";
   size_t lB = strlen(polyB);
 
   std::shared_ptr<VPackBuilder> builderA = VPackParser::fromJson(polyA, lA);
@@ -373,12 +372,12 @@ TEST_F(GeoEqualsPolygonTest,
 TEST_F(GeoEqualsPolygonTest,
        checking_two_unequal_nested_polygons_inner_loop_difference) {
   char const* polyA =
-      "[[[35, 10], [45, 45], [15, 40], [10, 20], [35, 10]],[[15, 30], [35, "
-      "35], [30, 20], [15, 30]]]";
+      "[[[35, 10], [45, 45], [15, 40], [10, 20], [35, 10]],[[15, 30], [30, "
+      "20], [35, 35], [15, 30]]]";
   size_t lA = strlen(polyA);
   char const* polyB =
-      "[[[35, 10], [45, 45], [15, 40], [10, 20], [35, 10]],[[20, 30], [35, "
-      "35], [30, 20], [20, 30]]]";
+      "[[[35, 10], [45, 45], [15, 40], [10, 20], [35, 10]],[[20, 30], [30, "
+      "20], [35, 35], [20, 30]]]";
   size_t lB = strlen(polyB);
 
   std::shared_ptr<VPackBuilder> builderA = VPackParser::fromJson(polyA, lA);
@@ -403,12 +402,12 @@ TEST_F(GeoEqualsPolygonTest,
 TEST_F(GeoEqualsPolygonTest,
        checking_two_unequal_nested_polygons_inner_and_outer_polygons) {
   char const* polyA =
-      "[[[30, 10], [45, 45], [15, 40], [10, 20], [30, 10]],[[20, 30], [35, "
-      "35], [30, 20], [20, 30]]]";
+      "[[[30, 10], [45, 45], [15, 40], [10, 20], [30, 10]],[[20, 30], [30, "
+      "20], [35, 35], [20, 30]]]";
   size_t lA = strlen(polyA);
   char const* polyB =
-      "[[[35, 10], [45, 45], [15, 40], [10, 20], [35, 10]],[[15, 30], [35, "
-      "35], [30, 20], [15, 30]]]";
+      "[[[35, 10], [45, 45], [15, 40], [10, 20], [35, 10]],[[15, 30], [30, "
+      "20], [35, 35], [15, 30]]]";
   size_t lB = strlen(polyB);
 
   std::shared_ptr<VPackBuilder> builderA = VPackParser::fromJson(polyA, lA);

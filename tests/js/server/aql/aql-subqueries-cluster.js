@@ -33,6 +33,7 @@ const jsunity = require("jsunity");
 const helper = require("@arangodb/aql-helper");
 const getQueryResults = helper.getQueryResults;
 const db = require("internal").db;
+
 const c1 = "UnitTestSubQuery1";
 const c2 = "UnitTestSubQuery2";
 const c3 = "UnitTestSubQuery3";
@@ -45,7 +46,6 @@ const c8 = "UnitTestSubQuery8";
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
-
 
 /**
  * @brief This suite is supposed to test subquery execution
@@ -303,17 +303,17 @@ function clusterSubqueriesTestSuite () {
       }
 
       db[c1].save(docsA);
-      db[c2].ensureHashIndex("valA");
+      db[c2].ensureIndex({ type: "persistent", fields: ["valA"] });
       db[c2].save(docsB);
-      db[c3].ensureHashIndex("valA", "valB");
+      db[c3].ensureIndex({ type: "persistent", fields: ["valA", "valB"] });
       db[c3].save(docsC);
-      db[c4].ensureHashIndex("valA", "valB", "valC");
+      db[c4].ensureIndex({ type: "persistent", fields: ["valA", "valB", "valC"] });
       db[c4].save(docsD);
-      db[c5].ensureHashIndex("valA", "valB", "valC", "valD");
+      db[c5].ensureIndex({ type: "persistent", fields: ["valA", "valB", "valC", "valD"] });
       db[c5].save(docsE);
-      db[c6].ensureHashIndex("valA", "valB", "valC", "valD", "valE");
+      db[c6].ensureIndex({ type: "persistent", fields: ["valA", "valB", "valC", "valD", "valE"] });
       db[c6].save(docsF);
-      db[c7].ensureHashIndex("valA", "valB", "valC", "valF");
+      db[c7].ensureIndex({ type: "persistent", fields: ["valA", "valB", "valC", "valF"] });
       db[c7].save(docsG);
  
       let q = `
@@ -370,10 +370,6 @@ function clusterSubqueriesTestSuite () {
     }
   };
 };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(clusterSubqueriesTestSuite);
 

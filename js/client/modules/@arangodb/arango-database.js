@@ -330,7 +330,7 @@ ArangoDatabase.prototype._compact = function (options) {
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoDatabase.prototype._collections = function () {
-  var requestResult = this._connection.GET(this._collectionurl());
+  var requestResult = this._connection.GET(this._collectionurl(), {"x-arango-frontend": "true"});
 
   arangosh.checkRequestResult(requestResult);
 

@@ -40,7 +40,6 @@
 #include "Statistics/ConnectionStatistics.h"
 #include "Statistics/RequestStatistics.h"
 
-#include <velocypack/velocypack-aliases.h>
 #include <cstring>
 
 using namespace arangodb::basics;

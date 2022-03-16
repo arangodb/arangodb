@@ -21,8 +21,8 @@
 /// @author Andrey Abramov
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
-
 #include "Basics/Common.h"
+#include "Basics/DownCast.h"
 
 #include "IResearchLinkHelper.h"
 
@@ -916,12 +916,12 @@ namespace iresearch {
   try {
     if (ServerState::instance()->isCoordinator()) {
       return modifyLinks<IResearchViewCoordinator>(
-          modified, LogicalView::cast<IResearchViewCoordinator>(view), links,
+          modified, basics::downCast<IResearchViewCoordinator>(view), links,
           defaultVersion, stale);
     }
 
     return modifyLinks<IResearchView>(modified,
-                                      LogicalView::cast<IResearchView>(view),
+                                      basics::downCast<IResearchView>(view),
                                       links, defaultVersion, stale);
   } catch (basics::Exception& e) {
     LOG_TOPIC("72dde", WARN, arangodb::iresearch::TOPIC)

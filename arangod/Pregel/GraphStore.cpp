@@ -24,6 +24,8 @@
 #include "GraphStore.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Aql/AttributeNamePath.h"
+#include "Aql/Projections.h"
 #include "Basics/Common.h"
 #include "Basics/LocalTaskQueue.h"
 #include "Basics/MutexLocker.h"
@@ -535,13 +537,15 @@ void GraphStore<V, E>::loadEdges(
     return TRI_ERROR_NO_ERROR;
   };
 
-  // allow for rocksdb edge index optimization
-  if (cursor->hasExtra() && _graphFormat->estimatedEdgeSize() == 0) {
-    while (cursor->nextExtra(
-        [&](LocalDocumentId const& /*token*/, VPackSlice edgeSlice) {
-          TRI_ASSERT(edgeSlice.isString());
+  if (_graphFormat->estimatedEdgeSize() == 0) {
+    // use covering index optimization
+    while (cursor->nextCovering(
+        [&](LocalDocumentId const& /*token*/,
+            IndexIteratorCoveringData& covering) {
+          TRI_ASSERT(covering.isArray());
 
-          std::string_view toValue = edgeSlice.stringView();
+          std::string_view toValue =
+              covering.at(info.coveringPosition()).stringView();
           size_t space = toValue.size();
           allocateSpace(space);
           Edge<E>* edge = edgeBuff->appendElement();
@@ -550,7 +554,6 @@ void GraphStore<V, E>::loadEdges(
         },
         1000)) { /* continue loading */
     }
-
   } else {
     while (cursor->nextDocument(
         [&](LocalDocumentId const& /*token*/, VPackSlice slice) {

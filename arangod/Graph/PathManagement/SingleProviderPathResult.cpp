@@ -37,7 +37,6 @@
 #endif
 
 #include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::graph;
@@ -70,6 +69,12 @@ auto SingleSidedPathResult<ProviderType, PathStoreType, Step>::prependVertex(
 }
 
 template<class ProviderType, class PathStoreType, class Step>
+auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::prependWeight(
+    double weight) -> void {
+  _weights.insert(_weights.begin(), weight);
+}
+
+template<class ProviderType, class PathStoreType, class Step>
 auto SingleSidedPathResult<ProviderType, PathStoreType, Step>::prependWeight(
     double weight) -> void {
   _weights.insert(_weights.begin(), weight);
@@ -88,7 +93,7 @@ auto SingleSidedPathResult<ProviderType, PathStoreType, Step>::prependEdge(
 }
 
 template<class ProviderType, class PathStoreType, class Step>
-auto SingleSidedPathResult<ProviderType, PathStoreType, Step>::populatePath()
+auto SingleSidedProviderPathResult<ProviderType, PathStoreType, Step>::populatePath()
     -> void {
   _store.visitReversePath(_step, [&](Step const& s) -> bool {
     prependVertex(s.getVertex());
@@ -103,7 +108,7 @@ auto SingleSidedPathResult<ProviderType, PathStoreType, Step>::populatePath()
 }
 
 template<class ProviderType, class PathStoreType, class Step>
-auto SingleSidedPathResult<ProviderType, PathStoreType, Step>::
+auto SingleSidedProviderPathResult<ProviderType, PathStoreType, Step>::
     verticesToVelocyPack(arangodb::velocypack::Builder& builder) -> void {
   TRI_ASSERT(builder.isOpenObject());
   {
@@ -127,6 +132,50 @@ auto SingleSidedPathResult<ProviderType, PathStoreType, Step>::
     for (auto const& e : _edges) {
       _provider.addEdgeToBuilder(e, builder);
     }
+  }
+}
+
+template<class ProviderType, class PathStoreType, class Step>
+auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::
+    weightsToVelocyPack(velocypack::Builder& builder) -> void {
+  TRI_ASSERT(builder.isOpenObject());
+  {
+    builder.add(VPackValue(StaticStrings::GraphQueryWeights));
+    VPackArrayBuilder weights(&builder);
+    // Write first part of the Path
+    for (auto const& weight : _weights) {
+      builder.add(VPackValue(weight));
+    }
+  }
+}
+
+template<class ProviderType, class PathStoreType, class Step>
+auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::toVelocyPack(
+    arangodb::velocypack::Builder& builder) -> void {
+  if (_vertices.empty()) {
+    populatePath();
+  }
+  VPackObjectBuilder path{&builder};
+  verticesToVelocyPack(builder);
+  edgesToVelocyPack(builder);
+  weightsToVelocyPack(builder);
+}
+
+template<class ProviderType, class PathStoreType, class Step>
+auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::
+    lastVertexToVelocyPack(arangodb::velocypack::Builder& builder) -> void {
+  TRI_ASSERT(!_step.getVertex().getID().empty());
+  _provider.addVertexToBuilder(_step.getVertex(), builder);
+}
+
+template<class ProviderType, class PathStoreType, class Step>
+auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::
+    lastEdgeToVelocyPack(arangodb::velocypack::Builder& builder) -> void {
+  if (_step.isFirst()) {
+    builder.add(VPackSlice::nullSlice());
+  } else {
+    TRI_ASSERT(_step.getEdge().isValid());
+    _provider.addEdgeToBuilder(_step.getEdge(), builder);
   }
 }
 

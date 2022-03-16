@@ -45,7 +45,6 @@
 #include <velocypack/Buffer.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -303,8 +302,9 @@ class TraversalExecutorTestInputStartVertex : public ::testing::Test {
   AqlFunctionsInternalCache aqlCache{};
   arangodb::aql::FixedVarExpressionContext exprContext{
       *server.createFakeTransaction(), *fakedQuery, aqlCache};
-  arangodb::graph::BaseProviderOptions baseProviderOptions{
-      &tmpVar, std::move(usedIndexes), exprContext, {}, {}};
+  arangodb::graph::SingleServerBaseProviderOptions
+      singleServerBaseProviderOptions{
+          &tmpVar, std::move(usedIndexes), exprContext, {}, {}};
   arangodb::graph::PathValidatorOptions pathValidatorOptions{&tmpVar,
                                                              exprContext};
   arangodb::graph::OneSidedEnumeratorOptions enumeratorOptions{1, 1};
@@ -334,10 +334,11 @@ class TraversalExecutorTestInputStartVertex : public ::testing::Test {
                       traverser::TraverserOptions::UniquenessLevel::NONE,
                       traverser::TraverserOptions::UniquenessLevel::NONE,
                       traverser::TraverserOptions::Order::DFS, false, 1,
-                      "weightAttribute", server.createFakeTransaction().get(),
-                      *fakedQuery.get(), std::move(baseProviderOptions),
+                      std::string("weightAttribute"),
+                      server.createFakeTransaction().get(), *fakedQuery,
                       std::move(pathValidatorOptions),
-                      std::move(enumeratorOptions)) {}
+                      std::move(enumeratorOptions), &traversalOptions,
+                      std::move(singleServerBaseProviderOptions)) {}
 };
 
 TEST_F(TraversalExecutorTestInputStartVertex,
@@ -349,7 +350,7 @@ TEST_F(TraversalExecutorTestInputStartVertex,
   TraversalStats stats{};
 
   auto inputBlock = buildBlock<1>(itemBlockManager, MatrixBuilder<1>{{{}}});
-  auto input = AqlItemBlockInputRange{ExecutorState::DONE, 0, inputBlock, 0};
+  auto input = AqlItemBlockInputRange{MainQueryState::DONE, 0, inputBlock, 0};
 
   OutputAqlItemRow result(std::move(block), registerInfos.getOutputRegisters(),
                           registerInfos.registersToKeep(),
@@ -374,7 +375,7 @@ TEST_F(TraversalExecutorTestInputStartVertex,
   auto inputBlock = buildBlock<1>(
       itemBlockManager,
       MatrixBuilder<1>{{{{R"("v/1")"}}}, {{{R"("v/2")"}}}, {{{R"("v/3")"}}}});
-  auto input = AqlItemBlockInputRange{ExecutorState::DONE, 0, inputBlock, 0};
+  auto input = AqlItemBlockInputRange{MainQueryState::DONE, 0, inputBlock, 0};
 
   OutputAqlItemRow row(std::move(block), registerInfos.getOutputRegisters(),
                        registerInfos.registersToKeep(),
@@ -409,7 +410,7 @@ TEST_F(TraversalExecutorTestInputStartVertex,
   auto inputBlock = buildBlock<1>(
       itemBlockManager,
       MatrixBuilder<1>{{{{R"("v/1")"}}}, {{{R"("v/2")"}}}, {{{R"("v/3")"}}}});
-  auto input = AqlItemBlockInputRange{ExecutorState::DONE, 0, inputBlock, 0};
+  auto input = AqlItemBlockInputRange{MainQueryState::DONE, 0, inputBlock, 0};
 
   OutputAqlItemRow row(std::move(block), registerInfos.getOutputRegisters(),
                        registerInfos.registersToKeep(),
@@ -445,7 +446,7 @@ TEST_F(TraversalExecutorTestInputStartVertex,
   auto inputBlock = buildBlock<1>(
       itemBlockManager,
       MatrixBuilder<1>{{{{R"("v/1")"}}}, {{{R"("v/2")"}}}, {{{R"("v/3")"}}}});
-  auto input = AqlItemBlockInputRange{ExecutorState::DONE, 0, inputBlock, 0};
+  auto input = AqlItemBlockInputRange{MainQueryState::DONE, 0, inputBlock, 0};
 
   myGraph.addEdge("1", "2", "1->2");
   myGraph.addEdge("2", "3", "2->3");
@@ -515,14 +516,15 @@ class TraversalExecutorTestConstantStartVertex : public ::testing::Test {
   AqlFunctionsInternalCache aqlCache{};
   arangodb::aql::FixedVarExpressionContext exprContext{
       *server.createFakeTransaction(), *fakedQuery, aqlCache};
-  arangodb::graph::BaseProviderOptions baseProviderOptions{
-      &tmpVar, std::move(usedIndexes), exprContext, {}, {}};
+  arangodb::graph::SingleServerBaseProviderOptions
+      singleServerBaseProviderOptions{
+          &tmpVar, std::move(usedIndexes), exprContext, {}, {}};
   arangodb::graph::PathValidatorOptions pathValidatorOptions{&tmpVar,
                                                              exprContext};
   arangodb::graph::OneSidedEnumeratorOptions enumeratorOptions{1, 1};
-  TraversalExecutorInfos
-      executorInfos;  // TODO [GraphRefactor]: We need to test all variants of
-                      // graph refactor here as well
+  TraversalExecutorInfos executorInfos;
+  // TODO [GraphRefactor]: We need to test all variants of graph refactor here
+  // as well
 
   TraversalExecutorTestConstantStartVertex()
       : fakedQuery(server.createFakeQuery()),
@@ -544,10 +546,11 @@ class TraversalExecutorTestConstantStartVertex : public ::testing::Test {
                       traverser::TraverserOptions::UniquenessLevel::NONE,
                       traverser::TraverserOptions::UniquenessLevel::NONE,
                       traverser::TraverserOptions::Order::DFS, false, 1,
-                      "weightAttribute", server.createFakeTransaction().get(),
-                      *fakedQuery, std::move(baseProviderOptions),
+                      std::string("weightAttribute"),
+                      server.createFakeTransaction().get(), *fakedQuery,
                       std::move(pathValidatorOptions),
-                      std::move(enumeratorOptions)) {}
+                      std::move(enumeratorOptions), &traversalOptions,
+                      std::move(singleServerBaseProviderOptions)) {}
 };
 
 TEST_F(TraversalExecutorTestConstantStartVertex,
@@ -558,7 +561,7 @@ TEST_F(TraversalExecutorTestConstantStartVertex,
   TraversalStats stats{};
 
   auto inputBlock = buildBlock<1>(itemBlockManager, MatrixBuilder<1>{{{{}}}});
-  auto input = AqlItemBlockInputRange{ExecutorState::DONE, 0, inputBlock, 0};
+  auto input = AqlItemBlockInputRange{MainQueryState::DONE, 0, inputBlock, 0};
 
   OutputAqlItemRow result(std::move(block), registerInfos.getOutputRegisters(),
                           registerInfos.registersToKeep(),
@@ -577,7 +580,7 @@ TEST_F(TraversalExecutorTestConstantStartVertex, no_rows_upstream) {
   TraversalStats stats{};
 
   auto inputBlock = buildBlock<1>(itemBlockManager, MatrixBuilder<1>{{{{}}}});
-  auto input = AqlItemBlockInputRange{ExecutorState::DONE, 0, inputBlock, 0};
+  auto input = AqlItemBlockInputRange{MainQueryState::DONE, 0, inputBlock, 0};
 
   OutputAqlItemRow result(std::move(block), registerInfos.getOutputRegisters(),
                           registerInfos.registersToKeep(),
@@ -604,7 +607,7 @@ TEST_F(TraversalExecutorTestConstantStartVertex,
   auto inputBlock = buildBlock<1>(
       itemBlockManager,
       MatrixBuilder<1>{{{{R"("v/1")"}}}, {{{R"("v/2")"}}}, {{{R"("v/3")"}}}});
-  auto input = AqlItemBlockInputRange{ExecutorState::DONE, 0, inputBlock, 0};
+  auto input = AqlItemBlockInputRange{MainQueryState::DONE, 0, inputBlock, 0};
 
   OutputAqlItemRow row(std::move(block), registerInfos.getOutputRegisters(),
                        registerInfos.registersToKeep(),
@@ -643,7 +646,7 @@ TEST_F(TraversalExecutorTestConstantStartVertex,
   auto inputBlock = buildBlock<1>(
       itemBlockManager,
       MatrixBuilder<1>{{{{R"("v/1")"}}}, {{{R"("v/2")"}}}, {{{R"("v/3")"}}}});
-  auto input = AqlItemBlockInputRange{ExecutorState::DONE, 0, inputBlock, 0};
+  auto input = AqlItemBlockInputRange{MainQueryState::DONE, 0, inputBlock, 0};
 
   AqlCall call;
 
@@ -683,7 +686,7 @@ TEST_F(TraversalExecutorTestConstantStartVertex, rows_edges_connected) {
   auto inputBlock = buildBlock<1>(
       itemBlockManager,
       MatrixBuilder<1>{{{{R"("v/1")"}}}, {{{R"("v/2")"}}}, {{{R"("v/3")"}}}});
-  auto input = AqlItemBlockInputRange{ExecutorState::DONE, 0, inputBlock, 0};
+  auto input = AqlItemBlockInputRange{MainQueryState::DONE, 0, inputBlock, 0};
 
   AqlCall call;
 

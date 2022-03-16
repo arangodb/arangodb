@@ -7626,6 +7626,7 @@ void arangodb::aql::moveFiltersIntoEnumerateRule(
   plan->findNodesOfType(nodes, ::moveFilterIntoEnumerateTypes, true);
 
   VarSet found;
+  VarSet introduced;
 
   for (auto const& n : nodes) {
     auto en = dynamic_cast<DocumentProducingNode*>(n);
@@ -7648,9 +7649,10 @@ void arangodb::aql::moveFiltersIntoEnumerateRule(
       continue;
     }
 
-    ExecutionNode* current = n->getFirstParent();
-
     std::unordered_map<Variable const*, CalculationNode*> calculations;
+    introduced.clear();
+
+    ExecutionNode* current = n->getFirstParent();
 
     while (current != nullptr) {
       if (current->getType() != EN::FILTER &&
@@ -7712,9 +7714,27 @@ void arangodb::aql::moveFiltersIntoEnumerateRule(
         TRI_ASSERT(!expr->willUseV8());
         found.clear();
         Ast::getReferencedVariables(expr->node(), found);
-        if (found.size() == 1 && found.find(outVariable) != found.end()) {
-          calculations.emplace(calculationNode->outVariable(), calculationNode);
+        if (found.find(outVariable) != found.end()) {
+          // check if the introduced variable refers to another temporary
+          // variable that is not valid yet in the EnumerateCollection/Index
+          // node, which would prevent moving the calculation and filter
+          // upwards, e.g.
+          //   FOR doc IN collection
+          //     LET a = RAND()
+          //     FILTER doc.value == 2 && doc.value > a
+          bool eligible = std::none_of(
+              introduced.begin(), introduced.end(), [&](Variable const* temp) {
+                return (found.find(temp) != found.end());
+              });
+
+          if (eligible) {
+            calculations.emplace(calculationNode->outVariable(),
+                                 calculationNode);
+          }
         }
+
+        // track all newly introduced variables
+        introduced.emplace(calculationNode->outVariable());
       }
 
       current = current->getFirstParent();

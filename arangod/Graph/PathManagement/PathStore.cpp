@@ -256,8 +256,7 @@ template void PathStore<enterprise::SmartGraphStep>::reverseBuildPath<
 
 // Tracing
 
-template void
-PathStore<enterprise::SmartGraphStep>::buildPath<TwoSidedPathResult<
+template void PathStore<enterprise::SmartGraphStep>::buildPath<PathResult<
     ProviderTracer<SingleServerProvider<enterprise::SmartGraphStep>>,
     ProviderTracer<SingleServerProvider<enterprise::SmartGraphStep>>::Step>>(
     ProviderTracer<

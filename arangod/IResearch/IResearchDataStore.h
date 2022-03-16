@@ -237,21 +237,25 @@ class IResearchDataStore {
   Result properties(IResearchViewMeta const& meta);
   static void properties(LinkLock linkLock, IResearchViewMeta const& meta);
 
- protected:
-  friend struct CommitTask;
-  friend struct ConsolidationTask;
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief index stats
   //////////////////////////////////////////////////////////////////////////////
   struct Stats {
-    uint64_t numBufferedDocs{};
     uint64_t numDocs{};
     uint64_t numLiveDocs{};
     uint64_t numSegments{};
     uint64_t numFiles{};
     uint64_t indexSize{};
   };
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief get index stats for current snapshot
+  ////////////////////////////////////////////////////////////////////////////////
+  Stats stats() const;
+
+ protected:
+  friend struct CommitTask;
+  friend struct ConsolidationTask;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief detailed commit result
@@ -354,7 +358,8 @@ class IResearchDataStore {
   /// @brief initialize the data store with a new or from an existing directory
   //////////////////////////////////////////////////////////////////////////////
   Result initDataStore(
-      InitCallback const& initCallback, uint32_t version, bool sorted,
+      bool& pathExists, InitCallback const& initCallback, uint32_t version,
+      bool sorted,
       std::vector<IResearchViewStoredValues::StoredColumn> const& storedColumns,
       irs::type_info::type_id primarySortCompression);
 
@@ -372,13 +377,13 @@ class IResearchDataStore {
   /// @brief wait for all outstanding commit/consolidate operations and closes
   /// data store
   //////////////////////////////////////////////////////////////////////////////
-  Result shutdownDataStore();
+  void shutdownDataStore() noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief wait for all outstanding commit/consolidate operations and remove
   /// data store
   //////////////////////////////////////////////////////////////////////////////
-  Result deleteDataStore();
+  Result deleteDataStore() noexcept;
 
  public:  // TODO(MBkkt) public only for tests, make protected
   // These methods only for tests
@@ -393,27 +398,21 @@ class IResearchDataStore {
   std::tuple<uint64_t, uint64_t, uint64_t> avgTime() const;
 
  protected:
-  Stats statsSynced() const;
   ////////////////////////////////////////////////////////////////////////////////
-  /// @brief get index stats for current snapshot
+  /// @brief Update index stats for current snapshot
   /// @note Unsafe, can only be called is _asyncSelf is locked
   ////////////////////////////////////////////////////////////////////////////////
-  Stats statsUnsafe() const;
+  Stats updateStatsUnsafe() const;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief insert statistic to MetricsFeature
+  /// @brief insert metrics to MetricsFeature
   //////////////////////////////////////////////////////////////////////////////
-  virtual void insertStats() {}
+  virtual void insertMetrics() {}
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief remove statistic from MetricsFeature
+  /// @brief remove metrics from MetricsFeature
   //////////////////////////////////////////////////////////////////////////////
-  virtual void removeStats() {}
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief update store statistics in MetricsFeature
-  //////////////////////////////////////////////////////////////////////////////
-  virtual void updateStats(Stats const&) {}
+  virtual void removeMetrics() {}
 
   virtual void invalidateQueryCache(TRI_vocbase_t*) = 0;
 
@@ -461,6 +460,8 @@ class IResearchDataStore {
 
   std::atomic_uint64_t _consolidationTimeNum;
   metrics::Gauge<uint64_t>* _avgConsolidationTimeMs;
+
+  metrics::Guard<Stats>* _metricStats;
 };
 
 irs::utf8_path getPersistedPath(DatabasePathFeature const& dbPathFeature,

@@ -28,6 +28,8 @@ namespace arangodb {
 inline constexpr char logContextKeyTerm[] = "term";
 inline constexpr char logContextKeyLeaderId[] = "leader-id";
 inline constexpr char logContextKeyLogComponent[] = "log-component";
+inline constexpr char logContextKeyStateComponent[] = "state-component";
+inline constexpr char logContextKeyStateImpl[] = "state-impl";
 inline constexpr char logContextKeyMessageId[] = "message-id";
 inline constexpr char logContextKeyPrevLogIdx[] = "prev-log-idx";
 inline constexpr char logContextKeyPrevLogTerm[] = "prev-log-term";

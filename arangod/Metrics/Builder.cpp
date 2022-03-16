@@ -23,6 +23,8 @@
 
 #include "Metrics/Builder.h"
 
+#include "Metrics/IBatch.h"
+
 namespace arangodb::metrics {
 
 std::string_view Builder::name() const noexcept { return _name; }
@@ -38,5 +40,7 @@ void Builder::addLabel(std::string_view key, std::string_view value) {
   _labels.append(value);
   _labels.push_back('"');
 }
+
+IBatch::~IBatch() = default;
 
 }  // namespace arangodb::metrics
