@@ -1,6 +1,8 @@
 devel
 -----
 
+* Added GET request for displaying the available optimizer rules.
+
 * Added an HTTP fuzzer that will fuzz requests (the header for the actual
   moment) and send to the server. The amount of requests sent is provided 
   by one of the parameters of the function `fuzzRequests()` in arangosh.
