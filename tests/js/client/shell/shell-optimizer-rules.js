@@ -84,17 +84,6 @@ const expectedRules = [
     }
   },
   {
-    name: "cluster-one-shard",
-    flags: {
-      hidden: false,
-      clusterOnly: true,
-      canBeDisabled: true,
-      canCreateAdditionalPlans: false,
-      disabledByDefault: false,
-      enterpriseOnly: true
-    }
-  },
-  {
     name: "optimize-cluster-single-document-operations",
     flags: {
       hidden: false,
@@ -105,17 +94,6 @@ const expectedRules = [
       enterpriseOnly: false
     }
   },
-  {
-    name: "collect-in-cluster",
-    flags: {
-      hidden: false,
-      clusterOnly: true,
-      canBeDisabled: true,
-      canCreateAdditionalPlans: false,
-      disabledByDefault: false,
-      enterpriseOnly: false
-    }
-  }
 ];
 
 
