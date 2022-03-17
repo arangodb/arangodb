@@ -52,6 +52,8 @@ inline constexpr std::string_view StringApplyRecentEntries =
     "ApplyRecentEntries";
 inline constexpr std::string_view StringUninitializedState =
     "UninitializedState";
+inline constexpr std::string_view StringSnapshotTransferFailed =
+    "SnapshotTransferFailed";
 
 inline constexpr auto StringRole = std::string_view{"role"};
 inline constexpr auto StringUnconfigured = std::string_view{"unconfigured"};
@@ -74,6 +76,8 @@ auto followerStateFromString(std::string_view str) -> FollowerInternalState {
     return FollowerInternalState::kNothingToApply;
   } else if (str == StringApplyRecentEntries) {
     return FollowerInternalState::kApplyRecentEntries;
+  } else if (str == StringSnapshotTransferFailed) {
+    return FollowerInternalState::kSnapshotTransferFailed;
   } else {
     THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_BAD_PARAMETER,
                                   "unknown follower internal state %*s",
@@ -131,6 +135,8 @@ auto replicated_state::to_string(FollowerInternalState state) noexcept
       return StringApplyRecentEntries;
     case FollowerInternalState::kUninitializedState:
       return StringUninitializedState;
+    case FollowerInternalState::kSnapshotTransferFailed:
+      return StringSnapshotTransferFailed;
   }
   TRI_ASSERT(false) << "invalid state value " << int(state);
   return "(unknown-internal-follower-state)";

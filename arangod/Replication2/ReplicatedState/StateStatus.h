@@ -72,6 +72,7 @@ enum class FollowerInternalState {
   kTransferSnapshot,
   kNothingToApply,
   kApplyRecentEntries,
+  kSnapshotTransferFailed,
 };
 
 auto to_string(FollowerInternalState) noexcept -> std::string_view;
