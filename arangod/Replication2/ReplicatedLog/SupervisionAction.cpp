@@ -121,7 +121,7 @@ void Executor::operator()(CurrentNotAvailableAction const& action) {
 
 void Executor::operator()(EvictLeaderAction const& action) {
   auto newFlags = action._flags;
-  newFlags.excluded = true;
+  newFlags.allowedAsLeader = false;
   auto newTerm = action._currentTerm;
   newTerm.term = LogTerm{newTerm.term.value + 1};
   newTerm.leader.reset();
@@ -213,7 +213,7 @@ void Executor::operator()(UpdateParticipantFlagsAction const& action) {
                  .inc(paths::plan()->version()->str())
                  .precs()
                  .isEqual(planPath->participantsConfig()->generation()->str(),
-                          action._generation)
+                          action._expectedGeneration)
                  .end();
 }
 
@@ -361,8 +361,8 @@ void VelocyPacker::operator()(AddParticipantToPlanAction const& action) {
 }
 
 void VelocyPacker::operator()(RemoveParticipantFromPlanAction const& action) {
-  builder.add(VPackValue("type"));
-  builder.add(VPackValue(action.name));
+  builder.add("type", action.name);
+  builder.add("participant", action._participant);
 }
 
 void VelocyPacker::operator()(UpdateLogConfigAction const& action) {

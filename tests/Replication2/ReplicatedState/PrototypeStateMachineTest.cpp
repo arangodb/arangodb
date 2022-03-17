@@ -45,8 +45,9 @@ struct MockPrototypeLeaderInterface : public IPrototypeLeaderInterface {
       std::shared_ptr<PrototypeLeaderState> leaderState)
       : leaderState(std::move(leaderState)) {}
 
-  auto getSnapshot(LogIndex waitForIndex) -> futures::Future<
-      ResultT<std::unordered_map<std::string, std::string>>> override {
+  auto getSnapshot(GlobalLogIdentifier const&, LogIndex waitForIndex)
+      -> futures::Future<
+          ResultT<std::unordered_map<std::string, std::string>>> override {
     return leaderState->getSnapshot(waitForIndex);
   }
 
@@ -86,7 +87,7 @@ struct PrototypeStateMachineTest : test::ReplicatedLogTest {
 };
 
 TEST_F(PrototypeStateMachineTest, prorotype_core_wait_for) {
-  auto core = PrototypeCore();
+  auto core = PrototypeCore(GlobalLogIdentifier{"", LogId{1}});
   core.store = core.store.set("a", "b");
   core.lastAppliedIndex = LogIndex{1};
   auto f = core.waitForApplied(LogIndex{1});

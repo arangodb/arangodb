@@ -77,7 +77,7 @@ struct CalcCommitIndexTest : ::testing::Test {
           [participantId](auto& pst) { return pst.id == participantId; });
       ASSERT_NE(participant, std::end(participants));
       EXPECT_GE(participant->lastIndex(), expectedLogIndex);
-      EXPECT_FALSE(participant->isExcluded());
+      EXPECT_TRUE(participant->isAllowedInQuorum());
       EXPECT_EQ(participant->lastTerm(), term);
       minIndex = std::min(minIndex, participant->lastIndex());
     }
@@ -209,7 +209,7 @@ TEST_F(CalcCommitIndexTest, includes_less_quorum_size) {
   auto participants = std::vector{
       ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(50),
                        .id = "A",
-                       .flags = {.excluded = true}},
+                       .flags = {.allowedInQuorum = false}},
       ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(25),
                        .id = "B"},
       ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(35),
@@ -228,7 +228,8 @@ TEST_F(CalcCommitIndexTest, includes_less_quorum_size) {
           reason.value);
   EXPECT_EQ(details.candidates.size(), 1);
   EXPECT_EQ(details.candidates.at("A"),
-            CommitFailReason::NonEligibleServerRequiredForQuorum::kExcluded);
+            CommitFailReason::NonEligibleServerRequiredForQuorum::
+                kNotAllowedInQuorum);
 
   EXPECT_EQ(quorum.size(), 0);
   verifyQuorum(participants, quorum, expectedLogIndex);
@@ -244,7 +245,7 @@ TEST_F(CalcCommitIndexTest, excluded_and_forced) {
                        .id = "A"},
       ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(25),
                        .id = "B",
-                       .flags = {.forced = true, .excluded = true}},
+                       .flags = {.forced = true, .allowedInQuorum = false}},
       ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(35),
                        .id = "C"},
   };
@@ -267,13 +268,13 @@ TEST_F(CalcCommitIndexTest, all_excluded) {
   auto participants = std::vector{
       ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(50),
                        .id = "A",
-                       .flags = {.excluded = true}},
+                       .flags = {.allowedInQuorum = false}},
       ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(25),
                        .id = "B",
-                       .flags = {.excluded = true}},
+                       .flags = {.allowedInQuorum = false}},
       ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(35),
                        .id = "C",
-                       .flags = {.excluded = true}},
+                       .flags = {.allowedInQuorum = false}},
   };
   auto expectedLogIndex = LogIndex{1};
 
@@ -329,7 +330,7 @@ TEST_F(CalcCommitIndexTest, not_enough_eligible) {
                        .id = "B"},
       ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(50),
                        .id = "C",
-                       .flags = {.excluded = true}},
+                       .flags = {.allowedInQuorum = false}},
       ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(35),
                        .id = "D"},
       ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(15),
@@ -357,7 +358,7 @@ TEST_F(CalcCommitIndexTest, nothing_to_commit) {
                        .id = "B"},
       ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(15),
                        .id = "C",
-                       .flags = {.excluded = true}},
+                       .flags = {.allowedInQuorum = false}},
       ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(15),
                        .id = "D"},
       ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(15),
@@ -412,7 +413,7 @@ TEST_F(CalcCommitIndexTest, failed_and_forced) {
                        .id = "A"},
       ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(25),
                        .id = "B",
-                       .flags = {.forced = true, .excluded = true}},
+                       .flags = {.forced = true, .allowedInQuorum = false}},
       ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(35),
                        .id = "C"},
   };
@@ -618,10 +619,10 @@ TEST_F(CalcCommitIndexTest, who_quorum_size_not_reached) {
 
   auto who = CommitFailReason::QuorumSizeNotReached::who_type();
   who["B"] = {.isFailed = false,
-              .isExcluded = false,
+              .isAllowedInQuorum = true,
               .lastAcknowledged = participants[1].lastAckedEntry};
   who["C"] = {.isFailed = false,
-              .isExcluded = false,
+              .isAllowedInQuorum = true,
               .lastAcknowledged = participants[2].lastAckedEntry};
   auto const expected =
       CommitFailReason::withQuorumSizeNotReached(std::move(who), spearhead);
@@ -645,13 +646,13 @@ TEST_F(CalcCommitIndexTest, who_quorum_size_not_reached_multiple) {
 
   auto who = CommitFailReason::QuorumSizeNotReached::who_type();
   who["A"] = {.isFailed = false,
-              .isExcluded = false,
+              .isAllowedInQuorum = true,
               .lastAcknowledged = participants[0].lastAckedEntry};
   who["B"] = {.isFailed = false,
-              .isExcluded = false,
+              .isAllowedInQuorum = true,
               .lastAcknowledged = participants[1].lastAckedEntry};
   who["C"] = {.isFailed = false,
-              .isExcluded = false,
+              .isAllowedInQuorum = true,
               .lastAcknowledged = participants[2].lastAckedEntry};
   auto const expected =
       CommitFailReason::withQuorumSizeNotReached(std::move(who), spearhead);
@@ -666,7 +667,7 @@ TEST_F(CalcCommitIndexTest, who_forced_participant_not_in_quorum) {
                        .id = "A"},
       ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(25),
                        .id = "B",
-                       .flags = {.forced = true, .excluded = true}},
+                       .flags = {.forced = true, .allowedInQuorum = false}},
       ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(35),
                        .id = "C"},
   };
@@ -687,7 +688,7 @@ TEST_F(CalcCommitIndexTest, who_failed_excluded) {
                        .failed = true},
       ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(50),
                        .id = "B",
-                       .flags = {.excluded = true}}};
+                       .flags = {.allowedInQuorum = false}}};
 
   auto expectedLogIndex = LogIndex{25};
   auto const spearhead = createDefaultTermIndexPair(50);
@@ -696,10 +697,10 @@ TEST_F(CalcCommitIndexTest, who_failed_excluded) {
 
   auto who = CommitFailReason::QuorumSizeNotReached::who_type();
   who["A"] = {.isFailed = true,
-              .isExcluded = false,
+              .isAllowedInQuorum = true,
               .lastAcknowledged = participants[0].lastAckedEntry};
   who["B"] = {.isFailed = false,
-              .isExcluded = true,
+              .isAllowedInQuorum = false,
               .lastAcknowledged = participants[1].lastAckedEntry};
   EXPECT_EQ(index, expectedLogIndex);
   auto const expected =
@@ -713,10 +714,10 @@ TEST_F(CalcCommitIndexTest, who_all_excluded) {
   auto participants = std::vector{
       ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(25),
                        .id = "A",
-                       .flags = {.excluded = true}},
+                       .flags = {.allowedInQuorum = false}},
       ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(50),
                        .id = "B",
-                       .flags = {.excluded = true}},
+                       .flags = {.allowedInQuorum = false}},
   };
 
   auto expectedLogIndex = LogIndex{1};
@@ -725,13 +726,12 @@ TEST_F(CalcCommitIndexTest, who_all_excluded) {
       createDefaultTermIndexPair(50));
 
   EXPECT_EQ(index, expectedLogIndex);
-  EXPECT_EQ(
-      reason,
-      (CommitFailReason::withNonEligibleServerRequiredForQuorum(
-          {{"A",
-            CommitFailReason::NonEligibleServerRequiredForQuorum::kExcluded},
-           {"B",
-            CommitFailReason::NonEligibleServerRequiredForQuorum::kExcluded}})))
+  EXPECT_EQ(reason,
+            (CommitFailReason::withNonEligibleServerRequiredForQuorum(
+                {{"A", CommitFailReason::NonEligibleServerRequiredForQuorum::
+                           kNotAllowedInQuorum},
+                 {"B", CommitFailReason::NonEligibleServerRequiredForQuorum::
+                           kNotAllowedInQuorum}})))
       << "Actual: " << basics::velocypackhelper::toJson(reason);
 }
 
@@ -742,7 +742,7 @@ TEST_F(CalcCommitIndexTest, who_all_excluded_wrong_term) {
       ParticipantState{
           .lastAckedEntry = TermIndexPair{LogTerm{2}, LogIndex{50}},
           .id = "B",
-          .flags = {.excluded = true}},
+          .flags = {.allowedInQuorum = false}},
   };
 
   auto expectedLogIndex = LogIndex{1};
@@ -756,8 +756,8 @@ TEST_F(CalcCommitIndexTest, who_all_excluded_wrong_term) {
       (CommitFailReason::withNonEligibleServerRequiredForQuorum(
           {{"A",
             CommitFailReason::NonEligibleServerRequiredForQuorum::kWrongTerm},
-           {"B",
-            CommitFailReason::NonEligibleServerRequiredForQuorum::kExcluded}})))
+           {"B", CommitFailReason::NonEligibleServerRequiredForQuorum::
+                     kNotAllowedInQuorum}})))
       << "Actual: " << basics::velocypackhelper::toJson(reason);
 }
 
@@ -768,10 +768,10 @@ TEST_F(CalcCommitIndexTest, write_concern_too_big) {
                        .failed = false},
       ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(25),
                        .id = "B",
-                       .flags = {.excluded = false}},
+                       .flags = {.allowedInQuorum = true}},
       ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(15),
                        .id = "C",
-                       .flags = {.excluded = false}}};
+                       .flags = {.allowedInQuorum = true}}};
 
   auto expectedLogIndex = LogIndex{1};
   auto [index, reason, quorum] = algorithms::calculateCommitIndex(
@@ -794,7 +794,7 @@ TEST_F(CalcCommitIndexTest, who_forced_participant_in_wrong_term) {
       ParticipantState{
           .lastAckedEntry = TermIndexPair(LogTerm{1}, LogIndex{200}),
           .id = "B",
-          .flags = {.forced = true, .excluded = false}},
+          .flags = {.forced = true, .allowedInQuorum = true}},
       ParticipantState{
           .lastAckedEntry = TermIndexPair(LogTerm{2}, LogIndex{50}), .id = "C"},
   };
@@ -832,11 +832,11 @@ TEST_F(CalcCommitIndexTest, who_non_eligible_required) {
       ParticipantState{
           .lastAckedEntry = TermIndexPair{LogTerm{2}, LogIndex{50}},
           .id = "A",
-          .flags = {.excluded = true}},
+          .flags = {.allowedInQuorum = false}},
       ParticipantState{
           .lastAckedEntry = TermIndexPair{LogTerm{2}, LogIndex{25}},
           .id = "B",
-          .flags = {.excluded = true}},
+          .flags = {.allowedInQuorum = false}},
       ParticipantState{
           .lastAckedEntry = TermIndexPair{LogTerm{1}, LogIndex{15}}, .id = "C"},
       ParticipantState{
@@ -849,14 +849,13 @@ TEST_F(CalcCommitIndexTest, who_non_eligible_required) {
       TermIndexPair{LogTerm{2}, LogIndex{50}});
 
   EXPECT_EQ(index, expectedLogIndex);
-  EXPECT_EQ(
-      reason,
-      (CommitFailReason::withNonEligibleServerRequiredForQuorum(
-          {{"A",
-            CommitFailReason::NonEligibleServerRequiredForQuorum::kExcluded},
-           {"B",
-            CommitFailReason::NonEligibleServerRequiredForQuorum::kExcluded},
-           {"C", CommitFailReason::NonEligibleServerRequiredForQuorum::
-                     kWrongTerm}})))
+  EXPECT_EQ(reason,
+            (CommitFailReason::withNonEligibleServerRequiredForQuorum(
+                {{"A", CommitFailReason::NonEligibleServerRequiredForQuorum::
+                           kNotAllowedInQuorum},
+                 {"B", CommitFailReason::NonEligibleServerRequiredForQuorum::
+                           kNotAllowedInQuorum},
+                 {"C", CommitFailReason::NonEligibleServerRequiredForQuorum::
+                           kWrongTerm}})))
       << "Actual: " << basics::velocypackhelper::toJson(reason);
 }

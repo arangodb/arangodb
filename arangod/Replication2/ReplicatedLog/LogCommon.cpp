@@ -245,10 +245,12 @@ inline constexpr std::string_view NonEligibleServerRequiredForQuorumEnum =
     "NonEligibleServerRequiredForQuorum";
 inline constexpr std::string_view WhoFieldName = "who";
 inline constexpr std::string_view CandidatesFieldName = "candidates";
-inline constexpr std::string_view NonEligibleExcluded = "excluded";
+inline constexpr std::string_view NonEligibleNotAllowedInQuorum =
+    "notAllowedInQuorum";
 inline constexpr std::string_view NonEligibleWrongTerm = "wrongTerm";
 inline constexpr std::string_view IsFailedFieldName = "isFailed";
-inline constexpr std::string_view IsExcludedFieldName = "isExcluded";
+inline constexpr std::string_view IsAllowedInQuorumFieldName =
+    "isAllowedInQuorum";
 inline constexpr std::string_view LastAcknowledgedFieldName =
     "lastAcknowledged";
 inline constexpr std::string_view SpearheadFieldName = "spearhead";
@@ -317,7 +319,7 @@ auto replicated_log::CommitFailReason::QuorumSizeNotReached::ParticipantInfo::
       << s.toJson();
   return {
       .isFailed = s.get(IsFailedFieldName).getBool(),
-      .isExcluded = s.get(IsExcludedFieldName).getBool(),
+      .isAllowedInQuorum = s.get(IsAllowedInQuorumFieldName).getBool(),
       .lastAcknowledged =
           TermIndexPair::fromVelocyPack(s.get(LastAcknowledgedFieldName)),
   };
@@ -327,7 +329,7 @@ void replicated_log::CommitFailReason::QuorumSizeNotReached::ParticipantInfo::
     toVelocyPack(velocypack::Builder& builder) const {
   VPackObjectBuilder obj(&builder);
   builder.add(IsFailedFieldName, isFailed);
-  builder.add(IsExcludedFieldName, isExcluded);
+  builder.add(IsAllowedInQuorumFieldName, isAllowedInQuorum);
   {
     builder.add(VPackValue(LastAcknowledgedFieldName));
     lastAcknowledged.toVelocyPack(builder);
@@ -340,8 +342,8 @@ auto replicated_log::operator<<(
     -> std::ostream& {
   ostream << "{ ";
   ostream << std::boolalpha;
-  if (pInfo.isExcluded) {
-    ostream << "isExcluded: " << pInfo.isExcluded;
+  if (pInfo.isAllowedInQuorum) {
+    ostream << "isAllowedInQuorum: " << pInfo.isAllowedInQuorum;
   } else {
     ostream << "lastAcknowledgedEntry: " << pInfo.lastAcknowledged;
     if (pInfo.isFailed) {
@@ -390,8 +392,8 @@ auto replicated_log::CommitFailReason::NonEligibleServerRequiredForQuorum::
                   NonEligibleServerRequiredForQuorum::Why why) noexcept
     -> std::string_view {
   switch (why) {
-    case kExcluded:
-      return NonEligibleExcluded;
+    case kNotAllowedInQuorum:
+      return NonEligibleNotAllowedInQuorum;
     case kWrongTerm:
       return NonEligibleWrongTerm;
     default:
@@ -409,8 +411,8 @@ auto replicated_log::CommitFailReason::NonEligibleServerRequiredForQuorum::
   CandidateMap candidates;
   for (auto const& [key, value] :
        velocypack::ObjectIterator(s.get(CandidatesFieldName))) {
-    if (value.isEqualString(NonEligibleExcluded)) {
-      candidates[key.copyString()] = kExcluded;
+    if (value.isEqualString(NonEligibleNotAllowedInQuorum)) {
+      candidates[key.copyString()] = kNotAllowedInQuorum;
     } else if (value.isEqualString(NonEligibleWrongTerm)) {
       candidates[key.copyString()] = kWrongTerm;
     }
@@ -502,26 +504,33 @@ auto replicated_log::to_string(CommitFailReason const& r) -> std::string {
 void replication2::ParticipantFlags::toVelocyPack(
     velocypack::Builder& builder) const {
   VPackObjectBuilder ob(&builder);
-  builder.add("excluded", VPackValue(excluded));
-  builder.add("forced", VPackValue(forced));
+  builder.add("forced", forced);
+  builder.add("allowedInQuorum", allowedInQuorum);
+  builder.add("allowedAsLeader", allowedAsLeader);
 }
 
 auto replication2::ParticipantFlags::fromVelocyPack(velocypack::Slice s)
     -> ParticipantFlags {
   auto const forced = s.get("forced").isTrue();
-  auto const excluded = s.get("excluded").isTrue();
-  return ParticipantFlags{
-      forced, excluded};  // {.forced = forced, .excluded = excluded}
+  // none or true => true
+  auto allowedInQuorum = !s.get("allowedInQuorum").isFalse();
+  auto allowedAsLeader = !s.get("allowedAsLeader").isFalse();
+  return ParticipantFlags{.forced = forced,
+                          .allowedInQuorum = allowedInQuorum,
+                          .allowedAsLeader = allowedAsLeader};
 }
 
 auto replication2::operator<<(std::ostream& os, ParticipantFlags const& f)
     -> std::ostream& {
   os << "{ ";
-  if (f.excluded) {
-    os << "excluded ";
-  }
   if (f.forced) {
     os << "forced ";
+  }
+  if (f.allowedAsLeader) {
+    os << "allowedAsLeader ";
+  }
+  if (f.allowedInQuorum) {
+    os << "allowedInQuorum ";
   }
   return os << "}";
 }
@@ -565,3 +574,6 @@ void replicated_log::CommitFailReason::FewerParticipantsThanWriteConcern::
   builder.add(StaticStrings::SoftWriteConcern, softWriteConcern);
   builder.add(StaticStrings::EffectiveWriteConcern, effectiveWriteConcern);
 }
+
+GlobalLogIdentifier::GlobalLogIdentifier(std::string database, LogId id)
+    : database(std::move(database)), id(id) {}

@@ -109,7 +109,9 @@ struct PrototypeCore {
   // TODO move outside
   WaitForAppliedQueue waitForAppliedQueue;
   LogIndex lastAppliedIndex;
+  GlobalLogIdentifier logId;
 
+  explicit PrototypeCore(GlobalLogIdentifier logId);
   template<typename EntryIterator>
   void applyEntries(std::unique_ptr<EntryIterator> ptr);
 
@@ -221,8 +223,10 @@ auto PrototypeLeaderState::remove(Iterator begin, Iterator end)
 
 struct IPrototypeLeaderInterface {
   virtual ~IPrototypeLeaderInterface() = default;
-  virtual auto getSnapshot(LogIndex waitForIndex) -> futures::Future<
-      ResultT<std::unordered_map<std::string, std::string>>> = 0;
+  virtual auto getSnapshot(GlobalLogIdentifier const& logId,
+                           LogIndex waitForIndex)
+      -> futures::Future<
+          ResultT<std::unordered_map<std::string, std::string>>> = 0;
 };
 
 struct IPrototypeNetworkInterface {
@@ -249,6 +253,7 @@ struct PrototypeFollowerState
   auto get(std::string key) -> std::optional<std::string>;
   auto dumpContent() -> std::unordered_map<std::string, std::string>;
 
+  GlobalLogIdentifier const logIdentifier;
   Guarded<std::unique_ptr<PrototypeCore>, basics::UnshackledMutex> guardedData;
   std::shared_ptr<IPrototypeNetworkInterface> const networkInterface;
 };
@@ -260,6 +265,8 @@ struct PrototypeFactory {
       -> std::shared_ptr<PrototypeFollowerState>;
   auto constructLeader(std::unique_ptr<PrototypeCore> core)
       -> std::shared_ptr<PrototypeLeaderState>;
+  auto constructCore(GlobalLogIdentifier const&)
+      -> std::unique_ptr<PrototypeCore>;
 
   std::shared_ptr<IPrototypeNetworkInterface> const networkInterface;
 };

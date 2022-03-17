@@ -83,6 +83,9 @@ auto PrototypeCore::waitForApplied(LogIndex index)
   return f;
 }
 
+PrototypeCore::PrototypeCore(GlobalLogIdentifier logId)
+    : logId(std::move(logId)) {}
+
 PrototypeLeaderState::PrototypeLeaderState(std::unique_ptr<PrototypeCore> core)
     : guardedData(std::move(core)) {}
 
@@ -225,7 +228,8 @@ auto PrototypeLeaderState::getSnapshot(LogIndex waitForIndex)
 PrototypeFollowerState::PrototypeFollowerState(
     std::unique_ptr<PrototypeCore> core,
     std::shared_ptr<IPrototypeNetworkInterface> networkInterface)
-    : guardedData(std::move(core)),
+    : logIdentifier(core->logId),
+      guardedData(std::move(core)),
       networkInterface(std::move(networkInterface)) {}
 
 auto PrototypeFollowerState::acquireSnapshot(ParticipantId const& destination,
@@ -236,7 +240,7 @@ auto PrototypeFollowerState::acquireSnapshot(ParticipantId const& destination,
     return leader.result();
   }
   return leader.get()
-      ->getSnapshot(waitForIndex)
+      ->getSnapshot(logIdentifier, waitForIndex)
       .thenValue([self = shared_from_this()](auto&& result) -> Result {
         if (result.fail()) {
           return result.result();
@@ -308,6 +312,11 @@ auto PrototypeFactory::constructLeader(std::unique_ptr<PrototypeCore> core)
 PrototypeFactory::PrototypeFactory(
     std::shared_ptr<IPrototypeNetworkInterface> networkInterface)
     : networkInterface(std::move(networkInterface)) {}
+
+auto PrototypeFactory::constructCore(GlobalLogIdentifier const& gid)
+    -> std::unique_ptr<PrototypeCore> {
+  return std::make_unique<PrototypeCore>(gid);
+}
 
 auto replicated_state::EntryDeserializer<
     replicated_state::prototype::PrototypeLogEntry>::

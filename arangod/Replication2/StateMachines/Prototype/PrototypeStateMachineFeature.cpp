@@ -41,13 +41,14 @@ class PrototypeLeaderInterface : public IPrototypeLeaderInterface {
                            network::ConnectionPool* pool)
       : participantId(std::move(participantId)), pool(pool){};
 
-  auto getSnapshot(LogIndex waitForIndex) -> futures::Future<
-      ResultT<std::unordered_map<std::string, std::string>>> override {
-    auto path = basics::StringUtils::joinT("/", "_api/prototype-state", logId,
-                                           "snapshot");
+  auto getSnapshot(GlobalLogIdentifier const& logId, LogIndex waitForIndex)
+      -> futures::Future<
+          ResultT<std::unordered_map<std::string, std::string>>> override {
+    auto path = basics::StringUtils::joinT("/", "_api/prototype-state",
+                                           logId.id, "snapshot");
     network::RequestOptions opts;
     // TODO add functionality when other databases available
-    opts.database = "replication2_prototype_state_test_db";
+    opts.database = logId.database;
     opts.param("waitForIndex", std::to_string(waitForIndex.value));
 
     return network::sendRequest(pool, "server:" + participantId,
@@ -78,7 +79,6 @@ class PrototypeLeaderInterface : public IPrototypeLeaderInterface {
 
  private:
   ParticipantId participantId;
-  LogId logId = LogId{12};
   network::ConnectionPool* pool;
 };
 

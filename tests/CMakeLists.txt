@@ -268,12 +268,14 @@ set(ARANGODB_TESTS_SOURCES
   Network/UtilsTest.cpp
   Pregel/typedbuffer.cpp
   Replication/ReplicationClientsProgressTrackerTest.cpp
+  Rest/PathMatchTest.cpp
   RestHandler/RestAnalyzerHandlerTest.cpp
   RestHandler/RestDocumentHandlerTest.cpp
   RestHandler/RestUsersHandlerTest.cpp
   RestHandler/RestViewHandlerTest.cpp
   RestHandler/VstResponseTest.cpp
   RestServer/FlushFeatureTest.cpp
+  RestServer/LanguageFeatureTest.cpp
   Restore/CollectionRestoreOrder.cpp
   RocksDBEngine/Endian.cpp
   RocksDBEngine/KeyTest.cpp
@@ -346,15 +348,12 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/ReplicatedLog/UpdateReplicatedLogTests.cpp
   Replication2/ReplicatedLog/WaitForSyncTest.cpp
   Replication2/ReplicatedLog/InMemoryLogTest.cpp
-  Replication2/ReplicatedState/AbstractStateMachinePollTest.cpp
   Replication2/ReplicatedState/FollowerSnapshotTest.cpp
   Replication2/ReplicatedState/FollowerWaitForTest.cpp
   Replication2/ReplicatedState/LeaderRecoveryTest.cpp
   Replication2/ReplicatedState/PrototypeStateMachineTest.cpp
   Replication2/ReplicatedState/ReplicatedStateFeatureTest.cpp
   Replication2/ReplicatedState/ReplicatedStateTest.cpp
-  Replication2/ReplicatedState/StateMachineTestHelper.cpp
-  Replication2/ReplicatedState/StateMachineTestHelper.h
   Replication2/ReplicatedState/StateMachines/MyStateMachine.cpp
   Replication2/Mocks/PersistedLog.cpp
   Replication2/Mocks/PersistedLog.h
