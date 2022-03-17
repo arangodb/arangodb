@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 200 */
-/* global assertEqual, assertNotEqual, arango */
+/* global assertTrue, assertEqual, assertNotEqual, arango */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief queries for all databases tests
@@ -107,6 +107,8 @@ function optimizerRulesSuite() {
       let response = arango.GET("/_api/query/rules");
       let clusterOnlyRules = expectedRules.filter(rule => rule.flags.clusterOnly === true);
       let nonClusterOnlyRules = expectedRules.filter(rule => rule.flags.clusterOnly === false);
+      assertTrue(clusterOnlyRules.length > 0);
+      assertTrue(nonClusterOnlyRules.length > 0);
       nonClusterOnlyRules.forEach(nonClusterRule => {
         const index = response.findIndex(rule => rule.name === nonClusterRule.name);
         assertNotEqual(index, -1);
