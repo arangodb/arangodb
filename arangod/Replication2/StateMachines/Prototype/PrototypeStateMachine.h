@@ -217,6 +217,8 @@ struct PrototypeFollowerState : IReplicatedFollowerState<PrototypeState> {
   auto applyEntries(std::unique_ptr<EntryIterator> ptr) noexcept
       -> futures::Future<Result> override;
 
+  auto get(std::string key) -> std::optional<std::string>;
+
   Guarded<std::unique_ptr<PrototypeCore>, basics::UnshackledMutex> guardedData;
 };
 
@@ -225,6 +227,8 @@ struct PrototypeFactory {
       -> std::shared_ptr<PrototypeFollowerState>;
   auto constructLeader(std::unique_ptr<PrototypeCore> core)
       -> std::shared_ptr<PrototypeLeaderState>;
+  auto constructCore(GlobalLogIdentifier const&)
+      -> std::unique_ptr<PrototypeCore>;
 };
 
 }  // namespace prototype

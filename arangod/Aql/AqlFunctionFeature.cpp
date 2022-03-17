@@ -372,6 +372,7 @@ void AqlFunctionFeature::addDocumentFunctions() {
   add({"UNSET", ".,.|+", flags, &Functions::Unset});
   add({"UNSET_RECURSIVE", ".,.|+", flags, &Functions::UnsetRecursive});
   add({"KEEP", ".,.|+", flags, &Functions::Keep});
+  add({"KEEP_RECURSIVE", ".,.|+", flags, &Functions::KeepRecursive});
   add({"TRANSLATE", ".,.|.", flags, &Functions::Translate});
   add({"ZIP", ".,.", flags, &Functions::Zip});
   add({"JSON_STRINGIFY", ".", flags, &Functions::JsonStringify});

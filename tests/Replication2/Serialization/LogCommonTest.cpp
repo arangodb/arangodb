@@ -70,7 +70,7 @@ TEST(LogCommonTest, commit_fail_reason) {
   reason = CommitFailReason::withQuorumSizeNotReached(
       {{"PRMR-1234",
         {.isFailed = false,
-         .isExcluded = true,
+         .isAllowedInQuorum = false,
          .lastAcknowledged = TermIndexPair(LogTerm(1), LogIndex(2))}}},
       TermIndexPair(LogTerm(3), LogIndex(4)));
   reason.toVelocyPack(builder);
