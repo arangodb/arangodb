@@ -1783,7 +1783,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
         std::move(outNonMaterializedViewRegs),
         _options.countApproximate,
         filterOptimization(),
-        _scorersSort, _scorersSortLimit};
+        _scorersSort, _scoresSortLimit};
 
     return std::make_tuple(materializeType, std::move(executorInfos),
                            std::move(registerInfos));

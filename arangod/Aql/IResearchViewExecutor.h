@@ -94,7 +94,7 @@ class IResearchViewExecutorInfos {
       iresearch::IResearchViewNode::ViewValuesRegisters&&
           outNonMaterializedViewRegs,
       iresearch::CountApproximate, iresearch::FilterOptimization,
-      std::vector<std::pair<size_t, bool>> scorersSort, size_t scorersSortLimit);
+      std::vector<std::pair<size_t, bool>> scoresSort, size_t scoresSortLimit);
 
   auto getDocumentRegister() const noexcept -> RegisterId;
   auto getCollectionRegister() const noexcept -> RegisterId;
@@ -131,11 +131,11 @@ class IResearchViewExecutorInfos {
 
   iresearch::IResearchViewStoredValues const& storedValues() const noexcept;
 
-  size_t scorersSortLimit() const noexcept {
-    return _scorersSortLimit;
+  size_t scoresSortLimit() const noexcept {
+    return _scoresSortLimit;
   }
 
-   std::vector<std::pair<size_t, bool>> const& scorersSort() const noexcept {
+   std::vector<std::pair<size_t, bool>> const& scoresSort() const noexcept {
     return _scorersSort;
   }
 
@@ -160,7 +160,7 @@ class IResearchViewExecutorInfos {
   bool _filterConditionIsEmpty;
   iresearch::FilterOptimization _filterOptimization;
   std::vector<std::pair<size_t, bool>> _scorersSort;
-  size_t _scorersSortLimit;
+  size_t _scoresSortLimit;
 };  // IResearchViewExecutorInfos
 
 class IResearchViewStats {
@@ -222,15 +222,15 @@ class IndexReadBufferEntry {
 
 class ScoreIterator {
  public:
-  ScoreIterator(std::vector<AqlValueHintDouble>& scoreBuffer, size_t keyIdx,
+  ScoreIterator(std::vector<double>& scoreBuffer, size_t keyIdx,
                 size_t numScores) noexcept;
 
-  std::vector<AqlValueHintDouble>::iterator begin() noexcept;
+  std::vector<double>::iterator begin() noexcept;
 
-  std::vector<AqlValueHintDouble>::iterator end() noexcept;
+  std::vector<double>::iterator end() noexcept;
 
  private:
-  std::vector<AqlValueHintDouble>& _scoreBuffer;
+  std::vector<double>& _scoreBuffer;
   size_t _scoreBaseIdx;
   size_t _numScores;
 };
@@ -239,14 +239,25 @@ class ScoreIterator {
 template<typename ValueType, bool copyStored>
 class IndexReadBuffer {
  public:
+
+  using KeyValueType = ValueType;
+
   explicit IndexReadBuffer(size_t numScoreRegisters);
 
   ValueType const& getValue(IndexReadBufferEntry bufferEntry) const noexcept;
 
   ScoreIterator getScores(IndexReadBufferEntry bufferEntry) noexcept;
 
+  void setScoresSort(std::vector<std::pair<size_t, bool>> const* s) noexcept {
+    _scoresSort = s;
+  }
+
   template<typename... Args>
   void pushValue(Args&&... args);
+
+  bool operator()(size_t const& a, size_t const& b) const;
+
+  void pushSortedValue(ValueType&& value, float_t const* scores, size_t count);
 
   // A note on the scores: instead of saving an array of AqlValues, we could
   // save an array of floats plus a bitfield noting which entries should be
@@ -276,6 +287,7 @@ class IndexReadBuffer {
       _scoreBuffer.reserve(atMost * scores);
       _storedValuesBuffer.reserve(atMost * stored);
     }
+    _maxSize = atMost;
   }
 
   void pushStoredValue(irs::bytes_ref value) {
@@ -301,10 +313,19 @@ class IndexReadBuffer {
   // .
 
   std::vector<ValueType> _keyBuffer;
-  std::vector<AqlValueHintDouble> _scoreBuffer;
+  std::vector<double> _scoreBuffer;
   StoredValuesContainer _storedValuesBuffer;
+
   size_t _numScoreRegisters;
   size_t _keyBaseIdx;
+
+  // sorting
+  template<typename RhsType>
+  bool compareInput(size_t lhsIdx, RhsType const* rhs_scores) const noexcept;
+
+  std::vector<std::pair<size_t, bool>> const* _scoresSort;
+  std::vector<size_t> _rows;
+  size_t _maxSize;
 };  // IndexReadBuffer
 
 template<typename Impl>
@@ -520,7 +541,7 @@ template<bool copyStored, bool ordered,
          iresearch::MaterializeType materializeType>
 struct IResearchViewExecutorTraits<
     IResearchViewExecutor<copyStored, ordered, materializeType>> {
-  using IndexBufferValueType = LocalDocumentId;
+  using IndexBufferValueType = std::pair<LocalDocumentId, LogicalCollection const*>;
   static constexpr bool Ordered = ordered;
   static constexpr iresearch::MaterializeType MaterializeType = materializeType;
   static constexpr bool CopyStored = copyStored;

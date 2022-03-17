@@ -205,7 +205,7 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
 
   void setScorersSort(std::vector<std::pair<size_t, bool>>&& sort, size_t limit) {
     _scorersSort = sort;
-    _scorersSortLimit = limit;
+    _scoresSortLimit = limit;
   }
 
   /// @brief creates corresponding ExecutionBlock
@@ -364,7 +364,7 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
 
   /// @brief internal order for scorers
   std::vector<std::pair<size_t, bool>> _scorersSort;
-  size_t _scorersSortLimit;
+  size_t _scoresSortLimit;
 };  // IResearchViewNode
 
 }  // namespace iresearch

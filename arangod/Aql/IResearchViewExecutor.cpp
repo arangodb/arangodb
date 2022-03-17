@@ -157,7 +157,7 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
     IResearchViewNode::ViewValuesRegisters&& outNonMaterializedViewRegs,
     iresearch::CountApproximate countApproximate,
     iresearch::FilterOptimization filterOptimization,
-    std::vector<std::pair<size_t, bool>> scorersSort, size_t scorersSortLimit)
+    std::vector<std::pair<size_t, bool>> scoresSort, size_t scoresSortLimit)
     : _scoreRegisters(std::move(scoreRegisters)),
       _reader(std::move(reader)),
       _query(query),
@@ -175,8 +175,8 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
       _outNonMaterializedViewRegs(std::move(outNonMaterializedViewRegs)),
       _countApproximate(countApproximate),
       _filterConditionIsEmpty(::filterConditionIsEmpty(&_filterCondition)),
-      _filterOptimization(filterOptimization), _scorersSort(std::move(scorersSort)),
-      _scorersSortLimit(scorersSortLimit) {
+      _filterOptimization(filterOptimization), _scorersSort(std::move(scoresSort)),
+      _scoresSortLimit(scoresSortLimit) {
   TRI_ASSERT(_reader != nullptr);
   std::tie(_documentOutReg, _collectionPointerReg) = std::visit(
       overload{
@@ -320,7 +320,7 @@ IResearchViewExecutorBase<Impl, Traits>::ReadContext::ReadContext(
 IndexReadBufferEntry::IndexReadBufferEntry(size_t keyIdx) noexcept
     : _keyIdx(keyIdx) {}
 
-ScoreIterator::ScoreIterator(std::vector<AqlValueHintDouble>& scoreBuffer,
+ScoreIterator::ScoreIterator(std::vector<double>& scoreBuffer,
                              size_t keyIdx, size_t numScores) noexcept
     : _scoreBuffer(scoreBuffer),
       _scoreBaseIdx(keyIdx * numScores),
@@ -328,11 +328,11 @@ ScoreIterator::ScoreIterator(std::vector<AqlValueHintDouble>& scoreBuffer,
   TRI_ASSERT(_scoreBaseIdx + _numScores <= _scoreBuffer.size());
 }
 
-std::vector<AqlValueHintDouble>::iterator ScoreIterator::begin() noexcept {
+std::vector<double>::iterator ScoreIterator::begin() noexcept {
   return _scoreBuffer.begin() + static_cast<ptrdiff_t>(_scoreBaseIdx);
 }
 
-std::vector<AqlValueHintDouble>::iterator ScoreIterator::end() noexcept {
+std::vector<double>::iterator ScoreIterator::end() noexcept {
   return _scoreBuffer.begin() +
          static_cast<ptrdiff_t>(_scoreBaseIdx + _numScores);
 }
@@ -340,7 +340,7 @@ std::vector<AqlValueHintDouble>::iterator ScoreIterator::end() noexcept {
 template<typename ValueType, bool copyStored>
 IndexReadBuffer<ValueType, copyStored>::IndexReadBuffer(
     size_t const numScoreRegisters)
-    : _numScoreRegisters(numScoreRegisters), _keyBaseIdx(0) {}
+  : _numScoreRegisters(numScoreRegisters), _keyBaseIdx(0), _maxSize(0) {}
 
 template<typename ValueType, bool copyStored>
 ValueType const& IndexReadBuffer<ValueType, copyStored>::getValue(
@@ -361,6 +361,59 @@ template<typename ValueType, bool copySorted>
 template<typename... Args>
 void IndexReadBuffer<ValueType, copySorted>::pushValue(Args&&... args) {
   _keyBuffer.emplace_back(std::forward<Args>(args)...);
+}
+
+template<typename ValueType, bool copySorted>
+bool IndexReadBuffer<ValueType, copySorted>::operator()(size_t const& a, size_t const& b) const {
+  auto const* rhs_scores = &_scoreBuffer[b * _numScoreRegisters];
+  return compareInput(a, rhs_scores);
+}
+
+template<typename ValueType, bool copySorted>
+template<typename RhsType>
+bool IndexReadBuffer<ValueType, copySorted>::compareInput(
+    size_t lhsIdx, RhsType const* rhs_scores) const noexcept {
+  auto lhs_scores = &_scoreBuffer[lhsIdx * _numScoreRegisters];
+  for (auto const& cmp : *_scoresSort) {
+    if (lhs_scores[cmp.first] != rhs_scores[cmp.first]) {
+      return cmp.second ? lhs_scores[cmp.first] < rhs_scores[cmp.first]
+                        : lhs_scores[cmp.first] > rhs_scores[cmp.first];
+    }
+  }
+  return false;
+}
+
+template<typename ValueType, bool copySorted>
+void IndexReadBuffer<ValueType, copySorted>::pushSortedValue(ValueType&& value, float_t const* scores, size_t count) {
+  if (_maxSize <= _rows.size()) {
+    if (!compareInput(_rows.front(), scores)) {
+      return; // not interested in this document
+    }
+    std::pop_heap(_rows.begin(), _rows.end(), *this);
+    // now last contains "free" index in the buffer
+    _keyBuffer[_rows.back()] = std::move(value);
+    auto const base = _rows.back() * _numScoreRegisters;
+    size_t i = 0;
+    for (; i < count; ++i) {
+      _scoreBuffer[base + i] = static_cast<double>(scores[i]);
+    }
+    while (i < _numScoreRegisters) {
+      _scoreBuffer[base + i] = std::numeric_limits<double>::quiet_NaN();
+      ++i;
+    }
+  } else {
+    _keyBuffer.push_back(std::move(value));
+    size_t i = 0;
+    for (; i < count; ++i) {
+      _scoreBuffer.emplace_back(static_cast<double>(scores[i]));
+    }
+    while (i < _numScoreRegisters) {
+      _scoreBuffer.emplace_back(std::numeric_limits<double>::quiet_NaN());
+      ++i;
+    }
+    _rows.push_back(_rows.size());
+  }
+  std::push_heap(_rows.begin(), _rows.end(), *this);
 }
 
 template<typename ValueType, bool copyStored>
@@ -388,6 +441,7 @@ void IndexReadBuffer<ValueType, copyStored>::reset() noexcept {
   _keyBuffer.clear();
   _scoreBuffer.clear();
   _storedValuesBuffer.clear();
+  _rows.clear();
 }
 
 template<typename ValueType, bool copyStored>
@@ -407,7 +461,13 @@ IndexReadBuffer<ValueType, copyStored>::pop_front() noexcept {
   TRI_ASSERT(!empty());
   TRI_ASSERT(_keyBaseIdx < _keyBuffer.size());
   assertSizeCoherence();
-  IndexReadBufferEntry entry{_keyBaseIdx};
+  size_t key = _keyBaseIdx;
+  if (!_rows.empty()) {
+    std::pop_heap(_rows.begin(), _rows.end(), *this);
+    key = _rows.back();
+    _rows.pop_back();
+  }
+  IndexReadBufferEntry entry{key};
   ++_keyBaseIdx;
   return entry;
 }
@@ -753,7 +813,8 @@ bool IResearchViewExecutorBase<Impl, Traits>::writeRow(
     auto scoreRegIter = scoreRegisters.begin();
     for (auto const& it : _indexReadBuffer.getScores(bufferEntry)) {
       TRI_ASSERT(scoreRegIter != scoreRegisters.end());
-      ctx.outputRow.moveValueInto(*scoreRegIter, ctx.inputRow, it);
+      auto const val = AqlValueHintDouble(it);
+      ctx.outputRow.moveValueInto(*scoreRegIter, ctx.inputRow, val);
       ++scoreRegIter;
     }
 
@@ -855,7 +916,8 @@ IResearchViewExecutor<copyStored, ordered,
       _scr(&irs::score::no_score()),
       _numScores(0) {
   this->_storedValuesReaders.resize(
-      this->_infos.getOutNonMaterializedViewRegs().size());
+     this->_infos.getOutNonMaterializedViewRegs().size());
+  this->_indexReadBuffer.setScoresSort(&this->_infos.scoresSort());
 }
 
 template<bool copyStored, bool ordered, MaterializeType materializeType>
@@ -907,64 +969,84 @@ void IResearchViewExecutor<copyStored, ordered, materializeType>::fillBuffer(
     IResearchViewExecutor::ReadContext& ctx) {
   TRI_ASSERT(this->_filter != nullptr);
 
-  size_t const atMost = ctx.outputRow.numRowsLeft();
-  TRI_ASSERT(this->_indexReadBuffer.empty());
-  this->_indexReadBuffer.reset();
-  this->_indexReadBuffer.preAllocateStoredValuesBuffer(
-      atMost, this->_infos.getScoreRegisters().size(),
-      this->_infos.getOutNonMaterializedViewRegs().size());
-  size_t const count = this->_reader->size();
+  if (!this->_infos.scoresSort().empty())
+  {
+    size_t const atMost = this->_infos.scoresSortLimit();
+    TRI_ASSERT(this->_indexReadBuffer.empty());
+    this->_indexReadBuffer.reset();
+    this->_indexReadBuffer.preAllocateStoredValuesBuffer(
+        atMost, this->_infos.getScoreRegisters().size(),
+        this->_infos.getOutNonMaterializedViewRegs().size());
+    size_t const count = this->_reader->size();
 
-  for (; _readerOffset < count;) {
-    if (!_itr) {
-      if (!this->_indexReadBuffer.empty()) {
-        // We may not reset the iterator and continue with the next reader if we
-        // still have documents in the buffer, as the cid changes with each
-        // reader.
-        break;
+    for (; _readerOffset < count;) {
+      if (!_itr) {
+        if (!resetIterator()) {
+          continue;
+        }
+
+        // CID is constant until the next resetIterator(). Save the
+        // corresponding collection so we don't have to look it up every time.
+
+        DataSourceId const cid = this->_reader->cid(_readerOffset);
+        aql::QueryContext& query = this->_infos.getQuery();
+        auto collection = lookupCollection(this->_trx, cid, query);
+
+        if (!collection) {
+          std::stringstream msg;
+          msg << "failed to find collection while reading document from "
+                 "arangosearch view, cid '"
+              << cid.id() << "'";
+          query.warnings().registerWarning(
+              TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, msg.str());
+
+          // We don't have a collection, skip the current reader.
+          ++_readerOffset;
+          _currentSegmentPos = 0;
+          _itr.reset();
+          _doc = nullptr;
+          continue;
+        }
+        _collection = collection.get();
       }
 
-      if (!resetIterator()) {
+      TRI_ASSERT(_pkReader.itr);
+      TRI_ASSERT(_pkReader.value);
+
+      LocalDocumentId documentId;
+
+      // try to read a document PK from iresearch
+      bool const iteratorExhausted = !readPK(documentId);
+
+      if (!documentId.isSet()) {
+        // No document read, we cannot write it.
+
+        if (iteratorExhausted) {
+          // The iterator is exhausted, we need to continue with the next
+          // reader.
+          ++_readerOffset;
+          _currentSegmentPos = 0;
+          _itr.reset();
+          _doc = nullptr;
+        }
         continue;
       }
 
-      // CID is constant until the next resetIterator(). Save the corresponding
-      // collection so we don't have to look it up every time.
+      // The CID must stay the same for all documents in the buffer
+      TRI_ASSERT(this->_collection->id() == this->_reader->cid(_readerOffset));
+      auto scoresBegin = reinterpret_cast<float_t const*>(_scr->evaluate());
 
-      DataSourceId const cid = this->_reader->cid(_readerOffset);
-      aql::QueryContext& query = this->_infos.getQuery();
-      auto collection = lookupCollection(this->_trx, cid, query);
+      this->_indexReadBuffer.pushSortedValue(typename decltype(this->_indexReadBuffer)::KeyValueType(documentId, this->_collection),
+                                             scoresBegin, _numScores);
 
-      if (!collection) {
-        std::stringstream msg;
-        msg << "failed to find collection while reading document from "
-               "arangosearch view, cid '"
-            << cid.id() << "'";
-        query.warnings().registerWarning(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                                         msg.str());
-
-        // We don't have a collection, skip the current reader.
-        ++_readerOffset;
-        _currentSegmentPos = 0;
-        _itr.reset();
-        _doc = nullptr;
-        continue;
-      }
-
-      _collection = collection.get();
-      this->_indexReadBuffer.reset();
-    }
-
-    TRI_ASSERT(_pkReader.itr);
-    TRI_ASSERT(_pkReader.value);
-
-    LocalDocumentId documentId;
-
-    // try to read a document PK from iresearch
-    bool const iteratorExhausted = !readPK(documentId);
-
-    if (!documentId.isSet()) {
-      // No document read, we cannot write it.
+      // TODO  (Dronplane) Handle stored values somehow (don`t read/store rejected by heap!
+      //if constexpr ((materializeType & MaterializeType::UseStoredValues) ==
+      //              MaterializeType::UseStoredValues) {
+      //  TRI_ASSERT(_doc);
+      //  this->pushStoredValues(*_doc);
+      //}
+      // doc and scores are both pushed, sizes must now be coherent
+      this->_indexReadBuffer.assertSizeCoherence();
 
       if (iteratorExhausted) {
         // The iterator is exhausted, we need to continue with the next reader.
@@ -973,41 +1055,114 @@ void IResearchViewExecutor<copyStored, ordered, materializeType>::fillBuffer(
         _itr.reset();
         _doc = nullptr;
       }
-      continue;
+      if (this->_indexReadBuffer.size() >= atMost) {
+        break;
+      }
     }
+  } else {
+    size_t const atMost = ctx.outputRow.numRowsLeft();
+    TRI_ASSERT(this->_indexReadBuffer.empty());
+    this->_indexReadBuffer.reset();
+    this->_indexReadBuffer.preAllocateStoredValuesBuffer(
+        atMost, this->_infos.getScoreRegisters().size(),
+        this->_infos.getOutNonMaterializedViewRegs().size());
+    size_t const count = this->_reader->size();
 
-    // The CID must stay the same for all documents in the buffer
-    TRI_ASSERT(this->_collection->id() == this->_reader->cid(_readerOffset));
+    for (; _readerOffset < count;) {
+      if (!_itr) {
+        if (!this->_indexReadBuffer.empty()) {
+          // We may not reset the iterator and continue with the next reader if
+          // we still have documents in the buffer, as the cid changes with each
+          // reader.
+          break;
+        }
 
-    this->_indexReadBuffer.pushValue(documentId);
+        if (!resetIterator()) {
+          continue;
+        }
 
-    // in the ordered case we have to write scores as well as a document
-    if constexpr (ordered) {
-      // Writes into _scoreBuffer
-      evaluateScores(ctx);
-    }
+        // CID is constant until the next resetIterator(). Save the
+        // corresponding collection so we don't have to look it up every time.
 
-    if constexpr ((materializeType & MaterializeType::UseStoredValues) ==
-                  MaterializeType::UseStoredValues) {
-      TRI_ASSERT(_doc);
-      this->pushStoredValues(*_doc);
-    }
-    // doc and scores are both pushed, sizes must now be coherent
-    this->_indexReadBuffer.assertSizeCoherence();
+        DataSourceId const cid = this->_reader->cid(_readerOffset);
+        aql::QueryContext& query = this->_infos.getQuery();
+        auto collection = lookupCollection(this->_trx, cid, query);
 
-    if (iteratorExhausted) {
-      // The iterator is exhausted, we need to continue with the next reader.
-      ++_readerOffset;
-      _currentSegmentPos = 0;
-      _itr.reset();
-      _doc = nullptr;
+        if (!collection) {
+          std::stringstream msg;
+          msg << "failed to find collection while reading document from "
+                 "arangosearch view, cid '"
+              << cid.id() << "'";
+          query.warnings().registerWarning(
+              TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, msg.str());
 
-      // Here we have at least one document in _indexReadBuffer, so we may not
-      // add documents from a new reader.
-      break;
-    }
-    if (this->_indexReadBuffer.size() >= atMost) {
-      break;
+          // We don't have a collection, skip the current reader.
+          ++_readerOffset;
+          _currentSegmentPos = 0;
+          _itr.reset();
+          _doc = nullptr;
+          continue;
+        }
+
+        _collection = collection.get();
+        this->_indexReadBuffer.reset();
+      }
+
+      TRI_ASSERT(_pkReader.itr);
+      TRI_ASSERT(_pkReader.value);
+
+      LocalDocumentId documentId;
+
+      // try to read a document PK from iresearch
+      bool const iteratorExhausted = !readPK(documentId);
+
+      if (!documentId.isSet()) {
+        // No document read, we cannot write it.
+
+        if (iteratorExhausted) {
+          // The iterator is exhausted, we need to continue with the next
+          // reader.
+          ++_readerOffset;
+          _currentSegmentPos = 0;
+          _itr.reset();
+          _doc = nullptr;
+        }
+        continue;
+      }
+
+      // The CID must stay the same for all documents in the buffer
+      TRI_ASSERT(this->_collection->id() == this->_reader->cid(_readerOffset));
+
+      this->_indexReadBuffer.pushValue(documentId, this->_collection);
+
+      // in the ordered case we have to write scores as well as a document
+      if constexpr (ordered) {
+        // Writes into _scoreBuffer
+        evaluateScores(ctx);
+      }
+
+      if constexpr ((materializeType & MaterializeType::UseStoredValues) ==
+                    MaterializeType::UseStoredValues) {
+        TRI_ASSERT(_doc);
+        this->pushStoredValues(*_doc);
+      }
+      // doc and scores are both pushed, sizes must now be coherent
+      this->_indexReadBuffer.assertSizeCoherence();
+
+      if (iteratorExhausted) {
+        // The iterator is exhausted, we need to continue with the next reader.
+        ++_readerOffset;
+        _currentSegmentPos = 0;
+        _itr.reset();
+        _doc = nullptr;
+
+        // Here we have at least one document in _indexReadBuffer, so we may not
+        // add documents from a new reader.
+        break;
+      }
+      if (this->_indexReadBuffer.size() >= atMost) {
+        break;
+      }
     }
   }
 }
@@ -1170,9 +1325,10 @@ bool IResearchViewExecutor<copyStored, ordered, materializeType>::writeRow(
     IResearchViewExecutor::ReadContext& ctx, IndexReadBufferEntry bufferEntry) {
   TRI_ASSERT(_collection);
 
+  auto const& val = this->_indexReadBuffer.getValue(bufferEntry);
   return Base::writeRow(ctx, bufferEntry,
-                        this->_indexReadBuffer.getValue(bufferEntry),
-                        *_collection);
+                        val.first,
+                        *val.second);
 }
 
 ///////////////////////////////////////////////////////////////////////////////

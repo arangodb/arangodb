@@ -217,6 +217,7 @@ bool optimizeSearchCondition(IResearchViewNode& viewNode,
   return true;
 }
 
+// TODO (Dronplane) Do NOT apply if there is fullcount!
 bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
   auto current = static_cast<ExecutionNode*>(&viewNode);
   auto const& scorers = viewNode.scorers();
@@ -252,7 +253,7 @@ bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
   }
   // we've found all we need
   auto const& sortElements = sortNode->elements();
-  std::vector<std::pair<size_t, bool>> scorersSort;
+  std::vector<std::pair<size_t, bool>> scoresSort;
   for (auto const& sort : sortElements) {
     /// TODO  - extract as func?
     TRI_ASSERT(sort.var);
@@ -281,10 +282,10 @@ bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
     if (s == scorers.end()) {
       return false;
     }
-    scorersSort.emplace_back(std::distance(scorers.begin(), s), sort.ascending);
+    scoresSort.emplace_back(std::distance(scorers.begin(), s), sort.ascending);
   }
   // all sort elements are covered by view's scorers
-  viewNode.setScorersSort(std::move(scorersSort), limitNode->offset() + limitNode->limit());
+  viewNode.setScorersSort(std::move(scoresSort), limitNode->offset() + limitNode->limit());
   sortNode->_reinsertInCluster = false;
   if (!arangodb::ServerState::instance()->isCoordinator()) {
     // in cluster node will be unlinked later by 'distributeSortToClusterRule'
