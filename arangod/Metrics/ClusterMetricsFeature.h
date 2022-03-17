@@ -73,6 +73,7 @@ class ClusterMetricsFeature final : public ArangodFeature {
 
   void collectOptions(std::shared_ptr<options::ProgramOptions> options) final;
   void validateOptions(std::shared_ptr<options::ProgramOptions> options) final;
+  void start() final;
   void beginShutdown() final;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -131,7 +132,10 @@ class ClusterMetricsFeature final : public ArangodFeature {
   Scheduler::WorkHandle _handle;
   std::chrono::time_point<std::chrono::steady_clock> _lastUpdate{};
   uint32_t _timeout{0};
-  std::atomic_int32_t _count{0};
+
+  static constexpr uint32_t kStop = 1;
+  static constexpr uint32_t kUpdate = 2;
+  std::atomic_uint32_t _count{0};
 };
 
 }  // namespace arangodb::metrics
