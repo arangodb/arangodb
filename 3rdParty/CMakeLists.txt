@@ -259,6 +259,12 @@ target_include_directories(linenoise-ng SYSTEM PUBLIC
   ${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/include)
 
 ################################################################################
+## fmt
+################################################################################
+UpdateModule(${GIT_EXECUTABLE} "fmt" ${CMAKE_CURRENT_SOURCE_DIR} "README.rst")
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/fmt)
+
+################################################################################
 ## LINK_DIRECTORIES
 ################################################################################
 
