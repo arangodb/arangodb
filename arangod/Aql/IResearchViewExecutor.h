@@ -286,6 +286,7 @@ class IndexReadBuffer {
       _keyBuffer.reserve(atMost);
       _scoreBuffer.reserve(atMost * scores);
       _storedValuesBuffer.reserve(atMost * stored);
+      _rows.reserve(atMost);
     }
     _maxSize = atMost;
   }

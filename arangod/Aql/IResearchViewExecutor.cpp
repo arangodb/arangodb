@@ -376,8 +376,8 @@ bool IndexReadBuffer<ValueType, copySorted>::compareInput(
   auto lhs_scores = &_scoreBuffer[lhsIdx * _numScoreRegisters];
   for (auto const& cmp : *_scoresSort) {
     if (lhs_scores[cmp.first] != rhs_scores[cmp.first]) {
-      return cmp.second ? lhs_scores[cmp.first] < rhs_scores[cmp.first]
-                        : lhs_scores[cmp.first] > rhs_scores[cmp.first];
+      return cmp.second ? lhs_scores[cmp.first] > rhs_scores[cmp.first]
+                        : lhs_scores[cmp.first] < rhs_scores[cmp.first];
     }
   }
   return false;
@@ -463,9 +463,10 @@ IndexReadBuffer<ValueType, copyStored>::pop_front() noexcept {
   assertSizeCoherence();
   size_t key = _keyBaseIdx;
   if (!_rows.empty()) {
-    std::pop_heap(_rows.begin(), _rows.end(), *this);
-    key = _rows.back();
-    _rows.pop_back();
+    if (key == 0) {
+      std::sort(_rows.begin(), _rows.end(), *this);
+    }
+    key = _rows[_keyBaseIdx];
   }
   IndexReadBufferEntry entry{key};
   ++_keyBaseIdx;
