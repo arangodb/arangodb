@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2022-2022 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,35 +20,14 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#include "SourceLocation.h"
 
-#include <iosfwd>
+#include <iostream>
 
 namespace arangodb::basics {
 
-// Poor-man's replacement for std::source_location, until we get C++20.
-struct SourceLocation {
- private:
-  const char* _file_name;
-  int _line;
-
- public:
-  SourceLocation() = delete;
-  constexpr SourceLocation(decltype(_file_name) file,
-                           decltype(_line) line) noexcept
-      : _file_name(file), _line(line) {}
-
-  [[nodiscard]] constexpr auto file_name() const noexcept
-      -> decltype(_file_name) {
-    return _file_name;
-  }
-  [[nodiscard]] constexpr auto line() const noexcept -> decltype(_line) {
-    return _line;
-  }
-};
-
-auto operator<<(std::ostream&, SourceLocation const&) -> std::ostream&;
-
+auto operator<<(std::ostream& ostream, SourceLocation const& sourceLocation)
+    -> std::ostream& {
+  return ostream << sourceLocation.file_name() << ":" << sourceLocation.line();
+}
 }  // namespace arangodb::basics
-
-#define ADB_HERE (::arangodb::basics::SourceLocation(__FILE__, __LINE__))
