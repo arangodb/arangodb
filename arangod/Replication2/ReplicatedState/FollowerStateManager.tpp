@@ -214,7 +214,7 @@ auto calcRetryDuration(std::uint64_t retryCount)
   // Capped exponential backoff. Wait for 100us, 200us, 400us, ...
   // until at most 100us * 2 ** 17 == 13.11s.
   auto executionDelay = std::chrono::microseconds{100} *
-                        (1u << std::min(retryCount, std::size_t{17}));
+                        (1u << std::min(retryCount, std::uint64_t{17}));
   return std::chrono::duration_cast<std::chrono::steady_clock::duration>(
       executionDelay);
 }
