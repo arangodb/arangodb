@@ -227,6 +227,15 @@ struct envelope {
       return std::move(*this);
     }
 
+    template<typename F>
+    write_trx cond(bool condition, F&& func) && {
+      static_assert(std::is_invocable_r_v<write_trx, F, write_trx&&>);
+      if (condition) {
+        return std::invoke(func, std::move(*this));
+      }
+      return std::move(*this);
+    }
+
     write_trx(write_trx&&) = default;
     write_trx& operator=(write_trx&&) = default;
 

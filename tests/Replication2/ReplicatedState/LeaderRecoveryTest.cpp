@@ -87,6 +87,10 @@ struct MyHelperFactory {
       -> std::shared_ptr<EmptyFollowerType<MyHelperState>> {
     return std::make_shared<EmptyFollowerType<MyHelperState>>(std::move(core));
   }
+  auto constructCore(GlobalLogIdentifier const&)
+      -> std::unique_ptr<MyCoreType> {
+    return std::make_unique<MyCoreType>();
+  }
   ReplicatedStateRecoveryTest& test;
 };
 

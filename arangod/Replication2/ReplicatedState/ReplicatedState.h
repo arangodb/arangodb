@@ -177,6 +177,7 @@ struct ReplicatedState final
   };
   Guarded<GuardedData> guardedData;
   LoggerContext const loggerContext;
+  DatabaseID const database;
 };
 
 template<typename S>

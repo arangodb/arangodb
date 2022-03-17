@@ -94,6 +94,7 @@ var aqlFuncs = {
   "UNSET":"a,sl|+",
   "UNSET_RECURSIVE":"a,sl|+",
   "KEEP":"a,sl|+",
+  "KEEP_RECURSIVE":"a,sl|+",
   "TRANSLATE":".,a|.",
   "ZIP":"l,l",
   "NEAR":"hs,n,n|nz,s",
