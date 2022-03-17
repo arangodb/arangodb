@@ -45,14 +45,18 @@ struct no_op_deleter {
 template<typename T>
 using moving_ptr = std::unique_ptr<T, no_op_deleter>;
 
+inline void add_to_builder(VPackBuilder& b, VPackSlice const& v) { b.add(v); }
+
 template<typename V>
-void add_to_builder(VPackBuilder& b, V const& v) {
+auto add_to_builder(VPackBuilder& b, V const& v)
+    -> std::enable_if_t<std::is_constructible_v<velocypack::Value, V>, void> {
   b.add(VPackValue(v));
 }
 
-template<>
-inline void add_to_builder(VPackBuilder& b, VPackSlice const& v) {
-  b.add(v);
+template<typename Path>
+inline auto add_to_builder(VPackBuilder& b, Path const& v)
+    -> std::enable_if_t<std::is_base_of_v<cluster::paths::Path, Path>, void> {
+  b.add(VPackValue(v.str()));
 }
 
 template<typename K, typename V>
