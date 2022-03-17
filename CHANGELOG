@@ -1,7 +1,7 @@
 devel
 -----
 
-* Added GET request for displaying the available optimizer rules.
+* Added API method to query a list of available optimizer rules from the arangod process.
 
 * Added new server option: --icu-language. Used instead of --default-language to set pure ICU collator.
 
