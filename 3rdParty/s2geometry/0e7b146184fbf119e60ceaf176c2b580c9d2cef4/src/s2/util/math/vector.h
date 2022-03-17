@@ -50,6 +50,7 @@ namespace internal_vector {
 // CRTP base class for all Vector templates.
 template <template <typename> class VecTemplate, typename T, std::size_t N>
 class BasicVector {
+ public:
   using D = VecTemplate<T>;
 
  protected:
@@ -97,12 +98,6 @@ class BasicVector {
     return static_cast<const D&>(*this).Data()[b];
   }
 
-  // TODO(user): Relationals should be nonmembers.
-  bool operator==(const D& b) const {
-    const T* ap = static_cast<const D&>(*this).Data();
-    return std::equal(ap, ap + this->Size(), b.Data());
-  }
-  bool operator!=(const D& b) const { return !(AsD() == b); }
   bool operator<(const D& b) const {
     const T* ap = static_cast<const D&>(*this).Data();
     const T* bp = b.Data();
@@ -333,6 +328,23 @@ class BasicVector {
     Ignore({(a[Is] /= b, true)...});
   }
 };
+
+template<typename T, template<typename> class VecTemplate, std::size_t N>
+bool operator==(const BasicVector<VecTemplate, T, N>& lhs,
+                const BasicVector<VecTemplate, T, N>& rhs) {
+  auto& vector1 =
+      static_cast<const typename BasicVector<VecTemplate, T, N>::D&>(lhs);
+  auto& vector2 =
+      static_cast<const typename BasicVector<VecTemplate, T, N>::D&>(rhs);
+  return std::equal(vector1.Data(), vector1.Data() + vector1.Size(),
+                    vector2.Data(), vector2.Data() + vector2.Size());
+}
+
+template<typename T, template<typename> class VecTemplate, std::size_t N>
+bool operator!=(const BasicVector<VecTemplate, T, N>& lhs,
+                const BasicVector<VecTemplate, T, N>& rhs) {
+  return !(lhs == rhs);
+}
 
 // These templates must be defined outside of BasicVector so that the
 // template specialization match algorithm must deduce 'a'. See the review

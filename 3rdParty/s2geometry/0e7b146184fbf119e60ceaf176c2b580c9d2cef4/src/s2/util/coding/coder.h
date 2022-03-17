@@ -134,7 +134,7 @@ class Encoder {
 
   // REQUIRES: length() >= N
   // Removes the last N bytes out of the encoded buffer
-  void RemoveLast(size_t N) { writer().skip(-N); }
+  void RemoveLast(size_t N) { writer().skip(-static_cast<ptrdiff_t>(N)); }
 
   // REQUIRES: length() >= N
   // Removes the last length()-N bytes to make the encoded buffer have length N
@@ -495,7 +495,7 @@ inline void DecoderExtensions::FillArray(Decoder* array, int num_decoders) {
                 "Decoder must be trivially copy-assignable");
   static_assert(absl::is_trivially_destructible<Decoder>::value,
                 "Decoder must be trivially destructible");
-  std::memset(array, 0, num_decoders * sizeof(Decoder));
+  std::memset(reinterpret_cast<char*>(array), 0, num_decoders * sizeof(Decoder));
 }
 
 inline unsigned char Decoder::get8() {

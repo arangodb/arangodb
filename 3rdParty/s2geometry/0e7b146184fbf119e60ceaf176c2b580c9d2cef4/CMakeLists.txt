@@ -19,7 +19,7 @@ endif()
 # undefined symbol errors since ABSL_HAVE_STD_STRING_VIEW etc will
 # end up defined differently.  There is probably a better way to achieve
 # this than assuming what absl used.
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # No compiler-specific extensions, i.e. -std=c++11, not -std=gnu++11.
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -67,7 +67,6 @@ if (WITH_GFLAGS)
     add_definitions(-DS2_USE_GFLAGS)
 endif()
 
-find_package(absl REQUIRED)
 find_package(OpenSSL REQUIRED)
 # pthreads isn't used directly, but this is still required for std::thread.
 find_package(Threads REQUIRED)
@@ -208,11 +207,15 @@ add_library(s2
             src/s2/util/math/exactfloat/exactfloat.cc
             src/s2/util/math/mathutil.cc
             src/s2/util/units/length-units.cc)
-add_library(s2testing STATIC
-            src/s2/s2builderutil_testing.cc
-            src/s2/s2shapeutil_testing.cc
-            src/s2/s2testing.cc
-            src/s2/thread_testing.cc)
+
+if (GTEST_ROOT)
+  add_library(s2testing STATIC
+              src/s2/s2builderutil_testing.cc
+              src/s2/s2shapeutil_testing.cc
+              src/s2/s2testing.cc
+              src/s2/thread_testing.cc)
+endif()
+
 target_link_libraries(
     s2
     ${GFLAGS_LIBRARIES} ${GLOG_LIBRARIES} ${OPENSSL_LIBRARIES}
@@ -236,11 +239,14 @@ target_link_libraries(
     absl::type_traits
     absl::utility
     ${CMAKE_THREAD_LIBS_INIT})
-target_link_libraries(
-    s2testing
-    ${GFLAGS_LIBRARIES} ${GLOG_LIBRARIES}
-    absl::memory
-    absl::strings)
+
+if (GTEST_ROOT)
+    target_link_libraries(
+      s2testing
+      ${GFLAGS_LIBRARIES} ${GLOG_LIBRARIES}
+      absl::memory
+      absl::strings)
+endif()
 
 # Allow other CMake projects to use this one with:
 # list(APPEND CMAKE_MODULE_PATH "<path_to_s2geometry_dir>/third_party/cmake")
@@ -409,7 +415,14 @@ install(FILES src/s2/util/math/exactfloat/exactfloat.h
 install(FILES src/s2/util/units/length-units.h
               src/s2/util/units/physical-units.h
         DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/s2/util/units")
-install(TARGETS s2 s2testing
+
+if (GTEST_ROOT)
+    set(S2_TARGETS s2 s2testing)
+else()
+    set(S2_TARGETS s2)
+endif()
+
+install(TARGETS ${S2_TARGETS}
         RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
         ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
         LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}")
@@ -548,7 +561,7 @@ if (GTEST_ROOT)
   endforeach()
 endif()
 
-if (BUILD_EXAMPLES)
+if (BUILD_EXAMPLES AND TARGET s2testing)
   add_subdirectory("doc/examples" examples)
 endif()
 
