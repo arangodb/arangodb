@@ -79,7 +79,6 @@ function shellReplication (options) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function shellClientReplication (options) {
-  print(testPaths.http_replication)
   let testCases = tu.scanTestPaths(testPaths.http_replication, options);
 
   var opts = {

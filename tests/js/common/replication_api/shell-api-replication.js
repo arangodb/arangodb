@@ -900,7 +900,6 @@ function dealing_with_the_initial_dump_interfaceSuite () {
       doc = arango.GET_RAW(cmd);
 
       assertEqual(doc.code, 204);
-      print(doc)
       assertEqual(doc.headers["x-arango-replication-checkmore"], "false");
       assertEqual(doc.headers["x-arango-replication-lastincluded"], "0", doc);
       assertEqual(doc.headers["content-type"], "application/x-arango-dump");
