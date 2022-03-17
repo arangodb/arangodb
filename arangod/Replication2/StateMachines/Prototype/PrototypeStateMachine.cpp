@@ -235,7 +235,8 @@ PrototypeFollowerState::PrototypeFollowerState(
 auto PrototypeFollowerState::acquireSnapshot(ParticipantId const& destination,
                                              LogIndex waitForIndex) noexcept
     -> futures::Future<Result> {
-  auto leader = networkInterface->getLeaderInterface(destination);
+  ResultT<std::shared_ptr<IPrototypeLeaderInterface>> leader =
+      networkInterface->getLeaderInterface(destination);
   if (leader.fail()) {
     return leader.result();
   }
