@@ -60,6 +60,13 @@ void PrototypeCore::applyEntries(std::unique_ptr<EntryIterator> ptr) {
   resolvePromises(lastAppliedIndex);
 }
 
+void PrototypeCore::applySnapshot(
+  std::unordered_map<std::string, std::string> snapshot) {
+  for (auto& [k, v] : snapshot) {
+    store = store.set(k, v);
+  }
+}
+
 /*
  * Resolve waitForApplied promises up to and including appliedIndex.
  */
@@ -248,11 +255,10 @@ auto PrototypeFollowerState::acquireSnapshot(ParticipantId const& destination,
         }
 
         auto map = result.get();
-        self->guardedData.doUnderLock([self, map = std::move(map)](auto& core) {
-          for (auto& [k, v] : map) {
-            core->store = core->store.set(k, v);
-          }
-        });
+        self->guardedData.doUnderLock(
+            [self, map = std::move(map)](auto& core) mutable {
+              core->applySnapshot(std::move(map));
+            });
         return TRI_ERROR_NO_ERROR;
       });
 }

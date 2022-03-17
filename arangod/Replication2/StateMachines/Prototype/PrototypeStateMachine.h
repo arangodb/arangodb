@@ -115,6 +115,8 @@ struct PrototypeCore {
   template<typename EntryIterator>
   void applyEntries(std::unique_ptr<EntryIterator> ptr);
 
+  void applySnapshot(std::unordered_map<std::string, std::string> snapshot);
+
   void resolvePromises(LogIndex index);
   auto waitForApplied(LogIndex index) -> futures::Future<futures::Unit>;
 };
