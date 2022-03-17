@@ -82,23 +82,23 @@ void RestQueryHandler::handleAvailableOptimizerRules() {
   VPackBuilder builder;
   builder.openArray();
   auto& rules = OptimizerRulesFeature::rules();
-  for (auto const& myRule : rules) {
+  for (auto const& optimizerRule : rules) {
     builder.openObject();
-    builder.add("name", VPackValue(myRule.name));
+    builder.add("name", VPackValue(optimizerRule.name));
     builder.add(velocypack::Value("flags"));
     builder.openObject();
-    builder.add("hidden", VPackValue(myRule.isHidden() ? "true" : "false"));
+    builder.add("hidden", VPackValue(optimizerRule.isHidden() ? "true" : "false"));
     builder.add("clusterOnly",
-                VPackValue(myRule.isClusterOnly() ? "true" : "false"));
+                VPackValue(optimizerRule.isClusterOnly() ? "true" : "false"));
     builder.add("canBeDisabled",
-                VPackValue(myRule.canBeDisabled() ? "true" : "false"));
+                VPackValue(optimizerRule.canBeDisabled() ? "true" : "false"));
     builder.add(
         "canCreateAdditionalPlans",
-        VPackValue(myRule.canCreateAdditionalPlans() ? "true" : "false"));
+        VPackValue(optimizerRule.canCreateAdditionalPlans() ? "true" : "false"));
     builder.add("disabledByDefault",
-                VPackValue(myRule.isDisabledByDefault() ? "true" : "false"));
+                VPackValue(optimizerRule.isDisabledByDefault() ? "true" : "false"));
     builder.add("enterpriseOnly",
-                VPackValue(myRule.isEnterpriseOnly() ? "true" : "false"));
+                VPackValue(optimizerRule.isEnterpriseOnly() ? "true" : "false"));
     builder.close();
     builder.close();
   }
