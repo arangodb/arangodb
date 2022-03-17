@@ -58,8 +58,6 @@
 #include "Transaction/ClusterUtils.h"
 #include "Utils/Events.h"
 #include "VocBase/vocbase.h"
-#include "V8Server/FoxxFeature.h"
-#include "V8Server/V8DealerFeature.h"
 
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/HistogramBuilder.h"
@@ -673,9 +671,6 @@ void HeartbeatThread::getNewsFromAgencyForCoordinator() {
     // handle global changes to Sync/UserVersion
     handleUserVersionChange(result);
 
-    // handle global changes to Sync/FoxxQueueVersion
-    handleFoxxQueueVersionChange(result);
-
     versionSlice = result[0].get(std::vector<std::string>(
         {AgencyCommHelper::path(), "Current", "Version"}));
     if (versionSlice.isInteger()) {
@@ -759,31 +754,6 @@ void HeartbeatThread::handleUserVersionChange(VPackSlice userVersion) {
       if (af.isActive() && af.userManager() != nullptr) {
         af.userManager()->setGlobalVersion(version);
       }
-    }
-  }
-}
-
-void HeartbeatThread::handleFoxxQueueVersionChange(
-    VPackSlice foxxQueueVersion) {
-  TRI_ASSERT(ServerState::instance()->isCoordinator());
-
-  VPackSlice slice = foxxQueueVersion[0].get(std::vector<std::string>(
-      {AgencyCommHelper::path(), "Sync", "FoxxQueueVersion"}));
-
-  if (slice.isInteger()) {
-    // there is a UserVersion
-    uint64_t version = 0;
-    try {
-      version = slice.getNumber<uint64_t>();
-    } catch (...) {
-    }
-
-    if (version > 0) {
-      // track the global foxx queues version from the agency. any
-      // coordinator can update this any time. the setQueueVersion
-      // method makes sure we are not going below a value that
-      // we have already seen.
-      server().getFeature<FoxxFeature>().setQueueVersion(version);
     }
   }
 }
@@ -989,10 +959,6 @@ void HeartbeatThread::runSingleServer() {
           auto& sysDbFeature =
               server().getFeature<arangodb::SystemDatabaseFeature>();
           auto database = sysDbFeature.use();
-          server()
-              .getFeature<V8DealerFeature>()
-              .loadJavaScriptFileInAllContexts(database.get(),
-                                               "server/leader.js", nullptr);
           LOG_TOPIC("98325", INFO, Logger::HEARTBEAT)
               << "Successful leadership takeover: "
               << "All your base are belong to us";

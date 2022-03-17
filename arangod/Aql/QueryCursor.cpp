@@ -186,8 +186,6 @@ QueryStreamCursor::QueryStreamCursor(std::shared_ptr<arangodb::aql::Query> q,
   if (!trx.addStatusChangeCallback(&_stateChangeCb)) {
     _stateChangeCb = nullptr;
   }
-
-  _query->exitV8Context();
 }
 
 QueryStreamCursor::~QueryStreamCursor() {
@@ -235,17 +233,6 @@ std::pair<ExecutionState, Result> QueryStreamCursor::dump(
   LOG_TOPIC("9af59", TRACE, Logger::QUERIES)
       << "executing query " << _id << ": '"
       << _query->queryString().extract(1024) << "'";
-
-  auto guard = scopeGuard([&]() noexcept {
-    try {
-      if (_query) {
-        _query->exitV8Context();
-      }
-    } catch (std::exception const& ex) {
-      LOG_TOPIC("a2bf8", ERR, Logger::QUERIES)
-          << "Failed to exit V8 context: " << ex.what();
-    }
-  });
 
   try {
     ExecutionState state = prepareDump();
@@ -303,17 +290,6 @@ Result QueryStreamCursor::dumpSync(VPackBuilder& builder) {
 
   std::shared_ptr<SharedQueryState> ss = _query->sharedState();
   ss->resetWakeupHandler();
-
-  auto guard = scopeGuard([&]() noexcept {
-    try {
-      if (_query) {
-        _query->exitV8Context();
-      }
-    } catch (std::exception const& ex) {
-      LOG_TOPIC("db997", ERR, Logger::QUERIES)
-          << "Failed to exit V8 context: " << ex.what();
-    }
-  });
 
   try {
     aql::ExecutionEngine* engine = _query->rootEngine();

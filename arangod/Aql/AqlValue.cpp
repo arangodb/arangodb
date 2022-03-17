@@ -32,7 +32,6 @@
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
-#include "V8/v8-vpack.h"
 
 #include <velocypack/Buffer.h>
 #include <velocypack/Iterator.h>
@@ -1018,50 +1017,6 @@ void AqlValue::setManagedSliceData(MemoryOriginType mot,
   TRI_ASSERT(type() == VPACK_MANAGED_SLICE);
   TRI_ASSERT(memoryOriginType() == mot);
   TRI_ASSERT(memoryUsage() == length);
-}
-
-/// @brief construct a V8 value as input for the expression execution in V8
-v8::Handle<v8::Value> AqlValue::toV8(v8::Isolate* isolate,
-                                     velocypack::Options const* options) const {
-  auto context = TRI_IGETC;
-  AqlValueType t = type();
-  switch (t) {
-    case VPACK_INLINE:
-    case VPACK_INLINE_INT48:
-    case VPACK_INLINE_INT64:
-    case VPACK_INLINE_UINT64:
-    case VPACK_INLINE_DOUBLE:
-    case VPACK_SLICE_POINTER:
-    case VPACK_MANAGED_SLICE: {
-      return TRI_VPackToV8(isolate, slice(t), options);
-    }
-    case RANGE: {
-      size_t const n = _data.rangeMeta.range->size();
-      Range::throwIfTooBigForMaterialization(n);
-      v8::Handle<v8::Array> result =
-          v8::Array::New(isolate, static_cast<int>(n));
-
-      for (uint32_t i = 0; i < n; ++i) {
-        // is it safe to use a double here (precision loss)?
-        result
-            ->Set(context, i,
-                  v8::Number::New(isolate,
-                                  static_cast<double>(_data.rangeMeta.range->at(
-                                      static_cast<size_t>(i)))))
-            .FromMaybe(true);
-
-        if (i % 1024 == 0) {
-          if (V8PlatformFeature::isOutOfMemory(isolate)) {
-            THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-          }
-        }
-      }
-      return result;
-    }
-  }
-
-  // we shouldn't get here
-  return v8::Null(isolate);
 }
 
 /// @brief materializes a value into the builder

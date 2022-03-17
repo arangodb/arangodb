@@ -61,7 +61,6 @@
 #include "Utils/Events.h"
 #include "Utils/ExecContext.h"
 #include "Utils/OperationOptions.h"
-#include "V8Server/FoxxFeature.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
@@ -1548,9 +1547,6 @@ futures::Future<OperationResult> createDocumentOnCoordinator(
     }
   }
 
-  bool const isJobsCollection =
-      coll.system() && coll.name() == StaticStrings::JobsCollection;
-
   Future<Result> f = makeFuture(Result());
   const bool isManaged =
       trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED);
@@ -1635,18 +1631,6 @@ futures::Future<OperationResult> createDocumentOnCoordinator(
           baseUrl + StringUtils::urlEncode(it.first), std::move(reqBuffer),
           reqOpts, std::move(headers));
       futures.emplace_back(std::move(future));
-    }
-
-    // track that we have done a local insert into a Foxx queue.
-    // this information will be broadcasted to other coordinators
-    // in the cluster eventually via the agency.
-    // because the agency update is posted asynchronously, there is the
-    // possibility that this coordinator dies before the update is
-    // broadcasted to the agency. this is a rather unlikely edge case,
-    // and we currently do not optimize for that (i.e. posting updates
-    // to the agency is currently best effort).
-    if (isJobsCollection && trx.vocbase().server().hasFeature<FoxxFeature>()) {
-      trx.vocbase().server().getFeature<FoxxFeature>().trackLocalQueueInsert();
     }
 
     // Now compute the result

@@ -43,7 +43,6 @@
 #include "RestServer/ServerFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SupervisedScheduler.h"
-#include "VocBase/Methods/Tasks.h"
 
 #ifdef _WIN32
 #include <stdio.h>
@@ -283,7 +282,6 @@ void SchedulerFeature::start() {
 
 void SchedulerFeature::stop() {
   // shutdown user jobs again, in case new ones appear
-  arangodb::Task::shutdownTasks();
   signalStuffDeinit();
   _scheduler->shutdown();
 }

@@ -41,7 +41,6 @@ using FF = Function::Flags;
 AqlFunctionFeature::AqlFunctionFeature(Server& server)
     : ArangodFeature{server, *this} {
   setOptional(false);
-  startsAfter<V8FeaturePhase>();
   startsAfter<AqlFeature>();
 }
 

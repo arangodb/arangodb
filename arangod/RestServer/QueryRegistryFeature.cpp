@@ -218,7 +218,6 @@ QueryRegistryFeature::QueryRegistryFeature(Server& server)
       Server::isCreatedAfter<QueryRegistryFeature, metrics::MetricsFeature>());
 
   setOptional(false);
-  startsAfter<V8FeaturePhase>();
 
   auto properties = arangodb::aql::QueryCache::instance()->properties();
   _queryCacheMaxResultsCount = properties.maxResultsCount;

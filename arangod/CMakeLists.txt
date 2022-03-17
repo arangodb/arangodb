@@ -466,7 +466,6 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/UnsortedGatherExecutor.cpp
   Aql/UpdateReplaceModifier.cpp
   Aql/UpsertModifier.cpp
-  Aql/V8Executor.cpp
   Aql/VarUsageFinder.cpp
   Aql/Variable.cpp
   Aql/VariableGenerator.cpp
@@ -496,13 +495,10 @@ set(LIB_ARANGO_VOCBASE_SOURCES
   VocBase/LogicalDataSource.cpp
   VocBase/LogicalView.cpp
   VocBase/ManagedDocumentResult.cpp
-  VocBase/Methods/AqlUserFunctions.cpp
   VocBase/Methods/Collections.cpp
   VocBase/Methods/Databases.cpp
   VocBase/Methods/Indexes.cpp
   VocBase/Methods/Queries.cpp
-  VocBase/Methods/Tasks.cpp
-  VocBase/Methods/Transactions.cpp
   VocBase/Methods/Ttl.cpp
   VocBase/Methods/Upgrade.cpp
   VocBase/Methods/UpgradeTasks.cpp
@@ -677,34 +673,7 @@ set(LIB_ARANGO_AGENCY_SOURCES
   Agency/State.cpp
   Agency/Store.cpp
   Agency/Supervision.cpp
-  Agency/v8-agency.cpp
 )
-
-set(LIB_ARANGO_V8SERVER_SOURCES
-  Cluster/v8-cluster.cpp
-  Transaction/V8Context.cpp
-  V8Server/FoxxFeature.cpp
-  V8Server/V8Context.cpp
-  V8Server/V8DealerFeature.cpp
-  V8Server/v8-actions.cpp
-  V8Server/v8-analyzers.cpp
-  V8Server/v8-collection-util.cpp
-  V8Server/v8-collection.cpp
-  V8Server/v8-dispatcher.cpp
-  V8Server/v8-general-graph.cpp
-  V8Server/v8-query.cpp
-  V8Server/v8-replication.cpp
-  V8Server/v8-statistics.cpp
-  V8Server/v8-ttl.cpp
-  V8Server/v8-user-functions.cpp
-  V8Server/v8-user-structures.cpp
-  V8Server/v8-users.cpp
-  V8Server/v8-util.cpp
-  V8Server/v8-views.cpp
-  V8Server/v8-vocbase.cpp
-  V8Server/v8-voccursor.cpp
-  V8Server/v8-vocindex.cpp
-  V8Server/v8-replicated-logs.cpp V8Server/v8-replicated-logs.h)
 
 set(LIB_ARANGO_NETWORK_SOURCES
   Network/ClusterUtils.cpp
@@ -767,9 +736,7 @@ set(LIB_ARANGOSERVER_SOURCES
   FeaturePhases/ClusterFeaturePhase.cpp
   FeaturePhases/DatabaseFeaturePhase.cpp
   FeaturePhases/FinalFeaturePhase.cpp
-  FeaturePhases/FoxxFeaturePhase.cpp
   FeaturePhases/ServerFeaturePhase.cpp
-  FeaturePhases/V8FeaturePhase.cpp
   GeneralServer/Acceptor.cpp
   GeneralServer/AcceptorTcp.cpp
   GeneralServer/AsyncJobManager.cpp
@@ -789,13 +756,9 @@ set(LIB_ARANGOSERVER_SOURCES
   GeneralServer/VstCommTask.cpp
   RestHandler/RestAdminClusterHandler.cpp
   RestHandler/RestAdminDatabaseHandler.cpp
-  RestHandler/RestAdminExecuteHandler.cpp
   RestHandler/RestAdminLogHandler.cpp
-  RestHandler/RestAdminRoutingHandler.cpp
   RestHandler/RestAdminServerHandler.cpp
   RestHandler/RestAdminStatisticsHandler.cpp
-  RestHandler/RestAqlFunctionsHandler.cpp
-  RestHandler/RestAqlUserFunctionsHandler.cpp
   RestHandler/RestAuthHandler.cpp
   RestHandler/RestAuthReloadHandler.cpp
   RestHandler/RestBaseHandler.cpp
@@ -823,7 +786,6 @@ set(LIB_ARANGOSERVER_SOURCES
   RestHandler/RestSupervisionStateHandler.cpp
   RestHandler/RestSupportInfoHandler.cpp
   RestHandler/RestSystemReportHandler.cpp
-  RestHandler/RestTasksHandler.cpp
   RestHandler/RestTimeHandler.cpp
   RestHandler/RestTransactionHandler.cpp
   RestHandler/RestTtlHandler.cpp
@@ -836,8 +798,6 @@ set(LIB_ARANGOSERVER_SOURCES
   RestServer/AqlFeature.cpp
   RestServer/BootstrapFeature.cpp
   RestServer/CheckVersionFeature.cpp
-  RestServer/ConsoleFeature.cpp
-  RestServer/ConsoleThread.cpp
   RestServer/CpuUsageFeature.cpp
   RestServer/DatabaseFeature.cpp
   RestServer/DatabasePathFeature.cpp
@@ -855,7 +815,6 @@ set(LIB_ARANGOSERVER_SOURCES
   RestServer/NonceFeature.cpp
   RestServer/QueryRegistryFeature.cpp
   RestServer/PrivilegeFeature.cpp
-  RestServer/ScriptFeature.cpp
   RestServer/ServerFeature.cpp
   RestServer/ServerIdFeature.cpp
   RestServer/SharedPRNGFeature.cpp
@@ -951,10 +910,6 @@ add_library(arango_health STATIC
 add_library(arango_vocbase STATIC
   ${LIB_ARANGO_VOCBASE_SOURCES}
   ${ADDITIONAL_LIB_ARANGO_VOCBASE_SOURCES}
-)
-
-add_library(arango_v8server STATIC
-  ${LIB_ARANGO_V8SERVER_SOURCES}
 )
 
 add_library(arango_utils STATIC
@@ -1065,7 +1020,6 @@ target_link_libraries(arango_cache boost_system)
 target_link_libraries(arango_cluster_engine arango_health)
 target_link_libraries(arango_cluster_engine arango_indexes)
 target_link_libraries(arango_cluster_engine boost_boost)
-target_link_libraries(arango_cluster_engine arango_v8 arango_v8_no_deadline)
 
 target_include_directories(arango_cluster_engine
     PUBLIC ${IRESEARCH_INCLUDE}
@@ -1162,12 +1116,6 @@ target_link_libraries(arango_utils arango::validation)
 target_link_libraries(arango_utils arango_replication2)
 target_link_libraries(arango_utils immer)
 
-target_link_libraries(arango_v8server arango_agency)
-target_link_libraries(arango_v8server arango_iresearch)
-target_link_libraries(arango_v8server arango_replication)
-target_link_libraries(arango_v8server arango_v8 arango_v8_no_deadline)
-target_link_libraries(arango_v8server ${V8_LIBS})
-
 target_link_libraries(arango_vocbase arango_agency)
 target_link_libraries(arango_vocbase arango_cluster_methods)
 target_link_libraries(arango_vocbase arango_indexes)
@@ -1191,7 +1139,6 @@ target_link_libraries(arangoserver arango_pregel)
 target_link_libraries(arangoserver arango_replication)
 target_link_libraries(arangoserver arango_storage_engine)
 target_link_libraries(arangoserver arango_utils)
-target_link_libraries(arangoserver arango_v8server)
 target_link_libraries(arangoserver arango_vocbase)
 target_link_libraries(arangoserver boost_boost)
 
@@ -1248,11 +1195,7 @@ install(
 
 install_config(arangod)
 
-if (NOT USE_PRECOMPILED_V8)
-  add_dependencies(arangod zlibstatic v8_build arango_iresearch)
-else ()
-  add_dependencies(arangod zlibstatic arango_iresearch)
-endif ()
+add_dependencies(arangod zlibstatic arango_iresearch)
 
 if (USE_JEMALLOC)
   add_dependencies(arangod jemalloc_build)
@@ -1278,7 +1221,6 @@ foreach(TARGET
   arango_storage_engine
   arango_storage_engine_common
   arango_utils
-  arango_v8server
   arango_vocbase
   arangod
   arangoserver

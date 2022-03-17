@@ -29,7 +29,6 @@ namespace arangodb::application_features {
 AgencyFeaturePhase::AgencyFeaturePhase(ArangodServer& server)
     : ApplicationFeaturePhase{server, *this} {
   setOptional(false);
-  startsAfter<FoxxFeaturePhase, ArangodServer>();
   startsAfter<AgencyFeature, ArangodServer>();
 }
 

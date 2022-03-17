@@ -43,12 +43,11 @@
 #include "Transaction/Helpers.h"
 #include "Transaction/Hints.h"
 #include "Transaction/StandaloneContext.h"
-#include "Transaction/V8Context.h"
+#include "Utils/CollectionNameResolver.h"
 #include "Utils/Events.h"
 #include "Utils/ExecContext.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utilities/NameValidator.h"
-#include "V8Server/v8-collection.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 #include "Logger/Logger.h"
@@ -62,6 +61,36 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::methods;
+
+/// @brief check if a name belongs to a collection
+bool EqualCollection(CollectionNameResolver const* resolver,
+                     std::string const& collectionName,
+                     LogicalCollection const* collection) {
+  if (collectionName == collection->name()) {
+    return true;
+  }
+
+  if (collectionName == std::to_string(collection->id().id())) {
+    return true;
+  }
+
+  // Shouldn't it just be: If we are on DBServer we also have to check for
+  // global ID name and cid should be the shard.
+  if (ServerState::instance()->isCoordinator()) {
+    if (collectionName ==
+        resolver->getCollectionNameCluster(collection->id())) {
+      return true;
+    }
+    return false;
+  }
+
+  if (collectionName == resolver->getCollectionName(collection->id())) {
+    return true;
+  }
+
+  return false;
+}
+
 
 Result Indexes::getIndex(LogicalCollection const* collection,
                          VPackSlice indexId, VPackBuilder& out,
@@ -712,8 +741,8 @@ arangodb::Result Indexes::drop(LogicalCollection* collection,
   } else {
     READ_LOCKER(readLocker, collection->vocbase()._inventoryLock);
 
-    SingleCollectionTransaction trx(transaction::V8Context::CreateWhenRequired(
-                                        collection->vocbase(), false),
+    SingleCollectionTransaction trx(transaction::StandaloneContext::Create(
+                                        collection->vocbase()),
                                     *collection, AccessMode::Type::EXCLUSIVE);
     Result res = trx.begin();
 

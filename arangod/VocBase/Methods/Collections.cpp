@@ -49,12 +49,10 @@
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/StandaloneContext.h"
-#include "Transaction/V8Context.h"
 #include "Utilities/NameValidator.h"
 #include "Utils/Events.h"
 #include "Utils/ExecContext.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "V8Server/V8Context.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/CollectionCreationInfo.h"
 #include "VocBase/vocbase.h"
@@ -389,8 +387,7 @@ transaction::Methods* Collections::Context::trx(AccessMode::Type const& type,
                                                 bool embeddable,
                                                 bool forceLoadCollection) {
   if (_responsibleForTrx && _trx == nullptr) {
-    auto ctx = transaction::V8Context::CreateWhenRequired(_coll->vocbase(),
-                                                          embeddable);
+    auto ctx = transaction::StandaloneContext::Create(_coll->vocbase());
     auto trx = std::make_unique<SingleCollectionTransaction>(ctx, *_coll, type);
     if (!trx) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_OUT_OF_MEMORY,
@@ -922,7 +919,7 @@ Result Collections::updateProperties(LogicalCollection& collection,
 
   } else {
     auto ctx =
-        transaction::V8Context::CreateWhenRequired(collection.vocbase(), false);
+        transaction::StandaloneContext::Create(collection.vocbase());
     SingleCollectionTransaction trx(ctx, collection,
                                     AccessMode::Type::EXCLUSIVE);
     Result res = trx.begin();
@@ -1113,7 +1110,7 @@ futures::Future<Result> Collections::warmup(TRI_vocbase_t& vocbase,
     return warmupOnCoordinator(feature, vocbase.name(), cid, options);
   }
 
-  auto ctx = transaction::V8Context::CreateWhenRequired(vocbase, false);
+  auto ctx = transaction::StandaloneContext::Create(vocbase);
   SingleCollectionTransaction trx(ctx, coll, AccessMode::Type::READ);
   Result res = trx.begin();
 
@@ -1190,7 +1187,7 @@ futures::Future<OperationResult> Collections::revisionId(
     }
     return res;
   } else {
-    auto ctx = transaction::V8Context::CreateWhenRequired(vocbase, true);
+    auto ctx = transaction::StandaloneContext::Create(vocbase);
     SingleCollectionTransaction trx(ctx, cname, AccessMode::Type::READ);
     Result res = trx.begin();
 
@@ -1231,7 +1228,7 @@ arangodb::Result Collections::checksum(LogicalCollection& collection,
   }
 
   auto ctx =
-      transaction::V8Context::CreateWhenRequired(collection.vocbase(), true);
+      transaction::StandaloneContext::Create(collection.vocbase());
   SingleCollectionTransaction trx(ctx, collection, AccessMode::Type::READ);
   Result res = trx.begin();
 

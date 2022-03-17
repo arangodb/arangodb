@@ -42,7 +42,6 @@
 #include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
-#include "V8Server/V8DealerFeature.h"
 #include "VocBase/Methods/Upgrade.h"
 
 namespace {
@@ -64,9 +63,6 @@ BootstrapFeature::BootstrapFeature(Server& server)
   startsAfter<application_features::ServerFeaturePhase>();
 
   startsAfter<SystemDatabaseFeature>();
-
-  // TODO: It is only in FoxxPhase because of:
-  startsAfter<FoxxFeature>();
 
   // If this is Sorted out we can go down to ServerPhase
   // And activate the following dependencies:
@@ -208,49 +204,6 @@ void raceForClusterBootstrap(BootstrapFeature& feature) {
   }
 }
 
-/// Run the coordinator initialization script, will run on each
-/// coordinator, not just one.
-void runCoordinatorJS(TRI_vocbase_t* vocbase) {
-  bool success = false;
-  while (!success) {
-    LOG_TOPIC("0f953", DEBUG, Logger::STARTUP)
-        << "Running server/bootstrap/coordinator.js";
-
-    VPackBuilder builder;
-    vocbase->server()
-        .getFeature<V8DealerFeature>()
-        .loadJavaScriptFileInAllContexts(
-            vocbase, "server/bootstrap/coordinator.js", &builder);
-
-    auto slice = builder.slice();
-    if (slice.isArray()) {
-      if (slice.length() > 0) {
-        bool newResult = true;
-        for (VPackSlice val : VPackArrayIterator(slice)) {
-          newResult = newResult && val.isTrue();
-        }
-        if (!newResult) {
-          LOG_TOPIC("6ca4b", WARN, Logger::STARTUP)
-              << "result of bootstrap was: " << builder.toJson()
-              << ". retrying bootstrap in 1s.";
-        }
-        success = newResult;
-      } else {
-        LOG_TOPIC("541a2", WARN, Logger::STARTUP)
-            << "bootstrap wasn't executed in a single context! retrying "
-               "bootstrap in 1s.";
-      }
-    } else {
-      LOG_TOPIC("5f716", WARN, Logger::STARTUP)
-          << "result of bootstrap was not an array: " << slice.typeName()
-          << ". retrying bootstrap in 1s.";
-    }
-    if (!success) {
-      std::this_thread::sleep_for(std::chrono::seconds(1));
-    }
-  }
-}
-
 // Try to become leader in active-failover setup
 void runActiveFailoverStart(BootstrapFeature& feature,
                             std::string const& myId) {
@@ -303,9 +256,6 @@ void BootstrapFeature::start() {
       server().hasFeature<arangodb::SystemDatabaseFeature>()
           ? server().getFeature<arangodb::SystemDatabaseFeature>().use()
           : nullptr;
-  bool v8Enabled = server().hasFeature<V8DealerFeature>() &&
-                   server().isEnabled<V8DealerFeature>() &&
-                   server().getFeature<V8DealerFeature>().isEnabled();
   TRI_ASSERT(vocbase.get() != nullptr);
 
   ServerState::RoleEnum role = ServerState::instance()->getRole();
@@ -324,9 +274,6 @@ void BootstrapFeature::start() {
       // both Plan and Current have been populated successfully
       waitForDatabases();
 
-      if (v8Enabled && !databaseFeature.upgrade()) {
-        ::runCoordinatorJS(vocbase.get());
-      }
     } else if (ServerState::isDBServer(role)) {
       // don't wait for databases in Current here, as we are a DB server and may
       // be the one responsible to create it. blocking here is thus no option!
@@ -356,13 +303,6 @@ void BootstrapFeature::start() {
           myId);  // could be empty, but set anyway
     }
 
-    if (v8Enabled) {  // runs the single server bootstrap JS
-      // will run foxx/manager.js::_startup() and more (start queues, load
-      // routes, etc)
-      LOG_TOPIC("e0c8b", DEBUG, Logger::STARTUP) << "Running server/server.js";
-      server().getFeature<V8DealerFeature>().loadJavaScriptFileInAllContexts(
-          vocbase.get(), "server/server.js", nullptr);
-    }
     auth::UserManager* um = AuthenticationFeature::instance()->userManager();
     if (um != nullptr) {
       // only creates root user if it does not exist, will be overwritten on

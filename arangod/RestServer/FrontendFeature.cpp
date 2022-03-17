@@ -26,7 +26,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
-#include "V8Server/V8DealerFeature.h"
 
 using namespace arangodb::application_features;
 using namespace arangodb::options;
@@ -53,8 +52,6 @@ void FrontendFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void FrontendFeature::prepare() {
-  V8DealerFeature& dealer = server().getFeature<V8DealerFeature>();
-  dealer.defineBoolean("FE_VERSION_CHECK", _versionCheck);
 }
 
 }  // namespace arangodb

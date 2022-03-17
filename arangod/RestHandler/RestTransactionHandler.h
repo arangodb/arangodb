@@ -31,10 +31,7 @@
 
 namespace arangodb {
 
-class V8Context;
-
 class RestTransactionHandler : public arangodb::RestVocbaseBaseHandler {
-  V8Context* _v8Context;
   basics::ReadWriteLock _lock;
 
  public:

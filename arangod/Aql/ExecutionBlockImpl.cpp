@@ -2473,8 +2473,6 @@ template class ::arangodb::aql::ExecutionBlockImpl<
     CalculationExecutor<CalculationType::Condition>>;
 template class ::arangodb::aql::ExecutionBlockImpl<
     CalculationExecutor<CalculationType::Reference>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    CalculationExecutor<CalculationType::V8Condition>>;
 template class ::arangodb::aql::ExecutionBlockImpl<ConstrainedSortExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<CountCollectExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<DistinctCollectExecutor>;

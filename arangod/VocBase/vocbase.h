@@ -80,7 +80,6 @@ class Slice;
 }  // namespace velocypack
 
 class CursorRepository;
-struct DatabaseJavaScriptCache;
 class DatabaseReplicationApplier;
 class LogicalCollection;
 class LogicalDataSource;
@@ -215,9 +214,6 @@ struct TRI_vocbase_t {
   arangodb::basics::ReadWriteLock _inventoryLock;  // object lock needed when
                                                    // replication is assessing
                                                    // the state of the vocbase
-
-  // structures for volatile cache data (used from JavaScript)
-  std::unique_ptr<arangodb::DatabaseJavaScriptCache> _cacheData;
 
   arangodb::ArangodServer& server() const noexcept { return _server; }
 

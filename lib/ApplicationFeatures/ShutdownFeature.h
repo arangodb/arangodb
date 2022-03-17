@@ -38,16 +38,10 @@ class ShutdownFeature final : public application_features::ApplicationFeature {
   static constexpr std::string_view name() noexcept { return "Shutdown"; }
 
   template<typename Server>
-  ShutdownFeature(Server& server, std::span<const size_t> features)
+  ShutdownFeature(Server& server)
       : ApplicationFeature{server, *this} {
     setOptional(true);
     startsAfter<application_features::GreetingsFeaturePhase, Server>();
-
-    for (auto feature : features) {
-      if (feature != Server::template id<LoggerFeature>()) {
-        startsAfter(feature);
-      }
-    }
   }
 
   void start() override final;

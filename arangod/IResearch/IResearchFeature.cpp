@@ -854,7 +854,6 @@ IResearchFeature::IResearchFeature(Server& server)
       _threads(0),
       _threadsLimit(0) {
   setOptional(true);
-  startsAfter<application_features::V8FeaturePhase>();
   startsAfter<IResearchAnalyzerFeature>();
   startsAfter<aql::AqlFunctionFeature>();
 }

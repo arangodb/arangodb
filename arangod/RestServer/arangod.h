@@ -36,10 +36,8 @@ class BasicFeaturePhaseServer;
 class ClusterFeaturePhase;
 class DatabaseFeaturePhase;
 class FinalFeaturePhase;
-class FoxxFeaturePhase;
 class GreetingsFeaturePhase;
 class ServerFeaturePhase;
-class V8FeaturePhase;
 
 template<typename Features>
 class ApplicationServerT;
@@ -66,7 +64,6 @@ class CheckVersionFeature;
 class ClusterFeature;
 class ClusterUpgradeFeature;
 class ConfigFeature;
-class ConsoleFeature;
 class CpuUsageFeature;
 class DatabaseFeature;
 class DatabasePathFeature;
@@ -76,7 +73,6 @@ class EnvironmentFeature;
 class FileDescriptorsFeature;
 class FlushFeature;
 class FortuneFeature;
-class FoxxFeature;
 class FrontendFeature;
 class GeneralServerFeature;
 class GreetingsFeature;
@@ -99,7 +95,6 @@ class ReplicatedLogFeature;
 class ReplicationMetricsFeature;
 class ReplicationTimeoutFeature;
 class SchedulerFeature;
-class ScriptFeature;
 class ServerFeature;
 class ServerIdFeature;
 class ServerSecurityFeature;
@@ -115,9 +110,6 @@ class SystemDatabaseFeature;
 class TempFeature;
 class TtlFeature;
 class UpgradeFeature;
-class V8DealerFeature;
-class V8PlatformFeature;
-class V8SecurityFeature;
 class VersionFeature;
 class ViewTypesFeature;
 class ClusterEngine;
@@ -184,10 +176,8 @@ using ArangodFeatures = TypeList<
     ClusterFeaturePhase,
     DatabaseFeaturePhase,
     FinalFeaturePhase,
-    FoxxFeaturePhase,
     GreetingsFeaturePhase,
     ServerFeaturePhase,
-    V8FeaturePhase,
     // Adding the features
     metrics::MetricsFeature, // metrics::MetricsFeature must go first
     metrics::ClusterMetricsFeature,
@@ -202,7 +192,6 @@ using ArangodFeatures = TypeList<
     ClusterFeature,
     ClusterUpgradeFeature,
     ConfigFeature,
-    ConsoleFeature,
     CpuUsageFeature,
     DatabaseFeature,
     DatabasePathFeature,
@@ -211,7 +200,6 @@ using ArangodFeatures = TypeList<
     EnvironmentFeature,
     FlushFeature,
     FortuneFeature,
-    FoxxFeature,
     FrontendFeature,
     GeneralServerFeature,
     GreetingsFeature,
@@ -234,7 +222,6 @@ using ArangodFeatures = TypeList<
     ReplicationMetricsFeature,
     ReplicationTimeoutFeature,
     SchedulerFeature,
-    ScriptFeature,
     ServerFeature,
     ServerIdFeature,
     ServerSecurityFeature,
@@ -250,9 +237,6 @@ using ArangodFeatures = TypeList<
     TempFeature,
     TtlFeature,
     UpgradeFeature,
-    V8DealerFeature,
-    V8PlatformFeature,
-    V8SecurityFeature,
     transaction::ManagerFeature,
     ViewTypesFeature,
     aql::AqlFunctionFeature,

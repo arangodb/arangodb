@@ -32,7 +32,6 @@
 #include "Aql/Function.h"
 #include "Aql/Query.h"
 #include "Aql/Range.h"
-#include "Aql/V8Executor.h"
 #include "Basics/Endian.h"
 #include "Basics/Exceptions.h"
 #include "Basics/HybridLogicalClock.h"
@@ -73,8 +72,6 @@
 #include "Transaction/Methods.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/ExecContext.h"
-#include "V8/v8-vpack.h"
-#include "V8Server/v8-collection.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
@@ -1117,7 +1114,7 @@ AqlValue callApplyBackend(ExpressionContext* expressionContext,
   unicodeStr.toUTF8String(ucInvokeFN);
 
   arangodb::aql::Function const* func = nullptr;
-  if (ucInvokeFN.find("::") == std::string::npos) {
+  if (true || ucInvokeFN.find("::") == std::string::npos) {
     // built-in C++ function
     auto& server = trx.vocbase().server();
     func = server.getFeature<AqlFunctionFeature>().byName(ucInvokeFN);
@@ -1135,57 +1132,7 @@ AqlValue callApplyBackend(ExpressionContext* expressionContext,
       return func->implementation(expressionContext, node, invokeParams);
     }
   }
-
-  // JavaScript function (this includes user-defined functions)
-  {
-    ISOLATE;
-    TRI_V8_CURRENT_GLOBALS_AND_SCOPE;
-    auto context = TRI_IGETC;
-
-    auto old = v8g->_expressionContext;
-    v8g->_expressionContext = expressionContext;
-    auto sg =
-        arangodb::scopeGuard([&]() noexcept { v8g->_expressionContext = old; });
-
-    VPackOptions const& options = trx.vpackOptions();
-    std::string jsName;
-    int const n = static_cast<int>(invokeParams.size());
-    int const callArgs = (func == nullptr ? 3 : n);
-    auto args = std::make_unique<v8::Handle<v8::Value>[]>(callArgs);
-
-    if (func == nullptr) {
-      // a call to a user-defined function
-      jsName = "FCALL_USER";
-
-      // function name
-      args[0] = TRI_V8_STD_STRING(isolate, ucInvokeFN);
-      // call parameters
-      v8::Handle<v8::Array> params =
-          v8::Array::New(isolate, static_cast<int>(n));
-
-      for (int i = 0; i < n; ++i) {
-        params
-            ->Set(context, static_cast<uint32_t>(i),
-                  invokeParams[i].toV8(isolate, &options))
-            .FromMaybe(true);
-      }
-      args[1] = params;
-      args[2] = TRI_V8_ASCII_STRING(isolate, AFN);
-    } else {
-      // a call to a built-in V8 function
-      TRI_ASSERT(func->hasV8Implementation());
-
-      jsName = "AQL_" + func->name;
-      for (int i = 0; i < n; ++i) {
-        args[i] = invokeParams[i].toV8(isolate, &options);
-      }
-    }
-
-    bool dummy;
-    return Expression::invokeV8Function(*expressionContext, jsName, ucInvokeFN,
-                                        AFN, false, callArgs, args.get(),
-                                        dummy);
-  }
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
 }
 
 AqlValue geoContainsIntersect(ExpressionContext* expressionContext,
@@ -1361,6 +1308,24 @@ irs::string_ref getFunctionName(const AstNode& node) {
 }
 
 }  // namespace
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get all cluster collections cloned, caller needs to cleanupb
+////////////////////////////////////////////////////////////////////////////////
+
+std::vector<std::shared_ptr<LogicalCollection>> GetCollections(
+    TRI_vocbase_t& vocbase) {
+  if (arangodb::ServerState::instance()->isCoordinator()) {
+    return vocbase.server().hasFeature<arangodb::ClusterFeature>()
+               ? vocbase.server()
+                     .getFeature<arangodb::ClusterFeature>()
+                     .clusterInfo()
+                     .getCollections(vocbase.name())
+               : std::vector<std::shared_ptr<LogicalCollection>>();
+  }
+
+  return vocbase.collections(false);
+}
 
 namespace arangodb {
 namespace aql {

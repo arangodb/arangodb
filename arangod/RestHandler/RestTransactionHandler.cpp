@@ -36,10 +36,6 @@
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
 #include "Transaction/Status.h"
-#include "V8/JavaScriptSecurityContext.h"
-#include "V8Server/V8Context.h"
-#include "V8Server/V8DealerFeature.h"
-#include "VocBase/Methods/Transactions.h"
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Builder.h>
@@ -52,7 +48,6 @@ RestTransactionHandler::RestTransactionHandler(ArangodServer& server,
                                                GeneralRequest* request,
                                                GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response),
-      _v8Context(nullptr),
       _lock() {}
 
 RestStatus RestTransactionHandler::execute() {
@@ -281,96 +276,15 @@ void RestTransactionHandler::generateTransactionResult(
 
 /// start a legacy JS transaction
 void RestTransactionHandler::executeJSTransaction() {
-  if (!server().isEnabled<V8DealerFeature>()) {
-    generateError(rest::ResponseCode::NOT_IMPLEMENTED,
-                  TRI_ERROR_NOT_IMPLEMENTED,
-                  "JavaScript operations are disabled");
-    return;
-  }
-
-  auto slice = _request->payload();
-  if (!slice.isObject()) {
-    generateError(
-        Result(TRI_ERROR_BAD_PARAMETER, "expecting object input data"));
-    return;
-  }
-
-  std::string portType = _request->connectionInfo().portType();
-
-  bool allowUseDatabase =
-      server().getFeature<ActionFeature>().allowUseDatabase();
-  JavaScriptSecurityContext securityContext =
-      JavaScriptSecurityContext::createRestActionContext(allowUseDatabase);
-  V8Context* v8Context = server().getFeature<V8DealerFeature>().enterContext(
-      &_vocbase, securityContext);
-
-  if (!v8Context) {
-    generateError(Result(TRI_ERROR_INTERNAL, "could not acquire v8 context"));
-    return;
-  }
-
-  // register a function to release the V8Context whenever we exit from this
-  // scope
-  auto guard = scopeGuard([this]() noexcept {
-    try {
-      WRITE_LOCKER(lock, _lock);
-      if (_v8Context != nullptr) {
-        server().getFeature<V8DealerFeature>().exitContext(_v8Context);
-        _v8Context = nullptr;
-      }
-    } catch (std::exception const& ex) {
-      LOG_TOPIC("1b20f", ERR, Logger::V8)
-          << "Failed to exit V8 context while executing JS transaction: "
-          << ex.what();
-    }
-  });
-
-  {
-    // make our V8Context available to the cancel function
-    WRITE_LOCKER(lock, _lock);
-    _v8Context = v8Context;
-    if (_canceled) {
-      // if we cancel here, the shutdown function above will perform the
-      // necessary cleanup
-      lock.unlock();
-      generateCanceled();
-      return;
-    }
-  }
-
-  VPackBuilder result;
-  try {
-    Result res = executeTransaction(v8Context->_isolate, _lock, _canceled,
-                                    slice, portType, result);
-    if (res.ok()) {
-      VPackSlice slice = result.slice();
-      if (slice.isNone()) {
-        generateOk(rest::ResponseCode::OK, VPackSlice::nullSlice());
-      } else {
-        generateOk(rest::ResponseCode::OK, slice);
-      }
-    } else {
-      generateError(res);
-    }
-  } catch (arangodb::basics::Exception const& ex) {
-    generateError(Result(ex.code(), ex.what()));
-  } catch (std::exception const& ex) {
-    generateError(Result(TRI_ERROR_INTERNAL, ex.what()));
-  } catch (...) {
-    generateError(Result(TRI_ERROR_INTERNAL));
-  }
+  generateError(rest::ResponseCode::NOT_IMPLEMENTED,
+                TRI_ERROR_NOT_IMPLEMENTED,
+                "JavaScript operations are disabled");
 }
 
 void RestTransactionHandler::cancel() {
   // cancel v8 transaction
   WRITE_LOCKER(writeLock, _lock);
   _canceled.store(true);
-  if (_v8Context != nullptr) {
-    auto isolate = _v8Context->_isolate;
-    if (!isolate->IsExecutionTerminating()) {
-      isolate->TerminateExecution();
-    }
-  }
 }
 
 /// @brief returns the short id of the server which should handle this request

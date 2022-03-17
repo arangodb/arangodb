@@ -48,7 +48,6 @@
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
 #include "Transaction/Helpers.h"
-#include "V8/v8-globals.h"
 
 #include <velocypack/Iterator.h>
 
@@ -557,30 +556,10 @@ void IndexExecutor::initIndexes(InputAqlItemRow const& input) {
   if (!_infos.getNonConstExpressions().empty()) {
     TRI_ASSERT(_infos.getCondition() != nullptr);
 
-    if (_infos.getV8Expression()) {
-      // must have a V8 context here to protect Expression::execute()
-      auto cleanup = [this]() {
-        if (arangodb::ServerState::instance()->isRunningInCluster()) {
-          _infos.query().exitV8Context();
-        }
-      };
-
-      _infos.query().enterV8Context();
-      auto sg = arangodb::scopeGuard([&]() noexcept { cleanup(); });
-
-      ISOLATE;
-      v8::HandleScope scope(isolate);  // do not delete this!
-
-      executeExpressions(input);
-      TRI_IF_FAILURE("IndexBlock::executeV8") {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-      }
-    } else {
-      // no V8 context required!
-      executeExpressions(input);
-      TRI_IF_FAILURE("IndexBlock::executeExpression") {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-      }
+    // no V8 context required!
+    executeExpressions(input);
+    TRI_IF_FAILURE("IndexBlock::executeExpression") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
   }
 

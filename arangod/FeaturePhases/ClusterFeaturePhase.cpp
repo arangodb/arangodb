@@ -35,9 +35,6 @@ ClusterFeaturePhase::ClusterFeaturePhase(ArangodServer& server)
   startsAfter<MaintenanceFeature, ArangodServer>();
   startsAfter<ReplicationTimeoutFeature, ArangodServer>();
   startsAfter<ReplicatedLogFeature, ArangodServer>();
-
-  // use before here since platform feature is in lib
-  startsBefore<V8PlatformFeature, ArangodServer>();
 }
 
 }  // namespace arangodb::application_features

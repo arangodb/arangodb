@@ -39,8 +39,6 @@
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
 #include "ApplicationFeatures/TempFeature.h"
-#include "ApplicationFeatures/V8PlatformFeature.h"
-#include "ApplicationFeatures/V8SecurityFeature.h"
 #include "ApplicationFeatures/VersionFeature.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/OptimizerRulesFeature.h"
@@ -65,9 +63,7 @@
 #include "FeaturePhases/ClusterFeaturePhase.h"
 #include "FeaturePhases/DatabaseFeaturePhase.h"
 #include "FeaturePhases/FinalFeaturePhase.h"
-#include "FeaturePhases/FoxxFeaturePhase.h"
 #include "FeaturePhases/ServerFeaturePhase.h"
-#include "FeaturePhases/V8FeaturePhase.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/ServerSecurityFeature.h"
@@ -90,7 +86,6 @@
 #include "RestServer/AqlFeature.h"
 #include "RestServer/BootstrapFeature.h"
 #include "RestServer/CheckVersionFeature.h"
-#include "RestServer/ConsoleFeature.h"
 #include "RestServer/CpuUsageFeature.h"
 #include "RestServer/DaemonFeature.h"
 #include "RestServer/DatabaseFeature.h"
@@ -110,7 +105,6 @@
 #include "RestServer/PrivilegeFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/RestartAction.h"
-#include "RestServer/ScriptFeature.h"
 #include "RestServer/ServerFeature.h"
 #include "RestServer/ServerIdFeature.h"
 #include "RestServer/SharedPRNGFeature.h"
@@ -132,8 +126,6 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngineFeature.h"
 #include "Transaction/ManagerFeature.h"
-#include "V8Server/FoxxFeature.h"
-#include "V8Server/V8DealerFeature.h"
 
 #ifdef _WIN32
 #include "Basics/win-utils.h"
@@ -161,7 +153,6 @@ constexpr auto kNonServerFeatures =
                ArangodServer::id<SupervisorFeature>(),
                ArangodServer::id<DaemonFeature>(),
 #endif
-               ArangodServer::id<FoxxFeature>(),
                ArangodServer::id<GeneralServerFeature>(),
                ArangodServer::id<GreetingsFeature>(),
                ArangodServer::id<HttpEndpointProvider>(),
@@ -215,15 +206,12 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
                 [](auto& server, TypeTag<LoggerFeature>) {
                   return std::make_unique<LoggerFeature>(server, true);
                 },
-                [&ret](auto& server, TypeTag<ScriptFeature>) {
-                  return std::make_unique<ScriptFeature>(server, &ret);
-                },
                 [&ret](auto& server, TypeTag<ServerFeature>) {
                   return std::make_unique<ServerFeature>(server, &ret);
                 },
                 [](auto& server, TypeTag<ShutdownFeature>) {
                   return std::make_unique<ShutdownFeature>(
-                      server, std::array{ArangodServer::id<ScriptFeature>()});
+                      server);
                 },
                 [&name](auto& server, TypeTag<TempFeature>) {
                   return std::make_unique<TempFeature>(server, name);

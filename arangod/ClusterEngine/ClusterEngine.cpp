@@ -34,7 +34,6 @@
 #include "ClusterEngine/ClusterIndexFactory.h"
 #include "ClusterEngine/ClusterRestHandlers.h"
 #include "ClusterEngine/ClusterTransactionState.h"
-#include "ClusterEngine/ClusterV8Functions.h"
 #include "GeneralServer/RestHandlerFactory.h"
 #include "Logger/Logger.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
@@ -284,7 +283,6 @@ void ClusterEngine::addOptimizerRules(aql::OptimizerRulesFeature& feature) {
 
 /// @brief Add engine-specific V8 functions
 void ClusterEngine::addV8Functions() {
-  ClusterV8Functions::registerResources();
 }
 
 /// @brief Add engine-specific REST handlers

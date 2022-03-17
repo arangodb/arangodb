@@ -35,7 +35,6 @@
 #include "Basics/Exceptions.h"
 #include "Basics/ScopeGuard.h"
 #include "Cluster/ServerState.h"
-#include "V8/v8-globals.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -120,24 +119,6 @@ CalculationExecutor<calculationType>::produceRows(
 }
 
 template<CalculationType calculationType>
-template<CalculationType U, typename>
-void CalculationExecutor<calculationType>::enterContext() {
-  _infos.getQuery().enterV8Context();
-  _hasEnteredContext = true;
-}
-
-template<CalculationType calculationType>
-template<CalculationType U, typename>
-void CalculationExecutor<calculationType>::exitContext() noexcept {
-  if (shouldExitContextBetweenBlocks()) {
-    // must invalidate the expression now as we might be called from
-    // different threads
-    _infos.getQuery().exitV8Context();
-    _hasEnteredContext = false;
-  }
-}
-
-template<CalculationType calculationType>
 bool CalculationExecutor<calculationType>::shouldExitContextBetweenBlocks()
     const noexcept {
   static bool const isRunningInCluster =
@@ -186,49 +167,5 @@ void CalculationExecutor<CalculationType::Condition>::doEvaluation(
   output.moveValueInto(_infos.getOutputRegisterId(), input, guard);
 }
 
-template<>
-void CalculationExecutor<CalculationType::V8Condition>::doEvaluation(
-    InputAqlItemRow& input, OutputAqlItemRow& output) {
-  // must have a V8 context here to protect Expression::execute().
-
-  // enterContext is safe to call even if we've already entered.
-
-  // If we should exit the context between two blocks, because client or
-  // upstream might send us to sleep, it is expected that we enter the context
-  // exactly on the first row of every block.
-  TRI_ASSERT(!shouldExitContextBetweenBlocks() ||
-             _hasEnteredContext == !input.isFirstDataRowInBlock());
-
-  enterContext();
-  auto contextGuard = scopeGuard([this]() noexcept { exitContext(); });
-
-  ISOLATE;
-  v8::HandleScope scope(isolate);  // do not delete this!
-  // execute the expression
-  ExecutorExpressionContext ctx(_trx, _infos.getQuery(),
-                                _aqlFunctionsInternalCache, input,
-                                _infos.getVarToRegs());
-
-  bool mustDestroy;  // will get filled by execution
-  AqlValue a = _infos.getExpression().execute(&ctx, mustDestroy);
-  AqlValueGuard guard(a, mustDestroy);
-
-  TRI_IF_FAILURE("CalculationBlock::executeExpression") {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-  }
-
-  output.moveValueInto(_infos.getOutputRegisterId(), input, guard);
-
-  if (input.blockHasMoreDataRowsAfterThis()) {
-    // We will be called again before the fetcher needs to get a new block.
-    // So we keep the context open.
-    // This works because this block allows pass through, i.e. produces exactly
-    // one output row per input row.
-    contextGuard.cancel();
-  }
-}
-
 template class ::arangodb::aql::CalculationExecutor<CalculationType::Condition>;
-template class ::arangodb::aql::CalculationExecutor<
-    CalculationType::V8Condition>;
 template class ::arangodb::aql::CalculationExecutor<CalculationType::Reference>;

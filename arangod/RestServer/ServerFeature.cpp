@@ -38,11 +38,6 @@
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "V8/v8-conv.h"
-#include "V8/v8-globals.h"
-#include "V8/v8-utils.h"
-#include "V8Server/V8Context.h"
-#include "V8Server/V8DealerFeature.h"
 
 using namespace arangodb::application_features;
 using namespace arangodb::options;
@@ -182,21 +177,6 @@ void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     FATAL_ERROR_EXIT();
   }
 
-  V8DealerFeature& v8dealer = server().getFeature<V8DealerFeature>();
-
-  if (v8dealer.isEnabled()) {
-    if (_operationMode == OperationMode::MODE_SCRIPT) {
-      v8dealer.setMinimumContexts(2);
-    } else {
-      v8dealer.setMinimumContexts(1);
-    }
-  } else if (_operationMode != OperationMode::MODE_SERVER) {
-    LOG_TOPIC("a114b", FATAL, arangodb::Logger::FIXME)
-        << "Options '--console', '--javascript.unit-tests'"
-        << " or '--javascript.script' are not supported without V8";
-    FATAL_ERROR_EXIT();
-  }
-
   auto disableDeamonAndSupervisor = [&]() {
     if constexpr (Server::contains<DaemonFeature>()) {
       server().disableFeatures(std::array{Server::id<DaemonFeature>()});
@@ -227,7 +207,6 @@ void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 
   if (_operationMode == OperationMode::MODE_CONSOLE) {
     disableDeamonAndSupervisor();
-    v8dealer.setMinimumContexts(2);
   }
 
   if (_operationMode == OperationMode::MODE_SERVER ||

@@ -93,7 +93,6 @@
 #include "Utils/ExecContext.h"
 #include "Utils/VersionTracker.h"
 #include "Utilities/NameValidator.h"
-#include "V8Server/v8-user-structures.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalDataSource.h"
 #include "VocBase/LogicalView.h"
@@ -1813,7 +1812,6 @@ TRI_vocbase_t::TRI_vocbase_t(TRI_vocbase_type_e type,
   _collections.reserve(32);
   _deadCollections.reserve(32);
 
-  _cacheData = std::make_unique<arangodb::DatabaseJavaScriptCache>();
   _logManager = std::make_shared<VocBaseLogManager>(_info.server(), name());
 }
 

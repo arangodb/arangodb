@@ -35,7 +35,6 @@
 #include "Aql/Quantifier.h"
 #include "Aql/QueryContext.h"
 #include "Aql/Range.h"
-#include "Aql/V8Executor.h"
 #include "Aql/Variable.h"
 #include "Aql/AqlValueMaterializer.h"
 #include "Basics/Exceptions.h"
@@ -45,15 +44,11 @@
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
-#include "V8/v8-globals.h"
-#include "V8/v8-vpack.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Sink.h>
 #include <velocypack/Slice.h>
-
-#include <v8.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -404,8 +399,6 @@ AqlValue Expression::executeSimpleExpression(ExpressionContext& ctx,
       return executeSimpleExpressionReference(ctx, node, mustDestroy, doCopy);
     case NODE_TYPE_FCALL:
       return executeSimpleExpressionFCall(ctx, node, mustDestroy);
-    case NODE_TYPE_FCALL_USER:
-      return executeSimpleExpressionFCallJS(ctx, node, mustDestroy);
     case NODE_TYPE_RANGE:
       return executeSimpleExpressionRange(ctx, node, mustDestroy);
     case NODE_TYPE_OPERATOR_UNARY_NOT:
@@ -802,10 +795,7 @@ AqlValue Expression::executeSimpleExpressionFCall(ExpressionContext& ctx,
   // check that the called function actually has one
   auto func = static_cast<Function*>(node->getData());
   TRI_ASSERT(func != nullptr);
-  if (func->hasCxxImplementation()) {
-    return executeSimpleExpressionFCallCxx(ctx, node, mustDestroy);
-  }
-  return executeSimpleExpressionFCallJS(ctx, node, mustDestroy);
+  return executeSimpleExpressionFCallCxx(ctx, node, mustDestroy);
 }
 
 // execute an expression of type SIMPLE with FCALL, CXX version
@@ -870,144 +860,6 @@ AqlValue Expression::executeSimpleExpressionFCallCxx(ExpressionContext& ctx,
   mustDestroy = true;  // function result is always dynamic
 
   return a;
-}
-
-AqlValue Expression::invokeV8Function(
-    ExpressionContext& ctx, std::string const& jsName,
-    std::string const& ucInvokeFN, char const* AFN, bool rethrowV8Exception,
-    size_t callArgs, v8::Handle<v8::Value>* args, bool& mustDestroy) {
-  ISOLATE;
-  auto current = isolate->GetCurrentContext()->Global();
-  auto context = TRI_IGETC;
-
-  v8::Handle<v8::Value> module =
-      current->Get(context, TRI_V8_ASCII_STRING(isolate, "_AQL"))
-          .FromMaybe(v8::Local<v8::Value>());
-  if (module.IsEmpty() || !module->IsObject()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "unable to find global _AQL module");
-  }
-
-  v8::Handle<v8::Value> function =
-      v8::Handle<v8::Object>::Cast(module)
-          ->Get(context, TRI_V8_STD_STRING(isolate, jsName))
-          .FromMaybe(v8::Local<v8::Value>());
-  if (function.IsEmpty() || !function->IsFunction()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL,
-        std::string("unable to find AQL function '") + jsName + "'");
-  }
-
-  // actually call the V8 function
-  v8::TryCatch tryCatch(isolate);
-  v8::Handle<v8::Value> result =
-      v8::Handle<v8::Function>::Cast(function)
-          ->Call(context, current, static_cast<int>(callArgs), args)
-          .FromMaybe(v8::Local<v8::Value>());
-
-  try {
-    V8Executor::HandleV8Error(tryCatch, result, nullptr, false);
-  } catch (arangodb::basics::Exception const& ex) {
-    if (rethrowV8Exception || ex.code() == TRI_ERROR_QUERY_FUNCTION_NOT_FOUND) {
-      throw;
-    }
-    std::string message("while invoking '");
-    message += ucInvokeFN + "' via '" + AFN + "': " + ex.message();
-    ctx.registerWarning(ex.code(), message.c_str());
-    return AqlValue(AqlValueHintNull());
-  }
-  if (result.IsEmpty() || result->IsUndefined()) {
-    return AqlValue(AqlValueHintNull());
-  }
-
-  auto& trx = ctx.trx();
-  transaction::BuilderLeaser builder(&trx);
-
-  // can throw
-  TRI_V8ToVPack(isolate, *builder.get(), result, false);
-
-  mustDestroy = true;  // builder = dynamic data
-  return AqlValue(builder->slice(), builder->size());
-}
-
-// execute an expression of type SIMPLE, JavaScript variant
-AqlValue Expression::executeSimpleExpressionFCallJS(ExpressionContext& ctx,
-                                                    AstNode const* node,
-                                                    bool& mustDestroy) {
-  auto member = node->getMemberUnchecked(0);
-  TRI_ASSERT(member->type == NODE_TYPE_ARRAY);
-
-  mustDestroy = false;
-
-  {
-    ISOLATE;
-    TRI_ASSERT(isolate != nullptr);
-    TRI_V8_CURRENT_GLOBALS_AND_SCOPE;
-    auto context = TRI_IGETC;
-
-    VPackOptions const& options = ctx.trx().vpackOptions();
-
-    auto old = v8g->_expressionContext;
-    v8g->_expressionContext = &ctx;
-    auto sg =
-        arangodb::scopeGuard([&]() noexcept { v8g->_expressionContext = old; });
-
-    std::string jsName;
-    size_t const n = member->numMembers();
-    size_t callArgs = (node->type == NODE_TYPE_FCALL_USER ? 2 : n);
-    auto args = std::make_unique<v8::Handle<v8::Value>[]>(callArgs);
-
-    if (node->type == NODE_TYPE_FCALL_USER) {
-      // a call to a user-defined function
-      jsName = "FCALL_USER";
-      v8::Handle<v8::Array> params =
-          v8::Array::New(isolate, static_cast<int>(n));
-
-      for (size_t i = 0; i < n; ++i) {
-        auto arg = member->getMemberUnchecked(i);
-
-        bool localMustDestroy;
-        AqlValue a = executeSimpleExpression(ctx, arg, localMustDestroy, false);
-        AqlValueGuard guard(a, localMustDestroy);
-
-        params
-            ->Set(context, static_cast<uint32_t>(i), a.toV8(isolate, &options))
-            .FromMaybe(false);
-      }
-
-      // function name
-      args[0] = TRI_V8_STD_STRING(isolate, node->getString());
-      // call parameters
-      args[1] = params;
-      // args[2] will be null
-    } else {
-      // a call to a built-in V8 function
-      auto func = static_cast<Function*>(node->getData());
-      TRI_ASSERT(func != nullptr);
-      TRI_ASSERT(func->hasV8Implementation());
-      jsName = "AQL_" + func->name;
-
-      for (size_t i = 0; i < n; ++i) {
-        auto arg = member->getMemberUnchecked(i);
-
-        if (arg->type == NODE_TYPE_COLLECTION) {
-          // parameter conversion for NODE_TYPE_COLLECTION here
-          args[i] = TRI_V8_ASCII_PAIR_STRING(isolate, arg->getStringValue(),
-                                             arg->getStringLength());
-        } else {
-          bool localMustDestroy;
-          AqlValue a =
-              executeSimpleExpression(ctx, arg, localMustDestroy, false);
-          AqlValueGuard guard(a, localMustDestroy);
-
-          args[i] = a.toV8(isolate, &options);
-        }
-      }
-    }
-
-    return invokeV8Function(ctx, jsName, "", "", true, callArgs, args.get(),
-                            mustDestroy);
-  }
 }
 
 // execute an expression of type SIMPLE with NOT

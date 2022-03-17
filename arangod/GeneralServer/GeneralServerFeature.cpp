@@ -52,14 +52,11 @@
 #include "Rest/HttpResponse.h"
 #include "RestHandler/RestAdminClusterHandler.h"
 #include "RestHandler/RestAdminDatabaseHandler.h"
-#include "RestHandler/RestAdminExecuteHandler.h"
 #include "RestHandler/RestAdminLogHandler.h"
 #include "RestHandler/RestAdminRoutingHandler.h"
 #include "RestHandler/RestAdminServerHandler.h"
 #include "RestHandler/RestAdminStatisticsHandler.h"
 #include "RestHandler/RestAnalyzerHandler.h"
-#include "RestHandler/RestAqlFunctionsHandler.h"
-#include "RestHandler/RestAqlUserFunctionsHandler.h"
 #include "RestHandler/RestAuthHandler.h"
 #include "RestHandler/RestAuthReloadHandler.h"
 #include "RestHandler/RestBatchHandler.h"
@@ -94,7 +91,6 @@
 #include "RestHandler/RestSupervisionStateHandler.h"
 #include "RestHandler/RestSupportInfoHandler.h"
 #include "RestHandler/RestSystemReportHandler.h"
-#include "RestHandler/RestTasksHandler.h"
 #include "RestHandler/RestTestHandler.h"
 #include "RestHandler/RestTimeHandler.h"
 #include "RestHandler/RestTransactionHandler.h"
@@ -114,7 +110,6 @@
 #include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
-#include "V8Server/V8DealerFeature.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/RestHandler/RestHotBackupHandler.h"
@@ -523,13 +518,6 @@ void GeneralServerFeature::defineHandlers() {
       RestHandlerCreator<RestSimpleHandler>::createData<aql::QueryRegistry*>,
       queryRegistry);
 
-  if (server().isEnabled<V8DealerFeature>()) {
-    // the tasks feature depends on V8. only enable it if JavaScript is enabled
-    _handlerFactory->addPrefixHandler(
-        RestVocbaseBaseHandler::TASKS_PATH,
-        RestHandlerCreator<RestTasksHandler>::createNoData);
-  }
-
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::UPLOAD_PATH,
       RestHandlerCreator<RestUploadHandler>::createNoData);
@@ -564,18 +552,6 @@ void GeneralServerFeature::defineHandlers() {
       "/_api/aql",
       RestHandlerCreator<aql::RestAqlHandler>::createData<aql::QueryRegistry*>,
       queryRegistry);
-
-  _handlerFactory->addPrefixHandler(
-      "/_api/aql-builtin",
-      RestHandlerCreator<RestAqlFunctionsHandler>::createNoData);
-
-  if (server().isEnabled<V8DealerFeature>()) {
-    // the AQL UDfs feature depends on V8. only enable it if JavaScript is
-    // enabled
-    _handlerFactory->addPrefixHandler(
-        "/_api/aqlfunction",
-        RestHandlerCreator<RestAqlUserFunctionsHandler>::createNoData);
-  }
 
   _handlerFactory->addPrefixHandler(
       "/_api/explain", RestHandlerCreator<RestExplainHandler>::createNoData);
@@ -632,15 +608,6 @@ void GeneralServerFeature::defineHandlers() {
   _handlerFactory->addHandler(
       "/_admin/auth/reload",
       RestHandlerCreator<RestAuthReloadHandler>::createNoData);
-
-  if (server().hasFeature<V8DealerFeature>() &&
-      server().getFeature<V8DealerFeature>().allowAdminExecute()) {
-    // the /_admin/execute API depends on V8. only enable it if JavaScript is
-    // enabled
-    _handlerFactory->addHandler(
-        "/_admin/execute",
-        RestHandlerCreator<RestAdminExecuteHandler>::createNoData);
-  }
 
   _handlerFactory->addHandler(
       "/_admin/time", RestHandlerCreator<RestTimeHandler>::createNoData);
@@ -705,14 +672,6 @@ void GeneralServerFeature::defineHandlers() {
   _handlerFactory->addPrefixHandler(
       "/_admin/log",
       RestHandlerCreator<arangodb::RestAdminLogHandler>::createNoData);
-
-  if (server().isEnabled<V8DealerFeature>()) {
-    // the routing feature depends on V8. only enable it if JavaScript is
-    // enabled
-    _handlerFactory->addPrefixHandler(
-        "/_admin/routing",
-        RestHandlerCreator<arangodb::RestAdminRoutingHandler>::createNoData);
-  }
 
   _handlerFactory->addHandler(
       "/_admin/supervisionState",

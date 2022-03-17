@@ -74,7 +74,6 @@ add_library(arango STATIC
   ApplicationFeatures/ShellColorsFeature.cpp
   ApplicationFeatures/ShutdownFeature.cpp
   ApplicationFeatures/TempFeature.cpp
-  ApplicationFeatures/V8PlatformFeature.cpp
   ApplicationFeatures/VersionFeature.cpp
   Basics/ArangoGlobalContext.cpp
   Basics/AttributeNameParser.cpp
@@ -229,7 +228,6 @@ target_link_libraries(arango
   velocypack
   linenoise-ng
   date_interface
-  ${V8_LIBS}
   ${SYSTEM_LIBRARIES}
   ${ICU_LIBS}
 )
@@ -247,7 +245,6 @@ target_include_directories(arango SYSTEM PUBLIC ${ICU_INCLUDE_DIR})
 
 target_link_libraries(arango rocksdb_interface)
 target_link_libraries(arango zlib_interface)
-target_link_libraries(arango v8_interface)
 
 add_dependencies(arango v8_build)
 
@@ -341,70 +338,16 @@ if (USE_ENTERPRISE)
   target_include_directories(arango_geo PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
 endif()
 
-################################################################################
-## LIB_ARANGO_V8
-################################################################################
-
-add_library(arango_v8 STATIC
-  ApplicationFeatures/V8SecurityFeature.cpp
-  V8/JavaScriptSecurityContext.cpp
-  V8/JSLoader.cpp
-  V8/V8LineEditor.cpp
-  V8/v8-buffer.cpp
-  V8/v8-conv.cpp
-  V8/v8-globals.cpp
-  V8/v8-shell.cpp
-  V8/v8-utils.cpp
-  V8/v8-vpack.cpp
-  V8/v8-environment.cpp
-  )
-add_library(arango_v8_deadline STATIC
-  V8/v8-deadline.cpp
-  )
-
-add_library(arango_v8_no_deadline STATIC
-  V8/v8-no-deadline.cpp
-  )
-
-target_link_libraries(arango_v8
-  boost_system
-  boost_boost
-  velocypack
-  )
-
-target_include_directories(arango_v8 PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-target_include_directories(arango_v8 PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
-target_include_directories(arango_v8 SYSTEM PUBLIC ${OPENSSL_INCLUDE_DIR})
-target_include_directories(arango_v8 SYSTEM PUBLIC ${ICU_INCLUDE_DIR} ${ABSL_INCLUDE_DIR})
-target_include_directories(arango_v8_deadline PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${ABSL_INCLUDE_DIR})
-target_include_directories(arango_v8_no_deadline PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-
-target_link_libraries(arango_v8 v8_interface)
-target_link_libraries(arango_v8_deadline arango v8_interface)
-target_link_libraries(arango_v8_no_deadline v8_interface)
-
-target_link_libraries(arango_v8_deadline velocypack)
-target_link_libraries(arango_v8_no_deadline velocypack)
-
-# Enterprise
-if (USE_ENTERPRISE)
-  target_compile_definitions(arango_v8 PUBLIC "-DUSE_ENTERPRISE=1")
-  target_include_directories(arango_v8 PRIVATE "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
-endif()
-
 if (USE_FAIL_ON_WARNINGS)
   if (MSVC)
-    target_compile_options(arango_v8 PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
     target_compile_options(arango_geo PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS96)
     target_compile_options(arango PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
     if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang") # clang-cl.exe
       # There's a warning about /MP being unused if compiling only a single file
-      target_compile_options(arango_v8 PRIVATE -Wno-unused-command-line-argument)
       target_compile_options(arango_geo PRIVATE -Wno-unused-command-line-argument)
       target_compile_options(arango PRIVATE -Wno-unused-command-line-argument)
     endif()
   else ()
-    target_compile_options(arango_v8 PRIVATE -Werror -Wno-error=deprecated-declarations)
     target_compile_options(arango_geo PRIVATE -Werror -Wno-error=deprecated-declarations)
     target_compile_options(arango PRIVATE -Werror -Wno-error=deprecated-declarations)
   endif ()

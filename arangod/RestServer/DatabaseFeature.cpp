@@ -59,7 +59,6 @@
 #include "Utils/CursorRepository.h"
 #include "Utils/Events.h"
 #include "Utilities/NameValidator.h"
-#include "V8Server/V8DealerFeature.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
@@ -111,7 +110,6 @@ DatabaseManagerThread::~DatabaseManagerThread() { shutdown(); }
 
 void DatabaseManagerThread::run() {
   auto& databaseFeature = server().getFeature<DatabaseFeature>();
-  auto& dealer = server().getFeature<V8DealerFeature>();
   int cleanupCycles = 0;
 
   StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
@@ -174,37 +172,6 @@ void DatabaseManagerThread::run() {
           // ---------------------------
 
           TRI_ASSERT(!database->isSystem());
-
-          if (dealer.isEnabled()) {
-            // remove apps directory for database
-            std::string const& appPath = dealer.appPath();
-            if (database->isOwnAppsDirectory() && !appPath.empty()) {
-              MUTEX_LOCKER(mutexLocker1, databaseFeature._databaseCreateLock);
-
-              // but only if nobody re-created a database with the same name!
-              MUTEX_LOCKER(mutexLocker2, databaseFeature._databasesMutex);
-
-              TRI_vocbase_t* newInstance =
-                  databaseFeature.lookupDatabase(database->name());
-              TRI_ASSERT(newInstance == nullptr ||
-                         newInstance->id() != database->id());
-              if (newInstance == nullptr) {
-                std::string const dirName = ::getDatabaseDirName(
-                    database->name(), std::to_string(database->id()));
-                std::string path = arangodb::basics::FileUtils::buildFilename(
-                    arangodb::basics::FileUtils::buildFilename(appPath, "_db"),
-                    dirName);
-
-                if (TRI_IsDirectory(path.c_str())) {
-                  LOG_TOPIC("041b1", TRACE, arangodb::Logger::FIXME)
-                      << "removing app directory '" << path << "' of database '"
-                      << database->name() << "'";
-
-                  TRI_RemoveDirectory(path.c_str());
-                }
-              }
-            }
-          }
 
           // destroy all items in the QueryRegistry for this database
           auto queryRegistry = QueryRegistryFeature::registry();
@@ -726,19 +693,6 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info,
       // enable deadlock detection
       vocbase->_deadlockDetector.enabled(
           !ServerState::instance()->isRunningInCluster());
-
-      // create application directories
-      V8DealerFeature& dealer = server().getFeature<V8DealerFeature>();
-      auto appPath = dealer.appPath();
-
-      // create app directory for database if it does not exist
-      std::string const dirName =
-          ::getDatabaseDirName(name, std::to_string(dbId));
-      auto res = createApplicationDirectory(dirName, appPath, true);
-
-      if (res != TRI_ERROR_NO_ERROR) {
-        THROW_ARANGO_EXCEPTION(res);
-      }
     }
 
     if (!engine.inRecovery()) {
@@ -1250,61 +1204,12 @@ ErrorCode DatabaseFeature::createApplicationDirectory(
     return TRI_ERROR_NO_ERROR;
   }
 
-  V8DealerFeature& dealer = server().getFeature<V8DealerFeature>();
-  if (!dealer.isEnabled()) {
-    // no JavaScript enabled - no need to create the js/apps directory/ies
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  std::string const path = basics::FileUtils::buildFilename(
-      basics::FileUtils::buildFilename(basePath, "_db"), name);
-
-  if (TRI_IsDirectory(path.c_str())) {
-    // directory already exists
-    // this can happen if a database is dropped and quickly recreated
-    if (!removeExisting) {
-      return TRI_ERROR_NO_ERROR;
-    }
-
-    if (!basics::FileUtils::listFiles(path).empty()) {
-      LOG_TOPIC("56fc7", INFO, arangodb::Logger::FIXME)
-          << "forcefully removing existing application directory '" << path
-          << "' for database '" << name << "'";
-      // removing is best effort. if it does not succeed, we can still
-      // go on creating the it
-      TRI_RemoveDirectory(path.c_str());
-    }
-  }
-
-  // directory does not yet exist - this should be the standard case
-  long systemError;
-  std::string errorMessage;
-  auto res =
-      TRI_CreateRecursiveDirectory(path.c_str(), systemError, errorMessage);
-
-  if (res == TRI_ERROR_NO_ERROR) {
-    LOG_TOPIC("6745a", TRACE, arangodb::Logger::FIXME)
-        << "created application directory '" << path << "' for database '"
-        << name << "'";
-  } else if (res == TRI_ERROR_FILE_EXISTS) {
-    LOG_TOPIC("2a78e", INFO, arangodb::Logger::FIXME)
-        << "unable to create application directory '" << path
-        << "' for database '" << name << "': " << errorMessage;
-    res = TRI_ERROR_NO_ERROR;
-  } else {
-    LOG_TOPIC("36682", ERR, arangodb::Logger::FIXME)
-        << "unable to create application directory '" << path
-        << "' for database '" << name << "': " << errorMessage;
-  }
-
-  return res;
+  // no JavaScript enabled - no need to create the js/apps directory/ies
+  return TRI_ERROR_NO_ERROR;
 }
 
 /// @brief iterate over all databases in the databases directory and open them
 ErrorCode DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
-  V8DealerFeature& dealer = server().getFeature<V8DealerFeature>();
-  std::string const appPath = dealer.appPath();
-
   StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
 
   auto res = TRI_ERROR_NO_ERROR;
@@ -1332,13 +1237,6 @@ ErrorCode DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
       std::string const databaseName = it.get("name").copyString();
       std::string const id = VelocyPackHelper::getStringValue(it, "id", "");
       std::string const dirName = ::getDatabaseDirName(databaseName, id);
-
-      // create app directory for database if it does not exist
-      res = createApplicationDirectory(dirName, appPath, false);
-
-      if (res != TRI_ERROR_NO_ERROR) {
-        break;
-      }
 
       // open the database and scan collections in it
 
@@ -1450,39 +1348,6 @@ void DatabaseFeature::closeDroppedDatabases() {
 
 void DatabaseFeature::verifyAppPaths() {
   // create shared application directory js/apps
-  V8DealerFeature& dealer = server().getFeature<V8DealerFeature>();
-  if (!dealer.isEnabled()) {
-    // no JavaScript enabled - no need to create the js/apps directory/ies
-    return;
-  }
-
-  auto appPath = dealer.appPath();
-
-  if (!appPath.empty() && !TRI_IsDirectory(appPath.c_str())) {
-    long systemError;
-    std::string errorMessage;
-    auto res = TRI_CreateRecursiveDirectory(appPath.c_str(), systemError,
-                                            errorMessage);
-
-    if (res == TRI_ERROR_NO_ERROR) {
-      LOG_TOPIC("1bf74", INFO, arangodb::Logger::FIXME)
-          << "created --javascript.app-path directory '" << appPath << "'";
-    } else {
-      LOG_TOPIC("52bd5", ERR, arangodb::Logger::FIXME)
-          << "unable to create --javascript.app-path directory '" << appPath
-          << "': " << errorMessage;
-      THROW_ARANGO_EXCEPTION(res);
-    }
-  }
-
-  // create subdirectory js/apps/_db if not yet present
-  auto res = createBaseApplicationDirectory(appPath, "_db");
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    LOG_TOPIC("610c7", ERR, arangodb::Logger::FIXME)
-        << "unable to initialize databases: " << TRI_errno_string(res);
-    THROW_ARANGO_EXCEPTION(res);
-  }
 }
 
 /// @brief activates deadlock detection in all existing databases

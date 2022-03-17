@@ -87,7 +87,6 @@
 #include "RocksDBEngine/RocksDBSyncThread.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "RocksDBEngine/RocksDBUpgrade.h"
-#include "RocksDBEngine/RocksDBV8Functions.h"
 #include "RocksDBEngine/RocksDBValue.h"
 #include "RocksDBEngine/RocksDBWalAccess.h"
 #include "RocksDBEngine/SimpleRocksDBTransactionState.h"
@@ -2222,7 +2221,6 @@ void RocksDBEngine::addOptimizerRules(aql::OptimizerRulesFeature& feature) {
 /// @brief Add engine-specific V8 functions
 void RocksDBEngine::addV8Functions() {
   // there are no specific V8 functions here
-  RocksDBV8Functions::registerResources();
 }
 
 /// @brief Add engine-specific REST handlers

@@ -50,7 +50,6 @@
 #include "Sharding/ShardingInfo.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
-#include "Transaction/V8Context.h"
 #include "Utils/ExecContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -77,7 +76,7 @@ static bool arrayContainsCollection(VPackSlice array,
 
 std::shared_ptr<transaction::Context> GraphManager::ctx() const {
   // we must use v8
-  return transaction::V8Context::CreateWhenRequired(_vocbase, true);
+  return transaction::StandaloneContext::Create(_vocbase);
 }
 
 Result GraphManager::createEdgeCollection(std::string const& name,

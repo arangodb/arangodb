@@ -57,8 +57,6 @@ SoftShutdownFeature::SoftShutdownFeature(Server& server)
   setOptional(true);
   startsAfter<application_features::AgencyFeaturePhase>();
   startsAfter<ShutdownFeature>();
-  startsAfter<ConsoleFeature>();
-  startsAfter<ScriptFeature>();
 
   // We do not yet know if we are a coordinator, so just in case,
   // create a SoftShutdownTracker, it will not hurt if it is not used:

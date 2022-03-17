@@ -30,13 +30,12 @@
 #include "Aql/ExecutionStats.h"
 #include "Aql/QueryContext.h"
 #include "Aql/QueryExecutionState.h"
-#include "Aql/QueryResultV8.h"
+#include "Aql/QueryResult.h"
 #include "Aql/QueryString.h"
 #include "Aql/SharedQueryState.h"
 #include "Basics/Common.h"
 #include "Basics/ResourceUsage.h"
 #include "Basics/system-functions.h"
-#include "V8Server/V8Context.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -130,10 +129,6 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   ///        need to wait.
   QueryResult executeSync();
 
-  /// @brief execute an AQL query
-  /// may only be called with an active V8 handle scope
-  QueryResultV8 executeV8(v8::Isolate* isolate);
-
   /// @brief Enter finalization phase and do cleanup.
   /// Sets `warnings`, `stats`, `profile`, timings and does the cleanup.
   /// Only use directly for a streaming query, rather use `execute(...)`
@@ -150,15 +145,9 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
 
   virtual bool isAsyncQuery() const noexcept override;
 
-  /// @brief enter a V8 context
-  virtual void enterV8Context() override;
-
-  /// @brief exits a V8 context
-  virtual void exitV8Context() override;
-
   /// @brief check if the query has a V8 context ready for use
   virtual bool hasEnteredV8Context() const override {
-    return (_contextOwnedByExterior || _v8Context != nullptr);
+    return (_contextOwnedByExterior);
   }
 
   /// @brief return the final query result status code (0 = no error,
@@ -273,9 +262,6 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
 
   /// @brief shared query state
   std::shared_ptr<SharedQueryState> _sharedState;
-
-  /// @brief the currently used V8 context
-  V8Context* _v8Context;
 
   /// @brief bind parameters for the query
   BindParameters _bindParameters;

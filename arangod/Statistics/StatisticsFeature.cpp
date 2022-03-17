@@ -55,8 +55,6 @@
 #include "Statistics/StatisticsWorker.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/ExecContext.h"
-#include "V8Server/V8DealerFeature.h"
-#include "VocBase/vocbase.h"
 
 #include <initializer_list>
 #include <chrono>
@@ -944,20 +942,6 @@ void StatisticsFeature::toPrometheus(std::string& result, double const& now) {
                  "httpReqsUser");
   }
 
-  V8DealerFeature::Statistics v8Counters{};
-  if (server().hasFeature<V8DealerFeature>()) {
-    V8DealerFeature& dealer = server().getFeature<V8DealerFeature>();
-    if (dealer.isEnabled()) {
-      v8Counters = dealer.getCurrentContextNumbers();
-    }
-  }
-  appendMetric(result, std::to_string(v8Counters.available),
-               "v8ContextAvailable");
-  appendMetric(result, std::to_string(v8Counters.busy), "v8ContextBusy");
-  appendMetric(result, std::to_string(v8Counters.dirty), "v8ContextDirty");
-  appendMetric(result, std::to_string(v8Counters.free), "v8ContextFree");
-  appendMetric(result, std::to_string(v8Counters.min), "v8ContextMin");
-  appendMetric(result, std::to_string(v8Counters.max), "v8ContextMax");
 }
 
 Result StatisticsFeature::getClusterSystemStatistics(

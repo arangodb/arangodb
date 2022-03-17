@@ -134,10 +134,6 @@ class QueryContext {
   virtual double getLockTimeout() const noexcept = 0;
   virtual void setLockTimeout(double timeout) = 0;
 
-  virtual void enterV8Context();
-
-  virtual void exitV8Context() {}
-
   virtual bool hasEnteredV8Context() const { return false; }
 
   // base overhead for each query. the number used here is somewhat arbitrary.

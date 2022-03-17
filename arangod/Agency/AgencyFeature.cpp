@@ -29,7 +29,6 @@
 #include "Agency/Supervision.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/HttpEndpointProvider.h"
-#include "ApplicationFeatures/V8PlatformFeature.h"
 #include "Basics/application-exit.h"
 #include "Cluster/ClusterFeature.h"
 #include "Endpoint/Endpoint.h"
@@ -40,8 +39,6 @@
 #include "ProgramOptions/Section.h"
 #include "RestServer/FrontendFeature.h"
 #include "RestServer/ScriptFeature.h"
-#include "V8Server/FoxxFeature.h"
-#include "V8Server/V8DealerFeature.h"
 
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
@@ -68,7 +65,6 @@ AgencyFeature::AgencyFeature(Server& server)
       _supervisionOkThreshold(5.0),
       _cmdLineTimings(false) {
   setOptional(true);
-  startsAfter<application_features::FoxxFeaturePhase>();
 }
 
 void AgencyFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -300,18 +296,7 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     server().disableFeatures(std::array{
         ArangodServer::id<iresearch::IResearchFeature>(),
         ArangodServer::id<iresearch::IResearchAnalyzerFeature>(),
-        ArangodServer::id<ActionFeature>(), ArangodServer::id<FoxxFeature>(),
         ArangodServer::id<FrontendFeature>()});
-  }
-
-  if (!V8DealerFeature::javascriptRequestedViaOptions(options)) {
-    // specifying --console requires JavaScript, so we can only turn Javascript
-    // off if not requested
-
-    // console mode inactive. so we can turn off V8
-    server().disableFeatures(std::array{ArangodServer::id<ScriptFeature>(),
-                                        ArangodServer::id<V8PlatformFeature>(),
-                                        ArangodServer::id<V8DealerFeature>()});
   }
 }
 
