@@ -91,6 +91,7 @@ class BaseEngine {
   arangodb::aql::EngineId const _engineId;
   arangodb::aql::QueryContext& _query;
   transaction::Methods* _trx;
+  // <collectionName> -> ["s123", "s456", ...]
   std::unordered_map<std::string, std::vector<std::string>> _vertexShards;
 };
 

@@ -22,12 +22,15 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "TraverserEngine.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AqlTransaction.h"
 #include "Aql/Ast.h"
 #include "Aql/Query.h"
 #include "Aql/QueryString.h"
 #include "Basics/Exceptions.h"
 #include "Basics/Result.h"
+#include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Graph/EdgeCursor.h"
 #include "Graph/EdgeDocumentToken.h"
 #include "Graph/ShortestPathOptions.h"
@@ -44,6 +47,7 @@
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Transaction/IgnoreNoAccessMethods.h"
+#include "Enterprise/Graph/Helpers/GraphHelperEE.h"
 #endif
 
 using namespace arangodb;
@@ -174,19 +178,42 @@ void BaseEngine::getVertexData(VPackSlice vertex, VPackBuilder& builder,
           TRI_ERROR_GRAPH_INVALID_EDGE,
           "edge contains invalid value " + std::string(id));
     }
-    std::string shardName = std::string(id.substr(0, pos));
-    auto shards = _vertexShards.find(shardName);
+
+    std::string collectionName = std::string(id.substr(0, pos));
+    auto shards = _vertexShards.find(collectionName);
     if (shards == _vertexShards.end()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED,
-                                     "collection not known to traversal: '" +
-                                         shardName + "'. please add 'WITH " +
-                                         shardName +
-                                         "' as the first line in your AQL");
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED,
+          "collection not known to traversal: '" + collectionName +
+              "'. please add 'WITH " + collectionName +
+              "' as the first line in your AQL");
       // The collection is not known here!
       // Maybe handle differently
     }
 
     if (shouldProduceVertices) {
+#ifdef USE_ENTERPRISE
+      // Guaranteed to be executed in a cluster environment and only on a
+      // DBServer
+
+      ClusterInfo& ci =
+          _query.vocbase().server().getFeature<ClusterFeature>().clusterInfo();
+      auto collection =
+          ci.getCollection(_query.vocbase().name(), collectionName);
+
+      if (collection->isSatellite()) {
+        TRI_ASSERT(shards->second.size() == 1);
+        // ID of the only shard (Satellite)
+        auto shardId = shards->second.front();
+
+        if (!GraphHelperEE::isSatelliteLeader(
+                ci, shardId, ServerState::instance()->getId())) {
+          // do not produce in this case
+          return;
+        }
+      }
+#endif
+
       std::string_view vertex = id.substr(pos + 1);
       for (std::string const& shard : shards->second) {
         Result res = _trx->documentFastPathLocal(
