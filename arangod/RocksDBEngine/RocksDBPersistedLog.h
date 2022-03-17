@@ -110,7 +110,7 @@ class RocksDBPersistedLog
       public std::enable_shared_from_this<RocksDBPersistedLog> {
  public:
   ~RocksDBPersistedLog() override = default;
-  RocksDBPersistedLog(replication2::LogId id, uint64_t objectId,
+  RocksDBPersistedLog(replication2::GlobalLogIdentifier id, uint64_t objectId,
                       std::shared_ptr<RocksDBLogPersistor> persistor);
 
   auto insert(replication2::PersistedLogIterator& iter, WriteOptions const&)
