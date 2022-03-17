@@ -73,6 +73,19 @@ The *estimates* attribute is optional and defaults to *true* if not set. It will
 have no effect on indexes other than *persistent* (with *hash* and *skiplist*
 being mere aliases for *persistent* nowadays).
 
+The optional attribute **cacheEnabled** is supported by indexes of type
+*persistent*. This attribute controls whether an extra in-memory hash cache is
+created for the index. The hash cache can be used to speed up index lookups.
+The cache can only be used for queries that look up all index attributes via
+an equality lookup (`==`). The hash cache cannot be used for range scans,
+partial lookups or sorting.
+The cache will populated lazily upon reading data from the index. Writing data
+into the collection or updating existing data will invalidate entries in the
+cache. The cache may have a negative effect on performance in case index values
+are updated more often than they are read.
+**cacheEnabled** defaults to *false* and should only be used for indexes that
+are known to benefit from an extra layer of caching.
+
 The optional attribute **inBackground** can be set to *true* to create the index
 in the background, which will not write-lock the underlying collection for
 as long as if the index is built in the foreground.
