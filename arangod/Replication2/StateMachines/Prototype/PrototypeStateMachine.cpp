@@ -61,7 +61,7 @@ void PrototypeCore::applyEntries(std::unique_ptr<EntryIterator> ptr) {
 }
 
 void PrototypeCore::applySnapshot(
-  std::unordered_map<std::string, std::string> snapshot) {
+    std::unordered_map<std::string, std::string> snapshot) {
   for (auto& [k, v] : snapshot) {
     store = store.set(k, v);
   }
