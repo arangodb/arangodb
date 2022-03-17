@@ -23,12 +23,14 @@
 
 #include "Basics/overload.h"
 #include "Basics/voc-errors.h"
+#include "Basics/Exceptions.h"
 #include "Futures/Future.h"
 #include "velocypack/Iterator.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 
 #include "PrototypeStateMachine.h"
 
+#include <rocksdb/utilities/transaction_db.h>
 #include <utility>
 
 using namespace arangodb;
@@ -36,6 +38,9 @@ using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_state;
 using namespace arangodb::replication2::replicated_state::prototype;
 
+/*
+ * Ensure this stays idempotent.
+ */
 template<typename EntryIterator>
 void PrototypeCore::applyEntries(std::unique_ptr<EntryIterator> ptr) {
   while (auto entry = ptr->next()) {
@@ -60,6 +65,37 @@ void PrototypeCore::applyEntries(std::unique_ptr<EntryIterator> ptr) {
   resolvePromises(lastAppliedIndex);
 }
 
+bool PrototypeCore::flush() {
+  if (lastAppliedIndex <= lastPersistedIndex + kFlushBatchSize) {
+    // no need to flush
+    return false;
+  }
+  auto result = storage->put(logId, getDump());
+  if (result.ok()) {
+    lastPersistedIndex = lastAppliedIndex;
+    return true;
+  } else {
+    // TODO can I pass the loggerContext from ReplicatedState when building the
+    // core? LOG_CTX("98432", ERR, loggerContext);
+  }
+  return false;
+}
+
+void PrototypeCore::loadStateFromDB() {
+  auto result = storage->get(logId);
+  if (result.ok()) {
+    auto dump = result.get();
+    lastPersistedIndex = lastAppliedIndex = dump.lastPersistedIndex;
+    LOG_DEVEL << "got map from rocksDB";
+    for (auto [k, v] : dump.map) {
+      store = store.set(k, v);
+      LOG_DEVEL << k << " " << v;
+    }
+  } else {
+    THROW_ARANGO_EXCEPTION(result.result());
+  }
+}
+
 void PrototypeCore::applySnapshot(
     std::unordered_map<std::string, std::string> snapshot) {
   for (auto& [k, v] : snapshot) {
@@ -79,6 +115,42 @@ void PrototypeCore::resolvePromises(LogIndex appliedIndex) {
   waitForAppliedQueue.erase(waitForAppliedQueue.begin(), end);
 }
 
+auto PrototypeCore::getDump() -> PrototypeCoreDump {
+  // after we write to DB, we set lastPersistedIndex to lastAppliedIndex
+  // we want to persist the already updated value of lastPersistedIndex
+  return PrototypeCoreDump{
+      lastAppliedIndex,
+      std::unordered_map<std::string, std::string>(store.begin(), store.end())};
+}
+
+void PrototypeCoreDump::toVelocyPack(velocypack::Builder& builder) const {
+  VPackObjectBuilder ob(&builder);
+  // after we write to DB, we set lastPersistedIndex to lastAppliedIndex
+  // we want to persist the already updated value of lastPersistedIndex
+  builder.add("lastPersistedIndex", lastPersistedIndex);
+  builder.add(VPackValue("map"));
+  {
+    VPackObjectBuilder mapOb(&builder);
+    for (auto const& [key, value] : map) {
+      builder.add(key, value);
+    }
+  }
+}
+
+auto PrototypeCoreDump::fromVelocyPack(velocypack::Slice slice)
+    -> PrototypeCoreDump {
+  PrototypeCoreDump dump;
+  if (auto s = slice.get("lastPersistedIndex"); !s.isNone()) {
+    dump.lastPersistedIndex = LogIndex{s.getUInt()};
+  }
+  if (auto s = slice.get("map"); s.isObject()) {
+    for (auto [k, v] : VPackObjectIterator(s)) {
+      dump.map.emplace(k.copyString(), v.copyString());
+    }
+  }
+  return dump;
+}
+
 auto PrototypeCore::waitForApplied(LogIndex index)
     -> futures::Future<futures::Unit> {
   if (lastAppliedIndex >= index) {
@@ -90,8 +162,12 @@ auto PrototypeCore::waitForApplied(LogIndex index)
   return f;
 }
 
-PrototypeCore::PrototypeCore(GlobalLogIdentifier logId)
-    : logId(std::move(logId)) {}
+PrototypeCore::PrototypeCore(
+    GlobalLogIdentifier logId,
+    std::shared_ptr<IPrototypeStorageInterface> storage)
+    : logId(std::move(logId)), storage(storage) {
+  loadStateFromDB();
+}
 
 PrototypeLeaderState::PrototypeLeaderState(std::unique_ptr<PrototypeCore> core)
     : guardedData(std::move(core)) {}
@@ -106,14 +182,19 @@ auto PrototypeLeaderState::resign() && noexcept
 
 auto PrototypeLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
     -> futures::Future<Result> {
-  return guardedData.doUnderLock([ptr = move(ptr)](auto& core) mutable {
-    if (!core) {
-      return Result{TRI_ERROR_CLUSTER_NOT_LEADER};
-    }
-    core->lastAppliedIndex = ptr->range().to.saturatedDecrement();
-    core->applyEntries(std::move(ptr));
-    return Result{TRI_ERROR_NO_ERROR};
-  });
+  return guardedData.doUnderLock(
+      [self = shared_from_this(), ptr = move(ptr)](auto& core) mutable {
+        if (!core) {
+          return Result{TRI_ERROR_CLUSTER_NOT_LEADER};
+        }
+        core->lastAppliedIndex = ptr->range().to.saturatedDecrement();
+        core->applyEntries(std::move(ptr));
+        if (core->flush()) {
+          // auto stream = self->getStream();
+          // stream->release(core->lastPersistedIndex);
+        }
+        return Result{TRI_ERROR_NO_ERROR};
+      });
 }
 
 auto PrototypeLeaderState::set(
@@ -128,7 +209,7 @@ auto PrototypeLeaderState::set(
       [self = shared_from_this(), idx = idx,
        entries = std::move(entries)](auto&& res) mutable {
         return self->guardedData.doUnderLock(
-            [idx = idx,
+            [self = self, idx = idx,
              entries = std::move(entries)](auto& core) -> ResultT<LogIndex> {
               if (!core) {
                 return ResultT<LogIndex>::error(TRI_ERROR_CLUSTER_NOT_LEADER);
@@ -138,6 +219,10 @@ auto PrototypeLeaderState::set(
               }
               core->lastAppliedIndex = idx;
               core->resolvePromises(idx);
+              if (core->flush()) {
+                // auto stream = self->getStream();
+                // stream->release(core->lastPersistedIndex);
+              }
               return idx;
             });
       });
@@ -153,13 +238,18 @@ auto PrototypeLeaderState::remove(std::string key)
                                          key = std::move(key),
                                          idx = idx](auto&& res) mutable {
     return self->guardedData.doUnderLock(
-        [key = std::move(key), idx = idx](auto& core) -> ResultT<LogIndex> {
+        [self = self, key = std::move(key),
+         idx = idx](auto& core) -> ResultT<LogIndex> {
           if (!core) {
             return ResultT<LogIndex>::error(TRI_ERROR_CLUSTER_NOT_LEADER);
           }
           core->store = core->store.erase(key);
           core->lastAppliedIndex = idx;
           core->resolvePromises(idx);
+          if (core->flush()) {
+            // auto stream = self->getStream();
+            // stream->release(core->lastPersistedIndex);
+          }
           return idx;
         });
   });
@@ -176,7 +266,7 @@ auto PrototypeLeaderState::remove(std::vector<std::string> keys)
       [self = shared_from_this(), idx = idx,
        entries = std::move(keys)](auto&& res) mutable {
         return self->guardedData.doUnderLock(
-            [entries = std::move(entries),
+            [self = self, entries = std::move(entries),
              idx = idx](auto& core) -> ResultT<LogIndex> {
               if (!core) {
                 return ResultT<LogIndex>::error(TRI_ERROR_CLUSTER_NOT_LEADER);
@@ -186,6 +276,10 @@ auto PrototypeLeaderState::remove(std::vector<std::string> keys)
               }
               core->lastAppliedIndex = idx;
               core->resolvePromises(idx);
+              if (core->flush()) {
+                // auto stream = self->getStream();
+                // stream->release(core->lastPersistedIndex);
+              }
               return idx;
             });
       });
@@ -265,13 +359,19 @@ auto PrototypeFollowerState::acquireSnapshot(ParticipantId const& destination,
 
 auto PrototypeFollowerState::applyEntries(
     std::unique_ptr<EntryIterator> ptr) noexcept -> futures::Future<Result> {
-  return guardedData.doUnderLock([ptr = std::move(ptr)](auto& core) mutable {
-    if (!core) {
-      return Result{TRI_ERROR_CLUSTER_NOT_FOLLOWER};
-    }
-    core->applyEntries(std::move(ptr));
-    return Result{TRI_ERROR_NO_ERROR};
-  });
+  return guardedData.doUnderLock(
+      [self = shared_from_this(), ptr = std::move(ptr)](auto& core) mutable {
+        if (!core) {
+          return Result{TRI_ERROR_CLUSTER_NOT_FOLLOWER};
+        }
+        core->lastAppliedIndex = ptr->range().to.saturatedDecrement();
+        core->applyEntries(std::move(ptr));
+        if (core->flush()) {
+          // auto stream = self->getStream();
+          // stream->release(core->lastPersistedIndex);
+        }
+        return Result{TRI_ERROR_NO_ERROR};
+      });
 }
 
 auto PrototypeFollowerState::resign() && noexcept
@@ -317,12 +417,14 @@ auto PrototypeFactory::constructLeader(std::unique_ptr<PrototypeCore> core)
   return std::make_shared<PrototypeLeaderState>(std::move(core));
 }
 PrototypeFactory::PrototypeFactory(
-    std::shared_ptr<IPrototypeNetworkInterface> networkInterface)
-    : networkInterface(std::move(networkInterface)) {}
+    std::shared_ptr<IPrototypeNetworkInterface> networkInterface,
+    std::shared_ptr<IPrototypeStorageInterface> storageInterface)
+    : networkInterface(std::move(networkInterface)),
+      storageInterface(std::move(storageInterface)) {}
 
 auto PrototypeFactory::constructCore(GlobalLogIdentifier const& gid)
     -> std::unique_ptr<PrototypeCore> {
-  return std::make_unique<PrototypeCore>(gid);
+  return std::make_unique<PrototypeCore>(gid, storageInterface);
 }
 
 auto replicated_state::EntryDeserializer<

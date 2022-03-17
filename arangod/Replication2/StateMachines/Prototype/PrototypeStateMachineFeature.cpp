@@ -28,6 +28,11 @@
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "velocypack/Iterator.h"
+#include "Cluster/ServerState.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "RocksDBEngine/RocksDBEngine.h"
+
+#include <rocksdb/utilities/transaction_db.h>
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -93,16 +98,85 @@ class PrototypeNetworkInterface : public IPrototypeNetworkInterface {
 
   network::ConnectionPool* pool{nullptr};
 };
+
+class PrototypeRocksDBInterface : public IPrototypeStorageInterface {
+ public:
+  explicit PrototypeRocksDBInterface(rocksdb::TransactionDB* db) : _db(db) {}
+
+  auto put(const GlobalLogIdentifier& logId, PrototypeCoreDump dump)
+      -> Result override {
+    auto key = getDBKey(logId);
+    VPackBuilder builder;
+    dump.toVelocyPack(builder);
+    auto value =
+        rocksdb::Slice(reinterpret_cast<char const*>(builder.slice().start()),
+                       builder.slice().byteSize());
+    auto opt = rocksdb::WriteOptions{};
+    auto status = _db->Put(opt, rocksdb::Slice(key), value);
+    if (status.ok()) {
+      return TRI_ERROR_NO_ERROR;
+    } else {
+      return TRI_ERROR_WAS_ERLAUBE;
+    }
+  }
+
+  auto get(const GlobalLogIdentifier& logId)
+      -> ResultT<PrototypeCoreDump> override {
+    auto key = getDBKey(logId);
+    auto opt = rocksdb::ReadOptions{};
+    std::string buffer;
+    auto status = _db->Get(opt, rocksdb::Slice(key), &buffer);
+    PrototypeCoreDump dump;
+    if (status.ok()) {
+      VPackSlice slice{reinterpret_cast<uint8_t const*>(buffer.data())};
+      return dump.fromVelocyPack(slice);
+    } else if (status.code() == rocksdb::Status::kNotFound) {
+      dump.lastPersistedIndex = LogIndex{0};
+      return dump;
+    } else {
+      // TODO
+      // LOG_CTX("98432", ERR, loggerContext);
+      return ResultT<PrototypeCoreDump>::error(TRI_ERROR_WAS_ERLAUBE,
+                                               status.ToString());
+    }
+  }
+
+  std::string getDBKey(const GlobalLogIdentifier& logId) {
+    return "prototype-core-" + std::to_string(logId.id.id());
+  }
+
+  rocksdb::TransactionDB* _db;
+};
 }  // namespace
 
 void PrototypeStateMachineFeature::start() {
   auto& replicatedStateFeature =
       server().getFeature<ReplicatedStateAppFeature>();
   auto& networkFeature = server().getFeature<NetworkFeature>();
+  auto& engine =
+      server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
+
+  rocksdb::TransactionDB* db = engine.db();
+  TRI_ASSERT(db != nullptr);
+
   replicatedStateFeature.registerStateType<PrototypeState>(
       "prototype",
-      std::make_shared<PrototypeNetworkInterface>(networkFeature.pool()));
+      std::make_shared<PrototypeNetworkInterface>(networkFeature.pool()),
+      std::make_shared<PrototypeRocksDBInterface>(db));
+}
+
+void PrototypeStateMachineFeature::prepare() {
+  bool const enabled = ServerState::instance()->isDBServer();
+  setEnabled(enabled);
 }
 
 PrototypeStateMachineFeature::PrototypeStateMachineFeature(Server& server)
-    : ArangodFeature{server, *this} {}
+    : ArangodFeature{server, *this} {
+  setOptional(true);
+  startsAfter<EngineSelectorFeature>();
+  startsAfter<NetworkFeature>();
+  startsAfter<RocksDBEngine>();
+  startsAfter<ReplicatedStateAppFeature>();
+  onlyEnabledWith<EngineSelectorFeature>();
+  onlyEnabledWith<ReplicatedStateAppFeature>();
+}
