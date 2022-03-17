@@ -81,7 +81,7 @@ RestStatus RestQueryHandler::execute() {
 void RestQueryHandler::handleAvailableOptimizerRules() {
   VPackBuilder builder;
   builder.openArray();
-  auto& rules = OptimizerRulesFeature::rules();
+  auto const& rules = OptimizerRulesFeature::rules();
   for (auto const& optimizerRule : rules) {
     builder.openObject();
     builder.add("name", VPackValue(optimizerRule.name));
