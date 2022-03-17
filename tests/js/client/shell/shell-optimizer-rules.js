@@ -25,7 +25,7 @@
 // / @author Julia Puget
 // //////////////////////////////////////////////////////////////////////////////
 
-let jsunity = require('jsunity');
+const jsunity = require('jsunity');
 const internal = require('internal');
 const isCluster = internal.isCluster();
 
