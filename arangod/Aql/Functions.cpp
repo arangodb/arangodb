@@ -74,7 +74,6 @@
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/ExecContext.h"
 #include "V8/v8-vpack.h"
-#include "V8Server/v8-collection.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
@@ -4986,14 +4985,7 @@ AqlValue Functions::Collections(ExpressionContext* exprCtx, AstNode const&,
   builder->openArray();
 
   auto& vocbase = exprCtx->vocbase();
-  auto colls = GetCollections(vocbase);
-
-  std::sort(colls.begin(), colls.end(),
-            [](std::shared_ptr<LogicalCollection> const& lhs,
-               std::shared_ptr<LogicalCollection> const& rhs) -> bool {
-              return arangodb::basics::StringUtils::tolower(lhs->name()) <
-                     arangodb::basics::StringUtils::tolower(rhs->name());
-            });
+  auto colls = methods::Collections::sorted(vocbase);
 
   size_t const n = colls.size();
 
