@@ -56,7 +56,7 @@ const testPaths = {
   'replication_ongoing_frompresent': [tu.pathForTesting('server/replication/ongoing/frompresent')],
   'replication_static': [tu.pathForTesting('server/replication/static')],
   'replication_sync': [tu.pathForTesting('server/replication/sync')],
-  'http_replication': [tu.pathForTesting('tests/js/common/replication_api')]
+  'http_replication': [tu.pathForTesting('common/replication_api')]
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -79,14 +79,15 @@ function shellReplication (options) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function shellClientReplication (options) {
-  let testCases = tu.scanTestPaths(testPaths.shell_replication, options);
+  print(testPaths.http_replication)
+  let testCases = tu.scanTestPaths(testPaths.http_replication, options);
 
   var opts = {
     'replication': true
   };
   _.defaults(opts, options);
 
-  return tu.performTests(opts, testCases, 'shell_replication', tu.runInLocalArangosh);
+  return tu.performTests(opts, testCases, 'replication_api', tu.runInLocalArangosh);
 }
 
 // //////////////////////////////////////////////////////////////////////////////
