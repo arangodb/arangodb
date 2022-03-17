@@ -73,6 +73,7 @@ class StaticStrings {
   static std::string const Overwrite;
   static std::string const OverwriteMode;
   static std::string const Compact;
+  static std::string const DontWaitForCommit;
 
   // replication headers
   static std::string const ReplicationHeaderCheckMore;
@@ -247,6 +248,7 @@ class StaticStrings {
   static std::string const ReplicationVersion;
   static std::string const ReplicatedLogs;
   static std::string_view const SoftWriteConcern;
+  static std::string_view const EffectiveWriteConcern;
 
   // graph attribute names
   static std::string const GraphCollection;

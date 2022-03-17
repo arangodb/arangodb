@@ -84,10 +84,10 @@ IResearchLinkCoordinator::IResearchLinkCoordinator(
   _sparse = true;   // always sparse
 }
 
-Result IResearchLinkCoordinator::init(
-    velocypack::Slice definition,
-    IResearchLink::InitCallback const& initCallback) {
-  auto r = IResearchLink::init(definition, initCallback);
+Result IResearchLinkCoordinator::init(velocypack::Slice definition) {
+  bool pathExists = false;
+  auto r = IResearchLink::init(definition, pathExists);
+  TRI_ASSERT(!pathExists);
   if (!r.ok()) {
     return r;
   }
@@ -138,7 +138,6 @@ Result IResearchLinkCoordinator::init(
   metric.add("arangodb_search_cleanup_time", gaugeToCoordinator);
   metric.add("arangodb_search_consolidation_time", gaugeToCoordinator);
 
-  metric.asyncUpdate();
   return r;
 }
 

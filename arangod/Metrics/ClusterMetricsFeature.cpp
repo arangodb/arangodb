@@ -55,27 +55,31 @@ ClusterMetricsFeature::ClusterMetricsFeature(Server& server)
 void ClusterMetricsFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
   options
-      ->addOption(
-          "--server.cluster-metrics-timeout",
-          "Cluster metrics polling timeout in seconds",
-          new options::UInt32Parameter(&_timeout),
-          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+      ->addOption("--server.cluster-metrics-timeout",
+                  "Cluster metrics polling timeout in seconds",
+                  new options::UInt32Parameter(&_timeout),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::Uncommon))
       .setIntroducedIn(310000);
 }
 
 void ClusterMetricsFeature::validateOptions(
     std::shared_ptr<options::ProgramOptions> /*options*/) {
   if (!ServerState::instance()->isCoordinator()) {
-    disable();
+    _count.store(kStop, std::memory_order_release);
   }
 }
+
+void ClusterMetricsFeature::start() { asyncUpdate(); }
+
 void ClusterMetricsFeature::beginShutdown() {
-  _count.store(std::numeric_limits<int32_t>::min() + 1,
-               std::memory_order_relaxed);
+  _count.store(kStop, std::memory_order_release);
+  _handle = nullptr;
 }
 
 void ClusterMetricsFeature::asyncUpdate() {
-  if (isEnabled() && _count.fetch_add(1, std::memory_order_acq_rel) == 0) {
+  if (_count.load(std::memory_order_acquire) % 2 != kStop &&
+      _count.fetch_add(kUpdate, std::memory_order_acq_rel) == 0) {
     scheduleUpdate();
   }
 }
@@ -89,7 +93,13 @@ void ClusterMetricsFeature::scheduleUpdate() noexcept {
         if (canceled) {
           return;
         }
-        _count.store(1, std::memory_order_relaxed);
+        if (_count.exchange(kUpdate, std::memory_order_acq_rel) % 2 == kStop) {
+          // If someone call more than 1 billion asyncUpdate() before we execute
+          // store we defer Stop to next try. But it's impossible,
+          // so it's valid optimization: exchange + store instead of cas loop
+          _count.store(kStop, std::memory_order_release);
+          return;
+        }
         try {
           update();
         } catch (...) {
@@ -120,15 +130,15 @@ void ClusterMetricsFeature::update() {
 }
 
 void ClusterMetricsFeature::repeatUpdate() noexcept {
-  if (_count.fetch_sub(1, std::memory_order_acq_rel) > 1) {
+  auto count = _count.fetch_sub(kUpdate, std::memory_order_acq_rel);
+  if (count % 2 != kStop && count > kUpdate) {
     scheduleUpdate();
   }
 }
 
 void ClusterMetricsFeature::set(RawDBServers&& raw) const {
   Metrics metrics;
-  std::shared_lock lock{_m};
-  for (auto const& payload : raw) {
+  for (std::shared_lock lock{_m}; auto const& payload : raw) {
     TRI_ASSERT(payload);
     velocypack::Slice slice{payload->data()};
     TRI_ASSERT(slice.isArray());
@@ -144,7 +154,7 @@ void ClusterMetricsFeature::set(RawDBServers&& raw) const {
       }
     }
   }
-  lock.unlock();
+
   auto data = std::make_shared<Data>(std::move(metrics));
   std::atomic_store_explicit(&_data, data, std::memory_order_release);
   // TODO(MBkkt) serialize to velocypack array
@@ -153,6 +163,9 @@ void ClusterMetricsFeature::set(RawDBServers&& raw) const {
 
 void ClusterMetricsFeature::add(std::string_view metric,
                                 ToCoordinator toCoordinator) {
+  if (_count.load(std::memory_order_acquire) % 2 == kStop) {
+    return;
+  }
   std::lock_guard lock{_m};
   _toCoordinator[metric] = toCoordinator;
 }
@@ -160,6 +173,9 @@ void ClusterMetricsFeature::add(std::string_view metric,
 void ClusterMetricsFeature::add(std::string_view metric,
                                 ToCoordinator toCoordinator,
                                 ToPrometheus toPrometheus) {
+  if (_count.load(std::memory_order_acquire) % 2 == kStop) {
+    return;
+  }
   std::lock_guard lock{_m};
   _toCoordinator[metric] = toCoordinator;
   _toPrometheus[metric] = toPrometheus;
@@ -167,6 +183,9 @@ void ClusterMetricsFeature::add(std::string_view metric,
 
 void ClusterMetricsFeature::toPrometheus(std::string& result,
                                          std::string_view globals) const {
+  if (_count.load(std::memory_order_acquire) % 2 == kStop) {
+    return;
+  }
   auto data = std::atomic_load_explicit(&_data, std::memory_order_acquire);
   if (!data) {
     return;

@@ -570,6 +570,16 @@ can be found [here](https://github.com/arangodb/arangodb/blob/devel/3rdParty/ire
 * License Comment: free as-is license (BSD-2-Clause variant),
   only used to generate code, not part of the distribution
 
+### fmt
+
+* Name: fmt
+* Version: 8.1.1
+* Date: 2022-01-06
+* Project Home: https://fmt.dev/
+* License: https://github.com/fmtlib/fmt/blob/master/LICENSE.rst
+* License Name: MIT
+* License Id: MIT
+
 ## Data files
 
 #### IANA Time Zone Database (tzdata)

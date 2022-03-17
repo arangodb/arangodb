@@ -26,13 +26,13 @@
 
 #include "Basics/Common.h"
 #include "Shell/arangosh.h"
-
 #include <fuerte/connection.h>
 #include <fuerte/loop.h>
 #include <fuerte/types.h>
 #include <v8.h>
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -42,6 +42,10 @@ class ClientFeature;
 
 namespace application_features {
 class ApplicationServer;
+}
+
+namespace fuzzer {
+class RequestFuzzer;
 }
 
 namespace httpclient {
@@ -69,6 +73,7 @@ class V8ClientConnection {
   ~V8ClientConnection();
 
   void setInterrupted(bool interrupted);
+
   bool isConnected() const;
 
   void connect();
@@ -133,6 +138,8 @@ class V8ClientConnection {
       v8::Local<v8::Value> const& body,
       std::unordered_map<std::string, std::string> const& headerFields,
       bool raw);
+
+  uint32_t requestFuzz(fuzzer::RequestFuzzer& fuzzer);
 
   void initServer(v8::Isolate*, v8::Handle<v8::Context> context);
 

@@ -722,7 +722,7 @@ void BackupFeature::collectOptions(
       "argument without '--operation')",
       new DiscreteValuesParameter<StringParameter>(&_options.operation,
                                                    ::Operations),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options->addOption(
       "--allow-inconsistent",

@@ -29,32 +29,11 @@ const _ = require('lodash');
 const {sleep} = require('internal');
 const {db, errors: ERRORS} = arangodb;
 const lh = require("@arangodb/testutils/replicated-logs-helper");
+const helper = require("@arangodb/testutils/replicated-logs-helper");
+
+const {waitForReplicatedLogAvailable} = helper;
 
 const database = "replication2_entry_test_db";
-
-const waitForReplicatedLogAvailable = function (id) {
-  while (true) {
-    try {
-      let status = db._replicatedLog(id).status();
-      const leaderId = status.leaderId;
-      if (leaderId !== undefined && status.participants !== undefined &&
-          status.participants[leaderId].connection.errorCode === 0 && status.participants[leaderId].response.role === "leader") {
-        break;
-      }
-      console.info("replicated log not yet available");
-    } catch (err) {
-      const errors = [
-        ERRORS.ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED.code,
-        ERRORS.ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND.code
-      ];
-      if (errors.indexOf(err.errorNum) === -1) {
-        throw err;
-      }
-    }
-
-    sleep(1);
-  }
-};
 
 const replicatedLogEntrySuite = function () {
   const targetConfig = {
@@ -118,7 +97,8 @@ const replicatedLogEntrySuite = function () {
       });
       lh.waitFor(lh.replicatedLogParticipantsFlag(database, logId, {
         [follower]: {
-          excluded: false,
+          allowedInQuorum: true,
+          allowedAsLeader: true,
           forced: true
         }
       }));

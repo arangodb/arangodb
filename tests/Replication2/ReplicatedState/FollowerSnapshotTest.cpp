@@ -53,6 +53,7 @@ struct FollowerSnapshotTest
   std::shared_ptr<State::FactoryType> factory =
       std::make_shared<State::FactoryType>();
   std::unique_ptr<State::CoreType> core = std::make_unique<State::CoreType>();
+  LoggerContext const loggerCtx{Logger::REPLICATED_STATE};
 };
 
 TEST_F(FollowerSnapshotTest, basic_follower_manager_test) {
@@ -68,7 +69,7 @@ TEST_F(FollowerSnapshotTest, basic_follower_manager_test) {
       test::DefaultEntryType{.key = "D", .value = "d"});
 
   auto manager = std::make_shared<FollowerStateManager<State>>(
-      nullptr, follower, std::move(core),
+      loggerCtx, nullptr, follower, std::move(core),
       std::make_unique<ReplicatedStateToken>(StateGeneration{1}), factory);
   manager->run();
   {
@@ -146,7 +147,7 @@ TEST_F(FollowerSnapshotTest, follower_resign_before_leadership_acked) {
       test::DefaultEntryType{.key = "D", .value = "d"});
 
   auto manager = std::make_shared<FollowerStateManager<State>>(
-      nullptr, follower, std::move(core),
+      loggerCtx, nullptr, follower, std::move(core),
       std::make_unique<ReplicatedStateToken>(StateGeneration{1}), factory);
   manager->run();
   {

@@ -240,8 +240,7 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
         
         print('\n' + (new Date()).toISOString() + GREEN + " [============] " + runFn.info + ': Trying', te, '...', RESET);
         let reply = runFn(options, instanceInfo, te, env);
-
-        if (reply.hasOwnProperty('forceTerminate')) {
+        if (reply.hasOwnProperty('forceTerminate') && reply.forceTerminate) {
           results[te] = reply;
           continueTesting = false;
           forceTerminate = true;
@@ -534,6 +533,11 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
       );
       return found;
     }
+  }
+
+  if ((testname.indexOf('-novst') !== -1) && options.vst) {
+    whichFilter.filter = 'skip when invoked with vst';
+    return false;
   }
 
   if (testname.indexOf('-timecritical') !== -1 && options.skipTimeCritical) {
@@ -1036,6 +1040,15 @@ function runInRSpec (options, instanceInfo, file, addArgs) {
     let rx = new RegExp('ruby.exe$');
     rspec = options.ruby.replace(rx, 'rspec');
     command = options.ruby;
+    if (!fs.exists(rspec) || !fs.exists(command)) {
+      return {
+        total: 1,
+        failed: 1,
+        status: false,
+        forceTerminate: false,
+        message: "rspec missing on your system! either " + rspec + " or " + command + " is unavailable!"
+      };
+    }
   } else {
     if (platform.substr(0, 3) !== 'win') {
       command = 'rspec';

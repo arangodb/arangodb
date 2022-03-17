@@ -2607,8 +2607,8 @@ void Supervision::checkReplicatedLogs() {
                                                     ->log(idString)
                                                     ->str(SkipComponents(1)));
 
-      auto action =
-          std::invoke([&, &dbName = dbName]() -> std::unique_ptr<Action> {
+      auto maybeAction =
+          std::invoke([&, &dbName = dbName]() -> std::optional<Action> {
             try {
               return checkReplicatedLog(Log{target, plan, current}, info);
             } catch (std::exception const& err) {
@@ -2616,11 +2616,13 @@ void Supervision::checkReplicatedLogs() {
                   << "Supervision caught exception in checkReplicatedLog for "
                      "replicated log "
                   << dbName << "/" << target.id << ": " << err.what();
-              return nullptr;
+              return std::nullopt;
             }
           });
 
-      if (action != nullptr) {
+      if (maybeAction) {
+        auto const& action = *maybeAction;
+
         if (target.supervision.has_value() &&
             target.supervision->maxActionsTraceLength > 0) {
           envelope =
@@ -2638,12 +2640,14 @@ void Supervision::checkReplicatedLogs() {
                         b.add("time", VPackValue(timepointToString(
                                           std::chrono::system_clock::now())));
                         b.add(VPackValue("desc"));
-                        action->toVelocyPack(b);
+                        arangodb::replication2::replicated_log::toVelocyPack(
+                            action, b);
                       },
                       target.supervision->maxActionsTraceLength)
                   .end();
         }
-        envelope = action->execute(dbName, std::move(envelope));
+        envelope = arangodb::replication2::replicated_log::execute(
+            action, dbName, target.id, std::move(envelope));
       }
     }
   }
@@ -2695,7 +2699,7 @@ void Supervision::checkReplicatedStates() {
 
       auto action = std::invoke(
           [&, &dbName = dbName, &idString = idString]()
-              -> std::unique_ptr<replication2::replicated_state::Action> {
+              -> std::optional<replication2::replicated_state::Action> {
             try {
               return replication2::replicated_state::checkReplicatedState(
                   log, state);
@@ -2705,12 +2709,29 @@ void Supervision::checkReplicatedStates() {
                      "for "
                      "replicated log "
                   << dbName << "/" << idString << ": " << err.what();
-              return nullptr;
+              return std::nullopt;
             }
           });
 
-      if (action != nullptr) {
-        envelope = action->execute(dbName, std::move(envelope));
+      if (action.has_value()) {
+        auto logTarget = std::invoke(
+            [&]() -> std::optional<replication2::agency::LogTarget> {
+              if (log.has_value()) {
+                return std::move(log->target);
+              }
+              return std::nullopt;
+            });
+        auto statePlan = std::invoke(
+            [&]()
+                -> std::optional<replication2::replicated_state::agency::Plan> {
+              if (state.plan.has_value()) {
+                return std::move(*state.plan);
+              }
+              return std::nullopt;
+            });
+        envelope =
+            execute(state.target.id, dbName, *action, std::move(statePlan),
+                    std::move(logTarget), std::move(envelope));
       }
     }
   }

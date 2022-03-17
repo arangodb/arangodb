@@ -96,7 +96,7 @@ function optimizerIndexesInOrTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testNoHashIndex : function () {
-      c.ensureHashIndex("value1");
+      c.ensureIndex({ type: "hash", fields: ["value1"] });
       var queries = [
         "FOR i IN " + c.name() + " FILTER i.value > 95 || i.value1 IN [ 95 ] RETURN i.value1",
         "FOR i IN " + c.name() + " FILTER i.value > 95 || i.value1 IN [ 95, 95, 95 ] RETURN i.value1",
@@ -133,7 +133,7 @@ function optimizerIndexesInOrTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testHashIndex : function () {
-      c.ensureHashIndex("value1");
+      c.ensureIndex({ type: "hash", fields: ["value1"] });
       var queries = [
         [ "FOR i IN " + c.name() + " FILTER i.value1 IN [ 35 ] RETURN i.value1", [ 35 ] ],
         [ "FOR i IN " + c.name() + " FILTER i.value1 IN [ 35, 35, 35 ] RETURN i.value1", [ 35 ] ],
@@ -172,10 +172,12 @@ function optimizerIndexesInOrTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testHashIndexString : function () {
-      c.ensureHashIndex("value1");
-      for (var i = 0; i < 1000; ++i) {
-        c.save({ value1: "test" + (i % 100) });
+      c.ensureIndex({ type: "hash", fields: ["value1"] });
+      let docs =  [];
+      for (let i = 0; i < 1000; ++i) {
+        docs.push({ value1: "test" + (i % 100) });
       }
+      c.insert(docs);
 
       var queries = [
         [ "FOR i IN " + c.name() + " FILTER i.value1 IN [ 'test1', 'test3', 'test4' ] RETURN i.value1", [ 'test1', 'test3', 'test4' ] ],
@@ -214,7 +216,7 @@ function optimizerIndexesInOrTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testHashIndexDynamic : function () {
-      c.ensureHashIndex("value1");
+      c.ensureIndex({ type: "hash", fields: ["value1"] });
       var queries = [
         [ "LET a = PASSTHRU(35) FOR i IN " + c.name() + " FILTER i.value1 IN [ a ] RETURN i.value1", [ 35 ] ],
         [ "LET a = PASSTHRU(35) FOR i IN " + c.name() + " FILTER i.value1 IN [ a, a, a ] RETURN i.value1", [ 35 ] ],
@@ -253,7 +255,7 @@ function optimizerIndexesInOrTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testHashIndexDifferentAttributes : function () {
-      c.ensureHashIndex("value1");
+      c.ensureIndex({ type: "hash", fields: ["value1"] });
       var queries = [
         [ "FOR i IN " + c.name() + " FILTER i.value1 == 3 || i.value2 == 5 || i.value1 == 7 RETURN i.value1", 41 ],
         [ "FOR i IN " + c.name() + " FILTER i.value1 == 3 || i.value2 == 5 || i.value1 == 3 RETURN i.value1", 21 ],
@@ -285,7 +287,7 @@ function optimizerIndexesInOrTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testHashIndexMulti : function () {
-      c.ensureHashIndex("value1", "value2");
+      c.ensureIndex({ type: "hash", fields: ["value1", "value2"] });
       var queries = [
         [ "FOR i IN " + c.name() + " FILTER i.value1 == 30 && i.value2 == 30 RETURN i.value1", 1 ],
         [ "FOR i IN " + c.name() + " FILTER i.value1 IN [ 30, 31, 32 ] && i.value2 IN [ 30, 31, 32, 130 ] RETURN i.value1", 4 ],
@@ -320,7 +322,7 @@ function optimizerIndexesInOrTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testHashIndexMultiDynamic : function () {
-      c.ensureHashIndex("value1", "value2");
+      c.ensureIndex({ type: "hash", fields: ["value1", "value2"] });
       var queries = [
         [ "LET a = PASSTHRU(30) FOR i IN " + c.name() + " FILTER i.value1 == a && i.value2 == a RETURN i.value1", 1 ],
         [ "LET a = PASSTHRU(30), b = PASSTHRU(31), c = PASSTHRU(32), d = PASSTHRU(130) FOR i IN " + c.name() + " FILTER i.value1 IN [ a, b, c ] && i.value2 IN [ a, b, c, d ] RETURN i.value1", 4 ],
@@ -356,7 +358,7 @@ function optimizerIndexesInOrTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSkiplistIndex : function () {
-      c.ensureSkiplist("value1");
+      c.ensureIndex({ type: "skiplist", fields: ["value1"] });
       var queries = [
         [ "FOR i IN " + c.name() + " FILTER i.value1 IN [ 35 ] RETURN i.value1", [ 35 ] ],
         [ "FOR i IN " + c.name() + " FILTER i.value1 IN [ 35, 35, 35 ] RETURN i.value1", [ 35 ] ],
@@ -395,7 +397,7 @@ function optimizerIndexesInOrTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSkiplistIndexDynamic : function () {
-      c.ensureSkiplist("value1");
+      c.ensureIndex({ type: "skiplist", fields: ["value1"] });
       var queries = [
         [ "LET a = PASSTHRU(35) FOR i IN " + c.name() + " FILTER i.value1 IN [ a ] RETURN i.value1", [ 35 ] ],
         [ "LET a = PASSTHRU(35) FOR i IN " + c.name() + " FILTER i.value1 IN [ a, a, a ] RETURN i.value1", [ 35 ] ],
@@ -436,7 +438,7 @@ function optimizerIndexesInOrTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSkiplistIndexDifferentAttributes : function () {
-      c.ensureSkiplist("value1");
+      c.ensureIndex({ type: "skiplist", fields: ["value1"] });
       var queries = [
         [ "FOR i IN " + c.name() + " FILTER i.value1 == 3 || i.value2 == 5 || i.value1 == 7 RETURN i.value1", 41 ],
         [ "FOR i IN " + c.name() + " FILTER i.value1 == 3 || i.value2 == 5 || i.value1 == 3 RETURN i.value1", 21 ],
@@ -468,7 +470,7 @@ function optimizerIndexesInOrTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testNoSkiplistIndexMulti : function () {
-      c.ensureSkiplist("value1", "value2");
+      c.ensureIndex({ type: "skiplist", fields: ["value1", "value2"] });
       var queries = [
         [ "FOR i IN " + c.name() + " FILTER i.value1 == 3 || i.value2 == 5 || i.value1 == 7 RETURN i.value1", 41 ],
         [ "FOR i IN " + c.name() + " FILTER i.value1 == 3 || i.value2 == 5 || i.value1 == 3 RETURN i.value1", 21 ],
@@ -501,7 +503,7 @@ function optimizerIndexesInOrTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSkiplistIndexMulti : function () {
-      c.ensureSkiplist("value1", "value2");
+      c.ensureIndex({ type: "skiplist", fields: ["value1", "value2"] });
       var queries = [
         [ "FOR i IN " + c.name() + " FILTER i.value1 == 30 && i.value2 == 30 RETURN i.value1", 1 ],
         [ "FOR i IN " + c.name() + " FILTER i.value1 IN [ 30, 31, 32 ] && i.value2 IN [ 30, 31, 32, 130 ] RETURN i.value1", 4 ],
@@ -531,7 +533,7 @@ function optimizerIndexesInOrTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSkiplistIndexMultiDynamic : function () {
-      c.ensureSkiplist("value1", "value2");
+      c.ensureIndex({ type: "skiplist", fields: ["value1", "value2"] });
       var queries = [
         [ "LET a = PASSTHRU(30) FOR i IN " + c.name() + " FILTER i.value1 == a && i.value2 == a RETURN i.value1", 1 ],
         [ "LET a = PASSTHRU(30), b = PASSTHRU(31), c = PASSTHRU(32), d = PASSTHRU(130) FOR i IN " + c.name() + " FILTER i.value1 IN [ a, b, c ] && i.value2 IN [ a, b, c, d ] RETURN i.value1", 4 ],
@@ -561,7 +563,7 @@ function optimizerIndexesInOrTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSkiplistIndexSort : function () {
-      c.ensureSkiplist("value1");
+      c.ensureIndex({ type: "skiplist", fields: ["value1"] });
       var queries = [
         [ "FOR i IN " + c.name() + " FILTER i.value1 == 30 && i.value2 == 30 SORT i.value1, i.value2 RETURN [ i.value1, i.value2 ]", [ [ 30, 30 ] ] ],
         [ "FOR i IN " + c.name() + " FILTER i.value1 IN [ 30, 31, 32 ] && i.value2 IN [ 30, 31, 32, 130 ] SORT i.value1, i.value2 RETURN [ i.value1, i.value2 ]", [ [ 30, 30 ], [ 30, 130 ], [ 31, 31 ], [ 32, 32 ] ] ],
@@ -597,7 +599,7 @@ function optimizerIndexesInOrTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSkiplistIndexSortMulti : function () {
-      c.ensureSkiplist("value1", "value2");
+      c.ensureIndex({ type: "skiplist", fields: ["value1", "value2"] });
       var queries = [
         [ "FOR i IN " + c.name() + " FILTER i.value1 == 30 && i.value2 == 30 SORT i.value1, i.value2 RETURN [ i.value1, i.value2 ]", [ [ 30, 30 ] ], false ],
         [ "FOR i IN " + c.name() + " FILTER i.value1 IN [ 30, 31, 32 ] && i.value2 IN [ 30, 31, 32, 130 ] SORT i.value1, i.value2 RETURN [ i.value1, i.value2 ]", [ [ 30, 30 ], [ 30, 130 ], [ 31, 31 ], [ 32, 32 ] ], false ],
@@ -633,9 +635,9 @@ function optimizerIndexesInOrTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSkiplistIndexSortManyCandidates : function () {
-      c.ensureSkiplist("value2");
-      c.ensureSkiplist("value2", "value1");
-      c.ensureSkiplist("value2", "valuex");
+      c.ensureIndex({ type: "skiplist", fields: ["value2"] });
+      c.ensureIndex({ type: "skiplist", fields: ["value2", "value1"] });
+      c.ensureIndex({ type: "skiplist", fields: ["value2", "valuex"] });
 
       var queries = [
         [ "FOR i IN " + c.name() + " FILTER i.value2 == 30 SORT i.value2 RETURN i.value2", [ 30 ] ],
@@ -667,7 +669,7 @@ function optimizerIndexesInOrTestSuite () {
     },
 
     testInOrReplacements : function() {
-      c.ensureSkiplist("foo");
+      c.ensureIndex({ type: "skiplist", fields: ["foo"] });
 
       c.insert({ value1: "testi", value2: "foobar", foo: 0 });
       c.insert({ value1: "testi", value2: "foobar", foo: 1 });

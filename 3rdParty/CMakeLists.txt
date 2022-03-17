@@ -121,6 +121,8 @@ set(BOOST_VERSION ${BOOST_VERSION} PARENT_SCOPE)
 ## Velocypack
 ################################################################################
 
+UpdateModule(${GIT_EXECUTABLE} "velocypack" ${CMAKE_CURRENT_SOURCE_DIR} "README.md")
+
 set(HashType "xxhash" CACHE STRING "Hash type (fasthash, xxhash)" FORCE)
 set(BuildVelocyPackExamples OFF CACHE BOOL "Build VelocyPack Examples" FORCE)
 set(BuildTools OFF CACHE BOOL "Build VelocyPack Tools" FORCE)
@@ -259,11 +261,15 @@ target_include_directories(linenoise-ng SYSTEM PUBLIC
 ################################################################################
 ## wasm3
 ################################################################################
-
 UpdateModule(${GIT_EXECUTABLE} "wasm3" ${CMAKE_CURRENT_SOURCE_DIR} "README.md")
-
 set(WASIENV 0 CACHE STRING "")
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/wasm3/source ${CMAKE_BINARY_DIR}/m3)
+
+################################################################################
+## fmt
+################################################################################
+UpdateModule(${GIT_EXECUTABLE} "fmt" ${CMAKE_CURRENT_SOURCE_DIR} "README.rst")
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/fmt)
 
 ################################################################################
 ## LINK_DIRECTORIES
