@@ -87,18 +87,18 @@ void RestQueryHandler::handleAvailableOptimizerRules() {
     builder.add("name", VPackValue(optimizerRule.name));
     builder.add(velocypack::Value("flags"));
     builder.openObject();
-    builder.add("hidden", VPackValue(optimizerRule.isHidden() ? true : false));
+    builder.add("hidden", VPackValue(optimizerRule.isHidden()));
     builder.add("clusterOnly",
-                VPackValue(optimizerRule.isClusterOnly() ? true : false));
+                VPackValue(optimizerRule.isClusterOnly()));
     builder.add("canBeDisabled",
-                VPackValue(optimizerRule.canBeDisabled() ? true : false));
+                VPackValue(optimizerRule.canBeDisabled()));
     builder.add(
         "canCreateAdditionalPlans",
-        VPackValue(optimizerRule.canCreateAdditionalPlans() ? true : false));
+        VPackValue(optimizerRule.canCreateAdditionalPlans()));
     builder.add("disabledByDefault",
-                VPackValue(optimizerRule.isDisabledByDefault() ? true : false));
+                VPackValue(optimizerRule.isDisabledByDefault()));
     builder.add("enterpriseOnly",
-                VPackValue(optimizerRule.isEnterpriseOnly() ? true : false));
+                VPackValue(optimizerRule.isEnterpriseOnly()));
     builder.close();
     builder.close();
   }
