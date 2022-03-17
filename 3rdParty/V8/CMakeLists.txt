@@ -274,13 +274,6 @@ if (WIN32)
 
 
   message("V8_LIBRARY_DEBUG ${V8_LIBRARY_DEBUG} CMAKE_CURRENT_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}")
-#v8_libplatform.lib
-#v8_base_without_compiler.lib
-#v8_libbase.lib
-#v8_libsampler.lib
-#v8_compiler.lib
-#v8_snapshot.lib
-#v8_initializers.lib
 
   set(V8_LIBS
     debug "${V8_LIBRARY_DEBUG}/lib/v8_libplatform.lib"
@@ -316,12 +309,14 @@ if (WIN32)
     CACHE INTERNAL
     "${PROJECT_NAME}: Libraries"
     )
+
   set(V8_INCLUDE_DIR
     debug "${V8_DIR}/include;${V8_DIR};${V8_LIBRARY_DEBUG}/obj/global_intermediate/"
     optimized "${V8_DIR}/include;${V8_DIR};${V8_LIBRARY_RELEASE}/obj/global_intermediate/"
     CACHE INTERNAL
     "${PROJECT_NAME}: include path"
     )
+
   set(V8_INTERNAL_INCLUDE_DIR
     debug "${V8_DIR}/src/builtins;${V8_LIBRARY_DEBUG}/obj/global_intermediate/generate-bytecode-output-root;${V8_LIBRARY_DEBUG}/obj/global_intermediate/torque-output-root"
     optimized "${V8_DIR}/src/builtins;${V8_LIBRARY_RELEASE}/obj/global_intermediate/generate-bytecode-output-root;${V8_LIBRARY_RELEASE}/obj/global_intermediate/torque-output-root"
@@ -432,21 +427,39 @@ else ()
     mksnapshot
     v8_snapshot
     )
-message(${V8_GYP_ARGS})
-  ExternalProject_Add(v8_build
-    BUILD_IN_SOURCE
-      TRUE
-    SOURCE_DIR
-      "${V8_DIR}"
-    CONFIGURE_COMMAND
-      ${PYTHON_EXECUTABLE} ${GYP_MAIN} ${V8_GYP_ARGS}
-    BUILD_COMMAND
-      $(MAKE) ${V8_COMPILE_TARGETS} ${V8_COMPILE_ARGS}
-    STEP_TARGETS
-      v8_libbase v8_libplatform icui18n icuuc v8_base v8_libsampler v8_init v8_initializers v8_nosnapshot mksnapshot v8_snapshot
-    INSTALL_COMMAND
-      "")
 
+  if (USE_V8)
+    message(${V8_GYP_ARGS})
+      ExternalProject_Add(v8_build
+        BUILD_IN_SOURCE
+          TRUE
+        SOURCE_DIR
+          "${V8_DIR}"
+        CONFIGURE_COMMAND
+          ${PYTHON_EXECUTABLE} ${GYP_MAIN} ${V8_GYP_ARGS}
+        BUILD_COMMAND
+          $(MAKE) ${V8_COMPILE_TARGETS} ${V8_COMPILE_ARGS}
+        STEP_TARGETS
+          v8_libbase v8_libplatform icui18n icuuc v8_base v8_libsampler v8_init v8_initializers v8_nosnapshot mksnapshot v8_snapshot
+        INSTALL_COMMAND
+          "")
+  else ()
+    message(${V8_GYP_ARGS})
+      ExternalProject_Add(v8_build
+        BUILD_IN_SOURCE
+          TRUE
+        SOURCE_DIR
+          "${V8_DIR}"
+        CONFIGURE_COMMAND
+          ${PYTHON_EXECUTABLE} ${GYP_MAIN} ${V8_GYP_ARGS}
+        BUILD_COMMAND
+          $(MAKE) ${V8_COMPILE_TARGETS} ${V8_COMPILE_ARGS}
+        STEP_TARGETS
+          icui18n icuuc
+        INSTALL_COMMAND
+          "")
+  endif ()
+          
   list(APPEND LINK_DIRECTORIES "${V8_LIBRARY_DIR}")
 
   set(V8_LIBS

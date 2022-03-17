@@ -75,7 +75,7 @@ install(
 
 install_config(arangobench)
 
-if (NOT USE_PRECOMPILED_V8 AND USE_V8)
+if (NOT USE_PRECOMPILED_V8)
   add_dependencies(arangobench zlibstatic v8_build) # v8_build includes ICU build
 else ()
   add_dependencies(arangobench zlibstatic)
@@ -128,7 +128,7 @@ if (USE_ENTERPRISE)
 
   install_config(arangobackup)
 
-  if (NOT USE_PRECOMPILED_V8 AND USE_V8)
+  if (NOT USE_PRECOMPILED_V8)
     add_dependencies(arangobackup zlibstatic v8_build) # v8_build includes ICU build
   else ()
     add_dependencies(arangobackup zlibstatic)
@@ -181,7 +181,7 @@ install(
 
 install_config(arangodump)
 
-if (NOT USE_PRECOMPILED_V8 AND USE_V8)
+if (NOT USE_PRECOMPILED_V8)
   add_dependencies(arangodump zlibstatic v8_build) # v8_build includes ICU build
 else ()
   add_dependencies(arangodump zlibstatic)
@@ -230,7 +230,7 @@ install(
 
 install_config(arangoexport)
 
-if (NOT USE_PRECOMPILED_V8 AND USE_V8)
+if (NOT USE_PRECOMPILED_V8)
   add_dependencies(arangoexport zlibstatic v8_build) # v8_build includes ICU build
 else ()
   add_dependencies(arangoexport zlibstatic) # v8_build includes ICU build
@@ -284,9 +284,8 @@ install_config(arangoimport)
 
 add_dependencies(arangoimport fuerte)
 
-if (NOT USE_PRECOMPILED_V8 AND USE_V8)
-  add_dependencies(arangoimport zlibstatic v8_build) # v8_build includes ICU
-                                                     # build
+if (NOT USE_PRECOMPILED_V8)
+  add_dependencies(arangoimport zlibstatic v8_build) # v8_build includes ICU build
 else ()
   add_dependencies(arangoimport zlibstatic) # v8_build includes ICU build
 endif ()
@@ -348,7 +347,7 @@ install(
 
 install_config(arangorestore)
 
-if (NOT USE_PRECOMPILED_V8 AND USE_V8)
+if (NOT USE_PRECOMPILED_V8)
   add_dependencies(arangorestore zlibstatic v8_build) # v8_build includes ICU build
 else ()
   add_dependencies(arangorestore zlibstatic) # v8_build includes ICU build
@@ -412,7 +411,7 @@ install(
 
 install_config(arangosh)
 
-if (NOT USE_PRECOMPILED_V8 AND USE_V8)
+if (NOT USE_PRECOMPILED_V8)
   add_dependencies(arangosh zlibstatic v8_build)
 else ()
   add_dependencies(arangosh zlibstatic)
@@ -460,7 +459,7 @@ install(
 
 install_config(arangovpack)
 
-if (NOT USE_PRECOMPILED_V8 AND USE_V8)
+if (NOT USE_PRECOMPILED_V8)
   add_dependencies(arangovpack zlibstatic v8_build) # v8_build includes ICU build
 else ()
   add_dependencies(arangovpack zlibstatic) # v8_build includes ICU build

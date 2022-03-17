@@ -1284,7 +1284,7 @@ install(
 
 install_config(arangod)
 
-if (NOT USE_PRECOMPILED_V8 AND USE_V8)
+if (NOT USE_PRECOMPILED_V8)
   add_dependencies(arangod zlibstatic v8_build arango_iresearch)
 else ()
   add_dependencies(arangod zlibstatic arango_iresearch)
