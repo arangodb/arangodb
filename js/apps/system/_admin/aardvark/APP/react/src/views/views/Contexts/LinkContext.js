@@ -41,7 +41,7 @@ export function LinkProvider({ children }) {
   const [show, setShow] = useState("LinkList");
   const [field, setShowField] = useState({});
   const [view, setView] = useState("");
-  const [links, setLinks] = useState([]);
+  const [links, setLinks] = useState("");
 
 
   const handleShowState = (str) => {
@@ -57,13 +57,13 @@ export function LinkProvider({ children }) {
   }
 
   const handleStoreLinks = (l) => {
-    setLinks(links.push(l));
+    setLinks(l);
   }
   return (
     <LinkContext.Provider value={show}>
       <ShowContext.Provider value={handleShowState}>
         <StoreLinksContext.Provider value={links}>
-          <UpdateLinksStoreContext.Provider>
+          <UpdateLinksStoreContext.Provider value={handleStoreLinks}>
             <FieldContext.Provider value={field}>
               <FieldUpdateContext.Provider value={handleShowField}>
                 <ViewContext.Provider value={view}>

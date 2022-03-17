@@ -9,7 +9,6 @@ import {
 import { IconButton } from "../../../components/arango/buttons";
 import Link from "./Link";
 import { chain, isNull } from "lodash";
-
 type CollProps = {
   links: {
     includeAllFields: boolean;

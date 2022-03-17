@@ -1,4 +1,4 @@
-import { cloneDeep, isEmpty } from "lodash";
+import { cloneDeep, isEmpty, isEqual } from "lodash";
 import React, { useEffect, useReducer, useRef, useState } from "react";
 import { LinkProvider } from "./Contexts/LinkContext";
 import {
@@ -12,7 +12,13 @@ import { buildSubNav, postProcessor, useView, useCollection } from "./helpers";
 import { ArangoTable, ArangoTH, ArangoTD } from "../../components/arango/table";
 import LinkList from "./Components/LinkList";
 import NewList from "./Components/NewLink";
-import { useShow, useShowUpdate, useUpdateView } from "./Contexts/LinkContext";
+import { Toast } from "./Notifications/Toast";
+import {
+  useShow,
+  useShowUpdate,
+  useUpdateView,
+  useLinks
+} from "./Contexts/LinkContext";
 const ViewLinksReactView = ({ name }) => {
   const initialState = useRef({
     formState: { name },
@@ -29,6 +35,7 @@ const ViewLinksReactView = ({ name }) => {
   const show = useShow();
   const updateShow = useShowUpdate();
   const updateView = useUpdateView();
+  const newLink = useLinks();
   updateView(name);
 
   useEffect(() => {
@@ -61,8 +68,27 @@ const ViewLinksReactView = ({ name }) => {
     updateShow("AddNew");
   };
 
+  const removeLink = l => {
+    dispatch({
+      type: "setField",
+      field: {
+        path: `links[${l}]`,
+        value: null
+      }
+    });
+  };
+
   const handleBackClick = e => {
     e.preventDefault();
+    if (newLink !== "") {
+      const msg = "Hey! Your link's not saved!";
+      const icon = "warning";
+      Toast.fire({ title: msg, icon: icon }).then(res => {
+        if (res.isConfirmed) {
+          removeLink(newLink);
+        }
+      });
+    }
     updateShow("LinkList");
   };
 

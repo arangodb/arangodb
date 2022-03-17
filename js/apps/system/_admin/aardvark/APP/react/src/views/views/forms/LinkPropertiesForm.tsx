@@ -9,6 +9,7 @@ import NewLink from "../Components/NewLink";
 import LinkView from "../Components/LinkView";
 import { useShow, useShowUpdate, useField } from "../Contexts/LinkContext";
 import FieldView from "../Components/FieldView";
+import { useUpdateLinks } from "../Contexts/LinkContext";
 
 const LinkPropertiesForm = ({
   formState,
@@ -28,6 +29,7 @@ const LinkPropertiesForm = ({
   const show = useShow();
   const setShow = useShowUpdate();
   const field = useField();
+  const updateLinks = useUpdateLinks();
 
   useEffect(() => {
     if (data) {
@@ -73,13 +75,12 @@ const LinkPropertiesForm = ({
         value: {}
       }
     });
-
     setCollection("");
     setShow("ViewChild");
     setLink(collection);
+    updateLinks(collection);
   };
 
-  console.log(links);
   return disabled && isEmpty(links) ? (
     <span>No links found.</span>
   ) : (
