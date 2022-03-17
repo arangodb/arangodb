@@ -540,27 +540,25 @@ TEST_F(SubqueryStartSpecficTest, hard_limit_nested_subqueries) {
   // InnerSubquery (Produce all)
   callStack.pushCall(AqlCallList{AqlCall{0}, AqlCall{0}});
 
-  for (size_t i = 0; i < 9; ++i) {
-    auto [state, skipped, block] = testee.execute(callStack);
-    // We will always get 3 rows
-    ASSERT_EQ(block->size(), 3);
-    // Two of them Shadows
-    ASSERT_EQ(block->numShadowRows(), 2);
+  auto [state, skipped, block] = testee.execute(callStack);
+  // We will always get 9 times 3 rows
+  ASSERT_EQ(block->size(), 3 * 9);
+  // Two of the 3 rows are Shadows
+  ASSERT_EQ(block->numShadowRows(), 2 * 9);
 
-    for (size_t i = 0; i < 9; ++i) {
-      // First is relevant
-      EXPECT_FALSE(block->isShadowRow(i * 3 + 0));
-      // Second is Depth 0
-      ASSERT_TRUE(block->isShadowRow(i * 3 + 1));
-      ShadowAqlItemRow second(block, i * 3 + 1);
-      EXPECT_EQ(second.getDepth(), 0);
-      // Third is Depth 1
-      ASSERT_TRUE(block->isShadowRow(i * 3 + 2));
-      ShadowAqlItemRow third(block, i * 3 + 2);
-      EXPECT_EQ(third.getDepth(), 1);
-    }
-    EXPECT_EQ(state, ExecutionState::DONE);
+  for (size_t i = 0; i < 9; ++i) {
+    // First is relevant
+    EXPECT_FALSE(block->isShadowRow(i * 3 + 0));
+    // Second is Depth 0
+    ASSERT_TRUE(block->isShadowRow(i * 3 + 1));
+    ShadowAqlItemRow second(block, i * 3 + 1);
+    EXPECT_EQ(second.getDepth(), 0);
+    // Third is Depth 1
+    ASSERT_TRUE(block->isShadowRow(i * 3 + 2));
+    ShadowAqlItemRow third(block, i * 3 + 2);
+    EXPECT_EQ(third.getDepth(), 1);
   }
+  EXPECT_EQ(state, ExecutionState::DONE);
 }
 
 TEST_F(SubqueryStartSpecficTest, count_shadow_rows_test) {

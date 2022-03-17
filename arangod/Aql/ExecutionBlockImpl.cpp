@@ -883,10 +883,12 @@ auto ExecutionBlockImpl<SubqueryStartExecutor>::shadowRowForwarding(AqlCallStack
     TRI_ASSERT(_outputItemRow->produced());
     _outputItemRow->advanceRow();
 
-    // Count that we have now produced a row in the new depth.
-    // Note: We need to increment the depth by one, as the we have increased
-    // it while writing into the output by one as well.
-    countShadowRowProduced(stack, shadowRow.getDepth() + 1);
+    if (!stack.is36Compatible()) {
+      // Count that we have now produced a row in the new depth.
+      // Note: We need to increment the depth by one, as the we have increased
+      // it while writing into the output by one as well.
+      countShadowRowProduced(stack, shadowRow.getDepth() + 1);
+    }
 
     if (_lastRange.hasShadowRow()) {
       return ExecState::SHADOWROWS;
