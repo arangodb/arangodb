@@ -106,12 +106,14 @@ if (CROSS_COMPILING)
   -DGYP_CROSSCOMPILE=1
   -DEXECUTABLE_PREFIX=${V8_PROC_ARCH}.
   )
+
   configure_file (
     "${CMAKE_SOURCE_DIR}/lib/V8/v8-mkpeephole.in"
     "${V8_TARGET_DIR}/${V8_PROC_ARCH}.release/${V8_PROC_ARCH}.mkpeephole"
     NEWLINE_STYLE UNIX
     @ONLY
   )
+
   configure_file (
     "${CMAKE_SOURCE_DIR}/lib/V8/v8-mksnapshot.in"
     "${V8_TARGET_DIR}/${V8_PROC_ARCH}.release/${V8_PROC_ARCH}.mksnapshot"
@@ -122,11 +124,11 @@ endif()
 
 option(USE_DEBUG_V8 "compile V8 in DEBUG mode" OFF)
   
+set(GYP_MAIN ${PROJECT_SOURCE_DIR}/gyp/gyp_main.py)
+
 ################################################################################
 ## WINDOWS with msbuild; Gyp now does TrackFileAccess too.
 ################################################################################
-
-set(GYP_MAIN ${PROJECT_SOURCE_DIR}/gyp/gyp_main.py)
 
 if (WIN32)
   MESSAGE(STATUS "Building V8 for Windows with MSBUILD")
@@ -212,11 +214,14 @@ if (WIN32)
     )
 
   add_custom_target(v8_build)
-  set(V8_LIBS
-    "v8_base_without_compiler;v8_compiler;v8_base_without_compiler;torque_base;v8_libplatform;v8_libsampler;v8_libbase;v8_init;v8_initializers;v8_nosnapshot"
-    CACHE INTERNAL
-    "${PROJECT_NAME}: Libraries"
-  )
+
+  if (USE_V8)
+    set(V8_LIBS
+      "v8_base_without_compiler;v8_compiler;v8_base_without_compiler;torque_base;v8_libplatform;v8_libsampler;v8_libbase;v8_init;v8_initializers;v8_nosnapshot"
+      CACHE INTERNAL
+      "${PROJECT_NAME}: Libraries"
+    )
+  endif ()
 
   foreach (MS_TARGET_CONF ${V8_TARGET_ARCHS})
     string(TOLOWER ${MS_TARGET_CONF} MS_TARGET_CONF_LOWER)
@@ -275,40 +280,42 @@ if (WIN32)
 
   message("V8_LIBRARY_DEBUG ${V8_LIBRARY_DEBUG} CMAKE_CURRENT_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}")
 
-  set(V8_LIBS
-    debug "${V8_LIBRARY_DEBUG}/lib/v8_libplatform.lib"
-    optimized "${V8_LIBRARY_RELEASE}/lib/v8_libplatform.lib"
+  if (USE_V8)
+    set(V8_LIBS
+      debug "${V8_LIBRARY_DEBUG}/lib/v8_libplatform.lib"
+      optimized "${V8_LIBRARY_RELEASE}/lib/v8_libplatform.lib"
 
-    debug "${V8_LIBRARY_DEBUG}/lib/v8_base_without_compiler.lib"
-    optimized "${V8_LIBRARY_RELEASE}/lib/v8_base_without_compiler.lib"
+      debug "${V8_LIBRARY_DEBUG}/lib/v8_base_without_compiler.lib"
+      optimized "${V8_LIBRARY_RELEASE}/lib/v8_base_without_compiler.lib"
 
-    debug "${V8_LIBRARY_DEBUG}/lib/v8_libbase.lib"
-    optimized "${V8_LIBRARY_RELEASE}/lib/v8_libbase.lib"
+      debug "${V8_LIBRARY_DEBUG}/lib/v8_libbase.lib"
+      optimized "${V8_LIBRARY_RELEASE}/lib/v8_libbase.lib"
 
-    debug "${V8_LIBRARY_DEBUG}/lib/v8_libsampler.lib"
-    optimized "${V8_LIBRARY_RELEASE}/lib/v8_libsampler.lib"
+      debug "${V8_LIBRARY_DEBUG}/lib/v8_libsampler.lib"
+      optimized "${V8_LIBRARY_RELEASE}/lib/v8_libsampler.lib"
 
-    debug "${V8_LIBRARY_DEBUG}/lib/torque_base.lib"
-    optimized "${V8_LIBRARY_RELEASE}/lib/torque_base.lib"
+      debug "${V8_LIBRARY_DEBUG}/lib/torque_base.lib"
+      optimized "${V8_LIBRARY_RELEASE}/lib/torque_base.lib"
 
-    debug "${V8_LIBRARY_DEBUG}/lib/v8_compiler.lib"
-    optimized "${V8_LIBRARY_RELEASE}/lib/v8_compiler.lib"
+      debug "${V8_LIBRARY_DEBUG}/lib/v8_compiler.lib"
+      optimized "${V8_LIBRARY_RELEASE}/lib/v8_compiler.lib"
 
-    debug "${V8_LIBRARY_DEBUG}/lib/v8_initializers.lib"
-    optimized "${V8_LIBRARY_RELEASE}/lib/v8_initializers.lib"
+      debug "${V8_LIBRARY_DEBUG}/lib/v8_initializers.lib"
+      optimized "${V8_LIBRARY_RELEASE}/lib/v8_initializers.lib"
 
-    debug "${V8_LIBRARY_DEBUG}/lib/v8_snapshot.lib"
-    optimized "${V8_LIBRARY_RELEASE}/lib/v8_snapshot.lib"
+      debug "${V8_LIBRARY_DEBUG}/lib/v8_snapshot.lib"
+      optimized "${V8_LIBRARY_RELEASE}/lib/v8_snapshot.lib"
 
-#    debug "${V8_LIBRARY_DEBUG}/lib/v8_init.lib"
-#    optimized "${V8_LIBRARY_RELEASE}/lib/v8_init.lib"
+  #    debug "${V8_LIBRARY_DEBUG}/lib/v8_init.lib"
+  #    optimized "${V8_LIBRARY_RELEASE}/lib/v8_init.lib"
 
-    debug "DbgHelp.lib"
-    optimized "DbgHelp.lib"
+      debug "DbgHelp.lib"
+      optimized "DbgHelp.lib"
 
-    CACHE INTERNAL
-    "${PROJECT_NAME}: Libraries"
-    )
+      CACHE INTERNAL
+      "${PROJECT_NAME}: Libraries"
+      )
+  endif ()
 
   set(V8_INCLUDE_DIR
     debug "${V8_DIR}/include;${V8_DIR};${V8_LIBRARY_DEBUG}/obj/global_intermediate/"
@@ -327,13 +334,11 @@ if (WIN32)
   set(V8_LIBRARY_DEBUG "${CMAKE_CURRENT_BINARY_DIR}/gypfiles/Debug")
   set(V8_LIBRARY_RELEASE "${CMAKE_CURRENT_BINARY_DIR}/gypfiles//Release")
 
-else ()
-
-
 ################################################################################
 ## UNIX
 ################################################################################
 
+else ()
   set(V8_CFLAGS   "$ENV{V8_CFLAGS}")
   set(V8_CXXFLAGS "$ENV{V8_CXXFLAGS}")
   set(V8_LDFLAGS  "$ENV{V8_LDFLAGS}")
@@ -371,6 +376,7 @@ else ()
   list(APPEND V8_GYP_ARGS -S.${V8_TARGET_ARCH})
 
   set(V8_INTERNAL_INCLUDE_DIR "${V8_LIBRARY_DIR}/obj/gen/generate-bytecode-output-root;${V8_LIBRARY_DIR}/obj/gen/torque-output-root")
+
   if (LINUX)
     set(V8_LIBRARY_DIR "${V8_LIBRARY_DIR}/gypfiles")
     set(ICU_LIBRARY_DIR "${ICU_LIBRARY_DIR}/obj.target/third_party/icu")
@@ -417,18 +423,19 @@ else ()
   )
 
   list(APPEND V8_COMPILE_TARGETS icui18n icuuc)
-  list(APPEND V8_COMPILE_TARGETS v8_libbase
-    v8_libplatform
-    v8_base
-    v8_libsampler
-    v8_init
-    v8_initializers
-    v8_nosnapshot
-    mksnapshot
-    v8_snapshot
-    )
 
   if (USE_V8)
+    list(APPEND V8_COMPILE_TARGETS v8_libbase
+      v8_libplatform
+      v8_base
+      v8_libsampler
+      v8_init
+      v8_initializers
+      v8_nosnapshot
+      mksnapshot
+      v8_snapshot
+      )
+
     message(${V8_GYP_ARGS})
       ExternalProject_Add(v8_build
         BUILD_IN_SOURCE
@@ -462,11 +469,13 @@ else ()
           
   list(APPEND LINK_DIRECTORIES "${V8_LIBRARY_DIR}")
 
-  set(V8_LIBS
-    "v8_base_without_compiler;v8_compiler;v8_base_without_compiler;torque_base;v8_libplatform;v8_libsampler;v8_libbase;v8_init;;v8_initializers;v8_snapshot"
-    CACHE INTERNAL
-    "${PROJECT_NAME}: Libraries"
-  )
+  if (USE_V8)
+    set(V8_LIBS
+      "v8_base_without_compiler;v8_compiler;v8_base_without_compiler;torque_base;v8_libplatform;v8_libsampler;v8_libbase;v8_init;;v8_initializers;v8_snapshot"
+      CACHE INTERNAL
+      "${PROJECT_NAME}: Libraries"
+    )
+  endif ()
 
   list(APPEND LINK_DIRECTORIES "${ICU_LIBRARY_DIR}")
 

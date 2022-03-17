@@ -92,6 +92,7 @@ set(V8_VERSION
   "${PROJECT_NAME}: Version"
   FORCE
   )
+
 set(V8_SUB_DIR "v${V8_VERSION}")
 set(V8_VERSION ${V8_VERSION} PARENT_SCOPE)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/V8)
