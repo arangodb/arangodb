@@ -26,6 +26,8 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 let jsunity = require('jsunity');
+const internal = require('internal');
+const isCluster = internal.isCluster();
 
 const expectedRules = [
   {
@@ -102,24 +104,30 @@ function optimizerRulesSuite() {
   return {
 
     testDisplayingOfAllRules: function () {
-      for (let i = 0; i < 10; ++i) {
-        let response = arango.GET("/_api/query/rules");
-        let clusterOnlyRules = expectedRules.filter(rule => rule.flags.clusterOnly === true);
-        let nonClusterOnlyRules = expectedRules.filter(rule => rule.flags.clusterOnly === false);
-        nonClusterOnlyRules.forEach(nonClusterRule => {
-          const index = response.findIndex(rule => rule.name === nonClusterRule.name);
+      let response = arango.GET("/_api/query/rules");
+      let clusterOnlyRules = expectedRules.filter(rule => rule.flags.clusterOnly === true);
+      let nonClusterOnlyRules = expectedRules.filter(rule => rule.flags.clusterOnly === false);
+      nonClusterOnlyRules.forEach(nonClusterRule => {
+        const index = response.findIndex(rule => rule.name === nonClusterRule.name);
+        assertNotEqual(index, -1);
+        for (const [key, value] of Object.entries(nonClusterRule.flags)) {
+          assertEqual(response[index].flags[key], nonClusterRule.flags[key]);
+          assertEqual(response[index].flags[value], nonClusterRule.flags[value]);
+        }
+      });
+      clusterOnlyRules.forEach(clusterRule => {
+        const index = response.findIndex(rule => rule.name === clusterRule.name);
+        if (isCluster) {
           assertNotEqual(index, -1);
-          for (const [key, value] of Object.entries(nonClusterRule.flags)) {
-            assertEqual(response[index].flags[key], nonClusterRule.flags[key]);
-            assertEqual(response[index].flags[value], nonClusterRule.flags[value]);
+          for (const [key, value] of Object.entries(clusterRule.flags)) {
+            assertEqual(response[index].flags[key], clusterRule.flags[key]);
+            assertEqual(response[index].flags[value], clusterRule.flags[value]);
           }
-        });
-        clusterOnlyRules.forEach(clusterRule => {
-          const index = response.findIndex(rule => rule.name === clusterRule.name);
+        } else {
           assertEqual(index, -1);
-        });
-      }
-    },
+        }
+      });
+    }
   };
 }
 
