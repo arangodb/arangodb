@@ -100,7 +100,7 @@ const replicatedStateSuite = function () {
 
     testPrototypeReplicatedStateMethods: function() {
       // TODO use unique id
-      const stateId = 12; //lh.nextUniqueLogId();
+      const stateId = lh.nextUniqueLogId();
 
       const servers = _.sampleSize(lh.dbservers, 3);
       let participants = {};

@@ -47,7 +47,6 @@ class PrototypeLeaderInterface : public IPrototypeLeaderInterface {
     auto path = basics::StringUtils::joinT("/", "_api/prototype-state",
                                            logId.id, "snapshot");
     network::RequestOptions opts;
-    // TODO add functionality when other databases available
     opts.database = logId.database;
     opts.param("waitForIndex", std::to_string(waitForIndex.value));
 
@@ -56,7 +55,6 @@ class PrototypeLeaderInterface : public IPrototypeLeaderInterface {
         .thenValue(
             [](network::Response&& resp)
                 -> ResultT<std::unordered_map<std::string, std::string>> {
-              LOG_DEVEL << "response " << resp.statusCode();
               if (resp.fail() || !fuerte::statusIsSuccess(resp.statusCode())) {
                 THROW_ARANGO_EXCEPTION(resp.combinedResult());
               } else {
