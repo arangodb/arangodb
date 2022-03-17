@@ -175,6 +175,13 @@ auto PrototypeLeaderState::getSnapshot()
       });
 }
 
+auto PrototypeLeaderState::setSingle(std::string key, std::string value)
+    -> futures::Future<ResultT<LogIndex>> {
+  std::unordered_map<std::string, std::string> entries;
+  entries.emplace(std::move(key), std::move(value));
+  return set(std::move(entries));
+}
+
 PrototypeFollowerState::PrototypeFollowerState(
     std::unique_ptr<PrototypeCore> core)
     : guardedData(std::move(core)) {}

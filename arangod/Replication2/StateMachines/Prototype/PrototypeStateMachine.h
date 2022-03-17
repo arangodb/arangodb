@@ -121,6 +121,8 @@ struct PrototypeLeaderState
 
   auto set(std::unordered_map<std::string, std::string> entries)
       -> futures::Future<ResultT<LogIndex>>;
+  auto setSingle(std::string key, std::string value)
+      -> futures::Future<ResultT<LogIndex>>;
   template<class Iterator>
   auto set(Iterator begin, Iterator end) -> futures::Future<ResultT<LogIndex>>;
 
