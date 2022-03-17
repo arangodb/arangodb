@@ -161,10 +161,16 @@ target_link_libraries(arango_iresearch
   boost_thread # required by IResearchView upgrade_mutex
 )
 
-add_dependencies(arango_iresearch
-  ${IRESEARCH_TARGET_DEPENDENCY}
-  v8_build # for ICU required by iResearch
-)
+if (USE_V8)
+  add_dependencies(arango_iresearch
+    ${IRESEARCH_TARGET_DEPENDENCY}
+    v8_build # for ICU required by iResearch
+  )
+else ()
+  add_dependencies(arango_iresearch
+    ${IRESEARCH_TARGET_DEPENDENCY}
+  )
+endif ()
 
 ################################################################################
 ## arangod
@@ -298,7 +304,14 @@ set(LIB_ARANGO_PREGEL_SOURCES
   RestHandler/RestPregelHandler.cpp
 )
 
+if (USE_V8)
+  set(LIB_ARANGO_AQL_V8_SOURCES
+    Aql/V8Executor.cpp
+  )
+endif ()
+
 set(LIB_ARANGO_AQL_SOURCES
+  ${LIB_ARANGO_AQL_V8_SOURCES}
   Aql/Aggregator.cpp
   Aql/AllRowsFetcher.cpp
   Aql/AqlCall.cpp
@@ -466,7 +479,6 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/UnsortedGatherExecutor.cpp
   Aql/UpdateReplaceModifier.cpp
   Aql/UpsertModifier.cpp
-  Aql/V8Executor.cpp
   Aql/VarUsageFinder.cpp
   Aql/Variable.cpp
   Aql/VariableGenerator.cpp
@@ -648,7 +660,14 @@ set (LIB_ARANGO_METRICS_SOURCES
   RestHandler/RestMetricsHandler.cpp
   )
 
+if (USE_V8)
+  set(LIB_ARANGO_AGENCY_V8_SOURCES
+    Agency/v8-agency.cpp
+  )
+endif ()
+
 set(LIB_ARANGO_AGENCY_SOURCES
+  ${LIB_ARANGO_AGENCY_V8_SOURCES}
   Agency/ActiveFailoverJob.cpp
   Agency/AddFollower.cpp
   Agency/AgencyComm.cpp
@@ -677,34 +696,35 @@ set(LIB_ARANGO_AGENCY_SOURCES
   Agency/State.cpp
   Agency/Store.cpp
   Agency/Supervision.cpp
-  Agency/v8-agency.cpp
 )
 
-set(LIB_ARANGO_V8SERVER_SOURCES
-  Cluster/v8-cluster.cpp
-  Transaction/V8Context.cpp
-  V8Server/FoxxFeature.cpp
-  V8Server/V8Context.cpp
-  V8Server/V8DealerFeature.cpp
-  V8Server/v8-actions.cpp
-  V8Server/v8-analyzers.cpp
-  V8Server/v8-collection-util.cpp
-  V8Server/v8-collection.cpp
-  V8Server/v8-dispatcher.cpp
-  V8Server/v8-general-graph.cpp
-  V8Server/v8-query.cpp
-  V8Server/v8-replication.cpp
-  V8Server/v8-statistics.cpp
-  V8Server/v8-ttl.cpp
-  V8Server/v8-user-functions.cpp
-  V8Server/v8-user-structures.cpp
-  V8Server/v8-users.cpp
-  V8Server/v8-util.cpp
-  V8Server/v8-views.cpp
-  V8Server/v8-vocbase.cpp
-  V8Server/v8-voccursor.cpp
-  V8Server/v8-vocindex.cpp
-  V8Server/v8-replicated-logs.cpp V8Server/v8-replicated-logs.h)
+if (USE_V8)
+  set(LIB_ARANGO_V8SERVER_SOURCES
+    Cluster/v8-cluster.cpp
+    Transaction/V8Context.cpp
+    V8Server/FoxxFeature.cpp
+    V8Server/V8Context.cpp
+    V8Server/V8DealerFeature.cpp
+    V8Server/v8-actions.cpp
+    V8Server/v8-analyzers.cpp
+    V8Server/v8-collection-util.cpp
+    V8Server/v8-collection.cpp
+    V8Server/v8-dispatcher.cpp
+    V8Server/v8-general-graph.cpp
+    V8Server/v8-query.cpp
+    V8Server/v8-replication.cpp
+    V8Server/v8-statistics.cpp
+    V8Server/v8-ttl.cpp
+    V8Server/v8-user-functions.cpp
+    V8Server/v8-user-structures.cpp
+    V8Server/v8-users.cpp
+    V8Server/v8-util.cpp
+    V8Server/v8-views.cpp
+    V8Server/v8-vocbase.cpp
+    V8Server/v8-voccursor.cpp
+    V8Server/v8-vocindex.cpp
+    V8Server/v8-replicated-logs.cpp V8Server/v8-replicated-logs.h)
+endif ()
 
 set(LIB_ARANGO_NETWORK_SOURCES
   Network/ClusterUtils.cpp
@@ -714,7 +734,14 @@ set(LIB_ARANGO_NETWORK_SOURCES
   Network/Utils.cpp
 )
 
+if (USE_V8)
+  set(LIB_ARANGOSERVER_V8_SOURCES
+    FeaturePhases/V8FeaturePhase.cpp
+  )
+endif ()
+
 set(LIB_ARANGOSERVER_SOURCES
+  ${LIB_ARANGOSERVER_V8_SOURCES}
   Actions/ActionFeature.cpp
   Actions/RestActionHandler.cpp
   Actions/actions.cpp
@@ -769,7 +796,6 @@ set(LIB_ARANGOSERVER_SOURCES
   FeaturePhases/FinalFeaturePhase.cpp
   FeaturePhases/FoxxFeaturePhase.cpp
   FeaturePhases/ServerFeaturePhase.cpp
-  FeaturePhases/V8FeaturePhase.cpp
   GeneralServer/Acceptor.cpp
   GeneralServer/AcceptorTcp.cpp
   GeneralServer/AsyncJobManager.cpp
@@ -953,9 +979,11 @@ add_library(arango_vocbase STATIC
   ${ADDITIONAL_LIB_ARANGO_VOCBASE_SOURCES}
 )
 
-add_library(arango_v8server STATIC
-  ${LIB_ARANGO_V8SERVER_SOURCES}
-)
+if (USE_V8)
+  add_library(arango_v8server STATIC
+    ${LIB_ARANGO_V8SERVER_SOURCES}
+  )
+endif ()
 
 add_library(arango_utils STATIC
   ${LIB_ARANGO_UTILS_SOURCES}
@@ -1065,7 +1093,10 @@ target_link_libraries(arango_cache boost_system)
 target_link_libraries(arango_cluster_engine arango_health)
 target_link_libraries(arango_cluster_engine arango_indexes)
 target_link_libraries(arango_cluster_engine boost_boost)
-target_link_libraries(arango_cluster_engine arango_v8 arango_v8_no_deadline)
+
+if (USE_V8)
+  target_link_libraries(arango_cluster_engine arango_v8 arango_v8_no_deadline)
+endif ()
 
 target_include_directories(arango_cluster_engine
     PUBLIC ${IRESEARCH_INCLUDE}
@@ -1162,11 +1193,13 @@ target_link_libraries(arango_utils arango::validation)
 target_link_libraries(arango_utils arango_replication2)
 target_link_libraries(arango_utils immer)
 
-target_link_libraries(arango_v8server arango_agency)
-target_link_libraries(arango_v8server arango_iresearch)
-target_link_libraries(arango_v8server arango_replication)
-target_link_libraries(arango_v8server arango_v8 arango_v8_no_deadline)
-target_link_libraries(arango_v8server ${V8_LIBS})
+if (USE_V8)
+  target_link_libraries(arango_v8server arango_agency)
+  target_link_libraries(arango_v8server arango_iresearch)
+  target_link_libraries(arango_v8server arango_replication)
+  target_link_libraries(arango_v8server arango_v8 arango_v8_no_deadline)
+  target_link_libraries(arango_v8server ${V8_LIBS})
+endif ()
 
 target_link_libraries(arango_vocbase arango_agency)
 target_link_libraries(arango_vocbase arango_cluster_methods)
@@ -1191,9 +1224,12 @@ target_link_libraries(arangoserver arango_pregel)
 target_link_libraries(arangoserver arango_replication)
 target_link_libraries(arangoserver arango_storage_engine)
 target_link_libraries(arangoserver arango_utils)
-target_link_libraries(arangoserver arango_v8server)
 target_link_libraries(arangoserver arango_vocbase)
 target_link_libraries(arangoserver boost_boost)
+
+if (USE_V8)
+  target_link_libraries(arangoserver arango_v8server)
+endif ()
 
 target_link_libraries(arangoserver
   ${MSVC_LIBS}
@@ -1248,7 +1284,7 @@ install(
 
 install_config(arangod)
 
-if (NOT USE_PRECOMPILED_V8)
+if (NOT USE_PRECOMPILED_V8 AND USE_V8)
   add_dependencies(arangod zlibstatic v8_build arango_iresearch)
 else ()
   add_dependencies(arangod zlibstatic arango_iresearch)
@@ -1258,7 +1294,14 @@ if (USE_JEMALLOC)
   add_dependencies(arangod jemalloc_build)
 endif ()
 
+if (USE_V8)
+  set(TARGET_V8
+    arango_v8server
+  )
+endif ()
+
 foreach(TARGET
+  ${TARGET_V8}
   arango_agency
   arango_aql
   arango_cache
@@ -1278,7 +1321,6 @@ foreach(TARGET
   arango_storage_engine
   arango_storage_engine_common
   arango_utils
-  arango_v8server
   arango_vocbase
   arangod
   arangoserver

@@ -93,7 +93,11 @@ add_library(boost_locale STATIC
     ${boost_src}/libs/locale/src/util/locale_data.cpp
     ${BOOST_LOCALE_PLATFORM_SRC}
 )
-add_dependencies(boost_locale v8_build) # for ICU libs
+
+if (USE_V8)
+  add_dependencies(boost_locale v8_build) # for ICU libs
+endif ()
+
 target_link_libraries(boost_locale PUBLIC boost_boost) #this will add required includes
 target_include_directories(boost_locale SYSTEM PRIVATE ${ICU_INCLUDE_DIR})
 target_compile_definitions(boost_locale PRIVATE "BOOST_SYSTEM_STATIC_LINK=1")

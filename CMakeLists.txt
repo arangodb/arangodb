@@ -1270,17 +1270,21 @@ endif ()
 
 add_definitions("-DVELOCYPACK_XXHASH=1")
 
-set(V8_LINK_DIRECTORIES "${LINK_DIRECTORIES}" CACHE INTERNAL "" FORCE)
-
 ################################################################################
 ## V8
 ################################################################################
 
-add_definitions("-DARANGODB_V8_VERSION=\"${V8_VERSION}\"")
+option(USE_V8 "use Javascript engine V8" OFF)
 
-foreach (LINK_DIR ${V8_LINK_DIRECTORIES})
-  link_directories("${LINK_DIR}")
-endforeach()
+if (USE_V8)
+  set(V8_LINK_DIRECTORIES "${LINK_DIRECTORIES}" CACHE INTERNAL "" FORCE)
+
+  add_definitions("-DARANGODB_V8_VERSION=\"${V8_VERSION}\"")
+
+  foreach (LINK_DIR ${V8_LINK_DIRECTORIES})
+    link_directories("${LINK_DIR}")
+  endforeach()
+endif ()
 
 ################################################################################
 ## ZLIB
@@ -1416,21 +1420,23 @@ if (UNIX)
   add_dependencies(arangosh      man)
 endif ()
 
-if (NOT USE_PRECOMPILED_V8)
-  # all binaries depend on v8_build because it contains ICU as well
-  add_dependencies(arangobench   v8_build)
+if (USE_V8)
+  if (NOT USE_PRECOMPILED_V8)
+    # all binaries depend on v8_build because it contains ICU as well
+    add_dependencies(arangobench   v8_build)
 
-  if (USE_ENTERPRISE)
-    add_dependencies(arangobackup  v8_build)
-  endif ()
-  add_dependencies(arangod       v8_build)
-  add_dependencies(arangodump    v8_build)
-  add_dependencies(arangoexport  v8_build)
-  add_dependencies(arangoimport  v8_build)
-  add_dependencies(arangorestore v8_build)
-  add_dependencies(arangosh      v8_build)
-  if (USE_GOOGLE_TESTS)
-    add_dependencies(arangodbtests v8_build)
+    if (USE_ENTERPRISE)
+      add_dependencies(arangobackup  v8_build)
+    endif ()
+    add_dependencies(arangod       v8_build)
+    add_dependencies(arangodump    v8_build)
+    add_dependencies(arangoexport  v8_build)
+    add_dependencies(arangoimport  v8_build)
+    add_dependencies(arangorestore v8_build)
+    add_dependencies(arangosh      v8_build)
+    if (USE_GOOGLE_TESTS)
+      add_dependencies(arangodbtests v8_build)
+    endif ()
   endif ()
 endif ()
 

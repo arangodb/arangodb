@@ -1,9 +1,9 @@
-
 if (NOT MSVC)
     add_executable(greenspun_repl REPL.cpp)
     target_link_libraries(greenspun_repl arango)
     target_link_libraries(greenspun_repl arango_greenspun)
-    if (NOT USE_PRECOMPILED_V8)
+
+    if (NOT USE_PRECOMPILED_V8 AND USE_V8)
         add_dependencies(greenspun_repl v8_build)
     endif ()
     if (USE_JEMALLOC)
@@ -15,7 +15,8 @@ if (NOT MSVC)
     target_link_libraries(greenspun_test arango_greenspun)
     target_link_libraries(greenspun_test gtest)
     target_compile_definitions(greenspun_test PRIVATE -DAIR_PRIMITIVE_TESTS_MAIN)
-    if (NOT USE_PRECOMPILED_V8)
+
+    if (NOT USE_PRECOMPILED_V8 AND USE_V8)
         add_dependencies(greenspun_test v8_build)
     endif ()
     if (USE_JEMALLOC)
