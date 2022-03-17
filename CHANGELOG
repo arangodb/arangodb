@@ -7,7 +7,7 @@ devel
 
     --icu-language sv
 
-* Added new AQL function `KEEP_RECURSIVE` to recursively keep attritutes from
+* Added new AQL function `KEEP_RECURSIVE` to recursively keep attributes from
   objects/documents, as a conterpart to `UNSET_RECURSIVE`.
 
 * No longer put document writes from replication into the audit log by
@@ -13227,7 +13227,7 @@ v2.8.0-alpha1 (2015-12-03)
   the HTTP response header `"Server: ArangoDB"` in its HTTP responses. By default,
   the option is turned off so the header is still sent as usual.
 
-* added new AQL function `UNSET_RECURSIVE` to recursively unset attritutes from
+* added new AQL function `UNSET_RECURSIVE` to recursively unset attributes from
   objects/documents
 
 * switched command-line editor in ArangoShell and arangod to linenoise-ng
