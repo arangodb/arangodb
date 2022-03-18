@@ -288,8 +288,8 @@ struct InspectorBase {
   template<class InnerField, class U>
   struct EMPTY_BASE FallbackField
       : Derived::template FallbackContainer<U>,
-                         WithInvariant<FallbackField<InnerField, U>>,
-                         WithTransform<FallbackField<InnerField, U>> {
+        WithInvariant<FallbackField<InnerField, U>>,
+        WithTransform<FallbackField<InnerField, U>> {
     FallbackField(InnerField inner, U&& val)
         : Derived::template FallbackContainer<U>(std::move(val)),
           inner(std::move(inner)) {}
@@ -300,8 +300,8 @@ struct InspectorBase {
   template<class InnerField, class Invariant>
   struct EMPTY_BASE InvariantField
       : Derived::template InvariantContainer<Invariant>,
-                          WithFallback<InvariantField<InnerField, Invariant>>,
-                          WithTransform<InvariantField<InnerField, Invariant>> {
+        WithFallback<InvariantField<InnerField, Invariant>>,
+        WithTransform<InvariantField<InnerField, Invariant>> {
     InvariantField(InnerField inner, Invariant&& invariant)
         : Derived::template InvariantContainer<Invariant>(std::move(invariant)),
           inner(std::move(inner)) {}
@@ -312,7 +312,7 @@ struct InspectorBase {
   template<class InnerField, class T>
   struct EMPTY_BASE TransformField
       : WithInvariant<TransformField<InnerField, T>>,
-                          WithFallback<TransformField<InnerField, T>> {
+        WithFallback<TransformField<InnerField, T>> {
     TransformField(InnerField inner, T&& transformer)
         : inner(std::move(inner)), transformer(std::move(transformer)) {}
     using value_type = typename InnerField::value_type;
@@ -322,8 +322,8 @@ struct InspectorBase {
 
   template<typename DerivedField>
   struct EMPTY_BASE BasicField : InvariantMixin<DerivedField>,
-                      FallbackMixin<DerivedField>,
-                      TransformMixin<DerivedField> {
+                                 FallbackMixin<DerivedField>,
+                                 TransformMixin<DerivedField> {
     explicit BasicField(std::string_view name) : name(name) {}
     std::string_view name;
   };
