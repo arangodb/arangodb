@@ -242,9 +242,13 @@ auto RestPregel3Handler::handleGetRequest(
     }
     generateOk(rest::ResponseCode::OK, builder.slice());
     return RestStatus::DONE;
-  } else if (request == "start") {
+  } else if (request == "run") {
+    query->createAlgorithm();
     query->setState(Query::State::RUNNING);
-    // todo
+    auto result = query->run();
+    VPackBuilder builder;
+    result->toVelocyPack(builder);
+    generateOk(rest::ResponseCode::OK, builder.slice());
   } else if (request == "store") {
     query->setState(Query::State::STORING);
     // todo

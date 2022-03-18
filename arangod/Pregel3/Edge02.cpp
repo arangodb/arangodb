@@ -6,7 +6,7 @@
 
 using namespace arangodb::pregel3;
 
-void MinCutEdge::toVelocyPack(VPackBuilder& builder) {
+void MinCutEdge::toVelocyPack(VPackBuilder& builder) const {
   VPackObjectBuilder ob(&builder);
   builder.add("from", VPackValue(from));
   builder.add("to", VPackValue(to));

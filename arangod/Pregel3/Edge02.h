@@ -48,7 +48,7 @@ struct MinCutEdge : public Edge<EmptyEdgeProperties> {
     return capacity == other.capacity && flow == other.flow;
   }
 
-  void toVelocyPack(VPackBuilder& builder);
+  void toVelocyPack(VPackBuilder& builder) const;
 
   double residual() const {
     TRI_ASSERT(capacity >= flow);

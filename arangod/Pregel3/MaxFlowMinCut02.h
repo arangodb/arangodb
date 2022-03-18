@@ -28,11 +28,12 @@
 #include "Basics/ResultT.h"
 #include "Containers/FlatHashSet.h"
 #include "Containers/FlatHashMap.h"
+#include "Algorithm.h"
 
 namespace arangodb::pregel3 {
 
 // indexes of edges with positive flow
-typedef containers::FlatHashSet<size_t> Flow;
+typedef containers::FlatHashMap<size_t, double> Flow;
 
 struct Cut {
   // indexes of edges in the cut
@@ -42,17 +43,26 @@ struct Cut {
   containers::FlatHashSet<size_t> sourceComp;
 };
 
-struct MaxFlowMinCutResult {
+struct MaxFlowMinCutResult : AlgorithmResult {
   MaxFlowMinCutResult() = default;  // if _target not reachable from _source
-  MaxFlowMinCutResult(Flow&& f, Cut&& c) : flow(f), cut(c) {}
+  MaxFlowMinCutResult(Flow&& f, Cut&& c, MinCutGraph* g)
+      : flow(f), cut(c), _g(g) {}
   Flow flow;
   Cut cut;
+
+ private:
+  MinCutGraph* _g;
+
+  void toVelocyPack(VPackBuilder& builder) override;
 };
 
-class MaxFlowMinCut {
+class MaxFlowMinCut : public Algorithm {
+ public:
   MaxFlowMinCut(MinCutGraph* g, size_t source, size_t target)
-      : _source(source), _target(target), _g(g) {}
+      : _source(source), _target(target), _g(g){};
+  ~MaxFlowMinCut() override = default;
 
+ private:
   /**
    * Check that _source and _target are, indeed, indexes of existing vertices
    * @return
@@ -71,7 +81,7 @@ class MaxFlowMinCut {
     }
   }
 
-  MaxFlowMinCutResult run();
+  std::unique_ptr<AlgorithmResult> run() override;
   void push(size_t a, size_t b);
 
   double excess(size_t u) const {
@@ -244,7 +254,6 @@ class MaxFlowMinCut {
   size_t _target;
   // e = (u,v) is applicable if excess(u) > 0, label(u) = label(v) + 1 and
   // residual(e) > 0
-  // an entry
   containers::FlatHashSet<std::pair<size_t, size_t>> _applicableEdges;
 
   // A vertex u is relabable if excess(u) > 0 and for all out-neighbors of u
@@ -255,8 +264,15 @@ class MaxFlowMinCut {
   void initialize();
   void relabel(size_t uIdx);
   // unknown getNeighborByIdx(size_t u, size_t idxNeighb);
-  void updateRelabable(MinCutVertex const& u, size_t oldLabel);
+  void updateRelabableAfterRelabel(MinCutVertex const& u, size_t uIdx,
+                                   size_t oldLabel);
   void removeLeavesRecursively();
+  bool existsEdge(MinCutEdge* eIdx);
+  void updateApplicableAfterPush(const MinCutVertex& v, const MinCutVertex& u,
+                                 double delta);
+  void updateRelabableAfterPush(const MinCutVertex& v, size_t vIdx,
+                                const MinCutVertex& u, size_t uIdx);
+  void updateApplicableAfterRelabel(const MinCutVertex& u, size_t uIdx);
 };
 
 }  // namespace arangodb::pregel3

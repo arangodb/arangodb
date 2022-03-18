@@ -41,7 +41,7 @@ void Edge<EdgeProperties>::toVelocyPack(VPackBuilder& builder) {
 }
 
 void MinCutVertex::toVelocyPack(VPackBuilder& builder, std::string_view id,
-                                size_t idx) {
+                                size_t idx) const {
   VPackObjectBuilder ob(&builder);
   builder.add("id", VPackValue(id));
   builder.add("idx", VPackValue(idx));

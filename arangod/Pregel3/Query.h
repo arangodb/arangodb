@@ -36,6 +36,8 @@
 #include "Graph02.h"
 #include "AlgorithmSpecification.h"
 #include "Containers/FlatHashMap.h"
+#include "Algorithm.h"
+#include "MaxFlowMinCut02.h"
 
 namespace arangodb::pregel3 {
 
@@ -98,6 +100,17 @@ struct Query : std::enable_shared_from_this<Query> {
     return _graphSpec;
   }
 
+  void createAlgorithm() {
+    if (_algSpec.algName == "MinCut") {
+      _algorithm = std::make_unique<MaxFlowMinCut>(
+          dynamic_cast<MinCutGraph*>(_graph.get()),
+          dynamic_cast<MinCutGraph*>(_graph.get())->source,
+          dynamic_cast<MinCutGraph*>(_graph.get())->target);
+    }
+  }
+
+  std::unique_ptr<AlgorithmResult> run();
+
  private:
   QueryId id;
   GraphSpecification _graphSpec;
@@ -111,5 +124,6 @@ struct Query : std::enable_shared_from_this<Query> {
   // addVertex, addSingleEdge)
   containers::FlatHashMap<std::string, size_t> _vertexIdToIdx;
   double _defaultCapacity = 0.0;
+  std::unique_ptr<Algorithm> _algorithm;
 };
 }  // namespace arangodb::pregel3

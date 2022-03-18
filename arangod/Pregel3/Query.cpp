@@ -89,6 +89,12 @@ void Query::loadGraph() {
       graph->vertices.emplace_back();
       // trust that each vertex id appears only once
       _vertexIdToIdx[vertexId] = graph->vertexIds.size();
+      if (vertexId == _algSpec.targetVertexId) {
+        graph->target = graph->numVertices();
+      }
+      if (vertexId == _algSpec.sourceVertexId) {
+        graph->source = graph->numVertices();
+      }
       graph->vertexIds.push_back(vertexId);
     } else {
       auto graph = dynamic_cast<EmptyPropertiesGraph*>(_graph.get());
@@ -230,5 +236,6 @@ auto Query::graphIsLoaded() -> bool {
   return _state == State::DONE || _state == State::LOADED ||
          _state == State::STORING || _state == State::RUNNING;
 }
+std::unique_ptr<AlgorithmResult> Query::run() { return _algorithm->run(); }
 
 }  // namespace arangodb::pregel3

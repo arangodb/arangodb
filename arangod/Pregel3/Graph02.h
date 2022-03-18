@@ -13,7 +13,7 @@ namespace arangodb::pregel3 {
 
 struct BaseGraph {
   virtual ~BaseGraph() = default;
-  virtual void toVelocyPack(VPackBuilder&) = 0;
+  virtual void toVelocyPack(VPackBuilder&) const = 0;
 };
 
 template<class V, class E>
@@ -30,15 +30,13 @@ struct Graph : BaseGraph {
                   // vertices
 
   ~Graph() override = default;
-  auto numVertices() -> size_t { return vertices.size(); }
-  auto numEdges() -> size_t { return edges.size(); }
-  void toVelocyPack(VPackBuilder& builder) override;
+  auto numVertices() const -> size_t { return vertices.size(); }
+  auto numEdges() const -> size_t { return edges.size(); }
+  void toVelocyPack(VPackBuilder& builder) const override;
 
-  void addVertex(V&& v) { vertices.emplace(std::move(v)); }
+  void addVertex(V&& v) { vertices.template emplace_back(std::move(v)); }
   void addVertex() { vertices.emplace_back(); }
   std::pair<size_t, bool> addEdge(size_t from, size_t to);
-
-  void addEdge(E&& e) { edges.insert(std::move(e)); }
 
   void removeEdge(E* e);
 
@@ -47,7 +45,7 @@ struct Graph : BaseGraph {
     return vertices[vIdx];
   }
 
-  V& vertex(size_t vIdx) const {
+  V const& vertex(size_t vIdx) const {
     TRI_ASSERT(vIdx < numVertices());
     return vertices[vIdx];
   }
@@ -60,7 +58,7 @@ struct Graph : BaseGraph {
     return nullptr;
   }
 
-  E* edge(size_t eIdx) const {
+  E const* edge(size_t eIdx) const {
     auto it = edges.find(eIdx);
     if (it != edges.end()) {
       return &(it->second);
@@ -78,13 +76,23 @@ struct Graph : BaseGraph {
     return nullptr;
   }
 
-  E* reverseEdge(E const& e) const { return edge(e.to, e.from); }
+  E const* edge(size_t from, size_t to) const {
+    TRI_ASSERT(from < numVertices());
+    TRI_ASSERT(to < numVertices());
+    auto it = vertices[from].outEdges.find(to);
+    if (it != vertices[from].outEdges.end()) {
+      return it->second;
+    }
+    return nullptr;
+  }
+
+  E const* reverseEdge(E const& e) const { return edge(e.to, e.from); }
 
   E* reverseEdge(E const* e) { return edge(e->to, e->from); }
 };
 
 template<class V, class E>
-void Graph<V, E>::toVelocyPack(VPackBuilder& builder) {
+void Graph<V, E>::toVelocyPack(VPackBuilder& builder) const {
   VPackObjectBuilder ob(&builder);
   builder.add(VPackValue("vertices"));
   {
@@ -107,9 +115,11 @@ void Graph<V, E>::toVelocyPack(VPackBuilder& builder) {
 using EmptyPropertiesGraph = Graph<VertexWithEmptyProps, EdgeWithEmptyProps>;
 
 class MinCutGraph : public Graph<MinCutVertex, MinCutEdge> {
+ public:
   size_t source;
   size_t target;
 
+ private:
   std::unordered_set<size_t> applicableEdges;
   std::unordered_set<size_t> relabableVertices;
 };

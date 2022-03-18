@@ -10,8 +10,7 @@ using namespace arangodb::pregel3;
 using namespace arangodb::velocypack;
 
 template<class V, class E>
-[[maybe_unused]] std::pair<size_t, bool> Graph<V, E>::addEdge(size_t from,
-                                                              size_t to) {
+std::pair<size_t, bool> Graph<V, E>::addEdge(size_t from, size_t to) {
   TRI_ASSERT(from < numVertices());
   TRI_ASSERT(to < numVertices());
   size_t idx;
@@ -25,12 +24,14 @@ template<class V, class E>
   } else {
     idx = edges.size();
   }
-  auto res = edges.emplace(std::make_pair(idx, Edge(from, to, idx)));
-  if (res.second) {
-    vertices[from].outEdges.insert(std::make_pair(to, *(res.first)));
-    vertices[to].outEdges.insert(std::make_pair(from, *(res.first)));
+  auto [it, success] = edges.emplace(std::make_pair(idx, Edge(from, to, idx)));
+  if (success) {
+    auto e = it->second;
+    vertices[from].outEdges.insert(std::make_pair(to, &e));
+    vertices[to].outEdges.insert(std::make_pair(from, &e));
+    return {e.idx, true};
   }
-  return res;
+  return {0, false};
 }
 
 template<class V, class E>
@@ -43,3 +44,5 @@ void Graph<V, E>::removeEdge(E* e) {
   }
   edges.erase(idx);
 }
+
+template struct arangodb::pregel3::Graph<MinCutVertex, MinCutEdge>;

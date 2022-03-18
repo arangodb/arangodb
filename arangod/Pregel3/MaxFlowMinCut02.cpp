@@ -152,34 +152,15 @@ void MaxFlowMinCut::initialize() {
   */
 }
 
-void MaxFlowMinCut::push(size_t uIdx, size_t vIdx) {
-  TRI_ASSERT(uIdx < _g->numEdges());
-  TRI_ASSERT(vIdx < _g->numEdges());
-  auto e = edge(uIdx, vIdx);
-  TRI_ASSERT(e->from < _g->numVertices());
-  TRI_ASSERT(e->to < _g->numVertices());
-  auto& u = _g->vertices[uIdx];
-  auto& v = _g->vertices[vIdx];
-  TRI_ASSERT(u.excess > 0);
-  TRI_ASSERT(u.label == v.label + 1);
+bool MaxFlowMinCut::existsEdge(MinCutEdge* eIdx) { return eIdx != nullptr; }
 
-  double delta = std::min(u.excess, residual(e));
-  e->increaseFlow(delta);
-
-  auto eRev = _g->reverseEdge(e);
-  eRev->decreaseFlow(delta);
-  u.decreaseExcess(delta);
-
-  // UPDATE _applicableEdges
-
-  // check if the edge is not applicable any more. labels have not been changed,
-  // so they must not be checked.
+void MaxFlowMinCut::updateApplicableAfterPush(MinCutVertex const& v,
+                                              MinCutVertex const& u,
+                                              double delta) {
   // other applicable edges remained applicable
-  if (u.excess <= 0 || residual(e) <= 0) {
-    _applicableEdges.erase(std::make_pair(e->from, e->to));
-  }
-  // check if, for out-neighbors nv of v, the edge (v, nv) becomes applicable
-  // (including nv == u)
+
+  // check if the edges (v, nv) become applicable (including nv == u),
+  // for out-neighbors nv of v
   if (v.excess - delta == 0) {  // otherwise v has already had positive excess
                                 // and nothing changed for edges (v, nv)
     // todo introduce data structure keeping track of outgoing edges with
@@ -203,9 +184,11 @@ void MaxFlowMinCut::push(size_t uIdx, size_t vIdx) {
   }
 
   // END UPDATE _applicableEdges
+}
 
-  // UPDATE _relabableVertices
-
+void MaxFlowMinCut::updateRelabableAfterPush(MinCutVertex const& v, size_t vIdx,
+                                             MinCutVertex const& u,
+                                             size_t uIdx) {
   // check if u still has excess
   if (u.excess == 0) {
     _relabableVertices.erase(uIdx);
@@ -216,6 +199,7 @@ void MaxFlowMinCut::push(size_t uIdx, size_t vIdx) {
   //  residual capacity (and, possibly, not smaller label).
   // for now, just iterate
   bool isRelabable = true;
+  // todo test if v is already relabable
   for (auto const& [neighbV, outE] : v.outEdges) {
     if (outE->residual() > 0 && v.label > vertex(neighbV).label) {
       isRelabable = false;
@@ -229,6 +213,34 @@ void MaxFlowMinCut::push(size_t uIdx, size_t vIdx) {
   // END UPDATE _relabableVertices
 }
 
+void MaxFlowMinCut::push(size_t uIdx, size_t vIdx) {
+  TRI_ASSERT(uIdx < _g->numVertices());
+  TRI_ASSERT(vIdx < _g->numVertices());
+  auto e = edge(uIdx, vIdx);
+  auto& u = vertex(uIdx);
+  auto& v = vertex(vIdx);
+  TRI_ASSERT(u.excess > 0);
+  TRI_ASSERT(u.label == v.label + 1);
+
+  double delta = std::min(u.excess, residual(e));
+  e->increaseFlow(delta);
+
+  auto eRev = _g->reverseEdge(e);
+  if (not existsEdge(eRev)) {
+    _g->addEdge(e->to, e->from);
+  }
+  eRev->decreaseFlow(delta);
+  u.decreaseExcess(delta);
+  if (e->residual() == 0) {
+    _applicableEdges.erase(std::make_pair(e->from, e->to));
+    _g->removeEdge(e);
+  }
+  v.increaseExcess(delta);
+
+  updateApplicableAfterPush(v, u, delta);
+  updateRelabableAfterPush(v, vIdx, u, uIdx);
+}
+
 // update _relabableVertices: the only possible change is that
 // in-neighbors v of u can become relabable: if u was the only out-neighbor of
 // v with smaller label and residual(v,u) > 0 and now (after relabelling)
@@ -238,15 +250,16 @@ void MaxFlowMinCut::push(size_t uIdx, size_t vIdx) {
 // exists in the residual graph).
 // Note: Maybe more efficient: store how many out-neighbors
 // y a vertex x has with capacity(x,y) > 0 and label(x) > label(y).
-void MaxFlowMinCut::updateRelabable(MinCutVertex const& u, size_t oldLabel) {
+void MaxFlowMinCut::updateRelabableAfterRelabel(MinCutVertex const& u,
+                                                size_t uIdx, size_t oldLabel) {
+  _relabableVertices.erase(uIdx);
   for (auto const& [vIdx, vu] : u.inEdges) {
     if (_relabableVertices.find(vIdx) != _relabableVertices.end()) {
       continue;  // already relabable
     }
     auto const& v = _g->vertices[vIdx];
 
-    if (v.excess > 0 && residual(vu) > 0 && v.label > oldLabel &&
-        v.label <= u.label) {  // filter
+    if (v.excess > 0 && v.label > oldLabel && v.label <= u.label) {  // filter
       bool isRelabable = true;
       // iterate over all out-neighbors of v (including u)
       for (auto const& [wIdx, vw] : v.outEdges) {
@@ -264,6 +277,27 @@ void MaxFlowMinCut::updateRelabable(MinCutVertex const& u, size_t oldLabel) {
   }
 }
 
+void MaxFlowMinCut::updateApplicableAfterRelabel(MinCutVertex const& u,
+                                                 size_t uIdx) {
+  for (auto const& [wIdx, e] : u.inEdges) {
+    auto const& w = vertex(wIdx);
+    if (w.excess > 0 and w.label == u.label + 1) {
+      _applicableEdges.insert(std::make_pair(wIdx, uIdx));
+    } else {
+      _applicableEdges.erase(std::make_pair(wIdx, uIdx));
+    }
+  }
+
+  for (auto const& [vIdx, e] : u.outEdges) {
+    auto const& v = vertex(vIdx);
+    if (u.excess > 0 and u.label == v.label + 1) {
+      _applicableEdges.insert(std::make_pair(uIdx, vIdx));
+    } else {
+      _applicableEdges.erase(std::make_pair(uIdx, vIdx));
+    }
+  }
+}
+
 void MaxFlowMinCut::relabel(size_t uIdx) {
   TRI_ASSERT(uIdx < _g->numVertices());
   auto& u = _g->vertices[uIdx];
@@ -277,34 +311,26 @@ void MaxFlowMinCut::relabel(size_t uIdx) {
 #endif
   size_t minLabelNeighb = _g->numVertices();
   for (auto const& [v, e] : u.outEdges) {
-    if (residual(e) > 0) {
-      minLabelNeighb = std::min(minLabelNeighb, vertex(v).label);
-    }
-  }
-  for (auto const& [vIdx, e] :
-       u.inEdges) {  // real edge: vu; in residual graph: uv
-    if (e->flow > 0) {
-      minLabelNeighb = std::min(minLabelNeighb, vertex(vIdx).label);
-    }
+    minLabelNeighb = std::min(minLabelNeighb, vertex(v).label);
   }
   size_t const oldLabel = u.label;
   u.label = minLabelNeighb + 1;
-  _relabableVertices.erase(uIdx);
 
-  // note: applicability did not change
+  updateApplicableAfterRelabel(u, uIdx);
 
   // update _relabableVertices: the only possible change is that
   // in-neighbors v of u can become relabable because label(u) increased
-  updateRelabable(u, oldLabel);
+  updateRelabableAfterRelabel(u, uIdx, oldLabel);
 }
 
-MaxFlowMinCutResult MaxFlowMinCut::run() {
+std::unique_ptr<AlgorithmResult> MaxFlowMinCut::run() {
   initialize();
 
   // saturate all out-edges of _source
-  // todo: iterator over outgoing edges
   for (auto const& [vIdx, e] : _g->vertices[_source].outEdges) {
     e->flow = e->capacity;
+    auto& v = vertex(vIdx);
+    v.excess = e->flow;
     _relabableVertices.insert(vIdx);
   }
   // Note: graph _g and residual graph are still the same, no need to iterate
@@ -363,11 +389,44 @@ MaxFlowMinCutResult MaxFlowMinCut::run() {
     auto const& u = vertex(uIdx);
     for (auto const& [_, e] : u.outEdges) {  // todo
       if (e->flow > 0) {
-        f.insert(e->idx);
+        f[e->idx] = e->flow;
       }
     }
   }
-  return {std::move(f), std::move(c)};
+  return std::make_unique<MaxFlowMinCutResult>(std::move(f), std::move(c), _g);
 }
 
+void MaxFlowMinCutResult::toVelocyPack(VPackBuilder& builder) {
+  VPackObjectBuilder ob(&builder);
+  {
+    builder.add(VPackValue("flow"));
+
+    VPackArrayBuilder ab(&builder);
+    for (auto const& [eIdx, f] : flow) {
+      auto const& e = _g->edge(eIdx);
+      VPackObjectBuilder o(&builder);
+      builder.add("from", VPackValue(_g->vertexIds[e->from]));
+      builder.add("to", VPackValue(_g->vertexIds[e->to]));
+      builder.add("flow", VPackValue(f));
+    }
+  }
+  {
+    builder.add(VPackValue("cut"));
+    VPackArrayBuilder ab(&builder);
+    for (auto const& eIdx : cut.edges) {
+      auto const& e = _g->edge(eIdx);
+      VPackObjectBuilder o(&builder);
+      builder.add("from", VPackValue(_g->vertexIds[e->from]));
+      builder.add("to", VPackValue(_g->vertexIds[e->to]));
+    }
+  }
+  {
+    builder.add(VPackValue("sourceComponent"));
+    VPackArrayBuilder ab(&builder);
+    for (auto const& vIdx : cut.sourceComp) {
+      auto& vId = _g->vertexIds[vIdx];
+      builder.add(VPackValue(vId));
+    }
+  }
+}
 }  // namespace arangodb::pregel3

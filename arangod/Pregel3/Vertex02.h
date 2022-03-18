@@ -39,7 +39,8 @@ struct MinCutVertex : public Vertex<EmptyVertexProperties, MinCutEdge> {
 
   MinCutVertex() = default;
 
-  void toVelocyPack(VPackBuilder& builder, std::string_view id, size_t idx);
+  void toVelocyPack(VPackBuilder& builder, std::string_view id,
+                    size_t idx) const;
 
   bool operator==(MinCutVertex const& other) {
     return label == other.label && excess == other.excess;

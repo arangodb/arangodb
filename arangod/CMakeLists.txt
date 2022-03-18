@@ -311,7 +311,7 @@ set(LIB_ARANGO_PREGEL3_SOURCES
         Pregel3/MaxFlowMinCut02.cpp
         Pregel3/Graph02.cpp
         Pregel3/AlgorithmSpecification.cpp
-        Pregel3/AlgorithmSpecification.h Pregel3/Vertex02.cpp Pregel3/Vertex02.h Pregel3/Edge02.cpp Pregel3/Edge02.h)
+        Pregel3/AlgorithmSpecification.h Pregel3/Vertex02.cpp Pregel3/Vertex02.h Pregel3/Edge02.cpp Pregel3/Edge02.h Pregel3/Algorithm.cpp Pregel3/Algorithm.h Pregel3/AlgorithmResult.cpp Pregel3/AlgorithmResult.h)
 
 set(LIB_ARANGO_AQL_SOURCES
   Aql/Aggregator.cpp
