@@ -199,7 +199,7 @@ void FollowerStateManager<S>::tryTransferSnapshot(
 }
 
 namespace {
-auto delayedFuture(std::chrono::steady_clock::duration duration)
+inline auto delayedFuture(std::chrono::steady_clock::duration duration)
     -> futures::Future<futures::Unit> {
   if (SchedulerFeature::SCHEDULER) {
     return SchedulerFeature::SCHEDULER->delay(duration);
@@ -209,7 +209,7 @@ auto delayedFuture(std::chrono::steady_clock::duration duration)
   return futures::Future<futures::Unit>{std::in_place};
 }
 
-auto calcRetryDuration(std::uint64_t retryCount)
+inline auto calcRetryDuration(std::uint64_t retryCount)
     -> std::chrono::steady_clock::duration {
   // Capped exponential backoff. Wait for 100us, 200us, 400us, ...
   // until at most 100us * 2 ** 17 == 13.11s.
