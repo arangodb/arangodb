@@ -82,7 +82,8 @@ function shellClientReplicationApi (options) {
   let testCases = tu.scanTestPaths(testPaths.http_replication, options);
 
   var opts = {
-    'replication': true
+    'replication': true,
+    'forceJson': true
   };
   _.defaults(opts, options);
 
