@@ -17,7 +17,8 @@ import {
   useShow,
   useShowUpdate,
   useUpdateView,
-  useLinks
+  useLinks,
+  useUpdateLinks
 } from "./Contexts/LinkContext";
 const ViewLinksReactView = ({ name }) => {
   const initialState = useRef({
@@ -36,6 +37,7 @@ const ViewLinksReactView = ({ name }) => {
   const updateShow = useShowUpdate();
   const updateView = useUpdateView();
   const newLink = useLinks();
+  const updateLinks = useUpdateLinks();
   updateView(name);
 
   useEffect(() => {
@@ -81,11 +83,15 @@ const ViewLinksReactView = ({ name }) => {
   const handleBackClick = e => {
     e.preventDefault();
     if (newLink !== "") {
-      const msg = "Hey! Your link's not saved!";
+      const msg = `Hey! Your link(${newLink}) is not saved!`;
       const icon = "warning";
       Toast.fire({ title: msg, icon: icon }).then(res => {
+        console.log(formState);
         if (res.isConfirmed) {
           removeLink(newLink);
+          updateLinks("");
+        } else if (res.isDismissed) {
+          updateShow("ViewChild");
         }
       });
     }

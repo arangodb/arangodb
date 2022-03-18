@@ -64,28 +64,15 @@ const LinkPropertiesInput = ({
   };
 
   const addField = () => {
-    //let fld;
-    //let regx = /[\[\]']+/g;
-    if (basePath.includes(".fields")) {
-      //fld = basePath.split(".fields")[1].replace(regx, "");
-      dispatch({
-        type: "setField",
-        field: {
-          path: `fields[${field}]`,
-          value: {}
-        },
-        basePath
-      });
-    } else {
-      dispatch({
-        type: "setField",
-        field: {
-          path: `fields[${field}]`,
-          value: {}
-        },
-        basePath
-      });
-    }
+    dispatch({
+      type: "setField",
+      field: {
+        path: `fields[${field}]`,
+        value: {}
+      },
+      basePath
+    });
+
     setField("");
   };
   const addAnalyzer = (analyzer: string | number) => {
@@ -137,8 +124,9 @@ const LinkPropertiesInput = ({
   //   removeField(field);
   // };
   const handleShowField = (field: string) => {
-    setShow("ViewField");
     setCurrentField({ field: field, basePath: basePath, fields: fields });
+    console.log(basePath);
+    setShow("ViewField");
   };
 
   const storeIdValues = formState.storeValues === "id";

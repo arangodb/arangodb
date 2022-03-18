@@ -2,11 +2,13 @@ import React from "react"
 import Swal from "sweetalert2"
 export const Toast = Swal.mixin({
   toast: false,
-  position: 'top-end',
+  position: 'center',
   showConfirmButton: true,
-  timer: 3000,
+  showCancelButton: true,
   timerProgressBar: false,
+  cancelButtonText: "Back",
   confirmButtonText: "Continue",
+  confirmButtonColor: "#2ecc71",
   didOpen: (toast) => {
     toast.addEventListener('mouseenter', Swal.stopTimer)
     toast.addEventListener('mouseleave', Swal.resumeTimer)

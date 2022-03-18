@@ -39,7 +39,6 @@ const FieldView: React.FC<FieldListProps> = ({
   const getFieldRemover = (field: string | number) => () => {
     removeField(field);
   };
-
   return (
     <ArangoTable style={{ marginLeft: 0 }}>
       <thead>
