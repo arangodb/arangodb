@@ -337,4 +337,6 @@ struct InspectorBase {
   };
 };
 
+#undef EMPTY_BASE
+
 }  // namespace arangodb::inspection
