@@ -53,7 +53,7 @@ struct ActionContext {
     static_assert(std::is_invocable_r_v<void, F, LogCurrent&>);
     TRI_ASSERT(current.has_value())
         << "modifying action expects current to be present";
-    modifiedPlan = true;
+    modifiedCurrent = true;
     return std::invoke(std::forward<F>(fn), *current);
   }
 
@@ -77,7 +77,7 @@ struct ActionContext {
 
   void setCurrent(LogCurrent newCurrent) {
     current.emplace(std::move(newCurrent));
-    modifiedPlan = true;
+    modifiedCurrent = true;
   }
 
   auto hasModification() const noexcept -> bool {
@@ -136,13 +136,15 @@ struct ErrorAction {
   LogCurrentSupervisionError _error;
 
   auto execute(ActionContext& ctx) const -> void {
-    /*  if (!current.supervision) {
+    ctx.modifyCurrent([&](LogCurrent& current) {
+      if (!current.supervision) {
         current.supervision = LogCurrentSupervision{};
       }
 
       if (!current.supervision->error || current.supervision->error != _error) {
         current.supervision->error = _error;
-      } */
+      }
+    });
   }
 };
 
@@ -167,12 +169,11 @@ struct CreateInitialTermAction {
   LogConfig const _config;
 
   auto execute(ActionContext& ctx) const -> void {
-    /*  auto updatePlan(LogPlanSpecification plan) -> LogPlanSpecification {
+    ctx.modifyPlan([&](LogPlanSpecification& plan) {
       // Precondition: currentTerm is std::nullopt
       plan.currentTerm =
           LogPlanTermSpecification(LogTerm{1}, _config, std::nullopt);
-
-      return plan; */
+    });
   }
 };
 
@@ -180,13 +181,12 @@ struct CurrentNotAvailableAction {
   static constexpr std::string_view name = "CurrentNotAvailableAction";
 
   auto execute(ActionContext& ctx) const -> void {
-    /*auto updateCurrent() -> LogCurrent {
-      auto current = LogCurrent{};
-      current.supervision = LogCurrentSupervision{};
-      current.supervision->statusMessage =
-          "Current was not available yet";  // It is now.
+    auto current = LogCurrent{};
+    current.supervision = LogCurrentSupervision{};
+    current.supervision->statusMessage =
+        "Current was not available yet";  // It is now.
 
-      return current; */
+    ctx.setCurrent(current);
   }
 };
 
@@ -199,12 +199,10 @@ struct DictateLeaderAction {
   LogPlanTermSpecification::Leader _leader;
 
   auto execute(ActionContext& ctx) const -> void {
-    /* auto updatePlan(LogPlanSpecification plan) -> LogPlanSpecification {
-      // TODO: this should dictate the *leader*
+    ctx.modifyPlan([&](LogPlanSpecification& plan) {
       plan.currentTerm->term = LogTerm{plan.currentTerm->term.value + 1};
       plan.currentTerm->leader = _leader;
-
-      return plan; */
+    });
   }
 };
 
@@ -216,9 +214,13 @@ struct DictateLeaderFailedAction {
   std::string _message;
 
   auto execute(ActionContext& ctx) const -> void {
-    /*  auto updateCurrent(LogCurrent current) -> LogCurrent {
+    ctx.modifyCurrent([&](LogCurrent& current) {
+      if (!current.supervision) {
+        current.supervision = LogCurrentSupervision{};
+      }
+
       current.supervision->statusMessage = _message;
-      return current; */
+    });
   }
 };
 
@@ -226,13 +228,14 @@ struct EvictLeaderAction {
   static constexpr std::string_view name = "EvictLeaderAction";
 
   auto execute(ActionContext& ctx) const -> void {
-    /* auto updatePlan(LogPlanSpecification plan) -> LogPlanSpecification {
-      plan.participantsConfig.participants.at(plan.currentTerm->leader->serverId)
+    ctx.modifyPlan([&](LogPlanSpecification& plan) {
+      plan.participantsConfig.participants
+          .at(plan.currentTerm->leader->serverId)
           .allowedAsLeader = false;
       plan.participantsConfig.generation += 1;
       plan.currentTerm->term = LogTerm{plan.currentTerm->term.value + 1};
       plan.currentTerm->leader.reset();
-      return plan; */
+    });
   }
 };
 
@@ -240,10 +243,10 @@ struct WriteEmptyTermAction {
   static constexpr std::string_view name = "WriteEmptyTermAction";
 
   auto execute(ActionContext& ctx) const -> void {
-    /* auto updatePlan(LogPlanSpecification plan) -> LogPlanSpecification {
+    ctx.modifyPlan([&](LogPlanSpecification& plan) {
       plan.currentTerm->term = LogTerm{plan.currentTerm->term.value + 1};
       plan.currentTerm->leader.reset();
-      return plan; */
+    });
   }
 };
 
@@ -251,9 +254,12 @@ struct LeaderElectionImpossibleAction {
   static constexpr std::string_view name = "LeaderElectionImpossibleAction";
 
   auto execute(ActionContext& ctx) const -> void {
-    /*auto updateCurrent(LogCurrent current) -> LogCurrent {
+    ctx.modifyCurrent([&](LogCurrent& current) {
+      if (!current.supervision) {
+        current.supervision = LogCurrentSupervision{};
+      }
       current.supervision->statusMessage = "Leader election impossible";
-      return current; */
+    });
   }
 };
 
@@ -263,11 +269,15 @@ struct LeaderElectionOutOfBoundsAction {
   LogCurrentSupervisionElection _election;
 
   auto execute(ActionContext& ctx) const -> void {
-    /* auto updateCurrent(LogCurrent current) -> LogCurrent {
+    ctx.modifyCurrent([&](LogCurrent& current) {
+      if (!current.supervision) {
+        current.supervision = LogCurrentSupervision{};
+      }
+
       current.supervision->statusMessage =
           "Number of electible participants out of bounds";
       current.supervision->election = _election;
-      return current; */
+    });
   }
 };
 
@@ -278,10 +288,14 @@ struct LeaderElectionQuorumNotReachedAction {
   LogCurrentSupervisionElection _election;
 
   auto execute(ActionContext& ctx) const -> void {
-    /* auto updateCurrent(LogCurrent current) -> LogCurrent {
+    ctx.modifyCurrent([&](LogCurrent& current) {
+      if (!current.supervision) {
+        current.supervision = LogCurrentSupervision{};
+      }
+
       current.supervision->statusMessage = "Quorum not reached";
       current.supervision->election = _election;
-      return current; */
+    });
   }
 };
 
@@ -296,14 +310,16 @@ struct LeaderElectionAction {
   LogCurrentSupervisionElection _electionReport;
 
   auto execute(ActionContext& ctx) const -> void {
-    /* auto updatePlan(LogPlanSpecification plan) -> LogPlanSpecification {
+    ctx.modifyPlan([&](LogPlanSpecification& plan) {
       plan.currentTerm->term = LogTerm{plan.currentTerm->term.value + 1};
       plan.currentTerm->leader = _electedLeader;
-      return plan;
-    }
-    auto updateCurrent(LogCurrent current) -> LogCurrent {
+    });
+    ctx.modifyCurrent([&](LogCurrent& current) {
+      if (!current.supervision) {
+        current.supervision = LogCurrentSupervision{};
+      }
       current.supervision->election = _electionReport;
-      return current; */
+    });
   }
 };
 
@@ -318,10 +334,10 @@ struct UpdateParticipantFlagsAction {
   ParticipantFlags _flags;
 
   auto execute(ActionContext& ctx) const -> void {
-    /* auto updatePlan(LogPlanSpecification plan) -> LogPlanSpecification {
+    ctx.modifyPlan([&](LogPlanSpecification& plan) {
       plan.participantsConfig.participants.at(_participant) = _flags;
       plan.participantsConfig.generation += 1;
-      return plan; */
+    });
   }
 };
 
@@ -336,8 +352,10 @@ struct AddParticipantToPlanAction {
   ParticipantFlags _flags;
 
   auto execute(ActionContext& ctx) const -> void {
-    // auto updatePlan(LogPlanSpecification plan) -> LogPlanSpecification {
-    // return plan;
+    ctx.modifyPlan([&](LogPlanSpecification& plan) {
+      plan.participantsConfig.generation += 1;
+      plan.participantsConfig.participants.emplace(_participant, _flags);
+    });
   }
 };
 
@@ -350,10 +368,10 @@ struct RemoveParticipantFromPlanAction {
   ParticipantId _participant;
 
   auto execute(ActionContext& ctx) const -> void {
-    /* auto updatePlan(LogPlanSpecification plan) -> LogPlanSpecification {
+    ctx.modifyPlan([&](LogPlanSpecification& plan) {
       plan.participantsConfig.participants.erase(_participant);
       plan.participantsConfig.generation += 1;
-      return plan; */
+    });
   }
 };
 
@@ -365,10 +383,14 @@ struct UpdateLogConfigAction {
   LogConfig _config;
 
   auto execute(ActionContext& ctx) const -> void {
-    /*  auto updateCurrent(LogCurrent current) -> LogCurrent {
+    ctx.modifyCurrent([&](LogCurrent& current) {
+      if (!current.supervision) {
+        current.supervision = LogCurrentSupervision{};
+      }
+
       current.supervision->statusMessage =
-          "Updating LogConfig is not implemented yet";
-      return current; */
+          "UpdatingLogConfig is not implemented yet";
+    });
   }
 };
 
@@ -376,10 +398,13 @@ struct ConvergedToTargetAction {
   static constexpr std::string_view name = "ConvergedToTargetAction";
 
   auto execute(ActionContext& ctx) const -> void {
-    /* auto updateCurrent(LogCurrent current) -> LogCurrent {
-      // TODO indicator as to which version of Target we converged to
+    ctx.modifyCurrent([&](LogCurrent& current) {
+      if (!current.supervision) {
+        current.supervision = LogCurrentSupervision{};
+      }
+
       current.supervision->statusMessage = "Converged to target";
-      return current; */
+    });
   }
 };
 
@@ -391,8 +416,6 @@ using Action = std::variant<
     LeaderElectionQuorumNotReachedAction, UpdateParticipantFlagsAction,
     AddParticipantToPlanAction, RemoveParticipantFromPlanAction,
     UpdateLogConfigAction, ConvergedToTargetAction>;
-
-using namespace arangodb::cluster::paths;
 
 struct VelocyPacker {
   VelocyPacker(VPackBuilder& builder) : builder(builder), ob(&builder){};

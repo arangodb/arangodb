@@ -2632,7 +2632,6 @@ void Supervision::checkReplicatedLogs() {
                           ->replicatedLogs()
                           ->database(dbName)
                           ->log(idString)
-                          ->supervision()
                           ->actions()
                           ->str(),
                       [&](velocypack::Builder& b) {

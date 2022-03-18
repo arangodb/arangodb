@@ -169,7 +169,7 @@ LogCurrentSupervision::LogCurrentSupervision(from_velocypack_t,
     }
   }
   if (auto es = slice.get("statusMessage"); !es.isNone()) {
-    statusMessage = es.get("statusMessage").copyString();
+    statusMessage = es.copyString();
   }
 }
 
@@ -198,7 +198,7 @@ auto LogCurrent::toVelocyPack(VPackBuilder& builder) const -> void {
     supervision->toVelocyPack(builder);
   }
   if (leader.has_value()) {
-    VPackObjectBuilder lob(&builder, "leader");
+    builder.add(VPackValue("leader"));
     leader->toVelocyPack(builder);
   }
 }

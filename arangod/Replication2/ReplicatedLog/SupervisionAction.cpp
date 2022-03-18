@@ -161,8 +161,13 @@ auto execute(Action const& action, DatabaseID const& dbName, LogId const& log,
     -> arangodb::agency::envelope {
   auto planPath =
       paths::plan()->replicatedLogs()->database(dbName)->log(log)->str();
-  auto currentPath =
-      paths::plan()->replicatedLogs()->database(dbName)->log(log)->str();
+
+  auto currentPath = paths::current()
+                         ->replicatedLogs()
+                         ->database(dbName)
+                         ->log(log)
+                         ->supervision()
+                         ->str();
 
   if (std::holds_alternative<EmptyAction>(action)) {
     return envelope;
@@ -174,6 +179,15 @@ auto execute(Action const& action, DatabaseID const& dbName, LogId const& log,
 
   if (!ctx.hasModification()) {
     return envelope;
+  }
+
+  if (ctx.hasPlanModification()) {
+    VPackBuilder b;
+    ctx.getPlan().toVelocyPack(b);
+  }
+  if (ctx.hasCurrentModification()) {
+    VPackBuilder b;
+    ctx.getCurrent().toVelocyPack(b);
   }
 
   return envelope.write()
@@ -189,10 +203,11 @@ auto execute(Action const& action, DatabaseID const& dbName, LogId const& log,
       .cond(ctx.hasCurrentModification(),
             [&](arangodb::agency::envelope::write_trx&& trx) {
               return std::move(trx)
-                  .emplace_object(currentPath,
-                                  [&](VPackBuilder& builder) {
-                                    ctx.getCurrent().toVelocyPack(builder);
-                                  })
+                  .emplace_object(
+                      currentPath,
+                      [&](VPackBuilder& builder) {
+                        ctx.getCurrent().supervision->toVelocyPack(builder);
+                      })
                   .inc(paths::current()->version()->str());
             })
       .end();
