@@ -127,6 +127,11 @@ struct ReplicatedStateMethods {
 
   static auto createInstance(TRI_vocbase_t& vocbase)
       -> std::shared_ptr<ReplicatedStateMethods>;
+
+  [[nodiscard]] virtual auto replaceParticipant(
+      LogId, ParticipantId const& participantToRemove,
+      ParticipantId const& participantToAdd) const
+      -> futures::Future<Result> = 0;
 };
 
 }  // namespace arangodb::replication2

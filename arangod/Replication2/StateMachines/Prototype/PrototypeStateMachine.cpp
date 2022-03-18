@@ -86,10 +86,8 @@ void PrototypeCore::loadStateFromDB() {
   if (result.ok()) {
     auto dump = result.get();
     lastPersistedIndex = lastAppliedIndex = dump.lastPersistedIndex;
-    LOG_DEVEL << "got map from rocksDB";
     for (auto [k, v] : dump.map) {
       store = store.set(k, v);
-      LOG_DEVEL << k << " " << v;
     }
   } else {
     THROW_ARANGO_EXCEPTION(result.result());
@@ -165,7 +163,7 @@ auto PrototypeCore::waitForApplied(LogIndex index)
 PrototypeCore::PrototypeCore(
     GlobalLogIdentifier logId,
     std::shared_ptr<IPrototypeStorageInterface> storage)
-    : logId(std::move(logId)), storage(storage) {
+    : logId(std::move(logId)), storage(std::move(storage)) {
   loadStateFromDB();
 }
 
@@ -189,10 +187,6 @@ auto PrototypeLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
         }
         core->lastAppliedIndex = ptr->range().to.saturatedDecrement();
         core->applyEntries(std::move(ptr));
-        if (core->flush()) {
-          // auto stream = self->getStream();
-          // stream->release(core->lastPersistedIndex);
-        }
         return Result{TRI_ERROR_NO_ERROR};
       });
 }
