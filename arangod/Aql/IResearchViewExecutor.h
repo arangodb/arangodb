@@ -222,15 +222,15 @@ class IndexReadBufferEntry {
 
 class ScoreIterator {
  public:
-  ScoreIterator(std::vector<double>& scoreBuffer, size_t keyIdx,
+  ScoreIterator(std::vector<float_t>& scoreBuffer, size_t keyIdx,
                 size_t numScores) noexcept;
 
-  std::vector<double>::iterator begin() noexcept;
+  std::vector<float_t>::iterator begin() noexcept;
 
-  std::vector<double>::iterator end() noexcept;
+  std::vector<float_t>::iterator end() noexcept;
 
  private:
-  std::vector<double>& _scoreBuffer;
+  std::vector<float_t>& _scoreBuffer;
   size_t _scoreBaseIdx;
   size_t _numScores;
 };
@@ -254,8 +254,6 @@ class IndexReadBuffer {
 
   template<typename... Args>
   void pushValue(Args&&... args);
-
-  bool operator()(size_t const& a, size_t const& b) const;
 
   void pushSortedValue(ValueType&& value, float_t const* scores, size_t count);
 
@@ -314,15 +312,11 @@ class IndexReadBuffer {
   // .
 
   std::vector<ValueType> _keyBuffer;
-  std::vector<double> _scoreBuffer;
+  std::vector<float_t> _scoreBuffer;
   StoredValuesContainer _storedValuesBuffer;
 
   size_t _numScoreRegisters;
   size_t _keyBaseIdx;
-
-  // sorting
-  template<typename RhsType>
-  bool compareInput(size_t lhsIdx, RhsType const* rhs_scores) const noexcept;
 
   std::vector<std::pair<size_t, bool>> const* _scoresSort;
   std::vector<size_t> _rows;
