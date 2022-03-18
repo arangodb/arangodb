@@ -2512,13 +2512,13 @@ function dealing_with_the_initial_dumSuite () {
 
 //jsunity.run(dealing_with_the_replication_interfaceSuite);
 jsunity.run(dealing_with_general_function_interfaceSuite);
-jsunity.run(dealing_with_the_appli_interfaceSuite);
-jsunity.run(dealing_with_the_loggeSuite);
-jsunity.run(dealing_with_batches_and_logger_statSuite);
+jsunity.run(dealing_with_the_applier_interfaceSuite);
+jsunity.run(dealing_with_the_loggerSuite);
+jsunity.run(dealing_with_batches_and_logger_stateSuite);
 jsunity.run(dealing_with_the_initial_dump_interfaceSuite);
 //jsunity.run(dealing_with_the_replication_interface_on_UnitTestDBSuite);
 jsunity.run(dealing_with_general_functionSuite);
-jsunity.run(dealing_with_the_applieSuite);
+jsunity.run(dealing_with_the_applierSuite);
 jsunity.run(dealing_with_the_logger_Suite);
 jsunity.run(dealing_with_the_initial_dumSuite);
 return jsunity.done();
