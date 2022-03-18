@@ -184,7 +184,7 @@ function adding_userSuite () {
 
     tearDown: function() {
       for (let i = 1; i < 10; i++) {
-        arango.DELETE_RAW("/_api/user/users-" + i.to_s);;
+        arango.DELETE_RAW("/_api/user/users-" + i);;
       }
     },
 
@@ -295,7 +295,7 @@ function replacing_userSuite () {
 
     tearDown: function() {
       for (let i = 1; i < 10; i++) {
-        arango.DELETE_RAW("/_api/user/users-" + i.to_s);;
+        arango.DELETE_RAW("/_api/user/users-" + i);;
       }
     },
 
@@ -406,7 +406,7 @@ function updating_userSuite () {
 
     tearDown: function() {
       for (let i = 1; i < 10; i++) {
-        arango.DELETE_RAW("/_api/user/users-" + i.to_s);;
+        arango.DELETE_RAW("/_api/user/users-" + i);;
       }
     },
 
@@ -518,7 +518,7 @@ function removing_userSuite () {
 
     tearDown: function() {
       for (let i = 1; i < 10; i++) {
-        arango.DELETE_RAW("/_api/user/users-" + i.to_s);;
+        arango.DELETE_RAW("/_api/user/users-" + i);;
       }
     },
 
@@ -581,7 +581,7 @@ function fetching_userSuite () {
 
     tearDown: function() {
       for (let i = 1; i < 10; i++) {
-        arango.DELETE_RAW("/_api/user/users-" + i.to_s);;
+        arango.DELETE_RAW("/_api/user/users-" + i);;
       }
     },
 
