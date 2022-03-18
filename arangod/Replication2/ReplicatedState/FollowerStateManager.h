@@ -77,6 +77,8 @@ struct FollowerStateManager
   void checkSnapshot(std::shared_ptr<IReplicatedFollowerState<S>>);
   void tryTransferSnapshot(std::shared_ptr<IReplicatedFollowerState<S>>);
   void startService(std::shared_ptr<IReplicatedFollowerState<S>>);
+  void retryTransferSnapshot(std::shared_ptr<IReplicatedFollowerState<S>>,
+                             std::uint64_t retryCount);
 
   void applyEntries(std::unique_ptr<Iterator> iter) noexcept;
 
@@ -92,6 +94,8 @@ struct FollowerStateManager
         FollowerInternalState::kUninitializedState};
     std::chrono::system_clock::time_point lastInternalStateChange;
     std::optional<LogRange> ingestionRange;
+    std::optional<Result> lastError;
+    std::uint64_t errorCounter{0};
 
     // core will be nullptr as soon as the FollowerState was created
     std::unique_ptr<CoreType> core;
@@ -104,6 +108,7 @@ struct FollowerStateManager
                 std::unique_ptr<ReplicatedStateToken> token);
     void updateInternalState(FollowerInternalState newState,
                              std::optional<LogRange> range = std::nullopt);
+    void updateInternalState(FollowerInternalState newState, Result);
     auto updateNextIndex(LogIndex nextWaitForIndex) -> DeferredAction;
   };
 
