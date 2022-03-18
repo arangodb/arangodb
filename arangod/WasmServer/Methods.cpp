@@ -24,17 +24,16 @@
 #include "Methods.h"
 
 #include <cstdint>
+#include <memory>
+#include <vector>
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/Exceptions.h"
 #include "Basics/Result.h"
 #include "Basics/ResultT.h"
-#include "Basics/voc-errors.h"
-#include "Cluster/ServerState.h"
 #include "Futures/Future.h"
 #include "VocBase/vocbase.h"
-#include "WasmServerFeature.h"
-#include "WasmCommon.h"
+#include "WasmServer/WasmServerFeature.h"
+#include "WasmServer/WasmCommon.h"
 
 using namespace arangodb;
 using namespace arangodb::wasm;
@@ -47,23 +46,21 @@ struct WasmVmMethodsSingleServer final
 
   auto addModule(Module const& module) const
       -> futures::Future<Result> override {
-    vocbase.server().getFeature<WasmServerFeature>().addModule(module);
-    return Result{TRI_ERROR_NO_ERROR};
+    return vocbase.server().getFeature<WasmServerFeature>().addModule(module);
   }
 
-  auto deleteModule(ModuleName const& name) const
+  auto removeModule(ModuleName const& name) const
       -> futures::Future<Result> override {
-    vocbase.server().getFeature<WasmServerFeature>().deleteModule(name);
-    return Result{TRI_ERROR_NO_ERROR};
+    return vocbase.server().getFeature<WasmServerFeature>().removeModule(name);
   }
 
   auto allModules() const
-      -> futures::Future<std::unordered_map<std::string, Module>> override {
+      -> futures::Future<ResultT<std::vector<ModuleName>>> override {
     return vocbase.server().getFeature<WasmServerFeature>().allModules();
   }
 
   auto module(ModuleName const& name) const
-      -> futures::Future<std::optional<Module>> override {
+      -> futures::Future<ResultT<Module>> override {
     return vocbase.server().getFeature<WasmServerFeature>().module(name);
   }
 
@@ -80,16 +77,5 @@ struct WasmVmMethodsSingleServer final
 
 auto WasmVmMethods::createInstance(TRI_vocbase_t& vocbase)
     -> std::shared_ptr<WasmVmMethods> {
-  switch (ServerState::instance()->getRole()) {
-    case ServerState::ROLE_SINGLE:
-      return std::make_shared<WasmVmMethodsSingleServer>(vocbase);
-    case ServerState::ROLE_COORDINATOR:
-      // TODO PREG-102 Create a separate class for Coordinator
-      return std::make_shared<WasmVmMethodsSingleServer>(vocbase);
-    // TODO PREG-103 Create a separate class for DBServer
-    default:
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_NOT_IMPLEMENTED,
-          "This API is only available on single server.");
-  }
+  return std::make_shared<WasmVmMethodsSingleServer>(vocbase);
 }

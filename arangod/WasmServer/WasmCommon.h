@@ -69,7 +69,8 @@ struct FunctionParameters {
 };
 
 auto velocypackToModule(arangodb::velocypack::Slice slice) -> ResultT<Module>;
-void moduleToVelocypack(Module const& module, VPackBuilder& builder);
+void moduleToVelocypack(Module const& module, VPackBuilder& builder,
+                        bool forCollection = false);
 auto velocypackToFunctionParameters(arangodb::velocypack::Slice slice)
     -> ResultT<FunctionParameters>;
 

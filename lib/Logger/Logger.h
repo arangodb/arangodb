@@ -205,6 +205,7 @@ class Logger {
   static LogTopic VALIDATION;
   static LogTopic V8;
   static LogTopic VIEWS;
+  static LogTopic WASM;
 
  public:
   struct FIXED {

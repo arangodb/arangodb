@@ -499,7 +499,9 @@ void AqlFunctionFeature::addMiscFunctions() {
                            FF::CanRunOnDBServerOneShard),
        &Functions::CallGreenspun});
 
-  add({"CALL_WASM", ".,.,.,.", Function::makeFlags(FF::None),
+  add({"CALL_WASM", ".,.,.,.",
+       Function::makeFlags(FF::CanRunOnDBServerCluster,
+                           FF::CanRunOnDBServerOneShard),
        &Functions::CallWasm});
 
   // special flags:
