@@ -33,10 +33,13 @@ devel
   As the cache is hash-based and unsorted, it cannot be used for full or
   partial range scans, for sorting, or for lookups that do not include all
   index attributes.
+
   The maximum combined memory usage of all in-memory caches can be controlled 
   via the existing `--cache.size` startup option, which now not only contains
   the maximum memory usage for edge caches, but also for index caches added
   here.
+
+* Updated ArangoDB Starter to 0.15.4-preview-1.
 
 * Added API method to query a list of available optimizer rules from the 
   arangod process.
