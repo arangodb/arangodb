@@ -66,7 +66,7 @@ created for the index. The hash cache can be used to speed up index lookups.
 The cache can only be used for queries that look up all index attributes via
 an equality lookup (`==`). The hash cache cannot be used for range scans,
 partial lookups or sorting.
-The cache will populated lazily upon reading data from the index. Writing data
+The cache will be populated lazily upon reading data from the index. Writing data
 into the collection or updating existing data will invalidate entries in the
 cache. The cache may have a negative effect on performance in case index values
 are updated more often than they are read.
