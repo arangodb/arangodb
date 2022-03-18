@@ -83,11 +83,16 @@ function shellClientReplicationApi (options) {
 
   var opts = {
     'replication': true,
-    'forceJson': true
   };
+  
+  arango.forceJson(true);
   _.defaults(opts, options);
 
-  return tu.performTests(opts, testCases, 'shell_replication_api', tu.runInLocalArangosh);
+  let ret = tu.performTests(opts, testCases, 'shell_replication_api', tu.runInLocalArangosh);
+  if (!options.forceJson) {
+    arango.forceJson(false);
+  }
+  return ret;
 }
 
 // //////////////////////////////////////////////////////////////////////////////
