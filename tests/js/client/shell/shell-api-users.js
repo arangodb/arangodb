@@ -81,7 +81,7 @@ function validating_userSuite () {
 
     tearDown: function() {
       for (let i = 1; i < 10; i++) {
-        arango.DELETE_RAW("/_api/user/users-" + i.to_s);;
+        arango.DELETE_RAW("/_api/user/users-" + i);
       }
     },
 
