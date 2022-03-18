@@ -195,7 +195,7 @@ jsUnity.results.endTeardownAll = function(index) {
   TOTALTEARDOWNS += RESULTS.teardownAllDuration;
 };
 
-function MatchesTestFilter(suiteName, key) {
+function matchesTestFilter(suiteName, key) {
   if (testFilter === "undefined" || testFilter === undefined || testFilter === null) {
     return true;
   }
@@ -210,7 +210,7 @@ function MatchesTestFilter(suiteName, key) {
     return suiteMatched && minimatch(key, testFilter);
   }
   if (Array.isArray(testFilter)) {
-    return testFilter.includes(key);
+    return testFilter.some(key => matchesTestFilter(suiteName, key));
   }
   return false;
 }
@@ -253,7 +253,7 @@ function Run (testsuite) {
 
   for (var key in definition) {
     if (key.indexOf('test') === 0) {
-      if (!MatchesTestFilter(suite.suiteName, key)) {
+      if (!matchesTestFilter(suite.suiteName, key)) {
         // print(`test "${key}" doesn't match "${testFilter}", skipping`);
         nonMatchedTests.push(key);
         continue;
