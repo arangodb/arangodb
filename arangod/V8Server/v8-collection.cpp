@@ -259,10 +259,9 @@ static ErrorCode ParseDocumentOrDocumentHandle(
   } else {
     // we read a collection name from the document id
     // check cross-collection requests
-    if (collection != nullptr) {
-      if (!EqualCollection(resolver, collectionName, collection.get())) {
-        return TRI_ERROR_ARANGO_CROSS_COLLECTION_REQUEST;
-      }
+    if (collection != nullptr && !methods::Collections::hasName(
+                                     *resolver, *collection, collectionName)) {
+      return TRI_ERROR_ARANGO_CROSS_COLLECTION_REQUEST;
     }
   }
 
@@ -2472,15 +2471,7 @@ static void JS_CollectionsVocbase(
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  auto colls = GetCollections(vocbase);
-
-  std::sort(colls.begin(), colls.end(),
-            [](std::shared_ptr<LogicalCollection> const& lhs,
-               std::shared_ptr<LogicalCollection> const& rhs) -> bool {
-              return arangodb::basics::StringUtils::tolower(lhs->name()) <
-                     arangodb::basics::StringUtils::tolower(rhs->name());
-            });
-
+  auto colls = methods::Collections::sorted(vocbase);
   bool error = false;
 
   v8::Handle<v8::Array> result = v8::Array::New(isolate);
