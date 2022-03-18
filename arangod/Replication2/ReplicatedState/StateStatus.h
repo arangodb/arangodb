@@ -126,6 +126,10 @@ struct StateStatus {
 
   void toVelocyPack(velocypack::Builder&) const;
   static auto fromVelocyPack(velocypack::Slice) -> StateStatus;
+
+  friend auto operator<<(std::ostream&, StateStatus const&) -> std::ostream&;
 };
+
+auto operator<<(std::ostream&, StateStatus const&) -> std::ostream&;
 
 }  // namespace arangodb::replication2::replicated_state

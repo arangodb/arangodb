@@ -102,10 +102,23 @@ struct PrototypeLogEntry {
 
 struct PrototypeCore {
   using StorageType = ::immer::map<std::string, std::string>;
-  StorageType store;
+  using WaitForAppliedPromise = futures::Promise<futures::Unit>;
+  using WaitForAppliedQueue = std::multimap<LogIndex, WaitForAppliedPromise>;
 
+  StorageType store;
+  // TODO move outside
+  WaitForAppliedQueue waitForAppliedQueue;
+  LogIndex lastAppliedIndex;
+  GlobalLogIdentifier logId;
+
+  explicit PrototypeCore(GlobalLogIdentifier logId);
   template<typename EntryIterator>
   void applyEntries(std::unique_ptr<EntryIterator> ptr);
+
+  void applySnapshot(std::unordered_map<std::string, std::string> snapshot);
+
+  void resolvePromises(LogIndex index);
+  auto waitForApplied(LogIndex index) -> futures::Future<futures::Unit>;
 };
 
 struct PrototypeLeaderState
@@ -135,7 +148,8 @@ struct PrototypeLeaderState
   template<class Iterator>
   auto get(Iterator begin, Iterator end)
       -> std::unordered_map<std::string, std::string>;
-  auto getSnapshot() -> ResultT<std::unordered_map<std::string, std::string>>;
+  auto getSnapshot(LogIndex waitForIndex)
+      -> futures::Future<ResultT<std::unordered_map<std::string, std::string>>>;
 
   Guarded<std::unique_ptr<PrototypeCore>, basics::UnshackledMutex> guardedData;
 };
@@ -177,6 +191,8 @@ auto PrototypeLeaderState::set(Iterator begin, Iterator end)
                 core->store = core->store.set(it->first, it->second);
               }
               return idx;
+              core->lastAppliedIndex = idx;
+              core->resolvePromises(idx);
             });
       });
 }
@@ -201,12 +217,31 @@ auto PrototypeLeaderState::remove(Iterator begin, Iterator end)
             core->store = core->store.erase(*it);
           }
           return idx;
+          core->lastAppliedIndex = idx;
+          core->resolvePromises(idx);
         });
   });
 }
 
-struct PrototypeFollowerState : IReplicatedFollowerState<PrototypeState> {
-  explicit PrototypeFollowerState(std::unique_ptr<PrototypeCore> core);
+struct IPrototypeLeaderInterface {
+  virtual ~IPrototypeLeaderInterface() = default;
+  virtual auto getSnapshot(GlobalLogIdentifier const& logId,
+                           LogIndex waitForIndex)
+      -> futures::Future<
+          ResultT<std::unordered_map<std::string, std::string>>> = 0;
+};
+
+struct IPrototypeNetworkInterface {
+  virtual ~IPrototypeNetworkInterface() = default;
+  virtual auto getLeaderInterface(ParticipantId id)
+      -> ResultT<std::shared_ptr<IPrototypeLeaderInterface>> = 0;
+};
+
+struct PrototypeFollowerState
+    : IReplicatedFollowerState<PrototypeState>,
+      std::enable_shared_from_this<PrototypeFollowerState> {
+  explicit PrototypeFollowerState(std::unique_ptr<PrototypeCore>,
+                                  std::shared_ptr<IPrototypeNetworkInterface>);
 
   [[nodiscard]] auto resign() && noexcept
       -> std::unique_ptr<PrototypeCore> override;
@@ -218,17 +253,24 @@ struct PrototypeFollowerState : IReplicatedFollowerState<PrototypeState> {
       -> futures::Future<Result> override;
 
   auto get(std::string key) -> std::optional<std::string>;
+  auto dumpContent() -> std::unordered_map<std::string, std::string>;
 
+  GlobalLogIdentifier const logIdentifier;
   Guarded<std::unique_ptr<PrototypeCore>, basics::UnshackledMutex> guardedData;
+  std::shared_ptr<IPrototypeNetworkInterface> const networkInterface;
 };
 
 struct PrototypeFactory {
+  PrototypeFactory(
+      std::shared_ptr<IPrototypeNetworkInterface> networkInterface);
   auto constructFollower(std::unique_ptr<PrototypeCore> core)
       -> std::shared_ptr<PrototypeFollowerState>;
   auto constructLeader(std::unique_ptr<PrototypeCore> core)
       -> std::shared_ptr<PrototypeLeaderState>;
   auto constructCore(GlobalLogIdentifier const&)
       -> std::unique_ptr<PrototypeCore>;
+
+  std::shared_ptr<IPrototypeNetworkInterface> const networkInterface;
 };
 
 }  // namespace prototype
