@@ -574,7 +574,7 @@ function dealing_with_the_loggeSuite () {
 ////////////////////////////////////////////////////////////////////////////////;
 // batches && logger state requests;
 ////////////////////////////////////////////////////////////////////////////////;
-function dealing_with_batches_and_logger_statSuite () {
+function dealing_with_batches_and_logger_stateSuite () {
   let batchId=0;
   return {
     tearDown: function() {
