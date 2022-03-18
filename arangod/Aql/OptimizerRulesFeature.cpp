@@ -52,6 +52,7 @@ OptimizerRulesFeature::OptimizerRulesFeature(Server& server)
   setOptional(false);
 
   startsAfter<AqlFeature>();
+  startsAfter<StorageEngineFeature>();
 }
 
 void OptimizerRulesFeature::collectOptions(
