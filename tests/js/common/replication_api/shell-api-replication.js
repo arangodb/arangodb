@@ -264,7 +264,7 @@ function dealing_with_the_appli_interfaceSuite () {
 ////////////////////////////////////////////////////////////////////////////////;
 // logger;
 ////////////////////////////////////////////////////////////////////////////////;
-function dealing_with_the_loggeSuite () {
+function dealing_with_the_loggerSuite () {
   return {
     setUp: function() {
       db._drop("UnitTestsReplication");
