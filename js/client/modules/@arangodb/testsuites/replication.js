@@ -78,7 +78,7 @@ function shellReplication (options) {
 // / @brief TEST: shell_replication
 // //////////////////////////////////////////////////////////////////////////////
 
-function shellClientReplication (options) {
+function shellClientReplicationApi (options) {
   let testCases = tu.scanTestPaths(testPaths.http_replication, options);
 
   var opts = {
@@ -86,7 +86,7 @@ function shellClientReplication (options) {
   };
   _.defaults(opts, options);
 
-  return tu.performTests(opts, testCases, 'replication_api', tu.runInLocalArangosh);
+  return tu.performTests(opts, testCases, 'shell_replication_api', tu.runInLocalArangosh);
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -633,7 +633,7 @@ exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTest
   testFns['replication_ongoing_frompresent'] = replicationOngoingFrompresent;
   testFns['replication_static'] = replicationStatic;
   testFns['replication_sync'] = replicationSync;
-  testFns['http_replication'] = shellClientReplication;
+  testFns['http_replication'] = shellClientReplicationApi;
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
   for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
 };
