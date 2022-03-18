@@ -74,20 +74,40 @@ struct MockPrototypeNetworkInterface : public IPrototypeNetworkInterface {
       leaderStates;
 };
 
+struct MockPrototypeStorageInterface : public IPrototypeStorageInterface {
+  auto put(const GlobalLogIdentifier& logId, PrototypeCoreDump dump)
+      -> Result override {
+    map[logId.id] = std::move(dump);
+    return TRI_ERROR_NO_ERROR;
+  }
+  auto get(const GlobalLogIdentifier& logId)
+      -> ResultT<PrototypeCoreDump> override {
+    if (!map.contains(logId.id)) {
+      return ResultT<PrototypeCoreDump>::success(map[logId.id] =
+                                                     PrototypeCoreDump{});
+    }
+    return ResultT<PrototypeCoreDump>::success(map[logId.id]);
+  }
+
+  std::unordered_map<LogId, PrototypeCoreDump> map;
+};
+
 struct PrototypeStateMachineTest : test::ReplicatedLogTest {
   PrototypeStateMachineTest() {
-    feature->registerStateType<prototype::PrototypeState>("prototype-state",
-                                                          networkMock);
+    feature->registerStateType<prototype::PrototypeState>(
+        "prototype-state", networkMock, storageMock);
   }
 
   std::shared_ptr<ReplicatedStateFeature> feature =
       std::make_shared<ReplicatedStateFeature>();
   std::shared_ptr<MockPrototypeNetworkInterface> networkMock =
       std::make_shared<MockPrototypeNetworkInterface>();
+  std::shared_ptr<MockPrototypeStorageInterface> storageMock =
+      std::make_shared<MockPrototypeStorageInterface>();
 };
 
 TEST_F(PrototypeStateMachineTest, prorotype_core_wait_for) {
-  auto core = PrototypeCore(GlobalLogIdentifier{"", LogId{1}});
+  auto core = PrototypeCore(GlobalLogIdentifier{"", LogId{1}}, storageMock);
   core.store = core.store.set("a", "b");
   core.lastAppliedIndex = LogIndex{1};
   auto f = core.waitForApplied(LogIndex{1});
@@ -97,6 +117,21 @@ TEST_F(PrototypeStateMachineTest, prorotype_core_wait_for) {
   core.lastAppliedIndex = LogIndex{3};
   core.resolvePromises(LogIndex{3});
   ASSERT_TRUE(f.isReady());
+}
+
+TEST_F(PrototypeStateMachineTest, prorotype_core_flush) {
+  auto core = PrototypeCore(GlobalLogIdentifier{"", LogId{1}}, storageMock);
+  core.store = core.store.set("x", "y");
+  core.store = core.store.set("a", "b");
+  core.lastAppliedIndex = LogIndex{2};
+  core.flush();
+  auto result = storageMock->get(GlobalLogIdentifier{"", LogId{1}});
+  ASSERT_TRUE(result.ok());
+  auto dump = result.get();
+  auto expected =
+      std::unordered_map<std::string, std::string>{{"a", "b"}, {"x", "y"}};
+  ASSERT_EQ(dump.map, expected);
+  ASSERT_EQ(dump.lastPersistedIndex, core.lastPersistedIndex);
 }
 
 TEST_F(PrototypeStateMachineTest, simple_operations) {
