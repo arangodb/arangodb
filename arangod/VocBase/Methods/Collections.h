@@ -39,6 +39,7 @@ namespace arangodb {
 class ClusterFeature;
 class LogicalCollection;
 struct CollectionCreationInfo;
+class CollectionNameResolver;
 
 namespace transaction {
 class Methods;
@@ -67,6 +68,15 @@ struct Collections {
     transaction::Methods* _trx;
     bool const _responsibleForTrx;
   };
+
+  /// @brief check if a name belongs to a collection
+  static bool hasName(CollectionNameResolver const& resolver,
+                      LogicalCollection const& collection,
+                      std::string const& collectionName);
+
+  /// @brief returns all collections, sorted by names
+  static std::vector<std::shared_ptr<LogicalCollection>> sorted(
+      TRI_vocbase_t& vocbase);
 
   static void enumerate(
       TRI_vocbase_t* vocbase,
