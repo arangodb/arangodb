@@ -648,7 +648,7 @@ TEST_F(LogSupervisionTest, test_remove_participant_action) {
           {"D",
            ParticipantHealth{.rebootId = RebootId{14}, .notIsFailed = true}}}};
 
-  auto r = checkReplicatedLog(Log{target, plan, current}, health);
+  auto r = checkReplicatedLog(target, plan, current, health);
   // We expect a UpdateParticipantsFlagsAction to unset the allowedInQuorum flag
   // for d
   ASSERT_TRUE(std::holds_alternative<UpdateParticipantFlagsAction>(r))
@@ -715,7 +715,7 @@ TEST_F(LogSupervisionTest, test_remove_participant_action_wait_for_committed) {
           {"D",
            ParticipantHealth{.rebootId = RebootId{14}, .notIsFailed = true}}}};
 
-  auto r = checkReplicatedLog(Log{target, plan, current}, health);
+  auto r = checkReplicatedLog(target, plan, current, health);
   // We expect an EmptyAction
   ASSERT_TRUE(std::holds_alternative<EmptyAction>(r)) << to_string(r);
 }
@@ -767,7 +767,7 @@ TEST_F(LogSupervisionTest, test_remove_participant_action_committed) {
           {"D",
            ParticipantHealth{.rebootId = RebootId{14}, .notIsFailed = true}}}};
 
-  auto r = checkReplicatedLog(Log{target, plan, current}, health);
+  auto r = checkReplicatedLog(target, plan, current, health);
   // We expect an RemoveParticipantFromPlanAction to finally remove D
   ASSERT_TRUE(std::holds_alternative<RemoveParticipantFromPlanAction>(r))
       << to_string(r);
