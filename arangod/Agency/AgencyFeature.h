@@ -27,10 +27,6 @@
 #include "RestServer/arangod.h"
 
 namespace arangodb {
-namespace application_features {
-class FoxxFeaturePhase;
-}
-
 namespace consensus {
 class Agent;
 }
