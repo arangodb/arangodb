@@ -264,3 +264,10 @@ auto LeaderStatus::ManagerState::fromVelocyPack(velocypack::Slice s)
   return ManagerState{
       .state = state, .lastChange = tp, .detail = std::move(detail)};
 }
+
+auto arangodb::replication2::replicated_state::operator<<(
+    std::ostream& out, StateStatus const& stateStatus) -> std::ostream& {
+  VPackBuilder builder;
+  stateStatus.toVelocyPack(builder);
+  return out << builder.slice().toJson();
+}
