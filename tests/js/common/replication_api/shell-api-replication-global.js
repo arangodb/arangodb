@@ -1177,7 +1177,7 @@ function dealing_with_the_initial_dumpSuite () {
 
 // TODO: add CRUD tests for updates;
 
-jsunity.run(dealing_with_the_applieSuite);
-jsunity.run(dealing_with_wal_access_apSuite);
-jsunity.run(dealing_with_the_initial_dumSuite);
+jsunity.run(dealing_with_the_applierSuite);
+jsunity.run(dealing_with_wal_access_apiSuite);
+jsunity.run(dealing_with_the_initial_dumpSuite);
 return jsunity.done();
