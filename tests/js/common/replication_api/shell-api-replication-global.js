@@ -932,7 +932,7 @@ function dealing_with_wal_access_apSuite () {
 ////////////////////////////////////////////////////////////////////////////////;
 // inventory / dump;
 ////////////////////////////////////////////////////////////////////////////////;
-function dealing_with_the_initial_dumSuite () {
+function dealing_with_the_initial_dumpSuite () {
   let api = "/_api/replication";
   let batchId;
   return {
