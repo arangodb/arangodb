@@ -910,15 +910,11 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
     auto const collectLogInformation = [&] {
       auto const& localLogsInDatabase = localLogsByDatabase.at(dbname);
       auto planLogsInDatabase = ReplicatedLogSpecMap{};
-      auto it = plan.find(dbname);
-      if (it == plan.end()) {
-        throw std::runtime_error{"Not found dbname in plan"};
-      }
       auto planLogInDatabaseSlice =
-          it->second->slice()[0].get(cluster::paths::aliases::plan()
-                                         ->replicatedLogs()
-                                         ->database(dbname)
-                                         ->vec());
+          plan.at(dbname)->slice()[0].get(cluster::paths::aliases::plan()
+                                              ->replicatedLogs()
+                                              ->database(dbname)
+                                              ->vec());
       if (planLogInDatabaseSlice.isObject()) {
         for (auto [key, value] : VPackObjectIterator(planLogInDatabaseSlice)) {
           auto spec =
@@ -936,21 +932,18 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
       auto planStatesInDatabase = ReplicatedStateSpecMap{};
       auto currentStatesInDatabase = ReplicatedStateCurrentMap{};
       auto const& localStatesInDatabase = localStatesByDatabase.at(dbname);
-      auto it1 = plan.find(dbname);
-      auto it2 = current.find(dbname);
-      if (it1 == plan.end() || it2 == current.end()) {
-        throw std::runtime_error{"Not found dbname in plan or current"};
-      }
+      auto& db_plan = plan.at(dbname);
+      auto& db_current = current.at(dbname);
       auto planStatesInDatabaseSlice =
-          it1->second->slice()[0].get(cluster::paths::aliases::plan()
-                                          ->replicatedStates()
-                                          ->database(dbname)
-                                          ->vec());
+          db_plan->slice()[0].get(cluster::paths::aliases::plan()
+                                      ->replicatedStates()
+                                      ->database(dbname)
+                                      ->vec());
       auto currentStatesInDatabaseSlice =
-          it2->second->slice()[0].get(cluster::paths::aliases::current()
-                                          ->replicatedStates()
-                                          ->database(dbname)
-                                          ->vec());
+          db_current->slice()[0].get(cluster::paths::aliases::current()
+                                         ->replicatedStates()
+                                         ->database(dbname)
+                                         ->vec());
       if (planStatesInDatabaseSlice.isObject()) {
         for (auto [key, value] :
              VPackObjectIterator(planStatesInDatabaseSlice)) {
