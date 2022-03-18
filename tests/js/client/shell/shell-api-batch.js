@@ -195,7 +195,7 @@ function using_disallowed_methodsSuite () {
       let doc = arango.HEAD_RAW(cmd);
 
       assertEqual(doc.code, 405);
-      assertEqual(doc.body, undefined);
+      assertUndefined(doc.body);
     },
 
     test_checks_whether_DELETE_is_allowed_on___api_batch: function() {
