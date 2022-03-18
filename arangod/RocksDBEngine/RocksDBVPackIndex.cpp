@@ -136,8 +136,7 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
     _key->constructUniqueVPackIndexValue(index->objectId(), indexValues);
 
     // if the cache is enabled, it must use the VPackKeyHasher!
-    TRI_ASSERT(_cache == nullptr ||
-               _cache->hasher().name() == "VPackKeyHasher");
+    TRI_ASSERT(_cache == nullptr || _cache->hasherName() == "VPackKeyHasher");
 
     TRI_IF_FAILURE("VPackIndexFailWithoutCache") {
       if (_cache == nullptr) {
@@ -399,8 +398,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
                    RocksDBColumnFamilyManager::Family::VPackIndex));
 
     // if the cache is enabled, it must use the VPackKeyHasher!
-    TRI_ASSERT(_cache == nullptr ||
-               _cache->hasher().name() == "VPackKeyHasher");
+    TRI_ASSERT(_cache == nullptr || _cache->hasherName() == "VPackKeyHasher");
 
     TRI_IF_FAILURE("VPackIndexFailWithoutCache") {
       if (_cache == nullptr) {

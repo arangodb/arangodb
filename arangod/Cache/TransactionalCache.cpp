@@ -47,7 +47,7 @@ Finding TransactionalCache<Hasher>::find(void const* key,
                                          std::uint32_t keySize) {
   TRI_ASSERT(key != nullptr);
   Finding result;
-  std::uint32_t hash = _hasher.hashKey(key, keySize);
+  std::uint32_t hash = Hasher::hashKey(key, keySize);
 
   ::ErrorCode status = TRI_ERROR_NO_ERROR;
   Table::BucketLocker guard;
@@ -56,7 +56,7 @@ Finding TransactionalCache<Hasher>::find(void const* key,
     result.reportError(status);
   } else {
     TransactionalBucket& bucket = guard.bucket<TransactionalBucket>();
-    result.set(bucket.find(_hasher, hash, key, keySize));
+    result.set(bucket.find<Hasher>(hash, key, keySize));
     if (result.found()) {
       recordStat(Stat::findHit);
     } else {
@@ -72,7 +72,7 @@ template<typename Hasher>
 Result TransactionalCache<Hasher>::insert(CachedValue* value) {
   TRI_ASSERT(value != nullptr);
   bool maybeMigrate = false;
-  std::uint32_t hash = _hasher.hashKey(value->key(), value->keySize());
+  std::uint32_t hash = Hasher::hashKey(value->key(), value->keySize());
 
   Result status;
   Table* source;
@@ -89,7 +89,7 @@ Result TransactionalCache<Hasher>::insert(CachedValue* value) {
     if (allowed) {
       std::int64_t change = static_cast<std::int64_t>(value->size());
       CachedValue* candidate =
-          bucket.find(_hasher, hash, value->key(), value->keySize());
+          bucket.find<Hasher>(hash, value->key(), value->keySize());
 
       if (candidate == nullptr && bucket.isFull()) {
         candidate = bucket.evictionCandidate();
@@ -113,7 +113,7 @@ Result TransactionalCache<Hasher>::insert(CachedValue* value) {
           bool eviction = false;
           if (candidate != nullptr) {
             bucket.evict(candidate, true);
-            if (!_hasher.sameKey(candidate->key(), candidate->keySize(),
+            if (!Hasher::sameKey(candidate->key(), candidate->keySize(),
                                  value->key(), value->keySize())) {
               eviction = true;
             }
@@ -148,7 +148,7 @@ Result TransactionalCache<Hasher>::remove(void const* key,
                                           std::uint32_t keySize) {
   TRI_ASSERT(key != nullptr);
   bool maybeMigrate = false;
-  std::uint32_t hash = _hasher.hashKey(key, keySize);
+  std::uint32_t hash = Hasher::hashKey(key, keySize);
 
   Result status;
   Table* source;
@@ -161,7 +161,7 @@ Result TransactionalCache<Hasher>::remove(void const* key,
 
     TransactionalBucket& bucket = guard.bucket<TransactionalBucket>();
     source = guard.source();
-    CachedValue* candidate = bucket.remove(_hasher, hash, key, keySize);
+    CachedValue* candidate = bucket.remove<Hasher>(hash, key, keySize);
 
     if (candidate != nullptr) {
       std::int64_t change = -static_cast<std::int64_t>(candidate->size());
@@ -190,7 +190,7 @@ Result TransactionalCache<Hasher>::banish(void const* key,
                                           std::uint32_t keySize) {
   TRI_ASSERT(key != nullptr);
   bool maybeMigrate = false;
-  std::uint32_t hash = _hasher.hashKey(key, keySize);
+  std::uint32_t hash = Hasher::hashKey(key, keySize);
 
   Result status;
   Table* source;
@@ -203,7 +203,7 @@ Result TransactionalCache<Hasher>::banish(void const* key,
 
     TransactionalBucket& bucket = guard.bucket<TransactionalBucket>();
     source = guard.source();
-    CachedValue* candidate = bucket.banish(_hasher, hash, key, keySize);
+    CachedValue* candidate = bucket.banish<Hasher>(hash, key, keySize);
 
     if (candidate != nullptr) {
       std::int64_t change = -static_cast<std::int64_t>(candidate->size());
@@ -228,10 +228,10 @@ Result TransactionalCache<Hasher>::banish(void const* key,
   return status;
 }
 
-/// @brief provide access to the Hasher object
+/// @brief returns the hasher name
 template<typename Hasher>
-Hasher const& TransactionalCache<Hasher>::hasher() const noexcept {
-  return _hasher;
+std::string_view TransactionalCache<Hasher>::hasherName() const noexcept {
+  return Hasher::name();
 }
 
 template<typename Hasher>
@@ -250,8 +250,7 @@ TransactionalCache<Hasher>::TransactionalCache(
     bool enableWindowedStats)
     : Cache(manager, id, std::move(metadata), std::move(table),
             enableWindowedStats, TransactionalCache::bucketClearer,
-            TransactionalBucket::slotsData),
-      _hasher(std::move(hasher)) {}
+            TransactionalBucket::slotsData) {}
 
 template<typename Hasher>
 TransactionalCache<Hasher>::~TransactionalCache() {
@@ -349,7 +348,7 @@ void TransactionalCache<Hasher>::migrateBucket(
           auto targetBucket =
               static_cast<TransactionalBucket*>(targets->fetchBucket(hash));
           CachedValue* candidate =
-              targetBucket->banish(_hasher, hash, nullptr, 0);
+              targetBucket->banish<Hasher>(hash, nullptr, 0);
           if (candidate != nullptr) {
             std::uint64_t size = candidate->size();
             freeValue(candidate);

@@ -113,8 +113,8 @@ struct TransactionalBucket {
   /// nothing will be changed and a nullptr will be returned.
   //////////////////////////////////////////////////////////////////////////////
   template<typename Hasher>
-  CachedValue* find(Hasher const& hasher, std::uint32_t hash, void const* key,
-                    std::size_t keySize, bool moveToFront = true) noexcept;
+  CachedValue* find(std::uint32_t hash, void const* key, std::size_t keySize,
+                    bool moveToFront = true) noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Inserts a given value if it is not banished. Requires state to
@@ -142,7 +142,7 @@ struct TransactionalBucket {
   /// of the bucket (to remove the gap).
   //////////////////////////////////////////////////////////////////////////////
   template<typename Hasher>
-  CachedValue* remove(Hasher const& hasher, std::uint32_t hash, void const* key,
+  CachedValue* remove(std::uint32_t hash, void const* key,
                       std::size_t keySize) noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -154,7 +154,7 @@ struct TransactionalBucket {
   /// banish the bucket.
   //////////////////////////////////////////////////////////////////////////////
   template<typename Hasher>
-  CachedValue* banish(Hasher const& hasher, std::uint32_t hash, void const* key,
+  CachedValue* banish(std::uint32_t hash, void const* key,
                       std::size_t keySize) noexcept;
 
   //////////////////////////////////////////////////////////////////////////////

@@ -69,9 +69,8 @@ bool PlainBucket::isFull() const noexcept {
 }
 
 template<typename Hasher>
-CachedValue* PlainBucket::find(Hasher const& hasher, std::uint32_t hash,
-                               void const* key, std::size_t keySize,
-                               bool moveToFront) noexcept {
+CachedValue* PlainBucket::find(std::uint32_t hash, void const* key,
+                               std::size_t keySize, bool moveToFront) noexcept {
   TRI_ASSERT(isLocked());
   CachedValue* result = nullptr;
 
@@ -80,8 +79,8 @@ CachedValue* PlainBucket::find(Hasher const& hasher, std::uint32_t hash,
       break;
     }
     if (_cachedHashes[i] == hash &&
-        hasher.sameKey(_cachedData[i]->key(), _cachedData[i]->keySize(), key,
-                       keySize)) {
+        Hasher::sameKey(_cachedData[i]->key(), _cachedData[i]->keySize(), key,
+                        keySize)) {
       result = _cachedData[i];
       if (moveToFront) {
         moveSlot(i, true);
@@ -110,11 +109,10 @@ void PlainBucket::insert(std::uint32_t hash, CachedValue* value) noexcept {
 }
 
 template<typename Hasher>
-CachedValue* PlainBucket::remove(Hasher const& hasher, std::uint32_t hash,
-                                 void const* key,
+CachedValue* PlainBucket::remove(std::uint32_t hash, void const* key,
                                  std::size_t keySize) noexcept {
   TRI_ASSERT(isLocked());
-  CachedValue* value = find(hasher, hash, key, keySize, false);
+  CachedValue* value = find<Hasher>(hash, key, keySize, false);
   if (value != nullptr) {
     evict(value, false);
   }
@@ -188,19 +186,17 @@ void PlainBucket::moveSlot(std::size_t slot, bool moveToFront) noexcept {
 }
 
 template CachedValue* PlainBucket::find<BinaryKeyHasher>(
-    BinaryKeyHasher const& hasher, std::uint32_t hash, void const* key,
-    std::size_t keySize, bool moveToFront) noexcept;
+    std::uint32_t hash, void const* key, std::size_t keySize,
+    bool moveToFront) noexcept;
 
 template CachedValue* PlainBucket::remove<BinaryKeyHasher>(
-    BinaryKeyHasher const& hasher, std::uint32_t hash, void const* key,
-    std::size_t keySize) noexcept;
+    std::uint32_t hash, void const* key, std::size_t keySize) noexcept;
 
 template CachedValue* PlainBucket::find<VPackKeyHasher>(
-    VPackKeyHasher const& hasher, std::uint32_t hash, void const* key,
-    std::size_t keySize, bool moveToFront) noexcept;
+    std::uint32_t hash, void const* key, std::size_t keySize,
+    bool moveToFront) noexcept;
 
 template CachedValue* PlainBucket::remove<VPackKeyHasher>(
-    VPackKeyHasher const& hasher, std::uint32_t hash, void const* key,
-    std::size_t keySize) noexcept;
+    std::uint32_t hash, void const* key, std::size_t keySize) noexcept;
 
 }  // namespace arangodb::cache

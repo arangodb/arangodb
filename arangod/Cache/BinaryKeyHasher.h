@@ -33,16 +33,16 @@
 namespace arangodb::cache {
 
 struct BinaryKeyHasher {
-  std::string_view name() const noexcept { return "BinaryKeyHasher"; }
+  static constexpr std::string_view name() { return "BinaryKeyHasher"; }
 
-  inline std::uint32_t hashKey(void const* key,
-                               std::size_t keySize) const noexcept {
+  static inline std::uint32_t hashKey(void const* key,
+                                      std::size_t keySize) noexcept {
     return (std::max)(static_cast<std::uint32_t>(1),
                       fasthash32(key, keySize, 0xdeadbeefUL));
   }
 
-  inline bool sameKey(void const* key1, std::size_t keySize1, void const* key2,
-                      std::size_t keySize2) const noexcept {
+  static inline bool sameKey(void const* key1, std::size_t keySize1,
+                             void const* key2, std::size_t keySize2) noexcept {
     return (keySize1 == keySize2 && (0 == std::memcmp(key1, key2, keySize1)));
   }
 };

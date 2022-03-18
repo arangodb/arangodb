@@ -101,8 +101,8 @@ struct PlainBucket {
   /// nothing will be changed and a nullptr will be returned.
   //////////////////////////////////////////////////////////////////////////////
   template<typename Hasher>
-  CachedValue* find(Hasher const& hasher, std::uint32_t hash, void const* key,
-                    std::size_t keySize, bool moveToFront = true) noexcept;
+  CachedValue* find(std::uint32_t hash, void const* key, std::size_t keySize,
+                    bool moveToFront = true) noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Inserts a given value. Requires state to be locked.
@@ -127,7 +127,7 @@ struct PlainBucket {
   /// of the bucket (to remove the gap).
   //////////////////////////////////////////////////////////////////////////////
   template<typename Hasher>
-  CachedValue* remove(Hasher const& hasher, std::uint32_t hash, void const* key,
+  CachedValue* remove(std::uint32_t hash, void const* key,
                       std::size_t keySize) noexcept;
 
   //////////////////////////////////////////////////////////////////////////////

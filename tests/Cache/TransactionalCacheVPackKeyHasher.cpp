@@ -53,9 +53,8 @@ TEST(CacheTransactionalCacheVPackKeyHasherTest,
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
   Manager manager(sharedPRNG, postFn, 4 * cacheLimit);
-  VPackKeyHasher hasher;
-  auto cache =
-      manager.createCache(CacheType::Transactional, hasher, false, cacheLimit);
+  auto cache = manager.createCache(CacheType::Transactional, VPackKeyHasher{},
+                                   false, cacheLimit);
 
   VPackBuilder builder;
   for (std::uint64_t i = 0; i < 16384; i++) {
@@ -104,9 +103,8 @@ TEST(CacheTransactionalCacheVPackKeyHasherTest,
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
   Manager manager(sharedPRNG, postFn, 4 * cacheLimit);
-  VPackKeyHasher hasher;
-  auto cache =
-      manager.createCache(CacheType::Transactional, hasher, false, cacheLimit);
+  auto cache = manager.createCache(CacheType::Transactional, VPackKeyHasher{},
+                                   false, cacheLimit);
 
   std::vector<std::uint8_t> builder;
   for (std::uint32_t i = 0; i < 256; i++) {
@@ -143,8 +141,9 @@ TEST(CacheTransactionalCacheVPackKeyHasherTest,
       ASSERT_EQ(
           0, basics::VelocyPackHelper::compare(foundSlice, builtSlice, true));
       ASSERT_TRUE(foundSlice.isUInt());
-      ASSERT_TRUE(hasher.sameKey(f.value()->key(), f.value()->keySize(),
-                                 builder.data(), builder.size()));
+      ASSERT_TRUE(VPackKeyHasher::sameKey(f.value()->key(),
+                                          f.value()->keySize(), builder.data(),
+                                          builder.size()));
       break;
     }
   }
@@ -174,8 +173,9 @@ TEST(CacheTransactionalCacheVPackKeyHasherTest,
       ASSERT_EQ(
           0, basics::VelocyPackHelper::compare(foundSlice, builtSlice, true));
       ASSERT_TRUE(foundSlice.isUInt());
-      ASSERT_TRUE(hasher.sameKey(f.value()->key(), f.value()->keySize(),
-                                 builder.data(), builder.size()));
+      ASSERT_TRUE(VPackKeyHasher::sameKey(f.value()->key(),
+                                          f.value()->keySize(), builder.data(),
+                                          builder.size()));
       break;
     }
   }
@@ -204,8 +204,9 @@ TEST(CacheTransactionalCacheVPackKeyHasherTest,
       ASSERT_EQ(
           0, basics::VelocyPackHelper::compare(foundSlice, builtSlice, true));
       ASSERT_TRUE(foundSlice.isUInt());
-      ASSERT_TRUE(hasher.sameKey(f.value()->key(), f.value()->keySize(),
-                                 builder.data(), builder.size()));
+      ASSERT_TRUE(VPackKeyHasher::sameKey(f.value()->key(),
+                                          f.value()->keySize(), builder.data(),
+                                          builder.size()));
       break;
     }
   }
@@ -228,8 +229,9 @@ TEST(CacheTransactionalCacheVPackKeyHasherTest,
       ASSERT_EQ(
           0, basics::VelocyPackHelper::compare(foundSlice, builtSlice, true));
       ASSERT_TRUE(foundSlice.isUInt());
-      ASSERT_TRUE(hasher.sameKey(f.value()->key(), f.value()->keySize(),
-                                 builder.data(), builder.size()));
+      ASSERT_TRUE(VPackKeyHasher::sameKey(f.value()->key(),
+                                          f.value()->keySize(), builder.data(),
+                                          builder.size()));
       break;
     }
   }
@@ -244,9 +246,8 @@ TEST(CacheTransactionalCacheVPackKeyHasherTest,
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
   Manager manager(sharedPRNG, postFn, 4 * cacheLimit);
-  VPackKeyHasher hasher;
-  auto cache =
-      manager.createCache(CacheType::Transactional, hasher, false, cacheLimit);
+  auto cache = manager.createCache(CacheType::Transactional, VPackKeyHasher{},
+                                   false, cacheLimit);
 
   std::vector<std::uint8_t> builder;
   for (std::uint32_t i = 0; i < 256; i++) {
@@ -311,8 +312,9 @@ TEST(CacheTransactionalCacheVPackKeyHasherTest,
         ASSERT_EQ(
             0, basics::VelocyPackHelper::compare(foundSlice, builtSlice, true));
         ASSERT_TRUE(foundSlice.isUInt());
-        ASSERT_TRUE(hasher.sameKey(f.value()->key(), f.value()->keySize(),
-                                   builder.data(), builder.size()));
+        ASSERT_TRUE(VPackKeyHasher::sameKey(f.value()->key(),
+                                            f.value()->keySize(),
+                                            builder.data(), builder.size()));
       }
       break;
     }
@@ -346,8 +348,9 @@ TEST(CacheTransactionalCacheVPackKeyHasherTest,
         ASSERT_EQ(
             0, basics::VelocyPackHelper::compare(foundSlice, builtSlice, true));
         ASSERT_TRUE(foundSlice.isUInt());
-        ASSERT_TRUE(hasher.sameKey(f.value()->key(), f.value()->keySize(),
-                                   builder.data(), builder.size()));
+        ASSERT_TRUE(VPackKeyHasher::sameKey(f.value()->key(),
+                                            f.value()->keySize(),
+                                            builder.data(), builder.size()));
       }
       break;
     }
@@ -380,8 +383,9 @@ TEST(CacheTransactionalCacheVPackKeyHasherTest,
         ASSERT_EQ(
             0, basics::VelocyPackHelper::compare(foundSlice, builtSlice, true));
         ASSERT_TRUE(foundSlice.isUInt());
-        ASSERT_TRUE(hasher.sameKey(f.value()->key(), f.value()->keySize(),
-                                   builder.data(), builder.size()));
+        ASSERT_TRUE(VPackKeyHasher::sameKey(f.value()->key(),
+                                            f.value()->keySize(),
+                                            builder.data(), builder.size()));
       }
       break;
     }
@@ -408,8 +412,9 @@ TEST(CacheTransactionalCacheVPackKeyHasherTest,
         ASSERT_EQ(
             0, basics::VelocyPackHelper::compare(foundSlice, builtSlice, true));
         ASSERT_TRUE(foundSlice.isUInt());
-        ASSERT_TRUE(hasher.sameKey(f.value()->key(), f.value()->keySize(),
-                                   builder.data(), builder.size()));
+        ASSERT_TRUE(VPackKeyHasher::sameKey(f.value()->key(),
+                                            f.value()->keySize(),
+                                            builder.data(), builder.size()));
       }
       break;
     }
@@ -425,9 +430,8 @@ TEST(CacheTransactionalCacheVPackKeyHasherTest,
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
   Manager manager(sharedPRNG, postFn, 4 * cacheLimit);
-  VPackKeyHasher hasher;
-  auto cache =
-      manager.createCache(CacheType::Transactional, hasher, false, cacheLimit);
+  auto cache = manager.createCache(CacheType::Transactional, VPackKeyHasher{},
+                                   false, cacheLimit);
 
   Transaction* tx = manager.beginTransaction(false);
 

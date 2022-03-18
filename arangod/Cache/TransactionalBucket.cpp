@@ -77,8 +77,8 @@ bool TransactionalBucket::isFull() const noexcept {
 }
 
 template<typename Hasher>
-CachedValue* TransactionalBucket::find(Hasher const& hasher, std::uint32_t hash,
-                                       void const* key, std::size_t keySize,
+CachedValue* TransactionalBucket::find(std::uint32_t hash, void const* key,
+                                       std::size_t keySize,
                                        bool moveToFront) noexcept {
   TRI_ASSERT(isLocked());
   CachedValue* result = nullptr;
@@ -88,8 +88,8 @@ CachedValue* TransactionalBucket::find(Hasher const& hasher, std::uint32_t hash,
       break;
     }
     if (_cachedHashes[i] == hash &&
-        hasher.sameKey(_cachedData[i]->key(), _cachedData[i]->keySize(), key,
-                       keySize)) {
+        Hasher::sameKey(_cachedData[i]->key(), _cachedData[i]->keySize(), key,
+                        keySize)) {
       result = _cachedData[i];
       if (moveToFront && i != 0) {
         moveSlot(i, true);
@@ -120,8 +120,7 @@ void TransactionalBucket::insert(std::uint32_t hash,
 }
 
 template<typename Hasher>
-CachedValue* TransactionalBucket::remove(Hasher const& hasher,
-                                         std::uint32_t hash, void const* key,
+CachedValue* TransactionalBucket::remove(std::uint32_t hash, void const* key,
                                          std::size_t keySize) noexcept {
   TRI_ASSERT(isLocked());
   CachedValue* result = nullptr;
@@ -131,8 +130,8 @@ CachedValue* TransactionalBucket::remove(Hasher const& hasher,
       break;
     }
     if (_cachedHashes[i] == hash &&
-        hasher.sameKey(_cachedData[i]->key(), _cachedData[i]->keySize(), key,
-                       keySize)) {
+        Hasher::sameKey(_cachedData[i]->key(), _cachedData[i]->keySize(), key,
+                        keySize)) {
       result = _cachedData[i];
       _cachedHashes[i] = 0;
       _cachedData[i] = nullptr;
@@ -145,8 +144,7 @@ CachedValue* TransactionalBucket::remove(Hasher const& hasher,
 }
 
 template<typename Hasher>
-CachedValue* TransactionalBucket::banish(Hasher const& hasher,
-                                         std::uint32_t hash, void const* key,
+CachedValue* TransactionalBucket::banish(std::uint32_t hash, void const* key,
                                          std::size_t keySize) noexcept {
   TRI_ASSERT(isLocked());
   if (!haveOpenTransaction()) {
@@ -155,7 +153,7 @@ CachedValue* TransactionalBucket::banish(Hasher const& hasher,
 
   // remove key if it's here
   CachedValue* value =
-      (keySize == 0) ? nullptr : remove(hasher, hash, key, keySize);
+      (keySize == 0) ? nullptr : remove<Hasher>(hash, key, keySize);
 
   if (isBanished(hash)) {
     return value;
@@ -304,27 +302,23 @@ bool TransactionalBucket::haveOpenTransaction() const noexcept {
 }
 
 template CachedValue* TransactionalBucket::find<BinaryKeyHasher>(
-    BinaryKeyHasher const& hasher, std::uint32_t hash, void const* key,
-    std::size_t keySize, bool moveToFront) noexcept;
+    std::uint32_t hash, void const* key, std::size_t keySize,
+    bool moveToFront) noexcept;
 
 template CachedValue* TransactionalBucket::remove<BinaryKeyHasher>(
-    BinaryKeyHasher const& hasher, std::uint32_t hash, void const* key,
-    std::size_t keySize) noexcept;
+    std::uint32_t hash, void const* key, std::size_t keySize) noexcept;
 
 template CachedValue* TransactionalBucket::banish<BinaryKeyHasher>(
-    BinaryKeyHasher const& hasher, std::uint32_t hash, void const* key,
-    std::size_t keySize) noexcept;
+    std::uint32_t hash, void const* key, std::size_t keySize) noexcept;
 
 template CachedValue* TransactionalBucket::find<VPackKeyHasher>(
-    VPackKeyHasher const& hasher, std::uint32_t hash, void const* key,
-    std::size_t keySize, bool moveToFront) noexcept;
+    std::uint32_t hash, void const* key, std::size_t keySize,
+    bool moveToFront) noexcept;
 
 template CachedValue* TransactionalBucket::remove<VPackKeyHasher>(
-    VPackKeyHasher const& hasher, std::uint32_t hash, void const* key,
-    std::size_t keySize) noexcept;
+    std::uint32_t hash, void const* key, std::size_t keySize) noexcept;
 
 template CachedValue* TransactionalBucket::banish<VPackKeyHasher>(
-    VPackKeyHasher const& hasher, std::uint32_t hash, void const* key,
-    std::size_t keySize) noexcept;
+    std::uint32_t hash, void const* key, std::size_t keySize) noexcept;
 
 }  // namespace arangodb::cache

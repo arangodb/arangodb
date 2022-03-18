@@ -139,8 +139,7 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
         _lastKey(VPackSlice::nullSlice()) {
     TRI_ASSERT(_keys.slice().isArray());
 
-    TRI_ASSERT(_cache == nullptr ||
-               _cache->hasher().name() == "BinaryKeyHasher");
+    TRI_ASSERT(_cache == nullptr || _cache->hasherName() == "BinaryKeyHasher");
   }
 
   char const* typeName() const override { return "edge-index-iterator"; }

@@ -46,7 +46,7 @@ template<typename Hasher>
 Finding PlainCache<Hasher>::find(void const* key, std::uint32_t keySize) {
   TRI_ASSERT(key != nullptr);
   Finding result;
-  std::uint32_t hash = _hasher.hashKey(key, keySize);
+  std::uint32_t hash = Hasher::hashKey(key, keySize);
 
   ::ErrorCode status = TRI_ERROR_NO_ERROR;
   Table::BucketLocker guard;
@@ -55,7 +55,7 @@ Finding PlainCache<Hasher>::find(void const* key, std::uint32_t keySize) {
     result.reportError(status);
   } else {
     PlainBucket& bucket = guard.bucket<PlainBucket>();
-    result.set(bucket.find(_hasher, hash, key, keySize));
+    result.set(bucket.find<Hasher>(hash, key, keySize));
     if (result.found()) {
       recordStat(Stat::findHit);
     } else {
@@ -70,7 +70,7 @@ template<typename Hasher>
 Result PlainCache<Hasher>::insert(CachedValue* value) {
   TRI_ASSERT(value != nullptr);
   bool maybeMigrate = false;
-  std::uint32_t hash = _hasher.hashKey(value->key(), value->keySize());
+  std::uint32_t hash = Hasher::hashKey(value->key(), value->keySize());
 
   Result status;
   Table* source;
@@ -86,7 +86,7 @@ Result PlainCache<Hasher>::insert(CachedValue* value) {
     bool allowed = true;
     std::int64_t change = static_cast<std::int64_t>(value->size());
     CachedValue* candidate =
-        bucket.find(_hasher, hash, value->key(), value->keySize());
+        bucket.find<Hasher>(hash, value->key(), value->keySize());
 
     if (candidate == nullptr && bucket.isFull()) {
       candidate = bucket.evictionCandidate();
@@ -111,7 +111,7 @@ Result PlainCache<Hasher>::insert(CachedValue* value) {
         bool eviction = false;
         if (candidate != nullptr) {
           bucket.evict(candidate, true);
-          if (!_hasher.sameKey(candidate->key(), candidate->keySize(),
+          if (!Hasher::sameKey(candidate->key(), candidate->keySize(),
                                value->key(), value->keySize())) {
             eviction = true;
           }
@@ -140,7 +140,7 @@ template<typename Hasher>
 Result PlainCache<Hasher>::remove(void const* key, std::uint32_t keySize) {
   TRI_ASSERT(key != nullptr);
   bool maybeMigrate = false;
-  std::uint32_t hash = _hasher.hashKey(key, keySize);
+  std::uint32_t hash = Hasher::hashKey(key, keySize);
 
   Result status;
   Table* source;
@@ -152,7 +152,7 @@ Result PlainCache<Hasher>::remove(void const* key, std::uint32_t keySize) {
     }
     PlainBucket& bucket = guard.bucket<PlainBucket>();
     source = guard.source();
-    CachedValue* candidate = bucket.remove(_hasher, hash, key, keySize);
+    CachedValue* candidate = bucket.remove<Hasher>(hash, key, keySize);
 
     if (candidate != nullptr) {
       std::int64_t change = -static_cast<std::int64_t>(candidate->size());
@@ -181,10 +181,10 @@ Result PlainCache<Hasher>::banish(void const* key, std::uint32_t keySize) {
   return {TRI_ERROR_NOT_IMPLEMENTED};
 }
 
-/// @brief provide access to the Hasher object
+/// @brief returns the hasher name
 template<typename Hasher>
-Hasher const& PlainCache<Hasher>::hasher() const noexcept {
-  return _hasher;
+std::string_view PlainCache<Hasher>::hasherName() const noexcept {
+  return Hasher::name();
 }
 
 template<typename Hasher>
@@ -204,8 +204,7 @@ PlainCache<Hasher>::PlainCache(Cache::ConstructionGuard /*guard*/,
                                bool enableWindowedStats)
     : Cache(manager, id, std::move(metadata), std::move(table),
             enableWindowedStats, PlainCache::bucketClearer,
-            PlainBucket::slotsData),
-      _hasher(std::move(hasher)) {}
+            PlainBucket::slotsData) {}
 
 template<typename Hasher>
 PlainCache<Hasher>::~PlainCache() {
