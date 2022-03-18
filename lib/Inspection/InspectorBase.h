@@ -35,6 +35,12 @@
 
 namespace arangodb::inspection {
 
+#ifdef _MSC_VER
+#define EMPTY_BASE __declspec(empty_bases)
+#else
+#define EMPTY_BASE
+#endif
+
 template<class Derived>
 struct InspectorBase {
   Derived& self() { return static_cast<Derived&>(*this); }
@@ -204,7 +210,7 @@ struct InspectorBase {
 
  private:
   template<class Field>
-  struct InvariantMixin {
+  struct EMPTY_BASE InvariantMixin {
     template<class Predicate>
     [[nodiscard]] auto invariant(Predicate predicate) && {
       return InvariantField<Field, Predicate>(
@@ -233,7 +239,7 @@ struct InspectorBase {
                          InvariantMixin<Inner>>;
 
   template<class Field>
-  struct FallbackMixin {
+  struct EMPTY_BASE FallbackMixin {
     template<class U>
     [[nodiscard]] auto fallback(U&& val) && {
       static_assert(std::is_constructible_v<typename Field::value_type, U>);
@@ -257,7 +263,7 @@ struct InspectorBase {
                                           std::monostate, FallbackMixin<Inner>>;
 
   template<class Field>
-  struct TransformMixin {
+  struct EMPTY_BASE TransformMixin {
     template<class T>
     [[nodiscard]] auto transformWith(T transformer) && {
       return TransformField<Field, T>(std::move(static_cast<Field&>(*this)),
@@ -280,7 +286,8 @@ struct InspectorBase {
 
  public:
   template<class InnerField, class U>
-  struct FallbackField : Derived::template FallbackContainer<U>,
+  struct EMPTY_BASE FallbackField
+      : Derived::template FallbackContainer<U>,
                          WithInvariant<FallbackField<InnerField, U>>,
                          WithTransform<FallbackField<InnerField, U>> {
     FallbackField(InnerField inner, U&& val)
@@ -291,7 +298,8 @@ struct InspectorBase {
   };
 
   template<class InnerField, class Invariant>
-  struct InvariantField : Derived::template InvariantContainer<Invariant>,
+  struct EMPTY_BASE InvariantField
+      : Derived::template InvariantContainer<Invariant>,
                           WithFallback<InvariantField<InnerField, Invariant>>,
                           WithTransform<InvariantField<InnerField, Invariant>> {
     InvariantField(InnerField inner, Invariant&& invariant)
@@ -302,7 +310,8 @@ struct InspectorBase {
   };
 
   template<class InnerField, class T>
-  struct TransformField : WithInvariant<TransformField<InnerField, T>>,
+  struct EMPTY_BASE TransformField
+      : WithInvariant<TransformField<InnerField, T>>,
                           WithFallback<TransformField<InnerField, T>> {
     TransformField(InnerField inner, T&& transformer)
         : inner(std::move(inner)), transformer(std::move(transformer)) {}
@@ -312,7 +321,7 @@ struct InspectorBase {
   };
 
   template<typename DerivedField>
-  struct BasicField : InvariantMixin<DerivedField>,
+  struct EMPTY_BASE BasicField : InvariantMixin<DerivedField>,
                       FallbackMixin<DerivedField>,
                       TransformMixin<DerivedField> {
     explicit BasicField(std::string_view name) : name(name) {}
@@ -320,7 +329,7 @@ struct InspectorBase {
   };
 
   template<typename T>
-  struct RawField : BasicField<RawField<T>> {
+  struct EMPTY_BASE RawField : BasicField<RawField<T>> {
     RawField(std::string_view name, T& value)
         : BasicField<RawField>(name), value(value) {}
     using value_type = T;
