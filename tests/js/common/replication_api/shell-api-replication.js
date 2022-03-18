@@ -1348,7 +1348,7 @@ function dealing_with_general_functionSuite () {
 ////////////////////////////////////////////////////////////////////////////////;
 // applier;
 ////////////////////////////////////////////////////////////////////////////////;
-function dealing_with_the_applieSuite () {
+function dealing_with_the_applierSuite () {
   let api = "/_db/UnitTestDB/_api/replication";
   return {
     setUp: function() {
