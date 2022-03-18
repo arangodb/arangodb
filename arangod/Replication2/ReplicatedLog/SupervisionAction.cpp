@@ -135,8 +135,8 @@ void VelocyPacker::operator()(AddParticipantToPlanAction const& action) {
 }
 
 void VelocyPacker::operator()(RemoveParticipantFromPlanAction const& action) {
-  builder.add(VPackValue("type"));
-  builder.add(VPackValue(action.name));
+  builder.add("type", action.name);
+  builder.add("participant", action._participant);
 }
 
 void VelocyPacker::operator()(UpdateLogConfigAction const& action) {

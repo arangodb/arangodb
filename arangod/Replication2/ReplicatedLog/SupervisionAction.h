@@ -109,7 +109,7 @@ struct EmptyAction {
   static constexpr std::string_view name = "EmptyAction";
 
   EmptyAction() : _message(""){};
-  EmptyAction(std::string_view message) : _message(message){};
+  explicit EmptyAction(std::string message) : _message(std::move(message)) {}
   std::string _message;
 
   auto updateCurrent(LogCurrent current) -> LogCurrent {

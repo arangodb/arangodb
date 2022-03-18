@@ -30,6 +30,7 @@
 #include "Futures/Future.h"
 
 #include <memory>
+#include <utility>
 
 namespace arangodb::replication2::replicated_log {
 
@@ -39,13 +40,16 @@ namespace arangodb::replication2::replicated_log {
  */
 struct PersistedLog {
   virtual ~PersistedLog() = default;
-  explicit PersistedLog(LogId lid) : _lid(lid) {}
+  explicit PersistedLog(GlobalLogIdentifier gid) : _gid(std::move(gid)) {}
 
   struct WriteOptions {
     bool waitForSync = false;
   };
 
-  [[nodiscard]] auto id() const noexcept -> LogId { return _lid; }
+  [[nodiscard]] auto id() const noexcept -> LogId { return _gid.id; }
+  [[nodiscard]] auto gid() const noexcept -> GlobalLogIdentifier const& {
+    return _gid;
+  }
   virtual auto insert(PersistedLogIterator& iter, WriteOptions const&)
       -> Result = 0;
   virtual auto insertAsync(std::unique_ptr<PersistedLogIterator> iter,
@@ -58,7 +62,7 @@ struct PersistedLog {
   virtual auto drop() -> Result = 0;
 
  private:
-  LogId _lid;
+  GlobalLogIdentifier _gid;
 };
 
 }  // namespace arangodb::replication2::replicated_log

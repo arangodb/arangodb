@@ -70,7 +70,8 @@ struct RocksDBLogTest : testing::Test {
       _maxLogId = id;
     }
 
-    return std::make_shared<RocksDBPersistedLog>(id, id.id(), _persistor);
+    return std::make_shared<RocksDBPersistedLog>(GlobalLogIdentifier("", id),
+                                                 id.id(), _persistor);
   }
 
   auto createUniqueLog() -> std::shared_ptr<RocksDBPersistedLog> {

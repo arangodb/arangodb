@@ -234,6 +234,10 @@ struct RecordingFactory {
     return ptr;
   }
 
+  auto constructCore(GlobalLogIdentifier const&) -> std::unique_ptr<CoreType> {
+    return std::make_unique<CoreType>();
+  }
+
   auto getLatestLeader() -> std::shared_ptr<LeaderType> {
     TRI_ASSERT(!leaders.empty());
     return leaders.back().lock();
