@@ -24,6 +24,9 @@
 #include "Methods.h"
 
 #include <cstdint>
+#include <memory>
+#include <set>
+#include <string>
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
@@ -33,8 +36,8 @@
 #include "Cluster/ServerState.h"
 #include "Futures/Future.h"
 #include "VocBase/vocbase.h"
-#include "WasmServerFeature.h"
-#include "WasmCommon.h"
+#include "WasmServer/WasmServerFeature.h"
+#include "WasmServer/WasmCommon.h"
 
 using namespace arangodb;
 using namespace arangodb::wasm;
@@ -47,23 +50,21 @@ struct WasmVmMethodsSingleServer final
 
   auto addModule(Module const& module) const
       -> futures::Future<Result> override {
-    vocbase.server().getFeature<WasmServerFeature>().addModule(module);
-    return Result{TRI_ERROR_NO_ERROR};
+    return vocbase.server().getFeature<WasmServerFeature>().addModule(module);
   }
 
-  auto deleteModule(ModuleName const& name) const
+  auto removeModule(ModuleName const& name) const
       -> futures::Future<Result> override {
-    vocbase.server().getFeature<WasmServerFeature>().deleteModule(name);
-    return Result{TRI_ERROR_NO_ERROR};
+    return vocbase.server().getFeature<WasmServerFeature>().removeModule(name);
   }
 
   auto allModules() const
-      -> futures::Future<std::unordered_map<std::string, Module>> override {
+      -> futures::Future<ResultT<std::set<std::string>>> override {
     return vocbase.server().getFeature<WasmServerFeature>().allModules();
   }
 
   auto module(ModuleName const& name) const
-      -> futures::Future<std::optional<Module>> override {
+      -> futures::Future<ResultT<Module>> override {
     return vocbase.server().getFeature<WasmServerFeature>().module(name);
   }
 

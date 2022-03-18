@@ -23,9 +23,7 @@
 #pragma once
 
 #include <cstdint>
-#include <unordered_map>
 #include <memory>
-#include <optional>
 #include <set>
 #include <string>
 #include <string_view>
@@ -35,8 +33,9 @@
 #include "Basics/Result.h"
 #include "Basics/ResultT.h"
 #include "RestServer/arangod.h"
-#include "Wasm3cpp.h"
-#include "WasmCommon.h"
+#include "WasmServer/Wasm3cpp.h"
+#include "WasmServer/WasmCommon.h"
+#include "WasmServer/WasmModuleCollection.h"
 
 namespace arangodb {
 namespace options {
@@ -56,26 +55,27 @@ class WasmServerFeature final : public ArangodFeature {
 
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override;
-  void addModule(wasm::Module const& module);
+  void start() override;
+
   auto loadModuleIntoRuntime(wasm::ModuleName const& name) -> Result;
   auto executeFunction(wasm::ModuleName const& moduleName,
                        wasm::FunctionName const& functionName,
                        wasm::FunctionParameters const& parameters)
       -> ResultT<uint64_t>;
-  void deleteModule(wasm::ModuleName const& name);
-  auto allModules() const -> std::unordered_map<std::string, wasm::Module>;
-  auto module(wasm::ModuleName const& name) const
-      -> std::optional<wasm::Module>;
+  auto addModule(wasm::Module const& module) -> Result;
+  auto removeModule(wasm::ModuleName const& name) -> Result;
+  auto allModules() const -> ResultT<std::set<std::string>>;
+  auto module(wasm::ModuleName const& name) const -> ResultT<wasm::Module>;
 
  private:
   struct GuardedModules {
-    std::unordered_map<std::string, wasm::Module> _modules;
+    std::set<std::string> _loadedModules;
   };
   Guarded<GuardedModules> _guardedModules;
 
   wasm3::environment _environment;
   wasm3::runtime _runtime = _environment.new_runtime(1024);
 
-  std::set<std::string> _loadedModules;
+  std::unique_ptr<WasmModuleCollection> _wasmModuleCollection;
 };
 }  // namespace arangodb

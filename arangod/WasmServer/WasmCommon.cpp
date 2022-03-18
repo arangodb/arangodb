@@ -25,12 +25,16 @@ void codeToVelocypack(Code const& code, VPackBuilder& builder) {
 }
 
 void arangodb::wasm::moduleToVelocypack(Module const& module,
-                                        VPackBuilder& builder) {
+                                        VPackBuilder& builder,
+                                        bool forCollection) {
   auto ob = VPackObjectBuilder(&builder);
   builder.add("name", VPackValue(module.name.string));
   builder.add(VPackValue("code"));
   codeToVelocypack(module.code, builder);
   builder.add("isDeterministic", VPackValue(module.isDeterministic));
+  if (forCollection) {
+    builder.add("_key", VPackValue(module.name.string));
+  }
 }
 
 auto checkVelocypackToModuleIsPossible(Slice slice) -> Result {
@@ -48,7 +52,7 @@ auto checkVelocypackToModuleIsPossible(Slice slice) -> Result {
   std::set<std::string> validFields = {"name", "code", "isDeterministic"};
   for (const auto& field : ObjectIterator(slice)) {
     if (auto fieldname = field.key.copyString();
-        !(validFields.contains(fieldname))) {
+        !fieldname.starts_with("_") && !validFields.contains(fieldname)) {
       return Result{TRI_ERROR_BAD_PARAMETER,
                     "Found unknown field '" + fieldname + "'"};
     }

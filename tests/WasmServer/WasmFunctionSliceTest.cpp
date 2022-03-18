@@ -79,6 +79,11 @@ TEST_F(WasmModuleCreation, gives_error_for_unknown_key) {
   expectError(R"({"name": "test", "code": [8, 9, 0], "banane": 5})");
 }
 
+TEST_F(WasmModuleCreation, creates_module_with_additional_underscore_key) {
+  expectModule(R"({"name": "test", "code": [8, 9, 0], "_banane": 5})",
+               Module{{"test"}, {{8, 9, 0}}, false});
+}
+
 TEST_F(WasmModuleCreation, gives_error_when_name_is_not_a_string) {
   expectError(R"({"name": 1, "code": [0]})");
 }
@@ -111,6 +116,18 @@ TEST(WasmModuleConversion, converts_module_to_velocypack) {
       velocypackBuilder.toJson(),
       VPackParser::fromJson(
           R"({"name": "module_name", "code": "A+k=", "isDeterministic": false})")
+          ->slice()
+          .toJson());
+}
+
+TEST(WasmModuleConversion, converts_module_to_velocypack_with_name_as_key) {
+  VPackBuilder velocypackBuilder;
+  arangodb::wasm::moduleToVelocypack(Module{{"module_name"}, {{3, 233}}, false},
+                                     velocypackBuilder, true);
+  EXPECT_EQ(
+      velocypackBuilder.toJson(),
+      VPackParser::fromJson(
+          R"({"name": "module_name", "code": "A+k=", "isDeterministic": false, "_key": "module_name"})")
           ->slice()
           .toJson());
 }

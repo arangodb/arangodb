@@ -160,6 +160,7 @@ LogTopic Logger::TTL("ttl", LogLevel::WARN);
 LogTopic Logger::VALIDATION("validation", LogLevel::INFO);
 LogTopic Logger::V8("v8", LogLevel::WARN);
 LogTopic Logger::VIEWS("views", LogLevel::FATAL);
+LogTopic Logger::WASM("wasm", LogLevel::WARN);
 
 #ifdef USE_ENTERPRISE
 LogTopic LdapAuthProvider::LDAP_TOPIC("ldap", LogLevel::INFO);
