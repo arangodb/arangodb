@@ -883,12 +883,10 @@ auto ExecutionBlockImpl<SubqueryStartExecutor>::shadowRowForwarding(AqlCallStack
     TRI_ASSERT(_outputItemRow->produced());
     _outputItemRow->advanceRow();
 
-    if (!stack.is36Compatible()) {
-      // Count that we have now produced a row in the new depth.
-      // Note: We need to increment the depth by one, as the we have increased
-      // it while writing into the output by one as well.
-      countShadowRowProduced(stack, shadowRow.getDepth() + 1);
-    }
+    // Count that we have now produced a row in the new depth.
+    // Note: We need to increment the depth by one, as the we have increased
+    // it while writing into the output by one as well.
+    countShadowRowProduced(stack, shadowRow.getDepth() + 1);
 
     if (_lastRange.hasShadowRow()) {
       return ExecState::SHADOWROWS;
@@ -1977,6 +1975,12 @@ auto ExecutionBlockImpl<Executor>::createUpstreamCall(AqlCall const& call, bool 
 template <class Executor>
 auto ExecutionBlockImpl<Executor>::countShadowRowProduced(AqlCallStack& stack, size_t depth)
     -> void {
+  if (stack.is36Compatible()) {
+    // 3.6 comptability code. In 3.6 we do not have a call stack available
+    // Hence in this compatibility mode we have no place where to count the
+    // ShadowRows. Skip counting here.
+    return;
+  }
   auto& subList = stack.modifyCallListAtDepth(depth);
   auto& subCall = subList.modifyNextCall();
   subCall.didProduce(1);
