@@ -67,8 +67,8 @@ const removeEntries = function (url, stateId, entries) {
   });
 };
 
-const getSnapshot = function (url, stateId) {
-  return request.get({url: `${url}/_db/${database}/_api/prototype-state/${stateId}/snapshot`});
+const getSnapshot = function (url, stateId, waitForIndex) {
+  return request.get({url: `${url}/_db/${database}/_api/prototype-state/${stateId}/snapshot?waitForIndex=${waitForIndex}`});
 };
 
 const replicatedStateSuite = function () {
@@ -99,7 +99,8 @@ const replicatedStateSuite = function () {
     tearDown: lh.registerAgencyTestEnd,
 
     testPrototypeReplicatedStateMethods: function() {
-      const stateId = lh.nextUniqueLogId();
+      // TODO use unique id
+      const stateId = 12; //lh.nextUniqueLogId();
 
       const servers = _.sampleSize(lh.dbservers, 3);
       let participants = {};
@@ -186,13 +187,17 @@ const replicatedStateSuite = function () {
       lh.checkRequestResult(result);
       assertEqual(result.json.result.foo400,  "bar400");
 
-      result = getSnapshot(leaderUrl, stateId);
+      result = getSnapshot(leaderUrl, stateId, 7);
       lh.checkRequestResult(result);
       assertEqual(result.json.result, {foo100: "bar100", foo400: "bar400"});
 
-      result = getSnapshot(coordUrl, stateId);
+      result = removeEntry(coordUrl, stateId, "foo100");
       lh.checkRequestResult(result);
-      assertEqual(result.json.result, {foo100: "bar100", foo400: "bar400"});
+      assertEqual(result.json.result.index, 8);
+
+      result = getSnapshot(leaderUrl, stateId, 8);
+      lh.checkRequestResult(result);
+      assertEqual(result.json.result, {foo400: "bar400"});
     },
   };
 };
