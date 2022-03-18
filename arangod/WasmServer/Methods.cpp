@@ -83,6 +83,10 @@ auto WasmVmMethods::createInstance(TRI_vocbase_t& vocbase)
   switch (ServerState::instance()->getRole()) {
     case ServerState::ROLE_SINGLE:
       return std::make_shared<WasmVmMethodsSingleServer>(vocbase);
+    case ServerState::ROLE_COORDINATOR:
+      // TODO PREG-102 Create a separate class for Coordinator
+      return std::make_shared<WasmVmMethodsSingleServer>(vocbase);
+    // TODO PREG-103 Create a separate class for DBServer
     default:
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_NOT_IMPLEMENTED,

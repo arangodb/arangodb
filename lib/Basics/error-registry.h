@@ -739,6 +739,8 @@ constexpr static frozen::unordered_map<ErrorCode, const char*, 363>
          "analyzers in plan could not be modified"},
         {TRI_ERROR_AIR_EXECUTION_ERROR,  // 8001
          "error during AIR execution"},
+        {TRI_ERROR_WASM_EXECUTION_ERROR,  // 8002
+         "error during WASM execution"},
         {TRI_ERROR_LICENSE_EXPIRED_OR_INVALID,  // 9001
          "license has expired or is invalid"},
         {TRI_ERROR_LICENSE_SIGNATURE_VERIFICATION,  // 9002

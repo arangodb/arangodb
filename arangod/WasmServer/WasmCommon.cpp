@@ -71,7 +71,7 @@ auto velocypackToCode(Slice slice) -> ResultT<Code> {
     std::vector<uint8_t> code;
     for (auto const& p : velocypack::ArrayIterator(slice)) {
       if (p.isInteger() and p.getInt() >= 0 and p.getInt() < 256) {
-        code.emplace_back(p.getInt());
+        code.emplace_back(static_cast<uint8_t>(p.getInt()));
       } else {
         return ResultT<Code>::error(TRI_ERROR_BAD_PARAMETER,
                                     "Array should include only bytes");

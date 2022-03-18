@@ -27,12 +27,11 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
-var internal = require('internal');
 var arangosh = require('@arangodb/arangosh');
 var fs = require('fs');
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief encode data in file with base64 
+// / @brief encode data in file with base64
 // //////////////////////////////////////////////////////////////////////////////
 
 var base64 = function (file) {
@@ -100,7 +99,7 @@ var showModule = function (name) {
   var requestResult = db._connection.GET('/_api/wasm/' + name);
   arangosh.checkRequestResult(requestResult);
   return requestResult.result;
-}
+};
 
 exports.unregister = unregisterModule;
 exports.registerByFile = registerModuleByFile;
