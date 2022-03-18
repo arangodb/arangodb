@@ -6,3 +6,4 @@ upgrade_data_3.5.*
 audit
 dfdb
 replication2_client
+shell_fuzzer
