@@ -25,10 +25,7 @@
 
 #include <cstdint>
 #include <memory>
-#include <optional>
 #include <string>
-#include <unordered_map>
-#include <utility>
 #include <vector>
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -79,29 +76,32 @@ auto RestWasmHandler::executeByMethod(WasmVmMethods const& methods)
 }
 
 auto showAllModules(WasmVmMethods const& methods, VPackBuilder& response)
-    -> void {
+    -> Result {
   auto modules = methods.allModules().get();
 
-  VPackArrayBuilder ob(&response);
-  for (auto const& function : modules) {
-    response.add(VPackValue(function.first));
+  if (modules.fail()) {
+    return Result{modules.errorNumber(), modules.errorMessage()};
   }
+
+  VPackArrayBuilder ob(&response);
+  for (auto const& module : modules.get()) {
+    response.add(VPackValue(module.string));
+  }
+  return {};
 }
 
 auto showModule(ModuleName const& name, WasmVmMethods const& methods,
                 VPackBuilder& response) -> Result {
   auto module = methods.module(name).get();
 
-  if (!module.has_value()) {
-    return Result{
-        TRI_ERROR_BAD_PARAMETER,
-        "RestWasmHandler: Module " + name.string + " does not exist."};
+  if (module.fail()) {
+    return Result{module.errorNumber(), module.errorMessage()};
   }
 
   VPackObjectBuilder ob(&response);
   response.add(VPackValue("result"));
-  arangodb::wasm::moduleToVelocypack(module.value(), response);
-  return Result{};
+  arangodb::wasm::moduleToVelocypack(module.get(), response);
+  return {};
 }
 
 auto RestWasmHandler::handleGetRequest(WasmVmMethods const& methods)
@@ -139,7 +139,11 @@ auto RestWasmHandler::handleDeleteRequest(WasmVmMethods const& methods)
   }
   auto const& name = suffixes[0];
 
-  methods.deleteModule(ModuleName{name});
+  auto result = methods.removeModule(ModuleName{name});
+  if (auto res = result.get(); res.fail()) {
+    generateError(ResponseCode::BAD, res.errorNumber(), res.errorMessage());
+    return RestStatus::DONE;
+  }
 
   VPackBuilder builder;
   {
@@ -157,7 +161,10 @@ auto addWasmModule(VPackSlice slice, wasm::WasmVmMethods const& methods,
     return Result{module.errorNumber(), module.errorMessage()};
   }
 
-  auto create = methods.addModule(module.get());
+  auto result = methods.addModule(module.get());
+  if (auto res = result.get(); res.fail()) {
+    return res;
+  }
 
   VPackObjectBuilder ob1(&response);
   response.add("installed", VPackValue(module.get().name.string));

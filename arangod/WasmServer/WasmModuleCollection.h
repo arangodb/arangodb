@@ -22,44 +22,33 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include <cstdint>
-#include <memory>
 #include <string>
 #include <vector>
 
+#include "Basics/Result.h"
+#include "Basics/ResultT.h"
+#include "RestServer/arangod.h"
 #include "WasmServer/WasmCommon.h"
 
 struct TRI_vocbase_t;
 
 namespace arangodb {
-class Result;
-template<typename T>
-class ResultT;
 
-namespace futures {
-template<typename T>
-class Future;
-}
-}  // namespace arangodb
+class WasmModuleCollection {
+ public:
+  WasmModuleCollection(TRI_vocbase_t& vocbase);
+  auto allNames() const -> ResultT<std::vector<wasm::ModuleName>>;
+  auto get(wasm::ModuleName const& name) const -> ResultT<wasm::Module>;
+  auto add(wasm::Module const& module) -> Result;
+  auto remove(wasm::ModuleName const& name) -> Result;
 
-namespace arangodb::wasm {
-
-struct WasmVmMethods {
-  virtual ~WasmVmMethods() = default;
-  virtual auto addModule(Module const& module) const
-      -> futures::Future<Result> = 0;
-  virtual auto removeModule(ModuleName const& name) const
-      -> futures::Future<Result> = 0;
-  virtual auto allModules() const
-      -> futures::Future<ResultT<std::vector<ModuleName>>> = 0;
-  virtual auto module(ModuleName const& name) const
-      -> futures::Future<ResultT<Module>> = 0;
-  virtual auto executeFunction(ModuleName const& moduleName,
-                               FunctionName const& functionName,
-                               FunctionParameters const& parameters) const
-      -> futures::Future<ResultT<uint64_t>> = 0;
-  static auto createInstance(TRI_vocbase_t& vocbase)
-      -> std::shared_ptr<WasmVmMethods>;
+ private:
+  TRI_vocbase_t& _vocbase;
+  inline static std::string const _collection = "wasmModules";
+  auto getFromDBServer(wasm::ModuleName const& name) const
+      -> ResultT<wasm::Module>;
 };
 
-}  // namespace arangodb::wasm
+void registerWasmModuleCollectionUpgradeTask(ArangodServer& server);
+
+}  // namespace arangodb
