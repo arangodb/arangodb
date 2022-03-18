@@ -1,8 +1,6 @@
 v3.9.1 (XXXX-XX-XX)
 -------------------
 
-* Added fuzzer tests to oskar blocklist.
-
 * Speed up initial sync (in case there is already data present) by prefetching
   data from leader.
 
