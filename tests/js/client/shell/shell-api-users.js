@@ -75,7 +75,7 @@ function validating_userSuite () {
   return {
     setUp: function() {
       for (let i = 1; i < 10; i++) {
-        arango.DELETE_RAW("/_api/user/users-" + i);;
+        arango.DELETE_RAW("/_api/user/users-" + i);
       }
     },
 
