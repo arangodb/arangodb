@@ -214,4 +214,3 @@ auto execute(Action const& action, DatabaseID const& dbName, LogId const& log,
 }
 
 }  // namespace arangodb::replication2::replicated_log
-   // arangodb::cluster::paths::aliasesnamespacearangodb::replication2::replicated_log
