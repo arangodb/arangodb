@@ -1,8 +1,6 @@
 v3.8.7 (XXXX-XX-XX)
 -------------------
 
-* Added fuzzer tests to oskar blocklist.
-
 * Updated arangosync to 2.9.0.
 
 * Bug-Fix: Resolve BTS-673/Issue #15107, a spliced subquery could return too few
