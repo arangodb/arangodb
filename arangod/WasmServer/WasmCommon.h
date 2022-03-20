@@ -22,12 +22,19 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+#include <cstdint>
 #include <string>
-#include "velocypack/Builder.h"
-#include "velocypack/Slice.h"
+#include <utility>
+#include <vector>
+
 #include "Basics/ResultT.h"
-#include "Basics/Result.h"
-#include "velocypack/Slice.h"
+#include "velocypack/Builder.h"
+
+namespace arangodb {
+namespace velocypack {
+class Slice;
+}  // namespace velocypack
+}  // namespace arangodb
 
 namespace arangodb::wasm {
 

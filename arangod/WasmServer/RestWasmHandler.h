@@ -23,11 +23,18 @@
 
 #pragma once
 
+#include "GeneralServer/RequestLane.h"
+#include "GeneralServer/RestHandler.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
-#include "WasmServer/Methods.h"
-#include "velocypack/Slice.h"
+#include "RestServer/arangod.h"
 
 namespace arangodb {
+class GeneralRequest;
+class GeneralResponse;
+namespace wasm {
+struct WasmVmMethods;
+}  // namespace wasm
+
 using namespace wasm;
 
 class RestWasmHandler : public arangodb::RestVocbaseBaseHandler {

@@ -24,22 +24,28 @@
 #include "RestWasmHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include <cstdint>
+#include <memory>
+#include <optional>
+#include <string>
+#include <unordered_map>
+#include <utility>
+#include <vector>
 
-#include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
-#include "velocypack/Parser.h"
-
-#include "GeneralServer/RestHandler.h"
-#include "Logger/LogMacros.h"
-#include "Rest/CommonDefines.h"
-
-#include "WasmServer/Methods.h"
-#include "RestServer/arangod.h"
-
-#include "WasmServer/WasmCommon.h"
+#include "Basics/Result.h"
 #include "Basics/ResultT.h"
+#include "Basics/voc-errors.h"
 #include "Futures/Future.h"
+#include "GeneralServer/RestHandler.h"
+#include "Rest/CommonDefines.h"
+#include "Rest/GeneralRequest.h"
+#include "Rest/GeneralResponse.h"
+#include "RestServer/arangod.h"
+#include "velocypack/Builder.h"
 #include "velocypack/Slice.h"
+#include "velocypack/Value.h"
+#include "WasmServer/Methods.h"
+#include "WasmServer/WasmCommon.h"
 
 using namespace arangodb;
 using namespace arangodb::wasm;

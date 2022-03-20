@@ -22,13 +22,23 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+#include <cstdint>
 #include <memory>
+#include <optional>
+#include <string>
+#include <unordered_map>
 #include <variant>
+
 #include "VocBase/vocbase.h"
 #include "WasmCommon.h"
 
+struct TRI_vocbase_t;
+
 namespace arangodb {
 class Result;
+template<typename T>
+class ResultT;
+
 namespace futures {
 template<typename T>
 class Future;

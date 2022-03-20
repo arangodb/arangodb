@@ -1,12 +1,24 @@
-#include <unordered_map>
-#include "Basics/Result.h"
-#include "WasmServerFeature.h"
-#include <s2/base/integral_types.h>
+#include <cstdint>
+#include <iterator>
 #include <optional>
-#include "Cluster/ServerState.h"
+#include <unordered_map>
+#include <utility>
+#include <vector>
+
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/Result.h"
+#include "Basics/voc-errors.h"
+#include "Cluster/ServerState.h"
 #include "WasmServer/Wasm3cpp.h"
 #include "WasmServer/WasmCommon.h"
+#include "WasmServerFeature.h"
+
+namespace arangodb {
+namespace application_features {
+class CommunicationFeaturePhase;
+class DatabaseFeaturePhase;
+}  // namespace application_features
+}  // namespace arangodb
 
 using namespace arangodb;
 using namespace arangodb::wasm;

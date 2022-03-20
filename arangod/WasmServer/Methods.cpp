@@ -22,9 +22,17 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Methods.h"
-#include "Futures/Future.h"
-#include "Cluster/ServerState.h"
+
+#include <cstdint>
+
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/Exceptions.h"
+#include "Basics/Result.h"
+#include "Basics/ResultT.h"
+#include "Basics/voc-errors.h"
+#include "Cluster/ServerState.h"
+#include "Futures/Future.h"
+#include "VocBase/vocbase.h"
 #include "WasmServerFeature.h"
 #include "WasmCommon.h"
 
