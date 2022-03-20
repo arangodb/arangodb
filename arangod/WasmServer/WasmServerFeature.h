@@ -22,16 +22,27 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include <s2/base/integral_types.h>
+#include <cstdint>
 #include <unordered_map>
-#include "RestServer/arangod.h"
-#include "WasmCommon.h"
+#include <memory>
+#include <optional>
+#include <set>
+#include <string>
+#include <string_view>
+
+#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Guarded.h"
-#include "Wasm3cpp.h"
-#include "Basics/ResultT.h"
 #include "Basics/Result.h"
+#include "Basics/ResultT.h"
+#include "RestServer/arangod.h"
+#include "Wasm3cpp.h"
+#include "WasmCommon.h"
 
 namespace arangodb {
+namespace options {
+class ProgramOptions;
+}  // namespace options
+
 class WasmServerFeature final : public ArangodFeature {
  public:
   static constexpr std::string_view name() noexcept {
@@ -42,6 +53,7 @@ class WasmServerFeature final : public ArangodFeature {
   ~WasmServerFeature() override = default;
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
+
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override;
   void addModule(wasm::Module const& module);

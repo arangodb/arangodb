@@ -1,17 +1,19 @@
+#include "WasmCommon.h"
+
+#include <cstdint>
 #include <optional>
 #include <regex>
-#include <string>
 #include <set>
+#include <string>
+
+#include "Basics/ResultT.h"
+#include "Basics/Result.h"
 #include "Basics/StringUtils.h"
-#include "WasmCommon.h"
+#include "Basics/voc-errors.h"
 #include "velocypack/Builder.h"
 #include "velocypack/Iterator.h"
 #include "velocypack/Slice.h"
 #include "velocypack/Value.h"
-#include "velocypack/ValueType.h"
-#include "velocypack/vpack.h"
-#include "Basics/ResultT.h"
-#include "Basics/Result.h"
 
 using namespace arangodb;
 using namespace arangodb::wasm;
