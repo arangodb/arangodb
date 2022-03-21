@@ -1697,7 +1697,10 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
     if (b.role === 'agent') return -1;
     return 0;
   });
-  print(Date() + ' Shutdown order ' + JSON.stringify(toShutdown));
+
+  if (options.extremeVerbosity || !options.noStartStopLogs) {
+    print(Date() + ' Shutdown order ' + JSON.stringify(toShutdown));
+  }
 
   let nonAgenciesCount = instanceInfo.arangods
       .filter(arangod => {
@@ -1733,7 +1736,10 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
           arangod.exitStatus = {
             status: 'RUNNING'
           };
-          print(Date() + " Commanded shut down: " + JSON.stringify(arangod));
+
+          if (options.extremeVerbosity || !options.noStartStopLogs) {
+            print(Date() + " Commanded shut down: " + JSON.stringify(arangod));
+          }
         }
         return true;
       }
