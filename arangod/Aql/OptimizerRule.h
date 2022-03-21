@@ -53,6 +53,7 @@ struct OptimizerRule {
     CanBeDisabled = 4,
     CanCreateAdditionalPlans = 8,
     DisabledByDefault = 16,
+    EnterpriseOnly = 32
   };
 
   /// @brief helper for building flags
@@ -83,6 +84,8 @@ struct OptimizerRule {
   }
 
   bool isDisabledByDefault() const { return hasFlag(Flags::DisabledByDefault); }
+
+  bool isEnterpriseOnly() const { return hasFlag(Flags::EnterpriseOnly); }
 
   /// @brief optimizer rules
   enum RuleLevel : int {

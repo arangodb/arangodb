@@ -574,3 +574,6 @@ void replicated_log::CommitFailReason::FewerParticipantsThanWriteConcern::
   builder.add(StaticStrings::SoftWriteConcern, softWriteConcern);
   builder.add(StaticStrings::EffectiveWriteConcern, effectiveWriteConcern);
 }
+
+GlobalLogIdentifier::GlobalLogIdentifier(std::string database, LogId id)
+    : database(std::move(database)), id(id) {}

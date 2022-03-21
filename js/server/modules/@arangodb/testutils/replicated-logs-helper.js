@@ -25,7 +25,7 @@
 const internal = require("internal");
 const {wait} = internal;
 const _ = require("lodash");
-const jsunity = require("../../../../common/modules/jsunity");
+const jsunity = require("jsunity");
 const {assertTrue} = jsunity.jsUnity.assertions;
 const request = require('@arangodb/request');
 const arangodb = require('@arangodb');
@@ -73,7 +73,7 @@ const getServerRebootId = function (serverId) {
 
 const getParticipantsObjectForServers = function (servers) {
   return _.reduce(servers, (a, v) => {
-    a[v] = {excluded: false, forced: false};
+    a[v] = {allowedInQuorum: true, allowedAsLeader: true, forced: false};
     return a;
   }, {});
 };

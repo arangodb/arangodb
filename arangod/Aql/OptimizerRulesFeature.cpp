@@ -23,7 +23,6 @@
 
 #include "OptimizerRulesFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Aql/ExecutionPlan.h"
 #include "Aql/IResearchViewOptimizerRules.h"
 #include "Aql/IndexNodeOptimizerRules.h"
 #include "Aql/OptimizerRules.h"
@@ -365,7 +364,8 @@ void OptimizerRulesFeature::addRules() {
   registerRule("cluster-one-shard", clusterOneShardRule,
                OptimizerRule::clusterOneShardRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
-                                        OptimizerRule::Flags::ClusterOnly));
+                                        OptimizerRule::Flags::ClusterOnly,
+                                        OptimizerRule::Flags::EnterpriseOnly));
 #endif
 
 #ifdef USE_ENTERPRISE
@@ -374,7 +374,8 @@ void OptimizerRulesFeature::addRules() {
   registerRule("cluster-lift-constant-for-disjoint-graph-nodes",
                clusterLiftConstantsForDisjointGraphNodes,
                OptimizerRule::clusterLiftConstantsForDisjointGraphNodes,
-               OptimizerRule::makeFlags(OptimizerRule::Flags::ClusterOnly));
+               OptimizerRule::makeFlags(OptimizerRule::Flags::ClusterOnly,
+                                        OptimizerRule::Flags::EnterpriseOnly));
 #endif
 
   registerRule("distribute-in-cluster", distributeInClusterRule,
@@ -384,7 +385,8 @@ void OptimizerRulesFeature::addRules() {
 #ifdef USE_ENTERPRISE
   registerRule("smart-joins", smartJoinsRule, OptimizerRule::smartJoinsRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
-                                        OptimizerRule::Flags::ClusterOnly));
+                                        OptimizerRule::Flags::ClusterOnly,
+                                        OptimizerRule::Flags::EnterpriseOnly));
 #endif
 
   // distribute operations in cluster
@@ -422,17 +424,20 @@ void OptimizerRulesFeature::addRules() {
   registerRule("scatter-satellite-graphs", scatterSatelliteGraphRule,
                OptimizerRule::scatterSatelliteGraphRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
-                                        OptimizerRule::Flags::ClusterOnly));
+                                        OptimizerRule::Flags::ClusterOnly,
+                                        OptimizerRule::Flags::EnterpriseOnly));
 
   registerRule("remove-satellite-joins", removeSatelliteJoinsRule,
                OptimizerRule::removeSatelliteJoinsRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
-                                        OptimizerRule::Flags::ClusterOnly));
+                                        OptimizerRule::Flags::ClusterOnly,
+                                        OptimizerRule::Flags::EnterpriseOnly));
 
   registerRule("remove-distribute-nodes", removeDistributeNodesRule,
                OptimizerRule::removeDistributeNodesRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
-                                        OptimizerRule::Flags::ClusterOnly));
+                                        OptimizerRule::Flags::ClusterOnly,
+                                        OptimizerRule::Flags::EnterpriseOnly));
 #endif
 
   registerRule("undistribute-remove-after-enum-coll",
@@ -473,7 +478,8 @@ void OptimizerRulesFeature::addRules() {
   registerRule("push-subqueries-to-dbserver", clusterPushSubqueryToDBServer,
                OptimizerRule::clusterPushSubqueryToDBServer,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
-                                        OptimizerRule::Flags::ClusterOnly));
+                                        OptimizerRule::Flags::ClusterOnly,
+                                        OptimizerRule::Flags::EnterpriseOnly));
 #endif
 
   // apply late materialization for index queries
