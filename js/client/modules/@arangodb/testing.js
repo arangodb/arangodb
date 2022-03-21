@@ -572,7 +572,7 @@ function unitTest (cases, options) {
   // testsuites may register more defaults...
   _.defaults(options, optionsDefaults);
 
-  if (options.setInterrupteable) {
+  if (options.setInterruptable) {
     internal.SetSignalToImmediateDeadline()
   }
   
