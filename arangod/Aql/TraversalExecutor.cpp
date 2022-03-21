@@ -222,7 +222,7 @@ bool TraversalExecutorInfos::usePathOutput() const {
 Ast* TraversalExecutorInfos::getAst() const { return _ast; }
 
 std::string TraversalExecutorInfos::typeToString(
-    TraversalExecutorInfosHelper::OutputName type) const {
+    TraversalExecutorInfosHelper::OutputName type) {
   switch (type) {
     case TraversalExecutorInfosHelper::VERTEX:
       return std::string{"VERTEX"};
@@ -802,8 +802,7 @@ TraversalExecutor::TraversalExecutor(Fetcher& fetcher, Infos& infos)
     : _infos(infos),
       _inputRow{CreateInvalidInputRowHint{}},
       _traverser(nullptr),
-      _traversalEnumerator(nullptr),
-      _traversalEnumerator(infos.traversalEnumerator()) {
+      _traversalEnumerator(nullptr) {
   // reset the traverser, so that no residual state is left in it. This is
   // important because the TraversalExecutor is sometimes reconstructed (in
   // place) with the same TraversalExecutorInfos as before. Those
@@ -1114,7 +1113,9 @@ bool TraversalExecutor::initTraverser(AqlItemBlockInputRange& input) {
         } else if (in.isString()) {
           sourceString = in.slice().copyString();
         }
-      }auto pos = sourceString.find('/');
+      }
+
+      auto pos = sourceString.find('/');
 
       if (pos == std::string::npos) {
         traverser()->options()->query().warnings().registerWarning(
