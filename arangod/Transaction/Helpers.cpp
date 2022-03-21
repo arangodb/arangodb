@@ -63,15 +63,16 @@ VPackSlice transaction::helpers::extractKeyFromDocument(VPackSlice slice) {
 }
 
 /** @brief extract the _key attribute from a slice. If slice is an Object,
- * _key is read from the attribute. If the read attribute is a String, it is returned,
- * otherwise, the empty string is returned.
- * If the given slice is a String, the substring
- * after '/' or the whole string if '/' does not appear is returned.
+ * _key is read from the attribute. If the read attribute is a String, it is
+ * returned, otherwise, the empty string is returned. If the given slice is a
+ * String, the substring after '/' or the whole string if '/' does not appear is
+ * returned.
  *
- * @param slice can be Object or String, otherwise an empty StringRef is returned.
+ * @param slice can be Object or String, otherwise an empty StringRef is
+ * returned.
  * @return The _key attribute
  */
- std::string_view transaction::helpers::extractKeyPart(VPackSlice slice) {
+std::string_view transaction::helpers::extractKeyPart(VPackSlice slice) {
   slice = slice.resolveExternal();
 
   // extract _key
