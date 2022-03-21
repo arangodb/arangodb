@@ -201,7 +201,7 @@ const optionsDefaults = {
   'sanitizer': false,
   'activefailover': false,
   'singles': 2,
-  'setInterrupteable': false,
+  'setInterruptable': false,
   'sniff': false,
   'sniffAgency': true,
   'sniffDBServers': true,
