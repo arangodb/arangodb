@@ -71,7 +71,7 @@ constexpr std::string_view kSortModeHeap("heap");
 
 constexpr std::string_view kParallelismParallel("parallel");
 constexpr std::string_view kParallelismSerial("serial");
-constexpr std::string_view kParallelismUndefined("undefied");
+constexpr std::string_view kParallelismUndefined("undefined");
 
 std::string_view toString(GatherNode::Parallelism value) noexcept {
   switch (value) {
