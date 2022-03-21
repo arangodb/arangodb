@@ -674,7 +674,7 @@ void arangodb::maintenance::diffReplicatedStates(
         if (spec.participants.contains(serverId)) {
           if (!localStates.contains(id)) {
             // we have to create this replicated state
-            createReplicatedStateAction(id, &spec, nullptr);
+            createReplicatedStateAction(id, &spec, current);
           }
         }
       };

@@ -64,11 +64,13 @@ void LeaderStateManager<S>::run() {
                     TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED};
               }
               LOG_CTX("53ba0", TRACE, self->loggerContext)
-                  << "creating leader instance and starting recovery";
+                  << "creating leader instance";
               self->updateInternalState(
                   LeaderInternalState::kRecoveryInProgress, result->range());
               std::shared_ptr<IReplicatedLeaderState<S>> machine =
                   self->factory->constructLeader(std::move(self->core));
+              LOG_CTX("5af0d", DEBUG, self->loggerContext)
+                  << "starting recovery on range " << result->range();
               return machine->recoverEntries(std::move(result))
                   .then([weak,
                          machine](futures::Try<Result>&& tryResult) mutable
