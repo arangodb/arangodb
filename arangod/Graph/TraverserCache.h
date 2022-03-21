@@ -91,37 +91,37 @@ class TraverserCache {
   virtual bool appendVertex(std::string_view idString,
                             arangodb::aql::AqlValue& result);
 
-  std::uint64_t getAndResetInsertedDocuments() {
+  [[nodiscard]] std::uint64_t getAndResetInsertedDocuments() {
     std::uint64_t value = _insertedDocuments;
     _insertedDocuments = 0;
     return value;
   }
 
-  std::uint64_t getAndResetFiltered() {
+  [[nodiscard]] std::uint64_t getAndResetFiltered() {
     std::uint64_t value = _filtered;
     _filtered = 0;
     return value;
   }
 
-  std::uint64_t getAndResetCursorsCreated() {
+  [[nodiscard]] std::uint64_t getAndResetCursorsCreated() {
     std::uint64_t value = _cursorsCreated;
     _cursorsCreated = 0;
     return value;
   }
 
-  std::uint64_t getAndResetCursorsRearmed() {
+  [[nodiscard]] std::uint64_t getAndResetCursorsRearmed() {
     std::uint64_t value = _cursorsRearmed;
     _cursorsRearmed = 0;
     return value;
   }
 
-  std::uint64_t getAndResetCacheHits() {
+  [[nodiscard]] std::uint64_t getAndResetCacheHits() {
     std::uint64_t value = _cacheHits;
     _cacheHits = 0;
     return value;
   }
 
-  std::uint64_t getAndResetCacheMisses() {
+  [[nodiscard]] std::uint64_t getAndResetCacheMisses() {
     std::uint64_t value = _cacheMisses;
     _cacheMisses = 0;
     return value;

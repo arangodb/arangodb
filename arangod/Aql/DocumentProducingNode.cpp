@@ -39,11 +39,6 @@
 
 using namespace arangodb::aql;
 
-namespace {
-constexpr std::string_view filterKey("filter");
-constexpr std::string_view producesResultKey("producesResult");
-}  // namespace
-
 DocumentProducingNode::DocumentProducingNode(Variable const* outVariable)
     : _outVariable(outVariable),
       _count(false),
@@ -62,7 +57,7 @@ DocumentProducingNode::DocumentProducingNode(ExecutionPlan* plan,
       _maxProjections(kMaxProjections) {
   TRI_ASSERT(_outVariable != nullptr);
 
-  VPackSlice p = slice.get(::filterKey);
+  VPackSlice p = slice.get(StaticStrings::Filter);
   if (!p.isNone()) {
     Ast* ast = plan->getAst();
     // new AstNode is memory-managed by the Ast
@@ -112,7 +107,7 @@ void DocumentProducingNode::toVelocyPack(arangodb::velocypack::Builder& builder,
   _projections.toVelocyPack(builder);
 
   if (_filter != nullptr) {
-    builder.add(VPackValue(filterKey));
+    builder.add(VPackValue(StaticStrings::Filter));
     _filter->toVelocyPack(builder, flags);
   }
 
@@ -120,10 +115,10 @@ void DocumentProducingNode::toVelocyPack(arangodb::velocypack::Builder& builder,
   builder.add("count", VPackValue(doCount()));
   if (doCount()) {
     TRI_ASSERT(_filter == nullptr);
-    builder.add(::producesResultKey, VPackValue(false));
+    builder.add(StaticStrings::ProducesResult, VPackValue(false));
   } else {
     builder.add(
-        ::producesResultKey,
+        StaticStrings::ProducesResult,
         VPackValue(_filter != nullptr ||
                    dynamic_cast<ExecutionNode const*>(this)->isVarUsedLater(
                        _outVariable)));

@@ -157,20 +157,20 @@ class Manager {
   /// additional synchronization between the caches and slow things down
   /// considerably.
   //////////////////////////////////////////////////////////////////////////////
-  std::uint64_t globalAllocation() const noexcept;
+  [[nodiscard]] std::uint64_t globalAllocation() const noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Report the current amount of allocated, but unused memory of all
   /// caches.
   //////////////////////////////////////////////////////////////////////////////
-  std::uint64_t spareAllocation() const noexcept;
+  [[nodiscard]] std::uint64_t spareAllocation() const noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Return some statistics about available caches
   //////////////////////////////////////////////////////////////////////////////
-  MemoryStats memoryStats() const noexcept;
+  [[nodiscard]] MemoryStats memoryStats() const noexcept;
 
-  std::pair<double, double> globalHitRates();
+  [[nodiscard]] std::pair<double, double> globalHitRates();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Open a new transaction.

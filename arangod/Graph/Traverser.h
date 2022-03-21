@@ -269,19 +269,19 @@ class Traverser {
   /// @brief Get the number of documents loaded
   //////////////////////////////////////////////////////////////////////////////
 
-  std::uint64_t getAndResetReadDocuments() noexcept;
+  [[nodiscard]] std::uint64_t getAndResetReadDocuments() noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Get the number of filtered paths
   //////////////////////////////////////////////////////////////////////////////
 
-  std::uint64_t getAndResetFiltered() noexcept;
+  [[nodiscard]] std::uint64_t getAndResetFiltered() noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Get the number of HTTP requests made
   //////////////////////////////////////////////////////////////////////////////
 
-  std::uint64_t getAndResetHttpRequests() noexcept;
+  [[nodiscard]] std::uint64_t getAndResetHttpRequests() noexcept;
 
   TraverserOptions* options() { return _opts; }
 
@@ -291,7 +291,7 @@ class Traverser {
   ///        If it returns false it is guaranteed that there are no more paths.
   //////////////////////////////////////////////////////////////////////////////
 
-  bool hasMore() const { return !_done; }
+  bool hasMore() const noexcept { return !_done; }
 
   bool edgeMatchesConditions(arangodb::velocypack::Slice edge,
                              std::string_view vid, uint64_t depth,

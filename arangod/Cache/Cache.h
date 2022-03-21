@@ -96,17 +96,17 @@ class Cache : public std::enable_shared_from_this<Cache> {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns the total memory usage for this cache in bytes.
   //////////////////////////////////////////////////////////////////////////////
-  std::uint64_t size() const noexcept;
+  [[nodiscard]] std::uint64_t size() const noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns the limit on data memory usage for this cache in bytes.
   //////////////////////////////////////////////////////////////////////////////
-  std::uint64_t usageLimit() const noexcept;
+  [[nodiscard]] std::uint64_t usageLimit() const noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns the current data memory usage for this cache in bytes.
   //////////////////////////////////////////////////////////////////////////////
-  std::uint64_t usage() const noexcept;
+  [[nodiscard]] std::uint64_t usage() const noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Gives hint to attempt to preallocate space for an incoming load.
@@ -216,8 +216,8 @@ class Cache : public std::enable_shared_from_this<Cache> {
   Metadata& metadata();
   std::shared_ptr<Table> table() const;
   void shutdown();
-  bool canResize() noexcept;
-  bool canMigrate() noexcept;
+  [[nodiscard]] bool canResize() noexcept;
+  [[nodiscard]] bool canMigrate() noexcept;
   bool freeMemory();
   bool migrate(std::shared_ptr<Table> newTable);
 

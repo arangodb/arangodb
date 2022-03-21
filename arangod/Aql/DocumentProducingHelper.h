@@ -90,9 +90,9 @@ struct DocumentProducingFunctionContext {
 
   void incrFiltered() noexcept;
 
-  uint64_t getAndResetNumScanned() noexcept;
+  [[nodiscard]] uint64_t getAndResetNumScanned() noexcept;
 
-  uint64_t getAndResetNumFiltered() noexcept;
+  [[nodiscard]] uint64_t getAndResetNumFiltered() noexcept;
 
   InputAqlItemRow const& getInputRow() const noexcept;
 

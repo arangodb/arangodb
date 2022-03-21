@@ -153,12 +153,13 @@ std::string const StaticStrings::IndexNameTime("time");
 
 // index hint strings
 std::string const StaticStrings::IndexHintDisableIndex("disableIndex");
-std::string const StaticStrings::IndexHintMaxProjections("maxProjections");
 std::string const StaticStrings::IndexHintOption("indexHint");
 std::string const StaticStrings::IndexHintOptionForce("forceIndexHint");
 
 // query options
+std::string const StaticStrings::Filter("filter");
 std::string const StaticStrings::MaxProjections("maxProjections");
+std::string const StaticStrings::ProducesResult("producesResult");
 std::string const StaticStrings::ReadOwnWrites("readOwnWrites");
 std::string const StaticStrings::UseCache("useCache");
 

@@ -144,7 +144,7 @@ class PathEnumerator {
   bool usePostFilter(aql::PruneExpressionEvaluator* evaluator);
 
   /// @brief return number of HTTP requests made, and reset it to 0
-  size_t getAndResetHttpRequests() {
+  [[nodiscard]] size_t getAndResetHttpRequests() {
     size_t value = _httpRequests;
     _httpRequests = 0;
     return value;

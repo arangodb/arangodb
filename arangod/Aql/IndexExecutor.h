@@ -200,10 +200,10 @@ class IndexExecutor {
     void incrCacheHits(std::uint64_t value = 1) noexcept;
     void incrCacheMisses(std::uint64_t value = 1) noexcept;
 
-    std::uint64_t getAndResetCursorsCreated() noexcept;
-    std::uint64_t getAndResetCursorsRearmed() noexcept;
-    std::uint64_t getAndResetCacheHits() noexcept;
-    std::uint64_t getAndResetCacheMisses() noexcept;
+    [[nodiscard]] std::uint64_t getAndResetCursorsCreated() noexcept;
+    [[nodiscard]] std::uint64_t getAndResetCursorsRearmed() noexcept;
+    [[nodiscard]] std::uint64_t getAndResetCacheHits() noexcept;
+    [[nodiscard]] std::uint64_t getAndResetCacheMisses() noexcept;
   };
 
   struct CursorReader {

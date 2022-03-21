@@ -137,7 +137,7 @@ IndexHint::IndexHint(QueryContext& query, AstNode const* node) : IndexHint() {
             }
             handled = true;
           }
-        } else if (name == arangodb::StaticStrings::IndexHintMaxProjections ||
+        } else if (name == arangodb::StaticStrings::MaxProjections ||
                    name == arangodb::StaticStrings::UseCache) {
           // "maxProjections" and "useCache" are valid attributes,
           // but handled elsewhere

@@ -87,7 +87,7 @@ class DocumentProducingNode {
   /// @brief wheter or not the node can be used for counting
   bool doCount() const;
 
-  bool useCache() const noexcept { return _useCache; }
+  [[nodiscard]] bool useCache() const noexcept { return _useCache; }
 
   void setUseCache(bool value) noexcept { _useCache = value; }
 

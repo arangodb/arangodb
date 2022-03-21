@@ -146,12 +146,14 @@ uint64_t EnumerateCollectionExecutor::skipEntries(
   if (_infos.getFilter() == nullptr) {
     _cursor->skip(toSkip, actuallySkipped);
     stats.incrScanned(actuallySkipped);
-    _documentProducingFunctionContext.getAndResetNumScanned();
+    [[maybe_unused]] uint64_t scanned =
+        _documentProducingFunctionContext.getAndResetNumScanned();
   } else {
     _cursor->nextDocument(_documentSkipper, toSkip);
-    size_t filtered =
+    uint64_t filtered =
         _documentProducingFunctionContext.getAndResetNumFiltered();
-    size_t scanned = _documentProducingFunctionContext.getAndResetNumScanned();
+    uint64_t scanned =
+        _documentProducingFunctionContext.getAndResetNumScanned();
     TRI_ASSERT(scanned >= filtered);
     stats.incrFiltered(filtered);
     stats.incrScanned(scanned);
@@ -193,7 +195,8 @@ EnumerateCollectionExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
            * TRI_ASSERT(_documentProducingFunctionContext.getAndResetNumScanned()
            * == skipped);
            */
-          _documentProducingFunctionContext.getAndResetNumScanned();
+          [[maybe_unused]] uint64_t scanned =
+              _documentProducingFunctionContext.getAndResetNumScanned();
         } else {
           // We need to call this to do the Accounting of FILTERED correctly.
           skipped += skipEntries(ExecutionBlock::SkipAllSize(), stats);

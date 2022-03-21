@@ -240,7 +240,8 @@ class IndexIterator {
 
   /// @brief returns cache hits (first) and misses (second) statistics, and
   /// resets their values to 0
-  std::pair<std::uint64_t, std::uint64_t> getAndResetCacheStats() noexcept;
+  [[nodiscard]] std::pair<std::uint64_t, std::uint64_t>
+  getAndResetCacheStats() noexcept;
 
  protected:
   ReadOwnWrites canReadOwnWrites() const noexcept { return _readOwnWrites; }

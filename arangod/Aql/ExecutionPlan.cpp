@@ -358,7 +358,7 @@ void setForOptions(QueryContext& query, AstNode const* node,
       if (child->type == AstNodeType::NODE_TYPE_OBJECT_ELEMENT) {
         TRI_ASSERT(child->numMembers() > 0);
         std::string_view name(child->getStringView());
-        if (name == arangodb::StaticStrings::IndexHintMaxProjections) {
+        if (name == arangodb::StaticStrings::MaxProjections) {
           AstNode const* value = child->getMember(0);
           int64_t maxProjections = -1;
 

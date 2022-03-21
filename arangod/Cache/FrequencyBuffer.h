@@ -25,6 +25,7 @@
 
 #include <algorithm>
 #include <atomic>
+#include <cmath>
 #include <cstdint>
 #include <unordered_map>
 #include <utility>
@@ -141,12 +142,8 @@ class FrequencyBuffer {
 
  private:
   static constexpr std::size_t powerOf2(std::size_t capacity) {
-    // TODO maybe use
-    // https://graphics.stanford.edu/~seander/bithacks.html#RoundUpPowerOf2
-    std::size_t i = 0;
-    for (; (static_cast<size_t>(1) << i) < capacity; i++) {
-    }
-    return (static_cast<size_t>(1) << i);
+    std::size_t bitPos = std::ceil(std::log2(capacity));
+    return (static_cast<size_t>(1) << bitPos);
   }
 
   SharedPRNGFeature& _sharedPRNG;

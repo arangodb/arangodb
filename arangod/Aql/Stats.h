@@ -48,7 +48,7 @@ class CountStats {
   CountStats() noexcept : _counted(0) {}
 
   void incrCounted(std::uint64_t value = 1) noexcept { _counted += value; }
-  std::uint64_t getCounted() const noexcept { return _counted; }
+  [[nodiscard]] std::uint64_t getCounted() const noexcept { return _counted; }
 
   void operator+=(CountStats const& stats) { _counted += stats._counted; }
 
@@ -67,7 +67,7 @@ class FilterStats {
   FilterStats() noexcept : _filtered(0) {}
 
   void incrFiltered(std::uint64_t value = 1) noexcept { _filtered += value; }
-  std::uint64_t getFiltered() const noexcept { return _filtered; }
+  [[nodiscard]] std::uint64_t getFiltered() const noexcept { return _filtered; }
 
   void operator+=(FilterStats const& stats) noexcept {
     _filtered += stats._filtered;
@@ -94,8 +94,10 @@ class EnumerateCollectionStats {
   void incrScanned(std::uint64_t value = 1) noexcept { _scannedFull += value; }
   void incrFiltered(std::uint64_t value = 1) noexcept { _filtered += value; }
 
-  std::uint64_t getScanned() const noexcept { return _scannedFull; }
-  std::uint64_t getFiltered() const noexcept { return _filtered; }
+  [[nodiscard]] std::uint64_t getScanned() const noexcept {
+    return _scannedFull;
+  }
+  [[nodiscard]] std::uint64_t getFiltered() const noexcept { return _filtered; }
 
   void operator+=(EnumerateCollectionStats const& stats) noexcept {
     _scannedFull += stats._scannedFull;
@@ -138,12 +140,22 @@ class IndexStats {
     _cacheMisses += value;
   }
 
-  std::uint64_t getScanned() const noexcept { return _scannedIndex; }
-  std::uint64_t getFiltered() const noexcept { return _filtered; }
-  std::uint64_t getCursorsCreated() const noexcept { return _cursorsCreated; }
-  std::uint64_t getCursorsRearmed() const noexcept { return _cursorsRearmed; }
-  std::uint64_t getCacheHits() const noexcept { return _cacheHits; }
-  std::uint64_t getCacheMisses() const noexcept { return _cacheMisses; }
+  [[nodiscard]] std::uint64_t getScanned() const noexcept {
+    return _scannedIndex;
+  }
+  [[nodiscard]] std::uint64_t getFiltered() const noexcept { return _filtered; }
+  [[nodiscard]] std::uint64_t getCursorsCreated() const noexcept {
+    return _cursorsCreated;
+  }
+  [[nodiscard]] std::uint64_t getCursorsRearmed() const noexcept {
+    return _cursorsRearmed;
+  }
+  [[nodiscard]] std::uint64_t getCacheHits() const noexcept {
+    return _cacheHits;
+  }
+  [[nodiscard]] std::uint64_t getCacheMisses() const noexcept {
+    return _cacheMisses;
+  }
 
   void operator+=(IndexStats const& stats) noexcept {
     _scannedIndex += stats._scannedIndex;
@@ -181,12 +193,16 @@ class ModificationStats {
   void incrWritesExecuted(std::uint64_t value = 1) noexcept {
     _writesExecuted += value;
   }
-  std::uint64_t getWritesExecuted() const noexcept { return _writesExecuted; }
+  [[nodiscard]] std::uint64_t getWritesExecuted() const noexcept {
+    return _writesExecuted;
+  }
 
   void incrWritesIgnored(std::uint64_t value = 1) noexcept {
     _writesIgnored += value;
   }
-  std::uint64_t getWritesIgnored() const noexcept { return _writesIgnored; }
+  [[nodiscard]] std::uint64_t getWritesIgnored() const noexcept {
+    return _writesIgnored;
+  }
 
   void operator+=(ModificationStats const& stats) noexcept {
     _writesExecuted += stats._writesExecuted;
@@ -214,17 +230,23 @@ class SingleRemoteModificationStats {
   void incrWritesExecuted(std::uint64_t value = 1) noexcept {
     _writesExecuted += value;
   }
-  std::uint64_t getWritesExecuted() const noexcept { return _writesExecuted; }
+  [[nodiscard]] std::uint64_t getWritesExecuted() const noexcept {
+    return _writesExecuted;
+  }
 
   void incrWritesIgnored(std::uint64_t value = 1) noexcept {
     _writesIgnored += value;
   }
-  std::uint64_t getWritesIgnored() const noexcept { return _writesIgnored; }
+  [[nodiscard]] std::uint64_t getWritesIgnored() const noexcept {
+    return _writesIgnored;
+  }
 
   void incrScannedIndex(std::uint64_t value = 1) noexcept {
     _scannedIndex += value;
   }
-  std::uint64_t getScannedIndex() const noexcept { return _scannedIndex; }
+  [[nodiscard]] std::uint64_t getScannedIndex() const noexcept {
+    return _scannedIndex;
+  }
 
   void operator+=(SingleRemoteModificationStats const& stats) noexcept {
     _writesExecuted += stats._writesExecuted;

@@ -151,12 +151,13 @@ class StaticStrings {
 
   // index hint strings
   static std::string const IndexHintDisableIndex;
-  static std::string const IndexHintMaxProjections;
   static std::string const IndexHintOption;
   static std::string const IndexHintOptionForce;
 
   // query options
+  static std::string const Filter;
   static std::string const MaxProjections;
+  static std::string const ProducesResult;
   static std::string const ReadOwnWrites;
   static std::string const UseCache;
 

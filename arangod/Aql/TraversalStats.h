@@ -52,17 +52,21 @@ class TraversalStats {
   }
 
   void incrFiltered(std::uint64_t value = 1) noexcept { _filtered += value; }
-  std::uint64_t getFiltered() const noexcept { return _filtered; }
+  [[nodiscard]] std::uint64_t getFiltered() const noexcept { return _filtered; }
 
   void incrScannedIndex(std::uint64_t value = 1) noexcept {
     _scannedIndex += value;
   }
-  std::uint64_t getScannedIndex() const noexcept { return _scannedIndex; }
+  [[nodiscard]] std::uint64_t getScannedIndex() const noexcept {
+    return _scannedIndex;
+  }
 
   void incrHttpRequests(std::uint64_t value = 1) noexcept {
     _httpRequests += value;
   }
-  std::uint64_t getHttpRequests() const noexcept { return _httpRequests; }
+  [[nodiscard]] std::uint64_t getHttpRequests() const noexcept {
+    return _httpRequests;
+  }
 
   void incrCursorsCreated(std::uint64_t value = 1) noexcept {
     _cursorsCreated += value;
@@ -70,15 +74,23 @@ class TraversalStats {
   void incrCursorsRearmed(std::uint64_t value = 1) noexcept {
     _cursorsRearmed += value;
   }
-  std::uint64_t getCursorsCreated() const noexcept { return _cursorsCreated; }
-  std::uint64_t getCursorsRearmed() const noexcept { return _cursorsRearmed; }
+  [[nodiscard]] std::uint64_t getCursorsCreated() const noexcept {
+    return _cursorsCreated;
+  }
+  [[nodiscard]] std::uint64_t getCursorsRearmed() const noexcept {
+    return _cursorsRearmed;
+  }
 
   void incrCacheHits(std::uint64_t value = 1) noexcept { _cacheHits += value; }
   void incrCacheMisses(std::uint64_t value = 1) noexcept {
     _cacheMisses += value;
   }
-  std::uint64_t getCacheHits() const noexcept { return _cacheHits; }
-  std::uint64_t getCacheMisses() const noexcept { return _cacheMisses; }
+  [[nodiscard]] std::uint64_t getCacheHits() const noexcept {
+    return _cacheHits;
+  }
+  [[nodiscard]] std::uint64_t getCacheMisses() const noexcept {
+    return _cacheMisses;
+  }
 
   void operator+=(TraversalStats const& other) {
     _filtered += other._filtered;
