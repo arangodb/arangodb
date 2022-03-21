@@ -109,6 +109,7 @@ add_library(arango STATIC
   Basics/ResourceUsage.cpp
   Basics/RocksDBLogger.cpp
   Basics/RocksDBUtils.cpp
+  Basics/SourceLocation.cpp
   Basics/StaticStrings.cpp
   Basics/StringBuffer.cpp
   Basics/StringHeap.cpp

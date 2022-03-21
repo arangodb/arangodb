@@ -27,7 +27,6 @@
 #include "RestServer/arangod.h"
 
 namespace arangodb {
-
 namespace consensus {
 class Agent;
 }

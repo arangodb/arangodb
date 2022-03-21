@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2022-2022 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,22 +17,17 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Alexandru Petenchea
+/// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
-#pragma once
 
-#include "RestServer/arangod.h"
+#include "SourceLocation.h"
 
-namespace arangodb::replication2::replicated_state::prototype {
+#include <iostream>
 
-struct PrototypeStateMachineFeature : public ArangodFeature {
-  static constexpr std::string_view name() noexcept {
-    return "PrototypeStateMachine";
-  }
+namespace arangodb::basics {
 
-  explicit PrototypeStateMachineFeature(Server& server);
-  void start() override;
-  void prepare() override;
-};
-
-}  // namespace arangodb::replication2::replicated_state::prototype
+auto operator<<(std::ostream& ostream, SourceLocation const& sourceLocation)
+    -> std::ostream& {
+  return ostream << sourceLocation.file_name() << ":" << sourceLocation.line();
+}
+}  // namespace arangodb::basics

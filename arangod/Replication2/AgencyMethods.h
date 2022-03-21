@@ -90,4 +90,9 @@ auto createReplicatedState(DatabaseID const& database,
     -> futures::Future<ResultT<uint64_t>>;
 auto getCurrentSupervision(TRI_vocbase_t& vocbase, LogId id)
     -> LogCurrentSupervision;
+
+auto replaceReplicatedStateParticipant(TRI_vocbase_t& vocbase, LogId id,
+                                       ParticipantId const& participantToRemove,
+                                       ParticipantId const& participantToAdd)
+    -> futures::Future<Result>;
 }  // namespace arangodb::replication2::agency::methods
