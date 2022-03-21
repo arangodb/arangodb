@@ -118,7 +118,7 @@ class PlainCache final : public Cache {
   virtual uint64_t freeMemoryFrom(std::uint32_t hash) override;
   virtual void migrateBucket(void* sourcePtr,
                              std::unique_ptr<Table::Subtable> targets,
-                             std::shared_ptr<Table>& newTable) override;
+                             Table& newTable) override;
 
   // helpers
   std::pair<::ErrorCode, Table::BucketLocker> getBucket(

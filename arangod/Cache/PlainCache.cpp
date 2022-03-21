@@ -255,7 +255,7 @@ std::uint64_t PlainCache<Hasher>::freeMemoryFrom(std::uint32_t hash) {
 template<typename Hasher>
 void PlainCache<Hasher>::migrateBucket(void* sourcePtr,
                                        std::unique_ptr<Table::Subtable> targets,
-                                       std::shared_ptr<Table>& newTable) {
+                                       Table& newTable) {
   // lock current bucket
   std::shared_ptr<Table> table = this->table();
 
@@ -305,8 +305,8 @@ void PlainCache<Hasher>::migrateBucket(void* sourcePtr,
       }
     }
     reclaimMemory(totalSize);
-    newTable->slotsFilled(filled);
-    newTable->slotsEmptied(emptied);
+    newTable.slotsFilled(filled);
+    newTable.slotsEmptied(emptied);
   }
 
   // finish up this bucket's migration

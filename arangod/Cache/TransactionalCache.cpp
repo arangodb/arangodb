@@ -301,7 +301,7 @@ uint64_t TransactionalCache<Hasher>::freeMemoryFrom(std::uint32_t hash) {
 template<typename Hasher>
 void TransactionalCache<Hasher>::migrateBucket(
     void* sourcePtr, std::unique_ptr<Table::Subtable> targets,
-    std::shared_ptr<Table>& newTable) {
+    Table& newTable) {
   std::uint64_t term = _manager->_transactions.term();
 
   // lock current bucket
@@ -359,7 +359,7 @@ void TransactionalCache<Hasher>::migrateBucket(
         }
       }
       reclaimMemory(totalSize);
-      newTable->slotsEmptied(emptied);
+      newTable.slotsEmptied(emptied);
     }
 
     // migrate actual values
@@ -404,8 +404,8 @@ void TransactionalCache<Hasher>::migrateBucket(
       }
     }
     reclaimMemory(totalSize);
-    newTable->slotsFilled(filled);
-    newTable->slotsEmptied(emptied);
+    newTable.slotsFilled(filled);
+    newTable.slotsEmptied(emptied);
   }
 
   // finish up this bucket's migration

@@ -224,7 +224,7 @@ class Cache : public std::enable_shared_from_this<Cache> {
   virtual std::uint64_t freeMemoryFrom(std::uint32_t hash) = 0;
   virtual void migrateBucket(void* sourcePtr,
                              std::unique_ptr<Table::Subtable> targets,
-                             std::shared_ptr<Table>& newTable) = 0;
+                             Table& newTable) = 0;
 };
 
 }  // end namespace arangodb::cache
