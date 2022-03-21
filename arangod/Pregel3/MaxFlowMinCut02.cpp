@@ -27,14 +27,15 @@
 namespace arangodb::pregel3 {
 
 void MaxFlowMinCut::removeLeavesRecursively() {
-  // make _target non-leaf
+  // make _target temporary non-leaf by adding a dummy vertex with 0 capacity,
+  // which will be deleted at the end of the function
   bool tmpVertex = false;
   if (vertex(_target).outDegree() == 0) {
     tmpVertex = true;
     size_t tmpVertexIdx = _g->numVertices();
     _g->addVertex();
-    _g->addEdge(_target, tmpVertexIdx);
-    _g->addEdge(tmpVertexIdx, _target);
+    _g->addEdge(_target, tmpVertexIdx, 0.0);
+    _g->addEdge(tmpVertexIdx, _target, 0.0);
   }
 
   std::vector<size_t> currentLeaves;
@@ -81,7 +82,7 @@ void MaxFlowMinCut::removeLeavesRecursively() {
     if (i == n) {
       // no leaves more, done
       _g->vertices.resize(i);
-      return;
+      break;
     }
     // set j
     size_t j = i + 1;
@@ -91,7 +92,7 @@ void MaxFlowMinCut::removeLeavesRecursively() {
     if (j == n) {
       // only non-leaves after leaves, no "holes" more
       _g->vertices.resize(i);
-      return;
+      break;
     }
     // copy
     _g->vertices[i] = _g->vertices[j];
@@ -102,14 +103,14 @@ void MaxFlowMinCut::removeLeavesRecursively() {
       auto handle = to.inEdges.extract(j);
       handle.key() = i;
       to.inEdges.insert(std::move(handle));
-      e->from = i;
+      e.from = i;
     }
     for (auto& [fromIdx, e] : v.inEdges) {
       auto& from = vertex(fromIdx);
       auto handle = from.outEdges.extract(j);
       handle.key() = i;
       from.inEdges.insert(std::move(handle));
-      e->from = i;
+      e.from = i;
     }
     // increase i (and j): this guarantees that i finally reaches n
     // and the outer while loop terminates
@@ -152,8 +153,6 @@ void MaxFlowMinCut::initialize() {
   */
 }
 
-bool MaxFlowMinCut::existsEdge(MinCutEdge* eIdx) { return eIdx != nullptr; }
-
 void MaxFlowMinCut::updateApplicableAfterPush(MinCutVertex const& v,
                                               MinCutVertex const& u,
                                               double delta) {
@@ -168,8 +167,8 @@ void MaxFlowMinCut::updateApplicableAfterPush(MinCutVertex const& v,
     // for now, just iterate
     for (auto const& [neighbIdx, outE] : u.outEdges) {
       auto const neighb = vertex(neighbIdx);
-      if (outE->residual() > 0 && v.label == neighb.label + 1) {
-        _applicableEdges.insert(std::make_pair(outE->from, outE->to));
+      if (outE.residual() > 0 && v.label == neighb.label + 1) {
+        _applicableEdges.insert(std::make_pair(outE.from, outE.to));
       }
     }
   }
@@ -179,7 +178,7 @@ void MaxFlowMinCut::updateApplicableAfterPush(MinCutVertex const& v,
   // if excess(u) became 0
   if (u.excess == 0) {
     for (auto const& [neighbIdx, outE] : u.outEdges) {
-      _applicableEdges.erase(std::make_pair(outE->from, neighbIdx));
+      _applicableEdges.erase(std::make_pair(outE.from, neighbIdx));
     }
   }
 
@@ -201,7 +200,7 @@ void MaxFlowMinCut::updateRelabableAfterPush(MinCutVertex const& v, size_t vIdx,
   bool isRelabable = true;
   // todo test if v is already relabable
   for (auto const& [neighbV, outE] : v.outEdges) {
-    if (outE->residual() > 0 && v.label > vertex(neighbV).label) {
+    if (outE.residual() > 0 && v.label > vertex(neighbV).label) {
       isRelabable = false;
       break;
     }
@@ -223,16 +222,18 @@ void MaxFlowMinCut::push(size_t uIdx, size_t vIdx) {
   TRI_ASSERT(u.label == v.label + 1);
 
   double delta = std::min(u.excess, residual(e));
-  e->increaseFlow(delta);
+  e.increaseFlow(delta);
 
-  auto eRev = _g->reverseEdge(e);
-  if (not existsEdge(eRev)) {
-    _g->addEdge(e->to, e->from);
+  auto eRevIdx = _g->reverseEdge(e);
+  if (not eRevIdx.has_value()) {  // there is no reverse edge
+    auto const& [idx, _] = _g->addEdge(e.to, e.from, delta);
+    eRevIdx = idx;
   }
-  eRev->decreaseFlow(delta);
+  auto eRev = edge(eRevIdx.value());
+  eRev.decreaseFlow(delta);
   u.decreaseExcess(delta);
-  if (e->residual() == 0) {
-    _applicableEdges.erase(std::make_pair(e->from, e->to));
+  if (e.residual() == 0) {
+    _applicableEdges.erase(std::make_pair(e.from, e.to));
     _g->removeEdge(e);
   }
   v.increaseExcess(delta);
@@ -328,9 +329,9 @@ std::unique_ptr<AlgorithmResult> MaxFlowMinCut::run() {
 
   // saturate all out-edges of _source
   for (auto const& [vIdx, e] : _g->vertices[_source].outEdges) {
-    e->flow = e->capacity;
+    e.flow = e.capacity;
     auto& v = vertex(vIdx);
-    v.excess = e->flow;
+    v.excess = e.flow;
     _relabableVertices.insert(vIdx);
   }
   // Note: graph _g and residual graph are still the same, no need to iterate
@@ -356,9 +357,10 @@ std::unique_ptr<AlgorithmResult> MaxFlowMinCut::run() {
   queue.push_back(_source);
   while (!queue.empty()) {
     size_t const u = queue.front();
+    c.sourceComp.insert(u);
     queue.pop_front();
-    for (auto const& [vIdx, e] : vertex(u).outEdges) {  // todo also inEdges
-      if (e->residual() == 0) {
+    for (auto const& [vIdx, e] : vertex(u).outEdges) {
+      if (e.residual() == 0) {
         continue;
       }
       if (!c.sourceComp.contains(vIdx)) {
@@ -373,11 +375,12 @@ std::unique_ptr<AlgorithmResult> MaxFlowMinCut::run() {
   for (size_t uIdx : c.sourceComp) {
     auto const& u = vertex(uIdx);
     for (auto const& [vIdx, e] : u.outEdges) {
-      if (e->residual() <= 0) {
+      if (e.residual() <= 0) {
+        c.edges.insert(e.idx);
         continue;
       }
       if (!c.sourceComp.contains(vIdx)) {
-        c.edges.insert(e->idx);
+        c.edges.insert(e.idx);
       }
     }
   }
@@ -388,8 +391,8 @@ std::unique_ptr<AlgorithmResult> MaxFlowMinCut::run() {
   for (size_t uIdx = 0; uIdx < _g->numVertices(); ++uIdx) {
     auto const& u = vertex(uIdx);
     for (auto const& [_, e] : u.outEdges) {  // todo
-      if (e->flow > 0) {
-        f[e->idx] = e->flow;
+      if (e.flow > 0) {
+        f[e.idx] = e.flow;
       }
     }
   }
@@ -405,8 +408,8 @@ void MaxFlowMinCutResult::toVelocyPack(VPackBuilder& builder) {
     for (auto const& [eIdx, f] : flow) {
       auto const& e = _g->edge(eIdx);
       VPackObjectBuilder o(&builder);
-      builder.add("from", VPackValue(_g->vertexIds[e->from]));
-      builder.add("to", VPackValue(_g->vertexIds[e->to]));
+      builder.add("from", VPackValue(_g->vertexIds[e.from]));
+      builder.add("to", VPackValue(_g->vertexIds[e.to]));
       builder.add("flow", VPackValue(f));
     }
   }
@@ -416,8 +419,8 @@ void MaxFlowMinCutResult::toVelocyPack(VPackBuilder& builder) {
     for (auto const& eIdx : cut.edges) {
       auto const& e = _g->edge(eIdx);
       VPackObjectBuilder o(&builder);
-      builder.add("from", VPackValue(_g->vertexIds[e->from]));
-      builder.add("to", VPackValue(_g->vertexIds[e->to]));
+      builder.add("from", VPackValue(_g->vertexIds[e.from]));
+      builder.add("to", VPackValue(_g->vertexIds[e.to]));
     }
   }
   {

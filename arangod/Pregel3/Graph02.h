@@ -36,9 +36,9 @@ struct Graph : BaseGraph {
 
   void addVertex(V&& v) { vertices.template emplace_back(std::move(v)); }
   void addVertex() { vertices.emplace_back(); }
-  std::pair<size_t, bool> addEdge(size_t from, size_t to);
+  //  std::pair<size_t, bool> addEdge(size_t from, size_t to);
 
-  void removeEdge(E* e);
+  void removeEdge(E& e);
 
   V& vertex(size_t vIdx) {
     TRI_ASSERT(vIdx < numVertices());
@@ -50,45 +50,51 @@ struct Graph : BaseGraph {
     return vertices[vIdx];
   }
 
-  E* edge(size_t eIdx) {
+  E& edge(size_t eIdx) {
     auto it = edges.find(eIdx);
-    if (it != edges.end()) {
-      return &(it->second);
-    }
-    return nullptr;
+    TRI_ASSERT(it != edges.end());
+    return it->second;
   }
 
-  E const* edge(size_t eIdx) const {
+  E const& edge(size_t eIdx) const {
     auto it = edges.find(eIdx);
-    if (it != edges.end()) {
-      return &(it->second);
-    }
-    return nullptr;
+    TRI_ASSERT(it != edges.end());
+    return it->second;
   }
 
-  E* edge(size_t from, size_t to) {
+  E& edge(size_t from, size_t to) {
     TRI_ASSERT(from < numVertices());
     TRI_ASSERT(to < numVertices());
     auto it = vertices[from].outEdges.find(to);
-    if (it != vertices[from].outEdges.end()) {
-      return it->second;
-    }
-    return nullptr;
+    TRI_ASSERT(it != vertices[from].outEdges.end());
+    return it->second;
   }
 
-  E const* edge(size_t from, size_t to) const {
+  E& edge(size_t from, size_t to) const {
     TRI_ASSERT(from < numVertices());
     TRI_ASSERT(to < numVertices());
     auto it = vertices[from].outEdges.find(to);
-    if (it != vertices[from].outEdges.end()) {
-      return it->second;
-    }
-    return nullptr;
+    TRI_ASSERT(it != vertices[from].outEdges.end());
+    return it->second;
   }
 
-  E const* reverseEdge(E const& e) const { return edge(e.to, e.from); }
+  std::optional<size_t> reverseEdge(E const& e) const {
+    auto const& to = vertex(e.to);
+    auto it = to.outEdges.find(e.from);
+    if (it == to.outEdges.end()) {
+      return {};
+    }
+    return it->second.idx;
+  }
 
-  E* reverseEdge(E const* e) { return edge(e->to, e->from); }
+  std::optional<size_t> reverseEdge(E const& e) {
+    auto const& to = vertex(e.to);
+    auto it = to.outEdges.find(e.from);
+    if (it == to.outEdges.end()) {
+      return {};
+    }
+    return it->second.idx;
+  }
 };
 
 template<class V, class E>
@@ -112,12 +118,16 @@ void Graph<V, E>::toVelocyPack(VPackBuilder& builder) const {
   // todo add graph properties: number of vertices/edges
 }
 
-using EmptyPropertiesGraph = Graph<VertexWithEmptyProps, EdgeWithEmptyProps>;
+struct EmptyPropertiesGraph : Graph<VertexWithEmptyProps, EdgeWithEmptyProps> {
+  std::pair<size_t, bool> addEdge(size_t fromIdx, size_t toIdx);
+};
 
 class MinCutGraph : public Graph<MinCutVertex, MinCutEdge> {
  public:
   size_t source;
   size_t target;
+
+  std::pair<size_t, bool> addEdge(size_t from, size_t to, double capacity);
 
  private:
   std::unordered_set<size_t> applicableEdges;

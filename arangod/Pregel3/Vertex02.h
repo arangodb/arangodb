@@ -13,8 +13,8 @@ namespace arangodb::pregel3 {
 
 template<class VertexProperties, class E>
 struct Vertex {
-  std::unordered_map<size_t, E*> outEdges;  // out-neighbour to edge
-  std::unordered_map<size_t, E*> inEdges;   // in-neighbour to edge
+  std::unordered_map<size_t, E&> outEdges;  // out-neighbour to edge
+  std::unordered_map<size_t, E&> inEdges;   // in-neighbour to edge
   VertexProperties props;
 
   void toVelocyPack(VPackBuilder& builder, std::string_view id, size_t idx);

@@ -78,7 +78,7 @@ void Query::loadGraph() {
     // get the _id (assume the slice is correct)
     // todo is _id stored in the db always a custom type?
 
-    std::string vertexId = transaction::helpers::extractIdString(
+    std::string const vertexId = transaction::helpers::extractIdString(
         &collectionNameResolver, slice, VPackSlice());
     //    auto graphVerticesEdges =
     //    _getCastedGraphVerticesEdges(_algSpec.algName);
@@ -86,15 +86,15 @@ void Query::loadGraph() {
     if (_algSpec.algName == "MinCut") {
       // todo the graph is casted each time a vertex is inserted
       auto graph = dynamic_cast<MinCutGraph*>(_graph.get());
-      graph->vertices.emplace_back();
       // trust that each vertex id appears only once
       _vertexIdToIdx[vertexId] = graph->vertexIds.size();
       if (vertexId == _algSpec.targetVertexId) {
-        graph->target = graph->numVertices();
+        graph->target = graph->vertices.size();
       }
       if (vertexId == _algSpec.sourceVertexId) {
-        graph->source = graph->numVertices();
+        graph->source = graph->vertices.size();
       }
+      graph->vertices.emplace_back();
       graph->vertexIds.push_back(vertexId);
     } else {
       auto graph = dynamic_cast<EmptyPropertiesGraph*>(_graph.get());
@@ -128,27 +128,10 @@ void Query::loadGraph() {
       } else {
         capacity = resCapacity.get();
       }
-
-      size_t eIdx = graph->edges.size();
-      // create the edge as the value of graph->edges[eIdx]
-      auto const& [eIt, _] = graph->edges.emplace(
-          std::piecewise_construct, std::forward_as_tuple(eIdx),
-          std::forward_as_tuple(fromIdx, toIdx, capacity));
-
-      graph->vertices[fromIdx].outEdges[toIdx] =
-          reinterpret_cast<MinCutEdge*>(&(*eIt));
-      graph->vertices[toIdx].inEdges[fromIdx] =
-          reinterpret_cast<MinCutEdge*>(&*eIt);
+      graph->addEdge(fromIdx, toIdx, capacity);
     } else {
       auto graph = dynamic_cast<EmptyPropertiesGraph*>(_graph.get());
-      size_t const eIdx = graph->edges.size();
-      auto const& [eIt, _] = graph->edges.emplace(
-          std::piecewise_construct, std::forward_as_tuple(eIdx),
-          std::forward_as_tuple(fromIdx, toIdx));
-      graph->vertices[fromIdx].outEdges[toIdx] =
-          reinterpret_cast<Edge<EmptyEdgeProperties>*>(&(*eIt));
-      graph->vertices[toIdx].outEdges[fromIdx] =
-          reinterpret_cast<Edge<EmptyEdgeProperties>*>(&(*eIt));
+      graph->addEdge(fromIdx, toIdx);
     }
 
     return true;

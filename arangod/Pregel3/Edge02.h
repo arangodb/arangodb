@@ -16,8 +16,8 @@ struct Edge {
   size_t to;
   size_t idx;  // used only for quick deletion of edges
   EdgeProperties props;
-
-  Edge(size_t from, size_t to) : from(from), to(to) {}
+  Edge() = delete;
+  Edge(size_t from, size_t to, size_t idx) : from(from), to(to), idx(idx) {}
 
   void toVelocyPack(VPackBuilder& builder);
 };
@@ -35,14 +35,17 @@ struct EmptyEdgeProperties {
   virtual ~EmptyEdgeProperties() = default;
   static void toVelocyPack(VPackBuilder& builder);
 };
-using EdgeWithEmptyProps = Edge<EmptyEdgeProperties>;
+struct EdgeWithEmptyProps : Edge<EmptyEdgeProperties> {
+  EdgeWithEmptyProps(size_t fromIdx, size_t toIdx, size_t idx)
+      : Edge(fromIdx, toIdx, idx){};
+};
 
 struct MinCutEdge : public Edge<EmptyEdgeProperties> {
   double const capacity;
   double flow = 0.0;
 
-  MinCutEdge(size_t from, size_t to, double capacity)
-      : Edge(from, to), capacity(capacity){};
+  MinCutEdge(size_t from, size_t to, size_t idx, double capacity)
+      : Edge(from, to, idx), capacity(capacity){};
 
   bool operator==(MinCutEdge const& other) {
     return capacity == other.capacity && flow == other.flow;

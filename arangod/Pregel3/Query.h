@@ -103,7 +103,7 @@ struct Query : std::enable_shared_from_this<Query> {
   void createAlgorithm() {
     if (_algSpec.algName == "MinCut") {
       _algorithm = std::make_unique<MaxFlowMinCut>(
-          dynamic_cast<MinCutGraph*>(_graph.get()),
+          std::static_pointer_cast<MinCutGraph>(_graph),
           dynamic_cast<MinCutGraph*>(_graph.get())->source,
           dynamic_cast<MinCutGraph*>(_graph.get())->target);
     }

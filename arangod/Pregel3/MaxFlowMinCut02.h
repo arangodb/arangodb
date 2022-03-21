@@ -32,8 +32,8 @@
 
 namespace arangodb::pregel3 {
 
-// indexes of edges with positive flow
-typedef containers::FlatHashMap<size_t, double> Flow;
+// indexes of edges with positive flow to the flow
+typedef std::unordered_map<size_t, double> Flow;
 
 struct Cut {
   // indexes of edges in the cut
@@ -45,22 +45,24 @@ struct Cut {
 
 struct MaxFlowMinCutResult : AlgorithmResult {
   MaxFlowMinCutResult() = default;  // if _target not reachable from _source
-  MaxFlowMinCutResult(Flow&& f, Cut&& c, MinCutGraph* g)
+  MaxFlowMinCutResult(Flow&& f, Cut&& c, std::shared_ptr<MinCutGraph> g)
       : flow(f), cut(c), _g(g) {}
   Flow flow;
   Cut cut;
 
  private:
-  MinCutGraph* _g;
+  std::shared_ptr<MinCutGraph> _g;
 
   void toVelocyPack(VPackBuilder& builder) override;
 };
 
 class MaxFlowMinCut : public Algorithm {
  public:
-  MaxFlowMinCut(MinCutGraph* g, size_t source, size_t target)
-      : _source(source), _target(target), _g(g){};
+  MaxFlowMinCut(std::shared_ptr<MinCutGraph> g, size_t source, size_t target)
+      : _source(source), _target(target), _g(std::move(g)){};
   ~MaxFlowMinCut() override = default;
+
+  std::unique_ptr<AlgorithmResult> run() override;
 
  private:
   /**
@@ -81,7 +83,6 @@ class MaxFlowMinCut : public Algorithm {
     }
   }
 
-  std::unique_ptr<AlgorithmResult> run() override;
   void push(size_t a, size_t b);
 
   double excess(size_t u) const {
@@ -119,7 +120,7 @@ class MaxFlowMinCut : public Algorithm {
 
   double getCapacity(size_t e) const {
     TRI_ASSERT(e < _g->numEdges());
-    return edge(e)->capacity;
+    return edge(e).capacity;
   }
 
   //  void setCapacity(size_t u, size_t idxNeighbor, size_t idxEdge, double val)
@@ -169,18 +170,13 @@ class MaxFlowMinCut : public Algorithm {
 
   double flow(size_t eIdx) {
     TRI_ASSERT(_g->edges.contains(eIdx));
-    return edge(eIdx)->flow;
+    return edge(eIdx).flow;
   }
 
   double residual(size_t eIdx) {
     TRI_ASSERT(eIdx < _g->numEdges());
     auto const& e = edge(eIdx);
     return residual(e);
-  }
-
-  static double residual(MinCutEdge* e) {
-    TRI_ASSERT(e->capacity >= e->flow);
-    return e->capacity - e->flow;
   }
 
   static double residual(MinCutEdge const& e) {
@@ -197,13 +193,13 @@ class MaxFlowMinCut : public Algorithm {
     increaseFlow(edge(eIdx), val);
   }
 
-  void increaseFlow(MinCutEdge* e, double val) { e->increaseFlow(val); }
+  static void increaseFlow(MinCutEdge& e, double val) { e.increaseFlow(val); }
 
   void decreaseFlow(size_t eIdx, double val) {
     TRI_ASSERT(eIdx < _g->numEdges());
     auto e = edge(eIdx);
-    e->flow -= val;
-    TRI_ASSERT(e->flow >= 0);
+    e.flow -= val;
+    TRI_ASSERT(e.flow >= 0);
   }
 
   //  void increaseFlowNeighb(size_t u, size_t idxNeighbor, double val) {
@@ -219,7 +215,7 @@ class MaxFlowMinCut : public Algorithm {
   void setFlow(size_t eIdx, double val) {
     TRI_ASSERT(eIdx < _g->numEdges());
     TRI_ASSERT(val >= 0);
-    edge(eIdx)->flow = val;
+    edge(eIdx).flow = val;
   }
 
   void increaseExcess(size_t u, double val) {
@@ -243,9 +239,9 @@ class MaxFlowMinCut : public Algorithm {
   MinCutVertex& vertex(size_t vIdx) { return _g->vertex(vIdx); }
   MinCutVertex& vertex(size_t vIdx) const { return _g->vertex(vIdx); }
 
-  MinCutEdge* edge(size_t eIdx) { return _g->edge(eIdx); }
-  MinCutEdge* edge(size_t eIdx) const { return _g->edge(eIdx); }
-  MinCutEdge* edge(size_t uIdx, size_t vIdx) const {
+  MinCutEdge& edge(size_t eIdx) { return _g->edge(eIdx); }
+  MinCutEdge& edge(size_t eIdx) const { return _g->edge(eIdx); }
+  MinCutEdge& edge(size_t uIdx, size_t vIdx) const {
     return _g->edge(uIdx, vIdx);
   }
 
@@ -260,14 +256,13 @@ class MaxFlowMinCut : public Algorithm {
   // with index idxNeighb, if residual(u, idxNeighb) > 0, then label(u) <=
   // label(v)
   std::unordered_set<size_t> _relabableVertices;
-  MinCutGraph* _g;
+  std::shared_ptr<MinCutGraph> _g;
   void initialize();
   void relabel(size_t uIdx);
   // unknown getNeighborByIdx(size_t u, size_t idxNeighb);
   void updateRelabableAfterRelabel(MinCutVertex const& u, size_t uIdx,
                                    size_t oldLabel);
   void removeLeavesRecursively();
-  bool existsEdge(MinCutEdge* eIdx);
   void updateApplicableAfterPush(const MinCutVertex& v, const MinCutVertex& u,
                                  double delta);
   void updateRelabableAfterPush(const MinCutVertex& v, size_t vIdx,

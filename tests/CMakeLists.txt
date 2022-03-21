@@ -294,17 +294,17 @@ set(ARANGODB_TESTS_SOURCES
   Utils/NameValidatorTest.cpp
   Utils/QuickGen.cpp
   V8Server/V8AnalyzersTest.cpp
-  V8Server/V8UsersTest.cpp
-  V8Server/V8ViewsTest.cpp
-  VocBase/VocbaseTest.cpp
-  VocBase/KeyGeneratorTest.cpp
-  VocBase/LogicalDataSourceTest.cpp
-  VocBase/LogicalViewTest.cpp
-  VocBase/VersionTest.cpp
-  VPackDeserializer/BasicTests.cpp
-  Zkd/Conversion.cpp
-  Zkd/Library.cpp
-  ${ADDITIONAL_TEST_SOURCES})
+        V8Server/V8UsersTest.cpp
+        V8Server/V8ViewsTest.cpp
+        VocBase/VocbaseTest.cpp
+        VocBase/KeyGeneratorTest.cpp
+        VocBase/LogicalDataSourceTest.cpp
+        VocBase/LogicalViewTest.cpp
+        VocBase/VersionTest.cpp
+        VPackDeserializer/BasicTests.cpp
+        Zkd/Conversion.cpp
+        Zkd/Library.cpp
+        ${ADDITIONAL_TEST_SOURCES} Pregel3/TestLoadGraph.cpp)
 
 set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/Helper/WaitForQueue.cpp
