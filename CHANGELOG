@@ -25,7 +25,7 @@ devel
 
 * Added optional in-memory caching for index entries when doing point lookups
   in indexes of type "persistent", "hash" or "skiplist".
-  The caching is turned off by default, by can be enabled when creating an
+  The caching is turned off by default, but can be enabled when creating an
   index of type "persistent", "hash" or "skiplist" by setting the 
   "cacheEnabled" flag for the index upon index creation. 
   The cache will be initially empty, but will be populated lazily upon querying 
