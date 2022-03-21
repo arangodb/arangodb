@@ -70,10 +70,11 @@ struct PrototypeStateMethodsDBServer final : PrototypeStateMethods {
     return leader->get(keys.begin(), keys.end());
   }
 
-  [[nodiscard]] auto getSnapshot(LogId id) const -> futures::Future<
-      ResultT<std::unordered_map<std::string, std::string>>> override {
+  [[nodiscard]] auto getSnapshot(LogId id, LogIndex waitForIndex) const
+      -> futures::Future<
+          ResultT<std::unordered_map<std::string, std::string>>> override {
     auto leader = getPrototypeStateLeaderById(id);
-    return leader->getSnapshot();
+    return leader->getSnapshot(waitForIndex);
   }
 
   [[nodiscard]] auto remove(LogId id, std::string key) const
@@ -206,12 +207,14 @@ struct PrototypeStateMethodsCoordinator final : PrototypeStateMethods {
         });
   }
 
-  [[nodiscard]] auto getSnapshot(LogId id) const -> futures::Future<
-      ResultT<std::unordered_map<std::string, std::string>>> override {
+  [[nodiscard]] auto getSnapshot(LogId id, LogIndex waitForIndex) const
+      -> futures::Future<
+          ResultT<std::unordered_map<std::string, std::string>>> override {
     auto path =
         basics::StringUtils::joinT("/", "_api/prototype-state", id, "snapshot");
     network::RequestOptions opts;
     opts.database = _vocbase.name();
+    opts.param("waitForIndex", std::to_string(waitForIndex.value));
 
     return network::sendRequest(_pool, "server:" + getLogLeader(id),
                                 fuerte::RestVerb::Get, path, {}, opts)

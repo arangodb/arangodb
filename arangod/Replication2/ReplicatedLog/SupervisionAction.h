@@ -38,7 +38,7 @@ struct EmptyAction {
   static constexpr std::string_view name = "EmptyAction";
 
   EmptyAction() : _message(""){};
-  EmptyAction(std::string_view message) : _message(message){};
+  explicit EmptyAction(std::string message) : _message(std::move(message)) {}
   std::string _message;
 };
 
@@ -135,12 +135,14 @@ struct UpdateParticipantFlagsAction {
 
   UpdateParticipantFlagsAction(ParticipantId const& participant,
                                ParticipantFlags const& flags,
-                               std::size_t generation)
-      : _participant(participant), _flags(flags), _generation{generation} {};
+                               std::size_t expectedGeneration)
+      : _participant(participant),
+        _flags(flags),
+        _expectedGeneration{expectedGeneration} {};
 
   ParticipantId _participant;
   ParticipantFlags _flags;
-  std::size_t _generation;
+  std::size_t _expectedGeneration;
 };
 
 struct AddParticipantToPlanAction {

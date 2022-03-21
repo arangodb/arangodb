@@ -27,6 +27,7 @@
 #include "Basics/debugging.h"
 #include "Basics/voc-errors.h"
 #include "Basics/Exceptions.h"
+#include "Scheduler/SchedulerFeature.h"
 
 namespace arangodb::replication2::replicated_state {
 
@@ -154,6 +155,8 @@ void FollowerStateManager<S>::tryTransferSnapshot(
   auto& leader = logFollower->getLeader();
   TRI_ASSERT(leader.has_value()) << "leader established it's leadership. There "
                                     "has to be a leader in the current term";
+
+  LOG_CTX("52a11", TRACE, loggerContext) << "try to acquire a new snapshot";
   auto f = hiddenState->acquireSnapshot(*leader, logFollower->getCommitIndex());
   std::move(f).thenFinal([weak = this->weak_from_this(), hiddenState](
                              futures::Try<Result>&& tryResult) noexcept {
@@ -161,30 +164,80 @@ void FollowerStateManager<S>::tryTransferSnapshot(
     if (self == nullptr) {
       return;
     }
-    try {
-      auto& result = tryResult.get();
-      if (result.ok()) {
-        LOG_CTX("44d58", DEBUG, self->loggerContext)
-            << "snapshot transfer successfully completed";
 
-        bool startService =
-            self->_guardedData.doUnderLock([&](GuardedData& data) {
-              if (data.token == nullptr) {
-                return false;
-              }
-              data.token->snapshot.updateStatus(SnapshotStatus::kCompleted);
-              return true;
-            });
-        if (startService) {
-          self->startService(hiddenState);
-        }
-        return;
+    auto result = basics::catchToResult([&] { return tryResult.get(); });
+    if (result.ok()) {
+      LOG_CTX("44d58", DEBUG, self->loggerContext)
+          << "snapshot transfer successfully completed";
+
+      bool startService =
+          self->_guardedData.doUnderLock([&](GuardedData& data) {
+            if (data.token == nullptr) {
+              return false;
+            }
+            data.token->snapshot.updateStatus(SnapshotStatus::kCompleted);
+            return true;
+          });
+      if (startService) {
+        self->startService(hiddenState);
       }
-    } catch (...) {
+      return;
+    } else {
+      LOG_CTX("9a68a", ERR, self->loggerContext)
+          << "failed to transfer snapshot: " << result.errorMessage()
+          << " - retry scheduled";
+
+      auto retryCount = self->_guardedData.doUnderLock([&](GuardedData& data) {
+        data.updateInternalState(FollowerInternalState::kSnapshotTransferFailed,
+                                 result);
+        return data.errorCounter;
+      });
+
+      self->retryTransferSnapshot(std::move(hiddenState), retryCount);
     }
-    TRI_ASSERT(false) << "error handling not implemented";
-    FATAL_ERROR_EXIT();
   });
+}
+
+namespace {
+inline auto delayedFuture(std::chrono::steady_clock::duration duration)
+    -> futures::Future<futures::Unit> {
+  if (SchedulerFeature::SCHEDULER) {
+    return SchedulerFeature::SCHEDULER->delay(duration);
+  }
+
+  std::this_thread::sleep_for(duration);
+  return futures::Future<futures::Unit>{std::in_place};
+}
+
+inline auto calcRetryDuration(std::uint64_t retryCount)
+    -> std::chrono::steady_clock::duration {
+  // Capped exponential backoff. Wait for 100us, 200us, 400us, ...
+  // until at most 100us * 2 ** 17 == 13.11s.
+  auto executionDelay = std::chrono::microseconds{100} *
+                        (1u << std::min(retryCount, std::uint64_t{17}));
+  return std::chrono::duration_cast<std::chrono::steady_clock::duration>(
+      executionDelay);
+}
+}  // namespace
+
+template<typename S>
+void FollowerStateManager<S>::retryTransferSnapshot(
+    std::shared_ptr<IReplicatedFollowerState<S>> hiddenState,
+    std::uint64_t retryCount) {
+  auto duration = calcRetryDuration(retryCount);
+  LOG_CTX("2ea59", TRACE, loggerContext)
+      << "retry snapshot transfer after "
+      << std::chrono::duration_cast<std::chrono::milliseconds>(duration).count()
+      << "ms";
+  delayedFuture(duration).thenFinal(
+      [weak = this->weak_from_this(), hiddenState](auto&&) {
+        auto self = weak.lock();
+        if (self == nullptr) {
+          return;
+        }
+
+        self->tryTransferSnapshot(hiddenState);
+      });
 }
 
 template<typename S>
@@ -339,6 +392,12 @@ auto FollowerStateManager<S>::getStatus() const -> StateStatus {
     status.managerState.detail = std::nullopt;
     status.generation = data.token->generation;
     status.snapshot = data.token->snapshot;
+
+    if (data.lastError.has_value()) {
+      status.managerState.detail = basics::StringUtils::concatT(
+          "Last error was: ", data.lastError->errorMessage());
+    }
+
     return StateStatus{.variant = std::move(status)};
   });
 }
@@ -392,6 +451,18 @@ void FollowerStateManager<S>::GuardedData::updateInternalState(
   internalState = newState;
   lastInternalStateChange = std::chrono::system_clock::now();
   ingestionRange = range;
+  lastError.reset();
+  errorCounter = 0;
+}
+
+template<typename S>
+void FollowerStateManager<S>::GuardedData::updateInternalState(
+    FollowerInternalState newState, Result error) {
+  internalState = newState;
+  lastInternalStateChange = std::chrono::system_clock::now();
+  ingestionRange.reset();
+  lastError.emplace(std::move(error));
+  errorCounter += 1;
 }
 
 template<typename S>

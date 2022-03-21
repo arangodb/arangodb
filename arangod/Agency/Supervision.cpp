@@ -2714,8 +2714,24 @@ void Supervision::checkReplicatedStates() {
           });
 
       if (action.has_value()) {
+        auto logTarget = std::invoke(
+            [&]() -> std::optional<replication2::agency::LogTarget> {
+              if (log.has_value()) {
+                return std::move(log->target);
+              }
+              return std::nullopt;
+            });
+        auto statePlan = std::invoke(
+            [&]()
+                -> std::optional<replication2::replicated_state::agency::Plan> {
+              if (state.plan.has_value()) {
+                return std::move(*state.plan);
+              }
+              return std::nullopt;
+            });
         envelope =
-            execute(state.target.id, dbName, *action, std::move(envelope));
+            execute(state.target.id, dbName, *action, std::move(statePlan),
+                    std::move(logTarget), std::move(envelope));
       }
     }
   }
