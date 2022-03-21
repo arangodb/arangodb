@@ -354,7 +354,7 @@ Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(Step* step) {
       VPackSlice id = e.get(StaticStrings::IdString);
       if (!id.isString()) {
         // invalid id type
-        LOG_TOPIC("eb7cd", WARN, Logger::GRAPHS)
+        LOG_TOPIC("eb7cd", ERR, Logger::GRAPHS)
             << "got invalid edge id type: " << id.typeName();
         continue;
       }
