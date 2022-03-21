@@ -44,12 +44,14 @@
 #include "Transaction/Hints.h"
 #include "Transaction/StandaloneContext.h"
 #include "Transaction/V8Context.h"
+#include "Utils/CollectionNameResolver.h"
 #include "Utils/Events.h"
 #include "Utils/ExecContext.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utilities/NameValidator.h"
 #include "V8Server/v8-collection.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/Methods/Collections.h"
 #include "VocBase/vocbase.h"
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
@@ -627,7 +629,8 @@ Result Indexes::extractHandle(arangodb::LogicalCollection const* collection,
   }
 
   if (!collectionName.empty()) {
-    if (!EqualCollection(resolver, collectionName, collection)) {
+    if (!methods::Collections::hasName(*resolver, *collection,
+                                       collectionName)) {
       // I wish this error provided me with more information!
       // e.g. 'cannot access index outside the collection it was defined in'
       return Result(TRI_ERROR_ARANGO_CROSS_COLLECTION_REQUEST);

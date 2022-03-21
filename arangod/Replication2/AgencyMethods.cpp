@@ -32,17 +32,18 @@
 
 #include <velocypack/velocypack-common.h>
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "Agency/AgencyPaths.h"
 #include "Agency/AsyncAgencyComm.h"
 #include "Agency/TransactionBuilder.h"
-#include "Agency/AgencyPaths.h"
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterTypes.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
-#include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
+#include "VocBase/vocbase.h"
 
 namespace arangodb {
 class Result;
@@ -268,4 +269,38 @@ auto methods::createReplicatedState(
         .done();
   }
   return sendAgencyWriteTransaction(std::move(trx));
+}
+
+auto methods::replaceReplicatedStateParticipant(
+    TRI_vocbase_t& vocbase, LogId id, const ParticipantId& participantToRemove,
+    const ParticipantId& participantToAdd) -> futures::Future<Result> {
+  auto path =
+      paths::target()->replicatedStates()->database(vocbase.name())->state(id);
+
+  VPackBufferUInt8 trx;
+  {
+    VPackBuilder builder(trx);
+    arangodb::agency::envelope::into_builder(builder)
+        .write()
+        .remove(*path->participants()->server(participantToRemove))
+        .set(*path->participants()->server(participantToAdd),
+             VPackSlice::emptyObjectSlice())
+        .inc(*paths::target()->version())
+        .precs()
+        .isNotEmpty(*path->participants()->server(participantToRemove))
+        .isEmpty(*path->participants()->server(participantToAdd))
+        .end()
+        .done();
+  }
+
+  return sendAgencyWriteTransaction(std::move(trx))
+      .thenValue([](ResultT<std::uint64_t>&& resultT) {
+        if (resultT.ok() && *resultT == 0) {
+          return Result(
+              TRI_ERROR_HTTP_PRECONDITION_FAILED,
+              "Failed to replace participant. Either the to-be-replaced one is "
+              "not part of the participants, or the new one already was.");
+        }
+        return resultT.result();
+      });
 }

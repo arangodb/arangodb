@@ -1,5 +1,4 @@
 /*jshint strict: true */
-/*global assertTrue, assertEqual*/
 'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -24,15 +23,34 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 const jsunity = require('jsunity');
+const {assertEqual, assertTrue} = jsunity.jsUnity.assertions;
 const arangodb = require("@arangodb");
 const _ = require('lodash');
 const db = arangodb.db;
 const lh = require("@arangodb/testutils/replicated-logs-helper");
 const sh = require("@arangodb/testutils/replicated-state-helper");
-const spreds = require("@arangodb/testutils/replicated-state-predicates");
 const request = require('@arangodb/request');
+const {waitFor} = require("@arangodb/testutils/replicated-logs-helper");
 
 const database = "replication2_replicated_state_http_api_db";
+
+const sortedArrayEqualOrError = (left, right) => {
+  if (_.eq(left, right)) {
+    return true;
+  } else {
+    return Error(`Expected the following to be equal: ${JSON.stringify(left)} and ${JSON.stringify(right)}`);
+  }
+};
+
+const replaceParticipant = (database, logId, oldParticipant, newParticipant) => {
+  const url = lh.getServerUrl(_.sample(lh.coordinators));
+  const res = request.post(
+    `${url}/_db/${database}/_api/replicated-state/${logId}/participant/${oldParticipant}/replace-with/${newParticipant}`
+  );
+  lh.checkRequestResult(res);
+  const {json: {result}} = res;
+  return result;
+};
 
 const replicatedStateSuite = function () {
   const targetConfig = {
@@ -89,6 +107,120 @@ const replicatedStateSuite = function () {
         assertEqual(status.snapshot.status, "Completed");
         assertTrue(status.snapshot.timestamp !== undefined);
         assertEqual(status.generation, 1);
+      }
+    },
+
+    testReplaceParticipantReplaceFollower: function () {
+      const {
+        stateId,
+        servers: participants,
+        followers
+      } = sh.createReplicatedStateTarget(database, targetConfig, "black-hole");
+      const nonParticipants = _.without(lh.dbservers, ...participants);
+      const oldParticipant = _.sample(followers);
+      const newParticipant = _.sample(nonParticipants);
+      const newParticipants = _.union(_.without(participants, oldParticipant), [newParticipant]).sort();
+
+      const url = lh.getServerUrl(_.sample(lh.coordinators));
+      const res = request.post(`${url}/_db/${database}/_api/replicated-state/${stateId}/participant/${oldParticipant}/replace-with/${newParticipant}`);
+      lh.checkRequestResult(res);
+      const {json: {result}} = res;
+      assertEqual({}, result);
+      {
+        const stateAgencyContent = sh.readReplicatedStateAgency(database, stateId);
+        assertEqual(newParticipants, Object.keys(stateAgencyContent.target.participants).sort());
+      }
+      // The following does not yet work.
+
+      // waitFor(() => {
+      //   const stateAgencyContent = sh.readReplicatedStateAgency(database, stateId);
+      //   return sortedArrayEqualOrError(newParticipants, Object.keys(stateAgencyContent.plan.participants).sort());
+      // });
+      // waitFor(() => {
+      //   const stateAgencyContent = sh.readReplicatedStateAgency(database, stateId);
+      //   return sortedArrayEqualOrError(newParticipants, Object.keys(stateAgencyContent.current.participants).sort());
+      // });
+      //
+      // const stateAgencyContent = sh.readReplicatedStateAgency(database, stateId);
+      // assertEqual(newParticipants, Object.keys(stateAgencyContent.target.participants).sort());
+      // assertEqual(newParticipants, Object.keys(stateAgencyContent.plan.participants).sort());
+      // assertEqual(newParticipants, Object.keys(stateAgencyContent.current.participants).sort());
+    },
+
+    testReplaceParticipantReplaceLeader: function () {
+      const {
+        stateId,
+        servers: participants,
+        leader
+      } = sh.createReplicatedStateTarget(database, targetConfig, "black-hole");
+      const nonParticipants = _.without(lh.dbservers, ...participants);
+      const oldParticipant = leader;
+      const newParticipant = _.sample(nonParticipants);
+      const newParticipants = _.union(_.without(participants, oldParticipant), [newParticipant]).sort();
+
+      const result = replaceParticipant(database, stateId, oldParticipant, newParticipant);
+      assertEqual({}, result);
+      {
+        const stateAgencyContent = sh.readReplicatedStateAgency(database, stateId);
+        assertEqual(newParticipants, Object.keys(stateAgencyContent.target.participants).sort());
+      }
+      // The following does not yet work.
+
+      // waitFor(() => {
+      //   const stateAgencyContent = sh.readReplicatedStateAgency(database, stateId);
+      //   return sortedArrayEqualOrError(newParticipants, Object.keys(stateAgencyContent.plan.participants).sort());
+      // });
+      // waitFor(() => {
+      //   const stateAgencyContent = sh.readReplicatedStateAgency(database, stateId);
+      //   return sortedArrayEqualOrError(newParticipants, Object.keys(stateAgencyContent.current.participants).sort());
+      // });
+      //
+      // const stateAgencyContent = sh.readReplicatedStateAgency(database, stateId);
+      // assertEqual(newParticipants, Object.keys(stateAgencyContent.target.participants).sort());
+      // assertEqual(newParticipants, Object.keys(stateAgencyContent.plan.participants).sort());
+      // assertEqual(newParticipants, Object.keys(stateAgencyContent.current.participants).sort());
+    },
+
+    testReplaceParticipantReplaceNonParticipant: function () {
+      const {
+        stateId,
+        servers: participants,
+      } = sh.createReplicatedStateTarget(database, targetConfig, "black-hole");
+      const nonParticipants = _.without(lh.dbservers, ...participants);
+      const [oldParticipant, newParticipant] = _.sampleSize(nonParticipants, 2);
+
+      try {
+        const result = replaceParticipant(database, stateId, oldParticipant, newParticipant);
+        // noinspection ExceptionCaughtLocallyJS
+        throw new Error(`replaceParticipant unexpectedly succeeded with ${JSON.stringify(result)}`);
+      } catch (e) {
+        assertEqual(412, e.code);
+      }
+
+      {
+        const stateAgencyContent = sh.readReplicatedStateAgency(database, stateId);
+        assertEqual(participants.sort(), Object.keys(stateAgencyContent.target.participants).sort());
+      }
+    },
+
+    testReplaceParticipantReplaceWithExistingParticipant: function () {
+      const {
+        stateId,
+        servers: participants,
+      } = sh.createReplicatedStateTarget(database, targetConfig, "black-hole");
+      const [oldParticipant, newParticipant] = _.sampleSize(participants, 2);
+
+      try {
+        const result = replaceParticipant(database, stateId, oldParticipant, newParticipant);
+        // noinspection ExceptionCaughtLocallyJS
+        throw new Error(`replaceParticipant unexpectedly succeeded with ${JSON.stringify(result)}`);
+      } catch (e) {
+        assertEqual(412, e.code);
+      }
+
+      {
+        const stateAgencyContent = sh.readReplicatedStateAgency(database, stateId);
+        assertEqual(participants.sort(), Object.keys(stateAgencyContent.target.participants).sort());
       }
     },
   };

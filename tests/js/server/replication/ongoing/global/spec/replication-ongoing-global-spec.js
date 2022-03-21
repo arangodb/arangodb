@@ -433,7 +433,7 @@ describe('Global Replication on a fresh boot', function () {
 
         let oIdx = db._collection(docColName).getIndexes();
 
-        db._collection(docColName).ensureHashIndex("value");
+        db._collection(docColName).ensureIndex({ type: "hash", fields: ["value"] });
 
         let mIdx = db._collection(docColName).getIndexes();
 
@@ -462,7 +462,7 @@ describe('Global Replication on a fresh boot', function () {
           }
         }
 
-        c.ensureHashIndex("value2");
+        c.ensureIndex({ type: "hash", fields: ["value2"] });
         let mIdx = c.getIndexes();
 
         waitForReplication();
@@ -694,7 +694,7 @@ describe('Global Replication on a fresh boot', function () {
         db._useDatabase(dbName);
         let oIdx = db._collection(docColName).getIndexes();
 
-        db._collection(docColName).ensureHashIndex("value");
+        db._collection(docColName).ensureIndex({ type: "hash", fields: ["value"] });
 
         let mIdx = db._collection(docColName).getIndexes();
 
@@ -726,7 +726,7 @@ describe('Global Replication on a fresh boot', function () {
           }
         }
 
-        c.ensureHashIndex("value2");
+        c.ensureIndex({ type: "hash", fields: ["value2"] });
         let mIdx = c.getIndexes();
 
         waitForReplication();
@@ -756,7 +756,7 @@ const fillLeaderWithInitialData = function () {
     docs.push({value: i});
   }
   let col = db._create(docColName);
-  col.ensureHashIndex("value");
+  col.ensureIndex({ type: "hash", fields: ["value"] });
   db._createEdgeCollection(edgeColName);
 
   col.save(docs);
@@ -766,7 +766,7 @@ const fillLeaderWithInitialData = function () {
   db._useDatabase(dbName);
 
   let dcol = db._create(docColName);
-  dcol.ensureHashIndex("value");
+  dcol.ensureIndex({ type: "hash", fields: ["value"] });
   db._createEdgeCollection(edgeColName);
 
   dcol.save(docs);
@@ -988,7 +988,7 @@ describe('Test switch off and restart replication', function() {
       connectToLeader();
       let mcol = db._collection(col);
       let omidx = mcol.getIndexes();
-      mcol.ensureHashIndex('value');
+      mcol.ensureIndex({ type: "hash", fields: ["value"] });
 
       let midxs = mcol.getIndexes();
 

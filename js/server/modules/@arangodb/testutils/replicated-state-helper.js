@@ -26,6 +26,37 @@ const LH = require("@arangodb/testutils/replicated-logs-helper");
 const request = require('@arangodb/request');
 const spreds = require("@arangodb/testutils/replicated-state-predicates");
 
+/**
+ * @param {string} database
+ * @param {string} logId
+ * @returns {{
+ *       target: {
+ *         properties: { implementation: { type: string } },
+ *         participants: {},
+ *         id: number,
+ *         config: {
+ *           writeConcern: number,
+ *           softWriteConern: number,
+ *           replicationFactor: number,
+ *           waitForSync: boolean
+ *         }
+ *       },
+ *       plan: {
+ *         properties: { implementation: { type: string } },
+ *         participants: Object<string, {generation: number}>,
+ *         id: number,
+ *         generation: number
+ *       },
+ *       current: {
+ *         participants: Object<string, {
+ *           snapshot: {
+ *             timestamp: string,
+ *             status: "InProgress" | "Completed" | "Failed" | "Uninitialized"
+ *           }
+ *         }>
+ *       }
+ *   }}
+ */
 const readReplicatedStateAgency = function (database, logId) {
   let target =  LH.readAgencyValueAt(`Target/ReplicatedStates/${database}/${logId}`);
   let plan =  LH.readAgencyValueAt(`Plan/ReplicatedStates/${database}/${logId}`);

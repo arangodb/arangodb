@@ -68,6 +68,7 @@ struct alignas(64) LogCore {
   auto releasePersistedLog() && -> std::shared_ptr<PersistedLog>;
 
   auto logId() const noexcept -> LogId;
+  auto gid() const noexcept -> GlobalLogIdentifier const&;
 
  private:
   std::shared_ptr<PersistedLog> _persistedLog;

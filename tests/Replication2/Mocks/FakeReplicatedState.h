@@ -114,6 +114,14 @@ struct AsyncOperationMarker {
     promise->setValue(std::move(res));
   }
 
+  auto resolveWithAndReset(Result res) {
+    TRI_ASSERT(triggered);
+    TRI_ASSERT(!promise->isFulfilled());
+    auto p = std::move(promise);
+    reset();
+    std::move(p)->setValue(std::move(res));
+  }
+
   auto inspectValue() const -> Input const& { return *in; }
 
   [[nodiscard]] auto wasTriggered() const noexcept -> bool { return triggered; }
@@ -232,6 +240,10 @@ struct RecordingFactory {
     auto ptr = std::make_shared<FollowerType>(std::move(core));
     followers.push_back(ptr);
     return ptr;
+  }
+
+  auto constructCore(GlobalLogIdentifier const&) -> std::unique_ptr<CoreType> {
+    return std::make_unique<CoreType>();
   }
 
   auto getLatestLeader() -> std::shared_ptr<LeaderType> {

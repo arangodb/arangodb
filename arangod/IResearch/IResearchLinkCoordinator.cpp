@@ -138,7 +138,6 @@ Result IResearchLinkCoordinator::init(velocypack::Slice definition) {
   metric.add("arangodb_search_cleanup_time", gaugeToCoordinator);
   metric.add("arangodb_search_consolidation_time", gaugeToCoordinator);
 
-  metric.asyncUpdate();
   return r;
 }
 

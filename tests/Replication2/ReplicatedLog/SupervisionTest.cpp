@@ -75,9 +75,9 @@ TEST_F(LeaderElectionCampaignTest, test_runElectionCampaign_allElectible) {
   auto config = ParticipantsConfig{
       .generation = 0,
       .participants = {
-          {"A", ParticipantFlags{.forced = false, .excluded = false}},
-          {"B", ParticipantFlags{.forced = false, .excluded = false}},
-          {"C", ParticipantFlags{.forced = false, .excluded = false}}}};
+          {"A", ParticipantFlags{.forced = false, .allowedAsLeader = true}},
+          {"B", ParticipantFlags{.forced = false, .allowedAsLeader = true}},
+          {"C", ParticipantFlags{.forced = false, .allowedAsLeader = true}}}};
 
   auto campaign = runElectionCampaign(localStates, config, health, LogTerm{1});
 
@@ -108,9 +108,9 @@ TEST_F(LeaderElectionCampaignTest, test_runElectionCampaign_oneElectible) {
   auto config = ParticipantsConfig{
       .generation = 0,
       .participants = {
-          {"A", ParticipantFlags{.forced = false, .excluded = false}},
-          {"B", ParticipantFlags{.forced = false, .excluded = false}},
-          {"C", ParticipantFlags{.forced = false, .excluded = false}}}};
+          {"A", ParticipantFlags{.forced = false, .allowedAsLeader = true}},
+          {"B", ParticipantFlags{.forced = false, .allowedAsLeader = true}},
+          {"C", ParticipantFlags{.forced = false, .allowedAsLeader = true}}}};
 
   auto campaign = runElectionCampaign(localStates, config, health, LogTerm{2});
 
@@ -149,10 +149,11 @@ TEST_F(LeaderStateMachineTest, test_election_success) {
       ParticipantsConfig{
           .generation = 1,
           .participants = {
-              {"A", ParticipantFlags{.forced = false, .excluded = false}},
-              {"B", ParticipantFlags{.forced = false, .excluded = false}},
+              {"A", ParticipantFlags{.forced = false, .allowedAsLeader = true}},
+              {"B", ParticipantFlags{.forced = false, .allowedAsLeader = true}},
 
-              {"C", ParticipantFlags{.forced = false, .excluded = false}}}});
+              {"C",
+               ParticipantFlags{.forced = false, .allowedAsLeader = true}}}});
 
   auto health = ParticipantsHealth{
       ._health = {{"A", ParticipantHealth{.rebootId = RebootId{1},
@@ -201,10 +202,11 @@ TEST_F(LeaderStateMachineTest, test_election_fails) {
       ParticipantsConfig{
           .generation = 1,
           .participants = {
-              {"A", ParticipantFlags{.forced = false, .excluded = false}},
-              {"B", ParticipantFlags{.forced = false, .excluded = false}},
+              {"A", ParticipantFlags{.forced = false, .allowedAsLeader = true}},
+              {"B", ParticipantFlags{.forced = false, .allowedAsLeader = true}},
 
-              {"C", ParticipantFlags{.forced = false, .excluded = false}}}});
+              {"C",
+               ParticipantFlags{.forced = false, .allowedAsLeader = true}}}});
 
   auto const& health = ParticipantsHealth{
       ._health = {{"A", ParticipantHealth{.rebootId = RebootId{43},
@@ -241,9 +243,10 @@ TEST_F(LeaderStateMachineTest, test_election_leader_with_higher_term) {
       ParticipantsConfig{
           .generation = 1,
           .participants = {
-              {"A", ParticipantFlags{.forced = false, .excluded = false}},
-              {"B", ParticipantFlags{.forced = false, .excluded = false}},
-              {"C", ParticipantFlags{.forced = false, .excluded = false}}}});
+              {"A", ParticipantFlags{.forced = false, .allowedAsLeader = true}},
+              {"B", ParticipantFlags{.forced = false, .allowedAsLeader = true}},
+              {"C",
+               ParticipantFlags{.forced = false, .allowedAsLeader = true}}}});
 
   auto const& health = ParticipantsHealth{
       ._health = {{"A", ParticipantHealth{.rebootId = RebootId{43},
@@ -289,11 +292,10 @@ struct SupervisionLogTest : ::testing::Test {};
 
 TEST_F(SupervisionLogTest, test_log_created) {
   auto const config = LogConfig(3, 2, 3, true);
-  auto const participants = LogTarget::Participants{
-      {"A", ParticipantFlags{.forced = false, .excluded = false}},
-      {"B", ParticipantFlags{.forced = false, .excluded = false}},
-
-      {"C", ParticipantFlags{.forced = false, .excluded = false}}};
+  auto const participants = ParticipantsFlagsMap{
+      {"A", ParticipantFlags{.forced = false, .allowedAsLeader = true}},
+      {"B", ParticipantFlags{.forced = false, .allowedAsLeader = true}},
+      {"C", ParticipantFlags{.forced = false, .allowedAsLeader = true}}};
 
   auto r = checkReplicatedLog(
       Log{.target = LogTarget(LogId{44}, participants, config),
@@ -309,11 +311,10 @@ TEST_F(SupervisionLogTest, test_log_created) {
 
 TEST_F(SupervisionLogTest, test_log_present) {
   auto const config = LogConfig(3, 2, 3, true);
-  auto const participants = LogTarget::Participants{
-      {"A", ParticipantFlags{.forced = false, .excluded = false}},
-      {"B", ParticipantFlags{.forced = false, .excluded = false}},
-
-      {"C", ParticipantFlags{.forced = false, .excluded = false}}};
+  auto const participants = ParticipantsFlagsMap{
+      {"A", ParticipantFlags{.forced = false, .allowedAsLeader = true}},
+      {"B", ParticipantFlags{.forced = false, .allowedAsLeader = true}},
+      {"C", ParticipantFlags{.forced = false, .allowedAsLeader = true}}};
 
   auto r = checkReplicatedLog(
       Log{.target = LogTarget(LogId(44), participants, config),
@@ -370,7 +371,7 @@ TEST_F(LogSupervisionTest, test_leader_not_known_in_health) {
 
 TEST_F(LogSupervisionTest, test_participant_added) {
   auto const targetParticipants = ParticipantsFlagsMap{
-      {"A", ParticipantFlags{.forced = false, .excluded = false}}};
+      {"A", ParticipantFlags{.forced = false, .allowedAsLeader = true}}};
 
   auto const planParticipants = ParticipantsFlagsMap{};
 
@@ -378,12 +379,13 @@ TEST_F(LogSupervisionTest, test_participant_added) {
   EXPECT_TRUE(r);
 
   EXPECT_EQ(r->first, "A");
-  EXPECT_EQ(r->second, (ParticipantFlags{.forced = false, .excluded = false}));
+  EXPECT_EQ(r->second,
+            (ParticipantFlags{.forced = false, .allowedAsLeader = true}));
 }
 
 TEST_F(LogSupervisionTest, test_no_participant_added) {
   auto const targetParticipants = ParticipantsFlagsMap{
-      {"A", ParticipantFlags{.forced = false, .excluded = false}}};
+      {"A", ParticipantFlags{.forced = false, .allowedAsLeader = true}}};
 
   auto const planParticipants = targetParticipants;
 
@@ -395,7 +397,7 @@ TEST_F(LogSupervisionTest, test_participant_removed) {
   auto const targetParticipants = ParticipantsFlagsMap{};
 
   auto const planParticipants = ParticipantsFlagsMap{
-      {"A", ParticipantFlags{.forced = false, .excluded = false}}};
+      {"A", ParticipantFlags{.forced = false, .allowedAsLeader = true}}};
 
   auto r = getRemovedParticipant(targetParticipants, planParticipants);
   EXPECT_TRUE(r);
@@ -405,10 +407,10 @@ TEST_F(LogSupervisionTest, test_participant_removed) {
 
 TEST_F(LogSupervisionTest, test_no_participant_removed) {
   auto const targetParticipants = ParticipantsFlagsMap{
-      {"A", ParticipantFlags{.forced = false, .excluded = false}}};
+      {"A", ParticipantFlags{.forced = false, .allowedAsLeader = true}}};
 
   auto const planParticipants = ParticipantsFlagsMap{
-      {"A", ParticipantFlags{.forced = false, .excluded = false}}};
+      {"A", ParticipantFlags{.forced = false, .allowedAsLeader = true}}};
 
   auto r = getRemovedParticipant(targetParticipants, planParticipants);
   EXPECT_FALSE(r);
@@ -416,10 +418,10 @@ TEST_F(LogSupervisionTest, test_no_participant_removed) {
 
 TEST_F(LogSupervisionTest, test_no_flags_changed) {
   auto const targetParticipants = ParticipantsFlagsMap{
-      {"A", ParticipantFlags{.forced = false, .excluded = false}}};
+      {"A", ParticipantFlags{.forced = false, .allowedAsLeader = true}}};
 
   auto const planParticipants = ParticipantsFlagsMap{
-      {"A", ParticipantFlags{.forced = false, .excluded = false}}};
+      {"A", ParticipantFlags{.forced = false, .allowedAsLeader = true}}};
 
   auto r = getParticipantWithUpdatedFlags(targetParticipants, planParticipants,
                                           std::nullopt, "A");
@@ -428,26 +430,27 @@ TEST_F(LogSupervisionTest, test_no_flags_changed) {
 
 TEST_F(LogSupervisionTest, test_flags_changed) {
   auto const targetParticipants = ParticipantsFlagsMap{
-      {"A", ParticipantFlags{.forced = false, .excluded = true}}};
+      {"A", ParticipantFlags{.forced = false, .allowedAsLeader = false}}};
 
   auto const planParticipants = ParticipantsFlagsMap{
-      {"A", ParticipantFlags{.forced = false, .excluded = false}}};
+      {"A", ParticipantFlags{.forced = false, .allowedAsLeader = true}}};
 
   auto r = getParticipantWithUpdatedFlags(targetParticipants, planParticipants,
                                           std::nullopt, "A");
   EXPECT_TRUE(r);
   EXPECT_EQ(r->first, "A");
-  EXPECT_EQ(r->second, (ParticipantFlags{.forced = false, .excluded = true}));
+  EXPECT_EQ(r->second,
+            (ParticipantFlags{.forced = false, .allowedAsLeader = false}));
 }
 
 TEST_F(LogSupervisionTest, test_leader_changed) {
   auto const targetParticipants = ParticipantsFlagsMap{
-      {"A", ParticipantFlags{.forced = false, .excluded = false}},
-      {"B", ParticipantFlags{.forced = false, .excluded = false}}};
+      {"A", ParticipantFlags{.forced = false, .allowedAsLeader = true}},
+      {"B", ParticipantFlags{.forced = false, .allowedAsLeader = true}}};
 
   auto const planParticipants = ParticipantsFlagsMap{
-      {"A", ParticipantFlags{.forced = false, .excluded = false}},
-      {"B", ParticipantFlags{.forced = false, .excluded = false}}};
+      {"A", ParticipantFlags{.forced = false, .allowedAsLeader = true}},
+      {"B", ParticipantFlags{.forced = false, .allowedAsLeader = true}}};
 
   auto r = getParticipantWithUpdatedFlags(targetParticipants, planParticipants,
                                           "B", "A");
@@ -455,15 +458,16 @@ TEST_F(LogSupervisionTest, test_leader_changed) {
 
   // IF the leader is changed via target, expect it to be forced first
   EXPECT_EQ(r->first, "B");
-  EXPECT_EQ(r->second, (ParticipantFlags{.forced = true, .excluded = false}));
+  EXPECT_EQ(r->second,
+            (ParticipantFlags{.forced = true, .allowedAsLeader = true}));
 }
 
 TEST_F(LogSupervisionTest, test_acceptable_leader_set) {
   auto const participants = ParticipantsFlagsMap{
-      {"A", ParticipantFlags{.forced = false, .excluded = false}},
-      {"B", ParticipantFlags{.forced = false, .excluded = false}},
-      {"C", ParticipantFlags{.forced = false, .excluded = true}},
-      {"D", ParticipantFlags{.forced = false, .excluded = false}}};
+      {"A", ParticipantFlags{.forced = false, .allowedAsLeader = true}},
+      {"B", ParticipantFlags{.forced = false, .allowedAsLeader = true}},
+      {"C", ParticipantFlags{.forced = false, .allowedAsLeader = false}},
+      {"D", ParticipantFlags{.forced = false, .allowedAsLeader = true}}};
 
   auto r = getParticipantsAcceptableAsLeaders("A", participants);
 
@@ -502,10 +506,10 @@ TEST_F(LogSupervisionTest, test_dictate_leader_force_first) {
   auto const& config = LogConfig(3, 3, 3, true);
 
   auto const& participants = ParticipantsFlagsMap{
-      {"A", ParticipantFlags{.forced = false, .excluded = false}},
-      {"B", ParticipantFlags{.forced = false, .excluded = false}},
-      {"C", ParticipantFlags{.forced = false, .excluded = true}},
-      {"D", ParticipantFlags{.forced = false, .excluded = false}}};
+      {"A", ParticipantFlags{.forced = false, .allowedAsLeader = true}},
+      {"B", ParticipantFlags{.forced = false, .allowedAsLeader = true}},
+      {"C", ParticipantFlags{.forced = false, .allowedAsLeader = false}},
+      {"D", ParticipantFlags{.forced = false, .allowedAsLeader = true}}};
 
   auto const& target = LogTarget(logId, participants, config);
 
@@ -520,8 +524,12 @@ TEST_F(LogSupervisionTest, test_dictate_leader_force_first) {
       participantsConfig);
 
   auto current = LogCurrent();
-  current.leader = LogCurrent::Leader{
-      .serverId = "A", .committedParticipantsConfig = participantsConfig};
+  current.leader =
+      LogCurrent::Leader{.serverId = "A",
+                         .term = LogTerm{1},
+                         .committedParticipantsConfig = participantsConfig,
+                         .leadershipEstablished = true,
+                         .commitStatus = std::nullopt};
 
   auto const& health = ParticipantsHealth{
       ._health = {
@@ -546,7 +554,7 @@ TEST_F(LogSupervisionTest, test_dictate_leader_force_first) {
   auto acceptableParticipants =
       getParticipantsAcceptableAsLeaders("A", participants);
 
-  ASSERT_EQ(action._generation, 1);
+  ASSERT_EQ(action._expectedGeneration, 1);
   ASSERT_NE(std::find(std::begin(acceptableParticipants),
                       std::end(acceptableParticipants), action._participant),
             std::end(acceptableParticipants));
@@ -559,10 +567,10 @@ TEST_F(LogSupervisionTest, test_dictate_leader_success) {
   auto const& config = LogConfig(3, 3, 3, true);
 
   auto const& participants = ParticipantsFlagsMap{
-      {"A", ParticipantFlags{.forced = false, .excluded = false}},
-      {"B", ParticipantFlags{.forced = false, .excluded = false}},
-      {"C", ParticipantFlags{.forced = false, .excluded = true}},
-      {"D", ParticipantFlags{.forced = true, .excluded = false}}};
+      {"A", ParticipantFlags{.forced = false, .allowedAsLeader = true}},
+      {"B", ParticipantFlags{.forced = false, .allowedAsLeader = true}},
+      {"C", ParticipantFlags{.forced = false, .allowedAsLeader = false}},
+      {"D", ParticipantFlags{.forced = true, .allowedAsLeader = true}}};
 
   auto const& target = LogTarget(logId, participants, config);
 
@@ -577,8 +585,12 @@ TEST_F(LogSupervisionTest, test_dictate_leader_success) {
       participantsConfig);
 
   auto current = LogCurrent();
-  current.leader = LogCurrent::Leader{
-      .serverId = "A", .committedParticipantsConfig = participantsConfig};
+  current.leader =
+      LogCurrent::Leader{.serverId = "A",
+                         .term = LogTerm{1},
+                         .committedParticipantsConfig = participantsConfig,
+                         .leadershipEstablished = true,
+                         .commitStatus = std::nullopt};
 
   auto const& health = ParticipantsHealth{
       ._health = {
@@ -601,4 +613,177 @@ TEST_F(LogSupervisionTest, test_dictate_leader_success) {
   auto action = std::get<DictateLeaderAction>(r);
 
   ASSERT_EQ(action._term.leader->serverId, "D");
+}
+
+TEST_F(LogSupervisionTest, test_remove_participant_action) {
+  auto const& logId = LogId{44};
+  auto const& config = LogConfig(3, 3, 3, true);
+
+  // Server D is missing in target
+  auto const& target =
+      LogTarget(logId,
+                ParticipantsFlagsMap{{"A", ParticipantFlags{}},
+                                     {"B", ParticipantFlags{}},
+                                     {"C", ParticipantFlags{}}},
+                config);
+
+  ParticipantsFlagsMap participantsFlags{{"A", ParticipantFlags{}},
+                                         {"B", ParticipantFlags{}},
+                                         {"C", ParticipantFlags{}},
+                                         {"D", ParticipantFlags{}}};
+  auto const& participantsConfig =
+      ParticipantsConfig{.generation = 1, .participants = participantsFlags};
+
+  auto const& plan = LogPlanSpecification(
+      logId,
+      LogPlanTermSpecification(
+          LogTerm{1}, config,
+          LogPlanTermSpecification::Leader{"A", RebootId{42}}),
+      participantsConfig);
+
+  auto current = LogCurrent();
+  current.leader =
+      LogCurrent::Leader{.serverId = "A",
+                         .term = LogTerm{1},
+                         .committedParticipantsConfig = participantsConfig,
+                         .leadershipEstablished = true,
+                         .commitStatus = std::nullopt};
+
+  auto const& health = ParticipantsHealth{
+      ._health = {
+          {"A",
+           ParticipantHealth{.rebootId = RebootId{42}, .notIsFailed = true}},
+          {"B",
+           ParticipantHealth{.rebootId = RebootId{14}, .notIsFailed = true}},
+          {"C",
+           ParticipantHealth{.rebootId = RebootId{14}, .notIsFailed = true}},
+          {"D",
+           ParticipantHealth{.rebootId = RebootId{14}, .notIsFailed = true}}}};
+
+  auto r = checkReplicatedLog(Log{target, plan, current}, health);
+  // We expect a UpdateParticipantsFlagsAction to unset the allowedInQuorum flag
+  // for d
+  ASSERT_TRUE(std::holds_alternative<UpdateParticipantFlagsAction>(r))
+      << to_string(r);
+
+  auto action = std::get<UpdateParticipantFlagsAction>(r);
+  ASSERT_EQ(action._participant, "D");
+  ASSERT_EQ(action._flags, (ParticipantFlags{.forced = false,
+                                             .allowedInQuorum = false,
+                                             .allowedAsLeader = true}));
+}
+
+TEST_F(LogSupervisionTest, test_remove_participant_action_wait_for_committed) {
+  auto const& logId = LogId{44};
+  auto const& config = LogConfig(3, 3, 3, true);
+
+  // Server D is missing in target and has set the allowedInQuorum flag to false
+  // but the config is not yet committed
+  auto const& target =
+      LogTarget(logId,
+                ParticipantsFlagsMap{{"A", ParticipantFlags{}},
+                                     {"B", ParticipantFlags{}},
+                                     {"C", ParticipantFlags{}}},
+                config);
+
+  ParticipantsFlagsMap participantsFlags{
+      {"A", ParticipantFlags{}},
+      {"B", ParticipantFlags{}},
+      {"C", ParticipantFlags{}},
+      {"D", ParticipantFlags{.allowedInQuorum = false}}};
+  auto const& participantsConfig =
+      ParticipantsConfig{.generation = 2, .participants = participantsFlags};
+
+  auto const& plan = LogPlanSpecification(
+      logId,
+      LogPlanTermSpecification(
+          LogTerm{1}, config,
+          LogPlanTermSpecification::Leader{"A", RebootId{42}}),
+      participantsConfig);
+
+  ParticipantsFlagsMap participantsFlagsOld{{"A", ParticipantFlags{}},
+                                            {"B", ParticipantFlags{}},
+                                            {"C", ParticipantFlags{}},
+                                            {"D", ParticipantFlags{}}};
+  auto const& participantsConfigOld =
+      ParticipantsConfig{.generation = 1, .participants = participantsFlagsOld};
+
+  auto current = LogCurrent();
+  current.leader =
+      LogCurrent::Leader{.serverId = "A",
+                         .term = LogTerm{1},
+                         .committedParticipantsConfig = participantsConfigOld,
+                         .leadershipEstablished = true,
+                         .commitStatus = std::nullopt};
+
+  auto const& health = ParticipantsHealth{
+      ._health = {
+          {"A",
+           ParticipantHealth{.rebootId = RebootId{42}, .notIsFailed = true}},
+          {"B",
+           ParticipantHealth{.rebootId = RebootId{14}, .notIsFailed = true}},
+          {"C",
+           ParticipantHealth{.rebootId = RebootId{14}, .notIsFailed = true}},
+          {"D",
+           ParticipantHealth{.rebootId = RebootId{14}, .notIsFailed = true}}}};
+
+  auto r = checkReplicatedLog(Log{target, plan, current}, health);
+  // We expect an EmptyAction
+  ASSERT_TRUE(std::holds_alternative<EmptyAction>(r)) << to_string(r);
+}
+
+TEST_F(LogSupervisionTest, test_remove_participant_action_committed) {
+  auto const& logId = LogId{44};
+  auto const& config = LogConfig(3, 3, 3, true);
+
+  // Server D is missing in target and has set the allowedInQuorum flag to false
+  // but the config is not yet committed
+  auto const& target =
+      LogTarget(logId,
+                ParticipantsFlagsMap{{"A", ParticipantFlags{}},
+                                     {"B", ParticipantFlags{}},
+                                     {"C", ParticipantFlags{}}},
+                config);
+
+  ParticipantsFlagsMap participantsFlags{
+      {"A", ParticipantFlags{}},
+      {"B", ParticipantFlags{}},
+      {"C", ParticipantFlags{}},
+      {"D", ParticipantFlags{.allowedInQuorum = false}}};
+  auto const& participantsConfig =
+      ParticipantsConfig{.generation = 2, .participants = participantsFlags};
+
+  auto const& plan = LogPlanSpecification(
+      logId,
+      LogPlanTermSpecification(
+          LogTerm{1}, config,
+          LogPlanTermSpecification::Leader{"A", RebootId{42}}),
+      participantsConfig);
+
+  auto current = LogCurrent();
+  current.leader =
+      LogCurrent::Leader{.serverId = "A",
+                         .term = LogTerm{1},
+                         .committedParticipantsConfig = participantsConfig,
+                         .leadershipEstablished = true,
+                         .commitStatus = std::nullopt};
+
+  auto const& health = ParticipantsHealth{
+      ._health = {
+          {"A",
+           ParticipantHealth{.rebootId = RebootId{42}, .notIsFailed = true}},
+          {"B",
+           ParticipantHealth{.rebootId = RebootId{14}, .notIsFailed = true}},
+          {"C",
+           ParticipantHealth{.rebootId = RebootId{14}, .notIsFailed = true}},
+          {"D",
+           ParticipantHealth{.rebootId = RebootId{14}, .notIsFailed = true}}}};
+
+  auto r = checkReplicatedLog(Log{target, plan, current}, health);
+  // We expect an RemoveParticipantFromPlanAction to finally remove D
+  ASSERT_TRUE(std::holds_alternative<RemoveParticipantFromPlanAction>(r))
+      << to_string(r);
+
+  auto action = std::get<RemoveParticipantFromPlanAction>(r);
+  ASSERT_EQ(action._participant, "D");
 }

@@ -1,6 +1,49 @@
 devel
 -----
 
+* Updated ArangoDB Starter to 0.15.4-preview-1.
+
+* Added API method to query a list of available optimizer rules from the arangod process.
+
+* Added new server option: --icu-language. Used instead of --default-language to set pure ICU collator.
+
+  For example, in Sweden language("sv") lowercase letters should precede uppercase ones. 
+  You can achieve it using following options when server starts
+
+    --icu-language sv
+
+* Added new AQL function `KEEP_RECURSIVE` to recursively keep attributes from
+  objects/documents, as a counterpart to `UNSET_RECURSIVE`.
+
+* No longer put document writes from replication into the audit log by
+  default. Same with low priority authentication like internal UI requests
+  to .html files for the UI. This solves a performance problem for
+  shards getting in sync with audit log switched on.
+
+* Added an HTTP fuzzer that will fuzz requests (the header for the actual
+  moment) and send to the server. The amount of requests sent is provided 
+  by one of the parameters of the function `fuzzRequests()` in arangosh.
+  The optional parameters that can be supplied are: 
+  `fuzzRequests(<numRequests>, <numIterations>, <seed>)`
+  The parameter numIterations is the amount of times the fuzzer is going to 
+  perform its random actions on the header, and seed is for the seed that is 
+  used for randomizing. 
+
+* Fixed ES-1078: The REST API endpoint for handling `/_api/user/${user}/config`
+  did not work properly. The supplied data by sending a PUT request has not been
+  stored to the correct location. The Web UI uses this endpoint to store its
+  graph properties for storing the visualization properties. As this endpoint
+  did not work as expected, the graph visualization properties did not get
+  persisted as well. This is now resolved.
+
+* Updated arangosync to 2.9.0.
+
+* Speed up initial sync (in case there is already data present) by prefetching
+  data from leader.
+
+* Escape each key in attribute paths of nested attributes in the query explain
+  output for SEARCH queries that utilize the primary sort order.
+
 * Turn off sending "Server" HTTP response header on DB servers if not 
   explicitly requested. This saves a tiny bit of traffic on each response
   from a DB server.
@@ -13189,7 +13232,7 @@ v2.8.0-alpha1 (2015-12-03)
   the HTTP response header `"Server: ArangoDB"` in its HTTP responses. By default,
   the option is turned off so the header is still sent as usual.
 
-* added new AQL function `UNSET_RECURSIVE` to recursively unset attritutes from
+* added new AQL function `UNSET_RECURSIVE` to recursively unset attributes from
   objects/documents
 
 * switched command-line editor in ArangoShell and arangod to linenoise-ng
