@@ -146,8 +146,7 @@ uint64_t EnumerateCollectionExecutor::skipEntries(
   if (_infos.getFilter() == nullptr) {
     _cursor->skip(toSkip, actuallySkipped);
     stats.incrScanned(actuallySkipped);
-    [[maybe_unused]] uint64_t scanned =
-        _documentProducingFunctionContext.getAndResetNumScanned();
+    std::ignore = _documentProducingFunctionContext.getAndResetNumScanned();
   } else {
     _cursor->nextDocument(_documentSkipper, toSkip);
     uint64_t filtered =
@@ -195,7 +194,7 @@ EnumerateCollectionExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
            * TRI_ASSERT(_documentProducingFunctionContext.getAndResetNumScanned()
            * == skipped);
            */
-          [[maybe_unused]] uint64_t scanned =
+          std::ignore =
               _documentProducingFunctionContext.getAndResetNumScanned();
         } else {
           // We need to call this to do the Accounting of FILTERED correctly.

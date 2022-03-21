@@ -135,7 +135,7 @@ std::shared_ptr<Cache> Manager::createCache(CacheType type,
     bool allowed = isOperational();
 
     if (allowed) {
-      std::uint64_t fixedSize = [](CacheType type, bool enableWindowedStats) {
+      std::uint64_t fixedSize = [&type, &enableWindowedStats]() {
         switch (type) {
           case CacheType::Plain:
             return PlainCache<Hasher>::allocationSize(enableWindowedStats);
@@ -145,7 +145,7 @@ std::shared_ptr<Cache> Manager::createCache(CacheType type,
           default:
             return std::uint64_t(0);
         }
-      }(type, enableWindowedStats);
+      }();
       std::tie(allowed, metadata, table) = registerCache(fixedSize, maxSize);
     }
 
