@@ -592,7 +592,7 @@ function unitTest (cases, options) {
       (Array.isArray(options.commandSwitches) && options.commandSwitches.includes("failed"))) {
     options.failed = rp.getFailedTestCases(options);
   }
-  if (options.setInterrupteable) {
+  if (options.setInterruptable) {
     internal.SetSignalToImmediateDeadline()
   }
   
