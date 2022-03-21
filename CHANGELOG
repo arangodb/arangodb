@@ -1,5 +1,10 @@
 devel
 -----
+
+* Updated ArangoDB Starter to 0.15.4-preview-1.
+
+* Added API method to query a list of available optimizer rules from the arangod process.
+
 * Added new server option: --icu-language. Used instead of --default-language to set pure ICU collator.
 
   For example, in Sweden language("sv") lowercase letters should precede uppercase ones. 
