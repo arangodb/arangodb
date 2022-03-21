@@ -77,6 +77,11 @@ auto MyFactory::constructFollower(std::unique_ptr<MyCoreType> core)
   return std::make_shared<MyFollowerState>(std::move(core));
 }
 
+auto MyFactory::constructCore(GlobalLogIdentifier const&)
+    -> std::unique_ptr<MyCoreType> {
+  return std::make_unique<MyCoreType>();
+}
+
 auto MyFollowerState::applyEntries(std::unique_ptr<EntryIterator> ptr) noexcept
     -> futures::Future<Result> {
   applyIterator(*ptr);

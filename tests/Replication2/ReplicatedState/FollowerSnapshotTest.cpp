@@ -103,6 +103,21 @@ TEST_F(FollowerSnapshotTest, basic_follower_manager_test) {
   ASSERT_EQ(nullptr, manager->getFollowerState())
       << "follower state should not be available yet";
 
+  // first trigger an error
+  state->acquire.resolveWithAndReset(
+      Result{TRI_ERROR_HTTP_SERVICE_UNAVAILABLE});
+
+  // we expect a retry
+  {
+    ASSERT_TRUE(state->acquire.wasTriggered())
+        << "expect snapshot to be requested";
+    auto& value = state->acquire.inspectValue();
+    EXPECT_EQ(value.first, "leader");
+    EXPECT_EQ(value.second, LogIndex{0});
+  }
+  ASSERT_EQ(nullptr, manager->getFollowerState())
+      << "follower state should not be available yet";
+
   // notify the manager that the state transfer was successfully completed
   state->acquire.resolveWith(Result{});
 
