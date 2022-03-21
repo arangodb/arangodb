@@ -116,7 +116,7 @@ void MigrateTask::run() {
         metadata.toggleMigrating();
       }
       _manager.reclaimTable(std::move(_table), false);
-      _table.reset();
+      TRI_ASSERT(_table == nullptr);
     }
 
     _manager.unprepareTask(_environment);

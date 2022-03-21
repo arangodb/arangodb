@@ -755,12 +755,12 @@ std::shared_ptr<Table> Manager::leaseTable(std::uint32_t logSize) {
     }
   } else {
     table = std::move(_tables[logSize].top());
+    _tables[logSize].pop();
     TRI_ASSERT(table != nullptr);
     _spareTableAllocation -= table->memoryUsage();
     TRI_ASSERT(_spareTables > 0);
     --_spareTables;
     ++_activeTables;
-    _tables[logSize].pop();
   }
 
   return table;
