@@ -99,7 +99,7 @@ struct AqlValueHintZero {
 
 struct AqlValueHintDouble {
   explicit AqlValueHintDouble(double v) noexcept;
-  double value; // TODO (Dronplane) restore const!
+  double const value;
 };
 
 struct AqlValueHintInt {
