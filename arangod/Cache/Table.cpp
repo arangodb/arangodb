@@ -183,7 +183,7 @@ Table::Table(std::uint32_t logSize)
     : _lock(),
       _disabled(true),
       _evictions(false),
-      _logSize(std::min(logSize, maxLogSize)),
+      _logSize(std::min(logSize, kMaxLogSize)),
       _size(static_cast<std::uint64_t>(1) << _logSize),
       _shift(32 - _logSize),
       _mask(static_cast<std::uint32_t>((_size - 1) << _shift)),
@@ -349,7 +349,7 @@ bool Table::slotEmptied() noexcept {
   TRI_ASSERT(i > 0);
   return (((static_cast<double>(i - 1) / static_cast<double>(_slotsTotal)) <
            Table::idealLowerRatio) &&
-          (_logSize > Table::minLogSize));
+          (_logSize > Table::kMinLogSize));
 }
 
 void Table::slotsEmptied(std::uint64_t numSlots) noexcept {

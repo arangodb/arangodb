@@ -59,7 +59,7 @@ using SpinUnlocker = ::arangodb::basics::SpinUnlocker;
 // hashers should be stateless and thus there should be no size difference
 // between them
 const std::uint64_t Manager::minCacheAllocation =
-    Cache::minSize + Table::allocationSize(Table::minLogSize) +
+    Cache::kMinSize + Table::allocationSize(Table::kMinLogSize) +
     std::max(PlainCache<BinaryKeyHasher>::allocationSize(true),
              TransactionalCache<BinaryKeyHasher>::allocationSize(true)) +
     Manager::cacheRecordOverhead;
@@ -210,7 +210,7 @@ void Manager::shutdown() {
 bool Manager::resize(std::uint64_t newGlobalLimit) {
   SpinLocker guard(SpinLocker::Mode::Write, _lock);
 
-  if ((newGlobalLimit < Manager::minSize) ||
+  if ((newGlobalLimit < Manager::kMinSize) ||
       (static_cast<std::uint64_t>(0.5 * (1.0 - Manager::highwaterMultiplier) *
                                   static_cast<double>(newGlobalLimit)) <
        _fixedAllocation) ||
@@ -333,13 +333,13 @@ std::tuple<bool, Metadata, std::shared_ptr<Table>> Manager::registerCache(
   }
 
   if (ok) {
-    table = leaseTable(Table::minLogSize);
+    table = leaseTable(Table::kMinLogSize);
     ok = (table != nullptr);
   }
 
   if (ok) {
     metadata =
-        Metadata(Cache::minSize, fixedSize, table->memoryUsage(), maxSize);
+        Metadata(Cache::kMinSize, fixedSize, table->memoryUsage(), maxSize);
     ok = increaseAllowed(metadata.allocatedSize - table->memoryUsage(), true);
     if (ok) {
       _globalAllocation += (metadata.allocatedSize - table->memoryUsage());
@@ -783,13 +783,14 @@ void Manager::reclaimTable(std::shared_ptr<Table>&& table, bool internal) {
     std::size_t maxTables =
         (logSize < 18) ? (static_cast<std::size_t>(1) << (18 - logSize)) : 1;
     if ((_tables[logSize].size() < maxTables) &&
-        (memoryUsage <= maxTableSize) && (_spareTables < maxSpareTablesTotal) &&
+        (memoryUsage <= maxTableSize) &&
+        (_spareTables < kMaxSpareTablesTotal) &&
         ((memoryUsage + _spareTableAllocation) <
          ((_globalSoftLimit - _globalHighwaterMark) / 2))) {
       _tables[logSize].emplace(std::move(table));
       _spareTableAllocation += memoryUsage;
       ++_spareTables;
-      TRI_ASSERT(_spareTables <= maxSpareTablesTotal);
+      TRI_ASSERT(_spareTables <= kMaxSpareTablesTotal);
     } else {
       _globalAllocation -= memoryUsage;
       TRI_ASSERT(_globalAllocation >= _fixedAllocation);

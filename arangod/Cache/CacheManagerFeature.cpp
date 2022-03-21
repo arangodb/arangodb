@@ -82,10 +82,10 @@ void CacheManagerFeature::collectOptions(
 
 void CacheManagerFeature::validateOptions(
     std::shared_ptr<options::ProgramOptions>) {
-  if (_cacheSize < Manager::minSize) {
+  if (_cacheSize < Manager::kMinSize) {
     LOG_TOPIC("75778", FATAL, arangodb::Logger::FIXME)
         << "invalid value for `--cache.size', need at least "
-        << Manager::minSize;
+        << Manager::kMinSize;
     FATAL_ERROR_EXIT();
   }
 

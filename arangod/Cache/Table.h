@@ -40,8 +40,8 @@ class Table : public std::enable_shared_from_this<Table> {
  public:
   static constexpr double idealLowerRatio = 0.04;
   static constexpr double idealUpperRatio = 0.25;
-  static constexpr std::uint32_t minLogSize = 8;
-  static constexpr std::uint32_t maxLogSize = 32;
+  static constexpr std::uint32_t kMinLogSize = 8;
+  static constexpr std::uint32_t kMaxLogSize = 32;
   static constexpr std::uint32_t standardLogSizeAdjustment = 6;
   static constexpr std::uint64_t triesGuarantee =
       std::numeric_limits<std::uint64_t>::max();

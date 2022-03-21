@@ -76,8 +76,8 @@ class Cache : public std::enable_shared_from_this<Cache> {
 
   typedef FrequencyBuffer<uint8_t> StatBuffer;
 
-  static constexpr std::uint64_t minSize = 16384;
-  static constexpr std::uint64_t minLogSize = 14;
+  static constexpr std::uint64_t kMinSize = 16384;
+  static constexpr std::uint64_t kMinLogSize = 14;
 
   static constexpr std::uint64_t triesGuarantee =
       std::numeric_limits<std::uint64_t>::max();

@@ -86,8 +86,8 @@ class Manager {
     std::uint64_t spareTables = 0;
   };
 
-  static constexpr std::uint64_t minSize = 1024 * 1024;
-  static constexpr std::uint64_t maxSpareTablesTotal = 16;
+  static constexpr std::uint64_t kMinSize = 1024 * 1024;
+  static constexpr std::uint64_t kMaxSpareTablesTotal = 16;
 
   typedef FrequencyBuffer<uint64_t> AccessStatBuffer;
   typedef FrequencyBuffer<uint8_t> FindStatBuffer;
