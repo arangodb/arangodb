@@ -38,9 +38,62 @@ using namespace arangodb::replication2::test;
 
 #include "Replication2/ReplicatedState/ReplicatedState.tpp"
 
+struct MockPrototypeLeaderInterface : public IPrototypeLeaderInterface {
+  explicit MockPrototypeLeaderInterface(
+      std::shared_ptr<PrototypeLeaderState> leaderState)
+      : leaderState(std::move(leaderState)) {}
+
+  auto getSnapshot(GlobalLogIdentifier const&, LogIndex waitForIndex)
+      -> futures::Future<
+          ResultT<std::unordered_map<std::string, std::string>>> override {
+    return leaderState->getSnapshot(waitForIndex);
+  }
+
+  std::shared_ptr<PrototypeLeaderState> leaderState;
+};
+
+struct MockPrototypeNetworkInterface : public IPrototypeNetworkInterface {
+  auto getLeaderInterface(ParticipantId id)
+      -> ResultT<std::shared_ptr<IPrototypeLeaderInterface>> override {
+    if (auto leaderState = leaderStates.find(id);
+        leaderState != leaderStates.end()) {
+      return ResultT<std::shared_ptr<IPrototypeLeaderInterface>>::success(
+          std::make_shared<MockPrototypeLeaderInterface>(leaderState->second));
+    }
+    return {TRI_ERROR_CLUSTER_NOT_LEADER};
+  }
+
+  void addLeaderState(ParticipantId id,
+                      std::shared_ptr<PrototypeLeaderState> leaderState) {
+    leaderStates[std::move(id)] = std::move(leaderState);
+  }
+
+  std::unordered_map<ParticipantId, std::shared_ptr<PrototypeLeaderState>>
+      leaderStates;
+};
+
+struct MockPrototypeStorageInterface : public IPrototypeStorageInterface {
+  auto put(const GlobalLogIdentifier& logId, PrototypeCoreDump dump)
+      -> Result override {
+    map[logId.id] = std::move(dump);
+    return TRI_ERROR_NO_ERROR;
+  }
+  auto get(const GlobalLogIdentifier& logId)
+      -> ResultT<PrototypeCoreDump> override {
+    if (!map.contains(logId.id)) {
+      return ResultT<PrototypeCoreDump>::success(map[logId.id] =
+                                                     PrototypeCoreDump{});
+    }
+    return ResultT<PrototypeCoreDump>::success(map[logId.id]);
+  }
+
+  std::unordered_map<LogId, PrototypeCoreDump> map;
+};
+
 struct PrototypeConcurrencyTest : test::ReplicatedLogTest {
   PrototypeConcurrencyTest() {
-    feature->registerStateType<prototype::PrototypeState>("prototype-state");
+    feature->registerStateType<prototype::PrototypeState>(
+        "prototype-state", networkMock, storageMock);
     leader->triggerAsyncReplication();
 
     auto replicatedState =
@@ -105,6 +158,11 @@ struct PrototypeConcurrencyTest : test::ReplicatedLogTest {
   std::shared_ptr<AsyncFollower> asyncWorker =
       std::make_shared<AsyncFollower>(follower);
   std::shared_ptr<PrototypeLeaderState> state;
+
+  std::shared_ptr<MockPrototypeNetworkInterface> networkMock =
+      std::make_shared<MockPrototypeNetworkInterface>();
+  std::shared_ptr<MockPrototypeStorageInterface> storageMock =
+      std::make_shared<MockPrototypeStorageInterface>();
 };
 
 namespace {
@@ -155,10 +213,10 @@ TEST_F(PrototypeConcurrencyTest, test) {
 
   wg.wait();
 
-  auto snapshot = state->getSnapshot().get();
+  auto snapshot = state->getSnapshot(LogIndex{1}).get();
   for (int x = 0; x <= numKeys; x++) {
     bool expectA = aIdxs[x] > bIdxs[x];
-    auto value = snapshot.at(std::to_string(x));
+    auto value = snapshot->at(std::to_string(x));
     EXPECT_EQ(value, expectA ? "A" : "B")
         << "at key " << x << " A idx = " << aIdxs[x] << " B idx = " << bIdxs[x];
   }
