@@ -173,7 +173,7 @@ class Table : public std::enable_shared_from_this<Table> {
   /// then the return value will be the existing auxiliary table (possibly
   /// null).
   //////////////////////////////////////////////////////////////////////////////
-  std::shared_ptr<Table> setAuxiliary(std::shared_ptr<Table> const& table);
+  std::shared_ptr<Table> setAuxiliary(std::shared_ptr<Table> table);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns a pointer to the specified bucket in the primary table,

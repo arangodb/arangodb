@@ -243,20 +243,14 @@ Table::BucketLocker Table::fetchAndLockBucket(std::uint32_t hash,
   return bucketGuard;
 }
 
-std::shared_ptr<Table> Table::setAuxiliary(
-    std::shared_ptr<Table> const& table) {
-  std::shared_ptr<Table> result = table;
+std::shared_ptr<Table> Table::setAuxiliary(std::shared_ptr<Table> table) {
   if (table.get() != this) {
     SpinLocker guard(SpinLocker::Mode::Write, _lock);
-    if (table == nullptr) {
-      result = std::move(_auxiliary);
-      _auxiliary = table;
-    } else if (_auxiliary == nullptr) {
-      _auxiliary = table;
-      result.reset();
+    if (table == nullptr || _auxiliary == nullptr) {
+      std::swap(_auxiliary, table);
     }
   }
-  return result;
+  return table;
 }
 
 void* Table::primaryBucket(uint64_t index) noexcept {
