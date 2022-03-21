@@ -553,7 +553,7 @@ function ahuacatlFunctionsTestSuite () {
       ];
 
       tests.forEach(function(test) {
-        actual = getQueryResults("RETURN SORTED(" + JSON.stringify(test[0]) + ")");
+        var actual = getQueryResults("RETURN SORTED(" + JSON.stringify(test[0]) + ")");
         assertEqual([ test[1] ], actual);
       });
     },
@@ -574,7 +574,7 @@ function ahuacatlFunctionsTestSuite () {
       ];
 
       tests.forEach(function(test) {
-        actual = getQueryResults("RETURN SORTED_UNIQUE(" + JSON.stringify(test[0]) + ")");
+        var actual = getQueryResults("RETURN SORTED_UNIQUE(" + JSON.stringify(test[0]) + ")");
         assertEqual([ test[1] ], actual);
       });
     },
