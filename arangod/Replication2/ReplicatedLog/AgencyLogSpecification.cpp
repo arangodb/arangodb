@@ -31,6 +31,8 @@
 
 #include <velocypack/Iterator.h>
 
+#include <Inspection/VPackSaveInspector.h>
+
 #include <type_traits>
 
 using namespace arangodb;
@@ -435,3 +437,10 @@ LogTarget::LogTarget(from_velocypack_t, VPackSlice slice) {
 LogTarget::LogTarget(LogId id, ParticipantsFlagsMap const& participants,
                      LogConfig const& config)
     : id{id}, participants{participants}, config(config) {}
+
+auto Log::toVelocyPack(VPackBuilder& builder) const -> void {
+  auto inspector = arangodb::inspection::VPackSaveInspector{builder};
+
+  auto res = inspector.apply(*this);
+  (void)res;
+}

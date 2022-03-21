@@ -27,6 +27,10 @@
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/types.h"
 
+#include "Inspection/VPack.h"
+#include "Inspection/VPackLoadInspector.h"
+#include "Inspection/VPackSaveInspector.h"
+
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
@@ -235,6 +239,45 @@ struct Log {
   // exist
   std::optional<LogPlanSpecification> plan;
   std::optional<LogCurrent> current;
+
+  auto toVelocyPack(VPackBuilder& builder) const -> void;
 };
+
+template<class Inspector>
+auto inspect(Inspector& f, LogTarget& o) {
+  if constexpr (Inspector::isLoading) {
+    o.fromVelocyPack(f.slice());
+  } else {
+    o.toVelocyPack(f.builder());
+  }
+  return arangodb::inspection::Result{};
+}
+
+template<class Inspector>
+auto inspect(Inspector& f, LogPlanSpecification& o) {
+  if constexpr (Inspector::isLoading) {
+    o.fromVelocyPack(f.slice());
+  } else {
+    o.toVelocyPack(f.builder());
+  }
+  return arangodb::inspection::Result{};
+}
+
+template<class Inspector>
+auto inspect(Inspector& f, LogCurrent& o) {
+  if constexpr (Inspector::isLoading) {
+    o.fromVelocyPack(f.slice());
+  } else {
+    o.toVelocyPack(f.builder());
+  }
+  return arangodb::inspection::Result{};
+}
+
+template<class Inspector>
+auto inspect(Inspector& f, Log& log) {
+  return f.object(log).fields(f.field("target", log.target),
+                              f.field("plan", log.plan),
+                              f.field("current", log.current));
+}
 
 }  // namespace arangodb::replication2::agency
