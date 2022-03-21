@@ -46,6 +46,7 @@ struct Dummy {
   double d;
   bool b;
   std::string s;
+  bool operator==(Dummy const&) const = default;
 };
 
 template<class Inspector>
@@ -166,12 +167,14 @@ auto inspect(Inspector& f, Pointer& x) {
 struct Fallback {
   int i;
   std::string s;
+  Dummy d = {.i = 1, .d = 4.2, .b = true, .s = "2"};
 };
 
 template<class Inspector>
 auto inspect(Inspector& f, Fallback& x) {
   return f.object(x).fields(f.field("i", x.i).fallback(42),
-                            f.field("s", x.s).fallback("foobar"));
+                            f.field("s", x.s).fallback("foobar"),
+                            f.field("d", x.d).fallback(f.keep()));
 }
 
 struct Invariant {
@@ -1244,10 +1247,12 @@ TEST_F(VPackLoadInspectorTest, load_object_with_fallbacks) {
   VPackLoadInspector inspector{builder};
 
   Fallback f;
+  Dummy expected = f.d;
   auto result = inspector.apply(f);
   ASSERT_TRUE(result.ok());
   EXPECT_EQ(42, f.i);
   EXPECT_EQ("foobar", f.s);
+  EXPECT_EQ(expected, f.d);
 }
 
 TEST_F(VPackLoadInspectorTest, load_object_with_fallback_reference) {

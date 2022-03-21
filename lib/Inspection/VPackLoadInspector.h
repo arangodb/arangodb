@@ -142,12 +142,16 @@ struct VPackLoadInspector : InspectorBase<VPackLoadInspector> {
     auto name = getFieldName(field);
     auto& value = getFieldValue(field);
     auto load = [&]() {
-      if constexpr (!std::is_void_v<decltype(getFallbackValue(field))>) {
+      using FallbackField = decltype(getFallbackField(field));
+      if constexpr (!std::is_void_v<FallbackField>) {
+        auto applyFallback = [&](auto& val) {
+          getFallbackField(field).apply(val);
+        };
         if constexpr (!std::is_void_v<decltype(getTransformer(field))>) {
-          return loadTransformedField(ff, name, value, getFallbackValue(field),
+          return loadTransformedField(ff, name, value, std::move(applyFallback),
                                       getTransformer(field));
         } else {
-          return loadField(ff, name, value, getFallbackValue(field));
+          return loadField(ff, name, value, std::move(applyFallback));
         }
       } else {
         if constexpr (!std::is_void_v<decltype(getTransformer(field))>) {
@@ -174,7 +178,24 @@ struct VPackLoadInspector : InspectorBase<VPackLoadInspector> {
   template<class U>
   struct FallbackContainer {
     explicit FallbackContainer(U&& val) : fallbackValue(std::move(val)) {}
+    template<class T>
+    void apply(T& val) const noexcept {
+      if constexpr (std::is_assignable_v<T, U>) {
+        val = fallbackValue;
+      } else {
+        val = T{fallbackValue};
+      }
+    }
+
+   private:
     U fallbackValue;
+  };
+
+  template<>
+  struct FallbackContainer<VPackLoadInspector::Keep> {
+    explicit FallbackContainer(VPackLoadInspector::Keep&&) {}
+    template<class T>
+    void apply(T&) const noexcept {}
   };
 
   template<class Invariant>
