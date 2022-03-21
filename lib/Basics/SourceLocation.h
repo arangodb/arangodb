@@ -23,6 +23,8 @@
 
 #pragma once
 
+#include <iosfwd>
+
 namespace arangodb::basics {
 
 // Poor-man's replacement for std::source_location, until we get C++20.
@@ -45,6 +47,8 @@ struct SourceLocation {
     return _line;
   }
 };
+
+auto operator<<(std::ostream&, SourceLocation const&) -> std::ostream&;
 
 }  // namespace arangodb::basics
 

@@ -237,22 +237,27 @@ RestStatus RestPrototypeStateHandler::handleGetSnapshot(
     return RestStatus::DONE;
   }
 
-  return waitForFuture(
-      methods.getSnapshot(logId).thenValue([this](auto&& waitForResult) {
-        if (waitForResult.ok()) {
-          auto map = waitForResult.get();
-          VPackBuilder result;
-          {
-            VPackObjectBuilder ob(&result);
-            for (auto const& [key, value] : map)
-              result.add(key, VPackValue(value));
-          }
-          generateOk(rest::ResponseCode::OK, result.slice());
-        } else {
-          generateError(waitForResult.result());
-        }
-        return RestStatus::DONE;
-      }));
+  auto waitForIndex =
+      LogIndex{_request->parsedValue<decltype(LogIndex::value)>("waitForIndex")
+                   .value_or(0)};
+  return waitForFuture(methods.getSnapshot(logId, waitForIndex)
+                           .thenValue([this](auto&& waitForResult) {
+                             if (waitForResult.fail()) {
+                               generateError(waitForResult.result());
+                             } else {
+                               auto map = waitForResult.get();
+                               VPackBuilder result;
+                               {
+                                 VPackObjectBuilder ob(&result);
+                                 for (auto const& [key, value] : map) {
+                                   result.add(key, VPackValue(value));
+                                 }
+                               }
+                               generateOk(rest::ResponseCode::OK,
+                                          result.slice());
+                             }
+                             return RestStatus::DONE;
+                           }));
 }
 
 RestStatus RestPrototypeStateHandler::handleDeleteRequest(

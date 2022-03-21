@@ -39,9 +39,11 @@ using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_log;
 
 RocksDBPersistedLog::RocksDBPersistedLog(
-    replication2::LogId id, uint64_t objectId,
+    replication2::GlobalLogIdentifier id, uint64_t objectId,
     std::shared_ptr<RocksDBLogPersistor> persistor)
-    : PersistedLog(id), _objectId(objectId), _persistor(std::move(persistor)) {}
+    : PersistedLog(std::move(id)),
+      _objectId(objectId),
+      _persistor(std::move(persistor)) {}
 
 auto RocksDBPersistedLog::insert(PersistedLogIterator& iter,
                                  WriteOptions const& options) -> Result {

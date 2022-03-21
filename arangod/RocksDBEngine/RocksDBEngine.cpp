@@ -2870,8 +2870,9 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
           it.get(StaticStrings::DataSourcePlanId).getNumericValue<uint64_t>()};
       auto objectId =
           it.get(StaticStrings::ObjectId).getNumericValue<uint64_t>();
-      auto log =
-          std::make_shared<RocksDBPersistedLog>(logId, objectId, _logPersistor);
+      auto log = std::make_shared<RocksDBPersistedLog>(
+          replication2::GlobalLogIdentifier(vocbase->name(), logId), objectId,
+          _logPersistor);
       StorageEngine::registerReplicatedLog(*vocbase, logId, log);
     }
   } catch (std::exception const& ex) {
@@ -3583,8 +3584,9 @@ auto RocksDBEngine::createReplicatedLog(TRI_vocbase_t& vocbase,
           RocksDBColumnFamilyManager::Family::Definitions),
       key.string(), value.string());
   if (s.ok()) {
-    return {
-        std::make_shared<RocksDBPersistedLog>(logId, objectId, _logPersistor)};
+    return {std::make_shared<RocksDBPersistedLog>(
+        replication2::GlobalLogIdentifier(vocbase.name(), logId), objectId,
+        _logPersistor)};
   }
 
   return rocksutils::convertStatus(s);
