@@ -693,11 +693,11 @@ struct ReplicatedStateDBServerMethods
 
   auto createReplicatedState(replicated_state::agency::Target spec) const
       -> futures::Future<Result> override {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_HTTP_NOT_IMPLEMENTED);
   }
 
   auto deleteReplicatedLog(LogId id) const -> futures::Future<Result> override {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_HTTP_NOT_IMPLEMENTED);
   }
 
   auto getLocalStatus(LogId id) const
@@ -706,7 +706,14 @@ struct ReplicatedStateDBServerMethods
     if (auto status = state->getStatus(); status.has_value()) {
       return std::move(*status);
     }
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_HTTP_SERVICE_UNAVAILABLE);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_HTTP_NOT_IMPLEMENTED);
+  }
+
+  auto replaceParticipant(LogId logId, ParticipantId const& participantToRemove,
+                          ParticipantId const& participantToAdd) const
+      -> futures::Future<Result> override {
+    // Only available on the coordinator
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_HTTP_NOT_IMPLEMENTED);
   }
 
   TRI_vocbase_t& vocbase;
@@ -767,6 +774,13 @@ struct ReplicatedStateCoordinatorMethods
   auto getLocalStatus(LogId id) const
       -> futures::Future<replicated_state::StateStatus> override {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+
+  auto replaceParticipant(LogId id, ParticipantId const& participantToRemove,
+                          ParticipantId const& participantToAdd) const
+      -> futures::Future<Result> override {
+    return replication2::agency::methods::replaceReplicatedStateParticipant(
+        vocbase, id, participantToRemove, participantToAdd);
   }
 
   TRI_vocbase_t& vocbase;
