@@ -74,7 +74,7 @@ let optionsDocumentation = [
   '   - `loopEternal`: to loop one test over and over.',
   '   - `loopSleepWhen`: sleep every nth iteration',
   '   - `loopSleepSec`: sleep seconds between iterations',
-  '   - `setInterrupteable`: register special break handler ',
+  '   - `setInterruptable`: register special break handler',
   '   - `sleepBeforeStart` : sleep at tcpdump info - use this dump traffic or attach debugger',
   '',
   '   - `storageEngine`: set to `rocksdb` - defaults to `rocksdb`',
