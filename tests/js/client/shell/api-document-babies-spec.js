@@ -285,6 +285,7 @@ describe('babies collection document', function () {
       // Check header error codes
       let headers = req.headers;
       expect(headers).to.have.property(errorHeader);
+      print(headers)
       let errorCodes = JSON.parse(headers[errorHeader]);
       expect(errorCodes).to.have.property(uniqueCode);
       expect(errorCodes[uniqueCode], 1);
