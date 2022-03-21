@@ -37,6 +37,17 @@ const arango = require('@arangodb').arango;
 const expect = require('chai').expect;
 const origin = arango.getEndpoint().replace(/\+vpp/, '').replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:').replace(/^vst:/, 'http:');
 
+
+function testItzInstalled(mountpoint) {
+  let doc = arango.GET_RAW(mountpoint + '/random');
+  expect(doc.code).to.equal(200);
+}
+
+function testItzUnInstalled(mountpoint) {
+  let doc = arango.GET_RAW(mountpoint + '/random');
+  expect(doc.code).to.equal(404);
+}
+
 describe('Foxx Manager', function () {
   describe('using different dbs', function () {
     beforeEach(function () {
@@ -76,6 +87,32 @@ describe('Foxx Manager', function () {
       arango.reconnect(origin, 'tmpFMDB2', 'root', '');
       const unavailable = arango.GET_RAW('/unittest/random');
       expect(unavailable.code).to.equal(404);
+    });
+  });
+
+  describe('should install apps from the various sources', function () {
+    let mount = '/itz';
+    afterEach(function() {
+      FoxxManager.uninstall(mount, {force: true});
+    });
+
+    it('from Store', function () {
+      FoxxManager.install("itzpapalotl", mount);
+      testItzInstalled(mount);
+      FoxxManager.uninstall(mount, {force: true});
+      testItzUnInstalled(mount);
+    });
+    it('from github', function () {
+      FoxxManager.install("git:arangodb/itzpapalotl:v1.2.0", mount);
+      testItzInstalled(mount);
+      FoxxManager.uninstall(mount, {force: true});
+      testItzUnInstalled(mount);
+    });
+    it('from local directory', function () {
+      FoxxManager.install("./tests/js/common/test-data/apps/itzpapalotl", mount);
+      testItzInstalled(mount);
+      FoxxManager.uninstall(mount, {force: true});
+      testItzUnInstalled(mount);
     });
   });
 
