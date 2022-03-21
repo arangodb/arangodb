@@ -38,7 +38,11 @@ const ViewLinksReactView = ({ name }) => {
   const updateView = useUpdateView();
   const newLink = useLinks();
   const updateLinks = useUpdateLinks();
-  updateView(name);
+  useEffect(() => {
+    if (name) {
+      updateView(name);
+    }
+  });
 
   useEffect(() => {
     initialState.current.formCache = cloneDeep(view);

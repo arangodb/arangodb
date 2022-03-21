@@ -7,6 +7,7 @@ import { DispatchArgs } from "../../../utils/constants";
 import { LinkProperties } from "../constants";
 // import { map } from "lodash";
 import LinkPropertiesInput from "../forms/inputs/LinkPropertiesInput";
+
 type FieldViewPprops = {
   fields: {};
   disabled: boolean | undefined;
@@ -51,19 +52,19 @@ const FieldView: React.FC<FieldViewPprops> = ({
     }
   };
 
-  const newField = loopFields(fields);
+  const field = loopFields(fields);
 
   return (
     <ViewLayout disabled={disabled} field={fieldName} view={view} link={link}>
       <ArangoTable style={{ marginLeft: 0 }}>
         <tbody>
-          <tr key={fieldName} style={{ borderBottom: "1px  solid #DDD" }}>
+          <tr key={fieldName} style={{ borderBottom: "1px  solid #794242" }}>
             <ArangoTD seq={disabled ? 0 : 1}>{fieldName}</ArangoTD>
             <ArangoTD seq={disabled ? 1 : 2}>
               {/* {newField &&
                  map(newField.analyzers, a => <Badge key={a} name={a} />)} */}
               <LinkPropertiesInput
-                formState={newField}
+                formState={field}
                 disabled={disabled}
                 basePath={`${basePath}.fields[${fieldName}]`}
                 dispatch={

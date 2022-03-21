@@ -47,7 +47,6 @@ const LinkPropertiesInput = ({
 
   const setShow = useShowUpdate();
   const setCurrentField = useUpdateField();
-
   useEffect(() => {
     if (data) {
       const tempOptions = chain(data.body.result)
@@ -72,7 +71,6 @@ const LinkPropertiesInput = ({
       },
       basePath
     });
-
     setField("");
   };
   const addAnalyzer = (analyzer: string | number) => {
@@ -124,14 +122,16 @@ const LinkPropertiesInput = ({
   //   removeField(field);
   // };
   const handleShowField = (field: string) => {
-    setCurrentField({ field: field, basePath: basePath, fields: fields });
-    console.log(basePath);
+    setCurrentField({
+      field: field,
+      basePath: basePath,
+      fields: fields
+    });
     setShow("ViewField");
   };
 
   const storeIdValues = formState.storeValues === "id";
   const hideInBackgroundField = disabled || basePath.includes(".fields");
-
   return (
     <Grid>
       <Cell size={"1-1"}>
@@ -231,21 +231,17 @@ const LinkPropertiesInput = ({
 
       <Cell size={"1"}>
         <Fieldset legend={"Fields"}>
-          <>
-            {disabled && isEmpty(fields) ? null : (
-              <FieldList
-                fields={fields}
-                disabled={disabled}
-                dispatch={
-                  (dispatch as unknown) as Dispatch<
-                    DispatchArgs<LinkProperties>
-                  >
-                }
-                basePath={basePath}
-                viewField={handleShowField}
-              />
-            )}
-          </>
+          {disabled && isEmpty(fields) ? null : (
+            <FieldList
+              fields={fields}
+              disabled={disabled}
+              dispatch={
+                (dispatch as unknown) as Dispatch<DispatchArgs<LinkProperties>>
+              }
+              basePath={basePath}
+              viewField={handleShowField}
+            />
+          )}
         </Fieldset>
 
         {/* {map(fields, (properties, fld) => {

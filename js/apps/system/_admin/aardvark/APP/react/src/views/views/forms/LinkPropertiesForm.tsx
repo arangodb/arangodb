@@ -84,7 +84,7 @@ const LinkPropertiesForm = ({
   return disabled && isEmpty(links) ? (
     <span>No links found.</span>
   ) : (
-    <>
+    <main>
       {!disabled && show === "AddNew" && (
         <NewLink
           view={view}
@@ -162,7 +162,7 @@ const LinkPropertiesForm = ({
             </tr>
           ) : null;
         })} */}
-    </>
+    </main>
   );
 };
 

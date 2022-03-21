@@ -1,4 +1,4 @@
-import React, { useState, useContext } from "react";
+import React, { useState, useContext, useRef, useEffect } from "react";
 
 const LinkContext = React.createContext();
 const ShowContext = React.createContext();
@@ -37,6 +37,16 @@ export const useLinks = () => {
 export const useUpdateLinks = () => {
   return useContext(UpdateLinksStoreContext);
 }
+
+export const usePrevious = (value) => {
+  const ref = useRef();
+  useEffect(() => {
+    ref.current = value;
+  });
+  return ref.current;
+}
+
+
 export function LinkProvider({ children }) {
   const [show, setShow] = useState("LinkList");
   const [field, setShowField] = useState({});

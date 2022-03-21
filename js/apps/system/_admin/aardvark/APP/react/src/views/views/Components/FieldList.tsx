@@ -61,7 +61,8 @@ const FieldView: React.FC<FieldListProps> = ({
           <tr key={fld} style={{ borderBottom: "1px  solid #DDD" }}>
             <ArangoTD seq={disabled ? 0 : 1}>{fld}</ArangoTD>
             <ArangoTD seq={disabled ? 1 : 2}>
-              {properties && map(properties.analyzers, a => <Badge name={a} />)}
+              {properties &&
+                map(properties.analyzers, a => <Badge key={a} name={a} />)}
               {/* {showField && (
                 <LinkPropertiesInput
                   formState={properties}
@@ -85,7 +86,7 @@ const FieldView: React.FC<FieldListProps> = ({
                 <IconButton
                   icon={"edit"}
                   type={"warning"}
-                  onClick={() => viewField(fld)}
+                  onClick={() => viewField(fld, properties)}
                 />
               </ArangoTD>
             )}
