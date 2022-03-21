@@ -24,6 +24,7 @@
 #include "ExecutionStats.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
+#include "Basics/VelocyPackHelper.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -152,43 +153,40 @@ ExecutionStats::ExecutionStats(VPackSlice slice) : ExecutionStats() {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "stats is not an object");
   }
-  writesExecuted = slice.get("writesExecuted").getNumber<uint64_t>();
-  writesIgnored = slice.get("writesIgnored").getNumber<uint64_t>();
-  scannedFull = slice.get("scannedFull").getNumber<uint64_t>();
-  scannedIndex = slice.get("scannedIndex").getNumber<uint64_t>();
-  filtered = slice.get("filtered").getNumber<uint64_t>();
-
-  if (VPackSlice s = slice.get("httpRequests"); s.isNumber()) {
-    requests = s.getNumber<uint64_t>();
-  }
-
-  if (VPackSlice s = slice.get("peakMemoryUsage"); s.isNumber()) {
-    peakMemoryUsage =
-        std::max<size_t>(peakMemoryUsage, s.getNumber<uint64_t>());
-  }
 
   TRI_ASSERT(cursorsCreated == 0);
   TRI_ASSERT(cursorsRearmed == 0);
   TRI_ASSERT(cacheHits == 0);
   TRI_ASSERT(cacheMisses == 0);
 
+  writesExecuted = basics::VelocyPackHelper::getNumericValue<uint64_t>(
+      slice, "writesExecuted", 0);
+  writesIgnored = basics::VelocyPackHelper::getNumericValue<uint64_t>(
+      slice, "writesIgnored", 0);
+  scannedFull = basics::VelocyPackHelper::getNumericValue<uint64_t>(
+      slice, "scannedFull", 0);
+  scannedIndex = basics::VelocyPackHelper::getNumericValue<uint64_t>(
+      slice, "scannedIndex", 0);
+  filtered =
+      basics::VelocyPackHelper::getNumericValue<uint64_t>(slice, "filtered", 0);
+  requests = basics::VelocyPackHelper::getNumericValue<uint64_t>(
+      slice, "httpRequests", 0);
+  peakMemoryUsage = basics::VelocyPackHelper::getNumericValue<uint64_t>(
+      slice, "peakMemoryUsage", 0);
+
   // cursorsCreated and cursorsRearmed are optional attributes.
   // the attributes are currently not shown in profile outputs,
   // but are rather used for testing purposes.
-  if (VPackSlice s = slice.get("cursorsCreated"); s.isNumber()) {
-    cursorsCreated = s.getNumber<uint64_t>();
-  }
-  if (VPackSlice s = slice.get("cursorsRearmed"); s.isNumber()) {
-    cursorsRearmed = s.getNumber<uint64_t>();
-  }
+  cursorsCreated = basics::VelocyPackHelper::getNumericValue<uint64_t>(
+      slice, "cursorsCreated", 0);
+  cursorsRearmed = basics::VelocyPackHelper::getNumericValue<uint64_t>(
+      slice, "cursorsRearmed", 0);
 
   // cacheHits and cacheMisses are also optional attributes.
-  if (VPackSlice s = slice.get("cacheHits"); s.isNumber()) {
-    cacheHits = s.getNumber<uint64_t>();
-  }
-  if (VPackSlice s = slice.get("cacheMisses"); s.isNumber()) {
-    cacheMisses = s.getNumber<uint64_t>();
-  }
+  cacheHits = basics::VelocyPackHelper::getNumericValue<uint64_t>(
+      slice, "cacheHits", 0);
+  cacheMisses = basics::VelocyPackHelper::getNumericValue<uint64_t>(
+      slice, "cacheMisses", 0);
 
   // note: fullCount is an optional attribute!
   if (VPackSlice s = slice.get("fullCount"); s.isNumber()) {
