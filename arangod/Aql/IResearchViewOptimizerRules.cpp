@@ -217,8 +217,32 @@ bool optimizeSearchCondition(IResearchViewNode& viewNode,
   return true;
 }
 
-// TODO (Dronplane) Do NOT apply if there is fullcount!
 bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
+  if (!plan->contains(ExecutionNode::LIMIT) || !plan->contains(ExecutionNode::SORT)) {
+    return false;
+  }
+  { // FullCount check
+    // We will consume all upstream in the EnumerateViewNode
+    // so fullCount should be calculated in the Enumerate node.
+    // But on the other hand AQL requires only LIMIT node to be able to do that.
+    // So we abort optimization in this case for now.
+    // FIXME: Would it be possible to calculate fullCount in the Enumerate?
+    arangodb::containers::SmallVector<
+        ExecutionNode*>::allocator_type::arena_type a;
+    arangodb::containers::SmallVector<ExecutionNode*> limits{a};
+    // LIMIT with fullCount currently could not be in the subqueries.
+    // But just in case set true here so even if it will change in the future
+    // code will not break. Performance penalty expected to be tolerable.
+    plan->findNodesOfType(limits, ExecutionNode::LIMIT, true);
+    for (auto const node : limits) {
+      TRI_ASSERT(node);
+      auto limit = ExecutionNode::castTo<LimitNode const*>(node);
+      if (limit->fullCount()) {
+        return false;
+      }
+    }
+  }
+
   auto current = static_cast<ExecutionNode*>(&viewNode);
   auto const& scorers = viewNode.scorers();
   SortNode* sortNode = nullptr;
@@ -251,6 +275,7 @@ bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
   if (!sortNode || !limitNode) {
     return false;
   }
+
   // we've found all we need
   auto const& sortElements = sortNode->elements();
   std::vector<std::pair<size_t, bool>> scoresSort;
@@ -291,7 +316,6 @@ bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
     // in cluster node will be unlinked later by 'distributeSortToClusterRule'
     plan->unlinkNode(sortNode);
   }
-  // TODO (Dronplane) check fullCount!
   return true;
 }
 
