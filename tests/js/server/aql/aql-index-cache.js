@@ -65,6 +65,50 @@ function CreateSuite () {
         checkIndex({ type: "persistent", fields: ["value1"], unique: true }, value);
       });
     },
+    
+    testCacheEnabledFlagDoesNotMakeADifference1 : function () {
+      let c = db._create(cn);
+      try {
+        assertEqual(1, c.indexes().length);
+
+        let idx1 = c.ensureIndex({ type: "persistent", fields: ["value"], cacheEnabled: true });
+        assertTrue(idx1.isNewlyCreated);
+        assertTrue(idx1.cacheEnabled);
+        assertEqual(2, c.indexes().length);
+        
+        // create same index but with different cacheEnabled flag value
+        let idx2 = c.ensureIndex({ type: "persistent", fields: ["value"], cacheEnabled: false });
+        assertFalse(idx2.isNewlyCreated);
+        assertTrue(idx2.cacheEnabled);
+        assertEqual(2, c.indexes().length);
+        
+        assertEqual(idx1.id, idx2.id);
+      } finally {
+        db._drop(cn);
+      }
+    },
+
+    testCacheEnabledFlagDoesNotMakeADifference2 : function () {
+      let c = db._create(cn);
+      try {
+        assertEqual(1, c.indexes().length);
+
+        let idx1 = c.ensureIndex({ type: "persistent", fields: ["value"], cacheEnabled: false });
+        assertTrue(idx1.isNewlyCreated);
+        assertFalse(idx1.cacheEnabled);
+        assertEqual(2, c.indexes().length);
+        
+        // create same index but with different cacheEnabled flag value
+        let idx2 = c.ensureIndex({ type: "persistent", fields: ["value"], cacheEnabled: true });
+        assertFalse(idx2.isNewlyCreated);
+        assertFalse(idx2.cacheEnabled);
+        assertEqual(2, c.indexes().length);
+        
+        assertEqual(idx1.id, idx2.id);
+      } finally {
+        db._drop(cn);
+      }
+    }
   };
 }
 
