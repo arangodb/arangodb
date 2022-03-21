@@ -322,8 +322,8 @@ void RocksDBIndex::compact() {
 
 std::shared_ptr<cache::Cache> RocksDBIndex::cacheFactory() const {
   TRI_ASSERT(_cacheManager != nullptr);
-  return _cacheManager->createCache(cache::CacheType::Transactional,
-                                    cache::BinaryKeyHasher{});
+  return _cacheManager->createCache<cache::BinaryKeyHasher>(
+      cache::CacheType::Transactional);
 }
 
 // banish given key from transactional cache

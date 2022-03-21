@@ -30,7 +30,6 @@
 #include <vector>
 
 #include "Basics/VelocyPackHelper.h"
-#include "Cache/BinaryKeyHasher.h"
 #include "Cache/Common.h"
 #include "Cache/Manager.h"
 #include "Cache/Transaction.h"
@@ -53,8 +52,8 @@ TEST(CacheTransactionalCacheVPackKeyHasherTest,
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
   Manager manager(sharedPRNG, postFn, 4 * cacheLimit);
-  auto cache = manager.createCache(CacheType::Transactional, VPackKeyHasher{},
-                                   false, cacheLimit);
+  auto cache = manager.createCache<VPackKeyHasher>(CacheType::Transactional,
+                                                   false, cacheLimit);
 
   VPackBuilder builder;
   for (std::uint64_t i = 0; i < 16384; i++) {
@@ -103,8 +102,8 @@ TEST(CacheTransactionalCacheVPackKeyHasherTest,
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
   Manager manager(sharedPRNG, postFn, 4 * cacheLimit);
-  auto cache = manager.createCache(CacheType::Transactional, VPackKeyHasher{},
-                                   false, cacheLimit);
+  auto cache = manager.createCache<VPackKeyHasher>(CacheType::Transactional,
+                                                   false, cacheLimit);
 
   std::vector<std::uint8_t> builder;
   for (std::uint32_t i = 0; i < 256; i++) {
@@ -246,8 +245,8 @@ TEST(CacheTransactionalCacheVPackKeyHasherTest,
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
   Manager manager(sharedPRNG, postFn, 4 * cacheLimit);
-  auto cache = manager.createCache(CacheType::Transactional, VPackKeyHasher{},
-                                   false, cacheLimit);
+  auto cache = manager.createCache<VPackKeyHasher>(CacheType::Transactional,
+                                                   false, cacheLimit);
 
   std::vector<std::uint8_t> builder;
   for (std::uint32_t i = 0; i < 256; i++) {
@@ -430,8 +429,8 @@ TEST(CacheTransactionalCacheVPackKeyHasherTest,
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
   Manager manager(sharedPRNG, postFn, 4 * cacheLimit);
-  auto cache = manager.createCache(CacheType::Transactional, VPackKeyHasher{},
-                                   false, cacheLimit);
+  auto cache = manager.createCache<VPackKeyHasher>(CacheType::Transactional,
+                                                   false, cacheLimit);
 
   Transaction* tx = manager.beginTransaction(false);
 

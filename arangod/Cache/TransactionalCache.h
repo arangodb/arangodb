@@ -59,7 +59,7 @@ template<typename Hasher>
 class TransactionalCache final : public Cache {
  public:
   TransactionalCache(Cache::ConstructionGuard guard, Manager* manager,
-                     Hasher hasher, std::uint64_t id, Metadata&& metadata,
+                     std::uint64_t id, Metadata&& metadata,
                      std::shared_ptr<Table> table, bool enableWindowedStats);
   ~TransactionalCache();
 
@@ -126,8 +126,8 @@ class TransactionalCache final : public Cache {
                 : 0);
   }
 
-  static std::shared_ptr<Cache> create(Manager* manager, Hasher hasher,
-                                       std::uint64_t id, Metadata&& metadata,
+  static std::shared_ptr<Cache> create(Manager* manager, std::uint64_t id,
+                                       Metadata&& metadata,
                                        std::shared_ptr<Table> table,
                                        bool enableWindowedStats);
 

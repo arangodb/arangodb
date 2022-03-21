@@ -51,8 +51,9 @@ TraverserCache* CacheFactory::CreateCache(
     auto cacheManager =
         query.vocbase().server().getFeature<CacheManagerFeature>().manager();
     if (cacheManager != nullptr) {
-      std::shared_ptr<arangodb::cache::Cache> cache = cacheManager->createCache(
-          cache::CacheType::Plain, cache::BinaryKeyHasher{});
+      std::shared_ptr<arangodb::cache::Cache> cache =
+          cacheManager->createCache<cache::BinaryKeyHasher>(
+              cache::CacheType::Plain);
       if (cache != nullptr) {
         return new TraverserDocumentCache(query, std::move(cache), opts);
       }

@@ -2289,8 +2289,8 @@ void RocksDBVPackIndex::afterTruncate(TRI_voc_tick_t tick,
 
 std::shared_ptr<cache::Cache> RocksDBVPackIndex::cacheFactory() const {
   TRI_ASSERT(_cacheManager != nullptr);
-  return _cacheManager->createCache(cache::CacheType::Transactional,
-                                    cache::VPackKeyHasher{});
+  return _cacheManager->createCache<cache::VPackKeyHasher>(
+      cache::CacheType::Transactional);
 }
 
 RocksDBCuckooIndexEstimatorType* RocksDBVPackIndex::estimator() {

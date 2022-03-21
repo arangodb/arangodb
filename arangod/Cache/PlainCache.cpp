@@ -188,18 +188,20 @@ std::string_view PlainCache<Hasher>::hasherName() const noexcept {
 }
 
 template<typename Hasher>
-std::shared_ptr<Cache> PlainCache<Hasher>::create(
-    Manager* manager, Hasher hasher, std::uint64_t id, Metadata&& metadata,
-    std::shared_ptr<Table> table, bool enableWindowedStats) {
+std::shared_ptr<Cache> PlainCache<Hasher>::create(Manager* manager,
+                                                  std::uint64_t id,
+                                                  Metadata&& metadata,
+                                                  std::shared_ptr<Table> table,
+                                                  bool enableWindowedStats) {
   return std::make_shared<PlainCache<Hasher>>(
-      Cache::ConstructionGuard(), manager, std::move(hasher), id,
-      std::move(metadata), std::move(table), enableWindowedStats);
+      Cache::ConstructionGuard(), manager, id, std::move(metadata),
+      std::move(table), enableWindowedStats);
 }
 
 template<typename Hasher>
 PlainCache<Hasher>::PlainCache(Cache::ConstructionGuard /*guard*/,
-                               Manager* manager, Hasher hasher,
-                               std::uint64_t id, Metadata&& metadata,
+                               Manager* manager, std::uint64_t id,
+                               Metadata&& metadata,
                                std::shared_ptr<Table> table,
                                bool enableWindowedStats)
     : Cache(manager, id, std::move(metadata), std::move(table),

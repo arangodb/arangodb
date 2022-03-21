@@ -2077,8 +2077,8 @@ void RocksDBCollection::createCache() const {
   if (_cache == nullptr) {
     TRI_ASSERT(_cacheManager != nullptr);
     LOG_TOPIC("f5df2", DEBUG, Logger::CACHE) << "Creating document cache";
-    _cache = _cacheManager->createCache(cache::CacheType::Transactional,
-                                        cache::BinaryKeyHasher{});
+    _cache = _cacheManager->createCache<cache::BinaryKeyHasher>(
+        cache::CacheType::Transactional);
   }
 }
 

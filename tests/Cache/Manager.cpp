@@ -58,14 +58,13 @@ TEST(CacheManagerTest, test_create_and_destroy_caches) {
   ASSERT_TRUE(0ULL < manager.globalAllocation());
   ASSERT_TRUE(requestLimit > manager.globalAllocation());
 
-  BinaryKeyHasher hasher;
   std::vector<std::shared_ptr<Cache>> caches;
 
   for (size_t i = 0; i < 8; ++i) {
     Manager::MemoryStats beforeStats = manager.memoryStats();
     ASSERT_EQ(i, beforeStats.activeTables);
 
-    auto cache = manager.createCache(CacheType::Transactional, hasher);
+    auto cache = manager.createCache<BinaryKeyHasher>(CacheType::Transactional);
     ASSERT_NE(nullptr, cache);
     ASSERT_GT(cache->size(), 80 * 1024);  // size of each cache is about 80kb
 
@@ -141,13 +140,12 @@ TEST(CacheManagerTest, test_mixed_cache_types_under_mixed_load_LongRunning) {
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
   Manager manager(sharedPRNG, postFn, 1024ULL * 1024ULL * 1024ULL);
-  BinaryKeyHasher hasher;
   std::size_t cacheCount = 4;
   std::size_t threadCount = 4;
   std::vector<std::shared_ptr<Cache>> caches;
   for (std::size_t i = 0; i < cacheCount; i++) {
-    auto res = manager.createCache(
-        (i % 2 == 0) ? CacheType::Plain : CacheType::Transactional, hasher);
+    auto res = manager.createCache<BinaryKeyHasher>(
+        (i % 2 == 0) ? CacheType::Plain : CacheType::Transactional);
     TRI_ASSERT(res);
     caches.emplace_back(res);
   }
@@ -157,8 +155,7 @@ TEST(CacheManagerTest, test_mixed_cache_types_under_mixed_load_LongRunning) {
   std::uint64_t operationCount = 4 * 1024 * 1024;
   std::atomic<std::uint64_t> hitCount(0);
   std::atomic<std::uint64_t> missCount(0);
-  auto worker = [&hasher, &caches, cacheCount, initialInserts, operationCount,
-                 &hitCount,
+  auto worker = [&caches, cacheCount, initialInserts, operationCount, &hitCount,
                  &missCount](std::uint64_t lower, std::uint64_t upper) -> void {
     // fill with some initial data
     for (std::uint64_t i = 0; i < initialInserts; i++) {
@@ -214,8 +211,9 @@ TEST(CacheManagerTest, test_mixed_cache_types_under_mixed_load_LongRunning) {
         if (f.found()) {
           hitCount++;
           TRI_ASSERT(f.value() != nullptr);
-          TRI_ASSERT(hasher.sameKey(f.value()->key(), f.value()->keySize(),
-                                    &item, sizeof(std::uint64_t)));
+          TRI_ASSERT(BinaryKeyHasher::sameKey(f.value()->key(),
+                                              f.value()->keySize(), &item,
+                                              sizeof(std::uint64_t)));
         } else {
           missCount++;
           TRI_ASSERT(f.value() == nullptr);
@@ -256,11 +254,10 @@ TEST(CacheManagerTest, test_manager_under_cache_lifecycle_chaos_LongRunning) {
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
   Manager manager(sharedPRNG, postFn, 1024ULL * 1024ULL * 1024ULL);
-  BinaryKeyHasher hasher;
   std::size_t threadCount = 4;
   std::uint64_t operationCount = 4ULL * 1024ULL;
 
-  auto worker = [&manager, &hasher, operationCount]() -> void {
+  auto worker = [&manager, operationCount]() -> void {
     std::queue<std::shared_ptr<Cache>> caches;
 
     for (std::uint64_t i = 0; i < operationCount; i++) {
@@ -268,9 +265,8 @@ TEST(CacheManagerTest, test_manager_under_cache_lifecycle_chaos_LongRunning) {
           RandomGenerator::interval(static_cast<std::uint32_t>(1));
       switch (r) {
         case 0: {
-          auto res = manager.createCache(
-              (i % 2 == 0) ? CacheType::Plain : CacheType::Transactional,
-              hasher);
+          auto res = manager.createCache<BinaryKeyHasher>(
+              (i % 2 == 0) ? CacheType::Plain : CacheType::Transactional);
           if (res) {
             caches.emplace(res);
           }

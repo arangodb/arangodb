@@ -73,8 +73,8 @@ TransactionalStore::TransactionalStore(Manager* manager)
       _writeOptions(rocksdb::WriteOptions()),
       _txOptions(rocksdb::TransactionOptions()) {
   TRI_ASSERT(manager != nullptr);
-  BinaryKeyHasher hasher;
-  _cache = manager->createCache(CacheType::Transactional, hasher, true);
+  _cache =
+      manager->createCache<BinaryKeyHasher>(CacheType::Transactional, true);
   TRI_ASSERT(_cache.get() != nullptr);
 
   _directory.appendText(TRI_GetTempPath());

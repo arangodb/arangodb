@@ -80,13 +80,11 @@ TEST(CacheRebalancerTest, test_rebalancing_with_plaincache_LongRunning) {
   Manager manager(sharedPRNG, postFn, 128 * 1024 * 1024);
   Rebalancer rebalancer(&manager);
 
-  BinaryKeyHasher hasher;
-
   std::size_t cacheCount = 4;
   std::size_t threadCount = 4;
   std::vector<std::shared_ptr<Cache>> caches;
   for (std::size_t i = 0; i < cacheCount; i++) {
-    caches.emplace_back(manager.createCache(CacheType::Plain, hasher));
+    caches.emplace_back(manager.createCache<BinaryKeyHasher>(CacheType::Plain));
   }
 
   std::atomic<bool> doneRebalancing(false);
@@ -108,8 +106,7 @@ TEST(CacheRebalancerTest, test_rebalancing_with_plaincache_LongRunning) {
   std::uint64_t operationCount = 4 * 1024 * 1024;
   std::atomic<std::uint64_t> hitCount(0);
   std::atomic<std::uint64_t> missCount(0);
-  auto worker = [&hasher, &caches, cacheCount, initialInserts, operationCount,
-                 &hitCount,
+  auto worker = [&caches, cacheCount, initialInserts, operationCount, &hitCount,
                  &missCount](std::uint64_t lower, std::uint64_t upper) -> void {
     // fill with some initial data
     for (std::uint64_t i = 0; i < initialInserts; i++) {
@@ -165,8 +162,9 @@ TEST(CacheRebalancerTest, test_rebalancing_with_plaincache_LongRunning) {
         if (f.found()) {
           hitCount++;
           TRI_ASSERT(f.value() != nullptr);
-          TRI_ASSERT(hasher.sameKey(f.value()->key(), f.value()->keySize(),
-                                    &item, sizeof(std::uint64_t)));
+          TRI_ASSERT(BinaryKeyHasher::sameKey(f.value()->key(),
+                                              f.value()->keySize(), &item,
+                                              sizeof(std::uint64_t)));
         } else {
           missCount++;
           TRI_ASSERT(f.value() == nullptr);
@@ -208,13 +206,13 @@ TEST(CacheRebalancerTest,
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
   Manager manager(sharedPRNG, postFn, 128 * 1024 * 1024);
   Rebalancer rebalancer(&manager);
-  BinaryKeyHasher hasher;
 
   std::size_t cacheCount = 4;
   std::size_t threadCount = 4;
   std::vector<std::shared_ptr<Cache>> caches;
   for (std::size_t i = 0; i < cacheCount; i++) {
-    caches.emplace_back(manager.createCache(CacheType::Transactional, hasher));
+    caches.emplace_back(
+        manager.createCache<BinaryKeyHasher>(CacheType::Transactional));
   }
 
   bool doneRebalancing = false;
@@ -236,8 +234,8 @@ TEST(CacheRebalancerTest,
   std::uint64_t operationCount = 4 * 1024 * 1024;
   std::atomic<std::uint64_t> hitCount(0);
   std::atomic<std::uint64_t> missCount(0);
-  auto worker = [&manager, &hasher, &caches, cacheCount, initialInserts,
-                 operationCount, &hitCount,
+  auto worker = [&manager, &caches, cacheCount, initialInserts, operationCount,
+                 &hitCount,
                  &missCount](std::uint64_t lower, std::uint64_t upper) -> void {
     Transaction* tx = manager.beginTransaction(false);
     // fill with some initial data
@@ -306,8 +304,9 @@ TEST(CacheRebalancerTest,
         if (f.found()) {
           hitCount++;
           TRI_ASSERT(f.value() != nullptr);
-          TRI_ASSERT(hasher.sameKey(f.value()->key(), f.value()->keySize(),
-                                    &item, sizeof(std::uint64_t)));
+          TRI_ASSERT(BinaryKeyHasher::sameKey(f.value()->key(),
+                                              f.value()->keySize(), &item,
+                                              sizeof(std::uint64_t)));
         } else {
           missCount++;
           TRI_ASSERT(f.value() == nullptr);
