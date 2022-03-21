@@ -106,16 +106,28 @@ struct PrototypeStateMachineTest : test::ReplicatedLogTest {
       std::make_shared<MockPrototypeStorageInterface>();
 };
 
-TEST_F(PrototypeStateMachineTest, prorotype_core_wait_for) {
-  auto core = PrototypeCore(GlobalLogIdentifier{"", LogId{1}}, storageMock);
-  core.store = core.store.set("a", "b");
-  core.lastAppliedIndex = LogIndex{1};
-  auto f = core.waitForApplied(LogIndex{1});
+TEST_F(PrototypeStateMachineTest, prorotype_leader_wait_for) {
+  auto leaderLog = makeReplicatedLog(LogId{1});
+  auto leader = leaderLog->becomeLeader("leader", LogTerm{1}, {}, 1);
+
+  leader->triggerAsyncReplication();
+
+  auto leaderReplicatedState =
+      std::dynamic_pointer_cast<ReplicatedState<PrototypeState>>(
+          feature->createReplicatedState("prototype-state", leaderLog));
+  ASSERT_NE(leaderReplicatedState, nullptr);
+  leaderReplicatedState->start(
+      std::make_unique<ReplicatedStateToken>(StateGeneration{1}));
+
+  auto leaderState = leaderReplicatedState->getLeader();
+  ASSERT_NE(leaderState, nullptr);
+
+  auto f = leaderState->waitForApplied(LogIndex{1});
   ASSERT_TRUE(f.isReady());
-  f = core.waitForApplied(LogIndex{3});
+  f = leaderState->waitForApplied(LogIndex{2});
   ASSERT_FALSE(f.isReady());
-  core.lastAppliedIndex = LogIndex{3};
-  core.resolvePromises(LogIndex{3});
+  leaderState->lastAppliedIndex = LogIndex{2};
+  leaderState->resolvePromise(LogIndex{2});
   ASSERT_TRUE(f.isReady());
 }
 

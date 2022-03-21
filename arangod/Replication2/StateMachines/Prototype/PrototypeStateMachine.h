@@ -47,6 +47,7 @@
 #include <optional>
 #include <string>
 #include <variant>
+#include <shared_mutex>
 #include <unordered_map>
 
 namespace rocksdb {
@@ -108,14 +109,10 @@ struct PrototypeLogEntry {
 
 struct PrototypeCore {
   using StorageType = ::immer::map<std::string, std::string>;
-  using WaitForAppliedPromise = futures::Promise<futures::Unit>;
-  using WaitForAppliedQueue = std::multimap<LogIndex, WaitForAppliedPromise>;
 
   static constexpr std::size_t kFlushBatchSize = 1;
 
   StorageType store;
-  // TODO move outside
-  WaitForAppliedQueue waitForAppliedQueue;
   LogIndex lastAppliedIndex;
   LogIndex lastPersistedIndex;
   GlobalLogIdentifier logId;
@@ -128,11 +125,6 @@ struct PrototypeCore {
 
   void applySnapshot(std::unordered_map<std::string, std::string> snapshot);
 
-  void resolvePromises(LogIndex index);
-
-  // TODO use DeferredAction
-  auto waitForApplied(LogIndex index) -> futures::Future<futures::Unit>;
-
   bool flush();
   void loadStateFromDB();
 
@@ -142,6 +134,9 @@ struct PrototypeCore {
 struct PrototypeLeaderState
     : IReplicatedLeaderState<PrototypeState>,
       std::enable_shared_from_this<PrototypeLeaderState> {
+  using WaitForAppliedPromise = futures::Promise<futures::Unit>;
+  using WaitForAppliedQueue = std::multimap<LogIndex, WaitForAppliedPromise>;
+
   explicit PrototypeLeaderState(std::unique_ptr<PrototypeCore> core);
 
   [[nodiscard]] auto resign() && noexcept
@@ -171,7 +166,15 @@ struct PrototypeLeaderState
   auto getSnapshot(LogIndex waitForIndex)
       -> futures::Future<ResultT<std::unordered_map<std::string, std::string>>>;
 
+  auto waitForApplied(LogIndex index) -> futures::Future<futures::Unit>;
+  void resolvePromise(LogIndex index);
+
   Guarded<std::unique_ptr<PrototypeCore>, basics::UnshackledMutex> guardedData;
+  WaitForAppliedQueue waitForAppliedQueue;
+  std::atomic<LogIndex> lastAppliedIndex;
+
+ private:
+  mutable std::shared_mutex _mutex;
 };
 
 template<class Iterator>
@@ -202,19 +205,24 @@ auto PrototypeLeaderState::set(Iterator begin, Iterator end)
 
   return stream->waitFor(idx).thenValue(
       [self = shared_from_this(), idx, begin, end](auto&& res) {
-        return self->guardedData.doUnderLock(
-            [idx, begin, end](auto& core) -> ResultT<LogIndex> {
+        auto fut = self->guardedData.doUnderLock(
+            [self = self, idx, begin, end](auto& core) -> ResultT<LogIndex> {
               if (!core) {
                 return Result{TRI_ERROR_CLUSTER_NOT_LEADER};
               }
               for (auto it{begin}; it != end; ++it) {
                 core->store = core->store.set(it->first, it->second);
               }
-              return idx;
               core->lastAppliedIndex = idx;
-              core->resolvePromises(idx);
-              core->flush();
+              if (core->flush()) {
+                auto stream = self->getStream();
+                stream->release(core->lastPersistedIndex);
+              }
+              return idx;
             });
+        self->lastAppliedIndex.store(idx);
+        self->resolvePromise(idx);
+        return fut;
       });
 }
 
@@ -227,22 +235,29 @@ auto PrototypeLeaderState::remove(Iterator begin, Iterator end)
       PrototypeLogEntry::BulkDeleteOperation{.keys = {begin, end}}};
   auto idx = stream->insert(entry);
 
-  return stream->waitFor(idx).thenValue([self = shared_from_this(), begin, end,
-                                         idx](auto&& res) {
-    return self->guardedData.doUnderLock(
-        [begin, end, idx](auto& core) -> futures::Future<ResultT<LogIndex>> {
-          if (!core) {
-            return ResultT<LogIndex>::error(TRI_ERROR_CLUSTER_NOT_LEADER);
-          }
-          for (auto it{begin}; it != end; ++it) {
-            core->store = core->store.erase(*it);
-          }
-          return idx;
-          core->lastAppliedIndex = idx;
-          core->resolvePromises(idx);
-          core->flush();
-        });
-  });
+  return stream->waitFor(idx).thenValue(
+      [self = shared_from_this(), begin, end, idx](auto&& res) {
+        auto fut = self->guardedData.doUnderLock(
+            [self = self, begin, end,
+             idx](auto& core) mutable -> futures::Future<ResultT<LogIndex>> {
+              if (!core) {
+                return ResultT<LogIndex>::error(TRI_ERROR_CLUSTER_NOT_LEADER);
+              }
+              for (auto it{begin}; it != end; ++it) {
+                core->store = core->store.erase(*it);
+              }
+              core->lastAppliedIndex = self->lastAppliedIndex = idx;
+              self->resolvePromise(idx);
+              if (core->flush()) {
+                auto stream = self->getStream();
+                stream->release(core->lastPersistedIndex);
+              }
+              return idx;
+            });
+        self->lastAppliedIndex.store(idx);
+        self->resolvePromise(idx);
+        return fut;
+      });
 }
 
 struct IPrototypeLeaderInterface {

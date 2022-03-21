@@ -62,7 +62,6 @@ void PrototypeCore::applyEntries(std::unique_ptr<EntryIterator> ptr) {
                },
                logEntry.operation);
   }
-  resolvePromises(lastAppliedIndex);
 }
 
 bool PrototypeCore::flush() {
@@ -101,18 +100,6 @@ void PrototypeCore::applySnapshot(
   }
 }
 
-/*
- * Resolve waitForApplied promises up to and including appliedIndex.
- */
-void PrototypeCore::resolvePromises(LogIndex appliedIndex) {
-  TRI_ASSERT(appliedIndex <= lastAppliedIndex);
-  auto const end = waitForAppliedQueue.upper_bound(appliedIndex);
-  for (auto it = waitForAppliedQueue.begin(); it != end; ++it) {
-    it->second.setValue();
-  }
-  waitForAppliedQueue.erase(waitForAppliedQueue.begin(), end);
-}
-
 auto PrototypeCore::getDump() -> PrototypeCoreDump {
   // after we write to DB, we set lastPersistedIndex to lastAppliedIndex
   // we want to persist the already updated value of lastPersistedIndex
@@ -149,22 +136,42 @@ auto PrototypeCoreDump::fromVelocyPack(velocypack::Slice slice)
   return dump;
 }
 
-auto PrototypeCore::waitForApplied(LogIndex index)
-    -> futures::Future<futures::Unit> {
-  if (lastAppliedIndex >= index) {
-    return futures::Future<futures::Unit>{std::in_place};
-  }
-  auto it = waitForAppliedQueue.emplace(index, WaitForAppliedPromise{});
-  auto f = it->second.getFuture();
-  TRI_ASSERT(f.valid());
-  return f;
-}
-
 PrototypeCore::PrototypeCore(
     GlobalLogIdentifier logId,
     std::shared_ptr<IPrototypeStorageInterface> storage)
     : logId(std::move(logId)), storage(std::move(storage)) {
   loadStateFromDB();
+}
+
+void PrototypeLeaderState::resolvePromise(LogIndex appliedIndex) {
+  std::shared_lock readLock(_mutex);
+  TRI_ASSERT(appliedIndex <= lastAppliedIndex.load());
+  std::vector<futures::Promise<futures::Unit>> resolvable;
+  auto range = waitForAppliedQueue.equal_range(appliedIndex);
+  for (auto it = range.first; it != range.second; ++it) {
+    resolvable.push_back(std::move(it->second));
+  }
+  readLock.unlock();
+  std::unique_lock writeLock(_mutex);
+  waitForAppliedQueue.erase(range.first, range.second);
+  writeLock.unlock();
+  for (auto& it : resolvable) {
+    it.setValue();
+  }
+}
+
+auto PrototypeLeaderState::waitForApplied(LogIndex index)
+    -> futures::Future<futures::Unit> {
+  std::shared_lock readLock(_mutex);
+  if (lastAppliedIndex.load() >= index) {
+    return futures::Future<futures::Unit>{std::in_place};
+  }
+  readLock.unlock();
+  std::unique_lock writeLock(_mutex);
+  auto it = waitForAppliedQueue.emplace(index, WaitForAppliedPromise{});
+  auto f = it->second.getFuture();
+  TRI_ASSERT(f.valid());
+  return f;
 }
 
 PrototypeLeaderState::PrototypeLeaderState(std::unique_ptr<PrototypeCore> core)
@@ -186,7 +193,13 @@ auto PrototypeLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
           return Result{TRI_ERROR_CLUSTER_NOT_LEADER};
         }
         core->lastAppliedIndex = ptr->range().to.saturatedDecrement();
+        auto idx = ptr->range().from;
         core->applyEntries(std::move(ptr));
+        self->lastAppliedIndex.store(core->lastAppliedIndex);
+        while (idx <= self->lastAppliedIndex.load()) {
+          self->resolvePromise(idx);
+          idx = idx + 1;
+        }
         return Result{TRI_ERROR_NO_ERROR};
       });
 }
@@ -199,27 +212,33 @@ auto PrototypeLeaderState::set(
   PrototypeLogEntry entry{PrototypeLogEntry::InsertOperation{entries}};
   auto idx = stream->insert(entry);
 
-  return stream->waitFor(idx).thenValue(
-      [self = shared_from_this(), idx = idx,
-       entries = std::move(entries)](auto&& res) mutable {
-        return self->guardedData.doUnderLock(
-            [self = self, idx = idx,
-             entries = std::move(entries)](auto& core) -> ResultT<LogIndex> {
-              if (!core) {
-                return ResultT<LogIndex>::error(TRI_ERROR_CLUSTER_NOT_LEADER);
-              }
-              for (auto const& [key, value] : entries) {
-                core->store = core->store.set(key, value);
-              }
-              core->lastAppliedIndex = idx;
-              core->resolvePromises(idx);
-              if (core->flush()) {
-                // auto stream = self->getStream();
-                // stream->release(core->lastPersistedIndex);
-              }
-              return idx;
-            });
-      });
+  return stream->waitFor(idx).thenValue([self = shared_from_this(), idx = idx,
+                                         entries = std::move(entries)](
+                                            auto&& res) mutable {
+    return self->waitForApplied(idx.saturatedDecrement())
+        .thenValue([self = self, idx = idx, entries = std::move(entries)](
+                       auto&& result) mutable -> ResultT<LogIndex> {
+          auto fut = self->guardedData.doUnderLock(
+              [self = self, idx = idx,
+               entries = std::move(entries)](auto& core) -> ResultT<LogIndex> {
+                if (!core) {
+                  return ResultT<LogIndex>::error(TRI_ERROR_CLUSTER_NOT_LEADER);
+                }
+                for (auto const& [key, value] : entries) {
+                  core->store = core->store.set(key, value);
+                }
+                core->lastAppliedIndex = idx;
+                if (core->flush()) {
+                  auto stream = self->getStream();
+                  stream->release(core->lastPersistedIndex);
+                }
+                return idx;
+              });
+          self->lastAppliedIndex.store(idx);
+          self->resolvePromise(idx);
+          return fut;
+        });
+  });
 }
 
 auto PrototypeLeaderState::remove(std::string key)
@@ -231,7 +250,7 @@ auto PrototypeLeaderState::remove(std::string key)
   return stream->waitFor(idx).thenValue([self = shared_from_this(),
                                          key = std::move(key),
                                          idx = idx](auto&& res) mutable {
-    return self->guardedData.doUnderLock(
+    auto fut = self->guardedData.doUnderLock(
         [self = self, key = std::move(key),
          idx = idx](auto& core) -> ResultT<LogIndex> {
           if (!core) {
@@ -239,13 +258,15 @@ auto PrototypeLeaderState::remove(std::string key)
           }
           core->store = core->store.erase(key);
           core->lastAppliedIndex = idx;
-          core->resolvePromises(idx);
           if (core->flush()) {
-            // auto stream = self->getStream();
-            // stream->release(core->lastPersistedIndex);
+            auto stream = self->getStream();
+            stream->release(core->lastPersistedIndex);
           }
           return idx;
         });
+    self->lastAppliedIndex.store(idx);
+    self->resolvePromise(idx);
+    return fut;
   });
 }
 
@@ -259,7 +280,7 @@ auto PrototypeLeaderState::remove(std::vector<std::string> keys)
   return stream->waitFor(idx).thenValue(
       [self = shared_from_this(), idx = idx,
        entries = std::move(keys)](auto&& res) mutable {
-        return self->guardedData.doUnderLock(
+        auto fut = self->guardedData.doUnderLock(
             [self = self, entries = std::move(entries),
              idx = idx](auto& core) -> ResultT<LogIndex> {
               if (!core) {
@@ -269,13 +290,15 @@ auto PrototypeLeaderState::remove(std::vector<std::string> keys)
                 core->store = core->store.erase(*it);
               }
               core->lastAppliedIndex = idx;
-              core->resolvePromises(idx);
               if (core->flush()) {
-                // auto stream = self->getStream();
-                // stream->release(core->lastPersistedIndex);
+                auto stream = self->getStream();
+                stream->release(core->lastPersistedIndex);
               }
               return idx;
             });
+        self->lastAppliedIndex.store(idx);
+        self->resolvePromise(idx);
+        return fut;
       });
 }
 
@@ -304,7 +327,7 @@ auto PrototypeLeaderState::getSnapshot(LogIndex waitForIndex)
           TRI_ERROR_CLUSTER_NOT_LEADER);
     }
     // TODO use then
-    return core->waitForApplied(waitForIndex)
+    return self->waitForApplied(waitForIndex)
         .thenValue([&core, self](auto&& r)
                        -> ResultT<
                            std::unordered_map<std::string, std::string>> {
@@ -368,8 +391,8 @@ auto PrototypeFollowerState::applyEntries(
         core->lastAppliedIndex = ptr->range().to.saturatedDecrement();
         core->applyEntries(std::move(ptr));
         if (core->flush()) {
-          // auto stream = self->getStream();
-          // stream->release(core->lastPersistedIndex);
+          auto stream = self->getStream();
+          stream->release(core->lastPersistedIndex);
         }
         return Result{TRI_ERROR_NO_ERROR};
       });
