@@ -41,7 +41,7 @@ Whether the rule is available in the Enterprise Edition only.
 
 @EXAMPLES
 
-Execute a query and extract the result in a single go
+Retrieve the list of all query optimizer rules:
 
 @EXAMPLE_ARANGOSH_RUN{RestQueryRules}
     var url = "/_api/query/rules";
