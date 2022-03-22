@@ -175,8 +175,10 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
   let count = 0;
   let forceTerminate = false;
   let graphCount = 0;
-  let usersCount = userManager.all().length;
-
+  let usersCount = 0;
+  if (testname !== 'agency') {
+    usersCount = userManager.all().length;
+  };
   for (let i = 0; i < testList.length; i++) {
     let te = testList[i];
     let filtered = {};
