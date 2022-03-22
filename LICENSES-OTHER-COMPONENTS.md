@@ -443,11 +443,16 @@ _Enterprise Edition only_
 
 ### RocksDB
 
+Author: Hui Xiao <huixiao@fb.com>
+Date:   Mon Mar 21 19:48:41 2022 -0700
+
+    Update HISTORY.md and version.h for 7.1 release (#9727)
+
 * Name: RocksDB
-* Version: 6.29.0 (e8f116deabc601a5eae011f2fd8a38d02d87be8d)
-* Date: 2022-01-21 17:23:03 -0800
+* Version: 6.29.0 (b360d25debe2485fd3187f865f5a48f5b618015f)
+* Date: 2022-03-21 19:48:41 -0700
 * GitHub: https://github.com/facebook/rocksdb
-* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/rocksdb/6.29/README.md
+* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/rocksdb/7.1/README.md
 * License Name: Apache License 2.0
 * License Id: Apache-2.0
 

@@ -3109,7 +3109,7 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
 
     _db->GetApproximateSizes(
         c, &r, 1, &out,
-        static_cast<uint8_t>(
+        static_cast<rocksdb::DB::SizeApproximationFlags>(
             rocksdb::DB::SizeApproximationFlags::INCLUDE_MEMTABLES |
             rocksdb::DB::SizeApproximationFlags::INCLUDE_FILES));
 

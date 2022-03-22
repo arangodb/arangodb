@@ -293,7 +293,7 @@ void RocksDBMetaCollection::estimateSize(velocypack::Builder& builder) {
   uint64_t out = 0, total = 0;
   db->GetApproximateSizes(
       bounds.columnFamily(), &r, 1, &out,
-      static_cast<uint8_t>(
+      static_cast<rocksdb::DB::SizeApproximationFlags>(
           rocksdb::DB::SizeApproximationFlags::INCLUDE_MEMTABLES |
           rocksdb::DB::SizeApproximationFlags::INCLUDE_FILES));
   total += out;

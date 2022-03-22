@@ -356,7 +356,7 @@ size_t RocksDBIndex::memory() const {
   uint64_t out;
   db->GetApproximateSizes(
       _cf, &r, 1, &out,
-      static_cast<uint8_t>(
+      static_cast<rocksdb::DB::SizeApproximationFlags>(
           rocksdb::DB::SizeApproximationFlags::INCLUDE_MEMTABLES |
           rocksdb::DB::SizeApproximationFlags::INCLUDE_FILES));
   return static_cast<size_t>(out);

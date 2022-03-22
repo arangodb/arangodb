@@ -1449,7 +1449,7 @@ void RocksDBCollection::figuresSpecific(
       RocksDBColumnFamilyManager::get(
           RocksDBColumnFamilyManager::Family::Documents),
       &r, 1, &out,
-      static_cast<uint8_t>(
+      static_cast<rocksdb::DB::SizeApproximationFlags>(
           rocksdb::DB::SizeApproximationFlags::INCLUDE_MEMTABLES |
           rocksdb::DB::SizeApproximationFlags::INCLUDE_FILES));
 

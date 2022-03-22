@@ -1,6 +1,8 @@
 devel
 -----
 
+* Upgraded bundled version of RocksDB to 7.1.
+
 * Updated arangosync to v2.9.0-preview-1.
 
 * Updated ArangoDB Starter to 0.15.4-preview-1.
