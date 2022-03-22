@@ -34,6 +34,17 @@ using namespace arangodb::replication2::replicated_log;
 using namespace arangodb::basics;
 using namespace arangodb::tests;
 
+TEST(LogCommonTest, log_index) {
+  auto index = LogIndex{1};
+
+  VPackBuilder builder;
+  serialize(builder, index);
+
+  auto fromVPack = deserialize<LogIndex>(builder.slice());
+
+  EXPECT_EQ(index, fromVPack);
+}
+
 TEST(LogCommonTest, term_index_pair) {
   auto spearHead = TermIndexPair{LogTerm{2}, LogIndex{1}};
   VPackBuilder builder;
@@ -111,6 +122,7 @@ TEST(LogCommonTest, log_config) {
   EXPECT_TRUE(VelocyPackHelper::equal(jsonSlice, slice, true))
       << "expected " << jsonSlice.toJson() << " found " << slice.toJson();
 
+  // Test defaulting of softWriteConcern to writeConcern
   jsonBuffer = R"({
     "writeConcern": 2,
     "replicationFactor": 3,
@@ -119,4 +131,105 @@ TEST(LogCommonTest, log_config) {
   jsonSlice = velocypack::Slice(jsonBuffer->data());
   logConfig = LogConfig{jsonSlice};
   EXPECT_EQ(logConfig.softWriteConcern, logConfig.writeConcern);
+}
+
+TEST(LogCommonTest, log_config_inspector) {
+  auto logConfig = LogConfig{1, 1, 1, false};
+  VPackBuilder builder;
+
+  serialize(builder, logConfig);
+  auto slice = builder.slice();
+  auto const fromVPack = deserialize<LogConfig>(slice);
+  EXPECT_EQ(logConfig, fromVPack);
+
+  auto jsonBuffer = R"({
+    "writeConcern": 1,
+    "softWriteConcern": 1,
+    "replicationFactor": 1,
+    "waitForSync": false
+  })"_vpack;
+  auto jsonSlice = velocypack::Slice(jsonBuffer->data());
+  EXPECT_TRUE(VelocyPackHelper::equal(jsonSlice, slice, true))
+      << "expected " << jsonSlice.toJson() << " found " << slice.toJson();
+
+  // Test defaulting of softWriteConcern to writeConcern
+  jsonBuffer = R"({
+    "writeConcern": 2,
+    "replicationFactor": 3,
+    "waitForSync": false
+  })"_vpack;
+  jsonSlice = velocypack::Slice(jsonBuffer->data());
+  logConfig = deserialize<LogConfig>(jsonSlice);
+  EXPECT_EQ(logConfig.softWriteConcern, logConfig.writeConcern);
+}
+
+TEST(LogCommonTest, participant_flags) {
+  {
+    auto participantFlags = ParticipantFlags{
+        .forced = true, .allowedInQuorum = false, .allowedAsLeader = true};
+
+    VPackBuilder builder;
+    participantFlags.toVelocyPack(builder);
+    auto slice = builder.slice();
+    auto fromVPack = ParticipantFlags::fromVelocyPack(slice);
+    EXPECT_EQ(participantFlags, fromVPack);
+  }
+
+  {
+    auto participantFlags = ParticipantFlags{
+        .forced = true, .allowedInQuorum = false, .allowedAsLeader = true};
+
+    VPackBuilder builder;
+    serialize(builder, participantFlags);
+    auto slice = builder.slice();
+
+    auto fromVPack = deserialize<ParticipantFlags>(slice);
+    EXPECT_EQ(participantFlags, fromVPack);
+
+    auto jsonBuffer = R"({
+      "allowedInQuorum": false,
+      "forced": true,
+      "allowedAsLeader": true
+    })"_vpack;
+    auto jsonSlice = velocypack::Slice(jsonBuffer->data());
+    EXPECT_TRUE(VelocyPackHelper::equal(jsonSlice, slice, true))
+        << "expected " << jsonSlice.toJson() << " found " << slice.toJson();
+  }
+}
+
+TEST(LogCommonTest, participants_config) {
+  auto participantsConfig = ParticipantsConfig{
+      .generation = 15, .participants = {{"A", ParticipantFlags{}}}};
+
+  VPackBuilder builder;
+  participantsConfig.toVelocyPack(builder);
+  auto slice = builder.slice();
+  auto fromVPack = ParticipantsConfig::fromVelocyPack(slice);
+  EXPECT_EQ(participantsConfig, fromVPack);
+}
+
+TEST(LogCommonTest, participants_config_inspector) {
+  auto participantsConfig = ParticipantsConfig{
+      .generation = 15, .participants = {{"A", ParticipantFlags{}}}};
+
+  VPackBuilder builder;
+  serialize(builder, participantsConfig);
+  auto slice = builder.slice();
+
+  auto fromVPack = deserialize<ParticipantsConfig>(slice);
+  EXPECT_EQ(participantsConfig, fromVPack);
+
+  auto jsonBuffer = R"({
+      "generation": 15,
+      "participants": {
+        "A": {
+          "forced": false,
+          "allowedInQuorum": true,
+          "allowedAsLeader": true
+        }
+      }
+      })"_vpack;
+  auto jsonSlice = velocypack::Slice(jsonBuffer->data());
+  EXPECT_TRUE(VelocyPackHelper::equal(jsonSlice, slice, true))
+      << "expected " << jsonSlice.toJson() << " found " << slice.toJson();
 }
