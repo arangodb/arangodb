@@ -85,7 +85,7 @@ auto inspect(Inspector& f, TypedInt& x) {
     }
     return res;
   } else {
-    return f.apply(x.value);
+    return f.apply(x.getValue());
   }
 }
 
