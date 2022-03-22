@@ -46,7 +46,6 @@ class OptimizerRulesFeature final : public ArangodFeature {
   void unprepare() override final;
 
   std::vector<std::string> const& optimizerRules() const {
-    LOG_DEVEL << "JULIA";
     return _optimizerRules;
   }
 
