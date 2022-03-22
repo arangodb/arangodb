@@ -205,9 +205,15 @@ class LogId : public arangodb::basics::Identifier {
 template<class Inspector>
 auto inspect(Inspector& f, LogId& x) {
   if constexpr (Inspector::isLoading) {
-    x = f.slice().template getNumericValue<LogId>();
+    auto v = uint64_t{0};
+    auto res = f.apply(v);
+    if (res.ok()) {
+      x = LogId(v);
+    }
+    return res;
+
   } else {
-    f.builder().add(VPackValue(x.id()));
+    f.apply(x.id());
   }
   return arangodb::inspection::Result{};
 }
