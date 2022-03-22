@@ -330,7 +330,7 @@ struct PrototypeStateMethodsCoordinator final : PrototypeStateMethods {
       -> replication2::replicated_state::agency::Target {
     auto target = replicated_state::agency::Target{};
     target.id = opts.id.value();
-    target.properties.implementation.type = "prototype-state";
+    target.properties.implementation.type = "prototype";
     target.config = opts.config.value();
     for (auto const& server : opts.servers) {
       target.participants[server];
@@ -340,14 +340,9 @@ struct PrototypeStateMethodsCoordinator final : PrototypeStateMethods {
 
   auto createState(CreateOptions options) const
       -> futures::Future<ResultT<CreateResult>> override {
-    LOG_DEVEL << options.servers;
     fillCreateOptions(options);
     TRI_ASSERT(options.id.has_value());
-
-    LOG_DEVEL << options.servers;
     auto target = stateTargetFromCreateOptions(options);
-
-    LOG_DEVEL << options.servers;
     auto methods =
         replication2::ReplicatedStateMethods::createInstance(_vocbase);
 
@@ -355,7 +350,6 @@ struct PrototypeStateMethodsCoordinator final : PrototypeStateMethods {
         .thenValue([options = std::move(options),
                     methods](auto&& result) mutable
                    -> futures::Future<ResultT<CreateResult>> {
-          LOG_DEVEL << options.servers;
           auto response = CreateResult{*options.id, std::move(options.servers)};
           if (!result.ok()) {
             return {result};
