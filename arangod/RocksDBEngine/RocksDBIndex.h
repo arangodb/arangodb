@@ -93,7 +93,7 @@ class RocksDBIndex : public Index {
     _cacheEnabled = enable;
   }
 
-  void createCache();
+  void setupCache();
   void destroyCache();
 
   /// performs a preflight check for an insert operation, not carrying out any
@@ -170,7 +170,7 @@ class RocksDBIndex : public Index {
     return _cacheEnabled && (_cache != nullptr);
   }
 
-  virtual std::shared_ptr<cache::Cache> cacheFactory() const;
+  virtual std::shared_ptr<cache::Cache> makeCache() const;
 
   void invalidateCacheEntry(char const* data, std::size_t len);
 

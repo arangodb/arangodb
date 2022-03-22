@@ -249,7 +249,7 @@ RocksDBCollection::RocksDBCollection(LogicalCollection& collection,
                       ._transactionsStatistics) {
   TRI_ASSERT(_logicalCollection.isAStub() || objectId() != 0);
   if (_cacheEnabled) {
-    createCache();
+    setupCache();
   }
 }
 
@@ -272,7 +272,7 @@ RocksDBCollection::RocksDBCollection(LogicalCollection& collection,
                       ._transactionsStatistics) {
   TRI_ASSERT(ServerState::instance()->isRunningInCluster());
   if (_cacheEnabled) {
-    createCache();
+    setupCache();
   }
 }
 
@@ -295,8 +295,8 @@ Result RocksDBCollection::updateProperties(VPackSlice const& slice,
   primaryIndex()->setCacheEnabled(_cacheEnabled);
 
   if (_cacheEnabled) {
-    createCache();
-    primaryIndex()->createCache();
+    setupCache();
+    primaryIndex()->setupCache();
   } else {
     // will do nothing if cache is not present
     destroyCache();
@@ -2060,7 +2060,7 @@ Result RocksDBCollection::lookupDocumentVPack(
   return Result{};
 }
 
-void RocksDBCollection::createCache() const {
+void RocksDBCollection::setupCache() const {
   if (_cacheManager == nullptr || !_cacheEnabled) {
     // if we cannot have a cache, return immediately
     return;

@@ -145,7 +145,7 @@ void RocksDBIndex::toVelocyPackFigures(VPackBuilder& builder) const {
 void RocksDBIndex::load() {
   if (_cacheEnabled) {
     TRI_ASSERT(_cacheManager != nullptr);
-    createCache();
+    setupCache();
   }
 }
 
@@ -171,7 +171,7 @@ void RocksDBIndex::toVelocyPack(
   builder.add(arangodb::StaticStrings::IndexSparse, VPackValue(sparse()));
 }
 
-void RocksDBIndex::createCache() {
+void RocksDBIndex::setupCache() {
   if (_cacheManager == nullptr || !_cacheEnabled) {
     // if we cannot have a cache, return immediately
     return;
@@ -185,7 +185,7 @@ void RocksDBIndex::createCache() {
     TRI_ASSERT(_cacheManager != nullptr);
     LOG_TOPIC("49e6c", DEBUG, Logger::CACHE) << "Creating index cache";
     // virtual call!
-    _cache = cacheFactory();
+    _cache = makeCache();
   }
 }
 
@@ -241,7 +241,7 @@ void RocksDBIndex::afterTruncate(TRI_voc_tick_t,
   // simply drop the cache and re-create it
   if (_cacheEnabled) {
     destroyCache();
-    createCache();
+    setupCache();
     TRI_ASSERT(_cache != nullptr);
   }
 }
@@ -320,7 +320,7 @@ void RocksDBIndex::compact() {
   }
 }
 
-std::shared_ptr<cache::Cache> RocksDBIndex::cacheFactory() const {
+std::shared_ptr<cache::Cache> RocksDBIndex::makeCache() const {
   TRI_ASSERT(_cacheManager != nullptr);
   return _cacheManager->createCache<cache::BinaryKeyHasher>(
       cache::CacheType::Transactional);

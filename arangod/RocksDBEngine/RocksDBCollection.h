@@ -210,7 +210,7 @@ class RocksDBCollection final : public RocksDBMetaCollection {
                              bool withCache, ReadOwnWrites readOwnWrites) const;
 
   /// @brief create hash-cache
-  void createCache() const;
+  void setupCache() const;
   /// @brief destory hash-cache
   void destroyCache() const;
 

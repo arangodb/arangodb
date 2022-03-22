@@ -632,7 +632,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
 
     _cacheKeyBuilder.clear();
     _cacheKeyBuilder.openArray(true);
-    for (auto const& it : VPackArrayIterator(s)) {
+    for (VPackSlice it : VPackArrayIterator(s)) {
       // don't include "min key" or "max key" here!
       if (it.type() == VPackValueType::MinKey ||
           it.type() == VPackValueType::MaxKey) {
@@ -660,14 +660,17 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
         while (limit > 0) {
           // return values from local buffer first, if we still have any
           if (_resultIterator.valid()) {
-            while (_resultIterator.valid()) {
+            bool valid;
+            do {
               handleIndexEntry();
+
+              valid = _resultIterator.valid();
 
               if (--limit == 0) {
                 // Limit reached. bail out
-                return _resultIterator.valid();
+                return valid;
               }
-            }
+            } while (valid);
             // all exhausted
             return false;
           }
@@ -684,13 +687,12 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
             return false;
           }
           if (lookupResult == CacheLookupResult::kNotInCache) {
-            // value not found in in-memory cache. break out of the look and
+            // value not found in in-memory cache. break out of the loop and
             // do a lookup in RocksDB.
             break;
           }
 
-          // value was found in cache, because there are more results than
-          // <limit>.
+          // value was found in cache, but we have not yet reached limit.
           TRI_ASSERT(lookupResult ==
                      CacheLookupResult::kInCacheAndPartlyHandled);
           TRI_ASSERT(_resultIterator.valid());
@@ -1028,7 +1030,7 @@ RocksDBVPackIndex::RocksDBVPackIndex(IndexId iid,
     // note: _cacheEnabled contains the user's setting for caching.
     // the cache may effectively still be turned off for system
     // collections or on the coordinator...
-    createCache();
+    setupCache();
     // now, we may or may not have a cache, depending on whether the
     // collection/environment are eligible for caching.
   }
@@ -2256,7 +2258,7 @@ void RocksDBVPackIndex::afterTruncate(TRI_voc_tick_t tick,
   RocksDBIndex::afterTruncate(tick, trx);
 }
 
-std::shared_ptr<cache::Cache> RocksDBVPackIndex::cacheFactory() const {
+std::shared_ptr<cache::Cache> RocksDBVPackIndex::makeCache() const {
   TRI_ASSERT(_cacheManager != nullptr);
   return _cacheManager->createCache<cache::VPackKeyHasher>(
       cache::CacheType::Transactional);

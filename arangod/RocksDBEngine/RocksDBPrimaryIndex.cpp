@@ -552,7 +552,7 @@ RocksDBPrimaryIndex::RocksDBPrimaryIndex(
   TRI_ASSERT(objectId() != 0);
 
   if (_cacheEnabled) {
-    createCache();
+    setupCache();
   }
 }
 

@@ -121,7 +121,7 @@ class RocksDBVPackIndex : public RocksDBIndex {
   void afterTruncate(TRI_voc_tick_t tick,
                      arangodb::transaction::Methods* trx) override;
 
-  std::shared_ptr<cache::Cache> cacheFactory() const override;
+  std::shared_ptr<cache::Cache> makeCache() const override;
 
   bool hasStoredValues() const noexcept { return !_storedValues.empty(); }
 

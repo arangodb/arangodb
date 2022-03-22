@@ -141,7 +141,7 @@ function FiguresSuite () {
           assertEqual(0, figures.figures.cacheUsage, figures);
           assertFalse(figures.figures.hasOwnProperty("cacheLifeTimeHitRate"), figures);
           assertFalse(figures.figures.hasOwnProperty("cacheWindowedTimeHitRate"), figures);
-          } else {
+        } else {
           assertTrue(figures.figures.cacheInUse, figures);
           assertNotEqual(0, figures.figures.cacheSize, figures);
           assertEqual(0, figures.figures.cacheUsage, figures);
