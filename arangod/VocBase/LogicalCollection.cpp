@@ -51,7 +51,6 @@
 
 #include <velocypack/Collection.h>
 #include <velocypack/Utf8Helper.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using Helper = basics::VelocyPackHelper;

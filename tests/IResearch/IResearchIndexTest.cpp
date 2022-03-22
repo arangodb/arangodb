@@ -97,12 +97,12 @@ class TestAnalyzer : public irs::analysis::analyzer {
     return "TestInsertAnalyzer";
   }
 
-  static ptr make(irs::string_ref const& args) {
+  static ptr make(irs::string_ref args) {
     PTR_NAMED(TestAnalyzer, ptr, args);
     return ptr;
   }
 
-  static bool normalize(irs::string_ref const& args, std::string& out) {
+  static bool normalize(irs::string_ref args, std::string& out) {
     auto slice = arangodb::iresearch::slice(args);
     if (slice.isNull()) throw std::exception();
     if (slice.isNone()) return false;
@@ -124,7 +124,7 @@ class TestAnalyzer : public irs::analysis::analyzer {
     return true;
   }
 
-  TestAnalyzer(irs::string_ref const& value)
+  TestAnalyzer(irs::string_ref value)
       : irs::analysis::analyzer(irs::type<TestAnalyzer>::get()) {
     auto slice = arangodb::iresearch::slice(value);
     auto arg = slice.get("args").copyString();
@@ -160,7 +160,7 @@ class TestAnalyzer : public irs::analysis::analyzer {
     return !_term.value.null();
   }
 
-  virtual bool reset(irs::string_ref const& data) override {
+  virtual bool reset(irs::string_ref data) override {
     _data = irs::ref_cast<irs::byte_type>(data);
     _term.value = irs::bytes_ref::NIL;
 

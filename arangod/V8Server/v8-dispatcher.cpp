@@ -25,7 +25,6 @@
 #include "v8-dispatcher.h"
 
 #include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/V8SecurityFeature.h"

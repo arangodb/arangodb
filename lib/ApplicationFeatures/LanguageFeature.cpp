@@ -27,7 +27,6 @@
 
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/FileUtils.h"
-#include "Basics/Utf8Helper.h"
 #include "Basics/application-exit.h"
 #include "Basics/directories.h"
 #include "Basics/error.h"
@@ -42,9 +41,11 @@
 #include "ProgramOptions/ProgramOptions.h"
 
 namespace {
-void setCollator(std::string const& language, void* icuDataPtr) {
+void setCollator(std::string_view language, void* icuDataPtr,
+                 arangodb::basics::LanguageType type) {
   using arangodb::basics::Utf8Helper;
-  if (!Utf8Helper::DefaultUtf8Helper.setCollatorLanguage(language,
+
+  if (!Utf8Helper::DefaultUtf8Helper.setCollatorLanguage(language, type,
                                                          icuDataPtr)) {
     LOG_TOPIC("01490", FATAL, arangodb::Logger::FIXME)
         << "error setting collator language to '" << language << "'. "
@@ -79,6 +80,18 @@ void setLocale(icu::Locale& locale) {
   LOG_TOPIC("f6e04", DEBUG, arangodb::Logger::CONFIG)
       << "using default language '" << languageName << "'";
 }
+
+arangodb::basics::LanguageType getLanguageType(std::string_view default_lang,
+                                               std::string_view icu_lang) {
+  if (icu_lang.empty()) {
+    return arangodb::basics::LanguageType::DEFAULT;
+  } else if (default_lang.empty()) {
+    return arangodb::basics::LanguageType::ICU;
+  } else {
+    return arangodb::basics::LanguageType::INVALID;
+  }
+}
+
 }  // namespace
 
 using namespace arangodb::basics;
@@ -96,15 +109,19 @@ void LanguageFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
   options->addOption(
       "--default-language", "ISO-639 language code",
-      new StringParameter(&_language),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      new StringParameter(&_defaultLanguage),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
+
+  options->addOption(
+      "--icu-language", "ICU language", new StringParameter(&_icuLanguage),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options
-      ->addOption(
-          "--default-language-check",
-          "check if default language matches stored language",
-          new BooleanParameter(&_forceLanguageCheck),
-          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+      ->addOption("--default-language-check",
+                  "check if default language matches stored language",
+                  new BooleanParameter(&_forceLanguageCheck),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30800);
 }
 
@@ -187,15 +204,33 @@ void LanguageFeature::prepare() {
   _icuDataPtr = LanguageFeature::prepareIcu(_binaryPath, binaryExecutionPath, p,
                                             binaryName);
 
-  ::setCollator(_language, _icuDataPtr);
+  _langType = ::getLanguageType(_defaultLanguage, _icuLanguage);
+
+  if (LanguageType::INVALID == _langType) {
+    LOG_TOPIC("d8a99", FATAL, arangodb::Logger::CONFIG)
+        << "Only one parameter from --default-language and --icu-language "
+           "should be specified";
+    FATAL_ERROR_EXIT();
+  }
+
+  ::setCollator(
+      _langType == LanguageType::ICU ? _icuLanguage : _defaultLanguage,
+      _icuDataPtr, _langType);
 }
 
 void LanguageFeature::start() { ::setLocale(_locale); }
 
 icu::Locale& LanguageFeature::getLocale() { return _locale; }
 
-std::string const& LanguageFeature::getDefaultLanguage() const {
-  return _language;
+std::tuple<std::string_view, LanguageType> LanguageFeature::getLanguage()
+    const {
+  if (LanguageType::ICU == _langType) {
+    return {_icuLanguage, _langType};
+  } else {
+    TRI_ASSERT(LanguageType::DEFAULT == _langType);
+    // If it is invalid type just returning _defaultLanguage
+    return {_defaultLanguage, _langType};
+  }
 }
 
 bool LanguageFeature::forceLanguageCheck() const { return _forceLanguageCheck; }
@@ -213,9 +248,26 @@ std::string LanguageFeature::getCollatorLanguage() const {
   return languageName;
 }
 
-void LanguageFeature::resetDefaultLanguage(std::string const& language) {
-  _language = language;
-  ::setCollator(_language, _icuDataPtr);
+void LanguageFeature::resetLanguage(std::string_view language,
+                                    arangodb::basics::LanguageType type) {
+  _langType = type;
+  _defaultLanguage.clear();
+  _icuLanguage.clear();
+  switch (_langType) {
+    case LanguageType::DEFAULT:
+      _defaultLanguage = language;
+      break;
+
+    case LanguageType::ICU:
+      _icuLanguage = language;
+      break;
+
+    case LanguageType::INVALID:
+      TRI_ASSERT(false);
+      return;
+  }
+
+  ::setCollator(language.data(), _icuDataPtr, _langType);
   ::setLocale(_locale);
 }
 

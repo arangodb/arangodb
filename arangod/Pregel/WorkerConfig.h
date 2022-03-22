@@ -26,7 +26,6 @@
 #include <set>
 #include <map>
 
-#include <velocypack/velocypack-aliases.h>
 #include <algorithm>
 #include "Basics/Common.h"
 #include "Cluster/ClusterInfo.h"

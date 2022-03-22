@@ -61,6 +61,7 @@ class TraversalExecutorInfosHelper {
 
 class TraversalExecutorInfos {
  public:
+  // for the coordinator
   TraversalExecutorInfos(
       std::unique_ptr<traverser::Traverser>&& traverser,
       std::unordered_map<TraversalExecutorInfosHelper::OutputName, RegisterId,
@@ -72,15 +73,35 @@ class TraversalExecutorInfos {
       Ast* ast, traverser::TraverserOptions::UniquenessLevel vertexUniqueness,
       traverser::TraverserOptions::UniquenessLevel edgeUniqueness,
       traverser::TraverserOptions::Order order, bool refactor,
-      double defaultWeight, std::string const& weightAttribute,
+      double defaultWeight, std::string weightAttribute,
       transaction::Methods* trx, arangodb::aql::QueryContext& query,
-      arangodb::graph::BaseProviderOptions&& baseProviderOptions,
       arangodb::graph::PathValidatorOptions&& pathValidatorOptions,
-      arangodb::graph::OneSidedEnumeratorOptions&& enumeratorOptions);
+      arangodb::graph::OneSidedEnumeratorOptions&& enumeratorOptions,
+      traverser::TraverserOptions* opts,
+      graph::ClusterBaseProviderOptions&& clusterBaseProviderOptions);
   // TODO [GraphRefactor]: Tidy-up input parameter "mess" after refactor is
   // done.
   // TODO [GraphRefactor]: Thinking about a new class / struct for passing /
   // encapsulating those properties.
+
+  // for non-coordinator (single server or DB-server)
+  TraversalExecutorInfos(
+      std::unique_ptr<traverser::Traverser>&& traverser,
+      std::unordered_map<TraversalExecutorInfosHelper::OutputName, RegisterId,
+                         TraversalExecutorInfosHelper::OutputNameHash>
+          registerMapping,
+      std::string fixedSource, RegisterId inputRegister,
+      std::vector<std::pair<Variable const*, RegisterId>>
+          filterConditionVariables,
+      Ast* ast, traverser::TraverserOptions::UniquenessLevel vertexUniqueness,
+      traverser::TraverserOptions::UniquenessLevel edgeUniqueness,
+      traverser::TraverserOptions::Order order, bool refactor,
+      double defaultWeight, std::string weightAttribute,
+      transaction::Methods* trx, arangodb::aql::QueryContext& query,
+      arangodb::graph::PathValidatorOptions&& pathValidatorOptions,
+      arangodb::graph::OneSidedEnumeratorOptions&& enumeratorOptions,
+      traverser::TraverserOptions* opts,
+      graph::SingleServerBaseProviderOptions&& singleServerBaseProviderOptions);
 
   TraversalExecutorInfos() = delete;
 
@@ -89,8 +110,8 @@ class TraversalExecutorInfos {
   ~TraversalExecutorInfos() = default;
 
   [[nodiscard]] auto traversalEnumerator() const
-      -> arangodb::graph::TraversalEnumerator&;
-  traverser::Traverser& traverser();
+      -> arangodb::graph::TraversalEnumerator*;
+  auto traverser() -> traverser::Traverser*;
 
   bool usesOutputRegister(TraversalExecutorInfosHelper::OutputName type) const;
 
@@ -124,13 +145,23 @@ class TraversalExecutorInfos {
             arangodb::graph::EdgeUniquenessLevel>
   convertUniquenessLevels() const;
 
-  auto parseTraversalEnumerator(
+  auto parseTraversalEnumeratorSingleServer(
       traverser::TraverserOptions::Order order,
       traverser::TraverserOptions::UniquenessLevel uniqueVertices,
       traverser::TraverserOptions::UniquenessLevel uniqueEdges,
       double defaultWeight, std::string const& weightAttribute,
       arangodb::aql::QueryContext& query,
-      arangodb::graph::BaseProviderOptions&& baseProviderOptions,
+      arangodb::graph::SingleServerBaseProviderOptions&& baseProviderOptions,
+      arangodb::graph::PathValidatorOptions&& pathValidatorOptions,
+      arangodb::graph::OneSidedEnumeratorOptions&& enumeratorOptions) -> void;
+
+  auto parseTraversalEnumeratorCluster(
+      traverser::TraverserOptions::Order order,
+      traverser::TraverserOptions::UniquenessLevel uniqueVertices,
+      traverser::TraverserOptions::UniquenessLevel uniqueEdges,
+      double defaultWeight, std::string const& weightAttribute,
+      arangodb::aql::QueryContext& query,
+      arangodb::graph::ClusterBaseProviderOptions&& baseProviderOptions,
       arangodb::graph::PathValidatorOptions&& pathValidatorOptions,
       arangodb::graph::OneSidedEnumeratorOptions&& enumeratorOptions) -> void;
 
@@ -143,7 +174,8 @@ class TraversalExecutorInfos {
   arangodb::aql::QueryWarnings& getWarnings();
 
  private:
-  std::string typeToString(TraversalExecutorInfosHelper::OutputName type) const;
+  static std::string typeToString(
+      TraversalExecutorInfosHelper::OutputName type);
   RegisterId findRegisterChecked(
       TraversalExecutorInfosHelper::OutputName type) const;
 
@@ -159,6 +191,9 @@ class TraversalExecutorInfos {
       _registerMapping;
   std::string _fixedSource;
   RegisterId _inputRegister;
+
+  // TODO [GraphRefactor]: Remove copy of _filterConditionVariables as soon
+  // as we remove the old non-refactored code.
   std::vector<std::pair<Variable const*, RegisterId>> _filterConditionVariables;
   Ast* _ast;
   traverser::TraverserOptions::UniquenessLevel _uniqueVertices;
@@ -206,15 +241,21 @@ class TraversalExecutor {
 
   [[nodiscard]] auto stats() -> Stats;
 
+  // OLD (non refactor)
+  auto traverser() -> traverser::Traverser*;
+
+  // NEW (refactor)
+  auto traversalEnumerator() -> arangodb::graph::TraversalEnumerator*;
+
  private:
   Infos& _infos;
   InputAqlItemRow _inputRow;
 
-  traverser::Traverser& _traverser;  // TODO [GraphRefactor]: Old way, to be
+  traverser::Traverser* _traverser;  // TODO [GraphRefactor]: Old way, to be
                                      // removed after refactor is done!
 
   /// @brief the refactored finder variant.
-  arangodb::graph::TraversalEnumerator& _traversalEnumerator;
+  arangodb::graph::TraversalEnumerator* _traversalEnumerator;
 };
 
 }  // namespace aql

@@ -145,7 +145,7 @@ void ShellConsoleFeature::collectOptions(
   options->addOption(
       "--console.pager-command", "pager command",
       new StringParameter(&_pagerCommand),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options->addOption(
       "--console.prompt",

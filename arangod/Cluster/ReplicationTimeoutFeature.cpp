@@ -78,7 +78,7 @@ void ReplicationTimeoutFeature::collectOptions(
       "all synchronous replication timeouts are increased by this amount per "
       "4096 bytes (in seconds)",
       new DoubleParameter(&timeoutPer4k),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 }
 
 void ReplicationTimeoutFeature::validateOptions(

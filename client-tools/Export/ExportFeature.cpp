@@ -44,7 +44,6 @@
 #include <velocypack/Dumper.h>
 #include <velocypack/Slice.h>
 #include <velocypack/Sink.h>
-#include <velocypack/velocypack-aliases.h>
 #include <iostream>
 #include <regex>
 #include <sys/types.h>

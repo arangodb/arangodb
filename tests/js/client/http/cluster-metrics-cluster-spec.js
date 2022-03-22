@@ -423,7 +423,7 @@ describe('_admin/metrics', () => {
         [new MaintenanceWatcher(), new ShardCountWatcher(18), new ShardLeaderCountWatcher(9)]
         );
         runTest(() => {
-          db["UnitTestCollection"].ensureHashIndex("temp");
+          db["UnitTestCollection"].ensureIndex({ type: "hash", fields: ["temp"] });
         },
         [new MaintenanceWatcher()]
         );
