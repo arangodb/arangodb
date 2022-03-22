@@ -211,11 +211,11 @@ auto inspect(Inspector& f, LogId& x) {
       x = LogId(v);
     }
     return res;
-
   } else {
-    f.apply(x.id());
+    // This is a hack to make the compiler happy
+    auto id = x.id();
+    return f.apply(id);
   }
-  return arangodb::inspection::Result{};
 }
 
 auto to_string(LogId logId) -> std::string;
