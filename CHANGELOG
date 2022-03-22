@@ -1,6 +1,9 @@
 v3.9.1 (XXXX-XX-XX)
 -------------------
 
+* Bug-Fix: Resolve BTS-673/Issue #15107, a spliced subquery could return too few
+  results.
+
 * Speed up initial sync (in case there is already data present) by prefetching
   data from leader.
 
