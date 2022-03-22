@@ -70,7 +70,7 @@
 #include "Basics/Common.h"
 #include "Basics/TypeTraits.h"
 #include "Basics/Identifier.h"
-#include "Containers/HashSet.h"
+#include "Containers/FlatHashSet.h"
 
 namespace arangodb {
 namespace velocypack {
@@ -393,7 +393,7 @@ class ExecutionNode {
   virtual std::vector<Variable const*> getVariablesSetHere() const;
 
   /// @brief getVariableIdsUsedHere
-  ::arangodb::containers::HashSet<VariableId> getVariableIdsUsedHere() const;
+  containers::FlatHashSet<VariableId> getVariableIdsUsedHere() const;
 
   /// @brief tests whether the node sets one of the passed variables
   bool setsVariable(VarSet const& which) const;

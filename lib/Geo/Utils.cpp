@@ -32,7 +32,7 @@
 
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/debugging.h"
-#include "Containers/HashSet.h"
+#include "Containers/FlatHashSet.h"
 #include "Geo/Ellipsoid.h"
 #include "Geo/ShapeContainer.h"
 #include "Geo/karney/geodesic.h"
@@ -104,7 +104,7 @@ void scanIntervals(QueryParams const& params,
     // not need
     // to look at [47|1|40] or [47|11|60] because these cells don't intersect,
     // but polygons indexed with exact cell id [47|11] still might.
-    ::arangodb::containers::HashSet<uint64_t> parentSet;
+    containers::FlatHashSet<uint64_t> parentSet;
     for (const S2CellId& interval : cover) {
       S2CellId cell = interval;
 

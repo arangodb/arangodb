@@ -34,6 +34,7 @@
 #include "Aql/Optimizer.h"
 #include "Basics/AttributeNameParser.h"
 #include "Cluster/ServerState.h"
+#include "Containers/FlatHashSet.h"
 #include "Indexes/Index.h"
 
 using namespace arangodb::aql;
@@ -262,7 +263,7 @@ void arangodb::aql::lateDocumentMaterializationRule(
       }
       if (sortNode && !nodesToChange.empty()) {
         IndexNode::IndexVarsInfo uniqueVariables;
-        arangodb::containers::HashSet<ExecutionNode*> toUnlink;
+        containers::FlatHashSet<ExecutionNode*> toUnlink;
         // at first use variables from simple expressions
         for (auto const& node : nodesToChange) {
           TRI_ASSERT(!node.attrs.empty());

@@ -40,7 +40,6 @@
 #include "Aql/Query.h"
 #include "Aql/SortNode.h"
 #include "Basics/StaticStrings.h"
-#include "Containers/HashSet.h"
 #include "Indexes/Index.h"
 #include "VocBase/LogicalCollection.h"
 

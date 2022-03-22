@@ -30,6 +30,7 @@
 #include "Aql/SortCondition.h"
 #include "Aql/Variable.h"
 #include "Basics/StaticStrings.h"
+#include "Containers/FlatHashSet.h"
 #include "Indexes/Index.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "VocBase/vocbase.h"
@@ -531,7 +532,7 @@ arangodb::aql::AstNode* SortedIndexAttributeMatcher::specializeCondition(
                 return Index::sortWeight(lhs) < Index::sortWeight(rhs);
               });
 
-    ::arangodb::containers::HashSet<int> operatorsFound;
+    containers::FlatHashSet<int> operatorsFound;
     for (auto const& it : nodes) {
       if (it->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NE) {
         // ignore all != operators here
@@ -570,7 +571,7 @@ arangodb::aql::AstNode* SortedIndexAttributeMatcher::specializeCondition(
 
 bool SortedIndexAttributeMatcher::isDuplicateOperator(
     arangodb::aql::AstNodeType type,
-    ::arangodb::containers::HashSet<int> const& operatorsFound) {
+    containers::FlatHashSet<int> const& operatorsFound) {
   if (operatorsFound.find(static_cast<int>(type)) != operatorsFound.end()) {
     // duplicate operator
     return true;

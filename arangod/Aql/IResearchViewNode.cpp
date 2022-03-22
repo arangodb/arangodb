@@ -342,7 +342,7 @@ bool parseOptions(aql::QueryContext& query, LogicalView const& view,
          }
 
          auto& resolver = query.resolver();
-         ::arangodb::containers::HashSet<DataSourceId> sources;
+         containers::FlatHashSet<DataSourceId> sources;
 
          // get list of CIDs for restricted collections
          for (size_t i = 0, n = value.numMembers(); i < n; ++i) {
@@ -685,7 +685,7 @@ class Snapshot : public IResearchView::Snapshot,
   /// @brief constructs snapshot from a given snapshot
   ///        according to specified set of collections
   Snapshot(const IResearchView::Snapshot& rhs,
-           ::arangodb::containers::HashSet<DataSourceId> const& collections);
+           containers::FlatHashSet<DataSourceId> const& collections);
 
   /// @returns corresponding sub-reader
   virtual const irs::sub_reader& operator[](size_t i) const noexcept override {
@@ -715,9 +715,8 @@ class Snapshot : public IResearchView::Snapshot,
   uint64_t _live_docs_count;
 };  // Snapshot
 
-Snapshot::Snapshot(
-    const IResearchView::Snapshot& rhs,
-    ::arangodb::containers::HashSet<DataSourceId> const& collections)
+Snapshot::Snapshot(const IResearchView::Snapshot& rhs,
+                   containers::FlatHashSet<DataSourceId> const& collections)
     : _docs_count(0), _live_docs_count(0) {
   for (size_t i = 0, size = rhs.size(); i < size; ++i) {
     auto const cid = rhs.cid(i);
@@ -1909,7 +1908,7 @@ void IResearchViewNode::OptimizationState::saveCalcNodesForViewVariables(
 IResearchViewNode::ViewVarsInfo
 IResearchViewNode::OptimizationState::replaceViewVariables(
     std::vector<aql::CalculationNode*> const& calcNodes,
-    arangodb::containers::HashSet<ExecutionNode*>& toUnlink) {
+    containers::FlatHashSet<ExecutionNode*>& toUnlink) {
   TRI_ASSERT(!calcNodes.empty());
   ViewVarsInfo uniqueVariables;
   // at first use variables from simple expressions
@@ -1990,7 +1989,7 @@ IResearchViewNode::OptimizationState::replaceViewVariables(
 
 IResearchViewNode::ViewVarsInfo
 IResearchViewNode::OptimizationState::replaceAllViewVariables(
-    arangodb::containers::HashSet<ExecutionNode*>& toUnlink) {
+    containers::FlatHashSet<ExecutionNode*>& toUnlink) {
   ViewVarsInfo uniqueVariables;
   if (_nodesToChange.empty()) {
     return uniqueVariables;

@@ -24,7 +24,7 @@
 #pragma once
 
 #include "Aql/AqlValue.h"
-#include "Containers/HashSet.h"
+#include "Containers/FlatHashSet.h"
 #include "Containers/FlatHashMap.h"
 #include "Graph/EdgeDocumentToken.h"
 #include "Graph/ShortestPathFinder.h"
@@ -56,11 +56,8 @@ class KShortestPathsFinder : public ShortestPathFinder {
   typedef std::string_view VertexRef;
   typedef arangodb::graph::EdgeDocumentToken Edge;
 
-  typedef arangodb::containers::HashSet<VertexRef, std::hash<VertexRef>,
-                                        std::equal_to<VertexRef>>
-      VertexSet;
-  typedef arangodb::containers::HashSet<Edge, std::hash<Edge>,
-                                        std::equal_to<Edge>>
+  typedef containers::FlatHashSet<VertexRef> VertexSet;
+  typedef containers::FlatHashSet<Edge, std::hash<Edge>, std::equal_to<Edge>>
       EdgeSet;
   enum Direction { FORWARD, BACKWARD };
 

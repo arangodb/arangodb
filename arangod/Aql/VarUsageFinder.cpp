@@ -22,8 +22,6 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <Containers/HashSet.h>
-
 #include "Aql/VarUsageFinder.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"

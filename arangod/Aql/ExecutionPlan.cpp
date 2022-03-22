@@ -55,6 +55,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
+#include "Containers/FlatHashSet.h"
 #include "Containers/SmallVector.h"
 #include "Graph/ShortestPathOptions.h"
 #include "Graph/ShortestPathType.h"
@@ -2407,7 +2408,7 @@ void ExecutionPlan::unlinkNodes(
 }
 
 void ExecutionPlan::unlinkNodes(
-    ::arangodb::containers::HashSet<ExecutionNode*> const& toRemove) {
+    containers::FlatHashSet<ExecutionNode*> const& toRemove) {
   for (auto& node : toRemove) {
     unlinkNode(node);
   }

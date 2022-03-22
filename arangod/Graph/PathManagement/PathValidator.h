@@ -24,7 +24,7 @@
 #pragma once
 
 #include <velocypack/HashedStringRef.h>
-#include "Containers/HashSet.h"
+#include "Containers/FlatHashSet.h"
 #include "Graph/PathManagement/PathValidatorOptions.h"
 #include "Graph/Types/UniquenessLevel.h"
 #include "Graph/EdgeDocumentToken.h"
@@ -103,13 +103,10 @@ class PathValidator {
   //       e.g. std::enable_if<vertexUniqueness != NONE>
   // VertexUniqueness == GLOBAL || PATH => EdgeUniqueness = PATH
   // VertexUniqueness == NONE => EdgeUniqueness == ANY (from user or PATH)
-  ::arangodb::containers::HashSet<VertexRef, std::hash<VertexRef>,
-                                  std::equal_to<VertexRef>>
-      _uniqueVertices;
-  ::arangodb::containers::HashSet<
-      typename PathStore::Step::EdgeType,
-      std::hash<typename PathStore::Step::EdgeType>,
-      std::equal_to<typename PathStore::Step::EdgeType>>
+  containers::FlatHashSet<VertexRef> _uniqueVertices;
+  containers::FlatHashSet<typename PathStore::Step::EdgeType,
+                          std::hash<typename PathStore::Step::EdgeType>,
+                          std::equal_to<typename PathStore::Step::EdgeType>>
       _uniqueEdges;
 
   PathValidatorOptions _options;
@@ -121,8 +118,7 @@ class PathValidator {
   auto evaluateVertexRestriction(typename PathStore::Step const& step) -> bool;
 
   [[nodiscard]] auto exposeUniqueVertices() const
-      -> ::arangodb::containers::HashSet<VertexRef, std::hash<VertexRef>,
-                                         std::equal_to<VertexRef>> const&;
+      -> containers::FlatHashSet<VertexRef> const&;
 
   auto evaluateVertexExpression(arangodb::aql::Expression* expression,
                                 arangodb::velocypack::Slice value) -> bool;

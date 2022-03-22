@@ -41,7 +41,6 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/datetime.h"
 #include "Cluster/ServerState.h"
-#include "Containers/HashSet.h"
 #include "IResearch/IResearchCommon.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"

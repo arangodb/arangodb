@@ -56,7 +56,6 @@
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/vocbase.h"
 
-#include <Containers/HashSet.h>
 #include "VPackDeserializer/deserializer.h"
 
 namespace {

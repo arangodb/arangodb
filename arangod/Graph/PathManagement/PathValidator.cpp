@@ -25,6 +25,7 @@
 #include "Aql/AstNode.h"
 #include "Aql/PruneExpressionEvaluator.h"
 #include "Basics/ScopeGuard.h"
+#include "Containers/FlatHashSet.h"
 #include "Graph/PathManagement/PathStore.h"
 #include "Graph/PathManagement/PathStoreTracer.h"
 #include "Graph/Providers/ClusterProvider.h"
@@ -186,8 +187,7 @@ template<class ProviderType, class PathStore,
          EdgeUniquenessLevel edgeUniqueness>
 auto PathValidator<ProviderType, PathStore, vertexUniqueness,
                    edgeUniqueness>::exposeUniqueVertices() const
-    -> ::arangodb::containers::HashSet<VertexRef, std::hash<VertexRef>,
-                                       std::equal_to<VertexRef>> const& {
+    -> containers::FlatHashSet<VertexRef> const& {
   return _uniqueVertices;
 }
 

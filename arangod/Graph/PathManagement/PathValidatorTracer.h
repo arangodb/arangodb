@@ -24,7 +24,6 @@
 #pragma once
 
 #include <velocypack/HashedStringRef.h>
-#include "Containers/HashSet.h"
 #include "Graph/PathManagement/PathValidatorOptions.h"
 #include "Graph/Types/UniquenessLevel.h"
 #include "Graph/EdgeDocumentToken.h"

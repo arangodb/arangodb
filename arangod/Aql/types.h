@@ -28,7 +28,7 @@
 #include "Basics/debugging.h"
 #include "Cluster/ClusterTypes.h"
 
-#include <Containers/HashSetFwd.h>
+#include "Containers/FlatHashSet.h"
 
 #include <map>
 #include <memory>
@@ -88,10 +88,9 @@ using ServerQueryIdList = std::vector<ServerQueryIdEntry>;
 using AqlCollectionMap = std::map<std::string, aql::Collection*, std::less<>>;
 
 struct Variable;
-// Note: #include <Containers/HashSet.h> to use the following types
-using VarSet = containers::HashSet<Variable const*>;
+using VarSet = containers::FlatHashSet<Variable const*>;
 using VarSetStack = std::vector<VarSet>;
-using RegIdSet = containers::HashSet<RegisterId>;
+using RegIdSet = containers::FlatHashSet<RegisterId>;
 using RegIdSetStack = std::vector<RegIdSet>;
 using RegIdOrderedSet = std::set<RegisterId>;
 using RegIdOrderedSetStack = std::vector<RegIdOrderedSet>;

@@ -36,7 +36,6 @@
 
 #include "FetcherTestHelper.h"
 
-#include <Containers/HashSet.h>
 #include <velocypack/Builder.h>
 
 using namespace arangodb;

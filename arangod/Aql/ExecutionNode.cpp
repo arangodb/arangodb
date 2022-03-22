@@ -66,6 +66,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/system-compiler.h"
 #include "Cluster/ServerState.h"
+#include "Containers/FlatHashSet.h"
 #include "Meta/static_assert_size.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -1306,12 +1307,12 @@ std::vector<Variable const*> ExecutionNode::getVariablesSetHere() const {
   return std::vector<Variable const*>();
 }
 
-::arangodb::containers::HashSet<VariableId>
-ExecutionNode::getVariableIdsUsedHere() const {
+containers::FlatHashSet<VariableId> ExecutionNode::getVariableIdsUsedHere()
+    const {
   VarSet vars;
   getVariablesUsedHere(vars);
 
-  ::arangodb::containers::HashSet<VariableId> ids;
+  containers::FlatHashSet<VariableId> ids;
   for (auto& it : vars) {
     ids.emplace(it->id);
   }

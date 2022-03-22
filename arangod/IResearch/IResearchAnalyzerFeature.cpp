@@ -83,7 +83,6 @@
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/vocbase.h"
 #include "frozen/map.h"
-#include <Containers/HashSet.h>
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/IResearch/IResearchAnalyzerFeature.h"

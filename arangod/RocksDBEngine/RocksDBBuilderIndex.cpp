@@ -26,7 +26,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/application-exit.h"
-#include "Containers/HashSet.h"
+#include "Containers/FlatHashSet.h"
 #include "RocksDBEngine/Methods/RocksDBBatchedMethods.h"
 #include "RocksDBEngine/Methods/RocksDBBatchedWithIndexMethods.h"
 #include "RocksDBEngine/RocksDBCollection.h"
@@ -74,7 +74,7 @@ struct BuilderTrx : public arangodb::transaction::Methods {
 
 struct BuilderCookie : public arangodb::TransactionState::Cookie {
   // do not track removed documents twice
-  ::arangodb::containers::HashSet<LocalDocumentId::BaseType> tracked;
+  containers::FlatHashSet<LocalDocumentId::BaseType> tracked;
 };
 }  // namespace
 

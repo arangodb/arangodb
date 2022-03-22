@@ -33,8 +33,6 @@
 #include "Basics/GlobalResourceMonitor.h"
 #include "Basics/ResourceUsage.h"
 
-#include <Containers/HashSet.h>
-
 namespace arangodb {
 namespace tests {
 namespace aql {

@@ -36,6 +36,7 @@
 #include "Aql/SortedCollectExecutor.h"
 #include "Aql/VariableGenerator.h"
 #include "Aql/WalkerWorker.h"
+#include "Containers/FlatHashSet.h"
 #include "Transaction/Methods.h"
 
 #include <velocypack/Builder.h>
@@ -799,7 +800,7 @@ std::vector<Variable const*> const& CollectNode::keepVariables() const {
 }
 
 void CollectNode::restrictKeepVariables(
-    containers::HashSet<Variable const*> const& variables) {
+    containers::FlatHashSet<Variable const*> const& variables) {
   auto remainingKeepVariables = decltype(this->_keepVariables){};
   remainingKeepVariables.reserve(
       std::min(_keepVariables.size(), variables.size()));

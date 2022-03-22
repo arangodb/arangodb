@@ -43,6 +43,7 @@
 #include "Aql/WalkerWorker.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ServerState.h"
+#include "Containers/FlatHashSet.h"
 #include "IResearch/AqlHelper.h"
 #include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/IResearchOrderFactory.h"
@@ -282,8 +283,7 @@ bool optimizeSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
     SortCondition sortCondition(
         plan, sorts,
         std::vector<std::vector<arangodb::basics::AttributeName>>(),
-        ::arangodb::containers::HashSet<
-            std::vector<arangodb::basics::AttributeName>>(),
+        containers::FlatHashSet<std::vector<basics::AttributeName>>{},
         variableDefinitions);
 
     if (sortCondition.isEmpty() || !sortCondition.isOnlyAttributeAccess()) {
@@ -417,7 +417,7 @@ void keepReplacementViewVariables(
 
 bool noDocumentMaterialization(
     arangodb::containers::SmallVector<ExecutionNode*> const& viewNodes,
-    arangodb::containers::HashSet<ExecutionNode*>& toUnlink) {
+    containers::FlatHashSet<ExecutionNode*>& toUnlink) {
   auto modified = false;
   VarSet currentUsedVars;
   for (auto* node : viewNodes) {
@@ -646,7 +646,7 @@ void lateDocumentMaterializationArangoSearchRule(
         // we could apply late materialization
         // 1. Replace view variables in calculation node if need
         if (!calcNodes.empty()) {
-          ::arangodb::containers::HashSet<ExecutionNode*> toUnlink;
+          containers::FlatHashSet<ExecutionNode*> toUnlink;
           auto viewVariables =
               viewNodeState.replaceViewVariables(calcNodes, toUnlink);
           viewNode.setViewVariables(viewVariables);
@@ -751,7 +751,7 @@ void handleViewsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
     modified = true;
   }
   keepReplacementViewVariables(calcNodes, viewNodes);
-  arangodb::containers::HashSet<ExecutionNode*> toUnlink;
+  containers::FlatHashSet<ExecutionNode*> toUnlink;
   modified |= noDocumentMaterialization(viewNodes, toUnlink);
   if (!toUnlink.empty()) {
     plan->unlinkNodes(toUnlink);

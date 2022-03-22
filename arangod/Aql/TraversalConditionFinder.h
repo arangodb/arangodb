@@ -26,6 +26,7 @@
 #include "Aql/Condition.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/WalkerWorker.h"
+#include "Containers/FlatHashSet.h"
 
 namespace arangodb {
 namespace aql {
@@ -48,7 +49,7 @@ class TraversalConditionFinder final
  private:
   ExecutionPlan* _plan;
   std::unique_ptr<Condition> _condition;
-  ::arangodb::containers::HashSet<VariableId> _filterVariables;
+  containers::FlatHashSet<VariableId> _filterVariables;
   bool* _planAltered;
 };
 }  // namespace aql

@@ -27,6 +27,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Basics/Exceptions.h"
+#include "Containers/FlatHashSet.h"
 
 using namespace arangodb::aql;
 
@@ -61,8 +62,8 @@ SortCondition::SortCondition(
     std::vector<std::pair<Variable const*, bool>> const& sorts,
     std::vector<std::vector<arangodb::basics::AttributeName>> const&
         constAttributes,
-    ::arangodb::containers::HashSet<
-        std::vector<arangodb::basics::AttributeName>> const& nonNullAttributes,
+    containers::FlatHashSet<std::vector<basics::AttributeName>> const&
+        nonNullAttributes,
     std::unordered_map<VariableId, AstNode const*> const& variableDefinitions)
     : _plan(plan),
       _constAttributes(constAttributes),

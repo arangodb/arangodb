@@ -32,7 +32,7 @@
 #include "Aql/RegisterPlan.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
-#include "Containers/HashSet.h"
+#include "Containers/FlatHashSet.h"
 #include "Containers/SmallVector.h"
 
 namespace arangodb {
@@ -239,8 +239,7 @@ class ExecutionPlan {
   /// @brief unlinkNodes, note that this does not delete the removed
   /// nodes and that one cannot remove the root node of the plan.
   void unlinkNodes(std::unordered_set<ExecutionNode*> const& toUnlink);
-  void unlinkNodes(
-      ::arangodb::containers::HashSet<ExecutionNode*> const& toUnlink);
+  void unlinkNodes(containers::FlatHashSet<ExecutionNode*> const& toUnlink);
 
   /// @brief unlinkNode, note that this does not delete the removed
   /// node and that one cannot remove the root node of the plan.
@@ -419,7 +418,7 @@ class ExecutionPlan {
   std::vector<int> _appliedRules;
 
   /// @brief which optimizer rules were disabled for a plan
-  ::arangodb::containers::HashSet<int> _disabledRules;
+  containers::FlatHashSet<int> _disabledRules;
 
   /// @brief whether or not memory usage should be tracked for this plan.
   /// note: tracking memory usage requires accessing the Ast/Query objects,

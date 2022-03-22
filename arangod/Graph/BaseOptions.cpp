@@ -37,7 +37,7 @@
 #include "Aql/Query.h"
 #include "Basics/ScopeGuard.h"
 #include "Cluster/ClusterEdgeCursor.h"
-#include "Containers/HashSet.h"
+#include "Containers/FlatHashSet.h"
 #include "Graph/ShortestPathOptions.h"
 #include "Graph/SingleServerEdgeCursor.h"
 #include "Graph/TraverserCache.h"
@@ -441,7 +441,7 @@ void BaseOptions::injectLookupInfoInList(std::vector<LookupInfo>& list,
     }
   }
 
-  ::arangodb::containers::HashSet<size_t> toRemove;
+  containers::FlatHashSet<size_t> toRemove;
   aql::Condition::collectOverlappingMembers(
       plan, _tmpVar, condition, info.indexCondition, toRemove, nullptr, false);
   size_t n = condition->numMembers();

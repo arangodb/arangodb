@@ -40,6 +40,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/tryEmplaceHelper.h"
 #include "Cluster/ClusterTraverser.h"
+#include "Containers/FlatHashSet.h"
 #include "Graph/Graph.h"
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Cluster/SmartGraphTraverser.h"
@@ -591,7 +592,7 @@ std::vector<IndexAccessor> TraversalNode::buildIndexAccessor(
   auto generateExpression =
       [&](aql::AstNode* remainderCondition,
           aql::AstNode* indexCondition) -> std::unique_ptr<aql::Expression> {
-    ::arangodb::containers::HashSet<size_t> toRemove;
+    containers::FlatHashSet<size_t> toRemove;
     aql::Condition::collectOverlappingMembers(
         _plan, options()->tmpVar(), remainderCondition, indexCondition,
         toRemove, nullptr, false);

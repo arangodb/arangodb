@@ -37,6 +37,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
+#include "Containers/FlatHashSet.h"
 #include "Indexes/Index.h"
 #include "Logger/LogMacros.h"
 #include "Transaction/CountCache.h"
@@ -725,10 +726,9 @@ Condition::getConstAttributes(Variable const* reference,
 }
 
 /// @brief get the attributes for a sub-condition that are not-null
-::arangodb::containers::HashSet<std::vector<arangodb::basics::AttributeName>>
+containers::FlatHashSet<std::vector<basics::AttributeName>>
 Condition::getNonNullAttributes(Variable const* reference) const {
-  ::arangodb::containers::HashSet<std::vector<arangodb::basics::AttributeName>>
-      result;
+  containers::FlatHashSet<std::vector<basics::AttributeName>> result;
 
   if (_root == nullptr) {
     return result;
@@ -839,8 +839,7 @@ void Condition::normalize() {
 
 void Condition::collectOverlappingMembers(
     ExecutionPlan const* plan, Variable const* variable, AstNode const* andNode,
-    AstNode const* otherAndNode,
-    ::arangodb::containers::HashSet<size_t>& toRemove,
+    AstNode const* otherAndNode, containers::FlatHashSet<size_t>& toRemove,
     Index const* index, /* may be nullptr */
     bool isFromTraverser) {
   bool const isSparse = (index != nullptr && index->sparse());
@@ -955,7 +954,7 @@ AstNode* Condition::removeIndexCondition(ExecutionPlan const* plan,
   auto conditionAndNode = condition->getMemberUnchecked(0);
   TRI_ASSERT(conditionAndNode->type == NODE_TYPE_OPERATOR_NARY_AND);
 
-  ::arangodb::containers::HashSet<size_t> toRemove;
+  containers::FlatHashSet<size_t> toRemove;
   collectOverlappingMembers(plan, variable, andNode, conditionAndNode, toRemove,
                             index, false);
 
@@ -1006,7 +1005,7 @@ AstNode* Condition::removeTraversalCondition(ExecutionPlan const* plan,
   TRI_ASSERT(otherAndNode->type == NODE_TYPE_OPERATOR_NARY_AND);
   size_t const n = andNode->numMembers();
 
-  ::arangodb::containers::HashSet<size_t> toRemove;
+  containers::FlatHashSet<size_t> toRemove;
   collectOverlappingMembers(plan, variable, andNode, otherAndNode, toRemove,
                             nullptr, true);
 

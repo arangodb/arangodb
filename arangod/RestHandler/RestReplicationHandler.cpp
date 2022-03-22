@@ -73,7 +73,6 @@
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/CollectionCreationInfo.h"
 
-#include <Containers/HashSet.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>

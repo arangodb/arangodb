@@ -31,8 +31,6 @@
 #include "Aql/SharedAqlItemBlockPtr.h"
 #include "Aql/types.h"
 
-#include <Containers/HashSet.h>
-
 #include <memory>
 
 namespace arangodb::aql {

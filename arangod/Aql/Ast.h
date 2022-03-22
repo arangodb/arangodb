@@ -41,7 +41,6 @@
 #include "Aql/VariableGenerator.h"
 #include "Aql/types.h"
 #include "Basics/AttributeNameParser.h"
-#include "Containers/HashSet.h"
 #include "Graph/ShortestPathType.h"
 #include "VocBase/AccessMode.h"
 

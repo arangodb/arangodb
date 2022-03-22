@@ -25,7 +25,6 @@
 #pragma once
 
 #include <velocypack/HashedStringRef.h>
-#include "Containers/HashSet.h"
 
 #include <numeric>
 

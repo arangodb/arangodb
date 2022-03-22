@@ -32,7 +32,6 @@
 #include "Aql/ExecutionNodeId.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/types.h"
-#include "Containers/HashSet.h"
 #include "Indexes/IndexIterator.h"
 #include "Transaction/Methods.h"
 #include "VocBase/Identifiers/IndexId.h"

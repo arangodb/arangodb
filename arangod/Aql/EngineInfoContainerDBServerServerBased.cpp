@@ -31,6 +31,7 @@
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterTrxMethods.h"
+#include "Containers/FlatHashSet.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
@@ -345,7 +346,7 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
   });
 
   // remember which servers we add during our setup request
-  ::arangodb::containers::HashSet<std::string> serversAdded;
+  containers::FlatHashSet<std::string> serversAdded;
 
   transaction::Methods& trx = _query.trxForOptimization();
   std::vector<arangodb::futures::Future<Result>> networkCalls{};

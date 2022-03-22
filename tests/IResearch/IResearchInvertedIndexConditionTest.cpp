@@ -31,6 +31,7 @@
 #include "Aql/Query.h"
 #include "Aql/Projections.h"
 #include "Aql/SortNode.h"
+#include "Containers/FlatHashSet.h"
 #include "IResearch/AqlHelper.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchInvertedIndex.h"
@@ -253,7 +254,8 @@ class IResearchInvertedIndexConditionTest
     ASSERT_TRUE(ref);
 
     std::vector<std::vector<arangodb::basics::AttributeName>> constAttributes;
-    arangodb::containers::HashSet<std::vector<arangodb::basics::AttributeName>>
+    arangodb::containers::FlatHashSet<
+        std::vector<arangodb::basics::AttributeName>>
         nonNullAttributes;
     {
       SortCondition sortCondition(query->plan(), sorts, constAttributes,

@@ -26,6 +26,7 @@
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionNodeId.h"
 #include "Aql/WalkerWorker.h"
+#include "Containers/FlatHashSet.h"
 
 #include <cstdint>
 #include <unordered_map>
@@ -62,7 +63,7 @@ class ConditionFinder final
  private:
   ExecutionPlan* _plan;
   std::unordered_map<VariableId, AstNode const*> _variableDefinitions;
-  ::arangodb::containers::HashSet<VariableId> _filters;
+  containers::FlatHashSet<VariableId> _filters;
   std::vector<std::pair<Variable const*, bool>> _sorts;
   // note: this class will never free the contents of this map
   std::unordered_map<aql::ExecutionNodeId, ExecutionNode*>& _changes;

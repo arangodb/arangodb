@@ -28,7 +28,6 @@
 
 #include "Aql/types.h"
 
-#include <Containers/HashSet.h>
 #include <boost/container/flat_set.hpp>
 
 #include <memory>

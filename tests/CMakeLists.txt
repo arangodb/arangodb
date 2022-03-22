@@ -226,7 +226,6 @@ set(ARANGODB_TESTS_SOURCES
   Cluster/RebootTrackerTest.cpp
   Cluster/QueryAnalyzerRevisionsTest.cpp
   Containers/EnumerateTest.cpp
-  Containers/HashSetTest.cpp
   Containers/MerkleTreeTest.cpp
   Containers/SmallVectorTest.cpp
   Futures/FutureTest.cpp

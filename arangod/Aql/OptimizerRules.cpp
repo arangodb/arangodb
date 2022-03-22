@@ -61,7 +61,7 @@
 #include "Basics/StaticStrings.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
-#include "Containers/HashSet.h"
+#include "Containers/FlatHashSet.h"
 #include "Containers/SmallUnorderedMap.h"
 #include "Containers/SmallVector.h"
 #include "Geo/GeoParams.h"
@@ -1208,7 +1208,7 @@ void arangodb::aql::removeRedundantSortsRule(
     return;
   }
 
-  ::arangodb::containers::HashSet<ExecutionNode*> toUnlink;
+  containers::FlatHashSet<ExecutionNode*> toUnlink;
 
   for (auto const& n : nodes) {
     if (toUnlink.find(n) != toUnlink.end()) {
@@ -1353,7 +1353,7 @@ void arangodb::aql::removeUnnecessaryFiltersRule(
   plan->findNodesOfType(nodes, EN::FILTER, true);
 
   bool modified = false;
-  ::arangodb::containers::HashSet<ExecutionNode*> toUnlink;
+  containers::FlatHashSet<ExecutionNode*> toUnlink;
 
   for (auto const& n : nodes) {
     // now check who introduced our variable
@@ -1425,7 +1425,7 @@ void arangodb::aql::removeCollectVariablesRule(
       // e.g. COLLECT something INTO g
       // we will now check how many parts of "g" are used later
 
-      auto keepAttributes = containers::HashSet<std::string>();
+      containers::FlatHashSet<std::string> keepAttributes;
 
       bool doOptimize = true;
       auto planNode = collectNode->getFirstParent();
@@ -1466,7 +1466,7 @@ void arangodb::aql::removeCollectVariablesRule(
          // planNode
 
       if (doOptimize) {
-        auto keepVariables = containers::HashSet<Variable const*>();
+        containers::FlatHashSet<Variable const*> keepVariables;
         // we are allowed to do the optimization
         auto current = n->getFirstDependency();
         while (current != nullptr) {
@@ -1475,7 +1475,8 @@ void arangodb::aql::removeCollectVariablesRule(
                  /* no hoisting */) {
               if ((*it) == var->name) {
                 keepVariables.emplace(var);
-                it = keepAttributes.erase(it);
+                auto erase_it = it++;
+                keepAttributes.erase(erase_it);
               } else {
                 ++it;
               }
@@ -2519,7 +2520,7 @@ void arangodb::aql::fuseFiltersRule(Optimizer* opt,
     return;
   }
 
-  ::arangodb::containers::HashSet<ExecutionNode*> seen;
+  containers::FlatHashSet<ExecutionNode*> seen;
   // candidates of CalculationNode, FilterNode
   std::vector<std::pair<ExecutionNode*, ExecutionNode*>> candidates;
 
@@ -2729,7 +2730,7 @@ void arangodb::aql::removeUnnecessaryCalculationsRule(
   auto& nodes = nodesStorage.vector();
   plan->findNodesOfType(nodes, ::removeUnnecessaryCalculationsNodeTypes, true);
 
-  ::arangodb::containers::HashSet<ExecutionNode*> toUnlink;
+  containers::FlatHashSet<ExecutionNode*> toUnlink;
 
   for (auto const& n : nodes) {
     arangodb::aql::Variable const* outVariable = nullptr;
@@ -2987,9 +2988,8 @@ struct SortToIndexNode final
       AstNode const* node, Variable const* variable,
       std::vector<std::vector<arangodb::basics::AttributeName>>&
           constAttributes,
-      ::arangodb::containers::HashSet<
-          std::vector<arangodb::basics::AttributeName>>& nonNullAttributes)
-      const {
+      containers::FlatHashSet<std::vector<basics::AttributeName>>&
+          nonNullAttributes) const {
     if (node->type == NODE_TYPE_OPERATOR_BINARY_AND) {
       // recurse into both sides
       getSpecialAttributes(node->getMemberUnchecked(0), variable,
@@ -3070,9 +3070,8 @@ struct SortToIndexNode final
       Variable const* variable,
       std::vector<std::vector<arangodb::basics::AttributeName>>&
           constAttributes,
-      ::arangodb::containers::HashSet<
-          std::vector<arangodb::basics::AttributeName>>& nonNullAttributes)
-      const {
+      containers::FlatHashSet<std::vector<basics::AttributeName>>&
+          nonNullAttributes) const {
     // resolve all FILTER variables into their appropriate filter conditions
     TRI_ASSERT(!_filters.empty());
     for (auto const& filter : _filters.back()) {
@@ -3101,8 +3100,7 @@ struct SortToIndexNode final
     // figure out all attributes from the FILTER conditions that have a constant
     // value and/or that cannot be null
     std::vector<std::vector<arangodb::basics::AttributeName>> constAttributes;
-    ::arangodb::containers::HashSet<
-        std::vector<arangodb::basics::AttributeName>>
+    containers::FlatHashSet<std::vector<basics::AttributeName>>
         nonNullAttributes;
     processCollectionAttributes(enumerateCollectionNode->outVariable(),
                                 constAttributes, nonNullAttributes);
@@ -3411,7 +3409,7 @@ void arangodb::aql::removeFiltersCoveredByIndexRule(
   auto& nodes = nodesStorage.vector();
   plan->findNodesOfType(nodes, EN::FILTER, true);
 
-  ::arangodb::containers::HashSet<ExecutionNode*> toUnlink;
+  containers::FlatHashSet<ExecutionNode*> toUnlink;
   bool modified = false;
   // this rule may modify the plan in place, but the new plan
   // may not yet be optimal. so we may pass it into this same
@@ -3561,7 +3559,7 @@ void arangodb::aql::interchangeAdjacentEnumerationsRule(
   plan->findNodesOfType(nodes, ::interchangeAdjacentEnumerationsNodeTypes,
                         true);
 
-  ::arangodb::containers::HashSet<ExecutionNode*> nodesSet;
+  containers::FlatHashSet<ExecutionNode*> nodesSet;
   for (auto const& n : nodes) {
     TRI_ASSERT(nodesSet.find(n) == nodesSet.end());
     nodesSet.emplace(n);
@@ -4964,7 +4962,7 @@ void arangodb::aql::removeUnnecessaryRemoteScatterRule(
   auto& nodes = nodesStorage.vector();
   plan->findNodesOfType(nodes, EN::REMOTE, true);
 
-  ::arangodb::containers::HashSet<ExecutionNode*> toUnlink;
+  containers::FlatHashSet<ExecutionNode*> toUnlink;
 
   for (auto& n : nodes) {
     // check if the remote node is preceded by a scatter node and any number of
@@ -5051,7 +5049,7 @@ void arangodb::aql::restrictToSingleShardRule(
   auto& nodes = nodesStorage.vector();
   plan->findNodesOfType(nodes, EN::REMOTE, true);
 
-  ::arangodb::containers::HashSet<ExecutionNode*> toUnlink;
+  containers::FlatHashSet<ExecutionNode*> toUnlink;
   std::map<Collection const*, std::unordered_set<std::string>>
       modificationRestrictions;
 
@@ -5124,7 +5122,7 @@ void arangodb::aql::restrictToSingleShardRule(
             // REMOTE node in front of us, we can probably move the remote
             // parts of the query to our side. this is only the case if the
             // remote part does not call any remote parts itself
-            ::arangodb::containers::HashSet<ExecutionNode*> toRemove;
+            containers::FlatHashSet<ExecutionNode*> toRemove;
 
             auto c = deps[0];
             toRemove.emplace(c);
@@ -5207,7 +5205,7 @@ void arangodb::aql::restrictToSingleShardRule(
 class RemoveToEnumCollFinder final
     : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
   ExecutionPlan* _plan;
-  ::arangodb::containers::HashSet<ExecutionNode*>& _toUnlink;
+  containers::FlatHashSet<ExecutionNode*>& _toUnlink;
   bool _foundModification;
   bool _foundScatter;
   bool _foundGather;
@@ -5216,9 +5214,8 @@ class RemoveToEnumCollFinder final
   Variable const* _variable;
 
  public:
-  RemoveToEnumCollFinder(
-      ExecutionPlan* plan,
-      ::arangodb::containers::HashSet<ExecutionNode*>& toUnlink)
+  RemoveToEnumCollFinder(ExecutionPlan* plan,
+                         containers::FlatHashSet<ExecutionNode*>& toUnlink)
       : _plan(plan),
         _toUnlink(toUnlink),
         _foundModification(false),
@@ -5469,7 +5466,7 @@ void arangodb::aql::undistributeRemoveAfterEnumCollRule(
   auto& nodes = nodesStorage.vector();
   plan->findNodesOfType(nodes, ::undistributeNodeTypes, true);
 
-  ::arangodb::containers::HashSet<ExecutionNode*> toUnlink;
+  containers::FlatHashSet<ExecutionNode*> toUnlink;
 
   for (auto& n : nodes) {
     RemoveToEnumCollFinder finder(plan.get(), toUnlink);
@@ -6204,7 +6201,7 @@ void arangodb::aql::removeFiltersCoveredByTraversal(
   }
 
   bool modified = false;
-  ::arangodb::containers::HashSet<ExecutionNode*> toUnlink;
+  containers::FlatHashSet<ExecutionNode*> toUnlink;
 
   for (auto const& node : fNodes) {
     auto fn = ExecutionNode::castTo<FilterNode const*>(node);

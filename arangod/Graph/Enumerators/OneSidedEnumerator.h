@@ -24,8 +24,6 @@
 
 #pragma once
 
-#include "Containers/HashSet.h"
-
 #include "Basics/ResourceUsage.h"
 
 #include "Aql/TraversalStats.h"

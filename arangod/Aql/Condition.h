@@ -26,7 +26,7 @@
 #include "Aql/AstNode.h"
 #include "Aql/types.h"
 #include "Basics/AttributeNameParser.h"
-#include "Containers/HashSet.h"
+#include "Containers/FlatHashSet.h"
 #include "Transaction/Methods.h"
 
 #include <string>
@@ -129,7 +129,7 @@ class Condition {
   static void collectOverlappingMembers(
       ExecutionPlan const* plan, Variable const* variable,
       AstNode const* andNode, AstNode const* otherAndNode,
-      ::arangodb::containers::HashSet<size_t>& toRemove, Index const* index,
+      containers::FlatHashSet<size_t>& toRemove, Index const* index,
       bool isFromTraverser);
 
   /// @brief return the condition root
@@ -197,7 +197,7 @@ class Condition {
       Variable const*, bool includeNull) const;
 
   /// @brief get the attributes for a sub-condition that are not-null
-  ::arangodb::containers::HashSet<std::vector<arangodb::basics::AttributeName>>
+  containers::FlatHashSet<std::vector<basics::AttributeName>>
   getNonNullAttributes(Variable const*) const;
 
  private:

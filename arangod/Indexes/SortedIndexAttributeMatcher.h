@@ -26,7 +26,6 @@
 #include "Basics/Common.h"
 #include "Containers/FlatHashMap.h"
 #include "Containers/FlatHashSet.h"
-#include "Containers/HashSet.h"
 #include "Indexes/Index.h"
 
 namespace arangodb {
@@ -100,9 +99,8 @@ bool accessFitsIndex(
     arangodb::containers::FlatHashSet<std::string>& nonNullAttributes,
     bool isExecution);
 
-bool isDuplicateOperator(
-    arangodb::aql::AstNodeType type,
-    ::arangodb::containers::HashSet<int> const& operatorsFound);
+bool isDuplicateOperator(arangodb::aql::AstNodeType type,
+                         containers::FlatHashSet<int> const& operatorsFound);
 };  // namespace SortedIndexAttributeMatcher
 
 }  // namespace arangodb

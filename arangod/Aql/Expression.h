@@ -31,7 +31,6 @@
 #include <velocypack/Slice.h>
 
 #include "Aql/types.h"
-#include "Containers/HashSet.h"
 
 namespace arangodb {
 namespace transaction {

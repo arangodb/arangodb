@@ -26,7 +26,7 @@
 #include "Aql/types.h"
 #include "Basics/Common.h"
 #include "Basics/debugging.h"
-#include "Containers/HashSet.h"
+#include "Containers/FlatHashSet.h"
 
 namespace arangodb {
 namespace aql {
@@ -96,7 +96,7 @@ class WalkerWorker : public WalkerWorkerBase<T> {
   }
 
  private:
-  ::arangodb::containers::HashSet<T*> _done;
+  containers::FlatHashSet<T*> _done;
 };
 
 }  // namespace aql

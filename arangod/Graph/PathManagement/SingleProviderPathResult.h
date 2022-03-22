@@ -25,7 +25,6 @@
 #pragma once
 
 #include <velocypack/HashedStringRef.h>
-#include "Containers/HashSet.h"
 
 #include "Graph/Enumerators/OneSidedEnumeratorInterface.h"
 #include "Graph/Providers/TypeAliases.h"
