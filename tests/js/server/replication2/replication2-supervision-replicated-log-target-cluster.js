@@ -242,7 +242,7 @@ const replicatedLogSuite = function () {
       }));
       {
         const {current} = readReplicatedLogAgency(database, logId);
-        const actions = current.supervision.actions;
+        const actions = current.actions;
         // we expect the last three actions to be
         //  3. update participant flags with leader.forced = true
         //  2. dictate leadership with new leader
@@ -256,7 +256,7 @@ const replicatedLogSuite = function () {
         {
           const action = _.nth(actions, -2).desc;
           assertEqual(action.type, 'DictateLeaderAction');
-          assertEqual(action.newTerm.leader.serverId, newLeader);
+          assertEqual(action.newLeader.serverId, newLeader);
         }
         {
           const action = _.nth(actions, -1).desc;
@@ -337,7 +337,7 @@ const replicatedLogSuite = function () {
 
       {
         const {current} = readReplicatedLogAgency(database, logId);
-        const actions = current.supervision.actions;
+        const actions = current.actions;
         // we expect the last actions to be
         //  1. remove the server
         //  2. dictate leadership with new leader
