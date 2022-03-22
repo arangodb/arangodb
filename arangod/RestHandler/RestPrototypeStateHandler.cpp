@@ -29,6 +29,7 @@
 #include <Network/Methods.h>
 #include <Network/NetworkFeature.h>
 #include <Cluster/ClusterFeature.h>
+#include "Inspection/VPack.h"
 
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/StateMachines/Prototype/PrototypeStateMethods.h"
@@ -67,6 +68,29 @@ RestStatus RestPrototypeStateHandler::executeByMethod(
   return RestStatus::DONE;
 }
 
+RestStatus RestPrototypeStateHandler::handleCreateState(
+    replication2::PrototypeStateMethods const& methods,
+    velocypack::Slice payload) {
+  auto options = velocypack::deserialize<
+      replication2::PrototypeStateMethods::CreateOptions>(payload);
+
+  return waitForFuture(
+      methods.createState(std::move(options))
+          .thenValue([&](ResultT<LogId>&& createResult) {
+            if (createResult.ok()) {
+              VPackBuilder result;
+              {
+                VPackObjectBuilder ob(&result);
+                result.add("id", VPackValue(createResult.get()));
+              }
+              generateOk(rest::ResponseCode::OK, result.slice());
+            } else {
+              generateError(createResult.result());
+            }
+            return RestStatus::DONE;
+          }));
+}
+
 RestStatus RestPrototypeStateHandler::handlePostRequest(
     PrototypeStateMethods const& methods) {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
@@ -75,6 +99,10 @@ RestStatus RestPrototypeStateHandler::handlePostRequest(
   VPackSlice body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess) {  // error message generated in parseVPackBody
     return RestStatus::DONE;
+  }
+
+  if (suffixes.size() == 0) {
+    return handleCreateState(methods, body);
   }
 
   if (suffixes.size() != 2) {

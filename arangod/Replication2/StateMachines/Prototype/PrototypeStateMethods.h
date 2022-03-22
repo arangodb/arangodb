@@ -52,6 +52,16 @@ class LogId;
 struct PrototypeStateMethods {
   virtual ~PrototypeStateMethods() = default;
 
+  struct CreateOptions {
+    bool waitForReady{false};
+    std::optional<LogId> id;
+    std::optional<LogConfig> config;
+    std::vector<ParticipantId> servers;
+  };
+
+  [[nodiscard]] virtual auto createState(CreateOptions options) const
+      -> futures::Future<ResultT<LogId>> = 0;
+
   [[nodiscard]] virtual auto insert(
       LogId id,
       std::unordered_map<std::string, std::string> const& entries) const
@@ -75,5 +85,13 @@ struct PrototypeStateMethods {
   static auto createInstance(TRI_vocbase_t& vocbase)
       -> std::shared_ptr<PrototypeStateMethods>;
 };
+
+template<class Inspector>
+auto inspect(Inspector& f, PrototypeStateMethods::CreateOptions& x) {
+  return f.object(x).fields(
+      f.field("waitForReady", x.waitForReady).fallback(true),
+      f.field("id", x.id), f.field("config", x.config),
+      f.field("servers", x.servers));
+}
 
 }  // namespace arangodb::replication2

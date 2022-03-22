@@ -158,6 +158,20 @@ class LogId : public arangodb::basics::Identifier {
   [[nodiscard]] explicit operator velocypack::Value() const noexcept;
 };
 
+template<class Inspector>
+auto inspect(Inspector& f, LogId& x) {
+  if constexpr (Inspector::isLoading) {
+    int v;
+    auto res = f.apply(v);
+    if (res.ok()) {
+      x = LogId(v);
+    }
+    return res;
+  } else {
+    return f.apply(x.id());
+  }
+}
+
 auto to_string(LogId logId) -> std::string;
 
 struct GlobalLogIdentifier {

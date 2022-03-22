@@ -34,10 +34,13 @@
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedState/ReplicatedState.h"
 #include "Replication2/StateMachines/Prototype/PrototypeStateMachine.h"
+#include "Replication2/Methods.h"
 #include "Network/Methods.h"
 #include "VocBase/vocbase.h"
+#include "Random/RandomGenerator.h"
 
 #include "PrototypeStateMethods.h"
+#include "Replication2/ReplicatedState/AgencySpecification.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -108,6 +111,12 @@ struct PrototypeStateMethodsDBServer final : PrototypeStateMethods {
               "Failed to get leader of ProtoypeState with id ", id));
     }
     return leader;
+  }
+
+ public:
+  auto createState(CreateOptions options) const
+      -> futures::Future<ResultT<LogId>> override {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
  private:
@@ -272,6 +281,69 @@ struct PrototypeStateMethodsCoordinator final : PrototypeStateMethods {
                                 builder.bufferRef(), opts)
         .thenValue([](network::Response&& resp) -> ResultT<LogIndex> {
           return processLogIndexResponse(std::move(resp));
+        });
+  }
+
+  void fillCreateOptions(CreateOptions& options) const {
+    if (options.id.has_value()) {
+      options.id = LogId{_clusterInfo.uniqid()};
+    }
+
+    auto dbservers = _clusterInfo.getCurrentDBServers();
+    std::size_t expectedNumberOfServers =
+        std::min(dbservers.size(), std::size_t{3});
+    if (options.config.has_value()) {
+      expectedNumberOfServers = options.config->replicationFactor;
+    } else if (!options.servers.empty()) {
+      expectedNumberOfServers = options.servers.size();
+    }
+
+    if (!options.config.has_value()) {
+      options.config =
+          LogConfig{2, expectedNumberOfServers, expectedNumberOfServers, false};
+    }
+
+    if (expectedNumberOfServers > dbservers.size()) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS);
+    }
+  }
+
+  auto stateTargetFromCreateOptions(CreateOptions const& opts) const
+      -> replication2::replicated_state::agency::Target {
+    auto target = replicated_state::agency::Target{};
+    target.id = opts.id.value();
+    target.properties.implementation.type = "prototype-state";
+    target.config = opts.config.value();
+    for (auto const& server : opts.servers) {
+      target.participants[server];
+    }
+    return target;
+  }
+
+  auto createState(CreateOptions options) const
+      -> futures::Future<ResultT<LogId>> override {
+    fillCreateOptions(options);
+    auto target = stateTargetFromCreateOptions(options);
+    auto methods =
+        replication2::ReplicatedStateMethods::createInstance(_vocbase);
+
+    return methods->createReplicatedState(std::move(target))
+        .thenValue([options = std::move(options),
+                    methods](auto&& result) -> futures::Future<ResultT<LogId>> {
+          if (result.ok()) {
+            return {options.id.value()};
+          }
+
+          if (options.waitForReady) {
+            return methods->waitForStateReady(*options.id)
+                .thenValue([id = *options.id](auto&& result) -> ResultT<LogId> {
+                  if (result.ok()) {
+                    return {id};
+                  }
+                  return result;
+                });
+          }
+          return result;
         });
   }
 

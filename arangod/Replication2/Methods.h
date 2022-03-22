@@ -117,6 +117,9 @@ struct ReplicatedLogMethods {
 struct ReplicatedStateMethods {
   virtual ~ReplicatedStateMethods() = default;
 
+  [[nodiscard]] virtual auto waitForStateReady(LogId)
+      -> futures::Future<Result> = 0;
+
   virtual auto createReplicatedState(replicated_state::agency::Target spec)
       const -> futures::Future<Result> = 0;
   virtual auto deleteReplicatedLog(LogId id) const

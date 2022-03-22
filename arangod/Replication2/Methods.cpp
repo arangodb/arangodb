@@ -700,6 +700,11 @@ struct ReplicatedStateDBServerMethods
     THROW_ARANGO_EXCEPTION(TRI_ERROR_HTTP_NOT_IMPLEMENTED);
   }
 
+  [[nodiscard]] auto waitForStateReady(LogId)
+      -> futures::Future<Result> override {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+
   auto getLocalStatus(LogId id) const
       -> futures::Future<replicated_state::StateStatus> override {
     auto state = vocbase.getReplicatedStateById(id);
@@ -765,6 +770,11 @@ struct ReplicatedStateCoordinatorMethods
 
           return self->clusterInfo.waitForPlan(res.get());
         });
+  }
+
+  [[nodiscard]] virtual auto waitForStateReady(LogId)
+      -> futures::Future<Result> override {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
   auto deleteReplicatedLog(LogId id) const -> futures::Future<Result> override {
