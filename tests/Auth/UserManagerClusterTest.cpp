@@ -33,7 +33,7 @@ namespace auth_info_test {
 
 class UserManagerClusterTest : public ::testing::Test {
  public:
-  mocks::MockCoordinator _server{};
+  mocks::MockCoordinator _server{"CRDN_0001"};
 
  protected:
   auth::UserManager* userManager() {

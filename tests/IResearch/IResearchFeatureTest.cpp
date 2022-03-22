@@ -2409,7 +2409,7 @@ class IResearchFeatureTestCoordinator
 
  private:
  protected:
-  IResearchFeatureTestCoordinator() : server(false) {
+  IResearchFeatureTestCoordinator() : server("CRDN_0001", false) {
     arangodb::tests::init();
 
     arangodb::ServerState::instance()->setRebootId(
@@ -2672,7 +2672,7 @@ class IResearchFeatureTestDBServer
 
  private:
  protected:
-  IResearchFeatureTestDBServer() : server(false) {
+  IResearchFeatureTestDBServer() : server("PRMR_0001", false) {
     arangodb::tests::init();
 
     arangodb::ServerState::instance()->setRebootId(

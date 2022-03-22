@@ -32,7 +32,7 @@
 using namespace arangodb;
 
 struct ClusterInfoTest : public ::testing::Test {
-  ClusterInfoTest() : server() {}
+  ClusterInfoTest() : server("CRDN_0001") {}
 
   arangodb::tests::mocks::MockCoordinator server;
 };

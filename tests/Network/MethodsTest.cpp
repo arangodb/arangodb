@@ -131,7 +131,7 @@ struct NetworkMethodsTest
     : public ::testing::Test,
       public arangodb::tests::LogSuppressor<arangodb::Logger::THREADS,
                                             arangodb::LogLevel::FATAL> {
-  NetworkMethodsTest() : server(false) {
+  NetworkMethodsTest() : server("CRDN_0001", false) {
     server.addFeature<SchedulerFeature>(true);
     server.startFeatures();
 

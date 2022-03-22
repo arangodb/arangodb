@@ -487,9 +487,11 @@ consensus::Store& AgencyCache::store() { return _readDB; }
 
 MockClusterServer::MockClusterServer(bool useAgencyMockPool,
                                      ServerState::RoleEnum newRole,
+                                     ServerID serverId,
                                      bool injectClusterIndexes)
     : MockServer(newRole, injectClusterIndexes),
-      _useAgencyMockPool(useAgencyMockPool) {
+      _useAgencyMockPool(useAgencyMockPool),
+      _serverId(serverId) {
   // Add features
   SetupAqlPhase(*this);
 
@@ -651,6 +653,8 @@ void MockClusterServer::agencyDropDatabase(std::string const& name) {
       .wait();
 }
 
+ServerID const& MockClusterServer::getServerID() const { return _serverId; }
+
 void MockClusterServer::buildCollectionProperties(
     VPackBuilder& props, std::string const& collectionName,
     std::string const& cid, TRI_col_type_e type,
@@ -777,8 +781,9 @@ std::shared_ptr<LogicalCollection> MockClusterServer::createCollection(
   return clusterInfo.getCollection(dbName, collectionName);
 }
 
-MockDBServer::MockDBServer(bool start, bool useAgencyMock)
-    : MockClusterServer(useAgencyMock, ServerState::RoleEnum::ROLE_DBSERVER) {
+MockDBServer::MockDBServer(ServerID serverId, bool start, bool useAgencyMock)
+    : MockClusterServer(useAgencyMock, ServerState::RoleEnum::ROLE_DBSERVER,
+                        serverId) {
   addFeature<FlushFeature>(false);        // do not start the thread
   addFeature<MaintenanceFeature>(false);  // do not start the thread
   if (start) {
@@ -899,10 +904,10 @@ void MockDBServer::createShard(std::string const& dbName, std::string shardName,
   }
 }
 
-MockCoordinator::MockCoordinator(bool start, bool useAgencyMock,
-                                 bool injectClusterIndexes)
+MockCoordinator::MockCoordinator(ServerID serverId, bool start,
+                                 bool useAgencyMock, bool injectClusterIndexes)
     : MockClusterServer(useAgencyMock, ServerState::RoleEnum::ROLE_COORDINATOR,
-                        injectClusterIndexes) {
+                        serverId, injectClusterIndexes) {
   addFeature<arangodb::metrics::ClusterMetricsFeature>(false).disable();
   if (start) {
     MockCoordinator::startFeatures();

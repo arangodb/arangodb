@@ -39,7 +39,7 @@ namespace store_test_api {
 
 class StoreTestAPI : public ::testing::Test {
  public:
-  StoreTestAPI() : _server(), _store(_server.server(), nullptr) {}
+  StoreTestAPI() : _server("CRDN_0001"), _store(_server.server(), nullptr) {}
 
  protected:
   arangodb::tests::mocks::MockCoordinator _server;
