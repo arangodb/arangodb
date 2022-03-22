@@ -65,6 +65,9 @@ function wait_for_put(cmd, code, maxWait) {
 
 function dealing_with_async_requestsSuite () {
   return {
+    tearDownAll: function() {
+      arango.DELETE('/_api/query/slow');
+    },
 
     ////////////////////////////////////////////////////////////////////////////////;
     // checking methods;
