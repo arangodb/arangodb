@@ -38,6 +38,8 @@ const download = require('internal').download;
 const pathForTesting = require('internal').pathForTesting;
 const platform = require('internal').platform;
 const SetGlobalExecutionDeadlineTo = require('internal').SetGlobalExecutionDeadlineTo;
+const userManager = require("@arangodb/users");
+
 /* Constants: */
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
 // const CYAN = require('internal').COLORS.COLOR_CYAN;
@@ -173,6 +175,7 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
   let count = 0;
   let forceTerminate = false;
   let graphCount = 0;
+  let usersCount = userManager.all().length;
 
   for (let i = 0; i < testList.length; i++) {
     let te = testList[i];
@@ -366,12 +369,12 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
                 JSON.stringify(results[te])
             };
           }
-          if (db._users.toArray().length !== 1) {
+          if (testname !== 'authentication' && userManager.all().length !== usersCount) {
             continueTesting = false;
             results[te] = {
               status: false,
               message: 'Cleanup of users missing - found users left over: [ ' +
-                JSON.stringify(db._users.toArray()) +
+                JSON.stringify(userManager.all()) +
                 ' ] - Original test status: ' +
                 JSON.stringify(results[te])
             };
