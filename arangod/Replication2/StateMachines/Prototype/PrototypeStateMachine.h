@@ -203,6 +203,7 @@ auto PrototypeLeaderState::set(Iterator begin, Iterator end)
       PrototypeLogEntry::InsertOperation{.entries = {begin, end}}};
   auto idx = stream->insert(entry);
 
+  // TODO add waitForApplied
   return stream->waitFor(idx).thenValue(
       [self = shared_from_this(), idx, begin, end](auto&& res) {
         auto fut = self->guardedData.doUnderLock(
@@ -237,6 +238,7 @@ auto PrototypeLeaderState::remove(Iterator begin, Iterator end)
 
   return stream->waitFor(idx).thenValue(
       [self = shared_from_this(), begin, end, idx](auto&& res) {
+        // TODO add waitForApplied
         auto fut = self->guardedData.doUnderLock(
             [self = self, begin, end,
              idx](auto& core) mutable -> futures::Future<ResultT<LogIndex>> {

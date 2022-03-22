@@ -218,7 +218,7 @@ auto PrototypeLeaderState::set(
     return self->waitForApplied(idx.saturatedDecrement())
         .thenValue([self = self, idx = idx, entries = std::move(entries)](
                        auto&& result) mutable -> ResultT<LogIndex> {
-          auto fut = self->guardedData.doUnderLock(
+          ResultT<LogIndex> r = self->guardedData.doUnderLock(
               [self = self, idx = idx,
                entries = std::move(entries)](auto& core) -> ResultT<LogIndex> {
                 if (!core) {
@@ -236,7 +236,7 @@ auto PrototypeLeaderState::set(
               });
           self->lastAppliedIndex.store(idx);
           self->resolvePromise(idx);
-          return fut;
+          return r;
         });
   });
 }
@@ -250,6 +250,7 @@ auto PrototypeLeaderState::remove(std::string key)
   return stream->waitFor(idx).thenValue([self = shared_from_this(),
                                          key = std::move(key),
                                          idx = idx](auto&& res) mutable {
+    // TODO add waitForApplied
     auto fut = self->guardedData.doUnderLock(
         [self = self, key = std::move(key),
          idx = idx](auto& core) -> ResultT<LogIndex> {
@@ -280,6 +281,7 @@ auto PrototypeLeaderState::remove(std::vector<std::string> keys)
   return stream->waitFor(idx).thenValue(
       [self = shared_from_this(), idx = idx,
        entries = std::move(keys)](auto&& res) mutable {
+        // TODO add waitForApplied
         auto fut = self->guardedData.doUnderLock(
             [self = self, entries = std::move(entries),
              idx = idx](auto& core) -> ResultT<LogIndex> {
