@@ -123,7 +123,7 @@ struct PrototypeCore {
   template<typename EntryIterator>
   void applyEntries(std::unique_ptr<EntryIterator> ptr);
 
-  void set(std::unordered_map<std::string, std::string> entries);
+  void set(std::unordered_map<std::string, std::string> const& entries);
 
   bool flush();
   void loadStateFromDB();

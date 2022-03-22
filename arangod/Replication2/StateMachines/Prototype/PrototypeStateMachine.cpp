@@ -50,9 +50,7 @@ void PrototypeCore::applyEntries(std::unique_ptr<EntryIterator> ptr) {
                      store = store.erase(op.key);
                    },
                    [&](PrototypeLogEntry::InsertOperation const& op) {
-                     for (auto const& [key, value] : op.entries) {
-                       store = store.set(key, value);
-                     }
+                     set(op.entries);
                    },
                    [&](PrototypeLogEntry::BulkDeleteOperation const& op) {
                      for (auto const& it : op.keys) {
@@ -85,16 +83,14 @@ void PrototypeCore::loadStateFromDB() {
   if (result.ok()) {
     auto dump = result.get();
     lastPersistedIndex = lastAppliedIndex = dump.lastPersistedIndex;
-    for (auto [k, v] : dump.map) {
-      store = store.set(k, v);
-    }
+    set(dump.map);
   } else {
     THROW_ARANGO_EXCEPTION(result.result());
   }
 }
 
 void PrototypeCore::set(
-    std::unordered_map<std::string, std::string> entries) {
+    std::unordered_map<std::string, std::string> const& entries) {
   for (auto& [k, v] : entries) {
     store = store.set(k, v);
   }
