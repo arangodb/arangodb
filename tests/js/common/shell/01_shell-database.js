@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue, assertFalse, assertNotEqual, assertMatch, assertEqual, fail, db, arango */
+/*global assertEqual, assertTrue, assertFalse, assertNotEqual, assertMatch, assertEqual, fail, arango */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the common database interface
@@ -32,6 +32,8 @@ const jsunity = require("jsunity");
 const internal = require("internal");
 const arangodb = require("@arangodb");
 const ERRORS = arangodb.errors;
+const db = internal.db;
+const userManager = require("@arangodb/users");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite: database methods
@@ -58,7 +60,7 @@ function DatabaseSuite () {
       db._flushCache();
       db._users.toArray().forEach(user => {
         if (user.user !== "root") {
-          arango.DELETE_RAW("/_api/user/" + user.user);
+          userManager.remove(user.user);
         }
       });
     },
@@ -370,7 +372,6 @@ function DatabaseSuite () {
 
       assertTrue(internal.db._createDatabase("UnitTestsDatabase0", { }, users));
 
-      var userManager = require("@arangodb/users");
       var user = userManager.document("admin");
 
       assertEqual("admin", user.user);
@@ -406,7 +407,6 @@ function DatabaseSuite () {
       ];
       assertTrue(internal.db._createDatabase("UnitTestsDatabase0", { }, users));
 
-      var userManager = require("@arangodb/users");
       var user = userManager.document("admin");
       assertEqual("admin", user.user);
       assertTrue(user.active);
