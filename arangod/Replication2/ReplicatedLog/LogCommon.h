@@ -241,7 +241,8 @@ struct LogConfig {
 template<class Inspector>
 auto inspect(Inspector& f, LogConfig& x) {
   return f.object(x).fields(f.field("writeConcern", x.writeConcern),
-                            f.field("softWriteConcern", x.softWriteConcern),
+                            f.field("softWriteConcern", x.softWriteConcern)
+                                .fallback(std::ref(x.writeConcern)),
                             f.field("replicationFactor", x.replicationFactor),
                             f.field("waitForSync", x.waitForSync));
 }
@@ -266,7 +267,7 @@ template<class Inspector>
 auto inspect(Inspector& f, ParticipantFlags& x) {
   return f.object(x).fields(f.field("forced", x.forced),
                             f.field("allowedInQuorum", x.allowedInQuorum),
-                            f.field("allowedAsLader", x.allowedAsLeader));
+                            f.field("allowedAsLeader", x.allowedAsLeader));
 }
 
 auto operator<<(std::ostream&, ParticipantFlags const&) -> std::ostream&;
