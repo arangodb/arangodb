@@ -19,10 +19,10 @@
 #include "RocksDBChecksumEnv.h"
 #include "Logger/LogMacros.h"
 
-namespace rocksdb {
-Status ChecksumEnv::NewWritableFile(const std::string& fname,
-                                    std::unique_ptr<WritableFile>* result,
-                                    const EnvOptions& options) {
+namespace arangodb {
+rocksdb::Status ChecksumEnv::NewWritableFile(
+    const std::string& fname, std::unique_ptr<rocksdb::WritableFile>* result,
+    const rocksdb::EnvOptions& options) {
   LOG_DEVEL << "NewWritableFile invoked";
 }
-}  // namespace rocksdb
+}  // namespace arangodb

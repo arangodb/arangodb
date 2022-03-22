@@ -126,10 +126,8 @@ using namespace arangodb::options;
 namespace {
 using Env = rocksdb::Env;
 std::unique_ptr<rocksdb::Env> checksumEnv;
-// Returns an Env that encrypts data when stored on disk and decrypts data when
-// read from disk.
 Env* NewChecksumEnv(Env* base_env) {
-  return new rocksdb::CompositeEnvWrapper(base_env);
+  return new arangodb::ChecksumEnv(base_env);
 }
 }  // namespace
 

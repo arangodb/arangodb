@@ -44,12 +44,14 @@ the EncryptingEnv and the DefaultEnv to compute the right checksum there.
 
 #include <rocksdb/env.h>
 
-namespace rocksdb {
+namespace arangodb {
 class ChecksumEnv
-    : public Env,
-      public WritableFile {  // must mix it with Env::Default() for the moment
-  Status NewWritableFile(const std::string& fname,
-                         std::unique_ptr<WritableFile>* result,
-                         const EnvOptions& options) override;
+    : public rocksdb::EnvWrapper,
+      public rocksdb::WritableFile {  // must mix it with Env::Default() for the
+                                      // moment
+  rocksdb::Status NewWritableFile(const std::string& fname,
+                                  std::unique_ptr<WritableFile>* result,
+                                  const rocksdb::EnvOptions& options) override;
 };
-}  // namespace rocksdb
+
+}  // namespace arangodb
