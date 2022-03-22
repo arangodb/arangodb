@@ -1773,6 +1773,19 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
             std::shared_ptr<Participants const> participants() const {
               return Participants::make_shared(shared_from_this());
             }
+
+            class Supervision : public StaticComponent<Supervision, State> {
+             public:
+              constexpr char const* component() const noexcept {
+                return "supervision";
+              }
+
+              using BaseType::StaticComponent;
+            };
+
+            std::shared_ptr<Supervision const> supervision() const {
+              return Supervision::make_shared(shared_from_this());
+            }
           };
 
           std::shared_ptr<State const> state(std::string value) const {

@@ -123,7 +123,9 @@ struct PrototypeStateMethodsDBServer final : PrototypeStateMethods {
   TRI_vocbase_t& _vocbase;
 };
 
-struct PrototypeStateMethodsCoordinator final : PrototypeStateMethods {
+struct PrototypeStateMethodsCoordinator final
+    : PrototypeStateMethods,
+      std::enable_shared_from_this<PrototypeStateMethodsCoordinator> {
   [[nodiscard]] auto insert(
       LogId id,
       std::unordered_map<std::string, std::string> const& entries) const
@@ -332,6 +334,7 @@ struct PrototypeStateMethodsCoordinator final : PrototypeStateMethods {
     target.id = opts.id.value();
     target.properties.implementation.type = "prototype";
     target.config = opts.config.value();
+    target.version = 1;
     for (auto const& server : opts.servers) {
       target.participants[server];
     }
@@ -347,8 +350,8 @@ struct PrototypeStateMethodsCoordinator final : PrototypeStateMethods {
         replication2::ReplicatedStateMethods::createInstance(_vocbase);
 
     return methods->createReplicatedState(std::move(target))
-        .thenValue([options = std::move(options),
-                    methods](auto&& result) mutable
+        .thenValue([options = std::move(options), methods,
+                    self = shared_from_this()](auto&& result) mutable
                    -> futures::Future<ResultT<CreateResult>> {
           auto response = CreateResult{*options.id, std::move(options.servers)};
           if (!result.ok()) {
@@ -356,13 +359,22 @@ struct PrototypeStateMethodsCoordinator final : PrototypeStateMethods {
           }
 
           if (options.waitForReady) {
-            return methods->waitForStateReady(*options.id)
-                .thenValue([resp = std::move(response)](
-                               auto&& result) mutable -> ResultT<CreateResult> {
-                  if (result.ok()) {
-                    return std::move(resp);
+            // wait for the state to be ready
+            return methods->waitForStateReady(*options.id, 1)
+                .thenValue([self,
+                            resp = std::move(response)](auto&& result) mutable
+                           -> futures::Future<ResultT<CreateResult>> {
+                  if (result.fail()) {
+                    return {result.result()};
                   }
-                  return result;
+                  return self->_clusterInfo.waitForPlan(result.get())
+                      .thenValue([resp = std::move(resp)](auto&& result) mutable
+                                 -> ResultT<CreateResult> {
+                        if (result.fail()) {
+                          return {result};
+                        }
+                        return std::move(resp);
+                      });
                 });
           }
           return response;

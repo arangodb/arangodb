@@ -111,6 +111,53 @@ auto checkSnapshotComplete(
   return EmptyAction();
 }
 
+auto hasConverged(replication2::replicated_state::agency::State const& state)
+    -> bool {
+  if (!state.plan) {
+    return false;
+  }
+  if (!state.current) {
+    return false;
+  }
+
+  for (auto const& [pid, flags] : state.target.participants) {
+    if (!state.plan->participants.contains(pid)) {
+      return false;
+    }
+
+    if (auto c = state.current->participants.find(pid);
+        c == state.current->participants.end()) {
+      return false;
+    } else if (c->second.generation !=
+               state.plan->participants.at(pid).generation) {
+      return false;
+    } else if (c->second.snapshot.status != SnapshotStatus::kCompleted) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+auto checkConverged(arangodb::replication2::agency::Log const& log,
+                    replication2::replicated_state::agency::State const& state)
+    -> Action {
+  if (!state.current or !state.current->supervision) {
+    return CurrentConvergedAction{0};
+  }
+
+  // check that we are actually waiting for this version
+  if (state.current->supervision->version == state.target.version) {
+    return EmptyAction{};
+  }
+
+  // now check if we actually have converged
+  if (!hasConverged(state)) {
+    return EmptyAction{};
+  }
+  return CurrentConvergedAction{state.target.version};
+}
+
 auto isEmptyAction(Action const& action) {
   return std::holds_alternative<EmptyAction>(action);
 }
@@ -138,6 +185,10 @@ auto checkReplicatedState(
 
   if (auto action = checkSnapshotComplete(*log, state);
       !isEmptyAction(action)) {
+    return action;
+  }
+
+  if (auto action = checkConverged(*log, state); !isEmptyAction(action)) {
     return action;
   }
 

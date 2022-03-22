@@ -74,15 +74,19 @@ RestStatus RestPrototypeStateHandler::handleCreateState(
   auto options = velocypack::deserialize<
       replication2::PrototypeStateMethods::CreateOptions>(payload);
 
+  bool isWaitForReady = options.waitForReady;
   return waitForFuture(
       methods.createState(std::move(options))
           .thenValue(
-              [&](ResultT<replication2::PrototypeStateMethods::CreateResult>&&
+              [&, isWaitForReady](
+                  ResultT<replication2::PrototypeStateMethods::CreateResult>&&
                       createResult) {
                 if (createResult.ok()) {
                   VPackBuilder result;
                   velocypack::serialize(result, createResult.get());
-                  generateOk(rest::ResponseCode::OK, result.slice());
+                  generateOk(isWaitForReady ? rest::ResponseCode::CREATED
+                                            : rest::ResponseCode::ACCEPTED,
+                             result.slice());
                 } else {
                   generateError(createResult.result());
                 }

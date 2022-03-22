@@ -2729,9 +2729,18 @@ void Supervision::checkReplicatedStates() {
               }
               return std::nullopt;
             });
-        envelope =
-            execute(state.target.id, dbName, *action, std::move(statePlan),
-                    std::move(logTarget), std::move(envelope));
+        auto stateCurrent = std::invoke(
+            [&]() -> std::optional<replication2::replicated_state::agency::
+                                       Current::Supervision> {
+              if (state.current.has_value() &&
+                  state.current->supervision.has_value()) {
+                return std::move(*state.current->supervision);
+              }
+              return std::nullopt;
+            });
+        envelope = execute(state.target.id, dbName, *action,
+                           std::move(statePlan), std::move(stateCurrent),
+                           std::move(logTarget), std::move(envelope));
       }
     }
   }
