@@ -55,6 +55,12 @@ function DatabaseSuite () {
       } catch (err) {
         // ignore
       }
+      db._flushCache();
+      db._users.toArray().forEach(user => {
+        if (user.user !== "root") {
+          arango.DELETE_RAW("/_api/user/" + user.user);
+        }
+      });
     },
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -365,7 +365,16 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
                 ' ] - Original test status: ' +
                 JSON.stringify(results[te])
             };
-
+          }
+          if (db._users.toArray().length !== 1) {
+            continueTesting = false;
+            results[te] = {
+              status: false,
+              message: 'Cleanup of failure points missing - found users left over: [ ' +
+                JSON.stringify(db._users.toArray()) +
+                ' ] - Original test status: ' +
+                JSON.stringify(results[te])
+            };
           }
         } else {
           serverDead = true;
