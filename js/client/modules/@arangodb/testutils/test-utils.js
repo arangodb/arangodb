@@ -369,7 +369,9 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
                 JSON.stringify(results[te])
             };
           }
-          if (testname !== 'authentication' && userManager.all().length !== usersCount) {
+          if ((testname !== 'agency') &&
+              (testname !== 'authentication') &&
+              (userManager.all().length !== usersCount)) {
             continueTesting = false;
             results[te] = {
               status: false,
