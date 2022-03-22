@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue, assertFalse, assertNotEqual, assertMatch, assertEqual, fail */
+/*global assertEqual, assertTrue, assertFalse, assertNotEqual, assertMatch, assertEqual, fail, db, arango */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the common database interface
