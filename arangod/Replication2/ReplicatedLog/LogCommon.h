@@ -271,9 +271,10 @@ struct ParticipantFlags {
 
 template<class Inspector>
 auto inspect(Inspector& f, ParticipantFlags& x) {
-  return f.object(x).fields(f.field("forced", x.forced),
-                            f.field("allowedInQuorum", x.allowedInQuorum),
-                            f.field("allowedAsLeader", x.allowedAsLeader));
+  return f.object(x).fields(
+      f.field("forced", x.forced),
+      f.field("allowedInQuorum", x.allowedInQuorum).fallback(true),
+      f.field("allowedAsLeader", x.allowedAsLeader).fallback(true));
 }
 
 auto operator<<(std::ostream&, ParticipantFlags const&) -> std::ostream&;

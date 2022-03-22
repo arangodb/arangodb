@@ -45,7 +45,6 @@ TEST(LogCommonTest, log_id) {
   EXPECT_EQ(id, fromVPack);
 }
 
-
 TEST(LogCommonTest, log_index) {
   auto index = LogIndex{1};
 
@@ -206,6 +205,22 @@ TEST(LogCommonTest, participant_flags) {
     auto jsonSlice = velocypack::Slice(jsonBuffer->data());
     EXPECT_TRUE(VelocyPackHelper::equal(jsonSlice, slice, true))
         << "expected " << jsonSlice.toJson() << " found " << slice.toJson();
+  }
+
+  {
+    auto const expectedFlags = ParticipantFlags{
+        .forced = true, .allowedInQuorum = true, .allowedAsLeader = true};
+
+    // if allowedInQuorum or allowedAsLeader are not given,
+    // then they are as a default set to true
+    auto jsonBuffer = R"({
+      "forced": true
+    })"_vpack;
+    auto jsonSlice = velocypack::Slice(jsonBuffer->data());
+
+    auto flags = deserialize<ParticipantFlags>(jsonSlice);
+
+    EXPECT_EQ(expectedFlags, flags);
   }
 }
 
