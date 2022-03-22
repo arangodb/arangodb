@@ -333,86 +333,21 @@ auto LogTarget::fromVelocyPack(velocypack::Slice s) -> LogTarget {
 }
 
 void LogTarget::toVelocyPack(velocypack::Builder& builder) const {
-  velocypack::ObjectBuilder ob(&builder);
-
-  builder.add(StaticStrings::Id, VPackValue(id));
-
-  builder.add(VPackValue(StaticStrings::Config));
-
-  config.toVelocyPack(builder);
-
-  if (leader.has_value()) {
-    builder.add(StaticStrings::Leader, VPackValue(leader.value()));
-  }
-
-  builder.add(VPackValue(StaticStrings::Participants));
-  {
-    velocypack::ObjectBuilder pb(&builder);
-    for (auto const& [pid, flags] : participants) {
-      builder.add(VPackValue(pid));
-      flags.toVelocyPack(builder);
-    }
-  }
-
-  builder.add(VPackValue("properties"));
-  properties.toVelocyPack(builder);
-
-  if (supervision.has_value()) {
-    builder.add(VPackValue("supervision"));
-    supervision->toVelocyPack(builder);
-  }
-}
-
-void LogTarget::Properties::toVelocyPack(velocypack::Builder& builder) const {
-  VPackObjectBuilder ob(&builder);
-}
-
-auto LogTarget::Properties::fromVelocyPack(velocypack::Slice s)
-    -> LogTarget::Properties {
-  return {};
+  serialize(builder, *this);
 }
 
 auto LogTarget::Supervision::fromVelocyPack(velocypack::Slice s)
     -> Supervision {
-  Supervision result;
-  if (auto slice = s.get("maxActionsTraceLength"); !slice.isNone()) {
-    result.maxActionsTraceLength = slice.extract<std::size_t>();
-  }
-  return result;
+  return deserialize<LogTarget::Supervision>(s);
 }
 
-auto LogTarget::Supervision::toVelocyPack(velocypack::Builder& b) const
+auto LogTarget::Supervision::toVelocyPack(velocypack::Builder& builder) const
     -> void {
-  velocypack::ObjectBuilder ob(&b);
-  b.add("maxActionsTraceLength", velocypack::Value(maxActionsTraceLength));
+  serialize(builder, *this);
 }
 
 LogTarget::LogTarget(from_velocypack_t, VPackSlice slice) {
-  id = slice.get(StaticStrings::Id).extract<LogId>();
-
-  config = LogConfig(slice.get(StaticStrings::Config));
-
-  if (auto leaderSlice = slice.get(StaticStrings::Leader);
-      leaderSlice.isString()) {
-    leader = leaderSlice.copyString();
-  }
-
-  if (auto participantsSlice = slice.get("participants");
-      participantsSlice.isObject()) {
-    for (auto const& [pid, flags] :
-         velocypack::ObjectIterator(participantsSlice)) {
-      participants.emplace(pid.copyString(),
-                           ParticipantFlags::fromVelocyPack(flags));
-    }
-  }
-
-  if (auto propSlice = slice.get("properties"); !propSlice.isNone()) {
-    properties = Properties::fromVelocyPack(propSlice);
-  }
-
-  if (auto supSlice = slice.get("supervision"); !supSlice.isNone()) {
-    supervision = Supervision::fromVelocyPack(supSlice);
-  }
+  *this = deserialize<LogTarget>(slice);
 }
 
 LogTarget::LogTarget(LogId id, ParticipantsFlagsMap const& participants,

@@ -213,9 +213,12 @@ auto inspect(Inspector& f, LogId& x) {
     return res;
 
   } else {
-    f.apply(x.id());
+    // TODO this is a hack to make the compiler happy who does not want
+    //      to assign x.id() (unsigned long int) to what it expects (unsigned
+    //      long int&)
+    auto id = x.id();
+    return f.apply(id);
   }
-  return arangodb::inspection::Result{};
 }
 
 auto to_string(LogId logId) -> std::string;

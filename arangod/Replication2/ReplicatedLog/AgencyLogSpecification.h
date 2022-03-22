@@ -26,6 +26,7 @@
 #include "Cluster/ClusterTypes.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/types.h"
+#include "Basics/StaticStrings.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -193,16 +194,13 @@ struct LogTarget {
 
   std::optional<ParticipantId> leader;
 
-  struct Properties {
-    void toVelocyPack(velocypack::Builder&) const;
-    static auto fromVelocyPack(velocypack::Slice) -> Properties;
-  };
-  Properties properties;
-
   struct Supervision {
     std::size_t maxActionsTraceLength{0};
     auto toVelocyPack(velocypack::Builder&) const -> void;
     static auto fromVelocyPack(velocypack::Slice) -> Supervision;
+
+    friend auto operator==(Supervision const&, Supervision const&) noexcept
+        -> bool = default;
   };
 
   std::optional<Supervision> supervision;
@@ -215,7 +213,26 @@ struct LogTarget {
 
   LogTarget(LogId id, ParticipantsFlagsMap const& participants,
             LogConfig const& config);
+
+  friend auto operator==(LogTarget const&, LogTarget const&) noexcept
+      -> bool = default;
 };
+
+template<class Inspector>
+auto inspect(Inspector& f, LogTarget::Supervision& x) {
+  return f.object(x).fields(
+      f.field("maxActionsTraceLength", x.maxActionsTraceLength));
+}
+
+template<class Inspector>
+auto inspect(Inspector& f, LogTarget& x) {
+  return f.object(x).fields(
+      f.field(StaticStrings::Id, x.id),
+      f.field(StaticStrings::Participants, x.participants),
+      f.field(StaticStrings::Config, x.config),
+      f.field(StaticStrings::Leader, x.leader),
+      f.field("supervision", x.supervision));
+}
 
 /* Convenience Wrapper */
 struct Log {
