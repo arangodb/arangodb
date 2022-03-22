@@ -370,7 +370,7 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
             continueTesting = false;
             results[te] = {
               status: false,
-              message: 'Cleanup of failure points missing - found users left over: [ ' +
+              message: 'Cleanup of users missing - found users left over: [ ' +
                 JSON.stringify(db._users.toArray()) +
                 ' ] - Original test status: ' +
                 JSON.stringify(results[te])
