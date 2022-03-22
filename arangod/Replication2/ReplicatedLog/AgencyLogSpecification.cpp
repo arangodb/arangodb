@@ -336,16 +336,6 @@ void LogTarget::toVelocyPack(velocypack::Builder& builder) const {
   serialize(builder, *this);
 }
 
-auto LogTarget::Supervision::fromVelocyPack(velocypack::Slice s)
-    -> Supervision {
-  return deserialize<LogTarget::Supervision>(s);
-}
-
-auto LogTarget::Supervision::toVelocyPack(velocypack::Builder& builder) const
-    -> void {
-  serialize(builder, *this);
-}
-
 LogTarget::LogTarget(from_velocypack_t, VPackSlice slice) {
   *this = deserialize<LogTarget>(slice);
 }

@@ -196,9 +196,6 @@ struct LogTarget {
 
   struct Supervision {
     std::size_t maxActionsTraceLength{0};
-    auto toVelocyPack(velocypack::Builder&) const -> void;
-    static auto fromVelocyPack(velocypack::Slice) -> Supervision;
-
     friend auto operator==(Supervision const&, Supervision const&) noexcept
         -> bool = default;
   };
