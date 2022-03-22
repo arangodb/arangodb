@@ -76,19 +76,18 @@ RestStatus RestPrototypeStateHandler::handleCreateState(
 
   return waitForFuture(
       methods.createState(std::move(options))
-          .thenValue([&](ResultT<LogId>&& createResult) {
-            if (createResult.ok()) {
-              VPackBuilder result;
-              {
-                VPackObjectBuilder ob(&result);
-                result.add("id", VPackValue(createResult.get()));
-              }
-              generateOk(rest::ResponseCode::OK, result.slice());
-            } else {
-              generateError(createResult.result());
-            }
-            return RestStatus::DONE;
-          }));
+          .thenValue(
+              [&](ResultT<replication2::PrototypeStateMethods::CreateResult>&&
+                      createResult) {
+                if (createResult.ok()) {
+                  VPackBuilder result;
+                  velocypack::serialize(result, createResult.get());
+                  generateOk(rest::ResponseCode::OK, result.slice());
+                } else {
+                  generateError(createResult.result());
+                }
+                return RestStatus::DONE;
+              }));
 }
 
 RestStatus RestPrototypeStateHandler::handlePostRequest(

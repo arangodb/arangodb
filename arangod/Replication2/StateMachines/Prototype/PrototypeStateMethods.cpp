@@ -115,7 +115,7 @@ struct PrototypeStateMethodsDBServer final : PrototypeStateMethods {
 
  public:
   auto createState(CreateOptions options) const
-      -> futures::Future<ResultT<LogId>> override {
+      -> futures::Future<ResultT<CreateResult>> override {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
@@ -285,7 +285,7 @@ struct PrototypeStateMethodsCoordinator final : PrototypeStateMethods {
   }
 
   void fillCreateOptions(CreateOptions& options) const {
-    if (options.id.has_value()) {
+    if (!options.id.has_value()) {
       options.id = LogId{_clusterInfo.uniqid()};
     }
 
@@ -306,9 +306,27 @@ struct PrototypeStateMethodsCoordinator final : PrototypeStateMethods {
     if (expectedNumberOfServers > dbservers.size()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS);
     }
+
+    if (options.servers.size() < expectedNumberOfServers) {
+      auto newEnd = dbservers.end();
+      if (!options.servers.empty()) {
+        newEnd = std::remove_if(
+            dbservers.begin(), dbservers.end(),
+            [&](ParticipantId const& server) {
+              return std::find(options.servers.begin(), options.servers.end(),
+                               server) != options.servers.end();
+            });
+      }
+
+      std::shuffle(dbservers.begin(), newEnd,
+                   RandomGenerator::UniformRandomGenerator<std::uint32_t>{});
+      std::copy_n(dbservers.begin(),
+                  expectedNumberOfServers - options.servers.size(),
+                  std::back_inserter(options.servers));
+    }
   }
 
-  auto stateTargetFromCreateOptions(CreateOptions const& opts) const
+  static auto stateTargetFromCreateOptions(CreateOptions const& opts)
       -> replication2::replicated_state::agency::Target {
     auto target = replicated_state::agency::Target{};
     target.id = opts.id.value();
@@ -321,29 +339,39 @@ struct PrototypeStateMethodsCoordinator final : PrototypeStateMethods {
   }
 
   auto createState(CreateOptions options) const
-      -> futures::Future<ResultT<LogId>> override {
+      -> futures::Future<ResultT<CreateResult>> override {
+    LOG_DEVEL << options.servers;
     fillCreateOptions(options);
+    TRI_ASSERT(options.id.has_value());
+
+    LOG_DEVEL << options.servers;
     auto target = stateTargetFromCreateOptions(options);
+
+    LOG_DEVEL << options.servers;
     auto methods =
         replication2::ReplicatedStateMethods::createInstance(_vocbase);
 
     return methods->createReplicatedState(std::move(target))
         .thenValue([options = std::move(options),
-                    methods](auto&& result) -> futures::Future<ResultT<LogId>> {
-          if (result.ok()) {
-            return {options.id.value()};
+                    methods](auto&& result) mutable
+                   -> futures::Future<ResultT<CreateResult>> {
+          LOG_DEVEL << options.servers;
+          auto response = CreateResult{*options.id, std::move(options.servers)};
+          if (!result.ok()) {
+            return {result};
           }
 
           if (options.waitForReady) {
             return methods->waitForStateReady(*options.id)
-                .thenValue([id = *options.id](auto&& result) -> ResultT<LogId> {
+                .thenValue([resp = std::move(response)](
+                               auto&& result) mutable -> ResultT<CreateResult> {
                   if (result.ok()) {
-                    return {id};
+                    return std::move(resp);
                   }
                   return result;
                 });
           }
-          return result;
+          return response;
         });
   }
 

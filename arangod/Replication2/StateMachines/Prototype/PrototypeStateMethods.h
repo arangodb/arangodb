@@ -59,8 +59,13 @@ struct PrototypeStateMethods {
     std::vector<ParticipantId> servers;
   };
 
+  struct CreateResult {
+    LogId id;
+    std::vector<ParticipantId> servers;
+  };
+
   [[nodiscard]] virtual auto createState(CreateOptions options) const
-      -> futures::Future<ResultT<LogId>> = 0;
+      -> futures::Future<ResultT<CreateResult>> = 0;
 
   [[nodiscard]] virtual auto insert(
       LogId id,
@@ -91,7 +96,11 @@ auto inspect(Inspector& f, PrototypeStateMethods::CreateOptions& x) {
   return f.object(x).fields(
       f.field("waitForReady", x.waitForReady).fallback(true),
       f.field("id", x.id), f.field("config", x.config),
-      f.field("servers", x.servers));
+      f.field("servers", x.servers).fallback(std::vector<ParticipantId>{}));
+}
+template<class Inspector>
+auto inspect(Inspector& f, PrototypeStateMethods::CreateResult& x) {
+  return f.object(x).fields(f.field("id", x.id), f.field("servers", x.servers));
 }
 
 }  // namespace arangodb::replication2
