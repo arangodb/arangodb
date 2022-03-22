@@ -34,6 +34,18 @@ using namespace arangodb::replication2::replicated_log;
 using namespace arangodb::basics;
 using namespace arangodb::tests;
 
+TEST(LogCommonTest, log_id) {
+  auto id = LogId{42};
+
+  VPackBuilder builder;
+  serialize(builder, id);
+
+  auto fromVPack = deserialize<LogId>(builder.slice());
+
+  EXPECT_EQ(id, fromVPack);
+}
+
+
 TEST(LogCommonTest, log_index) {
   auto index = LogIndex{1};
 
