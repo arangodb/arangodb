@@ -123,6 +123,24 @@ auto arangodb::RestReplicatedStateHandler::handlePostRequest(
                                }
                              }));
     return RestStatus::DONE;
+  } else if (std::string_view logIdStr, newLeaderStr;
+             rest::Match(suffixes).against(&logIdStr, "leader",
+                                           &newLeaderStr)) {
+    auto const logId = replication2::LogId::fromString(logIdStr);
+    auto const newLeader = replication2::ParticipantId(newLeaderStr);
+    if (!logId) {
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                    basics::StringUtils::concatT("Not a log id: ", logIdStr));
+      return RestStatus::DONE;
+    }
+    return waitForFuture(
+        methods.setLeader(*logId, newLeader).thenValue([this](auto&& result) {
+          if (result.ok()) {
+            generateOk(rest::ResponseCode::OK, VPackSlice::emptyObjectSlice());
+          } else {
+            generateError(result);
+          }
+        }));
   } else {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
     return RestStatus::DONE;

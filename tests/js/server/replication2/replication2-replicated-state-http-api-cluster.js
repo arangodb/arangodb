@@ -52,6 +52,14 @@ const replaceParticipant = (database, logId, oldParticipant, newParticipant) => 
   return result;
 };
 
+const setLeader = (database, logId, newLeader) => {
+  const url = lh.getServerUrl(_.sample(lh.coordinators));
+  const res = request.post(`${url}/_db/${database}/_api/replicated-state/${logId}/leader/${newLeader}`);
+  lh.checkRequestResult(res);
+  const {json: {result}} = res;
+  return result;
+};
+
 const replicatedStateSuite = function () {
   const targetConfig = {
     writeConcern: 2,
@@ -121,10 +129,7 @@ const replicatedStateSuite = function () {
       const newParticipant = _.sample(nonParticipants);
       const newParticipants = _.union(_.without(participants, oldParticipant), [newParticipant]).sort();
 
-      const url = lh.getServerUrl(_.sample(lh.coordinators));
-      const res = request.post(`${url}/_db/${database}/_api/replicated-state/${stateId}/participant/${oldParticipant}/replace-with/${newParticipant}`);
-      lh.checkRequestResult(res);
-      const {json: {result}} = res;
+      const result = replaceParticipant(database, stateId, oldParticipant, newParticipant);
       assertEqual({}, result);
       {
         const stateAgencyContent = sh.readReplicatedStateAgency(database, stateId);
@@ -222,6 +227,25 @@ const replicatedStateSuite = function () {
         const stateAgencyContent = sh.readReplicatedStateAgency(database, stateId);
         assertEqual(participants.sort(), Object.keys(stateAgencyContent.target.participants).sort());
       }
+    },
+
+    testSetLeader: function () {
+      const {
+        stateId,
+        followers,
+      } = sh.createReplicatedStateTarget(database, targetConfig, "black-hole");
+      const newLeader = _.sample(followers);
+
+      const result = setLeader(database, stateId, newLeader);
+      assertEqual({}, result);
+      {
+        const stateAgencyContent = sh.readReplicatedStateAgency(database, stateId);
+        assertEqual(newLeader, stateAgencyContent.target.leader);
+      }
+    },
+
+    testSetLeaderWithNonParticipant: function () {
+      // TODO try to set a leader that's not a participant, and assert that this fails
     },
   };
 };

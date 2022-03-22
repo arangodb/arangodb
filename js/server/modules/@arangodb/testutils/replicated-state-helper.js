@@ -33,6 +33,7 @@ const spreds = require("@arangodb/testutils/replicated-state-predicates");
  *       target: {
  *         properties: { implementation: { type: string } },
  *         participants: {},
+ *         leader: string,
  *         id: number,
  *         config: {
  *           writeConcern: number,

@@ -304,3 +304,33 @@ auto methods::replaceReplicatedStateParticipant(
         return resultT.result();
       });
 }
+
+auto replaceReplicatedSetLeader(TRI_vocbase_t& vocbase, LogId id,
+                                ParticipantId const& leaderId)
+    -> futures::Future<Result> {
+  auto path = paths::target()
+                  ->replicatedStates()
+                  ->database(vocbase.name())
+                  ->state(id)
+                  ->leader();
+  // TODO add a precondition that the new leader is actually a participant!
+
+  VPackBufferUInt8 trx;
+  {
+    VPackBuilder builder(trx);
+    arangodb::agency::envelope::into_builder(builder)
+        .write()
+        .set(*path, leaderId)
+        .inc(*paths::target()->version())
+        .end()
+        .done();
+  }
+
+  return sendAgencyWriteTransaction(std::move(trx))
+      .thenValue([](ResultT<std::uint64_t>&& resultT) {
+        if (resultT.ok() && *resultT == 0) {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_HTTP_SERVER_ERROR);
+        }
+        return resultT.result();
+      });
+}
