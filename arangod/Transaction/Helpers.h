@@ -47,7 +47,9 @@ namespace helpers {
 /// @brief extract the _key attribute from a slice
 std::string_view extractKeyPart(VPackSlice);
 
-/// @brief extract the _key attribute from a string_view
+/** @brief Given a string, returns the substring after the first '/' or
+ *          the whole string if it contains no '/'.
+ */
 std::string_view extractKeyPart(std::string_view);
 
 std::string extractIdString(CollectionNameResolver const*, VPackSlice,
@@ -101,7 +103,7 @@ std::string makeIdFromCustom(CollectionNameResolver const* resolver,
 
 std::string makeIdFromParts(CollectionNameResolver const* resolver,
                             DataSourceId const& cid, VPackSlice const& keyPart);
-};  // namespace helpers
+}  // namespace helpers
 
 /// @brief std::string leaser
 class StringLeaser {
