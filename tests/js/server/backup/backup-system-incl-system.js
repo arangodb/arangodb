@@ -51,11 +51,12 @@ function backupTestSuite() {
 
     tearDownAll: function () {
       db._flushCache();
-      db._users.toArray().forEach(user => {
-        if (user.user !== "root") {
-          userManager.remove(user.user);
-        }
-      });
+      // Users are here already, don't clean them up:
+      //userManager.all().forEach(user => {
+      //  if (user.user !== "root") {
+      //    userManager.remove(user.user);
+      //  }
+      //});
     },
 
 ////////////////////////////////////////////////////////////////////////////////
