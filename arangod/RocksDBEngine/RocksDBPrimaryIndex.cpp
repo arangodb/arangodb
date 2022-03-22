@@ -29,6 +29,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cache/BinaryKeyHasher.h"
 #include "Cache/CachedValue.h"
 #include "Cache/CacheManagerFeature.h"
 #include "Cache/TransactionalCache.h"
@@ -77,6 +78,8 @@ std::string const highest(
     KeyGenerator::maxKeyLength,
     std::numeric_limits<std::string::value_type>::max());  // greatest possible
                                                            // key
+
+using PrimaryIndexCacheType = cache::TransactionalCache<cache::BinaryKeyHasher>;
 }  // namespace
 
 // ================ Primary Index Iterators ================
@@ -619,14 +622,10 @@ LocalDocumentId RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
   if (hasCache() && !lockTimeout) {
     TRI_ASSERT(_cache != nullptr);
     // write entry back to cache
-    std::size_t attempts = 0;
-    cache::Cache::Inserter inserter(
-        *_cache, key->string().data(),
+    cache::Cache::SimpleInserter<PrimaryIndexCacheType>{
+        static_cast<PrimaryIndexCacheType&>(*_cache), key->string().data(),
         static_cast<uint32_t>(key->string().size()), val.data(),
-        static_cast<uint64_t>(val.size()),
-        [&attempts](Result const& res) -> bool {
-          return res.is(TRI_ERROR_LOCK_TIMEOUT) && ++attempts < 2;
-        });
+        static_cast<uint64_t>(val.size())};
   }
 
   return RocksDBValue::documentId(val);

@@ -84,7 +84,11 @@
 #include <rocksdb/utilities/transaction_db.h>
 #include <velocypack/Iterator.h>
 
+using namespace arangodb;
+
 namespace {
+using DocumentCacheType = cache::TransactionalCache<cache::BinaryKeyHasher>;
+
 // number of write operations in transactions after which we will start
 // doing preflight checks before every document insert or update/replace.
 // the rationale is that if we already have a lot of operations accumulated
@@ -1996,14 +2000,10 @@ arangodb::Result RocksDBCollection::lookupDocumentVPack(
   if (fillCache && useCache() && !lockTimeout) {
     TRI_ASSERT(_cache != nullptr);
     // write entry back to cache
-    size_t attempts = 0;
-    cache::Cache::Inserter inserter(*_cache, key->string().data(),
-                                    static_cast<uint32_t>(key->string().size()),
-                                    ps.data(), static_cast<uint64_t>(ps.size()),
-                                    [&attempts](Result const& res) -> bool {
-                                      return res.is(TRI_ERROR_LOCK_TIMEOUT) &&
-                                             ++attempts < 2;
-                                    });
+    cache::Cache::SimpleInserter<DocumentCacheType>{
+        static_cast<DocumentCacheType&>(*_cache), key->string().data(),
+        static_cast<uint32_t>(key->string().size()), ps.data(),
+        static_cast<uint64_t>(ps.size())};
   }
 
   return res;
@@ -2051,14 +2051,10 @@ Result RocksDBCollection::lookupDocumentVPack(
   if (withCache && useCache()) {
     TRI_ASSERT(_cache != nullptr);
     // write entry back to cache
-    size_t attempts = 0;
-    cache::Cache::Inserter inserter(*_cache, key->string().data(),
-                                    static_cast<uint32_t>(key->string().size()),
-                                    ps.data(), static_cast<uint64_t>(ps.size()),
-                                    [&attempts](Result const& res) -> bool {
-                                      return res.is(TRI_ERROR_LOCK_TIMEOUT) &&
-                                             ++attempts < 2;
-                                    });
+    cache::Cache::SimpleInserter<DocumentCacheType>{
+        static_cast<DocumentCacheType&>(*_cache), key->string().data(),
+        static_cast<uint32_t>(key->string().size()), ps.data(),
+        static_cast<uint64_t>(ps.size())};
   }
 
   return Result{};

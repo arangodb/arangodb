@@ -38,7 +38,9 @@
 #include "Cache/Common.h"
 #include "Cache/Manager.h"
 #include "Cache/Metadata.h"
+#include "Cache/PlainCache.h"
 #include "Cache/Table.h"
+#include "Cache/TransactionalCache.h"
 #include "Random/RandomGenerator.h"
 #include "RestServer/SharedPRNGFeature.h"
 
@@ -185,28 +187,6 @@ bool Cache::isBusy() const noexcept {
 
   SpinLocker metaGuard(SpinLocker::Mode::Read, _metadata.lock());
   return _metadata.isResizing() || _metadata.isMigrating();
-}
-
-Cache::Inserter::Inserter(Cache& cache, void const* key, std::size_t keySize,
-                          void const* value, std::size_t valueSize,
-                          std::function<bool(Result const&)> const& retry) {
-  std::unique_ptr<CachedValue> cv{
-      CachedValue::construct(key, keySize, value, valueSize)};
-  if (ADB_LIKELY(cv)) {
-    do {
-      status = cache.insert(cv.get());
-      if (status.ok()) {
-        cv.release();
-        break;
-      }
-      if (!retry(status)) {
-        break;
-      }
-      basics::cpu_relax();
-    } while (true);
-  } else {
-    status.reset(TRI_ERROR_OUT_OF_MEMORY);
-  }
 }
 
 void Cache::destroy(std::shared_ptr<Cache> const& cache) {

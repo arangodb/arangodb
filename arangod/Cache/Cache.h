@@ -146,11 +146,46 @@ class Cache : public std::enable_shared_from_this<Cache> {
   //////////////////////////////////////////////////////////////////////////////
   inline bool isShutdown() const noexcept { return _shutdown.load(); }
 
+  // helper struct that takes care of inserting into the cache during
+  // object construction. The insertion is not guaranteed to work. To
+  // check whether the insertion succeeded, check the "status" member!
+  template<typename CacheType>
   struct Inserter {
-    Inserter(Cache& cache, void const* key, std::size_t keySize,
-             void const* value, std::size_t valueSize,
-             std::function<bool(Result const&)> const& retry);
+    Inserter(CacheType& cache, void const* key, std::size_t keySize,
+             void const* value, std::size_t valueSize) {
+      std::unique_ptr<CachedValue> cv{
+          CachedValue::construct(key, keySize, value, valueSize)};
+      if (ADB_LIKELY(cv)) {
+        status = cache.insert(cv.get());
+        if (status.ok()) {
+          cv.release();
+        }
+      } else {
+        status.reset(TRI_ERROR_OUT_OF_MEMORY);
+      }
+    }
+
+    Inserter(Inserter const& other) = delete;
+    Inserter& operator=(Inserter const& other) = delete;
+
     Result status;
+  };
+
+  // same as Cache::Inserter, but more lightweight. Does not provide
+  // any indication about whether the insertion succeeded.
+  template<typename CacheType>
+  struct SimpleInserter {
+    SimpleInserter(CacheType& cache, void const* key, std::size_t keySize,
+                   void const* value, std::size_t valueSize) {
+      std::unique_ptr<CachedValue> cv{
+          CachedValue::construct(key, keySize, value, valueSize)};
+      if (ADB_LIKELY(cv) && cache.insert(cv.get()).ok()) {
+        cv.release();
+      }
+    }
+
+    SimpleInserter(SimpleInserter const& other) = delete;
+    SimpleInserter& operator=(SimpleInserter const& other) = delete;
   };
 
  protected:

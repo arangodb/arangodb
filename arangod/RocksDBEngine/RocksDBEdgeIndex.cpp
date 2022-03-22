@@ -68,7 +68,9 @@ using namespace arangodb::basics;
 
 namespace {
 constexpr bool EdgeIndexFillBlockCache = false;
-}
+
+using EdgeIndexCacheType = cache::TransactionalCache<cache::BinaryKeyHasher>;
+}  // namespace
 
 RocksDBEdgeIndexWarmupTask::RocksDBEdgeIndexWarmupTask(
     std::shared_ptr<basics::LocalTaskQueue> const& queue,
@@ -129,9 +131,7 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
                                  ReadOwnWrites readOwnWrites)
       : IndexIterator(collection, trx, readOwnWrites),
         _index(index),
-        _cache(std::static_pointer_cast<
-               cache::TransactionalCache<cache::BinaryKeyHasher>>(
-            std::move(cache))),
+        _cache(std::static_pointer_cast<EdgeIndexCacheType>(std::move(cache))),
         _keys(std::move(keys)),
         _keysIterator(_keys.slice()),
         _bounds(RocksDBKeyBounds::EdgeIndex(0)),
@@ -260,55 +260,46 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
 
       bool needRocksLookup = true;
       if (_cache) {
-        for (size_t attempts = 0; attempts < 10; ++attempts) {
-          // Try to read from cache
-          auto finding =
-              _cache->find(fromTo.data(), static_cast<uint32_t>(fromTo.size()));
-          if (finding.found()) {
-            incrCacheHits();
-            needRocksLookup = false;
-            // We got sth. in the cache
-            VPackSlice cachedData(finding.value()->value());
-            TRI_ASSERT(cachedData.isArray());
-            if (cachedData.length() / 2 < limit) {
-              // Directly return it, no need to copy
-              _builderIterator = VPackArrayIterator(cachedData);
-              while (_builderIterator.valid()) {
-                TRI_ASSERT(_builderIterator.value().isNumber());
-                LocalDocumentId docId{
-                    _builderIterator.value().getNumericValue<uint64_t>()};
+        // Try to read from cache
+        auto finding =
+            _cache->find(fromTo.data(), static_cast<uint32_t>(fromTo.size()));
+        if (finding.found()) {
+          incrCacheHits();
+          needRocksLookup = false;
+          // We got sth. in the cache
+          VPackSlice cachedData(finding.value()->value());
+          TRI_ASSERT(cachedData.isArray());
+          if (cachedData.length() / 2 < limit) {
+            // Directly return it, no need to copy
+            _builderIterator = VPackArrayIterator(cachedData);
+            while (_builderIterator.valid()) {
+              TRI_ASSERT(_builderIterator.value().isNumber());
+              LocalDocumentId docId{
+                  _builderIterator.value().getNumericValue<uint64_t>()};
 
-                _builderIterator.next();
+              _builderIterator.next();
 
-                TRI_ASSERT(_builderIterator.valid());
-                TRI_ASSERT(_builderIterator.value().isString());
-                std::forward<F>(cb)(docId, _builderIterator.value());
+              TRI_ASSERT(_builderIterator.valid());
+              TRI_ASSERT(_builderIterator.value().isString());
+              std::forward<F>(cb)(docId, _builderIterator.value());
 
-                _builderIterator.next();
-                limit--;
-              }
-              _builderIterator =
-                  VPackArrayIterator(VPackArrayIterator::Empty{});
-            } else {
-              // We need to copy it.
-              // And then we just get back to beginning of the loop
-              _builder.clear();
-              _builder.add(cachedData);
-              TRI_ASSERT(_builder.slice().isArray());
-              _builderIterator = VPackArrayIterator(_builder.slice());
-              // Do not set limit
+              _builderIterator.next();
+              limit--;
             }
-            break;
-          }  // finding found
-          if (finding.result() != TRI_ERROR_LOCK_TIMEOUT) {
-            // We really have not found an entry.
-            // Otherwise we do not know yet
-            incrCacheMisses();
-            break;
+            _builderIterator = VPackArrayIterator(VPackArrayIterator::Empty{});
+          } else {
+            // We need to copy it.
+            // And then we just get back to beginning of the loop
+            _builder.clear();
+            _builder.add(cachedData);
+            TRI_ASSERT(_builder.slice().isArray());
+            _builderIterator = VPackArrayIterator(_builder.slice());
+            // Do not set limit
           }
-          cpu_relax();
-        }  // attempts
-      }    // if (_cache)
+        } else {
+          incrCacheMisses();
+        }
+      }  // if (_cache)
 
       if (needRocksLookup) {
         lookupInRocksDB(fromTo);
@@ -378,23 +369,14 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
     // validate that Iterator is in a good shape and hasn't failed
     arangodb::rocksutils::checkIteratorStatus(iterator.get());
 
-    cache::Cache* cc = _cache.get();
-    if (cc != nullptr) {
+    if (_cache != nullptr) {
       // TODO Add cache retry on next call
       // Now we have something in _inplaceMemory.
       // It may be an empty array or a filled one, never mind, we cache both
-      size_t attempts = 0;
-      cache::Cache::Inserter inserter(
-          *cc, fromTo.data(), static_cast<uint32_t>(fromTo.size()),
-          _builder.slice().start(),
-          static_cast<uint64_t>(_builder.slice().byteSize()),
-          [&attempts](Result const& res) -> bool {
-            return res.is(TRI_ERROR_LOCK_TIMEOUT) && ++attempts <= 10;
-          });
-      if (inserter.status.fail()) {
-        LOG_TOPIC("c1809", DEBUG, arangodb::Logger::CACHE)
-            << "Failed to cache: " << fromTo;
-      }
+      cache::Cache::SimpleInserter<EdgeIndexCacheType>{
+          static_cast<EdgeIndexCacheType&>(*_cache), fromTo.data(),
+          static_cast<uint32_t>(fromTo.size()), _builder.slice().start(),
+          static_cast<uint64_t>(_builder.slice().byteSize())};
     }
     TRI_ASSERT(_builder.slice().isArray());
     _builderIterator = VPackArrayIterator(_builder.slice());
@@ -402,7 +384,7 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
 
   RocksDBEdgeIndex const* _index;
 
-  std::shared_ptr<cache::TransactionalCache<cache::BinaryKeyHasher>> _cache;
+  std::shared_ptr<EdgeIndexCacheType> _cache;
   arangodb::velocypack::Builder _keys;
   arangodb::velocypack::ArrayIterator _keysIterator;
 
@@ -814,14 +796,10 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
         // Store what we have.
         builder.close();
 
-        size_t attempts = 0;
-        cache::Cache::Inserter inserter(
-            *cc, previous.data(), static_cast<uint32_t>(previous.size()),
-            builder.slice().start(),
-            static_cast<uint64_t>(builder.slice().byteSize()),
-            [&attempts](Result const& res) -> bool {
-              return res.is(TRI_ERROR_LOCK_TIMEOUT) && ++attempts <= 10;
-            });
+        cache::Cache::SimpleInserter<EdgeIndexCacheType>{
+            static_cast<EdgeIndexCacheType&>(*cc), previous.data(),
+            static_cast<uint32_t>(previous.size()), builder.slice().start(),
+            static_cast<uint64_t>(builder.slice().byteSize())};
 
         builder.clear();
       }
@@ -858,14 +836,10 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
     // We still have something to store
     builder.close();
 
-    size_t attempts = 0;
-    cache::Cache::Inserter inserter(
-        *cc, previous.data(), static_cast<uint32_t>(previous.size()),
-        builder.slice().start(),
-        static_cast<uint64_t>(builder.slice().byteSize()),
-        [&attempts](Result const& res) -> bool {
-          return res.is(TRI_ERROR_LOCK_TIMEOUT) && ++attempts <= 10;
-        });
+    cache::Cache::SimpleInserter<EdgeIndexCacheType>{
+        static_cast<EdgeIndexCacheType&>(*cc), previous.data(),
+        static_cast<uint32_t>(previous.size()), builder.slice().start(),
+        static_cast<uint64_t>(builder.slice().byteSize())};
   }
   LOG_TOPIC("99a29", DEBUG, Logger::ENGINES) << "loaded n: " << n;
 }

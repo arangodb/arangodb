@@ -77,6 +77,8 @@ inline rocksdb::Slice lookupValueFromSlice(rocksdb::Slice data) noexcept {
   return data;
 }
 
+using VPackIndexCacheType = cache::TransactionalCache<cache::VPackKeyHasher>;
+
 }  // namespace
 
 // .............................................................................
@@ -124,9 +126,7 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
       : IndexIterator(collection, trx, readOwnWrites),
         _index(index),
         _cmp(index->comparator()),
-        _cache(std::static_pointer_cast<
-               cache::TransactionalCache<cache::VPackKeyHasher>>(
-            std::move(cache))),
+        _cache(std::static_pointer_cast<VPackIndexCacheType>(std::move(cache))),
         _key(trx),
         _done(false) {
     TRI_ASSERT(index->unique());
@@ -271,27 +271,20 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
     if (_cache != nullptr) {
       rocksdb::Slice key = lookupValueForCache();
 
-      for (size_t attempts = 0; attempts < 10; ++attempts) {
-        // Try to read from cache
-        auto finding =
-            _cache->find(key.data(), static_cast<uint32_t>(key.size()));
-        if (finding.found()) {
-          incrCacheHits();
-          // We got sth. in the cache
-          VPackSlice cachedData(finding.value()->value());
-          if (!cachedData.isEmptyArray()) {
-            handleCacheEntry(cachedData);
-          }
-          return false;
-        }  // finding found
-
-        if (finding.result() != TRI_ERROR_LOCK_TIMEOUT) {
-          incrCacheMisses();
-          break;
+      // Try to read from cache
+      auto finding =
+          _cache->find(key.data(), static_cast<uint32_t>(key.size()));
+      if (finding.found()) {
+        incrCacheHits();
+        // We got sth. in the cache
+        VPackSlice cachedData(finding.value()->value());
+        if (!cachedData.isEmptyArray()) {
+          handleCacheEntry(cachedData);
         }
-        // enhance our calm...
-        basics::cpu_relax();
-      }  // attempts
+        return false;
+      } else {
+        incrCacheMisses();
+      }
     }
 
     rocksdb::PinnableSlice ps;
@@ -335,18 +328,11 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
   void storeInCache(VPackSlice slice) {
     TRI_ASSERT(_cache != nullptr);
 
-    size_t attempts = 0;
     rocksdb::Slice key = lookupValueForCache();
-    cache::Cache::Inserter inserter(
-        *_cache, key.data(), static_cast<uint32_t>(key.size()), slice.start(),
-        static_cast<uint64_t>(slice.byteSize()),
-        [&attempts](Result const& res) -> bool {
-          return res.is(TRI_ERROR_LOCK_TIMEOUT) && ++attempts <= 10;
-        });
-    if (inserter.status.fail()) {
-      LOG_TOPIC("b33d8", TRACE, arangodb::Logger::CACHE)
-          << "Failed to cache: " << slice.toJson();
-    }
+    cache::Cache::SimpleInserter<VPackIndexCacheType>{
+        static_cast<VPackIndexCacheType&>(*_cache), key.data(),
+        static_cast<uint32_t>(key.size()), slice.start(),
+        static_cast<uint64_t>(slice.byteSize())};
   }
 
   rocksdb::Slice lookupValueForCache() const noexcept {
@@ -356,7 +342,7 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
 
   arangodb::RocksDBVPackIndex const* _index;
   rocksdb::Comparator const* _cmp;
-  std::shared_ptr<cache::TransactionalCache<cache::VPackKeyHasher>> _cache;
+  std::shared_ptr<VPackIndexCacheType> _cache;
   RocksDBKeyLeaser _key;
   bool _done;
 };
@@ -378,9 +364,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
       : IndexIterator(collection, trx, readOwnWrites),
         _index(index),
         _cmp(static_cast<RocksDBVPackComparator const*>(index->comparator())),
-        _cache(std::static_pointer_cast<
-               cache::TransactionalCache<cache::VPackKeyHasher>>(
-            std::move(cache))),
+        _cache(std::static_pointer_cast<VPackIndexCacheType>(std::move(cache))),
         _builderOptions(VPackOptions::Defaults),
         _cacheKeyBuilder(&_builderOptions),
         _cacheKeyBuilderSize(0),
@@ -832,43 +816,35 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
     size_t const numFields = _index->hasStoredValues() ? 3 : 2;
     VPackSlice key = _cacheKeyBuilder.slice();
 
-    for (size_t attempts = 0; attempts < 10; ++attempts) {
-      // Try to read from cache
-      auto finding = _cache->find(key.start(),
-                                  static_cast<uint32_t>(_cacheKeyBuilderSize));
-      if (finding.found()) {
-        incrCacheHits();
-        // We got sth. in the cache
-        VPackSlice cachedData(finding.value()->value());
-        TRI_ASSERT(cachedData.isArray());
-        if (cachedData.length() / numFields < limit) {
-          // Directly return it, no need to copy
-          _resultIterator = VPackArrayIterator(cachedData);
-          while (_resultIterator.valid()) {
-            cb();
-            TRI_ASSERT(limit > 0);
-            --limit;
-          }
-          _resultIterator = VPackArrayIterator(VPackArrayIterator::Empty{});
-          return CacheLookupResult::kInCacheAndFullyHandled;
+    // Try to read from cache
+    auto finding =
+        _cache->find(key.start(), static_cast<uint32_t>(_cacheKeyBuilderSize));
+    if (finding.found()) {
+      incrCacheHits();
+      // We got sth. in the cache
+      VPackSlice cachedData(finding.value()->value());
+      TRI_ASSERT(cachedData.isArray());
+      if (cachedData.length() / numFields < limit) {
+        // Directly return it, no need to copy
+        _resultIterator = VPackArrayIterator(cachedData);
+        while (_resultIterator.valid()) {
+          cb();
+          TRI_ASSERT(limit > 0);
+          --limit;
         }
-
-        // We need to copy the data from the cache, and let the caller
-        // handler the result.
-        _resultBuilder.clear();
-        _resultBuilder.add(cachedData);
-        TRI_ASSERT(_resultBuilder.slice().isArray());
-        _resultIterator = VPackArrayIterator(_resultBuilder.slice());
-        return CacheLookupResult::kInCacheAndPartlyHandled;
-      }  // finding found
-
-      if (finding.result() != TRI_ERROR_LOCK_TIMEOUT) {
-        incrCacheMisses();
-        break;
+        _resultIterator = VPackArrayIterator(VPackArrayIterator::Empty{});
+        return CacheLookupResult::kInCacheAndFullyHandled;
       }
-      // enhance our calm...
-      basics::cpu_relax();
-    }  // attempts
+
+      // We need to copy the data from the cache, and let the caller
+      // handler the result.
+      _resultBuilder.clear();
+      _resultBuilder.add(cachedData);
+      TRI_ASSERT(_resultBuilder.slice().isArray());
+      _resultIterator = VPackArrayIterator(_resultBuilder.slice());
+      return CacheLookupResult::kInCacheAndPartlyHandled;
+    }
+    incrCacheMisses();
     return CacheLookupResult::kNotInCache;
   }
 
@@ -882,18 +858,11 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
       return;
     }
 
-    size_t attempts = 0;
     VPackSlice key = _cacheKeyBuilder.slice();
-    cache::Cache::Inserter inserter(
-        *_cache, key.start(), static_cast<uint32_t>(_cacheKeyBuilderSize),
-        slice.start(), static_cast<uint64_t>(slice.byteSize()),
-        [&attempts](Result const& res) -> bool {
-          return res.is(TRI_ERROR_LOCK_TIMEOUT) && ++attempts <= 10;
-        });
-    if (inserter.status.fail()) {
-      LOG_TOPIC("ea2f3", TRACE, arangodb::Logger::CACHE)
-          << "Failed to cache: " << slice.toJson();
-    }
+    cache::Cache::SimpleInserter<VPackIndexCacheType>{
+        static_cast<VPackIndexCacheType&>(*_cache), key.start(),
+        static_cast<uint32_t>(_cacheKeyBuilderSize), slice.start(),
+        static_cast<uint64_t>(slice.byteSize())};
   }
 
   inline bool outOfRange() const {
@@ -962,7 +931,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
   arangodb::RocksDBVPackIndex const* _index;
   RocksDBVPackComparator const* _cmp;
   std::unique_ptr<rocksdb::Iterator> _iterator;
-  std::shared_ptr<cache::TransactionalCache<cache::VPackKeyHasher>> _cache;
+  std::shared_ptr<VPackIndexCacheType> _cache;
   // VPackOptions for _cacheKeyBuilder and _resultBuilder. only used when
   // _cache is set
   arangodb::velocypack::Options _builderOptions;
