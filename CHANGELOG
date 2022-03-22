@@ -1,6 +1,12 @@
 v3.9.1 (XXXX-XX-XX)
 -------------------
 
+* Fixed an assertion failure which could occur when there was an error in the
+  HTTP header, so that the message body was not actually read.
+
+* Fixed a crash which could occur when there was an error in the HTTP header
+  parsing.
+
 * Bug-Fix: Resolve BTS-673/Issue #15107, a spliced subquery could return too few
   results.
 
