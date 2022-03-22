@@ -93,9 +93,9 @@ void PrototypeCore::loadStateFromDB() {
   }
 }
 
-void PrototypeCore::applySnapshot(
-    std::unordered_map<std::string, std::string> snapshot) {
-  for (auto& [k, v] : snapshot) {
+void PrototypeCore::set(
+    std::unordered_map<std::string, std::string> entries) {
+  for (auto& [k, v] : entries) {
     store = store.set(k, v);
   }
 }
@@ -218,15 +218,13 @@ auto PrototypeLeaderState::set(
     return self->waitForApplied(idx.saturatedDecrement())
         .thenValue([self = self, idx = idx, entries = std::move(entries)](
                        auto&& result) mutable -> ResultT<LogIndex> {
-          ResultT<LogIndex> r = self->guardedData.doUnderLock(
+           ResultT<LogIndex> r = self->guardedData.doUnderLock(
               [self = self, idx = idx,
                entries = std::move(entries)](auto& core) -> ResultT<LogIndex> {
                 if (!core) {
                   return ResultT<LogIndex>::error(TRI_ERROR_CLUSTER_NOT_LEADER);
                 }
-                for (auto const& [key, value] : entries) {
-                  core->store = core->store.set(key, value);
-                }
+                core->set(entries);
                 core->lastAppliedIndex = idx;
                 if (core->flush()) {
                   auto stream = self->getStream();
@@ -377,7 +375,7 @@ auto PrototypeFollowerState::acquireSnapshot(ParticipantId const& destination,
         auto map = result.get();
         self->guardedData.doUnderLock(
             [self, map = std::move(map)](auto& core) mutable {
-              core->applySnapshot(std::move(map));
+              core->set(std::move(map));
             });
         return TRI_ERROR_NO_ERROR;
       });
