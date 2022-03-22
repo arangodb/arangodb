@@ -30,8 +30,6 @@
 #include "Aql/OptimizerRule.h"
 #include "RestServer/arangod.h"
 
-#include "Logger/LogMacros.h"
-
 namespace arangodb {
 namespace aql {
 
