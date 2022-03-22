@@ -66,6 +66,7 @@
 #include "RocksDBEngine/Listeners/RocksDBThrottle.h"
 #include "RocksDBEngine/ReplicatedRocksDBTransactionState.h"
 #include "RocksDBEngine/RocksDBBackgroundThread.h"
+#include "../../3rdParty/rocksdb/6.29/env/composite_env_wrapper.h"  // TODO: GET RID OF THIS WEIRD INCLUDE
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -121,6 +122,16 @@
 using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::options;
+
+namespace {
+using Env = rocksdb::Env;
+std::unique_ptr<rocksdb::Env> checksumEnv;
+// Returns an Env that encrypts data when stored on disk and decrypts data when
+// read from disk.
+Env* NewChecksumEnv(Env* base_env) {
+  return new rocksdb::CompositeEnvWrapper(base_env);
+}
+}  // namespace
 
 namespace arangodb {
 
@@ -793,6 +804,9 @@ void RocksDBEngine::start() {
   _options.recycle_log_file_num = opts._recycleLogFileNum;
   _options.compaction_readahead_size =
       static_cast<size_t>(opts._compactionReadaheadSize);
+
+  ::checksumEnv.reset(::NewChecksumEnv(Env::Default()));
+  _options.env = checksumEnv.get();
 
 #ifdef USE_ENTERPRISE
   configureEnterpriseRocksDBOptions(_options, createdEngineDir);

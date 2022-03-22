@@ -47,6 +47,7 @@ set(ROCKSDB_SOURCES
   RocksDBEngine/Methods/RocksDBTrxMethods.cpp
   RocksDBEngine/RocksDBBackgroundThread.cpp
   RocksDBEngine/RocksDBBuilderIndex.cpp
+  RocksDBEngine/RocksDBChecksumEnv.cpp
   RocksDBEngine/RocksDBCollection.cpp
   RocksDBEngine/RocksDBColumnFamilyManager.cpp
   RocksDBEngine/RocksDBCommon.cpp
