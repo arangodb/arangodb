@@ -36,33 +36,33 @@ const jsunity = require("jsunity");
 
 
 function queryAnalysisSuite () {
-  let api = "/_api/query";
-  let queryEndpoint ="/_api/cursor";
-  let queryPrefix = "api-cursor";
-  let properties = `${api}/properties`;
-  let current = `${api}/current`;
-  let slow = `${api}/slow`;
+  const api = "/_api/query";
+  const queryEndpoint ="/_api/cursor";
+  const queryPrefix = "api-cursor";
+  const properties = `${api}/properties`;
+  const current = `${api}/current`;
+  const slow = `${api}/slow`;
 
-  let queryBody = { query:  "FOR x IN 1..5 LET y = SLEEP(2) RETURN x"};
-  let fastQueryBody = { query: "FOR x IN 1..1 LET y = SLEEP(0.2) RETURN x"};
-  let longQueryBody = { query: "FOR x IN 1..1 LET y = SLEEP(0.2) LET a = y LET b = a LET c = b LET d = c LET e = d LET f = e  RETURN x"};
-  let queryWithBindBody = {query: "FOR x IN 1..5 LET y = SLEEP(@value) RETURN x", bindVars: {value: 4}};
+  const queryBody = { query:  "FOR x IN 1..5 LET y = SLEEP(2) RETURN x"};
+  const fastQueryBody = { query: "FOR x IN 1..1 LET y = SLEEP(0.2) RETURN x"};
+  const longQueryBody = { query: "FOR x IN 1..1 LET y = SLEEP(0.2) LET a = y LET b = a LET c = b LET d = c LET e = d LET f = e  RETURN x"};
+  const queryWithBindBody = {query: "FOR x IN 1..5 LET y = SLEEP(@value) RETURN x", bindVars: {value: 4}};
 
-  function send_queries (count = 1, async = "true"){
+  function send_queries (count = 1, doAsync = "true") {
     for (let i = 0; i < count; i++) {
-      arango.POST(queryEndpoint, queryBody, {"X-Arango-Async": async });
+      arango.POST(queryEndpoint, queryBody, {"X-Arango-Async": doAsync });
     }
   }
 
-  function send_fast_queries (count = 1, async = "true") {
+  function send_fast_queries (count = 1, doAsync = "true") {
     for (let i = 0; i < count; i++) {
-      arango.POST(queryEndpoint, fastQueryBody, { "X-Arango-Async": async });
+      arango.POST(queryEndpoint, fastQueryBody, { "X-Arango-Async": doAsync });
     }
   }
 
-  function send_queries_with_bind (count = 1, async = "true"){
+  function send_queries_with_bind (count = 1, doAsync = "true") {
     for (let i = 0; i < count; i++) {
-      arango.POST(queryEndpoint, queryWithBindBody, {"X-Arango-Async": async });
+      arango.POST(queryEndpoint, queryWithBindBody, {"X-Arango-Async": doAsync });
     }
   }
 
@@ -210,7 +210,7 @@ function queryAnalysisSuite () {
     test_should_truncate_the_query_string_to_at_least_64_bytes: function() {
       arango.PUT(properties, {slowQueryThreshold: 2, maxQueryStringLength: 12});
       let doc = arango.GET_RAW(properties);
-      assertEqual(doc.parsedBody["maxQueryStringLength"], 64);
+      assertEqual(doc.parsedBody["maxQueryStringLength"], 64, doc);
     },
 
     test_should_truncate_the_query_string: function() {
@@ -218,29 +218,31 @@ function queryAnalysisSuite () {
       arango.POST_RAW(queryEndpoint, longQueryBody);
       let doc = arango.GET_RAW(slow);
       assertEqual(doc.code, 200);
-      assertEqual(doc.parsedBody.length, 1);
+      assertTrue(Array.isArray(doc.parsedBody), doc);
+      assertEqual(doc.parsedBody.length, 1, doc);
       // This string is exactly 64 bytes long;
       let shortened = "FOR x IN 1..1 LET y = SLEEP(0.2) LET a = y LET b = a LET c = b L";
       let found = contains_query(doc.parsedBody, shortened + "...");
-      assertTrue(found);
-      assertTrue(found.hasOwnProperty("query"));
-      assertEqual(found["query"], shortened + "...");
-      assertEqual(found["bindVars"], {});
+      assertTrue(found, doc);
+      assertTrue(found.hasOwnProperty("query"), doc);
+      assertEqual(found["query"], shortened + "...", doc);
+      assertEqual(found["bindVars"], {}, doc);
     },
 
     test_should_properly_truncate_UTF8_symbols: function() {
       arango.PUT(properties, {slowQueryThreshold: 0.1, maxQueryStringLength: 64});
       arango.POST(queryEndpoint, {query: 'FOR x IN 1..1 LET y = SLEEP(0.2) LET a= y LET b= a LET c= "ööööööö" RETURN c'});
       let doc = arango.GET_RAW(slow);
-      assertEqual(doc.code, 200);
-      assertEqual(doc.parsedBody.length, 1);
+      assertEqual(doc.code, 200, doc);
+      assertTrue(Array.isArray(doc.parsedBody), doc);
+      assertEqual(doc.parsedBody.length, 1, doc);
       // This string is exactly 64 bytes long;
       let shortened = "FOR x IN 1..1 LET y = SLEEP(0.2) LET a= y LET b= a LET c= \"öö";
       let found = contains_query(doc.parsedBody, shortened + "...");
-      assertTrue(found);
-      assertTrue(found.hasOwnProperty("query"));
-      assertEqual(found["query"], shortened + "...");
-      assertEqual(found["bindVars"], {});
+      assertTrue(found, doc);
+      assertTrue(found.hasOwnProperty("query"), doc);
+      assertEqual(found["query"], shortened + "...", doc);
+      assertEqual(found["bindVars"], {}, doc);
     },
 
     test_should_be_able_to_kill_a_running_query: function() {
@@ -255,13 +257,14 @@ function queryAnalysisSuite () {
           id = q["id"];
         }
       });
-      assertTrue(found);
+      assertTrue(found, doc);
       doc = arango.DELETE_RAW(api + "/" + id);
-      assertEqual(doc.code, 200);
+      assertEqual(doc.code, 200, doc);
       sleep(5);
       doc = arango.GET_RAW(current);
+      assertTrue(Array.isArray(doc.parsedBody), doc);
       found = contains_query(doc.parsedBody, queryBody.query);
-      assertFalse(found);
+      assertFalse(found, doc);
     }
   };
 }
