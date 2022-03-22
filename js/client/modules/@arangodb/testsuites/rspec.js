@@ -53,7 +53,6 @@ const RESET = require('internal').COLORS.COLOR_RESET;
 // const YELLOW = require('internal').COLORS.COLOR_YELLOW;
 
 const testPaths = {
-  'http_replication': [tu.pathForTesting('HttpReplication', 'rb')],
   'http_server': [tu.pathForTesting('HttpInterface', 'rb')],
   'ssl_server': [tu.pathForTesting('HttpInterface', 'rb')],
   'server_http': [tu.pathForTesting('common/http')],
@@ -68,23 +67,6 @@ function serverHttp (options) {
   let testCases = tu.scanTestPaths(testPaths.server_http, options);
 
   return tu.performTests(options, testCases, 'server_http', tu.runThere);
-}
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief TEST: http_replication
-// //////////////////////////////////////////////////////////////////////////////
-
-function httpReplication (options) {
-  var opts = {
-    'replication': true
-  };
-  _.defaults(opts, options);
-  
-  let testCases = tu.scanTestPaths(testPaths.http_replication, options);
-
-  testCases = tu.splitBuckets(options, testCases);
-
-  return tu.performTests(opts, testCases, 'http_replication', tu.runInRSpec);
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -132,7 +114,6 @@ function sslServer (options) {
 
 exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
-  testFns['http_replication'] = httpReplication;
   testFns['http_server'] = httpServer;
   testFns['server_http'] = serverHttp;
   testFns['ssl_server'] = sslServer;
