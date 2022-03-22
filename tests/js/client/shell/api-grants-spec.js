@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 5000 */
-/* global describe, after, afterEach, before, beforeEach, it */
+/* global describe, after, afterEach, before, beforeEach, it, db, arango */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -25,9 +25,7 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const expect = require('chai').expect;
-const request = require('@arangodb/request');
 const users = require('@arangodb/users');
-const db = require('@arangodb').db;
 
 describe('Grants', function () {
   before(function () {
@@ -42,12 +40,9 @@ describe('Grants', function () {
     }
   });
   afterEach(function () {
-    let resp = request.put({
-      url: '/_admin/server/mode',
-      body: {'mode': 'default'},
-      json: true,
-    });
-    expect(resp.statusCode).to.equal(200);
+    let resp = arango.PUT_RAW('/_admin/server/mode',
+                              {'mode': 'default'});
+    expect(resp.code).to.equal(200);
     // wait for readonly mode to reset
     require('internal').wait(5.0);
     users.remove('hans');
@@ -58,11 +53,8 @@ describe('Grants', function () {
   it('should show the effective rights for a user', function () {
     users.save('hans');
     users.grantDatabase('hans', '_system', 'rw');
-    let resp = request.get({
-      url: '/_api/user/hans/database/_system',
-      json: true,
-    });
-    expect(JSON.parse(resp.body)).to.have.property('result', 'rw');
+    let resp = arango.GET_RAW('/_api/user/hans/database/_system');
+    expect(resp.parsedBody).to.have.property('result', 'rw');
   });
 
   it('should show the effective rights when readonly mode is on', function () {
@@ -70,16 +62,11 @@ describe('Grants', function () {
     users.grantDatabase('hans', '_system', 'rw');
 
     let resp;
-    resp = request.put({
-      url: '/_admin/server/mode',
-      body: {'mode': 'readonly'},
-      json: true,
-    });
-    resp = request.get({
-      url: '/_api/user/hans/database/_system',
-      json: true,
-    });
-    expect(JSON.parse(resp.body)).to.have.property('result', 'ro');
+    resp = arango.PUT_RAW(
+      '/_admin/server/mode',
+      {'mode': 'readonly'});
+    resp = arango.GET_RAW('/_api/user/hans/database/_system');
+    expect(resp.parsedBody).to.have.property('result', 'ro');
   });
 
   it('should show the configured rights when readonly mode is on and configured is requested', function () {
@@ -87,16 +74,9 @@ describe('Grants', function () {
     users.grantDatabase('hans', '_system', 'rw');
 
     let resp;
-    resp = request.put({
-      url: '/_admin/server/mode',
-      body: {'mode': 'readonly'},
-      json: true,
-    });
-    resp = request.get({
-      url: '/_api/user/hans/database/_system?configured=true',
-      json: true,
-    });
-    expect(JSON.parse(resp.body)).to.have.property('result', 'rw');
+    resp = arango.PUT_RAW('/_admin/server/mode', {'mode': 'readonly'});
+    resp = arango.GET_RAW('/_api/user/hans/database/_system?configured=true');
+    expect(resp.parsedBody).to.have.property('result', 'rw');
   });
 
   it('should show the effective rights when readonly mode is on', function () {
@@ -105,16 +85,9 @@ describe('Grants', function () {
     users.grantCollection('hans', '_system', 'grants');
 
     let resp;
-    resp = request.put({
-      url: '/_admin/server/mode',
-      body: {'mode': 'readonly'},
-      json: true,
-    });
-    resp = request.get({
-      url: '/_api/user/hans/database/_system/grants',
-      json: true,
-    });
-    expect(JSON.parse(resp.body)).to.have.property('result', 'ro');
+    resp = arango.PUT_RAW('/_admin/server/mode', {'mode': 'readonly'});
+    resp = arango.GET_RAW('/_api/user/hans/database/_system/grants');
+    expect(resp.parsedBody).to.have.property('result', 'ro');
   });
 
   it('should show the configured rights when readonly mode is on and configured is requested', function () {
@@ -123,16 +96,9 @@ describe('Grants', function () {
     users.grantCollection('hans', '_system', 'grants');
 
     let resp;
-    resp = request.put({
-      url: '/_admin/server/mode',
-      body: {'mode': 'readonly'},
-      json: true,
-    });
-    resp = request.get({
-      url: '/_api/user/hans/database/_system/grants?configured=true',
-      json: true,
-    });
-    expect(JSON.parse(resp.body)).to.have.property('result', 'rw');
+    resp = arango.PUT_RAW('/_admin/server/mode', {'mode': 'readonly'});
+    resp = arango.GET_RAW('/_api/user/hans/database/_system/grants?configured=true');
+    expect(resp.parsedBody).to.have.property('result', 'rw');
   });
 });
 
@@ -204,15 +170,15 @@ describe('UserProperties', function () {
     expect(expectedMergeObject.thisMustStay).to.be.true;
   };
 
-  const generateReadConfigUrl = (user, database) => {
-    return `/_db/${database}/_api/user/${user}/config`;
+  const generateReadConfigUrl = (user) => {
+    return `/_api/user/${user}/config`;
   };
 
-  const generateWriteConfigUrl = (user, database, attribute) => {
+  const generateWriteConfigUrl = (user, attribute) => {
     if (!attribute) {
       attribute = configPropertyAttribute;
     }
-    return `/_db/${database}/_api/user/${user}/config/${attribute}`;
+    return `/_api/user/${user}/config/${attribute}`;
   };
 
   const generateConfigBody = (object) => {
@@ -241,93 +207,57 @@ describe('UserProperties', function () {
 
     // cleanup root users config we might have been modified in any of our tests
     const cleanupRootUrl = generateWriteConfigUrl(rootUser, rootDB);
-    request.delete({
-      url: cleanupRootUrl,
-      json: true
-    });
+    arango.DELETE_RAW(cleanupRootUrl);
   });
 
   after(function () {
+        db._useDatabase('_system');
     db._dropDatabase(nonRootDB);
   });
 
   const testSuiteHelper = (user, database) => {
-    const readUrl = generateReadConfigUrl(user, database);
-    const writeUrl = generateWriteConfigUrl(user, database);
+    db._useDatabase(database);
+    const readUrl = generateReadConfigUrl(user);
+    const writeUrl = generateWriteConfigUrl(user);
     let response;
 
     // should be empty by default
-    response = request.get({
-      url: readUrl,
-      json: true
-    });
-    verifyEmptyConfig(JSON.parse(response.body));
+    response = arango.GET_RAW(readUrl);
+    verifyEmptyConfig(response.parsedBody);
 
     // stores the init object
-    response = request.put({
-      url: writeUrl,
-      body: generateConfigBody(initConfigObject),
-      json: true
-    });
-    expect(response.statusCode).to.equal(200);
+    response = arango.PUT_RAW(writeUrl,
+                              generateConfigBody(initConfigObject));
+    expect(response.code).to.equal(200);
 
     // should now be the same as init object
-    response = request.get({
-      url: readUrl,
-      json: true
-    });
-    verifyInitObject(JSON.parse(response.body));
+    response = arango.GET_RAW(readUrl);
+    verifyInitObject(response.parsedBody);
 
     // now try to overwrite as well
-    response = request.put({
-      url: writeUrl,
-      body: generateConfigBody(overwriteConfigObject),
-      json: true
-    });
-    expect(response.statusCode).to.equal(200);
+    response = arango.PUT_RAW(writeUrl, generateConfigBody(overwriteConfigObject));
+    expect(response.code).to.equal(200);
 
-    response = request.get({
-      url: readUrl,
-      json: true
-    });
-    verifyOverwriteConfigObject(JSON.parse(response.body));
+    response = arango.GET_RAW(readUrl);
+    verifyOverwriteConfigObject(response.parsedBody);
 
     // now try a merge with another storage attribute
     const additionalWriteUrl = generateWriteConfigUrl(user, database, additionalPropertyAttribute);
-    response = request.put({
-      url: additionalWriteUrl,
-      body: generateConfigBody(mergeConfigObject),
-      json: true
-    });
-    expect(response.statusCode).to.equal(200);
-    response = request.get({
-      url: readUrl,
-      json: true
-    });
-    verifyMergedConfigObject(JSON.parse(response.body));
+    response = arango.PUT_RAW(additionalWriteUrl, generateConfigBody(mergeConfigObject));
+    expect(response.code).to.equal(200);
+    response = arango.GET_RAW(readUrl);
+    verifyMergedConfigObject(response.parsedBody);
 
     // test delete (remove additional key)
-    response = request.delete({
-      url: additionalWriteUrl,
-      json: true
-    });
-    response = request.get({
-      url: readUrl,
-      json: true
-    });
-    verifyOverwriteConfigObject(JSON.parse(response.body));
+    response = arango.DELETE_RAW(additionalWriteUrl);
+    response = arango.GET_RAW(readUrl);
+    verifyOverwriteConfigObject(response.parsedBody);
 
     // finally, test delete of graph attribute
-    response = request.delete({
-      url: writeUrl,
-      json: true
-    });
+    response = arango.DELETE_RAW(writeUrl);
     // should be fully empty now again
-    response = request.get({
-      url: readUrl,
-      json: true
-    });
-    verifyEmptyConfig(JSON.parse(response.body));
+    response = arango.GET_RAW(readUrl);
+    verifyEmptyConfig(response.parsedBody);
   };
 
   it('should store/patch/delete root config data in _system database', function () {
