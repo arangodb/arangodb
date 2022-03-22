@@ -856,7 +856,7 @@ TEST_F(VPackLoadInspectorTest, load_optional) {
                     .y = "blubb",
                     .vec = {1, std::nullopt, 3},
                     .map = {{"1", 1}, {"2", std::nullopt}, {"3", 3}}};
-  EXPECT_EQ(expected.a, o.a);
+  EXPECT_EQ(expected.a, o.a) << o.a.has_value() << " " << o.a.value();
   EXPECT_EQ(expected.b, o.b);
   EXPECT_EQ(expected.x, o.x);
   EXPECT_EQ(expected.y, o.y);
@@ -920,7 +920,7 @@ TEST_F(VPackLoadInspectorTest, error_expecting_int) {
   builder.add(VPackValue("foo"));
   VPackLoadInspector inspector{builder};
 
-  int i;
+  int i{};
   auto result = inspector.apply(i);
   ASSERT_FALSE(result.ok());
   EXPECT_EQ("Expecting type Int", result.error());
@@ -930,7 +930,7 @@ TEST_F(VPackLoadInspectorTest, error_expecting_int16) {
   builder.add(VPackValue(123456789));
   VPackLoadInspector inspector{builder};
 
-  std::int16_t i;
+  std::int16_t i{};
   auto result = inspector.apply(i);
   ASSERT_FALSE(result.ok());
   EXPECT_EQ("Number out of range", result.error());
@@ -940,7 +940,7 @@ TEST_F(VPackLoadInspectorTest, error_expecting_double) {
   builder.add(VPackValue("foo"));
   VPackLoadInspector inspector{builder};
 
-  double d;
+  double d{};
   auto result = inspector.apply(d);
   ASSERT_FALSE(result.ok());
   EXPECT_EQ("Expecting numeric type", result.error());
@@ -950,7 +950,7 @@ TEST_F(VPackLoadInspectorTest, error_expecting_bool) {
   builder.add(VPackValue(42));
   VPackLoadInspector inspector{builder};
 
-  bool b;
+  bool b{};
   auto result = inspector.apply(b);
   ASSERT_FALSE(result.ok());
   EXPECT_EQ("Expecting type Bool", result.error());
