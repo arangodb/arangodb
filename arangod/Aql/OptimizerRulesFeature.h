@@ -30,6 +30,8 @@
 #include "Aql/OptimizerRule.h"
 #include "RestServer/arangod.h"
 
+#include "Logger/LogMacros.h"
+
 namespace arangodb {
 namespace aql {
 
@@ -44,6 +46,7 @@ class OptimizerRulesFeature final : public ArangodFeature {
   void unprepare() override final;
 
   std::vector<std::string> const& optimizerRules() const {
+    LOG_DEVEL << "JULIA";
     return _optimizerRules;
   }
 
