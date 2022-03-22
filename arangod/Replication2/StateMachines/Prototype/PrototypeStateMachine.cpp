@@ -214,7 +214,7 @@ auto PrototypeLeaderState::set(
     return self->waitForApplied(idx.saturatedDecrement())
         .thenValue([self = self, idx = idx, entries = std::move(entries)](
                        auto&& result) mutable -> ResultT<LogIndex> {
-           ResultT<LogIndex> r = self->guardedData.doUnderLock(
+          ResultT<LogIndex> r = self->guardedData.doUnderLock(
               [self = self, idx = idx,
                entries = std::move(entries)](auto& core) -> ResultT<LogIndex> {
                 if (!core) {
