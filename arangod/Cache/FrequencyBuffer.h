@@ -142,8 +142,9 @@ class FrequencyBuffer {
 
  private:
   static constexpr std::size_t powerOf2(std::size_t capacity) {
-    std::size_t bitPos = std::ceil(std::log2(capacity));
-    return (static_cast<size_t>(1) << bitPos);
+    std::size_t bitPos =
+        static_cast<std::size_t>(std::ceil(std::log2(capacity)));
+    return (static_cast<std::size_t>(1) << bitPos);
   }
 
   SharedPRNGFeature& _sharedPRNG;
