@@ -992,200 +992,295 @@ bool IResearchViewExecutor<copyStored, ordered, materializeType>::readPK(
 }
 
 template<bool copyStored, bool ordered, MaterializeType materializeType>
+size_t IResearchViewHeapSortExecutor<copyStored, ordered, materializeType>::skipAll() {
+  TRI_ASSERT(this->_indexReadBuffer.empty());
+  TRI_ASSERT(this->_filter);
+
+  size_t skipped = 0;
+
+  return this->_indexReadBuffer.size();
+}
+
+template<bool copyStored, bool ordered, MaterializeType materializeType>
+size_t IResearchViewHeapSortExecutor<copyStored, ordered, materializeType>::skip(
+    size_t limit) {
+  TRI_ASSERT(this->_indexReadBuffer.empty());
+  TRI_ASSERT(this->_filter);
+
+  size_t const toSkip = limit;
+
+  for (size_t count = this->_reader->size(); _readerOffset < count;
+       ++_readerOffset) {
+    if (!_itr && !resetIterator()) {
+      continue;
+    }
+
+    while (limit && _itr->next()) {
+      ++_currentSegmentPos;
+      ++_totalPos;
+      --limit;
+    }
+
+    if (!limit) {
+      break;  // do not change iterator if already reached limit
+    }
+    _itr.reset();
+    _doc = nullptr;
+  }
+  saveCollection();
+  return toSkip - limit;
+}
+
+template<bool copyStored, bool ordered, MaterializeType materializeType>
+void IResearchViewHeapSortExecutor<copyStored, ordered, materializeType>::reset() {
+  Base::reset();
+  _readerOffset = 0;
+}
+
+template<bool copyStored, bool ordered, MaterializeType materializeType>
+bool IResearchViewHeapSortExecutor<copyStored, ordered, materializeType>::writeRow(
+    IResearchViewHeapSortExecutor::ReadContext& ctx, IndexReadBufferEntry bufferEntry) {
+  auto const& val = this->_indexReadBuffer.getValue(bufferEntry);
+  return Base::writeRow(ctx, bufferEntry,
+                        val.documentId(),
+                        *val.collectionPtr());
+}
+
+template<bool copyStored, bool ordered, MaterializeType materializeType>
+void IResearchViewHeapSortExecutor<copyStored, ordered, materializeType>::fillBuffer(
+    IResearchViewHeapSortExecutor::ReadContext& ctx) {
+  TRI_ASSERT(!this->_infos.scoresSort().empty());
+  TRI_ASSERT(this->_filter != nullptr);
+  size_t const atMost = this->_infos.scoresSortLimit();
+  TRI_ASSERT(atMost);
+  TRI_ASSERT(this->_indexReadBuffer.empty());
+  this->_indexReadBuffer.reset();
+  this->_indexReadBuffer.preAllocateStoredValuesBuffer(
+      atMost, this->_infos.getScoreRegisters().size(),
+      this->_infos.getOutNonMaterializedViewRegs().size());
+  size_t const count = this->_reader->size();
+
+  irs::doc_iterator::ptr _itr;
+  irs::document const* doc{};
+  size_t numScores{0};
+  irs::score const* scr;
+  for (; _readerOffset < count;) {
+    if (!itr) {
+      {
+        auto& segmentReader = (*this->_reader)[_readerOffset];
+        itr = this->_filter->execute(segmentReader, this->_order,
+                                      &this->_filterCtx);
+        TRI_ASSERT(itr);
+        doc = irs::get<irs::document>(*itr);
+        TRI_ASSERT(doc);
+
+        if constexpr (ordered) {
+          scr = irs::get<irs::score>(*itr);
+
+          if (!scr) {
+            scr = &irs::score::no_score();
+            numScores = 0;
+          } else {
+            numScores = this->infos().scorers().size();
+          }
+        }
+
+        itr = segmentReader.mask(std::move(itr));
+        TRI_ASSERT(itr);
+      }
+    }
+    if (!itr->next()) {
+       ++_readerOffset;
+       itr.reset();
+       doc = nullptr;
+       scr = nullptr;
+       continue;
+    }
+    auto scoresBegin = reinterpret_cast<float_t const*>(scr->evaluate());
+    this->_indexReadBuffer.pushSortedValue(
+        typename decltype(this->_indexReadBuffer)::KeyValueType(
+            doc->value, _readerOffset),
+        scoresBegin, numScores);
+
+    // TODO  (Dronplane) Handle stored values somehow (don`t read/store rejected
+    // by heap!
+    // if constexpr ((materializeType & MaterializeType::UseStoredValues) ==
+    //              MaterializeType::UseStoredValues) {
+    //  TRI_ASSERT(_doc);
+    //  this->pushStoredValues(*_doc);
+    //}
+    // doc and scores are both pushed, sizes must now be coherent
+    
+    // TODO(Dronplane) reenable check but keep in mind - stored values will be written later
+    //this->_indexReadBuffer.assertSizeCoherence();
+  }
+
+  if (!this->_indexReadBuffer.empty()) {
+
+    std::vector<size_t> pkReadingOrder(atMost);
+    std::iota(pkReadingOrder.begin(), pkReadingOrder.end(), 0);
+    std::sort(pkReadingOrder.begin(), pkReadingOrder.end(), [buffer = this->_indexReadBuffer](
+      size_t lhs, size_t rhs) {
+      auto const& lhs_val = buffer.getValue(lhs);
+      auto const& rhs_val = buffer.getValue(rhs);
+      if (lhs_val.readerOffset() < rhs_val.readerOffset()) {
+        return true;
+      } else if (lhs_val.readerOffset() > rhs_val.readerOffset()) {
+        return false;
+      }
+      return lhs_val.irsDocId() < rhs_val.irsDocId();
+    });
+  
+    size_t lastSegmentIdx = pkReadingOrder.size();
+    ColumnIterator pkReader;
+    aql::QueryContext& query = this->_infos.getQuery();
+    std::shared_ptr<arangodb::LogicalCollection> collection;
+    for (auto orderIt = pkReadingOrder.begin(); orderIt != pkReadingOrder.end();) {
+      auto& value = this->_indexReadBuffer.getValue(*orderIt);
+      if (lastSegmentIdx != value.segmentOffset()) {
+        lastSegmentIdx = value.segmentOffset();
+        auto& segmentReader = (*this->_reader)[lastSegmentIdx];
+        auto pkIt = ::pkColumn(segmentReader);
+        pkReader.itr.reset();
+        DataSourceId const cid = this->_reader->cid(lastSegmentIdx);
+        collection = lookupCollection(this->_trx, cid, query);
+        if (ADB_UNLIKELY(!pkIt || !collection)) {
+          LOG_TOPIC("bd02b", WARN, arangodb::iresearch::TOPIC)
+              << "encountered a sub-reader without a primary key column or without the collection while "
+                 "executing a query, ignoring";
+          while ((++orderIt) != pkReadingOrder.end() && *orderIt == lastSegmentIdx) { }
+          continue;
+        }
+        ::reset(pkReader, pkIt);
+      }
+
+      LocalDocumentId documentId;
+      if (value.documentKey.irsId ==
+          segment.pkReader.itr->seek(value.documentKey.irsId)) {
+        bool const readSuccess =
+            DocumentPrimaryKey::read(documentId, value.documentKey.irsId);
+
+        TRI_ASSERT(readSuccess == documentId.isSet());
+
+        if (ADB_UNLIKELY(!readSuccess)) {
+          LOG_TOPIC("6423f", WARN, arangodb::iresearch::TOPIC)
+              << "failed to read document primary key while reading document "
+                 "from arangosearch view, doc_id '"
+              << value.documentKey.irsId << "'";
+        }
+      }
+      value.decode(documentId, collection.get());
+      ++orderIt;
+    }
+  }
+}
+
+template<bool copyStored, bool ordered, MaterializeType materializeType>
 void IResearchViewExecutor<copyStored, ordered, materializeType>::fillBuffer(
     IResearchViewExecutor::ReadContext& ctx) {
   TRI_ASSERT(this->_filter != nullptr);
+  size_t const atMost = ctx.outputRow.numRowsLeft();
+  TRI_ASSERT(this->_indexReadBuffer.empty());
+  this->_indexReadBuffer.reset();
+  this->_indexReadBuffer.preAllocateStoredValuesBuffer(
+      atMost, this->_infos.getScoreRegisters().size(),
+      this->_infos.getOutNonMaterializedViewRegs().size());
+  size_t const count = this->_reader->size();
 
-  if (!this->_infos.scoresSort().empty())
-  {
-    size_t const atMost = this->_infos.scoresSortLimit();
-    TRI_ASSERT(this->_indexReadBuffer.empty());
-    this->_indexReadBuffer.reset();
-    this->_indexReadBuffer.preAllocateStoredValuesBuffer(
-        atMost, this->_infos.getScoreRegisters().size(),
-        this->_infos.getOutNonMaterializedViewRegs().size());
-    size_t const count = this->_reader->size();
-
-    for (; _readerOffset < count;) {
-      if (!_itr) {
-        if (!resetIterator()) {
-          continue;
-        }
-
-        // CID is constant until the next resetIterator(). Save the
-        // corresponding collection so we don't have to look it up every time.
-
-        DataSourceId const cid = this->_reader->cid(_readerOffset);
-        aql::QueryContext& query = this->_infos.getQuery();
-        auto collection = lookupCollection(this->_trx, cid, query);
-
-        if (!collection) {
-          std::stringstream msg;
-          msg << "failed to find collection while reading document from "
-                 "arangosearch view, cid '"
-              << cid.id() << "'";
-          query.warnings().registerWarning(
-              TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, msg.str());
-
-          // We don't have a collection, skip the current reader.
-          ++_readerOffset;
-          _currentSegmentPos = 0;
-          _itr.reset();
-          _doc = nullptr;
-          continue;
-        }
-        _collection = collection.get();
+  for (; _readerOffset < count;) {
+    if (!_itr) {
+      if (!this->_indexReadBuffer.empty()) {
+        // We may not reset the iterator and continue with the next reader if
+        // we still have documents in the buffer, as the cid changes with each
+        // reader.
+        break;
       }
 
-      TRI_ASSERT(_pkReader.itr);
-      TRI_ASSERT(_pkReader.value);
-
-      LocalDocumentId documentId;
-
-      // try to read a document PK from iresearch
-      bool const iteratorExhausted = !readPK(documentId);
-
-      if (!documentId.isSet()) {
-        // No document read, we cannot write it.
-
-        if (iteratorExhausted) {
-          // The iterator is exhausted, we need to continue with the next
-          // reader.
-          ++_readerOffset;
-          _currentSegmentPos = 0;
-          _itr.reset();
-          _doc = nullptr;
-        }
+      if (!resetIterator()) {
         continue;
       }
-      // The CID must stay the same for all documents in the buffer
-      TRI_ASSERT(this->_collection->id() == this->_reader->cid(_readerOffset));
-      auto scoresBegin = reinterpret_cast<float_t const*>(_scr->evaluate());
 
-      this->_indexReadBuffer.pushSortedValue(typename decltype(this->_indexReadBuffer)::KeyValueType(documentId, this->_collection),
-                                             scoresBegin, _numScores);
+      // CID is constant until the next resetIterator(). Save the
+      // corresponding collection so we don't have to look it up every time.
 
-      // TODO  (Dronplane) Handle stored values somehow (don`t read/store rejected by heap!
-      //if constexpr ((materializeType & MaterializeType::UseStoredValues) ==
-      //              MaterializeType::UseStoredValues) {
-      //  TRI_ASSERT(_doc);
-      //  this->pushStoredValues(*_doc);
-      //}
-      // doc and scores are both pushed, sizes must now be coherent
-      this->_indexReadBuffer.assertSizeCoherence();
+      DataSourceId const cid = this->_reader->cid(_readerOffset);
+      aql::QueryContext& query = this->_infos.getQuery();
+      auto collection = lookupCollection(this->_trx, cid, query);
 
-      if (iteratorExhausted) {
-        // The iterator is exhausted, we need to continue with the next reader.
+      if (!collection) {
+        std::stringstream msg;
+        msg << "failed to find collection while reading document from "
+               "arangosearch view, cid '"
+            << cid.id() << "'";
+        query.warnings().registerWarning(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+                                         msg.str());
+
+        // We don't have a collection, skip the current reader.
         ++_readerOffset;
         _currentSegmentPos = 0;
         _itr.reset();
         _doc = nullptr;
+        continue;
       }
+
+      _collection = collection.get();
+      this->_indexReadBuffer.reset();
     }
-  } else {
-    size_t const atMost = ctx.outputRow.numRowsLeft();
-    TRI_ASSERT(this->_indexReadBuffer.empty());
-    this->_indexReadBuffer.reset();
-    this->_indexReadBuffer.preAllocateStoredValuesBuffer(
-        atMost, this->_infos.getScoreRegisters().size(),
-        this->_infos.getOutNonMaterializedViewRegs().size());
-    size_t const count = this->_reader->size();
 
-    for (; _readerOffset < count;) {
-      if (!_itr) {
-        if (!this->_indexReadBuffer.empty()) {
-          // We may not reset the iterator and continue with the next reader if
-          // we still have documents in the buffer, as the cid changes with each
-          // reader.
-          break;
-        }
+    TRI_ASSERT(_pkReader.itr);
+    TRI_ASSERT(_pkReader.value);
 
-        if (!resetIterator()) {
-          continue;
-        }
+    LocalDocumentId documentId;
 
-        // CID is constant until the next resetIterator(). Save the
-        // corresponding collection so we don't have to look it up every time.
+    // try to read a document PK from iresearch
+    bool const iteratorExhausted = !readPK(documentId);
 
-        DataSourceId const cid = this->_reader->cid(_readerOffset);
-        aql::QueryContext& query = this->_infos.getQuery();
-        auto collection = lookupCollection(this->_trx, cid, query);
-
-        if (!collection) {
-          std::stringstream msg;
-          msg << "failed to find collection while reading document from "
-                 "arangosearch view, cid '"
-              << cid.id() << "'";
-          query.warnings().registerWarning(
-              TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, msg.str());
-
-          // We don't have a collection, skip the current reader.
-          ++_readerOffset;
-          _currentSegmentPos = 0;
-          _itr.reset();
-          _doc = nullptr;
-          continue;
-        }
-
-        _collection = collection.get();
-        this->_indexReadBuffer.reset();
-      }
-
-      TRI_ASSERT(_pkReader.itr);
-      TRI_ASSERT(_pkReader.value);
-
-      LocalDocumentId documentId;
-
-      // try to read a document PK from iresearch
-      bool const iteratorExhausted = !readPK(documentId);
-
-      if (!documentId.isSet()) {
-        // No document read, we cannot write it.
-
-        if (iteratorExhausted) {
-          // The iterator is exhausted, we need to continue with the next
-          // reader.
-          ++_readerOffset;
-          _currentSegmentPos = 0;
-          _itr.reset();
-          _doc = nullptr;
-        }
-        continue;
-      }
-
-      // The CID must stay the same for all documents in the buffer
-      TRI_ASSERT(this->_collection->id() == this->_reader->cid(_readerOffset));
-
-      this->_indexReadBuffer.pushValue(documentId, this->_collection);
-
-      // in the ordered case we have to write scores as well as a document
-      if constexpr (ordered) {
-        // Writes into _scoreBuffer
-        evaluateScores(ctx);
-      }
-
-      if constexpr ((materializeType & MaterializeType::UseStoredValues) ==
-                    MaterializeType::UseStoredValues) {
-        TRI_ASSERT(_doc);
-        this->pushStoredValues(*_doc);
-      }
-      // doc and scores are both pushed, sizes must now be coherent
-      this->_indexReadBuffer.assertSizeCoherence();
+    if (!documentId.isSet()) {
+      // No document read, we cannot write it.
 
       if (iteratorExhausted) {
-        // The iterator is exhausted, we need to continue with the next reader.
+        // The iterator is exhausted, we need to continue with the next
+        // reader.
         ++_readerOffset;
         _currentSegmentPos = 0;
         _itr.reset();
         _doc = nullptr;
+      }
+      continue;
+    }
 
-        // Here we have at least one document in _indexReadBuffer, so we may not
-        // add documents from a new reader.
-        break;
-      }
-      if (this->_indexReadBuffer.size() >= atMost) {
-        break;
-      }
+    // The CID must stay the same for all documents in the buffer
+    TRI_ASSERT(this->_collection->id() == this->_reader->cid(_readerOffset));
+
+    this->_indexReadBuffer.pushValue(documentId, this->_collection);
+
+    // in the ordered case we have to write scores as well as a document
+    if constexpr (ordered) {
+      // Writes into _scoreBuffer
+      evaluateScores(ctx);
+    }
+
+    if constexpr ((materializeType & MaterializeType::UseStoredValues) ==
+                  MaterializeType::UseStoredValues) {
+      TRI_ASSERT(_doc);
+      this->pushStoredValues(*_doc);
+    }
+    // doc and scores are both pushed, sizes must now be coherent
+    this->_indexReadBuffer.assertSizeCoherence();
+
+    if (iteratorExhausted) {
+      // The iterator is exhausted, we need to continue with the next reader.
+      ++_readerOffset;
+      _currentSegmentPos = 0;
+      _itr.reset();
+      _doc = nullptr;
+
+      // Here we have at least one document in _indexReadBuffer, so we may not
+      // add documents from a new reader.
+      break;
+    }
+    if (this->_indexReadBuffer.size() >= atMost) {
+      break;
     }
   }
 }
@@ -1787,6 +1882,29 @@ template class ::arangodb::aql::IResearchViewMergeExecutor<
     true, true,
     MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>;
 
+template class ::arangodb::aql::IResearchViewHeapSortExecutor<
+    false, true, MaterializeType::NotMaterialize>;
+template class ::arangodb::aql::IResearchViewHeapSortExecutor<
+    false, true, MaterializeType::LateMaterialize>;
+template class ::arangodb::aql::IResearchViewHeapSortExecutor<
+    false, true, MaterializeType::Materialize>;
+template class ::arangodb::aql::IResearchViewHeapSortExecutor<
+    false, true,
+    MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>;
+template class ::arangodb::aql::IResearchViewHeapSortExecutor<
+    false, true,
+    MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>;
+
+// stored values copying implementation should be used only when stored values
+// are used
+template class ::arangodb::aql::IResearchViewHeapSortExecutor<
+    true, true,
+    MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>;
+template class ::arangodb::aql::IResearchViewHeapSortExecutor<
+    true, true,
+    MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>;
+
+
 template class ::arangodb::aql::IResearchViewExecutorBase<
     ::arangodb::aql::IResearchViewExecutor<false, false,
                                            MaterializeType::NotMaterialize>>;
@@ -1892,5 +2010,59 @@ template class ::arangodb::aql::IResearchViewExecutorBase<
         MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>;
 template class ::arangodb::aql::IResearchViewExecutorBase<
     ::arangodb::aql::IResearchViewMergeExecutor<
+        true, true,
+        MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>;
+
+template class ::arangodb::aql::IResearchViewExecutorBase<
+    ::arangodb::aql::IResearchViewHeapSortExecutor<false, false,
+                                           MaterializeType::NotMaterialize>>;
+template class ::arangodb::aql::IResearchViewExecutorBase<
+    ::arangodb::aql::IResearchViewHeapSortExecutor<false, false,
+                                           MaterializeType::LateMaterialize>>;
+template class ::arangodb::aql::IResearchViewExecutorBase<
+    ::arangodb::aql::IResearchViewHeapSortExecutor<false, false,
+                                           MaterializeType::Materialize>>;
+template class ::arangodb::aql::IResearchViewExecutorBase<
+    ::arangodb::aql::IResearchViewHeapSortExecutor<
+        false, false,
+        MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>;
+template class ::arangodb::aql::IResearchViewExecutorBase<
+    ::arangodb::aql::IResearchViewHeapSortExecutor<
+        false, false,
+        MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>;
+
+template class ::arangodb::aql::IResearchViewExecutorBase<
+    ::arangodb::aql::IResearchViewHeapSortExecutor<
+        true, false,
+        MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>;
+template class ::arangodb::aql::IResearchViewExecutorBase<
+    ::arangodb::aql::IResearchViewHeapSortExecutor<
+        true, false,
+        MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>;
+
+template class ::arangodb::aql::IResearchViewExecutorBase<
+    ::arangodb::aql::IResearchViewHeapSortExecutor<false, true,
+                                           MaterializeType::NotMaterialize>>;
+template class ::arangodb::aql::IResearchViewExecutorBase<
+    ::arangodb::aql::IResearchViewHeapSortExecutor<false, true,
+                                           MaterializeType::LateMaterialize>>;
+template class ::arangodb::aql::IResearchViewExecutorBase<
+    ::arangodb::aql::IResearchViewHeapSortExecutor<false, true,
+                                           MaterializeType::Materialize>>;
+template class ::arangodb::aql::IResearchViewExecutorBase<
+    ::arangodb::aql::IResearchViewHeapSortExecutor<
+        false, true,
+        MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>;
+template class ::arangodb::aql::IResearchViewExecutorBase<
+    ::arangodb::aql::IResearchViewHeapSortExecutor<
+        false, true,
+        MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>;
+
+template class ::arangodb::aql::IResearchViewExecutorBase<
+    ::arangodb::aql::IResearchViewHeapSortExecutor<
+        true, true,
+        MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>;
+template class ::arangodb::aql::IResearchViewExecutorBase<
+    ::arangodb::aql::IResearchViewHeapSortExecutor<
         true, true,
         MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>;

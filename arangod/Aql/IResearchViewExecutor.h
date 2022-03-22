@@ -246,6 +246,11 @@ class IndexReadBuffer {
 
   ValueType const& getValue(IndexReadBufferEntry bufferEntry) const noexcept;
 
+  ValueType& getValue(size_t idx) noexcept {
+    TRI_ASSERT(_keyBuffer.size() > idx);
+    return _keyBuffer[idx];
+  }
+
   ScoreIterator getScores(IndexReadBufferEntry bufferEntry) noexcept;
 
   void setScoresSort(std::vector<std::pair<size_t, bool>> const* s) noexcept {
@@ -536,7 +541,7 @@ template<bool copyStored, bool ordered,
          iresearch::MaterializeType materializeType>
 struct IResearchViewExecutorTraits<
     IResearchViewExecutor<copyStored, ordered, materializeType>> {
-  using IndexBufferValueType = std::pair<LocalDocumentId, LogicalCollection const*>;
+  using IndexBufferValueType = LocalDocumentId;
   static constexpr bool Ordered = ordered;
   static constexpr iresearch::MaterializeType MaterializeType = materializeType;
   static constexpr bool CopyStored = copyStored;
@@ -630,6 +635,109 @@ struct IResearchViewExecutorTraits<
     IResearchViewMergeExecutor<copyStored, ordered, materializeType>> {
   using IndexBufferValueType =
       std::pair<LocalDocumentId, LogicalCollection const*>;
+  static constexpr bool Ordered = ordered;
+  static constexpr iresearch::MaterializeType MaterializeType = materializeType;
+  static constexpr bool CopyStored = copyStored;
+};
+
+template<bool copyStored, bool ordered,
+         iresearch::MaterializeType materializeType>
+class IResearchViewHeapSortExecutor
+    : public IResearchViewExecutorBase<
+          IResearchViewHeapSortExecutor<copyStored, ordered, materializeType>> {
+ public:
+  using Base = IResearchViewExecutorBase<
+      IResearchViewHeapSortExecutor<copyStored, ordered, materializeType>>;
+  using Fetcher = typename Base::Fetcher;
+  using Infos = typename Base::Infos;
+
+  IResearchViewHeapSortExecutor(IResearchViewHeapSortExecutor&&) = default;
+  IResearchViewHeapSortExecutor(Fetcher& fetcher, Infos&);
+
+ private:
+  friend Base;
+  using ReadContext = typename Base::ReadContext;
+
+  size_t skip(size_t toSkip);
+  size_t skipAll();
+
+  void reset();
+  void fillBuffer(ReadContext& ctx);
+
+  bool writeRow(ReadContext& ctx, IndexReadBufferEntry bufferEntry);
+}; // ResearchViewHeapSortExecutor
+
+union UnitedDocumentId {
+  irs::doc_id_t irsId;
+  LocalDocumentId adbId;
+};
+
+union UnitedCollectionId {
+  size_t readerOffset;
+  LogicalCollection const* collection;
+};
+
+struct HeapSortExecutorValue {
+  HeapSortExecutorValue(irs::doc_id_t doc, size_t readerOffset) {
+    documentKey.irsId = doc;
+    collection.readerOffset = readerOffset;
+  }
+
+  void decode(LocalDocumentId docId, LogicalCollection const* col) noexcept {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    TRI_ASSERT(!decoded);
+    decoded = true;
+#endif
+
+    documentKey.adbId = docId;
+    collection.collection = col;
+  }
+
+  HeapSortExecutorValue(HeapSortExecutorValue const& other) = default;
+  HeapSortExecutorValue(HeapSortExecutorValue&& other) = default;
+
+  [[nodiscard]] irs::doc_id_t irsDocId() const noexcept {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    TRI_ASSERT(!decoded);
+#endif
+    return documentKey.irsId;
+  }
+
+  [[nodiscard]] size_t readerOffset() const noexcept {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    TRI_ASSERT(!decoded);
+#endif
+    return collection.readerOffset;
+  }
+
+  [[nodiscard]] LocalDocumentId documentId() const noexcept {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    TRI_ASSERT(decoded);
+#endif
+    return documentKey.adbId;
+  }
+
+  [[nodiscard]] LogicalCollection const* collectionPtr() const noexcept {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    TRI_ASSERT(decoded);
+#endif
+    return collection.collection;
+  }
+
+ private:
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  bool decoded{false};
+#endif
+  UnitedDocumentId documentKey;
+  UnitedCollectionId collection;
+};
+
+
+template<bool copyStored, bool ordered,
+         iresearch::MaterializeType materializeType>
+struct IResearchViewExecutorTraits<
+    IResearchViewHeapSortExecutor<copyStored, ordered, materializeType>> {
+  using IndexBufferValueType = HeapSortExecutorValue;
   static constexpr bool Ordered = ordered;
   static constexpr iresearch::MaterializeType MaterializeType = materializeType;
   static constexpr bool CopyStored = copyStored;
