@@ -55,7 +55,7 @@ const NewLinkInput = ({
   return (
     <>
       {!disabled && isEmpty(links) && (
-        <ViewLayout view={view} disabled={disabled}>
+        <ViewLayout view={view}>
           <NewLink
             disabled={addDisabled || !options.includes(collection)}
             addLink={addLink}

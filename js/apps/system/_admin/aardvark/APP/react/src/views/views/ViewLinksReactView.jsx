@@ -1,25 +1,15 @@
-import { cloneDeep, isEmpty, isEqual } from "lodash";
-import React, { useEffect, useReducer, useRef, useState } from "react";
-import { LinkProvider } from "./Contexts/LinkContext";
+import { cloneDeep } from 'lodash';
+import React, { useEffect, useReducer, useRef, useState } from 'react';
+import { getReducer, isAdminUser as userIsAdmin, usePermissions } from '../../utils/helpers';
+import { BackButton, SaveButton } from './Actions';
+import LinkList from './Components/LinkList';
 import {
-  getReducer,
-  isAdminUser as userIsAdmin,
-  usePermissions
-} from "../../utils/helpers";
-import { SaveButton, BackButton } from "./Actions";
-import LinkPropertiesForm from "./forms/LinkPropertiesForm";
-import { buildSubNav, postProcessor, useView, useCollection } from "./helpers";
-import { ArangoTable, ArangoTH, ArangoTD } from "../../components/arango/table";
-import LinkList from "./Components/LinkList";
-import NewList from "./Components/NewLink";
-import { Toast } from "./Notifications/Toast";
-import {
-  useShow,
-  useShowUpdate,
-  useUpdateView,
-  useLinks,
-  useUpdateLinks
-} from "./Contexts/LinkContext";
+  LinkProvider, useLinks, useShow, useShowUpdate, useUpdateLinks, useUpdateView
+} from './Contexts/LinkContext';
+import LinkPropertiesForm from './forms/LinkPropertiesForm';
+import { buildSubNav, postProcessor, useView } from './helpers';
+import { Toast } from './Notifications/Toast';
+
 const ViewLinksReactView = ({ name }) => {
   const initialState = useRef({
     formState: { name },
@@ -67,8 +57,7 @@ const ViewLinksReactView = ({ name }) => {
 
   const formState = state.formState;
 
-  const [viewLink, setViewLink] = useState(false);
-  const [icon, setIcon] = useState("fa-plus-circle");
+  const [icon] = useState("fa-plus-circle");
   const handleNewLinkClick = e => {
     e.preventDefault();
     updateShow("AddNew");
@@ -102,7 +91,7 @@ const ViewLinksReactView = ({ name }) => {
     updateShow("LinkList");
   };
 
-  const handleViewLink = link => {
+  const handleViewLink = () => {
     updateShow("ViewParent");
   };
 
@@ -111,6 +100,7 @@ const ViewLinksReactView = ({ name }) => {
       {show === "LinkList" && (
         <LinkList
           links={links}
+          dispatch={dispatch}
           addClick={handleNewLinkClick}
           viewLink={handleViewLink}
           icon={icon}
@@ -139,7 +129,7 @@ const ViewLinksReactView = ({ name }) => {
             </div>
           </div>
           <div className="modal-footer">
-            <BackButton buttonClick={handleBackClick} />
+            <BackButton buttonClick={handleBackClick} view={formState}/>
             <SaveButton view={formState} oldName={name} />
           </div>
         </div>

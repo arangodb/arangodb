@@ -46,8 +46,7 @@ const FieldView: React.FC<FieldViewPprops> = ({
   const loopFields = (fields: any) => {
     for (const f in fields) {
       if (fieldName === f) {
-        const toReturn = fields[f];
-        return toReturn;
+        return fields[f];
       }
     }
   };
@@ -55,7 +54,7 @@ const FieldView: React.FC<FieldViewPprops> = ({
   const field = loopFields(fields);
 
   return (
-    <ViewLayout disabled={disabled} field={fieldName} view={view} link={link}>
+    <ViewLayout field={fieldName} view={view} link={link}>
       <ArangoTable style={{ marginLeft: 0 }}>
         <tbody>
           <tr key={fieldName} style={{ borderBottom: "1px  solid #794242" }}>

@@ -12,7 +12,7 @@ import { chain, isEmpty, without } from "lodash";
 import { Cell, Grid } from "../../../../components/pure-css/grid";
 import Checkbox from "../../../../components/pure-css/form/Checkbox";
 import { DispatchArgs } from "../../../../utils/constants";
-import { ArangoTD } from "../../../../components/arango/table";
+import { ArangoTable, ArangoTD } from "../../../../components/arango/table";
 import Textbox from "../../../../components/pure-css/form/Textbox";
 import { IconButton } from "../../../../components/arango/buttons";
 import { useLinkState } from "../../helpers";
@@ -138,27 +138,31 @@ const LinkPropertiesInput = ({
         <Grid>
           <Cell size={"1-1"}>
             {disabled ? null : (
-              <>
-                <ArangoTD seq={0} colSpan={2}>
-                  <Textbox
-                    type={"text"}
-                    placeholder={"Field"}
-                    onChange={updateField}
-                    value={field}
-                  />
-                </ArangoTD>
-                <ArangoTD seq={1}>
-                  <IconButton
-                    style={{ marginTop: "12px" }}
-                    icon={"plus"}
-                    type={"warning"}
-                    onClick={addField}
-                    disabled={addDisabled}
-                  >
-                    Add
-                  </IconButton>
-                </ArangoTD>
-              </>
+              <ArangoTable>
+                <tbody>
+                  <tr>
+                    <ArangoTD seq={0} colSpan={2}>
+                      <Textbox
+                        type={"text"}
+                        placeholder={"Field"}
+                        onChange={updateField}
+                        value={field}
+                      />
+                    </ArangoTD>
+                    <ArangoTD seq={1}>
+                      <IconButton
+                        style={{ marginTop: "12px" }}
+                        icon={"plus"}
+                        type={"warning"}
+                        onClick={addField}
+                        disabled={addDisabled}
+                      >
+                        Add
+                      </IconButton>
+                    </ArangoTD>
+                  </tr>
+                </tbody>
+              </ArangoTable>
             )}
           </Cell>
         </Grid>

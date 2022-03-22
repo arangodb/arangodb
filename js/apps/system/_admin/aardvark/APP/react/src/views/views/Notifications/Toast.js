@@ -1,4 +1,3 @@
-import React from "react"
 import Swal from "sweetalert2"
 export const Toast = Swal.mixin({
   toast: false,

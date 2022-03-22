@@ -2,7 +2,7 @@ import React, { Dispatch } from "react";
 import ViewLayout from "./ViewLayout";
 import { DispatchArgs } from "../../../utils/constants";
 import { LinkProperties } from "../constants";
-import { ArangoTD } from "../../../components/arango/table";
+import { ArangoTable, ArangoTD } from "../../../components/arango/table";
 import LinkPropertiesInput from "../forms/inputs/LinkPropertiesInput";
 import { IconButton } from "../../../components/arango/buttons";
 
@@ -36,28 +36,32 @@ const NewLinkView: React.FC<NewLinkViewProps> = ({
   };
 
   return (
-    <ViewLayout view={view} disabled={disabled} link={linkName}>
-      <tr style={{ borderBottom: "1px  solid #DDD" }}>
-        <ArangoTD seq={disabled ? 1 : 2}>
-          <LinkPropertiesInput
-            formState={link.properties}
-            disabled={disabled || !link.properties}
-            dispatch={dispatch}
-            basePath={`links[${link}]`}
-          />
-        </ArangoTD>
-
-        {/* <ArangoTD seq={disabled ? 0 : 1}>{coll}</ArangoTD> */}
-        {disabled ? null : (
-          <ArangoTD seq={0} valign={"middle"}>
-            <IconButton
-              icon={"trash-o"}
-              type={"danger"}
-              onClick={getLinkRemover(link)}
+    <ViewLayout view={view} link={linkName}>
+      <ArangoTable>
+        <tbody>
+          <tr style={{ borderBottom: "1px  solid #DDD" }}>
+          <ArangoTD seq={disabled ? 1 : 2}>
+            <LinkPropertiesInput
+              formState={link.properties}
+              disabled={disabled || !link.properties}
+              dispatch={dispatch}
+              basePath={`links[${link}]`}
             />
           </ArangoTD>
-        )}
-      </tr>
+
+          {/* <ArangoTD seq={disabled ? 0 : 1}>{coll}</ArangoTD> */}
+          {disabled ? null : (
+            <ArangoTD seq={0} valign={"middle"}>
+              <IconButton
+                icon={"trash-o"}
+                type={"danger"}
+                onClick={getLinkRemover(link)}
+              />
+            </ArangoTD>
+          )}
+        </tr>
+        </tbody>
+      </ArangoTable>
     </ViewLayout>
   );
 };

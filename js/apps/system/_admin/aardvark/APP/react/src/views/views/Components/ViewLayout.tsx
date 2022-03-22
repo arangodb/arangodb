@@ -1,16 +1,14 @@
 import React from "react";
-import { ArangoTable, ArangoTH } from "../../../components/arango/table";
+import { ArangoTable, ArangoTD, ArangoTH } from "../../../components/arango/table";
 import { useShow, useShowUpdate } from "../Contexts/LinkContext";
 
 type ViewLayoutProps = {
-  disabled: boolean | undefined;
   view?: string | undefined;
   field?: string;
   link?: string;
 };
 
 const ViewLayout: React.FC<ViewLayoutProps> = ({
-  disabled,
   view,
   field,
   link,
@@ -32,7 +30,7 @@ const ViewLayout: React.FC<ViewLayoutProps> = ({
     <ArangoTable>
       <thead>
         <tr>
-          <ArangoTH seq={disabled ? 0 : 1} style={{ width: "100%" }}>
+          <ArangoTH seq={0} style={{ width: "100%" }}>
             <a href={`/${view}`}>{view}</a>
             <a href={`/${link}`} onClick={e => handleLinkClick(e, link)}>
               {link !== undefined ? "/" + link : ""}
@@ -41,7 +39,7 @@ const ViewLayout: React.FC<ViewLayoutProps> = ({
           </ArangoTH>
         </tr>
       </thead>
-      <tbody>{children}</tbody>
+      <tbody><tr><ArangoTD seq={0}>{children}</ArangoTD></tr></tbody>
     </ArangoTable>
   );
 };
