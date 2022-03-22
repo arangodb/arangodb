@@ -23,8 +23,6 @@
 
 #include "gtest/gtest.h"
 
-#include "fakeit.hpp"
-
 #include "Aql/Query.h"
 #include "Cluster/ServerState.h"
 #include "Graph/Cache/RefactoredTraverserCache.h"

@@ -23,8 +23,6 @@
 
 #include "gtest/gtest.h"
 
-#include "fakeit.hpp"
-
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/Ast.h"
 #include "Aql/ExecutionPlan.h"
