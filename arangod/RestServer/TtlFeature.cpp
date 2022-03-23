@@ -471,7 +471,8 @@ void TtlFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     FATAL_ERROR_EXIT();
   }
 
-  if (_properties.frequency < TtlProperties::minFrequency) {
+  if (_properties.frequency > 0 &&
+      _properties.frequency < TtlProperties::minFrequency) {
     LOG_TOPIC("ea696", FATAL, arangodb::Logger::STARTUP)
         << "too low value for '--ttl.frequency'.";
     FATAL_ERROR_EXIT();
@@ -508,7 +509,7 @@ void TtlFeature::start() {
     return;
   }
 
-  _thread.reset(new TtlThread(server(), *this));
+  _thread = std::make_unique<TtlThread>(server(), *this);
 
   if (!_thread->start()) {
     LOG_TOPIC("33c33", FATAL, Logger::TTL)
