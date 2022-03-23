@@ -291,7 +291,7 @@ TEST_F(ArangoLanguageFeatureTest,
   EXPECT_DEATH(langFeature.prepare(), "");
 }
 
-TEST_F(ArangoLanguageFeatureTest, test_default_lang_check_true) {
+TEST_F(ArangoLanguageFeatureTest, test_default_lang_check_true1) {
   // default-language-check=true
   // test behaviour of --default-language parameter
 
@@ -435,6 +435,152 @@ TEST_F(ArangoLanguageFeatureTest, test_default_lang_check_true) {
     checkCollatorSettings(firstLang.data(), isDefaultLanguage);
   }
 }
+
+TEST_F(ArangoLanguageFeatureTest, test_default_lang_check_true2) {
+  // default-language-check=true
+  // test behaviour of --default-language parameter
+
+  server.addFeatureUntracked<arangodb::LanguageFeature>().collectOptions(
+      server.server().options());
+  server.addFeatureUntracked<arangodb::LanguageCheckFeature>();
+
+  constexpr std::string_view firstLang = "de";
+  constexpr std::string_view secondLang = "ru";
+  constexpr std::string_view defaultParameter = "default-language";
+  constexpr std::string_view icuParameter = "icu-language";
+
+  // Enable force check for languages
+  server.server()
+      .options()
+      ->get<BooleanParameter>("default-language-check")
+      ->set("true");
+
+  // Assume that it is first launch of server
+  {
+    auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
+    auto& langCheckFeature =
+        server.getFeature<arangodb::LanguageCheckFeature>();
+
+    server.server()
+        .options()
+        ->get<StringParameter>(defaultParameter.data())
+        ->set(firstLang.data());
+
+    langFeature.validateOptions(server.server().options());
+
+    // Simulate server launch
+    langFeature.prepare();
+    langCheckFeature.start();
+
+    bool shouldBeLangEqual = true;
+    checkLanguageFile(server.server(), firstLang.data(),
+                      defaultParameter.data(), shouldBeLangEqual);
+    bool isDefaultLanguage = true;
+    checkCollatorSettings(firstLang.data(), isDefaultLanguage);
+  }
+
+  // Assume that server is stoped
+  // We launch it again with parameters
+  {
+    auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
+    auto& langCheckFeature =
+        server.getFeature<arangodb::LanguageCheckFeature>();
+
+    server.server()
+        .options()
+        ->get<StringParameter>(defaultParameter.data())
+        ->set(firstLang.data());
+
+    langFeature.validateOptions(server.server().options());
+
+    // Simulate server launch
+    langFeature.prepare();
+    langCheckFeature.start();
+
+    bool shouldBeLangEqual = true;
+    checkLanguageFile(server.server(), firstLang.data(),
+                      defaultParameter.data(), shouldBeLangEqual);
+    bool isDefaultLanguage = true;
+    checkCollatorSettings(firstLang.data(), isDefaultLanguage);
+  }
+
+  // Assume that server is stoped
+  // We launch it again with parameters
+  {
+    auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
+    auto& langCheckFeature =
+        server.getFeature<arangodb::LanguageCheckFeature>();
+
+    // Now we try to launch server with same parameter but with another lang
+    server.server()
+        .options()
+        ->get<StringParameter>(defaultParameter.data())
+        ->set(secondLang.data());
+
+    langFeature.validateOptions(server.server().options());
+
+    // Simulate server launch
+    langFeature.prepare();
+    bool shouldBeLangEqual = false;
+    checkLanguageFile(server.server(), secondLang.data(),
+                      defaultParameter.data(), shouldBeLangEqual);
+    EXPECT_DEATH(langCheckFeature.start(), "");
+  }
+
+  // Assume that server is stoped
+  // We launch it again with parameters
+  {
+    auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
+    auto& langCheckFeature =
+        server.getFeature<arangodb::LanguageCheckFeature>();
+
+    // Now we try to launch server with different parameter
+    server.server()
+        .options()
+        ->get<StringParameter>(defaultParameter.data())
+        ->set("");  // clear value for defaultParameter
+    server.server()
+        .options()
+        ->get<StringParameter>(icuParameter.data())
+        ->set(secondLang.data());
+
+    langFeature.validateOptions(server.server().options());
+
+    // Simulate server launch
+    langFeature.prepare();
+    EXPECT_DEATH(langCheckFeature.start(), "");
+  }
+
+  // Assume that server is stoped
+  // We launch it again with parameters
+  {
+    auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
+    auto& langCheckFeature =
+        server.getFeature<arangodb::LanguageCheckFeature>();
+
+    server.server()
+        .options()
+        ->get<StringParameter>(defaultParameter.data())
+        ->set("");  // clear value for parameter
+    server.server()
+        .options()
+        ->get<StringParameter>(icuParameter.data())
+        ->set("");  // clear value for parameter
+
+    langFeature.validateOptions(server.server().options());
+
+    // Simulate server launch
+    langFeature.prepare();
+    langCheckFeature.start();
+
+    bool shouldBeLangEqual = true;
+    checkLanguageFile(server.server(), firstLang.data(),
+                      defaultParameter.data(), shouldBeLangEqual);
+    bool isDefaultLanguage = true;
+    checkCollatorSettings(firstLang.data(), isDefaultLanguage);
+  }
+}
+
 
 TEST_F(ArangoLanguageFeatureTest, test_default_lang_check_false) {
   // default-language-check=true

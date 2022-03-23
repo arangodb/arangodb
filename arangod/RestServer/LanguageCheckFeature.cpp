@@ -47,13 +47,15 @@ constexpr std::string_view kIcuLangKey = "icu-language";
 /// @brief reads previous default langauge from file
 arangodb::Result readLanguage(
     arangodb::application_features::ApplicationServer& server,
-    std::string& language, LanguageType& type) {
+    std::string& language, LanguageType& type, bool& isFileExists) {
   auto& databasePath = server.getFeature<arangodb::DatabasePathFeature>();
   std::string filename = databasePath.subdirectoryName("LANGUAGE");
 
   if (!TRI_ExistsFile(filename.c_str())) {
+    isFileExists = false;
     return TRI_ERROR_FILE_NOT_FOUND;
   }
+  isFileExists = true;
 
   try {
     VPackBuilder builder = VelocyPackHelper::velocyPackFromFile(filename);
@@ -153,22 +155,23 @@ ErrorCode writeLanguage(
   return TRI_ERROR_NO_ERROR;
 }
 
-std::tuple<std::string, LanguageType> getOrSetPreviousLanguage(
+std::tuple<std::string, LanguageType, bool> getOrSetPreviousLanguage(
     arangodb::application_features::ApplicationServer& server,
     std::string_view collatorLang, LanguageType currLangType) {
   std::string prevLanguage;
   LanguageType prevType;
-  arangodb::Result res = ::readLanguage(server, prevLanguage, prevType);
+  bool isFileExists = false;
+  arangodb::Result res = ::readLanguage(server, prevLanguage, prevType, isFileExists);
 
   if (res.ok()) {
-    TRI_ASSERT(!prevLanguage.empty());
-    return {prevLanguage, prevType};
+//    TRI_ASSERT(!prevLanguage.empty());
+    return {prevLanguage, prevType, isFileExists};
   }
 
   // okay, we didn't find it, let's write out the input instead
   ::writeLanguage(server, collatorLang, currLangType);
 
-  return {std::string{collatorLang}, currLangType};
+  return {std::string{collatorLang}, currLangType, isFileExists};
 }
 }  // namespace
 
@@ -191,7 +194,7 @@ void LanguageCheckFeature::start() {
   auto [currLang, currLangType] = feature.getLanguage();
   auto collatorLang = feature.getCollatorLanguage();
 
-  auto [prevLang, prevLangType] =
+  auto [prevLang, prevLangType, isFileExists] =
       ::getOrSetPreviousLanguage(server(), collatorLang, currLangType);
 
   if (LanguageType::INVALID == currLangType) {
@@ -208,7 +211,7 @@ void LanguageCheckFeature::start() {
     return;
   }
 
-  if (collatorLang != prevLang || prevLangType != currLangType) {
+  if ((currLang != prevLang && collatorLang.empty() && isFileExists) || collatorLang != prevLang || prevLangType != currLangType) {
     if (feature.forceLanguageCheck()) {
       // current not empty and not the same as previous, get out!
       LOG_TOPIC("7ef60", FATAL, arangodb::Logger::CONFIG)
