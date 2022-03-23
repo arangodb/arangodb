@@ -645,7 +645,7 @@ void Manager::freeUnusedTables() {
 
   for (std::size_t i = 0; i < tableEntries; i++) {
     while (!_tables[i].empty()) {
-      auto table = std::move(_tables[i].top());
+      auto& table = _tables[i].top();
       std::uint64_t memoryUsage = table->memoryUsage();
       _globalAllocation -= memoryUsage;
 

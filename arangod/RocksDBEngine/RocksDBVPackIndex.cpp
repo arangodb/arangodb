@@ -196,13 +196,7 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
   /// @brief Get the next limit many element in the index
   bool nextImpl(LocalDocumentIdCallback const& cb, size_t limit) override {
     return nextImplementation(
-        [&cb, this](VPackSlice cachedData) {
-          TRI_ASSERT(cachedData.isArray());
-          TRI_ASSERT(cachedData.length() ==
-                     (_index->hasStoredValues() ? 3 : 2));
-
-          VPackArrayIterator it(cachedData);
-          TRI_ASSERT(it.value().isNumber());
+        [&cb, this](VPackArrayIterator it) {
           LocalDocumentId documentId{it.value().getNumericValue<uint64_t>()};
           cb(documentId);
         },
@@ -215,13 +209,7 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
 
   bool nextCoveringImpl(CoveringCallback const& cb, size_t limit) override {
     return nextImplementation(
-        [&cb, this](VPackSlice cachedData) {
-          TRI_ASSERT(cachedData.isArray());
-          TRI_ASSERT(cachedData.length() ==
-                     (_index->hasStoredValues() ? 3 : 2));
-
-          VPackArrayIterator it(cachedData);
-          TRI_ASSERT(it.value().isNumber());
+        [&cb, this](VPackArrayIterator it) {
           LocalDocumentId documentId{it.value().getNumericValue<uint64_t>()};
           it.next();
           VPackSlice value = it.value();
@@ -279,7 +267,11 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
         // We got sth. in the cache
         VPackSlice cachedData(finding.value()->value());
         if (!cachedData.isEmptyArray()) {
-          handleCacheEntry(cachedData);
+          TRI_ASSERT(cachedData.length() ==
+                     (_index->hasStoredValues() ? 3 : 2));
+          VPackArrayIterator it(cachedData);
+          TRI_ASSERT(it.value().isNumber());
+          handleCacheEntry(it);
         }
         return false;
       } else {

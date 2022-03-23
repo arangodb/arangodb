@@ -205,6 +205,8 @@ function VPackIndexCacheModifySuite (unique) {
   const canUseFailAt =  internal.debugCanUseFailAt();
 
   const n = 2000;
+
+  const maxTries = 3;
   
   let setFailurePointForPointLookup = () => {
     if (canUseFailAt) {
@@ -248,7 +250,7 @@ function VPackIndexCacheModifySuite (unique) {
     testPointLookupAndTruncate: function () {
       setFailurePointForPointLookup();
 
-      for (let tries = 0; tries < 3; ++tries) {
+      for (let tries = 0; tries < maxTries; ++tries) {
         if (tries !== 0) {
           db[cn].truncate();
           insertDocuments();
@@ -276,6 +278,12 @@ function VPackIndexCacheModifySuite (unique) {
         }
         stats = qres.getExtra().stats;
         assertEqual(1000, stats.cacheHits + stats.cacheMisses, stats);
+        // upon last round of tries, assume we have read at least
+        // _something_ from the cache. we cannot assume that everything
+        // was read from the cache because we don't have control over
+        // the entire caching subsystem from the tests and the interaction
+        // between different caches, cache migration events etc.
+        assertTrue(tries < maxTries - 1 || stats.cacheHits > 0, stats);
       }
     },
     
@@ -286,7 +294,7 @@ function VPackIndexCacheModifySuite (unique) {
       for (let i = 0; i < n; ++i) {
         keys.push("test" + i);
       }
-      for (let tries = 0; tries < 3; ++tries) {
+      for (let tries = 0; tries < maxTries; ++tries) {
         if (tries !== 0) {
           db[cn].remove(keys);
           insertDocuments();
@@ -314,6 +322,12 @@ function VPackIndexCacheModifySuite (unique) {
         }
         stats = qres.getExtra().stats;
         assertEqual(1000, stats.cacheHits + stats.cacheMisses, stats);
+        // upon last round of tries, assume we have read at least
+        // _something_ from the cache. we cannot assume that everything
+        // was read from the cache because we don't have control over
+        // the entire caching subsystem from the tests and the interaction
+        // between different caches, cache migration events etc.
+        assertTrue(tries < maxTries - 1 || stats.cacheHits > 0, stats);
       }
     },
     
@@ -324,7 +338,7 @@ function VPackIndexCacheModifySuite (unique) {
       for (let i = 0; i < n; ++i) {
         keys.push("test" + i);
       }
-      for (let tries = 0; tries < 3; ++tries) {
+      for (let tries = 0; tries < maxTries; ++tries) {
         if (tries !== 0) {
           let updates = [];
           for (let i = 0; i < n; ++i) {
@@ -362,6 +376,12 @@ function VPackIndexCacheModifySuite (unique) {
         }
         stats = qres.getExtra().stats;
         assertEqual(1000, stats.cacheHits + stats.cacheMisses, stats);
+        // upon last round of tries, assume we have read at least
+        // _something_ from the cache. we cannot assume that everything
+        // was read from the cache because we don't have control over
+        // the entire caching subsystem from the tests and the interaction
+        // between different caches, cache migration events etc.
+        assertTrue(tries < maxTries - 1 || stats.cacheHits > 0, stats);
       }
     },
 

@@ -37,6 +37,8 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
+#include <utility>
+
 using namespace arangodb;
 using namespace arangodb::aql;
 
@@ -307,15 +309,11 @@ void DocumentProducingFunctionContext::incrFiltered() noexcept {
 }
 
 uint64_t DocumentProducingFunctionContext::getAndResetNumScanned() noexcept {
-  uint64_t const numScanned = _numScanned;
-  _numScanned = 0;
-  return numScanned;
+  return std::exchange(_numScanned, 0);
 }
 
 uint64_t DocumentProducingFunctionContext::getAndResetNumFiltered() noexcept {
-  uint64_t const numFiltered = _numFiltered;
-  _numFiltered = 0;
-  return numFiltered;
+  return std::exchange(_numFiltered, 0);
 }
 
 InputAqlItemRow const& DocumentProducingFunctionContext::getInputRow()

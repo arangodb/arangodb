@@ -27,6 +27,7 @@
 #include "Graph/EdgeDocumentToken.h"
 
 #include <velocypack/Slice.h>
+#include <utility>
 #include <vector>
 
 namespace arangodb {
@@ -145,9 +146,7 @@ class PathEnumerator {
 
   /// @brief return number of HTTP requests made, and reset it to 0
   [[nodiscard]] size_t getAndResetHttpRequests() {
-    size_t value = _httpRequests;
-    _httpRequests = 0;
-    return value;
+    return std::exchange(_httpRequests, 0);
   }
 
   void incHttpRequests(size_t requests) { _httpRequests += requests; }

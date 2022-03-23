@@ -36,16 +36,15 @@ namespace arangodb::cache {
 struct VPackKeyHasher {
   static constexpr std::string_view name() { return "VPackKeyHasher"; }
 
-  static inline std::uint32_t hashKey(void const* key,
-                                      std::size_t /*keySize*/) noexcept {
-    return (std::max)(static_cast<std::uint32_t>(1),
+  static std::uint32_t hashKey(void const* key,
+                               std::size_t /*keySize*/) noexcept {
+    return (std::max)(std::uint32_t{1},
                       VPackSlice(static_cast<std::uint8_t const*>(key))
                           .normalizedHash32(0xdeadbeefUL));
   }
 
-  static inline bool sameKey(void const* key1, std::size_t /*keySize1*/,
-                             void const* key2,
-                             std::size_t /*keySize2*/) noexcept {
+  static bool sameKey(void const* key1, std::size_t /*keySize1*/,
+                      void const* key2, std::size_t /*keySize2*/) noexcept {
     int res = arangodb::basics::VelocyPackHelper::compare(
         VPackSlice(static_cast<std::uint8_t const*>(key1)),
         VPackSlice(static_cast<std::uint8_t const*>(key2)), true);

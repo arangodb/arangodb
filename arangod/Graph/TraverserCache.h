@@ -32,6 +32,7 @@
 #include <cstdint>
 #include <string_view>
 #include <unordered_set>
+#include <utility>
 
 namespace arangodb {
 
@@ -92,39 +93,27 @@ class TraverserCache {
                             arangodb::aql::AqlValue& result);
 
   [[nodiscard]] std::uint64_t getAndResetInsertedDocuments() {
-    std::uint64_t value = _insertedDocuments;
-    _insertedDocuments = 0;
-    return value;
+    return std::exchange(_insertedDocuments, 0);
   }
 
   [[nodiscard]] std::uint64_t getAndResetFiltered() {
-    std::uint64_t value = _filtered;
-    _filtered = 0;
-    return value;
+    return std::exchange(_filtered, 0);
   }
 
   [[nodiscard]] std::uint64_t getAndResetCursorsCreated() {
-    std::uint64_t value = _cursorsCreated;
-    _cursorsCreated = 0;
-    return value;
+    return std::exchange(_cursorsCreated, 0);
   }
 
   [[nodiscard]] std::uint64_t getAndResetCursorsRearmed() {
-    std::uint64_t value = _cursorsRearmed;
-    _cursorsRearmed = 0;
-    return value;
+    return std::exchange(_cursorsRearmed, 0);
   }
 
   [[nodiscard]] std::uint64_t getAndResetCacheHits() {
-    std::uint64_t value = _cacheHits;
-    _cacheHits = 0;
-    return value;
+    return std::exchange(_cacheHits, 0);
   }
 
   [[nodiscard]] std::uint64_t getAndResetCacheMisses() {
-    std::uint64_t value = _cacheMisses;
-    _cacheMisses = 0;
-    return value;
+    return std::exchange(_cacheMisses, 0);
   }
 
   //////////////////////////////////////////////////////////////////////////////

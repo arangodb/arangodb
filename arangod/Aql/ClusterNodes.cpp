@@ -73,7 +73,7 @@ constexpr std::string_view kParallelismParallel("parallel");
 constexpr std::string_view kParallelismSerial("serial");
 constexpr std::string_view kParallelismUndefined("undefined");
 
-std::string_view toString(GatherNode::Parallelism value) noexcept {
+constexpr std::string_view toString(GatherNode::Parallelism value) noexcept {
   switch (value) {
     case GatherNode::Parallelism::Parallel:
       return kParallelismParallel;
@@ -85,7 +85,8 @@ std::string_view toString(GatherNode::Parallelism value) noexcept {
   }
 }
 
-GatherNode::Parallelism parallelismFromString(std::string const& value) {
+constexpr GatherNode::Parallelism parallelismFromString(
+    std::string_view value) noexcept {
   if (value == kParallelismParallel) {
     return GatherNode::Parallelism::Parallel;
   } else if (value == kParallelismSerial) {

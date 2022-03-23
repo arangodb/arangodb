@@ -327,27 +327,19 @@ void IndexExecutor::CursorStats::incrCacheMisses(std::uint64_t value) noexcept {
 }
 
 std::uint64_t IndexExecutor::CursorStats::getAndResetCursorsCreated() noexcept {
-  std::uint64_t value = cursorsCreated;
-  cursorsCreated = 0;
-  return value;
+  return std::exchange(cursorsCreated, 0);
 }
 
 std::uint64_t IndexExecutor::CursorStats::getAndResetCursorsRearmed() noexcept {
-  std::uint64_t value = cursorsRearmed;
-  cursorsRearmed = 0;
-  return value;
+  return std::exchange(cursorsRearmed, 0);
 }
 
 std::uint64_t IndexExecutor::CursorStats::getAndResetCacheHits() noexcept {
-  std::uint64_t value = cacheHits;
-  cacheHits = 0;
-  return value;
+  return std::exchange(cacheHits, 0);
 }
 
 std::uint64_t IndexExecutor::CursorStats::getAndResetCacheMisses() noexcept {
-  std::uint64_t value = cacheMisses;
-  cacheMisses = 0;
-  return value;
+  return std::exchange(cacheMisses, 0);
 }
 
 IndexExecutor::CursorReader::CursorReader(
