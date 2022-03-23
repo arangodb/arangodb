@@ -101,6 +101,11 @@ function PrototypeStateTestSuite() {
       const {B: valueB, C: valueC} = state.read(["B", "C"]);
       assertEqual(valueB, "2");
       assertEqual(valueC, "3");
+
+      const nonExisting = state.read("DOES-NOT-EXIST");
+      assertEqual(nonExisting, undefined);
+      const otherNonEx = state.read(["STILL-DOES-NOT-EXIST"]);
+      assertEqual(otherNonEx, {});
     },
 
     testSnapshotWaitFor: function() {
