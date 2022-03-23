@@ -103,7 +103,6 @@ function queryAnalysisSuite () {
       arango.DELETE(slow);
     },
 
-
     tearDown: function() {
       // Let the queries finish;
       let count = 0;
@@ -112,7 +111,7 @@ function queryAnalysisSuite () {
         if (res.length === 0) {
           break;
         }
-        res.forEach( q => {
+        res.forEach(q => {
           if (q["query"].search('SLEEP') >= 0) {
             arango.DELETE(api + '/' + q["id"]);
           }
@@ -123,12 +122,13 @@ function queryAnalysisSuite () {
         }
         sleep(1);
       }
+      arango.DELETE(slow);
     },
+
     test_should_activate_tracking: function() {
       let doc = arango.PUT_RAW(properties, {enable: true});
       assertEqual(doc.code, 200);
     },
-
 
     test_should_track_running_queries: function() {
       send_queries();
