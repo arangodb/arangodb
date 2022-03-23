@@ -429,7 +429,6 @@ auto ClusterProvider<StepImpl>::fetchEdges(
     // else: We already fetched this vertex.
 
     // mark a looseEnd as fetched as vertex fetch + edges fetch was a success
-    LOG_DEVEL << "(fetchEdges) setFetched: " << *step;
     step->setFetched();
   }
   return TRI_ERROR_NO_ERROR;
