@@ -176,7 +176,7 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
   let forceTerminate = false;
   let graphCount = 0;
   let usersCount = 0;
-  if (testname !== 'agency') {
+  if ((testname !== 'agency') && (testname !== 'authentication')){
     usersCount = userManager.all().length;
   }
   for (let i = 0; i < testList.length; i++) {
