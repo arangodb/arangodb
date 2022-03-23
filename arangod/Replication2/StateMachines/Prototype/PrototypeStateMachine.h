@@ -314,19 +314,6 @@ struct PrototypeFactory {
 
 }  // namespace prototype
 
-template<>
-struct EntryDeserializer<prototype::PrototypeLogEntry> {
-  auto operator()(streams::serializer_tag_t<prototype::PrototypeLogEntry>,
-                  velocypack::Slice s) const -> prototype::PrototypeLogEntry;
-};
-
-template<>
-struct EntrySerializer<prototype::PrototypeLogEntry> {
-  void operator()(streams::serializer_tag_t<prototype::PrototypeLogEntry>,
-                  prototype::PrototypeLogEntry const& e,
-                  velocypack::Builder& b) const;
-};
-
 extern template struct replicated_state::ReplicatedState<
     prototype::PrototypeState>;
 }  // namespace arangodb::replication2::replicated_state
