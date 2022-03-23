@@ -1,6 +1,8 @@
 devel
 -----
 
+* Resync follower shard after a follower restart immediately and not lazily.
+
 * Updated arangosync to v2.9.0-preview-1.
 
 * Updated ArangoDB Starter to 0.15.4-preview-1.
