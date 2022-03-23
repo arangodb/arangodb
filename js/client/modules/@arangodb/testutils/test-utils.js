@@ -178,7 +178,7 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
   let usersCount = 0;
   if (testname !== 'agency') {
     usersCount = userManager.all().length;
-  };
+  }
   for (let i = 0; i < testList.length; i++) {
     let te = testList[i];
     let filtered = {};
