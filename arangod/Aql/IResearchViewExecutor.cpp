@@ -944,7 +944,7 @@ IResearchViewExecutor<copyStored, ordered,
       _numScores(0) {
   this->_storedValuesReaders.resize(
      this->_infos.getOutNonMaterializedViewRegs().size());
-  this->_indexReadBuffer.setScoresSort(&this->_infos.scoresSort());
+  TRI_ASSERT(infos.scoresSort().empty());
 }
 
 template<bool copyStored, bool ordered, MaterializeType materializeType>
@@ -992,49 +992,55 @@ bool IResearchViewExecutor<copyStored, ordered, materializeType>::readPK(
 }
 
 template<bool copyStored, bool ordered, MaterializeType materializeType>
+IResearchViewHeapSortExecutor<copyStored, ordered, materializeType>::
+    IResearchViewHeapSortExecutor(Fetcher& fetcher, Infos& infos)
+    : Base(fetcher, infos) {
+  this->_storedValuesReaders.resize(
+      this->_infos.getOutNonMaterializedViewRegs().size());
+  this->_indexReadBuffer.setScoresSort(&this->_infos.scoresSort());
+}
+
+
+template<bool copyStored, bool ordered, MaterializeType materializeType>
 size_t IResearchViewHeapSortExecutor<copyStored, ordered, materializeType>::skipAll() {
   TRI_ASSERT(this->_indexReadBuffer.empty());
   TRI_ASSERT(this->_filter);
-
-  size_t skipped = 0;
-
-  return this->_indexReadBuffer.size();
+  fillBufferInternal();
+  auto const maxBufferSize =
+      (std::min)(_totalCount, this->_infos.scoresSortLimit());
+  auto const bufferLeft = this->_indexReadBuffer.size();
+  TRI_ASSERT(maxBufferSize >= bufferLeft);
+  auto const totalSkipped = _totalCount - (maxBufferSize - this->_indexReadBuffer.size());
+  this->_indexReadBuffer.reset();
+  _totalCount = 0;
+  return totalSkipped;
 }
+
 
 template<bool copyStored, bool ordered, MaterializeType materializeType>
 size_t IResearchViewHeapSortExecutor<copyStored, ordered, materializeType>::skip(
     size_t limit) {
-  TRI_ASSERT(this->_indexReadBuffer.empty());
-  TRI_ASSERT(this->_filter);
-
-  size_t const toSkip = limit;
-
-  for (size_t count = this->_reader->size(); _readerOffset < count;
-       ++_readerOffset) {
-    if (!_itr && !resetIterator()) {
-      continue;
-    }
-
-    while (limit && _itr->next()) {
-      ++_currentSegmentPos;
-      ++_totalPos;
+  fillBufferInternal();
+  if (limit >= this->_indexReadBuffer.size()) {
+    auto const skipped = this->_indexReadBuffer.size();
+    this->_indexReadBuffer.reset();
+    _totalCount = 0;
+    return skipped;
+  } else {
+    size_t const toSkip = limit;
+    while (limit) {
+      this->_indexReadBuffer.pop_front();
       --limit;
     }
-
-    if (!limit) {
-      break;  // do not change iterator if already reached limit
-    }
-    _itr.reset();
-    _doc = nullptr;
+    return toSkip;
   }
-  saveCollection();
-  return toSkip - limit;
 }
 
 template<bool copyStored, bool ordered, MaterializeType materializeType>
 void IResearchViewHeapSortExecutor<copyStored, ordered, materializeType>::reset() {
   Base::reset();
-  _readerOffset = 0;
+  _totalCount = 0;
+  _bufferFilled = false;
 }
 
 template<bool copyStored, bool ordered, MaterializeType materializeType>
@@ -1048,26 +1054,35 @@ bool IResearchViewHeapSortExecutor<copyStored, ordered, materializeType>::writeR
 
 template<bool copyStored, bool ordered, MaterializeType materializeType>
 void IResearchViewHeapSortExecutor<copyStored, ordered, materializeType>::fillBuffer(
-    IResearchViewHeapSortExecutor::ReadContext& ctx) {
+    IResearchViewHeapSortExecutor::ReadContext&) {
+  fillBufferInternal();
+}
+
+template<bool copyStored, bool ordered, MaterializeType materializeType>
+void IResearchViewHeapSortExecutor<copyStored, ordered,
+                                   materializeType>::fillBufferInternal() {
+  if (_bufferFilled) {
+    return;
+  }
+  _bufferFilled = true;
   TRI_ASSERT(!this->_infos.scoresSort().empty());
   TRI_ASSERT(this->_filter != nullptr);
   size_t const atMost = this->_infos.scoresSortLimit();
   TRI_ASSERT(atMost);
-  TRI_ASSERT(this->_indexReadBuffer.empty());
   this->_indexReadBuffer.reset();
   this->_indexReadBuffer.preAllocateStoredValuesBuffer(
       atMost, this->_infos.getScoreRegisters().size(),
       this->_infos.getOutNonMaterializedViewRegs().size());
   size_t const count = this->_reader->size();
 
-  irs::doc_iterator::ptr _itr;
+  irs::doc_iterator::ptr itr;
   irs::document const* doc{};
   size_t numScores{0};
   irs::score const* scr;
-  for (; _readerOffset < count;) {
+  for (size_t readerOffset = 0; readerOffset < count;) {
     if (!itr) {
       {
-        auto& segmentReader = (*this->_reader)[_readerOffset];
+        auto& segmentReader = (*this->_reader)[readerOffset];
         itr = this->_filter->execute(segmentReader, this->_order,
                                       &this->_filterCtx);
         TRI_ASSERT(itr);
@@ -1090,25 +1105,19 @@ void IResearchViewHeapSortExecutor<copyStored, ordered, materializeType>::fillBu
       }
     }
     if (!itr->next()) {
-       ++_readerOffset;
+       ++readerOffset;
        itr.reset();
        doc = nullptr;
        scr = nullptr;
        continue;
     }
+    ++_totalCount;
     auto scoresBegin = reinterpret_cast<float_t const*>(scr->evaluate());
     this->_indexReadBuffer.pushSortedValue(
         typename decltype(this->_indexReadBuffer)::KeyValueType(
-            doc->value, _readerOffset),
+            doc->value, readerOffset),
         scoresBegin, numScores);
 
-    // TODO  (Dronplane) Handle stored values somehow (don`t read/store rejected
-    // by heap!
-    // if constexpr ((materializeType & MaterializeType::UseStoredValues) ==
-    //              MaterializeType::UseStoredValues) {
-    //  TRI_ASSERT(_doc);
-    //  this->pushStoredValues(*_doc);
-    //}
     // doc and scores are both pushed, sizes must now be coherent
     
     // TODO(Dronplane) reenable check but keep in mind - stored values will be written later
@@ -1119,10 +1128,10 @@ void IResearchViewHeapSortExecutor<copyStored, ordered, materializeType>::fillBu
 
     std::vector<size_t> pkReadingOrder(atMost);
     std::iota(pkReadingOrder.begin(), pkReadingOrder.end(), 0);
-    std::sort(pkReadingOrder.begin(), pkReadingOrder.end(), [buffer = this->_indexReadBuffer](
-      size_t lhs, size_t rhs) {
-      auto const& lhs_val = buffer.getValue(lhs);
-      auto const& rhs_val = buffer.getValue(rhs);
+    std::sort(pkReadingOrder.begin(), pkReadingOrder.end(), [buffer = &this->_indexReadBuffer] (
+      size_t lhs, size_t rhs) -> bool {
+      auto const& lhs_val = buffer->getValue(lhs);
+      auto const& rhs_val = buffer->getValue(rhs);
       if (lhs_val.readerOffset() < rhs_val.readerOffset()) {
         return true;
       } else if (lhs_val.readerOffset() > rhs_val.readerOffset()) {
@@ -1137,8 +1146,8 @@ void IResearchViewHeapSortExecutor<copyStored, ordered, materializeType>::fillBu
     std::shared_ptr<arangodb::LogicalCollection> collection;
     for (auto orderIt = pkReadingOrder.begin(); orderIt != pkReadingOrder.end();) {
       auto& value = this->_indexReadBuffer.getValue(*orderIt);
-      if (lastSegmentIdx != value.segmentOffset()) {
-        lastSegmentIdx = value.segmentOffset();
+      if (lastSegmentIdx != value.readerOffset()) {
+        lastSegmentIdx = value.readerOffset();
         auto& segmentReader = (*this->_reader)[lastSegmentIdx];
         auto pkIt = ::pkColumn(segmentReader);
         pkReader.itr.reset();
@@ -1151,14 +1160,14 @@ void IResearchViewHeapSortExecutor<copyStored, ordered, materializeType>::fillBu
           while ((++orderIt) != pkReadingOrder.end() && *orderIt == lastSegmentIdx) { }
           continue;
         }
-        ::reset(pkReader, pkIt);
+        ::reset(pkReader, std::move(pkIt));
       }
 
       LocalDocumentId documentId;
-      if (value.documentKey.irsId ==
-          segment.pkReader.itr->seek(value.documentKey.irsId)) {
+      if (value.irsDocId() ==
+          pkReader.itr->seek(value.irsDocId())) {
         bool const readSuccess =
-            DocumentPrimaryKey::read(documentId, value.documentKey.irsId);
+            DocumentPrimaryKey::read(documentId, pkReader.value->value);
 
         TRI_ASSERT(readSuccess == documentId.isSet());
 
@@ -1166,9 +1175,17 @@ void IResearchViewHeapSortExecutor<copyStored, ordered, materializeType>::fillBu
           LOG_TOPIC("6423f", WARN, arangodb::iresearch::TOPIC)
               << "failed to read document primary key while reading document "
                  "from arangosearch view, doc_id '"
-              << value.documentKey.irsId << "'";
+              << value.irsDocId() << "'";
         }
       }
+      // TODO  (Dronplane) Handle stored values somehow (don`t read/store
+      // rejected
+      // by heap!
+      // if constexpr ((materializeType & MaterializeType::UseStoredValues) ==
+      //              MaterializeType::UseStoredValues) {
+      //  TRI_ASSERT(_doc);
+      //  this->pushStoredValues(*_doc);
+      //}
       value.decode(documentId, collection.get());
       ++orderIt;
     }
@@ -1445,8 +1462,8 @@ bool IResearchViewExecutor<copyStored, ordered, materializeType>::writeRow(
 
   auto const& val = this->_indexReadBuffer.getValue(bufferEntry);
   return Base::writeRow(ctx, bufferEntry,
-                        val.first,
-                        *val.second);
+                        val,
+                        *_collection);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1463,6 +1480,7 @@ IResearchViewMergeExecutor<copyStored, ordered, materializeType>::
   TRI_ASSERT(!infos.sort().first->empty());
   TRI_ASSERT(infos.sort().first->size() >= infos.sort().second);
   TRI_ASSERT(infos.sort().second);
+  TRI_ASSERT(infos.scoresSort().empty());
 }
 
 template<bool copyStored, bool ordered, MaterializeType materializeType>

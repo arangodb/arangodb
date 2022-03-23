@@ -663,13 +663,17 @@ class IResearchViewHeapSortExecutor
 
   void reset();
   void fillBuffer(ReadContext& ctx);
+  void fillBufferInternal();
 
   bool writeRow(ReadContext& ctx, IndexReadBufferEntry bufferEntry);
+
+  size_t _totalCount{};
+  bool _bufferFilled{false};
 }; // ResearchViewHeapSortExecutor
 
 union UnitedDocumentId {
   irs::doc_id_t irsId;
-  LocalDocumentId adbId;
+  typename LocalDocumentId::BaseType adbId;
 };
 
 union UnitedCollectionId {
@@ -689,7 +693,7 @@ struct HeapSortExecutorValue {
     decoded = true;
 #endif
 
-    documentKey.adbId = docId;
+    documentKey.adbId = docId.id();
     collection.collection = col;
   }
 
@@ -714,7 +718,7 @@ struct HeapSortExecutorValue {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     TRI_ASSERT(decoded);
 #endif
-    return documentKey.adbId;
+    return LocalDocumentId(documentKey.adbId);
   }
 
   [[nodiscard]] LogicalCollection const* collectionPtr() const noexcept {
