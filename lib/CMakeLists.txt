@@ -250,12 +250,10 @@ target_link_libraries(arango zlib_interface)
 add_dependencies(arango v8_build)
 
 set(FROZEN_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/3rdParty/iresearch/external/frozen/include")
-set(ABSL_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/3rdParty/iresearch/external/absl")
 
 target_include_directories(arango
   PUBLIC
   ${FROZEN_INCLUDE_DIR}
-  ${ABSL_INCLUDE_DIR}
 )
 
 add_dependencies(arango snappy)
