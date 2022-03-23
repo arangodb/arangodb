@@ -27,9 +27,10 @@
 namespace arangodb::containers {
 
 template<class K, class V,
-         class Hash = absl::container_internal::hash_default_hash<K>,
-         class Eq = absl::container_internal::hash_default_eq<K>,
-         class Allocator = std::allocator<std::pair<const K, V>>>
+         class Hash = typename absl::flat_hash_map<K, V>::hasher,
+         class Eq = typename absl::flat_hash_map<K, V, Hash>::key_equal,
+         class Allocator =
+             typename absl::flat_hash_map<K, V, Hash, Eq>::allocator_type>
 using FlatHashMap = absl::flat_hash_map<K, V, Hash, Eq, Allocator>;
 
 }  // namespace arangodb::containers

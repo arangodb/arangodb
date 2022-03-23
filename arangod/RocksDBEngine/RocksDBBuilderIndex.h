@@ -37,7 +37,8 @@ class RocksDBCollection;
 /// and adds some required synchronization logic on top
 class RocksDBBuilderIndex final : public arangodb::RocksDBIndex {
  public:
-  explicit RocksDBBuilderIndex(std::shared_ptr<arangodb::RocksDBIndex> const&);
+  explicit RocksDBBuilderIndex(std::shared_ptr<arangodb::RocksDBIndex>,
+                               uint64_t numDocsHint);
 
   /// @brief return a VelocyPack representation of the index
   void toVelocyPack(
@@ -122,6 +123,7 @@ class RocksDBBuilderIndex final : public arangodb::RocksDBIndex {
 
  private:
   std::shared_ptr<arangodb::RocksDBIndex> _wrapped;
+  std::uint64_t _numDocsHint;
   std::atomic<uint64_t> _docsProcessed;
 };
 }  // namespace arangodb

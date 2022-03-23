@@ -179,8 +179,10 @@ Result RocksDBSettingsManager::sync(bool force) {
   bool didWork = false;
   auto mappings = _engine.collectionMappings();
 
-  // reserve 1MB of scratch space to work with
-  _scratch.reserve(10485760);
+  // reserve a bit of scratch space to work with.
+  // note: the scratch buffer is recycled, so we can start
+  // small here. it will grow as needed.
+  _scratch.reserve(128 * 1024);
 
   for (auto const& pair : mappings) {
     TRI_voc_tick_t dbid = pair.first;
