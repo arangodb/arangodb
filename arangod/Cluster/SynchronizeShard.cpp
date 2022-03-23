@@ -810,15 +810,17 @@ bool SynchronizeShard::first() {
           current.end()) {
         break;  // start synchronization work
       }
-      // We are already there, this is rather strange, but never mind:
+      // This was the normal case. However, if we have been away for a short
+      // amount of time and the leader has not yet noticed that we were gone,
+      // we might actually get here and try to resync and are still in Current.
+      // In this case, we write a log message and sync anyway:
       std::stringstream error;
-      error << "already done, ";
+      error << "already done, but resyncing anyways";
       AppendShardInformationToMessage(database, shard, planId, startTime,
                                       error);
       LOG_TOPIC("4abcb", DEBUG, Logger::MAINTENANCE)
           << "SynchronizeOneShard: " << error.str();
-      result(TRI_ERROR_FAILED, error.str());
-      return false;
+      break;
     }
 
     LOG_TOPIC("28600", DEBUG, Logger::MAINTENANCE)
