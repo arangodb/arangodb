@@ -206,7 +206,7 @@ describe('UserProperties', function () {
     }
 
     // cleanup root users config we might have been modified in any of our tests
-    const cleanupRootUrl = generateWriteConfigUrl(rootUser, rootDB);
+    const cleanupRootUrl = generateWriteConfigUrl(rootUser);
     arango.DELETE_RAW(cleanupRootUrl);
   });
 
@@ -242,7 +242,7 @@ describe('UserProperties', function () {
     verifyOverwriteConfigObject(response.parsedBody);
 
     // now try a merge with another storage attribute
-    const additionalWriteUrl = generateWriteConfigUrl(user, database, additionalPropertyAttribute);
+    const additionalWriteUrl = generateWriteConfigUrl(user, additionalPropertyAttribute);
     response = arango.PUT_RAW(additionalWriteUrl, generateConfigBody(mergeConfigObject));
     expect(response.code).to.equal(200);
     response = arango.GET_RAW(readUrl);
