@@ -63,37 +63,21 @@ ArangoPrototypeState.prototype.drop = function () {
   arangosh.checkRequestResult(requestResult);
 };
 
-
-// s.write("key", "value", {options})
-// s.write({"key":"value", ...}, {options})
-ArangoPrototypeState.prototype.write = function (...args) {
-  if (args.length === 3) {
-    return this.write({[args[0]]: args[1]}, args[2]);
-  }
-  if (args.length === 1) {
-    return this.write(args[0], {});
-  }
-  if (args.length !== 2) {
-    throw new Error("invalid arguments");
-  }
-  const [values, options] = args;
-
-  let query = `/insert?waitForCommit=${options.waitForCommit || false}`
+ArangoPrototypeState.prototype._writeInternal = function (values, options) {
+  let query = `/insert?waitForCommit=${options.waitForCommit || true}`
       + `&waitForSync=${options.waitForSync || false}`
-      + `&waitForApplied=${options.waitForApplied || false}`;
+      + `&waitForApplied=${options.waitForApplied || true}`;
   let requestResult = this._database._connection.POST(this._baseurl() + query, values);
   arangosh.checkRequestResult(requestResult);
   return requestResult.result.index;
 };
 
-// s.read("key", {options})
-// s.read(["key1", "key2"], {options})
-ArangoPrototypeState.prototype.read = function (keys, options) {
-  if (!(keys instanceof Array)) {
-    keys = [keys];
-  }
 
+ArangoPrototypeState.prototype._readInternal = function (keys, options) {
   let query = `/multi-get?waitForApplied=${options.waitForApplied || 0}`;
+  if (options.readFrom !== undefined) {
+    query += `&readFrom=${encodeURIComponent(options.readFrom)}`;
+  }
   let requestResult = this._database._connection.POST(this._baseurl() + query, keys);
   arangosh.checkRequestResult(requestResult);
   return requestResult.result;
@@ -112,3 +96,5 @@ ArangoPrototypeState.prototype.getSnapshot = function (waitForIndex) {
 ArangoPrototypeState.prototype.toString = function () {
   return `[object ArangoPrototypeState ${this._database._name()}/${this.id()}]`;
 };
+
+require('@arangodb/arango-prototype-state-common');

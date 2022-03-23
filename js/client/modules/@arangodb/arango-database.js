@@ -56,7 +56,7 @@ ArangoView = require('@arangodb/arango-view').ArangoView;
 var ArangoError = require('@arangodb').ArangoError;
 var ArangoStatement = require('@arangodb/arango-statement').ArangoStatement;
 let ArangoTransaction = require('@arangodb/arango-transaction').ArangoTransaction;
-const ArangoPrototypeState = require("@arangodb/prototype-state").ArangoPrototypeState;
+const ArangoPrototypeState = require("@arangodb/arango-prototype-state").ArangoPrototypeState;
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief index id regex
