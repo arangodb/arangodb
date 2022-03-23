@@ -1206,8 +1206,6 @@ v3.9.0-alpha.1 (2021-11-30)
 
 * Fixed proper return value in sendRequestRetry if server is shutting down.
 
-* Updated arangosync to 2.2.0.
-
 * Fixed internal issue #798: In  rare case when remove request
   completely cleans just consolidated segment commit could be cancelled
   and documents removed from collection may be left dangling in the ArangoSearch index.
