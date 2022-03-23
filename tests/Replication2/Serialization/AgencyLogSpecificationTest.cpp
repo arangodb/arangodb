@@ -167,7 +167,7 @@ TEST(AgencyLogSpecificationTest, log_target_test) {
     config.replicationFactor = 3;
     config.writeConcern = 2;
     config.softWriteConcern = 2;
-    config.waitForSync = false;
+    config.waitForSync = true;
 
     auto expectedTarget = LogTarget(
         LogId{12},
@@ -188,6 +188,7 @@ TEST(AgencyLogSpecificationTest, log_target_test) {
 
     auto jsonSlice = velocypack::Slice(jsonBuffer->data());
     auto target = deserialize<LogTarget>(jsonSlice);
+
     EXPECT_EQ(target, expectedTarget);
   }
 }
