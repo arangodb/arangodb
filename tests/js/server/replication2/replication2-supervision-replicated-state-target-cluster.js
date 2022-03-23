@@ -179,6 +179,28 @@ const replicatedStateSuite = function () {
         [newParticipant]: {allowedInQuorum: true, allowedAsLeader: true, forced: false},
       }));
     },
+
+    testUpdateVersionTest: function () {
+      const {stateId} = createReplicatedState();
+
+      const version = 4;
+      updateReplicatedStateTarget(database, stateId,
+          function (target) {
+            target.version = version;
+            return target;
+          });
+
+      lh.waitFor(spreds.replicatedStateVersionConverged(database, stateId, version));
+
+      const newVersion = 6;
+      updateReplicatedStateTarget(database, stateId,
+          function (target) {
+            target.version = newVersion;
+            return target;
+          });
+
+      lh.waitFor(spreds.replicatedStateVersionConverged(database, stateId, newVersion));
+    }
   };
 };
 

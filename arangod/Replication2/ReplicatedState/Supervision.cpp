@@ -142,6 +142,10 @@ auto hasConverged(replication2::replicated_state::agency::State const& state)
 auto checkConverged(arangodb::replication2::agency::Log const& log,
                     replication2::replicated_state::agency::State const& state)
     -> Action {
+  if (!state.target.version.has_value()) {
+    return EmptyAction();
+  }
+
   if (!state.current or !state.current->supervision) {
     return CurrentConvergedAction{0};
   }
@@ -155,7 +159,7 @@ auto checkConverged(arangodb::replication2::agency::Log const& log,
   if (!hasConverged(state)) {
     return EmptyAction{};
   }
-  return CurrentConvergedAction{state.target.version};
+  return CurrentConvergedAction{*state.target.version};
 }
 
 auto isEmptyAction(Action const& action) {

@@ -178,7 +178,9 @@ void Target::toVelocyPack(velocypack::Builder& builder) const {
   properties.toVelocyPack(builder);
   builder.add(velocypack::Value(StaticStrings::Config));
   config.toVelocyPack(builder);
-  builder.add(StaticStrings::Version, version);
+  if (version.has_value()) {
+    builder.add(StaticStrings::Version, *version);
+  }
 }
 
 auto Target::fromVelocyPack(velocypack::Slice slice) -> Target {
@@ -194,7 +196,10 @@ auto Target::fromVelocyPack(velocypack::Slice slice) -> Target {
       Properties::fromVelocyPack(slice.get(StaticStrings::Properties));
 
   auto config = LogConfig(slice.get(StaticStrings::Config));
-  auto version = slice.get(StaticStrings::Version).extract<std::uint64_t>();
+  auto version = std::optional<std::uint64_t>{};
+  if (auto vs = slice.get(StaticStrings::Version); !vs.isNone()) {
+    version = vs.extract<std::uint64_t>();
+  }
 
   return Target{.id = id,
                 .properties = std::move(properties),
