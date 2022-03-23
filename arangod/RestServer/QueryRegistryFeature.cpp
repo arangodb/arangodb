@@ -33,6 +33,7 @@
 #include "Basics/NumberOfCores.h"
 #include "Basics/PhysicalMemory.h"
 #include "Basics/application-exit.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -198,8 +199,8 @@ QueryRegistryFeature::QueryRegistryFeature(Server& server)
           arangodb_aql_query_time{})),
       _slowQueryTimes(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_aql_slow_query_time{})),
-      _totalQueryExecutionTime(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_aql_total_query_time_msec_total{})),
+      _totalQueryExecutionTime(server.getFeature<metrics::MetricsFeature>().add( 
+         arangodb_aql_total_query_time_msec_total{})),
       _queriesCounter(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_aql_all_query_total{})),
       _runningQueries(server.getFeature<metrics::MetricsFeature>().add(
@@ -224,6 +225,8 @@ QueryRegistryFeature::QueryRegistryFeature(Server& server)
   _queryCacheMaxResultsSize = properties.maxResultsSize;
   _queryCacheMaxEntrySize = properties.maxEntrySize;
   _queryCacheIncludeSystem = properties.includeSystem;
+
+  startsAfter<ClusterFeature>();
 }
 
 void QueryRegistryFeature::collectOptions(
