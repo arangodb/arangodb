@@ -177,7 +177,7 @@ function dealing_with_database_manipulation_methodsSuite () {
       db._flushCache();
       db._users.toArray().forEach(user => {
         if (user.user !== "root") {
-          arango.DELETE_RAW("/_api/user/" + user.user);
+          arango.DELETE_RAW("/_api/user/" + encodeURIComponent(user.user));
         }
       });
     },
