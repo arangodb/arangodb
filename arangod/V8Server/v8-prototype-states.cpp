@@ -240,7 +240,6 @@ static void JS_GetSnapshot(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-
 static void JS_ReadInternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
@@ -257,17 +256,15 @@ static void JS_ReadInternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("_readInternal(ks [, options])");
   }
 
-
   std::vector<std::string> keys;
   VPackBuilder builder;
   TRI_V8ToVPack(isolate, builder, args[0], false, false);
-  for (auto const& key: VPackArrayIterator (builder.slice())) {
+  for (auto const& key : VPackArrayIterator(builder.slice())) {
     keys.emplace_back(key.copyString());
   }
 
-  auto const result = PrototypeStateMethods::createInstance(vocbase)
-                          ->get(id, keys)
-                          .get();
+  auto const result =
+      PrototypeStateMethods::createInstance(vocbase)->get(id, keys).get();
   VPackBuilder response;
   {
     VPackObjectBuilder ob(&response);
