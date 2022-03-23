@@ -102,12 +102,14 @@ auto OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex()
   // Pull next element from Queue
   // Do 1 step search
   TRI_ASSERT(!_queue.isEmpty());
+  std::vector<Step*> preparedEnds;
   if (!_queue.hasProcessableElement()) {
     std::vector<Step*> looseEnds = _queue.getLooseEnds();
-    futures::Future<std::vector<Step*>> futureEnds = _provider.fetch(looseEnds);
+    futures::Future<std::vector<Step*>> futureEnds =
+        _provider.fetchVertices(looseEnds);
 
     // Will throw all network errors here
-    auto&& preparedEnds = futureEnds.get();
+    preparedEnds = std::move(futureEnds.get());
 
     TRI_ASSERT(preparedEnds.size() != 0);
     TRI_ASSERT(_queue.hasProcessableElement());
@@ -143,6 +145,9 @@ auto OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex()
   }
 
   if (step.getDepth() < _options.getMaxDepth() && !res.isPruned()) {
+    if (not step.edgesFetched()) {
+      _provider.fetchEdges(preparedEnds);
+    }
     _provider.expand(step, posPrevious,
                      [&](Step n) -> void { _queue.append(n); });
   }

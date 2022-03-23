@@ -60,6 +60,15 @@ class FifoQueue {
     guard.steal();  // now we are responsible for tracking the memory
   }
 
+  bool firstIsVertexFetched() const {
+    if (not isEmpty()) {
+      auto const& first = _queue.front();
+      return first.vertexFetched();
+    }
+    return false;
+  }
+
+  // todo: rename to firstElementIsProcessable
   bool hasProcessableElement() const {
     if (!isEmpty()) {
       auto const& first = _queue.front();

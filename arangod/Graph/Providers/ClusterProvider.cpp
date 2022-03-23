@@ -221,6 +221,7 @@ void ClusterProvider<StepImpl>::fetchVerticesFromEngines(
                                     VPackSlice::nullSlice());
     }
     result.emplace_back(lE);
+    lE->setFetchedVertex();
   }
 }
 
@@ -388,9 +389,8 @@ Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(Step* step) {
 }
 
 template<class StepImpl>
-auto ClusterProvider<StepImpl>::fetch(std::vector<Step*> const& looseEnds)
-    -> futures::Future<std::vector<Step*>> {
-  LOG_TOPIC("03c1b", TRACE, Logger::GRAPHS) << "<ClusterProvider> Fetching...";
+auto ClusterProvider<StepImpl>::fetchVertices(
+    const std::vector<Step*>& looseEnds) -> std::vector<Step*> {
   std::vector<Step*> result{};
 
   if (!looseEnds.empty()) {
@@ -410,24 +410,37 @@ auto ClusterProvider<StepImpl>::fetch(std::vector<Step*> const& looseEnds)
       fetchVerticesFromEngines(looseEnds, result);
       _stats.addHttpRequests(_opts.engines()->size() * looseEnds.size());
     }
-
-    for (auto const& step : result) {
-      if (!_vertexConnectedEdges.contains(step->getVertex().getID())) {
-        auto res = fetchEdgesFromEngines(step);
-        _stats.addHttpRequests(_opts.engines()->size());
-
-        if (res.fail()) {
-          THROW_ARANGO_EXCEPTION(res);
-        }
-      }
-      // else: We already fetched this vertex.
-
-      // mark a looseEnd as fetched as vertex fetch + edges fetch was a success
-      step->setFetched();
-    }
   }
+  return result;
+}
 
-  // Note: Discuss if we want to keep it that way in the future.
+template<class StepImpl>
+auto ClusterProvider<StepImpl>::fetchEdges(
+    std::vector<Step*> const& fetchedVertices) -> Result {
+  for (auto const& step : fetchedVertices) {
+    if (!_vertexConnectedEdges.contains(step->getVertex().getID())) {
+      auto res = fetchEdgesFromEngines(step);
+      _stats.addHttpRequests(_opts.engines()->size());
+
+      if (res.fail()) {
+        THROW_ARANGO_EXCEPTION(res);
+      }
+    }
+    // else: We already fetched this vertex.
+
+    // mark a looseEnd as fetched as vertex fetch + edges fetch was a success
+    LOG_DEVEL << "(fetchEdges) setFetched: " << *step;
+    step->setFetched();
+  }
+  return TRI_ERROR_NO_ERROR;
+}
+
+template<class StepImpl>
+auto ClusterProvider<StepImpl>::fetch(std::vector<Step*> const& looseEnds)
+    -> futures::Future<std::vector<Step*>> {
+  LOG_TOPIC("03c1b", TRACE, Logger::GRAPHS) << "<ClusterProvider> Fetching...";
+  std::vector<Step*> result = fetchVertices(looseEnds);
+  fetchEdges(result);
   return futures::makeFuture(std::move(result));
 }
 
@@ -444,13 +457,15 @@ auto ClusterProvider<StepImpl>::expand(
 
   if (ADB_LIKELY(relations != _vertexConnectedEdges.end())) {
     for (auto const& relation : relations->second) {
-      bool const fetchedTargetVertex =
-          _vertexConnectedEdges.contains(relation.second);
+      bool vertexCached = _opts.getCache()->isVertexCached(relation.second);
+      bool edgesCached = _vertexConnectedEdges.contains(relation.second);
+      typename Step::FetchedType fetchedType =
+          Step::getFetchedType(vertexCached, edgesCached);
       // [GraphRefactor] TODO: KShortestPaths does not require Depth/Weight. We
       // need a mechanism here as well to distinguish between (non)required
       // parameters.
       callback(
-          Step{relation.second, relation.first, previous, fetchedTargetVertex,
+          Step{relation.second, relation.first, previous, fetchedType,
                step.getDepth() + 1,
                _opts.weightEdge(step.getWeight(), readEdge(relation.first))});
     }

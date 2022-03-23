@@ -118,6 +118,14 @@ class SingleServerProviderStep
   friend auto operator<<(std::ostream& out,
                          SingleServerProviderStep const& step) -> std::ostream&;
 
+  static bool vertexFetched() {
+    return true;
+  }
+
+  static bool edgesFetched() {
+    return true;
+  }
+
  private:
   Vertex _vertex;
   Edge _edge;

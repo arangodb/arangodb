@@ -236,6 +236,19 @@ arangodb::aql::TraversalStats SingleServerProvider<Step>::stealStats() {
   return t;
 }
 
+template<class StepType>
+auto SingleServerProvider<StepType>::fetchVertices(
+    const std::vector<Step*>& looseEnds)
+    -> futures::Future<std::vector<Step*>> {
+  return std::move(fetch(looseEnds));
+}
+
+template<class StepType>
+auto SingleServerProvider<StepType>::fetchEdges(
+    const std::vector<Step*>& fetchedVertices) -> Result {
+  return TRI_ERROR_NO_ERROR;
+}
+
 template class arangodb::graph::SingleServerProvider<SingleServerProviderStep>;
 
 #ifdef USE_ENTERPRISE

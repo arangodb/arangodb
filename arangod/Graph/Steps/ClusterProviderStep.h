@@ -75,13 +75,37 @@ class ClusterProviderStep
     EdgeType _edge;
   };
 
+  enum class FetchedType {
+    UNFETCHED,
+    VERTEX_FETCHED,
+    EDGES_FETCHED,
+    VERTEX_AND_EDGES_FETCHED
+  };
+
+  static FetchedType getFetchedType(bool vertexFetched, bool edgesFetched) {
+    if (vertexFetched) {
+      if (edgesFetched) {
+        return FetchedType::VERTEX_AND_EDGES_FETCHED;
+      } else {
+        return FetchedType::VERTEX_FETCHED;
+      }
+    } else {
+      if (edgesFetched) {
+        return FetchedType::EDGES_FETCHED;
+      } else {
+        return FetchedType::UNFETCHED;
+      }
+    }
+  }
+
  private:
   ClusterProviderStep(const VertexType& v, const EdgeType& edge, size_t prev);
-  ClusterProviderStep(VertexType v, EdgeType edge, size_t prev, bool fetched);
-  ClusterProviderStep(VertexType v, EdgeType edge, size_t prev, bool fetched,
-                      size_t depth);
-  ClusterProviderStep(VertexType v, EdgeType edge, size_t prev, bool fetched,
-                      size_t depth, double weight);
+  ClusterProviderStep(VertexType v, EdgeType edge, size_t prev,
+                      FetchedType fetched);
+  ClusterProviderStep(VertexType v, EdgeType edge, size_t prev,
+                      FetchedType fetched, size_t depth);
+  ClusterProviderStep(VertexType v, EdgeType edge, size_t prev,
+                      FetchedType fetched, size_t depth, double weight);
   ClusterProviderStep(VertexType v, size_t depth, double weight = 0.0);
 
   explicit ClusterProviderStep(const VertexType& v);
@@ -97,10 +121,24 @@ class ClusterProviderStep
   [[nodiscard]] Edge const& getEdge() const { return _edge; }
 
   [[nodiscard]] std::string toString() const {
-    return "<Step><Vertex>: " + _vertex.getID().toString();
+    return "<Step><Vertex>: " + _vertex.getID().toString() +
+           ", fetched: " + std::to_string(int(_fetchedStatus));
   }
+
+  bool vertexFetched() const {
+    return _fetchedStatus == FetchedType::VERTEX_FETCHED or
+           _fetchedStatus == FetchedType::VERTEX_AND_EDGES_FETCHED;
+  }
+
+  bool edgesFetched() const {
+    return _fetchedStatus == FetchedType::EDGES_FETCHED or
+           _fetchedStatus == FetchedType::VERTEX_AND_EDGES_FETCHED;
+  }
+
   [[nodiscard]] bool isProcessable() const { return !isLooseEnd(); }
-  [[nodiscard]] bool isLooseEnd() const { return !_fetched; }
+  [[nodiscard]] bool isLooseEnd() const {
+    return _fetchedStatus == FetchedType::UNFETCHED;
+  }
 
   [[nodiscard]] VertexType getVertexIdentifier() const {
     return _vertex.getID();
@@ -121,12 +159,16 @@ class ClusterProviderStep
       -> std::ostream&;
 
  private:
-  void setFetched() { _fetched = true; }
+  void setFetched() { _fetchedStatus = FetchedType::VERTEX_AND_EDGES_FETCHED; }
+  void setFetchedVertex() { _fetchedStatus = FetchedType::VERTEX_FETCHED; }
+  void setFetchedEdges() {
+    _fetchedStatus = FetchedType::VERTEX_AND_EDGES_FETCHED;
+  }
 
  private:
   Vertex _vertex;
   Edge _edge;
-  bool _fetched;
+  FetchedType _fetchedStatus;
 };
 
 }  // namespace arangodb::graph

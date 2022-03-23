@@ -73,6 +73,16 @@ void QueueTracer<QueueImpl>::append(typename QueueImpl::Step step) {
 }
 
 template<class QueueImpl>
+bool QueueTracer<QueueImpl>::firstIsVertexFetched() const {
+  double start = TRI_microtime();
+  auto sg = arangodb::scopeGuard([&]() noexcept {
+    _stats["firstIsVertexFetched"].addTiming(TRI_microtime() - start);
+  });
+  return _impl.firstIsVertexFetched();
+
+}
+
+template<class QueueImpl>
 bool QueueTracer<QueueImpl>::hasProcessableElement() const {
   double start = TRI_microtime();
   // umpfh, this can extend _stats, thus requires mutability, may allocate
