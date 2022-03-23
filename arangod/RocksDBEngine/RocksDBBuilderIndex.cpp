@@ -80,7 +80,7 @@ struct BuilderCookie : public arangodb::TransactionState::Cookie {
 }  // namespace
 
 RocksDBBuilderIndex::RocksDBBuilderIndex(
-    std::shared_ptr<arangodb::RocksDBIndex> const& wp)
+    std::shared_ptr<arangodb::RocksDBIndex> wp, uint64_t numDocsHint)
     : RocksDBIndex(wp->id(), wp->collection(), wp->name(), wp->fields(),
                    wp->unique(), wp->sparse(), wp->columnFamily(),
                    wp->objectId(), /*useCache*/ false,
@@ -91,7 +91,8 @@ RocksDBBuilderIndex::RocksDBBuilderIndex(
                        .server()
                        .getFeature<EngineSelectorFeature>()
                        .engine<RocksDBEngine>()),
-      _wrapped(wp),
+      _wrapped(std::move(wp)),
+      _numDocsHint(numDocsHint),
       _docsProcessed(0) {
   TRI_ASSERT(_wrapped);
 }
@@ -311,6 +312,15 @@ arangodb::Result RocksDBBuilderIndex::fillIndexForeground() {
     _docsProcessed.fetch_add(docsProcessed, std::memory_order_relaxed);
   };
 
+  // reserve some space in WriteBatch
+  size_t batchSize = 1024 * 1024;
+  if (_numDocsHint >= 1024) {
+    batchSize = 4 * 1024 * 1024;
+  }
+  if (_numDocsHint >= 8192) {
+    batchSize = 32 * 1024 * 1024;
+  }
+
   Result res;
   auto& selector =
       _collection.vocbase().server().getFeature<EngineSelectorFeature>();
@@ -320,14 +330,14 @@ arangodb::Result RocksDBBuilderIndex::fillIndexForeground() {
     const rocksdb::Comparator* cmp = internal->columnFamily()->GetComparator();
     // unique index. we need to keep track of all our changes because we need to
     // avoid duplicate index keys. must therefore use a WriteBatchWithIndex
-    rocksdb::WriteBatchWithIndex batch(cmp, 32 * 1024 * 1024);
+    rocksdb::WriteBatchWithIndex batch(cmp, batchSize);
     RocksDBBatchedWithIndexMethods methods(engine.db(), &batch);
     res =
         ::fillIndex<true>(db, *internal, methods, batch, snap, reportProgress);
   } else {
     // non-unique index. all index keys will be unique anyway because they
     // contain the document id we can therefore get away with a cheap WriteBatch
-    rocksdb::WriteBatch batch(32 * 1024 * 1024);
+    rocksdb::WriteBatch batch(batchSize);
     RocksDBBatchedMethods methods(&batch);
     res =
         ::fillIndex<true>(db, *internal, methods, batch, snap, reportProgress);
