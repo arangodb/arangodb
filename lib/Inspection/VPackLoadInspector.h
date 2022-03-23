@@ -191,13 +191,6 @@ struct VPackLoadInspector : InspectorBase<VPackLoadInspector> {
     U fallbackValue;
   };
 
-  template<>
-  struct FallbackContainer<VPackLoadInspector::Keep> {
-    explicit FallbackContainer(VPackLoadInspector::Keep&&) {}
-    template<class T>
-    void apply(T&) const noexcept {}
-  };
-
   template<class Invariant>
   struct InvariantContainer {
     explicit InvariantContainer(Invariant&& invariant)
@@ -323,6 +316,13 @@ struct VPackLoadInspector : InspectorBase<VPackLoadInspector> {
 
   velocypack::Slice _slice;
   ParseOptions _options;
+};
+
+template<>
+struct VPackLoadInspector::FallbackContainer<VPackLoadInspector::Keep> {
+  explicit FallbackContainer(VPackLoadInspector::Keep&&) {}
+  template<class T>
+  void apply(T&) const noexcept {}
 };
 
 }  // namespace arangodb::inspection
