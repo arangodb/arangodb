@@ -274,7 +274,7 @@ struct ParticipantFlags {
 template<class Inspector>
 auto inspect(Inspector& f, ParticipantFlags& x) {
   return f.object(x).fields(
-      f.field("forced", x.forced),
+      f.field("forced", x.forced).fallback(false),
       f.field("allowedInQuorum", x.allowedInQuorum).fallback(true),
       f.field("allowedAsLeader", x.allowedAsLeader).fallback(true));
 }
