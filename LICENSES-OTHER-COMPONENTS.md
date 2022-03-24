@@ -13,6 +13,16 @@
 
 ## C/C++ Libraries
 
+### Abseil - C++ Common Libraries
+
+* Name: abseil-cpp
+* Version: 7f850b3167fb38e6b4a9ce1824e6fabd733b5d62
+* Date: 2022-02-18
+* Project Home: https://abseil.io
+* License: https://raw.githubusercontent.com/abseil/abseil-cpp/master/LICENSE
+* License Name: Apache License 2.0
+* License Id: Apache-2.0
+
 ### Boost
 
 * Name: Boost
