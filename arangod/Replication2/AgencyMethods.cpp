@@ -298,7 +298,8 @@ auto methods::replaceReplicatedStateParticipant(
         if (resultT.ok() && *resultT == 0) {
           return Result(
               TRI_ERROR_HTTP_PRECONDITION_FAILED,
-              "Failed to replace participant. Either the to-be-replaced one is "
+              "Refused to replace participant. Either the to-be-replaced one "
+              "is "
               "not part of the participants, or the new one already was.");
         }
         return resultT.result();
@@ -327,7 +328,9 @@ auto methods::replaceReplicatedSetLeader(TRI_vocbase_t& vocbase, LogId id,
   return sendAgencyWriteTransaction(std::move(trx))
       .thenValue([](ResultT<std::uint64_t>&& resultT) {
         if (resultT.ok() && *resultT == 0) {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_HTTP_SERVER_ERROR);
+          return Result(TRI_ERROR_HTTP_PRECONDITION_FAILED,
+                        "Refused to set the new leader: It's not part of the "
+                        "participants.");
         }
         return resultT.result();
       });
