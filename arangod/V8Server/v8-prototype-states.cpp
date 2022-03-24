@@ -105,7 +105,10 @@ static void JS_GetPrototypeState(
         std::string("No access to replicated log '") + to_string(id) + "'");
   }
 
-  auto state = vocbase.getReplicatedStateById(id);
+  auto res = PrototypeStateMethods::createInstance(vocbase)->status(id).get();
+  if (res.fail()) {
+    THROW_ARANGO_EXCEPTION(res.result());
+  }
   auto result = WrapPrototypeState(isolate, id);
   TRI_V8_RETURN(result);
 

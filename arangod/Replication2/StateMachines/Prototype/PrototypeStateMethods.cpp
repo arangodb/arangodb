@@ -41,6 +41,7 @@
 
 #include "PrototypeStateMethods.h"
 #include "Replication2/ReplicatedState/AgencySpecification.h"
+#include "Inspection/VPack.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -92,6 +93,17 @@ struct PrototypeStateMethodsDBServer final : PrototypeStateMethods {
     return leader->remove(std::move(keys));
   }
 
+  auto status(LogId id) const
+      -> futures::Future<ResultT<PrototypeStatus>> override {
+    std::ignore = getPrototypeStateLeaderById(id);
+    return PrototypeStatus{id};  // TODO
+  }
+
+  auto createState(CreateOptions options) const
+      -> futures::Future<ResultT<CreateResult>> override {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+
  private:
   [[nodiscard]] auto getPrototypeStateLeaderById(LogId id) const
       -> std::shared_ptr<PrototypeLeaderState> {
@@ -111,12 +123,6 @@ struct PrototypeStateMethodsDBServer final : PrototypeStateMethods {
               "Failed to get leader of ProtoypeState with id ", id));
     }
     return leader;
-  }
-
- public:
-  auto createState(CreateOptions options) const
-      -> futures::Future<ResultT<CreateResult>> override {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
  private:
@@ -339,6 +345,24 @@ struct PrototypeStateMethodsCoordinator final
       target.participants[server];
     }
     return target;
+  }
+
+  auto status(LogId id) const
+      -> futures::Future<ResultT<PrototypeStatus>> override {
+    auto path = basics::StringUtils::joinT("/", "_api/prototype-state", id);
+    network::RequestOptions opts;
+    opts.database = _vocbase.name();
+
+    return network::sendRequest(_pool, "server:" + getLogLeader(id),
+                                fuerte::RestVerb::Get, path, {}, opts)
+        .thenValue([](network::Response&& resp) -> ResultT<PrototypeStatus> {
+          if (resp.fail() || !fuerte::statusIsSuccess(resp.statusCode())) {
+            THROW_ARANGO_EXCEPTION(resp.combinedResult());
+          } else {
+            return velocypack::deserialize<PrototypeStatus>(
+                resp.slice().get("result"));
+          }
+        });
   }
 
   auto createState(CreateOptions options) const

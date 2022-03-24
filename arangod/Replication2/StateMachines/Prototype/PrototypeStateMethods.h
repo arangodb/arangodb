@@ -87,6 +87,14 @@ struct PrototypeStateMethods {
                                     std::vector<std::string> keys) const
       -> futures::Future<ResultT<LogIndex>> = 0;
 
+  struct PrototypeStatus {
+    // TODO
+    LogId id;
+  };
+
+  [[nodiscard]] virtual auto status(LogId) const
+      -> futures::Future<ResultT<PrototypeStatus>> = 0;
+
   static auto createInstance(TRI_vocbase_t& vocbase)
       -> std::shared_ptr<PrototypeStateMethods>;
 };
@@ -101,6 +109,10 @@ auto inspect(Inspector& f, PrototypeStateMethods::CreateOptions& x) {
 template<class Inspector>
 auto inspect(Inspector& f, PrototypeStateMethods::CreateResult& x) {
   return f.object(x).fields(f.field("id", x.id), f.field("servers", x.servers));
+}
+template<class Inspector>
+auto inspect(Inspector& f, PrototypeStateMethods::PrototypeStatus& x) {
+  return f.object(x).fields(f.field("id", x.id));
 }
 
 }  // namespace arangodb::replication2

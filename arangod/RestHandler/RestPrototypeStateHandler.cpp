@@ -212,13 +212,30 @@ RestStatus RestPrototypeStateHandler::handlePostRetrieveMulti(
 RestStatus RestPrototypeStateHandler::handleGetRequest(
     PrototypeStateMethods const& methods) {
   std::vector<std::string> const& suffixes = _request->suffixes();
+  if (suffixes.empty()) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "expect GET /_api/prototype-state/<state-id>");
+    return RestStatus::DONE;
+  }
+  LogId logId{basics::StringUtils::uint64(suffixes[0])};
+  if (suffixes.size() == 1) {
+    return waitForFuture(methods.status(logId).thenValue([&](auto&& result) {
+      if (result.fail()) {
+        generateError(result.result());
+      } else {
+        VPackBuilder response;
+        velocypack::serialize(response, result.get());
+        generateOk(rest::ResponseCode::OK, response.slice());
+      }
+      return RestStatus::DONE;
+    }));
+  }
+
   if (suffixes.size() < 2) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expect GET /_api/prototype-state/<state-id>/[verb]");
     return RestStatus::DONE;
   }
-
-  LogId logId{basics::StringUtils::uint64(suffixes[0])};
   auto const& verb = suffixes[1];
   if (verb == "entry") {
     return handleGetEntry(methods, logId);

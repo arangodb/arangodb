@@ -69,7 +69,8 @@ function PrototypeStateTestSuite() {
 
     testCreateAndDropPrototypeState: function () {
       const state = db._createPrototypeState({config});
-      // state.drop(); -- TODO
+      const same = db._prototypeState(state.id());
+      assertEqual(state.id(), same.id());
     },
 
     testWriteEntries: function () {
