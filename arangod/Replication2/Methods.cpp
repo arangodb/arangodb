@@ -716,7 +716,7 @@ struct ReplicatedStateDBServerMethods
     THROW_ARANGO_EXCEPTION(TRI_ERROR_HTTP_NOT_IMPLEMENTED);
   }
 
-  auto setLeader(LogId id, ParticipantId const& leaderId) const
+  auto setLeader(LogId id, std::optional<ParticipantId> const& leaderId) const
       -> futures::Future<Result> override {
     // Only available on the coordinator
     THROW_ARANGO_EXCEPTION(TRI_ERROR_HTTP_NOT_IMPLEMENTED);
@@ -789,7 +789,7 @@ struct ReplicatedStateCoordinatorMethods
         vocbase, id, participantToRemove, participantToAdd);
   }
 
-  auto setLeader(LogId id, ParticipantId const& leaderId) const
+  auto setLeader(LogId id, std::optional<ParticipantId> const& leaderId) const
       -> futures::Future<Result> override {
     return replication2::agency::methods::replaceReplicatedSetLeader(
         vocbase, id, leaderId);

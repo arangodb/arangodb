@@ -272,8 +272,8 @@ auto methods::createReplicatedState(
 }
 
 auto methods::replaceReplicatedStateParticipant(
-    TRI_vocbase_t& vocbase, LogId id, const ParticipantId& participantToRemove,
-    const ParticipantId& participantToAdd) -> futures::Future<Result> {
+    TRI_vocbase_t& vocbase, LogId id, ParticipantId const& participantToRemove,
+    ParticipantId const& participantToAdd) -> futures::Future<Result> {
   auto path =
       paths::target()->replicatedStates()->database(vocbase.name())->state(id);
 
@@ -306,9 +306,9 @@ auto methods::replaceReplicatedStateParticipant(
       });
 }
 
-auto methods::replaceReplicatedSetLeader(TRI_vocbase_t& vocbase, LogId id,
-                                         ParticipantId const& leaderId)
-    -> futures::Future<Result> {
+auto methods::replaceReplicatedSetLeader(
+    TRI_vocbase_t& vocbase, LogId id,
+    std::optional<ParticipantId> const& leaderId) -> futures::Future<Result> {
   auto path =
       paths::target()->replicatedStates()->database(vocbase.name())->state(id);
 
@@ -317,10 +317,21 @@ auto methods::replaceReplicatedSetLeader(TRI_vocbase_t& vocbase, LogId id,
     VPackBuilder builder(trx);
     arangodb::agency::envelope::into_builder(builder)
         .write()
-        .set(*path->leader(), leaderId)
+        .cond(leaderId.has_value(),
+              [&](auto&& write) {
+                return std::move(write).set(*path->leader(), *leaderId);
+              })
+        .cond(!leaderId.has_value(),
+              [&](auto&& write) {
+                return std::move(write).remove(*path->leader());
+              })
         .inc(*paths::target()->version())
         .precs()
-        .isNotEmpty(*path->participants()->server(leaderId))
+        .cond(leaderId.has_value(),
+              [&](auto&& precs) {
+                return std::move(precs).isNotEmpty(
+                    *path->participants()->server(*leaderId));
+              })
         .end()
         .done();
   }

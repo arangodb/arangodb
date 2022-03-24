@@ -133,8 +133,8 @@ struct ReplicatedStateMethods {
       ParticipantId const& participantToAdd) const
       -> futures::Future<Result> = 0;
 
-  [[nodiscard]] virtual auto setLeader(LogId id,
-                                       ParticipantId const& leaderId) const
+  [[nodiscard]] virtual auto setLeader(
+      LogId id, std::optional<ParticipantId> const& leaderId) const
       -> futures::Future<Result> = 0;
 };
 
