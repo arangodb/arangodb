@@ -2057,9 +2057,6 @@ function startInstanceCluster (instanceInfo, protocol, options,
       primaryArgs['cluster.my-role'] = 'PRIMARY';
       primaryArgs['cluster.agency-endpoint'] = agencyEndpoint;
       primaryArgs['javascript.enabled'] = 'false';
-      if (options.extremeVerbosity || !options.noStartStopLogs) {
-        primaryArgs['log.level'] = 'startup=error';
-      }
 
       startInstanceSingleServer(instanceInfo, protocol, options, ...makeArgs('dbserver' + i, 'dbserver', primaryArgs), 'dbserver');
     }
@@ -2074,9 +2071,6 @@ function startInstanceCluster (instanceInfo, protocol, options,
       coordinatorArgs['cluster.my-role'] = 'COORDINATOR';
       coordinatorArgs['cluster.agency-endpoint'] = agencyEndpoint;
       coordinatorArgs['foxx.force-update-on-startup'] = 'true';
-      if (options.extremeVerbosity || !options.noStartStopLogs) {
-        coordinatorArgs['log.level'] = 'startup=error';
-      }
       if (!addArgs.hasOwnProperty('cluster.default-replication-factor')) {
         coordinatorArgs['cluster.default-replication-factor'] = (platform.substr(0, 3) === 'win') ? '1':'2';
       }
@@ -2094,9 +2088,6 @@ function startInstanceCluster (instanceInfo, protocol, options,
       singleArgs['cluster.my-role'] = 'SINGLE';
       singleArgs['cluster.agency-endpoint'] = agencyEndpoint;
       singleArgs['replication.active-failover'] = true;
-      if (options.extremeVerbosity || !options.noStartStopLogs) {
-        singleArgs['log.level'] = 'startup=error';
-      }
       startInstanceSingleServer(instanceInfo, protocol, options, ...makeArgs('single' + i, 'single', singleArgs), 'single');
       sleep(1.0);
     }
@@ -2319,6 +2310,8 @@ function startArango (protocol, options, addArgs, rootDir, role) {
 
   if (options.verbose) {
     args['log.level'] = 'debug';
+  } else if (!options.extremeVerbosity && options.noStartStopLogs) {
+    args['log.level'] = 'all=error';
   }
 
   instanceInfo.url = endpointToURL(instanceInfo.endpoint);
