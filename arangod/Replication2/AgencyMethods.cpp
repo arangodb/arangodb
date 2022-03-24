@@ -305,23 +305,21 @@ auto methods::replaceReplicatedStateParticipant(
       });
 }
 
-auto replaceReplicatedSetLeader(TRI_vocbase_t& vocbase, LogId id,
-                                ParticipantId const& leaderId)
+auto methods::replaceReplicatedSetLeader(TRI_vocbase_t& vocbase, LogId id,
+                                         ParticipantId const& leaderId)
     -> futures::Future<Result> {
-  auto path = paths::target()
-                  ->replicatedStates()
-                  ->database(vocbase.name())
-                  ->state(id)
-                  ->leader();
-  // TODO add a precondition that the new leader is actually a participant!
+  auto path =
+      paths::target()->replicatedStates()->database(vocbase.name())->state(id);
 
   VPackBufferUInt8 trx;
   {
     VPackBuilder builder(trx);
     arangodb::agency::envelope::into_builder(builder)
         .write()
-        .set(*path, leaderId)
+        .set(*path->leader(), leaderId)
         .inc(*paths::target()->version())
+        .precs()
+        .isNotEmpty(*path->participants()->server(leaderId))
         .end()
         .done();
   }
