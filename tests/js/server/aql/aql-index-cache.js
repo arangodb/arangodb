@@ -27,8 +27,10 @@
 
 const db = require('@arangodb').db;
 const jsunity = require("jsunity");
+const internal = require('internal');
 const { deriveTestSuite } = require('@arangodb/test-helper');
 const isCluster = require('@arangodb/cluster').isCluster();
+const canUseFailAt =  internal.debugCanUseFailAt();
   
 const cn = "UnitTestsCollection";
 
@@ -201,9 +203,6 @@ function FiguresSuite () {
 }
 
 function VPackIndexCacheModifySuite (unique) {
-  const internal = require('internal');
-  const canUseFailAt =  internal.debugCanUseFailAt();
-
   const n = 2000;
 
   const maxTries = 3;
@@ -389,10 +388,8 @@ function VPackIndexCacheModifySuite (unique) {
 }
 
 function VPackIndexCacheReadOnlySuite (unique, cacheEnabled) {
-  const internal = require('internal');
-  const canUseFailAt =  internal.debugCanUseFailAt();
-
   const n = 5000;
+  const maxTries = 10;
   
   let setFailurePointIfCacheUsed = () => {
     if (canUseFailAt) {
@@ -522,7 +519,7 @@ function VPackIndexCacheReadOnlySuite (unique, cacheEnabled) {
     testPointLookupOnlyMissesPartialCoverage: function () {
       setFailurePointIfCacheUsed();
 
-      for (let tries = 0; tries < (cacheEnabled ? 10 : 1); ++tries) {
+      for (let tries = 0; tries < (cacheEnabled ? maxTries : 1); ++tries) {
         let qres = db._query(`FOR i IN 0..999 FOR doc IN ${cn} FILTER doc.value1 == 50000 + i RETURN doc`);
         let result = qres.toArray();
         assertEqual(0, result.length);
@@ -535,7 +532,7 @@ function VPackIndexCacheReadOnlySuite (unique, cacheEnabled) {
     testPointLookupOnlyMissesFullCoverage: function () {
       setFailurePointForPointLookup();
 
-      for (let tries = 0; tries < (cacheEnabled ? 10 : 1); ++tries) {
+      for (let tries = 0; tries < (cacheEnabled ? maxTries : 1); ++tries) {
         let qres = db._query(`FOR i IN 0..999 FOR doc IN ${cn} FILTER doc.value1 == i && doc.value2 == CONCAT('testmann', SUBSTRING('00000', 0, 5 - LENGTH(TO_STRING(50000 + i))), i) RETURN doc`);
         let result = qres.toArray();
         assertEqual(0, result.length);
@@ -560,7 +557,7 @@ function VPackIndexCacheReadOnlySuite (unique, cacheEnabled) {
     testPointLookupNonCovering: function () {
       setFailurePointForPointLookup();
 
-      for (let tries = 0; tries < (cacheEnabled ? 10 : 1); ++tries) {
+      for (let tries = 0; tries < (cacheEnabled ? maxTries : 1); ++tries) {
         let qres = db._query(`FOR i IN 0..999 FOR doc IN ${cn} FILTER doc.value1 == i && doc.value2 == CONCAT('testmann', SUBSTRING('00000', 0, 5 - LENGTH(TO_STRING(i))), i) RETURN doc`);
         let result = qres.toArray();
         assertEqual(1000, result.length);
@@ -591,7 +588,7 @@ function VPackIndexCacheReadOnlySuite (unique, cacheEnabled) {
     testPointLookupCovering1: function () {
       setFailurePointForPointLookup();
 
-      for (let tries = 0; tries < (cacheEnabled ? 10 : 1); ++tries) {
+      for (let tries = 0; tries < (cacheEnabled ? maxTries : 1); ++tries) {
         let qres = db._query(`FOR i IN 0..999 FOR doc IN ${cn} FILTER doc.value1 == i && doc.value2 == CONCAT('testmann', SUBSTRING('00000', 0, 5 - LENGTH(TO_STRING(i))), i) RETURN doc.value1`);
         let result = qres.toArray();
         assertEqual(1000, result.length);
@@ -619,7 +616,7 @@ function VPackIndexCacheReadOnlySuite (unique, cacheEnabled) {
     testPointLookupCovering2: function () {
       setFailurePointForPointLookup();
 
-      for (let tries = 0; tries < (cacheEnabled ? 10 : 1); ++tries) {
+      for (let tries = 0; tries < (cacheEnabled ? maxTries : 1); ++tries) {
         let qres = db._query(`FOR i IN 0..999 FOR doc IN ${cn} FILTER doc.value1 == i && doc.value2 == CONCAT('testmann', SUBSTRING('00000', 0, 5 - LENGTH(TO_STRING(i))), i) RETURN [doc.value1, doc.value2]`);
         let result = qres.toArray();
         assertEqual(1000, result.length);
@@ -649,7 +646,7 @@ function VPackIndexCacheReadOnlySuite (unique, cacheEnabled) {
     testPointLookupCoveringCacheExplicitlyOn: function () {
       setFailurePointForPointLookup();
 
-      for (let tries = 0; tries < (cacheEnabled ? 10 : 1); ++tries) {
+      for (let tries = 0; tries < (cacheEnabled ? maxTries : 1); ++tries) {
         let qres = db._query(`FOR i IN 0..999 FOR doc IN ${cn} OPTIONS { useCache: true } FILTER doc.value1 == i && doc.value2 == CONCAT('testmann', SUBSTRING('00000', 0, 5 - LENGTH(TO_STRING(i))), i) RETURN [doc.value1, doc.value2]`);
         let result = qres.toArray();
         assertEqual(1000, result.length);
@@ -679,7 +676,7 @@ function VPackIndexCacheReadOnlySuite (unique, cacheEnabled) {
     testPointLookupCoveringCacheDisabled: function () {
       setFailurePointIfCacheUsed();
 
-      for (let tries = 0; tries < (cacheEnabled ? 10 : 1); ++tries) {
+      for (let tries = 0; tries < (cacheEnabled ? maxTries : 1); ++tries) {
         let qres = db._query(`FOR i IN 0..999 FOR doc IN ${cn} OPTIONS { useCache: false }FILTER doc.value1 == i && doc.value2 == CONCAT('testmann', SUBSTRING('00000', 0, 5 - LENGTH(TO_STRING(i))), i) RETURN doc.value1`);
         let result = qres.toArray();
         assertEqual(1000, result.length);
@@ -713,10 +710,8 @@ function VPackIndexCacheReadOnlySuite (unique, cacheEnabled) {
 }
 
 function VPackIndexCacheReadOnlyStoredValuesSuite (unique) {
-  const internal = require('internal');
-  const canUseFailAt =  internal.debugCanUseFailAt();
-
   const n = 10000;
+  const maxTries = 10;
   
   let setFailurePointIfCacheUsed = () => {
     if (canUseFailAt) {
@@ -830,7 +825,7 @@ function VPackIndexCacheReadOnlyStoredValuesSuite (unique) {
     testPointLookupCovering1: function () {
       setFailurePointForPointLookup();
 
-      for (let tries = 0; tries < 10; ++tries) {
+      for (let tries = 0; tries < maxTries; ++tries) {
         let qres = db._query(`FOR i IN 0..999 FOR doc IN ${cn} FILTER doc.value1 == i && doc.value2 == CONCAT('testmann', SUBSTRING('00000', 0, 5 - LENGTH(TO_STRING(i))), i) RETURN doc.value3`);
         let result = qres.toArray();
         assertEqual(1000, result.length);
@@ -843,6 +838,7 @@ function VPackIndexCacheReadOnlyStoredValuesSuite (unique) {
           assertEqual(1000, stats.cacheMisses, stats);
         } else {
           assertEqual(1000, stats.cacheHits + stats.cacheMisses, stats);
+          assertTrue(stats.cacheHits > 0 || tries < maxTries + 1);
           if (stats.cacheHits > 0) {
             break;
           }
@@ -853,7 +849,7 @@ function VPackIndexCacheReadOnlyStoredValuesSuite (unique) {
     testPointLookupCovering2: function () {
       setFailurePointForPointLookup();
 
-      for (let tries = 0; tries < 10; ++tries) {
+      for (let tries = 0; tries < maxTries; ++tries) {
         let qres = db._query(`FOR i IN 0..999 FOR doc IN ${cn} FILTER doc.value1 == i && doc.value2 == CONCAT('testmann', SUBSTRING('00000', 0, 5 - LENGTH(TO_STRING(i))), i) RETURN [doc.value1, doc.value2, doc.value3, doc.value4]`);
         let result = qres.toArray();
         assertEqual(1000, result.length);
@@ -870,6 +866,80 @@ function VPackIndexCacheReadOnlyStoredValuesSuite (unique) {
           assertEqual(1000, stats.cacheMisses, stats);
         } else {
           assertEqual(1000, stats.cacheHits + stats.cacheMisses, stats);
+          assertTrue(stats.cacheHits > 0 || tries < maxTries + 1);
+          if (stats.cacheHits > 0) {
+            break;
+          }
+        }
+      }
+    },
+
+  };
+}
+
+function PersistentIndexNonUniqueHugeValueSuite () {
+  const maxTries = 10;
+  const n = 200000; 
+  
+  let setFailurePointForPointLookup = () => {
+    if (canUseFailAt) {
+      internal.debugSetFailAt("VPackIndexFailWithoutCache");
+    }
+  };
+
+  return {
+    setUpAll : function () {
+      let c = db._create(cn);
+      c.ensureIndex({ type: "persistent", fields: ["value"], cacheEnabled: true });
+      let docs = [];
+      // create a "super node", which will not be stored in the cache
+      for (let i = 0; i < n; ++i) {
+        docs.push({ value: "testmann42" });
+        if (docs.length === 10000) {
+          c.insert(docs);
+          docs = [];
+        }
+      }
+      // create a non-"super node"
+      c.insert({ value: "foobar" });
+    },
+
+    tearDownAll : function () {
+      db._drop(cn);
+    },
+
+    testHugeValue : function () {
+      setFailurePointForPointLookup();
+
+      let c = db._collection(cn);
+
+      for (let tries = 0; tries < maxTries; ++tries) {
+        let qres = db._query(`FOR doc IN ${cn} FILTER doc.value == 'testmann42' RETURN 1`);
+        let result = qres.toArray();
+        assertEqual(n, result.length);
+        let stats = qres.getExtra().stats;
+        assertEqual(0, stats.cacheHits, stats);
+        // the value for the super node can never be served from the cache
+        assertEqual(1, stats.cacheMisses, stats);
+      }
+    },
+    
+    testSmallValue : function () {
+      setFailurePointForPointLookup();
+
+      let c = db._collection(cn);
+
+      for (let tries = 0; tries < maxTries; ++tries) {
+        let qres = db._query(`FOR doc IN ${cn} FILTER doc.value == 'foobar' RETURN 1`);
+        let result = qres.toArray();
+        assertEqual(1, result.length);
+        let stats = qres.getExtra().stats;
+        if (tries === 0) {
+          assertEqual(0, stats.cacheHits, stats);
+          assertEqual(1, stats.cacheMisses, stats);
+        } else {
+          assertEqual(1, stats.cacheHits + stats.cacheMisses, stats);
+          assertTrue(stats.cacheHits === 1 || tries < maxTries + 1);
           if (stats.cacheHits > 0) {
             break;
           }
@@ -1005,6 +1075,7 @@ jsunity.run(CreateSuite);
 jsunity.run(FiguresSuite);
 jsunity.run(PersistentIndexNonUniqueModifySuite);
 jsunity.run(PersistentIndexUniqueModifySuite);
+jsunity.run(PersistentIndexNonUniqueHugeValueSuite);
 jsunity.run(PersistentIndexNonUniqueReadOnlyCacheDisabledSuite);
 jsunity.run(PersistentIndexNonUniqueReadOnlyCacheEnabledSuite);
 jsunity.run(PersistentIndexNonUniqueReadOnlyStoredValuesSuite);

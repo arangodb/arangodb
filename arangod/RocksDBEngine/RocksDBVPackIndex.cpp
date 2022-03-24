@@ -77,6 +77,10 @@ inline rocksdb::Slice lookupValueFromSlice(rocksdb::Slice data) noexcept {
   return data;
 }
 
+// largest "acceptable" cache value size
+constexpr uint64_t kMaxCacheValueSize = 4 * 1024 * 1024;
+static_assert(kMaxCacheValueSize < std::numeric_limits<uint32_t>::max());
+
 using VPackIndexCacheType = cache::TransactionalCache<cache::VPackKeyHasher>;
 
 }  // namespace
@@ -320,11 +324,17 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
   void storeInCache(VPackSlice slice) {
     TRI_ASSERT(_cache != nullptr);
 
+    uint64_t byteSize = slice.byteSize();
     rocksdb::Slice key = lookupValueForCache();
+    if (ADB_UNLIKELY(key.size() > kMaxCacheValueSize ||
+                     byteSize > kMaxCacheValueSize)) {
+      // if key or value are too large for the cache, do not store in cache
+      return;
+    }
     cache::Cache::SimpleInserter<VPackIndexCacheType>{
         static_cast<VPackIndexCacheType&>(*_cache), key.data(),
         static_cast<uint32_t>(key.size()), slice.start(),
-        static_cast<uint64_t>(slice.byteSize())};
+        static_cast<uint64_t>(byteSize)};
   }
 
   rocksdb::Slice lookupValueForCache() const noexcept {
@@ -846,9 +856,10 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
   void storeInCache(VPackSlice slice) {
     TRI_ASSERT(_cache != nullptr);
 
-    // key too large to be cached. should almost never happen
-    if (ADB_UNLIKELY(_cacheKeyBuilderSize) >
-        std::numeric_limits<uint32_t>::max()) {
+    uint64_t byteSize = slice.byteSize();
+    if (ADB_UNLIKELY(_cacheKeyBuilderSize > kMaxCacheValueSize ||
+                     byteSize > kMaxCacheValueSize)) {
+      // if key or value are too large for the cache, do not store in cache
       return;
     }
 
@@ -856,7 +867,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
     cache::Cache::SimpleInserter<VPackIndexCacheType>{
         static_cast<VPackIndexCacheType&>(*_cache), key.start(),
         static_cast<uint32_t>(_cacheKeyBuilderSize), slice.start(),
-        static_cast<uint64_t>(slice.byteSize())};
+        static_cast<uint64_t>(byteSize)};
   }
 
   inline bool outOfRange() const {

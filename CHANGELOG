@@ -33,6 +33,10 @@ devel
   As the cache is hash-based and unsorted, it cannot be used for full or
   partial range scans, for sorting, or for lookups that do not include all
   index attributes.
+  The maximum size of index entries that can be stored is currently 4 MB, i.e.
+  the cumulated size of all index entries for any index lookup value must be
+  less than 4 MB. This limitation is there to avoid storing the index entries
+  of "super nodes" in the cache.
 
   The maximum combined memory usage of all in-memory caches can be controlled 
   via the existing `--cache.size` startup option, which now not only contains
