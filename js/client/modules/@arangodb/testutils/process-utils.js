@@ -815,7 +815,7 @@ function killRemainingProcesses(results) {
       print(killExternal(running[i].pid, abortSignal));
     }
     results.crashed = true;
-  };
+  }
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -1364,7 +1364,9 @@ function checkInstanceAlive(instanceInfo, options, {skipHealthCheck = false} = {
     ) {
       rc = checkServersGOOD(instanceInfo);
       if (first) {
-        print(RESET + "Waiting for all servers to go GOOD...");
+        if (options.extremeVerbosity || !options.noStartStopLogs) {
+          print(RESET + "Waiting for all servers to go GOOD...");
+        }
         first = false;
       }
     }
@@ -1532,7 +1534,9 @@ function shutdownArangod (arangod, options, forceTerminate) {
       const requestOptions = makeAuthorizationHeaders(options);
       requestOptions.method = 'DELETE';
       requestOptions.timeout = 60; // 60 seconds hopefully are enough for getting a response
-      print(Date() + ' ' + arangod.url + '/_admin/shutdown');
+      if (options.extremeVerbosity || !options.noStartStopLogs) {
+        print(Date() + ' ' + arangod.url + '/_admin/shutdown');
+      }
       let sockStat = getSockStat(arangod, options, "Sock stat for: ");
       const reply = download(arangod.url + '/_admin/shutdown', '', requestOptions);
       if ((reply.code !== 200) && // if the server should reply, we expect 200 - if not:
@@ -1545,7 +1549,7 @@ function shutdownArangod (arangod, options, forceTerminate) {
         print(Date() + ' Wrong shutdown response: ' + JSON.stringify(reply) + "' " + sockStat + " continuing with hard kill!");
         shutdownArangod(arangod, options, true);
       }
-      else {
+      else if (options.extremeVerbosity || !options.noStartStopLogs) {
         print(sockStat);
       }
       if (options.extremeVerbosity) {
@@ -1622,7 +1626,9 @@ function shutDownOneInstance(options, arangod, fullInstance, counters, forceTerm
     if (arangod.role !== 'agent') {
       counters.nonAgenciesCount--;
     }
-    print(Date() + ' Server "' + arangod.role + '" shutdown: Success: pid', arangod.pid);
+    if (options.extremeVerbosity || !options.noStartStopLogs) {
+      print(Date() + ' Server "' + arangod.role + '" shutdown: Success: pid', arangod.pid);
+    }
     crashUtils.stopProcdump(options, arangod);
     return false;
   }
@@ -1664,7 +1670,9 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
         let requestOptions = makeAuthorizationHeaders(options);
         requestOptions.method = 'PUT';
 
-        print(coords[0].url + "/_admin/cluster/maintenance");
+        if (options.extremeVerbosity || !options.noStartStopLogs) {
+          print(coords[0].url + "/_admin/cluster/maintenance");
+        }
         download(coords[0].url + "/_admin/cluster/maintenance", JSON.stringify("on"), requestOptions);
       }
     } catch (err) {
@@ -1793,7 +1801,9 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
         if (arangod.role !== 'agent') {
           nonAgenciesCount--;
         }
-        print(Date() + ' Server "' + arangod.role + '" shutdown: Success: pid', arangod.pid);
+        if (options.extremeVerbosity || !options.noStartStopLogs) {
+          print(Date() + ' Server "' + arangod.role + '" shutdown: Success: pid', arangod.pid);
+        }
         crashUtils.stopProcdump(options, arangod);
         return false;
       }
@@ -1811,7 +1821,9 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
         // e.g. 2 + coordinator + (s)
         roleNames.push(roles[r] + ' ' + r + '(s)');
       }
-      print(roleNames.join(', ') + ' are still running...');
+      if (options.extremeVerbosity || !options.noStartStopLogs) {
+        print(roleNames.join(', ') + ' are still running...');
+      }
       require('internal').wait(1, false);
     }
   }
@@ -1901,7 +1913,9 @@ function checkClusterAlive(options, instanceInfo, addArgs) {
         arangod.upAndRunning = true;
         return;
       }
-      print(Date() + " tickeling cluster node " + arangod.url + " - " + arangod.role);
+      if (options.extremeVerbosity || !options.noStartStopLogs) {
+        print(Date() + " tickeling cluster node " + arangod.url + " - " + arangod.role);
+      }
       let url = arangod.url;
       if (arangod.role === "coordinator" && arangod.args["javascript.enabled"] !== "false") {
         url += '/_admin/aardvark/index.html';
@@ -1950,7 +1964,9 @@ function checkClusterAlive(options, instanceInfo, addArgs) {
     }
   }
 
-  print("Determining server IDs");
+  if (options.extremeVerbosity || !options.noStartStopLogs) {
+    print("Determining server IDs");
+  }
   instanceInfo.arangods.forEach(arangod => {
     if (arangod.suspended) {
       return;
@@ -2041,6 +2057,9 @@ function startInstanceCluster (instanceInfo, protocol, options,
       primaryArgs['cluster.my-role'] = 'PRIMARY';
       primaryArgs['cluster.agency-endpoint'] = agencyEndpoint;
       primaryArgs['javascript.enabled'] = 'false';
+      if (options.extremeVerbosity || !options.noStartStopLogs) {
+        primaryArgs['log.level'] = 'startup=error';
+      }
 
       startInstanceSingleServer(instanceInfo, protocol, options, ...makeArgs('dbserver' + i, 'dbserver', primaryArgs), 'dbserver');
     }
@@ -2055,6 +2074,9 @@ function startInstanceCluster (instanceInfo, protocol, options,
       coordinatorArgs['cluster.my-role'] = 'COORDINATOR';
       coordinatorArgs['cluster.agency-endpoint'] = agencyEndpoint;
       coordinatorArgs['foxx.force-update-on-startup'] = 'true';
+      if (options.extremeVerbosity || !options.noStartStopLogs) {
+        coordinatorArgs['log.level'] = 'startup=error';
+      }
       if (!addArgs.hasOwnProperty('cluster.default-replication-factor')) {
         coordinatorArgs['cluster.default-replication-factor'] = (platform.substr(0, 3) === 'win') ? '1':'2';
       }
@@ -2072,6 +2094,9 @@ function startInstanceCluster (instanceInfo, protocol, options,
       singleArgs['cluster.my-role'] = 'SINGLE';
       singleArgs['cluster.agency-endpoint'] = agencyEndpoint;
       singleArgs['replication.active-failover'] = true;
+      if (options.extremeVerbosity || !options.noStartStopLogs) {
+        singleArgs['log.level'] = 'startup=error';
+      }
       startInstanceSingleServer(instanceInfo, protocol, options, ...makeArgs('single' + i, 'single', singleArgs), 'single');
       sleep(1.0);
     }
@@ -2157,7 +2182,9 @@ function launchFinalize(options, instanceInfo, startTime) {
       }
     });
   }
-  print(CYAN + Date() + ' up and running in ' + (time() - startTime) + ' seconds' + RESET);
+  if (options.extremeVerbosity || !options.noStartStopLogs) {
+    print(CYAN + Date() + ' up and running in ' + (time() - startTime) + ' seconds' + RESET);
+  }
   var matchPort = /.*:.*:([0-9]*)/;
   var ports = [];
   var processInfo = [];
@@ -2184,7 +2211,9 @@ function launchFinalize(options, instanceInfo, startTime) {
                      ' - ' + arangod.args['database.directory']);
   });
 
-  print(Date() + ' sniffing template:\n  tcpdump -ni lo -s0 -w /tmp/out.pcap ' + ports.join(' or ') + '\n');
+  if (options.extremeVerbosity || !options.noStartStopLogs) {
+    print(Date() + ' sniffing template:\n  tcpdump -ni lo -s0 -w /tmp/out.pcap ' + ports.join(' or ') + '\n');
+  }
   if (options.sniff !== undefined && options.sniff !== false) {
     options.cleanup = false;
     let device = 'lo';
@@ -2224,7 +2253,9 @@ function launchFinalize(options, instanceInfo, startTime) {
     print(CYAN + 'launching ' + prog + ' ' + JSON.stringify(args) + RESET);
     tcpdump = executeExternal(prog, args);
   }
-  print(processInfo.join('\n') + '\n');
+  if (options.extremeVerbosity || !options.noStartStopLogs) {
+    print(processInfo.join('\n') + '\n');
+  }
   internal.sleep(options.sleepBeforeStart);
   initProcessStats(instanceInfo);
 }
@@ -2373,7 +2404,9 @@ function startInstanceAgency (instanceInfo, protocol, options, addArgs, rootDir)
     instanceInfo.endpoint = instanceInfo.arangods[instanceInfo.arangods.length - 1].endpoint;
     instanceInfo.url = instanceInfo.arangods[instanceInfo.arangods.length - 1].url;
     instanceInfo.role = 'agent';
-    print(Date() + ' Agency Endpoint: ' + instanceInfo.endpoint);
+    if (options.extremeVerbosity || !options.noStartStopLogs) {
+      print(Date() + ' Agency Endpoint: ' + instanceInfo.endpoint);
+    }
   }
 
   checkClusterAlive(options, instanceInfo, addArgs);
