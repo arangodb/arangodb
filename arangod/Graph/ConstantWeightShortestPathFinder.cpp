@@ -75,7 +75,6 @@ bool ConstantWeightShortestPathFinder::pathContainsOnlySatellites() const {
 }
 #endif
 
-
 bool ConstantWeightShortestPathFinder::shortestPath(
     arangodb::velocypack::Slice s, arangodb::velocypack::Slice e,
     arangodb::graph::ShortestPathResult& result) {

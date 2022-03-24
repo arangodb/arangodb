@@ -221,9 +221,11 @@ auto ShortestPathExecutor::fetchPath(AqlItemBlockInputRange& input) -> bool {
         getVertexId(_infos.getTargetVertex(), _inputRow, _targetBuilder,
                     target) &&
         _finder.shortestPath(source, target, *_path)) {
-      // TODO: Write a test to check if only one DB server is invoked for a pure satellite graph.
+      // TODO: Write a test to check if only one DB server is invoked for a pure
+      // satellite graph.
 #ifdef USE_ENTERPRISE
-      if (_finder.options().isDisjoint() && _finder.pathContainsOnlySatellites()) {
+      if (_finder.options().isDisjoint() &&
+          _finder.pathContainsOnlySatellites()) {
         if (_finder.options().isSatelliteLeader()) {
           return true;
         } else {

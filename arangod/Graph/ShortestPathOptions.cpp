@@ -248,9 +248,7 @@ auto ShortestPathOptions::getWeightAttribute() const& -> std::string {
 
 auto ShortestPathOptions::isDisjoint() const -> bool { return _isDisjoint; }
 
-auto ShortestPathOptions::setDisjoint(bool flag) -> void {
-  _isDisjoint = flag;
-}
+auto ShortestPathOptions::setDisjoint(bool flag) -> void { _isDisjoint = flag; }
 
 auto ShortestPathOptions::isSatelliteLeader() const -> bool {
   return _isSatelliteLeader;
