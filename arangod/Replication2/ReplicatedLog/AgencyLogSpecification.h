@@ -23,10 +23,10 @@
 #pragma once
 
 #include "Agency/AgencyPaths.h"
+#include "Basics/StaticStrings.h"
 #include "Cluster/ClusterTypes.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/types.h"
-#include "Basics/StaticStrings.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -223,12 +223,12 @@ auto inspect(Inspector& f, LogTarget::Supervision& x) {
 
 template<class Inspector>
 auto inspect(Inspector& f, LogTarget& x) {
-  return f.object(x).fields(
-      f.field(StaticStrings::Id, x.id),
-      f.field(StaticStrings::Participants, x.participants),
-      f.field(StaticStrings::Config, x.config),
-      f.field(StaticStrings::Leader, x.leader),
-      f.field("supervision", x.supervision));
+  return f.object(x).fields(f.field(StaticStrings::Id, x.id),
+                            f.field(StaticStrings::Participants, x.participants)
+                                .fallback(ParticipantsFlagsMap{}),
+                            f.field(StaticStrings::Config, x.config),
+                            f.field(StaticStrings::Leader, x.leader),
+                            f.field("supervision", x.supervision));
 }
 
 /* Convenience Wrapper */
