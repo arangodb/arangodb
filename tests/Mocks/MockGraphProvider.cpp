@@ -141,7 +141,7 @@ auto MockGraphProvider::addVertexToBuilder(
     const Step::Vertex& vertex, arangodb::velocypack::Builder& builder)
     -> void {
   std::string id = vertex.getID().toString();
-  _stats.addScannedIndex(1);
+  _stats.incrScannedIndex(1);
   builder.openObject();
   builder.add(StaticStrings::KeyString, VPackValue(id.substr(2)));
   builder.add(StaticStrings::IdString, VPackValue(id));
@@ -211,7 +211,7 @@ auto MockGraphProvider::expand(Step const& source, size_t previousIndex)
   }
   LOG_TOPIC("78160", TRACE, Logger::GRAPHS)
       << "<MockGraphProvider> Expansion length: " << result.size();
-  _stats.addScannedIndex(result.size());
+  _stats.incrScannedIndex(result.size());
   return result;
 }
 
