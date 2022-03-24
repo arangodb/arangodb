@@ -142,22 +142,26 @@ struct VPackLoadInspector : InspectorBase<VPackLoadInspector> {
     auto name = getFieldName(field);
     auto& value = getFieldValue(field);
     auto load = [&]() {
+      auto isPresent = !slice.isNone();
       using FallbackField = decltype(getFallbackField(field));
       if constexpr (!std::is_void_v<FallbackField>) {
         auto applyFallback = [&](auto& val) {
           getFallbackField(field).apply(val);
         };
         if constexpr (!std::is_void_v<decltype(getTransformer(field))>) {
-          return loadTransformedField(ff, name, value, std::move(applyFallback),
+          return loadTransformedField(ff, name, isPresent, value,
+                                      std::move(applyFallback),
                                       getTransformer(field));
         } else {
-          return loadField(ff, name, value, std::move(applyFallback));
+          return loadField(ff, name, isPresent, value,
+                           std::move(applyFallback));
         }
       } else {
         if constexpr (!std::is_void_v<decltype(getTransformer(field))>) {
-          return loadTransformedField(ff, name, value, getTransformer(field));
+          return loadTransformedField(ff, name, isPresent, value,
+                                      getTransformer(field));
         } else {
-          return loadField(ff, name, value);
+          return loadField(ff, name, isPresent, value);
         }
       }
     };
