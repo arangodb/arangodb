@@ -46,6 +46,7 @@ struct Dummy {
   double d;
   bool b;
   std::string s;
+  bool operator==(Dummy const&) const = default;
 };
 
 template<class Inspector>
@@ -84,7 +85,7 @@ auto inspect(Inspector& f, TypedInt& x) {
     }
     return res;
   } else {
-    return f.apply(x.value);
+    return f.apply(x.getValue());
   }
 }
 
@@ -166,12 +167,14 @@ auto inspect(Inspector& f, Pointer& x) {
 struct Fallback {
   int i;
   std::string s;
+  Dummy d = {.i = 1, .d = 4.2, .b = true, .s = "2"};
 };
 
 template<class Inspector>
 auto inspect(Inspector& f, Fallback& x) {
   return f.object(x).fields(f.field("i", x.i).fallback(42),
-                            f.field("s", x.s).fallback("foobar"));
+                            f.field("s", x.s).fallback("foobar"),
+                            f.field("d", x.d).fallback(f.keep()));
 }
 
 struct Invariant {
@@ -853,7 +856,7 @@ TEST_F(VPackLoadInspectorTest, load_optional) {
                     .y = "blubb",
                     .vec = {1, std::nullopt, 3},
                     .map = {{"1", 1}, {"2", std::nullopt}, {"3", 3}}};
-  EXPECT_EQ(expected.a, o.a);
+  EXPECT_EQ(expected.a, o.a) << o.a.has_value() << " " << o.a.value();
   EXPECT_EQ(expected.b, o.b);
   EXPECT_EQ(expected.x, o.x);
   EXPECT_EQ(expected.y, o.y);
@@ -917,7 +920,7 @@ TEST_F(VPackLoadInspectorTest, error_expecting_int) {
   builder.add(VPackValue("foo"));
   VPackLoadInspector inspector{builder};
 
-  int i;
+  int i{};
   auto result = inspector.apply(i);
   ASSERT_FALSE(result.ok());
   EXPECT_EQ("Expecting type Int", result.error());
@@ -927,7 +930,7 @@ TEST_F(VPackLoadInspectorTest, error_expecting_int16) {
   builder.add(VPackValue(123456789));
   VPackLoadInspector inspector{builder};
 
-  std::int16_t i;
+  std::int16_t i{};
   auto result = inspector.apply(i);
   ASSERT_FALSE(result.ok());
   EXPECT_EQ("Number out of range", result.error());
@@ -937,7 +940,7 @@ TEST_F(VPackLoadInspectorTest, error_expecting_double) {
   builder.add(VPackValue("foo"));
   VPackLoadInspector inspector{builder};
 
-  double d;
+  double d{};
   auto result = inspector.apply(d);
   ASSERT_FALSE(result.ok());
   EXPECT_EQ("Expecting numeric type", result.error());
@@ -947,7 +950,7 @@ TEST_F(VPackLoadInspectorTest, error_expecting_bool) {
   builder.add(VPackValue(42));
   VPackLoadInspector inspector{builder};
 
-  bool b;
+  bool b{};
   auto result = inspector.apply(b);
   ASSERT_FALSE(result.ok());
   EXPECT_EQ("Expecting type Bool", result.error());
@@ -1244,10 +1247,12 @@ TEST_F(VPackLoadInspectorTest, load_object_with_fallbacks) {
   VPackLoadInspector inspector{builder};
 
   Fallback f;
+  Dummy expected = f.d;
   auto result = inspector.apply(f);
   ASSERT_TRUE(result.ok());
   EXPECT_EQ(42, f.i);
   EXPECT_EQ("foobar", f.s);
+  EXPECT_EQ(expected, f.d);
 }
 
 TEST_F(VPackLoadInspectorTest, load_object_with_fallback_reference) {
