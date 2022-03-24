@@ -42,6 +42,9 @@ class TraversalStats;
 }
 
 namespace graph {
+struct OneSidedEnumeratorOptions;
+class PathValidatorOptions;
+struct ClusterBaseProviderOptions;
 
 class PathResultInterface {
  public:
@@ -57,6 +60,17 @@ class PathResultInterface {
 
 class TraversalEnumerator {
  public:
+  template<class Provider>
+  static auto createEnumerator(
+      traverser::TraverserOptions::Order order,
+      traverser::TraverserOptions::UniquenessLevel uniqueVertices,
+      traverser::TraverserOptions::UniquenessLevel uniqueEdges,
+      arangodb::aql::QueryContext& query,
+      typename Provider::Options&& baseProviderOptions,
+      arangodb::graph::PathValidatorOptions&& pathValidatorOptions,
+      arangodb::graph::OneSidedEnumeratorOptions&& enumeratorOptions,
+      bool useTracing) -> std::unique_ptr<TraversalEnumerator>;
+
   using VertexRef = arangodb::velocypack::HashedStringRef;
   TraversalEnumerator(){};
   virtual ~TraversalEnumerator() {}
