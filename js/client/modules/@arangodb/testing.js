@@ -42,6 +42,7 @@ const GREEN = internal.COLORS.COLOR_GREEN;
 const RED = internal.COLORS.COLOR_RED;
 const RESET = internal.COLORS.COLOR_RESET;
 const YELLOW = internal.COLORS.COLOR_YELLOW;
+const isInteactiveShell = YELLOW.length !== 0;
 
 let functionsDocumentation = {
   'all': 'run all tests (marked with [x])',
@@ -195,7 +196,7 @@ const optionsDefaults = {
   'sanitizer': false,
   'activefailover': false,
   'singles': 2,
-  'setInterruptable': false,
+  'setInterruptable': isInteactiveShell,
   'sniff': false,
   'sniffAgency': true,
   'sniffDBServers': true,
