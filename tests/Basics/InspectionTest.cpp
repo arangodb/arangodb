@@ -311,6 +311,16 @@ struct Access<Specialization> : AccessBase<Specialization> {
 }  // namespace arangodb::inspection
 
 namespace {
+
+struct ExplicitIgnore {
+  std::string s;
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, ExplicitIgnore& x) {
+  return f.object(x).fields(f.field("s", x.s), f.ignoreField("ignore"));
+}
+
 using namespace arangodb;
 using VPackLoadInspector = inspection::VPackLoadInspector;
 using VPackSaveInspector = inspection::VPackSaveInspector;
@@ -611,6 +621,16 @@ TEST_F(VPackSaveInspectorTest, store_type_with_custom_specialization) {
   ASSERT_TRUE(slice.isObject());
   EXPECT_EQ(s.i, slice["i"].getInt());
   EXPECT_EQ(s.s, slice["s"].copyString());
+}
+
+TEST_F(VPackSaveInspectorTest, store_type_with_explicitly_ignored_fields) {
+  ExplicitIgnore e{.s = "foobar"};
+  auto result = inspector.apply(e);
+  ASSERT_TRUE(result.ok());
+
+  velocypack::Slice slice = builder.slice();
+  ASSERT_TRUE(slice.isObject());
+  EXPECT_EQ(1, slice.length());
 }
 
 struct VPackLoadInspectorTest : public ::testing::Test {
@@ -1420,6 +1440,18 @@ TEST_F(VPackLoadInspectorTest, load_type_with_custom_specialization) {
   ASSERT_TRUE(result.ok());
   EXPECT_EQ(42, s.i);
   EXPECT_EQ("foobar", s.s);
+}
+
+TEST_F(VPackLoadInspectorTest, load_type_with_explicitly_ignored_fields) {
+  builder.openObject();
+  builder.add("s", VPackValue("foobar"));
+  builder.add("ignore", VPackValue("something"));
+  builder.close();
+  VPackLoadInspector inspector{builder};
+
+  ExplicitIgnore e;
+  auto result = inspector.apply(e);
+  ASSERT_TRUE(result.ok());
 }
 
 struct VPackInspectionTest : public ::testing::Test {};

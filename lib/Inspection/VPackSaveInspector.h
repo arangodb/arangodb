@@ -128,21 +128,26 @@ struct VPackSaveInspector : InspectorBase<VPackSaveInspector> {
  private:
   template<class T>
   [[nodiscard]] auto applyField(T const& field) {
-    auto name = getFieldName(field);
-    auto& value = getFieldValue(field);
-    auto res = [&]() {
-      if constexpr (!std::is_void_v<decltype(getTransformer(field))>) {
-        return saveTransformedField(*this, name, value, getTransformer(field));
-      } else {
-        return saveField(*this, name, value);
+    if constexpr (std::is_same_v<IgnoreField, T>) {
+      return Status::Success{};
+    } else {
+      auto name = getFieldName(field);
+      auto& value = getFieldValue(field);
+      auto res = [&]() {
+        if constexpr (!std::is_void_v<decltype(getTransformer(field))>) {
+          return saveTransformedField(*this, name, value,
+                                      getTransformer(field));
+        } else {
+          return saveField(*this, name, value);
+        }
+      }();
+      if constexpr (!isSuccess(res)) {
+        if (!res.ok()) {
+          return Status{std::move(res), name, Status::AttributeTag{}};
+        }
       }
-    }();
-    if constexpr (!isSuccess(res)) {
-      if (!res.ok()) {
-        return Status{std::move(res), name, Status::AttributeTag{}};
-      }
+      return res;
     }
-    return res;
   }
 
   template<std::size_t Idx, std::size_t End, class T>

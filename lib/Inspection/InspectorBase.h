@@ -136,6 +136,8 @@ struct InspectorBase {
   template<typename T>
   struct RawField;
 
+  struct IgnoreField;
+
   // TODO - support virtual fields with getter/setter
   // template<typename T>
   // struct VirtualField : BasicField<VirtualField<T>> {
@@ -152,6 +154,10 @@ struct InspectorBase {
                                   T& value) const noexcept {
     static_assert(!std::is_const<T>::value);
     return RawField<T>{{name}, value};
+  }
+
+  [[nodiscard]] IgnoreField ignoreField(std::string_view name) const noexcept {
+    return IgnoreField{name};
   }
 
  protected:
@@ -174,7 +180,8 @@ struct InspectorBase {
 
   template<class T>
   static std::string_view getFieldName(T& field) noexcept {
-    if constexpr (IsRawField<std::remove_cvref_t<T>>::value) {
+    if constexpr (IsRawField<std::remove_cvref_t<T>>::value ||
+                  std::is_same_v<IgnoreField, std::remove_cvref_t<T>>) {
       return field.name;
     } else {
       return getFieldName(field.inner);
@@ -339,6 +346,11 @@ struct InspectorBase {
         : BasicField<RawField>(name), value(value) {}
     using value_type = T;
     T& value;
+  };
+
+  struct IgnoreField {
+    explicit IgnoreField(std::string_view name) : name(name) {}
+    std::string_view name;
   };
 };
 

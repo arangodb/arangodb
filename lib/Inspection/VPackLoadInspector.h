@@ -136,6 +136,10 @@ struct VPackLoadInspector : InspectorBase<VPackLoadInspector> {
            | [&]() { return endArray(); };          //
   }
 
+  [[nodiscard]] Status::Success parseField(velocypack::Slice, IgnoreField&&) {
+    return {};
+  }
+
   template<class T>
   [[nodiscard]] Status parseField(velocypack::Slice slice, T&& field) {
     VPackLoadInspector ff(slice, _options);
