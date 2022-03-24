@@ -146,7 +146,9 @@ class FakePathFinder : public ShortestPathFinder {
   ~FakePathFinder() = default;
 
   void clear() override{};
+#ifdef USE_ENTERPRISE
   bool pathContainsOnlySatellites() const override { return false; }
+#endif
 
   void addPath(std::vector<std::string>&& path) {
     _paths.emplace_back(std::move(path));
