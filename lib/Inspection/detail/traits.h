@@ -25,7 +25,7 @@
 
 #include <type_traits>
 
-#include "Inspection/Result.h"
+#include "Inspection/Status.h"
 
 namespace arangodb::inspection {
 template<class T>
@@ -47,7 +47,7 @@ struct HasInspectOverload<T, Inspector,
     : std::conditional_t<
           std::is_convertible_v<decltype(inspect(std::declval<Inspector&>(),
                                                  std::declval<T&>())),
-                                Result>,
+                                Status>,
           std::true_type, typename std::false_type> {};
 
 template<class T>

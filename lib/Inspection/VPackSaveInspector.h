@@ -44,33 +44,33 @@ struct VPackSaveInspector : InspectorBase<VPackSaveInspector> {
       : _builder(builder) {}
 
   template<class T>
-  [[nodiscard]] Result apply(T const& x) {
+  [[nodiscard]] Status apply(T const& x) {
     return process(*this, x);
   }
 
-  [[nodiscard]] Result::Success beginObject() {
+  [[nodiscard]] Status::Success beginObject() {
     _builder.openObject();
     return {};
   }
 
-  [[nodiscard]] Result::Success endObject() {
+  [[nodiscard]] Status::Success endObject() {
     _builder.close();
     return {};
   }
 
   template<class T, class = std::enable_if_t<detail::IsBuiltinType<T>()>>
-  [[nodiscard]] Result::Success value(T const& v) {
+  [[nodiscard]] Status::Success value(T const& v) {
     static_assert(detail::IsBuiltinType<T>());
     _builder.add(VPackValue(v));
     return {};
   }
 
-  [[nodiscard]] Result::Success beginArray() {
+  [[nodiscard]] Status::Success beginArray() {
     _builder.openArray();
     return {};
   }
 
-  [[nodiscard]] Result::Success endArray() {
+  [[nodiscard]] Status::Success endArray() {
     _builder.close();
     return {};
   }
@@ -137,9 +137,9 @@ struct VPackSaveInspector : InspectorBase<VPackSaveInspector> {
         return saveField(*this, name, value);
       }
     }();
-    if constexpr (res.canFail()) {
+    if constexpr (!isSuccess(res)) {
       if (!res.ok()) {
-        return Result{std::move(res), name, Result::AttributeTag{}};
+        return Status{std::move(res), name, Status::AttributeTag{}};
       }
     }
     return res;
@@ -151,7 +151,7 @@ struct VPackSaveInspector : InspectorBase<VPackSaveInspector> {
       return process(*this, std::get<Idx>(data))                    //
              | [&]() { return processTuple<Idx + 1, End>(data); };  //
     } else {
-      return Result::Success{};
+      return Status::Success{};
     }
   }
 

@@ -198,7 +198,7 @@ struct InvariantWithResult {
 template<class Inspector>
 auto inspect(Inspector& f, InvariantWithResult& x) {
   return f.object(x).fields(
-      f.field("i", x.i).invariant([](int v) -> arangodb::inspection::Result {
+      f.field("i", x.i).invariant([](int v) -> arangodb::inspection::Status {
         if (v == 0) {
           return {"Must not be zero"};
         }
@@ -247,12 +247,12 @@ struct MyTransformer {
   using MemoryType = int;
   using SerializedType = std::string;
 
-  arangodb::inspection::Result toSerialized(MemoryType v,
+  arangodb::inspection::Status toSerialized(MemoryType v,
                                             SerializedType& result) const {
     result = std::to_string(v);
     return {};
   }
-  arangodb::inspection::Result fromSerialized(SerializedType const& v,
+  arangodb::inspection::Status fromSerialized(SerializedType const& v,
                                               MemoryType& result) const {
     result = std::stoi(v);
     return {};
@@ -304,7 +304,7 @@ namespace arangodb::inspection {
 template<>
 struct Access<Specialization> : AccessBase<Specialization> {
   template<class Inspector>
-  [[nodiscard]] static Result apply(Inspector& f, Specialization& x) {
+  [[nodiscard]] static Status apply(Inspector& f, Specialization& x) {
     return f.object(x).fields(f.field("i", x.i), f.field("s", x.s));
   }
 };
