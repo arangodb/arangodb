@@ -40,8 +40,6 @@ const LinkPropertiesForm = ({
     }
   }, [data, links]);
 
-  console.log(links);
-
   const linkVal = chain(links)
     .omitBy(isNull)
     .keys()
@@ -116,35 +114,6 @@ const LinkPropertiesForm = ({
           link={getLink(field.basePath)}
         />
       )}
-      {/* {map(links, (properties, coll) => {
-          return properties ? (
-            <tr key={coll} style={{ borderBottom: "1px  solid #DDD" }}>
-              <ArangoTD seq={disabled ? 1 : 2}>
-                <LinkPropertiesInput
-                  formState={properties}
-                  disabled={disabled || !properties}
-                  dispatch={
-                    (dispatch as unknown) as Dispatch<
-                      DispatchArgs<LinkProperties>
-                    >
-                  }
-                  basePath={`links[${coll}]`}
-                />
-              </ArangoTD>
-
-              <ArangoTD seq={disabled ? 0 : 1}>{coll}</ArangoTD>
-              {disabled ? null : (
-                <ArangoTD seq={0} valign={"middle"}>
-                  <IconButton
-                    icon={"trash-o"}
-                    type={"danger"}
-                    onClick={getLinkRemover(coll)}
-                  />
-                </ArangoTD>
-              )}
-            </tr>
-          ) : null;
-        })} */}
     </main>
   );
 };

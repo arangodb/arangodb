@@ -41,7 +41,7 @@ const FieldView = ({
     removeField(field);
   };
 
-  const field = get(formState, [basePath, fieldName || '']);
+  const field = get(formState, `${basePath}.fields[${fieldName}]`);
 
   return (
     <ViewLayout field={fieldName} view={view} link={link}>
