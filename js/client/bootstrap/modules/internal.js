@@ -431,6 +431,15 @@
   // / @brief returns if we are an Enterprise Edition or not
   // //////////////////////////////////////////////////////////////////////////////
 
+  if (global.SYS_IS_A_TTY) {
+    exports.isATTy = global.SYS_IS_A_TTY;
+    delete global.SYS_IS_A_TTY;
+  }
+
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief returns if we are an Enterprise Edition or not
+  // //////////////////////////////////////////////////////////////////////////////
+
   if (global.SYS_IS_ENTERPRISE) {
     exports.isEnterprise = global.SYS_IS_ENTERPRISE;
     delete global.SYS_IS_ENTERPRISE;
