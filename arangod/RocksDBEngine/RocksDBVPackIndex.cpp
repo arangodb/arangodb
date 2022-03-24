@@ -196,7 +196,7 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
   /// @brief Get the next limit many element in the index
   bool nextImpl(LocalDocumentIdCallback const& cb, size_t limit) override {
     return nextImplementation(
-        [&cb, this](VPackArrayIterator it) {
+        [&cb](VPackArrayIterator it) {
           LocalDocumentId documentId{it.value().getNumericValue<uint64_t>()};
           cb(documentId);
         },
