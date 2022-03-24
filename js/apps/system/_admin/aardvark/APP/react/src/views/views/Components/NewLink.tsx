@@ -13,14 +13,14 @@ type NewLinkProps = {
   view?: string | undefined;
 };
 
-const NewLink: React.FC<NewLinkProps> = ({
+const NewLink = ({
   collection,
   options,
   updateCollection,
   disabled,
   addLink,
   view
-}) => {
+}: NewLinkProps) => {
   return (
     <ViewLayout view={view}>
       <ArangoTable>

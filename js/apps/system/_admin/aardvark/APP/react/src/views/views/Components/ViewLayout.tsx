@@ -1,38 +1,29 @@
-import React from "react";
+import React, { ReactNode, useContext } from "react";
 import { ArangoTable, ArangoTD, ArangoTH } from "../../../components/arango/table";
-import { useShow, useShowUpdate } from "../Contexts/LinkContext";
+import { ViewContext } from "../ViewLinksReactView";
 
 type ViewLayoutProps = {
   view?: string | undefined;
   field?: string;
   link?: string;
+  children: ReactNode;
 };
 
-const ViewLayout: React.FC<ViewLayoutProps> = ({
+const ViewLayout = ({
   view,
   field,
   link,
   children
-}) => {
-  const show = useShow();
-  const updateShow = useShowUpdate();
+}: ViewLayoutProps) => {
+  const { setShow } = useContext(ViewContext);
 
-  const handleLinkClick = (
-    e: React.MouseEvent<HTMLAnchorElement, MouseEvent>,
-    str: string | undefined
-  ) => {
-    e.preventDefault();
-    updateShow("ViewParent");
-    console.log(str);
-    console.log(show);
-  };
   return (
     <ArangoTable>
       <thead>
         <tr>
           <ArangoTH seq={0} style={{ width: "100%" }}>
             <a href={`/${view}`}>{view}</a>
-            <a href={`/${link}`} onClick={e => handleLinkClick(e, link)}>
+            <a href={`/${link}`} onClick={() => setShow("ViewParent")}>
               {link !== undefined ? "/" + link : ""}
             </a>
             <a href={`/${field}`}>{field !== undefined ? "/" + field : ""}</a>

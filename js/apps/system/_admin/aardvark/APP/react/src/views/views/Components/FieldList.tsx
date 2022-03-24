@@ -1,31 +1,25 @@
-import React, { Dispatch } from "react";
-import { DispatchArgs } from "../../../utils/constants";
-import { LinkProperties } from "../constants";
+import React, { useContext } from "react";
 import { map } from "lodash";
-// import LinkPropertiesInput from "../forms/inputs/LinkPropertiesInput";
-import {
-  ArangoTable,
-  ArangoTD,
-  ArangoTH
-} from "../../../components/arango/table";
+import { ArangoTable, ArangoTD, ArangoTH } from "../../../components/arango/table";
 import Badge from "../../../components/arango/badges";
 import { IconButton } from "../../../components/arango/buttons";
+import { ViewContext } from "../ViewLinksReactView";
 
 type FieldListProps = {
   fields: object | any;
   disabled: boolean | undefined;
-  dispatch: Dispatch<DispatchArgs<LinkProperties>>;
   basePath: string;
   viewField: any;
 };
 
-const FieldView: React.FC<FieldListProps> = ({
+const FieldView = ({
   fields,
   disabled,
-  dispatch,
   basePath,
   viewField
-}) => {
+}: FieldListProps) => {
+  const { dispatch } = useContext(ViewContext);
+
   const removeField = (field: string | number) => {
     dispatch({
       type: "unsetField",

@@ -1,17 +1,15 @@
-import React, { Dispatch } from "react";
+import React, { Dispatch, useContext } from "react";
 import ViewLayout from "./ViewLayout";
 import { ArangoTable, ArangoTD } from "../../../components/arango/table";
-// import Badge from "../../../components/arango/badges";
 import { IconButton } from "../../../components/arango/buttons";
 import { DispatchArgs } from "../../../utils/constants";
 import { LinkProperties } from "../constants";
-// import { map } from "lodash";
 import LinkPropertiesInput from "../forms/inputs/LinkPropertiesInput";
+import { ViewContext } from "../ViewLinksReactView";
+import { get } from "lodash";
 
-type FieldViewPprops = {
-  fields: {};
+type FieldViewProps = {
   disabled: boolean | undefined;
-  dispatch: Dispatch<DispatchArgs<LinkProperties>>;
   basePath: string;
   viewField: any;
   link?: string;
@@ -19,16 +17,16 @@ type FieldViewPprops = {
   view?: string;
 };
 
-const FieldView: React.FC<FieldViewPprops> = ({
-  fields,
+const FieldView = ({
   disabled,
-  dispatch,
   basePath,
   viewField,
   fieldName,
   view,
   link
-}) => {
+}: FieldViewProps) => {
+  const { formState, dispatch } = useContext(ViewContext);
+
   const removeField = (field: string | undefined) => {
     dispatch({
       type: "unsetField",
@@ -43,15 +41,7 @@ const FieldView: React.FC<FieldViewPprops> = ({
     removeField(field);
   };
 
-  const loopFields = (fields: any) => {
-    for (const f in fields) {
-      if (fieldName === f) {
-        return fields[f];
-      }
-    }
-  };
-
-  const field = loopFields(fields);
+  const field = get(formState, [basePath, fieldName || '']);
 
   return (
     <ViewLayout field={fieldName} view={view} link={link}>

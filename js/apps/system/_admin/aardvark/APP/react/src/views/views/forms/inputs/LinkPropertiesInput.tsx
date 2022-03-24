@@ -1,17 +1,9 @@
 import { FormProps } from "../../../../utils/constants";
 import { LinkProperties } from "../../constants";
-import React, {
-  Dispatch,
-  ChangeEvent,
-  useEffect,
-  useMemo,
-  useState
-} from "react";
-import { useUpdateField, useShowUpdate } from "../../Contexts/LinkContext";
+import React, { ChangeEvent, useContext, useEffect, useMemo, useState } from "react";
 import { chain, isEmpty, without } from "lodash";
 import { Cell, Grid } from "../../../../components/pure-css/grid";
 import Checkbox from "../../../../components/pure-css/form/Checkbox";
-import { DispatchArgs } from "../../../../utils/constants";
 import { ArangoTable, ArangoTD } from "../../../../components/arango/table";
 import Textbox from "../../../../components/pure-css/form/Textbox";
 import { IconButton } from "../../../../components/arango/buttons";
@@ -22,6 +14,8 @@ import AutoCompleteMultiSelect from "../../../../components/pure-css/form/AutoCo
 import useSWR from "swr";
 import { getApiRouteForCurrentDB } from "../../../../utils/arangoClient";
 import FieldList from "../../Components/FieldList";
+import { ViewContext } from "../../ViewLinksReactView";
+
 type LinkPropertiesInputProps = FormProps<LinkProperties> & {
   basePath: string;
 };
@@ -45,8 +39,8 @@ const LinkPropertiesInput = ({
     formState.analyzers
   ]);
 
-  const setShow = useShowUpdate();
-  const setCurrentField = useUpdateField();
+  const { setShow, setField: setCurrentField } = useContext(ViewContext);
+
   useEffect(() => {
     if (data) {
       const tempOptions = chain(data.body.result)
@@ -124,8 +118,7 @@ const LinkPropertiesInput = ({
   const handleShowField = (field: string) => {
     setCurrentField({
       field: field,
-      basePath: basePath,
-      fields: fields
+      basePath: basePath
     });
     setShow("ViewField");
   };
@@ -239,9 +232,6 @@ const LinkPropertiesInput = ({
             <FieldList
               fields={fields}
               disabled={disabled}
-              dispatch={
-                (dispatch as unknown) as Dispatch<DispatchArgs<LinkProperties>>
-              }
               basePath={basePath}
               viewField={handleShowField}
             />

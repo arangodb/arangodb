@@ -1,4 +1,4 @@
-import React from "react";
+import React, { ReactElement } from "react";
 import { ArangoTD } from "../../../components/arango/table";
 import Badge from "../../../components/arango/badges";
 
@@ -7,18 +7,18 @@ interface LinkProps {
     name: string;
     includeAllFields: boolean;
     analyzers: [];
-    action: React.ReactElement;
+    action: ReactElement;
     linkKey: number;
   };
 }
 
-const Link: React.FC<LinkProps["link"]> = ({
+const Link = ({
   name,
   includeAllFields,
   analyzers,
   action,
   linkKey
-}) => {
+}: LinkProps["link"]) => {
   return (
     <tr>
       <ArangoTD seq={linkKey}>{name}</ArangoTD>

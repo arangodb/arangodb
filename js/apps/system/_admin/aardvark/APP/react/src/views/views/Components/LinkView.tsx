@@ -1,29 +1,27 @@
-import React, { Dispatch } from "react";
+import React, { useContext } from "react";
 import ViewLayout from "./ViewLayout";
-import { DispatchArgs } from "../../../utils/constants";
-import { LinkProperties } from "../constants";
 import { ArangoTable, ArangoTD } from "../../../components/arango/table";
-// import { map } from "lodash";
 import LinkPropertiesInput from "../forms/inputs/LinkPropertiesInput";
 import { IconButton } from "../../../components/arango/buttons";
+import { ViewContext } from "../ViewLinksReactView";
 
 interface LinkViewProps {
   links: {};
   disabled: boolean | undefined;
-  dispatch: Dispatch<DispatchArgs<LinkProperties>>;
   view?: string | undefined;
   link?: string;
   field?: string;
 }
 
-const LinkView: React.FC<LinkViewProps> = ({
+const LinkView = ({
   links,
   disabled,
-  dispatch,
   view,
   link,
   field
-}) => {
+}: LinkViewProps) => {
+  const { dispatch } = useContext(ViewContext);
+
   const removeLink = (collection: string | number) => {
     dispatch({
       type: "setField",
