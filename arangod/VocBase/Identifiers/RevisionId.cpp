@@ -33,7 +33,6 @@
 #include "Basics/debugging.h"
 #include "Cluster/ClusterInfo.h"
 #include "Logger/LogMacros.h"
-#include "RocksDBEngine/RocksDBFormat.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
 
 namespace {
@@ -87,11 +86,6 @@ arangodb::velocypack::ValuePair RevisionId::toValuePair(char* buffer) const {
   return arangodb::velocypack::ValuePair(&buffer[0] + positions.first,
                                          positions.second,
                                          velocypack::ValueType::String);
-}
-
-/// @brief Write revision ID to string for storage with correct endianness
-void RevisionId::toPersistent(std::string& buffer) const {
-  rocksutils::uint64ToPersistent(buffer, id());
 }
 
 /// @brief create a revision id with a lower-bound HLC value
@@ -169,10 +163,6 @@ RevisionId RevisionId::fromSlice(velocypack::Slice slice) {
   }
 
   return RevisionId::none();
-}
-
-RevisionId RevisionId::fromPersistent(char const* data) {
-  return RevisionId{rocksutils::uint64FromPersistent(data)};
 }
 
 }  // namespace arangodb

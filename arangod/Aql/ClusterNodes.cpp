@@ -53,6 +53,7 @@
 #include "Aql/SortingGatherExecutor.h"
 #include "Aql/UnsortedGatherExecutor.h"
 #include "Aql/types.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
@@ -68,22 +69,27 @@ constexpr std::string_view kSortModeUnset("unset");
 constexpr std::string_view kSortModeMinElement("minelement");
 constexpr std::string_view kSortModeHeap("heap");
 
-char const* toString(GatherNode::Parallelism value) {
+constexpr std::string_view kParallelismParallel("parallel");
+constexpr std::string_view kParallelismSerial("serial");
+constexpr std::string_view kParallelismUndefined("undefined");
+
+constexpr std::string_view toString(GatherNode::Parallelism value) noexcept {
   switch (value) {
     case GatherNode::Parallelism::Parallel:
-      return "parallel";
+      return kParallelismParallel;
     case GatherNode::Parallelism::Serial:
-      return "serial";
+      return kParallelismSerial;
     case GatherNode::Parallelism::Undefined:
     default:
-      return "undefined";
+      return kParallelismUndefined;
   }
 }
 
-GatherNode::Parallelism parallelismFromString(std::string const& value) {
-  if (value == "parallel") {
+constexpr GatherNode::Parallelism parallelismFromString(
+    std::string_view value) noexcept {
+  if (value == kParallelismParallel) {
     return GatherNode::Parallelism::Parallel;
-  } else if (value == "serial") {
+  } else if (value == kParallelismSerial) {
     return GatherNode::Parallelism::Serial;
   }
   return GatherNode::Parallelism::Undefined;
@@ -733,7 +739,7 @@ void SingleRemoteOperationNode::doToVelocyPack(VPackBuilder& nodes,
     _outVariable->toVelocyPack(nodes);
     isAnyVarUsedLater |= isVarUsedLater(_outVariable);
   }
-  nodes.add("producesResult", VPackValue(isAnyVarUsedLater));
+  nodes.add(StaticStrings::ProducesResult, VPackValue(isAnyVarUsedLater));
   nodes.add(VPackValue("modificationFlags"));
   _options.toVelocyPack(nodes);
 
