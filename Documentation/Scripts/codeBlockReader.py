@@ -277,13 +277,13 @@ def fetch_comments(dirpath, forceDocuBlockContent):
         # stored in files called 1_structs.md, without @startDocuBlock wrappers,
         # and they need to be processed before they are referenced in other files
         filepath = os.path.join(root, filename)
-        print("Assuming this file contains shared structs:", filename)
+        print("Assuming this file contains shared structs: %s" % filepath)
         fh.write("\n<!-- filename: %s -->\n" % filepath)
         infile = io.open(filepath, encoding='utf-8', newline=None)
         for line in infile:
-          fh.write(line + "\n")
+          fh.write(line)
         infile.close()
-      else
+      else:
         filepath = os.path.join(root, filename)
         file_comments = file_content(filepath, forceDocuBlockContent)
         for comment in file_comments:
@@ -293,11 +293,7 @@ def fetch_comments(dirpath, forceDocuBlockContent):
             if "@EXPLAIN{TRUE}" in _com:
               explain = True
           for _com in comment:
-            # TODO: Remove handling of no longer used code comments
-            _text = re.sub(r"//(/)+\s*\n", "<br />\n", _com) # place in temporary brs...
-            _text = re.sub(r"///+(\s+\s+)([-\*\d])", r"  \2", _text)
-            _text = re.sub(r"///\s", "", _text)
-            _text = _text.strip("\n")
+            _text = _com.strip("\n")
             if _text:
               if not shouldIgnoreLine:
                 if ("@startDocuBlock" in _text) or \
