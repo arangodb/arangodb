@@ -38,9 +38,6 @@
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/Maintenance.h"
 #include "Cluster/MaintenanceFeature.h"
-#if 0
-#include "Cluster/ResignShardLeadership.h"
-#endif
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Network/Methods.h"
@@ -163,32 +160,6 @@ std::string const& SynchronizeShard::clientInfoString() const {
 
 SynchronizeShard::~SynchronizeShard() = default;
 
-#if 0
-bool SynchronizeShard::checkShardInCurrent(std::string const& database,
-                                           std::string const& planId,
-                                           std::string const& shard) const {
-  auto& agencyCache =
-      feature().server().getFeature<ClusterFeature>().agencyCache();
-  std::string path = "Current/Collections/" + database + "/" + planId + "/" +
-                     shard + "/servers";
-  VPackBuilder builder;
-  agencyCache.get(builder, path);
-  if (builder.isEmpty()) {
-    return false;
-  }
-  VPackSlice current = builder.slice();
-  if (!current.isArray() || current.length() < 2) {
-    return false;
-  }
-  std::string myself = arangodb::ServerState::instance()->getId();
-  for (size_t i = 1; i < current.length(); ++i) {
-    if (current[i].isString() && current[i].isEqualString(myself)) {
-      return true;
-    }
-  }
-  return false;
-}
-#endif
 static std::stringstream& AppendShardInformationToMessage(
     std::string const& database, std::string const& shard,
     std::string const& planId,
@@ -1426,22 +1397,6 @@ Result SynchronizeShard::catchupWithExclusiveLock(
     errorMessage += res.errorMessage();
     return {TRI_ERROR_INTERNAL, errorMessage};
   }
-
-#if 0
-  // Wait until we are actually in the Current field for the shard,
-  // according to our local AgencyCache:
-  for (int tries = 0; tries <= 100; ++tries) {
-    if (checkShardInCurrent(collection.vocbase().name(),
-                            std::to_string(collection.planId().id()),
-                            collection.name())) {
-      break;
-    }
-    LOG_TOPIC("15242", ERR, Logger::MAINTENANCE)
-        << "Waiting for us to appear in Current for shard "
-        << collection.name();
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-  }
-#endif
 
   // Report success:
   LOG_TOPIC("3423d", DEBUG, Logger::MAINTENANCE)
