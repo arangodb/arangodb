@@ -108,12 +108,18 @@ struct ShortestPathOptions : public BaseOptions {
   auto getWeightAttribute() const& -> std::string;
   auto setDefaultWeight(double weight) -> void;
   auto getDefaultWeight() const -> double;
+  auto isDisjoint() const -> bool;
+  auto setDisjoint(bool flag) -> void;
+  auto isSatelliteLeader() const -> bool;
+  auto setIsSatelliteLeader(bool flag) -> void;
 
  private:
   /// @brief Lookup info to find all reverse edges.
   std::vector<LookupInfo> _reverseLookupInfos;
   std::string _weightAttribute;
   double _defaultWeight;
+  bool _isDisjoint;
+  bool _isSatelliteLeader;
 };
 
 }  // namespace graph

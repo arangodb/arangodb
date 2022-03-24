@@ -33,6 +33,10 @@
 
 #include <velocypack/Slice.h>
 
+#ifdef USE_ENTERPRISE
+#include "Enterprise/Graph/Helpers/GraphHelperEE.h"
+#endif
+
 using namespace arangodb;
 using namespace arangodb::graph;
 
@@ -61,6 +65,17 @@ void ConstantWeightShortestPathFinder::clear() {
   options().cache()->clear();
 }
 
+#ifdef USE_ENTERPRISE
+bool ConstantWeightShortestPathFinder::pathContainsOnlySatellites() const {
+  // Must be called after path calculation is finished.
+  if (options().isDisjoint() && _smartValue.empty()) {
+    return true;
+  }
+  return false;
+}
+#endif
+
+
 bool ConstantWeightShortestPathFinder::shortestPath(
     arangodb::velocypack::Slice s, arangodb::velocypack::Slice e,
     arangodb::graph::ShortestPathResult& result) {
@@ -75,6 +90,24 @@ bool ConstantWeightShortestPathFinder::shortestPath(
     _options.fetchVerticesCoordinator(result._vertices);
     return true;
   }
+
+#ifdef USE_ENTERPRISE
+  if (options().isDisjoint()) {
+    if (!GraphHelperEE::equalShardKeys(s, e)) {
+      return false;
+    } else {
+      auto leftSV = GraphHelperEE::extractShardKey(s);
+      if (leftSV.ok()) {
+        _smartValue = leftSV.get();
+      } else {
+        auto rightSV = GraphHelperEE::extractShardKey(e);
+        if (rightSV.ok()) {
+          _smartValue = rightSV.get();
+        }
+      }
+    }
+  }
+#endif
 
   clearVisited();
   _leftFound.try_emplace(start, PathSnippet());
@@ -192,6 +225,26 @@ void ConstantWeightShortestPathFinder::fillResult(
 
 void ConstantWeightShortestPathFinder::expandVertex(bool backward,
                                                     std::string_view vertex) {
+#ifdef USE_ENTERPRISE
+  auto isValidDisjointPath = [&](std::string_view vertexId) {
+    auto res = GraphHelperEE::extractShardKey(vertexId);
+
+    if (!_smartValue.empty()) {
+      if (res.ok()) {
+        if (res.get() != _smartValue) {
+          return false;
+        }
+      }
+    } else {
+      // value not initialized yet
+      if (res.ok()) {
+        _smartValue = res.get();
+      }
+    }
+    return true;
+  };
+#endif
+
   EdgeCursor* cursor = backward ? _backwardCursor.get() : _forwardCursor.get();
   cursor->rearm(vertex, 0);
 
@@ -207,14 +260,24 @@ void ConstantWeightShortestPathFinder::expandVertex(bool backward,
       if (edge.compareString(vertex.data(), vertex.length()) != 0) {
         guard.increase(Neighbor::itemMemoryUsage());
 
-        std::string_view id =
+        std::string_view vertexId =
             _options.cache()->persistString(edge.stringView());
 
         if (_neighbors.capacity() == 0) {
           // avoid a few reallocations for the first members
           _neighbors.reserve(8);
         }
-        _neighbors.emplace_back(id, std::move(eid));
+#ifdef USE_ENTERPRISE
+        if (options().isDisjoint()) {
+          if (isValidDisjointPath(vertexId)) {
+            _neighbors.emplace_back(vertexId, std::move(eid));
+          }
+        } else {
+          _neighbors.emplace_back(vertexId, std::move(eid));
+        }
+#else
+        _neighbors.emplace_back(vertexId, std::move(eid));
+#endif
       }
     } else {
       std::string_view other(
@@ -225,13 +288,23 @@ void ConstantWeightShortestPathFinder::expandVertex(bool backward,
       if (other != vertex) {
         guard.increase(Neighbor::itemMemoryUsage());
 
-        std::string_view id = _options.cache()->persistString(other);
+        std::string_view vertexId = _options.cache()->persistString(other);
 
         if (_neighbors.capacity() == 0) {
           // avoid a few reallocations for the first members
           _neighbors.reserve(8);
         }
-        _neighbors.emplace_back(id, std::move(eid));
+#ifdef USE_ENTERPRISE
+        if (options().isDisjoint()) {
+          if (isValidDisjointPath(vertexId)) {
+            _neighbors.emplace_back(vertexId, std::move(eid));
+          }
+        } else {
+          _neighbors.emplace_back(vertexId, std::move(eid));
+        }
+#else
+        _neighbors.emplace_back(vertexId, std::move(eid));
+#endif
       }
     }
   });

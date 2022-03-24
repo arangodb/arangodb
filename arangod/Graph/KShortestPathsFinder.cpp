@@ -76,6 +76,16 @@ void KShortestPathsFinder::clear() {
   _traversalDone = true;
 }
 
+#ifdef USE_ENTERPRISE
+bool KShortestPathsFinder::pathContainsOnlySatellites() const {
+  // Must be called after path calculation is finished.
+  if (options().isDisjoint() && _smartValue.empty()) {
+    return true;
+  }
+  return false;
+}
+#endif
+
 // Sets up k-shortest-paths traversal from start to end
 bool KShortestPathsFinder::startKShortestPathsTraversal(
     arangodb::velocypack::Slice const& start,

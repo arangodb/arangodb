@@ -58,6 +58,10 @@ class ShortestPathFinder {
 
   void incHttpRequests(size_t requests) { _httpRequests += requests; }
 
+#ifdef USE_ENTERPRISE
+  virtual bool pathContainsOnlySatellites() const = 0;
+#endif
+
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief The options to modify this shortest path computation

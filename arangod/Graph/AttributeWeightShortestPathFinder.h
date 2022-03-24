@@ -144,6 +144,10 @@ class AttributeWeightShortestPathFinder : public ShortestPathFinder {
 
   void clear() override;
 
+#ifdef USE_ENTERPRISE
+  bool pathContainsOnlySatellites() const override;
+#endif
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Find the shortest path between start and target.
   ///        Only edges having the given direction are followed.
@@ -203,6 +207,10 @@ class AttributeWeightShortestPathFinder : public ShortestPathFinder {
 
   std::unique_ptr<EdgeCursor> _forwardCursor;
   std::unique_ptr<EdgeCursor> _backwardCursor;
+
+#ifdef USE_ENTERPRISE
+  std::string_view _smartValue;
+#endif
 };
 
 }  // namespace graph

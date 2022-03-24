@@ -35,6 +35,10 @@
 
 #include <velocypack/Slice.h>
 
+#ifdef USE_ENTERPRISE
+#include "Enterprise/Graph/Helpers/GraphHelperEE.h"
+#endif
+
 using namespace arangodb;
 using namespace arangodb::graph;
 
@@ -195,6 +199,16 @@ void AttributeWeightShortestPathFinder::clear() {
   clearCandidates();
 }
 
+#ifdef USE_ENTERPRISE
+bool AttributeWeightShortestPathFinder::pathContainsOnlySatellites() const {
+  // Must be called after path calculation is finished.
+  if (options().isDisjoint() && _smartValue.empty()) {
+    return true;
+  }
+  return false;
+}
+#endif
+
 bool AttributeWeightShortestPathFinder::shortestPath(
     arangodb::velocypack::Slice st, arangodb::velocypack::Slice ta,
     ShortestPathResult& result) {
@@ -204,6 +218,24 @@ bool AttributeWeightShortestPathFinder::shortestPath(
   _highscore = 0;
   _bingo = false;
   _intermediateSet = false;
+
+#ifdef USE_ENTERPRISE
+  if (options().isDisjoint()) {
+    if (!GraphHelperEE::equalShardKeys(st, ta)) {
+      return false;
+    } else {
+      auto leftSV = GraphHelperEE::extractShardKey(st);
+      if (leftSV.ok()) {
+        _smartValue = leftSV.get();
+      } else {
+        auto rightSV = GraphHelperEE::extractShardKey(ta);
+        if (rightSV.ok()) {
+          _smartValue = rightSV.get();
+        }
+      }
+    }
+  }
+#endif
 
   std::string_view start = _options.cache()->persistString(st.stringView());
   std::string_view target = _options.cache()->persistString(ta.stringView());
@@ -314,16 +346,43 @@ bool AttributeWeightShortestPathFinder::shortestPath(
 }
 
 void AttributeWeightShortestPathFinder::inserter(
-    std::vector<std::unique_ptr<Step>>& result, std::string_view s,
-    std::string_view t, double currentWeight, EdgeDocumentToken&& edge) {
+    std::vector<std::unique_ptr<Step>>& result, std::string_view prevVertexId,
+    std::string_view nextVertexId, double currentWeight,
+    EdgeDocumentToken&& edge) {
   ResourceUsageScope guard(_resourceMonitor, candidateMemoryUsage());
 
-  auto [cand, emplaced] =
-      _candidates.try_emplace(t, arangodb::lazyConstruct([&] {
-                                result.emplace_back(std::make_unique<Step>(
-                                    t, s, currentWeight, std::move(edge)));
-                                return result.size() - 1;
-                              }));
+#ifdef USE_ENTERPRISE
+  if (options().isDisjoint()) {
+    auto isValidDisjointPath = [&](std::string_view vertexId) {
+      auto res = GraphHelperEE::extractShardKey(vertexId);
+
+      if (!_smartValue.empty()) {
+        if (res.ok()) {
+          if (res.get() != _smartValue) {
+            return false;
+          }
+        }
+      } else {
+        // value not initialized yet
+        if (res.ok()) {
+          _smartValue = res.get();
+        }
+      }
+      return true;
+    };
+
+    if (!isValidDisjointPath(nextVertexId)) {
+      return;
+    }
+  }
+#endif
+
+  auto [cand, emplaced] = _candidates.try_emplace(
+      nextVertexId, arangodb::lazyConstruct([&] {
+        result.emplace_back(std::make_unique<Step>(
+            nextVertexId, prevVertexId, currentWeight, std::move(edge)));
+        return result.size() - 1;
+      }));
   if (emplaced) {
     // new candidate created. now candiates are responsible for memory usage
     // tracking
@@ -334,7 +393,7 @@ void AttributeWeightShortestPathFinder::inserter(
     auto oldWeight = old->weight();
     if (currentWeight < oldWeight) {
       old->setWeight(currentWeight);
-      old->_predecessor = s;
+      old->_predecessor = prevVertexId;
       old->_edge = std::move(edge);
     }
   }

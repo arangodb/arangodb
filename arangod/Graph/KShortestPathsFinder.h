@@ -252,6 +252,10 @@ class KShortestPathsFinder : public ShortestPathFinder {
   // a cursor is initialized.
   void clear() override;
 
+#ifdef USE_ENTERPRISE
+  bool pathContainsOnlySatellites() const override;
+#endif
+
   // This is here because we inherit from ShortestPathFinder (to get the
   // destroyEngines function)
   // TODO: Remove
@@ -332,6 +336,10 @@ class KShortestPathsFinder : public ShortestPathFinder {
 
   // a temporary object that is reused for building candidate results
   Path _candidate;
+
+#ifdef USE_ENTERPRISE
+  std::string_view _smartValue;
+#endif
 };
 
 }  // namespace graph

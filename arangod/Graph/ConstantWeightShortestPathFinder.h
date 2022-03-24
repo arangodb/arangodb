@@ -71,6 +71,9 @@ class ConstantWeightShortestPathFinder : public ShortestPathFinder {
                     arangodb::graph::ShortestPathResult& result) override;
 
   void clear() override;
+#ifdef USE_ENTERPRISE
+  bool pathContainsOnlySatellites() const override;
+#endif
 
  private:
   // side-effect: populates _neighbors
@@ -95,6 +98,10 @@ class ConstantWeightShortestPathFinder : public ShortestPathFinder {
 
   Snippets _rightFound;
   Closure _rightClosure;
+
+#ifdef USE_ENTERPRISE
+  std::string_view _smartValue;
+#endif
 
   std::unique_ptr<EdgeCursor> _forwardCursor;
   std::unique_ptr<EdgeCursor> _backwardCursor;
