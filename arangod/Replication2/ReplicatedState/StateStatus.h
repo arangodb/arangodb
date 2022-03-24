@@ -72,6 +72,7 @@ enum class FollowerInternalState {
   kTransferSnapshot,
   kNothingToApply,
   kApplyRecentEntries,
+  kSnapshotTransferFailed,
 };
 
 auto to_string(FollowerInternalState) noexcept -> std::string_view;
@@ -96,10 +97,21 @@ struct FollowerStatus {
   static auto fromVelocyPack(velocypack::Slice) -> FollowerStatus;
 };
 
-struct StateStatus {
-  std::variant<LeaderStatus, FollowerStatus> variant;
+struct UnconfiguredStatus {
+  StateGeneration generation;
+  SnapshotInfo snapshot;
 
-  auto asFollowerStatus() const noexcept -> FollowerStatus const* {
+  void toVelocyPack(velocypack::Builder&) const;
+  static auto fromVelocyPack(velocypack::Slice) -> UnconfiguredStatus;
+
+  auto operator==(UnconfiguredStatus const&) const noexcept -> bool = default;
+};
+
+struct StateStatus {
+  std::variant<LeaderStatus, FollowerStatus, UnconfiguredStatus> variant;
+
+  [[nodiscard]] auto asFollowerStatus() const noexcept
+      -> FollowerStatus const* {
     return std::get_if<FollowerStatus>(&variant);
   }
 
@@ -115,6 +127,10 @@ struct StateStatus {
 
   void toVelocyPack(velocypack::Builder&) const;
   static auto fromVelocyPack(velocypack::Slice) -> StateStatus;
+
+  friend auto operator<<(std::ostream&, StateStatus const&) -> std::ostream&;
 };
+
+auto operator<<(std::ostream&, StateStatus const&) -> std::ostream&;
 
 }  // namespace arangodb::replication2::replicated_state

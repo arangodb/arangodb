@@ -874,41 +874,29 @@ Result IResearchDataStore::consolidateUnsafeImpl(
   return {};
 }
 
-Result IResearchDataStore::shutdownDataStore() {
-  std::atomic_store(&_flushSubscription, {});
-  // reset together with '_asyncSelf'
-  _asyncSelf->reset();
-  // the data-store is being deallocated, link use is no longer valid
-  // (wait for all the view users to finish)
-
+void IResearchDataStore::shutdownDataStore() noexcept {
+  std::atomic_store(&_flushSubscription, {});  // reset together with _asyncSelf
   try {
+    // the data-store is being deallocated, link use is no longer valid
+    _asyncSelf->reset();  // wait for all the view users to finish
     if (_dataStore) {
-      removeMetrics();
-      _dataStore.resetDataStore();
+      removeMetrics();  // TODO(MBkkt) Should be noexcept?
     }
-  } catch (basics::Exception const& e) {
-    return {e.code(),
-            "caught exception while unloading arangosearch data store '" +
-                std::to_string(id().id()) + "': " + e.what()};
   } catch (std::exception const& e) {
-    return {TRI_ERROR_INTERNAL,
-            "caught exception while unloading arangosearch data store '" +
-                std::to_string(id().id()) + "': " + e.what()};
+    LOG_TOPIC("bad00", ERR, TOPIC)
+        << "caught exception while waiting reset arangosearch data store '"
+        << std::to_string(id().id()) << "': " << e.what();
   } catch (...) {
-    return {TRI_ERROR_INTERNAL,
-            "caught exception while unloading arangosearch data store '" +
-                std::to_string(id().id()) + "'"};
+    LOG_TOPIC("bad01", ERR, TOPIC)
+        << "caught something while waiting reset arangosearch data store '"
+        << std::to_string(id().id()) << "'";
   }
-  return {};
+  _dataStore.resetDataStore();
 }
 
-Result IResearchDataStore::deleteDataStore() {
-  auto res = shutdownDataStore();
-  if (res.fail()) {
-    return res;
-  }
+Result IResearchDataStore::deleteDataStore() noexcept {
+  shutdownDataStore();
   bool exists;
-
   // remove persisted data store directory if present
   if (!irs::file_utils::exists_directory(exists, _dataStore._path.c_str()) ||
       (exists && !irs::file_utils::remove(_dataStore._path.c_str()))) {
@@ -919,7 +907,8 @@ Result IResearchDataStore::deleteDataStore() {
 }
 
 Result IResearchDataStore::initDataStore(
-    InitCallback const& initCallback, uint32_t version, bool sorted,
+    bool& pathExists, InitCallback const& initCallback, uint32_t version,
+    bool sorted,
     std::vector<IResearchViewStoredValues::StoredColumn> const& storedColumns,
     irs::type_info::type_id primarySortCompression) {
   std::atomic_store(&_flushSubscription, {});
@@ -956,14 +945,14 @@ Result IResearchDataStore::initDataStore(
 
   _engine = &server.getFeature<EngineSelectorFeature>().engine();
 
-  bool pathExists{false};
-
   _dataStore._path = getPersistedPath(dbPathFeature, *this);
 
   // must manually ensure that the data store directory exists (since not using
   // a lockfile)
-  if (irs::file_utils::exists_directory(pathExists, _dataStore._path.c_str()) &&
-      !pathExists && !irs::file_utils::mkdir(_dataStore._path.c_str(), true)) {
+  if (!irs::file_utils::exists_directory(pathExists,
+                                         _dataStore._path.c_str()) ||
+      (!pathExists &&
+       !irs::file_utils::mkdir(_dataStore._path.c_str(), true))) {
     return {TRI_ERROR_CANNOT_CREATE_DIRECTORY,
             "failed to create data store directory with path '" +
                 _dataStore._path.string() + "' while initializing link '" +

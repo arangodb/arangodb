@@ -152,7 +152,7 @@ class IResearchFilterArrayIntervalTest
 namespace {
 // Auxilary check lambdas. Need them to check by_range part of expected filter
 auto checkLess = [](irs::boolean_filter::const_iterator& filter,
-                    irs::bytes_ref const& term, irs::string_ref const& field) {
+                    irs::bytes_ref term, irs::string_ref field) {
   ASSERT_EQ(irs::type<irs::by_range>::id(), filter->type());
   auto& actual = dynamic_cast<irs::by_range const&>(*filter);
   irs::by_range expected;
@@ -163,8 +163,7 @@ auto checkLess = [](irs::boolean_filter::const_iterator& filter,
 };
 
 auto checkLessEqual = [](irs::boolean_filter::const_iterator& filter,
-                         irs::bytes_ref const& term,
-                         irs::string_ref const& field) {
+                         irs::bytes_ref term, irs::string_ref field) {
   ASSERT_EQ(irs::type<irs::by_range>::id(), filter->type());
   auto& actual = dynamic_cast<irs::by_range const&>(*filter);
   irs::by_range expected;
@@ -175,8 +174,7 @@ auto checkLessEqual = [](irs::boolean_filter::const_iterator& filter,
 };
 
 auto checkGreaterEqual = [](irs::boolean_filter::const_iterator& filter,
-                            irs::bytes_ref const& term,
-                            irs::string_ref const& field) {
+                            irs::bytes_ref term, irs::string_ref field) {
   ASSERT_EQ(irs::type<irs::by_range>::id(), filter->type());
   auto& actual = dynamic_cast<irs::by_range const&>(*filter);
   irs::by_range expected;
@@ -187,8 +185,7 @@ auto checkGreaterEqual = [](irs::boolean_filter::const_iterator& filter,
 };
 
 auto checkGreater = [](irs::boolean_filter::const_iterator& filter,
-                       irs::bytes_ref const& term,
-                       irs::string_ref const& field) {
+                       irs::bytes_ref term, irs::string_ref field) {
   ASSERT_EQ(irs::type<irs::by_range>::id(), filter->type());
   auto& actual = dynamic_cast<irs::by_range const&>(*filter);
   irs::by_range expected;

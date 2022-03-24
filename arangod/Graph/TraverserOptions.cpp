@@ -36,7 +36,6 @@
 #include "Indexes/Index.h"
 
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::graph;
@@ -668,11 +667,15 @@ void TraverserOptions::addDepthLookupInfo(aql::ExecutionPlan* plan,
                                           std::string const& collectionName,
                                           std::string const& attributeName,
                                           aql::AstNode* condition,
-                                          uint64_t depth,
-                                          bool onlyEdgeIndexes) {
+                                          uint64_t depth, bool onlyEdgeIndexes,
+                                          TRI_edge_direction_e direction) {
   auto& list = _depthLookupInfo[depth];
   injectLookupInfoInList(list, plan, collectionName, attributeName, condition,
-                         onlyEdgeIndexes);
+                         onlyEdgeIndexes, direction);
+}
+
+bool TraverserOptions::hasSpecificCursorForDepth(uint64_t depth) const {
+  return _depthLookupInfo.contains(depth);
 }
 
 bool TraverserOptions::vertexHasFilter(uint64_t depth) const {
@@ -865,10 +868,12 @@ std::unique_ptr<EdgeCursor> arangodb::traverser::TraverserOptions::buildCursor(
 
   auto specific = _depthLookupInfo.find(depth);
   if (specific != _depthLookupInfo.end()) {
+    // use specific cursor
     return std::make_unique<graph::SingleServerEdgeCursor>(
         this, _tmpVar, nullptr, specific->second);
   }
 
+  // otherwise, retain / reuse the general (global) cursor
   return std::make_unique<graph::SingleServerEdgeCursor>(this, _tmpVar, nullptr,
                                                          _baseLookupInfos);
 }

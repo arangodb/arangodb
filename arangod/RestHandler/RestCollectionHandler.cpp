@@ -46,7 +46,6 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -373,9 +372,12 @@ void RestCollectionHandler::handleCommandPost() {
     }
   }
 
+  bool isDC2DCContext = ExecContext::current().isSuperuser();
+
   // for some "security" a list of allowed parameters (i.e. all
   // others are disallowed!)
-  VPackBuilder filtered = methods::Collections::filterInput(body);
+  VPackBuilder filtered =
+      methods::Collections::filterInput(body, isDC2DCContext);
   VPackSlice const parameters = filtered.slice();
 
   bool allowSystem = VelocyPackHelper::getBooleanValue(

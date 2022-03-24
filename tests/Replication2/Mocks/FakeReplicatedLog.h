@@ -22,6 +22,7 @@
 
 #pragma once
 #include <deque>
+#include <memory>
 
 #include "Replication2/Mocks/ReplicatedLogMetricsMock.h"
 #include "Replication2/ReplicatedLog/ILogInterfaces.h"
@@ -35,6 +36,9 @@
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "Replication2/ReplicatedLog/types.h"
 
+namespace arangodb::cluster {
+struct IFailureOracle;
+}
 namespace arangodb::replication2::test {
 
 struct DelayedFollowerLog : replicated_log::AbstractFollower,
@@ -49,11 +53,9 @@ struct DelayedFollowerLog : replicated_log::AbstractFollower,
                      std::unique_ptr<replicated_log::LogCore> logCore,
                      LogTerm term, ParticipantId leaderId)
       : DelayedFollowerLog([&] {
-          auto inMemoryLog =
-              replicated_log::InMemoryLog::loadFromLogCore(*logCore);
-          return std::make_shared<replicated_log::LogFollower>(
+          return replicated_log::LogFollower::construct(
               logContext, std::move(logMetricsMock), id, std::move(logCore),
-              term, std::move(leaderId), std::move(inMemoryLog));
+              term, std::move(leaderId));
         }()) {}
 
   auto appendEntries(replicated_log::AppendEntriesRequest req)
@@ -132,7 +134,9 @@ struct DelayedFollowerLog : replicated_log::AbstractFollower,
   auto waitForIterator(LogIndex index) -> WaitForIteratorFuture override {
     return _follower->waitForIterator(index);
   }
-
+  auto waitForResign() -> futures::Future<futures::Unit> override {
+    return _follower->waitForResign();
+  }
   auto release(LogIndex doneWithIdx) -> Result override {
     return _follower->release(doneWithIdx);
   }
@@ -152,7 +156,8 @@ struct TestReplicatedLog : replicated_log::ReplicatedLog {
   auto becomeLeader(
       ParticipantId const& id, LogTerm term,
       std::vector<std::shared_ptr<replicated_log::AbstractFollower>> const&,
-      std::size_t writeConcern, bool waitForSync = false)
+      std::size_t writeConcern, bool waitForSync = false,
+      std::shared_ptr<cluster::IFailureOracle> failureOracle = nullptr)
       -> std::shared_ptr<replicated_log::LogLeader>;
 };
 }  // namespace arangodb::replication2::test

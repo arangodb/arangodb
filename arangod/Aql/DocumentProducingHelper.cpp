@@ -25,17 +25,17 @@
 
 #include "Aql/AqlValue.h"
 #include "Aql/DocumentExpressionContext.h"
-#include "Aql/DocumentIndexExpressionContext.h"
+#include "Aql/EnumerateCollectionExecutor.h"
 #include "Aql/Expression.h"
+#include "Aql/IndexExecutor.h"
+#include "Aql/LateMaterializedExpressionContext.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Query.h"
-#include "Basics/StaticStrings.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -54,11 +54,9 @@ IndexIterator::DocumentCallback aql::getCallback(
 
     context.incrScanned();
 
-    if (context.hasFilter()) {
-      if (!context.checkFilter(slice)) {
-        context.incrFiltered();
-        return false;
-      }
+    if (context.hasFilter() && !context.checkFilter(slice)) {
+      context.incrFiltered();
+      return false;
     }
 
     if constexpr (skip) {
@@ -140,7 +138,7 @@ IndexIterator::DocumentCallback aql::buildDocumentCallback(
 
   if (!context.getProjections().empty()) {
     // return a projection
-    TRI_ASSERT(!context.getProjections().supportsCoveringIndex() ||
+    TRI_ASSERT(!context.getProjections().usesCoveringIndex() ||
                !context.getAllowCoveringIndexOptimization());
     // projections from a "real" document
     return getCallback<checkUniqueness, skip>(
@@ -155,9 +153,9 @@ IndexIterator::DocumentCallback aql::buildDocumentCallback(
 template<bool checkUniqueness>
 std::function<bool(LocalDocumentId const& token)> aql::getNullCallback(
     DocumentProducingFunctionContext& context) {
-  return [&context](LocalDocumentId const& token) {
-    TRI_ASSERT(!context.hasFilter());
+  TRI_ASSERT(!context.hasFilter());
 
+  return [&context](LocalDocumentId const& token) {
     if constexpr (checkUniqueness) {
       if (!context.checkUniqueness(token)) {
         // Document already found, skip it
@@ -181,24 +179,92 @@ std::function<bool(LocalDocumentId const& token)> aql::getNullCallback(
 }
 
 DocumentProducingFunctionContext::DocumentProducingFunctionContext(
-    InputAqlItemRow const& inputRow, OutputAqlItemRow* outputRow,
-    RegisterId const outputRegister, bool produceResult,
-    aql::QueryContext& query, transaction::Methods& trx, Expression* filter,
-    arangodb::aql::Projections const& projections,
-    bool allowCoveringIndexOptimization, bool checkUniqueness)
+    transaction::Methods& trx, InputAqlItemRow const& inputRow,
+    EnumerateCollectionExecutorInfos& infos)
     : _inputRow(inputRow),
-      _outputRow(outputRow),
-      _query(query),
+      _outputRow(nullptr),
+      _query(infos.getQuery()),
       _trx(trx),
-      _filter(filter),
-      _projections(projections),
+      _filter(infos.getFilter()),
+      _projections(infos.getProjections()),
       _numScanned(0),
       _numFiltered(0),
-      _outputRegister(outputRegister),
-      _produceResult(produceResult),
-      _allowCoveringIndexOptimization(allowCoveringIndexOptimization),
-      _isLastIndex(false),
-      _checkUniqueness(checkUniqueness) {}
+      _outputRegister(infos.getOutputRegisterId()),
+      _outputVariable(infos.getOutVariable()),
+      _checkUniqueness(false),
+      _produceResult(infos.getProduceResult()),
+      _allowCoveringIndexOptimization(false),
+      _isLastIndex(false) {
+  // build ExpressionContext for filtering if we need one
+  if (hasFilter()) {
+    TRI_ASSERT(_outputVariable != nullptr);
+    auto const& filterVars = infos.getFilterVarsToRegister();
+    if (filterVars.size() == 1 && filterVars[0].first == _outputVariable->id) {
+      // filter condition only refers to the current document, but no other
+      // variables. we can get away with building a very simple expression
+      // context
+      _expressionContext = std::make_unique<SimpleDocumentExpressionContext>(
+          _trx, _query, _aqlFunctionsInternalCache,
+          infos.getFilterVarsToRegister(), _inputRow, _outputVariable);
+    } else {
+      // filter condition refers to addition variables.
+      // we have to use a more generic expression context
+      _expressionContext = std::make_unique<GenericDocumentExpressionContext>(
+          _trx, _query, _aqlFunctionsInternalCache,
+          infos.getFilterVarsToRegister(), _inputRow, _outputVariable);
+    }
+  }
+}
+
+DocumentProducingFunctionContext::DocumentProducingFunctionContext(
+    transaction::Methods& trx, InputAqlItemRow const& inputRow,
+    IndexExecutorInfos& infos)
+    : _inputRow(inputRow),
+      _outputRow(nullptr),
+      _query(infos.query()),
+      _trx(trx),
+      _filter(infos.getFilter()),
+      _projections(infos.getProjections()),
+      _numScanned(0),
+      _numFiltered(0),
+      _outputRegister(infos.getOutputRegisterId()),
+      _outputVariable(infos.getOutVariable()),
+      _checkUniqueness(infos.getIndexes().size() > 1 ||
+                       infos.hasMultipleExpansions()),
+      _produceResult(infos.getProduceResult()),
+      _allowCoveringIndexOptimization(false),  // can be updated later
+      _isLastIndex(false) {
+  // build ExpressionContext for filtering if we need one
+  if (hasFilter()) {
+    if (infos.isLateMaterialized()) {
+      // special handling for late materialization
+      _expressionContext = std::make_unique<LateMaterializedExpressionContext>(
+          _trx, _query, _aqlFunctionsInternalCache,
+          infos.getFilterVarsToRegister(), _inputRow,
+          infos.getOutNonMaterializedIndVars());
+    } else {
+      TRI_ASSERT(_outputVariable != nullptr);
+      auto const& filterVars = infos.getFilterVarsToRegister();
+      if (filterVars.size() == 1 &&
+          filterVars[0].first == _outputVariable->id) {
+        // filter condition only refers to the current document, but no other
+        // variables. we can get away with building a very simple expression
+        // context
+        _expressionContext = std::make_unique<SimpleDocumentExpressionContext>(
+            _trx, _query, _aqlFunctionsInternalCache,
+            infos.getFilterVarsToRegister(), _inputRow, _outputVariable);
+      } else {
+        // filter condition refers to addition variables.
+        // we have to use a more generic expression context
+        _expressionContext = std::make_unique<GenericDocumentExpressionContext>(
+            _trx, _query, _aqlFunctionsInternalCache,
+            infos.getFilterVarsToRegister(), _inputRow, _outputVariable);
+      }
+    }
+  }
+}
+
+DocumentProducingFunctionContext::~DocumentProducingFunctionContext() = default;
 
 void DocumentProducingFunctionContext::setOutputRow(
     OutputAqlItemRow* outputRow) {
@@ -287,20 +353,34 @@ bool DocumentProducingFunctionContext::checkUniqueness(
 }
 
 bool DocumentProducingFunctionContext::checkFilter(velocypack::Slice slice) {
-  DocumentExpressionContext ctx(_trx, _query, _aqlFunctionsInternalCache,
-                                slice);
+  TRI_ASSERT(_expressionContext != nullptr);
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  TRI_ASSERT(!_expressionContext->isLateMaterialized());
+#endif
+
+  DocumentExpressionContext& ctx =
+      *static_cast<DocumentExpressionContext*>(_expressionContext.get());
+  ctx.setCurrentDocument(slice);
   return checkFilter(ctx);
 }
 
 bool DocumentProducingFunctionContext::checkFilter(
-    AqlValue (*getValue)(void const* ctx, Variable const* var, bool doCopy),
-    void const* filterContext) {
-  DocumentIndexExpressionContext ctx(_trx, _query, _aqlFunctionsInternalCache,
-                                     getValue, filterContext);
+    IndexIteratorCoveringData const* covering) {
+  TRI_ASSERT(covering != nullptr);
+  TRI_ASSERT(_expressionContext != nullptr);
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  TRI_ASSERT(_expressionContext->isLateMaterialized());
+#endif
+
+  LateMaterializedExpressionContext& ctx =
+      *static_cast<LateMaterializedExpressionContext*>(
+          _expressionContext.get());
+  ctx.setCurrentCoveringData(covering);
   return checkFilter(ctx);
 }
 
-bool DocumentProducingFunctionContext::checkFilter(ExpressionContext& ctx) {
+bool DocumentProducingFunctionContext::checkFilter(
+    DocumentProducingExpressionContext& ctx) {
   _killCheckCounter = (_killCheckCounter + 1) % 1024;
   if (ADB_UNLIKELY(_killCheckCounter == 0 && _query.killed())) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);

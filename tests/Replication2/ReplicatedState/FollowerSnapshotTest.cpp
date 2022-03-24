@@ -53,6 +53,7 @@ struct FollowerSnapshotTest
   std::shared_ptr<State::FactoryType> factory =
       std::make_shared<State::FactoryType>();
   std::unique_ptr<State::CoreType> core = std::make_unique<State::CoreType>();
+  LoggerContext const loggerCtx{Logger::REPLICATED_STATE};
 };
 
 TEST_F(FollowerSnapshotTest, basic_follower_manager_test) {
@@ -68,7 +69,7 @@ TEST_F(FollowerSnapshotTest, basic_follower_manager_test) {
       test::DefaultEntryType{.key = "D", .value = "d"});
 
   auto manager = std::make_shared<FollowerStateManager<State>>(
-      nullptr, follower, std::move(core),
+      loggerCtx, nullptr, follower, std::move(core),
       std::make_unique<ReplicatedStateToken>(StateGeneration{1}), factory);
   manager->run();
   {
@@ -99,8 +100,23 @@ TEST_F(FollowerSnapshotTest, basic_follower_manager_test) {
     EXPECT_EQ(value.first, "leader");
     EXPECT_EQ(value.second, LogIndex{0});
   }
-  ASSERT_ANY_THROW(manager->getFollowerState())
-      << "follower state not yet available";
+  ASSERT_EQ(nullptr, manager->getFollowerState())
+      << "follower state should not be available yet";
+
+  // first trigger an error
+  state->acquire.resolveWithAndReset(
+      Result{TRI_ERROR_HTTP_SERVICE_UNAVAILABLE});
+
+  // we expect a retry
+  {
+    ASSERT_TRUE(state->acquire.wasTriggered())
+        << "expect snapshot to be requested";
+    auto& value = state->acquire.inspectValue();
+    EXPECT_EQ(value.first, "leader");
+    EXPECT_EQ(value.second, LogIndex{0});
+  }
+  ASSERT_EQ(nullptr, manager->getFollowerState())
+      << "follower state should not be available yet";
 
   // notify the manager that the state transfer was successfully completed
   state->acquire.resolveWith(Result{});
@@ -111,7 +127,7 @@ TEST_F(FollowerSnapshotTest, basic_follower_manager_test) {
     EXPECT_EQ(status.managerState.state,
               FollowerInternalState::kNothingToApply);
   }
-  ASSERT_NO_THROW(manager->getFollowerState())
+  ASSERT_NE(nullptr, manager->getFollowerState())
       << "follower state should be available";
   EXPECT_FALSE(state->apply.wasTriggered());
 
@@ -146,7 +162,7 @@ TEST_F(FollowerSnapshotTest, follower_resign_before_leadership_acked) {
       test::DefaultEntryType{.key = "D", .value = "d"});
 
   auto manager = std::make_shared<FollowerStateManager<State>>(
-      nullptr, follower, std::move(core),
+      loggerCtx, nullptr, follower, std::move(core),
       std::make_unique<ReplicatedStateToken>(StateGeneration{1}), factory);
   manager->run();
   {

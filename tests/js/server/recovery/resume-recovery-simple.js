@@ -37,8 +37,8 @@ function runSetup () {
   internal.debugClearFailAt();
 
   db._drop('UnitTestsRecovery');
-  var c = db._create('UnitTestsRecovery');
-  c.ensureHashIndex('foo', 'bar');
+  let c = db._create('UnitTestsRecovery');
+  c.ensureIndex({ type: "hash", fields: ["foo", "bar"] });
 
   c.save({ _key: 'test', 'foo': 1, 'bar': 2 }, true);
 

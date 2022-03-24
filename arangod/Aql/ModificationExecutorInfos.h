@@ -31,7 +31,6 @@
 #include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
 namespace aql {

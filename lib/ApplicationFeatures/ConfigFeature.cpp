@@ -56,17 +56,17 @@ void ConfigFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption(
       "--config", "the configuration file or 'none'",
       new StringParameter(&_file),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options->addOption(
       "--define,-D", "define key=value for a @key@ entry in config file",
       new VectorParameter<StringParameter>(&_defines),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options->addOption(
       "--check-configuration", "check the configuration and exit",
       new BooleanParameter(&_checkConfiguration),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden,
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon,
                                           arangodb::options::Flags::Command));
 }
 

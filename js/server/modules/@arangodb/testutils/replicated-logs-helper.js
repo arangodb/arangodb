@@ -21,13 +21,17 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
-const {wait} = require("internal");
+
+const internal = require("internal");
+const {wait} = internal;
 const _ = require("lodash");
-const jsunity = require("../../../../common/modules/jsunity");
+const jsunity = require("jsunity");
 const {assertTrue} = jsunity.jsUnity.assertions;
 const request = require('@arangodb/request');
 const arangodb = require('@arangodb');
 const ArangoError = arangodb.ArangoError;
+const ERRORS = arangodb.errors;
+const db = arangodb.db;
 
 const waitFor = function (checkFn, maxTries = 240) {
   let count = 0;
@@ -69,7 +73,7 @@ const getServerRebootId = function (serverId) {
 
 const getParticipantsObjectForServers = function (servers) {
   return _.reduce(servers, (a, v) => {
-    a[v] = {excluded: false, forced: false};
+    a[v] = {allowedInQuorum: true, allowedAsLeader: true, forced: false};
     return a;
   }, {});
 };
@@ -98,6 +102,9 @@ const getServerHealth = function (serverId) {
 
 const dbservers = (function () {
   return global.ArangoClusterInfo.getDBServers().map((x) => x.serverId);
+}());
+const coordinators = (function () {
+  return global.ArangoClusterInfo.getCoordinators();
 }());
 
 
@@ -235,6 +242,31 @@ const replicatedLogLeaderEstablished = function (database, logId, term, particip
   };
 };
 
+const waitForReplicatedLogAvailable = function (id) {
+  while (true) {
+    try {
+      let status = db._replicatedLog(id).status();
+      const leaderId = status.leaderId;
+      if (leaderId !== undefined && status.participants !== undefined &&
+        status.participants[leaderId].connection.errorCode === 0 && status.participants[leaderId].response.role === "leader") {
+        break;
+      }
+      console.info("replicated log not yet available");
+    } catch (err) {
+      const errors = [
+        ERRORS.ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED.code,
+        ERRORS.ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND.code
+      ];
+      if (errors.indexOf(err.errorNum) === -1) {
+        throw err;
+      }
+    }
+
+    internal.sleep(1);
+  }
+};
+
+
 const getServerProcessID = function (serverId) {
   let endpoint = global.ArangoClusterInfo.getServerEndpoint(serverId);
   // Now look for instanceInfo:
@@ -274,7 +306,10 @@ const allServersHealthy = function () {
 
 const checkServerHealth = function (serverId, value) {
   return function () {
-    return value === getServerHealth(serverId);
+    if (value === getServerHealth(serverId)) {
+      return true;
+    }
+    return Error(`${serverId} is not ${value}`);
   };
 };
 
@@ -287,7 +322,7 @@ const continueServerWaitOk = function (serverId) {
 };
 
 const stopServerWaitFailed = function (serverId) {
-  continueServer(serverId);
+  stopServer(serverId);
   waitFor(serverFailed(serverId));
 };
 
@@ -425,6 +460,7 @@ exports.readAgencyValueAt = readAgencyValueAt;
 exports.createParticipantsConfig = createParticipantsConfig;
 exports.createTermSpecification = createTermSpecification;
 exports.dbservers = dbservers;
+exports.coordinators = coordinators;
 exports.readReplicatedLogAgency = readReplicatedLogAgency;
 exports.replicatedLogSetPlanParticipantsConfig = replicatedLogSetPlanParticipantsConfig;
 exports.replicatedLogUpdatePlanParticipantsConfigParticipants = replicatedLogUpdatePlanParticipantsConfigParticipants;
@@ -447,6 +483,10 @@ exports.getLocalStatus = getLocalStatus;
 exports.getServerRebootId = getServerRebootId;
 exports.replicatedLogUpdateTargetParticipants = replicatedLogUpdateTargetParticipants;
 exports.replicatedLogLeaderEstablished = replicatedLogLeaderEstablished;
+exports.waitForReplicatedLogAvailable = waitForReplicatedLogAvailable;
 exports.replicatedLogParticipantsFlag = replicatedLogParticipantsFlag;
 exports.getReplicatedLogLeaderPlan = getReplicatedLogLeaderPlan;
 exports.createReplicatedLog = createReplicatedLog;
+exports.checkRequestResult = checkRequestResult;
+exports.getServerUrl = getServerUrl;
+exports.getServerHealth = getServerHealth;

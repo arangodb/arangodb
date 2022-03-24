@@ -1,27 +1,18 @@
-import { DispatchArgs, FormProps } from "../../../utils/constants";
-import { FormState, LinkProperties } from "../constants";
-import React, { Dispatch, useEffect, useState } from "react";
-import { chain, difference, isEmpty, isNull, map } from "lodash";
+import { FormProps } from "../../../utils/constants";
+import { FormState } from "../constants";
+import React, { useContext, useEffect, useState } from "react";
+import { chain, difference, isEmpty, isNull, map, noop } from "lodash";
 import { useLinkState } from "../helpers";
 import useSWR from "swr";
 import { getApiRouteForCurrentDB } from "../../../utils/arangoClient";
 import NewLink from "../Components/NewLink";
 import LinkView from "../Components/LinkView";
-import {
-  useShow,
-  useShowUpdate,
-  useField,
-  useUpdateLinks,
-  useUpdateField
-} from "../Contexts/LinkContext";
 import FieldView from "../Components/FieldView";
+import { ViewContext } from "../ViewLinksReactView";
 
-const LinkPropertiesForm = ({
-  formState,
-  dispatch,
-  disabled,
-  view
-}: FormProps<FormState>) => {
+const LinkPropertiesForm = ({ disabled, view }: FormProps<FormState>) => {
+  const { formState, dispatch, field } = useContext(ViewContext);
+
   const [collection, setCollection, addDisabled, links] = useLinkState(
     formState,
     "links"
@@ -32,11 +23,7 @@ const LinkPropertiesForm = ({
   );
   const [options, setOptions] = useState<string[]>([]);
   const [link, setLink] = useState<string>();
-  const show = useShow();
-  const setShow = useShowUpdate();
-  const field = useField();
-  const updateLinks = useUpdateLinks();
-  const setCurrentField = useUpdateField();
+  const { show, setShow } = useContext(ViewContext);
 
   useEffect(() => {
     if (data) {
@@ -56,10 +43,6 @@ const LinkPropertiesForm = ({
     .keys()
     .value()[0];
 
-  const updateCollection = (value: string | number) => {
-    setCollection(value);
-  };
-
   const getLink = (str: string) => {
     console.log(str);
     let formatedStr;
@@ -74,13 +57,6 @@ const LinkPropertiesForm = ({
     return formatedStr;
   };
 
-  const handleShowField = (fld: string, basePath: string) => {
-    setCurrentField({
-      field: fld,
-      basePath: basePath,
-      fields: field.fields
-    });
-  };
   const addLink = () => {
     dispatch({
       type: "setField",
@@ -92,7 +68,6 @@ const LinkPropertiesForm = ({
     setCollection("");
     setShow("ViewChild");
     setLink(collection);
-    updateLinks(collection);
   };
 
   return disabled && isEmpty(links) ? (
@@ -105,7 +80,7 @@ const LinkPropertiesForm = ({
           disabled={addDisabled || !options.includes(collection)}
           addLink={addLink}
           collection={collection}
-          updateCollection={updateCollection}
+          updateCollection={setCollection}
           options={options}
         />
       )}
@@ -115,67 +90,24 @@ const LinkPropertiesForm = ({
           view={view}
           link={linkVal}
           links={links}
-          dispatch={
-            (dispatch as unknown) as Dispatch<DispatchArgs<LinkProperties>>
-          }
-          disabled={disabled}
-        />
-      )}
-      {show === "ViewChild" && (
-        <LinkView
-          view={view}
-          link={link}
-          links={links}
-          dispatch={
-            (dispatch as unknown) as Dispatch<DispatchArgs<LinkProperties>>
-          }
           disabled={disabled}
         />
       )}
 
-      {show === "ViewField" && field !== null && (
+      {show === "ViewChild" && (
+        <LinkView view={view} link={link} links={links} disabled={disabled} />
+      )}
+
+      {show === "ViewField" && (
         <FieldView
           view={view}
-          fields={field.fields}
           disabled={disabled}
-          dispatch={
-            (dispatch as unknown) as Dispatch<DispatchArgs<LinkProperties>>
-          }
           basePath={field.basePath}
-          viewField={handleShowField}
+          viewField={noop}
           fieldName={field.field}
           link={getLink(field.basePath)}
         />
       )}
-      {/* {map(links, (properties, coll) => {
-          return properties ? (
-            <tr key={coll} style={{ borderBottom: "1px  solid #DDD" }}>
-              <ArangoTD seq={disabled ? 1 : 2}>
-                <LinkPropertiesInput
-                  formState={properties}
-                  disabled={disabled || !properties}
-                  dispatch={
-                    (dispatch as unknown) as Dispatch<
-                      DispatchArgs<LinkProperties>
-                    >
-                  }
-                  basePath={`links[${coll}]`}
-                />
-              </ArangoTD>
-
-              <ArangoTD seq={disabled ? 0 : 1}>{coll}</ArangoTD>
-              {disabled ? null : (
-                <ArangoTD seq={0} valign={"middle"}>
-                  <IconButton
-                    icon={"trash-o"}
-                    type={"danger"}
-                    onClick={getLinkRemover(coll)}
-                  />
-                </ArangoTD>
-              )}
-            </tr>
-          ) : null;
-        })} */}
     </main>
   );
 };

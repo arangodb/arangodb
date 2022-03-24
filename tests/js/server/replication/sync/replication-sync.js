@@ -31,7 +31,7 @@
 const jsunity = require('jsunity');
 const arangodb = require('@arangodb');
 const analyzers = require("@arangodb/analyzers");
-const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
+const { deriveTestSuite, getMetric } = require('@arangodb/test-helper');
 const reconnectRetry = require('@arangodb/replication-common').reconnectRetry;
 const db = arangodb.db;
 const _ = require('lodash');
@@ -63,7 +63,7 @@ const collectionCount = function (name) {
 };
 
 const compare = function (leaderFunc, followerInitFunc, followerCompareFunc, incremental, system) {
-  var state = {};
+  let state = {};
   
   db._flushCache();
   leaderFunc(state);
@@ -100,7 +100,7 @@ function BaseTestConfig () {
     
     testExistingPatchBrokenFollowerCounters1: function () {
       // can only use this with failure tests enabled
-      let r = arango.GET("/_db/" + db._name() + "/_admin/debug/failat");
+      let r = arango.GET("/_admin/debug/failat");
       if (String(r) === "false" || r.error) {
         return;
       }
@@ -162,7 +162,7 @@ function BaseTestConfig () {
     
     testExistingPatchBrokenFollowerCounters2: function () {
       // can only use this with failure tests enabled
-      let r = arango.GET("/_db/" + db._name() + "/_admin/debug/failat");
+      let r = arango.GET("/_admin/debug/failat");
       if (String(r) === "false" || r.error) {
         return;
       }
@@ -719,14 +719,14 @@ function BaseTestConfig () {
 
     testUpdateHugeIntermediateCommits: function () {
       // can only use this with failure tests enabled
-      let r = arango.GET("/_db/" + db._name() + "/_admin/debug/failat");
+      let r = arango.GET("/_admin/debug/failat");
       if (String(r) === "false" || r.error) {
         return;
       }
 
       connectToLeader();
 
-      var st;
+      let st;
 
       compare(
         function (state) {
@@ -767,7 +767,7 @@ function BaseTestConfig () {
       );
 
       connectToLeader();
-      var c = db._collection(cn);
+      let c = db._collection(cn);
       let selectors = [];
       let docs = [];
       //  update some documents at the 'front'
@@ -810,6 +810,200 @@ function BaseTestConfig () {
       assertEqual(st.checksum, collectionChecksum(cn));
 
       arango.DELETE_RAW("/_admin/debug/failat/IncrementalReplicationFrequentIntermediateCommit", "");
+    },
+    
+    testIntermediateCommitsUsageOnInsert: function () {
+      // can only use this with failure tests enabled
+      let r = arango.GET("/_admin/debug/failat");
+      if (String(r) === "false" || r.error) {
+        return;
+      }
+
+      connectToLeader();
+
+      let c = db._create(cn);
+      let docs = [];
+      for (let i = 0; i < 100; ++i) {
+        docs.push({ _key: "test" + i });
+      }
+      c.insert(docs);
+      
+      connectToFollower();
+      
+      // sync almost empty collection to follower
+      replication.syncCollection(cn, {
+        endpoint: leaderEndpoint,
+        verbose: true,
+        incremental: true
+      });
+     
+      // add a lot more data on the leader
+      connectToLeader();
+      c = db._collection(cn);
+      docs = [];
+      for (let i = 0; i < 100000; ++i) {
+        docs.push({ _key: 'testmann' + i });
+        if (docs.length === 5000) {
+          c.insert(docs);
+          docs = [];
+        }
+      }
+          
+      assertEqual(100100, collectionCount(cn));
+      let checksum = collectionChecksum(cn);
+
+      connectToFollower();
+          
+      // set intermediate commit count to 1000 on follower
+      arango.PUT_RAW("/_admin/debug/failat/IncrementalReplicationFrequentIntermediateCommit", "");
+
+      let intermediateCommitsBefore = getMetric(arango.getEndpoint(), "arangodb_intermediate_commits_total");
+
+      //  and sync again
+      replication.syncCollection(cn, {
+        endpoint: leaderEndpoint,
+        verbose: true,
+        incremental: true
+      });
+
+      db._flushCache();
+      assertEqual(100100, collectionCount(cn));
+      assertEqual(checksum, collectionChecksum(cn));
+      
+      arango.DELETE_RAW("/_admin/debug/failat/IncrementalReplicationFrequentIntermediateCommit", "");
+      
+      let intermediateCommitsAfter = getMetric(arango.getEndpoint(), "arangodb_intermediate_commits_total");
+      // unfortunately we don't know the exact number of intermediate commits that have
+      // been made. this is because the intermediate commits will not be triggered
+      // precisely at the specified intermediate commit count value of 1000, but only
+      // after each individual batch, which can contain arbitrary amounts of documents.
+      assertTrue(intermediateCommitsAfter > intermediateCommitsBefore, { intermediateCommitsBefore, intermediateCommitsAfter });
+    },
+    
+    testIntermediateCommitsUsageOnUpdate: function () {
+      // can only use this with failure tests enabled
+      let r = arango.GET("/_admin/debug/failat");
+      if (String(r) === "false" || r.error) {
+        return;
+      }
+
+      connectToLeader();
+
+      let c = db._create(cn);
+      let docs = [];
+      for (let i = 0; i < 100000; ++i) {
+        docs.push({ _key: 'testmann' + i });
+        if (docs.length === 5000) {
+          c.insert(docs);
+          docs = [];
+        }
+      }
+      
+      connectToFollower();
+      
+      // sync collection to follower
+      replication.syncCollection(cn, {
+        endpoint: leaderEndpoint,
+        verbose: true,
+        incremental: true
+      });
+     
+      // update documents on the leader
+      connectToLeader();
+      db._query("FOR doc IN " + cn + " UPDATE doc WITH { value: 42 } IN " + cn);
+          
+      assertEqual(100000, collectionCount(cn));
+      let checksum = collectionChecksum(cn);
+
+      connectToFollower();
+          
+      // set intermediate commit count to 1000 on follower
+      arango.PUT_RAW("/_admin/debug/failat/IncrementalReplicationFrequentIntermediateCommit", "");
+
+      let intermediateCommitsBefore = getMetric(arango.getEndpoint(), "arangodb_intermediate_commits_total");
+
+      //  and sync again
+      replication.syncCollection(cn, {
+        endpoint: leaderEndpoint,
+        verbose: true,
+        incremental: true
+      });
+
+      db._flushCache();
+      assertEqual(100000, collectionCount(cn));
+      assertEqual(checksum, collectionChecksum(cn));
+      
+      arango.DELETE_RAW("/_admin/debug/failat/IncrementalReplicationFrequentIntermediateCommit", "");
+      
+      let intermediateCommitsAfter = getMetric(arango.getEndpoint(), "arangodb_intermediate_commits_total");
+      // unfortunately we don't know the exact number of intermediate commits that have
+      // been made. this is because the intermediate commits will not be triggered
+      // precisely at the specified intermediate commit count value of 1000, but only
+      // after each individual batch, which can contain arbitrary amounts of documents.
+      assertTrue(intermediateCommitsAfter > intermediateCommitsBefore, { intermediateCommitsBefore, intermediateCommitsAfter });
+    },
+    
+    testIntermediateCommitsUsageOnRemove: function () {
+      // can only use this with failure tests enabled
+      let r = arango.GET("/_admin/debug/failat");
+      if (String(r) === "false" || r.error) {
+        return;
+      }
+
+      connectToLeader();
+
+      let c = db._create(cn);
+      let docs = [];
+      for (let i = 0; i < 100000; ++i) {
+        docs.push({ _key: 'testmann' + i, value: i });
+        if (docs.length === 5000) {
+          c.insert(docs);
+          docs = [];
+        }
+      }
+      
+      connectToFollower();
+      
+      // sync collection to follower
+      replication.syncCollection(cn, {
+        endpoint: leaderEndpoint,
+        verbose: true,
+        incremental: true
+      });
+     
+      // remove half the documents on the leader
+      connectToLeader();
+      db._query("FOR doc IN " + cn + " FILTER doc.value >= 50000 REMOVE doc IN " + cn);
+          
+      assertEqual(50000, collectionCount(cn));
+      let checksum = collectionChecksum(cn);
+
+      connectToFollower();
+          
+      // set intermediate commit count to 1000 on follower
+      arango.PUT_RAW("/_admin/debug/failat/IncrementalReplicationFrequentIntermediateCommit", "");
+
+      let intermediateCommitsBefore = getMetric(arango.getEndpoint(), "arangodb_intermediate_commits_total");
+
+      // and sync again
+      replication.syncCollection(cn, {
+        endpoint: leaderEndpoint,
+        verbose: true,
+        incremental: true
+      });
+
+      db._flushCache();
+      assertEqual(50000, collectionCount(cn));
+      assertEqual(checksum, collectionChecksum(cn));
+      
+      arango.DELETE_RAW("/_admin/debug/failat/IncrementalReplicationFrequentIntermediateCommit", "");
+      
+      let intermediateCommitsAfter = getMetric(arango.getEndpoint(), "arangodb_intermediate_commits_total");
+      // unfortunately we don't know the exact number of intermediate commits that have
+      // been made. this is because the intermediate commits will not be triggered
+      // precisely at the specified intermediate commit count value of 1000, but only
+      // after each individual batch, which can contain arbitrary amounts of documents.
+      assertTrue(intermediateCommitsAfter > intermediateCommitsBefore, { intermediateCommitsBefore, intermediateCommitsAfter });
     },
 
     // //////////////////////////////////////////////////////////////////////////////

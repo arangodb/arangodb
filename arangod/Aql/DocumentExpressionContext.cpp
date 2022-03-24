@@ -24,26 +24,80 @@
 #include "DocumentExpressionContext.h"
 
 #include "Aql/AqlValue.h"
+#include "Aql/InputAqlItemRow.h"
 #include "Aql/Variable.h"
 
 using namespace arangodb::aql;
 
 DocumentExpressionContext::DocumentExpressionContext(
     arangodb::transaction::Methods& trx, QueryContext& query,
-    AqlFunctionsInternalCache& cache,
-    arangodb::velocypack::Slice document) noexcept
-    : QueryExpressionContext(trx, query, cache), _document(document) {}
+    aql::AqlFunctionsInternalCache& cache,
+    std::vector<std::pair<VariableId, RegisterId>> const& filterVarsToRegister,
+    InputAqlItemRow const& inputRow, Variable const* outputVariable) noexcept
+    : DocumentProducingExpressionContext(trx, query, cache,
+                                         filterVarsToRegister, inputRow),
+      _outputVariable(outputVariable) {
+  TRI_ASSERT(_outputVariable != nullptr);
+}
 
-AqlValue DocumentExpressionContext::getVariableValue(Variable const* variable,
-                                                     bool doCopy,
-                                                     bool& mustDestroy) const {
+SimpleDocumentExpressionContext::SimpleDocumentExpressionContext(
+    arangodb::transaction::Methods& trx, QueryContext& query,
+    aql::AqlFunctionsInternalCache& cache,
+    std::vector<std::pair<VariableId, RegisterId>> const& filterVarsToRegister,
+    InputAqlItemRow const& inputRow, Variable const* outputVariable) noexcept
+    : DocumentExpressionContext(trx, query, cache, filterVarsToRegister,
+                                inputRow, outputVariable) {}
+
+AqlValue SimpleDocumentExpressionContext::getVariableValue(
+    Variable const* variable, bool doCopy, bool& mustDestroy) const {
+  TRI_ASSERT(variable != nullptr);
   return QueryExpressionContext::getVariableValue(
       variable, doCopy, mustDestroy,
       [this](Variable const* variable, bool doCopy, bool& mustDestroy) {
         mustDestroy = doCopy;
+        // return current document
         if (doCopy) {
           return AqlValue(AqlValueHintSliceCopy(_document));
         }
         return AqlValue(AqlValueHintSliceNoCopy(_document));
+      });
+}
+
+GenericDocumentExpressionContext::GenericDocumentExpressionContext(
+    arangodb::transaction::Methods& trx, QueryContext& query,
+    aql::AqlFunctionsInternalCache& cache,
+    std::vector<std::pair<VariableId, RegisterId>> const& filterVarsToRegister,
+    InputAqlItemRow const& inputRow, Variable const* outputVariable) noexcept
+    : DocumentExpressionContext(trx, query, cache, filterVarsToRegister,
+                                inputRow, outputVariable) {}
+
+AqlValue GenericDocumentExpressionContext::getVariableValue(
+    Variable const* variable, bool doCopy, bool& mustDestroy) const {
+  TRI_ASSERT(variable != nullptr);
+  return QueryExpressionContext::getVariableValue(
+      variable, doCopy, mustDestroy,
+      [this](Variable const* variable, bool doCopy, bool& mustDestroy) {
+        mustDestroy = doCopy;
+        if (variable->id == _outputVariable->id) {
+          // return current document
+          if (doCopy) {
+            return AqlValue(AqlValueHintSliceCopy(_document));
+          }
+          return AqlValue(AqlValueHintSliceNoCopy(_document));
+        }
+        for (auto const& [id, regId] : _filterVarsToRegister) {
+          // we can only get here in a post-filter expression
+          if (variable->id == id) {
+            TRI_ASSERT(regId < _inputRow.getNumRegisters());
+            if (doCopy) {
+              return _inputRow.getValue(regId).clone();
+            }
+            return _inputRow.getValue(regId);
+          }
+        }
+
+        // referred-to variable not found. should never happen
+        TRI_ASSERT(false);
+        return AqlValue(AqlValueHintNull{});
       });
 }

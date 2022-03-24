@@ -38,7 +38,6 @@
 
 #include <velocypack/Buffer.h>
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 namespace {
 using namespace arangodb::fuerte;

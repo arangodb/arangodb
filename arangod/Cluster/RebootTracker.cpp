@@ -67,7 +67,7 @@ RebootTracker::RebootTracker(RebootTracker::SchedulerPointer scheduler)
 }
 
 void RebootTracker::updateServerState(
-    std::unordered_map<ServerID, RebootId> const& state) {
+    containers::FlatHashMap<ServerID, RebootId> const& state) {
   MUTEX_LOCKER(guard, _mutex);
 
   LOG_TOPIC("77a6e", DEBUG, Logger::CLUSTER)

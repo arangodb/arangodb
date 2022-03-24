@@ -22,10 +22,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Collections.h"
-#include "Basics/Common.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
+#include "Basics/Common.h"
 #include "Basics/LocalTaskQueue.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"
@@ -51,6 +51,7 @@
 #include "Transaction/StandaloneContext.h"
 #include "Transaction/V8Context.h"
 #include "Utilities/NameValidator.h"
+#include "Utils/CollectionNameResolver.h"
 #include "Utils/Events.h"
 #include "Utils/ExecContext.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -62,7 +63,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/VocBase/Methods/CollectionValidatorEE.h"
@@ -419,6 +419,60 @@ std::shared_ptr<LogicalCollection> Collections::Context::coll() const {
   return _coll;
 }
 
+/// @brief check if a name belongs to a collection
+bool Collections::hasName(CollectionNameResolver const& resolver,
+                          LogicalCollection const& collection,
+                          std::string const& collectionName) {
+  if (collectionName == collection.name()) {
+    return true;
+  }
+
+  if (collectionName == std::to_string(collection.id().id())) {
+    return true;
+  }
+
+  // Shouldn't it just be: If we are on DBServer we also have to check for
+  // global ID name and cid should be the shard.
+  if (ServerState::instance()->isCoordinator()) {
+    if (collectionName == resolver.getCollectionNameCluster(collection.id())) {
+      return true;
+    }
+    return false;
+  }
+
+  return (collectionName == resolver.getCollectionName(collection.id()));
+}
+
+std::vector<std::shared_ptr<LogicalCollection>> Collections::sorted(
+    TRI_vocbase_t& vocbase) {
+  std::vector<std::shared_ptr<LogicalCollection>> result;
+
+  if (ServerState::instance()->isCoordinator()) {
+    auto& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
+    std::vector<std::shared_ptr<LogicalCollection>> colls =
+        ci.getCollections(vocbase.name());
+
+    result.reserve(colls.size());
+
+    for (std::shared_ptr<LogicalCollection>& c : colls) {
+      if (!c->deleted()) {
+        result.emplace_back(std::move(c));
+      }
+    }
+  } else {
+    result = vocbase.collections(false);
+  }
+
+  std::sort(result.begin(), result.end(),
+            [](std::shared_ptr<LogicalCollection> const& lhs,
+               std::shared_ptr<LogicalCollection> const& rhs) -> bool {
+              return arangodb::basics::StringUtils::tolower(lhs->name()) <
+                     arangodb::basics::StringUtils::tolower(rhs->name());
+            });
+
+  return result;
+}
+
 void Collections::enumerate(
     TRI_vocbase_t* vocbase,
     std::function<void(std::shared_ptr<LogicalCollection> const&)> const&
@@ -434,7 +488,7 @@ void Collections::enumerate(
       }
     }
   } else {
-    for (auto& c : vocbase->collections(false)) {
+    for (auto const& c : vocbase->collections(false)) {
       if (!c->deleted()) {
         func(c);
       }
@@ -1290,19 +1344,31 @@ arangodb::Result Collections::checksum(LogicalCollection& collection,
   return trx.finish(res);
 }
 
+/// @brief the list of collection attributes that are allowed by user-input
+/// this is to avoid retyping the same list twice
+#define COMMON_ALLOWED_COLLECTION_INPUT_ATTRIBUTES                            \
+  StaticStrings::DataSourceSystem, StaticStrings::DataSourceId, "keyOptions", \
+      StaticStrings::WaitForSyncString, StaticStrings::CacheEnabled,          \
+      StaticStrings::ShardKeys, StaticStrings::NumberOfShards,                \
+      StaticStrings::DistributeShardsLike, "avoidServers",                    \
+      StaticStrings::IsSmart, StaticStrings::ShardingStrategy,                \
+      StaticStrings::GraphSmartGraphAttribute, StaticStrings::Schema,         \
+      StaticStrings::SmartJoinAttribute, StaticStrings::ReplicationFactor,    \
+      StaticStrings::MinReplicationFactor, /* deprecated */                   \
+      StaticStrings::WriteConcern, "servers"
+
 arangodb::velocypack::Builder Collections::filterInput(
-    arangodb::velocypack::Slice properties) {
+    arangodb::velocypack::Slice properties, bool allowDC2DCAttributes) {
+#ifdef USE_ENTERPRISE
+  if (allowDC2DCAttributes) {
+    return velocypack::Collection::keep(
+        properties,
+        std::unordered_set<std::string>{
+            StaticStrings::IsDisjoint, StaticStrings::InternalValidatorTypes,
+            COMMON_ALLOWED_COLLECTION_INPUT_ATTRIBUTES});
+  }
+#endif
   return velocypack::Collection::keep(
-      properties,
-      std::unordered_set<std::string>{
-          StaticStrings::DataSourceSystem, StaticStrings::DataSourceId,
-          "keyOptions", StaticStrings::WaitForSyncString,
-          StaticStrings::CacheEnabled, StaticStrings::ShardKeys,
-          StaticStrings::NumberOfShards, StaticStrings::DistributeShardsLike,
-          "avoidServers", StaticStrings::IsSmart,
-          StaticStrings::ShardingStrategy,
-          StaticStrings::GraphSmartGraphAttribute, StaticStrings::Schema,
-          StaticStrings::SmartJoinAttribute, StaticStrings::ReplicationFactor,
-          StaticStrings::MinReplicationFactor,  // deprecated
-          StaticStrings::WriteConcern, "servers"});
+      properties, std::unordered_set<std::string>{
+                      COMMON_ALLOWED_COLLECTION_INPUT_ATTRIBUTES});
 }

@@ -566,7 +566,7 @@ function ReplicationLoggerSuite () {
 
       var tick = getLastLogTick();
 
-      c.ensureUniqueConstraint("a", "b");
+      c.ensureIndex({ type: "hash", fields: ["a", "b"], unique: true });
       var idx = c.getIndexes()[1];
 
       var entry = getLogEntries(tick, 2100)[0];
@@ -588,7 +588,7 @@ function ReplicationLoggerSuite () {
 
       var tick = getLastLogTick();
 
-      c.ensureHashIndex("a");
+      c.ensureIndex({ type: "hash", fields: ["a"] });
       var idx = c.getIndexes()[1];
 
       var entry = getLogEntries(tick, 2100)[0];
@@ -609,7 +609,7 @@ function ReplicationLoggerSuite () {
 
       var tick = getLastLogTick();
 
-      c.ensureUniqueConstraint("a", "b", { sparse: true });
+      c.ensureIndex({ type: "hash", fields: ["a", "b"], unique: true, sparse: true });
 
       var idx = c.getIndexes()[1];
 
@@ -632,7 +632,7 @@ function ReplicationLoggerSuite () {
 
       var tick = getLastLogTick();
 
-      c.ensureHashIndex("a", { sparse: true });
+      c.ensureIndex({ type: "hash", fields: ["a"], sparse: true });
 
       var idx = c.getIndexes()[1];
 
@@ -654,7 +654,7 @@ function ReplicationLoggerSuite () {
 
       var tick = getLastLogTick();
 
-      c.ensureSkiplist("a", "b", "c");
+      c.ensureIndex({ type: "skiplist", fields: ["a", "b", "c"] });
 
       var idx = c.getIndexes()[1];
       var entry = getLogEntries(tick, 2100)[0];
@@ -677,7 +677,7 @@ function ReplicationLoggerSuite () {
 
       var tick = getLastLogTick();
 
-      c.ensureUniqueSkiplist("a");
+      c.ensureIndex({ type: "skiplist", fields: ["a"], unique: true });
 
       var idx = c.getIndexes()[1];
       var entry = getLogEntries(tick, 2100)[0];
@@ -699,7 +699,7 @@ function ReplicationLoggerSuite () {
 
       var tick = getLastLogTick();
 
-      c.ensureSkiplist("a", "b", "c", { sparse: true });
+      c.ensureIndex({ type: "skiplist", fields: ["a", "b", "c"], sparse: true });
 
       var idx = c.getIndexes()[1];
       var entry = getLogEntries(tick, 2100)[0];
@@ -722,7 +722,7 @@ function ReplicationLoggerSuite () {
 
       var tick = getLastLogTick();
 
-      c.ensureUniqueSkiplist("a", { sparse: true });
+      c.ensureIndex({ type: "skiplist", fields: ["a"], unique: true, sparse: true });
 
       var idx = c.getIndexes()[1];
       var entry = getLogEntries(tick, 2100)[0];
@@ -743,7 +743,7 @@ function ReplicationLoggerSuite () {
       var c = db._create(cn);
 
       var tick = getLastLogTick();
-      c.ensureFulltextIndex("a", 5);
+      c.ensureIndex({ type: "fulltext", fields: ["a"], minLength: 5 });
       var idx = c.getIndexes()[1];
 
       var entry = getLogEntries(tick, 2100)[0];
@@ -765,7 +765,7 @@ function ReplicationLoggerSuite () {
 
       var tick = getLastLogTick();
 
-      c.ensureGeoIndex("a", "b");
+      c.ensureIndex({ type: "geo", fields: ["a", "b"] });
       var idx = c.getIndexes()[1];
       var entry = getLogEntries(tick, 2100)[0];
 
@@ -786,7 +786,7 @@ function ReplicationLoggerSuite () {
 
       var tick = getLastLogTick();
 
-      c.ensureGeoIndex("a", true);
+      c.ensureIndex({ type: "geo", fields: ["a"], geoJson: true });
       var idx = c.getIndexes()[1];
       var entry = getLogEntries(tick, 2100)[0];
 
@@ -796,6 +796,7 @@ function ReplicationLoggerSuite () {
       assertEqual("geo", entry.data.type);
       assertEqual(false, entry.data.unique);
       assertEqual([ "a" ], entry.data.fields);
+      assertTrue(entry.data.geoJson);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -807,7 +808,7 @@ function ReplicationLoggerSuite () {
 
       var tick = getLastLogTick();
 
-      c.ensureGeoConstraint("a", "b", true);
+      c.ensureIndex({ type: "geo", fields: ["a", "b"], geoJson: false });
       var idx = c.getIndexes()[1];
       var entry = getLogEntries(tick, 2100)[0];
 
@@ -818,6 +819,7 @@ function ReplicationLoggerSuite () {
       assertEqual(false, entry.data.unique);
       assertEqual(true, entry.data.sparse);
       assertEqual([ "a", "b" ], entry.data.fields);
+      assertFalse(entry.data.geoJson);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -829,7 +831,7 @@ function ReplicationLoggerSuite () {
 
       var tick = getLastLogTick();
 
-      c.ensureGeoConstraint("a", "b", false);
+      c.ensureIndex({ type: "geo", fields: ["a", "b"], geoJson: false });
       var idx = c.getIndexes()[1];
       var entry = getLogEntries(tick, 2100)[0];
 
@@ -840,6 +842,7 @@ function ReplicationLoggerSuite () {
       assertEqual(false, entry.data.unique);
       assertEqual(true, entry.data.sparse);
       assertEqual([ "a", "b" ], entry.data.fields);
+      assertFalse(entry.data.geoJson);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -851,7 +854,7 @@ function ReplicationLoggerSuite () {
 
       var tick = getLastLogTick();
 
-      c.ensureGeoConstraint("a", true);
+      c.ensureIndex({ type: "geo", fields: ["a"], geoJson: true });
       var idx = c.getIndexes()[1];
       var entry = getLogEntries(tick, 2100)[0];
 
@@ -862,6 +865,7 @@ function ReplicationLoggerSuite () {
       assertEqual(false, entry.data.unique);
       assertEqual(true, entry.data.sparse);
       assertEqual([ "a" ], entry.data.fields);
+      assertTrue(entry.data.geoJson);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -870,7 +874,7 @@ function ReplicationLoggerSuite () {
 
     testLoggerDropIndex : function () {
       var c = db._create(cn);
-      c.ensureUniqueConstraint("a", "b");
+      c.ensureIndex({ type: "hash", fields: ["a", "b"], unique: true });
       
       var tick = getLastLogTick();
 
