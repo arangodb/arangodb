@@ -87,7 +87,9 @@ void AuthenticationFeature::collectOptions(
 
   options
       ->addOption("--server.session-timeout",
-                  "timeout in seconds for web interface JWT sessions",
+                  "lifetime for tokens in seconds that can be obtained from "
+                  "the POST /_open/auth endpoint. Used by the web interface "
+                  "for JWT-based sessions",
                   new DoubleParameter(&_sessionTimeout),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
