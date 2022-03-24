@@ -161,7 +161,6 @@ std::tuple<std::string, LanguageType> getOrSetPreviousLanguage(
   arangodb::Result res = ::readLanguage(server, prevLanguage, prevType);
 
   if (res.ok()) {
-    TRI_ASSERT(!prevLanguage.empty());
     return {prevLanguage, prevType};
   }
 
@@ -189,7 +188,7 @@ void LanguageCheckFeature::start() {
 
   auto& feature = server().getFeature<LanguageFeature>();
   auto [currLang, currLangType] = feature.getLanguage();
-  auto collatorLang = feature.getCollatorLanguage();
+  auto collatorLang = feature.getCollatorLanguage(currLangType);
 
   auto [prevLang, prevLangType] =
       ::getOrSetPreviousLanguage(server(), collatorLang, currLangType);

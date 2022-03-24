@@ -177,12 +177,17 @@ bool Utf8Helper::setCollatorLanguage(std::string_view lang,
   }
 
   icu::Collator* coll;
-  if (lang == "") {
-    // get default collator for empty language
-    coll = icu::Collator::createInstance(status);
-  } else {
-    icu::Locale locale(lang.data());
+  if (LanguageType::ICU == langType) {
+    auto locale = icu::Locale::createCanonical(std::string(lang).c_str());
     coll = icu::Collator::createInstance(locale, status);
+  } else {
+    if (lang == "") {
+      // get default collator for empty language
+      coll = icu::Collator::createInstance(status);
+    } else {
+      icu::Locale locale(lang.data());
+      coll = icu::Collator::createInstance(locale, status);
+    }
   }
 
   if (U_FAILURE(status)) {
@@ -219,7 +224,7 @@ bool Utf8Helper::setCollatorLanguage(std::string_view lang,
   return true;
 }
 
-std::string Utf8Helper::getCollatorLanguage() {
+std::string Utf8Helper::getCollatorLanguage(LanguageType langType) {
   if (_coll) {
     UErrorCode status = U_ZERO_ERROR;
     ULocDataLocaleType type = ULOC_VALID_LOCALE;
@@ -230,7 +235,11 @@ std::string Utf8Helper::getCollatorLanguage() {
           << "error in Collator::getLocale(...): " << u_errorName(status);
       return "";
     }
-    return locale.getLanguage();
+    if (LanguageType::ICU == langType) {
+      return locale.getName();
+    } else {
+      return locale.getLanguage();
+    }
   }
   return "";
 }

@@ -54,18 +54,18 @@ class LanguageFeature final : public application_features::ApplicationFeature {
                           std::string const& binaryExecutionPath,
                           std::string& path, std::string const& binaryName);
   icu::Locale& getLocale();
-  std::tuple<std::string_view, arangodb::basics::LanguageType> getLanguage()
+  std::tuple<std::string_view, basics::LanguageType> getLanguage()
       const;
   bool forceLanguageCheck() const;
-  std::string getCollatorLanguage() const;
+  std::string getCollatorLanguage(basics::LanguageType langType = basics::LanguageType::DEFAULT) const;
   void resetLanguage(std::string_view language,
-                     arangodb::basics::LanguageType type);
+                     basics::LanguageType type);
 
  private:
   icu::Locale _locale;
   std::string _defaultLanguage;
   std::string _icuLanguage;
-  arangodb::basics::LanguageType _langType;
+  basics::LanguageType _langType;
   char const* _binaryPath;
   void* _icuDataPtr;
   bool _forceLanguageCheck;
