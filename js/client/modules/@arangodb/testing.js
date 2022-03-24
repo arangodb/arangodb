@@ -195,7 +195,7 @@ const optionsDefaults = {
   'sanitizer': false,
   'activefailover': false,
   'singles': 2,
-  'setInterruptable': internal.isATTy(),
+  'setInterruptable': ! internal.isATTy(),
   'sniff': false,
   'sniffAgency': true,
   'sniffDBServers': true,
