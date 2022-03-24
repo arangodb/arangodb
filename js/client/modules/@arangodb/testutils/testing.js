@@ -42,7 +42,6 @@ const GREEN = internal.COLORS.COLOR_GREEN;
 const RED = internal.COLORS.COLOR_RED;
 const RESET = internal.COLORS.COLOR_RESET;
 const YELLOW = internal.COLORS.COLOR_YELLOW;
-const isInteactiveShell = YELLOW.length !== 0;
 
 let functionsDocumentation = {
   'all': 'run all tests (marked with [x])',
@@ -202,7 +201,7 @@ const optionsDefaults = {
   'sanitizer': false,
   'activefailover': false,
   'singles': 2,
-  'setInterruptable': isInteactiveShell,
+  'setInterruptable': internal.isATTy(),
   'sniff': false,
   'sniffAgency': true,
   'sniffDBServers': true,
@@ -594,7 +593,7 @@ function unitTest (cases, options) {
     options.failed = rp.getFailedTestCases(options);
   }
   if (options.setInterruptable) {
-    internal.SetSignalToImmediateDeadline()
+    internal.SetSignalToImmediateDeadline();
   }
   
   try {
