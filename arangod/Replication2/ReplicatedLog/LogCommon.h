@@ -356,7 +356,7 @@ auto to_string(CommitFailReason const&) -> std::string;
 template<class Inspector>
 auto inspect(Inspector& f, LogId& x) {
   if constexpr (Inspector::isLoading) {
-    int v;
+    int v{0};
     auto res = f.apply(v);
     if (res.ok()) {
       x = LogId(v);
