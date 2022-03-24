@@ -537,7 +537,8 @@ void RocksDBEngine::collectOptions(
                       arangodb::options::Flags::OnDBServer,
                       arangodb::options::Flags::OnSingle,
                       arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(30604);
+      .setIntroducedIn(30604)
+      .setDeprecatedIn(30100);
 
   options->addOption(
       "--rocksdb.wal-archive-size-limit",
@@ -2871,9 +2872,8 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
       auto objectId =
           it.get(StaticStrings::ObjectId).getNumericValue<uint64_t>();
       auto log = std::make_shared<RocksDBPersistedLog>(
-          replication2::GlobalLogIdentifier(vocbase->name(),
-                                            replication2::LogId()),
-          objectId, _logPersistor);
+          replication2::GlobalLogIdentifier(vocbase->name(), logId), objectId,
+          _logPersistor);
       StorageEngine::registerReplicatedLog(*vocbase, logId, log);
     }
   } catch (std::exception const& ex) {

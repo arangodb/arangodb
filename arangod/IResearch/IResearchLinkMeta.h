@@ -31,7 +31,6 @@
 #include "analysis/analyzer.hpp"
 #include "utils/compression.hpp"
 #include "utils/object_pool.hpp"
-#include "utils/range.hpp"
 
 #include "Containers.h"
 #include "IResearchAnalyzerFeature.h"

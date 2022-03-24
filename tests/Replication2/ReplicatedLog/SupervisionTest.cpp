@@ -167,14 +167,10 @@ TEST_F(LeaderStateMachineTest, test_election_success) {
   EXPECT_TRUE(std::holds_alternative<LeaderElectionAction>(r));
 
   auto& action = std::get<LeaderElectionAction>(r);
-  EXPECT_EQ(action._election.outcome,
-            LogCurrentSupervisionElection::Outcome::SUCCESS);
 
   auto possibleLeaders = std::set<ParticipantId>{"A", "B", "C"};
-  EXPECT_TRUE(bool(action._newTerm));
-  EXPECT_TRUE(bool(action._newTerm->leader));
-  EXPECT_TRUE(possibleLeaders.contains(action._newTerm->leader->serverId));
-  EXPECT_EQ(action._newTerm->leader->rebootId, RebootId{1});
+  EXPECT_TRUE(possibleLeaders.contains(action._electedLeader.serverId));
+  EXPECT_EQ(action._electedLeader.rebootId, RebootId{1});
 }
 
 TEST_F(LeaderStateMachineTest, test_election_fails) {
@@ -261,10 +257,8 @@ TEST_F(LeaderStateMachineTest, test_election_leader_with_higher_term) {
   EXPECT_TRUE(std::holds_alternative<LeaderElectionAction>(r));
 
   auto& action = std::get<LeaderElectionAction>(r);
-  EXPECT_TRUE(bool(action._newTerm));
-  EXPECT_TRUE(bool(action._newTerm->leader));
-  EXPECT_EQ(action._newTerm->leader->serverId, "C");
-  EXPECT_EQ(action._newTerm->leader->rebootId, RebootId{14});
+  EXPECT_EQ(action._electedLeader.serverId, "C");
+  EXPECT_EQ(action._electedLeader.rebootId, RebootId{14});
 }
 
 TEST_F(LeaderStateMachineTest, test_leader_intact) {
@@ -297,11 +291,8 @@ TEST_F(SupervisionLogTest, test_log_created) {
       {"B", ParticipantFlags{.forced = false, .allowedAsLeader = true}},
       {"C", ParticipantFlags{.forced = false, .allowedAsLeader = true}}};
 
-  auto r = checkReplicatedLog(
-      Log{.target = LogTarget(LogId{44}, participants, config),
-          .plan = std::nullopt,
-          .current = std::nullopt},
-      ParticipantsHealth{});
+  auto r = checkReplicatedLog(LogTarget(LogId{44}, participants, config),
+                              std::nullopt, std::nullopt, ParticipantsHealth{});
 
   EXPECT_TRUE(std::holds_alternative<AddLogToPlanAction>(r));
 
@@ -316,11 +307,9 @@ TEST_F(SupervisionLogTest, test_log_present) {
       {"B", ParticipantFlags{.forced = false, .allowedAsLeader = true}},
       {"C", ParticipantFlags{.forced = false, .allowedAsLeader = true}}};
 
-  auto r = checkReplicatedLog(
-      Log{.target = LogTarget(LogId(44), participants, config),
-          .plan = LogPlanSpecification(),
-          .current = std::nullopt},
-      ParticipantsHealth());
+  auto r = checkReplicatedLog(LogTarget(LogId(44), participants, config),
+                              LogPlanSpecification(), std::nullopt,
+                              ParticipantsHealth());
 
   EXPECT_TRUE(std::holds_alternative<CreateInitialTermAction>(r))
       << to_string(r);
@@ -554,7 +543,6 @@ TEST_F(LogSupervisionTest, test_dictate_leader_force_first) {
   auto acceptableParticipants =
       getParticipantsAcceptableAsLeaders("A", participants);
 
-  ASSERT_EQ(action._expectedGeneration, 1);
   ASSERT_NE(std::find(std::begin(acceptableParticipants),
                       std::end(acceptableParticipants), action._participant),
             std::end(acceptableParticipants));
@@ -612,7 +600,7 @@ TEST_F(LogSupervisionTest, test_dictate_leader_success) {
 
   auto action = std::get<DictateLeaderAction>(r);
 
-  ASSERT_EQ(action._term.leader->serverId, "D");
+  ASSERT_EQ(action._leader.serverId, "D");
 }
 
 TEST_F(LogSupervisionTest, test_remove_participant_action) {
@@ -660,7 +648,7 @@ TEST_F(LogSupervisionTest, test_remove_participant_action) {
           {"D",
            ParticipantHealth{.rebootId = RebootId{14}, .notIsFailed = true}}}};
 
-  auto r = checkReplicatedLog(Log{target, plan, current}, health);
+  auto r = checkReplicatedLog(target, plan, current, health);
   // We expect a UpdateParticipantsFlagsAction to unset the allowedInQuorum flag
   // for d
   ASSERT_TRUE(std::holds_alternative<UpdateParticipantFlagsAction>(r))
@@ -727,7 +715,7 @@ TEST_F(LogSupervisionTest, test_remove_participant_action_wait_for_committed) {
           {"D",
            ParticipantHealth{.rebootId = RebootId{14}, .notIsFailed = true}}}};
 
-  auto r = checkReplicatedLog(Log{target, plan, current}, health);
+  auto r = checkReplicatedLog(target, plan, current, health);
   // We expect an EmptyAction
   ASSERT_TRUE(std::holds_alternative<EmptyAction>(r)) << to_string(r);
 }
@@ -779,7 +767,7 @@ TEST_F(LogSupervisionTest, test_remove_participant_action_committed) {
           {"D",
            ParticipantHealth{.rebootId = RebootId{14}, .notIsFailed = true}}}};
 
-  auto r = checkReplicatedLog(Log{target, plan, current}, health);
+  auto r = checkReplicatedLog(target, plan, current, health);
   // We expect an RemoveParticipantFromPlanAction to finally remove D
   ASSERT_TRUE(std::holds_alternative<RemoveParticipantFromPlanAction>(r))
       << to_string(r);

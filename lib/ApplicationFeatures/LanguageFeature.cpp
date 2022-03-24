@@ -99,11 +99,7 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-LanguageFeature::~LanguageFeature() {
-  if (_icuDataPtr != nullptr) {
-    TRI_Free(_icuDataPtr);
-  }
-}
+LanguageFeature::~LanguageFeature() = default;
 
 void LanguageFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
@@ -125,10 +121,10 @@ void LanguageFeature::collectOptions(
       .setIntroducedIn(30800);
 }
 
-void* LanguageFeature::prepareIcu(std::string const& binaryPath,
-                                  std::string const& binaryExecutionPath,
-                                  std::string& path,
-                                  std::string const& binaryName) {
+std::string LanguageFeature::prepareIcu(std::string const& binaryPath,
+                                        std::string const& binaryExecutionPath,
+                                        std::string& path,
+                                        std::string const& binaryName) {
   std::string fn("icudtl.dat");
   if (TRI_GETENV("ICU_DATA", path)) {
     path = FileUtils::buildFilename(path, fn);
@@ -185,15 +181,16 @@ void* LanguageFeature::prepareIcu(std::string const& binaryPath,
     }
   }
 
-  void* icuDataPtr = TRI_SlurpFile(path.c_str(), nullptr);
+  std::string icuData = basics::FileUtils::slurp(path);
 
-  if (icuDataPtr == nullptr) {
+  if (icuData.empty()) {
     LOG_TOPIC("d8a98", FATAL, arangodb::Logger::FIXME)
         << "failed to load '" << fn << "' at '" << path << "' - "
         << TRI_last_error();
     FATAL_ERROR_EXIT_CODE(TRI_EXIT_ICU_INITIALIZATION_FAILED);
   }
-  return icuDataPtr;
+
+  return icuData;
 }
 
 void LanguageFeature::prepare() {
@@ -201,8 +198,8 @@ void LanguageFeature::prepare() {
   auto context = ArangoGlobalContext::CONTEXT;
   std::string binaryExecutionPath = context->getBinaryPath();
   std::string binaryName = context->binaryName();
-  _icuDataPtr = LanguageFeature::prepareIcu(_binaryPath, binaryExecutionPath, p,
-                                            binaryName);
+  _icuData = LanguageFeature::prepareIcu(_binaryPath, binaryExecutionPath, p,
+                                         binaryName);
 
   _langType = ::getLanguageType(_defaultLanguage, _icuLanguage);
 
@@ -215,7 +212,7 @@ void LanguageFeature::prepare() {
 
   ::setCollator(
       _langType == LanguageType::ICU ? _icuLanguage : _defaultLanguage,
-      _icuDataPtr, _langType);
+      _icuData.data(), _langType);
 }
 
 void LanguageFeature::start() { ::setLocale(_locale); }
@@ -267,7 +264,7 @@ void LanguageFeature::resetLanguage(std::string_view language,
       return;
   }
 
-  ::setCollator(language.data(), _icuDataPtr, _langType);
+  ::setCollator(language.data(), _icuData.data(), _langType);
   ::setLocale(_locale);
 }
 

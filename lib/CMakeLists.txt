@@ -110,6 +110,7 @@ add_library(arango STATIC
   Basics/ResourceUsage.cpp
   Basics/RocksDBLogger.cpp
   Basics/RocksDBUtils.cpp
+  Basics/SourceLocation.cpp
   Basics/StaticStrings.cpp
   Basics/StringBuffer.cpp
   Basics/StringHeap.cpp
@@ -252,12 +253,10 @@ target_link_libraries(arango v8_interface)
 add_dependencies(arango v8_build)
 
 set(FROZEN_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/3rdParty/iresearch/external/frozen/include")
-set(ABSL_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/3rdParty/iresearch/external/absl")
 
 target_include_directories(arango
   PUBLIC
   ${FROZEN_INCLUDE_DIR}
-  ${ABSL_INCLUDE_DIR}
 )
 
 add_dependencies(arango snappy)
@@ -375,8 +374,8 @@ target_link_libraries(arango_v8
 target_include_directories(arango_v8 PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_include_directories(arango_v8 PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 target_include_directories(arango_v8 SYSTEM PUBLIC ${OPENSSL_INCLUDE_DIR})
-target_include_directories(arango_v8 SYSTEM PUBLIC ${ICU_INCLUDE_DIR} ${ABSL_INCLUDE_DIR})
-target_include_directories(arango_v8_deadline PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${ABSL_INCLUDE_DIR})
+target_include_directories(arango_v8 SYSTEM PUBLIC ${ICU_INCLUDE_DIR})
+target_include_directories(arango_v8_deadline PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_include_directories(arango_v8_no_deadline PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
 target_link_libraries(arango_v8 v8_interface)
