@@ -35,6 +35,8 @@ IndexIterator::IndexIterator(LogicalCollection* collection,
                              ReadOwnWrites readOwnWrites)
     : _collection(collection),
       _trx(trx),
+      _cacheHits(0),
+      _cacheMisses(0),
       _hasMore(true),
       _readOwnWrites(readOwnWrites) {
   TRI_ASSERT(_collection != nullptr);
@@ -42,6 +44,7 @@ IndexIterator::IndexIterator(LogicalCollection* collection,
 }
 
 void IndexIterator::reset() {
+  // intentionally do not reset cache statistics here.
   _hasMore = true;
   resetImpl();
 }
@@ -78,12 +81,23 @@ bool IndexIterator::nextCovering(CoveringCallback const& callback,
 bool IndexIterator::rearm(arangodb::aql::AstNode const* node,
                           arangodb::aql::Variable const* variable,
                           IndexIteratorOptions const& opts) {
+  // intentionally do not reset cache statistics here.
   _hasMore = true;
   if (rearmImpl(node, variable, opts)) {
     reset();
     return true;
   }
   return false;
+}
+
+/// @brief returns cache hits (first) and misses (second) statistics, and
+/// resets their values to 0
+std::pair<std::uint64_t, std::uint64_t>
+IndexIterator::getAndResetCacheStats() noexcept {
+  std::pair<std::uint64_t, std::uint64_t> result{_cacheHits, _cacheMisses};
+  _cacheHits = 0;
+  _cacheMisses = 0;
+  return result;
 }
 
 /// @brief Skip the next toSkip many elements.

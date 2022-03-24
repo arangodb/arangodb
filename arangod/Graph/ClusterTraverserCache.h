@@ -30,6 +30,7 @@
 
 #include <velocypack/Buffer.h>
 
+#include <cstdint>
 #include <string_view>
 
 namespace arangodb {
@@ -100,9 +101,9 @@ class ClusterTraverserCache final : public TraverserCache {
     return _datalake;
   }
 
-  size_t& insertedDocuments() { return _insertedDocuments; }
+  uint64_t& insertedDocuments() { return _insertedDocuments; }
 
-  size_t& filteredDocuments() { return _filteredDocuments; }
+  uint64_t& filteredDocuments() { return _filtered; }
 
  private:
   /// @brief link by _id into our data dump

@@ -77,7 +77,7 @@ EdgeCollectionInfo::EdgeCollectionInfo(transaction::Methods* trx,
   TRI_ASSERT(_index != nullptr);  // We always have an edge index
 
   // configure shared index iterator options
-  _indexIteratorOptions.enableCache = false;
+  _indexIteratorOptions.useCache = false;
 }
 
 /// @brief Get edges for the given direction and start vertex.
