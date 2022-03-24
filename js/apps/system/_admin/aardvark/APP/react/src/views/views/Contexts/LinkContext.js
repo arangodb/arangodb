@@ -59,7 +59,10 @@ export function LinkProvider({ children }) {
   }
 
   const handleShowField = (f) => {
-    setShowField(f);
+    setShowField({
+      ...field,
+      ...f
+    });
   }
 
   const handleView = (v) => {

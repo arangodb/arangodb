@@ -73,6 +73,7 @@ const LinkPropertiesInput = ({
     });
     setField("");
   };
+
   const addAnalyzer = (analyzer: string | number) => {
     dispatch({
       type: "setField",

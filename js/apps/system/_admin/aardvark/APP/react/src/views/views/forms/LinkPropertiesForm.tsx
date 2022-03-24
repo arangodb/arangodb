@@ -7,9 +7,14 @@ import useSWR from "swr";
 import { getApiRouteForCurrentDB } from "../../../utils/arangoClient";
 import NewLink from "../Components/NewLink";
 import LinkView from "../Components/LinkView";
-import { useShow, useShowUpdate, useField } from "../Contexts/LinkContext";
+import {
+  useShow,
+  useShowUpdate,
+  useField,
+  useUpdateLinks,
+  useUpdateField
+} from "../Contexts/LinkContext";
 import FieldView from "../Components/FieldView";
-import { useUpdateLinks } from "../Contexts/LinkContext";
 
 const LinkPropertiesForm = ({
   formState,
@@ -21,6 +26,7 @@ const LinkPropertiesForm = ({
     formState,
     "links"
   );
+
   const { data } = useSWR(["/collection", "excludeSystem=true"], (path, qs) =>
     getApiRouteForCurrentDB().get(path, qs)
   );
@@ -30,6 +36,7 @@ const LinkPropertiesForm = ({
   const setShow = useShowUpdate();
   const field = useField();
   const updateLinks = useUpdateLinks();
+  const setCurrentField = useUpdateField();
 
   useEffect(() => {
     if (data) {
@@ -54,6 +61,7 @@ const LinkPropertiesForm = ({
   };
 
   const getLink = (str: string) => {
+    console.log(str);
     let formatedStr;
     if (str !== "") {
       const toReturn = str.split("[")[1].replace("]", "");
@@ -66,7 +74,13 @@ const LinkPropertiesForm = ({
     return formatedStr;
   };
 
-  const handleShowField = () => {};
+  const handleShowField = (fld: string, basePath: string) => {
+    setCurrentField({
+      field: fld,
+      basePath: basePath,
+      fields: field.fields
+    });
+  };
   const addLink = () => {
     dispatch({
       type: "setField",
