@@ -672,6 +672,9 @@ void arangodb::maintenance::diffReplicatedStates(
       [&](LogId id, replicated_state::agency::Plan const& spec,
           replicated_state::agency::Current const* current) {
         if (spec.participants.contains(serverId)) {
+          if (!localLogs.contains(id)) {
+            return;  // wait for replicated log first
+          }
           if (!localStates.contains(id)) {
             // we have to create this replicated state
             createReplicatedStateAction(id, &spec, current);
