@@ -83,6 +83,10 @@ The cache will be populated lazily upon reading data from the index. Writing dat
 into the collection or updating existing data will invalidate entries in the
 cache. The cache may have a negative effect on performance in case index values
 are updated more often than they are read.
+The maximum size of cache entries that can be stored is currently 4 MB, i.e.
+the cumulated size of all index entries for any index lookup value must be
+less than 4 MB. This limitation is there to avoid storing the index entries
+of "super nodes" in the cache.
 **cacheEnabled** defaults to *false* and should only be used for indexes that
 are known to benefit from an extra layer of caching.
 
