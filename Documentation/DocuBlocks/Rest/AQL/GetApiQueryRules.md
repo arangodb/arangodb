@@ -1,11 +1,11 @@
 
 @startDocuBlock GetApiQueryRules
-@brief returns a list of all available optimizer rules for AQL queries
+@brief Returns a list of all available optimizer rules for AQL queries.
 
-@RESTHEADER{GET /_api/query/rules, Returns all AQL optimizer rules, queryRules}
+@RESTHEADER{GET /_api/query/rules, Return all AQL optimizer rules, queryRules}
 
 @RESTDESCRIPTION
-Returns an array of which each element describes an AQL optimizer rule.
+A list of all optimizer rules and their properties.
 
 @RESTRETURNCODES
 
@@ -13,19 +13,19 @@ Returns an array of which each element describes an AQL optimizer rule.
 is returned if the list of optimizer rules can be retrieved successfully.
 
 @RESTREPLYBODY{,array,required,get_api_query_rules}
-A list of all optimizer rules and their properties.
+An array of objects. Each object describes an AQL optimizer rule.
 
 @RESTSTRUCT{name,get_api_query_rules,string,required,}
-The name of the optimizer rule.
+The name of the optimizer rule as seen in query explain outputs.
 
 @RESTSTRUCT{flags,get_api_query_rules,object,required,get_api_query_rules_flags}
-Properties of the rule.
+An object with the properties of the rule.
 
 @RESTSTRUCT{hidden,get_api_query_rules_flags,boolean,required,}
 Whether the rule is displayed to users. Internal rules are hidden.
 
 @RESTSTRUCT{clusterOnly,get_api_query_rules_flags,boolean,required,}
-Whether the rule is applicable in cluster deployment mode only.
+Whether the rule is applicable in the cluster deployment mode only.
 
 @RESTSTRUCT{canBeDisabled,get_api_query_rules_flags,boolean,required,}
 Whether users are allowed to disable this rule. A few rules are mandatory.
