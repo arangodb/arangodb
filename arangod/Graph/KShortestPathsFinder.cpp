@@ -209,13 +209,11 @@ void KShortestPathsFinder::computeNeighbourhoodOfVertex(
     VertexSet& forbiddenVertices) {
 #ifdef USE_ENTERPRISE
   auto isValidDisjointPath = [&](std::string_view vertexId) {
-    LOG_DEVEL << "Testing vertex id: " << vertexId;
     auto res = GraphHelperEE::extractShardKey(vertexId);
 
     if (!_smartValue.empty()) {
       if (res.ok()) {
         if (res.get() != _smartValue) {
-          LOG_DEVEL << "Invalid: " << vertexId;
           forbiddenVertices.emplace(vertexId);
           return false;
         }
@@ -223,11 +221,9 @@ void KShortestPathsFinder::computeNeighbourhoodOfVertex(
     } else {
       // value not initialized yet
       if (res.ok()) {
-        LOG_DEVEL << "Initialized with: " << vertexId;
         _smartValue = res.get();
       }
     }
-    LOG_DEVEL << "Valid: " << vertexId;
     return true;
   };
 #endif
