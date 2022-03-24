@@ -356,8 +356,7 @@ static void JS_ProcessJsonFile(
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_IsATTY(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_IsATTY(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -386,8 +385,7 @@ void TRI_InitV8Shell(v8::Isolate* isolate) {
       isolate, TRI_V8_ASCII_STRING(isolate, "SYS_PROCESS_JSON_FILE"),
       JS_ProcessJsonFile);
   TRI_AddGlobalFunctionVocbase(
-      isolate, TRI_V8_ASCII_STRING(isolate, "SYS_IS_A_TTY"),
-      JS_IsATTY);
+      isolate, TRI_V8_ASCII_STRING(isolate, "SYS_IS_A_TTY"), JS_IsATTY);
 
   bool isTty = (isatty(STDOUT_FILENO) != 0);
   // on Linux, isatty() == 0 may also indicate an error. we can ignore this
