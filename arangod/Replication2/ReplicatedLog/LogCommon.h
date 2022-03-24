@@ -431,6 +431,17 @@ struct CommitFailReason {
   explicit CommitFailReason(std::in_place_t, Args&&... args) noexcept;
 };
 
+template<class Inspector>
+auto inspect(Inspector& f,
+             arangodb::replication2::replicated_log::CommitFailReason& x) {
+  if constexpr (Inspector::isLoading) {
+    x = CommitFailReason::fromVelocyPack(f.slice());
+  } else {
+    x.toVelocyPack(f.builder());
+  }
+  return arangodb::inspection::Result{};
+}
+
 auto operator<<(std::ostream&,
                 CommitFailReason::QuorumSizeNotReached::ParticipantInfo)
     -> std::ostream&;
