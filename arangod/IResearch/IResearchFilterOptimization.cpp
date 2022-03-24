@@ -29,7 +29,7 @@ namespace arangodb {
 namespace iresearch {
 
 bool includeStartsWithInLevenshtein(irs::boolean_filter* filter,
-                                    irs::string_ref name,
+                                    std::string_view name,
                                     irs::string_ref startsWith) {
   if (filter->type() == irs::type<irs::And>::id()) {
     for (auto& f : *filter) {
