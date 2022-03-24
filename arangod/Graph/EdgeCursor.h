@@ -58,7 +58,7 @@ class EdgeCursor {
       std::function<void(EdgeDocumentToken&&, arangodb::velocypack::Slice,
                          size_t)> const& callback) = 0;
 
-  virtual size_t httpRequests() const = 0;
+  virtual std::uint64_t httpRequests() const = 0;
 
   virtual void rearm(std::string_view vid, uint64_t depth) = 0;
 };
