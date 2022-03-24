@@ -86,11 +86,11 @@ template<class Inspector, class Value>
   return detail::AccessType<Value>::loadField(f, name, val);
 }
 
-template<class Inspector, class Value, class Fallback>
-[[nodiscard]] Result loadField(Inspector& f,
-                               [[maybe_unused]] std::string_view name,
-                               Value& val, Fallback&& fallback) {
-  return detail::AccessType<Value>::loadField(f, name, val, fallback);
+template<class Inspector, class Value, class ApplyFallback>
+[[nodiscard]] Result loadField(Inspector& f, std::string_view name, Value& val,
+                               ApplyFallback&& applyFallback) {
+  return detail::AccessType<Value>::loadField(
+      f, name, val, std::forward<ApplyFallback>(applyFallback));
 }
 
 template<class Inspector, class Value, class Transformer>
@@ -101,12 +101,13 @@ template<class Inspector, class Value, class Transformer>
                                                          transformer);
 }
 
-template<class Inspector, class Value, class Fallback, class Transformer>
-[[nodiscard]] Result loadTransformedField(
-    Inspector& f, [[maybe_unused]] std::string_view name, Value& val,
-    Fallback&& fallback, Transformer& transformer) {
-  return detail::AccessType<Value>::loadTransformedField(f, name, val, fallback,
-                                                         transformer);
+template<class Inspector, class Value, class ApplyFallback, class Transformer>
+[[nodiscard]] Result loadTransformedField(Inspector& f, std::string_view name,
+                                          Value& val,
+                                          ApplyFallback&& applyFallback,
+                                          Transformer& transformer) {
+  return detail::AccessType<Value>::loadTransformedField(
+      f, name, val, std::forward<ApplyFallback>(applyFallback), transformer);
 }
 
 template<class Value>
@@ -138,16 +139,13 @@ struct AccessBase {
     return f.apply(val);
   }
 
-  template<class Inspector, class Fallback>
+  template<class Inspector, class ApplyFallback>
   [[nodiscard]] static Result loadField(Inspector& f, std::string_view name,
-                                        Value& val, Fallback& fallback) {
+                                        Value& val,
+                                        ApplyFallback&& applyFallback) {
     auto s = f.slice();
     if (s.isNone()) {
-      if constexpr (std::is_assignable_v<Value, Fallback>) {
-        val = std::forward<Fallback>(fallback);
-      } else {
-        val = Value{std::forward<Fallback>(fallback)};
-      }
+      std::forward<ApplyFallback>(applyFallback)(val);
       return {};
     }
     return f.apply(val);
@@ -163,19 +161,13 @@ struct AccessBase {
            | [&]() { return transformer.fromSerialized(v, val); };  //
   }
 
-  template<class Inspector, class Fallback, class Transformer>
-  [[nodiscard]] static Result loadTransformedField(Inspector& f,
-                                                   std::string_view name,
-                                                   Value& val,
-                                                   Fallback&& fallback,
-                                                   Transformer& transformer) {
+  template<class Inspector, class ApplyFallback, class Transformer>
+  [[nodiscard]] static Result loadTransformedField(
+      Inspector& f, std::string_view name, Value& val,
+      ApplyFallback&& applyFallback, Transformer& transformer) {
     auto s = f.slice();
     if (s.isNone()) {
-      if constexpr (std::is_assignable_v<Value, Fallback>) {
-        val = std::forward<Fallback>(fallback);
-      } else {
-        val = Value{std::forward<Fallback>(fallback)};
-      }
+      std::forward<ApplyFallback>(applyFallback)(val);
       return {};
     }
     typename Transformer::SerializedType v;
@@ -240,13 +232,14 @@ struct Access<std::optional<T>> {
     return f.apply(val);
   }
 
-  template<class Inspector, class U>
+  template<class Inspector, class ApplyFallback>
   [[nodiscard]] static Result loadField(Inspector& f,
                                         [[maybe_unused]] std::string_view name,
-                                        std::optional<T>& val, U& fallback) {
+                                        std::optional<T>& val,
+                                        ApplyFallback&& applyFallback) {
     auto s = f.slice();
     if (s.isNone()) {
-      val = fallback;
+      std::forward<ApplyFallback>(applyFallback)(val);
       return {};
     }
     return f.apply(val);
@@ -271,17 +264,13 @@ struct Access<std::optional<T>> {
            | load;     //
   }
 
-  template<class Inspector, class Fallback, class Transformer>
+  template<class Inspector, class ApplyFallback, class Transformer>
   [[nodiscard]] static Result loadTransformedField(
-      Inspector& f, [[maybe_unused]] std::string_view name,
-      std::optional<T>& val, Fallback&& fallback, Transformer& transformer) {
+      Inspector& f, std::string_view name, std::optional<T>& val,
+      ApplyFallback&& applyFallback, Transformer& transformer) {
     auto s = f.slice();
     if (s.isNone()) {
-      if constexpr (std::is_assignable_v<std::optional<T>, Fallback>) {
-        val = std::forward<Fallback>(fallback);
-      } else {
-        val = std::optional<T>{std::forward<Fallback>(fallback)};
-      }
+      std::forward<ApplyFallback>(applyFallback)(val);
       return {};
     }
     return loadTransformedField(f, name, val, transformer);
@@ -331,13 +320,13 @@ struct PointerAccess {
     return f.apply(val);
   }
 
-  template<class Inspector, class U>
+  template<class Inspector, class ApplyFallback>
   [[nodiscard]] static Result loadField(Inspector& f,
                                         [[maybe_unused]] std::string_view name,
-                                        T& val, U& fallback) {
+                                        T& val, ApplyFallback&& applyFallback) {
     auto s = f.slice();
     if (s.isNone()) {
-      val = fallback;
+      std::forward<ApplyFallback>(applyFallback)(val);
       return {};
     } else if (s.isNull()) {
       val.reset();

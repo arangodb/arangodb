@@ -42,6 +42,17 @@ auto constexpr StringCommittedParticipantsConfig =
     std::string_view{"committedParticipantsConfig"};
 }
 
+auto LogPlanTermSpecification::Leader::toVelocyPack(VPackBuilder& builder) const
+    -> void {
+  VPackObjectBuilder ob2(&builder);
+  builder.add(StaticStrings::ServerId, VPackValue(serverId));
+  builder.add(StaticStrings::RebootId, VPackValue(rebootId.value()));
+}
+
+LogPlanTermSpecification::Leader::Leader(from_velocypack_t, VPackSlice slice)
+    : serverId(slice.get(StaticStrings::ServerId).copyString()),
+      rebootId(slice.get(StaticStrings::RebootId).extract<RebootId>()) {}
+
 auto LogPlanTermSpecification::toVelocyPack(VPackBuilder& builder) const
     -> void {
   VPackObjectBuilder ob(&builder);
@@ -51,9 +62,8 @@ auto LogPlanTermSpecification::toVelocyPack(VPackBuilder& builder) const
   config.toVelocyPack(builder);
 
   if (leader.has_value()) {
-    VPackObjectBuilder ob2(&builder, StaticStrings::Leader);
-    builder.add(StaticStrings::ServerId, VPackValue(leader->serverId));
-    builder.add(StaticStrings::RebootId, VPackValue(leader->rebootId.value()));
+    builder.add(VPackValue(StaticStrings::Leader));
+    leader->toVelocyPack(builder);
   }
 }
 
@@ -65,8 +75,7 @@ LogPlanTermSpecification::LogPlanTermSpecification(from_velocypack_t,
   // removed after the transition is complete.
   TRI_ASSERT(slice.get(StaticStrings::Participants).isNone());
   if (auto leaders = slice.get(StaticStrings::Leader); !leaders.isNone()) {
-    leader = Leader{leaders.get(StaticStrings::ServerId).copyString(),
-                    leaders.get(StaticStrings::RebootId).extract<RebootId>()};
+    leader = Leader(from_velocypack_t{}, leaders);
   }
 }
 
@@ -159,6 +168,9 @@ LogCurrentSupervision::LogCurrentSupervision(from_velocypack_t,
       error = es.get("code").getNumericValue<LogCurrentSupervisionError>();
     }
   }
+  if (auto es = slice.get("statusMessage"); !es.isNone()) {
+    statusMessage = es.copyString();
+  }
 }
 
 LogCurrentSupervisionElection::LogCurrentSupervisionElection(from_velocypack_t,
@@ -168,13 +180,6 @@ LogCurrentSupervisionElection::LogCurrentSupervisionElection(from_velocypack_t,
           slice.get("participantsRequired").getNumericValue<std::size_t>()),
       participantsAvailable(
           slice.get("participantsAvailable").getNumericValue<std::size_t>()) {
-  // TODO: this is a bit ugly
-  if (auto oco = slice.get("outcome"); oco.isObject()) {
-    if (auto oc = oco.get("outcome"); !oc.isNone()) {
-      outcome = oc.getNumericValue<LogCurrentSupervisionElection::Outcome>();
-    }
-  }
-
   for (auto [key, value] : VPackObjectIterator(slice.get("details"))) {
     detail.emplace(key.copyString(),
                    value.get("code").getNumericValue<ErrorCode>());
@@ -193,7 +198,7 @@ auto LogCurrent::toVelocyPack(VPackBuilder& builder) const -> void {
     supervision->toVelocyPack(builder);
   }
   if (leader.has_value()) {
-    VPackObjectBuilder lob(&builder, "leader");
+    builder.add(VPackValue("leader"));
     leader->toVelocyPack(builder);
   }
 }
@@ -212,6 +217,9 @@ auto LogCurrentSupervision::toVelocyPack(VPackBuilder& builder) const -> void {
     builder.add(VPackValue("error"));
     ::toVelocyPack(*error, builder);
   }
+  if (statusMessage) {
+    builder.add("statusMessage", statusMessage.value());
+  }
 }
 
 auto LogCurrentSupervisionElection::toVelocyPack(VPackBuilder& builder) const
@@ -219,10 +227,6 @@ auto LogCurrentSupervisionElection::toVelocyPack(VPackBuilder& builder) const
   VPackObjectBuilder ob(&builder);
   builder.add(StaticStrings::Term, VPackValue(term.value));
 
-  if (outcome) {
-    builder.add(VPackValue(StaticStrings::Outcome));
-    ::toVelocyPack(*outcome, builder);
-  }
   builder.add("participantsRequired", VPackValue(participantsRequired));
   builder.add("participantsAvailable", VPackValue(participantsAvailable));
   {
@@ -259,29 +263,6 @@ auto agency::to_string(LogCurrentSupervisionElection::ErrorCode ec) noexcept
   FATAL_ERROR_ABORT();
 }
 
-auto agency::toVelocyPack(LogCurrentSupervisionElection::Outcome outcome,
-                          VPackBuilder& builder) -> void {
-  VPackObjectBuilder ob(&builder);
-  builder.add(StaticStrings::Outcome, VPackValue(static_cast<int>(outcome)));
-  builder.add("message", VPackValue(to_string(outcome)));
-}
-
-auto agency::to_string(LogCurrentSupervisionElection::Outcome outcome) noexcept
-    -> std::string_view {
-  switch (outcome) {
-    case LogCurrentSupervisionElection::Outcome::SUCCESS:
-      return "the election was successful";
-    case LogCurrentSupervisionElection::Outcome::IMPOSSIBLE:
-      return "an election was impossible";
-    case LogCurrentSupervisionElection::Outcome::FAILED:
-      return "the election failed";
-  }
-  LOG_TOPIC("7f572", FATAL, arangodb::Logger::REPLICATION2)
-      << "Invalid LogCurrentSupervisionElection::Outcome "
-      << static_cast<std::underlying_type_t<decltype(outcome)>>(outcome);
-  FATAL_ERROR_ABORT();
-}
-
 auto agency::operator==(const LogCurrentSupervisionElection& left,
                         const LogCurrentSupervisionElection& right) noexcept
     -> bool {
@@ -301,6 +282,8 @@ auto agency::toVelocyPack(LogCurrentSupervisionError error,
 auto agency::to_string(LogCurrentSupervisionError error) noexcept
     -> std::string_view {
   switch (error) {
+    case LogCurrentSupervisionError::GENERAL_ERROR:
+      return "generic error.";
     case LogCurrentSupervisionError::TARGET_LEADER_INVALID:
       return "the leader selected in target is invalid";
     case LogCurrentSupervisionError::TARGET_LEADER_EXCLUDED:
