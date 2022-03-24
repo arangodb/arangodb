@@ -185,7 +185,7 @@ void ClusterProvider<StepImpl>::fetchVerticesFromEngines(
         // We flag to retain the payload.
         _opts.getCache()->cacheVertex(vertexKey, pair.value);
         // increase scanned Index for every vertex we cache.
-        _stats.addScannedIndex(1);
+        _stats.incrScannedIndex(1);
         needToRetainPayload = true;
       }
     }
@@ -245,7 +245,7 @@ void ClusterProvider<StepImpl>::destroyEngines() {
 
   auto const* engines = _opts.engines();
   for (auto const& engine : *engines) {
-    _stats.addHttpRequests(1);
+    _stats.incrHttpRequests(1);
     auto res = network::sendRequestRetry(
                    pool, "server:" + engine.first, fuerte::RestVerb::Delete,
                    "/_internal/traverser/" +
@@ -335,10 +335,18 @@ Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(Step* step) {
     if (res.fail()) {
       return res;
     }
-    _stats.addFiltered(
-        Helper::getNumericValue<size_t>(resSlice, "filtered", 0));
-    _stats.addScannedIndex(
+    _stats.incrScannedIndex(
         Helper::getNumericValue<size_t>(resSlice, "readIndex", 0));
+    _stats.incrFiltered(
+        Helper::getNumericValue<size_t>(resSlice, "filtered", 0));
+    _stats.incrCursorsCreated(
+        Helper::getNumericValue<size_t>(resSlice, "cursorsCreated", 0));
+    _stats.incrCursorsRearmed(
+        Helper::getNumericValue<size_t>(resSlice, "cursorsRearmed", 0));
+    _stats.incrCacheHits(
+        Helper::getNumericValue<size_t>(resSlice, "cacheHits", 0));
+    _stats.incrCacheMisses(
+        Helper::getNumericValue<size_t>(resSlice, "cacheMisses", 0));
 
     bool allCached = true;
     VPackSlice edges = resSlice.get("edges");
@@ -408,13 +416,13 @@ auto ClusterProvider<StepImpl>::fetch(std::vector<Step*> const& looseEnds)
       }
     } else {
       fetchVerticesFromEngines(looseEnds, result);
-      _stats.addHttpRequests(_opts.engines()->size() * looseEnds.size());
+      _stats.incrHttpRequests(_opts.engines()->size() * looseEnds.size());
     }
 
     for (auto const& step : result) {
       if (!_vertexConnectedEdges.contains(step->getVertex().getID())) {
         auto res = fetchEdgesFromEngines(step);
-        _stats.addHttpRequests(_opts.engines()->size());
+        _stats.incrHttpRequests(_opts.engines()->size());
 
         if (res.fail()) {
           THROW_ARANGO_EXCEPTION(res);
@@ -493,9 +501,7 @@ arangodb::transaction::Methods* ClusterProvider<StepImpl>::trx() {
 template<class StepImpl>
 arangodb::aql::TraversalStats ClusterProvider<StepImpl>::stealStats() {
   auto t = _stats;
-  // Placement new of stats, do not reallocate space.
-  _stats.~TraversalStats();
-  new (&_stats) aql::TraversalStats{};
+  _stats.clear();
   return t;
 }
 

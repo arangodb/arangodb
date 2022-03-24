@@ -137,8 +137,10 @@ IndexHint::IndexHint(QueryContext& query, AstNode const* node) : IndexHint() {
             }
             handled = true;
           }
-        } else if (name == arangodb::StaticStrings::IndexHintMaxProjections) {
-          // maxProjections is a valid attribute, but handled elsewhere
+        } else if (name == arangodb::StaticStrings::MaxProjections ||
+                   name == arangodb::StaticStrings::UseCache) {
+          // "maxProjections" and "useCache" are valid attributes,
+          // but handled elsewhere
           handled = true;
         } else if (name == ::FieldLookahead) {
           TRI_ASSERT(child->numMembers() > 0);
