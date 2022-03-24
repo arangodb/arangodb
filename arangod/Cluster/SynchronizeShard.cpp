@@ -38,6 +38,9 @@
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/Maintenance.h"
 #include "Cluster/MaintenanceFeature.h"
+#if 0
+#include "Cluster/ResignShardLeadership.h"
+#endif
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Network/Methods.h"
@@ -160,6 +163,32 @@ std::string const& SynchronizeShard::clientInfoString() const {
 
 SynchronizeShard::~SynchronizeShard() = default;
 
+#if 0
+bool SynchronizeShard::checkShardInCurrent(std::string const& database,
+                                           std::string const& planId,
+                                           std::string const& shard) const {
+  auto& agencyCache =
+      feature().server().getFeature<ClusterFeature>().agencyCache();
+  std::string path = "Current/Collections/" + database + "/" + planId + "/" +
+                     shard + "/servers";
+  VPackBuilder builder;
+  agencyCache.get(builder, path);
+  if (builder.isEmpty()) {
+    return false;
+  }
+  VPackSlice current = builder.slice();
+  if (!current.isArray() || current.length() < 2) {
+    return false;
+  }
+  std::string myself = arangodb::ServerState::instance()->getId();
+  for (size_t i = 1; i < current.length(); ++i) {
+    if (current[i].isString() && current[i].isEqualString(myself)) {
+      return true;
+    }
+  }
+  return false;
+}
+#endif
 static std::stringstream& AppendShardInformationToMessage(
     std::string const& database, std::string const& shard,
     std::string const& planId,
@@ -316,7 +345,6 @@ static arangodb::Result addShardFollower(
           result.errorNumber(),
           StringUtils::concatT(errorMessage, ", ", result.errorMessage()));
     }
-
     LOG_TOPIC("79935", DEBUG, Logger::MAINTENANCE)
         << "addShardFollower: success";
     return arangodb::Result();
@@ -677,6 +705,7 @@ bool SynchronizeShard::first() {
   std::string const& planId = _description.get(COLLECTION);
   std::string const& shard = getShard();
   std::string const& leader = _description.get(THE_LEADER);
+  bool forcedResync = _description.get(FORCED_RESYNC) == "true";
 
   size_t failuresInRow = feature().replicationErrors(database, shard);
 
@@ -701,8 +730,8 @@ bool SynchronizeShard::first() {
       TRI_RemoveFailurePointDebugging("SynchronizeShard::wrongChecksum");
       TRI_RemoveFailurePointDebugging("disableCountAdjustment");
 
-      // remove all recorded failures, so in next run we can start with a clean
-      // state
+      // remove all recorded failures, so in next run we can start with a
+      // clean state
       _feature.removeReplicationError(getDatabase(), getShard());
 
       ++feature()
@@ -812,15 +841,26 @@ bool SynchronizeShard::first() {
       }
       // This was the normal case. However, if we have been away for a short
       // amount of time and the leader has not yet noticed that we were gone,
-      // we might actually get here and try to resync and are still in Current.
-      // In this case, we write a log message and sync anyway:
+      // we might actually get here and try to resync and are still in
+      // Current. In this case, we write a log message and sync anyway:
       std::stringstream error;
-      error << "already done, but resyncing anyways";
+      if (forcedResync) {
+        error << "found ourselves in Current, but resyncing anyways because of "
+                 "a recent restart, ";
+        AppendShardInformationToMessage(database, shard, planId, startTime,
+                                        error);
+        LOG_TOPIC("4abcb", DEBUG, Logger::MAINTENANCE)
+            << "SynchronizeOneShard: " << error.str();
+        break;
+      }
+      // Otherwise, we give up on the job, since we do not want to repeat
+      // a SynchronizeShard if we are already in Current:
+      error << "already done, ";
       AppendShardInformationToMessage(database, shard, planId, startTime,
                                       error);
-      LOG_TOPIC("4abcb", DEBUG, Logger::MAINTENANCE)
+      LOG_TOPIC("4abcd", DEBUG, Logger::MAINTENANCE)
           << "SynchronizeOneShard: " << error.str();
-      break;
+      return false;
     }
 
     LOG_TOPIC("28600", DEBUG, Logger::MAINTENANCE)
@@ -904,10 +944,10 @@ bool SynchronizeShard::first() {
         << database << "/" << shard << "' for central '" << database << "/"
         << planId << "'";
 
-    // the destructor of the tailingSyncer will automatically unregister itself
-    // from the leader in case it still has to do so (it will do it at most once
-    // per tailingSyncer object, and only if the tailingSyncer registered itself
-    // on the leader)
+    // the destructor of the tailingSyncer will automatically unregister
+    // itself from the leader in case it still has to do so (it will do it at
+    // most once per tailingSyncer object, and only if the tailingSyncer
+    // registered itself on the leader)
     std::shared_ptr<DatabaseTailingSyncer> tailingSyncer =
         buildTailingSyncer(guard.database(), ep);
 
@@ -955,6 +995,9 @@ bool SynchronizeShard::first() {
       // Configure the shard to follow the leader without any following
       // term id:
       collection->followers()->setTheLeader(leader);
+      LOG_TOPIC("52412", ERR, Logger::MAINTENANCE)
+          << "Setting the leader to " << leader << " for shard "
+          << collection->name();
 
       startTime = system_clock::now();
 
@@ -991,10 +1034,10 @@ bool SynchronizeShard::first() {
       if (collections.length() == 0 ||
           collections[0].get("name").copyString() != shard) {
         std::stringstream error;
-        error
-            << "shard " << database << "/" << shard
-            << " seems to be gone from leader, this "
-               "can happen if a collection was dropped during synchronization!";
+        error << "shard " << database << "/" << shard
+              << " seems to be gone from leader, this "
+                 "can happen if a collection was dropped during "
+                 "synchronization!";
         LOG_TOPIC("664ae", WARN, Logger::MAINTENANCE)
             << "SynchronizeOneShard: " << error.str();
         result(TRI_ERROR_INTERNAL, error.str());
@@ -1080,8 +1123,8 @@ ResultT<TRI_voc_tick_t> SynchronizeShard::catchupWithReadLock(
   int tries = 0;
   double timeout = 300.0;
   TRI_voc_tick_t tickReached = 0;
-  while (didTimeout && tries++ < 18) {  // This will try to sync for at most ~1
-                                        // hour. ((300 * 0.6) * 18 == 3240)
+  while (didTimeout && tries++ < 18) {  // This will try to sync for at most
+                                        // ~1 hour. ((300 * 0.6) * 18 == 3240)
     if (feature().server().isStopping()) {
       std::string errorMessage =
           "SynchronizeShard: startReadLockOnLeader (soft): shutting down";
@@ -1135,8 +1178,8 @@ ResultT<TRI_voc_tick_t> SynchronizeShard::catchupWithReadLock(
     // this has not yet stopped the writes, so we have to be content
     // with nearly reaching the end of the WAL, which is a "soft" catchup.
 
-    // We only allow to hold this lock for 60% of the timeout time, so to avoid
-    // any issues with Locks timeouting on the Leader and the Client not
+    // We only allow to hold this lock for 60% of the timeout time, so to
+    // avoid any issues with Locks timeouting on the Leader and the Client not
     // recognizing it.
 
     try {
@@ -1247,6 +1290,9 @@ Result SynchronizeShard::catchupWithExclusiveLock(
   // If _followingTermId is 0, then this is a leader before the update,
   // we tolerate this and simply use its ID without a term in this case.
   collection.followers()->setTheLeader(leaderIdWithTerm);
+  LOG_TOPIC("57413", ERR, Logger::MAINTENANCE)
+      << "Setting the leader to " << leaderIdWithTerm << " for shard "
+      << collection.name();
   LOG_TOPIC("d76cb", DEBUG, Logger::MAINTENANCE) << "lockJobId: " << lockJobId;
 
   // repurpose tailingSyncer
@@ -1281,8 +1327,8 @@ Result SynchronizeShard::catchupWithExclusiveLock(
   // documents on the leader and the follower, which can happen if collection
   // counts are off for whatever reason.
   // under many cicrumstances the counts will have been auto-healed by the
-  // initial or the incremental replication before, so in many cases we will not
-  // even get into this if case
+  // initial or the incremental replication before, so in many cases we will
+  // not even get into this if case
   if (res.is(TRI_ERROR_REPLICATION_WRONG_CHECKSUM)) {
     // give up the lock on the leader, so writes aren't stopped unncessarily
     // on the leader while we are recalculating the counts
@@ -1347,7 +1393,8 @@ Result SynchronizeShard::catchupWithExclusiveLock(
 
       if (result.fail()) {
         auto const errorMessage = StringUtils::concatT(
-            "addShardFollower: could not add us to the leader's follower list "
+            "addShardFollower: could not add us to the leader's follower "
+            "list "
             "for ",
             getDatabase(), "/", getShard(),
             ", error while recalculating count on leader: ",
@@ -1379,6 +1426,22 @@ Result SynchronizeShard::catchupWithExclusiveLock(
     errorMessage += res.errorMessage();
     return {TRI_ERROR_INTERNAL, errorMessage};
   }
+
+#if 0
+  // Wait until we are actually in the Current field for the shard,
+  // according to our local AgencyCache:
+  for (int tries = 0; tries <= 100; ++tries) {
+    if (checkShardInCurrent(collection.vocbase().name(),
+                            std::to_string(collection.planId().id()),
+                            collection.name())) {
+      break;
+    }
+    LOG_TOPIC("15242", ERR, Logger::MAINTENANCE)
+        << "Waiting for us to appear in Current for shard "
+        << collection.name();
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  }
+#endif
 
   // Report success:
   LOG_TOPIC("3423d", DEBUG, Logger::MAINTENANCE)
@@ -1455,8 +1518,8 @@ void SynchronizeShard::setState(ActionState state) {
 
     // We're here, cause we either ran out of time or have an actual version
     // number. In the former case, we tried our best and will safely continue
-    // some 10 min later. If however v is an actual positive integer, we'll wait
-    // for it to sync in out ClusterInfo cache through loadCurrent.
+    // some 10 min later. If however v is an actual positive integer, we'll
+    // wait for it to sync in out ClusterInfo cache through loadCurrent.
     if (v > 0) {
       _feature.server()
           .getFeature<ClusterFeature>()
@@ -1494,8 +1557,8 @@ std::shared_ptr<DatabaseTailingSyncer> SynchronizeShard::buildTailingSyncer(
 
   std::string const& leader = _description.get(THE_LEADER);
   if (!leader.empty()) {
-    // In the initial phase we still use the normal leaderId without a following
-    // term id:
+    // In the initial phase we still use the normal leaderId without a
+    // following term id:
     syncer->setLeaderId(leader);
   }
 

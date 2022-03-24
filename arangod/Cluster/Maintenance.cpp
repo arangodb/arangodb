@@ -326,7 +326,7 @@ static void handlePlanShard(
       }
     }
     if (!leading && shouldBeLeading) {
-      LOG_TOPIC("52412", DEBUG, Logger::MAINTENANCE)
+      LOG_TOPIC("52413", DEBUG, Logger::MAINTENANCE)
           << "Triggering TakeoverShardLeadership job for shard " << dbname
           << "/" << colname << "/" << shname
           << ", local leader: " << lcol.get(THE_LEADER).copyString()
@@ -2352,7 +2352,11 @@ void arangodb::maintenance::syncReplicatedShardsWithLeaders(
           continue;
         }
 
+        LOG_DEVEL << "Scheduling SynchronizeShard for shard "
+                  << std::string(shname);
         std::string leader = pservers[0].copyString();
+        std::string forcedResync =
+            needsResyncBecauseOfRestart ? "true" : "false";
         std::shared_ptr<ActionDescription> description =
             std::make_shared<ActionDescription>(
                 std::map<std::string, std::string>{
@@ -2361,6 +2365,7 @@ void arangodb::maintenance::syncReplicatedShardsWithLeaders(
                     {COLLECTION, std::string(colname)},
                     {SHARD, std::string(shname)},
                     {THE_LEADER, std::move(leader)},
+                    {FORCED_RESYNC, std::move(forcedResync)},
                     {SHARD_VERSION, std::to_string(feature.shardVersion(
                                         std::string(shname)))}},
                 SYNCHRONIZE_PRIORITY, true);

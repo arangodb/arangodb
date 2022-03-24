@@ -59,6 +59,12 @@ class SynchronizeShard : public ActionBase, public ShardDefinition {
   std::string const& clientInfoString() const;
 
  private:
+#if 0
+  bool checkShardInCurrent(std::string const& database,
+                           std::string const& planId,
+                           std::string const& shard) const;
+#endif
+
   arangodb::Result collectionCountOnLeader(std::string const& endpoint,
                                            uint64_t& c);
 
