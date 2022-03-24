@@ -90,7 +90,7 @@ const replicatedStateSuite = function () {
         participants: {},
         properties: {
           implementation: {
-            type: "black-hole",
+            type: "prototype",
           }
         }
       };
@@ -164,6 +164,25 @@ const replicatedStateSuite = function () {
       });
 
       LH.waitFor(LH.replicatedLogIsReady(database, logId, 2, servers, leader));
+      LH.waitFor(spreds.replicatedStateIsReady(database, logId, servers));
+    },
+
+    testReplicatedStateIncreaseSnapshotGen: function () {
+      const logId = LH.nextUniqueLogId();
+      const servers = _.sampleSize(LH.dbservers, 3);
+      const leader = servers[0];
+      const follower = servers[1];
+      createReplicatedState(database, logId, servers, leader);
+
+      LH.waitFor(spreds.replicatedStateIsReady(database, logId, servers));
+
+      SH.updateReplicatedStatePlan(database, logId, function (state, log) {
+        state.generation += 1;
+        state.participants[follower].generation += 1;
+        return {state, log};
+      });
+
+      LH.waitFor(LH.replicatedLogIsReady(database, logId, 1, servers, leader));
       LH.waitFor(spreds.replicatedStateIsReady(database, logId, servers));
     },
 
