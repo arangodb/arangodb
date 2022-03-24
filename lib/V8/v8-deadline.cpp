@@ -103,7 +103,6 @@ double correctTimeoutToExecutionDeadlineS(double timeoutSeconds) {
 }
 
 std::chrono::milliseconds correctTimeoutToExecutionDeadline(std::chrono::milliseconds timeout) {
-    std::chrono::milliseconds timeout) {
   MUTEX_LOCKER(mutex, singletonDeadlineMutex);
   using namespace std::chrono;
 
