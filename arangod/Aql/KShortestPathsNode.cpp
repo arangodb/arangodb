@@ -52,6 +52,12 @@
 
 #include "Graph/algorithm-aliases.h"
 
+#ifdef USE_ENTERPRISE
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "Cluster/ClusterFeature.h"
+#include "Enterprise/Graph/Helpers/GraphHelperEE.h"
+#endif
+
 #include <velocypack/Iterator.h>
 
 #include <memory>
@@ -359,6 +365,20 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
                                            std::move(outputRegisters));
 
   auto opts = static_cast<ShortestPathOptions*>(options());
+#ifdef USE_ENTERPRISE
+  if (isDisjoint()) {
+    opts->setDisjoint(true);
+
+    ClusterInfo& ci = opts->query()
+                          .vocbase()
+                          .server()
+                          .getFeature<ClusterFeature>()
+                          .clusterInfo();
+    opts->setIsSatelliteLeader(GraphHelperEE::isSatelliteLeader(
+        opts->query().vocbase().name(), isDisjoint(), ci,
+        opts->collectionToShard()));
+  }
+#endif
 
   GraphNode::InputVertex sourceInput = ::prepareVertexInput(this, false);
   GraphNode::InputVertex targetInput = ::prepareVertexInput(this, true);

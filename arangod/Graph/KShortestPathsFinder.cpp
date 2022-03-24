@@ -37,6 +37,10 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 
+#ifdef USE_ENTERPRISE
+#include "Enterprise/Graph/Helpers/GraphHelperEE.h"
+#endif
+
 using namespace arangodb;
 using namespace arangodb::graph;
 
@@ -92,6 +96,25 @@ bool KShortestPathsFinder::startKShortestPathsTraversal(
     arangodb::velocypack::Slice const& end) {
   TRI_ASSERT(start.isString());
   TRI_ASSERT(end.isString());
+
+#ifdef USE_ENTERPRISE
+  if (options().isDisjoint()) {
+    if (!GraphHelperEE::equalShardKeys(start, end)) {
+      return false;
+    } else {
+      auto leftSV = GraphHelperEE::extractShardKey(start);
+      if (leftSV.ok()) {
+        _smartValue = leftSV.get();
+      } else {
+        auto rightSV = GraphHelperEE::extractShardKey(end);
+        if (rightSV.ok()) {
+          _smartValue = rightSV.get();
+        }
+      }
+    }
+  }
+#endif
+
   _start = start.stringView();
   _end = end.stringView();
 
@@ -103,10 +126,11 @@ bool KShortestPathsFinder::startKShortestPathsTraversal(
   return true;
 }
 
-bool KShortestPathsFinder::computeShortestPath(
-    VertexRef const& start, VertexRef const& end,
-    VertexSet const& forbiddenVertices, EdgeSet const& forbiddenEdges,
-    Path& result) {
+bool KShortestPathsFinder::computeShortestPath(VertexRef const& start,
+                                               VertexRef const& end,
+                                               VertexSet& forbiddenVertices,
+                                               EdgeSet const& forbiddenEdges,
+                                               Path& result) {
   _left.reset(start);
   _right.reset(end);
   VertexRef join;
@@ -139,7 +163,8 @@ bool KShortestPathsFinder::computeShortestPath(
 }
 
 void KShortestPathsFinder::computeNeighbourhoodOfVertexCache(
-    VertexRef vertex, Direction direction, std::vector<Step>*& res) {
+    VertexRef vertex, Direction direction, std::vector<Step>*& res,
+    VertexSet& forbiddenVertices) {
   // track memory usage for one more item
   // if we can't insert the item into the cache, it means the item is
   // already in the cache. then we are not responsible for tracking its memory
@@ -160,14 +185,16 @@ void KShortestPathsFinder::computeNeighbourhoodOfVertexCache(
   switch (direction) {
     case BACKWARD:
       if (!cache._hasCachedInNeighbours) {
-        computeNeighbourhoodOfVertex(vertex, direction, cache._inNeighbours);
+        computeNeighbourhoodOfVertex(vertex, direction, cache._inNeighbours,
+                                     forbiddenVertices);
         cache._hasCachedInNeighbours = true;
       }
       res = &cache._inNeighbours;
       break;
     case FORWARD:
       if (!cache._hasCachedOutNeighbours) {
-        computeNeighbourhoodOfVertex(vertex, direction, cache._outNeighbours);
+        computeNeighbourhoodOfVertex(vertex, direction, cache._outNeighbours,
+                                     forbiddenVertices);
         cache._hasCachedOutNeighbours = true;
       }
       res = &cache._outNeighbours;
@@ -178,7 +205,33 @@ void KShortestPathsFinder::computeNeighbourhoodOfVertexCache(
 }
 
 void KShortestPathsFinder::computeNeighbourhoodOfVertex(
-    VertexRef vertex, Direction direction, std::vector<Step>& steps) {
+    VertexRef vertex, Direction direction, std::vector<Step>& steps,
+    VertexSet& forbiddenVertices) {
+#ifdef USE_ENTERPRISE
+  auto isValidDisjointPath = [&](std::string_view vertexId) {
+    LOG_DEVEL << "Testing vertex id: " << vertexId;
+    auto res = GraphHelperEE::extractShardKey(vertexId);
+
+    if (!_smartValue.empty()) {
+      if (res.ok()) {
+        if (res.get() != _smartValue) {
+          LOG_DEVEL << "Invalid: " << vertexId;
+          forbiddenVertices.emplace(vertexId);
+          return false;
+        }
+      }
+    } else {
+      // value not initialized yet
+      if (res.ok()) {
+        LOG_DEVEL << "Initialized with: " << vertexId;
+        _smartValue = res.get();
+      }
+    }
+    LOG_DEVEL << "Valid: " << vertexId;
+    return true;
+  };
+#endif
+
   EdgeCursor* cursor =
       direction == BACKWARD ? _backwardCursor.get() : _forwardCursor.get();
   cursor->rearm(vertex, 0);
@@ -192,7 +245,17 @@ void KShortestPathsFinder::computeNeighbourhoodOfVertex(
         double weight = _options.weightEdge(doc);
         if (edge.compareString(vertex.data(), vertex.length()) != 0) {
           VertexRef id = _options.cache()->persistString(edge.stringView());
+#ifdef USE_ENTERPRISE
+          if (options().isDisjoint()) {
+            if (isValidDisjointPath(id)) {
+              steps.emplace_back(std::move(eid), id, weight);
+            }
+          } else {
+            steps.emplace_back(std::move(eid), id, weight);
+          }
+#else
           steps.emplace_back(std::move(eid), id, weight);
+#endif
         }
       } else {
         VertexRef other(
@@ -204,6 +267,17 @@ void KShortestPathsFinder::computeNeighbourhoodOfVertex(
         if (other != vertex) {
           VertexRef id = _options.cache()->persistString(other);
           steps.emplace_back(std::move(eid), id, _options.weightEdge(edge));
+#ifdef USE_ENTERPRISE
+          if (options().isDisjoint()) {
+            if (isValidDisjointPath(id)) {
+              steps.emplace_back(std::move(eid), id, _options.weightEdge(edge));
+            }
+          } else {
+            steps.emplace_back(std::move(eid), id, _options.weightEdge(edge));
+          }
+#else
+          steps.emplace_back(std::move(eid), id, _options.weightEdge(edge));
+#endif
         }
       }
     });
@@ -214,6 +288,17 @@ void KShortestPathsFinder::computeNeighbourhoodOfVertex(
         if (edge.compareString(vertex.data(), vertex.length()) != 0) {
           VertexRef id = _options.cache()->persistString(edge.stringView());
           steps.emplace_back(std::move(eid), id, 1);
+#ifdef USE_ENTERPRISE
+          if (options().isDisjoint()) {
+            if (isValidDisjointPath(id)) {
+              steps.emplace_back(std::move(eid), id, 1);
+            }
+          } else {
+            steps.emplace_back(std::move(eid), id, 1);
+          }
+#else
+          steps.emplace_back(std::move(eid), id, 1);
+#endif
         }
       } else {
         VertexRef other(
@@ -224,7 +309,17 @@ void KShortestPathsFinder::computeNeighbourhoodOfVertex(
         }
         if (other != vertex) {
           VertexRef id = _options.cache()->persistString(other);
+#ifdef USE_ENTERPRISE
+          if (options().isDisjoint()) {
+            if (isValidDisjointPath(id)) {
+              steps.emplace_back(std::move(eid), id, 1);
+            }
+          } else {
+            steps.emplace_back(std::move(eid), id, 1);
+          }
+#else
           steps.emplace_back(std::move(eid), id, 1);
+#endif
         }
       }
     });
@@ -232,7 +327,7 @@ void KShortestPathsFinder::computeNeighbourhoodOfVertex(
 }
 
 void KShortestPathsFinder::advanceFrontier(Ball& source, Ball const& target,
-                                           VertexSet const& forbiddenVertices,
+                                           VertexSet& forbiddenVertices,
                                            EdgeSet const& forbiddenEdges,
                                            VertexRef& join,
                                            std::optional<double>& currentBest) {
@@ -247,7 +342,8 @@ void KShortestPathsFinder::advanceFrontier(Ball& source, Ball const& target,
   }
 
   std::vector<Step>* neighbours;
-  computeNeighbourhoodOfVertexCache(vr, source._direction, neighbours);
+  computeNeighbourhoodOfVertexCache(vr, source._direction, neighbours,
+                                    forbiddenVertices);
   TRI_ASSERT(neighbours != nullptr);
 
   for (auto const& s : *neighbours) {
@@ -431,7 +527,8 @@ bool KShortestPathsFinder::getNextPath(Path& result) {
     } else {
       // Compute the first shortest path (i.e. the shortest path
       // between _start and _end!)
-      computeShortestPath(_start, _end, {}, {}, result);
+      VertexSet forbiddenVertices{};
+      computeShortestPath(_start, _end, forbiddenVertices, {}, result);
       result._branchpoint = 0;
     }
   } else {

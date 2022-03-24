@@ -288,7 +288,7 @@ class KShortestPathsFinder : public ShortestPathFinder {
  private:
   // Compute the first shortest path
   bool computeShortestPath(VertexRef const& start, VertexRef const& end,
-                           VertexSet const& forbiddenVertices,
+                           VertexSet& forbiddenVertices,
                            EdgeSet const& forbiddenEdges, Path& result);
   bool computeNextShortestPath(Path& result);
 
@@ -298,13 +298,15 @@ class KShortestPathsFinder : public ShortestPathFinder {
   // make sure the neighbourhood of vertex is in the cache, and return
   // that neighbourhood.
   void computeNeighbourhoodOfVertexCache(VertexRef vertex, Direction direction,
-                                         std::vector<Step>*& steps);
+                                         std::vector<Step>*& steps,
+                                         VertexSet& forbiddenVertices);
   // get the neighbourhood of the vertex in the given direction
   void computeNeighbourhoodOfVertex(VertexRef vertex, Direction direction,
-                                    std::vector<Step>& steps);
+                                    std::vector<Step>& steps,
+                                    VertexSet& forbiddenVertices);
 
   void advanceFrontier(Ball& source, Ball const& target,
-                       VertexSet const& forbiddenVertices,
+                       VertexSet& forbiddenVertices,
                        EdgeSet const& forbiddenEdges, VertexRef& join,
                        std::optional<double>& currentBest);
 

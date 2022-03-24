@@ -118,8 +118,8 @@ struct ShortestPathOptions : public BaseOptions {
   std::vector<LookupInfo> _reverseLookupInfos;
   std::string _weightAttribute;
   double _defaultWeight;
-  bool _isDisjoint;
-  bool _isSatelliteLeader;
+  bool _isDisjoint = false;
+  bool _isSatelliteLeader = false;
 };
 
 }  // namespace graph
