@@ -1,21 +1,40 @@
-import { cloneDeep, noop } from 'lodash';
-import React, { createContext, useEffect, useReducer, useRef, useState } from 'react';
-import { getReducer, isAdminUser as userIsAdmin, usePermissions } from '../../utils/helpers';
-import { BackButton, SaveButton } from './Actions';
-import LinkList from './Components/LinkList';
-import LinkPropertiesForm from './forms/LinkPropertiesForm';
-import { buildSubNav, postProcessor, useView } from './helpers';
+import { cloneDeep, noop } from "lodash";
+import React, {
+  createContext,
+  useEffect,
+  useReducer,
+  useRef,
+  useState
+} from "react";
+import {
+  getReducer,
+  isAdminUser as userIsAdmin,
+  usePermissions
+} from "../../utils/helpers";
+import { BackButton, SaveButton } from "./Actions";
+import LinkList from "./Components/LinkList";
+import LinkPropertiesForm from "./forms/LinkPropertiesForm";
+import { buildSubNav, postProcessor, useView } from "./helpers";
+import { Toast } from "./Notifications/Toast";
 
-export const ViewContext = createContext(
-  {
-    show: '',
-    setShow: noop,
-    formState: {},
-    dispatch: noop,
-    field: { field: '', basePath: '' },
-    setField: noop
-  }
-);
+export const ViewContext = createContext({
+  show: "",
+  setShow: noop,
+  formState: {},
+  dispatch: noop,
+  field: { field: "", basePath: "" },
+  setField: noop,
+  link: "",
+  setNewLink: noop
+});
+
+export const usePreviouse = value => {
+  const ref = useRef();
+  useEffect(() => {
+    ref.current = value;
+  }, [value]);
+  return ref.value;
+};
 
 const ViewLinksReactView = ({ name }) => {
   const initialState = useRef({
@@ -30,20 +49,21 @@ const ViewLinksReactView = ({ name }) => {
   const links = view.links;
   const permissions = usePermissions();
   const [isAdminUser, setIsAdminUser] = useState(false);
-  const [show, setShow] = useState('LinkList');
+  const [show, setShow] = useState("LinkList");
   const [field, setField] = useState({});
+  const [link, setNewLink] = useState("");
 
   useEffect(() => {
     initialState.current.formCache = cloneDeep(view);
 
     dispatch({
-      type: 'setFormState',
+      type: "setFormState",
       formState: view
     });
   }, [view, name]);
 
   useEffect(() => {
-    const observer = buildSubNav(isAdminUser, name, 'Links');
+    const observer = buildSubNav(isAdminUser, name, "Links");
 
     return () => observer.disconnect();
   }, [isAdminUser, name]);
@@ -55,27 +75,65 @@ const ViewLinksReactView = ({ name }) => {
   }
 
   const formState = state.formState;
+  const previousFormState = usePreviouse(formState);
+
+  const removeLink = l => {
+    dispatch({
+      type: "setField",
+      field: {
+        path: `links[${l}]`,
+        value: null
+      }
+    });
+  };
+
+  const handleBackClick = e => {
+    e.preventDefault();
+    console.log(link);
+    if (link !== "") {
+      const msg = `Your link (${link})'s not saved!`;
+      const icon = "warning";
+      Toast.fire({ title: msg, icon: icon }).then(res => {
+        if (res.isConfirmed) {
+          removeLink(link);
+        }
+      });
+    }
+    setShow("LinkList");
+  };
 
   return (
-    <ViewContext.Provider value={{ show, setShow, formState, dispatch, field, setField }}>
-      <div className={'centralContent'} id={'content'}>
-        {show === 'LinkList'
-          ? <LinkList
+    <ViewContext.Provider
+      value={{
+        show,
+        setShow,
+        formState,
+        dispatch,
+        field,
+        setField,
+        link,
+        setNewLink
+      }}
+    >
+      <div className={"centralContent"} id={"content"}>
+        {show === "LinkList" ? (
+          <LinkList
             links={links}
-            addClick={() => setShow('AddNew')}
-            viewLink={() => setShow('ViewParent')}
-            icon={'fa-plus-circle'}
+            addClick={() => setShow("AddNew")}
+            viewLink={() => setShow("ViewParent")}
+            icon={"fa-plus-circle"}
           />
-          : <div
-            id={'modal-dialog'}
-            className={'createModalDialog'}
+        ) : (
+          <div
+            id={"modal-dialog"}
+            className={"createModalDialog"}
             tabIndex={-1}
-            role={'dialog'}
-            aria-labelledby={'myModalLabel'}
-            aria-hidden={'true'}
+            role={"dialog"}
+            aria-labelledby={"myModalLabel"}
+            aria-hidden={"true"}
           >
-            <div className="modal-body" style={{ overflowY: 'visible' }}>
-              <div className={'tab-content'}>
+            <div className="modal-body" style={{ overflowY: "visible" }}>
+              <div className={"tab-content"}>
                 <div className="tab-pane tab-pane-modal active" id="Links">
                   <LinkPropertiesForm
                     formState={formState}
@@ -86,11 +144,14 @@ const ViewLinksReactView = ({ name }) => {
               </div>
             </div>
             <div className="modal-footer">
-              <BackButton buttonClick={() => setShow('LinkList')}/>
-              <SaveButton view={formState} oldName={name}/>
+              <BackButton
+                disabled={!previousFormState}
+                buttonClick={handleBackClick}
+              />
+              <SaveButton view={formState} oldName={name} />
             </div>
           </div>
-        }
+        )}
       </div>
     </ViewContext.Provider>
   );

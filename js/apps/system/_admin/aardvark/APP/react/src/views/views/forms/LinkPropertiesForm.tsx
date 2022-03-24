@@ -23,7 +23,7 @@ const LinkPropertiesForm = ({ disabled, view }: FormProps<FormState>) => {
   );
   const [options, setOptions] = useState<string[]>([]);
   const [link, setLink] = useState<string>();
-  const { show, setShow } = useContext(ViewContext);
+  const { show, setShow, setNewLink } = useContext(ViewContext);
 
   useEffect(() => {
     if (data) {
@@ -68,6 +68,7 @@ const LinkPropertiesForm = ({ disabled, view }: FormProps<FormState>) => {
     setCollection("");
     setShow("ViewChild");
     setLink(collection);
+    setNewLink(collection);
   };
 
   return disabled && isEmpty(links) ? (
