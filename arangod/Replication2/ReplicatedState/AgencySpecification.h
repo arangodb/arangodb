@@ -87,7 +87,7 @@ struct Current {
   std::unordered_map<ParticipantId, ParticipantStatus> participants;
 
   struct Supervision {
-    std::uint64_t version{0};
+    std::uint64_t version;
 
     void toVelocyPack(velocypack::Builder& builder) const;
     [[nodiscard]] static auto fromVelocyPack(velocypack::Slice) -> Supervision;

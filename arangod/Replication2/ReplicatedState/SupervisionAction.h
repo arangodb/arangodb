@@ -80,6 +80,7 @@ struct ModifyContext : private ModifySomeType<Ts>... {
     (
         [&] {
           if (!forType<T>().value.has_value()) {
+            static_assert(std::is_default_constructible_v<T>);
             forType<T>().value.emplace();
           }
         }(),
