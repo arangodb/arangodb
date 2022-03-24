@@ -1,34 +1,28 @@
-import React, { Dispatch } from "react";
-import { DispatchArgs } from "../../../utils/constants";
-import { LinkProperties } from "../constants";
-import {
-  ArangoTable,
-  ArangoTD,
-  ArangoTH
-} from "../../../components/arango/table";
+import React, { MouseEventHandler, ReactElement, useContext } from "react";
+import { ArangoTable, ArangoTD, ArangoTH } from "../../../components/arango/table";
 import { IconButton } from "../../../components/arango/buttons";
 import Link from "./Link";
 import { chain, isNull } from "lodash";
+import { ViewContext } from "../ViewLinksReactView";
+
 type CollProps = {
   links: {
     includeAllFields: boolean;
     analyzers: [];
     name: string;
-    action: React.ReactElement;
+    action: ReactElement;
   }[];
-  addClick: React.MouseEventHandler<HTMLElement>;
+  addClick: MouseEventHandler<HTMLElement>;
   viewLink: (link: {} | []) => void;
-  dispatch: Dispatch<DispatchArgs<LinkProperties>>;
   icon: string;
 };
 
-const LinkList: React.FC<CollProps> = ({
+const LinkList = ({
   links,
   addClick,
   icon,
-  viewLink,
-  dispatch
-}) => {
+  viewLink
+}: CollProps) => {
   // const checkLinks = () => {
   //   if (links) {
   //     console.log(Object.values(links));
@@ -39,6 +33,8 @@ const LinkList: React.FC<CollProps> = ({
   //     });
   //   }
   // };
+
+  const { dispatch } = useContext(ViewContext);
 
   const removeLink = (collection: string | number) => {
     dispatch({
@@ -104,7 +100,7 @@ const LinkList: React.FC<CollProps> = ({
             <ArangoTD seq={1}> </ArangoTD>
             <ArangoTD seq={2}> </ArangoTD>
             <ArangoTD seq={3}>
-              <i className={`fa ${icon}`} onClick={addClick}></i>
+              <i className={`fa ${icon}`} onClick={addClick}/>
             </ArangoTD>
           </tr>
         </tfoot>

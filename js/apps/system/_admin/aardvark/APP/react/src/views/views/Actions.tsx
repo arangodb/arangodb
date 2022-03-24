@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, MouseEventHandler } from "react";
 import Modal, {
   ModalBody,
   ModalFooter,
@@ -22,12 +22,12 @@ type SaveButtonProps = ButtonProps & {
   menu?: string;
 };
 
-type BackButtonProps = ButtonProps & {
-  buttonClick: React.MouseEventHandler<HTMLElement>;
+type BackButtonProps = {
+  buttonClick: MouseEventHandler<HTMLElement>;
 };
 
 type JsonButtonProps = {
-  buttonClick: React.MouseEventHandler<HTMLElement>;
+  buttonClick: MouseEventHandler<HTMLElement>;
   buttonName: string;
 };
 
