@@ -29,7 +29,6 @@
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Parser.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <iostream>
 #include <list>

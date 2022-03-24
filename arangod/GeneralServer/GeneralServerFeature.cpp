@@ -85,6 +85,8 @@
 #include "RestHandler/RestPregelHandler.h"
 #include "RestHandler/RestQueryCacheHandler.h"
 #include "RestHandler/RestQueryHandler.h"
+#include "RestHandler/RestPrototypeStateHandler.h"
+#include "RestHandler/RestReplicatedStateHandler.h"
 #include "RestHandler/RestShutdownHandler.h"
 #include "RestHandler/RestSimpleHandler.h"
 #include "RestHandler/RestSimpleQueryHandler.h"
@@ -204,11 +206,11 @@ void GeneralServerFeature::collectOptions(
   options->addSection("http", "HTTP server features");
 
   options
-      ->addOption(
-          "--http.allow-method-override",
-          "allow HTTP method override using special headers",
-          new BooleanParameter(&_allowMethodOverride),
-          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+      ->addOption("--http.allow-method-override",
+                  "allow HTTP method override using special headers",
+                  new BooleanParameter(&_allowMethodOverride),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::Uncommon))
       .setDeprecatedIn(30800);
 
   options->addOption("--http.keep-alive-timeout",
@@ -306,6 +308,14 @@ void GeneralServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
 
 void GeneralServerFeature::prepare() {
   ServerState::instance()->setServerMode(ServerState::Mode::MAINTENANCE);
+
+  if (ServerState::instance()->isDBServer() &&
+      !server().options()->processingResult().touched(
+          "http.hide-product-header")) {
+    // if we are a DB server, client applications will not talk to us
+    // directly, so we can turn off the Server signature header.
+    HttpResponse::HIDE_PRODUCT_HEADER = true;
+  }
 }
 
 void GeneralServerFeature::start() {
@@ -532,17 +542,19 @@ void GeneralServerFeature::defineHandlers() {
       RestVocbaseBaseHandler::VIEW_PATH,
       RestHandlerCreator<RestViewHandler>::createNoData);
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (cluster.isEnabled()) {
     _handlerFactory->addPrefixHandler(
-        "/_api/log", RestHandlerCreator<RestLogHandler>::createNoData);
-  }
-#endif
-
-  if (cluster.isEnabled()) {
+        std::string{StaticStrings::ApiLogExternal},
+        RestHandlerCreator<RestLogHandler>::createNoData);
     _handlerFactory->addPrefixHandler(
         std::string{StaticStrings::ApiLogInternal},
         RestHandlerCreator<RestLogInternalHandler>::createNoData);
+    _handlerFactory->addPrefixHandler(
+        std::string{StaticStrings::ApiReplicatedStateExternal},
+        RestHandlerCreator<RestReplicatedStateHandler>::createNoData);
+    _handlerFactory->addPrefixHandler(
+        "/_api/prototype-state",
+        RestHandlerCreator<RestPrototypeStateHandler>::createNoData);
   }
 
   // This is the only handler were we need to inject

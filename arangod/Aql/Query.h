@@ -30,6 +30,7 @@
 #include "Aql/ExecutionStats.h"
 #include "Aql/QueryContext.h"
 #include "Aql/QueryExecutionState.h"
+#include "Aql/QueryResult.h"
 #include "Aql/QueryResultV8.h"
 #include "Aql/QueryString.h"
 #include "Aql/SharedQueryState.h"

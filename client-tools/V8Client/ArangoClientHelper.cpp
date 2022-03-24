@@ -24,7 +24,6 @@
 #include "ArangoClientHelper.h"
 
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"

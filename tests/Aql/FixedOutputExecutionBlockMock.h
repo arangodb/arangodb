@@ -56,9 +56,14 @@ class FixedOutputExecutionBlockMock final
              arangodb::aql::SharedAqlItemBlockPtr>
   execute(arangodb::aql::AqlCallStack const& stack) override;
 
+  void setExecuteEnterHook(
+      std::function<void(arangodb::aql::AqlCallStack const& stack)> hook);
+
  private:
   arangodb::aql::RegisterInfos _infos;
   std::deque<arangodb::aql::SharedAqlItemBlockPtr> _blockData;
+  std::function<void(arangodb::aql::AqlCallStack const& stack)>
+      _executeEnterHook;
 };
 
 }  // namespace aql

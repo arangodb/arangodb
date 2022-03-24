@@ -56,7 +56,6 @@
 #include <rocksdb/utilities/write_batch_with_index.h>
 
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 
@@ -144,10 +143,6 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
 
     TRI_ASSERT(searchSlice.length() > 0);
     _key->constructUniqueVPackIndexValue(_index->objectId(), searchSlice);
-
-    // resets _done
-    resetImpl();
-    TRI_ASSERT(!_done);
     return true;
   }
 
@@ -211,14 +206,7 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
   /// @brief Reset the cursor
   void resetImpl() override {
     TRI_ASSERT(_trx->state()->isRunning());
-
     _done = false;
-  }
-
-  /// we provide a method to provide the index attribute values
-  /// while scanning the index
-  bool hasCovering() const override {
-    return _index->type() != arangodb::Index::IndexType::TRI_IDX_TYPE_TTL_INDEX;
   }
 
  private:
@@ -319,14 +307,10 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
           leftSearch->add(it);
         }
       }
-      _bounds = _index->buildIndexRangeBounds(_trx, searchSlice, *leftSearch,
-                                              lastNonEq);
+      _index->buildIndexRangeBounds(_trx, searchSlice, *leftSearch, lastNonEq,
+                                    _bounds);
       _rangeBound = reverse ? _bounds.start() : _bounds.end();
     }
-
-    // sets _mustSeek
-    resetImpl();
-    TRI_ASSERT(_mustSeek);
     return true;
   }
 
@@ -459,12 +443,6 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
     _mustSeek = true;
   }
 
-  /// @brief we provide a method to provide the index attribute values
-  /// while scanning the index
-  bool hasCovering() const override {
-    return _index->type() != arangodb::Index::IndexType::TRI_IDX_TYPE_TTL_INDEX;
-  }
-
  private:
   inline bool outOfRange() const {
     // we can effectively disable the out-of-range checks for read-only
@@ -534,14 +512,14 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
   RocksDBKeyBounds _bounds;
   // used for iterate_upper_bound iterate_lower_bound
   rocksdb::Slice _rangeBound;
-  RocksDBVPackIndexSearchValueFormat _format;
+  RocksDBVPackIndexSearchValueFormat const _format;
   bool _mustSeek;
   bool const _mustCheckBounds;
 };
 
 }  // namespace arangodb
 
-uint64_t RocksDBVPackIndex::HashForKey(const rocksdb::Slice& key) {
+uint64_t RocksDBVPackIndex::HashForKey(rocksdb::Slice const& key) {
   // NOTE: This function needs to use the same hashing on the
   // indexed VPack as the initial inserter does
   VPackSlice tmp = RocksDBKey::indexedVPack(key);
@@ -558,7 +536,6 @@ RocksDBVPackIndex::RocksDBVPackIndex(IndexId iid,
                    /*useCache*/ false),
       _deduplicate(arangodb::basics::VelocyPackHelper::getBooleanValue(
           info, "deduplicate", true)),
-      _allowPartialIndex(true),
       _estimates(true),
       _estimator(nullptr),
       _storedValues(Index::parseFields(
@@ -797,23 +774,18 @@ void RocksDBVPackIndex::buildIndexValues(
 
   // Finally, the complex case, where we have to expand one entry.
   // Note again that at most one step in the attribute path can be
-  // an array step. Furthermore, if _allowPartialIndex is true and
-  // anything goes wrong with this attribute path, we have to bottom out
-  // with None values to be able to use the index for a prefix match.
+  // an array step.
 
   // Trivial case to bottom out with Illegal types.
-  VPackSlice illegalSlice = arangodb::velocypack::Slice::illegalSlice();
-
   auto finishWithNones = [&]() -> void {
-    if (!_allowPartialIndex || level == 0) {
-      return;
-    }
-    for (size_t i = level; i < _paths.size(); i++) {
-      sliceStack.emplace_back(illegalSlice);
-    }
-    addIndexValue(leased, documentId, doc, elements, hashes, sliceStack);
-    for (size_t i = level; i < _paths.size(); i++) {
-      sliceStack.pop_back();
+    if (level != 0) {
+      for (size_t i = level; i < _paths.size(); i++) {
+        sliceStack.emplace_back(arangodb::velocypack::Slice::illegalSlice());
+      }
+      addIndexValue(leased, documentId, doc, elements, hashes, sliceStack);
+      for (size_t i = level; i < _paths.size(); i++) {
+        sliceStack.pop_back();
+      }
     }
   };
   size_t const n = _paths[level].size();
@@ -1409,9 +1381,11 @@ std::unique_ptr<IndexIterator> RocksDBVPackIndex::buildIterator(
   // generic case: we have a non-unique index or have non-equality lookups
   TRI_ASSERT(leftSearch->isOpenArray());
 
-  return buildIteratorFromBounds(
-      trx, reverse, readOwnWrites,
-      buildIndexRangeBounds(trx, searchValues, *leftSearch, lastNonEq), format);
+  RocksDBKeyBounds bounds = RocksDBKeyBounds::Empty();
+  buildIndexRangeBounds(trx, searchValues, *leftSearch, lastNonEq, bounds);
+
+  return buildIteratorFromBounds(trx, reverse, readOwnWrites, std::move(bounds),
+                                 format);
 }
 
 std::unique_ptr<IndexIterator> RocksDBVPackIndex::buildIteratorFromBounds(
@@ -1445,28 +1419,25 @@ std::unique_ptr<IndexIterator> RocksDBVPackIndex::buildIteratorFromBounds(
 }
 
 // build bounds for an index range
-RocksDBKeyBounds RocksDBVPackIndex::buildIndexRangeBounds(
-    transaction::Methods* trx, VPackSlice searchValues,
-    VPackBuilder& leftSearch, VPackSlice lastNonEq) const {
+void RocksDBVPackIndex::buildIndexRangeBounds(transaction::Methods* trx,
+                                              VPackSlice searchValues,
+                                              VPackBuilder& leftSearch,
+                                              VPackSlice lastNonEq,
+                                              RocksDBKeyBounds& bounds) const {
   TRI_ASSERT(searchValues.isArray());
   TRI_ASSERT(searchValues.length() <= _fields.size());
   TRI_ASSERT(leftSearch.isOpenArray());
 
-  VPackBuilder rightSearch;
+  bounds.clear();
 
-  VPackSlice leftBorder;
-  VPackSlice rightBorder;
+  // Copy rightSearch = leftSearch for right border
+  VPackBuilder rightSearch = leftSearch;
 
   if (lastNonEq.isNone()) {
     // We only have equality lookups!
-    rightSearch = leftSearch;
-
     leftSearch.add(VPackSlice::minKeySlice());
     rightSearch.add(VPackSlice::maxKeySlice());
   } else {
-    // Copy rightSearch = leftSearch for right border
-    rightSearch = leftSearch;
-
     // Define Lower-Bound
     VPackSlice lastLeft = lastNonEq.get(StaticStrings::IndexGe);
     if (!lastLeft.isNone()) {
@@ -1503,15 +1474,11 @@ RocksDBKeyBounds RocksDBVPackIndex::buildIndexRangeBounds(
   }
 
   leftSearch.close();
-  leftBorder = leftSearch.slice();
-
   rightSearch.close();
-  rightBorder = rightSearch.slice();
 
-  return _unique ? RocksDBKeyBounds::UniqueVPackIndex(objectId(), leftBorder,
-                                                      rightBorder)
-                 : RocksDBKeyBounds::VPackIndex(objectId(), leftBorder,
-                                                rightBorder);
+  bounds.fill(_unique ? RocksDBEntryType::UniqueVPackIndexValue
+                      : RocksDBEntryType::VPackIndexValue,
+              objectId(), leftSearch.slice(), rightSearch.slice());
 }
 
 Index::FilterCosts RocksDBVPackIndex::supportsFilterCondition(

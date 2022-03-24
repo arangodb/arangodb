@@ -5,6 +5,7 @@
 # ------------------------------------------------------------------------------
 
 include(ExternalProject)
+include(UpdateModule)
 
 remove_definitions("-DUSE_ENTERPRISE=1")
 
@@ -103,6 +104,13 @@ set(ICU_LIBRARY_DIR "${ICU_LIBRARY_DIR}" PARENT_SCOPE)
 set(ICU_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/V8/${V8_SUB_DIR}/third_party/icu/")
 
 ################################################################################
+## Google Abseil
+################################################################################
+
+add_subdirectory(abseil-cpp)
+set(ARANGO_ABSEIL_CPP_VERSION "${ARANGO_ABSEIL_CPP_VERSION}" PARENT_SCOPE)
+
+################################################################################
 ## Google S2
 ################################################################################
 
@@ -119,6 +127,8 @@ set(BOOST_VERSION ${BOOST_VERSION} PARENT_SCOPE)
 ################################################################################
 ## Velocypack
 ################################################################################
+
+UpdateModule(${GIT_EXECUTABLE} "velocypack" ${CMAKE_CURRENT_SOURCE_DIR} "README.md")
 
 set(HashType "xxhash" CACHE STRING "Hash type (fasthash, xxhash)" FORCE)
 set(BuildVelocyPackExamples OFF CACHE BOOL "Build VelocyPack Examples" FORCE)
@@ -158,10 +168,25 @@ set(LZ4_INCLUDE_DIR "${LZ4_ROOT}/lib" PARENT_SCOPE)
 set(SNOWBALL_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/snowball")
 set(UNWIND_ROOT "invalid")
 set(BFD_ROOT "invalid")
-find_package(IResearch REQUIRED) # set IRESEARCH_BUILD_DIR
+set(IRESEARCH_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/iresearch")
+set(IRESEARCH_BUILD_DIR "${CMAKE_BINARY_DIR}/3rdParty/iresearch")
+
+unset(IRESEARCH_INCLUDE)
+list(APPEND IRESEARCH_INCLUDE
+  "${IRESEARCH_ROOT}/core"
+  "${IRESEARCH_ROOT}/external"
+  "${IRESEARCH_BUILD_DIR}/core"
+)
+
+UpdateModule(${GIT_EXECUTABLE} "iresearch" ${CMAKE_CURRENT_SOURCE_DIR} "README.md")
+
+mark_as_advanced(
+  IRESEARCH_BUILD_DIR
+  IRESEARCH_INCLUDE
+  IRESEARCH_ROOT
+)
 
 set(CMAKE_MACOSX_RPATH ON) # suppress cmake warning (use same value as cmake default)
-set(CMAKE_MODULE_PATH_ORIGINAL ${CMAKE_MODULE_PATH}) # remember CMAKE_MODULE_PATH
 list(APPEND CMAKE_MODULE_PATH
   "${CMAKE_CURRENT_SOURCE_DIR}/cmake" # cmake overrides (must be first)
   "${IRESEARCH_ROOT}/cmake" # to find iResearch dependencies
@@ -175,7 +200,6 @@ foreach(ELEMENT ${IRESEARCH_PREBUILT})
 endforeach()
 
 add_subdirectory("${IRESEARCH_ROOT}" "${IRESEARCH_BUILD_DIR}" EXCLUDE_FROM_ALL) # do not build unused targets
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH_ORIGINAL}) # restore CMAKE_MODULE_PATH
 unset(BUILD_SHARED_LIBS) # otherwise ZLib (below) does not build on win32
 unset(BUILD_SHARED_LIBS CACHE) # otherwise ZLib (below) does not build on win32
 
@@ -240,6 +264,12 @@ add_library(linenoise-ng STATIC
 
 target_include_directories(linenoise-ng SYSTEM PUBLIC
   ${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/include)
+
+################################################################################
+## fmt
+################################################################################
+UpdateModule(${GIT_EXECUTABLE} "fmt" ${CMAKE_CURRENT_SOURCE_DIR} "README.rst")
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/fmt)
 
 ################################################################################
 ## LINK_DIRECTORIES

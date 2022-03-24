@@ -28,6 +28,7 @@
 #include "Basics/application-exit.h"
 #include "Logger/LogMacros.h"
 #include "Random/RandomGenerator.h"
+#include "Cluster/FailureOracle.h"
 
 #include <algorithm>
 #include <type_traits>
@@ -126,7 +127,8 @@ auto keySetDifference = [](auto const& left, auto const& right) {
 
 auto algorithms::updateReplicatedLog(
     LogActionContext& ctx, ServerID const& myServerId, RebootId myRebootId,
-    LogId logId, agency::LogPlanSpecification const* spec) noexcept
+    LogId logId, agency::LogPlanSpecification const* spec,
+    std::shared_ptr<cluster::IFailureOracle const> failureOracle) noexcept
     -> futures::Future<arangodb::Result> {
   auto result = basics::catchToResultT([&]() -> futures::Future<
                                                  arangodb::Result> {
@@ -190,7 +192,8 @@ auto algorithms::updateReplicatedLog(
       auto newLeader = log->becomeLeader(
           spec->currentTerm->config, myServerId, spec->currentTerm->term,
           followers,
-          std::make_shared<ParticipantsConfig>(spec->participantsConfig));
+          std::make_shared<ParticipantsConfig>(spec->participantsConfig),
+          std::move(failureOracle));
       newLeader->triggerAsyncReplication();  // TODO move this call into
                                              // becomeLeader?
       return newLeader->waitForLeadership().thenValue(
@@ -216,7 +219,7 @@ auto algorithms::updateReplicatedLog(
 }
 
 auto algorithms::operator<<(std::ostream& os,
-                            ParticipantStateTuple const& p) noexcept
+                            ParticipantState const& p) noexcept
     -> std::ostream& {
   os << '{' << p.id << ':' << p.lastAckedEntry << ", ";
   os << "failed = " << std::boolalpha << p.failed;
@@ -225,28 +228,26 @@ auto algorithms::operator<<(std::ostream& os,
   return os;
 }
 
-auto ParticipantStateTuple::isExcluded() const noexcept -> bool {
-  return flags.excluded;
+auto ParticipantState::isAllowedInQuorum() const noexcept -> bool {
+  return flags.allowedInQuorum;
 };
 
-auto ParticipantStateTuple::isForced() const noexcept -> bool {
+auto ParticipantState::isForced() const noexcept -> bool {
   return flags.forced;
 };
 
-auto ParticipantStateTuple::isFailed() const noexcept -> bool {
-  return failed;
-};
+auto ParticipantState::isFailed() const noexcept -> bool { return failed; };
 
-auto ParticipantStateTuple::lastTerm() const noexcept -> LogTerm {
+auto ParticipantState::lastTerm() const noexcept -> LogTerm {
   return lastAckedEntry.term;
 }
 
-auto ParticipantStateTuple::lastIndex() const noexcept -> LogIndex {
+auto ParticipantState::lastIndex() const noexcept -> LogIndex {
   return lastAckedEntry.index;
 }
 
-auto operator<=>(ParticipantStateTuple const& left,
-                 ParticipantStateTuple const& right) noexcept {
+auto operator<=>(ParticipantState const& left,
+                 ParticipantState const& right) noexcept {
   // return std::tie(left.index, left.id) <=> std::tie(right.index, right.id);
   // -- not supported by apple clang
   if (auto c = left.lastIndex() <=> right.lastIndex(); c != 0) {
@@ -260,41 +261,49 @@ algorithms::CalculateCommitIndexOptions::CalculateCommitIndexOptions(
     : _writeConcern(writeConcern), _softWriteConcern(softWriteConcern) {}
 
 auto algorithms::calculateCommitIndex(
-    std::vector<ParticipantStateTuple> const& indexes,
-    CalculateCommitIndexOptions const opt, LogIndex currentCommitIndex,
-    TermIndexPair lastTermIndex)
+    std::vector<ParticipantState> const& participants,
+    CalculateCommitIndexOptions const opt, LogIndex const currentCommitIndex,
+    TermIndexPair const lastTermIndex)
     -> std::tuple<LogIndex, CommitFailReason, std::vector<ParticipantId>> {
-  // We keep a vector of participants that are neither excluded nor have failed.
-  // All eligible participants have to be in the same term as the leader.
-  // Never commit log entries from older terms.
-  auto eligible = std::vector<ParticipantStateTuple>{};
-  eligible.reserve(indexes.size());
-  std::copy_if(std::begin(indexes), std::end(indexes),
-               std::back_inserter(eligible), [&](auto& p) {
-                 return !p.isFailed() && !p.isExcluded() &&
+  // We keep a vector of eligible participants.
+  // To be eligible, a participant
+  //  - must not be excluded, and
+  //  - must be in the same term as the leader.
+  // This is because we must not include an excluded server in any quorum, and
+  // must never commit log entries from older terms.
+  auto eligible = std::vector<ParticipantState>{};
+  eligible.reserve(participants.size());
+  std::copy_if(std::begin(participants), std::end(participants),
+               std::back_inserter(eligible), [&](auto const& p) {
+                 return p.isAllowedInQuorum() &&
                         p.lastTerm() == lastTermIndex.term;
                });
 
+  // If servers are unavailable because they are either failed or excluded,
+  // the actualWriteConcern may be lowered from softWriteConcern down to at
+  // least writeConcern.
+  auto const numAvailableParticipants = std::size_t(std::count_if(
+      std::begin(participants), std::end(participants),
+      [](auto const& p) { return !p.isFailed() && p.isAllowedInQuorum(); }));
   // We write to at least writeConcern servers, ideally more if available.
-  auto actualWriteConcern = std::max(
-      opt._writeConcern, std::min(eligible.size(), opt._softWriteConcern));
+  auto const effectiveWriteConcern =
+      std::max(opt._writeConcern,
+               std::min(numAvailableParticipants, opt._softWriteConcern));
 
-  if (actualWriteConcern > indexes.size() &&
-      indexes.size() == eligible.size()) {
+  if (effectiveWriteConcern > participants.size() &&
+      participants.size() == eligible.size()) {
     // With WC greater than the number of participants, we cannot commit
     // anything, even if all participants are eligible.
-    TRI_ASSERT(!indexes.empty());
-    auto quorum = std::vector<ParticipantId>{};
-    quorum.reserve(eligible.size());
-    std::transform(std::begin(eligible), std::end(eligible),
-                   std::back_inserter(quorum), [](auto& p) { return p.id; });
-    auto const& who = std::min_element(
-        std::begin(eligible), std::end(eligible), [](auto& left, auto& right) {
-          return left.lastAckedEntry.index < right.lastAckedEntry.index;
-        });
+    TRI_ASSERT(!participants.empty());
+    TRI_ASSERT(opt._writeConcern == effectiveWriteConcern);
     return {currentCommitIndex,
-            CommitFailReason::withQuorumSizeNotReached(who->id),
-            std::move(quorum)};
+            CommitFailReason::withFewerParticipantsThanWriteConcern({
+                .writeConcern = opt._writeConcern,
+                .softWriteConcern = opt._softWriteConcern,
+                .effectiveWriteConcern = effectiveWriteConcern,
+                .numParticipants = participants.size(),
+            }),
+            {}};
   }
 
   auto const spearhead = lastTermIndex.index;
@@ -304,7 +313,7 @@ auto algorithms::calculateCommitIndex(
   // the spearhead (the furthest we could commit to).
   auto minForcedCommitIndex = spearhead;
   auto minForcedParticipantId = std::optional<ParticipantId>{};
-  for (auto const& pt : indexes) {
+  for (auto const& pt : participants) {
     if (pt.isForced()) {
       if (pt.lastTerm() != lastTermIndex.term) {
         // A forced participant has entries from a previous term. We can't use
@@ -313,28 +322,27 @@ auto algorithms::calculateCommitIndex(
                 CommitFailReason::withForcedParticipantNotInQuorum(pt.id),
                 {}};
       }
-      if (pt.lastAckedEntry.index < minForcedCommitIndex) {
-        minForcedCommitIndex = pt.lastAckedEntry.index;
+      if (pt.lastIndex() < minForcedCommitIndex) {
+        minForcedCommitIndex = pt.lastIndex();
         minForcedParticipantId = pt.id;
       }
     }
   }
 
-  // While actualWriteConcern == 0 is silly we still allow it.
-  if (actualWriteConcern == 0) {
+  // While effectiveWriteConcern == 0 is silly we still allow it.
+  if (effectiveWriteConcern == 0) {
     return {minForcedCommitIndex, CommitFailReason::withNothingToCommit(), {}};
   }
 
-  if (actualWriteConcern <= eligible.size()) {
+  if (effectiveWriteConcern <= eligible.size()) {
     auto nth = std::begin(eligible);
 
-    TRI_ASSERT(actualWriteConcern > 0);
-    std::advance(nth, actualWriteConcern - 1);
+    TRI_ASSERT(effectiveWriteConcern > 0);
+    std::advance(nth, effectiveWriteConcern - 1);
 
     std::nth_element(std::begin(eligible), nth, std::end(eligible),
                      [](auto& left, auto& right) {
-                       return left.lastAckedEntry.index >
-                              right.lastAckedEntry.index;
+                       return left.lastIndex() > right.lastIndex();
                      });
     auto const minNonExcludedCommitIndex = nth->lastIndex();
 
@@ -342,7 +350,8 @@ auto algorithms::calculateCommitIndex(
         std::min(minForcedCommitIndex, minNonExcludedCommitIndex);
 
     auto quorum = std::vector<ParticipantId>{};
-    quorum.reserve(actualWriteConcern);
+    quorum.reserve(effectiveWriteConcern);
+
     std::transform(std::begin(eligible), std::next(nth),
                    std::back_inserter(quorum), [](auto& p) { return p.id; });
 
@@ -361,10 +370,24 @@ auto algorithms::calculateCommitIndex(
                   minForcedParticipantId.value()),
               {}};
     } else {
-      // We commit as far away as we can get, but report the participant whose
-      // id is the furthest away from the spearhead.
-      auto const& who = nth->id;
-      return {commitIndex, CommitFailReason::withQuorumSizeNotReached(who),
+      // We commit as far away as we can get, but report all participants who
+      // can't be part of a quorum for the spearhead.
+      auto who = CommitFailReason::QuorumSizeNotReached::who_type();
+      for (auto const& participant : participants) {
+        if (participant.lastAckedEntry < lastTermIndex ||
+            !participant.isAllowedInQuorum()) {
+          who.try_emplace(
+              participant.id,
+              CommitFailReason::QuorumSizeNotReached::ParticipantInfo{
+                  .isFailed = participant.isFailed(),
+                  .isAllowedInQuorum = participant.isAllowedInQuorum(),
+                  .lastAcknowledged = participant.lastAckedEntry,
+              });
+        }
+      }
+      return {commitIndex,
+              CommitFailReason::withQuorumSizeNotReached(std::move(who),
+                                                         lastTermIndex),
               std::move(quorum)};
     }
   }
@@ -374,14 +397,11 @@ auto algorithms::calculateCommitIndex(
   // indexes cannot be empty because this particular case would've been handled
   // above by comparing actualWriteConcern to 0;
   CommitFailReason::NonEligibleServerRequiredForQuorum::CandidateMap candidates;
-  for (auto const& p : indexes) {
-    if (p.isFailed()) {
-      candidates.emplace(
-          p.id, CommitFailReason::NonEligibleServerRequiredForQuorum::kFailed);
-    } else if (p.isExcluded()) {
-      candidates.emplace(
-          p.id,
-          CommitFailReason::NonEligibleServerRequiredForQuorum::kExcluded);
+  for (auto const& p : participants) {
+    if (!p.isAllowedInQuorum()) {
+      candidates.emplace(p.id,
+                         CommitFailReason::NonEligibleServerRequiredForQuorum::
+                             kNotAllowedInQuorum);
     } else if (p.lastTerm() != lastTermIndex.term) {
       candidates.emplace(
           p.id,
@@ -389,7 +409,7 @@ auto algorithms::calculateCommitIndex(
     }
   }
 
-  TRI_ASSERT(!indexes.empty());
+  TRI_ASSERT(!participants.empty());
   return {currentCommitIndex,
           CommitFailReason::withNonEligibleServerRequiredForQuorum(
               std::move(candidates)),

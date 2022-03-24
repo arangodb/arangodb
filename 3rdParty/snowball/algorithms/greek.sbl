@@ -188,8 +188,6 @@ backwardmode (
         ([] substring atlimit among (
           '{a}{n}{a}{m}{p}{a}' '{e}{m}{p}{a}' '{e}{p}{a}' '{x}{a}{n}{a}{p}{a}' '{p}{a}' '{p}{e}{r}{y}{p}{a}' '{a}{th}{r}{o}' '{s}{u}{n}{a}{th}{r}{o}' '{d}{a}{n}{e}'
           (<- '{y}')
-        )) or
-        ([] substring atlimit among (
           '{m}{a}{r}{k}' '{k}{o}{r}{n}' '{a}{m}{p}{a}{r}' '{a}{r}{r}' '{v}{a}{th}{u}{r}{y}' '{v}{a}{r}{k}' '{v}' '{v}{o}{l}{v}{o}{r}' '{g}{k}{r}'
           '{g}{l}{u}{k}{o}{r}' '{g}{l}{u}{k}{u}{r}' '{y}{m}{p}' '{l}' '{l}{o}{u}' '{m}{a}{r}' '{m}' '{p}{r}' '{m}{p}{r}' '{p}{o}{l}{u}{r}' '{p}'
           '{r}' '{p}{y}{p}{e}{r}{o}{r}'
@@ -222,8 +220,6 @@ backwardmode (
           '{s}{u}{n}{a}{th}{r}{o}' '{d}{a}{n}{e}' '{k}{l}{e}' '{ch}{a}{r}{t}{o}{p}{a}' '{e}{x}{a}{r}{ch}{a}' '{m}{e}{t}{e}{p}{e}' '{a}{p}{o}{k}{l}{e}'
           '{a}{p}{e}{k}{l}{e}' '{e}{k}{l}{e}' '{p}{e}'
           (<- '{y}')
-        )) or
-        ([] substring atlimit among (
           '{a}{n}' '{a}{f}' '{g}{e}' '{g}{y}{g}{a}{n}{t}{o}{a}{f}' '{g}{k}{e}' '{d}{i}{m}{o}{k}{r}{a}{t}' '{k}{o}{m}' '{g}{k}' '{m}' '{p}'
           '{p}{o}{u}{k}{a}{m}' '{o}{l}{o}' '{l}{a}{r}'
           (<- '{y}{s}')
@@ -256,8 +252,6 @@ backwardmode (
         ([] substring atlimit among (
           '{d}{a}{n}{e}' '{s}{u}{n}{a}{th}{r}{o}' '{k}{l}{e}' '{s}{e}' '{e}{s}{oo}{k}{l}{e}' '{a}{s}{e}' '{p}{l}{e}'
           (<- '{y}')
-        )) or
-        ([] substring atlimit among (
           '{m}' '{p}' '{a}{p}' '{a}{r}' '{i}{d}' '{k}{t}' '{s}{k}' '{s}{ch}' '{u}{ps}' '{f}{a}' '{ch}{r}' '{ch}{t}' '{a}{k}{t}'
           '{a}{o}{r}' '{a}{s}{ch}' '{a}{t}{a}' '{a}{ch}{n}' '{a}{ch}{t}' '{g}{e}{m}' '{g}{u}{r}' '{e}{m}{p}' '{e}{u}{p}' '{e}{ch}{th}' '{i}{f}{a}'
           '{k}{a}{th}' '{k}{a}{k}' '{k}{u}{l}' '{l}{u}{g}' '{m}{a}{k}' '{m}{e}{g}' '{t}{a}{ch}' '{f}{y}{l}' '{ch}{oo}{r}'
@@ -275,8 +269,6 @@ backwardmode (
         ([] substring atlimit among (
           '{s}{e}' '{m}{e}{t}{a}{s}{e}' '{m}{y}{k}{r}{o}{s}{e}' '{e}{g}{k}{l}{e}' '{a}{p}{o}{k}{l}{e}'
           (<- '{y}{s}{m}')
-        )) or
-        ([] substring atlimit among (
           '{d}{a}{n}{e}' '{a}{n}{t}{y}{d}{a}{n}{e}'
           (<- '{y}')
         )) or
@@ -320,10 +312,13 @@ backwardmode (
           '{a}{l}{y}{s}{f}' '{a}{m}{v}{r}' '{a}{n}{th}{r}' '{k}' '{f}{u}{l}' '{k}{a}{t}{r}{a}{p}' '{k}{l}{y}{m}' '{m}{a}{l}' '{s}{l}{o}{v}' '{f}'
           '{s}{f}' '{t}{s}{e}{ch}{o}{s}{l}{o}{v}'
            (<- '{a}{k}')
-        )) or
-        ([] substring atlimit among (
-          '{v}' '{v}{a}{l}' '{g}{y}{a}{n}' '{g}{l}' '{z}' '{i}{g}{o}{u}{m}{e}{n}' '{k}{a}{r}{d}' '{k}{o}{n}' '{m}{a}{k}{r}{u}{n}' '{n}{u}{f}'
-          '{p}{a}{t}{e}{r}' '{p}' '{s}{k}' '{t}{o}{s}' '{t}{r}{y}{p}{o}{l}'
+          '{v}' '{v}{a}{l}' '{g}{y}{a}{n}' '{g}{l}' '{z}' '{i}{g}{o}{u}{m}{e}{n}' '{k}{a}{r}{d}' '{m}{a}{k}{r}{u}{n}' '{n}{u}{f}'
+          '{p}{a}{t}{e}{r}' '{p}' '{t}{o}{s}' '{t}{r}{y}{p}{o}{l}'
+          // We're implementing the revised algorithm from the Saroukos paper
+          // which also lists '{k}{o}{n}' and '{s}{k}' here, but these are
+          // also listed just above in the `Add {a}{k} in the end` exception.
+          // It seems they're redundant here, so we omit them (otherwise the
+          // Snowball compiler would report an error).
           (<- '{y}{t}{s}')
         )) or
         ([] '{k}{o}{r}' <- '{y}{t}{s}')
@@ -363,7 +358,7 @@ backwardmode (
     [substring] among (
       '{a}{d}{e}{s}' '{a}{d}{oo}{n}' (delete)
     )
-    not ([substring] among (
+    not (substring among (
       '{o}{k}' '{m}{a}{m}' '{m}{a}{n}' '{m}{p}{a}{m}{p}' '{p}{a}{t}{e}{r}' '{g}{y}{a}{g}{y}' '{n}{t}{a}{n}{t}' '{k}{u}{r}' '{th}{e}{y}' '{p}{e}{th}{e}{r}'
     ))
     insert '{a}{d}'
@@ -581,8 +576,8 @@ backwardmode (
         delete
         unset test1
         ([] '{k}{o}{l}{l}' <- '{a}{g}') or (
-          not ([substring] among ('{ps}{o}{f}' '{n}{a}{u}{l}{o}{ch}'))
           ([] substring among (
+            '{ps}{o}{f}' '{n}{a}{u}{l}{o}{ch}' ()
             '{o}{f}' '{p}{e}{l}' '{ch}{o}{r}{t}' '{l}{l}' '{s}{f}' '{r}{p}' '{f}{r}' '{p}{r}' '{l}{o}{ch}' '{s}{m}{i}{n}'
             (<- '{a}{g}')
           )) or
