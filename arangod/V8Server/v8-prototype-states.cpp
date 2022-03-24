@@ -43,11 +43,11 @@ using namespace arangodb::replication2;
 v8::Handle<v8::Object> WrapPrototypeState(v8::Isolate* isolate, LogId id) {
   v8::EscapableHandleScope scope(isolate);
   TRI_GET_GLOBALS();
-  TRI_GET_GLOBAL(VocbaseReplicatedLogTempl, v8::ObjectTemplate);
+  TRI_GET_GLOBAL(VocbasePrototypeStateTempl, v8::ObjectTemplate);
   auto& vocbase = GetContextVocBase(isolate);
   auto context = TRI_IGETC;
   v8::Handle<v8::Object> result =
-      VocbaseReplicatedLogTempl->NewInstance(TRI_IGETC).FromMaybe(
+      VocbasePrototypeStateTempl->NewInstance(TRI_IGETC).FromMaybe(
           v8::Local<v8::Object>());
 
   if (result.IsEmpty()) {
@@ -305,7 +305,7 @@ void TRI_InitV8PrototypeStates(TRI_v8_global_t* v8g, v8::Isolate* isolate) {
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "getSnapshot"),
                        JS_GetSnapshot);
 
-  v8g->VocbaseReplicatedLogTempl.Reset(isolate, rt);
+  v8g->VocbasePrototypeStateTempl.Reset(isolate, rt);
   TRI_AddGlobalFunctionVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "ArangoPrototypeState"),
       ft->GetFunction(TRI_IGETC).FromMaybe(v8::Local<v8::Function>()));
