@@ -134,21 +134,21 @@ struct AccessBase {
   template<class Inspector>
   [[nodiscard]] static Status loadField(Inspector& f, std::string_view name,
                                         bool isPresent, Value& val) {
-    if (!isPresent) {
-      return {"Missing required attribute '" + std::string(name) + "'"};
+    if (isPresent) {
+      return f.apply(val);
     }
-    return f.apply(val);
+    return {"Missing required attribute '" + std::string(name) + "'"};
   }
 
   template<class Inspector, class ApplyFallback>
   [[nodiscard]] static Status loadField(Inspector& f, std::string_view name,
                                         bool isPresent, Value& val,
                                         ApplyFallback&& applyFallback) {
-    if (!isPresent) {
-      std::forward<ApplyFallback>(applyFallback)(val);
-      return {};
+    if (isPresent) {
+      return f.apply(val);
     }
-    return f.apply(val);
+    std::forward<ApplyFallback>(applyFallback)(val);
+    return {};
   }
 
   template<class Inspector, class Transformer>
@@ -165,13 +165,13 @@ struct AccessBase {
   [[nodiscard]] static Status loadTransformedField(
       Inspector& f, std::string_view name, bool isPresent, Value& val,
       ApplyFallback&& applyFallback, Transformer& transformer) {
-    if (!isPresent) {
-      std::forward<ApplyFallback>(applyFallback)(val);
-      return {};
+    if (isPresent) {
+      typename Transformer::SerializedType v;
+      return f.apply(v)                                               //
+             | [&]() { return transformer.fromSerialized(v, val); };  //
     }
-    typename Transformer::SerializedType v;
-    return f.apply(v)                                               //
-           | [&]() { return transformer.fromSerialized(v, val); };  //
+    std::forward<ApplyFallback>(applyFallback)(val);
+    return {};
   }
 };  // namespace arangodb::inspection
 
@@ -225,10 +225,14 @@ struct Access<std::optional<T>> {
   }
 
   template<class Inspector>
-  [[nodiscard]] static auto loadField(Inspector& f,
-                                      [[maybe_unused]] std::string_view name,
-                                      bool isPresent, std::optional<T>& val) {
-    return f.apply(val);
+  [[nodiscard]] static Status loadField(Inspector& f,
+                                        [[maybe_unused]] std::string_view name,
+                                        bool isPresent, std::optional<T>& val) {
+    if (isPresent) {
+      return f.apply(val);
+    }
+    val.reset();
+    return {};
   }
 
   template<class Inspector, class ApplyFallback>
@@ -236,30 +240,34 @@ struct Access<std::optional<T>> {
                                         [[maybe_unused]] std::string_view name,
                                         bool isPresent, std::optional<T>& val,
                                         ApplyFallback&& applyFallback) {
-    if (!isPresent) {
-      std::forward<ApplyFallback>(applyFallback)(val);
-      return {};
+    if (isPresent) {
+      return f.apply(val);
     }
-    return f.apply(val);
+    std::forward<ApplyFallback>(applyFallback)(val);
+    return {};
   }
 
   template<class Inspector, class Transformer>
   [[nodiscard]] static Status loadTransformedField(
       Inspector& f, [[maybe_unused]] std::string_view name, bool isPresent,
       std::optional<T>& val, Transformer& transformer) {
-    std::optional<typename Transformer::SerializedType> v;
-    auto load = [&]() -> Status {
-      if (!v.has_value()) {
-        val.reset();
-        return {};
-      }
-      T vv;
-      auto res = transformer.fromSerialized(*v, vv);
-      val = vv;
-      return res;
-    };
-    return f.apply(v)  //
-           | load;     //
+    if (isPresent) {
+      std::optional<typename Transformer::SerializedType> v;
+      auto load = [&]() -> Status {
+        if (!v.has_value()) {
+          val.reset();
+          return {};
+        }
+        T vv;
+        auto res = transformer.fromSerialized(*v, vv);
+        val = vv;
+        return res;
+      };
+      return f.apply(v)  //
+             | load;     //
+    }
+    val.reset();
+    return {};
   }
 
   template<class Inspector, class ApplyFallback, class Transformer>
@@ -267,11 +275,11 @@ struct Access<std::optional<T>> {
       Inspector& f, std::string_view name, bool isPresent,
       std::optional<T>& val, ApplyFallback&& applyFallback,
       Transformer& transformer) {
-    if (!isPresent) {
-      std::forward<ApplyFallback>(applyFallback)(val);
-      return {};
+    if (isPresent) {
+      return loadTransformedField(f, name, isPresent, val, transformer);
     }
-    return loadTransformedField(f, name, isPresent, val, transformer);
+    std::forward<ApplyFallback>(applyFallback)(val);
+    return {};
   }
 };  // namespace arangodb::inspection
 
@@ -309,12 +317,12 @@ struct PointerAccess {
   [[nodiscard]] static Status loadField(Inspector& f,
                                         [[maybe_unused]] std::string_view name,
                                         bool isPresent, T& val) {
-    if (!isPresent) {
-      val.reset();
-      return {};
+    if (isPresent) {
+      val = Derived::make();  // TODO - reuse existing object?
+      return f.apply(val);
     }
-    val = Derived::make();  // TODO - reuse existing object?
-    return f.apply(val);
+    val.reset();
+    return {};
   }
 
   template<class Inspector, class ApplyFallback>
@@ -322,12 +330,12 @@ struct PointerAccess {
                                         [[maybe_unused]] std::string_view name,
                                         bool isPresent, T& val,
                                         ApplyFallback&& applyFallback) {
-    if (!isPresent) {
-      std::forward<ApplyFallback>(applyFallback)(val);
-      return {};
+    if (isPresent) {
+      val = Derived::make();  // TODO - reuse existing object?
+      return f.apply(val);
     }
-    val = Derived::make();  // TODO - reuse existing object?
-    return f.apply(val);
+    std::forward<ApplyFallback>(applyFallback)(val);
+    return {};
   }
 };
 

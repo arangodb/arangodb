@@ -856,7 +856,7 @@ TEST_F(VPackLoadInspectorTest, load_optional) {
                     .y = "blubb",
                     .vec = {1, std::nullopt, 3},
                     .map = {{"1", 1}, {"2", std::nullopt}, {"3", 3}}};
-  EXPECT_EQ(expected.a, o.a) << o.a.has_value() << " " << o.a.value();
+  EXPECT_EQ(expected.a, o.a);
   EXPECT_EQ(expected.b, o.b);
   EXPECT_EQ(expected.x, o.x);
   EXPECT_EQ(expected.y, o.y);
