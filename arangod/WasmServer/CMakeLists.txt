@@ -1,4 +1,5 @@
 add_library(arango_wasm STATIC
+  Wasm3.cpp
   Methods.cpp
   WasmCommon.cpp
   RestWasmHandler.cpp

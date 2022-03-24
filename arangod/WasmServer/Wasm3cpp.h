@@ -14,8 +14,6 @@
 
 #include "wasm3.h"
 
-using namespace arangodb;
-
 namespace wasm3 {
 /** @cond */
 namespace detail {
@@ -25,6 +23,8 @@ template<typename T, typename...>
 struct first_type {
   typedef T type;
 };
+
+class module;
 
 typedef const void* (*m3_api_raw_fn)(IM3Runtime, uint64_t*, void*);
 
@@ -176,7 +176,7 @@ class environment {
    * @param stack_size_bytes  size of the WASM stack for this runtime
    * @return runtime object
    */
-  runtime new_runtime(size_t stack_size_bytes);
+  auto new_runtime(size_t stack_size_bytes) -> runtime;
 
   /**
    * Parse a WASM module from file
@@ -187,7 +187,7 @@ class environment {
    * @param in  file (WASM binary)
    * @return module object
    */
-  module parse_module(std::istream& in);
+  auto parse_module(std::istream& in) -> module;
 
   /**
    * Parse a WASM module from binary data
@@ -196,7 +196,7 @@ class environment {
    * @param size  size of the binary
    * @return module object
    */
-  module parse_module(const uint8_t* data, size_t size);
+  auto parse_module(const uint8_t* data, size_t size) -> module;
 
  protected:
   std::shared_ptr<struct M3Environment> m_env;
@@ -220,15 +220,17 @@ class runtime {
    * @param name  name of a function, c-string
    * @return function object
    */
-  std::optional<function> find_function(const char* name);
+  auto find_function(const char* name) -> std::optional<function>;
 
  protected:
   friend class environment;
 
   runtime(const std::shared_ptr<M3Environment>& env, size_t stack_size_bytes)
       : m_env(env) {
-    m_runtime.reset(m3_NewRuntime(env.get(), stack_size_bytes, nullptr),
-                    &m3_FreeRuntime);
+    m_runtime.reset(
+        m3_NewRuntime(env.get(), static_cast<uint32_t>(stack_size_bytes),
+                      nullptr),
+        &m3_FreeRuntime);
     if (m_runtime == nullptr) {
       throw std::bad_alloc();
     }
@@ -291,7 +293,7 @@ class module {
 
   void parse(IM3Environment env, const uint8_t* data, size_t size) {
     IM3Module p;
-    M3Result err = m3_ParseModule(env, &p, data, size);
+    M3Result err = m3_ParseModule(env, &p, data, static_cast<uint32_t>(size));
     detail::check_error(err);
     m_module.reset(p, [this](IM3Module module) {
       if (!m_loaded) {
@@ -373,47 +375,5 @@ class function {
 
   M3Function* m_func;
 };
-
-inline runtime environment::new_runtime(size_t stack_size_bytes) {
-  return runtime(m_env, stack_size_bytes);
-}
-
-inline module environment::parse_module(std::istream& in) {
-  return module(m_env, in);
-}
-
-inline module environment::parse_module(const uint8_t* data, size_t size) {
-  return module(m_env, data, size);
-}
-
-inline void runtime::load(module& mod) { mod.load_into(m_runtime.get()); }
-
-inline std::optional<function> runtime::find_function(const char* name) {
-  M3Function* m_func = nullptr;
-  M3Result err = m3_FindFunction(&m_func, m_runtime.get(), name);
-  if (err != m3Err_none or m_func == nullptr) {
-    return std::nullopt;
-  }
-  return function(m_func);
-}
-
-template<typename Func>
-void module::link(const char* module, const char* function_name,
-                  Func* function) {
-  M3Result ret = detail::m3_wrapper<Func>::link(m_module.get(), module,
-                                                function_name, function);
-  detail::check_error(ret);
-}
-
-template<typename Func>
-void module::link_optional(const char* module, const char* function_name,
-                           Func* function) {
-  M3Result ret = detail::m3_wrapper<Func>::link(m_module.get(), module,
-                                                function_name, function);
-  if (ret == m3Err_functionLookupFailed) {
-    return;
-  }
-  detail::check_error(ret);
-}
 
 }  // namespace wasm3

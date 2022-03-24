@@ -1,3 +1,5 @@
+#include "WasmServerFeature.h"
+
 #include <cstdint>
 #include <iterator>
 #include <optional>
@@ -6,12 +8,12 @@
 #include <vector>
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/error-registry.h"
 #include "Basics/Result.h"
 #include "Basics/voc-errors.h"
 #include "Cluster/ServerState.h"
 #include "WasmServer/Wasm3cpp.h"
 #include "WasmServer/WasmCommon.h"
-#include "WasmServerFeature.h"
 
 namespace arangodb {
 namespace application_features {

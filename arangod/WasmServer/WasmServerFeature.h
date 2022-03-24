@@ -35,8 +35,8 @@
 #include "Basics/Result.h"
 #include "Basics/ResultT.h"
 #include "RestServer/arangod.h"
-#include "Wasm3cpp.h"
-#include "WasmCommon.h"
+#include "WasmServer/Wasm3cpp.h"
+#include "WasmServer/WasmCommon.h"
 
 namespace arangodb {
 namespace options {
