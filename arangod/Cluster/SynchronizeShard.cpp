@@ -701,8 +701,8 @@ bool SynchronizeShard::first() {
       TRI_RemoveFailurePointDebugging("SynchronizeShard::wrongChecksum");
       TRI_RemoveFailurePointDebugging("disableCountAdjustment");
 
-      // remove all recorded failures, so in next run we can start with a
-      // clean state
+      // remove all recorded failures, so in next run we can start with a clean
+      // state
       _feature.removeReplicationError(getDatabase(), getShard());
 
       ++feature()
@@ -820,7 +820,7 @@ bool SynchronizeShard::first() {
                  "a recent restart, ";
         AppendShardInformationToMessage(database, shard, planId, startTime,
                                         error);
-        LOG_TOPIC("4abcb", DEBUG, Logger::MAINTENANCE)
+        LOG_TOPIC("4abcd", DEBUG, Logger::MAINTENANCE)
             << "SynchronizeOneShard: " << error.str();
         break;
       }
@@ -829,8 +829,9 @@ bool SynchronizeShard::first() {
       error << "already done, ";
       AppendShardInformationToMessage(database, shard, planId, startTime,
                                       error);
-      LOG_TOPIC("4abcd", DEBUG, Logger::MAINTENANCE)
+      LOG_TOPIC("4abcb", DEBUG, Logger::MAINTENANCE)
           << "SynchronizeOneShard: " << error.str();
+      result(TRI_ERROR_FAILED, error.str());
       return false;
     }
 
@@ -915,10 +916,10 @@ bool SynchronizeShard::first() {
         << database << "/" << shard << "' for central '" << database << "/"
         << planId << "'";
 
-    // the destructor of the tailingSyncer will automatically unregister
-    // itself from the leader in case it still has to do so (it will do it at
-    // most once per tailingSyncer object, and only if the tailingSyncer
-    // registered itself on the leader)
+    // the destructor of the tailingSyncer will automatically unregister itself
+    // from the leader in case it still has to do so (it will do it at most once
+    // per tailingSyncer object, and only if the tailingSyncer registered itself
+    // on the leader)
     std::shared_ptr<DatabaseTailingSyncer> tailingSyncer =
         buildTailingSyncer(guard.database(), ep);
 
@@ -966,9 +967,6 @@ bool SynchronizeShard::first() {
       // Configure the shard to follow the leader without any following
       // term id:
       collection->followers()->setTheLeader(leader);
-      LOG_TOPIC("52412", ERR, Logger::MAINTENANCE)
-          << "Setting the leader to " << leader << " for shard "
-          << collection->name();
 
       startTime = system_clock::now();
 
@@ -1005,10 +1003,10 @@ bool SynchronizeShard::first() {
       if (collections.length() == 0 ||
           collections[0].get("name").copyString() != shard) {
         std::stringstream error;
-        error << "shard " << database << "/" << shard
-              << " seems to be gone from leader, this "
-                 "can happen if a collection was dropped during "
-                 "synchronization!";
+        error
+            << "shard " << database << "/" << shard
+            << " seems to be gone from leader, this "
+               "can happen if a collection was dropped during synchronization!";
         LOG_TOPIC("664ae", WARN, Logger::MAINTENANCE)
             << "SynchronizeOneShard: " << error.str();
         result(TRI_ERROR_INTERNAL, error.str());
@@ -1094,8 +1092,8 @@ ResultT<TRI_voc_tick_t> SynchronizeShard::catchupWithReadLock(
   int tries = 0;
   double timeout = 300.0;
   TRI_voc_tick_t tickReached = 0;
-  while (didTimeout && tries++ < 18) {  // This will try to sync for at most
-                                        // ~1 hour. ((300 * 0.6) * 18 == 3240)
+  while (didTimeout && tries++ < 18) {  // This will try to sync for at most ~1
+                                        // hour. ((300 * 0.6) * 18 == 3240)
     if (feature().server().isStopping()) {
       std::string errorMessage =
           "SynchronizeShard: startReadLockOnLeader (soft): shutting down";
@@ -1149,8 +1147,8 @@ ResultT<TRI_voc_tick_t> SynchronizeShard::catchupWithReadLock(
     // this has not yet stopped the writes, so we have to be content
     // with nearly reaching the end of the WAL, which is a "soft" catchup.
 
-    // We only allow to hold this lock for 60% of the timeout time, so to
-    // avoid any issues with Locks timeouting on the Leader and the Client not
+    // We only allow to hold this lock for 60% of the timeout time, so to avoid
+    // any issues with Locks timeouting on the Leader and the Client not
     // recognizing it.
 
     try {
@@ -1261,9 +1259,6 @@ Result SynchronizeShard::catchupWithExclusiveLock(
   // If _followingTermId is 0, then this is a leader before the update,
   // we tolerate this and simply use its ID without a term in this case.
   collection.followers()->setTheLeader(leaderIdWithTerm);
-  LOG_TOPIC("57413", ERR, Logger::MAINTENANCE)
-      << "Setting the leader to " << leaderIdWithTerm << " for shard "
-      << collection.name();
   LOG_TOPIC("d76cb", DEBUG, Logger::MAINTENANCE) << "lockJobId: " << lockJobId;
 
   // repurpose tailingSyncer
@@ -1298,8 +1293,8 @@ Result SynchronizeShard::catchupWithExclusiveLock(
   // documents on the leader and the follower, which can happen if collection
   // counts are off for whatever reason.
   // under many cicrumstances the counts will have been auto-healed by the
-  // initial or the incremental replication before, so in many cases we will
-  // not even get into this if case
+  // initial or the incremental replication before, so in many cases we will not
+  // even get into this if case
   if (res.is(TRI_ERROR_REPLICATION_WRONG_CHECKSUM)) {
     // give up the lock on the leader, so writes aren't stopped unncessarily
     // on the leader while we are recalculating the counts
@@ -1364,8 +1359,7 @@ Result SynchronizeShard::catchupWithExclusiveLock(
 
       if (result.fail()) {
         auto const errorMessage = StringUtils::concatT(
-            "addShardFollower: could not add us to the leader's follower "
-            "list "
+            "addShardFollower: could not add us to the leader's follower list "
             "for ",
             getDatabase(), "/", getShard(),
             ", error while recalculating count on leader: ",
@@ -1473,8 +1467,8 @@ void SynchronizeShard::setState(ActionState state) {
 
     // We're here, cause we either ran out of time or have an actual version
     // number. In the former case, we tried our best and will safely continue
-    // some 10 min later. If however v is an actual positive integer, we'll
-    // wait for it to sync in out ClusterInfo cache through loadCurrent.
+    // some 10 min later. If however v is an actual positive integer, we'll wait
+    // for it to sync in out ClusterInfo cache through loadCurrent.
     if (v > 0) {
       _feature.server()
           .getFeature<ClusterFeature>()
@@ -1512,8 +1506,8 @@ std::shared_ptr<DatabaseTailingSyncer> SynchronizeShard::buildTailingSyncer(
 
   std::string const& leader = _description.get(THE_LEADER);
   if (!leader.empty()) {
-    // In the initial phase we still use the normal leaderId without a
-    // following term id:
+    // In the initial phase we still use the normal leaderId without a following
+    // term id:
     syncer->setLeaderId(leader);
   }
 
