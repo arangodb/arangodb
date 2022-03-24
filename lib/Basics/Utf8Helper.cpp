@@ -223,7 +223,7 @@ bool Utf8Helper::setCollatorLanguage(std::string_view lang,
   return true;
 }
 
-std::string Utf8Helper::getCollatorLanguage(LanguageType langType) {
+std::string Utf8Helper::getCollatorLanguage() {
   if (_coll) {
     UErrorCode status = U_ZERO_ERROR;
     ULocDataLocaleType type = ULOC_VALID_LOCALE;
@@ -234,11 +234,8 @@ std::string Utf8Helper::getCollatorLanguage(LanguageType langType) {
           << "error in Collator::getLocale(...): " << u_errorName(status);
       return "";
     }
-    if (LanguageType::ICU == langType) {
-      return locale.getName();
-    } else {
-      return locale.getLanguage();
-    }
+    std::string l = locale.getLanguage();
+    return locale.getName();
   }
   return "";
 }

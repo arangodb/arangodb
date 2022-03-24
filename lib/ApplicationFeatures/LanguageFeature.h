@@ -66,7 +66,7 @@ class LanguageFeature final : public application_features::ApplicationFeature {
   std::tuple<std::string_view, basics::LanguageType> getLanguage()
       const;
   bool forceLanguageCheck() const;
-  std::string getCollatorLanguage(basics::LanguageType langType = basics::LanguageType::DEFAULT) const;
+  std::string getCollatorLanguage() const;
   void resetLanguage(std::string_view language,
                      basics::LanguageType type);
 

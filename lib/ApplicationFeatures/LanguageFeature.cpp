@@ -232,17 +232,9 @@ std::tuple<std::string_view, LanguageType> LanguageFeature::getLanguage()
 
 bool LanguageFeature::forceLanguageCheck() const { return _forceLanguageCheck; }
 
-std::string LanguageFeature::getCollatorLanguage(LanguageType langType) const {
+std::string LanguageFeature::getCollatorLanguage() const {
   using arangodb::basics::Utf8Helper;
-  std::string languageName;
-  if (Utf8Helper::DefaultUtf8Helper.getCollatorCountry() != "") {
-    languageName =
-        std::string(Utf8Helper::DefaultUtf8Helper.getCollatorLanguage() + "_" +
-                    Utf8Helper::DefaultUtf8Helper.getCollatorCountry());
-  } else {
-    languageName = Utf8Helper::DefaultUtf8Helper.getCollatorLanguage(langType);
-  }
-  return languageName;
+  return Utf8Helper::DefaultUtf8Helper.getCollatorLanguage();
 }
 
 void LanguageFeature::resetLanguage(std::string_view language,
