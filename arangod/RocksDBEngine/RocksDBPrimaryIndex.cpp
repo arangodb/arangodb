@@ -22,12 +22,16 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBPrimaryIndex.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cache/BinaryKeyHasher.h"
 #include "Cache/CachedValue.h"
+#include "Cache/CacheManagerFeature.h"
 #include "Cache/TransactionalCache.h"
 #include "Cluster/ServerState.h"
 #include "Indexes/SortedIndexAttributeMatcher.h"
@@ -74,6 +78,8 @@ std::string const highest(
     KeyGenerator::maxKeyLength,
     std::numeric_limits<std::string::value_type>::max());  // greatest possible
                                                            // key
+
+using PrimaryIndexCacheType = cache::TransactionalCache<cache::BinaryKeyHasher>;
 }  // namespace
 
 // ================ Primary Index Iterators ================
@@ -130,10 +136,15 @@ class RocksDBPrimaryIndexEqIterator final : public IndexIterator {
     }
 
     _done = true;
-    LocalDocumentId documentId =
-        _index->lookupKey(_trx, _key.slice().stringView(), canReadOwnWrites());
+
+    bool foundInCache = false;
+    LocalDocumentId documentId = _index->lookupKey(
+        _trx, _key.slice().stringView(), canReadOwnWrites(), foundInCache);
     if (documentId.isSet()) {
       cb(documentId);
+    }
+    if (_index->hasCache()) {
+      incrCacheStats(foundInCache);
     }
     return false;
   }
@@ -148,11 +159,16 @@ class RocksDBPrimaryIndexEqIterator final : public IndexIterator {
     }
 
     _done = true;
-    LocalDocumentId documentId =
-        _index->lookupKey(_trx, _key.slice().stringView(), canReadOwnWrites());
+
+    bool foundInCache = false;
+    LocalDocumentId documentId = _index->lookupKey(
+        _trx, _key.slice().stringView(), canReadOwnWrites(), foundInCache);
     if (documentId.isSet()) {
       auto data = SliceCoveringData(_key.slice());
       cb(documentId, data);
+    }
+    if (_index->hasCache()) {
+      incrCacheStats(foundInCache);
     }
     return false;
   }
@@ -217,11 +233,15 @@ class RocksDBPrimaryIndexInIterator final : public IndexIterator {
     while (limit > 0) {
       // This is an in-iterator, and "in"-checks never need to observe own
       // writes.
-      LocalDocumentId documentId =
-          _index->lookupKey(_trx, (*_iterator).stringView(), ReadOwnWrites::no);
+      bool foundInCache = false;
+      LocalDocumentId documentId = _index->lookupKey(
+          _trx, (*_iterator).stringView(), ReadOwnWrites::no, foundInCache);
       if (documentId.isSet()) {
         cb(documentId);
         --limit;
+      }
+      if (_index->hasCache()) {
+        incrCacheStats(foundInCache);
       }
 
       _iterator.next();
@@ -243,12 +263,16 @@ class RocksDBPrimaryIndexInIterator final : public IndexIterator {
     while (limit > 0) {
       // This is an in-iterator, and "in"-checks never need to observe own
       // writes.
-      LocalDocumentId documentId =
-          _index->lookupKey(_trx, (*_iterator).stringView(), ReadOwnWrites::no);
+      bool foundInCache = false;
+      LocalDocumentId documentId = _index->lookupKey(
+          _trx, (*_iterator).stringView(), ReadOwnWrites::no, foundInCache);
       if (documentId.isSet()) {
         auto data = SliceCoveringData(*_iterator);
         cb(documentId, data);
         --limit;
+      }
+      if (_index->hasCache()) {
+        incrCacheStats(foundInCache);
       }
 
       _iterator.next();
@@ -497,8 +521,7 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
 // ================ PrimaryIndex ================
 
 RocksDBPrimaryIndex::RocksDBPrimaryIndex(
-    arangodb::LogicalCollection& collection,
-    arangodb::velocypack::Slice const& info)
+    arangodb::LogicalCollection& collection, arangodb::velocypack::Slice info)
     : RocksDBIndex(
           IndexId::primary(), collection, StaticStrings::IndexNamePrimary,
           std::vector<std::vector<arangodb::basics::AttributeName>>(
@@ -508,14 +531,29 @@ RocksDBPrimaryIndex::RocksDBPrimaryIndex(
           RocksDBColumnFamilyManager::get(
               RocksDBColumnFamilyManager::Family::PrimaryIndex),
           basics::VelocyPackHelper::stringUInt64(info, StaticStrings::ObjectId),
+          /*useCache*/
           static_cast<RocksDBCollection*>(collection.getPhysical())
-              ->cacheEnabled()),
+              ->cacheEnabled(),
+          /*cacheManager*/
+          collection.vocbase()
+              .server()
+              .getFeature<CacheManagerFeature>()
+              .manager(),
+          /*engine*/
+          collection.vocbase()
+              .server()
+              .getFeature<EngineSelectorFeature>()
+              .engine<RocksDBEngine>()),
       _coveredFields({{AttributeName(StaticStrings::KeyString, false)},
                       {AttributeName(StaticStrings::IdString, false)}}),
       _isRunningInCluster(ServerState::instance()->isRunningInCluster()) {
   TRI_ASSERT(_cf == RocksDBColumnFamilyManager::get(
                         RocksDBColumnFamilyManager::Family::PrimaryIndex));
   TRI_ASSERT(objectId() != 0);
+
+  if (_cacheEnabled) {
+    setupCache();
+  }
 }
 
 RocksDBPrimaryIndex::~RocksDBPrimaryIndex() = default;
@@ -527,7 +565,7 @@ RocksDBPrimaryIndex::coveredFields() const {
 
 void RocksDBPrimaryIndex::load() {
   RocksDBIndex::load();
-  if (useCache()) {
+  if (hasCache()) {
     // FIXME: make the factor configurable
     RocksDBCollection* rdb =
         static_cast<RocksDBCollection*>(_collection.getPhysical());
@@ -547,19 +585,22 @@ void RocksDBPrimaryIndex::toVelocyPack(
   builder.close();
 }
 
-LocalDocumentId RocksDBPrimaryIndex::lookupKey(
-    transaction::Methods* trx, std::string_view keyRef,
-    ReadOwnWrites readOwnWrites) const {
+LocalDocumentId RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
+                                               std::string_view keyRef,
+                                               ReadOwnWrites readOwnWrites,
+                                               bool& foundInCache) const {
   RocksDBKeyLeaser key(trx);
   key->constructPrimaryIndexValue(objectId(), keyRef);
 
+  foundInCache = false;
   bool lockTimeout = false;
-  if (useCache()) {
+  if (hasCache()) {
     TRI_ASSERT(_cache != nullptr);
     // check cache first for fast path
     auto f = _cache->find(key->string().data(),
                           static_cast<uint32_t>(key->string().size()));
     if (f.found()) {
+      foundInCache = true;
       rocksdb::Slice s(reinterpret_cast<char const*>(f.value()->value()),
                        f.value()->valueSize());
       return RocksDBValue::documentId(s);
@@ -578,17 +619,13 @@ LocalDocumentId RocksDBPrimaryIndex::lookupKey(
     return LocalDocumentId();
   }
 
-  if (useCache() && !lockTimeout) {
+  if (hasCache() && !lockTimeout) {
     TRI_ASSERT(_cache != nullptr);
     // write entry back to cache
-    std::size_t attempts = 0;
-    cache::Cache::Inserter inserter(
-        *_cache, key->string().data(),
+    cache::Cache::SimpleInserter<PrimaryIndexCacheType>{
+        static_cast<PrimaryIndexCacheType&>(*_cache), key->string().data(),
         static_cast<uint32_t>(key->string().size()), val.data(),
-        static_cast<uint64_t>(val.size()),
-        [&attempts](Result const& res) -> bool {
-          return res.is(TRI_ERROR_LOCK_TIMEOUT) && ++attempts < 2;
-        });
+        static_cast<uint64_t>(val.size())};
   }
 
   return RocksDBValue::documentId(val);

@@ -338,7 +338,7 @@ struct options {
     /* for the command line: */
 
     const char * output_file;
-    const char * name;
+    char * name;
     FILE * output_src;
     FILE * output_h;
     byte syntax_tree;

@@ -3,16 +3,60 @@ devel
 
 * Upgraded bundled version of RocksDB to 7.1.
 
+* Added AQL hint "useCache" for FOR loops, to explicitly disable the usage of 
+  in-memory caches for lookups.
+
+* When profiling an AQL query via `db._profileQuery(...)` or via the web UI,
+  the query profile will now contain the number of index entries read from
+  in-memory caches (usable for edge indexes and indexes of type "persistent",
+  "hash" or "skiplist") plus the number of cache misses.
+
+* The caching subsystem now provides the following 3 additional metrics:
+  - `rocksdb_cache_active_tables`: total number of active hash tables used for
+    caching index values. There should be 1 table per shard per index for which
+    the in-memory cache is enabled. The number also includes temporary tables
+    that are built when migrating existing tables to larger equivalents.
+  - `rocksdb_cache_unused_memory`: total amount of memory used for inactive
+    hash tables used for caching index values. Some inactive tables can be kept
+    around after use, so they can be recycled quickly. The overall amount of
+    inactive tables is limited, so not much memory will be used here.
+  - `rocksdb_cache_unused_tables`: total number of inactive hash tables used
+    for caching index values. Some inactive tables are kept around after use, 
+    so they can be recycled quickly. The overall amount of inactive tables is
+    limited, so not much memory will be used here.
+
+* Added optional in-memory caching for index entries when doing point lookups
+  in indexes of type "persistent", "hash" or "skiplist".
+  The caching is turned off by default, but can be enabled when creating an
+  index of type "persistent", "hash" or "skiplist" by setting the 
+  "cacheEnabled" flag for the index upon index creation. 
+  The cache will be initially empty, but will be populated lazily upon querying 
+  data from the index using equality lookups on all index attributes. 
+  As the cache is hash-based and unsorted, it cannot be used for full or
+  partial range scans, for sorting, or for lookups that do not include all
+  index attributes.
+  The maximum size of index entries that can be stored is currently 4 MB, i.e.
+  the cumulated size of all index entries for any index lookup value must be
+  less than 4 MB. This limitation is there to avoid storing the index entries
+  of "super nodes" in the cache.
+
+  The maximum combined memory usage of all in-memory caches can be controlled 
+  via the existing `--cache.size` startup option, which now not only contains
+  the maximum memory usage for edge caches, but also for index caches added
+  here.
+
 * Updated arangosync to v2.9.0-preview-1.
 
 * Updated ArangoDB Starter to 0.15.4-preview-1.
 
-* Added API method to query a list of available optimizer rules from the arangod process.
+* Added API method to query a list of available optimizer rules from the 
+  arangod process.
 
-* Added new server option: --icu-language. Used instead of --default-language to set pure ICU collator.
+* Added new server option: --icu-language. Used instead of --default-language 
+  to set pure ICU collator.
 
-  For example, in Sweden language("sv") lowercase letters should precede uppercase ones. 
-  You can achieve it using following options when server starts
+  For example, in Sweden language("sv") lowercase letters should precede 
+  uppercase ones. You can achieve it using following options when server starts
 
     --icu-language sv
 
@@ -24,14 +68,15 @@ devel
   to .html files for the UI. This solves a performance problem for
   shards getting in sync with audit log switched on.
 
-* Added an HTTP fuzzer that will fuzz requests (the header for the actual
-  moment) and send to the server. The amount of requests sent is provided 
-  by one of the parameters of the function `fuzzRequests()` in arangosh.
+* Added an HTTP fuzzer to arangosh that can send fuzzed requests to the server.
+  The amount of requests sent is provided by one of the parameters of the 
+  new arangosh function `fuzzRequests()`.
   The optional parameters that can be supplied are: 
   `fuzzRequests(<numRequests>, <numIterations>, <seed>)`
   The parameter numIterations is the amount of times the fuzzer is going to 
   perform its random actions on the header, and seed is for the seed that is 
   used for randomizing. 
+  The fuzzer is available only when building with failure points.
 
 * Fixed ES-1078: The REST API endpoint for handling `/_api/user/${user}/config`
   did not work properly. The supplied data by sending a PUT request has not been

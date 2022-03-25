@@ -41,7 +41,9 @@
 
 namespace arangodb::cache {
 
+template<typename Hasher>
 class PlainCache;
+template<typename Hasher>
 class TransactionalCache;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -58,7 +60,9 @@ class Cache : public std::enable_shared_from_this<Cache> {
   class ConstructionGuard {
    private:
     ConstructionGuard() = default;
+    template<typename Hasher>
     friend class PlainCache;
+    template<typename Hasher>
     friend class TransactionalCache;
   };
 
@@ -72,8 +76,8 @@ class Cache : public std::enable_shared_from_this<Cache> {
 
   typedef FrequencyBuffer<uint8_t> StatBuffer;
 
-  static constexpr std::uint64_t minSize = 16384;
-  static constexpr std::uint64_t minLogSize = 14;
+  static constexpr std::uint64_t kMinSize = 16384;
+  static constexpr std::uint64_t kMinLogSize = 14;
 
   static constexpr std::uint64_t triesGuarantee =
       std::numeric_limits<std::uint64_t>::max();
@@ -92,17 +96,17 @@ class Cache : public std::enable_shared_from_this<Cache> {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns the total memory usage for this cache in bytes.
   //////////////////////////////////////////////////////////////////////////////
-  std::uint64_t size() const;
+  [[nodiscard]] std::uint64_t size() const noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns the limit on data memory usage for this cache in bytes.
   //////////////////////////////////////////////////////////////////////////////
-  std::uint64_t usageLimit() const;
+  [[nodiscard]] std::uint64_t usageLimit() const noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns the current data memory usage for this cache in bytes.
   //////////////////////////////////////////////////////////////////////////////
-  std::uint64_t usage() const;
+  [[nodiscard]] std::uint64_t usage() const noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Gives hint to attempt to preallocate space for an incoming load.
@@ -142,11 +146,46 @@ class Cache : public std::enable_shared_from_this<Cache> {
   //////////////////////////////////////////////////////////////////////////////
   inline bool isShutdown() const noexcept { return _shutdown.load(); }
 
+  // helper struct that takes care of inserting into the cache during
+  // object construction. The insertion is not guaranteed to work. To
+  // check whether the insertion succeeded, check the "status" member!
+  template<typename CacheType>
   struct Inserter {
-    Inserter(Cache& cache, void const* key, std::size_t keySize,
-             void const* value, std::size_t valueSize,
-             std::function<bool(Result const&)> const& retry);
+    Inserter(CacheType& cache, void const* key, std::size_t keySize,
+             void const* value, std::size_t valueSize) {
+      std::unique_ptr<CachedValue> cv{
+          CachedValue::construct(key, keySize, value, valueSize)};
+      if (ADB_LIKELY(cv)) {
+        status = cache.insert(cv.get());
+        if (status.ok()) {
+          cv.release();
+        }
+      } else {
+        status.reset(TRI_ERROR_OUT_OF_MEMORY);
+      }
+    }
+
+    Inserter(Inserter const& other) = delete;
+    Inserter& operator=(Inserter const& other) = delete;
+
     Result status;
+  };
+
+  // same as Cache::Inserter, but more lightweight. Does not provide
+  // any indication about whether the insertion succeeded.
+  template<typename CacheType>
+  struct SimpleInserter {
+    SimpleInserter(CacheType& cache, void const* key, std::size_t keySize,
+                   void const* value, std::size_t valueSize) {
+      std::unique_ptr<CachedValue> cv{
+          CachedValue::construct(key, keySize, value, valueSize)};
+      if (ADB_LIKELY(cv) && cache.insert(cv.get()).ok()) {
+        cv.release();
+      }
+    }
+
+    SimpleInserter(SimpleInserter const& other) = delete;
+    SimpleInserter& operator=(SimpleInserter const& other) = delete;
   };
 
  protected:
@@ -202,9 +241,8 @@ class Cache : public std::enable_shared_from_this<Cache> {
   void requestMigrate(std::uint32_t requestedLogSize = 0);
 
   static void freeValue(CachedValue* value) noexcept;
-  bool reclaimMemory(std::uint64_t size);
+  bool reclaimMemory(std::uint64_t size) noexcept;
 
-  std::uint32_t hashKey(void const* key, std::size_t keySize) const noexcept;
   void recordStat(Stat stat);
 
   bool reportInsert(bool hadEviction);
@@ -213,15 +251,15 @@ class Cache : public std::enable_shared_from_this<Cache> {
   Metadata& metadata();
   std::shared_ptr<Table> table() const;
   void shutdown();
-  bool canResize();
-  bool canMigrate();
+  [[nodiscard]] bool canResize() noexcept;
+  [[nodiscard]] bool canMigrate() noexcept;
   bool freeMemory();
   bool migrate(std::shared_ptr<Table> newTable);
 
   virtual std::uint64_t freeMemoryFrom(std::uint32_t hash) = 0;
   virtual void migrateBucket(void* sourcePtr,
                              std::unique_ptr<Table::Subtable> targets,
-                             std::shared_ptr<Table> newTable) = 0;
+                             Table& newTable) = 0;
 };
 
 }  // end namespace arangodb::cache

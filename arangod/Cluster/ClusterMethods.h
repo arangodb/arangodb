@@ -197,7 +197,7 @@ Result fetchEdgesFromEngines(transaction::Methods& trx,
                              arangodb::velocypack::Slice vertexId,
                              bool backward,
                              std::vector<arangodb::velocypack::Slice>& result,
-                             size_t& read);
+                             uint64_t& read);
 
 /// @brief fetch vertices from TraverserEngines
 ///        Contacts all TraverserEngines placed

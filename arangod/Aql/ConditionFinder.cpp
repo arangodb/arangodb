@@ -154,6 +154,7 @@ bool ConditionFinder::before(ExecutionNode* en) {
         IndexIteratorOptions opts;
         opts.ascending = !descending;
         opts.lookahead = node->hint().getLookahead();
+        opts.useCache = node->useCache();
         TRI_IF_FAILURE("ConditionFinder::insertIndexNode") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
@@ -173,6 +174,7 @@ bool ConditionFinder::before(ExecutionNode* en) {
               idx->setCanReadOwnWrites(node->canReadOwnWrites());
               // copy max number of projections
               idx->setMaxProjections(node->maxProjections());
+              idx->setUseCache(node->useCache());
               return idx;
             }));
       }

@@ -55,6 +55,7 @@ namespace arangodb::cache {
 /// store.
 ////////////////////////////////////////////////////////////////////////////////
 
+template<typename Hasher>
 class TransactionalCache final : public Cache {
  public:
   TransactionalCache(Cache::ConstructionGuard guard, Manager* manager,
@@ -108,6 +109,9 @@ class TransactionalCache final : public Cache {
   //////////////////////////////////////////////////////////////////////////////
   Result banish(void const* key, std::uint32_t keySize) override;
 
+  /// @brief returns the name of the hasher
+  std::string_view hasherName() const noexcept;
+
  private:
   // friend class manager and tasks
   friend class FreeMemoryTask;
@@ -130,7 +134,7 @@ class TransactionalCache final : public Cache {
   virtual uint64_t freeMemoryFrom(std::uint32_t hash) override;
   virtual void migrateBucket(void* sourcePtr,
                              std::unique_ptr<Table::Subtable> targets,
-                             std::shared_ptr<Table> newTable) override;
+                             Table& newTable) override;
 
   // helpers
   std::tuple<::ErrorCode, Table::BucketLocker> getBucket(
