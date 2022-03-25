@@ -59,6 +59,20 @@ auto checkStateAdded(replication2::replicated_state::agency::State const& state)
   }
 }
 
+auto checkLeaderSet(
+    arangodb::replication2::agency::Log const& log,
+    replication2::replicated_state::agency::State const& state) -> Action {
+  auto const& targetLeader = state.target.leader;
+
+  auto const& planLeader = log.target.leader;
+
+  if (targetLeader != planLeader) {
+    return SetLeaderAction{targetLeader};
+  }
+
+  return EmptyAction();
+}
+
 auto checkParticipantAdded(
     arangodb::replication2::agency::Log const& log,
     replication2::replicated_state::agency::State const& state) -> Action {
@@ -122,14 +136,18 @@ auto checkReplicatedState(
     return action;
   }
 
-  // TGODO if the log isn't there yet we do nothing;
+  // TODO if the log isn't there yet we do nothing;
   // It will need to be observable in future that we are doing nothing because
-  // weŕe waiting for the log to appear.
+  // we're waiting for the log to appear.
   if (!log) {
     return EmptyAction();
   }
   // TODO: check for healthy leader?
   // TODO: is there something to be checked here?
+
+  if (auto action = checkLeaderSet(*log, state); !isEmptyAction(action)) {
+    return action;
+  }
 
   if (auto action = checkParticipantAdded(*log, state);
       !isEmptyAction(action)) {
