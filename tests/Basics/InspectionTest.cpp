@@ -315,6 +315,27 @@ auto to_string(AnEnumClass e) -> std::string_view {
   return "invalid.";
 }
 
+template<typename Enum>
+struct EnumStorage {
+  using MemoryType = Enum;
+
+  std::underlying_type_t<Enum> code;
+  std::string message;
+
+  explicit EnumStorage(Enum e)
+      : code(static_cast<std::underlying_type_t<Enum>>(e)),
+        message(to_string(e)){};
+  explicit EnumStorage() {}
+
+  operator Enum() const { return Enum(code); }
+};
+
+template<class Inspector, class Enum>
+auto inspect(Inspector& f, EnumStorage<Enum>& e) {
+  return f.object(e).fields(f.field("code", e.code),
+                            f.field("message", e.message).fallback(""));
+}
+
 }  // namespace
 
 namespace arangodb::inspection {
@@ -327,7 +348,7 @@ struct Access<Specialization> : AccessBase<Specialization> {
 };
 template<>
 struct Access<AnEnumClass>
-    : EnumMessageAccess<AnEnumClass, EnumStorage<AnEnumClass>> {};
+    : StorageTransformerAccess<AnEnumClass, EnumStorage<AnEnumClass>> {};
 
 }  // namespace arangodb::inspection
 

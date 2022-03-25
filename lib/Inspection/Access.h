@@ -350,43 +350,21 @@ struct Access<std::shared_ptr<T>>
   static auto make() { return std::make_shared<T>(); }
 };
 
-template<typename Enum>
-struct EnumStorage {
-  using EnumType = Enum;
-
-  std::underlying_type_t<Enum> code;
-  std::string message;
-
-  explicit EnumStorage(Enum e)
-      : code(static_cast<std::underlying_type_t<Enum>>(e)),
-        message(to_string(e)){};
-  explicit EnumStorage() {}
-
-  operator Enum() const { return Enum(code); }
-};
-
-template<class Inspector, class Enum>
-auto inspect(Inspector& f, EnumStorage<Enum>& e) {
-  return f.object(e).fields(f.field("code", e.code),
-                            f.field("message", e.message).fallback(""));
-}
-
-template<class Enum, class EnumStorageT>
-struct EnumMessageAccess {
-  static_assert(std::is_enum_v<Enum>);
-  static_assert(std::is_same_v<Enum, typename EnumStorageT::EnumType>);
+template<class T, class StorageT>
+struct StorageTransformerAccess {
+  static_assert(std::is_same_v<T, typename StorageT::MemoryType>);
 
   template<class Inspector>
-  static auto apply(Inspector& f, Enum& e) {
+  static auto apply(Inspector& f, T& x) {
     if constexpr (Inspector::isLoading) {
-      auto v = EnumStorageT();
+      auto v = StorageT{};
       auto res = f.apply(v);
       if (res.ok()) {
-        e = Enum(v);
+        x = T(v);
       }
       return res;
     } else {
-      auto v = EnumStorageT(e);
+      auto v = StorageT(x);
       return f.apply(v);
     }
   }
