@@ -89,21 +89,15 @@ std::shared_ptr<VPackBuilder> SimpleHttpResult::getBodyVelocyPack() const {
 std::string SimpleHttpResult::getTextifiedBody() const {
   bool found;
   auto content_type = getHeaderField(StaticStrings::ContentTypeHeader, found);
-  if (found) {
-    if (content_type == StaticStrings::MimeTypeVPack) {
-      auto parsedBody = getBodyVelocyPack();
+  if (found && content_type == StaticStrings::MimeTypeVPack) {
       try {
-        return std::string("V: " ) + parsedBody.get()->slice().toJson();
+        return std::string("V: " ) + getBodyVelocyPack()->slice().toJson();
       } catch (...) {
       }
+      // fallthrough to normal stringification
     }
-    else if (content_type.compare(0, 4, "text") ||
-        (content_type == StaticStrings::MimeTypeJsonNoEncoding) ||
-        (content_type == StaticStrings::MimeTypeJson)) {
-      return std::string(_resultBody.c_str(), _resultBody.size());
-    }
+    return std::string(_resultBody.c_str(), _resultBody.size());
   }
-  return StringUtils::encodeHex(_resultBody.c_str(), _resultBody.size());
 }
 
 std::string SimpleHttpResult::getResultTypeMessage() const {
