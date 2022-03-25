@@ -69,15 +69,17 @@ template<class Inspector, class T>
 }
 
 template<class Inspector, class Value>
-[[nodiscard]] auto saveField(Inspector& f, std::string_view name, Value& val) {
-  return detail::AccessType<Value>::saveField(f, name, val);
+[[nodiscard]] auto saveField(Inspector& f, std::string_view name,
+                             bool hasFallback, Value& val) {
+  return detail::AccessType<Value>::saveField(f, name, hasFallback, val);
 }
 
 template<class Inspector, class Value, class Transformer>
 [[nodiscard]] auto saveTransformedField(Inspector& f, std::string_view name,
-                                        Value& val, Transformer& transformer) {
-  return detail::AccessType<Value>::saveTransformedField(f, name, val,
-                                                         transformer);
+                                        bool hasFallback, Value& val,
+                                        Transformer& transformer) {
+  return detail::AccessType<Value>::saveTransformedField(f, name, hasFallback,
+                                                         val, transformer);
 }
 
 template<class Inspector, class Value>
@@ -116,7 +118,7 @@ template<class Value>
 struct AccessBase {
   template<class Inspector>
   [[nodiscard]] static auto saveField(Inspector& f, std::string_view name,
-                                      Value& val) {
+                                      bool hasFallback, Value& val) {
     f.builder().add(VPackValue(name));
     return f.apply(val);
   }
@@ -124,11 +126,11 @@ struct AccessBase {
   template<class Inspector, class Transformer>
   [[nodiscard]] static auto saveTransformedField(Inspector& f,
                                                  std::string_view name,
-                                                 Value& val,
+                                                 bool hasFallback, Value& val,
                                                  Transformer& transformer) {
     typename Transformer::SerializedType v;
-    return transformer.toSerialized(val, v)                        //
-           | [&]() { return inspection::saveField(f, name, v); };  //
+    return transformer.toSerialized(val, v)  //
+           | [&]() { return inspection::saveField(f, name, hasFallback, v); };
   }
 
   template<class Inspector>
@@ -173,122 +175,24 @@ struct AccessBase {
     std::forward<ApplyFallback>(applyFallback)(val);
     return {};
   }
-};  // namespace arangodb::inspection
+};
 
 template<class T>
-struct Access<std::optional<T>> {
-  template<class Inspector>
-  [[nodiscard]] static Status apply(Inspector& f, std::optional<T>& val) {
-    if constexpr (Inspector::isLoading) {
-      if (f.slice().isNull()) {
-        val.reset();
-        return {};
-      } else {
-        T v;
-        auto assign = [&]() -> Status::Success {
-          val = std::move(v);
-          return {};
-        };
-        return f.apply(v)  //
-               | assign;   //
-      }
-    } else {
-      if (val.has_value()) {
-        return f.apply(val.value());
-      }
-      f.builder().add(VPackValue(velocypack::ValueType::Null));
-      return {};
-    }
-  }
+struct OptionalAccess {
+  using Base = Access<T>;
 
-  template<class Inspector>
-  [[nodiscard]] static auto saveField(Inspector& f, std::string_view name,
-                                      std::optional<T>& val)
-      -> decltype(inspection::saveField(f, name, val.value())) {
-    if (!val.has_value()) {
-      return {};
-    }
-    return inspection::saveField(f, name, val.value());
-  }
-
-  template<class Inspector, class Transformer>
-  [[nodiscard]] static Status saveTransformedField(Inspector& f,
-                                                   std::string_view name,
-                                                   std::optional<T>& val,
-                                                   Transformer& transformer) {
-    if (!val.has_value()) {
-      return {};
-    }
-    typename Transformer::SerializedType v;
-    return transformer.toSerialized(*val, v) |
-           [&]() { return inspection::saveField(f, name, v); };
-  }
-
-  template<class Inspector>
-  [[nodiscard]] static Status loadField(Inspector& f,
-                                        [[maybe_unused]] std::string_view name,
-                                        bool isPresent, std::optional<T>& val) {
-    return loadField(f, name, isPresent, val, [](auto& v) { v.reset(); });
-  }
-
-  template<class Inspector, class ApplyFallback>
-  [[nodiscard]] static Status loadField(Inspector& f,
-                                        [[maybe_unused]] std::string_view name,
-                                        bool isPresent, std::optional<T>& val,
-                                        ApplyFallback&& applyFallback) {
-    if (isPresent) {
-      return f.apply(val);
-    }
-    std::forward<ApplyFallback>(applyFallback)(val);
-    return {};
-  }
-
-  template<class Inspector, class Transformer>
-  [[nodiscard]] static Status loadTransformedField(
-      Inspector& f, [[maybe_unused]] std::string_view name, bool isPresent,
-      std::optional<T>& val, Transformer& transformer) {
-    return loadTransformedField(
-        f, name, isPresent, val, [](auto& v) { v.reset(); }, transformer);
-  }
-
-  template<class Inspector, class ApplyFallback, class Transformer>
-  [[nodiscard]] static Status loadTransformedField(
-      Inspector& f, std::string_view name, bool isPresent,
-      std::optional<T>& val, ApplyFallback&& applyFallback,
-      Transformer& transformer) {
-    if (isPresent) {
-      std::optional<typename Transformer::SerializedType> v;
-      auto load = [&]() -> Status {
-        if (!v.has_value()) {
-          val.reset();
-          return {};
-        }
-        T vv;
-        auto res = transformer.fromSerialized(*v, vv);
-        val = vv;
-        return res;
-      };
-      return f.apply(v)  //
-             | load;     //
-    }
-    std::forward<ApplyFallback>(applyFallback)(val);
-    return {};
-  }
-};  // namespace arangodb::inspection
-
-template<class Derived, class T>
-struct PointerAccess {
   template<class Inspector>
   [[nodiscard]] static Status apply(Inspector& f, T& val) {
     if constexpr (Inspector::isLoading) {
       if (f.slice().isNull()) {
         val.reset();
         return {};
+      } else {
+        val = Base::make();
+        return f.apply(*val);
       }
-      val = Derived::make();  // TODO - reuse existing object?
-      return f.apply(*val);
     } else {
-      if (val != nullptr) {
+      if (val) {
         return f.apply(*val);
       }
       f.builder().add(VPackValue(velocypack::ValueType::Null));
@@ -298,12 +202,29 @@ struct PointerAccess {
 
   template<class Inspector>
   [[nodiscard]] static auto saveField(Inspector& f, std::string_view name,
-                                      T& val)
-      -> decltype(inspection::saveField(f, name, *val)) {
-    if (val == nullptr) {
-      return {};
+                                      bool hasFallback, T& val)
+      -> decltype(inspection::saveField(f, name, hasFallback, *val)) {
+    if (val) {
+      return inspection::saveField(f, name, hasFallback, *val);
+    } else if (hasFallback) {
+      // if we have a fallback we must explicitly serialize this field as null
+      f.builder().add(VPackValue(name));
+      f.builder().add(VPackValue(velocypack::ValueType::Null));
     }
-    return inspection::saveField(f, name, *val);
+    return {};
+  }
+
+  template<class Inspector, class Transformer>
+  [[nodiscard]] static Status saveTransformedField(Inspector& f,
+                                                   std::string_view name,
+                                                   bool hasFallback, T& val,
+                                                   Transformer& transformer) {
+    if (val) {
+      typename Transformer::SerializedType v;
+      return transformer.toSerialized(*val, v) |
+             [&]() { return inspection::saveField(f, name, hasFallback, v); };
+    }
+    return {};
   }
 
   template<class Inspector>
@@ -318,24 +239,56 @@ struct PointerAccess {
                                         bool isPresent, T& val,
                                         ApplyFallback&& applyFallback) {
     if (isPresent) {
-      val = Derived::make();  // TODO - reuse existing object?
       return f.apply(val);
+    }
+    std::forward<ApplyFallback>(applyFallback)(val);
+    return {};
+  }
+
+  template<class Inspector, class Transformer>
+  [[nodiscard]] static Status loadTransformedField(Inspector& f,
+                                                   std::string_view name,
+                                                   bool isPresent, T& val,
+                                                   Transformer& transformer) {
+    return loadTransformedField(
+        f, name, isPresent, val, [](auto& v) { v.reset(); }, transformer);
+  }
+
+  template<class Inspector, class ApplyFallback, class Transformer>
+  [[nodiscard]] static Status loadTransformedField(
+      Inspector& f, [[maybe_unused]] std::string_view name, bool isPresent,
+      T& val, ApplyFallback&& applyFallback, Transformer& transformer) {
+    if (isPresent) {
+      std::optional<typename Transformer::SerializedType> v;
+      auto load = [&]() -> Status {
+        if (!v) {
+          val.reset();
+          return {};
+        }
+        val = Base::make();
+        return transformer.fromSerialized(*v, *val);
+      };
+      return f.apply(v)  //
+             | load;     //
     }
     std::forward<ApplyFallback>(applyFallback)(val);
     return {};
   }
 };
 
+template<class T>
+struct Access<std::optional<T>> : OptionalAccess<std::optional<T>> {
+  static auto make() { return T{}; }
+};
+
 template<class T, class Deleter>
 struct Access<std::unique_ptr<T, Deleter>>
-    : PointerAccess<Access<std::unique_ptr<T, Deleter>>,
-                    std::unique_ptr<T, Deleter>> {
+    : OptionalAccess<std::unique_ptr<T, Deleter>> {
   static auto make() { return std::make_unique<T>(); }
 };
 
 template<class T>
-struct Access<std::shared_ptr<T>>
-    : PointerAccess<Access<std::shared_ptr<T>>, std::shared_ptr<T>> {
+struct Access<std::shared_ptr<T>> : OptionalAccess<std::shared_ptr<T>> {
   static auto make() { return std::make_shared<T>(); }
 };
 

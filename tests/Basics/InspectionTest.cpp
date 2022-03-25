@@ -509,7 +509,10 @@ TEST_F(VPackSaveInspectorTest, store_optional) {
 
   velocypack::Slice slice = builder.slice();
   ASSERT_TRUE(slice.isObject());
-  EXPECT_EQ(3, slice.length());
+  EXPECT_EQ(5, slice.length());
+  // a and b have fallbacks, so we need to serialize them explicitly as null
+  EXPECT_TRUE(slice["a"].isNull());
+  EXPECT_TRUE(slice["b"].isNull());
   EXPECT_EQ("blubb", slice["y"].copyString());
 
   auto vec = slice["vec"];
@@ -547,7 +550,7 @@ TEST_F(VPackSaveInspectorTest, store_optional_pointer) {
 
   velocypack::Slice slice = builder.slice();
   ASSERT_TRUE(slice.isObject());
-  EXPECT_EQ(3, slice.length());
+  EXPECT_EQ(5, slice.length());
   EXPECT_EQ(42, slice["b"].getInt());
   EXPECT_EQ(43, slice["d"]["i"].getInt());
   auto vec = slice["vec"];
@@ -556,6 +559,9 @@ TEST_F(VPackSaveInspectorTest, store_optional_pointer) {
   EXPECT_EQ(1, vec[0].getInt());
   EXPECT_TRUE(vec[1].isNull());
   EXPECT_EQ(2, vec[2].getInt());
+  // x and y have fallbacks, so we need to serialize them explicitly as null
+  EXPECT_TRUE(slice["x"].isNull());
+  EXPECT_TRUE(slice["y"].isNull());
 }
 
 TEST_F(VPackSaveInspectorTest, store_object_with_fallbacks) {

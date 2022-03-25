@@ -26,6 +26,7 @@
 
 #include <optional>
 #include <string_view>
+#include <tuple>
 #include <type_traits>
 #include <variant>
 
@@ -133,12 +134,14 @@ struct VPackSaveInspector : InspectorBase<VPackSaveInspector> {
     } else {
       auto name = getFieldName(field);
       auto& value = getFieldValue(field);
+      constexpr bool hasFallback =
+          !std::is_void_v<decltype(getFallbackField(field))>;
       auto res = [&]() {
         if constexpr (!std::is_void_v<decltype(getTransformer(field))>) {
-          return saveTransformedField(*this, name, value,
+          return saveTransformedField(*this, name, hasFallback, value,
                                       getTransformer(field));
         } else {
-          return saveField(*this, name, value);
+          return saveField(*this, name, hasFallback, value);
         }
       }();
       if constexpr (!isSuccess(res)) {
