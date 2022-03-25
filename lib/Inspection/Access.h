@@ -352,6 +352,8 @@ struct Access<std::shared_ptr<T>>
 
 template<typename Enum>
 struct EnumStorage {
+  using EnumType = Enum;
+
   std::underlying_type_t<Enum> code;
   std::string message;
 
@@ -369,21 +371,22 @@ auto inspect(Inspector& f, EnumStorage<Enum>& e) {
                             f.field("message", e.message).fallback(""));
 }
 
-template<class Enum>
+template<class Enum, class EnumStorageT>
 struct EnumMessageAccess {
   static_assert(std::is_enum_v<Enum>);
+  static_assert(std::is_same_v<Enum, typename EnumStorageT::EnumType>);
 
   template<class Inspector>
   static auto apply(Inspector& f, Enum& e) {
     if constexpr (Inspector::isLoading) {
-      auto v = EnumStorage<Enum>();
+      auto v = EnumStorageT();
       auto res = f.apply(v);
       if (res.ok()) {
         e = Enum(v);
       }
       return res;
     } else {
-      auto v = EnumStorage(e);
+      auto v = EnumStorageT(e);
       return f.apply(v);
     }
   }

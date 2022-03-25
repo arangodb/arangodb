@@ -326,7 +326,8 @@ struct Access<Specialization> : AccessBase<Specialization> {
   }
 };
 template<>
-struct Access<AnEnumClass> : EnumMessageAccess<AnEnumClass> {};
+struct Access<AnEnumClass>
+    : EnumMessageAccess<AnEnumClass, EnumStorage<AnEnumClass>> {};
 
 }  // namespace arangodb::inspection
 
