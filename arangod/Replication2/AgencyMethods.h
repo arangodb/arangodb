@@ -95,4 +95,9 @@ auto replaceReplicatedStateParticipant(TRI_vocbase_t& vocbase, LogId id,
                                        ParticipantId const& participantToRemove,
                                        ParticipantId const& participantToAdd)
     -> futures::Future<Result>;
+
+auto replaceReplicatedSetLeader(TRI_vocbase_t& vocbase, LogId id,
+                                std::optional<ParticipantId> const& leaderId)
+    -> futures::Future<Result>;
+
 }  // namespace arangodb::replication2::agency::methods
