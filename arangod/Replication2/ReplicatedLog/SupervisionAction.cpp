@@ -35,126 +35,15 @@ namespace paths = arangodb::cluster::paths::aliases;
 
 namespace arangodb::replication2::replicated_log {
 
-auto to_string(Action const& action) -> std::string_view {
-  return std::visit([](auto&& arg) { return arg.name; }, action);
+auto to_string(Action const &action) -> std::string_view {
+  return std::visit([](auto &&arg) { return arg.name; }, action);
 }
 
-void VelocyPacker::operator()(EmptyAction const& action) {
-  builder.add(VPackValue("type"));
-  builder.add(VPackValue(action.name));
+void toVelocyPack(Action const &action, VPackBuilder &builder) {
+  std::visit([&builder](auto &&item) { serialize(builder, item); }, action);
 }
 
-void VelocyPacker::operator()(ErrorAction const& action) {
-  builder.add(VPackValue("type"));
-  builder.add(VPackValue(action.name));
-
-  builder.add(VPackValue("error"));
-  serialize(builder, action._error);
-}
-
-void VelocyPacker::operator()(AddLogToPlanAction const& action) {
-  builder.add(VPackValue("type"));
-  builder.add(VPackValue(action.name));
-}
-
-void VelocyPacker::operator()(CreateInitialTermAction const& action) {
-  builder.add(VPackValue("type"));
-  builder.add(VPackValue(action.name));
-}
-
-void VelocyPacker::operator()(CurrentNotAvailableAction const& action) {
-  builder.add(VPackValue("type"));
-  builder.add(VPackValue(action.name));
-}
-
-void VelocyPacker::operator()(DictateLeaderAction const& action) {
-  builder.add(VPackValue("type"));
-  builder.add(VPackValue(action.name));
-
-  builder.add(VPackValue("newLeader"));
-  action._leader.toVelocyPack(builder);
-}
-
-void VelocyPacker::operator()(DictateLeaderFailedAction const& action) {
-  builder.add(VPackValue("type"));
-  builder.add(VPackValue(action.name));
-
-  builder.add(VPackValue("message"));
-  builder.add(VPackValue(action._message));
-}
-
-void VelocyPacker::operator()(EvictLeaderAction const& action) {
-  builder.add(VPackValue("type"));
-  builder.add(VPackValue(action.name));
-}
-
-void VelocyPacker::operator()(WriteEmptyTermAction const& action) {
-  builder.add(VPackValue("type"));
-  builder.add(VPackValue(action.name));
-}
-
-void VelocyPacker::operator()(LeaderElectionImpossibleAction const& action) {
-  builder.add(VPackValue("type"));
-  builder.add(VPackValue(action.name));
-}
-
-void VelocyPacker::operator()(LeaderElectionOutOfBoundsAction const& action) {
-  builder.add(VPackValue("type"));
-  builder.add(VPackValue(action.name));
-}
-
-void VelocyPacker::operator()(
-    LeaderElectionQuorumNotReachedAction const& action) {
-  builder.add(VPackValue("type"));
-  builder.add(VPackValue(action.name));
-};
-
-void VelocyPacker::operator()(LeaderElectionAction const& action) {
-  builder.add(VPackValue("type"));
-  builder.add(VPackValue(action.name));
-
-  builder.add(VPackValue("campaign"));
-  action._electionReport.toVelocyPack(builder);
-
-  builder.add(VPackValue("newLeader"));
-  action._electedLeader.toVelocyPack(builder);
-}
-
-void VelocyPacker::operator()(UpdateParticipantFlagsAction const& action) {
-  builder.add(VPackValue("type"));
-  builder.add(VPackValue(action.name));
-
-  builder.add("participant", VPackValue(action._participant));
-  builder.add(VPackValue("flags"));
-  action._flags.toVelocyPack(builder);
-}
-
-void VelocyPacker::operator()(AddParticipantToPlanAction const& action) {
-  builder.add(VPackValue("type"));
-  builder.add(VPackValue(action.name));
-}
-
-void VelocyPacker::operator()(RemoveParticipantFromPlanAction const& action) {
-  builder.add("type", action.name);
-  builder.add("participant", action._participant);
-}
-
-void VelocyPacker::operator()(UpdateLogConfigAction const& action) {
-  builder.add(VPackValue("type"));
-  builder.add(VPackValue(action.name));
-}
-
-void VelocyPacker::operator()(ConvergedToTargetAction const& action) {
-  builder.add(VPackValue("type"));
-  builder.add(VPackValue(action.name));
-}
-
-void toVelocyPack(Action const& action, VPackBuilder& builder) {
-  auto packer = VelocyPacker(builder);
-  std::visit(packer, action);
-}
-
-auto execute(Action const& action, DatabaseID const& dbName, LogId const& log,
+auto execute(Action const &action, DatabaseID const &dbName, LogId const &log,
              std::optional<LogPlanSpecification> const plan,
              std::optional<LogCurrent> const current,
              arangodb::agency::envelope envelope)
@@ -175,7 +64,7 @@ auto execute(Action const& action, DatabaseID const& dbName, LogId const& log,
 
   auto ctx = ActionContext{std::move(plan), std::move(current)};
 
-  std::visit([&](auto& action) { action.execute(ctx); }, action);
+  std::visit([&](auto &action) { action.execute(ctx); }, action);
 
   if (!ctx.hasModification()) {
     return envelope;
@@ -192,25 +81,25 @@ auto execute(Action const& action, DatabaseID const& dbName, LogId const& log,
 
   return envelope.write()
       .cond(ctx.hasPlanModification(),
-            [&](arangodb::agency::envelope::write_trx&& trx) {
+            [&](arangodb::agency::envelope::write_trx &&trx) {
               return std::move(trx)
                   .emplace_object(planPath,
-                                  [&](VPackBuilder& builder) {
+                                  [&](VPackBuilder &builder) {
                                     ctx.getPlan().toVelocyPack(builder);
                                   })
                   .inc(paths::plan()->version()->str());
             })
       .cond(ctx.hasCurrentModification(),
-            [&](arangodb::agency::envelope::write_trx&& trx) {
+            [&](arangodb::agency::envelope::write_trx &&trx) {
               return std::move(trx)
-                  .emplace_object(
-                      currentPath,
-                      [&](VPackBuilder& builder) {
-                        ctx.getCurrent().supervision->toVelocyPack(builder);
-                      })
+                  .emplace_object(currentPath,
+                                  [&](VPackBuilder &builder) {
+                                    ctx.getCurrent().supervision->toVelocyPack(
+                                        builder);
+                                  })
                   .inc(paths::current()->version()->str());
             })
       .end();
 }
 
-}  // namespace arangodb::replication2::replicated_log
+} // namespace arangodb::replication2::replicated_log

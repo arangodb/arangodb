@@ -256,7 +256,7 @@ const replicatedLogSuite = function () {
         {
           const action = _.nth(actions, -2).desc;
           assertEqual(action.type, 'DictateLeaderAction');
-          assertEqual(action.newLeader.serverId, newLeader);
+          assertEqual(action.electedLeader.serverId, newLeader);
         }
         {
           const action = _.nth(actions, -1).desc;
