@@ -136,6 +136,10 @@ struct ReplicatedStateMethods {
       LogId, ParticipantId const& participantToRemove,
       ParticipantId const& participantToAdd) const
       -> futures::Future<Result> = 0;
+
+  [[nodiscard]] virtual auto setLeader(
+      LogId id, std::optional<ParticipantId> const& leaderId) const
+      -> futures::Future<Result> = 0;
 };
 
 }  // namespace arangodb::replication2

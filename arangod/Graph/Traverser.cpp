@@ -103,7 +103,7 @@ bool Traverser::UniqueVertexGetter::getVertex(std::string_view vertex,
                                               size_t depth) {
   if (_returnedVertices.find(vertex) != _returnedVertices.end()) {
     // This vertex is not unique.
-    _traverser->traverserCache()->increaseFilterCounter();
+    _traverser->traverserCache()->incrFiltered();
     return false;
   }
 
@@ -132,7 +132,7 @@ bool Traverser::UniqueVertexGetter::getSingleVertex(
   // First check if we visited it. If not, then mark
   if (_returnedVertices.find(s) != _returnedVertices.end()) {
     // This vertex is not unique.
-    _traverser->traverserCache()->increaseFilterCounter();
+    _traverser->traverserCache()->incrFiltered();
     return false;
   }
 
@@ -208,14 +208,16 @@ TraverserCache* arangodb::traverser::Traverser::traverserCache() {
   return _opts->cache();
 }
 
-size_t arangodb::traverser::Traverser::getAndResetFilteredPaths() {
-  return traverserCache()->getAndResetFilteredDocuments();
-}
-
-size_t arangodb::traverser::Traverser::getAndResetReadDocuments() {
+std::uint64_t
+arangodb::traverser::Traverser::getAndResetReadDocuments() noexcept {
   return traverserCache()->getAndResetInsertedDocuments();
 }
 
-size_t arangodb::traverser::Traverser::getAndResetHttpRequests() {
+std::uint64_t arangodb::traverser::Traverser::getAndResetFiltered() noexcept {
+  return traverserCache()->getAndResetFiltered();
+}
+
+std::uint64_t
+arangodb::traverser::Traverser::getAndResetHttpRequests() noexcept {
   return _enumerator->getAndResetHttpRequests();
 }

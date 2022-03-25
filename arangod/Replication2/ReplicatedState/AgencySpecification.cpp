@@ -174,6 +174,9 @@ void Target::toVelocyPack(velocypack::Builder& builder) const {
       state.toVelocyPack(builder);
     }
   }
+  if (leader) {
+    builder.add(StaticStrings::Leader, *leader);
+  }
   builder.add(velocypack::Value(StaticStrings::Properties));
   properties.toVelocyPack(builder);
   builder.add(velocypack::Value(StaticStrings::Config));
@@ -192,6 +195,15 @@ auto Target::fromVelocyPack(velocypack::Slice slice) -> Target {
       participants.emplace(key.copyString(), participant);
     }
   }
+  auto leader = std::invoke([&]() -> decltype(Target::leader) {
+    if (auto leaderSlice = slice.get(StaticStrings::Leader);
+        !leaderSlice.isNone()) {
+      TRI_ASSERT(leaderSlice.isString());
+      return {leaderSlice.copyString()};
+    } else {
+      return std::nullopt;
+    }
+  });
   auto properties =
       Properties::fromVelocyPack(slice.get(StaticStrings::Properties));
 
@@ -203,6 +215,7 @@ auto Target::fromVelocyPack(velocypack::Slice slice) -> Target {
 
   return Target{.id = id,
                 .properties = std::move(properties),
+                .leader = std::move(leader),
                 .participants = std::move(participants),
                 .config = config,
                 .version = version};

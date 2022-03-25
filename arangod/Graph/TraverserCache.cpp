@@ -76,7 +76,11 @@ TraverserCache::TraverserCache(aql::QueryContext& query, BaseOptions* opts)
     : _query(query),
       _trx(opts->trx()),
       _insertedDocuments(0),
-      _filteredDocuments(0),
+      _filtered(0),
+      _cursorsCreated(0),
+      _cursorsRearmed(0),
+      _cacheHits(0),
+      _cacheMisses(0),
       _stringHeap(
           query.resourceMonitor(),
           4096), /* arbitrary block-size, may be adjusted for performance */

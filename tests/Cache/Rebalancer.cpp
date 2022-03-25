@@ -30,8 +30,8 @@
 #include <thread>
 #include <vector>
 
-#include "RestServer/SharedPRNGFeature.h"
 #include "Basics/voc-errors.h"
+#include "Cache/BinaryKeyHasher.h"
 #include "Cache/Common.h"
 #include "Cache/Manager.h"
 #include "Cache/PlainCache.h"
@@ -39,6 +39,7 @@
 #include "Cache/Transaction.h"
 #include "Cache/TransactionalCache.h"
 #include "Random/RandomGenerator.h"
+#include "RestServer/SharedPRNGFeature.h"
 
 #include "Mocks/Servers.h"
 #include "MockScheduler.h"
@@ -83,7 +84,7 @@ TEST(CacheRebalancerTest, test_rebalancing_with_plaincache_LongRunning) {
   std::size_t threadCount = 4;
   std::vector<std::shared_ptr<Cache>> caches;
   for (std::size_t i = 0; i < cacheCount; i++) {
-    caches.emplace_back(manager.createCache(CacheType::Plain));
+    caches.emplace_back(manager.createCache<BinaryKeyHasher>(CacheType::Plain));
   }
 
   std::atomic<bool> doneRebalancing(false);
@@ -161,7 +162,9 @@ TEST(CacheRebalancerTest, test_rebalancing_with_plaincache_LongRunning) {
         if (f.found()) {
           hitCount++;
           TRI_ASSERT(f.value() != nullptr);
-          TRI_ASSERT(f.value()->sameKey(&item, sizeof(std::uint64_t)));
+          TRI_ASSERT(BinaryKeyHasher::sameKey(f.value()->key(),
+                                              f.value()->keySize(), &item,
+                                              sizeof(std::uint64_t)));
         } else {
           missCount++;
           TRI_ASSERT(f.value() == nullptr);
@@ -208,7 +211,8 @@ TEST(CacheRebalancerTest,
   std::size_t threadCount = 4;
   std::vector<std::shared_ptr<Cache>> caches;
   for (std::size_t i = 0; i < cacheCount; i++) {
-    caches.emplace_back(manager.createCache(CacheType::Transactional));
+    caches.emplace_back(
+        manager.createCache<BinaryKeyHasher>(CacheType::Transactional));
   }
 
   bool doneRebalancing = false;
@@ -300,7 +304,9 @@ TEST(CacheRebalancerTest,
         if (f.found()) {
           hitCount++;
           TRI_ASSERT(f.value() != nullptr);
-          TRI_ASSERT(f.value()->sameKey(&item, sizeof(std::uint64_t)));
+          TRI_ASSERT(BinaryKeyHasher::sameKey(f.value()->key(),
+                                              f.value()->keySize(), &item,
+                                              sizeof(std::uint64_t)));
         } else {
           missCount++;
           TRI_ASSERT(f.value() == nullptr);

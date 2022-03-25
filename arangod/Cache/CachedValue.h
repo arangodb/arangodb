@@ -25,7 +25,6 @@
 
 #include <atomic>
 #include <cstdint>
-#include <cstring>
 
 namespace arangodb {
 namespace cache {
@@ -87,13 +86,6 @@ struct CachedValue {
   }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Utility method to compare underlying key to external key
-  //////////////////////////////////////////////////////////////////////////////
-  inline bool sameKey(void const* k, std::size_t kSize) const noexcept {
-    return (keySize() == kSize) && (0 == memcmp(key(), k, kSize));
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief Increase reference count
   //////////////////////////////////////////////////////////////////////////////
   inline void lease() noexcept { ++_refCount; }
@@ -143,7 +135,7 @@ struct CachedValue {
               std::size_t vSize) noexcept;
   CachedValue(CachedValue const& other) noexcept;
 
-  inline std::size_t offset() const {
+  inline std::size_t offset() const noexcept {
     return ((_keySize & _offsetMask) >> _offsetShift);
   }
 };

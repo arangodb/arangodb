@@ -1,5 +1,4 @@
 /*jshint strict: true */
-/*global assertTrue, assertEqual*/
 'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -201,6 +200,49 @@ const replicatedStateSuite = function () {
 
       lh.waitFor(spreds.replicatedStateVersionConverged(database, stateId, newVersion));
     }
+
+    testSetLeader: function () {
+      const {stateId, followers} = createReplicatedState();
+      const newLeader = _.sample(followers);
+      updateReplicatedStateTarget(database, stateId,
+          (target) => {
+            target.leader = newLeader;
+            return target;
+          });
+      lh.waitFor(() => {
+        const currentLeader = lh.getReplicatedLogLeaderTarget(database, stateId);
+        if (currentLeader === newLeader) {
+          return true;
+        } else {
+          return new Error(`Expected log leader to switch to ${newLeader}, but is still ${currentLeader}`);
+        }
+      });
+      lh.waitFor(() => {
+        const {leader: currentLeader} = lh.getReplicatedLogLeaderPlan(database, stateId);
+        if (currentLeader === newLeader) {
+          return true;
+        } else {
+          return new Error(`Expected log leader to switch to ${newLeader}, but is still ${currentLeader}`);
+        }
+      });
+    },
+
+    testUnsetLeader: function () {
+      const {stateId} = createReplicatedState();
+      updateReplicatedStateTarget(database, stateId,
+          (target) => {
+            delete target.leader;
+            return target;
+          });
+      lh.waitFor(() => {
+        const currentLeader = lh.getReplicatedLogLeaderTarget(database, stateId);
+        if (currentLeader === undefined) {
+          return true;
+        } else {
+          return new Error(`Expected log leader to be unset, but is still ${currentLeader}`);
+        }
+      });
+    },
   };
 };
 

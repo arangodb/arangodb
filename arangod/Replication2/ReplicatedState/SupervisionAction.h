@@ -166,9 +166,20 @@ struct CurrentConvergedAction {
   }
 };
 
-using Action =
-    std::variant<EmptyAction, AddParticipantAction, AddStateToPlanAction,
-                 UpdateParticipantFlagsAction, CurrentConvergedAction>;
+struct SetLeaderAction {
+  std::optional<ParticipantId> leader;
+
+  void execute(ActionContext& ctx) {
+    ctx.modify<replication2::agency::LogTarget>(
+        [&](replication2::agency::LogTarget& target) {
+          target.leader = leader;
+        });
+  }
+};
+
+using Action = std::variant<EmptyAction, AddParticipantAction,
+                            AddStateToPlanAction, UpdateParticipantFlagsAction,
+                            CurrentConvergedAction, SetLeaderAction>;
 
 auto execute(LogId id, DatabaseID const& database, Action action,
              std::optional<agency::Plan> state,
