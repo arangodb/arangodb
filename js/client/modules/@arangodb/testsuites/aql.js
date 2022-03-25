@@ -87,7 +87,7 @@ function shellApiClient (options) {
   // we want this to ensure that in an overload situation we do not
   // get random failedLeader / failedFollower jobs during our tests.
   let moreOptions = { "agency.supervision-ok-threshold" : "15", "agency.supervision-grace-period" : "30" };
-  let rc = tu.performTests(opts, testCases, 'shell_api', tu.runInLocalArangosh, moreOptions);
+  let rc = new tu.runLocalInArangoshRunner(opts, 'shell_api', moreOptions).run(testCases);
   options.cleanup = options.cleanup && opts.cleanup;
   return rc;
 }

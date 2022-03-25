@@ -102,46 +102,37 @@ function shellClientReplicationApi (options) {
 function replicationFuzz (options) {
   let testCases = tu.scanTestPaths(testPaths.replication_fuzz, options);
 
-  let startStopHandlers = {
-    postStart: function (options,
-                         serverOptions,
-                         instanceInfo,
-                         customInstanceInfos,
-                         startStopHandlers) {
+  class replFuzRunner extends tu.runInArangoshRunner {
+    constructor(options, testname, serverOptions, checkUsers=true) {
+      super(options, testname, serverOptions, checkUsers=true);
+      this.follower = undefined;
+      this.addArgs = {};
+    }
+
+    postStart() {
       let message;
       print("starting replication slave: ");
-      let slave = pu.startInstance('tcp', options, {}, 'slave_fuzz');
-      let state = (typeof slave === 'object');
+      this.follower = pu.startInstance('tcp', this.options, {}, 'slave_fuzz');
+      let state = (typeof this.follower === 'object');
 
       if (state) {
         message = 'failed to start slave instance!';
       }
-      slave['isSlaveInstance'] = true;
+      this.follower['isSlaveInstance'] = true;
+      this.addArgs['flatCommands'] = [ this.follower.endpoint];
       return {
-        instanceInfo: slave,
         message: message,
         state: state,
-        env: {
-          'flatCommands': slave.endpoint
-        }
       };
-    },
+    }
 
-    healthCheck: function (options,
-                           serverOptions,
-                           instanceInfo,
-                           customInstanceInfos,
-                           startStopHandlers) {
-      return pu.arangod.check.instanceAlive(customInstanceInfos.postStart.instanceInfo, options);
-    },
+    alive() {
+      return pu.arangod.check.instanceAlive(this.follower, this.options);
+    }
 
-    preStop: function (options,
-                       serverOptions,
-                       instanceInfo,
-                       customInstanceInfos,
-                       startStopHandlers) {
-      if (pu.arangod.check.instanceAlive(customInstanceInfos.postStart.instanceInfo, options)) {
-        if (!pu.shutdownInstance(customInstanceInfos.postStart.instanceInfo, options)) {
+    preStop() {
+      if (pu.arangod.check.instanceAlive(this.follower, this.options)) {
+        if (!pu.shutdownInstance(this.follower, this.options)) {
           return {
             state: false,
             shutdown: false,
@@ -156,23 +147,17 @@ function replicationFuzz (options) {
           message: " alive check of other instance failed"
         };
       }
-    },
+    }
 
-    postStop: function (options,
-                        serverOptions,
-                        instanceInfo,
-                        customInstanceInfos,
-                        startStopHandlers) {
-      if (options.cleanup) {
-        pu.cleanupLastDirectory(options);
+    postStop() {
+      if (this.options.cleanup) {
+        pu.cleanupLastDirectory(this.options);
       }
       return { state: true };
     }
-
   };
 
-  return tu.performTests(options, testCases, 'replication_fuzz', tu.runInArangosh,
-                         {"rocksdb.wal-file-timeout-initial": "7200"}, startStopHandlers);
+  return new replFuzRunner(options, 'replication_fuzz', {"rocksdb.wal-file-timeout-initial": "7200"}).run(testCases);
 }
 
 // //////////////////////////////////////////////////////////////////////////////
