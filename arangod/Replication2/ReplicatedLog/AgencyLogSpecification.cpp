@@ -98,19 +98,6 @@ auto LogCurrentLocalState::toVelocyPack(VPackBuilder& builder) const -> void {
 
 LogCurrent::LogCurrent(from_velocypack_t, VPackSlice slice) {
   *this = deserialize<LogCurrent>(slice);
-  /*
-  if (auto ls = slice.get(StaticStrings::LocalStatus); !ls.isNone()) {
-    for (auto const& [key, value] : VPackObjectIterator(ls)) {
-      localState.emplace(ParticipantId{key.copyString()},
-                         LogCurrentLocalState(from_velocypack, value));
-    }
-  }
-  if (auto ss = slice.get("supervision"); !ss.isNone()) {
-    supervision = LogCurrentSupervision{from_velocypack, ss};
-  }
-  if (auto ls = slice.get("leader"); !ls.isNone()) {
-    leader = Leader::fromVelocyPack(ls);
-  } */
 }
 
 LogCurrentSupervision::LogCurrentSupervision(from_velocypack_t,
@@ -126,17 +113,6 @@ LogCurrentSupervisionElection::LogCurrentSupervisionElection(from_velocypack_t,
                                                              VPackSlice slice) {
   *this = deserialize<LogCurrentSupervisionElection>(slice);
 }
-/*
-    : term(slice.get(StaticStrings::Term).extract<LogTerm>()),
-      participantsRequired(
-          slice.get("participantsRequired").getNumericValue<std::size_t>()),
-      participantsAvailable(
-          slice.get("participantsAvailable").getNumericValue<std::size_t>()) {
-  for (auto [key, value] : VPackObjectIterator(slice.get("details"))) {
-    detail.emplace(key.copyString(),
-                   value.get("code").getNumericValue<ErrorCode>());
-  }
-}*/
 
 auto LogCurrent::toVelocyPack(VPackBuilder& builder) const -> void {
   serialize(builder, *this);

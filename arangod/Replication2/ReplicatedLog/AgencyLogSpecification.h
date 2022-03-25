@@ -35,13 +35,32 @@
 #include <optional>
 #include <type_traits>
 
-/*
-namespace {
-auto constexpr StringCommittedParticipantsConfig =
-  std::string_view{"committedParticipantsConfig"};
-}
-*/
 namespace arangodb::replication2::agency {
+
+namespace static_strings {
+auto constexpr CommittedParticipantsConfig =
+    std::string_view{"committedParticipantsConfig"};
+auto constexpr ParticipantsConfig = std::string_view{"participantsConfig"};
+auto constexpr BestTermIndex = std::string_view{"bestTermIndex"};
+auto constexpr ParticipantsRequired = std::string_view{"participantsRequired"};
+auto constexpr ParticipantsAvailable =
+    std::string_view{"participantsAvailable"};
+auto constexpr Details = std::string_view{"details"};
+auto constexpr ElectibleLeaderSet = std::string_view{"electibleLeaderSet"};
+auto constexpr Election = std::string_view{"election"};
+auto constexpr Error = std::string_view{"error"};
+auto constexpr StatusMessage = std::string_view{"StatusMessage"};
+auto constexpr LeadershipEstablished =
+    std::string_view{"leadershipEstablished"};
+auto constexpr CommitStatus = std::string_view{"commitStatus"};
+auto constexpr Supervision = std::string_view{"supervision"};
+auto constexpr Leader = std::string_view{"leader"};
+auto constexpr Actions = std::string_view{"actions"};
+auto constexpr MaxActionsTraceLength =
+    std::string_view{"maxActionsTraceLength"};
+auto constexpr Code = std::string_view{"code"};
+auto constexpr Message = std::string_view{"message"};
+}  // namespace static_strings
 
 struct from_velocypack_t {};
 inline constexpr auto from_velocypack = from_velocypack_t{};
@@ -116,7 +135,7 @@ auto inspect(Inspector& f, LogPlanSpecification& x) {
   return f.object(x).fields(
       f.field(StaticStrings::Id, x.id),
       f.field(StaticStrings::CurrentTerm, x.currentTerm),
-      f.field("participantsConfig", x.participantsConfig));
+      f.field(static_strings::ParticipantsConfig, x.participantsConfig));
 };
 
 struct LogCurrentLocalState {
@@ -203,20 +222,21 @@ struct EnumStruct {
 
 template<class Inspector, typename Enum>
 auto inspect(Inspector& f, EnumStruct<Enum>& x) {
-  return f.object(x).fields(f.field("code", x.code),
-                            f.field("message", x.message));
+  return f.object(x).fields(f.field(static_strings::Code, x.code),
+                            f.field(static_strings::Message, x.message));
 };
 
 template<class Inspector>
 auto inspect(Inspector& f, LogCurrentSupervisionError& x) {
-  auto v = EnumStruct<LogCurrentSupervisionError>(x);
   if constexpr (Inspector::isLoading) {
+    auto v = EnumStruct<LogCurrentSupervisionError>();
     auto res = f.apply(v);
     if (res.ok()) {
       x = v.get();
     }
     return res;
   } else {
+    auto v = EnumStruct<LogCurrentSupervisionError>(x);
     return f.apply(v);
   }
 }
@@ -240,11 +260,11 @@ template<class Inspector>
 auto inspect(Inspector& f, LogCurrentSupervisionElection& x) {
   return f.object(x).fields(
       f.field(StaticStrings::Term, x.term),
-      f.field("bestTermIndex", x.bestTermIndex),
-      f.field("participantsRequired", x.participantsRequired),
-      f.field("participantsAvailable", x.participantsAvailable),
-      f.field("details", x.detail),
-      f.field("electibleLeaderSet", x.electibleLeaderSet));
+      f.field(static_strings::BestTermIndex, x.bestTermIndex),
+      f.field(static_strings::ParticipantsRequired, x.participantsRequired),
+      f.field(static_strings::ParticipantsAvailable, x.participantsAvailable),
+      f.field(static_strings::Details, x.detail),
+      f.field(static_strings::ElectibleLeaderSet, x.electibleLeaderSet));
 }
 
 struct LogCurrentSupervision {
@@ -260,9 +280,10 @@ struct LogCurrentSupervision {
 
 template<class Inspector>
 auto inspect(Inspector& f, LogCurrentSupervision& x) {
-  return f.object(x).fields(f.field("election", x.election),
-                            f.field("error", x.error),
-                            f.field("statusMessage", x.statusMessage));
+  return f.object(x).fields(
+      f.field(static_strings::Election, x.election),
+      f.field(static_strings::Error, x.error),
+      f.field(static_strings::StatusMessage, x.statusMessage));
 }
 
 struct LogCurrent {
@@ -302,9 +323,11 @@ auto inspect(Inspector& f, LogCurrent::Leader& x) {
   return f.object(x).fields(
       f.field(StaticStrings::ServerId, x.serverId),
       f.field(StaticStrings::Term, x.term),
-      f.field("committedParticipantsConfig", x.committedParticipantsConfig),
-      f.field("leadershipEstablished", x.leadershipEstablished).fallback(false),
-      f.field("commitStatus", x.commitStatus));
+      f.field(static_strings::CommittedParticipantsConfig,
+              x.committedParticipantsConfig),
+      f.field(static_strings::LeadershipEstablished, x.leadershipEstablished)
+          .fallback(false),
+      f.field(static_strings::CommitStatus, x.commitStatus));
 }
 
 template<class Inspector>
@@ -321,8 +344,9 @@ auto inspect(Inspector& f, LogCurrent& x) {
   return f.object(x).fields(
       f.field(StaticStrings::LocalStatus, x.localState)
           .fallback(std::unordered_map<ParticipantId, LogCurrentLocalState>{}),
-      f.field("supervision", x.supervision), f.field("leader", x.leader),
-      f.field("actions", x.actions)
+      f.field(static_strings::Supervision, x.supervision),
+      f.field(static_strings::Leader, x.leader),
+      f.field(static_strings::Actions, x.actions)
           .fallback(std::vector<LogCurrent::ActionDummy>{}));
 }
 
@@ -357,17 +381,18 @@ struct LogTarget {
 template<class Inspector>
 auto inspect(Inspector& f, LogTarget::Supervision& x) {
   return f.object(x).fields(
-      f.field("maxActionsTraceLength", x.maxActionsTraceLength));
+      f.field(static_strings::MaxActionsTraceLength, x.maxActionsTraceLength));
 }
 
 template<class Inspector>
 auto inspect(Inspector& f, LogTarget& x) {
-  return f.object(x).fields(f.field(StaticStrings::Id, x.id),
-                            f.field(StaticStrings::Participants, x.participants)
-                                .fallback(ParticipantsFlagsMap{}),
-                            f.field(StaticStrings::Config, x.config),
-                            f.field(StaticStrings::Leader, x.leader),
-                            f.field("supervision", x.supervision));
+  return f.object(x).fields(
+      f.field(StaticStrings::Id, x.id),
+      f.field(StaticStrings::Participants, x.participants)
+          .fallback(ParticipantsFlagsMap{}),
+      f.field(StaticStrings::Config, x.config),
+      f.field(StaticStrings::Leader, x.leader),
+      f.field(static_strings::Supervision, x.supervision));
 }
 
 /* Convenience Wrapper */
