@@ -627,6 +627,6 @@ void TRI_InitV8ReplicatedLogs(TRI_v8_global_t* v8g, v8::Isolate* isolate) {
 
   v8g->VocbaseReplicatedLogTempl.Reset(isolate, rt);
   TRI_AddGlobalFunctionVocbase(
-      isolate, TRI_V8_ASCII_STRING(isolate, "ReplicatedLog"),
+      isolate, TRI_V8_ASCII_STRING(isolate, "ArangoReplicatedLog"),
       ft->GetFunction(TRI_IGETC).FromMaybe(v8::Local<v8::Function>()));
 }
