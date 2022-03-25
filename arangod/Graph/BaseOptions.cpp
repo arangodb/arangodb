@@ -274,7 +274,7 @@ BaseOptions::BaseOptions(arangodb::aql::QueryContext& query)
       _parallelism(1),
       _produceVertices(true),
       _isCoordinator(arangodb::ServerState::instance()->isCoordinator()),
-      _refactor(arangodb::ServerState::instance()->isSingleServer()) {}
+      _refactor(true) {}
 
 BaseOptions::BaseOptions(BaseOptions const& other, bool allowAlreadyBuiltCopy)
     : _trx(other._query.newTrxContext()),
@@ -531,7 +531,7 @@ bool BaseOptions::evaluateExpression(arangodb::aql::Expression* expression,
   TRI_ASSERT(res.isBoolean());
   bool result = res.toBoolean();
   if (!result) {
-    cache()->increaseFilterCounter();
+    cache()->incrFiltered();
   }
   return result;
 }

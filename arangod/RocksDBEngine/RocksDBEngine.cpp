@@ -397,7 +397,7 @@ void RocksDBEngine::collectOptions(
               arangodb::options::Flags::DefaultNoComponents,
               arangodb::options::Flags::OnDBServer,
               arangodb::options::Flags::OnSingle,
-              arangodb::options::Flags::Hidden))
+              arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30608)
       .setIntroducedIn(30705);
 
@@ -418,7 +418,7 @@ void RocksDBEngine::collectOptions(
           arangodb::options::Flags::DefaultNoComponents,
           arangodb::options::Flags::OnDBServer,
           arangodb::options::Flags::OnSingle,
-          arangodb::options::Flags::Hidden));
+          arangodb::options::Flags::Uncommon));
 
   options->addOption("--rocksdb.throttle", "enable write-throttling",
                      new BooleanParameter(&_useThrottle),
@@ -436,7 +436,7 @@ void RocksDBEngine::collectOptions(
               arangodb::options::Flags::DefaultNoComponents,
               arangodb::options::Flags::OnDBServer,
               arangodb::options::Flags::OnSingle,
-              arangodb::options::Flags::Hidden))
+              arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30805);
 
   options
@@ -447,7 +447,7 @@ void RocksDBEngine::collectOptions(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnDBServer,
                       arangodb::options::Flags::OnSingle,
-                      arangodb::options::Flags::Hidden))
+                      arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30805);
 
   options
@@ -458,7 +458,7 @@ void RocksDBEngine::collectOptions(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnDBServer,
                       arangodb::options::Flags::OnSingle,
-                      arangodb::options::Flags::Hidden))
+                      arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30805);
 
   options
@@ -470,7 +470,7 @@ void RocksDBEngine::collectOptions(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnDBServer,
                       arangodb::options::Flags::OnSingle,
-                      arangodb::options::Flags::Hidden))
+                      arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30805);
 
   options
@@ -483,7 +483,7 @@ void RocksDBEngine::collectOptions(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnDBServer,
                       arangodb::options::Flags::OnSingle,
-                      arangodb::options::Flags::Hidden))
+                      arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30805);
 
   options
@@ -495,7 +495,7 @@ void RocksDBEngine::collectOptions(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnDBServer,
                       arangodb::options::Flags::OnSingle,
-                      arangodb::options::Flags::Hidden))
+                      arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30805);
 
 #ifdef USE_ENTERPRISE
@@ -517,7 +517,7 @@ void RocksDBEngine::collectOptions(
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnDBServer,
-                      arangodb::options::Flags::Hidden))
+                      arangodb::options::Flags::Uncommon))
       .setIntroducedIn(31000);
 
   options->addOption("--rocksdb.debug-logging",
@@ -527,7 +527,7 @@ void RocksDBEngine::collectOptions(
                          arangodb::options::Flags::DefaultNoComponents,
                          arangodb::options::Flags::OnDBServer,
                          arangodb::options::Flags::OnSingle,
-                         arangodb::options::Flags::Hidden));
+                         arangodb::options::Flags::Uncommon));
 
   options
       ->addOption("--rocksdb.edge-cache", "use in-memory cache for edges",
@@ -536,8 +536,9 @@ void RocksDBEngine::collectOptions(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnDBServer,
                       arangodb::options::Flags::OnSingle,
-                      arangodb::options::Flags::Hidden))
-      .setIntroducedIn(30604);
+                      arangodb::options::Flags::Uncommon))
+      .setIntroducedIn(30604)
+      .setDeprecatedIn(30100);
 
   options->addOption(
       "--rocksdb.wal-archive-size-limit",
@@ -547,7 +548,7 @@ void RocksDBEngine::collectOptions(
           arangodb::options::Flags::DefaultNoComponents,
           arangodb::options::Flags::OnDBServer,
           arangodb::options::Flags::OnSingle,
-          arangodb::options::Flags::Hidden));
+          arangodb::options::Flags::Uncommon));
 
 #ifdef USE_ENTERPRISE
   collectEnterpriseOptions(options);
@@ -2870,8 +2871,9 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
           it.get(StaticStrings::DataSourcePlanId).getNumericValue<uint64_t>()};
       auto objectId =
           it.get(StaticStrings::ObjectId).getNumericValue<uint64_t>();
-      auto log =
-          std::make_shared<RocksDBPersistedLog>(logId, objectId, _logPersistor);
+      auto log = std::make_shared<RocksDBPersistedLog>(
+          replication2::GlobalLogIdentifier(vocbase->name(), logId), objectId,
+          _logPersistor);
       StorageEngine::registerReplicatedLog(*vocbase, logId, log);
     }
   } catch (std::exception const& ex) {
@@ -2932,12 +2934,18 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
   }
 }
 
+DECLARE_GAUGE(rocksdb_cache_active_tables, uint64_t,
+              "rocksdb_cache_active_tables");
 DECLARE_GAUGE(rocksdb_cache_allocated, uint64_t, "rocksdb_cache_allocated");
 DECLARE_GAUGE(rocksdb_cache_hit_rate_lifetime, uint64_t,
               "rocksdb_cache_hit_rate_lifetime");
 DECLARE_GAUGE(rocksdb_cache_hit_rate_recent, uint64_t,
               "rocksdb_cache_hit_rate_recent");
 DECLARE_GAUGE(rocksdb_cache_limit, uint64_t, "rocksdb_cache_limit");
+DECLARE_GAUGE(rocksdb_cache_unused_memory, uint64_t,
+              "rocksdb_cache_unused_memory");
+DECLARE_GAUGE(rocksdb_cache_unused_tables, uint64_t,
+              "rocksdb_cache_unused_tables");
 DECLARE_GAUGE(rocksdb_actual_delayed_write_rate, uint64_t,
               "rocksdb_actual_delayed_write_rate");
 DECLARE_GAUGE(rocksdb_background_errors, uint64_t, "rocksdb_background_errors");
@@ -3186,9 +3194,13 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
       server().getFeature<CacheManagerFeature>().manager();
   if (manager != nullptr) {
     // cache turned on
+    cache::Manager::MemoryStats stats = manager->memoryStats();
     auto rates = manager->globalHitRates();
-    builder.add("cache.limit", VPackValue(manager->globalLimit()));
-    builder.add("cache.allocated", VPackValue(manager->globalAllocation()));
+    builder.add("cache.limit", VPackValue(stats.globalLimit));
+    builder.add("cache.allocated", VPackValue(stats.globalAllocation));
+    builder.add("cache.active-tables", VPackValue(stats.activeTables));
+    builder.add("cache.unused-memory", VPackValue(stats.spareAllocation));
+    builder.add("cache.unused-tables", VPackValue(stats.spareTables));
     // handle NaN
     builder.add("cache.hit-rate-lifetime",
                 VPackValue(rates.first >= 0.0 ? rates.first : 0.0));
@@ -3198,6 +3210,9 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
     // cache turned off
     builder.add("cache.limit", VPackValue(0));
     builder.add("cache.allocated", VPackValue(0));
+    builder.add("cache.active-tables", VPackValue(0));
+    builder.add("cache.unused-memory", VPackValue(0));
+    builder.add("cache.unused-tables", VPackValue(0));
     // handle NaN
     builder.add("cache.hit-rate-lifetime", VPackValue(0));
     builder.add("cache.hit-rate-recent", VPackValue(0));
@@ -3583,8 +3598,9 @@ auto RocksDBEngine::createReplicatedLog(TRI_vocbase_t& vocbase,
           RocksDBColumnFamilyManager::Family::Definitions),
       key.string(), value.string());
   if (s.ok()) {
-    return {
-        std::make_shared<RocksDBPersistedLog>(logId, objectId, _logPersistor)};
+    return {std::make_shared<RocksDBPersistedLog>(
+        replication2::GlobalLogIdentifier(vocbase.name(), logId), objectId,
+        _logPersistor)};
   }
 
   return rocksutils::convertStatus(s);

@@ -33,7 +33,7 @@ using namespace arangodb::options;
 bool Section::hasOptions() const {
   if (!hidden) {
     for (auto const& it : options) {
-      if (!it.second.hasFlag(arangodb::options::Flags::Hidden)) {
+      if (!it.second.hasFlag(arangodb::options::Flags::Uncommon)) {
         return true;
       }
     }

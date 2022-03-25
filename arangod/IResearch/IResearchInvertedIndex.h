@@ -89,8 +89,7 @@ class lazy_filter_bitset_iterator final : public irs::doc_iterator,
 class proxy_query final : public irs::filter::prepared {
  public:
   struct proxy_cache {
-    iresearch_absl::flat_hash_map<const irs::sub_reader*,
-                                  std::unique_ptr<lazy_bitset>>
+    absl::flat_hash_map<const irs::sub_reader*, std::unique_ptr<lazy_bitset>>
         readers_;
     irs::filter::prepared::ptr prepared_real_filter_;
   };
@@ -176,7 +175,7 @@ class IResearchInvertedIndex : public IResearchDataStore {
 
   bool isSorted() const { return !_meta._sort.empty(); }
 
-  Result init(bool& pathExist, InitCallback const& initCallback = {});
+  Result init(bool& pathExists, InitCallback const& initCallback = {});
 
   static std::vector<std::vector<arangodb::basics::AttributeName>> fields(
       IResearchInvertedIndexMeta const& meta);

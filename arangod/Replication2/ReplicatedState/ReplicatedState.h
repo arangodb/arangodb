@@ -32,6 +32,7 @@
 
 #include "Basics/Guarded.h"
 #include "Replication2/DeferredExecution.h"
+#include "Replication2/LoggerContext.h"
 
 namespace arangodb::futures {
 template<typename T>
@@ -94,7 +95,8 @@ struct ReplicatedState final
   using CoreType = typename ReplicatedStateTraits<S>::CoreType;
 
   explicit ReplicatedState(std::shared_ptr<replicated_log::ReplicatedLog> log,
-                           std::shared_ptr<Factory> factory);
+                           std::shared_ptr<Factory> factory,
+                           LoggerContext loggerContext);
 
   /**
    * Forces to rebuild the state machine depending on the replicated log state.
@@ -174,6 +176,8 @@ struct ReplicatedState final
     std::shared_ptr<StateManagerBase> currentManager = nullptr;
   };
   Guarded<GuardedData> guardedData;
+  LoggerContext const loggerContext;
+  DatabaseID const database;
 };
 
 template<typename S>

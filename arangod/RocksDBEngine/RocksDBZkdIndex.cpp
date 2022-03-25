@@ -22,17 +22,20 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Zkd/ZkdHelper.h"
+#include "RocksDBZkdIndex.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Variable.h"
 #include "Containers/Enumerate.h"
 #include "Containers/FlatHashSet.h"
 #include "Transaction/Helpers.h"
-#include "RocksDBColumnFamilyManager.h"
-#include "RocksDBMethods.h"
-#include "RocksDBTransactionMethods.h"
-#include "RocksDBZkdIndex.h"
+#include "RocksDBEngine/RocksDBColumnFamilyManager.h"
+#include "RocksDBEngine/RocksDBEngine.h"
+#include "RocksDBEngine/RocksDBMethods.h"
+#include "RocksDBEngine/RocksDBTransactionMethods.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Methods.h"
+#include "Zkd/ZkdHelper.h"
 
 using namespace arangodb;
 
@@ -519,11 +522,17 @@ arangodb::Result arangodb::RocksDBZkdIndexBase::remove(
 
 arangodb::RocksDBZkdIndexBase::RocksDBZkdIndexBase(
     arangodb::IndexId iid, arangodb::LogicalCollection& coll,
-    arangodb::velocypack::Slice const& info)
+    arangodb::velocypack::Slice info)
     : RocksDBIndex(iid, coll, info,
                    RocksDBColumnFamilyManager::get(
                        RocksDBColumnFamilyManager::Family::ZkdIndex),
-                   false) {}
+                   /*useCache*/ false,
+                   /*cacheManager*/ nullptr,
+                   /*engine*/
+                   coll.vocbase()
+                       .server()
+                       .getFeature<EngineSelectorFeature>()
+                       .engine<RocksDBEngine>()) {}
 
 void arangodb::RocksDBZkdIndexBase::toVelocyPack(
     arangodb::velocypack::Builder& builder,

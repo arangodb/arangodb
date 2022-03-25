@@ -69,6 +69,7 @@ std::string const StaticStrings::Prefix("prefix");
 std::string const StaticStrings::Overwrite("overwrite");
 std::string const StaticStrings::OverwriteMode("overwriteMode");
 std::string const StaticStrings::Compact("compact");
+std::string const StaticStrings::DontWaitForCommit("dontWaitForCommit");
 
 // replication headers
 std::string const StaticStrings::ReplicationHeaderCheckMore(
@@ -128,6 +129,7 @@ std::string const StaticStrings::DataSourceType("type");
 std::string const StaticStrings::DataSourceParameters("parameters");
 
 // Index definition fields
+std::string const StaticStrings::IndexDeduplicate("deduplicate");
 std::string const StaticStrings::IndexExpireAfter("expireAfter");
 std::string const StaticStrings::IndexFields("fields");
 std::string const StaticStrings::IndexId("id");
@@ -151,9 +153,15 @@ std::string const StaticStrings::IndexNameTime("time");
 
 // index hint strings
 std::string const StaticStrings::IndexHintDisableIndex("disableIndex");
-std::string const StaticStrings::IndexHintMaxProjections("maxProjections");
 std::string const StaticStrings::IndexHintOption("indexHint");
 std::string const StaticStrings::IndexHintOptionForce("forceIndexHint");
+
+// query options
+std::string const StaticStrings::Filter("filter");
+std::string const StaticStrings::MaxProjections("maxProjections");
+std::string const StaticStrings::ProducesResult("producesResult");
+std::string const StaticStrings::ReadOwnWrites("readOwnWrites");
+std::string const StaticStrings::UseCache("useCache");
 
 // HTTP headers
 std::string const StaticStrings::Accept("accept");
@@ -268,6 +276,8 @@ std::string const StaticStrings::ShardingSingle("single");
 std::string const StaticStrings::ReplicationVersion("replicationVersion");
 std::string const StaticStrings::ReplicatedLogs("replicatedLogs");
 std::string_view const StaticStrings::SoftWriteConcern("softWriteConcern");
+std::string_view const StaticStrings::EffectiveWriteConcern(
+    "effectiveWriteConcern");
 
 // graph attribute names
 std::string const StaticStrings::GraphCollection("_graphs");

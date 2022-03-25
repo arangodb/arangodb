@@ -1653,6 +1653,18 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
             std::shared_ptr<Leader const> leader() const {
               return Leader::make_shared(shared_from_this());
             }
+            class Actions : public StaticComponent<Actions, Log> {
+             public:
+              constexpr char const* component() const noexcept {
+                return "actions";
+              }
+
+              using BaseType::StaticComponent;
+            };
+
+            std::shared_ptr<Actions const> actions() const {
+              return Actions::make_shared(shared_from_this());
+            }
 
             class Supervision : public StaticComponent<Supervision, Log> {
              public:
@@ -1661,19 +1673,6 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
               }
 
               using BaseType::StaticComponent;
-
-              class Actions : public StaticComponent<Actions, Supervision> {
-               public:
-                constexpr char const* component() const noexcept {
-                  return "actions";
-                }
-
-                using BaseType::StaticComponent;
-              };
-
-              std::shared_ptr<Actions const> actions() const {
-                return Actions::make_shared(shared_from_this());
-              }
 
               class Election : public StaticComponent<Election, Supervision> {
                public:
@@ -2441,62 +2440,32 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
               return Id::make_shared(shared_from_this());
             }
 
-            class ParticipantsConfig
-                : public StaticComponent<ParticipantsConfig, State> {
+            class Participants : public StaticComponent<Participants, State> {
              public:
               constexpr char const* component() const noexcept {
-                return "participantsConfig";
+                return "participants";
               }
 
               using BaseType::StaticComponent;
 
-              class Participants
-                  : public StaticComponent<Participants, ParticipantsConfig> {
+              class Server
+                  : public DynamicComponent<Server, Participants, ServerID> {
                public:
-                constexpr char const* component() const noexcept {
-                  return "participants";
+                char const* component() const noexcept {
+                  return value().c_str();
                 }
 
-                using BaseType::StaticComponent;
-
-                class Server
-                    : public DynamicComponent<Server, Participants, ServerID> {
-                 public:
-                  char const* component() const noexcept {
-                    return value().c_str();
-                  }
-
-                  using BaseType::DynamicComponent;
-                };
-
-                std::shared_ptr<Server const> server(ServerID value) const {
-                  return Server::make_shared(shared_from_this(),
-                                             std::move(value));
-                }
+                using BaseType::DynamicComponent;
               };
 
-              std::shared_ptr<Participants const> participants() const {
-                return Participants::make_shared(shared_from_this());
-              }
-
-              class Generation
-                  : public StaticComponent<Generation, ParticipantsConfig> {
-               public:
-                constexpr char const* component() const noexcept {
-                  return "generation";
-                }
-
-                using BaseType::StaticComponent;
-              };
-
-              std::shared_ptr<Generation const> generation() const {
-                return Generation::make_shared(shared_from_this());
+              std::shared_ptr<Server const> server(ServerID value) const {
+                return Server::make_shared(shared_from_this(),
+                                           std::move(value));
               }
             };
 
-            std::shared_ptr<ParticipantsConfig const> participantsConfig()
-                const {
-              return ParticipantsConfig::make_shared(shared_from_this());
+            std::shared_ptr<Participants const> participants() const {
+              return Participants::make_shared(shared_from_this());
             }
           };
 

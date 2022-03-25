@@ -176,7 +176,7 @@ const replicatedStateSuite = function () {
       lh.waitFor(spreds.replicatedStateIsReady(database, stateId, newServers));
 
       lh.waitFor(lh.replicatedLogParticipantsFlag(database, stateId, {
-        [newParticipant]: {excluded: false, forced: false},
+        [newParticipant]: {allowedInQuorum: true, allowedAsLeader: true, forced: false},
       }));
     },
   };

@@ -61,10 +61,10 @@ class RocksDBEncryptionProvider final : public irs::encryption {
 
   size_t header_length() override { return _encryption->GetPrefixLength(); }
 
-  bool create_header(std::string const& filename,
+  bool create_header(std::string_view filename,
                      irs::byte_type* header) override;
 
-  encryption::stream::ptr create_stream(std::string const& filename,
+  encryption::stream::ptr create_stream(std::string_view filename,
                                         irs::byte_type* header) override;
 
  private:

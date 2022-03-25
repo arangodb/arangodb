@@ -44,12 +44,14 @@
 #include "Transaction/Hints.h"
 #include "Transaction/StandaloneContext.h"
 #include "Transaction/V8Context.h"
+#include "Utils/CollectionNameResolver.h"
 #include "Utils/Events.h"
 #include "Utils/ExecContext.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utilities/NameValidator.h"
 #include "V8Server/v8-collection.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/Methods/Collections.h"
 #include "VocBase/vocbase.h"
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
@@ -153,7 +155,7 @@ arangodb::Result Indexes::getAll(
                        });
 
     tmp.openArray();
-    for (VPackSlice const& s : VPackArrayIterator(tmpInner.slice())) {
+    for (VPackSlice s : VPackArrayIterator(tmpInner.slice())) {
       std::string_view id = s.get(StaticStrings::IndexId).stringView();
       auto found = std::find_if(estimates.begin(), estimates.end(),
                                 [&id](std::pair<std::string, double> const& v) {
@@ -211,12 +213,12 @@ arangodb::Result Indexes::getAll(
   }
 
   bool mergeEdgeIdxs = !ServerState::instance()->isDBServer();
-
   double selectivity = 0, memory = 0, cacheSize = 0, cacheUsage = 0,
          cacheLifeTimeHitRate = 0, cacheWindowedHitRate = 0;
+  bool useCache = false;
 
   VPackArrayBuilder a(&result);
-  for (VPackSlice const& index : VPackArrayIterator(tmp.slice())) {
+  for (VPackSlice index : VPackArrayIterator(tmp.slice())) {
     std::string id = collection->name() + TRI_INDEX_HANDLE_SEPARATOR_CHR +
                      index.get(arangodb::StaticStrings::IndexId).copyString();
     VPackBuilder merge;
@@ -232,44 +234,46 @@ arangodb::Result Indexes::getAll(
 
       if (fields.length() == 1) {  // merge indexes
         // read out relevant values
-        VPackSlice val = index.get("selectivityEstimate");
-
-        if (val.isNumber()) {
+        if (VPackSlice val = index.get("selectivityEstimate"); val.isNumber()) {
           selectivity += val.getNumber<double>();
         }
 
-        bool useCache = false;
-        VPackSlice figures = index.get("figures");
-
-        if (figures.isObject() && !figures.isEmptyObject()) {
-          if ((val = figures.get("cacheInUse")).isBool()) {
-            useCache = val.getBool();
+        if (VPackSlice figures = index.get("figures");
+            figures.isObject() && !figures.isEmptyObject()) {
+          if (VPackSlice val = figures.get("cacheInUse"); val.isBool()) {
+            useCache |= val.getBool();
           }
 
-          if ((val = figures.get("memory")).isNumber()) {
+          if (VPackSlice val = figures.get("memory"); val.isNumber()) {
             memory += val.getNumber<double>();
           }
 
-          if ((val = figures.get("cacheSize")).isNumber()) {
+          if (VPackSlice val = figures.get("cacheSize"); val.isNumber()) {
             cacheSize += val.getNumber<double>();
           }
 
-          if ((val = figures.get("cacheUsage")).isNumber()) {
+          if (VPackSlice val = figures.get("cacheUsage"); val.isNumber()) {
             cacheUsage += val.getNumber<double>();
           }
 
-          if ((val = figures.get("cacheLifeTimeHitRate")).isNumber()) {
+          if (VPackSlice val = figures.get("cacheLifeTimeHitRate");
+              val.isNumber()) {
             cacheLifeTimeHitRate += val.getNumber<double>();
           }
 
-          if ((val = figures.get("cacheWindowedHitRate")).isNumber()) {
+          if (VPackSlice val = figures.get("cacheWindowedHitRate");
+              val.isNumber()) {
             cacheWindowedHitRate += val.getNumber<double>();
           }
         }
 
         if (fields[0].compareString(StaticStrings::FromString) == 0) {
+          // ignore one part of the edge index
           continue;
-        } else if (fields[0].compareString(StaticStrings::ToString) == 0) {
+        }
+
+        if (fields[0].compareString(StaticStrings::ToString) == 0) {
+          // fuse the values of the two edge indexes together
           merge.add(StaticStrings::IndexFields,
                     VPackValue(VPackValueType::Array));
           merge.add(VPackValue(StaticStrings::FromString));
@@ -627,7 +631,8 @@ Result Indexes::extractHandle(arangodb::LogicalCollection const* collection,
   }
 
   if (!collectionName.empty()) {
-    if (!EqualCollection(resolver, collectionName, collection)) {
+    if (!methods::Collections::hasName(*resolver, *collection,
+                                       collectionName)) {
       // I wish this error provided me with more information!
       // e.g. 'cannot access index outside the collection it was defined in'
       return Result(TRI_ERROR_ARANGO_CROSS_COLLECTION_REQUEST);

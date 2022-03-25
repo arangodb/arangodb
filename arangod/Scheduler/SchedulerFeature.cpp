@@ -115,7 +115,7 @@ void SchedulerFeature::collectOptions(
       "--server.minimal-threads",
       "minimum number of request handling threads to run",
       new UInt64Parameter(&_nrMinimalThreads),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   // max / min number of threads
 
@@ -130,7 +130,7 @@ void SchedulerFeature::collectOptions(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnSingle,
                       arangodb::options::Flags::OnCoordinator,
-                      arangodb::options::Flags::Hidden))
+                      arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30800);
 
   options->addOption("--server.maximal-queue-size",
@@ -150,19 +150,19 @@ void SchedulerFeature::collectOptions(
       "--server.scheduler-queue-size",
       "number of simultaneously queued requests inside the scheduler",
       new UInt64Parameter(&_queueSize),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options
-      ->addOption(
-          "--server.prio2-size", "size of the priority 2 fifo",
-          new UInt64Parameter(&_fifo2Size),
-          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+      ->addOption("--server.prio2-size", "size of the priority 2 fifo",
+                  new UInt64Parameter(&_fifo2Size),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30800);
 
   options->addOption(
       "--server.prio1-size", "size of the priority 1 fifo",
       new UInt64Parameter(&_fifo1Size),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   // obsolete options
   options->addObsoleteOption("--server.threads", "number of threads", true);

@@ -104,6 +104,13 @@ set(ICU_LIBRARY_DIR "${ICU_LIBRARY_DIR}" PARENT_SCOPE)
 set(ICU_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/V8/${V8_SUB_DIR}/third_party/icu/")
 
 ################################################################################
+## Google Abseil
+################################################################################
+
+add_subdirectory(abseil-cpp)
+set(ARANGO_ABSEIL_CPP_VERSION "${ARANGO_ABSEIL_CPP_VERSION}" PARENT_SCOPE)
+
+################################################################################
 ## Google S2
 ################################################################################
 
@@ -257,6 +264,12 @@ add_library(linenoise-ng STATIC
 
 target_include_directories(linenoise-ng SYSTEM PUBLIC
   ${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/include)
+
+################################################################################
+## fmt
+################################################################################
+UpdateModule(${GIT_EXECUTABLE} "fmt" ${CMAKE_CURRENT_SOURCE_DIR} "README.rst")
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/fmt)
 
 ################################################################################
 ## LINK_DIRECTORIES

@@ -38,6 +38,8 @@ const download = require('internal').download;
 const pathForTesting = require('internal').pathForTesting;
 const platform = require('internal').platform;
 const SetGlobalExecutionDeadlineTo = require('internal').SetGlobalExecutionDeadlineTo;
+const userManager = require("@arangodb/users");
+
 /* Constants: */
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
 // const CYAN = require('internal').COLORS.COLOR_CYAN;
@@ -173,7 +175,10 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
   let count = 0;
   let forceTerminate = false;
   let graphCount = 0;
-
+  let usersCount = 0;
+  if ((testname !== 'agency') && (testname !== 'authentication')){
+    usersCount = userManager.all().length;
+  }
   for (let i = 0; i < testList.length; i++) {
     let te = testList[i];
     let filtered = {};
@@ -365,7 +370,18 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
                 ' ] - Original test status: ' +
                 JSON.stringify(results[te])
             };
-
+          }
+          if ((testname !== 'agency') &&
+              (testname !== 'authentication') &&
+              (userManager.all().length !== usersCount)) {
+            continueTesting = false;
+            results[te] = {
+              status: false,
+              message: 'Cleanup of users missing - found users left over: [ ' +
+                JSON.stringify(userManager.all()) +
+                ' ] - Original test status: ' +
+                JSON.stringify(results[te])
+            };
           }
         } else {
           serverDead = true;
@@ -533,6 +549,11 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
       );
       return found;
     }
+  }
+
+  if ((testname.indexOf('-novst') !== -1) && options.vst) {
+    whichFilter.filter = 'skip when invoked with vst';
+    return false;
   }
 
   if (testname.indexOf('-timecritical') !== -1 && options.skipTimeCritical) {

@@ -297,6 +297,7 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
             auto condition = std::make_unique<Condition>(plan->getAst());
             condition->normalize(plan.get());
             IndexIteratorOptions opts;
+            opts.useCache = false;
             // we have already proven that we can use the covering index
             // optimization, so force it - if we wouldn't force it here it would
             // mean that for a FILTER-less query we would be a lot less
@@ -397,6 +398,7 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
 
         if (picked != nullptr) {
           IndexIteratorOptions opts;
+          opts.useCache = false;
           auto condition = std::make_unique<Condition>(plan->getAst());
           condition->normalize(plan.get());
           auto inode = new IndexNode(

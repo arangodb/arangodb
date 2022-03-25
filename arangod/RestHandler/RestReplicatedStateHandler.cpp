@@ -22,9 +22,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 #include "RestReplicatedStateHandler.h"
 
+#include "Futures/Future.h"
 #include "Replication2/Methods.h"
 #include "Replication2/ReplicatedState/StateStatus.h"
-#include "Futures/Future.h"
+#include "Rest/PathMatch.h"
 
 arangodb::RestReplicatedStateHandler::RestReplicatedStateHandler(
     arangodb::ArangodServer& server, arangodb::GeneralRequest* request,
@@ -79,28 +80,51 @@ auto arangodb::RestReplicatedStateHandler::handleGetRequest(
 auto arangodb::RestReplicatedStateHandler::handlePostRequest(
     const replication2::ReplicatedStateMethods& methods)
     -> arangodb::RestStatus {
-  std::vector<std::string> const& suffixes = _request->suffixes();
-  if (suffixes.size() != 0) {
-    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "expecting _api/replicated-state");
+  auto const& suffixes = _request->suffixes();
+
+  if (suffixes.empty()) {
+    bool parseSuccess = false;
+    VPackSlice body = this->parseVPackBody(parseSuccess);
+    if (!parseSuccess) {  // error message generated in parseVPackBody
+      return RestStatus::DONE;
+    }
+
+    // create a new state
+    auto spec =
+        replication2::replicated_state::agency::Target::fromVelocyPack(body);
+    return waitForFuture(methods.createReplicatedState(std::move(spec))
+                             .thenValue([this](auto&& result) {
+                               if (result.ok()) {
+                                 generateOk(rest::ResponseCode::OK,
+                                            VPackSlice::emptyObjectSlice());
+                               } else {
+                                 generateError(result);
+                               }
+                             }));
+  } else if (std::string_view logIdStr, toRemoveStr, toAddStr;
+             rest::Match(suffixes).against(&logIdStr, "participant",
+                                           &toRemoveStr, "replace-with",
+                                           &toAddStr)) {
+    auto const logId = replication2::LogId::fromString(logIdStr);
+    auto const toRemove = replication2::ParticipantId(toRemoveStr);
+    auto const toAdd = replication2::ParticipantId(toAddStr);
+    if (!logId) {
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                    basics::StringUtils::concatT("Not a log id: ", logIdStr));
+      return RestStatus::DONE;
+    }
+    return waitForFuture(methods.replaceParticipant(*logId, toRemove, toAdd)
+                             .thenValue([this](auto&& result) {
+                               if (result.ok()) {
+                                 generateOk(rest::ResponseCode::OK,
+                                            VPackSlice::emptyObjectSlice());
+                               } else {
+                                 generateError(result);
+                               }
+                             }));
+    return RestStatus::DONE;
+  } else {
+    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
     return RestStatus::DONE;
   }
-
-  bool parseSuccess = false;
-  VPackSlice body = this->parseVPackBody(parseSuccess);
-  if (!parseSuccess) {  // error message generated in parseVPackBody
-    return RestStatus::DONE;
-  }
-
-  // create a new log
-  auto spec =
-      replication2::replicated_state::agency::Target::fromVelocyPack(body);
-  return waitForFuture(
-      methods.createReplicatedState(spec).thenValue([this](auto&& result) {
-        if (result.ok()) {
-          generateOk(rest::ResponseCode::OK, VPackSlice::emptyObjectSlice());
-        } else {
-          generateError(result);
-        }
-      }));
 }

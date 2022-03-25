@@ -73,6 +73,7 @@ class StaticStrings {
   static std::string const Overwrite;
   static std::string const OverwriteMode;
   static std::string const Compact;
+  static std::string const DontWaitForCommit;
 
   // replication headers
   static std::string const ReplicationHeaderCheckMore;
@@ -125,6 +126,8 @@ class StaticStrings {
   static std::string const DataSourceParameters;
 
   // Index definition fields
+  static std::string const
+      IndexDeduplicate;  // index deduplicate flag (for array indexes)
   static std::string const IndexExpireAfter;     // ttl index expire value
   static std::string const IndexFields;          // index fields
   static std::string const IndexId;              // index id
@@ -148,9 +151,15 @@ class StaticStrings {
 
   // index hint strings
   static std::string const IndexHintDisableIndex;
-  static std::string const IndexHintMaxProjections;
   static std::string const IndexHintOption;
   static std::string const IndexHintOptionForce;
+
+  // query options
+  static std::string const Filter;
+  static std::string const MaxProjections;
+  static std::string const ProducesResult;
+  static std::string const ReadOwnWrites;
+  static std::string const UseCache;
 
   // HTTP headers
   static std::string const Accept;
@@ -223,7 +232,7 @@ class StaticStrings {
   static std::string const ParsedBody;
 
   // collection attributes
-  static std::string const CacheEnabled;
+  static std::string const CacheEnabled;  // also used for indexes
   static std::string const ComputedValues;
   static std::string const DistributeShardsLike;
   static std::string const Indexes;
@@ -248,6 +257,7 @@ class StaticStrings {
   static std::string const ReplicationVersion;
   static std::string const ReplicatedLogs;
   static std::string_view const SoftWriteConcern;
+  static std::string_view const EffectiveWriteConcern;
 
   // graph attribute names
   static std::string const GraphCollection;

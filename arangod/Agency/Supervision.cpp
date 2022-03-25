@@ -2610,7 +2610,7 @@ void Supervision::checkReplicatedLogs() {
       auto maybeAction =
           std::invoke([&, &dbName = dbName]() -> std::optional<Action> {
             try {
-              return checkReplicatedLog(Log{target, plan, current}, info);
+              return checkReplicatedLog(target, plan, current, info);
             } catch (std::exception const& err) {
               LOG_TOPIC("576c1", ERR, Logger::REPLICATION2)
                   << "Supervision caught exception in checkReplicatedLog for "
@@ -2632,7 +2632,6 @@ void Supervision::checkReplicatedLogs() {
                           ->replicatedLogs()
                           ->database(dbName)
                           ->log(idString)
-                          ->supervision()
                           ->actions()
                           ->str(),
                       [&](velocypack::Builder& b) {
@@ -2647,7 +2646,7 @@ void Supervision::checkReplicatedLogs() {
                   .end();
         }
         envelope = arangodb::replication2::replicated_log::execute(
-            action, dbName, target.id, std::move(envelope));
+            action, dbName, target.id, plan, current, std::move(envelope));
       }
     }
   }
@@ -2714,8 +2713,24 @@ void Supervision::checkReplicatedStates() {
           });
 
       if (action.has_value()) {
+        auto logTarget = std::invoke(
+            [&]() -> std::optional<replication2::agency::LogTarget> {
+              if (log.has_value()) {
+                return std::move(log->target);
+              }
+              return std::nullopt;
+            });
+        auto statePlan = std::invoke(
+            [&]()
+                -> std::optional<replication2::replicated_state::agency::Plan> {
+              if (state.plan.has_value()) {
+                return std::move(*state.plan);
+              }
+              return std::nullopt;
+            });
         envelope =
-            execute(state.target.id, dbName, *action, std::move(envelope));
+            execute(state.target.id, dbName, *action, std::move(statePlan),
+                    std::move(logTarget), std::move(envelope));
       }
     }
   }

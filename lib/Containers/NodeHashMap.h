@@ -27,9 +27,10 @@
 namespace arangodb::containers {
 
 template<class K, class V,
-         class Hash = iresearch_absl::container_internal::hash_default_hash<K>,
-         class Eq = iresearch_absl::container_internal::hash_default_eq<K>,
-         class Allocator = std::allocator<std::pair<const K, V>>>
-using NodeHashMap = iresearch_absl::node_hash_map<K, V, Hash, Eq, Allocator>;
+         class Hash = typename absl::node_hash_map<K, V>::hasher,
+         class Eq = typename absl::node_hash_map<K, V, Hash>::key_equal,
+         class Allocator =
+             typename absl::node_hash_map<K, V, Hash, Eq>::allocator_type>
+using NodeHashMap = absl::node_hash_map<K, V, Hash, Eq, Allocator>;
 
 }  // namespace arangodb::containers

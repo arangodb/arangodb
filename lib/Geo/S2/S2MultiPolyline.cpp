@@ -37,8 +37,6 @@ using std::vector;
 #include <s2/s2polyline.h>
 #include <s2/util/coding/coder.h>
 
-DECLARE_bool(s2debug);  // defined in s2.cc
-
 S2MultiPolyline::S2MultiPolyline() : lines_() {}
 
 S2MultiPolyline::S2MultiPolyline(vector<S2Polyline>&& lines)

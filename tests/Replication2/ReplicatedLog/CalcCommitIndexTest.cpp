@@ -36,7 +36,7 @@ using namespace arangodb::replication2::replicated_log;
 
 struct CalcCommitIndexTest : ::testing::Test {
   auto formatParticipantsAndQuorum(
-      std::vector<ParticipantStateTuple> const& participants,
+      std::vector<ParticipantState> const& participants,
       std::vector<ParticipantId> const& quorum) -> std::string {
     std::stringstream buf;
     buf << "participants: ";
@@ -61,7 +61,7 @@ struct CalcCommitIndexTest : ::testing::Test {
     return {LogTerm{1}, LogIndex{value}};
   }
 
-  auto verifyQuorum(std::vector<ParticipantStateTuple> const& participants,
+  auto verifyQuorum(std::vector<ParticipantState> const& participants,
                     std::vector<ParticipantId> const& quorum,
                     LogIndex const& expectedLogIndex,
                     LogTerm term = LogTerm{1}) {
@@ -77,7 +77,7 @@ struct CalcCommitIndexTest : ::testing::Test {
           [participantId](auto& pst) { return pst.id == participantId; });
       ASSERT_NE(participant, std::end(participants));
       EXPECT_GE(participant->lastIndex(), expectedLogIndex);
-      EXPECT_FALSE(participant->isExcluded());
+      EXPECT_TRUE(participant->isAllowedInQuorum());
       EXPECT_EQ(participant->lastTerm(), term);
       minIndex = std::min(minIndex, participant->lastIndex());
     }
@@ -102,10 +102,10 @@ struct CalcCommitIndexTest : ::testing::Test {
 
 TEST_F(CalcCommitIndexTest, write_concern_1_single_participant) {
   auto participants = std::vector{
-      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(50),
-                            .id = "A",
-                            .failed = false,
-                            .flags = {}},
+      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(50),
+                       .id = "A",
+                       .failed = false,
+                       .flags = {}},
   };
   auto expectedLogIndex = LogIndex{50};
 
@@ -121,18 +121,18 @@ TEST_F(CalcCommitIndexTest, write_concern_1_single_participant) {
 
 TEST_F(CalcCommitIndexTest, write_concern_2_3_participants) {
   auto participants = std::vector{
-      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(50),
-                            .id = "A",
-                            .failed = false,
-                            .flags = {}},
-      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(25),
-                            .id = "B",
-                            .failed = false,
-                            .flags = {}},
-      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(35),
-                            .id = "C",
-                            .failed = false,
-                            .flags = {}}};
+      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(50),
+                       .id = "A",
+                       .failed = false,
+                       .flags = {}},
+      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(25),
+                       .id = "B",
+                       .failed = false,
+                       .flags = {}},
+      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(35),
+                       .id = "C",
+                       .failed = false,
+                       .flags = {}}};
 
   auto expectedLogIndex = LogIndex{35};
 
@@ -150,18 +150,18 @@ TEST_F(CalcCommitIndexTest, write_concern_2_3_participants) {
 
 TEST_F(CalcCommitIndexTest, write_concern_0_3_participants) {
   auto participants = std::vector{
-      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(50),
-                            .id = "A",
-                            .failed = false,
-                            .flags = {}},
-      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(25),
-                            .id = "B",
-                            .failed = false,
-                            .flags = {}},
-      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(35),
-                            .id = "C",
-                            .failed = false,
-                            .flags = {}}};
+      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(50),
+                       .id = "A",
+                       .failed = false,
+                       .flags = {}},
+      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(25),
+                       .id = "B",
+                       .failed = false,
+                       .flags = {}},
+      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(35),
+                       .id = "C",
+                       .failed = false,
+                       .flags = {}}};
   auto expectedLogIndex = LogIndex{50};
 
   auto [index, reason, quorum] = algorithms::calculateCommitIndex(
@@ -177,18 +177,18 @@ TEST_F(CalcCommitIndexTest, write_concern_0_3_participants) {
 
 TEST_F(CalcCommitIndexTest, write_concern_3_3_participants) {
   auto participants = std::vector{
-      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(50),
-                            .id = "A",
-                            .failed = false,
-                            .flags = {}},
-      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(25),
-                            .id = "B",
-                            .failed = false,
-                            .flags = {}},
-      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(35),
-                            .id = "C",
-                            .failed = false,
-                            .flags = {}}};
+      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(50),
+                       .id = "A",
+                       .failed = false,
+                       .flags = {}},
+      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(25),
+                       .id = "B",
+                       .failed = false,
+                       .flags = {}},
+      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(35),
+                       .id = "C",
+                       .failed = false,
+                       .flags = {}}};
   auto expectedLogIndex = LogIndex{25};
 
   auto [index, reason, quorum] = algorithms::calculateCommitIndex(
@@ -207,13 +207,13 @@ TEST_F(CalcCommitIndexTest, includes_less_quorum_size) {
   // Three participants but only two are included
 
   auto participants = std::vector{
-      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(50),
-                            .id = "A",
-                            .flags = {.excluded = true}},
-      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(25),
-                            .id = "B"},
-      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(35),
-                            .id = "C"}};
+      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(50),
+                       .id = "A",
+                       .flags = {.allowedInQuorum = false}},
+      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(25),
+                       .id = "B"},
+      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(35),
+                       .id = "C"}};
   auto expectedLogIndex = LogIndex{1};
 
   auto [index, reason, quorum] = algorithms::calculateCommitIndex(
@@ -228,7 +228,8 @@ TEST_F(CalcCommitIndexTest, includes_less_quorum_size) {
           reason.value);
   EXPECT_EQ(details.candidates.size(), 1);
   EXPECT_EQ(details.candidates.at("A"),
-            CommitFailReason::NonEligibleServerRequiredForQuorum::kExcluded);
+            CommitFailReason::NonEligibleServerRequiredForQuorum::
+                kNotAllowedInQuorum);
 
   EXPECT_EQ(quorum.size(), 0);
   verifyQuorum(participants, quorum, expectedLogIndex);
@@ -240,13 +241,13 @@ TEST_F(CalcCommitIndexTest, excluded_and_forced) {
   // form a quorum for LogIndex{25}!)
 
   auto participants = std::vector{
-      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(50),
-                            .id = "A"},
-      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(25),
-                            .id = "B",
-                            .flags = {.forced = true, .excluded = true}},
-      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(35),
-                            .id = "C"},
+      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(50),
+                       .id = "A"},
+      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(25),
+                       .id = "B",
+                       .flags = {.forced = true, .allowedInQuorum = false}},
+      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(35),
+                       .id = "C"},
   };
   auto expectedLogIndex = LogIndex{25};
 
@@ -265,15 +266,15 @@ TEST_F(CalcCommitIndexTest, excluded_and_forced) {
 TEST_F(CalcCommitIndexTest, all_excluded) {
   // all participants are excluded.
   auto participants = std::vector{
-      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(50),
-                            .id = "A",
-                            .flags = {.excluded = true}},
-      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(25),
-                            .id = "B",
-                            .flags = {.excluded = true}},
-      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(35),
-                            .id = "C",
-                            .flags = {.excluded = true}},
+      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(50),
+                       .id = "A",
+                       .flags = {.allowedInQuorum = false}},
+      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(25),
+                       .id = "B",
+                       .flags = {.allowedInQuorum = false}},
+      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(35),
+                       .id = "C",
+                       .flags = {.allowedInQuorum = false}},
   };
   auto expectedLogIndex = LogIndex{1};
 
@@ -296,15 +297,15 @@ TEST_F(CalcCommitIndexTest, all_excluded) {
 TEST_F(CalcCommitIndexTest, all_forced) {
   // all participants are forced.
   auto participants = std::vector{
-      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(50),
-                            .id = "A",
-                            .flags = {.forced = true}},
-      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(25),
-                            .id = "B",
-                            .flags = {.forced = true}},
-      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(35),
-                            .id = "C",
-                            .flags = {.forced = true}},
+      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(50),
+                       .id = "A",
+                       .flags = {.forced = true}},
+      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(25),
+                       .id = "B",
+                       .flags = {.forced = true}},
+      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(35),
+                       .id = "C",
+                       .flags = {.forced = true}},
   };
   auto expectedLogIndex = LogIndex{25};
 
@@ -323,17 +324,17 @@ TEST_F(CalcCommitIndexTest, not_enough_eligible) {
   // Cannot reach quorum size, as participant "C" with
   // LogIndex{50} is excluded
   auto participants = std::vector{
-      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(50),
-                            .id = "A"},
-      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(35),
-                            .id = "B"},
-      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(50),
-                            .id = "C",
-                            .flags = {.excluded = true}},
-      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(35),
-                            .id = "D"},
-      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(15),
-                            .id = "E"},
+      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(50),
+                       .id = "A"},
+      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(35),
+                       .id = "B"},
+      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(50),
+                       .id = "C",
+                       .flags = {.allowedInQuorum = false}},
+      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(35),
+                       .id = "D"},
+      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(15),
+                       .id = "E"},
   };
   auto expectedLogIndex = LogIndex{35};
 
@@ -351,17 +352,17 @@ TEST_F(CalcCommitIndexTest, not_enough_eligible) {
 TEST_F(CalcCommitIndexTest, nothing_to_commit) {
   // Everyone is at LogIndex{15}, so there is nothing to do
   auto participants = std::vector{
-      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(15),
-                            .id = "A"},
-      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(15),
-                            .id = "B"},
-      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(15),
-                            .id = "C",
-                            .flags = {.excluded = true}},
-      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(15),
-                            .id = "D"},
-      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(15),
-                            .id = "E"},
+      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(15),
+                       .id = "A"},
+      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(15),
+                       .id = "B"},
+      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(15),
+                       .id = "C",
+                       .flags = {.allowedInQuorum = false}},
+      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(15),
+                       .id = "D"},
+      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(15),
+                       .id = "E"},
   };
   auto expectedLogIndex = LogIndex{15};
 
@@ -381,13 +382,13 @@ TEST_F(CalcCommitIndexTest, failed_participant) {
   // calculated commit index.
 
   auto participants = std::vector{
-      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(50),
-                            .id = "A",
-                            .failed = true},
-      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(25),
-                            .id = "B"},
-      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(35),
-                            .id = "C"},
+      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(50),
+                       .id = "A",
+                       .failed = true},
+      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(25),
+                       .id = "B"},
+      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(35),
+                       .id = "C"},
   };
   auto expectedLogIndex = LogIndex{35};
 
@@ -408,13 +409,13 @@ TEST_F(CalcCommitIndexTest, failed_and_forced) {
   // form a quorum for LogIndex{25}!)
 
   auto participants = std::vector{
-      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(50),
-                            .id = "A"},
-      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(25),
-                            .id = "B",
-                            .flags = {.forced = true, .excluded = true}},
-      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(35),
-                            .id = "C"},
+      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(50),
+                       .id = "A"},
+      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(25),
+                       .id = "B",
+                       .flags = {.forced = true, .allowedInQuorum = false}},
+      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(35),
+                       .id = "C"},
   };
   auto expectedLogIndex = LogIndex{25};
 
@@ -432,18 +433,18 @@ TEST_F(CalcCommitIndexTest, failed_and_forced) {
 
 TEST_F(CalcCommitIndexTest, failed_with_soft_write_concern) {
   auto participants = std::vector{
-      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(55),
-                            .id = "A",
-                            .failed = true},
-      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(15),
-                            .id = "B"},
-      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(25),
-                            .id = "C",
-                            .failed = true},
-      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(5),
-                            .id = "D"},
-      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(17),
-                            .id = "E"},
+      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(55),
+                       .id = "A",
+                       .failed = true},
+      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(15),
+                       .id = "B"},
+      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(25),
+                       .id = "C",
+                       .failed = true},
+      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(5),
+                       .id = "D"},
+      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(17),
+                       .id = "E"},
   };
   auto expectedLogIndex = LogIndex{17};
 
@@ -459,19 +460,19 @@ TEST_F(CalcCommitIndexTest, failed_with_soft_write_concern) {
 
 TEST_F(CalcCommitIndexTest, failed_with_reduced_soft_write_concern) {
   auto participants = std::vector{
-      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(55),
-                            .id = "A",
-                            .failed = true},
-      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(15),
-                            .id = "B"},
-      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(25),
-                            .id = "C",
-                            .failed = true},
-      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(5),
-                            .id = "D",
-                            .failed = true},
-      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(17),
-                            .id = "E"},
+      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(55),
+                       .id = "A",
+                       .failed = true},
+      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(15),
+                       .id = "B"},
+      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(25),
+                       .id = "C",
+                       .failed = true},
+      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(5),
+                       .id = "D",
+                       .failed = true},
+      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(17),
+                       .id = "E"},
   };
   auto expectedLogIndex = LogIndex{25};
 
@@ -489,18 +490,18 @@ TEST_F(CalcCommitIndexTest, failed_with_reduced_soft_write_concern) {
 
 TEST_F(CalcCommitIndexTest, smallest_failed) {
   auto participants = std::vector{
-      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(55),
-                            .id = "A",
-                            .failed = true},
-      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(15),
-                            .id = "B"},
-      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(25),
-                            .id = "C"},
-      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(5),
-                            .id = "D",
-                            .failed = true},
-      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(17),
-                            .id = "E"},
+      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(55),
+                       .id = "A",
+                       .failed = true},
+      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(15),
+                       .id = "B"},
+      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(25),
+                       .id = "C"},
+      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(5),
+                       .id = "D",
+                       .failed = true},
+      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(17),
+                       .id = "E"},
   };
   // Note that the effective writeConcern will be 3, due to 2 failed servers.
   auto expectedLogIndex = LogIndex{17};
@@ -517,18 +518,18 @@ TEST_F(CalcCommitIndexTest, smallest_failed) {
 
 TEST_F(CalcCommitIndexTest, nothing_to_commit_failed) {
   auto participants = std::vector{
-      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(55),
-                            .id = "A",
-                            .failed = true},
-      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(15),
-                            .id = "B"},
-      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(25),
-                            .id = "C"},
-      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(5),
-                            .id = "D",
-                            .failed = true},
-      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(17),
-                            .id = "E"},
+      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(55),
+                       .id = "A",
+                       .failed = true},
+      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(15),
+                       .id = "B"},
+      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(25),
+                       .id = "C"},
+      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(5),
+                       .id = "D",
+                       .failed = true},
+      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(17),
+                       .id = "E"},
   };
   // Note that the effective writeConcern will be 3, due to 2 failed servers.
   auto expectedLogIndex = LogIndex{17};
@@ -547,13 +548,13 @@ TEST_F(CalcCommitIndexTest, nothing_to_commit_failed) {
 TEST_F(CalcCommitIndexTest, write_concern_0_forced_flag) {
   // Everyone is at LogIndex{15}, so there is nothing to do
   auto participants = std::vector{
-      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(25),
-                            .id = "A",
-                            .flags = {.forced = true}},
-      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(15),
-                            .id = "B"},
-      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(55),
-                            .id = "C"},
+      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(25),
+                       .id = "A",
+                       .flags = {.forced = true}},
+      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(15),
+                       .id = "B"},
+      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(55),
+                       .id = "C"},
   };
   auto expectedLogIndex = LogIndex{25};
 
@@ -575,20 +576,20 @@ TEST_F(CalcCommitIndexTest, DISABLED_more_forced_than_quorum_size) {
   // forced participants in the quorum returned by
   // calculateCommitIndex, so this test is disabled
   auto participants = std::vector{
-      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(25),
-                            .id = "A",
-                            .flags = {.forced = true}},
-      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(25),
-                            .id = "B",
-                            .flags = {.forced = true}},
-      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(25),
-                            .id = "C"},
-      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(25),
-                            .id = "D",
-                            .flags = {.forced = true}},
-      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(25),
-                            .id = "E",
-                            .flags = {.forced = true}},
+      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(25),
+                       .id = "A",
+                       .flags = {.forced = true}},
+      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(25),
+                       .id = "B",
+                       .flags = {.forced = true}},
+      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(25),
+                       .id = "C"},
+      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(25),
+                       .id = "D",
+                       .flags = {.forced = true}},
+      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(25),
+                       .id = "E",
+                       .flags = {.forced = true}},
   };
   auto expectedLogIndex = LogIndex{25};
 
@@ -605,47 +606,70 @@ TEST_F(CalcCommitIndexTest, DISABLED_more_forced_than_quorum_size) {
 
 TEST_F(CalcCommitIndexTest, who_quorum_size_not_reached) {
   auto participants = std::vector{
-      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(50),
-                            .id = "A"},
-      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(25),
-                            .id = "B"},
-      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(35),
-                            .id = "C"}};
+      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(50),
+                       .id = "A"},
+      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(25),
+                       .id = "B"},
+      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(35),
+                       .id = "C"}};
 
+  auto const spearhead = createDefaultTermIndexPair(50);
   auto [index, reason, quorum] = algorithms::calculateCommitIndex(
-      participants, CalculateCommitIndexOptions{2, 2}, LogIndex{1},
-      createDefaultTermIndexPair(50));
+      participants, CalculateCommitIndexOptions{2, 2}, LogIndex{1}, spearhead);
 
-  EXPECT_EQ(reason, CommitFailReason::withQuorumSizeNotReached("C"));
+  auto who = CommitFailReason::QuorumSizeNotReached::who_type();
+  who["B"] = {.isFailed = false,
+              .isAllowedInQuorum = true,
+              .lastAcknowledged = participants[1].lastAckedEntry};
+  who["C"] = {.isFailed = false,
+              .isAllowedInQuorum = true,
+              .lastAcknowledged = participants[2].lastAckedEntry};
+  auto const expected =
+      CommitFailReason::withQuorumSizeNotReached(std::move(who), spearhead);
+  EXPECT_EQ(reason, expected)
+      << "Actual: " << basics::velocypackhelper::toJson(reason) << "\n"
+      << "Expected: " << basics::velocypackhelper::toJson(expected);
 }
 
 TEST_F(CalcCommitIndexTest, who_quorum_size_not_reached_multiple) {
   auto participants = std::vector{
-      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(25),
-                            .id = "A"},
-      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(25),
-                            .id = "B"},
-      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(25),
-                            .id = "C"}};
+      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(25),
+                       .id = "A"},
+      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(25),
+                       .id = "B"},
+      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(25),
+                       .id = "C"}};
 
+  auto const spearhead = createDefaultTermIndexPair(50);
   auto [index, reason, quorum] = algorithms::calculateCommitIndex(
-      participants, CalculateCommitIndexOptions{2, 2}, LogIndex{1},
-      createDefaultTermIndexPair(50));
+      participants, CalculateCommitIndexOptions{2, 2}, LogIndex{1}, spearhead);
 
-  EXPECT_TRUE(reason == CommitFailReason::withQuorumSizeNotReached("A") ||
-              reason == CommitFailReason::withQuorumSizeNotReached("B") ||
-              reason == CommitFailReason::withQuorumSizeNotReached("C"));
+  auto who = CommitFailReason::QuorumSizeNotReached::who_type();
+  who["A"] = {.isFailed = false,
+              .isAllowedInQuorum = true,
+              .lastAcknowledged = participants[0].lastAckedEntry};
+  who["B"] = {.isFailed = false,
+              .isAllowedInQuorum = true,
+              .lastAcknowledged = participants[1].lastAckedEntry};
+  who["C"] = {.isFailed = false,
+              .isAllowedInQuorum = true,
+              .lastAcknowledged = participants[2].lastAckedEntry};
+  auto const expected =
+      CommitFailReason::withQuorumSizeNotReached(std::move(who), spearhead);
+  EXPECT_EQ(reason, expected)
+      << "Actual: " << basics::velocypackhelper::toJson(reason) << "\n"
+      << "Expected: " << basics::velocypackhelper::toJson(expected);
 }
 
 TEST_F(CalcCommitIndexTest, who_forced_participant_not_in_quorum) {
   auto participants = std::vector{
-      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(50),
-                            .id = "A"},
-      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(25),
-                            .id = "B",
-                            .flags = {.forced = true, .excluded = true}},
-      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(35),
-                            .id = "C"},
+      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(50),
+                       .id = "A"},
+      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(25),
+                       .id = "B",
+                       .flags = {.forced = true, .allowedInQuorum = false}},
+      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(35),
+                       .id = "C"},
   };
   auto expectedLogIndex = LogIndex{25};
 
@@ -659,31 +683,41 @@ TEST_F(CalcCommitIndexTest, who_forced_participant_not_in_quorum) {
 
 TEST_F(CalcCommitIndexTest, who_failed_excluded) {
   auto participants = std::vector{
-      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(25),
-                            .id = "A",
-                            .failed = true},
-      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(50),
-                            .id = "B",
-                            .flags = {.excluded = true}}};
+      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(25),
+                       .id = "A",
+                       .failed = true},
+      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(50),
+                       .id = "B",
+                       .flags = {.allowedInQuorum = false}}};
 
   auto expectedLogIndex = LogIndex{25};
+  auto const spearhead = createDefaultTermIndexPair(50);
   auto [index, reason, quorum] = algorithms::calculateCommitIndex(
-      participants, CalculateCommitIndexOptions{1, 1}, LogIndex{1},
-      createDefaultTermIndexPair(50));
+      participants, CalculateCommitIndexOptions{1, 1}, LogIndex{1}, spearhead);
 
+  auto who = CommitFailReason::QuorumSizeNotReached::who_type();
+  who["A"] = {.isFailed = true,
+              .isAllowedInQuorum = true,
+              .lastAcknowledged = participants[0].lastAckedEntry};
+  who["B"] = {.isFailed = false,
+              .isAllowedInQuorum = false,
+              .lastAcknowledged = participants[1].lastAckedEntry};
   EXPECT_EQ(index, expectedLogIndex);
-  EXPECT_EQ(reason, (CommitFailReason::withQuorumSizeNotReached({"A"})))
-      << "Actual: " << basics::velocypackhelper::toJson(reason);
+  auto const expected =
+      CommitFailReason::withQuorumSizeNotReached(std::move(who), spearhead);
+  EXPECT_EQ(reason, expected)
+      << "Actual: " << basics::velocypackhelper::toJson(reason) << "\n"
+      << "Expected: " << basics::velocypackhelper::toJson(expected);
 }
 
 TEST_F(CalcCommitIndexTest, who_all_excluded) {
   auto participants = std::vector{
-      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(25),
-                            .id = "A",
-                            .flags = {.excluded = true}},
-      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(50),
-                            .id = "B",
-                            .flags = {.excluded = true}},
+      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(25),
+                       .id = "A",
+                       .flags = {.allowedInQuorum = false}},
+      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(50),
+                       .id = "B",
+                       .flags = {.allowedInQuorum = false}},
   };
 
   auto expectedLogIndex = LogIndex{1};
@@ -692,24 +726,23 @@ TEST_F(CalcCommitIndexTest, who_all_excluded) {
       createDefaultTermIndexPair(50));
 
   EXPECT_EQ(index, expectedLogIndex);
-  EXPECT_EQ(
-      reason,
-      (CommitFailReason::withNonEligibleServerRequiredForQuorum(
-          {{"A",
-            CommitFailReason::NonEligibleServerRequiredForQuorum::kExcluded},
-           {"B",
-            CommitFailReason::NonEligibleServerRequiredForQuorum::kExcluded}})))
+  EXPECT_EQ(reason,
+            (CommitFailReason::withNonEligibleServerRequiredForQuorum(
+                {{"A", CommitFailReason::NonEligibleServerRequiredForQuorum::
+                           kNotAllowedInQuorum},
+                 {"B", CommitFailReason::NonEligibleServerRequiredForQuorum::
+                           kNotAllowedInQuorum}})))
       << "Actual: " << basics::velocypackhelper::toJson(reason);
 }
 
 TEST_F(CalcCommitIndexTest, who_all_excluded_wrong_term) {
   auto participants = std::vector{
-      ParticipantStateTuple{
+      ParticipantState{
           .lastAckedEntry = TermIndexPair{LogTerm{1}, LogIndex{25}}, .id = "A"},
-      ParticipantStateTuple{
+      ParticipantState{
           .lastAckedEntry = TermIndexPair{LogTerm{2}, LogIndex{50}},
           .id = "B",
-          .flags = {.excluded = true}},
+          .flags = {.allowedInQuorum = false}},
   };
 
   auto expectedLogIndex = LogIndex{1};
@@ -723,41 +756,46 @@ TEST_F(CalcCommitIndexTest, who_all_excluded_wrong_term) {
       (CommitFailReason::withNonEligibleServerRequiredForQuorum(
           {{"A",
             CommitFailReason::NonEligibleServerRequiredForQuorum::kWrongTerm},
-           {"B",
-            CommitFailReason::NonEligibleServerRequiredForQuorum::kExcluded}})))
+           {"B", CommitFailReason::NonEligibleServerRequiredForQuorum::
+                     kNotAllowedInQuorum}})))
       << "Actual: " << basics::velocypackhelper::toJson(reason);
 }
 
 TEST_F(CalcCommitIndexTest, write_concern_too_big) {
   auto participants = std::vector{
-      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(50),
-                            .id = "A",
-                            .failed = false},
-      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(25),
-                            .id = "B",
-                            .flags = {.excluded = false}},
-      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(15),
-                            .id = "C",
-                            .flags = {.excluded = false}}};
+      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(50),
+                       .id = "A",
+                       .failed = false},
+      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(25),
+                       .id = "B",
+                       .flags = {.allowedInQuorum = true}},
+      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(15),
+                       .id = "C",
+                       .flags = {.allowedInQuorum = true}}};
 
   auto expectedLogIndex = LogIndex{1};
   auto [index, reason, quorum] = algorithms::calculateCommitIndex(
-      participants, CalculateCommitIndexOptions{100, 100}, LogIndex{1},
+      participants, CalculateCommitIndexOptions{4, 6}, LogIndex{1},
       createDefaultTermIndexPair(50));
 
-  EXPECT_TRUE(reason == CommitFailReason::withQuorumSizeNotReached("C"));
+  EXPECT_EQ(reason, CommitFailReason::withFewerParticipantsThanWriteConcern(
+                        {.writeConcern = 4,
+                         .softWriteConcern = 6,
+                         .effectiveWriteConcern = 4,
+                         .numParticipants = 3}))
+      << "Actual: " << basics::velocypackhelper::toJson(reason);
   EXPECT_EQ(index, expectedLogIndex);
 }
 
 TEST_F(CalcCommitIndexTest, who_forced_participant_in_wrong_term) {
   auto participants = std::vector{
-      ParticipantStateTuple{
+      ParticipantState{
           .lastAckedEntry = TermIndexPair(LogTerm{2}, LogIndex{50}), .id = "A"},
-      ParticipantStateTuple{
+      ParticipantState{
           .lastAckedEntry = TermIndexPair(LogTerm{1}, LogIndex{200}),
           .id = "B",
-          .flags = {.forced = true, .excluded = false}},
-      ParticipantStateTuple{
+          .flags = {.forced = true, .allowedInQuorum = true}},
+      ParticipantState{
           .lastAckedEntry = TermIndexPair(LogTerm{2}, LogIndex{50}), .id = "C"},
   };
   auto expectedLogIndex = LogIndex{1};
@@ -772,11 +810,11 @@ TEST_F(CalcCommitIndexTest, who_forced_participant_in_wrong_term) {
 
 TEST_F(CalcCommitIndexTest, non_eligible_participant_in_wrong_term) {
   auto participants = std::vector{
-      ParticipantStateTuple{
+      ParticipantState{
           .lastAckedEntry = TermIndexPair(LogTerm{2}, LogIndex{50}), .id = "A"},
-      ParticipantStateTuple{
+      ParticipantState{
           .lastAckedEntry = TermIndexPair(LogTerm{1}, LogIndex{25}), .id = "B"},
-      ParticipantStateTuple{
+      ParticipantState{
           .lastAckedEntry = TermIndexPair(LogTerm{2}, LogIndex{50}), .id = "C"},
   };
   auto expectedLogIndex = LogIndex{50};
@@ -791,17 +829,17 @@ TEST_F(CalcCommitIndexTest, non_eligible_participant_in_wrong_term) {
 
 TEST_F(CalcCommitIndexTest, who_non_eligible_required) {
   auto participants = std::vector{
-      ParticipantStateTuple{
+      ParticipantState{
           .lastAckedEntry = TermIndexPair{LogTerm{2}, LogIndex{50}},
           .id = "A",
-          .flags = {.excluded = true}},
-      ParticipantStateTuple{
+          .flags = {.allowedInQuorum = false}},
+      ParticipantState{
           .lastAckedEntry = TermIndexPair{LogTerm{2}, LogIndex{25}},
           .id = "B",
-          .flags = {.excluded = true}},
-      ParticipantStateTuple{
+          .flags = {.allowedInQuorum = false}},
+      ParticipantState{
           .lastAckedEntry = TermIndexPair{LogTerm{1}, LogIndex{15}}, .id = "C"},
-      ParticipantStateTuple{
+      ParticipantState{
           .lastAckedEntry = TermIndexPair{LogTerm{2}, LogIndex{15}}, .id = "D"},
   };
 
@@ -811,14 +849,13 @@ TEST_F(CalcCommitIndexTest, who_non_eligible_required) {
       TermIndexPair{LogTerm{2}, LogIndex{50}});
 
   EXPECT_EQ(index, expectedLogIndex);
-  EXPECT_EQ(
-      reason,
-      (CommitFailReason::withNonEligibleServerRequiredForQuorum(
-          {{"A",
-            CommitFailReason::NonEligibleServerRequiredForQuorum::kExcluded},
-           {"B",
-            CommitFailReason::NonEligibleServerRequiredForQuorum::kExcluded},
-           {"C", CommitFailReason::NonEligibleServerRequiredForQuorum::
-                     kWrongTerm}})))
+  EXPECT_EQ(reason,
+            (CommitFailReason::withNonEligibleServerRequiredForQuorum(
+                {{"A", CommitFailReason::NonEligibleServerRequiredForQuorum::
+                           kNotAllowedInQuorum},
+                 {"B", CommitFailReason::NonEligibleServerRequiredForQuorum::
+                           kNotAllowedInQuorum},
+                 {"C", CommitFailReason::NonEligibleServerRequiredForQuorum::
+                           kWrongTerm}})))
       << "Actual: " << basics::velocypackhelper::toJson(reason);
 }

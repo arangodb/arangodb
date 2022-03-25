@@ -79,6 +79,8 @@ function shellClient (options) {
 
   var opts = ensureServers(options, 3);
   opts = ensureCoordinators(opts, 2);
+  opts['httpTrustedOrigin'] =  'http://was-erlauben-strunz.it';
+
   // increase timeouts after which servers count as BAD/FAILED.
   // we want this to ensure that in an overload situation we do not
   // get random failedLeader / failedFollower jobs during our tests.

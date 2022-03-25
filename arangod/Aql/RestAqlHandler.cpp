@@ -26,8 +26,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AqlCallStack.h"
 #include "Aql/AqlExecuteResult.h"
-#include "Aql/AqlItemBlock.h"
-#include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/BlocksWithClients.h"
 #include "Aql/ClusterQuery.h"
 #include "Aql/ExecutionBlock.h"
@@ -41,7 +39,6 @@
 #include "Basics/tri-strings.h"
 #include "Cluster/CallbackGuard.h"
 #include "Cluster/ClusterFeature.h"
-#include "Cluster/ClusterInfo.h"
 #include "Cluster/RebootTracker.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/TraverserEngine.h"
@@ -49,7 +46,6 @@
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
 #include "Transaction/Context.h"
-#include "Transaction/Methods.h"
 
 #include <velocypack/Iterator.h>
 

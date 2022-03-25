@@ -37,6 +37,9 @@ namespace arangodb::replication2::agency {
 struct from_velocypack_t {};
 inline constexpr auto from_velocypack = from_velocypack_t{};
 
+using ParticipantsFlagsMap =
+    std::unordered_map<ParticipantId, ParticipantFlags>;
+
 struct LogPlanTermSpecification {
   LogTerm term;
   LogConfig config;
@@ -44,6 +47,10 @@ struct LogPlanTermSpecification {
     ParticipantId serverId;
     RebootId rebootId;
 
+    Leader(ParticipantId const& participant, RebootId const& rebootId)
+        : serverId{participant}, rebootId{rebootId} {}
+    Leader(from_velocypack_t, VPackSlice);
+    auto toVelocyPack(VPackBuilder&) const -> void;
     friend auto operator==(Leader const&, Leader const&) noexcept
         -> bool = default;
   };
@@ -92,16 +99,6 @@ struct LogCurrentLocalState {
 };
 
 struct LogCurrentSupervisionElection {
-  // TODO: I would really like the Election type to be
-  //       a tagged union, but it is such a pain to implement
-  //       so I currently hacked the possible outcomes of an
-  //       election in here.
-  enum class Outcome {
-    SUCCESS = 0,     // A new leader has been selected
-    IMPOSSIBLE = 1,  // Election is impossible because the number of
-                     // participants + 1 is less than writeConcern
-    FAILED = 2,      // The election failed
-  };
   // This error code applies to participants, not to
   // the election itself
   enum class ErrorCode {
@@ -111,7 +108,6 @@ struct LogCurrentSupervisionElection {
     SERVER_EXCLUDED = 3
   };
 
-  std::optional<Outcome> outcome{std::nullopt};
   LogTerm term;
 
   TermIndexPair bestTermIndex;
@@ -143,14 +139,11 @@ auto to_string(LogCurrentSupervisionElection::ErrorCode) noexcept
 auto toVelocyPack(LogCurrentSupervisionElection::ErrorCode, VPackBuilder&)
     -> void;
 
-auto to_string(LogCurrentSupervisionElection::Outcome) noexcept
-    -> std::string_view;
-auto toVelocyPack(LogCurrentSupervisionElection::Outcome, VPackBuilder&)
-    -> void;
-
 enum class LogCurrentSupervisionError {
   TARGET_LEADER_INVALID,
-  TARGET_LEADER_EXCLUDED
+  TARGET_LEADER_EXCLUDED,
+  GENERAL_ERROR  // TODO: Using this whilw refactoring
+                 // other code; needs to be improved
 };
 
 auto to_string(LogCurrentSupervisionError) noexcept -> std::string_view;
@@ -159,6 +152,7 @@ auto toVelocyPack(LogCurrentSupervisionError, VPackBuilder&) -> void;
 struct LogCurrentSupervision {
   std::optional<LogCurrentSupervisionElection> election;
   std::optional<LogCurrentSupervisionError> error;
+  std::optional<std::string> statusMessage;
 
   auto toVelocyPack(VPackBuilder&) const -> void;
 
@@ -193,10 +187,8 @@ struct LogCurrent {
 };
 
 struct LogTarget {
-  using Participants = std::unordered_map<ParticipantId, ParticipantFlags>;
-
   LogId id;
-  Participants participants;
+  ParticipantsFlagsMap participants;
   LogConfig config;
 
   std::optional<ParticipantId> leader;
@@ -221,7 +213,7 @@ struct LogTarget {
   LogTarget(from_velocypack_t, VPackSlice);
   LogTarget() = default;
 
-  LogTarget(LogId id, Participants const& participants,
+  LogTarget(LogId id, ParticipantsFlagsMap const& participants,
             LogConfig const& config);
 };
 
