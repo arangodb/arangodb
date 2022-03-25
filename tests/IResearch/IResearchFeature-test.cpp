@@ -1291,7 +1291,8 @@ TEST_F(IResearchFeatureTest, test_options_threads_set_zero) {
 
   opts->processingResult().touch("arangosearch.threads");
 
-  uint32_t const expectedNumThreads = std::max(1U, uint32_t(arangodb::NumberOfCores::getValue()) / 8);
+  uint32_t const expectedNumThreads = std::max(
+      1U, std::min(4U, (uint32_t(arangodb::NumberOfCores::getValue()) / 8)));
   feature.validateOptions(opts);
   ASSERT_EQ(0, *threads->ptr);
   ASSERT_EQ(0, *threadsLimit->ptr);
