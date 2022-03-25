@@ -228,11 +228,7 @@ struct Access<std::optional<T>> {
   [[nodiscard]] static Status loadField(Inspector& f,
                                         [[maybe_unused]] std::string_view name,
                                         bool isPresent, std::optional<T>& val) {
-    if (isPresent) {
-      return f.apply(val);
-    }
-    val.reset();
-    return {};
+    return loadField(f, name, isPresent, val, [](auto& v) { v.reset(); });
   }
 
   template<class Inspector, class ApplyFallback>
@@ -251,6 +247,15 @@ struct Access<std::optional<T>> {
   [[nodiscard]] static Status loadTransformedField(
       Inspector& f, [[maybe_unused]] std::string_view name, bool isPresent,
       std::optional<T>& val, Transformer& transformer) {
+    return loadTransformedField(
+        f, name, isPresent, val, [](auto& v) { v.reset(); }, transformer);
+  }
+
+  template<class Inspector, class ApplyFallback, class Transformer>
+  [[nodiscard]] static Status loadTransformedField(
+      Inspector& f, std::string_view name, bool isPresent,
+      std::optional<T>& val, ApplyFallback&& applyFallback,
+      Transformer& transformer) {
     if (isPresent) {
       std::optional<typename Transformer::SerializedType> v;
       auto load = [&]() -> Status {
@@ -265,18 +270,6 @@ struct Access<std::optional<T>> {
       };
       return f.apply(v)  //
              | load;     //
-    }
-    val.reset();
-    return {};
-  }
-
-  template<class Inspector, class ApplyFallback, class Transformer>
-  [[nodiscard]] static Status loadTransformedField(
-      Inspector& f, std::string_view name, bool isPresent,
-      std::optional<T>& val, ApplyFallback&& applyFallback,
-      Transformer& transformer) {
-    if (isPresent) {
-      return loadTransformedField(f, name, isPresent, val, transformer);
     }
     std::forward<ApplyFallback>(applyFallback)(val);
     return {};
@@ -314,15 +307,9 @@ struct PointerAccess {
   }
 
   template<class Inspector>
-  [[nodiscard]] static Status loadField(Inspector& f,
-                                        [[maybe_unused]] std::string_view name,
+  [[nodiscard]] static Status loadField(Inspector& f, std::string_view name,
                                         bool isPresent, T& val) {
-    if (isPresent) {
-      val = Derived::make();  // TODO - reuse existing object?
-      return f.apply(val);
-    }
-    val.reset();
-    return {};
+    return loadField(f, name, isPresent, val, [](auto& v) { v.reset(); });
   }
 
   template<class Inspector, class ApplyFallback>
