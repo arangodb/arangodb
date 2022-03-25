@@ -199,7 +199,7 @@ const replicatedStateSuite = function () {
           });
 
       lh.waitFor(spreds.replicatedStateVersionConverged(database, stateId, newVersion));
-    }
+    },
 
     testSetLeader: function () {
       const {stateId, followers} = createReplicatedState();
