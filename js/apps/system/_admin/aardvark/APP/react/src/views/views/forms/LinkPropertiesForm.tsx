@@ -44,14 +44,26 @@ const LinkPropertiesForm = ({ disabled, view }: FormProps<FormState>) => {
     .value()[0];
 
   const getLink = (str: string) => {
-    console.log(str);
     let formatedStr;
+    let parentField;
+
+    const replaceSquareBrackets = (
+      str: string,
+      idnt: string,
+      index: number
+    ) => {
+      return str.split(idnt)[index].replace("]", "");
+    };
     if (str !== "") {
-      const toReturn = str.split("[")[1].replace("]", "");
-      if (toReturn.includes(".")) {
-        formatedStr = toReturn.split(".")[0];
+      let link = replaceSquareBrackets(str, "[", 1);
+      formatedStr = link;
+      if (str.includes(".")) {
+        link = replaceSquareBrackets(str.split(".")[0], "[", 1);
+        parentField = replaceSquareBrackets(str.split(".")[1], "[", 1);
+        formatedStr = `${link}/${parentField}`;
+        debugger;
       } else {
-        formatedStr = toReturn;
+        formatedStr = link;
       }
     }
     return formatedStr;
