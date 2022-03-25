@@ -28,6 +28,7 @@
 #include "Futures/Future.h"
 #include "Replication2/ReplicatedState/ReplicatedState.h"
 #include "Replication2/ReplicatedState/StateInterfaces.h"
+#include "PrototypeLogEntry.h"
 
 #if (_MSC_VER >= 1)
 // suppress warnings:
@@ -90,20 +91,6 @@ struct PrototypeState {
   using EntryType = PrototypeLogEntry;
   using FactoryType = PrototypeFactory;
   using CoreType = PrototypeCore;
-};
-
-struct PrototypeLogEntry {
-  struct InsertOperation {
-    std::unordered_map<std::string, std::string> entries;
-  };
-  struct DeleteOperation {
-    std::string key;
-  };
-  struct BulkDeleteOperation {
-    std::vector<std::string> keys;
-  };
-
-  std::variant<DeleteOperation, InsertOperation, BulkDeleteOperation> operation;
 };
 
 struct PrototypeCore {
@@ -195,7 +182,7 @@ auto PrototypeLeaderState::set(Iterator begin, Iterator end)
   auto stream = getStream();
 
   PrototypeLogEntry entry{
-      PrototypeLogEntry::InsertOperation{.entries = {begin, end}}};
+      PrototypeLogEntry::InsertOperation{.map = {begin, end}}};
   auto idx = stream->insert(entry);
 
   return stream->waitFor(idx).thenValue(

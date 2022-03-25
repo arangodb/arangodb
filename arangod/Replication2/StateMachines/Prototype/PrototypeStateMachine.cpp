@@ -31,6 +31,7 @@
 #include "PrototypeStateMachine.h"
 
 #include <rocksdb/utilities/transaction_db.h>
+#include "PrototypeLogEntry.h"
 #include <utility>
 
 using namespace arangodb;
@@ -50,7 +51,7 @@ void PrototypeCore::applyEntries(std::unique_ptr<EntryIterator> ptr) {
                      store = store.erase(op.key);
                    },
                    [&](PrototypeLogEntry::InsertOperation const& op) {
-                     for (auto const& [key, value] : op.entries) {
+                     for (auto const& [key, value] : op.map) {
                        store = store.set(key, value);
                      }
                    },
@@ -60,7 +61,7 @@ void PrototypeCore::applyEntries(std::unique_ptr<EntryIterator> ptr) {
                      }
                    },
                },
-               logEntry.operation);
+               logEntry.op);
   }
   resolvePromises(lastAppliedIndex);
 }

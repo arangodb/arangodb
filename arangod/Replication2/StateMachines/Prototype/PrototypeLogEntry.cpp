@@ -23,12 +23,36 @@
 
 #include "PrototypeLogEntry.h"
 
-#include "Basics/overload.h"
-#include "Inspection/VPack.h"
-#include "Inspection/VPackLoadInspector.h"
-
 using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_state;
 using namespace arangodb::replication2::replicated_state::prototype;
-using namespace arangodb::velocypack;
+
+auto PrototypeLogEntry::getType() noexcept -> std::string_view {
+  return std::visit(
+      overload{
+          [](PrototypeLogEntry::DeleteOperation const& o) { return kDelete; },
+          [](PrototypeLogEntry::InsertOperation const& o) { return kInsert; },
+          [](PrototypeLogEntry::BulkDeleteOperation const& o) {
+            return kBulkDelete;
+          },
+      },
+      op);
+}
+
+auto replicated_state::EntryDeserializer<
+    replicated_state::prototype::PrototypeLogEntry>::
+operator()(
+    streams::serializer_tag_t<replicated_state::prototype::PrototypeLogEntry>,
+    velocypack::Slice s) const
+    -> replicated_state::prototype::PrototypeLogEntry {
+  return deserialize<prototype::PrototypeLogEntry>(s);
+}
+
+void replicated_state::EntrySerializer<
+    replicated_state::prototype::PrototypeLogEntry>::
+operator()(
+    streams::serializer_tag_t<replicated_state::prototype::PrototypeLogEntry>,
+    prototype::PrototypeLogEntry const& e, velocypack::Builder& b) const {
+  return serialize(b, e);
+}
