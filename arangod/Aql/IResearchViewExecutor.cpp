@@ -1269,7 +1269,7 @@ void IResearchViewExecutor<copyStored, ordered, materializeType>::fillBuffer(
     // The CID must stay the same for all documents in the buffer
     TRI_ASSERT(this->_collection->id() == this->_reader->cid(_readerOffset));
 
-    this->_indexReadBuffer.pushValue(documentId, this->_collection);
+    this->_indexReadBuffer.pushValue(documentId);
 
     // in the ordered case we have to write scores as well as a document
     if constexpr (ordered) {
@@ -1898,6 +1898,28 @@ template class ::arangodb::aql::IResearchViewMergeExecutor<
     MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>;
 template class ::arangodb::aql::IResearchViewMergeExecutor<
     true, true,
+    MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>;
+
+template class ::arangodb::aql::IResearchViewHeapSortExecutor<
+    false, false, MaterializeType::NotMaterialize>;
+template class ::arangodb::aql::IResearchViewHeapSortExecutor<
+    false, false, MaterializeType::LateMaterialize>;
+template class ::arangodb::aql::IResearchViewHeapSortExecutor<
+    false, false, MaterializeType::Materialize>;
+template class ::arangodb::aql::IResearchViewHeapSortExecutor<
+    false, false,
+    MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>;
+template class ::arangodb::aql::IResearchViewHeapSortExecutor<
+    false, false,
+    MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>;
+
+// stored values copying implementation should be used only when stored values
+// are used
+template class ::arangodb::aql::IResearchViewHeapSortExecutor<
+    true, false,
+    MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>;
+template class ::arangodb::aql::IResearchViewHeapSortExecutor<
+    true, false,
     MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>;
 
 template class ::arangodb::aql::IResearchViewHeapSortExecutor<

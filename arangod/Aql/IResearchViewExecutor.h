@@ -697,9 +697,6 @@ struct HeapSortExecutorValue {
     collection.collection = col;
   }
 
-  HeapSortExecutorValue(HeapSortExecutorValue const& other) = default;
-  HeapSortExecutorValue(HeapSortExecutorValue&& other) = default;
-
   [[nodiscard]] irs::doc_id_t irsDocId() const noexcept {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     TRI_ASSERT(!decoded);
