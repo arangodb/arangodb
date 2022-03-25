@@ -179,14 +179,36 @@ const replicatedStateSuite = function () {
       }));
     },
 
+    testUpdateVersionTest: function () {
+      const {stateId} = createReplicatedState();
+
+      const version = 4;
+      updateReplicatedStateTarget(database, stateId,
+          function (target) {
+            target.version = version;
+            return target;
+          });
+
+      lh.waitFor(spreds.replicatedStateVersionConverged(database, stateId, version));
+
+      const newVersion = 6;
+      updateReplicatedStateTarget(database, stateId,
+          function (target) {
+            target.version = newVersion;
+            return target;
+          });
+
+      lh.waitFor(spreds.replicatedStateVersionConverged(database, stateId, newVersion));
+    },
+
     testSetLeader: function () {
       const {stateId, followers} = createReplicatedState();
       const newLeader = _.sample(followers);
       updateReplicatedStateTarget(database, stateId,
-        (target) => {
-          target.leader = newLeader;
-          return target;
-        });
+          (target) => {
+            target.leader = newLeader;
+            return target;
+          });
       lh.waitFor(() => {
         const currentLeader = lh.getReplicatedLogLeaderTarget(database, stateId);
         if (currentLeader === newLeader) {
@@ -208,10 +230,10 @@ const replicatedStateSuite = function () {
     testUnsetLeader: function () {
       const {stateId} = createReplicatedState();
       updateReplicatedStateTarget(database, stateId,
-        (target) => {
-          delete target.leader;
-          return target;
-        });
+          (target) => {
+            delete target.leader;
+            return target;
+          });
       lh.waitFor(() => {
         const currentLeader = lh.getReplicatedLogLeaderTarget(database, stateId);
         if (currentLeader === undefined) {

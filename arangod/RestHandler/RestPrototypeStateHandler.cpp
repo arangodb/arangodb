@@ -29,6 +29,7 @@
 #include <Network/Methods.h>
 #include <Network/NetworkFeature.h>
 #include <Cluster/ClusterFeature.h>
+#include "Inspection/VPack.h"
 
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/StateMachines/Prototype/PrototypeStateMethods.h"
@@ -67,6 +68,32 @@ RestStatus RestPrototypeStateHandler::executeByMethod(
   return RestStatus::DONE;
 }
 
+RestStatus RestPrototypeStateHandler::handleCreateState(
+    replication2::PrototypeStateMethods const& methods,
+    velocypack::Slice payload) {
+  auto options = velocypack::deserialize<
+      replication2::PrototypeStateMethods::CreateOptions>(payload);
+
+  bool isWaitForReady = options.waitForReady;
+  return waitForFuture(
+      methods.createState(std::move(options))
+          .thenValue(
+              [&, isWaitForReady](
+                  ResultT<replication2::PrototypeStateMethods::CreateResult>&&
+                      createResult) {
+                if (createResult.ok()) {
+                  VPackBuilder result;
+                  velocypack::serialize(result, createResult.get());
+                  generateOk(isWaitForReady ? rest::ResponseCode::CREATED
+                                            : rest::ResponseCode::ACCEPTED,
+                             result.slice());
+                } else {
+                  generateError(createResult.result());
+                }
+                return RestStatus::DONE;
+              }));
+}
+
 RestStatus RestPrototypeStateHandler::handlePostRequest(
     PrototypeStateMethods const& methods) {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
@@ -75,6 +102,10 @@ RestStatus RestPrototypeStateHandler::handlePostRequest(
   VPackSlice body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess) {  // error message generated in parseVPackBody
     return RestStatus::DONE;
+  }
+
+  if (suffixes.size() == 0) {
+    return handleCreateState(methods, body);
   }
 
   if (suffixes.size() != 2) {
@@ -181,13 +212,30 @@ RestStatus RestPrototypeStateHandler::handlePostRetrieveMulti(
 RestStatus RestPrototypeStateHandler::handleGetRequest(
     PrototypeStateMethods const& methods) {
   std::vector<std::string> const& suffixes = _request->suffixes();
+  if (suffixes.empty()) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "expect GET /_api/prototype-state/<state-id>");
+    return RestStatus::DONE;
+  }
+  LogId logId{basics::StringUtils::uint64(suffixes[0])};
+  if (suffixes.size() == 1) {
+    return waitForFuture(methods.status(logId).thenValue([&](auto&& result) {
+      if (result.fail()) {
+        generateError(result.result());
+      } else {
+        VPackBuilder response;
+        velocypack::serialize(response, result.get());
+        generateOk(rest::ResponseCode::OK, response.slice());
+      }
+      return RestStatus::DONE;
+    }));
+  }
+
   if (suffixes.size() < 2) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expect GET /_api/prototype-state/<state-id>/[verb]");
     return RestStatus::DONE;
   }
-
-  LogId logId{basics::StringUtils::uint64(suffixes[0])};
   auto const& verb = suffixes[1];
   if (verb == "entry") {
     return handleGetEntry(methods, logId);
