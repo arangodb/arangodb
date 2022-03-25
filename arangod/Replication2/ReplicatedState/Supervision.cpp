@@ -59,9 +59,9 @@ auto checkStateAdded(replication2::replicated_state::agency::State const& state)
   }
 }
 
-auto checkLeaderSet(
-    arangodb::replication2::agency::Log const& log,
-    replication2::replicated_state::agency::State const& state) -> Action {
+auto checkLeaderSet(arangodb::replication2::agency::Log const& log,
+                    replication2::replicated_state::agency::State const& state)
+    -> Action {
   auto const& targetLeader = state.target.leader;
 
   auto const& planLeader = log.target.leader;
