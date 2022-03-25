@@ -69,22 +69,18 @@ void LeaderStateManager<S>::run() {
           }
           LOG_CTX("53ba0", TRACE, self->loggerContext)
               << "creating leader instance and starting recovery";
-          auto machine = self->guardedData.doUnderLock(
-              [&](GuardedData& data)
-                  -> std::shared_ptr<IReplicatedLeaderState<S>> {
-                if (data.core == nullptr) {
-                  LOG_CTX("6d9ee", DEBUG, self->loggerContext)
-                      << "core already gone";
-                  return nullptr;
-                }
-                data.updateInternalState(
-                    LeaderInternalState::kRecoveryInProgress, result->range());
-                return self->factory->constructLeader(std::move(data.core));
-              });
-          if (machine == nullptr) {
+          auto core = self->guardedData.doUnderLock([&](GuardedData& data) {
+            data.updateInternalState(LeaderInternalState::kRecoveryInProgress,
+                                     result->range());
+            return std::move(data.core);
+          });
+          if (core == nullptr) {
+            LOG_CTX("6d9ee", DEBUG, self->loggerContext) << "core already gone";
             return futures::Future<Result>{
                 TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED};
           }
+          std::shared_ptr<IReplicatedLeaderState<S>> machine =
+              self->factory->constructLeader(std::move(core));
           return machine->recoverEntries(std::move(result))
               .then([weak, machine](
                         futures::Try<Result>&& tryResult) mutable -> Result {
@@ -97,17 +93,29 @@ void LeaderStateManager<S>::run() {
                   if (auto result = tryResult.get(); result.ok()) {
                     LOG_CTX("1a375", DEBUG, self->loggerContext)
                         << "recovery on leader completed";
-                    self->guardedData.doUnderLock([&](GuardedData& data) {
-                      data.state = machine;
-                      data.token->snapshot.updateStatus(
-                          SnapshotStatus::kCompleted);
-                      data.updateInternalState(
-                          LeaderInternalState::kServiceAvailable);
-                      data.state->_stream = data.stream;
-                    });
+                    bool waitForResigned =
+                        self->guardedData.doUnderLock([&](GuardedData& data) {
+                          if (data.token == nullptr) {
+                            LOG_CTX("59a31", DEBUG, self->loggerContext)
+                                << "token already gone";
+                            return false;
+                          }
+                          data.state = machine;
+                          data.token->snapshot.updateStatus(
+                              SnapshotStatus::kCompleted);
+                          data.updateInternalState(
+                              LeaderInternalState::kServiceAvailable);
+                          data.state->_stream = data.stream;
+                          return true;
+                        });
 
-                    self->beginWaitingForParticipantResigned();
-                    return result;
+                    if (waitForResigned) {
+                      self->beginWaitingForParticipantResigned();
+                      return result;
+                    } else {
+                      return Result{
+                          TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED};
+                    }
                   } else {
                     LOG_CTX("3fd49", FATAL, self->loggerContext)
                         << "recovery failed with error: "
@@ -126,26 +134,29 @@ void LeaderStateManager<S>::run() {
               });
         });
       })
-      .thenFinal(
-          [weak = this->weak_from_this()](futures::Try<Result>&& result) {
-            auto self = weak.lock();
-            if (self == nullptr) {
-              return;
-            }
-            try {
-              auto res = result.get();  // throws exceptions
-              TRI_ASSERT(res.ok());
-            } catch (std::exception const& e) {
-              LOG_CTX("e73bc", FATAL, self->loggerContext)
-                  << "Unexpected exception in leader startup procedure: "
-                  << e.what();
-              FATAL_ERROR_EXIT();
-            } catch (...) {
-              LOG_CTX("4d2b7", FATAL, self->loggerContext)
-                  << "Unexpected exception in leader startup procedure";
-              FATAL_ERROR_EXIT();
-            }
-          });
+      .thenFinal([weak =
+                      this->weak_from_this()](futures::Try<Result>&& result) {
+        auto self = weak.lock();
+        if (self == nullptr) {
+          return;
+        }
+        try {
+          auto res = result.get();  // throws exceptions
+          if (res.is(TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED)) {
+            return;
+          }
+          TRI_ASSERT(res.ok());
+        } catch (std::exception const& e) {
+          LOG_CTX("e73bc", FATAL, self->loggerContext)
+              << "Unexpected exception in leader startup procedure: "
+              << e.what();
+          FATAL_ERROR_EXIT();
+        } catch (...) {
+          LOG_CTX("4d2b7", FATAL, self->loggerContext)
+              << "Unexpected exception in leader startup procedure";
+          FATAL_ERROR_EXIT();
+        }
+      });
 }
 
 template<typename S>
