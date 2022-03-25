@@ -97,6 +97,8 @@ struct Target {
 
   Properties properties;
 
+  std::optional<ParticipantId> leader;
+
   struct Participant {
     void toVelocyPack(velocypack::Builder& builder) const;
     [[nodiscard]] static auto fromVelocyPack(velocypack::Slice) -> Participant;

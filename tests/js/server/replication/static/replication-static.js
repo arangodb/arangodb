@@ -35,6 +35,7 @@ const arangodb = require('@arangodb');
 const errors = arangodb.errors;
 const db = arangodb.db;
 const _ = require('lodash');
+const userManager = require("@arangodb/users");
 
 const replication = require('@arangodb/replication');
 const compareTicks = require('@arangodb/replication-common').compareTicks;
@@ -171,6 +172,14 @@ function BaseTestConfig () {
   'use strict';
 
   return {
+    tearDownAll: function() {
+      db._flushCache();
+      db._users.toArray().forEach(user => {
+        if (user.user !== "root") {
+          userManager.remove(user.user);
+        }
+      });
+    },
 
     // /////////////////////////////////////////////////////////////////////////////
     //  @brief test invalid credentials

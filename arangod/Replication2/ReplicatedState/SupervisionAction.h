@@ -148,8 +148,19 @@ struct UpdateParticipantFlagsAction {
   }
 };
 
-using Action = std::variant<EmptyAction, AddParticipantAction,
-                            AddStateToPlanAction, UpdateParticipantFlagsAction>;
+struct SetLeaderAction {
+  std::optional<ParticipantId> leader;
+
+  void execute(ActionContext& ctx) {
+    ctx.modifyLogTarget([&](replication2::agency::LogTarget& target) {
+      target.leader = leader;
+    });
+  }
+};
+
+using Action =
+    std::variant<EmptyAction, AddParticipantAction, AddStateToPlanAction,
+                 UpdateParticipantFlagsAction, SetLeaderAction>;
 
 auto execute(LogId id, DatabaseID const& database, Action action,
              std::optional<agency::Plan> state,

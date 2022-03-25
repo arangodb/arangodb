@@ -130,6 +130,7 @@
       var sparse;
       var deduplicate;
       var estimates;
+      var cacheEnabled;
       var background;
       var name;
 
@@ -184,6 +185,7 @@
           sparse = self.checkboxToValue('#newPersistentSparse');
           deduplicate = self.checkboxToValue('#newPersistentDeduplicate');
           estimates = self.checkboxToValue('#newPersistentEstimates');
+          cacheEnabled = self.checkboxToValue('#newPersistentCacheEnabled');
           background = self.checkboxToValue('#newPersistentBackground');
           name = $('#newPersistentName').val();
           postParameter = {
@@ -194,6 +196,7 @@
             sparse: sparse,
             deduplicate: deduplicate,
             estimates: estimates,
+            cacheEnabled: cacheEnabled,
             inBackground: background,
             name: name
           };
@@ -204,6 +207,7 @@
           sparse = self.checkboxToValue('#newHashSparse');
           deduplicate = self.checkboxToValue('#newHashDeduplicate');
           estimates = self.checkboxToValue('#newHashEstimates');
+          cacheEnabled = self.checkboxToValue('#newHashCacheEnabled');
           background = self.checkboxToValue('#newHashBackground');
           name = $('#newHashName').val();
           postParameter = {
@@ -213,6 +217,7 @@
             sparse: sparse,
             deduplicate: deduplicate,
             estimates: estimates,
+            cacheEnabled: cacheEnabled,
             inBackground: background,
             name: name
           };
@@ -236,6 +241,7 @@
           sparse = self.checkboxToValue('#newSkiplistSparse');
           deduplicate = self.checkboxToValue('#newSkiplistDeduplicate');
           estimates = self.checkboxToValue('#newSkiplistEstimates');
+          cacheEnabled = self.checkboxToValue('#newSkiplistCacheEnabled');
           background = self.checkboxToValue('#newSkiplistBackground');
           name = $('#newSkiplistName').val();
           postParameter = {
@@ -245,6 +251,7 @@
             sparse: sparse,
             deduplicate: deduplicate,
             estimates: estimates,
+            cacheEnabled: cacheEnabled,
             inBackground: background,
             name: name
           };
@@ -475,7 +482,7 @@
           );
           var sparse = (v.hasOwnProperty('sparse') ? v.sparse : 'n/a');
           var extras = [];
-          ['deduplicate', 'expireAfter', 'minLength', 'geoJson', 'estimates'].forEach(function (k) {
+          ['deduplicate', 'expireAfter', 'minLength', 'geoJson', 'estimates', 'cacheEnabled'].forEach(function (k) {
             if (v.hasOwnProperty(k)) {
               extras.push(k + ': ' + v[k]);
             }
