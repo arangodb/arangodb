@@ -298,6 +298,9 @@ struct Specialization {
   int i;
   std::string s;
 };
+
+enum class AnEnumClass { Option1, Option2, Option3 };
+
 }  // namespace
 
 namespace arangodb::inspection {
@@ -308,6 +311,7 @@ struct Access<Specialization> : AccessBase<Specialization> {
     return f.object(x).fields(f.field("i", x.i), f.field("s", x.s));
   }
 };
+
 }  // namespace arangodb::inspection
 
 namespace {
@@ -1470,6 +1474,32 @@ TEST_F(VPackInspectionTest, deserialize_throws) {
         }
       },
       arangodb::basics::Exception);
+}
+
+TEST_F(VPackInspectionTest, GenericEnumClass) {
+  {
+    velocypack::Builder builder;
+
+    AnEnumClass const d = AnEnumClass::Option1;
+    arangodb::velocypack::serialize(builder, d);
+
+    velocypack::Slice slice = builder.slice();
+    ASSERT_TRUE(slice.isObject());
+    EXPECT_EQ(static_cast<std::underlying_type_t<AnEnumClass>>(d),
+              slice["code"].getInt());
+  }
+
+  {
+    velocypack::Builder builder;
+
+    builder.openObject();
+    builder.add("code", VPackValue("1"));
+    builder.close();
+
+    auto d = arangodb::velocypack::deserialize<AnEnumClass>(builder.slice());
+
+    EXPECT_EQ(d, AnEnumClass(1));
+  }
 }
 
 }  // namespace

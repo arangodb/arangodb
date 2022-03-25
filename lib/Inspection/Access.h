@@ -37,7 +37,7 @@
 
 namespace arangodb::inspection {
 
-template<class T>
+template<class T, class E>
 struct Access;
 
 template<class T>
@@ -350,4 +350,41 @@ struct Access<std::shared_ptr<T>>
   static auto make() { return std::make_shared<T>(); }
 };
 
+template<typename Enum>
+struct EnumTransform {
+  static_assert(std::is_enum_v<Enum>);
+
+  explicit EnumTransform() : code{-1} {};
+  explicit EnumTransform(Enum e)
+      : code(static_cast<std::underlying_type_t<Enum>>(e)){};
+
+  [[nodiscard]] auto get() const -> Enum { return static_cast<Enum>(code); }
+
+  std::underlying_type_t<Enum> code;
+};
+
+template<typename Inspector, typename Enum>
+auto inspect(Inspector& f, EnumTransform<Enum>& x) {
+  return f.object(x).fields(f.field("code", x.code));
+}
+
+template<typename Enum>
+struct Access<Enum, std::enable_if_t<std::is_enum_v<Enum>>> {
+  static_assert(std::is_enum_v<Enum>);
+
+  template<class Inspector, typename Transform = EnumTransform<Enum>>
+  [[nodiscard]] static Result apply(Inspector& f, Enum& x) {
+    if constexpr (Inspector::isLoading) {
+      auto v = Transform{};
+      auto res = f.apply(v);
+      if (res.ok()) {
+        x = v.get();
+      }
+      return res;
+    } else {
+      auto v = Transform(x);
+      return f.apply(v);
+    }
+  }
+};
 }  // namespace arangodb::inspection

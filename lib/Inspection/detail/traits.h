@@ -28,7 +28,7 @@
 #include "Inspection/Result.h"
 
 namespace arangodb::inspection {
-template<class T>
+template<class T, class E = void>
 struct Access;
 
 template<class T>
