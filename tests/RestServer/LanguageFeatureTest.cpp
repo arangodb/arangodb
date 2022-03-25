@@ -168,7 +168,7 @@ class ArangoLanguageFeatureTest
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
 
-TEST_F(ArangoLanguageFeatureTest, test_reset_language_default) {
+TEST_F(ArangoLanguageFeatureTest, testResetLanguageDefault) {
   auto& langFeature = server.addFeatureUntracked<arangodb::LanguageFeature>();
   langFeature.collectOptions(server.server().options());
   constexpr std::string_view language1 = "ru";
@@ -202,7 +202,7 @@ TEST_F(ArangoLanguageFeatureTest, test_reset_language_default) {
   }
 }
 
-TEST_F(ArangoLanguageFeatureTest, test_reset_language_icu) {
+TEST_F(ArangoLanguageFeatureTest, testResetLanguageIcu) {
   auto& langFeature = server.addFeatureUntracked<arangodb::LanguageFeature>();
   langFeature.collectOptions(server.server().options());
   constexpr std::string_view language1 = "ru";
@@ -237,7 +237,7 @@ TEST_F(ArangoLanguageFeatureTest, test_reset_language_icu) {
 }
 
 TEST_F(ArangoLanguageFeatureTest,
-       test_both_arguments_specified_lang_check_true) {
+       testBothArgumentsSpecifiedLangCheckTrue) {
   // Specify both language arguments and get server failure
 
   auto& langFeature = server.addFeatureUntracked<arangodb::LanguageFeature>();
@@ -266,7 +266,7 @@ TEST_F(ArangoLanguageFeatureTest,
 }
 
 TEST_F(ArangoLanguageFeatureTest,
-       test_both_arguments_specified_lang_check_false) {
+       testBothArgumentsSpecifiedLangCheckFalse) {
   // Specify both language arguments and get server failure
 
   auto& langFeature = server.addFeatureUntracked<arangodb::LanguageFeature>();
@@ -294,7 +294,7 @@ TEST_F(ArangoLanguageFeatureTest,
   EXPECT_DEATH(langFeature.prepare(), "");
 }
 
-TEST_F(ArangoLanguageFeatureTest, test_default_lang_check_true) {
+TEST_F(ArangoLanguageFeatureTest, testDefaultLangCheckTrue) {
   // default-language-check=true
   // test behaviour of --default-language parameter
 
@@ -439,7 +439,7 @@ TEST_F(ArangoLanguageFeatureTest, test_default_lang_check_true) {
   }
 }
 
-TEST_F(ArangoLanguageFeatureTest, test_default_lang_check_false) {
+TEST_F(ArangoLanguageFeatureTest, testDefaultLangCheckFalse) {
   // default-language-check=true
   // test behaviour of --default-language parameter
 
@@ -584,7 +584,7 @@ TEST_F(ArangoLanguageFeatureTest, test_default_lang_check_false) {
   }
 }
 
-TEST_F(ArangoLanguageFeatureTest, test_empty_lang_check_true) {
+TEST_F(ArangoLanguageFeatureTest, testEmptyLangCheckTrue) {
   // default-language-check=true
   // test behaviour of parameters
 
@@ -736,7 +736,7 @@ TEST_F(ArangoLanguageFeatureTest, test_empty_lang_check_true) {
   }
 }
 
-TEST_F(ArangoLanguageFeatureTest, test_empty_lang_check_false) {
+TEST_F(ArangoLanguageFeatureTest, testEmptyLangCheckFalse) {
   // default-language-check=true
   // test behaviour of parameters
 
@@ -888,7 +888,7 @@ TEST_F(ArangoLanguageFeatureTest, test_empty_lang_check_false) {
   }
 }
 
-TEST_F(ArangoLanguageFeatureTest, test_icu_lang_check_true) {
+TEST_F(ArangoLanguageFeatureTest, testIcuLangCheckTrue) {
   // default-language-check=true
   // test behaviour of --icu-language parameter
 
@@ -1033,7 +1033,7 @@ TEST_F(ArangoLanguageFeatureTest, test_icu_lang_check_true) {
   }
 }
 
-TEST_F(ArangoLanguageFeatureTest, test_icu_lang_check_false) {
+TEST_F(ArangoLanguageFeatureTest, testIcuLangCheckFalse) {
   // default-language-check=true
   // test behaviour of --icu-language parameter
 
@@ -1178,7 +1178,7 @@ TEST_F(ArangoLanguageFeatureTest, test_icu_lang_check_false) {
   }
 }
 
-TEST_F(ArangoLanguageFeatureTest, test_icu_with_variant_lang_check_true) {
+TEST_F(ArangoLanguageFeatureTest, testIcuWithVariantLangCheckTrue) {
   // default-language-check=true
   // test behaviour of --icu-language parameter
 
@@ -1324,7 +1324,7 @@ TEST_F(ArangoLanguageFeatureTest, test_icu_with_variant_lang_check_true) {
   }
 }
 
-TEST_F(ArangoLanguageFeatureTest, test_icu_with_collation_lang_check_true) {
+TEST_F(ArangoLanguageFeatureTest, testIcuWithCollationLangCheckTrue) {
   // default-language-check=true
   // test behaviour of --icu-language parameter
 
@@ -1469,7 +1469,7 @@ TEST_F(ArangoLanguageFeatureTest, test_icu_with_collation_lang_check_true) {
   }
 }
 
-TEST_F(ArangoLanguageFeatureTest, test_default_with_collation_lang_check_true) {
+TEST_F(ArangoLanguageFeatureTest, testDefaultWithCollationLangCheckTrue) {
   // default-language-check=true
   // test behaviour of --icu-language parameter
 
@@ -1477,7 +1477,7 @@ TEST_F(ArangoLanguageFeatureTest, test_default_with_collation_lang_check_true) {
       server.server().options());
   server.addFeatureUntracked<arangodb::LanguageCheckFeature>();
 
-  constexpr std::string_view inputFirstLang = "de@collation=phonebook";
+  constexpr std::string_view inputFirstLang = "de_DE@collation=phonebook";
   constexpr std::string_view actualFirstLang = "de";
   constexpr std::string_view secondLang = "de";
   constexpr std::string_view defaultParameter = "default-language";
@@ -1527,11 +1527,11 @@ TEST_F(ArangoLanguageFeatureTest, test_default_with_collation_lang_check_true) {
     server.server()
         .options()
         ->get<StringParameter>(defaultParameter.data())
-        ->set("");
+        ->set(inputFirstLang.data());
     server.server()
         .options()
         ->get<StringParameter>(icuParameter.data())
-        ->set(inputFirstLang.data());
+        ->set("");
 
     langFeature.validateOptions(server.server().options());
 
@@ -1630,8 +1630,7 @@ TEST_F(ArangoLanguageFeatureTest, test_default_with_collation_lang_check_true) {
   }
 }
 
-
-TEST_F(ArangoLanguageFeatureTest, test_icu_with_wrong_collation_lang_check_true) {
+TEST_F(ArangoLanguageFeatureTest, testIcuWithWrongCollationLangCheckTrue) {
   // default-language-check=true
   // test behaviour of --icu-language parameter
 
@@ -1792,7 +1791,7 @@ TEST_F(ArangoLanguageFeatureTest, test_icu_with_wrong_collation_lang_check_true)
   }
 }
 
-TEST_F(ArangoLanguageFeatureTest, test_default_with_wrong_collation_lang_check_true) {
+TEST_F(ArangoLanguageFeatureTest, testDefaultWithWrongCollationLangCheckTrue) {
   // default-language-check=true
   // test behaviour of --icu-language parameter
 

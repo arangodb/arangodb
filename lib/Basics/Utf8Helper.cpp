@@ -176,16 +176,18 @@ bool Utf8Helper::setCollatorLanguage(std::string_view lang,
   }
 
   icu::Collator* coll;
-  if (LanguageType::ICU == langType) {
-    auto locale = icu::Locale::createCanonical(std::string(lang).c_str());
-    coll = icu::Collator::createInstance(locale, status);
+  if (lang == "") {
+    // get default locale for empty language
+    coll = icu::Collator::createInstance(status);
   } else {
-    if (lang == "") {
-      // get default collator for empty language
-      coll = icu::Collator::createInstance(status);
+    icu::Locale canonicalLocale = icu::Locale::createCanonical(std::string(lang).c_str());
+    if (LanguageType::DEFAULT == langType) {
+      std::string l = canonicalLocale.getLanguage();
+      std::string c = canonicalLocale.getCountry();
+      icu::Locale defaultLocale = icu::Locale(l.c_str(), c.c_str());
+      coll = icu::Collator::createInstance(defaultLocale, status);
     } else {
-      icu::Locale locale(lang.data());
-      coll = icu::Collator::createInstance(locale, status);
+      coll = icu::Collator::createInstance(canonicalLocale, status);
     }
   }
 
@@ -234,7 +236,7 @@ std::string Utf8Helper::getCollatorLanguage() {
           << "error in Collator::getLocale(...): " << u_errorName(status);
       return "";
     }
-    std::string l = locale.getLanguage();
+
     return locale.getName();
   }
   return "";
