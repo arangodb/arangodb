@@ -39,6 +39,8 @@
 #include "Inspection/VPackSaveInspector.h"
 #include "Inspection/VPack.h"
 
+#include "Logger/LogMacros.h"
+
 namespace {
 
 struct Dummy {
@@ -301,6 +303,18 @@ struct Specialization {
 
 enum class AnEnumClass { Option1, Option2, Option3 };
 
+auto to_string(AnEnumClass e) -> std::string_view {
+  switch (e) {
+    case AnEnumClass::Option1:
+      return "Option1";
+    case AnEnumClass::Option2:
+      return "Option2";
+    case AnEnumClass::Option3:
+      return "Option3";
+  }
+  return "invalid.";
+}
+
 }  // namespace
 
 namespace arangodb::inspection {
@@ -311,6 +325,8 @@ struct Access<Specialization> : AccessBase<Specialization> {
     return f.object(x).fields(f.field("i", x.i), f.field("s", x.s));
   }
 };
+template<>
+struct Access<AnEnumClass> : EnumMessageAccess<AnEnumClass> {};
 
 }  // namespace arangodb::inspection
 
@@ -1490,15 +1506,18 @@ TEST_F(VPackInspectionTest, GenericEnumClass) {
   }
 
   {
+    auto const expected = AnEnumClass::Option3;
     velocypack::Builder builder;
 
     builder.openObject();
-    builder.add("code", VPackValue("1"));
+    builder.add(
+        "code",
+        VPackValue(static_cast<std::underlying_type_t<AnEnumClass>>(expected)));
     builder.close();
 
     auto d = arangodb::velocypack::deserialize<AnEnumClass>(builder.slice());
 
-    EXPECT_EQ(d, AnEnumClass(1));
+    EXPECT_EQ(d, expected);
   }
 }
 

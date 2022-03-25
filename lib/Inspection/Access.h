@@ -37,7 +37,7 @@
 
 namespace arangodb::inspection {
 
-template<class T, class E>
+template<class T>
 struct Access;
 
 template<class T>
@@ -351,40 +351,42 @@ struct Access<std::shared_ptr<T>>
 };
 
 template<typename Enum>
-struct EnumTransform {
-  static_assert(std::is_enum_v<Enum>);
-
-  explicit EnumTransform() : code{-1} {};
-  explicit EnumTransform(Enum e)
-      : code(static_cast<std::underlying_type_t<Enum>>(e)){};
-
-  [[nodiscard]] auto get() const -> Enum { return static_cast<Enum>(code); }
-
+struct EnumStorage {
   std::underlying_type_t<Enum> code;
+  std::string message;
+
+  explicit EnumStorage(Enum e)
+      : code(static_cast<std::underlying_type_t<Enum>>(e)),
+        message(to_string(e)){};
+  explicit EnumStorage() {}
+
+  operator Enum() const { return Enum(code); }
 };
 
-template<typename Inspector, typename Enum>
-auto inspect(Inspector& f, EnumTransform<Enum>& x) {
-  return f.object(x).fields(f.field("code", x.code));
+template<class Inspector, class Enum>
+auto inspect(Inspector& f, EnumStorage<Enum>& e) {
+  return f.object(e).fields(f.field("code", e.code),
+                            f.field("message", e.message).fallback(""));
 }
 
-template<typename Enum>
-struct Access<Enum, std::enable_if_t<std::is_enum_v<Enum>>> {
+template<class Enum>
+struct EnumMessageAccess {
   static_assert(std::is_enum_v<Enum>);
 
-  template<class Inspector, typename Transform = EnumTransform<Enum>>
-  [[nodiscard]] static Result apply(Inspector& f, Enum& x) {
+  template<class Inspector>
+  static auto apply(Inspector& f, Enum& e) {
     if constexpr (Inspector::isLoading) {
-      auto v = Transform{};
+      auto v = EnumStorage<Enum>();
       auto res = f.apply(v);
       if (res.ok()) {
-        x = v.get();
+        e = Enum(v);
       }
       return res;
     } else {
-      auto v = Transform(x);
+      auto v = EnumStorage(e);
       return f.apply(v);
     }
   }
 };
+
 }  // namespace arangodb::inspection
