@@ -90,7 +90,7 @@ const replicatedStateSuite = function () {
         participants: {},
         properties: {
           implementation: {
-            type: "prototype",
+            type: "black-hole",
           }
         }
       };
