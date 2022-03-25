@@ -202,14 +202,21 @@ void BaseEngine::getVertexData(VPackSlice vertex, VPackBuilder& builder,
           ci.getCollection(_query.vocbase().name(), collectionName);
 
       if (collection->isSatellite()) {
-        TRI_ASSERT(shards->second.size() == 1);
-        // ID of the only shard (Satellite)
-        auto shardId = shards->second.front();
+        if (shards->second.size() == 1) {
+          // We will end up here in case we do have a SmartGraph containing
+          // Satellite collections (HybridSmartGraph)
+          // ID of the only shard (Satellite)
+          auto shardId = shards->second.front();
 
-        if (!GraphHelperEE::isSatelliteLeader(
-                ci, shardId, ServerState::instance()->getId())) {
-          // do not produce in this case
-          return;
+          if (!GraphHelperEE::isSatelliteLeader(
+                  ci, shardId, ServerState::instance()->getId())) {
+            // do not produce in this case
+            return;
+          }
+        } else {
+          // We would end up here in case we only traverse a pure
+          // Satellite Graph
+          TRI_ASSERT(shards->second.empty());
         }
       }
 #endif
