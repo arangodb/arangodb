@@ -174,6 +174,12 @@ function dealing_with_database_manipulation_methodsSuite () {
 
     tearDown: function() {
       arango.DELETE(api + `/${name}`);
+      db._flushCache();
+      db._users.toArray().forEach(user => {
+        if (user.user !== "root") {
+          arango.DELETE_RAW("/_api/user/" + encodeURIComponent(user.user));
+        }
+      });
     },
 
     test_creates_a_new_database: function() {

@@ -121,7 +121,7 @@ void SingleServerEdgeCursor::getDocAndRunCallback(
           }
         }
 #endif
-        _opts->cache()->increaseCounter();
+        _opts->cache()->incrDocuments();
         if (_internalCursorMapping != nullptr) {
           TRI_ASSERT(_currentCursor < _internalCursorMapping->size());
           callback(std::move(etkn), edgeDoc,
@@ -280,7 +280,7 @@ void SingleServerEdgeCursor::readAll(EdgeCursor::Callback const& callback) {
             return false;
           }
 #endif
-          _opts->cache()->increaseCounter();
+          _opts->cache()->incrDocuments();
           callback(EdgeDocumentToken(cid, token), edge, cursorId);
           return true;
         });
@@ -304,7 +304,7 @@ void SingleServerEdgeCursor::readAll(EdgeCursor::Callback const& callback) {
                       }
                     }
 #endif
-                    _opts->cache()->increaseCounter();
+                    _opts->cache()->incrDocuments();
                     callback(EdgeDocumentToken(cid, token), edgeDoc, cursorId);
                     return true;
                   },
@@ -312,6 +312,11 @@ void SingleServerEdgeCursor::readAll(EdgeCursor::Callback const& callback) {
               .ok();
         });
       }
+
+      // update cache hits and misses
+      auto [ch, cm] = cursor->getAndResetCacheStats();
+      _opts->cache()->incrCacheHits(ch);
+      _opts->cache()->incrCacheMisses(cm);
     }
   }
 }
@@ -338,9 +343,16 @@ void SingleServerEdgeCursor::rearm(std::string_view vertex,
     auto& node = info.indexCondition;
     for (auto const& it : info.idxHandles) {
       auto& cursor = csrs[j].cursor;
+
+      // steal cache hits and misses before the cursor is recycled
+      auto [ch, cm] = cursor->getAndResetCacheStats();
+      _opts->cache()->incrCacheHits(ch);
+      _opts->cache()->incrCacheMisses(cm);
+
       // check if the underlying index iterator supports rearming
       if (cursor->canRearm()) {
         // rearming supported
+        _opts->cache()->incrCursorsRearmed();
         if (!cursor->rearm(node, _tmpVar, defaultIndexIteratorOptions)) {
           cursor =
               std::make_unique<EmptyIndexIterator>(cursor->collection(), _trx);
@@ -348,6 +360,7 @@ void SingleServerEdgeCursor::rearm(std::string_view vertex,
       } else {
         // rearming not supported - we need to throw away the index iterator
         // and create a new one
+        _opts->cache()->incrCursorsCreated();
         cursor = _trx->indexScanForCondition(
             it, node, _tmpVar, defaultIndexIteratorOptions, ReadOwnWrites::no,
             static_cast<int>(

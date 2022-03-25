@@ -177,7 +177,7 @@ bool RefactoredTraverserCache::appendVertex(
           collectionName,
           id.substr(collectionNameResult.get().second + 1).stringView(),
           [&](LocalDocumentId const&, VPackSlice doc) -> bool {
-            stats.addScannedIndex(1);
+            stats.incrScannedIndex(1);
             // copying...
             if constexpr (std::is_same_v<ResultType, aql::AqlValue>) {
               result = aql::AqlValue(doc);

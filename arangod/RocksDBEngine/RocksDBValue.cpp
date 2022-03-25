@@ -121,8 +121,8 @@ LocalDocumentId RocksDBValue::documentId(std::string_view s) {
 
 bool RocksDBValue::revisionId(rocksdb::Slice const& slice, RevisionId& id) {
   if (slice.size() == sizeof(LocalDocumentId::BaseType) + sizeof(RevisionId)) {
-    id = RevisionId::fromPersistent(slice.data() +
-                                    sizeof(LocalDocumentId::BaseType));
+    char const* data = slice.data() + sizeof(LocalDocumentId::BaseType);
+    id = RevisionId{rocksutils::uint64FromPersistent(data)};
     return true;
   }
   return false;
@@ -211,7 +211,7 @@ RocksDBValue::RocksDBValue(RocksDBEntryType type, LocalDocumentId const& docId,
       } else {
         _buffer.reserve(sizeof(uint64_t) * 2);
         uint64ToPersistent(_buffer, docId.id());  // LocalDocumentId
-        revision.toPersistent(_buffer);           // revision
+        rocksutils::uint64ToPersistent(_buffer, revision.id());  // revision
       }
       break;
     }

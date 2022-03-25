@@ -30,34 +30,20 @@
 #include "Basics/Utf8Helper.h"
 #include "Basics/directories.h"
 #include "Basics/files.h"
-#include "Basics/memory.h"
 
-static IcuInitializer theInstance;  // must be here to call the dtor
-
-bool IcuInitializer::initialized = false;
-void* IcuInitializer::icuDataPtr = nullptr;
-
-IcuInitializer::IcuInitializer() {}
-
-IcuInitializer::~IcuInitializer() {
-  if (icuDataPtr != nullptr) {
-    TRI_Free(icuDataPtr);
-  }
-  icuDataPtr = nullptr;
-}
+std::string IcuInitializer::icuData;
 
 void IcuInitializer::setup(char const* path) {
-  if (initialized) {
+  if (!icuData.empty()) {
     return;
   }
-  initialized = true;
   std::string p;
   std::string binaryPath = TRI_LocateBinaryPath(path);
-  icuDataPtr = arangodb::LanguageFeature::prepareIcu(TEST_DIRECTORY, binaryPath,
-                                                     p, "basics_suite");
-  if (icuDataPtr == nullptr ||
+  icuData = arangodb::LanguageFeature::prepareIcu(TEST_DIRECTORY, binaryPath, p,
+                                                  "basics_suite");
+  if (icuData.empty() ||
       !arangodb::basics::Utf8Helper::DefaultUtf8Helper.setCollatorLanguage(
-          "", arangodb::basics::LanguageType::DEFAULT, icuDataPtr)) {
+          "", arangodb::basics::LanguageType::DEFAULT, icuData.data())) {
     std::string msg =
         "failed to initialize ICU library. The environment variable ICU_DATA";
     if (getenv("ICU_DATA") != nullptr) {

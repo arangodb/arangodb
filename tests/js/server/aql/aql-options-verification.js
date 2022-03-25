@@ -74,6 +74,8 @@ function aqlOptionsVerificationSuite() {
         [prefix + "{ disableIndex: true } RETURN 1"],
         [prefix + "{ disableIndex: false } RETURN 1"],
         [prefix + "{ maxProjections: 123 } RETURN 1"],
+        [prefix + "{ useCache: true } RETURN 1"],
+        [prefix + "{ useCache: false } RETURN 1"],
         [prefix + "{ lookahead: 0 } RETURN 1"],
         [prefix + "{ lookahead: 1 } RETURN 1"],
         [prefix + "{ indexHint: 'primary' } RETURN 1"],
@@ -84,6 +86,8 @@ function aqlOptionsVerificationSuite() {
         [prefix + "{ forceIndexHint: 'meow' } RETURN 1", "forceIndexHint"],
         [prefix + "{ indexHint: false } RETURN 1", "indexHint"],
         [prefix + "{ indexHint: [] } RETURN 1", "indexHint"],
+        [prefix + "{ maxProjections: 'piff' } RETURN 1", "maxProjections"],
+        [prefix + "{ useCache: 'piff' } RETURN 1", "useCache"],
         [prefix + "{ lookahead: 'meow' } RETURN 1", "lookahead"],
         [prefix + "{ lookahead: false } RETURN 1", "lookahead"],
         [prefix + "{ waitForSync: true } RETURN 1", "waitForSync"],
@@ -128,6 +132,7 @@ function aqlOptionsVerificationSuite() {
         [prefix + "{ forceIndexHint: true } RETURN 1", "forceIndexHint"],
         [prefix + "{ disableIndex: true } RETURN 1", "disableIndex"],
         [prefix + "{ maxProjections: 123 } RETURN 1", "maxProjections"],
+        [prefix + "{ useCache: true } RETURN 1", "useCache"],
         [prefix + "{ lookahead: 0 } RETURN 1", "lookahead"],
       ];
 
@@ -220,6 +225,7 @@ function aqlOptionsVerificationSuite() {
         [prefix + "{ forceIndexHint: true } RETURN x", "forceIndexHint"],
         [prefix + "{ disableIndex: true } RETURN x", "disableIndex"],
         [prefix + "{ maxProjections: 123 } RETURN x", "maxProjections"],
+        [prefix + "{ useCache: true } RETURN x", "useCache"],
         [prefix + "{ lookahead: 0 } RETURN x", "lookahead"],
       ];
 
@@ -249,6 +255,7 @@ function aqlOptionsVerificationSuite() {
         [prefix + "{ forceIndexHint: true }", "forceIndexHint"],
         [prefix + "{ disableIndex: true }", "disableIndex"],
         [prefix + "{ maxProjections: 123 }", "maxProjections"],
+        [prefix + "{ useCache: true }", "useCache"],
         [prefix + "{ lookahead: 0 }", "lookahead"],
       ];
 
@@ -278,6 +285,7 @@ function aqlOptionsVerificationSuite() {
         [prefix + "{ forceIndexHint: true }", "forceIndexHint"],
         [prefix + "{ disableIndex: true }", "disableIndex"],
         [prefix + "{ maxProjections: 123 }", "maxProjections"],
+        [prefix + "{ useCache: true }", "useCache"],
         [prefix + "{ lookahead: 0 }", "lookahead"],
       ];
 
@@ -307,6 +315,7 @@ function aqlOptionsVerificationSuite() {
         [prefix + "{ forceIndexHint: true }", "forceIndexHint"],
         [prefix + "{ disableIndex: true }", "disableIndex"],
         [prefix + "{ maxProjections: 123 }", "maxProjections"],
+        [prefix + "{ useCache: true }", "useCache"],
         [prefix + "{ lookahead: 0 }", "lookahead"],
       ];
 
@@ -336,6 +345,7 @@ function aqlOptionsVerificationSuite() {
         [prefix + "{ forceIndexHint: true }", "forceIndexHint"],
         [prefix + "{ disableIndex: true }", "disableIndex"],
         [prefix + "{ maxProjections: 123 }", "maxProjections"],
+        [prefix + "{ useCache: true }", "useCache"],
         [prefix + "{ lookahead: 0 }", "lookahead"],
       ];
 
@@ -360,6 +370,8 @@ function aqlOptionsVerificationSuite() {
         [prefix + "{ ignoreRevs: true }"],
         [prefix + "{ exclusive: true }"],
         [prefix + "{ ignoreErrors: true }"],
+        [prefix + "{ useCache: true }"],
+        [prefix + "{ useCache: false }"],
 
         [prefix + "{ overwriteMode: true }", "overwriteMode"],
         [prefix + "{ method: 'hash' }", "method"],
