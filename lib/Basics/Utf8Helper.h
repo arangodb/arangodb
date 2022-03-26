@@ -205,6 +205,8 @@ class Utf8Helper {
   }
 
  private:
+  std::string _collatorLanguage;
+  std::string _collatorCountry;
   icu::Collator* _coll;
 };
 }  // namespace basics
