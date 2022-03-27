@@ -75,7 +75,6 @@ const ViewLinksReactView = ({ name }) => {
   }
 
   const formState = state.formState;
-  const previousFormState = usePreviouse(formState);
 
   const removeLink = l => {
     dispatch({
@@ -89,17 +88,18 @@ const ViewLinksReactView = ({ name }) => {
 
   const handleBackClick = e => {
     e.preventDefault();
-    console.log(link);
     if (link !== "") {
       const msg = `Your link (${link})'s not saved!`;
       const icon = "warning";
       Toast.fire({ title: msg, icon: icon }).then(res => {
         if (res.isConfirmed) {
           removeLink(link);
+          setNewLink("");
         }
       });
+    } else {
+      setShow("LinkList");
     }
-    setShow("LinkList");
   };
 
   return (
@@ -144,10 +144,7 @@ const ViewLinksReactView = ({ name }) => {
               </div>
             </div>
             <div className="modal-footer">
-              <BackButton
-                disabled={!previousFormState}
-                buttonClick={handleBackClick}
-              />
+              <BackButton buttonClick={handleBackClick} />
               <SaveButton view={formState} oldName={name} />
             </div>
           </div>

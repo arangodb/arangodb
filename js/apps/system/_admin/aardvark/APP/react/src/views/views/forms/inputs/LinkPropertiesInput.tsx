@@ -1,6 +1,12 @@
 import { FormProps } from "../../../../utils/constants";
 import { LinkProperties } from "../../constants";
-import React, { ChangeEvent, useContext, useEffect, useMemo, useState } from "react";
+import React, {
+  ChangeEvent,
+  useContext,
+  useEffect,
+  useMemo,
+  useState
+} from "react";
 import { chain, isEmpty, without } from "lodash";
 import { Cell, Grid } from "../../../../components/pure-css/grid";
 import Checkbox from "../../../../components/pure-css/form/Checkbox";
@@ -164,7 +170,7 @@ const LinkPropertiesInput = ({
 
       <Cell size={"1-1"}>
         <Grid style={{ marginTop: 24 }}>
-          <Cell size={"1-3"}>
+          <Cell size={"1-3"} style={{ marginBottom: 24, marginLeft: 10 }}>
             <AutoCompleteMultiSelect
               values={analyzers}
               onRemove={removeAnalyzer}
@@ -174,56 +180,58 @@ const LinkPropertiesInput = ({
               disabled={disabled}
             />
           </Cell>
-          <Cell size={hideInBackgroundField ? "1-5" : "1-6"}>
-            <Checkbox
-              onChange={getBooleanFieldSetter(
-                "includeAllFields",
-                dispatch,
-                basePath
-              )}
-              inline={true}
-              label={"Include All Fields"}
-              disabled={disabled}
-              checked={formState.includeAllFields}
-            />
-          </Cell>
-          <Cell size={hideInBackgroundField ? "1-5" : "1-6"}>
-            <Checkbox
-              onChange={getBooleanFieldSetter(
-                "trackListPositions",
-                dispatch,
-                basePath
-              )}
-              label={"Track List Positions"}
-              disabled={disabled}
-              inline={true}
-              checked={formState.trackListPositions}
-            />
-          </Cell>
-          <Cell size={hideInBackgroundField ? "1-5" : "1-6"}>
-            <Checkbox
-              onChange={updateStoreValues}
-              label={"Store ID Values"}
-              disabled={disabled}
-              inline={true}
-              checked={storeIdValues}
-            />
-          </Cell>
-          {hideInBackgroundField ? null : (
-            <Cell size={"1-6"}>
+          <Cell size={"1-1"} style={{ margingTop: 24, marginLeft: 10 }}>
+            <Cell size={hideInBackgroundField ? "1-5" : "1-6"}>
               <Checkbox
                 onChange={getBooleanFieldSetter(
-                  "inBackground",
+                  "includeAllFields",
                   dispatch,
                   basePath
                 )}
-                label={"In Background"}
                 inline={true}
+                label={"Include All Fields"}
                 disabled={disabled}
-                checked={formState.inBackground}
+                checked={formState.includeAllFields}
               />
             </Cell>
-          )}
+            <Cell size={hideInBackgroundField ? "1-5" : "1-6"}>
+              <Checkbox
+                onChange={getBooleanFieldSetter(
+                  "trackListPositions",
+                  dispatch,
+                  basePath
+                )}
+                label={"Track List Positions"}
+                disabled={disabled}
+                inline={true}
+                checked={formState.trackListPositions}
+              />
+            </Cell>
+            <Cell size={hideInBackgroundField ? "1-5" : "1-6"}>
+              <Checkbox
+                onChange={updateStoreValues}
+                label={"Store ID Values"}
+                disabled={disabled}
+                inline={true}
+                checked={storeIdValues}
+              />
+            </Cell>
+            {hideInBackgroundField ? null : (
+              <Cell size={"1-6"}>
+                <Checkbox
+                  onChange={getBooleanFieldSetter(
+                    "inBackground",
+                    dispatch,
+                    basePath
+                  )}
+                  label={"In Background"}
+                  inline={true}
+                  disabled={disabled}
+                  checked={formState.inBackground}
+                />
+              </Cell>
+            )}
+          </Cell>
         </Grid>
       </Cell>
 

@@ -61,7 +61,6 @@ const LinkPropertiesForm = ({ disabled, view }: FormProps<FormState>) => {
         link = replaceSquareBrackets(str.split(".")[0], "[", 1);
         parentField = replaceSquareBrackets(str.split(".")[1], "[", 1);
         formatedStr = `${link}/${parentField}`;
-        debugger;
       } else {
         formatedStr = link;
       }

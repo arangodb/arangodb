@@ -20,7 +20,6 @@ type FieldViewProps = {
 const FieldView = ({
   disabled,
   basePath,
-  viewField,
   fieldName,
   view,
   link
@@ -69,11 +68,6 @@ const FieldView = ({
                   icon={"trash-o"}
                   type={"danger"}
                   onClick={getFieldRemover(fieldName)}
-                />
-                <IconButton
-                  icon={"eye"}
-                  type={"warning"}
-                  onClick={() => viewField(fieldName, basePath)}
                 />
               </ArangoTD>
             )}

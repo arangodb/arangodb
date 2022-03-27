@@ -1,6 +1,10 @@
 import React, { useContext } from "react";
 import { map } from "lodash";
-import { ArangoTable, ArangoTD, ArangoTH } from "../../../components/arango/table";
+import {
+  ArangoTable,
+  ArangoTD,
+  ArangoTH
+} from "../../../components/arango/table";
 import Badge from "../../../components/arango/badges";
 import { IconButton } from "../../../components/arango/buttons";
 import { ViewContext } from "../ViewLinksReactView";
