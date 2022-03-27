@@ -63,12 +63,10 @@ class LanguageFeature final : public application_features::ApplicationFeature {
                                 std::string& path,
                                 std::string const& binaryName);
   icu::Locale& getLocale();
-  std::tuple<std::string_view, basics::LanguageType> getLanguage()
-      const;
+  std::tuple<std::string_view, basics::LanguageType> getLanguage() const;
   bool forceLanguageCheck() const;
   std::string getCollatorLanguage() const;
-  void resetLanguage(std::string_view language,
-                     basics::LanguageType type);
+  void resetLanguage(std::string_view language, basics::LanguageType type);
 
  private:
   icu::Locale _locale;
