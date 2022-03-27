@@ -101,7 +101,7 @@ uint16_t RefactoredSingleServerEdgeCursor<
 template<class Step>
 void RefactoredSingleServerEdgeCursor<Step>::LookupInfo::rearmVertex(
     VertexType vertex, transaction::Methods* trx,
-    arangodb::aql::Variable const* tmpVar) {
+    arangodb::aql::Variable const* tmpVar, aql::TraversalStats& stats) {
   auto* node = _accessor->getCondition();
   // We need to rewire the search condition for the new vertex
   TRI_ASSERT(node->numMembers() > 0);
@@ -146,6 +146,8 @@ void RefactoredSingleServerEdgeCursor<Step>::LookupInfo::rearmVertex(
   // check if the underlying index iterator supports rearming
   if (_cursor != nullptr && _cursor->canRearm()) {
     // rearming supported
+    stats.incrCursorsRearmed();
+
     if (!_cursor->rearm(node, tmpVar, defaultIndexIteratorOptions)) {
       _cursor =
           std::make_unique<EmptyIndexIterator>(_cursor->collection(), trx);
@@ -153,6 +155,7 @@ void RefactoredSingleServerEdgeCursor<Step>::LookupInfo::rearmVertex(
   } else {
     // rearming not supported - we need to throw away the index iterator
     // and create a new one
+    stats.incrCursorsCreated();
     auto index = _accessor->indexHandle();
 
     _cursor = trx->indexScanForCondition(
@@ -271,13 +274,15 @@ void RefactoredSingleServerEdgeCursor<
 }
 
 template<class Step>
-RefactoredSingleServerEdgeCursor<Step>::~RefactoredSingleServerEdgeCursor() {}
+RefactoredSingleServerEdgeCursor<Step>::~RefactoredSingleServerEdgeCursor() =
+    default;
 
 template<class Step>
 void RefactoredSingleServerEdgeCursor<Step>::rearm(VertexType vertex,
-                                                   uint64_t depth) {
+                                                   uint64_t depth,
+                                                   aql::TraversalStats& stats) {
   for (auto& info : getLookupInfos(depth)) {
-    info.rearmVertex(vertex, _trx, _tmpVar);
+    info.rearmVertex(vertex, _trx, _tmpVar, stats);
   }
 }
 
@@ -286,15 +291,15 @@ void RefactoredSingleServerEdgeCursor<Step>::readAll(
     SingleServerProvider<Step>& provider, aql::TraversalStats& stats,
     size_t depth, Callback const& callback) {
   TRI_ASSERT(!getLookupInfos(depth).empty());
-  VPackBuilder tmpBuilder;
+  transaction::BuilderLeaser tmpBuilder(_trx);
 
   auto evaluateEdgeExpressionHelper = [&](aql::Expression* expression,
                                           EdgeDocumentToken edgeToken,
                                           VPackSlice edge) {
     if (edge.isString()) {
-      tmpBuilder.clear();
-      provider.insertEdgeIntoResult(edgeToken, tmpBuilder);
-      edge = tmpBuilder.slice();
+      tmpBuilder->clear();
+      provider.insertEdgeIntoResult(edgeToken, *tmpBuilder);
+      edge = tmpBuilder->slice();
     }
     return evaluateEdgeExpression(expression, edge);
   };
@@ -316,7 +321,7 @@ void RefactoredSingleServerEdgeCursor<Step>::readAll(
       // use covering index and projections
       cursor.allCovering([&](LocalDocumentId const& token,
                              IndexIteratorCoveringData& covering) {
-        stats.addScannedIndex(1);
+        stats.incrScannedIndex(1);
 
         TRI_ASSERT(covering.isArray());
         VPackSlice edge = covering.at(coveringPosition);
@@ -346,7 +351,7 @@ void RefactoredSingleServerEdgeCursor<Step>::readAll(
             ->read(
                 _trx, token,
                 [&](LocalDocumentId const&, VPackSlice edgeDoc) {
-                  stats.addScannedIndex(1);
+                  stats.incrScannedIndex(1);
 #ifdef USE_ENTERPRISE
                   if (_trx->skipInaccessible()) {
                     // TODO: we only need to check one of these
@@ -378,6 +383,11 @@ void RefactoredSingleServerEdgeCursor<Step>::readAll(
             .ok();
       });
     }
+
+    // update cache hits and misses
+    auto [ch, cm] = cursor.getAndResetCacheStats();
+    stats.incrCacheHits(ch);
+    stats.incrCacheMisses(cm);
   }
 }
 

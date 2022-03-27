@@ -30,12 +30,13 @@
 #include <thread>
 #include <vector>
 
-#include "RestServer/SharedPRNGFeature.h"
+#include "Cache/BinaryKeyHasher.h"
 #include "Cache/CacheManagerFeatureThreads.h"
 #include "Cache/Common.h"
 #include "Cache/Manager.h"
 #include "Cache/PlainCache.h"
 #include "Random/RandomGenerator.h"
+#include "RestServer/SharedPRNGFeature.h"
 
 #include "Mocks/Servers.h"
 #include "MockScheduler.h"
@@ -44,7 +45,67 @@ using namespace arangodb;
 using namespace arangodb::cache;
 using namespace arangodb::tests::mocks;
 
-// long-running
+TEST(CacheManagerTest, test_create_and_destroy_caches) {
+  std::uint64_t requestLimit = 1024 * 1024;
+
+  MockMetricsServer server;
+  SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
+  auto postFn = [](std::function<void()>) -> bool { return false; };
+  Manager manager(sharedPRNG, postFn, requestLimit);
+
+  ASSERT_EQ(requestLimit, manager.globalLimit());
+
+  ASSERT_TRUE(0ULL < manager.globalAllocation());
+  ASSERT_TRUE(requestLimit > manager.globalAllocation());
+
+  std::vector<std::shared_ptr<Cache>> caches;
+
+  for (size_t i = 0; i < 8; ++i) {
+    Manager::MemoryStats beforeStats = manager.memoryStats();
+    ASSERT_EQ(i, beforeStats.activeTables);
+
+    auto cache = manager.createCache<BinaryKeyHasher>(CacheType::Transactional);
+    ASSERT_NE(nullptr, cache);
+    ASSERT_GT(cache->size(), 80 * 1024);  // size of each cache is about 80kb
+
+    Manager::MemoryStats afterStats = manager.memoryStats();
+    ASSERT_EQ(beforeStats.globalAllocation + cache->size(),
+              afterStats.globalAllocation);
+    ASSERT_EQ(i + 1, afterStats.activeTables);
+
+    ASSERT_EQ(0, afterStats.spareAllocation);
+    ASSERT_EQ(0, afterStats.spareTables);
+
+    caches.emplace_back(std::move(cache));
+  }
+
+  std::uint64_t spareTables = 0;
+  while (!caches.empty()) {
+    Manager::MemoryStats beforeStats = manager.memoryStats();
+    ASSERT_EQ(spareTables, beforeStats.spareTables);
+
+    auto cache = caches.back();
+    std::uint64_t size = cache->size();
+    ASSERT_GT(size, 80 * 1024);  // size of each cache is about 80kb
+    manager.destroyCache(cache);
+
+    Manager::MemoryStats afterStats = manager.memoryStats();
+    if (afterStats.spareTables == beforeStats.spareTables) {
+      // table deleted
+      ASSERT_EQ(beforeStats.globalAllocation,
+                afterStats.globalAllocation + size);
+      ASSERT_EQ(spareTables, afterStats.spareTables);
+    } else {
+      // table recycled
+      ++spareTables;
+      // ASSERT_EQ(spareTables * 80 * 1024, afterStats.spareAllocation);
+      ASSERT_EQ(spareTables, afterStats.spareTables);
+    }
+    ASSERT_EQ(caches.size() - 1, afterStats.activeTables);
+
+    caches.pop_back();
+  }
+}
 
 TEST(CacheManagerTest, test_basic_constructor_function) {
   std::uint64_t requestLimit = 1024 * 1024;
@@ -83,8 +144,8 @@ TEST(CacheManagerTest, test_mixed_cache_types_under_mixed_load_LongRunning) {
   std::size_t threadCount = 4;
   std::vector<std::shared_ptr<Cache>> caches;
   for (std::size_t i = 0; i < cacheCount; i++) {
-    auto res = manager.createCache(
-        ((i % 2 == 0) ? CacheType::Plain : CacheType::Transactional));
+    auto res = manager.createCache<BinaryKeyHasher>(
+        (i % 2 == 0) ? CacheType::Plain : CacheType::Transactional);
     TRI_ASSERT(res);
     caches.emplace_back(res);
   }
@@ -150,7 +211,9 @@ TEST(CacheManagerTest, test_mixed_cache_types_under_mixed_load_LongRunning) {
         if (f.found()) {
           hitCount++;
           TRI_ASSERT(f.value() != nullptr);
-          TRI_ASSERT(f.value()->sameKey(&item, sizeof(std::uint64_t)));
+          TRI_ASSERT(BinaryKeyHasher::sameKey(f.value()->key(),
+                                              f.value()->keySize(), &item,
+                                              sizeof(std::uint64_t)));
         } else {
           missCount++;
           TRI_ASSERT(f.value() == nullptr);
@@ -202,7 +265,7 @@ TEST(CacheManagerTest, test_manager_under_cache_lifecycle_chaos_LongRunning) {
           RandomGenerator::interval(static_cast<std::uint32_t>(1));
       switch (r) {
         case 0: {
-          auto res = manager.createCache(
+          auto res = manager.createCache<BinaryKeyHasher>(
               (i % 2 == 0) ? CacheType::Plain : CacheType::Transactional);
           if (res) {
             caches.emplace(res);

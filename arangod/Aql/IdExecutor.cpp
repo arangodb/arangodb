@@ -100,7 +100,7 @@ auto IdExecutor<UsedFetcher>::produceRows(AqlItemBlockInputRange& inputRange,
   }
   TRI_ASSERT(!inputRange.hasDataRow());
   if (_infos.doCount()) {
-    stats.addCounted(output.numRowsWritten());
+    stats.incrCounted(output.numRowsWritten());
   }
 
   return {inputRange.upstreamState(), stats, output.getClientCall()};
