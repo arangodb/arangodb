@@ -128,6 +128,11 @@ auto SingleServerProvider<Step>::fetch(std::vector<Step*> const& looseEnds)
 }
 
 template<class Step>
+bool SingleServerProvider<Step>::isCached(Step* s) {
+  return true;
+}
+
+template<class Step>
 auto SingleServerProvider<Step>::expand(
     Step const& step, size_t previous,
     std::function<void(Step)> const& callback) -> void {

@@ -183,6 +183,16 @@ void ProviderTracer<ProviderImpl>::unPrepareContext() {
   _impl.unPrepareContext();
 }
 
+template<class ProviderImpl>
+bool ProviderTracer<ProviderImpl>::isCached(Step* s) {
+  double start = TRI_microtime();
+  auto sg = arangodb::scopeGuard([&]() noexcept {
+    _stats["isCached"].addTiming(TRI_microtime() - start);
+  });
+  return _impl.isCached(s);
+}
+
+
 using SingleServerProviderStep = ::arangodb::graph::SingleServerProviderStep;
 
 template class ::arangodb::graph::ProviderTracer<

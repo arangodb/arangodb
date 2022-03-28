@@ -50,6 +50,9 @@ class QueueTracer {
   std::vector<Step*> getLooseEnds();
 
   Step pop();
+  std::string getName() const;
+  std::vector<Step*> getStepsWithoutFetchedVertex();
+  std::vector<Step*> getStepsWithoutFetchedEdges();
 
  private:
   QueueImpl _impl;

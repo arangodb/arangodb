@@ -126,7 +126,9 @@ class SingleServerProviderStep
     return true;
   }
 
- private:
+  std::string fetchedTypeAsString() const {return "";}
+
+      private:
   Vertex _vertex;
   Edge _edge;
 };

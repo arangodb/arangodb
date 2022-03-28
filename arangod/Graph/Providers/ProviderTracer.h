@@ -89,6 +89,7 @@ class ProviderTracer {
   void prepareContext(aql::InputAqlItemRow input);
   void unPrepareContext();
 
+  bool isCached(Step* s);
  private:
   ProviderImpl _impl;
 

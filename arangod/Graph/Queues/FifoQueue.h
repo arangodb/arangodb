@@ -95,6 +95,26 @@ class FifoQueue {
     return steps;
   }
 
+  std::vector<Step*> getStepsWithoutFetchedVertex() {
+    std::vector<Step*> steps;
+    for (auto& step : _queue) {
+      if (not step.vertexFetched()) {
+        steps.emplace_back(&step);
+      }
+    }
+    return steps;
+  }
+
+  std::vector<Step*> getStepsWithoutFetchedEdges() {
+    std::vector<Step*> steps;
+    for (auto& step : _queue) {
+      if (not step.edgesFetched()) {
+        steps.emplace_back(&step);
+      }
+    }
+    return steps;
+  }
+
   Step pop() {
     TRI_ASSERT(!isEmpty());
     Step first = std::move(_queue.front());

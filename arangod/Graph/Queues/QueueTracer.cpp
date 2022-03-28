@@ -79,7 +79,26 @@ bool QueueTracer<QueueImpl>::firstIsVertexFetched() const {
     _stats["firstIsVertexFetched"].addTiming(TRI_microtime() - start);
   });
   return _impl.firstIsVertexFetched();
+}
 
+template<class QueueImpl>
+std::string QueueTracer<QueueImpl>::getName() const {
+  double start = TRI_microtime();
+  auto sg = arangodb::scopeGuard(
+      [&]() noexcept { _stats["getName"].addTiming(TRI_microtime() - start); });
+  return _impl.getName();
+}
+
+template<class QueueImpl>
+std::vector<typename QueueImpl::Step*>
+QueueTracer<QueueImpl>::getStepsWithoutFetchedEdges() {
+  return {};
+}
+
+template<class QueueImpl>
+std::vector<typename QueueImpl::Step*>
+QueueTracer<QueueImpl>::getStepsWithoutFetchedVertex() {
+  return {};
 }
 
 template<class QueueImpl>

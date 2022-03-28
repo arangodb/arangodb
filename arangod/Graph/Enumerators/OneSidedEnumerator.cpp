@@ -102,20 +102,20 @@ auto OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex()
   // Pull next element from Queue
   // Do 1 step search
   TRI_ASSERT(!_queue.isEmpty());
-  std::vector<Step*> preparedEnds;
-  if (!_queue.hasProcessableElement()) {
-    std::vector<Step*> looseEnds = _queue.getLooseEnds();
+  if (!_queue.firstIsVertexFetched()) {
+    std::vector<Step*> looseEnds = _queue.getStepsWithoutFetchedVertex();
     futures::Future<std::vector<Step*>> futureEnds =
         _provider.fetchVertices(looseEnds);
 
     // Will throw all network errors here
-    preparedEnds = std::move(futureEnds.get());
+    std::vector<Step*> preparedEnds = std::move(futureEnds.get());
 
     TRI_ASSERT(preparedEnds.size() != 0);
-    TRI_ASSERT(_queue.hasProcessableElement());
+    TRI_ASSERT(_queue.firstIsVertexFetched());
   }
 
   auto tmp = _queue.pop();
+  // todo: why posPrevious? append returns the position of the inserted element
   auto posPrevious = _interior.append(std::move(tmp));
   auto& step = _interior.getStepReference(posPrevious);
 
@@ -145,9 +145,12 @@ auto OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex()
   }
 
   if (step.getDepth() < _options.getMaxDepth() && !res.isPruned()) {
+    std::vector<Step*> preparedEdgesSteps =
+        _queue.getStepsWithoutFetchedEdges();
     if (not step.edgesFetched()) {
-      _provider.fetchEdges(preparedEnds);
+      preparedEdgesSteps.emplace_back(&step);
     }
+    _provider.fetchEdges(preparedEdgesSteps);
     _provider.expand(step, posPrevious,
                      [&](Step n) -> void { _queue.append(n); });
   }
@@ -252,16 +255,16 @@ auto OneSidedEnumerator<Configuration>::fetchResults() -> void {
   if (!_resultsFetched && !_results.empty()) {
     std::vector<Step*> looseEnds{};
 
-    for (auto& vertex : _results) {
-      if (!vertex.isProcessable()) {
-        looseEnds.emplace_back(&vertex);
+    for (auto& step : _results) {
+      if (!step.vertexFetched()) {
+        looseEnds.emplace_back(&step);
       }
     }
 
     if (!looseEnds.empty()) {
       // Will throw all network errors here
       futures::Future<std::vector<Step*>> futureEnds =
-          _provider.fetch(looseEnds);
+          _provider.fetchVertices(looseEnds);
       futureEnds.get();
       // Notes for the future:
       // Vertices are now fetched. Think about other less-blocking and
@@ -270,6 +273,14 @@ auto OneSidedEnumerator<Configuration>::fetchResults() -> void {
       // fetch as fetched. This works, but we might create a batch limit here in
       // the future. Also discuss: Do we want (re-)fetch logic here?
       // TODO: maybe we can combine this with prefetching of paths
+    }
+
+    std::vector<Step*> unfetchedEdgesSteps =
+        _queue.getStepsWithoutFetchedEdges();
+
+    if (!unfetchedEdgesSteps.empty()) {
+      // Will throw all network errors here
+      _provider.fetchEdges(unfetchedEdgesSteps);
     }
   }
 

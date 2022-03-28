@@ -82,6 +82,21 @@ class ClusterProviderStep
     VERTEX_AND_EDGES_FETCHED
   };
 
+  std::string fetchedTypeAsString() const {
+    auto const type = _fetchedStatus;
+    switch (type) {
+      case FetchedType::UNFETCHED:
+        return "UNFETCHED";
+      case FetchedType::VERTEX_FETCHED:
+        return "VERTEX_FETCHED";
+      case FetchedType::EDGES_FETCHED:
+        return "EDGES_FETCHED";
+      case FetchedType::VERTEX_AND_EDGES_FETCHED:
+        return "VERTEX_AND_EDGES_FETCHED";
+    }
+    return "ERROR";
+  }
+
   static FetchedType getFetchedType(bool vertexFetched, bool edgesFetched) {
     if (vertexFetched) {
       if (edgesFetched) {
@@ -121,8 +136,7 @@ class ClusterProviderStep
   [[nodiscard]] Edge const& getEdge() const { return _edge; }
 
   [[nodiscard]] std::string toString() const {
-    return "<Step><Vertex>: " + _vertex.getID().toString() +
-           ", fetched: " + std::to_string(int(_fetchedStatus));
+    return "<Step><Vertex>: " + _vertex.getID().toString();
   }
 
   bool vertexFetched() const {
@@ -135,9 +149,12 @@ class ClusterProviderStep
            _fetchedStatus == FetchedType::VERTEX_AND_EDGES_FETCHED;
   }
 
+  // todo: rename
   [[nodiscard]] bool isProcessable() const { return !isLooseEnd(); }
   [[nodiscard]] bool isLooseEnd() const {
-    return _fetchedStatus == FetchedType::UNFETCHED;
+    return _fetchedStatus == FetchedType::UNFETCHED ||
+           _fetchedStatus == FetchedType::EDGES_FETCHED ||
+           _fetchedStatus == FetchedType::VERTEX_FETCHED;
   }
 
   [[nodiscard]] VertexType getVertexIdentifier() const {
@@ -159,10 +176,22 @@ class ClusterProviderStep
       -> std::ostream&;
 
  private:
-  void setFetched() { _fetchedStatus = FetchedType::VERTEX_AND_EDGES_FETCHED; }
-  void setFetchedVertex() { _fetchedStatus = FetchedType::VERTEX_FETCHED; }
-  void setFetchedEdges() {
+  void setAllFetched() {
     _fetchedStatus = FetchedType::VERTEX_AND_EDGES_FETCHED;
+  }
+  void setVertexFetched() {
+    if (edgesFetched()) {
+      _fetchedStatus = FetchedType::VERTEX_AND_EDGES_FETCHED;
+    } else {
+      _fetchedStatus = FetchedType::VERTEX_FETCHED;
+    }
+  }
+  void setEdgesFetched() {
+    if (vertexFetched()) {
+      _fetchedStatus = FetchedType::VERTEX_AND_EDGES_FETCHED;
+    } else {
+      _fetchedStatus = FetchedType::EDGES_FETCHED;
+    }
   }
 
  private:

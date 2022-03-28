@@ -119,6 +119,30 @@ class WeightedQueue {
     return first;
   }
 
+  std::string getName() const {
+    return "Weighted queue";
+  }
+
+  std::vector<Step*> getStepsWithoutFetchedVertex() {
+    std::vector<Step*> steps;
+    for (auto& step : _queue) {
+      if (not step.vertexFetched()) {
+        steps.emplace_back(&step);
+      }
+    }
+    return steps;
+  }
+
+  std::vector<Step*> getStepsWithoutFetchedEdges() {
+    std::vector<Step*> steps;
+    for (auto& step : _queue) {
+      if (not step.edgesFetched()) {
+        steps.emplace_back(&step);
+      }
+    }
+    return steps;
+  }
+
  private:
   struct WeightedComparator {
     bool operator()(Step const& a, Step const& b) {

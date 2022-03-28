@@ -118,7 +118,7 @@ void ClusterProvider<StepImpl>::fetchVerticesFromEngines(
   leased->openObject();
   leased->add("keys", VPackValue(VPackValueType::Array));
   for (auto const& looseEnd : looseEnds) {
-    TRI_ASSERT(looseEnd->isLooseEnd());
+    TRI_ASSERT(not looseEnd->vertexFetched());
     auto const& vertexId = looseEnd->getVertex().getID();
     if (!_opts.getCache()->isVertexCached(vertexId)) {
       leased->add(VPackValuePair(vertexId.data(), vertexId.length(),
@@ -221,7 +221,7 @@ void ClusterProvider<StepImpl>::fetchVerticesFromEngines(
                                     VPackSlice::nullSlice());
     }
     result.emplace_back(lE);
-    lE->setFetchedVertex();
+    lE->setVertexFetched();
   }
 }
 
@@ -405,6 +405,7 @@ auto ClusterProvider<StepImpl>::fetchVertices(
                                         VPackSlice::nullSlice());
         }
         result.emplace_back(lE);
+        lE->setVertexFetched();
       }
     } else {
       fetchVerticesFromEngines(looseEnds, result);
@@ -429,7 +430,7 @@ auto ClusterProvider<StepImpl>::fetchEdges(
     // else: We already fetched this vertex.
 
     // mark a looseEnd as fetched as vertex fetch + edges fetch was a success
-    step->setFetched();
+    step->setEdgesFetched();
   }
   return TRI_ERROR_NO_ERROR;
 }

@@ -83,8 +83,7 @@ class ClusterProvider {
                    double weight = 0.0) -> Step;
   auto fetch(std::vector<Step*> const& looseEnds)
       -> futures::Future<std::vector<Step*>>;
-  auto fetchVertices(std::vector<Step*> const& looseEnds)
-      -> std::vector<Step*>;
+  auto fetchVertices(std::vector<Step*> const& looseEnds) -> std::vector<Step*>;
   auto fetchEdges(const std::vector<Step*>& fetchedVertices) -> Result;
   auto expand(Step const& from, size_t previous,
               std::function<void(Step)> const& callback) -> void;
@@ -112,6 +111,10 @@ class ClusterProvider {
 
   void prepareContext(aql::InputAqlItemRow input);
   void unPrepareContext();
+
+  bool isCached(Step* s) {
+    return _opts.getCache()->isVertexCached(s->getVertex().getID());
+  }
 
  private:
   // Unique_ptr to have this class movable, and to keep reference of trx()
