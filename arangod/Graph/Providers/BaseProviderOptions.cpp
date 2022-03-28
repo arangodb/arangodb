@@ -230,3 +230,16 @@ double ClusterBaseProviderOptions::weightEdge(
   }
   return _weightCallback.value()(prefixWeight, edge);
 }
+
+#ifdef USE_ENTERPRISE
+void ClusterBaseProviderOptions::setRPCCommunicator(
+    std::unique_ptr<enterprise::SmartGraphRPCCommunicator> communicator) {
+  _communicator = std::move(communicator);
+}
+
+enterprise::SmartGraphRPCCommunicator&
+ClusterBaseProviderOptions::getRPCCommunicator() {
+  TRI_ASSERT(_communicator != nullptr);
+  return *_communicator;
+}
+#endif

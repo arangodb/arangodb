@@ -31,6 +31,10 @@
 #include "Transaction/Methods.h"
 #include "Aql/InAndOutRowExpressionContext.h"
 
+#ifdef USE_ENTERPRISE
+#include "Enterprise/Graph/Providers/SmartGraphRPCCommunicator.h"
+#endif
+
 #include <optional>
 #include <vector>
 
@@ -180,6 +184,12 @@ struct ClusterBaseProviderOptions {
 
   void setWeightEdgeCallback(WeightCallback callback);
 
+#ifdef USE_ENTERPRISE
+  void setRPCCommunicator(
+      std::unique_ptr<enterprise::SmartGraphRPCCommunicator>);
+  enterprise::SmartGraphRPCCommunicator& getRPCCommunicator();
+#endif
+
  private:
   std::shared_ptr<RefactoredClusterTraverserCache> _cache;
 
@@ -199,6 +209,13 @@ struct ClusterBaseProviderOptions {
 
   // Optional callback to compute the weight of an edge.
   std::optional<WeightCallback> _weightCallback;
+
+#ifdef USE_ENTERPRISE
+  // TODO: This is right now a little bit hacked in, to allow unittestability.
+  // i would like to clean this up better such that the RPCCommunicator is
+  // properly owned by this class
+  std::unique_ptr<enterprise::SmartGraphRPCCommunicator> _communicator;
+#endif
 };
 
 }  // namespace graph

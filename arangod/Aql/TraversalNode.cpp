@@ -708,9 +708,9 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createRefactoredBlock(
   };
   auto isDisjointIsSat = generateDisjointPathValidatorOptions();
 
-  PathValidatorOptions validatorOptions{opts->_tmpVar, opts->getExpressionCtx(),
-                                        isDisjointIsSat.first,
-                                        isDisjointIsSat.second};
+  PathValidatorOptions validatorOptions{
+      opts->tmpVar(), opts->getExpressionCtx(), isDisjointIsSat.first,
+      isDisjointIsSat.second};
 
   // Prune Section
   if (pruneExpression() != nullptr) {

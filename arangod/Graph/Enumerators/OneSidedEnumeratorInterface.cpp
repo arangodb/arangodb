@@ -32,6 +32,11 @@
 #include "Graph/Providers/SingleServerProvider.h"
 #include "Graph/Steps/SingleServerProviderStep.h"
 
+#ifdef USE_ENTERPRISE
+#include "Enterprise/Graph/Providers/SmartGraphProvider.h"
+#include "Enterprise/Graph/Steps/SmartGraphCoordinatorStep.h"
+#endif
+
 using namespace arangodb::graph;
 
 #define INSTANTIATE_ENUMERATOR(BaseEnumeratorType, ProviderType,           \
@@ -137,3 +142,8 @@ INSTANTIATE_FACTORY(
 
 INSTANTIATE_FACTORY(arangodb::graph::SingleServerProvider<
                     arangodb::graph::SingleServerProviderStep>)
+
+#ifdef USE_ENTERPRISE
+INSTANTIATE_FACTORY(arangodb::graph::enterprise::SmartGraphProvider<
+                    arangodb::graph::enterprise::SmartGraphCoordinatorStep>)
+#endif
