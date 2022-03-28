@@ -191,7 +191,6 @@ const replicatedLogSetPlanTerm = function (database, logId, term) {
 };
 
 const replicatedLogSetPlan = function (database, logId, spec) {
-  assertTrue(spec.targetConfig.replicationFactor <= Object.keys(spec.participantsConfig.participants).length);
   global.ArangoAgency.set(`Plan/ReplicatedLogs/${database}/${logId}`, spec);
   global.ArangoAgency.increaseVersion(`Plan/Version`);
 };
