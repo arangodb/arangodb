@@ -86,6 +86,17 @@ struct Current {
 
   std::unordered_map<ParticipantId, ParticipantStatus> participants;
 
+  struct Supervision {
+    std::uint64_t version;
+
+    void toVelocyPack(velocypack::Builder& builder) const;
+    [[nodiscard]] static auto fromVelocyPack(velocypack::Slice) -> Supervision;
+    friend auto operator==(Supervision const&, Supervision const&) noexcept
+        -> bool = default;
+  };
+
+  std::optional<Supervision> supervision;
+
   friend auto operator==(Current const&, Current const&) noexcept
       -> bool = default;
   void toVelocyPack(velocypack::Builder& builder) const;
@@ -97,6 +108,8 @@ struct Target {
 
   Properties properties;
 
+  std::optional<ParticipantId> leader;
+
   struct Participant {
     void toVelocyPack(velocypack::Builder& builder) const;
     [[nodiscard]] static auto fromVelocyPack(velocypack::Slice) -> Participant;
@@ -104,6 +117,7 @@ struct Target {
 
   std::unordered_map<ParticipantId, Participant> participants;
   LogConfig config;
+  std::optional<std::uint64_t> version;
 
   void toVelocyPack(velocypack::Builder& builder) const;
   [[nodiscard]] static auto fromVelocyPack(velocypack::Slice) -> Target;
@@ -114,5 +128,10 @@ struct State {
   std::optional<Plan> plan;
   std::optional<Current> current;
 };
+
+template<class Inspector>
+auto inspect(Inspector& f, Current::Supervision& x) {
+  return f.object(x).fields(f.field("version", x.version));
+}
 
 }  // namespace arangodb::replication2::replicated_state::agency

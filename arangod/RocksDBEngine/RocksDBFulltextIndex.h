@@ -62,7 +62,7 @@ class RocksDBFulltextIndex final : public RocksDBIndex {
   RocksDBFulltextIndex() = delete;
 
   RocksDBFulltextIndex(IndexId iid, LogicalCollection& collection,
-                       arangodb::velocypack::Slice const& info);
+                       arangodb::velocypack::Slice info);
 
   ~RocksDBFulltextIndex() = default;
 

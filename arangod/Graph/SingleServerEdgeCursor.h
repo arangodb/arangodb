@@ -94,7 +94,7 @@ class SingleServerEdgeCursor final : public EdgeCursor {
   void readAll(EdgeCursor::Callback const& callback) override;
 
   /// @brief number of HTTP requests performed. always 0 in single server
-  size_t httpRequests() const override { return 0; }
+  std::uint64_t httpRequests() const override { return 0; }
 
   void rearm(std::string_view vertex, uint64_t depth) override;
 

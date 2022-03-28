@@ -24,47 +24,92 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 
 #include "ExecutionStats.h"
 
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
 
 class TraversalStats {
  public:
   TraversalStats() noexcept
-      : _filtered(0), _scannedIndex(0), _httpRequests(0) {}
+      : _filtered(0),
+        _scannedIndex(0),
+        _httpRequests(0),
+        _cursorsCreated(0),
+        _cursorsRearmed(0),
+        _cacheHits(0),
+        _cacheMisses(0) {}
 
-  void setFiltered(std::size_t filtered) noexcept { _filtered = filtered; }
-
-  void addFiltered(std::size_t filtered) noexcept { _filtered += filtered; }
-
-  void incrFiltered() noexcept { _filtered++; }
-
-  std::size_t getFiltered() const noexcept { return _filtered; }
-
-  void addScannedIndex(std::size_t scanned) noexcept {
-    _scannedIndex += scanned;
+  void clear() noexcept {
+    _filtered = 0;
+    _scannedIndex = 0;
+    _httpRequests = 0;
+    _cursorsCreated = 0;
+    _cursorsRearmed = 0;
+    _cacheHits = 0;
+    _cacheMisses = 0;
   }
 
-  std::size_t getScannedIndex() const noexcept { return _scannedIndex; }
+  void incrFiltered(std::uint64_t value = 1) noexcept { _filtered += value; }
+  [[nodiscard]] std::uint64_t getFiltered() const noexcept { return _filtered; }
 
-  void addHttpRequests(std::size_t requests) noexcept {
-    _httpRequests += requests;
+  void incrScannedIndex(std::uint64_t value = 1) noexcept {
+    _scannedIndex += value;
+  }
+  [[nodiscard]] std::uint64_t getScannedIndex() const noexcept {
+    return _scannedIndex;
   }
 
-  std::size_t getHttpRequests() const noexcept { return _httpRequests; }
+  void incrHttpRequests(std::uint64_t value = 1) noexcept {
+    _httpRequests += value;
+  }
+  [[nodiscard]] std::uint64_t getHttpRequests() const noexcept {
+    return _httpRequests;
+  }
+
+  void incrCursorsCreated(std::uint64_t value = 1) noexcept {
+    _cursorsCreated += value;
+  }
+  void incrCursorsRearmed(std::uint64_t value = 1) noexcept {
+    _cursorsRearmed += value;
+  }
+  [[nodiscard]] std::uint64_t getCursorsCreated() const noexcept {
+    return _cursorsCreated;
+  }
+  [[nodiscard]] std::uint64_t getCursorsRearmed() const noexcept {
+    return _cursorsRearmed;
+  }
+
+  void incrCacheHits(std::uint64_t value = 1) noexcept { _cacheHits += value; }
+  void incrCacheMisses(std::uint64_t value = 1) noexcept {
+    _cacheMisses += value;
+  }
+  [[nodiscard]] std::uint64_t getCacheHits() const noexcept {
+    return _cacheHits;
+  }
+  [[nodiscard]] std::uint64_t getCacheMisses() const noexcept {
+    return _cacheMisses;
+  }
 
   void operator+=(TraversalStats const& other) {
     _filtered += other._filtered;
     _scannedIndex += other._scannedIndex;
     _httpRequests += other._httpRequests;
+    _cursorsCreated += other._cursorsCreated;
+    _cursorsRearmed += other._cursorsRearmed;
+    _cacheHits += other._cacheHits;
+    _cacheMisses += other._cacheMisses;
   }
 
  private:
-  std::size_t _filtered;
-  std::size_t _scannedIndex;
-  std::size_t _httpRequests;
+  std::uint64_t _filtered = 0;
+  std::uint64_t _scannedIndex = 0;
+  std::uint64_t _httpRequests = 0;
+  std::uint64_t _cursorsCreated = 0;
+  std::uint64_t _cursorsRearmed = 0;
+  std::uint64_t _cacheHits = 0;
+  std::uint64_t _cacheMisses = 0;
 };
 
 inline ExecutionStats& operator+=(
@@ -73,8 +118,11 @@ inline ExecutionStats& operator+=(
   executionStats.filtered += traversalStats.getFiltered();
   executionStats.scannedIndex += traversalStats.getScannedIndex();
   executionStats.requests += traversalStats.getHttpRequests();
+  executionStats.cursorsCreated += traversalStats.getCursorsCreated();
+  executionStats.cursorsRearmed += traversalStats.getCursorsRearmed();
+  executionStats.cacheHits += traversalStats.getCacheHits();
+  executionStats.cacheMisses += traversalStats.getCacheMisses();
   return executionStats;
 }
 
-}  // namespace aql
-}  // namespace arangodb
+}  // namespace arangodb::aql

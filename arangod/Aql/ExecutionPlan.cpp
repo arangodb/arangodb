@@ -345,8 +345,12 @@ std::unique_ptr<graph::BaseOptions> createShortestPathOptions(
   return options;
 }
 
-// extract "maxProjections" from FOR options
-size_t extractMaxProjections(QueryContext& query, AstNode const* node) {
+// extract "maxProjections" and "useCache" from FOR options
+void setForOptions(QueryContext& query, AstNode const* node,
+                   DocumentProducingNode* dn) {
+  // default value
+  dn->setMaxProjections(DocumentProducingNode::kMaxProjections);
+
   if (node != nullptr && node->type == AstNodeType::NODE_TYPE_OBJECT) {
     for (size_t i = 0; i < node->numMembers(); i++) {
       AstNode const* child = node->getMember(i);
@@ -354,7 +358,7 @@ size_t extractMaxProjections(QueryContext& query, AstNode const* node) {
       if (child->type == AstNodeType::NODE_TYPE_OBJECT_ELEMENT) {
         TRI_ASSERT(child->numMembers() > 0);
         std::string_view name(child->getStringView());
-        if (name == arangodb::StaticStrings::IndexHintMaxProjections) {
+        if (name == arangodb::StaticStrings::MaxProjections) {
           AstNode const* value = child->getMember(0);
           int64_t maxProjections = -1;
 
@@ -367,19 +371,26 @@ size_t extractMaxProjections(QueryContext& query, AstNode const* node) {
           }
           if (maxProjections >= 0) {
             // got a valid value
-            return static_cast<size_t>(maxProjections);
+            dn->setMaxProjections(static_cast<size_t>(maxProjections));
+          } else {
+            // will raise a warning, which can optionally abort the query
+            ExecutionPlan::invalidOptionAttribute(query, "invalid", "FOR",
+                                                  name.data(), name.size());
           }
-          // will raise a warning, which can optionally abort the query
-          ExecutionPlan::invalidOptionAttribute(query, "invalid", "FOR",
-                                                name.data(), name.size());
-          break;
+        } else if (name == arangodb::StaticStrings::UseCache) {
+          AstNode const* value = child->getMember(0);
+
+          if (value->isBoolValue()) {
+            dn->setUseCache(value->getBoolValue());
+          } else {
+            // will raise a warning, which can optionally abort the query
+            ExecutionPlan::invalidOptionAttribute(query, "invalid", "FOR",
+                                                  name.data(), name.size());
+          }
         }
       }
     }
   }
-
-  // default value
-  return DocumentProducingNode::kMaxProjections;
 }
 
 std::unique_ptr<Expression> createPruneExpression(ExecutionPlan* plan, Ast* ast,
@@ -1140,10 +1151,10 @@ ExecutionNode* ExecutionPlan::fromNodeFor(ExecutionNode* previous,
       ExecutionNode::castTo<EnumerateCollectionNode*>(en)->setCanReadOwnWrites(
           ReadOwnWrites::yes);
     }
-    size_t maxProjections = ::extractMaxProjections(_ast->query(), options);
+
     auto* dn = dynamic_cast<DocumentProducingNode*>(en);
     TRI_ASSERT(dn != nullptr);
-    dn->setMaxProjections(maxProjections);
+    ::setForOptions(_ast->query(), options, dn);
 
   } else if (expression->type == NODE_TYPE_VIEW) {
     // second operand is a view
