@@ -141,7 +141,7 @@ class ArangoLanguageFeatureTest
   // Per-test-suite set-up.
   // Called before the first test in this test suite.
   // Can be omitted if not needed.
-  static void SetUpTestSuite() {
+  static void SetUpTestCase() {
     auto collator =
         arangodb::basics::Utf8Helper::DefaultUtf8Helper.getCollator();
     delete collator;
@@ -152,11 +152,11 @@ class ArangoLanguageFeatureTest
   // Per-test-suite tear-down.
   // Called after the last test in this test suite.
   // Can be omitted if not needed.
-  static void TearDownTestSuite() { IcuInitializer::reinit(); }
+  static void TearDownTestCase() { IcuInitializer::reinit(); }
 
-  void SetUp() {}
+  void SetUp() override {}
 
-  void TearDown() { SetUpTestSuite(); }
+  void TearDown() override { SetUpTestCase(); }
 
  public:
   ArangoLanguageFeatureTest() : server(false) {
