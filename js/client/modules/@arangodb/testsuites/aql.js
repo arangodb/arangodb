@@ -43,7 +43,7 @@ const tu = require('@arangodb/testutils/test-utils');
 
 const testPaths = {
   'shell_api': [ tu.pathForTesting('client/shell/api')],
-  'shell_client': [ tu.pathForTesting('common/shell'), tu.pathForTesting('client/shell'), tu.pathForTesting('client/api') ],
+  'shell_client': [ tu.pathForTesting('common/shell'), tu.pathForTesting('client/shell')],
   'shell_server': [ tu.pathForTesting('common/shell'), tu.pathForTesting('server/shell') ],
   'shell_server_only': [ tu.pathForTesting('server/shell') ],
   'shell_server_aql': [ tu.pathForTesting('server/aql'), tu.pathForTesting('common/aql') ],
