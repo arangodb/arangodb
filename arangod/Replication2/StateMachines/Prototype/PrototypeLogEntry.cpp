@@ -33,9 +33,6 @@ auto PrototypeLogEntry::getType() noexcept -> std::string_view {
       overload{
           [](PrototypeLogEntry::DeleteOperation const& o) { return kDelete; },
           [](PrototypeLogEntry::InsertOperation const& o) { return kInsert; },
-          [](PrototypeLogEntry::BulkDeleteOperation const& o) {
-            return kBulkDelete;
-          },
       },
       op);
 }
@@ -54,5 +51,5 @@ void replicated_state::EntrySerializer<
 operator()(
     streams::serializer_tag_t<replicated_state::prototype::PrototypeLogEntry>,
     prototype::PrototypeLogEntry const& e, velocypack::Builder& b) const {
-  return serialize(b, e);
+  serialize(b, e);
 }

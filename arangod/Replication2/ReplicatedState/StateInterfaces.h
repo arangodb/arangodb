@@ -80,6 +80,13 @@ struct IReplicatedLeaderState : IReplicatedLeaderStateBase {
   [[nodiscard]] virtual auto resign() && noexcept
       -> std::unique_ptr<CoreType> = 0;
 
+  /**
+   * This function has been added to allow resolving futures once the
+   * stream is available. The PrototypeLeaderState uses it as an opportunity
+   * to begin its waiting-for-entries cycle.
+   */
+  virtual void start(){};
+
   // TODO make private
   std::shared_ptr<Stream> _stream;
 };

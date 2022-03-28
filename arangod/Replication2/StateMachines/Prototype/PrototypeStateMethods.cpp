@@ -39,6 +39,7 @@
 #include "VocBase/vocbase.h"
 #include "Random/RandomGenerator.h"
 
+#include "PrototypeLeaderState.h"
 #include "PrototypeStateMethods.h"
 #include "Replication2/ReplicatedState/AgencySpecification.h"
 #include "Inspection/VPack.h"
@@ -71,7 +72,7 @@ struct PrototypeStateMethodsDBServer final : PrototypeStateMethods {
       -> futures::Future<
           std::unordered_map<std::string, std::string>> override {
     auto leader = getPrototypeStateLeaderById(id);
-    return leader->get(keys.begin(), keys.end());
+    return leader->get(std::move(keys));
   }
 
   [[nodiscard]] auto getSnapshot(LogId id, LogIndex waitForIndex) const

@@ -20,20 +20,32 @@
 ///
 /// @author Alexandru Petenchea
 ////////////////////////////////////////////////////////////////////////////////
+
 #pragma once
 
-#include "RestServer/arangod.h"
+#include "PrototypeStateMachine.h"
 
 namespace arangodb::replication2::replicated_state::prototype {
+struct PrototypeFollowerState
+    : IReplicatedFollowerState<PrototypeState>,
+      std::enable_shared_from_this<PrototypeFollowerState> {
+  explicit PrototypeFollowerState(std::unique_ptr<PrototypeCore>,
+                                  std::shared_ptr<IPrototypeNetworkInterface>);
 
-struct PrototypeStateMachineFeature : public ArangodFeature {
-  static constexpr std::string_view name() noexcept {
-    return "PrototypeStateMachine";
-  }
+  [[nodiscard]] auto resign() && noexcept
+      -> std::unique_ptr<PrototypeCore> override;
 
-  explicit PrototypeStateMachineFeature(Server& server);
-  void prepare() override;
-  void start() override;
+  auto acquireSnapshot(ParticipantId const& destination, LogIndex) noexcept
+      -> futures::Future<Result> override;
+
+  auto applyEntries(std::unique_ptr<EntryIterator> ptr) noexcept
+      -> futures::Future<Result> override;
+
+  LoggerContext const loggerContext;
+
+ private:
+  GlobalLogIdentifier const _logIdentifier;
+  std::shared_ptr<IPrototypeNetworkInterface> const _networkInterface;
+  Guarded<std::unique_ptr<PrototypeCore>, basics::UnshackledMutex> _guardedData;
 };
-
 }  // namespace arangodb::replication2::replicated_state::prototype

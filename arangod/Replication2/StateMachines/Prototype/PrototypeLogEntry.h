@@ -45,20 +45,16 @@ inline constexpr std::string_view kType = "type";
 // Operation names
 inline constexpr std::string_view kDelete = "delete";
 inline constexpr std::string_view kInsert = "insert";
-inline constexpr std::string_view kBulkDelete = "bulkDelete";
 
 struct PrototypeLogEntry {
   struct InsertOperation {
     std::unordered_map<std::string, std::string> map;
   };
   struct DeleteOperation {
-    std::string key;
-  };
-  struct BulkDeleteOperation {
     std::vector<std::string> keys;
   };
 
-  std::variant<DeleteOperation, InsertOperation, BulkDeleteOperation> op;
+  std::variant<DeleteOperation, InsertOperation> op;
 
   auto getType() noexcept -> std::string_view;
 };
@@ -70,11 +66,6 @@ auto inspect(Inspector& f, PrototypeLogEntry::InsertOperation& x) {
 
 template<class Inspector>
 auto inspect(Inspector& f, PrototypeLogEntry::DeleteOperation& x) {
-  return f.object(x).fields(f.field("key", x.key));
-}
-
-template<class Inspector>
-auto inspect(Inspector& f, PrototypeLogEntry::BulkDeleteOperation& x) {
   return f.object(x).fields(f.field("keys", x.keys));
 }
 
@@ -98,14 +89,12 @@ auto inspect(Inspector& f, PrototypeLogEntry& x) {
       return opLoader(PrototypeLogEntry::InsertOperation{});
     } else if (typeSlice.isEqualString(kDelete)) {
       return opLoader(PrototypeLogEntry::DeleteOperation{});
-    } else if (typeSlice.isEqualString(kBulkDelete)) {
-      return opLoader(PrototypeLogEntry::BulkDeleteOperation{});
     } else {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_BAD_PARAMETER,
+          basics::StringUtils::concatT("Unknown operation '",
+                                       typeSlice.copyString(), "'"));
     }
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_BAD_PARAMETER,
-        basics::StringUtils::concatT("Unknown operation '",
-                                     typeSlice.copyString(), "'"));
   } else {
     auto& b = f.builder();
     VPackObjectBuilder ob(&b);

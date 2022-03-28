@@ -89,6 +89,7 @@ void LeaderStateManager<S>::run() {
                             LeaderInternalState::kServiceAvailable);
                         self->state->_stream = self->stream;
                         self->beginWaitingForParticipantResigned();
+                        self->state->start();
                         return result;
                       } else {
                         LOG_CTX("3fd49", FATAL, self->loggerContext)
