@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, assertTrue, assertEqual, arango */
+/* global assertEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
@@ -28,11 +28,41 @@
 const jsunity = require('jsunity');
 const _ = require('lodash');
 const rh = require('@arangodb/testutils/restart-helper');
-const {db} = require('@arangodb');
+const {db, errors} = require('@arangodb');
+const request = require('@arangodb/request');
 
 const dbservers = (function () {
   return global.instanceInfo.arangods.filter((instance) => instance.role === "dbserver").map((x) => x.id);
 }());
+
+
+const retryWithExceptions = function (check, allowedErrors) {
+  let i = 0, lastError = null;
+  while (true) {
+    try {
+      check();
+      break;
+    } catch (err) {
+      if (!_.includes(allowedErrors, err.errorNum)) {
+        throw err;
+      }
+      lastError = err;
+    }
+    i += 1;
+    if (i >= 100) {
+      throw Error("repeated error conditions: " + lastError);
+    }
+    require('internal').sleep(1);
+  }
+};
+
+const getSnapshotStatus = function (logId) {
+  const response = db._connection.GET(`/_api/replicated-state/${logId}/snapshot-status`);
+  if (response.code !== 200) {
+    throw new Error("Snapshot status returned invalid response code: " + response.code)
+  }
+  return response.result;
+};
 
 function testSuite() {
 
@@ -42,13 +72,22 @@ function testSuite() {
       rh.restartAllServers();
     },
 
-    testRestartFollower: function () {
+    testRestartDatabaseServers: function () {
       const servers = _.sampleSize(dbservers, 3);
       const state = db._createPrototypeState({servers});
+      state.write({"foo": "bar"});
 
+      const sstatus = getSnapshotStatus(state.id());
 
+      rh.shutdownServers(dbservers);
+      rh.restartAllServers();
 
+      retryWithExceptions(function () {
+        assertEqual(state.read("foo"), "bar");
+      }, [errors.ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED.code, errors.ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND.code]);
 
+      // we expect the snapshost status to be unchanged
+      assertEqual(sstatus, getSnapshotStatus(state.id()));
     },
   };
 }

@@ -728,6 +728,12 @@ struct ReplicatedStateDBServerMethods
     THROW_ARANGO_EXCEPTION(TRI_ERROR_HTTP_NOT_IMPLEMENTED);
   }
 
+  auto getGlobalSnapshotStatus(LogId) const
+      -> futures::Future<ResultT<GlobalSnapshotStatus>> override {
+    // Only available on the coordinator
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_HTTP_NOT_IMPLEMENTED);
+  }
+
   TRI_vocbase_t& vocbase;
 };
 
@@ -847,6 +853,39 @@ struct ReplicatedStateCoordinatorMethods
       -> futures::Future<Result> override {
     return replication2::agency::methods::replaceReplicatedSetLeader(
         vocbase, id, leaderId);
+  }
+
+  auto getGlobalSnapshotStatus(LogId id) const
+      -> futures::Future<ResultT<GlobalSnapshotStatus>> override {
+    AsyncAgencyComm ac;
+    auto f = ac.getValues(arangodb::cluster::paths::aliases::current()
+                              ->replicatedStates()
+                              ->database(vocbase.name())
+                              ->state(id),
+                          std::chrono::seconds{5});
+    return std::move(f).then([self = shared_from_this()](
+                                 futures::Try<AgencyReadResult>&& tryResult)
+                                 -> ResultT<GlobalSnapshotStatus> {
+      auto result =
+          basics::catchToResultT([&] { return std::move(tryResult.get()); });
+
+      if (result.fail()) {
+        return result.result();
+      }
+      if (result->value().isNone()) {
+        return {TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND};
+      }
+      auto current =
+          replicated_state::agency::Current::fromVelocyPack(result->value());
+
+      GlobalSnapshotStatus status;
+      for (auto const& [p, s] : current.participants) {
+        status[p] = ParticipantSnapshotStatus{.status = s.snapshot,
+                                              .generation = s.generation};
+      }
+
+      return status;
+    });
   }
 
   TRI_vocbase_t& vocbase;

@@ -26,14 +26,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 const pu = require('@arangodb/testutils/process-utils');
+const _ = require('lodash');
 
-const {shutdownServer, restartServer, restartAllServers} = (function () {
-  let getServerById = function (serverId) {
-    return global.instanceInfo.arangods.filter((instance) => instance.id === serverId);
+const {shutdownServers, restartServers, restartAllServers} = (function () {
+  const getServersById = function (serverIds) {
+    return global.instanceInfo.arangods.filter((instance) => _.includes(serverIds, instance.id));
   };
 
-  let waitForAlive = function (timeout, baseurl, data) {
-
+  const waitForAlive = function (timeout, baseurl, data) {
     const time = require("internal").time;
     const request = require("@arangodb/request");
     let res;
@@ -52,36 +52,37 @@ const {shutdownServer, restartServer, restartAllServers} = (function () {
 
   const stoppedServers = {};
 
-  const restartServer = function (serverId) {
-    const server = getServerById(serverId);
-    pu.reStartInstance(global.options, global.instanceInfo, {});
-    waitForAlive(30, server.url, {});
-    delete stoppedServers[serverId];
+  const restartServers = function (serverIds) {
+    const servers = getServersById(serverIds);
+    pu.reStartInstance(global.testOptions, global.instanceInfo, {});
+    for (const server of servers) {
+      waitForAlive(30, server.url, {});
+      delete stoppedServers[server.id];
+    }
   };
 
-  const shutdownServer = function (serverId) {
-    const server = getServerById(serverId);
-
+  const shutdownServers = function (serverIds) {
+    const servers = getServersById(serverIds);
     const newInstanceInfo = {
-      arangods: [server],
+      arangods: servers,
       endpoint: global.instanceInfo.endpoint,
     };
     const shutdownStatus = pu.shutdownInstance(newInstanceInfo, global.testOptions, false);
-    server.pid = null;
     assertTrue(shutdownStatus);
-    stoppedServers[serverId] = true;
+    for (const server of servers) {
+      server.pid = null;
+      stoppedServers[server.id] = true;
+    }
   };
 
   return {
-    shutdownServer, restartServer,
+    shutdownServers, restartServers,
     restartAllServers: function () {
-      Object.keys(stoppedServers).forEach(function (key) {
-        restartServer(key);
-      });
+      restartServers(Object.keys(stoppedServers));
     }
   };
 })();
 
-exports.shutdownServer = shutdownServer;
-exports.restartServer = restartServer;
+exports.shutdownServers = shutdownServers;
+exports.restartServers = restartServers;
 exports.restartAllServers = restartAllServers;
