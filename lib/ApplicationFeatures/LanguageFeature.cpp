@@ -271,6 +271,7 @@ void LanguageFeature::resetLanguage(std::string_view language,
       break;
 
     case LanguageType::INVALID:
+    default:
       TRI_ASSERT(false);
       return;
   }

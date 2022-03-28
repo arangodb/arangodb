@@ -155,8 +155,6 @@ class ArangoLanguageFeatureTest
   // Can be omitted if not needed.
   static void TearDownTestCase() { IcuInitializer::reinit(); }
 
-  void SetUp() override {}
-
   void TearDown() override { SetUpTestCase(); }
 
  private:
@@ -175,7 +173,7 @@ class ArangoLanguageFeatureTest
     server.server().setBinaryPath(dbPathFeature.directory().c_str());
   }
 
-  ~ArangoLanguageFeatureTest() {}
+  ~ArangoLanguageFeatureTest() = default;
 };
 
 // -----------------------------------------------------------------------------

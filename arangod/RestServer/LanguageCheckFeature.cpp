@@ -118,6 +118,7 @@ ErrorCode writeLanguage(
         break;
 
       case LanguageType::INVALID:
+      default:
         TRI_ASSERT(false);
         break;
     }
