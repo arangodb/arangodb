@@ -119,17 +119,14 @@ TEST_F(PrototypeStateMachineTest, prorotype_core_flush) {
   auto leader = leaderLog->becomeLeader("leader", LogTerm{1}, {follower}, 2);
 
   leader->triggerAsyncReplication();
-  LOG_DEVEL << "debug";
 
   auto leaderReplicatedState =
       std::dynamic_pointer_cast<ReplicatedState<PrototypeState>>(
           feature->createReplicatedState("prototype-state", leaderLog));
-  LOG_DEVEL << "debug";
   ASSERT_NE(leaderReplicatedState, nullptr);
   leaderReplicatedState->start(
       std::make_unique<ReplicatedStateToken>(StateGeneration{1}));
   follower->runAllAsyncAppendEntries();
-  LOG_DEVEL << "debug";
 
   auto leaderState = leaderReplicatedState->getLeader();
   ASSERT_NE(leaderState, nullptr);
@@ -146,19 +143,20 @@ TEST_F(PrototypeStateMachineTest, prorotype_core_flush) {
   ASSERT_NE(followerState, nullptr);
 
   std::unordered_map<std::string, std::string> expected;
-  for (std::size_t cnt{0}; cnt <= PrototypeCore::kFlushBatchSize; ++cnt) {
-    LOG_DEVEL << cnt;
+  for (std::size_t cnt{0}; cnt < PrototypeCore::kFlushBatchSize; ++cnt) {
     auto key = "foo" + std::to_string(cnt);
     auto value = "bar" + std::to_string(cnt);
     auto entries = std::unordered_map<std::string, std::string>{{key, value}};
     expected.emplace(key, value);
     auto result = leaderState->set(entries);
+    ASSERT_TRUE(result.isReady());
     auto index = result.get()->value;
     ASSERT_EQ(index, cnt + 2);
   }
   follower->runAllAsyncAppendEntries();
 
-  ASSERT_EQ(storageMock->putCalled, 1);
+  // put is called twice, once from the leader and once from the follower
+  ASSERT_EQ(storageMock->putCalled, 2);
 
   auto snapshot = leaderState->getSnapshot(LogIndex{1});
   ASSERT_TRUE(snapshot.isReady());
