@@ -39,6 +39,10 @@ auto to_string(Action const& action) -> std::string_view {
   return std::visit([](auto&& arg) { return arg.name; }, action);
 }
 
+void toVelocyPack(Action const& action, VPackBuilder& builder) {
+  std::visit([&builder](auto&& arg) { serialize(builder, arg); }, action);
+}
+
 auto execute(Action const& action, DatabaseID const& dbName, LogId const& log,
              std::optional<LogPlanSpecification> const plan,
              std::optional<LogCurrent> const current,
