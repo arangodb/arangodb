@@ -2276,9 +2276,10 @@ TEST_F(IResearchAnalyzerFeatureTest, test_analyzer_features) {
                                        irs::IndexFeatures::FREQ}),
         pool->features());
     ASSERT_EQ(irs::IndexFeatures::FREQ, pool->indexFeatures());
-    irs::type_info::type_id const expectedFeatures[]{
-        irs::type<irs::Norm>::id()};
-    ASSERT_EQ((irs::features_t{expectedFeatures, 1}), pool->fieldFeatures());
+    irs::type_info::type_id const expected[]{irs::type<irs::Norm>::id()};
+    auto features = pool->fieldFeatures();
+    ASSERT_TRUE(
+        std::equal(expected, expected + 1, features.begin(), features.end()));
   }
 
   // norm, version 1
@@ -2300,9 +2301,10 @@ TEST_F(IResearchAnalyzerFeatureTest, test_analyzer_features) {
                                        irs::IndexFeatures::FREQ}),
         pool->features());
     ASSERT_EQ(irs::IndexFeatures::FREQ, pool->indexFeatures());
-    irs::type_info::type_id const expectedFeatures[]{
-        irs::type<irs::Norm2>::id()};
-    ASSERT_EQ((irs::features_t{expectedFeatures, 1}), pool->fieldFeatures());
+    irs::type_info::type_id const expected[]{irs::type<irs::Norm2>::id()};
+    auto features = pool->fieldFeatures();
+    ASSERT_TRUE(
+        std::equal(expected, expected + 1, features.begin(), features.end()));
   }
 
   // frequency is not set

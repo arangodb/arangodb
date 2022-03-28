@@ -699,6 +699,12 @@ function fetching_userSuite () {
 ////////////////////////////////////////////////////////////////////////////////;
 function Modifying_permissionSuite () {
   return {
+    tearDownAll: function() {
+      for (let i = 1; i < 10; i++) {
+        arango.DELETE_RAW("/_api/user/users-" + i);;
+      }
+    },
+
     test_granting_database: function() {
       let body = { "user" : "users-1", "passwd" : "" };
       let doc = arango.POST_RAW(api, body);

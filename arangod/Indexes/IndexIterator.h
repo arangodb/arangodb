@@ -49,6 +49,8 @@
 #include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/vocbase.h"
 
+#include <cstdint>
+
 namespace arangodb {
 class Index;
 class LogicalCollection;
@@ -236,6 +238,11 @@ class IndexIterator {
   /// @brief whether or not the index iterator supports rearming
   virtual bool canRearm() const { return false; }
 
+  /// @brief returns cache hits (first) and misses (second) statistics, and
+  /// resets their values to 0
+  [[nodiscard]] std::pair<std::uint64_t, std::uint64_t>
+  getAndResetCacheStats() noexcept;
+
  protected:
   ReadOwnWrites canReadOwnWrites() const noexcept { return _readOwnWrites; }
 
@@ -253,8 +260,25 @@ class IndexIterator {
 
   virtual void skipImpl(uint64_t count, uint64_t& skipped);
 
+  void incrCacheHits(std::uint64_t value = 1) noexcept { _cacheHits += value; }
+  void incrCacheMisses(std::uint64_t value = 1) noexcept {
+    _cacheMisses += value;
+  }
+  void incrCacheStats(bool found, std::uint64_t value = 1) noexcept {
+    if (found) {
+      _cacheHits += value;
+    } else {
+      _cacheMisses += value;
+    }
+  }
+
   LogicalCollection* _collection;
   transaction::Methods* _trx;
+
+  // statistics
+  std::uint64_t _cacheHits;
+  std::uint64_t _cacheMisses;
+
   bool _hasMore;
 
  private:
@@ -337,7 +361,7 @@ struct IndexIteratorOptions {
   /// Used when creating the condition required to build an iterator
   bool evaluateFCalls = true;
   /// @brief enable caching
-  bool enableCache = true;
+  bool useCache = true;
   /// @brief number of lookahead elements considered before computing the next
   /// intersection of the Z-curve with the search range
   size_t lookahead = 1;

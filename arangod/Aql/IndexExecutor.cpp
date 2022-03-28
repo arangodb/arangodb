@@ -308,19 +308,38 @@ bool IndexExecutorInfos::hasNonConstParts() const {
   return !_nonConstExpressions._expressions.empty();
 }
 
-void IndexExecutor::CursorStats::incrCreated() noexcept { ++created; }
-void IndexExecutor::CursorStats::incrRearmed() noexcept { ++rearmed; }
-
-size_t IndexExecutor::CursorStats::getAndResetCreated() noexcept {
-  size_t value = created;
-  created = 0;
-  return value;
+void IndexExecutor::CursorStats::incrCursorsCreated(
+    std::uint64_t value) noexcept {
+  cursorsCreated += value;
 }
 
-size_t IndexExecutor::CursorStats::getAndResetRearmed() noexcept {
-  size_t value = rearmed;
-  rearmed = 0;
-  return value;
+void IndexExecutor::CursorStats::incrCursorsRearmed(
+    std::uint64_t value) noexcept {
+  cursorsRearmed += value;
+}
+
+void IndexExecutor::CursorStats::incrCacheHits(std::uint64_t value) noexcept {
+  cacheHits += value;
+}
+
+void IndexExecutor::CursorStats::incrCacheMisses(std::uint64_t value) noexcept {
+  cacheMisses += value;
+}
+
+std::uint64_t IndexExecutor::CursorStats::getAndResetCursorsCreated() noexcept {
+  return std::exchange(cursorsCreated, 0);
+}
+
+std::uint64_t IndexExecutor::CursorStats::getAndResetCursorsRearmed() noexcept {
+  return std::exchange(cursorsRearmed, 0);
+}
+
+std::uint64_t IndexExecutor::CursorStats::getAndResetCacheHits() noexcept {
+  return std::exchange(cacheHits, 0);
+}
+
+std::uint64_t IndexExecutor::CursorStats::getAndResetCacheMisses() noexcept {
+  return std::exchange(cacheMisses, 0);
 }
 
 IndexExecutor::CursorReader::CursorReader(
@@ -345,7 +364,7 @@ IndexExecutor::CursorReader::CursorReader(
                                                               : Type::Document),
       _checkUniqueness(checkUniqueness) {
   // for the initial cursor created in the initializer list
-  _cursorStats.incrCreated();
+  _cursorStats.incrCursorsCreated();
 
   switch (_type) {
     case Type::NoResult: {
@@ -412,6 +431,14 @@ bool IndexExecutor::CursorReader::readIndex(OutputAqlItemRow& output) {
   TRI_IF_FAILURE("IndexBlock::readIndex") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
+
+  // update cache statistics from cursor when we exit this method
+  auto statsUpdater = scopeGuard([this]() noexcept {
+    auto [ch, cm] = _cursor->getAndResetCacheStats();
+    _cursorStats.incrCacheHits(ch);
+    _cursorStats.incrCacheMisses(cm);
+  });
+
   switch (_type) {
     case Type::NoResult:
       TRI_ASSERT(_documentNonProducer != nullptr);
@@ -500,8 +527,13 @@ void IndexExecutor::CursorReader::reset() {
     return;
   }
 
+  // update cache statistics from cursor
+  auto [ch, cm] = _cursor->getAndResetCacheStats();
+  _cursorStats.incrCacheHits(ch);
+  _cursorStats.incrCacheMisses(cm);
+
   if (_cursor->canRearm()) {
-    _cursorStats.incrRearmed();
+    _cursorStats.incrCursorsRearmed();
     bool didRearm = _cursor->rearm(_condition, _infos.getOutVariable(),
                                    _infos.getOptions());
     if (!didRearm) {
@@ -512,7 +544,7 @@ void IndexExecutor::CursorReader::reset() {
     }
   } else {
     // We need to build a fresh search and cannot go the rearm shortcut
-    _cursorStats.incrCreated();
+    _cursorStats.incrCursorsCreated();
     _cursor = _trx.indexScanForCondition(
         _index, _condition, _infos.getOutVariable(), _infos.getOptions(),
         _infos.canReadOwnWrites(),
@@ -817,9 +849,13 @@ auto IndexExecutor::produceRows(AqlItemBlockInputRange& inputRange,
         _documentProducingFunctionContext.getAndResetNumScanned());
     stats.incrFiltered(
         _documentProducingFunctionContext.getAndResetNumFiltered());
-    stats.incrCursorsCreated(_cursorStats.getAndResetCreated());
-    stats.incrCursorsRearmed(_cursorStats.getAndResetRearmed());
   }
+
+  // ok to update the stats at the end of the method
+  stats.incrCursorsCreated(_cursorStats.getAndResetCursorsCreated());
+  stats.incrCursorsRearmed(_cursorStats.getAndResetCursorsRearmed());
+  stats.incrCacheHits(_cursorStats.getAndResetCacheHits());
+  stats.incrCacheMisses(_cursorStats.getAndResetCacheMisses());
 
   INTERNAL_LOG_IDX << "IndexExecutor::produceRows reporting state "
                    << returnState();

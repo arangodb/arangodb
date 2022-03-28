@@ -198,7 +198,7 @@ auto OneSidedEnumerator<Configuration>::getNextPath()
   while (!isDone()) {
     searchMoreResults();
 
-    while (!_results.empty()) {
+    if (!_results.empty()) {
       auto step = std::move(_results.back());
       _results.pop_back();
       return std::make_unique<ResultPathType>(step, _provider, _interior);
@@ -212,6 +212,7 @@ void OneSidedEnumerator<Configuration>::searchMoreResults() {
   while (_results.empty() &&
          !searchDone()) {  // TODO: check && !_queue.isEmpty()
     _resultsFetched = false;
+
     computeNeighbourhoodOfNextVertex();
   }
 
@@ -230,7 +231,7 @@ bool OneSidedEnumerator<Configuration>::skipPath() {
   while (!isDone()) {
     searchMoreResults();
 
-    while (!_results.empty()) {
+    if (!_results.empty()) {
       // just drop one result for skipping
       _results.pop_back();
       return true;
@@ -284,9 +285,7 @@ auto OneSidedEnumerator<Configuration>::stealStats() -> aql::TraversalStats {
   _stats += _provider.stealStats();
 
   auto t = _stats;
-  // Placement new of stats, do not reallocate space.
-  _stats.~TraversalStats();
-  new (&_stats) aql::TraversalStats{};
+  _stats.clear();
   return t;
 }
 
