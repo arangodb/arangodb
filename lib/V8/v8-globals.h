@@ -571,6 +571,9 @@ struct TRI_v8_global_t {
   /// @brief replicated log template
   v8::Persistent<v8::ObjectTemplate> VocbaseReplicatedLogTempl;
 
+  /// @brief prototype state template
+  v8::Persistent<v8::ObjectTemplate> VocbasePrototypeStateTempl;
+
   /// @brief TRI_vocbase_t template
   v8::Persistent<v8::ObjectTemplate> VocbaseTempl;
 
