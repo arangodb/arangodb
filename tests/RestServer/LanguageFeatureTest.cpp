@@ -31,8 +31,10 @@
 #include "Servers.h"
 #include "Basics/Utf8Helper.h"
 #include <unicode/coll.h>
+#include <unicode/uclean.h>
+#include <unicode/urename.h>
 #include "Basics/files.h"
-
+#include "Basics/icu-helper.h"
 #include "IResearch/common.h"
 
 // -----------------------------------------------------------------------------
@@ -136,16 +138,38 @@ class ArangoLanguageFeatureTest
  protected:
   arangodb::tests::mocks::MockAqlServer server;
 
+  // Per-test-suite set-up.
+  // Called before the first test in this test suite.
+  // Can be omitted if not needed.
+  static void SetUpTestSuite() {
+    auto collator = arangodb::basics::Utf8Helper::DefaultUtf8Helper.getCollator();
+    delete collator;
+    arangodb::basics::Utf8Helper::DefaultUtf8Helper.setCollator(nullptr);
+    u_cleanup();
+  }
+
+  // Per-test-suite tear-down.
+  // Called after the last test in this test suite.
+  // Can be omitted if not needed.
+  static void TearDownTestSuite() {
+     IcuInitializer::reinit();
+  }
+
+  void SetUp() {
+
+  }
+
+  void TearDown() {
+    SetUpTestSuite();
+  }
+
  private:
-  //  TRI_vocbase_t* _vocbase;
-  icu::Collator* collator;
+  std::string _lang;
+  std::string _country;
+  icu::Collator* _collator;
 
  public:
   ArangoLanguageFeatureTest() : server(false) {
-    collator = arangodb::basics::Utf8Helper::DefaultUtf8Helper.getCollator();
-
-    arangodb::basics::Utf8Helper::DefaultUtf8Helper.setCollator(nullptr);
-
     arangodb::tests::init();
 
     server.startFeatures();
@@ -155,15 +179,9 @@ class ArangoLanguageFeatureTest
     server.server().setBinaryPath(dbPathFeature.directory().c_str());
   }
 
-  ~ArangoLanguageFeatureTest() {
-    auto curr_coll =
-        arangodb::basics::Utf8Helper::DefaultUtf8Helper.getCollator();
-    if (curr_coll) {
-      delete curr_coll;
-    }
-    arangodb::basics::Utf8Helper::DefaultUtf8Helper.setCollator(collator);
-  }
+  ~ArangoLanguageFeatureTest() { }
 };
+
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite

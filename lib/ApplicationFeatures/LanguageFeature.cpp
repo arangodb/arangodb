@@ -198,8 +198,10 @@ void LanguageFeature::prepare() {
   auto context = ArangoGlobalContext::CONTEXT;
   std::string binaryExecutionPath = context->getBinaryPath();
   std::string binaryName = context->binaryName();
-  _icuData = LanguageFeature::prepareIcu(_binaryPath, binaryExecutionPath, p,
-                                         binaryName);
+  if (_icuData.empty()) {
+    _icuData = LanguageFeature::prepareIcu(_binaryPath, binaryExecutionPath, p,
+                                              binaryName);
+  }
 
   _langType = ::getLanguageType(_defaultLanguage, _icuLanguage);
 
