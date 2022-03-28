@@ -73,11 +73,6 @@ const replicatedStateSuite = function () {
             serverId: leader,
             rebootId: LH.getServerRebootId(leader),
           }
-        }, targetConfig: {
-          replicationFactor: 3,
-          writeConcern: 2,
-          softWriteConcern: 2,
-          waitForSync: false,
         },
         participantsConfig: {
           generation: 1,
@@ -179,7 +174,7 @@ const replicatedStateSuite = function () {
       const oldFollower = _.sample(followers);
       const newFollower = _.sample(_.difference(dbservers, servers));
       SH.updateReplicatedStatePlan(database, logId, function (state, log) {
-        log.participantsConfig.participants[newFollower] = {excluded: true};
+        log.participantsConfig.participants[newFollower] = {allowedAsLeader: false, allowedInQuorum: false};
         delete log.participantsConfig.participants[oldFollower];
         log.participantsConfig.generation += 1;
         const nextGeneration = state.generation += 1;
