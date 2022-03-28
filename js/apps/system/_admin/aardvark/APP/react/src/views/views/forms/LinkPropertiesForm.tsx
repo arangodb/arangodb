@@ -22,8 +22,7 @@ const LinkPropertiesForm = ({ disabled, view }: FormProps<FormState>) => {
     getApiRouteForCurrentDB().get(path, qs)
   );
   const [options, setOptions] = useState<string[]>([]);
-  const [link, setLink] = useState<string>();
-  const { show, setShow, setNewLink } = useContext(ViewContext);
+  const { show, setShow, setNewLink, newLink, link } = useContext(ViewContext);
 
   useEffect(() => {
     if (data) {
@@ -37,11 +36,6 @@ const LinkPropertiesForm = ({ disabled, view }: FormProps<FormState>) => {
       setOptions(tempOptions);
     }
   }, [data, links]);
-
-  const linkVal = chain(links)
-    .omitBy(isNull)
-    .keys()
-    .value()[0];
 
   const getLink = (str: string) => {
     let formatedStr;
@@ -78,7 +72,6 @@ const LinkPropertiesForm = ({ disabled, view }: FormProps<FormState>) => {
     });
     setCollection("");
     setShow("ViewChild");
-    setLink(collection);
     setNewLink(collection);
   };
 
@@ -98,16 +91,16 @@ const LinkPropertiesForm = ({ disabled, view }: FormProps<FormState>) => {
       )}
 
       {show === "ViewParent" && (
-        <LinkView
-          view={view}
-          link={linkVal}
-          links={links}
-          disabled={disabled}
-        />
+        <LinkView view={view} link={link} links={links} disabled={disabled} />
       )}
 
       {show === "ViewChild" && (
-        <LinkView view={view} link={link} links={links} disabled={disabled} />
+        <LinkView
+          view={view}
+          link={newLink}
+          links={links}
+          disabled={disabled}
+        />
       )}
 
       {show === "ViewField" && (

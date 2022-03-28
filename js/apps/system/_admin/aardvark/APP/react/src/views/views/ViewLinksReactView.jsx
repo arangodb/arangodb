@@ -25,7 +25,9 @@ export const ViewContext = createContext({
   field: { field: "", basePath: "" },
   setField: noop,
   link: "",
-  setNewLink: noop
+  setNewLink: noop,
+  newLink: "",
+  setParentLink: noop
 });
 
 export const usePreviouse = value => {
@@ -51,7 +53,8 @@ const ViewLinksReactView = ({ name }) => {
   const [isAdminUser, setIsAdminUser] = useState(false);
   const [show, setShow] = useState("LinkList");
   const [field, setField] = useState({});
-  const [link, setNewLink] = useState("");
+  const [newLink, setNewLink] = useState("");
+  const [link, setParentLink] = useState("");
 
   useEffect(() => {
     initialState.current.formCache = cloneDeep(view);
@@ -86,9 +89,15 @@ const ViewLinksReactView = ({ name }) => {
     });
   };
 
+  const handleView = l => {
+    setParentLink(l);
+    if (link !== "") {
+      setShow("ViewParent");
+    }
+  };
   const handleBackClick = e => {
     e.preventDefault();
-    if (link !== "") {
+    if (newLink !== "") {
       const msg = `Your link (${link})'s not saved!`;
       const icon = "warning";
       Toast.fire({ title: msg, icon: icon }).then(res => {
@@ -112,7 +121,9 @@ const ViewLinksReactView = ({ name }) => {
         field,
         setField,
         link,
-        setNewLink
+        setNewLink,
+        newLink,
+        setParentLink
       }}
     >
       <div className={"centralContent"} id={"content"}>
@@ -120,7 +131,7 @@ const ViewLinksReactView = ({ name }) => {
           <LinkList
             links={links}
             addClick={() => setShow("AddNew")}
-            viewLink={() => setShow("ViewParent")}
+            viewLink={handleView}
             icon={"fa-plus-circle"}
           />
         ) : (
