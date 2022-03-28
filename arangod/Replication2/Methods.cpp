@@ -42,6 +42,7 @@
 #include "Methods.h"
 #include "Agency/AsyncAgencyComm.h"
 #include "Random/RandomGenerator.h"
+#include "Agency/AgencyPaths.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -700,6 +701,11 @@ struct ReplicatedStateDBServerMethods
     THROW_ARANGO_EXCEPTION(TRI_ERROR_HTTP_NOT_IMPLEMENTED);
   }
 
+  [[nodiscard]] auto waitForStateReady(LogId, std::uint64_t)
+      -> futures::Future<ResultT<consensus::index_t>> override {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+
   auto getLocalStatus(LogId id) const
       -> futures::Future<replicated_state::StateStatus> override {
     auto state = vocbase.getReplicatedStateById(id);
@@ -730,8 +736,8 @@ struct ReplicatedStateCoordinatorMethods
       ReplicatedStateMethods {
   explicit ReplicatedStateCoordinatorMethods(TRI_vocbase_t& vocbase)
       : vocbase(vocbase),
-        clusterInfo(
-            vocbase.server().getFeature<ClusterFeature>().clusterInfo()) {}
+        clusterFeature(vocbase.server().getFeature<ClusterFeature>()),
+        clusterInfo(clusterFeature.clusterInfo()) {}
 
   auto createReplicatedState(replicated_state::agency::Target spec) const
       -> futures::Future<Result> override {
@@ -773,6 +779,54 @@ struct ReplicatedStateCoordinatorMethods
         });
   }
 
+  [[nodiscard]] virtual auto waitForStateReady(LogId id, std::uint64_t version)
+      -> futures::Future<ResultT<consensus::index_t>> override {
+    struct Context {
+      explicit Context(uint64_t version) : version(version) {}
+      futures::Promise<ResultT<consensus::index_t>> promise;
+      std::uint64_t version;
+    };
+
+    auto ctx = std::make_shared<Context>(version);
+    auto f = ctx->promise.getFuture();
+
+    using namespace cluster::paths;
+    // register an agency callback and wait for the given version to appear in
+    // target (or bigger)
+    auto path = aliases::current()
+                    ->replicatedStates()
+                    ->database(vocbase.name())
+                    ->state(id)
+                    ->supervision();
+    auto cb = std::make_shared<AgencyCallback>(
+        vocbase.server(), path->str(SkipComponents(1)),
+        [ctx](velocypack::Slice slice, consensus::index_t index) -> bool {
+          if (slice.isNone()) {
+            return false;
+          }
+
+          auto supervision =
+              replicated_state::agency::Current::Supervision::fromVelocyPack(
+                  slice);
+          if (supervision.version >= ctx->version) {
+            ctx->promise.setValue(ResultT<consensus::index_t>{index});
+            return true;
+          }
+          return false;
+        },
+        true, true);
+    if (auto result =
+            clusterFeature.agencyCallbackRegistry()->registerCallback(cb, true);
+        result.fail()) {
+      return {result};
+    }
+
+    return std::move(f).then([self = shared_from_this(), cb](auto&& result) {
+      self->clusterFeature.agencyCallbackRegistry()->unregisterCallback(cb);
+      return std::move(result.get());
+    });
+  }
+
   auto deleteReplicatedLog(LogId id) const -> futures::Future<Result> override {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
@@ -796,6 +850,7 @@ struct ReplicatedStateCoordinatorMethods
   }
 
   TRI_vocbase_t& vocbase;
+  ClusterFeature& clusterFeature;
   ClusterInfo& clusterInfo;
 };
 

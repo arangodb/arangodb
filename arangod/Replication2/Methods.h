@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+#include "Agency/AgencyCommon.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/LogEntries.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
@@ -116,6 +117,9 @@ struct ReplicatedLogMethods {
 
 struct ReplicatedStateMethods {
   virtual ~ReplicatedStateMethods() = default;
+
+  [[nodiscard]] virtual auto waitForStateReady(LogId, std::uint64_t version)
+      -> futures::Future<ResultT<consensus::index_t>> = 0;
 
   virtual auto createReplicatedState(replicated_state::agency::Target spec)
       const -> futures::Future<Result> = 0;
