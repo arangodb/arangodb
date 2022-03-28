@@ -81,7 +81,6 @@ struct PrototypeCore {
   using StorageType = ::immer::map<std::string, std::string>;
   static constexpr std::size_t kFlushBatchSize = 1;
 
- public:
   explicit PrototypeCore(GlobalLogIdentifier logId, LoggerContext loggerContext,
                          std::shared_ptr<IPrototypeStorageInterface> storage);
 
@@ -103,7 +102,6 @@ struct PrototypeCore {
   [[nodiscard]] auto getLastPersistedIndex() const noexcept -> LogIndex const&;
   [[nodiscard]] auto getLogId() const noexcept -> GlobalLogIdentifier const&;
 
- public:
   LoggerContext const loggerContext;
 
  private:

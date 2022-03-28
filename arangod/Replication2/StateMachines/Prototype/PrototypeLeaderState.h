@@ -35,7 +35,6 @@ struct PrototypeLeaderState
   using WaitForAppliedPromise = futures::Promise<futures::Unit>;
   using WaitForAppliedQueue = std::multimap<LogIndex, WaitForAppliedPromise>;
 
- public:
   explicit PrototypeLeaderState(std::unique_ptr<PrototypeCore> core);
 
   [[nodiscard]] auto resign() && noexcept
