@@ -23,11 +23,11 @@
 
 #pragma once
 
-#include <limits>
-#include <string>
-#include <iosfwd>
-#include <memory>
 #include "velocypack/Builder.h"
+#include <iosfwd>
+#include <limits>
+#include <memory>
+#include <string>
 
 #include "Basics/Result.h"
 
@@ -77,6 +77,21 @@ class RebootId {
  private:
   uint64_t _value{};
 };
+
+template<class Inspector>
+auto inspect(Inspector& f, RebootId& x) {
+  if constexpr (Inspector::isLoading) {
+    auto v = uint64_t{0};
+    auto res = f.apply(v);
+    if (res.ok()) {
+      x = RebootId{v};
+    }
+    return res;
+  } else {
+    auto v = x.value();
+    return f.apply(v);
+  }
+}
 
 namespace velocypack {
 class Builder;
