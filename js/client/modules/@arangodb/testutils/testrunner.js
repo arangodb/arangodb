@@ -67,7 +67,7 @@ class testRunner {
     let usersTests = {
       name: 'users',
       setUp: function (te) {
-        if ((testname !== 'agency') && (testname !== 'authentication')){
+        if (testname !== 'agency' && testname !== 'authentication') {
           this.usersCount = userManager.all().length;
         }
         return true;
