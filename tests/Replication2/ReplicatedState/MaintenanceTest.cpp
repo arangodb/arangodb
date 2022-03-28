@@ -73,6 +73,7 @@ TEST_F(ReplicatedStateMaintenanceTest, create_state_test_without_local_log) {
       {logId, replicated_state::agency::Plan{
                   .id = logId,
                   .generation = replicated_state::StateGeneration{1},
+                  .properties = {},
                   .participants = {
                       {serverId, {}},
                       {"otherServer", {}},
@@ -109,6 +110,7 @@ TEST_F(ReplicatedStateMaintenanceTest, create_state_test_with_local_log) {
        replicated_state::agency::Plan{
            .id = logId,
            .generation = replicated_state::StateGeneration{1},
+           .properties = {},
            .participants = {
                {serverId, {.generation = replicated_state::StateGeneration{1}}},
                {"otherServer",
@@ -158,6 +160,7 @@ TEST_F(ReplicatedStateMaintenanceTest,
        replicated_state::agency::Plan{
            .id = logId,
            .generation = replicated_state::StateGeneration{1},
+           .properties = {},
            .participants = {
                {serverId, {.generation = replicated_state::StateGeneration{1}}},
                {"otherServer",
@@ -171,7 +174,8 @@ TEST_F(ReplicatedStateMaintenanceTest,
                   {serverId,
                    {.generation = replicated_state::StateGeneration{0},
                     .snapshot = {}}},
-              }},
+              },
+          .supervision = {}},
   }};
 
   maintenance::diffReplicatedStates(database, localLogs, localStates, planLogs,
@@ -207,7 +211,8 @@ TEST_F(ReplicatedStateMaintenanceTest, do_nothing_if_stable) {
   auto const localStates = ReplicatedStateStatusMap{
       {logId,
        {replicated_state::UnconfiguredStatus{
-           .generation = replicated_state::StateGeneration{1}}}},
+           .generation = replicated_state::StateGeneration{1},
+           .snapshot = {}}}},
   };
   auto const planLogs = ReplicatedLogSpecMap{
       {logId,
@@ -218,6 +223,7 @@ TEST_F(ReplicatedStateMaintenanceTest, do_nothing_if_stable) {
        replicated_state::agency::Plan{
            .id = logId,
            .generation = replicated_state::StateGeneration{1},
+           .properties = {},
            .participants = {
                {serverId, {.generation = replicated_state::StateGeneration{1}}},
                {"otherServer",
@@ -231,7 +237,8 @@ TEST_F(ReplicatedStateMaintenanceTest, do_nothing_if_stable) {
                   {serverId,
                    {.generation = replicated_state::StateGeneration{0},
                     .snapshot = {}}},
-              }},
+              },
+          .supervision = {}},
   }};
 
   maintenance::diffReplicatedStates(database, localLogs, localStates, planLogs,
@@ -257,7 +264,8 @@ TEST_F(ReplicatedStateMaintenanceTest, check_resync_if_generation_changes) {
   auto const localStates = ReplicatedStateStatusMap{
       {logId,
        {replicated_state::UnconfiguredStatus{
-           .generation = replicated_state::StateGeneration{0}}}},
+           .generation = replicated_state::StateGeneration{0},
+           .snapshot = {}}}},
   };
   auto const planLogs = ReplicatedLogSpecMap{
       {logId,
@@ -268,6 +276,7 @@ TEST_F(ReplicatedStateMaintenanceTest, check_resync_if_generation_changes) {
        replicated_state::agency::Plan{
            .id = logId,
            .generation = replicated_state::StateGeneration{1},
+           .properties = {},
            .participants = {
                {serverId, {.generation = replicated_state::StateGeneration{1}}},
                {"otherServer",
@@ -281,7 +290,8 @@ TEST_F(ReplicatedStateMaintenanceTest, check_resync_if_generation_changes) {
                   {serverId,
                    {.generation = replicated_state::StateGeneration{0},
                     .snapshot = {}}},
-              }},
+              },
+          .supervision = {}},
   }};
 
   maintenance::diffReplicatedStates(database, localLogs, localStates, planLogs,
