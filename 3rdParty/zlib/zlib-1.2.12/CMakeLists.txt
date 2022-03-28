@@ -258,19 +258,19 @@ set(ZLIB_VERSION
   "${PROJECT_NAME}: Version"
 )
 
-if (WINDOWS)
+#if (WINDOWS)
   set(ZLIB_LIBS
     zlibstatic
     CACHE INTERNAL
     "${PROJECT_NAME}: Libraries"
   )
-else ()
-  set(ZLIB_LIBS
-    z
-    CACHE INTERNAL
-    "${PROJECT_NAME}: Libraries"
-  )
-endif ()
+#else ()
+#  set(ZLIB_LIBS
+#    z
+#    CACHE INTERNAL
+#    "${PROJECT_NAME}: Libraries"
+#  )
+#endif ()
 list(APPEND LINK_DIRECTORIES "${zlib_BINARY_DIR}")
 
 set(ZLIB_INCLUDE_DIR
