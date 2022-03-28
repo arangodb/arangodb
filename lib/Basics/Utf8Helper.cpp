@@ -183,9 +183,8 @@ bool Utf8Helper::setCollatorLanguage(std::string_view lang,
     icu::Locale canonicalLocale =
         icu::Locale::createCanonical(std::string(lang).c_str());
     if (LanguageType::DEFAULT == langType) {
-      std::string l = canonicalLocale.getLanguage();
-      std::string c = canonicalLocale.getCountry();
-      icu::Locale defaultLocale = icu::Locale(l.c_str(), c.c_str());
+      icu::Locale defaultLocale{canonicalLocale.getLanguage(),
+                                canonicalLocale.getCountry()};
       coll = icu::Collator::createInstance(defaultLocale, status);
     } else {
       coll = icu::Collator::createInstance(canonicalLocale, status);
