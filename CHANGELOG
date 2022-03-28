@@ -6,6 +6,15 @@ v3.9.1 (XXXX-XX-XX)
   to .html files for the UI. This solves a performance problem for
   shards getting in sync with audit log switched on.
 
+* Fixed an assertion failure which could occur when there was an error in the
+  HTTP header, so that the message body was not actually read.
+
+* Fixed a crash which could occur when there was an error in the HTTP header
+  parsing.
+
+* Bug-Fix: Resolve BTS-673/Issue #15107, a spliced subquery could return too few
+  results.
+
 * Speed up initial sync (in case there is already data present) by prefetching
   data from leader.
 
@@ -18,8 +27,6 @@ v3.9.1 (XXXX-XX-XX)
 
 * Fix counts and file size sum in hotbackup META files. Do no longer count
   directories.
-
-* Updated arangosync to 2.9.0.
 
 * Optimize further RocksDB throttle to allow for no change on any given
   calculation cycle.
@@ -1203,8 +1210,6 @@ v3.9.0-alpha.1 (2021-11-30)
 * Guarded access only to ActionBase::_result.
 
 * Fixed proper return value in sendRequestRetry if server is shutting down.
-
-* Updated arangosync to 2.2.0.
 
 * Fixed internal issue #798: In  rare case when remove request
   completely cleans just consolidated segment commit could be cancelled
