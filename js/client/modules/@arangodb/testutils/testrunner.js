@@ -67,15 +67,11 @@ class testRunner {
     let usersTests = {
       name: 'users',
       setUp: function (te) {
-        if (testname !== 'agency' && testname !== 'authentication') {
-          this.usersCount = userManager.all().length;
-        }
+        this.usersCount = userManager.all().length;
         return true;
       },
       runCheck: function (te) {
-        if ((testname !== 'agency') &&
-            (testname !== 'authentication') &&
-            (userManager.all().length !== this.usersCount)) {
+        if (userManager.all().length !== this.usersCount) {
           this.continueTesting = false;
           this.results[te] = {
             status: false,
@@ -358,6 +354,7 @@ class testRunner {
 
     this.customInstanceInfos['preStart'] = this.preStart();
     if (this.customInstanceInfos.preStart.state === false) {
+      print(this.customInstanceInfos.preStart)
       return {
         setup: {
           status: false,
