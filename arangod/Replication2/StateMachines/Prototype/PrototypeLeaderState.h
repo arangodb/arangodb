@@ -73,7 +73,7 @@ struct PrototypeLeaderState
     explicit GuardedData(std::unique_ptr<PrototypeCore> core)
         : core(std::move(core)), nextWaitForIndex{1} {};
 
-    [[nodiscard]] bool didResign() const noexcept { return core != nullptr; }
+    [[nodiscard]] bool didResign() const noexcept { return core == nullptr; }
 
     std::unique_ptr<PrototypeCore> core;
     WaitForAppliedQueue waitForAppliedQueue;

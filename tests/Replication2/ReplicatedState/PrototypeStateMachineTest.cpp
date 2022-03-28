@@ -31,6 +31,9 @@
 #include "Replication2/ReplicatedState/ReplicatedStateFeature.h"
 
 #include "Replication2/StateMachines/Prototype/PrototypeStateMachine.h"
+#include "Replication2/StateMachines/Prototype/PrototypeLeaderState.h"
+#include "Replication2/StateMachines/Prototype/PrototypeFollowerState.h"
+#include "Replication2/StateMachines/Prototype/PrototypeCore.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -75,21 +78,23 @@ struct MockPrototypeNetworkInterface : public IPrototypeNetworkInterface {
 };
 
 struct MockPrototypeStorageInterface : public IPrototypeStorageInterface {
-  auto put(const GlobalLogIdentifier& logId, PrototypeCoreDump dump)
+  auto put(const GlobalLogIdentifier& logId, PrototypeDump dump)
       -> Result override {
     map[logId.id] = std::move(dump);
+    ++putCalled;
     return TRI_ERROR_NO_ERROR;
   }
+
   auto get(const GlobalLogIdentifier& logId)
-      -> ResultT<PrototypeCoreDump> override {
+      -> ResultT<PrototypeDump> override {
     if (!map.contains(logId.id)) {
-      return ResultT<PrototypeCoreDump>::success(map[logId.id] =
-                                                     PrototypeCoreDump{});
+      return ResultT<PrototypeDump>::success(map[logId.id] = PrototypeDump{});
     }
-    return ResultT<PrototypeCoreDump>::success(map[logId.id]);
+    return ResultT<PrototypeDump>::success(map[logId.id]);
   }
 
-  std::unordered_map<LogId, PrototypeCoreDump> map;
+  std::unordered_map<LogId, PrototypeDump> map;
+  int putCalled{0};
 };
 
 struct PrototypeStateMachineTest : test::ReplicatedLogTest {
@@ -106,34 +111,64 @@ struct PrototypeStateMachineTest : test::ReplicatedLogTest {
       std::make_shared<MockPrototypeStorageInterface>();
 };
 
-TEST_F(PrototypeStateMachineTest, prorotype_core_wait_for) {
-  auto core = PrototypeCore(GlobalLogIdentifier{"", LogId{1}}, storageMock);
-  core.store = core.store.set("a", "b");
-  core.lastAppliedIndex = LogIndex{1};
-  auto f = core.waitForApplied(LogIndex{1});
-  ASSERT_TRUE(f.isReady());
-  f = core.waitForApplied(LogIndex{3});
-  ASSERT_FALSE(f.isReady());
-  core.lastAppliedIndex = LogIndex{3};
-  core.resolvePromises(LogIndex{3});
-  ASSERT_TRUE(f.isReady());
-}
-
 TEST_F(PrototypeStateMachineTest, prorotype_core_flush) {
-  auto core = PrototypeCore(GlobalLogIdentifier{"", LogId{1}}, storageMock);
-  core.store = core.store.set("x", "y");
-  core.store = core.store.set("a", "b");
-  core.lastAppliedIndex = LogIndex{2};
-  core.flush();
-  auto result = storageMock->get(GlobalLogIdentifier{"", LogId{1}});
-  ASSERT_TRUE(result.ok());
-  auto dump = result.get();
-  auto expected =
-      std::unordered_map<std::string, std::string>{{"a", "b"}, {"x", "y"}};
-  ASSERT_EQ(dump.map, expected);
-  ASSERT_EQ(dump.lastPersistedIndex, core.lastPersistedIndex);
+  auto followerLog = makeReplicatedLog(LogId{1});
+  auto follower = followerLog->becomeFollower("follower", LogTerm{1}, "leader");
+
+  auto leaderLog = makeReplicatedLog(LogId{1});
+  auto leader = leaderLog->becomeLeader("leader", LogTerm{1}, {follower}, 2);
+
+  leader->triggerAsyncReplication();
+  LOG_DEVEL << "debug";
+
+  auto leaderReplicatedState =
+      std::dynamic_pointer_cast<ReplicatedState<PrototypeState>>(
+          feature->createReplicatedState("prototype-state", leaderLog));
+  LOG_DEVEL << "debug";
+  ASSERT_NE(leaderReplicatedState, nullptr);
+  leaderReplicatedState->start(
+      std::make_unique<ReplicatedStateToken>(StateGeneration{1}));
+  follower->runAllAsyncAppendEntries();
+  LOG_DEVEL << "debug";
+
+  auto leaderState = leaderReplicatedState->getLeader();
+  ASSERT_NE(leaderState, nullptr);
+  networkMock->addLeaderState("leader", leaderState);
+
+  auto followerReplicatedState =
+      std::dynamic_pointer_cast<ReplicatedState<PrototypeState>>(
+          feature->createReplicatedState("prototype-state", followerLog));
+  ASSERT_NE(followerReplicatedState, nullptr);
+  followerReplicatedState->start(
+      std::make_unique<ReplicatedStateToken>(StateGeneration{1}));
+
+  auto followerState = followerReplicatedState->getFollower();
+  ASSERT_NE(followerState, nullptr);
+
+  std::unordered_map<std::string, std::string> expected;
+  for (std::size_t cnt{0}; cnt <= PrototypeCore::kFlushBatchSize; ++cnt) {
+    LOG_DEVEL << cnt;
+    auto key = "foo" + std::to_string(cnt);
+    auto value = "bar" + std::to_string(cnt);
+    auto entries = std::unordered_map<std::string, std::string>{{key, value}};
+    expected.emplace(key, value);
+    auto result = leaderState->set(entries);
+    auto index = result.get()->value;
+    ASSERT_EQ(index, cnt + 2);
+  }
+  follower->runAllAsyncAppendEntries();
+
+  ASSERT_EQ(storageMock->putCalled, 1);
+
+  auto snapshot = leaderState->getSnapshot(LogIndex{1});
+  ASSERT_TRUE(snapshot.isReady());
+  auto leaderMap = snapshot.get().get();
+  ASSERT_EQ(expected, leaderMap);
+
+  // auto storageMap = storageMock->get();
 }
 
+/*
 TEST_F(PrototypeStateMachineTest, simple_operations) {
   auto followerLog = makeReplicatedLog(LogId{1});
   auto follower = followerLog->becomeFollower("follower", LogTerm{1}, "leader");
@@ -322,3 +357,4 @@ TEST_F(PrototypeStateMachineTest, snapshot_transfer) {
     ASSERT_EQ(map, expected);
   }
 }
+ */
