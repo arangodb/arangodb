@@ -56,6 +56,9 @@ class RestPrototypeStateHandler : public RestVocbaseBaseHandler {
   RestStatus handlePostRetrieveMulti(
       replication2::PrototypeStateMethods const& methods, replication2::LogId,
       velocypack::Slice payload);
+  RestStatus handleCreateState(
+      replication2::PrototypeStateMethods const& methods,
+      velocypack::Slice payload);
 
   RestStatus handleDeleteRemove(
       replication2::PrototypeStateMethods const& methods,

@@ -449,6 +449,28 @@ auto operator<<(std::ostream&,
 auto to_string(CommitFailReason const&) -> std::string;
 }  // namespace replicated_log
 
+template<class Inspector>
+auto inspect(Inspector& f, LogId& x) {
+  if constexpr (Inspector::isLoading) {
+    int v{0};
+    auto res = f.apply(v);
+    if (res.ok()) {
+      x = LogId(v);
+    }
+    return res;
+  } else {
+    return f.apply(*x.data());
+  }
+}
+
+template<class Inspector>
+auto inspect(Inspector& f, LogConfig& x) {
+  return f.object(x).fields(f.field("writeConcern", x.writeConcern),
+                            f.field("replicationFactor", x.replicationFactor),
+                            f.field("softWriteConcern", x.softWriteConcern),
+                            f.field("waitForSync", x.waitForSync));
+}
+
 }  // namespace arangodb::replication2
 
 namespace arangodb {

@@ -1,6 +1,8 @@
 devel
 -----
 
+* Updated arangosync to v2.9.0-preview-2.
+
 * Added AQL hint "useCache" for FOR loops, to explicitly disable the usage of 
   in-memory caches for lookups.
 
