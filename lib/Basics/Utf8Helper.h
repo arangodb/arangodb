@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -42,9 +42,6 @@ class RegexMatcher;
 }
 
 namespace arangodb {
-namespace velocypack {
-class StringRef;
-}
 namespace basics {
 
 #ifdef _WIN32
@@ -128,11 +125,9 @@ class Utf8Helper {
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get collator language
-  /// @param langType type of language. Now supports DEFAULT and ICU only
-  /// collation
   //////////////////////////////////////////////////////////////////////////////
 
-  std::string getCollatorLanguage(LanguageType langType = LanguageType::DEFAULT);
+  std::string getCollatorLanguage();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get collator country
@@ -168,8 +163,7 @@ class Utf8Helper {
   /// @brief returns the words of a UTF-8 string.
   //////////////////////////////////////////////////////////////////////////////
 
-  bool tokenize(std::set<std::string>& words,
-                arangodb::velocypack::StringRef const& text,
+  bool tokenize(std::set<std::string>& words, std::string_view text,
                 size_t minimalWordLength, size_t maximalWordLength,
                 bool lowerCase);
 

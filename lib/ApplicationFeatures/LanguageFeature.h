@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -32,9 +32,8 @@
 
 namespace arangodb {
 namespace application_features {
-class ApplicationServer;
 class GreetingsFeaturePhase;
-}  // namespace application_features
+}
 namespace options {
 class ProgramOptions;
 }
@@ -51,15 +50,14 @@ class LanguageFeature final : public application_features::ApplicationFeature {
   void prepare() override final;
   void start() override final;
   static void* prepareIcu(std::string const& binaryPath,
-                          std::string const& binaryExecutionPath,
-                          std::string& path, std::string const& binaryName);
+                                std::string const& binaryExecutionPath,
+                                std::string& path,
+                                std::string const& binaryName);
   icu::Locale& getLocale();
-  std::tuple<std::string_view, basics::LanguageType> getLanguage()
-      const;
+  std::tuple<std::string_view, basics::LanguageType> getLanguage() const;
   bool forceLanguageCheck() const;
-  std::string getCollatorLanguage(basics::LanguageType langType = basics::LanguageType::DEFAULT) const;
-  void resetLanguage(std::string_view language,
-                     basics::LanguageType type);
+  std::string getCollatorLanguage() const;
+  void resetLanguage(std::string_view language, basics::LanguageType type);
 
  private:
   icu::Locale _locale;

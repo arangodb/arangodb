@@ -188,7 +188,7 @@ void LanguageCheckFeature::start() {
 
   auto& feature = server().getFeature<LanguageFeature>();
   auto [currLang, currLangType] = feature.getLanguage();
-  auto collatorLang = feature.getCollatorLanguage(currLangType);
+  auto collatorLang = feature.getCollatorLanguage();
 
   auto [prevLang, prevLangType] =
       ::getOrSetPreviousLanguage(server(), collatorLang, currLangType);

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -43,7 +43,6 @@
 #include <unicode/urename.h>
 #include <unicode/ustring.h>
 #include <unicode/utypes.h>
-#include <velocypack/StringRef.h>
 
 #include "ApplicationFeatures/LanguageFeature.h"
 #include "Basics/Exceptions.h"
@@ -177,16 +176,19 @@ bool Utf8Helper::setCollatorLanguage(std::string_view lang,
   }
 
   icu::Collator* coll;
-  if (LanguageType::ICU == langType) {
-    auto locale = icu::Locale::createCanonical(std::string(lang).c_str());
-    coll = icu::Collator::createInstance(locale, status);
+  if (lang == "") {
+    // get default locale for empty language
+    coll = icu::Collator::createInstance(status);
   } else {
-    if (lang == "") {
-      // get default collator for empty language
-      coll = icu::Collator::createInstance(status);
+    icu::Locale canonicalLocale =
+        icu::Locale::createCanonical(std::string(lang).c_str());
+    if (LanguageType::DEFAULT == langType) {
+      std::string l = canonicalLocale.getLanguage();
+      std::string c = canonicalLocale.getCountry();
+      icu::Locale defaultLocale = icu::Locale(l.c_str(), c.c_str());
+      coll = icu::Collator::createInstance(defaultLocale, status);
     } else {
-      icu::Locale locale(lang.data());
-      coll = icu::Collator::createInstance(locale, status);
+      coll = icu::Collator::createInstance(canonicalLocale, status);
     }
   }
 
@@ -224,7 +226,7 @@ bool Utf8Helper::setCollatorLanguage(std::string_view lang,
   return true;
 }
 
-std::string Utf8Helper::getCollatorLanguage(LanguageType langType) {
+std::string Utf8Helper::getCollatorLanguage() {
   if (_coll) {
     UErrorCode status = U_ZERO_ERROR;
     ULocDataLocaleType type = ULOC_VALID_LOCALE;
@@ -235,11 +237,8 @@ std::string Utf8Helper::getCollatorLanguage(LanguageType langType) {
           << "error in Collator::getLocale(...): " << u_errorName(status);
       return "";
     }
-    if (LanguageType::ICU == langType) {
-      return locale.getName();
-    } else {
-      return locale.getLanguage();
-    }
+
+    return locale.getName();
   }
   return "";
 }
@@ -432,8 +431,7 @@ char* Utf8Helper::toupper(char const* src, int32_t srcLength,
 /// @brief Extract the words from a UTF-8 string.
 ////////////////////////////////////////////////////////////////////////////////
 
-bool Utf8Helper::tokenize(std::set<std::string>& words,
-                          arangodb::velocypack::StringRef const& text,
+bool Utf8Helper::tokenize(std::set<std::string>& words, std::string_view text,
                           size_t minimalLength, size_t maximalLength,
                           bool lowerCase) {
   UErrorCode status = U_ZERO_ERROR;

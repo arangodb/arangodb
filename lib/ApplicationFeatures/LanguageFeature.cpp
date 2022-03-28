@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,9 +21,9 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <stdlib.h>
-
 #include "LanguageFeature.h"
+
+#include <stdlib.h>
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
@@ -101,23 +101,23 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-LanguageFeature::LanguageFeature(
-    application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Language"),
-      _locale(),
-      _langType(LanguageType::INVALID),
-      _binaryPath(server.getBinaryPath()),
-      _icuDataPtr(nullptr),
-      _forceLanguageCheck(true) {
-  setOptional(false);
-  startsAfter<application_features::GreetingsFeaturePhase>();
-}
-
-LanguageFeature::~LanguageFeature() {
-  if (_icuDataPtr != nullptr) {
-    TRI_Free(_icuDataPtr);
+  LanguageFeature::LanguageFeature(
+      application_features::ApplicationServer& server)
+      : ApplicationFeature(server, "Language"),
+        _locale(),
+        _langType(LanguageType::INVALID),
+        _binaryPath(server.getBinaryPath()),
+        _icuDataPtr(nullptr),
+        _forceLanguageCheck(true) {
+    setOptional(false);
+    startsAfter<application_features::GreetingsFeaturePhase>();
   }
-}
+
+  LanguageFeature::~LanguageFeature() {
+    if (_icuDataPtr != nullptr) {
+      TRI_Free(_icuDataPtr);
+    }
+  }
 
 void LanguageFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
@@ -131,18 +131,18 @@ void LanguageFeature::collectOptions(
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options
-      ->addOption(
-          "--default-language-check",
-          "check if default language matches stored language",
-          new BooleanParameter(&_forceLanguageCheck),
-          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+      ->addOption("--default-language-check",
+                  "check if default language matches stored language",
+                  new BooleanParameter(&_forceLanguageCheck),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::Hidden))
       .setIntroducedIn(30800);
 }
 
 void* LanguageFeature::prepareIcu(std::string const& binaryPath,
-                                  std::string const& binaryExecutionPath,
-                                  std::string& path,
-                                  std::string const& binaryName) {
+                                        std::string const& binaryExecutionPath,
+                                        std::string& path,
+                                        std::string const& binaryName) {
   std::string fn("icudtl.dat");
   if (TRI_GETENV("ICU_DATA", path)) {
     path = FileUtils::buildFilename(path, fn);
@@ -249,17 +249,9 @@ std::tuple<std::string_view, LanguageType> LanguageFeature::getLanguage()
 
 bool LanguageFeature::forceLanguageCheck() const { return _forceLanguageCheck; }
 
-std::string LanguageFeature::getCollatorLanguage(LanguageType langType) const {
+std::string LanguageFeature::getCollatorLanguage() const {
   using arangodb::basics::Utf8Helper;
-  std::string languageName;
-  if (Utf8Helper::DefaultUtf8Helper.getCollatorCountry() != "") {
-    languageName =
-        std::string(Utf8Helper::DefaultUtf8Helper.getCollatorLanguage() + "_" +
-                    Utf8Helper::DefaultUtf8Helper.getCollatorCountry());
-  } else {
-    languageName = Utf8Helper::DefaultUtf8Helper.getCollatorLanguage(langType);
-  }
-  return languageName;
+  return Utf8Helper::DefaultUtf8Helper.getCollatorLanguage();
 }
 
 void LanguageFeature::resetLanguage(std::string_view language,
