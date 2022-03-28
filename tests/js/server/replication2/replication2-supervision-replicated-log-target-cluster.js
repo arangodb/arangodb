@@ -285,7 +285,7 @@ const replicatedLogSuite = function () {
 
       // now remove the flag again
       replicatedLogUpdateTargetParticipants(database, logId, {
-        [server]: {allowedInQuroum: true},
+        [server]: {allowedInQuorum: true},
       });
 
       waitFor(replicatedLogParticipantsFlag(database, logId, {
