@@ -35,7 +35,7 @@ std::string IcuInitializer::icuData;
 
 void IcuInitializer::reinit() {
   arangodb::basics::Utf8Helper::DefaultUtf8Helper.setCollatorLanguage(
-        "", arangodb::basics::LanguageType::DEFAULT, icuData.data());
+      "", arangodb::basics::LanguageType::DEFAULT, icuData.data());
 }
 
 void IcuInitializer::setup(char const* path) {

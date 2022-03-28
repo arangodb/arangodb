@@ -200,7 +200,7 @@ void LanguageFeature::prepare() {
   std::string binaryName = context->binaryName();
   if (_icuData.empty()) {
     _icuData = LanguageFeature::prepareIcu(_binaryPath, binaryExecutionPath, p,
-                                              binaryName);
+                                           binaryName);
   }
 
   _langType = ::getLanguageType(_defaultLanguage, _icuLanguage);
