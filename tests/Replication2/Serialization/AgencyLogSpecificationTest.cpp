@@ -119,3 +119,76 @@ TEST(AgencyLogSpecificationTest, log_plan_term_specification) {
   spec = LogPlanSpecification{from_velocypack, jsonSlice};
   EXPECT_EQ(spec.currentTerm, std::nullopt);
 }
+
+TEST(AgencyLogSpecificationTest, log_target_supervision_test) {
+  {
+    auto supervision = LogTarget::Supervision{.maxActionsTraceLength = 15};
+
+    VPackBuilder builder;
+    serialize(builder, supervision);
+    auto slice = builder.slice();
+
+    auto fromVPack = deserialize<LogTarget::Supervision>(slice);
+    EXPECT_EQ(supervision, fromVPack);
+  }
+
+  {
+    auto jsonBuffer = R"({
+    "maxActionsTraceLength": 1234
+  })"_vpack;
+
+    auto jsonSlice = velocypack::Slice(jsonBuffer->data());
+    auto supervision = deserialize<LogTarget::Supervision>(jsonSlice);
+    EXPECT_EQ(supervision.maxActionsTraceLength, 1234);
+  }
+}
+
+TEST(AgencyLogSpecificationTest, log_target_test) {
+  {
+    auto config = LogConfig();
+    config.replicationFactor = 3;
+    config.writeConcern = 2;
+    config.softWriteConcern = 2;
+    config.waitForSync = false;
+
+    auto target = LogTarget(
+        LogId{5}, ParticipantsFlagsMap{{"A", ParticipantFlags{}}}, config);
+
+    VPackBuilder builder;
+    serialize(builder, target);
+    auto slice = builder.slice();
+
+    auto fromVPack = deserialize<LogTarget>(slice);
+    EXPECT_EQ(target, fromVPack);
+  }
+
+  {
+    auto config = LogConfig();
+    config.replicationFactor = 3;
+    config.writeConcern = 2;
+    config.softWriteConcern = 2;
+    config.waitForSync = true;
+
+    auto expectedTarget = LogTarget(
+        LogId{12},
+        ParticipantsFlagsMap{{"A", ParticipantFlags{.allowedInQuorum = false}}},
+        config);
+
+    expectedTarget.leader = "A";
+
+    auto jsonBuffer = R"({
+      "id": 12,
+      "participants": { "A": { "allowedInQuorum": false } },
+      "config": {
+        "writeConcern": 2,
+        "replicationFactor": 3,
+        "waitForSync": true },
+      "leader": "A"
+    })"_vpack;
+
+    auto jsonSlice = velocypack::Slice(jsonBuffer->data());
+    auto target = deserialize<LogTarget>(jsonSlice);
+
+    EXPECT_EQ(target, expectedTarget);
+  }
+}
