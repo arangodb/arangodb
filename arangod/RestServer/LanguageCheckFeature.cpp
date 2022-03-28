@@ -115,6 +115,7 @@ ErrorCode writeLanguage(arangodb::ArangodServer& server, std::string_view lang,
         break;
 
       case LanguageType::INVALID:
+      default:
         TRI_ASSERT(false);
         break;
     }
