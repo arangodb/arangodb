@@ -504,10 +504,13 @@ struct ConvergedToTargetAction {
         current.supervision = LogCurrentSupervision{};
       }
 
-      current.supervision->statusMessage = "Converged to target";
+      if (current.supervision->statusMessage != "Converged to target") {
+        current.supervision->statusMessage = "Converged to target";
+      }
     });
   }
 };
+
 template<typename Inspector>
 auto inspect(Inspector& f, ConvergedToTargetAction& x) {
   auto hack = std::string{x.name};
