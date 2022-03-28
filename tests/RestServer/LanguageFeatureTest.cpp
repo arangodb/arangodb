@@ -143,7 +143,8 @@ class ArangoLanguageFeatureTest
   // Called before the first test in this test suite.
   // Can be omitted if not needed.
   static void SetUpTestSuite() {
-    auto collator = arangodb::basics::Utf8Helper::DefaultUtf8Helper.getCollator();
+    auto collator =
+        arangodb::basics::Utf8Helper::DefaultUtf8Helper.getCollator();
     delete collator;
     arangodb::basics::Utf8Helper::DefaultUtf8Helper.setCollator(nullptr);
     u_cleanup();
@@ -152,17 +153,11 @@ class ArangoLanguageFeatureTest
   // Per-test-suite tear-down.
   // Called after the last test in this test suite.
   // Can be omitted if not needed.
-  static void TearDownTestSuite() {
-     IcuInitializer::reinit();
-  }
+  static void TearDownTestSuite() { IcuInitializer::reinit(); }
 
-  void SetUp() {
+  void SetUp() {}
 
-  }
-
-  void TearDown() {
-    SetUpTestSuite();
-  }
+  void TearDown() { SetUpTestSuite(); }
 
  private:
   std::string _lang;
@@ -180,14 +175,12 @@ class ArangoLanguageFeatureTest
     server.server().setBinaryPath(dbPathFeature.directory().c_str());
   }
 
-  ~ArangoLanguageFeatureTest() { }
+  ~ArangoLanguageFeatureTest() {}
 };
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
-
 
 TEST_F(ArangoLanguageFeatureTest, testResetLanguageDefault) {
   auto& langFeature = server.addFeatureUntracked<arangodb::LanguageFeature>();
@@ -1228,8 +1221,8 @@ TEST_F(ArangoLanguageFeatureTest, testIcuWithVariantLangCheckTrue) {
     langFeature.prepare();
     langCheckFeature.start();
     bool shouldBeLangEqual = true;
-    checkLanguageFile(server.server(), actualFirstLang.data(), icuParameter.data(),
-                      shouldBeLangEqual);
+    checkLanguageFile(server.server(), actualFirstLang.data(),
+                      icuParameter.data(), shouldBeLangEqual);
     bool isDefaultLanguage = false;
     checkCollatorSettings(actualFirstLang.data(), isDefaultLanguage);
   }
@@ -1248,8 +1241,8 @@ TEST_F(ArangoLanguageFeatureTest, testIcuWithVariantLangCheckTrue) {
     langFeature.prepare();
     langCheckFeature.start();
     bool shouldBeLangEqual = true;
-    checkLanguageFile(server.server(), actualFirstLang.data(), icuParameter.data(),
-                      shouldBeLangEqual);
+    checkLanguageFile(server.server(), actualFirstLang.data(),
+                      icuParameter.data(), shouldBeLangEqual);
     bool isDefaultLanguage = false;
     checkCollatorSettings(actualFirstLang.data(), isDefaultLanguage);
   }
@@ -1311,8 +1304,8 @@ TEST_F(ArangoLanguageFeatureTest, testIcuWithVariantLangCheckTrue) {
     langFeature.prepare();
     langCheckFeature.start();
     bool shouldBeLangEqual = true;
-    checkLanguageFile(server.server(), actualFirstLang.data(), icuParameter.data(),
-                      shouldBeLangEqual);
+    checkLanguageFile(server.server(), actualFirstLang.data(),
+                      icuParameter.data(), shouldBeLangEqual);
     bool isDefaultLanguage = false;
     checkCollatorSettings(actualFirstLang.data(), isDefaultLanguage);
   }

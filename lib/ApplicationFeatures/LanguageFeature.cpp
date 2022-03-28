@@ -101,23 +101,23 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-  LanguageFeature::LanguageFeature(
-      application_features::ApplicationServer& server)
-      : ApplicationFeature(server, "Language"),
-        _locale(),
-        _langType(LanguageType::INVALID),
-        _binaryPath(server.getBinaryPath()),
-        _icuDataPtr(nullptr),
-        _forceLanguageCheck(true) {
-    setOptional(false);
-    startsAfter<application_features::GreetingsFeaturePhase>();
-  }
+LanguageFeature::LanguageFeature(
+    application_features::ApplicationServer& server)
+    : ApplicationFeature(server, "Language"),
+      _locale(),
+      _langType(LanguageType::INVALID),
+      _binaryPath(server.getBinaryPath()),
+      _icuDataPtr(nullptr),
+      _forceLanguageCheck(true) {
+  setOptional(false);
+  startsAfter<application_features::GreetingsFeaturePhase>();
+}
 
-  LanguageFeature::~LanguageFeature() {
-    if (_icuDataPtr != nullptr) {
-      TRI_Free(_icuDataPtr);
-    }
+LanguageFeature::~LanguageFeature() {
+  if (_icuDataPtr != nullptr) {
+    TRI_Free(_icuDataPtr);
   }
+}
 
 void LanguageFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
@@ -131,18 +131,18 @@ void LanguageFeature::collectOptions(
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options
-      ->addOption("--default-language-check",
-                  "check if default language matches stored language",
-                  new BooleanParameter(&_forceLanguageCheck),
-                  arangodb::options::makeDefaultFlags(
-                      arangodb::options::Flags::Hidden))
+      ->addOption(
+          "--default-language-check",
+          "check if default language matches stored language",
+          new BooleanParameter(&_forceLanguageCheck),
+          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
       .setIntroducedIn(30800);
 }
 
 void* LanguageFeature::prepareIcu(std::string const& binaryPath,
-                                        std::string const& binaryExecutionPath,
-                                        std::string& path,
-                                        std::string const& binaryName) {
+                                  std::string const& binaryExecutionPath,
+                                  std::string& path,
+                                  std::string const& binaryName) {
   std::string fn("icudtl.dat");
   if (TRI_GETENV("ICU_DATA", path)) {
     path = FileUtils::buildFilename(path, fn);
@@ -216,8 +216,8 @@ void LanguageFeature::prepare() {
   std::string binaryExecutionPath = context->getBinaryPath();
   std::string binaryName = context->binaryName();
   if (!_icuDataPtr) {
-    _icuDataPtr = LanguageFeature::prepareIcu(_binaryPath, binaryExecutionPath, p,
-                                              binaryName);
+    _icuDataPtr = LanguageFeature::prepareIcu(_binaryPath, binaryExecutionPath,
+                                              p, binaryName);
   }
 
   _langType = ::getLanguageType(_defaultLanguage, _icuLanguage);

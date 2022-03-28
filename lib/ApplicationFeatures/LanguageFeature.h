@@ -50,9 +50,8 @@ class LanguageFeature final : public application_features::ApplicationFeature {
   void prepare() override final;
   void start() override final;
   static void* prepareIcu(std::string const& binaryPath,
-                                std::string const& binaryExecutionPath,
-                                std::string& path,
-                                std::string const& binaryName);
+                          std::string const& binaryExecutionPath,
+                          std::string& path, std::string const& binaryName);
   icu::Locale& getLocale();
   std::tuple<std::string_view, basics::LanguageType> getLanguage() const;
   bool forceLanguageCheck() const;
