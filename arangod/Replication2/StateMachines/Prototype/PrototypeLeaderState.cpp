@@ -34,7 +34,7 @@ using namespace arangodb::replication2::replicated_state::prototype;
 PrototypeLeaderState::PrototypeLeaderState(std::unique_ptr<PrototypeCore> core)
     : loggerContext(
           core->loggerContext.with<logContextKeyStateComponent>("LeaderState")),
-      _guardedData(std::move(core)) {}
+      _guardedData(*this, std::move(core)) {}
 
 auto PrototypeLeaderState::resign() && noexcept
     -> std::unique_ptr<PrototypeCore> {
@@ -48,15 +48,17 @@ auto PrototypeLeaderState::resign() && noexcept
 
 auto PrototypeLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
     -> futures::Future<Result> {
-  return _guardedData.doUnderLock(
-      [self = shared_from_this(), ptr = std::move(ptr)](auto& data) mutable {
+  auto [result, action] = _guardedData.doUnderLock(
+      [self = shared_from_this(), ptr = std::move(ptr)](
+          auto& data) mutable -> std::pair<Result, DeferredAction> {
         if (data.didResign()) {
-          return Result{TRI_ERROR_CLUSTER_NOT_LEADER};
+          return {Result{TRI_ERROR_CLUSTER_NOT_LEADER}, DeferredAction{}};
         }
-        auto resolvePromises = self->applyEntries(std::move(ptr));
-        resolvePromises.fire();
-        return Result{TRI_ERROR_NO_ERROR};
+        auto resolvePromises = data.applyEntries(std::move(ptr));
+        return std::make_pair(Result{TRI_ERROR_NO_ERROR},
+                              std::move(resolvePromises));
       });
+  return std::move(result);
 }
 
 auto PrototypeLeaderState::set(
@@ -106,32 +108,33 @@ auto PrototypeLeaderState::get(std::string key) -> std::optional<std::string> {
 
 auto PrototypeLeaderState::getSnapshot(LogIndex waitForIndex)
     -> futures::Future<ResultT<std::unordered_map<std::string, std::string>>> {
-  return _guardedData.doUnderLock([waitForIndex, self = shared_from_this()](
-                                      auto& data) mutable
-                                  -> futures::Future<ResultT<std::unordered_map<
-                                      std::string, std::string>>> {
+  auto f = _guardedData.doUnderLock([&](auto& data) {
     if (data.didResign()) {
-      return ResultT<std::unordered_map<std::string, std::string>>::error(
-          TRI_ERROR_CLUSTER_NOT_LEADER);
+      THROW_ARANGO_EXCEPTION(
+          TRI_ERROR_REPLICATION_REPLICATED_LOG_PARTICIPANT_GONE);
     }
 
-    return self->waitForApplied(waitForIndex)
-        .then([&data,
-               self = std::move(self)](futures::Try<futures::Unit>&& tryResult)
-                  -> ResultT<std::unordered_map<std::string, std::string>> {
-          if (data.didResign()) {
-            return ResultT<std::unordered_map<std::string, std::string>>::error(
-                TRI_ERROR_CLUSTER_NOT_LEADER);
-          }
-
-          auto result = basics::catchToResultT([&] { return tryResult.get(); });
-          if (result.fail()) {
-            return result.result();
-          }
-          return ResultT<std::unordered_map<std::string, std::string>>::success(
-              data.core->getSnapshot());
-        });
+    return data.waitForApplied(waitForIndex);
   });
+
+  return std::move(f).thenValue(
+      [weak = weak_from_this()](
+          auto&&) -> ResultT<std::unordered_map<std::string, std::string>> {
+        auto self = weak.lock();
+        if (self == nullptr) {
+          return {TRI_ERROR_REPLICATION_REPLICATED_LOG_PARTICIPANT_GONE};
+        }
+
+        return self->_guardedData.doUnderLock(
+            [&](GuardedData& data)
+                -> ResultT<std::unordered_map<std::string, std::string>> {
+              if (data.didResign()) {
+                return {TRI_ERROR_REPLICATION_REPLICATED_LOG_PARTICIPANT_GONE};
+              }
+
+              return {data.core->getSnapshot()};
+            });
+      });
 }
 
 auto PrototypeLeaderState::pollNewEntries() {
@@ -157,56 +160,57 @@ void PrototypeLeaderState::handlePollResult(
           THROW_ARANGO_EXCEPTION(result.result());
         }
 
-        auto resolvePromises = self->applyEntries(std::move(result.get()));
+        auto resolvePromises =
+            self->_guardedData.getLockedGuard()->applyEntries(
+                std::move(result.get()));
         resolvePromises.fire();
 
         self->handlePollResult(self->pollNewEntries());
       });
 }
 
-auto PrototypeLeaderState::applyEntries(std::unique_ptr<EntryIterator> ptr)
-    -> DeferredAction {
-  return _guardedData.doUnderLock([self = shared_from_this(),
-                                   ptr = std::move(ptr)](auto& data) mutable {
-    if (data.didResign()) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_NOT_LEADER);
+auto PrototypeLeaderState::GuardedData::applyEntries(
+    std::unique_ptr<EntryIterator> ptr) -> DeferredAction {
+  if (didResign()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_NOT_LEADER);
+  }
+  auto toIndex = ptr->range().to;
+  core->applyEntries(std::move(ptr));
+  nextWaitForIndex = toIndex;
+
+  if (core->flush()) {
+    auto stream = self.getStream();
+    stream->release(core->getLastPersistedIndex());
+  }
+
+  auto resolveQueue = std::make_unique<WaitForAppliedQueue>();
+
+  auto const end = waitForAppliedQueue.lower_bound(nextWaitForIndex);
+  for (auto it = waitForAppliedQueue.begin(); it != end; ++it) {
+    resolveQueue->insert(waitForAppliedQueue.extract(it));
+  }
+
+  return DeferredAction([resolveQueue = std::move(resolveQueue)]() noexcept {
+    for (auto& p : *resolveQueue) {
+      p.second.setValue();
     }
-    auto nextWaitForIndex = ptr->range().to;
-    data.core->applyEntries(std::move(ptr));
-    data.nextWaitForIndex = nextWaitForIndex;
-
-    if (data.core->flush()) {
-      auto stream = self->getStream();
-      stream->release(data.core->getLastPersistedIndex());
-    }
-
-    auto resolveQueue = std::make_unique<WaitForAppliedQueue>();
-
-    auto const end =
-        data.waitForAppliedQueue.lower_bound(data.nextWaitForIndex);
-    for (auto it = data.waitForAppliedQueue.begin(); it != end; ++it) {
-      resolveQueue->insert(data.waitForAppliedQueue.extract(it));
-    }
-
-    return DeferredAction([resolveQueue = std::move(resolveQueue)]() noexcept {
-      for (auto& p : *resolveQueue) {
-        p.second.setValue();
-      }
-    });
   });
 }
 
 auto PrototypeLeaderState::waitForApplied(LogIndex index)
     -> futures::Future<futures::Unit> {
-  return _guardedData.doUnderLock([index](auto& data) {
-    if (index < data.nextWaitForIndex) {
-      return futures::Future<futures::Unit>{std::in_place};
-    }
-    auto it = data.waitForAppliedQueue.emplace(index, WaitForAppliedPromise{});
-    auto f = it->second.getFuture();
-    TRI_ASSERT(f.valid());
-    return f;
-  });
+  return _guardedData.getLockedGuard()->waitForApplied(index);
+}
+
+auto PrototypeLeaderState::GuardedData::waitForApplied(LogIndex index)
+    -> futures::Future<futures::Unit> {
+  if (index < nextWaitForIndex) {
+    return futures::Future<futures::Unit>{std::in_place};
+  }
+  auto it = waitForAppliedQueue.emplace(index, WaitForAppliedPromise{});
+  auto f = it->second.getFuture();
+  TRI_ASSERT(f.valid());
+  return f;
 }
 
 void PrototypeLeaderState::start() { handlePollResult(pollNewEntries()); }

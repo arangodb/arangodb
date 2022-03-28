@@ -65,16 +65,22 @@ struct PrototypeLeaderState
   auto pollNewEntries();
   void handlePollResult(
       futures::Future<std::unique_ptr<EntryIterator>>&& pollFuture);
-  [[nodiscard]] auto applyEntries(std::unique_ptr<EntryIterator> ptr)
-      -> DeferredAction;
+
   auto waitForApplied(LogIndex index) -> futures::Future<futures::Unit>;
 
   struct GuardedData {
-    explicit GuardedData(std::unique_ptr<PrototypeCore> core)
-        : core(std::move(core)), nextWaitForIndex{1} {};
+    explicit GuardedData(PrototypeLeaderState& self,
+                         std::unique_ptr<PrototypeCore> core)
+        : self(self), core(std::move(core)), nextWaitForIndex{1} {};
+
+    [[nodiscard]] auto applyEntries(std::unique_ptr<EntryIterator> ptr)
+        -> DeferredAction;
+
+    auto waitForApplied(LogIndex index) -> futures::Future<futures::Unit>;
 
     [[nodiscard]] bool didResign() const noexcept { return core == nullptr; }
 
+    PrototypeLeaderState& self;
     std::unique_ptr<PrototypeCore> core;
     WaitForAppliedQueue waitForAppliedQueue;
     LogIndex nextWaitForIndex;
