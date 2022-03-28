@@ -1,6 +1,8 @@
 devel
 -----
 
+* Updated arangosync to v2.9.0-preview-2.
+
 * Added AQL hint "useCache" for FOR loops, to explicitly disable the usage of 
   in-memory caches for lookups.
 
@@ -96,7 +98,7 @@ devel
 * Fix null pointer access when using WINDOW operation with a COUNT/LENGTH
   aggregate function without any arguments.
 
-* Enable range deletions in the WAL for truncate operationns in the cluster, 
+* Enable range deletions in the WAL for truncate operations in the cluster, 
   too. This can speed up truncate operations for large collections/shards.
 
 * Set max recursion depth for VelocyPack, JSON and JavaScript arrays and 
@@ -104,17 +106,23 @@ devel
 
 * Updated snowball to version 2.2.0
 
-* Fixed: Deadlock created by high load and a follower trying to get into sync.
-  In the final synchronization phase the follower needs to temporarily block writes
-  on the leader so we have a reliable point in time where we can prove that the data is consistent.
-  If the leader at this point is flooded with write requests to that shard there is a chance
-  that all worker threads only pick up those writes, which cannot make any progress until the
-  lock is cleared. However, the process to clear the lock was on the same priority as those writes.
-  Hence this lock clear operations could not bypass the writes. Now we moved every follow up request
-  after the lock to HIGH lanes, which will allow them to bypass all non-internal operations.
+* Fixed: Deadlock created by high load and a follower trying to get into 
+  sync.
+  In the final synchronization phase the follower needs to temporarily block 
+  writes on the leader so we have a reliable point in time where we can prove 
+  that the data is consistent.
+  If the leader at this point is flooded with write requests to that shard 
+  there is a chance that all worker threads only pick up those writes, which 
+  cannot make any progress until the lock is cleared. However, the process to 
+  clear the lock was on the same priority as those writes.
+  Hence this lock clear operations could not bypass the writes. Now we moved 
+  every follow up request after the lock to HIGH lanes, which will allow them 
+  to bypass all non-internal operations.
 
-* arangosh now uses the same header the UI uses to gain higher priority on initial connection.
-  This will increase the chance for an arangosh to connect to a server under very high load.
+* arangosh now uses the same header the UI uses to gain higher priority on 
+  initial connection.
+  This will increase the chance for an arangosh to connect to a server under 
+  very high load.
 
 * Removed internal JavaScript dependencies "mocha" and "chalk". We recommend
   always bundling your own copy of third-party modules, even ones listed as
@@ -302,7 +310,7 @@ devel
   This drastically reduces peak memory usage for queries that use index lookups
   in inner loops and that get lots of different inputs from outer loops.
 
-* Adjust interal RocksDB setting `optimize_filters_for_hits` for Documents
+* Adjust internal RocksDB setting `optimize_filters_for_hits` for Documents
   column family, setting it from `false` to `true`. This should reduce memory
   and disk space requirements for the bottom-most .sst files of the documents
   column family.
@@ -315,23 +323,24 @@ devel
   and total amount of data parsed for the client tools arangodump and 
   arangorestore. 
 
-* Fixed minDepth handling of weighted Traversals. When using a minDepth of 3, also paths of length
-  2 have been returned, on all locally executed variants (SingleServer, OneShard, DisjointSmart).
+* Fixed minDepth handling of weighted traversals. When using a minDepth of 3, 
+  also paths of length 2 have been returned, on all locally executed variants 
+  (SingleServer, OneShard, DisjointSmart).
 
-* Fixed BTS-728 (no released version infected) fixed: for DisjointSmartGraphs, that include
-  a satellite vertex collection, valid disjoint path were not always followed, if one of the
-  satellites has a connection to two (or more) vertices that have different shardValues that
-  by chance are routed to the same shard.
+* Fixed BTS-728 (no released version infected) fixed: for DisjointSmartGraphs, 
+  that include a satellite vertex collection, valid disjoint path were not always 
+  followed, if one of the satellites has a connection to two (or more) vertices 
+  that have different shardValues that by chance are routed to the same shard.
 
-* Fixed PRESUPP-445: Foxx queues: Some Jobs are never run in case of
+* Fixed PRESUPP-445: Foxx queues: Some jobs are never run in case of
   multiple Coordinators.
 
-* Fixed BTS-740 (no released version infected) fixed Smart<->Sat SmartEdgeCollections
-  determining the shard in SingleRemoteModification nodes was incorrect. E.g. this could
-  be triggered, by viewing the details of an edge in the UI. Only alpha/beta of 3.9.0
-  contained this bug.
+* Fixed BTS-740 (no released version infected) fixed Smart<->Sat 
+  SmartEdgeCollections determining the shard in SingleRemoteModification nodes 
+  was incorrect. E.g. this could be triggered, by viewing the details of an edge 
+  in the UI. Only alpha/beta of 3.9.0 contained this bug.
 
-* Fixed BTS-729 (no released version infected): Some conditions in a Hybrid
+* Fixed BTS-729 (no released version affected): Some conditions in a Hybrid
   Smart Graph could led to wrong shard location calculation and therefore to
   wrong graph query results. Only alpha/beta of 3.9.0 contained this bug.
 
@@ -461,8 +470,6 @@ devel
   
 * Fixed BTS-693: Sort-limit rule now always ensures proper LIMIT node placement
   to avoid possible invalid results in the fullCount data.
-
-* Added new AQL function SHARD_ID.
 
 * Updated OpenSSL to 1.1.1m and OpenLDAP to 2.6.0.
 

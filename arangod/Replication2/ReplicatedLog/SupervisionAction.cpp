@@ -35,15 +35,11 @@ namespace paths = arangodb::cluster::paths::aliases;
 
 namespace arangodb::replication2::replicated_log {
 
-auto to_string(Action const &action) -> std::string_view {
-  return std::visit([](auto &&arg) { return arg.name; }, action);
+auto to_string(Action const& action) -> std::string_view {
+  return std::visit([](auto&& arg) { return arg.name; }, action);
 }
 
-void toVelocyPack(Action const &action, VPackBuilder &builder) {
-  std::visit([&builder](auto &&item) { serialize(builder, item); }, action);
-}
-
-auto execute(Action const &action, DatabaseID const &dbName, LogId const &log,
+auto execute(Action const& action, DatabaseID const& dbName, LogId const& log,
              std::optional<LogPlanSpecification> const plan,
              std::optional<LogCurrent> const current,
              arangodb::agency::envelope envelope)
@@ -64,7 +60,7 @@ auto execute(Action const &action, DatabaseID const &dbName, LogId const &log,
 
   auto ctx = ActionContext{std::move(plan), std::move(current)};
 
-  std::visit([&](auto &action) { action.execute(ctx); }, action);
+  std::visit([&](auto& action) { action.execute(ctx); }, action);
 
   if (!ctx.hasModification()) {
     return envelope;
@@ -81,25 +77,25 @@ auto execute(Action const &action, DatabaseID const &dbName, LogId const &log,
 
   return envelope.write()
       .cond(ctx.hasPlanModification(),
-            [&](arangodb::agency::envelope::write_trx &&trx) {
+            [&](arangodb::agency::envelope::write_trx&& trx) {
               return std::move(trx)
                   .emplace_object(planPath,
-                                  [&](VPackBuilder &builder) {
+                                  [&](VPackBuilder& builder) {
                                     ctx.getPlan().toVelocyPack(builder);
                                   })
                   .inc(paths::plan()->version()->str());
             })
       .cond(ctx.hasCurrentModification(),
-            [&](arangodb::agency::envelope::write_trx &&trx) {
+            [&](arangodb::agency::envelope::write_trx&& trx) {
               return std::move(trx)
-                  .emplace_object(currentPath,
-                                  [&](VPackBuilder &builder) {
-                                    ctx.getCurrent().supervision->toVelocyPack(
-                                        builder);
-                                  })
+                  .emplace_object(
+                      currentPath,
+                      [&](VPackBuilder& builder) {
+                        ctx.getCurrent().supervision->toVelocyPack(builder);
+                      })
                   .inc(paths::current()->version()->str());
             })
       .end();
 }
 
-} // namespace arangodb::replication2::replicated_log
+}  // namespace arangodb::replication2::replicated_log
