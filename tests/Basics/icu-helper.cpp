@@ -46,6 +46,11 @@ IcuInitializer::~IcuInitializer() {
   icuDataPtr = nullptr;
 }
 
+void IcuInitializer::reinit() {
+  arangodb::basics::Utf8Helper::DefaultUtf8Helper.setCollatorLanguage(
+            "", icuDataPtr);
+}
+
 void IcuInitializer::setup(char const* path) {
   if (initialized) {
     return;
