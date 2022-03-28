@@ -1,6 +1,9 @@
 v3.8.7 (XXXX-XX-XX)
 -------------------
 
+* Resync follower shard after a follower restart immediately and not lazily
+  (BTS-829).
+
 * Bug-Fix: Resolve BTS-673/Issue #15107, a spliced subquery could return too few
   results.
 
