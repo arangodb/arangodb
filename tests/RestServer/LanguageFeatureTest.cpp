@@ -1487,8 +1487,8 @@ TEST_F(ArangoLanguageFeatureTest, testIcuCountry1WithCollationLangCheckTrue) {
     langCheckFeature.start();
 
     bool shouldBeLangEqual = true;
-    checkLanguageFile(server.server(), actualFirstLang.data(), icuParameter.data(),
-                      shouldBeLangEqual);
+    checkLanguageFile(server.server(), actualFirstLang.data(),
+                      icuParameter.data(), shouldBeLangEqual);
     bool isDefaultLanguage = false;
     checkCollatorSettings(actualFirstLang.data(), isDefaultLanguage);
   }
@@ -1512,8 +1512,8 @@ TEST_F(ArangoLanguageFeatureTest, testIcuCountry1WithCollationLangCheckTrue) {
     langCheckFeature.start();
 
     bool shouldBeLangEqual = true;
-    checkLanguageFile(server.server(), actualFirstLang.data(), icuParameter.data(),
-                      shouldBeLangEqual);
+    checkLanguageFile(server.server(), actualFirstLang.data(),
+                      icuParameter.data(), shouldBeLangEqual);
     bool isDefaultLanguage = false;
     checkCollatorSettings(actualFirstLang.data(), isDefaultLanguage);
   }
@@ -1588,8 +1588,8 @@ TEST_F(ArangoLanguageFeatureTest, testIcuCountry1WithCollationLangCheckTrue) {
     langCheckFeature.start();
 
     bool shouldBeLangEqual = true;
-    checkLanguageFile(server.server(), actualFirstLang.data(), icuParameter.data(),
-                      shouldBeLangEqual);
+    checkLanguageFile(server.server(), actualFirstLang.data(),
+                      icuParameter.data(), shouldBeLangEqual);
     bool isDefaultLanguage = false;
     checkCollatorSettings(actualFirstLang.data(), isDefaultLanguage);
   }
@@ -1633,8 +1633,8 @@ TEST_F(ArangoLanguageFeatureTest, testIcuCountry2WithCollationLangCheckTrue) {
     langCheckFeature.start();
 
     bool shouldBeLangEqual = true;
-    checkLanguageFile(server.server(), actualFirstLang.data(), icuParameter.data(),
-                      shouldBeLangEqual);
+    checkLanguageFile(server.server(), actualFirstLang.data(),
+                      icuParameter.data(), shouldBeLangEqual);
     bool isDefaultLanguage = false;
     checkCollatorSettings(actualFirstLang.data(), isDefaultLanguage);
   }
@@ -1658,8 +1658,8 @@ TEST_F(ArangoLanguageFeatureTest, testIcuCountry2WithCollationLangCheckTrue) {
     langCheckFeature.start();
 
     bool shouldBeLangEqual = true;
-    checkLanguageFile(server.server(), actualFirstLang.data(), icuParameter.data(),
-                      shouldBeLangEqual);
+    checkLanguageFile(server.server(), actualFirstLang.data(),
+                      icuParameter.data(), shouldBeLangEqual);
     bool isDefaultLanguage = false;
     checkCollatorSettings(actualFirstLang.data(), isDefaultLanguage);
   }
@@ -1734,8 +1734,8 @@ TEST_F(ArangoLanguageFeatureTest, testIcuCountry2WithCollationLangCheckTrue) {
     langCheckFeature.start();
 
     bool shouldBeLangEqual = true;
-    checkLanguageFile(server.server(), actualFirstLang.data(), icuParameter.data(),
-                      shouldBeLangEqual);
+    checkLanguageFile(server.server(), actualFirstLang.data(),
+                      icuParameter.data(), shouldBeLangEqual);
     bool isDefaultLanguage = false;
     checkCollatorSettings(actualFirstLang.data(), isDefaultLanguage);
   }
@@ -1885,7 +1885,6 @@ TEST_F(ArangoLanguageFeatureTest, testIcuCountry3WithCollationLangCheckTrue) {
     checkCollatorSettings(firstLang.data(), isDefaultLanguage);
   }
 }
-
 
 TEST_F(ArangoLanguageFeatureTest, testDefaultWithCollationLangCheckTrue) {
   // default-language-check=true
@@ -2048,7 +2047,8 @@ TEST_F(ArangoLanguageFeatureTest, testDefaultWithCollationLangCheckTrue) {
   }
 }
 
-TEST_F(ArangoLanguageFeatureTest, testDefaultCountryWithCollationLangCheckTrue) {
+TEST_F(ArangoLanguageFeatureTest,
+       testDefaultCountryWithCollationLangCheckTrue) {
   // default-language-check=true
   // test behaviour of --icu-language parameter
 
