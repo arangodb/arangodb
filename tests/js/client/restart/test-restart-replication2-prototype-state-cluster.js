@@ -29,7 +29,6 @@ const jsunity = require('jsunity');
 const _ = require('lodash');
 const rh = require('@arangodb/testutils/restart-helper');
 const {db, errors} = require('@arangodb');
-const request = require('@arangodb/request');
 
 const dbservers = (function () {
   return global.instanceInfo.arangods.filter((instance) => instance.role === "dbserver").map((x) => x.id);
@@ -59,7 +58,7 @@ const retryWithExceptions = function (check, allowedErrors) {
 const getSnapshotStatus = function (logId) {
   const response = db._connection.GET(`/_api/replicated-state/${logId}/snapshot-status`);
   if (response.code !== 200) {
-    throw new Error("Snapshot status returned invalid response code: " + response.code)
+    throw new Error("Snapshot status returned invalid response code: " + response.code);
   }
   return response.result;
 };
