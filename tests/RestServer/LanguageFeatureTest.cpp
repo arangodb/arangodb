@@ -158,11 +158,6 @@ class ArangoLanguageFeatureTest
 
   void TearDown() { SetUpTestSuite(); }
 
- private:
-  std::string _lang;
-  std::string _country;
-  icu::Collator* _collator;
-
  public:
   ArangoLanguageFeatureTest() : server(false) {
     arangodb::tests::init();
@@ -1220,8 +1215,8 @@ TEST_F(ArangoLanguageFeatureTest, testIcuWithVariantLangCheckTrue) {
     langFeature.prepare();
     langCheckFeature.start();
     bool shouldBeLangEqual = true;
-    checkLanguageFile(server.server(), actualFirstLang.data(), icuParameter.data(),
-                      shouldBeLangEqual);
+    checkLanguageFile(server.server(), actualFirstLang.data(),
+                      icuParameter.data(), shouldBeLangEqual);
     bool isDefaultLanguage = false;
     checkCollatorSettings(actualFirstLang.data(), isDefaultLanguage);
   }
@@ -1240,8 +1235,8 @@ TEST_F(ArangoLanguageFeatureTest, testIcuWithVariantLangCheckTrue) {
     langFeature.prepare();
     langCheckFeature.start();
     bool shouldBeLangEqual = true;
-    checkLanguageFile(server.server(), actualFirstLang.data(), icuParameter.data(),
-                      shouldBeLangEqual);
+    checkLanguageFile(server.server(), actualFirstLang.data(),
+                      icuParameter.data(), shouldBeLangEqual);
     bool isDefaultLanguage = false;
     checkCollatorSettings(actualFirstLang.data(), isDefaultLanguage);
   }
@@ -1303,8 +1298,8 @@ TEST_F(ArangoLanguageFeatureTest, testIcuWithVariantLangCheckTrue) {
     langFeature.prepare();
     langCheckFeature.start();
     bool shouldBeLangEqual = true;
-    checkLanguageFile(server.server(), actualFirstLang.data(), icuParameter.data(),
-                      shouldBeLangEqual);
+    checkLanguageFile(server.server(), actualFirstLang.data(),
+                      icuParameter.data(), shouldBeLangEqual);
     bool isDefaultLanguage = false;
     checkCollatorSettings(actualFirstLang.data(), isDefaultLanguage);
   }
