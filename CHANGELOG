@@ -1,6 +1,8 @@
 devel
 -----
 
+* Updated bundled version of libunwind to v1.6.2.
+
 * Updated arangosync to v2.9.0-preview-2.
 
 * Added AQL hint "useCache" for FOR loops, to explicitly disable the usage of 
