@@ -310,7 +310,7 @@ devel
   This drastically reduces peak memory usage for queries that use index lookups
   in inner loops and that get lots of different inputs from outer loops.
 
-* Adjust interal RocksDB setting `optimize_filters_for_hits` for Documents
+* Adjust internal RocksDB setting `optimize_filters_for_hits` for Documents
   column family, setting it from `false` to `true`. This should reduce memory
   and disk space requirements for the bottom-most .sst files of the documents
   column family.
@@ -323,23 +323,24 @@ devel
   and total amount of data parsed for the client tools arangodump and 
   arangorestore. 
 
-* Fixed minDepth handling of weighted Traversals. When using a minDepth of 3, also paths of length
-  2 have been returned, on all locally executed variants (SingleServer, OneShard, DisjointSmart).
+* Fixed minDepth handling of weighted traversals. When using a minDepth of 3, 
+  also paths of length 2 have been returned, on all locally executed variants 
+  (SingleServer, OneShard, DisjointSmart).
 
-* Fixed BTS-728 (no released version infected) fixed: for DisjointSmartGraphs, that include
-  a satellite vertex collection, valid disjoint path were not always followed, if one of the
-  satellites has a connection to two (or more) vertices that have different shardValues that
-  by chance are routed to the same shard.
+* Fixed BTS-728 (no released version infected) fixed: for DisjointSmartGraphs, 
+  that include a satellite vertex collection, valid disjoint path were not always 
+  followed, if one of the satellites has a connection to two (or more) vertices 
+  that have different shardValues that by chance are routed to the same shard.
 
-* Fixed PRESUPP-445: Foxx queues: Some Jobs are never run in case of
+* Fixed PRESUPP-445: Foxx queues: Some jobs are never run in case of
   multiple Coordinators.
 
-* Fixed BTS-740 (no released version infected) fixed Smart<->Sat SmartEdgeCollections
-  determining the shard in SingleRemoteModification nodes was incorrect. E.g. this could
-  be triggered, by viewing the details of an edge in the UI. Only alpha/beta of 3.9.0
-  contained this bug.
+* Fixed BTS-740 (no released version infected) fixed Smart<->Sat 
+  SmartEdgeCollections determining the shard in SingleRemoteModification nodes 
+  was incorrect. E.g. this could be triggered, by viewing the details of an edge 
+  in the UI. Only alpha/beta of 3.9.0 contained this bug.
 
-* Fixed BTS-729 (no released version infected): Some conditions in a Hybrid
+* Fixed BTS-729 (no released version affected): Some conditions in a Hybrid
   Smart Graph could led to wrong shard location calculation and therefore to
   wrong graph query results. Only alpha/beta of 3.9.0 contained this bug.
 
@@ -469,8 +470,6 @@ devel
   
 * Fixed BTS-693: Sort-limit rule now always ensures proper LIMIT node placement
   to avoid possible invalid results in the fullCount data.
-
-* Added new AQL function SHARD_ID.
 
 * Updated OpenSSL to 1.1.1m and OpenLDAP to 2.6.0.
 
