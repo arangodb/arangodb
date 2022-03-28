@@ -157,11 +157,6 @@ class ArangoLanguageFeatureTest
 
   void TearDown() override { SetUpTestCase(); }
 
- private:
-  std::string _lang;
-  std::string _country;
-  icu::Collator* _collator;
-
  public:
   ArangoLanguageFeatureTest() : server(false) {
     arangodb::tests::init();
