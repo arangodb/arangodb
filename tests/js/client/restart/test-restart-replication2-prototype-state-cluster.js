@@ -63,6 +63,10 @@ const getSnapshotStatus = function (logId) {
   return response.result;
 };
 
+const disableMaintenanceMode = function () {
+  const response = db._connection.PUT("/_admin/cluster/maintenance", "\"off\"");
+};
+
 function testSuite() {
 
 
@@ -72,6 +76,7 @@ function testSuite() {
     },
 
     testRestartDatabaseServers: function () {
+      disableMaintenanceMode();
       const servers = _.sampleSize(dbservers, 3);
       const state = db._createPrototypeState({servers});
       state.write({"foo": "bar"});
