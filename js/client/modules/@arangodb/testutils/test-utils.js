@@ -304,8 +304,8 @@ function getTestCode(file, options, instanceInfo) {
 // //////////////////////////////////////////////////////////////////////////////
 
 class runOnArangodRunner extends testRunnerBase{
-  constructor(options, testname, serverOptions, checkUsers=true) {
-    super(options, testname, serverOptions, checkUsers);
+  constructor(options, testname, serverOptions, checkUsers=true, checkCollections=true) {
+    super(options, testname, serverOptions, checkUsers, checkCollections);
     this.info = "onRemoteArangod";
   }
   runOneTest(file) {
@@ -441,8 +441,8 @@ function findEndpoint(options, instanceInfo) {
 // //////////////////////////////////////////////////////////////////////////////
 
 class runInArangoshRunner extends testRunnerBase{
-  constructor(options, testname, serverOptions, checkUsers=true) {
-    super(options, testname, serverOptions, checkUsers);
+  constructor(options, testname, serverOptions, checkUsers=true, checkCollections=true) {
+    super(options, testname, serverOptions, checkUsers, checkCollections);
     this.info = "forkedArangosh";
   }
   runOneTest(file) {
@@ -476,8 +476,8 @@ class runInArangoshRunner extends testRunnerBase{
 // //////////////////////////////////////////////////////////////////////////////
 
 class runLocalInArangoshRunner extends testRunnerBase{
-  constructor(options, testname, serverOptions, checkUsers=true) {
-    super(options, testname, serverOptions, checkUsers);
+  constructor(options, testname, serverOptions, checkUsers=true, checkCollections=true) {
+    super(options, testname, serverOptions, checkUsers, checkCollections);
     this.info = "localArangosh";
   }
   runOneTest(file) {

@@ -45,7 +45,7 @@ let didSplitBuckets = false;
 
 
 class testRunner {
-  constructor(options, testname, serverOptions, checkUsers=true) {
+  constructor(options, testname, serverOptions, checkUsers=true, checkCollections=true) {
     if (options.testBuckets && !didSplitBuckets) {
       throw new Error("You parametrized to split buckets, but this testsuite doesn't support it!!!");
     }
@@ -108,135 +108,139 @@ class testRunner {
       }
     });
     this.collectionsBefore = [];
-    this.cleanupChecks.push({
-      name: 'collections',
-      setUp: function(obj, te) {
-        try {
-          db._collections().forEach(collection => {
-            obj.collectionsBefore.push(collection._name);
+    if (checkCollections) {
+      this.cleanupChecks.push({
+        name: 'collections',
+        setUp: function(obj, te) {
+          try {
+            db._collections().forEach(collection => {
+              obj.collectionsBefore.push(collection._name);
+            });
+          } catch (x) {
+            obj.results[te] = {
+              status: false,
+              message: 'failed to fetch the previously available collections: ' + x.message
+            };
+            obj.continueTesting = false;
+            obj.serverDead = true;
+            return false;
+          }
+          return true;
+        },
+        runCheck: function(obj, te) {
+          let collectionsAfter = [];
+          try {
+            db._collections().forEach(collection => {
+              collectionsAfter.push(collection._name);
+            });
+          } catch (x) {
+            obj.results[te] = {
+              status: false,
+              message: 'failed to fetch the currently available collections: ' + x.message + '. Original test status: ' + JSON.stringify(obj.results[te])
+            };
+            obj.continueTesting = false;
+            return false;
+          }
+          let delta = tu.diffArray(obj.collectionsBefore, collectionsAfter).filter(function(name) {
+            return ! ((name[0] === '_') || (name === "compact") || (name === "election")
+                      || (name === "log")); // exclude system/agency collections from the comparison
+            return (name[0] !== '_'); // exclude system collections from the comparison
           });
-        } catch (x) {
-          obj.results[te] = {
-            status: false,
-            message: 'failed to fetch the previously available collections: ' + x.message
-          };
-          obj.continueTesting = false;
-          obj.serverDead = true;
-          return false;
+          if (delta.length !== 0) {
+            obj.results[te] = {
+              status: false,
+              message: 'Cleanup missing - test left over collection:' + delta + '. Original test status: ' + JSON.stringify(obj.results[te])
+            };
+            return false;
+          }
+          return true;
         }
-        return true;
-      },
-      runCheck: function(obj, te) {
-        let collectionsAfter = [];
-        try {
-          db._collections().forEach(collection => {
-            collectionsAfter.push(collection._name);
-          });
-        } catch (x) {
-          obj.results[te] = {
-            status: false,
-            message: 'failed to fetch the currently available collections: ' + x.message + '. Original test status: ' + JSON.stringify(obj.results[te])
-          };
-          obj.continueTesting = false;
-          return false;
-        }
-        let delta = tu.diffArray(obj.collectionsBefore, collectionsAfter).filter(function(name) {
-          return ! ((name[0] === '_') || (name === "compact") || (name === "election")
-                    || (name === "log")); // exclude system/agency collections from the comparison
-          return (name[0] !== '_'); // exclude system collections from the comparison
-        });
-        if (delta.length !== 0) {
-          obj.results[te] = {
-            status: false,
-            message: 'Cleanup missing - test left over collection:' + delta + '. Original test status: ' + JSON.stringify(obj.results[te])
-          };
-          return false;
-        }
-        return true;
-      }
-    });
+      });
+    }
     this.viewsBefore = [];
-    this.cleanupChecks.push({
-      name: 'views',
-      setUp: function(obj, te) {
-        try {
-          db._views().forEach(view => {
-            obj.viewsBefore.push(view._name);
+    if (checkCollections) {
+      this.cleanupChecks.push({
+        name: 'views',
+        setUp: function(obj, te) {
+          try {
+            db._views().forEach(view => {
+              obj.viewsBefore.push(view._name);
+            });
+          } catch (x) {
+            this.results[te] = {
+              status: false,
+              message: 'failed to fetch the previously available views: ' + x.message
+            };
+            obj.continueTesting = false;
+            obj.serverDead = true;
+            return false;
+          }
+          return true;
+        },
+        runCheck: function(obj, te) {
+          let viewsAfter = [];
+          try {
+            db._views().forEach(view => {
+              viewsAfter.push(view._name);
+            });
+          } catch (x) {
+            obj.results[te] = {
+              status: false,
+              message: 'failed to fetch the currently available views: ' + x.message + '. Original test status: ' + JSON.stringify(obj.results[te])
+            };
+            obj.continueTesting = false;
+            return false;
+          }
+          let delta = tu.diffArray(obj.viewsBefore, viewsAfter).filter(function(name) {
+            return ! ((name[0] === '_') || (name === "compact") || (name === "election")
+                      || (name === "log")); // exclude system/agency collections from the comparison
           });
-        } catch (x) {
-          this.results[te] = {
-            status: false,
-            message: 'failed to fetch the previously available views: ' + x.message
-          };
-          obj.continueTesting = false;
-          obj.serverDead = true;
-          return false;
+          if (delta.length !== 0) {
+            obj.results[te] = {
+              status: false,
+              message: 'Cleanup missing - test left over view:' + delta + '. Original test status: ' + JSON.stringify(obj.results[te])
+            };
+            return false;
+          }
+          return true;
         }
-        return true;
-      },
-      runCheck: function(obj, te) {
-        let viewsAfter = [];
-        try {
-          db._views().forEach(view => {
-            viewsAfter.push(view._name);
-          });
-        } catch (x) {
-          obj.results[te] = {
-            status: false,
-            message: 'failed to fetch the currently available views: ' + x.message + '. Original test status: ' + JSON.stringify(obj.results[te])
-          };
-          obj.continueTesting = false;
-          return false;
-        }
-        let delta = tu.diffArray(obj.viewsBefore, viewsAfter).filter(function(name) {
-          return ! ((name[0] === '_') || (name === "compact") || (name === "election")
-                    || (name === "log")); // exclude system/agency collections from the comparison
-        });
-        if (delta.length !== 0) {
-          obj.results[te] = {
-            status: false,
-            message: 'Cleanup missing - test left over view:' + delta + '. Original test status: ' + JSON.stringify(obj.results[te])
-          };
-          return false;
-        }
-        return true;
-      }
-    });
-
+      });
+    }
     this.graphCount = 0;
-    this.cleanupChecks.push({
-      name: 'graphs',
-      setUp: function(obj, te) {
-        this.graphCount = db._collection('_graphs').count();
-        return true;
-      },
-      runCheck: function(obj, te) {
-        let graphs;
-        try {
-          graphs = db._collection('_graphs');
-        } catch (x) {
-          obj.results[te] = {
-            status: false,
-            message: 'failed to fetch the graphs: ' + x.message + '. Original test status: ' + JSON.stringify(this.results[te])
-          };
-          obj.continueTesting = false;
-          return false;
+    if (checkCollections) {
+      this.cleanupChecks.push({
+        name: 'graphs',
+        setUp: function(obj, te) {
+          this.graphCount = db._collection('_graphs').count();
+          return true;
+        },
+        runCheck: function(obj, te) {
+          let graphs;
+          try {
+            graphs = db._collection('_graphs');
+          } catch (x) {
+            obj.results[te] = {
+              status: false,
+              message: 'failed to fetch the graphs: ' + x.message + '. Original test status: ' + JSON.stringify(this.results[te])
+            };
+            obj.continueTesting = false;
+            return false;
+          }
+          if (graphs && graphs.count() !== obj.graphCount) {
+            obj.results[te] = {
+              status: false,
+              message: 'Cleanup of graphs missing - found graph definitions: [ ' +
+                JSON.stringify(graphs.toArray()) +
+                ' ] - Original test status: ' +
+                JSON.stringify(obj.results[te])
+            };
+            obj.graphCount = graphs.count();
+            return false;
+          }
+          return true;
         }
-        if (graphs && graphs.count() !== obj.graphCount) {
-          obj.results[te] = {
-            status: false,
-            message: 'Cleanup of graphs missing - found graph definitions: [ ' +
-              JSON.stringify(graphs.toArray()) +
-              ' ] - Original test status: ' +
-              JSON.stringify(obj.results[te])
-          };
-          obj.graphCount = graphs.count();
-          return false;
-        }
-        return true;
-      }
-    });
-
+      });
+    }
     this.cleanupChecks.push({
       name: 'failurepoints',
       setUp: function(obj, te) { return true; },
