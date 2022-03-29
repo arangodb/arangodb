@@ -4246,7 +4246,7 @@ bool ClusterInfo::startCollectMetrics() {
   AgencyWriteTransaction const write{
       {kMetricsFlagPath, AgencyValueOperationType::SET,
        VPackSlice::nullSlice()},
-      {kMetricsFlagPath, AgencyPrecondition::Type::EMPTY}};
+      {kMetricsFlagPath, AgencyPrecondition::Type::EMPTY, true}};
   do {
     auto const r = ac.sendTransactionWithFailover(write);
     if (r.successful()) {
