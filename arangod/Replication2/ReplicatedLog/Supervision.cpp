@@ -388,7 +388,13 @@ auto checkReplicatedLog(LogTarget const& target,
                         ParticipantsHealth const& health) -> Action {
   if (!maybePlan) {
     // The log is not planned right now, so we create it
-    return AddLogToPlanAction(target.id, target.participants);
+    LogPlanTermSpecification term;
+    term.config = target.config;
+    term.term = LogTerm{1};
+    auto leader = target.participants.begin()->first;
+    auto rebootId = health._health.at(leader).rebootId;
+    term.leader.emplace(std::move(leader), rebootId);
+    return AddLogToPlanAction(target.id, target.participants, term);
   }
 
   // plan now exists
@@ -501,7 +507,7 @@ auto checkReplicatedLog(LogTarget const& target,
   }
 
   // Here we are converged and can hence signal so
-  return ConvergedToTargetAction{};
+  return EmptyAction{};
 }
 
 }  // namespace arangodb::replication2::replicated_log

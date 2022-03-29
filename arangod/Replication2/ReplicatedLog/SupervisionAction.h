@@ -25,6 +25,7 @@
 #include "velocypack/Builder.h"
 #include "velocypack/velocypack-common.h"
 #include <memory>
+#include <utility>
 
 #include "Agency/TransactionBuilder.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
@@ -151,14 +152,18 @@ struct ErrorAction {
 struct AddLogToPlanAction {
   static constexpr std::string_view name = "AddLogToPlanAction";
 
-  AddLogToPlanAction(LogId const id, ParticipantsFlagsMap const& participants)
-      : _id(id), _participants(participants){};
+  AddLogToPlanAction(LogId const id, ParticipantsFlagsMap participants,
+                     LogPlanTermSpecification term)
+      : _id(id),
+        _participants(std::move(participants)),
+        _term(std::move(term)){};
   LogId const _id;
   ParticipantsFlagsMap const _participants;
+  std::optional<LogPlanTermSpecification> const _term;
 
   auto execute(ActionContext& ctx) const -> void {
     ctx.setPlan(LogPlanSpecification(
-        _id, std::nullopt,
+        _id, _term,
         ParticipantsConfig{.generation = 1, .participants = _participants}));
   }
 };
