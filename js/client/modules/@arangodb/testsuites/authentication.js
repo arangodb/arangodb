@@ -74,11 +74,11 @@ function authenticationClient (options) {
 
   testCases = tu.splitBuckets(options, testCases);
 
-  return tu.performTests(options, testCases, 'authentication', tu.runInArangosh, {
+  return new tu.runInArangoshRunner(options, 'authentication', {
     'server.authentication': 'true',
     'server.jwt-secret': 'haxxmann',
     'cluster.create-waits-for-sync-replication': false
-  });
+  }, false).run(testCases);
 }
 
 function authenticationServer (options) {
@@ -97,11 +97,11 @@ function authenticationServer (options) {
   }
 
   print(CYAN + 'Server Authentication tests...' + RESET);
-  return tu.performTests(options, testCases, 'authentication_server', tu.runThere, {
+  return new tu.runOnArangodRunner(options, 'authentication_server', {
     'server.authentication': 'true',
     'server.jwt-secret': 'haxxmann',
     'cluster.create-waits-for-sync-replication': false
-  });
+  }, false).run(testCases);
 }
 
 // //////////////////////////////////////////////////////////////////////////////
