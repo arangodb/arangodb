@@ -88,7 +88,9 @@ function testSuite() {
 
       retryWithExceptions(function () {
         assertEqual(state.read("foo"), "bar");
-      }, [errors.ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED.code, errors.ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND.code]);
+      }, [errors.ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED.code,
+        errors.ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND.code,
+        errors.ERROR_CLUSTER_NOT_LEADER.code]);
 
       // we expect the snapshost status to be unchanged
       assertEqual(sstatus, getSnapshotStatus(state.id()));
