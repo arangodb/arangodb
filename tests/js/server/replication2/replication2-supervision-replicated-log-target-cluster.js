@@ -42,6 +42,7 @@ const {
   replicatedLogLeaderEstablished,
   replicatedLogUpdateTargetParticipants,
   replicatedLogParticipantsFlag,
+  replicatedLogTargetVersion,
   waitForReplicatedLogAvailable,
 } = helper;
 
@@ -170,26 +171,6 @@ const replicatedLogSuite = function () {
     target.version = version;
     replicatedLogSetTarget(database, logId, target);
   };
-
-  const replicatedLogTargetVersion = function(database, logId, version) {
-    return function() {
-      let {current} = readReplicatedLogAgency(database, logId);
-
-      if (current === undefined) {
-        return Error(`current not yet defined`);
-      }
-      if (!current.supervision) {
-        return Error(`supervision not yet reported to current`);
-      }
-      if (!current.supervision.targetVersion) {
-        return Error(`no version reported in current by supervision`);
-      }
-      if (current.supervision.targetVersion !== version) {
-        return Error(`found version ${current.supervison.targetVersion}, expected ${version}`);
-      }
-      return true;
-    }
-  }
 
   return {
     setUpAll, tearDownAll,
