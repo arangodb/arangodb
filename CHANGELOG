@@ -1,6 +1,11 @@
 v3.8.7 (XXXX-XX-XX)
 -------------------
 
+* No longer put document writes from replication into the audit log by default.
+  Same with low priority authentication like internal UI requests to .html files
+  for the UI. This solves a performance problem for shards getting in sync with
+  audit log switched on.
+
 * Updated OpenSSL to 1.1.1n and OpenLDAP to 2.6.1.
 
 * Bug-Fix: Resolve BTS-673/Issue #15107, a spliced subquery could return too few
