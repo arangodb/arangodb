@@ -27,6 +27,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
+#include "RocksDBEngine/RocksDBEngine.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -255,7 +256,13 @@ IResearchRocksDBInvertedIndex::IResearchRocksDBInvertedIndex(
                    false, true,
                    RocksDBColumnFamilyManager::get(
                        RocksDBColumnFamilyManager::Family::Invalid),
-                   objectId, false) {}
+                   objectId, /*useCache*/ false,
+                   /*cacheManager*/ nullptr,
+                   /*engine*/
+                   collection.vocbase()
+                       .server()
+                       .getFeature<EngineSelectorFeature>()
+                       .engine<RocksDBEngine>()) {}
 
 void IResearchRocksDBInvertedIndex::toVelocyPack(
     VPackBuilder& builder,

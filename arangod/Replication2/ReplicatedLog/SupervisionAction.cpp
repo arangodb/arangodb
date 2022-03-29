@@ -49,7 +49,7 @@ void VelocyPacker::operator()(ErrorAction const& action) {
   builder.add(VPackValue(action.name));
 
   builder.add(VPackValue("error"));
-  ::toVelocyPack(action._error, builder);
+  serialize(builder, action._error);
 }
 
 void VelocyPacker::operator()(AddLogToPlanAction const& action) {

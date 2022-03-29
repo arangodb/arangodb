@@ -23,6 +23,7 @@
 
 #include "RocksDBFulltextIndex.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Basics/StaticStrings.h"
@@ -34,9 +35,11 @@
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
+#include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "RocksDBEngine/RocksDBTypes.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 
 #include <rocksdb/utilities/transaction_db.h>
 #include <rocksdb/utilities/write_batch_with_index.h>
@@ -90,17 +93,23 @@ class RocksDBFulltextIndexIterator final : public IndexIterator {
 
 RocksDBFulltextIndex::RocksDBFulltextIndex(
     IndexId iid, arangodb::LogicalCollection& collection,
-    arangodb::velocypack::Slice const& info)
+    arangodb::velocypack::Slice info)
     : RocksDBIndex(iid, collection, info,
                    RocksDBColumnFamilyManager::get(
                        RocksDBColumnFamilyManager::Family::FulltextIndex),
-                   false),
+                   /*useCache*/ false,
+                   /*cacheManager*/ nullptr,
+                   /*engine*/
+                   collection.vocbase()
+                       .server()
+                       .getFeature<EngineSelectorFeature>()
+                       .engine<RocksDBEngine>()),
       _minWordLength(FulltextIndexLimits::minWordLengthDefault) {
   TRI_ASSERT(iid.isSet());
   TRI_ASSERT(_cf == RocksDBColumnFamilyManager::get(
                         RocksDBColumnFamilyManager::Family::FulltextIndex));
 
-  VPackSlice const value = info.get("minLength");
+  VPackSlice value = info.get("minLength");
 
   if (value.isNumber()) {
     _minWordLength = value.getNumericValue<int>();

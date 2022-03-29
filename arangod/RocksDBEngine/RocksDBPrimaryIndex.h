@@ -48,10 +48,8 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
   friend class RocksDBAnyIndexIterator;
 
  public:
-  RocksDBPrimaryIndex() = delete;
-
   RocksDBPrimaryIndex(arangodb::LogicalCollection& collection,
-                      arangodb::velocypack::Slice const& info);
+                      arangodb::velocypack::Slice info);
 
   ~RocksDBPrimaryIndex();
 
@@ -79,7 +77,8 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
       const override;
 
   LocalDocumentId lookupKey(transaction::Methods* trx, std::string_view key,
-                            ReadOwnWrites readOwnWrites) const;
+                            ReadOwnWrites readOwnWrites,
+                            bool& foundInCache) const;
 
   /// @brief reads a revision id from the primary index
   /// if the document does not exist, this function will return false

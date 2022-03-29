@@ -46,6 +46,8 @@ namespace arangodb::cache {
 /// simple API following that of the base Cache class. For any non-pure-virtual
 /// functions, see Cache.h for documentation.
 ////////////////////////////////////////////////////////////////////////////////
+
+template<typename Hasher>
 class PlainCache final : public Cache {
  public:
   PlainCache(Cache::ConstructionGuard guard, Manager* manager, std::uint64_t id,
@@ -91,6 +93,9 @@ class PlainCache final : public Cache {
   //////////////////////////////////////////////////////////////////////////////
   Result banish(void const* key, std::uint32_t keySize) override;
 
+  /// @brief returns the name of the hasher
+  std::string_view hasherName() const noexcept;
+
  private:
   // friend class manager and tasks
   friend class FreeMemoryTask;
@@ -113,7 +118,7 @@ class PlainCache final : public Cache {
   virtual uint64_t freeMemoryFrom(std::uint32_t hash) override;
   virtual void migrateBucket(void* sourcePtr,
                              std::unique_ptr<Table::Subtable> targets,
-                             std::shared_ptr<Table> newTable) override;
+                             Table& newTable) override;
 
   // helpers
   std::pair<::ErrorCode, Table::BucketLocker> getBucket(

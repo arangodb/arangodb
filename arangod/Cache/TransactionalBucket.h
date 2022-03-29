@@ -31,18 +31,21 @@
 #include "Cache/CachedValue.h"
 #include "Cache/Common.h"
 
-namespace arangodb {
-namespace cache {
+namespace arangodb::cache {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Bucket structure for TransactionalCache.
 ///
-/// Contains, a State variable, three slots each for hashes and data pointers,
+/// Contains a State variable, three slots each for hashes and data pointers,
 /// four slots for banished hashes, and the applicable transaction term. Most
 /// querying and manipulation can be handled via the exposed methods. Bucket
 /// must be locked before doing anything else to ensure proper synchronization.
 /// Data entries are carefully laid out to ensure the structure fits in a single
 /// cacheline.
+/// Note: the object used for hashing and comparison of values is not part of
+/// every bucket, to save memory. Instead, the object used for hashing and
+/// comparison is handed into the find() and remove() methods. It is required
+/// that always the same hasher/comparator object is used for a given bucket.
 ////////////////////////////////////////////////////////////////////////////////
 struct TransactionalBucket {
   BucketState _state;
@@ -57,7 +60,7 @@ struct TransactionalBucket {
   std::uint32_t _cachedHashes[slotsData];
   CachedValue* _cachedData[slotsData];
 
-// padding, if necessary?
+  // padding, if necessary?
 #ifdef TRI_PADDING_32
   uint32_t _padding[slotsData];
 #endif
@@ -65,39 +68,39 @@ struct TransactionalBucket {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Initialize an empty bucket.
   //////////////////////////////////////////////////////////////////////////////
-  TransactionalBucket();
+  TransactionalBucket() noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Attempt to lock bucket (failing after maxTries attempts).
   //////////////////////////////////////////////////////////////////////////////
-  bool lock(std::uint64_t maxTries);
+  bool lock(std::uint64_t maxTries) noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Unlock the bucket. Requires bucket to be locked.
   //////////////////////////////////////////////////////////////////////////////
-  void unlock();
+  void unlock() noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Checks whether the bucket is locked.
   //////////////////////////////////////////////////////////////////////////////
-  bool isLocked() const;
+  bool isLocked() const noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Checks whether the bucket has been migrated. Requires state to be
   /// locked.
   //////////////////////////////////////////////////////////////////////////////
-  bool isMigrated() const;
+  bool isMigrated() const noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Checks whether bucket has been fully banished. Requires state to
   /// be locked.
   //////////////////////////////////////////////////////////////////////////////
-  bool isFullyBanished() const;
+  bool isFullyBanished() const noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Checks whether bucket is full. Requires state to be locked.
   //////////////////////////////////////////////////////////////////////////////
-  bool isFull() const;
+  bool isFull() const noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Looks up a given key and returns associated value. Requires state
@@ -109,8 +112,9 @@ struct TransactionalBucket {
   /// bucket to allow basic LRU semantics. If no matching entry is found,
   /// nothing will be changed and a nullptr will be returned.
   //////////////////////////////////////////////////////////////////////////////
+  template<typename Hasher>
   CachedValue* find(std::uint32_t hash, void const* key, std::size_t keySize,
-                    bool moveToFront = true);
+                    bool moveToFront = true) noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Inserts a given value if it is not banished. Requires state to
@@ -126,7 +130,7 @@ struct TransactionalBucket {
   /// user should evict an item and specify the optimizeForInsertion flag to be
   /// true.
   //////////////////////////////////////////////////////////////////////////////
-  void insert(std::uint32_t hash, CachedValue* value);
+  void insert(std::uint32_t hash, CachedValue* value) noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Removes an item with the given key if one exists. Requires state to
@@ -137,7 +141,9 @@ struct TransactionalBucket {
   /// to the value. Upon removal, the empty slot generated is moved to the back
   /// of the bucket (to remove the gap).
   //////////////////////////////////////////////////////////////////////////////
-  CachedValue* remove(std::uint32_t hash, void const* key, std::size_t keySize);
+  template<typename Hasher>
+  CachedValue* remove(std::uint32_t hash, void const* key,
+                      std::size_t keySize) noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Banishs a key and removes it if it exists. Requires state to
@@ -147,13 +153,15 @@ struct TransactionalBucket {
   /// hash associated with the key. If there are no empty banish slots, fully
   /// banish the bucket.
   //////////////////////////////////////////////////////////////////////////////
-  CachedValue* banish(std::uint32_t hash, void const* key, std::size_t keySize);
+  template<typename Hasher>
+  CachedValue* banish(std::uint32_t hash, void const* key,
+                      std::size_t keySize) noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Checks whether a given hash is banished. Requires state to be
   /// locked.
   //////////////////////////////////////////////////////////////////////////////
-  bool isBanished(std::uint32_t hash) const;
+  bool isBanished(std::uint32_t hash) const noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Searches for the best candidate in the bucket to evict. Requires
@@ -164,7 +172,14 @@ struct TransactionalBucket {
   /// returns nullptr. In the case that ignoreRefCount is set to true, then it
   /// simply returns the least recently used value, regardless of freeability.
   //////////////////////////////////////////////////////////////////////////////
-  CachedValue* evictionCandidate(bool ignoreRefCount = false) const;
+  CachedValue* evictionCandidate(bool ignoreRefCount = false) const noexcept;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief evicts a candidate in the bucket. Requires state to be locked.
+  /// Returns the size of the evicted value in case a value was evicted.
+  /// Returns 0 otherwise.
+  //////////////////////////////////////////////////////////////////////////////
+  std::uint64_t evictCandidate() noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Evicts the given value from the bucket. Requires state to be
@@ -174,27 +189,26 @@ struct TransactionalBucket {
   /// preparing an empty slot for insertion, specify the second parameter to be
   /// true. This will move the empty slot to the front instead.
   //////////////////////////////////////////////////////////////////////////////
-  void evict(CachedValue* value, bool optimizeForInsertion = false);
+  void evict(CachedValue* value, bool optimizeForInsertion = false) noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Updates the bucket's banish term. Requires state to be locked.
   //////////////////////////////////////////////////////////////////////////////
-  void updateBanishTerm(std::uint64_t term);
+  void updateBanishTerm(std::uint64_t term) noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Reinitializes a bucket to be completely empty and unlocked.
   /// Requires state to be locked.
   //////////////////////////////////////////////////////////////////////////////
-  void clear();
+  void clear() noexcept;
 
  private:
-  void moveSlot(std::size_t slot, bool moveToFront);
-  bool haveOpenTransaction() const;
+  void moveSlot(std::size_t slot, bool moveToFront) noexcept;
+  bool haveOpenTransaction() const noexcept;
 };
 
 // ensure that TransactionalBucket is exactly BUCKET_SIZE
 static_assert(sizeof(TransactionalBucket) == BUCKET_SIZE,
               "Expected sizeof(TransactionalBucket) == BUCKET_SIZE.");
 
-};  // end namespace cache
-};  // end namespace arangodb
+};  // end namespace arangodb::cache

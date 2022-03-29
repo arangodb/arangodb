@@ -24,6 +24,7 @@
 #include "ExecutionStats.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
+#include "Basics/VelocyPackHelper.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -41,6 +42,9 @@ void ExecutionStats::toVelocyPack(VPackBuilder& builder,
   builder.add("scannedIndex", VPackValue(scannedIndex));
   builder.add("cursorsCreated", VPackValue(cursorsCreated));
   builder.add("cursorsRearmed", VPackValue(cursorsRearmed));
+  builder.add("cacheHits", VPackValue(cacheHits));
+  builder.add("cacheMisses", VPackValue(cacheMisses));
+
   builder.add("filtered", VPackValue(filtered));
   builder.add("httpRequests", VPackValue(requests));
   if (reportFullCount) {
@@ -75,6 +79,8 @@ void ExecutionStats::add(ExecutionStats const& summand) {
   scannedIndex += summand.scannedIndex;
   cursorsCreated += summand.cursorsCreated;
   cursorsRearmed += summand.cursorsRearmed;
+  cacheHits += summand.cacheHits;
+  cacheMisses += summand.cacheMisses;
   filtered += summand.filtered;
   requests += summand.requests;
   if (summand.fullCount > 0) {
@@ -126,13 +132,15 @@ void ExecutionStats::addNode(arangodb::aql::ExecutionNodeId nid,
   }
 }
 
-ExecutionStats::ExecutionStats()
+ExecutionStats::ExecutionStats() noexcept
     : writesExecuted(0),
       writesIgnored(0),
       scannedFull(0),
       scannedIndex(0),
       cursorsCreated(0),
       cursorsRearmed(0),
+      cacheHits(0),
+      cacheMisses(0),
       filtered(0),
       requests(0),
       fullCount(0),
@@ -146,33 +154,43 @@ ExecutionStats::ExecutionStats(VPackSlice slice) : ExecutionStats() {
                                    "stats is not an object");
   }
 
-  writesExecuted = slice.get("writesExecuted").getNumber<int64_t>();
-  writesIgnored = slice.get("writesIgnored").getNumber<int64_t>();
-  scannedFull = slice.get("scannedFull").getNumber<int64_t>();
-  scannedIndex = slice.get("scannedIndex").getNumber<int64_t>();
-  filtered = slice.get("filtered").getNumber<int64_t>();
+  TRI_ASSERT(cursorsCreated == 0);
+  TRI_ASSERT(cursorsRearmed == 0);
+  TRI_ASSERT(cacheHits == 0);
+  TRI_ASSERT(cacheMisses == 0);
 
-  if (VPackSlice s = slice.get("httpRequests"); s.isNumber()) {
-    requests = s.getNumber<int64_t>();
-  }
-
-  if (VPackSlice s = slice.get("peakMemoryUsage"); s.isNumber()) {
-    peakMemoryUsage = std::max<size_t>(peakMemoryUsage, s.getNumber<int64_t>());
-  }
+  writesExecuted = basics::VelocyPackHelper::getNumericValue<uint64_t>(
+      slice, "writesExecuted", 0);
+  writesIgnored = basics::VelocyPackHelper::getNumericValue<uint64_t>(
+      slice, "writesIgnored", 0);
+  scannedFull = basics::VelocyPackHelper::getNumericValue<uint64_t>(
+      slice, "scannedFull", 0);
+  scannedIndex = basics::VelocyPackHelper::getNumericValue<uint64_t>(
+      slice, "scannedIndex", 0);
+  filtered =
+      basics::VelocyPackHelper::getNumericValue<uint64_t>(slice, "filtered", 0);
+  requests = basics::VelocyPackHelper::getNumericValue<uint64_t>(
+      slice, "httpRequests", 0);
+  peakMemoryUsage = basics::VelocyPackHelper::getNumericValue<uint64_t>(
+      slice, "peakMemoryUsage", 0);
 
   // cursorsCreated and cursorsRearmed are optional attributes.
   // the attributes are currently not shown in profile outputs,
   // but are rather used for testing purposes.
-  if (VPackSlice s = slice.get("cursorsCreated"); s.isNumber()) {
-    cursorsCreated = s.getNumber<int64_t>();
-  }
-  if (VPackSlice s = slice.get("cursorsRearmed"); s.isNumber()) {
-    cursorsRearmed = s.getNumber<int64_t>();
-  }
+  cursorsCreated = basics::VelocyPackHelper::getNumericValue<uint64_t>(
+      slice, "cursorsCreated", 0);
+  cursorsRearmed = basics::VelocyPackHelper::getNumericValue<uint64_t>(
+      slice, "cursorsRearmed", 0);
+
+  // cacheHits and cacheMisses are also optional attributes.
+  cacheHits = basics::VelocyPackHelper::getNumericValue<uint64_t>(
+      slice, "cacheHits", 0);
+  cacheMisses = basics::VelocyPackHelper::getNumericValue<uint64_t>(
+      slice, "cacheMisses", 0);
 
   // note: fullCount is an optional attribute!
   if (VPackSlice s = slice.get("fullCount"); s.isNumber()) {
-    fullCount = s.getNumber<int64_t>();
+    fullCount = s.getNumber<uint64_t>();
   } else {
     fullCount = count;
   }
@@ -204,13 +222,15 @@ void ExecutionStats::setPeakMemoryUsage(size_t value) {
   peakMemoryUsage = value;
 }
 
-void ExecutionStats::clear() {
+void ExecutionStats::clear() noexcept {
   writesExecuted = 0;
   writesIgnored = 0;
   scannedFull = 0;
   scannedIndex = 0;
   cursorsCreated = 0;
   cursorsRearmed = 0;
+  cacheHits = 0;
+  cacheMisses = 0;
   filtered = 0;
   requests = 0;
   fullCount = 0;
