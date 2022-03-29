@@ -1253,6 +1253,7 @@ link_libraries(
   absl::flat_hash_map
   absl::node_hash_set
   absl::node_hash_map
+  absl::inlined_vector
 )
 
 

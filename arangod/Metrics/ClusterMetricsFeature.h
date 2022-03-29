@@ -35,6 +35,7 @@
 #include "Containers/FlatHashMap.h"
 #include "Metrics/Batch.h"
 #include "Metrics/Builder.h"
+#include "Metrics/CollectMode.h"
 #include "Metrics/IBatch.h"
 #include "Metrics/Metric.h"
 #include "Metrics/MetricKey.h"
@@ -58,17 +59,23 @@ class ClusterMetricsFeature final : public ArangodFeature {
   // such as double, or char, just add it to this variant
   using MetricValue = std::variant<uint64_t>;
   using MetricKey = std::pair<std::string, std::string>;
-  // We want map because of promtool format
-  // Another option is hashmap<string, hashmap<string, value>
-  using Metrics = std::map<MetricKey, MetricValue>;
+
+  struct Metrics final : public VPackSerializable {
+    // We want map because of promtool format
+    // Another option is hashmap<string, hashmap<string, value>
+    using Values = std::map<MetricKey, MetricValue>;
+
+    Values values;
+
+    void toVelocyPack(VPackBuilder& builder) const final;
+  };
 
   struct Data {
     explicit Data(uint64_t v) : version{v} {}
     explicit Data(uint64_t v, Metrics&& m)
         : version{v}, metrics{std::move(m)} {}
 
-    static std::shared_ptr<Data> fromVPack(VPackSlice slice);
-    static void toVPack(Metrics const& metrics, VPackBuilder& builder);
+    static std::shared_ptr<Data> fromVPack(uint64_t version, VPackSlice slice);
 
     uint64_t version{0};
     Metrics metrics;
@@ -87,7 +94,7 @@ class ClusterMetricsFeature final : public ArangodFeature {
   /// update for the future. There will be no more than one scheduled update at
   /// a time, they will collapse.
   //////////////////////////////////////////////////////////////////////////////
-  void asyncUpdate();
+  void update(CollectMode mode);
 
   //////////////////////////////////////////////////////////////////////////////
   /// ToCoordinator custom function that accumulate many metrics from DBServers
@@ -128,10 +135,21 @@ class ClusterMetricsFeature final : public ArangodFeature {
   containers::FlatHashMap<std::string_view, ToPrometheus> _toPrometheus;
 
   void update();
+
+  enum class Result {
+    Error,
+    Old,
+    New,
+  };
+  Result readData(uint64_t& version);
+  Result writeData(uint64_t version, futures::Try<RawDBServers>&& raw);
+
   void repeatUpdate() noexcept;
   void rescheduleUpdate(uint32_t timeout) noexcept;
 
   Metrics parse(RawDBServers&& metrics) const;
+
+  bool wasStop() const noexcept;
 
   std::shared_ptr<Data> _data;
   Scheduler::WorkHandle _handle;

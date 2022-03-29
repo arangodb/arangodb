@@ -21,6 +21,7 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 #include "Metrics/MetricsFeature.h"
+#include "Metrics/MetricsFeature.h"
 
 #include <frozen/unordered_set.h>
 #include <velocypack/Builder.h>
@@ -111,10 +112,10 @@ void MetricsFeature::validateOptions(std::shared_ptr<options::ProgramOptions>) {
   }
 }
 
-void MetricsFeature::toPrometheus(std::string& result) const {
+void MetricsFeature::toPrometheus(std::string& result, CollectMode mode) const {
   auto& cm = server().getFeature<ClusterMetricsFeature>();
-  if (cm.isEnabled()) {
-    cm.asyncUpdate();
+  if (cm.isEnabled() && mode != CollectMode::Local) {
+    cm.update(mode);
   }
 
   // minimize reallocs
@@ -152,7 +153,7 @@ void MetricsFeature::toPrometheus(std::string& result) const {
   if (es.typeName() == RocksDBEngine::kEngineName) {
     es.getStatistics(result);
   }
-  if (hasGlobals && cm.isEnabled()) {
+  if (hasGlobals && cm.isEnabled() && mode != CollectMode::Local) {
     cm.toPrometheus(result, _globals);
   }
 }

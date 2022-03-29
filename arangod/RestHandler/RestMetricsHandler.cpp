@@ -23,9 +23,6 @@
 
 #include "RestMetricsHandler.h"
 
-#include "Agency/AgencyComm.h"
-#include "Agency/AgencyFeature.h"
-#include "Agency/Agent.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
@@ -152,7 +149,17 @@ RestStatus RestMetricsHandler::execute() {
     return RestStatus::DONE;
   } else {
     std::string result;
-    metrics.toPrometheus(result);
+    auto mode = metrics::CollectMode::Local;
+    if (it = values.find("mode"); it != values.end()) {
+      if (it->second == "trigger_global") {
+        mode = metrics::CollectMode::TriggerGlobal;
+      } else if (it->second == "read_global") {
+        mode = metrics::CollectMode::ReadGlobal;
+      } else if (it->second == "write_global") {
+        mode = metrics::CollectMode::WriteGlobal;
+      }
+    }
+    metrics.toPrometheus(result, mode);
     _response->setResponseCode(rest::ResponseCode::OK);
     _response->setContentType(rest::ContentType::TEXT);
     _response->addRawPayload(result);

@@ -778,17 +778,9 @@ class ClusterInfo final {
 
   Result finishModifyingAnalyzerCoordinator(std::string_view databaseId,
                                             bool restore);
-  void initMetrics();
 
-  enum class MetricsResult {
-    Repeat,
-    Reschedule,
-    Update,
-  };
-  [[nodiscard]] MetricsResult startCollectMetrics(
-      std::shared_ptr<metrics::ClusterMetricsFeature::Data>& data);
-
-  uint64_t endCollectMetrics(velocypack::Slice data);
+  [[nodiscard]] bool startCollectMetrics();
+  void endCollectMetrics();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Creates cleanup transaction for first found dangling operation

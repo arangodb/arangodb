@@ -89,6 +89,7 @@ class StaticStrings {
   // collection names
   static std::string const AnalyzersCollection;
   static std::string const LegacyAnalyzersCollection;
+  static std::string const MetricsCollection;
   static std::string const UsersCollection;
   static std::string const GraphsCollection;
   static std::string const AqlFunctionsCollection;

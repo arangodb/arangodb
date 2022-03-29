@@ -4233,110 +4233,44 @@ Result ClusterInfo::finishModifyingAnalyzerCoordinator(
 }
 
 static std::string const kMetricsFlagPath = "Plan/Metrics/Flag";
-static std::string const kMetricsVersionPath = "Plan/Metrics/Version";
-static std::string const kMetricsDataPath = "Plan/Metrics/Data";
 
-void ClusterInfo::initMetrics() {
-  AgencyComm ac{_server};
-
-  VPackBuilder builder;
-  builder.add(VPackValue{uint64_t{0}});
-
-  AgencyWriteTransaction const write{
-      {kMetricsVersionPath, AgencyValueOperationType::SET, builder.slice()},
-      {kMetricsVersionPath, AgencyPrecondition::Type::EMPTY, true}};
-  do {
-    auto const r = ac.sendTransactionWithFailover(write);
-    if (r.successful() ||
-        r.httpCode() == rest::ResponseCode::PRECONDITION_FAILED) {
-      break;
-    }
-  } while (true);
-}
-
-ClusterInfo::MetricsResult ClusterInfo::startCollectMetrics(
-    std::shared_ptr<metrics::ClusterMetricsFeature::Data>& data) {
+bool ClusterInfo::startCollectMetrics() {
   auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
-  auto [builder, index] =
-      agencyCache.read({AgencyCommHelper::path(kMetricsVersionPath)});
-  auto version =
-      builder->slice()
-          .at(0)
-          .get(std::initializer_list<std::string_view>{
-              AgencyCommHelper::path(), "Plan", "Metrics", "Version"})
-          .getUInt();
-  if ((data ? data->version : 0) < version) {
-    std::tie(builder, index) =
-        agencyCache.read({AgencyCommHelper::path(kMetricsVersionPath),
-                          AgencyCommHelper::path(kMetricsDataPath)});
-    data = metrics::ClusterMetricsFeature::Data::fromVPack(
-        builder->slice().at(0).get(std::initializer_list<std::string_view>{
-            AgencyCommHelper::path(), "Plan", "Metrics"}));
-    return MetricsResult::Repeat;
-  } else {
-    data = nullptr;
+  auto [result, index] =
+      agencyCache.read({AgencyCommHelper::path(kMetricsFlagPath)});
+  if (result->slice().at(0).hasKey(std::initializer_list<std::string_view>{
+          AgencyCommHelper::path(), "Plan", "Metrics", "Flag"})) {
+    return false;
   }
   AgencyComm ac{_server};
-  // TODO(MBkkt) ReadWrite transaction? Write before Read?
   AgencyWriteTransaction const write{
       {kMetricsFlagPath, AgencyValueOperationType::SET,
-       VPackSlice::booleanSlice(true)},
-      {kMetricsFlagPath, AgencyPrecondition::Type::EMPTY, true}};
+       VPackSlice::nullSlice()},
+      {kMetricsFlagPath, AgencyPrecondition::Type::EMPTY}};
   do {
     auto const r = ac.sendTransactionWithFailover(write);
     if (r.successful()) {
-      return MetricsResult::Update;
+      return true;
     } else if (r.httpCode() == rest::ResponseCode::PRECONDITION_FAILED) {
-      return MetricsResult::Reschedule;
+      return false;
     }
   } while (true);
 }
 
-uint64_t ClusterInfo::endCollectMetrics(velocypack::Slice data) {
+void ClusterInfo::endCollectMetrics() {
   AgencyComm ac{_server};
-  if (data.isNone()) {
-    AgencyWriteTransaction const write{
-        {kMetricsFlagPath, AgencySimpleOperationType::DELETE_OP},
-        {kMetricsFlagPath, AgencyPrecondition::Type::EMPTY, false},
-    };
-    do {
-      auto const r = ac.sendTransactionWithFailover(write);
-      if (r.successful()) {
-        return 0;
-      }
-      TRI_ASSERT(r.httpCode() != rest::ResponseCode::PRECONDITION_FAILED);
-    } while (true);
-  }
-  // TODO AgencyCache optimization
-  AgencyReadTransaction const read{AgencyCommHelper::path(kMetricsVersionPath)};
-  uint64_t version = 0;
-  do {
-    auto const r = ac.sendTransactionWithFailover(read);
-    if (r.successful()) {
-      version = r.slice()
-                    .at(0)
-                    .get(std::initializer_list<std::string_view>{
-                        AgencyCommHelper::path(), "Plan", "Metrics", "Version"})
-                    .getUInt();
-      break;
-    }
-  } while (true);
-  VPackBuilder builder;
-  builder.add(VPackValue{version});
   AgencyWriteTransaction const write{
-      {{kMetricsFlagPath, AgencySimpleOperationType::DELETE_OP},
-       {kMetricsVersionPath, AgencySimpleOperationType::INCREMENT_OP},
-       {kMetricsDataPath, AgencyValueOperationType::SET, data}},
-      {{kMetricsFlagPath, AgencyPrecondition::Type::EMPTY, false},
-       {kMetricsVersionPath, AgencyPrecondition::Type::VALUE,
-        builder.slice()}}};
+      {kMetricsFlagPath, AgencySimpleOperationType::DELETE_OP},
+      {kMetricsFlagPath, AgencyPrecondition::Type::VALUE,
+       VPackSlice::nullSlice()},
+  };
   do {
     auto const r = ac.sendTransactionWithFailover(write);
     if (r.successful()) {
-      return version + 1;
+      return;
     } else if (r.httpCode() == rest::ResponseCode::PRECONDITION_FAILED) {
       TRI_ASSERT(false);
-      return 0;
+      return;
     }
   } while (true);
 }

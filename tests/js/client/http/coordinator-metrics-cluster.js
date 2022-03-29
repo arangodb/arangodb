@@ -148,11 +148,15 @@ function CoordinatorMetricsTestSuite() {
     testIResearchMetricStats: function () {
       let coordinators = getEndpointsByType("coordinator");
       let c = coordinators[coordinators.length - 1];
-      getMetricRaw(c, '');
-      require('internal').sleep(5);
+      getMetricRaw(c, '?mode=write_global'); // mode=local/trigger_global/read_global/write_global
       for (let i = 0; i < coordinators.length; i++) {
         let c = coordinators[i];
-        let txt = getMetricRaw(c, '');
+        let txt;
+        if (i === coordinators.length - 1) {
+          txt = getMetricRaw(c, '?mode=trigger_global');
+        } else {
+          txt = getMetricRaw(c, '?mode=read_global');
+        }
         let json = parsePrometheusTextFormat(txt);
         let metrics = {};
         json.forEach((entry) => {

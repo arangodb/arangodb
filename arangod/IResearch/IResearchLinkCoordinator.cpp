@@ -101,7 +101,7 @@ Result IResearchLinkCoordinator::init(velocypack::Slice definition) {
                                std::string_view name, velocypack::Slice labels,
                                velocypack::Slice value) {
     ClusterMetricsFeature::MetricKey key{name, labels.stringView()};
-    std::get<uint64_t>(metrics[key]) += value.getNumber<uint64_t>();
+    std::get<uint64_t>(metrics.values[key]) += value.getNumber<uint64_t>();
   };
   auto batchToPrometheus = [](std::string& result, std::string_view globals,
                               ClusterMetricsFeature::MetricKey const& key,
@@ -129,7 +129,7 @@ Result IResearchLinkCoordinator::init(velocypack::Slice definition) {
     }
     labelsStr = labelsStr.substr(0, end);
     metrics::ClusterMetricsFeature::MetricKey key{name, labelsStr};
-    std::get<uint64_t>(metrics[key]) += value.getNumber<uint64_t>();
+    std::get<uint64_t>(metrics.values[key]) += value.getNumber<uint64_t>();
   };
   metric.add("arangodb_search_num_failed_commits", gaugeToCoordinator);
   metric.add("arangodb_search_num_failed_cleanups", gaugeToCoordinator);

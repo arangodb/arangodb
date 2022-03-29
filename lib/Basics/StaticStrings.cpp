@@ -92,6 +92,7 @@ std::string const StaticStrings::SystemDatabase("_system");
 std::string const StaticStrings::AnalyzersCollection("_analyzers");
 std::string const StaticStrings::LegacyAnalyzersCollection(
     "_iresearch_analyzers");
+std::string const StaticStrings::MetricsCollection("_metrics");
 std::string const StaticStrings::UsersCollection("_users");
 std::string const StaticStrings::GraphsCollection("_graphs");
 std::string const StaticStrings::AqlFunctionsCollection("_aqlfunctions");
