@@ -34,7 +34,7 @@
 
 namespace arangodb::cache {
 
-Metadata::Metadata()
+Metadata::Metadata() noexcept
     : fixedSize(0),
       tableSize(0),
       maxSize(0),
@@ -48,7 +48,7 @@ Metadata::Metadata()
       _resizing(false) {}
 
 Metadata::Metadata(uint64_t usageLimit, std::uint64_t fixed,
-                   std::uint64_t table, std::uint64_t max)
+                   std::uint64_t table, std::uint64_t max) noexcept
     : fixedSize(fixed),
       tableSize(table),
       maxSize(max),
@@ -133,12 +133,12 @@ bool Metadata::adjustLimits(std::uint64_t softLimit,
 
   // special case: start shrink to minimum, ignore deserved/max (table may be
   // too big, should shrink during process)
-  if ((softLimit == Cache::minSize) && hardLimit == hardUsageLimit) {
+  if ((softLimit == Cache::kMinSize) && hardLimit == hardUsageLimit) {
     return approve();
   }
 
   // special case: finalize shrinking case above
-  if ((softLimit == Cache::minSize) && (hardLimit == Cache::minSize) &&
+  if ((softLimit == Cache::kMinSize) && (hardLimit == Cache::kMinSize) &&
       (usage <= hardLimit)) {
     return approve();
   }
@@ -173,8 +173,8 @@ std::uint64_t Metadata::adjustDeserved(std::uint64_t deserved) noexcept {
 std::uint64_t Metadata::newLimit() const noexcept {
   TRI_ASSERT(_lock.isLocked());
   std::uint64_t fixed = fixedSize + tableSize + Manager::cacheRecordOverhead;
-  return ((Cache::minSize + fixed) >= deservedSize)
-             ? Cache::minSize
+  return ((Cache::kMinSize + fixed) >= deservedSize)
+             ? Cache::kMinSize
              : std::min((deservedSize - fixed), 4 * hardUsageLimit);
 }
 

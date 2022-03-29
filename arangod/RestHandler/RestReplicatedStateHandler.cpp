@@ -51,6 +51,8 @@ auto arangodb::RestReplicatedStateHandler::executeByMethod(
       return handleGetRequest(methods);
     case rest::RequestType::POST:
       return handlePostRequest(methods);
+    case rest::RequestType::DELETE_REQ:
+      return handleDeleteRequest(methods);
     default:
       generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                     TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
@@ -59,7 +61,7 @@ auto arangodb::RestReplicatedStateHandler::executeByMethod(
 }
 
 auto arangodb::RestReplicatedStateHandler::handleGetRequest(
-    const replication2::ReplicatedStateMethods& methods)
+    replication2::ReplicatedStateMethods const& methods)
     -> arangodb::RestStatus {
   std::vector<std::string> const& suffixes = _request->suffixes();
   if (suffixes.size() < 2 || suffixes[1] != "local-status") {
@@ -78,7 +80,7 @@ auto arangodb::RestReplicatedStateHandler::handleGetRequest(
 }
 
 auto arangodb::RestReplicatedStateHandler::handlePostRequest(
-    const replication2::ReplicatedStateMethods& methods)
+    replication2::ReplicatedStateMethods const& methods)
     -> arangodb::RestStatus {
   auto const& suffixes = _request->suffixes();
 
@@ -123,6 +125,51 @@ auto arangodb::RestReplicatedStateHandler::handlePostRequest(
                                }
                              }));
     return RestStatus::DONE;
+  } else if (std::string_view logIdStr, newLeaderStr;
+             rest::Match(suffixes).against(&logIdStr, "leader",
+                                           &newLeaderStr)) {
+    auto const logId = replication2::LogId::fromString(logIdStr);
+    auto const newLeader = replication2::ParticipantId(newLeaderStr);
+    if (!logId) {
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                    basics::StringUtils::concatT("Not a log id: ", logIdStr));
+      return RestStatus::DONE;
+    }
+    return waitForFuture(
+        methods.setLeader(*logId, newLeader).thenValue([this](auto&& result) {
+          if (result.ok()) {
+            generateOk(rest::ResponseCode::OK, VPackSlice::emptyObjectSlice());
+          } else {
+            generateError(result);
+          }
+        }));
+  } else {
+    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
+    return RestStatus::DONE;
+  }
+}
+
+auto arangodb::RestReplicatedStateHandler::handleDeleteRequest(
+    arangodb::replication2::ReplicatedStateMethods const& methods)
+    -> arangodb::RestStatus {
+  auto const& suffixes = _request->suffixes();
+  if (std::string_view logIdStr;
+      rest::Match(suffixes).against(&logIdStr, "leader")) {
+    auto const logId = replication2::LogId::fromString(logIdStr);
+    if (!logId) {
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                    basics::StringUtils::concatT("Not a log id: ", logIdStr));
+      return RestStatus::DONE;
+    }
+    return waitForFuture(methods.setLeader(*logId, std::nullopt)
+                             .thenValue([this](auto&& result) {
+                               if (result.ok()) {
+                                 generateOk(rest::ResponseCode::OK,
+                                            VPackSlice::emptyObjectSlice());
+                               } else {
+                                 generateError(result);
+                               }
+                             }));
   } else {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
     return RestStatus::DONE;

@@ -33,6 +33,7 @@
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
+#include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
 #include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
@@ -82,7 +83,14 @@ RocksDBBuilderIndex::RocksDBBuilderIndex(
     std::shared_ptr<arangodb::RocksDBIndex> wp, uint64_t numDocsHint)
     : RocksDBIndex(wp->id(), wp->collection(), wp->name(), wp->fields(),
                    wp->unique(), wp->sparse(), wp->columnFamily(),
-                   wp->objectId(), /*useCache*/ false),
+                   wp->objectId(), /*useCache*/ false,
+                   /*cacheManager*/ nullptr,
+                   /*engine*/
+                   wp->collection()
+                       .vocbase()
+                       .server()
+                       .getFeature<EngineSelectorFeature>()
+                       .engine<RocksDBEngine>()),
       _wrapped(std::move(wp)),
       _numDocsHint(numDocsHint),
       _docsProcessed(0) {
