@@ -54,6 +54,7 @@ auto constexpr LeadershipEstablished =
 auto constexpr CommitStatus = std::string_view{"commitStatus"};
 auto constexpr Supervision = std::string_view{"supervision"};
 auto constexpr Leader = std::string_view{"leader"};
+auto constexpr TargetVersion = std::string_view{"targetVersion"};
 auto constexpr Version = std::string_view{"version"};
 auto constexpr Actions = std::string_view{"actions"};
 auto constexpr MaxActionsTraceLength =
@@ -284,6 +285,7 @@ auto inspect(Inspector& f, LogCurrentSupervision& x) {
   return f.object(x).fields(
       f.field(static_strings::Election, x.election),
       f.field(static_strings::Error, x.error),
+      f.field(static_strings::TargetVersion, x.targetVersion),
       f.field(static_strings::StatusMessage, x.statusMessage));
 }
 
@@ -306,6 +308,7 @@ struct LogCurrent {
 
   // Will be nullopt until a leader has been assumed leadership
   std::optional<Leader> leader;
+  std::optional<std::uint64_t> targetVersion;
 
   // Temporary hack until Actions are de-serializable.
   struct ActionDummy {

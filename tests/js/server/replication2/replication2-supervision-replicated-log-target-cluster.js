@@ -165,6 +165,32 @@ const replicatedLogSuite = function () {
     replicatedLogSetTarget(database, logId, target);
   };
 
+  const setReplicatedLogVersionTarget = function (database, logId, version) {
+    let {target} = readReplicatedLogAgency(database, logId);
+    target.version = version;
+    replicatedLogSetTarget(database, logId, target);
+  };
+
+  const replicatedLogTargetVersion = function(database, logId, version) {
+    return function() {
+      let {current} = readReplicatedLogAgency(database, logId);
+
+      if (current === undefined) {
+        return Error(`current not yet defined`);
+      }
+      if (!current.supervision) {
+        return Error(`supervision not yet reported to current`);
+      }
+      if (!current.supervision.targetVersion) {
+        return Error(`no version reported in current by supervision`);
+      }
+      if (current.supervision.targetVersion !== version) {
+        return Error(`found version ${current.supervison.targetVersion}, expected ${version}`);
+      }
+      return true;
+    }
+  }
+
   return {
     setUpAll, tearDownAll,
     setUp: registerAgencyTestBegin,
@@ -172,6 +198,19 @@ const replicatedLogSuite = function () {
       resumeAll();
       waitFor(allServersHealthy());
       registerAgencyTestEnd(test);
+    },
+
+    // This test stops the leader and a follower, then waits for a failover to happen
+    testConvergedToVersion: function () {
+      const {logId, followers, leader, term} = createReplicatedLogAndWaitForLeader(database);
+
+      const targetVersion = 15;
+
+      waitForReplicatedLogAvailable(logId);
+
+      setReplicatedLogVersionTarget(database, logId, targetVersion);
+
+      waitFor(replicatedLogTargetVersion(database, logId, targetVersion));
     },
 
     // This test stops the leader and a follower, then waits for a failover to happen

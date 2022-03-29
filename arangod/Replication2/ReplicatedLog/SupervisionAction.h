@@ -496,7 +496,7 @@ auto inspect(Inspector& f, UpdateLogConfigAction& x) {
 
 struct ConvergedToTargetAction {
   static constexpr std::string_view name = "ConvergedToTargetAction";
-  std::optional<uint64_t> version;
+  std::optional<std::uint64_t> version{std::nullopt};
 
   auto execute(ActionContext& ctx) const -> void {
     ctx.modifyCurrent([&](LogCurrent& current) {
@@ -504,7 +504,7 @@ struct ConvergedToTargetAction {
         current.supervision = LogCurrentSupervision{};
       }
 
-      current.supervision->targetVersion = version;
+      if (current.supervision) current.supervision->targetVersion = version;
     });
   }
 };
@@ -512,7 +512,8 @@ struct ConvergedToTargetAction {
 template<typename Inspector>
 auto inspect(Inspector& f, ConvergedToTargetAction& x) {
   auto hack = std::string{x.name};
-  return f.object(x).fields(f.field("type", hack));
+  return f.object(x).fields(f.field("type", hack),
+                            f.field("version", x.version));
 }
 
 using Action = std::variant<

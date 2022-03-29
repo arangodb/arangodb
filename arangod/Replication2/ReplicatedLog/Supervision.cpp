@@ -500,7 +500,14 @@ auto checkReplicatedLog(LogTarget const& target,
     return UpdateLogConfigAction(target.config);
   }
 
-  return ConvergedToTargetAction{*target.version};
+  if (target.version != current.supervision->targetVersion) {
+    return ConvergedToTargetAction{target.version};
+  } else {
+    // Note that if we converged and the version is the same this ends up doing
+    // nothing.
+    // Maybe we should have a debug mode where this is still reported?
+    return EmptyAction("There was nothing to do.");
+  }
 }
 
 }  // namespace arangodb::replication2::replicated_log

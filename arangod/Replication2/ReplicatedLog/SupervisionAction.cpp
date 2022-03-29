@@ -66,7 +66,7 @@ auto execute(Action const& action, DatabaseID const& dbName, LogId const& log,
 
   std::visit([&](auto& action) { action.execute(ctx); }, action);
 
-  if (!ctx.hasModification()) {
+  if (std::holds_alternative<EmptyAction>(action)) {
     return envelope;
   }
 
