@@ -203,58 +203,6 @@ function ahuacatlFunctionsTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test first function
-////////////////////////////////////////////////////////////////////////////////
-
-    testFirstCxx1 : function () {
-      var expected = [ { "the fox" : "jumped" } ];
-      var actual = getQueryResults("RETURN NOOPT(FIRST([ { \"the fox\" : \"jumped\" }, \"over\", [ \"the dog\" ] ]))");
-      assertEqual(expected, actual);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test first function
-////////////////////////////////////////////////////////////////////////////////
-
-    testFirstCxx2 : function () {
-      var expected = [ "over" ];
-      var actual = getQueryResults("RETURN NOOPT(FIRST([ \"over\", [ \"the dog\" ] ]))");
-      assertEqual(expected, actual);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test first function
-////////////////////////////////////////////////////////////////////////////////
-
-    testFirstCxx3 : function () {
-      var expected = [ [ "the dog" ] ];
-      var actual = getQueryResults("RETURN NOOPT(FIRST([ [ \"the dog\" ] ]))");
-      assertEqual(expected, actual);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test first function
-////////////////////////////////////////////////////////////////////////////////
-
-    testFirstCxx4 : function () {
-      var expected = [ null ];
-      var actual = getQueryResults("RETURN NOOPT(FIRST([ ]))");
-      assertEqual(expected, actual);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test first function
-////////////////////////////////////////////////////////////////////////////////
-
-    testFirstCxxInvalid : function () {
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(FIRST(null))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(FIRST(true))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(FIRST(4))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(FIRST(\"yes\"))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(FIRST({ }))"); 
-    },
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief test last function
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -307,59 +255,6 @@ function ahuacatlFunctionsTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test last function
-////////////////////////////////////////////////////////////////////////////////
-
-    testLastCxx1 : function () {
-      var expected = [ [ "the dog" ] ];
-      var actual = getQueryResults("RETURN NOOPT(LAST([ { \"the fox\" : \"jumped\" }, \"over\", [ \"the dog\" ] ]))");
-      assertEqual(expected, actual);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test last function
-////////////////////////////////////////////////////////////////////////////////
-
-    testLastCxx2 : function () {
-      var expected = [ "over" ];
-      var actual = getQueryResults("RETURN NOOPT(LAST([ { \"the fox\" : \"jumped\" }, \"over\" ]))");
-      assertEqual(expected, actual);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test last function
-////////////////////////////////////////////////////////////////////////////////
-
-    testLastCxx3 : function () {
-      var expected = [ { "the fox" : "jumped" } ];
-      var actual = getQueryResults("RETURN NOOPT(LAST([ { \"the fox\" : \"jumped\" } ]))");
-      assertEqual(expected, actual);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test last function
-////////////////////////////////////////////////////////////////////////////////
-
-    testLastCxx4 : function () {
-      var expected = [ null ];
-      var actual = getQueryResults("RETURN NOOPT(LAST([ ]))");
-      assertEqual(expected, actual);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test last function
-////////////////////////////////////////////////////////////////////////////////
-
-    testLastInvalidCxx : function () {
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(LAST(null))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(LAST(true))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(LAST(4))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(LAST(\"yes\"))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(LAST({ }))"); 
-    },
-
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief test position function
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -395,18 +290,6 @@ function ahuacatlFunctionsTestSuite () {
         // look up the element using the position
         actual = getQueryResults("RETURN NTH(@list, @position)", { list: list, position: actual[0] });
         assertEqual(search, actual[0]);
-
-        // find if element is contained in list (should be true)
-        actual = getQueryResults("RETURN NOOPT(POSITION(@list, @search, false))", { list: list, search: search });
-        assertTrue(actual[0]);
-
-        // find position of element in list
-        actual = getQueryResults("RETURN NOOPT(POSITION(@list, @search, true))", { list: list, search: search });
-        assertEqual(expected, actual[0]);
-        
-        // look up the element using the position
-        actual = getQueryResults("RETURN NOOPT(NTH(@list, @position))", { list: list, position: actual[0] });
-        assertEqual(search, actual[0]);
       });
     },
 
@@ -425,12 +308,6 @@ function ahuacatlFunctionsTestSuite () {
 
         actual = getQueryResults("RETURN POSITION(@list, @search, true)", { list: list, search: d });
         assertEqual(-1, actual[0]);
-
-        actual = getQueryResults("RETURN NOOPT(POSITION(@list, @search, false))", { list: list, search: d });
-        assertFalse(actual[0]);
-
-        actual = getQueryResults("RETURN NOOPT(POSITION(@list, @search, true))", { list: list, search: d });
-        assertEqual(-1, actual[0]);
       });
     },
 
@@ -447,13 +324,6 @@ function ahuacatlFunctionsTestSuite () {
       assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN POSITION(\"yes\", 'foo')"); 
       assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN POSITION({ }, 'foo')"); 
 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(POSITION())"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(POSITION([ ]))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(POSITION(null, 'foo'))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(POSITION(true, 'foo'))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(POSITION(4, 'foo'))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(POSITION(\"yes\", 'foo'))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(POSITION({ }, 'foo'))"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -530,82 +400,6 @@ function ahuacatlFunctionsTestSuite () {
       assertEqual([ 2 ], getQueryResults("RETURN NTH([ 1, 2, 3 ], true)")); 
       assertEqual([ 3 ], getQueryResults("RETURN NTH([ 1, 2, 3 ], '2')")); 
       assertEqual([ null ], getQueryResults("RETURN NTH([ 1, 2, 3 ], '3')")); 
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test nth function
-////////////////////////////////////////////////////////////////////////////////
-
-    testNthEmptyCxx : function () {
-      var i;
-
-      for (i = -3; i <= 3; ++i) {                         
-        var actual = getQueryResults("RETURN NOOPT(NTH([ ], @pos))", { pos: i });
-        assertNull(actual[0]);
-      }
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test nth function
-////////////////////////////////////////////////////////////////////////////////
-
-    testNthNegativeCxx : function () {
-      var i;
-
-      for (i = -3; i <= 3; ++i) {                         
-        var actual = getQueryResults("RETURN NOOPT(NTH([ 1, 2, 3, 4 ], @pos))", { pos: i });
-        if (i < 0) {
-          assertNull(actual[0]);
-        }
-        else {
-          assertEqual(i + 1, actual[0]);
-        }
-      }
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test nth function
-////////////////////////////////////////////////////////////////////////////////
-
-    testNthBoundsCxx : function () {
-      var i;
-
-      for (i = 0; i <= 10; ++i) {                         
-        var actual = getQueryResults("RETURN NOOPT(NTH([ 'a1', 'a2', 'a3', 'a4', 'a5' ], @pos))", { pos: i });
-        if (i < 5) {
-          assertEqual('a' + (i + 1), actual[0]);
-        }
-        else {
-          assertNull(actual[0]);
-        }
-      }
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test nth function
-////////////////////////////////////////////////////////////////////////////////
-
-    testNthInvalidCxx : function () {
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(NTH())"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(NTH([ ]))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(NTH(null, 1))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(NTH(true, 1))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(NTH(4, 1))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(NTH(\"yes\", 1))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(NTH({ }, 1))"); 
-      assertEqual([ null ], getQueryResults("RETURN NOOPT(NTH([ ], null))")); 
-      assertEqual([ null ], getQueryResults("RETURN NOOPT(NTH([ ], false))")); 
-      assertEqual([ null ], getQueryResults("RETURN NOOPT(NTH([ ], true))")); 
-      assertEqual([ null ], getQueryResults("RETURN NOOPT(NTH([ ], ''))")); 
-      assertEqual([ null ], getQueryResults("RETURN NOOPT(NTH([ ], '1234'))")); 
-      assertEqual([ null ], getQueryResults("RETURN NOOPT(NTH([ ], [ ]))")); 
-      assertEqual([ null ], getQueryResults("RETURN NOOPT(NTH([ ], { \"foo\": true }))")); 
-      assertEqual([ null ], getQueryResults("RETURN NOOPT(NTH([ ], { }))")); 
-      
-      assertEqual([ 1 ], getQueryResults("RETURN NOOPT(NTH([ 1, 2, 3 ], false))")); 
-      assertEqual([ 2 ], getQueryResults("RETURN NOOPT(NTH([ 1, 2, 3 ], true))")); 
-      assertEqual([ 3 ], getQueryResults("RETURN NOOPT(NTH([ 1, 2, 3 ], '2'))")); 
-      assertEqual([ null ], getQueryResults("RETURN NOOPT(NTH([ 1, 2, 3 ], '3'))")); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -759,10 +553,7 @@ function ahuacatlFunctionsTestSuite () {
       ];
 
       tests.forEach(function(test) {
-        var actual = getQueryResults("RETURN NOOPT(SORTED(" + JSON.stringify(test[0]) + "))");
-        assertEqual([ test[1] ], actual);
-        
-        actual = getQueryResults("RETURN SORTED(" + JSON.stringify(test[0]) + ")");
+        var actual = getQueryResults("RETURN SORTED(" + JSON.stringify(test[0]) + ")");
         assertEqual([ test[1] ], actual);
       });
     },
@@ -783,10 +574,7 @@ function ahuacatlFunctionsTestSuite () {
       ];
 
       tests.forEach(function(test) {
-        var actual = getQueryResults("RETURN NOOPT(SORTED_UNIQUE(" + JSON.stringify(test[0]) + "))");
-        assertEqual([ test[1] ], actual);
-        
-        actual = getQueryResults("RETURN SORTED_UNIQUE(" + JSON.stringify(test[0]) + ")");
+        var actual = getQueryResults("RETURN SORTED_UNIQUE(" + JSON.stringify(test[0]) + ")");
         assertEqual([ test[1] ], actual);
       });
     },
@@ -816,46 +604,46 @@ function ahuacatlFunctionsTestSuite () {
 /// @brief test slice function
 ////////////////////////////////////////////////////////////////////////////////
 
-    testSliceCxx : function () {
+    testSlice : function () {
       var actual;
       
-      actual = getQueryResults("RETURN NOOPT(SLICE([ ], 0, 1))");
+      actual = getQueryResults("RETURN SLICE([ ], 0, 1)");
       assertEqual([ [ ] ], actual);
       
-      actual = getQueryResults("RETURN NOOPT(SLICE([ 1, 2, 3, 4, 5 ], 0, 1))");
+      actual = getQueryResults("RETURN SLICE([ 1, 2, 3, 4, 5 ], 0, 1)");
       assertEqual([ [ 1 ] ], actual);
 
-      actual = getQueryResults("RETURN NOOPT(SLICE([ 1, 2, 3, 4, 5 ], 0, 2))");
+      actual = getQueryResults("RETURN SLICE([ 1, 2, 3, 4, 5 ], 0, 2)");
       assertEqual([ [ 1, 2 ] ], actual);
       
-      actual = getQueryResults("RETURN NOOPT(SLICE([ 1, 2, 3, 4, 5 ], 1, 2))");
+      actual = getQueryResults("RETURN SLICE([ 1, 2, 3, 4, 5 ], 1, 2)");
       assertEqual([ [ 2, 3 ] ], actual);
       
-      actual = getQueryResults("RETURN NOOPT(SLICE([ 1, 2, 3, 4, 5 ], 0))");
+      actual = getQueryResults("RETURN SLICE([ 1, 2, 3, 4, 5 ], 0)");
       assertEqual([ [ 1, 2, 3, 4, 5 ] ], actual);
       
-      actual = getQueryResults("RETURN NOOPT(SLICE([ 1, 2, 3, 4, 5 ], 3))");
+      actual = getQueryResults("RETURN SLICE([ 1, 2, 3, 4, 5 ], 3)");
       assertEqual([ [ 4, 5 ] ], actual);
       
-      actual = getQueryResults("RETURN NOOPT(SLICE([ 1, 2, 3, 4, 5 ], 0, -1))");
+      actual = getQueryResults("RETURN SLICE([ 1, 2, 3, 4, 5 ], 0, -1)");
       assertEqual([ [ 1, 2, 3, 4 ] ], actual);
       
-      actual = getQueryResults("RETURN NOOPT(SLICE([ 1, 2, 3, 4, 5 ], 0, -2))");
+      actual = getQueryResults("RETURN SLICE([ 1, 2, 3, 4, 5 ], 0, -2)");
       assertEqual([ [ 1, 2, 3 ] ], actual);
       
-      actual = getQueryResults("RETURN NOOPT(SLICE([ 1, 2, 3, 4, 5 ], 2, -1))");
+      actual = getQueryResults("RETURN SLICE([ 1, 2, 3, 4, 5 ], 2, -1)");
       assertEqual([ [ 3, 4 ] ], actual);
       
-      actual = getQueryResults("RETURN NOOPT(SLICE([ 1, 2, 3, 4, 5 ], 10))");
+      actual = getQueryResults("RETURN SLICE([ 1, 2, 3, 4, 5 ], 10)");
       assertEqual([ [ ] ], actual);
       
-      actual = getQueryResults("RETURN NOOPT(SLICE([ 1, 2, 3, 4, 5 ], 1000))");
+      actual = getQueryResults("RETURN SLICE([ 1, 2, 3, 4, 5 ], 1000)");
       assertEqual([ [ ] ], actual);
       
-      actual = getQueryResults("RETURN NOOPT(SLICE([ 1, 2, 3, 4, 5 ], -1000))");
+      actual = getQueryResults("RETURN SLICE([ 1, 2, 3, 4, 5 ], -1000)");
       assertEqual([ [ 1, 2, 3, 4, 5 ] ], actual);
       
-      actual = getQueryResults("RETURN NOOPT(SLICE([ 1, 2, 3, 4, 5 ], 1, -10))");
+      actual = getQueryResults("RETURN SLICE([ 1, 2, 3, 4, 5 ], 1, -10)");
       assertEqual([ [ ] ], actual);
     },
 
@@ -863,28 +651,28 @@ function ahuacatlFunctionsTestSuite () {
 /// @brief test slice function
 ////////////////////////////////////////////////////////////////////////////////
 
-    testSliceInvalidCxx : function () {
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(SLICE())"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(SLICE(true))"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(SLICE(1))"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(SLICE('foo'))"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(SLICE({ }))"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(SLICE([ ]))"); 
-      assertEqual([ [ ] ], getQueryResults("RETURN NOOPT(SLICE([ ], { }))")); 
-      assertEqual([ [ ] ], getQueryResults("RETURN NOOPT(SLICE([ ], true))")); 
-      assertEqual([ [ ] ], getQueryResults("RETURN NOOPT(SLICE([ ], 'foo'))")); 
-      assertEqual([ [ ] ], getQueryResults("RETURN NOOPT(SLICE([ ], [ ]))")); 
-      assertEqual([ [ ] ], getQueryResults("RETURN NOOPT(SLICE([ ], { }))")); 
-      assertEqual([ [ ] ], getQueryResults("RETURN NOOPT(SLICE([ ], 1, false))")); 
-      assertEqual([ [ ] ], getQueryResults("RETURN NOOPT(SLICE([ ], 1, 'foo'))")); 
-      assertEqual([ [ ] ], getQueryResults("RETURN NOOPT(SLICE([ ], 1, [ ]))")); 
+    testSliceInvalid : function () {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN SLICE()"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN SLICE(true)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN SLICE(1)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN SLICE('foo')"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN SLICE({ })"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN SLICE([ ])"); 
+      assertEqual([ [ ] ], getQueryResults("RETURN SLICE([ ], { })")); 
+      assertEqual([ [ ] ], getQueryResults("RETURN SLICE([ ], true)")); 
+      assertEqual([ [ ] ], getQueryResults("RETURN SLICE([ ], 'foo')")); 
+      assertEqual([ [ ] ], getQueryResults("RETURN SLICE([ ], [ ])")); 
+      assertEqual([ [ ] ], getQueryResults("RETURN SLICE([ ], { })")); 
+      assertEqual([ [ ] ], getQueryResults("RETURN SLICE([ ], 1, false)")); 
+      assertEqual([ [ ] ], getQueryResults("RETURN SLICE([ ], 1, 'foo')")); 
+      assertEqual([ [ ] ], getQueryResults("RETURN SLICE([ ], 1, [ ])")); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test replace_nth function
 ////////////////////////////////////////////////////////////////////////////////
 
-    testReplaceNthCxx : function () {
+    testReplaceNth : function () {
       var testArray = [
         null,
         true,
@@ -899,7 +687,7 @@ function ahuacatlFunctionsTestSuite () {
       for (let replaceIndex = 0;  replaceIndex <= testArray.length + 2; replaceIndex ++) {
         for (let replaceValue = 0;  replaceValue < testArray.length; replaceValue ++) {
           const msg = `Index: ${replaceIndex} ReplaceValue: ${replaceValue}`;
-          let actual = getQueryResults("RETURN NOOPT(REPLACE_NTH(@testArray, @which, @replaceValue, @defaultValue))",
+          let actual = getQueryResults("RETURN REPLACE_NTH(@testArray, @which, @replaceValue, @defaultValue)",
                                    {
                                      testArray: testArray,
                                      which: replaceIndex,
@@ -925,7 +713,7 @@ function ahuacatlFunctionsTestSuite () {
             actualReplaceIndex = 0;
           }
           const msg = `Index: ${replaceIndexValue} => ${actualReplaceIndex} ReplaceValue: ${replaceValue}`;
-          let actual = getQueryResults("RETURN NOOPT(REPLACE_NTH(@testArray, @which, @replaceValue, @defaultValue))",
+          let actual = getQueryResults("RETURN REPLACE_NTH(@testArray, @which, @replaceValue, @defaultValue)",
                                    {
                                      testArray: testArray,
                                      which: replaceIndexValue,
@@ -979,11 +767,11 @@ function ahuacatlFunctionsTestSuite () {
 /// @brief test replace_nth function
 ////////////////////////////////////////////////////////////////////////////////
 
-    testReplaceNthInvalidCxx : function () {
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(REPLACE_NTH(null, null))"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(REPLACE_NTH(['x'], null, { }))");
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(REPLACE_NTH([], null, { }))");
-      assertEqual([ null ], getQueryResults("RETURN NOOPT(REPLACE_NTH(null, 1, 1))")); 
+    testReplaceNthInvalid : function () {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN REPLACE_NTH(null, null)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN REPLACE_NTH(['x'], null, { })");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN REPLACE_NTH([], null, { })");
+      assertEqual([ null ], getQueryResults("RETURN REPLACE_NTH(null, 1, 1)")); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1123,74 +911,6 @@ function ahuacatlFunctionsTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test keep function
-////////////////////////////////////////////////////////////////////////////////
-    
-    testKeepCxxInvalid : function () {
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(KEEP())"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(KEEP({ }))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(KEEP(null, 1))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(KEEP(1, 1))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(KEEP(false, 1))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(KEEP(1, 'foo'))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(KEEP('bar', 1))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(KEEP('foo', 'foo'))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(KEEP([ ], 'foo', { }))"); 
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test keep function
-////////////////////////////////////////////////////////////////////////////////
-    
-    testCxxKeep : function () {
-      var actual;
-
-      actual = getQueryResults("FOR i IN [ { }, { foo: 1, bar: 2, moo: 3, goof: 4, bang: 5, meow: 6 }, { foo: 0, goof: 1, meow: 2 }, { foo: null }, { foo: true }, { goof: null } ] RETURN NOOPT(KEEP(i, 'foo', 'bar', 'baz', [ 'meow' ], [ ]))");
-      assertEqual([ { }, { bar: 2, foo: 1, meow: 6 }, { foo: 0, meow: 2 }, { foo: null }, { foo: true }, { } ], actual);
-      
-      actual = getQueryResults("FOR i IN [ { }, { foo: 1, bar: 2, moo: 3, goof: 4, bang: 5, meow: 6 }, { foo: 0, goof: 1, meow: 2 }, { foo: null }, { foo: true }, { goof: null } ] RETURN NOOPT(KEEP(i, [ 'foo', 'bar', 'baz', 'meow' ]))");
-      assertEqual([ { }, { bar: 2, foo: 1, meow: 6 }, { foo: 0, meow: 2 }, { foo: null }, { foo: true }, { } ], actual);
-      
-      actual = getQueryResults("FOR i IN [ { }, { foo: 1, bar: 2, moo: 3, goof: 4, bang: 5, meow: 6 }, { foo: 0, goof: 1, meow: 2 }, { foo: null }, { foo: true }, { goof: null } ] RETURN NOOPT(KEEP(i, 'foo', 'bar', 'baz', 'meow'))");
-      assertEqual([ { }, { bar: 2, foo: 1, meow: 6 }, { foo: 0, meow: 2 }, { foo: null }, { foo: true }, { } ], actual);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test unset function
-////////////////////////////////////////////////////////////////////////////////
-    
-    testUnsetCxxInvalid : function () {
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(UNSET())"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(UNSET({ }))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(UNSET(null, 1))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(UNSET(false, 1))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(UNSET(1, 1))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(UNSET(1, 'foo'))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(UNSET('bar', 1))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(UNSET('foo', 'bar'))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(UNSET([ ], 1))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(UNSET('foo', 'foo'))"); 
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test unset function
-////////////////////////////////////////////////////////////////////////////////
-    
-    testUnsetCxx : function () {
-      var expected = [ { bang: 5, goof: 4, moo: 3 }, { goof: 1 }, { }, { }, { goof: null } ];
-      var actual;
-
-      actual = getQueryResults("FOR i IN [ { foo: 1, bar: 2, moo: 3, goof: 4, bang: 5, meow: 6 }, { foo: 0, goof: 1, meow: 2 }, { foo: null }, { foo: true }, { goof: null } ] RETURN NOOPT(UNSET(i, 'foo', 'bar', 'baz', [ 'meow' ], [ ]))");
-      assertEqual(expected, actual);
-      
-      actual = getQueryResults("FOR i IN [ { foo: 1, bar: 2, moo: 3, goof: 4, bang: 5, meow: 6 }, { foo: 0, goof: 1, meow: 2 }, { foo: null }, { foo: true }, { goof: null } ] RETURN NOOPT(UNSET(i, [ 'foo', 'bar', 'baz', 'meow' ]))");
-      assertEqual(expected, actual);
-      
-      actual = getQueryResults("FOR i IN [ { foo: 1, bar: 2, moo: 3, goof: 4, bang: 5, meow: 6 }, { foo: 0, goof: 1, meow: 2 }, { foo: null }, { foo: true }, { goof: null } ] RETURN NOOPT(UNSET(i, 'foo', 'bar', 'baz', 'meow'))");
-      assertEqual(expected, actual);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief test unset_recursive function
 ////////////////////////////////////////////////////////////////////////////////
     
@@ -1232,43 +952,83 @@ function ahuacatlFunctionsTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test unset_recursive function
+/// @brief test keep_recursive function
 ////////////////////////////////////////////////////////////////////////////////
-    
-    testUnsetRecursiveCxxInvalid : function () {
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN UNSET_RECURSIVE()"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN UNSET_RECURSIVE({ })"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UNSET_RECURSIVE(null, 1)"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UNSET_RECURSIVE(false, 1)"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UNSET_RECURSIVE(1, 1)"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UNSET_RECURSIVE(1, 'foo')"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UNSET_RECURSIVE('bar', 1)"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UNSET_RECURSIVE('foo', 'bar')"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UNSET_RECURSIVE([ ], 1)"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UNSET_RECURSIVE('foo', 'foo')"); 
+
+    testKeepRecursiveInvalid : function () {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN KEEP_RECURSIVE()");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN KEEP_RECURSIVE({ })");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN KEEP_RECURSIVE(null, 1)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN KEEP_RECURSIVE(false, 1)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN KEEP_RECURSIVE(1, 1)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN KEEP_RECURSIVE(1, 'foo')");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN KEEP_RECURSIVE('bar', 1)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN KEEP_RECURSIVE('foo', 'bar')");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN KEEP_RECURSIVE([ ], 1)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN KEEP_RECURSIVE('foo', 'foo')");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test unset_recursive function
+/// @brief test keep_recursive function
 ////////////////////////////////////////////////////////////////////////////////
-    
-    testUnsetRecursiveCxx : function () {
+
+    testKeepRecursive : function () {
       var actual, expected;
 
-      expected = { foo: { bar: { baz: 1 }, baz: 2 }, baz: 3 };
-      actual = getQueryResults("RETURN NOOPT(UNSET_RECURSIVE({ foo: { bar: { baz: 1 }, baz: 2 }, baz: 3 }, 'moo'))");
+      expected = { };
+      actual = getQueryResults("RETURN KEEP_RECURSIVE({ foo: { bar: { baz: 1 }, baz: 2 }, baz: 3 }, 'moo')");
       assertEqualObj(expected, actual[0]);
-      
+
+      expected = { foo: { bar: { baz: 1 }, baz: 2 }, baz: 3 };
+      actual = getQueryResults("RETURN KEEP_RECURSIVE({ foo: { bar: { baz: 1 }, baz: 2 }, baz: 3 }, 'foo', 'bar', 'baz')");
+      assertEqualObj(expected, actual[0]);
+
+      expected = { foo: { } };
+      actual = getQueryResults("RETURN KEEP_RECURSIVE({ foo: { bar: { baz: 1 }, baz: 2 }, baz: 3 }, 'foo')");
+      assertEqualObj(expected, actual[0]);
+
+      expected = { };
+      actual = getQueryResults("RETURN KEEP_RECURSIVE({ foo: { bar: { baz: 1 }, baz: 2 }, baz: 3 }, 'bar')");
+      assertEqualObj(expected, actual[0]);
+
       expected = { baz: 3 };
-      actual = getQueryResults("RETURN NOOPT(UNSET_RECURSIVE({ foo: { bar: { baz: 1 }, baz: 2 }, baz: 3 }, 'foo'))");
+      actual = getQueryResults("RETURN KEEP_RECURSIVE({ foo: { bar: { baz: 1 }, baz: 2 }, baz: 3 }, 'baz')");
+      assertEqualObj(expected, actual[0]);
+
+      expected = { baz: 3 };
+      actual = getQueryResults("RETURN KEEP_RECURSIVE({ foo: { bar: { baz: 1 }, baz: 2 }, baz: 3 }, ['baz'])");
+      assertEqualObj(expected, actual[0]);
+
+      expected = { foo: { foo: 2 } };
+      actual = getQueryResults("RETURN KEEP_RECURSIVE({ foo: { bar: { foo: 1 }, foo: 2 } }, 'foo')");
       assertEqualObj(expected, actual[0]);
 
       expected = { foo: { baz: 2 }, baz: 3 };
-      actual = getQueryResults("RETURN NOOPT(UNSET_RECURSIVE({ foo: { bar: { baz: 1 }, baz: 2 }, baz: 3 }, 'bar'))");
+      actual = getQueryResults("RETURN KEEP_RECURSIVE({ foo: { bar: { baz: 1 }, baz: 2 }, baz: 3 }, 'baz', 'foo')");
       assertEqualObj(expected, actual[0]);
 
       expected = { foo: { bar: { } } };
-      actual = getQueryResults("RETURN NOOPT(UNSET_RECURSIVE({ foo: { bar: { baz: 1 }, baz: 2 }, baz: 3 }, 'baz'))");
+      actual = getQueryResults("RETURN KEEP_RECURSIVE({ foo: { bar: { baz: 1 }, baz: 2 }, baz: 3 }, 'bar', 'foo')");
+      assertEqualObj(expected, actual[0]);
+
+      expected = { foo: { bar: { } } };
+      actual = getQueryResults("RETURN KEEP_RECURSIVE({ foo: { bar: { baz: 1 }, baz: 2 }, baz: 3 }, ['bar', 'foo'])");
+      assertEqualObj(expected, actual[0]);
+
+      expected = { foo: { bar: { foo: 1 }, foo: 2 }, bar: 3 };
+      actual = getQueryResults("RETURN KEEP_RECURSIVE({ foo: { bar: { foo: 1, bark: 5 }, foo: 2 }, bar: 3, baz: 4 }, 'bar', 'foo')");
+      assertEqualObj(expected, actual[0]);
+
+      expected = { foo: { bar: { foo: 1 }, foo: 2 }, bar: 3 };
+      actual = getQueryResults("RETURN KEEP_RECURSIVE({ foo: { bar: { foo: 1, bark: 5 }, foo: 2 }, bar: 3, baz: 4 }, ['bar', 'foo'])");
+      assertEqualObj(expected, actual[0]);
+
+      expected = { };
+      actual = getQueryResults("RETURN KEEP_RECURSIVE({ foo: { bar: { foo: 1, bark: 5 }, foo: 2 }, bar: 3, baz: 4 }, [])");
+      assertEqualObj(expected, actual[0]);
+
+      expected = { };
+      actual = getQueryResults("RETURN KEEP_RECURSIVE({ foo: { bar: { foo: 1, bark: 5 }, foo: 2 }, bar: 3, baz: 4 }, ['moo', 'fasa'])");
       assertEqualObj(expected, actual[0]);
     },
 
@@ -1325,60 +1085,9 @@ function ahuacatlFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test merge function
 ////////////////////////////////////////////////////////////////////////////////
-    
-    testMergeCxx1 : function () {
-      var expected = [ { "quarter" : 1, "year" : 2010 }, { "quarter" : 2, "year" : 2010 }, { "quarter" : 3, "year" : 2010 }, { "quarter" : 4, "year" : 2010 }, { "quarter" : 1, "year" : 2011 }, { "quarter" : 2, "year" : 2011 }, { "quarter" : 3, "year" : 2011 }, { "quarter" : 4, "year" : 2011 }, { "quarter" : 1, "year" : 2012 }, { "quarter" : 2, "year" : 2012 }, { "quarter" : 3, "year" : 2012 }, { "quarter" : 4, "year" : 2012 } ]; 
-      var actual = getQueryResults("FOR year IN [ 2010, 2011, 2012 ] FOR quarter IN [ 1, 2, 3, 4 ] return NOOPT(MERGE({ \"year\" : year }, { \"quarter\" : quarter }))");
-      assertEqual(expected, actual);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test merge function
-////////////////////////////////////////////////////////////////////////////////
-    
-    testMergeCxx2 : function () {
-      var expected = [ { "age" : 15, "isAbove18" : false, "name" : "John" }, { "age" : 19, "isAbove18" : true, "name" : "Corey" } ];
-      var actual = getQueryResults("FOR u IN [ { \"name\" : \"John\", \"age\" : 15 }, { \"name\" : \"Corey\", \"age\" : 19 } ] return NOOPT(MERGE(u, { \"isAbove18\" : u.age >= 18 }))");
-      assertEqual(expected, actual);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test merge function
-////////////////////////////////////////////////////////////////////////////////
-    
-    testMergeCxx3 : function () {
-      var expected = [ { "age" : 15, "id" : 9, "name" : "John" }, { "age" : 19, "id" : 9, "name" : "Corey" } ];
-      var actual = getQueryResults("FOR u IN [ { \"id\" : 100, \"name\" : \"John\", \"age\" : 15 }, { \"id\" : 101, \"name\" : \"Corey\", \"age\" : 19 } ] return NOOPT(MERGE(u, { \"id\" : 9 }))");
-      assertEqual(expected, actual);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test merge function
-////////////////////////////////////////////////////////////////////////////////
-    
-    testMergeCxx4 : function () {
-      var expected = [ { "age" : 15, "id" : 33, "name" : "foo" }, { "age" : 19, "id" : 33, "name" : "foo" } ];
-      var actual = getQueryResults("FOR u IN [ { \"id\" : 100, \"name\" : \"John\", \"age\" : 15 }, { \"id\" : 101, \"name\" : \"Corey\", \"age\" : 19 } ] return NOOPT(MERGE(u, { \"id\" : 9 }, { \"name\" : \"foo\", \"id\" : 33 }))");
-      assertEqual(expected, actual);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test merge function
-////////////////////////////////////////////////////////////////////////////////
-    
-    testMergeCxx5 : function () {
-      var expected = [ { "age" : 15, "id" : 33, "sub": {"newer": "value"} } ];
-      var actual = getQueryResults("RETURN NOOPT(MERGE({ \"id\" : 100, \"age\" : 15, \"sub\": {\"old\": \"value\" }}, { \"id\" : 9 }, { \"id\" : 33, \"sub\": {\"newer\": \"value\" }}))");
-      assertEqual(expected, actual);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test merge function
-////////////////////////////////////////////////////////////////////////////////
-    
-    testMergeArrayCxx : function () {
+    testMergeArray : function () {
       var expected = [ { "abc" : [ 1, 2, 3 ], "chicken" : "is a language", "empty" : false, "foo" : "bar", "foobar" : "baz", "quarter" : 1, "quux" : 123, "value" : true, "year" : 2010 } ];
-      var actual = getQueryResults("RETURN NOOPT(MERGE([ { quarter: 1, year: 2010 }, { foo: 'bar' }, { chicken: 'is a language' }, { }, { foobar: 'baz' }, { quux: 123, value: true }, { empty: false }, { }, { abc: [1,2,3] } ]))");
+      var actual = getQueryResults("RETURN MERGE([ { quarter: 1, year: 2010 }, { foo: 'bar' }, { chicken: 'is a language' }, { }, { foobar: 'baz' }, { quux: 123, value: true }, { empty: false }, { }, { abc: [1,2,3] } ])");
       assertEqual(expected, actual);
     },
 
@@ -1405,28 +1114,6 @@ function ahuacatlFunctionsTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test merge function
-////////////////////////////////////////////////////////////////////////////////
-
-    testMergeCxxInvalid : function () {
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(MERGE())"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(MERGE({ }, null))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(MERGE({ }, true))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(MERGE({ }, 3))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(MERGE({ }, \"yes\"))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(MERGE({ }, [ ]))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(MERGE(null, { }))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(MERGE(true, { }))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(MERGE(3, { }))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(MERGE(\"yes\", { }))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(MERGE({ }, { }, null))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(MERGE({ }, { }, true))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(MERGE({ }, { }, 3))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(MERGE({ }, { }, \"yes\"))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(MERGE({ }, { }, [ ]))"); 
-    },
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief test merge_recursive function
 ////////////////////////////////////////////////////////////////////////////////
     
@@ -1437,9 +1124,6 @@ function ahuacatlFunctionsTestSuite () {
       var expected = [ { "black" : { "enabled" : false, "visible" : false }, "list" : [ 6, 7, 8, 9, 0 ], "white" : { "enabled" : true } } ];
 
       var actual = getQueryResults("RETURN MERGE_RECURSIVE(" + doc1 + ", " + doc2 + ")");
-      assertEqual(expected, actual);
-
-      actual = getQueryResults("RETURN NOOPT(MERGE_RECURSIVE(" + doc1 + ", " + doc2 + "))");
       assertEqual(expected, actual);
     },
 
@@ -1455,15 +1139,11 @@ function ahuacatlFunctionsTestSuite () {
 
       var actual = getQueryResults("RETURN MERGE_RECURSIVE(" + doc2 + ", " + doc1 + ")");
       assertEqual(expected, actual);
-
-      actual = getQueryResults("RETURN NOOPT(MERGE_RECURSIVE(" + doc2 + ", " + doc1 + "))");
-      assertEqual(expected, actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test merge_recursive function
 ////////////////////////////////////////////////////////////////////////////////
-    
     testMergeRecursive3 : function () {
       var doc1 = "{ \"a\" : 1, \"b\" : 2, \"c\" : 3 }";
 
@@ -1474,15 +1154,6 @@ function ahuacatlFunctionsTestSuite () {
       assertEqual([ { "a" : 1, "b" : 2, "c" : 3 } ], actual);
       
       actual = getQueryResults("RETURN MERGE_RECURSIVE(" + doc1 + ", " + doc1 + ", " + doc1 + ", " + doc1 + ")");
-      assertEqual([ { "a" : 1, "b" : 2, "c" : 3 } ], actual);
-
-      actual = getQueryResults("RETURN NOOPT(MERGE_RECURSIVE(" + doc1 + ", " + doc1 + "))");
-      assertEqual([ { "a" : 1, "b" : 2, "c" : 3 } ], actual);
-      
-      actual = getQueryResults("RETURN NOOPT(MERGE_RECURSIVE(" + doc1 + ", " + doc1 + ", " + doc1 + "))");
-      assertEqual([ { "a" : 1, "b" : 2, "c" : 3 } ], actual);
-      
-      actual = getQueryResults("RETURN NOOPT(MERGE_RECURSIVE(" + doc1 + ", " + doc1 + ", " + doc1 + ", " + doc1 + "))");
       assertEqual([ { "a" : 1, "b" : 2, "c" : 3 } ], actual);
     },
 
@@ -1506,18 +1177,6 @@ function ahuacatlFunctionsTestSuite () {
       
       actual = getQueryResults("RETURN MERGE_RECURSIVE(" + doc3 + ", " + doc1 + ", " + doc2 + ")");
       assertEqual([ { "a" : 2, "b" : 3, "c" : 4 } ], actual);
-
-      actual = getQueryResults("RETURN NOOPT(MERGE_RECURSIVE(" + doc1 + ", " + doc2 + ", " + doc3 + "))");
-      assertEqual([ { "a" : 3, "b" : 4, "c" : 5 } ], actual);
-      
-      actual = getQueryResults("RETURN NOOPT(MERGE_RECURSIVE(" + doc1 + ", " + doc3 + ", " + doc2 + "))");
-      assertEqual([ { "a" : 2, "b" : 3, "c" : 4 } ], actual);
-      
-      actual = getQueryResults("RETURN NOOPT(MERGE_RECURSIVE(" + doc2 + ", " + doc3 + ", " + doc1 + "))");
-      assertEqual([ { "a" : 1, "b" : 2, "c" : 3 } ], actual);
-      
-      actual = getQueryResults("RETURN NOOPT(MERGE_RECURSIVE(" + doc3 + ", " + doc1 + ", " + doc2 + "))");
-      assertEqual([ { "a" : 2, "b" : 3, "c" : 4 } ], actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1540,18 +1199,6 @@ function ahuacatlFunctionsTestSuite () {
       
       actual = getQueryResults("RETURN MERGE_RECURSIVE(" + doc3 + ", " + doc1 + ", " + doc2 + ")");
       assertEqual([ { "1" : 7, "a" : 1, "b" : 8, "c" : 3, "x" : 4, "y": 9, "z" : 6 } ], actual);
-
-      actual = getQueryResults("RETURN NOOPT(MERGE_RECURSIVE(" + doc1 + ", " + doc2 + ", " + doc3 + "))");
-      assertEqual([ { "1" : 7, "a" : 1, "b" : 8, "c" : 3, "x" : 4, "y": 5, "z" : 6 } ], actual);
-      
-      actual = getQueryResults("RETURN NOOPT(MERGE_RECURSIVE(" + doc1 + ", " + doc3 + ", " + doc2 + "))");
-      assertEqual([ { "1" : 7, "a" : 1, "b" : 8, "c" : 3, "x" : 4, "y": 9, "z" : 6 } ], actual);
-      
-      actual = getQueryResults("RETURN NOOPT(MERGE_RECURSIVE(" + doc2 + ", " + doc3 + ", " + doc1 + "))");
-      assertEqual([ { "1" : 7, "a" : 1, "b" : 2, "c" : 3, "x" : 4, "y": 5, "z" : 6 } ], actual);
-      
-      actual = getQueryResults("RETURN NOOPT(MERGE_RECURSIVE(" + doc3 + ", " + doc1 + ", " + doc2 + "))");
-      assertEqual([ { "1" : 7, "a" : 1, "b" : 8, "c" : 3, "x" : 4, "y": 9, "z" : 6 } ], actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1573,15 +1220,6 @@ function ahuacatlFunctionsTestSuite () {
       var doc12 ="{ \"continent\" : { \"Africa\" : { \"country\" : { \"EG\" : { \"city\" : \"Cairo\" } } } } }";
 
       var actual = getQueryResults("RETURN MERGE_RECURSIVE(" + doc1 + ", " + doc2 + ", " + doc3 + ", " + doc4 + ", " + doc5 + ", " + doc6 + ", " + doc7 + ", " + doc8 + ", " + doc9 + ", " + doc10 + ", " + doc11 + ", " + doc12 + ")");
-
-      assertEqual([ { "continent" : { 
-        "Europe" : { "country" : { "DE" : { "city" : "Munich" }, "UK" : { "city" : "London" }, "FR" : { "city" : "Paris" } } }, 
-        "Asia" : { "country" : { "CN" : { "city" : "Shanghai" }, "JP" : { "city" : "Tokyo" } } }, 
-        "Australia" : { "country" : { "AU" : { "city" : "Melbourne" } } }, 
-        "Africa" : { "country" : { "EG" : { "city" : "Cairo" } } } 
-      } } ], actual);
-
-      actual = getQueryResults("RETURN NOOPT(MERGE_RECURSIVE(" + doc1 + ", " + doc2 + ", " + doc3 + ", " + doc4 + ", " + doc5 + ", " + doc6 + ", " + doc7 + ", " + doc8 + ", " + doc9 + ", " + doc10 + ", " + doc11 + ", " + doc12 + "))");
 
       assertEqual([ { "continent" : { 
         "Europe" : { "country" : { "DE" : { "city" : "Munich" }, "UK" : { "city" : "London" }, "FR" : { "city" : "Paris" } } }, 
@@ -1613,24 +1251,6 @@ function ahuacatlFunctionsTestSuite () {
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN MERGE_RECURSIVE({ }, { }, 3)"); 
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN MERGE_RECURSIVE({ }, { }, \"yes\")"); 
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN MERGE_RECURSIVE({ }, { }, [ ])"); 
-
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(MERGE_RECURSIVE())"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(MERGE_RECURSIVE({ }))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(MERGE_RECURSIVE({ }, null))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(MERGE_RECURSIVE({ }, true))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(MERGE_RECURSIVE({ }, 3))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(MERGE_RECURSIVE({ }, \"yes\"))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(MERGE_RECURSIVE({ }, [ ]))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(MERGE_RECURSIVE(null, { }))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(MERGE_RECURSIVE(true, { }))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(MERGE_RECURSIVE(3, { }))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(MERGE_RECURSIVE(\"yes\", { }))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(MERGE_RECURSIVE([ ], { }))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(MERGE_RECURSIVE({ }, { }, null))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(MERGE_RECURSIVE({ }, { }, true))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(MERGE_RECURSIVE({ }, { }, 3))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(MERGE_RECURSIVE({ }, { }, \"yes\"))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(MERGE_RECURSIVE({ }, { }, [ ]))"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1927,174 +1547,6 @@ function ahuacatlFunctionsTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test union function
-////////////////////////////////////////////////////////////////////////////////
-    
-    testUnionCxx1 : function () {
-      var expected = [ [ 1, 2, 3, 1, 2, 3 ] ];
-      var actual = getQueryResults("RETURN NOOPT(UNION([ 1, 2, 3 ], [ 1, 2, 3 ]))");
-      assertEqual(expected, actual);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test union function
-////////////////////////////////////////////////////////////////////////////////
-    
-    testUnionCxx2 : function () {
-      var expected = [ [ 1, 2, 3, 3, 2, 1 ] ];
-      var actual = getQueryResults("RETURN NOOPT(UNION([ 1, 2, 3 ], [ 3, 2, 1 ]))");
-      assertEqual(expected, actual);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test union function
-////////////////////////////////////////////////////////////////////////////////
-    
-    testUnionCxx3 : function () {
-      var expected = [ "Fred", "John", "John", "Amy" ];
-      var actual = getQueryResults("FOR u IN NOOPT(UNION([ \"Fred\", \"John\" ], [ \"John\", \"Amy\"])) RETURN u");
-      assertEqual(expected, actual);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test union function
-////////////////////////////////////////////////////////////////////////////////
-
-    testUnionCxxInvalid : function () {
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(UNION())"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(UNION([ ]))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(UNION([ ], null))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(UNION([ ], true))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(UNION([ ], 3))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(UNION([ ], \"yes\"))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(UNION([ ], { }))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(UNION([ ], [ ], null))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(UNION([ ], [ ], true))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(UNION([ ], [ ], 3))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(UNION([ ], [ ], \"yes\"))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(UNION([ ], [ ], { }))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(UNION(null, [ ]))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(UNION(true, [ ]))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(UNION(3, [ ]))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(UNION(\"yes\", [ ]))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(UNION({ }, [ ]))"); 
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test union function indexed access
-////////////////////////////////////////////////////////////////////////////////
-    
-    testUnionCxxIndexedAccess1 : function () {
-      var expected = [ "Fred" ];
-      var actual = getQueryResults("RETURN NOOPT(UNION([ \"Fred\", \"John\" ], [ \"John\", \"Amy\"]))[0]");
-      assertEqual(expected, actual);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test union function indexed access
-////////////////////////////////////////////////////////////////////////////////
-    
-    testUnionCxxIndexedAccess2 : function () {
-      var expected = [ "John" ];
-      var actual = getQueryResults("RETURN NOOPT(UNION([ \"Fred\", \"John\" ], [ \"John\", \"Amy\"]))[1]");
-      assertEqual(expected, actual);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test union function indexed access
-////////////////////////////////////////////////////////////////////////////////
-    
-    testUnionCxxIndexedAccess3 : function () {
-      var expected = [ "bar" ];
-      var actual = getQueryResults("RETURN NOOPT(UNION([ { title : \"foo\" } ], [ { title : \"bar\" } ]))[1].title");
-      assertEqual(expected, actual);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test union_distinct function
-////////////////////////////////////////////////////////////////////////////////
-    
-    testUnionDistinctCxx1 : function () {
-      var expected = [ 1, 2, 3 ];
-      var actual = getQueryResults("RETURN NOOPT(UNION_DISTINCT([ 1, 2, 3 ], [ 1, 2, 3 ]))");
-      assertEqual(expected, actual[0].sort());
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test union_distinct function
-////////////////////////////////////////////////////////////////////////////////
-    
-    testUnionDistinctCxx2 : function () {
-      var expected = [ 1, 2, 3 ];
-      var actual = getQueryResults("RETURN NOOPT(UNION_DISTINCT([ 1, 2, 3 ], [ 3, 2, 1 ]))");
-      assertEqual(expected, actual[0].sort());
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test union_distinct function
-////////////////////////////////////////////////////////////////////////////////
-    
-    testUnionDistinctCxx3 : function () {
-      var expected = [ "Amy", "Fred", "John" ];
-      var actual = getQueryResults("FOR u IN NOOPT(UNION_DISTINCT([ \"Fred\", \"John\" ], [ \"John\", \"Amy\"])) RETURN u");
-      assertEqual(expected, actual.sort());
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test union_distinct function
-////////////////////////////////////////////////////////////////////////////////
-    
-    testUnionDistinctCxx4 : function () {
-      var expected = [ 1, 2, 3, 4, 5, 6 ];
-      var actual = getQueryResults("RETURN NOOPT(UNION_DISTINCT([ 1, 2, 3 ], [ 3, 2, 1 ], [ 4 ], [ 5, 6, 1 ]))");
-      assertEqual(expected, actual[0].sort());
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test union_distinct function
-////////////////////////////////////////////////////////////////////////////////
-    
-    testUnionDistinctCxx5 : function () {
-      var expected = [ [ ] ];
-      var actual = getQueryResults("RETURN NOOPT(UNION_DISTINCT([ ], [ ], [ ]))");
-      assertEqual(expected, actual);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test union_distinct function
-////////////////////////////////////////////////////////////////////////////////
-    
-    testUnionDistinctCxx6 : function () {
-      var expected = [ false, true ];
-      var actual = getQueryResults("RETURN NOOPT(UNION_DISTINCT([ ], [ false ], [ ], [ true ]))");
-      assertEqual(expected, actual[0].sort());
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test union_distinct function
-////////////////////////////////////////////////////////////////////////////////
-
-    testUnionDistinctCxxInvalid : function () {
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(UNION_DISTINCT())"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(UNION_DISTINCT([ ]))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(UNION_DISTINCT([ ], null))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(UNION_DISTINCT([ ], true))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(UNION_DISTINCT([ ], 3))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(UNION_DISTINCT([ ], \"yes\"))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(UNION_DISTINCT([ ], { }))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(UNION_DISTINCT([ ], [ ], null))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(UNION_DISTINCT([ ], [ ], true))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(UNION_DISTINCT([ ], [ ], 3))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(UNION_DISTINCT([ ], [ ], \"yes\"))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(UNION_DISTINCT([ ], [ ], { }))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(UNION_DISTINCT(null, [ ]))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(UNION_DISTINCT(true, [ ]))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(UNION_DISTINCT(3, [ ]))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(UNION_DISTINCT(\"yes\", [ ]))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(UNION_DISTINCT({ }, [ ]))"); 
-    },
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief test range function
 ////////////////////////////////////////////////////////////////////////////////
     
@@ -2207,131 +1659,11 @@ function ahuacatlFunctionsTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test range function
-////////////////////////////////////////////////////////////////////////////////
-    
-    testRangeCxx1 : function () {
-      var expected = [ [ 1 ] ];
-      var actual = getQueryResults("RETURN NOOPT(RANGE(1, 1))");
-      assertEqual(expected, actual);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test range function
-////////////////////////////////////////////////////////////////////////////////
-    
-    testRangeCxx2 : function () {
-      var expected = [ [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ] ];
-      var actual = getQueryResults("RETURN NOOPT(RANGE(1, 10))");
-      assertEqual(expected, actual);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test range function
-////////////////////////////////////////////////////////////////////////////////
-    
-    testRangeCxx3 : function () {
-      var expected = [ [ -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ] ];
-      var actual = getQueryResults("RETURN NOOPT(RANGE(-1, 10))");
-      assertEqual(expected, actual);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test range function
-////////////////////////////////////////////////////////////////////////////////
-    
-    testRangeCxx4 : function () {
-      var expected = [ [ 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0, -1 ] ];
-      var actual = getQueryResults("RETURN NOOPT(RANGE(10, -1))");
-      assertEqual(expected, actual);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test range function
-////////////////////////////////////////////////////////////////////////////////
-    
-    testRangeCxx5 : function () {
-      var expected = [ [ 0 ] ];
-      var actual = getQueryResults("RETURN NOOPT(RANGE(0, 0))");
-      assertEqual(expected, actual);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test range function
-////////////////////////////////////////////////////////////////////////////////
-    
-    testRangeCxx6 : function () {
-      var expected = [ [ 10 ] ];
-      var actual = getQueryResults("RETURN NOOPT(RANGE(10, 10, 5))");
-      assertEqual(expected, actual);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test range function
-////////////////////////////////////////////////////////////////////////////////
-    
-    testRangeCxx7 : function () {
-      var expected = [ [ 10, 15, 20, 25, 30 ] ];
-      var actual = getQueryResults("RETURN NOOPT(RANGE(10, 30, 5))");
-      assertEqual(expected, actual);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test range function
-////////////////////////////////////////////////////////////////////////////////
-    
-    testRangeCxx8 : function () {
-      var expected = [ [ 30, 25, 20, 15, 10 ] ];
-      var actual = getQueryResults("RETURN NOOPT(RANGE(30, 10, -5))");
-      assertEqual(expected, actual);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test range function
-////////////////////////////////////////////////////////////////////////////////
-    
-    testRangeCxx9 : function () {
-      var expected = [ [ 3.4, 4.6, 5.8, 7.0, 8.2 ] ];
-      var actual = getQueryResults("RETURN NOOPT(RANGE(3.4, 8.9, 1.2))");
-      assertEqual(expected, actual);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test range function
-////////////////////////////////////////////////////////////////////////////////
-
-    testRangeCxxInvalid : function () {
-      assertQueryError(errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE.code, "RETURN NOOPT(RANGE(1, 100000000))");
-      assertQueryError(errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE.code, "RETURN NOOPT(RANGE(100000000, 1, -1))");
-
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(RANGE())");
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(RANGE(1))"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(RANGE(1, 2, 3, 4))"); 
-      assertEqual([ [ 0, 1, 2 ] ], getQueryResults("RETURN NOOPT(RANGE(null, 2))"));
-      assertEqual([ [ 0 ] ], getQueryResults("RETURN NOOPT(RANGE(null, null))"));
-      assertEqual([ [ 0, 1, 2 ] ], getQueryResults("RETURN NOOPT(RANGE(false, 2))"));
-      assertEqual([ [ 1, 2 ] ], getQueryResults("RETURN NOOPT(RANGE(true, 2))"));
-      assertEqual([ [ 1 ] ], getQueryResults("RETURN NOOPT(RANGE(1, true))"));
-      assertEqual([ [ 1, 0 ] ], getQueryResults("RETURN NOOPT(RANGE(1, [ ]))"));
-      assertEqual([ [ 1, 0 ] ], getQueryResults("RETURN NOOPT(RANGE(1, { }))"));
-      
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(RANGE(1, 1, 0))");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(RANGE(-1, -1, 0))");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(RANGE(1, -1, 1))");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(RANGE(-1, 1, -1))");
-    },
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief test minus function
 ////////////////////////////////////////////////////////////////////////////////
-    
     testMinus1 : function () {
       var expected = [ 'b', 'd' ].sort();
-      // Opt
       var actual = getQueryResults("RETURN MINUS([ 'a', 'b', 'c', 'd' ], [ 'c' ], [ 'a', 'c', 'e' ])");
-      assertEqual(expected, actual[0].sort());
-      // No opt / No v8
-      actual = getQueryResults("RETURN NOOPT(MINUS([ 'a', 'b', 'c', 'd' ], [ 'c' ], [ 'a', 'c', 'e' ]))");
       assertEqual(expected, actual[0].sort());
     },
 
@@ -2341,12 +1673,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testMinus2 : function () {
       var expected = [ 'a', 'b' ].sort();
-      // Opt
       var actual = getQueryResults("RETURN MINUS([ 'a', 'b', 'c' ], [ 'c', 'd', 'e' ])");
-      assertEqual(expected, actual[0].sort());
-
-      // No Opt / No v8
-      actual = getQueryResults("RETURN NOOPT(MINUS([ 'a', 'b', 'c' ], [ 'c', 'd', 'e' ]))");
       assertEqual(expected, actual[0].sort());
     },
 
@@ -2356,13 +1683,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testMinus3 : function () {
       var expected = [ 'a', 'b', 'c' ].sort();
-
-      // Opt
       var actual = getQueryResults("RETURN MINUS([ 'a', 'b', 'c' ], [ 1, 2, 3 ])");
-      assertEqual(expected, actual[0].sort());
-
-      // No Opt / No v8
-      actual = getQueryResults("RETURN NOOPT(MINUS([ 'a', 'b', 'c' ], [ 1, 2, 3 ]))");
       assertEqual(expected, actual[0].sort());
     },
 
@@ -2372,13 +1693,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testMinus4 : function () {
       var expected = [ 'a', 'b', 'c' ].sort();
-
-      // Opt
       var actual = getQueryResults("RETURN MINUS([ 'a', 'b', 'c' ], [ 1, 2, 3 ], [ 1, 2, 3 ])");
-      assertEqual(expected, actual[0].sort());
-
-      // No Opt / No v8
-      actual = getQueryResults("RETURN NOOPT(MINUS([ 'a', 'b', 'c' ], [ 1, 2, 3 ], [ 1, 2, 3 ]))");
       assertEqual(expected, actual[0].sort());
     },
 
@@ -2388,13 +1703,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testMinus5 : function () {
       var expected = [ [ ] ];
-
-      // Opt
       var actual = getQueryResults("RETURN MINUS([ 2 ], [ 'a', 'b', 'c' ], [ 1, 2, 3 ], [ 1, 2, 3 ])");
-      assertEqual(expected, actual);
-
-      // No Opt / No v8
-      actual = getQueryResults("RETURN NOOPT(MINUS([ 2 ], [ 'a', 'b', 'c' ], [ 1, 2, 3 ], [ 1, 2, 3 ]))");
       assertEqual(expected, actual);
     },
 
@@ -2404,13 +1713,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testMinus6 : function () {
       var expected = [ [ ] ];
-
-      // Opt
       var actual = getQueryResults("RETURN MINUS([ ], [ 'a', 'b', 'c' ], [ 1, 2, 3 ], [ 1, 2, 3 ])");
-      assertEqual(expected, actual);
-
-      // No Opt / No v8
-      actual = getQueryResults("RETURN NOOPT(MINUS([ ], [ 'a', 'b', 'c' ], [ 1, 2, 3 ], [ 1, 2, 3 ]))");
       assertEqual(expected, actual);
     },
 
@@ -2535,124 +1838,8 @@ function ahuacatlFunctionsTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test intersection function
-////////////////////////////////////////////////////////////////////////////////
-    
-    testIntersectionCxx1 : function () {
-      var expected = [ -3, 1 ];
-      var actual = getQueryResults("RETURN NOOPT(INTERSECTION([ 1, -3 ], [ -3, 1 ]))");
-      assertEqual(expected, actual[0].sort());
-    },
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief test intersect function
 ////////////////////////////////////////////////////////////////////////////////
-    
-    testIntersectionCxx2 : function () {
-      var expected = [ [ ] ];
-      var actual = getQueryResults("RETURN NOOPT(INTERSECTION([ ], [ 1 ]))");
-      assertEqual(expected, actual);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test intersect function
-////////////////////////////////////////////////////////////////////////////////
-    
-    testIntersectionCxx3 : function () {
-      var expected = [ [ ] ];
-      var actual = getQueryResults("RETURN NOOPT(INTERSECTION([ 1 ], [  ]))");
-      assertEqual(expected, actual);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test intersect function
-////////////////////////////////////////////////////////////////////////////////
-    
-    testIntersectionCxx4 : function () {
-      var expected = [ [ ] ];
-      var actual = getQueryResults("RETURN NOOPT(INTERSECTION([ 1 ], [ 2, 3, 1 ], [ 4, 5, 6 ]))");
-      assertEqual(expected, actual);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test intersect function
-////////////////////////////////////////////////////////////////////////////////
-    
-    testIntersectionCxx5 : function () {
-      var expected = [ 2, 4 ];
-      var actual = getQueryResults("RETURN NOOPT(INTERSECTION([ 1, 3, 2, 4 ], [ 2, 3, 1, 4 ], [ 4, 5, 6, 2 ]))");
-      assertEqual(expected, actual[0].sort());
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test intersect function
-////////////////////////////////////////////////////////////////////////////////
-    
-    testIntersectionCxx6 : function () {
-      var expected = [ [ ] ];
-      var actual = getQueryResults("RETURN NOOPT(INTERSECTION([ [ 1, 2 ] ], [ 2, 1 ]))");
-      assertEqual(expected, actual);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test intersect function
-////////////////////////////////////////////////////////////////////////////////
-    
-    testIntersectionCxx7 : function () {
-      var expected = [ [ ] ];
-      var actual = getQueryResults("RETURN NOOPT(INTERSECTION([ [ 1, 2 ] ], [ 1, 2 ]))");
-      assertEqual(expected, actual);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test intersect function
-////////////////////////////////////////////////////////////////////////////////
-    
-    testIntersectionCxx8 : function () {
-      var expected = [ [ [ 1, 2 ] ] ];
-      var actual = getQueryResults("RETURN NOOPT(INTERSECTION([ [ 1, 2 ] ], [ [ 1, 2 ] ]))");
-      assertEqual(expected, actual);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test intersect function
-////////////////////////////////////////////////////////////////////////////////
-    
-    testIntersectionCxx9 : function () {
-      var expected = [ [ { foo: 'test' } ] ];
-      var actual = getQueryResults("RETURN NOOPT(INTERSECTION([ { foo: 'bar' }, { foo: 'test' } ], [ { foo: 'test' } ]))");
-      assertEqual(expected, actual);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test intersect function
-////////////////////////////////////////////////////////////////////////////////
-    
-    testIntersectionCxx10 : function () {
-      var expected = [ 2, 4, 5 ];
-      var actual = getQueryResults("RETURN NOOPT(INTERSECTION([ 1, 2, 3, 3, 4, 4, 5, 1 ], [ 2, 4, 5 ]))");
-      assertEqual(expected, actual[0].sort());
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test intersect function
-////////////////////////////////////////////////////////////////////////////////
-    
-    testIntersectionCxx11 : function () {
-      var expected = [ 1, 3 ];
-      var actual = getQueryResults("RETURN NOOPT(INTERSECTION([ 1, 1, 2, 2, 3, 3, 3 ], [ 1, 1, 3 ]))");
-      assertEqual(expected, actual[0].sort());
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test intersect function
-////////////////////////////////////////////////////////////////////////////////
-    
-    testIntersectionCxx12 : function () {
-      var expected = [ 3 ];
-      var actual = getQueryResults("RETURN NOOPT(INTERSECTION([ 1, 1, 3 ], [ 2, 2, 3 ]))");
-      assertEqual(expected, actual[0].sort());
-    },
 
     testIntersectionAllDocuments : function () {
       var bindVars = {"@collection": collectionName};
@@ -2708,38 +1895,15 @@ function ahuacatlFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testFlattenInvalid : function () {
-      var buildQuery = function (nr, input) {
-        switch (nr) {
-          case 0:
-            // Optimized
-            return `RETURN FLATTEN(${input})`;
-          case 1:
-            // No opt / No v8
-            return `RETURN NOOPT(FLATTEN(${input}))`;
-          default:
-            assertTrue(false, "Unreachable state");
-        }
-      };
-      for (var i = 0; i < 2; ++i) {
-        var q = buildQuery(i, "");
-        assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, q);
-        q = buildQuery(i, "[], 1, 1");
-        assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, q);
-        q = buildQuery(i, "1");
-        assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, q);
-        q = buildQuery(i, "null");
-        assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, q);
-        q = buildQuery(i, "false");
-        assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, q);
-        q = buildQuery(i, "'foo'");
-        assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, q);
-        q = buildQuery(i, "[ ], 'foo'");
-        assertEqual([ [ ] ], getQueryResults(q), q);
-        q = buildQuery(i, "[ ], [ ]");
-        assertEqual([ [ ] ], getQueryResults(q), q);
-        q = buildQuery(i, "{ }");
-        assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, q);
-      }
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN FLATTEN()");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN FLATTEN([ ], 1, 1)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN FLATTEN(1)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN FLATTEN(null)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN FLATTEN(false)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN FLATTEN('foo')");
+      assertEqual([ [ ] ], getQueryResults("RETURN FLATTEN([ ], 'foo')"));
+      assertEqual([ [ ] ], getQueryResults("RETURN FLATTEN([ ], [ ])"));
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN FLATTEN({ })");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2748,18 +1912,11 @@ function ahuacatlFunctionsTestSuite () {
     
     testFlatten1 : function () {
       var input = [ [ 2, 4, 5 ], [ 1, 2, 3 ], [ ], [ "foo", "bar" ] ];
-      // Optimized
+
       var actual = getQueryResults("RETURN FLATTEN(@value)", { value: input });
       assertEqual([ [ 2, 4, 5, 1, 2, 3, "foo", "bar" ] ], actual);
       
       actual = getQueryResults("RETURN FLATTEN(@value, 1)", { value: input });
-      assertEqual([ [ 2, 4, 5, 1, 2, 3, "foo", "bar" ] ], actual);
-
-      // No opt / No v8
-      actual = getQueryResults("RETURN NOOPT(FLATTEN(@value))", { value: input });
-      assertEqual([ [ 2, 4, 5, 1, 2, 3, "foo", "bar" ] ], actual);
-      
-      actual = getQueryResults("RETURN NOOPT(FLATTEN(@value, 1))", { value: input });
       assertEqual([ [ 2, 4, 5, 1, 2, 3, "foo", "bar" ] ], actual);
     },
 
@@ -2769,7 +1926,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testFlatten2 : function () {
       var input = [ [ 1, 1, 2, 2 ], [ 1, 1, 2, 2 ], [ null, null ], [ [ 1, 2 ], [ 3, 4 ] ] ];
-      // Optimized
+
       var actual = getQueryResults("RETURN FLATTEN(@value)", { value: input });
       assertEqual([ [ 1, 1, 2, 2, 1, 1, 2, 2, null, null, [ 1, 2 ], [ 3, 4 ] ] ], actual);
       
@@ -2777,16 +1934,6 @@ function ahuacatlFunctionsTestSuite () {
       assertEqual([ [ 1, 1, 2, 2, 1, 1, 2, 2, null, null, [ 1, 2 ], [ 3, 4 ] ] ], actual);
       
       actual = getQueryResults("RETURN FLATTEN(@value, 2)", { value: input });
-      assertEqual([ [ 1, 1, 2, 2, 1, 1, 2, 2, null, null, 1, 2, 3, 4 ] ], actual);
-
-      // No opt / No v8
-      actual = getQueryResults("RETURN NOOPT(FLATTEN(@value))", { value: input });
-      assertEqual([ [ 1, 1, 2, 2, 1, 1, 2, 2, null, null, [ 1, 2 ], [ 3, 4 ] ] ], actual);
-      
-      actual = getQueryResults("RETURN NOOPT(FLATTEN(@value, 1))", { value: input });
-      assertEqual([ [ 1, 1, 2, 2, 1, 1, 2, 2, null, null, [ 1, 2 ], [ 3, 4 ] ] ], actual);
-      
-      actual = getQueryResults("RETURN NOOPT(FLATTEN(@value, 2))", { value: input });
       assertEqual([ [ 1, 1, 2, 2, 1, 1, 2, 2, null, null, 1, 2, 3, 4 ] ], actual);
     },
 
@@ -2797,7 +1944,6 @@ function ahuacatlFunctionsTestSuite () {
     testFlatten3 : function () {
       var input = [ [ 1, 1, 2, 2 ], [ 1, 1, 2, 2 ], [ [ 1, 2 ], [ 3, 4 ], [ [ 5, 6 ], [ 7, 8 ] ], [ 9, 10, [ 11, 12 ] ] ] ];
 
-      // Optimized
       var actual = getQueryResults("RETURN FLATTEN(@value, 1)", { value: input });
       assertEqual([ [ 1, 1, 2, 2, 1, 1, 2, 2, [ 1, 2 ], [ 3, 4 ], [ [ 5, 6 ], [ 7, 8 ] ], [ 9, 10, [ 11, 12 ] ] ] ], actual);
 
@@ -2805,16 +1951,6 @@ function ahuacatlFunctionsTestSuite () {
       assertEqual([ [ 1, 1, 2, 2, 1, 1, 2, 2, 1, 2, 3, 4, [ 5, 6 ], [ 7, 8 ], 9, 10, [ 11, 12 ] ] ], actual);
       
       actual = getQueryResults("RETURN FLATTEN(@value, 3)", { value: input });
-      assertEqual([ [ 1, 1, 2, 2, 1, 1, 2, 2, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 ] ], actual);
-
-      // No opt / No v8
-      actual = getQueryResults("RETURN NOOPT(FLATTEN(@value, 1))", { value: input });
-      assertEqual([ [ 1, 1, 2, 2, 1, 1, 2, 2, [ 1, 2 ], [ 3, 4 ], [ [ 5, 6 ], [ 7, 8 ] ], [ 9, 10, [ 11, 12 ] ] ] ], actual);
-
-      actual = getQueryResults("RETURN NOOPT(FLATTEN(@value, 2))", { value: input });
-      assertEqual([ [ 1, 1, 2, 2, 1, 1, 2, 2, 1, 2, 3, 4, [ 5, 6 ], [ 7, 8 ], 9, 10, [ 11, 12 ] ] ], actual);
-      
-      actual = getQueryResults("RETURN NOOPT(FLATTEN(@value, 3))", { value: input });
       assertEqual([ [ 1, 1, 2, 2, 1, 1, 2, 2, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 ] ], actual);
     },
 
@@ -2824,50 +1960,29 @@ function ahuacatlFunctionsTestSuite () {
     
     testFlatten4 : function () {
       var input = [ 1, [ 2, [ 3, [ 4, [ 5, [ 6, [ 7, [ 8, [ 9 ] ] ] ] ] ] ] ] ];
-      var buildQuery = function (nr, input) {
-        switch (nr) {
-          case 0:
-            return `RETURN FLATTEN(@value, ${input})`;
-          case 1:
-            return `RETURN NOOPT(FLATTEN(@value, ${input}))`;
-          default:
-          assertTrue(false, "Undefined state");
-        }
-      };
+      var actual = getQueryResults("RETURN FLATTEN(@value, 1)", { value: input });
+      assertEqual([ [ 1, 2, [ 3, [ 4, [ 5, [ 6, [ 7, [ 8, [ 9 ] ] ] ] ] ] ] ] ], actual);
 
-      for (var i = 0; i < 2; ++i) {
-        var q = buildQuery(i, 1);
-        var actual = getQueryResults(q, { value: input });
-        assertEqual([ [ 1, 2, [ 3, [ 4, [ 5, [ 6, [ 7, [ 8, [ 9 ] ] ] ] ] ] ] ] ], actual, q);
+      actual = getQueryResults("RETURN FLATTEN(@value, 2)", { value: input });
+      assertEqual([ [ 1, 2, 3, [ 4, [ 5, [ 6, [ 7, [ 8, [ 9 ] ] ] ] ] ] ] ], actual);
 
-        q = buildQuery(i, 2);
-        actual = getQueryResults(q, { value: input });
-        assertEqual([ [ 1, 2, 3, [ 4, [ 5, [ 6, [ 7, [ 8, [ 9 ] ] ] ] ] ] ] ], actual, q);
+      actual = getQueryResults("RETURN FLATTEN(@value, 3)", { value: input });
+      assertEqual([ [ 1, 2, 3, 4, [ 5, [ 6, [ 7, [ 8, [ 9 ] ] ] ] ] ] ], actual);
 
-        q = buildQuery(i, 3);
-        actual = getQueryResults(q, { value: input });
-        assertEqual([ [ 1, 2, 3, 4, [ 5, [ 6, [ 7, [ 8, [ 9 ] ] ] ] ] ] ], actual);
+      actual = getQueryResults("RETURN FLATTEN(@value, 4)", { value: input });
+      assertEqual([ [ 1, 2, 3, 4, 5, [ 6, [ 7, [ 8, [ 9 ] ] ] ] ] ], actual);
 
-        q = buildQuery(i, 4);
-        actual = getQueryResults(q, { value: input });
-        assertEqual([ [ 1, 2, 3, 4, 5, [ 6, [ 7, [ 8, [ 9 ] ] ] ] ] ], actual);
+      actual = getQueryResults("RETURN FLATTEN(@value, 5)", { value: input });
+      assertEqual([ [ 1, 2, 3, 4, 5, 6, [ 7, [ 8, [ 9 ] ] ] ] ], actual);
 
-        q = buildQuery(i, 5);
-        actual = getQueryResults(q, { value: input });
-        assertEqual([ [ 1, 2, 3, 4, 5, 6, [ 7, [ 8, [ 9 ] ] ] ] ], actual);
+      actual = getQueryResults("RETURN FLATTEN(@value, 6)", { value: input });
+      assertEqual([ [ 1, 2, 3, 4, 5, 6, 7, [ 8, [ 9 ] ] ] ], actual);
 
-        q = buildQuery(i, 6);
-        actual = getQueryResults(q, { value: input });
-        assertEqual([ [ 1, 2, 3, 4, 5, 6, 7, [ 8, [ 9 ] ] ] ], actual);
+      actual = getQueryResults("RETURN FLATTEN(@value, 7)", { value: input });
+      assertEqual([ [ 1, 2, 3, 4, 5, 6, 7, 8, [ 9 ] ] ], actual);
 
-        q = buildQuery(i, 7);
-        actual = getQueryResults(q, { value: input });
-        assertEqual([ [ 1, 2, 3, 4, 5, 6, 7, 8, [ 9 ] ] ], actual);
-
-        q = buildQuery(i, 8);
-        actual = getQueryResults(q, { value: input });
-        assertEqual([ [ 1, 2, 3, 4, 5, 6, 7, 8, 9 ] ], actual);
-      }
+      actual = getQueryResults("RETURN FLATTEN(@value, 8)", { value: input });
+      assertEqual([ [ 1, 2, 3, 4, 5, 6, 7, 8, 9 ] ], actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3101,182 +2216,6 @@ function ahuacatlFunctionsTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test min function
-////////////////////////////////////////////////////////////////////////////////
-    
-    testMinCxx1 : function () {
-      var expected = [ null, null ]; 
-      var actual = getQueryResults("FOR u IN [ [ ], [ null, null ] ] RETURN NOOPT(MIN(u))");
-      assertEqual(expected, actual);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test min function
-////////////////////////////////////////////////////////////////////////////////
-    
-    testMinCxx2 : function () {
-      var expected = [ 1, 1, 1, 1, 1, 1 ];
-      var actual = getQueryResults("FOR u IN [ [ 1, 2, 3 ], [ 3, 2, 1 ], [ 1, 3, 2 ], [ 2, 3, 1 ], [ 2, 1, 3 ], [ 3, 1, 2 ] ] RETURN NOOPT(MIN(u))");
-      assertEqual(expected, actual);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test min function
-////////////////////////////////////////////////////////////////////////////////
-    
-    testMinCxx3 : function () {
-      var expected = [ 2, false, false, false, false, true, -1, '', 1 ];
-      var actual = getQueryResults("FOR u IN [ [ 3, 2, '1' ], [ [ ], null, true, false, 1, '0' ], [ '0', 1, false, true, null, [ ] ], [ false, true ], [ 0, false ], [ true, 0 ], [ '0', -1 ], [ '', '-1' ], [ [ ], 1 ] ] RETURN NOOPT(MIN(u))");
-      assertEqual(expected, actual);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test min function
-////////////////////////////////////////////////////////////////////////////////
-
-    testMinCxxInvalid : function () {
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(MIN())"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(MIN([ ], 2))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(MIN(null))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(MIN(false))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(MIN(3))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(MIN(\"yes\"))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(MIN({ }))"); 
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test max function
-////////////////////////////////////////////////////////////////////////////////
-    
-    testMaxCxx1 : function () {
-      var expected = [ null, null ]; 
-      var actual = getQueryResults("FOR u IN [ [ ], [ null, null ] ] RETURN NOOPT(MAX(u))");
-      assertEqual(expected, actual);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test max function
-////////////////////////////////////////////////////////////////////////////////
-    
-    testMaxCxx2 : function () {
-      var expected = [ 3, 3, 3, 3, 3, 3 ];
-      var actual = getQueryResults("FOR u IN [ [ 1, 2, 3 ], [ 3, 2, 1 ], [ 1, 3, 2 ], [ 2, 3, 1 ], [ 2, 1, 3 ], [ 3, 1, 2 ] ] RETURN NOOPT(MAX(u))");
-      assertEqual(expected, actual);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test max function
-////////////////////////////////////////////////////////////////////////////////
-    
-    testMaxCxx3 : function () {
-      var expected = [ '1', [ ], [ ], true, 0, 0, '0', '-1', [ ] ];
-      var actual = getQueryResults("FOR u IN [ [ 3, 2, '1' ], [ [ ], null, true, false, 1, '0' ], [ '0', 1, false, true, null, [ ] ], [ false, true ], [ 0, false ], [ true, 0 ], [ '0', -1 ], [ '', '-1' ], [ [ ], 1 ] ] RETURN NOOPT(MAX(u))");
-      assertEqual(expected, actual);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test max function
-////////////////////////////////////////////////////////////////////////////////
-
-    testMaxCxxInvalid : function () {
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(MAX())"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(MAX([ ], 2))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(MAX(null))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(MAX(false))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(MAX(3))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(MAX(\"yes\"))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(MAX({ }))"); 
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test sum function
-////////////////////////////////////////////////////////////////////////////////
-    
-    testCxxSum : function () {
-      var data = [
-        [ 0, [ ] ],
-        [ 0, [ null ] ],
-        [ 0, [ null, null ] ],
-        [ 1, [ 1, null, null ] ],
-        [ 2, [ 1, null, null, 1 ] ],
-        [ 15, [ 1, 2, 3, 4, 5 ] ],
-        [ 15, [ 5, 4, 3, 2, 1 ] ],
-        [ 15, [ null, 5, 4, null, 3, 2, 1, null ] ],
-        [ 0, [ -1, 1, -1, 1, -1, 1, 0 ] ],
-        [ -4, [ -1, -1, -1, -1 ] ],
-        [ 1.31, [ 0.1, 0.1, 0.01, 1.1 ] ],
-        [ -1.31, [ -0.1, -0.1, -0.01, -1.1 ] ],
-        [ 9040346.290954, [ 45.356, 256.23, -223.6767, -14512.63, 456.00222, -0.090566, 9054325.1 ] ]
-      ];
-
-      data.forEach(function (value) {
-        var actual = getQueryResults("RETURN SUM(NOOPT(" + JSON.stringify(value[1]) + "))");
-        assertEqual(value[0].toFixed(4), actual[0].toFixed(4));
-      });
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test sum function
-////////////////////////////////////////////////////////////////////////////////
-
-    testSumCxxInvalid : function () {
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(SUM())"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(SUM([ ], 2))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(SUM(null))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(SUM(false))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(SUM(3))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(SUM(\"yes\"))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(SUM({ }))"); 
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test average function
-////////////////////////////////////////////////////////////////////////////////
-    
-    testAverageCxx : function () {
-      var data = [
-        [ null, [ ] ],
-        [ null, [ null ] ],
-        [ null, [ null, null ] ],
-        [ 1, [ 1, null, null ] ],
-        [ 1, [ 1, null, null, 1 ] ],
-        [ 2.5, [ 0, 1, 2, 3, 4, 5 ] ],
-        [ 3, [ 1, 2, 3, 4, 5 ] ],
-        [ 3, [ 5, 4, 3, 2, 1 ] ],
-        [ 3, [ 5, 4, null, null, 3, 2, 1, null ] ],
-        [ 0, [ -1, 1, -1, 1, -1, 1, 0 ] ],
-        [ -1, [ -1, -1, -1, -1 ] ],
-        [ 0.3275, [ 0.1, 0.1, 0.01, 1.1 ] ],
-        [ -0.3275, [ -0.1, -0.1, -0.01, -1.1 ] ],
-        [ 1291478.0415649, [ 45.356, 256.23, -223.6767, -14512.63, 456.00222, -0.090566, 9054325.1 ] ]
-      ];
-
-      data.forEach(function (value) {
-        var actual = getQueryResults("RETURN NOOPT(AVERAGE(" + JSON.stringify(value[1]) + "))");
-        if (actual[0] === null) {
-          assertNull(value[0]);
-        }
-        else {
-          assertEqual(value[0].toFixed(4), actual[0].toFixed(4));
-        }
-      });
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test average function
-////////////////////////////////////////////////////////////////////////////////
-
-    testAverageCxxInvalid : function () {
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(AVERAGE())"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(AVERAGE([ ], 2))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(AVERAGE(null))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(AVERAGE(false))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(AVERAGE(3))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(AVERAGE(\"yes\"))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(AVERAGE({ }))"); 
-    },
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief test median function
 ////////////////////////////////////////////////////////////////////////////////
     
@@ -3317,14 +2256,6 @@ function ahuacatlFunctionsTestSuite () {
         else {
           assertEqual(value[0].toFixed(4), actual[0].toFixed(4));
         }
-
-        actual = getQueryResults("RETURN NOOPT(MEDIAN(" + JSON.stringify(value[1]) + "))");
-        if (actual[0] === null) {
-          assertNull(value[0]);
-        }
-        else {
-          assertEqual(value[0].toFixed(4), actual[0].toFixed(4));
-        }
       });
     },
 
@@ -3340,14 +2271,6 @@ function ahuacatlFunctionsTestSuite () {
       assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN MEDIAN(3)"); 
       assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN MEDIAN(\"yes\")"); 
       assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN MEDIAN({ })"); 
-
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(MEDIAN())");
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(MEDIAN([ ], 2))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(MEDIAN(null))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(MEDIAN(false))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(MEDIAN(3))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(MEDIAN(\"yes\"))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(MEDIAN({ }))"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3383,14 +2306,6 @@ function ahuacatlFunctionsTestSuite () {
 
       data.forEach(function (value) {
         var actual = getQueryResults("RETURN PERCENTILE(" + JSON.stringify(value[1]) + ", " + JSON.stringify(value[2]) + ", " + JSON.stringify(value[3]) + ")");
-        if (actual[0] === null) {
-          assertNull(value[0]);
-        }
-        else {
-          assertEqual(value[0].toFixed(4), actual[0].toFixed(4), value);
-        }
-
-        actual = getQueryResults("RETURN NOOPT(PERCENTILE(" + JSON.stringify(value[1]) + ", " + JSON.stringify(value[2]) + ", " + JSON.stringify(value[3]) + "))");
         if (actual[0] === null) {
           assertNull(value[0]);
         }
@@ -3451,56 +2366,6 @@ function ahuacatlFunctionsTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test has function
-////////////////////////////////////////////////////////////////////////////////
-    
-    testHasCxx1 : function () {
-      var expected = [ true, true, true, false, true ]; 
-      var actual = getQueryResults("FOR u IN [ { \"the fox\" : true }, { \"the fox\" : false }, { \"the fox\" : null }, { \"the FOX\" : true }, { \"the FOX\" : true, \"the fox\" : false } ] return NOOPT(HAS(u, \"the fox\"))");
-      assertEqual(expected, actual);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test has function
-////////////////////////////////////////////////////////////////////////////////
-    
-    testHasCxx2 : function () {
-      var expected = [ false, false, false ];
-      var actual = getQueryResults("FOR u IN [ { \"the foxx\" : { \"the fox\" : false } }, { \" the fox\" : false }, null ] return NOOPT(HAS(u, \"the fox\"))");
-      assertEqual(expected, actual);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test has function
-////////////////////////////////////////////////////////////////////////////////
-    
-    testHasCxx3 : function () {
-      var expected = [ [ "test2", [ "other" ] ] ];
-      var actual = getQueryResults("LET doc = { \"_id\": \"test/76689250173\", \"_rev\": \"76689250173\", \"_key\": \"76689250173\", \"test1\": \"something\", \"test2\": { \"DATA\": [ \"other\" ] } } FOR attr IN ATTRIBUTES(doc) LET prop = doc[attr] FILTER NOOPT(HAS(prop, 'DATA')) RETURN [ attr, prop.DATA ]"); 
-      assertEqual(expected, actual);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test has function
-////////////////////////////////////////////////////////////////////////////////
-
-    testHasCxxInvalid : function () {
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(HAS())"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(HAS({ }))"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(HAS({ }, \"fox\", true))"); 
-      assertEqual([ false ], getQueryResults("RETURN NOOPT(HAS(false, \"fox\"))")); 
-      assertEqual([ false ], getQueryResults("RETURN NOOPT(HAS(3, \"fox\"))")); 
-      assertEqual([ false ], getQueryResults("RETURN NOOPT(HAS(\"yes\", \"fox\"))")); 
-      assertEqual([ false ], getQueryResults("RETURN NOOPT(HAS([ ], \"fox\"))")); 
-      assertEqual([ false ], getQueryResults("RETURN NOOPT(HAS({ }, null))")); 
-      assertEqual([ false ], getQueryResults("RETURN NOOPT(HAS({ }, false))")); 
-      assertEqual([ false ], getQueryResults("RETURN NOOPT(HAS({ }, true))")); 
-      assertEqual([ false ], getQueryResults("RETURN NOOPT(HAS({ }, 1))")); 
-      assertEqual([ false ], getQueryResults("RETURN NOOPT(HAS({ }, [ ]))")); 
-      assertEqual([ false ], getQueryResults("RETURN NOOPT(HAS({ }, { }))")); 
-    },
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief test attributes function
 ////////////////////////////////////////////////////////////////////////////////
     
@@ -3547,52 +2412,6 @@ function ahuacatlFunctionsTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test attributes function
-////////////////////////////////////////////////////////////////////////////////
-    
-    testAttributesCxx1 : function () {
-      var expected = [ [ "foo", "bar", "meow", "_id" ], [ "foo" ] ];
-      var actual = getQueryResults("FOR u IN [ { foo: \"bar\", bar: \"baz\", meow: true, _id: \"123/456\" }, { foo: \"bar\" } ] RETURN NOOPT(ATTRIBUTES(u))");
-      // Order is not guaranteed order here in-place
-      assertEqual(actual.length, expected.length);
-      assertEqual(actual[0].sort(), expected[0].sort());
-      assertEqual(actual[1].sort(), expected[1].sort());
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test attributes function
-////////////////////////////////////////////////////////////////////////////////
-    
-    testAttributesCxx2 : function () {
-      var expected = [ [ "foo", "bar", "meow" ], [ "foo" ] ];
-      var actual = getQueryResults("FOR u IN [ { foo: \"bar\", bar: \"baz\", meow: true, _id: \"123/456\" }, { foo: \"bar\" } ] RETURN NOOPT(ATTRIBUTES(u, true))");
-      // Order is not guaranteed order here in-place
-      assertEqual(actual.length, expected.length);
-      assertEqual(actual[0].sort(), expected[0].sort());
-      assertEqual(actual[1].sort(), expected[1].sort());
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test attributes function
-////////////////////////////////////////////////////////////////////////////////
-    
-    testAttributesCxx3 : function () {
-      var expected = [ [ "_id", "bar", "foo", "meow" ], [ "foo" ] ];
-      var actual = getQueryResults("FOR u IN [ { foo: \"bar\", bar: \"baz\", meow: true, _id: \"123/456\" }, { foo: \"bar\" } ] RETURN NOOPT(ATTRIBUTES(u, false, true))");
-      assertEqual(expected, actual);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test attributes function
-////////////////////////////////////////////////////////////////////////////////
-    
-    testAttributesCxx4 : function () {
-      var expected = [ [ "bar", "foo", "meow" ], [ "foo" ] ];
-      var actual = getQueryResults("FOR u IN [ { foo: \"bar\", bar: \"baz\", meow: true, _id: \"123/456\" }, { foo: \"bar\" } ] RETURN NOOPT(ATTRIBUTES(u, true, true))");
-      assertEqual(expected, actual);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief test values function
 ////////////////////////////////////////////////////////////////////////////////
     
@@ -3628,41 +2447,6 @@ function ahuacatlFunctionsTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test values function
-////////////////////////////////////////////////////////////////////////////////
-    
-    testValuesCxx1 : function () {
-      var expected = [ [ "bar", "baz", true, "123/456" ], [ "bar" ] ];
-      var actual = getQueryResults("FOR u IN [ { foo: \"bar\", bar: \"baz\", meow: true, _id: \"123/456\" }, { foo: \"bar\" } ] RETURN NOOPT(VALUES(u))");
-      assertEqual(actual.length, expected.length);
-      assertEqual(actual[0].sort(), expected[0].sort());
-      assertEqual(actual[1].sort(), expected[1].sort());
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test values function
-////////////////////////////////////////////////////////////////////////////////
-    
-    testValuesCxx2 : function () {
-      var expected = [ [ "bar", "baz", true ], [ "bar" ] ];
-      var actual = getQueryResults("FOR u IN [ { foo: \"bar\", bar: \"baz\", meow: true, _id: \"123/456\" }, { foo: \"bar\" } ] RETURN NOOPT(VALUES(u, true))");
-      assertEqual(actual.length, expected.length);
-      assertEqual(actual[0].sort(), expected[0].sort());
-      assertEqual(actual[1].sort(), expected[1].sort());
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test values function
-////////////////////////////////////////////////////////////////////////////////
-    
-    testValuesCxx3 : function () {
-      var expected = [ [ "test/1123", "test/abc", "1234", "test", "", [ 1, 2, 3, 4, [ true ] ], null, { d: 42, e: null, f: [ "test!" ] } ] ];
-      var actual = getQueryResults("RETURN NOOPT(VALUES({ _from: \"test/1123\", _to: \"test/abc\", _rev: \"1234\", _key: \"test\", void: \"\", a: [ 1, 2, 3, 4, [ true ] ], b : null, c: { d: 42, e: null, f: [ \"test!\" ] } }))");
-      assertEqual(actual.length, expected.length);
-      assertEqual(actual[0].sort(), expected[0].sort());
-    },
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief test zip function
 ////////////////////////////////////////////////////////////////////////////////
     
@@ -3683,11 +2467,7 @@ function ahuacatlFunctionsTestSuite () {
       ];
 
       values.forEach(function (value) {
-        // Opt
         var actual = getQueryResults("RETURN ZIP(" + JSON.stringify(value[1]) + ", " + JSON.stringify(value[2]) + ")");
-        assertEqual(value[0], actual[0], value);
-        // No opt / No v8
-        actual = getQueryResults("RETURN NOOPT(ZIP(" + JSON.stringify(value[1]) + ", " + JSON.stringify(value[2]) + "))");
         assertEqual(value[0], actual[0], value);
       });
     },
@@ -3697,12 +2477,8 @@ function ahuacatlFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testZipSubquery : function () {
-      // Opt
       var query = "LET value = (FOR i IN 1..3 RETURN 'value') RETURN ZIP([ 'a11111', 'b222', 'c' ], value)";
       var actual = getQueryResults(query);
-      assertEqual({ a11111: "value", b222: "value", c: "value" }, actual[0]);
-      // No opt / No v8
-      query = "LET value = (FOR i IN 1..3 RETURN 'value') RETURN NOOPT(ZIP([ 'a11111', 'b222', 'c' ], value))";
       assertEqual({ a11111: "value", b222: "value", c: "value" }, actual[0]);
     },
 
@@ -3711,40 +2487,28 @@ function ahuacatlFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testZipInvalid : function () {
-      var buildQuery = function (nr, input) {
-        switch (nr) {
-          case 0:
-            return `RETURN ZIP(${input})`;
-          case 1:
-            return `RETURN NOOPT(ZIP(${input}))`;
-          default:
-            assertTrue(false, "Undefined state");
-        }
-      };
-      for (var i = 0; i < 2; ++i) {
-        assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, buildQuery(i, "")); 
-        assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, buildQuery(i, "[ ]"));
-        assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, buildQuery(i, "[ ], [ ], [ ]"));
-        
-        assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, buildQuery(i, "[ ], null"));
-        assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, buildQuery(i, "[ ], false"));
-        assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, buildQuery(i, "[ ], true"));
-        assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, buildQuery(i, "[ ], 0"));
-        assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, buildQuery(i, "[ ], 1"));
-        assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, buildQuery(i, "[ ], \"\""));
-        assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, buildQuery(i, "[ ], { }"));
-        assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, buildQuery(i, "null, [ ]"));
-        assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, buildQuery(i, "false, [ ]"));
-        assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, buildQuery(i, "true, [ ]"));
-        assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, buildQuery(i, "0, [ ]"));
-        assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, buildQuery(i, "1, [ ]"));
-        assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, buildQuery(i, "\"\", [ ]"));
-        assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, buildQuery(i, "{ }, [ ]"));
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN ZIP()"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN ZIP([ ])"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN ZIP([ ], [ ], [ ])");
 
-        assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, buildQuery(i, "[ 1 ], [ ]"));
-        assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, buildQuery(i, "[ 1 ], [ 1, 2 ]"));
-        assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, buildQuery(i, "[ ], [ 1, 2 ]"));
-      }
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ZIP([ ], null)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ZIP([ ], false)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ZIP([ ], true)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ZIP([ ], 0)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ZIP([ ], 1)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ZIP([ ], \"\")");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ZIP([ ], { })");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ZIP(null, [ ])");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ZIP(false, [ ])");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ZIP(true, [ ])");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ZIP(0, [ ])");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ZIP(1, [ ])");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ZIP(\"\", [ ])");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ZIP({ }, [ ])");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ZIP([ 1 ], [ ])");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ZIP([ 1 ], [ 1, 2 ])");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ZIP([ ], [ 1, 2 ])");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3772,56 +2536,56 @@ function ahuacatlFunctionsTestSuite () {
           expected: [ true ]
         },
         {
-          doc: {a:1,b:2},
-          examples: {a:1},
+          doc: { a: 1, b: 2 },
+          examples: { a: 1 },
           flag: true,
           expected: [ 0 ]
         },
         {
-          doc: {a:1,b:2},
-          examples: {b:2},
+          doc: { a: 1, b: 2 },
+          examples: { b: 2 },
           flag: true,
           expected: [ 0 ]
         },
         {
-          doc: {a:1,b:2 },
+          doc: { a: 1, b: 2 },
           examples: { },
           flag: true,
           expected: [ 0 ]
         },
         {
-          doc: {a:1,b:2 },
-          examples: {a:1,b:2,c:3},
+          doc: { a: 1, b: 2 },
+          examples: { a: 1, b: 2, c: 3 },
           flag: true,
           expected: [ -1 ]
         },
         {
-          doc: {a:1,b:2 },
-          examples: {a:1,b:2,c:3},
+          doc: { a: 1, b: 2 },
+          examples: { a: 1, b: 2, c: 3 },
           flag: null,
           expected: [ false ]
         },
         {
-          doc: {a:1,b:2 },
-          examples: {c:3},
+          doc: { a: 1, b: 2 },
+          examples: { c: 3 },
           flag: null,
           expected: [ false ]
         },
         {
-          doc: {a:1,b:2 },
-          examples: {c:3},
+          doc: { a: 1, b: 2 },
+          examples: { c: 3 },
           flag: true,
           expected: [ -1 ]
         },
         {
-          doc: {a:1,b:2 },
-          examples: {a:null,b:2 },
+          doc: { a: 1, b: 2 },
+          examples: { a: null, b: 2 },
           flag: null,
           expected: [ false ]
         },
         {
-          doc: {b:2 },
-          examples: {a:null,b:2 },
+          doc: { b: 2 },
+          examples: { a: null, b: 2 },
           flag: null,
           expected: [ true ]
         },
@@ -3894,12 +2658,12 @@ function ahuacatlFunctionsTestSuite () {
       ];
 
       tests.forEach(function (data) {
-        let query = "RETURN NOOPT(MATCHES(" + JSON.stringify(data.doc) + ", " + JSON.stringify(data.examples);
+        let query = "RETURN MATCHES(" + JSON.stringify(data.doc) + ", " + JSON.stringify(data.examples);
         if (data.flag !== null) {
-          query += ", " + JSON.stringify(data.flag) + "))";
+          query += ", " + JSON.stringify(data.flag) + ")";
         }
         else {
-          query += "))";
+          query += ")";
         }
         let actual = getQueryResults(query);
         assertEqual(data.expected, actual);
@@ -3951,14 +2715,6 @@ function ahuacatlFunctionsTestSuite () {
         else {
           assertEqual(value[0].toFixed(4), actual[0].toFixed(4));
         }
-
-        actual = getQueryResults("RETURN NOOPT(VARIANCE_POPULATION(" + JSON.stringify(value[1]) + "))");
-        if (value[0] === null) {
-          assertNull(actual[0]);
-        }
-        else {
-          assertEqual(value[0].toFixed(4), actual[0].toFixed(4));
-        }
       });
     },
 
@@ -3974,14 +2730,6 @@ function ahuacatlFunctionsTestSuite () {
       assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN VARIANCE_POPULATION(3)"); 
       assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN VARIANCE_POPULATION(\"yes\")"); 
       assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN VARIANCE_POPULATION({ })"); 
-
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(VARIANCE_POPULATION())"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(VARIANCE_POPULATION([ ], 2))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(VARIANCE_POPULATION(null))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(VARIANCE_POPULATION(false))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(VARIANCE_POPULATION(3))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(VARIANCE_POPULATION(\"yes\"))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(VARIANCE_POPULATION({ }))"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4024,14 +2772,6 @@ function ahuacatlFunctionsTestSuite () {
         else {
           assertEqual(value[0].toFixed(4), actual[0].toFixed(4));
         }
-
-        actual = getQueryResults("RETURN NOOPT(VARIANCE_SAMPLE(" + JSON.stringify(value[1]) + "))");
-        if (value[0] === null) {
-          assertNull(actual[0]);
-        }
-        else {
-          assertEqual(value[0].toFixed(4), actual[0].toFixed(4));
-        }
       });
     },
 
@@ -4047,14 +2787,6 @@ function ahuacatlFunctionsTestSuite () {
       assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN VARIANCE_SAMPLE(3)"); 
       assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN VARIANCE_SAMPLE(\"yes\")"); 
       assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN VARIANCE_SAMPLE({ })"); 
-
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(VARIANCE_SAMPLE())");
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(VARIANCE_SAMPLE([ ], 2))");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(VARIANCE_SAMPLE(null))");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(VARIANCE_SAMPLE(false))");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(VARIANCE_SAMPLE(3))");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(VARIANCE_SAMPLE(\"yes\"))");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(VARIANCE_SAMPLE({ }))");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4102,14 +2834,6 @@ function ahuacatlFunctionsTestSuite () {
         else {
           assertEqual(value[0].toFixed(4), actual[0].toFixed(4));
         }
-
-        actual = getQueryResults("RETURN NOOPT(STDDEV_POPULATION(" + JSON.stringify(value[1]) + "))");
-        if (value[0] === null) {
-          assertNull(actual[0]);
-        }
-        else {
-          assertEqual(value[0].toFixed(4), actual[0].toFixed(4));
-        }
       });
     },
 
@@ -4125,14 +2849,6 @@ function ahuacatlFunctionsTestSuite () {
       assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN STDDEV_POPULATION(3)"); 
       assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN STDDEV_POPULATION(\"yes\")"); 
       assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN STDDEV_POPULATION({ })"); 
-
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(STDDEV_POPULATION())");
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(STDDEV_POPULATION([ ], 2))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(STDDEV_POPULATION(null))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(STDDEV_POPULATION(false))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(STDDEV_POPULATION(3))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(STDDEV_POPULATION(\"yes\"))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(STDDEV_POPULATION({ }))"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4180,14 +2896,6 @@ function ahuacatlFunctionsTestSuite () {
         else {
           assertEqual(value[0].toFixed(4), actual[0].toFixed(4));
         }
-
-        actual = getQueryResults("RETURN NOOPT(STDDEV_SAMPLE(" + JSON.stringify(value[1]) + "))");
-        if (value[0] === null) {
-          assertNull(actual[0]);
-        }
-        else {
-          assertEqual(value[0].toFixed(4), actual[0].toFixed(4));
-        }
       });
     },
 
@@ -4203,14 +2911,6 @@ function ahuacatlFunctionsTestSuite () {
       assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN STDDEV_SAMPLE(3)"); 
       assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN STDDEV_SAMPLE(\"yes\")"); 
       assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN STDDEV_SAMPLE({ })"); 
-
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(STDDEV_SAMPLE())");
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(STDDEV_SAMPLE([ ], 2))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(STDDEV_SAMPLE(null))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(STDDEV_SAMPLE(false))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(STDDEV_SAMPLE(3))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(STDDEV_SAMPLE(\"yes\"))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(STDDEV_SAMPLE({ }))"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////

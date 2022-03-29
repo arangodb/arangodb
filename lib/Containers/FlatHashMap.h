@@ -20,20 +20,17 @@
 ///
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
-
 #pragma once
 
 #include <absl/container/flat_hash_map.h>
 
-namespace arangodb {
-namespace containers {
+namespace arangodb::containers {
 
-template<typename T, typename V,
-         typename Hash =
-             ::iresearch_absl::container_internal::hash_default_hash<T>,
-         typename Eq = ::iresearch_absl::container_internal::hash_default_eq<T>,
-         typename Allocator = std::allocator<T>>
-using FlatHashMap = ::iresearch_absl::flat_hash_map<T, V, Hash, Eq, Allocator>;
+template<class K, class V,
+         class Hash = typename absl::flat_hash_map<K, V>::hasher,
+         class Eq = typename absl::flat_hash_map<K, V, Hash>::key_equal,
+         class Allocator =
+             typename absl::flat_hash_map<K, V, Hash, Eq>::allocator_type>
+using FlatHashMap = absl::flat_hash_map<K, V, Hash, Eq, Allocator>;
 
-}
-}  // namespace arangodb
+}  // namespace arangodb::containers

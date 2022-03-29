@@ -190,7 +190,7 @@ inline bool canHandleValue(
 
 // returns 'context' in case if can't find the specified 'field'
 inline arangodb::iresearch::FieldMeta const* findMeta(
-    irs::string_ref const& key, arangodb::iresearch::FieldMeta const* context) {
+    irs::string_ref key, arangodb::iresearch::FieldMeta const* context) {
   TRI_ASSERT(context);
 
   auto const* meta = context->_fields.findPtr(key);

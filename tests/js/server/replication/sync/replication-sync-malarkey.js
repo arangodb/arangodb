@@ -70,8 +70,10 @@ function BaseTestConfig () {
       let c = db[cn];
       let figures = c.figures(true).engine;
 
+      // count returns a stored value, and doesn't iterate over the documents in the collection
       assertEqual(expected, c.count(), figures);
-      assertEqual(expected, c.toArray().length, figures);
+      // iterate the documents in the collection, but don't return them in full (too expensive)
+      assertEqual(expected, db._query(`FOR doc IN ${c.name()} RETURN 1`).toArray().length, figures);
       assertEqual(expected, figures.documents, figures);
       assertEqual("primary", figures.indexes[0].type, figures);
       figures.indexes.forEach((idx) => {
@@ -191,7 +193,7 @@ function BaseTestConfig () {
       let c = db._create(cn);
       c.ensureIndex({ type: "persistent", fields: ["value"], unique: true });
 
-      // create connection on follower too
+      // create collection on follower too
       connectToFollower();
       db._flushCache();
 
@@ -228,7 +230,7 @@ function BaseTestConfig () {
     testMoreOnLeader: function () {
       let c = db._create(cn);
 
-      // create connection on follower too
+      // create collection on follower too
       connectToFollower();
       db._flushCache();
 
@@ -265,7 +267,7 @@ function BaseTestConfig () {
     testMoreOnFollower: function () {
       let c = db._create(cn);
 
-      // create connection on follower too
+      // create collection on follower too
       connectToFollower();
       db._flushCache();
 
@@ -302,7 +304,7 @@ function BaseTestConfig () {
     testDifferentDocuments: function () {
       let c = db._create(cn);
 
-      // create connection on follower too
+      // create collection on follower too
       connectToFollower();
       db._flushCache();
 
@@ -339,7 +341,7 @@ function BaseTestConfig () {
     testLargeDocuments: function () {
       let c = db._create(cn);
 
-      // create connection on follower too
+      // create collection on follower too
       connectToFollower();
       db._flushCache();
 
@@ -353,7 +355,7 @@ function BaseTestConfig () {
       connectToLeader();
       let payload = Array(512).join("x");
       let doc = {};
-      for (let i = 0; i < 100; ++i) {
+      for (let i = 0; i < 80; ++i) {
         doc["test" + i] = payload;
       }
       let docs = [];
@@ -382,7 +384,7 @@ function BaseTestConfig () {
     testLargeDocumentsWithEvilKeys: function () {
       let c = db._create(cn);
 
-      // create connection on follower too
+      // create collection on follower too
       connectToFollower();
       db._flushCache();
 
@@ -430,7 +432,7 @@ function BaseTestConfig () {
     
     testInsertRemoveInsertRemove: function () {
       let c = db._create(cn);
-      // create connection on follower too
+      // create collection on follower too
       connectToFollower();
       db._flushCache();
 

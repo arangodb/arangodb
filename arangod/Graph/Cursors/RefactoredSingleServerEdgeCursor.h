@@ -66,7 +66,7 @@ template<class StepType>
 class RefactoredSingleServerEdgeCursor {
  public:
   struct LookupInfo {
-    LookupInfo(IndexAccessor* accessor);
+    explicit LookupInfo(IndexAccessor* accessor);
 
     ~LookupInfo();
 
@@ -82,12 +82,16 @@ class RefactoredSingleServerEdgeCursor {
 
     size_t getCursorID() const;
 
+    uint16_t coveringIndexPosition() const noexcept;
+
     void calculateIndexExpressions(aql::Ast* ast, aql::ExpressionContext& ctx);
 
    private:
     IndexAccessor* _accessor;
 
     std::unique_ptr<IndexIterator> _cursor;
+
+    uint16_t _coveringIndexPosition;
   };
 
   enum Direction { FORWARD, BACKWARD };
@@ -115,6 +119,8 @@ class RefactoredSingleServerEdgeCursor {
   // Only works with hardcoded variables
   arangodb::aql::FixedVarExpressionContext& _expressionCtx;
 
+  // TODO [GraphRefactor]: This is currently unused. Ticket: #GORDO-1364
+  // Will be implemented in the future (Performance Optimization).
   bool _requiresFullDocument;
 
  public:

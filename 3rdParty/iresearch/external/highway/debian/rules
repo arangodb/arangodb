@@ -1,6 +1,0 @@
-#!/usr/bin/make -f
-%:
-	dh $@ --buildsystem=cmake
-
-override_dh_auto_configure:
-	dh_auto_configure -- -DHWY_SYSTEM_GTEST=ON

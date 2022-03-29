@@ -117,14 +117,15 @@ TEST_F(EstablishLeadershipTest, excluded_follower) {
 
   auto config = LogConfig{2, 2, 2, false};
   auto participants = std::unordered_map<ParticipantId, ParticipantFlags>{
-      {"leader", {}}, {"follower", {.excluded = true}}};
+      {"leader", {}}, {"follower", {.allowedInQuorum = false}}};
   auto participantsConfig =
       std::make_shared<ParticipantsConfig>(ParticipantsConfig{
           .generation = 1,
           .participants = std::move(participants),
       });
   auto leader = leaderLog->becomeLeader(config, "leader", LogTerm{4},
-                                        {follower}, participantsConfig);
+                                        {follower}, participantsConfig,
+                                        std::make_shared<FakeFailureOracle>());
 
   auto f = leader->waitForLeadership();
   {

@@ -104,12 +104,12 @@ void V8ShellFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "--javascript.startup-directory",
       "startup paths containing the JavaScript files",
       new StringParameter(&_startupDirectory),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options->addOption(
       "--javascript.client-module", "client module to use at startup",
       new StringParameter(&_clientModule),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options->addOption(
       "--javascript.copy-directory",
@@ -121,7 +121,7 @@ void V8ShellFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "--javascript.module-directory",
       "additional paths containing JavaScript modules",
       new VectorParameter<StringParameter>(&_moduleDirectories),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options->addOption("--javascript.current-module-directory",
                      "add current directory to module path",

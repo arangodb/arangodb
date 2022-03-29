@@ -61,6 +61,8 @@ option(USE_STRICT_OPENSSL_VERSION "use strictly required OpenSSL version (from .
 
 option(USE_MINIMAL_DEBUGINFO "use minimal debug symbols for builds containing debug information" OFF)
 
+find_package(Git 1.5.3 REQUIRED)
+
 # don't use standalone boost asio
 # use this when asio is included outside of Boost
 # add_definitions("-DARANGODB_STANDALONE_ASIO=0")
@@ -1229,10 +1231,6 @@ endif ()
 ## 3RD PARTY
 ################################################################################
 
-# ------------------------------------------------------------------------------
-# IResearch
-# ------------------------------------------------------------------------------
-
 # 3rdParty exports:
 #
 # V8_VERSION
@@ -1250,6 +1248,13 @@ endif ()
 add_definitions(-DBOOST_UUID_RANDOM_PROVIDER_FORCE_POSIX=1) #fix random provider
 add_definitions(-DBOOST_ALL_NO_LIB=1) #disable boost autolink on windows
 add_subdirectory(3rdParty)
+link_libraries(
+  absl::flat_hash_set
+  absl::flat_hash_map
+  absl::node_hash_set
+  absl::node_hash_map
+)
+
 
 add_definitions("-DARANGODB_BOOST_VERSION=\"${BOOST_VERSION}\"")
 
@@ -1382,7 +1387,6 @@ list(INSERT SYSTEM_LIBRARIES 0
   ${SYS_LIBS}
   ${CMAKE_DL_LIBS}
   ${CMAKE_THREAD_LIBS_INIT}
-  absl-static
 )
 
 add_subdirectory(lib)

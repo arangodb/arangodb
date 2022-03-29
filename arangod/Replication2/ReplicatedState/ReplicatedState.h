@@ -23,6 +23,8 @@
 
 #pragma once
 
+#include <map>
+
 #include "Replication2/ReplicatedState/ReplicatedStateToken.h"
 #include "Replication2/ReplicatedState/ReplicatedStateTraits.h"
 #include "Replication2/ReplicatedState/StateStatus.h"
@@ -30,11 +32,15 @@
 
 #include "Basics/Guarded.h"
 #include "Replication2/DeferredExecution.h"
+#include "Replication2/LoggerContext.h"
 
 namespace arangodb::futures {
 template<typename T>
 class Future;
-}
+template<typename T>
+class Promise;
+struct Unit;
+}  // namespace arangodb::futures
 namespace arangodb {
 class Result;
 }
@@ -44,6 +50,7 @@ struct ReplicatedLog;
 struct ILogFollower;
 struct ILogLeader;
 struct ILogParticipant;
+struct LogUnconfiguredParticipant;
 }  // namespace replicated_log
 
 namespace replicated_state {
@@ -60,18 +67,20 @@ struct ReplicatedStateBase {
   virtual void flush(StateGeneration plannedGeneration) = 0;
   virtual void start(std::unique_ptr<ReplicatedStateToken> token) = 0;
   virtual void forceRebuild() = 0;
-  virtual auto getStatus() -> std::optional<StateStatus> = 0;
-  auto getLeader() -> std::shared_ptr<IReplicatedLeaderStateBase> {
+  [[nodiscard]] virtual auto getStatus() -> std::optional<StateStatus> = 0;
+  [[nodiscard]] auto getLeader()
+      -> std::shared_ptr<IReplicatedLeaderStateBase> {
     return getLeaderBase();
   }
-  auto getFollower() -> std::shared_ptr<IReplicatedFollowerStateBase> {
+  [[nodiscard]] auto getFollower()
+      -> std::shared_ptr<IReplicatedFollowerStateBase> {
     return getFollowerBase();
   }
 
  private:
-  virtual auto getLeaderBase()
+  [[nodiscard]] virtual auto getLeaderBase()
       -> std::shared_ptr<IReplicatedLeaderStateBase> = 0;
-  virtual auto getFollowerBase()
+  [[nodiscard]] virtual auto getFollowerBase()
       -> std::shared_ptr<IReplicatedFollowerStateBase> = 0;
 };
 
@@ -86,7 +95,8 @@ struct ReplicatedState final
   using CoreType = typename ReplicatedStateTraits<S>::CoreType;
 
   explicit ReplicatedState(std::shared_ptr<replicated_log::ReplicatedLog> log,
-                           std::shared_ptr<Factory> factory);
+                           std::shared_ptr<Factory> factory,
+                           LoggerContext loggerContext);
 
   /**
    * Forces to rebuild the state machine depending on the replicated log state.
@@ -98,14 +108,14 @@ struct ReplicatedState final
    * Returns the follower state machine. Returns nullptr if no follower state
    * machine is present. (i.e. this server is not a follower)
    */
-  auto getFollower() const -> std::shared_ptr<FollowerType>;
+  [[nodiscard]] auto getFollower() const -> std::shared_ptr<FollowerType>;
   /**
    * Returns the leader state machine. Returns nullptr if no leader state
    * machine is present. (i.e. this server is not a leader)
    */
-  auto getLeader() const -> std::shared_ptr<LeaderType>;
+  [[nodiscard]] auto getLeader() const -> std::shared_ptr<LeaderType>;
 
-  auto getStatus() -> std::optional<StateStatus> final;
+  [[nodiscard]] auto getStatus() -> std::optional<StateStatus> final;
 
   /**
    * Rebuilds the managers. Called when the managers participant is gone.
@@ -114,10 +124,16 @@ struct ReplicatedState final
 
   struct StateManagerBase {
     virtual ~StateManagerBase() = default;
-    virtual auto getStatus() const -> StateStatus = 0;
+    virtual void run() = 0;
+
+    using WaitForAppliedPromise = futures::Promise<futures::Unit>;
+    using WaitForAppliedQueue = std::multimap<LogIndex, WaitForAppliedPromise>;
+
+    [[nodiscard]] virtual auto getStatus() const -> StateStatus = 0;
     [[nodiscard]] virtual auto resign() && noexcept
-        -> std::pair<std::unique_ptr<CoreType>,
-                     std::unique_ptr<ReplicatedStateToken>> = 0;
+        -> std::tuple<std::unique_ptr<CoreType>,
+                      std::unique_ptr<ReplicatedStateToken>,
+                      DeferredAction> = 0;
   };
 
  private:
@@ -143,6 +159,11 @@ struct ReplicatedState final
                      std::unique_ptr<CoreType>,
                      std::unique_ptr<ReplicatedStateToken> token)
         -> DeferredAction;
+    auto runUnconfigured(
+        std::shared_ptr<replicated_log::LogUnconfiguredParticipant>
+            unconfiguredParticipant,
+        std::unique_ptr<CoreType> core,
+        std::unique_ptr<ReplicatedStateToken> token) -> DeferredAction;
 
     auto rebuild(std::unique_ptr<CoreType> core,
                  std::unique_ptr<ReplicatedStateToken> token) -> DeferredAction;
@@ -155,6 +176,8 @@ struct ReplicatedState final
     std::shared_ptr<StateManagerBase> currentManager = nullptr;
   };
   Guarded<GuardedData> guardedData;
+  LoggerContext const loggerContext;
+  DatabaseID const database;
 };
 
 template<typename S>

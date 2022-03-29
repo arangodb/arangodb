@@ -26,8 +26,6 @@
 #include "EdgeData.h"
 #include <Basics/StaticStrings.h>
 
-#include "velocypack/velocypack-aliases.h"
-
 using namespace arangodb::pregel::algos::accumulators;
 
 void EdgeData::reset(VPackSlice const& doc) {

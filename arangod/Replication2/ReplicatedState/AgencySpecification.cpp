@@ -28,7 +28,6 @@
 #include "Basics/voc-errors.h"
 #include "velocypack/Builder.h"
 #include "velocypack/Iterator.h"
-#include "velocypack/velocypack-aliases.h"
 
 #include "Logger/LogMacros.h"
 
@@ -174,10 +173,11 @@ void Target::toVelocyPack(velocypack::Builder& builder) const {
 auto Target::fromVelocyPack(velocypack::Slice slice) -> Target {
   auto id = slice.get(StaticStrings::Id).extract<LogId>();
   auto participants = std::unordered_map<ParticipantId, Participant>{};
-  for (auto [key, value] :
-       velocypack::ObjectIterator(slice.get(StaticStrings::Participants))) {
-    auto participant = Participant::fromVelocyPack(value);
-    participants.emplace(key.copyString(), participant);
+  if (auto pslice = slice.get(StaticStrings::Participants); !pslice.isNone()) {
+    for (auto [key, value] : velocypack::ObjectIterator(pslice)) {
+      auto participant = Participant::fromVelocyPack(value);
+      participants.emplace(key.copyString(), participant);
+    }
   }
   auto properties =
       Properties::fromVelocyPack(slice.get(StaticStrings::Properties));

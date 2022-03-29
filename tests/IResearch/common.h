@@ -39,7 +39,6 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a TRI_vocbase_t that will call shutdown() on deallocation
@@ -95,7 +94,7 @@ v8::Isolate* v8Isolate();
 
 bool assertRules(
     TRI_vocbase_t& vocbase, std::string const& queryString,
-    std::vector<int> expectedRulesIds,
+    std::vector<int> const& expectedRulesIds,
     std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
     std::string const& optionsString = "{}");
 

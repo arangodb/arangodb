@@ -44,7 +44,7 @@ function optimizerRuleTestSuite () {
       for (let i = 0; i < 2000; ++i) {
         c.insert({ _key: "test" + i, value1: i, value2: i });
       }
-      c.ensureIndex({ type: "skiplist", fields: ["value1"] });
+      c.ensureIndex({ type: "persistent", fields: ["value1"] });
     },
     
     tearDownAll : function () {
@@ -183,12 +183,86 @@ function optimizerRuleTestSuite () {
         assertEqual(query[1], result, query);
       });
     },
+    
+    testNestedLoopFilters : function () {
+      let queries = [ 
+        `FOR doc1 IN ${cn} FILTER doc1.abc >= 35 FOR doc2 IN ${cn} RETURN doc1`,
+        `FOR doc1 IN ${cn} FILTER doc1.abc >= 35 FILTER doc1.xyz < 19 FOR doc2 IN ${cn} RETURN doc1`,
+        `FOR doc1 IN ${cn} FILTER doc1.abc >= 35 FOR doc2 IN ${cn} FILTER doc2.xyz < 12 RETURN doc1`,
+        `FOR doc1 IN ${cn} FILTER doc1.abc >= 35 FILTER doc1.xyz < 19 FOR doc2 IN ${cn} FILTER doc2.xyz < 12 FILTER doc2.abc > 4 RETURN doc1`,
+        `FOR doc1 IN ${cn} FOR doc2 IN ${cn} FILTER doc2.xyz < 12 RETURN doc1`,
+        `FOR doc1 IN ${cn} FOR doc2 IN ${cn} FILTER doc2.xyz < 12 FILTER doc2.abc > 4 RETURN doc1`,
+        `FOR doc1 IN ${cn} FOR doc2 IN ${cn} FILTER doc1.abc == doc2.abc RETURN doc1`,
+        `FOR i IN 1..10 FOR doc1 IN ${cn} FILTER doc1.abc == i FOR doc2 IN ${cn} FILTER doc2.abc == doc1.abc RETURN doc1`,
+        `FOR i IN 1..10 FOR doc1 IN ${cn} FILTER doc1.abc == i FOR doc2 IN ${cn} FILTER doc2.abc == i RETURN doc1`,
+      ];
+
+      queries.forEach(function(query) {
+        let result = AQL_EXPLAIN(query, null, { optimizer: { rules: [ "-interchange-adjacent-enumerations" ] } });
+        assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
+        // all filters should be removed here, and moved into the respective FOR loops
+        assertEqual(0, result.plan.nodes.filter((node) => node.type === 'FilterNode').length);
+      });
+    },
+    
+    testFiltersWithIndex : function () {
+      let queries = [ 
+        `FOR doc1 IN ${cn} FILTER doc1.value1 == 35 && doc1.abc >= 35 RETURN doc1`,
+        `FOR doc1 IN ${cn} FILTER doc1.value1 >= 35 && doc1.abc >= 35 RETURN doc1`,
+        `FOR doc1 IN ${cn} FILTER doc1.value1 IN [1, 2] && doc1.abc >= 35 RETURN doc1`,
+        `FOR doc1 IN ${cn} FILTER doc1.value1 >= 35 && doc1.value1 < 44 FILTER doc1.abc >= 35 RETURN doc1`,
+        `FOR doc1 IN ${cn} FILTER doc1.value1 == 35 FILTER doc1.abc >= 35 FOR doc2 IN ${cn} FILTER doc2.value1 < doc1.value1 FILTER doc2.abc == 99 RETURN doc1`,
+      ];
+
+      queries.forEach(function(query) {
+        let result = AQL_EXPLAIN(query, null, { optimizer: { rules: [ "-interchange-adjacent-enumerations" ] } });
+        assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
+        assertNotEqual(-1, result.plan.rules.indexOf("use-indexes"), query);
+        assertNotEqual(0, result.plan.nodes.filter((node) => node.type === 'IndexNode').length, query);
+        // all filters should be removed here, and moved into the respective FOR loops
+        assertEqual(0, result.plan.nodes.filter((node) => node.type === 'FilterNode').length, query);
+        assertEqual(0, result.plan.nodes.filter((node) => node.type === 'EnumerateCollectionNode').length, query);
+      });
+    },
+    
+    testFiltersNoEarlyPruning : function () {
+      let queries = [
+        // cannot pull FILTER into FOR loop, because "inner" is not available in FOR loop yet
+        `FOR doc1 IN ${cn} FOR inner IN 1..10 FILTER doc1.abc == inner RETURN doc1`,
+        `FOR doc1 IN ${cn} FOR inner IN 1..10 FILTER doc1.xyz == inner RETURN doc1`,
+      ];
+
+      queries.forEach(function(query) {
+        let result = AQL_EXPLAIN(query, null, { optimizer: { rules: [ "-interchange-adjacent-enumerations" ] } });
+        assertEqual(-1, result.plan.rules.indexOf(ruleName), query);
+        assertEqual(-1, result.plan.rules.indexOf("use-indexes"), query);
+        assertEqual(1, result.plan.nodes.filter((node) => node.type === 'EnumerateCollectionNode').length, query);
+        assertNotEqual(0, result.plan.nodes.filter((node) => node.type === 'FilterNode').length, query);
+      });
+    },
+    
+    testFiltersWithIndexNoEarlyPruning : function () {
+      let queries = [
+        // cannot pull FILTER into FOR loop, because "inner" is not available in FOR loop yet
+        `FOR doc1 IN ${cn} FILTER doc1.value1 == 35 FOR inner IN 1..10 FILTER doc1.abc == inner RETURN doc1`,
+      ];
+
+      queries.forEach(function(query) {
+        let result = AQL_EXPLAIN(query, null, { optimizer: { rules: [ "-interchange-adjacent-enumerations" ] } });
+        assertEqual(-1, result.plan.rules.indexOf(ruleName), query);
+        assertNotEqual(-1, result.plan.rules.indexOf("use-indexes"), query);
+        assertEqual(1, result.plan.nodes.filter((node) => node.type === 'IndexNode').length, query);
+        assertNotEqual(0, result.plan.nodes.filter((node) => node.type === 'FilterNode').length, query);
+      });
+    },
 
     testVariableUsage : function () {
       let queries = [ 
         `FOR doc IN ${cn} FILTER doc.abc FOR inner IN doc.abc RETURN inner`,
         `FOR doc IN ${cn} FILTER doc.abc FILTER doc.abc FOR inner IN doc.abc RETURN inner`,
         `FOR doc IN ${cn} FILTER doc.abc FILTER doc.xyz FOR inner IN doc.xyz RETURN inner`,
+        `FOR doc IN ${cn} FOR inner IN 1..10 FILTER doc.abc == inner + 1 RETURN inner`,
+        `FOR doc IN ${cn} FOR inner IN 1..10 FILTER doc.abc == inner + 1 FILTER doc.xyz == inner + 2 RETURN inner`,
       ];
 
       queries.forEach(function(query) {
@@ -252,7 +326,7 @@ function optimizerRuleIndexesTestSuite () {
       for (let i = 0; i < 2000; ++i) {
         c.insert({ _key: "test" + i, value1: i, value2: i, value3: i });
       }
-      c.ensureIndex({ type: "skiplist", fields: ["value1", "value2"] });
+      c.ensureIndex({ type: "persistent", fields: ["value1", "value2"] });
     },
     
     tearDownAll : function () {
