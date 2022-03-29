@@ -84,6 +84,8 @@ struct alignas(64) ReplicatedLog {
   auto operator=(ReplicatedLog const&) -> ReplicatedLog& = delete;
   auto operator=(ReplicatedLog&&) -> ReplicatedLog& = delete;
 
+  auto getId() const noexcept -> LogId;
+  auto getGlobalLogId() const noexcept -> GlobalLogIdentifier const&;
   auto becomeLeader(
       LogConfig config, ParticipantId id, LogTerm term,
       std::vector<std::shared_ptr<AbstractFollower>> const& follower,
@@ -120,6 +122,7 @@ struct alignas(64) ReplicatedLog {
   }
 
  private:
+  GlobalLogIdentifier const _logId;
   LoggerContext const _logContext = LoggerContext(Logger::REPLICATION2);
   mutable std::mutex _mutex;
   std::shared_ptr<ILogParticipant> _participant;

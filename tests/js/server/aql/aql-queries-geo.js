@@ -69,40 +69,31 @@ function ahuacatlLegacyGeoTestSuite () {
 
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
-
     setUpAll : function () {
-      var lat, lon;
       db._drop("UnitTestsAhuacatlLocations");
       db._drop("UnitTestsAhuacatlLocationsNon");
 
       locations = db._create("UnitTestsAhuacatlLocations");
       let docs = [];
-      for (lat = -40; lat <= 40; ++lat) {
-        for (lon = -40; lon <= 40; ++lon) {
+      for (let lat = -40; lat <= 40; ++lat) {
+        for (let lon = -40; lon <= 40; ++lon) {
           docs.push({"latitude" : lat, "longitude" : lon });
         }
       }
       locations.insert(docs);
 
-      locations.ensureGeoIndex("latitude", "longitude");
+      locations.ensureIndex({ type: "geo", fields: ["latitude", "longitude"] });
 
       //locations without index
       locationsNon = db._create("UnitTestsAhuacatlLocationsNon");
       docs = [];
-      for (lat = -40; lat <= 40; ++lat) {
-        for (lon = -40; lon <= 40; ++lon) {
+      for (let lat = -40; lat <= 40; ++lat) {
+        for (let lon = -40; lon <= 40; ++lon) {
           docs.push({"latitude" : lat, "longitude" : lon });
         }
       }
       locationsNon.insert(docs);
     },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
 
     tearDownAll: function () {
       db._drop("UnitTestsAhuacatlLocations");
@@ -877,8 +868,8 @@ function pointsTestSuite() {
     ////////////////////////////////////////////////////////////////////////////////
 
     testContainsPolygonNested: function () {
-      const polygon1 = [[[-11.5, 12.5], [-11.5, 13.5], [-10.5, 13.5], [-10.5, 12.5], [-11.5, 12.5]]];
-      const polygon2 = [[[11.5, -12.5], [11.5, -13.5], [10.5, -13.5], [10.5, -12.5], [11.5, -12.5]]];
+      const polygon1 = [[[-11.5, 12.5], [-10.5, 12.5], [-10.5, 13.5], [-11.5, 13.5], [-11.5, 12.5]]];
+      const polygon2 = [[[11.5, -12.5], [10.5, -12.5], [10.5, -13.5], [11.5, -13.5], [11.5, -12.5]]];
 
       runQuery({
         string: `
@@ -936,8 +927,8 @@ function pointsTestSuite() {
     ////////////////////////////////////////////////////////////////////////////////
 
     testIntersectsPolygonNested: function () {
-      const polygon1 = [[[-11.5, 12.5], [-11.5, 13.5], [-10.5, 13.5], [-10.5, 12.5], [-11.5, 12.5]]];
-      const polygon2 = [[[11.5, -12.5], [11.5, -13.5], [10.5, -13.5], [10.5, -12.5], [11.5, -12.5]]];
+      const polygon1 = [[[-11.5, 12.5], [-10.5, 12.5], [-10.5, 13.5], [-11.5, 13.5], [-11.5, 12.5]]];
+      const polygon2 = [[[11.5, -12.5], [10.5, -12.5], [10.5, -13.5], [11.5, -13.5], [11.5, -12.5]]];
 
       runQuery({
         string: `
@@ -990,7 +981,7 @@ function geoJsonTestSuite() {
     { "type": "MultiPolygon", "coordinates": [
       [[[102.0, 2.0], [103.0, 2.0], [103.0, 3.0], [102.0, 3.0], [102.0, 2.0]]],
       [[[100.0, 0.0], [101.0, 0.0], [101.0, 1.0], [100.0, 1.0], [100.0, 0.0]],
-        [[100.2, 0.2], [100.2, 0.8], [100.8, 0.8], [100.8, 0.2], [100.2, 0.2]]]]
+        [[100.2, 0.2], [100.8, 0.2], [100.8, 0.8], [100.2, 0.8], [100.2, 0.2]]]]
     }];
   let indonesiaKeys = [];
 
@@ -998,7 +989,7 @@ function geoJsonTestSuite() {
   let emea = [ // TODO implement multi-polygon
     /*{ "type": "MultiPolygon", "coordinates": [ [[[40, 40], [20, 45], [45, 30], [40, 40]]],
       [[[20, 35], [10, 30], [10, 10], [30, 5], [45, 20], [20, 35]],  [[30, 20], [20, 15], [20, 25], [30, 20]]]] }*/
-    { "type": "Polygon", "coordinates": [[[35, 10], [45, 45], [15, 40], [10, 20], [35, 10]], [[20, 30], [35, 35], [30, 20], [20, 30]]] },
+    { "type": "Polygon", "coordinates": [[[35, 10], [45, 45], [15, 40], [10, 20], [35, 10]], [[20, 30], [30, 20], [35, 35], [20, 30]]] },
     { "type": "LineString", "coordinates": [[25, 10], [10, 30], [25, 40]] },
     { "type": "MultiLineString", "coordinates": [[[10, 10], [20, 20], [10, 40]], [[40, 40], [30, 30], [40, 20], [30, 10]]] },
     { "type": "MultiPoint", "coordinates": [[10, 40], [40, 30], [20, 20], [30, 10]] }
@@ -1310,10 +1301,72 @@ function geoFunctionsTestSuite() {
   };
 }
 
+function geoLegacyComparison() {
+
+  function runQuery(query) {
+    return getQueryResults(query.string, query.bindVars || {}, false);
+  }
+
+  let legacy, newStyle;
+
+  const cnLegacy = "UnitTestsAhuacatlGeoLegacy";
+  const cnNewStyle = "UnitTestsAhuacatlGeoNewStyle";
+
+  return {
+    setUp : function() {
+      db._drop(cnLegacy);
+      db._drop(cnNewStyle);
+      legacy = db._create(cnLegacy);
+      legacy.ensureIndex({type:"geo", fields:["geo"], geoJson: true,
+                          legacyPolygons: true});
+      newStyle = db._create(cnNewStyle);
+      newStyle.ensureIndex({type:"geo", fields:["geo"], geoJson: true});
+    },
+
+    tearDown : function() {
+      db._drop(cnLegacy);
+      db._drop(cnNewStyle);
+    },
+
+    testRectangles : function () {
+      let poly = { "type": "Polygon",
+          "coordinates": [[[10, 10], [20, 10], [20, 20], [10, 20], [10, 10]]]
+      };
+      legacy.insert({geo: poly});
+      newStyle.insert({geo: poly});
+      let a = getQueryResults(`FOR d IN ${cnLegacy}
+                                 FILTER GEO_INTERSECTS({type:"Point", coordinates:[15, 10]}, d.geo)
+                                 RETURN d._key`, {}, false);
+      assertEqual(1, a.length);
+      let b = getQueryResults(`FOR d IN ${cnNewStyle}
+                                 FILTER GEO_INTERSECTS({type:"Point", coordinates:[15, 10]}, d.geo)
+                                 RETURN d._key`, {}, false);
+      assertEqual(0, b.length);
+    },
+
+    testLargerThanHalfOfEarth : function() {
+      let poly = { "type": "Polygon",
+          "coordinates": [[[10, 10], [15, 15], [20, 10], [15, 5], [10, 10]]] };
+      legacy.insert({geo: poly});
+      newStyle.insert({geo: poly});
+      let a = getQueryResults(`FOR d IN ${cnLegacy}
+                                 FILTER GEO_INTERSECTS({type:"Point", coordinates:[15, 10]}, d.geo)
+                                 RETURN d._key`, {}, false);
+      assertEqual(1, a.length);
+      let b = getQueryResults(`FOR d IN ${cnNewStyle}
+                                 FILTER GEO_INTERSECTS({type:"Point", coordinates:[15, 10]}, d.geo)
+                                 RETURN d._key`, {}, false);
+      assertEqual(0, b.length);
+    },
+
+  };
+}
+
 jsunity.run(ahuacatlLegacyGeoTestSuite);
 jsunity.run(legacyGeoTestSuite);
 jsunity.run(pointsTestSuite);
 jsunity.run(geoJsonTestSuite);
 jsunity.run(geoFunctionsTestSuite);
+jsunity.run(geoLegacyComparison);
 
 return jsunity.done();

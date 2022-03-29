@@ -25,7 +25,6 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <Basics/application-exit.h>
 #include <Containers/ImmerMemoryPolicy.h>

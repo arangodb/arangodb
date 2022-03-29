@@ -23,15 +23,28 @@
 
 #pragma once
 
+#include <algorithm>
 #include <vector>
+
+#include "Basics/debugging.h"
 
 #include "Containers/details/short_alloc.h"
 
-namespace arangodb {
-namespace containers {
+namespace arangodb::containers {
+
+#if defined(_MSC_VER) && defined(_DEBUG)
+#define MSVC_DEBUG
+#endif
+
+#ifndef MSVC_DEBUG
+constexpr static auto minAlignment = std::size_t{1};
+#else
+// Make Debug-MSVC happy
+constexpr static auto minAlignment = alignof(std::_Container_proxy);
+#endif
 
 template<class T, std::size_t BufSize = 64,
-         std::size_t ElementAlignment = alignof(T)>
+         std::size_t ElementAlignment = std::max(minAlignment, alignof(T))>
 using SmallVector =
     std::vector<T, detail::short_alloc<T, BufSize, ElementAlignment>>;
 
@@ -40,7 +53,7 @@ using SmallVector =
 // neither copyable nor movable.
 // the interface is a subset of std::vector's interface.
 template<class T, std::size_t BufSize = 64,
-         std::size_t ElementAlignment = alignof(T)>
+         std::size_t ElementAlignment = std::max(minAlignment, alignof(T))>
 class SmallVectorWithArena {
  public:
   SmallVectorWithArena() noexcept : _vector{_arena} {
@@ -135,5 +148,4 @@ class SmallVectorWithArena {
   SmallVector<T, BufSize, ElementAlignment> _vector;
 };
 
-}  // namespace containers
-}  // namespace arangodb
+}  // namespace arangodb::containers

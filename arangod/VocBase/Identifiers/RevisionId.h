@@ -68,10 +68,6 @@ class RevisionId final : public arangodb::basics::Identifier {
   /// bytes long
   arangodb::velocypack::ValuePair toValuePair(char* buffer) const;
 
-  /// @brief Write revision ID to string for storage with correct endianness
-  void toPersistent(std::string& buffer) const;
-
- public:
   /// @brief create a not-set revision id
   static constexpr RevisionId none() { return RevisionId{0}; }
 
@@ -106,9 +102,6 @@ class RevisionId final : public arangodb::basics::Identifier {
   /// @brief extract revision from slice; expects either an integer or string,
   /// or an object with a string or integer _rev attribute
   static RevisionId fromSlice(velocypack::Slice slice);
-
-  /// @brief extract revision from persistent storage (proper endianness)
-  static RevisionId fromPersistent(char const* data);
 };
 
 static_assert(sizeof(RevisionId) == sizeof(RevisionId::BaseType),

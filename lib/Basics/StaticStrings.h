@@ -73,6 +73,7 @@ class StaticStrings {
   static std::string const Overwrite;
   static std::string const OverwriteMode;
   static std::string const Compact;
+  static std::string const DontWaitForCommit;
 
   // replication headers
   static std::string const ReplicationHeaderCheckMore;
@@ -125,17 +126,20 @@ class StaticStrings {
   static std::string const DataSourceParameters;
 
   // Index definition fields
-  static std::string const IndexExpireAfter;   // ttl index expire value
-  static std::string const IndexFields;        // index fields
-  static std::string const IndexId;            // index id
-  static std::string const IndexInBackground;  // index in background
-  static std::string const IndexIsBuilding;    // index build in-process
-  static std::string const IndexName;          // index name
-  static std::string const IndexSparse;        // index sparsity marker
-  static std::string const IndexStoredValues;  // index stored values
-  static std::string const IndexType;          // index type
-  static std::string const IndexUnique;        // index uniqueness marker
-  static std::string const IndexEstimates;     // index estimates flag
+  static std::string const
+      IndexDeduplicate;  // index deduplicate flag (for array indexes)
+  static std::string const IndexExpireAfter;     // ttl index expire value
+  static std::string const IndexFields;          // index fields
+  static std::string const IndexId;              // index id
+  static std::string const IndexInBackground;    // index in background
+  static std::string const IndexIsBuilding;      // index build in-process
+  static std::string const IndexName;            // index name
+  static std::string const IndexSparse;          // index sparsity marker
+  static std::string const IndexStoredValues;    // index stored values
+  static std::string const IndexType;            // index type
+  static std::string const IndexUnique;          // index uniqueness marker
+  static std::string const IndexEstimates;       // index estimates flag
+  static std::string const IndexLegacyPolygons;  // index legacyPolygons flag
 
   // static index names
   static std::string const IndexNameEdge;
@@ -147,9 +151,15 @@ class StaticStrings {
 
   // index hint strings
   static std::string const IndexHintDisableIndex;
-  static std::string const IndexHintMaxProjections;
   static std::string const IndexHintOption;
   static std::string const IndexHintOptionForce;
+
+  // query options
+  static std::string const Filter;
+  static std::string const MaxProjections;
+  static std::string const ProducesResult;
+  static std::string const ReadOwnWrites;
+  static std::string const UseCache;
 
   // HTTP headers
   static std::string const Accept;
@@ -222,7 +232,7 @@ class StaticStrings {
   static std::string const ParsedBody;
 
   // collection attributes
-  static std::string const CacheEnabled;
+  static std::string const CacheEnabled;  // also used for indexes
   static std::string const DistributeShardsLike;
   static std::string const Indexes;
   static std::string const IsSmart;
@@ -246,6 +256,7 @@ class StaticStrings {
   static std::string const ReplicationVersion;
   static std::string const ReplicatedLogs;
   static std::string_view const SoftWriteConcern;
+  static std::string_view const EffectiveWriteConcern;
 
   // graph attribute names
   static std::string const GraphCollection;
@@ -274,6 +285,11 @@ class StaticStrings {
   static std::string const FullLocalPrefix;
   static std::string const FullFromPrefix;
   static std::string const FullToPrefix;
+
+  // Graph directions
+  static std::string const GraphDirection;
+  static std::string const GraphDirectionInbound;
+  static std::string const GraphDirectionOutbound;
 
   // Pregel Section Start
 
@@ -400,6 +416,8 @@ class StaticStrings {
 
   // API Strings
   static std::string_view const ApiLogInternal;
+  static std::string_view const ApiLogExternal;
+  static std::string_view const ApiReplicatedStateExternal;
 
   // TODO: remove me after refactor is done
   static std::string const GraphRefactorFlag;

@@ -79,3 +79,8 @@ auto Root::Arango::Current::ReplicatedStates::Database::state(
     replication2::LogId id) const -> std::shared_ptr<const State> {
   return State::make_shared(shared_from_this(), std::to_string(id.id()));
 }
+
+auto Root::Arango::Target::ReplicatedStates::Database::state(
+    replication2::LogId id) const -> std::shared_ptr<const State> {
+  return State::make_shared(shared_from_this(), std::to_string(id.id()));
+}

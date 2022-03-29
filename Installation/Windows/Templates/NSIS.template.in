@@ -34,7 +34,6 @@
 ;--------------------------------
 ; custom defines for the DRY people of us.
 !define TRI_UNINSTALL_REG_PATH "Software\Microsoft\Windows\CurrentVersion\Uninstall\@CPACK_PACKAGE_INSTALL_REGISTRY_KEY@";
-# Comes from WaitForService: !define TRI_SVC_NAME 'ArangoDB'
 ; Put some of the more custom ones in from the CMakeFile:
 @CPACK_ARANGODB_NSIS_DEFINES@
 
@@ -377,7 +376,7 @@ Var AR_RegFlags
 !include "WinMessages.NSH"
 !verbose 4
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Uninstall sutff
+; Uninstall stuff
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;###########################################
@@ -1060,12 +1059,12 @@ Function insert_registration_keys
   ClearErrors
   ${If} $AllowGlobalInstall == "1"
     WriteRegExpandStr HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" "service" "$TRI_INSTALL_SERVICE"
-    IfErrors there_are_erros
+    IfErrors there_are_errors
     WriteRegExpandStr HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" "scopeAll" "$TRI_INSTALL_SCOPE_ALL"
-    IfErrors there_are_erros
+    IfErrors there_are_errors
   ${EndIf}
   Return
-there_are_erros: ;nothing
+there_are_errors: ;nothing
   MessageBox MB_OK "There was an error adding the installation keys to the registry.$\r$\nArangoDB will work fine, but there may be trouble during the uninstallation.$\r$\nPlease contact @CPACK_NSIS_CONTACT@"
 
 FunctionEnd
@@ -1394,49 +1393,4 @@ inst:
   !insertmacro SectionList "InitSection"
 
   ReadEnvStr $PROGRAMDATA ProgramData
-  ; check to see if /D has been used to change
-  ; the install directory by comparing it to the
-  ; install directory that is expected to be the
-  ; default
-  StrCpy $IS_DEFAULT_INSTALLDIR 0
-  StrCmp "$INSTDIR" "@CPACK_NSIS_INSTALL_ROOT@\@CPACK_PACKAGE_INSTALL_DIRECTORY@" 0 +2
-    StrCpy $IS_DEFAULT_INSTALLDIR 1
-
-  StrCpy $SV_ALLUSERS "JustMe"
-  ; if default install dir then change the default
-  ; if it is installed for JustMe
-  StrCmp "$IS_DEFAULT_INSTALLDIR" "1" 0 +2
-    StrCpy $INSTDIR "$DOCUMENTS\@CPACK_PACKAGE_INSTALL_DIRECTORY@"
-
-  ClearErrors
-  UserInfo::GetName
-  IfErrors noLM
-  Pop $0
-  UserInfo::GetAccountType
-  Pop $1
-  StrCmp $1 "Admin" 0 +4
-    SetShellVarContext all
-    ;MessageBox MB_OK 'User "$0" is in the Admin group'
-    StrCpy $SV_ALLUSERS "AllUsers"
-    Goto done
-  StrCmp $1 "Power" 0 +4
-    SetShellVarContext all
-    ;MessageBox MB_OK 'User "$0" is in the Power Users group'
-    StrCpy $SV_ALLUSERS "AllUsers"
-    Goto done
-
-  noLM:
-    StrCpy $SV_ALLUSERS "AllUsers"
-    ;MessageBox MB_OK 'noLM'
-    ;Get installation folder from registry if available
-
-  done:
-  StrCmp $SV_ALLUSERS "AllUsers" 0 +3
-    StrCmp "$IS_DEFAULT_INSTALLDIR" "1" 0 +2
-      StrCpy $INSTDIR "@CPACK_NSIS_INSTALL_ROOT@\@CPACK_PACKAGE_INSTALL_DIRECTORY@"
-
-  StrCmp "@CPACK_NSIS_MODIFY_PATH@" "ON" 0 noOptionsPage
-  ; !insertmacro INSTALLOPTIONS_EXTRACT "NSIS.InstallOptions.ini"
-
-  noOptionsPage:
 FunctionEnd

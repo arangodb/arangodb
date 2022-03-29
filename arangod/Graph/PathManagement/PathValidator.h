@@ -28,6 +28,7 @@
 #include "Graph/PathManagement/PathValidatorOptions.h"
 #include "Graph/Types/UniquenessLevel.h"
 #include "Graph/EdgeDocumentToken.h"
+#include "Graph/Types/ValidationResult.h"
 
 #include <velocypack/Builder.h>
 
@@ -76,11 +77,11 @@ class PathValidator {
   void reset();
 
   // Prune section
-  bool usesPrune() const;
+  [[nodiscard]] bool usesPrune() const;
   void setPruneContext(aql::InputAqlItemRow& inputRow);
 
   // Post filter section
-  bool usesPostFilter() const;
+  [[nodiscard]] bool usesPostFilter() const;
   void setPostFilterContext(aql::InputAqlItemRow& inputRow);
 
   /**
@@ -112,7 +113,6 @@ class PathValidator {
       _uniqueEdges;
 
   PathValidatorOptions _options;
-
   arangodb::velocypack::Builder _tmpObjectBuilder;
 
  private:
@@ -120,12 +120,18 @@ class PathValidator {
       -> ValidationResult;
   auto evaluateVertexRestriction(typename PathStore::Step const& step) -> bool;
 
-  auto exposeUniqueVertices() const
+  [[nodiscard]] auto exposeUniqueVertices() const
       -> ::arangodb::containers::HashSet<VertexRef, std::hash<VertexRef>,
                                          std::equal_to<VertexRef>> const&;
 
   auto evaluateVertexExpression(arangodb::aql::Expression* expression,
                                 arangodb::velocypack::Slice value) -> bool;
+
+  auto checkValidDisjointPath(typename PathStore::Step const& lastStep)
+      -> arangodb::graph::ValidationResult::Type;
+
+  auto isDisjoint() const { return _options.isDisjoint(); }
+  auto isSatelliteLeader() const { return _options.isSatelliteLeader(); }
 };
 }  // namespace graph
 }  // namespace arangodb

@@ -30,20 +30,20 @@
 #include <string>
 #include <utility>
 
-#include <velocypack/velocypack-aliases.h>
 #include <velocypack/velocypack-common.h>
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "Agency/AgencyPaths.h"
 #include "Agency/AsyncAgencyComm.h"
 #include "Agency/TransactionBuilder.h"
-#include "Agency/AgencyPaths.h"
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterTypes.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
-#include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
+#include "VocBase/vocbase.h"
 
 namespace arangodb {
 class Result;
@@ -235,4 +235,114 @@ auto methods::getCurrentSupervision(TRI_vocbase_t& vocbase, LogId id)
                                "Current/ReplicatedLogs/", vocbase.name(), "/",
                                id, "/supervision"));
   return LogCurrentSupervision{from_velocypack, builder.slice()};
+}
+
+namespace {
+auto createReplicatedStateTrx(arangodb::agency::envelope envelope,
+                              DatabaseID const& database,
+                              replicated_state::agency::Target const& spec)
+    -> arangodb::agency::envelope {
+  auto path = paths::target()
+                  ->replicatedStates()
+                  ->database(database)
+                  ->state(spec.id)
+                  ->str();
+
+  return envelope.write()
+      .emplace_object(
+          path, [&](VPackBuilder& builder) { spec.toVelocyPack(builder); })
+      .inc(paths::target()->version()->str())
+      .precs()
+      .isEmpty(path)
+      .end();
+}
+}  // namespace
+
+auto methods::createReplicatedState(
+    DatabaseID const& database, replicated_state::agency::Target const& spec)
+    -> futures::Future<ResultT<uint64_t>> {
+  VPackBufferUInt8 trx;
+  {
+    VPackBuilder builder(trx);
+    createReplicatedStateTrx(arangodb::agency::envelope::into_builder(builder),
+                             database, spec)
+        .done();
+  }
+  return sendAgencyWriteTransaction(std::move(trx));
+}
+
+auto methods::replaceReplicatedStateParticipant(
+    TRI_vocbase_t& vocbase, LogId id, ParticipantId const& participantToRemove,
+    ParticipantId const& participantToAdd) -> futures::Future<Result> {
+  auto path =
+      paths::target()->replicatedStates()->database(vocbase.name())->state(id);
+
+  VPackBufferUInt8 trx;
+  {
+    VPackBuilder builder(trx);
+    arangodb::agency::envelope::into_builder(builder)
+        .write()
+        .remove(*path->participants()->server(participantToRemove))
+        .set(*path->participants()->server(participantToAdd),
+             VPackSlice::emptyObjectSlice())
+        .inc(*paths::target()->version())
+        .precs()
+        .isNotEmpty(*path->participants()->server(participantToRemove))
+        .isEmpty(*path->participants()->server(participantToAdd))
+        .end()
+        .done();
+  }
+
+  return sendAgencyWriteTransaction(std::move(trx))
+      .thenValue([](ResultT<std::uint64_t>&& resultT) {
+        if (resultT.ok() && *resultT == 0) {
+          return Result(
+              TRI_ERROR_HTTP_PRECONDITION_FAILED,
+              "Refused to replace participant. Either the to-be-replaced one "
+              "is "
+              "not part of the participants, or the new one already was.");
+        }
+        return resultT.result();
+      });
+}
+
+auto methods::replaceReplicatedSetLeader(
+    TRI_vocbase_t& vocbase, LogId id,
+    std::optional<ParticipantId> const& leaderId) -> futures::Future<Result> {
+  auto path =
+      paths::target()->replicatedStates()->database(vocbase.name())->state(id);
+
+  VPackBufferUInt8 trx;
+  {
+    VPackBuilder builder(trx);
+    arangodb::agency::envelope::into_builder(builder)
+        .write()
+        .cond(leaderId.has_value(),
+              [&](auto&& write) {
+                return std::move(write).set(*path->leader(), *leaderId);
+              })
+        .cond(!leaderId.has_value(),
+              [&](auto&& write) {
+                return std::move(write).remove(*path->leader());
+              })
+        .inc(*paths::target()->version())
+        .precs()
+        .cond(leaderId.has_value(),
+              [&](auto&& precs) {
+                return std::move(precs).isNotEmpty(
+                    *path->participants()->server(*leaderId));
+              })
+        .end()
+        .done();
+  }
+
+  return sendAgencyWriteTransaction(std::move(trx))
+      .thenValue([](ResultT<std::uint64_t>&& resultT) {
+        if (resultT.ok() && *resultT == 0) {
+          return Result(TRI_ERROR_HTTP_PRECONDITION_FAILED,
+                        "Refused to set the new leader: It's not part of the "
+                        "participants.");
+        }
+        return resultT.result();
+      });
 }

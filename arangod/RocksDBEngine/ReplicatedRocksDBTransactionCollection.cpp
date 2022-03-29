@@ -84,17 +84,17 @@ void ReplicatedRocksDBTransactionCollection::maybeDisableIndexing() {
   // single operation transaction or we are sure we are writing
   // unique keys
 
+  auto const indexes = collection()->getIndexes();
+
   bool disableIndexing =
       !AccessMode::isWriteOrExclusive(accessType()) ||
-      !std::any_of(collection()->getIndexes().begin(),
-                   collection()->getIndexes().end(), [](auto& idx) {
-                     // primary index is unique, but we can ignore it here.
-                     // for secondary unique indexes we need to turn off the
-                     // NO_INDEXING optimization
-                     return idx->type() !=
-                                Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX &&
-                            idx->unique();
-                   });
+      !std::any_of(indexes.begin(), indexes.end(), [](auto& idx) {
+        // primary index is unique, but we can ignore it here.
+        // for secondary unique indexes we need to turn off the
+        // NO_INDEXING optimization
+        return idx->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX &&
+               idx->unique();
+      });
 
   if (disableIndexing) {
     // only turn it on when safe...
@@ -104,7 +104,8 @@ void ReplicatedRocksDBTransactionCollection::maybeDisableIndexing() {
 
 /// @brief commit a transaction
 Result ReplicatedRocksDBTransactionCollection::commitTransaction() {
-  auto lock = static_cast<ReplicatedRocksDBTransactionState*>(_transaction)->lockCommit();
+  auto lock = static_cast<ReplicatedRocksDBTransactionState*>(_transaction)
+                  ->lockCommit();
   return _rocksMethods->commitTransaction();
 }
 

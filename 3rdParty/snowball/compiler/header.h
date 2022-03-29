@@ -1,6 +1,6 @@
 #include <stdio.h>
 
-#define SNOWBALL_VERSION "2.0.0"
+#define SNOWBALL_VERSION "2.2.0"
 
 typedef unsigned char byte;
 typedef unsigned short symbol;
@@ -36,6 +36,7 @@ extern struct str * str_new(void);
 extern void str_delete(struct str * str);
 extern void str_append(struct str * str, const struct str * add);
 extern void str_append_ch(struct str * str, char add);
+extern void str_append_symbol(struct str * str, symbol add);
 extern void str_append_b(struct str * str, const symbol * q);
 extern void str_append_b_tail(struct str * str, const symbol * q, int skip);
 extern void str_append_string(struct str * str, const char * s);
@@ -194,7 +195,7 @@ struct among {
     struct amongvec * b;      /* pointer to the amongvec */
     int number;               /* amongs are numbered 0, 1, 2 ... */
     int literalstring_count;  /* in this among */
-    int command_count;        /* in this among */
+    int command_count;        /* in this among (includes "no command" entries) */
     int nocommand_count;      /* number of "no command" entries in this among */
     int function_count;       /* in this among */
     int amongvar_needed;      /* do we need to set among_var? */
@@ -324,6 +325,7 @@ struct generator {
     int literalstring_count;
     int keep_count;      /* used to number keep/restore pairs to avoid compiler warnings
                             about shadowed variables */
+    int temporary_used;  /* track if temporary variable used (for Pascal) */
 };
 
 /* Special values for failure_label in struct generator. */
@@ -336,13 +338,13 @@ struct options {
     /* for the command line: */
 
     const char * output_file;
-    const char * name;
+    char * name;
     FILE * output_src;
     FILE * output_h;
     byte syntax_tree;
     byte comments;
     enc encoding;
-    enum { LANG_JAVA, LANG_C, LANG_CPLUSPLUS, LANG_CSHARP, LANG_PASCAL, LANG_PYTHON, LANG_JAVASCRIPT, LANG_RUST, LANG_GO } make_lang;
+    enum { LANG_JAVA, LANG_C, LANG_CPLUSPLUS, LANG_CSHARP, LANG_PASCAL, LANG_PYTHON, LANG_JAVASCRIPT, LANG_RUST, LANG_GO, LANG_ADA } make_lang;
     const char * externals_prefix;
     const char * variables_prefix;
     const char * runtime_path;
@@ -364,6 +366,7 @@ extern void write_char(struct generator * g, int ch);
 extern void write_newline(struct generator * g);
 extern void write_string(struct generator * g, const char * s);
 extern void write_int(struct generator * g, int i);
+extern void write_symbol(struct generator * g, symbol s);
 extern void write_b(struct generator * g, symbol * b);
 extern void write_str(struct generator * g, struct str * str);
 
@@ -408,4 +411,8 @@ extern void generate_program_rust(struct generator * g);
 
 #ifndef DISABLE_GO
 extern void generate_program_go(struct generator * g);
+#endif
+
+#ifndef DISABLE_ADA
+extern void generate_program_ada(struct generator * g);
 #endif

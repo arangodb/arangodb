@@ -46,7 +46,6 @@
 #include "Graph/algorithm-aliases.h"
 
 #include <velocypack/HashedStringRef.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::graph;

@@ -106,7 +106,7 @@ auto ClusterProvider<StepImpl>::startVertex(const VertexType& vertex,
       << "<ClusterProvider> Start Vertex:" << vertex;
   // Create the default initial step.
   TRI_ASSERT(weight == 0.0);  // Not implemented yet
-  return Step{_opts.getCache()->persistString(vertex)};
+  return Step{_opts.getCache()->persistString(vertex), depth, weight};
 }
 
 template<class StepImpl>
@@ -184,6 +184,8 @@ void ClusterProvider<StepImpl>::fetchVerticesFromEngines(
         // Will be protected by the datalake.
         // We flag to retain the payload.
         _opts.getCache()->cacheVertex(vertexKey, pair.value);
+        // increase scanned Index for every vertex we cache.
+        _stats.incrScannedIndex(1);
         needToRetainPayload = true;
       }
     }
@@ -208,10 +210,10 @@ void ClusterProvider<StepImpl>::fetchVerticesFromEngines(
   // Note: This disables the ScopeGuard
   futures.clear();
 
-  // put back all looseEnds we we're able to cache
+  // put back all looseEnds. We were able to cache
   for (auto& lE : looseEnds) {
     if (!_opts.getCache()->isVertexCached(lE->getVertexIdentifier())) {
-      // if we end up here, we we're not able to cache the requested vertex
+      // if we end up here. We were not able to cache the requested vertex
       // (e.g. it does not exist)
       _query->warnings().registerWarning(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND,
                                          lE->getVertexIdentifier().toString());
@@ -243,7 +245,7 @@ void ClusterProvider<StepImpl>::destroyEngines() {
 
   auto const* engines = _opts.engines();
   for (auto const& engine : *engines) {
-    _stats.addHttpRequests(1);
+    _stats.incrHttpRequests(1);
     auto res = network::sendRequestRetry(
                    pool, "server:" + engine.first, fuerte::RestVerb::Delete,
                    "/_internal/traverser/" +
@@ -262,15 +264,29 @@ void ClusterProvider<StepImpl>::destroyEngines() {
 }
 
 template<class StepImpl>
-Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(
-    VertexType const& vertex) {
+Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(Step* step) {
+  TRI_ASSERT(step != nullptr);
+
   auto const* engines = _opts.engines();
-  // TODO Assert that the vertex is not in _vertexConnections after no-loose-end
-  // handling todo is done.
   transaction::BuilderLeaser leased(trx());
   leased->openObject(true);
-  leased->add("backward", VPackValue(_opts.isBackward()));
-  leased->add("keys", VPackValue(vertex.toString()));
+  leased->add("backward",
+              VPackValue(_opts.isBackward()));  // [GraphRefactor] ksp only?
+
+  // [GraphRefactor] TODO: Differentiate between algorithms -> traversal vs.
+  // ksp.
+  /* Needed for TRAVERSALS only - Begin */
+  leased->add("depth", VPackValue(step->getDepth()));
+  if (_opts.expressionContext() != nullptr) {
+    leased->add(VPackValue("variables"));
+    leased->openArray();
+    _opts.expressionContext()->serializeAllVariables(trx()->vpackOptions(),
+                                                     *(leased.get()));
+    leased->close();
+  }
+  /* Needed for TRAVERSALS only - End */
+
+  leased->add("keys", VPackValue(step->getVertex().getID().toString()));
   leased->close();
 
   auto* pool =
@@ -319,10 +335,18 @@ Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(
     if (res.fail()) {
       return res;
     }
-    _stats.addFiltered(
-        Helper::getNumericValue<size_t>(resSlice, "filtered", 0));
-    _stats.addScannedIndex(
+    _stats.incrScannedIndex(
         Helper::getNumericValue<size_t>(resSlice, "readIndex", 0));
+    _stats.incrFiltered(
+        Helper::getNumericValue<size_t>(resSlice, "filtered", 0));
+    _stats.incrCursorsCreated(
+        Helper::getNumericValue<size_t>(resSlice, "cursorsCreated", 0));
+    _stats.incrCursorsRearmed(
+        Helper::getNumericValue<size_t>(resSlice, "cursorsRearmed", 0));
+    _stats.incrCacheHits(
+        Helper::getNumericValue<size_t>(resSlice, "cacheHits", 0));
+    _stats.incrCacheMisses(
+        Helper::getNumericValue<size_t>(resSlice, "cacheMisses", 0));
 
     bool allCached = true;
     VPackSlice edges = resSlice.get("edges");
@@ -344,7 +368,8 @@ Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(
           edge.get(StaticStrings::IdString));
 
       auto edgeToEmplace = std::make_pair(
-          edgeIdRef, VertexType{getEdgeDestination(edge, vertex)});
+          edgeIdRef,
+          VertexType{getEdgeDestination(edge, step->getVertex().getID())});
 
       connectedEdges.emplace_back(edgeToEmplace);
     }
@@ -361,8 +386,8 @@ Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(
       (connectedEdges.size() * (costPerVertexOrEdgeType * 2));
   ResourceUsageScope guard(*_resourceMonitor, memoryPerItem);
 
-  auto [it, inserted] =
-      _vertexConnectedEdges.emplace(vertex, std::move(connectedEdges));
+  auto [it, inserted] = _vertexConnectedEdges.emplace(
+      step->getVertex().getID(), std::move(connectedEdges));
   if (inserted) {
     guard.steal();
   }
@@ -378,15 +403,26 @@ auto ClusterProvider<StepImpl>::fetch(std::vector<Step*> const& looseEnds)
 
   if (!looseEnds.empty()) {
     result.reserve(looseEnds.size());
-    fetchVerticesFromEngines(looseEnds, result);
-    _stats.addHttpRequests(_opts.engines()->size() * looseEnds.size());
+    if (!_opts.produceVertices()) {
+      // in that case we do not have to fetch the actual vertex data
+
+      for (auto& lE : looseEnds) {
+        if (!_opts.getCache()->isVertexCached(lE->getVertexIdentifier())) {
+          // we'll only cache the vertex id, we do not need the data
+          _opts.getCache()->cacheVertex(lE->getVertexIdentifier(),
+                                        VPackSlice::nullSlice());
+        }
+        result.emplace_back(lE);
+      }
+    } else {
+      fetchVerticesFromEngines(looseEnds, result);
+      _stats.incrHttpRequests(_opts.engines()->size() * looseEnds.size());
+    }
 
     for (auto const& step : result) {
       if (!_vertexConnectedEdges.contains(step->getVertex().getID())) {
-        auto res = fetchEdgesFromEngines(step->getVertex().getID());
-        // TODO: check stats (also take a look of vertex stats)
-        // add http stats
-        _stats.addHttpRequests(_opts.engines()->size());
+        auto res = fetchEdgesFromEngines(step);
+        _stats.incrHttpRequests(_opts.engines()->size());
 
         if (res.fail()) {
           THROW_ARANGO_EXCEPTION(res);
@@ -416,8 +452,15 @@ auto ClusterProvider<StepImpl>::expand(
 
   if (ADB_LIKELY(relations != _vertexConnectedEdges.end())) {
     for (auto const& relation : relations->second) {
-      bool const fetched = _vertexConnectedEdges.contains(relation.second);
-      callback(Step{relation.second, relation.first, previous, fetched});
+      bool const fetchedTargetVertex =
+          _vertexConnectedEdges.contains(relation.second);
+      // [GraphRefactor] TODO: KShortestPaths does not require Depth/Weight. We
+      // need a mechanism here as well to distinguish between (non)required
+      // parameters.
+      callback(
+          Step{relation.second, relation.first, previous, fetchedTargetVertex,
+               step.getDepth() + 1,
+               _opts.weightEdge(step.getWeight(), readEdge(relation.first))});
     }
   } else {
     throw std::out_of_range{"ClusterProvider::_vertexConnectedEdges"};
@@ -440,6 +483,11 @@ auto ClusterProvider<StepImpl>::addEdgeToBuilder(
 }
 
 template<class StepImpl>
+auto ClusterProvider<StepImpl>::readEdge(EdgeType const& edgeID) -> VPackSlice {
+  return _opts.getCache()->getCachedEdge(edgeID);
+}
+
+template<class StepImpl>
 void ClusterProvider<StepImpl>::prepareIndexExpressions(aql::Ast* ast) {
   // Nothing to do here. The variables are send over in a different way.
   // We do not make use of special indexes here anyways.
@@ -453,10 +501,18 @@ arangodb::transaction::Methods* ClusterProvider<StepImpl>::trx() {
 template<class StepImpl>
 arangodb::aql::TraversalStats ClusterProvider<StepImpl>::stealStats() {
   auto t = _stats;
-  // Placement new of stats, do not reallocate space.
-  _stats.~TraversalStats();
-  new (&_stats) aql::TraversalStats{};
+  _stats.clear();
   return t;
+}
+
+template<class StepImpl>
+void ClusterProvider<StepImpl>::prepareContext(aql::InputAqlItemRow input) {
+  _opts.prepareContext(std::move(input));
+}
+
+template<class StepImpl>
+void ClusterProvider<StepImpl>::unPrepareContext() {
+  _opts.unPrepareContext();
 }
 
 template class graph::ClusterProvider<ClusterProviderStep>;

@@ -50,6 +50,12 @@ class RocksDBTtlIndex final : public RocksDBSkiplistIndex {
       arangodb::velocypack::Builder& builder,
       std::underlying_type<Index::Serialize>::type flags) const override;
 
+  std::vector<std::vector<arangodb::basics::AttributeName>> const&
+  coveredFields() const override {
+    // index does not cover the ttl index attribute!
+    return Index::emptyCoveredFields;
+  }
+
  protected:
   // special override method that extracts a timestamp value from the index
   // attribute

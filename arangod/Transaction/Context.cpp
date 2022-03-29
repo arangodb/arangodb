@@ -37,7 +37,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Dumper.h>
 #include <velocypack/Options.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 

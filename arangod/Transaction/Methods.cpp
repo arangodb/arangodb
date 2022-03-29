@@ -24,7 +24,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Options.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "Basics/ScopeGuard.h"
 #include "Methods.h"
@@ -1486,10 +1485,8 @@ Future<OperationResult> transaction::Methods::modifyLocal(
   [[maybe_unused]] size_t numExclusions = 0;
 
   // lambda //////////////
-  auto workForOneDocument = [this, &numExclusions, &operation, &options,
-                             &collection, &resultBuilder, &cid, &previous,
-                             &result](VPackSlice const newVal, bool isBabies,
-                                      bool& excludeFromReplication) -> Result {
+  auto workForOneDocument = [&](VPackSlice newVal, bool isBabies,
+                                bool& excludeFromReplication) -> Result {
     Result res;
     if (!newVal.isObject()) {
       res.reset(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
@@ -2244,8 +2241,6 @@ OperationResult transaction::Methods::countLocal(
 }
 
 /// @brief factory for IndexIterator objects from AQL
-/// note: the caller must have read-locked the underlying collection when
-/// calling this method
 std::unique_ptr<IndexIterator> transaction::Methods::indexScanForCondition(
     IndexHandle const& idx, arangodb::aql::AstNode const* condition,
     arangodb::aql::Variable const* var, IndexIteratorOptions const& opts,

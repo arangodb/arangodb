@@ -26,7 +26,6 @@
 #include <fuerte/connection.h>
 #include <fuerte/requests.h>
 #include <velocypack/Parser.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "Mocks/LogLevels.h"
 #include "Mocks/Servers.h"

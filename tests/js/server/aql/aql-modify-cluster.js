@@ -42,6 +42,8 @@ var sanitizeStats = function (stats) {
   delete stats.scannedIndex;
   delete stats.cursorsCreated;
   delete stats.cursorsRearmed;
+  delete stats.cacheHits;
+  delete stats.cacheMisses;
   delete stats.filtered;
   delete stats.executionTime;
   delete stats.httpRequests;
@@ -1330,7 +1332,7 @@ function ahuacatlUpdateSuite () {
 
     testUpdateUniqueConstraint1 : function () {
       try {
-        c1.ensureUniqueConstraint("value1");
+        c1.ensureIndex({ type: "hash", fields: ["value1"], unique: true });
         fail();
       }
       catch (e) {
@@ -1343,7 +1345,7 @@ function ahuacatlUpdateSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUpdateUniqueConstraint2 : function () {
-      c3.ensureUniqueConstraint("value1");
+      c3.ensureIndex({ type: "hash", fields: ["value1"], unique: true });
       assertQueryError(errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, "FOR d IN @@cn UPDATE d._key WITH { value1: 1 } IN @@cn", { "@cn": cn3 });
     },
 
@@ -1352,7 +1354,7 @@ function ahuacatlUpdateSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUpdateUniqueConstraint3 : function () {
-      c3.ensureUniqueConstraint("value3", { sparse: true });
+      c3.ensureIndex({ type: "hash", fields: ["value3"], unique: true, sparse: true });
       assertQueryError(errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, "FOR d IN @@cn UPDATE d._key WITH { value3: 1 } IN @@cn", { "@cn": cn3 });
     },
 
@@ -1361,7 +1363,7 @@ function ahuacatlUpdateSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUpdateIgnore1 : function () {
-      c3.ensureUniqueConstraint("value3", { sparse: true });
+      c3.ensureIndex({ type: "hash", fields: ["value3"], unique: true, sparse: true });
       var expected = { writesExecuted: 1, writesIgnored: 99 };
       var actual = getModifyQueryResults("FOR d IN @@cn UPDATE d WITH { value3: 1 } IN @@cn OPTIONS { ignoreErrors: true }", { "@cn": cn3 });
 
@@ -1373,7 +1375,7 @@ function ahuacatlUpdateSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUpdateIgnore2 : function () {
-      c3.ensureUniqueConstraint("value1");
+      c3.ensureIndex({ type: "hash", fields: ["value1"], unique: true });
       var expected = { writesExecuted: 0, writesIgnored: 51 };
       var actual = getModifyQueryResults("FOR i IN 50..100 UPDATE { _key: CONCAT('test', i), value1: 1 } IN @@cn OPTIONS { ignoreErrors: true }", { "@cn": cn3 });
 

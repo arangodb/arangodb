@@ -28,11 +28,6 @@
 #include <iostream>
 #endif
 
-#include "Basics/Common.h"
-#include "Basics/directories.h"
-#include "Basics/operating-system.h"
-#include "Basics/tri-strings.h"
-
 #include "Actions/ActionFeature.h"
 #include "Agency/AgencyFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -50,8 +45,12 @@
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Basics/ArangoGlobalContext.h"
+#include "Basics/Common.h"
 #include "Basics/CrashHandler.h"
 #include "Basics/FileUtils.h"
+#include "Basics/directories.h"
+#include "Basics/operating-system.h"
+#include "Basics/tri-strings.h"
 #include "Cache/CacheManagerFeature.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterUpgradeFeature.h"
@@ -76,6 +75,7 @@
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchFeature.h"
 #include "Logger/LoggerFeature.h"
+#include "Metrics/ClusterMetricsFeature.h"
 #include "Metrics/MetricsFeature.h"
 #include "Network/NetworkFeature.h"
 #include "Pregel/PregelFeature.h"
@@ -86,6 +86,7 @@
 #include "Replication2/ReplicatedLog/ReplicatedLogFeature.h"
 #include "Replication2/ReplicatedState/ReplicatedStateFeature.h"
 #include "Replication2/StateMachines/BlackHole/BlackHoleStateMachineFeature.h"
+#include "Replication2/StateMachines/Prototype/PrototypeStateMachineFeature.h"
 #include "RestServer/AqlFeature.h"
 #include "RestServer/BootstrapFeature.h"
 #include "RestServer/CheckVersionFeature.h"
@@ -135,8 +136,8 @@
 #include "V8Server/V8DealerFeature.h"
 
 #ifdef _WIN32
-#include "RestServer/WindowsServiceFeature.h"
 #include "Basics/win-utils.h"
+#include "RestServer/WindowsServiceFeature.h"
 #endif
 
 #ifdef USE_ENTERPRISE

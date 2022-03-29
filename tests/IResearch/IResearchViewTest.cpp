@@ -2763,7 +2763,9 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
     Link(arangodb::IndexId id, arangodb::LogicalCollection& col)
         : IResearchLink(id, col) {
       auto json = VPackParser::fromJson(R"({ "view": "42" })");
-      EXPECT_TRUE(init(json->slice()).ok());
+      bool pathExists = false;
+      EXPECT_TRUE(init(json->slice(), pathExists).ok());
+      EXPECT_TRUE(pathExists);
     }
   };
 

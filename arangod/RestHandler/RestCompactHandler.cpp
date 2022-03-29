@@ -26,7 +26,6 @@
 #include "Basics/StringUtils.h"
 #include "Basics/debugging.h"
 #include "Cluster/ClusterMethods.h"
-#include "RocksDBEngine/RocksDBCommon.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Utils/ExecContext.h"

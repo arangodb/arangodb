@@ -74,7 +74,7 @@ namespace arangodb::cluster {
 struct IFailureOracle;
 }
 namespace arangodb::replication2::algorithms {
-struct ParticipantStateTuple;
+struct ParticipantState;
 }
 namespace arangodb::replication2::replicated_log {
 struct LogCore;
@@ -282,8 +282,8 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
 
     [[nodiscard]] auto checkCommitIndex() -> ResolvedPromiseSet;
 
-    [[nodiscard]] auto collectFollowerIndexes() const
-        -> std::pair<LogIndex, std::vector<algorithms::ParticipantStateTuple>>;
+    [[nodiscard]] auto collectFollowerStates() const
+        -> std::pair<LogIndex, std::vector<algorithms::ParticipantState>>;
     [[nodiscard]] auto checkCompaction() -> Result;
 
     [[nodiscard]] auto updateCommitIndexLeader(
