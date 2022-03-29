@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,7 +23,10 @@
 
 #pragma once
 
+#include "Basics/ResultT.h"
+
 #include <velocypack/HashedStringRef.h>
+#include "Basics/ResultT.h"
 
 #include <numeric>
 
@@ -31,7 +34,7 @@ namespace arangodb {
 
 namespace graph {
 
-template <class StepDetails>
+template<class StepDetails>
 class BaseStep {
  public:
   BaseStep(size_t prev = std::numeric_limits<size_t>::max(), size_t depth = 0,
@@ -52,7 +55,7 @@ class BaseStep {
 
   double getWeight() const { return _weight; }
 
-  ResultT<std::pair<std::string, size_t>> extractCollectionName(
+  [[nodiscard]] ResultT<std::pair<std::string, size_t>> extractCollectionName(
       arangodb::velocypack::HashedStringRef const& idHashed) const {
     size_t pos = idHashed.find('/');
     if (pos == std::string::npos) {

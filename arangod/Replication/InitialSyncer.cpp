@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,8 +31,9 @@
 
 namespace arangodb {
 
-InitialSyncer::InitialSyncer(ReplicationApplierConfiguration const& configuration,
-                             replutils::ProgressInfo::Setter setter)
+InitialSyncer::InitialSyncer(
+    ReplicationApplierConfiguration const& configuration,
+    replutils::ProgressInfo::Setter setter)
     : Syncer(configuration), _progress{setter} {}
 
 InitialSyncer::~InitialSyncer() {
@@ -52,7 +53,7 @@ InitialSyncer::~InitialSyncer() {
 /// @brief start a recurring task to extend the batch
 void InitialSyncer::startRecurringBatchExtension() {
   TRI_ASSERT(!_state.isChildSyncer);
-  
+
   std::lock_guard<std::mutex> guard(_batchPingMutex);
 
   if (isAborted()) {
@@ -67,13 +68,15 @@ void InitialSyncer::startRecurringBatchExtension() {
 
   std::weak_ptr<Syncer> self(shared_from_this());
   _batchPingTimer = SchedulerFeature::SCHEDULER->queueDelayed(
-      RequestLane::SERVER_REPLICATION, std::chrono::seconds(secs), [self](bool cancelled) {
+      RequestLane::SERVER_REPLICATION, std::chrono::seconds(secs),
+      [self](bool cancelled) {
         if (!cancelled) {
           auto syncer = self.lock();
           if (syncer) {
             auto* s = static_cast<InitialSyncer*>(syncer.get());
             if (s->_batch.id != 0 && !s->isAborted()) {
-              s->_batch.extend(s->_state.connection, s->_progress, s->_state.syncerId);
+              s->_batch.extend(s->_state.connection, s->_progress,
+                               s->_state.syncerId);
               s->startRecurringBatchExtension();
             }
           }

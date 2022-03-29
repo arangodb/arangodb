@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -46,7 +46,9 @@ struct AccessMode {
 
   static bool isWrite(Type type) noexcept { return type == Type::WRITE; }
 
-  static bool isExclusive(Type type) noexcept { return type == Type::EXCLUSIVE; }
+  static bool isExclusive(Type type) noexcept {
+    return type == Type::EXCLUSIVE;
+  }
 
   static bool isWriteOrExclusive(Type type) noexcept {
     return isWrite(type) || isExclusive(type);
@@ -92,7 +94,7 @@ struct AccessMode {
 }  // namespace arangodb
 
 namespace std {
-template <>
+template<>
 struct hash<arangodb::AccessMode::Type> {
   size_t operator()(arangodb::AccessMode::Type const& value) const noexcept {
     return static_cast<size_t>(value);

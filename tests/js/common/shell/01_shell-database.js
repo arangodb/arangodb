@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue, assertFalse, assertNotEqual, assertMatch, assertEqual, fail */
+/*global assertEqual, assertTrue, assertFalse, assertNotEqual, assertMatch, assertEqual, fail, arango */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the common database interface
@@ -28,10 +28,12 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require("jsunity");
-var internal = require("internal");
-var arangodb = require("@arangodb");
-var ERRORS = arangodb.errors;
+const jsunity = require("jsunity");
+const internal = require("internal");
+const arangodb = require("@arangodb");
+const ERRORS = arangodb.errors;
+const db = internal.db;
+const userManager = require("@arangodb/users");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite: database methods
@@ -55,9 +57,12 @@ function DatabaseSuite () {
       } catch (err) {
         // ignore
       }
-
-      // trigger GC to remove databases physically
-      internal.wait(0);
+      db._flushCache();
+      db._users.toArray().forEach(user => {
+        if (user.user !== "root") {
+          userManager.remove(user.user);
+        }
+      });
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -367,7 +372,6 @@ function DatabaseSuite () {
 
       assertTrue(internal.db._createDatabase("UnitTestsDatabase0", { }, users));
 
-      var userManager = require("@arangodb/users");
       var user = userManager.document("admin");
 
       assertEqual("admin", user.user);
@@ -403,7 +407,6 @@ function DatabaseSuite () {
       ];
       assertTrue(internal.db._createDatabase("UnitTestsDatabase0", { }, users));
 
-      var userManager = require("@arangodb/users");
       var user = userManager.document("admin");
       assertEqual("admin", user.user);
       assertTrue(user.active);
@@ -740,11 +743,80 @@ function DatabaseSuite () {
   };
 }
 
+function DatabaseWriteConcernSuite () {
+  'use strict';
+  const cn = "UnitTestsDatabase";
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
+  return {
+
+    setUp : function () {
+      try {
+        internal.db._dropDatabase(cn);
+      } catch (err) {
+        // ignore
+      }
+    },
+
+    tearDown : function () {
+      try {
+        internal.db._dropDatabase(cn);
+      } catch (err) {
+        // ignore
+      }
+    },
+
+    testCreateDatabaseReplicationFactorGreaterWriteConcern : function () {
+      [
+        [1, 2],
+        [1, 3],
+        [2, 3],
+      ].forEach((data) => {
+        let [replicationFactor, writeConcern] = data;
+        try {
+          internal.db._createDatabase(cn, { replicationFactor, writeConcern });
+          fail();
+        } catch (err) {
+          assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
+        }
+      });
+    },
+    
+    testCreateDatabaseReplicationFactorGreaterDBServers : function () {
+      try {
+        internal.db._createDatabase(cn, { replicationFactor: 10, writeConcern: 10 });
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_CLUSTER_INSUFFICIENT_DBSERVERS.code, err.errorNum);
+      }
+    },
+
+    testCreateDatabaseReplicationFactorWriteConcernPairs : function () {
+      [
+        [1, 1],
+        [2, 1],
+        [2, 2],
+        [3, 1],
+        [3, 2],
+      ].forEach((data) => {
+        let [replicationFactor, writeConcern] = data;
+        internal.db._createDatabase(cn, { replicationFactor, writeConcern });
+        try {
+          internal.db._useDatabase(cn);
+          assertEqual(replicationFactor, internal.db._properties().replicationFactor);
+          assertEqual(writeConcern, internal.db._properties().writeConcern);
+        } finally {
+          internal.db._useDatabase("_system");
+        }
+        internal.db._dropDatabase(cn);
+      });
+    },
+
+  };
+}
 
 jsunity.run(DatabaseSuite);
+if (internal.isCluster()) {
+  jsunity.run(DatabaseWriteConcernSuite);
+}
 
 return jsunity.done();

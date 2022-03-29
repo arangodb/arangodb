@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -95,7 +95,8 @@ struct BucketState {
   /// locked or not. The optional second parameter is a function which will be
   /// called upon successfully locking the state.
   //////////////////////////////////////////////////////////////////////////////
-  bool lock(std::uint64_t maxTries = std::numeric_limits<std::uint64_t>::max()) noexcept;
+  bool lock(std::uint64_t maxTries =
+                std::numeric_limits<std::uint64_t>::max()) noexcept;
 
   template<typename F>
   bool lock(std::uint64_t maxTries, F&& cb) noexcept {
@@ -138,4 +139,3 @@ static_assert(sizeof(BucketState) == sizeof(std::uint32_t),
 
 };  // end namespace cache
 };  // end namespace arangodb
-

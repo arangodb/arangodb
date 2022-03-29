@@ -39,13 +39,14 @@ TEST(IResearchComparerTest, test_comparer_single_entry) {
   resource /= std::string_view(arangodb::tests::testResourceDir);
   resource /= std::string_view("simple_sequential.json");
 
-  auto builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.string());
+  auto builder =
+      arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.string());
   auto docsSlice = builder.slice();
   ASSERT_TRUE(docsSlice.isArray());
   ASSERT_NE(0, docsSlice.length());
 
   arangodb::iresearch::IResearchViewSort sort;
-  sort.emplace_back({{"name", false}}, false);  // name DESC
+  sort.emplace_back({{std::string_view("name"), false}}, false);  // name DESC
 
   std::vector<irs::bytes_ref> expected_values;
   expected_values.reserve(docsSlice.length());
@@ -56,15 +57,17 @@ TEST(IResearchComparerTest, test_comparer_single_entry) {
     auto slice = doc.get("name");
     EXPECT_TRUE(slice.isString());
     actual_values.emplace_back(irs::bytes_ref(slice.start(), slice.byteSize()));
-    expected_values.emplace_back(irs::bytes_ref(slice.start(), slice.byteSize()));
+    expected_values.emplace_back(
+        irs::bytes_ref(slice.start(), slice.byteSize()));
   }
 
   // sorted expected docs
   auto expectedComparer = [](irs::bytes_ref const& lhs, irs::bytes_ref& rhs) {
-    return arangodb::basics::VelocyPackHelper::compare(VPackSlice(lhs.c_str()),
-                                                       VPackSlice(rhs.c_str()), true) > 0;
+    return arangodb::basics::VelocyPackHelper::compare(
+               VPackSlice(lhs.c_str()), VPackSlice(rhs.c_str()), true) > 0;
   };
-  EXPECT_FALSE(std::is_sorted(expected_values.begin(), expected_values.end(), expectedComparer));
+  EXPECT_FALSE(std::is_sorted(expected_values.begin(), expected_values.end(),
+                              expectedComparer));
   std::sort(expected_values.begin(), expected_values.end(), expectedComparer);
 
   // sort actual docs
@@ -72,7 +75,8 @@ TEST(IResearchComparerTest, test_comparer_single_entry) {
   EXPECT_TRUE(comparer.empty());
   comparer.reset(sort);
   EXPECT_FALSE(comparer.empty());
-  EXPECT_FALSE(std::is_sorted(actual_values.begin(), actual_values.end(), comparer));
+  EXPECT_FALSE(
+      std::is_sorted(actual_values.begin(), actual_values.end(), comparer));
   std::sort(actual_values.begin(), actual_values.end(), comparer);
   EXPECT_EQ(expected_values, actual_values);
 }
@@ -84,15 +88,16 @@ TEST(IResearchComparerTest, test_comparer_multiple_entries) {
   resource /= std::string_view(arangodb::tests::testResourceDir);
   resource /= std::string_view("simple_sequential.json");
 
-  auto builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.string());
+  auto builder =
+      arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.string());
   auto docsSlice = builder.slice();
   ASSERT_TRUE(docsSlice.isArray());
   ASSERT_NE(0, docsSlice.length());
 
   arangodb::iresearch::IResearchViewSort sort;
-  sort.emplace_back({{"same", false}}, true);  // same ASC
-  sort.emplace_back({{"seq", false}}, false);  // seq DESC
-  sort.emplace_back({{"name", false}}, true);  // name ASC
+  sort.emplace_back({{std::string_view("same"), false}}, true);  // same ASC
+  sort.emplace_back({{std::string_view("seq"), false}}, false);  // seq DESC
+  sort.emplace_back({{std::string_view("name"), false}}, true);  // name ASC
 
   std::vector<irs::bstring> expected_values;
   expected_values.reserve(docsSlice.length());
@@ -112,7 +117,8 @@ TEST(IResearchComparerTest, test_comparer_multiple_entries) {
   }
 
   // sorted expected docs
-  auto expectedComparer = [](irs::bytes_ref const& lhs, irs::bytes_ref const& rhs) {
+  auto expectedComparer = [](irs::bytes_ref const& lhs,
+                             irs::bytes_ref const& rhs) {
     VPackSlice const lhsSlice(lhs.c_str());
     VPackSlice const rhsSlice(rhs.c_str());
 
@@ -121,7 +127,8 @@ TEST(IResearchComparerTest, test_comparer_multiple_entries) {
                VPackSlice(lhsSlice.start() + lhsSlice.byteSize()),
                VPackSlice(rhsSlice.start() + rhsSlice.byteSize()), true) > 0;
   };
-  EXPECT_FALSE(std::is_sorted(expected_values.begin(), expected_values.end(), expectedComparer));
+  EXPECT_FALSE(std::is_sorted(expected_values.begin(), expected_values.end(),
+                              expectedComparer));
   std::sort(expected_values.begin(), expected_values.end(), expectedComparer);
 
   // sort actual docs
@@ -129,7 +136,8 @@ TEST(IResearchComparerTest, test_comparer_multiple_entries) {
   EXPECT_TRUE(comparer.empty());
   comparer.reset(sort);
   EXPECT_FALSE(comparer.empty());
-  EXPECT_FALSE(std::is_sorted(actual_values.begin(), actual_values.end(), comparer));
+  EXPECT_FALSE(
+      std::is_sorted(actual_values.begin(), actual_values.end(), comparer));
   std::sort(actual_values.begin(), actual_values.end(), comparer);
   EXPECT_EQ(expected_values, actual_values);
 }

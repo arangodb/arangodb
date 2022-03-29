@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -60,11 +60,10 @@ TimeFormat formatFromName(std::string const& name);
 
 /// @brief writes the given time into the given buffer,
 /// in the specified format
-void writeTime(std::string& out, 
-               TimeFormat format, 
+void writeTime(std::string& out, TimeFormat format,
                std::chrono::system_clock::time_point tp,
-               std::chrono::system_clock::time_point startTp = std::chrono::system_clock::time_point());
+               std::chrono::system_clock::time_point startTp =
+                   std::chrono::system_clock::time_point());
 
 }  // namespace LogTimeFormats
 }  // namespace arangodb
-

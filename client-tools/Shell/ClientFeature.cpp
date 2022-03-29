@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -53,10 +53,14 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-ClientFeature::ClientFeature(application_features::ApplicationServer& server,
-                             bool allowJwtSecret, size_t maxNumEndpoints,
-                             double connectionTimeout, double requestTimeout)
-    : HttpEndpointProvider(server, "Client"),
+ClientFeature::ClientFeature(ApplicationServer& server,
+                             CommunicationFeaturePhase& comm,
+                             size_t registration, bool allowJwtSecret,
+                             size_t maxNumEndpoints, double connectionTimeout,
+                             double requestTimeout)
+    : HttpEndpointProvider(server, registration, name()),
+      _comm{comm},
+      _console{},
       _databaseName(StaticStrings::SystemDatabase),
       _endpoints{Endpoint::defaultEndpoint(Endpoint::TransportType::HTTP)},
       _maxNumEndpoints(maxNumEndpoints),
@@ -81,14 +85,13 @@ ClientFeature::ClientFeature(application_features::ApplicationServer& server,
       _forceJson(false) {
   setOptional(true);
   requiresElevatedPrivileges(false);
-  startsAfter<CommunicationFeaturePhase>();
-  startsAfter<GreetingsFeaturePhase>();
 }
 
 void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("server", "server connection");
 
-  options->addOption("--server.database", "database name to use when connecting",
+  options->addOption("--server.database",
+                     "database name to use when connecting",
                      new StringParameter(&_databaseName));
 
   options->addOption("--server.authentication",
@@ -118,9 +121,10 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
         "server endpoint, otherwise http+tcp:// or unix://";
   }
 
-  options->addOption("--server.endpoint", endpointHelp,
-                     new VectorParameter<StringParameter>(&_endpoints),
-                     arangodb::options::makeFlags(Flags::FlushOnFirst, Flags::Default));
+  options->addOption(
+      "--server.endpoint", endpointHelp,
+      new VectorParameter<StringParameter>(&_endpoints),
+      arangodb::options::makeFlags(Flags::FlushOnFirst, Flags::Default));
 
   options->addOption("--server.password",
                      "password to use when connecting. If not specified and "
@@ -134,7 +138,8 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
         ->addOption("--server.force-json",
                     "force to not use VelocyPack for easier debugging",
                     new BooleanParameter(&_forceJson),
-                    arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+                    arangodb::options::makeDefaultFlags(
+                        arangodb::options::Flags::Uncommon))
         .setIntroducedIn(30600);
   }
 
@@ -150,7 +155,8 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
         "connections - even when a new connection to another server is "
         "created",
         new BooleanParameter(&_askJwtSecret),
-        arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+        arangodb::options::makeDefaultFlags(
+            arangodb::options::Flags::Uncommon));
 
     options->addOption(
         "--server.jwt-secret-keyfile",
@@ -161,7 +167,8 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
         "connections - even when a new connection to another server is "
         "created",
         new StringParameter(&_jwtSecretFile),
-        arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+        arangodb::options::makeDefaultFlags(
+            arangodb::options::Flags::Uncommon));
   }
 
   options->addOption("--server.connection-timeout",
@@ -177,20 +184,21 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "--server.max-packet-size",
       "maximum packet size (in bytes) for client/server communication",
       new UInt64Parameter(&_maxPacketSize),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   std::unordered_set<uint64_t> const sslProtocols = availableSslProtocols();
 
   options->addSection("ssl", "SSL communication");
   options->addOption("--ssl.protocol", availableSslProtocolsDescription(),
-                     new DiscreteValuesParameter<UInt64Parameter>(&_sslProtocol, sslProtocols));
+                     new DiscreteValuesParameter<UInt64Parameter>(
+                         &_sslProtocol, sslProtocols));
 #if _WIN32
-  options->addOption("--console.code-page",
-                     "Windows code page to use; defaults to UTF8",
-                     new UInt16Parameter(&_codePage),
-                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs,
-                                                  arangodb::options::Flags::OsWindows,
-                                                  arangodb::options::Flags::Hidden));
+  options->addOption(
+      "--console.code-page", "Windows code page to use; defaults to UTF8",
+      new UInt16Parameter(&_codePage),
+      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs,
+                                   arangodb::options::Flags::OsWindows,
+                                   arangodb::options::Flags::Uncommon));
 #endif
 }
 
@@ -206,12 +214,12 @@ void ClientFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     // this is the case if we have more endpoints than allowed.
     // in versions before 3.9, it was allowed to specify `--server.endpoint`
     // multiple times, and if this was done, only the last provided endpoint
-    // was used. to keep backward-compatibility, we now emulate this 
+    // was used. to keep backward-compatibility, we now emulate this
     // behavior here.
     TRI_ASSERT(_maxNumEndpoints == 1);
     std::string selectedEndpoint = _endpoints.back();
 
-    _endpoints = { std::move(selectedEndpoint) };
+    _endpoints = {std::move(selectedEndpoint)};
   }
 
   // if a username is specified explicitly, assume authentication is desired
@@ -278,20 +286,24 @@ void ClientFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   }
 
   if (!_endpoints.empty()) {
-    std::for_each(_endpoints.begin(), _endpoints.end(),  [] (auto const& endpoint) {
-      if (!endpoint.empty() && (endpoint != "none") &&
-          (endpoint != Endpoint::defaultEndpoint(Endpoint::TransportType::HTTP))) {
-        std::unique_ptr<Endpoint> ep(Endpoint::clientFactory(endpoint));
-        if (ep != nullptr && ep->isBroadcastBind()) {
-          LOG_TOPIC("701fb", FATAL, arangodb::Logger::FIXME)
-              << "invalid value for --server.endpoint ('"
-              << endpoint << "') - 0.0.0.0 and :: are only allowed for servers binding - not for clients connecting."
-              << " Choose an IP address of your machine instead."
-              << " See https://en.wikipedia.org/wiki/0.0.0.0 for more details.";
-          FATAL_ERROR_EXIT();
-        }
-      }
-    });
+    std::for_each(
+        _endpoints.begin(), _endpoints.end(), [](auto const& endpoint) {
+          if (!endpoint.empty() && (endpoint != "none") &&
+              (endpoint !=
+               Endpoint::defaultEndpoint(Endpoint::TransportType::HTTP))) {
+            std::unique_ptr<Endpoint> ep(Endpoint::clientFactory(endpoint));
+            if (ep != nullptr && ep->isBroadcastBind()) {
+              LOG_TOPIC("701fb", FATAL, arangodb::Logger::FIXME)
+                  << "invalid value for --server.endpoint ('" << endpoint
+                  << "') - 0.0.0.0 and :: are only allowed for servers binding "
+                     "- not for clients connecting."
+                  << " Choose an IP address of your machine instead."
+                  << " See https://en.wikipedia.org/wiki/0.0.0.0 for more "
+                     "details.";
+              FATAL_ERROR_EXIT();
+            }
+          }
+        });
   }
 
   SimpleHttpClientParams::setDefaultMaxPacketSize(_maxPacketSize);
@@ -300,14 +312,9 @@ void ClientFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 void ClientFeature::readPassword() {
   std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
-  try {
-    ShellConsoleFeature& console = server().getFeature<ShellConsoleFeature>();
-
-    if (console.isEnabled()) {
-      _password = console.readPassword("Please specify a password: ");
-      return;
-    }
-  } catch (...) {
+  if (_console && _console->isEnabled()) {
+    _password = _console->readPassword("Please specify a password: ");
+    return;
   }
 
   std::cout << "Please specify a password: " << std::flush;
@@ -318,14 +325,9 @@ void ClientFeature::readPassword() {
 void ClientFeature::readJwtSecret() {
   std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
-  try {
-    ShellConsoleFeature& console = server().getFeature<ShellConsoleFeature>();
-
-    if (console.isEnabled()) {
-      _jwtSecret = console.readPassword("Please specify the JWT secret: ");
-      return;
-    }
-  } catch (...) {
+  if (_console && _console->isEnabled()) {
+    _jwtSecret = _console->readPassword("Please specify the JWT secret: ");
+    return;
   }
 
   std::cout << "Please specify the JWT secret: " << std::flush;
@@ -339,8 +341,8 @@ void ClientFeature::loadJwtSecretFile() {
     // at the end of a file can easily happen. We do not base64-encode,
     // though, so the bytes count as given. Zero bytes might be a problem
     // here.
-    _jwtSecret = basics::StringUtils::trim(basics::FileUtils::slurp(_jwtSecretFile),
-                                           " \t\n\r");
+    _jwtSecret = basics::StringUtils::trim(
+        basics::FileUtils::slurp(_jwtSecretFile), " \t\n\r");
   } catch (std::exception const& ex) {
     LOG_TOPIC("aeaec", FATAL, Logger::STARTUP)
         << "unable to read content of jwt-secret file '" << _jwtSecretFile
@@ -369,12 +371,15 @@ void ClientFeature::prepare() {
   }
 }
 
-std::unique_ptr<SimpleHttpClient> ClientFeature::createHttpClient(size_t threadNumber) const {
+std::unique_ptr<SimpleHttpClient> ClientFeature::createHttpClient(
+    size_t threadNumber) const {
   return createHttpClient(_endpoints[threadNumber % _endpoints.size()]);
 }
 
-std::unique_ptr<SimpleHttpClient> ClientFeature::createHttpClient(std::string const& definition) const {
-  return createHttpClient(definition, SimpleHttpClientParams(_requestTimeout, _warn));
+std::unique_ptr<SimpleHttpClient> ClientFeature::createHttpClient(
+    std::string const& definition) const {
+  return createHttpClient(definition,
+                          SimpleHttpClientParams(_requestTimeout, _warn));
 }
 
 std::unique_ptr<httpclient::SimpleHttpClient> ClientFeature::createHttpClient(
@@ -388,19 +393,22 @@ std::unique_ptr<httpclient::SimpleHttpClient> ClientFeature::createHttpClient(
   }
 
   std::unique_ptr<GeneralClientConnection> connection(
-      GeneralClientConnection::factory(server(), endpoint, _requestTimeout,
-                                       _connectionTimeout, _retries, _sslProtocol));
+      GeneralClientConnection::factory(_comm, endpoint, _requestTimeout,
+                                       _connectionTimeout, _retries,
+                                       _sslProtocol));
 
   return std::make_unique<SimpleHttpClient>(connection, params);
 }
 
 std::vector<std::string> ClientFeature::httpEndpoints() {
   std::vector<std::string> httpEndpoints;
-  std::for_each(_endpoints.begin(), _endpoints.end(), [&httpEndpoints] (std::string const& endpoint) {
-    if (std::string http = Endpoint::uriForm(endpoint); !http.empty()) {
-      httpEndpoints.emplace_back(std::move(http));
-    }
-  });
+  std::for_each(_endpoints.begin(), _endpoints.end(),
+                [&httpEndpoints](std::string const& endpoint) {
+                  if (std::string http = Endpoint::uriForm(endpoint);
+                      !http.empty()) {
+                    httpEndpoints.emplace_back(std::move(http));
+                  }
+                });
   return httpEndpoints;
 }
 
@@ -425,29 +433,35 @@ void ClientFeature::setDatabaseName(std::string const& databaseName) {
   _databaseName = normalizeUtf8ToNFC(databaseName);
 }
 
-std::string ClientFeature::buildConnectedMessage(std::string const& endpointSpecification,
-                                                 std::string const& version,
-                                                 std::string const& role,
-                                                 std::string const& mode,
-                                                 std::string const& databaseName,
-                                                 std::string const& user) {
+ApplicationServer& ClientFeature::server() const noexcept {
+  return _comm.server();
+}
+
+std::string ClientFeature::buildConnectedMessage(
+    std::string const& endpointSpecification, std::string const& version,
+    std::string const& role, std::string const& mode,
+    std::string const& databaseName, std::string const& user) {
   return std::string("Connected to ArangoDB '") + endpointSpecification +
-         ((version.empty() || version == "arango") ? "" : ", version: " + version) +
+         ((version.empty() || version == "arango") ? ""
+                                                   : ", version: " + version) +
          (role.empty() ? "" : " [" + role + ", " + mode + "]") +
          ", database: '" + databaseName + "', username: '" + user + "'";
 }
 
-int ClientFeature::runMain(int argc, char* argv[],
-                           std::function<int(int argc, char* argv[])> const& mainFunc) {
+int ClientFeature::runMain(
+    int argc, char* argv[],
+    std::function<int(int argc, char* argv[])> const& mainFunc) {
   try {
     return mainFunc(argc, argv);
   } catch (std::exception const& ex) {
     LOG_TOPIC("5b00f", ERR, arangodb::Logger::FIXME)
-        << argv[0] << " terminated because of an unhandled exception: " << ex.what();
+        << argv[0]
+        << " terminated because of an unhandled exception: " << ex.what();
     return EXIT_FAILURE;
   } catch (...) {
     LOG_TOPIC("98466", ERR, arangodb::Logger::FIXME)
-        << argv[0] << " terminated because of an unhandled exception of unknown type";
+        << argv[0]
+        << " terminated because of an unhandled exception of unknown type";
     return EXIT_FAILURE;
   }
 }

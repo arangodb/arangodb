@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,6 +24,7 @@
 
 #pragma once
 
+#include "Dump/arangodump.h"
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 #include "Basics/Mutex.h"
@@ -41,26 +42,23 @@ namespace httpclient {
 class SimpleHttpClient;
 }
 
-class DumpFeature final : public application_features::ApplicationFeature {
+class DumpFeature final : public ArangoDumpFeature {
  public:
-  DumpFeature(application_features::ApplicationServer& server, int& exitCode);
+  static constexpr std::string_view name() noexcept { return "Dump"; }
+
+  DumpFeature(Server& server, int& exitCode);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void validateOptions(std::shared_ptr<options::ProgramOptions> options) override;
+  void validateOptions(
+      std::shared_ptr<options::ProgramOptions> options) override;
   void start() override;
-
-  /**
-   * @brief Returns the feature name (for registration with `ApplicationServer`)
-   * @return The name of the feature
-   */
-  static std::string featureName();
 
   /**
    * @brief Saves a worker error for later handling and clears queued jobs
    * @param error Error from a client worker
    */
   void reportError(Result const& error);
-  
+
   /// @brief Holds configuration data to pass between methods
   struct Options {
     std::vector<std::string> collections{};
@@ -94,12 +92,12 @@ class DumpFeature final : public application_features::ApplicationFeature {
   /// @brief base class for dump jobs
   struct DumpJob {
     DumpJob(ManagedDirectory&, DumpFeature&, Options const& options,
-        maskings::Maskings* maskings, Stats& stats,
-        VPackSlice collectionInfo);
+            maskings::Maskings* maskings, Stats& stats,
+            VPackSlice collectionInfo);
     virtual ~DumpJob();
 
     virtual Result run(arangodb::httpclient::SimpleHttpClient& client) = 0;
-    
+
     ManagedDirectory& directory;
     DumpFeature& feature;
     Options const& options;
@@ -117,30 +115,28 @@ class DumpFeature final : public application_features::ApplicationFeature {
   struct DumpCollectionJob : public DumpJob {
     DumpCollectionJob(ManagedDirectory&, DumpFeature&, Options const& options,
                       maskings::Maskings* maskings, Stats& stats,
-                      VPackSlice collectionInfo,
-                      uint64_t batchId);
+                      VPackSlice collectionInfo, uint64_t batchId);
 
     ~DumpCollectionJob();
-    
+
     Result run(arangodb::httpclient::SimpleHttpClient& client) override;
-    
+
     uint64_t const batchId;
   };
- 
+
   /// @brief stores all necessary data to dump a single shard.
   /// only used in cluster mode
   struct DumpShardJob : public DumpJob {
     DumpShardJob(ManagedDirectory&, DumpFeature&, Options const& options,
                  maskings::Maskings* maskings, Stats& stats,
-                 VPackSlice collectionInfo,
-                 std::string const& shardName,
+                 VPackSlice collectionInfo, std::string const& shardName,
                  std::string const& server,
                  std::shared_ptr<ManagedDirectory::File> file);
 
     ~DumpShardJob();
-    
+
     Result run(arangodb::httpclient::SimpleHttpClient& client) override;
-    
+
     VPackSlice const collectionInfo;
     std::string const shardName;
     std::string const server;
@@ -160,16 +156,18 @@ class DumpFeature final : public application_features::ApplicationFeature {
   std::queue<Result> _workerErrors;
   std::unique_ptr<maskings::Maskings> _maskings;
 
-  Result runClusterDump(httpclient::SimpleHttpClient& client, std::string const& dbName);
-  Result runSingleDump(httpclient::SimpleHttpClient& client, std::string const& dbName);
+  Result runClusterDump(httpclient::SimpleHttpClient& client,
+                        std::string const& dbName);
+  Result runSingleDump(httpclient::SimpleHttpClient& client,
+                       std::string const& dbName);
 
   // called from both runClusterDump and runSingleDump
-  Result runDump(httpclient::SimpleHttpClient& client, std::string const& baseUrl, std::string const& dbName, uint64_t batchId);
+  Result runDump(httpclient::SimpleHttpClient& client,
+                 std::string const& baseUrl, std::string const& dbName,
+                 uint64_t batchId);
 
   Result storeDumpJson(VPackSlice body, std::string const& dbName) const;
   Result storeViews(velocypack::Slice const&) const;
-
 };
 
 }  // namespace arangodb
-

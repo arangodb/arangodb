@@ -1,0 +1,124 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+  <head>
+    <meta http-equiv="content-type" content="text/html;
+      charset=windows-1252">
+    <title>BOOST_PP_VA_OPT</title>
+    <link rel="stylesheet" type="text/css" href="../styles.css">
+  </head>
+  <body>
+    <div style="margin-left: 0px;"> The <b>BOOST_PP_VA_OPT</b> variadic
+      macro is a more flexible alternative to the C++20 __VA_OPT__
+      construct. It expands to either one of two inputs depending on
+      whether the variadic data is empty or not, whereas the C++20
+      __VA_OPT__ constructs expands to either its input or nothing
+      depending on whether the variadic data is empty or not. This macro
+      only exists when the compilation is at the C++20 level and the
+      __VA_OPT__ construct is supported.</div>
+    <h4>Usage</h4>
+    <div class="code"> <b>BOOST_PP_VA_OPT</b>(x,y,<i>...</i>) <a
+        href="../topics/variadic_macros.html#VNotation" target="_self"><sup>(v)</sup></a><br>
+    </div>
+    <h4>Arguments</h4>
+    <p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; x<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; A tuple
+      whose data is the macro expansion if the <i>variadic data</i> is
+      <b>not</b> empty<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; y<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; A tuple
+      whose data is the macro expansion if the <i>variadic data</i> is
+      empty<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ,,,<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; The <i>variadic
+        data</i> to be checked for emptiness<br>
+    </p>
+    <dl>
+    </dl>
+    <h4>Remarks</h4>
+    <div> When the macro invocation BOOST_PP_VARIADIC_HAS_OPT() expands
+      to 1, then this macro exists and can be invoked, otherwise this
+      macro does not exist and attempting to invoke it will lead to a
+      preprocessor error that the macro can not be found. Because of
+      this condition the header file for including this macro includes
+      the header file for the BOOST_PP_VARIADIC_HAS_OPT macro.<br>
+      <br>
+      The difference between this macro and the __VA_OPT__ construct
+      illustrates a limitation of the latter construct with a trade off
+      of simpler syntax. The differences between the __VA_OPT__
+      construct and this macro are:<br>
+      <ul>
+        <li>The __VA_OPT__ construct offers a choice as its expansion
+          only between its input preprocessing tokens or nothing (
+          called a "single placemarker token" ) depending on whether the
+          implicit variadic data is empty or not. There is no way using
+          the __VA_OPT__ construct to specify any alternative but the
+          "single placemarker token" when the variadic data is empty
+          whereas any preprocessing tokens can be specified when the
+          variadic data is not empty. With the BOOST_PP_VA_OPT macro the
+          user can specify as its expansion preprocessing tokens both
+          when the variadic data is empty and when the variadic data is
+          not empty.</li>
+        <li>The __VA_OPT__ construct offers a simple syntax whereas this
+          macro is more verbose. The BOOST_PP_VA_OPT macro's first and
+          second parameters must be Boost PP tuples of data, in order to
+          expand to normal or variadic data, and the third parameter
+          must be the variadic data to check for emptiness, whereas the
+          __VA_OPT__ construct has an implied variadic data as
+          __VA_ARGS__ to check for emptiness and can specify its
+          expansion directly in terms of its input.</li>
+        <li>The __VA_OPT__ construct can only be specified in the
+          replacement list of some macro, whereas the BOOST_PP_VA_OPT
+          macro can be used both as an alternative to the __VA_OPT__
+          construct in the replacement list of some macro and anywhere
+          else a macro can be used.</li>
+        <li>It is impossible to have a left parenthesis '(' or a right
+          parenthesis ')' as preprocessing token data within the
+          __VA_OPT__ construct whereas both are possible as part of the
+          expanded data for the BOOST_PP_VA_OPT macro.<br>
+        </li>
+      </ul>
+      <br>
+      The exact BOOST_PP_VA_OPT equivalent to the construct of&nbsp;
+      '__VA_OPT__ ( pp-tokens )' in the replacement list of a macro is
+      'BOOST_PP_VA_OPT (( pp-tokens ),(),__VA_ARGS__)'.</div>
+    <h4>See Also</h4>
+    <ul>
+      <li><a href="variadic_has_opt.html">BOOST_PP_VARIADIC_HAS_OPT</a></li>
+    </ul>
+    <h4>Requirements</h4>
+    <div> <b>Header:</b> &nbsp;<a
+        href="../headers/facilities/va_opt.html">&lt;boost/preprocessor/facilities/va_opt.hpp&gt;</a>
+    </div>
+    <h4>Sample Code</h4>
+    <div>
+      <pre>#include &lt;<a href="../headers/facilities/va_opt.html">boost/preprocessor/facilities/va_opt.hpp</a>&gt;
+
+# if <a href="variadic_has_opt.html">BOOST_PP_VARIADIC_HAS_OPT</a>()
+
+#define DATA
+#define OBJECT OBJECT2
+#define OBJECT2
+#define FUNC(x) FUNC2(x)
+#define FUNC2(x)
+#define FUNC_GEN(x,y) (1,2,3)
+
+<a href="va_opt.html">BOOST_PP_VA_OPT</a>((1),(2),DATA)                      // expands to 2
+<a href="va_opt.html">BOOST_PP_VA_OPT</a>((3),(4),OBJECT)                    // expands to 4
+<a href="va_opt.html">BOOST_PP_VA_OPT</a>((5),(6),FUNC(1))                   // expands to 6
+<a href="va_opt.html">BOOST_PP_VA_OPT</a>((7,8),(9,10),FUNC)                 // expands to 7,8
+<a href="va_opt.html">BOOST_PP_VA_OPT</a>((1,2,3,4,5),(6,7,8,9,10),FUNC_GEN) // expands to 1,2,3,4,5
+
+#endif
+</pre>
+    </div>
+    <hr size="1">
+    <div style="margin-left: 0px;"> <i>© Copyright Edward Diener 2019</i>
+    </div>
+    <div style="margin-left: 0px;">
+      <p><small>Distributed under the Boost Software License, Version
+          1.0. (See accompanying file <a
+            href="../../../../LICENSE_1_0.txt">LICENSE_1_0.txt</a> or
+          copy at <a href="http://www.boost.org/LICENSE_1_0.txt">www.boost.org/LICENSE_1_0.txt</a>)</small></p>
+    </div>
+  </body>
+</html>

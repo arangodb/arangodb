@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertTrue, assertFalse, assertNull, assertMatch, fail, AQL_EXECUTE, AQL_EXPLAIN */
+/*global assertEqual, assertNotEqual, assertTrue, assertFalse, assertNull, assertMatch, fail, AQL_EXECUTE, AQL_EXPLAIN */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, bind parameters
@@ -40,6 +40,10 @@ var sanitizeStats = function (stats) {
   // for the comparisons
   delete stats.scannedFull;
   delete stats.scannedIndex;
+  delete stats.cursorsCreated;
+  delete stats.cursorsRearmed;
+  delete stats.cacheHits;
+  delete stats.cacheMisses;
   delete stats.filtered;
   delete stats.executionTime;
   delete stats.httpRequests;
@@ -53,10 +57,11 @@ var sanitizeStats = function (stats) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function ahuacatlModifySuite () {
-  var errors = internal.errors;
-  var cn1 = "UnitTestsAhuacatlModify1";
-  var cn2 = "UnitTestsAhuacatlModify2";
-  var c1, c2;
+  const errors = internal.errors;
+  const cn1 = "UnitTestsAhuacatlModify1";
+  const cn2 = "UnitTestsAhuacatlModify2";
+
+  let c1, c2;
 
   return {
 
@@ -66,12 +71,13 @@ function ahuacatlModifySuite () {
 
     setUp : function () {
       db._drop(cn1);
-      db._drop(cn2);
       c1 = db._create(cn1, {numberOfShards:5});
-      c2 = db._create(cn2, {numberOfShards:5});
 
-      c1.save({ _key: "foo", a: 1 });
-      c2.save({ _key: "foo", b: 1 });
+      let docs = [];
+      for (let i = 0; i < 1000; ++i) {
+        docs.push({name: `test${i}`});
+      }
+      c1.insert(docs);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -108,6 +114,54 @@ function ahuacatlModifySuite () {
     testInvalidOptions : function () {
       assertQueryError(errors.ERROR_QUERY_PARSE.code, "FOR d IN @@cn REMOVE d IN @@cn OPTIONS 'foo'", { "@cn": cn1 });
     },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test upsert update with empty update object
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpsertUpdateEmpty: function () {
+      for (let i = 0; i < 5; ++i) {
+        const actual = AQL_EXECUTE(`UPSERT {name: "test1500"} INSERT {name: "test1500"} UPDATE {} IN ${cn1} OPTIONS { } RETURN { new: NEW, old: OLD }`);
+        const res = actual.json[0];
+        if (i > 0) {
+          assertEqual(res.old._rev, res.new._rev);
+          assertEqual(res.old.name, "test1500");
+          assertEqual(4, Object.keys(res.old).length);
+        }
+        assertEqual(1001, c1.count());
+        assertEqual(4, Object.keys(res.new).length);
+        assertEqual(res.new.name, "test1500");
+      }
+    },
+
+/////////////////////////////////////////////////////////////////////////////////
+/// @brief test upsert replace with empty replace object
+/// in 5 iterations, starting with size 1000:
+/// i = 0, document with name "test1500" doesn't exist, so inserts it size = 1001
+/// i = 1, document exists so replaces it with empty document  size = 1001
+/// i = 2, document with name "test1500" doesn't exist, so inserts it size = 1002
+/// i = 3, document exists so replaces it with empty document  size = 1002
+/// i = 4, document with name "test1500" doesn't exist, so inserts it size = 1003
+/////////////////////////////////////////////////////////////////////////////////
+
+    testUpsertReplaceEmpty: function () {
+      for (let i = 0; i < 5; ++i) {
+        const actual = AQL_EXECUTE(`UPSERT {name: "test1500"} INSERT {name: "test1500"} REPLACE {} IN ${cn1} OPTIONS { } RETURN { new: NEW, old: OLD }`);
+        const res = actual.json[0];
+        if (i % 2 !== 0) {
+          assertNotEqual(res.old._rev, res.new._rev);
+          assertEqual(res.old.name, "test1500");
+          assertEqual(4, Object.keys(res.old).length);
+          assertEqual(3, Object.keys(res.new).length);
+          assertFalse(res.new.hasOwnProperty("name"));
+          assertTrue(res.old.hasOwnProperty("name"));
+        } else {
+          assertEqual(4, Object.keys(res.new).length);
+        }
+      }
+      assertEqual(1003, c1.count());
+    },
+
   };
 }
 
@@ -116,11 +170,11 @@ function ahuacatlModifySuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function ahuacatlRemoveSuite () {
-  var errors = internal.errors;
-  var cn1 = "UnitTestsAhuacatlRemove1";
-  var cn2 = "UnitTestsAhuacatlRemove2";
-  var c1;
-  var c2;
+  const errors = internal.errors;
+  const cn1 = "UnitTestsAhuacatlRemove1";
+  const cn2 = "UnitTestsAhuacatlRemove2";
+  let c1;
+  let c2;
 
   return {
 
@@ -1184,11 +1238,9 @@ function ahuacatlUpdateSuite () {
       db._drop(cn1);
       db._drop(cn2);
       db._drop(cn3);
-      db._drop(cn4);
       c1 = db._create(cn1, {numberOfShards: 5});
       c2 = db._create(cn2, {numberOfShards: 5});
       c3 = db._create(cn3, {numberOfShards: 1});
-      c4 = db._create(cn4, {numberOfShards: 1});
 
       let docs = [];
       for (i = 0; i < 100; ++i) {
@@ -1196,8 +1248,8 @@ function ahuacatlUpdateSuite () {
       }
       c1.insert(docs);
       docs = [];
-      for (i = 0; i < 50; ++i) {
-        docs.push({ _key: "test" + i, value1: i, value2: "test" + i });
+      for (let i = 0; i < 1000; ++i) {
+        docs.push({name: `test${i}`});
       }
       c2.insert(docs);
       docs = [];
@@ -1205,11 +1257,6 @@ function ahuacatlUpdateSuite () {
         docs.push({ _key: "test" + i, value1: i, value2: "test" + i });
       }
       c3.insert(docs);
-      docs = [];
-      for (i = 0; i < 50; ++i) {
-        docs.push({ _key: "test" + i, value1: i, value2: "test" + i });
-      }
-      c4.insert(docs);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1220,11 +1267,9 @@ function ahuacatlUpdateSuite () {
       db._drop(cn1);
       db._drop(cn2);
       db._drop(cn3);
-      db._drop(cn4);
       c1 = null;
       c2 = null;
       c3 = null;
-      c4 = null;
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1287,7 +1332,7 @@ function ahuacatlUpdateSuite () {
 
     testUpdateUniqueConstraint1 : function () {
       try {
-        c1.ensureUniqueConstraint("value1");
+        c1.ensureIndex({ type: "hash", fields: ["value1"], unique: true });
         fail();
       }
       catch (e) {
@@ -1300,7 +1345,7 @@ function ahuacatlUpdateSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUpdateUniqueConstraint2 : function () {
-      c3.ensureUniqueConstraint("value1");
+      c3.ensureIndex({ type: "hash", fields: ["value1"], unique: true });
       assertQueryError(errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, "FOR d IN @@cn UPDATE d._key WITH { value1: 1 } IN @@cn", { "@cn": cn3 });
     },
 
@@ -1309,7 +1354,7 @@ function ahuacatlUpdateSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUpdateUniqueConstraint3 : function () {
-      c3.ensureUniqueConstraint("value3", { sparse: true });
+      c3.ensureIndex({ type: "hash", fields: ["value3"], unique: true, sparse: true });
       assertQueryError(errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, "FOR d IN @@cn UPDATE d._key WITH { value3: 1 } IN @@cn", { "@cn": cn3 });
     },
 
@@ -1318,7 +1363,7 @@ function ahuacatlUpdateSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUpdateIgnore1 : function () {
-      c3.ensureUniqueConstraint("value3", { sparse: true });
+      c3.ensureIndex({ type: "hash", fields: ["value3"], unique: true, sparse: true });
       var expected = { writesExecuted: 1, writesIgnored: 99 };
       var actual = getModifyQueryResults("FOR d IN @@cn UPDATE d WITH { value3: 1 } IN @@cn OPTIONS { ignoreErrors: true }", { "@cn": cn3 });
 
@@ -1330,7 +1375,7 @@ function ahuacatlUpdateSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUpdateIgnore2 : function () {
-      c3.ensureUniqueConstraint("value1");
+      c3.ensureIndex({ type: "hash", fields: ["value1"], unique: true });
       var expected = { writesExecuted: 0, writesIgnored: 51 };
       var actual = getModifyQueryResults("FOR i IN 50..100 UPDATE { _key: CONCAT('test', i), value1: 1 } IN @@cn OPTIONS { ignoreErrors: true }", { "@cn": cn3 });
 
@@ -1366,6 +1411,20 @@ function ahuacatlUpdateSuite () {
         var doc = c1.document("test" + i);
         assertEqual(i, doc.value1);
         assertEqual("test" + i, doc.value2);
+      }
+    },
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief test update with empty object
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpdateEmpty3: function () {
+      const actual = AQL_EXECUTE(`FOR doc IN ${cn2} UPDATE doc WITH {} IN ${cn2} RETURN {old: OLD, new: NEW}`);
+      const res = actual.json;
+      assertEqual(res.length, 1000);
+      for (let i = 0; i < res.length; ++i) {
+        assertEqual(res[i].old._rev, res[i].new._rev);
+        assertEqual(res[i].old.name, res[i].new.name);
       }
     },
 
@@ -1870,7 +1929,24 @@ false
 
       let rules = AQL_EXPLAIN(query, { "@cn": cn1 }).plan.rules;
       assertEqual(-1, rules.indexOf("restrict-to-single-shard"));
-    }
+    },
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief test replace with empty object
+/// replaces all documents with empty object, hence, the old documents would
+/// have the "name" key, as the new documents wouldn't
+////////////////////////////////////////////////////////////////////////////////
+
+    testReplaceEmpty: function () {
+      const actual = AQL_EXECUTE(`FOR doc IN ${cn2} REPLACE doc WITH {} IN ${cn2} RETURN {old: OLD, new: NEW}`);
+      const res = actual.json;
+      assertEqual(res.length, 1000);
+      for (let i = 0; i < res.length; ++i) {
+        assertNotEqual(res[i].old._rev, res[i].new._rev);
+        assertFalse(res[i].new.hasOwnProperty("name"));
+        assertTrue(res[i].old.hasOwnProperty("name"));
+      }
+    },
 
   };
 }

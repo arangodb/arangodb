@@ -25,6 +25,7 @@
 
 #include "Basics/voc-errors.h"
 
+#include <Replication2/Mocks/FakeFailureOracle.h>
 #include <Replication2/ReplicatedLog/Algorithms.h>
 
 #include <utility>
@@ -53,8 +54,8 @@ struct FakeAbstractFollower : replicated_log::AbstractFollower {
   ParticipantId id;
 };
 
-struct ReplicationMaintenanceActionTest : ReplicatedLogTest, algorithms::LogActionContext {
-
+struct ReplicationMaintenanceActionTest : ReplicatedLogTest,
+                                          algorithms::LogActionContext {
   auto dropReplicatedLog(LogId id) -> Result final {
     if (auto it = logs.find(id); it != logs.end()) {
       logs.erase(it);
@@ -64,7 +65,8 @@ struct ReplicationMaintenanceActionTest : ReplicatedLogTest, algorithms::LogActi
     }
   }
 
-  auto ensureReplicatedLog(LogId id) -> std::shared_ptr<replicated_log::ReplicatedLog> final {
+  auto ensureReplicatedLog(LogId id)
+      -> std::shared_ptr<replicated_log::ReplicatedLog> final {
     if (auto it = logs.find(id); it != logs.end()) {
       return it->second;
     }
@@ -80,11 +82,13 @@ struct ReplicationMaintenanceActionTest : ReplicatedLogTest, algorithms::LogActi
   std::unordered_map<LogId, std::shared_ptr<TestReplicatedLog>> logs;
 };
 
-}
+}  // namespace
 
 TEST_F(ReplicationMaintenanceActionTest, drop_replicated_log) {
   auto const logId = LogId{12};
-  algorithms::updateReplicatedLog(*this, ParticipantId{"A"}, RebootId{17}, logId, nullptr);
+  algorithms::updateReplicatedLog(*this, ParticipantId{"A"}, RebootId{17},
+                                  logId, nullptr,
+                                  std::make_shared<FakeFailureOracle>());
 
   ASSERT_EQ(logs.size(), 0);
 }
@@ -97,9 +101,10 @@ TEST_F(ReplicationMaintenanceActionTest, create_replicated_log) {
   spec.id = logId;
   spec.currentTerm = agency::LogPlanTermSpecification{};
   spec.currentTerm->term = LogTerm{8};
-  spec.currentTerm->participants[serverId] = {};
+  spec.participantsConfig.participants[serverId] = {};
 
-  algorithms::updateReplicatedLog(*this, serverId, RebootId{17}, logId, &spec);
+  algorithms::updateReplicatedLog(*this, serverId, RebootId{17}, logId, &spec,
+                                  std::make_shared<FakeFailureOracle>());
 
   ASSERT_EQ(logs.size(), 1);
   auto& log = logs.at(logId);
@@ -114,39 +119,49 @@ TEST_F(ReplicationMaintenanceActionTest, create_replicated_log_leader) {
   spec.id = logId;
   spec.currentTerm = agency::LogPlanTermSpecification{};
   spec.currentTerm->term = LogTerm{8};
-  spec.currentTerm->participants[serverId] = {};
-  spec.currentTerm->leader = agency::LogPlanTermSpecification::Leader{serverId, RebootId{17}};
+  spec.participantsConfig.generation = 1;
+  spec.participantsConfig.participants[serverId] = {};
+  spec.currentTerm->leader =
+      agency::LogPlanTermSpecification::Leader{serverId, RebootId{17}};
 
-  algorithms::updateReplicatedLog(*this, serverId, RebootId{17}, logId, &spec);
+  algorithms::updateReplicatedLog(*this, serverId, RebootId{17}, logId, &spec,
+                                  std::make_shared<FakeFailureOracle>());
 
   ASSERT_EQ(logs.size(), 1);
   auto& log = logs.at(logId);
   EXPECT_EQ(log->getParticipant()->getTerm().value(), LogTerm{8});
-  auto status = std::get<LeaderStatus>(log->getParticipant()->getStatus().getVariant());
+  auto status =
+      std::get<LeaderStatus>(log->getParticipant()->getStatus().getVariant());
   EXPECT_EQ(status.follower.size(), 1);
   EXPECT_NE(status.follower.find(serverId), status.follower.end());
 }
 
-TEST_F(ReplicationMaintenanceActionTest, create_replicated_log_leader_wrong_reboot_id) {
+TEST_F(ReplicationMaintenanceActionTest,
+       create_replicated_log_leader_wrong_reboot_id) {
   auto const logId = LogId{12};
   auto const serverId = ParticipantId{"A"};
 
   agency::LogPlanSpecification spec;
   spec.id = logId;
   spec.currentTerm = agency::LogPlanTermSpecification{};
+  spec.participantsConfig.generation = 1;
   spec.currentTerm->term = LogTerm{8};
-  spec.currentTerm->participants[serverId] = {};
-  spec.currentTerm->leader = agency::LogPlanTermSpecification::Leader{serverId, RebootId{18}};
+  spec.participantsConfig.participants[serverId] = {};
+  spec.currentTerm->leader =
+      agency::LogPlanTermSpecification::Leader{serverId, RebootId{18}};
 
-  algorithms::updateReplicatedLog(*this, serverId, RebootId{17}, logId, &spec);
+  algorithms::updateReplicatedLog(*this, serverId, RebootId{17}, logId, &spec,
+                                  std::make_shared<FakeFailureOracle>());
 
   ASSERT_EQ(logs.size(), 1);
   auto& log = logs.at(logId);
   EXPECT_EQ(log->getParticipant()->getTerm().value(), LogTerm{8});
-  EXPECT_TRUE(std::holds_alternative<FollowerStatus>(log->getParticipant()->getStatus().getVariant()));
+  EXPECT_TRUE(std::holds_alternative<FollowerStatus>(
+      log->getParticipant()->getStatus().getVariant()));
 }
 
-TEST_F(ReplicationMaintenanceActionTest, create_replicated_log_leader_with_follower) {
+TEST_F(ReplicationMaintenanceActionTest,
+       create_replicated_log_leader_with_follower) {
   auto const logId = LogId{12};
   auto const serverId = ParticipantId{"A"};
   auto const followerId = ParticipantId{"B"};
@@ -154,19 +169,49 @@ TEST_F(ReplicationMaintenanceActionTest, create_replicated_log_leader_with_follo
   agency::LogPlanSpecification spec;
   spec.id = logId;
   spec.currentTerm = agency::LogPlanTermSpecification{};
+  spec.participantsConfig.generation = 1;
   spec.currentTerm->term = LogTerm{8};
-  spec.currentTerm->participants[serverId] = {};
-  spec.currentTerm->participants[followerId] = {};
-  spec.currentTerm->leader = agency::LogPlanTermSpecification::Leader{serverId, RebootId{17}};
+  spec.participantsConfig.participants[serverId] = {};
+  spec.participantsConfig.participants[followerId] = {};
+  spec.currentTerm->leader =
+      agency::LogPlanTermSpecification::Leader{serverId, RebootId{17}};
 
-  algorithms::updateReplicatedLog(*this, serverId, RebootId{17}, logId, &spec);
+  algorithms::updateReplicatedLog(*this, serverId, RebootId{17}, logId, &spec,
+                                  std::make_shared<FakeFailureOracle>());
 
   ASSERT_EQ(logs.size(), 1);
   auto& log = logs.at(logId);
   EXPECT_EQ(log->getParticipant()->getTerm().value(), LogTerm{8});
-  auto status = std::get<LeaderStatus>(log->getParticipant()->getStatus().getVariant());
+  auto status =
+      std::get<LeaderStatus>(log->getParticipant()->getStatus().getVariant());
   EXPECT_EQ(status.follower.size(), 2);
   EXPECT_NE(status.follower.find(serverId), status.follower.end());
   EXPECT_NE(status.follower.find(followerId), status.follower.end());
 }
 
+TEST_F(ReplicationMaintenanceActionTest,
+       create_replicated_log_participantsConfig_leader_creation) {
+  auto const logId = LogId{12};
+  auto const serverId = ParticipantId{"A"};
+
+  agency::LogPlanSpecification spec;
+  spec.id = logId;
+  spec.currentTerm = agency::LogPlanTermSpecification{};
+  spec.currentTerm->term = LogTerm{8};
+  spec.participantsConfig.generation = 2;
+  spec.participantsConfig.participants[serverId] = {};
+  spec.currentTerm->leader =
+      agency::LogPlanTermSpecification::Leader{serverId, RebootId{17}};
+
+  algorithms::updateReplicatedLog(*this, serverId, RebootId{17}, logId, &spec,
+                                  std::make_shared<FakeFailureOracle>());
+
+  ASSERT_EQ(logs.size(), 1);
+  auto& log = logs.at(logId);
+  EXPECT_EQ(log->getParticipant()->getTerm().value(), LogTerm{8});
+  auto status =
+      std::get<LeaderStatus>(log->getParticipant()->getStatus().getVariant());
+  EXPECT_EQ(status.follower.size(), 1);
+  EXPECT_NE(status.follower.find(serverId), status.follower.end());
+  EXPECT_EQ(status.activeParticipantsConfig.generation, 2);
+}

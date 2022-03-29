@@ -37,7 +37,7 @@ extern const char* ARGV0;  // defined in main.cpp
 namespace {
 
 static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
-static const VPackSlice   systemDatabaseArgs = systemDatabaseBuilder.slice();
+static const VPackSlice systemDatabaseArgs = systemDatabaseBuilder.slice();
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
@@ -55,7 +55,8 @@ class IResearchPrimaryKeyReuse : public IResearchQueryTest {};
 ////////////////////////////////////////////////////////////////////////////////
 
 TEST_F(IResearchPrimaryKeyReuse, test_multiple_transactions_sequential) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                        testDBInfo(server.server()));
   std::vector<arangodb::velocypack::Builder> insertedDocs;
   arangodb::LogicalView* view;
   std::shared_ptr<arangodb::LogicalCollection> collection;
@@ -67,7 +68,6 @@ TEST_F(IResearchPrimaryKeyReuse, test_multiple_transactions_sequential) {
         "  \"usesRevisionsAsDocumentIds\": true }");
     collection = vocbase.createCollection(createJson->slice());
     ASSERT_NE(nullptr, collection);
-
   }
 
   // create view
@@ -103,16 +103,14 @@ TEST_F(IResearchPrimaryKeyReuse, test_multiple_transactions_sequential) {
 
   // insert initial document
   {
-      std::vector<std::shared_ptr<arangodb::velocypack::Builder>> docs{
-        VPackParser::fromJson(
-            "{ \"value\": true }")
-    };
+    std::vector<std::shared_ptr<arangodb::velocypack::Builder>> docs{
+        VPackParser::fromJson("{ \"value\": true }")};
 
     arangodb::OperationOptions options;
     options.returnNew = true;
-    arangodb::SingleCollectionTransaction trx(arangodb::transaction::StandaloneContext::Create(vocbase),
-                                              *collection,
-                                              arangodb::AccessMode::Type::WRITE);
+    arangodb::SingleCollectionTransaction trx(
+        arangodb::transaction::StandaloneContext::Create(vocbase), *collection,
+        arangodb::AccessMode::Type::WRITE);
     EXPECT_TRUE(trx.begin().ok());
 
     for (auto& entry : docs) {
@@ -129,9 +127,9 @@ TEST_F(IResearchPrimaryKeyReuse, test_multiple_transactions_sequential) {
     // remove
     {
       arangodb::OperationOptions options;
-      arangodb::SingleCollectionTransaction trx(arangodb::transaction::StandaloneContext::Create(vocbase),
-                                                *collection,
-                                                arangodb::AccessMode::Type::WRITE);
+      arangodb::SingleCollectionTransaction trx(
+          arangodb::transaction::StandaloneContext::Create(vocbase),
+          *collection, arangodb::AccessMode::Type::WRITE);
       EXPECT_TRUE(trx.begin().ok());
 
       for (auto& entry : insertedDocs) {
@@ -154,16 +152,20 @@ TEST_F(IResearchPrimaryKeyReuse, test_multiple_transactions_sequential) {
       arangodb::OperationOptions options;
       options.returnNew = true;
       options.isRestore = true;
-      arangodb::SingleCollectionTransaction trx(arangodb::transaction::StandaloneContext::Create(vocbase),
-                                                *collection,
-                                                arangodb::AccessMode::Type::WRITE);
+      arangodb::SingleCollectionTransaction trx(
+          arangodb::transaction::StandaloneContext::Create(vocbase),
+          *collection, arangodb::AccessMode::Type::WRITE);
       EXPECT_TRUE(trx.begin().ok());
 
       for (auto& entry : insertedDocs) {
         auto res = trx.insert(collection->name(), entry.slice(), options);
         EXPECT_TRUE(res.ok());
-        EXPECT_EQ(res.slice().get("new").get(arangodb::StaticStrings::RevString).copyString(),
-                  entry.slice().get(arangodb::StaticStrings::RevString).copyString());
+        EXPECT_EQ(
+            res.slice()
+                .get("new")
+                .get(arangodb::StaticStrings::RevString)
+                .copyString(),
+            entry.slice().get(arangodb::StaticStrings::RevString).copyString());
       }
 
       EXPECT_TRUE(trx.commit().ok());
@@ -233,9 +235,9 @@ TEST_F(IResearchPrimaryKeyReuse, test_multiple_transactions_interleaved) {
   {
     arangodb::OperationOptions options;
     options.returnNew = true;
-    arangodb::SingleCollectionTransaction trx(arangodb::transaction::StandaloneContext::Create(vocbase),
-                                              *collection,
-                                              arangodb::AccessMode::Type::WRITE);
+    arangodb::SingleCollectionTransaction trx(
+        arangodb::transaction::StandaloneContext::Create(vocbase), *collection,
+        arangodb::AccessMode::Type::WRITE);
     EXPECT_TRUE(trx.begin().ok());
 
     for (auto& entry : docs) {
@@ -320,8 +322,12 @@ TEST_F(IResearchPrimaryKeyReuse, test_multiple_transactions_interleaved) {
       for (auto& entry : insertedDocs) {
         auto res = trx.insert(collection->name(), entry.slice(), options);
         EXPECT_TRUE(res.ok());
-        EXPECT_EQ(res.slice().get("new").get(arangodb::StaticStrings::RevString).copyString(),
-                  entry.slice().get(arangodb::StaticStrings::RevString).copyString());
+        EXPECT_EQ(
+            res.slice()
+                .get("new")
+                .get(arangodb::StaticStrings::RevString)
+                .copyString(),
+            entry.slice().get(arangodb::StaticStrings::RevString).copyString());
       }
 
       EXPECT_TRUE(trx.commit().ok());
@@ -388,9 +394,9 @@ TEST_F(IResearchPrimaryKeyReuse, test_single_transaction) {
     std::vector<std::shared_ptr<arangodb::velocypack::Builder>> docs{
         VPackParser::fromJson("{ \"value\": true }")};
 
-    arangodb::SingleCollectionTransaction trx(arangodb::transaction::StandaloneContext::Create(vocbase),
-                                              *collection,
-                                              arangodb::AccessMode::Type::WRITE);
+    arangodb::SingleCollectionTransaction trx(
+        arangodb::transaction::StandaloneContext::Create(vocbase), *collection,
+        arangodb::AccessMode::Type::WRITE);
     EXPECT_TRUE(trx.begin().ok());
 
     for (auto& entry : docs) {
@@ -420,9 +426,13 @@ TEST_F(IResearchPrimaryKeyReuse, test_single_transaction) {
         for (auto& entry : insertedDocs) {
           auto res = trx.insert(collection->name(), entry.slice(), options);
           EXPECT_TRUE(res.ok());
-          EXPECT_EQ(
-              res.slice().get("new").get(arangodb::StaticStrings::RevString).copyString(),
-              entry.slice().get(arangodb::StaticStrings::RevString).copyString());
+          EXPECT_EQ(res.slice()
+                        .get("new")
+                        .get(arangodb::StaticStrings::RevString)
+                        .copyString(),
+                    entry.slice()
+                        .get(arangodb::StaticStrings::RevString)
+                        .copyString());
         }
       }
     }

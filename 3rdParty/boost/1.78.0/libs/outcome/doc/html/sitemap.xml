@@ -1,0 +1,2215 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+  xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  
+  <url>
+    <loc>/requirements.html</loc>
+    <lastmod>2020-02-25T11:15:13+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/build.html</loc>
+    <lastmod>2021-04-02T11:06:20+01:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/tutorial/essential/before.html</loc>
+    <lastmod>2020-12-15T12:22:39+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/tutorial/advanced/interop/problem.html</loc>
+    <lastmod>2019-02-09T15:18:26+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/experimental/advantages.html</loc>
+    <lastmod>2019-02-05T21:41:47+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/tutorial/advanced/interop/value-or-error.html</loc>
+    <lastmod>2020-12-15T12:22:39+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/motivation.html</loc>
+    <lastmod>2019-06-27T16:00:40+01:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/tutorial/essential/no-value/custom.html</loc>
+    <lastmod>2019-02-08T22:18:08+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/experimental/map.html</loc>
+    <lastmod>2020-12-16T14:14:42+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/tutorial/essential/coroutines/try.html</loc>
+    <lastmod>2020-04-07T10:22:38+01:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/experimental/worked-example/preamble.html</loc>
+    <lastmod>2019-01-26T23:38:56+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/tutorial/essential.html</loc>
+    <lastmod>2019-02-08T22:18:08+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/motivation/exceptions.html</loc>
+    <lastmod>2019-03-22T13:58:05-07:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/tutorial/advanced/hooks/keeping_state.html</loc>
+    <lastmod>2019-02-08T22:18:08+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/experimental/c-api/limitations.html</loc>
+    <lastmod>2019-02-05T17:14:18+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/macros.html</loc>
+    <lastmod>2018-12-10T20:32:00+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/tutorial/advanced/payload/copy_file.html</loc>
+    <lastmod>2019-02-08T22:18:08+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/tutorial/advanced/interop/httplib.html</loc>
+    <lastmod>2019-02-08T22:18:08+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/tutorial.html</loc>
+    <lastmod>2020-12-15T12:22:39+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/tutorial/advanced/constructors/two-phase-init.html</loc>
+    <lastmod>2019-02-08T22:18:08+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/tutorial/essential/result.html</loc>
+    <lastmod>2021-02-23T17:37:27+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/recipes.html</loc>
+    <lastmod>2019-02-08T22:18:08+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/experimental.html</loc>
+    <lastmod>2020-12-17T11:27:06+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/tutorial/advanced/interop/tidylib.html</loc>
+    <lastmod>2019-02-08T22:18:08+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/tutorial/advanced/constructors/file_handle.html</loc>
+    <lastmod>2019-02-08T22:18:08+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/tutorial/advanced/hooks/adl_bridging.html</loc>
+    <lastmod>2020-12-15T12:22:39+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference.html</loc>
+    <lastmod>2018-12-10T20:32:00+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/tutorial/advanced.html</loc>
+    <lastmod>2019-02-08T22:18:08+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/tutorial/essential/no-value/builtin.html</loc>
+    <lastmod>2019-02-09T15:18:26+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/concepts.html</loc>
+    <lastmod>2018-12-11T14:56:04+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/tutorial/essential/coroutines/awaitables.html</loc>
+    <lastmod>2020-04-07T10:22:38+01:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/experimental/c-api/example.html</loc>
+    <lastmod>2019-02-05T17:14:18+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/tutorial/essential/result/inspecting.html</loc>
+    <lastmod>2019-03-22T15:01:40-07:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/experimental/differences.html</loc>
+    <lastmod>2020-12-16T14:14:42+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/tutorial/advanced/interop/filelib.html</loc>
+    <lastmod>2019-02-08T22:18:08+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/experimental/worked-example/value_type.html</loc>
+    <lastmod>2019-01-26T23:38:56+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/changelog/upgrade_v21_v22.html</loc>
+    <lastmod>2021-02-23T17:37:27+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/tutorial/advanced/payload/copy_file2.html</loc>
+    <lastmod>2019-02-08T22:18:08+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/motivation/errno.html</loc>
+    <lastmod>2019-01-16T01:05:39+01:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/tutorial/essential/outcome.html</loc>
+    <lastmod>2019-03-19T22:57:48+01:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/converters.html</loc>
+    <lastmod>2018-12-15T17:49:37+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/tutorial/essential/no-value.html</loc>
+    <lastmod>2019-02-08T22:18:08+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/tutorial/advanced/interop/app.html</loc>
+    <lastmod>2019-02-11T17:14:51+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/tutorial/advanced/payload/copy_file3.html</loc>
+    <lastmod>2019-02-08T22:18:08+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/experimental/c-api/example2.html</loc>
+    <lastmod>2019-02-05T17:14:18+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/tutorial/essential/coroutines.html</loc>
+    <lastmod>2020-04-07T10:22:38+01:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/tutorial/advanced/payload.html</loc>
+    <lastmod>2019-02-08T22:18:08+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/motivation/error_codes.html</loc>
+    <lastmod>2019-01-16T01:05:39+01:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/faq.html</loc>
+    <lastmod>2021-04-20T11:39:35+01:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/tutorial/advanced/hooks/hook_result.html</loc>
+    <lastmod>2020-12-15T12:22:39+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/functions/hooks.html</loc>
+    <lastmod>2019-01-22T01:11:40+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/tutorial/essential/outcome/inspecting.html</loc>
+    <lastmod>2020-06-19T15:42:26+01:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/tutorial/advanced/interop/app-map-httplib1.html</loc>
+    <lastmod>2019-02-11T13:38:04+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/tutorial/advanced/constructors/static-constructor.html</loc>
+    <lastmod>2019-02-08T22:18:08+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/tutorial/essential/coroutines/returning.html</loc>
+    <lastmod>2020-04-07T10:22:38+01:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/tutorial/essential/result/try.html</loc>
+    <lastmod>2021-02-12T20:25:43+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/experimental/worked-example/constructor.html</loc>
+    <lastmod>2019-01-26T23:38:56+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/traits.html</loc>
+    <lastmod>2018-12-13T17:36:11+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/changelog/v22.html</loc>
+    <lastmod>2021-02-23T17:37:27+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/functions/iostream.html</loc>
+    <lastmod>2019-03-03T21:04:29+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/tutorial/advanced/interop/app-map-httplib2.html</loc>
+    <lastmod>2020-12-15T12:22:39+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/tutorial/advanced/hooks/poke_exception.html</loc>
+    <lastmod>2020-12-15T12:22:39+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/tutorial/advanced/interop/app-map-filelib.html</loc>
+    <lastmod>2019-02-11T13:38:04+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/tutorial/advanced/constructors/metaprogrammg1.html</loc>
+    <lastmod>2019-02-08T22:18:08+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/policies.html</loc>
+    <lastmod>2018-12-13T21:10:19+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/functions/policy.html</loc>
+    <lastmod>2019-01-22T01:11:40+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/experimental/worked-example/string_ref.html</loc>
+    <lastmod>2019-01-26T23:38:56+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/tutorial/essential/result/try_greedy.html</loc>
+    <lastmod>2020-02-03T12:05:24+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/videos.html</loc>
+    <lastmod>2018-09-20T09:21:47+01:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/tutorial/essential/coroutines/co_await.html</loc>
+    <lastmod>2020-04-07T10:22:38+01:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/experimental/status_result.html</loc>
+    <lastmod>2020-12-16T14:14:42+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/motivation/std_error_code.html</loc>
+    <lastmod>2019-01-16T01:05:39+01:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/tutorial/advanced/interop/app-map-tidylib.html</loc>
+    <lastmod>2019-02-08T22:18:08+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/tutorial/advanced/constructors.html</loc>
+    <lastmod>2019-06-24T21:48:18+01:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/experimental/c-api/reference.html</loc>
+    <lastmod>2020-12-17T11:27:06+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/tutorial/advanced/hooks/hook_outcome.html</loc>
+    <lastmod>2020-12-15T12:22:39+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/tutorial/advanced/hooks.html</loc>
+    <lastmod>2020-09-16T11:58:04+01:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/tutorial/advanced/interop/app-go.html</loc>
+    <lastmod>2020-12-15T12:22:39+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/motivation/plug_error_code.html</loc>
+    <lastmod>2021-09-10T11:56:40+01:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/experimental/worked-example/message.html</loc>
+    <lastmod>2019-01-26T23:38:56+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/tutorial/essential/result/try_ref.html</loc>
+    <lastmod>2021-02-12T20:25:43+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types.html</loc>
+    <lastmod>2018-12-13T21:10:19+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/tutorial/advanced/constructors/metaprogrammg2.html</loc>
+    <lastmod>2019-02-08T22:18:08+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/tutorial/advanced/interop/conclusion.html</loc>
+    <lastmod>2020-12-15T12:22:39+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/motivation/plug_error_code2.html</loc>
+    <lastmod>2021-09-10T11:56:40+01:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/aliases.html</loc>
+    <lastmod>2018-12-13T21:10:19+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/tutorial/advanced/constructors/metaprogrammg3.html</loc>
+    <lastmod>2019-02-08T22:18:08+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/experimental/worked-example/source.html</loc>
+    <lastmod>2019-01-26T23:38:56+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/motivation/narrow_contract.html</loc>
+    <lastmod>2019-04-26T17:43:41+02:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/functions.html</loc>
+    <lastmod>2018-12-13T21:10:19+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/experimental/worked-example/implicit_conversion.html</loc>
+    <lastmod>2019-01-26T23:38:56+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/changelog.html</loc>
+    <lastmod>2021-11-01T20:14:02+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/tutorial/essential/conventions.html</loc>
+    <lastmod>2019-02-09T15:18:26+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/tutorial/advanced/interop.html</loc>
+    <lastmod>2019-02-08T22:18:08+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/experimental/outcome.html</loc>
+    <lastmod>2019-02-05T17:14:18+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/experimental/worked-example.html</loc>
+    <lastmod>2019-01-26T23:38:56+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/history.html</loc>
+    <lastmod>2020-09-16T11:58:04+01:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/experimental/c-api.html</loc>
+    <lastmod>2019-02-05T17:14:18+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_outcome/default.html</loc>
+    <lastmod>2019-01-31T01:07:35+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_result/default.html</loc>
+    <lastmod>2018-12-15T17:49:37+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/policies/base/ub.html</loc>
+    <lastmod>2019-01-22T01:11:40+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_outcome/move_constructor.html</loc>
+    <lastmod>2019-03-03T00:11:47+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_result/move_constructor.html</loc>
+    <lastmod>2019-03-03T00:11:47+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_outcome/copy_constructor.html</loc>
+    <lastmod>2019-03-03T00:11:47+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_result/copy_constructor.html</loc>
+    <lastmod>2019-03-03T00:11:47+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_outcome/move_assignment.html</loc>
+    <lastmod>2019-03-03T00:11:47+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_result/move_assignment.html</loc>
+    <lastmod>2019-03-03T00:11:47+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_outcome/copy_assignment.html</loc>
+    <lastmod>2019-03-03T00:11:47+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_result/copy_assignment.html</loc>
+    <lastmod>2019-03-03T00:11:47+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_outcome/destructor.html</loc>
+    <lastmod>2019-01-31T01:07:35+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_result/destructor.html</loc>
+    <lastmod>2018-12-15T17:49:37+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_outcome/disabling_catchall.html</loc>
+    <lastmod>2019-01-31T01:07:35+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_result/disabling_catchall.html</loc>
+    <lastmod>2018-12-15T17:49:37+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_outcome/disabling_implicit_constructor.html</loc>
+    <lastmod>2019-01-31T01:07:35+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_result/disabling_implicit_constructor.html</loc>
+    <lastmod>2018-12-15T17:49:37+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_outcome/implicit_value_converting_constructor.html</loc>
+    <lastmod>2020-12-17T11:27:06+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_result/implicit_value_converting_constructor.html</loc>
+    <lastmod>2020-12-17T11:27:06+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_outcome/implicit_error_converting_constructor.html</loc>
+    <lastmod>2020-12-17T11:27:06+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_result/implicit_error_converting_constructor.html</loc>
+    <lastmod>2020-12-17T11:27:06+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_outcome/implicit_error_condition_converting_constructor.html</loc>
+    <lastmod>2020-12-17T11:27:06+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_result/implicit_error_condition_converting_constructor.html</loc>
+    <lastmod>2020-12-17T11:27:06+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/policies/base/has_value.html</loc>
+    <lastmod>2019-01-22T01:11:40+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_outcome/implicit_exception_converting_constructor.html</loc>
+    <lastmod>2020-12-17T11:27:06+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_outcome/implicit_error_exception_converting_constructor.html</loc>
+    <lastmod>2020-12-17T11:27:06+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/policies/base/has_error.html</loc>
+    <lastmod>2019-01-22T01:11:40+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/policies/base/has_exception.html</loc>
+    <lastmod>2019-01-22T01:11:40+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/policies/base/has_error_is_errno.html</loc>
+    <lastmod>2019-01-22T01:11:40+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/policies/base/value.html</loc>
+    <lastmod>2019-01-22T01:11:40+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/policies/base/error.html</loc>
+    <lastmod>2019-01-22T01:11:40+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/policies/base/exception.html</loc>
+    <lastmod>2019-01-22T01:11:40+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_outcome/explicit_valueorerror_converting_constructor.html</loc>
+    <lastmod>2020-12-15T12:22:39+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_result/explicit_valueorerror_converting_constructor.html</loc>
+    <lastmod>2020-12-15T12:22:39+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/policies/base/set_has_value.html</loc>
+    <lastmod>2019-01-22T01:11:40+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_outcome/explicit_copy_converting_constructor.html</loc>
+    <lastmod>2020-12-17T11:27:06+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_result/explicit_copy_converting_constructor.html</loc>
+    <lastmod>2020-12-17T11:27:06+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/policies/base/set_has_error.html</loc>
+    <lastmod>2019-01-22T01:11:40+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_outcome/explicit_move_converting_constructor.html</loc>
+    <lastmod>2020-12-17T11:27:06+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_result/explicit_move_converting_constructor.html</loc>
+    <lastmod>2020-12-17T11:27:06+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_result/explicit_make_error_code_copy_converting_constructor.html</loc>
+    <lastmod>2020-12-17T11:27:06+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_result/explicit_make_error_code_move_converting_constructor.html</loc>
+    <lastmod>2020-12-17T11:27:06+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_result/explicit_make_exception_ptr_copy_converting_constructor.html</loc>
+    <lastmod>2020-12-17T11:27:06+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_result/explicit_make_exception_ptr_move_converting_constructor.html</loc>
+    <lastmod>2020-12-17T11:27:06+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_outcome/explicit_result_copy_converting_constructor.html</loc>
+    <lastmod>2020-12-17T11:27:06+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/policies/base/set_has_exception.html</loc>
+    <lastmod>2019-01-22T01:11:40+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_outcome/explicit_result_move_converting_constructor.html</loc>
+    <lastmod>2020-12-17T11:27:06+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/policies/base/set_has_error_is_errno.html</loc>
+    <lastmod>2019-01-22T01:11:40+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_outcome/explicit_result_make_error_code_copy_converting_constructor.html</loc>
+    <lastmod>2020-12-17T11:27:06+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_outcome/explicit_result_make_error_code_move_converting_constructor.html</loc>
+    <lastmod>2020-12-17T11:27:06+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_outcome/explicit_inplace_value_constructor.html</loc>
+    <lastmod>2020-12-17T11:27:06+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_result/explicit_inplace_value_constructor.html</loc>
+    <lastmod>2020-12-17T11:27:06+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/policies/base/narrow_value_check.html</loc>
+    <lastmod>2019-01-22T01:11:40+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_outcome/explicit_inplace_value_constructor_il.html</loc>
+    <lastmod>2020-12-17T11:27:06+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_result/explicit_inplace_value_constructor_il.html</loc>
+    <lastmod>2020-12-17T11:27:06+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/policies/base/narrow_error_check.html</loc>
+    <lastmod>2019-01-22T01:11:40+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_outcome/explicit_inplace_error_constructor.html</loc>
+    <lastmod>2020-12-17T11:27:06+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_result/explicit_inplace_error_constructor.html</loc>
+    <lastmod>2020-12-17T11:27:06+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/policies/base/narrow_exception_check.html</loc>
+    <lastmod>2019-01-22T01:11:40+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_outcome/explicit_inplace_error_constructor_il.html</loc>
+    <lastmod>2020-12-17T11:27:06+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_result/explicit_inplace_error_constructor_il.html</loc>
+    <lastmod>2020-12-17T11:27:06+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_outcome/explicit_inplace_exception_constructor.html</loc>
+    <lastmod>2020-12-17T11:27:06+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_outcome/explicit_inplace_exception_constructor_il.html</loc>
+    <lastmod>2020-12-17T11:27:06+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_outcome/implicit_inplace_value_error_exception_constructor.html</loc>
+    <lastmod>2019-01-31T01:07:35+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_result/implicit_inplace_value_error_constructor.html</loc>
+    <lastmod>2019-01-17T21:24:36+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/policies/base/on_outcome_construction.html</loc>
+    <lastmod>2020-12-17T11:27:06+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/policies/base/on_outcome_construction2.html</loc>
+    <lastmod>2020-12-17T11:27:06+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/policies/base/on_outcome_copy_construction.html</loc>
+    <lastmod>2020-12-17T11:27:06+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/policies/base/on_outcome_copy_construction2.html</loc>
+    <lastmod>2020-12-17T11:27:06+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/policies/base/on_outcome_in_place_construction.html</loc>
+    <lastmod>2020-12-17T11:27:06+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/policies/base/on_outcome_move_construction.html</loc>
+    <lastmod>2020-12-17T11:27:06+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/policies/base/on_outcome_move_construction2.html</loc>
+    <lastmod>2020-12-17T11:27:06+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/policies/base/on_result_construction.html</loc>
+    <lastmod>2020-12-17T11:27:06+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/policies/base/on_result_copy_construction.html</loc>
+    <lastmod>2020-12-17T11:27:06+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/policies/base/on_result_in_place_construction.html</loc>
+    <lastmod>2020-12-17T11:27:06+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/policies/base/on_result_move_construction.html</loc>
+    <lastmod>2020-12-17T11:27:06+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_outcome/implicit_success_copy_constructor.html</loc>
+    <lastmod>2020-12-17T11:27:06+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_result/implicit_success_copy_constructor.html</loc>
+    <lastmod>2020-12-17T11:27:06+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_outcome/implicit_success_move_constructor.html</loc>
+    <lastmod>2020-12-17T11:27:06+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_result/implicit_success_move_constructor.html</loc>
+    <lastmod>2020-12-17T11:27:06+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_outcome/implicit_failure_error_copy_constructor.html</loc>
+    <lastmod>2020-12-17T11:27:06+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_result/implicit_failure_copy_constructor.html</loc>
+    <lastmod>2020-12-17T11:27:06+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_outcome/implicit_failure_error_move_constructor.html</loc>
+    <lastmod>2020-12-17T11:27:06+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_result/implicit_failure_move_constructor.html</loc>
+    <lastmod>2020-12-17T11:27:06+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_outcome/implicit_failure_error_make_error_code_copy_constructor.html</loc>
+    <lastmod>2020-12-17T11:27:06+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_result/implicit_failure_make_error_code_copy_constructor.html</loc>
+    <lastmod>2020-12-17T11:27:06+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_outcome/implicit_failure_error_make_error_code_move_constructor.html</loc>
+    <lastmod>2020-12-17T11:27:06+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_result/implicit_failure_make_error_code_move_constructor.html</loc>
+    <lastmod>2020-12-17T11:27:06+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_result/implicit_failure_make_exception_ptr_copy_constructor.html</loc>
+    <lastmod>2020-12-17T11:27:06+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_outcome/implicit_failure_exception_copy_constructor.html</loc>
+    <lastmod>2020-12-17T11:27:06+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_result/implicit_failure_make_exception_ptr_move_constructor.html</loc>
+    <lastmod>2020-12-17T11:27:06+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_outcome/implicit_failure_exception_move_constructor.html</loc>
+    <lastmod>2020-12-17T11:27:06+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_outcome/implicit_failure_error_exception_copy_constructor.html</loc>
+    <lastmod>2020-12-17T11:27:06+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_outcome/implicit_failure_error_exception_move_constructor.html</loc>
+    <lastmod>2020-12-17T11:27:06+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_outcome/operator_bool.html</loc>
+    <lastmod>2019-01-31T01:07:35+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_result/operator_bool.html</loc>
+    <lastmod>2019-01-20T16:02:33+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_outcome/has_value.html</loc>
+    <lastmod>2019-01-31T01:07:35+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_result/has_value.html</loc>
+    <lastmod>2019-01-20T16:02:33+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_outcome/has_error.html</loc>
+    <lastmod>2019-01-31T01:07:35+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_result/has_error.html</loc>
+    <lastmod>2019-01-20T16:02:33+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_outcome/has_exception.html</loc>
+    <lastmod>2019-01-31T01:07:35+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_result/has_exception.html</loc>
+    <lastmod>2019-01-20T16:02:33+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_outcome/has_failure.html</loc>
+    <lastmod>2019-01-31T01:07:35+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_result/has_failure.html</loc>
+    <lastmod>2019-01-20T16:02:33+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_result/has_lost_consistency.html</loc>
+    <lastmod>2019-06-23T16:48:29+01:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_outcome/assume_value_lvalue.html</loc>
+    <lastmod>2019-02-12T16:36:24+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_result/assume_value_lvalue.html</loc>
+    <lastmod>2019-02-12T16:36:24+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_outcome/assume_value_lvalue_const.html</loc>
+    <lastmod>2019-02-12T16:36:24+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_result/assume_value_lvalue_const.html</loc>
+    <lastmod>2019-02-12T16:36:24+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_outcome/assume_value_rvalue.html</loc>
+    <lastmod>2019-02-12T16:36:24+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_result/assume_value_rvalue.html</loc>
+    <lastmod>2019-02-12T16:36:24+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_outcome/assume_value_rvalue_const.html</loc>
+    <lastmod>2019-02-12T16:36:24+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_result/assume_value_rvalue_const.html</loc>
+    <lastmod>2019-02-12T16:36:24+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_outcome/value_lvalue.html</loc>
+    <lastmod>2019-02-12T16:36:24+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_result/value_lvalue.html</loc>
+    <lastmod>2019-02-12T16:36:24+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_outcome/value_lvalue_const.html</loc>
+    <lastmod>2019-02-12T16:36:24+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_result/value_lvalue_const.html</loc>
+    <lastmod>2019-02-12T16:36:24+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_outcome/value_rvalue.html</loc>
+    <lastmod>2019-02-12T16:36:24+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_result/value_rvalue.html</loc>
+    <lastmod>2019-02-12T16:36:24+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_outcome/value_rvalue_const.html</loc>
+    <lastmod>2019-02-12T16:36:24+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_result/value_rvalue_const.html</loc>
+    <lastmod>2019-02-12T16:36:24+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_outcome/assume_error_lvalue.html</loc>
+    <lastmod>2019-02-12T16:36:24+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_result/assume_error_lvalue.html</loc>
+    <lastmod>2019-02-12T16:36:24+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_outcome/assume_error_lvalue_const.html</loc>
+    <lastmod>2019-02-12T16:36:24+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_result/assume_error_lvalue_const.html</loc>
+    <lastmod>2019-02-12T16:36:24+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_outcome/assume_error_rvalue.html</loc>
+    <lastmod>2019-02-12T16:36:24+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_result/assume_error_rvalue.html</loc>
+    <lastmod>2019-02-12T16:36:24+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_outcome/assume_error_rvalue_const.html</loc>
+    <lastmod>2019-02-12T16:36:24+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_result/assume_error_rvalue_const.html</loc>
+    <lastmod>2019-02-12T16:36:24+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_outcome/error_lvalue.html</loc>
+    <lastmod>2019-02-12T16:36:24+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_result/error_lvalue.html</loc>
+    <lastmod>2019-02-12T16:36:24+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_outcome/error_lvalue_const.html</loc>
+    <lastmod>2019-02-12T16:36:24+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_result/error_lvalue_const.html</loc>
+    <lastmod>2019-02-12T16:36:24+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_outcome/error_rvalue.html</loc>
+    <lastmod>2019-02-12T16:36:24+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_result/error_rvalue.html</loc>
+    <lastmod>2019-02-12T16:36:24+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_outcome/error_rvalue_const.html</loc>
+    <lastmod>2019-02-12T16:36:24+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_result/error_rvalue_const.html</loc>
+    <lastmod>2019-02-12T16:36:24+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_outcome/assume_exception_lvalue.html</loc>
+    <lastmod>2019-02-12T16:36:24+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_outcome/assume_exception_lvalue_const.html</loc>
+    <lastmod>2019-02-12T16:36:24+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_outcome/assume_exception_rvalue_const.html</loc>
+    <lastmod>2019-02-12T16:36:24+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_outcome/assume_exception_rvalue.html</loc>
+    <lastmod>2019-02-12T16:36:24+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_outcome/exception_lvalue.html</loc>
+    <lastmod>2019-02-12T16:36:24+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_outcome/exception_lvalue_const.html</loc>
+    <lastmod>2019-02-12T16:36:24+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_outcome/exception_rvalue.html</loc>
+    <lastmod>2019-02-12T16:36:24+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_outcome/exception_rvalue_const.html</loc>
+    <lastmod>2019-02-12T16:36:24+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_outcome/failure.html</loc>
+    <lastmod>2019-02-05T21:41:47+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_outcome/equality_basic_result.html</loc>
+    <lastmod>2019-02-01T15:52:57+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_result/equality_basic_result.html</loc>
+    <lastmod>2019-02-01T15:52:57+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_outcome/equality_basic_outcome.html</loc>
+    <lastmod>2019-02-01T15:52:57+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_outcome/inequality_success_type.html</loc>
+    <lastmod>2019-01-31T01:07:35+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_result/inequality_success_type.html</loc>
+    <lastmod>2019-01-20T16:02:33+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_outcome/equality_failure_type.html</loc>
+    <lastmod>2019-01-31T01:07:35+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_result/equality_failure_type.html</loc>
+    <lastmod>2019-01-31T01:07:35+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_result/inequality_basic_result.html</loc>
+    <lastmod>2019-02-01T15:52:57+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_outcome/inequality_basic_result.html</loc>
+    <lastmod>2019-02-01T15:52:57+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_outcome/inequality_basic_outcome.html</loc>
+    <lastmod>2019-02-01T15:52:57+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_outcome/equality_success_type.html</loc>
+    <lastmod>2019-01-31T01:07:35+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_result/equality_success_type.html</loc>
+    <lastmod>2019-01-20T16:02:33+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_outcome/inequality_failure_type.html</loc>
+    <lastmod>2019-01-31T01:07:35+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_result/inequality_failure_type.html</loc>
+    <lastmod>2019-01-31T01:07:35+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_outcome/swap.html</loc>
+    <lastmod>2019-06-25T17:01:21+01:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_result/swap.html</loc>
+    <lastmod>2019-06-25T17:01:21+01:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_result/as_failure_lvalue.html</loc>
+    <lastmod>2019-01-24T01:15:16+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_outcome/as_failure_lvalue.html</loc>
+    <lastmod>2019-02-01T15:52:57+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_result/as_failure_rvalue.html</loc>
+    <lastmod>2019-01-24T01:15:16+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_outcome/as_failure_rvalue.html</loc>
+    <lastmod>2019-02-01T15:52:57+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/_footer.html</loc>
+  </url>
+  
+  <url>
+    <loc>/_header.html</loc>
+  </url>
+  
+  <url>
+    <loc>/recipes/asio-integration.html</loc>
+    <lastmod>2019-08-06T10:42:06+01:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/recipes/asio-integration-1-70.html</loc>
+    <lastmod>2019-08-06T10:42:06+01:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/credits.html</loc>
+    <lastmod>2019-01-25T23:04:27+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/tags/adl-bridging.html</loc>
+    <lastmod>2020-12-15T12:22:39+00:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>/tags/asio.html</loc>
+    <lastmod>2019-08-06T10:42:06+01:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>/categories/assignment.html</loc>
+    <lastmod>2019-03-03T00:11:47+00:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>/tags/awaitables.html</loc>
+    <lastmod>2020-04-07T10:22:38+01:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>/tags/backtrace.html</loc>
+    <lastmod>2019-02-08T22:18:08+00:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>/tags/best-practice.html</loc>
+    <lastmod>2019-02-09T15:18:26+00:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>/categories.html</loc>
+    <lastmod>2019-03-03T00:11:47+00:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>/tags/co_await.html</loc>
+    <lastmod>2020-04-07T10:22:38+01:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>/categories/comparisons.html</loc>
+    <lastmod>2019-01-20T16:02:33+00:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>/reference/macros/template.html</loc>
+    <lastmod>2018-12-12T22:01:42+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/tags/constructors.html</loc>
+    <lastmod>2019-06-24T21:48:18+01:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>/categories/constructors.html</loc>
+    <lastmod>2020-12-17T11:27:06+00:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>/tags/conventions.html</loc>
+    <lastmod>2019-02-09T15:18:26+00:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>/categories/converting-constructors.html</loc>
+    <lastmod>2020-12-17T11:27:06+00:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>/categories/copy-assignment.html</loc>
+    <lastmod>2019-03-03T00:11:47+00:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>/categories/copy-constructors.html</loc>
+    <lastmod>2019-03-03T00:11:47+00:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>/tags/coroutines.html</loc>
+    <lastmod>2020-04-07T10:22:38+01:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>/tags/default-actions.html</loc>
+    <lastmod>2019-02-08T22:18:08+00:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>/categories/default-constructors.html</loc>
+    <lastmod>2018-12-15T17:49:37+00:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>/categories/destructors.html</loc>
+    <lastmod>2018-12-15T17:49:37+00:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>/categories/disabling-constructors.html</loc>
+    <lastmod>2018-12-15T17:49:37+00:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>/tags/dual-api.html</loc>
+    <lastmod>2019-02-08T22:18:08+00:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>/tags/eager.html</loc>
+    <lastmod>2020-04-07T10:22:38+01:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>/tags/error.html</loc>
+    <lastmod>2019-03-22T15:01:40-07:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>/tags/exception.html</loc>
+    <lastmod>2020-06-19T15:42:26+01:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>/categories/explicit-constructors.html</loc>
+    <lastmod>2020-12-17T11:27:06+00:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>/recipes/foreign-try.html</loc>
+    <lastmod>2020-12-15T12:22:39+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/tags/has_error_code.html</loc>
+    <lastmod>2019-02-08T22:18:08+00:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>/</loc>
+    <lastmod>2021-02-12T20:25:43+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/tags/hooks.html</loc>
+    <lastmod>2020-09-16T11:58:04+01:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>/tags/idioms.html</loc>
+    <lastmod>2019-02-09T15:18:26+00:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>/categories/implicit-constructors.html</loc>
+    <lastmod>2020-12-17T11:27:06+00:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>/categories/inplace-constructors.html</loc>
+    <lastmod>2020-12-17T11:27:06+00:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>/tags/lazy.html</loc>
+    <lastmod>2020-04-07T10:22:38+01:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>/tags/make_error_code.html</loc>
+    <lastmod>2019-02-08T22:18:08+00:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>/categories/modifiers.html</loc>
+    <lastmod>2019-06-25T17:01:21+01:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>/categories/move-assignment.html</loc>
+    <lastmod>2019-03-03T00:11:47+00:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>/categories/move-constructors.html</loc>
+    <lastmod>2019-03-03T00:11:47+00:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>/tags/namespace.html</loc>
+    <lastmod>2021-02-23T17:37:27+00:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>/tags/networking-ts.html</loc>
+    <lastmod>2019-08-06T10:42:06+01:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>/tags/nodiscard.html</loc>
+    <lastmod>2019-03-22T15:01:40-07:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>/categories/observer-policies.html</loc>
+    <lastmod>2020-12-17T11:27:06+00:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>/categories/observers.html</loc>
+    <lastmod>2019-02-12T16:36:24+00:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>/categories/operators.html</loc>
+    <lastmod>2019-03-03T00:11:47+00:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>/tags/outcome.html</loc>
+    <lastmod>2019-03-19T22:57:48+01:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>/tags/payload.html</loc>
+    <lastmod>2019-02-08T22:18:08+00:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>/tags/playpen.html</loc>
+    <lastmod>2020-12-15T12:22:39+00:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>/tags/policies.html</loc>
+    <lastmod>2019-02-08T22:18:08+00:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>/tags/result.html</loc>
+    <lastmod>2021-02-23T17:37:27+00:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>/categories/special.html</loc>
+    <lastmod>2019-01-22T01:11:40+00:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>/categories/tagged-constructors.html</loc>
+    <lastmod>2020-12-17T11:27:06+00:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>/tags.html</loc>
+    <lastmod>2019-02-09T15:18:26+00:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>/tags/try.html</loc>
+    <lastmod>2021-02-23T17:37:27+00:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>/tags/value.html</loc>
+    <lastmod>2019-03-22T15:01:40-07:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>/tags/value-or-error.html</loc>
+    <lastmod>2020-12-15T12:22:39+00:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>/reference/macros/version.html</loc>
+    <lastmod>2018-12-12T22:01:42+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/macros/co_try.html</loc>
+    <lastmod>2021-02-12T20:25:43+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/macros/co_tryv.html</loc>
+    <lastmod>2021-02-12T20:25:43+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/macros/co_tryv2.html</loc>
+    <lastmod>2021-02-12T20:25:43+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/macros/co_tryv2_failure_likely.html</loc>
+    <lastmod>2021-02-12T20:25:43+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/macros/co_tryv_failure_likely.html</loc>
+    <lastmod>2021-02-12T20:25:43+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/macros/co_tryx.html</loc>
+    <lastmod>2021-02-12T20:25:43+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/macros/co_tryx_failure_likely.html</loc>
+    <lastmod>2021-02-12T20:25:43+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/macros/co_try_failure_likely.html</loc>
+    <lastmod>2021-02-12T20:25:43+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/macros/disable_execinfo.html</loc>
+    <lastmod>2018-12-12T22:01:42+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/macros/enable_legacy_support_for.html</loc>
+    <lastmod>2020-05-24T12:48:39+01:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/macros/nodiscard.html</loc>
+    <lastmod>2018-12-12T22:01:42+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/macros/requires.html</loc>
+    <lastmod>2018-12-12T22:01:42+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/macros/symbol_visible.html</loc>
+    <lastmod>2018-12-12T22:01:42+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/macros/thread_local.html</loc>
+    <lastmod>2018-12-12T22:01:42+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/macros/throw_exception.html</loc>
+    <lastmod>2018-12-12T22:01:42+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/macros/try.html</loc>
+    <lastmod>2021-02-12T20:25:43+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/macros/tryv.html</loc>
+    <lastmod>2021-02-12T20:25:43+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/macros/tryv2.html</loc>
+    <lastmod>2021-02-12T20:25:43+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/macros/tryv2_failure_likely.html</loc>
+    <lastmod>2021-02-12T20:25:43+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/macros/tryv_failure_likely.html</loc>
+    <lastmod>2021-02-12T20:25:43+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/macros/tryx.html</loc>
+    <lastmod>2021-02-12T20:25:43+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/macros/tryx_failure_likely.html</loc>
+    <lastmod>2021-02-12T20:25:43+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/macros/try_failure_likely.html</loc>
+    <lastmod>2021-02-12T20:25:43+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/macros/in_place_type.html</loc>
+    <lastmod>2019-01-30T16:16:10+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/macros/is_nothrow_swappable.html</loc>
+    <lastmod>2019-02-05T17:14:18+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/policies/all_narrow.html</loc>
+    <lastmod>2019-01-22T01:11:40+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/functions/policy/basic_outcome_failure_exception_from_error.html</loc>
+    <lastmod>2019-02-06T16:50:01+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/functions/failure.html</loc>
+    <lastmod>2021-02-23T17:37:27+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/functions/success.html</loc>
+    <lastmod>2021-02-23T17:37:27+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/bad_outcome_access.html</loc>
+    <lastmod>2019-01-25T01:51:37+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/bad_result_access_with.html</loc>
+    <lastmod>2019-01-25T01:51:37+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/bad_result_access.html</loc>
+    <lastmod>2019-01-25T01:51:37+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/policies/base.html</loc>
+    <lastmod>2019-01-22T01:11:40+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_outcome.html</loc>
+    <lastmod>2020-12-17T11:27:06+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/concepts/basic_outcome.html</loc>
+    <lastmod>2020-05-24T12:48:39+01:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/basic_result.html</loc>
+    <lastmod>2020-12-17T11:27:06+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/concepts/basic_result.html</loc>
+    <lastmod>2020-05-24T12:48:39+01:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/functions/try_operation_has_value.html</loc>
+    <lastmod>2019-06-20T11:14:48+01:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/aliases/boost_checked.html</loc>
+    <lastmod>2019-01-24T01:15:16+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/aliases/boost_outcome.html</loc>
+    <lastmod>2019-02-01T23:42:52+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/aliases/boost_result.html</loc>
+    <lastmod>2019-01-24T01:15:16+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/aliases/boost_unchecked.html</loc>
+    <lastmod>2019-01-24T01:15:16+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/aliases/checked.html</loc>
+    <lastmod>2019-01-24T01:15:16+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/functions/policy/error_code.html</loc>
+    <lastmod>2019-02-11T15:13:33+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/functions/policy/exception_ptr.html</loc>
+    <lastmod>2019-01-23T01:27:31+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/functions/try_operation_extract_value.html</loc>
+    <lastmod>2019-06-20T11:14:48+01:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/functions/try_operation_return_as.html</loc>
+    <lastmod>2019-06-20T11:14:48+01:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/aliases/default_policy.html</loc>
+    <lastmod>2019-02-05T21:41:47+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/awaitables/eager.html</loc>
+    <lastmod>2020-04-07T10:22:38+01:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/policies/error_code_throw_as_system_error_outcome.html</loc>
+    <lastmod>2019-02-01T23:42:52+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/policies/error_code_throw_as_system_error_result.html</loc>
+    <lastmod>2019-02-01T23:42:52+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/policies/exception_ptr_rethrow_outcome.html</loc>
+    <lastmod>2019-02-01T23:42:52+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/policies/exception_ptr_rethrow_result.html</loc>
+    <lastmod>2019-02-01T23:42:52+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/policies/fail_to_compile_observers.html</loc>
+    <lastmod>2019-01-23T01:27:31+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/failure_type.html</loc>
+    <lastmod>2021-02-23T17:37:27+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/in_place_type_t.html</loc>
+    <lastmod>2019-01-31T01:07:35+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/traits/is_basic_outcome.html</loc>
+    <lastmod>2020-05-24T12:48:39+01:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/traits/is_basic_result.html</loc>
+    <lastmod>2020-05-24T12:48:39+01:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/traits/is_error_code_available.html</loc>
+    <lastmod>2019-10-10T18:14:56+01:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/traits/is_error_type.html</loc>
+    <lastmod>2019-10-11T17:03:05+01:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/traits/is_error_type_enum.html</loc>
+    <lastmod>2018-12-13T17:36:11+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/traits/is_exception_ptr_available.html</loc>
+    <lastmod>2019-10-10T18:14:56+01:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/traits/is_failure_type.html</loc>
+    <lastmod>2019-01-24T01:15:16+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/traits/is_move_bitcopying.html</loc>
+    <lastmod>2020-12-17T11:27:06+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/traits/is_success_type.html</loc>
+    <lastmod>2019-01-21T18:00:41+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/awaitables/lazy.html</loc>
+    <lastmod>2020-04-07T10:22:38+01:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/aliases/outcome.html</loc>
+    <lastmod>2019-02-01T23:42:52+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/aliases/result.html</loc>
+    <lastmod>2019-01-24T01:15:16+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/functions/error_from_exception.html</loc>
+    <lastmod>2019-02-01T23:42:52+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/functions/iostream/outcome_operator_in.html</loc>
+    <lastmod>2019-03-03T21:04:29+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/functions/iostream/result_operator_in.html</loc>
+    <lastmod>2019-03-03T21:04:29+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/functions/iostream/outcome_operator_out.html</loc>
+    <lastmod>2019-03-03T21:04:29+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/functions/iostream/result_operator_out.html</loc>
+    <lastmod>2019-03-03T21:04:29+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/functions/iostream/outcome_print.html</loc>
+    <lastmod>2019-03-03T21:04:29+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/functions/iostream/result_print.html</loc>
+    <lastmod>2019-03-03T21:04:29+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/aliases/std_checked.html</loc>
+    <lastmod>2019-01-23T01:27:31+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/aliases/std_outcome.html</loc>
+    <lastmod>2019-02-01T23:42:52+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/aliases/std_result.html</loc>
+    <lastmod>2019-01-24T01:15:16+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/aliases/std_unchecked.html</loc>
+    <lastmod>2019-01-23T01:27:31+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/types/success_type.html</loc>
+    <lastmod>2021-02-23T17:37:27+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/policies/terminate.html</loc>
+    <lastmod>2019-01-22T01:11:40+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/policies/throw_bad_result_access.html</loc>
+    <lastmod>2019-01-23T01:27:31+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/traits/type_can_be_used_in_basic_result.html</loc>
+    <lastmod>2019-01-24T01:15:16+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/functions/hooks/spare_storage.html</loc>
+    <lastmod>2019-01-21T18:00:41+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/aliases/unchecked.html</loc>
+    <lastmod>2019-01-24T01:15:16+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/converters/value_or_error.html</loc>
+    <lastmod>2020-12-15T12:22:39+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/concepts/value_or_error.html</loc>
+    <lastmod>2020-08-19T12:15:40+01:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/concepts/value_or_none.html</loc>
+    <lastmod>2020-12-15T12:22:39+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/functions/hooks/hook_outcome_construction.html</loc>
+    <lastmod>2020-08-19T12:15:40+01:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/functions/hooks/hook_outcome_construction2.html</loc>
+    <lastmod>2020-08-19T12:15:40+01:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/functions/hooks/hook_outcome_copy_construction.html</loc>
+    <lastmod>2020-08-19T12:15:40+01:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/functions/hooks/hook_outcome_copy_construction2.html</loc>
+    <lastmod>2020-08-19T12:15:40+01:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/functions/hooks/hook_outcome_in_place_construction.html</loc>
+    <lastmod>2020-08-19T12:15:40+01:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/functions/hooks/hook_outcome_move_construction.html</loc>
+    <lastmod>2020-08-19T12:15:40+01:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/functions/hooks/hook_outcome_move_construction2.html</loc>
+    <lastmod>2020-08-19T12:15:40+01:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/functions/hooks/hook_result_construction.html</loc>
+    <lastmod>2020-08-19T12:15:40+01:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/functions/hooks/hook_result_copy_construction.html</loc>
+    <lastmod>2020-08-19T12:15:40+01:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/functions/hooks/hook_result_in_place_construction.html</loc>
+    <lastmod>2020-08-19T12:15:40+01:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/functions/hooks/hook_result_move_construction.html</loc>
+    <lastmod>2020-08-19T12:15:40+01:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/functions/policy/outcome_throw_as_system_error_with_payload_boost_enum.html</loc>
+    <lastmod>2019-08-13T13:55:04-04:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/functions/policy/outcome_throw_as_system_error_with_payload_std_enum.html</loc>
+    <lastmod>2019-02-01T15:52:57+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/functions/policy/outcome_throw_as_system_error_with_payload_boost_error_code.html</loc>
+    <lastmod>2019-01-24T01:15:16+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/functions/policy/outcome_throw_as_system_error_with_payload_std_error_code.html</loc>
+    <lastmod>2019-02-01T15:52:57+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/functions/hooks/override_outcome_exception.html</loc>
+    <lastmod>2019-01-30T16:16:10+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/functions/hooks/set_spare_storage.html</loc>
+    <lastmod>2019-01-21T18:00:41+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/functions/strong_swap.html</loc>
+    <lastmod>2019-06-24T21:09:37+01:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/reference/functions/try_throw_std_exception_from_error.html</loc>
+    <lastmod>2019-02-01T23:42:52+00:00</lastmod>
+  </url>
+  
+</urlset>

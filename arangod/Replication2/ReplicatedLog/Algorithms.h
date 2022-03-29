@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -32,6 +32,10 @@
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 
+namespace arangodb::cluster {
+struct IFailureOracle;
+}
+
 namespace arangodb::replication2::algorithms {
 
 struct ParticipantRecord {
@@ -44,11 +48,6 @@ struct ParticipantRecord {
 
 using ParticipantInfo = std::unordered_map<ParticipantId, ParticipantRecord>;
 
-auto checkReplicatedLog(DatabaseID const& database, agency::LogPlanSpecification const& spec,
-                        agency::LogCurrent const& current,
-                        std::unordered_map<ParticipantId, ParticipantRecord> const& info)
-    -> std::variant<std::monostate, agency::LogPlanTermSpecification, agency::LogCurrentSupervisionElection>;
-
 enum class ConflictReason {
   LOG_ENTRY_AFTER_END,
   LOG_ENTRY_BEFORE_BEGIN,
@@ -58,7 +57,8 @@ enum class ConflictReason {
 
 auto to_string(ConflictReason r) noexcept -> std::string_view;
 
-auto detectConflict(replicated_log::InMemoryLog const& log, TermIndexPair prevLog) noexcept
+auto detectConflict(replicated_log::InMemoryLog const& log,
+                    TermIndexPair prevLog) noexcept
     -> std::optional<std::pair<ConflictReason, TermIndexPair>>;
 
 struct LogActionContext {
@@ -70,48 +70,49 @@ struct LogActionContext {
       -> std::shared_ptr<replication2::replicated_log::AbstractFollower> = 0;
 };
 
-auto updateReplicatedLog(LogActionContext& ctx, ServerID const& myServerId, RebootId myRebootId,
-                         LogId logId, agency::LogPlanSpecification const* spec) noexcept
-    -> arangodb::Result;
+auto updateReplicatedLog(
+    LogActionContext& ctx, ServerID const& myServerId, RebootId myRebootId,
+    LogId logId, agency::LogPlanSpecification const* spec,
+    std::shared_ptr<cluster::IFailureOracle const> failureOracle) noexcept
+    -> futures::Future<arangodb::Result>;
 
-enum class ParticipantFlag {
-  Excluded,
-  Forced,
-  Failed
-};
-using ParticipantFlags = std::set<ParticipantFlag>;
-
-struct ParticipantStateTuple : implement_compare<ParticipantStateTuple> {
-  LogIndex index;
+struct ParticipantState {
+  TermIndexPair lastAckedEntry;
   ParticipantId id;
-  ParticipantFlags flags;
+  bool failed = false;
+  ParticipantFlags flags{};
 
-  ParticipantStateTuple(LogIndex index, ParticipantId id, ParticipantFlags flags);
-
-  [[nodiscard]] auto isExcluded() const noexcept -> bool;
+  [[nodiscard]] auto isAllowedInQuorum() const noexcept -> bool;
   [[nodiscard]] auto isForced() const noexcept -> bool;
   [[nodiscard]] auto isFailed() const noexcept -> bool;
 
-  friend auto operator<=(ParticipantStateTuple const&, ParticipantStateTuple const&) noexcept -> bool;
-  friend auto operator<<(std::ostream& os, ParticipantStateTuple const& p) noexcept -> std::ostream&;
+  [[nodiscard]] auto lastTerm() const noexcept -> LogTerm;
+  [[nodiscard]] auto lastIndex() const noexcept -> LogIndex;
+
+  friend auto operator<=>(ParticipantState const&,
+                          ParticipantState const&) noexcept;
+  friend auto operator<<(std::ostream& os, ParticipantState const& p) noexcept
+      -> std::ostream&;
 };
 
-auto operator<=(ParticipantStateTuple const& left, ParticipantStateTuple const& right) noexcept -> bool;
-auto operator<<(std::ostream& os, ParticipantStateTuple const& p) noexcept -> std::ostream&;
-auto operator<<(std::ostream& os, ParticipantFlag const& f) noexcept
- -> std::ostream&;
+auto operator<=>(ParticipantState const& left,
+                 ParticipantState const& right) noexcept;
+auto operator<<(std::ostream& os, ParticipantState const& p) noexcept
+    -> std::ostream&;
 
 struct CalculateCommitIndexOptions {
-  std::size_t const _writeConcern{0};       // might be called quorumSize in other places
+  std::size_t const _writeConcern{0};
   std::size_t const _softWriteConcern{0};
-  std::size_t const _replicationFactor{0};
 
-  CalculateCommitIndexOptions(std::size_t writeConcern, std::size_t softWriteConcern, std::size_t replicationFactor);
+  CalculateCommitIndexOptions(std::size_t writeConcern,
+                              std::size_t softWriteConcern);
 };
 
-auto calculateCommitIndex(std::vector<ParticipantStateTuple> const& indexes,
-                          CalculateCommitIndexOptions const opt,
-                          LogIndex currentCommitIndex, LogIndex spearhead)
-    -> std::tuple<LogIndex, replicated_log::CommitFailReason, std::vector<ParticipantId>>;
+auto calculateCommitIndex(std::vector<ParticipantState> const& participants,
+                          CalculateCommitIndexOptions opt,
+                          LogIndex currentCommitIndex,
+                          TermIndexPair lastTermIndex)
+    -> std::tuple<LogIndex, replicated_log::CommitFailReason,
+                  std::vector<ParticipantId>>;
 
 }  // namespace arangodb::replication2::algorithms

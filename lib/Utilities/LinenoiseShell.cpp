@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -51,7 +51,8 @@ static Completer* COMPLETER = nullptr;
 /// @brief completer generator
 ////////////////////////////////////////////////////////////////////////////////
 
-static void LinenoiseCompletionGenerator(char const* text, linenoiseCompletions* lc) {
+static void LinenoiseCompletionGenerator(char const* text,
+                                         linenoiseCompletions* lc) {
   if (COMPLETER && text != nullptr) {
     std::vector<std::string> alternatives = COMPLETER->alternatives(text);
     ShellBase::sortAlternatives(alternatives);

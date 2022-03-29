@@ -1,5 +1,5 @@
 @RESTSTRUCT{waitForSync,collection_info,boolean,required,}
-If *true* then creating, changing or removing
+If `true` then creating, changing or removing
 documents will wait until the data has been synchronized to disk.
 
 @RESTSTRUCT{schema,collection_info,object,optional,}
@@ -10,18 +10,18 @@ A object which contains key generation options
 
 @RESTSTRUCT{type,key_generator_type,string,required,}
 specifies the type of the key generator. The currently
-available generators are *traditional*, *autoincrement*, *uuid*
-and *padded*.
+available generators are `traditional`, `autoincrement`, `uuid`
+and `padded`.
 
 @RESTSTRUCT{cacheEnabled,collection_info,boolean,required,}
 Whether the in-memory hash cache for documents is enabled for this
 collection.
 
 @RESTSTRUCT{allowUserKeys,key_generator_type,boolean,required,}
-if set to *true*, then it is allowed to supply
-own key values in the *_key* attribute of a document. If set to
-*false*, then the key generator is solely responsible for
-generating keys and supplying own key values in the *_key* attribute
+if set to `true`, then it is allowed to supply
+own key values in the `_key` attribute of a document. If set to
+`false`, then the key generator is solely responsible for
+generating keys and supplying own key values in the `_key` attribute
 of documents is considered an error.
 
 @RESTSTRUCT{lastValue,key_generator_type,integer,required,}
@@ -43,7 +43,7 @@ determines how many copies of each shard are required to be
 in sync on the different DB-Servers. If there are less then these many copies
 in the cluster a shard will refuse to write. Writes to shards with enough
 up-to-date copies will succeed at the same time however. The value of
-*writeConcern* can not be larger than *replicationFactor*. _(cluster only)_
+`writeConcern` can not be larger than `replicationFactor`. _(cluster only)_
 
 @RESTSTRUCT{shardingStrategy,collection_info,string,optional,}
 the sharding strategy selected for the collection.
@@ -61,7 +61,7 @@ Determines an attribute of the collection that must contain the shard key value
 of the referred-to SmartJoin collection (Enterprise Edition only). _(cluster only)_
 
 @RESTSTRUCT{isSystem,collection_info,boolean,optional,}
-true if this is a system collection; usually *name* will start with an underscore.
+true if this is a system collection; usually `name` will start with an underscore.
 
 @RESTSTRUCT{name,collection_info,string,optional,}
 literal name of this collection
@@ -71,9 +71,9 @@ unique identifier of the collection; *deprecated*
 
 @RESTSTRUCT{type,collection_info,integer,optional,}
 The type of the collection:
-  - 0: "unknown"
-  - 2: regular document collection
-  - 3: edge collection
+  - `0`: "unknown"
+  - `2`: regular document collection
+  - `3`: edge collection
 
 @RESTSTRUCT{globallyUniqueId,collection_info,string,optional,}
 Unique identifier of the collection

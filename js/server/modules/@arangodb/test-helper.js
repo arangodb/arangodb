@@ -111,17 +111,28 @@ exports.getChecksum = function (endpoint, name) {
   return JSON.parse(res.body).checksum;
 };
 
-exports.getMetric = function (endpoint, name) {
-
-  let res = request.get({
-    url: endpoint + '/_admin/metrics/v2',
-  });
+function getMetricName(text, name) {
   let re = new RegExp("^" + name);
-  let matches = res.body.split('\n').filter((line) => !line.match(/^#/)).filter((line) => line.match(re));
+  let matches = text.split("\n").filter((line) => !line.match(/^#/)).filter((line) => line.match(re));
   if (!matches.length) {
     throw "Metric " + name + " not found";
   }
-  return Number(matches[0].replace(/^.* (\d+)$/, '$1'));
+  return Number(matches[0].replace(/^.*{.*}([0-9.]+)$/, "$1"));
+}
+
+exports.getMetric = function (endpoint, name) {
+  let res = request.get({
+    url: endpoint + "/_admin/metrics",
+  });
+  return getMetricName(res.body, name);
+};
+
+exports.getMetricSingle = function (name) {
+  let res = arango.GET_RAW("/_admin/metrics");
+  if (res.code !== 200) {
+    throw "error fetching metric";
+  }
+  return getMetricName(res.body, name);
 };
 
 exports.waitForShardsInSync = function(cn, timeout) {

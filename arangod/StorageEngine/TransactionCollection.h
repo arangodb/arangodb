@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -44,7 +44,8 @@ class TransactionCollection {
   TransactionCollection(TransactionCollection const&) = delete;
   TransactionCollection& operator=(TransactionCollection const&) = delete;
 
-  TransactionCollection(TransactionState* trx, DataSourceId cid, AccessMode::Type accessType)
+  TransactionCollection(TransactionState* trx, DataSourceId cid,
+                        AccessMode::Type accessType)
       : _transaction(trx),
         _cid(cid),
         _accessType(accessType),
@@ -61,7 +62,7 @@ class TransactionCollection {
   std::string const& collectionName() const;
 
   AccessMode::Type accessType() const noexcept { return _accessType; }
-  
+
   Result updateUsage(AccessMode::Type accessType);
 
   /// @brief check whether a collection is locked in a specific mode in a
@@ -93,4 +94,3 @@ class TransactionCollection {
 };
 
 }  // namespace arangodb
-

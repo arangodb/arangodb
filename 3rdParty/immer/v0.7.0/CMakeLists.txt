@@ -91,7 +91,7 @@ endif()
 
 # the library
 add_library(immer INTERFACE)
-target_include_directories(immer INTERFACE
+target_include_directories(immer SYSTEM INTERFACE
   $<BUILD_INTERFACE:${immer_BINARY_DIR}/>
   $<BUILD_INTERFACE:${immer_SOURCE_DIR}/>
   $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)

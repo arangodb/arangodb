@@ -1,7 +1,0 @@
-//[example_output
-> tolerance_06
-Running 1 test case...
-test.cpp(21): error: in "test1": check x == 3 has failed [3.1415924049158361 != 3]. Relative difference exceeds tolerance [0.0471975 > 0.0471667]
-
-*** 1 failure is detected in the test module "tolerance_06"
-//]

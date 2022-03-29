@@ -24,7 +24,6 @@
 #include <fuerte/helper.h>
 #include <fuerte/message.h>
 #include <velocypack/Validator.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <sstream>
 
@@ -89,7 +88,7 @@ void RequestHeader::acceptType(std::string const& type) {
 
 /// @brief analyze path and split into components
 /// strips /_db/<name> prefix, sets db name and fills parameters
-void RequestHeader::parseArangoPath(std::string const& p) {
+void RequestHeader::parseArangoPath(std::string_view p) {
   this->path = extractPathParameters(p, this->parameters);
 
   // extract database prefix /_db/<name>/

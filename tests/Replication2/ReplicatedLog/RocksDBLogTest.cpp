@@ -48,13 +48,15 @@ struct RocksDBLogTest : testing::Test {
     }
 
     struct SyncExecutor : RocksDBLogPersistor::Executor {
-      void operator()(fu2::unique_function<void() noexcept> f) noexcept override {
+      void operator()(
+          fu2::unique_function<void() noexcept> f) noexcept override {
         std::move(f).operator()();
       }
     };
 
-    _persistor = std::make_shared<RocksDBLogPersistor>(_db->DefaultColumnFamily(), _db, std::make_shared<SyncExecutor>(),
-                                                       std::make_shared<ReplicatedLogGlobalSettings>());
+    _persistor = std::make_shared<RocksDBLogPersistor>(
+        _db->DefaultColumnFamily(), _db, std::make_shared<SyncExecutor>(),
+        std::make_shared<ReplicatedLogGlobalSettings>());
   }
 
   static void TearDownTestCase() {
@@ -68,7 +70,8 @@ struct RocksDBLogTest : testing::Test {
       _maxLogId = id;
     }
 
-    return std::make_shared<RocksDBPersistedLog>(id, id.id(), _persistor);
+    return std::make_shared<RocksDBPersistedLog>(GlobalLogIdentifier("", id),
+                                                 id.id(), _persistor);
   }
 
   auto createUniqueLog() -> std::shared_ptr<RocksDBPersistedLog> {
@@ -86,7 +89,8 @@ std::string RocksDBLogTest::_path = {};
 rocksdb::DB* RocksDBLogTest::_db = nullptr;
 std::shared_ptr<RocksDBLogPersistor> RocksDBLogTest::_persistor = nullptr;
 
-template <typename I>
+namespace {
+template<typename I>
 struct SimpleIterator : PersistedLogIterator {
   SimpleIterator(I begin, I end) : current(begin), end(end) {}
   ~SimpleIterator() override = default;
@@ -102,26 +106,25 @@ struct SimpleIterator : PersistedLogIterator {
   I current, end;
 };
 
-template <typename C, typename Iter = typename C::const_iterator>
+template<typename C, typename Iter = typename C::const_iterator>
 auto make_iterator(C const& c) -> std::shared_ptr<SimpleIterator<Iter>> {
   return std::make_shared<SimpleIterator<Iter>>(c.begin(), c.end());
 }
-
-auto make_iterator(std::initializer_list<PersistingLogEntry> c)
-    -> std::shared_ptr<SimpleIterator<std::initializer_list<PersistingLogEntry>::iterator>> {
-  return std::make_shared<SimpleIterator<std::initializer_list<PersistingLogEntry>::iterator>>(
-      c.begin(), c.end());
-}
+}  // namespace
 
 TEST_F(RocksDBLogTest, insert_iterate) {
   auto log = createUniqueLog();
 
   {
     auto entries = std::vector{
-        PersistingLogEntry{LogTerm{1}, LogIndex{1}, LogPayload::createFromString("first")},
-        PersistingLogEntry{LogTerm{1}, LogIndex{2}, LogPayload::createFromString("second")},
-        PersistingLogEntry{LogTerm{2}, LogIndex{3}, LogPayload::createFromString("third")},
-        PersistingLogEntry{LogTerm{2}, LogIndex{1000}, LogPayload::createFromString("thousand")},
+        PersistingLogEntry{LogTerm{1}, LogIndex{1},
+                           LogPayload::createFromString("first")},
+        PersistingLogEntry{LogTerm{1}, LogIndex{2},
+                           LogPayload::createFromString("second")},
+        PersistingLogEntry{LogTerm{2}, LogIndex{3},
+                           LogPayload::createFromString("third")},
+        PersistingLogEntry{LogTerm{2}, LogIndex{1000},
+                           LogPayload::createFromString("thousand")},
     };
     auto iter = make_iterator(entries);
 
@@ -137,25 +140,25 @@ TEST_F(RocksDBLogTest, insert_iterate) {
     ASSERT_TRUE(entry.has_value());
     ASSERT_EQ(entry->logIndex().value, 1);
     ASSERT_EQ(entry->logTerm().value, 1);
-    ASSERT_EQ(entry->logPayload(), LogPayload::createFromString("first"));
+    ASSERT_EQ(*entry->logPayload(), LogPayload::createFromString("first"));
 
     entry = iter->next();
     ASSERT_TRUE(entry.has_value());
     ASSERT_EQ(entry->logIndex().value, 2);
     ASSERT_EQ(entry->logTerm().value, 1);
-    ASSERT_EQ(entry->logPayload(), LogPayload::createFromString("second"));
+    ASSERT_EQ(*entry->logPayload(), LogPayload::createFromString("second"));
 
     entry = iter->next();
     ASSERT_TRUE(entry.has_value());
     ASSERT_EQ(entry->logIndex().value, 3);
     ASSERT_EQ(entry->logTerm().value, 2);
-    ASSERT_EQ(entry->logPayload(), LogPayload::createFromString("third"));
+    ASSERT_EQ(*entry->logPayload(), LogPayload::createFromString("third"));
 
     entry = iter->next();
     ASSERT_TRUE(entry.has_value());
     ASSERT_EQ(entry->logIndex().value, 1000);
     ASSERT_EQ(entry->logTerm().value, 2);
-    ASSERT_EQ(entry->logPayload(), LogPayload::createFromString("thousand"));
+    ASSERT_EQ(*entry->logPayload(), LogPayload::createFromString("thousand"));
 
     entry = iter->next();
     ASSERT_FALSE(entry.has_value());
@@ -167,11 +170,16 @@ TEST_F(RocksDBLogTest, insert_remove_iterate) {
 
   {
     auto entries = std::vector{
-        PersistingLogEntry{LogTerm{1}, LogIndex{1}, LogPayload::createFromString("first")},
-        PersistingLogEntry{LogTerm{1}, LogIndex{2}, LogPayload::createFromString("second")},
-        PersistingLogEntry{LogTerm{2}, LogIndex{3}, LogPayload::createFromString("third")},
-        PersistingLogEntry{LogTerm{2}, LogIndex{999}, LogPayload::createFromString("nine-nine-nine")},
-        PersistingLogEntry{LogTerm{2}, LogIndex{1000}, LogPayload::createFromString("thousand")},
+        PersistingLogEntry{LogTerm{1}, LogIndex{1},
+                           LogPayload::createFromString("first")},
+        PersistingLogEntry{LogTerm{1}, LogIndex{2},
+                           LogPayload::createFromString("second")},
+        PersistingLogEntry{LogTerm{2}, LogIndex{3},
+                           LogPayload::createFromString("third")},
+        PersistingLogEntry{LogTerm{2}, LogIndex{999},
+                           LogPayload::createFromString("nine-nine-nine")},
+        PersistingLogEntry{LogTerm{2}, LogIndex{1000},
+                           LogPayload::createFromString("thousand")},
     };
     auto iter = make_iterator(entries);
 
@@ -192,24 +200,28 @@ TEST_F(RocksDBLogTest, insert_remove_iterate) {
     ASSERT_TRUE(entry.has_value());
     ASSERT_EQ(entry->logIndex().value, 1000);
     ASSERT_EQ(entry->logTerm().value, 2);
-    ASSERT_EQ(entry->logPayload(), LogPayload::createFromString("thousand"));
+    ASSERT_EQ(*entry->logPayload(), LogPayload::createFromString("thousand"));
 
     entry = iter->next();
     ASSERT_FALSE(entry.has_value());
   }
 }
 
-
 TEST_F(RocksDBLogTest, insert_iterate_remove_iterate) {
   auto log = createUniqueLog();
 
   {
     auto entries = std::vector{
-        PersistingLogEntry{LogTerm{1}, LogIndex{1}, LogPayload::createFromString("first")},
-        PersistingLogEntry{LogTerm{1}, LogIndex{2}, LogPayload::createFromString("second")},
-        PersistingLogEntry{LogTerm{2}, LogIndex{3}, LogPayload::createFromString("third")},
-        PersistingLogEntry{LogTerm{2}, LogIndex{999}, LogPayload::createFromString("nine-nine-nine")},
-        PersistingLogEntry{LogTerm{2}, LogIndex{1000}, LogPayload::createFromString("thousand")},
+        PersistingLogEntry{LogTerm{1}, LogIndex{1},
+                           LogPayload::createFromString("first")},
+        PersistingLogEntry{LogTerm{1}, LogIndex{2},
+                           LogPayload::createFromString("second")},
+        PersistingLogEntry{LogTerm{2}, LogIndex{3},
+                           LogPayload::createFromString("third")},
+        PersistingLogEntry{LogTerm{2}, LogIndex{999},
+                           LogPayload::createFromString("nine-nine-nine")},
+        PersistingLogEntry{LogTerm{2}, LogIndex{1000},
+                           LogPayload::createFromString("thousand")},
     };
     auto iter = make_iterator(entries);
 
@@ -231,32 +243,101 @@ TEST_F(RocksDBLogTest, insert_iterate_remove_iterate) {
     ASSERT_TRUE(entry.has_value());
     ASSERT_EQ(entry->logIndex().value, 1);
     ASSERT_EQ(entry->logTerm().value, 1);
-    ASSERT_EQ(entry->logPayload(), LogPayload::createFromString("first"));
+    ASSERT_EQ(*entry->logPayload(), LogPayload::createFromString("first"));
 
     entry = iter->next();
     ASSERT_TRUE(entry.has_value());
     ASSERT_EQ(entry->logIndex().value, 2);
     ASSERT_EQ(entry->logTerm().value, 1);
-    ASSERT_EQ(entry->logPayload(), LogPayload::createFromString("second"));
+    ASSERT_EQ(*entry->logPayload(), LogPayload::createFromString("second"));
 
     entry = iter->next();
     ASSERT_TRUE(entry.has_value());
     ASSERT_EQ(entry->logIndex().value, 3);
     ASSERT_EQ(entry->logTerm().value, 2);
-    ASSERT_EQ(entry->logPayload(), LogPayload::createFromString("third"));
+    ASSERT_EQ(*entry->logPayload(), LogPayload::createFromString("third"));
 
     entry = iter->next();
     ASSERT_TRUE(entry.has_value());
     ASSERT_EQ(entry->logIndex().value, 999);
     ASSERT_EQ(entry->logTerm().value, 2);
-    ASSERT_EQ(entry->logPayload(),
+    ASSERT_EQ(*entry->logPayload(),
               LogPayload::createFromString("nine-nine-nine"));
 
     entry = iter->next();
     ASSERT_TRUE(entry.has_value());
     ASSERT_EQ(entry->logIndex().value, 1000);
     ASSERT_EQ(entry->logTerm().value, 2);
-    ASSERT_EQ(entry->logPayload(), LogPayload::createFromString("thousand"));
+    ASSERT_EQ(*entry->logPayload(), LogPayload::createFromString("thousand"));
+    entry = iter->next();
+    ASSERT_FALSE(entry.has_value());
+  }
+}
+
+namespace {
+template<typename T>
+auto to_vpack_string(T const& t) -> std::string {
+  VPackBuilder builder;
+  t.toVelocyPack(builder);
+  return builder.toJson();
+}
+}  // namespace
+
+TEST_F(RocksDBLogTest, insert_iterate_with_meta) {
+  auto log = createUniqueLog();
+
+  {
+    auto entries = std::vector{
+        PersistingLogEntry{TermIndexPair{LogTerm{1}, LogIndex{1}},
+                           LogMetaPayload::withFirstEntryOfTerm("Foobar", {})},
+        PersistingLogEntry{
+            TermIndexPair{LogTerm{1}, LogIndex{2}},
+            LogMetaPayload::withUpdateParticipantsConfig(ParticipantsConfig{
+                .generation = 1,
+                .participants = {{"FooBar", {.allowedInQuorum = false}}}})},
+        PersistingLogEntry{LogTerm{2}, LogIndex{3},
+                           LogPayload::createFromString("third")},
+    };
+    auto iter = make_iterator(entries);
+
+    auto res = log->insert(*iter, {});
+    ASSERT_TRUE(res.ok());
+  }
+
+  {
+    auto entry = std::optional<PersistingLogEntry>{};
+    auto iter = log->read(LogIndex{1});
+
+    entry = iter->next();
+    ASSERT_TRUE(entry.has_value());
+    ASSERT_EQ(entry->logIndex().value, 1);
+    ASSERT_EQ(entry->logTerm().value, 1);
+    EXPECT_FALSE(entry->hasPayload());
+    EXPECT_TRUE(entry->hasMeta());
+    ASSERT_EQ(*entry->meta(),
+              LogMetaPayload::withFirstEntryOfTerm("Foobar", {}))
+        << to_vpack_string(*entry->meta()) << " expected = "
+        << to_vpack_string(LogMetaPayload::withFirstEntryOfTerm("Foobar", {}));
+
+    entry = iter->next();
+    ASSERT_TRUE(entry.has_value());
+    ASSERT_EQ(entry->logIndex().value, 2);
+    ASSERT_EQ(entry->logTerm().value, 1);
+    EXPECT_FALSE(entry->hasPayload());
+    EXPECT_TRUE(entry->hasMeta());
+    auto const expected =
+        LogMetaPayload::withUpdateParticipantsConfig(ParticipantsConfig{
+            .generation = 1,
+            .participants = {{"FooBar", {.allowedInQuorum = false}}}});
+    ASSERT_EQ(*entry->meta(), expected)
+        << to_vpack_string(*entry->meta()) << " " << to_vpack_string(expected);
+
+    entry = iter->next();
+    ASSERT_TRUE(entry.has_value());
+    ASSERT_EQ(entry->logIndex().value, 3);
+    ASSERT_EQ(entry->logTerm().value, 2);
+    ASSERT_EQ(*entry->logPayload(), LogPayload::createFromString("third"));
+
     entry = iter->next();
     ASSERT_FALSE(entry.has_value());
   }

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -32,18 +32,21 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 ModificationExecutorInfos::ModificationExecutorInfos(
-    ExecutionEngine* engine,
-    RegisterId input1RegisterId, RegisterId input2RegisterId, RegisterId input3RegisterId,
+    ExecutionEngine* engine, RegisterId input1RegisterId,
+    RegisterId input2RegisterId, RegisterId input3RegisterId,
     RegisterId outputNewRegisterId, RegisterId outputOldRegisterId,
-    RegisterId outputRegisterId, arangodb::aql::QueryContext& query, OperationOptions options,
-    aql::Collection const* aqlCollection, ProducesResults producesResults,
+    RegisterId outputRegisterId, arangodb::aql::QueryContext& query,
+    OperationOptions options, aql::Collection const* aqlCollection,
+    ProducesResults producesResults,
     ConsultAqlWriteFilter consultAqlWriteFilter, IgnoreErrors ignoreErrors,
-    DoCount doCount, IsReplace isReplace, IgnoreDocumentNotFound ignoreDocumentNotFound)
-    : _engine(engine), 
+    DoCount doCount, IsReplace isReplace,
+    IgnoreDocumentNotFound ignoreDocumentNotFound)
+    : _engine(engine),
       _query(query),
       _options(options),
       _aqlCollection(aqlCollection),
-      _producesResults(ProducesResults(producesResults._value || !_options.silent)),
+      _producesResults(
+          ProducesResults(producesResults._value || !_options.silent)),
       _consultAqlWriteFilter(consultAqlWriteFilter),
       _ignoreErrors(ignoreErrors),
       _doCount(doCount),
@@ -55,9 +58,10 @@ ModificationExecutorInfos::ModificationExecutorInfos(
       _outputNewRegisterId(outputNewRegisterId),
       _outputOldRegisterId(outputOldRegisterId),
       _outputRegisterId(outputRegisterId) {
-  // If we're running on a DBServer in a cluster some modification operations legitimately
-  // fail due to the affected document not being available (which is reflected in _ignoreDocumentNotFound).
-  // This makes sure that results are reported back from a DBServer.
+  // If we're running on a DBServer in a cluster some modification operations
+  // legitimately fail due to the affected document not being available (which
+  // is reflected in _ignoreDocumentNotFound). This makes sure that results are
+  // reported back from a DBServer.
   auto isDBServer = ServerState::instance()->isDBServer();
   _producesResults = ProducesResults(_producesResults || !_options.silent ||
                                      (isDBServer && _ignoreDocumentNotFound));

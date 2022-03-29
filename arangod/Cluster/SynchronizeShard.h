@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -55,7 +55,7 @@ class SynchronizeShard : public ActionBase, public ShardDefinition {
   bool first() override final;
 
   void setState(ActionState state) override final;
-  
+
   std::string const& clientInfoString() const;
 
  private:
@@ -63,48 +63,42 @@ class SynchronizeShard : public ActionBase, public ShardDefinition {
                                            uint64_t& c);
 
   arangodb::Result getReadLock(network::ConnectionPool* pool,
-                               std::string const& endpoint, 
-                               std::string const& collection, 
-                               std::string const& clientId,
-                               uint64_t rlid, 
-                               bool soft, 
-                               double timeout);
+                               std::string const& endpoint,
+                               std::string const& collection,
+                               std::string const& clientId, uint64_t rlid,
+                               bool soft, double timeout);
 
   arangodb::Result startReadLockOnLeader(std::string const& endpoint,
                                          std::string const& collection,
-                                         std::string const& clientId, 
-                                         uint64_t& rlid,
-                                         bool soft, 
+                                         std::string const& clientId,
+                                         uint64_t& rlid, bool soft,
                                          double timeout = 300.0);
 
   arangodb::ResultT<TRI_voc_tick_t> catchupWithReadLock(
-      std::string const& ep, 
-      LogicalCollection const& collection,
-      std::string const& clientId, 
-      std::string const& leader, 
-      TRI_voc_tick_t lastLogTick, 
+      std::string const& ep, LogicalCollection const& collection,
+      std::string const& clientId, std::string const& leader,
+      TRI_voc_tick_t lastLogTick,
       std::shared_ptr<DatabaseTailingSyncer> tailingSyncer);
 
   arangodb::Result catchupWithExclusiveLock(
-      std::string const& ep, 
-      LogicalCollection& collection, 
-      std::string const& clientId,
-      std::string const& leader, SyncerId syncerId,
-      TRI_voc_tick_t lastLogTick, 
+      std::string const& ep, LogicalCollection& collection,
+      std::string const& clientId, std::string const& leader, SyncerId syncerId,
+      TRI_voc_tick_t lastLogTick,
       std::shared_ptr<DatabaseTailingSyncer> tailingSyncer);
 
-  std::shared_ptr<DatabaseTailingSyncer> buildTailingSyncer(TRI_vocbase_t& vocbase, 
-                                                            std::string const& endpoint);
+  std::shared_ptr<DatabaseTailingSyncer> buildTailingSyncer(
+      TRI_vocbase_t& vocbase, std::string const& endpoint);
 
-  /// @brief Short, informative description of the replication client, passed to the server
+  /// @brief Short, informative description of the replication client, passed to
+  /// the server
   std::string _clientInfoString;
 
   uint64_t _followingTermId;
 
-  /// @brief maximum tick until which we need to run WAL tailing for. 0 means "no restriction"
+  /// @brief maximum tick until which we need to run WAL tailing for. 0 means
+  /// "no restriction"
   uint64_t _tailingUpperBoundTick;
 };
 
 }  // namespace maintenance
 }  // namespace arangodb
-

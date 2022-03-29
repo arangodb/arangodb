@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -49,16 +49,17 @@
 #include "Transaction/Methods.h"
 
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
 
 /// @brief constructor
-IndexNode::IndexNode(ExecutionPlan* plan, ExecutionNodeId id,
-                     Collection const* collection, Variable const* outVariable,
-                     std::vector<transaction::Methods::IndexHandle> const& indexes,
-                     std::unique_ptr<Condition> condition, IndexIteratorOptions const& opts)
+IndexNode::IndexNode(
+    ExecutionPlan* plan, ExecutionNodeId id, Collection const* collection,
+    Variable const* outVariable,
+    std::vector<transaction::Methods::IndexHandle> const& indexes,
+    bool allCoveredByOneIndex, std::unique_ptr<Condition> condition,
+    IndexIteratorOptions const& opts)
     : ExecutionNode(plan, id),
       DocumentProducingNode(outVariable),
       CollectionAccessingNode(collection),
@@ -66,28 +67,33 @@ IndexNode::IndexNode(ExecutionPlan* plan, ExecutionNodeId id,
       _condition(std::move(condition)),
       _needsGatherNodeSort(false),
       _options(opts),
-      _outNonMaterializedDocId(nullptr) {
+      _outNonMaterializedDocId(nullptr),
+      _allCoveredByOneIndex(allCoveredByOneIndex) {
   TRI_ASSERT(_condition != nullptr);
-  
-  _projections.determineIndexSupport(this->collection()->id(), _indexes);
+
+  prepareProjections();
 }
 
 /// @brief constructor for IndexNode
-IndexNode::IndexNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
+IndexNode::IndexNode(ExecutionPlan* plan,
+                     arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
       DocumentProducingNode(plan, base),
       CollectionAccessingNode(plan, base),
       _indexes(),
-      _needsGatherNodeSort(
-          basics::VelocyPackHelper::getBooleanValue(base, "needsGatherNodeSort", false)),
+      _needsGatherNodeSort(basics::VelocyPackHelper::getBooleanValue(
+          base, "needsGatherNodeSort", false)),
       _options(),
-      _outNonMaterializedDocId(
-          aql::Variable::varFromVPack(plan->getAst(), base, "outNmDocId", true)) {
-  _options.sorted = basics::VelocyPackHelper::getBooleanValue(base, "sorted", true);
+      _outNonMaterializedDocId(aql::Variable::varFromVPack(
+          plan->getAst(), base, "outNmDocId", true)) {
+  _options.sorted =
+      basics::VelocyPackHelper::getBooleanValue(base, "sorted", true);
   _options.ascending =
       basics::VelocyPackHelper::getBooleanValue(base, "ascending", false);
   _options.evaluateFCalls =
       basics::VelocyPackHelper::getBooleanValue(base, "evalFCalls", true);
+  _options.useCache = basics::VelocyPackHelper::getBooleanValue(
+      base, StaticStrings::UseCache, true);
   _options.limit = basics::VelocyPackHelper::getNumericValue(base, "limit", 0);
 
   if (_options.sorted && base.isObject() && base.get("reverse").isBool()) {
@@ -124,6 +130,8 @@ IndexNode::IndexNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
   }
 
   _condition = Condition::fromVPack(plan, condition);
+  _allCoveredByOneIndex = basics::VelocyPackHelper::getBooleanValue(
+      base, "allCoveredByOneIndex", false);
 
   TRI_ASSERT(_condition != nullptr);
 
@@ -172,19 +180,19 @@ IndexNode::IndexNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
       if (!var) {
         THROW_ARANGO_EXCEPTION_FORMAT(
             TRI_ERROR_BAD_PARAMETER,
-            "\"indexValuesVars[*].id\" unable to find variable by id %d", varId);
+            "\"indexValuesVars[*].id\" unable to find variable by id %d",
+            varId);
       }
       _outNonMaterializedIndVars.second.try_emplace(var, fieldNumber);
     }
   }
 
-  _projections.determineIndexSupport(this->collection()->id(), _indexes);
+  prepareProjections();
 }
 
 void IndexNode::setProjections(arangodb::aql::Projections projections) {
-  auto dn = dynamic_cast<DocumentProducingNode*>(this);
-  dn->setProjections(std::move(projections));
-  dn->projections().determineIndexSupport(this->collection()->id(), _indexes);
+  _projections = std::move(projections);
+  prepareProjections();
 }
 
 /// @brief doToVelocyPack, for IndexNode
@@ -197,51 +205,60 @@ void IndexNode::doToVelocyPack(VPackBuilder& builder, unsigned flags) const {
 
   // Now put info about vocbase and cid in there
   builder.add("needsGatherNodeSort", VPackValue(_needsGatherNodeSort));
-  builder.add("indexCoversProjections", VPackValue(_projections.supportsCoveringIndex()));
+  builder.add("indexCoversProjections",
+              VPackValue(_projections.usesCoveringIndex()));
 
   builder.add(VPackValue("indexes"));
   {
     VPackArrayBuilder guard(&builder);
     for (auto const& index : _indexes) {
-      index->toVelocyPack(builder, Index::makeFlags(Index::Serialize::Estimates));
+      index->toVelocyPack(builder,
+                          Index::makeFlags(Index::Serialize::Estimates));
     }
   }
   builder.add(VPackValue("condition"));
   _condition->toVelocyPack(builder, flags);
+  builder.add("allCoveredByOneIndex", VPackValue(_allCoveredByOneIndex));
   // IndexIteratorOptions
   builder.add("sorted", VPackValue(_options.sorted));
   builder.add("ascending", VPackValue(_options.ascending));
   builder.add("reverse", VPackValue(!_options.ascending));  // legacy
   builder.add("evalFCalls", VPackValue(_options.evaluateFCalls));
+  builder.add(StaticStrings::UseCache, VPackValue(_options.useCache));
   builder.add("limit", VPackValue(_options.limit));
 
   if (isLateMaterialized()) {
     builder.add(VPackValue("outNmDocId"));
     _outNonMaterializedDocId->toVelocyPack(builder);
 
-    builder.add("indexIdOfVars", VPackValue(_outNonMaterializedIndVars.first.id()));
+    builder.add("indexIdOfVars",
+                VPackValue(_outNonMaterializedIndVars.first.id()));
     // container _indexes contains a few items
-    auto indIt = std::find_if(_indexes.cbegin(), _indexes.cend(), [this](auto const& index) {
-      return index->id() == _outNonMaterializedIndVars.first;
-    });
+    auto indIt = std::find_if(
+        _indexes.cbegin(), _indexes.cend(), [this](auto const& index) {
+          return index->id() == _outNonMaterializedIndVars.first;
+        });
     TRI_ASSERT(indIt != _indexes.cend());
-    auto const& fields = (*indIt)->fields();
+    auto const& coveredFields = (*indIt)->coveredFields();
     VPackArrayBuilder arrayScope(&builder, "indexValuesVars");
     for (auto const& fieldVar : _outNonMaterializedIndVars.second) {
       VPackObjectBuilder objectScope(&builder);
       builder.add("fieldNumber", VPackValue(fieldVar.second));
       builder.add("id", VPackValue(fieldVar.first->id));
-      builder.add("name", VPackValue(fieldVar.first->name));  // for explainer.js
+      builder.add("name",
+                  VPackValue(fieldVar.first->name));  // for explainer.js
       std::string fieldName;
-      TRI_ASSERT(fieldVar.second < fields.size());
-      basics::TRI_AttributeNamesToString(fields[fieldVar.second], fieldName, true);
+      TRI_ASSERT(fieldVar.second < coveredFields.size());
+      basics::TRI_AttributeNamesToString(coveredFields[fieldVar.second],
+                                         fieldName, true);
       builder.add("field", VPackValue(fieldName));  // for explainer.js
     }
   }
 }
 
 /// @brief adds a UNIQUE() to a dynamic IN condition
-arangodb::aql::AstNode* IndexNode::makeUnique(arangodb::aql::AstNode* node) const {
+arangodb::aql::AstNode* IndexNode::makeUnique(
+    arangodb::aql::AstNode* node) const {
   if (node->type != arangodb::aql::NODE_TYPE_ARRAY || node->numMembers() >= 2) {
     // an non-array or an array with more than 1 member
     auto ast = _plan->getAst();
@@ -260,10 +277,10 @@ arangodb::aql::AstNode* IndexNode::makeUnique(arangodb::aql::AstNode* node) cons
     if (idx->sparse() || idx->isSorted()) {
       // the index is sorted. we need to use SORTED_UNIQUE to get the
       // result back in index order
-      return ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("SORTED_UNIQUE"), array, true);
+      return ast->createNodeFunctionCall("SORTED_UNIQUE", array, true);
     }
     // a regular UNIQUE will do
-    return ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("UNIQUE"), array, true);
+    return ast->createNodeFunctionCall("UNIQUE", array, true);
   }
 
   // presumably an array with no or a single member
@@ -287,7 +304,8 @@ NonConstExpressionContainer IndexNode::initializeOnce() const {
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
-    ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
+    ExecutionEngine& engine,
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
 
@@ -303,20 +321,38 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
   /// by their _condition node path indexes
   auto nonConstExpressions = initializeOnce();
 
-  auto const outVariable = isLateMaterialized() ? _outNonMaterializedDocId : _outVariable;
+  // check which variables are used by the node's post-filter
+  std::vector<std::pair<VariableId, RegisterId>> filterVarsToRegs;
+
+  if (hasFilter()) {
+    VarSet inVars;
+    filter()->variables(inVars);
+
+    filterVarsToRegs.reserve(inVars.size());
+
+    for (auto& var : inVars) {
+      TRI_ASSERT(var != nullptr);
+      auto regId = variableToRegisterId(var);
+      filterVarsToRegs.emplace_back(var->id, regId);
+    }
+  }
+
+  auto const outVariable =
+      isLateMaterialized() ? _outNonMaterializedDocId : _outVariable;
   auto const outRegister = variableToRegisterId(outVariable);
   auto numIndVarsRegisters =
       static_cast<aql::RegisterCount>(_outNonMaterializedIndVars.second.size());
   TRI_ASSERT(0 == numIndVarsRegisters || isLateMaterialized());
 
-  // We could be asked to produce only document id for later materialization or full document body at once
+  // We could be asked to produce only document id for later materialization or
+  // full document body at once
   aql::RegisterCount numDocumentRegs = 1;
 
   // if late materialized
-  // We have one additional output register for each index variable which is used later, before
-  // the output register for document id
-  // These must of course fit in the available registers.
-  // There may be unused registers reserved for later blocks.
+  // We have one additional output register for each index variable which is
+  // used later, before the output register for document id These must of course
+  // fit in the available registers. There may be unused registers reserved for
+  // later blocks.
   RegIdSet writableOutputRegisters;
   writableOutputRegisters.reserve(numDocumentRegs + numIndVarsRegisters);
   writableOutputRegisters.emplace(outRegister);
@@ -324,7 +360,8 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
   auto const& varInfos = getRegisterPlan()->varInfo;
   IndexValuesRegisters outNonMaterializedIndRegs;
   outNonMaterializedIndRegs.first = _outNonMaterializedIndVars.first;
-  outNonMaterializedIndRegs.second.reserve(_outNonMaterializedIndVars.second.size());
+  outNonMaterializedIndRegs.second.reserve(
+      _outNonMaterializedIndVars.second.size());
   std::transform(_outNonMaterializedIndVars.second.cbegin(),
                  _outNonMaterializedIndVars.second.cend(),
                  std::inserter(outNonMaterializedIndRegs.second,
@@ -338,21 +375,22 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
                    return std::make_pair(indVar.second, regId);
                  });
 
-  TRI_ASSERT(writableOutputRegisters.size() == numDocumentRegs + numIndVarsRegisters);
+  TRI_ASSERT(writableOutputRegisters.size() ==
+             numDocumentRegs + numIndVarsRegisters);
 
-  auto registerInfos = createRegisterInfos({}, std::move(writableOutputRegisters));
+  auto registerInfos =
+      createRegisterInfos({}, std::move(writableOutputRegisters));
 
-  auto executorInfos =
-      IndexExecutorInfos(outRegister, engine.getQuery(), this->collection(),
-                         _outVariable, isProduceResult(), this->_filter.get(),
-                         this->projections(), std::move(nonConstExpressions),
-                         doCount(), canReadOwnWrites(), _condition->root(),
-                         this->getIndexes(), _plan->getAst(), this->options(),
-                         _outNonMaterializedIndVars, std::move(outNonMaterializedIndRegs));
+  auto executorInfos = IndexExecutorInfos(
+      outRegister, engine.getQuery(), this->collection(), _outVariable,
+      isProduceResult(), this->_filter.get(), this->projections(),
+      std::move(filterVarsToRegs), std::move(nonConstExpressions), doCount(),
+      canReadOwnWrites(), _condition->root(), _allCoveredByOneIndex,
+      this->getIndexes(), _plan->getAst(), this->options(),
+      _outNonMaterializedIndVars, std::move(outNonMaterializedIndRegs));
 
-  return std::make_unique<ExecutionBlockImpl<IndexExecutor>>(&engine, this,
-                                                             std::move(registerInfos),
-                                                             std::move(executorInfos));
+  return std::make_unique<ExecutionBlockImpl<IndexExecutor>>(
+      &engine, this, std::move(registerInfos), std::move(executorInfos));
 }
 
 ExecutionNode* IndexNode::clone(ExecutionPlan* plan, bool withDependencies,
@@ -368,18 +406,20 @@ ExecutionNode* IndexNode::clone(ExecutionPlan* plan, bool withDependencies,
           plan->getAst()->variables()->createVariable(outNonMaterializedDocId);
     }
     outNonMaterializedIndVars.first = _outNonMaterializedIndVars.first;
-    outNonMaterializedIndVars.second.reserve(_outNonMaterializedIndVars.second.size());
+    outNonMaterializedIndVars.second.reserve(
+        _outNonMaterializedIndVars.second.size());
     for (auto& indVar : _outNonMaterializedIndVars.second) {
       outNonMaterializedIndVars.second.try_emplace(
-          plan->getAst()->variables()->createVariable(indVar.first), indVar.second);
+          plan->getAst()->variables()->createVariable(indVar.first),
+          indVar.second);
     }
   } else {
     outNonMaterializedIndVars = _outNonMaterializedIndVars;
   }
 
-  auto c =
-      std::make_unique<IndexNode>(plan, _id, collection(), outVariable, _indexes,
-                                  std::unique_ptr<Condition>(_condition->clone()), _options);
+  auto c = std::make_unique<IndexNode>(
+      plan, _id, collection(), outVariable, _indexes, _allCoveredByOneIndex,
+      std::unique_ptr<Condition>(_condition->clone()), _options);
 
   c->_projections = _projections;
   c->needsGatherNodeSort(_needsGatherNodeSort);
@@ -388,6 +428,13 @@ ExecutionNode* IndexNode::clone(ExecutionPlan* plan, bool withDependencies,
   CollectionAccessingNode::cloneInto(*c);
   DocumentProducingNode::cloneInto(plan, *c);
   return cloneHelper(std::move(c), withDependencies, withProperties);
+}
+
+/// @brief replaces variables in the internals of the execution node
+/// replacements are { old variable id => new variable }
+void IndexNode::replaceVariables(
+    std::unordered_map<VariableId, Variable const*> const& replacements) {
+  DocumentProducingNode::replaceVariables(replacements);
 }
 
 /// @brief destroy the IndexNode
@@ -401,19 +448,20 @@ CostEstimate IndexNode::estimateCost() const {
 
   transaction::Methods& trx = _plan->getAst()->query().trxForOptimization();
   // estimate for the number of documents in the collection. may be outdated...
-  size_t const itemsInCollection = collection()->count(&trx, transaction::CountType::TryCache);
+  size_t const itemsInCollection =
+      collection()->count(&trx, transaction::CountType::TryCache);
   size_t totalItems = 0;
   double totalCost = 0.0;
 
   auto root = _condition->root();
-
+  TRI_ASSERT(!_allCoveredByOneIndex || _indexes.size() == 1);
   for (size_t i = 0; i < _indexes.size(); ++i) {
-    Index::FilterCosts costs = Index::FilterCosts::defaultCosts(itemsInCollection);
+    Index::FilterCosts costs =
+        Index::FilterCosts::defaultCosts(itemsInCollection);
 
     if (root != nullptr && root->numMembers() > i) {
-      arangodb::aql::AstNode const* condition = root->getMember(i);
-      costs = _indexes[i]->supportsFilterCondition(std::vector<std::shared_ptr<Index>>(),
-                                                   condition, _outVariable,
+      auto const* condition = _allCoveredByOneIndex ? root : root->getMember(i);
+      costs = _indexes[i]->supportsFilterCondition({}, condition, _outVariable,
                                                    itemsInCollection);
     }
 
@@ -434,9 +482,15 @@ CostEstimate IndexNode::estimateCost() const {
 /// @brief getVariablesUsedHere, modifying the set in-place
 void IndexNode::getVariablesUsedHere(VarSet& vars) const {
   Ast::getReferencedVariables(_condition->root(), vars);
-
+  if (hasFilter()) {
+    Ast::getReferencedVariables(filter()->node(), vars);
+  }
+  for (auto const& it : _outNonMaterializedIndVars.second) {
+    vars.erase(it.first);
+  }
   vars.erase(_outVariable);
 }
+
 ExecutionNode::NodeType IndexNode::getType() const { return INDEX; }
 
 Condition* IndexNode::condition() const { return _condition.get(); }
@@ -460,17 +514,20 @@ std::vector<Variable const*> IndexNode::getVariablesSetHere() const {
   vars.reserve(1 + _outNonMaterializedIndVars.second.size());
   vars.emplace_back(_outNonMaterializedDocId);
   std::transform(_outNonMaterializedIndVars.second.cbegin(),
-                 _outNonMaterializedIndVars.second.cend(), std::back_inserter(vars),
+                 _outNonMaterializedIndVars.second.cend(),
+                 std::back_inserter(vars),
                  [](auto const& indVar) { return indVar.first; });
 
   return vars;
 }
 
-std::vector<transaction::Methods::IndexHandle> const& IndexNode::getIndexes() const {
+std::vector<transaction::Methods::IndexHandle> const& IndexNode::getIndexes()
+    const {
   return _indexes;
 }
 
-void IndexNode::setLateMaterialized(aql::Variable const* docIdVariable, IndexId commonIndexId,
+void IndexNode::setLateMaterialized(aql::Variable const* docIdVariable,
+                                    IndexId commonIndexId,
                                     IndexVarsInfo const& indexVariables) {
   _outNonMaterializedDocId = docIdVariable;
   _outNonMaterializedIndVars.first = commonIndexId;
@@ -479,5 +536,23 @@ void IndexNode::setLateMaterialized(aql::Variable const* docIdVariable, IndexId 
   for (auto& indVars : indexVariables) {
     _outNonMaterializedIndVars.second.try_emplace(indVars.second.var,
                                                   indVars.second.indexFieldNum);
+  }
+}
+
+void IndexNode::prepareProjections() {
+  if (_indexes.empty()) {
+    return;
+  }
+  // cannot apply the optimization if we use more than one different index
+  auto const& idx = _indexes[0];
+  for (size_t i = 1; i < _indexes.size(); ++i) {
+    if (_indexes[i] != idx) {
+      // different indexes used => cannot use projections
+      return;
+    }
+  }
+
+  if (idx->covers(_projections)) {
+    _projections.setCoveringContext(collection()->id(), idx);
   }
 }

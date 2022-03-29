@@ -218,7 +218,7 @@ const std::string fu_content_type_dump("application/x-arango-dump");
 const std::string fu_content_type_batchpart("application/x-arango-batchpart");
 const std::string fu_content_type_formdata("multipart/form-data");
 
-ContentType to_ContentType(std::string const& val) {
+ContentType to_ContentType(std::string_view val) {
   if (val.empty()) {
     return ContentType::Unset;
   } else if (val.compare(0, fu_content_type_unset.size(),
@@ -289,7 +289,7 @@ const std::string fu_content_encoding_identity("identity");
 const std::string fu_content_encoding_deflate("deflate");
 const std::string fu_content_encoding_gzip("gzip");
 
-ContentEncoding to_ContentEncoding(std::string const& val) {
+ContentEncoding to_ContentEncoding(std::string_view val) {
   if (val.empty()) {
     return ContentEncoding::Identity;
   } else if (val.compare(0, fu_content_encoding_gzip.size(),

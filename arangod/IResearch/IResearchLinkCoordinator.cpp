@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,29 +27,33 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
+#include <memory>
+
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StringUtils.h"
-#include "Cluster/ClusterInfo.h"
 #include "ClusterEngine/ClusterEngine.h"
-#include "IResearchCommon.h"
-#include "IResearchFeature.h"
-#include "IResearchLinkHelper.h"
-#include "IResearchViewCoordinator.h"
+#include "IResearch/IResearchCommon.h"
+#include "IResearch/IResearchFeature.h"
+#include "IResearch/IResearchLinkHelper.h"
+#include "IResearch/IResearchMetricStats.h"
 #include "Indexes/IndexFactory.h"
 #include "Logger/Logger.h"
+#include "Metrics/ClusterMetricsFeature.h"
+#include "Metrics/Metric.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "StorageEngine/EngineSelectorFeature.h"
-#include "VelocyPackHelper.h"
 #include "VocBase/LogicalCollection.h"
 
 namespace {
 
 using namespace arangodb;
 
-ClusterEngineType getEngineType(application_features::ApplicationServer& server) {
+ClusterEngineType getEngineType(ArangodServer& server) {
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   // during the unit tests there is a mock storage engine which cannot be casted
-  // to a ClusterEngine at all. the only sensible way to find out the engine type is 
-  // to try a dynamic_cast here and assume the MockEngine if the cast goes wrong
+  // to a ClusterEngine at all. the only sensible way to find out the engine
+  // type is to try a dynamic_cast here and assume the MockEngine if the cast
+  // goes wrong
   auto& engine = server.getFeature<EngineSelectorFeature>().engine();
   auto cast = dynamic_cast<ClusterEngine*>(&engine);
   if (cast != nullptr) {
@@ -63,20 +67,78 @@ ClusterEngineType getEngineType(application_features::ApplicationServer& server)
 #endif
 }
 
-} // namespace
+}  // namespace
 
-namespace arangodb {
-namespace iresearch {
+namespace arangodb::iresearch {
 
-IResearchLinkCoordinator::IResearchLinkCoordinator(IndexId id, LogicalCollection& collection)
-    : arangodb::ClusterIndex(id, collection,
-                             ::getEngineType(collection.vocbase().server()),
-                             arangodb::Index::TRI_IDX_TYPE_IRESEARCH_LINK,
-                             IResearchLinkHelper::emptyIndexSlice(0).slice()), // we don`t have objectId`s on coordinator
+IResearchLinkCoordinator::IResearchLinkCoordinator(
+    IndexId id, LogicalCollection& collection)
+    : arangodb::ClusterIndex(
+          id, collection, ::getEngineType(collection.vocbase().server()),
+          arangodb::Index::TRI_IDX_TYPE_IRESEARCH_LINK,
+          IResearchLinkHelper::emptyIndexSlice(0)
+              .slice()),  // we don`t have objectId`s on coordinator
       IResearchLink(id, collection) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
   _unique = false;  // cannot be unique since multiple fields are indexed
   _sparse = true;   // always sparse
+}
+
+Result IResearchLinkCoordinator::init(velocypack::Slice definition) {
+  bool pathExists = false;
+  auto r = IResearchLink::init(definition, pathExists);
+  TRI_ASSERT(!pathExists);
+  if (!r.ok()) {
+    return r;
+  }
+  using namespace metrics;
+  auto& metric = IResearchLink::collection()
+                     .vocbase()
+                     .server()
+                     .getFeature<ClusterMetricsFeature>();
+
+  auto batchToCoordinator = [](ClusterMetricsFeature::Metrics& metrics,
+                               std::string_view name, velocypack::Slice labels,
+                               velocypack::Slice value) {
+    ClusterMetricsFeature::MetricKey key{name, labels.stringView()};
+    std::get<uint64_t>(metrics[key]) += value.getNumber<uint64_t>();
+  };
+  auto batchToPrometheus = [](std::string& result, std::string_view globals,
+                              ClusterMetricsFeature::MetricKey const& key,
+                              ClusterMetricsFeature::MetricValue const& value) {
+    Metric::addMark(result, key.first, globals, key.second);
+    result.append(std::to_string(std::get<uint64_t>(value))) += '\n';
+  };
+  metric.add("arangodb_search_num_docs", batchToCoordinator, batchToPrometheus);
+  metric.add("arangodb_search_num_live_docs", batchToCoordinator,
+             batchToPrometheus);
+  metric.add("arangodb_search_num_segments", batchToCoordinator,
+             batchToPrometheus);
+  metric.add("arangodb_search_num_files", batchToCoordinator,
+             batchToPrometheus);
+  metric.add("arangodb_search_index_size", batchToCoordinator,
+             batchToPrometheus);
+  auto gaugeToCoordinator = [](ClusterMetricsFeature::Metrics& metrics,
+                               std::string_view name, velocypack::Slice labels,
+                               velocypack::Slice value) {
+    auto labelsStr = labels.stringView();
+    auto end = labelsStr.find(",shard=\"");
+    if (end == std::string_view::npos) {
+      TRI_ASSERT(false);
+      return;
+    }
+    labelsStr = labelsStr.substr(0, end);
+    metrics::ClusterMetricsFeature::MetricKey key{name, labelsStr};
+    std::get<uint64_t>(metrics[key]) += value.getNumber<uint64_t>();
+  };
+  metric.add("arangodb_search_num_failed_commits", gaugeToCoordinator);
+  metric.add("arangodb_search_num_failed_cleanups", gaugeToCoordinator);
+  metric.add("arangodb_search_num_failed_consolidations", gaugeToCoordinator);
+  metric.add("arangodb_search_commit_time", gaugeToCoordinator);
+  metric.add("arangodb_search_cleanup_time", gaugeToCoordinator);
+  metric.add("arangodb_search_consolidation_time", gaugeToCoordinator);
+
+  return r;
 }
 
 void IResearchLinkCoordinator::toVelocyPack(
@@ -111,20 +173,19 @@ void IResearchLinkCoordinator::toVelocyPack(
   builder.close();
 }
 
-IResearchLinkCoordinator::IndexFactory::IndexFactory(application_features::ApplicationServer& server)
+IResearchLinkCoordinator::IndexFactory::IndexFactory(ArangodServer& server)
     : IndexTypeFactory(server) {}
 
-bool IResearchLinkCoordinator::IndexFactory::equal(velocypack::Slice lhs,
-                                                   velocypack::Slice rhs,
-                                                   std::string const& dbname) const {
+bool IResearchLinkCoordinator::IndexFactory::equal(
+    velocypack::Slice lhs, velocypack::Slice rhs,
+    std::string const& dbname) const {
   return IResearchLinkHelper::equal(_server, lhs, rhs, dbname);
 }
 
 std::shared_ptr<Index> IResearchLinkCoordinator::IndexFactory::instantiate(
-    LogicalCollection& collection, VPackSlice definition,
-    IndexId id, bool /*isClusterConstructor*/) const {
-  auto link = std::shared_ptr<IResearchLinkCoordinator>(
-      new IResearchLinkCoordinator(id, collection));
+    LogicalCollection& collection, VPackSlice definition, IndexId id,
+    bool /*isClusterConstructor*/) const {
+  auto link = std::make_shared<IResearchLinkCoordinator>(id, collection);
   auto res = link->init(definition);
 
   if (!res.ok()) {
@@ -135,26 +196,17 @@ std::shared_ptr<Index> IResearchLinkCoordinator::IndexFactory::instantiate(
 }
 
 Result IResearchLinkCoordinator::IndexFactory::normalize(
-    velocypack::Builder& normalized,
-    velocypack::Slice definition,
-    bool isCreation,
-    TRI_vocbase_t const& vocbase) const {
+    velocypack::Builder& normalized, velocypack::Slice definition,
+    bool isCreation, TRI_vocbase_t const& vocbase) const {
   // no attribute set in a definition -> old version
   constexpr LinkVersion defaultVersion = LinkVersion::MIN;
-
-  return IResearchLinkHelper::normalize(
-      normalized, definition, isCreation, vocbase, defaultVersion);
+  return IResearchLinkHelper::normalize(normalized, definition, isCreation,
+                                        vocbase, defaultVersion);
 }
 
-std::shared_ptr<IResearchLinkCoordinator::IndexFactory> IResearchLinkCoordinator::createFactory(
-    application_features::ApplicationServer& server) {
-  return std::shared_ptr<IResearchLinkCoordinator::IndexFactory>(
-      new IResearchLinkCoordinator::IndexFactory(server));
+std::shared_ptr<IResearchLinkCoordinator::IndexFactory>
+IResearchLinkCoordinator::createFactory(ArangodServer& server) {
+  return std::make_shared<IResearchLinkCoordinator::IndexFactory>(server);
 }
 
-}  // namespace iresearch
-}  // namespace arangodb
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
+}  // namespace arangodb::iresearch

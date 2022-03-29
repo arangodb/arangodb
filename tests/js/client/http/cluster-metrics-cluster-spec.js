@@ -335,7 +335,7 @@ describe('_admin/metrics', () => {
       const lines = prometheus.split('\n').filter((s) => !s.startsWith('#') && s !== '');
       const res = {};
       for (const l of lines) {
-        const [keypart, count] = l.split(' ');
+        const [keypart, count] = l.split('}');
         const [key, labels] = extractKeyAndLabel(keypart);
         if (labels.has("le")) {
           // Bucket case
@@ -423,7 +423,7 @@ describe('_admin/metrics', () => {
         [new MaintenanceWatcher(), new ShardCountWatcher(18), new ShardLeaderCountWatcher(9)]
         );
         runTest(() => {
-          db["UnitTestCollection"].ensureHashIndex("temp");
+          db["UnitTestCollection"].ensureIndex({ type: "hash", fields: ["temp"] });
         },
         [new MaintenanceWatcher()]
         );

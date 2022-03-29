@@ -1,0 +1,163 @@
+dist: bionic
+
+language: cpp
+
+matrix:
+  include:
+    - os: linux
+      addons:
+        apt:
+          packages:
+            - libgflags-dev
+            - libgoogle-glog-dev
+            - libgtest-dev
+            - libssl-dev
+            - swig3.0
+      env:
+        - MATRIX_EVAL="CC=gcc && CXX=g++"
+        - GTEST_ROOT=/usr/src/gtest
+
+    - os: linux
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - g++-8
+            - libgflags-dev
+            - libgoogle-glog-dev
+            - libgtest-dev
+            - libssl-dev
+            - swig3.0
+      env:
+        - MATRIX_EVAL="CC=gcc-8 && CXX=g++-8"
+        - GTEST_ROOT=/usr/src/gtest
+
+    - os: linux
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - g++-9
+            - libgflags-dev
+            - libgoogle-glog-dev
+            - libgtest-dev
+            - libssl-dev
+            - swig3.0
+      env:
+        - MATRIX_EVAL="CC=gcc-9 && CXX=g++-9"
+        - GTEST_ROOT=/usr/src/gtest
+
+    - os: linux
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - g++-10
+            - libgflags-dev
+            - libgoogle-glog-dev
+            - libgtest-dev
+            - libssl-dev
+            - swig3.0
+      env:
+        - MATRIX_EVAL="CC=gcc-10 && CXX=g++-10"
+        - GTEST_ROOT=/usr/src/gtest
+
+    - os: linux
+      addons:
+        apt:
+          packages:
+            - libgflags-dev
+            - libgoogle-glog-dev
+            - libgtest-dev
+            - libssl-dev
+            - swig3.0
+      env:
+        - MATRIX_EVAL="CC=clang && CXX=clang++"
+        - GTEST_ROOT=/usr/src/gtest
+
+    - os: linux
+      addons:
+        apt:
+          sources:
+            - llvm-toolchain-bionic-8
+            - ubuntu-toolchain-r-test
+          packages:
+            - clang-8
+            - g++-7
+            - libgflags-dev
+            - libgoogle-glog-dev
+            - libgtest-dev
+            - libssl-dev
+            - swig3.0
+      env:
+        - MATRIX_EVAL="CC=clang-8 && CXX=clang++-8"
+        - GTEST_ROOT=/usr/src/gtest
+
+    - os: linux
+      addons:
+        apt:
+          sources:
+            - llvm-toolchain-bionic-9
+            - ubuntu-toolchain-r-test
+          packages:
+            - clang-9
+            - g++-7
+            - libgflags-dev
+            - libgoogle-glog-dev
+            - libgtest-dev
+            - libssl-dev
+            - swig3.0
+      env:
+        - MATRIX_EVAL="CC=clang-9 && CXX=clang++-9"
+        - GTEST_ROOT=/usr/src/gtest
+
+    - os: linux
+      addons:
+        apt:
+          sources:
+            - llvm-toolchain-bionic-10
+            - ubuntu-toolchain-r-test
+          packages:
+            - clang-10
+            - g++-7
+            - libgflags-dev
+            - libgoogle-glog-dev
+            - libgtest-dev
+            - libssl-dev
+            - swig3.0
+      env:
+        - MATRIX_EVAL="CC=clang-10 && CXX=clang++-10"
+        - GTEST_ROOT=/usr/src/gtest
+
+    - os: osx
+      osx_image: xcode11.3
+      env:
+        - MATRIX_EVAL=""
+        - GTEST_ROOT="$( /bin/pwd )/googletest-release-1.8.0/googletest"
+        - OPENSSL_ROOT_DIR=/usr/local/opt/openssl
+
+    - os: osx
+      osx_image: xcode12
+      env:
+        - MATRIX_EVAL=""
+        - GTEST_ROOT="$( /bin/pwd )/googletest-release-1.8.0/googletest"
+        - OPENSSL_ROOT_DIR=/usr/local/opt/openssl
+
+before_install:
+  - eval "${MATRIX_EVAL}"
+  - ${CC} --version
+  - ${CXX} --version
+
+install:
+  - if [[ "$TRAVIS_OS_NAME" == osx ]]; then brew install gflags glog swig; fi
+  - if [[ "$TRAVIS_OS_NAME" == osx ]]; then wget https://github.com/google/googletest/archive/release-1.8.0.tar.gz; fi
+  - if [[ "$TRAVIS_OS_NAME" == osx ]]; then tar zxvf release-1.8.0.tar.gz; fi
+
+script:
+  - mkdir build
+  - cd build
+  - cmake -DGTEST_ROOT=$GTEST_ROOT -DWITH_GFLAGS=ON -DWITH_GLOG=ON -DWITH_PYTHON=ON ..
+  - make && make CTEST_OUTPUT_ON_FAILURE=1 test

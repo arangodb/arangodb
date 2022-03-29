@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -37,7 +37,7 @@
 namespace arangodb {
 
 namespace futures {
-template <typename T>
+template<typename T>
 class Future;
 }
 
@@ -52,13 +52,14 @@ class HashedStringRef;
 
 namespace graph {
 
-// TODO: we need to control from the outside if and which parts of the vertex - (will be implemented in the future via template parameters)
-// data should be returned. This is most-likely done via a template parameter like
-// this: template<ProduceVertexData>
-template <class StepType>
+// TODO: we need to control from the outside if and which parts of the vertex -
+// (will be implemented in the future via template parameters) data should be
+// returned. This is most-likely done via a template parameter like this:
+// template<ProduceVertexData>
+template<class StepType>
 class SingleServerProvider {
  public:
-  using Options = BaseProviderOptions;
+  using Options = SingleServerBaseProviderOptions;
   using Step = StepType;
 
  public:
@@ -70,15 +71,18 @@ class SingleServerProvider {
 
   SingleServerProvider& operator=(SingleServerProvider const&) = delete;
 
-  auto startVertex(VertexType vertex, size_t depth = 0, double weight = 0.0) -> Step;
+  auto startVertex(VertexType vertex, size_t depth = 0, double weight = 0.0)
+      -> Step;
   auto fetch(std::vector<Step*> const& looseEnds)
       -> futures::Future<std::vector<Step*>>;  // rocks
   auto expand(Step const& from, size_t previous,
               std::function<void(Step)> const& callback) -> void;  // index
   auto clear() -> void;
 
-  void insertEdgeIntoResult(EdgeDocumentToken edge, arangodb::velocypack::Builder& builder);
-  void insertEdgeIdIntoResult(EdgeDocumentToken edge, arangodb::velocypack::Builder& builder);
+  void insertEdgeIntoResult(EdgeDocumentToken edge,
+                            arangodb::velocypack::Builder& builder);
+  void insertEdgeIdIntoResult(EdgeDocumentToken edge,
+                              arangodb::velocypack::Builder& builder);
 
   void addVertexToBuilder(typename Step::Vertex const& vertex,
                           arangodb::velocypack::Builder& builder,
@@ -97,6 +101,9 @@ class SingleServerProvider {
 
   void prepareIndexExpressions(aql::Ast* ast);
 
+  void prepareContext(aql::InputAqlItemRow input);
+  void unPrepareContext();
+
  private:
   void activateCache(bool enableDocumentCache);
 
@@ -110,7 +117,7 @@ class SingleServerProvider {
 
   std::unique_ptr<RefactoredSingleServerEdgeCursor<Step>> _cursor;
 
-  BaseProviderOptions _opts;
+  SingleServerBaseProviderOptions _opts;
 
   RefactoredTraverserCache _cache;
 

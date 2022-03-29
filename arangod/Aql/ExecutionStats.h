@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -34,16 +34,15 @@ namespace arangodb {
 namespace velocypack {
 class Builder;
 class Slice;
-}
+}  // namespace velocypack
 namespace aql {
 
 struct ExecutionStats {
-  ExecutionStats();
+  ExecutionStats() noexcept;
 
   /// @brief instantiate the statistics from VelocyPack
-  explicit ExecutionStats(arangodb::velocypack::Slice const& slice);
- 
- public:
+  explicit ExecutionStats(arangodb::velocypack::Slice slice);
+
   /// @brief convert the statistics to VelocyPack
   void toVelocyPack(arangodb::velocypack::Builder&, bool reportFullCount) const;
 
@@ -59,42 +58,57 @@ struct ExecutionStats {
   void addAlias(aql::ExecutionNodeId from, aql::ExecutionNodeId to) {
     _nodeAliases.emplace(from, to);
   }
-  void setAliases(std::map<aql::ExecutionNodeId, aql::ExecutionNodeId>&& aliases) {
+  void setAliases(
+      std::map<aql::ExecutionNodeId, aql::ExecutionNodeId>&& aliases) {
     _nodeAliases = std::move(aliases);
   }
 
-  void clear();
+  void clear() noexcept;
 
   /// @brief number of successfully executed write operations
-  int64_t writesExecuted;
+  uint64_t writesExecuted = 0;
 
   /// @brief number of ignored write operations (ignored due to errors)
-  int64_t writesIgnored;
+  uint64_t writesIgnored = 0;
 
   /// @brief number of documents scanned (full-collection scan)
-  int64_t scannedFull;
+  uint64_t scannedFull = 0;
 
   /// @brief number of documents scanned (using indexes scan)
-  int64_t scannedIndex;
+  uint64_t scannedIndex = 0;
+
+  /// @brief number of cursors created. currently only populated by
+  /// IndexExecutor.
+  uint64_t cursorsCreated = 0;
+
+  /// @brief number of existing cursors that were rearmed. currently only
+  /// populated by IndexExecutor.
+  uint64_t cursorsRearmed = 0;
+
+  /// @brief number of (in-memory) cache hits, if cache is enabled
+  uint64_t cacheHits = 0;
+
+  /// @brief number of (in-memory) cache misses, if cache is enabled
+  uint64_t cacheMisses = 0;
 
   /// @brief number of documents filtered away
-  int64_t filtered;
+  uint64_t filtered = 0;
 
   /// @brief total number of requests made
-  int64_t requests;
+  uint64_t requests = 0;
 
   /// @brief total number of results, before applying last limit
-  int64_t fullCount;
+  uint64_t fullCount = 0;
 
   /// @brief total number of results
-  int64_t count;
+  uint64_t count = 0;
 
   /// @brief query execution time (wall-clock time). value will be set from
   /// the outside
-  double executionTime;
+  double executionTime = 0.0;
 
   /// @brief peak memory usage of the query
-  size_t peakMemoryUsage;
+  size_t peakMemoryUsage = 0;
 
  private:
   /// @brief Node aliases, source => target.
@@ -102,10 +116,9 @@ struct ExecutionStats {
   ///        will be counted as the target instead
   ///        within nodes.
   std::map<aql::ExecutionNodeId, aql::ExecutionNodeId> _nodeAliases;
-  
+
   ///  @brief statistics per ExecutionNodes
   std::map<aql::ExecutionNodeId, ExecutionNodeStats> _nodes;
 };
 }  // namespace aql
 }  // namespace arangodb
-

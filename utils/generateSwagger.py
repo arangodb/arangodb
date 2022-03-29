@@ -865,6 +865,17 @@ def restallbodyparam(cargo, r=Regexen()):
             'additionalProperties': {}
         }
     }
+
+    if _ptype != "json" and _ptype != "object":
+        if _ptype == "string":
+            restBodyParam['name'] = "plain text body"
+            restBodyParam['schema'] = {
+                'type': 'string',
+                'additionalProperties': {}
+            }
+        else:
+            raise Exception("Unknown body type " + _ptype + " - supported are json, object and string")
+
     swagger['paths'][httpPath][method]['parameters'].append(restBodyParam)
 
     return generic_handler_desc(cargo, r, "restbodyparam", None,
@@ -1320,10 +1331,10 @@ def getOneApi(infile, filename, thisFn):
 def getReference(name, source, verb):
     try:
         ref = name['$ref'][defLen:]
-    except Exception:
+    except Exception as ex:
         print("No reference in: ", file=sys.stderr)
         print(name, file=sys.stderr)
-        raise Exception("No reference in: " + name)
+        raise Exception("No reference in: " + str(name)) from ex
     if not ref in swagger['definitions']:
         fn = ''
         if verb:
@@ -1345,7 +1356,7 @@ def TrimThisParam(text, indent):
     text = text.rstrip('\n').lstrip('\n')
     text = removeDoubleLF.sub("\n", text)
     if indent > 0:
-        indent = (indent + 2) # align the text right of the list...
+        indent = (indent + 4) # align the text right of the list...
     return removeLF.sub("\n" + ' ' * indent, text)
 
 def unwrapPostJson(reference, layer):

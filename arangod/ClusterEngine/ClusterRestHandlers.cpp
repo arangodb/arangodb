@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,11 +30,14 @@
 
 using namespace arangodb;
 
-void ClusterRestHandlers::registerResources(rest::RestHandlerFactory* handlerFactory) {
-  handlerFactory->addPrefixHandler(RestVocbaseBaseHandler::COLLECTION_PATH,
-                                   RestHandlerCreator<ClusterRestCollectionHandler>::createNoData);
-  handlerFactory->addPrefixHandler("/_api/replication",
-                                   RestHandlerCreator<ClusterRestReplicationHandler>::createNoData);
-  handlerFactory->addPrefixHandler("/_admin/wal",
-                                   RestHandlerCreator<ClusterRestWalHandler>::createNoData);
+void ClusterRestHandlers::registerResources(
+    rest::RestHandlerFactory* handlerFactory) {
+  handlerFactory->addPrefixHandler(
+      RestVocbaseBaseHandler::COLLECTION_PATH,
+      RestHandlerCreator<ClusterRestCollectionHandler>::createNoData);
+  handlerFactory->addPrefixHandler(
+      "/_api/replication",
+      RestHandlerCreator<ClusterRestReplicationHandler>::createNoData);
+  handlerFactory->addPrefixHandler(
+      "/_admin/wal", RestHandlerCreator<ClusterRestWalHandler>::createNoData);
 }

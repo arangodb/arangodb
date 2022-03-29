@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -35,37 +35,43 @@ namespace arangodb::arangobench {
 struct DocumentCreationTest : public Benchmark<DocumentCreationTest> {
   static std::string name() { return "document"; }
   DocumentCreationTest(BenchFeature& arangobench)
-    : Benchmark<DocumentCreationTest>(arangobench),
-      _url(std::string("/_api/document?collection=") + _arangobench.collection() + "&silent=true") {}
+      : Benchmark<DocumentCreationTest>(arangobench),
+        _url(std::string("/_api/document?collection=") +
+             _arangobench.collection() + "&silent=true") {}
 
   bool setUp(arangodb::httpclient::SimpleHttpClient* client) override {
     return DeleteCollection(client, _arangobench.collection()) &&
-      CreateCollection(client, _arangobench.collection(), 2, _arangobench);
+           CreateCollection(client, _arangobench.collection(), 2, _arangobench);
   }
 
   void tearDown() override {}
 
-  void buildRequest(size_t threadNumber, size_t threadCounter,
-                    size_t globalCounter, BenchmarkOperation::RequestData& requestData) const override {
+  void buildRequest(
+      size_t threadNumber, size_t threadCounter, size_t globalCounter,
+      BenchmarkOperation::RequestData& requestData) const override {
     requestData.url = _url;
     requestData.type = rest::RequestType::POST;
     using namespace arangodb::velocypack;
     requestData.payload.openObject();
     uint64_t const n = _arangobench.complexity();
     for (uint64_t i = 1; i <= n; ++i) {
-      requestData.payload.add(std::string("test") + std::to_string(i), Value(std::string_view("some test value")));
+      requestData.payload.add(std::string("test") + std::to_string(i),
+                              Value(std::string_view("some test value")));
     }
     requestData.payload.close();
   }
 
   char const* getDescription() const noexcept override {
-    return "performs single-document insert operations via the specialized insert API (in contrast to performing inserts via generic AQL). The --complexity parameter controls the number of attributes per document. The attribute values for the inserted documents will be hard-coded. The total number of documents to be inserted is equal to the value of --requests.";
+    return "performs single-document insert operations via the specialized "
+           "insert API (in contrast to performing inserts via generic AQL). "
+           "The --complexity parameter controls the number of attributes per "
+           "document. The attribute values for the inserted documents will be "
+           "hard-coded. The total number of documents to be inserted is equal "
+           "to the value of --requests.";
   }
 
-  bool isDeprecated() const noexcept override {
-    return false;
-  }
- 
+  bool isDeprecated() const noexcept override { return false; }
+
  private:
   std::string const _url;
 };

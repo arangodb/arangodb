@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,6 +23,8 @@
 
 #pragma once
 
+#include <iosfwd>
+
 namespace arangodb::basics {
 
 // Poor-man's replacement for std::source_location, until we get C++20.
@@ -32,16 +35,20 @@ struct SourceLocation {
 
  public:
   SourceLocation() = delete;
-  constexpr SourceLocation(decltype(_file_name) file, decltype(_line) line) noexcept
+  constexpr SourceLocation(decltype(_file_name) file,
+                           decltype(_line) line) noexcept
       : _file_name(file), _line(line) {}
 
-  [[nodiscard]] constexpr auto file_name() const noexcept -> decltype(_file_name) {
+  [[nodiscard]] constexpr auto file_name() const noexcept
+      -> decltype(_file_name) {
     return _file_name;
   }
   [[nodiscard]] constexpr auto line() const noexcept -> decltype(_line) {
     return _line;
   }
 };
+
+auto operator<<(std::ostream&, SourceLocation const&) -> std::ostream&;
 
 }  // namespace arangodb::basics
 

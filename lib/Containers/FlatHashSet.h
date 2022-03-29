@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,19 +20,16 @@
 ///
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
-
 #pragma once
 
 #include <absl/container/flat_hash_set.h>
 
-namespace arangodb {
-namespace containers {
+namespace arangodb::containers {
 
-template <typename T, typename Hash = ::iresearch_absl::container_internal::hash_default_hash<T>,
-          typename Eq = ::iresearch_absl::container_internal::hash_default_eq<T>,
-          typename Allocator = std::allocator<T>>
-using FlatHashSet = ::iresearch_absl::flat_hash_set<T, Hash, Eq, Allocator>;
+template<class T, class Hash = typename absl::flat_hash_set<T>::hasher,
+         class Eq = typename absl::flat_hash_set<T, Hash>::key_equal,
+         class Allocator =
+             typename absl::flat_hash_set<T, Hash, Eq>::allocator_type>
+using FlatHashSet = absl::flat_hash_set<T, Hash, Eq, Allocator>;
 
-}
-}
-
+}  // namespace arangodb::containers

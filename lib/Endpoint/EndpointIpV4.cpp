@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,11 +30,10 @@
 using namespace arangodb;
 
 EndpointIpV4::EndpointIpV4(EndpointType type, TransportType transport,
-                           EncryptionType encryption, int listenBacklog, bool reuseAddress,
-                           std::string const& host, uint16_t const port)
+                           EncryptionType encryption, int listenBacklog,
+                           bool reuseAddress, std::string const& host,
+                           uint16_t const port)
     : EndpointIp(DomainType::IPV4, type, transport, encryption, listenBacklog,
                  reuseAddress, host, port) {}
 
-bool EndpointIpV4::isBroadcastBind() const {
-  return host() == "0.0.0.0";
-}
+bool EndpointIpV4::isBroadcastBind() const { return host() == "0.0.0.0"; }

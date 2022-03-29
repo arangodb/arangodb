@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,16 +25,16 @@
 #pragma once
 
 #include "Basics/Common.h"
-
-#include <velocypack/StringRef.h>
-
+#include "Shell/arangosh.h"
 #include <fuerte/connection.h>
 #include <fuerte/loop.h>
 #include <fuerte/types.h>
 #include <v8.h>
 
 #include <memory>
+#include <optional>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 
 namespace arangodb {
@@ -44,6 +44,10 @@ namespace application_features {
 class ApplicationServer;
 }
 
+namespace fuzzer {
+class RequestFuzzer;
+}
+
 namespace httpclient {
 class GeneralClientConnection;
 class SimpleHttpClient;
@@ -51,7 +55,9 @@ class SimpleHttpResult;
 }  // namespace httpclient
 
 namespace fuerte {
-inline namespace v1 { class Connection; }
+inline namespace v1 {
+class Connection;
+}
 }  // namespace fuerte
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -63,10 +69,11 @@ class V8ClientConnection {
   V8ClientConnection& operator=(V8ClientConnection const&) = delete;
 
  public:
-  explicit V8ClientConnection(application_features::ApplicationServer&, ClientFeature&);
+  explicit V8ClientConnection(ArangoshServer&, ClientFeature&);
   ~V8ClientConnection();
 
   void setInterrupted(bool interrupted);
+
   bool isConnected() const;
 
   void connect();
@@ -75,7 +82,7 @@ class V8ClientConnection {
   double timeout() const;
 
   void timeout(double value);
-  
+
   std::string protocol() const;
 
   std::string const& databaseName() const { return _databaseName; }
@@ -90,40 +97,49 @@ class V8ClientConnection {
   std::string const& role() const { return _role; }
   std::string endpointSpecification() const;
 
-  application_features::ApplicationServer& server();
+  ArangoshServer& server();
 
-  v8::Handle<v8::Value> getData(v8::Isolate* isolate, arangodb::velocypack::StringRef const& location,
-                                std::unordered_map<std::string, std::string> const& headerFields,
-                                bool raw);
+  v8::Handle<v8::Value> getData(
+      v8::Isolate* isolate, std::string_view location,
+      std::unordered_map<std::string, std::string> const& headerFields,
+      bool raw);
 
-  v8::Handle<v8::Value> headData(v8::Isolate* isolate, arangodb::velocypack::StringRef const& location,
-                                 std::unordered_map<std::string, std::string> const& headerFields,
-                                 bool raw);
+  v8::Handle<v8::Value> headData(
+      v8::Isolate* isolate, std::string_view location,
+      std::unordered_map<std::string, std::string> const& headerFields,
+      bool raw);
 
-  v8::Handle<v8::Value> deleteData(v8::Isolate* isolate, arangodb::velocypack::StringRef const& location,
-                                   v8::Local<v8::Value> const& body,
-                                   std::unordered_map<std::string, std::string> const& headerFields,
-                                   bool raw);
+  v8::Handle<v8::Value> deleteData(
+      v8::Isolate* isolate, std::string_view location,
+      v8::Local<v8::Value> const& body,
+      std::unordered_map<std::string, std::string> const& headerFields,
+      bool raw);
 
-  v8::Handle<v8::Value> optionsData(v8::Isolate* isolate, arangodb::velocypack::StringRef const& location,
-                                    v8::Local<v8::Value> const& body,
-                                    std::unordered_map<std::string, std::string> const& headerFields,
-                                    bool raw);
+  v8::Handle<v8::Value> optionsData(
+      v8::Isolate* isolate, std::string_view location,
+      v8::Local<v8::Value> const& body,
+      std::unordered_map<std::string, std::string> const& headerFields,
+      bool raw);
 
-  v8::Handle<v8::Value> postData(v8::Isolate* isolate, arangodb::velocypack::StringRef const& location,
-                                 v8::Local<v8::Value> const& body,
-                                 std::unordered_map<std::string, std::string> const& headerFields,
-                                 bool raw = false, bool isFile = false);
+  v8::Handle<v8::Value> postData(
+      v8::Isolate* isolate, std::string_view location,
+      v8::Local<v8::Value> const& body,
+      std::unordered_map<std::string, std::string> const& headerFields,
+      bool raw = false, bool isFile = false);
 
-  v8::Handle<v8::Value> putData(v8::Isolate* isolate, arangodb::velocypack::StringRef const& location,
-                                v8::Local<v8::Value> const& body,
-                                std::unordered_map<std::string, std::string> const& headerFields,
-                                bool raw);
+  v8::Handle<v8::Value> putData(
+      v8::Isolate* isolate, std::string_view location,
+      v8::Local<v8::Value> const& body,
+      std::unordered_map<std::string, std::string> const& headerFields,
+      bool raw);
 
-  v8::Handle<v8::Value> patchData(v8::Isolate* isolate, arangodb::velocypack::StringRef const& location,
-                                  v8::Local<v8::Value> const& body,
-                                  std::unordered_map<std::string, std::string> const& headerFields,
-                                  bool raw);
+  v8::Handle<v8::Value> patchData(
+      v8::Isolate* isolate, std::string_view location,
+      v8::Local<v8::Value> const& body,
+      std::unordered_map<std::string, std::string> const& headerFields,
+      bool raw);
+
+  uint32_t requestFuzz(fuzzer::RequestFuzzer& fuzzer);
 
   void initServer(v8::Isolate*, v8::Handle<v8::Context> context);
 
@@ -131,16 +147,16 @@ class V8ClientConnection {
   std::shared_ptr<fuerte::Connection> createConnection();
   std::shared_ptr<fuerte::Connection> acquireConnection();
 
-  v8::Local<v8::Value> requestData(v8::Isolate* isolate, fuerte::RestVerb verb,
-                                   arangodb::velocypack::StringRef const& location,
-                                   v8::Local<v8::Value> const& body,
-                                   std::unordered_map<std::string, std::string> const& headerFields,
-                                   bool isFile = false);
+  v8::Local<v8::Value> requestData(
+      v8::Isolate* isolate, fuerte::RestVerb verb, std::string_view location,
+      v8::Local<v8::Value> const& body,
+      std::unordered_map<std::string, std::string> const& headerFields,
+      bool isFile = false);
 
-  v8::Local<v8::Value> requestDataRaw(v8::Isolate* isolate, fuerte::RestVerb verb,
-                                      arangodb::velocypack::StringRef const& location,
-                                      v8::Local<v8::Value> const& body,
-                                      std::unordered_map<std::string, std::string> const& headerFields);
+  v8::Local<v8::Value> requestDataRaw(
+      v8::Isolate* isolate, fuerte::RestVerb verb, std::string_view location,
+      v8::Local<v8::Value> const& body,
+      std::unordered_map<std::string, std::string> const& headerFields);
 
   v8::Local<v8::Value> handleResult(v8::Isolate* isolate,
                                     std::unique_ptr<fuerte::Response> response,
@@ -157,7 +173,7 @@ class V8ClientConnection {
   }
 
  private:
-  application_features::ApplicationServer& _server;
+  ArangoshServer& _server;
   ClientFeature& _client;
 
   std::string _databaseName;
@@ -180,9 +196,10 @@ class V8ClientConnection {
   // a per-endpoint, per-user cache for connections. whenever we reconnect
   // to another endpoint, we can put the old connection into this cache,
   // and recycle it later. the goal is to not use too many separate connections
-  // and ephemeral ports for patterns such as "connect-to-leader" -> "connect-to-follower"
-  // -> "connect-to-leader" etc. 
-  std::unordered_map<std::string, std::shared_ptr<fuerte::Connection>> _connectionCache;
+  // and ephemeral ports for patterns such as "connect-to-leader" ->
+  // "connect-to-follower"
+  // -> "connect-to-leader" etc.
+  std::unordered_map<std::string, std::shared_ptr<fuerte::Connection>>
+      _connectionCache;
 };
 }  // namespace arangodb
-

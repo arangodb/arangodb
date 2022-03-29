@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,12 +21,12 @@
 /// @author Michael Hackstein
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
-
 #pragma once
 
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
+#include "Containers/FlatHashMap.h"
 #include "Futures/Future.h"
 #include "Indexes/IndexIterator.h"
 #include "Transaction/CountCache.h"
@@ -39,12 +39,12 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
-#include <velocypack/StringRef.h>
 
 namespace arangodb {
+
 typedef std::string ServerID;  // ID of a server
 typedef std::string ShardID;   // ID of a shard
-typedef std::unordered_map<ShardID, std::vector<ServerID>> ShardMap;
+using ShardMap = containers::FlatHashMap<ShardID, std::vector<ServerID>>;
 
 class FollowerInfo;
 class Index;
@@ -78,12 +78,17 @@ class LogicalCollection : public LogicalDataSource {
 
  public:
   LogicalCollection() = delete;
-  LogicalCollection(TRI_vocbase_t& vocbase, velocypack::Slice info, bool isAStub);
+  LogicalCollection(TRI_vocbase_t& vocbase, velocypack::Slice info,
+                    bool isAStub);
   LogicalCollection(LogicalCollection const&) = delete;
   LogicalCollection& operator=(LogicalCollection const&) = delete;
   ~LogicalCollection() override;
 
   enum class Version { v30 = 5, v31 = 6, v33 = 7, v34 = 8, v37 = 9 };
+
+  constexpr static Category category() noexcept {
+    return Category::kCollection;
+  }
 
   /*
    * @brief Available types of internal validators. These validators
@@ -104,9 +109,6 @@ class LogicalCollection : public LogicalDataSource {
     SatToSmartEdge = 16,
   };
 
-  /// @brief the category representing a logical collection
-  static Category const& category() noexcept;
-
   /// @brief hard-coded minimum version number for collections
   static constexpr Version minimumVersion() { return Version::v30; }
   /// @brief current version for collections
@@ -120,8 +122,6 @@ class LogicalCollection : public LogicalDataSource {
   uint32_t v8CacheVersion() const;
 
   TRI_col_type_e type() const;
-
-  std::string globallyUniqueId() const;
 
   // For normal collections the realNames is just a vector of length 1
   // with its name. For smart edge collections (Enterprise Edition only)
@@ -191,13 +191,14 @@ class LogicalCollection : public LogicalDataSource {
   void distributeShardsLike(std::string const& cid, ShardingInfo const* other);
 
   // query shard for a given document
-  ErrorCode getResponsibleShard(velocypack::Slice slice,
-                                bool docComplete, std::string& shardID);
+  ErrorCode getResponsibleShard(velocypack::Slice slice, bool docComplete,
+                                std::string& shardID);
   ErrorCode getResponsibleShard(std::string_view key, std::string& shardID);
 
   ErrorCode getResponsibleShard(velocypack::Slice slice, bool docComplete,
-                                std::string& shardID, bool& usesDefaultShardKeys,
-                                velocypack::StringRef const& key = velocypack::StringRef());
+                                std::string& shardID,
+                                bool& usesDefaultShardKeys,
+                                std::string_view key = std::string_view());
 
   /// @briefs creates a new document key, the input slice is ignored here
   /// this method is overriden in derived classes
@@ -205,7 +206,8 @@ class LogicalCollection : public LogicalDataSource {
 
   PhysicalCollection* getPhysical() const { return _physical.get(); }
 
-  std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx, ReadOwnWrites readOwnWrites);
+  std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx,
+                                                ReadOwnWrites readOwnWrites);
   std::unique_ptr<IndexIterator> getAnyIterator(transaction::Methods* trx);
 
   /// @brief fetches current index selectivity estimates
@@ -221,18 +223,20 @@ class LogicalCollection : public LogicalDataSource {
   /// @brief return all indexes of the collection
   std::vector<std::shared_ptr<Index>> getIndexes() const;
 
-  void getIndexesVPack(velocypack::Builder&,
-                       std::function<bool(Index const*, uint8_t&)> const& filter) const;
+  void getIndexesVPack(
+      velocypack::Builder&,
+      std::function<bool(Index const*, uint8_t&)> const& filter) const;
 
   /// @brief a method to skip certain documents in AQL write operations,
   /// this is only used in the Enterprise Edition for SmartGraphs
-  virtual bool skipForAqlWrite(velocypack::Slice document, std::string const& key) const;
+  virtual bool skipForAqlWrite(velocypack::Slice document,
+                               std::string const& key) const;
 
   bool allowUserKeys() const;
 
   // SECTION: Modification Functions
-  virtual Result drop() override;
-  virtual Result rename(std::string&& name) override;
+  Result drop() override;
+  Result rename(std::string&& name) override;
   virtual void setStatus(TRI_vocbase_col_status_e);
 
   // SECTION: Serialization
@@ -240,13 +244,15 @@ class LogicalCollection : public LogicalDataSource {
                           std::unordered_set<std::string> const& ignoreKeys,
                           Serialization context) const;
 
-  velocypack::Builder toVelocyPackIgnore(std::unordered_set<std::string> const& ignoreKeys,
-                                         Serialization context) const;
+  velocypack::Builder toVelocyPackIgnore(
+      std::unordered_set<std::string> const& ignoreKeys,
+      Serialization context) const;
 
   void toVelocyPackForInventory(velocypack::Builder&) const;
 
-  virtual void toVelocyPackForClusterInventory(velocypack::Builder&, bool useSystem,
-                                               bool isReady, bool allInSync) const;
+  virtual void toVelocyPackForClusterInventory(velocypack::Builder&,
+                                               bool useSystem, bool isReady,
+                                               bool allInSync) const;
 
   using LogicalDataSource::properties;
 
@@ -258,8 +264,8 @@ class LogicalCollection : public LogicalDataSource {
   virtual Result properties(velocypack::Slice definition, bool partialUpdate);
 
   /// @brief return the figures for a collection
-  virtual futures::Future<OperationResult> figures(bool details,
-                                                   OperationOptions const& options) const;
+  virtual futures::Future<OperationResult> figures(
+      bool details, OperationOptions const& options) const;
 
   /// @brief closes an open collection
   ErrorCode close();
@@ -314,11 +320,13 @@ class LogicalCollection : public LogicalDataSource {
   ///        can be dropped. The callback is supposed to drop
   ///        the collection and it is guaranteed that no one is using
   ///        it at that moment.
-  void deferDropCollection(std::function<bool(LogicalCollection&)> const& callback);
+  void deferDropCollection(
+      std::function<bool(LogicalCollection&)> const& callback);
 
   void schemaToVelocyPack(VPackBuilder&) const;
   Result validate(VPackSlice newDoc, VPackOptions const*) const;  // insert
-  Result validate(VPackSlice modifiedDoc, VPackSlice oldDoc, VPackOptions const*) const;  // update / replace
+  Result validate(VPackSlice modifiedDoc, VPackSlice oldDoc,
+                  VPackOptions const*) const;  // update / replace
 
   // Get a reference to this KeyGenerator.
   // Caller is not allowed to free it.
@@ -331,8 +339,9 @@ class LogicalCollection : public LogicalDataSource {
   /// @brief returns the value of _syncByRevision
   bool syncByRevision() const;
 
-  /// @brief returns the value of _syncByRevision, but only for "real" collections with data backing.
-  /// returns false for all collections with no data backing.
+  /// @brief returns the value of _syncByRevision, but only for "real"
+  /// collections with data backing. returns false for all collections with no
+  /// data backing.
   bool useSyncByRevision() const;
 
   /// @brief set the internal validator types. This should be handled with care
@@ -356,8 +365,8 @@ class LogicalCollection : public LogicalDataSource {
  protected:
   void addInternalValidator(std::unique_ptr<ValidatorBase>);
 
-  virtual Result appendVelocyPack(velocypack::Builder& builder,
-                                  Serialization context) const override;
+  Result appendVPack(velocypack::Builder& build, Serialization ctx,
+                     bool safe) const override;
 
   Result updateSchema(VPackSlice schema);
 
@@ -365,7 +374,7 @@ class LogicalCollection : public LogicalDataSource {
    * Enterprise only method. See enterprise code for implementation
    * Community has a dummy stub.
    */
-  std::string createSmartToSatKey(arangodb::velocypack::Slice input);
+  std::string createSmartToSatKey(velocypack::Slice input);
 
   void decorateWithInternalEEValidators();
 
@@ -407,7 +416,8 @@ class LogicalCollection : public LogicalDataSource {
   bool const _isDisjoint;
   // @brief Flag if this collection is a smart one. (Enterprise Edition only)
   bool const _isSmart;
-  // @brief Flag if this collection is a child of a smart collection (Enterprise Edition only)
+  // @brief Flag if this collection is a child of a smart collection (Enterprise
+  // Edition only)
   bool const _isSmartChild;
 #endif
 
@@ -424,10 +434,7 @@ class LogicalCollection : public LogicalDataSource {
 
   transaction::CountCache _countCache;
 
-  // SECTION: Key Options
-
-  // @brief options for key creation
-  std::shared_ptr<velocypack::Buffer<uint8_t> const> _keyOptions;
+  // options for key creation
   std::unique_ptr<KeyGenerator> _keyGenerator;
 
   std::unique_ptr<PhysicalCollection> _physical;
@@ -453,4 +460,3 @@ class LogicalCollection : public LogicalDataSource {
 };
 
 }  // namespace arangodb
-

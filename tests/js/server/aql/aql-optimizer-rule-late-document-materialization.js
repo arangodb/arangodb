@@ -30,7 +30,9 @@
 
 let jsunity = require("jsunity");
 let db = require("@arangodb").db;
-let isCluster = require("internal").isCluster();
+const internal = require('internal');
+let isCluster = internal.isCluster();
+
 
 function lateDocumentMaterializationRuleTestSuite () {
   const ruleName = "late-document-materialization";
@@ -41,6 +43,7 @@ function lateDocumentMaterializationRuleTestSuite () {
   const primaryIndexCollectionName = "UnitTestsPrimCollection";
   const edgeIndexCollectionName = "UnitTestsEdgeCollection";
   const severalIndexesCollectionName = "UnitTestsSeveralIndexesCollection";
+  const withIndexCollectionName = "UnitTestsWithIndexCollection";
   const projectionsCoveredByIndexCollectionName = "ProjectionsCoveredByIndexCollection";
   const prefixIndexCollectionName = "PrefixIndexCollection";
   let collectionNames = [];
@@ -641,6 +644,59 @@ function lateDocumentMaterializationRuleTestSuite () {
       assertNotEqual(-1, plan.rules.indexOf(ruleName));
       let result = AQL_EXECUTE(query).json;
       assertEqual(0, result.length);
+    },
+
+    // fullCount was too low
+    testRegressionBts611() {
+      const _ = require('lodash');
+      try {
+        const col = db._create(withIndexCollectionName, {numberOfShards: 9});
+        col.ensureIndex({type: "persistent", fields: ["value", "x"]});
+        col.insert(_.range(0, 1000).map(i => ({value: i, x: Math.random()})));
+        const query = `
+          FOR doc IN ${withIndexCollectionName}
+            FILTER doc.value >= 500
+            SORT doc.x
+            LIMIT @limit
+            RETURN doc
+        `;
+        const options = { fullCount: true };
+        let result;
+
+        result = AQL_EXECUTE(query, {limit: 1000}, options);
+        assertEqual(500, result.json.length);
+        assertEqual(500, result.stats.fullCount);
+
+        result = AQL_EXECUTE(query, {limit: 1}, options);
+        assertEqual(1, result.json.length);
+        assertEqual(500, result.stats.fullCount);
+        
+        if (!internal.debugCanUseFailAt()) {
+          return;
+        }
+        internal.debugClearFailAt();
+        internal.debugSetFailAt('MaterializeExecutor::all_fail');
+        result = AQL_EXECUTE(query, {limit: 100}, options);
+        assertEqual(0, result.json.length);
+        assertEqual(500, result.stats.fullCount);
+        
+        internal.debugClearFailAt();
+        internal.debugSetFailAt('MaterializeExecutor::only_one');
+        result = AQL_EXECUTE(query, {limit: 100}, options);
+        if (isCluster) {
+          // for cluster it depends on db servers number as each materializer will issue only one document
+          // to not bother with accurate number  - let's check it is not all 100
+          // we anyway want to check it just not breaks in case of materialization failure
+          assertTrue(result.json.length < 100);
+        } else {
+          assertEqual(1, result.json.length);
+        }
+        assertEqual(500, result.stats.fullCount);
+        
+      } finally {
+        db._drop(withIndexCollectionName);
+        internal.debugClearFailAt();
+      }
     },
 
   };

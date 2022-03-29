@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -98,7 +98,7 @@ class FollowerInfo {
     // This should also disable satellite tracking.
   }
 
-  enum class WriteState { ALLOWED = 0, FORBIDDEN, STARTUP };
+  enum class WriteState { ALLOWED = 0, FORBIDDEN, STARTUP, UNAVAILABLE };
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief get information about current followers of a shard.
@@ -127,8 +127,9 @@ class FollowerInfo {
   ///        list is initialized empty.
   ////////////////////////////////////////////////////////////////////////////////
 
-  void takeOverLeadership(std::vector<ServerID> const& previousInsyncFollowers,
-                          std::shared_ptr<std::vector<ServerID>> realInsyncFollowers);
+  void takeOverLeadership(
+      std::vector<ServerID> const& previousInsyncFollowers,
+      std::shared_ptr<std::vector<ServerID>> realInsyncFollowers);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief add a follower to a shard, this is only done by the server side
@@ -220,61 +221,15 @@ class FollowerInfo {
     return _theLeaderTouched;
   }
 
-  WriteState allowedToWrite() {
-    {
-      auto& engine =
-          _docColl->vocbase().server().getFeature<EngineSelectorFeature>().engine();
-      if (engine.inRecovery()) {
-        return WriteState::ALLOWED;
-      }
-      READ_LOCKER(readLocker, _canWriteLock);
-      if (_canWrite) {
-        // Someone has decided we can write, fastPath!
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-        // Invariant, we can only WRITE if we do not have other failover candidates
-        READ_LOCKER(readLockerData, _dataLock);
-        TRI_ASSERT(_followers->size() == _failoverCandidates->size());
-        // Our follower list only contains followers, numFollowers + leader
-        // needs to be at least writeConcern.
-        TRI_ASSERT(_followers->size() + 1 >= _docColl->writeConcern());
-#endif
-        return WriteState::ALLOWED;
-      }
-      READ_LOCKER(readLockerData, _dataLock);
-      TRI_ASSERT(_docColl != nullptr);
-
-      if (!_theLeaderTouched) {
-        // prevent writes before `TakeoverShardLeadership` has run
-        LOG_TOPIC("7c1d4", INFO, Logger::REPLICATION)
-            << "Shard "
-            << _docColl->name() << " is temporarily in read-only mode, since we have not yet run TakeoverShardLeadership since the last restart.";
-        return WriteState::STARTUP;
-      }
-      if (_followers->size() + 1 < _docColl->writeConcern()) {
-        // We know that we still do not have enough followers
-        LOG_TOPIC("d7306", ERR, Logger::REPLICATION)
-            << "Shard " << _docColl->name() << " is temporarily in read-only mode, since we have less than writeConcern ("
-            << basics::StringUtils::itoa(_docColl->writeConcern())
-            << ") replicas in sync.";
-        return WriteState::FORBIDDEN;
-      }
-    }
-    bool res = updateFailoverCandidates();
-    if (!res) {
-      LOG_TOPIC("2e35a", ERR, Logger::REPLICATION)
-          << "Shard "
-          << _docColl->name() << " is temporarily in read-only mode, since we could not update the failover candidates in the agency.";
-    }
-    return res ? WriteState::ALLOWED : WriteState::FORBIDDEN;
-  }
+  WriteState allowedToWrite();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Inject the information about followers into the builder.
   ///        Builder needs to be an open object and is not allowed to contain
   ///        the keys "servers" and "failoverCandidates".
   //////////////////////////////////////////////////////////////////////////////
-  std::pair<size_t, size_t> injectFollowerInfo(arangodb::velocypack::Builder& builder) const {
+  std::pair<size_t, size_t> injectFollowerInfo(
+      arangodb::velocypack::Builder& builder) const {
     READ_LOCKER(readLockerData, _dataLock);
     injectFollowerInfoInternal(builder);
     return std::make_pair(_followers->size(), _failoverCandidates->size());
@@ -287,6 +242,7 @@ class FollowerInfo {
 
   Result persistInAgency(bool isRemove) const;
 
-  arangodb::velocypack::Builder newShardEntry(arangodb::velocypack::Slice oldValue) const;
+  arangodb::velocypack::Builder newShardEntry(
+      arangodb::velocypack::Slice oldValue) const;
 };
 }  // end namespace arangodb

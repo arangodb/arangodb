@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,20 +23,22 @@
 
 #pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Auth/TokenCache.h"
 #include "Auth/UserManager.h"
+#include "RestServer/arangod.h"
 
 namespace arangodb {
 
-class AuthenticationFeature final : public application_features::ApplicationFeature {
+class AuthenticationFeature final : public ArangodFeature {
  private:
   const size_t _maxSecretLength = 64;
 
  public:
-  explicit AuthenticationFeature(application_features::ApplicationServer& server);
+  static constexpr std::string_view name() noexcept { return "Authentication"; }
 
   static inline AuthenticationFeature* instance() { return INSTANCE; }
+
+  explicit AuthenticationFeature(Server& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -48,7 +50,6 @@ class AuthenticationFeature final : public application_features::ApplicationFeat
 
   bool authenticationUnixSockets() const { return _authenticationUnixSockets; }
   bool authenticationSystemOnly() const { return _authenticationSystemOnly; }
-
 
   /// Enable or disable standalone authentication
   bool localAuthentication() const noexcept { return _localAuthentication; }
@@ -72,7 +73,7 @@ class AuthenticationFeature final : public application_features::ApplicationFeat
 #endif
 
   double sessionTimeout() const { return _sessionTimeout; }
-  
+
   // load secrets from file(s)
   [[nodiscard]] Result loadJwtSecretsFromFile();
 
@@ -92,7 +93,7 @@ class AuthenticationFeature final : public application_features::ApplicationFeat
   bool _active;
   double _authenticationTimeout;
   double _sessionTimeout;
-  
+
   mutable std::mutex _jwtSecretsLock;
 
   std::string _jwtSecretProgramOption;
@@ -108,4 +109,3 @@ class AuthenticationFeature final : public application_features::ApplicationFeat
 };
 
 }  // namespace arangodb
-

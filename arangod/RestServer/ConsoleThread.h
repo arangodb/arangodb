@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,20 +25,21 @@
 
 #include "Basics/Thread.h"
 #include "V8Server/V8Context.h"
+#include "RestServer/arangod.h"
 
 struct TRI_vocbase_t;
 
 namespace arangodb {
 class V8ContextGuard;
 class V8LineEditor;
-}
+}  // namespace arangodb
 
 namespace arangodb {
 namespace application_features {
 class ApplicationServer;
 }
 
-class ConsoleThread final : public Thread {
+class ConsoleThread final : public ServerThread<ArangodServer> {
   ConsoleThread(const ConsoleThread&) = delete;
   ConsoleThread& operator=(const ConsoleThread&) = delete;
 
@@ -47,7 +48,7 @@ class ConsoleThread final : public Thread {
   static arangodb::Mutex serverConsoleMutex;
 
  public:
-  ConsoleThread(application_features::ApplicationServer&, TRI_vocbase_t*);
+  ConsoleThread(Server&, TRI_vocbase_t*);
 
   ~ConsoleThread();
 
@@ -66,4 +67,3 @@ class ConsoleThread final : public Thread {
   std::atomic<bool> _userAborted;
 };
 }  // namespace arangodb
-

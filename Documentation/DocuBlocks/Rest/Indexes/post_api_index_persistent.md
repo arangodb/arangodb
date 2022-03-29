@@ -15,11 +15,27 @@ must be equal to *"persistent"*.
 @RESTBODYPARAM{fields,array,required,string}
 an array of attribute paths.
 
+@RESTBODYPARAM{storedValues,array,optional,string}
+The optional **storedValues** attribute can contain an array of paths to additional 
+attributes to store in the index. These additional attributes cannot be used for
+index lookups or for sorting, but they can be used for projections. This allows an
+index to fully cover more queries and avoid extra document lookups.
+The maximum number of attributes in **storedValues** is 32.
+It is not possible to create multiple indexes with the same **fields** attributes
+and uniqueness but different **storedValues** attributes. That means the value of 
+**storedValues** is not considered by index creation calls when checking if an 
+index is already present or needs to be created.
+In unique indexes, only the attributes in **fields** are checked for uniqueness,
+but the attributes in **storedValues** are not checked for their uniqueness. 
+Non-existing attributes are stored as **null** values inside **storedValues**.
+
 @RESTBODYPARAM{unique,boolean,optional,}
-if *true*, then create a unique index.
+if *true*, then create a unique index. Defaults to *false*.
+In unique indexes, only the attributes in **fields** are checked for uniqueness,
+but the attributes in **storedValues** are not checked for their uniqueness.
 
 @RESTBODYPARAM{sparse,boolean,optional,}
-if *true*, then create a sparse index.
+if *true*, then create a sparse index. Defaults to *false*.
 
 @RESTBODYPARAM{deduplicate,boolean,optional,}
 The attribute **deduplicate** is supported by array indexes of type *persistent*,
@@ -42,6 +58,24 @@ choose from.
 The *estimates* attribute is optional and defaults to *true* if not set. It will
 have no effect on indexes other than *persistent* (with *hash* and *skiplist*
 being mere aliases for *persistent* nowadays).
+
+@RESTBODYPARAM{cacheEnabled,boolean,optional,}
+**cacheEnabled** can be *true* or *false* and is supported by indexes of type
+*persistent*. The attribute controls whether an extra in-memory hash cache is
+created for the index. The hash cache can be used to speed up index lookups.
+The cache can only be used for queries that look up all index attributes via
+an equality lookup (`==`). The hash cache cannot be used for range scans,
+partial lookups or sorting.
+The cache will be populated lazily upon reading data from the index. Writing data
+into the collection or updating existing data will invalidate entries in the
+cache. The cache may have a negative effect on performance in case index values
+are updated more often than they are read.
+The maximum size of cache entries that can be stored is currently 4 MB, i.e.
+the cumulated size of all index entries for any index lookup value must be
+less than 4 MB. This limitation is there to avoid storing the index entries
+of "super nodes" in the cache.
+**cacheEnabled** defaults to *false* and should only be used for indexes that
+are known to benefit from an extra layer of caching.
 
 @RESTBODYPARAM{inBackground,boolean,optional,}
 The optional attribute **inBackground** can be set to *true* to create the index

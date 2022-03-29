@@ -1,7 +1,7 @@
-////////////////////////////////////////////////////////////////////////////////
+﻿////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -42,6 +42,7 @@
 
 namespace arangodb {
 class ClientFeature;
+class EncryptionFeature;
 namespace httpclient {
 class SimpleHttpClient;
 class SimpleHttpResult;
@@ -82,9 +83,11 @@ class ImportHelper {
   ImportHelper& operator=(ImportHelper const&) = delete;
 
  public:
-  ImportHelper(ClientFeature const& client, std::string const& endpoint,
-               httpclient::SimpleHttpClientParams const& params, uint64_t maxUploadSize,
-               uint32_t threadCount, bool autoUploadSize = false);
+  ImportHelper(EncryptionFeature* encryption, ClientFeature const& client,
+               std::string const& endpoint,
+               httpclient::SimpleHttpClientParams const& params,
+               uint64_t maxUploadSize, uint32_t threadCount,
+               bool autoUploadSize = false);
 
   ~ImportHelper();
 
@@ -93,8 +96,8 @@ class ImportHelper {
   //////////////////////////////////////////////////////////////////////////////
 
   bool importDelimited(std::string const& collectionName,
-                       std::string const& fileName, 
-                       std::string const& headersFile, 
+                       std::string const& fileName,
+                       std::string const& headersFile,
                        DelimitedImportType typeImport);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -161,11 +164,13 @@ class ImportHelper {
     _createCollectionType = value;
   }
 
-  void setTranslations(std::unordered_map<std::string, std::string> const& translations) {
+  void setTranslations(
+      std::unordered_map<std::string, std::string> const& translations) {
     _translations = translations;
   }
-  
-  void setDatatypes(std::unordered_map<std::string, std::string> const& datatypes) {
+
+  void setDatatypes(
+      std::unordered_map<std::string, std::string> const& datatypes) {
     _datatypes = datatypes;
   }
 
@@ -182,9 +187,11 @@ class ImportHelper {
     bool isLiteral;
   };
 
-  std::vector<Step> tokenizeInput(std::string const& input, std::string const& key) const;
+  std::vector<Step> tokenizeInput(std::string const& input,
+                                  std::string const& key) const;
 
-  void verifyNestedAttributes(std::string const& input, std::string const& key) const;
+  void verifyNestedAttributes(std::string const& input,
+                              std::string const& key) const;
 
   void verifyMergeAttributesSyntax(std::string const& input) const;
 
@@ -207,7 +214,6 @@ class ImportHelper {
   //////////////////////////////////////////////////////////////////////////////
 
   void setSkipValidation(bool value) { _skipValidation = value; }
-
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get the number of rows to skip
@@ -283,8 +289,12 @@ class ImportHelper {
 
   std::vector<std::string> getErrorMessages() { return _errorMessages; }
 
-  uint64_t getMaxUploadSize() { return (_maxUploadSize.load(std::memory_order_relaxed)); }
-  void setMaxUploadSize(uint64_t newSize) { _maxUploadSize.store(newSize, std::memory_order_relaxed); }
+  uint64_t getMaxUploadSize() {
+    return (_maxUploadSize.load(std::memory_order_relaxed));
+  }
+  void setMaxUploadSize(uint64_t newSize) {
+    _maxUploadSize.store(newSize, std::memory_order_relaxed);
+  }
 
   uint64_t rotatePeriodByteCount() { return (_periodByteCount.exchange(0)); }
   void addPeriodByteCount(uint64_t add) { _periodByteCount.fetch_add(add); }
@@ -295,32 +305,34 @@ class ImportHelper {
 
  private:
   // read headers from separate file
-  bool readHeadersFile(std::string const& headersFile, 
-                       DelimitedImportType typeImport,
-                       char separator);
+  bool readHeadersFile(std::string const& headersFile,
+                       DelimitedImportType typeImport, char separator);
 
   static void ProcessCsvBegin(TRI_csv_parser_t*, size_t);
-  static void ProcessCsvAdd(TRI_csv_parser_t*, char const*, size_t, size_t, size_t, bool);
-  static void ProcessCsvEnd(TRI_csv_parser_t*, char const*, size_t, size_t, size_t, bool);
+  static void ProcessCsvAdd(TRI_csv_parser_t*, char const*, size_t, size_t,
+                            size_t, bool);
+  static void ProcessCsvEnd(TRI_csv_parser_t*, char const*, size_t, size_t,
+                            size_t, bool);
 
   void reportProgress(int64_t, int64_t, double&);
 
   std::string getCollectionUrlPart() const;
   void beginLine(size_t row);
   void addField(char const*, size_t, size_t row, size_t column, bool escaped);
-  void addLastField(char const*, size_t, size_t row, size_t column, bool escaped);
+  void addLastField(char const*, size_t, size_t row, size_t column,
+                    bool escaped);
 
   bool collectionExists();
   bool checkCreateCollection();
   bool truncateCollection();
 
-  void sendCsvBuffer();
+  void handleCsvBuffer(uint64_t bufferSizeThreshold);
   void sendJsonBuffer(char const* str, size_t len, bool isObject);
   SenderThread* findIdleSender();
   void waitForSenders();
 
  private:
-  ClientFeature const& _clientFeature;
+  EncryptionFeature* _encryption;
   std::unique_ptr<httpclient::SimpleHttpClient> _httpClient;
   std::atomic<uint64_t> _maxUploadSize;
   std::atomic<uint64_t> _periodByteCount;
@@ -364,7 +376,8 @@ class ImportHelper {
   std::unordered_map<std::string, std::string> _translations;
   std::unordered_map<std::string, std::string> _datatypes;
 
-  std::vector<std::pair<std::string, std::vector<Step>>> _mergeAttributesInstructions;
+  std::vector<std::pair<std::string, std::vector<Step>>>
+      _mergeAttributesInstructions;
   std::unordered_map<std::string, std::string> _fieldsLookUpTable;
   std::unordered_set<std::string> _removeAttributes;
 

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,7 +31,6 @@
 #include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
 namespace aql {
@@ -65,15 +64,16 @@ struct IgnoreDocumentNotFound : BoolWrapper {
 };
 
 struct ModificationExecutorInfos {
-  ModificationExecutorInfos(ExecutionEngine* engine, 
-                            RegisterId input1RegisterId, RegisterId input2RegisterId,
-                            RegisterId input3RegisterId, RegisterId outputNewRegisterId,
-                            RegisterId outputOldRegisterId, RegisterId outputRegisterId,
-                            arangodb::aql::QueryContext& query, OperationOptions options,
-                            aql::Collection const* aqlCollection, ProducesResults producesResults,
-                            ConsultAqlWriteFilter consultAqlWriteFilter,
-                            IgnoreErrors ignoreErrors, DoCount doCount, IsReplace isReplace,
-                            IgnoreDocumentNotFound ignoreDocumentNotFound);
+  ModificationExecutorInfos(
+      ExecutionEngine* engine, RegisterId input1RegisterId,
+      RegisterId input2RegisterId, RegisterId input3RegisterId,
+      RegisterId outputNewRegisterId, RegisterId outputOldRegisterId,
+      RegisterId outputRegisterId, arangodb::aql::QueryContext& query,
+      OperationOptions options, aql::Collection const* aqlCollection,
+      ProducesResults producesResults,
+      ConsultAqlWriteFilter consultAqlWriteFilter, IgnoreErrors ignoreErrors,
+      DoCount doCount, IsReplace isReplace,
+      IgnoreDocumentNotFound ignoreDocumentNotFound);
 
   ModificationExecutorInfos() = delete;
   ModificationExecutorInfos(ModificationExecutorInfos&&) = default;
@@ -109,4 +109,3 @@ struct ModificationExecutorInfos {
 
 }  // namespace aql
 }  // namespace arangodb
-

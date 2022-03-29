@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,6 +28,7 @@
 #include "Aql/Expression.h"
 #include "Aql/FixedVarExpressionContext.h"
 #include "Aql/QueryContext.h"
+#include "Containers/FlatHashMap.h"
 #include "Indexes/IndexIterator.h"
 #include "Transaction/Methods.h"
 
@@ -36,6 +37,7 @@
 #include "Aql/OptimizerUtils.h"
 
 #include "Graph/Providers/TypeAliases.h"
+#include "Aql/InAndOutRowExpressionContext.h"
 
 #include <vector>
 
@@ -57,14 +59,14 @@ struct IndexAccessor;
 
 struct EdgeDocumentToken;
 
-template <class StepType>
+template<class StepType>
 class SingleServerProvider;
 
-template <class StepType>
+template<class StepType>
 class RefactoredSingleServerEdgeCursor {
  public:
   struct LookupInfo {
-    LookupInfo(IndexAccessor* accessor);
+    explicit LookupInfo(IndexAccessor* accessor);
 
     ~LookupInfo();
 
@@ -73,12 +75,15 @@ class RefactoredSingleServerEdgeCursor {
     LookupInfo& operator=(LookupInfo const&) = delete;
 
     void rearmVertex(VertexType vertex, transaction::Methods* trx,
-                     arangodb::aql::Variable const* tmpVar);
+                     arangodb::aql::Variable const* tmpVar,
+                     aql::TraversalStats& stats);
 
     IndexIterator& cursor();
     aql::Expression* getExpression();
 
     size_t getCursorID() const;
+
+    uint16_t coveringIndexPosition() const noexcept;
 
     void calculateIndexExpressions(aql::Ast* ast, aql::ExpressionContext& ctx);
 
@@ -86,6 +91,8 @@ class RefactoredSingleServerEdgeCursor {
     IndexAccessor* _accessor;
 
     std::unique_ptr<IndexIterator> _cursor;
+
+    uint16_t _coveringIndexPosition;
   };
 
   enum Direction { FORWARD, BACKWARD };
@@ -94,32 +101,40 @@ class RefactoredSingleServerEdgeCursor {
   RefactoredSingleServerEdgeCursor(
       transaction::Methods* trx, arangodb::aql::Variable const* tmpVar,
       std::vector<IndexAccessor>& globalIndexConditions,
-      std::unordered_map<uint64_t, std::vector<IndexAccessor>>& depthBasedIndexConditions,
-      arangodb::aql::FixedVarExpressionContext& expressionContext, bool requiresFullDocument);
+      std::unordered_map<uint64_t, std::vector<IndexAccessor>>&
+          depthBasedIndexConditions,
+      arangodb::aql::FixedVarExpressionContext& expressionContext,
+      bool requiresFullDocument);
 
   ~RefactoredSingleServerEdgeCursor();
 
-  using Callback =
-      std::function<void(EdgeDocumentToken&&, arangodb::velocypack::Slice, size_t)>;
+  using Callback = std::function<void(EdgeDocumentToken&&,
+                                      arangodb::velocypack::Slice, size_t)>;
 
  private:
   aql::Variable const* _tmpVar;
   std::vector<LookupInfo> _lookupInfo;
-  std::unordered_map<uint64_t, std::vector<LookupInfo>> _depthLookupInfo;
+  containers::FlatHashMap<uint64_t, std::vector<LookupInfo>> _depthLookupInfo;
 
   transaction::Methods* _trx;
+  // Only works with hardcoded variables
   arangodb::aql::FixedVarExpressionContext& _expressionCtx;
+
+  // TODO [GraphRefactor]: This is currently unused. Ticket: #GORDO-1364
+  // Will be implemented in the future (Performance Optimization).
   bool _requiresFullDocument;
 
  public:
   void readAll(SingleServerProvider<StepType>& provider,
-               aql::TraversalStats& stats, size_t depth, Callback const& callback);
+               aql::TraversalStats& stats, size_t depth,
+               Callback const& callback);
 
-  void rearm(VertexType vertex, uint64_t depth);
+  void rearm(VertexType vertex, uint64_t depth, aql::TraversalStats& stats);
 
   void prepareIndexExpressions(aql::Ast* ast);
 
-  bool evaluateEdgeExpression(arangodb::aql::Expression* expression, VPackSlice value);
+  bool evaluateEdgeExpression(arangodb::aql::Expression* expression,
+                              VPackSlice value);
 
  private:
   auto getLookupInfos(uint64_t depth) -> std::vector<LookupInfo>&;

@@ -63,7 +63,7 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/FlushFeature.h"
-#include "RestServer/MetricsFeature.h"
+#include "Metrics/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/UpgradeFeature.h"
@@ -87,11 +87,13 @@ using namespace std::chrono_literals;
 
 class IResearchFeatureTest
     : public ::testing::Test,
-      public arangodb::tests::LogSuppressor<arangodb::Logger::AGENCY, arangodb::LogLevel::FATAL>,
-      public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION, arangodb::LogLevel::ERR>,
-      public arangodb::tests::LogSuppressor<arangodb::Logger::CLUSTER, arangodb::LogLevel::FATAL> {
+      public arangodb::tests::LogSuppressor<arangodb::Logger::AGENCY,
+                                            arangodb::LogLevel::FATAL>,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION,
+                                            arangodb::LogLevel::ERR>,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::CLUSTER,
+                                            arangodb::LogLevel::FATAL> {
  protected:
-
   arangodb::tests::mocks::MockV8Server server;
 
   IResearchFeatureTest() : server(false) {
@@ -111,20 +113,21 @@ class IResearchFeatureTest
     dataPath /= "databases";
     dataPath /= "database-";
     dataPath += std::to_string(view.vocbase().id());
-    dataPath /= arangodb::iresearch::DATA_SOURCE_TYPE.name();
+    dataPath /= arangodb::iresearch::StaticStrings::DataSourceType;
     dataPath += "-";
     dataPath += std::to_string(view.id().id());
     return dataPath;
   };
 
   // version 1 data-source path
-  irs::utf8_path getPersistedPath1(arangodb::iresearch::IResearchLink const& link) {
+  irs::utf8_path getPersistedPath1(
+      arangodb::iresearch::IResearchLink const& link) {
     auto& dbPathFeature = server.getFeature<arangodb::DatabasePathFeature>();
     irs::utf8_path dataPath(dbPathFeature.directory());
     dataPath /= "databases";
     dataPath /= "database-";
     dataPath += std::to_string(link.collection().vocbase().id());
-    dataPath /= arangodb::iresearch::DATA_SOURCE_TYPE.name();
+    dataPath /= arangodb::iresearch::StaticStrings::DataSourceType;
     dataPath += "-";
     dataPath += std::to_string(link.collection().id().id());
     dataPath += "_";
@@ -162,23 +165,29 @@ TEST_F(IResearchFeatureTest, test_options_default) {
   auto* threads = opts->get<UInt32Parameter>("--arangosearch.threads");
   ASSERT_NE(nullptr, threads);
   ASSERT_EQ(0, *threads->ptr);
-  auto* threadsLimit = opts->get<UInt32Parameter>("--arangosearch.threads-limit");
+  auto* threadsLimit =
+      opts->get<UInt32Parameter>("--arangosearch.threads-limit");
   ASSERT_NE(nullptr, threadsLimit);
   ASSERT_EQ(0, *threadsLimit->ptr);
-  auto* consolidationThreads = opts->get<UInt32Parameter>("--arangosearch.consolidation-threads");
+  auto* consolidationThreads =
+      opts->get<UInt32Parameter>("--arangosearch.consolidation-threads");
   ASSERT_NE(nullptr, consolidationThreads);
   ASSERT_EQ(0, *consolidationThreads->ptr);
-  auto* consolidationThreadsIdle = opts->get<UInt32Parameter>("--arangosearch.consolidation-threads-idle");
+  auto* consolidationThreadsIdle =
+      opts->get<UInt32Parameter>("--arangosearch.consolidation-threads-idle");
   ASSERT_NE(nullptr, consolidationThreadsIdle);
   ASSERT_EQ(0, *consolidationThreadsIdle->ptr);
-  auto* commitThreads = opts->get<UInt32Parameter>("--arangosearch.commit-threads");
+  auto* commitThreads =
+      opts->get<UInt32Parameter>("--arangosearch.commit-threads");
   ASSERT_NE(nullptr, commitThreads);
   ASSERT_EQ(0, *commitThreads->ptr);
-  auto* commitThreadsIdle = opts->get<UInt32Parameter>("--arangosearch.commit-threads-idle");
+  auto* commitThreadsIdle =
+      opts->get<UInt32Parameter>("--arangosearch.commit-threads-idle");
   ASSERT_NE(nullptr, commitThreadsIdle);
   ASSERT_EQ(0, *commitThreadsIdle->ptr);
 
-  uint32_t const expectedNumThreads = std::max(1U, uint32_t(arangodb::NumberOfCores::getValue()) / 6);
+  uint32_t const expectedNumThreads =
+      std::max(1U, uint32_t(arangodb::NumberOfCores::getValue()) / 6);
   feature.validateOptions(opts);
   ASSERT_EQ(0, *threads->ptr);
   ASSERT_EQ(0, *threadsLimit->ptr);
@@ -188,20 +197,26 @@ TEST_F(IResearchFeatureTest, test_options_default) {
   ASSERT_EQ(expectedNumThreads, *commitThreadsIdle->ptr);
 
   feature.prepare();
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_0));
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_1));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_0));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_1));
 
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(1), size_t(0)),
             feature.stats(ThreadGroup::_0));
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(1), size_t(0)),
             feature.stats(ThreadGroup::_1));
   feature.start();
-  ASSERT_EQ(std::make_pair(size_t(*commitThreads->ptr), size_t(*commitThreadsIdle->ptr)),
+  ASSERT_EQ(std::make_pair(size_t(*commitThreads->ptr),
+                           size_t(*commitThreadsIdle->ptr)),
             feature.limits(ThreadGroup::_0));
-  ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr), size_t(*consolidationThreadsIdle->ptr)),
+  ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr),
+                           size_t(*consolidationThreadsIdle->ptr)),
             feature.limits(ThreadGroup::_1));
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_0);
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_1);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+               ThreadGroup::_0);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+               ThreadGroup::_1);
   feature.stop();
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
             feature.stats(ThreadGroup::_0));
@@ -234,24 +249,29 @@ TEST_F(IResearchFeatureTest, test_options_commit_threads_default_set) {
   auto* threads = opts->get<UInt32Parameter>("--arangosearch.threads");
   ASSERT_NE(nullptr, threads);
   ASSERT_EQ(0, *threads->ptr);
-  auto* threadsLimit = opts->get<UInt32Parameter>("--arangosearch.threads-limit");
+  auto* threadsLimit =
+      opts->get<UInt32Parameter>("--arangosearch.threads-limit");
   ASSERT_NE(nullptr, threadsLimit);
   ASSERT_EQ(0, *threadsLimit->ptr);
-  auto* consolidationThreads = opts->get<UInt32Parameter>("--arangosearch.consolidation-threads");
+  auto* consolidationThreads =
+      opts->get<UInt32Parameter>("--arangosearch.consolidation-threads");
   ASSERT_NE(nullptr, consolidationThreads);
   ASSERT_EQ(0, *consolidationThreads->ptr);
-  auto* consolidationThreadsIdle = opts->get<UInt32Parameter>("--arangosearch.consolidation-threads-idle");
+  auto* consolidationThreadsIdle =
+      opts->get<UInt32Parameter>("--arangosearch.consolidation-threads-idle");
   ASSERT_NE(nullptr, consolidationThreadsIdle);
   ASSERT_EQ(0, *consolidationThreadsIdle->ptr);
-  auto* commitThreads = opts->get<UInt32Parameter>("--arangosearch.commit-threads");
+  auto* commitThreads =
+      opts->get<UInt32Parameter>("--arangosearch.commit-threads");
   ASSERT_NE(nullptr, commitThreads);
   ASSERT_EQ(0, *commitThreads->ptr);
-  auto* commitThreadsIdle = opts->get<UInt32Parameter>("--arangosearch.commit-threads-idle");
+  auto* commitThreadsIdle =
+      opts->get<UInt32Parameter>("--arangosearch.commit-threads-idle");
   ASSERT_NE(nullptr, commitThreadsIdle);
   ASSERT_EQ(0, *commitThreadsIdle->ptr);
 
-  uint32_t const expectedConsolidationThreads
-    = std::max(1U, uint32_t(arangodb::NumberOfCores::getValue()) / 6);
+  uint32_t const expectedConsolidationThreads =
+      std::max(1U, uint32_t(arangodb::NumberOfCores::getValue()) / 6);
   uint32_t const expectedCommitThreads = expectedConsolidationThreads;
 
   opts->processingResult().touch("arangosearch.commit-threads");
@@ -266,20 +286,26 @@ TEST_F(IResearchFeatureTest, test_options_commit_threads_default_set) {
   ASSERT_EQ(expectedCommitThreads, *commitThreadsIdle->ptr);
 
   feature.prepare();
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_0));
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_1));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_0));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_1));
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(1), size_t(0)),
             feature.stats(ThreadGroup::_0));
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(1), size_t(0)),
             feature.stats(ThreadGroup::_1));
 
   feature.start();
-  ASSERT_EQ(std::make_pair(size_t(*commitThreads->ptr), size_t(*commitThreadsIdle->ptr)),
+  ASSERT_EQ(std::make_pair(size_t(*commitThreads->ptr),
+                           size_t(*commitThreadsIdle->ptr)),
             feature.limits(ThreadGroup::_0));
-  ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr), size_t(*consolidationThreadsIdle->ptr)),
+  ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr),
+                           size_t(*consolidationThreadsIdle->ptr)),
             feature.limits(ThreadGroup::_1));
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_0);
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_1);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+               ThreadGroup::_0);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+               ThreadGroup::_1);
   feature.stop();
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
             feature.stats(ThreadGroup::_0));
@@ -312,25 +338,29 @@ TEST_F(IResearchFeatureTest, test_options_commit_threads_min) {
   auto* threads = opts->get<UInt32Parameter>("--arangosearch.threads");
   ASSERT_NE(nullptr, threads);
   ASSERT_EQ(0, *threads->ptr);
-  auto* threadsLimit = opts->get<UInt32Parameter>("--arangosearch.threads-limit");
+  auto* threadsLimit =
+      opts->get<UInt32Parameter>("--arangosearch.threads-limit");
   ASSERT_NE(nullptr, threadsLimit);
   ASSERT_EQ(0, *threadsLimit->ptr);
-  auto* consolidationThreads = opts->get<UInt32Parameter>("--arangosearch.consolidation-threads");
+  auto* consolidationThreads =
+      opts->get<UInt32Parameter>("--arangosearch.consolidation-threads");
   ASSERT_NE(nullptr, consolidationThreads);
   ASSERT_EQ(0, *consolidationThreads->ptr);
-  auto* consolidationThreadsIdle = opts->get<UInt32Parameter>("--arangosearch.consolidation-threads-idle");
+  auto* consolidationThreadsIdle =
+      opts->get<UInt32Parameter>("--arangosearch.consolidation-threads-idle");
   ASSERT_NE(nullptr, consolidationThreadsIdle);
   ASSERT_EQ(0, *consolidationThreadsIdle->ptr);
-  auto* commitThreads = opts->get<UInt32Parameter>("--arangosearch.commit-threads");
+  auto* commitThreads =
+      opts->get<UInt32Parameter>("--arangosearch.commit-threads");
   ASSERT_NE(nullptr, commitThreads);
   ASSERT_EQ(0, *commitThreads->ptr);
-  auto* commitThreadsIdle = opts->get<UInt32Parameter>("--arangosearch.commit-threads-idle");
+  auto* commitThreadsIdle =
+      opts->get<UInt32Parameter>("--arangosearch.commit-threads-idle");
   ASSERT_NE(nullptr, commitThreadsIdle);
   ASSERT_EQ(0, *commitThreadsIdle->ptr);
 
-
-  uint32_t const expectedConsolidationThreads
-    = std::max(1U, uint32_t(arangodb::NumberOfCores::getValue()) / 6);
+  uint32_t const expectedConsolidationThreads =
+      std::max(1U, uint32_t(arangodb::NumberOfCores::getValue()) / 6);
   uint32_t const expectedCommitThreads = 1;
 
   opts->processingResult().touch("arangosearch.commit-threads");
@@ -345,20 +375,26 @@ TEST_F(IResearchFeatureTest, test_options_commit_threads_min) {
   ASSERT_EQ(expectedCommitThreads, *commitThreadsIdle->ptr);
 
   feature.prepare();
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_0));
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_1));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_0));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_1));
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(1), size_t(0)),
             feature.stats(ThreadGroup::_0));
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(1), size_t(0)),
             feature.stats(ThreadGroup::_1));
 
   feature.start();
-  ASSERT_EQ(std::make_pair(size_t(*commitThreads->ptr), size_t(*commitThreadsIdle->ptr)),
+  ASSERT_EQ(std::make_pair(size_t(*commitThreads->ptr),
+                           size_t(*commitThreadsIdle->ptr)),
             feature.limits(ThreadGroup::_0));
-  ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr), size_t(*consolidationThreadsIdle->ptr)),
+  ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr),
+                           size_t(*consolidationThreadsIdle->ptr)),
             feature.limits(ThreadGroup::_1));
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_0);
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_1);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+               ThreadGroup::_0);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+               ThreadGroup::_1);
   feature.stop();
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
             feature.stats(ThreadGroup::_0));
@@ -391,24 +427,29 @@ TEST_F(IResearchFeatureTest, test_options_commit_threads) {
   auto* threads = opts->get<UInt32Parameter>("--arangosearch.threads");
   ASSERT_NE(nullptr, threads);
   ASSERT_EQ(0, *threads->ptr);
-  auto* threadsLimit = opts->get<UInt32Parameter>("--arangosearch.threads-limit");
+  auto* threadsLimit =
+      opts->get<UInt32Parameter>("--arangosearch.threads-limit");
   ASSERT_NE(nullptr, threadsLimit);
   ASSERT_EQ(0, *threadsLimit->ptr);
-  auto* consolidationThreads = opts->get<UInt32Parameter>("--arangosearch.consolidation-threads");
+  auto* consolidationThreads =
+      opts->get<UInt32Parameter>("--arangosearch.consolidation-threads");
   ASSERT_NE(nullptr, consolidationThreads);
   ASSERT_EQ(0, *consolidationThreads->ptr);
-  auto* consolidationThreadsIdle = opts->get<UInt32Parameter>("--arangosearch.consolidation-threads-idle");
+  auto* consolidationThreadsIdle =
+      opts->get<UInt32Parameter>("--arangosearch.consolidation-threads-idle");
   ASSERT_NE(nullptr, consolidationThreadsIdle);
   ASSERT_EQ(0, *consolidationThreadsIdle->ptr);
-  auto* commitThreads = opts->get<UInt32Parameter>("--arangosearch.commit-threads");
+  auto* commitThreads =
+      opts->get<UInt32Parameter>("--arangosearch.commit-threads");
   ASSERT_NE(nullptr, commitThreads);
   ASSERT_EQ(0, *commitThreads->ptr);
-  auto* commitThreadsIdle = opts->get<UInt32Parameter>("--arangosearch.commit-threads-idle");
+  auto* commitThreadsIdle =
+      opts->get<UInt32Parameter>("--arangosearch.commit-threads-idle");
   ASSERT_NE(nullptr, commitThreadsIdle);
   ASSERT_EQ(0, *commitThreadsIdle->ptr);
 
-  uint32_t const expectedConsolidationThreads
-    = std::max(1U, uint32_t(arangodb::NumberOfCores::getValue()) / 6);
+  uint32_t const expectedConsolidationThreads =
+      std::max(1U, uint32_t(arangodb::NumberOfCores::getValue()) / 6);
   uint32_t const expectedCommitThreads = 6;
 
   opts->processingResult().touch("arangosearch.commit-threads");
@@ -423,20 +464,26 @@ TEST_F(IResearchFeatureTest, test_options_commit_threads) {
   ASSERT_EQ(expectedCommitThreads, *commitThreadsIdle->ptr);
 
   feature.prepare();
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_0));
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_1));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_0));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_1));
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(1), size_t(0)),
             feature.stats(ThreadGroup::_0));
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(1), size_t(0)),
             feature.stats(ThreadGroup::_1));
 
   feature.start();
-  ASSERT_EQ(std::make_pair(size_t(*commitThreads->ptr), size_t(*commitThreadsIdle->ptr)),
+  ASSERT_EQ(std::make_pair(size_t(*commitThreads->ptr),
+                           size_t(*commitThreadsIdle->ptr)),
             feature.limits(ThreadGroup::_0));
-  ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr), size_t(*consolidationThreadsIdle->ptr)),
+  ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr),
+                           size_t(*consolidationThreadsIdle->ptr)),
             feature.limits(ThreadGroup::_1));
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_0);
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_1);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+               ThreadGroup::_0);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+               ThreadGroup::_1);
   feature.stop();
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
             feature.stats(ThreadGroup::_0));
@@ -469,24 +516,29 @@ TEST_F(IResearchFeatureTest, test_options_consolidation_threads) {
   auto* threads = opts->get<UInt32Parameter>("--arangosearch.threads");
   ASSERT_NE(nullptr, threads);
   ASSERT_EQ(0, *threads->ptr);
-  auto* threadsLimit = opts->get<UInt32Parameter>("--arangosearch.threads-limit");
+  auto* threadsLimit =
+      opts->get<UInt32Parameter>("--arangosearch.threads-limit");
   ASSERT_NE(nullptr, threadsLimit);
   ASSERT_EQ(0, *threadsLimit->ptr);
-  auto* consolidationThreads = opts->get<UInt32Parameter>("--arangosearch.consolidation-threads");
+  auto* consolidationThreads =
+      opts->get<UInt32Parameter>("--arangosearch.consolidation-threads");
   ASSERT_NE(nullptr, consolidationThreads);
   ASSERT_EQ(0, *consolidationThreads->ptr);
-  auto* consolidationThreadsIdle = opts->get<UInt32Parameter>("--arangosearch.consolidation-threads-idle");
+  auto* consolidationThreadsIdle =
+      opts->get<UInt32Parameter>("--arangosearch.consolidation-threads-idle");
   ASSERT_NE(nullptr, consolidationThreadsIdle);
   ASSERT_EQ(0, *consolidationThreadsIdle->ptr);
-  auto* commitThreads = opts->get<UInt32Parameter>("--arangosearch.commit-threads");
+  auto* commitThreads =
+      opts->get<UInt32Parameter>("--arangosearch.commit-threads");
   ASSERT_NE(nullptr, commitThreads);
   ASSERT_EQ(0, *commitThreads->ptr);
-  auto* commitThreadsIdle = opts->get<UInt32Parameter>("--arangosearch.commit-threads-idle");
+  auto* commitThreadsIdle =
+      opts->get<UInt32Parameter>("--arangosearch.commit-threads-idle");
   ASSERT_NE(nullptr, commitThreadsIdle);
   ASSERT_EQ(0, *commitThreadsIdle->ptr);
 
-  uint32_t const expectedCommitThreads
-    = std::max(1U, uint32_t(arangodb::NumberOfCores::getValue()) / 6);
+  uint32_t const expectedCommitThreads =
+      std::max(1U, uint32_t(arangodb::NumberOfCores::getValue()) / 6);
   uint32_t const expectedConsolidationThreads = 6;
 
   opts->processingResult().touch("arangosearch.consolidation-threads");
@@ -501,20 +553,26 @@ TEST_F(IResearchFeatureTest, test_options_consolidation_threads) {
   ASSERT_EQ(expectedCommitThreads, *commitThreadsIdle->ptr);
 
   feature.prepare();
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_0));
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_1));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_0));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_1));
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(1), size_t(0)),
             feature.stats(ThreadGroup::_0));
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(1), size_t(0)),
             feature.stats(ThreadGroup::_1));
 
   feature.start();
-  ASSERT_EQ(std::make_pair(size_t(*commitThreads->ptr), size_t(*commitThreadsIdle->ptr)),
+  ASSERT_EQ(std::make_pair(size_t(*commitThreads->ptr),
+                           size_t(*commitThreadsIdle->ptr)),
             feature.limits(ThreadGroup::_0));
-  ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr), size_t(*consolidationThreadsIdle->ptr)),
+  ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr),
+                           size_t(*consolidationThreadsIdle->ptr)),
             feature.limits(ThreadGroup::_1));
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_0);
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_1);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+               ThreadGroup::_0);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+               ThreadGroup::_1);
   feature.stop();
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
             feature.stats(ThreadGroup::_0));
@@ -547,24 +605,29 @@ TEST_F(IResearchFeatureTest, test_options_consolidation_threads_idle_auto) {
   auto* threads = opts->get<UInt32Parameter>("--arangosearch.threads");
   ASSERT_NE(nullptr, threads);
   ASSERT_EQ(0, *threads->ptr);
-  auto* threadsLimit = opts->get<UInt32Parameter>("--arangosearch.threads-limit");
+  auto* threadsLimit =
+      opts->get<UInt32Parameter>("--arangosearch.threads-limit");
   ASSERT_NE(nullptr, threadsLimit);
   ASSERT_EQ(0, *threadsLimit->ptr);
-  auto* consolidationThreads = opts->get<UInt32Parameter>("--arangosearch.consolidation-threads");
+  auto* consolidationThreads =
+      opts->get<UInt32Parameter>("--arangosearch.consolidation-threads");
   ASSERT_NE(nullptr, consolidationThreads);
   ASSERT_EQ(0, *consolidationThreads->ptr);
-  auto* consolidationThreadsIdle = opts->get<UInt32Parameter>("--arangosearch.consolidation-threads-idle");
+  auto* consolidationThreadsIdle =
+      opts->get<UInt32Parameter>("--arangosearch.consolidation-threads-idle");
   ASSERT_NE(nullptr, consolidationThreadsIdle);
   ASSERT_EQ(0, *consolidationThreadsIdle->ptr);
-  auto* commitThreads = opts->get<UInt32Parameter>("--arangosearch.commit-threads");
+  auto* commitThreads =
+      opts->get<UInt32Parameter>("--arangosearch.commit-threads");
   ASSERT_NE(nullptr, commitThreads);
   ASSERT_EQ(0, *commitThreads->ptr);
-  auto* commitThreadsIdle = opts->get<UInt32Parameter>("--arangosearch.commit-threads-idle");
+  auto* commitThreadsIdle =
+      opts->get<UInt32Parameter>("--arangosearch.commit-threads-idle");
   ASSERT_NE(nullptr, commitThreadsIdle);
   ASSERT_EQ(0, *commitThreadsIdle->ptr);
 
-  uint32_t const expectedCommitThreads
-    = std::max(1U, uint32_t(arangodb::NumberOfCores::getValue()) / 6);
+  uint32_t const expectedCommitThreads =
+      std::max(1U, uint32_t(arangodb::NumberOfCores::getValue()) / 6);
   uint32_t const expectedConsolidationThreads = 6;
 
   opts->processingResult().touch("arangosearch.consolidation-threads");
@@ -576,25 +639,31 @@ TEST_F(IResearchFeatureTest, test_options_consolidation_threads_idle_auto) {
   ASSERT_EQ(0, *threads->ptr);
   ASSERT_EQ(0, *threadsLimit->ptr);
   ASSERT_EQ(expectedConsolidationThreads, *consolidationThreads->ptr);
-  ASSERT_EQ(expectedConsolidationThreads/2, *consolidationThreadsIdle->ptr);
+  ASSERT_EQ(expectedConsolidationThreads / 2, *consolidationThreadsIdle->ptr);
   ASSERT_EQ(expectedCommitThreads, *commitThreads->ptr);
   ASSERT_EQ(expectedCommitThreads, *commitThreadsIdle->ptr);
 
   feature.prepare();
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_0));
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_1));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_0));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_1));
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(1), size_t(0)),
             feature.stats(ThreadGroup::_0));
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(1), size_t(0)),
             feature.stats(ThreadGroup::_1));
 
   feature.start();
-  ASSERT_EQ(std::make_pair(size_t(*commitThreads->ptr), size_t(*commitThreadsIdle->ptr)),
+  ASSERT_EQ(std::make_pair(size_t(*commitThreads->ptr),
+                           size_t(*commitThreadsIdle->ptr)),
             feature.limits(ThreadGroup::_0));
-  ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr), size_t(*consolidationThreadsIdle->ptr)),
+  ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr),
+                           size_t(*consolidationThreadsIdle->ptr)),
             feature.limits(ThreadGroup::_1));
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_0);
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_1);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+               ThreadGroup::_0);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+               ThreadGroup::_1);
   feature.stop();
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
             feature.stats(ThreadGroup::_0));
@@ -627,24 +696,29 @@ TEST_F(IResearchFeatureTest, test_options_consolidation_threads_idle_set) {
   auto* threads = opts->get<UInt32Parameter>("--arangosearch.threads");
   ASSERT_NE(nullptr, threads);
   ASSERT_EQ(0, *threads->ptr);
-  auto* threadsLimit = opts->get<UInt32Parameter>("--arangosearch.threads-limit");
+  auto* threadsLimit =
+      opts->get<UInt32Parameter>("--arangosearch.threads-limit");
   ASSERT_NE(nullptr, threadsLimit);
   ASSERT_EQ(0, *threadsLimit->ptr);
-  auto* consolidationThreads = opts->get<UInt32Parameter>("--arangosearch.consolidation-threads");
+  auto* consolidationThreads =
+      opts->get<UInt32Parameter>("--arangosearch.consolidation-threads");
   ASSERT_NE(nullptr, consolidationThreads);
   ASSERT_EQ(0, *consolidationThreads->ptr);
-  auto* consolidationThreadsIdle = opts->get<UInt32Parameter>("--arangosearch.consolidation-threads-idle");
+  auto* consolidationThreadsIdle =
+      opts->get<UInt32Parameter>("--arangosearch.consolidation-threads-idle");
   ASSERT_NE(nullptr, consolidationThreadsIdle);
   ASSERT_EQ(0, *consolidationThreadsIdle->ptr);
-  auto* commitThreads = opts->get<UInt32Parameter>("--arangosearch.commit-threads");
+  auto* commitThreads =
+      opts->get<UInt32Parameter>("--arangosearch.commit-threads");
   ASSERT_NE(nullptr, commitThreads);
   ASSERT_EQ(0, *commitThreads->ptr);
-  auto* commitThreadsIdle = opts->get<UInt32Parameter>("--arangosearch.commit-threads-idle");
+  auto* commitThreadsIdle =
+      opts->get<UInt32Parameter>("--arangosearch.commit-threads-idle");
   ASSERT_NE(nullptr, commitThreadsIdle);
   ASSERT_EQ(0, *commitThreadsIdle->ptr);
 
-  uint32_t const expectedCommitThreads
-    = std::max(1U, uint32_t(arangodb::NumberOfCores::getValue()) / 6);
+  uint32_t const expectedCommitThreads =
+      std::max(1U, uint32_t(arangodb::NumberOfCores::getValue()) / 6);
   uint32_t const expectedConsolidationThreads = 6;
   uint32_t const expectedConsolidationThreadsIdle = 4;
 
@@ -662,20 +736,26 @@ TEST_F(IResearchFeatureTest, test_options_consolidation_threads_idle_set) {
   ASSERT_EQ(expectedCommitThreads, *commitThreadsIdle->ptr);
 
   feature.prepare();
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_0));
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_1));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_0));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_1));
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(1), size_t(0)),
             feature.stats(ThreadGroup::_0));
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(1), size_t(0)),
             feature.stats(ThreadGroup::_1));
 
   feature.start();
-  ASSERT_EQ(std::make_pair(size_t(*commitThreads->ptr), size_t(*commitThreadsIdle->ptr)),
+  ASSERT_EQ(std::make_pair(size_t(*commitThreads->ptr),
+                           size_t(*commitThreadsIdle->ptr)),
             feature.limits(ThreadGroup::_0));
-  ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr), size_t(*consolidationThreadsIdle->ptr)),
+  ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr),
+                           size_t(*consolidationThreadsIdle->ptr)),
             feature.limits(ThreadGroup::_1));
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_0);
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_1);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+               ThreadGroup::_0);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+               ThreadGroup::_1);
   feature.stop();
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
             feature.stats(ThreadGroup::_0));
@@ -683,7 +763,8 @@ TEST_F(IResearchFeatureTest, test_options_consolidation_threads_idle_set) {
             feature.stats(ThreadGroup::_1));
 }
 
-TEST_F(IResearchFeatureTest, test_options_consolidation_threads_idle_set_to_zero) {
+TEST_F(IResearchFeatureTest,
+       test_options_consolidation_threads_idle_set_to_zero) {
   using namespace arangodb::options;
   using namespace arangodb::iresearch;
 
@@ -708,26 +789,32 @@ TEST_F(IResearchFeatureTest, test_options_consolidation_threads_idle_set_to_zero
   auto* threads = opts->get<UInt32Parameter>("--arangosearch.threads");
   ASSERT_NE(nullptr, threads);
   ASSERT_EQ(0, *threads->ptr);
-  auto* threadsLimit = opts->get<UInt32Parameter>("--arangosearch.threads-limit");
+  auto* threadsLimit =
+      opts->get<UInt32Parameter>("--arangosearch.threads-limit");
   ASSERT_NE(nullptr, threadsLimit);
   ASSERT_EQ(0, *threadsLimit->ptr);
-  auto* consolidationThreads = opts->get<UInt32Parameter>("--arangosearch.consolidation-threads");
+  auto* consolidationThreads =
+      opts->get<UInt32Parameter>("--arangosearch.consolidation-threads");
   ASSERT_NE(nullptr, consolidationThreads);
   ASSERT_EQ(0, *consolidationThreads->ptr);
-  auto* consolidationThreadsIdle = opts->get<UInt32Parameter>("--arangosearch.consolidation-threads-idle");
+  auto* consolidationThreadsIdle =
+      opts->get<UInt32Parameter>("--arangosearch.consolidation-threads-idle");
   ASSERT_NE(nullptr, consolidationThreadsIdle);
   ASSERT_EQ(0, *consolidationThreadsIdle->ptr);
-  auto* commitThreads = opts->get<UInt32Parameter>("--arangosearch.commit-threads");
+  auto* commitThreads =
+      opts->get<UInt32Parameter>("--arangosearch.commit-threads");
   ASSERT_NE(nullptr, commitThreads);
   ASSERT_EQ(0, *commitThreads->ptr);
-  auto* commitThreadsIdle = opts->get<UInt32Parameter>("--arangosearch.commit-threads-idle");
+  auto* commitThreadsIdle =
+      opts->get<UInt32Parameter>("--arangosearch.commit-threads-idle");
   ASSERT_NE(nullptr, commitThreadsIdle);
   ASSERT_EQ(0, *commitThreadsIdle->ptr);
 
-  uint32_t const expectedCommitThreads
-    = std::max(1U, uint32_t(arangodb::NumberOfCores::getValue()) / 6);
+  uint32_t const expectedCommitThreads =
+      std::max(1U, uint32_t(arangodb::NumberOfCores::getValue()) / 6);
   uint32_t const expectedConsolidationThreads = 6;
-  uint32_t const expectedConsolidationThreadsIdle = expectedConsolidationThreads/2;
+  uint32_t const expectedConsolidationThreadsIdle =
+      expectedConsolidationThreads / 2;
 
   opts->processingResult().touch("arangosearch.consolidation-threads");
   *consolidationThreads->ptr = 6;
@@ -743,20 +830,26 @@ TEST_F(IResearchFeatureTest, test_options_consolidation_threads_idle_set_to_zero
   ASSERT_EQ(expectedCommitThreads, *commitThreadsIdle->ptr);
 
   feature.prepare();
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_0));
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_1));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_0));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_1));
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(1), size_t(0)),
             feature.stats(ThreadGroup::_0));
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(1), size_t(0)),
             feature.stats(ThreadGroup::_1));
 
   feature.start();
-  ASSERT_EQ(std::make_pair(size_t(*commitThreads->ptr), size_t(*commitThreadsIdle->ptr)),
+  ASSERT_EQ(std::make_pair(size_t(*commitThreads->ptr),
+                           size_t(*commitThreadsIdle->ptr)),
             feature.limits(ThreadGroup::_0));
-  ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr), size_t(*consolidationThreadsIdle->ptr)),
+  ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr),
+                           size_t(*consolidationThreadsIdle->ptr)),
             feature.limits(ThreadGroup::_1));
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_0);
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_1);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+               ThreadGroup::_0);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+               ThreadGroup::_1);
   feature.stop();
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
             feature.stats(ThreadGroup::_0));
@@ -764,7 +857,9 @@ TEST_F(IResearchFeatureTest, test_options_consolidation_threads_idle_set_to_zero
             feature.stats(ThreadGroup::_1));
 }
 
-TEST_F(IResearchFeatureTest, test_options_consolidation_threads_idle_greater_than_consolidation_threads) {
+TEST_F(
+    IResearchFeatureTest,
+    test_options_consolidation_threads_idle_greater_than_consolidation_threads) {
   using namespace arangodb::options;
   using namespace arangodb::iresearch;
 
@@ -789,24 +884,29 @@ TEST_F(IResearchFeatureTest, test_options_consolidation_threads_idle_greater_tha
   auto* threads = opts->get<UInt32Parameter>("--arangosearch.threads");
   ASSERT_NE(nullptr, threads);
   ASSERT_EQ(0, *threads->ptr);
-  auto* threadsLimit = opts->get<UInt32Parameter>("--arangosearch.threads-limit");
+  auto* threadsLimit =
+      opts->get<UInt32Parameter>("--arangosearch.threads-limit");
   ASSERT_NE(nullptr, threadsLimit);
   ASSERT_EQ(0, *threadsLimit->ptr);
-  auto* consolidationThreads = opts->get<UInt32Parameter>("--arangosearch.consolidation-threads");
+  auto* consolidationThreads =
+      opts->get<UInt32Parameter>("--arangosearch.consolidation-threads");
   ASSERT_NE(nullptr, consolidationThreads);
   ASSERT_EQ(0, *consolidationThreads->ptr);
-  auto* consolidationThreadsIdle = opts->get<UInt32Parameter>("--arangosearch.consolidation-threads-idle");
+  auto* consolidationThreadsIdle =
+      opts->get<UInt32Parameter>("--arangosearch.consolidation-threads-idle");
   ASSERT_NE(nullptr, consolidationThreadsIdle);
   ASSERT_EQ(0, *consolidationThreadsIdle->ptr);
-  auto* commitThreads = opts->get<UInt32Parameter>("--arangosearch.commit-threads");
+  auto* commitThreads =
+      opts->get<UInt32Parameter>("--arangosearch.commit-threads");
   ASSERT_NE(nullptr, commitThreads);
   ASSERT_EQ(0, *commitThreads->ptr);
-  auto* commitThreadsIdle = opts->get<UInt32Parameter>("--arangosearch.commit-threads-idle");
+  auto* commitThreadsIdle =
+      opts->get<UInt32Parameter>("--arangosearch.commit-threads-idle");
   ASSERT_NE(nullptr, commitThreadsIdle);
   ASSERT_EQ(0, *commitThreadsIdle->ptr);
 
-  uint32_t const expectedCommitThreads
-    = std::max(1U, uint32_t(arangodb::NumberOfCores::getValue()) / 6);
+  uint32_t const expectedCommitThreads =
+      std::max(1U, uint32_t(arangodb::NumberOfCores::getValue()) / 6);
   uint32_t const expectedConsolidationThreads = 6;
   uint32_t const expectedConsolidationThreadsIdle = 6;
 
@@ -824,20 +924,26 @@ TEST_F(IResearchFeatureTest, test_options_consolidation_threads_idle_greater_tha
   ASSERT_EQ(expectedCommitThreads, *commitThreadsIdle->ptr);
 
   feature.prepare();
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_0));
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_1));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_0));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_1));
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(1), size_t(0)),
             feature.stats(ThreadGroup::_0));
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(1), size_t(0)),
             feature.stats(ThreadGroup::_1));
 
   feature.start();
-  ASSERT_EQ(std::make_pair(size_t(*commitThreads->ptr), size_t(*commitThreadsIdle->ptr)),
+  ASSERT_EQ(std::make_pair(size_t(*commitThreads->ptr),
+                           size_t(*commitThreadsIdle->ptr)),
             feature.limits(ThreadGroup::_0));
-  ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr), size_t(*consolidationThreadsIdle->ptr)),
+  ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr),
+                           size_t(*consolidationThreadsIdle->ptr)),
             feature.limits(ThreadGroup::_1));
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_0);
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_1);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+               ThreadGroup::_0);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+               ThreadGroup::_1);
   feature.stop();
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
             feature.stats(ThreadGroup::_0));
@@ -870,24 +976,29 @@ TEST_F(IResearchFeatureTest, test_options_commit_threads_idle_auto) {
   auto* threads = opts->get<UInt32Parameter>("--arangosearch.threads");
   ASSERT_NE(nullptr, threads);
   ASSERT_EQ(0, *threads->ptr);
-  auto* threadsLimit = opts->get<UInt32Parameter>("--arangosearch.threads-limit");
+  auto* threadsLimit =
+      opts->get<UInt32Parameter>("--arangosearch.threads-limit");
   ASSERT_NE(nullptr, threadsLimit);
   ASSERT_EQ(0, *threadsLimit->ptr);
-  auto* consolidationThreads = opts->get<UInt32Parameter>("--arangosearch.consolidation-threads");
+  auto* consolidationThreads =
+      opts->get<UInt32Parameter>("--arangosearch.consolidation-threads");
   ASSERT_NE(nullptr, consolidationThreads);
   ASSERT_EQ(0, *consolidationThreads->ptr);
-  auto* consolidationThreadsIdle = opts->get<UInt32Parameter>("--arangosearch.consolidation-threads-idle");
+  auto* consolidationThreadsIdle =
+      opts->get<UInt32Parameter>("--arangosearch.consolidation-threads-idle");
   ASSERT_NE(nullptr, consolidationThreadsIdle);
   ASSERT_EQ(0, *consolidationThreadsIdle->ptr);
-  auto* commitThreads = opts->get<UInt32Parameter>("--arangosearch.commit-threads");
+  auto* commitThreads =
+      opts->get<UInt32Parameter>("--arangosearch.commit-threads");
   ASSERT_NE(nullptr, commitThreads);
   ASSERT_EQ(0, *commitThreads->ptr);
-  auto* commitThreadsIdle = opts->get<UInt32Parameter>("--arangosearch.commit-threads-idle");
+  auto* commitThreadsIdle =
+      opts->get<UInt32Parameter>("--arangosearch.commit-threads-idle");
   ASSERT_NE(nullptr, commitThreadsIdle);
   ASSERT_EQ(0, *commitThreadsIdle->ptr);
 
-  uint32_t const expectedConsolidationThreads
-    = std::max(1U, uint32_t(arangodb::NumberOfCores::getValue()) / 6);
+  uint32_t const expectedConsolidationThreads =
+      std::max(1U, uint32_t(arangodb::NumberOfCores::getValue()) / 6);
   uint32_t const expectedCommitThreads = 6;
 
   opts->processingResult().touch("arangosearch.commit-threads");
@@ -901,23 +1012,29 @@ TEST_F(IResearchFeatureTest, test_options_commit_threads_idle_auto) {
   ASSERT_EQ(expectedConsolidationThreads, *consolidationThreads->ptr);
   ASSERT_EQ(expectedConsolidationThreads, *consolidationThreadsIdle->ptr);
   ASSERT_EQ(expectedCommitThreads, *commitThreads->ptr);
-  ASSERT_EQ(expectedCommitThreads/2, *commitThreadsIdle->ptr);
+  ASSERT_EQ(expectedCommitThreads / 2, *commitThreadsIdle->ptr);
 
   feature.prepare();
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_0));
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_1));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_0));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_1));
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(1), size_t(0)),
             feature.stats(ThreadGroup::_0));
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(1), size_t(0)),
             feature.stats(ThreadGroup::_1));
 
   feature.start();
-  ASSERT_EQ(std::make_pair(size_t(*commitThreads->ptr), size_t(*commitThreadsIdle->ptr)),
+  ASSERT_EQ(std::make_pair(size_t(*commitThreads->ptr),
+                           size_t(*commitThreadsIdle->ptr)),
             feature.limits(ThreadGroup::_0));
-  ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr), size_t(*consolidationThreadsIdle->ptr)),
+  ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr),
+                           size_t(*consolidationThreadsIdle->ptr)),
             feature.limits(ThreadGroup::_1));
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_0);
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_1);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+               ThreadGroup::_0);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+               ThreadGroup::_1);
   feature.stop();
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
             feature.stats(ThreadGroup::_0));
@@ -950,25 +1067,29 @@ TEST_F(IResearchFeatureTest, test_options_commit_threads_idle_set) {
   auto* threads = opts->get<UInt32Parameter>("--arangosearch.threads");
   ASSERT_NE(nullptr, threads);
   ASSERT_EQ(0, *threads->ptr);
-  auto* threadsLimit = opts->get<UInt32Parameter>("--arangosearch.threads-limit");
+  auto* threadsLimit =
+      opts->get<UInt32Parameter>("--arangosearch.threads-limit");
   ASSERT_NE(nullptr, threadsLimit);
   ASSERT_EQ(0, *threadsLimit->ptr);
-  auto* consolidationThreads = opts->get<UInt32Parameter>("--arangosearch.consolidation-threads");
+  auto* consolidationThreads =
+      opts->get<UInt32Parameter>("--arangosearch.consolidation-threads");
   ASSERT_NE(nullptr, consolidationThreads);
   ASSERT_EQ(0, *consolidationThreads->ptr);
-  auto* consolidationThreadsIdle = opts->get<UInt32Parameter>("--arangosearch.consolidation-threads-idle");
+  auto* consolidationThreadsIdle =
+      opts->get<UInt32Parameter>("--arangosearch.consolidation-threads-idle");
   ASSERT_NE(nullptr, consolidationThreadsIdle);
   ASSERT_EQ(0, *consolidationThreadsIdle->ptr);
-  auto* commitThreads = opts->get<UInt32Parameter>("--arangosearch.commit-threads");
+  auto* commitThreads =
+      opts->get<UInt32Parameter>("--arangosearch.commit-threads");
   ASSERT_NE(nullptr, commitThreads);
   ASSERT_EQ(0, *commitThreads->ptr);
-  auto* commitThreadsIdle = opts->get<UInt32Parameter>("--arangosearch.commit-threads-idle");
+  auto* commitThreadsIdle =
+      opts->get<UInt32Parameter>("--arangosearch.commit-threads-idle");
   ASSERT_NE(nullptr, commitThreadsIdle);
   ASSERT_EQ(0, *commitThreadsIdle->ptr);
 
-
-  uint32_t const expectedConsolidationThreads
-    = std::max(1U, uint32_t(arangodb::NumberOfCores::getValue()) / 6);
+  uint32_t const expectedConsolidationThreads =
+      std::max(1U, uint32_t(arangodb::NumberOfCores::getValue()) / 6);
   uint32_t const expectedCommitThreads = 6;
   uint32_t const expectedCommitThreadsIdle = 4;
 
@@ -986,20 +1107,26 @@ TEST_F(IResearchFeatureTest, test_options_commit_threads_idle_set) {
   ASSERT_EQ(expectedCommitThreadsIdle, *commitThreadsIdle->ptr);
 
   feature.prepare();
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_0));
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_1));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_0));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_1));
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(1), size_t(0)),
             feature.stats(ThreadGroup::_0));
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(1), size_t(0)),
             feature.stats(ThreadGroup::_1));
 
   feature.start();
-  ASSERT_EQ(std::make_pair(size_t(*commitThreads->ptr), size_t(*commitThreadsIdle->ptr)),
+  ASSERT_EQ(std::make_pair(size_t(*commitThreads->ptr),
+                           size_t(*commitThreadsIdle->ptr)),
             feature.limits(ThreadGroup::_0));
-  ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr), size_t(*consolidationThreadsIdle->ptr)),
+  ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr),
+                           size_t(*consolidationThreadsIdle->ptr)),
             feature.limits(ThreadGroup::_1));
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_0);
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_1);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+               ThreadGroup::_0);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+               ThreadGroup::_1);
   feature.stop();
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
             feature.stats(ThreadGroup::_0));
@@ -1007,7 +1134,8 @@ TEST_F(IResearchFeatureTest, test_options_commit_threads_idle_set) {
             feature.stats(ThreadGroup::_1));
 }
 
-TEST_F(IResearchFeatureTest, test_options_commit_threads_idle_greater_than_commit_threads) {
+TEST_F(IResearchFeatureTest,
+       test_options_commit_threads_idle_greater_than_commit_threads) {
   using namespace arangodb::options;
   using namespace arangodb::iresearch;
 
@@ -1032,24 +1160,29 @@ TEST_F(IResearchFeatureTest, test_options_commit_threads_idle_greater_than_commi
   auto* threads = opts->get<UInt32Parameter>("--arangosearch.threads");
   ASSERT_NE(nullptr, threads);
   ASSERT_EQ(0, *threads->ptr);
-  auto* threadsLimit = opts->get<UInt32Parameter>("--arangosearch.threads-limit");
+  auto* threadsLimit =
+      opts->get<UInt32Parameter>("--arangosearch.threads-limit");
   ASSERT_NE(nullptr, threadsLimit);
   ASSERT_EQ(0, *threadsLimit->ptr);
-  auto* consolidationThreads = opts->get<UInt32Parameter>("--arangosearch.consolidation-threads");
+  auto* consolidationThreads =
+      opts->get<UInt32Parameter>("--arangosearch.consolidation-threads");
   ASSERT_NE(nullptr, consolidationThreads);
   ASSERT_EQ(0, *consolidationThreads->ptr);
-  auto* consolidationThreadsIdle = opts->get<UInt32Parameter>("--arangosearch.consolidation-threads-idle");
+  auto* consolidationThreadsIdle =
+      opts->get<UInt32Parameter>("--arangosearch.consolidation-threads-idle");
   ASSERT_NE(nullptr, consolidationThreadsIdle);
   ASSERT_EQ(0, *consolidationThreadsIdle->ptr);
-  auto* commitThreads = opts->get<UInt32Parameter>("--arangosearch.commit-threads");
+  auto* commitThreads =
+      opts->get<UInt32Parameter>("--arangosearch.commit-threads");
   ASSERT_NE(nullptr, commitThreads);
   ASSERT_EQ(0, *commitThreads->ptr);
-  auto* commitThreadsIdle = opts->get<UInt32Parameter>("--arangosearch.commit-threads-idle");
+  auto* commitThreadsIdle =
+      opts->get<UInt32Parameter>("--arangosearch.commit-threads-idle");
   ASSERT_NE(nullptr, commitThreadsIdle);
   ASSERT_EQ(0, *commitThreadsIdle->ptr);
 
-  uint32_t const expectedConsolidationThreads
-    = std::max(1U, uint32_t(arangodb::NumberOfCores::getValue()) / 6);
+  uint32_t const expectedConsolidationThreads =
+      std::max(1U, uint32_t(arangodb::NumberOfCores::getValue()) / 6);
   uint32_t const expectedCommitThreads = 6;
   uint32_t const expectedCommitThreadsIdle = 6;
 
@@ -1067,20 +1200,26 @@ TEST_F(IResearchFeatureTest, test_options_commit_threads_idle_greater_than_commi
   ASSERT_EQ(expectedCommitThreadsIdle, *commitThreadsIdle->ptr);
 
   feature.prepare();
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_0));
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_1));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_0));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_1));
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(1), size_t(0)),
             feature.stats(ThreadGroup::_0));
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(1), size_t(0)),
             feature.stats(ThreadGroup::_1));
 
   feature.start();
-  ASSERT_EQ(std::make_pair(size_t(*commitThreads->ptr), size_t(*commitThreadsIdle->ptr)),
+  ASSERT_EQ(std::make_pair(size_t(*commitThreads->ptr),
+                           size_t(*commitThreadsIdle->ptr)),
             feature.limits(ThreadGroup::_0));
-  ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr), size_t(*consolidationThreadsIdle->ptr)),
+  ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr),
+                           size_t(*consolidationThreadsIdle->ptr)),
             feature.limits(ThreadGroup::_1));
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_0);
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_1);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+               ThreadGroup::_0);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+               ThreadGroup::_1);
   feature.stop();
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
             feature.stats(ThreadGroup::_0));
@@ -1113,19 +1252,24 @@ TEST_F(IResearchFeatureTest, test_options_custom_thread_count) {
   auto* threads = opts->get<UInt32Parameter>("--arangosearch.threads");
   ASSERT_NE(nullptr, threads);
   ASSERT_EQ(0, *threads->ptr);
-  auto* threadsLimit = opts->get<UInt32Parameter>("--arangosearch.threads-limit");
+  auto* threadsLimit =
+      opts->get<UInt32Parameter>("--arangosearch.threads-limit");
   ASSERT_NE(nullptr, threadsLimit);
   ASSERT_EQ(0, *threadsLimit->ptr);
-  auto* consolidationThreads = opts->get<UInt32Parameter>("--arangosearch.consolidation-threads");
+  auto* consolidationThreads =
+      opts->get<UInt32Parameter>("--arangosearch.consolidation-threads");
   ASSERT_NE(nullptr, consolidationThreads);
   ASSERT_EQ(0, *consolidationThreads->ptr);
-  auto* consolidationThreadsIdle = opts->get<UInt32Parameter>("--arangosearch.consolidation-threads-idle");
+  auto* consolidationThreadsIdle =
+      opts->get<UInt32Parameter>("--arangosearch.consolidation-threads-idle");
   ASSERT_NE(nullptr, consolidationThreadsIdle);
   ASSERT_EQ(0, *consolidationThreadsIdle->ptr);
-  auto* commitThreads = opts->get<UInt32Parameter>("--arangosearch.commit-threads");
+  auto* commitThreads =
+      opts->get<UInt32Parameter>("--arangosearch.commit-threads");
   ASSERT_NE(nullptr, commitThreads);
   ASSERT_EQ(0, *commitThreads->ptr);
-  auto* commitThreadsIdle = opts->get<UInt32Parameter>("--arangosearch.commit-threads-idle");
+  auto* commitThreadsIdle =
+      opts->get<UInt32Parameter>("--arangosearch.commit-threads-idle");
   ASSERT_NE(nullptr, commitThreadsIdle);
   ASSERT_EQ(0, *commitThreadsIdle->ptr);
 
@@ -1152,20 +1296,26 @@ TEST_F(IResearchFeatureTest, test_options_custom_thread_count) {
   ASSERT_EQ(expectedCommitThreadsIdle, *commitThreadsIdle->ptr);
 
   feature.prepare();
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_0));
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_1));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_0));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_1));
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(1), size_t(0)),
             feature.stats(ThreadGroup::_0));
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(1), size_t(0)),
             feature.stats(ThreadGroup::_1));
 
   feature.start();
-  ASSERT_EQ(std::make_pair(size_t(*commitThreads->ptr), size_t(*commitThreadsIdle->ptr)),
+  ASSERT_EQ(std::make_pair(size_t(*commitThreads->ptr),
+                           size_t(*commitThreadsIdle->ptr)),
             feature.limits(ThreadGroup::_0));
-  ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr), size_t(*consolidationThreadsIdle->ptr)),
+  ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr),
+                           size_t(*consolidationThreadsIdle->ptr)),
             feature.limits(ThreadGroup::_1));
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_0);
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_1);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+               ThreadGroup::_0);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+               ThreadGroup::_1);
   feature.stop();
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
             feature.stats(ThreadGroup::_0));
@@ -1198,25 +1348,31 @@ TEST_F(IResearchFeatureTest, test_options_commit_threads_max) {
   auto* threads = opts->get<UInt32Parameter>("--arangosearch.threads");
   ASSERT_NE(nullptr, threads);
   ASSERT_EQ(0, *threads->ptr);
-  auto* threadsLimit = opts->get<UInt32Parameter>("--arangosearch.threads-limit");
+  auto* threadsLimit =
+      opts->get<UInt32Parameter>("--arangosearch.threads-limit");
   ASSERT_NE(nullptr, threadsLimit);
   ASSERT_EQ(0, *threadsLimit->ptr);
-  auto* consolidationThreads = opts->get<UInt32Parameter>("--arangosearch.consolidation-threads");
+  auto* consolidationThreads =
+      opts->get<UInt32Parameter>("--arangosearch.consolidation-threads");
   ASSERT_NE(nullptr, consolidationThreads);
   ASSERT_EQ(0, *consolidationThreads->ptr);
-  auto* consolidationThreadsIdle = opts->get<UInt32Parameter>("--arangosearch.consolidation-threads-idle");
+  auto* consolidationThreadsIdle =
+      opts->get<UInt32Parameter>("--arangosearch.consolidation-threads-idle");
   ASSERT_NE(nullptr, consolidationThreadsIdle);
   ASSERT_EQ(0, *consolidationThreadsIdle->ptr);
-  auto* commitThreads = opts->get<UInt32Parameter>("--arangosearch.commit-threads");
+  auto* commitThreads =
+      opts->get<UInt32Parameter>("--arangosearch.commit-threads");
   ASSERT_NE(nullptr, commitThreads);
   ASSERT_EQ(0, *commitThreads->ptr);
-  auto* commitThreadsIdle = opts->get<UInt32Parameter>("--arangosearch.commit-threads-idle");
+  auto* commitThreadsIdle =
+      opts->get<UInt32Parameter>("--arangosearch.commit-threads-idle");
   ASSERT_NE(nullptr, commitThreadsIdle);
   ASSERT_EQ(0, *commitThreadsIdle->ptr);
 
-  uint32_t const expectedConsolidationThreads
-    = std::max(1U, uint32_t(arangodb::NumberOfCores::getValue()) / 6);
-  uint32_t const expectedCommitThreads = 4*uint32_t(arangodb::NumberOfCores::getValue());
+  uint32_t const expectedConsolidationThreads =
+      std::max(1U, uint32_t(arangodb::NumberOfCores::getValue()) / 6);
+  uint32_t const expectedCommitThreads =
+      4 * uint32_t(arangodb::NumberOfCores::getValue());
 
   opts->processingResult().touch("arangosearch.commit-threads");
   *commitThreads->ptr = std::numeric_limits<uint32_t>::max();
@@ -1230,20 +1386,26 @@ TEST_F(IResearchFeatureTest, test_options_commit_threads_max) {
   ASSERT_EQ(expectedCommitThreads, *commitThreadsIdle->ptr);
 
   feature.prepare();
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_0));
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_1));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_0));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_1));
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(1), size_t(0)),
             feature.stats(ThreadGroup::_0));
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(1), size_t(0)),
             feature.stats(ThreadGroup::_1));
 
   feature.start();
-  ASSERT_EQ(std::make_pair(size_t(*commitThreads->ptr), size_t(*commitThreadsIdle->ptr)),
+  ASSERT_EQ(std::make_pair(size_t(*commitThreads->ptr),
+                           size_t(*commitThreadsIdle->ptr)),
             feature.limits(ThreadGroup::_0));
-  ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr), size_t(*consolidationThreadsIdle->ptr)),
+  ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr),
+                           size_t(*consolidationThreadsIdle->ptr)),
             feature.limits(ThreadGroup::_1));
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_0);
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_1);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+               ThreadGroup::_0);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+               ThreadGroup::_1);
   feature.stop();
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
             feature.stats(ThreadGroup::_0));
@@ -1276,25 +1438,31 @@ TEST_F(IResearchFeatureTest, test_options_threads_set_zero) {
   auto* threads = opts->get<UInt32Parameter>("--arangosearch.threads");
   ASSERT_NE(nullptr, threads);
   ASSERT_EQ(0, *threads->ptr);
-  auto* threadsLimit = opts->get<UInt32Parameter>("--arangosearch.threads-limit");
+  auto* threadsLimit =
+      opts->get<UInt32Parameter>("--arangosearch.threads-limit");
   ASSERT_NE(nullptr, threadsLimit);
   ASSERT_EQ(0, *threadsLimit->ptr);
-  auto* consolidationThreads = opts->get<UInt32Parameter>("--arangosearch.consolidation-threads");
+  auto* consolidationThreads =
+      opts->get<UInt32Parameter>("--arangosearch.consolidation-threads");
   ASSERT_NE(nullptr, consolidationThreads);
   ASSERT_EQ(0, *consolidationThreads->ptr);
-  auto* consolidationThreadsIdle = opts->get<UInt32Parameter>("--arangosearch.consolidation-threads-idle");
+  auto* consolidationThreadsIdle =
+      opts->get<UInt32Parameter>("--arangosearch.consolidation-threads-idle");
   ASSERT_NE(nullptr, consolidationThreadsIdle);
   ASSERT_EQ(0, *consolidationThreadsIdle->ptr);
-  auto* commitThreads = opts->get<UInt32Parameter>("--arangosearch.commit-threads");
+  auto* commitThreads =
+      opts->get<UInt32Parameter>("--arangosearch.commit-threads");
   ASSERT_NE(nullptr, commitThreads);
   ASSERT_EQ(0, *commitThreads->ptr);
-  auto* commitThreadsIdle = opts->get<UInt32Parameter>("--arangosearch.commit-threads-idle");
+  auto* commitThreadsIdle =
+      opts->get<UInt32Parameter>("--arangosearch.commit-threads-idle");
   ASSERT_NE(nullptr, commitThreadsIdle);
   ASSERT_EQ(0, *commitThreadsIdle->ptr);
 
   opts->processingResult().touch("arangosearch.threads");
 
-  uint32_t const expectedNumThreads = std::max(1U, uint32_t(arangodb::NumberOfCores::getValue()) / 8);
+  uint32_t const expectedNumThreads = std::max(
+      1U, std::min(4U, (uint32_t(arangodb::NumberOfCores::getValue()) / 8)));
   feature.validateOptions(opts);
   ASSERT_EQ(0, *threads->ptr);
   ASSERT_EQ(0, *threadsLimit->ptr);
@@ -1304,20 +1472,26 @@ TEST_F(IResearchFeatureTest, test_options_threads_set_zero) {
   ASSERT_EQ(expectedNumThreads, *commitThreadsIdle->ptr);
 
   feature.prepare();
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_0));
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_1));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_0));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_1));
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(1), size_t(0)),
             feature.stats(ThreadGroup::_0));
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(1), size_t(0)),
             feature.stats(ThreadGroup::_1));
 
   feature.start();
-  ASSERT_EQ(std::make_pair(size_t(*commitThreads->ptr), size_t(*commitThreadsIdle->ptr)),
+  ASSERT_EQ(std::make_pair(size_t(*commitThreads->ptr),
+                           size_t(*commitThreadsIdle->ptr)),
             feature.limits(ThreadGroup::_0));
-  ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr), size_t(*consolidationThreadsIdle->ptr)),
+  ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr),
+                           size_t(*consolidationThreadsIdle->ptr)),
             feature.limits(ThreadGroup::_1));
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_0);
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_1);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+               ThreadGroup::_0);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+               ThreadGroup::_1);
   feature.stop();
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
             feature.stats(ThreadGroup::_0));
@@ -1350,26 +1524,31 @@ TEST_F(IResearchFeatureTest, test_options_threads) {
   auto* threads = opts->get<UInt32Parameter>("--arangosearch.threads");
   ASSERT_NE(nullptr, threads);
   ASSERT_EQ(0, *threads->ptr);
-  auto* threadsLimit = opts->get<UInt32Parameter>("--arangosearch.threads-limit");
+  auto* threadsLimit =
+      opts->get<UInt32Parameter>("--arangosearch.threads-limit");
   ASSERT_NE(nullptr, threadsLimit);
   ASSERT_EQ(0, *threadsLimit->ptr);
-  auto* consolidationThreads = opts->get<UInt32Parameter>("--arangosearch.consolidation-threads");
+  auto* consolidationThreads =
+      opts->get<UInt32Parameter>("--arangosearch.consolidation-threads");
   ASSERT_NE(nullptr, consolidationThreads);
   ASSERT_EQ(0, *consolidationThreads->ptr);
-  auto* consolidationThreadsIdle = opts->get<UInt32Parameter>("--arangosearch.consolidation-threads-idle");
+  auto* consolidationThreadsIdle =
+      opts->get<UInt32Parameter>("--arangosearch.consolidation-threads-idle");
   ASSERT_NE(nullptr, consolidationThreadsIdle);
   ASSERT_EQ(0, *consolidationThreadsIdle->ptr);
-  auto* commitThreads = opts->get<UInt32Parameter>("--arangosearch.commit-threads");
+  auto* commitThreads =
+      opts->get<UInt32Parameter>("--arangosearch.commit-threads");
   ASSERT_NE(nullptr, commitThreads);
   ASSERT_EQ(0, *commitThreads->ptr);
-  auto* commitThreadsIdle = opts->get<UInt32Parameter>("--arangosearch.commit-threads-idle");
+  auto* commitThreadsIdle =
+      opts->get<UInt32Parameter>("--arangosearch.commit-threads-idle");
   ASSERT_NE(nullptr, commitThreadsIdle);
   ASSERT_EQ(0, *commitThreadsIdle->ptr);
 
   opts->processingResult().touch("arangosearch.threads");
   *threads->ptr = 3;
 
-  uint32_t const expectedNumThreads = *threads->ptr/2;
+  uint32_t const expectedNumThreads = *threads->ptr / 2;
   feature.validateOptions(opts);
   ASSERT_EQ(3, *threads->ptr);
   ASSERT_EQ(0, *threadsLimit->ptr);
@@ -1379,20 +1558,26 @@ TEST_F(IResearchFeatureTest, test_options_threads) {
   ASSERT_EQ(expectedNumThreads, *commitThreadsIdle->ptr);
 
   feature.prepare();
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_0));
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_1));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_0));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_1));
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(1), size_t(0)),
             feature.stats(ThreadGroup::_0));
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(1), size_t(0)),
             feature.stats(ThreadGroup::_1));
 
   feature.start();
-  ASSERT_EQ(std::make_pair(size_t(*commitThreads->ptr), size_t(*commitThreadsIdle->ptr)),
+  ASSERT_EQ(std::make_pair(size_t(*commitThreads->ptr),
+                           size_t(*commitThreadsIdle->ptr)),
             feature.limits(ThreadGroup::_0));
-  ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr), size_t(*consolidationThreadsIdle->ptr)),
+  ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr),
+                           size_t(*consolidationThreadsIdle->ptr)),
             feature.limits(ThreadGroup::_1));
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_0);
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_1);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+               ThreadGroup::_0);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+               ThreadGroup::_1);
   feature.stop();
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
             feature.stats(ThreadGroup::_0));
@@ -1425,26 +1610,31 @@ TEST_F(IResearchFeatureTest, test_options_threads_max) {
   auto* threads = opts->get<UInt32Parameter>("--arangosearch.threads");
   ASSERT_NE(nullptr, threads);
   ASSERT_EQ(0, *threads->ptr);
-  auto* threadsLimit = opts->get<UInt32Parameter>("--arangosearch.threads-limit");
+  auto* threadsLimit =
+      opts->get<UInt32Parameter>("--arangosearch.threads-limit");
   ASSERT_NE(nullptr, threadsLimit);
   ASSERT_EQ(0, *threadsLimit->ptr);
-  auto* consolidationThreads = opts->get<UInt32Parameter>("--arangosearch.consolidation-threads");
+  auto* consolidationThreads =
+      opts->get<UInt32Parameter>("--arangosearch.consolidation-threads");
   ASSERT_NE(nullptr, consolidationThreads);
   ASSERT_EQ(0, *consolidationThreads->ptr);
-  auto* consolidationThreadsIdle = opts->get<UInt32Parameter>("--arangosearch.consolidation-threads-idle");
+  auto* consolidationThreadsIdle =
+      opts->get<UInt32Parameter>("--arangosearch.consolidation-threads-idle");
   ASSERT_NE(nullptr, consolidationThreadsIdle);
   ASSERT_EQ(0, *consolidationThreadsIdle->ptr);
-  auto* commitThreads = opts->get<UInt32Parameter>("--arangosearch.commit-threads");
+  auto* commitThreads =
+      opts->get<UInt32Parameter>("--arangosearch.commit-threads");
   ASSERT_NE(nullptr, commitThreads);
   ASSERT_EQ(0, *commitThreads->ptr);
-  auto* commitThreadsIdle = opts->get<UInt32Parameter>("--arangosearch.commit-threads-idle");
+  auto* commitThreadsIdle =
+      opts->get<UInt32Parameter>("--arangosearch.commit-threads-idle");
   ASSERT_NE(nullptr, commitThreadsIdle);
   ASSERT_EQ(0, *commitThreadsIdle->ptr);
 
   opts->processingResult().touch("arangosearch.threads");
   *threads->ptr = std::numeric_limits<uint32_t>::max();
 
-  uint32_t const expectedNumThreads = 8/2;
+  uint32_t const expectedNumThreads = 8 / 2;
   feature.validateOptions(opts);
   ASSERT_EQ(std::numeric_limits<uint32_t>::max(), *threads->ptr);
   ASSERT_EQ(0, *threadsLimit->ptr);
@@ -1454,20 +1644,26 @@ TEST_F(IResearchFeatureTest, test_options_threads_max) {
   ASSERT_EQ(expectedNumThreads, *commitThreadsIdle->ptr);
 
   feature.prepare();
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_0));
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_1));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_0));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_1));
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(1), size_t(0)),
             feature.stats(ThreadGroup::_0));
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(1), size_t(0)),
             feature.stats(ThreadGroup::_1));
 
   feature.start();
-  ASSERT_EQ(std::make_pair(size_t(*commitThreads->ptr), size_t(*commitThreadsIdle->ptr)),
+  ASSERT_EQ(std::make_pair(size_t(*commitThreads->ptr),
+                           size_t(*commitThreadsIdle->ptr)),
             feature.limits(ThreadGroup::_0));
-  ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr), size_t(*consolidationThreadsIdle->ptr)),
+  ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr),
+                           size_t(*consolidationThreadsIdle->ptr)),
             feature.limits(ThreadGroup::_1));
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_0);
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_1);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+               ThreadGroup::_0);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+               ThreadGroup::_1);
   feature.stop();
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
             feature.stats(ThreadGroup::_0));
@@ -1500,19 +1696,24 @@ TEST_F(IResearchFeatureTest, test_options_threads_limit_max) {
   auto* threads = opts->get<UInt32Parameter>("--arangosearch.threads");
   ASSERT_NE(nullptr, threads);
   ASSERT_EQ(0, *threads->ptr);
-  auto* threadsLimit = opts->get<UInt32Parameter>("--arangosearch.threads-limit");
+  auto* threadsLimit =
+      opts->get<UInt32Parameter>("--arangosearch.threads-limit");
   ASSERT_NE(nullptr, threadsLimit);
   ASSERT_EQ(0, *threadsLimit->ptr);
-  auto* consolidationThreads = opts->get<UInt32Parameter>("--arangosearch.consolidation-threads");
+  auto* consolidationThreads =
+      opts->get<UInt32Parameter>("--arangosearch.consolidation-threads");
   ASSERT_NE(nullptr, consolidationThreads);
   ASSERT_EQ(0, *consolidationThreads->ptr);
-  auto* consolidationThreadsIdle = opts->get<UInt32Parameter>("--arangosearch.consolidation-threads-idle");
+  auto* consolidationThreadsIdle =
+      opts->get<UInt32Parameter>("--arangosearch.consolidation-threads-idle");
   ASSERT_NE(nullptr, consolidationThreadsIdle);
   ASSERT_EQ(0, *consolidationThreadsIdle->ptr);
-  auto* commitThreads = opts->get<UInt32Parameter>("--arangosearch.commit-threads");
+  auto* commitThreads =
+      opts->get<UInt32Parameter>("--arangosearch.commit-threads");
   ASSERT_NE(nullptr, commitThreads);
   ASSERT_EQ(0, *commitThreads->ptr);
-  auto* commitThreadsIdle = opts->get<UInt32Parameter>("--arangosearch.commit-threads-idle");
+  auto* commitThreadsIdle =
+      opts->get<UInt32Parameter>("--arangosearch.commit-threads-idle");
   ASSERT_NE(nullptr, commitThreadsIdle);
   ASSERT_EQ(0, *commitThreadsIdle->ptr);
 
@@ -1529,20 +1730,26 @@ TEST_F(IResearchFeatureTest, test_options_threads_limit_max) {
   ASSERT_EQ(expectedNumThreads, *commitThreadsIdle->ptr);
 
   feature.prepare();
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_0));
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_1));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_0));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_1));
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(1), size_t(0)),
             feature.stats(ThreadGroup::_0));
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(1), size_t(0)),
             feature.stats(ThreadGroup::_1));
 
   feature.start();
-  ASSERT_EQ(std::make_pair(size_t(*commitThreads->ptr), size_t(*commitThreadsIdle->ptr)),
+  ASSERT_EQ(std::make_pair(size_t(*commitThreads->ptr),
+                           size_t(*commitThreadsIdle->ptr)),
             feature.limits(ThreadGroup::_0));
-  ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr), size_t(*consolidationThreadsIdle->ptr)),
+  ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr),
+                           size_t(*consolidationThreadsIdle->ptr)),
             feature.limits(ThreadGroup::_1));
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_0);
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_1);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+               ThreadGroup::_0);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+               ThreadGroup::_1);
   feature.stop();
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
             feature.stats(ThreadGroup::_0));
@@ -1571,28 +1778,29 @@ TEST_F(IResearchFeatureTest, test_start) {
 
   enum class FunctionType { FILTER = 0, SCORER };
 
-  std::map<irs::string_ref, std::pair<irs::string_ref, FunctionType>> expected = {
-    // filter functions
-    { "EXISTS", { ".|.,.", FunctionType::FILTER } },
-    { "PHRASE", { ".,.|.+", FunctionType::FILTER } },
-    { "STARTS_WITH", { ".,.|.,.", FunctionType::FILTER } },
-    { "MIN_MATCH", { ".,.|.+", FunctionType::FILTER } },
-    { "LIKE", { ".,.|.", FunctionType::FILTER } },
-    { "NGRAM_MATCH", { ".,.|.,.", FunctionType::FILTER } },
-    { "LEVENSHTEIN_MATCH", { ".,.,.|.,.,.", FunctionType::FILTER } },
-    { "IN_RANGE", { ".,.,.,.,.", FunctionType::FILTER } },
-    { "GEO_IN_RANGE", { ".,.,.,.|.,.,.", FunctionType::FILTER } },
-    { "GEO_CONTAINS", { ".,.", FunctionType::FILTER } },
-    { "GEO_INTERSECTS", { ".,.", FunctionType::FILTER } },
+  std::map<irs::string_ref, std::pair<irs::string_ref, FunctionType>> expected =
+      {
+          // filter functions
+          {"EXISTS", {".|.,.", FunctionType::FILTER}},
+          {"PHRASE", {".,.|.+", FunctionType::FILTER}},
+          {"STARTS_WITH", {".,.|.,.", FunctionType::FILTER}},
+          {"MIN_MATCH", {".,.|.+", FunctionType::FILTER}},
+          {"LIKE", {".,.|.", FunctionType::FILTER}},
+          {"NGRAM_MATCH", {".,.|.,.", FunctionType::FILTER}},
+          {"LEVENSHTEIN_MATCH", {".,.,.|.,.,.", FunctionType::FILTER}},
+          {"IN_RANGE", {".,.,.,.,.", FunctionType::FILTER}},
+          {"GEO_IN_RANGE", {".,.,.,.|.,.,.", FunctionType::FILTER}},
+          {"GEO_CONTAINS", {".,.", FunctionType::FILTER}},
+          {"GEO_INTERSECTS", {".,.", FunctionType::FILTER}},
 
-    // context functions
-    { "ANALYZER", { ".,.", FunctionType::FILTER } },
-    { "BOOST", { ".,.", FunctionType::FILTER } },
+          // context functions
+          {"ANALYZER", {".,.", FunctionType::FILTER}},
+          {"BOOST", {".,.", FunctionType::FILTER}},
 
-    // scorer functions
-    { "BM25", { ".|+", FunctionType::SCORER } },
-    { "TFIDF", { ".|+", FunctionType::SCORER } },
-  };
+          // scorer functions
+          {"BM25", {".|+", FunctionType::SCORER}},
+          {"TFIDF", {".|+", FunctionType::SCORER}},
+      };
 
   auto opts = std::make_shared<ProgramOptions>("", "", "", "");
   iresearch.collectOptions(opts);
@@ -1617,17 +1825,19 @@ TEST_F(IResearchFeatureTest, test_start) {
             iresearch.stats(ThreadGroup::_1));
 
   iresearch.start();
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_0);
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_1);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+               ThreadGroup::_0);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+               ThreadGroup::_1);
 
   for (auto& entry : expected) {
     auto* function = arangodb::iresearch::getFunction(functions, entry.first);
     EXPECT_NE(nullptr, function);
     EXPECT_EQ(entry.second.first, function->arguments);
     EXPECT_TRUE((entry.second.second == FunctionType::FILTER &&
-                  arangodb::iresearch::isFilter(*function)) ||
-                 (entry.second.second == FunctionType::SCORER &&
-                  arangodb::iresearch::isScorer(*function)));
+                 arangodb::iresearch::isFilter(*function)) ||
+                (entry.second.second == FunctionType::SCORER &&
+                 arangodb::iresearch::isScorer(*function)));
   };
 
   iresearch.stop();
@@ -1654,25 +1864,31 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1_no_directory) {
       "{ \"version\": 0, \"tasks\": {} }");
 
   // add the UpgradeFeature, but make sure it is not prepared
-  server.addFeatureUntracked<arangodb::UpgradeFeature>(nullptr, std::vector<std::type_index>{});
+  server.addFeatureUntracked<arangodb::UpgradeFeature>(nullptr,
+                                                       std::vector<size_t>{});
 
-  auto& feature = server.addFeatureUntracked<arangodb::iresearch::IResearchFeature>();
+  auto& feature =
+      server.addFeatureUntracked<arangodb::iresearch::IResearchFeature>();
   feature.collectOptions(server.server().options());
   feature.validateOptions(server.server().options());
   feature.prepare();  // register iresearch view type
   feature.start();    // register upgrade tasks
 
-  server.getFeature<arangodb::DatabaseFeature>().enableUpgrade();  // skip IResearchView validation
+  // skip IResearchView validation
+  server.getFeature<arangodb::DatabaseFeature>().enableUpgrade();
 
   auto& dbPathFeature = server.getFeature<arangodb::DatabasePathFeature>();
-  arangodb::tests::setDatabasePath(dbPathFeature);  // ensure test data is stored in a unique directory
+
+  // ensure test data is stored in a unique directory
+  arangodb::tests::setDatabasePath(dbPathFeature);
   auto versionFilename = StorageEngineMock::versionFilenameResult;
   auto versionFilenameRestore = irs::make_finally([&versionFilename]() -> void {
     StorageEngineMock::versionFilenameResult = versionFilename;
   });
   StorageEngineMock::versionFilenameResult =
       (irs::utf8_path(dbPathFeature.directory()) /= "version").string();
-  ASSERT_TRUE(irs::file_utils::mkdir(irs::utf8_path(dbPathFeature.directory()).c_str(), true));
+  ASSERT_TRUE(irs::file_utils::mkdir(
+      irs::utf8_path(dbPathFeature.directory()).c_str(), true));
   ASSERT_TRUE((arangodb::basics::VelocyPackHelper::velocyPackToFile(
       StorageEngineMock::versionFilenameResult, versionJson->slice(), false)));
 
@@ -1681,47 +1897,66 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1_no_directory) {
   auto logicalCollection = vocbase.createCollection(collectionJson->slice());
   ASSERT_NE(logicalCollection, nullptr);
   auto logicalView0 = vocbase.createView(viewJson->slice());
+  // logicalView0->guid();
   ASSERT_NE(logicalView0, nullptr);
   bool created = false;
   auto index = logicalCollection->createIndex(linkJson->slice(), created);
   ASSERT_TRUE(created);
   ASSERT_NE(index, nullptr);
-  auto link0 = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+  auto link0 =
+      std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
   ASSERT_NE(link0, nullptr);
 
   index->unload();  // release file handles
   bool result;
   auto linkDataPath = getPersistedPath1(*link0);
-  EXPECT_TRUE(irs::file_utils::remove(linkDataPath.c_str()));  // remove link directory
+  EXPECT_TRUE(
+      irs::file_utils::remove(linkDataPath.c_str()));  // remove link directory
   auto viewDataPath = getPersistedPath0(*logicalView0);
-  EXPECT_TRUE(irs::file_utils::exists(result, viewDataPath.c_str()) && !result);  // ensure no view directory
+  EXPECT_TRUE(irs::file_utils::exists(result, viewDataPath.c_str()) &&
+              !result);  // ensure no view directory
   arangodb::velocypack::Builder builder;
   builder.openObject();
-  EXPECT_TRUE(logicalView0
-                  ->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence)
-                  .ok());
+  EXPECT_TRUE(
+      logicalView0
+          ->properties(builder,
+                       arangodb::LogicalDataSource::Serialization::Persistence)
+          .ok());
   builder.close();
-  EXPECT_EQ(0, builder.slice().get("version").getNumber<uint32_t>());  // ensure 'version == 0 before upgrade
+  EXPECT_EQ(0,
+            builder.slice()
+                .get("version")
+                .getNumber<uint32_t>());  // ensure 'version == 0 before upgrade
 
-  EXPECT_TRUE(arangodb::methods::Upgrade::startup(vocbase, true, false).ok());  // run upgrade
+  EXPECT_TRUE(arangodb::methods::Upgrade::startup(vocbase, true, false)
+                  .ok());  // run upgrade
   auto logicalView1 = vocbase.lookupView(logicalView0->name());
   EXPECT_FALSE(!logicalView1);  // ensure view present after upgrade
   EXPECT_EQ(logicalView0->id(), logicalView1->id());  // ensure same id for view
-  auto link1 = arangodb::iresearch::IResearchLinkHelper::find(*logicalCollection, *logicalView1);
-  ASSERT_NE(nullptr, link1); // ensure link present after upgrade
+  auto link1 = arangodb::iresearch::IResearchLinkHelper::find(
+      *logicalCollection, *logicalView1);
+  ASSERT_NE(nullptr, link1);            // ensure link present after upgrade
   EXPECT_NE(link0->id(), link1->id());  // ensure new link
   linkDataPath = getPersistedPath1(*link1);
-  EXPECT_TRUE(irs::file_utils::exists(result, linkDataPath.c_str()) && result);  // ensure link directory created after upgrade
-  EXPECT_TRUE(irs::file_utils::exists(result, viewDataPath.c_str()) && !result);  // ensure view directory not present
+  EXPECT_TRUE(irs::file_utils::exists(result, linkDataPath.c_str()) &&
+              result);  // ensure link directory created after upgrade
+  EXPECT_TRUE(irs::file_utils::exists(result, viewDataPath.c_str()) &&
+              !result);  // ensure view directory not present
   viewDataPath = getPersistedPath0(*logicalView1);
-  EXPECT_TRUE(irs::file_utils::exists(result, viewDataPath.c_str()) && !result);  // ensure view directory not created
+  EXPECT_TRUE(irs::file_utils::exists(result, viewDataPath.c_str()) &&
+              !result);  // ensure view directory not created
   builder.clear();
   builder.openObject();
-  EXPECT_TRUE(logicalView1
-                  ->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence)
-                  .ok());
+  EXPECT_TRUE(
+      logicalView1
+          ->properties(builder,
+                       arangodb::LogicalDataSource::Serialization::Persistence)
+          .ok());
   builder.close();
-  EXPECT_EQ(1, builder.slice().get("version").getNumber<uint32_t>());  // ensure 'version == 1 after upgrade
+  EXPECT_EQ(1,
+            builder.slice()
+                .get("version")
+                .getNumber<uint32_t>());  // ensure 'version == 1 after upgrade
 }
 
 TEST_F(IResearchFeatureTest, test_upgrade0_1_with_directory) {
@@ -1738,25 +1973,30 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1_with_directory) {
       "{ \"version\": 0, \"tasks\": {} }");
 
   // add the UpgradeFeature, but make sure it is not prepared
-  server.addFeatureUntracked<arangodb::UpgradeFeature>(nullptr, std::vector<std::type_index>{});
+  server.addFeatureUntracked<arangodb::UpgradeFeature>(nullptr,
+                                                       std::vector<size_t>{});
 
-  auto& feature = server.addFeatureUntracked<arangodb::iresearch::IResearchFeature>();
+  auto& feature =
+      server.addFeatureUntracked<arangodb::iresearch::IResearchFeature>();
   feature.collectOptions(server.server().options());
   feature.validateOptions(server.server().options());
   feature.prepare();  // register iresearch view type
   feature.start();    // register upgrade tasks
 
-  server.getFeature<arangodb::DatabaseFeature>().enableUpgrade();  // skip IResearchView validation
+  server.getFeature<arangodb::DatabaseFeature>()
+      .enableUpgrade();  // skip IResearchView validation
 
   auto& dbPathFeature = server.getFeature<arangodb::DatabasePathFeature>();
-  arangodb::tests::setDatabasePath(dbPathFeature);  // ensure test data is stored in a unique directory
+  arangodb::tests::setDatabasePath(
+      dbPathFeature);  // ensure test data is stored in a unique directory
   auto versionFilename = StorageEngineMock::versionFilenameResult;
   auto versionFilenameRestore = irs::make_finally([&versionFilename]() -> void {
     StorageEngineMock::versionFilenameResult = versionFilename;
   });
   StorageEngineMock::versionFilenameResult =
       (irs::utf8_path(dbPathFeature.directory()) /= "version").string();
-  ASSERT_TRUE(irs::file_utils::mkdir(irs::utf8_path(dbPathFeature.directory()).c_str(), true));
+  ASSERT_TRUE(irs::file_utils::mkdir(
+      irs::utf8_path(dbPathFeature.directory()).c_str(), true));
   ASSERT_TRUE((arangodb::basics::VelocyPackHelper::velocyPackToFile(
       StorageEngineMock::versionFilenameResult, versionJson->slice(), false)));
 
@@ -1770,44 +2010,62 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1_with_directory) {
   auto index = logicalCollection->createIndex(linkJson->slice(), created);
   ASSERT_TRUE(created);
   ASSERT_FALSE(!index);
-  auto link0 = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+  auto link0 =
+      std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
   ASSERT_FALSE(!link0);
 
   index->unload();  // release file handles
   bool result;
   auto linkDataPath = getPersistedPath1(*link0);
-  EXPECT_TRUE(irs::file_utils::remove(linkDataPath.c_str()));  // remove link directory
+  EXPECT_TRUE(
+      irs::file_utils::remove(linkDataPath.c_str()));  // remove link directory
   auto viewDataPath = getPersistedPath0(*logicalView0);
   EXPECT_TRUE(irs::file_utils::exists(result, viewDataPath.c_str()) && !result);
-  EXPECT_TRUE(irs::file_utils::mkdir(viewDataPath.c_str(), true));  // create view directory
+  EXPECT_TRUE(irs::file_utils::mkdir(viewDataPath.c_str(),
+                                     true));  // create view directory
   EXPECT_TRUE(irs::file_utils::exists(result, viewDataPath.c_str()) && result);
   arangodb::velocypack::Builder builder;
   builder.openObject();
-  EXPECT_TRUE(logicalView0
-                  ->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence)
-                  .ok());
+  EXPECT_TRUE(
+      logicalView0
+          ->properties(builder,
+                       arangodb::LogicalDataSource::Serialization::Persistence)
+          .ok());
   builder.close();
-  EXPECT_EQ(0, builder.slice().get("version").getNumber<uint32_t>());  // ensure 'version == 0 before upgrade
+  EXPECT_EQ(0,
+            builder.slice()
+                .get("version")
+                .getNumber<uint32_t>());  // ensure 'version == 0 before upgrade
 
-  EXPECT_TRUE(arangodb::methods::Upgrade::startup(vocbase, true, false).ok());  // run upgrade
+  EXPECT_TRUE(arangodb::methods::Upgrade::startup(vocbase, true, false)
+                  .ok());  // run upgrade
   auto logicalView1 = vocbase.lookupView(logicalView0->name());
   EXPECT_FALSE(!logicalView1);  // ensure view present after upgrade
   EXPECT_EQ(logicalView0->id(), logicalView1->id());  // ensure same id for view
-  auto link1 = arangodb::iresearch::IResearchLinkHelper::find(*logicalCollection, *logicalView1);
+  auto link1 = arangodb::iresearch::IResearchLinkHelper::find(
+      *logicalCollection, *logicalView1);
   EXPECT_FALSE(!link1);                 // ensure link present after upgrade
   EXPECT_NE(link0->id(), link1->id());  // ensure new link
   linkDataPath = getPersistedPath1(*link1);
-  EXPECT_TRUE(irs::file_utils::exists(result, linkDataPath.c_str()) && result);  // ensure link directory created after upgrade
-  EXPECT_TRUE(irs::file_utils::exists(result, viewDataPath.c_str()) && !result);  // ensure view directory removed after upgrade
+  EXPECT_TRUE(irs::file_utils::exists(result, linkDataPath.c_str()) &&
+              result);  // ensure link directory created after upgrade
+  EXPECT_TRUE(irs::file_utils::exists(result, viewDataPath.c_str()) &&
+              !result);  // ensure view directory removed after upgrade
   viewDataPath = getPersistedPath0(*logicalView1);
-  EXPECT_TRUE(irs::file_utils::exists(result, viewDataPath.c_str()) && !result);  // ensure view directory not created
+  EXPECT_TRUE(irs::file_utils::exists(result, viewDataPath.c_str()) &&
+              !result);  // ensure view directory not created
   builder.clear();
   builder.openObject();
-  EXPECT_TRUE(logicalView1
-                  ->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence)
-                  .ok());
+  EXPECT_TRUE(
+      logicalView1
+          ->properties(builder,
+                       arangodb::LogicalDataSource::Serialization::Persistence)
+          .ok());
   builder.close();
-  EXPECT_EQ(1, builder.slice().get("version").getNumber<uint32_t>());  // ensure 'version == 1 after upgrade
+  EXPECT_EQ(1,
+            builder.slice()
+                .get("version")
+                .getNumber<uint32_t>());  // ensure 'version == 1 after upgrade
 }
 
 TEST_F(IResearchFeatureTest, IResearch_version_test) {
@@ -1816,42 +2074,16 @@ TEST_F(IResearchFeatureTest, IResearch_version_test) {
               arangodb::rest::Version::Values["iresearch-version"]);
 }
 
-// Temporarily surpress for MSVC
-TEST_F(IResearchFeatureTest, test_async_schedule) {
-  bool deallocated = false;  // declare above 'feature' to ensure proper destruction order
-  arangodb::iresearch::IResearchFeature feature(server.server());
-  feature.collectOptions(server.server().options());
-  feature.validateOptions(server.server().options());
-  feature.prepare();
-  feature.start(); // start thread pool
-  std::condition_variable cond;
-  std::mutex mutex;
-  auto lock = irs::make_unique_lock(mutex);
-
-  {
-    std::shared_ptr<bool> flag(&deallocated,
-                               [](bool* ptr) -> void { *ptr = true; });
-    feature.queue(
-      arangodb::iresearch::ThreadGroup::_0, 0ms,
-      [&cond, &mutex, flag]()  {
-        auto scopedLock = irs::make_lock_guard(mutex);
-        cond.notify_all();
-    });
-  }
-  EXPECT_NE(std::cv_status::timeout, cond.wait_for(lock, 100ms));
-  std::this_thread::sleep_for(100ms);
-  EXPECT_TRUE(deallocated);
-}
-
 TEST_F(IResearchFeatureTest, test_async_schedule_wait_indefinite) {
   struct Task {
-    Task(bool& deallocated, std::mutex& mutex,
+    Task(std::atomic_bool& deallocated, std::mutex& mutex,
          std::condition_variable& cond, std::atomic<size_t>& count,
          arangodb::iresearch::IResearchFeature& feature)
-      : flag(&deallocated, [](bool* ptr) -> void { *ptr = true; }),
-        mutex(&mutex), cond(&cond),
-        count(&count), feature(&feature) {
-    }
+        : flag(&deallocated, [](std::atomic_bool* ptr) { *ptr = true; }),
+          mutex(&mutex),
+          cond(&cond),
+          count(&count),
+          feature(&feature) {}
 
     void operator()() {
       ++*count;
@@ -1864,21 +2096,25 @@ TEST_F(IResearchFeatureTest, test_async_schedule_wait_indefinite) {
       cond->notify_all();
     }
 
-    std::shared_ptr<bool> flag;
+    std::shared_ptr<std::atomic_bool> flag;
     std::mutex* mutex;
     std::condition_variable* cond;
     std::atomic<size_t>* count;
     arangodb::iresearch::IResearchFeature* feature;
   };
 
-  bool deallocated = false;  // declare above 'feature' to ensure proper destruction order
+  std::atomic_bool deallocated = false;
+  // declare above 'feature' to ensure proper destruction order
   arangodb::iresearch::IResearchFeature feature(server.server());
   feature.collectOptions(server.server().options());
-  server.server().options()
-    ->get<arangodb::options::UInt32Parameter>("arangosearch.consolidation-threads")->set("1");
+  server.server()
+      .options()
+      ->get<arangodb::options::UInt32Parameter>(
+          "arangosearch.consolidation-threads")
+      ->set("1");
   feature.validateOptions(server.server().options());
   feature.prepare();
-  feature.start(); // start thread pool
+  feature.start();  // start thread pool
   std::condition_variable cond;
   std::mutex mutex;
   std::atomic<size_t> count = 0;
@@ -1896,7 +2132,8 @@ TEST_F(IResearchFeatureTest, test_async_schedule_wait_indefinite) {
   }
 
   EXPECT_EQ(1, count);
-  EXPECT_NE(std::cv_status::timeout, cond.wait_for(lock, 1000ms));  // first run invoked immediately
+  EXPECT_NE(std::cv_status::timeout,
+            cond.wait_for(lock, 1000ms));  // first run invoked immediately
   EXPECT_FALSE(deallocated);
 
   {
@@ -1913,45 +2150,47 @@ TEST_F(IResearchFeatureTest, test_async_schedule_wait_indefinite) {
     if (std::cv_status::timeout == wait_status) {
       break;
     }
-    ASSERT_EQ(1, count); // spurious wakeup?
-  } while(1);
-  EXPECT_FALSE(deallocated); // still scheduled
+    ASSERT_EQ(1, count);  // spurious wakeup?
+  } while (1);
+  EXPECT_FALSE(deallocated);  // still scheduled
   EXPECT_EQ(1, count);
 }
 
 TEST_F(IResearchFeatureTest, test_async_single_run_task) {
-  bool deallocated = false;  // declare above 'feature' to ensure proper destruction order
+  bool deallocated = false;
+  // declare above 'feature' to ensure proper destruction order
   arangodb::iresearch::IResearchFeature feature(server.server());
   feature.collectOptions(server.server().options());
   feature.validateOptions(server.server().options());
   feature.prepare();
-  feature.start(); // start thread pool
+  feature.start();  // start thread pool
   std::condition_variable cond;
   std::mutex mutex;
-  auto lock = irs::make_unique_lock(mutex);
-
-  {
-    std::shared_ptr<bool> flag(&deallocated,
-                               [](bool* ptr) -> void { *ptr = true; });
-    feature.queue(
-      arangodb::iresearch::ThreadGroup::_0, 0ms,
-      [&cond, &mutex, flag]() {
-        auto scopedLock = irs::make_lock_guard(mutex);
-        cond.notify_all();
-    });
-  }
-  EXPECT_NE(std::cv_status::timeout, cond.wait_for(lock, 100ms));
-  std::this_thread::sleep_for(100ms);
-  EXPECT_TRUE(deallocated);
+  struct Func {
+    bool& _deallocated;
+    std::condition_variable& _cond;
+    std::mutex& _mutex;
+  };
+  Func func{deallocated, cond, mutex};
+  std::shared_ptr<Func> flag(&func, [](Func* func) {
+    std::lock_guard lock{func->_mutex};
+    func->_deallocated = true;
+    func->_cond.notify_all();
+  });
+  feature.queue(arangodb::iresearch::ThreadGroup::_0, 0ms,
+                [flag = std::move(flag)] {});
+  std::unique_lock lock{mutex};
+  ASSERT_TRUE(cond.wait_for(lock, 10s, [&] { return deallocated; }));
 }
 
 TEST_F(IResearchFeatureTest, test_async_multi_run_task) {
-  bool deallocated = false;  // declare above 'feature' to ensure proper destruction order
+  std::atomic_bool deallocated = false;
+  // declare above 'feature' to ensure proper destruction order
   arangodb::iresearch::IResearchFeature feature(server.server());
   feature.collectOptions(server.server().options());
   feature.validateOptions(server.server().options());
   feature.prepare();
-  feature.start(); // start thread pool
+  feature.start();  // start thread pool
   std::mutex mutex;
   std::condition_variable cond;
   size_t count = 0;
@@ -1959,17 +2198,18 @@ TEST_F(IResearchFeatureTest, test_async_multi_run_task) {
   auto lock = irs::make_unique_lock(mutex);
 
   {
-    std::shared_ptr<bool> flag(&deallocated,
-                               [](bool* ptr) -> void { *ptr = true; });
+    std::shared_ptr<std::atomic_bool> flag(
+        &deallocated, [](std::atomic_bool* ptr) { *ptr = true; });
 
     struct Task {
-      std::shared_ptr<bool> flag;
+      std::shared_ptr<std::atomic_bool> flag;
       size_t* count;
       std::chrono::steady_clock::duration* diff;
       std::mutex* mutex;
       std::condition_variable* cond;
       arangodb::iresearch::IResearchFeature* feature;
-      std::chrono::steady_clock::time_point last = std::chrono::steady_clock::now();
+      std::chrono::steady_clock::time_point last =
+          std::chrono::steady_clock::now();
 
       void operator()() {
         *diff = std::chrono::steady_clock::now() - last;
@@ -1989,20 +2229,20 @@ TEST_F(IResearchFeatureTest, test_async_multi_run_task) {
     task.feature = &feature;
     task.count = &count;
     task.diff = &diff;
-    task.flag = flag;
+    task.flag = std::move(flag);
 
     feature.queue(arangodb::iresearch::ThreadGroup::_0, 0ms, task);
   }
 
   EXPECT_NE(std::cv_status::timeout, cond.wait_for(lock, 1000ms));
   std::this_thread::sleep_for(100ms);
-  EXPECT_TRUE(deallocated);
+  EXPECT_TRUE(deallocated);  // TODO write correct sync
   EXPECT_EQ(2, count);
   EXPECT_TRUE(100ms < diff);
 }
 
 TEST_F(IResearchFeatureTest, test_async_deallocate_with_running_tasks) {
-  bool deallocated = false;
+  std::atomic_bool deallocated = false;
   std::condition_variable cond;
   std::mutex mutex;
   auto lock = irs::make_unique_lock(mutex);
@@ -2013,11 +2253,11 @@ TEST_F(IResearchFeatureTest, test_async_deallocate_with_running_tasks) {
     feature.validateOptions(server.server().options());
     feature.prepare();
     feature.start();  // start thread pool
-    std::shared_ptr<bool> flag(&deallocated,
-                               [](bool* ptr) -> void { *ptr = true; });
+    std::shared_ptr<std::atomic_bool> flag(
+        &deallocated, [](std::atomic_bool* ptr) { *ptr = true; });
 
     struct Task {
-      std::shared_ptr<bool> flag;
+      std::shared_ptr<std::atomic_bool> flag;
       std::mutex* mutex;
       std::condition_variable* cond;
       arangodb::iresearch::IResearchFeature* feature;
@@ -2034,7 +2274,7 @@ TEST_F(IResearchFeatureTest, test_async_deallocate_with_running_tasks) {
     task.mutex = &mutex;
     task.cond = &cond;
     task.feature = &feature;
-    task.flag = flag;
+    task.flag = std::move(flag);
 
     feature.queue(arangodb::iresearch::ThreadGroup::_0, 0ms, task);
 
@@ -2045,10 +2285,14 @@ TEST_F(IResearchFeatureTest, test_async_deallocate_with_running_tasks) {
 }
 
 TEST_F(IResearchFeatureTest, test_async_schedule_task_resize_pool) {
-  bool deallocated = false;  // declare above 'feature' to ensure proper destruction order
+  std::atomic_bool deallocated = false;
+  // declare above 'feature' to ensure proper destruction order
   arangodb::iresearch::IResearchFeature feature(server.server());
   feature.collectOptions(server.server().options());
-  server.server().options()->get<arangodb::options::UInt32Parameter>("arangosearch.threads")->set("8");
+  server.server()
+      .options()
+      ->get<arangodb::options::UInt32Parameter>("arangosearch.threads")
+      ->set("8");
   feature.validateOptions(server.server().options());
   feature.prepare();
   std::condition_variable cond;
@@ -2057,17 +2301,18 @@ TEST_F(IResearchFeatureTest, test_async_schedule_task_resize_pool) {
   std::chrono::steady_clock::duration diff;
   auto lock = irs::make_unique_lock(mutex);
   {
-    std::shared_ptr<bool> flag(&deallocated,
-                               [](bool* ptr) -> void { *ptr = true; });
+    std::shared_ptr<std::atomic_bool> flag(
+        &deallocated, [](std::atomic_bool* ptr) { *ptr = true; });
 
     struct Task {
-      std::shared_ptr<bool> flag;
+      std::shared_ptr<std::atomic_bool> flag;
       size_t* count;
       std::chrono::steady_clock::duration* diff;
       std::mutex* mutex;
       std::condition_variable* cond;
       arangodb::iresearch::IResearchFeature* feature;
-      std::chrono::steady_clock::time_point last = std::chrono::steady_clock::now();
+      std::chrono::steady_clock::time_point last =
+          std::chrono::steady_clock::now();
 
       void operator()() {
         *diff = std::chrono::steady_clock::now() - last;
@@ -2091,10 +2336,11 @@ TEST_F(IResearchFeatureTest, test_async_schedule_task_resize_pool) {
 
     feature.queue(arangodb::iresearch::ThreadGroup::_0, 0ms, task);
   }
-  feature.start(); // start thread pool after a task has been scheduled, to trigger resize with a task
+  feature.start();  // start thread pool after a task has been scheduled, to
+                    // trigger resize with a task
   EXPECT_NE(std::cv_status::timeout, cond.wait_for(lock, 1000ms));
   std::this_thread::sleep_for(100ms);
-  EXPECT_TRUE(deallocated);
+  EXPECT_TRUE(deallocated);  // TODO write correct sync
   EXPECT_EQ(2, count);
   EXPECT_TRUE(100ms < diff);
 }
@@ -2152,42 +2398,45 @@ TEST_F(IResearchFeatureTest, test_fail_to_start) {
 
 class IResearchFeatureTestCoordinator
     : public ::testing::Test,
-      public arangodb::tests::LogSuppressor<arangodb::Logger::AGENCY, arangodb::LogLevel::FATAL>,
-      public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION, arangodb::LogLevel::ERR>,
-      public arangodb::tests::LogSuppressor<arangodb::Logger::CLUSTER, arangodb::LogLevel::FATAL> {
+      public arangodb::tests::LogSuppressor<arangodb::Logger::AGENCY,
+                                            arangodb::LogLevel::FATAL>,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION,
+                                            arangodb::LogLevel::ERR>,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::CLUSTER,
+                                            arangodb::LogLevel::FATAL> {
  protected:
   arangodb::tests::mocks::MockCoordinator server;
 
  private:
-
  protected:
-  IResearchFeatureTestCoordinator()
-      : server(false) {
-
+  IResearchFeatureTestCoordinator() : server(false) {
     arangodb::tests::init();
 
-    arangodb::ServerState::instance()->setRebootId(arangodb::RebootId{1});  // Hack.
+    arangodb::ServerState::instance()->setRebootId(
+        arangodb::RebootId{1});  // Hack.
     // we will start Upgrade feature under our control
     server.untrackFeature<arangodb::UpgradeFeature>();
     server.startFeatures();
   }
 
-  arangodb::consensus::index_t agencyTrx(std::string const& key, std::string const& value) {
+  arangodb::consensus::index_t agencyTrx(std::string const& key,
+                                         std::string const& value) {
     // Build an agency transaction:
     auto b2 = VPackParser::fromJson(value);
     VPackBuilder b;
-    { 
+    {
       VPackArrayBuilder trxs(&b);
-      { 
+      {
         VPackArrayBuilder trx(&b);
-        { 
+        {
           VPackObjectBuilder op(&b);
-          b.add(key, b2->slice()); 
+          b.add(key, b2->slice());
         }
       }
     }
-    return std::get<1>(
-      server.getFeature<arangodb::ClusterFeature>().agencyCache().applyTestTransaction(b.slice()));
+    return std::get<1>(server.getFeature<arangodb::ClusterFeature>()
+                           .agencyCache()
+                           .applyTestTransaction(b.slice()));
   }
 
   void agencyCreateDatabase(std::string const& name) {
@@ -2200,10 +2449,16 @@ class IResearchFeatureTestCoordinator
     agencyTrx("/arango/Current/Databases/" + name, st);
     st = ts.specialize(current_colls_string);
     agencyTrx("/arango/Current/Collections/" + name, st);
-    server.getFeature<arangodb::ClusterFeature>().clusterInfo().waitForPlan(
-      agencyTrx("/arango/Plan/Version", R"=({"op":"increment"})=")).wait();
-    server.getFeature<arangodb::ClusterFeature>().clusterInfo().waitForCurrent(
-      agencyTrx("/arango/Current/Version", R"=({"op":"increment"})=")).wait();
+    server.getFeature<arangodb::ClusterFeature>()
+        .clusterInfo()
+        .waitForPlan(
+            agencyTrx("/arango/Plan/Version", R"=({"op":"increment"})="))
+        .wait();
+    server.getFeature<arangodb::ClusterFeature>()
+        .clusterInfo()
+        .waitForCurrent(
+            agencyTrx("/arango/Current/Version", R"=({"op":"increment"})="))
+        .wait();
   }
 
   void agencyDropDatabase(std::string const& name) {
@@ -2212,36 +2467,49 @@ class IResearchFeatureTestCoordinator
     agencyTrx("/arango/Plan/Collections/" + name, st);
     agencyTrx("/arango/Current/Databases/" + name, st);
     agencyTrx("/arango/Current/Collections/" + name, st);
-    server.getFeature<arangodb::ClusterFeature>().clusterInfo().waitForPlan(
-      agencyTrx("/arango/Plan/Version", R"=({"op":"increment"})=")).wait();
-    server.getFeature<arangodb::ClusterFeature>().clusterInfo().waitForCurrent(
-      agencyTrx("/arango/Current/Version", R"=({"op":"increment"})=")).wait();
+    server.getFeature<arangodb::ClusterFeature>()
+        .clusterInfo()
+        .waitForPlan(
+            agencyTrx("/arango/Plan/Version", R"=({"op":"increment"})="))
+        .wait();
+    server.getFeature<arangodb::ClusterFeature>()
+        .clusterInfo()
+        .waitForCurrent(
+            agencyTrx("/arango/Current/Version", R"=({"op":"increment"})="))
+        .wait();
   }
 
-  VPackBuilder agencyCreateIndex(
-    std::string const& db, std::string const& cid, std::set<std::string> const& fields,
-    bool deduplicate, uint64_t id, std::string const& name, bool sparse,
-    std::string const& type, bool unique) {
+  VPackBuilder agencyCreateIndex(std::string const& db, std::string const& cid,
+                                 std::set<std::string> const& fields,
+                                 bool deduplicate, uint64_t id,
+                                 std::string const& name, bool sparse,
+                                 std::string const& type, bool unique) {
     VPackBuilder b;
-    { VPackObjectBuilder o(&b);
-      b.add(
-        VPackValue(std::string("/arango/Plan/Collections/") + db + "/" + cid + "/indexes"));
-      { VPackObjectBuilder oo(&b);
+    {
+      VPackObjectBuilder o(&b);
+      b.add(VPackValue(std::string("/arango/Plan/Collections/") + db + "/" +
+                       cid + "/indexes"));
+      {
+        VPackObjectBuilder oo(&b);
         b.add("op", VPackValue("push"));
         b.add(VPackValue("new"));
-        { VPackObjectBuilder ooo(&b);
+        {
+          VPackObjectBuilder ooo(&b);
           b.add(VPackValue("fields"));
-          { VPackArrayBuilder aa(&b);
+          {
+            VPackArrayBuilder aa(&b);
             for (auto const& i : fields) {
               b.add(VPackValue(i));
-            }}
+            }
+          }
           b.add("deduplicate", VPackValue(deduplicate));
           b.add("id", VPackValue(id));
           b.add("inBackground", VPackValue(false));
           b.add("name", VPackValue(name));
           b.add("sparse", VPackValue(sparse));
           b.add("type", VPackValue(type));
-          b.add("unique", VPackValue(unique)); }
+          b.add("unique", VPackValue(unique));
+        }
       }
     }
     return b;
@@ -2263,39 +2531,41 @@ TEST_F(IResearchFeatureTestCoordinator, test_upgrade0_1) {
   auto collectionId = std::to_string(41);
   auto viewId = std::to_string(42);
 
-  server.getFeature<arangodb::DatabaseFeature>().enableUpgrade();  // skip IResearchView validation
+  server.getFeature<arangodb::DatabaseFeature>()
+      .enableUpgrade();  // skip IResearchView validation
 
   auto& engine = server.getFeature<arangodb::EngineSelectorFeature>().engine();
-  auto& factory =
-      server.getFeature<arangodb::iresearch::IResearchFeature>().factory<arangodb::ClusterEngine>();
+  auto& factory = server.getFeature<arangodb::iresearch::IResearchFeature>()
+                      .factory<arangodb::ClusterEngine>();
   const_cast<arangodb::IndexFactory&>(engine.indexFactory())
-      .emplace(  // required for Indexes::ensureIndex(...)
-          arangodb::iresearch::DATA_SOURCE_TYPE.name(), factory);
+      .emplace(std::string{arangodb::iresearch::StaticStrings::DataSourceType},
+               factory);
   auto& ci = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
 
   auto& database = server.getFeature<arangodb::DatabaseFeature>();
-  ASSERT_TRUE(database.createDatabase(testDBInfo(server.server()), vocbase).ok());
+  ASSERT_TRUE(
+      database.createDatabase(testDBInfo(server.server()), vocbase).ok());
 
   agencyCreateDatabase(vocbase->name());
 
-  ASSERT_TRUE(
-    ci.createCollectionCoordinator(
-      vocbase->name(), collectionId, 0, 1, 1, false, collectionJson->slice(), 0.0, false, nullptr)
-    .ok());
+  ASSERT_TRUE(ci.createCollectionCoordinator(
+                    vocbase->name(), collectionId, 0, 1, 1, false,
+                    collectionJson->slice(), 0.0, false, nullptr)
+                  .ok());
   auto logicalCollection = ci.getCollection(vocbase->name(), collectionId);
   ASSERT_FALSE(!logicalCollection);
   EXPECT_TRUE(
-      (ci.createViewCoordinator(vocbase->name(), viewId, viewJson->slice()).ok()));
+      (ci.createViewCoordinator(vocbase->name(), viewId, viewJson->slice())
+           .ok()));
   auto logicalView0 = ci.getView(vocbase->name(), viewId);
   ASSERT_FALSE(!logicalView0);
 
-
   arangodb::velocypack::Builder tmp;
 
-  auto const currentCollectionPath = "/Current/Collections/" + vocbase->name() +
-                                     "/" +
-                                     std::to_string(logicalCollection->id().id());
+  auto const currentCollectionPath =
+      "/Current/Collections/" + vocbase->name() + "/" +
+      std::to_string(logicalCollection->id().id());
   {
     ASSERT_TRUE(logicalView0);
     auto const viewId = std::to_string(logicalView0->planId().id());
@@ -2304,33 +2574,38 @@ TEST_F(IResearchFeatureTestCoordinator, test_upgrade0_1) {
     // simulate heartbeat thread (create index in current)
     {
       auto const value = arangodb::velocypack::Parser::fromJson(
-        "{ \"shard-id\": { \"indexes\" : [ { \"id\": \"1\" } ] } }");
+          "{ \"shard-id\": { \"indexes\" : [ { \"id\": \"1\" } ] } }");
       EXPECT_TRUE(arangodb::AgencyComm(server.server())
-                  .setValue(currentCollectionPath, value->slice(), 0.0)
-                  .successful());
+                      .setValue(currentCollectionPath, value->slice(), 0.0)
+                      .successful());
     }
   }
 
-  auto [t,i] = server.getFeature<arangodb::ClusterFeature>().
-    agencyCache().read(
-      std::vector<std::string>{"/arango"});
+  auto [t, i] =
+      server.getFeature<arangodb::ClusterFeature>().agencyCache().read(
+          std::vector<std::string>{"/arango"});
 
-
-  ASSERT_TRUE((arangodb::methods::Indexes::ensureIndex(logicalCollection.get(),
-                                                         linkJson->slice(), true, tmp)
-               .ok()));
+  ASSERT_TRUE((arangodb::methods::Indexes::ensureIndex(
+                   logicalCollection.get(), linkJson->slice(), true, tmp)
+                   .ok()));
   logicalCollection = ci.getCollection(vocbase->name(), collectionId);
   ASSERT_FALSE(!logicalCollection);
-  auto link0 = arangodb::iresearch::IResearchLinkHelper::find(*logicalCollection, *logicalView0);
+  auto link0 = arangodb::iresearch::IResearchLinkHelper::find(
+      *logicalCollection, *logicalView0);
   ASSERT_FALSE(!link0);
 
   arangodb::velocypack::Builder builder;
   builder.openObject();
-  EXPECT_TRUE(logicalView0
-                  ->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence)
-                  .ok());
+  EXPECT_TRUE(
+      logicalView0
+          ->properties(builder,
+                       arangodb::LogicalDataSource::Serialization::Persistence)
+          .ok());
   builder.close();
-  EXPECT_EQ(0, builder.slice().get("version").getNumber<uint32_t>());  // ensure 'version == 0 before upgrade
+  EXPECT_EQ(0,
+            builder.slice()
+                .get("version")
+                .getNumber<uint32_t>());  // ensure 'version == 0 before upgrade
 
   // ensure no upgrade on coordinator
   // simulate heartbeat thread (create index in current)
@@ -2345,57 +2620,65 @@ TEST_F(IResearchFeatureTestCoordinator, test_upgrade0_1) {
                     .successful());
 
     VPackBuilder b;
-    { 
+    {
       VPackArrayBuilder trxs(&b);
-      { 
+      {
         VPackArrayBuilder trx(&b);
-        { 
+        {
           VPackObjectBuilder op(&b);
-          b.add(path, value->slice()); 
+          b.add(path, value->slice());
         }
       }
     }
-    server.getFeature<arangodb::ClusterFeature>().agencyCache().applyTestTransaction(b.slice());
-
+    server.getFeature<arangodb::ClusterFeature>()
+        .agencyCache()
+        .applyTestTransaction(b.slice());
   }
-  EXPECT_TRUE(arangodb::methods::Upgrade::clusterBootstrap(*vocbase).ok());  // run upgrade
+  EXPECT_TRUE(arangodb::methods::Upgrade::clusterBootstrap(*vocbase)
+                  .ok());  // run upgrade
   auto logicalCollection2 = ci.getCollection(vocbase->name(), collectionId);
   ASSERT_FALSE(!logicalCollection2);
   auto logicalView1 = ci.getView(vocbase->name(), viewId);
   EXPECT_FALSE(!logicalView1);  // ensure view present after upgrade
   EXPECT_EQ(logicalView0->id(), logicalView1->id());  // ensure same id for view
-  auto link1 = arangodb::iresearch::IResearchLinkHelper::find(*logicalCollection2, *logicalView1);
+  auto link1 = arangodb::iresearch::IResearchLinkHelper::find(
+      *logicalCollection2, *logicalView1);
   EXPECT_FALSE(!link1);                 // ensure link present after upgrade
   EXPECT_EQ(link0->id(), link1->id());  // ensure new link
   builder.clear();
   builder.openObject();
-  EXPECT_TRUE(logicalView1
-                  ->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence)
-                  .ok());
+  EXPECT_TRUE(
+      logicalView1
+          ->properties(builder,
+                       arangodb::LogicalDataSource::Serialization::Persistence)
+          .ok());
   builder.close();
-  EXPECT_EQ(0, builder.slice().get("version").getNumber<uint32_t>());  // ensure 'version == 0 after upgrade
+  EXPECT_EQ(0,
+            builder.slice()
+                .get("version")
+                .getNumber<uint32_t>());  // ensure 'version == 0 after upgrade
 }
 
 class IResearchFeatureTestDBServer
     : public ::testing::Test,
-      public arangodb::tests::LogSuppressor<arangodb::Logger::AGENCY, arangodb::LogLevel::FATAL>,
-      public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION, arangodb::LogLevel::ERR>,
-      public arangodb::tests::LogSuppressor<arangodb::Logger::CLUSTER, arangodb::LogLevel::FATAL> {
+      public arangodb::tests::LogSuppressor<arangodb::Logger::AGENCY,
+                                            arangodb::LogLevel::FATAL>,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION,
+                                            arangodb::LogLevel::ERR>,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::CLUSTER,
+                                            arangodb::LogLevel::FATAL> {
  protected:
   arangodb::tests::mocks::MockDBServer server;
 
  private:
-
  protected:
-  IResearchFeatureTestDBServer()
-      : server(false) {
-
-
+  IResearchFeatureTestDBServer() : server(false) {
     arangodb::tests::init();
 
-    arangodb::ServerState::instance()->setRebootId(arangodb::RebootId{1});  // Hack.
+    arangodb::ServerState::instance()->setRebootId(
+        arangodb::RebootId{1});  // Hack.
 
-    //server.addFeature<arangodb::SchedulerFeature>(true);
+    // server.addFeature<arangodb::SchedulerFeature>(true);
     // we will control UgradeFeature start!
     server.untrackFeature<arangodb::UpgradeFeature>();
     server.startFeatures();
@@ -2408,20 +2691,21 @@ class IResearchFeatureTestDBServer
     dataPath /= "databases";
     dataPath /= "database-";
     dataPath += std::to_string(view.vocbase().id());
-    dataPath /= arangodb::iresearch::DATA_SOURCE_TYPE.name();
+    dataPath /= arangodb::iresearch::StaticStrings::DataSourceType;
     dataPath += "-";
     dataPath += std::to_string(view.id().id());
     return dataPath;
   };
 
   // version 1 data-source path
-  irs::utf8_path getPersistedPath1(arangodb::iresearch::IResearchLink const& link) {
+  irs::utf8_path getPersistedPath1(
+      arangodb::iresearch::IResearchLink const& link) {
     auto& dbPathFeature = server.getFeature<arangodb::DatabasePathFeature>();
     irs::utf8_path dataPath(dbPathFeature.directory());
     dataPath /= "databases";
     dataPath /= "database-";
     dataPath += std::to_string(link.collection().vocbase().id());
-    dataPath /= arangodb::iresearch::DATA_SOURCE_TYPE.name();
+    dataPath /= arangodb::iresearch::StaticStrings::DataSourceType;
     dataPath += "-";
     dataPath += std::to_string(link.collection().id().id());
     dataPath += "_";
@@ -2429,14 +2713,13 @@ class IResearchFeatureTestDBServer
     return dataPath;
   }
 
-
-  void createTestDatabase(TRI_vocbase_t*& vocbase, std::string const name = "testDatabase") {
+  void createTestDatabase(TRI_vocbase_t*& vocbase,
+                          std::string const name = "testDatabase") {
     vocbase = server.createDatabase(name);
     ASSERT_NE(nullptr, vocbase);
     ASSERT_EQ(name, vocbase->name());
     ASSERT_EQ(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, vocbase->type());
   }
-
 };
 
 TEST_F(IResearchFeatureTestDBServer, test_upgrade0_1_no_directory) {
@@ -2452,33 +2735,38 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade0_1_no_directory) {
   auto versionJson = arangodb::velocypack::Parser::fromJson(
       "{ \"version\": 0, \"tasks\": {} }");
 
-  server.getFeature<arangodb::DatabaseFeature>().enableUpgrade();  // skip IResearchView validation
+  server.getFeature<arangodb::DatabaseFeature>()
+      .enableUpgrade();  // skip IResearchView validation
 
   auto& dbPathFeature = server.getFeature<arangodb::DatabasePathFeature>();
-  arangodb::tests::setDatabasePath(dbPathFeature);  // ensure test data is stored in a unique directory
+  arangodb::tests::setDatabasePath(
+      dbPathFeature);  // ensure test data is stored in a unique directory
   auto versionFilename = StorageEngineMock::versionFilenameResult;
   auto versionFilenameRestore = irs::make_finally([&versionFilename]() -> void {
     StorageEngineMock::versionFilenameResult = versionFilename;
   });
   StorageEngineMock::versionFilenameResult =
       (irs::utf8_path(dbPathFeature.directory()) /= "version").string();
-  ASSERT_TRUE(irs::file_utils::mkdir(irs::utf8_path(dbPathFeature.directory()).c_str(), true));
+  ASSERT_TRUE(irs::file_utils::mkdir(
+      irs::utf8_path(dbPathFeature.directory()).c_str(), true));
   ASSERT_TRUE((arangodb::basics::VelocyPackHelper::velocyPackToFile(
       StorageEngineMock::versionFilenameResult, versionJson->slice(), false)));
 
   VPackBuilder bogus;
-  { 
+  {
     VPackArrayBuilder trxs(&bogus);
-    { 
+    {
       VPackArrayBuilder trx(&bogus);
-      { 
+      {
         VPackObjectBuilder op(&bogus);
-        bogus.add("a", VPackValue(12)); 
+        bogus.add("a", VPackValue(12));
       }
     }
   }
-  server.server().getFeature<arangodb::ClusterFeature>().agencyCache().applyTestTransaction(
-    bogus.slice());
+  server.server()
+      .getFeature<arangodb::ClusterFeature>()
+      .agencyCache()
+      .applyTestTransaction(bogus.slice());
 
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
                         testDBInfo(server.server()));
@@ -2486,34 +2774,47 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade0_1_no_directory) {
   ASSERT_FALSE(!logicalCollection);
   auto logicalView = vocbase.createView(viewJson->slice());
   ASSERT_FALSE(!logicalView);
-  auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
+  auto* view =
+      dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
   ASSERT_FALSE(!view);
   bool created = false;
   auto index = logicalCollection->createIndex(linkJson->slice(), created);
   ASSERT_TRUE(created);
   ASSERT_FALSE(!index);
-  auto link = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+  auto link =
+      std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
   ASSERT_FALSE(!link);
-  ASSERT_TRUE(view->link(link->self()).ok());  // link will not notify view in 'vocbase', hence notify manually
+  ASSERT_TRUE(
+      view->link(link->self()).ok());  // link will not notify view in
+                                       // 'vocbase', hence notify manually
 
   index->unload();  // release file handles
   bool result;
   auto linkDataPath = getPersistedPath1(*link);
-  EXPECT_TRUE(irs::file_utils::remove(linkDataPath.c_str()));  // remove link directory
+  EXPECT_TRUE(
+      irs::file_utils::remove(linkDataPath.c_str()));  // remove link directory
   auto viewDataPath = getPersistedPath0(*logicalView);
-  EXPECT_TRUE(irs::file_utils::exists(result, viewDataPath.c_str()) && !result);  // ensure no view directory
+  EXPECT_TRUE(irs::file_utils::exists(result, viewDataPath.c_str()) &&
+              !result);  // ensure no view directory
   arangodb::velocypack::Builder builder;
   builder.openObject();
-  EXPECT_TRUE(logicalView
-                  ->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence)
-                  .ok());
+  EXPECT_TRUE(
+      logicalView
+          ->properties(builder,
+                       arangodb::LogicalDataSource::Serialization::Persistence)
+          .ok());
   builder.close();
-  EXPECT_EQ(0, builder.slice().get("version").getNumber<uint32_t>());  // ensure 'version == 0 before upgrade
+  EXPECT_EQ(0,
+            builder.slice()
+                .get("version")
+                .getNumber<uint32_t>());  // ensure 'version == 0 before upgrade
 
-  EXPECT_TRUE(arangodb::methods::Upgrade::startup(vocbase, true, false).ok());  // run upgrade
+  EXPECT_TRUE(arangodb::methods::Upgrade::startup(vocbase, true, false)
+                  .ok());  // run upgrade
   logicalView = vocbase.lookupView(logicalView->name());
   EXPECT_FALSE(logicalView);  // ensure view removed after upgrade
-  EXPECT_TRUE(irs::file_utils::exists(result, viewDataPath.c_str()) && !result);  // ensure view directory not present
+  EXPECT_TRUE(irs::file_utils::exists(result, viewDataPath.c_str()) &&
+              !result);  // ensure view directory not present
 }
 
 TEST_F(IResearchFeatureTestDBServer, test_upgrade0_1_with_directory) {
@@ -2529,17 +2830,20 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade0_1_with_directory) {
   auto versionJson = arangodb::velocypack::Parser::fromJson(
       "{ \"version\": 0, \"tasks\": {} }");
 
-  server.getFeature<arangodb::DatabaseFeature>().enableUpgrade();  // skip IResearchView validation
+  server.getFeature<arangodb::DatabaseFeature>()
+      .enableUpgrade();  // skip IResearchView validation
 
   auto& dbPathFeature = server.getFeature<arangodb::DatabasePathFeature>();
-  arangodb::tests::setDatabasePath(dbPathFeature);  // ensure test data is stored in a unique directory
+  arangodb::tests::setDatabasePath(
+      dbPathFeature);  // ensure test data is stored in a unique directory
   auto versionFilename = StorageEngineMock::versionFilenameResult;
   auto versionFilenameRestore = irs::make_finally([&versionFilename]() -> void {
     StorageEngineMock::versionFilenameResult = versionFilename;
   });
   StorageEngineMock::versionFilenameResult =
       (irs::utf8_path(dbPathFeature.directory()) /= "version").string();
-  ASSERT_TRUE(irs::file_utils::mkdir(irs::utf8_path(dbPathFeature.directory()).c_str(), true));
+  ASSERT_TRUE(irs::file_utils::mkdir(
+      irs::utf8_path(dbPathFeature.directory()).c_str(), true));
   ASSERT_TRUE((arangodb::basics::VelocyPackHelper::velocyPackToFile(
       StorageEngineMock::versionFilenameResult, versionJson->slice(), false)));
 
@@ -2548,18 +2852,20 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade0_1_with_directory) {
   engine.views.clear();
 
   VPackBuilder bogus;
-  { 
+  {
     VPackArrayBuilder trxs(&bogus);
-    { 
+    {
       VPackArrayBuilder trx(&bogus);
-      { 
+      {
         VPackObjectBuilder op(&bogus);
-        bogus.add("a", VPackValue(12)); 
+        bogus.add("a", VPackValue(12));
       }
     }
   }
-  server.server().getFeature<arangodb::ClusterFeature>().agencyCache().applyTestTransaction(
-    bogus.slice());
+  server.server()
+      .getFeature<arangodb::ClusterFeature>()
+      .agencyCache()
+      .applyTestTransaction(bogus.slice());
 
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
                         testDBInfo(server.server()));
@@ -2567,42 +2873,56 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade0_1_with_directory) {
   ASSERT_FALSE(!logicalCollection);
   auto logicalView = vocbase.createView(viewJson->slice());
   ASSERT_FALSE(!logicalView);
-  auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
+  auto* view =
+      dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
   ASSERT_FALSE(!view);
   bool created;
   auto index = logicalCollection->createIndex(linkJson->slice(), created);
   ASSERT_TRUE(created);
   ASSERT_FALSE(!index);
-  auto link = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+  auto link =
+      std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
   ASSERT_FALSE(!link);
-  ASSERT_TRUE(view->link(link->self()).ok());  // link will not notify view in 'vocbase', hence notify manually
+  ASSERT_TRUE(
+      view->link(link->self()).ok());  // link will not notify view in
+                                       // 'vocbase', hence notify manually
 
   index->unload();  // release file handles
   bool result;
   auto linkDataPath = getPersistedPath1(*link);
-  EXPECT_TRUE(irs::file_utils::remove(linkDataPath.c_str()));  // remove link directory
+  EXPECT_TRUE(
+      irs::file_utils::remove(linkDataPath.c_str()));  // remove link directory
   auto viewDataPath = getPersistedPath0(*logicalView);
   EXPECT_TRUE(irs::file_utils::exists(result, viewDataPath.c_str()) && !result);
-  EXPECT_TRUE(irs::file_utils::mkdir(viewDataPath.c_str(), true));  // create view directory
+  EXPECT_TRUE(irs::file_utils::mkdir(viewDataPath.c_str(),
+                                     true));  // create view directory
   EXPECT_TRUE(irs::file_utils::exists(result, viewDataPath.c_str()) && result);
   arangodb::velocypack::Builder builder;
   builder.openObject();
-  EXPECT_TRUE(logicalView
-                  ->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence)
-                  .ok());
+  EXPECT_TRUE(
+      logicalView
+          ->properties(builder,
+                       arangodb::LogicalDataSource::Serialization::Persistence)
+          .ok());
   builder.close();
-  EXPECT_EQ(0, builder.slice().get("version").getNumber<uint32_t>());  // ensure 'version == 0 before upgrade
+  EXPECT_EQ(0,
+            builder.slice()
+                .get("version")
+                .getNumber<uint32_t>());  // ensure 'version == 0 before upgrade
 
-  EXPECT_TRUE(arangodb::methods::Upgrade::startup(vocbase, true, false).ok());  // run upgrade
-  //    EXPECT_TRUE(arangodb::methods::Upgrade::clusterBootstrap(vocbase).ok()); // run upgrade
+  EXPECT_TRUE(arangodb::methods::Upgrade::startup(vocbase, true, false)
+                  .ok());  // run upgrade
+  //    EXPECT_TRUE(arangodb::methods::Upgrade::clusterBootstrap(vocbase).ok());
+  //    // run upgrade
   logicalView = vocbase.lookupView(logicalView->name());
   EXPECT_FALSE(logicalView);  // ensure view removed after upgrade
-  EXPECT_TRUE(irs::file_utils::exists(result, viewDataPath.c_str()) && !result);  // ensure view directory removed after upgrade
+  EXPECT_TRUE(irs::file_utils::exists(result, viewDataPath.c_str()) &&
+              !result);  // ensure view directory removed after upgrade
 }
 
 TEST_F(IResearchFeatureTestDBServer, test_upgrade1_link_collectionName) {
   // test db-server (with directory)
-  //auto collectionJson = arangodb::velocypack::Parser::fromJson(
+  // auto collectionJson = arangodb::velocypack::Parser::fromJson(
   //    "{ \"name\": \"testCollection\", \"id\":999 }");
   auto viewJson = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"version\": 1 "
@@ -2613,19 +2933,24 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade1_link_collectionName) {
       "\"includeAllFields\": true }");
   // assume step 1 already finished
   auto versionJson = arangodb::velocypack::Parser::fromJson(
-      std::string("{ \"version\": ") + std::to_string(arangodb::methods::Version::current()) + ", \"tasks\": {\"upgradeArangoSearch0_1\":true} }");
+      std::string("{ \"version\": ") +
+      std::to_string(arangodb::methods::Version::current()) +
+      ", \"tasks\": {\"upgradeArangoSearch0_1\":true} }");
 
-  server.getFeature<arangodb::DatabaseFeature>().enableUpgrade();  // skip IResearchView validation
+  server.getFeature<arangodb::DatabaseFeature>()
+      .enableUpgrade();  // skip IResearchView validation
 
   auto& dbPathFeature = server.getFeature<arangodb::DatabasePathFeature>();
-  arangodb::tests::setDatabasePath(dbPathFeature);  // ensure test data is stored in a unique directory
+  arangodb::tests::setDatabasePath(
+      dbPathFeature);  // ensure test data is stored in a unique directory
   auto versionFilename = StorageEngineMock::versionFilenameResult;
   auto versionFilenameRestore = irs::make_finally([&versionFilename]() -> void {
     StorageEngineMock::versionFilenameResult = versionFilename;
   });
   StorageEngineMock::versionFilenameResult =
       (irs::utf8_path(dbPathFeature.directory()) /= "version").string();
-  ASSERT_TRUE(irs::file_utils::mkdir(irs::utf8_path(dbPathFeature.directory()).c_str(), true));
+  ASSERT_TRUE(irs::file_utils::mkdir(
+      irs::utf8_path(dbPathFeature.directory()).c_str(), true));
 
   auto& engine = *static_cast<StorageEngineMock*>(
       &server.getFeature<arangodb::EngineSelectorFeature>().engine());
@@ -2641,48 +2966,64 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade1_link_collectionName) {
   auto& clusterInfo =
       vocbase->server().getFeature<arangodb::ClusterFeature>().clusterInfo();
 
-  //server.createCollection("testDatabase", "999", "testCollection");
-  auto logicalCollectionCluster = clusterInfo.getCollection("testDatabase", "_analyzers");//createCollection(collectionJson->slice());
+  // server.createCollection("testDatabase", "999", "testCollection");
+  auto logicalCollectionCluster = clusterInfo.getCollection(
+      "testDatabase",
+      "_analyzers");  // createCollection(collectionJson->slice());
   ASSERT_FALSE(!logicalCollectionCluster);
 
   // now we have standart collections in ClusterInfo
   // we need corresponding collection in vocbase with the same id!
   // FIXME: remove this as soon as proper DBServer mock will be ready
   // and  createTestDatabase will actually fill collections in vocbase
-  std::string collectionJson = "{ \"isSystem\":true, \"name\": \"_analyzers\", \"id\":";
-  collectionJson.append(std::to_string(logicalCollectionCluster->id().id())).append("}");
-  auto logicalCollection = vocbase->createCollection(VPackParser::fromJson(collectionJson)->slice());
+  std::string collectionJson =
+      "{ \"isSystem\":true, \"name\": \"_analyzers\", \"id\":";
+  collectionJson.append(std::to_string(logicalCollectionCluster->id().id()))
+      .append("}");
+  auto logicalCollection =
+      vocbase->createCollection(VPackParser::fromJson(collectionJson)->slice());
 
   auto logicalView = vocbase->createView(viewJson->slice());
   ASSERT_FALSE(!logicalView);
-  auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
+  auto* view =
+      dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
   bool created;
   auto index = logicalCollection->createIndex(linkJson->slice(), created);
   ASSERT_TRUE(created);
   ASSERT_FALSE(!index);
-  auto link = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+  auto link =
+      std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
   ASSERT_FALSE(!link);
-  ASSERT_TRUE(view->link(link->self()).ok());  // link will not notify view in 'vocbase', hence notify manually
+  ASSERT_TRUE(
+      view->link(link->self()).ok());  // link will not notify view in
+                                       // 'vocbase', hence notify manually
 
   {
     auto indexes = logicalCollection->getIndexes();
     for (auto& index : indexes) {
-      if (index->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK) {
+      if (index->type() ==
+          arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK) {
         VPackBuilder builder;
-        index->toVelocyPack(builder, arangodb::Index::makeFlags(arangodb::Index::Serialize::Internals));
+        index->toVelocyPack(
+            builder,
+            arangodb::Index::makeFlags(arangodb::Index::Serialize::Internals));
         ASSERT_FALSE(builder.slice().hasKey("collectionName"));
       }
     }
   }
 
-  EXPECT_TRUE(arangodb::methods::Upgrade::startup(*vocbase, false, false).ok());  // run upgrade
+  EXPECT_TRUE(arangodb::methods::Upgrade::startup(*vocbase, false, false)
+                  .ok());  // run upgrade
 
   {
     auto indexes = logicalCollection->getIndexes();
     for (auto& index : indexes) {
-      if (index->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK) {
+      if (index->type() ==
+          arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK) {
         VPackBuilder builder;
-        index->toVelocyPack(builder, arangodb::Index::makeFlags(arangodb::Index::Serialize::Internals));
+        index->toVelocyPack(
+            builder,
+            arangodb::Index::makeFlags(arangodb::Index::Serialize::Internals));
         auto slice = builder.slice();
         ASSERT_TRUE(slice.hasKey("collectionName"));
         ASSERT_EQ("_analyzers", slice.get("collectionName").copyString());

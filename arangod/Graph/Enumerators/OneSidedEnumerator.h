@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -38,6 +38,10 @@
 
 namespace arangodb {
 
+namespace aql {
+class InputAqlItemRow;
+}
+
 namespace velocypack {
 class Builder;
 class HashedStringRef;
@@ -48,7 +52,7 @@ namespace graph {
 struct OneSidedEnumeratorOptions;
 class PathValidatorOptions;
 
-template <class Configuration>
+template<class Configuration>
 class OneSidedEnumerator : public TraversalEnumerator {
  public:
   using Step = typename Configuration::Step;  // public due to tracer access
@@ -86,12 +90,13 @@ class OneSidedEnumerator : public TraversalEnumerator {
    * @brief Reset to new source vertex.
    * This API uses string references, this class will not take responsibility
    * for the referenced data. It is caller's responsibility to retain the
-   * underlying data and make sure the StringRefs stay valid until next
+   * underlying data and make sure the strings stay valid until next
    * call of reset.
    *
    * @param source The source vertex to start the paths
    * @param depth The depth we're starting the search at
-   * @param weight The vertex ist starting to search at, only relevant for weighted searches
+   * @param weight The vertex ist starting to search at, only relevant for
+   * weighted searches
    * @param keepPathStore flag to determine that we should keep internas of last
    * run in memory. should be used if the last result is not processed yet, as
    * we will create invalid memory access in the handed out Paths.
@@ -132,19 +137,24 @@ class OneSidedEnumerator : public TraversalEnumerator {
    */
   auto stealStats() -> aql::TraversalStats override;
 
+  auto validatorUsesPrune() const -> bool override;
+  auto validatorUsesPostFilter() const -> bool override;
+
+  auto setValidatorContext(aql::InputAqlItemRow& inputRow) -> void override;
+
+  auto unprepareValidatorContext() -> void override;
+
  private:
   [[nodiscard]] auto searchDone() const -> bool;
 
   auto computeNeighbourhoodOfNextVertex() -> void;
 
-  // Ensure that we have fetched all vertices
-  // in the _results list.
-  // Otherwise we will not be able to
-  // generate the resulting path
+  // Ensure that we have fetched all vertices in the _results list.
+  // Otherwise, we will not be able to generate the resulting path
   auto fetchResults() -> void;
 
   // Ensure that we have more valid paths in the _result stock.
-  // May be a noop if _result is not empty.
+  // It may be a noop if _result is not empty.
   auto searchMoreResults() -> void;
   void clearProvider();
 

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -37,7 +37,6 @@
 #endif
 
 #include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::graph;
@@ -46,76 +45,140 @@ namespace arangodb::graph::enterprise {
 class SmartGraphStep;
 }  // namespace arangodb::graph::enterprise
 
-template <class ProviderType, class PathStoreType, class Step>
-SingleProviderPathResult<ProviderType, PathStoreType, Step>::SingleProviderPathResult(
-    Step step, ProviderType& provider, PathStoreType& store)
+template<class ProviderType, class PathStoreType, class Step>
+SingleProviderPathResult<ProviderType, PathStoreType,
+                         Step>::SingleProviderPathResult(Step step,
+                                                         ProviderType& provider,
+                                                         PathStoreType& store)
     : _step(std::move(step)), _provider(provider), _store(store) {}
 
-template <class ProviderType, class PathStoreType, class Step>
-auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::clear() -> void {
+template<class ProviderType, class PathStoreType, class Step>
+auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::clear()
+    -> void {
   _vertices.clear();
   _edges.clear();
 }
 
-template <class ProviderType, class PathStoreType, class Step>
-auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::appendVertex(typename Step::Vertex v)
-    -> void {
+template<class ProviderType, class PathStoreType, class Step>
+auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::appendVertex(
+    typename Step::Vertex v) -> void {
   _vertices.push_back(std::move(v));
 }
 
-template <class ProviderType, class PathStoreType, class Step>
-auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::prependVertex(typename Step::Vertex v)
-    -> void {
+template<class ProviderType, class PathStoreType, class Step>
+auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::prependVertex(
+    typename Step::Vertex v) -> void {
   _vertices.insert(_vertices.begin(), std::move(v));
 }
 
-template <class ProviderType, class PathStoreType, class Step>
-auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::appendEdge(typename Step::Edge e)
-    -> void {
+template<class ProviderType, class PathStoreType, class Step>
+auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::prependWeight(
+    double weight) -> void {
+  _weights.insert(_weights.begin(), weight);
+}
+
+template<class ProviderType, class PathStoreType, class Step>
+auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::appendEdge(
+    typename Step::Edge e) -> void {
   _edges.push_back(std::move(e));
 }
 
-template <class ProviderType, class PathStoreType, class Step>
-auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::prependEdge(typename Step::Edge e)
-    -> void {
+template<class ProviderType, class PathStoreType, class Step>
+auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::prependEdge(
+    typename Step::Edge e) -> void {
   _edges.insert(_edges.begin(), std::move(e));
 }
 
-template <class ProviderType, class PathStoreType, class Step>
-auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::toVelocyPack(
-    arangodb::velocypack::Builder& builder) -> void {
-  if (_vertices.empty()) {
-    _store.visitReversePath(_step, [&](Step const& s) -> bool {
-      prependVertex(s.getVertex());
-      if (s.getEdge().isValid()) {
-        prependEdge(s.getEdge());
-      }
-      return true;
-    });
-  }
-  VPackObjectBuilder path{&builder};
+template<class ProviderType, class PathStoreType, class Step>
+auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::populatePath()
+    -> void {
+  _store.visitReversePath(_step, [&](Step const& s) -> bool {
+    prependVertex(s.getVertex());
+    if (s.getEdge().isValid()) {
+      prependEdge(s.getEdge());
+      prependWeight(s.getWeight());
+    } else {
+      prependWeight(0);
+    };
+    return true;
+  });
+}
+
+template<class ProviderType, class PathStoreType, class Step>
+auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::
+    verticesToVelocyPack(arangodb::velocypack::Builder& builder) -> void {
+  TRI_ASSERT(builder.isOpenObject());
   {
     builder.add(VPackValue(StaticStrings::GraphQueryVertices));
     VPackArrayBuilder vertices{&builder};
     // Write first part of the Path
-    for (size_t i = 0; i < _vertices.size(); i++) {
-      _provider.addVertexToBuilder(_vertices[i], builder);
-    }
-  }
-
-  {
-    builder.add(VPackValue(StaticStrings::GraphQueryEdges));
-    VPackArrayBuilder edges(&builder);
-    // Write first part of the Path
-    for (size_t i = 0; i < _edges.size(); i++) {
-      _provider.addEdgeToBuilder(_edges[i], builder);
+    for (auto const& v : _vertices) {
+      _provider.addVertexToBuilder(v, builder);
     }
   }
 }
 
-template <class ProviderType, class PathStoreType, class Step>
-auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::isEmpty() const
-    -> bool {
+template<class ProviderType, class PathStoreType, class Step>
+auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::
+    edgesToVelocyPack(arangodb::velocypack::Builder& builder) -> void {
+  TRI_ASSERT(builder.isOpenObject());
+  {
+    builder.add(VPackValue(StaticStrings::GraphQueryEdges));
+    VPackArrayBuilder edges(&builder);
+    // Write first part of the Path
+    for (auto const& e : _edges) {
+      _provider.addEdgeToBuilder(e, builder);
+    }
+  }
+}
+
+template<class ProviderType, class PathStoreType, class Step>
+auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::
+    weightsToVelocyPack(velocypack::Builder& builder) -> void {
+  TRI_ASSERT(builder.isOpenObject());
+  {
+    builder.add(VPackValue(StaticStrings::GraphQueryWeights));
+    VPackArrayBuilder weights(&builder);
+    // Write first part of the Path
+    for (auto const& weight : _weights) {
+      builder.add(VPackValue(weight));
+    }
+  }
+}
+
+template<class ProviderType, class PathStoreType, class Step>
+auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::toVelocyPack(
+    arangodb::velocypack::Builder& builder) -> void {
+  if (_vertices.empty()) {
+    populatePath();
+  }
+  VPackObjectBuilder path{&builder};
+  verticesToVelocyPack(builder);
+  edgesToVelocyPack(builder);
+  weightsToVelocyPack(builder);
+}
+
+template<class ProviderType, class PathStoreType, class Step>
+auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::
+    lastVertexToVelocyPack(arangodb::velocypack::Builder& builder) -> void {
+  TRI_ASSERT(!_step.getVertex().getID().empty());
+  _provider.addVertexToBuilder(_step.getVertex(), builder);
+}
+
+template<class ProviderType, class PathStoreType, class Step>
+auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::
+    lastEdgeToVelocyPack(arangodb::velocypack::Builder& builder) -> void {
+  if (_step.isFirst()) {
+    builder.add(VPackSlice::nullSlice());
+  } else {
+    TRI_ASSERT(_step.getEdge().isValid());
+    _provider.addEdgeToBuilder(_step.getEdge(), builder);
+  }
+}
+
+template<class ProviderType, class PathStoreType, class Step>
+auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::isEmpty()
+    const -> bool {
   return false;
 }
 
@@ -124,29 +187,40 @@ using SingleServerProviderStep = ::arangodb::graph::SingleServerProviderStep;
 
 template class ::arangodb::graph::SingleProviderPathResult<
     ::arangodb::graph::SingleServerProvider<SingleServerProviderStep>,
-    ::arangodb::graph::PathStore<SingleServerProviderStep>, SingleServerProviderStep>;
+    ::arangodb::graph::PathStore<SingleServerProviderStep>,
+    SingleServerProviderStep>;
 
 template class ::arangodb::graph::SingleProviderPathResult<
-    ::arangodb::graph::ProviderTracer<::arangodb::graph::SingleServerProvider<SingleServerProviderStep>>,
-    ::arangodb::graph::PathStoreTracer<::arangodb::graph::PathStore<SingleServerProviderStep>>, SingleServerProviderStep>;
+    ::arangodb::graph::ProviderTracer<
+        ::arangodb::graph::SingleServerProvider<SingleServerProviderStep>>,
+    ::arangodb::graph::PathStoreTracer<
+        ::arangodb::graph::PathStore<SingleServerProviderStep>>,
+    SingleServerProviderStep>;
 
 #ifdef USE_ENTERPRISE
 template class ::arangodb::graph::SingleProviderPathResult<
     ::arangodb::graph::SingleServerProvider<enterprise::SmartGraphStep>,
-    ::arangodb::graph::PathStore<enterprise::SmartGraphStep>, enterprise::SmartGraphStep>;
+    ::arangodb::graph::PathStore<enterprise::SmartGraphStep>,
+    enterprise::SmartGraphStep>;
 
 template class ::arangodb::graph::SingleProviderPathResult<
-    ::arangodb::graph::ProviderTracer<::arangodb::graph::SingleServerProvider<enterprise::SmartGraphStep>>,
-    ::arangodb::graph::PathStoreTracer<::arangodb::graph::PathStore<enterprise::SmartGraphStep>>, enterprise::SmartGraphStep>;
+    ::arangodb::graph::ProviderTracer<
+        ::arangodb::graph::SingleServerProvider<enterprise::SmartGraphStep>>,
+    ::arangodb::graph::PathStoreTracer<
+        ::arangodb::graph::PathStore<enterprise::SmartGraphStep>>,
+    enterprise::SmartGraphStep>;
 #endif
 
 // TODO: check if cluster is needed here
 /* ClusterProvider Section */
 template class ::arangodb::graph::SingleProviderPathResult<
-    ::arangodb::graph::ClusterProvider, ::arangodb::graph::PathStore<::arangodb::graph::ClusterProvider::Step>,
-    ::arangodb::graph::ClusterProvider::Step>;
+    ::arangodb::graph::ClusterProvider<ClusterProviderStep>,
+    ::arangodb::graph::PathStore<::arangodb::graph::ClusterProviderStep>,
+    ::arangodb::graph::ClusterProviderStep>;
 
 template class ::arangodb::graph::SingleProviderPathResult<
-    ::arangodb::graph::ProviderTracer<::arangodb::graph::ClusterProvider>,
-    ::arangodb::graph::PathStoreTracer<::arangodb::graph::PathStore<::arangodb::graph::ClusterProvider::Step>>,
-    ::arangodb::graph::ClusterProvider::Step>;
+    ::arangodb::graph::ProviderTracer<
+        ::arangodb::graph::ClusterProvider<ClusterProviderStep>>,
+    ::arangodb::graph::PathStoreTracer<
+        ::arangodb::graph::PathStore<::arangodb::graph::ClusterProviderStep>>,
+    ::arangodb::graph::ClusterProviderStep>;

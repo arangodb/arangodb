@@ -26,8 +26,9 @@
 
 namespace arangodb::replication2::streams {
 
-template <StreamId Id, typename Type, typename Tags>
-auto StreamInformationBlock<stream_descriptor<Id, Type, Tags>>::getTransientContainer()
+template<StreamId Id, typename Type, typename Tags>
+auto StreamInformationBlock<
+    stream_descriptor<Id, Type, Tags>>::getTransientContainer()
     -> TransientType& {
   if (!std::holds_alternative<TransientType>(_container)) {
     _container = std::get<ContainerType>(_container).transient();
@@ -35,8 +36,9 @@ auto StreamInformationBlock<stream_descriptor<Id, Type, Tags>>::getTransientCont
   return std::get<TransientType>(_container);
 }
 
-template <StreamId Id, typename Type, typename Tags>
-auto StreamInformationBlock<stream_descriptor<Id, Type, Tags>>::getPersistentContainer()
+template<StreamId Id, typename Type, typename Tags>
+auto StreamInformationBlock<
+    stream_descriptor<Id, Type, Tags>>::getPersistentContainer()
     -> ContainerType& {
   if (!std::holds_alternative<ContainerType>(_container)) {
     _container = std::get<TransientType>(_container).persistent();
@@ -44,15 +46,16 @@ auto StreamInformationBlock<stream_descriptor<Id, Type, Tags>>::getPersistentCon
   return std::get<ContainerType>(_container);
 }
 
-template <StreamId Id, typename Type, typename Tags>
-auto StreamInformationBlock<stream_descriptor<Id, Type, Tags>>::appendEntry(LogIndex index,
-                                                                            Type t) {
+template<StreamId Id, typename Type, typename Tags>
+auto StreamInformationBlock<stream_descriptor<Id, Type, Tags>>::appendEntry(
+    LogIndex index, Type t) {
   getTransientContainer().push_back(EntryType{index, std::move(t)});
 }
 
-template <StreamId Id, typename Type, typename Tags>
-auto StreamInformationBlock<stream_descriptor<Id, Type, Tags>>::getWaitForResolveSet(LogIndex commitIndex)
-    -> std::multimap<LogIndex, futures::Promise<WaitForResult>> {
+template<StreamId Id, typename Type, typename Tags>
+auto StreamInformationBlock<stream_descriptor<Id, Type, Tags>>::
+    getWaitForResolveSet(LogIndex commitIndex)
+        -> std::multimap<LogIndex, futures::Promise<WaitForResult>> {
   WaitForQueue toBeResolved;
   auto const end = _waitForQueue.upper_bound(commitIndex);
   for (auto it = _waitForQueue.begin(); it != end;) {
@@ -61,13 +64,14 @@ auto StreamInformationBlock<stream_descriptor<Id, Type, Tags>>::getWaitForResolv
   return toBeResolved;
 }
 
-template <StreamId Id, typename Type, typename Tags>
-auto StreamInformationBlock<stream_descriptor<Id, Type, Tags>>::registerWaitFor(LogIndex index)
-    -> futures::Future<WaitForResult> {
-  return _waitForQueue.emplace(index, futures::Promise<WaitForResult>{})->second.getFuture();
+template<StreamId Id, typename Type, typename Tags>
+auto StreamInformationBlock<stream_descriptor<Id, Type, Tags>>::registerWaitFor(
+    LogIndex index) -> futures::Future<WaitForResult> {
+  return _waitForQueue.emplace(index, futures::Promise<WaitForResult>{})
+      ->second.getFuture();
 }
 
-template <StreamId Id, typename Type, typename Tags>
+template<StreamId Id, typename Type, typename Tags>
 auto StreamInformationBlock<stream_descriptor<Id, Type, Tags>>::getIterator()
     -> std::unique_ptr<Iterator> {
   auto log = getPersistentContainer();
@@ -86,7 +90,7 @@ auto StreamInformationBlock<stream_descriptor<Id, Type, Tags>>::getIterator()
     }
 
     [[nodiscard]] LogRange range() const noexcept override {
-      abort(); // TODO
+      abort();  // TODO
     }
 
     explicit Iterator(ContainerType log)
@@ -96,8 +100,10 @@ auto StreamInformationBlock<stream_descriptor<Id, Type, Tags>>::getIterator()
   return std::make_unique<Iterator>(std::move(log));
 }
 
-template <StreamId Id, typename Type, typename Tags>
-auto StreamInformationBlock<stream_descriptor<Id, Type, Tags>>::getIteratorRange(LogIndex start, LogIndex stop)
+template<StreamId Id, typename Type, typename Tags>
+auto StreamInformationBlock<
+    stream_descriptor<Id, Type, Tags>>::getIteratorRange(LogIndex start,
+                                                         LogIndex stop)
     -> std::unique_ptr<Iterator> {
   TRI_ASSERT(stop >= start);
 
@@ -112,7 +118,8 @@ auto StreamInformationBlock<stream_descriptor<Id, Type, Tags>>::getIteratorRange
 
     std::optional<StreamEntryView<Type>> next() override {
       if (_current != std::end(_log) && _current->first < _stop) {
-        auto view = std::make_pair(_current->first, std::cref(_current->second));
+        auto view =
+            std::make_pair(_current->first, std::cref(_current->second));
         ++_current;
         return view;
       }
@@ -124,10 +131,11 @@ auto StreamInformationBlock<stream_descriptor<Id, Type, Tags>>::getIteratorRange
 
     explicit Iterator(ContainerType log, LogIndex start, LogIndex stop)
         : _log(std::move(log)),
-          _current(std::lower_bound(std::begin(_log), std::end(_log), start,
-                                    [](StreamEntry<Type> const& left, LogIndex index) {
-                                      return left.first < index;
-                                    })),
+          _current(std::lower_bound(
+              std::begin(_log), std::end(_log), start,
+              [](StreamEntry<Type> const& left, LogIndex index) {
+                return left.first < index;
+              })),
           _start(start),
           _stop(stop) {}
   };

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -40,15 +40,18 @@ class AgentInterface {
     bool privileged() const { return _privileged; }
     bool discardStartup() const { return _discardStartup; }
     bool operator==(WriteMode const& other) const {
-      return other._discardStartup == _discardStartup && other._privileged == _privileged;
+      return other._discardStartup == _discardStartup &&
+             other._privileged == _privileged;
     }
     bool operator!=(WriteMode const& other) const {
-      return other._discardStartup != _discardStartup || other._privileged != _privileged;
+      return other._discardStartup != _discardStartup ||
+             other._privileged != _privileged;
     }
   };
 
   /// @brief Attempt write
-  virtual write_ret_t write(query_t const&, WriteMode const& mode = WriteMode()) = 0;
+  virtual write_ret_t write(query_t const&,
+                            WriteMode const& mode = WriteMode()) = 0;
 
   /// @brief Attempt write
   virtual trans_ret_t transient(query_t const&) = 0;

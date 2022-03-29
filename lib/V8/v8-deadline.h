@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,7 +31,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 bool isExecutionDeadlineReached(v8::Isolate* isolate);
 double correctTimeoutToExecutionDeadlineS(double timeoutSeconds);
-std::chrono::milliseconds correctTimeoutToExecutionDeadline(std::chrono::milliseconds timeout);
+std::chrono::milliseconds correctTimeoutToExecutionDeadline(
+    std::chrono::milliseconds timeout);
 
 void TRI_InitV8Deadline(v8::Isolate* isolate);
-

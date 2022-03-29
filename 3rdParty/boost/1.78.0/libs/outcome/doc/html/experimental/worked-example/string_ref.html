@@ -1,0 +1,51 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html><meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>String refs - Boost.Outcome documentation</title>
+<link rel="stylesheet" href="../../css/boost.css" type="text/css">
+<meta name="generator" content="Hugo 0.52 with Boostdoc theme">
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+
+<link rel="icon" href="../../images/favicon.ico" type="image/ico"/>
+<body><div class="spirit-nav">
+<a accesskey="p" href="../../experimental/worked-example/constructor.html"><img src="../../images/prev.png" alt="Prev"></a>
+    <a accesskey="u" href="../../experimental/worked-example.html"><img src="../../images/up.png" alt="Up"></a>
+    <a accesskey="h" href="../../index.html"><img src="../../images/home.png" alt="Home"></a><a accesskey="n" href="../../experimental/worked-example/message.html"><img src="../../images/next.png" alt="Next"></a></div><div id="content">
+  <div class="titlepage"><div><div><h1 style="clear: both">String refs</h1></div></div></div>
+  <p><code>&lt;system_error2&gt;</code> does not use <code>std::string</code> to return possibly statically
+or dynamically allocated strings, and thus avoids dragging in a lot of the
+standard library which impacts build times.</p>
+
+<p>Instead status code domains have a <a href="https://ned14.github.io/status-code/doc_status_code_domain.html#standardese-system_error2__status_code_domain__string_ref"><code>string_ref</code></a>,
+which has a polymorphic implementation which may or may not <a href="https://ned14.github.io/status-code/doc_status_code_domain.html#standardese-system_error2__status_code_domain__atomic_refcounted_string_ref">manage a dynamic
+memory allocation using an atomic reference counter</a>. Due to this polymorphism, you don&rsquo;t
+need to worry which implementation is actually in use under the bonnet
+when you pass around <code>string_ref</code> instances.</p>
+
+<p><code>string_ref</code> provides the same member functions as a <code>span&lt;const char&gt;</code>,
+and so participates ordinarily in STL algorithms and containers. In
+particular, if you need to string search or slice it, you can construct a
+<code>string_view</code> on top easily.</p>
+
+<div class="code-snippet"><div class="highlight"><pre class="chroma"><code class="language-c++" data-lang="c++">  <span class="c1">// Return the name of our custom code domain
+</span><span class="c1"></span>  <span class="k">virtual</span> <span class="n">_base</span><span class="o">::</span><span class="n">string_ref</span> <span class="n">name</span><span class="p">()</span> <span class="k">const</span> <span class="k">noexcept</span> <span class="k">override</span> <span class="k">final</span>  <span class="c1">// NOLINT
+</span><span class="c1"></span>  <span class="p">{</span>
+    <span class="k">static</span> <span class="n">string_ref</span> <span class="n">v</span><span class="p">(</span><span class="s">&#34;file i/o error domain&#34;</span><span class="p">);</span>
+    <span class="k">return</span> <span class="n">v</span><span class="p">;</span>  <span class="c1">// NOLINT
+</span><span class="c1"></span>  <span class="p">}</span>
+</code></pre></div><a href="https://github.com/boostorg/outcome/tree/master/doc/src/snippets/experimental_status_code.cpp#L103" class="code-snippet-url" target="_blank">View this code on Github</a></div>
+
+
+<p>Now you understand what <code>string_ref</code> does, returning the name of the
+status code domain is self describing. Note we use the non-managing
+constructor of <code>string_ref</code>, as the string <code>&quot;file i/o error domain&quot;</code>
+is statically stored. We cache the returned value locally in static
+storage.</p>
+
+
+        </div><p><small>Last revised: January 26, 2019 at 23:38:56 UTC</small></p>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../../experimental/worked-example/constructor.html"><img src="../../images/prev.png" alt="Prev"></a>
+    <a accesskey="u" href="../../experimental/worked-example.html"><img src="../../images/up.png" alt="Up"></a>
+    <a accesskey="h" href="../../index.html"><img src="../../images/home.png" alt="Home"></a><a accesskey="n" href="../../experimental/worked-example/message.html"><img src="../../images/next.png" alt="Next"></a></div></body>
+</html>

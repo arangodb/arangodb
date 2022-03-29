@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,13 +26,36 @@
 #include "ApplicationFeatures/ApplicationFeaturePhase.h"
 
 namespace arangodb {
+class EncryptionFeature;
+class SslFeature;
+class HttpEndpointProvider;
 namespace application_features {
+class GreetingsFeaturePhase;
 
 class BasicFeaturePhaseClient : public ApplicationFeaturePhase {
  public:
-  explicit BasicFeaturePhaseClient(ApplicationServer& server);
+  static constexpr std::string_view name() noexcept {
+    return "BasicsPhaseClient";
+  }
+
+  template<typename Server>
+  explicit BasicFeaturePhaseClient(Server& server)
+      : ApplicationFeaturePhase(server, *this) {
+    setOptional(false);
+    if constexpr (Server::template contains<GreetingsFeaturePhase>()) {
+      startsAfter<GreetingsFeaturePhase, Server>();
+    }
+    if constexpr (Server::template contains<EncryptionFeature>()) {
+      startsAfter<EncryptionFeature, Server>();
+    }
+    if constexpr (Server::template contains<SslFeature>()) {
+      startsAfter<SslFeature, Server>();
+    }
+    if constexpr (Server::template contains<HttpEndpointProvider>()) {
+      startsAfter<HttpEndpointProvider, Server>();
+    }
+  }
 };
 
 }  // namespace application_features
 }  // namespace arangodb
-

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,8 +25,8 @@
 #pragma once
 
 #include <rocksdb/types.h>
-#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Common.h"
+#include "RestServer/arangod.h"
 #include "StorageEngine/StorageEngine.h"
 
 namespace rocksdb {
@@ -36,11 +36,11 @@ class TransactionDB;
 
 namespace arangodb {
 
-class RocksDBRecoveryManager final : public application_features::ApplicationFeature {
+class RocksDBRecoveryManager final : public ArangodFeature {
  public:
-  explicit RocksDBRecoveryManager(application_features::ApplicationServer& server);
+  static constexpr std::string_view name() { return "RocksDBRecoveryManager"; }
 
-  static std::string featureName() { return "RocksDBRecoveryManager"; }
+  explicit RocksDBRecoveryManager(Server& server);
 
   void start() override;
 
@@ -51,9 +51,7 @@ class RocksDBRecoveryManager final : public application_features::ApplicationFea
   }
 
   /// @brief current recovery tick
-  rocksdb::SequenceNumber recoveryTick() const noexcept {
-    return _tick;
-  }
+  rocksdb::SequenceNumber recoveryTick() const noexcept { return _tick; }
 
  private:
   Result parseRocksWAL();
@@ -67,4 +65,3 @@ class RocksDBRecoveryManager final : public application_features::ApplicationFea
 };
 
 }  // namespace arangodb
-

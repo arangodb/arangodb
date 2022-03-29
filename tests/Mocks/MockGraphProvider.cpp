@@ -29,11 +29,11 @@
 #include "Aql/QueryContext.h"
 #include "Futures/Future.h"
 #include "Futures/Utilities.h"
+#include "Aql/InputAqlItemRow.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/HashedStringRef.h>
 #include <velocypack/Value.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::tests;
@@ -42,7 +42,8 @@ using namespace arangodb::tests::graph;
 namespace arangodb {
 namespace tests {
 namespace graph {
-auto operator<<(std::ostream& out, MockGraphProvider::Step const& step) -> std::ostream& {
+auto operator<<(std::ostream& out, MockGraphProvider::Step const& step)
+    -> std::ostream& {
   out << step._vertex.getID();
   return out;
 }
@@ -51,21 +52,26 @@ auto operator<<(std::ostream& out, MockGraphProvider::Step const& step) -> std::
 }  // namespace arangodb
 
 MockGraphProvider::Step::Step(VertexType v, bool isProcessable)
-    : arangodb::graph::BaseStep<Step>{}, _vertex(v), _edge({}), _isProcessable(isProcessable) {}
+    : arangodb::graph::BaseStep<Step>{},
+      _vertex(v),
+      _edge({}),
+      _isProcessable(isProcessable) {}
 
-MockGraphProvider::Step::Step(size_t prev, VertexType v, EdgeType e, bool isProcessable)
+MockGraphProvider::Step::Step(size_t prev, VertexType v, MockEdgeType e,
+                              bool isProcessable)
     : arangodb::graph::BaseStep<Step>{prev},
       _vertex(v),
       _edge(e),
       _isProcessable(isProcessable) {}
 
-MockGraphProvider::Step::Step(size_t prev, VertexType v, bool isProcessable, size_t depth)
+MockGraphProvider::Step::Step(size_t prev, VertexType v, bool isProcessable,
+                              size_t depth)
     : arangodb::graph::BaseStep<Step>{prev, depth},
       _vertex(v),
       _edge({}),
       _isProcessable(isProcessable) {}
 
-MockGraphProvider::Step::Step(size_t prev, VertexType v, EdgeType e,
+MockGraphProvider::Step::Step(size_t prev, VertexType v, MockEdgeType e,
                               bool isProcessable, size_t depth)
     : arangodb::graph::BaseStep<Step>{prev, depth},
       _vertex(v),
@@ -75,7 +81,10 @@ MockGraphProvider::Step::Step(size_t prev, VertexType v, EdgeType e,
 MockGraphProvider::MockGraphProvider(arangodb::aql::QueryContext& queryContext,
                                      MockGraphProviderOptions opts,
                                      arangodb::ResourceMonitor&)
-    : _trx(queryContext.newTrxContext()), _reverse(opts.reverse()), _looseEnds(opts.looseEnds()), _stats{} {
+    : _trx(queryContext.newTrxContext()),
+      _reverse(opts.reverse()),
+      _looseEnds(opts.looseEnds()),
+      _stats{} {
   for (auto const& it : opts.data().edges()) {
     _fromIndex[it._from].push_back(it);
     _toIndex[it._to].push_back(it);
@@ -95,7 +104,8 @@ auto MockGraphProvider::decideProcessable() const -> bool {
   }
 }
 
-auto MockGraphProvider::startVertex(VertexType v, size_t depth, double weight) -> Step {
+auto MockGraphProvider::startVertex(VertexType v, size_t depth, double weight)
+    -> Step {
   LOG_TOPIC("78156", TRACE, Logger::GRAPHS)
       << "<MockGraphProvider> Start Vertex:" << v;
   TRI_ASSERT(weight == 0.0);  // Not handled yet
@@ -127,10 +137,11 @@ auto MockGraphProvider::expand(Step const& step, size_t previous,
 
 auto MockGraphProvider::clear() -> void {}
 
-auto MockGraphProvider::addVertexToBuilder(const Step::Vertex& vertex,
-                                           arangodb::velocypack::Builder& builder) -> void {
+auto MockGraphProvider::addVertexToBuilder(
+    const Step::Vertex& vertex, arangodb::velocypack::Builder& builder)
+    -> void {
   std::string id = vertex.getID().toString();
-  _stats.addScannedIndex(1);
+  _stats.incrScannedIndex(1);
   builder.openObject();
   builder.add(StaticStrings::KeyString, VPackValue(id.substr(2)));
   builder.add(StaticStrings::IdString, VPackValue(id));
@@ -138,7 +149,8 @@ auto MockGraphProvider::addVertexToBuilder(const Step::Vertex& vertex,
 }
 
 auto MockGraphProvider::addEdgeToBuilder(const Step::Edge& edge,
-                                         arangodb::velocypack::Builder& builder) -> void {
+                                         arangodb::velocypack::Builder& builder)
+    -> void {
   std::string fromId = edge.getEdge()._from;
   std::string toId = edge.getEdge()._to;
   std::string keyId = fromId.substr(2) + "-" + toId.substr(2);
@@ -159,12 +171,14 @@ auto MockGraphProvider::expand(Step const& source, size_t previousIndex)
   std::vector<Step> result{};
 
   LOG_TOPIC("78157", TRACE, Logger::GRAPHS)
-      << "<MockGraphProvider> Searching: " << source.getVertex().getID().toString();
+      << "<MockGraphProvider> Searching: "
+      << source.getVertex().getID().toString();
 
   if (_reverse) {
     LOG_TOPIC("78157", TRACE, Logger::GRAPHS)
         << "<MockGraphProvider - reverse> _toIndex size: " << _toIndex.size();
-    if (_toIndex.find(source.getVertex().getID().toString()) != _toIndex.end()) {
+    if (_toIndex.find(source.getVertex().getID().toString()) !=
+        _toIndex.end()) {
       for (auto const& edge : _toIndex[source.getVertex().getID().toString()]) {
         VPackHashedStringRef fromH{edge._from.c_str(),
                                    static_cast<uint32_t>(edge._from.length())};
@@ -178,9 +192,12 @@ auto MockGraphProvider::expand(Step const& source, size_t previousIndex)
     }
   } else {
     LOG_TOPIC("78157", TRACE, Logger::GRAPHS)
-        << "<MockGraphProvider - default> _fromIndex size: " << _fromIndex.size();
-    if (_fromIndex.find(source.getVertex().getID().toString()) != _fromIndex.end()) {
-      for (auto const& edge : _fromIndex[source.getVertex().getID().toString()]) {
+        << "<MockGraphProvider - default> _fromIndex size: "
+        << _fromIndex.size();
+    if (_fromIndex.find(source.getVertex().getID().toString()) !=
+        _fromIndex.end()) {
+      for (auto const& edge :
+           _fromIndex[source.getVertex().getID().toString()]) {
         VPackHashedStringRef toH{edge._to.c_str(),
                                  static_cast<uint32_t>(edge._to.length())};
         result.push_back(Step{previousIndex, toH, edge, decideProcessable(),
@@ -194,11 +211,19 @@ auto MockGraphProvider::expand(Step const& source, size_t previousIndex)
   }
   LOG_TOPIC("78160", TRACE, Logger::GRAPHS)
       << "<MockGraphProvider> Expansion length: " << result.size();
-  _stats.addScannedIndex(result.size());
+  _stats.incrScannedIndex(result.size());
   return result;
 }
 
 void MockGraphProvider::prepareIndexExpressions(aql::Ast* ast) {
+  // Nothing to do here. We do not have any special index conditions
+}
+
+void MockGraphProvider::prepareContext(aql::InputAqlItemRow input) {
+  // Nothing to do here. We do not have any special index conditions
+}
+
+void MockGraphProvider::unPrepareContext() {
   // Nothing to do here. We do not have any special index conditions
 }
 

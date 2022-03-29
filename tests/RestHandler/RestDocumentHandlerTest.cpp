@@ -28,14 +28,23 @@
 #include "Mocks/Servers.h"
 
 #include "Basics/StaticStrings.h"
+#include "Cluster/ServerState.h"
 #include "RestHandler/RestDocumentHandler.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 setup / tear-down
-// -----------------------------------------------------------------------------
+using namespace arangodb;
+
+struct RoleChanger {
+  explicit RoleChanger(ServerState::RoleEnum newRole)
+      : oldRole(ServerState::instance()->getRole()) {
+    ServerState::instance()->setRole(newRole);
+  }
+  ~RoleChanger() { ServerState::instance()->setRole(oldRole); }
+  ServerState::RoleEnum const oldRole;
+};
 
 class RestDocumentHandlerTestBase
-    : public arangodb::tests::LogSuppressor<arangodb::Logger::CLUSTER, arangodb::LogLevel::WARN> {
+    : public arangodb::tests::LogSuppressor<arangodb::Logger::CLUSTER,
+                                            arangodb::LogLevel::WARN> {
  protected:
   arangodb::tests::mocks::MockRestServer server;
 
@@ -44,7 +53,8 @@ class RestDocumentHandlerTestBase
   ~RestDocumentHandlerTestBase() = default;
 };
 
-class RestDocumentHandlerTest : public RestDocumentHandlerTestBase, public ::testing::Test {
+class RestDocumentHandlerTest : public RestDocumentHandlerTestBase,
+                                public ::testing::Test {
  protected:
   RestDocumentHandlerTest() : RestDocumentHandlerTestBase{} {}
 
@@ -69,6 +79,19 @@ TEST_P(RestDocumentHandlerLaneTest, test_request_lane_user) {
   auto fakeResponse = std::make_unique<GeneralResponseMock>();
   fakeRequest->setRequestType(_type);
 
+  RoleChanger roleChanger(ServerState::ROLE_DBSERVER);
+  arangodb::RestDocumentHandler testee(server.server(), fakeRequest.release(),
+                                       fakeResponse.release());
+  ASSERT_EQ(arangodb::RequestLane::CLIENT_SLOW, testee.lane());
+}
+
+TEST_P(RestDocumentHandlerLaneTest, test_request_lane_coordinator) {
+  auto& vocbase = server.getSystemDatabase();
+  auto fakeRequest = std::make_unique<GeneralRequestMock>(vocbase);
+  auto fakeResponse = std::make_unique<GeneralResponseMock>();
+  fakeRequest->setRequestType(_type);
+
+  RoleChanger roleChanger(ServerState::ROLE_COORDINATOR);
   arangodb::RestDocumentHandler testee(server.server(), fakeRequest.release(),
                                        fakeResponse.release());
   ASSERT_EQ(arangodb::RequestLane::CLIENT_SLOW, testee.lane());
@@ -79,17 +102,25 @@ TEST_P(RestDocumentHandlerLaneTest, test_request_lane_replication) {
   auto fakeRequest = std::make_unique<GeneralRequestMock>(vocbase);
   auto fakeResponse = std::make_unique<GeneralResponseMock>();
   fakeRequest->setRequestType(_type);
-  fakeRequest->values().emplace(arangodb::StaticStrings::IsSynchronousReplicationString,
-                                "abc");
+  fakeRequest->values().emplace(
+      arangodb::StaticStrings::IsSynchronousReplicationString, "abc");
 
+  RoleChanger roleChanger(ServerState::ROLE_DBSERVER);
   arangodb::RestDocumentHandler testee(server.server(), fakeRequest.release(),
                                        fakeResponse.release());
-  ASSERT_EQ(arangodb::RequestLane::SERVER_SYNCHRONOUS_REPLICATION, testee.lane());
+
+  if (_type == arangodb::rest::RequestType::GET) {
+    ASSERT_EQ(arangodb::RequestLane::CLIENT_SLOW, testee.lane());
+  } else {
+    ASSERT_EQ(arangodb::RequestLane::SERVER_SYNCHRONOUS_REPLICATION,
+              testee.lane());
+  }
 }
 
-INSTANTIATE_TEST_CASE_P(RequestTypeVariations, RestDocumentHandlerLaneTest,
-                        ::testing::Values(arangodb::rest::RequestType::GET,
-                                          arangodb::rest::RequestType::PUT,
-                                          arangodb::rest::RequestType::POST,
-                                          arangodb::rest::RequestType::DELETE_REQ,
-                                          arangodb::rest::RequestType::PATCH));
+INSTANTIATE_TEST_CASE_P(
+    RequestTypeVariations, RestDocumentHandlerLaneTest,
+    ::testing::Values(arangodb::rest::RequestType::GET,
+                      arangodb::rest::RequestType::PUT,
+                      arangodb::rest::RequestType::POST,
+                      arangodb::rest::RequestType::DELETE_REQ,
+                      arangodb::rest::RequestType::PATCH));

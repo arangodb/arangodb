@@ -1,0 +1,54 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html><meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>The constructor - Boost.Outcome documentation</title>
+<link rel="stylesheet" href="../../css/boost.css" type="text/css">
+<meta name="generator" content="Hugo 0.52 with Boostdoc theme">
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+
+<link rel="icon" href="../../images/favicon.ico" type="image/ico"/>
+<body><div class="spirit-nav">
+<a accesskey="p" href="../../experimental/worked-example/value_type.html"><img src="../../images/prev.png" alt="Prev"></a>
+    <a accesskey="u" href="../../experimental/worked-example.html"><img src="../../images/up.png" alt="Up"></a>
+    <a accesskey="h" href="../../index.html"><img src="../../images/home.png" alt="Home"></a><a accesskey="n" href="../../experimental/worked-example/string_ref.html"><img src="../../images/next.png" alt="Next"></a></div><div id="content">
+  <div class="titlepage"><div><div><h1 style="clear: both">The constructor</h1></div></div></div>
+  <p>Code domains are 100% constexpr to construct and destruct, as are status codes.
+This enables the compiler to 100% instantiate both only in its mind, and to emit
+zero code and thus zero overhead.</p>
+
+<p>Unfortunately it also means that it must be possible for each domain to be instantiated an infinite
+number of times, and being 100% in constexpr, any instances never have a unique
+address in memory either. Thus we cannot compare domains for equivalence using
+their address in memory, as 
+<a href="https://en.cppreference.com/w/cpp/error/error_category" class="api-reference" target="_blank"><i class="fa fa-book" aria-hidden="true"></i> <code>std::error_category</code></a>
+ does.</p>
+
+<p>We solve this by using a <em>very</em> random 64 bit number taken from a hard random
+number source. The website <a href="https://www.random.org/cgi-bin/randbyte?nbytes=8&amp;format=h">https://www.random.org/cgi-bin/randbyte?nbytes=8&amp;format=h</a>
+is strongly suggested as the source for this number.</p>
+
+<p>(In case you are wondering about the chance of collision for a 64 bit integer, SG14 estimated that
+approximately 190,000 separate domains would need to exist in a single process
+for there to be a 0.00000001% probability of collision if the random number
+source is very random)</p>
+
+<div class="code-snippet"><div class="highlight"><pre class="chroma"><code class="language-c++" data-lang="c++">  <span class="c1">// unique id must be from a hard random number source
+</span><span class="c1"></span>  <span class="c1">// Use https://www.random.org/cgi-bin/randbyte?nbytes=8&amp;format=h to get a hard random 64 bit id.
+</span><span class="c1"></span>  <span class="c1">// Do NOT make up your own value. Do NOT use zero.
+</span><span class="c1"></span>  <span class="k">constexpr</span> <span class="k">explicit</span> <span class="nf">_file_io_error_domain</span><span class="p">(</span><span class="k">typename</span> <span class="n">_base</span><span class="o">::</span><span class="n">unique_id_type</span> <span class="n">id</span> <span class="o">=</span> <span class="mh">0x230f170194fcc6c7</span><span class="p">)</span> <span class="k">noexcept</span> <span class="o">:</span> <span class="n">_base</span><span class="p">(</span><span class="n">id</span><span class="p">)</span> <span class="p">{}</span>
+  <span class="k">static</span> <span class="kr">inline</span> <span class="k">constexpr</span> <span class="k">const</span> <span class="n">_file_io_error_domain</span> <span class="o">&amp;</span><span class="n">get</span><span class="p">();</span>
+</code></pre></div><a href="https://github.com/boostorg/outcome/tree/master/doc/src/snippets/experimental_status_code.cpp#L96" class="code-snippet-url" target="_blank">View this code on Github</a></div>
+
+
+<p>A nice side effect of this approach is that custom error domains in header-only
+libraries are safe, unlike custom <code>&lt;system_error&gt;</code> error categories. Boost.System&rsquo;s
+error categories can now opt into this same safe mechanism in order to also be
+safe in header only library use cases.</p>
+
+
+        </div><p><small>Last revised: January 26, 2019 at 23:38:56 UTC</small></p>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../../experimental/worked-example/value_type.html"><img src="../../images/prev.png" alt="Prev"></a>
+    <a accesskey="u" href="../../experimental/worked-example.html"><img src="../../images/up.png" alt="Up"></a>
+    <a accesskey="h" href="../../index.html"><img src="../../images/home.png" alt="Home"></a><a accesskey="n" href="../../experimental/worked-example/string_ref.html"><img src="../../images/next.png" alt="Next"></a></div></body>
+</html>

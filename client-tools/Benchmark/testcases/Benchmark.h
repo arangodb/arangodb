@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,9 +28,10 @@
 
 namespace arangodb::arangobench {
 
-template <class Derived>
+template<class Derived>
 struct Benchmark : public BenchmarkOperation {
-  explicit Benchmark(BenchFeature& arangobench) : BenchmarkOperation(arangobench) {}
+  explicit Benchmark(BenchFeature& arangobench)
+      : BenchmarkOperation(arangobench) {}
 
   static void registerTestcase() {
     registerBenchmark(Derived::name(), [](BenchFeature& arangobench) {

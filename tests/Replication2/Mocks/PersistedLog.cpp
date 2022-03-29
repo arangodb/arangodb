@@ -9,7 +9,8 @@ using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_log;
 using namespace arangodb::replication2::test;
 
-auto MockLog::insert(PersistedLogIterator& iter, WriteOptions const&) -> arangodb::Result {
+auto MockLog::insert(PersistedLogIterator& iter, WriteOptions const& opts)
+    -> arangodb::Result {
   auto lastIndex = LogIndex{0};
 
   while (auto entry = iter.next()) {
@@ -18,12 +19,15 @@ auto MockLog::insert(PersistedLogIterator& iter, WriteOptions const&) -> arangod
 
     TRI_ASSERT(entry->logIndex() > lastIndex);
     lastIndex = entry->logIndex();
+    if (opts.waitForSync) {
+      _writtenWithWaitForSync.insert(entry->logIndex());
+    }
   }
 
   return {};
 }
 
-template <typename I>
+template<typename I>
 struct MockLogContainerIterator : PersistedLogIterator {
   MockLogContainerIterator(MockLog::storeType store, LogIndex start)
       : _store(std::move(store)),
@@ -44,11 +48,14 @@ struct MockLogContainerIterator : PersistedLogIterator {
   I _end;
 };
 
-auto MockLog::read(replication2::LogIndex start) -> std::unique_ptr<PersistedLogIterator> {
-  return std::make_unique<MockLogContainerIterator<iteratorType>>(_storage, start);
+auto MockLog::read(replication2::LogIndex start)
+    -> std::unique_ptr<PersistedLogIterator> {
+  return std::make_unique<MockLogContainerIterator<iteratorType>>(_storage,
+                                                                  start);
 }
 
-auto MockLog::removeFront(replication2::LogIndex stop) -> futures::Future<Result> {
+auto MockLog::removeFront(replication2::LogIndex stop)
+    -> futures::Future<Result> {
   _storage.erase(_storage.begin(), _storage.lower_bound(stop));
   return Result{};
 }
@@ -72,7 +79,7 @@ void MockLog::setEntry(replication2::LogIndex idx, replication2::LogTerm term,
 MockLog::MockLog(replication2::LogId id) : MockLog(id, {}) {}
 
 MockLog::MockLog(replication2::LogId id, MockLog::storeType storage)
-    : PersistedLog(id), _storage(std::move(storage)) {}
+    : PersistedLog(GlobalLogIdentifier("", id)), _storage(std::move(storage)) {}
 
 AsyncMockLog::AsyncMockLog(replication2::LogId id)
     : MockLog(id), _asyncWorker([this] { this->runWorker(); }) {}
@@ -89,7 +96,8 @@ auto MockLog::insertAsync(std::unique_ptr<PersistedLogIterator> iter,
 }
 
 auto AsyncMockLog::insertAsync(std::unique_ptr<PersistedLogIterator> iter,
-                               WriteOptions const& opts) -> futures::Future<Result> {
+                               WriteOptions const& opts)
+    -> futures::Future<Result> {
   auto entry = std::make_shared<QueueEntry>();
   entry->opts = opts;
   entry->iter = std::move(iter);

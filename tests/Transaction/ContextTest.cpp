@@ -35,7 +35,6 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Parser.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "../IResearch/common.h"
 #include "gtest/gtest.h"
@@ -100,7 +99,8 @@ TEST_F(TransactionContextTest, StandaloneSmartContext) {
 
   auto ctx = std::make_shared<transaction::StandaloneContext>(vocbase);
   transaction::Options trxOpts;
-  transaction::Methods trx{ctx, {}, std::vector<std::string>{cname}, {}, trxOpts};
+  transaction::Methods trx{
+      ctx, {}, std::vector<std::string>{cname}, {}, trxOpts};
 
   Result res = trx.begin();
   ASSERT_TRUE(res.ok());
@@ -116,12 +116,9 @@ TEST_F(TransactionContextTest, StandaloneSmartContext) {
   ASSERT_TRUE(trxSlice.isArray());
   ASSERT_EQ(trxSlice.length(), 2);
 
-  aql::QueryString queryString{R"aql(
-    FOR doc IN @@collection
-      FILTER doc.hello != ''
-      SORT doc.hello
-      RETURN doc
-  )aql"};
+  aql::QueryString queryString{
+      std::string_view("FOR doc IN @@collection FILTER doc.hello != '' SORT "
+                       "doc.hello RETURN doc")};
 
   auto bindVars = std::make_shared<VPackBuilder>();
   bindVars->add(VPackValue(VPackValueType::Object));

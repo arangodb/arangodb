@@ -29,7 +29,6 @@
 #include "IResearch/VelocyPackHelper.h"
 #include "Geo/GeoJson.h"
 #include "velocypack/Parser.h"
-#include "velocypack/velocypack-aliases.h"
 
 using namespace arangodb;
 using namespace arangodb::iresearch;
@@ -39,7 +38,8 @@ using namespace arangodb::iresearch;
 // -----------------------------------------------------------------------------
 
 TEST(GeoOptionsTest, constants) {
-  static_assert(S2RegionCoverer::Options::kDefaultMaxCells == GeoOptions::MAX_CELLS);
+  static_assert(S2RegionCoverer::Options::kDefaultMaxCells ==
+                GeoOptions::MAX_CELLS);
   static_assert(0 == GeoOptions::MIN_LEVEL);
   static_assert(S2CellId::kMaxLevel == GeoOptions::MAX_LEVEL);
   static_assert(20 == GeoOptions::DEFAULT_MAX_CELLS);
@@ -131,7 +131,6 @@ TEST(GeoPointAnalyzerTest, ctor) {
     }
     ASSERT_EQ(irs::type<GeoPointAnalyzer>::id(), a.type());
     ASSERT_FALSE(a.next());
-
   }
 
   {
@@ -253,7 +252,8 @@ TEST(GeoPointAnalyzerTest, tokenizePointFromArray) {
 
 TEST(GeoPointAnalyzerTest, tokenizePointFromObject) {
   auto json = VPackParser::fromJson(R"([ 63.57789956676574, 53.72314453125 ])");
-  auto jsonObject = VPackParser::fromJson(R"({ "lat": 63.57789956676574, "lon": 53.72314453125 })");
+  auto jsonObject = VPackParser::fromJson(
+      R"({ "lat": 63.57789956676574, "lon": 53.72314453125 })");
 
   geo::ShapeContainer shape;
   ASSERT_TRUE(shape.parseCoordinates(json->slice(), false).ok());
@@ -333,7 +333,8 @@ TEST(GeoPointAnalyzerTest, tokenizePointFromObject) {
 
 TEST(GeoPointAnalyzerTest, tokenizePointFromObjectComplexPath) {
   auto json = VPackParser::fromJson(R"([ 63.57789956676574, 53.72314453125 ])");
-  auto jsonObject = VPackParser::fromJson(R"({ "subObj": { "lat": 63.57789956676574, "lon": 53.72314453125 } })");
+  auto jsonObject = VPackParser::fromJson(
+      R"({ "subObj": { "lat": 63.57789956676574, "lon": 53.72314453125 } })");
 
   geo::ShapeContainer shape;
   ASSERT_TRUE(shape.parseCoordinates(json->slice(), false).ok());
@@ -481,7 +482,8 @@ TEST(GeoPointAnalyzerTest, createFromSlice) {
   }
 
   {
-    auto json = VPackParser::fromJson(R"({ "latitude": ["foo"], "longitude":["bar"] })");
+    auto json = VPackParser::fromJson(
+        R"({ "latitude": ["foo"], "longitude":["bar"] })");
     auto a = GeoPointAnalyzer::make(ref<char>(json->slice()));
     ASSERT_NE(nullptr, a);
     auto& impl = dynamic_cast<GeoPointAnalyzer&>(*a);
@@ -499,7 +501,8 @@ TEST(GeoPointAnalyzerTest, createFromSlice) {
   }
 
   {
-    auto json = VPackParser::fromJson(R"({ "latitude": ["subObj", "foo"], "longitude":["subObj", "bar"] })");
+    auto json = VPackParser::fromJson(
+        R"({ "latitude": ["subObj", "foo"], "longitude":["subObj", "bar"] })");
     auto a = GeoPointAnalyzer::make(ref<char>(json->slice()));
     ASSERT_NE(nullptr, a);
     auto& impl = dynamic_cast<GeoPointAnalyzer&>(*a);
@@ -517,7 +520,8 @@ TEST(GeoPointAnalyzerTest, createFromSlice) {
   }
 
   {
-    auto json = VPackParser::fromJson(R"({ "unknownField": "anything", "latitude": ["subObj", "foo"], "longitude":["subObj", "bar"] })");
+    auto json = VPackParser::fromJson(
+        R"({ "unknownField": "anything", "latitude": ["subObj", "foo"], "longitude":["subObj", "bar"] })");
     auto a = GeoPointAnalyzer::make(ref<char>(json->slice()));
     ASSERT_NE(nullptr, a);
     auto& impl = dynamic_cast<GeoPointAnalyzer&>(*a);
@@ -687,8 +691,8 @@ TEST(GeoJSONAnalyzerTest, tokenizeLatLngRect) {
   })");
 
   geo::ShapeContainer shape;
-  ASSERT_TRUE(geo::geojson::parsePolygon(json->slice(), shape).ok());
-  ASSERT_EQ(geo::ShapeContainer::Type::S2_LATLNGRECT, shape.type());
+  ASSERT_TRUE(geo::geojson::parsePolygon(json->slice(), shape, false).ok());
+  ASSERT_EQ(geo::ShapeContainer::Type::S2_POLYGON, shape.type());
 
   // tokenize shape
   {
@@ -846,7 +850,7 @@ TEST(GeoJSONAnalyzerTest, tokenizePolygon) {
   })");
 
   geo::ShapeContainer shape;
-  ASSERT_TRUE(geo::geojson::parsePolygon(json->slice(), shape).ok());
+  ASSERT_TRUE(geo::geojson::parsePolygon(json->slice(), shape, false).ok());
   ASSERT_EQ(geo::ShapeContainer::Type::S2_POLYGON, shape.type());
 
   // tokenize shape
@@ -1007,7 +1011,7 @@ TEST(GeoJSONAnalyzerTest, tokenizeLineString) {
   })");
 
   geo::ShapeContainer shape;
-  ASSERT_TRUE(geo::geojson::parseRegion(json->slice(), shape).ok());
+  ASSERT_TRUE(geo::geojson::parseRegion(json->slice(), shape, false).ok());
   ASSERT_EQ(geo::ShapeContainer::Type::S2_POLYLINE, shape.type());
 
   // tokenize shape
@@ -1176,7 +1180,8 @@ TEST(GeoJSONAnalyzerTest, tokenizeMultiPolygon) {
   })");
 
   geo::ShapeContainer shape;
-  ASSERT_TRUE(geo::geojson::parseMultiPolygon(json->slice(), shape).ok());
+  ASSERT_TRUE(
+      geo::geojson::parseMultiPolygon(json->slice(), shape, false).ok());
   ASSERT_EQ(geo::ShapeContainer::Type::S2_POLYGON, shape.type());
 
   // tokenize shape
@@ -1455,7 +1460,7 @@ TEST(GeoJSONAnalyzerTest, tokenizeMultiPolyLine) {
   })");
 
   geo::ShapeContainer shape;
-  ASSERT_TRUE(geo::geojson::parseRegion(json->slice(), shape).ok());
+  ASSERT_TRUE(geo::geojson::parseRegion(json->slice(), shape, false).ok());
   ASSERT_EQ(geo::ShapeContainer::Type::S2_MULTIPOLYLINE, shape.type());
 
   // tokenize shape
@@ -1578,7 +1583,7 @@ TEST(GeoJSONAnalyzerTest, tokenizePoint) {
   })");
 
   geo::ShapeContainer shape;
-  ASSERT_TRUE(geo::geojson::parseRegion(json->slice(), shape).ok());
+  ASSERT_TRUE(geo::geojson::parseRegion(json->slice(), shape, false).ok());
   ASSERT_EQ(geo::ShapeContainer::Type::S2_POINT, shape.type());
 
   // tokenize shape
@@ -1997,14 +2002,22 @@ TEST(GeoJSONAnalyzerTest, invalidGeoJson) {
     ASSERT_NE(nullptr, inc);
     auto* term = irs::get<irs::term_attribute>(a);
     ASSERT_NE(nullptr, term);
-    ASSERT_FALSE(a.reset(arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice())));
-    ASSERT_FALSE(a.reset(arangodb::iresearch::ref<char>(VPackSlice::emptyArraySlice())));
-    ASSERT_FALSE(a.reset(arangodb::iresearch::ref<char>(VPackSlice::noneSlice())));
-    ASSERT_FALSE(a.reset(arangodb::iresearch::ref<char>(VPackSlice::illegalSlice())));
-    ASSERT_FALSE(a.reset(arangodb::iresearch::ref<char>(VPackSlice::falseSlice())));
-    ASSERT_FALSE(a.reset(arangodb::iresearch::ref<char>(VPackSlice::trueSlice())));
-    ASSERT_FALSE(a.reset(arangodb::iresearch::ref<char>(VPackSlice::zeroSlice())));
-    ASSERT_FALSE(a.reset(arangodb::iresearch::ref<char>(VPackSlice::nullSlice())));
+    ASSERT_FALSE(a.reset(
+        arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice())));
+    ASSERT_FALSE(
+        a.reset(arangodb::iresearch::ref<char>(VPackSlice::emptyArraySlice())));
+    ASSERT_FALSE(
+        a.reset(arangodb::iresearch::ref<char>(VPackSlice::noneSlice())));
+    ASSERT_FALSE(
+        a.reset(arangodb::iresearch::ref<char>(VPackSlice::illegalSlice())));
+    ASSERT_FALSE(
+        a.reset(arangodb::iresearch::ref<char>(VPackSlice::falseSlice())));
+    ASSERT_FALSE(
+        a.reset(arangodb::iresearch::ref<char>(VPackSlice::trueSlice())));
+    ASSERT_FALSE(
+        a.reset(arangodb::iresearch::ref<char>(VPackSlice::zeroSlice())));
+    ASSERT_FALSE(
+        a.reset(arangodb::iresearch::ref<char>(VPackSlice::nullSlice())));
   }
 
   // tokenize centroid
@@ -2016,14 +2029,22 @@ TEST(GeoJSONAnalyzerTest, invalidGeoJson) {
     ASSERT_NE(nullptr, inc);
     auto* term = irs::get<irs::term_attribute>(a);
     ASSERT_NE(nullptr, term);
-    ASSERT_FALSE(a.reset(arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice())));
-    ASSERT_FALSE(a.reset(arangodb::iresearch::ref<char>(VPackSlice::emptyArraySlice())));
-    ASSERT_FALSE(a.reset(arangodb::iresearch::ref<char>(VPackSlice::noneSlice())));
-    ASSERT_FALSE(a.reset(arangodb::iresearch::ref<char>(VPackSlice::illegalSlice())));
-    ASSERT_FALSE(a.reset(arangodb::iresearch::ref<char>(VPackSlice::falseSlice())));
-    ASSERT_FALSE(a.reset(arangodb::iresearch::ref<char>(VPackSlice::trueSlice())));
-    ASSERT_FALSE(a.reset(arangodb::iresearch::ref<char>(VPackSlice::zeroSlice())));
-    ASSERT_FALSE(a.reset(arangodb::iresearch::ref<char>(VPackSlice::nullSlice())));
+    ASSERT_FALSE(a.reset(
+        arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice())));
+    ASSERT_FALSE(
+        a.reset(arangodb::iresearch::ref<char>(VPackSlice::emptyArraySlice())));
+    ASSERT_FALSE(
+        a.reset(arangodb::iresearch::ref<char>(VPackSlice::noneSlice())));
+    ASSERT_FALSE(
+        a.reset(arangodb::iresearch::ref<char>(VPackSlice::illegalSlice())));
+    ASSERT_FALSE(
+        a.reset(arangodb::iresearch::ref<char>(VPackSlice::falseSlice())));
+    ASSERT_FALSE(
+        a.reset(arangodb::iresearch::ref<char>(VPackSlice::trueSlice())));
+    ASSERT_FALSE(
+        a.reset(arangodb::iresearch::ref<char>(VPackSlice::zeroSlice())));
+    ASSERT_FALSE(
+        a.reset(arangodb::iresearch::ref<char>(VPackSlice::nullSlice())));
   }
 
   // tokenize point
@@ -2035,14 +2056,22 @@ TEST(GeoJSONAnalyzerTest, invalidGeoJson) {
     ASSERT_NE(nullptr, inc);
     auto* term = irs::get<irs::term_attribute>(a);
     ASSERT_NE(nullptr, term);
-    ASSERT_FALSE(a.reset(arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice())));
-    ASSERT_FALSE(a.reset(arangodb::iresearch::ref<char>(VPackSlice::emptyArraySlice())));
-    ASSERT_FALSE(a.reset(arangodb::iresearch::ref<char>(VPackSlice::noneSlice())));
-    ASSERT_FALSE(a.reset(arangodb::iresearch::ref<char>(VPackSlice::illegalSlice())));
-    ASSERT_FALSE(a.reset(arangodb::iresearch::ref<char>(VPackSlice::falseSlice())));
-    ASSERT_FALSE(a.reset(arangodb::iresearch::ref<char>(VPackSlice::trueSlice())));
-    ASSERT_FALSE(a.reset(arangodb::iresearch::ref<char>(VPackSlice::zeroSlice())));
-    ASSERT_FALSE(a.reset(arangodb::iresearch::ref<char>(VPackSlice::nullSlice())));
+    ASSERT_FALSE(a.reset(
+        arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice())));
+    ASSERT_FALSE(
+        a.reset(arangodb::iresearch::ref<char>(VPackSlice::emptyArraySlice())));
+    ASSERT_FALSE(
+        a.reset(arangodb::iresearch::ref<char>(VPackSlice::noneSlice())));
+    ASSERT_FALSE(
+        a.reset(arangodb::iresearch::ref<char>(VPackSlice::illegalSlice())));
+    ASSERT_FALSE(
+        a.reset(arangodb::iresearch::ref<char>(VPackSlice::falseSlice())));
+    ASSERT_FALSE(
+        a.reset(arangodb::iresearch::ref<char>(VPackSlice::trueSlice())));
+    ASSERT_FALSE(
+        a.reset(arangodb::iresearch::ref<char>(VPackSlice::zeroSlice())));
+    ASSERT_FALSE(
+        a.reset(arangodb::iresearch::ref<char>(VPackSlice::nullSlice())));
   }
 }
 
@@ -2237,7 +2266,8 @@ TEST(GeoJSONAnalyzerTest, createFromSlice) {
   }
 
   {
-    auto json = VPackParser::fromJson(R"({ "type": "point", "unknownField":"anything" })");
+    auto json = VPackParser::fromJson(
+        R"({ "type": "point", "unknownField":"anything" })");
     auto a = GeoJSONAnalyzer::make(ref<char>(json->slice()));
     ASSERT_NE(nullptr, a);
     auto& impl = dynamic_cast<GeoJSONAnalyzer&>(*a);

@@ -16,7 +16,8 @@ struct prof_bt_s {
 #ifdef JEMALLOC_PROF_LIBGCC
 /* Data structure passed to libgcc _Unwind_Backtrace() callback functions. */
 typedef struct {
-	prof_bt_t	*bt;
+	void 		**vec;
+	unsigned	*len;
 	unsigned	max;
 } prof_unwind_data_t;
 #endif

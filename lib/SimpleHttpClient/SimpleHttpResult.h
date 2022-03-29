@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,7 +29,6 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Options.h>
-#include <velocypack/velocypack-aliases.h>
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief class for storing a request result
@@ -201,12 +200,6 @@ class SimpleHttpResult final {
   }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief returns whether the result is JSON-encoded
-  //////////////////////////////////////////////////////////////////////////////
-
-  bool isJson() const { return _isJson; }
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief returns whether the request has been sent in its entirety, this
   /// is only meaningful if isComplete() returns false.
   //////////////////////////////////////////////////////////////////////////////
@@ -232,7 +225,6 @@ class SimpleHttpResult final {
   size_t _contentLength;
   int _returnCode;
   bool _foundHeader;
-  bool _isJson;
   bool _hasContentLength;
   bool _chunked;
   bool _deflated;
@@ -240,7 +232,7 @@ class SimpleHttpResult final {
   // flag which indicates whether or not the complete request has already be
   // sent (to the operating system):
   bool _haveSentRequestFully;
-  
+
   // request result type
   enum resultTypes _requestResultType;
 

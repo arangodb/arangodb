@@ -30,15 +30,12 @@
 #include "IResearch/VelocyPackHelper.h"
 
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
 namespace tests {
 
 struct StringField final {
-  irs::string_ref name() const {
-    return fieldName;
-  }
+  irs::string_ref name() const { return fieldName; }
 
   irs::token_stream& get_tokens() const {
     stream.reset(value);
@@ -50,9 +47,7 @@ struct StringField final {
     return true;
   }
 
-  const irs::features_t& features() const noexcept {
-    return _featuresRange;
-  }
+  const irs::features_t& features() const noexcept { return _featuresRange; }
 
   irs::IndexFeatures index_features() const noexcept {
     return irs::IndexFeatures::NONE;
@@ -61,13 +56,11 @@ struct StringField final {
   mutable irs::string_token_stream stream;
   irs::string_ref value;
   irs::string_ref fieldName;
-  irs::features_t _featuresRange{nullptr, 0};
+  irs::features_t _featuresRange;
 };
 
 struct GeoField final {
-  irs::string_ref name() const {
-    return fieldName;
-  }
+  irs::string_ref name() const { return fieldName; }
 
   irs::token_stream& get_tokens() const {
     if (!shapeSlice.isNone()) {
@@ -83,9 +76,7 @@ struct GeoField final {
     return true;
   }
 
-  const irs::features_t& features() const noexcept {
-    return _featuresRange;
-  }
+  const irs::features_t& features() const noexcept { return _featuresRange; }
 
   irs::IndexFeatures index_features() const noexcept {
     return irs::IndexFeatures::NONE;
@@ -94,8 +85,8 @@ struct GeoField final {
   mutable iresearch::GeoJSONAnalyzer stream{{}};
   VPackSlice shapeSlice;
   irs::string_ref fieldName;
-  irs::features_t _featuresRange{nullptr, 0};
+  irs::features_t _featuresRange;
 };
 
-} // arangodb
-} // tests
+}  // namespace tests
+}  // namespace arangodb

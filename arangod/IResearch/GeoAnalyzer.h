@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,12 +33,12 @@
 #include "Geo/ShapeContainer.h"
 #include "IResearch/Geo.h"
 #include "velocypack/Slice.h"
-#include "velocypack/velocypack-aliases.h"
 
 namespace arangodb {
 
 namespace velocypack {
-template<typename T> class Buffer;
+template<typename T>
+class Buffer;
 }
 
 namespace iresearch {
@@ -47,9 +47,8 @@ namespace iresearch {
 /// @class GeoAnalyzer
 /// @brief base class for other geo analyzers
 ////////////////////////////////////////////////////////////////////////////////
-class GeoAnalyzer
-  : public irs::frozen_attributes<2, irs::analysis::analyzer>,
-    private irs::util::noncopyable {
+class GeoAnalyzer : public irs::frozen_attributes<2, irs::analysis::analyzer>,
+                    private irs::util::noncopyable {
  public:
   virtual bool next() noexcept override final;
   using irs::analysis::analyzer::reset;
@@ -66,12 +65,12 @@ class GeoAnalyzer
 
  private:
   std::vector<std::string> _terms;
-  const std::string* _begin{ _terms.data() };
-  const std::string* _end{ _begin };
+  const std::string* _begin{_terms.data()};
+  const std::string* _end{_begin};
   irs::offset _offset;
   irs::increment _inc;
   irs::term_attribute _term;
-}; // GeoAnalyzer
+};  // GeoAnalyzer
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class GeoPointAnalyzer
@@ -87,26 +86,28 @@ class GeoPointAnalyzer final : public GeoAnalyzer {
   };
 
   static constexpr irs::string_ref type_name() noexcept { return "geopoint"; }
-  static bool normalize(const irs::string_ref& args,  std::string& out);
-  static irs::analysis::analyzer::ptr make(irs::string_ref const& args);
+  static bool normalize(irs::string_ref args, std::string& out);
+  static irs::analysis::analyzer::ptr make(irs::string_ref args);
 
   // store point as [lng, lat] array to be GeoJSON compliant
-  static VPackSlice store(
-    irs::token_stream const* ctx,
-    VPackSlice slice,
-    velocypack::Buffer<uint8_t>& buf);
+  static VPackSlice store(irs::token_stream const* ctx, VPackSlice slice,
+                          velocypack::Buffer<uint8_t>& buf);
 
   explicit GeoPointAnalyzer(Options const& opts);
 
-  std::vector<std::string> const& latitude() const noexcept { return _latitude; }
-  std::vector<std::string> const& longitude() const noexcept { return _longitude; }
+  std::vector<std::string> const& latitude() const noexcept {
+    return _latitude;
+  }
+  std::vector<std::string> const& longitude() const noexcept {
+    return _longitude;
+  }
 
   S2RegionTermIndexer::Options const& options() const noexcept {
     return _indexer.options();
   }
 
   virtual void prepare(S2RegionTermIndexer::Options& opts) const override;
-  virtual bool reset(irs::string_ref const& value) override;
+  virtual bool reset(irs::string_ref value) override;
 
  private:
   bool parsePoint(VPackSlice slice, S2LatLng& out) const;
@@ -116,7 +117,7 @@ class GeoPointAnalyzer final : public GeoAnalyzer {
   std::vector<std::string> _latitude;
   std::vector<std::string> _longitude;
   S2LatLng _point;
-}; // GeoPointAnalyzer
+};  // GeoPointAnalyzer
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class GeoJSONAnalyzer
@@ -150,18 +151,16 @@ class GeoJSONAnalyzer final : public GeoAnalyzer {
   };
 
   static constexpr irs::string_ref type_name() noexcept { return "geojson"; }
-  static bool normalize(const irs::string_ref& args,  std::string& out);
-  static irs::analysis::analyzer::ptr make(irs::string_ref const& args);
+  static bool normalize(irs::string_ref args, std::string& out);
+  static irs::analysis::analyzer::ptr make(irs::string_ref args);
 
-  static VPackSlice store(
-      irs::token_stream const*,
-      VPackSlice slice,
-      velocypack::Buffer<uint8_t>&) noexcept;
+  static VPackSlice store(irs::token_stream const*, VPackSlice slice,
+                          velocypack::Buffer<uint8_t>&) noexcept;
 
   explicit GeoJSONAnalyzer(Options const& opts);
 
   virtual void prepare(S2RegionTermIndexer::Options& opts) const override;
-  virtual bool reset(irs::string_ref const& value) override;
+  virtual bool reset(irs::string_ref value) override;
 
   Type shapeType() const noexcept { return _type; }
 
@@ -173,14 +172,13 @@ class GeoJSONAnalyzer final : public GeoAnalyzer {
   S2RegionTermIndexer _indexer;
   geo::ShapeContainer _shape;
   Type _type;
-}; // GeoJSONAnalyzer
+};  // GeoJSONAnalyzer
 
 // FIXME remove kludge
-inline bool isGeoAnalyzer(irs::string_ref const& type) noexcept {
-  return type == GeoJSONAnalyzer::type_name()
-    || type == GeoPointAnalyzer::type_name();
+inline bool isGeoAnalyzer(irs::string_ref type) noexcept {
+  return type == GeoJSONAnalyzer::type_name() ||
+         type == GeoPointAnalyzer::type_name();
 }
 
-} // iresearch
-} // arangodb
-
+}  // namespace iresearch
+}  // namespace arangodb

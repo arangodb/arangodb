@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -35,15 +35,17 @@ class GlobalInitialSyncer : public InitialSyncer {
   // constructor is private, as GlobalInitialSyncer uses shared_from_this() and
   // we must ensure that it is only created via make_shared.
   explicit GlobalInitialSyncer(ReplicationApplierConfiguration const&);
- 
+
  public:
-  static std::shared_ptr<GlobalInitialSyncer> create(ReplicationApplierConfiguration const&);
+  static std::shared_ptr<GlobalInitialSyncer> create(
+      ReplicationApplierConfiguration const&);
 
   ~GlobalInitialSyncer();
 
   /// @brief run method, performs a full synchronization
   /// public method, catches exceptions
-  arangodb::Result run(bool incremental, char const* context = nullptr) override;
+  arangodb::Result run(bool incremental,
+                       char const* context = nullptr) override;
 
   /// @brief fetch the server's inventory, public method
   Result getInventory(arangodb::velocypack::Builder& builder);
@@ -64,4 +66,3 @@ class GlobalInitialSyncer : public InitialSyncer {
   Result updateServerInventory(velocypack::Slice const& leaderDatabases);
 };
 }  // namespace arangodb
-

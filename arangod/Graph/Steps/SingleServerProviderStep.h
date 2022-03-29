@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -32,10 +32,14 @@
 namespace arangodb {
 namespace graph {
 
-template <class StepType>
+template<class EdgeType>
 class SingleServerProvider;
 
-class SingleServerProviderStep : public arangodb::graph::BaseStep<SingleServerProviderStep> {
+class SingleServerProviderStep
+    : public arangodb::graph::BaseStep<SingleServerProviderStep> {
+ public:
+  using EdgeType = EdgeDocumentToken;
+
  public:
   class Vertex {
    public:
@@ -62,7 +66,7 @@ class SingleServerProviderStep : public arangodb::graph::BaseStep<SingleServerPr
 
     void addToBuilder(SingleServerProvider<SingleServerProviderStep>& provider,
                       arangodb::velocypack::Builder& builder) const;
-    EdgeDocumentToken const& getID() const;
+    EdgeType const& getID() const;
     bool isValid() const;
 
    private:
@@ -84,7 +88,8 @@ class SingleServerProviderStep : public arangodb::graph::BaseStep<SingleServerPr
   Edge const& getEdge() const { return _edge; }
 
   std::string toString() const {
-    return "<Step><Vertex>: " + _vertex.getID().toString();
+    return "<Step><Vertex>: " + _vertex.getID().toString() +
+           ", <Edge>: " + std::to_string(_edge.getID().localDocumentId().id());
   }
   bool isProcessable() const { return !isLooseEnd(); }
   bool isLooseEnd() const { return false; }
@@ -93,7 +98,14 @@ class SingleServerProviderStep : public arangodb::graph::BaseStep<SingleServerPr
     return _vertex.getID();
   }
 
+  EdgeType getEdgeIdentifier() const { return _edge.getID(); }
+
   std::string getCollectionName() const {
+    /*
+     * Future optimization: When re-implementing the documentFastPathLocal
+     * method to support string refs or either string views, we can improve this
+     * section here as well.
+     */
     auto collectionNameResult = extractCollectionName(_vertex.getID());
     if (collectionNameResult.fail()) {
       THROW_ARANGO_EXCEPTION(collectionNameResult.result());
@@ -101,10 +113,10 @@ class SingleServerProviderStep : public arangodb::graph::BaseStep<SingleServerPr
     return collectionNameResult.get().first;
   };
 
-  bool isResponsible(transaction::Methods* trx) const;
+  bool isResponsible(transaction::Methods*) const;
 
-  friend auto operator<<(std::ostream& out, SingleServerProviderStep const& step)
-      -> std::ostream&;
+  friend auto operator<<(std::ostream& out,
+                         SingleServerProviderStep const& step) -> std::ostream&;
 
  private:
   Vertex _vertex;

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -78,9 +78,12 @@ void FreeMemoryTask::run() {
 }
 
 MigrateTask::MigrateTask(Manager::TaskEnvironment environment, Manager& manager,
-                         std::shared_ptr<Cache> cache, std::shared_ptr<Table> table)
-    : _environment(environment), _manager(manager), 
-      _cache(std::move(cache)), _table(std::move(table)) {}
+                         std::shared_ptr<Cache> cache,
+                         std::shared_ptr<Table> table)
+    : _environment(environment),
+      _manager(manager),
+      _cache(std::move(cache)),
+      _table(std::move(table)) {}
 
 MigrateTask::~MigrateTask() = default;
 
@@ -112,7 +115,8 @@ void MigrateTask::run() {
         TRI_ASSERT(metaGuard.isLocked());
         metadata.toggleMigrating();
       }
-      _manager.reclaimTable(_table, false);
+      _manager.reclaimTable(std::move(_table), false);
+      TRI_ASSERT(_table == nullptr);
     }
 
     _manager.unprepareTask(_environment);
@@ -122,4 +126,4 @@ void MigrateTask::run() {
     throw;
   }
 }
-}
+}  // namespace arangodb::cache

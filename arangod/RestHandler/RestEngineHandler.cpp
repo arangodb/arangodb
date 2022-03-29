@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,14 +29,14 @@
 #include "StorageEngine/StorageEngine.h"
 
 #include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestEngineHandler::RestEngineHandler(application_features::ApplicationServer& server,
-                                     GeneralRequest* request, GeneralResponse* response)
+RestEngineHandler::RestEngineHandler(ArangodServer& server,
+                                     GeneralRequest* request,
+                                     GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
 RestStatus RestEngineHandler::execute() {
@@ -44,7 +44,8 @@ RestStatus RestEngineHandler::execute() {
   auto const type = _request->requestType();
 
   if (type != rest::RequestType::GET) {
-    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
     return RestStatus::DONE;
   }
 
@@ -66,7 +67,8 @@ void RestEngineHandler::handleGet() {
     return;
   }
 
-  ServerSecurityFeature& security = server().getFeature<ServerSecurityFeature>();
+  ServerSecurityFeature& security =
+      server().getFeature<ServerSecurityFeature>();
 
   if (!security.canAccessHardenedApi()) {
     // dont leak information about server internals here
@@ -89,7 +91,7 @@ void RestEngineHandler::getCapabilities() {
 void RestEngineHandler::getStats() {
   VPackBuilder result;
   StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
-  engine.getStatistics(result, true);
+  engine.getStatistics(result);
 
   generateResult(rest::ResponseCode::OK, result.slice());
 }

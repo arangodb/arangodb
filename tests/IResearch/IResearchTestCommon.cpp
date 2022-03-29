@@ -26,12 +26,11 @@
 
 #include <analysis/analyzers.hpp>
 #include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 
 TestAnalyzer::TestAnalyzer()
-    : irs::analysis::analyzer(irs::type<TestAnalyzer>::get()) { }
+    : irs::analysis::analyzer(irs::type<TestAnalyzer>::get()) {}
 
-bool TestAnalyzer::reset(const iresearch::string_ref& data) {
+bool TestAnalyzer::reset(irs::string_ref data) {
   _data = irs::ref_cast<irs::byte_type>(data);
   return true;
 }
@@ -44,7 +43,7 @@ bool TestAnalyzer::next() {
   return true;
 }
 
-bool TestAnalyzer::normalize(const iresearch::string_ref& args, std::string& definition) {
+bool TestAnalyzer::normalize(irs::string_ref args, std::string& definition) {
   // same validation as for make,
   // as normalize usually called to sanitize data before make
   auto slice = arangodb::iresearch::slice(args);
@@ -55,11 +54,12 @@ bool TestAnalyzer::normalize(const iresearch::string_ref& args, std::string& def
   if (slice.isString()) {
     VPackObjectBuilder scope(&builder);
     arangodb::iresearch::addStringRef(builder, "args",
-        arangodb::iresearch::getStringRef(slice));
-  } else if (slice.isObject() && slice.hasKey("args") && slice.get("args").isString()) {
+                                      arangodb::iresearch::getStringRef(slice));
+  } else if (slice.isObject() && slice.hasKey("args") &&
+             slice.get("args").isString()) {
     VPackObjectBuilder scope(&builder);
-    arangodb::iresearch::addStringRef(builder, "args",
-        arangodb::iresearch::getStringRef(slice.get("args")));
+    arangodb::iresearch::addStringRef(
+        builder, "args", arangodb::iresearch::getStringRef(slice.get("args")));
   } else {
     return false;
   }
@@ -69,7 +69,7 @@ bool TestAnalyzer::normalize(const iresearch::string_ref& args, std::string& def
   return true;
 }
 
-auto TestAnalyzer::make(const iresearch::string_ref& args) -> ptr {
+auto TestAnalyzer::make(irs::string_ref args) -> ptr {
   auto slice = arangodb::iresearch::slice(args);
   if (slice.isNull()) throw std::exception();
   if (slice.isNone()) return nullptr;
@@ -77,7 +77,8 @@ auto TestAnalyzer::make(const iresearch::string_ref& args) -> ptr {
   return ptr;
 }
 
-irs::attribute* TestAnalyzer::get_mutable(irs::type_info::type_id type) noexcept {
+irs::attribute* TestAnalyzer::get_mutable(
+    irs::type_info::type_id type) noexcept {
   if (type == irs::type<TestAttribute>::id()) {
     return &_attr;
   }
@@ -90,6 +91,8 @@ irs::attribute* TestAnalyzer::get_mutable(irs::type_info::type_id type) noexcept
   return nullptr;
 }
 
-REGISTER_ATTRIBUTE(TestAttribute);  // required to open reader on segments with analyzed fields
+REGISTER_ATTRIBUTE(
+    TestAttribute);  // required to open reader on segments with analyzed fields
 
-REGISTER_ANALYZER_VPACK(TestAnalyzer, TestAnalyzer::make, TestAnalyzer::normalize);
+REGISTER_ANALYZER_VPACK(TestAnalyzer, TestAnalyzer::make,
+                        TestAnalyzer::normalize);

@@ -1,0 +1,1015 @@
+[/
+    Copyright (c) 2016-2019 Vinnie Falco (vinnie dot falco at gmail dot com)
+
+    Distributed under the Boost Software License, Version 1.0. (See accompanying
+    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+
+    Official repository: https://github.com/boostorg/beast
+]
+
+[section Release Notes]
+
+[/-----------------------------------------------------------------------------]
+
+[heading Boost 1.78]
+
+[*Fixes]
+
+* Fix CVE-2016-9840 in zlib implementation.
+* Fix TLS SNI handling in websocket_client_async_ssl example.
+* [Issue 2313] Fix reuse of sliding window in WebSocket permessage_deflate.
+* Fix accept error handling in http_server_async example.
+
+[*Miscellaneous]
+
+* Remove test framework's dependency on RTTI.
+* Move library-specific docca configuration to Beast.
+* Remove dependency on RTTI in `test::stream`.
+* Fix missing includes in test headers.
+
+
+
+[heading Boost 1.77]
+
+[*Fixes]
+
+* [Issue 2233] Remove use of POSIX-only constant.
+
+[*Miscellaneous]
+
+* Fixes to tests.
+* Improvements and fixes in Github and Drone CI.
+* Accommodate Docca updates.
+* Update example root certificates.
+* Add example of reading large response body.
+* Remove Travis CI.
+* Update CMakeLists.txt
+
+
+[heading Boost 1.76]
+
+[*Fixes]
+
+* [issue 2139] Add executor rebind to test::stream.
+* Fix unused variable compiler warning in WebSocket async shutdown.
+
+[*Improvements]
+
+* [issue 2124] Floating point support no longer required to use Beast.
+* Reduce size of websockety compiled code by using a common buffers type for all operations.
+* HTTP Parser has improved detection of incorrect use.
+
+
+[*Miscellaneous]
+
+* [issue 2140] Add cxxstd tag to library metadata.
+* Move to Drone CI.
+* Minor documentation formatting improvements.
+* CML now finds required Boost::thread library during in-tree build.
+
+
+[heading Boost 1.75]
+
+[*Fixes]
+
+* Eliminate spurious unused parameter warning in `detect_ssl`.
+* Update Websocket examples to set the SNI for TLS connections.
+* [issue 2023] websocket async_shutdown will now shutdown the underlying TLS transport.
+* [issue 2011] File open with append_existing flag now works correctly in posix environments.
+* [issue 2039] Windows builds now link to bcrypt as required by the filesystem library.
+* [issue 2063] Logic error fixed in `advanced_server_flex` example.
+* [issue 1582] Fix unreachable code error on MSVC.
+* [issue 2070] Fix http body behaviour when body_limit it none.
+* [issue 2065] Fix behaviour of `basic_stream` when a zero-length write is requested.
+* [issue 2080] Add enums representing Sec-* HTTP headers.
+* [issue 2085] Fix `nullptr` implicit cast on `fields::set()`.
+* [issue 2029] Fix C++20 tests for `basic_stream`.
+
+[*Miscellaneous]
+
+* Add handler tracking to asynchronous operations:
+  * Define the preprocessor macro `BOOST_ASIO_ENABLE_HANDLER_TRACKING` to enable Asio handler
+    tracking in Boost.Beast asynchronous operations. Please see
+    [@boost:/doc/html/boost_asio/overview/core/handler_tracking.html asio handler tracking]
+    for details.
+* Add Bishop-Fox 2020 Security Assessment.
+
+[heading Boost 1.74]
+
+[*API Changes]
+
+* The API to Asio has undergone changes. Please refer to the Asio release notes for details.
+
+* Beast has been updated to track and respect developer choices in the use of Asio. In particular:
+ * Define `BOOST_ASIO_NO_DEPRECATED` to disallow deprecated invocation and allocation hooks.
+ * Define `BOOST_ASIO_NO_TS_EXECUTORS` to ensure that executors conform to the
+   [@http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p0443r11.html Standard Executors] proposal.
+ * Define `BOOST_ASIO_USE_TS_EXECUTOR_AS_DEFAULT` to select
+   [@https://cplusplus.github.io/networking-ts/draft.pdf Networking TS] style executors by default.
+   If this macro is not defined, Asio default executors will be the
+   [@http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p0443r11.html Standard Executors] implementation.
+
+* [issue 1897] Parser `body_limit` is optional (API Change)
+  ['Actions Required]
+  * The signature of `basic_parser<>::body_limit(n)` has changed. It now accepts an
+    optional `std::uint64_t`. The caller may indicate that no body limit is required
+    by calling `body_limit(boost::none)`. The default limits remain in place in order
+    to maintain 'safe by default' behaviour.
+
+* [issue 1934] Remove deprecated interfaces (API Change)
+  ['Actions Required]
+  * The macro `BOOST_BEAST_NO_DEPRECATED` will no longer be noticed by Beast. The only way to
+    enable deprecated functionality is now the macro `BOOST_BEAST_ALLOW_DEPRECATED` which is
+    undefined by default. That is, all deprecated behaviour is disabled by default.
+  * The following deprecated functions have been removed:
+    - `websocket::async_accept_ex`
+    - `websocket::async_handshake_ex`
+    - `websocket::accept_ex`
+    - `websocket::handshake_ex`
+    Programs still using these names should be refactored to use the `decorator` feature and
+    the remaining handshake and accept functions.
+  * `websocket::role_type` has been removed. Users should use `beast::role_type` instead.
+  * `handler_ptr` has been removed. Users should use `net::bind_handler` and/or
+    `bind_front_handler` instead.
+  * Code that depends on `mutable_data_type` should be refactored to use
+    `mutable_buffers_type`. Classes affected are:
+    - `buffers_adaptor`
+    - `flat_buffer`
+    - `flat_static_buffer`
+    - `multi_buffer`
+    - `static_buffer`
+  * The `reset` function has been removed from `flat_static_buffer`. Use the
+    `clear` function instead.
+  * The `core/type_traits.hpp` public header has been removed and along with it
+    the type trait `is_completion_handler`. Beast uses the CompletionHandler correctness
+    checks provided by Asio. In a c++20 environment, these convert to concept checks.
+  * The error code enum `invalid_code_lenths` (sic) was a synonym of `invalid_code_lengths`.
+    Affected programs should be modified to use `invalid_code_lengths`.
+  * The file `core/buffers_adapter.hpp` has been removed along with the deprecated
+    alias typename `buffers_adapter`. Affected programs should use
+  `  core/buffers_adapator.hpp` and the type `buffers_adaptor`.
+
+* [issue 1956] Deprecate `string_param` (API Change)
+  ['Actions Required]
+  `string_param`, which was previously the argument type when setting field values
+  has been replaced by `string_view`. Because of this, it is no longer possible to
+  set message field values directly as integrals.
+  Users are requied to convert numeric arguments to a string type prior to calling
+  `fields::set` et. al.
+  Beast provides the non-allocating `to_static_string()` function for this purpose.
+  To set Content-Length field manually, call `message::content_length`.
+
+[*Fixes]
+
+* [issue 1913] Fix standalone compilation error with `std::string_view`
+* [issue 1925] [issue 1916] Fix compile errors on Visual Studio with /std:c++latest
+* [issue 1924] Fix c++20 deprecation warning in `span_body`
+* [issue 1920] Fix use `buffered_read_stream` with `use_awaitable`
+* [issue 1918] Fix `async_detect_ssl` with `use_awaitable`
+* [issue 1944] Fix `FILE` namespace qualification
+* [issue 1942] Fix http read `bytes_transferred`
+* [issue 1943] Fix `basic_stream` `expires_after`
+* [issue 1980] Fix `max` compile error
+* [issue 1949] `iless` and `iequal` take part in Heterogeneous Lookup
+
+[*Miscellaneous]
+
+* [issue 1907]  OpenSSL 1.0.2 or later is required when using SSL/TLS streams.
+  This is a requirement inherited from Boost.Asio.
+
+* Additional tests have been added to ensure correct integration with C++20
+  coroutines when avaialable.
+
+[heading Boost 1.73]
+
+[*API Changes]
+
+* Nested `mutable_data_type` in Beast dynamic buffers is deprecated. Affected types:
+  - `buffers_adaptor`
+  - `flat_buffer`
+  - `flat_static_buffer`
+  - `multi_buffer`
+  - `static_buffer`
+
+
+[*Changes Required]
+
+* Use nested `mutable_buffers_type` instead of `mutable_data_type`,
+  or define `BOOST_BEAST_ALLOW_DEPRECATED`
+
+[*Miscellaneous]
+
+* Update root certificates in examples
+
+[*Fixes]
+
+* [issue 1880] Fix Content-Length parsing
+* [issue 1852] Fix examples to dispatch to strand
+* [issue 1875] Ensure `basic_stream::close` will not throw
+* [issue 1863] Field digest is endian-independent
+* [issue 1853] Fix ostream flush
+* [issue 1831] `flat_buffer::shrink_to_fit` is `noexcept`
+* [issue 1828] Fix erase field
+* [issue 1822] Examples use strands correctly
+* [issue 1818] `file_body` returns `short_read` on eof during read
+* [issue 1786] Fix bug in win32 `file_body`
+* [issue 1260] Add accessor function to File member of `basic_file_body`
+* [issue 793] `file_win32` supports UTF-8 paths
+* [issue 793] `file_stdio` supports unicode paths
+* [issue 1786] `file_win32` bodies respect `http::serializer::split`
+* Correct `buffer_bytes` documentation
+* Fix missing include in sha1.hpp
+* Fix ostream warning
+* Update broken links in README
+* Translate some win32 errors to net error codes
+* Moved-from dynamic buffers do not clear if different allocator
+* Fix compilation macro documentation
+* Clarify end-of-file behaviour in `File::read` docs
+* ostream_buffer satisfies preconditions of DynamicBuffer_v1::commit
+* Fix release build of docs
+* Fix `echo-op` test
+* Fix non-msvc cmake
+
+[heading Boost 1.72]
+
+[*Examples]
+
+* Add async-ssl-system-executor http client example
+
+* Add async-ssl-system-executor websocket client example
+
+[*Features]
+
+* Async init-fns use the executor's default token
+
+* Use automatically deduced return types for all async operations (since C++14)
+
+* Support Concepts for completion token params
+
+[*Fixes]
+
+* [issue 1664] Add default dtors to satisfy -Wnon-virtual-dtor
+
+* [issue 1682] Multiple I/O of the same type is not supported 
+
+* [issue 1687] Fix signed/unsigned mismatch in file_stdio::seek
+
+* [issue 1688] basic_stream dtor cannot throw
+
+* [issue 1734] Fix leftovers in basic_parser corner case: 
+
+* [issue 1751] https_get example sends the Host header
+
+* [issue 1754] Fix async_close error code when async_read times out 
+
+* [issue 1782] root_certificates.hpp is not for production
+
+* Fix data race in websocket examples
+ 
+* Fix data race in http server examples
+
+* Squelch spurious websocket timer assert
+
+* Use the executor type in basic_stream timer 
+
+[/-----------------------------------------------------------------------------]
+
+[heading Boost 1.71]
+
+
+
+[*Improvements]
+
+* [issue 1280] Add 1-element specialization for `buffers_cat`
+
+* [issue 1556] Set parser status and flags even if body limit has been reached
+
+* [issue 1567] Relax requirements for vector_body
+
+* [issue 1568] `detect_ssl` uses `bool` instead of `tribool`
+
+* [issue 1574] Replace `static_string` in HTTP parser
+
+* [issue 1606] Use `steady_timer` type
+
+* [issue 1611] Make chat websocket javascript client more user friendly
+
+* [issue 1613] Remove redundant use of `static_string`
+
+* [issue 1636] Improve performance of `http::string_to_verb`
+
+* Preserve `operation_aborted` on partial message
+
+* Remove unused `<experimental/unit_test/thread.hpp>`
+
+* Reduce the number of instantiations of `filter_token_list`
+
+* Add idle ping suspend test
+
+* Remove the use of `bind_executor` in `basic_stream`
+
+* Remove redundant template in service_base
+
+* Remove the use of `static_string` from `http::fields` 
+
+* Enable split compilation in http::basic_fields
+
+* Remove redundant instation of `static_string` in websocket
+
+* Remove redundant use of `asio::coroutine` in `flat_stream` 
+
+* More split compilation in rfc7230.hpp
+
+* More split compilation in websocket/detail/mask.hpp 
+
+* Simplify generation of sec-websocket-key
+
+
+
+
+[*Fixes]
+
+* [issue 1332] `allocator_traits::construct` is used for user-defined types
+
+* [issue 1559] Member `get_executor` const-correctness
+
+* [issue 1569] Fix `async_detect_ssl` handler type
+
+* [issue 1570] Launder pointers
+
+* [issue 1578] Fix min/max on MSVC
+
+* [issue 1586] Fix uninitalized memory use in deflate_stream
+
+* [issue 1593] Fix UB in websocket close tests 
+
+* [issue 1594] Fix data race in test stream
+
+* [issue 1599] Fix moved-from executor in idle ping timeout
+
+* [issue 1607] Remove uses of the deprecated `buffers` function
+
+* [issue 1612] Remove uses of deprecated methods in websocket tests
+
+* [issue 1620] Clean up typo in chat websocket javascript client
+
+* [issue 1621] Fix `flat_buffer` copy members
+
+* Silence gcc-8 warning
+
+* Fix `buffers_cat` iterator tests
+
+* Don't pessimize-move
+
+* Qualify calls to `beast::iequals` in basic_parser.ipp
+
+* Fix UB in websocket read tests
+
+* Simplify websocket::detail::prng
+
+* Don't over-allocate in http::basic_fields
+
+
+
+[*Documentation]
+
+* Documentation is built with SaxonHE instead of xsltproc
+
+
+
+[/-----------------------------------------------------------------------------]
+
+[heading Boost 1.70]
+
+[tip
+  The namespace alias `net` is used throughout for `boost::asio`.
+]
+
+[*New Features]
+
+* All composed operations use the new
+  [@boost:/doc/html/boost_asio/reference/async_initiate.html `net::async_initiate`]
+  internally.
+
+* New `tcp_stream` and
+  `basic_stream`
+  support:
+  * Timeouts,
+    [link beast.ref.boost__beast__basic_stream.async_read_some `async_read_some`],
+    [link beast.ref.boost__beast__basic_stream.async_write_some `async_write_some`]
+    complete with
+    [link beast.ref.boost__beast__error `error::timeout`]
+    on expiration.
+  * Traffic-shaping policies
+    [link beast.ref.boost__beast__simple_rate_policy `simple`] and
+    [link beast.ref.boost__beast__unlimited_rate_policy `unlimited`],
+    or a user-defined
+    [link beast.concepts.RatePolicy ['RatePolicy]].
+  * Supports
+    [@http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p1322r0.html P1322R0].
+
+* `websocket::stream`
+   supports
+   * Configurable handshake timeout
+   * Configurable idle timeout
+   * Automatic idle pings
+
+* [link beast.ref.boost__beast__ssl_stream `ssl_stream`]
+  is a public interface
+
+* ([issue 1305]) Better
+  `flat_buffer`,
+  `flat_static_buffer`,
+  `multi_buffer`, and
+  `static_buffer`:
+  * Revise all reference documentation
+  * Move construction does not always invalidate buffers
+  * non-const `data()` returns a mutable buffer sequence
+  * Add `cdata()` to also return constant readable bytes
+  * Eligible member functions are declared `noexcept`
+
+* ([issue 1345]) Better
+  `flat_buffer`,
+  `multi_buffer`
+  * Add `clear`, `reserve()`, `max_size()`, `shrink_to_fit()`
+  * Respect Allocator `max_size()`
+  * Specify exception safety
+
+* ([issue 1384]) New functions
+  `bind_front_handler`
+
+* Better
+  `static_buffer`,
+  `flat_static_buffer`
+  * Add `clear()`
+  * More members are `noexcept`
+  * Specify exception safety
+
+* Faster
+  `http::string_to_field`
+
+* Dynamic buffer `clear` operations perserve capacity.
+
+* New file <boost/beast/core/buffer_traits.hpp>
+  * New variadic `is_const_buffer_sequence`
+  * New variadic `is_mutable_buffer_sequence`
+  * New trait `buffers_iterator_type`
+  * New trait `buffers_type`
+
+* New classes
+  `async_base`,
+  `stable_async_base`
+  * Handle boilerplate for writing composed operations
+  * New
+    `allocate_stable`
+    is preferred over `handler_ptr`
+
+* New
+  `buffer_bytes`
+  replacement for `net::buffer_size`
+
+* New:
+  * `saved_handler`
+  * `buffers_range_ref` 
+  * `executor_type`
+  * `get_lowest_layer`,
+    `lowest_layer_type`
+  * `close_socket`,
+    `beast_close_socket`
+  * `error`,
+    `condition`
+
+* These interfaces are now public (were experimental):
+  [link beast.ref.boost__beast__flat_stream `flat_stream`],
+  [link beast.ref.boost__beast__detect_ssl `detect_ssl`],
+  [link beast.ref.boost__beast__async_detect_ssl `async_detect_ssl`].
+
+* Websocket streams use PCG as the fast random number generator,
+  for increased security.
+
+
+
+[*Documentation]
+
+* WebSocket reference documentation is revised
+
+* Updated [link beast.using_io.asio_refresher Networking Refresher]
+
+* Revised [link beast.using_io.writing_composed_operations.echo Asynchronous Echo]
+
+* Rewritten [link beast.using_io.writing_composed_operations.detect_ssl [*Detect SSL Handshake]]
+
+
+
+[*API Changes]
+
+* The __Fields__ concept is deprecated and will be removed
+  in a future version. ['Actions Required]: Do not rely on
+  the ['Fields] concept.
+
+* `handler_ptr` is deprecated. ['Actions Required]: Use
+  `stable_async_base` and
+  `allocate_stable`
+  instead.
+
+* On Windows, Visual Studio 2017 or later is required
+
+* OpenSSL is required to build the examples and tests
+
+* HTTP stream algorithms return the number of bytes transferred
+  from the stream. Previously, they returned the number of bytes
+  consumed by the parser.
+  ['Actions Required]:
+  * Callers depending on the return value of
+    `http::read` or
+    `http::async_read`
+    overloads should adjust the usage of
+    the returned value as needed.
+
+* Metafunctions
+  `has_get_executor`,
+  `is_sync_stream`,
+  `is_sync_read_stream`,
+  `is_sync_write_stream`,
+  `is_async_stream`,
+  `is_async_read_stream`, and
+  `is_async_write_stream`
+  are in stream_traits.hpp.
+  ['Actions Required]: Include stream_traits.hpp as needed.
+
+* `basic_parser`
+  is abstract.
+  ['Actions Required]
+  * Change uses of the `basic_parser` type to omit the `Derived`
+    template parameter
+  * Classes derived from `basic_parser` no longer need to friend
+    the base.
+  * Virtual functions in the derived class may be marked `override`.
+
+* Metafunction
+  `is_file`
+  is in file_base.hpp.
+  ['Actions Required]: Include file_base.hpp as needed.
+
+* `flat_static_buffer::reset()`
+  is deprecated.
+  ['Actions Required]:
+  * call
+    `clear()` instead.
+
+* `buffers_adapter` is spelled
+  `buffers_adaptor`.
+  ['Actions Required]:
+  * Replace `buffers_adapter` with
+    `buffers_adaptor`,
+    or define `BOOST_BEAST_ALLOW_DEPRECATED`.
+
+* `buffers` is spelled
+  `make_printable`.
+  ['Actions Required]:
+  * Replace `buffers` with
+    `make_printable`,
+    and include "make_printable.hpp" instead of "ostream.hpp".
+
+* `file_mode::append_new` is removed, as it makes no sense.
+  ['Actions Required]:
+  - Replace `file_mode::append_new` with either
+    `file_mode::append` or
+    `file_mode::append_existing`
+    as needed.
+
+* `role_type` is moved from `websocket` to `beast`
+
+* `buffers_range_ref`
+  is preferred to `std::reference_wrapper`.
+  ['Actions Required]:
+  - Call
+    `buffers_range_ref`
+    with the buffer, instead of calling
+    `buffers_range`
+    with a reference wrapper constructed from the buffer.
+
+* Nested `lowest_layer` and `lowest_layer_type` are removed.
+  ['Actions Required]: Use the free function
+  `get_lowest_layer` and the
+  type trait
+  `lowest_layer_type` instead.
+
+* WebSocket decorator is a socket option:
+  * Overloads of the following functions which accept a Decorator
+    are deprecated:
+    - `accept`, `accept_ex`
+    - `handshake`, `handshake_ex`
+    - `async_accept`, `async_accept_ex`
+    - `async_handshake`, `async_handshake_ex`
+
+* ([issue 1375]) The value returned from `basic_parser::content_length`
+  no longer changes as the body of the message is received.
+  ['Actions Required]: Call `basic_parser::content_length_remaining` instead
+  of `basic_parser::content_length` in order to determine the remaining
+  number of bytes in the body.
+
+
+[*Examples]
+
+* All example programs are updated:
+  * Use
+    `tcp_stream`
+    with timeouts (HTTP)
+  * Use
+    `ssl_stream`
+  * Set timeouts for WebSocket streams.
+  * Use
+    `bind_front_handler`
+
+* ([issue 1100]) http-crawl clears the response before each read
+
+* ([issue 1347]) echo-op is rewritten
+
+* ([issue 1401]) Examples use
+  `flat_buffer`
+
+* Advanced servers use HTTP parser interfaces for reading
+
+* detect-ssl is rewritten
+
+* New example [path_link example/websocket/server/chat-multi example/websocket/server/chat-multi]
+
+* `async_echo` works with move-only handlers
+
+* cppcon2018 example is removed
+
+
+
+[*Fixes]
+
+* ([issue 38]) Better treatment of SSL short reads
+
+* ([issue 1223]) HTTP read counts bytes correctly when an error occurs
+
+* ([issue 1247]) Update `ssl_stream`
+  for Asio changes
+
+* ([issue 1279]) Enable explicit instantiations of
+  `websocket::stream`
+
+* ([issue 1290]) Don't use deprecated Asio interfaces
+
+* ([issue 1306]) `http::message`
+  is not-a `boost::empty_value`
+
+* ([issue 1306]) `test::stream`
+  has fewer dependencies
+
+* ([issue 1358]) Destroy abandoned websocket ops on shutdown
+
+* ([issue 1365]) Handler wrappers decay parameters sooner
+
+* ([issue 1408]) `session_alloc`
+  is thread-safe
+
+* ([issue 1414]) Boost.System is header-only
+
+* ([issue 1418]) `test::stream`
+  maintains a handler work guard
+
+* ([issue 1445]) Fix posix_file::close handling of EINTR
+
+* ([issue 1460]) Large WebSocket Upgrade response no longer overflows
+
+* Reusing an HTTP parser returns an error
+
+* Handler bind wrappers use the associated allocator
+
+* `buffers_cat`
+  correctly skips empty buffers when iterated
+
+* `ostream`
+  does not overflow or exceed the dynamic buffer's maximum size
+
+* Fixes to
+  `test::stream::async_read`
+
+* `file_mode::append_existing`
+  works correctly
+
+* A handler work guard is maintained on paused websocket operations
+
+* All behavior of default-constructed iterators is conforming
+
+[/-----------------------------------------------------------------------------]
+
+[heading Boost 1.69]
+
+[*New Videos]
+
+[block'''
+<mediaobject>
+  <videoobject>
+    <videodata fileref="https://www.youtube.com/embed/7FQwAjELMek"
+        align="center" contentwidth="448" contentdepth="252"/>
+  </videoobject>
+</mediaobject>
+''']
+
+[*New Features]
+
+* ([issue 1133]) Add `BOOST_BEAST_USE_STD_STRING_VIEW`
+
+[*Examples]
+
+* New WebSocket server and browser-based client: example/cppcon2018
+
+[*Fixes]
+
+* ([issue 1245]) Fix a rare case of incorrect UTF8 validation
+
+* ([issue 1237]) Verify certificates in client examples
+
+* ([issue 1233]) Use [@boost:/doc/html/core/empty_value.html `boost::empty_value`]
+
+* ([issue 1091]) Fix timer on websocket upgrade in examples
+
+* ([issue 1270]) [link beast.ref.boost__beast__http__basic_fields `basic_fields`] uses intrusive base hooks
+
+* ([issue 1267]) Fix parsing of out-of-bounds hex values
+
+* ([issue 1263]) Fix uninitialized comparison in buffers iterator
+
+* ([issue 1288]) Remove extraneous strand from example
+
+* Workaround for http-server-fast and libstdc++
+
+* Partial support for `BOOST_NO_EXCEPTIONS`
+
+[*Experimental]
+
+* Add `timeout_socket`
+
+
+
+
+[heading Boost 1.68]
+
+This version fixes a missing executor work guard in all composed operations
+used in the implementation. Users who are experiencing crashes related to
+asynchronous completion handlers are encouraged to upgrade. Also included
+is an improved mechanism for generating random numbers used to mask outgoing
+websocket frames when operating in the client mode. This resolves a
+vulnerability described in the Beast Hybrid Assessment Report from Bishop Fox.
+
+[*New Features]
+
+The include directory `<beast/experimental>` contains features which are not
+part of the stable public interface but are available anyway. They may change
+in future versions.
+
+* ([issue 1108]) New [link beast.ref.boost__beast__flat_stream `flat_stream`] for working around an SSL stream performance limitation
+
+* ([issue 1151], [issue 595]) New [link beast.ref.boost__beast__http__icy_stream `http::icy_stream`] stream filter allows parsing ICY HTTP response handshakes
+
+* New [link beast.ref.boost__beast__ssl_stream `ssl_stream`] for better SSL performance and move constructability
+
+* New
+  [link beast.ref.boost__beast__test__error `test::connect`],
+  [link beast.ref.boost__beast__test__error `test::error`],
+  [link beast.ref.boost__beast__test__error `test::fail_count`], and
+  [link beast.ref.boost__beast__test__error `test::stream`] utilities for writing unit tests.
+
+* New [link beast.ref.boost__beast__http__is_mutable_body_writer `http::is_mutable_body_writer`] metafunction
+
+* New [link beast.ref.boost__beast__websocket__seed_prng `websocket::seed_prng`] for manually providing entropy to the PRNG
+
+* New [link beast.ref.boost__beast__websocket__stream.secure_prng `websocket::stream::secure_prng`] to control whether the connection uses a secure PRNG
+
+[*Improvements]
+
+* Generated WebSocket masks use a secure PRNG by default
+
+* Improvements to [link beast.ref.boost__beast__buffers_adaptor `buffers_adaptor`]
+
+* ([issue 1188]) Set "/permissive-" for MSVC builds
+
+* ([issue 1109]) Use a shared string for example HTTP server doc roots 
+
+* ([issue 1079]) Add `handler_ptr::has_value`
+
+[*Fixes]
+
+* ([issue 1073]) Fix race in advanced server examples
+
+* ([issue 1076]) Use executor_work_guard in composed operations
+
+* ([issue 1079]) Remove spurious assert
+
+* ([issue 1113]) Add `const` and non-`const` overloads for message based HTTP writes
+
+* ([issue 1119]) Fix unused variable warning
+
+* ([issue 1121]) Examples use the root certificate which matches the fingerprint
+
+* ([issue 1141]) Tidy up composed operation doc
+
+* ([issue 1186]) Check error in example set_option
+
+* ([issue 1210]) Fix http_server_stackless_ssl.cpp example
+
+* ([issue 1211]) Fix parse_dec algorithm
+
+* ([issue 1214]) Silence ubsan false positive
+
+* Tidy up websocket stream javadocs
+
+* Fix move-only arguments in [link beast.ref.boost__beast__bind_handler `bind_handler`]
+
+* Fix [link beast.ref.boost__beast__http__parser `http::parser`] constructor javadoc
+
+* Fix [link beast.ref.boost__beast__buffers_adaptor `buffers_adaptor`] iterator value type
+
+* Fix [link beast.ref.boost__beast__buffers_adaptor.max_size `buffers_adaptor::max_size`]
+
+* Fix [link beast.ref.boost__beast__buffers_prefix `buffers_prefix`] iterator decrement
+
+* Fix __Fields__, __FieldsWriter__ concept docs
+
+* Fix __BodyReader__ constructor requirements doc
+
+[*Breaking Changes]
+
+* Remove deprecated `serializer::reader_impl`
+
+* Remove deprecated __Body__ `reader` and `writer` ctor signatures
+
+
+
+
+
+[heading Boost 1.67]
+
+This version fixes significant defects in
+[link beast.ref.boost__beast__websocket__stream `websocket::stream`]
+which can lead to asserts or undefined behavior. Users are encouraged
+to update to the latest Boost release.
+
+[*New Features]
+
+* Move-only completion handlers are supported throughout the library
+
+* ([issue 899]) Advanced server examples support idle websocket pings and timeouts
+
+* ([issue 849]) WebSocket permessage-deflate support is now a compile-time
+  feature.  This adds an additional `bool` template parameter to
+  [link beast.ref.boost__beast__websocket__stream `websocket::stream`]
+  When `deflateSupported` is `true`, the stream will be capable of
+  negotiating the permessage-deflate websocket extension per the
+  configured run-time settings.
+  When `deflateSupported` is `false`, the stream will never negotiate
+  the permessage-deflate websocket extension. Furthermore, all of the
+  code necessary for implementing the permessage-deflate extension
+  will be excluded from function instantiations. Programs which set
+  `deflateSupported` to `false` when instantiating streams will be smaller.
+
+* ([issue 949]) WebSocket error codes are revised. New
+  [link beast.ref.boost__beast__websocket__error error codes]
+  are added for more fine-grained failure outcomes. Messages for error
+  codes are more verbose to help pinpoint the problem. Error codes are
+  now also mapped to newly added
+  [link beast.ref.boost__beast__websocket__condition error conditions]
+  to simplify comparisons. The error codes `websocket::error::failed`
+  and `websocket::error::handshake_failed` are removed.
+  Actions required:
+  Code which explicitly compares `error_code` values against
+  the constant `websocket::error::handshake_failed` should compare
+  against
+  [link beast.ref.boost__beast__websocket__condition `websocket::condition::handshake_failed`]
+  instead.
+  Code which explicitly compares error_code values against the
+  constant `websocket::error::failed` should compare
+  against
+  [link beast.ref.boost__beast__websocket__condition `websocket::condition::protocol_violation`]
+  instead.
+
+[*Improvements]
+
+* ([issue 857])
+  [link beast.ref.boost__beast__http__basic_fields `http::basic_fields`]
+  uses less storage
+
+* ([issue 894])
+  [link beast.ref.boost__beast__http__basic_fields `http::basic_fields`]
+  exception specifiers are provided
+
+* Implementation no longer uses deprecated `asio::null_buffers`
+
+* Add [include_file boost/beast/websocket/stream_fwd.hpp]
+
+* ([issue 955]) The asynchronous SSL detector example uses a stackless coroutine
+
+* [link beast.ref.boost__beast__bind_handler `bind_handler`]
+  works with boost placeholders
+
+* Examples set `reuse_address(true)`
+
+* ([issue 1026]) Advanced servers support clean shutdown via SIGINT or SIGTERM
+
+* Some basic_fields operations now give the strong exception guarantee
+
+[*Fixes]
+
+* Fix "warning: ‘const’ type qualifier on return type has no effect"
+
+* ([issue 916]) Tidy up `ssl_stream` special members
+
+* ([issue 918]) Calls to `<algorithm>` are protected from macros
+
+* ([issue 954]) The control callback is invoked on the proper executor
+
+* ([issue 994]) Fix iterator version of
+  [link beast.ref.boost__beast__http__basic_fields.erase.overload1 `http::basic_fields::erase`]
+
+* ([issue 992]) Fix use-after-move in example request handlers
+
+* ([issue 988]) Type check completion handlers
+
+* ([issue 985]) Tidy up
+  [link beast.ref.boost__beast__bind_handler `bind_handler`]
+  doc
+
+* Fix memory leak in advanced server examples
+
+* ([issue 1000]) Fix soft-mutex assert in websocket stream.
+  This resolves the assert `"ws_.wr_block_ == tok_"`.
+
+* ([issue 1019]) Fix fallthrough warnings
+
+* ([issue 1024]) Fix teardown for TIME_WAIT
+
+* ([issue 1030]) Fix big-endian websocket masking
+
+* Safe treatment of zero-length string arguments in basic_fields
+
+* ([issue 1043]) Examples clear the HTTP message before reading
+
+* ([issue 1012]) Add asio_handler_invoke overloads for stream algorithms
+
+* Add Access-Control-Expose-Headers field constant
+
+[*API Changes]
+
+* Remove unintended public members of
+  `handler_ptr`.
+  Actions required: don't call non-public members.
+
+* `handler_ptr`
+  is a move-only type, with `unique_ptr` semantics.
+  Actions required: user-defined composed operations using `handler_ptr`
+  to manage state can only be moved, not copied.
+
+* `handler_ptr`
+  gives the strong exception guarantee. The constructor signature
+  for managed objects constructed by `handler_ptr` now receives a
+  `const` reference to the handler. Actions required: Change the
+  constructor signature for state objects used with `handler_ptr`
+  to receive a `const` reference to the handler.
+
+* ([issue 896])
+  [link beast.ref.boost__beast__http__basic_fields `http::basic_fields`]
+  does not support fancy pointers
+
+* [link beast.ref.boost__beast__http__parser `http::parser`]
+  is no longer [*MoveConstructible]
+
+* ([issue 930]) `http::serializer::reader_impl` is deprecated and will
+  be removed in the next release. Actions required: Call
+  [link beast.ref.boost__beast__http__serializer.writer_impl `http::serializer::writer_impl`]
+  instead of `serializer::reader_impl`.
+
+* ([issue 884]) The __BodyReader__ and __BodyWriter__ concept constructor
+  requirements have changed. They now require the header and body
+  elements to be passed as distinct
+  [link beast.ref.boost__beast__http__header `http::header`]
+  and `value_type` objects. This enables the composition of body types.
+  The previous single-argument constructors are deprecated and will be
+  removed in the next version.
+  Actions required: Change user-defined instances of __BodyReader__ or
+  __BodyWriter__ constructor signatures to the two-argument form.
+  Alternatively. define the macro `BOOST_BEAST_ALLOW_DEPRECATED` in
+  the project (which will cause both the new and the deprecated
+  signatures to be accepted).
+
+* [link beast.ref.boost__beast__websocket__stream.control_callback `websocket::stream::control_callback`]
+  now copies or moves the function object.
+
+* ([issue 1014]) DynamicBuffer input areas are not mutable.
+  Actions required: do not attempt to write to input areas of dynamic
+  buffers.
+
+* ([issue 941]) `get_lowest_layer` is now a type alias.
+  Actions required: Replace instances of `typename get_lowest_layer<T>::type`
+  with `get_lowest_layer<T>`.
+
+[heading Boost 1.66]
+
+* Initial release
+
+[endsect]

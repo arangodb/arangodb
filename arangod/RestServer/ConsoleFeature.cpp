@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,7 +28,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/debugging.h"
 #include "Basics/messages.h"
-#include "FeaturePhases/AgencyFeaturePhase.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -50,8 +49,8 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-ConsoleFeature::ConsoleFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Console"),
+ConsoleFeature::ConsoleFeature(Server& server)
+    : ArangodFeature{server, *this},
       _operationMode(OperationMode::MODE_SERVER) {
   startsAfter<AgencyFeaturePhase>();
 }
@@ -65,7 +64,8 @@ void ConsoleFeature::start() {
     return;
   }
 
-  LOG_TOPIC("a4313", TRACE, Logger::STARTUP) << "server operation mode: CONSOLE";
+  LOG_TOPIC("a4313", TRACE, Logger::STARTUP)
+      << "server operation mode: CONSOLE";
 
   auto& sysDbFeature = server().getFeature<arangodb::SystemDatabaseFeature>();
   auto database = sysDbFeature.use();
@@ -104,7 +104,8 @@ void ConsoleFeature::unprepare() {
   int iterations = 0;
 
   while (_consoleThread->isRunning() && ++iterations < 30) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));  // sleep while console is still needed
+    std::this_thread::sleep_for(
+        std::chrono::milliseconds(100));  // sleep while console is still needed
   }
 
   std::cout << std::endl << TRI_BYE_MESSAGE << std::endl;

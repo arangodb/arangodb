@@ -43,7 +43,6 @@
 #include "Transaction/Methods.h"
 
 #include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 
 // required for QuerySetup
 #include "Mocks/Servers.h"
@@ -95,15 +94,15 @@ class CalculationExecutorTest
         one(ast.createNodeValueInt(1)),
         var("a", 0, false),
         a(::initializeReference(ast, var)),
-        node(ast.createNodeBinaryOperator(AstNodeType::NODE_TYPE_OPERATOR_BINARY_PLUS, a, one)),
+        node(ast.createNodeBinaryOperator(
+            AstNodeType::NODE_TYPE_OPERATOR_BINARY_PLUS, a, one)),
         plan(&ast, false),
         expr(&ast, node),
         outRegID(1),
         inRegID(0),
-        registerInfos(RegIdSet{inRegID}, RegIdSet{outRegID},
-                      1 /*in width*/, 2 /*out width*/,
-                      RegIdSet{} /*to clear*/, RegIdSetStack{{}} /*to keep*/) {
-        }
+        registerInfos(RegIdSet{inRegID}, RegIdSet{outRegID}, 1 /*in width*/,
+                      2 /*out width*/, RegIdSet{} /*to clear*/,
+                      RegIdSetStack{{}} /*to keep*/) {}
 
   auto getSplit() -> CalculationExecutorSplitType {
     auto [split] = GetParam();
@@ -111,28 +110,32 @@ class CalculationExecutorTest
   }
 
   auto buildInfos() -> CalculationExecutorInfos {
-    std::vector<std::pair<VariableId, RegisterId>> varToRegs{std::make_pair(var.id, inRegID)};
-    return CalculationExecutorInfos{outRegID, *fakedQuery.get(), expr, std::move(varToRegs)};
+    std::vector<std::pair<VariableId, RegisterId>> varToRegs{
+        std::make_pair(var.id, inRegID)};
+    return CalculationExecutorInfos{outRegID, *fakedQuery.get(), expr,
+                                    std::move(varToRegs)};
   }
 };
 
-template <size_t... vs>
+template<size_t... vs>
 const CalculationExecutorSplitType splitIntoBlocks =
     CalculationExecutorSplitType{std::vector<std::size_t>{vs...}};
-template <size_t step>
-const CalculationExecutorSplitType splitStep = CalculationExecutorSplitType{step};
+template<size_t step>
+const CalculationExecutorSplitType splitStep =
+    CalculationExecutorSplitType{step};
 
 INSTANTIATE_TEST_CASE_P(CalculationExecutor, CalculationExecutorTest,
-                        ::testing::Values(splitIntoBlocks<2, 3>, splitIntoBlocks<3, 4>,
-                                          splitStep<1>, splitStep<2>));
+                        ::testing::Values(splitIntoBlocks<2, 3>,
+                                          splitIntoBlocks<3, 4>, splitStep<1>,
+                                          splitStep<2>));
 
 TEST_P(CalculationExecutorTest, reference_empty_input) {
   AqlCall call{};
   ExecutionStats stats{};
 
   makeExecutorTestHelper<2, 2>()
-      .addConsumer<CalculationExecutor<CalculationType::Reference>>(std::move(registerInfos),
-                                                                    buildInfos())
+      .addConsumer<CalculationExecutor<CalculationType::Reference>>(
+          std::move(registerInfos), buildInfos())
       .setInputValue({})
       .setInputSplitType(getSplit())
       .setCall(call)
@@ -148,8 +151,8 @@ TEST_P(CalculationExecutorTest, reference_some_input) {
   ExecutionStats stats{};
 
   makeExecutorTestHelper<2, 2>()
-      .addConsumer<CalculationExecutor<CalculationType::Reference>>(std::move(registerInfos),
-                                                                    buildInfos())
+      .addConsumer<CalculationExecutor<CalculationType::Reference>>(
+          std::move(registerInfos), buildInfos())
       .setInputValue(MatrixBuilder<2>{
           RowBuilder<2>{0, NoneEntry{}}, RowBuilder<2>{1, NoneEntry{}},
           RowBuilder<2>{R"("a")", NoneEntry{}}, RowBuilder<2>{2, NoneEntry{}},
@@ -157,11 +160,12 @@ TEST_P(CalculationExecutorTest, reference_some_input) {
           RowBuilder<2>{5, NoneEntry{}}, RowBuilder<2>{6, NoneEntry{}}})
       .setInputSplitType(getSplit())
       .setCall(call)
-      .expectOutput({0, 1}, MatrixBuilder<2>{RowBuilder<2>{0, 0}, RowBuilder<2>{1, 1},
-                                             RowBuilder<2>{R"("a")", R"("a")"},
-                                             RowBuilder<2>{2, 2}, RowBuilder<2>{3, 3},
-                                             RowBuilder<2>{4, 4}, RowBuilder<2>{5, 5},
-                                             RowBuilder<2>{6, 6}})
+      .expectOutput({0, 1},
+                    MatrixBuilder<2>{RowBuilder<2>{0, 0}, RowBuilder<2>{1, 1},
+                                     RowBuilder<2>{R"("a")", R"("a")"},
+                                     RowBuilder<2>{2, 2}, RowBuilder<2>{3, 3},
+                                     RowBuilder<2>{4, 4}, RowBuilder<2>{5, 5},
+                                     RowBuilder<2>{6, 6}})
       .allowAnyOutputOrder(false)
       .expectSkipped(0)
       .expectedState(ExecutionState::DONE)
@@ -174,8 +178,8 @@ TEST_P(CalculationExecutorTest, reference_some_input_skip) {
   ExecutionStats stats{};
 
   makeExecutorTestHelper<2, 2>()
-      .addConsumer<CalculationExecutor<CalculationType::Reference>>(std::move(registerInfos),
-                                                                    buildInfos())
+      .addConsumer<CalculationExecutor<CalculationType::Reference>>(
+          std::move(registerInfos), buildInfos())
       .setInputValue(MatrixBuilder<2>{
           RowBuilder<2>{0, NoneEntry{}}, RowBuilder<2>{1, NoneEntry{}},
           RowBuilder<2>{R"("a")", NoneEntry{}}, RowBuilder<2>{2, NoneEntry{}},
@@ -183,8 +187,9 @@ TEST_P(CalculationExecutorTest, reference_some_input_skip) {
           RowBuilder<2>{5, NoneEntry{}}, RowBuilder<2>{6, NoneEntry{}}})
       .setInputSplitType(getSplit())
       .setCall(call)
-      .expectOutput({0, 1}, MatrixBuilder<2>{RowBuilder<2>{3, 3}, RowBuilder<2>{4, 4},
-                                             RowBuilder<2>{5, 5}, RowBuilder<2>{6, 6}})
+      .expectOutput({0, 1},
+                    MatrixBuilder<2>{RowBuilder<2>{3, 3}, RowBuilder<2>{4, 4},
+                                     RowBuilder<2>{5, 5}, RowBuilder<2>{6, 6}})
       .allowAnyOutputOrder(false)
       .expectSkipped(4)
       .expectedState(ExecutionState::DONE)
@@ -197,8 +202,8 @@ TEST_P(CalculationExecutorTest, reference_some_input_limit) {
   ExecutionStats stats{};
 
   makeExecutorTestHelper<2, 2>()
-      .addConsumer<CalculationExecutor<CalculationType::Reference>>(std::move(registerInfos),
-                                                                    buildInfos())
+      .addConsumer<CalculationExecutor<CalculationType::Reference>>(
+          std::move(registerInfos), buildInfos())
       .setInputValue(MatrixBuilder<2>{
           RowBuilder<2>{0, NoneEntry{}}, RowBuilder<2>{1, NoneEntry{}},
           RowBuilder<2>{R"("a")", NoneEntry{}}, RowBuilder<2>{2, NoneEntry{}},
@@ -206,9 +211,10 @@ TEST_P(CalculationExecutorTest, reference_some_input_limit) {
           RowBuilder<2>{5, NoneEntry{}}, RowBuilder<2>{6, NoneEntry{}}})
       .setInputSplitType(getSplit())
       .setCall(call)
-      .expectOutput({0, 1}, MatrixBuilder<2>{RowBuilder<2>{0, 0}, RowBuilder<2>{1, 1},
-                                             RowBuilder<2>{R"("a")", R"("a")"},
-                                             RowBuilder<2>{2, 2}})
+      .expectOutput({0, 1},
+                    MatrixBuilder<2>{RowBuilder<2>{0, 0}, RowBuilder<2>{1, 1},
+                                     RowBuilder<2>{R"("a")", R"("a")"},
+                                     RowBuilder<2>{2, 2}})
       .allowAnyOutputOrder(false)
       .expectSkipped(0)
       .expectedState(ExecutionState::DONE)
@@ -222,8 +228,8 @@ TEST_P(CalculationExecutorTest, reference_some_input_limit_fullcount) {
   ExecutionStats stats{};
 
   makeExecutorTestHelper<2, 2>()
-      .addConsumer<CalculationExecutor<CalculationType::Reference>>(std::move(registerInfos),
-                                                                    buildInfos())
+      .addConsumer<CalculationExecutor<CalculationType::Reference>>(
+          std::move(registerInfos), buildInfos())
       .setInputValue(MatrixBuilder<2>{
           RowBuilder<2>{0, NoneEntry{}}, RowBuilder<2>{1, NoneEntry{}},
           RowBuilder<2>{R"("a")", NoneEntry{}}, RowBuilder<2>{2, NoneEntry{}},
@@ -231,9 +237,10 @@ TEST_P(CalculationExecutorTest, reference_some_input_limit_fullcount) {
           RowBuilder<2>{5, NoneEntry{}}, RowBuilder<2>{6, NoneEntry{}}})
       .setInputSplitType(getSplit())
       .setCall(call)
-      .expectOutput({0, 1}, MatrixBuilder<2>{RowBuilder<2>{0, 0}, RowBuilder<2>{1, 1},
-                                             RowBuilder<2>{R"("a")", R"("a")"},
-                                             RowBuilder<2>{2, 2}})
+      .expectOutput({0, 1},
+                    MatrixBuilder<2>{RowBuilder<2>{0, 0}, RowBuilder<2>{1, 1},
+                                     RowBuilder<2>{R"("a")", R"("a")"},
+                                     RowBuilder<2>{2, 2}})
       .allowAnyOutputOrder(false)
       .expectSkipped(4)
       .expectedState(ExecutionState::DONE)
@@ -245,8 +252,8 @@ TEST_P(CalculationExecutorTest, condition_some_input) {
   ExecutionStats stats{};
 
   makeExecutorTestHelper<2, 2>()
-      .addConsumer<CalculationExecutor<CalculationType::Condition>>(std::move(registerInfos),
-                                                                    buildInfos())
+      .addConsumer<CalculationExecutor<CalculationType::Condition>>(
+          std::move(registerInfos), buildInfos())
       .setInputValue(MatrixBuilder<2>{
           RowBuilder<2>{0, NoneEntry{}}, RowBuilder<2>{1, NoneEntry{}},
           RowBuilder<2>{R"("a")", NoneEntry{}}, RowBuilder<2>{2, NoneEntry{}},
@@ -254,11 +261,12 @@ TEST_P(CalculationExecutorTest, condition_some_input) {
           RowBuilder<2>{5, NoneEntry{}}, RowBuilder<2>{6, NoneEntry{}}})
       .setInputSplitType(getSplit())
       .setCall(call)
-      .expectOutput({0, 1},
-                    MatrixBuilder<2>{RowBuilder<2>{0, 1}, RowBuilder<2>{1, 2},
-                                     RowBuilder<2>{R"("a")", 1}, RowBuilder<2>{2, 3},
-                                     RowBuilder<2>{3, 4}, RowBuilder<2>{4, 5},
-                                     RowBuilder<2>{5, 6}, RowBuilder<2>{6, 7}})
+      .expectOutput(
+          {0, 1},
+          MatrixBuilder<2>{RowBuilder<2>{0, 1}, RowBuilder<2>{1, 2},
+                           RowBuilder<2>{R"("a")", 1}, RowBuilder<2>{2, 3},
+                           RowBuilder<2>{3, 4}, RowBuilder<2>{4, 5},
+                           RowBuilder<2>{5, 6}, RowBuilder<2>{6, 7}})
       .allowAnyOutputOrder(false)
       .expectSkipped(0)
       .expectedState(ExecutionState::DONE)
@@ -271,8 +279,8 @@ TEST_P(CalculationExecutorTest, condition_some_input_skip) {
   ExecutionStats stats{};
 
   makeExecutorTestHelper<2, 2>()
-      .addConsumer<CalculationExecutor<CalculationType::Condition>>(std::move(registerInfos),
-                                                                    buildInfos())
+      .addConsumer<CalculationExecutor<CalculationType::Condition>>(
+          std::move(registerInfos), buildInfos())
       .setInputValue(MatrixBuilder<2>{
           RowBuilder<2>{0, NoneEntry{}}, RowBuilder<2>{1, NoneEntry{}},
           RowBuilder<2>{R"("a")", NoneEntry{}}, RowBuilder<2>{2, NoneEntry{}},
@@ -280,8 +288,9 @@ TEST_P(CalculationExecutorTest, condition_some_input_skip) {
           RowBuilder<2>{5, NoneEntry{}}, RowBuilder<2>{6, NoneEntry{}}})
       .setInputSplitType(getSplit())
       .setCall(call)
-      .expectOutput({0, 1}, MatrixBuilder<2>{RowBuilder<2>{3, 4}, RowBuilder<2>{4, 5},
-                                             RowBuilder<2>{5, 6}, RowBuilder<2>{6, 7}})
+      .expectOutput({0, 1},
+                    MatrixBuilder<2>{RowBuilder<2>{3, 4}, RowBuilder<2>{4, 5},
+                                     RowBuilder<2>{5, 6}, RowBuilder<2>{6, 7}})
       .allowAnyOutputOrder(false)
       .expectSkipped(4)
       .expectedState(ExecutionState::DONE)
@@ -294,8 +303,8 @@ TEST_P(CalculationExecutorTest, condition_some_input_limit) {
   ExecutionStats stats{};
 
   makeExecutorTestHelper<2, 2>()
-      .addConsumer<CalculationExecutor<CalculationType::Condition>>(std::move(registerInfos),
-                                                                    buildInfos())
+      .addConsumer<CalculationExecutor<CalculationType::Condition>>(
+          std::move(registerInfos), buildInfos())
       .setInputValue(MatrixBuilder<2>{
           RowBuilder<2>{0, NoneEntry{}}, RowBuilder<2>{1, NoneEntry{}},
           RowBuilder<2>{R"("a")", NoneEntry{}}, RowBuilder<2>{2, NoneEntry{}},
@@ -303,9 +312,10 @@ TEST_P(CalculationExecutorTest, condition_some_input_limit) {
           RowBuilder<2>{5, NoneEntry{}}, RowBuilder<2>{6, NoneEntry{}}})
       .setInputSplitType(getSplit())
       .setCall(call)
-      .expectOutput({0, 1},
-                    MatrixBuilder<2>{RowBuilder<2>{0, 1}, RowBuilder<2>{1, 2},
-                                     RowBuilder<2>{R"("a")", 1}, RowBuilder<2>{2, 3}})
+      .expectOutput(
+          {0, 1},
+          MatrixBuilder<2>{RowBuilder<2>{0, 1}, RowBuilder<2>{1, 2},
+                           RowBuilder<2>{R"("a")", 1}, RowBuilder<2>{2, 3}})
       .allowAnyOutputOrder(false)
       .expectSkipped(0)
       .expectedState(ExecutionState::DONE)
@@ -319,8 +329,8 @@ TEST_P(CalculationExecutorTest, condition_some_input_limit_fullcount) {
   ExecutionStats stats{};
 
   makeExecutorTestHelper<2, 2>()
-      .addConsumer<CalculationExecutor<CalculationType::Condition>>(std::move(registerInfos),
-                                                                    buildInfos())
+      .addConsumer<CalculationExecutor<CalculationType::Condition>>(
+          std::move(registerInfos), buildInfos())
       .setInputValue(MatrixBuilder<2>{
           RowBuilder<2>{0, NoneEntry{}}, RowBuilder<2>{1, NoneEntry{}},
           RowBuilder<2>{R"("a")", NoneEntry{}}, RowBuilder<2>{2, NoneEntry{}},
@@ -328,9 +338,10 @@ TEST_P(CalculationExecutorTest, condition_some_input_limit_fullcount) {
           RowBuilder<2>{5, NoneEntry{}}, RowBuilder<2>{6, NoneEntry{}}})
       .setInputSplitType(getSplit())
       .setCall(call)
-      .expectOutput({0, 1},
-                    MatrixBuilder<2>{RowBuilder<2>{0, 1}, RowBuilder<2>{1, 2},
-                                     RowBuilder<2>{R"("a")", 1}, RowBuilder<2>{2, 3}})
+      .expectOutput(
+          {0, 1},
+          MatrixBuilder<2>{RowBuilder<2>{0, 1}, RowBuilder<2>{1, 2},
+                           RowBuilder<2>{R"("a")", 1}, RowBuilder<2>{2, 3}})
       .allowAnyOutputOrder(false)
       .expectSkipped(4)
       .expectedState(ExecutionState::DONE)
@@ -343,8 +354,8 @@ TEST_P(CalculationExecutorTest, DISABLED_v8condition_some_input) {
   ExecutionStats stats{};
 
   makeExecutorTestHelper<2, 2>()
-      .addConsumer<CalculationExecutor<CalculationType::V8Condition>>(std::move(registerInfos),
-                                                                      buildInfos())
+      .addConsumer<CalculationExecutor<CalculationType::V8Condition>>(
+          std::move(registerInfos), buildInfos())
       .setInputValue(MatrixBuilder<2>{
           RowBuilder<2>{0, NoneEntry{}}, RowBuilder<2>{1, NoneEntry{}},
           RowBuilder<2>{R"("a")", NoneEntry{}}, RowBuilder<2>{2, NoneEntry{}},
@@ -352,11 +363,12 @@ TEST_P(CalculationExecutorTest, DISABLED_v8condition_some_input) {
           RowBuilder<2>{5, NoneEntry{}}, RowBuilder<2>{6, NoneEntry{}}})
       .setInputSplitType(getSplit())
       .setCall(call)
-      .expectOutput({0, 1},
-                    MatrixBuilder<2>{RowBuilder<2>{0, 1}, RowBuilder<2>{1, 2},
-                                     RowBuilder<2>{R"("a")", 1}, RowBuilder<2>{2, 3},
-                                     RowBuilder<2>{3, 4}, RowBuilder<2>{4, 5},
-                                     RowBuilder<2>{5, 6}, RowBuilder<2>{6, 7}})
+      .expectOutput(
+          {0, 1},
+          MatrixBuilder<2>{RowBuilder<2>{0, 1}, RowBuilder<2>{1, 2},
+                           RowBuilder<2>{R"("a")", 1}, RowBuilder<2>{2, 3},
+                           RowBuilder<2>{3, 4}, RowBuilder<2>{4, 5},
+                           RowBuilder<2>{5, 6}, RowBuilder<2>{6, 7}})
       .allowAnyOutputOrder(false)
       .expectSkipped(0)
       .expectedState(ExecutionState::DONE)

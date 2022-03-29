@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,13 +23,15 @@
 
 #pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
+#include "RestServer/arangod.h"
 
 namespace arangodb {
 
-class FrontendFeature final : public application_features::ApplicationFeature {
+class FrontendFeature final : public ArangodFeature {
  public:
-  explicit FrontendFeature(application_features::ApplicationServer& server);
+  static constexpr std::string_view name() noexcept { return "Frontend"; }
+
+  explicit FrontendFeature(Server& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
@@ -39,4 +41,3 @@ class FrontendFeature final : public application_features::ApplicationFeature {
 };
 
 }  // namespace arangodb
-

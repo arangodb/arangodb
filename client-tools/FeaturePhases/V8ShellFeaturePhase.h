@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,13 +26,29 @@
 #include "ApplicationFeatures/ApplicationFeaturePhase.h"
 
 namespace arangodb {
+class ShellConsoleFeature;
+class V8ShellFeature;
+class V8PlatformFeature;
+class V8SecurityFeature;
 namespace application_features {
+class GreetingsFeaturePhase;
 
 class V8ShellFeaturePhase final : public ApplicationFeaturePhase {
  public:
-  explicit V8ShellFeaturePhase(ApplicationServer& server);
+  static constexpr std::string_view name() noexcept { return "V8ShellPhase"; }
+
+  template<typename Server>
+  explicit V8ShellFeaturePhase(Server& server)
+      : ApplicationFeaturePhase{server, *this} {
+    setOptional(false);
+    startsAfter<GreetingsFeaturePhase, Server>();
+
+    startsAfter<ShellConsoleFeature, Server>();
+    startsAfter<V8ShellFeature, Server>();
+    startsAfter<V8PlatformFeature, Server>();
+    startsAfter<V8SecurityFeature, Server>();
+  }
 };
 
 }  // namespace application_features
 }  // namespace arangodb
-

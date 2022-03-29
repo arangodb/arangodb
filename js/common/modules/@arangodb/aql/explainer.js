@@ -114,6 +114,14 @@ function attributeUncolored(v) {
   return '`' + v + '`';
 }
 
+function indexFieldToName(v) {
+  'use strict';
+  if (typeof v === 'object') {
+    return v.name;
+  }
+  return v;
+}
+
 function keyword(v) {
   'use strict';
   return colors.COLOR_CYAN + v + colors.COLOR_RESET;
@@ -158,6 +166,11 @@ function view(v) {
 function attribute(v) {
   'use strict';
   return '`' + colors.COLOR_YELLOW + v + colors.COLOR_RESET + '`';
+}
+
+function attributePath(v) {
+  'use strict';
+  return v.split('.').map(attribute).join('.');
 }
 
 function header(v) {
@@ -290,18 +303,21 @@ function printStats(stats) {
   var maxWILen = String('Writes Ign').length;
   var maxSFLen = String('Scan Full').length;
   var maxSILen = String('Scan Index').length;
+  var maxCHMLen = String('Cache Hits/Misses').length;
   var maxFLen = String('Filtered').length;
   var maxMem = String('Peak Mem [b]').length;
   var maxETen = String('Exec Time [s]').length;
   stats.executionTime = stats.executionTime.toFixed(5);
   stringBuilder.appendLine(' ' + header('Writes Exec') + '   ' + header('Writes Ign') + '   ' + header('Scan Full') + '   ' +
-    header('Scan Index') + '   ' + header('Filtered') + '   ' + header('Peak Mem [b]') + '   ' + header('Exec Time [s]'));
+    header('Scan Index') + '   ' + header('Cache Hits/Misses') + '   ' + header('Filtered') + '   ' + 
+    header('Peak Mem [b]') + '   ' + header('Exec Time [s]'));
 
   stringBuilder.appendLine(' ' + pad(1 + maxWELen - String(stats.writesExecuted).length) + value(stats.writesExecuted) + '   ' +
     pad(1 + maxWILen - String(stats.writesIgnored).length) + value(stats.writesIgnored) + '   ' +
     pad(1 + maxSFLen - String(stats.scannedFull).length) + value(stats.scannedFull) + '   ' +
     pad(1 + maxSILen - String(stats.scannedIndex).length) + value(stats.scannedIndex) + '   ' +
-    pad(1 + maxFLen - String(stats.filtered).length) + value(stats.filtered) + '   ' +
+    pad(1 + maxCHMLen - (String(stats.cacheHits || 0) + ' / ' + String(stats.cacheMisses || 0)).length) + value(stats.cacheHits || 0) + ' / ' + value(stats.cacheMisses || 0) + '   ' +
+    pad(1 + maxFLen - String(stats.filtered || 0).length) + value(stats.filtered || 0) + '   ' +
     pad(1 + maxMem - String(stats.peakMemoryUsage).length) + value(stats.peakMemoryUsage) + '   ' +
     pad(1 + maxETen - String(stats.executionTime).length) + value(stats.executionTime));
   stringBuilder.appendLine();
@@ -344,6 +360,7 @@ function printIndexes(indexes) {
     var maxCollectionLen = String('Collection').length;
     var maxUniqueLen = String('Unique').length;
     var maxSparseLen = String('Sparse').length;
+    var maxCacheLen = String('Cache').length;
     var maxNameLen = String('Name').length;
     var maxTypeLen = String('Type').length;
     var maxSelectivityLen = String('Selectivity').length;
@@ -361,7 +378,7 @@ function printIndexes(indexes) {
       if (l > maxTypeLen) {
         maxTypeLen = l;
       }
-      l = index.fields.map(attributeUncolored).join(', ').length + '[  ]'.length;
+      l = index.fields.map(indexFieldToName).map(attributeUncolored).join(', ').length + '[  ]'.length;
       if (l > maxFieldsLen) {
         maxFieldsLen = l;
       }
@@ -376,6 +393,7 @@ function printIndexes(indexes) {
       header('Collection') + pad(1 + maxCollectionLen - 'Collection'.length) + '   ' +
       header('Unique') + pad(1 + maxUniqueLen - 'Unique'.length) + '   ' +
       header('Sparse') + pad(1 + maxSparseLen - 'Sparse'.length) + '   ' +
+      header('Cache') + pad(1 + maxCacheLen - 'Cache'.length) + '   ' +
       header('Selectivity') + '   ' +
       header('Fields') + pad(1 + maxFieldsLen - 'Fields'.length) + '   ' +
       header('Ranges');
@@ -385,8 +403,9 @@ function printIndexes(indexes) {
     for (var i = 0; i < indexes.length; ++i) {
       var uniqueness = (indexes[i].unique ? 'true' : 'false');
       var sparsity = (indexes[i].hasOwnProperty('sparse') ? (indexes[i].sparse ? 'true' : 'false') : 'n/a');
-      var fields = '[ ' + indexes[i].fields.map(attribute).join(', ') + ' ]';
-      var fieldsLen = indexes[i].fields.map(attributeUncolored).join(', ').length + '[  ]'.length;
+      var cache = (indexes[i].hasOwnProperty('cacheEnabled') && indexes[i].cacheEnabled ? 'true' : 'false');
+      var fields = '[ ' + indexes[i].fields.map(indexFieldToName).map(attribute).join(', ') + ' ]';
+      var fieldsLen = indexes[i].fields.map(indexFieldToName).map(attributeUncolored).join(', ').length + '[  ]'.length;
       var ranges;
       if (indexes[i].hasOwnProperty('condition')) {
         ranges = indexes[i].condition;
@@ -411,6 +430,7 @@ function printIndexes(indexes) {
         collection(indexes[i].collection) + pad(1 + maxCollectionLen - indexes[i].collection.length) + '   ' +
         value(uniqueness) + pad(1 + maxUniqueLen - uniqueness.length) + '   ' +
         value(sparsity) + pad(1 + maxSparseLen - sparsity.length) + '   ' +
+        value(cache) + pad(1 + maxCacheLen - cache.length) + '   ' +
         pad(1 + maxSelectivityLen - estimate.length) + value(estimate) + '   ' +
         fields + pad(1 + maxFieldsLen - fieldsLen) + '   ' +
         ranges;
@@ -744,6 +764,7 @@ function processQuery(query, explain, planIndex) {
     maxEstimateLen = String('Est.').length,
     maxCallsLen = String('Calls').length,
     maxItemsLen = String('Items').length,
+    maxFilteredLen = String('Filtered').length,
     maxRuntimeLen = String('Runtime [s]').length,
     stats = explain.stats;
 
@@ -802,6 +823,7 @@ function processQuery(query, explain, planIndex) {
       if (nodes.hasOwnProperty(n.id)) {
         nodes[n.id].calls = (n.calls === undefined ? "n/a" : n.calls);
         nodes[n.id].items = (n.items === undefined ? "n/a" : n.items);
+        nodes[n.id].filtered = (n.filtered === undefined ? "n/a" : n.filtered);
         nodes[n.id].runtime = (n.runtime === undefined ? "n/a" : n.runtime);
 
         if (String(nodes[n.id].calls).length > maxCallsLen) {
@@ -809,6 +831,9 @@ function processQuery(query, explain, planIndex) {
         }
         if (String(nodes[n.id].items).length > maxItemsLen) {
           maxItemsLen = String(nodes[n.id].items).length;
+        }
+        if (String(nodes[n.id].filtered).length > maxFilteredLen) {
+          maxFilteredLen = String(nodes[n.id].filtered).length;
         }
         let l;
         if (typeof nodes[n.id].runtime === 'number') {
@@ -1133,7 +1158,10 @@ function processQuery(query, explain, planIndex) {
     }
     idx.collection = node.collection;
     idx.node = node.id;
-    if (node.hasOwnProperty('condition') && node.condition.type && node.condition.type === 'n-ary or') {
+    if (node.hasOwnProperty('condition') && node.hasOwnProperty('allCoveredByOneIndex') &&
+        node.allCoveredByOneIndex) {
+       idx.condition = buildExpression(node.condition);
+    } else if (node.hasOwnProperty('condition') && node.condition.type && node.condition.type === 'n-ary or') {
       idx.condition = buildExpression(node.condition.subNodes[i]);
     } else {
       if (variable !== false && variable !== undefined) {
@@ -1222,7 +1250,7 @@ function processQuery(query, explain, planIndex) {
           }
 
           sortCondition = keyword(' SORT ') + node.primarySort.slice(0, primarySortBuckets).map(function (element) {
-            return variableName(node.outVariable) + '.' + attribute(element.field) + ' ' + keyword(element.asc ? 'ASC' : 'DESC');
+            return variableName(node.outVariable) + '.' + attributePath(element.field) + ' ' + keyword(element.asc ? 'ASC' : 'DESC');
           }).join(', ');
         }
 
@@ -1247,10 +1275,10 @@ function processQuery(query, explain, planIndex) {
         if (node.hasOwnProperty('viewValuesVars') && node.viewValuesVars.length > 0) {
           viewVariables = node.viewValuesVars.map(function (viewValuesColumn) {
             if (viewValuesColumn.hasOwnProperty('field')) {
-              return keyword(' LET ') + variableName(viewValuesColumn) + ' = ' + variableName(node.outVariable) + '.' + attribute(viewValuesColumn.field);
+              return keyword(' LET ') + variableName(viewValuesColumn) + ' = ' + variableName(node.outVariable) + '.' + attributePath(viewValuesColumn.field);
             } else {
               return viewValuesColumn.viewStoredValuesVars.map(function (viewValuesVar) {
-                return keyword(' LET ') + variableName(viewValuesVar) + ' = ' + variableName(node.outVariable) + '.' + attribute(viewValuesVar.field);
+                return keyword(' LET ') + variableName(viewValuesVar) + ' = ' + variableName(node.outVariable) + '.' + attributePath(viewValuesVar.field);
               }).join('');
             }
           }).join('');
@@ -1789,7 +1817,7 @@ function processQuery(query, explain, planIndex) {
             collectionVariables[node.outVariable.id] = node.collection;
             let indexRef = `${variable(JSON.stringify(node.key))}`;
             node.indexes.forEach(function (idx, i) { iterateIndexes(idx, i, node, types, indexRef); });
-            return `${keyword('FOR')} ${variableName(node.outVariable)} ${keyword('IN')} ${collection(node.collection)} ${keyword('FILTER')} ${variable('_key')} == ${indexRef} ${annotation(`/* primary index scan */`)}`;
+            return `${keyword('FOR')} ${variableName(node.outVariable)} ${keyword('IN')} ${collection(node.collection)} ${keyword('FILTER')} ${variableName(node.outVariable)}.${attribute('_key')} == ${indexRef} ${annotation(`/* primary index scan */`)}`;
             // `
           }
           case 'InsertNode': {
@@ -1812,9 +1840,9 @@ function processQuery(query, explain, planIndex) {
             let keyCondition = "";
             let filterCondition;
             if (node.hasOwnProperty('key')) {
-              keyCondition = `{ _key: ${variable(JSON.stringify(node.key))} } `;
+              keyCondition = `{ ${value('_key')} : ${variable(JSON.stringify(node.key))} } `;
               indexRef = `${variable(JSON.stringify(node.key))} `;
-              filterCondition = `${variable('doc._key')} == ${variable(JSON.stringify(node.key))}`;
+              filterCondition = `${variable('doc')}.${attribute('_key')} == ${variable(JSON.stringify(node.key))}`;
             } else if (node.hasOwnProperty('inVariable')) {
               keyCondition = `${variableName(node.inVariable)} `;
               indexRef = `${variableName(node.inVariable)}`;
@@ -1843,9 +1871,9 @@ function processQuery(query, explain, planIndex) {
             let keyCondition = "";
             let filterCondition;
             if (node.hasOwnProperty('key')) {
-              keyCondition = `{ _key: ${variable(JSON.stringify(node.key))} } `;
+              keyCondition = `{ ${value('_key')} : ${variable(JSON.stringify(node.key))} } `;
               indexRef = `${variable(JSON.stringify(node.key))}`;
-              filterCondition = `${variable('doc._key')} == ${variable(JSON.stringify(node.key))}`;
+              filterCondition = `${variable('doc')}.${attribute('_key')} == ${variable(JSON.stringify(node.key))}`;
             } else if (node.hasOwnProperty('inVariable')) {
               keyCondition = `${variableName(node.inVariable)} `;
               indexRef = `${variableName(node.inVariable)}`;
@@ -1872,9 +1900,9 @@ function processQuery(query, explain, planIndex) {
             let keyCondition;
             let filterCondition;
             if (node.hasOwnProperty('key')) {
-              keyCondition = `{ _key: ${variable(JSON.stringify(node.key))} } `;
+              keyCondition = `{ ${value('_key')} : ${variable(JSON.stringify(node.key))} } `;
               indexRef = `${variable(JSON.stringify(node.key))}`;
-              filterCondition = `${variable('doc._key')} == ${variable(JSON.stringify(node.key))}`;
+              filterCondition = `${variable('doc')}.${attribute('_key')} == ${variable(JSON.stringify(node.key))}`;
             } else if (node.hasOwnProperty('inVariable')) {
               keyCondition = `${variableName(node.inVariable)} `;
               indexRef = `${variableName(node.inVariable)}`;
@@ -2030,6 +2058,9 @@ function processQuery(query, explain, planIndex) {
       if (node.items === undefined) {
         node.items = 'n/a';
       }
+      if (node.filtered === undefined) {
+        node.filtered = 'n/a';
+      }
       let runtime = node.runtime;
       if (runtime === undefined) {
         runtime = 'n/a';
@@ -2039,6 +2070,7 @@ function processQuery(query, explain, planIndex) {
 
       line += pad(1 + maxCallsLen - String(node.calls).length) + value(node.calls) + '   ' +
         pad(1 + maxItemsLen - String(node.items).length) + value(node.items) + '   ' +
+        pad(1 + maxFilteredLen - String(node.filtered).length) + value(node.filtered) + '   ' +
         pad(1 + maxRuntimeLen - runtime.length) + value(runtime) + '   ' +
         indent(level, node.type === 'SingletonNode') + label(node) + callstackSplit(node);
     } else {
@@ -2070,6 +2102,7 @@ function processQuery(query, explain, planIndex) {
   if (profileMode) {
     line += pad(1 + maxCallsLen - String('Calls').length) + header('Calls') + '   ' +
       pad(1 + maxItemsLen - String('Items').length) + header('Items') + '   ' +
+      pad(1 + maxFilteredLen - String('Filtered').length) + header('Filtered') + '   ' +
       pad(1 + maxRuntimeLen - String('Runtime [s]').length) + header('Runtime [s]') + '   ' +
       header('Comment');
   } else {
@@ -2103,11 +2136,11 @@ function processQuery(query, explain, planIndex) {
 
   printRules(plan.rules, explain.stats);
   printModificationFlags(modificationFlags);
-  printWarnings(explain.warnings);
   if (profileMode) {
     printStats(explain.stats);
     printProfile(explain.profile);
   }
+  printWarnings(explain.warnings);
 }
 
 /* the exposed explain function */
@@ -2124,6 +2157,7 @@ function explain(data, options, shouldPrint) {
     options = data.options;
   }
   options = options || {};
+  options.explainInternals = false;
   options.verbosePlans = true;
   setColors(options.colors === undefined ? true : options.colors);
 
@@ -2885,6 +2919,7 @@ function explainRegisters(data, options, shouldPrint) {
   }
   options = options || {};
   options.verbosePlans = true;
+  options.explainInternals = true;
   options.explainRegisters = true;
   setColors(options.colors === undefined ? true : options.colors);
 

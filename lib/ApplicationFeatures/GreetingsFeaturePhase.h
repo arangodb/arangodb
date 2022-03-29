@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,13 +26,38 @@
 #include "ApplicationFeaturePhase.h"
 
 namespace arangodb {
+
+class ConfigFeature;
+class LoggerFeature;
+class RandomFeature;
+class ShellColorsFeature;
+class VersionFeature;
+class GreetingsFeature;
+
 namespace application_features {
 
 class GreetingsFeaturePhase final : public ApplicationFeaturePhase {
  public:
-  explicit GreetingsFeaturePhase(ApplicationServer& server, bool isClient);
+  static constexpr std::string_view name() noexcept { return "GreetingsPhase"; }
+
+  template<typename Server, bool IsClient>
+  explicit GreetingsFeaturePhase(Server& server,
+                                 std::integral_constant<bool, IsClient>)
+      : ApplicationFeaturePhase{server, *this} {
+    setOptional(false);
+
+    startsAfter<ConfigFeature, Server>();
+    startsAfter<LoggerFeature, Server>();
+    startsAfter<RandomFeature, Server>();
+    startsAfter<ShellColorsFeature, Server>();
+    startsAfter<VersionFeature, Server>();
+
+    if constexpr (!IsClient) {
+      // These are server only features
+      startsAfter<GreetingsFeature, Server>();
+    }
+  }
 };
 
 }  // namespace application_features
 }  // namespace arangodb
-
