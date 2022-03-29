@@ -43,6 +43,11 @@ struct VPackSaveInspector : InspectorBase<VPackSaveInspector> {
   explicit VPackSaveInspector(velocypack::Builder& builder)
       : _builder(builder) {}
 
+  template<class T>
+  [[nodiscard]] Result apply(T const& x) {
+    return process(*this, x);
+  }
+
   [[nodiscard]] Result::Success beginObject() {
     _builder.openObject();
     return {};

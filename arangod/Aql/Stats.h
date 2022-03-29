@@ -29,9 +29,9 @@
 #include "Aql/ExecutionStats.h"
 
 #include <cstddef>
+#include <cstdint>
 
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
 
 // no-op statistics for all Executors that don't have custom stats.
 class NoStats {
@@ -47,18 +47,13 @@ class CountStats {
  public:
   CountStats() noexcept : _counted(0) {}
 
-  void setCounted(std::size_t counted) noexcept { _counted = counted; }
-
-  void addCounted(std::size_t counted) noexcept { _counted += counted; }
-
-  void incrCounted() noexcept { _counted++; }
-
-  std::size_t getCounted() const noexcept { return _counted; }
+  void incrCounted(std::uint64_t value = 1) noexcept { _counted += value; }
+  [[nodiscard]] std::uint64_t getCounted() const noexcept { return _counted; }
 
   void operator+=(CountStats const& stats) { _counted += stats._counted; }
 
  private:
-  std::size_t _counted;
+  std::uint64_t _counted = 0;
 };
 
 inline ExecutionStats& operator+=(ExecutionStats& executionStats,
@@ -71,20 +66,15 @@ class FilterStats {
  public:
   FilterStats() noexcept : _filtered(0) {}
 
-  void setFiltered(std::size_t filtered) noexcept { _filtered = filtered; }
-
-  void addFiltered(std::size_t filtered) noexcept { _filtered += filtered; }
-
-  void incrFiltered() noexcept { _filtered++; }
-
-  std::size_t getFiltered() const noexcept { return _filtered; }
+  void incrFiltered(std::uint64_t value = 1) noexcept { _filtered += value; }
+  [[nodiscard]] std::uint64_t getFiltered() const noexcept { return _filtered; }
 
   void operator+=(FilterStats const& stats) noexcept {
     _filtered += stats._filtered;
   }
 
  private:
-  std::size_t _filtered;
+  std::uint64_t _filtered = 0;
 };
 
 inline ExecutionStats& operator+=(ExecutionStats& executionStats,
@@ -101,11 +91,13 @@ class EnumerateCollectionStats {
  public:
   EnumerateCollectionStats() noexcept : _scannedFull(0), _filtered(0) {}
 
-  void incrScanned(size_t scanned) noexcept { _scannedFull += scanned; }
-  void incrFiltered(size_t filtered) noexcept { _filtered += filtered; }
+  void incrScanned(std::uint64_t value = 1) noexcept { _scannedFull += value; }
+  void incrFiltered(std::uint64_t value = 1) noexcept { _filtered += value; }
 
-  std::size_t getScanned() const noexcept { return _scannedFull; }
-  std::size_t getFiltered() const noexcept { return _filtered; }
+  [[nodiscard]] std::uint64_t getScanned() const noexcept {
+    return _scannedFull;
+  }
+  [[nodiscard]] std::uint64_t getFiltered() const noexcept { return _filtered; }
 
   void operator+=(EnumerateCollectionStats const& stats) noexcept {
     _scannedFull += stats._scannedFull;
@@ -113,8 +105,8 @@ class EnumerateCollectionStats {
   }
 
  private:
-  std::size_t _scannedFull;
-  std::size_t _filtered;
+  std::uint64_t _scannedFull = 0;
+  std::uint64_t _filtered = 0;
 };
 
 inline ExecutionStats& operator+=(
@@ -131,34 +123,56 @@ class IndexStats {
       : _scannedIndex(0),
         _filtered(0),
         _cursorsCreated(0),
-        _cursorsRearmed(0) {}
+        _cursorsRearmed(0),
+        _cacheHits(0),
+        _cacheMisses(0) {}
 
-  void incrScanned() noexcept { _scannedIndex++; }
-  void incrScanned(size_t value) noexcept { _scannedIndex += value; }
+  void incrScanned(std::uint64_t value = 1) noexcept { _scannedIndex += value; }
+  void incrFiltered(std::uint64_t value = 1) noexcept { _filtered += value; }
+  void incrCursorsCreated(std::uint64_t value = 1) noexcept {
+    _cursorsCreated += value;
+  }
+  void incrCursorsRearmed(std::uint64_t value = 1) noexcept {
+    _cursorsRearmed += value;
+  }
+  void incrCacheHits(std::uint64_t value = 1) noexcept { _cacheHits += value; }
+  void incrCacheMisses(std::uint64_t value = 1) noexcept {
+    _cacheMisses += value;
+  }
 
-  void incrFiltered() noexcept { _filtered++; }
-  void incrFiltered(size_t value) noexcept { _filtered += value; }
-
-  void incrCursorsCreated(size_t value) noexcept { _cursorsCreated += value; }
-  void incrCursorsRearmed(size_t value) noexcept { _cursorsRearmed += value; }
-
-  std::size_t getScanned() const noexcept { return _scannedIndex; }
-  std::size_t getFiltered() const noexcept { return _filtered; }
-  std::size_t getCursorsCreated() const noexcept { return _cursorsCreated; }
-  std::size_t getCursorsRearmed() const noexcept { return _cursorsRearmed; }
+  [[nodiscard]] std::uint64_t getScanned() const noexcept {
+    return _scannedIndex;
+  }
+  [[nodiscard]] std::uint64_t getFiltered() const noexcept { return _filtered; }
+  [[nodiscard]] std::uint64_t getCursorsCreated() const noexcept {
+    return _cursorsCreated;
+  }
+  [[nodiscard]] std::uint64_t getCursorsRearmed() const noexcept {
+    return _cursorsRearmed;
+  }
+  [[nodiscard]] std::uint64_t getCacheHits() const noexcept {
+    return _cacheHits;
+  }
+  [[nodiscard]] std::uint64_t getCacheMisses() const noexcept {
+    return _cacheMisses;
+  }
 
   void operator+=(IndexStats const& stats) noexcept {
     _scannedIndex += stats._scannedIndex;
     _filtered += stats._filtered;
     _cursorsCreated += stats._cursorsCreated;
     _cursorsRearmed += stats._cursorsRearmed;
+    _cacheHits += stats._cacheHits;
+    _cacheMisses += stats._cacheMisses;
   }
 
  private:
-  std::size_t _scannedIndex;
-  std::size_t _filtered;
-  std::size_t _cursorsCreated;
-  std::size_t _cursorsRearmed;
+  std::uint64_t _scannedIndex = 0;
+  std::uint64_t _filtered = 0;
+  std::uint64_t _cursorsCreated = 0;
+  std::uint64_t _cursorsRearmed = 0;
+  std::uint64_t _cacheHits = 0;
+  std::uint64_t _cacheMisses = 0;
 };
 
 inline ExecutionStats& operator+=(ExecutionStats& executionStats,
@@ -167,6 +181,8 @@ inline ExecutionStats& operator+=(ExecutionStats& executionStats,
   executionStats.filtered += indexStats.getFiltered();
   executionStats.cursorsCreated += indexStats.getCursorsCreated();
   executionStats.cursorsRearmed += indexStats.getCursorsRearmed();
+  executionStats.cacheHits += indexStats.getCacheHits();
+  executionStats.cacheMisses += indexStats.getCacheMisses();
   return executionStats;
 }
 
@@ -174,23 +190,19 @@ class ModificationStats {
  public:
   ModificationStats() noexcept : _writesExecuted(0), _writesIgnored(0) {}
 
-  void setWritesExecuted(std::size_t writesExecuted) noexcept {
-    _writesExecuted = writesExecuted;
+  void incrWritesExecuted(std::uint64_t value = 1) noexcept {
+    _writesExecuted += value;
   }
-  void addWritesExecuted(std::size_t writesExecuted) noexcept {
-    _writesExecuted += writesExecuted;
+  [[nodiscard]] std::uint64_t getWritesExecuted() const noexcept {
+    return _writesExecuted;
   }
-  void incrWritesExecuted() noexcept { _writesExecuted++; }
-  std::size_t getWritesExecuted() const noexcept { return _writesExecuted; }
 
-  void setWritesIgnored(std::size_t writesIgnored) noexcept {
-    _writesIgnored = writesIgnored;
+  void incrWritesIgnored(std::uint64_t value = 1) noexcept {
+    _writesIgnored += value;
   }
-  void addWritesIgnored(std::size_t writesIgnored) noexcept {
-    _writesIgnored += writesIgnored;
+  [[nodiscard]] std::uint64_t getWritesIgnored() const noexcept {
+    return _writesIgnored;
   }
-  void incrWritesIgnored() noexcept { _writesIgnored++; }
-  std::size_t getWritesIgnored() const noexcept { return _writesIgnored; }
 
   void operator+=(ModificationStats const& stats) noexcept {
     _writesExecuted += stats._writesExecuted;
@@ -198,8 +210,8 @@ class ModificationStats {
   }
 
  private:
-  std::size_t _writesExecuted;
-  std::size_t _writesIgnored;
+  std::uint64_t _writesExecuted = 0;
+  std::uint64_t _writesIgnored = 0;
 };
 
 inline ExecutionStats& operator+=(
@@ -215,32 +227,26 @@ class SingleRemoteModificationStats {
   SingleRemoteModificationStats() noexcept
       : _writesExecuted(0), _writesIgnored(0), _scannedIndex(0) {}
 
-  void setWritesExecuted(std::size_t writesExecuted) noexcept {
-    _writesExecuted = writesExecuted;
+  void incrWritesExecuted(std::uint64_t value = 1) noexcept {
+    _writesExecuted += value;
   }
-  void addWritesExecuted(std::size_t writesExecuted) noexcept {
-    _writesExecuted += writesExecuted;
+  [[nodiscard]] std::uint64_t getWritesExecuted() const noexcept {
+    return _writesExecuted;
   }
-  void incrWritesExecuted() noexcept { _writesExecuted++; }
-  std::size_t getWritesExecuted() const noexcept { return _writesExecuted; }
 
-  void setWritesIgnored(std::size_t writesIgnored) noexcept {
-    _writesIgnored = writesIgnored;
+  void incrWritesIgnored(std::uint64_t value = 1) noexcept {
+    _writesIgnored += value;
   }
-  void addWritesIgnored(std::size_t writesIgnored) noexcept {
-    _writesIgnored += writesIgnored;
+  [[nodiscard]] std::uint64_t getWritesIgnored() const noexcept {
+    return _writesIgnored;
   }
-  void incrWritesIgnored() noexcept { _writesIgnored++; }
-  std::size_t getWritesIgnored() const noexcept { return _writesIgnored; }
 
-  void setScannedIndex(std::size_t scannedIndex) noexcept {
-    _scannedIndex = scannedIndex;
+  void incrScannedIndex(std::uint64_t value = 1) noexcept {
+    _scannedIndex += value;
   }
-  void addScannedIndex(std::size_t scannedIndex) noexcept {
-    _scannedIndex += scannedIndex;
+  [[nodiscard]] std::uint64_t getScannedIndex() const noexcept {
+    return _scannedIndex;
   }
-  void incrScannedIndex() noexcept { _scannedIndex++; }
-  std::size_t getScannedIndex() const noexcept { return _scannedIndex; }
 
   void operator+=(SingleRemoteModificationStats const& stats) noexcept {
     _writesExecuted += stats._writesExecuted;
@@ -249,9 +255,9 @@ class SingleRemoteModificationStats {
   }
 
  private:
-  std::size_t _writesExecuted;
-  std::size_t _writesIgnored;
-  std::size_t _scannedIndex;
+  std::uint64_t _writesExecuted = 0;
+  std::uint64_t _writesIgnored = 0;
+  std::uint64_t _scannedIndex = 0;
 };
 
 inline ExecutionStats& operator+=(
@@ -263,5 +269,4 @@ inline ExecutionStats& operator+=(
   return executionStats;
 }
 
-}  // namespace aql
-}  // namespace arangodb
+}  // namespace arangodb::aql

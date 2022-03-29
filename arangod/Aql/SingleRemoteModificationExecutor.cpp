@@ -198,7 +198,7 @@ auto SingleRemoteModificationExecutor<
     }
   }
 
-  stats.addWritesExecuted(possibleWrites);
+  stats.incrWritesExecuted(possibleWrites);
   stats.incrScannedIndex();
   return result;
 }

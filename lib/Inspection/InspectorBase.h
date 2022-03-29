@@ -43,8 +43,6 @@ namespace arangodb::inspection {
 
 template<class Derived>
 struct InspectorBase {
-  Derived& self() { return static_cast<Derived&>(*this); }
-
   template<class T>
   [[nodiscard]] Result apply(T& x) {
     return process(self(), x);
@@ -52,6 +50,10 @@ struct InspectorBase {
 
   template<class T>
   struct Object;
+
+  struct Keep {};
+
+  constexpr Keep keep() { return {}; }
 
   template<class T, const char ErrorMsg[], class Func, class... Args>
   static Result checkInvariant(Func&& func, Args&&... args) {
@@ -153,6 +155,8 @@ struct InspectorBase {
   }
 
  protected:
+  Derived& self() { return static_cast<Derived&>(*this); }
+
   template<class T>
   struct IsRawField : std::false_type {};
   template<class T>
@@ -187,13 +191,12 @@ struct InspectorBase {
   }
 
   template<class T>
-  static decltype(auto) getFallbackValue(T& field) noexcept {
+  static decltype(auto) getFallbackField(T& field) noexcept {
     using TT = std::remove_cvref_t<T>;
     if constexpr (IsFallbackField<TT>::value) {
-      auto& result = field.fallbackValue;  // We want to return a reference!
-      return result;
+      return field;
     } else if constexpr (!IsRawField<TT>::value) {
-      return getFallbackValue(field.inner);
+      return getFallbackField(field.inner);
     }
   }
 
@@ -221,16 +224,17 @@ struct InspectorBase {
   template<class Field, class = void>
   struct HasInvariantMethod : std::false_type {};
 
-  struct True {
-    template<class T>
-    bool operator()(T&&) {
+  struct AlwaysTrue {
+    template<class... Ts>
+    [[nodiscard]] constexpr bool operator()(Ts&&...) const noexcept {
       return true;
     }
   };
 
   template<class Field>
   struct HasInvariantMethod<
-      Field, std::void_t<decltype(std::declval<Field>().invariant(True{}))>>
+      Field,
+      std::void_t<decltype(std::declval<Field>().invariant(AlwaysTrue{}))>>
       : std::true_type {};
 
   template<class Inner>
@@ -242,7 +246,8 @@ struct InspectorBase {
   struct EMPTY_BASE FallbackMixin {
     template<class U>
     [[nodiscard]] auto fallback(U&& val) && {
-      static_assert(std::is_constructible_v<typename Field::value_type, U>);
+      static_assert(std::is_constructible_v<typename Field::value_type, U> ||
+                    std::is_same_v<Keep, U>);
 
       return FallbackField<Field, U>(std::move(static_cast<Field&>(*this)),
                                      std::forward<U>(val));
