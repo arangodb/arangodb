@@ -46,9 +46,9 @@ struct UnconfiguredStateManager
   using CoreType = typename ReplicatedStateTraits<S>::CoreType;
 
   using WaitForAppliedQueue =
-      typename ReplicatedState<S>::StateManagerBase::WaitForAppliedQueue;
+      typename ReplicatedState<S>::IStateManager::WaitForAppliedQueue;
   using WaitForAppliedPromise =
-      typename ReplicatedState<S>::StateManagerBase::WaitForAppliedQueue;
+      typename ReplicatedState<S>::IStateManager::WaitForAppliedQueue;
 
   UnconfiguredStateManager(
       std::shared_ptr<ReplicatedState<S>> const& parent,

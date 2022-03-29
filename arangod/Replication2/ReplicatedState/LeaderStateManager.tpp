@@ -47,9 +47,9 @@ void LeaderStateManager<S>::run() noexcept {
         }
         LOG_CTX("53ba1", TRACE, self->loggerContext)
             << "LeaderStateManager established";
-        TRI_ASSERT(self->_guardedData.getLockedGuard()->_internalState ==
-                   LeaderInternalState::kWaitingForLeadershipEstablished);
         auto f = self->guardedData.doUnderLock([&](GuardedData& data) {
+          TRI_ASSERT(data.internalState ==
+                     LeaderInternalState::kWaitingForLeadershipEstablished);
           data.updateInternalState(LeaderInternalState::kIngestingExistingLog);
           auto mux = Multiplexer::construct(self->logLeader);
           mux->digestAvailableEntries();
@@ -209,15 +209,15 @@ auto LeaderStateManager<S>::resign() && noexcept
     -> std::tuple<std::unique_ptr<CoreType>,
                   std::unique_ptr<ReplicatedStateToken>, DeferredAction> {
   LOG_CTX("edcf3", TRACE, loggerContext) << "Leader manager resign";
-  auto [core, token] = _guardedData.doUnderLock([&](auto& self) {
-    if (state != nullptr) {
-      TRI_ASSERT(self._core == nullptr);
-      return std::pair(std::move(*state).resign(), std::move(self._token));
+  auto guard = guardedData.getLockedGuard();
+  auto core = std::invoke([&] {
+    if (guard->state != nullptr) {
+      TRI_ASSERT(guard->core == nullptr);
+      return std::move(*guard->state).resign();
     } else {
-      return std::pair(std::move(self._core), std::move(self._token));
+      return std::move(guard->core);
     }
   });
-
   TRI_ASSERT(core != nullptr);
   TRI_ASSERT(guard->token != nullptr);
   TRI_ASSERT(!guard->_didResign);

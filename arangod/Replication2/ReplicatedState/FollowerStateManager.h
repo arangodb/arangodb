@@ -38,9 +38,9 @@ struct FollowerStateManager
   using LeaderType = typename ReplicatedStateTraits<S>::LeaderType;
   using CoreType = typename ReplicatedStateTraits<S>::CoreType;
   using WaitForAppliedQueue =
-      typename ReplicatedState<S>::StateManagerBase::WaitForAppliedQueue;
+      typename ReplicatedState<S>::IStateManager::WaitForAppliedQueue;
   using WaitForAppliedPromise =
-      typename ReplicatedState<S>::StateManagerBase::WaitForAppliedPromise;
+      typename ReplicatedState<S>::IStateManager::WaitForAppliedPromise;
 
   using Stream = streams::Stream<EntryType>;
   using Iterator = typename Stream::Iterator;
