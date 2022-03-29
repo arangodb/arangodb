@@ -3,6 +3,8 @@ devel
 
 * Upgraded bundled version of RocksDB to 7.1.
 
+* Updated OpenSSL to 1.1.1n and OpenLDAP to 2.6.1.
+
 * Updated arangosync to v2.9.0-preview-2.
 
 * Added AQL hint "useCache" for FOR loops, to explicitly disable the usage of 

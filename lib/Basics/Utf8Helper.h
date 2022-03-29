@@ -103,7 +103,7 @@ class Utf8Helper {
   ///     This parameter can instead be an ICU style C locale (e.g. "en_US")
   /// @param icuDataPointer data file to be loaded by the application
   /// @param langType type of language. Now supports DEFAULT and ICU only
-  /// collation?
+  /// collation
   //////////////////////////////////////////////////////////////////////////////
 
   bool setCollatorLanguage(std::string_view lang, LanguageType langType,

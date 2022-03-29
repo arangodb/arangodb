@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 5000 */
-/* global describe, beforeEach, afterEach, it */
+/* global describe, beforeEach, afterEach, it, arango, db */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -26,11 +26,7 @@
 
 const expect = require('chai').expect;
 
-const arangodb = require('@arangodb');
-const request = require('@arangodb/request');
-
-const ERRORS = arangodb.errors;
-const db = arangodb.db;
+const ERRORS = require('internal').errors;
 const wait = require('internal').wait;
 const extend = require('lodash').extend;
 
@@ -43,8 +39,6 @@ var createOptions = { waitForSync: false,
                       replicationFactor: 2,
                       numberOfShards: 2 };
 // Note that the cluster options are ignored in single server
-
-let endpoint = {};
 
 describe('babies collection document', function () {
   const cn = 'UnitTestsCollectionBasics';
@@ -68,46 +62,39 @@ describe('babies collection document', function () {
 
   describe('basics', function () {
     it('insert remove multi (few)', function () {
-      let req = request.post('/_api/document/' + cn, extend(endpoint, {
-        body: JSON.stringify([{}, {}, {}])
-      }));
+      let req = arango.POST_RAW('/_api/document/' + cn, [{}, {}, {}]);
 
-      expect(req.statusCode).to.equal(202);
+      expect(req.code).to.equal(202);
       expect(collection.count()).to.equal(3);
 
-      let result = JSON.parse(req.rawBody);
+      let result = req.parsedBody;
       let ids = result.map(function (x) {
         return x._key;
       });
 
-      req = request.put('/_api/simple/remove-by-keys', extend(endpoint, {
-        body: JSON.stringify({
-          keys: ids,
-          collection: cn
-        })
-      }));
+      req = arango.PUT_RAW('/_api/simple/remove-by-keys', {
+        keys: ids,
+        collection: cn
+      });
 
-      expect(req.statusCode).to.equal(200);
+      expect(req.code).to.equal(200);
       expect(collection.count()).to.equal(0);
     });
 
     it('insert remove multi by DELETE (few)', function () {
-      let req = request.post('/_api/document/' + cn, extend(endpoint, {
-        body: JSON.stringify([{}, {}, {}])
-      }));
+      let req = arango.POST_RAW('/_api/document/' + cn, [{}, {}, {}]);
 
-      expect(req.statusCode).to.equal(202);
+      expect(req.code).to.equal(202);
       expect(collection.count()).to.equal(3);
 
-      let result = JSON.parse(req.rawBody);
+      let result = req.parsedBody;
       let ids = result.map(function (x) {
         return x._key;
       });
 
-      req = request['delete']('/_api/document/' + cn,
-        extend(endpoint, { body: JSON.stringify(ids) }));
+      req = arango.DELETE_RAW('/_api/document/' + cn, ids);
 
-      expect(req.statusCode).to.equal(202);
+      expect(req.code).to.equal(202);
       expect(collection.count()).to.equal(0);
     });
 
@@ -120,26 +107,22 @@ describe('babies collection document', function () {
         });
       }
 
-      let req = request.post('/_api/document/' + cn, extend(endpoint, {
-        body: JSON.stringify(l)
-      }));
+      let req = arango.POST_RAW('/_api/document/' + cn, l);
 
-      expect(req.statusCode).to.equal(202);
+      expect(req.code).to.equal(202);
       expect(collection.count()).to.equal(l.length);
 
-      let result = JSON.parse(req.rawBody);
+      let result = req.parsedBody;
       let ids = result.map(function (x) {
         return x._key;
       });
 
-      req = request.put('/_api/simple/remove-by-keys', extend(endpoint, {
-        body: JSON.stringify({
-          keys: ids,
-          collection: cn
-        })
-      }));
+      req = arango.PUT_RAW('/_api/simple/remove-by-keys', {
+        keys: ids,
+        collection: cn
+      });
 
-      expect(req.statusCode).to.equal(200);
+      expect(req.code).to.equal(200);
       expect(collection.count()).to.equal(0);
     });
 
@@ -152,22 +135,19 @@ describe('babies collection document', function () {
         });
       }
 
-      let req = request.post('/_api/document/' + cn, extend(endpoint, {
-        body: JSON.stringify(l)
-      }));
+      let req = arango.POST_RAW('/_api/document/' + cn, l);
 
-      expect(req.statusCode).to.equal(202);
+      expect(req.code).to.equal(202);
       expect(collection.count()).to.equal(l.length);
 
-      let result = JSON.parse(req.rawBody);
+      let result = req.parsedBody;
       let ids = result.map(function (x) {
         return x._key;
       });
 
-      req = request['delete']('/_api/document/' + cn,
-        extend(endpoint, { body: JSON.stringify(ids) }));
+      req = arango.DELETE_RAW('/_api/document/' + cn, ids);
 
-      expect(req.statusCode).to.equal(202);
+      expect(req.code).to.equal(202);
       expect(collection.count()).to.equal(0);
     });
 
@@ -180,26 +160,22 @@ describe('babies collection document', function () {
         _key: 'c'
       }];
 
-      let req = request.post('/_api/document/' + cn, extend(endpoint, {
-        body: JSON.stringify(l)
-      }));
+      let req = arango.POST_RAW('/_api/document/' + cn, l);
 
-      expect(req.statusCode).to.equal(202);
+      expect(req.code).to.equal(202);
       expect(collection.count()).to.equal(l.length);
 
-      let result = JSON.parse(req.rawBody);
+      let result = req.parsedBody;
       let ids = result.map(function (x) {
         return x._key;
       });
 
-      req = request.put('/_api/simple/remove-by-keys', extend(endpoint, {
-        body: JSON.stringify({
-          keys: ids,
-          collection: cn
-        })
-      }));
+      req = arango.PUT_RAW('/_api/simple/remove-by-keys', {
+        keys: ids,
+        collection: cn
+      });
 
-      expect(req.statusCode).to.equal(200);
+      expect(req.code).to.equal(200);
       expect(collection.count()).to.equal(0);
     });
 
@@ -212,22 +188,19 @@ describe('babies collection document', function () {
         _key: 'c'
       }];
 
-      let req = request.post('/_api/document/' + cn, extend(endpoint, {
-        body: JSON.stringify(l)
-      }));
+      let req = arango.POST_RAW('/_api/document/' + cn, l);
 
-      expect(req.statusCode).to.equal(202);
+      expect(req.code).to.equal(202);
       expect(collection.count()).to.equal(l.length);
 
-      let result = JSON.parse(req.rawBody);
+      let result = req.parsedBody;
       let ids = result.map(function (x) {
         return x._key;
       });
 
-      req = request['delete']('/_api/document/' + cn,
-        extend(endpoint, { body: JSON.stringify(ids) }));
+      req = arango.DELETE_RAW('/_api/document/' + cn, ids);
 
-      expect(req.statusCode).to.equal(202);
+      expect(req.code).to.equal(202);
       expect(collection.count()).to.equal(0);
     });
 
@@ -241,26 +214,22 @@ describe('babies collection document', function () {
         });
       }
 
-      let req = request.post('/_api/document/' + cn, extend(endpoint, {
-        body: JSON.stringify(l)
-      }));
+      let req = arango.POST_RAW('/_api/document/' + cn, l);
 
-      expect(req.statusCode).to.equal(202);
+      expect(req.code).to.equal(202);
       expect(collection.count()).to.equal(l.length);
 
-      let result = JSON.parse(req.rawBody);
+      let result = req.parsedBody;
       let ids = result.map(function (x) {
         return x._key;
       });
 
-      req = request.put('/_api/simple/remove-by-keys', extend(endpoint, {
-        body: JSON.stringify({
-          keys: ids,
-          collection: cn
-        })
-      }));
+      req = arango.PUT_RAW('/_api/simple/remove-by-keys', {
+        keys: ids,
+        collection: cn
+      });
 
-      expect(req.statusCode).to.equal(200);
+      expect(req.code).to.equal(200);
       expect(collection.count()).to.equal(0);
     });
 
@@ -274,22 +243,19 @@ describe('babies collection document', function () {
         });
       }
 
-      let req = request.post('/_api/document/' + cn, extend(endpoint, {
-        body: JSON.stringify(l)
-      }));
+      let req = arango.POST_RAW('/_api/document/' + cn, l);
 
-      expect(req.statusCode).to.equal(202);
+      expect(req.code).to.equal(202);
       expect(collection.count()).to.equal(l.length);
 
-      let result = JSON.parse(req.rawBody);
+      let result = req.parsedBody;
       let ids = result.map(function (x) {
         return x._key;
       });
 
-      req = request['delete']('/_api/document/' + cn,
-        extend(endpoint, { body: JSON.stringify(ids) }));
+      req = arango.DELETE_RAW('/_api/document/' + cn, ids);
 
-      expect(req.statusCode).to.equal(202);
+      expect(req.code).to.equal(202);
       expect(collection.count()).to.equal(0);
     });
 
@@ -304,13 +270,11 @@ describe('babies collection document', function () {
         _key: 'a' // already there
       }];
 
-      let req = request.post('/_api/document/' + cn, extend(endpoint, {
-        body: JSON.stringify(l)
-      }));
+      let req = arango.POST_RAW('/_api/document/' + cn, l);
 
-      expect(req.statusCode).to.equal(202);
+      expect(req.code).to.equal(202);
 
-      let b = JSON.parse(req.rawBody);
+      let b = req.parsedBody;
 
       expect(b).to.be.an('array');
       expect(b.length).to.equal(2);
@@ -333,13 +297,11 @@ describe('babies collection document', function () {
         _key: 'c' // new
       }];
 
-      req = request.post('/_api/document/' + cn, extend(endpoint, {
-        body: JSON.stringify(l)
-      }));
+      req = arango.POST_RAW('/_api/document/' + cn, l);
 
-      expect(req.statusCode).to.equal(202);
+      expect(req.code).to.equal(202);
 
-      b = JSON.parse(req.rawBody);
+      b = req.parsedBody;
 
       expect(b).to.be.an('array');
       expect(b.length).to.equal(2);
@@ -358,8 +320,8 @@ describe('babies collection document', function () {
 
     it('insert error bad key', function () {
       let l = [null, false, true, 1, -1, {},
-        []
-      ];
+               []
+              ];
 
       l.forEach(function (k) {
         let m = [{
@@ -370,13 +332,11 @@ describe('babies collection document', function () {
           _key: 'b'
         }];
 
-        let req = request.post('/_api/document/' + cn, extend(endpoint, {
-          body: JSON.stringify(m)
-        }));
+        let req = arango.POST_RAW('/_api/document/' + cn, m);
 
-        expect(req.statusCode).to.equal(202);
+        expect(req.code).to.equal(202);
 
-        let b = JSON.parse(req.rawBody);
+        let b = req.parsedBody;
         expect(b).to.be.an('array');
         expect(b.length).to.equal(3);
         // The first and the last should work
@@ -412,14 +372,12 @@ describe('babies collection document', function () {
         value: 1
       }];
 
-      let req1 = request.post('/_api/document/' + cn, extend(endpoint, {
-        body: JSON.stringify(l1)
-      }));
+      let req1 = arango.POST_RAW('/_api/document/' + cn, l1);
 
-      expect(req1.statusCode).to.equal(202);
+      expect(req1.code).to.equal(202);
       expect(collection.count()).to.equal(l1.length);
 
-      let b1 = JSON.parse(req1.rawBody);
+      let b1 = req1.parsedBody;
 
       let l2 = [{
         value: 2
@@ -434,15 +392,12 @@ describe('babies collection document', function () {
         l2[i]._rev = b1[i]._rev;
       }
 
-      let req2 = request.put('/_api/document/' + cn + '?ignoreRevs=false',
-        extend(endpoint, {
-          body: JSON.stringify(l2)
-        }));
+      let req2 = arango.PUT_RAW('/_api/document/' + cn + '?ignoreRevs=false', l2);
 
-      expect(req2.statusCode).to.equal(202);
+      expect(req2.code).to.equal(202);
       expect(collection.count()).to.equal(l1.length);
 
-      let b2 = JSON.parse(req2.rawBody);
+      let b2 = req2.parsedBody;
 
       let docs3 = collection.toArray();
 
@@ -473,14 +428,12 @@ describe('babies collection document', function () {
         value: 1
       }];
 
-      let req1 = request.post('/_api/document/' + cn, extend(endpoint, {
-        body: JSON.stringify(l1)
-      }));
+      let req1 = arango.POST_RAW('/_api/document/' + cn, l1);
 
-      expect(req1.statusCode).to.equal(202);
+      expect(req1.code).to.equal(202);
       expect(collection.count()).to.equal(l1.length);
 
-      let b1 = JSON.parse(req1.rawBody);
+      let b1 = req1.parsedBody;
 
       let l2 = [{
         value: 2
@@ -495,15 +448,12 @@ describe('babies collection document', function () {
         l2[i]._rev = b1[i]._rev;
       }
 
-      let req2 = request.patch('/_api/document/' + cn + '?ignoreRevs=false',
-        extend(endpoint, {
-          body: JSON.stringify(l2)
-        }));
+      let req2 = arango.PATCH_RAW('/_api/document/' + cn + '?ignoreRevs=false', l2);
 
-      expect(req2.statusCode).to.equal(202);
+      expect(req2.code).to.equal(202);
       expect(collection.count()).to.equal(l1.length);
 
-      let b2 = JSON.parse(req2.rawBody);
+      let b2 = req2.parsedBody;
 
       let docs3 = collection.toArray();
 
@@ -534,14 +484,12 @@ describe('babies collection document', function () {
         value: 3
       }];
 
-      let req1 = request.post('/_api/document/' + cn, extend(endpoint, {
-        body: JSON.stringify(l1)
-      }));
+      let req1 = arango.POST_RAW('/_api/document/' + cn, l1);
 
-      expect(req1.statusCode).to.equal(202);
+      expect(req1.code).to.equal(202);
       expect(collection.count()).to.equal(l1.length);
 
-      let b1 = JSON.parse(req1.rawBody);
+      let b1 = req1.parsedBody;
 
       let l2 = [{
         value: 4
@@ -556,15 +504,12 @@ describe('babies collection document', function () {
         l2[i]._rev = b1[i]._rev;
       }
 
-      let req2 = request.put('/_api/document/' + cn + '?ignoreRevs=false',
-        extend(endpoint, {
-          body: JSON.stringify(l2)
-        }));
+      let req2 = arango.PUT_RAW('/_api/document/' + cn + '?ignoreRevs=false', l2);
 
-      expect(req2.statusCode).to.equal(202);
+      expect(req2.code).to.equal(202);
       expect(collection.count()).to.equal(l1.length);
 
-      JSON.parse(req2.rawBody);
+      expect(req2).to.haveOwnProperty('parsedBody');
 
       let l3 = [{
         value: 7
@@ -579,14 +524,11 @@ describe('babies collection document', function () {
         l3[i]._rev = b1[i]._rev;
       }
 
-      let req3 = request.put('/_api/document/' + cn + '?ignoreRevs=false',
-        extend(endpoint, {
-          body: JSON.stringify(l3)
-        }));
+      let req3 = arango.PUT_RAW('/_api/document/' + cn + '?ignoreRevs=false', l3);
       // Babies only have positive result codes
-      expect(req3.statusCode).to.equal(202);
+      expect(req3.code).to.equal(202);
 
-      let b3 = JSON.parse(req3.rawBody);
+      let b3 = req3.parsedBody;
       for (let i = 0; i < l3.length; ++i) {
         expect(b3[i].error).to.equal(true);
         expect(b3[i].errorNum).to.equal(ERRORS.ERROR_ARANGO_CONFLICT.code);
@@ -604,14 +546,12 @@ describe('babies collection document', function () {
         value: 3
       }];
 
-      let req1 = request.post('/_api/document/' + cn, extend(endpoint, {
-        body: JSON.stringify(l1)
-      }));
+      let req1 = arango.POST_RAW('/_api/document/' + cn, l1);
 
-      expect(req1.statusCode).to.equal(202);
+      expect(req1.code).to.equal(202);
       expect(collection.count()).to.equal(l1.length);
 
-      let b1 = JSON.parse(req1.rawBody);
+      let b1 = req1.parsedBody;
 
       let l2 = [{
         value: 4
@@ -626,15 +566,12 @@ describe('babies collection document', function () {
         l2[i]._rev = b1[i]._rev;
       }
 
-      let req2 = request.patch('/_api/document/' + cn + '?ignoreRevs=false',
-        extend(endpoint, {
-          body: JSON.stringify(l2)
-        }));
+      let req2 = arango.PATCH_RAW('/_api/document/' + cn + '?ignoreRevs=false', l2);
 
-      expect(req2.statusCode).to.equal(202);
+      expect(req2.code).to.equal(202);
       expect(collection.count()).to.equal(l1.length);
 
-      JSON.parse(req2.rawBody);
+      expect(req2).to.haveOwnProperty('parsedBody');
 
       let l3 = [{
         value: 7
@@ -649,15 +586,12 @@ describe('babies collection document', function () {
         l3[i]._rev = b1[i]._rev;
       }
 
-      let req3 = request.patch('/_api/document/' + cn + '?ignoreRevs=false',
-        extend(endpoint, {
-          body: JSON.stringify(l3)
-        }));
+      let req3 = arango.PATCH_RAW('/_api/document/' + cn + '?ignoreRevs=false', l3);
 
       // Babies only have positive result codes
-      expect(req3.statusCode).to.equal(202);
+      expect(req3.code).to.equal(202);
 
-      let b3 = JSON.parse(req3.rawBody);
+      let b3 = req3.parsedBody;
       for (let i = 0; i < l3.length; ++i) {
         expect(b3[i].error).to.equal(true);
         expect(b3[i].errorNum).to.equal(ERRORS.ERROR_ARANGO_CONFLICT.code);
@@ -667,17 +601,15 @@ describe('babies collection document', function () {
 
     it('invalid document type', function () {
       let values1 = [null, false, true, 1, 'abc', [],
-        [1, 2, 3]
-      ];
+                     [1, 2, 3]
+                    ];
 
       values1.forEach(function (x) {
-        let req1 = request.post('/_api/document/' + cn, extend(endpoint, {
-          body: JSON.stringify([x])
-        }));
+        let req1 = arango.POST_RAW('/_api/document/' + cn, [x]);
 
-        expect(req1.statusCode).to.equal(202);
+        expect(req1.code).to.equal(202);
 
-        let b = JSON.parse(req1.rawBody);
+        let b = req1.parsedBody;
         expect(b).to.be.an('array');
         expect(b.length).to.equal(1);
 
@@ -696,27 +628,27 @@ describe('babies collection document', function () {
     it('multiple errors', function () {
       collection.save({_key: 'a'});
 
-      let req1 = request.post('/_api/document/' + cn, extend(endpoint, {
-        body: JSON.stringify([{
+      let req1 = arango.POST_RAW('/_api/document/' + cn, [
+        {
           _key: 'b' // valid
         },
-          true, // type invalid
-          {
-            _key: 'a' // unique violated
-          }, {
-            _key: 'c' // valid
-          }, {
-            _key: 'b' // unique violated
-          }, [
-            // type invalid
-          ], {
-            _key: 'd' // valid
-          } ])
-      }));
+        true, // type invalid
+        {
+          _key: 'a' // unique violated
+        }, {
+          _key: 'c' // valid
+        }, {
+          _key: 'b' // unique violated
+        }, [
+          // type invalid
+        ], {
+          _key: 'd' // valid
+        }
+      ]);
 
-      expect(req1.statusCode).to.equal(202);
+      expect(req1.code).to.equal(202);
 
-      let b = JSON.parse(req1.rawBody);
+      let b = req1.parsedBody;
       expect(b).to.be.an('array');
       expect(b.length).to.equal(7);
       // Check the valid ones
@@ -752,15 +684,13 @@ describe('babies collection document', function () {
 
   describe('old and new', function () {
     it('create multi, return new', function () {
-      let req1 = request.post('/_api/document/' + cn, extend(endpoint, {
-        body: JSON.stringify([{
-          'Hallo': 12
-        }])
-      }));
+      let req1 = arango.POST_RAW('/_api/document/' + cn, [{
+        'Hallo': 12
+      }]);
 
-      expect(req1.statusCode).to.equal(202);
+      expect(req1.code).to.equal(202);
 
-      let b1 = JSON.parse(req1.rawBody);
+      let b1 = req1.parsedBody;
 
       expect(b1).to.be.instanceof(Array);
       expect(b1).to.have.lengthOf(1);
@@ -770,16 +700,13 @@ describe('babies collection document', function () {
       expect(b1[0]._key).to.be.a('string');
       expect(b1[0]._rev).to.be.a('string');
 
-      let req2 = request.post('/_api/document/' + cn + '?returnNew=true',
-        extend(endpoint, {
-          body: JSON.stringify([{
-            'Hallo': 12
-          }])
-        }));
+      let req2 = arango.POST_RAW('/_api/document/' + cn + '?returnNew=true',[{
+        'Hallo': 12
+      }]);
 
-      expect(req2.statusCode).to.equal(202);
+      expect(req2.code).to.equal(202);
 
-      let b2 = JSON.parse(req2.rawBody);
+      let b2 = req2.parsedBody;
 
       expect(b2).to.be.instanceof(Array);
       expect(b2).to.have.lengthOf(1);
@@ -792,16 +719,13 @@ describe('babies collection document', function () {
       expect(Object.keys(b2[0]['new'])).to.have.lengthOf(4);
       expect(b2[0]['new'].Hallo).to.equal(12);
 
-      let req3 = request.post('/_api/document/' + cn + '?returnNew=false',
-        extend(endpoint, {
-          body: JSON.stringify([{
-            'Hallo': 12
-          }])
-        }));
+      let req3 = arango.POST_RAW('/_api/document/' + cn + '?returnNew=false', [{
+        'Hallo': 12
+      }]);
 
-      expect(req3.statusCode).to.equal(202);
+      expect(req3.code).to.equal(202);
 
-      let b3 = JSON.parse(req3.rawBody);
+      let b3 = req3.parsedBody;
 
       expect(b3).to.be.instanceof(Array);
       expect(b3).to.have.lengthOf(1);
@@ -817,18 +741,15 @@ describe('babies collection document', function () {
         'Hallo': 12
       });
 
-      let req1 = request.put('/_api/document/' + cn + '?ignoreRevs=false',
-        extend(endpoint, {
-          body: JSON.stringify([{
-            'Hallo': 13,
-            '_key': res._key,
-            '_rev': res._rev
-          }])
-        }));
+      let req1 = arango.PUT_RAW('/_api/document/' + cn + '?ignoreRevs=false', [{
+        'Hallo': 13,
+        '_key': res._key,
+        '_rev': res._rev
+      }]);
 
-      expect(req1.statusCode).to.equal(202);
+      expect(req1.code).to.equal(202);
 
-      let b1 = JSON.parse(req1.rawBody);
+      let b1 = req1.parsedBody;
 
       expect(b1).to.be.instanceof(Array);
       expect(b1).to.have.lengthOf(1);
@@ -843,18 +764,15 @@ describe('babies collection document', function () {
         'Hallo': 12
       });
 
-      let req2 = request.put('/_api/document/' + cn + '?returnOld=true',
-        extend(endpoint, {
-          body: JSON.stringify([{
-            'Hallo': 13,
-            '_key': res._key,
-            '_rev': res._rev
-          }])
-        }));
+      let req2 = arango.PUT_RAW('/_api/document/' + cn + '?returnOld=true', [{
+        'Hallo': 13,
+        '_key': res._key,
+        '_rev': res._rev
+      }]);
 
-      expect(req2.statusCode).to.equal(202);
+      expect(req2.code).to.equal(202);
 
-      let b2 = JSON.parse(req2.rawBody);
+      let b2 = req2.parsedBody;
 
       expect(b2).to.be.instanceof(Array);
       expect(b2).to.have.lengthOf(1);
@@ -872,18 +790,15 @@ describe('babies collection document', function () {
         'Hallo': 12
       });
 
-      let req3 = request.put('/_api/document/' + cn + '?returnOld=false',
-        extend(endpoint, {
-          body: JSON.stringify([{
-            'Hallo': 14,
-            '_key': res._key,
-            '_rev': res._rev
-          }])
-        }));
+      let req3 = arango.PUT_RAW('/_api/document/' + cn + '?returnOld=false', [{
+        'Hallo': 14,
+        '_key': res._key,
+        '_rev': res._rev
+      }]);
 
-      expect(req3.statusCode).to.equal(202);
+      expect(req3.code).to.equal(202);
 
-      let b3 = JSON.parse(req3.rawBody);
+      let b3 = req3.parsedBody;
 
       expect(b3).to.be.instanceof(Array);
       expect(b3).to.have.lengthOf(1);
@@ -898,18 +813,15 @@ describe('babies collection document', function () {
         'Hallo': 12
       });
 
-      let req4 = request.put('/_api/document/' + cn + '?returnNew=true',
-        extend(endpoint, {
-          body: JSON.stringify([{
-            'Hallo': 14,
-            '_key': res._key,
-            '_rev': res._rev
-          }])
-        }));
+      let req4 = arango.PUT_RAW('/_api/document/' + cn + '?returnNew=true', [{
+        'Hallo': 14,
+        '_key': res._key,
+        '_rev': res._rev
+      }]);
 
-      expect(req4.statusCode).to.equal(202);
+      expect(req4.code).to.equal(202);
 
-      let b4 = JSON.parse(req4.rawBody);
+      let b4 = req4.parsedBody;
 
       expect(b4).to.be.instanceof(Array);
       expect(b4).to.have.lengthOf(1);
@@ -927,18 +839,15 @@ describe('babies collection document', function () {
         'Hallo': 12
       });
 
-      let req5 = request.put('/_api/document/' + cn + '?returnNew=false',
-        extend(endpoint, {
-          body: JSON.stringify([{
-            'Hallo': 15,
-            '_key': res._key,
-            '_rev': res._rev
-          }])
-        }));
+      let req5 = arango.PUT_RAW('/_api/document/' + cn + '?returnNew=false', [{
+        'Hallo': 15,
+        '_key': res._key,
+        '_rev': res._rev
+      }]);
 
-      expect(req5.statusCode).to.equal(202);
+      expect(req5.code).to.equal(202);
 
-      let b5 = JSON.parse(req5.rawBody);
+      let b5 = req5.parsedBody;
 
       expect(b5).to.be.instanceof(Array);
       expect(b5).to.have.lengthOf(1);
@@ -953,18 +862,15 @@ describe('babies collection document', function () {
         'Hallo': 12
       });
 
-      let req6 = request.put('/_api/document/' + cn + '?returnNew=true&returnOld=true',
-        extend(endpoint, {
-          body: JSON.stringify([{
-            'Hallo': 16,
-            '_key': res._key,
-            '_rev': res._rev
-          }])
-        }));
+      let req6 = arango.PUT_RAW('/_api/document/' + cn + '?returnNew=true&returnOld=true', [{
+        'Hallo': 16,
+        '_key': res._key,
+        '_rev': res._rev
+      }]);
 
-      expect(req6.statusCode).to.equal(202);
+      expect(req6.code).to.equal(202);
 
-      let b6 = JSON.parse(req6.rawBody);
+      let b6 = req6.parsedBody;
 
       expect(b6).to.be.instanceof(Array);
       expect(b6).to.have.lengthOf(1);
@@ -985,18 +891,15 @@ describe('babies collection document', function () {
         'Hallo': 12
       });
 
-      let req7 = request.put('/_api/document/' + cn + '?returnNew=false&returnOld=false',
-        extend(endpoint, {
-          body: JSON.stringify([{
-            'Hallo': 17,
-            '_key': res._key,
-            '_rev': res._rev
-          }])
-        }));
+      let req7 = arango.PUT_RAW('/_api/document/' + cn + '?returnNew=false&returnOld=false', [{
+        'Hallo': 17,
+        '_key': res._key,
+        '_rev': res._rev
+      }]);
 
-      expect(req7.statusCode).to.equal(202);
+      expect(req7.code).to.equal(202);
 
-      let b7 = JSON.parse(req2.rawBody);
+      let b7 = req2.parsedBody;
 
       expect(b7).to.be.instanceof(Array);
       expect(b7).to.have.lengthOf(1);
@@ -1013,18 +916,15 @@ describe('babies collection document', function () {
         'Hallo': 12
       });
 
-      let req1 = request.patch('/_api/document/' + cn + '?ignoreRevs=false',
-        extend(endpoint, {
-          body: JSON.stringify([{
-            'Hallo': 13,
-            '_key': res._key,
-            '_rev': res._rev
-          }])
-        }));
+      let req1 = arango.PATCH_RAW('/_api/document/' + cn + '?ignoreRevs=false', [{
+        'Hallo': 13,
+        '_key': res._key,
+        '_rev': res._rev
+      }]);
 
-      expect(req1.statusCode).to.equal(202);
+      expect(req1.code).to.equal(202);
 
-      let b1 = JSON.parse(req1.rawBody);
+      let b1 = req1.parsedBody;
 
       expect(b1).to.be.instanceof(Array);
       expect(b1).to.have.lengthOf(1);
@@ -1039,18 +939,15 @@ describe('babies collection document', function () {
         'Hallo': 12
       });
 
-      let req2 = request.patch('/_api/document/' + cn + '?returnOld=true',
-        extend(endpoint, {
-          body: JSON.stringify([{
-            'Hallo': 13,
-            '_key': res._key,
-            '_rev': res._rev
-          }])
-        }));
+      let req2 = arango.PATCH_RAW('/_api/document/' + cn + '?returnOld=true', [{
+        'Hallo': 13,
+        '_key': res._key,
+        '_rev': res._rev
+      }]);
 
-      expect(req2.statusCode).to.equal(202);
+      expect(req2.code).to.equal(202);
 
-      let b2 = JSON.parse(req2.rawBody);
+      let b2 = req2.parsedBody;
 
       expect(b2).to.be.instanceof(Array);
       expect(b2).to.have.lengthOf(1);
@@ -1068,18 +965,15 @@ describe('babies collection document', function () {
         'Hallo': 12
       });
 
-      let req3 = request.patch('/_api/document/' + cn + '?returnOld=false',
-        extend(endpoint, {
-          body: JSON.stringify([{
-            'Hallo': 14,
-            '_key': res._key,
-            '_rev': res._rev
-          }])
-        }));
+      let req3 = arango.PATCH_RAW('/_api/document/' + cn + '?returnOld=false', [{
+        'Hallo': 14,
+        '_key': res._key,
+        '_rev': res._rev
+      }]);
 
-      expect(req3.statusCode).to.equal(202);
+      expect(req3.code).to.equal(202);
 
-      let b3 = JSON.parse(req3.rawBody);
+      let b3 = req3.parsedBody;
 
       expect(b3).to.be.instanceof(Array);
       expect(b3).to.have.lengthOf(1);
@@ -1094,18 +988,15 @@ describe('babies collection document', function () {
         'Hallo': 12
       });
 
-      let req4 = request.patch('/_api/document/' + cn + '?returnNew=true',
-        extend(endpoint, {
-          body: JSON.stringify([{
-            'Hallo': 14,
-            '_key': res._key,
-            '_rev': res._rev
-          }])
-        }));
+      let req4 = arango.PATCH_RAW('/_api/document/' + cn + '?returnNew=true', [{
+        'Hallo': 14,
+        '_key': res._key,
+        '_rev': res._rev
+      }]);
 
-      expect(req4.statusCode).to.equal(202);
+      expect(req4.code).to.equal(202);
 
-      let b4 = JSON.parse(req4.rawBody);
+      let b4 = req4.parsedBody;
 
       expect(b4).to.be.instanceof(Array);
       expect(b4).to.have.lengthOf(1);
@@ -1123,19 +1014,16 @@ describe('babies collection document', function () {
         'Hallo': 12
       });
 
-      let req5 = request.patch('/_api/document/' + cn + '?returnNew=false',
-        extend(endpoint, {
-          body: JSON.stringify([{
-            'Hallo': 15,
-            '_key': res._key,
-            '_rev': res._rev
-          }])
-        }));
+      let req5 = arango.PATCH_RAW('/_api/document/' + cn + '?returnNew=false', [{
+        'Hallo': 15,
+        '_key': res._key,
+        '_rev': res._rev
+      }]);
 
-      expect(req5.statusCode).to.equal(202);
+      expect(req5.code).to.equal(202);
 
-      let b5 = JSON.parse(req5.rawBody);
-
+      let b5 = req5.parsedBody;
+      
       expect(b5).to.be.instanceof(Array);
       expect(b5).to.have.lengthOf(1);
       expect(b5[0]).to.be.a('object');
@@ -1149,18 +1037,15 @@ describe('babies collection document', function () {
         'Hallo': 12
       });
 
-      let req6 = request.patch('/_api/document/' + cn + '?returnNew=true&returnOld=true',
-        extend(endpoint, {
-          body: JSON.stringify([{
-            'Hallo': 16,
-            '_key': res._key,
-            '_rev': res._rev
-          }])
-        }));
+      let req6 = arango.PATCH_RAW('/_api/document/' + cn + '?returnNew=true&returnOld=true', [{
+        'Hallo': 16,
+        '_key': res._key,
+        '_rev': res._rev
+      }]);
 
-      expect(req6.statusCode).to.equal(202);
+      expect(req6.code).to.equal(202);
 
-      let b6 = JSON.parse(req6.rawBody);
+      let b6 = req6.parsedBody;
 
       expect(b6).to.be.instanceof(Array);
       expect(b6).to.have.lengthOf(1);
@@ -1181,18 +1066,15 @@ describe('babies collection document', function () {
         'Hallo': 12
       });
 
-      let req7 = request.patch('/_api/document/' + cn + '?returnNew=false&returnOld=false',
-        extend(endpoint, {
-          body: JSON.stringify([{
-            'Hallo': 17,
-            '_key': res._key,
-            '_rev': res._rev
-          }])
-        }));
+      let req7 = arango.PATCH_RAW('/_api/document/' + cn + '?returnNew=false&returnOld=false', [{
+        'Hallo': 17,
+        '_key': res._key,
+        '_rev': res._rev
+      }]);
 
-      expect(req7.statusCode).to.equal(202);
+      expect(req7.code).to.equal(202);
 
-      let b7 = JSON.parse(req2.rawBody);
+      let b7 = req2.parsedBody;
 
       expect(b7).to.be.instanceof(Array);
       expect(b7).to.have.lengthOf(1);
@@ -1209,25 +1091,21 @@ describe('babies collection document', function () {
     let base_url = '/_api/document/' + cn;
     it('overwrite once', function () {
       let url1 = base_url;
-      let req1 = request.post(url1, extend(endpoint, {
-        body: JSON.stringify([{
-          'Hallo': 12
-        }])
-      }));
-      let b1 = JSON.parse(req1.rawBody);
+      let req1 = arango.POST_RAW(url1, [{
+        'Hallo': 12
+      }]);
+      let b1 = req1.parsedBody;
       let res1 = b1[0];
 
       let url2 = base_url + '?overwrite=true&returnOld=true';
-      let req2 = request.post(url2, extend(endpoint, {
-        body: JSON.stringify([{
-          '_key': res1._key,
-          'ulf': 42
-        }])
-      }));
-      let b2 = JSON.parse(req2.rawBody);
+      let req2 = arango.POST_RAW(url2, [{
+        '_key': res1._key,
+        'ulf': 42
+      }]);
+      let b2 = req2.parsedBody;
       let res2 = b2[0];
 
-      expect(req2.statusCode).to.equal(202);
+      expect(req2.code).to.equal(202);
       expect(res2._key).to.equal(res1._key);
       expect(res2._oldRev).to.equal(res1._rev);
       expect(res2.old.Hallo).to.equal(12);
@@ -1237,33 +1115,29 @@ describe('babies collection document', function () {
 
     it('overwrite multi', function () {
       let url1 = base_url;
-      let req1 = request.post(url1, extend(endpoint, {
-        body: JSON.stringify([{
-          'Hallo': 12
-        }])
-      }));
-      let b1 = JSON.parse(req1.rawBody);
+      let req1 = arango.POST_RAW(url1, [{
+        'Hallo': 12
+      }]);
+      let b1 = req1.parsedBody;
       let res1 = b1[0];
       let key1 = res1._key;
 
       let url2 = base_url + '?overwrite=true&returnOld=true&returnNew=true';
-      let req2 = request.post(url2, extend(endpoint, {
-        body: JSON.stringify([
-          {
-            '_key': key1,
-            'ulf': 42
-          },{
-            '_key': key1,
-            'ulf': 32
+      let req2 = arango.POST_RAW(url2, [
+        {
+          '_key': key1,
+          'ulf': 42
+        },{
+          '_key': key1,
+          'ulf': 32
 
-          },{
-            '_key': key1,
-            'ulfine': 23
-          }
-        ])
-      }));
-      expect(req2.statusCode).to.equal(202);
-      let b2 = JSON.parse(req2.rawBody);
+        },{
+          '_key': key1,
+          'ulfine': 23
+        }
+      ]);
+      expect(req2.code).to.equal(202);
+      let b2 = req2.parsedBody;
 
       expect(b2).to.be.instanceof(Array);
       expect(b2).to.have.lengthOf(3);
