@@ -35,6 +35,8 @@
 #include "Cluster/Maintenance.h"
 #include "Cluster/MaintenanceFeature.h"
 #include "Metrics/MetricsFeature.h"
+#include "Mocks/Servers.h"
+#include "RestServer/UpgradeFeature.h"
 
 #include "MaintenanceFeatureMock.h"
 
@@ -161,6 +163,25 @@ class TestActionBasic : public ActionBase {
   bool _reschedule;
 
 };  // TestActionBasic
+
+class MaintenanceFeatureTestDBServer
+    : public ::testing::Test,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::AGENCY,
+                                            arangodb::LogLevel::FATAL>,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION,
+                                            arangodb::LogLevel::ERR>,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::CLUSTER,
+                                            arangodb::LogLevel::FATAL> {
+ protected:
+  arangodb::tests::mocks::MockDBServer server;
+
+  MaintenanceFeatureTestDBServer() : server(false) {
+    arangodb::ServerState::instance()->setRebootId(
+        arangodb::RebootId{1});  // Hack.
+    server.untrackFeature<arangodb::UpgradeFeature>();
+    server.startFeatures();
+  }
+};
 
 //
 //
@@ -847,4 +868,21 @@ TEST(MaintenanceFeatureTestThreaded,
 #if 0  // for debugging
   std::cout << tf.toVelocyPack().toJson() << std::endl;
 #endif
+}
+
+TEST_F(MaintenanceFeatureTestDBServer, test_synchronize_shard_abort) {
+  auto& mf = server.getFeature<arangodb::MaintenanceFeature>();
+  mf.start();
+
+  std::shared_ptr<ActionDescription> description =
+      std::make_shared<ActionDescription>(
+          std::map<std::string, std::string>{{NAME, SYNCHRONIZE_SHARD},
+                                             {DATABASE, "_system"},
+                                             {COLLECTION, "tmp"},
+                                             {SHARD, "s1"},
+                                             {THE_LEADER, "PRMR-1"},
+                                             {SHARD_VERSION, "1"}},
+          SYNCHRONIZE_PRIORITY, true);
+
+  auto res = mf.addAction(description, true);
 }

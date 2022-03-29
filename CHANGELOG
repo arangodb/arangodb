@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fix deadlocked shard synchronisations when planned shard leader has
+  not yet taken over leadership.
+
 * Updated arangosync to v2.9.0-preview-2.
 
 * Added AQL hint "useCache" for FOR loops, to explicitly disable the usage of 
