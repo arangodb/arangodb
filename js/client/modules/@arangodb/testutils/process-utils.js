@@ -2202,7 +2202,7 @@ function launchFinalize(options, instanceInfo, startTime) {
                      ' - ' + arangod.args['database.directory']);
   });
 
-  if (!options.noStartStopLogs) {
+  if (!options.noStartStopLogs && options.sniff !== false) {
     print(Date() + ' sniffing template:\n  tcpdump -ni lo -s0 -w /tmp/out.pcap ' + ports.join(' or ') + '\n');
   }
   if (options.sniff !== undefined && options.sniff !== false) {
