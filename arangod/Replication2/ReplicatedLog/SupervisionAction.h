@@ -108,31 +108,30 @@ struct ActionContext {
 struct EmptyAction {
   static constexpr std::string_view name = "EmptyAction";
 
-  EmptyAction() : _message(""){};
-  explicit EmptyAction(std::string message) : _message(std::move(message)) {}
-  std::string _message;
+  EmptyAction() : message(std::nullopt){};
+  explicit EmptyAction(std::string message) : message(std::move(message)) {}
 
-  auto updateCurrent(LogCurrent current) -> LogCurrent {
-    if (!current.supervision) {
-      current.supervision = LogCurrentSupervision{};
-    }
+  std::optional<std::string> message;
 
-    if (!current.supervision->statusMessage or
-        current.supervision->statusMessage != _message) {
-      current.supervision->statusMessage = _message;
-    }
+  auto execute(ActionContext& ctx) const -> void {
+    ctx.modifyCurrent([&](LogCurrent& current) {
+      if (!current.supervision) {
+        current.supervision = LogCurrentSupervision{};
+      }
 
-    return current;
+      if (!current.supervision->statusMessage or
+          current.supervision->statusMessage != message) {
+        current.supervision->statusMessage = message;
+      }
+    });
   }
-
-  auto execute(ActionContext& ctx) const -> void {}
 };
 
 template<typename Inspector>
 auto inspect(Inspector& f, EmptyAction& x) {
   auto hack = std::string{x.name};
   return f.object(x).fields(f.field("type", hack),
-                            f.field("message", x._message));
+                            f.field("message", x.message));
 }
 
 struct ErrorAction {
@@ -497,7 +496,7 @@ auto inspect(Inspector& f, UpdateLogConfigAction& x) {
 
 struct ConvergedToTargetAction {
   static constexpr std::string_view name = "ConvergedToTargetAction";
-  uint64_t version;
+  std::optional<uint64_t> version;
 
   auto execute(ActionContext& ctx) const -> void {
     ctx.modifyCurrent([&](LogCurrent& current) {

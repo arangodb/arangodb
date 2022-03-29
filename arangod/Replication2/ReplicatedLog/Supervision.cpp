@@ -386,10 +386,6 @@ auto checkReplicatedLog(LogTarget const& target,
                         std::optional<LogPlanSpecification> const& maybePlan,
                         std::optional<LogCurrent> const& maybeCurrent,
                         ParticipantsHealth const& health) -> Action {
-  if (!target.version) {
-    return EmptyAction("No version specified in Target");
-  }
-
   if (!maybePlan) {
     // The log is not planned right now, so we create it
     return AddLogToPlanAction(target.id, target.participants);
@@ -504,8 +500,6 @@ auto checkReplicatedLog(LogTarget const& target,
     return UpdateLogConfigAction(target.config);
   }
 
-  // Here we are converged and can hence signal so
-  TRI_ASSERT(target.version);
   return ConvergedToTargetAction{*target.version};
 }
 
