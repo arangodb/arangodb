@@ -1,6 +1,12 @@
 v3.7.18 (XXXX-XX-XX)
 --------------------
 
+* Fixed an assertion failure which could occur when there was an error in the
+  HTTP header, so that the message body was not actually read.
+
+* Fixed a crash which could occur when there was an error in the HTTP header
+  parsing.
+
 * No longer put document writes from replication into the audit log by default.
   Same with low priority authentication like internal UI requests to .html files
   for the UI. This solves a performance problem for shards getting in sync with
