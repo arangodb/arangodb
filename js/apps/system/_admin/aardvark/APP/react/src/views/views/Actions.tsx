@@ -29,6 +29,7 @@ type BackButtonProps = {
 type JsonButtonProps = {
   buttonClick: MouseEventHandler<HTMLElement>;
   buttonName: string;
+  icon: string;
 };
 
 export const BackButton = ({ buttonClick }: BackButtonProps) => {
@@ -39,9 +40,13 @@ export const BackButton = ({ buttonClick }: BackButtonProps) => {
   );
 };
 
-export const JsonButton = ({ buttonClick, buttonName }: JsonButtonProps) => {
+export const JsonButton = ({
+  buttonClick,
+  buttonName,
+  icon
+}: JsonButtonProps) => {
   return (
-    <IconButton icon={"code"} onClick={buttonClick} type={"success"}>
+    <IconButton icon={icon} onClick={buttonClick} type={"success"}>
       {buttonName}
     </IconButton>
   );

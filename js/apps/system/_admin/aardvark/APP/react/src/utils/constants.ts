@@ -23,13 +23,9 @@ export type DispatchArgs<FormState> = {
   formState?: FormState;
 };
 
-export type RenderView = "LinkList" | "AddNew" | "ViewParent" | "ViewChild" | "ViewField";
-
 export type FormProps<FormState> = {
   formState: FormState;
   dispatch: Dispatch<DispatchArgs<FormState>>;
   disabled?: boolean;
-  view?: string;
-  show?: RenderView;
 };
 

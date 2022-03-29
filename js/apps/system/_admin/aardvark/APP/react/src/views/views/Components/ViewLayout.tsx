@@ -1,7 +1,11 @@
-import React, { ReactNode, useContext } from "react";
-import { ArangoTable, ArangoTD, ArangoTH } from "../../../components/arango/table";
+import React, { ReactNode, useContext, useState } from "react";
+import {
+  ArangoTable,
+  ArangoTD,
+  ArangoTH
+} from "../../../components/arango/table";
 import { ViewContext } from "../ViewLinksReactView";
-
+import { JsonButton } from "../Actions";
 type ViewLayoutProps = {
   view?: string | undefined;
   field?: string;
@@ -9,14 +13,13 @@ type ViewLayoutProps = {
   children: ReactNode;
 };
 
-const ViewLayout = ({
-  view,
-  field,
-  link,
-  children
-}: ViewLayoutProps) => {
+const ViewLayout = ({ view, field, link, children }: ViewLayoutProps) => {
   const { setShow } = useContext(ViewContext);
+  const [json, setJson] = useState(false);
 
+  const handleJsonClick = () => {
+    setJson(!json);
+  };
   return (
     <ArangoTable>
       <thead>
@@ -27,10 +30,19 @@ const ViewLayout = ({
               {link !== undefined ? "/" + link : ""}
             </a>
             <a href={`/${field}`}>{field !== undefined ? "/" + field : ""}</a>
+            <JsonButton
+              icon={!json ? "code" : "align-right"}
+              buttonName={!json ? "Json View" : "Form view"}
+              buttonClick={handleJsonClick}
+            />
           </ArangoTH>
         </tr>
       </thead>
-      <tbody><tr><ArangoTD seq={0}>{children}</ArangoTD></tr></tbody>
+      <tbody>
+        <tr>
+          <ArangoTD seq={0}>{children}</ArangoTD>
+        </tr>
+      </tbody>
     </ArangoTable>
   );
 };

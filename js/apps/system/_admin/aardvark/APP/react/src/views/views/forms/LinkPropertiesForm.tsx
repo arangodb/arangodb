@@ -10,14 +10,16 @@ import LinkView from "../Components/LinkView";
 import FieldView from "../Components/FieldView";
 import { ViewContext } from "../ViewLinksReactView";
 
-const LinkPropertiesForm = ({ disabled, view }: FormProps<FormState>) => {
+type LinksPropertiesFormProps = FormProps<FormState> & {
+  view: string;
+};
+const LinkPropertiesForm = ({ disabled, view }: LinksPropertiesFormProps) => {
   const { formState, dispatch, field } = useContext(ViewContext);
 
   const [collection, setCollection, addDisabled, links] = useLinkState(
     formState,
     "links"
   );
-
   const { data } = useSWR(["/collection", "excludeSystem=true"], (path, qs) =>
     getApiRouteForCurrentDB().get(path, qs)
   );
