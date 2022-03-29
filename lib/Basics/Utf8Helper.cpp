@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,6 +21,8 @@
 /// @author Frank Celler
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
+
+#include "Utf8Helper.h"
 
 #include <string.h>
 #include <memory>
@@ -42,10 +44,7 @@
 #include <unicode/ustring.h>
 #include <unicode/utypes.h>
 
-#include <velocypack/StringRef.h>
-
-#include "Utf8Helper.h"
-
+#include "ApplicationFeatures/LanguageFeature.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/debugging.h"
@@ -97,7 +96,7 @@ Utf8Helper Utf8Helper::DefaultUtf8Helper(nullptr);
 
 Utf8Helper::Utf8Helper(std::string const& lang, void* icuDataPtr)
     : _coll(nullptr) {
-  setCollatorLanguage(lang, icuDataPtr);
+  setCollatorLanguage(lang, LanguageType::DEFAULT, icuDataPtr);
 }
 
 Utf8Helper::Utf8Helper(void* icuDataPtr) : Utf8Helper("", icuDataPtr) {}
@@ -146,7 +145,8 @@ int Utf8Helper::compareUtf16(uint16_t const* left, size_t leftLength,
                         (const UChar*)right, (int32_t)rightLength);
 }
 
-bool Utf8Helper::setCollatorLanguage(std::string const& lang,
+bool Utf8Helper::setCollatorLanguage(std::string_view lang,
+                                     LanguageType langType,
                                      void* icuDataPointer) {
   if (icuDataPointer == nullptr) {
     return false;
@@ -177,11 +177,18 @@ bool Utf8Helper::setCollatorLanguage(std::string const& lang,
 
   icu::Collator* coll;
   if (lang == "") {
-    // get default collator for empty language
+    // get default locale for empty language
     coll = icu::Collator::createInstance(status);
   } else {
-    icu::Locale locale(lang.c_str());
-    coll = icu::Collator::createInstance(locale, status);
+    icu::Locale canonicalLocale =
+        icu::Locale::createCanonical(std::string(lang).c_str());
+    if (LanguageType::DEFAULT == langType) {
+      icu::Locale defaultLocale{canonicalLocale.getLanguage(),
+                                canonicalLocale.getCountry()};
+      coll = icu::Collator::createInstance(defaultLocale, status);
+    } else {
+      coll = icu::Collator::createInstance(canonicalLocale, status);
+    }
   }
 
   if (U_FAILURE(status)) {
@@ -194,19 +201,20 @@ bool Utf8Helper::setCollatorLanguage(std::string const& lang,
     return false;
   }
 
-  // set the default attributes for sorting:
-  coll->setAttribute(UCOL_CASE_FIRST, UCOL_UPPER_FIRST, status);  // A < a
-  coll->setAttribute(UCOL_NORMALIZATION_MODE, UCOL_OFF,
-                     status);  // no normalization
-  coll->setAttribute(
-      UCOL_STRENGTH, UCOL_IDENTICAL,
-      status);  // UCOL_IDENTICAL, UCOL_PRIMARY, UCOL_SECONDARY, UCOL_TERTIARY
+  if (LanguageType::DEFAULT == langType) {
+    // set the default attributes for sorting:
+    coll->setAttribute(UCOL_CASE_FIRST, UCOL_UPPER_FIRST, status);  // A < a
+    // no normalization
+    coll->setAttribute(UCOL_NORMALIZATION_MODE, UCOL_OFF, status);
+    // UCOL_IDENTICAL, UCOL_PRIMARY, UCOL_SECONDARY, UCOL_TERTIARY
+    coll->setAttribute(UCOL_STRENGTH, UCOL_IDENTICAL, status);
 
-  if (U_FAILURE(status)) {
-    LOG_TOPIC("f0757", ERR, arangodb::Logger::FIXME)
-        << "error in Collator::setAttribute(...): " << u_errorName(status);
-    delete coll;
-    return false;
+    if (U_FAILURE(status)) {
+      LOG_TOPIC("f0757", ERR, arangodb::Logger::FIXME)
+          << "error in Collator::setAttribute(...): " << u_errorName(status);
+      delete coll;
+      return false;
+    }
   }
 
   if (_coll) {
@@ -228,10 +236,17 @@ std::string Utf8Helper::getCollatorLanguage() {
           << "error in Collator::getLocale(...): " << u_errorName(status);
       return "";
     }
-    return locale.getLanguage();
+
+    return locale.getName();
   }
   return "";
 }
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+icu::Collator* Utf8Helper::getCollator() const { return _coll; }
+
+void Utf8Helper::setCollator(icu::Collator* coll) { _coll = coll; }
+#endif
 
 std::string Utf8Helper::getCollatorCountry() {
   if (_coll) {
@@ -415,8 +430,7 @@ char* Utf8Helper::toupper(char const* src, int32_t srcLength,
 /// @brief Extract the words from a UTF-8 string.
 ////////////////////////////////////////////////////////////////////////////////
 
-bool Utf8Helper::tokenize(std::set<std::string>& words,
-                          arangodb::velocypack::StringRef const& text,
+bool Utf8Helper::tokenize(std::set<std::string>& words, std::string_view text,
                           size_t minimalLength, size_t maximalLength,
                           bool lowerCase) {
   UErrorCode status = U_ZERO_ERROR;

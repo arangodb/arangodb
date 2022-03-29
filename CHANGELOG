@@ -1,6 +1,13 @@
 v3.9.1 (XXXX-XX-XX)
 -------------------
 
+* Added new server option: --icu-language. Used instead of --default-language to
+  set pure ICU collator.
+  For example, in Sweden language("sv") lowercase letters should precede
+  uppercase ones. You can achieve it using following options when server starts:
+
+    `--icu-language sv`
+
 * No longer put document writes from replication into the audit log by default.
   Same with low priority authentication like internal UI requests to .html files
   for the UI. This solves a performance problem for shards getting in sync with
