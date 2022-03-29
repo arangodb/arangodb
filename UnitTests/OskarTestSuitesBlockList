@@ -6,3 +6,5 @@ audit
 dfdb
 replication2_client
 replication2_server
+shell_fuzzer
+shell_api
