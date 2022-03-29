@@ -68,5 +68,8 @@ class RestQueryHandler : public RestVocbaseBaseHandler {
 
   /// @brief parses a query
   void parseQuery();
+
+  /// @brief returns the available optimizer rules
+  void handleAvailableOptimizerRules();
 };
 }  // namespace arangodb

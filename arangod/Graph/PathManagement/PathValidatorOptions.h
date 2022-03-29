@@ -47,6 +47,10 @@ class PathValidatorOptions {
   PathValidatorOptions(
       aql::Variable const* tmpVar,
       arangodb::aql::FixedVarExpressionContext& expressionContext);
+  PathValidatorOptions(
+      aql::Variable const* tmpVar,
+      arangodb::aql::FixedVarExpressionContext& expressionContext,
+      bool isDisjoint, bool isSatelliteLeader);
   ~PathValidatorOptions() = default;
   PathValidatorOptions(PathValidatorOptions&&) = default;
   PathValidatorOptions(PathValidatorOptions const&) = default;
@@ -133,6 +137,9 @@ class PathValidatorOptions {
     return _bfsResultHasToIncludeFirstVertex;
   }
 
+  bool isDisjoint() const { return _isDisjoint; }
+  bool isSatelliteLeader() const { return _isSatelliteLeader; }
+
  private:
   // Vertex expression section
   std::shared_ptr<aql::Expression> _allVerticesExpression;
@@ -147,6 +154,9 @@ class PathValidatorOptions {
 
   aql::Variable const* _tmpVar;
   arangodb::aql::FixedVarExpressionContext& _expressionCtx;
+
+  bool _isDisjoint;
+  bool _isSatelliteLeader;
 };
 }  // namespace graph
 }  // namespace arangodb

@@ -43,7 +43,13 @@ struct LeaderStateManager
   using LeaderType = typename ReplicatedStateTraits<S>::LeaderType;
   using CoreType = typename ReplicatedStateTraits<S>::CoreType;
 
+  using WaitForAppliedQueue =
+      typename ReplicatedState<S>::StateManagerBase::WaitForAppliedQueue;
+  using WaitForAppliedPromise =
+      typename ReplicatedState<S>::StateManagerBase::WaitForAppliedQueue;
+
   explicit LeaderStateManager(
+      LoggerContext loggerContext,
       std::shared_ptr<ReplicatedState<S>> const& parent,
       std::shared_ptr<replicated_log::ILogLeader> leader,
       std::unique_ptr<CoreType> core,
@@ -55,43 +61,61 @@ struct LeaderStateManager
 
   [[nodiscard]] auto getStatus() const -> StateStatus final;
 
-  void run() noexcept;
+  void run() noexcept override;
 
   [[nodiscard]] auto resign() && noexcept
-      -> std::pair<std::unique_ptr<CoreType>,
-                   std::unique_ptr<ReplicatedStateToken>> override;
+      -> std::tuple<std::unique_ptr<CoreType>,
+                    std::unique_ptr<ReplicatedStateToken>,
+                    DeferredAction> override;
 
   using Multiplexer = streams::LogMultiplexer<ReplicatedStateStreamSpec<S>>;
-  std::shared_ptr<IReplicatedLeaderState<S>> state;
-  std::shared_ptr<Stream> stream;
-  std::weak_ptr<ReplicatedState<S>> parent;
-  std::shared_ptr<replicated_log::ILogLeader> logLeader;
 
-  std::shared_ptr<Factory> const factory;
-  bool _didResign = false;
+  auto getImplementationState() -> std::shared_ptr<IReplicatedLeaderState<S>>;
 
-  struct GuardedLeaderStateManagerData {
-    GuardedLeaderStateManagerData(std::unique_ptr<CoreType> core,
-                                  std::unique_ptr<ReplicatedStateToken> token);
+  struct GuardedData {
+    explicit GuardedData(LeaderStateManager& self,
+                         LeaderInternalState internalState,
+                         std::unique_ptr<CoreType> core,
+                         std::unique_ptr<ReplicatedStateToken> token);
+    LeaderStateManager& self;
+    std::shared_ptr<IReplicatedLeaderState<S>> state;
+    std::shared_ptr<Stream> stream;
 
-    LeaderInternalState _internalState{
-        LeaderInternalState::kUninitializedState};
-    std::chrono::system_clock::time_point _lastInternalStateChange;
-    std::optional<LogRange> _recoveryRange;
+    LeaderInternalState internalState{LeaderInternalState::kUninitializedState};
+    std::chrono::system_clock::time_point lastInternalStateChange;
+    std::optional<LogRange> recoveryRange;
 
-    std::unique_ptr<CoreType> _core;
-    std::unique_ptr<ReplicatedStateToken> _token;
+    std::unique_ptr<CoreType> core;
+    std::unique_ptr<ReplicatedStateToken> token;
+    bool _didResign = false;
 
     void updateInternalState(LeaderInternalState newState,
-                             std::optional<LogRange> range = std::nullopt);
-
-    [[nodiscard]] auto getLeaderStatus() const -> LeaderStatus;
+                             std::optional<LogRange> range = std::nullopt) {
+      internalState = newState;
+      lastInternalStateChange = std::chrono::system_clock::now();
+      recoveryRange = range;
+    }
   };
 
-  Guarded<GuardedLeaderStateManagerData> _guardedData;
+  Guarded<GuardedData> guardedData;
+  std::weak_ptr<ReplicatedState<S>> const parent;
+  std::shared_ptr<replicated_log::ILogLeader> const logLeader;
+  LoggerContext const loggerContext;
+  std::shared_ptr<Factory> const factory;
 
  private:
   void beginWaitingForParticipantResigned();
 };
 
+template<typename S>
+LeaderStateManager<S>::GuardedData::GuardedData(
+    LeaderStateManager& self, LeaderInternalState internalState,
+    std::unique_ptr<CoreType> core, std::unique_ptr<ReplicatedStateToken> token)
+    : self(self),
+      internalState(internalState),
+      core(std::move(core)),
+      token(std::move(token)) {
+  TRI_ASSERT(this->core != nullptr);
+  TRI_ASSERT(this->token != nullptr);
+}
 }  // namespace arangodb::replication2::replicated_state

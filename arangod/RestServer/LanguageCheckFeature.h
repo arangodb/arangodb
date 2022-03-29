@@ -24,9 +24,7 @@
 #pragma once
 
 #include "RestServer/arangod.h"
-
 namespace arangodb {
-
 class LanguageCheckFeature final : public ArangodFeature {
  public:
   static constexpr std::string_view name() noexcept { return "LanguageCheck"; }

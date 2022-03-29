@@ -76,7 +76,12 @@ TEST(LogStatusTest, commit_fail_reason) {
       << "expected " << jsonSlice.toJson() << " found " << slice.toJson();
 
   builder.clear();
-  reason = CommitFailReason::withQuorumSizeNotReached("PRMR-1234");
+  reason = CommitFailReason::withQuorumSizeNotReached(
+      {{"PRMR-1234",
+        {.isFailed = true,
+         .isAllowedInQuorum = true,
+         .lastAcknowledged = TermIndexPair(LogTerm(1), LogIndex(2))}}},
+      TermIndexPair(LogTerm(3), LogIndex(4)));
   reason.toVelocyPack(builder);
   slice = builder.slice();
   fromVPack = CommitFailReason::fromVelocyPack(slice);
@@ -256,6 +261,7 @@ TEST(LogStatusTest, follower_status) {
 TEST(LogStatusTest, global_status) {
   auto election = agency::LogCurrentSupervisionElection{};
   election.term = LogTerm{1};
+  election.bestTermIndex = TermIndexPair(LogTerm{1}, LogIndex{1});
   election.participantsRequired = 2;
   election.participantsAvailable = 0;
 
@@ -293,9 +299,11 @@ TEST(LogStatusTest, global_status) {
       "response": {
         "election": {
           "term": 1,
+          "bestTermIndex": { "term": 1, "index": 1 },
           "participantsRequired": 2,
           "participantsAvailable": 0,
-          "details": {}
+          "details": {},
+          "electibleLeaderSet": []
         }
       }
     },

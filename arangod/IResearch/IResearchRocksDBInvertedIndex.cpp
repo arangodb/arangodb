@@ -27,6 +27,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
+#include "RocksDBEngine/RocksDBEngine.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -120,18 +121,27 @@ std::shared_ptr<Index> IResearchRocksDBInvertedIndexFactory::instantiate(
   auto index = std::make_shared<IResearchRocksDBInvertedIndex>(
       id, collection, objectId, indexName, std::move(fieldsMeta));
   if (!clusterWideIndex) {
-    auto initRes = index->init([this]() -> irs::directory_attributes {
-      auto& selector = _server.getFeature<EngineSelectorFeature>();
-      TRI_ASSERT(selector.isRocksDB());
-      auto& engine = selector.engine<RocksDBEngine>();
-      auto* encryption = engine.encryptionProvider();
-      if (encryption) {
-        return irs::directory_attributes{
-            0, std::make_unique<RocksDBEncryptionProvider>(
-                   *encryption, engine.rocksDBOptions())};
+    bool pathExists = false;
+    auto cleanup = scopeGuard([&]() noexcept {
+      if (pathExists) {
+        index->unload();
+      } else {
+        index->drop();
       }
-      return irs::directory_attributes{};
     });
+    auto initRes =
+        index->init(pathExists, [this]() -> irs::directory_attributes {
+          auto& selector = _server.getFeature<EngineSelectorFeature>();
+          TRI_ASSERT(selector.isRocksDB());
+          auto& engine = selector.engine<RocksDBEngine>();
+          auto* encryption = engine.encryptionProvider();
+          if (encryption) {
+            return irs::directory_attributes{
+                0, std::make_unique<RocksDBEncryptionProvider>(
+                       *encryption, engine.rocksDBOptions())};
+          }
+          return irs::directory_attributes{};
+        });
 
     if (initRes.fail()) {
       LOG_TOPIC("9c9ac", ERR, iresearch::TOPIC)
@@ -150,6 +160,7 @@ std::shared_ptr<Index> IResearchRocksDBInvertedIndexFactory::instantiate(
           << initRes.errorMessage();
       return nullptr;
     }
+    cleanup.cancel();
   }
   return index;
 }
@@ -245,7 +256,13 @@ IResearchRocksDBInvertedIndex::IResearchRocksDBInvertedIndex(
                    false, true,
                    RocksDBColumnFamilyManager::get(
                        RocksDBColumnFamilyManager::Family::Invalid),
-                   objectId, false) {}
+                   objectId, /*useCache*/ false,
+                   /*cacheManager*/ nullptr,
+                   /*engine*/
+                   collection.vocbase()
+                       .server()
+                       .getFeature<EngineSelectorFeature>()
+                       .engine<RocksDBEngine>()) {}
 
 void IResearchRocksDBInvertedIndex::toVelocyPack(
     VPackBuilder& builder,
@@ -273,15 +290,12 @@ void IResearchRocksDBInvertedIndex::toVelocyPack(
   builder.add(arangodb::StaticStrings::IndexSparse, VPackValue(sparse()));
 }
 
-Result IResearchRocksDBInvertedIndex::drop() { return deleteDataStore(); }
+Result IResearchRocksDBInvertedIndex::drop() /*noexcept*/ {
+  return deleteDataStore();
+}
 
-void IResearchRocksDBInvertedIndex::unload() {
-  auto res = shutdownDataStore();
-  if (!res.ok()) {
-    LOG_TOPIC("0617f", ERR, iresearch::TOPIC)
-        << "failed to unload arangosearch rockdb inverted index: "
-        << res.errorNumber() << " " << res.errorMessage();
-  }
+void IResearchRocksDBInvertedIndex::unload() /*noexcept*/ {
+  shutdownDataStore();
 }
 
 bool IResearchRocksDBInvertedIndex::matchesDefinition(

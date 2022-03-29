@@ -24,11 +24,11 @@
 #include "RestQueryHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Aql/OptimizerRulesFeature.h"
 #include "Aql/Query.h"
 #include "Aql/QueryList.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
 #include "Transaction/Helpers.h"
@@ -55,9 +55,14 @@ RestStatus RestQueryHandler::execute() {
     case rest::RequestType::DELETE_REQ:
       deleteQuery();
       break;
-    case rest::RequestType::GET:
-      readQuery();
-      break;
+    case rest::RequestType::GET: {
+      auto const& suffixes = _request->suffixes();
+      if (suffixes.size() == 1 && suffixes[0] == "rules") {
+        handleAvailableOptimizerRules();
+      } else {
+        readQuery();
+      }
+    } break;
     case rest::RequestType::PUT:
       replaceProperties();
       break;
@@ -71,6 +76,31 @@ RestStatus RestQueryHandler::execute() {
 
   // this handler is done
   return RestStatus::DONE;
+}
+
+void RestQueryHandler::handleAvailableOptimizerRules() {
+  VPackBuilder builder;
+  builder.openArray();
+  auto const& optimizerRules = OptimizerRulesFeature::rules();
+  for (auto const& optimizerRule : optimizerRules) {
+    builder.openObject();
+    builder.add("name", VPackValue(optimizerRule.name));
+    builder.add(velocypack::Value("flags"));
+    builder.openObject();
+    builder.add("hidden", VPackValue(optimizerRule.isHidden()));
+    builder.add("clusterOnly", VPackValue(optimizerRule.isClusterOnly()));
+    builder.add("canBeDisabled", VPackValue(optimizerRule.canBeDisabled()));
+    builder.add("canCreateAdditionalPlans",
+                VPackValue(optimizerRule.canCreateAdditionalPlans()));
+    builder.add("disabledByDefault",
+                VPackValue(optimizerRule.isDisabledByDefault()));
+    builder.add("enterpriseOnly", VPackValue(optimizerRule.isEnterpriseOnly()));
+    builder.close();
+    builder.close();
+  }
+  builder.close();
+
+  generateResult(rest::ResponseCode::OK, builder.slice());
 }
 
 void RestQueryHandler::readQueryProperties() {

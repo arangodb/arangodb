@@ -25,7 +25,6 @@
 #include "IResearch/RestHandlerMock.h"
 #include "InternalRestHandler/InternalRestTraverserHandler.h"
 
-#include "MockGraph.h"
 #include "gtest/gtest.h"
 
 #include "Mocks/PreparedResponseConnectionPool.h"
@@ -351,6 +350,7 @@ MockGraph::simulateApi(
       leased.openObject();
       leased.add("keys", VPackValue(vertexToId(vertex)));
       leased.add("backward", VPackValue(false));
+      leased.add("depth", VPackValue(0));
       leased.close();  // base object
 
       prep.setRequestType(arangodb::rest::RequestType::PUT);

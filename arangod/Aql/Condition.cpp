@@ -43,7 +43,6 @@
 #include "Transaction/Methods.h"
 
 #include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 
 #ifdef _WIN32
 // turn off warnings about too long type name for debug symbols blabla in MSVC

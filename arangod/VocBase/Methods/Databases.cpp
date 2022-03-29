@@ -46,8 +46,6 @@
 #include "Utilities/NameValidator.h"
 #include "V8/JavaScriptSecurityContext.h"
 #include "V8/v8-utils.h"
-#include "V8/v8-vpack.h"
-#include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/Methods/Tasks.h"
 #include "VocBase/Methods/Upgrade.h"
@@ -60,7 +58,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::methods;

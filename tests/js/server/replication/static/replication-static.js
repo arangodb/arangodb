@@ -35,6 +35,7 @@ const arangodb = require('@arangodb');
 const errors = arangodb.errors;
 const db = arangodb.db;
 const _ = require('lodash');
+const userManager = require("@arangodb/users");
 
 const replication = require('@arangodb/replication');
 const compareTicks = require('@arangodb/replication-common').compareTicks;
@@ -171,6 +172,14 @@ function BaseTestConfig () {
   'use strict';
 
   return {
+    tearDownAll: function() {
+      db._flushCache();
+      db._users.toArray().forEach(user => {
+        if (user.user !== "root") {
+          userManager.remove(user.user);
+        }
+      });
+    },
 
     // /////////////////////////////////////////////////////////////////////////////
     //  @brief test invalid credentials
@@ -1450,7 +1459,7 @@ function BaseTestConfig () {
       compare(
         function (state) {
           let c = db._create(cn);
-          c.ensureHashIndex('a', 'b');
+          c.ensureIndex({ type: "hash", fields: ["a", "b"] });
 
           let docs = [];
           for (let i = 0; i < 1000; ++i) {
@@ -1491,9 +1500,7 @@ function BaseTestConfig () {
       compare(
         function (state) {
           let c = db._create(cn);
-          c.ensureHashIndex('a', 'b', {
-            sparse: true
-          });
+          c.ensureIndex({ type: "hash", fields: ["a", "b"], sparse: true });
 
           let docs = [];
           for (let i = 0; i < 1000; ++i) {
@@ -1534,7 +1541,7 @@ function BaseTestConfig () {
       compare(
         function (state) {
           let c = db._create(cn);
-          c.ensureUniqueConstraint('a');
+          c.ensureIndex({ type: "hash", fields: ["a"], unique: true });
 
           for (let i = 0; i < 1000; ++i) {
             try {
@@ -1574,9 +1581,7 @@ function BaseTestConfig () {
       compare(
         function (state) {
           let c = db._create(cn);
-          c.ensureUniqueConstraint('a', {
-            sparse: true
-          });
+          c.ensureIndex({ type: "hash", fields: ["a"], unique: true, sparse: true });
 
           for (let i = 0; i < 1000; ++i) {
             try {
@@ -1616,7 +1621,7 @@ function BaseTestConfig () {
       compare(
         function (state) {
           let c = db._create(cn);
-          c.ensureSkiplist('a', 'b');
+          c.ensureIndex({ type: "skiplist", fields: ["a", "b"] });
 
           let docs = [];
           for (let i = 0; i < 1000; ++i) {
@@ -1657,9 +1662,7 @@ function BaseTestConfig () {
       compare(
         function (state) {
           let c = db._create(cn);
-          c.ensureSkiplist('a', 'b', {
-            sparse: true
-          });
+          c.ensureIndex({ type: "skiplist", fields: ["a", "b"], sparse: true });
 
           let docs = [];
           for (let i = 0; i < 1000; ++i) {
@@ -1669,8 +1672,8 @@ function BaseTestConfig () {
               'b': i
             });
           }
+          docs.push({});
           c.insert(docs);
-          c.save({});
 
           state.checksum = collectionChecksum(cn);
           state.count = collectionCount(cn);
@@ -1700,7 +1703,7 @@ function BaseTestConfig () {
       compare(
         function (state) {
           let c = db._create(cn);
-          c.ensureUniqueSkiplist('a');
+          c.ensureIndex({ type: "skiplist", fields: ["a"], unique: true });
 
           for (let i = 0; i < 1000; ++i) {
             try {
@@ -1740,9 +1743,7 @@ function BaseTestConfig () {
       compare(
         function (state) {
           let c = db._create(cn);
-          c.ensureUniqueSkiplist('a', {
-            sparse: true
-          });
+          c.ensureIndex({ type: "skiplist", fields: ["a"], unique: true, sparse: true });
 
           for (let i = 0; i < 1000; ++i) {
             try {

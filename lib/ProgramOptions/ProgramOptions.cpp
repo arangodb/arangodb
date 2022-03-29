@@ -31,7 +31,6 @@
 #include "ProgramOptions/Translator.h"
 
 #include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <algorithm>
 #include <iostream>
@@ -206,7 +205,7 @@ VPackBuilder ProgramOptions::toVPack(
                              : "option"));
           builder.add(
               "hidden",
-              VPackValue(option.hasFlag(arangodb::options::Flags::Hidden)));
+              VPackValue(option.hasFlag(arangodb::options::Flags::Uncommon)));
           builder.add("type", VPackValue(option.parameter->name()));
           builder.add("experimental",
                       VPackValue(option.hasFlag(

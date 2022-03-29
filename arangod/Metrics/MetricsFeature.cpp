@@ -20,15 +20,21 @@
 ///
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
-
 #include "Metrics/MetricsFeature.h"
+
+#include <frozen/unordered_set.h>
+#include <velocypack/Builder.h>
+
+#include <chrono>
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Basics/application-exit.h"
 #include "Basics/debugging.h"
 #include "Cluster/ServerState.h"
+#include "Containers/FlatHashSet.h"
 #include "Logger/LoggerFeature.h"
+#include "Metrics/ClusterMetricsFeature.h"
 #include "Metrics/Metric.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
@@ -36,8 +42,6 @@
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "Statistics/StatisticsFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
-
-#include <chrono>
 
 namespace arangodb::metrics {
 
@@ -56,18 +60,18 @@ void MetricsFeature::collectOptions(
       std::make_unique<ServerStatistics>(*this, StatisticsFeature::time());
 
   options
-      ->addOption(
-          "--server.export-metrics-api", "turn metrics API on or off",
-          new options::BooleanParameter(&_export),
-          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+      ->addOption("--server.export-metrics-api", "turn metrics API on or off",
+                  new options::BooleanParameter(&_export),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30600);
 
   options
-      ->addOption(
-          "--server.export-read-write-metrics",
-          "turn metrics for document read/write metrics on or off",
-          new options::BooleanParameter(&_exportReadWriteMetrics),
-          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+      ->addOption("--server.export-read-write-metrics",
+                  "turn metrics for document read/write metrics on or off",
+                  new options::BooleanParameter(&_exportReadWriteMetrics),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30707);
 }
 
@@ -108,14 +112,21 @@ void MetricsFeature::validateOptions(std::shared_ptr<options::ProgramOptions>) {
 }
 
 void MetricsFeature::toPrometheus(std::string& result) const {
+  auto& cm = server().getFeature<ClusterMetricsFeature>();
+  if (cm.isEnabled()) {
+    cm.asyncUpdate();
+  }
+
   // minimize reallocs
   result.reserve(32768);
 
   // QueryRegistryFeature
   auto& q = server().getFeature<QueryRegistryFeature>();
   q.updateMetrics();
+  bool hasGlobals = false;
   {
     auto lock = initGlobalLabels();
+    hasGlobals = hasShortname && hasRole;
     std::string_view last;
     std::string_view curr;
     for (auto const& i : _registry) {
@@ -134,14 +145,49 @@ void MetricsFeature::toPrometheus(std::string& result) const {
     }
   }
   auto& sf = server().getFeature<StatisticsFeature>();
-  sf.toPrometheus(result,
-                  std::chrono::duration<double, std::milli>(
-                      std::chrono::system_clock::now().time_since_epoch())
-                      .count());
+  auto time = std::chrono::duration<double, std::milli>(
+      std::chrono::system_clock::now().time_since_epoch());
+  sf.toPrometheus(result, time.count());
   auto& es = server().getFeature<EngineSelectorFeature>().engine();
   if (es.typeName() == RocksDBEngine::kEngineName) {
     es.getStatistics(result);
   }
+  if (hasGlobals && cm.isEnabled()) {
+    cm.toPrometheus(result, _globals);
+  }
+}
+constexpr auto kCoordinatorBatch = frozen::make_unordered_set<frozen::string>({
+    "arangodb_search_link_stats",
+});
+
+constexpr auto kCoordinatorMetrics =
+    frozen::make_unordered_set<frozen::string>({
+        "arangodb_search_num_failed_commits",
+        "arangodb_search_num_failed_cleanups",
+        "arangodb_search_num_failed_consolidations",
+        "arangodb_search_commit_time",
+        "arangodb_search_cleanup_time",
+        "arangodb_search_consolidation_time",
+    });
+
+void MetricsFeature::toVPack(velocypack::Builder& builder) const {
+  builder.openArray(true);
+  std::shared_lock lock{_mutex};
+  for (auto const& i : _registry) {
+    TRI_ASSERT(i.second);
+    auto const name = i.second->name();
+    if (kCoordinatorMetrics.count(name)) {
+      i.second->toVPack(builder, server());
+    }
+  }
+  for (auto const& [name, batch] : _batch) {
+    TRI_ASSERT(batch);
+    if (kCoordinatorBatch.count(name)) {
+      batch->toVPack(builder, server());
+    }
+  }
+  lock.unlock();
+  builder.close();
 }
 
 ServerStatistics& MetricsFeature::serverStatistics() noexcept {

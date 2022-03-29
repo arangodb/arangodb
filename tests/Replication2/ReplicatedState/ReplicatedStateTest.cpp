@@ -90,7 +90,7 @@ TEST_F(ReplicatedStateTest, simple_unconfigured_log_test) {
       std::get<replicated_state::UnconfiguredStatus>(status->variant);
   ASSERT_EQ(unconfiguredStatus, (replicated_state::UnconfiguredStatus{
                                     .generation = stateGeneration,
-                                    .snapshot{},
+                                    .snapshot = {},
                                 }));
 }
 
@@ -114,7 +114,7 @@ TEST_F(ReplicatedStateTest, unconfigured_log_becomes_leader_test) {
         std::get<replicated_state::UnconfiguredStatus>(status->variant);
     ASSERT_EQ(unconfiguredStatus, (replicated_state::UnconfiguredStatus{
                                       .generation = stateGeneration,
-                                      .snapshot{},
+                                      .snapshot = {},
                                   }));
   }
 
@@ -170,7 +170,7 @@ TEST_F(ReplicatedStateTest, unconfigured_log_becomes_follower_test) {
         std::get<replicated_state::UnconfiguredStatus>(status->variant);
     ASSERT_EQ(unconfiguredStatus, (replicated_state::UnconfiguredStatus{
                                       .generation = stateGeneration,
-                                      .snapshot{},
+                                      .snapshot = {},
                                   }));
   }
 

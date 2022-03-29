@@ -42,8 +42,6 @@
 #include "Aql/SubqueryStartExecutor.h"
 #include "Basics/ResourceUsage.h"
 
-#include <velocypack/velocypack-aliases.h>
-
 using namespace arangodb;
 using namespace arangodb::aql;
 
