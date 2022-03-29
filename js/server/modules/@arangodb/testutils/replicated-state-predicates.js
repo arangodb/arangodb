@@ -84,6 +84,11 @@ const replicatedStateIsReady = function (database, logId, servers) {
       }
     }
 
+    const otherServers = _.difference(Object.keys(plan.participants), servers);
+    if (otherServers.length > 0) {
+      return Error(`Server ${otherServers[0]} is still in plan.`);
+    }
+
     return true;
   };
 };

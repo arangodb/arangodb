@@ -93,6 +93,42 @@ auto checkParticipantAdded(
   return EmptyAction();
 }
 
+auto checkParticipantRemoved(
+    arangodb::replication2::agency::Log const& log,
+    replication2::replicated_state::agency::State const& state) -> Action {
+  auto const& targetParticipants = state.target.participants;
+
+  if (!state.plan || !log.plan || !log.current) {
+    return EmptyAction();
+  }
+
+  auto const& planParticipants = state.plan->participants;
+
+  for (auto const& [participant, _] : planParticipants) {
+    if (!targetParticipants.contains(participant)) {
+      // first check if the phase out flag is set (allowedInQuorum == false)
+      if (auto flags =
+              log.plan->participantsConfig.participants.at(participant);
+          flags.allowedInQuorum) {
+        // set the flag in target
+        return UpdateParticipantFlagsAction{
+            participant, ParticipantFlags{.allowedInQuorum = false}};
+      } else if (log.current->leader and
+                 log.current->leader->committedParticipantsConfig and
+                 log.plan->participantsConfig.generation ==
+                     log.current->leader->committedParticipantsConfig
+                         ->generation) {
+        // we can remove the old server from Log/Target and State/Plan
+        return RemoveParticipantAction{participant};
+      } else {
+        // we have to wait for the log to converge
+        return WaitForAction{};
+      }
+    }
+  }
+  return EmptyAction();
+}
+
 /* Check whether there is a participant that is excluded but reported snapshot
  * complete */
 auto checkSnapshotComplete(
@@ -201,6 +237,11 @@ auto checkReplicatedState(
   }
 
   if (auto action = checkParticipantAdded(*log, state);
+      !isEmptyAction(action)) {
+    return action;
+  }
+
+  if (auto action = checkParticipantRemoved(*log, state);
       !isEmptyAction(action)) {
     return action;
   }

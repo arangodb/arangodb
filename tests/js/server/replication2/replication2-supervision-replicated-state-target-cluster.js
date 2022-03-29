@@ -90,10 +90,9 @@ const replicatedStateSuite = function () {
     };
   }());
 
-  const createReplicatedState = function () {
+  const createReplicatedStateWithServers = function (servers) {
     const stateId = lh.nextUniqueLogId();
 
-    const servers = _.sampleSize(lh.dbservers, targetConfig.replicationFactor);
     let participants = {};
     for (const server of servers) {
       participants[server] = {};
@@ -105,11 +104,12 @@ const replicatedStateSuite = function () {
             id: stateId,
             participants: participants,
             config: targetConfig,
+            version: 1,
             properties: {
               implementation: {
                 type: "black-hole"
               }
-            }
+            },
           };
         });
 
@@ -118,6 +118,13 @@ const replicatedStateSuite = function () {
     const followers = _.difference(servers, [leader]);
     return {stateId, servers, leader, followers};
   };
+
+
+  const createReplicatedState = function () {
+    const servers = _.sampleSize(lh.dbservers, targetConfig.replicationFactor);
+    return createReplicatedStateWithServers(servers);
+  };
+
 
   return {
     setUpAll, tearDownAll,
@@ -177,6 +184,25 @@ const replicatedStateSuite = function () {
       lh.waitFor(lh.replicatedLogParticipantsFlag(database, stateId, {
         [newParticipant]: {allowedInQuorum: true, allowedAsLeader: true, forced: false},
       }));
+    },
+
+    testRemoveParticipant: function () {
+      const servers = _.sampleSize(lh.dbservers, 4);
+      const {stateId, followers} = createReplicatedStateWithServers(servers);
+
+      const serverToBeRemoved = _.sample(followers);
+      updateReplicatedStateTarget(database, stateId,
+          function (target) {
+            delete target.participants[serverToBeRemoved];
+            target.version = 2;
+            return target;
+          });
+      lh.waitFor(spreds.replicatedStateVersionConverged(database, stateId, 2));
+      const newServers = _.without(servers, serverToBeRemoved);
+      lh.waitFor(lh.replicatedLogParticipantsFlag(database, stateId, {
+        [serverToBeRemoved]: null,
+      }));
+      lh.waitFor(spreds.replicatedStateIsReady(database, stateId, newServers));
     },
 
     testUpdateVersionTest: function () {
