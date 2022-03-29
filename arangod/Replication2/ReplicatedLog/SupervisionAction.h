@@ -497,6 +497,7 @@ auto inspect(Inspector& f, UpdateLogConfigAction& x) {
 
 struct ConvergedToTargetAction {
   static constexpr std::string_view name = "ConvergedToTargetAction";
+  uint64_t version;
 
   auto execute(ActionContext& ctx) const -> void {
     ctx.modifyCurrent([&](LogCurrent& current) {
@@ -504,9 +505,7 @@ struct ConvergedToTargetAction {
         current.supervision = LogCurrentSupervision{};
       }
 
-      if (current.supervision->statusMessage != "Converged to target") {
-        current.supervision->statusMessage = "Converged to target";
-      }
+      current.supervision->targetVersion = version;
     });
   }
 };

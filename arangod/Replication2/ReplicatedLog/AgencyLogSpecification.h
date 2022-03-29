@@ -27,7 +27,6 @@
 #include "Cluster/ClusterTypes.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/types.h"
-#include "Basics/StaticStrings.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -55,6 +54,7 @@ auto constexpr LeadershipEstablished =
 auto constexpr CommitStatus = std::string_view{"commitStatus"};
 auto constexpr Supervision = std::string_view{"supervision"};
 auto constexpr Leader = std::string_view{"leader"};
+auto constexpr Version = std::string_view{"version"};
 auto constexpr Actions = std::string_view{"actions"};
 auto constexpr MaxActionsTraceLength =
     std::string_view{"maxActionsTraceLength"};
@@ -271,6 +271,7 @@ struct LogCurrentSupervision {
   std::optional<LogCurrentSupervisionElection> election;
   std::optional<LogCurrentSupervisionError> error;
   std::optional<std::string> statusMessage;
+  std::optional<uint64_t> targetVersion;
 
   auto toVelocyPack(VPackBuilder&) const -> void;
 
@@ -356,6 +357,7 @@ struct LogTarget {
   LogConfig config;
 
   std::optional<ParticipantId> leader;
+  std::optional<uint64_t> version;
 
   struct Supervision {
     std::size_t maxActionsTraceLength{0};
@@ -392,6 +394,7 @@ auto inspect(Inspector& f, LogTarget& x) {
           .fallback(ParticipantsFlagsMap{}),
       f.field(StaticStrings::Config, x.config),
       f.field(StaticStrings::Leader, x.leader),
+      f.field(static_strings::Version, x.version),
       f.field(static_strings::Supervision, x.supervision));
 }
 
