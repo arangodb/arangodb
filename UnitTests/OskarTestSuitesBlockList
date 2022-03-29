@@ -7,3 +7,4 @@ audit
 dfdb
 replication2_client
 shell_fuzzer
+shell_api
