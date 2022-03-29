@@ -884,5 +884,9 @@ TEST_F(MaintenanceFeatureTestDBServer, test_synchronize_shard_abort) {
                                              {SHARD_VERSION, "1"}},
           SYNCHRONIZE_PRIORITY, true);
 
-  auto res = mf.addAction(description, true);
+  // The following will executed the action right away:
+  auto res = mf.addAction(description, true /* executeNow */);
+  ASSERT_FALSE(res.ok());  // must have been aborted
+  mf.beginShutdown();
+  mf.stop();
 }
