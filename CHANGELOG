@@ -1,6 +1,10 @@
 devel
 -----
 
+* Always open a new, working connection before HTTP request-fuzzing during 
+  testing. Otherwise the fuzzing results are not 100% comparable from run to
+  run.
+
 * Updated OpenSSL to 1.1.1n and OpenLDAP to 2.6.1.
 
 * Updated arangosync to v2.9.0-preview-2.
