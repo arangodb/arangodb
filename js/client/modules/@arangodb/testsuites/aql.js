@@ -26,6 +26,7 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const functionsDocumentation = {
+  'shell_api': 'shell client tests - only *api*',
   'shell_client': 'shell client tests',
   'shell_server': 'shell server tests',
   'shell_client_aql': 'AQL tests in the client',
@@ -41,7 +42,8 @@ const _ = require('lodash');
 const tu = require('@arangodb/testutils/test-utils');
 
 const testPaths = {
-  'shell_client': [ tu.pathForTesting('common/shell'), tu.pathForTesting('client/http'), tu.pathForTesting('client/shell') ],
+  'shell_api': [ tu.pathForTesting('client/shell/api')],
+  'shell_client': [ tu.pathForTesting('common/shell'), tu.pathForTesting('client/shell')],
   'shell_server': [ tu.pathForTesting('common/shell'), tu.pathForTesting('server/shell') ],
   'shell_server_only': [ tu.pathForTesting('server/shell') ],
   'shell_server_aql': [ tu.pathForTesting('server/aql'), tu.pathForTesting('common/aql') ],
@@ -68,6 +70,27 @@ function ensureCoordinators(options, numServers) {
   return options;
 }
 
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief TEST: shell_client
+// //////////////////////////////////////////////////////////////////////////////
+
+function shellApiClient (options) {
+  let testCases = tu.scanTestPaths(testPaths.shell_api, options);
+
+  testCases = tu.splitBuckets(options, testCases);
+
+  var opts = ensureServers(options, 3);
+  opts = ensureCoordinators(opts, 2);
+  opts['httpTrustedOrigin'] =  'http://was-erlauben-strunz.it';
+
+  // increase timeouts after which servers count as BAD/FAILED.
+  // we want this to ensure that in an overload situation we do not
+  // get random failedLeader / failedFollower jobs during our tests.
+  let moreOptions = { "agency.supervision-ok-threshold" : "15", "agency.supervision-grace-period" : "30" };
+  let rc = tu.performTests(opts, testCases, 'shell_api', tu.runInLocalArangosh, moreOptions);
+  options.cleanup = options.cleanup && opts.cleanup;
+  return rc;
+}
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief TEST: shell_client
 // //////////////////////////////////////////////////////////////////////////////
@@ -188,12 +211,14 @@ function shellClientAql (options) {
 
 exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
+  testFns['shell_api'] = shellApiClient;
   testFns['shell_client'] = shellClient;
   testFns['shell_server'] = shellServer;
   testFns['shell_client_aql'] = shellClientAql;
   testFns['shell_server_aql'] = shellServerAql;
   testFns['shell_server_only'] = shellServerOnly;
 
+  defaultFns.push('shell_api');
   defaultFns.push('shell_client');
   defaultFns.push('shell_server');
   defaultFns.push('shell_client_aql');
