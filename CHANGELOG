@@ -1,10 +1,12 @@
 v3.9.1 (XXXX-XX-XX)
 -------------------
 
-* No longer put document writes from replication into the audit log by
-  default. Same with low priority authentication like internal UI requests
-  to .html files for the UI. This solves a performance problem for
-  shards getting in sync with audit log switched on.
+* No longer put document writes from replication into the audit log by default.
+  Same with low priority authentication like internal UI requests to .html files
+  for the UI. This solves a performance problem for shards getting in sync with
+  audit log switched on.
+
+* Updated OpenSSL to 1.1.1n and OpenLDAP to 2.6.1.
 
 * Fixed an assertion failure which could occur when there was an error in the
   HTTP header, so that the message body was not actually read.
