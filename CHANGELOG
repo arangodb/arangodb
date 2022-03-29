@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fix lock order in Agent::advanceCommitIndex for State's _logLock and
+  Agent's _waitForCV.
+
 * Updated arangosync to v2.9.0-preview-2.
 
 * Added AQL hint "useCache" for FOR loops, to explicitly disable the usage of 
