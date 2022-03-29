@@ -112,8 +112,9 @@ struct PrototypeStateMethodsDBServer final : PrototypeStateMethods {
             _vocbase.getReplicatedStateById(id));
     if (stateMachine == nullptr) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND, basics::StringUtils::concatT(
-                                  "Failed to get ProtoypeState with id ", id));
+          TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND,
+          basics::StringUtils::concatT("Failed to get ProtoypeState with id ",
+                                       id));
     }
     auto leader = stateMachine->getLeader();
     if (leader == nullptr) {
