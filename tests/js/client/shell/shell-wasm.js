@@ -135,6 +135,18 @@ function WasmModulesSuite() {
 			assertEqual(queryresult, [5]);
 		},
 
+		test_function_in_registered_module_is_exectable_via_AQL_query_on_DB_server: function() {
+			wasmmodules.register(modulename, code);
+		        db._createDocumentCollection("newtable");
+		        db._query("INSERT {a: 1, b: 2} in newtable")
+
+			const queryresult = db._query("FOR d in newtable RETURN CALL_WASM('" + modulename + "', 'add', 1, 4)").toArray();
+
+			assertEqual(queryresult, [5]);
+
+		        db._drop("newtable");
+		},
+
 		test_unknown_module_execution_throws_error: function() {
 			try {
 				const queryresult = db._query("RETURN CALL_WASM('unknown_module', 'add', 1, 4)").toArray();

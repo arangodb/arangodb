@@ -91,7 +91,7 @@ auto WasmModuleCollection::getFromDBServer(ModuleName const& name) const
   auto collectionName = shardList->at(0);
 
   SingleCollectionTransaction trx(
-      transaction::StandaloneContext::Create(_vocbase), _collection,
+      transaction::StandaloneContext::Create(_vocbase), collectionName,
       AccessMode::Type::READ);
   if (auto res = trx.begin(); res.fail()) {
     return Result{TRI_ERROR_INTERNAL, errorContext +
