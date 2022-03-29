@@ -34,6 +34,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
+#include <optional>
 
 namespace arangodb { namespace fuerte { inline namespace v1 {
 const std::string fu_accept_key("accept");
@@ -193,8 +194,12 @@ class Request final : public Message {
   /// @brief request header
   RequestHeader header;
 
+
   MessageType type() const override { return MessageType::Request; }
   MessageHeader const& messageHeader() const override { return header; }
+  void setFuzzReqHeader(std::string fuzzHeader) { _fuzzReqHeader = std::move(fuzzHeader); }
+  std::optional<std::string> getFuzzReqHeader() const { return _fuzzReqHeader; }
+  bool getFuzzerReq() const noexcept { return _fuzzReqHeader.has_value(); }
 
   ///////////////////////////////////////////////
   // header accessors
@@ -230,6 +235,7 @@ class Request final : public Message {
  private:
   velocypack::Buffer<uint8_t> _payload;
   std::chrono::milliseconds _timeout;
+  std::optional<std::string> _fuzzReqHeader = std::nullopt;
 };
 
 // Response contains the message resulting from a request to a server.

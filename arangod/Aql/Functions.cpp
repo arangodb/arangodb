@@ -74,7 +74,6 @@
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/ExecContext.h"
 #include "V8/v8-vpack.h"
-#include "V8Server/v8-collection.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
@@ -106,7 +105,6 @@
 #include <velocypack/Dumper.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Sink.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <algorithm>
 
@@ -1206,7 +1204,7 @@ AqlValue geoContainsIntersect(ExpressionContext* expressionContext,
 
   AqlValueMaterializer mat1(vopts);
   geo::ShapeContainer outer, inner;
-  Result res = geo::geojson::parseRegion(mat1.slice(p1, true), outer);
+  Result res = geo::geojson::parseRegion(mat1.slice(p1, true), outer, false);
   if (res.fail()) {
     registerWarning(expressionContext, func, res);
     return AqlValue(AqlValueHintNull());
@@ -1224,7 +1222,7 @@ AqlValue geoContainsIntersect(ExpressionContext* expressionContext,
   if (p2.isArray() && p2.length() >= 2) {
     res = inner.parseCoordinates(mat2.slice(p2, true), /*geoJson*/ true);
   } else if (p2.isObject()) {
-    res = geo::geojson::parseRegion(mat2.slice(p2, true), inner);
+    res = geo::geojson::parseRegion(mat2.slice(p2, true), inner, false);
   } else {
     res.reset(TRI_ERROR_BAD_PARAMETER,
               "Second arg requires coordinate pair or GeoJSON");
@@ -1348,7 +1346,7 @@ Result parseShape(ExpressionContext* exprCtx, AqlValue const& value,
   if (value.isArray() && value.length() >= 2) {
     return shape.parseCoordinates(mat.slice(value, true), /*geoJson*/ true);
   } else if (value.isObject()) {
-    return geo::geojson::parseRegion(mat.slice(value, true), shape);
+    return geo::geojson::parseRegion(mat.slice(value, true), shape, false);
   } else {
     return {TRI_ERROR_BAD_PARAMETER, "Requires coordinate pair or GeoJSON"};
   }
@@ -4533,6 +4531,32 @@ AqlValue Functions::Keep(ExpressionContext* expressionContext, AstNode const&,
   return AqlValue(builder->slice(), builder->size());
 }
 
+/// @brief function KEEP_RECURSIVE
+AqlValue Functions::KeepRecursive(ExpressionContext* expressionContext,
+                                  AstNode const&,
+                                  VPackFunctionParameters const& parameters) {
+  static char const* AFN = "KEEP_RECURSIVE";
+
+  AqlValue const& value = extractFunctionParameterValue(parameters, 0);
+
+  if (!value.isObject()) {
+    registerInvalidArgumentWarning(expressionContext, AFN);
+    return AqlValue(AqlValueHintNull());
+  }
+
+  transaction::Methods* trx = &expressionContext->trx();
+  auto* vopts = &trx->vpackOptions();
+
+  containers::FlatHashSet<std::string> names;
+  ::extractKeys(names, expressionContext, vopts, parameters, 1, AFN);
+
+  AqlValueMaterializer materializer(vopts);
+  VPackSlice slice = materializer.slice(value, false);
+  transaction::BuilderLeaser builder(trx);
+  ::unsetOrKeep(trx, slice, names, false, true, *builder.get());
+  return AqlValue(builder->slice(), builder->size());
+}
+
 /// @brief function TRANSLATE
 AqlValue Functions::Translate(ExpressionContext* expressionContext,
                               AstNode const&,
@@ -4961,14 +4985,7 @@ AqlValue Functions::Collections(ExpressionContext* exprCtx, AstNode const&,
   builder->openArray();
 
   auto& vocbase = exprCtx->vocbase();
-  auto colls = GetCollections(vocbase);
-
-  std::sort(colls.begin(), colls.end(),
-            [](std::shared_ptr<LogicalCollection> const& lhs,
-               std::shared_ptr<LogicalCollection> const& rhs) -> bool {
-              return arangodb::basics::StringUtils::tolower(lhs->name()) <
-                     arangodb::basics::StringUtils::tolower(rhs->name());
-            });
+  auto colls = methods::Collections::sorted(vocbase);
 
   size_t const n = colls.size();
 
@@ -5986,8 +6003,8 @@ AqlValue Functions::GeoEquals(ExpressionContext* expressionContext,
   AqlValueMaterializer mat2(vopts);
 
   geo::ShapeContainer first, second;
-  Result res1 = geo::geojson::parseRegion(mat1.slice(p1, true), first);
-  Result res2 = geo::geojson::parseRegion(mat2.slice(p2, true), second);
+  Result res1 = geo::geojson::parseRegion(mat1.slice(p1, true), first, false);
+  Result res2 = geo::geojson::parseRegion(mat2.slice(p2, true), second, false);
 
   if (res1.fail()) {
     registerWarning(expressionContext, "GEO_EQUALS", res1);
@@ -6014,7 +6031,7 @@ AqlValue Functions::GeoArea(ExpressionContext* expressionContext,
   AqlValueMaterializer mat(vopts);
 
   geo::ShapeContainer shape;
-  Result res = geo::geojson::parseRegion(mat.slice(p1, true), shape);
+  Result res = geo::geojson::parseRegion(mat.slice(p1, true), shape, false);
 
   if (res.fail()) {
     registerWarning(expressionContext, "GEO_AREA", res);
@@ -6243,6 +6260,14 @@ AqlValue Functions::GeoPolygon(ExpressionContext* expressionContext,
   builder->close();  // coordinates
   builder->close();  // object
 
+  // Now actually parse the result with S2:
+  geo::ShapeContainer container;
+  res = geo::geojson::parsePolygon(builder->slice(), container, false);
+  if (res.fail()) {
+    registerWarning(expressionContext, "GEO_POLYGON", res);
+    return AqlValue(AqlValueHintNull());
+  }
+
   return AqlValue(builder->slice(), builder->size());
 }
 
@@ -6317,6 +6342,15 @@ AqlValue Functions::GeoMultiPolygon(ExpressionContext* expressionContext,
 
   builder->close();
   builder->close();
+
+  // Now actually parse the result with S2:
+  geo::ShapeContainer container;
+  Result res =
+      geo::geojson::parseMultiPolygon(builder->slice(), container, false);
+  if (res.fail()) {
+    registerWarning(expressionContext, "GEO_MULTIPOLYGON", res);
+    return AqlValue(AqlValueHintNull());
+  }
 
   return AqlValue(builder->slice(), builder->size());
 }

@@ -67,7 +67,7 @@ class RocksDBVPackIndex : public RocksDBIndex {
   friend class RocksDBVPackIndexIterator;
 
  public:
-  static uint64_t HashForKey(const rocksdb::Slice& key);
+  static uint64_t HashForKey(rocksdb::Slice const& key);
 
   RocksDBVPackIndex() = delete;
 
@@ -93,8 +93,6 @@ class RocksDBVPackIndex : public RocksDBIndex {
       std::underlying_type<Index::Serialize>::type) const override;
 
   bool canBeDropped() const override { return true; }
-
-  bool hasCoveringIterator() const override { return true; }
 
   /// @brief return the attribute paths
   std::vector<std::vector<std::string>> const& paths() const { return _paths; }
@@ -122,6 +120,8 @@ class RocksDBVPackIndex : public RocksDBIndex {
 
   void afterTruncate(TRI_voc_tick_t tick,
                      arangodb::transaction::Methods* trx) override;
+
+  std::shared_ptr<cache::Cache> makeCache() const override;
 
   bool hasStoredValues() const noexcept { return !_storedValues.empty(); }
 
@@ -151,19 +151,18 @@ class RocksDBVPackIndex : public RocksDBIndex {
   // build an index iterator from a VelocyPack range description
   std::unique_ptr<IndexIterator> buildIterator(
       transaction::Methods* trx, arangodb::velocypack::Slice searchValues,
-      bool reverse, ReadOwnWrites readOwnWrites,
+      IndexIteratorOptions const& opts, ReadOwnWrites readOwnWrites,
       RocksDBVPackIndexSearchValueFormat format) const;
 
   // build bounds for an index range
-  RocksDBKeyBounds buildIndexRangeBounds(transaction::Methods* trx,
-                                         VPackSlice searchValues,
-                                         VPackBuilder& leftSearch,
-                                         VPackSlice lastNonEq) const;
+  void buildIndexRangeBounds(transaction::Methods* trx, VPackSlice searchValues,
+                             VPackBuilder& leftSearch, VPackSlice lastNonEq,
+                             RocksDBKeyBounds& bounds) const;
 
   std::unique_ptr<IndexIterator> buildIteratorFromBounds(
       transaction::Methods* trx, bool reverse, ReadOwnWrites readOwnWrites,
-      RocksDBKeyBounds&& bounds,
-      RocksDBVPackIndexSearchValueFormat format) const;
+      RocksDBKeyBounds&& bounds, RocksDBVPackIndexSearchValueFormat format,
+      bool useCache) const;
 
   /// @brief returns whether the document can be inserted into the index
   /// (or if there will be a conflict)
@@ -232,8 +231,14 @@ class RocksDBVPackIndex : public RocksDBIndex {
   /// otherwise the non-negative number is the index of the expanding one.
   std::vector<int> _expanding;
 
+  /// @brief whether or not the user requested to use a cache for the index.
+  /// note: even if this is set to true, it may not mean that the cache is
+  /// effectively in use. for example, for system collections and on the
+  /// coordinator, no cache will actually be used although this flag may be true
+  bool const _cacheEnabled;
+
   /// @brief whether or not array indexes will de-duplicate their input values
-  bool _deduplicate;
+  bool const _deduplicate;
 
   /// @brief whether or not we want to have estimates
   bool _estimates;

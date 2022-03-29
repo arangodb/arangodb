@@ -28,6 +28,8 @@
 #include "Aql/GraphNode.h"
 #include "Aql/Graphs.h"
 #include "VocBase/LogicalCollection.h"
+#include "PruneExpressionEvaluator.h"
+#include "TraversalExecutor.h"
 
 namespace arangodb {
 
@@ -92,7 +94,7 @@ class TraversalNode : public virtual GraphNode {
   TraversalNode(ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
                 std::vector<Collection*> const& edgeColls,
                 std::vector<Collection*> const& vertexColls,
-                Variable const* inVariable, std::string const& vertexId,
+                Variable const* inVariable, std::string vertexId,
                 TRI_edge_direction_e defaultDirection,
                 std::vector<TRI_edge_direction_e> const& directions,
                 std::unique_ptr<graph::BaseOptions> options,
@@ -118,6 +120,19 @@ class TraversalNode : public virtual GraphNode {
       ExecutionEngine& engine,
       std::unordered_map<ExecutionNode*, ExecutionBlock*> const&)
       const override;
+
+  std::unique_ptr<ExecutionBlock> createRefactoredBlock(
+      ExecutionEngine& engine,
+      std::vector<std::pair<Variable const*, RegisterId>>&&,
+      std::function<
+          void(bool, std::shared_ptr<aql::PruneExpressionEvaluator>&)> const&,
+      std::function<
+          void(bool, std::shared_ptr<aql::PruneExpressionEvaluator>&)> const&,
+      const std::unordered_map<TraversalExecutorInfosHelper::OutputName,
+                               RegisterId,
+                               TraversalExecutorInfosHelper::OutputNameHash>&,
+      RegisterId, RegisterInfos,
+      std::unordered_map<ServerID, aql::EngineId> const*) const;
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
@@ -159,7 +174,7 @@ class TraversalNode : public virtual GraphNode {
   /// @brief return the in variable
   Variable const* inVariable() const;
 
-  std::string const getStartVertex() const;
+  std::string getStartVertex() const;
 
   void setInVariable(Variable const* inVariable);
 
@@ -287,6 +302,15 @@ class TraversalNode : public virtual GraphNode {
 
   /// @brief the hashSet for variables used in postFilter
   VarSet _postFilterVariables;
+
+  graph::ClusterBaseProviderOptions getClusterBaseProviderOptions(
+      traverser::TraverserOptions* opts,
+      std::vector<std::pair<Variable const*, RegisterId>> const&
+          filterConditionVariables) const;
+  graph::SingleServerBaseProviderOptions getSingleServerBaseProviderOptions(
+      traverser::TraverserOptions* opts,
+      std::vector<std::pair<Variable const*, RegisterId>> const&
+          filterConditionVariables) const;
 };
 
 }  // namespace aql

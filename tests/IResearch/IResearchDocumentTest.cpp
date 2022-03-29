@@ -29,7 +29,6 @@
 #include "velocypack/Builder.h"
 #include "velocypack/Iterator.h"
 #include "velocypack/Parser.h"
-#include "velocypack/velocypack-aliases.h"
 
 #include "analysis/analyzers.hpp"
 #include "analysis/token_streams.hpp"
@@ -1136,9 +1135,11 @@ TEST_F(IResearchDocumentTest,
     EXPECT_EQ(mangleNumeric("smallIntValue"), field.name());
     auto& analyzer =
         dynamic_cast<irs::numeric_token_stream&>(field.get_tokens());
-    irs::type_info::type_id const fieldFeatures[]{
+    irs::type_info::type_id const expected[]{
         irs::type<irs::granularity_prefix>::id()};
-    EXPECT_EQ((irs::features_t{fieldFeatures, 1}), field.features());
+    auto features = field.features();
+    EXPECT_TRUE(
+        std::equal(expected, expected + 1, features.begin(), features.end()));
     EXPECT_EQ(irs::IndexFeatures::NONE, field.index_features());
     EXPECT_TRUE(analyzer.next());
   }
@@ -1152,9 +1153,11 @@ TEST_F(IResearchDocumentTest,
     EXPECT_EQ(mangleNumeric("smallNegativeIntValue"), field.name());
     auto& analyzer =
         dynamic_cast<irs::numeric_token_stream&>(field.get_tokens());
-    irs::type_info::type_id const fieldFeatures[]{
+    irs::type_info::type_id const expected[]{
         irs::type<irs::granularity_prefix>::id()};
-    EXPECT_EQ((irs::features_t{fieldFeatures, 1}), field.features());
+    auto features = field.features();
+    EXPECT_TRUE(
+        std::equal(expected, expected + 1, features.begin(), features.end()));
     EXPECT_EQ(irs::IndexFeatures::NONE, field.index_features());
     EXPECT_TRUE(analyzer.next());
   }
@@ -1168,9 +1171,11 @@ TEST_F(IResearchDocumentTest,
     EXPECT_EQ(mangleNumeric("bigIntValue"), field.name());
     auto& analyzer =
         dynamic_cast<irs::numeric_token_stream&>(field.get_tokens());
-    irs::type_info::type_id const fieldFeatures[]{
+    irs::type_info::type_id const expected[]{
         irs::type<irs::granularity_prefix>::id()};
-    EXPECT_EQ((irs::features_t{fieldFeatures, 1}), field.features());
+    auto features = field.features();
+    EXPECT_TRUE(
+        std::equal(expected, expected + 1, features.begin(), features.end()));
     EXPECT_EQ(irs::IndexFeatures::NONE, field.index_features());
     EXPECT_TRUE(analyzer.next());
   }
@@ -1184,9 +1189,11 @@ TEST_F(IResearchDocumentTest,
     EXPECT_EQ(mangleNumeric("bigNegativeIntValue"), field.name());
     auto& analyzer =
         dynamic_cast<irs::numeric_token_stream&>(field.get_tokens());
-    irs::type_info::type_id const fieldFeatures[]{
+    irs::type_info::type_id const expected[]{
         irs::type<irs::granularity_prefix>::id()};
-    EXPECT_EQ((irs::features_t{fieldFeatures, 1}), field.features());
+    auto features = field.features();
+    EXPECT_TRUE(
+        std::equal(expected, expected + 1, features.begin(), features.end()));
     EXPECT_EQ(irs::IndexFeatures::NONE, field.index_features());
     EXPECT_TRUE(analyzer.next());
   }
@@ -1200,9 +1207,11 @@ TEST_F(IResearchDocumentTest,
     EXPECT_EQ(mangleNumeric("smallDoubleValue"), field.name());
     auto& analyzer =
         dynamic_cast<irs::numeric_token_stream&>(field.get_tokens());
-    irs::type_info::type_id const fieldFeatures[]{
+    irs::type_info::type_id const expected[]{
         irs::type<irs::granularity_prefix>::id()};
-    EXPECT_EQ((irs::features_t{fieldFeatures, 1}), field.features());
+    auto features = field.features();
+    EXPECT_TRUE(
+        std::equal(expected, expected + 1, features.begin(), features.end()));
     EXPECT_EQ(irs::IndexFeatures::NONE, field.index_features());
     EXPECT_TRUE(analyzer.next());
   }
@@ -1216,9 +1225,11 @@ TEST_F(IResearchDocumentTest,
     EXPECT_EQ(mangleNumeric("bigDoubleValue"), field.name());
     auto& analyzer =
         dynamic_cast<irs::numeric_token_stream&>(field.get_tokens());
-    irs::type_info::type_id const fieldFeatures[]{
+    irs::type_info::type_id const expected[]{
         irs::type<irs::granularity_prefix>::id()};
-    EXPECT_EQ((irs::features_t{fieldFeatures, 1}), field.features());
+    auto features = field.features();
+    EXPECT_TRUE(
+        std::equal(expected, expected + 1, features.begin(), features.end()));
     EXPECT_EQ(irs::IndexFeatures::NONE, field.index_features());
     EXPECT_TRUE(analyzer.next());
   }
@@ -1232,9 +1243,11 @@ TEST_F(IResearchDocumentTest,
     EXPECT_EQ(mangleNumeric("bigNegativeDoubleValue"), field.name());
     auto& analyzer =
         dynamic_cast<irs::numeric_token_stream&>(field.get_tokens());
-    irs::type_info::type_id const fieldFeatures[]{
+    irs::type_info::type_id const expected[]{
         irs::type<irs::granularity_prefix>::id()};
-    EXPECT_EQ((irs::features_t{fieldFeatures, 1}), field.features());
+    auto features = field.features();
+    EXPECT_TRUE(
+        std::equal(expected, expected + 1, features.begin(), features.end()));
     EXPECT_EQ(irs::IndexFeatures::NONE, field.index_features());
     EXPECT_TRUE(analyzer.next());
   }

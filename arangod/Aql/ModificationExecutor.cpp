@@ -34,7 +34,6 @@
 #include "Aql/SimpleModifier.h"
 #include "Aql/UpsertModifier.h"
 
-#include <velocypack/velocypack-aliases.h>
 #include <algorithm>
 
 using namespace arangodb;
@@ -168,8 +167,8 @@ ModificationExecutor<FetcherType, ModifierType>::produceOrSkip(
 
     _modifier->checkException();
     if (_infos._doCount) {
-      stats.addWritesExecuted(_modifier->nrOfWritesExecuted());
-      stats.addWritesIgnored(_modifier->nrOfWritesIgnored());
+      stats.incrWritesExecuted(_modifier->nrOfWritesExecuted());
+      stats.incrWritesIgnored(_modifier->nrOfWritesIgnored());
     }
 
     produceOrSkipData.doOutput();

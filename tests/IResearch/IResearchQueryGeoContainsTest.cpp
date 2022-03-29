@@ -236,7 +236,7 @@ TEST_P(IResearchQueryGeoContainsTest, test) {
       arangodb::geo::ShapeContainer shape;
       for (; it->next(); ++doc) {
         ASSERT_TRUE(arangodb::geo::geojson::parseRegion(
-                        doc->slice().get("geometry"), shape)
+                        doc->slice().get("geometry"), shape, false)
                         .ok());
         S2LatLng const centroid(shape.centroid());
 

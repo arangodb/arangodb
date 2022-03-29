@@ -72,20 +72,20 @@ void InitDatabaseFeature::collectOptions(
   options->addOption(
       "--database.init-database", "initializes an empty database",
       new BooleanParameter(&_initDatabase),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden,
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon,
                                           arangodb::options::Flags::Command));
 
   options->addOption(
       "--database.restore-admin",
       "resets the admin users and sets a new password",
       new BooleanParameter(&_restoreAdmin),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden,
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon,
                                           arangodb::options::Flags::Command));
 
   options->addOption(
       "--database.password", "initial password of root user",
       new StringParameter(&_password),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 }
 
 void InitDatabaseFeature::validateOptions(

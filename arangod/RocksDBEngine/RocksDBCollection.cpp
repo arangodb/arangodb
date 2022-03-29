@@ -34,6 +34,7 @@
 #include "Basics/WriteLocker.h"
 #include "Basics/debugging.h"
 #include "Basics/hashes.h"
+#include "Cache/BinaryKeyHasher.h"
 #include "Cache/CacheManagerFeature.h"
 #include "Cache/Common.h"
 #include "Cache/Manager.h"
@@ -82,9 +83,12 @@
 #include <rocksdb/utilities/transaction.h>
 #include <rocksdb/utilities/transaction_db.h>
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
+
+using namespace arangodb;
 
 namespace {
+using DocumentCacheType = cache::TransactionalCache<cache::BinaryKeyHasher>;
+
 // number of write operations in transactions after which we will start
 // doing preflight checks before every document insert or update/replace.
 // the rationale is that if we already have a lot of operations accumulated
@@ -226,17 +230,18 @@ void reportPrimaryIndexInconsistency(arangodb::Result const& res,
 namespace arangodb {
 
 RocksDBCollection::RocksDBCollection(LogicalCollection& collection,
-                                     arangodb::velocypack::Slice const& info)
+                                     arangodb::velocypack::Slice info)
     : RocksDBMetaCollection(collection, info),
       _primaryIndex(nullptr),
-      _cacheEnabled(!collection.system() &&
+      _cacheManager(collection.vocbase()
+                        .server()
+                        .getFeature<CacheManagerFeature>()
+                        .manager()),
+      _cacheEnabled(_cacheManager != nullptr && !collection.system() &&
+                    !collection.isAStub() &&
+                    !ServerState::instance()->isCoordinator() &&
                     basics::VelocyPackHelper::getBooleanValue(
-                        info, StaticStrings::CacheEnabled, false) &&
-                    collection.vocbase()
-                            .server()
-                            .getFeature<CacheManagerFeature>()
-                            .manager() != nullptr),
-      _numIndexCreations(0),
+                        info, StaticStrings::CacheEnabled, false)),
       _statistics(collection.vocbase()
                       .server()
                       .getFeature<metrics::MetricsFeature>()
@@ -244,7 +249,7 @@ RocksDBCollection::RocksDBCollection(LogicalCollection& collection,
                       ._transactionsStatistics) {
   TRI_ASSERT(_logicalCollection.isAStub() || objectId() != 0);
   if (_cacheEnabled) {
-    createCache();
+    setupCache();
   }
 }
 
@@ -252,13 +257,14 @@ RocksDBCollection::RocksDBCollection(LogicalCollection& collection,
                                      PhysicalCollection const* physical)
     : RocksDBMetaCollection(collection, VPackSlice::emptyObjectSlice()),
       _primaryIndex(nullptr),
+      _cacheManager(collection.vocbase()
+                        .server()
+                        .getFeature<CacheManagerFeature>()
+                        .manager()),
       _cacheEnabled(
-          static_cast<RocksDBCollection const*>(physical)->_cacheEnabled &&
-          collection.vocbase()
-                  .server()
-                  .getFeature<CacheManagerFeature>()
-                  .manager() != nullptr),
-      _numIndexCreations(0),
+          _cacheManager != nullptr && !collection.system() &&
+          !collection.isAStub() && !ServerState::instance()->isCoordinator() &&
+          static_cast<RocksDBCollection const*>(physical)->_cacheEnabled),
       _statistics(collection.vocbase()
                       .server()
                       .getFeature<metrics::MetricsFeature>()
@@ -266,7 +272,7 @@ RocksDBCollection::RocksDBCollection(LogicalCollection& collection,
                       ._transactionsStatistics) {
   TRI_ASSERT(ServerState::instance()->isRunningInCluster());
   if (_cacheEnabled) {
-    createCache();
+    setupCache();
   }
 }
 
@@ -281,25 +287,21 @@ RocksDBCollection::~RocksDBCollection() {
 
 Result RocksDBCollection::updateProperties(VPackSlice const& slice,
                                            bool doSync) {
-  auto isSys = _logicalCollection.system();
-
-  _cacheEnabled = !isSys &&
+  _cacheEnabled = _cacheManager != nullptr && !_logicalCollection.system() &&
+                  !_logicalCollection.isAStub() &&
+                  !ServerState::instance()->isCoordinator() &&
                   basics::VelocyPackHelper::getBooleanValue(
-                      slice, StaticStrings::CacheEnabled, _cacheEnabled) &&
-                  _logicalCollection.vocbase()
-                          .server()
-                          .getFeature<CacheManagerFeature>()
-                          .manager() != nullptr;
+                      slice, StaticStrings::CacheEnabled, _cacheEnabled);
   primaryIndex()->setCacheEnabled(_cacheEnabled);
 
   if (_cacheEnabled) {
-    createCache();
-    primaryIndex()->createCache();
+    setupCache();
+    primaryIndex()->setupCache();
   } else {
     // will do nothing if cache is not present
     destroyCache();
     primaryIndex()->destroyCache();
-    TRI_ASSERT(_cache.get() == nullptr);
+    TRI_ASSERT(_cache == nullptr);
   }
 
   // nothing else to do
@@ -415,11 +417,7 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
     throw;
   }
 
-  _numIndexCreations.fetch_add(1, std::memory_order_release);
-  auto colGuard = scopeGuard([&]() noexcept {
-    _numIndexCreations.fetch_sub(1, std::memory_order_release);
-    vocbase.release();
-  });
+  auto colGuard = scopeGuard([&]() noexcept { vocbase.release(); });
 
   READ_LOCKER(inventoryLocker, vocbase._inventoryLock);
 
@@ -497,7 +495,8 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
 
     // Step 3. add index to collection entry (for removal after a crash)
     auto buildIdx = std::make_shared<RocksDBBuilderIndex>(
-        std::static_pointer_cast<RocksDBIndex>(newIdx));
+        std::static_pointer_cast<RocksDBIndex>(newIdx),
+        _meta.numberDocuments());
     if (!engine.inRecovery()) {
       // manually modify collection entry, other methods need lock
       RocksDBKey key;  // read collection info from database
@@ -547,6 +546,7 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
         _indexes.emplace(buildIdx);
       }
 
+      RocksDBFilePurgePreventer walKeeper(&engine);
       res = buildIdx->fillIndexBackground(locker);
     } else {
       res = buildIdx->fillIndexForeground();
@@ -782,7 +782,7 @@ Result RocksDBCollection::truncate(transaction::Methods& trx,
       return rocksutils::convertStatus(s);
     }
 
-    // delete indexes, place estimator blockers
+    // delete index values
     {
       RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
       for (std::shared_ptr<Index> const& idx : _indexes) {
@@ -991,7 +991,9 @@ Result RocksDBCollection::read(transaction::Methods* trx, std::string_view key,
   Result res;
   LocalDocumentId documentId;
   do {
-    documentId = primaryIndex()->lookupKey(trx, key, readOwnWrites);
+    [[maybe_unused]] bool foundInCache;
+    documentId =
+        primaryIndex()->lookupKey(trx, key, readOwnWrites, foundInCache);
     if (!documentId.isSet()) {
       res.reset(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
       return res;
@@ -1189,8 +1191,9 @@ Result RocksDBCollection::performUpdateOrReplace(
 
   // modifications always need to observe all changes in order to validate
   // uniqueness constraints
+  [[maybe_unused]] bool foundInCache;
   auto const oldDocumentId =
-      primaryIndex()->lookupKey(trx, keyStr, ReadOwnWrites::yes);
+      primaryIndex()->lookupKey(trx, keyStr, ReadOwnWrites::yes, foundInCache);
   if (!oldDocumentId.isSet()) {
     return res.reset(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
   }
@@ -1339,8 +1342,9 @@ Result RocksDBCollection::remove(transaction::Methods& trx,
 
   // modifications always need to observe all changes in order to validate
   // uniqueness constraints
+  [[maybe_unused]] bool foundInCache;
   auto const documentId =
-      primaryIndex()->lookupKey(&trx, keyStr, ReadOwnWrites::yes);
+      primaryIndex()->lookupKey(&trx, keyStr, ReadOwnWrites::yes, foundInCache);
   if (!documentId.isSet()) {
     return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
   }
@@ -1972,7 +1976,7 @@ arangodb::Result RocksDBCollection::lookupDocumentVPack(
       // TODO we could potentially use the PinSlice method ?!
       return res;  // all good
     }
-    if (f.result().errorNumber() == TRI_ERROR_LOCK_TIMEOUT) {
+    if (f.result() == TRI_ERROR_LOCK_TIMEOUT) {
       // assuming someone is currently holding a write lock, which
       // is why we cannot access the TransactionalBucket.
       lockTimeout = true;  // we skip the insert in this case
@@ -1997,14 +2001,10 @@ arangodb::Result RocksDBCollection::lookupDocumentVPack(
   if (fillCache && useCache() && !lockTimeout) {
     TRI_ASSERT(_cache != nullptr);
     // write entry back to cache
-    size_t attempts = 0;
-    cache::Cache::Inserter inserter(*_cache, key->string().data(),
-                                    static_cast<uint32_t>(key->string().size()),
-                                    ps.data(), static_cast<uint64_t>(ps.size()),
-                                    [&attempts](Result const& res) -> bool {
-                                      return res.is(TRI_ERROR_LOCK_TIMEOUT) &&
-                                             ++attempts < 2;
-                                    });
+    cache::Cache::SimpleInserter<DocumentCacheType>{
+        static_cast<DocumentCacheType&>(*_cache), key->string().data(),
+        static_cast<uint32_t>(key->string().size()), ps.data(),
+        static_cast<uint64_t>(ps.size())};
   }
 
   return res;
@@ -2052,53 +2052,40 @@ Result RocksDBCollection::lookupDocumentVPack(
   if (withCache && useCache()) {
     TRI_ASSERT(_cache != nullptr);
     // write entry back to cache
-    size_t attempts = 0;
-    cache::Cache::Inserter inserter(*_cache, key->string().data(),
-                                    static_cast<uint32_t>(key->string().size()),
-                                    ps.data(), static_cast<uint64_t>(ps.size()),
-                                    [&attempts](Result const& res) -> bool {
-                                      return res.is(TRI_ERROR_LOCK_TIMEOUT) &&
-                                             ++attempts < 2;
-                                    });
+    cache::Cache::SimpleInserter<DocumentCacheType>{
+        static_cast<DocumentCacheType&>(*_cache), key->string().data(),
+        static_cast<uint32_t>(key->string().size()), ps.data(),
+        static_cast<uint64_t>(ps.size())};
   }
 
   return Result{};
 }
 
-void RocksDBCollection::createCache() const {
-  if (!_cacheEnabled || _cache || _logicalCollection.isAStub() ||
-      ServerState::instance()->isCoordinator()) {
-    // we leave this if we do not need the cache
-    // or if cache already created
+void RocksDBCollection::setupCache() const {
+  if (_cacheManager == nullptr || !_cacheEnabled) {
+    // if we cannot have a cache, return immediately
     return;
   }
 
-  TRI_ASSERT(_cacheEnabled);
-  TRI_ASSERT(_cache.get() == nullptr);
-  auto* manager = _logicalCollection.vocbase()
-                      .server()
-                      .getFeature<CacheManagerFeature>()
-                      .manager();
-  TRI_ASSERT(manager != nullptr);
-  LOG_TOPIC("f5df2", DEBUG, Logger::CACHE) << "Creating document cache";
-  _cache = manager->createCache(cache::CacheType::Transactional);
-  TRI_ASSERT(_cacheEnabled);
+  // there will never be a cache on the coordinator. this should be handled
+  // by _cacheEnabled already.
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
+
+  if (_cache == nullptr) {
+    TRI_ASSERT(_cacheManager != nullptr);
+    LOG_TOPIC("f5df2", DEBUG, Logger::CACHE) << "Creating document cache";
+    _cache = _cacheManager->createCache<cache::BinaryKeyHasher>(
+        cache::CacheType::Transactional);
+  }
 }
 
 void RocksDBCollection::destroyCache() const {
-  if (!_cache) {
-    return;
+  if (_cache != nullptr) {
+    TRI_ASSERT(_cacheManager != nullptr);
+    LOG_TOPIC("7137b", DEBUG, Logger::CACHE) << "Destroying document cache";
+    _cacheManager->destroyCache(_cache);
+    _cache.reset();
   }
-  auto* manager = _logicalCollection.vocbase()
-                      .server()
-                      .getFeature<CacheManagerFeature>()
-                      .manager();
-  TRI_ASSERT(manager != nullptr);
-  // must have a cache...
-  TRI_ASSERT(_cache.get() != nullptr);
-  LOG_TOPIC("7137b", DEBUG, Logger::CACHE) << "Destroying document cache";
-  manager->destroyCache(_cache);
-  _cache.reset();
 }
 
 // banish given key from transactional cache
@@ -2122,10 +2109,12 @@ void RocksDBCollection::invalidateCacheEntry(RocksDBKey const& k) const {
 /// @brief can use non transactional range delete in write ahead log
 bool RocksDBCollection::canUseRangeDeleteInWal() const {
   if (ServerState::instance()->isSingleServer()) {
-    // disableWalFilePruning is used by createIndex
-    return _numIndexCreations.load(std::memory_order_acquire) == 0;
+    return true;
   }
-  return false;
+  auto& selector =
+      _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>();
+  auto& engine = selector.engine<RocksDBEngine>();
+  return engine.useRangeDeleteInWal();
 }
 
 }  // namespace arangodb

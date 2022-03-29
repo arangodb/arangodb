@@ -541,6 +541,7 @@ set(LIB_ARANGO_STORAGE_ENGINE_COMMON_SOURCES
 
 set(LIB_ARANGO_INDEXES_SOURCES
   GeoIndex/Index.cpp
+  GeoIndex/Covering.cpp
   GeoIndex/Near.cpp
   Indexes/Index.cpp
   Indexes/IndexFactory.cpp
@@ -628,8 +629,12 @@ set(LIB_ARANGO_REPLICATION2_SOURCES
   Replication2/ReplicatedState/UpdateReplicatedState.h
   Replication2/StateMachines/BlackHole/BlackHoleStateMachine.cpp
   Replication2/StateMachines/BlackHole/BlackHoleStateMachineFeature.cpp
+  Replication2/StateMachines/Prototype/PrototypeStateMachine.cpp
+  Replication2/StateMachines/Prototype/PrototypeStateMachineFeature.cpp
+  Replication2/StateMachines/Prototype/PrototypeStateMethods.cpp
   Replication2/Version.cpp
   RestHandler/RestLogHandler.cpp
+  RestHandler/RestPrototypeStateHandler.cpp
   RestHandler/RestLogInternalHandler.cpp
 )
 
@@ -639,6 +644,7 @@ set (LIB_ARANGO_METRICS_SOURCES
   Metrics/Metric.cpp
   Metrics/MetricKey.cpp
   Metrics/MetricsFeature.cpp
+  Metrics/ClusterMetricsFeature.cpp
   RestHandler/RestMetricsHandler.cpp
   )
 
@@ -686,7 +692,9 @@ set(LIB_ARANGO_V8SERVER_SOURCES
   V8Server/v8-collection.cpp
   V8Server/v8-dispatcher.cpp
   V8Server/v8-general-graph.cpp
+  V8Server/v8-prototype-states.cpp
   V8Server/v8-query.cpp
+  V8Server/v8-replicated-logs.cpp
   V8Server/v8-replication.cpp
   V8Server/v8-statistics.cpp
   V8Server/v8-ttl.cpp
@@ -698,7 +706,7 @@ set(LIB_ARANGO_V8SERVER_SOURCES
   V8Server/v8-vocbase.cpp
   V8Server/v8-voccursor.cpp
   V8Server/v8-vocindex.cpp
-  V8Server/v8-replicated-logs.cpp V8Server/v8-replicated-logs.h)
+)
 
 set(LIB_ARANGO_NETWORK_SOURCES
   Network/ClusterUtils.cpp
@@ -775,6 +783,7 @@ set(LIB_ARANGOSERVER_SOURCES
   GeneralServer/H2CommTask.cpp
   GeneralServer/HttpCommTask.cpp
   GeneralServer/IoContext.cpp
+  GeneralServer/RequestLane.cpp
   GeneralServer/RestHandler.cpp
   GeneralServer/RestHandlerFactory.cpp
   GeneralServer/ServerSecurityFeature.cpp
@@ -808,6 +817,7 @@ set(LIB_ARANGOSERVER_SOURCES
   RestHandler/RestLicenseHandler.cpp
   RestHandler/RestQueryCacheHandler.cpp
   RestHandler/RestQueryHandler.cpp
+  RestHandler/RestReplicatedStateHandler.cpp
   RestHandler/RestShutdownHandler.cpp
   RestHandler/RestSimpleHandler.cpp
   RestHandler/RestSimpleQueryHandler.cpp

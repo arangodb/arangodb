@@ -49,7 +49,6 @@
 #include "Transaction/Methods.h"
 
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -72,7 +71,7 @@ IndexNode::IndexNode(
       _allCoveredByOneIndex(allCoveredByOneIndex) {
   TRI_ASSERT(_condition != nullptr);
 
-  _projections.determineIndexSupport(this->collection()->id(), _indexes);
+  prepareProjections();
 }
 
 /// @brief constructor for IndexNode
@@ -93,6 +92,8 @@ IndexNode::IndexNode(ExecutionPlan* plan,
       basics::VelocyPackHelper::getBooleanValue(base, "ascending", false);
   _options.evaluateFCalls =
       basics::VelocyPackHelper::getBooleanValue(base, "evalFCalls", true);
+  _options.useCache = basics::VelocyPackHelper::getBooleanValue(
+      base, StaticStrings::UseCache, true);
   _options.limit = basics::VelocyPackHelper::getNumericValue(base, "limit", 0);
 
   if (_options.sorted && base.isObject() && base.get("reverse").isBool()) {
@@ -186,13 +187,12 @@ IndexNode::IndexNode(ExecutionPlan* plan,
     }
   }
 
-  _projections.determineIndexSupport(this->collection()->id(), _indexes);
+  prepareProjections();
 }
 
 void IndexNode::setProjections(arangodb::aql::Projections projections) {
-  auto dn = dynamic_cast<DocumentProducingNode*>(this);
-  dn->setProjections(std::move(projections));
-  dn->projections().determineIndexSupport(this->collection()->id(), _indexes);
+  _projections = std::move(projections);
+  prepareProjections();
 }
 
 /// @brief doToVelocyPack, for IndexNode
@@ -206,7 +206,7 @@ void IndexNode::doToVelocyPack(VPackBuilder& builder, unsigned flags) const {
   // Now put info about vocbase and cid in there
   builder.add("needsGatherNodeSort", VPackValue(_needsGatherNodeSort));
   builder.add("indexCoversProjections",
-              VPackValue(_projections.supportsCoveringIndex()));
+              VPackValue(_projections.usesCoveringIndex()));
 
   builder.add(VPackValue("indexes"));
   {
@@ -224,6 +224,7 @@ void IndexNode::doToVelocyPack(VPackBuilder& builder, unsigned flags) const {
   builder.add("ascending", VPackValue(_options.ascending));
   builder.add("reverse", VPackValue(!_options.ascending));  // legacy
   builder.add("evalFCalls", VPackValue(_options.evaluateFCalls));
+  builder.add(StaticStrings::UseCache, VPackValue(_options.useCache));
   builder.add("limit", VPackValue(_options.limit));
 
   if (isLateMaterialized()) {
@@ -535,5 +536,23 @@ void IndexNode::setLateMaterialized(aql::Variable const* docIdVariable,
   for (auto& indVars : indexVariables) {
     _outNonMaterializedIndVars.second.try_emplace(indVars.second.var,
                                                   indVars.second.indexFieldNum);
+  }
+}
+
+void IndexNode::prepareProjections() {
+  if (_indexes.empty()) {
+    return;
+  }
+  // cannot apply the optimization if we use more than one different index
+  auto const& idx = _indexes[0];
+  for (size_t i = 1; i < _indexes.size(); ++i) {
+    if (_indexes[i] != idx) {
+      // different indexes used => cannot use projections
+      return;
+    }
+  }
+
+  if (idx->covers(_projections)) {
+    _projections.setCoveringContext(collection()->id(), idx);
   }
 }

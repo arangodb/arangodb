@@ -24,7 +24,6 @@
 #include "ClusterTraverser.h"
 
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
@@ -66,7 +65,7 @@ void ClusterTraverser::setStartVertex(std::string const& vid) {
     if (firstSlash == std::string::npos ||
         vid.find('/', firstSlash + 1) != std::string::npos) {
       // We can stop here. The start vertex is not a valid _id
-      traverserCache()->increaseFilterCounter();
+      traverserCache()->incrFiltered();
       _done = true;
       return;
     }

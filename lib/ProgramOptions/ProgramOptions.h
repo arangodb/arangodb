@@ -122,7 +122,8 @@ class ProgramOptions {
   // set context for error reporting
   void setContext(std::string const& value) { _context = value; }
 
-  // sets a single old option and its replacement name
+  // sets a single old option and its replacement name.
+  // to be used when an option is renamed to still support the original name
   void addOldOption(std::string const& old, std::string const& replacement);
 
   // adds a section to the options
@@ -166,12 +167,14 @@ class ProgramOptions {
     return getOption(name);
   }
 
-  // adds an obsolete and hidden option to the program options
+  // adds a deprecated option that has no effect to the program options to not
+  // throw an unrecognized startup option error after upgrades until fully
+  // removed. not listed by --help (uncommon option)
   Option& addObsoleteOption(std::string const& name,
                             std::string const& description,
                             bool requiresValue) {
     addOption(Option(name, description, new ObsoleteParameter(requiresValue),
-                     makeFlags(Flags::Hidden, Flags::Obsolete)));
+                     makeFlags(Flags::Uncommon, Flags::Obsolete)));
     return getOption(name);
   }
 

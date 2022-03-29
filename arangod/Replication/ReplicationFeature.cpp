@@ -123,7 +123,7 @@ void ReplicationFeature::collectOptions(
       "switch to enable or disable the automatic start "
       "of replication appliers",
       new BooleanParameter(&_replicationApplierAutoStart),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options->addOldOption("server.disable-replication-applier",
                         "replication.auto-start");
@@ -133,7 +133,7 @@ void ReplicationFeature::collectOptions(
       "--replication.automatic-failover",
       "Please use `--replication.active-failover` instead",
       new BooleanParameter(&_enableActiveFailover),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
   options->addOption("--replication.active-failover",
                      "Enable active-failover during asynchronous replication",
                      new BooleanParameter(&_enableActiveFailover));
@@ -144,7 +144,8 @@ void ReplicationFeature::collectOptions(
           "Maximum number of concurrently allowed WAL tailing invocations (0 = "
           "unlimited)",
           new UInt64Parameter(&_maxParallelTailingInvocations),
-          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+          arangodb::options::makeDefaultFlags(
+              arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30500);
 
   options
@@ -167,7 +168,8 @@ void ReplicationFeature::collectOptions(
           "Limit at which 'quick' calls to the replication keys API return "
           "only the document count for second run",
           new UInt64Parameter(&_quickKeysLimit),
-          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+          arangodb::options::makeDefaultFlags(
+              arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30709);
 
   options

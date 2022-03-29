@@ -56,11 +56,11 @@
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
 #include "Transaction/Methods.h"
+#include "Utilities/NameValidator.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Events.h"
 #include "Utils/ExecContext.h"
 #include "Utils/OperationOptions.h"
-#include "Utilities/NameValidator.h"
 #include "V8Server/FoxxFeature.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
@@ -71,26 +71,24 @@
 #ifdef USE_ENTERPRISE
 #include "Enterprise/RocksDBEngine/RocksDBHotBackup.h"
 #endif
-#include "StorageEngine/EngineSelectorFeature.h"
-#include "ClusterEngine/Common.h"
-#include "ClusterEngine/ClusterEngine.h"
-
 #include <velocypack/Buffer.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 #include <velocypack/HashedStringRef.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
+#include <algorithm>
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_generators.hpp>
 #include <boost/uuid/uuid_io.hpp>
-
-#include <algorithm>
 #include <numeric>
-#include <vector>
 #include <random>
+#include <vector>
+
+#include "ClusterEngine/ClusterEngine.h"
+#include "ClusterEngine/Common.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -637,14 +635,10 @@ void ClusterMethods::realNameFromSmartName(std::string&) {}
 /// fetched from ClusterInfo and with shuffle to mix it up.
 ////////////////////////////////////////////////////////////////////////////////
 
-static std::shared_ptr<
-    std::unordered_map<std::string, std::vector<std::string>>>
-DistributeShardsEvenly(ClusterInfo& ci, uint64_t numberOfShards,
-                       uint64_t replicationFactor,
-                       std::vector<std::string>& dbServers,
-                       bool warnAboutReplicationFactor) {
-  auto shards = std::make_shared<
-      std::unordered_map<std::string, std::vector<std::string>>>();
+static std::shared_ptr<ShardMap> DistributeShardsEvenly(
+    ClusterInfo& ci, uint64_t numberOfShards, uint64_t replicationFactor,
+    std::vector<std::string>& dbServers, bool warnAboutReplicationFactor) {
+  auto shards = std::make_shared<ShardMap>();
 
   if (dbServers.empty()) {
     ci.loadCurrentDBServers();
@@ -711,10 +705,9 @@ DistributeShardsEvenly(ClusterInfo& ci, uint64_t numberOfShards,
 /// @brief Clone shard distribution from other collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static std::shared_ptr<
-    std::unordered_map<std::string, std::vector<std::string>>>
-CloneShardDistribution(ClusterInfo& ci, std::shared_ptr<LogicalCollection> col,
-                       std::shared_ptr<LogicalCollection> const& other) {
+static std::shared_ptr<ShardMap> CloneShardDistribution(
+    ClusterInfo& ci, std::shared_ptr<LogicalCollection> col,
+    std::shared_ptr<LogicalCollection> const& other) {
   TRI_ASSERT(col);
   TRI_ASSERT(other);
 
@@ -732,8 +725,7 @@ CloneShardDistribution(ClusterInfo& ci, std::shared_ptr<LogicalCollection> col,
         TRI_ERROR_CLUSTER_CHAIN_OF_DISTRIBUTESHARDSLIKE, errorMessage);
   }
 
-  auto result = std::make_shared<
-      std::unordered_map<std::string, std::vector<std::string>>>();
+  auto result = std::make_shared<ShardMap>();
 
   // We need to replace the distribute with the cid.
   auto cidString = arangodb::basics::StringUtils::itoa(other.get()->id().id());
@@ -1353,13 +1345,61 @@ futures::Future<OperationResult> countOnCoordinator(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief gets the metrics from DBServers
+////////////////////////////////////////////////////////////////////////////////
+
+futures::Future<metrics::RawDBServers> metricsOnCoordinator(
+    NetworkFeature& network, ClusterFeature& cluster) {
+  auto* pool = network.pool();
+  auto serverIds = cluster.clusterInfo().getCurrentDBServers();
+
+  std::vector<Future<network::Response>> futures;
+  futures.reserve(serverIds.size());
+  for (auto const& id : serverIds) {
+    network::Headers headers;
+    headers.emplace(StaticStrings::Accept,
+                    StaticStrings::MimeTypeJsonNoEncoding);
+    futures.push_back(network::sendRequest(
+        pool, "server:" + id, fuerte::RestVerb::Get, "/_admin/metrics", {},
+        network::RequestOptions{}.param("type", "json"), std::move(headers)));
+  }
+  return collectAll(futures).thenValue(
+      [](std::vector<Try<network::Response>>&& responses) {
+        metrics::RawDBServers metrics;
+        metrics.reserve(responses.size());
+        for (auto& response : responses) {
+          if (!response.hasValue() || response->fail() ||
+              !response->hasResponse()) {
+            continue;  // Shit happens, just ignore it
+          }
+          auto payload = response->response().stealPayload();
+          if (!payload) {
+            TRI_ASSERT(false);
+            continue;
+          }
+          velocypack::Slice slice{payload->data()};
+          if (!slice.isArray()) {
+            continue;  // some like 503
+          }
+          if (auto const size = slice.length(); size % 3 != 0) {
+            TRI_ASSERT(false);
+            continue;
+          }
+          metrics.push_back(std::move(payload));
+        }
+        return metrics;
+      });
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief gets the selectivity estimates from DBservers
 ////////////////////////////////////////////////////////////////////////////////
 
-Result selectivityEstimatesOnCoordinator(
-    ClusterFeature& feature, std::string const& dbname,
-    std::string const& collname,
-    std::unordered_map<std::string, double>& result, TransactionId tid) {
+Result selectivityEstimatesOnCoordinator(ClusterFeature& feature,
+                                         std::string const& dbname,
+                                         std::string const& collname,
+                                         IndexEstMap& result,
+                                         TransactionId tid) {
   // Set a few variables needed for our work:
   ClusterInfo& ci = feature.clusterInfo();
 
@@ -1415,26 +1455,17 @@ Result selectivityEstimatesOnCoordinator(
   //            }
   // }
 
-  std::map<std::string, std::vector<double>> indexEstimates;
+  containers::FlatHashMap<std::string, std::vector<double>> indexEstimates;
   for (Future<network::Response>& f : futures) {
     network::Response const& r = f.get();
 
     if (r.fail()) {
-      return {network::fuerteToArangoErrorCode(r),
-              network::fuerteToArangoErrorMessage(r)};
+      return r.combinedResult();
     }
 
     VPackSlice answer = r.slice();
     if (!answer.isObject()) {
       return {TRI_ERROR_INTERNAL, "invalid response structure"};
-    }
-
-    if (answer.hasKey(StaticStrings::ErrorNum)) {
-      Result res = network::resultFromBody(answer, TRI_ERROR_NO_ERROR);
-
-      if (res.fail()) {
-        return res;
-      }
     }
 
     answer = answer.get("indexes");
@@ -2118,8 +2149,8 @@ Result fetchEdgesFromEngines(
     std::string_view vertexId, size_t depth, std::vector<VPackSlice>& result) {
   auto const* engines = travCache.engines();
   auto& cache = travCache.cache();
-  size_t& filtered = travCache.filteredDocuments();
-  size_t& read = travCache.insertedDocuments();
+  uint64_t& filtered = travCache.filteredDocuments();
+  uint64_t& read = travCache.insertedDocuments();
 
   // TODO map id => ServerID if possible
   // And go fast-path
@@ -2222,7 +2253,7 @@ Result fetchEdgesFromEngines(
 Result fetchEdgesFromEngines(transaction::Methods& trx,
                              graph::ClusterTraverserCache& travCache,
                              VPackSlice vertexId, bool backward,
-                             std::vector<VPackSlice>& result, size_t& read) {
+                             std::vector<VPackSlice>& result, uint64_t& read) {
   auto const* engines = travCache.engines();
   auto& cache = travCache.cache();
   // TODO map id => ServerID if possible
@@ -2792,8 +2823,7 @@ ClusterMethods::persistCollectionsInAgency(
       TRI_ASSERT(col->vocbase().name() == dbName);
       std::string distributeShardsLike = col->distributeShardsLike();
       std::vector<std::string> avoid = col->avoidServers();
-      std::shared_ptr<std::unordered_map<std::string, std::vector<std::string>>>
-          shards = nullptr;
+      std::shared_ptr<ShardMap> shards;
 
       if (!distributeShardsLike.empty()) {
         std::shared_ptr<LogicalCollection> myColToDistributeLike;

@@ -45,7 +45,6 @@
 #include <velocypack/Buffer.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -303,8 +302,9 @@ class TraversalExecutorTestInputStartVertex : public ::testing::Test {
   AqlFunctionsInternalCache aqlCache{};
   arangodb::aql::FixedVarExpressionContext exprContext{
       *server.createFakeTransaction(), *fakedQuery, aqlCache};
-  arangodb::graph::BaseProviderOptions baseProviderOptions{
-      &tmpVar, std::move(usedIndexes), exprContext, {}, {}};
+  arangodb::graph::SingleServerBaseProviderOptions
+      singleServerBaseProviderOptions{
+          &tmpVar, std::move(usedIndexes), exprContext, {}, {}};
   arangodb::graph::PathValidatorOptions pathValidatorOptions{&tmpVar,
                                                              exprContext};
   arangodb::graph::OneSidedEnumeratorOptions enumeratorOptions{1, 1};
@@ -334,10 +334,11 @@ class TraversalExecutorTestInputStartVertex : public ::testing::Test {
                       traverser::TraverserOptions::UniquenessLevel::NONE,
                       traverser::TraverserOptions::UniquenessLevel::NONE,
                       traverser::TraverserOptions::Order::DFS, false, 1,
-                      "weightAttribute", server.createFakeTransaction().get(),
-                      *fakedQuery.get(), std::move(baseProviderOptions),
+                      std::string("weightAttribute"),
+                      server.createFakeTransaction().get(), *fakedQuery,
                       std::move(pathValidatorOptions),
-                      std::move(enumeratorOptions)) {}
+                      std::move(enumeratorOptions), &traversalOptions,
+                      std::move(singleServerBaseProviderOptions)) {}
 };
 
 TEST_F(TraversalExecutorTestInputStartVertex,
@@ -515,14 +516,15 @@ class TraversalExecutorTestConstantStartVertex : public ::testing::Test {
   AqlFunctionsInternalCache aqlCache{};
   arangodb::aql::FixedVarExpressionContext exprContext{
       *server.createFakeTransaction(), *fakedQuery, aqlCache};
-  arangodb::graph::BaseProviderOptions baseProviderOptions{
-      &tmpVar, std::move(usedIndexes), exprContext, {}, {}};
+  arangodb::graph::SingleServerBaseProviderOptions
+      singleServerBaseProviderOptions{
+          &tmpVar, std::move(usedIndexes), exprContext, {}, {}};
   arangodb::graph::PathValidatorOptions pathValidatorOptions{&tmpVar,
                                                              exprContext};
   arangodb::graph::OneSidedEnumeratorOptions enumeratorOptions{1, 1};
-  TraversalExecutorInfos
-      executorInfos;  // TODO [GraphRefactor]: We need to test all variants of
-                      // graph refactor here as well
+  TraversalExecutorInfos executorInfos;
+  // TODO [GraphRefactor]: We need to test all variants of graph refactor here
+  // as well
 
   TraversalExecutorTestConstantStartVertex()
       : fakedQuery(server.createFakeQuery()),
@@ -544,10 +546,11 @@ class TraversalExecutorTestConstantStartVertex : public ::testing::Test {
                       traverser::TraverserOptions::UniquenessLevel::NONE,
                       traverser::TraverserOptions::UniquenessLevel::NONE,
                       traverser::TraverserOptions::Order::DFS, false, 1,
-                      "weightAttribute", server.createFakeTransaction().get(),
-                      *fakedQuery, std::move(baseProviderOptions),
+                      std::string("weightAttribute"),
+                      server.createFakeTransaction().get(), *fakedQuery,
                       std::move(pathValidatorOptions),
-                      std::move(enumeratorOptions)) {}
+                      std::move(enumeratorOptions), &traversalOptions,
+                      std::move(singleServerBaseProviderOptions)) {}
 };
 
 TEST_F(TraversalExecutorTestConstantStartVertex,

@@ -36,7 +36,6 @@
 #include "Logger/LoggerStream.h"
 
 #include "velocypack/Iterator.h"
-#include "velocypack/velocypack-aliases.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;

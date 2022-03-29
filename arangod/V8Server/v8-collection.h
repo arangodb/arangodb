@@ -39,20 +39,6 @@ class LogicalCollection;
 void ReleaseCollection(arangodb::LogicalCollection const* collection);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return all collections in a cluster
-////////////////////////////////////////////////////////////////////////////////
-std::vector<std::shared_ptr<arangodb::LogicalCollection>> GetCollections(
-    TRI_vocbase_t& vocbase);
-
-///////////////////////////////////////////////////////////////////////////////
-/// @brief check if a name belongs to a collection
-////////////////////////////////////////////////////////////////////////////////
-
-bool EqualCollection(arangodb::CollectionNameResolver const* resolver,
-                     std::string const& collectionName,
-                     arangodb::LogicalCollection const* collection);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief wraps a LogicalCollection
 /// Note that if collection is a local collection, then the object will never
 /// be freed. If it is not a local collection (coordinator case), then delete

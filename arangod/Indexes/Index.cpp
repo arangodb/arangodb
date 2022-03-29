@@ -27,7 +27,6 @@
 #include <date/date.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Utf8Helper.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "Index.h"
 
@@ -194,6 +193,10 @@ Index::SortCosts Index::SortCosts::defaultCosts(size_t itemsInIndex) {
                                : 0.0);
   return costs;
 }
+
+// empty field attributes list
+/*static*/ std::vector<std::vector<arangodb::basics::AttributeName>> const
+    Index::emptyCoveredFields{};
 
 // If the Index is on a coordinator instance the index may not access the
 // logical collection because it could be gone!
@@ -980,6 +983,7 @@ bool Index::covers(arangodb::aql::Projections& projections) const {
       // projection on  a.b.c
       if (k >= field.size() && k != std::numeric_limits<size_t>::max()) {
         TRI_ASSERT(k > 0);
+        TRI_ASSERT(k < arangodb::aql::Projections::kNoCoveringIndexPosition);
         projections[i].coveringIndexPosition = static_cast<uint16_t>(j);
         projections[i].coveringIndexCutoff = static_cast<uint16_t>(k);
         found = true;

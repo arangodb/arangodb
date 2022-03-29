@@ -38,6 +38,8 @@
 #include "Indexes/Index.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "Logger/Logger.h"
+#include "Network/Methods.h"
+#include "Network/NetworkFeature.h"
 #include "Replication/DatabaseReplicationApplier.h"
 #include "Replication/GlobalReplicationApplier.h"
 #include "Replication/ReplicationFeature.h"
@@ -49,6 +51,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
+#include "StorageEngine/TransactionState.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
@@ -64,7 +67,6 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 #include <velocypack/Validator.h>
-#include <velocypack/velocypack-aliases.h>
 #include <array>
 #include <cstring>
 
@@ -88,6 +90,13 @@ std::chrono::milliseconds sleepTimeFromWaitTime(double waitTime) {
   }
 
   return std::chrono::seconds(2);
+}
+
+bool isVelocyPack(arangodb::httpclient::SimpleHttpResult const& response) {
+  bool found = false;
+  std::string const& cType = response.getHeaderField(
+      arangodb::StaticStrings::ContentTypeHeader, found);
+  return found && cType == arangodb::StaticStrings::MimeTypeVPack;
 }
 
 std::string const kTypeString = "type";
@@ -115,14 +124,14 @@ arangodb::Result removeRevisions(
   options.isRestore = true;
   options.waitForSync = false;
 
+  double t = TRI_microtime();
   for (arangodb::RevisionId const& rid : toRemove) {
-    double t = TRI_microtime();
     auto r = physical->remove(trx, arangodb::LocalDocumentId::create(rid), mdr,
                               options);
 
-    stats.waitedForRemovals += TRI_microtime() - t;
     if (r.fail() && r.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
       // ignore not found, we remove conflicting docs ahead of time
+      stats.waitedForRemovals += TRI_microtime() - t;
       return r;
     }
 
@@ -131,11 +140,13 @@ arangodb::Result removeRevisions(
     }
   }
 
+  stats.waitedForRemovals += TRI_microtime() - t;
+
   return Result();
 }
 
 arangodb::Result fetchRevisions(
-    arangodb::transaction::Methods& trx,
+    arangodb::NetworkFeature& netFeature, arangodb::transaction::Methods& trx,
     arangodb::DatabaseInitialSyncer::Configuration& config,
     arangodb::Syncer::SyncerState& state,
     arangodb::LogicalCollection& collection, std::string const& leader,
@@ -166,16 +177,13 @@ arangodb::Result fetchRevisions(
 
   PhysicalCollection* physical = collection.getPhysical();
 
-  std::string url = arangodb::replutils::ReplicationUrl + "/" +
-                    RestReplicationHandler::Revisions + "/" +
-                    RestReplicationHandler::Documents + "?collection=" +
-                    arangodb::basics::StringUtils::urlEncode(leader) +
-                    "&serverId=" + state.localServerIdString +
-                    "&batchId=" + std::to_string(config.batch.id);
+  std::string path = arangodb::replutils::ReplicationUrl + "/" +
+                     RestReplicationHandler::Revisions + "/" +
+                     RestReplicationHandler::Documents;
   auto headers = arangodb::replutils::createHeaders();
 
   config.progress.set("fetching documents by revision for collection '" +
-                      collection.name() + "' from " + url);
+                      collection.name() + "' from " + path);
 
   auto removeConflict = [&](auto const& conflictingKey) -> Result {
     keyBuilder->clear();
@@ -201,130 +209,216 @@ arangodb::Result fetchRevisions(
   std::size_t current = 0;
   auto guard = arangodb::scopeGuard(
       [&current, &stats]() noexcept { stats.numDocsRequested += current; });
+
   char ridBuffer[arangodb::basics::maxUInt64StringSize];
-  std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response;
-  while (current < toFetch.size()) {
-    arangodb::transaction::BuilderLeaser requestBuilder(&trx);
-    {
-      VPackArrayBuilder list(requestBuilder.get());
-      for (std::size_t i = 0; i < 5000 && current + i < toFetch.size(); ++i) {
-        requestBuilder->add(toFetch[current + i].toValuePair(ridBuffer));
+  std::deque<arangodb::network::FutureRes> futures;
+  std::deque<std::unordered_set<arangodb::RevisionId>> shoppingLists;
+
+  arangodb::network::ConnectionPool* pool = netFeature.pool();
+
+  std::size_t queueSize = 10;
+  if ((config.leader.majorVersion < 3) ||
+      (config.leader.majorVersion == 3 && config.leader.minorVersion < 9) ||
+      (config.leader.majorVersion == 3 && config.leader.minorVersion == 9 &&
+       config.leader.patchVersion < 1)) {
+    queueSize = 1;
+  }
+  while (current < toFetch.size() || !futures.empty()) {
+    // Send some requests off if not enough in flight and something to go
+    while (futures.size() < queueSize && current < toFetch.size()) {
+      VPackBuilder requestBuilder;
+      std::unordered_set<arangodb::RevisionId> shoppingList;
+      uint64_t count = 0;
+      {
+        VPackArrayBuilder list(&requestBuilder);
+        std::size_t i;
+        for (i = 0; i < 5000 && current + i < toFetch.size(); ++i) {
+          requestBuilder.add(toFetch[current + i].toValuePair(ridBuffer));
+          shoppingList.insert(toFetch[current + i]);
+          ++count;
+        }
+        current += i;
       }
-    }
-    std::string request = requestBuilder->slice().toJson();
 
-    double t = TRI_microtime();
-    config.connection.lease(
-        [&](arangodb::httpclient::SimpleHttpClient* client) {
-          response.reset(client->retryRequest(arangodb::rest::RequestType::PUT,
-                                              url, request.data(),
-                                              request.size(), headers));
-        });
-    stats.waitedForDocs += TRI_microtime() - t;
-    ++stats.numDocsRequests;
-
-    if (arangodb::replutils::hasFailed(response.get())) {
-      return arangodb::replutils::buildHttpError(response.get(), url,
-                                                 config.connection);
-    }
-
-    arangodb::transaction::BuilderLeaser responseBuilder(&trx);
-    Result r = arangodb::replutils::parseResponse(*responseBuilder.get(),
-                                                  response.get());
-    if (r.fail()) {
-      return Result(
-          TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-          concatT("got invalid response from leader at ",
-                  config.leader.endpoint, url, ": ", r.errorMessage()));
+      arangodb::network::RequestOptions reqOptions;
+      reqOptions.param("collection", leader)
+          .param("serverId", state.localServerIdString)
+          .param("batchId", std::to_string(config.batch.id));
+      reqOptions.database = config.vocbase.name();
+      reqOptions.timeout = arangodb::network::Timeout(25.0);
+      auto buffer = requestBuilder.steal();
+      auto f = arangodb::network::sendRequestRetry(
+          pool, config.leader.endpoint, arangodb::fuerte::RestVerb::Put, path,
+          std::move(*buffer), reqOptions);
+      futures.emplace_back(std::move(f));
+      shoppingLists.emplace_back(std::move(shoppingList));
+      ++stats.numDocsRequests;
+      LOG_TOPIC("eda42", DEBUG, arangodb::Logger::REPLICATION)
+          << "Have requested a chunk of " << count << " revision(s) from "
+          << config.leader.serverId << " at " << config.leader.endpoint
+          << " for collection " << leader
+          << " length of queue: " << futures.size();
     }
 
-    VPackSlice docs = responseBuilder->slice();
-    if (!docs.isArray()) {
-      return Result(
-          TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-          concatT("got invalid response from leader at ",
-                  config.leader.endpoint, url, ": response is not an array"));
-    }
+    if (!futures.empty()) {
+      TRI_ASSERT(futures.size() == shoppingLists.size());
+      auto& f = futures.front();
+      double tWait = TRI_microtime();
+      auto& val = f.get();
+      stats.waitedForDocs += TRI_microtime() - tWait;
+      Result res = val.combinedResult();
+      if (res.fail()) {
+        return Result(
+            TRI_ERROR_REPLICATION_INVALID_RESPONSE,
+            concatT("got invalid response from leader at ",
+                    config.leader.endpoint, path, ": ", res.errorMessage()));
+      }
 
-    config.progress.set("applying documents by revision for collection '" +
-                        collection.name() + "'");
-
-    for (VPackSlice leaderDoc : VPackArrayIterator(docs)) {
-      if (!leaderDoc.isObject()) {
+      VPackSlice docs = val.slice();
+      if (!docs.isArray()) {
         return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-                      std::string("got invalid response from leader at ") +
-                          config.leader.endpoint + url +
-                          ": response document entry is not an object");
+                      concatT("got invalid response from leader at ",
+                              config.leader.endpoint, path,
+                              ": response is not an array"));
       }
 
-      VPackSlice keySlice = leaderDoc.get(arangodb::StaticStrings::KeyString);
-      if (!keySlice.isString()) {
-        return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-                      std::string("got invalid response from leader at ") +
-                          state.leader.endpoint + ": document key is invalid");
-      }
+      config.progress.set("applying documents by revision for collection '" +
+                          collection.name() + "'");
 
-      VPackSlice revSlice = leaderDoc.get(arangodb::StaticStrings::RevString);
-      if (!revSlice.isString()) {
-        return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-                      std::string("got invalid response from leader at ") +
-                          state.leader.endpoint +
-                          ": document revision is invalid");
-      }
-
-      options.indexOperationMode = arangodb::IndexOperationMode::internal;
-
-      // we need a retry loop here for unique indexes (we will always have at
-      // least one unique index, which is the primary index, but there can be
-      // more). as documents can be presented in any state on the follower,
-      // simply inserting them in leader order may trigger a unique constraint
-      // violation on the follower. in this case we may need to remove the
-      // conflicting document. this can happen multiple times if there are
-      // multiple unique indexes! we can only stop trying once we have tried
-      // often enough, or if inserting succeeds.
-      std::size_t tries = 1 + numUniqueIndexes;
-      while (tries-- > 0) {
-        if (tries == 0) {
-          options.indexOperationMode = arangodb::IndexOperationMode::normal;
+      auto& sl = shoppingLists.front();  // corresponds to future
+      for (VPackSlice leaderDoc : VPackArrayIterator(docs)) {
+        if (!leaderDoc.isObject()) {
+          return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
+                        std::string("got invalid response from leader at ") +
+                            config.leader.endpoint + path +
+                            ": response document entry is not an object");
         }
 
-        double tInsert = TRI_microtime();
-        Result res = physical->insert(&trx, leaderDoc, mdr, options);
-        stats.waitedForInsertions += TRI_microtime() - tInsert;
+        VPackSlice keySlice = leaderDoc.get(arangodb::StaticStrings::KeyString);
+        if (!keySlice.isString()) {
+          return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
+                        std::string("got invalid response from leader at ") +
+                            state.leader.endpoint +
+                            ": document key is invalid");
+        }
+
+        VPackSlice revSlice = leaderDoc.get(arangodb::StaticStrings::RevString);
+        if (!revSlice.isString()) {
+          return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
+                        std::string("got invalid response from leader at ") +
+                            state.leader.endpoint +
+                            ": document revision is invalid");
+        }
 
         options.indexOperationMode = arangodb::IndexOperationMode::internal;
 
-        if (res.ok()) {
-          ++stats.numDocsInserted;
-          break;
-        }
+        // we need a retry loop here for unique indexes (we will always have at
+        // least one unique index, which is the primary index, but there can be
+        // more). as documents can be presented in any state on the follower,
+        // simply inserting them in leader order may trigger a unique constraint
+        // violation on the follower. in this case we may need to remove the
+        // conflicting document. this can happen multiple times if there are
+        // multiple unique indexes! we can only stop trying once we have tried
+        // often enough, or if inserting succeeds.
+        std::size_t tries = 1 + numUniqueIndexes;
+        while (tries-- > 0) {
+          if (tries == 0) {
+            options.indexOperationMode = arangodb::IndexOperationMode::normal;
+          }
 
-        if (!res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)) {
-          auto errorNumber = res.errorNumber();
-          res.reset(errorNumber, concatT(TRI_errno_string(errorNumber), ": ",
-                                         res.errorMessage()));
-          return res;
-        }
+          double tInsert = TRI_microtime();
+          Result res = physical->insert(&trx, leaderDoc, mdr, options);
+          stats.waitedForInsertions += TRI_microtime() - tInsert;
 
-        arangodb::RevisionId rid = arangodb::RevisionId::fromSlice(leaderDoc);
-        // We must see our own writes, because we may have to remove conflicting
-        // documents (that we just inserted) as documents may be replicated in
-        // unexpected order.
-        if (physical->readDocument(&trx, arangodb::LocalDocumentId(rid.id()),
-                                   mdr, arangodb::ReadOwnWrites::yes)) {
-          // already have exactly this revision no need to insert
-          break;
-        }
+          options.indexOperationMode = arangodb::IndexOperationMode::internal;
 
-        // remove conflict and retry
-        // errorMessage() is this case contains the conflicting key
-        auto inner = removeConflict(res.errorMessage());
-        if (inner.fail()) {
-          return res;
+          arangodb::RevisionId rid = arangodb::RevisionId::fromSlice(leaderDoc);
+          // We must see our own writes, because we may have to remove
+          if (res.ok()) {
+            sl.erase(rid);
+            ++stats.numDocsInserted;
+            break;
+          }
+
+          if (!res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)) {
+            auto errorNumber = res.errorNumber();
+            res.reset(errorNumber, concatT(TRI_errno_string(errorNumber), ": ",
+                                           res.errorMessage()));
+            return res;
+          }
+
+          // conflicting documents (that we just inserted) as documents may be
+          // replicated in unexpected order.
+          if (physical->readDocument(&trx, arangodb::LocalDocumentId(rid.id()),
+                                     mdr, arangodb::ReadOwnWrites::yes)) {
+            // already have exactly this revision no need to insert
+            sl.erase(rid);
+            break;
+          }
+
+          // remove conflict and retry
+          // errorMessage() is this case contains the conflicting key
+          auto inner = removeConflict(res.errorMessage());
+          if (inner.fail()) {
+            return res;
+          }
         }
       }
+      // Here we expect that a lot if not all of our shopping list has come
+      // back from the leader and the shopping list is empty, however, it
+      // is possible that this is not the case, since the leader reserves
+      // the right to send fewer documents. In this case, we have to order
+      // another batch:
+      if (!sl.empty()) {
+        // Take out the nonempty list:
+        std::unordered_set<arangodb::RevisionId> newList = std::move(sl);
+        // Sort in ascending order to speed up iterator lookup on leader:
+        std::vector<arangodb::RevisionId> v;
+        v.reserve(newList.size());
+        for (auto it = newList.begin(); it != newList.end(); ++it) {
+          v.push_back(*it);
+        }
+        std::sort(v.begin(), v.end());
+        VPackBuilder requestBuilder;
+        {
+          VPackArrayBuilder list(&requestBuilder);
+          for (auto const& r : v) {
+            requestBuilder.add(r.toValuePair(ridBuffer));
+          }
+        }
+
+        arangodb::network::RequestOptions reqOptions;
+        reqOptions.param("collection", leader)
+            .param("serverId", state.localServerIdString)
+            .param("batchId", std::to_string(config.batch.id));
+        reqOptions.timeout = arangodb::network::Timeout(25.0);
+        reqOptions.database = config.vocbase.name();
+        auto buffer = requestBuilder.steal();
+        auto f = arangodb::network::sendRequestRetry(
+            pool, config.leader.endpoint, arangodb::fuerte::RestVerb::Put, path,
+            std::move(*buffer), reqOptions);
+        futures.emplace_back(std::move(f));
+        shoppingLists.emplace_back(std::move(newList));
+        ++stats.numDocsRequests;
+        LOG_TOPIC("eda45", DEBUG, arangodb::Logger::REPLICATION)
+            << "Have re-requested a chunk of " << shoppingLists.back().size()
+            << " revision(s) from " << config.leader.serverId << " at "
+            << config.leader.endpoint << " for collection " << leader
+            << " queue length: " << futures.size();
+      }
+      LOG_TOPIC("eda44", DEBUG, arangodb::Logger::REPLICATION)
+          << "Have applied a chunk of " << docs.length() << " documents from "
+          << config.leader.serverId << " at " << config.leader.endpoint
+          << " for collection " << leader
+          << " queue length: " << futures.size();
+      futures.pop_front();
+      shoppingLists.pop_front();
+      TRI_ASSERT(futures.size() == shoppingLists.size());
+      res = trx.state()->performIntermediateCommitIfRequired(collection.id());
+      if (res.fail()) {
+        return res;
+      }
     }
-    current += docs.length();
   }
 
   return Result();
@@ -666,6 +760,7 @@ Result DatabaseInitialSyncer::parseCollectionDumpMarker(
 Result DatabaseInitialSyncer::parseCollectionDump(
     transaction::Methods& trx, LogicalCollection* coll,
     httpclient::SimpleHttpResult* response, uint64_t& markersProcessed) {
+  TRI_ASSERT(response != nullptr);
   TRI_ASSERT(!trx.isSingleOperationTransaction());
 
   FormatHint hint = FormatHint::AutoDetect;
@@ -674,17 +769,17 @@ Result DatabaseInitialSyncer::parseCollectionDump(
   char const* p = data.begin();
   char const* end = p + data.length();
 
-  bool found = false;
-  std::string const& cType =
-      response->getHeaderField(StaticStrings::ContentTypeHeader, found);
-
-  if (found && cType == StaticStrings::MimeTypeVPack) {
+  if (isVelocyPack(*response)) {
     // received a velocypack response from the leader
-    LOG_TOPIC("b9f4d", DEBUG, Logger::REPLICATION)
-        << "using vpack for chunk contents";
 
-    VPackValidator validator(
-        &basics::VelocyPackHelper::strictRequestValidationOptions);
+    // intentional copy
+    VPackOptions validationOptions =
+        basics::VelocyPackHelper::strictRequestValidationOptions;
+
+    // allow custom types being sent here
+    validationOptions.disallowCustom = false;
+
+    VPackValidator validator(&validationOptions);
 
     // now check the sub-format of the velocypack data we received...
     VPackSlice s(reinterpret_cast<uint8_t const*>(p));
@@ -840,17 +935,20 @@ void DatabaseInitialSyncer::fetchDumpChunk(
       _config.flushed = true;
     }
 
+    bool isVPack = false;
     auto headers = replutils::createHeaders();
     if (_config.leader.version() >= 30800) {
       // from 3.8 onwards, it is safe and also faster to retrieve vpack-encoded
       // dumps. in previous versions there may be vpack encoding issues for the
       // /_api/replication/dump responses.
       headers[StaticStrings::Accept] = StaticStrings::MimeTypeVPack;
+      isVPack = true;
     }
 
     _config.progress.set(
         std::string("fetching leader collection dump for collection '") +
-        coll->name() + "', type: " + typeString + ", id: " + leaderColl +
+        coll->name() + "', type: " + typeString +
+        ", format: " + (isVPack ? "vpack" : "json") + ", id: " + leaderColl +
         ", batch " + itoa(batch) + ", url: " + url);
 
     double t = TRI_microtime();
@@ -1426,6 +1524,72 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(
   }
 }
 
+/// @brief order a new chunk from the /revisions API
+void DatabaseInitialSyncer::fetchRevisionsChunk(
+    std::shared_ptr<Syncer::JobSynchronizer> sharedStatus,
+    std::string const& baseUrl, arangodb::LogicalCollection* coll,
+    std::string const& leaderColl, std::string const& requestPayload,
+    RevisionId requestResume) {
+  if (isAborted()) {
+    sharedStatus->gotResponse(Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED));
+    return;
+  }
+
+  try {
+    std::string const typeString =
+        (coll->type() == TRI_COL_TYPE_EDGE ? "edge" : "document");
+
+    if (!_config.isChild()) {
+      batchExtend();
+    }
+
+    using ::arangodb::basics::StringUtils::urlEncode;
+
+    // assemble URL to call
+    std::string url = baseUrl + "&" + StaticStrings::RevisionTreeResume + "=" +
+                      urlEncode(requestResume.toString());
+
+    bool isVPack = false;
+    auto headers = replutils::createHeaders();
+    if (_config.leader.version() >= 31000) {
+      headers[StaticStrings::Accept] = StaticStrings::MimeTypeVPack;
+      isVPack = true;
+    }
+
+    _config.progress.set(
+        std::string(
+            "fetching leader collection revision ranges for collection '") +
+        coll->name() + "', type: " + typeString + ", format: " +
+        (isVPack ? "vpack" : "json") + ", id: " + leaderColl + ", url: " + url);
+
+    double t = TRI_microtime();
+
+    // send request
+    std::unique_ptr<httpclient::SimpleHttpResult> response;
+    _config.connection.lease([&](httpclient::SimpleHttpClient* client) {
+      response.reset(client->retryRequest(rest::RequestType::PUT, url,
+                                          requestPayload.data(),
+                                          requestPayload.size(), headers));
+    });
+
+    t = TRI_microtime() - t;
+
+    if (replutils::hasFailed(response.get())) {
+      sharedStatus->gotResponse(
+          replutils::buildHttpError(response.get(), url, _config.connection),
+          t);
+      return;
+    }
+
+    // success!
+    sharedStatus->gotResponse(std::move(response), t);
+  } catch (basics::Exception const& ex) {
+    sharedStatus->gotResponse(Result(ex.code(), ex.what()));
+  } catch (std::exception const& ex) {
+    sharedStatus->gotResponse(Result(TRI_ERROR_INTERNAL, ex.what()));
+  }
+}
+
 /// @brief incrementally fetch data from a collection using keys as the primary
 /// document identifier
 Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
@@ -1555,6 +1719,9 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
   });
   std::unique_ptr<arangodb::SingleCollectionTransaction> trx;
   transaction::Options options;
+  // We do intermediate commits relatively frequently, since this is good
+  // for performance, and we actually have no transactional needs here.
+  options.intermediateCommitCount = 10000;
   TRI_IF_FAILURE("IncrementalReplicationFrequentIntermediateCommit") {
     options.intermediateCommitCount = 1000;
   }
@@ -1636,17 +1803,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
                                                                    ridBuffer));
       }
     }
-    std::string request = requestBuilder.slice().toJson();
 
-    std::string url = baseUrl + "/" + RestReplicationHandler::Ranges +
-                      "?collection=" + urlEncode(leaderColl) +
-                      "&serverId=" + _state.localServerIdString +
-                      "&batchId=" + std::to_string(_config.batch.id);
-    auto headers = replutils::createHeaders();
-    std::unique_ptr<httpclient::SimpleHttpResult> response;
-    RevisionId requestResume{ranges[0].first};  // start with beginning
-    RevisionId iterResume = requestResume;
-    std::size_t chunk = 0;
     std::unique_ptr<ReplicationIterator> iter =
         physical->getReplicationIterator(
             ReplicationIterator::Ordering::Revision, *trx);
@@ -1654,81 +1811,128 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
       return Result(TRI_ERROR_INTERNAL, "could not get replication iterator");
     }
 
-    std::vector<RevisionId> toFetch;
-    std::vector<RevisionId> toRemove;
-    const uint64_t documentsFound = treeLocal->count();
     RevisionReplicationIterator& local =
         *static_cast<RevisionReplicationIterator*>(iter.get());
 
+    uint64_t const documentsFound = treeLocal->count();
+
+    std::vector<RevisionId> toFetch;
+    std::vector<RevisionId> toRemove;
+
+    std::string const requestPayload = requestBuilder.slice().toJson();
+    std::string const url = baseUrl + "/" + RestReplicationHandler::Ranges +
+                            "?collection=" + urlEncode(leaderColl) +
+                            "&serverId=" + _state.localServerIdString +
+                            "&batchId=" + std::to_string(_config.batch.id);
+    RevisionId requestResume{ranges[0].first};  // start with beginning
+    RevisionId iterResume = requestResume;
+    std::size_t chunk = 0;
+
+    // the shared status will wait in its destructor until all posted
+    // requests have been completed/canceled!
+    auto self = shared_from_this();
+    auto sharedStatus = std::make_shared<Syncer::JobSynchronizer>(self);
+
+    // order initial chunk. this will block until the initial response
+    // has arrived
+    fetchRevisionsChunk(sharedStatus, url, coll, leaderColl, requestPayload,
+                        requestResume);
+
+    // Builder will be recycled
+    VPackBuilder responseBuilder;
+
+    auto& nf = coll->vocbase().server().getFeature<arangodb::NetworkFeature>();
     while (requestResume < RevisionId::max()) {
-      if (isAborted()) {
-        return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
-      }
+      std::unique_ptr<httpclient::SimpleHttpResult> chunkResponse;
 
-      if (!_config.isChild()) {
-        batchExtend();
-      }
+      // block until we either got a response or were shut down
+      Result res = sharedStatus->waitForResponse(chunkResponse);
 
-      std::string batchUrl = url + "&" + StaticStrings::RevisionTreeResume +
-                             "=" + requestResume.toString();
-      std::string msg = "fetching collection revision ranges for collection '" +
-                        coll->name() + "' from " + batchUrl;
-      _config.progress.set(msg);
-      double t = TRI_microtime();
-      _config.connection.lease([&](httpclient::SimpleHttpClient* client) {
-        response.reset(client->retryRequest(rest::RequestType::PUT, batchUrl,
-                                            request.data(), request.size(),
-                                            headers));
-      });
-      stats.waitedForKeys += TRI_microtime() - t;
+      // update our statistics
       ++stats.numKeysRequests;
+      stats.waitedForKeys += sharedStatus->time();
 
-      if (replutils::hasFailed(response.get())) {
-        ++stats.numFailedConnects;
-        return replutils::buildHttpError(response.get(), batchUrl,
-                                         _config.connection);
+      if (res.fail()) {
+        // no response or error or shutdown
+        return res;
       }
 
-      if (response->hasContentLength()) {
-        stats.numSyncBytesReceived += response->getContentLength();
+      // now we have got a response!
+      TRI_ASSERT(chunkResponse != nullptr);
+
+      if (chunkResponse->hasContentLength()) {
+        stats.numSyncBytesReceived += chunkResponse->getContentLength();
       }
 
-      VPackBuilder responseBuilder;
-      Result r = replutils::parseResponse(responseBuilder, response.get());
-      if (r.fail()) {
-        ++stats.numFailedConnects;
-        return Result(
-            TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-            concatT("got invalid response from leader at ",
-                    _config.leader.endpoint, batchUrl, ": ", r.errorMessage()));
+      VPackSlice slice;
+
+      if (::isVelocyPack(*chunkResponse)) {
+        // velocypack body...
+
+        // intentional copy of options
+        VPackOptions validationOptions =
+            basics::VelocyPackHelper::strictRequestValidationOptions;
+        // allow custom types being sent here
+        validationOptions.disallowCustom = false;
+        VPackValidator validator(&validationOptions);
+
+        validator.validate(chunkResponse->getBody().begin(),
+                           chunkResponse->getBody().length(),
+                           /*isSubPart*/ false);
+
+        slice = VPackSlice(
+            reinterpret_cast<uint8_t const*>(chunkResponse->getBody().begin()));
+      } else {
+        // JSON body...
+        // recycle builder
+        responseBuilder.clear();
+        Result r =
+            replutils::parseResponse(responseBuilder, chunkResponse.get());
+        if (r.fail()) {
+          ++stats.numFailedConnects;
+          return Result(
+              TRI_ERROR_REPLICATION_INVALID_RESPONSE,
+              concatT("got invalid response from leader at ",
+                      _config.leader.endpoint, url, ": ", r.errorMessage()));
+        }
+        slice = responseBuilder.slice();
       }
 
-      VPackSlice const slice = responseBuilder.slice();
       if (!slice.isObject()) {
         ++stats.numFailedConnects;
         return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                       std::string("got invalid response from leader at ") +
-                          _config.leader.endpoint + batchUrl +
+                          _config.leader.endpoint + url +
                           ": response is not an object");
       }
 
-      VPackSlice const resumeSlice = slice.get("resume");
+      VPackSlice resumeSlice = slice.get("resume");
       if (!resumeSlice.isNone() && !resumeSlice.isString()) {
         ++stats.numFailedConnects;
         return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                       std::string("got invalid response from leader at ") +
-                          _config.leader.endpoint + batchUrl +
+                          _config.leader.endpoint + url +
                           ": response field 'resume' is not a number");
       }
       requestResume = resumeSlice.isNone() ? RevisionId::max()
                                            : RevisionId::fromSlice(resumeSlice);
 
-      VPackSlice const rangesSlice = slice.get("ranges");
+      if (requestResume < RevisionId::max() && !isAborted()) {
+        // already fetch next chunk in the background, by posting the
+        // request to the scheduler, which can run it asynchronously
+        sharedStatus->request([this, self, url, sharedStatus, coll, leaderColl,
+                               requestResume, &requestPayload]() {
+          fetchRevisionsChunk(sharedStatus, url, coll, leaderColl,
+                              requestPayload, requestResume);
+        });
+      }
+
+      VPackSlice rangesSlice = slice.get("ranges");
       if (!rangesSlice.isArray()) {
         ++stats.numFailedConnects;
         return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                       std::string("got invalid response from leader at ") +
-                          _config.leader.endpoint + batchUrl +
+                          _config.leader.endpoint + url +
                           ": response field 'ranges' is not an array");
       }
 
@@ -1738,7 +1942,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
           return Result(
               TRI_ERROR_REPLICATION_INVALID_RESPONSE,
               std::string("got invalid response from leader at ") +
-                  _config.leader.endpoint + batchUrl +
+                  _config.leader.endpoint + url +
                   ": response field 'ranges' entry is not a revision range");
         }
         auto& currentRange = ranges[chunk];
@@ -1806,18 +2010,24 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
         }
       }
 
-      Result res = ::removeRevisions(*trx, *coll, toRemove, stats);
+      res = ::removeRevisions(*trx, *coll, toRemove, stats);
       if (res.fail()) {
         return res;
       }
       toRemove.clear();
 
-      res = ::fetchRevisions(*trx, _config, _state, *coll, leaderColl, toFetch,
-                             stats);
+      res = ::fetchRevisions(nf, *trx, _config, _state, *coll, leaderColl,
+                             toFetch, stats);
       if (res.fail()) {
         return res;
       }
       toFetch.clear();
+
+      res = trx->state()->performIntermediateCommitIfRequired(coll->id());
+
+      if (res.fail()) {
+        return res;
+      }
     }
 
     // adjust counts

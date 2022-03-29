@@ -37,7 +37,6 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Parser.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "Logger/LogMacros.h"
 using namespace arangodb;

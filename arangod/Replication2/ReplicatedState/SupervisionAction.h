@@ -22,86 +22,169 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
-
-#include <Agency/TransactionBuilder.h>
-#include <Replication2/ReplicatedLog/AgencyLogSpecification.h>
-#include <Replication2/ReplicatedState/AgencySpecification.h>
-
 #include <memory>
+#include <utility>
+
+#include "Agency/TransactionBuilder.h"
+#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
+#include "Replication2/ReplicatedState/AgencySpecification.h"
 #include "Replication2/ReplicatedState/StateCommon.h"
 
 namespace arangodb::replication2::replicated_state {
-struct Action {
-  enum class ActionType {
-    EmptyAction,
-    AddStateToPlanAction,
-    AddParticipantAction,
-    UnExcludeParticipantAction
-  };
-  virtual auto execute(std::string dbName, arangodb::agency::envelope envelope)
-      -> arangodb::agency::envelope = 0;
 
-  virtual ActionType type() const = 0;
-  virtual void toVelocyPack(VPackBuilder& builder) const = 0;
-  virtual ~Action() = default;
+template<typename T>
+struct ModifySomeType {
+  explicit ModifySomeType(std::optional<T> const& value) : value(value) {}
+  template<typename F>
+  auto modifyMyValue(F&& fn) {
+    static_assert(std::is_invocable_r_v<void, F, T&>);
+    TRI_ASSERT(value.has_value())
+        << "modifying action expects value to be present";
+    wasModified = true;
+    return std::invoke(std::forward<F>(fn), *value);
+  }
+
+  template<typename... Vs>
+  void setMyValue(Vs&&... args) {
+    value.emplace(std::forward<Vs>(args)...);
+    wasModified = true;
+  }
+
+  auto getMyValue() const -> T const& { return value.value(); }
+
+  std::optional<T> value;
+  bool wasModified = false;
 };
 
-auto to_string(Action::ActionType action) -> std::string_view;
+template<typename... Ts>
+struct ModifyContext : private ModifySomeType<Ts>... {
+  explicit ModifyContext(std::optional<Ts>... values)
+      : ModifySomeType<Ts>(std::move(values))... {}
 
-struct EmptyAction : Action {
-  auto execute(std::string dbName, arangodb::agency::envelope envelope)
-      -> arangodb::agency::envelope override;
+  [[nodiscard]] auto hasModification() const noexcept -> bool {
+    return (forType<Ts>().wasModified || ...);
+  }
 
-  ActionType type() const override { return ActionType::EmptyAction; };
-  void toVelocyPack(VPackBuilder& builder) const override;
+  template<typename... T, typename F>
+  auto modify(F&& fn) {
+    static_assert(std::is_invocable_v<F, T&...>);
+    TRI_ASSERT((forType<T>().value.has_value() && ...))
+        << "modifying action expects value to be present";
+    ((forType<T>().wasModified = true), ...);
+    return std::invoke(std::forward<F>(fn), (*forType<T>().value)...);
+  }
+
+  template<typename... T, typename F>
+  auto modifyOrCreate(F&& fn) {
+    static_assert(std::is_invocable_v<F, T&...>);
+    (
+        [&] {
+          if (!forType<T>().value.has_value()) {
+            static_assert(std::is_default_constructible_v<T>);
+            forType<T>().value.emplace();
+          }
+        }(),
+        ...);
+    ((forType<T>().wasModified = true), ...);
+    return std::invoke(std::forward<F>(fn), (*forType<T>().value)...);
+  }
+
+  template<typename T, typename... Args>
+  auto setValue(Args&&... args) {
+    return forType<T>().setMyValue(std::forward<Args>(args)...);
+  }
+
+  template<typename T>
+  auto getValue() const -> T const& {
+    return forType<T>().getMyValue();
+  }
+
+  template<typename T>
+  [[nodiscard]] auto hasModificationFor() const noexcept -> bool {
+    return forType<T>().wasModified;
+  }
+
+ private:
+  template<typename T>
+  auto forType() -> ModifySomeType<T>& {
+    return static_cast<ModifySomeType<T>&>(*this);
+  }
+  template<typename T>
+  auto forType() const -> ModifySomeType<T> const& {
+    return static_cast<ModifySomeType<T> const&>(*this);
+  }
 };
 
-struct AddStateToPlanAction : Action {
-  auto execute(std::string dbName, arangodb::agency::envelope envelope)
-      -> arangodb::agency::envelope override;
-
-  ActionType type() const override { return ActionType::AddStateToPlanAction; };
-  void toVelocyPack(VPackBuilder& builder) const override;
-
-  AddStateToPlanAction(
-      arangodb::replication2::agency::LogTarget const& logTarget,
-      agency::Plan const& statePlan)
-      : logTarget{logTarget}, statePlan{statePlan} {};
-
-  arangodb::replication2::agency::LogTarget logTarget;
-  agency::Plan statePlan;
+using ActionContext = ModifyContext<replication2::agency::LogTarget,
+                                    agency::Plan, agency::Current::Supervision>;
+struct EmptyAction {
+  void execute(ActionContext&) {}
 };
 
-struct AddParticipantAction : Action {
-  auto execute(std::string dbName, arangodb::agency::envelope envelope)
-      -> arangodb::agency::envelope override;
-
-  ActionType type() const override { return ActionType::AddParticipantAction; };
-  void toVelocyPack(VPackBuilder& builder) const override;
-
-  AddParticipantAction(LogId const& log, ParticipantId const& participant,
-                       StateGeneration const& generation)
-      : log{log}, participant{participant}, generation{generation} {};
-
-  LogId log;
+struct AddParticipantAction {
   ParticipantId participant;
   StateGeneration generation;
+
+  void execute(ActionContext& ctx) {
+    ctx.modify<agency::Plan, replication2::agency::LogTarget>(
+        [&](auto& plan, auto& logTarget) {
+          logTarget.participants[participant] = ParticipantFlags{
+              .allowedInQuorum = false, .allowedAsLeader = false};
+
+          plan.participants[participant].generation = plan.generation;
+          plan.generation.value += 1;
+        });
+  }
 };
 
-struct UnExcludeParticipantAction : Action {
-  auto execute(std::string dbName, arangodb::agency::envelope envelope)
-      -> arangodb::agency::envelope override;
+struct AddStateToPlanAction {
+  replication2::agency::LogTarget logTarget;
+  agency::Plan statePlan;
 
-  ActionType type() const override {
-    return ActionType::UnExcludeParticipantAction;
-  };
-  void toVelocyPack(VPackBuilder& builder) const override;
+  void execute(ActionContext& ctx) {
+    ctx.setValue<agency::Plan>(std::move(statePlan));
+    ctx.setValue<replication2::agency::LogTarget>(std::move(logTarget));
+  }
+};
 
-  UnExcludeParticipantAction(LogId const& log, ParticipantId const& participant)
-      : log{log}, participant{participant} {};
-
-  LogId log;
+struct UpdateParticipantFlagsAction {
   ParticipantId participant;
+  ParticipantFlags flags;
+
+  void execute(ActionContext& ctx) {
+    ctx.modify<replication2::agency::LogTarget>(
+        [&](auto& target) { target.participants.at(participant) = flags; });
+  }
 };
+
+struct CurrentConvergedAction {
+  std::uint64_t version;
+
+  void execute(ActionContext& ctx) {
+    ctx.modifyOrCreate<replicated_state::agency::Current::Supervision>(
+        [&](auto& current) { current.version = version; });
+  }
+};
+
+struct SetLeaderAction {
+  std::optional<ParticipantId> leader;
+
+  void execute(ActionContext& ctx) {
+    ctx.modify<replication2::agency::LogTarget>(
+        [&](replication2::agency::LogTarget& target) {
+          target.leader = leader;
+        });
+  }
+};
+
+using Action = std::variant<EmptyAction, AddParticipantAction,
+                            AddStateToPlanAction, UpdateParticipantFlagsAction,
+                            CurrentConvergedAction, SetLeaderAction>;
+
+auto execute(LogId id, DatabaseID const& database, Action action,
+             std::optional<agency::Plan> state,
+             std::optional<agency::Current::Supervision> currentSupervision,
+             std::optional<replication2::agency::LogTarget> log,
+             arangodb::agency::envelope envelope) -> arangodb::agency::envelope;
 
 }  // namespace arangodb::replication2::replicated_state

@@ -137,7 +137,6 @@ const checkCommitFailReasonReport = function () {
       const generation = 1;
       replicatedLogSetPlan(database, logId, {
         id: logId,
-        targetConfig,
         currentTerm: createTermSpecification(term, servers, targetConfig, leader),
         participantsConfig: createParticipantsConfig(generation, servers),
       });
@@ -155,7 +154,6 @@ const checkCommitFailReasonReport = function () {
       const generation = 1;
       replicatedLogSetPlan(database, logId, {
         id: logId,
-        targetConfig,
         currentTerm: createTermSpecification(term, servers, targetConfig, leader),
         participantsConfig: createParticipantsConfig(generation, servers),
       });
@@ -164,21 +162,21 @@ const checkCommitFailReasonReport = function () {
 
       const [followerA, followerB] = _.sampleSize(followers, 2);
       replicatedLogUpdatePlanParticipantsConfigParticipants(database, logId, {
-        [followerA]: {excluded: true, forced: false},
-        [followerB]: {excluded: true, forced: false},
+        [followerA]: {allowedInQuorum: false, forced: false},
+        [followerB]: {allowedInQuorum: false, forced: false},
       });
 
       waitFor(replicatedLogLeaderCommitFail(database, logId, "NonEligibleServerRequiredForQuorum"));
       {
         const {current} = readReplicatedLogAgency(database, logId);
         const status = current.leader.commitStatus;
-        assertEqual(status.candidates[followerA], "excluded");
-        assertEqual(status.candidates[followerB], "excluded");
+        assertEqual(status.candidates[followerA], "notAllowedInQuorum");
+        assertEqual(status.candidates[followerB], "notAllowedInQuorum");
       }
 
       replicatedLogUpdatePlanParticipantsConfigParticipants(database, logId, {
-        [followerA]: {excluded: false, forced: false},
-        [followerB]: {excluded: true, forced: false},
+        [followerA]: {allowedInQuorum: false, forced: false},
+        [followerB]: {allowedInQuorum: true, forced: false},
       });
 
       waitFor(replicatedLogLeaderCommitFail(database, logId, undefined));
@@ -229,7 +227,6 @@ const replicatedLogSuite = function () {
       const generation = 1;
       replicatedLogSetPlan(database, logId, {
         id: logId,
-        targetConfig,
         currentTerm: createTermSpecification(term, servers, targetConfig, leader),
         participantsConfig: createParticipantsConfig(generation, servers),
       });
@@ -247,7 +244,6 @@ const replicatedLogSuite = function () {
       const generation = 1;
       replicatedLogSetPlan(database, logId, {
         id: logId,
-        targetConfig,
         currentTerm: createTermSpecification(term, servers, targetConfig),
         participantsConfig: createParticipantsConfig(generation, servers),
       });
@@ -267,7 +263,6 @@ const replicatedLogSuite = function () {
       const participantsConfig = createParticipantsConfig(generation, servers);
       replicatedLogSetPlan(database, logId, {
         id: logId,
-        targetConfig,
         currentTerm: createTermSpecification(term, servers, targetConfig, leader),
         participantsConfig,
       });
@@ -279,20 +274,21 @@ const replicatedLogSuite = function () {
       const follower = servers[1];
       let newGeneration = replicatedLogUpdatePlanParticipantsConfigParticipants(database, logId, {
         [follower]: {
-          excluded: true,
+          allowedInQuorum: false,
           forced: false
         }
       });
       waitFor(replicatedLogParticipantsFlag(database, logId, {
         [follower]: {
-          excluded: true,
+          allowedInQuorum: false,
+          allowedAsLeader: true,
           forced: false
         }
       }, newGeneration));
 
       newGeneration = replicatedLogUpdatePlanParticipantsConfigParticipants(database, logId, {
         [follower]: {
-          excluded: false,
+          allowedInQuorum: true,
           forced: false
         }
       });
@@ -300,7 +296,8 @@ const replicatedLogSuite = function () {
 
       waitFor(replicatedLogParticipantsFlag(database, logId, {
         [follower]: {
-          excluded: false,
+          allowedInQuorum: true,
+          allowedAsLeader: true,
           forced: false
         }
       }, newGeneration));
@@ -315,7 +312,6 @@ const replicatedLogSuite = function () {
       const generation = 1;
       replicatedLogSetPlan(database, logId, {
         id: logId,
-        targetConfig,
         currentTerm: createTermSpecification(term, servers, targetConfig, leader),
         participantsConfig: createParticipantsConfig(generation, servers),
       });
@@ -337,7 +333,6 @@ const replicatedLogSuite = function () {
       const generation = 1;
       replicatedLogSetPlan(database, logId, {
         id: logId,
-        targetConfig,
         currentTerm: createTermSpecification(term, servers, targetConfig, leader),
         participantsConfig: createParticipantsConfig(generation, servers),
       });
@@ -360,7 +355,6 @@ const replicatedLogSuite = function () {
       const generation = 1;
       replicatedLogSetPlan(database, logId, {
         id: logId,
-        targetConfig,
         currentTerm: createTermSpecification(term, servers, targetConfig, leader),
         participantsConfig: createParticipantsConfig(generation, servers),
       });
@@ -371,10 +365,7 @@ const replicatedLogSuite = function () {
       const newServer = _.sample(remaining);
       const newServers = [...servers, newServer];
       replicatedLogUpdatePlanParticipantsConfigParticipants(database, logId, {
-        [newServer]: {
-          excluded: false,
-          forced: false
-        }
+        [newServer]: {}
       });
       waitFor(replicatedLogIsReady(database, logId, term, newServers, leader));
       replicatedLogDeletePlan(database, logId);
@@ -391,7 +382,6 @@ const replicatedLogSuite = function () {
       const newServers = [...servers, toBeRemoved];
       replicatedLogSetPlan(database, logId, {
         id: logId,
-        targetConfig,
         currentTerm: createTermSpecification(term, newServers, targetConfig, leader),
         participantsConfig: createParticipantsConfig(generation, newServers),
       });

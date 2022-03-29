@@ -191,7 +191,8 @@ void MaintenanceFeature::collectOptions(
       arangodb::options::makeFlags(
           arangodb::options::Flags::DefaultNoComponents,
           arangodb::options::Flags::OnDBServer,
-          arangodb::options::Flags::Hidden, arangodb::options::Flags::Dynamic));
+          arangodb::options::Flags::Uncommon,
+          arangodb::options::Flags::Dynamic));
 
   options
       ->addOption("--server.maintenance-slow-threads",
@@ -201,7 +202,7 @@ void MaintenanceFeature::collectOptions(
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnDBServer,
-                      arangodb::options::Flags::Hidden,
+                      arangodb::options::Flags::Uncommon,
                       arangodb::options::Flags::Dynamic))
       .setIntroducedIn(30803);
 
@@ -212,7 +213,7 @@ void MaintenanceFeature::collectOptions(
       arangodb::options::makeFlags(
           arangodb::options::Flags::DefaultNoComponents,
           arangodb::options::Flags::OnDBServer,
-          arangodb::options::Flags::Hidden));
+          arangodb::options::Flags::Uncommon));
 
   options->addOption(
       "--server.maintenance-actions-linger",
@@ -221,7 +222,7 @@ void MaintenanceFeature::collectOptions(
       arangodb::options::makeFlags(
           arangodb::options::Flags::DefaultNoComponents,
           arangodb::options::Flags::OnDBServer,
-          arangodb::options::Flags::Hidden));
+          arangodb::options::Flags::Uncommon));
 
   options->addOption(
       "--cluster.resign-leadership-on-shutdown",
@@ -230,7 +231,7 @@ void MaintenanceFeature::collectOptions(
       arangodb::options::makeFlags(
           arangodb::options::Flags::DefaultNoComponents,
           arangodb::options::Flags::OnDBServer,
-          arangodb::options::Flags::Hidden));
+          arangodb::options::Flags::Uncommon));
 
 }  // MaintenanceFeature::collectOptions
 
@@ -1183,18 +1184,19 @@ void MaintenanceFeature::addDirty(std::string const& database) {
   server().getFeature<ClusterFeature>().addDirty(database);
 }
 void MaintenanceFeature::addDirty(
-    std::unordered_set<std::string> const& databases, bool callNotify) {
+    containers::FlatHashSet<std::string> const& databases, bool callNotify) {
   server().getFeature<ClusterFeature>().addDirty(databases, callNotify);
 }
 
-std::unordered_set<std::string> MaintenanceFeature::pickRandomDirty(size_t n) {
+containers::FlatHashSet<std::string> MaintenanceFeature::pickRandomDirty(
+    size_t n) {
   size_t left = _databasesToCheck.size();
   bool more = false;
   if (n >= left) {
     n = left;
     more = true;
   }
-  std::unordered_set<std::string> ret(
+  containers::FlatHashSet<std::string> ret(
       std::make_move_iterator(_databasesToCheck.end() - n),
       std::make_move_iterator(_databasesToCheck.end()));
   _databasesToCheck.erase(_databasesToCheck.end() - n, _databasesToCheck.end());
@@ -1213,8 +1215,8 @@ void MaintenanceFeature::refillToCheck() {
   std::shuffle(_databasesToCheck.begin(), _databasesToCheck.end(), e);
 }
 
-std::unordered_set<std::string> MaintenanceFeature::dirty(
-    std::unordered_set<std::string> const& more) {
+containers::FlatHashSet<std::string> MaintenanceFeature::dirty(
+    containers::FlatHashSet<std::string> const& more) {
   auto& clusterFeature = server().getFeature<ClusterFeature>();
   auto ret = clusterFeature.dirty();  // plan & current in first run
   if (_firstRun) {
@@ -1288,7 +1290,7 @@ bool MaintenanceFeature::unlockShard(ShardID const& shardId) noexcept {
 }
 
 MaintenanceFeature::ShardActionMap MaintenanceFeature::getShardLocks() const {
-  LOG_TOPIC("aaed4", DEBUG, Logger::MAINTENANCE)
+  LOG_TOPIC("aaed4", TRACE, Logger::MAINTENANCE)
       << "Copy of shard action map taken.";
   std::lock_guard<std::mutex> guard(_shardActionMapMutex);
   return _shardActionMap;

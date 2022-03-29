@@ -36,7 +36,8 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
+
+#include <utility>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -139,7 +140,7 @@ IndexIterator::DocumentCallback aql::buildDocumentCallback(
 
   if (!context.getProjections().empty()) {
     // return a projection
-    TRI_ASSERT(!context.getProjections().supportsCoveringIndex() ||
+    TRI_ASSERT(!context.getProjections().usesCoveringIndex() ||
                !context.getAllowCoveringIndexOptimization());
     // projections from a "real" document
     return getCallback<checkUniqueness, skip>(
@@ -307,16 +308,12 @@ void DocumentProducingFunctionContext::incrFiltered() noexcept {
   ++_numFiltered;
 }
 
-size_t DocumentProducingFunctionContext::getAndResetNumScanned() noexcept {
-  size_t const numScanned = _numScanned;
-  _numScanned = 0;
-  return numScanned;
+uint64_t DocumentProducingFunctionContext::getAndResetNumScanned() noexcept {
+  return std::exchange(_numScanned, 0);
 }
 
-size_t DocumentProducingFunctionContext::getAndResetNumFiltered() noexcept {
-  size_t const numFiltered = _numFiltered;
-  _numFiltered = 0;
-  return numFiltered;
+uint64_t DocumentProducingFunctionContext::getAndResetNumFiltered() noexcept {
+  return std::exchange(_numFiltered, 0);
 }
 
 InputAqlItemRow const& DocumentProducingFunctionContext::getInputRow()
