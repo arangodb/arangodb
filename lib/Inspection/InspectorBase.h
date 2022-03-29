@@ -66,7 +66,7 @@ struct InspectorBase {
     } else {
       static_assert(std::is_same_v<result_t, Status>,
                     "Invariants must either return bool or "
-                    "velocypack::inspection::Result");
+                    "velocypack::inspection::Status");
       return std::invoke(std::forward<Func>(func), std::forward<Args>(args)...);
     }
   }
