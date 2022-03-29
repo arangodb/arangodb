@@ -70,15 +70,6 @@ auto execute(Action const& action, DatabaseID const& dbName, LogId const& log,
     return envelope;
   }
 
-  if (ctx.hasPlanModification()) {
-    VPackBuilder b;
-    ctx.getPlan().toVelocyPack(b);
-  }
-  if (ctx.hasCurrentModification()) {
-    VPackBuilder b;
-    ctx.getCurrent().toVelocyPack(b);
-  }
-
   return envelope.write()
       .cond(ctx.hasPlanModification(),
             [&](arangodb::agency::envelope::write_trx&& trx) {
