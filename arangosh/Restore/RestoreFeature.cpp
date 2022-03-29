@@ -1390,7 +1390,7 @@ Result RestoreFeature::RestoreMainJob::restoreData(
   using arangodb::basics::StringUtils::formatSize;
 
   int type = arangodb::basics::VelocyPackHelper::getNumericValue<int>(
-      parameters, "type", 2);
+      parameters, std::vector<std::string_view>({"parameters", "type"}), 2);
   std::string const collectionType(type == 2 ? "document" : "edge");
 
   auto&& currentStatus = progressTracker.getStatus(collectionName);
@@ -1528,7 +1528,7 @@ Result RestoreFeature::RestoreMainJob::restoreData(
       // data in order. this is because the enveloped data format may contain
       // documents to insert *AND* documents to remove (this is an MMFiles
       // legacy).
-      bool const forceDirect = (numRead == 0) || !useEnvelope;
+      bool const forceDirect = (numRead == 0) || useEnvelope;
 
       result = dispatchRestoreData(client, datafileReadOffset, buffer->begin(),
                                    length, forceDirect);
@@ -1572,7 +1572,7 @@ Result RestoreFeature::RestoreMainJob::restoreData(
         }
 
         LOG_TOPIC("69a73", INFO, Logger::RESTORE)
-            << "# Still loading data into " << collectionType << " collection '"
+            << "# Loading data into " << collectionType << " collection '"
             << collectionName << "', " << formatSize(numReadForThisCollection)
             << ofFilesize << " read" << percentage;
         numReadSinceLastReport = 0;
@@ -2236,15 +2236,17 @@ void RestoreFeature::start() {
 
     if (_options.importData) {
       LOG_TOPIC("a66e1", INFO, Logger::RESTORE)
-          << "Processed " << _stats.restoredCollections << " collection(s) in "
-          << Logger::FIXED(totalTime, 6) << " s, "
-          << "read " << formatSize(_stats.totalRead) << " from datafiles, "
+          << "Processed " << _stats.restoredCollections
+          << " collection(s) from " << databases.size() << " database(s) in "
+          << Logger::FIXED(totalTime, 2) << " s total time. Read "
+          << formatSize(_stats.totalRead) << " from datafiles, "
           << "sent " << _stats.totalBatches << " data batch(es) of "
           << formatSize(_stats.totalSent) << " total size";
     } else if (_options.importStructure) {
       LOG_TOPIC("147ca", INFO, Logger::RESTORE)
-          << "Processed " << _stats.restoredCollections << " collection(s) in "
-          << Logger::FIXED(totalTime, 6) << " s";
+          << "Processed " << _stats.restoredCollections
+          << " collection(s) from " << databases.size() << " database(s) in "
+          << Logger::FIXED(totalTime, 2) << " s total time.";
     }
   }
 }

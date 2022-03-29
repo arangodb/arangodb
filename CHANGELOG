@@ -1,6 +1,8 @@
 v3.9.1 (XXXX-XX-XX)
 -------------------
 
+* Improve parallelism in arangorestore in case new data format is used.
+
 * Added new server option: --icu-language. Used instead of --default-language to
   set pure ICU collator.
   For example, in Sweden language("sv") lowercase letters should precede
