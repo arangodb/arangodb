@@ -466,7 +466,7 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
 
   let shutDownStart = time();
   results['testDuration'] = shutDownStart - testrunStart;
-  if (options.extremeVerbosity || !options.noStartStopLogs) {
+  if (!options.noStartStopLogs) {
     print(Date() + ' Shutting down...');
   }
   if (startStopHandlers !== undefined && startStopHandlers.hasOwnProperty('preStop')) {
@@ -509,7 +509,7 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
   }
   results['shutdownTime'] = time() - shutDownStart;
 
-  if (options.extremeVerbosity || !options.noStartStopLogs) {
+  if (!options.noStartStopLogs) {
     print('done.');
   }
 

@@ -230,7 +230,7 @@ const optionsDefaults = {
   'valgrindArgs': {},
   'valgrindHosts': false,
   'verbose': false,
-  'noStartStopLogs': false,
+  'noStartStopLogs': !internal.isATTy(),
   'vst': false,
   'http2': false,
   'walFlushTimeout': 30000,
@@ -590,6 +590,9 @@ function unitTest (cases, options) {
   loadTestSuites(options);
   // testsuites may register more defaults...
   _.defaults(options, optionsDefaults);
+
+  options.noStartStopLogs = !options.extremeVerbosity && options.noStartStopLogs;
+
   if (options.failed ||
       (Array.isArray(options.commandSwitches) && options.commandSwitches.includes("failed"))) {
     options.failed = rp.getFailedTestCases(options);

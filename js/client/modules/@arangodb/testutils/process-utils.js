@@ -1364,7 +1364,7 @@ function checkInstanceAlive(instanceInfo, options, {skipHealthCheck = false} = {
     ) {
       rc = checkServersGOOD(instanceInfo);
       if (first) {
-        if (options.extremeVerbosity || !options.noStartStopLogs) {
+        if (!options.noStartStopLogs) {
           print(RESET + "Waiting for all servers to go GOOD...");
         }
         first = false;
@@ -1534,7 +1534,7 @@ function shutdownArangod (arangod, options, forceTerminate) {
       const requestOptions = makeAuthorizationHeaders(options);
       requestOptions.method = 'DELETE';
       requestOptions.timeout = 60; // 60 seconds hopefully are enough for getting a response
-      if (options.extremeVerbosity || !options.noStartStopLogs) {
+      if (!options.noStartStopLogs) {
         print(Date() + ' ' + arangod.url + '/_admin/shutdown');
       }
       let sockStat = getSockStat(arangod, options, "Sock stat for: ");
@@ -1549,7 +1549,7 @@ function shutdownArangod (arangod, options, forceTerminate) {
         print(Date() + ' Wrong shutdown response: ' + JSON.stringify(reply) + "' " + sockStat + " continuing with hard kill!");
         shutdownArangod(arangod, options, true);
       }
-      else if (options.extremeVerbosity || !options.noStartStopLogs) {
+      else if (!options.noStartStopLogs) {
         print(sockStat);
       }
       if (options.extremeVerbosity) {
@@ -1626,7 +1626,7 @@ function shutDownOneInstance(options, arangod, fullInstance, counters, forceTerm
     if (arangod.role !== 'agent') {
       counters.nonAgenciesCount--;
     }
-    if (options.extremeVerbosity || !options.noStartStopLogs) {
+    if (!options.noStartStopLogs) {
       print(Date() + ' Server "' + arangod.role + '" shutdown: Success: pid', arangod.pid);
     }
     crashUtils.stopProcdump(options, arangod);
@@ -1670,7 +1670,7 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
         let requestOptions = makeAuthorizationHeaders(options);
         requestOptions.method = 'PUT';
 
-        if (options.extremeVerbosity || !options.noStartStopLogs) {
+        if (!options.noStartStopLogs) {
           print(coords[0].url + "/_admin/cluster/maintenance");
         }
         download(coords[0].url + "/_admin/cluster/maintenance", JSON.stringify("on"), requestOptions);
@@ -1706,7 +1706,7 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
     return 0;
   });
 
-  if (options.extremeVerbosity || !options.noStartStopLogs) {
+  if (!options.noStartStopLogs) {
     print(Date() + ' Shutdown order ' + JSON.stringify(toShutdown));
   }
 
@@ -1745,7 +1745,7 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
             status: 'RUNNING'
           };
 
-          if (options.extremeVerbosity || !options.noStartStopLogs) {
+          if (!options.noStartStopLogs) {
             print(Date() + " Commanded shut down: " + JSON.stringify(arangod));
           }
         }
@@ -1801,7 +1801,7 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
         if (arangod.role !== 'agent') {
           nonAgenciesCount--;
         }
-        if (options.extremeVerbosity || !options.noStartStopLogs) {
+        if (!options.noStartStopLogs) {
           print(Date() + ' Server "' + arangod.role + '" shutdown: Success: pid', arangod.pid);
         }
         crashUtils.stopProcdump(options, arangod);
@@ -1821,7 +1821,7 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
         // e.g. 2 + coordinator + (s)
         roleNames.push(roles[r] + ' ' + r + '(s)');
       }
-      if (options.extremeVerbosity || !options.noStartStopLogs) {
+      if (!options.noStartStopLogs) {
         print(roleNames.join(', ') + ' are still running...');
       }
       require('internal').wait(1, false);
@@ -1913,7 +1913,7 @@ function checkClusterAlive(options, instanceInfo, addArgs) {
         arangod.upAndRunning = true;
         return;
       }
-      if (options.extremeVerbosity || !options.noStartStopLogs) {
+      if (!options.noStartStopLogs) {
         print(Date() + " tickeling cluster node " + arangod.url + " - " + arangod.role);
       }
       let url = arangod.url;
@@ -1964,7 +1964,7 @@ function checkClusterAlive(options, instanceInfo, addArgs) {
     }
   }
 
-  if (options.extremeVerbosity || !options.noStartStopLogs) {
+  if (!options.noStartStopLogs) {
     print("Determining server IDs");
   }
   instanceInfo.arangods.forEach(arangod => {
@@ -2173,7 +2173,7 @@ function launchFinalize(options, instanceInfo, startTime) {
       }
     });
   }
-  if (options.extremeVerbosity || !options.noStartStopLogs) {
+  if (!options.noStartStopLogs) {
     print(CYAN + Date() + ' up and running in ' + (time() - startTime) + ' seconds' + RESET);
   }
   var matchPort = /.*:.*:([0-9]*)/;
@@ -2202,7 +2202,7 @@ function launchFinalize(options, instanceInfo, startTime) {
                      ' - ' + arangod.args['database.directory']);
   });
 
-  if (options.extremeVerbosity || !options.noStartStopLogs) {
+  if (!options.noStartStopLogs) {
     print(Date() + ' sniffing template:\n  tcpdump -ni lo -s0 -w /tmp/out.pcap ' + ports.join(' or ') + '\n');
   }
   if (options.sniff !== undefined && options.sniff !== false) {
@@ -2244,7 +2244,7 @@ function launchFinalize(options, instanceInfo, startTime) {
     print(CYAN + 'launching ' + prog + ' ' + JSON.stringify(args) + RESET);
     tcpdump = executeExternal(prog, args);
   }
-  if (options.extremeVerbosity || !options.noStartStopLogs) {
+  if (!options.noStartStopLogs) {
     print(processInfo.join('\n') + '\n');
   }
   internal.sleep(options.sleepBeforeStart);
@@ -2310,7 +2310,7 @@ function startArango (protocol, options, addArgs, rootDir, role) {
 
   if (options.verbose) {
     args['log.level'] = 'debug';
-  } else if (!options.extremeVerbosity && options.noStartStopLogs) {
+  } else if (options.noStartStopLogs) {
     args['log.level'] = 'all=error';
   }
 
@@ -2397,7 +2397,7 @@ function startInstanceAgency (instanceInfo, protocol, options, addArgs, rootDir)
     instanceInfo.endpoint = instanceInfo.arangods[instanceInfo.arangods.length - 1].endpoint;
     instanceInfo.url = instanceInfo.arangods[instanceInfo.arangods.length - 1].url;
     instanceInfo.role = 'agent';
-    if (options.extremeVerbosity || !options.noStartStopLogs) {
+    if (!options.noStartStopLogs) {
       print(Date() + ' Agency Endpoint: ' + instanceInfo.endpoint);
     }
   }
