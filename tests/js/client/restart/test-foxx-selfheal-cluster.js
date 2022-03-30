@@ -43,7 +43,6 @@ const basePath = path.resolve(require("internal").pathForTesting('common'), 'tes
 const originalEndpoint = arango.getEndpoint();
 const originalUser = arango.connectedUser();
 
-print(global.obj)
 function testSuite() {
   const jwtSecret = 'haxxmann';
 

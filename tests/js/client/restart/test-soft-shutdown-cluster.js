@@ -28,6 +28,7 @@
 /// @author Copyright 2021, ArangoDB Inc, Cologne, Germany
 //////////////////////////////////////////////////////////////////////////////
 
+const _ = require('lodash');
 let jsunity = require('jsunity');
 const pu = require('@arangodb/testutils/process-utils');
 const request = require("@arangodb/request");
