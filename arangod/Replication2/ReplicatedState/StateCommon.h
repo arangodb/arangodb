@@ -123,7 +123,7 @@ auto inspect(Inspector& f, SnapshotInfo& x) {
   } else {
     x.toVelocyPack(f.builder());
   }
-  return arangodb::inspection::Result{};
+  return arangodb::inspection::Status{};
 }
 }  // namespace replication2::replicated_state
 
