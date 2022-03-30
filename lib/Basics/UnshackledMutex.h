@@ -25,6 +25,8 @@
 
 #include <condition_variable>
 #include <mutex>
+#include <optional>
+#include "Basics/SourceLocation.h"
 
 namespace arangodb::basics {
 
@@ -40,7 +42,7 @@ class UnshackledMutex {
   UnshackledMutex(UnshackledMutex const&) = delete;
   auto operator=(UnshackledMutex const&) -> UnshackledMutex& = delete;
 
-  void lock();
+  void lock(std::optional<SourceLocation> = {});
   void unlock();
   bool try_lock();
 
@@ -48,6 +50,7 @@ class UnshackledMutex {
   std::mutex _mutex;
   std::condition_variable _cv;
   bool _locked{false};
+  std::optional<SourceLocation> _lockedHere;
 };
 
 }  // namespace arangodb::basics

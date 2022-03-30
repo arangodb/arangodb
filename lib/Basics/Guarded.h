@@ -76,6 +76,10 @@
  *  use any of the more general methods described above instead.
  */
 
+#include <optional>
+#include "Basics/SourceLocation.h"
+#include "Basics/UnshackledMutex.h"
+
 namespace arangodb {
 
 class Mutex;
@@ -174,8 +178,10 @@ class Guarded {
   using mutex_guard_type = MutexGuard<value_type, lock_type>;
   using const_mutex_guard_type = MutexGuard<value_type const, lock_type>;
 
-  auto getLockedGuard() -> mutex_guard_type;
-  auto getLockedGuard() const -> const_mutex_guard_type;
+  auto getLockedGuard(std::optional<basics::SourceLocation> = {})
+      -> mutex_guard_type;
+  auto getLockedGuard(std::optional<basics::SourceLocation> = {}) const
+      -> const_mutex_guard_type;
 
   auto tryLockedGuard() -> std::optional<MutexGuard<value_type, lock_type>>;
   auto tryLockedGuard() const
@@ -259,13 +265,28 @@ void Guarded<T, M, L>::assign(U&& value) {
 }
 
 template<class T, class M, template<class> class L>
-auto Guarded<T, M, L>::getLockedGuard() -> MutexGuard<T, L<M>> {
-  return MutexGuard(_value, lock_type(_mutex));
+auto Guarded<T, M, L>::getLockedGuard(
+    std::optional<basics::SourceLocation> location) -> MutexGuard<T, L<M>> {
+  if constexpr (std::is_same_v<M, basics::UnshackledMutex>) {
+    _mutex.lock(location);
+    auto guard = lock_type(_mutex, std::adopt_lock);
+    return MutexGuard(_value, std::move(guard));
+  } else {
+    return MutexGuard(_value, lock_type(_mutex));
+  }
 }
 
 template<class T, class M, template<class> class L>
-auto Guarded<T, M, L>::getLockedGuard() const -> MutexGuard<T const, L<M>> {
-  return MutexGuard(_value, lock_type(_mutex));
+auto Guarded<T, M, L>::getLockedGuard(
+    std::optional<basics::SourceLocation> location) const
+    -> MutexGuard<T const, L<M>> {
+  if constexpr (std::is_same_v<M, basics::UnshackledMutex>) {
+    _mutex.lock(location);
+    auto guard = lock_type(_mutex, std::adopt_lock);
+    return MutexGuard(_value, std::move(guard));
+  } else {
+    return MutexGuard(_value, lock_type(_mutex));
+  }
 }
 
 template<class T, class M, template<class> class L>
