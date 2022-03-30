@@ -1124,7 +1124,7 @@ void IResearchViewHeapSortExecutor<copyStored, ordered,
   }
 
   if (materialize && !this->_indexReadBuffer.empty()) {
-    std::vector<size_t> pkReadingOrder(atMost);
+    std::vector<size_t> pkReadingOrder(this->_indexReadBuffer.size());
     std::iota(pkReadingOrder.begin(), pkReadingOrder.end(), 0);
     std::sort(pkReadingOrder.begin(), pkReadingOrder.end(), [buffer = &this->_indexReadBuffer] (
       size_t lhs, size_t rhs) -> bool {
