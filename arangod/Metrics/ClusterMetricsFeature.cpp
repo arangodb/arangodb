@@ -131,12 +131,18 @@ void ClusterMetricsFeature::update(CollectMode mode) {
 }
 
 void ClusterMetricsFeature::update() {
+  if (wasStop()) {
+    return;
+  }
   // We want more time than _timeout should expire
   // after last try cross cluster communication
   _lastUpdate = std::chrono::steady_clock::now();
   uint64_t version = 0;
   auto result = readData(version);
   _lastUpdate = std::chrono::steady_clock::now();
+  if (wasStop()) {
+    return;
+  }
   if (result == Result::Error) {
     return rescheduleUpdate(std::max(_timeout, uint32_t{1}));
   }
@@ -149,8 +155,14 @@ void ClusterMetricsFeature::update() {
     return rescheduleUpdate(std::max(_timeout, uint32_t{1}));
   }
   auto& nf = server().getFeature<NetworkFeature>();
+  if (wasStop()) {
+    return;
+  }
   metricsOnCoordinator(nf, cf).thenFinal(
       [this, version, &ci](futures::Try<RawDBServers>&& raw) mutable {
+        if (wasStop()) {
+          return;
+        }
         try {
           _lastUpdate = std::chrono::steady_clock::now();
           auto result = writeData(version, std::move(raw));
@@ -162,7 +174,10 @@ void ClusterMetricsFeature::update() {
           }
         } catch (...) {
         }
-        return rescheduleUpdate(std::max(_timeout, uint32_t{1}));
+        if (wasStop()) {
+          return;
+        }
+        rescheduleUpdate(std::max(_timeout, uint32_t{1}));
       });
 }
 
@@ -245,7 +260,9 @@ void ClusterMetricsFeature::rescheduleUpdate(uint32_t timeout) noexcept {
         try {
           update();
         } catch (...) {
-          rescheduleUpdate(std::max(_timeout, uint32_t{1}));
+          if (!wasStop()) {
+            rescheduleUpdate(std::max(_timeout, uint32_t{1}));
+          }
         }
       });
 }
