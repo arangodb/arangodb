@@ -66,6 +66,22 @@ function wait_for_put(cmd, code, maxWait) {
 function dealing_with_async_requestsSuite () {
   return {
     tearDownAll: function() {
+      // cancel all pending jobs this test may have created
+      // (and probably also others, but other tests should
+      // have cleaned up their own data)
+      let tries = 0;
+      while (++tries < 60) {
+        let jobs = arango.GET('/_api/job/pending');
+        if (jobs.length === 0) {
+          break;
+        }
+        jobs.forEach((id) => {
+          let cmd = "/_api/job/" + id + "/cancel";
+          // don't fail if cancelation of jobs fails
+          arango.PUT_RAW(cmd, "");
+        });
+        sleep(0.5);
+      }
       arango.DELETE('/_api/query/slow');
     },
 

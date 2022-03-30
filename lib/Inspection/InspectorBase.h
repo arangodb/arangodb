@@ -44,7 +44,7 @@ namespace arangodb::inspection {
 template<class Derived>
 struct InspectorBase {
   template<class T>
-  [[nodiscard]] Result apply(T& x) {
+  [[nodiscard]] Status apply(T& x) {
     return process(self(), x);
   }
 
@@ -56,7 +56,7 @@ struct InspectorBase {
   constexpr Keep keep() { return {}; }
 
   template<class T, const char ErrorMsg[], class Func, class... Args>
-  static Result checkInvariant(Func&& func, Args&&... args) {
+  static Status checkInvariant(Func&& func, Args&&... args) {
     using result_t = std::invoke_result_t<Func, Args...>;
     if constexpr (std::is_same_v<result_t, bool>) {
       if (!std::invoke(std::forward<Func>(func), std::forward<Args>(args)...)) {
@@ -64,9 +64,9 @@ struct InspectorBase {
       }
       return {};
     } else {
-      static_assert(std::is_same_v<result_t, Result>,
+      static_assert(std::is_same_v<result_t, Status>,
                     "Invariants must either return bool or "
-                    "velocypack::inspection::Result");
+                    "velocypack::inspection::Status");
       return std::invoke(std::forward<Func>(func), std::forward<Args>(args)...);
     }
   }
@@ -74,7 +74,7 @@ struct InspectorBase {
   template<class T>
   struct FieldsResult {
     template<class Invariant>
-    Result invariant(Invariant&& func) {
+    Status invariant(Invariant&& func) {
       if constexpr (Derived::isLoading) {
         if (!result.ok()) {
           return std::move(result);
@@ -85,7 +85,7 @@ struct InspectorBase {
         return std::move(result);
       }
     }
-    operator Result() && { return std::move(result); }
+    operator Status() && { return std::move(result); }
 
     static constexpr const char InvariantFailedError[] =
         "Object invariant failed";
@@ -93,9 +93,9 @@ struct InspectorBase {
    private:
     template<class TT>
     friend struct Object;
-    FieldsResult(Result&& res, T& object)
+    FieldsResult(Status&& res, T& object)
         : result(std::move(res)), object(object) {}
-    Result result;
+    Status result;
     T& object;
   };
 
@@ -136,6 +136,8 @@ struct InspectorBase {
   template<typename T>
   struct RawField;
 
+  struct IgnoreField;
+
   // TODO - support virtual fields with getter/setter
   // template<typename T>
   // struct VirtualField : BasicField<VirtualField<T>> {
@@ -152,6 +154,10 @@ struct InspectorBase {
                                   T& value) const noexcept {
     static_assert(!std::is_const<T>::value);
     return RawField<T>{{name}, value};
+  }
+
+  [[nodiscard]] IgnoreField ignoreField(std::string_view name) const noexcept {
+    return IgnoreField{name};
   }
 
  protected:
@@ -174,7 +180,8 @@ struct InspectorBase {
 
   template<class T>
   static std::string_view getFieldName(T& field) noexcept {
-    if constexpr (IsRawField<std::remove_cvref_t<T>>::value) {
+    if constexpr (IsRawField<std::remove_cvref_t<T>>::value ||
+                  std::is_same_v<IgnoreField, std::remove_cvref_t<T>>) {
       return field.name;
     } else {
       return getFieldName(field.inner);
@@ -339,6 +346,11 @@ struct InspectorBase {
         : BasicField<RawField>(name), value(value) {}
     using value_type = T;
     T& value;
+  };
+
+  struct IgnoreField {
+    explicit IgnoreField(std::string_view name) : name(name) {}
+    std::string_view name;
   };
 };
 
