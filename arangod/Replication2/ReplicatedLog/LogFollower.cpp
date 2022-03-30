@@ -245,7 +245,6 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
     // This will cause deadlocks.
     decltype(inFlightGuard) inFlightGuardLocal = std::move(inFlightGuard);
     auto data = self->_guardedFollowerData.getLockedGuard();
-    // _appendEntriesInFlight = false;
 
     auto const& res = tryRes.get();
     {
@@ -288,7 +287,8 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
   // Action
   auto f = core->insertAsync(std::move(iter), req.waitForSync);
   // Release mutex here, otherwise we might deadlock in
-  // checkResultAndCommitIndex
+  // checkResultAndCommitIndex if another request arrives before the previous
+  // one was processed.
   dataGuard.unlock();
   return std::move(f)
       .then(std::move(checkResultAndCommitIndex))
