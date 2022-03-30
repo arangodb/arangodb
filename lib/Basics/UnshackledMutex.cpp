@@ -25,13 +25,11 @@
 
 #include "Basics/debugging.h"
 
-void arangodb::basics::UnshackledMutex::lock(
-    std::optional<SourceLocation> location) {
+void arangodb::basics::UnshackledMutex::lock() {
   auto guard = std::unique_lock(_mutex);
   _cv.wait(guard, [&] { return !_locked; });
   TRI_ASSERT(!_locked);
   _locked = true;
-  _lockedHere = location;
 }
 
 void arangodb::basics::UnshackledMutex::unlock() {
@@ -39,7 +37,6 @@ void arangodb::basics::UnshackledMutex::unlock() {
     auto guard = std::unique_lock(_mutex);
     TRI_ASSERT(_locked);
     _locked = false;
-    _lockedHere.reset();
   }
   _cv.notify_one();
 }

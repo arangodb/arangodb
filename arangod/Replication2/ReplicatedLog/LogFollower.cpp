@@ -148,7 +148,7 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
   MeasureTimeGuard measureTimeGuard{
       _logMetrics->replicatedLogFollowerAppendEntriesRtUs};
 
-  auto dataGuard = _guardedFollowerData.getLockedGuard(ADB_HERE);
+  auto dataGuard = _guardedFollowerData.getLockedGuard();
 
   {
     // Preflight checks - does the leader, log and other stuff match?
@@ -159,12 +159,16 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
     }
 
     dataGuard->_lastRecvMessageId = req.messageId;
-    _appendEntriesInFlight = true;
   }
 
   // In case of an exception, this scope guard sets the in flight flag to false.
   // _appendEntriesInFlight is an atomic variable, hence we are allowed to set
   // it without acquiring the mutex.
+  //
+  // _appendEntriesInFlight is set true, only if the _guardedFollowerData mutex
+  // is locked. It is set to false precisely once by the scope guard below.
+  // Setting it to false does not require the mutex.
+  _appendEntriesInFlight = true;
   auto inFlightScopeGuard =
       ScopeGuard([&flag = _appendEntriesInFlight]() noexcept { flag = false; });
 
@@ -240,7 +244,7 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
     // particular the lock is held until the end of the future chain is reached.
     // This will cause deadlocks.
     decltype(inFlightGuard) inFlightGuardLocal = std::move(inFlightGuard);
-    auto data = self->_guardedFollowerData.getLockedGuard(ADB_HERE);
+    auto data = self->_guardedFollowerData.getLockedGuard();
     // _appendEntriesInFlight = false;
 
     auto const& res = tryRes.get();
@@ -305,7 +309,7 @@ auto replicated_log::LogFollower::GuardedFollowerData::checkCommitIndex(
 
   auto const generateToBeResolved = [&, this] {
     try {
-      auto waitForQueue = _waitForQueue.getLockedGuard(ADB_HERE);
+      auto waitForQueue = _waitForQueue.getLockedGuard();
 
       auto const end = waitForQueue->upper_bound(_commitIndex);
       for (auto it = waitForQueue->begin(); it != end;) {
@@ -425,7 +429,7 @@ auto replicated_log::LogFollower::resign() && -> std::tuple<
         };
         auto queues = std::make_unique<Queues>();
         std::swap(queues->waitForQueue,
-                  followerData._waitForQueue.getLockedGuard(ADB_HERE).get());
+                  followerData._waitForQueue.getLockedGuard().get());
         queues->waitForResignQueue =
             std::move(followerData._waitForResignQueue);
 
@@ -473,7 +477,7 @@ replicated_log::LogFollower::LogFollower(
 
 auto replicated_log::LogFollower::waitFor(LogIndex idx)
     -> replicated_log::ILogParticipant::WaitForFuture {
-  auto self = _guardedFollowerData.getLockedGuard(ADB_HERE);
+  auto self = _guardedFollowerData.getLockedGuard();
   if (self->_commitIndex >= idx) {
     return futures::Future<WaitForResult>{
         std::in_place, self->_commitIndex,
@@ -482,8 +486,8 @@ auto replicated_log::LogFollower::waitFor(LogIndex idx)
   // emplace might throw a std::bad_alloc but the remainder is noexcept
   // so either you inserted it and or nothing happens
   // TODO locking ok? Iterator stored but lock guard is temporary
-  auto it = self->_waitForQueue.getLockedGuard(ADB_HERE)->emplace(
-      idx, WaitForPromise{});
+  auto it =
+      self->_waitForQueue.getLockedGuard()->emplace(idx, WaitForPromise{});
   auto& promise = it->second;
   auto future = promise.getFuture();
   TRI_ASSERT(future.valid());
@@ -568,8 +572,8 @@ auto replicated_log::LogFollower::GuardedFollowerData::getCommittedLogIterator(
 
 replicated_log::LogFollower::~LogFollower() {
   _logMetrics->replicatedLogFollowerNumber->fetch_sub(1);
-  if (auto queueEmpty = _guardedFollowerData.getLockedGuard(ADB_HERE)
-                            ->_waitForQueue.getLockedGuard(ADB_HERE)
+  if (auto queueEmpty = _guardedFollowerData.getLockedGuard()
+                            ->_waitForQueue.getLockedGuard()
                             ->empty();
       !queueEmpty) {
     TRI_ASSERT(false) << "expected wait-for-queue to be empty";
@@ -602,11 +606,11 @@ auto LogFollower::getLeader() const noexcept
 }
 
 auto LogFollower::getCommitIndex() const noexcept -> LogIndex {
-  return _guardedFollowerData.getLockedGuard(ADB_HERE)->_commitIndex;
+  return _guardedFollowerData.getLockedGuard()->_commitIndex;
 }
 
 auto LogFollower::waitForResign() -> futures::Future<futures::Unit> {
-  return _guardedFollowerData.getLockedGuard(ADB_HERE)
+  return _guardedFollowerData.getLockedGuard()
       ->_waitForResignQueue.addWaitFor();
 }
 
