@@ -423,7 +423,13 @@ auto checkReplicatedLog(LogTarget const& target,
   // does not have a leader.
   // In the next round this will lead to a leadership election.
   if (isLeaderFailed(leader, health)) {
-    return WriteEmptyTermAction{};
+    auto minTerm = plan.currentTerm->term;
+    for (auto [participant, state] : current.localState) {
+      if (state.spearhead.term > minTerm) {
+        minTerm = state.spearhead.term;
+      }
+    }
+    return WriteEmptyTermAction(minTerm);
   }
 
   // leader has been removed from target;
