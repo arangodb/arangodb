@@ -647,3 +647,8 @@ https://github.com/arangodb/velocypack/
 ## zlib
 
 ZLib compression library https://zlib.net/
+
+Compared to the original zlib 1.2.12, we have made changes to the CMakeLists.txt
+as can be found in the patch file
+
+    3rdParty/zlib/zlib-1.2.12.patch
