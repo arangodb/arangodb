@@ -1895,8 +1895,7 @@ OperationResult transaction::Methods::allLocal(
       [&resultBuilder](LocalDocumentId const& /*token*/, VPackSlice slice) {
         resultBuilder.add(slice);
         return true;
-      },
-      1000);
+      });
 
   resultBuilder.close();
 

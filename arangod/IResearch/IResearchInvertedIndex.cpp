@@ -555,17 +555,19 @@ class IResearchInvertedIndexIterator final
                                            variable, mutableConditionIdx),
         _projections(index->meta()) {}
 
-  char const* typeName() const override { return "inverted-index-iterator"; }
+  std::string_view typeName() const noexcept override {
+    return "inverted-index-iterator";
+  }
 
  protected:
   bool nextImpl(LocalDocumentIdCallback const& callback,
-                size_t limit) override {
+                uint64_t limit) override {
     return nextImplInternal<LocalDocumentIdCallback, false, true>(callback,
                                                                   limit);
   }
 
   bool nextCoveringImpl(CoveringCallback const& callback,
-                        size_t limit) override {
+                        uint64_t limit) override {
     return nextImplInternal<CoveringCallback, true, true>(callback, limit);
   }
 
@@ -575,7 +577,7 @@ class IResearchInvertedIndexIterator final
 
   // FIXME: Evaluate buffering iresearch reads
   template<typename Callback, bool withCovering, bool produce>
-  bool nextImplInternal(Callback const& callback, size_t limit) {
+  bool nextImplInternal(Callback const& callback, uint64_t limit) {
     if (limit == 0 || !_filter) {
       TRI_ASSERT(
           limit >
@@ -660,7 +662,7 @@ class IResearchInvertedIndexMergeIterator final
         _heap_it({index->meta()._sort, index->meta()._sort.size(), _segments}),
         _projectionsPrototype(index->meta()) {}
 
-  char const* typeName() const override {
+  std::string_view typeName() const noexcept override {
     return "inverted-index-merge-iterator";
   }
 
@@ -680,13 +682,13 @@ class IResearchInvertedIndexMergeIterator final
   }
 
   bool nextImpl(LocalDocumentIdCallback const& callback,
-                size_t limit) override {
+                uint64_t limit) override {
     return nextImplInternal<LocalDocumentIdCallback, false, true>(callback,
                                                                   limit);
   }
 
   bool nextCoveringImpl(CoveringCallback const& callback,
-                        size_t limit) override {
+                        uint64_t limit) override {
     return nextImplInternal<CoveringCallback, true, true>(callback, limit);
   }
 
@@ -695,7 +697,7 @@ class IResearchInvertedIndexMergeIterator final
   }
 
   template<typename Callback, bool withCovering, bool produce>
-  bool nextImplInternal(Callback const& callback, size_t limit) {
+  bool nextImplInternal(Callback const& callback, uint64_t limit) {
     if (limit == 0 || !_filter) {
       TRI_ASSERT(
           limit >

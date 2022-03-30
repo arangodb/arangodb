@@ -63,9 +63,11 @@ class RocksDBFulltextIndexIterator final : public IndexIterator {
         _docs(std::move(docs)),
         _pos(_docs.begin()) {}
 
-  char const* typeName() const override { return "fulltext-index-iterator"; }
+  std::string_view typeName() const noexcept override {
+    return "fulltext-index-iterator";
+  }
 
-  bool nextImpl(LocalDocumentIdCallback const& cb, size_t limit) override {
+  bool nextImpl(LocalDocumentIdCallback const& cb, uint64_t limit) override {
     TRI_ASSERT(limit > 0);
     while (_pos != _docs.end() && limit > 0) {
       cb(*_pos);

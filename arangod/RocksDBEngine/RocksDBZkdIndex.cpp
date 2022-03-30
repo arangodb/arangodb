@@ -88,7 +88,9 @@ class RocksDBZkdIndexIterator final : public IndexIterator {
     _compareResult.resize(_dim);
   }
 
-  char const* typeName() const override { return "rocksdb-zkd-index-iterator"; }
+  std::string_view typeName() const noexcept override {
+    return "rocksdb-zkd-index-iterator";
+  }
 
  protected:
   size_t numNextTries()
@@ -98,8 +100,8 @@ class RocksDBZkdIndexIterator final : public IndexIterator {
   }
 
   bool nextImpl(LocalDocumentIdCallback const& callback,
-                size_t limit) override {
-    for (auto i = size_t{0}; i < limit;) {
+                uint64_t limit) override {
+    for (uint64_t i = 0; i < limit;) {
       switch (_iterState) {
         case IterState::SEEK_ITER_TO_CUR: {
           RocksDBKey rocks_key;
