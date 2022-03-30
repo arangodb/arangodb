@@ -1631,7 +1631,6 @@ RestoreFeature::RestoreFeature(Server& server, int& exitCode)
       _exitCode{exitCode} {
   static_assert(Server::isCreatedAfter<RestoreFeature, HttpEndpointProvider>());
 
-  requiresElevatedPrivileges(false);
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseClient>();
 

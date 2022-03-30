@@ -29,23 +29,21 @@
 #include "Basics/debugging.h"
 
 namespace arangodb::inspection {
-struct Result {
-  // Type that can be returned by a function instead of a Results
+struct Status {
+  // Type that can be returned by a function instead of a `Status`
   // to indicate that this function cannot fail.
   struct Success {
     constexpr bool ok() const noexcept { return true; }
-    constexpr bool canFail() const noexcept { return false; }
   };
 
-  Result() = default;
+  Status() = default;
 
-  Result(Success) : Result() {}
+  Status(Success) : Status() {}
 
-  Result(std::string error)
+  Status(std::string error)
       : _error(std::make_unique<Error>(std::move(error))) {}
 
   bool ok() const noexcept { return _error == nullptr; }
-  constexpr bool canFail() const noexcept { return true; }
 
   std::string const& error() const noexcept {
     TRI_ASSERT(!ok());
@@ -66,13 +64,13 @@ struct Result {
   struct AttributeTag {};
   struct ArrayTag {};
 
-  Result(Result&& res, std::string const& index, ArrayTag)
-      : Result(std::move(res)) {
+  Status(Status&& res, std::string const& index, ArrayTag)
+      : Status(std::move(res)) {
     prependPath("[" + index + "]");
   }
 
-  Result(Result&& res, std::string_view attribute, AttributeTag)
-      : Result(std::move(res)) {
+  Status(Status&& res, std::string_view attribute, AttributeTag)
+      : Status(std::move(res)) {
     if (attribute.find('.') != std::string::npos) {
       prependPath("['" + std::string(attribute) + "']");
     } else {
@@ -81,7 +79,7 @@ struct Result {
   }
 
   void prependPath(std::string const& s) {
-    assert(!ok());
+    TRI_ASSERT(!ok());
     if (_error->path.empty()) {
       _error->path = s;
     } else {
@@ -100,8 +98,11 @@ struct Result {
   std::unique_ptr<Error> _error;
 };
 
+constexpr inline bool isSuccess(Status const&) { return false; }
+constexpr inline bool isSuccess(Status::Success const&) { return true; }
+
 template<class Func>
-Result operator|(Result&& res, Func&& func) {
+Status operator|(Status&& res, Func&& func) {
   if (!res.ok()) {
     return std::move(res);
   }
@@ -109,7 +110,7 @@ Result operator|(Result&& res, Func&& func) {
 }
 
 template<class Func>
-auto operator|(Result::Success&&, Func&& func) {
+auto operator|(Status::Success&&, Func&& func) {
   return func();
 }
 

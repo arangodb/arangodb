@@ -1,4 +1,4 @@
-/* global describe, it, beforeEach, afterEach, it, clean, before, after */
+/* global describe, it, beforeEach, afterEach, it, clean, before, after, db, arango */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -29,13 +29,8 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const expect = require('chai').expect;
-const arangodb = require('@arangodb');
-const request = require('@arangodb/request');
 const graph = require('@arangodb/general-graph');
-const extend = require('lodash').extend;
-let endpoint = {};
 
-const db = arangodb.db;
 const defaultReplicationFactor = db._properties().replicationFactor;
 
 describe('General graph creation', function () {
@@ -52,9 +47,9 @@ describe('General graph creation', function () {
 
   const clean = () => {
     try {
-      request["delete"](`/_api/gharial/${gn}?dropCollections=true`);
+      arango.DELETE_RAW(`/_api/gharial/${gn}?dropCollections=true&waitForSync=true`);
     } catch (ignore) {}
-
+    db._flushCache();
     expect(db._collection(vn)).to.not.exist;
     expect(db._collection(en)).to.not.exist;
     expect(db._collection(on)).to.not.exist;
@@ -101,10 +96,8 @@ describe('General graph creation', function () {
         isSmart: false,
       };
       // Create with default options
-      let res = request.post(`/_api/gharial`, {
-        body: JSON.stringify(body),
-      });
-      expect(res.statusCode).to.equal(202);
+      let res = arango.POST_RAW(`/_api/gharial`, body);
+      expect(res.code).to.equal(202);
 
       // Do we need to wait here?
 
@@ -152,26 +145,16 @@ describe('General graph creation', function () {
           from: [vn2],
           collection: en2,
         };
-        let res = request.post(
-          `/_api/gharial/${gn}/edge`,
-          extend(endpoint, {
-            body: JSON.stringify(body),
-          })
-        );
+        let res = arango.POST_RAW(`/_api/gharial/${gn}/edge`, body);
 
-        expect(res.statusCode).to.equal(202);
+        expect(res.code).to.equal(202);
 
         body = {
           collection: on2,
         };
-        res = request.post(
-          `/_api/gharial/${gn}/vertex`,
-          extend(endpoint, {
-            body: JSON.stringify(body),
-          })
-        );
+        res = arango.POST_RAW(`/_api/gharial/${gn}/vertex`, body);
 
-        expect(res.statusCode).to.equal(202);
+        expect(res.code).to.equal(202);
 
         // Do we need to wait here?
 
@@ -207,14 +190,9 @@ describe('General graph creation', function () {
           collection: en,
         };
 
-        let res = request.put(
-          `/_api/gharial/${gn}/edge/${en}`,
-          extend(endpoint, {
-            body: JSON.stringify(body),
-          })
-        );
+        let res = arango.PUT_RAW(`/_api/gharial/${gn}/edge/${en}`, body);
 
-        expect(res.statusCode).to.equal(202);
+        expect(res.code).to.equal(202);
 
         expect(db._collection(vn3)).to.exist;
       });
