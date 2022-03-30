@@ -418,7 +418,7 @@ V8LineEditor::V8LineEditor(v8::Isolate* isolate, v8::Handle<v8::Context> context
 #else
   struct sigaction sa;
   sa.sa_flags = 0;
-  sigemptyset(&sa.sa_mask);
+  sigfillset(&sa.sa_mask);
   sa.sa_handler = &SignalHandler;
 
   int res = sigaction(SIGINT, &sa, nullptr);
