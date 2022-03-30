@@ -317,6 +317,13 @@ void OptimizerRulesFeature::addRules() {
       "handle-arangosearch-views", arangodb::iresearch::handleViewsRule,
       OptimizerRule::handleArangoSearchViewsRule, OptimizerRule::makeFlags());
 
+  // move constrained sort into views
+  registerRule(
+      "handle-arangosearch-views-constrained-sort",
+      arangodb::iresearch::handleConstrainedSortInView,
+      OptimizerRule::handleConstrainedSortInView,
+      OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
+
   // remove calculations that are never necessary
   registerRule("remove-unnecessary-calculations-2",
                removeUnnecessaryCalculationsRule,

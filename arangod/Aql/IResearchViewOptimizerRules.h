@@ -56,6 +56,12 @@ void handleViewsRule(arangodb::aql::Optimizer* opt,
                      std::unique_ptr<arangodb::aql::ExecutionPlan> plan,
                      arangodb::aql::OptimizerRule const& rule);
 
+// move constrained sort into views
+void handleConstrainedSortInView(
+    arangodb::aql::Optimizer* opt,
+    std::unique_ptr<arangodb::aql::ExecutionPlan> plan,
+    arangodb::aql::OptimizerRule const& rule);
+
 /// @brief scatter view query in cluster
 /// this rule inserts scatter, gather and remote nodes so operations on sharded
 /// views

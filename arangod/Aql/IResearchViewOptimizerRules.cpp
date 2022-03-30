@@ -226,7 +226,7 @@ bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
     // so fullCount should be calculated in the Enumerate node.
     // But on the other hand AQL requires only LIMIT node to be able to do that.
     // So we abort optimization in this case for now.
-    // FIXME: Would it be possible to calculate fullCount in the Enumerate?
+    // FIXME (Dronplane): Would it be possible to calculate fullCount in the Enumerate?
     arangodb::containers::SmallVector<
         ExecutionNode*>::allocator_type::arena_type a;
     arangodb::containers::SmallVector<ExecutionNode*> limits{a};
@@ -786,6 +786,48 @@ void lateDocumentMaterializationArangoSearchRule(
   }
 }
 
+void handleConstrainedSortInView(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
+                     OptimizerRule const& rule) {
+  TRI_ASSERT(plan && plan->getAst());
+
+  // ensure 'Optimizer::addPlan' will be called
+  bool modified = false;
+  auto addPlan = irs::make_finally([opt, &plan, &rule, &modified]() {
+    opt->addPlan(std::move(plan), rule, modified);
+  });
+
+  // cppcheck-suppress accessMoved
+  if (!plan->contains(ExecutionNode::ENUMERATE_IRESEARCH_VIEW) || 
+      !plan->contains(ExecutionNode::SORT) || 
+      !plan->contains(ExecutionNode::LIMIT)) {
+    // no view && sort && limit present in the query,
+    // so no need to do any expensive transformations
+    return;
+  }
+
+  ::arangodb::containers::SmallVector<
+      ExecutionNode*>::allocator_type::arena_type va;
+  ::arangodb::containers::SmallVector<ExecutionNode*> viewNodes{va};
+  plan->findNodesOfType(viewNodes, ExecutionNode::ENUMERATE_IRESEARCH_VIEW,
+                        true);
+  for (auto* node : viewNodes) {
+    TRI_ASSERT(node &&
+               ExecutionNode::ENUMERATE_IRESEARCH_VIEW == node->getType());
+    auto& viewNode = *ExecutionNode::castTo<IResearchViewNode*>(node);
+    if (viewNode.sort().first) {
+      // this view already has PrimarySort - no sort for us.
+      continue;
+    }
+
+    if (!viewNode.scorers().empty() && !viewNode.isInInnerLoop()) {
+      // check if we can optimize away a sort that follows the EnumerateView
+      // node this is only possible if the view node itself is not contained in
+      // another loop
+      modified |= optimizeScoreSort(viewNode, plan.get());
+    }
+  }
+}
+
 /// @brief move filters and sort conditions into views
 void handleViewsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
                      OptimizerRule const& rule) {
@@ -845,13 +887,6 @@ void handleViewsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
     // find scorers that have to be evaluated by a view
     scorerReplacer.extract(viewNode, scorers);
     viewNode.scorers(std::move(scorers));
-
-    if (!viewNode.scorers().empty()  && !viewNode.isInInnerLoop()) {
-      // check if we can optimize away a sort that follows the EnumerateView
-      // node this is only possible if the view node itself is not contained in
-      // another loop
-      modified |= optimizeScoreSort(viewNode, plan.get());
-    }
 
     if (!optimizeSearchCondition(viewNode, query, *plan)) {
       continue;

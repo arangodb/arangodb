@@ -208,6 +208,9 @@ struct OptimizerRule {
     // move filters and sort conditions into views and remove them
     handleArangoSearchViewsRule,
 
+    // move constrained sort into views
+    handleConstrainedSortInView,
+
     // remove calculations that are redundant
     // needs to run after filter removal
     removeUnnecessaryCalculationsRule2,
