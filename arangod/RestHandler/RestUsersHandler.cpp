@@ -446,10 +446,10 @@ RestStatus RestUsersHandler::putRequest(auth::UserManager* um) {
         // to a remove of the config option.
         res = um->updateUser(name, [&](auth::User& u) {
           VPackSlice newVal = body;
-          VPackSlice oldConf = u.userData();
+          VPackSlice oldConf = u.configData();
           if (!newVal.isObject() || !newVal.hasKey("value")) {
             if (oldConf.isObject() && oldConf.hasKey(key)) {
-              u.setUserData(VPackCollection::remove(
+              u.setConfigData(VPackCollection::remove(
                   oldConf, std::unordered_set<std::string>{key}));
             }       // Nothing to do. We do not have a config yet.
           } else {  // We need to merge the new key into the config
@@ -458,9 +458,10 @@ RestStatus RestUsersHandler::putRequest(auth::UserManager* um) {
 
             if (oldConf.isObject() &&
                 !oldConf.isEmptyObject()) {  // merge value in
-              u.setUserData(VPackCollection::merge(oldConf, b.slice(), false));
+              u.setConfigData(
+                  VPackCollection::merge(oldConf, b.slice(), false));
             } else {
-              u.setUserData(std::move(b));
+              u.setConfigData(std::move(b));
             }
           }
 

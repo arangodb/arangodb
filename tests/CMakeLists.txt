@@ -270,6 +270,7 @@ set(ARANGODB_TESTS_SOURCES
   RestHandler/VstResponse-test.cpp
   RestServer/FlushFeature-test.cpp
   RocksDBEngine/Endian.cpp
+  RestServer/LanguageFeatureTest.cpp
   RocksDBEngine/KeyTest.cpp
   RocksDBEngine/HotBackupTest.cpp
   RocksDBEngine/EncryptionProviderTest.cpp

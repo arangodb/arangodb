@@ -71,10 +71,14 @@ function aqlOptionsVerificationSuite() {
     testForCollection: function () {
       const prefix = "FOR doc IN " + cn + " OPTIONS ";
       const queries = [
+        [prefix + "{ disableIndex: true } RETURN 1"],
+        [prefix + "{ disableIndex: false } RETURN 1"],
+        [prefix + "{ maxProjections: 123 } RETURN 1"],
         [prefix + "{ indexHint: 'primary' } RETURN 1"],
         [prefix + "{ indexHint: ['primary'] } RETURN 1"],
         [prefix + "{ indexHint: ['primary'], forceIndexHint: false } RETURN 1"],
         [prefix + "{ forceIndexHint: false } RETURN 1"],
+
         [prefix + "{ forceIndexHint: 'meow' } RETURN 1", "forceIndexHint"],
         [prefix + "{ indexHint: false } RETURN 1", "indexHint"],
         [prefix + "{ indexHint: [] } RETURN 1", "indexHint"],
@@ -84,6 +88,16 @@ function aqlOptionsVerificationSuite() {
         [prefix + "{ waitForSync: -1 } RETURN 1", "waitForSync"],
         [prefix + "{ method: 'hash' } RETURN 1", "method"],
         [prefix + "{ tititi: 'piff' } RETURN 1", "tititi"],
+        
+        // valid combinations of indexHint and disableIndex
+        [prefix + "{ indexHint: 'primary', disableIndex: false } RETURN 1"],
+        [prefix + "{ indexHint: ['primary'], disableIndex: false } RETURN 1"],
+        [prefix + "{ disableIndex: false, indexHint: 'primary' } RETURN 1"],
+
+        // invalid combinations of indexHint and disableIndex
+        [prefix + "{ indexHint: 'primary', disableIndex: true } RETURN 1", "disableIndex"],
+        [prefix + "{ indexHint: ['primary'], disableIndex: true } RETURN 1", "disableIndex"],
+        [prefix + "{ disableIndex: true, indexHint: 'primary' } RETURN 1", "indexHint"],
       ];
 
       checkQueries("FOR", queries);
@@ -106,6 +120,10 @@ function aqlOptionsVerificationSuite() {
 
         [prefix + "{ method: 'hash' } RETURN 1", "method"],
         [prefix + "{ tititi: 'piff' } RETURN 1", "tititi"],
+        [prefix + "{ indexHint: false } RETURN 1", "indexHint"],
+        [prefix + "{ forceIndexHint: true } RETURN 1", "forceIndexHint"],
+        [prefix + "{ disableIndex: true } RETURN 1", "disableIndex"],
+        [prefix + "{ maxProjections: 123 } RETURN 1", "maxProjections"],
       ];
 
       // arangosearch only likes boolean attributes for its waitForSync value
@@ -136,7 +154,10 @@ function aqlOptionsVerificationSuite() {
         [prefix + "{ uniqueVertices: 'path' } RETURN 1"],
         [prefix + "{ uniqueVertices: 'none' } RETURN 1"],
         [prefix + "{ parallelism: 4 } RETURN 1"],
+        
         [prefix + "{ indexHint: 'primary' } RETURN 1", "indexHint"],
+        [prefix + "{ disableIndex: true } RETURN 1", "disableIndex"],
+        [prefix + "{ maxProjections: 123 } RETURN 1", "maxProjections"],
         [prefix + "{ defaultWeight: true } RETURN 1", "defaultWeight"],
         [prefix + "{ weightAttribute: ['testi'] } RETURN 1", "weightAttribute"],
         [prefix + "{ uniqueVertices: true } RETURN 1", "uniqueVertices"],
@@ -158,6 +179,7 @@ function aqlOptionsVerificationSuite() {
       const queries = [
         [prefix + "{ weightAttribute: 'testi' } RETURN 1"],
         [prefix + "{ defaultWeight: 42.5 } RETURN 1"],
+
         [prefix + "{ weightAttribute: false } RETURN 1", "weightAttribute"],
         [prefix + "{ defaultWeight: false } RETURN 1", "defaultWeight"],
         [prefix + "{ waitForSync: false } RETURN 1", "waitForSync"],
@@ -166,6 +188,10 @@ function aqlOptionsVerificationSuite() {
         [prefix + "{ waitForSync: -1 } RETURN 1", "waitForSync"],
         [prefix + "{ method: 'hash' } RETURN 1", "method"],
         [prefix + "{ tititi: 'piff' } RETURN 1", "tititi"],
+        [prefix + "{ indexHint: 'primary' } RETURN 1", "indexHint"],
+        [prefix + "{ forceIndexHint: true } RETURN 1", "forceIndexHint"],
+        [prefix + "{ disableIndex: true } RETURN 1", "disableIndex"],
+        [prefix + "{ maxProjections: 123 } RETURN 1", "maxProjections"],
       ];
 
       checkQueries("SHORTEST_PATH", queries);
@@ -176,12 +202,17 @@ function aqlOptionsVerificationSuite() {
       const queries = [
         [prefix + "{ method: 'sorted' } RETURN x"],
         [prefix + "{ method: 'hash' } RETURN x"],
+
         [prefix + "{ method: 'foxx' } RETURN x", "method"],
         [prefix + "{ waitForSync: false } RETURN x", "waitForSync"],
         [prefix + "{ waitForSync: true } RETURN x", "waitForSync"],
         [prefix + "{ waitForSync: +1 } RETURN x", "waitForSync"],
         [prefix + "{ waitForSync: -1 } RETURN x", "waitForSync"],
         [prefix + "{ tititi: 'piff' } RETURN x", "tititi"],
+        [prefix + "{ indexHint: 'primary' } RETURN x", "indexHint"],
+        [prefix + "{ forceIndexHint: true } RETURN x", "forceIndexHint"],
+        [prefix + "{ disableIndex: true } RETURN x", "disableIndex"],
+        [prefix + "{ maxProjections: 123 } RETURN x", "maxProjections"],
       ];
 
       checkQueries("COLLECT", queries);
@@ -202,9 +233,14 @@ function aqlOptionsVerificationSuite() {
         [prefix + "{ ignoreRevs: true }"],
         [prefix + "{ exclusive: true }"],
         [prefix + "{ ignoreErrors: true }"],
+
         [prefix + "{ overwriteMode: true }", "overwriteMode"],
         [prefix + "{ method: 'hash' }", "method"],
         [prefix + "{ tititi: 'piff' }", "tititi"],
+        [prefix + "{ indexHint: 'primary' }", "indexHint"],
+        [prefix + "{ forceIndexHint: true }", "forceIndexHint"],
+        [prefix + "{ disableIndex: true }", "disableIndex"],
+        [prefix + "{ maxProjections: 123 }", "maxProjections"],
       ];
 
       checkQueries("INSERT", queries);
@@ -225,9 +261,14 @@ function aqlOptionsVerificationSuite() {
         [prefix + "{ ignoreRevs: true }"],
         [prefix + "{ exclusive: true }"],
         [prefix + "{ ignoreErrors: true }"],
+
         [prefix + "{ overwriteMode: true }", "overwriteMode"],
         [prefix + "{ method: 'hash' }", "method"],
         [prefix + "{ tititi: 'piff' }", "tititi"],
+        [prefix + "{ indexHint: 'primary' }", "indexHint"],
+        [prefix + "{ forceIndexHint: true }", "forceIndexHint"],
+        [prefix + "{ disableIndex: true }", "disableIndex"],
+        [prefix + "{ maxProjections: 123 }", "maxProjections"],
       ];
 
       checkQueries("UPDATE", queries);
@@ -248,9 +289,14 @@ function aqlOptionsVerificationSuite() {
         [prefix + "{ ignoreRevs: true }"],
         [prefix + "{ exclusive: true }"],
         [prefix + "{ ignoreErrors: true }"],
+
         [prefix + "{ overwriteMode: true }", "overwriteMode"],
         [prefix + "{ method: 'hash' }", "method"],
         [prefix + "{ tititi: 'piff' }", "tititi"],
+        [prefix + "{ indexHint: 'primary' }", "indexHint"],
+        [prefix + "{ forceIndexHint: true }", "forceIndexHint"],
+        [prefix + "{ disableIndex: true }", "disableIndex"],
+        [prefix + "{ maxProjections: 123 }", "maxProjections"],
       ];
 
       checkQueries("REPLACE", queries);
@@ -271,22 +317,29 @@ function aqlOptionsVerificationSuite() {
         [prefix + "{ ignoreRevs: true }"],
         [prefix + "{ exclusive: true }"],
         [prefix + "{ ignoreErrors: true }"],
+
         [prefix + "{ overwriteMode: true }", "overwriteMode"],
         [prefix + "{ method: 'hash' }", "method"],
         [prefix + "{ tititi: 'piff' }", "tititi"],
+        [prefix + "{ indexHint: 'primary' }", "indexHint"],
+        [prefix + "{ forceIndexHint: true }", "forceIndexHint"],
+        [prefix + "{ disableIndex: true }", "disableIndex"],
+        [prefix + "{ maxProjections: 123 }", "maxProjections"],
       ];
 
       checkQueries("REMOVE", queries);
     },
 
     testUpsert: function () {
-
       const prefix = "FOR doc IN " + cn + " UPSERT { testi: 1234 } INSERT { testi: 1234 } UPDATE { testi: OLD.testi + 1 } IN " + cn + " OPTIONS ";
       const queries = [
         [prefix + "{ waitForSync: false }"],
         [prefix + "{ waitForSync: true }"],
         [prefix + "{ waitForSync: +1 }"],
         [prefix + "{ waitForSync: -1 }"],
+        [prefix + "{ indexHint: 'primary' }"],
+        [prefix + "{ forceIndexHint: true }"],
+        [prefix + "{ disableIndex: true }"],
         [prefix + "{ skipDocumentValidation: true }"],
         [prefix + "{ keepNull: true }"],
         [prefix + "{ mergeObjects: true }"],
@@ -295,9 +348,11 @@ function aqlOptionsVerificationSuite() {
         [prefix + "{ ignoreRevs: true }"],
         [prefix + "{ exclusive: true }"],
         [prefix + "{ ignoreErrors: true }"],
+
         [prefix + "{ overwriteMode: true }", "overwriteMode"],
         [prefix + "{ method: 'hash' }", "method"],
         [prefix + "{ tititi: 'piff' }", "tititi"],
+        [prefix + "{ maxProjections: 123 }", "maxProjections"],
       ];
 
       checkQueries("UPSERT", queries);

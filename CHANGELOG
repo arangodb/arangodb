@@ -5,6 +5,91 @@ v3.9.1 (XXXX-XX-XX)
   experience. To display the license informationn in the UI is only
   informational. It disturbs the user experience to know somthing went wrong
   and doesn't provide any important information for the user.
+  
+* Added new server option: --icu-language. Used instead of --default-language to
+  set pure ICU collator.
+  For example, in Sweden language("sv") lowercase letters should precede
+  uppercase ones. You can achieve it using following options when server starts:
+
+    `--icu-language sv`
+
+* No longer put document writes from replication into the audit log by default.
+  Same with low priority authentication like internal UI requests to .html files
+  for the UI. This solves a performance problem for shards getting in sync with
+  audit log switched on.
+
+* Updated OpenSSL to 1.1.1n and OpenLDAP to 2.6.1.
+
+* Fixed an assertion failure which could occur when there was an error in the
+  HTTP header, so that the message body was not actually read.
+
+* Fixed a crash which could occur when there was an error in the HTTP header
+  parsing.
+
+* Bug-Fix: Resolve BTS-673/Issue #15107, a spliced subquery could return too few
+  results.
+
+* Speed up initial sync (in case there is already data present) by prefetching
+  data from leader.
+
+* Fixed ES-1078: The REST API endpoint for handling `/_api/user/${user}/config`
+  did not work properly. The supplied data by sending a PUT request has not been
+  stored to the correct location. The Web UI uses this endpoint to store its
+  graph properties for storing the visualization properties. As this endpoint
+  did not work as expected, the graph visualization properties did not get
+  persisted as well. This is now resolved.
+
+* Fix counts and file size sum in hotbackup META files. Do no longer count
+  directories.
+
+* Optimize further RocksDB throttle to allow for no change on any given
+  calculation cycle.
+
+* Fix UI to only fetch license info as admin user.
+
+* Added `disableIndex` index hint for AQL FOR loops. This index hint disables
+  the usage of any index (except geo or full text indexes) and will cause a full
+  scan over the collection.
+  In some circumstances a full scan can be more efficient than an index scan,
+  for example if the index scan produces many matches (close to the number of
+  documents in the collection) and the index is not fully covering the query.
+  The `disableIndex` hint can be given per FOR loop in the query, e.g.:
+
+      FOR doc IN collection OPTIONS { disableIndex: true }
+        RETURN doc.value
+
+  The default value of `disableIndex` is `false`.
+  In case a different index hint is provided, `disableIndex: true` takes
+  precendence and produces a warning about the ambiguous settings.
+
+* Added `maxProjections` hint for AQL FOR loops. This hint can be used to set
+  the maximum number of document attributes that are taken into account for
+  using projections.
+
+  For example, in the following query, no projections will be used because the
+  number of potential projection attributes (`value1`, value2`, `value3`) is
+  higher than the maximum number of projection attributes set via the
+  `maxProjections` option:
+
+      FOR doc IN collection OPTIONS { maxProjections: 2 }
+        RETURN [ doc.value1, doc.value2, doc.value3 ]
+
+  The default value for `maxProjections` is `5`, which is compatible with the
+  previous hard-coded default value.
+
+* Avoid a deadlock in agency, when Inception::gossip() acquired a mutex, then
+  could call Agent under the mutex, and Agent could finally could call
+  Inception::signalConditionVar(), which would try to acquire the mutex again.
+
+* Avoid multiple parallel SIGHUP requests to be handled at the same time.
+  Now collapse multiple incoming SIGHUP requests into a single one, which can be
+  executed race-free.
+
+* Upgraded JavaScript "i" module from 0.3.6 to 0.3.7.
+
+* Removed internal JavaScript dependencies "mocha" and "chalk". We recommend
+  always bundling your own copy of third-party modules, even ones listed as
+  public.
 
 * Reduce memory usage of inner joins if they were performed by the IndexExecutor
   with dynamic index lookup expressions that needed to be recomputed for input
@@ -1139,8 +1224,6 @@ v3.9.0-alpha.1 (2021-11-30)
 * Guarded access only to ActionBase::_result.
 
 * Fixed proper return value in sendRequestRetry if server is shutting down.
-
-* Updated arangosync to 2.2.0.
 
 * Fixed internal issue #798: In  rare case when remove request
   completely cleans just consolidated segment commit could be cancelled
