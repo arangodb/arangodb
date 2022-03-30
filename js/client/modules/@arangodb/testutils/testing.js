@@ -230,7 +230,7 @@ const optionsDefaults = {
   'valgrindArgs': {},
   'valgrindHosts': false,
   'verbose': false,
-  'noStartStopLogs': !internal.isATTy(),
+  'noStartStopLogs': internal.isATTy(),
   'vst': false,
   'http2': false,
   'walFlushTimeout': 30000,
