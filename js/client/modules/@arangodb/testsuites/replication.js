@@ -89,7 +89,7 @@ function shellClientReplicationApi (options) {
   _.defaults(opts, options);
   opts.forceJson = true;
 
-  let ret = new tu.runInArangoshRunner(opts, 'shell_replication_api').run(testCases);
+  let ret = new tu.runLocalInArangoshRunner(opts, 'shell_replication_api').run(testCases);
   if (!options.forceJson) {
     arango.forceJson(false);
   }

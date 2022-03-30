@@ -54,22 +54,6 @@ const testPaths = {
   'restart': [tu.pathForTesting('client/restart')]
 };
 
-class runWithInstancePublic extends tu.runLocalInArangoshRunner {
-  constructor(options, testname, serverOptions, checkUsers=true, checkCollections=true) {
-    super(options, testname, serverOptions, checkUsers, checkCollections);
-    this.info = "runInPhpTest";
-  }
-  preRun(file) {
-    global.instanceInfo = this.instanceInfo;
-    global.testOptions = this.options;
-    return {state: true};
-  }
-  postRun(file) {
-    this.instanceInfo = global.instanceInfo;
-    return {state: true};
-  }
-}
-
 function restart (options) {
   let clonedOpts = _.clone(options);
   clonedOpts.disableClusterMonitor = true;

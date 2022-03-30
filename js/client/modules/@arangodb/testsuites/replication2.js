@@ -47,7 +47,7 @@ function replication2Client(options) {
   const opts = _.clone(options);
   opts.dbServers = Math.max(opts.dbServers, 3);
 
-  return new tu.runInArangoshRunner(opts, 'replication2_client').run(testCases);
+  return new tu.runLocalInArangoshRunner(opts, 'replication2_client').run(testCases);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
