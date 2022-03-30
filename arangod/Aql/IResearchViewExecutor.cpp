@@ -382,7 +382,10 @@ std::vector<float_t>::iterator ScoreIterator::end() noexcept {
 template<typename ValueType, bool copyStored>
 IndexReadBuffer<ValueType, copyStored>::IndexReadBuffer(
     size_t const numScoreRegisters)
-  : _numScoreRegisters(numScoreRegisters), _keyBaseIdx(0), _maxSize(0) {}
+    : _numScoreRegisters(numScoreRegisters),
+      _keyBaseIdx(0),
+      _maxSize(0),
+      _storedCount(0) {}
 
 template<typename ValueType, bool copyStored>
 ValueType const& IndexReadBuffer<ValueType, copyStored>::getValue(
@@ -426,6 +429,7 @@ void IndexReadBuffer<ValueType, copySorted>::pushSortedValue(ValueType&& value, 
     }
   } else {
     _keyBuffer.push_back(std::move(value));
+    _storedValuesBuffer.resize(_storedValuesBuffer.size() + _storedCount);
     size_t i = 0;
     for (; i < count; ++i) {
       _scoreBuffer.emplace_back(static_cast<float_t>(scores[i]));
@@ -1005,7 +1009,7 @@ template<bool copyStored, bool ordered, MaterializeType materializeType>
 size_t IResearchViewHeapSortExecutor<copyStored, ordered, materializeType>::skipAll() {
   TRI_ASSERT(this->_indexReadBuffer.empty());
   TRI_ASSERT(this->_filter);
-  fillBufferInternal();
+  fillBufferInternal(false);
   auto const maxBufferSize =
       (std::min)(_totalCount, this->_infos.scoresSortLimit());
   auto const bufferLeft = this->_indexReadBuffer.size();
@@ -1020,7 +1024,7 @@ size_t IResearchViewHeapSortExecutor<copyStored, ordered, materializeType>::skip
 template<bool copyStored, bool ordered, MaterializeType materializeType>
 size_t IResearchViewHeapSortExecutor<copyStored, ordered, materializeType>::skip(
     size_t limit) {
-  fillBufferInternal();
+  fillBufferInternal(true);
   if (limit >= this->_indexReadBuffer.size()) {
     auto const skipped = this->_indexReadBuffer.size();
     this->_indexReadBuffer.reset();
@@ -1055,12 +1059,12 @@ bool IResearchViewHeapSortExecutor<copyStored, ordered, materializeType>::writeR
 template<bool copyStored, bool ordered, MaterializeType materializeType>
 void IResearchViewHeapSortExecutor<copyStored, ordered, materializeType>::fillBuffer(
     IResearchViewHeapSortExecutor::ReadContext&) {
-  fillBufferInternal();
+  fillBufferInternal(true);
 }
 
 template<bool copyStored, bool ordered, MaterializeType materializeType>
 void IResearchViewHeapSortExecutor<copyStored, ordered,
-                                   materializeType>::fillBufferInternal() {
+                                   materializeType>::fillBufferInternal(bool materialize) {
   if (_bufferFilled) {
     return;
   }
@@ -1117,15 +1121,9 @@ void IResearchViewHeapSortExecutor<copyStored, ordered,
         typename decltype(this->_indexReadBuffer)::KeyValueType(
             doc->value, readerOffset),
         scoresBegin, numScores);
-
-    // doc and scores are both pushed, sizes must now be coherent
-    
-    // TODO(Dronplane) reenable check but keep in mind - stored values will be written later
-    //this->_indexReadBuffer.assertSizeCoherence();
   }
 
-  if (!this->_indexReadBuffer.empty()) {
-
+  if (materialize && !this->_indexReadBuffer.empty()) {
     std::vector<size_t> pkReadingOrder(atMost);
     std::iota(pkReadingOrder.begin(), pkReadingOrder.end(), 0);
     std::sort(pkReadingOrder.begin(), pkReadingOrder.end(), [buffer = &this->_indexReadBuffer] (
@@ -1146,8 +1144,10 @@ void IResearchViewHeapSortExecutor<copyStored, ordered,
     std::shared_ptr<arangodb::LogicalCollection> collection;
     for (auto orderIt = pkReadingOrder.begin(); orderIt != pkReadingOrder.end();) {
       auto& value = this->_indexReadBuffer.getValue(*orderIt);
-      if (lastSegmentIdx != value.readerOffset()) {
-        lastSegmentIdx = value.readerOffset();
+      auto const irsDocId = value.irsDocId();
+      auto const segmentIdx = value.readerOffset();
+      if (lastSegmentIdx != segmentIdx) {
+        lastSegmentIdx = segmentIdx;
         auto& segmentReader = (*this->_reader)[lastSegmentIdx];
         auto pkIt = ::pkColumn(segmentReader);
         pkReader.itr.reset();
@@ -1161,11 +1161,20 @@ void IResearchViewHeapSortExecutor<copyStored, ordered,
           continue;
         }
         ::reset(pkReader, std::move(pkIt));
+        if constexpr ((materializeType & MaterializeType::UseStoredValues) ==
+                      MaterializeType::UseStoredValues) {
+          if (ADB_UNLIKELY(!this->getStoredValuesReaders(segmentReader, segmentIdx))) {
+            LOG_TOPIC("bd02c", WARN, arangodb::iresearch::TOPIC)
+                << "encountered a sub-reader without stored values column "
+                   "while executing a query, ignoring";
+            continue;
+          }
+        }
       }
 
       LocalDocumentId documentId;
-      if (value.irsDocId() ==
-          pkReader.itr->seek(value.irsDocId())) {
+      if (irsDocId ==
+          pkReader.itr->seek(irsDocId)) {
         bool const readSuccess =
             DocumentPrimaryKey::read(documentId, pkReader.value->value);
 
@@ -1178,15 +1187,31 @@ void IResearchViewHeapSortExecutor<copyStored, ordered,
               << value.irsDocId() << "'";
         }
       }
-      // TODO  (Dronplane) Handle stored values somehow (don`t read/store
-      // rejected
-      // by heap!
-      // if constexpr ((materializeType & MaterializeType::UseStoredValues) ==
-      //              MaterializeType::UseStoredValues) {
-      //  TRI_ASSERT(_doc);
-      //  this->pushStoredValues(*_doc);
-      //}
       value.decode(documentId, collection.get());
+      if constexpr ((materializeType & MaterializeType::UseStoredValues) ==
+                    MaterializeType::UseStoredValues) {
+        auto const& columnsFieldsRegs = this->infos().getOutNonMaterializedViewRegs();
+        TRI_ASSERT(!columnsFieldsRegs.empty());
+        auto readerIndex = segmentIdx * columnsFieldsRegs.size();
+        size_t valueIndex = *orderIt * columnsFieldsRegs.size();
+        for (auto it = columnsFieldsRegs.cbegin();
+             it != columnsFieldsRegs.cend(); ++it) {
+          TRI_ASSERT(readerIndex < this->_storedValuesReaders.size());
+          auto const& reader = this->_storedValuesReaders[readerIndex++];
+          TRI_ASSERT(reader.itr);
+          TRI_ASSERT(reader.value);
+          auto const& payload = reader.value->value;
+          bool const found = (irsDocId == reader.itr->seek(irsDocId));
+          if (found && !payload.empty()) {
+            this->_indexReadBuffer.setStoredValue(valueIndex++, payload);
+          } else {
+            this->_indexReadBuffer.setStoredValue(valueIndex++,
+                ref<irs::byte_type>(VPackSlice::nullSlice()));
+          }
+        }
+      }
+
+      this->_indexReadBuffer.assertSizeCoherence();
       ++orderIt;
     }
   }

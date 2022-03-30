@@ -292,6 +292,13 @@ class IndexReadBuffer {
       _rows.reserve(atMost);
     }
     _maxSize = atMost;
+    _storedCount = stored;
+  }
+
+  void setStoredValue(size_t idx, irs::bytes_ref value) {
+    TRI_ASSERT(_storedValuesBuffer.size() < _storedValuesBuffer.capacity());
+    TRI_ASSERT(idx < _storedValuesBuffer.size());
+    _storedValuesBuffer[idx] = value;
   }
 
   void pushStoredValue(irs::bytes_ref value) {
@@ -326,6 +333,7 @@ class IndexReadBuffer {
   std::vector<std::pair<size_t, bool>> const* _scoresSort;
   std::vector<size_t> _rows;
   size_t _maxSize;
+  size_t _storedCount;
 };  // IndexReadBuffer
 
 template<typename Impl>
@@ -663,7 +671,7 @@ class IResearchViewHeapSortExecutor
 
   void reset();
   void fillBuffer(ReadContext& ctx);
-  void fillBufferInternal();
+  void fillBufferInternal(bool materialize);
 
   bool writeRow(ReadContext& ctx, IndexReadBufferEntry bufferEntry);
 
