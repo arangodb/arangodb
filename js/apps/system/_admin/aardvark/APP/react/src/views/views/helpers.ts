@@ -45,6 +45,16 @@ export const useCollection = () => {
   }
 }
 
+export function useJsonFormEffect(Ivalue: any) {
+  const [json, setJson] = useState(Ivalue);
+
+  function toggleButton(value: any) {
+    setJson((cur: any) => typeof value === "boolean" ? value : !cur)
+  }
+
+  return [json, toggleButton];
+}
+
 export function useView(name: string) {
   const [view, setView] = useState<object>({ name });
   const { data } = useSWR(`/view/${name}/properties`,

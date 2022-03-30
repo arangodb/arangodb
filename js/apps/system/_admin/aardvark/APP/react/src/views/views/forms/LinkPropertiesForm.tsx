@@ -9,11 +9,15 @@ import NewLink from "../Components/NewLink";
 import LinkView from "../Components/LinkView";
 import FieldView from "../Components/FieldView";
 import { ViewContext } from "../ViewLinksReactView";
-
+import JsonForm from "../forms/JsonForm";
 type LinksPropertiesFormProps = FormProps<FormState> & {
   view: string;
 };
-const LinkPropertiesForm = ({ disabled, view }: LinksPropertiesFormProps) => {
+const LinkPropertiesForm = ({
+  disabled,
+  view,
+  formState: newFormstate
+}: LinksPropertiesFormProps) => {
   const { formState, dispatch, field } = useContext(ViewContext);
 
   const [collection, setCollection, addDisabled, links] = useLinkState(
@@ -94,6 +98,15 @@ const LinkPropertiesForm = ({ disabled, view }: LinksPropertiesFormProps) => {
 
       {show === "ViewParent" && (
         <LinkView view={view} link={link} links={links} disabled={disabled} />
+      )}
+
+      {show === "JsonView" && (
+        <JsonForm
+          formState={newFormstate}
+          dispatch={dispatch}
+          renderKey={view}
+          isEdit={true}
+        />
       )}
 
       {show === "ViewChild" && (
