@@ -693,7 +693,9 @@ set(LIB_ARANGO_V8SERVER_SOURCES
   V8Server/v8-collection.cpp
   V8Server/v8-dispatcher.cpp
   V8Server/v8-general-graph.cpp
+  V8Server/v8-prototype-states.cpp
   V8Server/v8-query.cpp
+  V8Server/v8-replicated-logs.cpp
   V8Server/v8-replication.cpp
   V8Server/v8-statistics.cpp
   V8Server/v8-ttl.cpp
@@ -705,7 +707,7 @@ set(LIB_ARANGO_V8SERVER_SOURCES
   V8Server/v8-vocbase.cpp
   V8Server/v8-voccursor.cpp
   V8Server/v8-vocindex.cpp
-  V8Server/v8-replicated-logs.cpp V8Server/v8-replicated-logs.h)
+)
 
 set(LIB_ARANGO_NETWORK_SOURCES
   Network/ClusterUtils.cpp

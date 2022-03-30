@@ -38,7 +38,7 @@ using SpinLocker = ::arangodb::basics::SpinLocker;
 TEST(CacheMetadataTest, test_basic_constructor) {
   std::uint64_t usageLimit = 1024;
   std::uint64_t fixed = 128;
-  std::uint64_t table = Table::allocationSize(Table::minLogSize);
+  std::uint64_t table = Table::allocationSize(Table::kMinLogSize);
   std::uint64_t max = UINT64_MAX;
   Metadata metadata(usageLimit, fixed, table, max);
 

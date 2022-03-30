@@ -3198,6 +3198,7 @@ struct SortToIndexNode final
         TRI_ASSERT(usedIndexes.size() == 1);
         IndexIteratorOptions opts;
         opts.ascending = sortCondition.isAscending();
+        opts.useCache = false;
         auto newNode = std::make_unique<IndexNode>(
             _plan, _plan->nextId(), enumerateCollectionNode->collection(),
             outVariable, usedIndexes,

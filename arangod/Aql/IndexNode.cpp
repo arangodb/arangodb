@@ -93,6 +93,8 @@ IndexNode::IndexNode(ExecutionPlan* plan,
       basics::VelocyPackHelper::getBooleanValue(base, "ascending", false);
   _options.evaluateFCalls =
       basics::VelocyPackHelper::getBooleanValue(base, "evalFCalls", true);
+  _options.useCache = basics::VelocyPackHelper::getBooleanValue(
+      base, StaticStrings::UseCache, true);
   _options.limit = basics::VelocyPackHelper::getNumericValue(base, "limit", 0);
 
   if (_options.sorted && base.isObject() && base.get("reverse").isBool()) {
@@ -227,6 +229,7 @@ void IndexNode::doToVelocyPack(VPackBuilder& builder, unsigned flags) const {
   builder.add("ascending", VPackValue(_options.ascending));
   builder.add("reverse", VPackValue(!_options.ascending));  // legacy
   builder.add("evalFCalls", VPackValue(_options.evaluateFCalls));
+  builder.add(StaticStrings::UseCache, VPackValue(_options.useCache));
   builder.add("limit", VPackValue(_options.limit));
 
   if (isLateMaterialized()) {

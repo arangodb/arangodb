@@ -38,12 +38,11 @@ class Slice;
 namespace aql {
 
 struct ExecutionStats {
-  ExecutionStats();
+  ExecutionStats() noexcept;
 
   /// @brief instantiate the statistics from VelocyPack
   explicit ExecutionStats(arangodb::velocypack::Slice slice);
 
- public:
   /// @brief convert the statistics to VelocyPack
   void toVelocyPack(arangodb::velocypack::Builder&, bool reportFullCount) const;
 
@@ -64,46 +63,52 @@ struct ExecutionStats {
     _nodeAliases = std::move(aliases);
   }
 
-  void clear();
+  void clear() noexcept;
 
   /// @brief number of successfully executed write operations
-  int64_t writesExecuted;
+  uint64_t writesExecuted = 0;
 
   /// @brief number of ignored write operations (ignored due to errors)
-  int64_t writesIgnored;
+  uint64_t writesIgnored = 0;
 
   /// @brief number of documents scanned (full-collection scan)
-  int64_t scannedFull;
+  uint64_t scannedFull = 0;
 
   /// @brief number of documents scanned (using indexes scan)
-  int64_t scannedIndex;
+  uint64_t scannedIndex = 0;
 
   /// @brief number of cursors created. currently only populated by
   /// IndexExecutor.
-  int64_t cursorsCreated;
+  uint64_t cursorsCreated = 0;
 
   /// @brief number of existing cursors that were rearmed. currently only
   /// populated by IndexExecutor.
-  int64_t cursorsRearmed;
+  uint64_t cursorsRearmed = 0;
+
+  /// @brief number of (in-memory) cache hits, if cache is enabled
+  uint64_t cacheHits = 0;
+
+  /// @brief number of (in-memory) cache misses, if cache is enabled
+  uint64_t cacheMisses = 0;
 
   /// @brief number of documents filtered away
-  int64_t filtered;
+  uint64_t filtered = 0;
 
   /// @brief total number of requests made
-  int64_t requests;
+  uint64_t requests = 0;
 
   /// @brief total number of results, before applying last limit
-  int64_t fullCount;
+  uint64_t fullCount = 0;
 
   /// @brief total number of results
-  int64_t count;
+  uint64_t count = 0;
 
   /// @brief query execution time (wall-clock time). value will be set from
   /// the outside
-  double executionTime;
+  double executionTime = 0.0;
 
   /// @brief peak memory usage of the query
-  size_t peakMemoryUsage;
+  size_t peakMemoryUsage = 0;
 
  private:
   /// @brief Node aliases, source => target.

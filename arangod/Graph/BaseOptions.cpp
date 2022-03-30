@@ -531,7 +531,7 @@ bool BaseOptions::evaluateExpression(arangodb::aql::Expression* expression,
   TRI_ASSERT(res.isBoolean());
   bool result = res.toBoolean();
   if (!result) {
-    cache()->increaseFilterCounter();
+    cache()->incrFiltered();
   }
   return result;
 }
