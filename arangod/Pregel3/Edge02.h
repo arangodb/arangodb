@@ -20,6 +20,10 @@ struct Edge {
   Edge(size_t from, size_t to, size_t idx) : from(from), to(to), idx(idx) {}
 
   void toVelocyPack(VPackBuilder& builder);
+  std::string toString() const {
+    return "idx: " + std::to_string(idx) + ", from: " + std::to_string(from) +
+           ", to: " + std::to_string(to);
+  }
 };
 
 template<class EdgeProperties>
@@ -66,6 +70,11 @@ struct MinCutEdge : public Edge<EmptyEdgeProperties> {
   void increaseFlow(double val) {
     TRI_ASSERT(val <= residual());
     flow += val;
+  }
+
+  std::string toString() const {
+    return "{" + Edge::toString() + ", capacity: " + std::to_string(capacity) +
+           ", flow: " + std::to_string(flow) + "}";
   }
 };
 

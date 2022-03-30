@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "MaxFlowMinCut02.h"
+#include "Logger/LogMacros.h"
 #include <vector>
 
 namespace arangodb::pregel3 {
@@ -30,12 +31,16 @@ void MaxFlowMinCut::removeLeavesRecursively() {
   // make _target temporary non-leaf by adding a dummy vertex with 0 capacity,
   // which will be deleted at the end of the function
   bool tmpVertex = false;
+  size_t targetToNeighborEdgeIdx;
+  size_t neighborToTargetEdgeIdx;
   if (vertex(_target).outDegree() == 0) {
     tmpVertex = true;
     size_t tmpVertexIdx = _g->numVertices();
     _g->addVertex();
-    _g->addEdge(_target, tmpVertexIdx, 0.0);
-    _g->addEdge(tmpVertexIdx, _target, 0.0);
+    auto [tTNEI, dummy0] = _g->addEdge(_target, tmpVertexIdx, 0.0);
+    targetToNeighborEdgeIdx = tTNEI;
+    auto [nTTEI, dummy1] = _g->addEdge(tmpVertexIdx, _target, 0.0);
+    neighborToTargetEdgeIdx = nTTEI;
   }
 
   std::vector<size_t> currentLeaves;
@@ -67,11 +72,27 @@ void MaxFlowMinCut::removeLeavesRecursively() {
       }
     }
   }
+  // remove edges leading from and to marked vertices
+  for (size_t vIdx : allLeaves) {
+    auto& v = vertex(vIdx);
+    for (auto [_, eIdx] : v.inEdges) {
+      _g->removeEdge(eIdx);
+    }
+    for (auto [_, eIdx] : v.outEdges) {
+      _g->removeEdge(eIdx);
+    }
+  }
+
   // remove marked leaves, compress _g->vertices
   // iterate over _g->vertices with two indexes: i, j. Index i points to the
   // first position with a leaf, index j to the first position after a leaf
   // with a non-leaf. Then _g->vertices[j] is copied to _g[vertices[i] and
-  // the indexes are updated.
+  // the indexes are updated. Note that the relative order of the indexes is
+  // not changed. (In particular, if we added a neighbor of the target, it is
+  // still the last vertex in vertices and can be removed by
+  // vertices.pop_back().) moreover, the indexes of the edges do not change,
+  // so the edges between the target and the added neighbor of the target can
+  // be removed using the same edge index.
   size_t i = 0;
   size_t const n = _g->vertices.size();
   while (true) {
@@ -109,8 +130,8 @@ void MaxFlowMinCut::removeLeavesRecursively() {
       auto& from = vertex(fromIdx);
       auto handle = from.outEdges.extract(j);
       handle.key() = i;
-      from.inEdges.insert(std::move(handle));
-      e.from = i;
+      from.outEdges.insert(std::move(handle));
+      e.to = i;
     }
     // increase i (and j): this guarantees that i finally reaches n
     // and the outer while loop terminates
@@ -119,11 +140,12 @@ void MaxFlowMinCut::removeLeavesRecursively() {
   }
 
   if (tmpVertex) {
-    _g->removeEdge(edge(_target, _g->numVertices() - 1));
-    _g->removeEdge(edge(_g->numVertices() - 1, _target));
+    _g->removeEdge(edge(targetToNeighborEdgeIdx));
+    _g->removeEdge(edge(neighborToTargetEdgeIdx));
     _g->vertices.pop_back();
   }
 }
+
 void MaxFlowMinCut::initialize() {
   removeLeavesRecursively();
 

@@ -61,6 +61,11 @@ struct MinCutVertex : public Vertex<EmptyVertexProperties, MinCutEdge> {
     excess -= val;
     TRI_ASSERT(excess >= 0);
   }
+
+  std::string toString() const {
+    return "label: " + std::to_string(label) +
+           ", excess: " + std::to_string(excess);
+  }
 };
 
 }  // namespace arangodb::pregel3

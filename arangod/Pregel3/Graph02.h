@@ -95,6 +95,26 @@ struct Graph : BaseGraph {
     }
     return it->second.idx;
   }
+
+  // for debugging only
+  std::string toString() {
+    std::string s = "vertices: {";
+    for (size_t vIdx = 0; vIdx < vertices.size() - 1; ++vIdx) {
+      s += "{idx: " + std::to_string(vIdx) + ", " + vertices[vIdx].toString() +
+           "}" + ", ";
+    }
+    s += "{idx: " + std::to_string(vertices.size() - 1) + ", " +
+         vertices.back().toString() + "}}, edges: {";
+    for (auto const& e : edges) {
+      s += e.second.toString() + ", ";
+    }
+    if (edges.size() > 0) {
+      s.pop_back();  // the last " "
+      s.pop_back();  // the last comma
+    }
+    s += "}";
+    return s;
+  }
 };
 
 template<class V, class E>
