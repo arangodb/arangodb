@@ -171,7 +171,7 @@ function server_permissions(options) {
 
 function server_parameters(options) {
   return new permissionsRunner(options, "server_parameters").run(
-    tu.scanTestPaths(testPaths.server_permissions, options));
+    tu.scanTestPaths(testPaths.server_parameters, options));
 }
 
 function server_secrets(options) {
