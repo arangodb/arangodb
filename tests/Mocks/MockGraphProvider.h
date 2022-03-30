@@ -298,6 +298,8 @@ class MockGraphProvider {
 
   aql::TraversalStats stealStats();
 
+  bool isCached(Step* s);
+
  private:
   auto decideProcessable() const -> bool;
 

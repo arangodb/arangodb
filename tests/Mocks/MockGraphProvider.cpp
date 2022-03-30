@@ -246,3 +246,5 @@ aql::TraversalStats MockGraphProvider::stealStats() {
   new (&_stats) aql::TraversalStats{};
   return t;
 }
+
+bool MockGraphProvider::isCached(Step* s) { return true; }
