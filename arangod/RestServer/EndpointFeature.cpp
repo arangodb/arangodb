@@ -43,7 +43,6 @@ EndpointFeature::EndpointFeature(ArangodServer& server)
       _reuseAddress(true),
       _backlogSize(64) {
   setOptional(true);
-  requiresElevatedPrivileges(true);
   startsAfter<application_features::AqlFeaturePhase, ArangodServer>();
 
   startsAfter<ServerFeature, ArangodServer>();
