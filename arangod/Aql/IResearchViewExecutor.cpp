@@ -1181,7 +1181,7 @@ void IResearchViewHeapSortExecutor<copyStored, ordered,
         TRI_ASSERT(readSuccess == documentId.isSet());
 
         if (ADB_UNLIKELY(!readSuccess)) {
-          LOG_TOPIC("6423f", WARN, arangodb::iresearch::TOPIC)
+          LOG_TOPIC("6424f", WARN, arangodb::iresearch::TOPIC)
               << "failed to read document primary key while reading document "
                  "from arangosearch view, doc_id '"
               << value.irsDocId() << "'";
