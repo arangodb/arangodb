@@ -80,7 +80,7 @@ var dumpPath;
 
 class backupTestRunner extends tu.runInArangoshRunner {
   constructor(options, testname, useAuth, user, restoreDir, checkUsers=true) {
-    super(options, testname, {}, checkUsers);
+    super(options, testname, {}, checkUsers, false);
     this.user = user;
     this.useAuth = useAuth;
     this.dumpPath = undefined;
