@@ -54,46 +54,19 @@ const testPaths = {
   'restart': [tu.pathForTesting('client/restart')]
 };
 
-function runTest (options, instanceInfo, file, addArgs) {
-  let endpoint = arango.getEndpoint();
-  if (( options.vst && endpoint !== instanceInfo.vstEndpoint) ||
-      (!options.vst && endpoint !== instanceInfo.endpoint)) {
-    let newEndpoint = (options.vst && instanceInfo.hasOwnProperty('vstEndpoint')) ?
-        instanceInfo.vstEndpoint : 
-        instanceInfo.endpoint;
-    print(`runInLocalArangosh: Reconnecting to ${newEndpoint} from ${endpoint}`);
-    arango.reconnect(newEndpoint, '_system', 'root', '');
+class runWithInstancePublic extends tu.runLocalInArangoshRunner {
+  constructor(options, testname, serverOptions, checkUsers=true, checkCollections=true) {
+    super(options, testname, serverOptions, checkUsers, checkCollections);
+    this.info = "runInPhpTest";
   }
-  
-  let testCode;
-  // \n's in testCode are required because of content could contain '//' at the very EOF
-  if (file.indexOf('-spec') === -1) {
-    let testCase = JSON.stringify(options.testCase);
-    if (options.testCase === undefined) {
-      testCase = '"undefined"';
-    }
-    testCode = 'const runTest = require("jsunity").runTest;\n ' +
-      'return runTest(' + JSON.stringify(file) + ', true, ' + testCase + ');\n';
-  } else {
-    let mochaGrep = options.testCase ? ', ' + JSON.stringify(options.testCase) : '';
-    testCode = 'const runTest = require("@arangodb/mocha-runner"); ' +
-      'return runTest(' + JSON.stringify(file) + ', true' + mochaGrep + ');\n';
+  preRun(file) {
+    global.instanceInfo = this.instanceInfo;
+    global.testOptions = this.options;
+    return {state: true};
   }
-
-  global.instanceInfo = instanceInfo;
-  global.testOptions = options;
-  let testFunc;
-  eval('testFunc = function () { ' + testCode + " \n}");
-  
-  try {
-    let result = testFunc();
-    return result;
-  } catch (ex) {
-    return {
-      status: false,
-      message: "test has thrown! '" + file + "' - " + ex.message || String(ex),
-      stack: ex.stack
-    };
+  postRun(file) {
+    this.instanceInfo = global.instanceInfo;
+    return {state: true};
   }
 }
 
@@ -103,9 +76,10 @@ function restart (options) {
   clonedOpts.skipLogAnalysis = true;
   clonedOpts.skipReconnect = true;
   let testCases = tu.scanTestPaths(testPaths.restart, clonedOpts);
-  let rc = tu.performTests(clonedOpts, testCases, 'restart', runTest, {
+  global.obj = new tu.runLocalInArangoshRunner(clonedOpts, 'restart', {
     'server.jwt-secret': 'haxxmann',
-  });
+  }, false, false);
+  let rc = global.obj.run(testCases);
   options.cleanup = options.cleanup && clonedOpts.cleanup;
   return rc;
 }

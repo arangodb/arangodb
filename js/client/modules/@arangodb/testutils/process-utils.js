@@ -2245,7 +2245,9 @@ function launchFinalize(options, instanceInfo, startTime) {
     print(processInfo.join('\n') + '\n');
   }
   internal.sleep(options.sleepBeforeStart);
-  initProcessStats(instanceInfo);
+  if (!options.disableClusterMonitor) {
+    initProcessStats(instanceInfo);
+  }
 }
 
 // //////////////////////////////////////////////////////////////////////////////

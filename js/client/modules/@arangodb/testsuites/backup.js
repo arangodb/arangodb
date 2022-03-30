@@ -124,7 +124,6 @@ class backupTestRunner extends tu.runInArangoshRunner {
       path = this.instanceInfo.rootDir;
 
       _.defaults(asRoot, options);
-      print(asRoot)
       let dump = pu.run.arangoDumpRestore(asRoot, this.instanceInfo,
                                           'dump', '_system', path, syssys,
                                           true, options.coreCheck);
@@ -147,10 +146,6 @@ class backupTestRunner extends tu.runInArangoshRunner {
       }
 
       log('Dump successful');
-    } catch (x) {
-      print('snaotehuxxx')
-      print(x)
-      
     } finally {
       log('Shutting down dump server');
 

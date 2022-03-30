@@ -43,11 +43,12 @@ const basePath = path.resolve(require("internal").pathForTesting('common'), 'tes
 const originalEndpoint = arango.getEndpoint();
 const originalUser = arango.connectedUser();
 
+print(global.obj)
 function testSuite() {
   const jwtSecret = 'haxxmann';
 
   let getServers = function (role) {
-    return global.instanceInfo.arangods.filter((instance) => instance.role === role);
+    return global.obj.instanceInfo.arangods.filter((instance) => instance.role === role);
   };
 
   let waitForAlive = function (timeout, baseurl, data) {
@@ -143,18 +144,17 @@ function testSuite() {
       
       // restart coordinator
       try {
-        let instanceInfo = global.instanceInfo;
+        let instanceInfo = global.obj.instanceInfo;
 
         let newInstanceInfo = {
           arangods: [ coordinator ],
           endpoint: instanceInfo.endpoint,
         };
 
-        let options = global.testOptions;
         // shut down and restart coordinator.
         // on this coordinator, the self-heal cannot run successfully because
         // the DB servers are down
-        let shutdownStatus = pu.shutdownInstance(newInstanceInfo, options, false); 
+        let shutdownStatus = pu.shutdownInstance(newInstanceInfo, global.obj.options, false); 
         coordinator.pid = null;
         assertTrue(shutdownStatus);
 
@@ -163,7 +163,7 @@ function testSuite() {
           "foxx.queues": "false",
           "server.jwt-secret": jwtSecret
         };
-        pu.reStartInstance(options, instanceInfo, extraOptions);
+        pu.reStartInstance(global.obj.options, instanceInfo, extraOptions);
           
         waitForAlive(30, coordinator.url, {});
  
@@ -194,18 +194,17 @@ function testSuite() {
       let coordinators = getServers('coordinator');
       assertTrue(coordinators.length > 0);
       let coordinator = coordinators[0];
-      let instanceInfo = global.instanceInfo;
+      let instanceInfo = global.obj.instanceInfo;
 
       let newInstanceInfo = {
         arangods: [ coordinator ],
         endpoint: instanceInfo.endpoint,
       };
 
-      let options = global.testOptions;
       // shut down and restart coordinator.
       // on this coordinator, the self-heal cannot run successfully because
       // the DB servers are down
-      let shutdownStatus = pu.shutdownInstance(newInstanceInfo, options, false); 
+      let shutdownStatus = pu.shutdownInstance(newInstanceInfo, global.obj.options, false); 
       coordinator.pid = null;
       assertTrue(shutdownStatus);
 
@@ -214,7 +213,7 @@ function testSuite() {
         "foxx.queues": "false",
         "server.jwt-secret": jwtSecret
       };
-      pu.reStartInstance(options, instanceInfo, extraOptions);
+      pu.reStartInstance(global.obj.options, instanceInfo, extraOptions);
         
       waitForAlive(30, coordinator.url, {});
       
@@ -238,18 +237,17 @@ function testSuite() {
       let coordinators = getServers('coordinator');
       assertTrue(coordinators.length > 0);
       let coordinator = coordinators[0];
-      let instanceInfo = global.instanceInfo;
+      let instanceInfo = global.obj.instanceInfo;
 
       let newInstanceInfo = {
         arangods: [ coordinator ],
         endpoint: instanceInfo.endpoint,
       };
 
-      let options = global.testOptions;
       // shut down and restart coordinator.
       // on this coordinator, the self-heal cannot run successfully because
       // the DB servers are down
-      let shutdownStatus = pu.shutdownInstance(newInstanceInfo, options, false); 
+      let shutdownStatus = pu.shutdownInstance(newInstanceInfo, global.obj.options, false); 
       coordinator.pid = null;
       assertTrue(shutdownStatus);
 
@@ -258,8 +256,8 @@ function testSuite() {
         "foxx.queues": "false",
         "server.jwt-secret": jwtSecret
       };
-      pu.reStartInstance(options, instanceInfo, extraOptions);
-        
+      pu.reStartInstance(global.obj.options, instanceInfo, extraOptions);
+
       waitForAlive(30, coordinator.url, {});
 
       // try to request Foxx app. the app must be accessible, because of self-heal

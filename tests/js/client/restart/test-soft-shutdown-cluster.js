@@ -57,7 +57,7 @@ function testAlgoCheck(pid) {
 }
 
 function getServers(role) {
-  return global.instanceInfo.arangods.filter((instance) => instance.role === role);
+  return global.obj.instanceInfo.arangods.filter((instance) => instance.role === role);
 };
 
 function waitForShutdown(arangod, timeout) {
@@ -94,9 +94,9 @@ function waitForAlive(timeout, baseurl, data) {
 };
 
 function restartInstance(arangod) {
-  let options = global.testOptions;
+  let options = _.clone(global.obj.options);
   options.skipReconnect = false;
-  pu.reStartInstance(options, global.instanceInfo, {});
+  pu.reStartInstance(options, global.obj.instanceInfo, {});
   waitForAlive(30, arangod.url, {});
 };
 

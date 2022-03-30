@@ -97,7 +97,7 @@ class testRunner {
         // should be fixed eventually
         let databasesAfter = db._databases().filter((name) => name !== 'UnitTestDB');
         if (databasesAfter.length !== 1 || databasesAfter[0] !== '_system') {
-          this.results[te] = {
+          obj.results[te] = {
             status: false,
             message: 'Cleanup missing - test left over databases: ' + JSON.stringify(databasesAfter) + '. Original test status: ' + JSON.stringify(obj.results[te])
           };
@@ -167,7 +167,7 @@ class testRunner {
               obj.viewsBefore.push(view._name);
             });
           } catch (x) {
-            this.results[te] = {
+            obj.results[te] = {
               status: false,
               message: 'failed to fetch the previously available views: ' + x.message
             };
@@ -211,7 +211,7 @@ class testRunner {
       this.cleanupChecks.push({
         name: 'graphs',
         setUp: function(obj, te) {
-          this.graphCount = db._collection('_graphs').count();
+          obj.graphCount = db._collection('_graphs').count();
           return true;
         },
         runCheck: function(obj, te) {
@@ -221,7 +221,7 @@ class testRunner {
           } catch (x) {
             obj.results[te] = {
               status: false,
-              message: 'failed to fetch the graphs: ' + x.message + '. Original test status: ' + JSON.stringify(this.results[te])
+              message: 'failed to fetch the graphs: ' + x.message + '. Original test status: ' + JSON.stringify(obj.results[te])
             };
             obj.continueTesting = false;
             return false;
@@ -265,6 +265,7 @@ class testRunner {
   startFailed() { return {state: true}; } // overload me
   postStart() { return {state: true}; } // overload me
   preRun() { return {state: true}; } // overload me
+  postRun() { return {state: true}; } // overload me
   preStop() { return {state: true}; } // overload me
   postStop() { return {state: true}; } // overload me
 
@@ -358,7 +359,6 @@ class testRunner {
 
     this.customInstanceInfos['preStart'] = this.preStart();
     if (this.customInstanceInfos.preStart.state === false) {
-      print(this.customInstanceInfos.preStart)
       return {
         setup: {
           status: false,
@@ -438,7 +438,9 @@ class testRunner {
 
           if (reply.hasOwnProperty('status')) {
             this.results[te] = reply;
-            this.results[te]['processStats'] = pu.getDeltaProcessStats(this.instanceInfo);
+            if (!this.options.disableClusterMonitor) {
+              this.results[te]['processStats'] = pu.getDeltaProcessStats(this.instanceInfo);
+            }
 
             if (this.results[te].status === false) {
               this.options.cleanup = false;
@@ -477,6 +479,7 @@ class testRunner {
 
             ++loopCount;
           }
+          this.postRun();
         }
       } else {
         if (this.options.extremeVerbosity) {
