@@ -39,119 +39,8 @@ auto to_string(Action const& action) -> std::string_view {
   return std::visit([](auto&& arg) { return arg.name; }, action);
 }
 
-void VelocyPacker::operator()(EmptyAction const& action) {
-  builder.add(VPackValue("type"));
-  builder.add(VPackValue(action.name));
-}
-
-void VelocyPacker::operator()(ErrorAction const& action) {
-  builder.add(VPackValue("type"));
-  builder.add(VPackValue(action.name));
-
-  builder.add(VPackValue("error"));
-  ::toVelocyPack(action._error, builder);
-}
-
-void VelocyPacker::operator()(AddLogToPlanAction const& action) {
-  builder.add(VPackValue("type"));
-  builder.add(VPackValue(action.name));
-}
-
-void VelocyPacker::operator()(CreateInitialTermAction const& action) {
-  builder.add(VPackValue("type"));
-  builder.add(VPackValue(action.name));
-}
-
-void VelocyPacker::operator()(CurrentNotAvailableAction const& action) {
-  builder.add(VPackValue("type"));
-  builder.add(VPackValue(action.name));
-}
-
-void VelocyPacker::operator()(DictateLeaderAction const& action) {
-  builder.add(VPackValue("type"));
-  builder.add(VPackValue(action.name));
-
-  builder.add(VPackValue("newLeader"));
-  action._leader.toVelocyPack(builder);
-}
-
-void VelocyPacker::operator()(DictateLeaderFailedAction const& action) {
-  builder.add(VPackValue("type"));
-  builder.add(VPackValue(action.name));
-
-  builder.add(VPackValue("message"));
-  builder.add(VPackValue(action._message));
-}
-
-void VelocyPacker::operator()(EvictLeaderAction const& action) {
-  builder.add(VPackValue("type"));
-  builder.add(VPackValue(action.name));
-}
-
-void VelocyPacker::operator()(WriteEmptyTermAction const& action) {
-  builder.add(VPackValue("type"));
-  builder.add(VPackValue(action.name));
-}
-
-void VelocyPacker::operator()(LeaderElectionImpossibleAction const& action) {
-  builder.add(VPackValue("type"));
-  builder.add(VPackValue(action.name));
-}
-
-void VelocyPacker::operator()(LeaderElectionOutOfBoundsAction const& action) {
-  builder.add(VPackValue("type"));
-  builder.add(VPackValue(action.name));
-}
-
-void VelocyPacker::operator()(
-    LeaderElectionQuorumNotReachedAction const& action) {
-  builder.add(VPackValue("type"));
-  builder.add(VPackValue(action.name));
-};
-
-void VelocyPacker::operator()(LeaderElectionAction const& action) {
-  builder.add(VPackValue("type"));
-  builder.add(VPackValue(action.name));
-
-  builder.add(VPackValue("campaign"));
-  action._electionReport.toVelocyPack(builder);
-
-  builder.add(VPackValue("newLeader"));
-  action._electedLeader.toVelocyPack(builder);
-}
-
-void VelocyPacker::operator()(UpdateParticipantFlagsAction const& action) {
-  builder.add(VPackValue("type"));
-  builder.add(VPackValue(action.name));
-
-  builder.add("participant", VPackValue(action._participant));
-  builder.add(VPackValue("flags"));
-  action._flags.toVelocyPack(builder);
-}
-
-void VelocyPacker::operator()(AddParticipantToPlanAction const& action) {
-  builder.add(VPackValue("type"));
-  builder.add(VPackValue(action.name));
-}
-
-void VelocyPacker::operator()(RemoveParticipantFromPlanAction const& action) {
-  builder.add("type", action.name);
-  builder.add("participant", action._participant);
-}
-
-void VelocyPacker::operator()(UpdateLogConfigAction const& action) {
-  builder.add(VPackValue("type"));
-  builder.add(VPackValue(action.name));
-}
-
-void VelocyPacker::operator()(ConvergedToTargetAction const& action) {
-  builder.add(VPackValue("type"));
-  builder.add(VPackValue(action.name));
-}
-
 void toVelocyPack(Action const& action, VPackBuilder& builder) {
-  auto packer = VelocyPacker(builder);
-  std::visit(packer, action);
+  std::visit([&builder](auto&& arg) { serialize(builder, arg); }, action);
 }
 
 auto execute(Action const& action, DatabaseID const& dbName, LogId const& log,
@@ -177,17 +66,8 @@ auto execute(Action const& action, DatabaseID const& dbName, LogId const& log,
 
   std::visit([&](auto& action) { action.execute(ctx); }, action);
 
-  if (!ctx.hasModification()) {
+  if (std::holds_alternative<EmptyAction>(action)) {
     return envelope;
-  }
-
-  if (ctx.hasPlanModification()) {
-    VPackBuilder b;
-    ctx.getPlan().toVelocyPack(b);
-  }
-  if (ctx.hasCurrentModification()) {
-    VPackBuilder b;
-    ctx.getCurrent().toVelocyPack(b);
   }
 
   return envelope.write()

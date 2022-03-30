@@ -123,8 +123,9 @@ auto ReplicatedState<S>::getLeader() const -> std::shared_ptr<LeaderType> {
   if (auto internalState = std::dynamic_pointer_cast<LeaderStateManager<S>>(
           guard->currentManager);
       internalState) {
-    if (internalState->state != nullptr) {
-      return std::static_pointer_cast<LeaderType>(internalState->state);
+    if (auto state = internalState->getImplementationState();
+        state != nullptr) {
+      return std::static_pointer_cast<LeaderType>(state);
     }
   }
   return nullptr;
