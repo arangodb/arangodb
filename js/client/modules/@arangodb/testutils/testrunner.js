@@ -25,9 +25,6 @@
 // / @author Wilfried Goesgens
 // //////////////////////////////////////////////////////////////////////////////
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief runs a list of tests
-// //////////////////////////////////////////////////////////////////////////////
 const _ = require('lodash');
 const fs = require('fs');
 const pu = require('@arangodb/testutils/process-utils');
@@ -43,6 +40,212 @@ const YELLOW = require('internal').COLORS.COLOR_YELLOW;
 
 let didSplitBuckets = false;
 
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief checks no new users were left on the SUT by tests
+// //////////////////////////////////////////////////////////////////////////////
+let usersTests = {
+  name: 'users',
+  setUp: function (te) {
+    this.usersCount = userManager.all().length;
+    return true;
+  },
+  runCheck: function (te) {
+    if (userManager.all().length !== this.usersCount) {
+      this.continueTesting = false;
+      this.results[te] = {
+        status: false,
+        message: 'Cleanup of users missing - found users left over: [ ' +
+          JSON.stringify(userManager.all()) +
+          ' ] - Original test status: ' +
+          JSON.stringify(this.results[te])
+      };
+      return false;
+    }
+    return true;
+  }
+};
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief checks that no new collections were left on the SUT. 
+// //////////////////////////////////////////////////////////////////////////////
+let collectionsTest = {
+  name: 'collections',
+  setUp: function(obj, te) {
+    try {
+      db._collections().forEach(collection => {
+        obj.collectionsBefore.push(collection._name);
+      });
+    } catch (x) {
+      obj.results[te] = {
+        status: false,
+        message: 'failed to fetch the previously available collections: ' + x.message
+      };
+      obj.continueTesting = false;
+      obj.serverDead = true;
+      return false;
+    }
+    return true;
+  },
+  runCheck: function(obj, te) {
+    let collectionsAfter = [];
+    try {
+      db._collections().forEach(collection => {
+        collectionsAfter.push(collection._name);
+      });
+    } catch (x) {
+      obj.results[te] = {
+        status: false,
+        message: 'failed to fetch the currently available collections: ' + x.message + '. Original test status: ' + JSON.stringify(obj.results[te])
+      };
+      obj.continueTesting = false;
+      return false;
+    }
+    let delta = tu.diffArray(obj.collectionsBefore, collectionsAfter).filter(function(name) {
+      return ! ((name[0] === '_') || (name === "compact") || (name === "election")
+                || (name === "log")); // exclude system/agency collections from the comparison
+      return (name[0] !== '_'); // exclude system collections from the comparison
+    });
+    if (delta.length !== 0) {
+      obj.results[te] = {
+        status: false,
+        message: 'Cleanup missing - test left over collection:' + delta + '. Original test status: ' + JSON.stringify(obj.results[te])
+      };
+      return false;
+    }
+    return true;
+  }
+};
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief checks that no new views were left on the SUT. 
+// //////////////////////////////////////////////////////////////////////////////
+let viewsTest = {
+  name: 'views',
+  setUp: function(obj, te) {
+    try {
+      db._views().forEach(view => {
+        obj.viewsBefore.push(view._name);
+      });
+    } catch (x) {
+      obj.results[te] = {
+        status: false,
+        message: 'failed to fetch the previously available views: ' + x.message
+      };
+      obj.continueTesting = false;
+      obj.serverDead = true;
+      return false;
+    }
+    return true;
+  },
+  runCheck: function(obj, te) {
+    let viewsAfter = [];
+    try {
+      db._views().forEach(view => {
+        viewsAfter.push(view._name);
+      });
+    } catch (x) {
+      obj.results[te] = {
+        status: false,
+        message: 'failed to fetch the currently available views: ' + x.message + '. Original test status: ' + JSON.stringify(obj.results[te])
+      };
+      obj.continueTesting = false;
+      return false;
+    }
+    let delta = tu.diffArray(obj.viewsBefore, viewsAfter).filter(function(name) {
+      return ! ((name[0] === '_') || (name === "compact") || (name === "election")
+                || (name === "log")); // exclude system/agency collections from the comparison
+    });
+    if (delta.length !== 0) {
+      obj.results[te] = {
+        status: false,
+        message: 'Cleanup missing - test left over view:' + delta + '. Original test status: ' + JSON.stringify(obj.results[te])
+      };
+      return false;
+    }
+    return true;
+  }
+};
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief checks that no new graphs were left on the SUT. 
+// //////////////////////////////////////////////////////////////////////////////
+let graphsTest = {
+  name: 'graphs',
+  setUp: function(obj, te) {
+    obj.graphCount = db._collection('_graphs').count();
+    return true;
+  },
+  runCheck: function(obj, te) {
+    let graphs;
+    try {
+      graphs = db._collection('_graphs');
+    } catch (x) {
+      obj.results[te] = {
+        status: false,
+        message: 'failed to fetch the graphs: ' + x.message + '. Original test status: ' + JSON.stringify(obj.results[te])
+      };
+      obj.continueTesting = false;
+      return false;
+    }
+    if (graphs && graphs.count() !== obj.graphCount) {
+      obj.results[te] = {
+        status: false,
+        message: 'Cleanup of graphs missing - found graph definitions: [ ' +
+          JSON.stringify(graphs.toArray()) +
+          ' ] - Original test status: ' +
+          JSON.stringify(obj.results[te])
+      };
+      obj.graphCount = graphs.count();
+      return false;
+    }
+    return true;
+  }
+};
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief checks that no new databases were left on the SUT. 
+// //////////////////////////////////////////////////////////////////////////////
+let databasesTest = {
+  name: 'databases',
+  setUp: function(obj, te){ return true;},
+  runCheck: function(obj, te) {
+    // TODO: we are currently filtering out the UnitTestDB here because it is 
+    // created and not cleaned up by a lot of the `authentication` tests. This
+    // should be fixed eventually
+    let databasesAfter = db._databases().filter((name) => name !== 'UnitTestDB');
+    if (databasesAfter.length !== 1 || databasesAfter[0] !== '_system') {
+      obj.results[te] = {
+        status: false,
+        message: 'Cleanup missing - test left over databases: ' + JSON.stringify(databasesAfter) + '. Original test status: ' + JSON.stringify(obj.results[te])
+      };
+      obj.continueTesting = false;
+      return false;
+    }
+    return true;
+  }
+};
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief checks that no failure points were left engaged on the SUT. 
+// //////////////////////////////////////////////////////////////////////////////
+let failurePointsCheck = {
+  name: 'failurepoints',
+  setUp: function(obj, te) { return true; },
+  runCheck: function(obj, te) {
+    let failurePoints = pu.checkServerFailurePoints(obj.instanceInfo);
+    if (failurePoints.length > 0) {
+      obj.continueTesting = false;
+      obj.results[te] = {
+        status: false,
+        message: 'Cleanup of failure points missing - found failure points engaged: [ ' +
+          JSON.stringify(failurePoints) +
+          ' ] - Original test status: ' +
+          JSON.stringify(obj.results[te])
+      };
+      return false;
+    }
+  }
+};
 
 class testRunner {
   constructor(options, testname, serverOptions, checkUsers=true, checkCollections=true) {
@@ -64,217 +267,49 @@ class testRunner {
     this.continueTesting = true;
     this.usersCount = 0;
     this.cleanupChecks = [ ];
-    let usersTests = {
-      name: 'users',
-      setUp: function (te) {
-        this.usersCount = userManager.all().length;
-        return true;
-      },
-      runCheck: function (te) {
-        if (userManager.all().length !== this.usersCount) {
-          this.continueTesting = false;
-          this.results[te] = {
-            status: false,
-            message: 'Cleanup of users missing - found users left over: [ ' +
-              JSON.stringify(userManager.all()) +
-              ' ] - Original test status: ' +
-              JSON.stringify(this.results[te])
-          };
-          return false;
-        }
-        return true;
-      }
-    };
     if (checkUsers) {
       this.cleanupChecks.push(usersTests);
     }
-    this.cleanupChecks.push({
-      name: 'databases',
-      setUp: function(obj, te){ return true;},
-      runCheck: function(obj, te) {
-        // TODO: we are currently filtering out the UnitTestDB here because it is 
-        // created and not cleaned up by a lot of the `authentication` tests. This
-        // should be fixed eventually
-        let databasesAfter = db._databases().filter((name) => name !== 'UnitTestDB');
-        if (databasesAfter.length !== 1 || databasesAfter[0] !== '_system') {
-          obj.results[te] = {
-            status: false,
-            message: 'Cleanup missing - test left over databases: ' + JSON.stringify(databasesAfter) + '. Original test status: ' + JSON.stringify(obj.results[te])
-          };
-          obj.continueTesting = false;
-          return false;
-        }
-        return true;
-      }
-    });
+    this.cleanupChecks.push(databasesTest);
     this.collectionsBefore = [];
     if (checkCollections) {
-      this.cleanupChecks.push({
-        name: 'collections',
-        setUp: function(obj, te) {
-          try {
-            db._collections().forEach(collection => {
-              obj.collectionsBefore.push(collection._name);
-            });
-          } catch (x) {
-            obj.results[te] = {
-              status: false,
-              message: 'failed to fetch the previously available collections: ' + x.message
-            };
-            obj.continueTesting = false;
-            obj.serverDead = true;
-            return false;
-          }
-          return true;
-        },
-        runCheck: function(obj, te) {
-          let collectionsAfter = [];
-          try {
-            db._collections().forEach(collection => {
-              collectionsAfter.push(collection._name);
-            });
-          } catch (x) {
-            obj.results[te] = {
-              status: false,
-              message: 'failed to fetch the currently available collections: ' + x.message + '. Original test status: ' + JSON.stringify(obj.results[te])
-            };
-            obj.continueTesting = false;
-            return false;
-          }
-          let delta = tu.diffArray(obj.collectionsBefore, collectionsAfter).filter(function(name) {
-            return ! ((name[0] === '_') || (name === "compact") || (name === "election")
-                      || (name === "log")); // exclude system/agency collections from the comparison
-            return (name[0] !== '_'); // exclude system collections from the comparison
-          });
-          if (delta.length !== 0) {
-            obj.results[te] = {
-              status: false,
-              message: 'Cleanup missing - test left over collection:' + delta + '. Original test status: ' + JSON.stringify(obj.results[te])
-            };
-            return false;
-          }
-          return true;
-        }
-      });
+      this.cleanupChecks.push(collectionsTest);
     }
     this.viewsBefore = [];
     if (checkCollections) {
-      this.cleanupChecks.push({
-        name: 'views',
-        setUp: function(obj, te) {
-          try {
-            db._views().forEach(view => {
-              obj.viewsBefore.push(view._name);
-            });
-          } catch (x) {
-            obj.results[te] = {
-              status: false,
-              message: 'failed to fetch the previously available views: ' + x.message
-            };
-            obj.continueTesting = false;
-            obj.serverDead = true;
-            return false;
-          }
-          return true;
-        },
-        runCheck: function(obj, te) {
-          let viewsAfter = [];
-          try {
-            db._views().forEach(view => {
-              viewsAfter.push(view._name);
-            });
-          } catch (x) {
-            obj.results[te] = {
-              status: false,
-              message: 'failed to fetch the currently available views: ' + x.message + '. Original test status: ' + JSON.stringify(obj.results[te])
-            };
-            obj.continueTesting = false;
-            return false;
-          }
-          let delta = tu.diffArray(obj.viewsBefore, viewsAfter).filter(function(name) {
-            return ! ((name[0] === '_') || (name === "compact") || (name === "election")
-                      || (name === "log")); // exclude system/agency collections from the comparison
-          });
-          if (delta.length !== 0) {
-            obj.results[te] = {
-              status: false,
-              message: 'Cleanup missing - test left over view:' + delta + '. Original test status: ' + JSON.stringify(obj.results[te])
-            };
-            return false;
-          }
-          return true;
-        }
-      });
+      this.cleanupChecks.push(viewsTest);
     }
     this.graphCount = 0;
     if (checkCollections) {
-      this.cleanupChecks.push({
-        name: 'graphs',
-        setUp: function(obj, te) {
-          obj.graphCount = db._collection('_graphs').count();
-          return true;
-        },
-        runCheck: function(obj, te) {
-          let graphs;
-          try {
-            graphs = db._collection('_graphs');
-          } catch (x) {
-            obj.results[te] = {
-              status: false,
-              message: 'failed to fetch the graphs: ' + x.message + '. Original test status: ' + JSON.stringify(obj.results[te])
-            };
-            obj.continueTesting = false;
-            return false;
-          }
-          if (graphs && graphs.count() !== obj.graphCount) {
-            obj.results[te] = {
-              status: false,
-              message: 'Cleanup of graphs missing - found graph definitions: [ ' +
-                JSON.stringify(graphs.toArray()) +
-                ' ] - Original test status: ' +
-                JSON.stringify(obj.results[te])
-            };
-            obj.graphCount = graphs.count();
-            return false;
-          }
-          return true;
-        }
-      });
+      this.cleanupChecks.push(graphsTest);
     }
-    this.cleanupChecks.push({
-      name: 'failurepoints',
-      setUp: function(obj, te) { return true; },
-      runCheck: function(obj, te) {
-        let failurePoints = pu.checkServerFailurePoints(obj.instanceInfo);
-        if (failurePoints.length > 0) {
-          obj.continueTesting = false;
-          obj.results[te] = {
-            status: false,
-            message: 'Cleanup of failure points missing - found failure points engaged: [ ' +
-              JSON.stringify(failurePoints) +
-              ' ] - Original test status: ' +
-              JSON.stringify(obj.results[te])
-          };
-          return false;
-        }
-      }
-    });
+    this.cleanupChecks.push();
 
   }
-  preStart() { return {state: true}; } // overload me
-  startFailed() { return {state: true}; } // overload me
-  postStart() { return {state: true}; } // overload me
-  preRun() { return {state: true}; } // overload me
-  postRun() { return {state: true}; } // overload me
-  preStop() { return {state: true}; } // overload me
-  postStop() { return {state: true}; } // overload me
 
-  alive() { return true; }
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief Hooks that you can overload to be invoked in different phases:
+  // //////////////////////////////////////////////////////////////////////////////
+  preStart() { return {state: true}; } // before launching the SUT
+  startFailed() { return {state: true}; } // if launching the SUT failed..
+  postStart() { return {state: true}; } // after successfull launch of the SUT
+  preRun() { return {state: true}; } // before each test
+  postRun() { return {state: true}; } // after each test
+  preStop() { return {state: true}; } // before shutting down the SUT
+  postStop() { return {state: true}; } // after shutting down the SUT
+  alive() { return true; } // after each testrun, check whether the SUT is alaive and well
+  
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief checks whether the SUT is alive and well:
+  // //////////////////////////////////////////////////////////////////////////////
   healthCheck() {
     return pu.arangod.check.instanceAlive(this.instanceInfo, this.options) &&
       this.alive();
   }
 
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief something is wrong. cook a summary for the spectator.
+  // //////////////////////////////////////////////////////////////////////////////
   abortTestOnError(te) {
     if (!this.results.hasOwnProperty('SKIPPED')) {
       print('oops! Skipping remaining tests, server is unavailable for testing.');
@@ -301,6 +336,9 @@ class testRunner {
 
   }
 
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief checks for cluster wellbeing.
+  // //////////////////////////////////////////////////////////////////////////////
   loadClusterTestStabilityInfo(){
     try {
       if (this.instanceInfo.hasOwnProperty('clusterHealthMonitorFile')) {
@@ -334,11 +372,19 @@ class testRunner {
       print(x);
     }
   }
-  
+
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief hook to replace with your way to invoke one test; existing overloads:
+  //   - tu.runOnArangodRunner - spawn the test on the arangod / coordinator via .js
+  //   - tu.runInArangoshRunner - spawn an arangosh to launch the test in
+  //   - tu.runLocalInArangoshRunner - eval the test into the current arangosh
+  // //////////////////////////////////////////////////////////////////////////////
   runOneTest(testCase) {
     throw new Error("must overload the runOneTest function!");
   }
+
   ////////////////////////////////////////////////////////////////////////////////
+  // Main loop - launch the SUT, iterate over testList, shut down
   run(testList) {
     this.testList = testList;
     if (this.testList.length === 0) {
