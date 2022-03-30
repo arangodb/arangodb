@@ -138,7 +138,7 @@ void IndexIterator::skipImpl(uint64_t count, uint64_t& skipped) {
 ///        If callback is called less than limit many times
 ///        all iterators are exhausted
 bool MultiIndexIterator::nextImpl(LocalDocumentIdCallback const& callback,
-                                  size_t limit) {
+                                  uint64_t limit) {
   auto cb = [&limit, &callback](LocalDocumentId const& token) {
     if (callback(token)) {
       --limit;
@@ -167,7 +167,7 @@ bool MultiIndexIterator::nextImpl(LocalDocumentIdCallback const& callback,
 ///        If callback is called less than limit many times
 ///        all iterators are exhausted
 bool MultiIndexIterator::nextDocumentImpl(DocumentCallback const& callback,
-                                          size_t limit) {
+                                          uint64_t limit) {
   auto cb = [&limit, &callback](LocalDocumentId const& token,
                                 arangodb::velocypack::Slice slice) {
     if (callback(token, slice)) {
@@ -197,7 +197,7 @@ bool MultiIndexIterator::nextDocumentImpl(DocumentCallback const& callback,
 ///        If callback is called less than limit many times
 ///        all iterators are exhausted
 bool MultiIndexIterator::nextCoveringImpl(CoveringCallback const& callback,
-                                          size_t limit) {
+                                          uint64_t limit) {
   auto cb = [&limit, &callback](LocalDocumentId const& token,
                                 IndexIteratorCoveringData& data) {
     if (callback(token, data)) {

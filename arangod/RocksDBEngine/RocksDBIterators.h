@@ -32,7 +32,6 @@
 namespace rocksdb {
 class Iterator;
 class Comparator;
-class ReadOptions;
 class TransactionDB;
 }  // namespace rocksdb
 
