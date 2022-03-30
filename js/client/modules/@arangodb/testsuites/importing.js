@@ -450,7 +450,7 @@ class importRunner extends tu.runInArangoshRunner {
   }
 }
 function importing (options) {
-  return new importRunner(options, "importing").run()
+  return new importRunner(options, "importing").run();
 }
 exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
