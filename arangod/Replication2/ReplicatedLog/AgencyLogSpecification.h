@@ -340,7 +340,7 @@ auto inspect(Inspector& f, LogCurrent::ActionDummy& x) {
     x = LogCurrent::ActionDummy{};
   } else {
   }
-  return arangodb::inspection::Result{};
+  return arangodb::inspection::Status::Success{};
 }
 
 template<class Inspector>
