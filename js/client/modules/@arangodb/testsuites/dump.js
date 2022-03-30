@@ -382,7 +382,7 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
 
   runReTests(file, database) {
     this.print('revalidating modifications - ' + file);
-    db._useDatabase(database);
+    this.addArgs = {'server.database': database};
     this.results.test = this.runOneTest(file);
     this.addArgs = undefined;
     return this.validate(this.results.test);
