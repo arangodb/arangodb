@@ -58,7 +58,6 @@ struct FollowerAppendEntriesTest : ReplicatedLogTest {
       -> std::shared_ptr<ReplicatedLog> {
     auto persisted = makeDelayedPersistedLog(LogId{3});
     auto core = std::make_unique<LogCore>(persisted);
-    ;
     auto log = std::make_shared<ReplicatedLog>(std::move(core), _logMetricsMock,
                                                _optionsMock, defaultLogger());
     log->becomeFollower(std::move(id), term, std::move(leaderId));
