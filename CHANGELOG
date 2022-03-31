@@ -1,6 +1,11 @@
 v3.9.1 (XXXX-XX-XX)
 -------------------
 
+* Remove error handling fetching license information to improve user
+  experience. To display the license informationn in the UI is only
+  informational. It disturbs the user experience to know somthing went wrong
+  and doesn't provide any important information for the user.
+  
 * Added new server option: --icu-language. Used instead of --default-language to
   set pure ICU collator.
   For example, in Sweden language("sv") lowercase letters should precede
