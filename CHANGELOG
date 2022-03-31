@@ -9,7 +9,7 @@ devel
   queues becoming full and not being able to hold more items.
   Now we go with a variable length queue instead, which only requires a
   small amount of memory initially, and allocate more memory only when needed.
-  Freelists for reusing statistics items are still presents to avoid lots of
+  Freelists for reusing statistics items are still present to avoid lots of
   reallocations.
   The change also reduces the size of the executable's .bss section by more 
   than 10MB.
