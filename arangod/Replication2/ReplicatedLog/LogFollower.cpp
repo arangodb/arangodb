@@ -450,6 +450,12 @@ replicated_log::LogFollower::LogFollower(
 auto replicated_log::LogFollower::waitFor(LogIndex idx)
     -> replicated_log::ILogParticipant::WaitForFuture {
   auto self = _guardedFollowerData.getLockedGuard();
+  if (self->_didResign) {
+    auto promise = WaitForPromise{};
+    promise.setException(ParticipantResignedException(
+        TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED, ADB_HERE));
+    return promise.getFuture();
+  }
   if (self->_commitIndex >= idx) {
     return futures::Future<WaitForResult>{
         std::in_place, self->_commitIndex,
