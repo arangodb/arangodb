@@ -1278,12 +1278,6 @@ arangodb::Result PhysicalCollectionMock::lookupKey(
   return arangodb::Result(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
 }
 
-size_t PhysicalCollectionMock::memory() const {
-  before();
-  TRI_ASSERT(false);
-  return 0;
-}
-
 uint64_t PhysicalCollectionMock::numberDocuments(
     arangodb::transaction::Methods*) const {
   before();
