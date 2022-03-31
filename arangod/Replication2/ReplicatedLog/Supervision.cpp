@@ -366,28 +366,45 @@ auto getRemovedParticipant(ParticipantsFlagsMap const& targetParticipants,
 }
 
 // Pick leader at random from participants
-// TODO: should respect allowed as leader?
-auto pickLeader(ParticipantsFlagsMap const& participants,
-                ParticipantsHealth const& health)
-    -> std::optional<LogPlanTermSpecification::Leader> {
+auto pickRandomParticipantToBeLeader(ParticipantsFlagsMap const& participants,
+                                     ParticipantsHealth const& health)
+    -> std::optional<ParticipantId> {
   auto acceptableParticipants = std::vector<ParticipantId>{};
+
   for (auto [part, flags] : participants) {
-    if (flags.allowedAsLeader) {
+    if (flags.allowedAsLeader && health._health.contains(part)) {
       acceptableParticipants.emplace_back(part);
     }
   }
 
-  auto p = acceptableParticipants.begin();
-  std::advance(p, RandomGenerator::interval(participants.size()));
+  if (acceptableParticipants.size() > 0) {
+    auto p = acceptableParticipants.begin();
+    std::advance(p, RandomGenerator::interval(acceptableParticipants.size()));
 
-  auto participant = *p;
-
-  if (auto it = health._health.find(participant);
-      it != std::end(health._health)) {
-    return LogPlanTermSpecification::Leader{participant, it->second.rebootId};
-  } else {
-    return std::nullopt;
+    return *p;
   }
+
+  return std::nullopt;
+}
+
+auto pickLeader(std::optional<ParticipantId> targetLeader,
+                ParticipantsFlagsMap const& participants,
+                ParticipantsHealth const& health)
+    -> std::optional<LogPlanTermSpecification::Leader> {
+  auto leaderId = targetLeader;
+
+  if (!leaderId) {
+    leaderId = pickRandomParticipantToBeLeader(participants, health);
+  }
+
+  if (leaderId.has_value()) {
+    auto rebootId = health.getRebootId(*leaderId);
+    if (rebootId.has_value()) {
+      return LogPlanTermSpecification::Leader{*leaderId, *rebootId};
+    }
+  };
+
+  return std::nullopt;
 }
 
 //
@@ -419,7 +436,7 @@ auto checkReplicatedLog(LogTarget const& target,
       return ErrorAction(
           LogCurrentSupervisionError::TARGET_NOT_ENOUGH_PARTICIPANTS);
     } else {
-      auto leader = pickLeader(target.participants, health);
+      auto leader = pickLeader(target.leader, target.participants, health);
       return AddLogToPlanAction(target.id, target.participants, target.config,
                                 leader);
     }
