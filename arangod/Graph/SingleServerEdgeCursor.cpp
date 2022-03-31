@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,7 +23,10 @@
 
 #include "SingleServerEdgeCursor.h"
 
+#include "Aql/AttributeNamePath.h"
+#include "Aql/Projections.h"
 #include "Aql/AstNode.h"
+#include "Basics/StaticStrings.h"
 #include "Graph/BaseOptions.h"
 #include "Graph/EdgeDocumentToken.h"
 #include "Graph/TraverserCache.h"
@@ -37,6 +40,27 @@
 using namespace arangodb;
 using namespace arangodb::graph;
 
+namespace {
+void PrepareIndexCondition(BaseOptions::LookupInfo const& info,
+                           std::string_view vertex) {
+  auto& node = info.indexCondition;
+  TRI_ASSERT(node->numMembers() > 0);
+  if (info.conditionNeedUpdate) {
+    // We have to inject _from/_to iff the condition needs it
+    auto dirCmp = node->getMemberUnchecked(info.conditionMemberToUpdate);
+    TRI_ASSERT(dirCmp->type == aql::NODE_TYPE_OPERATOR_BINARY_EQ);
+    TRI_ASSERT(dirCmp->numMembers() == 2);
+
+    auto idNode = dirCmp->getMemberUnchecked(1);
+    TRI_ASSERT(idNode->type == aql::NODE_TYPE_VALUE);
+    TRI_ASSERT(idNode->isValueType(aql::VALUE_TYPE_STRING));
+    // must edit node in place; TODO replace node?
+    TEMPORARILY_UNLOCK_NODE(idNode);
+    idNode->setStringValue(vertex.data(), vertex.length());
+  }
+}
+}  // namespace
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Get a document by it's ID. Also lazy locks the collection.
 ///        If DOCUMENT_NOT_FOUND this function will return normally
@@ -44,10 +68,10 @@ using namespace arangodb::graph;
 ///        On all other cases this function throws.
 ////////////////////////////////////////////////////////////////////////////////
 
-SingleServerEdgeCursor::SingleServerEdgeCursor(BaseOptions* opts,
-                                               aql::Variable const* tmpVar,
-                                               std::vector<size_t> const* mapping,
-                                               std::vector<BaseOptions::LookupInfo> const& lookupInfo)
+SingleServerEdgeCursor::SingleServerEdgeCursor(
+    BaseOptions* opts, aql::Variable const* tmpVar,
+    std::vector<size_t> const* mapping,
+    std::vector<BaseOptions::LookupInfo> const& lookupInfo)
     : _opts(opts),
       _trx(opts->trx()),
       _tmpVar(tmpVar),
@@ -68,45 +92,50 @@ SingleServerEdgeCursor::SingleServerEdgeCursor(BaseOptions* opts,
 SingleServerEdgeCursor::~SingleServerEdgeCursor() = default;
 
 #ifdef USE_ENTERPRISE
-static bool CheckInaccessible(transaction::Methods* trx, VPackSlice const& edge) {
+static bool CheckInaccessible(transaction::Methods* trx, VPackSlice edge) {
   // for skipInaccessibleCollections we need to check the edge
   // document, in that case nextWithExtra has no benefit
   TRI_ASSERT(edge.isString());
-  arangodb::velocypack::StringRef str(edge);
+  std::string_view str(edge.stringView());
   size_t pos = str.find('/');
-  TRI_ASSERT(pos != std::string::npos);
-  return trx->isInaccessibleCollection(str.substr(0, pos).toString());
+  TRI_ASSERT(pos != std::string_view::npos);
+  return trx->isInaccessibleCollection(str.substr(0, pos));
 }
 #endif
 
-void SingleServerEdgeCursor::getDocAndRunCallback(IndexIterator* cursor, EdgeCursor::Callback const& callback) {
+void SingleServerEdgeCursor::getDocAndRunCallback(
+    IndexIterator* cursor, EdgeCursor::Callback const& callback) {
   auto collection = cursor->collection();
   EdgeDocumentToken etkn(collection->id(), _cache[_cachePos++]);
   collection->getPhysical()->read(
-      _trx, etkn.localDocumentId(), [&](LocalDocumentId const&, VPackSlice edgeDoc) {
+      _trx, etkn.localDocumentId(),
+      [&](LocalDocumentId const&, VPackSlice edgeDoc) {
 #ifdef USE_ENTERPRISE
         if (_trx->skipInaccessible()) {
           // TODO: we only need to check one of these
-          VPackSlice from = transaction::helpers::extractFromFromDocument(edgeDoc);
+          VPackSlice from =
+              transaction::helpers::extractFromFromDocument(edgeDoc);
           VPackSlice to = transaction::helpers::extractToFromDocument(edgeDoc);
           if (CheckInaccessible(_trx, from) || CheckInaccessible(_trx, to)) {
             return false;
           }
         }
 #endif
-        _opts->cache()->increaseCounter();
+        _opts->cache()->incrDocuments();
         if (_internalCursorMapping != nullptr) {
           TRI_ASSERT(_currentCursor < _internalCursorMapping->size());
-          callback(std::move(etkn), edgeDoc, _internalCursorMapping->at(_currentCursor));
+          callback(std::move(etkn), edgeDoc,
+                   _internalCursorMapping->at(_currentCursor));
         } else {
           callback(std::move(etkn), edgeDoc, _currentCursor);
         }
         return true;
-      });
+      },
+      ReadOwnWrites::no);
 }
 
-bool SingleServerEdgeCursor::advanceCursor(IndexIterator*& cursor,
-                                           std::vector<std::unique_ptr<IndexIterator>>*& cursorSet) {
+bool SingleServerEdgeCursor::advanceCursor(
+    IndexIterator*& cursor, std::vector<CursorInfo>*& cursorSet) {
   TRI_ASSERT(!_cursors.empty());
   ++_currentSubCursor;
   if (_currentSubCursor >= cursorSet->size()) {
@@ -119,7 +148,7 @@ bool SingleServerEdgeCursor::advanceCursor(IndexIterator*& cursor,
     cursorSet = &_cursors[_currentCursor];
   }
 
-  cursor = (*cursorSet)[_currentSubCursor].get();
+  cursor = (*cursorSet)[_currentSubCursor].cursor.get();
   // If we switch the cursor. We have to clear the cache.
   _cache.clear();
   return true;
@@ -127,9 +156,12 @@ bool SingleServerEdgeCursor::advanceCursor(IndexIterator*& cursor,
 
 bool SingleServerEdgeCursor::next(EdgeCursor::Callback const& callback) {
   // fills callback with next EdgeDocumentToken and Slice that contains the
-  // ohter side of the edge (we are standing on a node and want to iterate all
+  // other side of the edge (we are standing on a node and want to iterate all
   // connected edges
   TRI_ASSERT(!_cursors.empty());
+
+  // curiously enough, this method is only called in the cluster, but not
+  // on single servers.
 
   if (_currentCursor == _cursors.size()) {
     return false;
@@ -138,7 +170,8 @@ bool SingleServerEdgeCursor::next(EdgeCursor::Callback const& callback) {
   // There is still something in the cache
   if (_cachePos < _cache.size()) {
     // get the collection
-    getDocAndRunCallback(_cursors[_currentCursor][_currentSubCursor].get(), callback);
+    getDocAndRunCallback(
+        _cursors[_currentCursor][_currentSubCursor].cursor.get(), callback);
     return true;
   }
 
@@ -147,52 +180,66 @@ bool SingleServerEdgeCursor::next(EdgeCursor::Callback const& callback) {
   auto* cursorSet = &_cursors[_currentCursor];
 
   // get current cursor
-  auto cursor = (*cursorSet)[_currentSubCursor].get();
+  auto cursor = (*cursorSet)[_currentSubCursor].cursor.get();
+  uint16_t coveringPosition =
+      (*cursorSet)[_currentSubCursor].coveringIndexPosition;
+  TRI_ASSERT(cursor != nullptr);
 
   // NOTE: We cannot clear the cache,
-  // because the cursor expect's it to be filled.
+  // because the cursor expects it to be filled.
   do {
     if (cursorSet->empty() || !cursor->hasMore()) {
       if (!advanceCursor(cursor, cursorSet)) {
         return false;
       }
     } else {
-      if (cursor->hasExtra()) {
+      if (aql::Projections::isCoveringIndexPosition(coveringPosition)) {
         bool operationSuccessful = false;
-        auto extraCB = [&](LocalDocumentId const& token, VPackSlice edge) {
-          if (token.isSet()) {
+        cursor->nextCovering(
+            [&](LocalDocumentId const& token,
+                IndexIteratorCoveringData& covering) {
+              TRI_ASSERT(covering.isArray());
+              VPackSlice edge = covering.at(coveringPosition);
+              TRI_ASSERT(edge.isString());
+
+              if (token.isSet()) {
 #ifdef USE_ENTERPRISE
-            if (_trx->skipInaccessible() && CheckInaccessible(_trx, edge)) {
-              return false;
-            }
+                if (_trx->skipInaccessible() && CheckInaccessible(_trx, edge)) {
+                  return false;
+                }
 #endif
-            operationSuccessful = true;
-            auto etkn = EdgeDocumentToken(cursor->collection()->id(), token);
-            if (_internalCursorMapping != nullptr) {
-              TRI_ASSERT(_currentCursor < _internalCursorMapping->size());
-              callback(std::move(etkn), edge, _internalCursorMapping->at(_currentCursor));
-            } else {
-              callback(std::move(etkn), edge, _currentCursor);
-            }
-            return true;
-          }
-          return false;
-        };
-        cursor->nextExtra(extraCB, 1);
+                operationSuccessful = true;
+                auto etkn =
+                    EdgeDocumentToken(cursor->collection()->id(), token);
+                if (_internalCursorMapping != nullptr) {
+                  TRI_ASSERT(_currentCursor < _internalCursorMapping->size());
+                  callback(std::move(etkn), edge,
+                           _internalCursorMapping->at(_currentCursor));
+                } else {
+                  callback(std::move(etkn), edge, _currentCursor);
+                }
+                return true;
+              }
+              return false;
+            },
+            1);
+        // TODO: why are we calling this for just one document, but the
+        // non-covering part we call for 1000 documents at a time?
         if (operationSuccessful) {
           return true;
         }
       } else {
         _cache.clear();
-        auto cb = [&](LocalDocumentId const& token) {
-          if (token.isSet()) {
-            // Document found
-            _cache.emplace_back(token);
-            return true;
-          }
-          return false;
-        };
-        bool tmp = cursor->next(cb, 1000);
+        bool tmp = cursor->next(
+            [&](LocalDocumentId const& token) {
+              if (token.isSet()) {
+                // Document found
+                _cache.emplace_back(token);
+                return true;
+              }
+              return false;
+            },
+            1000);
         TRI_ASSERT(tmp == cursor->hasMore());
       }
     }
@@ -214,44 +261,68 @@ void SingleServerEdgeCursor::readAll(EdgeCursor::Callback const& callback) {
       cursorId = _currentCursor;
     }
     auto& cursorSet = _cursors[_currentCursor];
-    for (auto& cursor : cursorSet) {
+    for (auto& [cursor, coveringPosition] : cursorSet) {
       LogicalCollection* collection = cursor->collection();
       auto cid = collection->id();
-      if (cursor->hasExtra()) {
-        cursor->allExtra([&](LocalDocumentId const& token, VPackSlice edge) {
+
+      if (aql::Projections::isCoveringIndexPosition(coveringPosition)) {
+        // thanks AppleClang for having to declare this extra variable!
+        uint16_t cv = coveringPosition;
+
+        cursor->allCovering([&](LocalDocumentId const& token,
+                                IndexIteratorCoveringData& covering) {
+          TRI_ASSERT(covering.isArray());
+          VPackSlice edge = covering.at(cv);
+          TRI_ASSERT(edge.isString());
+
 #ifdef USE_ENTERPRISE
-          if (_trx->skipInaccessible() &&
-              CheckInaccessible(_trx, edge)) {
+          if (_trx->skipInaccessible() && CheckInaccessible(_trx, edge)) {
             return false;
           }
 #endif
+          _opts->cache()->incrDocuments();
           callback(EdgeDocumentToken(cid, token), edge, cursorId);
           return true;
         });
       } else {
         cursor->all([&](LocalDocumentId const& token) {
-          return collection->getPhysical()->read(_trx, token, [&](LocalDocumentId const&, VPackSlice edgeDoc) {
+          return collection->getPhysical()
+              ->read(
+                  _trx, token,
+                  [&](LocalDocumentId const&, VPackSlice edgeDoc) {
 #ifdef USE_ENTERPRISE
-            if (_trx->skipInaccessible()) {
-              // TODO: we only need to check one of these
-              VPackSlice from = transaction::helpers::extractFromFromDocument(edgeDoc);
-              VPackSlice to = transaction::helpers::extractToFromDocument(edgeDoc);
-              if (CheckInaccessible(_trx, from) || CheckInaccessible(_trx, to)) {
-                return false;
-              }
-            }
+                    if (_trx->skipInaccessible()) {
+                      // TODO: we only need to check one of these
+                      VPackSlice from =
+                          transaction::helpers::extractFromFromDocument(
+                              edgeDoc);
+                      VPackSlice to =
+                          transaction::helpers::extractToFromDocument(edgeDoc);
+                      if (CheckInaccessible(_trx, from) ||
+                          CheckInaccessible(_trx, to)) {
+                        return false;
+                      }
+                    }
 #endif
-            _opts->cache()->increaseCounter();
-            callback(EdgeDocumentToken(cid, token), edgeDoc, cursorId);
-            return true;
-          }).ok();
+                    _opts->cache()->incrDocuments();
+                    callback(EdgeDocumentToken(cid, token), edgeDoc, cursorId);
+                    return true;
+                  },
+                  ReadOwnWrites::no)
+              .ok();
         });
       }
+
+      // update cache hits and misses
+      auto [ch, cm] = cursor->getAndResetCacheStats();
+      _opts->cache()->incrCacheHits(ch);
+      _opts->cache()->incrCacheMisses(cm);
     }
   }
 }
-  
-void SingleServerEdgeCursor::rearm(arangodb::velocypack::StringRef vertex, uint64_t /*depth*/) {
+
+void SingleServerEdgeCursor::rearm(std::string_view vertex,
+                                   uint64_t /*depth*/) {
   _currentCursor = 0;
   _currentSubCursor = 0;
   _cache.clear();
@@ -264,48 +335,48 @@ void SingleServerEdgeCursor::rearm(arangodb::velocypack::StringRef vertex, uint6
 
   size_t i = 0;
   for (auto& info : _lookupInfo) {
-    auto& node = info.indexCondition;
-    TRI_ASSERT(node->numMembers() > 0);
-    if (info.conditionNeedUpdate) {
-      // We have to inject _from/_to iff the condition needs it
-      auto dirCmp = node->getMemberUnchecked(info.conditionMemberToUpdate);
-      TRI_ASSERT(dirCmp->type == aql::NODE_TYPE_OPERATOR_BINARY_EQ);
-      TRI_ASSERT(dirCmp->numMembers() == 2);
-
-      auto idNode = dirCmp->getMemberUnchecked(1);
-      TRI_ASSERT(idNode->type == aql::NODE_TYPE_VALUE);
-      TRI_ASSERT(idNode->isValueType(aql::VALUE_TYPE_STRING));
-      // must edit node in place; TODO replace node?
-      TEMPORARILY_UNLOCK_NODE(idNode);
-      idNode->setStringValue(vertex.data(), vertex.length());
-    }
-
+    ::PrepareIndexCondition(info, vertex);
     IndexIteratorOptions defaultIndexIteratorOptions;
 
     auto& csrs = _cursors[i++];
     size_t j = 0;
+    auto& node = info.indexCondition;
     for (auto const& it : info.idxHandles) {
-      auto& cursor = csrs[j];
+      auto& cursor = csrs[j].cursor;
+
+      // steal cache hits and misses before the cursor is recycled
+      auto [ch, cm] = cursor->getAndResetCacheStats();
+      _opts->cache()->incrCacheHits(ch);
+      _opts->cache()->incrCacheMisses(cm);
+
       // check if the underlying index iterator supports rearming
       if (cursor->canRearm()) {
         // rearming supported
+        _opts->cache()->incrCursorsRearmed();
         if (!cursor->rearm(node, _tmpVar, defaultIndexIteratorOptions)) {
-          cursor = std::make_unique<EmptyIndexIterator>(cursor->collection(), _trx);
+          cursor =
+              std::make_unique<EmptyIndexIterator>(cursor->collection(), _trx);
         }
       } else {
         // rearming not supported - we need to throw away the index iterator
         // and create a new one
-        cursor = _trx->indexScanForCondition(it, node, _tmpVar, defaultIndexIteratorOptions);
+        _opts->cache()->incrCursorsCreated();
+        cursor = _trx->indexScanForCondition(
+            it, node, _tmpVar, defaultIndexIteratorOptions, ReadOwnWrites::no,
+            static_cast<int>(
+                info.conditionNeedUpdate
+                    ? info.conditionMemberToUpdate
+                    : transaction::Methods::kNoMutableConditionIdx));
       }
       ++j;
     }
   }
 }
 
-void SingleServerEdgeCursor::buildLookupInfo(arangodb::velocypack::StringRef vertex) { 
+void SingleServerEdgeCursor::buildLookupInfo(std::string_view vertex) {
   TRI_ASSERT(_cursors.empty());
   _cursors.reserve(_lookupInfo.size());
-    
+
   if (_internalCursorMapping == nullptr) {
     for (auto& info : _lookupInfo) {
       addCursor(info, vertex);
@@ -317,33 +388,51 @@ void SingleServerEdgeCursor::buildLookupInfo(arangodb::velocypack::StringRef ver
       addCursor(info, vertex);
     }
   }
-  TRI_ASSERT(_internalCursorMapping == nullptr || _internalCursorMapping->size() == _cursors.size());
+  TRI_ASSERT(_internalCursorMapping == nullptr ||
+             _internalCursorMapping->size() == _cursors.size());
 }
 
 void SingleServerEdgeCursor::addCursor(BaseOptions::LookupInfo const& info,
-                                       arangodb::velocypack::StringRef vertex) {
-  auto& node = info.indexCondition;
-  TRI_ASSERT(node->numMembers() > 0);
-  if (info.conditionNeedUpdate) {
-    // We have to inject _from/_to iff the condition needs it
-    auto dirCmp = node->getMemberUnchecked(info.conditionMemberToUpdate);
-    TRI_ASSERT(dirCmp->type == aql::NODE_TYPE_OPERATOR_BINARY_EQ);
-    TRI_ASSERT(dirCmp->numMembers() == 2);
-
-    auto idNode = dirCmp->getMemberUnchecked(1);
-    TRI_ASSERT(idNode->type == aql::NODE_TYPE_VALUE);
-    TRI_ASSERT(idNode->isValueType(aql::VALUE_TYPE_STRING));
-    // must edit node in place; TODO replace node?
-    TEMPORARILY_UNLOCK_NODE(idNode);
-    idNode->setStringValue(vertex.data(), vertex.length());
-  }
-
+                                       std::string_view vertex) {
+  ::PrepareIndexCondition(info, vertex);
   IndexIteratorOptions defaultIndexIteratorOptions;
-  
+
   _cursors.emplace_back();
   auto& csrs = _cursors.back();
   csrs.reserve(info.idxHandles.size());
   for (std::shared_ptr<Index> const& index : info.idxHandles) {
-    csrs.emplace_back(_trx->indexScanForCondition(index, node, _tmpVar, defaultIndexIteratorOptions));
+    uint16_t coveringPosition = aql::Projections::kNoCoveringIndexPosition;
+
+    // projections we want to cover
+    aql::Projections edgeProjections(std::vector<aql::AttributeNamePath>(
+        {StaticStrings::FromString, StaticStrings::ToString}));
+
+    if (index->covers(edgeProjections)) {
+      // find opposite attribute
+      edgeProjections.setCoveringContext(index->collection().id(), index);
+
+      TRI_edge_direction_e dir = info.direction;
+      TRI_ASSERT(dir == TRI_EDGE_IN || dir == TRI_EDGE_OUT);
+
+      if (dir == TRI_EDGE_OUT) {
+        coveringPosition = edgeProjections.coveringIndexPosition(
+            aql::AttributeNamePath::Type::ToAttribute);
+      } else {
+        coveringPosition = edgeProjections.coveringIndexPosition(
+            aql::AttributeNamePath::Type::FromAttribute);
+      }
+
+      TRI_ASSERT(aql::Projections::isCoveringIndexPosition(coveringPosition));
+    }
+
+    csrs.emplace_back(
+        _trx->indexScanForCondition(
+            index, info.indexCondition, _tmpVar, defaultIndexIteratorOptions,
+            ReadOwnWrites::no,
+            static_cast<int>(
+                info.conditionNeedUpdate
+                    ? info.conditionMemberToUpdate
+                    : transaction::Methods::kNoMutableConditionIdx)),
+        coveringPosition);
   }
 }

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -40,8 +40,7 @@ using namespace arangodb::consensus;
 
 namespace {
 void handleGossipResponse(arangodb::network::Response const& r,
-                          arangodb::consensus::Agent* agent,
-                          size_t version) {
+                          arangodb::consensus::Agent* agent, size_t version) {
   using namespace arangodb;
   std::string newLocation;
 
@@ -71,22 +70,26 @@ void handleGossipResponse(arangodb::network::Response const& r,
             FATAL_ERROR_EXIT();
           }
 
-          LOG_TOPIC("4c822", DEBUG, Logger::AGENCY) << "Got redirect to " << newLocation
-                                           << ". Adding peer to gossip peers";
+          LOG_TOPIC("4c822", DEBUG, Logger::AGENCY)
+              << "Got redirect to " << newLocation
+              << ". Adding peer to gossip peers";
           bool added = agent->addGossipPeer(newLocation);
           if (added) {
-            LOG_TOPIC("d41c8", DEBUG, Logger::AGENCY) << "Added " << newLocation << " to gossip peers";
+            LOG_TOPIC("d41c8", DEBUG, Logger::AGENCY)
+                << "Added " << newLocation << " to gossip peers";
           } else {
-            LOG_TOPIC("4fcf3", DEBUG, Logger::AGENCY) << "Endpoint " << newLocation << " already known";
+            LOG_TOPIC("4fcf3", DEBUG, Logger::AGENCY)
+                << "Endpoint " << newLocation << " already known";
           }
         } else {
-          LOG_TOPIC("1886b", ERR, Logger::AGENCY) << "Redirect lacks 'Location' header";
+          LOG_TOPIC("1886b", ERR, Logger::AGENCY)
+              << "Redirect lacks 'Location' header";
         }
         break;
 
       default:
-        LOG_TOPIC("bed89", ERR, Logger::AGENCY) << "Got error " << r.statusCode()
-        << " from gossip endpoint";
+        LOG_TOPIC("bed89", ERR, Logger::AGENCY)
+            << "Got error " << r.statusCode() << " from gossip endpoint";
         std::this_thread::sleep_for(std::chrono::seconds(40));
         break;
     }
@@ -95,15 +98,13 @@ void handleGossipResponse(arangodb::network::Response const& r,
   LOG_TOPIC("e2ef9", DEBUG, Logger::AGENCY)
       << "Got error from gossip message, status:" << fuerte::to_string(r.error);
 }
-}
+}  // namespace
 
 Inception::Inception(Agent& agent)
     : Thread(agent.server(), "Inception"), _agent(agent) {}
 
 // Shutdown if not already
-Inception::~Inception() {
-  shutdown();
-}
+Inception::~Inception() { shutdown(); }
 
 /// Gossip to others
 /// - Get snapshot of gossip peers and agent pool
@@ -113,11 +114,9 @@ void Inception::gossip() {
   if (this->isStopping() || _agent.isStopping()) {
     return;
   }
-  
-  
+
   auto const& nf = _agent.server().getFeature<arangodb::NetworkFeature>();
   network::ConnectionPool* cp = nf.pool();
-
 
   LOG_TOPIC("7b6f3", INFO, Logger::AGENCY) << "Entering gossip phase ...";
   using namespace std::chrono;
@@ -125,11 +124,9 @@ void Inception::gossip() {
   auto startTime = steady_clock::now();
   seconds timeout(3600);
   long waitInterval = 250000;
-  
+
   network::RequestOptions reqOpts;
   reqOpts.timeout = network::Timeout(1);
-
-  CONDITION_LOCKER(guard, _cv);
 
   while (!this->isStopping() && !_agent.isStopping()) {
     auto const config = _agent.config();  // get a copy of conf
@@ -154,7 +151,7 @@ void Inception::gossip() {
     for (auto const& p : config.gossipPeers()) {
       if (p != config.endpoint()) {
         {
-          MUTEX_LOCKER(ackedLocker, _vLock);
+          MUTEX_LOCKER(ackedLocker, _ackLock);
           auto const& ackedPeer = _acked.find(p);
           if (ackedPeer != _acked.end() && ackedPeer->second >= version) {
             continue;
@@ -166,10 +163,11 @@ void Inception::gossip() {
           return;
         }
 
-        network::sendRequest(cp, p, fuerte::RestVerb::Post, path,
-                             buffer, reqOpts).thenValue([=](network::Response r) {
-          ::handleGossipResponse(r, &_agent, version);
-        });
+        network::sendRequest(cp, p, fuerte::RestVerb::Post, path, buffer,
+                             reqOpts)
+            .thenValue([=, this](network::Response r) {
+              ::handleGossipResponse(r, &_agent, version);
+            });
       }
     }
 
@@ -177,13 +175,13 @@ void Inception::gossip() {
       _agent.activateAgency();
       return;
     }
-    
+
     // pool entries
     bool complete = true;
     for (auto const& pair : config.pool()) {
       if (pair.second != config.endpoint()) {
         {
-          MUTEX_LOCKER(ackedLocker, _vLock);
+          MUTEX_LOCKER(ackedLocker, _ackLock);
           if (_acked[pair.second] > version) {
             continue;
           }
@@ -197,9 +195,10 @@ void Inception::gossip() {
         }
 
         network::sendRequest(cp, pair.second, fuerte::RestVerb::Post, path,
-                             buffer, reqOpts).thenValue([=](network::Response r) {
-          ::handleGossipResponse(r, &_agent, version);
-        });
+                             buffer, reqOpts)
+            .thenValue([=, this](network::Response r) {
+              ::handleGossipResponse(r, &_agent, version);
+            });
       }
     }
 
@@ -217,7 +216,8 @@ void Inception::gossip() {
     // Timed out? :(
     if ((steady_clock::now() - startTime) > timeout) {
       if (config.poolComplete()) {
-        LOG_TOPIC("28033", DEBUG, Logger::AGENCY) << "Stopping active gossipping!";
+        LOG_TOPIC("28033", DEBUG, Logger::AGENCY)
+            << "Stopping active gossipping!";
       } else {
         LOG_TOPIC("5d169", ERR, Logger::AGENCY)
             << "Failed to find complete pool of agents. Giving up!";
@@ -227,6 +227,8 @@ void Inception::gossip() {
 
     // don't panic just yet
     //  wait() is true on signal, false on timeout
+    CONDITION_LOCKER(guard, _cv);
+
     if (_cv.wait(waitInterval)) {
       waitInterval = 250000;
     } else {
@@ -242,7 +244,8 @@ bool Inception::restartingActiveAgent() {
     return false;
   }
 
-  LOG_TOPIC("d7476", INFO, Logger::AGENCY) << "Restarting agent from persistence ...";
+  LOG_TOPIC("d7476", INFO, Logger::AGENCY)
+      << "Restarting agent from persistence ...";
 
   using namespace std::chrono;
 
@@ -260,20 +263,19 @@ bool Inception::restartingActiveAgent() {
     VPackObjectBuilder b(&greeting);
     greeting.add(clientId, VPackValue(clientEp));
   }
-  
+
   network::RequestOptions reqOpts;
   reqOpts.timeout = network::Timeout(2);
-  reqOpts.skipScheduler = true; // hack to speed up future.get()
+  reqOpts.skipScheduler = true;  // hack to speed up future.get()
 
   seconds const timeout(3600);
   long waitInterval(500000);
-  
+
   auto const& nf = _agent.server().getFeature<arangodb::NetworkFeature>();
   network::ConnectionPool* cp = nf.pool();
 
-  CONDITION_LOCKER(guard, _cv);
-
-  active.erase(std::remove(active.begin(), active.end(), myConfig.id()), active.end());
+  active.erase(std::remove(active.begin(), active.end(), myConfig.id()),
+               active.end());
 
   while (!this->isStopping() && !_agent.isStopping()) {
     active.erase(std::remove(active.begin(), active.end(), ""), active.end());
@@ -292,12 +294,12 @@ bool Inception::restartingActiveAgent() {
       if (this->isStopping() || _agent.isStopping()) {
         return false;
       }
-      
+
       auto comres = network::sendRequest(cp, p, fuerte::RestVerb::Post, path,
-                                         greetBuffer, reqOpts).get();
-      
+                                         greetBuffer, reqOpts)
+                        .get();
+
       if (comres.ok() && comres.statusCode() == fuerte::StatusOK) {
-        
         VPackSlice const theirConfig = comres.slice();
 
         if (!theirConfig.isObject()) {
@@ -320,21 +322,23 @@ bool Inception::restartingActiveAgent() {
     for (auto const& i : informed) {
       active.erase(std::remove(active.begin(), active.end(), i), active.end());
     }
-    
+
     for (auto& p : pool) {
       if (p.first != myConfig.id() && p.first != "") {
         if (this->isStopping() || _agent.isStopping()) {
           return false;
         }
-        
-        auto comres = network::sendRequest(cp, p.second, fuerte::RestVerb::Post, path,
-                                           greetBuffer, reqOpts).get();
-        
+
+        auto comres = network::sendRequest(cp, p.second, fuerte::RestVerb::Post,
+                                           path, greetBuffer, reqOpts)
+                          .get();
+
         if (comres.ok()) {
           try {
             VPackSlice theirConfig = comres.slice();
-          
-            auto const& theirLeaderId = theirConfig.get("leaderId").copyString();
+
+            auto const& theirLeaderId =
+                theirConfig.get("leaderId").copyString();
             auto const& tcc = theirConfig.get("configuration");
             auto const& theirId = tcc.get("id").copyString();
 
@@ -345,7 +349,8 @@ bool Inception::restartingActiveAgent() {
                   << ". Finishing startup sequence.";
 
               auto const theirLeaderEp =
-                  tcc.get(std::vector<std::string>({"pool", theirLeaderId})).copyString();
+                  tcc.get(std::vector<std::string>({"pool", theirLeaderId}))
+                      .copyString();
 
               if (theirLeaderId == myConfig.id()) {
                 continue;
@@ -356,10 +361,12 @@ bool Inception::restartingActiveAgent() {
                 if (this->isStopping() || _agent.isStopping()) {
                   return false;
                 }
-                
-                comres = network::sendRequest(cp, theirLeaderEp, fuerte::RestVerb::Post, path,
-                                              greetBuffer, reqOpts).get();
-                
+
+                comres = network::sendRequest(cp, theirLeaderEp,
+                                              fuerte::RestVerb::Post, path,
+                                              greetBuffer, reqOpts)
+                             .get();
+
                 // Failed to contact leader move on until we do. This way at
                 // least we inform everybody individually of the news.
                 if (comres.fail()) {
@@ -390,7 +397,8 @@ bool Inception::restartingActiveAgent() {
 
             if (i != active.end()) {  // Member in my active list
               TRI_ASSERT(theirActive.isArray());
-              if (theirActive.length() == 0 || theirActive.length() == myActive.length()) {
+              if (theirActive.length() == 0 ||
+                  theirActive.length() == myActive.length()) {
                 std::vector<std::string> theirActVec, myActVec;
                 for (auto const i : VPackArrayIterator(theirActive)) {
                   theirActVec.push_back(i.copyString());
@@ -429,8 +437,8 @@ bool Inception::restartingActiveAgent() {
           } catch (std::exception const& e) {
             if (!this->isStopping()) {
               LOG_TOPIC("e971a", FATAL, Logger::AGENCY)
-                  << "Assumed active RAFT peer has no active agency list: " << e.what()
-                  << ", administrative intervention needed.";
+                  << "Assumed active RAFT peer has no active agency list: "
+                  << e.what() << ", administrative intervention needed.";
               FATAL_ERROR_EXIT();
             }
             return false;
@@ -450,6 +458,7 @@ bool Inception::restartingActiveAgent() {
       break;
     }
 
+    CONDITION_LOCKER(guard, _cv);
     _cv.wait(waitInterval);
     if (waitInterval < 2500000) {  // 2.5s
       waitInterval *= 2;
@@ -459,8 +468,9 @@ bool Inception::restartingActiveAgent() {
   return false;
 }
 
-void Inception::reportVersionForEp(std::string const& endpoint, size_t version) {
-  MUTEX_LOCKER(versionLocker, _vLock);
+void Inception::reportVersionForEp(std::string const& endpoint,
+                                   size_t version) {
+  MUTEX_LOCKER(versionLocker, _ackLock);
   if (_acked[endpoint] < version) {
     _acked[endpoint] = version;
   }
@@ -469,7 +479,8 @@ void Inception::reportVersionForEp(std::string const& endpoint, size_t version) 
 // @brief Thread main
 void Inception::run() {
   auto server = ServerState::instance();
-  while (server->isMaintenance() && !this->isStopping() && !_agent.isStopping()) {
+  while (server->isMaintenance() && !this->isStopping() &&
+         !_agent.isStopping()) {
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     LOG_TOPIC("1b613", DEBUG, Logger::AGENCY)
         << "Waiting for RestHandlerFactory to exit maintenance mode before we "

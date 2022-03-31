@@ -1,0 +1,158 @@
+[/
+    Boost.Optional
+
+    Copyright (c) 2003-2007 Fernando Luis Cacciola Carballal
+    Copyright (c) 2014 Andrzej Krzemienski
+
+    Distributed under the Boost Software License, Version 1.0.
+    (See accompanying file LICENSE_1_0.txt or copy at
+    http://www.boost.org/LICENSE_1_0.txt)
+]
+
+
+[section Quick Start]
+
+[section Optional return values]
+
+Let's write and use a converter function that converts a `std::string` to an `int`. It is possible that for a given string (e.g. `"cat"`) there exists no value of type `int` capable of representing the conversion result. We do not consider such situation an error. We expect that the converter can be used only to check if the conversion is possible. A natural signature for this function can be:
+
+    #include <boost/optional.hpp>
+    boost::optional<int> convert(const std::string& text);
+
+All necessary functionality can be included with one header `<boost/optional.hpp>`. The above function signature means that the function can either return a value of type `int` or a flag indicating that no value of `int` is available. This does not indicate an error. It is like one additional value of `int`. This is how we can use our function:
+
+    const std::string& text = /*... */;
+    boost::optional<int> oi = convert(text); // move-construct
+    if (oi)                                  // contextual conversion to bool
+      int i = *oi;                           // operator*
+    
+In order to test if `optional` contains a value, we use the contextual conversion to type `bool`. Because of this we can combine the initialization of the optional object and the test into one instruction:
+
+    if (boost::optional<int> oi = convert(text))
+      int i = *oi;
+
+We extract the contained value with `operator*` (and with `operator->` where it makes sense). An attempt to extract the contained value of an uninitialized optional object is an ['undefined behaviour] (UB). This implementation guards the call with `BOOST_ASSERT`. Therefore you should be sure that the contained value is there before extracting. For instance, the following code is reasonably UB-safe:
+
+    int i = *convert("100");
+    
+This is because we know that string value `"100"` converts to a valid value of `int`. If you do not like this potential UB, you can use an alternative way of extracting the contained value:
+
+    try {
+      int j = convert(text).value();
+    }
+    catch (const boost::bad_optional_access&) {
+      // deal with it
+    }
+
+This version throws an exception upon an attempt to access a non-existent contained value. If your way of dealing with the missing value is to use some default, like `0`, there exists a yet another alternative:
+
+    int k = convert(text).value_or(0);
+    
+This uses the `atoi`-like approach to conversions: if `text` does not represent an integral number just return `0`. Finally, you can provide a callback to be called when trying to access the contained value fails:
+
+    int fallback_to_default()
+    {
+      cerr << "could not convert; using -1 instead" << endl; 
+      return -1;
+    }
+    
+    int l = convert(text).value_or_eval(fallback_to_default);
+
+This will call the provided callback and return whatever the callback returns. The callback can have side effects: they will only be observed when the optional object does not contain a value.
+
+Now, let's consider how function `convert` can be implemented.
+
+    boost::optional<int> convert(const std::string& text)
+    {  
+      std::stringstream s(text);
+      int i;
+      if ((s >> i) && s.get() == std::char_traits<char>::eof())
+        return i;
+      else
+        return boost::none;
+    }
+
+Observe the two return statements. `return i` uses the converting constructor that can create `optional<T>` from `T`. Thus constructed optional object is initialized and its value is a copy of `i`. The other return statement uses another converting constructor from a special tag `boost::none`. It is used to indicate that we want to create an uninitialized optional object. 
+
+[endsect]
+
+[section Optional automatic variables]
+
+We could write function `convert` in a slightly different manner, so that it has a single `return`-statement:
+
+    boost::optional<int> convert(const std::string& text)
+    {
+      boost::optional<int> ans;
+      std::stringstream s(text);
+      int i;
+      if ((s >> i) && s.get() == std::char_traits<char>::eof())
+        ans = i;
+
+      return ans;
+    }
+
+The default constructor of `optional` creates an unitialized optional object. Unlike with `int`s you cannot have an `optional<int>` in an indeterminate state. Its state is always well defined. Instruction `ans = i` initializes the optional object. It uses the 'mixed' assignment from `int`. In general, for `optional<T>`, when an assignment from `T` is invoked, it can do two things. If the optional object is not initialized (our case here), it initializes the contained value using `T`'s copy constructor. If the optional object is already initialized, it assigns the new value to it using `T`'s copy assignment.      
+[endsect]
+
+[section Optional data members]
+
+Suppose we want to implement a ['lazy load] optimization. This is because we do not want to perform an expensive initialization of our `Resource` until (if at all) it is really used. We can do it this way:
+
+    class Widget
+    {
+      mutable boost::optional<const Resource> resource_;
+      
+    public:
+      Widget() {}
+      
+      const Resource& getResource() const // not thread-safe
+      {
+        if (resource_ == boost::none)
+            resource_.emplace("resource", "arguments");
+        
+        return *resource_;
+      }
+    };
+    
+`optional`'s default constructor creates an uninitialized optional. No call to `Resource`'s default constructor is attempted. `Resource` doesn't have to be __SGI_DEFAULT_CONSTRUCTIBLE__. In function `getResource` we first check if `resource_` is initialized. This time we do not use the contextual conversion to `bool`, but a comparison with `boost::none`. These two ways are equivalent. Function `emplace` initializes the optional in-place by perfect-forwarding the arguments to the constructor of `Resource`. No copy- or move-construction is involved here. `Resource` doesn't even have to be `MoveConstructible`. 
+
+[note Function `emplace` is only available on compilers that support rvalue references and variadic templates. If your compiler does not support these features and you still need to avoid any move-constructions, use [link boost_optional.tutorial.in_place_factories In-Place Factories].]
+
+[endsect]
+
+[section Bypassing unnecessary default construction]
+
+Suppose we have class `Date`, which does not have a default constructor: there is no good candidate for a default date. We have a function that returns two dates in form of a `boost::tuple`:
+
+    boost::tuple<Date, Date> getPeriod();
+    
+In other place we want to use the result of `getPeriod`, but want the two dates to be named: `begin` and `end`. We want to implement something like 'multiple return values':
+
+    Date begin, end; // Error: no default ctor!
+    boost::tie(begin, end) = getPeriod();
+    
+The second line works already, this is the capability of __BOOST_TUPLE__ library, but the first line won't work. We could set some invented initial dates, but it is confusing and may be an unacceptable cost, given that these values will be overwritten in the next line anyway. This is where `optional` can help:
+
+    boost::optional<Date> begin, end;
+    boost::tie(begin, end) = getPeriod();
+    
+It works because inside `boost::tie` a move-assignment from `T` is invoked on `optional<T>`, which internally calls a move-constructor of `T`.
+[endsect]
+
+[section Storage in containers]
+
+Suppose you want to ask users to choose some number (an `int`). One of the valid responses is to choose nothing, which is represented by an uninitialized `optional<int>`. You want to make a histogram showing how many times each choice was made. You can use an `std::map`:
+
+    std::map<boost::optional<int>, int> choices;
+  
+    for (int i = 0; i < LIMIT; ++i) {
+      boost::optional<int> choice = readChoice();
+      ++choices[choice];
+    }
+    
+This works because `optional<T>` is __SGI_LESS_THAN_COMPARABLE__ whenever `T` is __SGI_LESS_THAN_COMPARABLE__. In this case the state of being uninitialized is treated as a yet another value of `T`, which is compared less than any value of `T`.
+[endsect]
+
+[endsect]
+
+ 

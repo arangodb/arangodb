@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,7 +31,8 @@
 namespace arangodb::aql {
 
 // Partial map dep -> call. May be empty.
-// IMPORTANT: Are expected to be saved in increasing order (regarding dependency)
+// IMPORTANT: Are expected to be saved in increasing order (regarding
+// dependency)
 struct AqlCallSet {
   struct DepCallPair {
     std::size_t dependency{};
@@ -49,4 +50,3 @@ auto operator<<(std::ostream& out, AqlCallSet::DepCallPair const& callPair)
 auto operator<<(std::ostream&, AqlCallSet const&) -> std::ostream&;
 
 }  // namespace arangodb::aql
-

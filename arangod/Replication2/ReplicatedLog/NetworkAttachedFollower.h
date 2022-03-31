@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2020-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -31,10 +32,13 @@ class ConnectionPool;
 
 namespace arangodb::replication2::replicated_log {
 
-struct NetworkAttachedFollower : arangodb::replication2::replicated_log::AbstractFollower {
-  explicit NetworkAttachedFollower(network::ConnectionPool* pool, ParticipantId id,
-                                   DatabaseID database, LogId logId);
-  [[nodiscard]] auto getParticipantId() const noexcept -> ParticipantId const& override;
+struct NetworkAttachedFollower
+    : arangodb::replication2::replicated_log::AbstractFollower {
+  explicit NetworkAttachedFollower(network::ConnectionPool* pool,
+                                   ParticipantId id, DatabaseID database,
+                                   LogId logId);
+  [[nodiscard]] auto getParticipantId() const noexcept
+      -> ParticipantId const& override;
   auto appendEntries(AppendEntriesRequest request)
       -> futures::Future<AppendEntriesResult> override;
 

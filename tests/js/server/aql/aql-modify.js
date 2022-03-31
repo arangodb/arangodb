@@ -1182,15 +1182,15 @@ function aqlUpsertOptionsSuite() {
       const countBefore = col.count();
       let q = `
         FOR fv0 IN 1..3
-        LET sq1 = (
-          FOR fv2 IN ${collectionName}
-          UPSERT {value: fv2.value} INSERT {value: 98 }  UPDATE {value: 51, updated: true} IN ${collectionName}
-          LIMIT 5,0
-          RETURN {fv2: UNSET_RECURSIVE(fv2,"_rev", "_id", "_key")}
-        )
-        FILTER fv0 < 8
-        LIMIT 14,13
-        RETURN {fv0, sq1}
+          LET sq1 = (
+            FOR fv2 IN ${collectionName}
+              UPSERT {val: fv2.val} INSERT {val: 98}  UPDATE {updated: true} IN ${collectionName}
+              LIMIT 5,0
+              RETURN {fv2: UNSET_RECURSIVE(fv2,"_rev", "_id", "_key")}
+            )
+          FILTER fv0 < 8
+          LIMIT 14,13
+          RETURN {fv0, sq1}
       `;
       const res = db._query(q);
       const { writesExecuted, writesIgnored } = res.getExtra().stats;

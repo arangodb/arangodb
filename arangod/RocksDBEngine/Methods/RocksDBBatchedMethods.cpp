@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,16 +30,17 @@ RocksDBBatchedMethods::RocksDBBatchedMethods(rocksdb::WriteBatch* wb)
 
 rocksdb::Status RocksDBBatchedMethods::Get(rocksdb::ColumnFamilyHandle* cf,
                                            rocksdb::Slice const& key,
-                                           rocksdb::PinnableSlice* val) {
+                                           rocksdb::PinnableSlice* val,
+                                           ReadOwnWrites) {
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                  "BatchedMethods does not provide Get");
 }
 
-rocksdb::Status RocksDBBatchedMethods::GetForUpdate(rocksdb::ColumnFamilyHandle* cf,
-                                                    rocksdb::Slice const& key,
-                                                    rocksdb::PinnableSlice* val) {
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                 "BatchedMethods does not provide GetForUpdate");
+rocksdb::Status RocksDBBatchedMethods::GetForUpdate(
+    rocksdb::ColumnFamilyHandle* cf, rocksdb::Slice const& key,
+    rocksdb::PinnableSlice* val) {
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_INTERNAL, "BatchedMethods does not provide GetForUpdate");
 }
 
 rocksdb::Status RocksDBBatchedMethods::Put(rocksdb::ColumnFamilyHandle* cf,
@@ -50,10 +51,10 @@ rocksdb::Status RocksDBBatchedMethods::Put(rocksdb::ColumnFamilyHandle* cf,
   return _wb->Put(cf, key.string(), val);
 }
 
-rocksdb::Status RocksDBBatchedMethods::PutUntracked(rocksdb::ColumnFamilyHandle* cf,
-                                                    RocksDBKey const& key,
-                                                    rocksdb::Slice const& val) {
-  return RocksDBBatchedMethods::Put(cf, key, val, /*assume_tracked*/false);
+rocksdb::Status RocksDBBatchedMethods::PutUntracked(
+    rocksdb::ColumnFamilyHandle* cf, RocksDBKey const& key,
+    rocksdb::Slice const& val) {
+  return RocksDBBatchedMethods::Put(cf, key, val, /*assume_tracked*/ false);
 }
 
 rocksdb::Status RocksDBBatchedMethods::Delete(rocksdb::ColumnFamilyHandle* cf,
@@ -62,8 +63,8 @@ rocksdb::Status RocksDBBatchedMethods::Delete(rocksdb::ColumnFamilyHandle* cf,
   return _wb->Delete(cf, key.string());
 }
 
-rocksdb::Status RocksDBBatchedMethods::SingleDelete(rocksdb::ColumnFamilyHandle* cf,
-                                                    RocksDBKey const& key) {
+rocksdb::Status RocksDBBatchedMethods::SingleDelete(
+    rocksdb::ColumnFamilyHandle* cf, RocksDBKey const& key) {
   TRI_ASSERT(cf != nullptr);
   return _wb->SingleDelete(cf, key.string());
 }

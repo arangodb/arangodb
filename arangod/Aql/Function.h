@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -61,35 +61,40 @@ struct Function {
     // pushed down to DB servers in OneShard mode but are in normal Cluster
     // mode.
 
-    /// @brief whether or not the function may be executed on DB servers, 
+    /// @brief whether or not the function may be executed on DB servers,
     /// general cluster case (non-OneShard)
     /// note: in almost all circumstances it is also useful to set the flag
     /// CanRunOnDBServerOneShard in addition!
     CanRunOnDBServerCluster = 4,
-    
+
     /// @brief whether or not the function may be executed on DB servers,
-    /// OneShard databases. 
+    /// OneShard databases.
     /// note: this flag must be set in addition to CanRunOnDBServerCluster
-    /// to make a function run on DB servers in OneShard mode! 
+    /// to make a function run on DB servers in OneShard mode!
     CanRunOnDBServerOneShard = 8,
-    
+
     /// @brief whether or not the function may read documents from the database
     CanReadDocuments = 16,
 
+    /// @brief whether or not the function is usable in an analyzer
+    CanUseInAnalyzer = 32,
+
     /// @brief exclude the function from being evaluated during AST
     /// optimizations evaluation of function will only happen at query runtime
-    NoEval = 32,
+    NoEval = 64,
 
     /// @brief internal function, supposed to be inserted only by internal
     /// optimizations and transformations. not supposed to be used by end users
     /// and thus not documented in the official list of available AQL functions.
-    Internal = 64,
+    Internal = 128,
   };
 
   /// @brief helper for building flags
-  template <typename... Args>
-  static inline std::underlying_type<Flags>::type makeFlags(Flags flag, Args... args) noexcept {
-    return static_cast<std::underlying_type<Flags>::type>(flag) | makeFlags(args...);
+  template<typename... Args>
+  static inline std::underlying_type<Flags>::type makeFlags(
+      Flags flag, Args... args) noexcept {
+    return static_cast<std::underlying_type<Flags>::type>(flag) |
+           makeFlags(args...);
   }
 
   static std::underlying_type<Flags>::type makeFlags() noexcept;
@@ -102,13 +107,12 @@ struct Function {
            FunctionImplementation implementation);
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-  Function(std::string const& name,
-           FunctionImplementation implementation);
+  Function(std::string const& name, FunctionImplementation implementation);
 #endif
 
   /// @brief whether or not the function is based on V8
   bool hasV8Implementation() const noexcept;
-  
+
   /// @brief whether or not the function is based on cxx
   bool hasCxxImplementation() const noexcept;
 
@@ -154,4 +158,3 @@ struct Function {
 };
 }  // namespace aql
 }  // namespace arangodb
-

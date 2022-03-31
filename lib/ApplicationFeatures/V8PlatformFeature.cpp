@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -70,13 +70,14 @@ static void gcPrologueCallback(v8::Isolate* isolate, v8::GCType /*type*/,
   v8::HeapStatistics h;
   isolate->GetHeapStatistics(&h);
 
-  V8PlatformFeature::getIsolateData(isolate)->_heapSizeAtStart = h.used_heap_size();
+  V8PlatformFeature::getIsolateData(isolate)->_heapSizeAtStart =
+      h.used_heap_size();
 }
 
 static void gcEpilogueCallback(v8::Isolate* isolate, v8::GCType type,
-                               v8::GCCallbackFlags flags) {
+                               v8::GCCallbackFlags /*flags*/) {
   TRI_GET_GLOBALS();
-  static size_t const LIMIT_ABS = 200 * 1024 * 1024;
+  size_t constexpr LIMIT_ABS = 200 * 1024 * 1024;
   size_t minFreed = LIMIT_ABS / 10;
 
   if (type != v8::kGCTypeMarkSweepCompact) {
@@ -89,7 +90,8 @@ static void gcEpilogueCallback(v8::Isolate* isolate, v8::GCType type,
   auto now = TRI_microtime();
   size_t freed = 0;
   size_t heapSizeAtStop = h.used_heap_size();
-  size_t heapSizeAtStart = V8PlatformFeature::getIsolateData(isolate)->_heapSizeAtStart;
+  size_t heapSizeAtStart =
+      V8PlatformFeature::getIsolateData(isolate)->_heapSizeAtStart;
 
   if (heapSizeAtStop < heapSizeAtStart) {
     freed = heapSizeAtStart - heapSizeAtStop;
@@ -115,12 +117,12 @@ static void gcEpilogueCallback(v8::Isolate* isolate, v8::GCType type,
   }
 
   if (stillFree <= LIMIT_ABS && freed <= minFreed) {
-    const char* whereFreed = (v8g->_inForcedCollect)? "Forced collect": "V8 internal collection";
+    const char* whereFreed =
+        (v8g->_inForcedCollect) ? "Forced collect" : "V8 internal collection";
     LOG_TOPIC("95f66", WARN, arangodb::Logger::V8)
         << "reached heap-size limit of #" << v8g->_id
         << " interrupting V8 execution ("
-        << "heap size limit " << heapSizeLimit
-        << ", used " << usedHeapSize
+        << "heap size limit " << heapSizeLimit << ", used " << usedHeapSize
         << ") during " << whereFreed;
 
     isolate->TerminateExecution();
@@ -136,7 +138,8 @@ static void oomCallback(char const* location, bool isHeapOOM) {
     LOG_TOPIC("fd5c4", FATAL, arangodb::Logger::V8)
         << "out of heap hemory in V8 (" << location << ")";
   } else {
-    LOG_TOPIC("5d980", FATAL, arangodb::Logger::V8) << "out of memory in V8 (" << location << ")";
+    LOG_TOPIC("5d980", FATAL, arangodb::Logger::V8)
+        << "out of memory in V8 (" << location << ")";
   }
   FATAL_ERROR_EXIT();
 }
@@ -155,23 +158,21 @@ static void fatalCallback(char const* location, char const* message) {
 
 }  // namespace
 
-V8PlatformFeature::V8PlatformFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "V8Platform") {
-  setOptional(true);
-}
-
-void V8PlatformFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
+void V8PlatformFeature::collectOptions(
+    std::shared_ptr<ProgramOptions> options) {
   options->addSection("javascript", "JavaScript engine and execution");
 
-  options->addOption("--javascript.v8-options", "options to pass to v8",
-                     new VectorParameter<StringParameter>(&_v8Options),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+  options->addOption(
+      "--javascript.v8-options", "options to pass to v8",
+      new VectorParameter<StringParameter>(&_v8Options),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options->addOption("--javascript.v8-max-heap", "maximal heap size (in MB)",
                      new UInt64Parameter(&_v8MaxHeap));
 }
 
-void V8PlatformFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
+void V8PlatformFeature::validateOptions(
+    std::shared_ptr<ProgramOptions> /*options*/) {
   if (!_v8Options.empty()) {
     _v8CombinedOptions = StringUtils::join(_v8Options, " ");
 
@@ -199,7 +200,8 @@ void V8PlatformFeature::start() {
 
   // explicit option --javascript.v8-options used
   if (!_v8CombinedOptions.empty()) {
-    LOG_TOPIC("d064a", INFO, Logger::V8) << "using V8 options '" << _v8CombinedOptions << "'";
+    LOG_TOPIC("d064a", INFO, Logger::V8)
+        << "using V8 options '" << _v8CombinedOptions << "'";
     v8::V8::SetFlagsFromString(_v8CombinedOptions.c_str(),
                                (int)_v8CombinedOptions.size());
   }
@@ -228,7 +230,8 @@ v8::Isolate* V8PlatformFeature::createIsolate() {
   createParams.array_buffer_allocator = _allocator.get();
 
   if (0 < _v8MaxHeap) {
-    createParams.constraints.set_max_old_space_size(static_cast<int>(_v8MaxHeap));
+    createParams.constraints.set_max_old_space_size(
+        static_cast<int>(_v8MaxHeap));
   }
 
   auto isolate = v8::Isolate::New(createParams);

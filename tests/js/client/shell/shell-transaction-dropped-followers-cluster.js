@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 200 */
-/* global fail, assertEqual, assertNotEqual */
+/* global fail, assertEqual, assertNotEqual, assertTrue */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -31,6 +31,24 @@ const db = arangodb.db;
 const { getEndpointById, getEndpointsByType, getMetric } = require('@arangodb/test-helper');
 const request = require('@arangodb/request');
 
+function getDroppedFollowers(servers) {
+  let droppedFollowers = {};
+  servers.forEach((serverId) => {
+    let endpoint = getEndpointById(serverId);
+    droppedFollowers[serverId] = getMetric(endpoint, "arangodb_dropped_followers_total");
+  });
+  return droppedFollowers;
+}
+
+function getIntermediateCommits(servers) {
+  let intermediateCommits = {};
+  servers.forEach((serverId) => {
+    let endpoint = getEndpointById(serverId);
+    intermediateCommits[serverId] = getMetric(endpoint, "arangodb_intermediate_commits_total");
+  });
+  return intermediateCommits;
+}
+
 function transactionDroppedFollowersSuite() {
   'use strict';
   const cn = 'UnitTestsTransaction';
@@ -43,6 +61,48 @@ function transactionDroppedFollowersSuite() {
 
     tearDown: function () {
       db._drop(cn);
+    },
+    
+    testInsertSameFollower: function () {
+      let c = db._create(cn, { numberOfShards: 40, replicationFactor: 3 });
+      let docs = [];
+      for (let i = 0; i < 1000; ++i) { 
+        docs.push({});
+      }
+
+      let shards = db._collection(cn ).shards(true);
+      let servers = shards[Object.keys(shards)[0]];
+
+      let droppedFollowersBefore = getDroppedFollowers(servers);
+
+      for (let i = 0; i < 50; ++i) {
+        c.insert(docs);
+      }
+      
+      assertEqual(1000 * 50, c.count());
+
+      // follower must not have been dropped
+      let droppedFollowersAfter = getDroppedFollowers(servers);
+      assertEqual(droppedFollowersBefore, droppedFollowersAfter);
+    },
+    
+    testInsertAQLSameFollower: function () {
+      let c = db._create(cn, { numberOfShards: 40, replicationFactor: 3 });
+
+      let shards = db._collection(cn ).shards(true);
+      let servers = shards[Object.keys(shards)[0]];
+
+      let droppedFollowersBefore = getDroppedFollowers(servers);
+
+      for (let i = 0; i < 50; ++i) {
+        db._query("FOR i IN 1..1000 INSERT {} INTO " + cn);
+      }
+
+      assertEqual(1000 * 50, c.count());
+      
+      // follower must not have been dropped
+      let droppedFollowersAfter = getDroppedFollowers(servers);
+      assertEqual(droppedFollowersBefore, droppedFollowersAfter);
     },
 
     testTransactionWritesSameFollower: function () {
@@ -60,11 +120,7 @@ function transactionDroppedFollowersSuite() {
       let shards = db._collection(cn ).shards(true);
       let servers = shards[Object.keys(shards)[0]];
 
-      let droppedFollowers = {};
-      servers.forEach((serverId) => {
-        let endpoint = getEndpointById(serverId);
-        droppedFollowers[serverId] = getMetric(endpoint, "arangodb_dropped_followers_total");
-      });
+      let droppedFollowersBefore = getDroppedFollowers(servers);
 
       for (let i = 0; i < 50; ++i) { 
         const trx = db._createTransaction(opts);
@@ -74,13 +130,11 @@ function transactionDroppedFollowersSuite() {
         assertEqual("committed", result.status);
       }
 
-      // follower must not have been dropped
-      servers.forEach((serverId) => {
-        let endpoint = getEndpointById(serverId);
-        assertEqual(droppedFollowers[serverId], getMetric(endpoint, "arangodb_dropped_followers_total"));
-      });
-
       assertEqual(1000 * 50, c.count());
+      
+      // follower must not have been dropped
+      let droppedFollowersAfter = getDroppedFollowers(servers);
+      assertEqual(droppedFollowersBefore, droppedFollowersAfter);
     },
     
     testTransactionExclusiveSameFollower: function () {
@@ -98,11 +152,7 @@ function transactionDroppedFollowersSuite() {
       let shards = db._collection(cn ).shards(true);
       let servers = shards[Object.keys(shards)[0]];
 
-      let droppedFollowers = {};
-      servers.forEach((serverId) => {
-        let endpoint = getEndpointById(serverId);
-        droppedFollowers[serverId] = getMetric(endpoint, "arangodb_dropped_followers_total");
-      });
+      let droppedFollowersBefore = getDroppedFollowers(servers);
 
       for (let i = 0; i < 50; ++i) { 
         const trx = db._createTransaction(opts);
@@ -112,15 +162,84 @@ function transactionDroppedFollowersSuite() {
         assertEqual("committed", result.status);
       }
 
-      // follower must not have been dropped
-      servers.forEach((serverId) => {
-        let endpoint = getEndpointById(serverId);
-        assertEqual(droppedFollowers[serverId], getMetric(endpoint, "arangodb_dropped_followers_total"));
-      });
-      
       assertEqual(1000 * 50, c.count());
+      
+      // follower must not have been dropped
+      let droppedFollowersAfter = getDroppedFollowers(servers);
+      assertEqual(droppedFollowersBefore, droppedFollowersAfter);
+    },
+    
+    testTransactionAbortsSameFollower: function () {
+      let c = db._create(cn, { numberOfShards: 40, replicationFactor: 3 });
+      let docs = [];
+      for (let i = 0; i < 1000; ++i) { 
+        docs.push({});
+      }
+      const opts = {
+        collections: {
+          write: [ cn  ]
+        }
+      };
+
+      let shards = db._collection(cn ).shards(true);
+      let servers = shards[Object.keys(shards)[0]];
+
+      let droppedFollowersBefore = getDroppedFollowers(servers);
+
+      for (let i = 0; i < 50; ++i) { 
+        const trx = db._createTransaction(opts);
+        const tc = trx.collection(cn);
+        tc.insert(docs);
+        let result = trx.abort();
+        assertEqual("aborted", result.status);
+      }
+
+      assertEqual(0, c.count());
+      
+      // follower must not have been dropped
+      let droppedFollowersAfter = getDroppedFollowers(servers);
+      assertEqual(droppedFollowersBefore, droppedFollowersAfter);
     },
 
+    testTransactionWritesSameFollowerIntermediateCommit: function () {
+      let c = db._create(cn, { numberOfShards: 40, replicationFactor: 3 });
+      let docs = [];
+      for (let i = 0; i < 2000; ++i) { 
+        docs.push({});
+      }
+      const opts = {
+        collections: {
+          write: [ cn  ]
+        },
+        intermediateCommitCount: 50
+      };
+
+      let shards = db._collection(cn ).shards(true);
+      let servers = shards[Object.keys(shards)[0]];
+
+      let droppedFollowersBefore = getDroppedFollowers(servers);
+      let intermediateCommitsBefore = getIntermediateCommits(servers);
+
+      for (let i = 0; i < 10; ++i) { 
+        const trx = db._createTransaction(opts);
+        const tc = trx.collection(cn);
+        tc.insert(docs);
+        let result = trx.commit();
+        assertEqual("committed", result.status);
+      }
+
+      assertEqual(2000 * 10, c.count());
+      
+      // follower must not have been dropped
+      let droppedFollowersAfter = getDroppedFollowers(servers);
+      assertEqual(droppedFollowersBefore, droppedFollowersAfter);
+      
+      let intermediateCommitsAfter = getIntermediateCommits(servers);
+
+      Object.keys(intermediateCommitsBefore).forEach((s) => {
+        assertTrue(intermediateCommitsBefore[s] + 5 < intermediateCommitsAfter[s]);
+      });
+    },
   };
 }
 

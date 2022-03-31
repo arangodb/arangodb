@@ -1,4 +1,4 @@
-import React, { ReactNode } from 'react';
+import React, { ReactNode, useEffect, useState } from 'react';
 import styled from 'styled-components';
 import { uniqueId } from 'lodash';
 import PlainLabel from "./PlainLabel";
@@ -20,20 +20,23 @@ const StyledTextbox = styled.input.attrs(({ type, ...rest }: StyledTextboxProps)
 
 type TextboxProps = {
   id?: string;
-  label: ReactNode;
+  label?: ReactNode;
   disabled?: boolean;
 } & StyledTextboxProps;
 
 const Textbox = ({ id, label, disabled, ...rest }: TextboxProps) => {
-  const { type } = rest;
+  const [thisId, setThisId] = useState(id || uniqueId('textbox-'));
 
-  if (!id) {
-    id = uniqueId(`textbox-${type}-`);
-  }
+  useEffect(() => {
+    if (id) {
+      setThisId(id);
+    }
+  }, [id]);
+
 
   return <>
-    <PlainLabel htmlFor={id}>{label}</PlainLabel>
-    <StyledTextbox id={id} disabled={disabled} {...rest}/>
+    {label ? <PlainLabel htmlFor={thisId}>{label}</PlainLabel> : null}
+    <StyledTextbox id={thisId} disabled={disabled} {...rest}/>
   </>;
 };
 

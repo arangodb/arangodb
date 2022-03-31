@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -42,14 +42,18 @@ class DistributeNode;
 
 class DistributeExecutorInfos : public ClientsExecutorInfos {
  public:
-  DistributeExecutorInfos(std::vector<std::string> clientIds, Collection const* collection,
-                          RegisterId regId, ScatterNode::ScatterType type);
+  DistributeExecutorInfos(std::vector<std::string> clientIds,
+                          Collection const* collection, RegisterId regId,
+                          ScatterNode::ScatterType type,
+                          std::vector<aql::Collection*> satellites);
 
   auto registerId() const noexcept -> RegisterId;
   auto scatterType() const noexcept -> ScatterNode::ScatterType;
 
   auto getResponsibleClient(arangodb::velocypack::Slice value) const
       -> ResultT<std::string>;
+
+  auto shouldDistributeToAll(arangodb::velocypack::Slice value) const -> bool;
 
  private:
   RegisterId _regId;
@@ -63,6 +67,9 @@ class DistributeExecutorInfos : public ClientsExecutorInfos {
 
   /// @brief type of distribution that this nodes follows.
   ScatterNode::ScatterType _type;
+
+  /// @brief list of collections that should be used
+  std::vector<aql::Collection*> _satellites;
 };
 
 // The DistributeBlock is actually implemented by specializing
@@ -79,32 +86,22 @@ class DistributeExecutor {
   /**
    * @brief Distribute the rows of the given block into the blockMap
    *        NOTE: Has SideEffects
-   *        If the input value does not contain an object, it is modified inplace with
-   *        a new Object containing a key value!
-   *        Hence this method is not const ;(
+   *        If the input value does not contain an object, it is modified
+   * inplace with a new Object containing a key value! Hence this method is not
+   * const ;(
    *
    * @param block The block to be distributed
    * @param skipped The rows that have been skipped from upstream
-   * @param blockMap Map client => Data. Will provide the required data to the correct client.
+   * @param blockMap Map client => Data. Will provide the required data to the
+   * correct client.
    */
-  auto distributeBlock(SharedAqlItemBlockPtr const& block, SkipResult skipped,
-                       std::unordered_map<std::string, ClientBlockData>& blockMap) -> void;
+  auto distributeBlock(
+      SharedAqlItemBlockPtr const& block, SkipResult skipped,
+      std::unordered_map<std::string, ClientBlockData>& blockMap) -> void;
 
  private:
-  /**
-   * @brief Compute which client needs to get this row
-   *        NOTE: Has SideEffects
-   *        If the input value does not contain an object, it is modified inplace with
-   *        a new Object containing a key value!
-   *        Hence this method is not const ;(
-   *
-   * @param block The input block
-   * @param rowIndex
-   * @return std::string Identifier used by the client
-   */
-  auto getClient(SharedAqlItemBlockPtr const& block, size_t rowIndex) const -> std::string;
+  auto getClient(velocypack::Slice input) const -> std::string;
 
- private:
   DistributeExecutorInfos const& _infos;
 
   // a reusable Builder object for building _key values
@@ -117,16 +114,16 @@ class DistributeExecutor {
 /**
  * @brief See ExecutionBlockImpl.h for documentation.
  */
-template <>
+template<>
 class ExecutionBlockImpl<DistributeExecutor>
     : public BlocksWithClientsImpl<DistributeExecutor> {
  public:
   ExecutionBlockImpl(ExecutionEngine* engine, DistributeNode const* node,
-                     RegisterInfos registerInfos, DistributeExecutorInfos&& executorInfos);
+                     RegisterInfos registerInfos,
+                     DistributeExecutorInfos&& executorInfos);
 
   ~ExecutionBlockImpl() override = default;
 };
 
 }  // namespace aql
 }  // namespace arangodb
-

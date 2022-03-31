@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,18 +27,18 @@
 #include <string>
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "RestServer/arangod.h"
 
 namespace arangodb {
-namespace application_features {
-class ApplicationServer;
-}
 namespace options {
 class ProgramOptions;
 }
 
-class DaemonFeature final : public application_features::ApplicationFeature {
+class DaemonFeature final : public ArangodFeature {
  public:
-  explicit DaemonFeature(application_features::ApplicationServer& server);
+  static constexpr std::string_view name() noexcept { return "Daemon"; }
+
+  explicit DaemonFeature(Server& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -64,4 +64,3 @@ class DaemonFeature final : public application_features::ApplicationFeature {
 };
 
 }  // namespace arangodb
-

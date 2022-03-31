@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,6 +25,8 @@
 
 #include "Basics/AttributeNameParser.h"
 #include "Basics/Common.h"
+#include "Containers/FlatHashMap.h"
+#include "Containers/FlatHashSet.h"
 #include "Indexes/Index.h"
 
 namespace arangodb {
@@ -44,16 +46,9 @@ class SimpleAttributeEqualityMatcher {
  public:
   /// @brief match a single of the attributes
   /// this is used for the primary index and the edge index
-  Index::FilterCosts matchOne(arangodb::Index const* index, 
+  Index::FilterCosts matchOne(arangodb::Index const* index,
                               arangodb::aql::AstNode const* node,
-                              arangodb::aql::Variable const* reference, 
-                              size_t itemsInIndex);
-  
-  /// @brief match all of the attributes, in any order
-  /// this is used for the hash index
-  Index::FilterCosts matchAll(arangodb::Index const* index, 
-                              arangodb::aql::AstNode const* node,
-                              arangodb::aql::Variable const* reference, 
+                              arangodb::aql::Variable const* reference,
                               size_t itemsInIndex);
 
   /// @brief get the condition parts that the index is responsible for
@@ -67,32 +62,28 @@ class SimpleAttributeEqualityMatcher {
   /// @brief specialize the condition for the index
   /// this is used for the primary index and the edge index
   /// requires that a previous matchOne() returned true
-  arangodb::aql::AstNode* specializeOne(arangodb::Index const*, arangodb::aql::AstNode*,
+  arangodb::aql::AstNode* specializeOne(arangodb::Index const*,
+                                        arangodb::aql::AstNode*,
                                         arangodb::aql::Variable const*);
 
-  /// @brief specialize the condition for the index
-  /// this is used for the hash index
-  /// requires that a previous matchAll() returned true
-  arangodb::aql::AstNode* specializeAll(arangodb::Index const*, arangodb::aql::AstNode*,
-                                        arangodb::aql::Variable const*);
-
-  static size_t estimateNumberOfArrayMembers(arangodb::aql::AstNode const* value);
+  static size_t estimateNumberOfArrayMembers(
+      arangodb::aql::AstNode const* value);
 
  private:
   /// @brief determine the costs of using this index and the number of items
   /// that will return in average
   /// cost values have no special meaning, except that multiple cost values are
   /// comparable, and lower values mean lower costs
-  Index::FilterCosts calculateIndexCosts(arangodb::Index const* index,
-                                         arangodb::aql::AstNode const* attribute, 
-                                         size_t itemsInIndex, size_t values,
-                                         size_t coveredAttributes) const;
+  Index::FilterCosts calculateIndexCosts(
+      arangodb::Index const* index, arangodb::aql::AstNode const* attribute,
+      size_t itemsInIndex, size_t values, size_t coveredAttributes) const;
 
   /// @brief whether or not the access fits
-  bool accessFitsIndex(arangodb::Index const*, arangodb::aql::AstNode const*,
-                       arangodb::aql::AstNode const*, arangodb::aql::AstNode const*,
-                       arangodb::aql::Variable const*,
-                       std::unordered_set<std::string>& nonNullAttributes, bool);
+  bool accessFitsIndex(
+      arangodb::Index const*, arangodb::aql::AstNode const*,
+      arangodb::aql::AstNode const*, arangodb::aql::AstNode const*,
+      arangodb::aql::Variable const*,
+      arangodb::containers::FlatHashSet<std::string>& nonNullAttributes, bool);
 
  private:
   /// @brief array of attributes used for comparisons
@@ -100,9 +91,9 @@ class SimpleAttributeEqualityMatcher {
 
   /// @brief an internal map to mark which condition parts were useful and
   /// covered by the index. Also contains the matching Node
-  std::unordered_map<size_t, arangodb::aql::AstNode const*> _found;
+  arangodb::containers::FlatHashMap<size_t, arangodb::aql::AstNode const*>
+      _found;
 
   static constexpr size_t defaultEstimatedNumberOfArrayMembers = 10;
 };
 }  // namespace arangodb
-

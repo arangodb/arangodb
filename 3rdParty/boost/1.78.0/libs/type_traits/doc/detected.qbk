@@ -1,0 +1,40 @@
+[/
+Copyright 2018 Glen Joseph Fernandes
+(glenjofe@gmail.com)
+
+Distributed under the Boost Software License,
+Version 1.0. (See accompanying file LICENSE_1_0.txt
+or copy at http://www.boost.org/LICENSE_1_0.txt).
+]
+
+[section:detected detected]
+
+    template<template<class...> class Op, class... Args>
+    using detected_t = __below;
+
+__alias `Op<Args...>` if it is a valid template-id, otherwise
+`boost::nonesuch`.
+
+__std_paper [@http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2015/n4502.pdf N4502]
+
+__compat Requires C++11 variadic templates and C++11 template aliases.
+
+__header `#include <boost/type_traits/detected.hpp>`
+
+__examples
+
+Suppose you wish to determine whether a type has a `size()` const-member function, then given the meta-functions:
+
+   template <class T>
+   using size_member_tester = decltype(std::declval<const T&>().size());
+
+   template <class T>
+   using size_member_t = boost::detected_t<size_member_tester, T >;
+
+
+Then the type `size_member_t<T>` is an alias for `size_member_tester<T>` if the operation is valid, and an alias for
+`boost::nonesuch` otherwise.
+
+See also: __is_detected, __is_detected_convertible, __is_detected_exact.
+
+[endsect]

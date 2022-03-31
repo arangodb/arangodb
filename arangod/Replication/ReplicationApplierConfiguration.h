@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,6 +27,7 @@
 #include <string>
 
 #include "Basics/Common.h"
+#include "RestServer/arangod.h"
 
 namespace arangodb {
 namespace application_features {
@@ -42,7 +43,7 @@ class ReplicationApplierConfiguration {
  public:
   enum class RestrictType { None, Include, Exclude };
 
-  application_features::ApplicationServer& _server;
+  ArangodServer& _server;
 
   std::string _endpoint;
   std::string _database;
@@ -67,9 +68,9 @@ class ReplicationApplierConfiguration {
   bool _adaptivePolling;
   bool _autoResync;  /// resync completely if we miss updates
   bool _includeSystem;
-  bool _includeFoxxQueues; /// sync the _jobs and _queues collection
-  bool _requireFromPresent;  /// while tailing WAL: leader must have the client's
-                             /// requested tick
+  bool _includeFoxxQueues;   /// sync the _jobs and _queues collection
+  bool _requireFromPresent;  /// while tailing WAL: leader must have the
+                             /// client's requested tick
   bool _incremental;         /// use incremental sync if we got local data
   bool _verbose;
   RestrictType _restrictType;
@@ -77,11 +78,13 @@ class ReplicationApplierConfiguration {
   std::string _clientInfoString;
 
  public:
-  explicit ReplicationApplierConfiguration(application_features::ApplicationServer&);
+  explicit ReplicationApplierConfiguration(ArangodServer&);
   ~ReplicationApplierConfiguration() = default;
 
-  ReplicationApplierConfiguration(ReplicationApplierConfiguration const&) = default;
-  ReplicationApplierConfiguration& operator=(ReplicationApplierConfiguration const&);
+  ReplicationApplierConfiguration(ReplicationApplierConfiguration const&) =
+      default;
+  ReplicationApplierConfiguration& operator=(
+      ReplicationApplierConfiguration const&);
 
   ReplicationApplierConfiguration(ReplicationApplierConfiguration&&) = default;
 
@@ -93,15 +96,20 @@ class ReplicationApplierConfiguration {
 
   /// @brief get a VelocyPack representation
   /// expects builder to be in an open Object state
-  void toVelocyPack(arangodb::velocypack::Builder&, bool includePassword, bool includeJwt) const;
+  void toVelocyPack(arangodb::velocypack::Builder&, bool includePassword,
+                    bool includeJwt) const;
 
-  void setClientInfo(std::string&& clientInfo) { _clientInfoString = std::move(clientInfo); }
-  void setClientInfo(std::string const& clientInfo) { _clientInfoString = clientInfo; }
+  void setClientInfo(std::string&& clientInfo) {
+    _clientInfoString = std::move(clientInfo);
+  }
+  void setClientInfo(std::string const& clientInfo) {
+    _clientInfoString = clientInfo;
+  }
 
   /// @brief create a configuration object from velocypack
-  static ReplicationApplierConfiguration fromVelocyPack(application_features::ApplicationServer&,
-                                                        arangodb::velocypack::Slice slice,
-                                                        std::string const& databaseName);
+  static ReplicationApplierConfiguration fromVelocyPack(
+      ArangodServer&, arangodb::velocypack::Slice slice,
+      std::string const& databaseName);
 
   /// @brief create a configuration object from velocypack, merging it with an
   /// existing one
@@ -114,4 +122,3 @@ class ReplicationApplierConfiguration {
 };
 
 }  // namespace arangodb
-

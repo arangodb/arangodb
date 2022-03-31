@@ -129,26 +129,29 @@ exports.debugClearFailAt = function (endpoint) {
   }
 };
 
-
-exports.debugClearFailAt = function (endpoint) {
+exports.debugGetFailurePoints = function (endpoint) {
   const primaryEndpoint = arango.getEndpoint();
   try {
     reconnectRetry(endpoint, db._name(), "root", "");
-    let res = arango.DELETE_RAW('/_admin/debug/failat');
-    if (res.code !== 200) {
-      throw "Error removing failure points";
+    let haveFailAt = arango.GET("/_admin/debug/failat") === true;
+    if (haveFailAt) {
+      let res = arango.GET_RAW('/_admin/debug/failat/all');
+      if (res.code !== 200) {
+        throw "Error checking failure points = " + JSON.stringify(res);
+      }
+      return res.parsedBody;
     }
-    return true;
   } finally {
     reconnectRetry(primaryEndpoint, "_system", "root", "");
   }
+  return [];
 };
 
 exports.getChecksum = function (endpoint, name) {
   const primaryEndpoint = arango.getEndpoint();
   try {
     reconnectRetry(endpoint, db._name(), "root", "");
-    let res = arango.GET_RAW( '/_api/collection/' + name + '/checksum');
+    let res = arango.GET_RAW('/_api/collection/' + name + '/checksum');
     if (res.code !== 200) {
       throw "Error getting collection checksum";
     }
@@ -157,27 +160,50 @@ exports.getChecksum = function (endpoint, name) {
     reconnectRetry(primaryEndpoint, "_system", "root", "");
   }
 };
-
-exports.getMetric = function (endpoint, name) {
+exports.getMetricRaw = function (endpoint, tags) {
   const primaryEndpoint = arango.getEndpoint();
   try {
     reconnectRetry(endpoint, db._name(), "root", "");
-    let res = arango.GET_RAW( '/_admin/metrics/v2');
+    let res = arango.GET_RAW('/_admin/metrics' + tags);
     if (res.code !== 200) {
       throw "error fetching metric";
     }
-    let re = new RegExp("^" + name);
-    let matches = res.body.split('\n').filter((line) => !line.match(/^#/)).filter((line) => line.match(re));
-    if (!matches.length) {
-      throw "Metric " + name + " not found";
-    }
-    return Number(matches[0].replace(/^.* (\d+)$/, '$1'));
+    return res.body;
   } finally {
     reconnectRetry(primaryEndpoint, "_system", "root", "");
   }
 };
 
-const arangosh = fs.join(global.ARANGOSH_PATH, 'arangosh' + pu.executableExt);
+function getMetricName(text, name) {
+  let re = new RegExp("^" + name);
+  let matches = text.split('\n').filter((line) => !line.match(/^#/)).filter((line) => line.match(re));
+  if (!matches.length) {
+    throw "Metric " + name + " not found";
+  }
+  return Number(matches[0].replace(/^.*{.*}([0-9.]+)$/, "$1"));
+}
+
+exports.getMetric = function (endpoint, name) {
+  const primaryEndpoint = arango.getEndpoint();
+  try {
+    reconnectRetry(endpoint, db._name(), "root", "");
+    let res = arango.GET_RAW("/_admin/metrics");
+    if (res.code !== 200) {
+      throw "error fetching metric";
+    }
+    return getMetricName(res.body, name);
+  } finally {
+    reconnectRetry(primaryEndpoint, db._name(), "root", "");
+  }
+};
+
+exports.getMetricSingle = function (name) {
+  let res = arango.GET_RAW("/_admin/metrics");
+  if (res.code !== 200) {
+    throw "error fetching metric";
+  }
+  return getMetricName(res.body, name);
+};
 
 const debug = function (text) {
   console.warn(text);
@@ -205,7 +231,7 @@ const runShell = function(args, prefix) {
     argv.push(options['javascript.module-directory'][o]);
   }
 
-  let result = internal.executeExternal(arangosh, argv, false /*usePipes*/);
+  let result = internal.executeExternal(global.ARANGOSH_BIN, argv, false /*usePipes*/);
   assertTrue(result.hasOwnProperty('pid'));
   let status = internal.statusExternal(result.pid);
   assertEqual(status.status, "RUNNING");
@@ -246,7 +272,7 @@ while (++saveTries < 100) {
 exports.runShell = runShell;
 
 exports.runParallelArangoshTests = function (tests, duration, cn) {
-  assertTrue(fs.isFile(arangosh), "arangosh executable not found!");
+  assertTrue(fs.isFile(global.ARANGOSH_BIN), "arangosh executable not found!");
   
   assertFalse(db[cn].exists("stop"));
   let clients = [];
@@ -337,7 +363,7 @@ exports.runParallelArangoshTests = function (tests, duration, cn) {
   return clients;
 };
 
-exports.waitForShardsInSync = function(cn, timeout) {
+exports.waitForShardsInSync = function (cn, timeout, minimumRequiredFollowers = 0) {
   if (!timeout) {
     timeout = 300;
   }
@@ -354,7 +380,8 @@ exports.waitForShardsInSync = function(cn, timeout) {
     let shards = Object.keys(collInfo.Plan);
     let insync = 0;
     for (let s of shards) {
-      if (collInfo.Plan[s].followers.length === collInfo.Current[s].followers.length) {
+      if (collInfo.Plan[s].followers.length === collInfo.Current[s].followers.length
+        && minimumRequiredFollowers <= collInfo.Plan[s].followers.length) {
         ++insync;
       }
     }

@@ -170,7 +170,7 @@ enum class ContentType : uint8_t {
   BatchPart,
   FormData
 };
-ContentType to_ContentType(std::string const& val);
+ContentType to_ContentType(std::string_view val);
 std::string to_string(ContentType type);
 
 // -----------------------------------------------------------------------------
@@ -180,9 +180,10 @@ std::string to_string(ContentType type);
 enum class ContentEncoding : uint8_t {
   Identity = 0,
   Deflate = 1,
-  Gzip = 2
+  Gzip = 2,
+  Custom = 3
 };
-ContentEncoding to_ContentEncoding(std::string const& val);
+ContentEncoding to_ContentEncoding(std::string_view val);
 std::string to_string(ContentEncoding type);
 
 // -----------------------------------------------------------------------------

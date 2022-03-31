@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -35,19 +35,21 @@ namespace methods {
 
 struct Queries {
   /// @brief return the list of slow queries
-  static Result listSlow(TRI_vocbase_t& vocbase, velocypack::Builder& out, bool allDatabases, bool fanout);
-  
-  /// @brief return the list of currently running queries
-  static Result listCurrent(TRI_vocbase_t& vocbase, velocypack::Builder& out, bool allDatabases,  bool fanout);
-  
-  /// @brief clears the list of slow queries
-  static Result clearSlow(TRI_vocbase_t& vocbase, bool allDatabases, bool fanout);
-  
-  /// @brief kills the given query
-  static Result kill(TRI_vocbase_t& vocbase, TRI_voc_tick_t id, bool allDatabases); 
+  static Result listSlow(TRI_vocbase_t& vocbase, velocypack::Builder& out,
+                         bool allDatabases, bool fanout);
 
+  /// @brief return the list of currently running queries
+  static Result listCurrent(TRI_vocbase_t& vocbase, velocypack::Builder& out,
+                            bool allDatabases, bool fanout);
+
+  /// @brief clears the list of slow queries
+  static Result clearSlow(TRI_vocbase_t& vocbase, bool allDatabases,
+                          bool fanout);
+
+  /// @brief kills the given query
+  static Result kill(TRI_vocbase_t& vocbase, TRI_voc_tick_t id,
+                     bool allDatabases);
 };
 
 }  // namespace methods
 }  // namespace arangodb
-

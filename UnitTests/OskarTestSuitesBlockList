@@ -4,3 +4,6 @@ upgrade_data_3.4.*
 upgrade_data_3.5.*
 audit
 dfdb
+http_server
+ssl_server
+server_http

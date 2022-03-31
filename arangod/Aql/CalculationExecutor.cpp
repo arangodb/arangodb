@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -40,53 +40,49 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-CalculationExecutorInfos::CalculationExecutorInfos(RegisterId outputRegister,
-                                                   QueryContext& query, Expression& expression,
-                                                   std::vector<Variable const*>&& expInVars,
-                                                   std::vector<RegisterId>&& expInRegs)
+CalculationExecutorInfos::CalculationExecutorInfos(
+    RegisterId outputRegister, QueryContext& query, Expression& expression,
+    std::vector<std::pair<VariableId, RegisterId>>&& expInVarToRegs)
     : _outputRegisterId(outputRegister),
       _query(query),
       _expression(expression),
-      _expInVars(std::move(expInVars)),
-      _expInRegs(std::move(expInRegs)) {
-}
+      _expVarToRegs(std::move(expInVarToRegs)) {}
 
-template <CalculationType calculationType>
-CalculationExecutor<calculationType>::CalculationExecutor(Fetcher& fetcher,
-                                                          CalculationExecutorInfos& infos)
-    :
-      _trx(infos.getQuery().newTrxContext()),
+template<CalculationType calculationType>
+CalculationExecutor<calculationType>::CalculationExecutor(
+    Fetcher& fetcher, CalculationExecutorInfos& infos)
+    : _trx(infos.getQuery().newTrxContext()),
       _infos(infos),
       _fetcher(fetcher),
       _currentRow(InputAqlItemRow{CreateInvalidInputRowHint{}}),
       _rowState(ExecutionState::HASMORE),
       _hasEnteredContext(false) {}
 
-template <CalculationType calculationType>
+template<CalculationType calculationType>
 CalculationExecutor<calculationType>::~CalculationExecutor() = default;
 
 RegisterId CalculationExecutorInfos::getOutputRegisterId() const noexcept {
   return _outputRegisterId;
 }
 
-QueryContext& CalculationExecutorInfos::getQuery() const noexcept { return _query; }
+QueryContext& CalculationExecutorInfos::getQuery() const noexcept {
+  return _query;
+}
 
 Expression& CalculationExecutorInfos::getExpression() const noexcept {
   return _expression;
 }
 
-std::vector<Variable const*> const& CalculationExecutorInfos::getExpInVars() const noexcept {
-  return _expInVars;
+std::vector<std::pair<VariableId, RegisterId>> const&
+CalculationExecutorInfos::getVarToRegs() const noexcept {
+  return _expVarToRegs;
 }
 
-std::vector<RegisterId> const& CalculationExecutorInfos::getExpInRegs() const noexcept {
-  return _expInRegs;
-}
-
-template <CalculationType calculationType>
-std::tuple<ExecutorState, typename CalculationExecutor<calculationType>::Stats, AqlCall>
-CalculationExecutor<calculationType>::produceRows(AqlItemBlockInputRange& inputRange,
-                                                  OutputAqlItemRow& output) {
+template<CalculationType calculationType>
+std::tuple<ExecutorState, typename CalculationExecutor<calculationType>::Stats,
+           AqlCall>
+CalculationExecutor<calculationType>::produceRows(
+    AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output) {
   TRI_IF_FAILURE("CalculationExecutor::produceRows") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
@@ -96,7 +92,8 @@ CalculationExecutor<calculationType>::produceRows(AqlItemBlockInputRange& inputR
   while (inputRange.hasDataRow()) {
     // This executor is passthrough. it has enough place to write.
     TRI_ASSERT(!output.isFull());
-    std::tie(state, input) = inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
+    std::tie(state, input) =
+        inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
     TRI_ASSERT(input.isInitialized());
 
     doEvaluation(input, output);
@@ -107,7 +104,8 @@ CalculationExecutor<calculationType>::produceRows(AqlItemBlockInputRange& inputR
     TRI_ASSERT(!_hasEnteredContext || _infos.getQuery().hasEnteredV8Context());
 
     // The following only affects V8Conditions. If we should exit the V8 context
-    // between blocks, because we might have to wait for client or upstream, then
+    // between blocks, because we might have to wait for client or upstream,
+    // then
     //   hasEnteredContext => state == HASMORE,
     // as we only leave the context open when there are rows left in the current
     // block.
@@ -121,16 +119,16 @@ CalculationExecutor<calculationType>::produceRows(AqlItemBlockInputRange& inputR
   return {inputRange.upstreamState(), NoStats{}, output.getClientCall()};
 }
 
-template <CalculationType calculationType>
-template <CalculationType U, typename>
+template<CalculationType calculationType>
+template<CalculationType U, typename>
 void CalculationExecutor<calculationType>::enterContext() {
   _infos.getQuery().enterV8Context();
   _hasEnteredContext = true;
 }
 
-template <CalculationType calculationType>
-template <CalculationType U, typename>
-void CalculationExecutor<calculationType>::exitContext() {
+template<CalculationType calculationType>
+template<CalculationType U, typename>
+void CalculationExecutor<calculationType>::exitContext() noexcept {
   if (shouldExitContextBetweenBlocks()) {
     // must invalidate the expression now as we might be called from
     // different threads
@@ -139,18 +137,20 @@ void CalculationExecutor<calculationType>::exitContext() {
   }
 }
 
-template <CalculationType calculationType>
-bool CalculationExecutor<calculationType>::shouldExitContextBetweenBlocks() const {
-  static bool const isRunningInCluster = ServerState::instance()->isRunningInCluster();
+template<CalculationType calculationType>
+bool CalculationExecutor<calculationType>::shouldExitContextBetweenBlocks()
+    const noexcept {
+  static bool const isRunningInCluster =
+      ServerState::instance()->isRunningInCluster();
   bool const stream = _infos.getQuery().queryOptions().stream;
 
   return isRunningInCluster || stream;
 }
 
-template <>
-void CalculationExecutor<CalculationType::Reference>::doEvaluation(InputAqlItemRow& input,
-                                                                   OutputAqlItemRow& output) {
-  auto const& inRegs = _infos.getExpInRegs();
+template<>
+void CalculationExecutor<CalculationType::Reference>::doEvaluation(
+    InputAqlItemRow& input, OutputAqlItemRow& output) {
+  auto const& inRegs = _infos.getVarToRegs();
   TRI_ASSERT(inRegs.size() == 1);
 
   TRI_IF_FAILURE("CalculationBlock::executeExpression") {
@@ -163,15 +163,17 @@ void CalculationExecutor<CalculationType::Reference>::doEvaluation(InputAqlItemR
   // We assume here that the output block (which must be the same as the input
   // block) is already responsible for this value.
   // Thus we do not want to clone it.
-  output.copyBlockInternalRegister(input, inRegs[0], _infos.getOutputRegisterId());
+  output.copyBlockInternalRegister(input, inRegs[0].second,
+                                   _infos.getOutputRegisterId());
 }
 
-template <>
-void CalculationExecutor<CalculationType::Condition>::doEvaluation(InputAqlItemRow& input,
-                                                                   OutputAqlItemRow& output) {
+template<>
+void CalculationExecutor<CalculationType::Condition>::doEvaluation(
+    InputAqlItemRow& input, OutputAqlItemRow& output) {
   // execute the expression
-  ExecutorExpressionContext ctx(_trx, _infos.getQuery(), _aqlFunctionsInternalCache, input,
-                                _infos.getExpInVars(), _infos.getExpInRegs());
+  ExecutorExpressionContext ctx(_trx, _infos.getQuery(),
+                                _aqlFunctionsInternalCache, input,
+                                _infos.getVarToRegs());
 
   bool mustDestroy;  // will get filled by execution
   AqlValue a = _infos.getExpression().execute(&ctx, mustDestroy);
@@ -184,9 +186,9 @@ void CalculationExecutor<CalculationType::Condition>::doEvaluation(InputAqlItemR
   output.moveValueInto(_infos.getOutputRegisterId(), input, guard);
 }
 
-template <>
-void CalculationExecutor<CalculationType::V8Condition>::doEvaluation(InputAqlItemRow& input,
-                                                                     OutputAqlItemRow& output) {
+template<>
+void CalculationExecutor<CalculationType::V8Condition>::doEvaluation(
+    InputAqlItemRow& input, OutputAqlItemRow& output) {
   // must have a V8 context here to protect Expression::execute().
 
   // enterContext is safe to call even if we've already entered.
@@ -198,13 +200,14 @@ void CalculationExecutor<CalculationType::V8Condition>::doEvaluation(InputAqlIte
              _hasEnteredContext == !input.isFirstDataRowInBlock());
 
   enterContext();
-  auto contextGuard = scopeGuard([this]() { exitContext(); });
+  auto contextGuard = scopeGuard([this]() noexcept { exitContext(); });
 
   ISOLATE;
   v8::HandleScope scope(isolate);  // do not delete this!
   // execute the expression
-  ExecutorExpressionContext ctx(_trx, _infos.getQuery(), _aqlFunctionsInternalCache, input,
-                                _infos.getExpInVars(), _infos.getExpInRegs());
+  ExecutorExpressionContext ctx(_trx, _infos.getQuery(),
+                                _aqlFunctionsInternalCache, input,
+                                _infos.getVarToRegs());
 
   bool mustDestroy;  // will get filled by execution
   AqlValue a = _infos.getExpression().execute(&ctx, mustDestroy);
@@ -226,5 +229,6 @@ void CalculationExecutor<CalculationType::V8Condition>::doEvaluation(InputAqlIte
 }
 
 template class ::arangodb::aql::CalculationExecutor<CalculationType::Condition>;
-template class ::arangodb::aql::CalculationExecutor<CalculationType::V8Condition>;
+template class ::arangodb::aql::CalculationExecutor<
+    CalculationType::V8Condition>;
 template class ::arangodb::aql::CalculationExecutor<CalculationType::Reference>;

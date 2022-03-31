@@ -1,0 +1,19 @@
+[/ 
+  (C) Copyright Edward Diener 2011-2015
+  Distributed under the Boost Software License, Version 1.0.
+  (See accompanying file LICENSE_1_0.txt or copy at
+  http://www.boost.org/LICENSE_1_0.txt).
+]
+
+[section:vmd_ack Acknowledgements]
+
+First and foremost I would like to thank Paul Mensonides for providing 
+advice, explanation and code for working with variadic macros and macros 
+in general. Secondly I would like to thank Steve Watanabe for his help, code, 
+and explanations. Finally I have to acknowledge that this library is an amalgam 
+of already known techniques for dealing with variadic macros themselves, 
+among which are techniques published online by Paul Mensonides. I have added 
+design and some cleverness in creating the library but I could not have done 
+it without the previous knowledge of others.
+
+[endsect]

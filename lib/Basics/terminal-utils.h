@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -50,5 +50,4 @@ TRI_TerminalSize TRI_DefaultTerminalSize();
 /// @brief set the visibility of stdin inputs (turn off for password entry etc.)
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_SetStdinVisibility(bool);
-
+void TRI_SetStdinVisibility(bool) noexcept;

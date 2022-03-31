@@ -12,6 +12,9 @@
 #define DEFAULT_GO_PACKAGE "snowball"
 #define DEFAULT_GO_SNOWBALL_RUNTIME "github.com/snowballstem/snowball/go"
 
+#define DEFAULT_ADA_PACKAGE "Snowball"
+#define DEFAULT_ADA_SNOWBALL_RUNTIME "github.com/snowballstem/snowball/ada"
+
 #define DEFAULT_CS_NAMESPACE "Snowball"
 #define DEFAULT_CS_BASE_CLASS "Stemmer"
 #define DEFAULT_CS_AMONG_CLASS "Among"
@@ -53,6 +56,9 @@ static void print_arglist(int exit_code) {
 #endif
 #ifndef DISABLE_GO
                "  -go\n"
+#endif
+#ifndef DISABLE_ADA
+               "  -ada\n"
 #endif
                "  -w[idechars]\n"
                "  -u[tf8]\n"
@@ -140,19 +146,16 @@ static int read_options(struct options * o, int argc, char * argv[]) {
                 continue;
             }
             if (eq(s, "-n") || eq(s, "-name")) {
-                /* Copy here so we do not free an argv item. */
-                const char * name = NULL;
-                char * new_name = NULL;
-                size_t len = 0;
+                char * new_name;
+                size_t len;
 
                 check_lim(i, argc);
-                name = argv[i++];
-
-                len = strlen(name);
-                new_name = malloc(len+1);
-                memcpy(new_name, name, len);
+                /* Take a copy of the argument here, because
+                 * later we will free o->name */
+                len = strlen(argv[i]);
+                new_name = malloc(len + 1);
+                memcpy(new_name, argv[i++], len);
                 new_name[len] = '\0';
-
                 o->name = new_name;
                 continue;
             }
@@ -199,6 +202,12 @@ static int read_options(struct options * o, int argc, char * argv[]) {
 #ifndef DISABLE_PYTHON
             if (eq(s, "-py") || eq(s, "-python")) {
                 o->make_lang = LANG_PYTHON;
+                continue;
+            }
+#endif
+#ifndef DISABLE_ADA
+            if (eq(s, "-ada")) {
+                o->make_lang = LANG_ADA;
                 continue;
             }
 #endif
@@ -324,6 +333,11 @@ static int read_options(struct options * o, int argc, char * argv[]) {
             o->encoding = ENC_UTF8;
             if (!o->package)
                 o->package = DEFAULT_GO_PACKAGE;
+            break;
+        case LANG_ADA:
+            o->encoding = ENC_UTF8;
+            if (!o->package)
+                o->package = DEFAULT_ADA_PACKAGE;
             break;
         case LANG_JAVA:
             o->encoding = ENC_WIDECHARS;
@@ -567,6 +581,21 @@ extern int main(int argc, char * argv[]) {
                     fclose(o->output_src);
                 }
 #endif
+#ifndef DISABLE_ADA
+                if (o->make_lang == LANG_ADA) {
+                    symbol * b = add_s_to_b(0, s);
+                    b = add_s_to_b(b, ".ads");
+                    o->output_h = get_output(b);
+                    b[SIZE(b) - 1] = 'b';
+                    o->output_src = get_output(b);
+                    lose_b(b);
+
+                    generate_program_ada(g);
+                    fclose(o->output_src);
+                    fclose(o->output_h);
+
+                }
+#endif
                 close_generator(g);
             }
             close_analyser(a);
@@ -579,7 +608,7 @@ extern int main(int argc, char * argv[]) {
             lose_b(p->b); FREE(p); p = q;
         }
     }
-    free((void*)o->name);
+    FREE(o->name);
     FREE(o);
     if (space_count) fprintf(stderr, "%d blocks unfreed\n", space_count);
     return 0;

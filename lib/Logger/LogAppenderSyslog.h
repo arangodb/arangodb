@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,14 +30,13 @@ namespace arangodb {
 
 class LogAppenderSyslog final : public LogAppender {
  public:
-  static void close();
-
- public:
   LogAppenderSyslog(std::string const& facility, std::string const& name);
 
   void logMessage(LogMessage const& message) override final;
 
   std::string details() const override final;
+
+  static void close();
 
  private:
   std::string const _sysname;
@@ -46,4 +45,3 @@ class LogAppenderSyslog final : public LogAppender {
 };
 #endif
 }  // namespace arangodb
-

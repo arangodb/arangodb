@@ -1,0 +1,4 @@
+<div class="notices {{ .Get 0 }}" {{ if len .Params | eq 2 }} id="{{ .Get 1 }}" {{ end }}style="background: url('{{printf "%simages/%s.png" (.Page.Scratch.Get "relbasedir") (.Get 0)}}') top left no-repeat padding-box padding-box;">
+<div class="notices heading">{{ .Get 0 }}</div>
+<div class="notices message">{{ .Inner }}</div>
+</div>

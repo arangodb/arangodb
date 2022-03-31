@@ -134,17 +134,18 @@ function sortTestSuite () {
           RETURN COUNT(sq)
       `;
       const result = AQL_EXECUTE(query);
+
       assertEqual([
           'SingletonNode',
           'CalculationNode',
           'CalculationNode',
-          'CalculationNode',
-          'EnumerateListNode',
           'SubqueryStartNode',
           'EnumerateListNode',
           'SortNode',
           'SubqueryEndNode',
           'CalculationNode',
+          'CalculationNode',
+          'EnumerateListNode',
           'ReturnNode',
         ],
         AQL_EXPLAIN(query).plan.nodes.map(node => node.type)

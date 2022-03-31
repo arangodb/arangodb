@@ -124,17 +124,20 @@ TEST_F(RocksDBKeyTestLittleEndian, test_collection) {
   auto const& s6 = key.string();
 
   EXPECT_EQ(s6.size(), sizeof(char) + sizeof(uint64_t) + sizeof(uint64_t));
-  EXPECT_TRUE(s6 ==
-              std::string("1\x35\x1c\xdc\xdf\x02\0\0\0\xb1\x68\xde\x3a\0\0\0\0", 17));
+  EXPECT_TRUE(
+      s6 ==
+      std::string("1\x35\x1c\xdc\xdf\x02\0\0\0\xb1\x68\xde\x3a\0\0\0\0", 17));
 
-  key.constructCollection(0xf0f1f2f3f4f5f6f7ULL, DataSourceId{0xf0f1f2f3f4f5f6f7ULL});
+  key.constructCollection(0xf0f1f2f3f4f5f6f7ULL,
+                          DataSourceId{0xf0f1f2f3f4f5f6f7ULL});
   auto const& s7 = key.string();
 
   EXPECT_EQ(s7.size(), sizeof(char) + sizeof(uint64_t) + sizeof(uint64_t));
   EXPECT_TRUE(
       s7 ==
       std::string(
-          "1\xf7\xf6\xf5\xf4\xf3\xf2\xf1\xf0\xf7\xf6\xf5\xf4\xf3\xf2\xf1\xf0", 17));
+          "1\xf7\xf6\xf5\xf4\xf3\xf2\xf1\xf0\xf7\xf6\xf5\xf4\xf3\xf2\xf1\xf0",
+          17));
 }
 
 /// @brief test document little-endian
@@ -174,36 +177,38 @@ TEST_F(RocksDBKeyTestLittleEndian, test_document) {
   auto const& s6 = key.string();
 
   EXPECT_EQ(s6.size(), sizeof(uint64_t) + sizeof(uint64_t));
-  EXPECT_TRUE(s6 ==
-              std::string("\x35\x1c\xdc\xdf\x02\0\0\0\xb1\x68\xde\x3a\0\0\0\0", 16));
+  EXPECT_TRUE(
+      s6 ==
+      std::string("\x35\x1c\xdc\xdf\x02\0\0\0\xb1\x68\xde\x3a\0\0\0\0", 16));
 
-  key.constructDocument(0xf0f1f2f3f4f5f6f7ULL, LocalDocumentId(0xf0f1f2f3f4f5f6f7ULL));
+  key.constructDocument(0xf0f1f2f3f4f5f6f7ULL,
+                        LocalDocumentId(0xf0f1f2f3f4f5f6f7ULL));
   auto const& s7 = key.string();
 
   EXPECT_EQ(s7.size(), sizeof(uint64_t) + sizeof(uint64_t));
   EXPECT_TRUE(
       s7 ==
       std::string(
-          "\xf7\xf6\xf5\xf4\xf3\xf2\xf1\xf0\xf7\xf6\xf5\xf4\xf3\xf2\xf1\xf0", 16));
+          "\xf7\xf6\xf5\xf4\xf3\xf2\xf1\xf0\xf7\xf6\xf5\xf4\xf3\xf2\xf1\xf0",
+          16));
 }
 
 /// @brief test primary index
 TEST_F(RocksDBKeyTestLittleEndian, test_primary_index) {
   RocksDBKey key;
-  key.constructPrimaryIndexValue(1, arangodb::velocypack::StringRef("abc"));
+  key.constructPrimaryIndexValue(1, std::string_view("abc"));
   auto const& s2 = key.string();
 
   EXPECT_EQ(s2.size(), sizeof(uint64_t) + strlen("abc"));
   EXPECT_EQ(s2, std::string("\1\0\0\0\0\0\0\0abc", 11));
 
-  key.constructPrimaryIndexValue(1, arangodb::velocypack::StringRef(" "));
+  key.constructPrimaryIndexValue(1, std::string_view(" "));
   auto const& s3 = key.string();
 
   EXPECT_EQ(s3.size(), sizeof(uint64_t) + strlen(" "));
   EXPECT_EQ(s3, std::string("\1\0\0\0\0\0\0\0 ", 9));
 
-  key.constructPrimaryIndexValue(1, arangodb::velocypack::StringRef(
-                                        "this is a key"));
+  key.constructPrimaryIndexValue(1, std::string_view("this is a key"));
   auto const& s4 = key.string();
 
   EXPECT_EQ(s4.size(), sizeof(uint64_t) + strlen("this is a key"));
@@ -215,14 +220,13 @@ TEST_F(RocksDBKeyTestLittleEndian, test_primary_index) {
       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
-  key.constructPrimaryIndexValue(1, arangodb::velocypack::StringRef(longKey));
+  key.constructPrimaryIndexValue(1, std::string_view(longKey));
   auto const& s5 = key.string();
 
   EXPECT_EQ(s5.size(), sizeof(uint64_t) + strlen(longKey));
   EXPECT_EQ(s5, std::string("\1\0\0\0\0\0\0\0", 8) + longKey);
 
-  key.constructPrimaryIndexValue(123456789, arangodb::velocypack::StringRef(
-                                                "this is a key"));
+  key.constructPrimaryIndexValue(123456789, std::string_view("this is a key"));
   auto const& s6 = key.string();
 
   EXPECT_EQ(s6.size(), sizeof(uint64_t) + strlen("this is a key"));
@@ -232,18 +236,17 @@ TEST_F(RocksDBKeyTestLittleEndian, test_primary_index) {
 /// @brief test edge index
 TEST_F(RocksDBKeyTestLittleEndian, test_edge_index) {
   RocksDBKey key1;
-  key1.constructEdgeIndexValue(1, arangodb::velocypack::StringRef("a/1"),
-                               LocalDocumentId(33));
+  key1.constructEdgeIndexValue(1, std::string_view("a/1"), LocalDocumentId(33));
   RocksDBKey key2;
-  key2.constructEdgeIndexValue(1, arangodb::velocypack::StringRef("b/1"),
-                               LocalDocumentId(33));
+  key2.constructEdgeIndexValue(1, std::string_view("b/1"), LocalDocumentId(33));
   auto const& s1 = key1.string();
 
   EXPECT_TRUE(s1.size() == sizeof(uint64_t) + strlen("a/1") + sizeof(char) +
                                sizeof(uint64_t) + sizeof(char));
   EXPECT_EQ(s1, std::string("\1\0\0\0\0\0\0\0a/1\0!\0\0\0\0\0\0\0\xff", 21));
-  EXPECT_TRUE(key2.string().size() == sizeof(uint64_t) + strlen("b/1") + sizeof(char) +
-                                          sizeof(uint64_t) + sizeof(char));
+  EXPECT_TRUE(key2.string().size() == sizeof(uint64_t) + strlen("b/1") +
+                                          sizeof(char) + sizeof(uint64_t) +
+                                          sizeof(char));
   EXPECT_TRUE(key2.string() ==
               std::string("\1\0\0\0\0\0\0\0b/1\0!\0\0\0\0\0\0\0\xff", 21));
 
@@ -345,17 +348,20 @@ TEST_F(RocksDBKeyTestBigEndian, test_collection) {
   auto const& s6 = key.string();
 
   EXPECT_EQ(s6.size(), sizeof(char) + sizeof(uint64_t) + sizeof(uint64_t));
-  EXPECT_TRUE(s6 ==
-              std::string("1\0\0\0\x02\xdf\xdc\x1c\x35\0\0\0\0\x3a\xde\x68\xb1", 17));
+  EXPECT_TRUE(
+      s6 ==
+      std::string("1\0\0\0\x02\xdf\xdc\x1c\x35\0\0\0\0\x3a\xde\x68\xb1", 17));
 
-  key.constructCollection(0xf0f1f2f3f4f5f6f7ULL, DataSourceId{0xf0f1f2f3f4f5f6f7ULL});
+  key.constructCollection(0xf0f1f2f3f4f5f6f7ULL,
+                          DataSourceId{0xf0f1f2f3f4f5f6f7ULL});
   auto const& s7 = key.string();
 
   EXPECT_EQ(s7.size(), sizeof(char) + sizeof(uint64_t) + sizeof(uint64_t));
   EXPECT_TRUE(
       s7 ==
       std::string(
-          "1\xf0\xf1\xf2\xf3\xf4\xf5\xf6\xf7\xf0\xf1\xf2\xf3\xf4\xf5\xf6\xf7", 17));
+          "1\xf0\xf1\xf2\xf3\xf4\xf5\xf6\xf7\xf0\xf1\xf2\xf3\xf4\xf5\xf6\xf7",
+          17));
 }
 
 /// @brief test document
@@ -395,36 +401,38 @@ TEST_F(RocksDBKeyTestBigEndian, test_document) {
   auto const& s6 = key.string();
 
   EXPECT_EQ(s6.size(), sizeof(uint64_t) + sizeof(uint64_t));
-  EXPECT_TRUE(s6 ==
-              std::string("\0\0\0\x02\xdf\xdc\x1c\x35\0\0\0\0\x3a\xde\x68\xb1", 16));
+  EXPECT_TRUE(
+      s6 ==
+      std::string("\0\0\0\x02\xdf\xdc\x1c\x35\0\0\0\0\x3a\xde\x68\xb1", 16));
 
-  key.constructDocument(0xf0f1f2f3f4f5f6f7ULL, LocalDocumentId(0xf0f1f2f3f4f5f6f7ULL));
+  key.constructDocument(0xf0f1f2f3f4f5f6f7ULL,
+                        LocalDocumentId(0xf0f1f2f3f4f5f6f7ULL));
   auto const& s7 = key.string();
 
   EXPECT_EQ(s7.size(), sizeof(uint64_t) + sizeof(uint64_t));
   EXPECT_TRUE(
       s7 ==
       std::string(
-          "\xf0\xf1\xf2\xf3\xf4\xf5\xf6\xf7\xf0\xf1\xf2\xf3\xf4\xf5\xf6\xf7", 16));
+          "\xf0\xf1\xf2\xf3\xf4\xf5\xf6\xf7\xf0\xf1\xf2\xf3\xf4\xf5\xf6\xf7",
+          16));
 }
 
 /// @brief test primary index
 TEST_F(RocksDBKeyTestBigEndian, test_primary_index) {
   RocksDBKey key;
-  key.constructPrimaryIndexValue(1, arangodb::velocypack::StringRef("abc"));
+  key.constructPrimaryIndexValue(1, std::string_view("abc"));
   auto const& s2 = key.string();
 
   EXPECT_EQ(s2.size(), sizeof(uint64_t) + strlen("abc"));
   EXPECT_EQ(s2, std::string("\0\0\0\0\0\0\0\1abc", 11));
 
-  key.constructPrimaryIndexValue(1, arangodb::velocypack::StringRef(" "));
+  key.constructPrimaryIndexValue(1, std::string_view(" "));
   auto const& s3 = key.string();
 
   EXPECT_EQ(s3.size(), sizeof(uint64_t) + strlen(" "));
   EXPECT_EQ(s3, std::string("\0\0\0\0\0\0\0\1 ", 9));
 
-  key.constructPrimaryIndexValue(1, arangodb::velocypack::StringRef(
-                                        "this is a key"));
+  key.constructPrimaryIndexValue(1, std::string_view("this is a key"));
   auto const& s4 = key.string();
 
   EXPECT_EQ(s4.size(), sizeof(uint64_t) + strlen("this is a key"));
@@ -436,14 +444,13 @@ TEST_F(RocksDBKeyTestBigEndian, test_primary_index) {
       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
-  key.constructPrimaryIndexValue(1, arangodb::velocypack::StringRef(longKey));
+  key.constructPrimaryIndexValue(1, std::string_view(longKey));
   auto const& s5 = key.string();
 
   EXPECT_EQ(s5.size(), sizeof(uint64_t) + strlen(longKey));
   EXPECT_EQ(s5, std::string("\0\0\0\0\0\0\0\1", 8) + longKey);
 
-  key.constructPrimaryIndexValue(123456789, arangodb::velocypack::StringRef(
-                                                "this is a key"));
+  key.constructPrimaryIndexValue(123456789, std::string_view("this is a key"));
   auto const& s6 = key.string();
 
   EXPECT_EQ(s6.size(), sizeof(uint64_t) + strlen("this is a key"));
@@ -453,18 +460,17 @@ TEST_F(RocksDBKeyTestBigEndian, test_primary_index) {
 /// @brief test edge index
 TEST_F(RocksDBKeyTestBigEndian, test_edge_index) {
   RocksDBKey key1;
-  key1.constructEdgeIndexValue(1, arangodb::velocypack::StringRef("a/1"),
-                               LocalDocumentId(33));
+  key1.constructEdgeIndexValue(1, std::string_view("a/1"), LocalDocumentId(33));
   RocksDBKey key2;
-  key2.constructEdgeIndexValue(1, arangodb::velocypack::StringRef("b/1"),
-                               LocalDocumentId(33));
+  key2.constructEdgeIndexValue(1, std::string_view("b/1"), LocalDocumentId(33));
   auto const& s1 = key1.string();
 
   EXPECT_TRUE(s1.size() == sizeof(uint64_t) + strlen("a/1") + sizeof(char) +
                                sizeof(uint64_t) + sizeof(char));
   EXPECT_EQ(s1, std::string("\0\0\0\0\0\0\0\1a/1\0\0\0\0\0\0\0\0!\xff", 21));
-  EXPECT_TRUE(key2.string().size() == sizeof(uint64_t) + strlen("b/1") + sizeof(char) +
-                                          sizeof(uint64_t) + sizeof(char));
+  EXPECT_TRUE(key2.string().size() == sizeof(uint64_t) + strlen("b/1") +
+                                          sizeof(char) + sizeof(uint64_t) +
+                                          sizeof(char));
   EXPECT_TRUE(key2.string() ==
               std::string("\0\0\0\0\0\0\0\1b/1\0\0\0\0\0\0\0\0!\xff", 21));
 
@@ -494,8 +500,7 @@ class RocksDBKeyBoundsTestLittleEndian : public ::testing::Test {
 /// @brief test edge index with dynamic prefix extractor
 TEST_F(RocksDBKeyBoundsTestLittleEndian, test_edge_index) {
   RocksDBKey key1;
-  key1.constructEdgeIndexValue(1, arangodb::velocypack::StringRef("a/1"),
-                               LocalDocumentId(33));
+  key1.constructEdgeIndexValue(1, std::string_view("a/1"), LocalDocumentId(33));
   // check the variable length edge prefix
   auto pe = std::make_unique<RocksDBPrefixExtractor>();
   ASSERT_TRUE(pe->InDomain(key1.string()));
@@ -508,7 +513,8 @@ TEST_F(RocksDBKeyBoundsTestLittleEndian, test_edge_index) {
   rocksdb::Slice prefixEnd = pe->Transform(bounds.end());
   ASSERT_FALSE(pe->InDomain(prefixBegin));
   ASSERT_FALSE(pe->InDomain(prefixEnd));
-  ASSERT_EQ(memcmp(bounds.start().data(), prefixBegin.data(), prefixBegin.size()), 0);
+  ASSERT_EQ(
+      memcmp(bounds.start().data(), prefixBegin.data(), prefixBegin.size()), 0);
   ASSERT_EQ(memcmp(bounds.end().data(), prefixEnd.data(), prefixEnd.size()), 0);
 
   // check our assumptions about bound construction
@@ -518,14 +524,14 @@ TEST_F(RocksDBKeyBoundsTestLittleEndian, test_edge_index) {
   EXPECT_GT(cmp->Compare(prefixEnd, key1.string()), 0);
 
   RocksDBKey key2;
-  key2.constructEdgeIndexValue(1, arangodb::velocypack::StringRef("c/1000"),
+  key2.constructEdgeIndexValue(1, std::string_view("c/1000"),
                                LocalDocumentId(33));
   EXPECT_LT(cmp->Compare(prefixBegin, key2.string()), 0);
   EXPECT_GT(cmp->Compare(prefixEnd, key2.string()), 0);
 
   // test higher prefix
   RocksDBKey key3;
-  key3.constructEdgeIndexValue(1, arangodb::velocypack::StringRef("c/1000"),
+  key3.constructEdgeIndexValue(1, std::string_view("c/1000"),
                                LocalDocumentId(33));
   EXPECT_LT(cmp->Compare(prefixBegin, key3.string()), 0);
   EXPECT_GT(cmp->Compare(prefixEnd, key3.string()), 0);
@@ -557,7 +563,8 @@ TEST_F(RocksDBKeyBoundsTestLittleEndian, test_hash_index) {
   rocksdb::Slice prefixEnd = pe->Transform(bounds.end());
   EXPECT_TRUE(pe->InDomain(prefixBegin));
   EXPECT_TRUE(pe->InDomain(prefixEnd));
-  EXPECT_EQ(memcmp(bounds.start().data(), prefixBegin.data(), prefixBegin.size()), 0);
+  EXPECT_EQ(
+      memcmp(bounds.start().data(), prefixBegin.data(), prefixBegin.size()), 0);
   EXPECT_EQ(memcmp(bounds.end().data(), prefixEnd.data(), prefixEnd.size()), 0);
   EXPECT_EQ(prefixBegin.data()[prefixBegin.size() - 1], '\0');
   EXPECT_EQ(prefixEnd.data()[prefixEnd.size() - 1], '\0');
@@ -582,7 +589,8 @@ TEST_F(RocksDBKeyBoundsTestLittleEndian, test_hash_index) {
   prefixEnd = pe->Transform(bounds.end());
   EXPECT_TRUE(pe->InDomain(prefixBegin));
   EXPECT_TRUE(pe->InDomain(prefixEnd));
-  EXPECT_EQ(memcmp(bounds.start().data(), prefixBegin.data(), prefixBegin.size()), 0);
+  EXPECT_EQ(
+      memcmp(bounds.start().data(), prefixBegin.data(), prefixBegin.size()), 0);
   EXPECT_EQ(memcmp(bounds.end().data(), prefixEnd.data(), prefixEnd.size()), 0);
   EXPECT_EQ(prefixBegin.data()[prefixBegin.size() - 1], '\0');
   EXPECT_EQ(prefixEnd.data()[prefixEnd.size() - 1], '\0');
@@ -638,8 +646,7 @@ class RocksDBKeyBoundsTestBigEndian : public ::testing::Test {
 /// @brief test edge index with dynamic prefix extractor
 TEST_F(RocksDBKeyBoundsTestBigEndian, test_edge_index) {
   RocksDBKey key1;
-  key1.constructEdgeIndexValue(1, arangodb::velocypack::StringRef("a/1"),
-                               LocalDocumentId(33));
+  key1.constructEdgeIndexValue(1, std::string_view("a/1"), LocalDocumentId(33));
   // check the variable length edge prefix
   auto pe = std::make_unique<RocksDBPrefixExtractor>();
   ASSERT_TRUE(pe->InDomain(key1.string()));
@@ -652,7 +659,8 @@ TEST_F(RocksDBKeyBoundsTestBigEndian, test_edge_index) {
   rocksdb::Slice prefixEnd = pe->Transform(bounds.end());
   ASSERT_FALSE(pe->InDomain(prefixBegin));
   ASSERT_FALSE(pe->InDomain(prefixEnd));
-  ASSERT_EQ(memcmp(bounds.start().data(), prefixBegin.data(), prefixBegin.size()), 0);
+  ASSERT_EQ(
+      memcmp(bounds.start().data(), prefixBegin.data(), prefixBegin.size()), 0);
   ASSERT_EQ(memcmp(bounds.end().data(), prefixEnd.data(), prefixEnd.size()), 0);
 
   // check our assumptions about bound construction
@@ -662,14 +670,14 @@ TEST_F(RocksDBKeyBoundsTestBigEndian, test_edge_index) {
   EXPECT_GT(cmp->Compare(prefixEnd, key1.string()), 0);
 
   RocksDBKey key2;
-  key2.constructEdgeIndexValue(1, arangodb::velocypack::StringRef("c/1000"),
+  key2.constructEdgeIndexValue(1, std::string_view("c/1000"),
                                LocalDocumentId(33));
   EXPECT_LT(cmp->Compare(prefixBegin, key2.string()), 0);
   EXPECT_GT(cmp->Compare(prefixEnd, key2.string()), 0);
 
   // test higher prefix
   RocksDBKey key3;
-  key3.constructEdgeIndexValue(1, arangodb::velocypack::StringRef("c/1000"),
+  key3.constructEdgeIndexValue(1, std::string_view("c/1000"),
                                LocalDocumentId(33));
   EXPECT_LT(cmp->Compare(prefixBegin, key3.string()), 0);
   EXPECT_GT(cmp->Compare(prefixEnd, key3.string()), 0);
@@ -701,7 +709,8 @@ TEST_F(RocksDBKeyBoundsTestBigEndian, test_hash_index) {
   rocksdb::Slice prefixEnd = pe->Transform(bounds.end());
   EXPECT_TRUE(pe->InDomain(prefixBegin));
   EXPECT_TRUE(pe->InDomain(prefixEnd));
-  EXPECT_EQ(memcmp(bounds.start().data(), prefixBegin.data(), prefixBegin.size()), 0);
+  EXPECT_EQ(
+      memcmp(bounds.start().data(), prefixBegin.data(), prefixBegin.size()), 0);
   EXPECT_EQ(memcmp(bounds.end().data(), prefixEnd.data(), prefixEnd.size()), 0);
   EXPECT_EQ(prefixBegin.data()[0], '\0');
   EXPECT_EQ(prefixEnd.data()[0], '\0');
@@ -730,7 +739,8 @@ TEST_F(RocksDBKeyBoundsTestBigEndian, test_hash_index) {
   prefixEnd = pe->Transform(bounds.end());
   EXPECT_TRUE(pe->InDomain(prefixBegin));
   EXPECT_TRUE(pe->InDomain(prefixEnd));
-  EXPECT_EQ(memcmp(bounds.start().data(), prefixBegin.data(), prefixBegin.size()), 0);
+  EXPECT_EQ(
+      memcmp(bounds.start().data(), prefixBegin.data(), prefixBegin.size()), 0);
   EXPECT_EQ(memcmp(bounds.end().data(), prefixEnd.data(), prefixEnd.size()), 0);
   EXPECT_EQ(prefixBegin.data()[0], '\0');
   EXPECT_EQ(prefixEnd.data()[0], '\0');

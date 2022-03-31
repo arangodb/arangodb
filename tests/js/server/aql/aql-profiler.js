@@ -1,5 +1,5 @@
 /*jshint globalstrict:true, strict:true, esnext: true */
-/*global AQL_EXPLAIN, assertTrue */
+/*global AQL_EXPLAIN, assertTrue, _ */
 
 "use strict";
 
@@ -156,6 +156,35 @@ function ahuacatlProfilerTestSuite () {
 
 
   return {
+    testProfileQueryWithJoins : function () {
+      const collections = ["UnitTestsCollection1", "UnitTestsCollection2", "UnitTestsCollection3"];
+          
+      let docs = [];
+      for (let i = 0; i < 100; ++i) {
+        docs.push({ foreign1: "test" + i, foreign2: "test" + i, _key: "test" + i });
+      }
+
+      try {
+        collections.forEach((cn) => {
+          // must have more shards than DB servers
+          let c = db._create(cn, { numberOfShards: 10 });
+          c.insert(docs);
+        });
+
+        const query = `FOR c1 IN UnitTestsCollection1
+          FOR c2 IN UnitTestsCollection2 FILTER c2._key == c1.foreign1 
+          FOR c3 IN UnitTestsCollection3 FILTER c3._key == c1.foreign2
+          RETURN { c1, c2, c3 }`;
+
+        // this is a test that verifies if we still run into a specific assertion
+        // failure on a coordinator. the success criterion is that this query
+        // does not trigger the assertion failure
+        const profile = db._query(query, {}, {profile: 2, silent: true}).getExtra();
+        assertTrue(profile.hasOwnProperty("stats"));
+      } finally {
+        collections.forEach((cn) => { db._drop(cn); });
+      }
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test {profile: 0}
@@ -217,9 +246,9 @@ function ahuacatlProfilerTestSuite () {
 
       assert.assertEqual(
         [
-          { type : SingletonBlock, calls : 1, items : 1 },
-          { type : CalculationBlock, calls : 1, items : 1 },
-          { type : ReturnBlock, calls : 1, items : 1 }
+          { type : SingletonBlock, calls : 1, items : 1, filtered: 0},
+          { type : CalculationBlock, calls : 1, items : 1, filtered: 0},
+          { type : ReturnBlock, calls : 1, items : 1, filtered: 0}
         ],
         profHelper.getCompactStatsNodes(profile)
       );
@@ -232,10 +261,10 @@ function ahuacatlProfilerTestSuite () {
     testEnumerateListAndReturnAndSingletonBlock : function () {
       const query = 'FOR i IN 1..@rows RETURN i';
       const genNodeList = (rows, batches) => [
-        { type : SingletonBlock, calls : 1, items : 1 },
-        { type : CalculationBlock, calls : 1, items : 1 },
-        { type : EnumerateListBlock, calls : batches, items : rows },
-        { type : ReturnBlock, calls : batches, items : rows }
+        { type : SingletonBlock, calls : 1, items : 1, filtered: 0},
+        { type : CalculationBlock, calls : 1, items : 1, filtered: 0},
+        { type : EnumerateListBlock, calls : batches, items : rows, filtered: 0},
+        { type : ReturnBlock, calls : batches, items : rows, filtered: 0}
       ];
       profHelper.runDefaultChecks({query, genNodeList});
     },
@@ -247,11 +276,11 @@ function ahuacatlProfilerTestSuite () {
     testCalculationBlock : function () {
       const query = 'FOR i IN 1..@rows RETURN i*i';
       const genNodeList = (rows, batches) => [
-        { type : SingletonBlock, calls : 1, items : 1 },
-        { type : CalculationBlock, calls : 1, items : 1 },
-        { type : EnumerateListBlock, calls : batches, items : rows },
-        { type : CalculationBlock, calls : batches, items : rows },
-        { type : ReturnBlock, calls : batches, items : rows }
+        { type : SingletonBlock, calls : 1, items : 1, filtered: 0},
+        { type : CalculationBlock, calls : 1, items : 1, filtered: 0},
+        { type : EnumerateListBlock, calls : batches, items : rows, filtered: 0},
+        { type : CalculationBlock, calls : batches, items : rows, filtered: 0},
+        { type : ReturnBlock, calls : batches, items : rows, filtered: 0}
       ];
       profHelper.runDefaultChecks({query, genNodeList});
     },
@@ -263,11 +292,11 @@ function ahuacatlProfilerTestSuite () {
     testCountCollectBlock : function () {
       const query = 'FOR i IN 1..@rows COLLECT WITH COUNT INTO c RETURN c';
       const genNodeList = (rows) => [
-        { type : SingletonBlock, calls : 1, items : 1 },
-        { type : CalculationBlock, calls : 1, items : 1 },
-        { type : EnumerateListBlock, calls : 1, items : rows },
-        { type : CountCollectBlock, calls : 1, items : 1 },
-        { type : ReturnBlock, calls : 1, items : 1 }
+        { type : SingletonBlock, calls : 1, items : 1, filtered: 0},
+        { type : CalculationBlock, calls : 1, items : 1, filtered: 0},
+        { type : EnumerateListBlock, calls : 1, items : rows, filtered: 0},
+        { type : CountCollectBlock, calls : 1, items : 1, filtered: 0},
+        { type : ReturnBlock, calls : 1, items : 1, filtered: 0}
       ];
       profHelper.runDefaultChecks({query, genNodeList});
     },
@@ -279,11 +308,11 @@ function ahuacatlProfilerTestSuite () {
     testDistinctCollectBlock1 : function () {
       const query = 'FOR i IN 1..@rows RETURN DISTINCT i';
       const genNodeList = (rows, batches) => [
-        { type : SingletonBlock, calls : 1, items : 1 },
-        { type : CalculationBlock, calls : 1, items : 1 },
-        { type : EnumerateListBlock, calls : batches, items : rows },
-        { type : DistinctCollectBlock, calls : batches, items : rows },
-        { type : ReturnBlock, calls : batches, items : rows }
+        { type : SingletonBlock, calls : 1, items : 1, filtered: 0},
+        { type : CalculationBlock, calls : 1, items : 1, filtered: 0},
+        { type : EnumerateListBlock, calls : batches, items : rows, filtered: 0},
+        { type : DistinctCollectBlock, calls : batches, items : rows, filtered: 0},
+        { type : ReturnBlock, calls : batches, items : rows, filtered: 0}
       ];
       profHelper.runDefaultChecks({query, genNodeList});
     },
@@ -298,12 +327,12 @@ function ahuacatlProfilerTestSuite () {
         const resultRows = Math.min(rows, 7);
         const resultBatches = Math.ceil(resultRows / 1000);
         return [
-          {type: SingletonBlock, calls: 1, items: 1},
-          {type: CalculationBlock, calls: 1, items: 1},
-          {type: EnumerateListBlock, calls: batches, items: rows},
-          {type: CalculationBlock, calls: batches, items: rows},
-          {type: DistinctCollectBlock, calls: resultBatches, items: resultRows},
-          {type: ReturnBlock, calls: resultBatches, items: resultRows}
+          {type: SingletonBlock, calls: 1, items: 1, filtered: 0},
+          {type: CalculationBlock, calls: 1, items: 1, filtered: 0},
+          {type: EnumerateListBlock, calls: batches, items: rows, filtered: 0},
+          {type: CalculationBlock, calls: batches, items: rows, filtered: 0},
+          {type: DistinctCollectBlock, calls: resultBatches, items: resultRows, filtered: 0},
+          {type: ReturnBlock, calls: resultBatches, items: resultRows, filtered: 0}
         ];
       };
       profHelper.runDefaultChecks({query, genNodeList});
@@ -326,10 +355,10 @@ function ahuacatlProfilerTestSuite () {
         }
       };
       const genNodeList = (rows, batches) => [
-        {type: SingletonBlock, calls: 1, items: 1},
-        {type: CalculationBlock, calls: 1, items: 1},
-        {type: EnumerateListBlock, calls: batches, items: rows},
-        {type: ReturnBlock, calls: batches, items: rows},
+        {type: SingletonBlock, calls: 1, items: 1, filtered: 0},
+        {type: CalculationBlock, calls: 1, items: 1, filtered: 0},
+        {type: EnumerateListBlock, calls: batches, items: rows, filtered: 0},
+        {type: ReturnBlock, calls: batches, items: rows, filtered: 0},
       ];
       profHelper.runDefaultChecks({query, genNodeList, options});
     },
@@ -337,7 +366,7 @@ function ahuacatlProfilerTestSuite () {
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief test FilterBlock
     ////////////////////////////////////////////////////////////////////////////////
-
+    
     testFilterBlock2 : function () {
       const query = 'FOR i IN 1..@rows FILTER i % 13 != 0 RETURN i';
       const genNodeList = (rows, batches) => {
@@ -349,17 +378,17 @@ function ahuacatlProfilerTestSuite () {
         const batchesAfterFilter = Math.ceil(rowsAfterFilter / defaultBatchSize);
 
         return [
-          { type : SingletonBlock, calls : 1, items : 1 },
-          { type : CalculationBlock, calls : 1, items : 1 },
-          { type : EnumerateListBlock, calls : batches, items : rows },
-          { type : CalculationBlock, calls : batches, items : rows },
-          { type : FilterBlock, calls : batchesAfterFilter, items : rowsAfterFilter },
-          { type : ReturnBlock, calls : batchesAfterFilter, items : rowsAfterFilter },
+          { type : SingletonBlock, calls : 1, items : 1, filtered: 0},
+          { type : CalculationBlock, calls : 1, items : 1, filtered: 0},
+          { type : EnumerateListBlock, calls : batches, items : rows, filtered: 0},
+          { type : CalculationBlock, calls : batches, items : rows, filtered: 0},
+          { type : FilterBlock, calls : batchesAfterFilter, items : rowsAfterFilter, filtered: rows - rowsAfterFilter},
+          { type : ReturnBlock, calls : batchesAfterFilter, items : rowsAfterFilter, filtered: 0},
         ];
       };
       profHelper.runDefaultChecks({query, genNodeList});
     },
-
+    
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief test FilterBlock
     ////////////////////////////////////////////////////////////////////////////////
@@ -375,12 +404,12 @@ function ahuacatlProfilerTestSuite () {
         const batchesAfterFilter = Math.max(1, Math.ceil(rowsAfterFilter / defaultBatchSize));
 
         return [
-          { type : SingletonBlock, calls : 1, items : 1 },
-          { type : CalculationBlock, calls : 1, items : 1 },
-          { type : EnumerateListBlock, calls : batches, items : rows },
-          { type : CalculationBlock, calls : batches, items : rows },
-          { type : FilterBlock, calls : batchesAfterFilter, items : rowsAfterFilter },
-          { type : ReturnBlock, calls : batchesAfterFilter, items : rowsAfterFilter },
+          { type : SingletonBlock, calls : 1, items : 1, filtered: 0},
+          { type : CalculationBlock, calls : 1, items : 1, filtered: 0},
+          { type : EnumerateListBlock, calls : batches, items : rows, filtered: 0},
+          { type : CalculationBlock, calls : batches, items : rows, filtered: 0},
+          { type : FilterBlock, calls : batchesAfterFilter, items : rowsAfterFilter, filtered: rows - rowsAfterFilter},
+          { type : ReturnBlock, calls : batchesAfterFilter, items : rowsAfterFilter, filtered: 0},
         ];
       };
       profHelper.runDefaultChecks({query, genNodeList});
@@ -395,12 +424,12 @@ function ahuacatlProfilerTestSuite () {
       const genNodeList = (rows, batches) => {
 
         return [
-          { type: SingletonBlock, calls: 1, items: 1 },
-          { type: CalculationBlock, calls: 1, items: 1 },
-          { type: EnumerateListBlock, calls: batches, items: rows },
-          { type: HashedCollectBlock, calls: batches, items: rows },
-          { type: SortBlock, calls: batches, items: rows },
-          { type: ReturnBlock, calls: batches, items: rows },
+          { type: SingletonBlock, calls: 1, items: 1, filtered: 0},
+          { type: CalculationBlock, calls: 1, items: 1, filtered: 0},
+          { type: EnumerateListBlock, calls: batches, items: rows, filtered: 0},
+          { type: HashedCollectBlock, calls: batches, items: rows, filtered: 0},
+          { type: SortBlock, calls: batches, items: rows, filtered: 0},
+          { type: ReturnBlock, calls: batches, items: rows, filtered: 0},
         ];
       };
       profHelper.runDefaultChecks({query, genNodeList});
@@ -418,13 +447,13 @@ function ahuacatlProfilerTestSuite () {
         const batchesAfterCollect = Math.ceil(rowsAfterCollect / defaultBatchSize);
 
         return [
-          { type: SingletonBlock, calls: 1, items: 1 },
-          { type: CalculationBlock, calls: 1, items: 1 },
-          { type: EnumerateListBlock, calls: batches, items: rows },
-          { type: CalculationBlock, calls: batches, items: rows },
-          { type: HashedCollectBlock, calls: batchesAfterCollect, items: rowsAfterCollect },
-          { type: SortBlock, calls: batchesAfterCollect, items: rowsAfterCollect },
-          { type: ReturnBlock, calls: batchesAfterCollect, items: rowsAfterCollect },
+          { type: SingletonBlock, calls: 1, items: 1, filtered: 0},
+          { type: CalculationBlock, calls: 1, items: 1, filtered: 0},
+          { type: EnumerateListBlock, calls: batches, items: rows, filtered: 0},
+          { type: CalculationBlock, calls: batches, items: rows, filtered: 0},
+          { type: HashedCollectBlock, calls: batchesAfterCollect, items: rowsAfterCollect, filtered: 0},
+          { type: SortBlock, calls: batchesAfterCollect, items: rowsAfterCollect, filtered: 0},
+          { type: ReturnBlock, calls: batchesAfterCollect, items: rowsAfterCollect, filtered: 0},
         ];
       };
       profHelper.runDefaultChecks({query, genNodeList});
@@ -444,13 +473,13 @@ function ahuacatlProfilerTestSuite () {
         const batchesAfterCollect = Math.ceil(rowsAfterCollect / defaultBatchSize);
 
         return [
-          { type: SingletonBlock, calls: 1, items: 1 },
-          { type: CalculationBlock, calls: 1, items: 1 },
-          { type: EnumerateListBlock, calls: batches, items: rows },
-          { type: CalculationBlock, calls: batches, items: rows },
-          { type: HashedCollectBlock, calls: batchesAfterCollect, items: rowsAfterCollect },
-          { type: SortBlock, calls: batchesAfterCollect, items: rowsAfterCollect },
-          { type: ReturnBlock, calls: batchesAfterCollect, items: rowsAfterCollect },
+          { type: SingletonBlock, calls: 1, items: 1, filtered: 0},
+          { type: CalculationBlock, calls: 1, items: 1, filtered: 0},
+          { type: EnumerateListBlock, calls: batches, items: rows, filtered: 0},
+          { type: CalculationBlock, calls: batches, items: rows, filtered: 0},
+          { type: HashedCollectBlock, calls: batchesAfterCollect, items: rowsAfterCollect, filtered: 0},
+          { type: SortBlock, calls: batchesAfterCollect, items: rowsAfterCollect, filtered: 0},
+          { type: ReturnBlock, calls: batchesAfterCollect, items: rowsAfterCollect, filtered: 0},
         ];
       };
       profHelper.runDefaultChecks({query, genNodeList});
@@ -463,11 +492,11 @@ function ahuacatlProfilerTestSuite () {
     testLimitBlock1: function() {
       const query = 'FOR i IN 1..@rows LIMIT 0, @rows RETURN i';
       const genNodeList = (rows, batches) => [
-        {type: SingletonBlock, calls: 1, items: 1},
-        {type: CalculationBlock, calls: 1, items: 1},
-        {type: EnumerateListBlock, calls: batches, items: rows},
-        {type: LimitBlock, calls: batches, items: rows},
-        {type: ReturnBlock, calls: batches, items: rows},
+        {type: SingletonBlock, calls: 1, items: 1, filtered: 0},
+        {type: CalculationBlock, calls: 1, items: 1, filtered: 0},
+        {type: EnumerateListBlock, calls: batches, items: rows, filtered: 0},
+        {type: LimitBlock, calls: batches, items: rows, filtered: 0},
+        {type: ReturnBlock, calls: batches, items: rows, filtered: 0},
       ];
       profHelper.runDefaultChecks({query, genNodeList});
     },
@@ -482,11 +511,11 @@ function ahuacatlProfilerTestSuite () {
       const limitBatches = rows => Math.max(1, Math.ceil(limit(rows) / defaultBatchSize));
 
       const genNodeList = (rows) => [
-        {type: SingletonBlock, calls: 1, items: 1},
-        {type: CalculationBlock, calls: 1, items: 1},
-        {type: EnumerateListBlock, calls: limitBatches(rows), items: limit(rows)},
-        {type: LimitBlock, calls: limitBatches(rows), items: limit(rows)},
-        {type: ReturnBlock, calls: limitBatches(rows), items: limit(rows)},
+        {type: SingletonBlock, calls: 1, items: 1, filtered: 0},
+        {type: CalculationBlock, calls: 1, items: 1, filtered: 0},
+        {type: EnumerateListBlock, calls: limitBatches(rows), items: limit(rows), filtered: 0},
+        {type: LimitBlock, calls: limitBatches(rows), items: limit(rows), filtered: 0},
+        {type: ReturnBlock, calls: limitBatches(rows), items: limit(rows), filtered: 0},
       ];
       const bind = (rows) => ({
         rows,
@@ -504,11 +533,11 @@ function ahuacatlProfilerTestSuite () {
       const query = 'FOR i IN 1..@rows LIMIT @offset, @limit RETURN i';
 
       const genNodeList = (rows) => [
-        {type: SingletonBlock, calls: 1, items: 1},
-        {type: CalculationBlock, calls: 1, items: 1},
-        {type: EnumerateListBlock, calls: limitBatches(rows), items: limit(rows) + offset(rows)},
-        {type: LimitBlock, calls: limitBatches(rows), items: limit(rows)},
-        {type: ReturnBlock, calls: limitBatches(rows), items: limit(rows)},
+        {type: SingletonBlock, calls: 1, items: 1, filtered: 0},
+        {type: CalculationBlock, calls: 1, items: 1, filtered: 0},
+        {type: EnumerateListBlock, calls: limitBatches(rows), items: limit(rows) + offset(rows), filtered: 0},
+        {type: LimitBlock, calls: limitBatches(rows), items: limit(rows), filtered: 0},
+        {type: ReturnBlock, calls: limitBatches(rows), items: limit(rows), filtered: 0},
       ];
       const bind = (rows) => ({
         rows,
@@ -530,11 +559,11 @@ function ahuacatlProfilerTestSuite () {
       // potentielly we have modifiaction nodes that need to be executed.
 
       const genNodeList = () => [
-        {type: SingletonBlock, calls: 1, items: 0},
-        {type: CalculationBlock, calls: 1, items: 0},
-        {type: EnumerateListBlock, calls: 1, items: 0},
-        {type: NoResultsBlock, calls: 1, items: 0},
-        {type: ReturnBlock, calls: 1, items: 0},
+        {type: SingletonBlock, calls: 1, items: 0, filtered: 0},
+        {type: CalculationBlock, calls: 1, items: 0, filtered: 0},
+        {type: EnumerateListBlock, calls: 1, items: 0, filtered: 0},
+        {type: NoResultsBlock, calls: 1, items: 0, filtered: 0},
+        {type: ReturnBlock, calls: 1, items: 0, filtered: 0},
       ];
 
       // This is essentially runDefaultChecks, but we cannot use it because
@@ -558,9 +587,10 @@ function ahuacatlProfilerTestSuite () {
           node => (
             node.fromStats ?
             {
-            type: node.type,
-            calls: node.fromStats.calls,
-            items: node.fromStats.items,
+              type: node.type,
+              calls: node.fromStats.calls,
+              items: node.fromStats.items,
+              filtered: 0
           } : {})
         );
 
@@ -576,11 +606,11 @@ function ahuacatlProfilerTestSuite () {
     testSortBlock1 : function () {
       const query = 'FOR i IN 1..@rows SORT i DESC RETURN i';
       const genNodeList = (rows, batches) => [
-        { type : SingletonBlock, calls : 1, items : 1 },
-        { type : CalculationBlock, calls : 1, items : 1 },
-        { type : EnumerateListBlock, calls : batches, items : rows },
-        { type : SortBlock, calls : batches, items : rows },
-        { type : ReturnBlock, calls : batches, items : rows }
+        { type : SingletonBlock, calls : 1, items : 1, filtered: 0 },
+        { type : CalculationBlock, calls : 1, items : 1, filtered: 0 },
+        { type : EnumerateListBlock, calls : batches, items : rows, filtered: 0 },
+        { type : SortBlock, calls : batches, items : rows, filtered: 0 },
+        { type : ReturnBlock, calls : batches, items : rows, filtered: 0 }
       ];
       profHelper.runDefaultChecks({query, genNodeList});
     },
@@ -593,11 +623,11 @@ function ahuacatlProfilerTestSuite () {
     testSortBlock2 : function () {
       const query = 'FOR i IN @rows..1 SORT i ASC RETURN i';
       const genNodeList = (rows, batches) => [
-        { type : SingletonBlock, calls : 1, items : 1 },
-        { type : CalculationBlock, calls : 1, items : 1 },
-        { type : EnumerateListBlock, calls : batches, items : rows },
-        { type : SortBlock, calls : batches, items : rows },
-        { type : ReturnBlock, calls : batches, items : rows }
+        { type : SingletonBlock, calls : 1, items : 1, filtered: 0 },
+        { type : CalculationBlock, calls : 1, items : 1, filtered: 0 },
+        { type : EnumerateListBlock, calls : batches, items : rows, filtered: 0 },
+        { type : SortBlock, calls : batches, items : rows, filtered: 0 },
+        { type : ReturnBlock, calls : batches, items : rows, filtered: 0 }
       ];
       profHelper.runDefaultChecks({query, genNodeList});
     },
@@ -611,12 +641,12 @@ function ahuacatlProfilerTestSuite () {
       // effectively sort [ 0, 1, 2, ..., 0, 1, 2, ... ]
       const query = 'FOR i IN 1..@rows SORT i % @mod RETURN i';
       const genNodeList = (rows, batches) => [
-        { type : SingletonBlock, calls : 1, items : 1 },
-        { type : CalculationBlock, calls : 1, items : 1 },
-        { type : EnumerateListBlock, calls : batches, items : rows },
-        { type : CalculationBlock, calls : batches, items : rows },
-        { type : SortBlock, calls : batches, items : rows },
-        { type : ReturnBlock, calls : batches, items : rows }
+        { type : SingletonBlock, calls : 1, items : 1, filtered: 0 },
+        { type : CalculationBlock, calls : 1, items : 1, filtered: 0 },
+        { type : EnumerateListBlock, calls : batches, items : rows, filtered: 0 },
+        { type : CalculationBlock, calls : batches, items : rows, filtered: 0 },
+        { type : SortBlock, calls : batches, items : rows, filtered: 0 },
+        { type : ReturnBlock, calls : batches, items : rows, filtered: 0 }
       ];
       const bind = rows => ({rows, mod: Math.ceil(rows / 2)});
       profHelper.runDefaultChecks({query, genNodeList, bind});
@@ -629,12 +659,12 @@ function ahuacatlProfilerTestSuite () {
     testSortLimitBlock1 : function () {
       const query = 'FOR i IN 1..@rows SORT i DESC LIMIT @offset, @limit RETURN i';
       const genNodeList = (rows, batches) => [
-        { type : SingletonBlock, calls : 1, items : 1 },
-        { type : CalculationBlock, calls : 1, items : 1 },
-        { type : EnumerateListBlock, calls : batches, items : rows },
-        { type : ConstrainedSortBlock, calls : limitMinusSkipBatches(rows), items : limit(rows) },
-        { type : LimitBlock, calls : limitMinusSkipBatches(rows), items : limitMinusSkip(rows) },
-        { type : ReturnBlock, calls : limitMinusSkipBatches(rows), items : limitMinusSkip(rows) }
+        { type : SingletonBlock, calls : 1, items : 1, filtered: 0 },
+        { type : CalculationBlock, calls : 1, items : 1, filtered: 0 },
+        { type : EnumerateListBlock, calls : batches, items : rows, filtered: 0 },
+        { type : ConstrainedSortBlock, calls : limitMinusSkipBatches(rows), items : limit(rows), filtered: 0 },
+        { type : LimitBlock, calls : limitMinusSkipBatches(rows), items : limitMinusSkip(rows), filtered: 0 },
+        { type : ReturnBlock, calls : limitMinusSkipBatches(rows), items : limitMinusSkip(rows), filtered: 0 }
       ];
       const bind = rows => ({
         rows,
@@ -654,12 +684,12 @@ function ahuacatlProfilerTestSuite () {
     testSortLimitBlock2 : function () {
       const query = 'FOR i IN 1..@rows SORT i DESC LIMIT @offset, @limit RETURN i';
       const genNodeList = (rows, batches) => [
-        { type : SingletonBlock, calls : 1, items : 1 },
-        { type : CalculationBlock, calls : 1, items : 1 },
-        { type : EnumerateListBlock, calls : batches, items : rows },
-        { type : ConstrainedSortBlock, calls : limitMinusSkipBatches(rows), items : rows },
-        { type : LimitBlock, calls : limitMinusSkipBatches(rows), items : limitMinusSkip(rows) },
-        { type : ReturnBlock, calls : limitMinusSkipBatches(rows), items : limitMinusSkip(rows) }
+        { type : SingletonBlock, calls : 1, items : 1, filtered: 0 },
+        { type : CalculationBlock, calls : 1, items : 1, filtered: 0 },
+        { type : EnumerateListBlock, calls : batches, items : rows, filtered: 0 },
+        { type : ConstrainedSortBlock, calls : limitMinusSkipBatches(rows), items : rows, filtered: 0 },
+        { type : LimitBlock, calls : limitMinusSkipBatches(rows), items : limitMinusSkip(rows), filtered: 0 },
+        { type : ReturnBlock, calls : limitMinusSkipBatches(rows), items : limitMinusSkip(rows), filtered: 0 }
       ];
       const bind = rows => ({
         rows,
@@ -683,12 +713,12 @@ function ahuacatlProfilerTestSuite () {
       const genNodeList = (rows, batches) => {
 
         return [
-          { type: SingletonBlock, calls: 1, items: 1 },
-          { type: CalculationBlock, calls: 1, items: 1 },
-          { type: EnumerateListBlock, calls: batches, items: rows },
-          { type: SortBlock, calls: batches, items: rows },
-          { type: SortedCollectBlock, calls: batches, items: rows },
-          { type: ReturnBlock, calls: batches, items: rows },
+          { type: SingletonBlock, calls: 1, items: 1, filtered: 0 },
+          { type: CalculationBlock, calls: 1, items: 1, filtered: 0 },
+          { type: EnumerateListBlock, calls: batches, items: rows, filtered: 0 },
+          { type: SortBlock, calls: batches, items: rows, filtered: 0 },
+          { type: SortedCollectBlock, calls: batches, items: rows, filtered: 0 },
+          { type: ReturnBlock, calls: batches, items: rows, filtered: 0 },
         ];
       };
       profHelper.runDefaultChecks({query, genNodeList});
@@ -708,13 +738,13 @@ function ahuacatlProfilerTestSuite () {
         const batchesAfterCollect = Math.ceil(rowsAfterCollect / defaultBatchSize);
 
         return [
-          { type: SingletonBlock, calls: 1, items: 1 },
-          { type: CalculationBlock, calls: 1, items: 1 },
-          { type: EnumerateListBlock, calls: batches, items: rows },
-          { type: CalculationBlock, calls: batches, items: rows },
-          { type: SortBlock, calls: batches, items: rows },
-          { type: SortedCollectBlock, calls: batchesAfterCollect, items: rowsAfterCollect },
-          { type: ReturnBlock, calls: batchesAfterCollect, items: rowsAfterCollect },
+          { type: SingletonBlock, calls: 1, items: 1, filtered: 0 },
+          { type: CalculationBlock, calls: 1, items: 1, filtered: 0 },
+          { type: EnumerateListBlock, calls: batches, items: rows, filtered: 0 },
+          { type: CalculationBlock, calls: batches, items: rows, filtered: 0 },
+          { type: SortBlock, calls: batches, items: rows, filtered: 0 },
+          { type: SortedCollectBlock, calls: batchesAfterCollect, items: rowsAfterCollect, filtered: 0 },
+          { type: ReturnBlock, calls: batchesAfterCollect, items: rowsAfterCollect, filtered: 0 },
         ];
       };
       profHelper.runDefaultChecks({query, genNodeList});
@@ -736,13 +766,13 @@ function ahuacatlProfilerTestSuite () {
         const batchesAfterCollect = Math.ceil(rowsAfterCollect / defaultBatchSize);
 
         return [
-          { type: SingletonBlock, calls: 1, items: 1 },
-          { type: CalculationBlock, calls: 1, items: 1 },
-          { type: EnumerateListBlock, calls: batches, items: rows },
-          { type: CalculationBlock, calls: batches, items: rows },
-          { type: SortBlock, calls: batches, items: rows },
-          { type: SortedCollectBlock, calls: batchesAfterCollect, items: rowsAfterCollect },
-          { type: ReturnBlock, calls: batchesAfterCollect, items: rowsAfterCollect },
+          { type: SingletonBlock, calls: 1, items: 1, filtered: 0 },
+          { type: CalculationBlock, calls: 1, items: 1, filtered: 0 },
+          { type: EnumerateListBlock, calls: batches, items: rows, filtered: 0 },
+          { type: CalculationBlock, calls: batches, items: rows, filtered: 0 },
+          { type: SortBlock, calls: batches, items: rows, filtered: 0 },
+          { type: SortedCollectBlock, calls: batchesAfterCollect, items: rowsAfterCollect, filtered: 0 },
+          { type: ReturnBlock, calls: batchesAfterCollect, items: rowsAfterCollect, filtered: 0 },
         ];
       };
       profHelper.runDefaultChecks({query, genNodeList});
@@ -764,11 +794,11 @@ function ahuacatlProfilerTestSuite () {
         const batchesAfterCollect = 1;
 
         return [
-          { type: SingletonBlock, calls: 1, items: 1 },
-          { type: CalculationBlock, calls: 1, items: 1 },
-          { type: EnumerateListBlock, calls: batches, items: rows },
-          { type: SortedCollectBlock, calls: batchesAfterCollect, items: rowsAfterCollect },
-          { type: ReturnBlock, calls: batchesAfterCollect, items: rowsAfterCollect },
+          { type: SingletonBlock, calls: 1, items: 1, filtered: 0 },
+          { type: CalculationBlock, calls: 1, items: 1, filtered: 0 },
+          { type: EnumerateListBlock, calls: batches, items: rows, filtered: 0 },
+          { type: SortedCollectBlock, calls: batchesAfterCollect, items: rowsAfterCollect, filtered: 0 },
+          { type: ReturnBlock, calls: batchesAfterCollect, items: rowsAfterCollect, filtered: 0 },
         ];
       };
       profHelper.runDefaultChecks({query, genNodeList});
@@ -788,12 +818,12 @@ function ahuacatlProfilerTestSuite () {
           RETURN c
       `;
       const genNodeList = (rows) => [
-        { type : SingletonBlock, calls : 1, items : 1 },
-        { type : CalculationBlock, calls : 1, items : 1 },
-        { type : EnumerateListBlock, calls : 1, items : limit(rows) },
-        { type : LimitBlock, calls : 1, items : limitMinusSkip(rows) },
-        { type : CountCollectBlock, calls : 1, items : 1 },
-        { type : ReturnBlock, calls : 1, items : 1 }
+        { type : SingletonBlock, calls : 1, items : 1, filtered: 0 },
+        { type : CalculationBlock, calls : 1, items : 1, filtered: 0 },
+        { type : EnumerateListBlock, calls : 1, items : limit(rows), filtered: 0 },
+        { type : LimitBlock, calls : 1, items : limitMinusSkip(rows), filtered: 0 },
+        { type : CountCollectBlock, calls : 1, items : 1, filtered: 0 },
+        { type : ReturnBlock, calls : 1, items : 1, filtered: 0 }
       ];
       const bind = rows => ({
         rows,
@@ -819,12 +849,12 @@ function ahuacatlProfilerTestSuite () {
           RETURN c
       `;
       const genNodeList = (rows) => [
-        { type : SingletonBlock, calls : 1, items : 1 },
-        { type : CalculationBlock, calls : 1, items : 1 },
-        { type : EnumerateListBlock, calls : 1, items : rows },
-        { type : LimitBlock, calls : 1, items : limitMinusSkip(rows) },
-        { type : CountCollectBlock, calls : 1, items : 1 },
-        { type : ReturnBlock, calls : 1, items : 1 }
+        { type : SingletonBlock, calls : 1, items : 1, filtered: 0 },
+        { type : CalculationBlock, calls : 1, items : 1, filtered: 0 },
+        { type : EnumerateListBlock, calls : 1, items : rows, filtered: 0 },
+        { type : LimitBlock, calls : 1, items : limitMinusSkip(rows), filtered: 0 },
+        { type : CountCollectBlock, calls : 1, items : 1, filtered: 0 },
+        { type : ReturnBlock, calls : 1, items : 1, filtered: 0 }
       ];
       const bind = rows => ({
         rows,
@@ -865,14 +895,14 @@ function ahuacatlProfilerTestSuite () {
       const batches = rows => Math.ceil(rows / defaultBatchSize);
 
       const genNodeList = (rows) => [
-        { type : SingletonBlock, calls : 1, items : 1 },
-        { type : CalculationBlock, calls : 1, items : 1 },
+        { type : SingletonBlock, calls : 1, items : 1, filtered: 0 },
+        { type : CalculationBlock, calls : 1, items : 1, filtered: 0 },
         // NOTE: `items: rows` should *really* be upperOffset(rows) + upperLimit(rows).
         //       That still needs to be implemented.
-        { type : EnumerateListBlock, calls : batches(lowerLimit(rows)), items : rows },
-        { type : LimitBlock, calls : batches(lowerLimit(rows)), items : upperLimit(rows) },
-        { type : LimitBlock, calls : batches(lowerLimit(rows)), items : lowerLimit(rows) },
-        { type : ReturnBlock, calls : batches(lowerLimit(rows)), items : lowerLimit(rows) }
+        { type : EnumerateListBlock, calls : batches(lowerLimit(rows)), items : rows, filtered: 0 },
+        { type : LimitBlock, calls : batches(lowerLimit(rows)), items : upperLimit(rows), filtered: 0 },
+        { type : LimitBlock, calls : batches(lowerLimit(rows)), items : lowerLimit(rows), filtered: 0 },
+        { type : ReturnBlock, calls : batches(lowerLimit(rows)), items : lowerLimit(rows), filtered: 0 }
       ];
 
       const bind = rows => ({

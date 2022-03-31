@@ -1,17 +1,14 @@
 import React, { ChangeEvent } from "react";
-import { AqlState, FormProps } from "../constants";
+import { AqlState } from "../constants";
+import { FormProps } from '../../../utils/constants';
 import Checkbox from "../../../components/pure-css/form/Checkbox";
 import Textbox from "../../../components/pure-css/form/Textbox";
 import Textarea from "../../../components/pure-css/form/Textarea";
 import { Cell, Grid } from "../../../components/pure-css/grid";
-import { setIntegerField } from "../helpers";
 import Select from "../../../components/pure-css/form/Select";
+import { getBooleanFieldSetter, getNumericFieldSetter, getNumericFieldValue } from "../../../utils/helpers";
 
-const AqlForm = ({ formState, dispatch, disabled }: FormProps) => {
-  const getNumericFieldSetter = (field: string) => (event: ChangeEvent<HTMLInputElement>) => {
-    setIntegerField(field, event.target.value, dispatch);
-  };
-
+const AqlForm = ({ formState, dispatch, disabled }: FormProps<AqlState>) => {
   const updateQueryString = (event: ChangeEvent<HTMLTextAreaElement>) => {
     dispatch({
       type: 'setField',
@@ -32,61 +29,41 @@ const AqlForm = ({ formState, dispatch, disabled }: FormProps) => {
     });
   };
 
-  const updateCollapsePositions = (event: ChangeEvent<HTMLInputElement>) => {
-    dispatch({
-      type: 'setField',
-      field: {
-        path: 'properties.collapsePositions',
-        value: event.target.checked
-      }
-    });
-  };
-
-  const updateKeepNull = (event: ChangeEvent<HTMLInputElement>) => {
-    dispatch({
-      type: 'setField',
-      field: {
-        path: 'properties.keepNull',
-        value: event.target.checked
-      }
-    });
-  };
-
-  const aqlFormState = formState as AqlState;
-
   return <Grid>
-    <Cell size={'1-3'}>
-      <Textarea label={'Query String'} value={aqlFormState.properties.queryString || ''} disabled={disabled}
+    <Cell size={'1-2'}>
+      <Textarea label={'Query String'} value={formState.properties.queryString || ''} disabled={disabled}
                 onChange={updateQueryString} rows={4} required={true}/>
     </Cell>
 
-    <Cell size={'1-3'}>
+    <Cell size={'1-2'}>
       <Grid>
         <Cell size={'1'}>
-          <Textbox label={'Batch Size'} type={'number'} min={1} placeholder={'10'} required={true}
-                   value={aqlFormState.properties.batchSize || ''} disabled={disabled}
-                   onChange={getNumericFieldSetter('properties.batchSize')}/>
+          <Textbox label={'Batch Size'} type={'number'} min={1} required={true}
+                   value={getNumericFieldValue(formState.properties.batchSize)} disabled={disabled}
+                   onChange={getNumericFieldSetter('properties.batchSize', dispatch)}/>
         </Cell>
         <Cell size={'1'}>
           <Textbox label={'Memory Limit'} type={'number'} min={1} max={33554432} required={true}
-                   placeholder={'1048576'} value={aqlFormState.properties.memoryLimit || ''}
-                   disabled={disabled} onChange={getNumericFieldSetter('properties.memoryLimit')}/>
+                   value={getNumericFieldValue(formState.properties.memoryLimit)}
+                   disabled={disabled} onChange={getNumericFieldSetter('properties.memoryLimit', dispatch)}/>
         </Cell>
       </Grid>
     </Cell>
 
-    <Cell size={'1-3'}>
+    <Cell size={'1-2'}>
       <Grid>
-        <Cell size={'1-2'}>
-          <Checkbox checked={aqlFormState.properties.collapsePositions || false} disabled={disabled}
-                    onChange={updateCollapsePositions} label={'Collapse Positions'}/>
+        <Cell size={'1-3'}>
+          <Checkbox checked={formState.properties.collapsePositions || false} disabled={disabled}
+                    onChange={getBooleanFieldSetter('properties.collapsePositions', dispatch)}
+                    label={'Collapse Positions'}/>
         </Cell>
-        <Cell size={'1-2'}>
-          <Checkbox checked={aqlFormState.properties.keepNull || false} onChange={updateKeepNull}
+        <Cell size={'1-3'}>
+          <Checkbox checked={formState.properties.keepNull || false}
+                    onChange={getBooleanFieldSetter('properties.keepNull', dispatch)}
                     disabled={disabled} label={'Keep Null'}/>
         </Cell>
-        <Cell size={'1'}>
-          <Select label={'Return Type'} value={aqlFormState.properties.returnType || 'string'}
+        <Cell size={'1-3'}>
+          <Select label={'Return Type'} value={formState.properties.returnType || 'string'}
                   onChange={updateReturnType} required={true} disabled={disabled}>
             <option value={'string'}>String</option>
             <option value={'number'}>Number</option>

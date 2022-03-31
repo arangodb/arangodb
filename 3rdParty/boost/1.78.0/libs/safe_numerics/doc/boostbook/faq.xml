@@ -1,0 +1,360 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE section PUBLIC "-//OASIS//DTD DocBook XML V4.5//EN"
+"http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd">
+<section id="safe_numerics.rationale">
+  <title>Rationale and FAQ</title>
+
+  <qandaset defaultlabel="number">
+    <qandaentry>
+      <question>
+        <para>Is this really necessary? If I'm writing the program with the
+        requisite care and competence, problems noted in the introduction will
+        never arise. Should they arise, they should be fixed "at the source"
+        and not with a "band aid" to cover up bad practice.</para>
+      </question>
+
+      <answer>
+        <para>This surprised me when it was first raised. But some of the
+        feedback I've received makes me think that it's a widely held view.
+        The best answer is to consider the examples in the <link
+        linkend="safe_numerics.tutorial">Tutorials and Motivating
+        Examples</link> section of the library documentation. I believe they
+        convincingly demonstrate that any program which does not use this
+        library must be assumed to contain arithmetic errors.</para>
+      </answer>
+    </qandaentry>
+
+    <qandaentry>
+      <question>
+        <para>Can safe types be used as drop-in replacements for built-in
+        types?</para>
+      </question>
+
+      <answer>
+        <para>Almost. Replacing all built-in types with their safe
+        counterparts should result in a program that will compile and run as
+        expected. Occasionally compile time errors will occur and adjustments
+        to the source code will be required. Typically these will result in
+        code which is more correct.</para>
+      </answer>
+    </qandaentry>
+
+    <qandaentry>
+      <question>
+        <para>Why are there special types for literal such as
+        <code>safe_signed_literal&lt;42&gt;</code>? Why not just use
+        std::integral_const&lt;int, 42&gt;?</para>
+      </question>
+
+      <answer>
+        <para>By defining our own "special" type we can simplify the
+        interface. Using <code>std::integral_const</code> requires one to
+        specify both the type <emphasis>and</emphasis> the value. Using
+        <code>safe_signed_literal&lt;42&gt;</code> doesn't require a parameter
+        for the type. So the library can select the best type to hold the
+        specified value. It also means that one won't have the opportunity to
+        specify a type-value pair which are inconsistent.</para>
+      </answer>
+    </qandaentry>
+
+    <qandaentry>
+      <question>
+        <para>Why is safe...literal needed at all? What's the matter with
+        <code>const safe&lt;int&gt;(42)</code>?</para>
+      </question>
+
+      <answer>
+        <para><code>const safe&lt;int&gt;(42)</code> looks like it might be
+        what we want: An immutable value which invokes the "safe" operators
+        when used in an expression. But there is one problem. The
+        <code>std::numeric_limits&lt;safe&lt;int&gt;&gt;</code> is a range
+        from INTMIN to INTMAX even though the value is fixed to 42 at compile
+        time. It is this range which is used at compile time to calculate the
+        range of the result of the operation.</para>
+
+        <para>So when an operation is performed, the range of the result is
+        calculated from [INTMIN, INTMAX] rather than from [42,42].</para>
+      </answer>
+    </qandaentry>
+
+    <qandaentry>
+      <question>
+        <para>Are safe type operations <code>constexpr</code>? That is, can
+        they be invoked at compile time?</para>
+      </question>
+
+      <answer>
+        <para>Yes. safe type construction and calculations are all
+        <code>constexpr</code>. Note that to get maximum benefit, you'll have
+        to use <code>safe...literal</code> to specify the primitive values at
+        compile time.</para>
+      </answer>
+    </qandaentry>
+
+    <qandaentry>
+      <question>
+        <para>Why define <link
+        linkend="safe_numerics.safe_literal"><code>safe_literal</code></link>?
+        Isn't it effectively the same as
+        <code>std::integral_constant</code>?</para>
+      </question>
+
+      <answer>
+        <para>Almost, but there are still good reasons to create a different
+        type.<itemizedlist>
+            <listitem>
+              <para><code>std::integral_constant&lt;int, 42&gt;</code>
+              requires specification of type as well as value so it's less
+              convenient than safe_signed_literal which maps to the smallest
+              type required to hold the value.</para>
+            </listitem>
+
+            <listitem>
+              <para><code>std::numeric_limits&lt;std::integral_constant&lt;int,
+              42&gt;&gt;::is_integer</code> returns <code>false</code>. This
+              would complicate implementation of the library</para>
+            </listitem>
+
+            <listitem>
+              <para>type trait <code>is_safe&lt;std::integral_constant&lt;int,
+              42&gt;&gt;</code> would have to be defined to return
+              <code>true</code>.</para>
+            </listitem>
+
+            <listitem>
+              <para>But globally altering the traits of
+              <code>std::integral_constant</code> might have unintended
+              side-effects related to other code. These might well be
+              surprises which are create errors which are hard to find and
+              hard to work around.</para>
+            </listitem>
+          </itemizedlist></para>
+      </answer>
+    </qandaentry>
+
+    <qandaentry>
+      <question>
+        <para>Why is Boost.Convert not used?</para>
+      </question>
+
+      <answer>
+        <para>I couldn't figure out how to use it from the
+        documentation.</para>
+      </answer>
+    </qandaentry>
+
+    <qandaentry>
+      <question>
+        <para>Why is the library named "safe ..." rather than something like
+        "checked ..." ?</para>
+      </question>
+
+      <answer>
+        <para>I used "safe" in large part because this is what has been used
+        by other similar libraries. Maybe a better word might have been
+        "correct" but that would raise similar concerns. I'm not inclined to
+        change this. I've tried to make it clear in the documentation what the
+        problem that the library addressed is.</para>
+      </answer>
+    </qandaentry>
+
+    <qandaentry>
+      <question>
+        <para>Given that the library is called "numerics" why is floating
+        point arithmetic not addressed?</para>
+      </question>
+
+      <answer>
+        <para>Actually, I believe that this can/should be applied to any type
+        T which satisfies the type requirement <code>Numeric</code> type as
+        defined in the documentation. So there should be specializations
+        <code>safe&lt;float&gt;</code> and related types as well as new types
+        like <code>safe&lt;fixed_decimal&gt;</code> etc. But the current
+        version of the library only addresses integer types. Hopefully the
+        library will evolve to match the promise implied by its name.</para>
+      </answer>
+    </qandaentry>
+
+    <qandaentry>
+      <question>
+        <para>Isn't putting a defensive check just before any potential
+        undefined behavior often considered a bad practice?</para>
+      </question>
+
+      <answer>
+        <para>By whom? Is leaving code which can produce incorrect results
+        better? Note that the documentation contains references to various
+        sources which recommend exactly this approach to mitigate the problems
+        created by this C/C++ behavior. See
+        <citation>Seacord</citation></para>
+      </answer>
+    </qandaentry>
+
+    <qandaentry>
+      <question>
+        <para>It looks like the implementation presumes two's complement
+        arithmetic at the hardware level. So this library is not portable -
+        correct? What about other hardware architectures?</para>
+      </question>
+
+      <answer>
+        <para>As far as is known as of this writing, the library does not
+        presume that the underlying hardware is two's complement. However,
+        this has yet to be verified in any rigorous way.</para>
+      </answer>
+    </qandaentry>
+
+    <qandaentry>
+      <question>
+        <para>According to C/C++ standards, <code>unsigned integers</code>
+        cannot overflow - they are modular integers which "wrap around". Yet
+        the safe numerics library detects and traps this behavior as errors.
+        Why is that?</para>
+      </question>
+
+      <answer>
+        <para>The guiding purpose of the library is to trap incorrect
+        arithmetic behavior - not just undefined behavior. Although a savvy
+        user may understand and keep present in his mind that an unsigned
+        integer is really a modular type, the plain reading of an arithmetic
+        expression conveys the idea that all operands are common integers.
+        Also in many cases, <code>unsigned integers</code> are used in cases
+        where modular arithmetic is not intended, such as array indices.
+        Finally, the modulus for such an integer would vary depending upon the
+        machine architecture. For these reasons, in the context of this
+        library, an <code>unsigned integer</code> is considered to be a
+        representation of a subset of integers. Note that this decision is
+        consistent with <citation>INT30-C</citation>, “Ensure that unsigned
+        integer operations do not wrap” in the CERT C Secure Coding Standard
+        <citation>Seacord</citation>.</para>
+      </answer>
+    </qandaentry>
+
+    <qandaentry>
+      <question>
+        <para>Why does the library require C++14?</para>
+      </question>
+
+      <answer>
+        <para>The original version of the library used C++11. Feedback from
+        CPPCon, <ulink url="http://www.blincubator.com">Boost Library
+        Incubator</ulink> and Boost developer's mailing list convinced me that
+        I had to address the issue of run-time penalty much more seriously. I
+        resolved to eliminate or minimize it. This led to more elaborate
+        meta-programming. But this wasn't enough. It became apparent that the
+        only way to really minimize run-time penalty was to implement
+        compile-time integer range arithmetic - a pretty elaborate sub
+        library. By doing range arithmetic at compile-time, I could skip
+        runtime checking on many/most integer operations. While C++11
+        <code>constexpr</code> wasn't quite powerful enough to do the job,
+        C++14 <code>constexpr</code> is. The library currently relies very
+        heavily on C++14 <code>constexpr</code>. I think that those who delve
+        into the library will be very surprised at the extent that minor
+        changes in user code can produce guaranteed correct integer code with
+        zero run-time penalty.</para>
+      </answer>
+    </qandaentry>
+
+    <qandaentry>
+      <question>
+        <para>This is a C++ library - yet you refer to C/C++. Which is
+        it?</para>
+      </question>
+
+      <answer>
+        <para>C++ has evolved way beyond the original C language. But C++ is
+        still (mostly) compatible with C. So most C programs can be compiled
+        with a C++ compiler. The problems of incorrect arithmetic afflict both
+        C and C++. Suppose we have a legacy C program designed for some
+        embedded system.<itemizedlist>
+            <listitem>
+              <para>Replace all <code>int</code> declarations with
+              <code>int16_t</code> and all <code>long</code> declarations with
+              <code>int32_t</code>.</para>
+            </listitem>
+
+            <listitem>
+              <para>Create a file containing something like the following and
+              include it at the beginning of every source file.</para>
+
+              <programlisting>#ifdef TEST
+// using C++ on test platform
+#include  &lt;cstdint&gt;
+#include &lt;boost/numeric/safe_numerics/safe_integer.hpp&gt;
+#include &lt;cpp.hpp&gt;
+using pic16_promotion = boost::numeric::cpp&lt;
+    8,  // char
+    8,  // short
+    8,  // int
+    16, // long
+    32  // long long
+&gt;;
+// define safe types used in the desktop version of the program.
+template &lt;typename T&gt; // T is char, int, etc data type
+using safe_t = boost::numeric::safe&lt;
+    T,
+    pic16_promotion,
+    boost::numeric::default_exception_policy // use for compiling and running tests
+&gt;;
+typedef safe_t&lt;std::int_least16_t&gt; int16_t;
+typedef safe_t&lt;std::int_least32_t&gt; int32_t;
+#else
+/* using C on embedded platform */
+typedef int int_least16_t;
+typedef long int_least16_t;
+#endif
+
+</programlisting>
+            </listitem>
+
+            <listitem>
+              <para>Compile tests on the desktop with a C++14 compiler and
+              with the macro TEST defined.</para>
+            </listitem>
+
+            <listitem>
+              <para>Run the tests and change the code to address any thrown
+              exceptions.</para>
+            </listitem>
+
+            <listitem>
+              <para>Compile for the target C platform with the macro TEST
+              undefined.</para>
+            </listitem>
+          </itemizedlist></para>
+
+        <para>This example illustrates how this library, implemented with
+        C++14 can be useful in the development of correct code for programs
+        written in C.</para>
+      </answer>
+    </qandaentry>
+
+    <qandaentry>
+      <question>
+        <para>Some compilers (including gcc and clang) include builtin
+        functions for checked addition, multiplication, etc. Does this library
+        use these intrinsics?</para>
+      </question>
+
+      <answer>
+        <para>No. I attempted to use these but they are currently not
+        <code>constexpr</code>. So I couldn't use these without breaking
+        <code>constexpr</code> compatibility for the safe numerics
+        primitives.</para>
+      </answer>
+    </qandaentry>
+
+    <qandaentry>
+      <question>
+        <para>Some compilers (including gcc and clang) included a builtin
+        function for detecting constants. This seemed attractive to eliminate
+        the requirement for the safe_literal type. Alas, these builtin
+        functions are defined as macros. Constants passed through functions
+        down into the safe numerics library cannot be detected as constants.
+        So the opportunity to make the library even more efficient by moving
+        more operations to compile time doesn't exist - contrary to my hopes
+        and expections.</para>
+      </question>
+    </qandaentry>
+  </qandaset>
+</section>

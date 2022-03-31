@@ -1,0 +1,23 @@
+[/ 
+  (C) Copyright Edward Diener 2011-2015,2020
+  Distributed under the Boost Software License, Version 1.0.
+  (See accompanying file LICENSE_1_0.txt or copy at
+  http://www.boost.org/LICENSE_1_0.txt).
+]
+
+[section:vmd_specific Specific macros for working with data types]
+
+VMD has a number of specific macros for parsing data types.
+Each of these macros asks if some input is a particular
+VMD data type.
+
+[include vmd_empty.qbk]
+[include vmd_constraints.qbk]
+[include vmd_identifier.qbk]
+[include vmd_number.qbk]
+[include vmd_type.qbk]
+[include vmd_pp_data_types.qbk]
+[include vmd_identifying.qbk]
+[include vmd_specific_table.qbk]
+
+[endsect]

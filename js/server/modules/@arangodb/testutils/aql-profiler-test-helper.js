@@ -57,6 +57,7 @@ const GatherNode = 'GatherNode';
 const IndexNode = 'IndexNode';
 const InsertNode = 'InsertNode';
 const LimitNode = 'LimitNode';
+const MaterializeNode = 'MaterializeNode';
 const MutexNode = 'MutexNode';
 const NoResultsNode = 'NoResultsNode';
 const RemoteNode = 'RemoteNode';
@@ -74,9 +75,9 @@ const UpsertNode = 'UpsertNode';
 const nodeTypesList = [
   AsyncNode, CalculationNode, CollectNode, DistributeNode, EnumerateCollectionNode,
   EnumerateListNode, EnumerateViewNode, FilterNode, GatherNode, IndexNode,
-  InsertNode, LimitNode, MutexNode, NoResultsNode, RemoteNode, RemoveNode, ReplaceNode,
-  ReturnNode, ScatterNode, ShortestPathNode, SingletonNode, SortNode,
-  TraversalNode, UpdateNode, UpsertNode
+  InsertNode, LimitNode, MaterializeNode, MutexNode, NoResultsNode, RemoteNode, 
+  RemoveNode, ReplaceNode, ReturnNode, ScatterNode, ShortestPathNode, SingletonNode, 
+  SortNode, TraversalNode, UpdateNode, UpsertNode
 ];
 
 const AsyncBlock = 'AsyncNode';
@@ -90,6 +91,7 @@ const FilterBlock = 'FilterNode';
 const HashedCollectBlock = 'HashedCollectNode';
 const IndexBlock = 'IndexNode';
 const LimitBlock = 'LimitNode';
+const MaterializeBlock = 'MaterializeNode';
 const MutexBlock = 'MutexNode';
 const NoResultsBlock = 'NoResultsNode';
 const RemoteBlock = 'RemoteNode';
@@ -115,8 +117,8 @@ const IResearchViewOrderedBlock = 'IResearchOrderedViewNode';
 const blockTypesList = [
   AsyncBlock, CalculationBlock, ConstrainedSortBlock, CountCollectBlock, DistinctCollectBlock,
   EnumerateCollectionBlock, EnumerateListBlock, FilterBlock,
-  HashedCollectBlock, IndexBlock, LimitBlock, MutexBlock, NoResultsBlock, RemoteBlock,
-  ReturnBlock, ShortestPathBlock, SingletonBlock, SortBlock,
+  HashedCollectBlock, IndexBlock, LimitBlock, MaterializeBlock, MutexBlock, NoResultsBlock, 
+  RemoteBlock, ReturnBlock, ShortestPathBlock, SingletonBlock, SortBlock,
   SortedCollectBlock, SortingGatherBlock, TraversalBlock,
   UnsortingGatherBlock, RemoveBlock, InsertBlock, UpdateBlock, ReplaceBlock,
   UpsertBlock, ScatterBlock, DistributeBlock, IResearchViewUnorderedBlock,
@@ -219,6 +221,7 @@ function getCompactStatsNodes (profile) {
       type: translateType(profile.plan.nodes, node),
       calls: node.fromStats.calls,
       items: node.fromStats.items,
+      filtered: node.fromStats.filtered || 0,
     })
   );
 }
@@ -257,6 +260,10 @@ function assertIsProfileStatsObject (stats, {level, fullCount}) {
     'writesIgnored',
     'scannedFull',
     'scannedIndex',
+    'cursorsCreated',
+    'cursorsRearmed',
+    'cacheHits',
+    'cacheMisses',
     'filtered',
     'httpRequests',
     'peakMemoryUsage',
@@ -278,6 +285,8 @@ function assertIsProfileStatsObject (stats, {level, fullCount}) {
   expect(stats.writesIgnored).to.be.a('number');
   expect(stats.scannedFull).to.be.a('number');
   expect(stats.scannedIndex).to.be.a('number');
+  expect(stats.cursorsCreated).to.be.a('number');
+  expect(stats.cursorsRearmed).to.be.a('number');
   expect(stats.filtered).to.be.a('number');
   expect(stats.httpRequests).to.be.a('number');
   expect(stats.peakMemoryUsage).to.be.a('number');
@@ -495,10 +504,17 @@ function assertNodesItemsAndCalls (expected, actual, details = {}) {
     details
   );
 
-  // assert call count last.
+  // assert call count next
   assertFuzzyNumArrayEquality(
     expected.map(node => node.calls),
     actual.map(node => node.calls),
+    details
+  );
+  
+  // assert filtered count last
+  assertFuzzyNumArrayEquality(
+    expected.map(node => node.filtered),
+    actual.map(node => node.filtered),
     details
   );
 }
@@ -540,6 +556,7 @@ function runDefaultChecks (
   testRowCounts = _.uniq(testRowCounts.concat(additionalTestRowCounts).sort());
   for (const rows of testRowCounts) {
     prepare(rows);
+    
     const queryResults = db._query(query, bind(rows),
       _.merge(options, {profile, defaultBatchSize})
     ).getExtra();
@@ -674,14 +691,14 @@ function createBinaryTree (vertexCol, edgeCol, numVertices) {
   edgeCol.truncate();
 
   // add vertices
-  vertexCol.insert(_.range(1, numVertices + 1).map((i) => ({_key: ""+i})));
+  vertexCol.insert(_.range(1, numVertices + 1).map((i) => ({_key: "" + i})));
 
   // create a balanced binary tree on edgeCol
   edgeCol.insert(
     // for every v._key from col
     _.range(1, numVertices + 1)
-    // calculate child indices of (potential) children
-      .map(i => [{from: i, to: 2*i}, {from: i, to: 2*i+1}])
+      // calculate child indices of (potential) children
+      .map(i => [{from: i, to: 2 * i}, {from: i, to: 2 * i + 1}])
       // flatten
       .reduce((accum, cur) => accum.concat(cur), [])
       // omit edges to non-existent vertices
@@ -749,6 +766,7 @@ exports.GatherNode = GatherNode;
 exports.IndexNode = IndexNode;
 exports.InsertNode = InsertNode;
 exports.LimitNode = LimitNode;
+exports.MaterializeNode = MaterializeNode;
 exports.MutexNode = MutexNode;
 exports.NoResultsNode = NoResultsNode;
 exports.RemoteNode = RemoteNode;
@@ -774,6 +792,7 @@ exports.FilterBlock = FilterBlock;
 exports.HashedCollectBlock = HashedCollectBlock;
 exports.IndexBlock = IndexBlock;
 exports.LimitBlock = LimitBlock;
+exports.MaterializeBlock = MaterializeBlock;
 exports.MutexBlock = MutexBlock;
 exports.NoResultsBlock = NoResultsBlock;
 exports.RemoteBlock = RemoteBlock;

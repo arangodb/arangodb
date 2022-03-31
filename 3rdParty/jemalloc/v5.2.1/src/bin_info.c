@@ -7,9 +7,9 @@ bin_info_t bin_infos[SC_NBINS];
 
 static void
 bin_infos_init(sc_data_t *sc_data, unsigned bin_shard_sizes[SC_NBINS],
-    bin_info_t bin_infos[SC_NBINS]) {
+    bin_info_t infos[SC_NBINS]) {
 	for (unsigned i = 0; i < SC_NBINS; i++) {
-		bin_info_t *bin_info = &bin_infos[i];
+		bin_info_t *bin_info = &infos[i];
 		sc_t *sc = &sc_data->sc[i];
 		bin_info->reg_size = ((size_t)1U << sc->lg_base)
 		    + ((size_t)sc->ndelta << sc->lg_delta);

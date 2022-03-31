@@ -1,0 +1,82 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>array::shrink_to_fit</title>
+<link rel="stylesheet" href="../../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../index.html" title="Chapter 1. Boost.JSON">
+<link rel="up" href="../boost__json__array.html" title="array">
+<link rel="prev" href="reserve.html" title="array::reserve">
+<link rel="next" href="clear.html" title="array::clear">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="reserve.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../boost__json__array.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="clear.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="json.ref.boost__json__array.shrink_to_fit"></a><a class="link" href="shrink_to_fit.html" title="array::shrink_to_fit">array::shrink_to_fit</a>
+</h5></div></div></div>
+<p>
+          <a class="indexterm" name="idm16875"></a>
+        </p>
+<p>
+          Request the removal of unused capacity.
+        </p>
+<h6>
+<a name="json.ref.boost__json__array.shrink_to_fit.h0"></a>
+          <span class="phrase"><a name="json.ref.boost__json__array.shrink_to_fit.synopsis"></a></span><a class="link" href="shrink_to_fit.html#json.ref.boost__json__array.shrink_to_fit.synopsis">Synopsis</a>
+        </h6>
+<pre class="programlisting"><span class="keyword">void</span>
+<span class="identifier">shrink_to_fit</span><span class="special">();</span>
+</pre>
+<h6>
+<a name="json.ref.boost__json__array.shrink_to_fit.h1"></a>
+          <span class="phrase"><a name="json.ref.boost__json__array.shrink_to_fit.description"></a></span><a class="link" href="shrink_to_fit.html#json.ref.boost__json__array.shrink_to_fit.description">Description</a>
+        </h6>
+<p>
+          This performs a non-binding request to reduce the capacity to the current
+          size. The request may or may not be fulfilled. If reallocation occurs,
+          all iterators including any past-the-end iterators, and all references
+          to the elements are invalidated. Otherwise, no iterators or references
+          are invalidated.
+        </p>
+<h6>
+<a name="json.ref.boost__json__array.shrink_to_fit.h2"></a>
+          <span class="phrase"><a name="json.ref.boost__json__array.shrink_to_fit.complexity"></a></span><a class="link" href="shrink_to_fit.html#json.ref.boost__json__array.shrink_to_fit.complexity">Complexity</a>
+        </h6>
+<p>
+          At most, linear in <a class="link" href="size.html" title="array::size"><code class="computeroutput"><span class="identifier">size</span><span class="special">()</span></code></a>.
+        </p>
+<h6>
+<a name="json.ref.boost__json__array.shrink_to_fit.h3"></a>
+          <span class="phrase"><a name="json.ref.boost__json__array.shrink_to_fit.exception_safety"></a></span><a class="link" href="shrink_to_fit.html#json.ref.boost__json__array.shrink_to_fit.exception_safety">Exception
+          Safety</a>
+        </h6>
+<p>
+          No-throw guarantee.
+        </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2019, 2020 Vinnie Falco<br>Copyright © 2020 Krystian Stasiowski<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="reserve.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../boost__json__array.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="clear.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

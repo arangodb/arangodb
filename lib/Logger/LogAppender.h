@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -76,17 +76,20 @@ class LogAppender {
   static bool allowStdLogging() { return _allowStdLogging; }
   static void allowStdLogging(bool value) { _allowStdLogging = value; }
 
-  static Result parseDefinition(std::string const& definition, 
-                                std::string& topicName,
-                                std::string& output,
+  static Result parseDefinition(std::string const& definition,
+                                std::string& topicName, std::string& output,
                                 LogTopic*& topic);
- 
+
  private:
   static arangodb::basics::ReadWriteLock _appendersLock;
-  static std::array<std::vector<std::shared_ptr<LogAppender>>, LogGroup::Count> _globalAppenders;
-  static std::array<std::map<size_t, std::vector<std::shared_ptr<LogAppender>>>, LogGroup::Count> _topics2appenders;
-  static std::array<std::map<std::string, std::shared_ptr<LogAppender>>, LogGroup::Count> _definition2appenders;
+  static std::array<std::vector<std::shared_ptr<LogAppender>>, LogGroup::Count>
+      _globalAppenders;
+  static std::array<std::map<size_t, std::vector<std::shared_ptr<LogAppender>>>,
+                    LogGroup::Count>
+      _topics2appenders;
+  static std::array<std::map<std::string, std::shared_ptr<LogAppender>>,
+                    LogGroup::Count>
+      _definition2appenders;
   static bool _allowStdLogging;
 };
 }  // namespace arangodb
-

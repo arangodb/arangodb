@@ -1,0 +1,164 @@
+[/ 
+  (C) Copyright Edward Diener 2020
+  Distributed under the Boost Software License, Version 1.0.
+  (See accompanying file LICENSE_1_0.txt or copy at
+  http://www.boost.org/LICENSE_1_0.txt).
+]
+
+[section:tti_detail_has_function_template Introspecting function template]
+
+We can introspect a member function template or a static member function template
+of a user-defined type using the TTI functionality we shall now explain.
+
+A function template of a user-defined type can either be a member function
+template or a static member function template. An example would be:
+
+  struct AType 
+    {
+    template<class X,class Y,class Z> double AFuncTemplate(X x,Y * y,Z & z) 
+      { ...some code using x,y,z; return 0.0; }
+    template<class X,int Y> static int AFuncTemplate(X x) 
+      { ...some code using x; return Y; }
+    };
+    
+A function template `AFuncTemplate` is a member function template of the `AType`
+user-defined type and a different function template also called `AFuncTemplate`
+is a static member function template of the `AType` user-defined type.
+
+In order to introspect either function template we use some theoretical valid
+instantiations of `AFuncTemplate`. An instantiation of a function template was
+previously explained in the topic [link sectti_function_templates "Introspecting function templates technique"].
+
+For the purposes of illustration the instantiation we will use is:
+
+  double AFuncTemplate<char,bool,int>(char,bool *,int &)
+  
+What we have now which the TTI will need in order to introspect the function
+template `template<class X,class Y,class Z> double AFuncTemplate(X,Y *,Z &)`
+within the `AType` struct is:
+
+* The name of `AFuncTemplate`
+* The template parameters of `char,bool,int`
+* The enclosing type of `AType`
+* The return type of `double`
+* The function parameters of `char,bool *,int &`
+
+[heading Generating the metafunction]
+
+As with all TTI functionality for introspecting entities within a user-defined
+type introspecting a function template is a two step process. The first
+process is using a macro to generate a metafunction. The macro for
+function templates is [macroref BOOST_TTI_HAS_FUNCTION_TEMPLATE].
+This macro takes the name of the member function template and the instantiated 
+template parameters, the first two items in our list above:
+
+  BOOST_TTI_HAS_FUNCTION_TEMPLATE(AFuncTemplate,char,bool,int)
+  
+An alternative form for compilers which do not support variadic macros, and which will
+also work with compilers which do support variadic macros, is to specify
+the template parameters of the instantiation as a single macro argument using a 
+Boost PP array:
+  
+  BOOST_TTI_HAS_FUNCTION_TEMPLATE(AFuncTemplate,(3,(char,bool,int)))
+  
+The macro generates a metafunction based on the pattern of
+"has_function_template_'name_of_inner_function_template'",
+which in our example case would be `has_function_template_AFuncTemplate`.
+
+[heading Invoking the metafunction]
+
+To use this macro to test whether our function template exists
+the metafunction the macro creates is invoked with the enclosing type, the instantiated return type,
+and the instantiated function parameters, with the resulting `value` being a compile time
+boolean constant which is `true` if the function template exists,
+or `false` otherwise. We use each of our needed types as separate parameters, with the
+function parameters being enclosed in an MPL forward sequence. We would have:
+
+  has_function_template_AFuncTemplate<AType,double,boost::mpl::vector<char,bool *,int &> >::value
+
+[heading Introspecting the other function template]
+
+If we chose to try to introspect the second `AFuncTemplate` within `AType` we might
+choose an instantiation of:
+
+  int AFuncTemplate<long,7435>(long)
+  
+Our generation of the metafunction would then be:
+
+  BOOST_TTI_HAS_FUNCTION_TEMPLATE(AFuncTemplate,long,7435)
+  
+or
+
+  BOOST_TTI_HAS_FUNCTION_TEMPLATE(AFuncTemplate,(2,(long,7435)))
+  
+and our invocation of the metafunction would now be:
+  
+  has_function_template_AFuncTemplate<AType,int,boost::mpl::vector<long> >::value
+  
+[heading Other considerations]
+
+In our two examples above we could not introspect both function templates
+in the same namespace using the BOOST_TTI_HAS_FUNCTION_TEMPLATE macro as we would
+be generating two metafunctions with the same name, which would be
+`has_function_template_AFuncTemplate`, thus violating the One Definition Rule.
+The solution to this is the use of the complex macro form.
+
+The macro for generating the metafunction for introspecting function templates
+also has, like other macros in the TTI library, a complex macro form where the
+end-user can directly specify the name of the metafunction to be generated. The
+corresponding macro is BOOST_TTI_TRAIT_HAS_FUNCTION_TEMPLATE, 
+where the first parameter is the name of the metafunction to be generated,
+the second parameter is the member function template name, and the remaining parameters
+are the instantiated template parameters.
+
+For our first example we could have
+
+  BOOST_TTI_TRAIT_HAS_FUNCTION_TEMPLATE(FirstMetafunction,char,bool,int)
+  
+or for the non-variadic macro form
+
+  BOOST_TTI_TRAIT_HAS_FUNCTION_TEMPLATE(FirstMetafunction,(3,(char,bool,int)))
+  
+which generates a metafunction whose name would be `FirstMetafunction`.
+  
+For our second example we could have
+
+  BOOST_TTI_TRAIT_HAS_FUNCTION_TEMPLATE(SecondMetafunction,AFuncTemplate,long,7435)
+  
+or for the non-variadic macro form
+
+  BOOST_TTI_TRAIT_HAS_FUNCTION_TEMPLATE(SecondMetafunction,AFuncTemplate,(2,(long,7435)))
+  
+which generates a metafunction whose name would be `SecondMetafunction`.
+  
+In all other respects the resulting metafunctions generated works exactly the same
+as when using the simpler macro form previously illustrated.
+
+If you do use the simple macro form, which generates the metafunction name
+from the name of the function template you are introspecting, you can use
+a corresponding macro, taking the name of the function template as a single
+parameter, to create the appropriate metafunction name if you do not want to
+remember the pattern for generating the metafunction name. This macro name is
+`BOOST_TTI_HAS_FUNCTION_TEMPLATE_GEN` as in
+
+  BOOST_TTI_HAS_FUNCTION_TEMPLATE_GEN(AFuncTemplate)
+  
+which would generate the name `has_function_template_AFuncTemplate`.
+
+When invoking the appropriate metafunction a fourth
+template argument may optionally be given which holds a Boost FunctionTypes tag
+type. This optional template argument is of much less use for 
+function templates than for non-static member function templates since static
+member function templates, like static member functions, can not have
+cv-qualifications. which a number of Boost FunctionTypes tags provide.
+Nonetheless this optional Boost FunctionTypes tag is available for
+end-user use and may come in handy in certain rare cases, as when some calling
+convention qualification for the function template needs to be
+specified. If you do use a Boost FunctionTypes tag type for cv-qualification,
+such as `boost::function_types::const_qualified` to look for a function template
+it will be applied when introspecting for the member function template side of
+the match, but will ensure that introspecting for the static member function 
+template side of the match will always fail. In either case no compiler error
+will be generated.
+
+[endsect]

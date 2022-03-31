@@ -13,10 +13,17 @@ The name of the cursor
 If the cursor is still alive, returns an object with the following
 attributes:
 
-- *id*: the *cursor-identifier*
+- *id*: a *cursor-identifier*
 - *result*: a list of documents for the current batch
 - *hasMore*: *false* if this was the last batch
 - *count*: if present the total number of elements
+- *code*: an HTTP status code
+- *error*: a boolean flag to indicate whether an error occurred
+- *errorNum*: a server error number (if *error* is *true*)
+- *errorMessage*: a descriptive error message (if *error* is *true*)
+- *extra*: an object with additional information about the query result, with
+  the nested objects *stats* and *warnings*. Only delivered as part of the last
+  batch in case of a cursor with the *stream* option enabled.
 
 Note that even if *hasMore* returns *true*, the next call might
 still return no documents. If, however, *hasMore* is *false*, then
@@ -34,6 +41,17 @@ If the cursor identifier is omitted, the server will respond with *HTTP 404*.
 @RESTRETURNCODE{404}
 If no cursor with the specified identifier can be found, the server will respond
 with *HTTP 404*.
+
+@RESTRETURNCODE{410}
+The server will respond with *HTTP 410* if a server which processes the query
+or is the leader for a shard which is used in the query stops responding, but 
+the connection has not been closed.
+
+@RESTRETURNCODE{503}
+The server will respond with *HTTP 503* if a server which processes the query
+or is the leader for a shard which is used in the query is down, either for 
+going through a restart, a failure or connectivity issues.
+
 
 @EXAMPLES
 

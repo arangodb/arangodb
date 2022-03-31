@@ -1,0 +1,94 @@
+[/
+ / Copyright (c) 2003-2021 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See accompanying
+ / file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+ /]
+
+[section:DynamicBuffer_v2 Dynamic buffer requirements (version 2)]
+
+A dynamic buffer encapsulates memory storage that may be automatically resized
+as required.
+
+A dynamic buffer type `X` shall satisfy the requirements of `CopyConstructible`
+(C++ Std, [copyconstructible]) types in addition to those listed below.
+
+In the table below, `X` denotes a dynamic buffer class, `x` denotes a value of
+type `X&`, `x1` denotes values of type `const X&`, `pos` and `n` denote values
+of type `size_t`, and `u` denotes an identifier.
+
+[table DynamicBuffer_v2 requirements
+  [[expression] [type] [assertion/note[br]pre/post-conditions]]
+  [
+    [`X::const_buffers_type`]
+    [type meeting [link boost_asio.reference.ConstBufferSequence ConstBufferSequence]
+     requirements.]
+    [This type represents the underlying memory as a sequence of @c const_buffer
+     objects.]
+  ]
+  [
+    [`X::mutable_buffers_type`]
+    [type meeting [link boost_asio.reference.MutableBufferSequence MutableBufferSequence]
+     requirements.]
+    [This type represents the underlying memory as a sequence of @c
+     mutable_buffer objects.]
+  ]
+  [
+    [`x1.size()`]
+    [`size_t`]
+    [Returns the size, in bytes, of the underlying memory.]
+  ]
+  [
+    [`x1.max_size()`]
+    [`size_t`]
+    [Returns the permitted maximum size of the underlying memory.]
+  ]
+  [
+    [`x1.capacity()`]
+    [`size_t`]
+    [Returns the maximum size to which the underlying memory can grow without
+     requiring reallocation.]
+  ]
+  [
+    [`x1.data(pos, n)`]
+    [`X::const_buffers_type`]
+    [Returns a constant buffer sequence `u` that represents the underlying
+     memory beginning at offset `pos`, and where `buffer_size(u) <= n`.]
+  ]
+  [
+    [`x.data(pos, n)`]
+    [`X::mutable_buffers_type`]
+    [Returns a mutable buffer sequence `u` that represents the underlying
+     memory beginning at offset `pos`, and where `buffer_size(u) <= n`.]
+  ]
+  [
+    [`x.grow(n)`]
+    []
+    [Requires: `size() + n <= max_size()`.[br]
+     [br]
+     Extends the underlying memory to accommodate `n` additional bytes at the
+     end. The dynamic buffer reallocates memory as required. All constant or
+     mutable buffer sequences previously obtained using `data()` are
+     invalidated.[br]
+     [br]
+     Throws: `length_error` if `size() + n > max_size()`.]
+  ]
+  [
+    [`x.shrink(n)`]
+    []
+    [Removes `n` bytes from the end of the underlying memory. If `n` is greater
+     than the size of the underlying memory, the entire underlying memory is
+     emptied. All constant or mutable buffer sequences previously obtained
+     using `data()` are invalidated.]
+  ]
+  [
+    [`x.consume(n)`]
+    []
+    [Removes `n` bytes from the beginning of the underlying memory. If `n` is
+     greater than the size of the underlying memory, the entire underlying memory
+     is emptied. All constant or mutable buffer sequences previously obtained
+     using `data()` are invalidated.]
+  ]
+]
+
+[endsect]

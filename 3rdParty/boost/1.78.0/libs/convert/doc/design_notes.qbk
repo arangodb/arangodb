@@ -1,0 +1,145 @@
+[/
+  Copyright (c) Vladimir Batov 2009-2020
+  Distributed under the Boost Software License, Version 1.0.
+  See copy at http://www.boost.org/LICENSE_1_0.txt.
+]
+
+[#quickbook.ref.design_notes]
+[section:design_notes Design Notes]
+
+[:[*['"The art of simplicity is a puzzle of complexity” Doug Horton]]]
+
+Feel free to skip this section. It is here to document the process and the decisions made during design to be able to review and to reevaluate and to ensure the relevancy and the correctness of those decisions and ultimately the design. Still, this section might be useful for understanding why and how certain decisions have been made and why ['Boost.Convert] is the way it is.
+
+[section Requirements]
+
+['Boost.Convert] has been designed to satisfy the following user requirements:
+
+# ['(R1)] ['Boost.Convert] shall provide a mechanism and an interface that take a value of type ['TypeIn] and yield a value of type ['TypeOut] using an algorithm of type ['Converter];
+# ['(R2)] ['Boost.Convert] shall provide a mechanism and an interface to indicate success or failure of the requested conversion;
+# ['(R3)] ['Boost.Convert] shall provide fully-functional interfaces for two different program flows where
+    # ['(R3a)] error-processing is orthogonal to the normal program flow (exception-throwing interface);
+    # ['(R3b)] normal and error-processing flows are part of the same program flow (non-throwing interface);
+# ['(R4)] The throwing interface shall return the result of successful conversion or shall throw an exception;
+# ['(R5)] The non-throwing interface shall return the result and/or some indication of conversion success or failure;
+    # ['(R5a)] there shall be means to distinguish success from failure;
+    # ['(R5b)] the result of conversion shall only be available when conversion succeeds;
+    # ['(R5c)] when conversion fails, an optional fallback value shall be returned instead if supplied;
+    # ['(R5d)] in the case of failure (with no fallback provided) an attempt to retrieve the result shall result in an exception thrown;
+# ['(R6)] ['Boost.Convert] shall provide a uniform interface suitable for generic programming;
+# ['(R7)] ['Boost.Convert] shall not interfere with or intercept any exceptions that are not part of the official converter interface (i.e. exceptions caused by malfunction, etc.);
+# ['(R8)] Converters shall be independent of and shall not rely on the ['Boost.Convert] infrastructure.
+
+[endsect] [/section Requirements]
+
+[section:converter_signature Converter Signature]
+
+The following converter signatures have been considered:
+
+ bool operator()(TypeIn const&, TypeOut&); //#1
+ void operator()(TypeIn const&, boost::optional<TypeOut>&); //#2
+ boost::optional<TypeOut> operator()(TypeIn const&); //#3
+
+From the design perspective the signature #1 has the advantage of providing the best ['separation of concerns]. Namely, it leaves the respective converter with only one task -- the actual task of conversion. In practice though that can result in unnecessary performance overhead. Namely, given an instance of ['TypeOut] type is supplied from outside, a storage for that instance needs to be allocated and, most importantly, initialized. That initialization phase (which can be expensive) is an unnecessary overhead as, if the conversion operation succeeds, the initial value is overridden with the actual result, if it fails, then the value of the ['TypeOut] instance is either meaningless or worse misleading.
+
+The signature #2 avoids the initialization overhead by deploying `boost::optional`'s ability to allocate storage ['without initializing it]. Now the storage for ['TypeOut] is still allocated outside but it is not initialized. It is now converter's responsibility to know ['how] to initialize the ['TypeOut] instance and, ['when] needed, to actually initialize it. In practice it is usually easier than it might sound. For example, `strtol()`-based converter might have something along the following lines:
+
+ void operator()(char const* str_in, boost::optional<int>& result_out) const
+ {
+    char const* str_end = str_in + strlen(str_in);
+    char*       cnv_end = 0;
+    long int     result = ::strtol(str_in, &cnv_end, base_);
+
+    if (INT_MIN <= result && result <= INT_MAX && cnv_end == str_end)
+        result_out = int(result);
+ }
+
+The signature #3 has been briefly considered as aesthetically advantageous and more idiomatic. Unfortunately, it lacked automatic deduction of the ['TypeOut] which, consequently, had to be specified explicitly. For different types of supported converters (class-based, plain old functions, lambdas) that complicated considerably the implementation of the ['Boost.Convert] infrastructure and restricted implementation of the respective converters.
+
+[endsect] [/section:converter_signature Converter Signature]
+
+[section User Interface Signature]
+
+The first attempt to accommodate the User Requirements might result in the following fairly conventional interface:
+
+ template<typename Out, typename In> Out  convert (In const&); //#1
+ template<typename Out, typename In> Out  convert (In const&, Out const& fallback); //#2
+ template<typename Out, typename In> bool convert (Out& result_out, In const&); //#3
+ template<typename Out, typename In> bool convert (Out& result_out, In const&, Out const& fallback); //#4
+
+with the following behavior:
+
+# returns the result or throws on failure (['R3a], ['R4]);
+# does not throw, returns the result or the provided fallback (['R3b], ['R5], ['R5c] but not ['R5a]);
+# does not throw, writes the result to `result_out` (when successful), returns indication of success or failure (['R3b], ['R5], ['R5a] but not ['R5c]);
+# does not throw, writes the result to `result_out` (when successful) or the provided fallback, returns indication of success or failure (['R3b], ['R5], ['R5c] and ['R5a]).
+
+The #3 and #4 signatures are special as they, in fact, return two things -- the actual result (written into the `result_out`) and the indication of success or failure (returned by the functions). Given that a reference to `result_out` is passed in, the actual `result_out` instance is constructed (storage allocated and initialized) outside the function calls.
+
+Similar to the scenario described in the [link boost_convert.design_notes.converter_signature Converter Signature] section that results in an additional and unnecessary overhead. Indeed, if the conversion operation succeeds, then the initialization value is overridden (with the actual result), if it fails, then the value is either overridden still (with the fallback) or is meaningless.
+
+To avoid the overhead we might again (as in the [link boost_convert.design_notes.converter_signature Converter Signature] section) deploy `boost::optional` and to change the signatures to
+
+ bool convert (boost::optional<Out>&, In const&); //#3
+ bool convert (boost::optional<Out>&, In const&, Out const&); //#4
+
+Now, when we look at #3, we can see that the indication of success or failure is duplicated. Namely, it is returned from the function and is encapsulated in `boost::optional<Out>`. Consequently, #3 can be further simplified to
+
+ void convert (boost::optional<Out>&, In const&); //#3
+
+or expressed more idiomatically (in C++) as:
+
+ boost::optional<Out> convert (In const&); //#3
+
+So far, we have arrived to the following set
+
+ Out                  convert (In const&); //#1
+ Out                  convert (In const&, Out const&); //#2
+ boost::optional<Out> convert (In const&); //#3
+ bool                 convert (boost::optional<Out>&, In const&, Out const&); //#4
+
+which as a whole looks quite ugly and, in fact, does not even compile as #1 clashes with #3. The good thing though is that ['functionally] #1 and #2 are not needed anymore as they are duplicates of the following #3 deployments:
+
+ Out out1 = boost::convert(in).value(); // #3 with #1 behavior
+ Out out2 = boost::convert(in).value_or(fallback); // #3 with #2 behavior
+
+Again, we are not discussing aesthetic aspects of the interface (or syntactic sugar some might say, which might be very subjective). Instead, we are focusing on the ['functional completeness] and so far we manage to maintain the same ['functional completeness] with ['less].
+
+Turns out, with a bit of effort, we can get away without the most complex one -- #4 -- as well:
+
+ boost::optional<Out> out = boost::convert(in);
+ bool         out_success = out ? true : false;
+ Out            out_value = out.value_or(fallback);
+
+So, ultimately we arrive to one and only
+
+ boost::optional<Out> convert(In const&);
+
+The important qualities of the API are that it is ['functionally-complete] and the ['most efficient way] to deploy the chosen converter signature (see the [link boost_convert.design_notes.converter_signature Converter Signature] section). Namely, the `boost::convert()` interface is routinely optimized out (elided) when deployed as
+
+ boost::optional<Out> out = boost::convert(in);
+
+The API has several deployment-related advantages. First, it says exactly what it does. Given a conversion request is only a ['request], the API returns `boost::optional` essentially saying "I'll try but I might fail. Proceed as you find appropriate.". Honest and simple. I prefer it to "I'll try. I might fail but you do not want to know about it." or "I'll try. If I fail, you die." or variations along these lines. :-)
+
+On a more serious note though the interface allows for batched conveyor-style conversions. Namely, attempting to convert several values, in sequence, storing the `boost::optional` results and, then, analyzing/validating them (without losing the information if each individual conversion was successful or not) in some semi-automated way.
+
+Again, that API does not have to be the only API ['Boost.Convert] provides. However, that API is the only ['essential] API. Other APIs are relatively easily derived from it. For example,
+
+ template<typename Out, typename In>
+ Out
+ convert(In const& in, Out const& fallback) //#2
+ {
+    return convert(in).value_or(fallback);
+ }
+
+Given that it is extremely difficult (if not impossible) to come up with a library API that could please everyone, we might as well settle on the ['essential] API and let the users build their own APIs (as in the example above) to satisfy their aesthetic preferences.
+
+Still, it needs to be acknowledged that `boost::optional` is a fairly new concept and some people are reluctant using it or find its deployment unreasonably complicating. Consequently, ['Boost.Convert] provides an alternative (more conventional) interface:
+
+ Out convert(In const&, Converter const&, Out const& fallback_value);
+ Out convert(In const&, Converter const&, Functor const& fallback_functor);
+ Out convert(In const&, Converter const&, boost::throw_on_failure);
+
+[endsect]
+[endsect]
+

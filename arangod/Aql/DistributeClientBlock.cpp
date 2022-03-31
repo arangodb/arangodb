@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -43,15 +43,18 @@ auto DistributeClientBlock::QueueEntry::numRows() const -> size_t {
   return _chosen.size();
 }
 
-auto DistributeClientBlock::QueueEntry::skipResult() const -> SkipResult const& {
+auto DistributeClientBlock::QueueEntry::skipResult() const
+    -> SkipResult const& {
   return _skip;
 }
 
-auto DistributeClientBlock::QueueEntry::block() const -> SharedAqlItemBlockPtr const& {
+auto DistributeClientBlock::QueueEntry::block() const
+    -> SharedAqlItemBlockPtr const& {
   return _block;
 }
 
-auto DistributeClientBlock::QueueEntry::chosen() const -> std::vector<size_t> const& {
+auto DistributeClientBlock::QueueEntry::chosen() const
+    -> std::vector<size_t> const& {
   return _chosen;
 }
 
@@ -68,9 +71,11 @@ DistributeClientBlock::DistributeClientBlock(ExecutionEngine& engine,
                     registerInfos.numberOfOutputRegisters(),
                     registerInfos.registersToClear(),
                     registerInfos.registersToKeep()};
-  // NOTE: Do never change this type! The execute logic below requires this and only this type.
+  // NOTE: Do never change this type! The execute logic below requires this and
+  // only this type.
   _executor = std::make_unique<ExecutionBlockImpl<IdExecutor<ConstFetcher>>>(
-      &engine, node, std::move(idExecutorRegisterInfos), std::move(executorInfos));
+      &engine, node, std::move(idExecutorRegisterInfos),
+      std::move(executorInfos));
 }
 
 auto DistributeClientBlock::clear() -> void {
@@ -78,7 +83,8 @@ auto DistributeClientBlock::clear() -> void {
   _executorHasMore = false;
 }
 
-auto DistributeClientBlock::addBlock(SkipResult const& skipResult, SharedAqlItemBlockPtr block,
+auto DistributeClientBlock::addBlock(SkipResult const& skipResult,
+                                     SharedAqlItemBlockPtr block,
                                      std::vector<size_t> usedIndexes) -> void {
   TRI_ASSERT(!usedIndexes.empty() || block == nullptr);
   _queue.emplace_back(skipResult, std::move(block), std::move(usedIndexes));
@@ -132,12 +138,13 @@ auto DistributeClientBlock::popJoinedBlock()
 
   // If we do not have rows, we will get an empty block here.
   // We still need to morege the SkipResults.
-  SharedAqlItemBlockPtr newBlock =
-      _blockManager.requestBlock(numRows, registerInfos.numberOfOutputRegisters());
+  SharedAqlItemBlockPtr newBlock = _blockManager.requestBlock(
+      numRows, registerInfos.numberOfOutputRegisters());
   // We create a block, with correct register information
   // but we do not allow outputs to be written.
   RegIdSet const noOutputRegisters{};
-  OutputAqlItemRow output{newBlock, noOutputRegisters, registerInfos.registersToKeep(),
+  OutputAqlItemRow output{newBlock, noOutputRegisters,
+                          registerInfos.registersToKeep(),
                           registerInfos.registersToClear()};
   while (!output.isFull()) {
     // If the queue is empty our sizing above would not be correct
@@ -167,7 +174,8 @@ auto DistributeClientBlock::popJoinedBlock()
   return {std::move(newBlock), skipRes};
 }
 
-auto DistributeClientBlock::execute(AqlCallStack callStack, ExecutionState upstreamState)
+auto DistributeClientBlock::execute(AqlCallStack callStack,
+                                    ExecutionState upstreamState)
     -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> {
   TRI_ASSERT(_executor != nullptr);
   // Make sure we actually have data before you call execute
@@ -177,8 +185,8 @@ auto DistributeClientBlock::execute(AqlCallStack callStack, ExecutionState upstr
     // this executor is used here.
     // Unfortunately i did not get a version compiled were i could only forward
     // declare the templates in header.
-    auto casted =
-        static_cast<ExecutionBlockImpl<IdExecutor<ConstFetcher>>*>(_executor.get());
+    auto casted = static_cast<ExecutionBlockImpl<IdExecutor<ConstFetcher>>*>(
+        _executor.get());
     TRI_ASSERT(casted != nullptr);
     auto [block, skipped] = popJoinedBlock();
     casted->injectConstantBlock(std::move(block), std::move(skipped));

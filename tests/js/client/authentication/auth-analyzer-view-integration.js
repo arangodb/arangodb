@@ -43,7 +43,6 @@ function testSuite() {
 
     testIntegration : function() {
       db._createDatabase(name);
-    
       users.save(user, "", true); 
       users.grantDatabase(user, name, "rw"); 
 

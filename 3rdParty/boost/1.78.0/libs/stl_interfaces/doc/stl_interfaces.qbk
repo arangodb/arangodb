@@ -1,0 +1,90 @@
+[/
+ / Distributed under the Boost Software License, Version 1.0. (See accompanying
+ / file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+ /]
+
+[library Boost.STLInterfaces
+    [quickbook 1.3]
+    [authors [Laine, Zach]]
+    [copyright 2019 T. Zachary Laine]
+    [category template]
+    [id stl_interfaces]
+    [dirname stl_interfaces]
+    [purpose
+        A string and rope library targeting standardization.
+    ]
+    [license
+        Distributed under the Boost Software License, Version 1.0.
+        (See accompanying file LICENSE_1_0.txt or copy at
+        [@http://www.boost.org/LICENSE_1_0.txt])
+    ]
+]
+
+[/ QuickBook Document version 1.3 ]
+
+[/ Imports ]
+
+[/ Iterator Examples ]
+[import ../example/repeated_chars_iterator.cpp]
+[import ../example/node_iterator.cpp]
+[import ../example/filtered_int_iterator.cpp]
+[import ../example/random_access_iterator.cpp]
+[import ../example/interoperability.cpp]
+[import ../example/zip_proxy_iterator.cpp]
+[import ../example/back_insert_iterator.cpp]
+[import ../example/reverse_iterator.cpp]
+
+[/ View Examples ]
+[import ../example/drop_while_view.cpp]
+
+[/ Container Examples ]
+[import ../example/static_vector.hpp]
+[import ../example/static_vector.cpp]
+
+[/ Images ]
+
+[def __note__              [$images/note.png]]
+[def __tip__               [$images/tip.png]]
+[def __important__         [$images/important.png]]
+[def __caution__           [$images/caution.png]]
+[def __warning__           [$images/warning.png]]
+
+[/ Links ]
+
+[def _IFaces_              Boost.STLInterfaces]
+[def _iter_iface_          [classref boost::stl_interfaces::v1::iterator_interface `iterator_interface`]]
+[def _proxy_iter_iface_    [classref boost::stl_interfaces::v1::proxy_iterator_interface `proxy_iterator_interface`]]
+[def _view_iface_          [classref boost::stl_interfaces::v1::view_interface `view_interface`]]
+[def _cont_iface_          [classref boost::stl_interfaces::v1::sequence_container_interface `sequence_container_interface`]]
+[def _rev_iter_            [classref boost::stl_interfaces::v1::reverse_iterator `reverse_iterator`]]
+[def _access_              [classref boost::stl_interfaces::access `access`]]
+
+[def _concept_m_           [macroref BOOST_STL_INTERFACES_STATIC_ASSERT_CONCEPT]]
+[def _traits_m_            [macroref BOOST_STL_INTERFACES_STATIC_ASSERT_ITERATOR_TRAITS]]
+[def _disable_concepts_m_  [macroref BOOST_STL_INTERFACES_DISABLE_CONCEPTS]]
+
+[def _CRTP_                [@https://en.wikipedia.org/wiki/Curiously_recurring_template_pattern CRTP]]
+[def _Iterator_            [@https://www.boost.org/doc/libs/release/libs/iterator Boost.Iterator]]
+[def _Container_           [@https://www.boost.org/doc/libs/release/libs/container Boost.Container]]
+
+[def _emdash_              \u2014]
+
+[include intro.qbk]
+[include tutorial.qbk]
+[include examples.qbk]
+
+[section Compiler Support]
+
+_IFaces_ is written against the C++14 standard.  It is targetting
+standardization, and the changes required to make it C++11-compatible were
+considered too great.
+
+_IFaces_ should work with any conforming C++14 compiler.  It has been tested with Clang, GCC, and Visual Studio.
+
+[endsect]
+
+[section Reference]
+[xinclude stl_interfaces_reference.xml]
+[endsect]
+
+[include rationale.qbk]

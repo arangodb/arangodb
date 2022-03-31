@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,6 +24,7 @@
 #pragma once
 
 #include <cstdint>
+#include <limits>
 #include <memory>
 
 namespace arangodb {
@@ -74,6 +75,27 @@ class RandomGenerator {
                        // recommended by microsoft (e.g. CryptGenKey(...) )
   };
 
+  // satisfies UniformRandomBitGenerator
+  // Note: As the RandomGenerator::interval(a, b) functions all take signed
+  //       integers only, we cannot use the unsigned T at its fullest.
+  template<typename T, T min_value = 0,
+           T max_value = std::numeric_limits<std::make_signed_t<T>>::max()>
+  struct UniformRandomGenerator {
+    using result_type = T;
+    using internal_type = std::make_signed_t<T>;
+
+    static_assert(std::is_unsigned_v<T>);
+    static_assert(max_value <= std::numeric_limits<internal_type>::max());
+
+    constexpr static auto min() noexcept -> result_type { return min_value; }
+    constexpr static auto max() noexcept -> result_type { return max_value; }
+
+    constexpr auto operator()() -> result_type {
+      return RandomGenerator::interval(static_cast<internal_type>(min()),
+                                       static_cast<internal_type>(max()));
+    }
+  };
+
  public:
   static void initialize(RandomType);
   static void shutdown();
@@ -88,7 +110,7 @@ class RandomGenerator {
   static uint16_t interval(uint16_t);
   static uint32_t interval(uint32_t);
   static uint64_t interval(uint64_t);
-  
+
   // exposed only for testing
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   static int32_t random(int32_t left, int32_t right);
@@ -99,4 +121,3 @@ class RandomGenerator {
   static thread_local std::unique_ptr<RandomDevice> _device;
 };
 }  // namespace arangodb
-

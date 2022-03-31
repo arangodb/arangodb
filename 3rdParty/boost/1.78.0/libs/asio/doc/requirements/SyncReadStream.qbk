@@ -1,0 +1,41 @@
+[/
+ / Copyright (c) 2003-2021 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See accompanying
+ / file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+ /]
+
+[section:SyncReadStream Buffer-oriented synchronous read stream requirements]
+
+A type `X` meets the `SyncReadStream` requirements if it satisfies the
+requirements listed below.
+
+In the table below, `a` denotes a value of type `X`, `mb` denotes a (possibly
+const) value satisfying the [link boost_asio.reference.MutableBufferSequence
+`MutableBufferSequence`] requirements, and `ec` denotes an object of type
+`error_code`.
+
+[table SyncReadStream requirements
+  [[operation] [type] [semantics, pre/post-conditions]]
+  [
+    [`a.read_some(mb)`[br]
+     `a.read_some(mb,ec)`]
+    [`size_t`]
+    [
+      Meets the requirements for a [link boost_asio.reference.read_write_operations
+      read operation].[br]
+      [br]
+      If `buffer_size(mb) > 0`, reads one or more bytes of data from the stream
+      `a` into the buffer sequence `mb`. If successful, sets `ec` such that
+      `!ec` is `true`, and returns the number of bytes read. If an error
+      occurred, sets `ec` such that `!!ec` is `true`, and returns 0. If all
+      data has been read from the stream, and the stream performed an orderly
+      shutdown, sets `ec` to `stream_errc::eof` and returns 0.[br]
+      [br]
+      If `buffer_size(mb) == 0`, the operation shall not block. Sets `ec` such
+      that `!ec` is `true`, and returns 0.
+    ]
+  ]
+]
+
+[endsect]

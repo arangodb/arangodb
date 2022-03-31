@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -50,7 +50,7 @@ void TRI_gmtime(time_t, struct tm*);
 time_t TRI_timegm(struct tm*);
 
 // seconds with microsecond resolution
-double TRI_microtime();
+double TRI_microtime() noexcept;
 
 namespace arangodb {
 namespace utilities {
@@ -60,4 +60,3 @@ std::string timeString(char sep = 'T', char fin = 'Z');
 std::string hostname();
 }  // namespace utilities
 }  // namespace arangodb
-

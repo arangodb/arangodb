@@ -1,9 +1,13 @@
 import React, { ChangeEvent } from "react";
-import { AnalyzerTypeState, FormProps } from "../../constants";
+import { AnalyzerTypeState } from "../../constants";
+import { FormProps } from "../../../../utils/constants";
 import { map } from "lodash";
 import Select from "../../../../components/pure-css/form/Select";
 
-type TypeInputProps = FormProps & {
+declare var versionHelper: { [key: string]: any };
+declare var frontendConfig: { [key: string]: any };
+
+type TypeInputProps = FormProps<AnalyzerTypeState> & {
   typeNameMap: {
     [key: string]: string;
   },
@@ -21,19 +25,22 @@ const TypeInput = ({ formState, dispatch, disabled, typeNameMap, inline }: TypeI
     });
   };
 
-  return <Select label={
-    <>
-      Analyzer Type&nbsp;
-      <a target={'_blank'} href={'https://www.arangodb.com/docs/stable/analyzers.html'} rel="noreferrer">
-        <i className={'fa fa-question-circle'}/>
-      </a>
-    </>
-  } value={(formState as AnalyzerTypeState).type} onChange={updateType}
-                 required={true} disabled={disabled} inline={inline}>
-    {
-      map(typeNameMap, (value, key) => <option key={key} value={key}>{value}</option>)
-    }
-  </Select>;
+  const docuVersion = versionHelper.toDocuVersion(frontendConfig.version.version);
+
+  return <>
+    <Select label={'Analyzer Type'} value={formState.type} onChange={updateType}
+            required={true} disabled={disabled} inline={inline}>
+      {
+        map(typeNameMap, (value, key) => <option key={key} value={key}>{value}</option>)
+      }
+    </Select>
+    &nbsp;&nbsp;
+    <a target={'_blank'}
+       href={`https://www.arangodb.com/docs/${docuVersion}/analyzers.html#${formState.type}`}
+       rel="noreferrer">
+      <i className={'fa fa-question-circle'}/>
+    </a>
+  </>;
 };
 
 export default TypeInput;

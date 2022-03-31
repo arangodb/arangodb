@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -69,11 +69,10 @@ ErrorCode TRI_MMFile(void* memoryAddress, size_t numOfBytesToInitialize,
 ////////////////////////////////////////////////////////////////////////////////
 
 ErrorCode TRI_UNMMFile(void* memoryAddress, size_t numOfBytesToUnMap,
-                 int fileDescriptor, void** mmHandle);
+                       int fileDescriptor, void** mmHandle);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gives hints about upcoming memory usage
 ////////////////////////////////////////////////////////////////////////////////
 
 ErrorCode TRI_MMFileAdvise(void* memoryAddress, size_t numOfBytes, int advice);
-

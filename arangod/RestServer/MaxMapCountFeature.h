@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,18 +23,20 @@
 
 #pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
+#include "RestServer/arangod.h"
 #include "Basics/Common.h"
 
 namespace arangodb {
 
-class MaxMapCountFeature final : public application_features::ApplicationFeature {
+class MaxMapCountFeature final : public ArangodFeature {
  public:
-  explicit MaxMapCountFeature(application_features::ApplicationServer& server);
+  static constexpr std::string_view name() noexcept { return "MaxMapCount"; }
+
+  explicit MaxMapCountFeature(Server& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
 
-  static bool needsChecking() { 
+  static bool needsChecking() {
 #ifdef __linux__
     return true;
 #else
@@ -47,4 +49,3 @@ class MaxMapCountFeature final : public application_features::ApplicationFeature
 };
 
 }  // namespace arangodb
-

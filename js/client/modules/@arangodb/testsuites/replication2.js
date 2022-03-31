@@ -25,6 +25,7 @@
 
 const functionsDocumentation = {
   'replication2_client': 'tests for the replication2 http api',
+  'replication2_server': 'tests for the replication2',
 };
 const optionsDocumentation = [];
 
@@ -33,6 +34,7 @@ const tu = require('@arangodb/testutils/test-utils');
 
 const testPaths = {
   'replication2_client': [tu.pathForTesting('client/replication2')],
+  'replication2_server': [tu.pathForTesting('server/replication2')],
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -48,13 +50,35 @@ function replication2Client(options) {
   return tu.performTests(opts, testCases, 'replication2_client', tu.runInLocalArangosh);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief TEST: replication2_server
+////////////////////////////////////////////////////////////////////////////////
+
+function replication2Server(options) {
+  const testCases = tu.scanTestPaths(testPaths.replication2_server, options);
+
+  const opts = _.clone(options);
+  opts.dbServers = Math.max(opts.dbServers, 5);
+
+  return tu.performTests(opts, testCases, 'replication2_server', tu.runThere, {
+        'javascript.allow-external-process-control': 'true',
+        'javascript.allow-port-testing': 'true',
+        'javascript.allow-admin-execute': 'true',
+        'agency.supervision-grace-period': '3.0',
+        'agency.supervision-ok-threshold': '1.5',
+      });
+}
+
 
 exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns.replication2_client = replication2Client;
+  testFns.replication2_server = replication2Server;
   for (const [key, value] of Object.entries(functionsDocumentation)) {
     fnDocs[key] = value;
   }
+  defaultFns.push('replication2_client');
+  defaultFns.push('replication2_server');
   for (let i = 0; i < optionsDocumentation.length; i++) {
     optionsDoc.push(optionsDocumentation[i]);
   }

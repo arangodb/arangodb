@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,15 +27,13 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Options.h>
 #include <velocypack/Slice.h>
-#include <velocypack/StringRef.h>
-#include <velocypack/velocypack-aliases.h>
 #include <string>
 
 #include <tao/json/forward.hpp>
 #include <validation/types.hpp>
 
 namespace tao::json {
-template <template <typename...> class Traits>
+template<template<typename...> class Traits>
 class basic_schema;
 }
 
@@ -56,11 +54,12 @@ struct ValidatorBase {
   explicit ValidatorBase(VPackSlice params);
   virtual ~ValidatorBase() = default;
 
-  // Validation function as it should be used in the logical collection or storage engine.
+  // Validation function as it should be used in the logical collection or
+  // storage engine.
   virtual Result validate(VPackSlice newDoc, VPackSlice oldDoc, bool isInsert,
                           VPackOptions const*) const;
 
-  // Validate a single document in the specialized class ignoring the the level.
+  // Validate a single document in the specialized class ignoring the level.
   // This version is used in the implementations of AQL Functions.
   virtual Result validateOne(VPackSlice slice, VPackOptions const*) const = 0;
 
@@ -68,7 +67,7 @@ struct ValidatorBase {
   virtual char const* type() const = 0;
   std::string const& message() const { return this->_message; }
   std::string const& specialProperties() const;
-  void setLevel(ValidationLevel level) { _level = level; }
+  void setLevel(ValidationLevel level) noexcept { _level = level; }
   ValidationLevel level() { return _level; }
 
  protected:

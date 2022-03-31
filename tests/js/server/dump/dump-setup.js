@@ -50,6 +50,22 @@ const setup = require(base);
   setup.createJobs();
   setup.createFoxx();
   setup.createAnalyzers();
+
+  // those two are related to each other as createSmartArangoSearch depends on createSmartGraph
+  setup.createSmartGraph();
+  setup.createSmartArangoSearch();
+
+  setup.createEmptySmartGraph();
+  setup.createEmptySatelliteGraph();
+  setup.createEmptyDisjointGraph();
+  setup.createSmartGraphWithoutData();
+  setup.createSatelliteGraphWithoutData();
+  setup.createDisjointGraphWithoutData();
+  setup.createSmartGraphSingleServer();
+  setup.createSatelliteGraphSingleServer();
+  setup.createDisjointGraphSingleServer();
+  setup.createHybridSmartGraphSingleServer();
+  setup.createHybridDisjointSmartGraphSingleServer();
 })();
 
 return {

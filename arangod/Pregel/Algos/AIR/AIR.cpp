@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -50,14 +50,13 @@
 
 #include <set>
 
-
 using namespace arangodb;
 using namespace arangodb::pregel;
 
 namespace arangodb::pregel::algos::accumulators {
 
-ProgrammablePregelAlgorithm::ProgrammablePregelAlgorithm(application_features::ApplicationServer& server,
-                                       VPackSlice userParams)
+ProgrammablePregelAlgorithm::ProgrammablePregelAlgorithm(
+    application_features::ApplicationServer& server, VPackSlice userParams)
     : Algorithm(server, pregel_algorithm_name) {
   parseUserParams(userParams);
 }
@@ -65,14 +64,16 @@ ProgrammablePregelAlgorithm::ProgrammablePregelAlgorithm(application_features::A
 bool ProgrammablePregelAlgorithm::supportsAsyncMode() const { return false; }
 bool ProgrammablePregelAlgorithm::supportsCompensation() const { return false; }
 
-auto ProgrammablePregelAlgorithm::createComputation(WorkerConfig const* config) const
-    -> vertex_computation* {
+auto ProgrammablePregelAlgorithm::createComputation(
+    WorkerConfig const* config) const -> vertex_computation* {
   return new VertexComputation(*this);
 }
 
 auto ProgrammablePregelAlgorithm::inputFormat() const -> graph_format* {
-  return new GraphFormat(_server, _options.resultField, _options.globalAccumulators,
-                         _options.vertexAccumulators, _options.customAccumulators, _options.dataAccess);
+  return new GraphFormat(_server, _options.resultField,
+                         _options.globalAccumulators,
+                         _options.vertexAccumulators,
+                         _options.customAccumulators, _options.dataAccess);
 }
 
 message_format* ProgrammablePregelAlgorithm::messageFormat() const {
@@ -89,7 +90,8 @@ void ProgrammablePregelAlgorithm::parseUserParams(VPackSlice userParams) {
     _options = std::move(result).get();
   } else {
     // What do we do on error? std::terminate()
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, result.error().as_string());
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   result.error().as_string());
   }
 }
 
@@ -97,9 +99,12 @@ VertexAccumulatorOptions const& ProgrammablePregelAlgorithm::options() const {
   return _options;
 }
 
-bool ProgrammablePregelAlgorithm::getBindParameter(std::string_view name, VPackBuilder& into) const {
-  std::string nameStr(name);  // TODO remove this in c++20 (then this method will be noexcept)
-  if (auto iter = options().bindings.find(nameStr); iter != std::end(options().bindings)) {
+bool ProgrammablePregelAlgorithm::getBindParameter(std::string_view name,
+                                                   VPackBuilder& into) const {
+  std::string nameStr(
+      name);  // TODO remove this in c++20 (then this method will be noexcept)
+  if (auto iter = options().bindings.find(nameStr);
+      iter != std::end(options().bindings)) {
     into.add(iter->second.slice());
     return true;
   }
@@ -107,15 +112,18 @@ bool ProgrammablePregelAlgorithm::getBindParameter(std::string_view name, VPackB
   return false;
 }
 
-::arangodb::pregel::MasterContext* ProgrammablePregelAlgorithm::masterContext(VPackSlice userParams) const {
+::arangodb::pregel::MasterContext* ProgrammablePregelAlgorithm::masterContext(
+    VPackSlice userParams) const {
   return new MasterContext(this);
 }
 
-::arangodb::pregel::WorkerContext* ProgrammablePregelAlgorithm::workerContext(VPackSlice userParams) const {
+::arangodb::pregel::WorkerContext* ProgrammablePregelAlgorithm::workerContext(
+    VPackSlice userParams) const {
   return new WorkerContext(this);
 }
 
-IAggregator* ProgrammablePregelAlgorithm::aggregator(std::string const& name) const {
+IAggregator* ProgrammablePregelAlgorithm::aggregator(
+    std::string const& name) const {
   if (name == "phase") {  // permanent value
     return new OverwriteAggregator<uint32_t>(0, true);
   } else if (name == Utils::phaseFirstStepKey) {

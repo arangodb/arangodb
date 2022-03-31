@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,6 +29,7 @@
 #include <vector>
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include <velocypack/Builder.h>
 
 namespace arangodb {
 namespace application_features {
@@ -38,9 +39,20 @@ namespace options {
 class ProgramOptions;
 }
 
+class ShellColorsFeature;
+class VersionFeature;
+
 class LoggerFeature final : public application_features::ApplicationFeature {
  public:
-  LoggerFeature(application_features::ApplicationServer& server, bool threaded);
+  static constexpr std::string_view name() { return "Logger"; }
+
+  template<typename Server>
+  LoggerFeature(Server& server, bool threaded)
+      : LoggerFeature(server, Server::template id<LoggerFeature>(), threaded) {
+    startsAfter<ShellColorsFeature, Server>();
+    startsAfter<VersionFeature, Server>();
+  }
+
   ~LoggerFeature();
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -58,6 +70,9 @@ class LoggerFeature final : public application_features::ApplicationFeature {
   bool onlySuperUser() const { return _apiSwitch == "jwt"; }
 
  private:
+  LoggerFeature(application_features::ApplicationServer& server,
+                size_t registration, bool threaded);
+
   std::vector<std::string> _output;
   std::vector<std::string> _levels;
   std::string _prefix;
@@ -66,11 +81,13 @@ class LoggerFeature final : public application_features::ApplicationFeature {
   std::string _fileMode;
   std::string _fileGroup;
   std::string _timeFormatString;
+  std::vector<std::string> _structuredLogParams;
   uint32_t _maxEntryLength = 128U * 1048576U;
   bool _useJson = false;
   bool _useLocalTime = false;
   bool _useColor = true;
-  bool _useEscaped = true;
+  bool _useControlEscaped = true;
+  bool _useUnicodeEscaped = false;
   bool _lineNumber = false;
   bool _shortenFilenames = true;
   bool _processId = true;
@@ -92,4 +109,3 @@ class LoggerFeature final : public application_features::ApplicationFeature {
 };
 
 }  // namespace arangodb
-

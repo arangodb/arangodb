@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -40,27 +40,23 @@ namespace iresearch {
 
 class IResearchRocksDBLink final : public RocksDBIndex, public IResearchLink {
  public:
-  IResearchRocksDBLink(IndexId iid, LogicalCollection& collection, uint64_t objectId);
+  IResearchRocksDBLink(IndexId iid, LogicalCollection& collection,
+                       uint64_t objectId);
 
-  void afterTruncate(TRI_voc_tick_t tick,
-                     transaction::Methods* trx) override {
+  void afterTruncate(TRI_voc_tick_t tick, transaction::Methods* trx) override {
     IResearchLink::afterTruncate(tick, trx);
   }
 
-  bool canBeDropped() const override {
-    return IResearchLink::canBeDropped();
-  }
+  bool canBeDropped() const override { return IResearchLink::canBeDropped(); }
 
-  Result drop() override { return IResearchLink::drop(); }
+  Result drop() override /*noexcept*/ { return IResearchLink::drop(); }
 
   bool hasSelectivityEstimate() const override {
     return IResearchLink::hasSelectivityEstimate();
   }
 
-  Result insert(transaction::Methods& trx,
-                RocksDBMethods* /*methods*/,
-                LocalDocumentId const& documentId,
-                VPackSlice doc,
+  Result insert(transaction::Methods& trx, RocksDBMethods* /*methods*/,
+                LocalDocumentId const& documentId, VPackSlice doc,
                 OperationOptions const& /*options*/,
                 bool /*performChecks*/) override {
     return IResearchLink::insert(trx, documentId, doc);
@@ -70,8 +66,8 @@ class IResearchRocksDBLink final : public RocksDBIndex, public IResearchLink {
 
   bool isHidden() const override { return IResearchLink::isHidden(); }
 
-  bool needsReversal() const override { return true; } 
-  
+  bool needsReversal() const override { return true; }
+
   void load() override { IResearchLink::load(); }
 
   bool matchesDefinition(VPackSlice const& slice) const override {
@@ -83,20 +79,20 @@ class IResearchRocksDBLink final : public RocksDBIndex, public IResearchLink {
     return stats().indexSize;
   }
 
-  Result remove(transaction::Methods& trx,
-                RocksDBMethods*,
-                LocalDocumentId const& documentId,
-                VPackSlice doc) override {
-    return IResearchLink::remove(trx, documentId, doc);
+  Result remove(transaction::Methods& trx, RocksDBMethods*,
+                LocalDocumentId const& documentId, VPackSlice) override {
+    return IResearchLink::remove(trx, documentId);
   }
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief fill and return a JSON description of a IResearchLink object
   /// @param withFigures output 'figures' section with e.g. memory size
   ////////////////////////////////////////////////////////////////////////////////
-  using Index::toVelocyPack; // for std::shared_ptr<Builder> Index::toVelocyPack(bool, Index::Serialize)
-  void toVelocyPack(VPackBuilder& builder,
-                    std::underlying_type<Index::Serialize>::type flags) const override;
+  using Index::toVelocyPack;  // for std::shared_ptr<Builder>
+                              // Index::toVelocyPack(bool, Index::Serialize)
+  void toVelocyPack(
+      VPackBuilder& builder,
+      std::underlying_type<Index::Serialize>::type flags) const override;
 
   void toVelocyPackFigures(VPackBuilder& builder) const override {
     IResearchLink::toVelocyPackStats(builder);
@@ -104,9 +100,7 @@ class IResearchRocksDBLink final : public RocksDBIndex, public IResearchLink {
 
   IndexType type() const override { return IResearchLink::type(); }
 
-  char const* typeName() const override {
-    return IResearchLink::typeName();
-  }
+  char const* typeName() const override { return IResearchLink::typeName(); }
 
   void unload() override {
     auto res = IResearchLink::unload();
@@ -123,27 +117,23 @@ class IResearchRocksDBLink final : public RocksDBIndex, public IResearchLink {
     friend class IResearchRocksDBLink;
 
    private:
-    IndexFactory(application_features::ApplicationServer& server);
+    IndexFactory(ArangodServer& server);
 
    public:
-    bool equal(VPackSlice const& lhs,
-               VPackSlice const& rhs,
+    bool equal(VPackSlice lhs, VPackSlice rhs,
                std::string const& dbname) const override;
 
-    std::shared_ptr<Index> instantiate(LogicalCollection& collection,
-                                       VPackSlice const& definition,
-                                       IndexId id,
-                                       bool /*isClusterConstructor*/) const override;
+    std::shared_ptr<Index> instantiate(
+        LogicalCollection& collection, VPackSlice definition, IndexId id,
+        bool /*isClusterConstructor*/) const override;
 
-    virtual Result normalize(VPackBuilder& normalized,
-                             VPackSlice definition,
+    virtual Result normalize(VPackBuilder& normalized, VPackSlice definition,
                              bool isCreation,
                              TRI_vocbase_t const& vocbase) const override;
   };
 
-  static std::shared_ptr<IndexFactory> createFactory(application_features::ApplicationServer&);
+  static std::shared_ptr<IndexFactory> createFactory(ArangodServer&);
 };
 
 }  // namespace iresearch
 }  // namespace arangodb
-

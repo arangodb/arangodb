@@ -484,10 +484,11 @@ ERROR_AGENCY_MALFORMED_TRANSACTION,20030,"malformed agency transaction","Malform
 ERROR_SUPERVISION_GENERAL_FAILURE,20501,"general supervision failure","General supervision failure."
 
 ################################################################################
-## Dispatcher errors
+## Scheduler errors
 ################################################################################
 
-ERROR_QUEUE_FULL,21003,"named queue is full","Will be returned if a queue with this name is full."
+ERROR_QUEUE_FULL,21003,"queue is full","Will be returned if the scheduler queue is full."
+ERROR_QUEUE_TIME_REQUIREMENT_VIOLATED,21004,"queue time violated","Will be returned if a request with a queue time requirement is set and it cannot be fulfilled."
 
 ################################################################################
 ## Maintenance errors
@@ -495,7 +496,6 @@ ERROR_QUEUE_FULL,21003,"named queue is full","Will be returned if a queue with t
 
 ERROR_ACTION_OPERATION_UNABORTABLE,6002,"this maintenance action cannot be stopped","This maintenance action cannot be stopped once it is started"
 ERROR_ACTION_UNFINISHED,6003,"maintenance action still processing","This maintenance action is still processing"
-ERROR_NO_SUCH_ACTION,6004,"no such maintenance action","No such maintenance action exists"
 
 ################################################################################
 ## Backup/Restore errors
@@ -523,3 +523,15 @@ ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN,7021,"analyzers in plan could n
 ## AIR errors
 ################################################################################
 ERROR_AIR_EXECUTION_ERROR,8001,"error during AIR execution","During the execution of an AIR program an error occurred"
+
+################################################################################
+## Licensing
+################################################################################
+ERROR_LICENSE_EXPIRED_OR_INVALID,9001,"license has expired or is invalid","The license has expired or is invalid."
+ERROR_LICENSE_SIGNATURE_VERIFICATION,9002,"license verification failed","Verification of license failed."
+ERROR_LICENSE_NON_MATCHING_ID,9003,"non-matching license id","The ID of the license does not match the ID of this instance."
+ERROR_LICENSE_FEATURE_NOT_ENABLED,9004,"feature is not enabled by the license","The installed license does not cover this feature."
+ERROR_LICENSE_RESOURCE_EXHAUSTED,9005,"the resource is exhausted","The installed license does not cover a higher number of this resource."
+ERROR_LICENSE_INVALID,9006,"invalid license","The license does not hold features of an ArangoDB license."
+ERROR_LICENSE_CONFLICT,9007,"conflicting license","The license has one or more inferior features."
+ERROR_LICENSE_VALIDATION_FAILED,9008,"failed to validate license signature","Could not verify the license's signature."

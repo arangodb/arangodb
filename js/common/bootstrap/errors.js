@@ -345,10 +345,10 @@
     "ERROR_AGENCY_CANNOT_REBUILD_DBS" : { "code" : 20021, "message" : "Cannot rebuild readDB and spearHead" },
     "ERROR_AGENCY_MALFORMED_TRANSACTION" : { "code" : 20030, "message" : "malformed agency transaction" },
     "ERROR_SUPERVISION_GENERAL_FAILURE" : { "code" : 20501, "message" : "general supervision failure" },
-    "ERROR_QUEUE_FULL"             : { "code" : 21003, "message" : "named queue is full" },
+    "ERROR_QUEUE_FULL"             : { "code" : 21003, "message" : "queue is full" },
+    "ERROR_QUEUE_TIME_REQUIREMENT_VIOLATED" : { "code" : 21004, "message" : "queue time violated" },
     "ERROR_ACTION_OPERATION_UNABORTABLE" : { "code" : 6002, "message" : "this maintenance action cannot be stopped" },
     "ERROR_ACTION_UNFINISHED"      : { "code" : 6003, "message" : "maintenance action still processing" },
-    "ERROR_NO_SUCH_ACTION"         : { "code" : 6004, "message" : "no such maintenance action" },
     "ERROR_HOT_BACKUP_INTERNAL"    : { "code" : 7001, "message" : "internal hot backup error" },
     "ERROR_HOT_RESTORE_INTERNAL"   : { "code" : 7002, "message" : "internal hot restore error" },
     "ERROR_BACKUP_TOPOLOGY"        : { "code" : 7003, "message" : "backup does not match this topology" },
@@ -362,7 +362,15 @@
     "ERROR_HOT_BACKUP_CONFLICT"    : { "code" : 7011, "message" : "hot backup conflict" },
     "ERROR_HOT_BACKUP_DBSERVERS_AWOL" : { "code" : 7012, "message" : "hot backup not all db servers reachable" },
     "ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN" : { "code" : 7021, "message" : "analyzers in plan could not be modified" },
-    "ERROR_AIR_EXECUTION_ERROR"    : { "code" : 8001, "message" : "error during AIR execution" }
+    "ERROR_AIR_EXECUTION_ERROR"    : { "code" : 8001, "message" : "error during AIR execution" },
+    "ERROR_LICENSE_EXPIRED_OR_INVALID" : { "code" : 9001, "message" : "license has expired or is invalid" },
+    "ERROR_LICENSE_SIGNATURE_VERIFICATION" : { "code" : 9002, "message" : "license verification failed" },
+    "ERROR_LICENSE_NON_MATCHING_ID" : { "code" : 9003, "message" : "non-matching license id" },
+    "ERROR_LICENSE_FEATURE_NOT_ENABLED" : { "code" : 9004, "message" : "feature is not enabled by the license" },
+    "ERROR_LICENSE_RESOURCE_EXHAUSTED" : { "code" : 9005, "message" : "the resource is exhausted" },
+    "ERROR_LICENSE_INVALID"        : { "code" : 9006, "message" : "invalid license" },
+    "ERROR_LICENSE_CONFLICT"       : { "code" : 9007, "message" : "conflicting license" },
+    "ERROR_LICENSE_VALIDATION_FAILED" : { "code" : 9008, "message" : "failed to validate license signature" }
   };
 
   // For compatibility with <= 3.3

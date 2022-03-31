@@ -1,8 +1,11 @@
 import { JsonEditor as Editor } from 'jsoneditor-react';
 import React, { useState } from 'react';
 import Ajv from 'ajv';
-import { FormProps, formSchema, FormState, State } from "../constants";
+import { formSchema, FormState } from "../constants";
+import { FormProps, State } from "../../../utils/constants";
 import { Cell, Grid } from "../../../components/pure-css/grid";
+import { useJsonFormErrorHandler, useJsonFormUpdateEffect } from "../../../utils/helpers";
+import ajvErrors from 'ajv-errors';
 
 const ajv = new Ajv({
   allErrors: true,
@@ -10,12 +13,18 @@ const ajv = new Ajv({
   discriminator: true,
   $data: true
 });
+ajvErrors(ajv);
 const validate = ajv.compile(formSchema);
 
-type JsonFormProps = Pick<FormProps, 'formState' | 'dispatch'> & Pick<State, 'renderKey'>;
+type JsonFormProps =
+  Pick<FormProps<FormState>, 'formState' | 'dispatch'>
+  & Pick<State<FormState>, 'renderKey'>;
 
 const JsonForm = ({ formState, dispatch, renderKey }: JsonFormProps) => {
   const [formErrors, setFormErrors] = useState<string[]>([]);
+  const raiseError = useJsonFormErrorHandler(dispatch, setFormErrors);
+
+  useJsonFormUpdateEffect(validate, formState, raiseError, setFormErrors);
 
   const changeHandler = (json: FormState) => {
     if (validate(json)) {
@@ -25,15 +34,8 @@ const JsonForm = ({ formState, dispatch, renderKey }: JsonFormProps) => {
       });
       dispatch({ type: 'unlockJsonForm' });
       setFormErrors([]);
-    } else if (Array.isArray(validate.errors)) {
-      dispatch({ type: 'lockJsonForm' });
-
-      setFormErrors(validate.errors.map(error =>
-        `
-          ${error.keyword} error: ${error.instancePath} ${error.message}.
-          Schema: ${JSON.stringify(error.params)}
-        `
-      ));
+    } else {
+      raiseError(validate.errors);
     }
   };
 

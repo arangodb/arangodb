@@ -22,8 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
-#ifndef ARANGODB_MOCK_TRX_MANAGER
-#define ARANGODB_MOCK_TRX_MANAGER
 
 #include "Aql/OptimizerRulesFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
@@ -44,23 +42,22 @@
 namespace arangodb {
 namespace tests {
 namespace mocks {
-  
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 setup / tear-down
-  // -----------------------------------------------------------------------------
-  
-  struct TransactionManagerSetup {
-    arangodb::tests::mocks::MockAqlServer server;
 
-    TransactionManagerSetup() : server(false) {
-      server.addFeature<transaction::ManagerFeature>(true);
-      server.startFeatures();
-    }
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 setup / tear-down
+// -----------------------------------------------------------------------------
 
-    ~TransactionManagerSetup() = default;
-  };
+struct TransactionManagerSetup {
+  arangodb::tests::mocks::MockAqlServer server;
 
-} // namespace tests
-} // namespace mocks
-} // namespace arangodb
-#endif
+  TransactionManagerSetup() : server(false) {
+    TRI_ASSERT(server.server().hasFeature<transaction::ManagerFeature>());
+    server.startFeatures();
+  }
+
+  ~TransactionManagerSetup() = default;
+};
+
+}  // namespace mocks
+}  // namespace tests
+}  // namespace arangodb

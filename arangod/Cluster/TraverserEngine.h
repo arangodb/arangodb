@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -49,19 +49,17 @@ class VariableGenerator;
 namespace graph {
 class EdgeCursor;
 struct ShortestPathOptions;
-}
+}  // namespace graph
 
 namespace velocypack {
 class Builder;
 class Slice;
-class StringRef;
 }  // namespace velocypack
 
 namespace traverser {
 struct TraverserOptions;
 
 class BaseEngine {
-
  public:
   enum EngineType { TRAVERSER, SHORTESTPATH };
 
@@ -78,22 +76,21 @@ class BaseEngine {
   // The engine is NOT copyable.
   BaseEngine(BaseEngine const&) = delete;
 
-  void getVertexData(arangodb::velocypack::Slice vertex, 
-                     arangodb::velocypack::Builder& builder,
-                     bool nestedOutput);
+  void getVertexData(arangodb::velocypack::Slice vertex,
+                     arangodb::velocypack::Builder& builder, bool nestedOutput);
 
   std::shared_ptr<transaction::Context> context() const;
 
   virtual EngineType getType() const = 0;
 
   virtual bool produceVertices() const { return true; }
-  
-  arangodb::aql::EngineId engineId() const { return _engineId; }
+
+  arangodb::aql::EngineId engineId() const noexcept { return _engineId; }
 
  protected:
   arangodb::aql::EngineId const _engineId;
   arangodb::aql::QueryContext& _query;
-  transaction::Methods* _trx;
+  std::unique_ptr<transaction::Methods> _trx;
   std::unordered_map<std::string, std::vector<std::string>> _vertexShards;
 };
 
@@ -105,23 +102,19 @@ class BaseTraverserEngine : public BaseEngine {
   // deletes an engine but the registry
   // does not get informed properly
 
-  BaseTraverserEngine(TRI_vocbase_t& vocbase,
-                      aql::QueryContext& query,
+  BaseTraverserEngine(TRI_vocbase_t& vocbase, aql::QueryContext& query,
                       arangodb::velocypack::Slice info);
 
   ~BaseTraverserEngine();
 
-  void getEdges(arangodb::velocypack::Slice, size_t, arangodb::velocypack::Builder&);
+  void getEdges(arangodb::velocypack::Slice, size_t,
+                arangodb::velocypack::Builder&);
 
-  graph::EdgeCursor* getCursor(arangodb::velocypack::StringRef nextVertex, uint64_t currentDepth);
+  graph::EdgeCursor* getCursor(std::string_view nextVertex,
+                               uint64_t currentDepth);
 
-  virtual void smartSearch(arangodb::velocypack::Slice, arangodb::velocypack::Builder&) = 0;
-
-  virtual void smartSearchBFS(arangodb::velocypack::Slice,
-                              arangodb::velocypack::Builder&) = 0;
-
-  virtual void smartSearchWeighted(arangodb::velocypack::Slice,
-                                   arangodb::velocypack::Builder&) = 0;
+  virtual void smartSearch(arangodb::velocypack::Slice,
+                           arangodb::velocypack::Builder&) = 0;
 
   EngineType getType() const override { return TRAVERSER; }
 
@@ -134,7 +127,9 @@ class BaseTraverserEngine : public BaseEngine {
 
  protected:
   std::unique_ptr<traverser::TraverserOptions> _opts;
-  std::vector<std::unique_ptr<graph::EdgeCursor>> _cursors;
+  std::unordered_map<uint64_t, std::unique_ptr<graph::EdgeCursor>>
+      _depthSpecificCursors;
+  std::unique_ptr<graph::EdgeCursor> _generalCursor;
   aql::VariableGenerator const* _variables;
 };
 
@@ -151,13 +146,15 @@ class ShortestPathEngine : public BaseEngine {
 
   ~ShortestPathEngine();
 
-  void getEdges(arangodb::velocypack::Slice, bool backward, arangodb::velocypack::Builder&);
+  void getEdges(arangodb::velocypack::Slice, bool backward,
+                arangodb::velocypack::Builder&);
 
   EngineType getType() const override { return SHORTESTPATH; }
 
  private:
-  void addEdgeData(arangodb::velocypack::Builder& builder, bool backward, arangodb::velocypack::StringRef v);
- 
+  void addEdgeData(arangodb::velocypack::Builder& builder, bool backward,
+                   std::string_view v);
+
  protected:
   std::unique_ptr<graph::ShortestPathOptions> _opts;
 
@@ -178,13 +175,9 @@ class TraverserEngine : public BaseTraverserEngine {
 
   ~TraverserEngine();
 
-  void smartSearch(arangodb::velocypack::Slice, arangodb::velocypack::Builder&) override;
-
-  void smartSearchBFS(arangodb::velocypack::Slice, arangodb::velocypack::Builder&) override;
-
-  void smartSearchWeighted(arangodb::velocypack::Slice, arangodb::velocypack::Builder&) override;
+  void smartSearch(arangodb::velocypack::Slice,
+                   arangodb::velocypack::Builder&) override;
 };
 
 }  // namespace traverser
 }  // namespace arangodb
-

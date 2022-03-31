@@ -49,35 +49,8 @@
           type: "GET",
           url: url,
           success: function (permissions) {
-            //  enable db select and login button
-            $('#loginDatabase').html('');
-            // fill select with allowed dbs
-            if (Object.keys(permissions.result).length > 0) {
-              // show select, remove input
-              $('#loginDatabase').show();
-              $('.fa-database').show();
-              $('#databaseInputName').remove();
-
-              var sortedObj = self.sortDatabases(permissions.result);
-              _.each(sortedObj, function (rule, db) {
-                if (frontendConfig.authenticationEnabled) {
-                  $('#loginDatabase').append(
-                      '<option>' + _.escape(db) + '</option>'
-                  );
-                } else {
-                  $('#loginDatabase').append(
-                      '<option>' + _.escape(rule) + '</option>'
-                  );
-                }
-              });
-            } else {
-              $('#loginDatabase').hide();
-              $('.fa-database').hide();
-              $('#loginDatabase').after(
-                  '<input id="databaseInputName" class="databaseInput login-input" placeholder="_system" value="_system"></input>'
-              );
-            }
-
+            // enable db select and login button
+            self.renderDatabasesDropdown(permissions.result);
             self.renderDBS();
           },
           error: function (e) {
@@ -213,40 +186,44 @@
           $('.login-window #databases').show();
 
           // enable db select and login button
-          $('#loginDatabase').html('');
-
-          if (Object.keys(permissions.result).length > 0) {
-            // show select, remove input
-            $('#loginDatabase').show();
-            $('.fa-database').show();
-            $('#databaseInputName').remove();
-
-            var sortedObj = self.sortDatabases(permissions.result);
-            _.each(sortedObj, function (rule, db) {
-              if (frontendConfig.authenticationEnabled) {
-                $('#loginDatabase').append(
-                    '<option>' + _.escape(db) + '</option>'
-                );
-              } else {
-                $('#loginDatabase').append(
-                    '<option>' + _.escape(rule) + '</option>'
-                );
-              }
-            });
-          } else {
-            $('#loginDatabase').hide();
-            $('.fa-database').hide();
-            $('#loginDatabase').after(
-                '<input id="databaseInputName" class="databaseInput login-input" placeholder="_system" value="_system"></input>'
-            );
-          }
-
+          self.renderDatabasesDropdown(permissions.result);
           self.renderDBS();
         },
         error: function () {
           $('.wrong-credentials').show();
         }
       });
+    },
+
+    renderDatabasesDropdown: function (dbs) {
+      $('#loginDatabase').html('');
+
+      if (Object.keys(dbs).length > 0) {
+        // show select, remove input
+        $('#databaseInputName').remove();
+
+        var sortedObj = this.sortDatabases(dbs);
+        _.each(sortedObj, function (rule, db) {
+          var v;
+          if (frontendConfig.authenticationEnabled) {
+            v = db;
+          } else {
+            v = rule;
+          }
+          $('#loginDatabase').append(
+            '<option value="' + _.escape(v) + '"><pre>' + _.escape(v) + '</pre></option>'
+          );
+        });
+            
+        $('#loginDatabase').show();
+        $('.fa-database').show();
+      } else {
+        $('#loginDatabase').hide();
+        $('.fa-database').hide();
+        $('#loginDatabase').after(
+            '<input id="databaseInputName" class="databaseInput login-input" placeholder="_system" value="_system"></input>'
+        );
+      }
     },
 
     renderDBS: function () {
@@ -272,7 +249,7 @@
           $('#goToDatabase').focus();
         }, 150);
       }
-      $('#goToDatabase').html(message);
+      $('#goToDatabase').html(_.escape(message));
     },
 
     logout: function () {
@@ -289,7 +266,6 @@
       } else {
         database = $('#loginDatabase').val();
       }
-      window.App.dbSet = database;
 
       var callback2 = function (error) {
         if (error) {
@@ -324,9 +300,9 @@
         },
         error: function (data) {
           if (data.responseJSON && data.responseJSON.errorMessage) {
-            $('#noAccess').html('Error (DB: ' + database + '): ' + data.responseJSON.errorMessage);
+            $('#noAccess').html('Error (DB: ' + _.escape(database) + '): ' + _.escape(data.responseJSON.errorMessage));
           } else {
-            $('#noAccess').html('Error (DB: ' + database + '): ' + data.statusText);
+            $('#noAccess').html('Error (DB: ' + _.escape(database) + '): ' + _.escape(data.statusText));
           }
           $('#noAccess').show();
         }

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -32,7 +32,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb::aql;
 
@@ -62,13 +61,15 @@ QueryOptions::QueryOptions()
       traversalProfile(TraversalProfileLevel::None),
       allPlans(false),
       verbosePlans(false),
+      explainInternals(true),
       stream(false),
       silent(false),
-      failOnWarning(QueryOptions::defaultFailOnWarning),  // use global "failOnWarning" value
+      failOnWarning(
+          QueryOptions::defaultFailOnWarning),  // use global "failOnWarning"
+                                                // value
       cache(false),
       fullCount(false),
       count(false),
-      verboseErrors(false),
       skipAudit(false),
       explainRegisters(ExplainRegisterPlan::No) {
   // now set some default values from server configuration options
@@ -106,18 +107,17 @@ void QueryOptions::fromVelocyPack(VPackSlice slice) {
   }
 
   VPackSlice value;
-    
+
   // use global memory limit value first
   if (QueryOptions::defaultMemoryLimit > 0) {
     memoryLimit = QueryOptions::defaultMemoryLimit;
   }
-  
+
   // numeric options
   value = slice.get("memoryLimit");
   if (value.isNumber()) {
     size_t v = value.getNumber<size_t>();
-    if (v > 0 && 
-        (allowMemoryLimitOverride || v < memoryLimit)) {
+    if (v > 0 && (allowMemoryLimitOverride || v < memoryLimit)) {
       // only allow increasing the memory limit if the respective startup option
       // is set. and if it is set, only allow decreasing the memory limit
       memoryLimit = v;
@@ -140,7 +140,7 @@ void QueryOptions::fromVelocyPack(VPackSlice slice) {
   if (value.isNumber()) {
     maxNodesPerCallstack = value.getNumber<size_t>();
   }
-  
+
   value = slice.get("maxRuntime");
   if (value.isNumber()) {
     maxRuntime = value.getNumber<double>();
@@ -169,53 +169,48 @@ void QueryOptions::fromVelocyPack(VPackSlice slice) {
     traversalProfile = value.getBool() ? TraversalProfileLevel::Basic
                                        : TraversalProfileLevel::None;
   } else if (value.isNumber()) {
-    traversalProfile = static_cast<TraversalProfileLevel>(value.getNumber<uint16_t>());
+    traversalProfile =
+        static_cast<TraversalProfileLevel>(value.getNumber<uint16_t>());
   }
 
-  value = slice.get("allPlans");
-  if (value.isBool()) {
+  if (value = slice.get("allPlans"); value.isBool()) {
     allPlans = value.getBool();
   }
-  value = slice.get("verbosePlans");
-  if (value.isBool()) {
+  if (value = slice.get("verbosePlans"); value.isBool()) {
     verbosePlans = value.getBool();
   }
-  value = slice.get("stream");
-  if (value.isBool()) {
+  if (value = slice.get("explainInternals"); value.isBool()) {
+    explainInternals = value.getBool();
+  }
+  if (value = slice.get("stream"); value.isBool()) {
     stream = value.getBool();
   }
-  value = slice.get("silent");
-  if (value.isBool()) {
+  if (value = slice.get("silent"); value.isBool()) {
     silent = value.getBool();
   }
-  value = slice.get("failOnWarning");
-  if (value.isBool()) {
+  if (value = slice.get("failOnWarning"); value.isBool()) {
     failOnWarning = value.getBool();
   }
-  value = slice.get("cache");
-  if (value.isBool()) {
+  if (value = slice.get("cache"); value.isBool()) {
     cache = value.getBool();
   }
-  value = slice.get("fullCount");
-  if (value.isBool()) {
+  if (value = slice.get("fullCount"); value.isBool()) {
     fullCount = value.getBool();
   }
-  value = slice.get("count");
-  if (value.isBool()) {
+  if (value = slice.get("count"); value.isBool()) {
     count = value.getBool();
   }
-  value = slice.get("verboseErrors");
-  if (value.isBool()) {
-    verboseErrors = value.getBool();
-  }
-  value = slice.get("explainRegisters");
-  if (value.isBool()) {
+  if (value = slice.get("explainRegisters"); value.isBool()) {
     explainRegisters =
         value.getBool() ? ExplainRegisterPlan::Yes : ExplainRegisterPlan::No;
   }
 
   // note: skipAudit is intentionally not read here.
   // the end user cannot override this setting
+
+  if (value = slice.get("forceOneShardAttributeValue"); value.isString()) {
+    forceOneShardAttributeValue = value.copyString();
+  }
 
   VPackSlice optimizer = slice.get("optimizer");
   if (optimizer.isObject()) {
@@ -258,7 +253,8 @@ void QueryOptions::fromVelocyPack(VPackSlice slice) {
   transactionOptions.fromVelocyPack(slice);
 }
 
-void QueryOptions::toVelocyPack(VPackBuilder& builder, bool disableOptimizerRules) const {
+void QueryOptions::toVelocyPack(VPackBuilder& builder,
+                                bool disableOptimizerRules) const {
   builder.openObject();
 
   builder.add("memoryLimit", VPackValue(memoryLimit));
@@ -269,17 +265,22 @@ void QueryOptions::toVelocyPack(VPackBuilder& builder, bool disableOptimizerRule
   builder.add("satelliteSyncWait", VPackValue(satelliteSyncWait));
   builder.add("ttl", VPackValue(ttl));
   builder.add("profile", VPackValue(static_cast<uint32_t>(profile)));
-  builder.add(StaticStrings::GraphTraversalProfileLevel, VPackValue(static_cast<uint32_t>(traversalProfile)));
+  builder.add(StaticStrings::GraphTraversalProfileLevel,
+              VPackValue(static_cast<uint32_t>(traversalProfile)));
   builder.add("allPlans", VPackValue(allPlans));
   builder.add("verbosePlans", VPackValue(verbosePlans));
+  builder.add("explainInternals", VPackValue(explainInternals));
   builder.add("stream", VPackValue(stream));
   builder.add("silent", VPackValue(silent));
   builder.add("failOnWarning", VPackValue(failOnWarning));
   builder.add("cache", VPackValue(cache));
   builder.add("fullCount", VPackValue(fullCount));
   builder.add("count", VPackValue(count));
-  builder.add("verboseErrors", VPackValue(verboseErrors));
-  
+  if (!forceOneShardAttributeValue.empty()) {
+    builder.add("forceOneShardAttributeValue",
+                VPackValue(forceOneShardAttributeValue));
+  }
+
   // note: skipAudit is intentionally not serialized here.
   // the end user cannot override this setting anyway.
 

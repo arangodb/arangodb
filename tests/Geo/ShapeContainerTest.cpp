@@ -27,7 +27,8 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Parser.h>
-#include <velocypack/velocypack-aliases.h>
+
+#include "Aql/VelocyPackHelper.h"
 
 #include "Basics/Common.h"
 #include "Basics/error.h"
@@ -63,10 +64,13 @@ double distance(double degreesDiffLat, double degreesDiffLng) {
 
 namespace {
 bool pointsEqual(S2Point const& a, S2Point const& b) {
-  bool equal = (a.Angle(b) * arangodb::geo::kEarthRadiusInMeters) <= AcceptableDistanceError;
+  bool equal = (a.Angle(b) * arangodb::geo::kEarthRadiusInMeters) <=
+               AcceptableDistanceError;
   if (!equal) {
-    // std::cout << "EXPECTING EQUAL POINTS, GOT " << S2LatLng(a).ToStringInDegrees()
-    //           << " AND " << S2LatLng(b).ToStringInDegrees() << " AT DISTANCE "
+    // std::cout << "EXPECTING EQUAL POINTS, GOT " <<
+    // S2LatLng(a).ToStringInDegrees()
+    //           << " AND " << S2LatLng(b).ToStringInDegrees() << " AT DISTANCE
+    //           "
     //           << (a.Angle(b) * arangodb::geo::kEarthRadiusInMeters);
   }
   return equal;
@@ -84,7 +88,7 @@ bool pointsEqual(S2LatLng const& a, S2LatLng const& b) {
 // -----------------------------------------------------------------------------
 
 namespace arangodb {
-namespace geo {  
+namespace geo {
 
 class ShapeContainerTest : public ::testing::Test {
  protected:
@@ -110,7 +114,7 @@ TEST_F(ShapeContainerTest, valid_point_as_region) {
   }
   VPackSlice vpack = builder.slice();
 
-  ASSERT_TRUE(geojson::parseRegion(vpack, shape).ok());
+  ASSERT_TRUE(geojson::parseRegion(vpack, shape, false).ok());
 
   // properties match
   ASSERT_EQ(ShapeType::S2_POINT, shape.type());
@@ -118,12 +122,15 @@ TEST_F(ShapeContainerTest, valid_point_as_region) {
   ASSERT_FALSE(shape.isAreaType());
 
   // location utilities
-  ASSERT_TRUE(::pointsEqual(S2LatLng::FromDegrees(1.0, 0.0).ToPoint(), shape.centroid()));
-  ASSERT_TRUE(::distance(1.0, 0.0) ==
-              shape.distanceFromCentroid(S2LatLng::FromDegrees(0.0, 0.0).ToPoint()));
-  
+  ASSERT_TRUE(::pointsEqual(S2LatLng::FromDegrees(1.0, 0.0).ToPoint(),
+                            shape.centroid()));
+  ASSERT_TRUE(
+      ::distance(1.0, 0.0) ==
+      shape.distanceFromCentroid(S2LatLng::FromDegrees(0.0, 0.0).ToPoint()));
+
   geo::Ellipsoid const& e = geo::WGS84_ELLIPSOID;
-  double dist = shape.distanceFromCentroid(S2LatLng::FromDegrees(-24.993289, 151.960336).ToPoint(), e);
+  double dist = shape.distanceFromCentroid(
+      S2LatLng::FromDegrees(-24.993289, 151.960336).ToPoint(), e);
   ASSERT_LE(std::fabs(dist - 16004725.0), 0.5);
 
   // equality works
@@ -139,7 +146,7 @@ TEST_F(ShapeContainerTest, valid_point_as_region) {
   // doesn't contain what it shouldn't
   ASSERT_FALSE(shape.contains(S2LatLng::FromDegrees(0.0, 0.0).ToPoint()));
   ASSERT_FALSE(shape.intersects(S2LatLng::FromDegrees(0.0, 0.0).ToPoint()));
-  
+
   ASSERT_EQ(shape.area(e), 0.0);
 
   // query params
@@ -177,7 +184,7 @@ TEST_F(ShapeContainerTest, valid_multipoint_as_region) {
   }
   VPackSlice vpack = builder.slice();
 
-  ASSERT_TRUE(geojson::parseRegion(vpack, shape).ok());
+  ASSERT_TRUE(geojson::parseRegion(vpack, shape, false).ok());
 
   // properties match
   ASSERT_EQ(ShapeType::S2_MULTIPOINT, shape.type());
@@ -185,12 +192,15 @@ TEST_F(ShapeContainerTest, valid_multipoint_as_region) {
   ASSERT_FALSE(shape.isAreaType());
 
   // location utilities
-  ASSERT_TRUE(::pointsEqual(S2LatLng::FromDegrees(0.5, 0.5).ToPoint(), shape.centroid()));
-  ASSERT_TRUE(::AcceptableDistanceError >=
-              shape.distanceFromCentroid(S2LatLng::FromDegrees(0.5, 0.5).ToPoint()));
+  ASSERT_TRUE(::pointsEqual(S2LatLng::FromDegrees(0.5, 0.5).ToPoint(),
+                            shape.centroid()));
+  ASSERT_TRUE(
+      ::AcceptableDistanceError >=
+      shape.distanceFromCentroid(S2LatLng::FromDegrees(0.5, 0.5).ToPoint()));
   ASSERT_TRUE(::AcceptableDistanceError >=
               std::abs(::distance(0.5, 0.5) -
-                       shape.distanceFromCentroid(S2LatLng::FromDegrees(0.0, 0.0).ToPoint())));
+                       shape.distanceFromCentroid(
+                           S2LatLng::FromDegrees(0.0, 0.0).ToPoint())));
 
   // equality works
   ASSERT_TRUE(shape.equals(&shape));
@@ -210,7 +220,7 @@ TEST_F(ShapeContainerTest, valid_multipoint_as_region) {
   ASSERT_FALSE(shape.contains(S2LatLng::FromDegrees(2.0, 2.0).ToPoint()));
   ASSERT_FALSE(shape.intersects(S2LatLng::FromDegrees(0.5, 0.5).ToPoint()));
   ASSERT_FALSE(shape.intersects(S2LatLng::FromDegrees(2.0, 2.0).ToPoint()));
-  
+
   ASSERT_EQ(shape.area(geo::WGS84_ELLIPSOID), 0);
   ASSERT_EQ(shape.area(geo::SPHERE), 0);
 
@@ -218,7 +228,8 @@ TEST_F(ShapeContainerTest, valid_multipoint_as_region) {
   QueryParams qp;
   shape.updateBounds(qp);
   ASSERT_TRUE(::pointsEqual(S2LatLng::FromDegrees(0.5, 0.5), qp.origin));
-  ASSERT_TRUE(::AcceptableDistanceError >= std::abs(::distance(0.5, 0.5) - qp.maxDistance));
+  ASSERT_TRUE(::AcceptableDistanceError >=
+              std::abs(::distance(0.5, 0.5) - qp.maxDistance));
 }
 
 TEST_F(ShapeContainerTest, valid_linestring_as_region) {
@@ -249,7 +260,7 @@ TEST_F(ShapeContainerTest, valid_linestring_as_region) {
   }
   VPackSlice vpack = builder.slice();
 
-  ASSERT_TRUE(geojson::parseRegion(vpack, shape).ok());
+  ASSERT_TRUE(geojson::parseRegion(vpack, shape, false).ok());
 
   // properties match
   ASSERT_EQ(ShapeType::S2_POLYLINE, shape.type());
@@ -260,10 +271,12 @@ TEST_F(ShapeContainerTest, valid_linestring_as_region) {
   ASSERT_TRUE(::pointsEqual(S2LatLng::FromDegrees(0.5, 0.66666667).ToPoint(),
                             shape.centroid()));
   ASSERT_TRUE(::AcceptableDistanceError >=
-              shape.distanceFromCentroid(S2LatLng::FromDegrees(0.5, 0.66666667).ToPoint()));
+              shape.distanceFromCentroid(
+                  S2LatLng::FromDegrees(0.5, 0.66666667).ToPoint()));
   ASSERT_TRUE(::AcceptableDistanceError >=
               std::abs(::distance(0.5, 0.66666667) -
-                       shape.distanceFromCentroid(S2LatLng::FromDegrees(0.0, 0.0).ToPoint())));
+                       shape.distanceFromCentroid(
+                           S2LatLng::FromDegrees(0.0, 0.0).ToPoint())));
 
   // equality works
   ASSERT_TRUE(shape.equals(&shape));
@@ -275,7 +288,7 @@ TEST_F(ShapeContainerTest, valid_linestring_as_region) {
   ASSERT_FALSE(shape.intersects(S2LatLng::FromDegrees(0.0, 0.5).ToPoint()));
   ASSERT_FALSE(shape.intersects(S2LatLng::FromDegrees(0.5, 0.5).ToPoint()));
   ASSERT_FALSE(shape.intersects(S2LatLng::FromDegrees(2.0, 2.0).ToPoint()));
-  
+
   ASSERT_EQ(shape.area(geo::WGS84_ELLIPSOID), 0);
   ASSERT_EQ(shape.area(geo::SPHERE), 0);
 
@@ -341,7 +354,7 @@ TEST_F(ShapeContainerTest, valid_multilinestring_as_region) {
   }
   VPackSlice vpack = builder.slice();
 
-  ASSERT_TRUE(geojson::parseRegion(vpack, shape).ok());
+  ASSERT_TRUE(geojson::parseRegion(vpack, shape, false).ok());
 
   // properties match
   ASSERT_EQ(ShapeType::S2_MULTIPOLYLINE, shape.type());
@@ -352,10 +365,12 @@ TEST_F(ShapeContainerTest, valid_multilinestring_as_region) {
   ASSERT_TRUE(::pointsEqual(S2LatLng::FromDegrees(0.5, 0.91666666666).ToPoint(),
                             shape.centroid()));
   ASSERT_TRUE(::AcceptableDistanceError >=
-              shape.distanceFromCentroid(S2LatLng::FromDegrees(0.5, 0.91666666666).ToPoint()));
+              shape.distanceFromCentroid(
+                  S2LatLng::FromDegrees(0.5, 0.91666666666).ToPoint()));
   ASSERT_TRUE(::AcceptableDistanceError >=
               std::abs(::distance(0.5, 0.91666666666) -
-                       shape.distanceFromCentroid(S2LatLng::FromDegrees(0.0, 0.0).ToPoint())));
+                       shape.distanceFromCentroid(
+                           S2LatLng::FromDegrees(0.0, 0.0).ToPoint())));
 
   // equality works
   ASSERT_TRUE(shape.equals(&shape));
@@ -365,14 +380,15 @@ TEST_F(ShapeContainerTest, valid_multilinestring_as_region) {
   ASSERT_FALSE(shape.contains(S2LatLng::FromDegrees(3.0, 3.0).ToPoint()));
   ASSERT_FALSE(shape.intersects(S2LatLng::FromDegrees(0.5, 0.5).ToPoint()));
   ASSERT_FALSE(shape.intersects(S2LatLng::FromDegrees(3.0, 3.0).ToPoint()));
-  
+
   ASSERT_EQ(shape.area(geo::WGS84_ELLIPSOID), 0);
   ASSERT_EQ(shape.area(geo::SPHERE), 0);
 
   // query params
   QueryParams qp;
   shape.updateBounds(qp);
-  ASSERT_TRUE(::pointsEqual(S2LatLng::FromDegrees(0.5, 0.91666666666), qp.origin));
+  ASSERT_TRUE(
+      ::pointsEqual(S2LatLng::FromDegrees(0.5, 0.91666666666), qp.origin));
   ASSERT_TRUE(::AcceptableDistanceError >=
               std::abs(::distance(1.5, 1.91666666666) - qp.maxDistance));
 }
@@ -408,7 +424,7 @@ TEST_F(ShapeContainerTest, valid_polygon_as_region) {
   }
   VPackSlice vpack = builder.slice();
 
-  ASSERT_TRUE(geojson::parseRegion(vpack, shape).ok());
+  ASSERT_TRUE(geojson::parseRegion(vpack, shape, false).ok());
 
   // properties match
   ASSERT_EQ(ShapeType::S2_POLYGON, shape.type());
@@ -416,13 +432,16 @@ TEST_F(ShapeContainerTest, valid_polygon_as_region) {
   ASSERT_TRUE(shape.isAreaType());
 
   // location utilities
-  ASSERT_TRUE(::pointsEqual(S2LatLng::FromDegrees(0.33333333, 0.33333333).ToPoint(),
-                            shape.centroid()));
+  ASSERT_TRUE(
+      ::pointsEqual(S2LatLng::FromDegrees(0.33333333, 0.33333333).ToPoint(),
+                    shape.centroid()));
   ASSERT_TRUE(::AcceptableDistanceError >=
-              shape.distanceFromCentroid(S2LatLng::FromDegrees(0.33333333, 0.33333333).ToPoint()));
+              shape.distanceFromCentroid(
+                  S2LatLng::FromDegrees(0.33333333, 0.33333333).ToPoint()));
   ASSERT_TRUE(::AcceptableDistanceError >=
               std::abs(::distance(0.33333333, 0.33333333) -
-                       shape.distanceFromCentroid(S2LatLng::FromDegrees(0.0, 0.0).ToPoint())));
+                       shape.distanceFromCentroid(
+                           S2LatLng::FromDegrees(0.0, 0.0).ToPoint())));
 
   // equality works
   ASSERT_TRUE(shape.equals(&shape));
@@ -436,33 +455,78 @@ TEST_F(ShapeContainerTest, valid_polygon_as_region) {
   // doesn't contain what it shouldn't
   ASSERT_FALSE(shape.contains(S2LatLng::FromDegrees(1.0, 1.0).ToPoint()));
   ASSERT_FALSE(shape.intersects(S2LatLng::FromDegrees(1.0, 1.0).ToPoint()));
-  
+
   ASSERT_NEAR(shape.area(geo::SPHERE), 6182469722.73085, 1000);
   ASSERT_NEAR(shape.area(geo::WGS84_ELLIPSOID), 6154854786.72143, 1000);
 
   // query params
   QueryParams qp;
   shape.updateBounds(qp);
-  ASSERT_TRUE(::pointsEqual(S2LatLng::FromDegrees(0.33333333, 0.33333333), qp.origin));
+  ASSERT_TRUE(
+      ::pointsEqual(S2LatLng::FromDegrees(0.33333333, 0.33333333), qp.origin));
   ASSERT_TRUE(::AcceptableDistanceError >=
               std::abs(::distance(0.66666667, 0.66666667) - qp.maxDistance));
 }
 
 TEST_F(ShapeContainerTest, polygon_area_test) {
   // approx australia
-  const char* json = "{\"type\": \"Polygon\", \"coordinates\": [[[125, -15],[113, -22],[117, -37],[130, -33],"
-                     "[148, -39],[154, -27],[144, -15],[125, -15]]]}";
-  
+  const char* json =
+      "{\"type\": \"Polygon\", \"coordinates\": [[[125, -15],[113, -22],[117, "
+      "-37],[130, -33],"
+      "[148, -39],[154, -27],[144, -15],[125, -15]]]}";
+
   auto builder = VPackParser::fromJson(json);
   VPackSlice vpack = builder->slice();
-  
-  ASSERT_TRUE(geojson::parseRegion(vpack, shape).ok());
+
+  ASSERT_TRUE(geojson::parseRegion(vpack, shape, false).ok());
 
   // tolerance 50.000 km^2 vs 7.692.000 km^2 total
   ASSERT_NEAR(shape.area(geo::SPHERE), 7800367402432, 50000000000);
   ASSERT_NEAR(shape.area(geo::WGS84_ELLIPSOID), 7800367402432, 50000000000);
 }
-  
+
+using namespace arangodb::tests;
+
+TEST_F(ShapeContainerTest, compare_new_legacy) {
+  // Check that legacy parsing detects LngLatRects and new style finds .
+  // a polygon Also check containment of a point to make sure          .
+  auto poly = R"({
+    "type": "Polygon",
+    "coordinates": [[[10, 10], [20, 10], [20, 20], [10, 20], [10, 10]]]
+  })"_vpack;
+  VPackSlice polyS = velocypack::Slice(poly->data());
+  Result res = geojson::parseRegion(polyS, shape, false);
+  ASSERT_TRUE(res.ok());
+  ASSERT_EQ(ShapeType::S2_POLYGON, shape.type());
+  S2Point point = S2LatLng::FromDegrees(10.0, 15.0).ToPoint();
+  ASSERT_FALSE(shape.contains(point));
+
+  res = geojson::parseRegion(polyS, shape, true);
+  ASSERT_TRUE(res.ok());
+  ASSERT_EQ(ShapeType::S2_LATLNGRECT, shape.type());
+  ASSERT_TRUE(shape.contains(point));
+
+  // Check that legacy parsing normalizes polygons whereas new style allows
+  // for polygons covering more than half of the world:
+  poly = R"({
+    "type": "Polygon",
+    "coordinates": [[[10, 10], [15, 15], [20, 10], [15, 5], [10, 10]]]
+  })"_vpack;
+  // This polygon contains what is to the left of the polyline, which is
+  // the complement of a small shape around [15, 10]!
+  polyS = velocypack::Slice(poly->data());
+  res = geojson::parseRegion(polyS, shape, false);
+  ASSERT_TRUE(res.ok());
+  ASSERT_EQ(ShapeType::S2_POLYGON, shape.type());
+  point = S2LatLng::FromDegrees(10.0, 15.0).ToPoint();
+  ASSERT_FALSE(shape.contains(point));
+
+  res = geojson::parseRegion(polyS, shape, true);
+  ASSERT_TRUE(res.ok());
+  ASSERT_EQ(ShapeType::S2_POLYGON, shape.type());
+  ASSERT_TRUE(shape.contains(point));
+}
+
 class ShapeContainerTest2 : public ::testing::Test {
  protected:
   using ShapeType = arangodb::geo::ShapeContainer::Type;
@@ -476,35 +540,35 @@ class ShapeContainerTest2 : public ::testing::Test {
   ShapeContainer rect;
   ShapeContainer line2;
   ShapeContainer rects[4];
-  ShapeContainer nearly[4];   // nearly rects, but not quite
+  ShapeContainer nearly[4];  // nearly rects, but not quite
 
   ShapeContainerTest2() {
     auto builder = VPackParser::fromJson(R"=(
       { "type": "Point",
       "coordinates": [ 6.537, 50.332 ]
       })=");
-    geojson::parseRegion(builder->slice(), point);
+    geojson::parseRegion(builder->slice(), point, false);
     builder = VPackParser::fromJson(R"=(
       { "type": "MultiPoint",
         "coordinates": [ [ 6.537, 50.332 ], [ 6.537, 50.376 ] ]
       })=");
-    geojson::parseRegion(builder->slice(), multipoint);
+    geojson::parseRegion(builder->slice(), multipoint, false);
     builder = VPackParser::fromJson(R"=(
       { "type": "LineString",
         "coordinates": [ [ 6.537, 50.332 ], [ 6.537, 50.376 ] ]
       })=");
-    geojson::parseRegion(builder->slice(), line);
+    geojson::parseRegion(builder->slice(), line, false);
     builder = VPackParser::fromJson(R"=(
       { "type": "MultiLineString",
         "coordinates": [ [ [ 6.537, 50.332 ], [ 6.537, 50.376 ] ],
                          [ [ 6.621, 50.332 ], [ 6.621, 50.376 ] ] ]
       })=");
-    geojson::parseRegion(builder->slice(), multiline);
+    geojson::parseRegion(builder->slice(), multiline, false);
     builder = VPackParser::fromJson(R"=(
       { "type": "Polygon",
         "coordinates": [ [ [6,50], [7.5,50], [7.5,52], [6,51], [6,50] ] ]
       })=");
-    geojson::parseRegion(builder->slice(), poly);
+    geojson::parseRegion(builder->slice(), poly, false);
     // Note that internally, a multipolygon is just a special polygon with
     // holes, which could have been initialized as polygon, too!
     builder = VPackParser::fromJson(R"=(
@@ -513,67 +577,67 @@ class ShapeContainerTest2 : public ::testing::Test {
                              [6.501,51], [6.501,50] ] ],
                          [ [ [6,50], [6.5,50], [6.5,51], [6,51], [6,50] ] ] ]
       })=");
-    geojson::parseRegion(builder->slice(), multipoly);
+    geojson::parseRegion(builder->slice(), multipoly, false);
     builder = VPackParser::fromJson(R"=(
       { "type": "Polygon",
         "coordinates": [ [ [6,50], [7.5,50], [7.5,51], [6,51], [6,50] ] ]
       })=");
-    geojson::parseRegion(builder->slice(), rect);
+    geojson::parseRegion(builder->slice(), rect, false);
     builder = VPackParser::fromJson(R"=(
       { "type": "LineString",
         "coordinates": [ [ 5.437, 50.332 ], [ 7.537, 50.376 ] ]
       })=");
-    geojson::parseRegion(builder->slice(), line2);
+    geojson::parseRegion(builder->slice(), line2, false);
     builder = VPackParser::fromJson(R"=(
       { "type": "Polygon",
         "coordinates": [ [ [1.0,1.0], [4.0,1.0], [4.0,4.0], [1.0,4.0], [1.0,1.0] ] ]
       })=");
-    geojson::parseRegion(builder->slice(), rects[0]);
+    geojson::parseRegion(builder->slice(), rects[0], false);
     builder = VPackParser::fromJson(R"=(
       { "type": "Polygon",
         "coordinates": [ [ [2.0,2.0], [3.0,2.0], [3.0,3.0], [2.0,3.0], [2.0,2.0] ] ]
       })=");
-    geojson::parseRegion(builder->slice(), rects[1]);
+    geojson::parseRegion(builder->slice(), rects[1], false);
     builder = VPackParser::fromJson(R"=(
       { "type": "Polygon",
         "coordinates": [ [ [2.0,2.0], [5.0,2.0], [5.0,5.0], [2.0,5.0], [2.0,2.0] ] ]
       })=");
-    geojson::parseRegion(builder->slice(), rects[2]);
+    geojson::parseRegion(builder->slice(), rects[2], false);
     builder = VPackParser::fromJson(R"=(
       { "type": "Polygon",
         "coordinates": [ [ [7.0,7.0], [8.0,7.0], [8.0,8.0], [7.0,8.0], [7.0,7.0] ] ]
       })=");
-    geojson::parseRegion(builder->slice(), rects[3]);
+    geojson::parseRegion(builder->slice(), rects[3], false);
     builder = VPackParser::fromJson(R"=(
       { "type": "Polygon",
         "coordinates": [ [ [1.0,1.0], [4.0,1.0], [4.1,4.1], [1.0,4.0], [1.0,1.0] ] ]
       })=");
-    geojson::parseRegion(builder->slice(), nearly[0]);
+    geojson::parseRegion(builder->slice(), nearly[0], false);
     builder = VPackParser::fromJson(R"=(
       { "type": "Polygon",
         "coordinates": [ [ [2.0,2.0], [3.0,2.0], [3.1,3.1], [2.0,3.0], [2.0,2.0] ] ]
       })=");
-    geojson::parseRegion(builder->slice(), nearly[1]);
+    geojson::parseRegion(builder->slice(), nearly[1], false);
     builder = VPackParser::fromJson(R"=(
       { "type": "Polygon",
         "coordinates": [ [ [2.0,2.0], [5.0,2.0], [5.1,5.1], [2.0,5.0], [2.0,2.0] ] ]
       })=");
-    geojson::parseRegion(builder->slice(), nearly[2]);
+    geojson::parseRegion(builder->slice(), nearly[2], false);
     builder = VPackParser::fromJson(R"=(
       { "type": "Polygon",
         "coordinates": [ [ [7.0,7.0], [8.0,7.0], [8.1,8.1], [7.0,8.0], [7.0,7.0] ] ]
       })=");
-    geojson::parseRegion(builder->slice(), nearly[3]);
+    geojson::parseRegion(builder->slice(), nearly[3], false);
   }
 };
 
-#define NOT_IMPL_EXC(expr) \
-  try { \
-    expr; \
-    ASSERT_TRUE(false); \
-  } catch(arangodb::basics::Exception const& exc) { \
+#define NOT_IMPL_EXC(expr)                            \
+  try {                                               \
+    expr;                                             \
+    ASSERT_TRUE(false);                               \
+  } catch (arangodb::basics::Exception const& exc) {  \
     ASSERT_EQ(exc.code(), TRI_ERROR_NOT_IMPLEMENTED); \
-  } 
+  }
 
 // point      TT--TTT
 // multipoint TT----T
@@ -602,7 +666,7 @@ TEST_F(ShapeContainerTest2, intersections_multipoint) {
   NOT_IMPL_EXC(ASSERT_TRUE(multipoint.intersects(&multiline)));
   NOT_IMPL_EXC(ASSERT_TRUE(multipoint.intersects(&poly)));
   NOT_IMPL_EXC(ASSERT_TRUE(multipoint.intersects(&multipoly)));
-  ASSERT_TRUE(multipoint.intersects(&rect));
+  NOT_IMPL_EXC(ASSERT_TRUE(multipoint.intersects(&rect)));
 }
 
 TEST_F(ShapeContainerTest2, intersections_line) {
@@ -616,7 +680,6 @@ TEST_F(ShapeContainerTest2, intersections_line) {
   ASSERT_TRUE(line.intersects(&multipoly));
   ASSERT_TRUE(line.intersects(&rect));
 }
-
 
 TEST_F(ShapeContainerTest2, intersections_multiline) {
   // Note that in the S2 geo library intersections of points and lines
@@ -701,5 +764,37 @@ TEST_F(ShapeContainerTest2, intersections_nearly_latlntrects) {
   ASSERT_FALSE(nearly[3].intersects(&rects[0]));
 }
 
-}}
+class ShapeContainerTest3 : public ::testing::Test {
+ protected:
+  using ShapeType = arangodb::geo::ShapeContainer::Type;
 
+  ShapeContainer line;
+  ShapeContainer multiline;
+  ShapeContainer poly;
+
+  ShapeContainerTest3() {
+    auto builder = VPackParser::fromJson(R"=(
+      { "type": "LineString",
+        "coordinates": [ [ 5, 5 ], [ 6, 6 ] ]
+      })=");
+    geojson::parseRegion(builder->slice(), line, false);
+    builder = VPackParser::fromJson(R"=(
+      { "type": "MultiLineString",
+        "coordinates": [ [ [ 5, 5 ], [ 6, 6 ] ],
+                         [ [ 7, 7 ], [ 8, 8 ] ] ]
+      })=");
+    geojson::parseRegion(builder->slice(), multiline, false);
+    builder = VPackParser::fromJson(R"=(
+      { "type": "Polygon",
+        "coordinates": [ [ [0,0], [10,0], [10,10], [0,10], [0,0] ] ]
+      })=");
+    geojson::parseRegion(builder->slice(), poly, false);
+  }
+};
+
+TEST_F(ShapeContainerTest3, contains) {
+  ASSERT_TRUE(poly.contains(&line));
+  ASSERT_TRUE(poly.contains(&multiline));
+}
+}  // namespace geo
+}  // namespace arangodb

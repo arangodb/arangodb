@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,32 +26,25 @@
 #include <memory>
 #include <string>
 
-#include "ApplicationFeatures/ApplicationFeature.h"
-
 #include <velocypack/Builder.h>
 #include <velocypack/Options.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
-// needs to come first
-#include "Ssl/ssl-helper.h"
-
-// needs to come second in order to recognize ssl
 #include "Basics/asio_ns.h"
+#include "RestServer/arangod.h"
 
 namespace arangodb {
-namespace application_features {
-class ApplicationServer;
-}
 namespace options {
 class ProgramOptions;
 }
 
-class SslServerFeature : public application_features::ApplicationFeature {
+class SslServerFeature : public ArangodFeature {
  public:
   typedef std::shared_ptr<std::vector<asio_ns::ssl::context>> SslContextList;
 
-  explicit SslServerFeature(application_features::ApplicationServer& server);
+  static constexpr std::string_view name() noexcept { return "SslServer"; }
+
+  explicit SslServerFeature(Server& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
@@ -67,13 +60,12 @@ class SslServerFeature : public application_features::ApplicationFeature {
   virtual Result dumpTLSData(VPackBuilder& builder) const;
 
  protected:
-
   struct SNIEntry {
     std::string serverName;      // empty for default
     std::string keyfileName;     // name of key file
     std::string keyfileContent;  // content of key file
     SNIEntry(std::string name, std::string keyfileName)
-      : serverName(name), keyfileName(keyfileName) {}
+        : serverName(std::move(name)), keyfileName(std::move(keyfileName)) {}
   };
 
   std::string _cafile;
@@ -81,13 +73,15 @@ class SslServerFeature : public application_features::ApplicationFeature {
   std::string _keyfile;        // name of default keyfile
   // For SNI, we have two maps, one mapping to the filename for a certain
   // server, another, to keep the actual keyfile in memory.
-  std::vector<SNIEntry> _sniEntries;   // the first entry is the default server keyfile
-  std::unordered_map<std::string, size_t> _sniServerIndex;  // map server names to indices in _sniEntries
-  bool _sessionCache;
+  std::vector<SNIEntry>
+      _sniEntries;  // the first entry is the default server keyfile
+  std::unordered_map<std::string, size_t>
+      _sniServerIndex;  // map server names to indices in _sniEntries
   std::string _cipherList;
   uint64_t _sslProtocol;
   uint64_t _sslOptions;
   std::string _ecdhCurve;
+  bool _sessionCache;
   bool _preferHttp11InAlpn;
 
  private:
@@ -100,4 +94,3 @@ class SslServerFeature : public application_features::ApplicationFeature {
 };
 
 }  // namespace arangodb
-

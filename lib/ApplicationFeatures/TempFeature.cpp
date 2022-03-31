@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -35,13 +35,6 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-TempFeature::TempFeature(application_features::ApplicationServer& server,
-                         std::string const& appname)
-    : ApplicationFeature(server, "Temp"), _path(), _appname(appname) {
-  setOptional(false);
-  startsAfter<application_features::GreetingsFeaturePhase>();
-}
-
 void TempFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOldOption("temp-path", "temp.path");
 
@@ -51,7 +44,7 @@ void TempFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      new StringParameter(&_path));
 }
 
-void TempFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
+void TempFeature::validateOptions(std::shared_ptr<ProgramOptions> /*options*/) {
   if (!_path.empty()) {
     basics::FileUtils::makePathAbsolute(_path);
   }

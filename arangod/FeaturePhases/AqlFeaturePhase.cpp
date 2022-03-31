@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,36 +22,24 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AqlFeaturePhase.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 
-#include "ApplicationFeatures/CommunicationFeaturePhase.h"
-#include "Aql/AqlFunctionFeature.h"
-#include "Aql/OptimizerRulesFeature.h"
-#include "FeaturePhases/V8FeaturePhase.h"
-#include "IResearch/IResearchAnalyzerFeature.h"
-#include "IResearch/IResearchFeature.h"
-#include "Pregel/PregelFeature.h"
-#include "RestServer/AqlFeature.h"
-#include "RestServer/QueryRegistryFeature.h"
-#include "RestServer/SystemDatabaseFeature.h"
+namespace arangodb::application_features {
 
-namespace arangodb {
-namespace application_features {
-
-AqlFeaturePhase::AqlFeaturePhase(ApplicationServer& server)
-    : ApplicationFeaturePhase(server, "AQLPhase") {
+AqlFeaturePhase::AqlFeaturePhase(ArangodServer& server)
+    : ApplicationFeaturePhase{server, *this} {
   setOptional(false);
-  startsAfter<CommunicationFeaturePhase>();
-  startsAfter<V8FeaturePhase>();
+  startsAfter<CommunicationFeaturePhase, ArangodServer>();
+  startsAfter<V8FeaturePhase, ArangodServer>();
 
-  startsAfter<AqlFeature>();
-  startsAfter<aql::AqlFunctionFeature>();
-  startsAfter<iresearch::IResearchAnalyzerFeature>();
-  startsAfter<iresearch::IResearchFeature>();
-  startsAfter<aql::OptimizerRulesFeature>();
-  startsAfter<pregel::PregelFeature>();
-  startsAfter<QueryRegistryFeature>();
-  startsAfter<SystemDatabaseFeature>();
+  startsAfter<AqlFeature, ArangodServer>();
+  startsAfter<aql::AqlFunctionFeature, ArangodServer>();
+  startsAfter<iresearch::IResearchAnalyzerFeature, ArangodServer>();
+  startsAfter<iresearch::IResearchFeature, ArangodServer>();
+  startsAfter<aql::OptimizerRulesFeature, ArangodServer>();
+  startsAfter<pregel::PregelFeature, ArangodServer>();
+  startsAfter<QueryRegistryFeature, ArangodServer>();
+  startsAfter<SystemDatabaseFeature, ArangodServer>();
 }
 
-}  // namespace application_features
-}  // namespace arangodb
+}  // namespace arangodb::application_features

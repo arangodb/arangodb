@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,36 +30,38 @@
 
 using namespace arangodb::aql;
 
-AqlValue ExecutorExpressionContext::getVariableValue(Variable const* variable, bool doCopy,
-                                                     bool& mustDestroy) const {
-  mustDestroy = false;
+ExecutorExpressionContext::ExecutorExpressionContext(
+    arangodb::transaction::Methods& trx, QueryContext& context,
+    AqlFunctionsInternalCache& cache, InputAqlItemRow const& inputRow,
+    std::vector<std::pair<VariableId, RegisterId>> const& varsToRegister)
+    : QueryExpressionContext(trx, context, cache),
+      _inputRow(inputRow),
+      _varsToRegister(varsToRegister) {}
 
-  auto const searchId = variable->id;
-  size_t i = -1;  // size_t is guaranteed to be unsigned so the overflow is ok
-  for (auto const* var : _vars) {
-    TRI_ASSERT(var != nullptr);
-    ++i;
-    if (var->id == searchId) {
-      TRI_ASSERT(i < _regs.size());
-      if (doCopy) {
-        mustDestroy = true;  // as we are copying
-        return _inputRow.getValue((_regs)[i]).clone();
-      }
-      return _inputRow.getValue((_regs)[i]);
-    }
-  }
-
-  std::string msg("variable not found '");
-  msg.append(variable->name);
-  msg.append("' in executeSimpleExpression()");
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg.c_str());
+void ExecutorExpressionContext::adjustInputRow(
+    InputAqlItemRow const& inputRow) noexcept {
+  _inputRow = inputRow;
 }
 
-ExecutorExpressionContext::ExecutorExpressionContext(arangodb::transaction::Methods& trx,
-                                                     QueryContext& context,
-                                                     AqlFunctionsInternalCache& cache,
-                                                     InputAqlItemRow const& inputRow,
-                                                     std::vector<Variable const*> const& vars,
-                                                     std::vector<RegisterId> const& regs)
-    : QueryExpressionContext(trx, context, cache),
-      _inputRow(inputRow), _vars(vars), _regs(regs) {}
+AqlValue ExecutorExpressionContext::getVariableValue(Variable const* variable,
+                                                     bool doCopy,
+                                                     bool& mustDestroy) const {
+  return QueryExpressionContext::getVariableValue(
+      variable, doCopy, mustDestroy,
+      [this](Variable const* variable, bool doCopy, bool& mustDestroy) {
+        mustDestroy = doCopy;
+        auto const searchId = variable->id;
+        for (auto const& [varId, regId] : _varsToRegister) {
+          if (varId == searchId) {
+            if (doCopy) {
+              return _inputRow.get().getValue(regId).clone();
+            }
+            return _inputRow.get().getValue(regId);
+          }
+        }
+        std::string msg("variable not found '");
+        msg.append(variable->name);
+        msg.append("' in executeSimpleExpression()");
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg.c_str());
+      });
+}

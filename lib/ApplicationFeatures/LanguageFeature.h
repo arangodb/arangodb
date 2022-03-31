@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,15 +23,16 @@
 
 #pragma once
 
-#include <unicode/locid.h>
 #include <memory>
 #include <string>
+#include <unicode/locid.h>
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "Basics/Utf8Helper.h"
 
 namespace arangodb {
 namespace application_features {
-class ApplicationServer;
+class GreetingsFeaturePhase;
 }
 namespace options {
 class ProgramOptions;
@@ -39,27 +40,42 @@ class ProgramOptions;
 
 class LanguageFeature final : public application_features::ApplicationFeature {
  public:
-  explicit LanguageFeature(application_features::ApplicationServer& server);
+  static constexpr std::string_view name() noexcept { return "Language"; }
+
+  template<typename Server>
+  explicit LanguageFeature(Server& server)
+      : application_features::ApplicationFeature{server, *this},
+        _locale(),
+        _langType(basics::LanguageType::INVALID),
+        _binaryPath(server.getBinaryPath()),
+        _forceLanguageCheck(true) {
+    setOptional(false);
+    startsAfter<application_features::GreetingsFeaturePhase, Server>();
+  }
+
   ~LanguageFeature();
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
   void start() override final;
-  static void* prepareIcu(std::string const& binaryPath, std::string const& binaryExecutionPath,
-                          std::string& path, std::string const& binaryName);
+  static std::string prepareIcu(std::string const& binaryPath,
+                                std::string const& binaryExecutionPath,
+                                std::string& path,
+                                std::string const& binaryName);
   icu::Locale& getLocale();
-  std::string const& getDefaultLanguage() const;
+  std::tuple<std::string_view, basics::LanguageType> getLanguage() const;
   bool forceLanguageCheck() const;
   std::string getCollatorLanguage() const;
-  void resetDefaultLanguage(std::string const& language);
+  void resetLanguage(std::string_view language, basics::LanguageType type);
 
  private:
   icu::Locale _locale;
-  std::string _language;
+  std::string _defaultLanguage;
+  std::string _icuLanguage;
+  basics::LanguageType _langType;
   char const* _binaryPath;
-  void* _icuDataPtr;
+  std::string _icuData;
   bool _forceLanguageCheck;
 };
 
 }  // namespace arangodb
-

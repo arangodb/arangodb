@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,6 +24,8 @@
 #pragma once
 
 #include "Basics/Common.h"
+
+#include <cstdint>
 
 /// @brief wrapped class for TRI_vocbase_t
 /// Layout:
@@ -49,3 +51,14 @@ static int32_t const WRP_VOCBASE_VIEW_TYPE = 3;
 /// - SLOT_CLASS
 static int32_t const WRP_IRESEARCH_ANALYZER_TYPE = 4;
 
+/// @brief wrapped class for ReplicatedLog
+/// Layout:
+/// - SLOT_CLASS_TYPE
+/// - SLOT_CLASS
+static int32_t const WRP_VOCBASE_REPLICATED_LOG_TYPE = 5;
+
+/// @brief wrapped class for PrototypeState
+/// Layout:
+/// - SLOT_CLASS_TYPE
+/// - SLOT_CLASS
+static int32_t const WRP_VOCBASE_PROTOTYPE_STATE_TYPE = 6;

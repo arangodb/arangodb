@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,32 +22,25 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ServerFeaturePhase.h"
-
-#include "FeaturePhases/AqlFeaturePhase.h"
-#include "GeneralServer/GeneralServerFeature.h"
-#include "GeneralServer/SslServerFeature.h"
-#include "Network/NetworkFeature.h"
-#include "RestServer/EndpointFeature.h"
-#include "RestServer/ServerFeature.h"
-#include "RestServer/UpgradeFeature.h"
-#include "Statistics/StatisticsFeature.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 
 namespace arangodb {
-namespace application_features {
-
-ServerFeaturePhase::ServerFeaturePhase(ApplicationServer& server)
-    : ApplicationFeaturePhase(server, "ServerPhase") {
-  setOptional(false);
-  startsAfter<AqlFeaturePhase>();
-
-  startsAfter<EndpointFeature>();
-  startsAfter<GeneralServerFeature>();
-  startsAfter<NetworkFeature>();
-  startsAfter<ServerFeature>();
-  startsAfter<SslServerFeature>();
-  startsAfter<StatisticsFeature>();
-  startsAfter<UpgradeFeature>();
+class SslServerFeature;
 }
 
-}  // namespace application_features
-}  // namespace arangodb
+namespace arangodb::application_features {
+
+ServerFeaturePhase::ServerFeaturePhase(ArangodServer& server)
+    : ApplicationFeaturePhase{server, *this} {
+  setOptional(false);
+  startsAfter<AqlFeaturePhase, ArangodServer>();
+
+  startsAfter<HttpEndpointProvider, ArangodServer>();
+  startsAfter<GeneralServerFeature, ArangodServer>();
+  startsAfter<NetworkFeature, ArangodServer>();
+  startsAfter<ServerFeature, ArangodServer>();
+  startsAfter<SslServerFeature, ArangodServer>();
+  startsAfter<StatisticsFeature, ArangodServer>();
+  startsAfter<UpgradeFeature, ArangodServer>();
+}
+}  // namespace arangodb::application_features

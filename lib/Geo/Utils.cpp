@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -64,7 +64,8 @@ Result indexCellsLatLng(VPackSlice const& data, bool isGeoJson,
 
 /// generate intervalls of list of intervals to scan
 void scanIntervals(QueryParams const& params, S2RegionCoverer* coverer,
-                   S2Region const& region, std::vector<Interval>& sortedIntervals) {
+                   S2Region const& region,
+                   std::vector<Interval>& sortedIntervals) {
   std::vector<S2CellId> cover;
   coverer->GetCovering(region, &cover);
   TRI_ASSERT(!cover.empty());
@@ -75,7 +76,8 @@ void scanIntervals(QueryParams const& params, S2RegionCoverer* coverer,
 /// will return all the intervals including the cells containing them
 /// in the less detailed levels. Should allow us to scan all intervals
 /// which may contain intersecting geometries
-void scanIntervals(QueryParams const& params, std::vector<S2CellId> const& cover,
+void scanIntervals(QueryParams const& params,
+                   std::vector<S2CellId> const& cover,
                    std::vector<Interval>& sortedIntervals) {
   TRI_ASSERT(params.cover.worstIndexedLevel > 0);
   if (cover.empty()) {
@@ -94,7 +96,7 @@ void scanIntervals(QueryParams const& params, std::vector<S2CellId> const& cover
     }
   }
 
-  if (!params.pointsOnly && params.filterType == FilterType::INTERSECTS) {
+  if (!params.pointsOnly || params.filterType == FilterType::INTERSECTS) {
     // we need to find larger cells that may still contain (parts of) the cover,
     // these are parent cells, up to the minimum allowed cell level allowed in
     // the index. In that case we do not need to look at all sub-cells only
@@ -138,7 +140,8 @@ void scanIntervals(QueryParams const& params, std::vector<S2CellId> const& cover
 #endif
 }
 
-double geodesicDistance(S2LatLng const& p1, S2LatLng const& p2, geo::Ellipsoid const& e) {
+double geodesicDistance(S2LatLng const& p1, S2LatLng const& p2,
+                        geo::Ellipsoid const& e) {
   // Use Karney's algorithm
   struct geod_geodesic g;
   geod_init(&g, e.equator_radius(), e.flattening());
@@ -157,71 +160,11 @@ S2LatLng geodesicPointAtDist(S2LatLng const& p, double dist, double azimuth,
   geod_init(&g, e.equator_radius(), e.flattening());
 
   double lat, lon;
-  geod_direct(&g, p.lat().degrees(), p.lng().degrees(), azimuth, dist, &lat, &lon, NULL);
+  geod_direct(&g, p.lat().degrees(), p.lng().degrees(), azimuth, dist, &lat,
+              &lon, NULL);
 
   return S2LatLng::FromDegrees(lat, lon);
 }
-
-// TODO remove ?
-#if 0
-double geodesic_distance(const geo::S2Point &p,
-                         const ql::datum_t &g,
-                         const ellipsoid_spec_t &e) {
-    class distance_estimator_t : public s2_geo_visitor_t<double> {
-    public:
-        distance_estimator_t(
-                             lon_lat_point_t r, const geo::S2Point &r_s2, const ellipsoid_spec_t &_e)
-        : ref_(r), ref_s2_(r_s2), e_(_e) { }
-        double on_point(const geo::S2Point &point) {
-            lon_lat_point_t llpoint =
-            lon_lat_point_t(geo::S2LatLng::Longitude(point).degrees(),
-                            geo::S2LatLng::Latitude(point).degrees());
-            return geodesic_distance(ref_, llpoint, e_);
-        }
-        double on_line(const geo::S2Polyline &line) {
-            // This sometimes over-estimates large distances, because the
-            // projection assumes spherical rather than ellipsoid geometry.
-            int next_vertex;
-            geo::S2Point prj = line.Project(ref_s2_, &next_vertex);
-            if (prj == ref_s2_) {
-                // ref_ is on the line
-                return 0.0;
-            } else {
-                lon_lat_point_t llprj =
-                lon_lat_point_t(geo::S2LatLng::Longitude(prj).degrees(),
-                                geo::S2LatLng::Latitude(prj).degrees());
-                return geodesic_distance(ref_, llprj, e_);
-            }
-        }
-        double on_polygon(const geo::S2Polygon &polygon) {
-            // This sometimes over-estimates large distances, because the
-            // projection assumes spherical rather than ellipsoid geometry.
-            geo::S2Point prj = polygon.Project(ref_s2_);
-            if (prj == ref_s2_) {
-                // ref_ is inside/on the polygon
-                return 0.0;
-            } else {
-                lon_lat_point_t llprj =
-                lon_lat_point_t(geo::S2LatLng::Longitude(prj).degrees(),
-                                geo::S2LatLng::Latitude(prj).degrees());
-                return geodesic_distance(ref_, llprj, e_);
-            }
-        }
-        double on_latlngrect(const geo::S2LatLngRect &) {
-            throw geo_exception_t("Distance calculation not implemented on LatLngRect.");
-        }
-        lon_lat_point_t ref_;
-        const geo::S2Point &ref_s2_;
-        const ellipsoid_spec_t &e_;
-    };
-    distance_estimator_t estimator(
-                                   lon_lat_point_t(geo::S2LatLng::Longitude(p).degrees(),
-                                                   geo::S2LatLng::Latitude(p).degrees()),
-                                   p, e);
-    return visit_geojson(&estimator, g);
-}
-
-#endif
 
 }  // namespace utils
 }  // namespace geo

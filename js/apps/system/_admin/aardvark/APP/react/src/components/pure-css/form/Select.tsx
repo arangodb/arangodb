@@ -1,4 +1,4 @@
-import React, { ReactNode } from 'react';
+import React, { ReactNode, useEffect, useState } from 'react';
 import styled from 'styled-components';
 import { uniqueId } from 'lodash';
 import PlainLabel from "./PlainLabel";
@@ -11,7 +11,7 @@ const StyledSelect = styled.select`
 
 type SelectProps = {
   id?: string;
-  label: ReactNode;
+  label?: ReactNode;
   children: ReactNode;
   disabled?: boolean;
   inline?: boolean;
@@ -19,20 +19,26 @@ type SelectProps = {
 };
 
 const Select = ({ id, label, children, disabled, inline, ...rest }: SelectProps) => {
-  if (!id) {
-    id = uniqueId('textbox-');
-  }
+  const [thisId, setThisId] = useState(id || uniqueId('textbox-'));
 
-  if (inline) {
-    return <PlainLabel htmlFor={id}>
+  useEffect(() => {
+    if (id) {
+      setThisId(id);
+    }
+  }, [id]);
+
+  if (inline && label) {
+    return <PlainLabel htmlFor={thisId} style={{
+      display: 'inline-block'
+    }}>
       {label}:&nbsp;
-      <StyledSelect id={id} disabled={disabled} {...rest}>{children}</StyledSelect>
+      <StyledSelect id={thisId} disabled={disabled} {...rest}>{children}</StyledSelect>
     </PlainLabel>;
   }
 
   return <>
-    <PlainLabel htmlFor={id}>{label}</PlainLabel>
-    <StyledSelect id={id} disabled={disabled} {...rest}>{children}</StyledSelect>
+    {label ? <PlainLabel htmlFor={thisId}>{label}</PlainLabel> : null}
+    <StyledSelect id={thisId} disabled={disabled} {...rest}>{children}</StyledSelect>
   </>;
 };
 

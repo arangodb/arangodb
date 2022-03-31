@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,23 +20,19 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
-#ifndef ARANGODB3_PERSISTEDLOG_H
-#define ARANGODB3_PERSISTEDLOG_H
+
+#pragma once
 
 #include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/ReplicatedLog/LogEntries.h"
 
 #include "Basics/Result.h"
 #include "Futures/Future.h"
 
 #include <memory>
+#include <utility>
 
 namespace arangodb::replication2::replicated_log {
-
-// ReplicatedLog-internal iterator over PersistingLogEntries
-struct PersistedLogIterator {
-  virtual ~PersistedLogIterator() = default;
-  virtual auto next() -> std::optional<PersistingLogEntry> = 0;
-};
 
 /**
  * @brief Interface to persist a replicated log locally. Implemented by
@@ -43,25 +40,29 @@ struct PersistedLogIterator {
  */
 struct PersistedLog {
   virtual ~PersistedLog() = default;
-  explicit PersistedLog(LogId lid) : _lid(lid) {}
+  explicit PersistedLog(GlobalLogIdentifier gid) : _gid(std::move(gid)) {}
 
   struct WriteOptions {
     bool waitForSync = false;
   };
 
-  [[nodiscard]] auto id() const noexcept -> LogId { return _lid; }
-  virtual auto insert(PersistedLogIterator& iter, WriteOptions const&) -> Result = 0;
-  virtual auto insertAsync(std::unique_ptr<PersistedLogIterator> iter, WriteOptions const&) -> futures::Future<Result> = 0;
-  virtual auto read(LogIndex start) -> std::unique_ptr<PersistedLogIterator> = 0;
-  virtual auto removeFront(LogIndex stop) -> Result = 0;
+  [[nodiscard]] auto id() const noexcept -> LogId { return _gid.id; }
+  [[nodiscard]] auto gid() const noexcept -> GlobalLogIdentifier const& {
+    return _gid;
+  }
+  virtual auto insert(PersistedLogIterator& iter, WriteOptions const&)
+      -> Result = 0;
+  virtual auto insertAsync(std::unique_ptr<PersistedLogIterator> iter,
+                           WriteOptions const&) -> futures::Future<Result> = 0;
+  virtual auto read(LogIndex start)
+      -> std::unique_ptr<PersistedLogIterator> = 0;
+  virtual auto removeFront(LogIndex stop) -> futures::Future<Result> = 0;
   virtual auto removeBack(LogIndex start) -> Result = 0;
 
   virtual auto drop() -> Result = 0;
 
  private:
-  LogId _lid;
+  GlobalLogIdentifier _gid;
 };
 
-}  // namespace arangodb::replication2
-
-#endif  // ARANGODB3_PERSISTEDLOG_H
+}  // namespace arangodb::replication2::replicated_log

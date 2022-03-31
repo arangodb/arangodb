@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -55,7 +55,8 @@ class OutputAqlItemRow {
 
   OutputAqlItemRow(SharedAqlItemBlockPtr block, RegIdSet const& outputRegisters,
                    RegIdFlatSetStack const& registersToKeep,
-                   RegIdFlatSet const& registersToClear, AqlCall clientCall = AqlCall{},
+                   RegIdFlatSet const& registersToClear,
+                   AqlCall clientCall = AqlCall{},
                    CopyRowBehavior = CopyRowBehavior::CopyInputRows);
 
   ~OutputAqlItemRow() = default;
@@ -67,7 +68,7 @@ class OutputAqlItemRow {
   bool isInitialized() const noexcept;
 
   // Clones the given AqlValue
-  template <class ItemRowType>
+  template<class ItemRowType>
   void cloneValueInto(RegisterId registerId, ItemRowType const& sourceRow,
                       AqlValue const& value);
 
@@ -76,8 +77,9 @@ class OutputAqlItemRow {
   // Note that there is no real move happening here, just a trivial copy of
   // the passed AqlValue. However, that means the output block will take
   // responsibility of possibly referenced external memory.
-  template <class ItemRowType, class ValueType>
-  void moveValueInto(RegisterId registerId, ItemRowType const& sourceRow, ValueType& value);
+  template<class ItemRowType, class ValueType>
+  void moveValueInto(RegisterId registerId, ItemRowType const& sourceRow,
+                     ValueType& value);
 
   // Consume the given shadow row and transform it into a InputAqlItemRow
   // for the next consumer of this block.
@@ -104,11 +106,12 @@ class OutputAqlItemRow {
   // row before. This call cannot be used on the first row of this output block.
   // If the reusing does not work this call will return `false` caller needs to
   // react accordingly.
-  bool reuseLastStoredValue(RegisterId registerId, InputAqlItemRow const& sourceRow);
+  bool reuseLastStoredValue(RegisterId registerId,
+                            InputAqlItemRow const& sourceRow);
 
   void moveRow(ShadowAqlItemRow& sourceRow, bool ignoreMissing = false);
 
-  template <class ItemRowType>
+  template<class ItemRowType>
   void copyRow(ItemRowType const& sourceRow, bool ignoreMissing = false);
 
   void copyBlockInternalRegister(InputAqlItemRow const& sourceRow,
@@ -125,7 +128,8 @@ class OutputAqlItemRow {
    *                    - Input and Output blocks are the same
    *                    - Input and Output row position are identical
    */
-  auto fastForwardAllRows(InputAqlItemRow const& sourceRow, size_t rows) -> void;
+  auto fastForwardAllRows(InputAqlItemRow const& sourceRow, size_t rows)
+      -> void;
 
   [[nodiscard]] RegisterCount getNumRegisters() const;
 
@@ -179,32 +183,36 @@ class OutputAqlItemRow {
    *        NOTE that we later want to replace this with some "atMost" value
    *        passed from ExecutionBlockImpl.
    */
-  [[nodiscard]] size_t numRowsLeft() const {
+  [[nodiscard]] size_t numRowsLeft() const noexcept {
     if (_block == nullptr) {
       return 0;
     }
     return (std::min)(block().numRows() - _baseIndex, _call.getLimit());
   }
 
-  // Use this function with caution! We need it only for the ConstrainedSortExecutor
-  void setBaseIndex(std::size_t index);
+  // Use this function with caution! We need it only for the
+  // ConstrainedSortExecutor
+  void setBaseIndex(std::size_t index) noexcept;
   // Use this function with caution! We need it for the SortedCollectExecutor,
   // CountCollectExecutor, and the ConstrainedSortExecutor.
-  void setAllowSourceRowUninitialized() { _allowSourceRowUninitialized = true; }
+  void setAllowSourceRowUninitialized() noexcept {
+    _allowSourceRowUninitialized = true;
+  }
 
   // This function can be used to restore the row's invariant.
   // After setting this value numRowsWritten() rather returns
   // the number of written rows contained in the block than
   // the number of written rows, that could potentially be more.
-  void setMaxBaseIndex(std::size_t index);
+  void setMaxBaseIndex(std::size_t index) noexcept;
 
-  void toVelocyPack(velocypack::Options const* options, velocypack::Builder& builder);
+  void toVelocyPack(velocypack::Options const* options,
+                    velocypack::Builder& builder);
 
-  AqlCall::Limit softLimit() const;
+  AqlCall::Limit softLimit() const noexcept;
 
-  AqlCall::Limit hardLimit() const;
+  AqlCall::Limit hardLimit() const noexcept;
 
-  AqlCall const& getClientCall() const;
+  AqlCall const& getClientCall() const noexcept;
 
   AqlCall& getModifiableClientCall();
 
@@ -213,19 +221,19 @@ class OutputAqlItemRow {
   void setCall(AqlCall call);
 
  private:
-  [[nodiscard]] RegIdSet const& outputRegisters() const {
+  [[nodiscard]] RegIdSet const& outputRegisters() const noexcept {
     return _outputRegisters;
   }
 
-  [[nodiscard]] RegIdFlatSetStack const& registersToKeep() const {
+  [[nodiscard]] RegIdFlatSetStack const& registersToKeep() const noexcept {
     return _registersToKeep;
   }
 
-  [[nodiscard]] RegIdFlatSet const& registersToClear() const {
+  [[nodiscard]] RegIdFlatSet const& registersToClear() const noexcept {
     return _registersToClear;
   }
 
-  [[nodiscard]] bool isOutputRegister(RegisterId registerId) const {
+  [[nodiscard]] bool isOutputRegister(RegisterId registerId) const noexcept {
     return outputRegisters().find(registerId) != outputRegisters().end();
   }
 
@@ -233,22 +241,23 @@ class OutputAqlItemRow {
     return numRowsWritten();
   }
 
-  [[nodiscard]] size_t numRegistersToWrite() const {
+  [[nodiscard]] size_t numRegistersToWrite() const noexcept {
     return outputRegisters().size();
   }
 
-  [[nodiscard]] bool allValuesWritten() const {
+  [[nodiscard]] bool allValuesWritten() const noexcept {
     // If we have a shadowRow in the output, it counts as written
     // if not it only counts is written, if we have all registers filled.
-    return block().isShadowRow(_baseIndex) || _numValuesWritten == numRegistersToWrite();
+    return block().isShadowRow(_baseIndex) ||
+           _numValuesWritten == numRegistersToWrite();
   }
 
-  [[nodiscard]] inline AqlItemBlock const& block() const {
+  [[nodiscard]] inline AqlItemBlock const& block() const noexcept {
     TRI_ASSERT(_block != nullptr);
     return *_block;
   }
 
-  inline AqlItemBlock& block() {
+  inline AqlItemBlock& block() noexcept {
     TRI_ASSERT(_block != nullptr);
     return *_block;
   }
@@ -261,29 +270,32 @@ class OutputAqlItemRow {
     IncreaseDepth = 1
   };
 
-  static auto constexpr depthDelta(AdaptRowDepth) -> std::underlying_type_t<AdaptRowDepth>;
+  static auto constexpr depthDelta(AdaptRowDepth)
+      -> std::underlying_type_t<AdaptRowDepth>;
 
-  template <class ItemRowType, CopyOrMove, AdaptRowDepth = AdaptRowDepth::Unchanged>
+  template<class ItemRowType, CopyOrMove,
+           AdaptRowDepth = AdaptRowDepth::Unchanged>
   void copyOrMoveRow(ItemRowType& sourceRow, bool ignoreMissing);
 
-  template <class ItemRowType, CopyOrMove, AdaptRowDepth = AdaptRowDepth::Unchanged>
+  template<class ItemRowType, CopyOrMove,
+           AdaptRowDepth = AdaptRowDepth::Unchanged>
   void doCopyOrMoveRow(ItemRowType& sourceRow, bool ignoreMissing);
 
-  template <class ItemRowType, CopyOrMove>
+  template<class ItemRowType, CopyOrMove>
   void doCopyOrMoveValue(ItemRowType& sourceRow, RegisterId);
 
   /// @brief move the value into the given output registers and count the value
   /// as written in _numValuesWritten.
-  template <class ItemRowType, class ValueType>
+  template<class ItemRowType, class ValueType>
   void moveValueWithoutRowCopy(RegisterId registerId, ValueType& value);
 
-  template <class ItemRowType>
+  template<class ItemRowType>
   void memorizeRow(ItemRowType const& sourceRow);
 
-  template <class ItemRowType>
+  template<class ItemRowType>
   bool testIfWeMustClone(ItemRowType const& sourceRow) const;
 
-  template <class ItemRowType>
+  template<class ItemRowType>
   void adjustShadowRowDepth(ItemRowType const& sourceRow);
 
  private:
@@ -340,4 +352,3 @@ class OutputAqlItemRow {
   RegIdFlatSet const& _registersToClear;
 };
 }  // namespace arangodb::aql
-

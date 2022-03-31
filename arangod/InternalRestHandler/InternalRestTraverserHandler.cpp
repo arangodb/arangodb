@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,9 +29,11 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/TraverserEngine.h"
+#include "Logger/LogMacros.h"
 #include "Rest/GeneralResponse.h"
 #include "Transaction/StandaloneContext.h"
 
+#include <Logger/LogMacros.h>
 #include <chrono>
 #include <thread>
 
@@ -40,9 +42,10 @@ using namespace arangodb::traverser;
 using namespace arangodb::rest;
 
 InternalRestTraverserHandler::InternalRestTraverserHandler(
-    application_features::ApplicationServer& server, GeneralRequest* request,
-    GeneralResponse* response, aql::QueryRegistry* engineRegistry)
-    : RestVocbaseBaseHandler(server, request, response), _registry(engineRegistry) {
+    ArangodServer& server, GeneralRequest* request, GeneralResponse* response,
+    aql::QueryRegistry* engineRegistry)
+    : RestVocbaseBaseHandler(server, request, response),
+      _registry(engineRegistry) {
   TRI_ASSERT(_registry != nullptr);
 }
 
@@ -73,7 +76,8 @@ RestStatus InternalRestTraverserHandler::execute() {
         break;
     }
   } catch (arangodb::basics::Exception const& ex) {
-    generateError(GeneralResponse::responseCode(ex.code()), ex.code(), ex.what());
+    generateError(GeneralResponse::responseCode(ex.code()), ex.code(),
+                  ex.what());
   } catch (std::exception const& ex) {
     generateError(ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
@@ -85,8 +89,9 @@ RestStatus InternalRestTraverserHandler::execute() {
 }
 
 void InternalRestTraverserHandler::createEngine() {
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
-                                 "API traversal engine creation no longer supported");
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_NOT_IMPLEMENTED,
+      "API traversal engine creation no longer supported");
 }
 
 void InternalRestTraverserHandler::queryEngine() {
@@ -100,7 +105,8 @@ void InternalRestTraverserHandler::queryEngine() {
   }
 
   std::string const& option = suffixes[0];
-  auto engineId = static_cast<aql::EngineId>(basics::StringUtils::uint64(suffixes[1]));
+  auto engineId =
+      static_cast<aql::EngineId>(basics::StringUtils::uint64(suffixes[1]));
   if (engineId == 0) {
     generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expected TraveserEngineId to be an integer number");
@@ -117,7 +123,8 @@ void InternalRestTraverserHandler::queryEngine() {
     return;
   }
 
-  std::chrono::time_point<std::chrono::steady_clock> start =  std::chrono::steady_clock::now();
+  std::chrono::time_point<std::chrono::steady_clock> start =
+      std::chrono::steady_clock::now();
 
   traverser::BaseEngine* engine = nullptr;
   while (true) {
@@ -127,7 +134,8 @@ void InternalRestTraverserHandler::queryEngine() {
         break;
       }
       generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                    "invalid TraverserEngine id - potentially the AQL query was already aborted or timed out");
+                    "invalid TraverserEngine id - potentially the AQL query "
+                    "was already aborted or timed out");
       return;
     } catch (basics::Exception const& ex) {
       // it is possible that the engine is already in use
@@ -147,18 +155,24 @@ void InternalRestTraverserHandler::queryEngine() {
       generateError(ResponseCode::SERVER_ERROR, TRI_ERROR_LOCK_TIMEOUT);
       return;
     }
-  } 
+  }
 
   TRI_ASSERT(engine != nullptr);
 
   auto& registry = _registry;  // For the guard
-  auto cleanup = scopeGuard([registry, &engineId]() {
-    registry->closeEngine(engineId);
+  auto cleanup = scopeGuard([registry, &engineId]() noexcept {
+    try {
+      registry->closeEngine(engineId);
+    } catch (std::exception const& ex) {
+      LOG_TOPIC("dfc7a", ERR, Logger::AQL)
+          << "Failed to close engine: " << ex.what();
+    }
   });
 
   if (option == "lock") {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
-                                   "API for traversal engine locking no longer supported");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_NOT_IMPLEMENTED,
+        "API for traversal engine locking no longer supported");
   }
 
   VPackBuilder result;
@@ -182,7 +196,7 @@ void InternalRestTraverserHandler::queryEngine() {
         // Safe cast BaseTraverserEngines are all of type TRAVERSER
         auto eng = static_cast<BaseTraverserEngine*>(engine);
         TRI_ASSERT(eng != nullptr);
-        
+
         VPackSlice variables = body.get("variables");
         eng->injectVariables(variables);
 
@@ -223,7 +237,8 @@ void InternalRestTraverserHandler::queryEngine() {
       return;
     }
     engine->getVertexData(keysSlice, result, !depthSlice.isNone());
-  } else if (option == "smartSearch") {
+  } else if (option == "smartSearch" || option == "smartSearchBFS" ||
+             option == "smartSearchWeighted") {
     if (engine->getType() != BaseEngine::EngineType::TRAVERSER) {
       generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     "this engine does not support the requested operation.");
@@ -233,26 +248,6 @@ void InternalRestTraverserHandler::queryEngine() {
     auto eng = static_cast<BaseTraverserEngine*>(engine);
     TRI_ASSERT(eng != nullptr);
     eng->smartSearch(body, result);
-  } else if (option == "smartSearchBFS") {
-    if (engine->getType() != BaseEngine::EngineType::TRAVERSER) {
-      generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                    "this engine does not support the requested operation.");
-      return;
-    }
-    // Safe cast BaseTraverserEngines are all of type TRAVERSER
-    auto eng = static_cast<BaseTraverserEngine*>(engine);
-    TRI_ASSERT(eng != nullptr);
-    eng->smartSearchBFS(body, result);
-  } else if (option == "smartSearchWeighted") {
-    if (engine->getType() != BaseEngine::EngineType::TRAVERSER) {
-      generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                    "this engine does not support the requested operation.");
-      return;
-    }
-    // Safe cast BaseTraverserEngines are all of type TRAVERSER
-    auto eng = static_cast<BaseTraverserEngine*>(engine);
-    TRI_ASSERT(eng != nullptr);
-    eng->smartSearchWeighted(body, result);
   } else {
     // PATH Info wrong other error
     generateError(ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND, "");
@@ -266,13 +261,14 @@ void InternalRestTraverserHandler::destroyEngine() {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
   if (suffixes.size() != 1) {
     // DELETE requires the id as path parameter
-    generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "expected DELETE " + INTERNAL_TRAVERSER_PATH +
-                      "/<TraverserEngineId>");
+    generateError(
+        ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+        "expected DELETE " + INTERNAL_TRAVERSER_PATH + "/<TraverserEngineId>");
     return;
   }
 
-  auto engineId = static_cast<aql::EngineId>(basics::StringUtils::uint64(suffixes[0]));
+  auto engineId =
+      static_cast<aql::EngineId>(basics::StringUtils::uint64(suffixes[0]));
   bool found = _registry->destroyEngine(engineId, TRI_ERROR_NO_ERROR);
   generateResult(ResponseCode::OK, VPackSlice::booleanSlice(found));
 }

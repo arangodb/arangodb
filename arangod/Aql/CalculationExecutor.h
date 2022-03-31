@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -46,14 +46,14 @@ class AqlItemBlockInputRange;
 class Expression;
 class OutputAqlItemRow;
 class QueryContext;
-template <BlockPassthrough>
+template<BlockPassthrough>
 class SingleRowFetcher;
 struct Variable;
 
 struct CalculationExecutorInfos {
-  CalculationExecutorInfos(RegisterId outputRegister, QueryContext& query, Expression& expression,
-                           std::vector<Variable const*>&& expInVars,
-                           std::vector<RegisterId>&& expInRegs);
+  CalculationExecutorInfos(
+      RegisterId outputRegister, QueryContext& query, Expression& expression,
+      std::vector<std::pair<VariableId, RegisterId>>&& expInVarToRegs);
 
   CalculationExecutorInfos() = delete;
   CalculationExecutorInfos(CalculationExecutorInfos&&) = default;
@@ -67,27 +67,27 @@ struct CalculationExecutorInfos {
 
   Expression& getExpression() const noexcept;
 
-  std::vector<Variable const*> const& getExpInVars() const noexcept;
-
-  std::vector<RegisterId> const& getExpInRegs() const noexcept;
+  std::vector<std::pair<VariableId, RegisterId>> const& getVarToRegs()
+      const noexcept;
 
  private:
   RegisterId _outputRegisterId;
 
   QueryContext& _query;
   Expression& _expression;
-  std::vector<Variable const*> _expInVars;  // input variables for expression
-  std::vector<RegisterId> _expInRegs;       // input registers for expression
+  // Input variable and register pairs required for the expression
+  std::vector<std::pair<VariableId, RegisterId>> _expVarToRegs;
 };
 
 enum class CalculationType { Condition, V8Condition, Reference };
 
-template <CalculationType calculationType>
+template<CalculationType calculationType>
 class CalculationExecutor {
  public:
   struct Properties {
     static constexpr bool preservesOrder = true;
-    static constexpr BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Enable;
+    static constexpr BlockPassthrough allowsBlockPassthrough =
+        BlockPassthrough::Enable;
     /* This could be set to true after some investigation/fixes */
     static constexpr bool inputSizeRestrictsOutputSize = false;
   };
@@ -101,7 +101,8 @@ class CalculationExecutor {
   /**
    * @brief produce the next Row of Aql Values.
    *
-   * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
+   * @return ExecutorState, the stats, and a new Call that needs to be send to
+   * upstream
    */
   [[nodiscard]] std::tuple<ExecutorState, Stats, AqlCall> produceRows(
       AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output);
@@ -111,14 +112,16 @@ class CalculationExecutor {
   void doEvaluation(InputAqlItemRow& input, OutputAqlItemRow& output);
 
   // Only for V8Conditions
-  template <CalculationType U = calculationType, typename = std::enable_if_t<U == CalculationType::V8Condition>>
+  template<CalculationType U = calculationType,
+           typename = std::enable_if_t<U == CalculationType::V8Condition>>
   void enterContext();
 
   // Only for V8Conditions
-  template <CalculationType U = calculationType, typename = std::enable_if_t<U == CalculationType::V8Condition>>
-  void exitContext();
+  template<CalculationType U = calculationType,
+           typename = std::enable_if_t<U == CalculationType::V8Condition>>
+  void exitContext() noexcept;
 
-  [[nodiscard]] bool shouldExitContextBetweenBlocks() const;
+  [[nodiscard]] bool shouldExitContextBetweenBlocks() const noexcept;
 
  private:
   transaction::Methods _trx;
@@ -138,4 +141,3 @@ class CalculationExecutor {
 
 }  // namespace aql
 }  // namespace arangodb
-

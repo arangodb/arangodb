@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -50,19 +51,22 @@ auto replicated_log::LogCore::removeBack(LogIndex first) -> Result {
   return _persistedLog->removeBack(first);
 }
 
-auto replicated_log::LogCore::insert(PersistedLogIterator& iter, bool waitForSync) -> Result {
+auto replicated_log::LogCore::insert(PersistedLogIterator& iter,
+                                     bool waitForSync) -> Result {
   std::unique_lock guard(_operationMutex);
   PersistedLog::WriteOptions opts;
   opts.waitForSync = waitForSync;
   return _persistedLog->insert(iter, opts);
 }
 
-auto replicated_log::LogCore::read(LogIndex first) const -> std::unique_ptr<PersistedLogIterator> {
+auto replicated_log::LogCore::read(LogIndex first) const
+    -> std::unique_ptr<PersistedLogIterator> {
   std::unique_lock guard(_operationMutex);
   return _persistedLog->read(first);
 }
 
-auto replicated_log::LogCore::insertAsync(std::unique_ptr<PersistedLogIterator> iter, bool waitForSync)
+auto replicated_log::LogCore::insertAsync(
+    std::unique_ptr<PersistedLogIterator> iter, bool waitForSync)
     -> futures::Future<Result> {
   std::unique_lock guard(_operationMutex);
   // This will hold the mutex
@@ -75,11 +79,25 @@ auto replicated_log::LogCore::insertAsync(std::unique_ptr<PersistedLogIterator> 
       });
 }
 
-auto replicated_log::LogCore::releasePersistedLog() && -> std::shared_ptr<PersistedLog> {
+auto replicated_log::LogCore::releasePersistedLog() && -> std::shared_ptr<
+    PersistedLog> {
   std::unique_lock guard(_operationMutex);
   return std::move(_persistedLog);
 }
 
 auto replicated_log::LogCore::logId() const noexcept -> LogId {
   return _persistedLog->id();
+}
+
+auto LogCore::removeFront(LogIndex stop) -> futures::Future<Result> {
+  std::unique_lock guard(_operationMutex);
+  return _persistedLog->removeFront(stop).thenValue(
+      [guard = std::move(guard)](Result&& res) mutable {
+        guard.unlock();
+        return std::move(res);
+      });
+}
+
+auto LogCore::gid() const noexcept -> GlobalLogIdentifier const& {
+  return _persistedLog->gid();
 }

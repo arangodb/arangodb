@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,14 +23,13 @@
 
 #include "EndpointFeature.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/application-exit.h"
-#include "FeaturePhases/AqlFeaturePhase.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
-#include "RestServer/ServerFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 
 using namespace arangodb::basics;
@@ -39,13 +38,14 @@ using namespace arangodb::rest;
 
 namespace arangodb {
 
-EndpointFeature::EndpointFeature(application_features::ApplicationServer& server)
-    : HttpEndpointProvider(server, "Endpoint"), _reuseAddress(true), _backlogSize(64) {
+EndpointFeature::EndpointFeature(ArangodServer& server)
+    : HttpEndpointProvider{server, *this},
+      _reuseAddress(true),
+      _backlogSize(64) {
   setOptional(true);
-  requiresElevatedPrivileges(true);
-  startsAfter<application_features::AqlFeaturePhase>();
+  startsAfter<application_features::AqlFeaturePhase, ArangodServer>();
 
-  startsAfter<ServerFeature>();
+  startsAfter<ServerFeature, ArangodServer>();
 
   // if our default value is too high, we'll use half of the max value provided
   // by the system
@@ -66,13 +66,15 @@ void EndpointFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addSection("tcp", "TCP features");
 
-  options->addOption("--tcp.reuse-address", "try to reuse TCP port(s)",
-                     new BooleanParameter(&_reuseAddress),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+  options->addOption(
+      "--tcp.reuse-address", "try to reuse TCP port(s)",
+      new BooleanParameter(&_reuseAddress),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
-  options->addOption("--tcp.backlog-size", "listen backlog size",
-                     new UInt64Parameter(&_backlogSize),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+  options->addOption(
+      "--tcp.backlog-size", "listen backlog size",
+      new UInt64Parameter(&_backlogSize),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 }
 
 void EndpointFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
@@ -115,10 +117,12 @@ std::vector<std::string> EndpointFeature::httpEndpoints() {
 void EndpointFeature::buildEndpointLists() {
   for (std::vector<std::string>::const_iterator i = _endpoints.begin();
        i != _endpoints.end(); ++i) {
-    bool ok = _endpointList.add((*i), static_cast<int>(_backlogSize), _reuseAddress);
+    bool ok =
+        _endpointList.add((*i), static_cast<int>(_backlogSize), _reuseAddress);
 
     if (!ok) {
-      LOG_TOPIC("1ddc1", FATAL, arangodb::Logger::FIXME) << "invalid endpoint '" << (*i) << "'";
+      LOG_TOPIC("1ddc1", FATAL, arangodb::Logger::FIXME)
+          << "invalid endpoint '" << (*i) << "'";
       FATAL_ERROR_EXIT();
     }
   }

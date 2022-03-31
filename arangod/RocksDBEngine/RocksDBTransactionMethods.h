@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,61 +27,73 @@
 #include "RocksDBEngine/RocksDBMethods.h"
 
 namespace rocksdb {
- class Slice;
+class Slice;
 }  // namespace rocksdb
 
 namespace arangodb {
 class RocksDBKey;
 class RocksDBTransactionState;
 
+struct ReadOptions : public rocksdb::ReadOptions {
+  bool readOwnWrites = false;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // only used to control whether we verify in NewIterator that we do not
+  // create a read-own-write iterator with intermediate commits enabled.
+  bool checkIntermediateCommits = true;
+#endif
+};
+
 class RocksDBTransactionMethods : public RocksDBMethods {
  public:
-  explicit RocksDBTransactionMethods(RocksDBTransactionState* state) : _state(state) {}
+  explicit RocksDBTransactionMethods(RocksDBTransactionState* state)
+      : _state(state) {}
   virtual ~RocksDBTransactionMethods() = default;
 
   virtual Result beginTransaction() = 0;
-  
+
   virtual Result commitTransaction() = 0;
 
   virtual Result abortTransaction() = 0;
-  
+
   // Only relevant for RocksDBTrxMethods
-  virtual Result checkIntermediateCommit(bool& hasPerformedIntermediateCommit) { return {}; }
-  
+  virtual Result checkIntermediateCommit() { return {}; }
+
   /// @returns tick of last operation in a transaction
   /// @note the value is guaranteed to be valid only after
   ///       transaction is committed
   virtual TRI_voc_tick_t lastOperationTick() const noexcept = 0;
-  
+
   virtual uint64_t numCommits() const noexcept = 0;
-  
-  virtual rocksdb::ReadOptions iteratorReadOptions() const = 0; // TODO - remove later
-  
+
+  virtual rocksdb::ReadOptions iteratorReadOptions()
+      const = 0;  // TODO - remove later
+
   /// @brief acquire a database snapshot if we do not yet have one.
   /// Returns true if a snapshot was acquire
   virtual bool ensureSnapshot() = 0;
 
   virtual rocksdb::SequenceNumber GetSequenceNumber() const noexcept = 0;
-  
+
   virtual bool hasOperations() const noexcept = 0;
 
   virtual uint64_t numOperations() const noexcept = 0;
-  
-  virtual void prepareOperation(DataSourceId cid, RevisionId rid, TRI_voc_document_operation_e operationType) = 0;
+
+  virtual void prepareOperation(DataSourceId cid, RevisionId rid,
+                                TRI_voc_document_operation_e operationType) = 0;
 
   /// @brief undo the effects of the previous prepareOperation call
-  virtual void rollbackOperation(TRI_voc_document_operation_e operationType) = 0;
+  virtual void rollbackOperation(
+      TRI_voc_document_operation_e operationType) = 0;
 
-  /// @brief add an operation for a transaction collection
-  /// sets hasPerformedIntermediateCommit to true if an intermediate commit was
-  /// performed
-  virtual Result addOperation(DataSourceId collectionId, RevisionId revisionId,
-                              TRI_voc_document_operation_e opType) = 0;
+  /// @brief add an operation for a transaction
+  virtual Result addOperation(TRI_voc_document_operation_e opType) = 0;
 
-  using ReadOptionsCallback = std::function<void(rocksdb::ReadOptions&)>;
-  
-  virtual std::unique_ptr<rocksdb::Iterator> NewIterator(rocksdb::ColumnFamilyHandle*,
-                                                         ReadOptionsCallback) = 0;
+  using ReadOptionsCallback = std::function<void(ReadOptions&)>;
+
+  virtual std::unique_ptr<rocksdb::Iterator> NewIterator(
+      rocksdb::ColumnFamilyHandle*, ReadOptionsCallback) = 0;
+
+  virtual bool iteratorMustCheckBounds(ReadOwnWrites) const = 0;
 
   virtual void SetSavePoint() = 0;
   virtual rocksdb::Status RollbackToSavePoint() = 0;
@@ -89,7 +101,8 @@ class RocksDBTransactionMethods : public RocksDBMethods {
   virtual void PopSavePoint() = 0;
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  std::size_t countInBounds(RocksDBKeyBounds const& bounds, bool isElementInRange = false);
+  std::size_t countInBounds(RocksDBKeyBounds const& bounds,
+                            bool isElementInRange = false);
 #endif
 
  protected:
@@ -97,4 +110,3 @@ class RocksDBTransactionMethods : public RocksDBMethods {
 };
 
 }  // namespace arangodb
-

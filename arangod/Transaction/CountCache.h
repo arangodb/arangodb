@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -54,6 +54,10 @@ struct CountCache {
   /// @brief construct a cache with the specified TTL value
   explicit CountCache(double ttl);
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  virtual ~CountCache() = default;
+#endif
+
   /// @brief get current value from cache, regardless if expired or not.
   /// will return whatever has been stored. if nothing was stored yet, will
   /// return NotPopulated.
@@ -66,6 +70,9 @@ struct CountCache {
   /// @brief stores value in the cache and bumps the TTL into the future
   void store(uint64_t value);
 
+ protected:
+  TEST_VIRTUAL double getTime() const;
+
  private:
   std::atomic<uint64_t> count;
   std::atomic<double> expireStamp;
@@ -74,4 +81,3 @@ struct CountCache {
 
 }  // namespace transaction
 }  // namespace arangodb
-

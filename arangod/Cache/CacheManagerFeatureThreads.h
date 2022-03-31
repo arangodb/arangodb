@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -37,8 +37,8 @@ class ApplicationServer;
 
 class CacheRebalancerThread final : public Thread {
  public:
-  CacheRebalancerThread(application_features::ApplicationServer& server,
-                        cache::Manager* manager, std::uint64_t interval);
+  CacheRebalancerThread(ArangodServer& server, cache::Manager* manager,
+                        std::uint64_t interval);
   ~CacheRebalancerThread();
 
   void beginShutdown() override;
@@ -55,4 +55,3 @@ class CacheRebalancerThread final : public Thread {
 };
 
 };  // end namespace arangodb
-

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -32,11 +32,13 @@
 namespace arangodb {
 namespace graph {
 
-template <class StepType>
+template<class StepType>
 class LifoQueue {
  public:
+  static constexpr bool RequiresWeight = false;
   using Step = StepType;
-  // TODO: Add Sorting (Performance - will be implemented in the future - cluster relevant)
+  // TODO: Add Sorting (Performance - will be implemented in the future -
+  // cluster relevant)
   // -> loose ends to the end
 
   explicit LifoQueue(arangodb::ResourceMonitor& resourceMonitor)
@@ -55,7 +57,7 @@ class LifoQueue {
     // if push_front() throws, no harm is done, and the memory usage increase
     // will be rolled back
     _queue.push_front(std::move(step));
-    guard.steal(); // now we are responsible for tracking the memory
+    guard.steal();  // now we are responsible for tracking the memory
   }
 
   bool hasProcessableElement() const {
@@ -87,7 +89,8 @@ class LifoQueue {
   Step pop() {
     TRI_ASSERT(!isEmpty());
     Step first = std::move(_queue.front());
-    LOG_TOPIC("9cd64", TRACE, Logger::GRAPHS) << "<LifoQueue> Pop: " << first.toString();
+    LOG_TOPIC("9cd64", TRACE, Logger::GRAPHS)
+        << "<LifoQueue> Pop: " << first.toString();
     _resourceMonitor.decreaseMemoryUsage(sizeof(Step));
     _queue.pop_front();
     return first;
@@ -103,4 +106,3 @@ class LifoQueue {
 
 }  // namespace graph
 }  // namespace arangodb
-

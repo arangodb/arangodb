@@ -1,0 +1,115 @@
+# \libs\multiprecision\example\jamfile.v2
+# Runs multiprecision examples.
+# Copyright 2014 John Maddock
+# Copyright Paul A. Bristow 2014.
+# Copyright Christopher Kormanyos 2014
+
+# Distributed under the Boost Software License, Version 1.0.
+# (See accompanying file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+
+# Bring in the rules for testing.
+import testing ;
+import modules ;
+import path ;
+import ../../config/checks/config : requires ;
+
+local ntl-path = [ modules.peek : NTL_PATH ] ;
+local gmp_path = [ modules.peek : GMP_PATH ] ;
+local mpfr_path = [ modules.peek : MPFR_PATH ] ;
+local mpfi_path = [ modules.peek : MPFI_PATH ] ;
+local tommath_path = [ modules.peek : TOMMATH_PATH ] ;
+
+project
+    : requirements
+     <include>$(gmp_path)
+     <include>$(gmp_path)/mpfr
+     <include>$(gmp_path)/gmpfrxx
+     <include>$(mpfr_path)
+     <include>$(mpfi_path)
+     <include>$(mpfi_path)/src
+     <include>$(tommath_path)
+     <include>../include
+     <include>../../..
+     
+      <toolset>gcc:<cxxflags>-Wno-missing-braces
+      <toolset>darwin:<cxxflags>-Wno-missing-braces
+      <toolset>acc:<cxxflags>+W2068,2461,2236,4070
+      <toolset>intel:<cxxflags>-Qwd264,239
+      <toolset>msvc:<runtime-link>static
+      <toolset>msvc:<link>static
+      <toolset>msvc:<warnings>all
+      <toolset>msvc:<asynch-exceptions>on
+      <toolset>msvc:<define>_CRT_SECURE_NO_DEPRECATE
+      <toolset>msvc:<define>_SCL_SECURE_NO_DEPRECATE
+      <toolset>msvc:<define>_SCL_SECURE_NO_WARNINGS
+      <toolset>msvc:<define>_CRT_SECURE_NO_WARNINGS
+      <toolset>msvc:<cxxflags>/wd4996
+      <toolset>msvc:<cxxflags>/wd4512
+      <toolset>msvc:<cxxflags>/wd4610
+      <toolset>msvc:<cxxflags>/wd4510
+      #<toolset>msvc:<cxxflags>/wd4127
+      <toolset>msvc:<cxxflags>/wd4701
+      <toolset>msvc:<cxxflags>/wd4305
+      <toolset>clang:<link>static
+      [ requires  
+         cxx11_rvalue_references cxx11_template_aliases cxx11_hdr_array cxx11_allocator cxx11_constexpr cxx11_explicit_conversion_operators cxx11_ref_qualifiers
+         cxx11_hdr_functional cxx11_variadic_templates cxx11_user_defined_literals cxx11_decltype cxx11_static_assert cxx11_defaulted_functions
+         cxx11_noexcept cxx11_ref_qualifiers cxx11_user_defined_literals cxx11_hdr_type_traits
+         ]
+    ;
+
+lib gmp : : <search>$(gmp_path) ;
+lib mpfr : : <search>$(gmp_path) <search>$(mpfr_path) <search>$(mpfr_path)/build.vc10/lib/Win32/Debug ;
+lib mpfi : : <search>$(gmp_path) <search>$(mpfr_path) <search>$(mpfr_path)/build.vc10/lib/Win32/Debug <search>$(mpfi_path) <search>$(mpfi_path)/src ;
+lib quadmath ;
+
+if $(tommath_path)
+{
+   lib tommath : [ GLOB $(tommath_path) : *.c ] : <visibility>global ;
+   TOMMATH = tommath ;
+}
+else
+{
+   lib tommath : : <search>$(tommath_path) ;
+   TOMMATH = tommath ;
+}
+
+lib no_eh_eg_support : ../test/no_eh_test_support.cpp ;
+
+test-suite examples :
+
+      [ run cpp_int_snips.cpp no_eh_eg_support ]
+      [ run cpp_int_import_export.cpp no_eh_eg_support ]
+      [ run cpp_bin_float_import_export.cpp no_eh_eg_support ]
+
+      [ run cpp_dec_float_snips.cpp no_eh_eg_support ]
+
+      [ run cpp_bin_float_snips.cpp no_eh_eg_support ]
+
+      [ run debug_adaptor_snips.cpp no_eh_eg_support ]
+      [ run float128_snips.cpp quadmath no_eh_eg_support : : : [ check-target-builds ../config//has_float128 : : <build>no ] ]
+
+      [ run floating_point_examples.cpp no_eh_eg_support : : : [ check-target-builds ../config//has_big_obj : <cxxflags>-Wa,-mbig-obj <debug-symbols>off ] ]
+      [ run gauss_laguerre_quadrature.cpp no_eh_eg_support : : : release [ requires cxx11_lambdas ] ]
+      [ run hypergeometric_luke_algorithms.cpp no_eh_eg_support ../../chrono/build//boost_chrono ../../system/build//boost_system : : : [ requires cxx11_nullptr ]  ]
+      [ run integer_examples.cpp no_eh_eg_support ]
+      [ run logged_adaptor.cpp no_eh_eg_support mpfi mpfr gmp :  :  : [ check-target-builds ../config//has_mpfi : : <build>no ] ]
+      [ run mixed_integer_arithmetic.cpp no_eh_eg_support ]
+      [ run numeric_limits_snips.cpp no_eh_eg_support /boost//test_exec_monitor : : : [ requires cxx11_numeric_limits ]  [ check-target-builds ../config//has_float128 : <source>quadmath ] ]
+      [ run random_snips.cpp gmp no_eh_eg_support : : : [ requires cxx11_explicit_conversion_operators ] [ check-target-builds ../config//has_gmp : : <build>no ] ]
+      [ run safe_prime.cpp no_eh_eg_support ]
+
+      [ run gmp_snips.cpp gmp no_eh_eg_support : : : [ check-target-builds ../config//has_gmp : : <build>no ] ]
+      [ run mpfi_snips.cpp mpfi mpfr gmp no_eh_eg_support :  :  : [ check-target-builds ../config//has_mpfi : : <build>no ] ]
+      [ run mpfr_snips.cpp mpfr gmp no_eh_eg_support : : : [ check-target-builds ../config//has_mpfr : : <build>no ] ]
+      [ run tommath_snips.cpp $(TOMMATH) no_eh_eg_support : : : [ check-target-builds ../config//has_tommath : : <build>no ] ]
+      [ compile constexpr_float_arithmetic_examples.cpp : [ requires cxx14_constexpr cxx17_if_constexpr ] ]
+      
+      [ run big_seventh.cpp no_eh_eg_support ]
+
+      [ run exercise_threading_log_agm.cpp : : : <define>BOOST_MULTIPRECISION_EXERCISE_THREADING_BACKEND_TYPE=101 release [ requires cxx11_hdr_atomic cxx11_hdr_thread ] : exercise_threading_log_agm_cpp_dec_float ]
+      [ run exercise_threading_log_agm.cpp gmp : : : <define>BOOST_MULTIPRECISION_EXERCISE_THREADING_BACKEND_TYPE=102 release [ requires cxx11_hdr_atomic cxx11_hdr_thread ] [ check-target-builds ../config//has_gmp : : <build>no ] : exercise_threading_log_agm_gmp ]
+      [ run exercise_threading_log_agm.cpp mpfr gmp : : : <define>BOOST_MULTIPRECISION_EXERCISE_THREADING_BACKEND_TYPE=104 release [ requires cxx11_hdr_atomic cxx11_hdr_thread ] [ check-target-builds ../config//has_mpfr : : <build>no ] : exercise_threading_log_agm_mpfr ]
+      [ run exercise_threading_log_agm.cpp : : : <define>BOOST_MULTIPRECISION_EXERCISE_THREADING_BACKEND_TYPE=103 release [ requires cxx11_hdr_atomic cxx11_hdr_thread ] : exercise_threading_log_agm_cpp_bin_float ]
+
+;

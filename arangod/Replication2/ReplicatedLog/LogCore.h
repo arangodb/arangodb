@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -30,10 +31,10 @@
 #include <Futures/Future.h>
 
 #include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/ReplicatedLog/LogEntries.h"
 
 namespace arangodb::replication2::replicated_log {
 struct PersistedLog;
-struct PersistedLogIterator;
 
 /**
  * @brief The persistent core of a replicated log. There must only ever by one
@@ -56,14 +57,18 @@ struct alignas(64) LogCore {
   auto operator=(LogCore const&) -> LogCore& = delete;
   auto operator=(LogCore&&) -> LogCore& = delete;
 
-  auto insertAsync(std::unique_ptr<PersistedLogIterator> iter, bool waitForSync) -> futures::Future<Result>;
+  auto insertAsync(std::unique_ptr<PersistedLogIterator> iter, bool waitForSync)
+      -> futures::Future<Result>;
   auto insert(PersistedLogIterator& iter, bool waitForSync) -> Result;
-  [[nodiscard]] auto read(LogIndex first) const -> std::unique_ptr<PersistedLogIterator>;
+  [[nodiscard]] auto read(LogIndex first) const
+      -> std::unique_ptr<PersistedLogIterator>;
   auto removeBack(LogIndex first) -> Result;
+  auto removeFront(LogIndex stop) -> futures::Future<Result>;
 
   auto releasePersistedLog() && -> std::shared_ptr<PersistedLog>;
 
   auto logId() const noexcept -> LogId;
+  auto gid() const noexcept -> GlobalLogIdentifier const&;
 
  private:
   std::shared_ptr<PersistedLog> _persistedLog;

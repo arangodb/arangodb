@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,6 +24,8 @@
 #include "GlobalReplicationApplier.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
+#include "Basics/ReadLocker.h"
+#include "Basics/WriteLocker.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -38,8 +40,11 @@
 using namespace arangodb;
 
 /// @brief server-global replication applier for all databases
-GlobalReplicationApplier::GlobalReplicationApplier(ReplicationApplierConfiguration const& configuration)
-    : ReplicationApplier(configuration, "global database") {}
+GlobalReplicationApplier::GlobalReplicationApplier(
+    ReplicationApplierConfiguration const& configuration)
+    : ReplicationApplier(configuration, "global database"),
+      _engine(
+          configuration._server.getFeature<EngineSelectorFeature>().engine()) {}
 
 GlobalReplicationApplier::~GlobalReplicationApplier() {
   try {
@@ -54,9 +59,8 @@ void GlobalReplicationApplier::forget() {
 
   removeState();
 
-  StorageEngine& engine =
-      configuration()._server.getFeature<EngineSelectorFeature>().engine();
-  engine.removeReplicationApplierConfiguration();
+  _engine.removeReplicationApplierConfiguration();
+  WRITE_LOCKER(writeLocker, _statusLock);
   _configuration.reset();
 }
 
@@ -71,9 +75,8 @@ void GlobalReplicationApplier::storeConfiguration(bool doSync) {
       << "storing applier configuration " << builder.slice().toJson() << " for "
       << _databaseName;
 
-  StorageEngine& engine =
-      _configuration._server.getFeature<EngineSelectorFeature>().engine();
-  auto res = engine.saveReplicationApplierConfiguration(builder.slice(), doSync);
+  auto res =
+      _engine.saveReplicationApplierConfiguration(builder.slice(), doSync);
 
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
@@ -82,7 +85,7 @@ void GlobalReplicationApplier::storeConfiguration(bool doSync) {
 
 /// @brief load a persisted configuration for the applier
 ReplicationApplierConfiguration GlobalReplicationApplier::loadConfiguration(
-    application_features::ApplicationServer& server) {
+    ArangodServer& server) {
   StorageEngine& engine = server.getFeature<EngineSelectorFeature>().engine();
   auto res = TRI_ERROR_INTERNAL;
   VPackBuilder builder = engine.getReplicationApplierConfiguration(res);
@@ -95,27 +98,27 @@ ReplicationApplierConfiguration GlobalReplicationApplier::loadConfiguration(
 
   TRI_ASSERT(!builder.isEmpty());
 
-  return ReplicationApplierConfiguration::fromVelocyPack(engine.server(),
-                                                         builder.slice(), std::string());
+  return ReplicationApplierConfiguration::fromVelocyPack(
+      engine.server(), builder.slice(), std::string());
 }
 
-std::shared_ptr<InitialSyncer> GlobalReplicationApplier::buildInitialSyncer() const {
+std::shared_ptr<InitialSyncer> GlobalReplicationApplier::buildInitialSyncer()
+    const {
   return arangodb::GlobalInitialSyncer::create(_configuration);
 }
 
 std::shared_ptr<TailingSyncer> GlobalReplicationApplier::buildTailingSyncer(
     TRI_voc_tick_t initialTick, bool useTick) const {
-  return arangodb::GlobalTailingSyncer::create(_configuration, initialTick, useTick);
+  return arangodb::GlobalTailingSyncer::create(_configuration, initialTick,
+                                               useTick);
 }
 
 std::string GlobalReplicationApplier::getStateFilename() const {
-  StorageEngine& engine =
-      _configuration._server.getFeature<EngineSelectorFeature>().engine();
   auto& sysDbFeature =
       _configuration._server.getFeature<arangodb::SystemDatabaseFeature>();
   auto vocbase = sysDbFeature.use();
 
-  std::string const path = engine.databasePath(vocbase.get());
+  std::string const path = _engine.databasePath(vocbase.get());
   if (path.empty()) {
     return std::string();
   }

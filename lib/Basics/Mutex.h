@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,8 +24,11 @@
 
 #pragma once
 
+#if defined __has_include
+// cppcheck-suppress preprocessorErrorDirective
 #if __has_include(<pthread.h>)
 #include <pthread.h>
+#endif
 #endif
 
 #include "Basics/operating-system.h"
@@ -57,21 +60,21 @@ class Mutex {
   Mutex(Mutex const&) = delete;
   Mutex& operator=(Mutex const&) = delete;
 
-  Mutex();
+  Mutex() noexcept;
   ~Mutex();
 
  public:
-  void lock();
+  void lock() noexcept;
   // purposefully violate our naming convention (try_lock instead of tryLock)
   // in order to be compatible with std::mutex
-  bool try_lock();
-  void unlock();
+  bool try_lock() noexcept;
+  void unlock() noexcept;
 
   // assert that the mutex is locked by the current thread. will do
   // nothing in non-maintainer mode and will do nothing for non-posix locks
 #ifdef ARANGODB_ENABLE_DEADLOCK_DETECTION
-  void assertLockedByCurrentThread();
-  void assertNotLockedByCurrentThread();
+  void assertLockedByCurrentThread() const noexcept;
+  void assertNotLockedByCurrentThread() const noexcept;
 #else
   inline void assertLockedByCurrentThread() {}
   inline void assertNotLockedByCurrentThread() {}
@@ -88,9 +91,9 @@ class Mutex {
   SRWLOCK _mutex;
 #endif
 
-#ifdef ARANGODB_ENABLE_DEADLOCK_DETECTION
+#if defined(ARANGODB_ENABLE_DEADLOCK_DETECTION) && \
+    defined(TRI_HAVE_POSIX_THREADS)
   TRI_tid_t _holder;
 #endif
 };
 }  // namespace arangodb
-

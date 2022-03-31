@@ -6,6 +6,7 @@
 (function () {
   'use strict';
 
+  let isCurrentCoordinator = false;
   window.Router = Backbone.Router.extend({
     toUpdate: [],
     dbServers: [],
@@ -13,6 +14,7 @@
     foxxApiEnabled: undefined,
     statisticsInAllDatabases: undefined,
     lastRoute: undefined,
+    maxNumberOfMoveShards: undefined,
 
     routes: {
       '': 'cluster',
@@ -52,6 +54,7 @@
       'cluster': 'cluster',
       'nodes': 'nodes',
       'shards': 'shards',
+      'rebalanceShards': 'rebalanceShards',
       'maintenance': 'maintenance',
       'distribution': 'distribution',
       'node/:name': 'node',
@@ -59,7 +62,11 @@
       'logs': 'logger',
       'helpus': 'helpUs',
       'views': 'views',
-      'view/:name': 'view',
+      'view/:name': 'viewInfo',
+      'view/:name/settings': 'viewSettings',
+      'view/:name/consolidation': 'viewConsolidation',
+      'view/:name/links': 'viewLinks',
+      'view/:name/json': 'viewJSON',
       'graph/:name': 'graph',
       'graph/:name/settings': 'graphSettings',
       'support': 'support'
@@ -108,6 +115,12 @@
           }
           if (this.loggerView.logTopicView) {
             this.loggerView.logTopicView.remove();
+          }
+        }
+
+        if (this.lastRoute === '#shards') {
+          if (this.shardsView) {
+            this.shardsView.remove();
           }
         }
 
@@ -211,6 +224,8 @@
         this.statisticsInAllDatabases = frontendConfig.statisticsInAllDatabases;
       }
 
+      this.maxNumberOfMoveShards = frontendConfig.maxNumberOfMoveShards;
+
       document.addEventListener('keyup', this.listener, false);
 
       // This should be the only global object
@@ -238,6 +253,7 @@
       this.initOnce = _.once(function () {
         const callback = function (error, isCoordinator) {
           if (isCoordinator === true) {
+           isCurrentCoordinator = true;
             self.coordinatorCollection.fetch({
               success: function () {
                 self.fetchDBS();
@@ -441,6 +457,32 @@
           dbServers: this.dbServers
         });
         this.shardsView.render();
+      });
+    },
+
+    rebalanceShards: function () {
+      this.checkUser();
+
+      this.init.then(() => {
+        if (this.isCluster === false || isCurrentCoordinator === false || this.maxNumberOfMoveShards === 0) {
+          this.routes[''] = 'dashboard';
+          this.navigate('#dashboard', { trigger: true });
+          return;
+        }
+        // this below is for when Rebalance Shards tab is not clickable, but user enters it through its URL
+        else if (this.userCollection.authOptions.ro) { // if user can't edit the database,
+                                                                                            // it goes back to the Overview page
+          this.routes[''] = 'nodes';
+          this.navigate('#nodes', { trigger: true });
+          return;
+        }
+        if (this.rebalanceShardsView) {
+          this.rebalanceShardsView.remove();
+        }
+        this.rebalanceShardsView = new window.RebalanceShardsView({
+          maxNumberOfMoveShards: this.maxNumberOfMoveShards
+        });
+        this.rebalanceShardsView.render();
       });
     },
 
@@ -830,13 +872,8 @@
         this.documentView.defaultMode = mode;
 
         let doc = window.location.hash.split('/')[2];
-        const test = (doc.split('%').length - 1) % 3;
-
-        if (decodeURI(doc) !== doc && test !== 0) {
-          doc = decodeURIComponent(doc);
-        }
+        doc = decodeURIComponent(doc);
         this.documentView.docid = doc;
-
         this.documentView.render();
 
         const callback = function (error, type) {
@@ -1130,6 +1167,10 @@
           this.navigate('#dashboard', { trigger: true });
           return;
         }
+        if (!frontendConfig.foxxAllowInstallFromRemote) {
+          this.navigate('#services/install/upload', { trigger: true });
+          return;
+        }
         window.modalView.clearValidators();
         if (this.serviceUrlView) {
           this.serviceUrlView.remove();
@@ -1251,25 +1292,44 @@
       });
     },
 
-    view: function (name) {
-      const self = this;
+    viewInfo: function (name) {
       this.checkUser();
 
-      this.init.then(() => {
-        if (this.viewView) {
-          this.viewView.remove();
-        }
+      this.init.then(
+        () => ReactDOM.render(React.createElement(window.ViewInfoReactView, { name }),
+          document.getElementById('content')));
+    },
 
-        this.arangoViewsStore.fetch({
-          success: function () {
-            self.viewView = new window.ViewView({
-              model: self.arangoViewsStore.get(name),
-              name: name
-            });
-            self.viewView.render();
-          }
-        });
-      });
+    viewSettings: function (name) {
+      this.checkUser();
+
+      this.init.then(
+        () => ReactDOM.render(React.createElement(window.ViewSettingsReactView, { name }),
+          document.getElementById('content')));
+    },
+
+    viewConsolidation: function (name) {
+      this.checkUser();
+
+      this.init.then(
+        () => ReactDOM.render(React.createElement(window.ViewConsolidationReactView, { name }),
+          document.getElementById('content')));
+    },
+
+    viewLinks: function (name) {
+      this.checkUser();
+
+      this.init.then(
+        () => ReactDOM.render(React.createElement(window.ViewLinksReactView, { name }),
+          document.getElementById('content')));
+    },
+
+    viewJSON: function (name) {
+      this.checkUser();
+
+      this.init.then(
+        () => ReactDOM.render(React.createElement(window.ViewJSONReactView, { name }),
+          document.getElementById('content')));
     },
 
     views: function () {

@@ -151,6 +151,33 @@ function optimizerEdgeIndexTestSuite () {
     },
 
 // //////////////////////////////////////////////////////////////////////////////
+// / @brief test index usage with le/lt/ge/gt
+// //////////////////////////////////////////////////////////////////////////////
+
+    testFindFromRange: function () {
+      var queries = [
+        [ 'FOR i IN ' + e.name() + ' FILTER i._from > "UnitTestsCollection/from100" RETURN i._key', 37900 ],
+        [ 'FOR i IN ' + e.name() + ' FILTER i._from >= "UnitTestsCollection/from100" RETURN i._key', 38000 ],
+        [ 'FOR i IN ' + e.name() + ' FILTER i._from < "UnitTestsCollection/from1000" RETURN i._key', 100 ],
+        [ 'FOR i IN ' + e.name() + ' FILTER i._from <= "UnitTestsCollection/from1000" RETURN i._key', 1100 ],
+        [ 'FOR i IN ' + e.name() + ' FILTER i._from != "UnitTestsCollection/from1100" RETURN i._key', 36900 ],
+      ];
+
+      queries.forEach(function (query) {
+        var results = AQL_EXECUTE(query[0]);
+        assertEqual(query[1], results.json.length, query[0]);
+        assertEqual(e.count(), results.stats.scannedFull);
+        assertEqual(0, results.stats.scannedIndex);
+
+        let nodes = AQL_EXPLAIN(query[0]).plan.nodes.filter(function(n) { return n.type === 'IndexNode'; });
+        assertEqual(0, nodes.length);
+        nodes = AQL_EXPLAIN(query[0]).plan.nodes.filter(function(n) { return n.type === 'EnumerateCollectionNode'; });
+        assertEqual(1, nodes.length);
+        assertTrue(nodes[0].producesResult);
+      });
+    },
+
+// //////////////////////////////////////////////////////////////////////////////
 // / @brief test index usage
 // //////////////////////////////////////////////////////////////////////////////
 
@@ -192,6 +219,33 @@ function optimizerEdgeIndexTestSuite () {
     },
 
 // //////////////////////////////////////////////////////////////////////////////
+// / @brief test index usage with le/lt/ge/gt
+// //////////////////////////////////////////////////////////////////////////////
+
+    testFindToRange: function () {
+      var queries = [
+        [ 'FOR i IN ' + e.name() + ' FILTER i._to > "UnitTestsCollection/from100" RETURN i._key', 38000 ],
+        [ 'FOR i IN ' + e.name() + ' FILTER i._to >= "UnitTestsCollection/from100" RETURN i._key', 38000 ],
+        [ 'FOR i IN ' + e.name() + ' FILTER i._to < "UnitTestsCollection/from1000" RETURN i._key', 0 ],
+        [ 'FOR i IN ' + e.name() + ' FILTER i._to <= "UnitTestsCollection/from1000" RETURN i._key', 0 ],
+        [ 'FOR i IN ' + e.name() + ' FILTER i._to != "UnitTestsCollection/from1100" RETURN i._key', 38000 ],
+      ];
+
+      queries.forEach(function (query) {
+        var results = AQL_EXECUTE(query[0]);
+        assertEqual(query[1], results.json.length, query[0]);
+        assertEqual(e.count(), results.stats.scannedFull);
+        assertEqual(0, results.stats.scannedIndex);
+
+        let nodes = AQL_EXPLAIN(query[0]).plan.nodes.filter(function(n) { return n.type === 'IndexNode'; });
+        assertEqual(0, nodes.length);
+        nodes = AQL_EXPLAIN(query[0]).plan.nodes.filter(function(n) { return n.type === 'EnumerateCollectionNode'; });
+        assertEqual(1, nodes.length);
+        assertTrue(nodes[0].producesResult);
+      });
+    },
+
+// //////////////////////////////////////////////////////////////////////////////
 // / @brief test index usage
 // //////////////////////////////////////////////////////////////////////////////
 
@@ -208,6 +262,33 @@ function optimizerEdgeIndexTestSuite () {
         var results = AQL_EXECUTE(query[0]);
         assertEqual(query[1], results.json.length, query[0]);
         assertEqual(0, results.stats.scannedFull);
+      });
+    },
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test index usage with le/lt/ge/gt
+// //////////////////////////////////////////////////////////////////////////////
+
+    testFindFromToRange: function () {
+      var queries = [
+        [ 'FOR i IN ' + e.name() + ' FILTER i._from >= "UnitTestsCollection/from100" && i._to < "UnitTestsCollection/from1000" RETURN i._key', 0 ],
+        [ 'FOR i IN ' + e.name() + ' FILTER i._from > "UnitTestsCollection/from100" && i._to < "UnitTestsCollection/from1000" RETURN i._key', 0 ],
+        [ 'FOR i IN ' + e.name() + ' FILTER i._from >= "UnitTestsCollection/from100" && i._to <= "UnitTestsCollection/from1000" RETURN i._key', 0 ],
+        [ 'FOR i IN ' + e.name() + ' FILTER i._from > "UnitTestsCollection/from100" && i._to < "UnitTestsCollection/from1000" RETURN i._key', 0 ],
+        [ 'FOR i IN ' + e.name() + ' FILTER i._from != "UnitTestsCollection/from100" && i._to != "UnitTestsCollection/from1000" RETURN i._key', 37900 ],
+      ];
+
+      queries.forEach(function (query) {
+        var results = AQL_EXECUTE(query[0]);
+        assertEqual(query[1], results.json.length, query[0]);
+        assertEqual(e.count(), results.stats.scannedFull);
+        assertEqual(0, results.stats.scannedIndex);
+
+        let nodes = AQL_EXPLAIN(query[0]).plan.nodes.filter(function(n) { return n.type === 'IndexNode'; });
+        assertEqual(0, nodes.length);
+        nodes = AQL_EXPLAIN(query[0]).plan.nodes.filter(function(n) { return n.type === 'EnumerateCollectionNode'; });
+        assertEqual(1, nodes.length);
+        assertTrue(nodes[0].producesResult);
       });
     },
 

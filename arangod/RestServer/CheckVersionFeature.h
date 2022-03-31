@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,17 +23,21 @@
 
 #pragma once
 
-#include <cstdint>
+#include <span>
+
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "RestServer/arangod.h"
 
 struct TRI_vocbase_t;
 
 namespace arangodb {
 
-class CheckVersionFeature final : public application_features::ApplicationFeature {
+class CheckVersionFeature final : public ArangodFeature {
  public:
-  explicit CheckVersionFeature(application_features::ApplicationServer& server, int* result,
-                               std::vector<std::type_index> const& nonServerFeatures);
+  static constexpr std::string_view name() noexcept { return "CheckVersion"; }
+
+  explicit CheckVersionFeature(Server& server, int* result,
+                               std::span<const size_t> nonServerFeatures);
 
  private:
   bool _checkVersion;
@@ -47,8 +51,7 @@ class CheckVersionFeature final : public application_features::ApplicationFeatur
   void checkVersion();
 
   int* _result;
-  std::vector<std::type_index> _nonServerFeatures;
+  std::span<const size_t> _nonServerFeatures;
 };
 
 }  // namespace arangodb
-

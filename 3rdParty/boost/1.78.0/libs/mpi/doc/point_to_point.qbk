@@ -1,0 +1,176 @@
+[section:point_to_point Point-to-Point communication]
+
+[section:blocking Blocking communication]
+
+As a message passing library, MPI's primary purpose is to routine
+messages from one process to another, i.e., point-to-point. MPI
+contains routines that can send messages, receive messages, and query
+whether messages are available. Each message has a source process, a
+target process, a tag, and a payload containing arbitrary data. The
+source and target processes are the ranks of the sender and receiver
+of the message, respectively. Tags are integers that allow the
+receiver to distinguish between different messages coming from the
+same sender. 
+
+The following program uses two MPI processes to write "Hello, world!"
+to the screen (`hello_world.cpp`):
+
+  #include <boost/mpi.hpp>
+  #include <iostream>
+  #include <string>
+  #include <boost/serialization/string.hpp>
+  namespace mpi = boost::mpi;
+
+  int main() 
+  {
+    mpi::environment env;
+    mpi::communicator world;
+
+    if (world.rank() == 0) {
+      world.send(1, 0, std::string("Hello"));
+      std::string msg;
+      world.recv(1, 1, msg);
+      std::cout << msg << "!" << std::endl;
+    } else {
+      std::string msg;
+      world.recv(0, 0, msg);
+      std::cout << msg << ", ";
+      std::cout.flush();
+      world.send(0, 1, std::string("world"));
+    }
+
+    return 0;
+  }
+
+The first processor (rank 0) passes the message "Hello" to the second
+processor (rank 1) using tag 0. The second processor prints the string
+it receives, along with a comma, then passes the message "world" back
+to processor 0 with a different tag. The first processor then writes
+this message with the "!" and exits. All sends are accomplished with
+the [memberref boost::mpi::communicator::send
+communicator::send] method and all receives use a corresponding
+[memberref boost::mpi::communicator::recv
+communicator::recv] call.
+
+[endsect:blocking]
+
+[section:nonblocking Non-blocking communication]
+
+The default MPI communication operations--`send` and `recv`--may have
+to wait until the entire transmission is completed before they can
+return. Sometimes this *blocking* behavior has a negative impact on
+performance, because the sender could be performing useful computation
+while it is waiting for the transmission to occur. More important,
+however, are the cases where several communication operations must
+occur simultaneously, e.g., a process will both send and receive at
+the same time.
+
+Let's revisit our "Hello, world!" program from the previous
+[link mpi.tutorial.point_to_point.blocking section].
+The core of this program transmits two messages:
+
+    if (world.rank() == 0) {
+      world.send(1, 0, std::string("Hello"));
+      std::string msg;
+      world.recv(1, 1, msg);
+      std::cout << msg << "!" << std::endl;
+    } else {
+      std::string msg;
+      world.recv(0, 0, msg);
+      std::cout << msg << ", ";
+      std::cout.flush();
+      world.send(0, 1, std::string("world"));
+    }
+
+The first process passes a message to the second process, then
+prepares to receive a message. The second process does the send and
+receive in the opposite order. However, this sequence of events is
+just that--a *sequence*--meaning that there is essentially no
+parallelism. We can use non-blocking communication to ensure that the
+two messages are transmitted simultaneously
+(`hello_world_nonblocking.cpp`): 
+
+  #include <boost/mpi.hpp>
+  #include <iostream>
+  #include <string>
+  #include <boost/serialization/string.hpp>
+  namespace mpi = boost::mpi;
+
+  int main() 
+  {
+    mpi::environment env;
+    mpi::communicator world;
+
+    if (world.rank() == 0) {
+      mpi::request reqs[2];
+      std::string msg, out_msg = "Hello";
+      reqs[0] = world.isend(1, 0, out_msg);
+      reqs[1] = world.irecv(1, 1, msg);
+      mpi::wait_all(reqs, reqs + 2);
+      std::cout << msg << "!" << std::endl;
+    } else {
+      mpi::request reqs[2];
+      std::string msg, out_msg = "world";
+      reqs[0] = world.isend(0, 1, out_msg);
+      reqs[1] = world.irecv(0, 0, msg);
+      mpi::wait_all(reqs, reqs + 2);
+      std::cout << msg << ", ";
+    }
+
+    return 0;
+  }
+
+We have replaced calls to the [memberref
+boost::mpi::communicator::send communicator::send] and
+[memberref boost::mpi::communicator::recv
+communicator::recv] members with similar calls to their non-blocking
+counterparts, [memberref boost::mpi::communicator::isend
+communicator::isend] and [memberref
+boost::mpi::communicator::irecv communicator::irecv]. The
+prefix *i* indicates that the operations return immediately with a
+[classref boost::mpi::request mpi::request] object, which
+allows one to query the status of a communication request (see the
+[memberref boost::mpi::request::test test] method) or wait
+until it has completed (see the [memberref
+boost::mpi::request::wait wait] method). Multiple requests
+can be completed at the same time with the [funcref
+boost::mpi::wait_all wait_all] operation. 
+
+[important Regarding communication completion/progress:
+The MPI standard requires users to keep the request
+handle for a non-blocking communication, and to call the "wait"
+operation (or successfully test for completion) to complete the send
+or receive.
+Unlike most C MPI implementations, which allow the user to
+discard the request for a non-blocking send, Boost.MPI requires the
+user to call "wait" or "test", since the request object might contain
+temporary buffers that have to be kept until the send is
+completed.
+Moreover, the MPI standard does not guarantee that the
+receive makes any progress before a call to "wait" or "test", although
+most implementations of the C MPI do allow receives to progress before
+the call to "wait" or "test".
+Boost.MPI, on the other hand, generally
+requires "test" or "wait" calls to make progress.
+More specifically, Boost.MPI  guarantee that calling "test" multiple time will
+eventually complete the communication (this is due to the fact that serialized communication are potentially a multi step operation.). ]
+
+If you run this program multiple times, you may see some strange
+results: namely, some runs will produce:
+
+  Hello, world!
+
+while others will produce:
+
+  world!
+  Hello,
+
+or even some garbled version of the letters in "Hello" and
+"world". This indicates that there is some parallelism in the program,
+because after both messages are (simultaneously) transmitted, both
+processes will concurrent execute their print statements. For both
+performance and correctness, non-blocking communication operations are
+critical to many parallel applications using MPI.
+
+[endsect:nonblocking]
+[endsect:point_to_point]

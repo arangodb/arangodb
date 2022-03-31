@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -29,11 +30,12 @@ namespace arangodb {
 namespace iresearch {
 
 struct VPackTermAttribute final : irs::attribute {
-  static constexpr irs::string_ref type_name() noexcept { return "vpack_term_attribute"; }
+  static constexpr irs::string_ref type_name() noexcept {
+    return "vpack_term_attribute";
+  }
 
   ::arangodb::velocypack::Slice value;
 };
 
-} // namespace iresearch
-} // namespace arangodb
-
+}  // namespace iresearch
+}  // namespace arangodb

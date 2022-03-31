@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,32 +30,51 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
-namespace application_features {
-class ApplicationServer;
-}
 namespace options {
 class ProgramOptions;
 }
 
+class LoggerFeature;
+class ShellColorsFeature;
+class VersionFeature;
+
 class ConfigFeature final : public application_features::ApplicationFeature {
  public:
-  ConfigFeature(application_features::ApplicationServer& server, std::string const& progname,
-                std::string const& configFilename = "");
+  static constexpr std::string_view name() noexcept { return "Config"; }
+
+  template<typename Server>
+  ConfigFeature(Server& server, std::string const& progname,
+                std::string const& configFilename = "")
+      : application_features::ApplicationFeature{server, *this},
+        _version{[&server]() {
+          return server.template hasFeature<VersionFeature>()
+                     ? &server.template getFeature<VersionFeature>()
+                     : nullptr;
+        }()},
+        _file(configFilename),
+        _progname(progname),
+        _checkConfiguration(false) {
+    static_assert(
+        Server::template isCreatedAfter<ConfigFeature, VersionFeature>());
+
+    setOptional(false);
+    startsAfter<LoggerFeature, Server>();
+    startsAfter<ShellColorsFeature, Server>();
+  }
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void loadOptions(std::shared_ptr<options::ProgramOptions>,
                    char const* binaryPath) override final;
 
  private:
-  std::string _file;
-  std::vector<std::string> _defines;
-  bool _checkConfiguration;
-
   void loadConfigFile(std::shared_ptr<options::ProgramOptions>,
                       std::string const& progname, char const* binaryPath);
 
+  VersionFeature* _version;
+  std::string _file;
   std::string _progname;
+  std::vector<std::string> _defines;
+  bool _checkConfiguration;
 };
 
 }  // namespace arangodb
-

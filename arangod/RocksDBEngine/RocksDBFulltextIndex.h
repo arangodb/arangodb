@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -62,7 +62,7 @@ class RocksDBFulltextIndex final : public RocksDBIndex {
   RocksDBFulltextIndex() = delete;
 
   RocksDBFulltextIndex(IndexId iid, LogicalCollection& collection,
-                       arangodb::velocypack::Slice const& info);
+                       arangodb::velocypack::Slice info);
 
   ~RocksDBFulltextIndex() = default;
 
@@ -76,8 +76,15 @@ class RocksDBFulltextIndex final : public RocksDBIndex {
 
   bool hasSelectivityEstimate() const override { return false; }
 
-  void toVelocyPack(velocypack::Builder&,
-                    std::underlying_type<Index::Serialize>::type) const override;
+  void toVelocyPack(
+      velocypack::Builder&,
+      std::underlying_type<Index::Serialize>::type) const override;
+
+  std::vector<std::vector<arangodb::basics::AttributeName>> const&
+  coveredFields() const override {
+    // index does not cover the index attribute!
+    return Index::emptyCoveredFields;
+  }
 
   bool matchesDefinition(VPackSlice const&) const override;
 
@@ -87,10 +94,10 @@ class RocksDBFulltextIndex final : public RocksDBIndex {
     return (_minWordLength == minWordLength && fieldString == field);
   }
 
-  std::unique_ptr<IndexIterator> iteratorForCondition(transaction::Methods* trx, 
-                                                      aql::AstNode const* node, 
-                                                      aql::Variable const* reference,
-                                                      IndexIteratorOptions const& opts) override;
+  std::unique_ptr<IndexIterator> iteratorForCondition(
+      transaction::Methods* trx, aql::AstNode const* node,
+      aql::Variable const* reference, IndexIteratorOptions const& opts,
+      ReadOwnWrites readOwnWrites, int) override;
 
   arangodb::Result parseQueryString(std::string const&, FulltextQuery&);
   Result executeQuery(transaction::Methods* trx, FulltextQuery const& query,
@@ -100,7 +107,8 @@ class RocksDBFulltextIndex final : public RocksDBIndex {
   /// insert index elements into the specified write batch.
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,
                 LocalDocumentId const& documentId, velocypack::Slice doc,
-                OperationOptions const& /*options*/, bool /*performChecks*/) override;
+                OperationOptions const& /*options*/,
+                bool /*performChecks*/) override;
 
   /// remove index elements and put it in the specified write batch.
   Result remove(transaction::Methods& trx, RocksDBMethods* methods,
@@ -116,9 +124,9 @@ class RocksDBFulltextIndex final : public RocksDBIndex {
   /// @brief minimum word length
   int _minWordLength;
 
-  arangodb::Result applyQueryToken(transaction::Methods* trx, FulltextQueryToken const&,
+  arangodb::Result applyQueryToken(transaction::Methods* trx,
+                                   FulltextQueryToken const&,
                                    std::set<LocalDocumentId>& resultSet);
 };
 
 }  // namespace arangodb
-

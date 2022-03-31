@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,14 +31,11 @@ namespace arangodb {
 /// Storage engine agnostic handler for using the WalAccess interface
 class RestWalAccessHandler : public arangodb::RestVocbaseBaseHandler {
  public:
-  RestWalAccessHandler(application_features::ApplicationServer&,
-                       GeneralRequest*, GeneralResponse*);
+  RestWalAccessHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
 
  public:
   char const* name() const override final { return "RestWalAccessHandler"; }
-  RequestLane lane() const override final {
-    return RequestLane::SERVER_REPLICATION;
-  }
+  RequestLane lane() const override final;
   RestStatus execute() override;
 
  private:
@@ -47,7 +44,8 @@ class RestWalAccessHandler : public arangodb::RestVocbaseBaseHandler {
   void handleCommandTickRange(WalAccess const* wal);
   void handleCommandLastTick(WalAccess const* wal);
   void handleCommandTail(WalAccess const* wal);
+
+  /// @brief deprecated. remove in future version
   void handleCommandDetermineOpenTransactions(WalAccess const* wal);
 };
 }  // namespace arangodb
-

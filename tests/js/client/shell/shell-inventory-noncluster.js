@@ -70,6 +70,9 @@ function inventorySuite () {
     assertEqual("object", typeof view.links);
     Object.keys(view.links).forEach(function(collection) {
       let link = view.links[collection];
+      assertEqual(10, Object.keys(link).length);
+      assertEqual("number", typeof link.version);
+      assertEqual(1, link.version);
       assertTrue(Array.isArray(link.analyzerDefinitions));
       link.analyzerDefinitions.forEach(function(analyzer) {
         assertEqual("object", typeof analyzer);
@@ -80,7 +83,7 @@ function inventorySuite () {
       });
       assertTrue(Array.isArray(link.analyzers));
       assertEqual("object", typeof link.fields);
-      
+
       assertEqual("boolean", typeof link.includeAllFields);
       assertTrue(Array.isArray(link.primarySort));
       assertTrue(link.hasOwnProperty("storeValues"));
@@ -149,15 +152,15 @@ function inventorySuite () {
       db._createEdgeCollection("UnitTestsDumpEdges");
 
       let c = db._create("UnitTestsDumpIndexes");
-      c.ensureUniqueConstraint("a_uc");
-      c.ensureSkiplist("a_s1", "a_s2");
-      c.ensureHashIndex("a_h1", "a_h2");
-      c.ensureUniqueSkiplist("a_su");
-      c.ensureHashIndex("a_hs1", "a_hs2", { sparse: true });
-      c.ensureSkiplist("a_ss1", "a_ss2", { sparse: true });
-      c.ensureFulltextIndex("a_f");
-      c.ensureGeoIndex("a_la", "a_lo");
-      
+      c.ensureIndex({ type: "hash", fields: ["a_uc"], unique: true });
+      c.ensureIndex({ type: "skiplist", fields: ["a_s1", "a_s2"] });
+      c.ensureIndex({ type: "hash", fields: ["a_h1", "a_h2"] });
+      c.ensureIndex({ type: "skiplist", fields: ["a_su"], unique: true });
+      c.ensureIndex({ type: "hash", fields: ["a_hs1", "a_hs2"], sparse: true });
+      c.ensureIndex({ type: "skiplist", fields: ["a_ss1", "a_ss2"], sparse: true });
+      c.ensureIndex({ type: "fulltext", fields: ["a_f"] });
+      c.ensureIndex({ type: "geo", fields: ["a_la", "a_lo"] });
+
       let analyzer = analyzers.save("custom", "delimiter", { delimiter : " " }, [ "frequency" ]);
 
       // setup a view
@@ -165,7 +168,7 @@ function inventorySuite () {
 
       // setup an empty view
       db._createView("UnitTestsDumpViewEmpty", "arangosearch", {});
-      
+
       let view = db._createView("UnitTestsDumpView", "arangosearch", {});
       view.properties({
         cleanupIntervalStep: 456,
@@ -282,6 +285,9 @@ function inventorySuite () {
         assertEqual(1, Object.keys(links).length);
         assertEqual("UnitTestsDumpEmpty", Object.keys(links)[0]);
         let link = links["UnitTestsDumpEmpty"];
+        assertEqual(10, Object.keys(link).length);
+        assertEqual("number", typeof link.version);
+        assertEqual(1, link.version);
         assertTrue(link.includeAllFields);
         assertEqual([], link.primarySort);
         assertEqual("none", link.storeValues);
@@ -317,7 +323,7 @@ function inventorySuite () {
         a = link.analyzerDefinitions[2];
         assertEqual("text_en", a.name);
         assertEqual("text", a.type);
-        assertEqual({locale: "en.utf-8", case: "lower", stopwords: [], accent: false, stemming: true}, a.properties);
+        assertEqual({locale: "en", case: "lower", stopwords: [], accent: false, stemming: true}, a.properties);
         assertEqual(["frequency", "norm", "position"], a.features.sort());
 
         view = results.views[1];

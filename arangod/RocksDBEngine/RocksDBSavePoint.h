@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,6 +24,7 @@
 #pragma once
 
 #include "Basics/Result.h"
+#include "RocksDBEngine/Methods/RocksDBTrxMethods.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "VocBase/Identifiers/RevisionId.h"
 #include "VocBase/voc-types.h"
@@ -31,39 +32,33 @@
 namespace arangodb {
 class RocksDBTransactionState;
 
-namespace transaction {
-class Methods;
-}
-
 class RocksDBSavePoint {
  public:
-  RocksDBSavePoint(RocksDBTransactionState* state,
-                   transaction::Methods* trx, 
+  RocksDBSavePoint(DataSourceId collectionId, RocksDBTransactionState& state,
                    TRI_voc_document_operation_e operationType);
 
   ~RocksDBSavePoint();
 
-  void prepareOperation(DataSourceId cid, RevisionId rid);
-  
+  void prepareOperation(RevisionId rid);
+
   /// @brief acknowledges the current savepoint, so there
   /// will be no rollback when the destructor is called
-  [[nodiscard]] Result finish(DataSourceId cid, RevisionId rid);
-  
-  TRI_voc_document_operation_e operationType() const {
-    return _operationType;
-  }
+  [[nodiscard]] Result finish(RevisionId rid);
+
+  TRI_voc_document_operation_e operationType() const { return _operationType; }
 
   /// @brief this is going to be called if at least one Put or Delete
   /// has made it into the underyling WBWI. if so, on rollback we must
   /// perform a full rebuild
   void tainted() { _tainted = true; }
-  
+
  private:
   void rollback();
 
  private:
-  RocksDBTransactionState* _state;
-  transaction::Methods* _trx;
+  RocksDBTransactionState& _state;
+  RocksDBTransactionMethods& _rocksMethods;
+  DataSourceId _collectionId;
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   uint64_t _numCommitsAtStart;
 #endif
@@ -73,4 +68,3 @@ class RocksDBSavePoint {
 };
 
 }  // namespace arangodb
-

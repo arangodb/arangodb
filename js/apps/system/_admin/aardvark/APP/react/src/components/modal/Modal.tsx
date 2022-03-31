@@ -1,4 +1,4 @@
-import { CSSProperties, ReactNode, useEffect, useRef } from "react";
+import { CSSProperties, ReactNode, useEffect, useRef, useState } from "react";
 import { createPortal, render, unmountComponentAtNode } from "react-dom";
 import picoModal from 'picomodal';
 import { uniqueId } from 'lodash';
@@ -7,6 +7,7 @@ interface ModalProps {
   show: boolean;
   children?: ReactNode;
   setShow: (show: boolean) => void;
+  cid?: string;
 }
 
 function renderChildren (children: ReactNode, contentDivId: string) {
@@ -15,10 +16,17 @@ function renderChildren (children: ReactNode, contentDivId: string) {
   render(createPortal(children, contentDiv, contentDivId), contentDiv);
 }
 
-const Modal = ({ show, setShow, children }: ModalProps) => {
-  const contentDivId = useRef(uniqueId('modal-content-'));
+const Modal = ({ show, setShow, children, cid }: ModalProps) => {
+  const [thisCid, setThisCid] = useState(cid || uniqueId('modal-content-'));
+
+  useEffect(() => {
+    if (cid) {
+      setThisCid(cid);
+    }
+  }, [cid]);
+
   const modal = useRef(picoModal({
-    content: `<div id='${contentDivId.current}'></div>`,
+    content: `<div id='${thisCid}'></div>`,
     closeButton: false,
     modalStyles: (styles: CSSProperties) => {
       styles.zIndex = 9000;
@@ -28,7 +36,7 @@ const Modal = ({ show, setShow, children }: ModalProps) => {
     }
   })
     .afterCreate(() => {
-      renderChildren(children, contentDivId.current); // First render of children.
+      renderChildren(children, thisCid); // First render of children.
     })
     .afterClose(() => {
       setShow(false);
@@ -36,9 +44,9 @@ const Modal = ({ show, setShow, children }: ModalProps) => {
 
   useEffect(() => {
     if (modal.current.isVisible()) {
-      renderChildren(children, contentDivId.current); // Re-render children on any child update. Important!
+      renderChildren(children, thisCid); // Re-render children on any child update. Important!
     }
-  }, [children]);
+  }, [children, thisCid]);
 
   useEffect(() => {
     if (show) {
@@ -52,13 +60,13 @@ const Modal = ({ show, setShow, children }: ModalProps) => {
     return () => {
       try {
         // eslint-disable-next-line react-hooks/exhaustive-deps
-        unmountComponentAtNode(document.getElementById(contentDivId.current) as HTMLElement);
+        unmountComponentAtNode(document.getElementById(thisCid) as HTMLElement);
         // eslint-disable-next-line react-hooks/exhaustive-deps
         modal.current.destroy();
       } catch (e) {
       }
     };
-  }, []);
+  }, [thisCid]);
 
   return null;
 };

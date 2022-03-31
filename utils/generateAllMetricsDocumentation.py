@@ -37,13 +37,14 @@ if len(sys.argv) > 1 and (sys.argv[1] == "-h" or sys.argv[1] == "--help"):
 CATEGORYNAMES = ["Health", "AQL", "Transactions", "Foxx", "Pregel",
                  "Statistics", "Replication", "Disk", "Errors",
                  "RocksDB", "Hotbackup", "k8s", "Connectivity", "Network",
-                 "V8", "Agency", "Scheduler", "Maintenance", "kubearangodb"]
+                 "V8", "Agency", "Scheduler", "Maintenance", "kubearangodb",
+                 "License", "ArangoSearch"]
 
 NODE_TYPES = ["coordinator", "dbserver", "agent", "single"]
 
 # Check that we are in the right place:
 LS_HERE = os.listdir(".")
-if not("arangod" in LS_HERE and "arangosh" in LS_HERE and
+if not("arangod" in LS_HERE and "client-tools" in LS_HERE and
        "Documentation" in LS_HERE and "CMakeLists.txt" in LS_HERE):
     print("Please execute me in the main source dir!")
     sys.exit(1)
@@ -67,7 +68,7 @@ HEADERHISTOGRAM = re.compile(r"^\s*DECLARE_HISTOGRAM\s*\(")
 NAMEMATCH = re.compile(r"^\s*([a-z_A-Z0-9]+)\s*,")
 
 files = chain(*[ Path(rootdir).glob(pattern)
-            for rootdir in ["arangod", "lib"]
+            for rootdir in ["arangod", "lib", "enterprise"]
             for pattern in ["**/*.cpp", "**/*.h"] ])
 
 for f in files:
@@ -105,7 +106,7 @@ for f in files:
                 if m:
                     METRICSLIST.append(m.group(1))
 if len(METRICSLIST) == 0:
-    print("Did not find any metrics in arangod/RestServer/MetricsFeature.h!")
+    print("Did not find any metrics in arangod/Metrics/MetricsFeature.h!")
     sys.exit(2)
 
 METRICSLIST.sort()

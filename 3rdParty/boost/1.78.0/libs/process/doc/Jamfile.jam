@@ -1,0 +1,64 @@
+# Copyright (c) 2006, 2007 Julio M. Merino Vidal
+# Copyright (c) 2008 Ilya Sokolov, Boris Schaeling
+# Copyright (c) 2009 Boris Schaeling
+# Copyright (c) 2010 Felipe Tanus, Boris Schaeling
+# Copyright (c) 2011, 2012 Jeff Flinn, Boris Schaeling
+#
+# Distributed under the Boost Software License, Version 1.0. (See accompanying
+# file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+
+using boostbook ;
+using quickbook ;
+using doxygen ;
+
+
+local images = [ glob images/*.svg ] ;
+install images      : $(images) : <location>html/boost_process ;
+install images_glob : $(images) : <location>$(BOOST_ROOT)/doc/html/boost_process ;         
+
+import type ;
+type.register XMLPROCESSWORKAROUND : : XML ;
+import generators ;
+generators.register-standard common.copy : XML : XMLPROCESSWORKAROUND ; 
+
+xmlprocessworkaround posix_pseudocode   : posix_pseudocode.xml   ; 
+xmlprocessworkaround windows_pseudocode : windows_pseudocode.xml ;
+
+
+doxygen autodoc
+:
+  ../../../boost/process.hpp
+  [ glob ../../../boost/process/*.hpp ]
+:
+  <doxygen:param>EXCLUDE_SYMBOLS=BOOST_ASIO_INITFN_RESULT_TYPE
+  <doxygen:param>PREDEFINED=BOOST_PROCESS_DOXYGEN
+  <doxygen:param>HIDE_UNDOC_CLASSES=YES
+  <doxygen:param>HIDE_UNDOC_MEMBERS=YES
+  <doxygen:param>EXAMPLE_PATH=.
+  <dependency>posix_pseudocode
+  <dependency>windows_pseudocode
+  <xsl:path>.
+;
+
+
+
+boostbook standalone
+:
+  process.qbk
+:
+  <dependency>autodoc
+  <dependency>images
+  <dependency>images_glob
+  <xsl:param>boost.root=../../../..
+  <xsl:param>html.stylesheet=../../../../doc/src/boostbook.css
+;
+
+###############################################################################
+alias boostdoc
+    : standalone/<format>docbook
+    : 
+    : <dependency>images_glob
+    : ;
+explicit boostdoc ;
+alias boostrelease ;
+explicit boostrelease ;

@@ -35,7 +35,7 @@ function graphTraversalGenericGeneralGraphStandaloneSuite() {
   let testGraphs = _.fromPairs(_.keys(protoGraphs).map(x => [x, {}]));
   _.each(protoGraphs, function (protoGraph) {
     _.each(protoGraph.prepareSingleServerGraph(), function (testGraph) {
-      testGraphs[protoGraph.name()][testGraph.name()] = testGraph;
+      testGraphs[protoGraph.name()][`${testGraph.name()}_SingleServerGeneralGraph`] = testGraph;
     });
   });
 
@@ -78,8 +78,8 @@ function graphTraversalGenericGeneralGraphStandaloneSuite() {
   _.each(testsByGraph, function (localTests, graphName) {
     let graphs = testGraphs[graphName];
     _.each(localTests, function (test, testName) {
-      _.each(graphs, function (graph){
-        suite[testName + '_' + graph.name()] = function () {
+      _.each(graphs, function (graph, name){
+        suite[`${testName}_${name}`] = function () {
           test(graph);
         };
       });

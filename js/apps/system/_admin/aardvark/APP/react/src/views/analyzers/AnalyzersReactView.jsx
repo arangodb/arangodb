@@ -1,13 +1,13 @@
-/* global arangoHelper, frontendConfig */
+/* global $ */
 
-import { isEqual, sortBy } from 'lodash';
-import minimatch from 'minimatch';
+import { isEqual, map, sortBy } from 'lodash';
 import React, { useCallback, useEffect, useState } from 'react';
 import useSWR from 'swr';
+import { ArangoTable, ArangoTD, ArangoTH } from '../../components/arango/table';
 import Modal, { ModalBody, ModalFooter, ModalHeader } from '../../components/modal/Modal';
 import { Cell, Grid } from '../../components/pure-css/grid';
 import { getApiRouteForCurrentDB } from '../../utils/arangoClient';
-import { getChangeHandler } from '../../utils/helpers';
+import { facetedFilter, getChangeHandler, isAdminUser, usePermissions } from '../../utils/helpers';
 import Actions from './Actions';
 import AddAnalyzer from './AddAnalyzer';
 import { typeNameMap } from './constants';
@@ -23,14 +23,12 @@ const FilterHelpModal = () => {
   return <>
     <a href={'#analyzers'} onClick={showFilterHelp}>
       <i className={'fa fa-question-circle'} style={{
-        float: 'right',
-        marginRight: 10,
-        marginTop: 3,
-        color: '#fff',
-        fontSize: '16pt'
+        marginTop: 5,
+        color: 'rgb(85, 85, 85)',
+        fontSize: '18px'
       }}/>
     </a>
-    <Modal show={show} setShow={setShow}>
+    <Modal show={show} setShow={setShow} cid={'modal-content-filter-help'}>
       <ModalHeader title={'Filter Help'}/>
       <ModalBody>
         <dl>
@@ -66,12 +64,16 @@ const FilterHelpModal = () => {
   </>;
 };
 
+const toggleHeaderDropdown = () => {
+  $('#analyzersToggle').toggleClass('activated');
+  $('#analyzersDropdown2').slideToggle(200);
+};
+
+const facets = ['db', 'name', 'type'];
+
 const AnalyzersReactView = () => {
   const { data } = useSWR('/analyzer', (path) => getApiRouteForCurrentDB().get(path));
-  const { data: permData } = useSWR(
-    `/user/${arangoHelper.getCurrentJwtUsername()}/database/${frontendConfig.db}`,
-    (path) => getApiRouteForCurrentDB().get(path)
-  );
+  const permissions = usePermissions();
 
   const [filterExpr, setFilterExpr] = useState('');
   const [filteredAnalyzers, setFilteredAnalyzers] = useState([]);
@@ -95,119 +97,100 @@ const AnalyzersReactView = () => {
   };
 
   useEffect(() => {
-    let tempFilteredAnalyzers = analyzers;
-
-    if (filterExpr) {
-      try {
-        const filters = filterExpr.trim().split(/\s+/);
-
-        for (const filter of filters) {
-          const splitIndex = filter.indexOf(':');
-          const field = filter.slice(0, splitIndex);
-          const pattern = filter.slice(splitIndex + 1);
-
-          tempFilteredAnalyzers = tempFilteredAnalyzers.filter(
-            analyzer => minimatch(analyzer[field].toLowerCase(), `*${pattern.toLowerCase()}*`));
-        }
-      } catch (e) {
-        tempFilteredAnalyzers = tempFilteredAnalyzers.filter(analyzer => {
-          const normalizedPattern = `*${filterExpr.toLowerCase()}*`;
-
-          return ['db', 'name', 'type'].some(
-            field => minimatch(analyzer[field].toLowerCase(), normalizedPattern));
-        });
-      }
-    }
-
-    processAndSetFilteredAnalyzers(tempFilteredAnalyzers);
+    processAndSetFilteredAnalyzers(facetedFilter(filterExpr, analyzers, facets));
   }, [analyzers, filterExpr, processAndSetFilteredAnalyzers]);
 
-  if (data && permData) {
-    const permission = permData.body.result;
-
-    if (!isEqual(data.body.result, analyzers)) {
+  if (data) {
+    if (!isEqual(map(data.body.result, 'name'), map(analyzers, 'name'))) {
       setAnalyzers(data.body.result);
       processAndSetFilteredAnalyzers(data.body.result);
     }
 
-    return <div className={'innerContent'} id={'analyzersContent'} style={{ paddingTop: 0 }}>
-      <Grid>
-        <Cell size={'1'}>
-          <Grid className={'sectionHeader'}>
-            <Cell size={'2-5'}>
-              <div className={'title'}><AddAnalyzer analyzers={analyzers}/></div>
-            </Cell>
-
-            <Cell size={'3-5'}>
+    return <>
+      <div className="headerBar">
+        <div className="search-field">
+          <input type={'text'} id={'filterInput'} className={'search-input'} value={filterExpr}
+                 onChange={getChangeHandler(setFilterExpr)} placeholder={'Filter...'}/>
+          <i id="searchSubmit" className="fa fa-search"/>
+        </div>
+        <div className="headerButtonBar">
+          <ul className="headerButtonList">
+            <li className="enabled">
               <FilterHelpModal/>
-              <label htmlFor={'filter-input'} style={{
-                color: '#fff',
-                marginRight: 10,
-                float: 'right'
-              }}>
-                Filter: <input type={'text'} id={'filter-input'} className={'search-input'}
-                               value={filterExpr} onChange={getChangeHandler(setFilterExpr)}
-                               placeholder={'<glob>|(<db|name|type>:<glob> )+'}
-                               style={{
-                                 margin: 0,
-                                 width: 300,
-                                 paddingLeft: 25
-                               }}/>
-                <i className={'fa fa-filter'} style={{
-                  position: 'relative',
-                  float: 'left',
-                  top: 9,
-                  left: 60,
-                  cursor: 'default',
-                  color: 'rgb(85, 85, 85)'
-                }}/>
-              </label>
-              <label htmlFor={'inbuilt-analyzers'} className="pure-checkbox" style={{
-                float: 'right',
-                color: '#fff',
-                marginTop: 3
-              }}>
-                <input id={'inbuilt-analyzers'} type={'checkbox'} checked={showInbuiltAnalyzers}
-                       onChange={toggleInbuiltAnalyzers} style={{
-                  width: 'auto',
-                  marginBottom: 7
-                }}/> Show In-built Analyzers
-              </label>
-            </Cell>
-          </Grid>
-          <table className={'arango-table'}>
-            <thead>
-            <tr>
-              <th className={'arango-table-th table-cell0'}>DB</th>
-              <th className={'arango-table-th table-cell1'}>Name</th>
-              <th className={'arango-table-th table-cell2'}>Type</th>
-              <th className={'arango-table-th table-cell3'}>Actions</th>
-            </tr>
-            </thead>
-            <tbody>
+            </li>
+            <li className="enabled">
+              <a id="analyzersToggle" className="headerButton" href={'#analyzers'}
+                 onClick={toggleHeaderDropdown}>
+                <span className="icon_arangodb_settings2" title="Settings"/>
+              </a>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <div id="analyzersDropdown2" className="headerDropdown">
+        <div id="analyzersDropdown" className="dropdownInner">
+          <ul>
+            <li className="nav-header">System</li>
+            <li>
+              <a href={'#analyzers'}>
+                <label className="checkbox checkboxLabel">
+                  <input className="css-checkbox" type="checkbox"
+                         onChange={toggleInbuiltAnalyzers}/>
+                  <i
+                    className={`fa ${showInbuiltAnalyzers ? 'fa-check-square-o' : 'fa-square-o'}`}/>
+                  Built-in
+                </label>
+              </a>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <div className={'contentDiv'} id={'analyzersContent'} style={{ paddingTop: 0 }}>
+        <Grid>
+          <Cell size={'1'}>
             {
-              filteredAnalyzers.length
-                ? filteredAnalyzers.map(analyzer => (
-                  <tr key={analyzer.name}>
-                    <td className={'arango-table-td table-cell0'}>{analyzer.db}</td>
-                    <td className={'arango-table-td table-cell1'}>{analyzer.name}</td>
-                    <td className={'arango-table-td table-cell2'}>{typeNameMap[analyzer.type]}</td>
-                    <td className={'arango-table-td table-cell3'}>
-                      <Actions analyzer={analyzer} permission={permission}/>
-                    </td>
-                  </tr>
-                ))
-                : <tr>
-                  <td className={'arango-table-td table-cell0'} colSpan={4}>
-                    No analyzers found.
-                  </td>
-                </tr>
+              isAdminUser(permissions)
+                ? <div className={'sectionHeader'}>
+                  <div className={'title'}><AddAnalyzer analyzers={analyzers}/></div>
+                </div>
+                : null
             }
-            </tbody>
-          </table>
-        </Cell>
-      </Grid>
-    </div>;
+            <ArangoTable className={'arango-table'}>
+              <thead>
+              <tr>
+                <ArangoTH seq={0}>DB</ArangoTH>
+                <ArangoTH seq={1}>Name</ArangoTH>
+                <ArangoTH seq={2}>Type</ArangoTH>
+                <ArangoTH seq={3}>Actions</ArangoTH>
+              </tr>
+              </thead>
+              <tbody>
+              {
+                filteredAnalyzers.length
+                  ? filteredAnalyzers.map((analyzer, idx) => (
+                    <tr key={analyzer.name}>
+                      <ArangoTD seq={0}>{analyzer.db}</ArangoTD>
+                      <ArangoTD seq={1}>{analyzer.name}</ArangoTD>
+                      <ArangoTD seq={2}>{typeNameMap[analyzer.type]}</ArangoTD>
+                      <ArangoTD seq={3}>
+                        <Actions analyzer={analyzer} permission={permissions} modalCidSuffix={idx}/>
+                      </ArangoTD>
+                    </tr>
+                  ))
+                  : <tr>
+                    <ArangoTD seq={0} colSpan={4}>
+                      No analyzers found.
+                    </ArangoTD>
+                  </tr>
+              }
+              </tbody>
+            </ArangoTable>
+          </Cell>
+        </Grid>
+      </div>
+    </>;
   }
 
   return <h1>Analyzers</h1>;

@@ -29,8 +29,6 @@
 #include "RocksDBEngine/RocksDBFormat.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 
-#include <velocypack/StringRef.h>
-
 using namespace arangodb;
 
 // -----------------------------------------------------------------------------
@@ -103,12 +101,13 @@ TEST_F(IndexEstimatorTest, test_serialize_deserialize) {
 
   // We read starting from the 10th char. The first 8 are reserved for the
   // seq, and the ninth char is reserved for the type
-  uint64_t persLength = rocksutils::uint64FromPersistent(serialization.data() + 9);
+  uint64_t persLength =
+      rocksutils::uint64FromPersistent(serialization.data() + 9);
   EXPECT_EQ(persLength, length);
 
   // We first have an uint64_t representing the length.
   // This has to be extracted BEFORE initialization.
-  arangodb::velocypack::StringRef ref(serialization.data(), persLength + 8);
+  std::string_view ref(serialization.data(), persLength + 8);
   RocksDBCuckooIndexEstimatorType copy(ref);
 
   // After serialization => deserialization
@@ -142,7 +141,7 @@ TEST_F(IndexEstimatorTest, test_blocker_logic_basic) {
   std::string serialization;
   RocksDBCuckooIndexEstimatorType est(2048);
   RocksDBMetadata meta;
-    
+
   auto format = RocksDBCuckooIndexEstimatorType::SerializeFormat::UNCOMPRESSED;
 
   // test basic insertion buffering
@@ -150,7 +149,8 @@ TEST_F(IndexEstimatorTest, test_blocker_logic_basic) {
     uint64_t index = 0;
     std::vector<uint64_t> toInsert(10);
     std::vector<uint64_t> toRemove(0);
-    std::generate(toInsert.begin(), toInsert.end(), [&index] { return ++index; });
+    std::generate(toInsert.begin(), toInsert.end(),
+                  [&index] { return ++index; });
     expected = currentSeq;  // only commit up to blocker
     meta.placeBlocker(TransactionId{iteration}, ++currentSeq);
     est.bufferUpdates(++currentSeq, std::move(toInsert), std::move(toRemove));
@@ -159,7 +159,8 @@ TEST_F(IndexEstimatorTest, test_blocker_logic_basic) {
     est.serialize(serialization, meta.committableSeq(UINT64_MAX), format);
     serialization.clear();
     ASSERT_EQ(est.appliedSeq(), expected);
-    ASSERT_EQ(1.0 / std::max(1.0, static_cast<double>(iteration)), est.computeEstimate());
+    ASSERT_EQ(1.0 / std::max(1.0, static_cast<double>(iteration)),
+              est.computeEstimate());
 
     meta.removeBlocker(TransactionId{iteration});
     EXPECT_EQ(meta.committableSeq(UINT64_MAX), UINT64_MAX);
@@ -170,7 +171,7 @@ TEST_F(IndexEstimatorTest, test_blocker_logic_basic) {
     serialization.clear();
     ASSERT_EQ(est.appliedSeq(), expected);
     ASSERT_TRUE((1.0 / std::max(1.0, static_cast<double>(iteration + 1))) ==
-            est.computeEstimate());
+                est.computeEstimate());
   }
 
   // test basic removal buffering
@@ -178,7 +179,8 @@ TEST_F(IndexEstimatorTest, test_blocker_logic_basic) {
     uint64_t index = 0;
     std::vector<uint64_t> toInsert(0);
     std::vector<uint64_t> toRemove(10);
-    std::generate(toRemove.begin(), toRemove.end(), [&index] { return ++index; });
+    std::generate(toRemove.begin(), toRemove.end(),
+                  [&index] { return ++index; });
     expected = currentSeq;  // only commit up to blocker
     meta.placeBlocker(TransactionId{iteration}, ++currentSeq);
     est.bufferUpdates(++currentSeq, std::move(toInsert), std::move(toRemove));
@@ -189,7 +191,7 @@ TEST_F(IndexEstimatorTest, test_blocker_logic_basic) {
     serialization.clear();
     ASSERT_EQ(est.appliedSeq(), expected);
     ASSERT_TRUE((1.0 / std::max(1.0, static_cast<double>(10 - iteration))) ==
-            est.computeEstimate());
+                est.computeEstimate());
 
     meta.removeBlocker(TransactionId{iteration});
 
@@ -198,8 +200,9 @@ TEST_F(IndexEstimatorTest, test_blocker_logic_basic) {
     serialization.clear();
     expected = currentSeq;
     ASSERT_EQ(est.appliedSeq(), expected);
-    ASSERT_TRUE((1.0 / std::max(1.0, static_cast<double>(10 - (iteration + 1)))) ==
-            est.computeEstimate());
+    ASSERT_TRUE(
+        (1.0 / std::max(1.0, static_cast<double>(10 - (iteration + 1)))) ==
+        est.computeEstimate());
     ASSERT_EQ(est.appliedSeq(), expected);
   }
 }
@@ -209,7 +212,7 @@ TEST_F(IndexEstimatorTest, test_blocker_logic_overlapping) {
   std::string serialization;
   RocksDBCuckooIndexEstimatorType est(2048);
   RocksDBMetadata meta;
-  
+
   auto format = RocksDBCuckooIndexEstimatorType::SerializeFormat::UNCOMPRESSED;
 
   // test buffering with multiple blockers, but remove blockers in order
@@ -217,7 +220,8 @@ TEST_F(IndexEstimatorTest, test_blocker_logic_overlapping) {
     uint64_t index = 0;
     std::vector<uint64_t> toInsert(10);
     std::vector<uint64_t> toRemove(0);
-    std::generate(toInsert.begin(), toInsert.end(), [&index] { return ++index; });
+    std::generate(toInsert.begin(), toInsert.end(),
+                  [&index] { return ++index; });
 
     auto expected = currentSeq;  // only commit up to blocker
     meta.placeBlocker(TransactionId{iteration}, ++currentSeq);
@@ -230,7 +234,8 @@ TEST_F(IndexEstimatorTest, test_blocker_logic_overlapping) {
     est.serialize(serialization, meta.committableSeq(UINT64_MAX), format);
     serialization.clear();
     ASSERT_EQ(est.appliedSeq(), expected);
-    ASSERT_EQ(1.0 / std::max(1.0, static_cast<double>(iteration)), est.computeEstimate());
+    ASSERT_EQ(1.0 / std::max(1.0, static_cast<double>(iteration)),
+              est.computeEstimate());
   }
 }
 
@@ -240,7 +245,7 @@ TEST_F(IndexEstimatorTest, test_blocker_logic_out_of_order) {
   std::string serialization;
   RocksDBCuckooIndexEstimatorType est(2048);
   RocksDBMetadata meta;
-  
+
   auto format = RocksDBCuckooIndexEstimatorType::SerializeFormat::UNCOMPRESSED;
 
   // test buffering where we keep around one old blocker
@@ -248,14 +253,16 @@ TEST_F(IndexEstimatorTest, test_blocker_logic_out_of_order) {
     uint64_t index = 0;
     std::vector<uint64_t> toInsert(10);
     std::vector<uint64_t> toRemove(0);
-    std::generate(toInsert.begin(), toInsert.end(), [&index] { return ++index; });
+    std::generate(toInsert.begin(), toInsert.end(),
+                  [&index] { return ++index; });
     if (0 == iteration) {
       expected = currentSeq;  // only commit up to blocker
     }
     meta.placeBlocker(TransactionId{iteration}, ++currentSeq);
     est.bufferUpdates(++currentSeq, std::move(toInsert), std::move(toRemove));
     // remove only if not first blocker
-    meta.removeBlocker(TransactionId{std::max(static_cast<size_t>(1), iteration)});
+    meta.removeBlocker(
+        TransactionId{std::max(static_cast<size_t>(1), iteration)});
 
     // now make sure we haven't applied anything
     est.serialize(serialization, meta.committableSeq(UINT64_MAX), format);
@@ -278,7 +285,7 @@ TEST_F(IndexEstimatorTest, test_truncate_logic) {
   rocksdb::SequenceNumber expected(0);
   RocksDBCuckooIndexEstimatorType est(2048);
   RocksDBMetadata meta;
-  
+
   auto format = RocksDBCuckooIndexEstimatorType::SerializeFormat::UNCOMPRESSED;
 
   // test buffering where we keep around one old blocker
@@ -286,7 +293,8 @@ TEST_F(IndexEstimatorTest, test_truncate_logic) {
     uint64_t index = 0;
     std::vector<uint64_t> toInsert(10);
     std::vector<uint64_t> toRemove(0);
-    std::generate(toInsert.begin(), toInsert.end(), [&index] { return ++index; });
+    std::generate(toInsert.begin(), toInsert.end(),
+                  [&index] { return ++index; });
 
     est.bufferUpdates(++currentSeq, std::move(toInsert), std::move(toRemove));
   }
@@ -322,7 +330,7 @@ TEST_F(IndexEstimatorTest, test_truncate_logic_2) {
   rocksdb::SequenceNumber currentSeq(0);
   RocksDBCuckooIndexEstimatorType est(2048);
   RocksDBMetadata meta;
-  
+
   auto format = RocksDBCuckooIndexEstimatorType::SerializeFormat::UNCOMPRESSED;
 
   // test buffering where we keep around one old blocker
@@ -330,7 +338,8 @@ TEST_F(IndexEstimatorTest, test_truncate_logic_2) {
     uint64_t index = 0;
     std::vector<uint64_t> toInsert(10);
     std::vector<uint64_t> toRemove(0);
-    std::generate(toInsert.begin(), toInsert.end(), [&index] { return ++index; });
+    std::generate(toInsert.begin(), toInsert.end(),
+                  [&index] { return ++index; });
 
     est.bufferUpdates(++currentSeq, std::move(toInsert), std::move(toRemove));
   }
@@ -363,12 +372,13 @@ TEST_F(IndexEstimatorTest, test_serialize_compression) {
     }
 
     est->setAppliedSeq(seq);
-    
+
     return est;
   };
-  
-  auto validateSerializedValue = [&](auto& est, std::string const& serialization) {
-    arangodb::velocypack::StringRef ref(serialization);
+
+  auto validateSerializedValue = [&](auto& est,
+                                     std::string const& serialization) {
+    std::string_view ref(serialization);
     RocksDBCuckooIndexEstimatorType copy(ref);
 
     // After serialization => deserialization
@@ -396,12 +406,13 @@ TEST_F(IndexEstimatorTest, test_serialize_compression) {
     EXPECT_EQ(est.computeEstimate(), copy.computeEstimate());
   };
 
-  { 
+  {
     // uncompressed
     auto est = buildEstimator();
 
     std::string serialization;
-    auto format = RocksDBCuckooIndexEstimatorType::SerializeFormat::UNCOMPRESSED;
+    auto format =
+        RocksDBCuckooIndexEstimatorType::SerializeFormat::UNCOMPRESSED;
     est->serialize(serialization, seq, format);
     ASSERT_EQ(24641, serialization.size());
     ASSERT_EQ(format, serialization[sizeof(uint64_t)]);
@@ -409,7 +420,7 @@ TEST_F(IndexEstimatorTest, test_serialize_compression) {
     validateSerializedValue(*est, serialization);
   }
 
-  { 
+  {
     // compressed
     auto est = buildEstimator();
 
@@ -418,8 +429,7 @@ TEST_F(IndexEstimatorTest, test_serialize_compression) {
     est->serialize(serialization, seq, format);
     ASSERT_EQ(10056, serialization.size());
     ASSERT_EQ(format, serialization[sizeof(uint64_t)]);
-    
+
     validateSerializedValue(*est, serialization);
   }
-
 }

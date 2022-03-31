@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,15 +23,17 @@
 
 #pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Cache/CacheManagerFeatureThreads.h"
 #include "Cache/Manager.h"
+#include "RestServer/arangod.h"
 
 namespace arangodb {
 
-class CacheManagerFeature final : public application_features::ApplicationFeature {
+class CacheManagerFeature final : public ArangodFeature {
  public:
-  explicit CacheManagerFeature(application_features::ApplicationServer& server);
+  static constexpr std::string_view name() { return "CacheManager"; }
+
+  explicit CacheManagerFeature(Server& server);
   ~CacheManagerFeature();
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -53,4 +55,3 @@ class CacheManagerFeature final : public application_features::ApplicationFeatur
 };
 
 }  // namespace arangodb
-

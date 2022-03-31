@@ -79,6 +79,9 @@ The number of execution nodes in the query plan after that stack splitting is
 performed to avoid a potential stack overflow. Defaults to the configured value
 of the startup option `--query.max-nodes-per-callstack`.
 
+This option is only useful for testing and debugging and normally does not need
+any adjustment.
+
 @RESTSTRUCT{maxWarningCount,post_api_cursor_opts,integer,optional,int64}
 Limits the maximum number of warnings a query will return. The number of warnings
 a query will return is limited to 10 by default, but that number can be increased
@@ -152,15 +155,15 @@ The query has to be executed within the given runtime or it will be killed.
 The value is specified in seconds. The default value is *0.0* (no timeout).
 
 @RESTSTRUCT{maxTransactionSize,post_api_cursor_opts,integer,optional,int64}
-Transaction size limit in bytes. Honored by the RocksDB storage engine only.
+Transaction size limit in bytes.
 
 @RESTSTRUCT{intermediateCommitSize,post_api_cursor_opts,integer,optional,int64}
 Maximum total size of operations after which an intermediate commit is performed
-automatically. Honored by the RocksDB storage engine only.
+automatically.
 
 @RESTSTRUCT{intermediateCommitCount,post_api_cursor_opts,integer,optional,int64}
 Maximum number of operations after which an intermediate commit is performed
-automatically. Honored by the RocksDB storage engine only.
+automatically.
 
 @RESTSTRUCT{skipInaccessibleCollections,post_api_cursor_opts,boolean,optional,}
 AQL queries (especially graph traversals) will treat collection to which a user has no access rights as if these collections were empty. Instead of returning a forbidden access error, your queries will execute normally. This is intended to help with certain use-cases: A graph contains several collections and different users execute AQL queries on that graph. You can now naturally limit the accessible results by changing the access rights of users on collections. This feature is only available in the Enterprise Edition.
@@ -239,6 +242,16 @@ accessed in the query.
 
 @RESTRETURNCODE{405}
 The server will respond with *HTTP 405* if an unsupported HTTP method is used.
+
+@RESTRETURNCODE{410}
+The server will respond with *HTTP 410* if a server which processes the query
+or is the leader for a shard which is used in the query stops responding, but 
+the connection has not been closed.
+
+@RESTRETURNCODE{503}
+The server will respond with *HTTP 503* if a server which processes the query
+or is the leader for a shard which is used in the query is down, either for 
+going through a restart, a failure or connectivity issues.
 
 @EXAMPLES
 

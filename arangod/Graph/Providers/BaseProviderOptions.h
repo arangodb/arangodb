@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,10 +23,13 @@
 
 #pragma once
 
+#include "Aql/Expression.h"
 #include "Aql/FixedVarExpressionContext.h"
+#include "Aql/NonConstExpressionContainer.h"
 #include "Cluster/ClusterInfo.h"
 #include "Graph/Cache/RefactoredClusterTraverserCache.h"
 #include "Transaction/Methods.h"
+#include "Aql/InAndOutRowExpressionContext.h"
 
 #include <optional>
 #include <vector>
@@ -41,50 +44,141 @@ namespace graph {
 
 struct IndexAccessor {
   IndexAccessor(transaction::Methods::IndexHandle idx, aql::AstNode* condition,
-                std::optional<size_t> memberToUpdate);
+                std::optional<size_t> memberToUpdate,
+                std::unique_ptr<arangodb::aql::Expression> expression,
+                std::optional<aql::NonConstExpressionContainer> nonConstPart,
+                size_t cursorId, TRI_edge_direction_e direction);
+  IndexAccessor(IndexAccessor const&) = delete;
+  IndexAccessor(IndexAccessor&&) = default;
+  IndexAccessor& operator=(IndexAccessor const&) = delete;
 
-  aql::AstNode* getCondition() const;
-  transaction::Methods::IndexHandle indexHandle() const;
+  aql::AstNode* getCondition() const noexcept;
+  aql::Expression* getExpression() const noexcept;
+  transaction::Methods::IndexHandle indexHandle() const noexcept;
   std::optional<size_t> getMemberToUpdate() const;
+  size_t cursorId() const noexcept;
+  TRI_edge_direction_e direction() const noexcept;
+
+  bool hasNonConstParts() const noexcept;
+
+  aql::NonConstExpressionContainer const& nonConstPart() const;
 
  private:
   transaction::Methods::IndexHandle _idx;
   aql::AstNode* _indexCondition;
+  // Position of _from / _to in the index search condition
   std::optional<size_t> _memberToUpdate;
+  std::unique_ptr<arangodb::aql::Expression> _expression;
+  size_t _cursorId;
+  std::optional<aql::NonConstExpressionContainer> _nonConstContainer;
+  TRI_edge_direction_e const _direction;
 };
 
-struct BaseProviderOptions {
+struct SingleServerBaseProviderOptions {
+  using WeightCallback = std::function<double(
+      double originalWeight, arangodb::velocypack::Slice edge)>;
+
  public:
-  BaseProviderOptions(aql::Variable const* tmpVar, std::vector<IndexAccessor> indexInfo,
-                      std::map<std::string, std::string> const& collectionToShardMap);
+  SingleServerBaseProviderOptions(
+      aql::Variable const* tmpVar,
+      std::pair<std::vector<IndexAccessor>,
+                std::unordered_map<uint64_t, std::vector<IndexAccessor>>>&&
+          indexInfo,
+      aql::FixedVarExpressionContext& expressionContext,
+      std::vector<std::pair<aql::Variable const*, aql::RegisterId>>
+          filterConditionVariables,
+      std::unordered_map<std::string, std::vector<std::string>> const&
+          collectionToShardMap);
+
+  SingleServerBaseProviderOptions(SingleServerBaseProviderOptions const&) =
+      delete;
+  SingleServerBaseProviderOptions(SingleServerBaseProviderOptions&&) = default;
 
   aql::Variable const* tmpVar() const;
-  std::vector<IndexAccessor> const& indexInformations() const;
+  std::pair<std::vector<IndexAccessor>,
+            std::unordered_map<uint64_t, std::vector<IndexAccessor>>>&
+  indexInformations();
 
-  std::map<std::string, std::string> const& collectionToShardMap() const;
+  std::unordered_map<std::string, std::vector<std::string>> const&
+  collectionToShardMap() const;
+
+  aql::FixedVarExpressionContext& expressionContext() const;
+
+  void prepareContext(aql::InputAqlItemRow input);
+  void unPrepareContext();
+
+  bool hasWeightMethod() const;
+
+  double weightEdge(double prefixWeight,
+                    arangodb::velocypack::Slice edge) const;
+
+  void setWeightEdgeCallback(WeightCallback callback);
 
  private:
   // The temporary Variable used in the Indexes
   aql::Variable const* _temporaryVariable;
   // One entry per collection, ShardTranslation needs
   // to be done by Provider
-  std::vector<IndexAccessor> _indexInformation;
+  std::pair<std::vector<IndexAccessor>,
+            std::unordered_map<uint64_t, std::vector<IndexAccessor>>>
+      _indexInformation;
 
-  // CollectionName to ShardMap, used if the Traversal is pushed down to DBServer
-  std::map<std::string, std::string> const& _collectionToShardMap;
+  // The context of AQL variables. These variables are set from the outside.
+  // and the caller needs to make sure the reference stays valid
+  aql::FixedVarExpressionContext& _expressionContext;
+
+  // CollectionName to ShardMap, used if the Traversal is pushed down to
+  // DBServer
+  std::unordered_map<std::string, std::vector<std::string>> const&
+      _collectionToShardMap;
+
+  // Optional callback to compute the weight of an edge.
+  std::optional<WeightCallback> _weightCallback;
+
+  // TODO: Currently this will be a copy. As soon as we remove the old
+  // non-refactored code, we will do a move instead of a copy operation.
+  std::vector<std::pair<aql::Variable const*, aql::RegisterId>>
+      _filterConditionVariables;
 };
 
 struct ClusterBaseProviderOptions {
+  using WeightCallback = std::function<double(
+      double originalWeight, arangodb::velocypack::Slice edge)>;
+
  public:
-  ClusterBaseProviderOptions(std::shared_ptr<RefactoredClusterTraverserCache> cache,
-                             std::unordered_map<ServerID, aql::EngineId> const* engines,
-                             bool backward);
+  ClusterBaseProviderOptions(
+      std::shared_ptr<RefactoredClusterTraverserCache> cache,
+      std::unordered_map<ServerID, aql::EngineId> const* engines, bool backward,
+      bool produceVertices);
+
+  ClusterBaseProviderOptions(
+      std::shared_ptr<RefactoredClusterTraverserCache> cache,
+      std::unordered_map<ServerID, aql::EngineId> const* engines, bool backward,
+      bool produceVertices, aql::FixedVarExpressionContext* expressionContext,
+      std::vector<std::pair<aql::Variable const*, aql::RegisterId>>
+          filterConditionVariables);
 
   RefactoredClusterTraverserCache* getCache();
 
   bool isBackward() const;
 
-  [[nodiscard]] std::unordered_map<ServerID, aql::EngineId> const* engines() const;
+  bool produceVertices() const;
+
+  [[nodiscard]] std::unordered_map<ServerID, aql::EngineId> const* engines()
+      const;
+
+  // [GraphRefactor] Note: Both used in SingleServer and Cluster variant.
+  // If more overlaps reoccur, we might want to implement a base class.
+  void prepareContext(aql::InputAqlItemRow input);
+  void unPrepareContext();
+  aql::FixedVarExpressionContext* expressionContext();
+
+  bool hasWeightMethod() const;
+
+  double weightEdge(double prefixWeight,
+                    arangodb::velocypack::Slice edge) const;
+
+  void setWeightEdgeCallback(WeightCallback callback);
 
  private:
   std::shared_ptr<RefactoredClusterTraverserCache> _cache;
@@ -92,8 +186,20 @@ struct ClusterBaseProviderOptions {
   std::unordered_map<ServerID, aql::EngineId> const* _engines;
 
   bool _backward;
+
+  bool _produceVertices;
+
+  // [GraphRefactor] Note: All vars below used in SingleServer && Cluster case
+  aql::FixedVarExpressionContext* _expressionContext;
+
+  // TODO: Currently this will be a copy. As soon as we remove the old
+  // non-refactored code, we will do a move instead of a copy operation.
+  std::vector<std::pair<aql::Variable const*, aql::RegisterId>>
+      _filterConditionVariables;
+
+  // Optional callback to compute the weight of an edge.
+  std::optional<WeightCallback> _weightCallback;
 };
 
 }  // namespace graph
 }  // namespace arangodb
-

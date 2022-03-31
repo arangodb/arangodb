@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -44,13 +44,11 @@ class Transaction;
 namespace arangodb {
 
 class RocksDBSettingsManager {
-  friend class RocksDBEngine;
-
+ public:
   /// Constructor needs to be called synchronously,
   /// will load counts from the db and scan the WAL
   explicit RocksDBSettingsManager(RocksDBEngine& engine);
 
- public:
   /// Retrieve initial settings values from database on engine startup
   void retrieveInitialValues();
 
@@ -87,4 +85,3 @@ class RocksDBSettingsManager {
   TRI_voc_tick_t _initialReleasedTick;
 };
 }  // namespace arangodb
-

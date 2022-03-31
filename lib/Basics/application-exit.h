@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -42,4 +42,4 @@ void TRI_Application_Exit_SetExit(TRI_ExitFunction_t);
 [[noreturn]] void FATAL_ERROR_EXIT() noexcept;
 
 /// @brief aborts program execution, calling std::abort
-[[noreturn]] void FATAL_ERROR_ABORT() noexcept;;
+[[noreturn]] void FATAL_ERROR_ABORT() noexcept;

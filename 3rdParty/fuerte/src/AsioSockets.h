@@ -130,7 +130,7 @@ struct Socket<fuerte::SocketType::Ssl> {
     bool verify = config._verifyHost;
     resolveConnect(
         config, resolver, socket.next_layer(),
-        [=, done(std::forward<F>(done))](auto const& ec) mutable {
+        [=, this, done(std::forward<F>(done))](auto const& ec) mutable {
           if (ec) {
             done(ec);
             return;

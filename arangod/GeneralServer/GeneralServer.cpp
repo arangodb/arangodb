@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -49,7 +49,8 @@ using namespace arangodb::rest;
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
-GeneralServer::GeneralServer(GeneralServerFeature& feature, uint64_t numIoThreads)
+GeneralServer::GeneralServer(GeneralServerFeature& feature,
+                             uint64_t numIoThreads)
     : _feature(feature), _endpointList(nullptr), _contexts() {
   auto& server = feature.server();
   for (size_t i = 0; i < numIoThreads; ++i) {
@@ -67,9 +68,8 @@ void GeneralServer::registerTask(std::shared_ptr<CommTask> task) {
   LOG_TOPIC("29da9", TRACE, Logger::REQUESTS)
       << "registering CommTask with ptr " << t;
   {
-    auto* ptr = task.get();
     std::lock_guard<std::recursive_mutex> guard(_tasksLock);
-    _commTasks.try_emplace(ptr, std::move(task));
+    _commTasks.try_emplace(t, std::move(task));
   }
   t->start();
 }
@@ -136,22 +136,25 @@ void GeneralServer::stopConnections() {
 }
 
 void GeneralServer::stopWorking() {
-  auto const started {std::chrono::system_clock::now()};
-  constexpr auto timeout {std::chrono::seconds(5)};
+  auto const started{std::chrono::system_clock::now()};
+  constexpr auto timeout{std::chrono::seconds(5)};
   do {
     {
       std::unique_lock<std::recursive_mutex> guard(_tasksLock);
-      if (_commTasks.empty())
-        break;
+      if (_commTasks.empty()) break;
     }
     std::this_thread::yield();
-  } while((std::chrono::system_clock::now() - started) < timeout);
+  } while ((std::chrono::system_clock::now() - started) < timeout);
   {
     std::lock_guard<std::recursive_mutex> guard(_tasksLock);
     _commTasks.clear();
   }
+  // need to stop IoThreads before cleaning up the acceptors
+  for (auto& ctx : _contexts) {
+    ctx.stop();
+  }
   _acceptors.clear();
-  _contexts.clear();  // stops threads
+  _contexts.clear();
 }
 
 // -----------------------------------------------------------------------------
@@ -170,8 +173,9 @@ bool GeneralServer::openEndpoint(IoContext& ioContext, Endpoint* endpoint) {
 }
 
 IoContext& GeneralServer::selectIoContext() {
-  return *std::min_element(_contexts.begin(), _contexts.end(), 
-    [](auto const &a, auto const &b) { return a.clients() < b.clients(); });
+  return *std::min_element(
+      _contexts.begin(), _contexts.end(),
+      [](auto const& a, auto const& b) { return a.clients() < b.clients(); });
 }
 
 #ifdef USE_ENTERPRISE
@@ -184,8 +188,10 @@ SslServerFeature::SslContextList GeneralServer::sslContexts() {
     _sslContexts = server().getFeature<SslServerFeature>().createSslContexts();
 #ifdef USE_ENTERPRISE
     if (_sslContexts->size() > 0) {
-      // Set a client hello callback such that we have a chance to change the SSL context:
-      SSL_CTX_set_client_hello_cb((*_sslContexts)[0].native_handle(), &clientHelloCallback, (void*) this);
+      // Set a client hello callback such that we have a chance to change the
+      // SSL context:
+      SSL_CTX_set_client_hello_cb((*_sslContexts)[0].native_handle(),
+                                  &clientHelloCallback, (void*)this);
     }
 #endif
   }
@@ -201,26 +207,32 @@ Result GeneralServer::reloadTLS() {
   try {
     {
       std::lock_guard<std::mutex> guard(_sslContextMutex);
-      _sslContexts = server().getFeature<SslServerFeature>().createSslContexts();
+      _sslContexts =
+          server().getFeature<SslServerFeature>().createSslContexts();
 #ifdef USE_ENTERPRISE
       if (_sslContexts->size() > 0) {
-        // Set a client hello callback such that we have a chance to change the SSL context:
-        SSL_CTX_set_client_hello_cb((*_sslContexts)[0].native_handle(), &clientHelloCallback, (void*) this);
+        // Set a client hello callback such that we have a chance to change the
+        // SSL context:
+        SSL_CTX_set_client_hello_cb((*_sslContexts)[0].native_handle(),
+                                    &clientHelloCallback, (void*)this);
       }
 #endif
     }
-    // Now cancel every acceptor once, such that a new AsioSocket is generated which will
-    // use the new context. Otherwise, the first connection will still use the old certs:
+    // Now cancel every acceptor once, such that a new AsioSocket is generated
+    // which will use the new context. Otherwise, the first connection will
+    // still use the old certs:
     for (auto& a : _acceptors) {
       a->cancel();
     }
     return TRI_ERROR_NO_ERROR;
-  } catch(std::exception& e) {
-    LOG_TOPIC("feffe", ERR, Logger::SSL) << "Could not reload TLS context from files, got exception with this error: " << e.what();
-    return Result(TRI_ERROR_CANNOT_READ_FILE, "Could not reload TLS context from files.");
+  } catch (std::exception& e) {
+    LOG_TOPIC("feffe", ERR, Logger::SSL)
+        << "Could not reload TLS context from files, got exception with this "
+           "error: "
+        << e.what();
+    return Result(TRI_ERROR_CANNOT_READ_FILE,
+                  "Could not reload TLS context from files.");
   }
 }
 
-application_features::ApplicationServer& GeneralServer::server() const {
-  return _feature.server();
-}
+ArangodServer& GeneralServer::server() const { return _feature.server(); }

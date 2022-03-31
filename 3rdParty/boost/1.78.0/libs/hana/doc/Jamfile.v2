@@ -1,0 +1,34 @@
+# Copyright Louis Dionne 2013-2017
+# Distributed under the Boost Software License, Version 1.0.
+# (See accompanying file LICENSE.md or copy at http://boost.org/LICENSE_1_0.txt)
+
+import os ;
+
+if [ os.environ TRAVIS ] {
+  path-constant HANA_SOURCE_DIR : .. ;
+} else {
+  path-constant HANA_SOURCE_DIR : $(BOOST_ROOT)/libs/hana ;
+}
+
+make hana-doc :  : @make-hana-doc ;
+
+actions make-hana-doc {
+  cd $(HANA_SOURCE_DIR)
+  master_ref=$(git show-ref --hash=7 heads/master)
+
+  git clone https://github.com/boostorg/hana doc/html
+  cd doc/html
+  git checkout gh-pages
+  gh_pages_ref=$(git log --branches=gh-pages -n 1 --grep=${master_ref} --format="format:%H")
+  git checkout ${gh_pages_ref}
+}
+
+# Since Hana does not use BoostBook, it does not integrate into the global
+# book containing the documentation of all Boost libraries. Per [1], we need
+# to define this empty target to accommodate the build scripts.
+#
+# [1]: http://www.boost.org/development/requirements.html#Requirements
+alias boostdoc ;
+explicit boostdoc ;
+alias boostrelease : hana-doc ;
+explicit boostrelease ;

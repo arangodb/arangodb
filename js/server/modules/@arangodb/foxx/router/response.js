@@ -100,6 +100,13 @@ module.exports =
       }
     }
 
+    transformations(which) {
+      if (!this._raw.hasOwnProperty('transformations')) {
+        this._raw.transformations = [];
+      }
+      this._raw.transformations.push(which);
+    }
+
     getHeader (name) {
       name = name.toLowerCase();
       if (name === 'content-type') {
@@ -372,9 +379,7 @@ module.exports =
       type = mimeTypes.lookup(type) || type;
 
       let handler;
-      for (const entry of this.context.service.types.entries()) {
-        const key = entry[0];
-        const value = entry[1];
+      for (const [key, value] of this.context.service.types.entries()) {
         let match;
         if (key instanceof RegExp) {
           match = type.test(key);

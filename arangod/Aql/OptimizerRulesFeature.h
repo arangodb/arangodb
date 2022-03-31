@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,53 +23,56 @@
 
 #pragma once
 
+#include <string_view>
 #include <unordered_map>
 #include <vector>
 
-#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Aql/OptimizerRule.h"
-
-#include <velocypack/StringRef.h>
+#include "RestServer/arangod.h"
 
 namespace arangodb {
 namespace aql {
 
-class OptimizerRulesFeature final : public application_features::ApplicationFeature {
+class OptimizerRulesFeature final : public ArangodFeature {
  public:
-  explicit OptimizerRulesFeature(application_features::ApplicationServer& server);
+  static constexpr std::string_view name() noexcept { return "OptimizerRules"; }
+
+  explicit OptimizerRulesFeature(Server& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
   void unprepare() override final;
-  
-  std::vector<std::string> const& optimizerRules() const { return _optimizerRules; }
+
+  std::vector<std::string> const& optimizerRules() const {
+    return _optimizerRules;
+  }
 
   /// @brief whether or not certain write operations can be parallelized
   bool parallelizeGatherWrites() const { return _parallelizeGatherWrites; }
 
   /// @brief translate a list of rule ids into rule name
-  static std::vector<velocypack::StringRef> translateRules(std::vector<int> const&);
+  static std::vector<std::string_view> translateRules(std::vector<int> const&);
 
   /// @brief translate a single rule
-  static velocypack::StringRef translateRule(int rule);
-  
+  static std::string_view translateRule(int rule);
+
   /// @brief translate a single rule
-  static int translateRule(velocypack::StringRef name);
+  static int translateRule(std::string_view name);
 
   /// @brief return a reference to all rules
   static std::vector<OptimizerRule> const& rules() { return _rules; }
 
   /// @brief return a rule by its level
   static OptimizerRule& ruleByLevel(int level);
-  
+
   /// @brief return a rule by its index
   static OptimizerRule& ruleByIndex(int index);
-  
+
   /// @brief return the index of a rule
   static int ruleIndex(int level);
-  
+
   /// @brief register a rule, don't call this after prepare()
-  void registerRule(char const* name, RuleFunction func,
+  void registerRule(std::string_view name, RuleFunction func,
                     OptimizerRule::RuleLevel level,
                     std::underlying_type<OptimizerRule::Flags>::type flags);
 
@@ -77,7 +80,7 @@ class OptimizerRulesFeature final : public application_features::ApplicationFeat
   void addRules();
   void addStorageEngineRules();
   void enableOrDisableRules();
-  
+
   std::vector<std::string> _optimizerRules;
 
   /// @brief if set to true, a gather node will be parallelized even for
@@ -88,14 +91,13 @@ class OptimizerRulesFeature final : public application_features::ApplicationFeat
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   bool _fixed = false;
 #endif
-  
+
   /// @brief the rules database
   static std::vector<OptimizerRule> _rules;
 
   /// @brief map to look up rule id by name
-  static std::unordered_map<velocypack::StringRef, int> _ruleLookup;
+  static std::unordered_map<std::string_view, int> _ruleLookup;
 };
 
 }  // namespace aql
 }  // namespace arangodb
-

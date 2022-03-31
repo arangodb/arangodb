@@ -46,6 +46,11 @@ struct base_s {
 	 */
 	ehooks_t ehooks;
 
+	/*
+	 * User-configurable extent hook functions for metadata allocations.
+	 */
+	ehooks_t ehooks_base;
+
 	/* Protects base_alloc() and base_stats_get() operations. */
 	malloc_mutex_t mtx;
 
@@ -87,9 +92,10 @@ metadata_thp_enabled(void) {
 
 base_t *b0get(void);
 base_t *base_new(tsdn_t *tsdn, unsigned ind,
-    const extent_hooks_t *extent_hooks);
+    const extent_hooks_t *extent_hooks, bool metadata_use_hooks);
 void base_delete(tsdn_t *tsdn, base_t *base);
 ehooks_t *base_ehooks_get(base_t *base);
+ehooks_t *base_ehooks_get_for_metadata(base_t *base);
 extent_hooks_t *base_extent_hooks_set(base_t *base,
     extent_hooks_t *extent_hooks);
 void *base_alloc(tsdn_t *tsdn, base_t *base, size_t size, size_t alignment);

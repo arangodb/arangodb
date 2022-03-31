@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,11 +24,11 @@
 #include "RestQueryHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Aql/OptimizerRulesFeature.h"
 #include "Aql/Query.h"
 #include "Aql/QueryList.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
 #include "Transaction/Helpers.h"
@@ -41,8 +41,9 @@ using namespace arangodb::aql;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestQueryHandler::RestQueryHandler(application_features::ApplicationServer& server,
-                                   GeneralRequest* request, GeneralResponse* response)
+RestQueryHandler::RestQueryHandler(ArangodServer& server,
+                                   GeneralRequest* request,
+                                   GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
 RestStatus RestQueryHandler::execute() {
@@ -54,9 +55,14 @@ RestStatus RestQueryHandler::execute() {
     case rest::RequestType::DELETE_REQ:
       deleteQuery();
       break;
-    case rest::RequestType::GET:
-      readQuery();
-      break;
+    case rest::RequestType::GET: {
+      auto const& suffixes = _request->suffixes();
+      if (suffixes.size() == 1 && suffixes[0] == "rules") {
+        handleAvailableOptimizerRules();
+      } else {
+        readQuery();
+      }
+    } break;
     case rest::RequestType::PUT:
       replaceProperties();
       break;
@@ -70,6 +76,31 @@ RestStatus RestQueryHandler::execute() {
 
   // this handler is done
   return RestStatus::DONE;
+}
+
+void RestQueryHandler::handleAvailableOptimizerRules() {
+  VPackBuilder builder;
+  builder.openArray();
+  auto const& optimizerRules = OptimizerRulesFeature::rules();
+  for (auto const& optimizerRule : optimizerRules) {
+    builder.openObject();
+    builder.add("name", VPackValue(optimizerRule.name));
+    builder.add(velocypack::Value("flags"));
+    builder.openObject();
+    builder.add("hidden", VPackValue(optimizerRule.isHidden()));
+    builder.add("clusterOnly", VPackValue(optimizerRule.isClusterOnly()));
+    builder.add("canBeDisabled", VPackValue(optimizerRule.canBeDisabled()));
+    builder.add("canCreateAdditionalPlans",
+                VPackValue(optimizerRule.canCreateAdditionalPlans()));
+    builder.add("disabledByDefault",
+                VPackValue(optimizerRule.isDisabledByDefault()));
+    builder.add("enterpriseOnly", VPackValue(optimizerRule.isEnterpriseOnly()));
+    builder.close();
+    builder.close();
+  }
+  builder.close();
+
+  generateResult(rest::ResponseCode::OK, builder.slice());
 }
 
 void RestQueryHandler::readQueryProperties() {
@@ -86,7 +117,8 @@ void RestQueryHandler::readQueryProperties() {
   result.add("slowQueryThreshold", VPackValue(queryList->slowQueryThreshold()));
   result.add("slowStreamingQueryThreshold",
              VPackValue(queryList->slowStreamingQueryThreshold()));
-  result.add("maxQueryStringLength", VPackValue(queryList->maxQueryStringLength()));
+  result.add("maxQueryStringLength",
+             VPackValue(queryList->maxQueryStringLength()));
   result.close();
 
   generateResult(rest::ResponseCode::OK, result.slice());
@@ -95,9 +127,10 @@ void RestQueryHandler::readQueryProperties() {
 void RestQueryHandler::readQuery(bool slow) {
   Result res;
   VPackBuilder result;
-    
+
   bool const allDatabases = _request->parsedValue("all", false);
-  bool const fanout = ServerState::instance()->isCoordinator() && !_request->parsedValue("local", false);
+  bool const fanout = ServerState::instance()->isCoordinator() &&
+                      !_request->parsedValue("local", false);
   if (slow) {
     res = methods::Queries::listSlow(_vocbase, result, allDatabases, fanout);
   } else {
@@ -138,8 +171,9 @@ void RestQueryHandler::readQuery() {
 
 void RestQueryHandler::deleteQuerySlow() {
   bool const allDatabases = _request->parsedValue("all", false);
-  bool const fanout = ServerState::instance()->isCoordinator() && !_request->parsedValue("local", false);
-  
+  bool const fanout = ServerState::instance()->isCoordinator() &&
+                      !_request->parsedValue("local", false);
+
   Result res = methods::Queries::clearSlow(_vocbase, allDatabases, fanout);
 
   if (res.ok()) {
@@ -151,7 +185,8 @@ void RestQueryHandler::deleteQuerySlow() {
 
 void RestQueryHandler::killQuery(std::string const& id) {
   bool const allDatabases = _request->parsedValue("all", false);
-  Result res = methods::Queries::kill(_vocbase, StringUtils::uint64(id), allDatabases);
+  Result res =
+      methods::Queries::kill(_vocbase, StringUtils::uint64(id), allDatabases);
 
   if (res.ok()) {
     generateOk(rest::ResponseCode::OK, velocypack::Slice::noneSlice());
@@ -282,9 +317,9 @@ void RestQueryHandler::parseQuery() {
   std::string const queryString =
       VelocyPackHelper::checkAndGetStringValue(body, "query");
 
-  Query query(transaction::StandaloneContext::Create(_vocbase),
-              QueryString(queryString), nullptr);
-  auto parseResult = query.parse();
+  auto query = Query::create(transaction::StandaloneContext::Create(_vocbase),
+                             QueryString(queryString), nullptr);
+  auto parseResult = query->parse();
 
   if (parseResult.result.fail()) {
     generateError(parseResult.result);
@@ -339,7 +374,8 @@ ResultT<std::pair<std::string, bool>> RestQueryHandler::forwardingTarget() {
       uint32_t sourceServer = TRI_ExtractServerIdFromTick(tick);
       if (sourceServer != ServerState::instance()->getShortId()) {
         auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
-        return {std::make_pair(ci.getCoordinatorByShortID(sourceServer), false)};
+        return {
+            std::make_pair(ci.getCoordinatorByShortID(sourceServer), false)};
       }
     }
   }

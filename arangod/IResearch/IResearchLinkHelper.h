@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,9 +25,11 @@
 #pragma once
 
 #include <memory>
-
 #include <utils/type_id.hpp>
+
 #include "Basics/Result.h"
+#include "IResearch/IResearchCommon.h"
+#include "RestServer/arangod.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/voc-types.h"
@@ -37,8 +39,8 @@ namespace application_features {
 class ApplicationServer;
 }
 
-class LogicalCollection;  // forward declaration
-class LogicalView;        // forward declaration
+class LogicalCollection;
+class LogicalView;
 
 namespace velocypack {
 
@@ -66,25 +68,20 @@ struct IResearchLinkHelper {
   /// @brief compare two link definitions for equivalience if used to create a
   ///        link instance
   //////////////////////////////////////////////////////////////////////////////
-  static bool equal(
-      application_features::ApplicationServer& server,
-      velocypack::Slice const& lhs,
-      velocypack::Slice const& rhs,
-      irs::string_ref const& dbname);
+  static bool equal(ArangodServer& server, velocypack::Slice lhs,
+                    velocypack::Slice rhs, irs::string_ref dbname);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief finds link between specified collection and view with the given id
   //////////////////////////////////////////////////////////////////////////////
   static std::shared_ptr<IResearchLink> find(
-      LogicalCollection const& collection,
-      IndexId id);
+      LogicalCollection const& collection, IndexId id);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief finds first link between specified collection and view
   //////////////////////////////////////////////////////////////////////////////
-  static std::shared_ptr<IResearchLink> find( // find link
-    LogicalCollection const& collection,
-    LogicalView const& view);
+  static std::shared_ptr<IResearchLink> find(
+      LogicalCollection const& collection, LogicalView const& view);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief validate and copy required fields from the 'definition' into
@@ -93,22 +90,14 @@ struct IResearchLinkHelper {
   /// @note engine == nullptr then SEGFAULT in Methods constructor during insert
   /// @note true == inRecovery() then AnalyzerFeature will not allow persistence
   //////////////////////////////////////////////////////////////////////////////
-  static arangodb::Result normalize(
-    velocypack::Builder& normalized,
-    velocypack::Slice definition,
-    bool isCreation,
-    TRI_vocbase_t const& vocbase,
-    const uint32_t* version = nullptr,
-    IResearchViewSort const* primarySort = nullptr,
-    irs::type_info::type_id const* primarySortCompression = nullptr,
-    IResearchViewStoredValues const* storedValues = nullptr,
-    velocypack::Slice idSlice = velocypack::Slice(),
-    irs::string_ref collectionName = irs::string_ref::NIL);
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief IResearch Link index type string value
-  ////////////////////////////////////////////////////////////////////////////////
-  static std::string const& type() noexcept;
+  static Result normalize(
+      velocypack::Builder& normalized, velocypack::Slice definition,
+      bool isCreation, TRI_vocbase_t const& vocbase, LinkVersion defaultVersion,
+      IResearchViewSort const* primarySort = nullptr,
+      irs::type_info::type_id const* primarySortCompression = nullptr,
+      IResearchViewStoredValues const* storedValues = nullptr,
+      velocypack::Slice idSlice = velocypack::Slice(),
+      irs::string_ref collectionName = irs::string_ref::NIL);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief validate the link specifications for:
@@ -117,17 +106,14 @@ struct IResearchLinkHelper {
   ///        * collection permissions
   ///        * valid link meta
   //////////////////////////////////////////////////////////////////////////////
-  static arangodb::Result validateLinks(
-    TRI_vocbase_t& vocbase,
-    velocypack::Slice links);
+  static Result validateLinks(TRI_vocbase_t& vocbase, velocypack::Slice links);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief visits all links in a collection
   /// @return full visitation compleated
   //////////////////////////////////////////////////////////////////////////////
-  static bool visit(
-    LogicalCollection const& collection,
-    std::function<bool(IResearchLink& link)> const& visitor);
+  static bool visit(LogicalCollection const& collection,
+                    std::function<bool(IResearchLink& link)> const& visitor);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief updates the collections in 'vocbase' to match the specified
@@ -136,17 +122,16 @@ struct IResearchLinkHelper {
   /// @param view the view to associate created links with
   /// @param links the link modification definitions, null link == link removal
   /// @param stale links to remove if there is no creation definition in 'links'
+  /// @param linkVersion link version for creation if not set in a definition
   //////////////////////////////////////////////////////////////////////////////
-  static arangodb::Result updateLinks(
-    std::unordered_set<DataSourceId>& modified,
-    LogicalView& view,
-    velocypack::Slice links,
-    std::unordered_set<DataSourceId> const& stale = {});
+  static Result updateLinks(std::unordered_set<DataSourceId>& modified,
+                            LogicalView& view, velocypack::Slice links,
+                            LinkVersion defaultVersion,
+                            std::unordered_set<DataSourceId> const& stale = {});
 
  private:
   IResearchLinkHelper() = delete;
-}; // IResearchLinkHelper
+};  // IResearchLinkHelper
 
-} // iresearch
-} // arangodb
-
+}  // namespace iresearch
+}  // namespace arangodb

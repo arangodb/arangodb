@@ -22,19 +22,15 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_TEST_ICU_HELPER
-#define ARANGODB_TEST_ICU_HELPER 1
+#pragma once
 
 #include "Basics/Common.h"
 
+#include <string>
+
 struct IcuInitializer {
-  IcuInitializer();
-  ~IcuInitializer();
-
   static void setup(char const* path);
+  static void reinit();
 
-  static void* icuDataPtr;
-  static bool initialized;
+  static std::string icuData;
 };
-
-#endif

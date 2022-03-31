@@ -14,7 +14,7 @@ if (list.length > 0) {
     _.each(list, function(i) {
   %>
     <li class="dropdown-item">
-        <a id=<%=i%> class="dbSelectionLink tab" href="#"><%=i%></a>
+        <a id="<%=_.escape(i)%>" class="dbSelectionLink tab" href="#"><%=_.escape(i)%></a>
     </li>
   <%
     });

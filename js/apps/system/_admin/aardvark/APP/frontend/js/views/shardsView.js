@@ -16,7 +16,6 @@
       'click #toggleAllShards': 'toggleAllShards',
       'click #shardsContent .shardLeader span': 'moveShard',
       'click #shardsContent .shardFollowers span': 'moveShardFollowers',
-      'click #rebalanceShards': 'rebalanceShards',
       'click .sectionHeader': 'toggleSection'
     },
 
@@ -222,10 +221,7 @@
             }
           }
         });
-
-        if (navi !== false) {
-          arangoHelper.buildNodesSubNav('Shards');
-        }
+        arangoHelper.buildNodesSubNav('Shards');
       }
     },
 
@@ -265,10 +261,6 @@
                 label: db.get('name')
               };
             }
-          });
-
-          _.each(self.shardDistribution[collectionName].Plan[shardName].followers, function (follower) {
-            delete obj[follower];
           });
 
           if (from) {
@@ -350,33 +342,6 @@
       window.modalView.hide();
     },
 
-    rebalanceShards: function () {
-      var self = this;
-
-      $.ajax({
-        type: 'POST',
-        cache: false,
-        url: arangoHelper.databaseUrl('/_admin/cluster/rebalanceShards'),
-        contentType: 'application/json',
-        processData: false,
-        data: JSON.stringify({}),
-        async: true,
-        success: function (data) {
-          if (data === true) {
-            window.setTimeout(function () {
-              self.render(false);
-            }, 3000);
-          }
-          arangoHelper.arangoNotification('Started rebalance process.');
-        },
-        error: function () {
-          arangoHelper.arangoError('Could not start rebalance process.');
-        }
-      });
-
-      window.modalView.hide();
-    },
-
     continueRender: function (collections) {
       delete collections.code;
       delete collections.error;
@@ -430,9 +395,18 @@
         ordered[key] = collections[key];
       });
 
+      var serversFailed = {};
+      var healthData = window.App.lastHealthCheckResult;
+      if (healthData && healthData.Health) {
+        Object.keys(healthData.Health).forEach(function(id) {
+          serversFailed[healthData.Health[id].ShortName] = healthData.Health[id].Status === 'FAILED';
+        });
+      }
+        
       this.$el.html(this.template.render({
         collections: ordered,
-        visible: this.visibleCollections
+        visible: this.visibleCollections,
+        serversFailed: serversFailed,
       }));
 
       // if we have only one collection to show, automatically open the entry

@@ -15,14 +15,19 @@ must be equal to *"hash"*.
 @RESTBODYPARAM{fields,array,required,string}
 an array of attribute paths.
 
-@RESTBODYPARAM{unique,boolean,required,}
+@RESTBODYPARAM{unique,boolean,optional,}
 if *true*, then create a unique index.
 
-@RESTBODYPARAM{sparse,boolean,required,}
+@RESTBODYPARAM{sparse,boolean,optional,}
 if *true*, then create a sparse index.
 
 @RESTBODYPARAM{deduplicate,boolean,optional,}
 if *false*, the deduplication of array values is turned off.
+
+@RESTBODYPARAM{inBackground,boolean,optional,}
+The optional attribute **inBackground** can be set to *true* to create the index
+in the background, which will not write-lock the underlying collection for
+as long as if the index is built in the foreground. The default value is *false*.
 
 @RESTDESCRIPTION
 Creates a hash index for the collection *collection-name* if it

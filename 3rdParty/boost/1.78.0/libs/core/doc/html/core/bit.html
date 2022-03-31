@@ -1,0 +1,394 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>bit</title>
+<link rel="stylesheet" href="../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="Chapter 1. Boost.Core">
+<link rel="up" href="../index.html" title="Chapter 1. Boost.Core">
+<link rel="prev" href="alloc_construct.html" title="alloc_construct, alloc_destroy">
+<link rel="next" href="checked_delete.html" title="checked_delete">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="alloc_construct.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="checked_delete.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="core.bit"></a><a class="link" href="bit.html" title="bit">bit</a>
+</h2></div></div></div>
+<div class="toc"><dl class="toc"><dt><span class="section"><a href="bit.html#core.bit.header_boost_core_bit_hpp">Header &lt;boost/core/bit.hpp&gt;</a></span></dt></dl></div>
+<div class="simplesect">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="idm2434"></a>Authors</h3></div></div></div>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; "><li class="listitem">
+          Peter Dimov
+        </li></ul></div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="core.bit.header_boost_core_bit_hpp"></a><a class="link" href="bit.html#core.bit.header_boost_core_bit_hpp" title="Header &lt;boost/core/bit.hpp&gt;">Header &lt;boost/core/bit.hpp&gt;</a>
+</h3></div></div></div>
+<p>
+        The header <code class="computeroutput"><span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">core</span><span class="special">/</span><span class="identifier">bit</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span></code> implements, in a portable way, the C++20
+        <code class="computeroutput"><span class="special">&lt;</span><span class="identifier">bit</span><span class="special">&gt;</span></code> header.
+      </p>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="core.bit.header_boost_core_bit_hpp.synopsis"></a><a class="link" href="bit.html#core.bit.header_boost_core_bit_hpp.synopsis" title="Synopsis">Synopsis</a>
+</h4></div></div></div>
+<pre class="programlisting"><span class="keyword">namespace</span> <span class="identifier">boost</span>
+<span class="special">{</span>
+<span class="keyword">namespace</span> <span class="identifier">core</span>
+<span class="special">{</span>
+
+<span class="comment">// bit_cast</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">To</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">From</span><span class="special">&gt;</span>
+<span class="identifier">To</span> <span class="identifier">bit_cast</span><span class="special">(</span><span class="identifier">From</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">from</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+<span class="comment">// Integral powers of 2</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span>
+<span class="keyword">constexpr</span> <span class="keyword">bool</span> <span class="identifier">has_single_bit</span><span class="special">(</span><span class="identifier">T</span> <span class="identifier">x</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span>
+<span class="keyword">constexpr</span> <span class="identifier">T</span> <span class="identifier">bit_ceil</span><span class="special">(</span><span class="identifier">T</span> <span class="identifier">x</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span>
+<span class="keyword">constexpr</span> <span class="identifier">T</span> <span class="identifier">bit_floor</span><span class="special">(</span><span class="identifier">T</span> <span class="identifier">x</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span>
+<span class="keyword">constexpr</span> <span class="identifier">T</span> <span class="identifier">bit_width</span><span class="special">(</span><span class="identifier">T</span> <span class="identifier">x</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+<span class="comment">// Rotating</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span>
+<span class="keyword">constexpr</span> <span class="identifier">T</span> <span class="identifier">rotl</span><span class="special">(</span><span class="identifier">T</span> <span class="identifier">x</span><span class="special">,</span> <span class="keyword">int</span> <span class="identifier">s</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span>
+<span class="keyword">constexpr</span> <span class="identifier">T</span> <span class="identifier">rotr</span><span class="special">(</span><span class="identifier">T</span> <span class="identifier">x</span><span class="special">,</span> <span class="keyword">int</span> <span class="identifier">s</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+<span class="comment">// Counting</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span>
+<span class="keyword">constexpr</span> <span class="keyword">int</span> <span class="identifier">countl_zero</span><span class="special">(</span><span class="identifier">T</span> <span class="identifier">x</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span>
+<span class="keyword">constexpr</span> <span class="keyword">int</span> <span class="identifier">countl_one</span><span class="special">(</span><span class="identifier">T</span> <span class="identifier">x</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span>
+<span class="keyword">constexpr</span> <span class="keyword">int</span> <span class="identifier">countr_zero</span><span class="special">(</span><span class="identifier">T</span> <span class="identifier">x</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span>
+<span class="keyword">constexpr</span> <span class="keyword">int</span> <span class="identifier">countr_one</span><span class="special">(</span><span class="identifier">T</span> <span class="identifier">x</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span>
+<span class="keyword">constexpr</span> <span class="keyword">int</span> <span class="identifier">popcount</span><span class="special">(</span><span class="identifier">T</span> <span class="identifier">x</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+<span class="comment">// Endian</span>
+
+<span class="keyword">enum</span> <span class="keyword">class</span> <span class="identifier">endian</span>
+<span class="special">{</span>
+    <span class="identifier">little</span> <span class="special">=</span> <span class="identifier">see</span> <span class="identifier">below</span><span class="special">,</span>
+    <span class="identifier">big</span> <span class="special">=</span> <span class="identifier">see</span> <span class="identifier">below</span><span class="special">,</span>
+    <span class="identifier">native</span> <span class="special">=</span> <span class="identifier">see</span> <span class="identifier">below</span>
+<span class="special">};</span>
+
+<span class="keyword">using</span> <span class="identifier">endian_type</span> <span class="special">=</span> <span class="identifier">endian</span><span class="special">;</span> <span class="comment">// portable alias for C++03 code</span>
+
+<span class="special">}</span> <span class="comment">// namespace core</span>
+<span class="special">}</span> <span class="comment">// namespace boost</span>
+</pre>
+<p>
+          Note: even though the functions are shown as <code class="computeroutput"><span class="keyword">constexpr</span></code>
+          in the synopsis, since they are implemented via compiler-specific intrinsics,
+          portable code cannot generally rely on their being usable in a constant
+          expression context.
+        </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="core.bit.header_boost_core_bit_hpp.bit_cast"></a><a class="link" href="bit.html#core.bit.header_boost_core_bit_hpp.bit_cast" title="bit_cast">bit_cast</a>
+</h4></div></div></div>
+<p>
+          <code class="computeroutput"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">To</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">From</span><span class="special">&gt;</span> <span class="identifier">To</span> <span class="identifier">bit_cast</span><span class="special">(</span><span class="identifier">From</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">from</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></code>
+        </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+              <span class="bold"><strong>Requires:</strong></span> <code class="computeroutput"><span class="identifier">To</span></code>
+              and <code class="computeroutput"><span class="identifier">From</span></code> must be trivially
+              copyable and <code class="computeroutput"><span class="keyword">sizeof</span><span class="special">(</span><span class="identifier">To</span><span class="special">)</span></code>
+              must be the same as <code class="computeroutput"><span class="keyword">sizeof</span><span class="special">(</span><span class="identifier">From</span><span class="special">)</span></code>.
+            </li>
+<li class="listitem">
+              <span class="bold"><strong>Returns:</strong></span> A value of type <code class="computeroutput"><span class="identifier">To</span></code> with the storage bytes copied
+              from <code class="computeroutput"><span class="identifier">from</span></code>.
+            </li>
+</ul></div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="core.bit.header_boost_core_bit_hpp.integral_powers_of_2"></a><a class="link" href="bit.html#core.bit.header_boost_core_bit_hpp.integral_powers_of_2" title="Integral powers of 2">Integral
+        powers of 2</a>
+</h4></div></div></div>
+<p>
+          <code class="computeroutput"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span> <span class="keyword">constexpr</span>
+          <span class="keyword">bool</span> <span class="identifier">has_single_bit</span><span class="special">(</span><span class="identifier">T</span> <span class="identifier">x</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></code>
+        </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+              <span class="bold"><strong>Requires:</strong></span> <code class="computeroutput"><span class="identifier">T</span></code>
+              must be an unsigned integer type (i.e. one of <code class="computeroutput"><span class="keyword">unsigned</span>
+              <span class="keyword">char</span></code>, <code class="computeroutput"><span class="keyword">unsigned</span>
+              <span class="keyword">short</span></code>, <code class="computeroutput"><span class="keyword">unsigned</span>
+              <span class="keyword">int</span></code>, <code class="computeroutput"><span class="keyword">unsigned</span>
+              <span class="keyword">long</span></code>, <code class="computeroutput"><span class="keyword">unsigned</span>
+              <span class="keyword">long</span> <span class="keyword">long</span></code>).
+            </li>
+<li class="listitem">
+              <span class="bold"><strong>Returns:</strong></span> <code class="computeroutput"><span class="keyword">true</span></code>
+              if <code class="computeroutput"><span class="identifier">x</span></code> is an integral
+              power of two, <code class="computeroutput"><span class="keyword">false</span></code> otherwise.
+              (<code class="computeroutput"><span class="identifier">has_single_bit</span><span class="special">(</span><span class="number">0u</span><span class="special">)</span></code> is
+              false.)
+            </li>
+</ul></div>
+<p>
+          <code class="computeroutput"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span> <span class="keyword">constexpr</span>
+          <span class="identifier">T</span> <span class="identifier">bit_ceil</span><span class="special">(</span><span class="identifier">T</span> <span class="identifier">x</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></code>
+        </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+              <span class="bold"><strong>Requires:</strong></span> <code class="computeroutput"><span class="identifier">T</span></code>
+              must be an unsigned integer type.
+            </li>
+<li class="listitem">
+              <span class="bold"><strong>Returns:</strong></span> The smallest integral power
+              of 2 greater than or equal to <code class="computeroutput"><span class="identifier">x</span></code>.
+              If this value is not representable in <code class="computeroutput"><span class="identifier">T</span></code>,
+              behavior is undefined.
+            </li>
+</ul></div>
+<p>
+          <code class="computeroutput"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span> <span class="keyword">constexpr</span>
+          <span class="identifier">T</span> <span class="identifier">bit_floor</span><span class="special">(</span><span class="identifier">T</span> <span class="identifier">x</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></code>
+        </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+              <span class="bold"><strong>Requires:</strong></span> <code class="computeroutput"><span class="identifier">T</span></code>
+              must be an unsigned integer type.
+            </li>
+<li class="listitem">
+              <span class="bold"><strong>Returns:</strong></span> If <code class="computeroutput"><span class="identifier">x</span>
+              <span class="special">==</span> <span class="number">0</span></code>,
+              0; otherwise the maximal value <code class="computeroutput"><span class="identifier">y</span></code>
+              such that <code class="computeroutput"><span class="identifier">has_single_bit</span><span class="special">(</span><span class="identifier">y</span><span class="special">)</span></code> is <code class="computeroutput"><span class="keyword">true</span></code>
+              and <code class="computeroutput"><span class="identifier">y</span> <span class="special">&lt;=</span>
+              <span class="identifier">x</span></code>.
+            </li>
+</ul></div>
+<p>
+          <code class="computeroutput"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span> <span class="keyword">constexpr</span>
+          <span class="identifier">T</span> <span class="identifier">bit_width</span><span class="special">(</span><span class="identifier">T</span> <span class="identifier">x</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></code>
+        </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+              <span class="bold"><strong>Requires:</strong></span> <code class="computeroutput"><span class="identifier">T</span></code>
+              must be an unsigned integer type.
+            </li>
+<li class="listitem">
+              <span class="bold"><strong>Returns:</strong></span> If <code class="computeroutput"><span class="identifier">x</span>
+              <span class="special">==</span> <span class="number">0</span></code>,
+              0; otherwise one plus the base-2 logarithm of <code class="computeroutput"><span class="identifier">x</span></code>,
+              with any fractional part discarded.
+            </li>
+</ul></div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="core.bit.header_boost_core_bit_hpp.rotating"></a><a class="link" href="bit.html#core.bit.header_boost_core_bit_hpp.rotating" title="Rotating">Rotating</a>
+</h4></div></div></div>
+<p>
+          In the following descriptions, <code class="computeroutput"><span class="identifier">N</span></code>
+          denotes <code class="computeroutput"><span class="identifier">numeric_limits</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;::</span><span class="identifier">digits</span></code>
+          and <code class="computeroutput"><span class="identifier">r</span></code> denotes <code class="computeroutput"><span class="identifier">s</span> <span class="special">%</span> <span class="identifier">N</span></code>.
+        </p>
+<p>
+          <code class="computeroutput"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span> <span class="keyword">constexpr</span>
+          <span class="identifier">T</span> <span class="identifier">rotl</span><span class="special">(</span><span class="identifier">T</span> <span class="identifier">x</span><span class="special">,</span> <span class="keyword">int</span> <span class="identifier">s</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></code>
+        </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+              <span class="bold"><strong>Requires:</strong></span> <code class="computeroutput"><span class="identifier">T</span></code>
+              must be an unsigned integer type.
+            </li>
+<li class="listitem">
+              <span class="bold"><strong>Returns:</strong></span> If <code class="computeroutput"><span class="identifier">s</span></code>
+              is negative, <code class="computeroutput"><span class="identifier">rotr</span><span class="special">(</span><span class="identifier">x</span><span class="special">,</span> <span class="special">-</span><span class="identifier">s</span><span class="special">)</span></code>; if <code class="computeroutput"><span class="identifier">r</span></code>
+              is 0, <code class="computeroutput"><span class="identifier">x</span></code>; if <code class="computeroutput"><span class="identifier">r</span></code> is positive, <code class="computeroutput"><span class="special">(</span><span class="identifier">x</span> <span class="special">&lt;&lt;</span>
+              <span class="identifier">r</span><span class="special">)</span>
+              <span class="special">|</span> <span class="special">(</span><span class="identifier">x</span> <span class="special">&gt;&gt;</span>
+              <span class="special">(</span><span class="identifier">N</span>
+              <span class="special">-</span> <span class="identifier">r</span><span class="special">))</span></code>.
+            </li>
+</ul></div>
+<p>
+          <code class="computeroutput"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span> <span class="keyword">constexpr</span>
+          <span class="identifier">T</span> <span class="identifier">rotr</span><span class="special">(</span><span class="identifier">T</span> <span class="identifier">x</span><span class="special">,</span> <span class="keyword">int</span> <span class="identifier">s</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></code>
+        </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+              <span class="bold"><strong>Requires:</strong></span> <code class="computeroutput"><span class="identifier">T</span></code>
+              must be an unsigned integer type.
+            </li>
+<li class="listitem">
+              <span class="bold"><strong>Returns:</strong></span> If <code class="computeroutput"><span class="identifier">s</span></code>
+              is negative, <code class="computeroutput"><span class="identifier">rotl</span><span class="special">(</span><span class="identifier">x</span><span class="special">,</span> <span class="special">-</span><span class="identifier">s</span><span class="special">)</span></code>; if <code class="computeroutput"><span class="identifier">r</span></code>
+              is 0, <code class="computeroutput"><span class="identifier">x</span></code>; if <code class="computeroutput"><span class="identifier">r</span></code> is positive, <code class="computeroutput"><span class="special">(</span><span class="identifier">x</span> <span class="special">&gt;&gt;</span>
+              <span class="identifier">r</span><span class="special">)</span>
+              <span class="special">|</span> <span class="special">(</span><span class="identifier">x</span> <span class="special">&lt;&lt;</span>
+              <span class="special">(</span><span class="identifier">N</span>
+              <span class="special">-</span> <span class="identifier">r</span><span class="special">))</span></code>.
+            </li>
+</ul></div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="core.bit.header_boost_core_bit_hpp.counting"></a><a class="link" href="bit.html#core.bit.header_boost_core_bit_hpp.counting" title="Counting">Counting</a>
+</h4></div></div></div>
+<p>
+          <code class="computeroutput"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span> <span class="keyword">constexpr</span>
+          <span class="keyword">int</span> <span class="identifier">countl_zero</span><span class="special">(</span><span class="identifier">T</span> <span class="identifier">x</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></code>
+        </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+              <span class="bold"><strong>Requires:</strong></span> <code class="computeroutput"><span class="identifier">T</span></code>
+              must be an unsigned integer type.
+            </li>
+<li class="listitem">
+              <span class="bold"><strong>Returns:</strong></span> The number of consecutive
+              0 bits in the value of <code class="computeroutput"><span class="identifier">x</span></code>,
+              starting from the most significant ("left") bit.
+            </li>
+</ul></div>
+<p>
+          <code class="computeroutput"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span> <span class="keyword">constexpr</span>
+          <span class="keyword">int</span> <span class="identifier">countl_one</span><span class="special">(</span><span class="identifier">T</span> <span class="identifier">x</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></code>
+        </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+              <span class="bold"><strong>Requires:</strong></span> <code class="computeroutput"><span class="identifier">T</span></code>
+              must be an unsigned integer type.
+            </li>
+<li class="listitem">
+              <span class="bold"><strong>Returns:</strong></span> The number of consecutive
+              1 bits in the value of <code class="computeroutput"><span class="identifier">x</span></code>,
+              starting from the most significant bit.
+            </li>
+</ul></div>
+<p>
+          <code class="computeroutput"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span> <span class="keyword">constexpr</span>
+          <span class="keyword">int</span> <span class="identifier">countr_zero</span><span class="special">(</span><span class="identifier">T</span> <span class="identifier">x</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></code>
+        </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+              <span class="bold"><strong>Requires:</strong></span> <code class="computeroutput"><span class="identifier">T</span></code>
+              must be an unsigned integer type.
+            </li>
+<li class="listitem">
+              <span class="bold"><strong>Returns:</strong></span> The number of consecutive
+              0 bits in the value of <code class="computeroutput"><span class="identifier">x</span></code>,
+              starting from the least significant ("right") bit.
+            </li>
+</ul></div>
+<p>
+          <code class="computeroutput"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span> <span class="keyword">constexpr</span>
+          <span class="keyword">int</span> <span class="identifier">countr_one</span><span class="special">(</span><span class="identifier">T</span> <span class="identifier">x</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></code>
+        </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+              <span class="bold"><strong>Requires:</strong></span> <code class="computeroutput"><span class="identifier">T</span></code>
+              must be an unsigned integer type.
+            </li>
+<li class="listitem">
+              <span class="bold"><strong>Returns:</strong></span> The number of consecutive
+              1 bits in the value of <code class="computeroutput"><span class="identifier">x</span></code>,
+              starting from the least significant bit.
+            </li>
+</ul></div>
+<p>
+          <code class="computeroutput"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span> <span class="keyword">constexpr</span>
+          <span class="keyword">int</span> <span class="identifier">popcount</span><span class="special">(</span><span class="identifier">T</span> <span class="identifier">x</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></code>
+        </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+              <span class="bold"><strong>Requires:</strong></span> <code class="computeroutput"><span class="identifier">T</span></code>
+              must be an unsigned integer type.
+            </li>
+<li class="listitem">
+              <span class="bold"><strong>Returns:</strong></span> The number of 1 bits in the
+              value of <code class="computeroutput"><span class="identifier">x</span></code>.
+            </li>
+</ul></div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="core.bit.header_boost_core_bit_hpp.endian"></a><a class="link" href="bit.html#core.bit.header_boost_core_bit_hpp.endian" title="Endian">Endian</a>
+</h4></div></div></div>
+<p>
+          Under C++11, <code class="computeroutput"><span class="identifier">endian</span></code> is
+          defined as <code class="computeroutput"><span class="keyword">enum</span> <span class="keyword">class</span>
+          <span class="identifier">endian</span></code> as shown in the synopsis.
+          Under C++03, its definition is
+        </p>
+<pre class="programlisting"><span class="keyword">namespace</span> <span class="identifier">endian</span>
+<span class="special">{</span>
+<span class="keyword">enum</span> <span class="identifier">type</span>
+<span class="special">{</span>
+    <span class="identifier">little</span> <span class="special">=</span> <span class="identifier">see</span> <span class="identifier">below</span><span class="special">,</span>
+    <span class="identifier">big</span> <span class="special">=</span> <span class="identifier">see</span> <span class="identifier">below</span><span class="special">,</span>
+    <span class="identifier">native</span> <span class="special">=</span> <span class="identifier">see</span> <span class="identifier">below</span>
+<span class="special">};</span>
+<span class="special">}</span>
+
+<span class="keyword">typedef</span> <span class="identifier">endian</span><span class="special">::</span><span class="identifier">type</span> <span class="identifier">endian_type</span><span class="special">;</span>
+</pre>
+<p>
+          The values of <code class="computeroutput"><span class="identifier">endian</span><span class="special">::</span><span class="identifier">big</span></code> and <code class="computeroutput"><span class="identifier">endian</span><span class="special">::</span><span class="identifier">little</span></code>
+          are distinct. <code class="computeroutput"><span class="identifier">endian</span><span class="special">::</span><span class="identifier">native</span></code> is equal to <code class="computeroutput"><span class="identifier">endian</span><span class="special">::</span><span class="identifier">big</span></code>
+          on big endian platforms, equal to <code class="computeroutput"><span class="identifier">endian</span><span class="special">::</span><span class="identifier">little</span></code>
+          on little endian platforms, and a distinct value on platforms that are
+          neither.
+        </p>
+<p>
+          Note that you should not rely on <code class="computeroutput"><span class="identifier">little</span></code>
+          and <code class="computeroutput"><span class="identifier">big</span></code> having any specific
+          values, because the C++20 standard leaves these unspecified.
+        </p>
+</div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2014 Peter Dimov<br>Copyright © 2014 Glen Fernandes<br>Copyright © 2014 Andrey Semashev<p>
+        Distributed under the <a href="http://boost.org/LICENSE_1_0.txt" target="_top">Boost
+        Software License, Version 1.0</a>.
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="alloc_construct.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="checked_delete.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

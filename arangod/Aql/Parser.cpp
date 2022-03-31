@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -32,12 +32,12 @@
 #include "Aql/QueryString.h"
 
 #include <sstream>
+#include <string_view>
 
 using namespace arangodb::aql;
 
 /// @brief create the parser
-Parser::Parser(QueryContext& query,
-               Ast& ast, QueryString& qs)
+Parser::Parser(QueryContext& query, Ast& ast, QueryString& qs)
     : _query(query),
       _ast(ast),
       _queryString(qs),
@@ -59,7 +59,8 @@ Parser::Parser(QueryContext& query,
 Parser::~Parser() = default;
 
 /// @brief set data for write queries
-bool Parser::configureWriteQuery(AstNode const* collectionNode, AstNode* optionNode) {
+bool Parser::configureWriteQuery(AstNode const* collectionNode,
+                                 AstNode* optionNode) {
   bool isExclusiveAccess = false;
 
   if (optionNode != nullptr) {
@@ -96,7 +97,7 @@ void Parser::parse() {
   TRI_ASSERT(_scanner != nullptr);
   Aqlset_extra(this, _scanner);
 
-  auto guard = scopeGuard([this]() {
+  auto guard = scopeGuard([this]() noexcept {
     Aqllex_destroy(_scanner);
     _scanner = nullptr;
   });
@@ -126,7 +127,7 @@ QueryResult Parser::parseWithDetails() {
   result.bindParameters = _ast.bindParameters();
   auto builder = std::make_shared<VPackBuilder>();
   _ast.toVelocyPack(*builder, false);
-  result.data = std::move(builder); 
+  result.data = std::move(builder);
 
   return result;
 }
@@ -145,7 +146,8 @@ void Parser::registerParseError(ErrorCode errorCode, char const* format,
 }
 
 /// @brief register a parse error, position is specified as line / column
-void Parser::registerParseError(ErrorCode errorCode, std::string_view data, int line, int column) {
+void Parser::registerParseError(ErrorCode errorCode, std::string_view data,
+                                int line, int column) {
   TRI_ASSERT(errorCode != TRI_ERROR_NO_ERROR);
   TRI_ASSERT(data.data() != nullptr);
 
@@ -158,26 +160,13 @@ void Parser::registerParseError(ErrorCode errorCode, std::string_view data, int 
                << std::string("' at position ") << line << std::string(":")
                << (column + 1);
 
-  if (_query.queryOptions().verboseErrors) {
-    errorMessage << std::endl << queryString() << std::endl;
-
-    // create a neat pointer to the location of the error.
-    size_t i;
-    for (i = 0; i + 1 < (size_t)column; i++) {
-      errorMessage << ' ';
-    }
-    if (i > 0) {
-      errorMessage << '^';
-    }
-    errorMessage << '^' << '^' << std::endl;
-  }
-
   _query.warnings().registerError(errorCode, errorMessage.str());
 }
 
 /// @brief register a warning
 void Parser::registerWarning(ErrorCode errorCode, std::string_view data,
-                             [[maybe_unused]] int line, [[maybe_unused]] int column) {
+                             [[maybe_unused]] int line,
+                             [[maybe_unused]] int column) {
   // ignore line and column for now
   _query.warnings().registerWarning(errorCode, data);
 }
@@ -211,11 +200,13 @@ void Parser::pushArrayElement(AstNode* node) {
 }
 
 /// @brief push an AstNode into the object element on top of the stack
-void Parser::pushObjectElement(char const* attributeName, size_t nameLength, AstNode* node) {
+void Parser::pushObjectElement(char const* attributeName, size_t nameLength,
+                               AstNode* node) {
   auto object = static_cast<AstNode*>(peekStack());
   TRI_ASSERT(object != nullptr);
   TRI_ASSERT(object->type == NODE_TYPE_OBJECT);
-  auto element = _ast.createNodeObjectElement(attributeName, nameLength, node);
+  auto element = _ast.createNodeObjectElement(
+      std::string_view(attributeName, nameLength), node);
   object->addMember(element);
 }
 
@@ -231,7 +222,7 @@ void Parser::pushObjectElement(AstNode* attributeName, AstNode* node) {
 /// @brief push a temporary value on the parser's stack
 void Parser::pushStack(void* value) {
   TRI_ASSERT(value != nullptr);
-  _stack.emplace_back(value); 
+  _stack.emplace_back(value);
 }
 
 /// @brief pop a temporary value from the parser's stack

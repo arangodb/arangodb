@@ -1,0 +1,75 @@
+[section boost/python/reference_existing_object.hpp]
+[section Class `reference_existing_object`]
+`reference_existing_object` is a model of [link concepts.resultconverter.resultconvertergenerator_concept ResultConverterGenerator] which can be used to wrap C++ functions which return a reference or pointer to a C++ object. When the wrapped function is called, the value referenced by its return value is not copied. A new Python object is created which contains a pointer to the referent, and no attempt is made to ensure that the lifetime of the referent is at least as long as that of the corresponding Python object. Thus, it can be *highly dangerous* to use `reference_existing_object` without additional lifetime management from such models of [link concepts.callpolicies CallPolicies] as [link function_invocation_and_creation.models_of_callpolicies.boost_python_with_custodian_and_.class_with_custodian_and_ward `with_custodian_and_ward`]. This class is used in the implementation of [link function_invocation_and_creation.models_of_callpolicies.boost_python_return_internal_ref.class_template_return_internal_r `return_internal_reference`].
+``
+namespace boost { namespace python
+{
+    struct reference_existing_object
+    {
+        template <class T> struct apply;
+    };
+}}
+``
+[endsect]
+[section Class `reference_existing_object` metafunctions]
+``template <class T> struct apply``
+[variablelist
+[[Requires][`T` is `U&` or `U*` for some `U`.]]
+[[Returns][`typedef to_python_indirect<T, V> type;`, where V is a class whose static execute function constructs an instance holder containing an unowned `U*` pointing to the referent of the wrapped function's return value.]]
+]
+[endsect]
+[section Example]
+In C++:
+``
+#include <boost/python/module.hpp>
+#include <boost/python/class.hpp>
+#include <boost/python/reference_existing_object.hpp>
+#include <boost/python/return_value_policy.hpp>
+#include <utility>
+
+// classes to wrap
+struct Singleton
+{
+   Singleton() : x(0) {}
+
+   int exchange(int n)  // set x and return the old value
+   {
+        std::swap(n, x);
+        return n;
+   }
+
+   int x;
+};
+
+Singleton& get_it()
+{
+   static Singleton just_one;
+   return just_one;
+}
+
+// Wrapper code
+using namespace boost::python;
+BOOST_PYTHON_MODULE(singleton)
+{
+    def("get_it", get_it,
+        return_value_policy<reference_existing_object>());
+
+    class_<Singleton>("Singleton")
+       .def("exchange", &Singleton::exchange)
+       ;
+}
+``
+Python code:
+``
+>>> import singleton
+>>> s1 = singleton.get_it()  
+>>> s2 = singleton.get_it()
+>>> id(s1) == id(s2)  # s1 and s2 are not the same object
+0
+>>> s1.exchange(42)   # but they reference the same C++ Singleton
+0
+>>> s2.exchange(99)
+42
+``
+[endsect]
+[endsect]
