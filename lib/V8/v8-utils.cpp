@@ -3766,7 +3766,7 @@ static void JS_RemoveRecursiveDirectory(
     // windows paths are case-insensitive
     if (!TRI_CaseEqualString(path.c_str(), tempPath.c_str(), tempPath.size())) {
 #else
-    if (!TRI_EqualString(path.c_str(), tempPath.c_str(), tempPath.size())) {
+    if (!path.starts_with(tempPath)) {
 #endif
       std::string errorMessage = std::string("directory to be removed [") +
                                  path + "] is outside of temporary path [" +
