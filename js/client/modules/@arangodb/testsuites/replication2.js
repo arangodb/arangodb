@@ -60,7 +60,7 @@ function replication2Server(options) {
   const opts = _.clone(options);
   opts.dbServers = Math.max(opts.dbServers, 5);
 
-  return tu.runOnArangodRunner(opts, 'replication2_server', {
+  return new tu.runOnArangodRunner(opts, 'replication2_server', {
     'javascript.allow-external-process-control': 'true',
     'javascript.allow-port-testing': 'true',
     'javascript.allow-admin-execute': 'true',
