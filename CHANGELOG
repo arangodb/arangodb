@@ -1,6 +1,11 @@
 devel
 -----
 
+* Web UI: Fixes two GraphViewer issues related to display issues with node
+  and edge labels. Boolean values could not be uses as label values.
+  Furthermore, the color calculation for nodes and edges could be wrong in
+  case the graph gets expanded by the user (ES-1084 and ES-1085).
+
 * Updated ArangoDB Starter to 0.15.4.
 
 * Always open a new, working connection before HTTP request-fuzzing during 
