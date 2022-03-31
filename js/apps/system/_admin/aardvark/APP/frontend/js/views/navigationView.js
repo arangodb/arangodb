@@ -164,11 +164,9 @@
               self.showGetTimeError();
             }
           }
-        },
-        error: function () {
-          self.showGetTimeError();
         }
-      }); 
+        // intentionally no error handling: non-root users may not be allowed to fetch license information, but in that case we do not want to show an error
+      });
     },
 
     showLicenseError: function () {
