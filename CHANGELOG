@@ -4,6 +4,19 @@ devel
 * Fix deadlocked shard synchronisations when planned shard leader has
   not yet taken over leadership.
 
+* Updated ArangoDB Starter to 0.15.4.
+
+* Remove error handling fetching license information to improve user
+  experience. To display the license informationn in the UI is only
+  informational. It disturbs the user experience to know somthing went wrong
+  and doesn't provide any important information for the user.
+
+* Updated bundled version of zlib library to 1.2.12.
+
+* Improve parallelism in arangorestore in case new data format is used.
+
+* Updated OpenSSL to 1.1.1n and OpenLDAP to 2.6.1.
+
 * Updated arangosync to v2.9.0-preview-2.
 
 * Added AQL hint "useCache" for FOR loops, to explicitly disable the usage of 
