@@ -23,6 +23,7 @@
 
 #include "RestServer/arangod.h"
 
+#include <string_view>
 #include <type_traits>
 #ifdef _WIN32
 #include <iostream>
@@ -332,7 +333,7 @@ int main(int argc, char* argv[]) {
 
   TRI_GET_ARGV(argc, argv);
 #if _WIN32
-  if (argc > 1 && TRI_EqualString("--start-service", argv[1])) {
+  if (argc > 1 && std::string_view(argv[1]) == "--start-service") {
     ARGC = argc;
     ARGV = argv;
 

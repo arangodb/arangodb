@@ -466,7 +466,9 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
 
   let shutDownStart = time();
   results['testDuration'] = shutDownStart - testrunStart;
-  print(Date() + ' Shutting down...');
+  if (!options.noStartStopLogs) {
+    print(Date() + ' Shutting down...');
+  }
   if (startStopHandlers !== undefined && startStopHandlers.hasOwnProperty('preStop')) {
     customInstanceInfos['preStop'] = startStopHandlers.preStop(options,
                                                                serverOptions,
@@ -507,7 +509,9 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
   }
   results['shutdownTime'] = time() - shutDownStart;
 
-  print('done.');
+  if (!options.noStartStopLogs) {
+    print('done.');
+  }
 
   return results;
 }

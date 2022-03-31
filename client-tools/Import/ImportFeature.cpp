@@ -74,7 +74,6 @@ ImportFeature::ImportFeature(Server& server, int* result)
       _result(result),
       _skipValidation(false),
       _latencyStats(false) {
-  requiresElevatedPrivileges(false);
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseClient>();
   _threadCount = std::max(uint32_t(_threadCount),
