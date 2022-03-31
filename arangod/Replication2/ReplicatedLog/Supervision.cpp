@@ -365,6 +365,31 @@ auto getRemovedParticipant(ParticipantsFlagsMap const& targetParticipants,
   return std::nullopt;
 }
 
+// Pick leader at random from participants
+// TODO: should respect allowed as leader?
+auto pickLeader(ParticipantsFlagsMap const& participants,
+                ParticipantsHealth const& health)
+    -> std::optional<LogPlanTermSpecification::Leader> {
+  auto acceptableParticipants = std::vector<ParticipantId>{};
+  for (auto [part, flags] : participants) {
+    if (flags.allowedAsLeader) {
+      acceptableParticipants.emplace_back(part);
+    }
+  }
+
+  auto p = acceptableParticipants.begin();
+  std::advance(p, RandomGenerator::interval(participants.size()));
+
+  auto participant = *p;
+
+  if (auto it = health._health.find(participant);
+      it != std::end(health._health)) {
+    return LogPlanTermSpecification::Leader{participant, it->second.rebootId};
+  } else {
+    return std::nullopt;
+  }
+}
+
 //
 // This function is called from Agency/Supervision.cpp every k seconds for every
 // replicated log in every database.
@@ -382,6 +407,7 @@ auto getRemovedParticipant(ParticipantsFlagsMap const& targetParticipants,
 //
 // These actions are executes by using std::visit via an Executor struct that
 // contains the necessary context.
+
 auto checkReplicatedLog(LogTarget const& target,
                         std::optional<LogPlanSpecification> const& maybePlan,
                         std::optional<LogCurrent> const& maybeCurrent,
@@ -393,19 +419,7 @@ auto checkReplicatedLog(LogTarget const& target,
       return ErrorAction(
           LogCurrentSupervisionError::TARGET_NOT_ENOUGH_PARTICIPANTS);
     } else {
-      auto leader = std::invoke(
-          [&target,
-           &health]() -> std::optional<LogPlanTermSpecification::Leader> {
-            auto participant = target.participants.begin()->first;
-            if (auto it = health._health.find(participant);
-                it != std::end(health._health)) {
-              return LogPlanTermSpecification::Leader{participant,
-                                                      it->second.rebootId};
-            } else {
-              return std::nullopt;
-            }
-          });
-
+      auto leader = pickLeader(target.participants, health);
       return AddLogToPlanAction(target.id, target.participants, target.config,
                                 leader);
     }
