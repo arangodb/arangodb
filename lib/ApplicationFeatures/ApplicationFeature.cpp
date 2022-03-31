@@ -47,7 +47,6 @@ ApplicationFeature::ApplicationFeature(ApplicationServer& server,
       _state(State::UNINITIALIZED),
       _enabled(true),
       _optional(false),
-      _requiresElevatedPrivileges(false),
       _ancestorsDetermined(false) {}
 
 // add the feature's options to the global list of options. this method will be
