@@ -92,6 +92,7 @@
 #include "RocksDBEngine/RocksDBValue.h"
 #include "RocksDBEngine/RocksDBWalAccess.h"
 #include "RocksDBEngine/SimpleRocksDBTransactionState.h"
+#include "RocksDBEngine/RocksDBChecksumEnv.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Transaction/Context.h"
 #include "Transaction/Manager.h"
@@ -803,8 +804,12 @@ void RocksDBEngine::start() {
   _options.compaction_readahead_size =
       static_cast<size_t>(opts._compactionReadaheadSize);
 
-  ::checksumEnv.reset(::NewChecksumEnv(Env::Default()));
-  _options.env = checksumEnv.get();
+  if (_createShaFiles) {
+    ::checksumEnv.reset(::NewChecksumEnv(Env::Default()));
+    _options.env = checksumEnv.get();
+  } else {
+    _options.env = Env::Default();
+  }
 
 #ifdef USE_ENTERPRISE
   configureEnterpriseRocksDBOptions(_options, createdEngineDir);
@@ -885,13 +890,16 @@ void RocksDBEngine::start() {
 
   if (_createShaFiles) {
     auto shaFileManager = std::make_shared<RocksDBShaFileManager>(_path);
+    /*
     // Register checksum factory
     _options.file_checksum_gen_factory =
         std::make_shared<RocksDBSha256ChecksumFactory>(shaFileManager);
     // Do an initial check in the database directory for missing SHA checksum
     // files
+     */
     shaFileManager->checkMissingShaFiles();
-    _options.listeners.push_back(std::move(shaFileManager));
+
+    //  _options.listeners.push_back(std::move(shaFileManager));
   }
 
   // WAL_ttl_seconds needs to be bigger than the sync interval of the count

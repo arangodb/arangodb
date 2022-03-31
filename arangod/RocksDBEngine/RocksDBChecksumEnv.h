@@ -20,38 +20,57 @@
 ///
 /// @author Julia Puget
 ////////////////////////////////////////////////////////////////////////////////
-/*
- *
- *
- * What I would do first is to derive a ChecksummingEnv from Env which overrides
-only NewWritableFile and prints a message. Then use that in the community case
-instead of the default Env. The enterprise code can tell you how to use a
-non-default Env.
-
-neunhoef:house_with_garden:  10 hours ago
-That would be the "foot in the door". Then we must inherit from WritableFile and
-override enough methods to compute the right checksum, and then on "Close" of
-the WritableFile we spit out the right hash file.
-
-neunhoef:house_with_garden:  10 hours ago
-Once this works for the community edition, we use that ChecksummingEnv between
-the EncryptingEnv and the DefaultEnv to compute the right checksum there.
-
-
- */
 
 #pragma once
 
+#include <openssl/evp.h>
 #include <rocksdb/env.h>
+#include "Logger/LogMacros.h"
 
 namespace arangodb {
+
+class ChecksumHelper {
+ public:
+  ChecksumHelper();
+  bool isSstFilename(std::string const& fileName);
+  bool writeShaFile(std::string const& fileName, std::string const& checksum);
+  std::string computeChecksum();
+  ~ChecksumHelper();
+
+ private:
+  EVP_MD_CTX* _context;
+};
+
+class ChecksumWritableFile : public rocksdb::WritableFileWrapper {
+ public:
+  explicit ChecksumWritableFile(rocksdb::WritableFile* t)
+      : rocksdb::WritableFileWrapper(t) {}
+  rocksdb::Status Append(const rocksdb::Slice& data) override {
+    LOG_DEVEL << "Appending " << data.size()
+              << " bytes to ChecksummingWritableFile.";
+    return rocksdb::WritableFileWrapper::Append(data);
+  }
+  rocksdb::Status Close() override;
+
+ private:
+  std::string _checksum;
+};
+
 class ChecksumEnv
-    : public rocksdb::EnvWrapper,
-      public rocksdb::WritableFile {  // must mix it with Env::Default() for the
-                                      // moment
-  rocksdb::Status NewWritableFile(const std::string& fname,
-                                  std::unique_ptr<WritableFile>* result,
-                                  const rocksdb::EnvOptions& options) override;
+    : public rocksdb::EnvWrapper {  // must mix it with Env::Default() for the
+                                    // moment
+
+ public:
+  explicit ChecksumEnv(Env* t) : EnvWrapper(t) {}
+  explicit ChecksumEnv(std::unique_ptr<Env>&& t) : EnvWrapper(std::move(t)) {}
+  explicit ChecksumEnv(const std::shared_ptr<Env>& t) : EnvWrapper(t) {}
+
+  rocksdb::Status NewWritableFile(
+      const std::string& fileName,
+      std::unique_ptr<rocksdb::WritableFile>* result,
+      const rocksdb::EnvOptions& options) override;
+
+  rocksdb::Status DeleteFile(const std::string& fileName) override;
 };
 
 }  // namespace arangodb
