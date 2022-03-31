@@ -76,15 +76,15 @@ void ClusterMetricsFeature::start() {
   if (wasStop()) {
     return;
   }
+  auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+  ci.initMetricsUpdate();
   aql::QueryString writeText{
       absl::StrCat("INSERT { _key: \"metrics\", version: 0, data: [] } INTO ",
                    StaticStrings::MetricsCollection)};
-  auto& sdf = server().getFeature<SystemDatabaseFeature>();
-  auto vocbase = sdf.use();
+  auto vocbase = server().getFeature<SystemDatabaseFeature>().use();
   auto writeQuery = aql::Query::create(
       transaction::StandaloneContext::Create(*vocbase), writeText, nullptr);
-  writeQuery->executeSync();
-
+  writeQuery->executeSync();  // TODO(MBkkt) Maybe remove old volatile metrics?
   update(CollectMode::ReadGlobal);
 }
 
@@ -107,12 +107,17 @@ void ClusterMetricsFeature::update(CollectMode mode) {
         if (mode == CollectMode::WriteGlobal && result != Result::Error) {
           auto& nf = server().getFeature<NetworkFeature>();
           auto& cf = server().getFeature<ClusterFeature>();
-          auto& ci = cf.clusterInfo();
-          if (ci.startCollectMetrics()) {
-            result = writeData(version, metricsOnCoordinator(nf, cf).getTry());
-            ci.endCollectMetrics();
-          } else {
-            result = Result::Old;
+          result = writeData(version, metricsOnCoordinator(nf, cf).getTry());
+          if (result == Result::Old) {
+            // Now there is new data in the global cache,
+            // relative to what we read at the start of this operation,
+            // so we are trying to read it into the local cache.
+            result = readData(version);
+            // We're also happy with Result::Old
+            // because it means that someone else has updated the local cache.
+            if (result == Result::Old) {
+              return;
+            }
           }
         }
         if (result == Result::New) {
@@ -131,18 +136,15 @@ void ClusterMetricsFeature::update(CollectMode mode) {
 }
 
 void ClusterMetricsFeature::update() {
-  if (wasStop()) {
-    return;
-  }
   // We want more time than _timeout should expire
   // after last try cross cluster communication
   _lastUpdate = std::chrono::steady_clock::now();
   uint64_t version = 0;
   auto result = readData(version);
-  _lastUpdate = std::chrono::steady_clock::now();
   if (wasStop()) {
     return;
   }
+  _lastUpdate = std::chrono::steady_clock::now();
   if (result == Result::Error) {
     return rescheduleUpdate(std::max(_timeout, uint32_t{1}));
   }
@@ -151,31 +153,37 @@ void ClusterMetricsFeature::update() {
   }
   auto& cf = server().getFeature<ClusterFeature>();
   auto& ci = cf.clusterInfo();
-  if (!ci.startCollectMetrics()) {
+  if (_acquiredUpdateLock) {
+    _acquiredUpdateLock = !ci.unlockMetricsUpdate();
+  }
+  if (_acquiredUpdateLock) {
     return rescheduleUpdate(std::max(_timeout, uint32_t{1}));
   }
-  auto& nf = server().getFeature<NetworkFeature>();
+  _acquiredUpdateLock = ci.lockMetricsUpdate();
+  if (!_acquiredUpdateLock) {
+    return rescheduleUpdate(std::max(_timeout, uint32_t{1}));
+  }
   if (wasStop()) {
     return;
   }
+  auto& nf = server().getFeature<NetworkFeature>();
   metricsOnCoordinator(nf, cf).thenFinal(
       [this, version, &ci](futures::Try<RawDBServers>&& raw) mutable {
         if (wasStop()) {
           return;
         }
+        auto result = Result::Old;
         try {
           _lastUpdate = std::chrono::steady_clock::now();
-          auto result = writeData(version, std::move(raw));
+          result = writeData(version, std::move(raw));
           _lastUpdate = std::chrono::steady_clock::now();
-          ci.endCollectMetrics();
-          _lastUpdate = std::chrono::steady_clock::now();
-          if (result == Result::New) {
-            return repeatUpdate();
-          }
         } catch (...) {
+          result = Result::Error;
         }
-        if (wasStop()) {
-          return;
+        _acquiredUpdateLock = !ci.unlockMetricsUpdate();
+        _lastUpdate = std::chrono::steady_clock::now();
+        if (result != Result::Error) {
+          repeatUpdate();
         }
         rescheduleUpdate(std::max(_timeout, uint32_t{1}));
       });
@@ -183,21 +191,20 @@ void ClusterMetricsFeature::update() {
 
 ClusterMetricsFeature::Result ClusterMetricsFeature::readData(
     uint64_t& version) {
-  auto& sdf = server().getFeature<SystemDatabaseFeature>();
-  auto vocbase = sdf.use();
+  auto vocbase = server().getFeature<SystemDatabaseFeature>().use();
   aql::QueryString readText{
-      absl::StrCat("FOR d IN ", StaticStrings::MetricsCollection, " RETURN d")};
+      absl::StrCat("FOR m IN ", StaticStrings::MetricsCollection, " RETURN m")};
   auto readQuery = aql::Query::create(
       transaction::StandaloneContext::Create(*vocbase), readText, nullptr);
-  auto result = readQuery->executeSync();
-  if (!result.ok()) {
+  auto r = readQuery->executeSync();
+  if (r.fail()) {
     return Result::Error;
   }
+  auto metrics = r.data->slice().at(0);
+  version = metrics.get("version").getNumber<uint64_t>();
   auto data = std::atomic_load_explicit(&_data, std::memory_order_acquire);
-  auto metrics = result.data->slice();
-  version = metrics.at(0).get("version").getNumber<uint64_t>();
   if ((data ? data->version : 0) < version) {
-    auto raw = metrics.at(0).get("data");
+    auto raw = metrics.get("data");
     std::atomic_store_explicit(&_data, Data::fromVPack(version, raw),
                                std::memory_order_release);
     return Result::New;
@@ -207,8 +214,7 @@ ClusterMetricsFeature::Result ClusterMetricsFeature::readData(
 
 ClusterMetricsFeature::Result ClusterMetricsFeature::writeData(
     uint64_t version, futures::Try<RawDBServers>&& raw) {
-  auto& sdf = server().getFeature<SystemDatabaseFeature>();
-  auto vocbase = sdf.use();
+  auto vocbase = server().getFeature<SystemDatabaseFeature>().use();
   if (!raw.hasValue()) {
     return Result::Error;
   }
@@ -219,16 +225,24 @@ ClusterMetricsFeature::Result ClusterMetricsFeature::writeData(
   VPackBuilder builder;
   builder.openObject();
   builder.add("d", VPackSerialize{metrics});
-  builder.add("v", VPackValue{(version + 1)});
+  builder.add("v", VPackValue{version + 1});
   builder.close();
   aql::QueryString writeText{
-      "REPLACE { _key: \"metrics\", data: @d, version: @v } INTO " +
-      StaticStrings::MetricsCollection};
+      absl::StrCat("FOR m IN ", StaticStrings::MetricsCollection,
+                   " FILTER m.version < @v"
+                   " REPLACE m WITH { data: @d, version: @v } IN _metrics"
+                   " RETURN 0")};
   std::shared_ptr<VPackBuilder> sharedDefault;
   std::shared_ptr<VPackBuilder> bindVars{sharedDefault, &builder};
   auto writeQuery = aql::Query::create(
       transaction::StandaloneContext::Create(*vocbase), writeText, bindVars);
-  writeQuery->executeSync();
+  auto r = writeQuery->executeSync();
+  if (r.fail()) {
+    return Result::Error;
+  }
+  if (r.data->slice().length() == 0) {
+    return Result::Old;
+  }
   std::atomic_store_explicit(
       &_data, std::make_shared<Data>(version + 1, std::move(metrics)),
       std::memory_order_release);
@@ -243,8 +257,11 @@ void ClusterMetricsFeature::repeatUpdate() noexcept {
 }
 
 void ClusterMetricsFeature::rescheduleUpdate(uint32_t timeout) noexcept {
-  auto now = std::chrono::steady_clock::now();
+  if (wasStop()) {
+    return;
+  }
   auto next = _lastUpdate + std::chrono::seconds{timeout};
+  auto now = std::chrono::steady_clock::now();
   _handle = SchedulerFeature::SCHEDULER->queueDelayed(
       RequestLane::CLUSTER_INTERNAL, (now < next ? next - now : 0ns),
       [this](bool canceled) {
@@ -260,9 +277,7 @@ void ClusterMetricsFeature::rescheduleUpdate(uint32_t timeout) noexcept {
         try {
           update();
         } catch (...) {
-          if (!wasStop()) {
-            rescheduleUpdate(std::max(_timeout, uint32_t{1}));
-          }
+          rescheduleUpdate(std::max(_timeout, uint32_t{1}));
         }
       });
 }

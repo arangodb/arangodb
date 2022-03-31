@@ -39,20 +39,15 @@ class CallbackGuard {
   // Calls the callback given callback upon destruction.
   // Allows only move semantics and no copy semantics.
 
-  CallbackGuard();
+  CallbackGuard() noexcept;
   // IMPORTANT NOTE:
   // The passed callback should not throw exceptions, they will not be caught
   // here, but thrown by the destructor!
-  explicit CallbackGuard(std::function<void(void)> callback);
+  explicit CallbackGuard(std::function<void(void)> callback) noexcept;
   ~CallbackGuard();
 
-  // Note that the move constructor of std::function is not noexcept until
-  // C++20. Thus we cannot mark the constructors here noexcept.
-  // NOLINTNEXTLINE(hicpp-noexcept-move,performance-noexcept-move-constructor)
-  CallbackGuard(CallbackGuard&& other);
-  // operator= additionally calls the _callback, and this can also throw.
-  // NOLINTNEXTLINE(hicpp-noexcept-move,performance-noexcept-move-constructor)
-  CallbackGuard& operator=(CallbackGuard&&);
+  CallbackGuard(CallbackGuard&& other) noexcept;
+  CallbackGuard& operator=(CallbackGuard&&) noexcept;
 
   CallbackGuard(CallbackGuard const&) = delete;
   CallbackGuard& operator=(CallbackGuard const&) = delete;

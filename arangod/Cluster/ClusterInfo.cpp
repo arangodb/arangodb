@@ -114,6 +114,62 @@ struct ShardStatistics {
 };
 
 namespace {
+
+std::string const kMetricsUpdateRebootId = "Plan/MetricsUpdate/RebootId";
+std::string const kMetricsUpdateServerId = "Plan/MetricsUpdate/ServerId";
+constexpr uint64_t kInvalidRebootId = 0;
+constexpr std::string_view kInvalidServerId = "";
+
+static bool changeMetricsUpdate(AgencyComm& ac, uint64_t oldRebootId,
+                                std::string_view oldServerId,
+                                uint64_t newRebootId,
+                                std::string_view newServerId) {
+  VPackBuilder builderOldRebootId;
+  builderOldRebootId.add(VPackValue{oldRebootId});
+  VPackBuilder builderOldServerId;
+  builderOldServerId.add(VPackValue{oldServerId});
+
+  VPackBuilder builderNewRebootId;
+  builderNewRebootId.add(VPackValue{newRebootId});
+  VPackBuilder builderNewServerId;
+  builderNewServerId.add(VPackValue{newServerId});
+
+  AgencyWriteTransaction const write{
+      {{kMetricsUpdateRebootId, AgencyValueOperationType::SET,
+        builderNewRebootId.slice()},
+       {kMetricsUpdateServerId, AgencyValueOperationType::SET,
+        builderNewServerId.slice()}},
+      {{kMetricsUpdateRebootId, AgencyPrecondition::Type::VALUE,
+        builderOldRebootId.slice()},
+       {kMetricsUpdateServerId, AgencyPrecondition::Type::VALUE,
+        builderOldServerId.slice()}}};
+
+  auto const r = ac.sendTransactionWithFailover(write);
+  if (r.successful()) {
+    return true;
+  }
+  if (r.httpCode() == rest::ResponseCode::PRECONDITION_FAILED) {
+    LOG_TOPIC("bfdc0", INFO, Logger::CLUSTER)
+        << "Failed change MetricsUpdate with precondition failed";
+  } else {
+    LOG_TOPIC("bfdc1", ERR, Logger::CLUSTER)
+        << "Failed change MetricsUpdate with httpCode: " << r.httpCode();
+  }
+  return false;
+}
+
+static std::pair<uint64_t, std::string> readMetricsUpdate(AgencyCache& ac) {
+  auto [result, index] =
+      ac.read({AgencyCommHelper::path(kMetricsUpdateRebootId),
+               AgencyCommHelper::path(kMetricsUpdateServerId)});
+  auto data = result->slice().at(0).get(std::initializer_list<std::string_view>{
+      AgencyCommHelper::path(), "Plan", "MetricsUpdate"});
+  auto lockRebootId = data.get("RebootId").getNumber<uint64_t>();
+  auto lockServerId = data.get("ServerId").stringView();
+  // TODO(MBkkt) In some case we don't need string
+  return {lockRebootId, std::string{lockServerId}};
+}
+
 void addToShardStatistics(arangodb::ShardStatistics& stats,
                           containers::FlatHashSet<std::string>& servers,
                           arangodb::velocypack::Slice databaseSlice,
@@ -4232,47 +4288,81 @@ Result ClusterInfo::finishModifyingAnalyzerCoordinator(
   return Result(TRI_ERROR_NO_ERROR);
 }
 
-static std::string const kMetricsFlagPath = "Plan/Metrics/Flag";
+void ClusterInfo::initMetricsUpdate() {
+  VPackBuilder builderNewRebootId;
+  builderNewRebootId.add(VPackValue{kInvalidRebootId});
+  VPackBuilder builderNewServerId;
+  builderNewServerId.add(VPackValue{kInvalidServerId});
 
-bool ClusterInfo::startCollectMetrics() {
-  auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
-  auto [result, index] =
-      agencyCache.read({AgencyCommHelper::path(kMetricsFlagPath)});
-  if (result->slice().at(0).hasKey(std::initializer_list<std::string_view>{
-          AgencyCommHelper::path(), "Plan", "Metrics", "Flag"})) {
-    return false;
-  }
-  AgencyComm ac{_server};
   AgencyWriteTransaction const write{
-      {kMetricsFlagPath, AgencyValueOperationType::SET,
-       VPackSlice::nullSlice()},
-      {kMetricsFlagPath, AgencyPrecondition::Type::EMPTY, true}};
-  do {
+      {{kMetricsUpdateRebootId, AgencyValueOperationType::SET,
+        builderNewRebootId.slice()},
+       {kMetricsUpdateServerId, AgencyValueOperationType::SET,
+        builderNewServerId.slice()}},
+      {{kMetricsUpdateRebootId, AgencyPrecondition::Type::EMPTY, true},
+       {kMetricsUpdateServerId, AgencyPrecondition::Type::EMPTY, true}}};
+  AgencyComm ac{_server};
+  while (true) {
     auto const r = ac.sendTransactionWithFailover(write);
-    if (r.successful()) {
-      return true;
-    } else if (r.httpCode() == rest::ResponseCode::PRECONDITION_FAILED) {
-      return false;
+    if (r.successful() ||
+        r.httpCode() == rest::ResponseCode::PRECONDITION_FAILED) {
+      return;
     }
-  } while (true);
+  }
 }
 
-void ClusterInfo::endCollectMetrics() {
+bool ClusterInfo::lockMetricsUpdate() {
+  LOG_TOPIC("bfdb0", INFO, Logger::CLUSTER) << "Start lock metrics update";
+  auto ourRebootId = ServerState::instance()->getRebootId().value();
+  auto ourServerId = ServerState::instance()->getId();
+  TRI_ASSERT(ourRebootId != kInvalidRebootId &&
+             ourServerId != kInvalidServerId);
+  auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
+  auto [lockRebootId, lockServerId] = readMetricsUpdate(cache);
+  if (lockRebootId != kInvalidRebootId || ourServerId != kInvalidServerId) {
+    _metricsUpdateGuard = _rebootTracker.callMeOnChange(
+        {lockServerId, RebootId{lockRebootId}},
+        [this, rebootId = lockRebootId, serverId = lockServerId] {
+          AgencyComm ac{_server};
+          changeMetricsUpdate(ac, rebootId, serverId, kInvalidRebootId,
+                              kInvalidServerId);
+        },
+        "Unlock MetricsUpdate if current owner die");
+    LOG_TOPIC("bfdb1", INFO, Logger::CLUSTER)
+        << "Cannot lock metrics update, it's already locked";
+    return false;
+  }
+  _metricsUpdateGuard.callAndClear();
   AgencyComm ac{_server};
-  AgencyWriteTransaction const write{
-      {kMetricsFlagPath, AgencySimpleOperationType::DELETE_OP},
-      {kMetricsFlagPath, AgencyPrecondition::Type::VALUE,
-       VPackSlice::nullSlice()},
-  };
-  do {
-    auto const r = ac.sendTransactionWithFailover(write);
-    if (r.successful()) {
-      return;
-    } else if (r.httpCode() == rest::ResponseCode::PRECONDITION_FAILED) {
-      TRI_ASSERT(false);
-      return;
+  return changeMetricsUpdate(ac, kInvalidRebootId, kInvalidServerId,
+                             ourRebootId, ourServerId);
+}
+
+bool ClusterInfo::unlockMetricsUpdate() noexcept {
+  LOG_TOPIC("bfda0", INFO, Logger::CLUSTER) << "Start unlock metrics update";
+  AgencyComm ac{_server};
+  auto ourRebootId = ServerState::instance()->getRebootId().value();
+  auto ourServerId = ServerState::instance()->getId();
+  TRI_ASSERT(ourRebootId != kInvalidRebootId &&
+             ourServerId != kInvalidServerId);
+  try {
+    if (changeMetricsUpdate(ac, ourRebootId, ourServerId, kInvalidRebootId,
+                            kInvalidServerId)) {
+      return true;
     }
-  } while (true);
+  } catch (...) {
+  }
+  LOG_TOPIC("bfda1", ERR, Logger::CLUSTER) << "Failed unlock metrics update";
+  auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
+  try {
+    auto [lockRebootId, lockServerId] = readMetricsUpdate(cache);
+    if (ourRebootId != lockRebootId || ourServerId != lockServerId) {
+      return true;
+    }
+  } catch (...) {
+  }
+  LOG_TOPIC("bfda2", ERR, Logger::CLUSTER) << "Failed reset metrics update";
+  return false;
 }
 
 AnalyzerModificationTransaction::Ptr

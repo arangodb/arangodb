@@ -778,9 +778,9 @@ class ClusterInfo final {
 
   Result finishModifyingAnalyzerCoordinator(std::string_view databaseId,
                                             bool restore);
-
-  [[nodiscard]] bool startCollectMetrics();
-  void endCollectMetrics();
+  void initMetricsUpdate();
+  [[nodiscard]] bool lockMetricsUpdate();
+  [[nodiscard]] bool unlockMetricsUpdate() noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Creates cleanup transaction for first found dangling operation
@@ -1126,7 +1126,7 @@ class ClusterInfo final {
   };
 
   cluster::RebootTracker _rebootTracker;
-
+  cluster::CallbackGuard _metricsUpdateGuard;
   /// @brief error code sent to all remaining promises of the syncers at
   /// shutdown. normally this is TRI_ERROR_SHUTTING_DOWN, but it can be
   /// overridden during testing

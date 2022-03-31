@@ -26,19 +26,17 @@
 using namespace arangodb;
 using namespace arangodb::cluster;
 
-CallbackGuard::CallbackGuard() : _callback(nullptr) {}
+CallbackGuard::CallbackGuard() noexcept : _callback(nullptr) {}
 
-CallbackGuard::CallbackGuard(std::function<void(void)> callback)
+CallbackGuard::CallbackGuard(std::function<void(void)> callback) noexcept
     : _callback(std::move(callback)) {}
 
-// NOLINTNEXTLINE(hicpp-noexcept-move,performance-noexcept-move-constructor)
-CallbackGuard::CallbackGuard(CallbackGuard&& other)
+CallbackGuard::CallbackGuard(CallbackGuard&& other) noexcept
     : _callback(std::move(other._callback)) {
   other._callback = nullptr;
 }
 
-// NOLINTNEXTLINE(hicpp-noexcept-move,performance-noexcept-move-constructor)
-CallbackGuard& CallbackGuard::operator=(CallbackGuard&& other) {
+CallbackGuard& CallbackGuard::operator=(CallbackGuard&& other) noexcept {
   call();
   _callback = std::move(other._callback);
   other._callback = nullptr;

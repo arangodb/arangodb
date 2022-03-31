@@ -154,11 +154,12 @@ class ClusterMetricsFeature final : public ArangodFeature {
   std::shared_ptr<Data> _data;
   Scheduler::WorkHandle _handle;
   std::chrono::time_point<std::chrono::steady_clock> _lastUpdate{};
-  uint32_t _timeout{0};
+  uint32_t _timeout = 0;
 
   static constexpr uint32_t kStop = 1;
   static constexpr uint32_t kUpdate = 2;
-  std::atomic_uint32_t _count{0};
+  std::atomic_uint32_t _count = 0;
+  bool _acquiredUpdateLock = false;
 };
 
 }  // namespace arangodb::metrics
