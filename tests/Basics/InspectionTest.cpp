@@ -198,7 +198,7 @@ struct InvariantWithResult {
 template<class Inspector>
 auto inspect(Inspector& f, InvariantWithResult& x) {
   return f.object(x).fields(
-      f.field("i", x.i).invariant([](int v) -> arangodb::inspection::Result {
+      f.field("i", x.i).invariant([](int v) -> arangodb::inspection::Status {
         if (v == 0) {
           return {"Must not be zero"};
         }
@@ -247,12 +247,12 @@ struct MyTransformer {
   using MemoryType = int;
   using SerializedType = std::string;
 
-  arangodb::inspection::Result toSerialized(MemoryType v,
+  arangodb::inspection::Status toSerialized(MemoryType v,
                                             SerializedType& result) const {
     result = std::to_string(v);
     return {};
   }
-  arangodb::inspection::Result fromSerialized(SerializedType const& v,
+  arangodb::inspection::Status fromSerialized(SerializedType const& v,
                                               MemoryType& result) const {
     result = std::stoi(v);
     return {};
@@ -304,13 +304,23 @@ namespace arangodb::inspection {
 template<>
 struct Access<Specialization> : AccessBase<Specialization> {
   template<class Inspector>
-  [[nodiscard]] static Result apply(Inspector& f, Specialization& x) {
+  [[nodiscard]] static Status apply(Inspector& f, Specialization& x) {
     return f.object(x).fields(f.field("i", x.i), f.field("s", x.s));
   }
 };
 }  // namespace arangodb::inspection
 
 namespace {
+
+struct ExplicitIgnore {
+  std::string s;
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, ExplicitIgnore& x) {
+  return f.object(x).fields(f.field("s", x.s), f.ignoreField("ignore"));
+}
+
 using namespace arangodb;
 using VPackLoadInspector = inspection::VPackLoadInspector;
 using VPackSaveInspector = inspection::VPackSaveInspector;
@@ -499,7 +509,10 @@ TEST_F(VPackSaveInspectorTest, store_optional) {
 
   velocypack::Slice slice = builder.slice();
   ASSERT_TRUE(slice.isObject());
-  EXPECT_EQ(3, slice.length());
+  EXPECT_EQ(5, slice.length());
+  // a and b have fallbacks, so we need to serialize them explicitly as null
+  EXPECT_TRUE(slice["a"].isNull());
+  EXPECT_TRUE(slice["b"].isNull());
   EXPECT_EQ("blubb", slice["y"].copyString());
 
   auto vec = slice["vec"];
@@ -537,7 +550,7 @@ TEST_F(VPackSaveInspectorTest, store_optional_pointer) {
 
   velocypack::Slice slice = builder.slice();
   ASSERT_TRUE(slice.isObject());
-  EXPECT_EQ(3, slice.length());
+  EXPECT_EQ(5, slice.length());
   EXPECT_EQ(42, slice["b"].getInt());
   EXPECT_EQ(43, slice["d"]["i"].getInt());
   auto vec = slice["vec"];
@@ -546,6 +559,9 @@ TEST_F(VPackSaveInspectorTest, store_optional_pointer) {
   EXPECT_EQ(1, vec[0].getInt());
   EXPECT_TRUE(vec[1].isNull());
   EXPECT_EQ(2, vec[2].getInt());
+  // x and y have fallbacks, so we need to serialize them explicitly as null
+  EXPECT_TRUE(slice["x"].isNull());
+  EXPECT_TRUE(slice["y"].isNull());
 }
 
 TEST_F(VPackSaveInspectorTest, store_object_with_fallbacks) {
@@ -611,6 +627,16 @@ TEST_F(VPackSaveInspectorTest, store_type_with_custom_specialization) {
   ASSERT_TRUE(slice.isObject());
   EXPECT_EQ(s.i, slice["i"].getInt());
   EXPECT_EQ(s.s, slice["s"].copyString());
+}
+
+TEST_F(VPackSaveInspectorTest, store_type_with_explicitly_ignored_fields) {
+  ExplicitIgnore e{.s = "foobar"};
+  auto result = inspector.apply(e);
+  ASSERT_TRUE(result.ok());
+
+  velocypack::Slice slice = builder.slice();
+  ASSERT_TRUE(slice.isObject());
+  EXPECT_EQ(1, slice.length());
 }
 
 struct VPackLoadInspectorTest : public ::testing::Test {
@@ -856,7 +882,7 @@ TEST_F(VPackLoadInspectorTest, load_optional) {
                     .y = "blubb",
                     .vec = {1, std::nullopt, 3},
                     .map = {{"1", 1}, {"2", std::nullopt}, {"3", 3}}};
-  EXPECT_EQ(expected.a, o.a) << o.a.has_value() << " " << o.a.value();
+  EXPECT_EQ(expected.a, o.a);
   EXPECT_EQ(expected.b, o.b);
   EXPECT_EQ(expected.x, o.x);
   EXPECT_EQ(expected.y, o.y);
@@ -1420,6 +1446,18 @@ TEST_F(VPackLoadInspectorTest, load_type_with_custom_specialization) {
   ASSERT_TRUE(result.ok());
   EXPECT_EQ(42, s.i);
   EXPECT_EQ("foobar", s.s);
+}
+
+TEST_F(VPackLoadInspectorTest, load_type_with_explicitly_ignored_fields) {
+  builder.openObject();
+  builder.add("s", VPackValue("foobar"));
+  builder.add("ignore", VPackValue("something"));
+  builder.close();
+  VPackLoadInspector inspector{builder};
+
+  ExplicitIgnore e;
+  auto result = inspector.apply(e);
+  ASSERT_TRUE(result.ok());
 }
 
 struct VPackInspectionTest : public ::testing::Test {};

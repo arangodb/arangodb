@@ -124,6 +124,7 @@ class LogFollower : public ILogFollower,
   // thread. Using the UnshackledMutex this is no longer required.
   Guarded<GuardedFollowerData, arangodb::basics::UnshackledMutex>
       _guardedFollowerData;
+  std::atomic<bool> _appendEntriesInFlight{false};
 
   [[nodiscard]] auto appendEntriesPreFlightChecks(
       GuardedFollowerData const&, AppendEntriesRequest const&) const noexcept
