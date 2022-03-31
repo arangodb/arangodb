@@ -554,7 +554,9 @@ class testRunner {
 
     let shutDownStart = time();
     this.results['testDuration'] = shutDownStart - testrunStart;
-    print(Date() + ' Shutting down...');
+    if (!this.options.noStartStopLogs) {
+      print(Date() + ' Shutting down...');
+    }
     this.customInstanceInfos.preStop = this.preStop();
     if (this.customInstanceInfos.preStop.state === false) {
       if (!this.results.hasOwnProperty('setup')) {
@@ -582,8 +584,9 @@ class testRunner {
     }
     this.results['shutdownTime'] = time() - shutDownStart;
 
-    print('done.');
-
+    if (!this.options.noStartStopLogs) {
+      print('done.');
+    }
     return this.results;
   }
 }
