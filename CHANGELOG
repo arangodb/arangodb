@@ -1,6 +1,8 @@
 devel
 -----
 
+* Updated ArangoDB Starter to 0.15.4.
+
 * Remove error handling fetching license information to improve user
   experience. To display the license informationn in the UI is only
   informational. It disturbs the user experience to know somthing went wrong
