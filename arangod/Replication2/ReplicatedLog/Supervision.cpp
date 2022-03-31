@@ -389,17 +389,25 @@ auto checkReplicatedLog(LogTarget const& target,
   if (!maybePlan) {
     // The log is not planned right now, so we create it
     // provided we have enough participants
-    if (target.participants.size() + target.config.writeConcern <
-        target.config.replicationFactor + 1) {
+    if (target.participants.size() + 1 < target.config.writeConcern) {
       return ErrorAction(
           LogCurrentSupervisionError::TARGET_NOT_ENOUGH_PARTICIPANTS);
     } else {
-      auto leader = target.participants.begin()->first;
-      auto rebootId = health._health.at(leader).rebootId;
+      auto leader = std::invoke(
+          [&target,
+           &health]() -> std::optional<LogPlanTermSpecification::Leader> {
+            auto participant = target.participants.begin()->first;
+            if (auto it = health._health.find(participant);
+                it != std::end(health._health)) {
+              return LogPlanTermSpecification::Leader{participant,
+                                                      it->second.rebootId};
+            } else {
+              return std::nullopt;
+            }
+          });
 
-      return AddLogToPlanAction(
-          target.id, target.participants, target.config,
-          LogPlanTermSpecification::Leader{leader, rebootId});
+      return AddLogToPlanAction(target.id, target.participants, target.config,
+                                leader);
     }
   }
 
