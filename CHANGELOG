@@ -3,6 +3,8 @@ devel
 
 * Upgraded bundled version of RocksDB to 7.1.
 
+* Improve parallelism in arangorestore in case new data format is used.
+
 * Updated OpenSSL to 1.1.1n and OpenLDAP to 2.6.1.
 
 * Updated arangosync to v2.9.0-preview-2.

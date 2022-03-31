@@ -775,3 +775,78 @@ TEST_F(LogSupervisionTest, test_remove_participant_action_committed) {
   auto action = std::get<RemoveParticipantFromPlanAction>(r);
   ASSERT_EQ(action._participant, "D");
 }
+
+#include <Logger/LogMacros.h>
+
+TEST_F(LogSupervisionTest, test_write_empty_term) {
+  auto const& logId = LogId{44};
+  auto const& config = LogConfig(3, 3, 3, true);
+
+  auto const& target =
+      LogTarget(logId,
+                ParticipantsFlagsMap{{"A", ParticipantFlags{}},
+                                     {"B", ParticipantFlags{}},
+                                     {"C", ParticipantFlags{}},
+                                     {"D", ParticipantFlags{}}},
+                config);
+
+  ParticipantsFlagsMap participantsFlags{
+      {"A", ParticipantFlags{}},
+      {"B", ParticipantFlags{}},
+      {"C", ParticipantFlags{}},
+      {"D", ParticipantFlags{.allowedInQuorum = false}}};
+  auto const& participantsConfig =
+      ParticipantsConfig{.generation = 2, .participants = participantsFlags};
+
+  auto const& plan = LogPlanSpecification(
+      logId,
+      LogPlanTermSpecification(
+          LogTerm{2}, config,
+          LogPlanTermSpecification::Leader{"A", RebootId{42}}),
+      participantsConfig);
+
+  ParticipantsFlagsMap participantsFlagsOld{{"A", ParticipantFlags{}},
+                                            {"B", ParticipantFlags{}},
+                                            {"C", ParticipantFlags{}},
+                                            {"D", ParticipantFlags{}}};
+  auto const& participantsConfigOld =
+      ParticipantsConfig{.generation = 1, .participants = participantsFlagsOld};
+
+  auto current = LogCurrent();
+  current.leader =
+      LogCurrent::Leader{.serverId = "A",
+                         .term = LogTerm{1},
+                         .committedParticipantsConfig = participantsConfigOld,
+                         .leadershipEstablished = true,
+                         .commitStatus = std::nullopt};
+  current.localState = {
+      {"A", LogCurrentLocalState(LogTerm(2),
+                                 TermIndexPair(LogTerm(1), LogIndex(44)))},
+      {"B", LogCurrentLocalState(LogTerm(2),
+                                 TermIndexPair(LogTerm(1), LogIndex(44)))},
+      {"C", LogCurrentLocalState(LogTerm(2),
+                                 TermIndexPair(LogTerm(3), LogIndex(44)))},
+      {"D", LogCurrentLocalState(LogTerm(2),
+                                 TermIndexPair(LogTerm(1), LogIndex(44)))}};
+
+  auto const& health = ParticipantsHealth{
+      ._health = {
+          {"A",
+           ParticipantHealth{.rebootId = RebootId{44}, .notIsFailed = true}},
+          {"B",
+           ParticipantHealth{.rebootId = RebootId{14}, .notIsFailed = true}},
+          {"C",
+           ParticipantHealth{.rebootId = RebootId{14}, .notIsFailed = true}},
+          {"D",
+           ParticipantHealth{.rebootId = RebootId{14}, .notIsFailed = true}}}};
+
+  auto r = checkReplicatedLog(target, plan, current, health);
+
+  // Since the leader is `A` and the rebootId in health is higher than the one
+  // in plan, we need to write an empty term
+  ASSERT_TRUE(std::holds_alternative<WriteEmptyTermAction>(r)) << to_string(r);
+
+  auto writeEmptyTermAction = std::get<WriteEmptyTermAction>(r);
+
+  ASSERT_EQ(writeEmptyTermAction.minTerm, LogTerm{3});
+}
