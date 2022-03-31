@@ -40,8 +40,8 @@ namespace arangodb::replication2::replicated_log {
 
 // Leader has failed if it is marked as failed or it's rebootId is
 // different from what is expected
-auto isLeaderFailed(LogPlanTermSpecification::Leader const &leader,
-                    ParticipantsHealth const &health) -> bool {
+auto isLeaderFailed(LogPlanTermSpecification::Leader const& leader,
+                    ParticipantsHealth const& health) -> bool {
   // TODO: less obscure with fewer negations
   // TODO: write test first
   if (health.notIsFailed(leader.serverId) &&
@@ -64,12 +64,12 @@ auto isLeaderFailed(LogPlanTermSpecification::Leader const &leader,
 // rip out the old leader and waiting for failover to occur
 
 auto getParticipantsAcceptableAsLeaders(
-    ParticipantId const &currentLeader,
-    ParticipantsFlagsMap const &participants) -> std::vector<ParticipantId> {
+    ParticipantId const& currentLeader,
+    ParticipantsFlagsMap const& participants) -> std::vector<ParticipantId> {
   // A participant is acceptable if it is neither excluded nor
   // already the leader
   auto acceptableLeaderSet = std::vector<ParticipantId>{};
-  for (auto const &[participant, flags] : participants) {
+  for (auto const& [participant, flags] : participants) {
     if (participant != currentLeader and flags.allowedAsLeader) {
       acceptableLeaderSet.emplace_back(participant);
     }
@@ -81,8 +81,8 @@ auto getParticipantsAcceptableAsLeaders(
 // Switch to a new leader gracefully by finding a participant that is
 // functioning and handing leadership to them.
 // This happens when the user uses Target to specify a leader.
-auto dictateLeader(LogTarget const &target, LogPlanSpecification const &plan,
-                   LogCurrent const &current, ParticipantsHealth const &health)
+auto dictateLeader(LogTarget const& target, LogPlanSpecification const& plan,
+                   LogCurrent const& current, ParticipantsHealth const& health)
     -> Action {
   // TODO: integrate
   if (!current.leader || !current.leader->committedParticipantsConfig ||
@@ -101,8 +101,8 @@ auto dictateLeader(LogTarget const &target, LogPlanSpecification const &plan,
   //  acceptable and forced
   //
   //  if so, make them leader
-  for (auto const &participant : acceptableLeaderSet) {
-    auto const &flags =
+  for (auto const& participant : acceptableLeaderSet) {
+    auto const& flags =
         current.leader->committedParticipantsConfig->participants.at(
             participant);
 
@@ -118,7 +118,7 @@ auto dictateLeader(LogTarget const &target, LogPlanSpecification const &plan,
   auto const numElectible = acceptableLeaderSet.size();
   if (numElectible > 0) {
     auto const maxIdx = static_cast<uint16_t>(numElectible - 1);
-    auto const &chosenOne =
+    auto const& chosenOne =
         acceptableLeaderSet.at(RandomGenerator::interval(maxIdx));
 
     auto flags =
@@ -135,9 +135,9 @@ auto dictateLeader(LogTarget const &target, LogPlanSpecification const &plan,
 
 // Check whether Target contains an entry for a leader, which means
 // that the user would like a particular participant to be leader;
-auto leaderInTarget(ParticipantId const &targetLeader,
-                    LogPlanSpecification const &plan, LogCurrent const &current,
-                    ParticipantsHealth const &health) -> std::optional<Action> {
+auto leaderInTarget(ParticipantId const& targetLeader,
+                    LogPlanSpecification const& plan, LogCurrent const& current,
+                    ParticipantsHealth const& health) -> std::optional<Action> {
   // Someone wishes there to be a particular leader
 
   if (plan.currentTerm && plan.currentTerm->leader &&
@@ -168,7 +168,7 @@ auto leaderInTarget(ParticipantId const &targetLeader,
         return ErrorAction(LogCurrentSupervisionError::TARGET_LEADER_INVALID);
       }
     }
-    auto const &planLeaderConfig =
+    auto const& planLeaderConfig =
         plan.participantsConfig.participants.at(targetLeader);
 
     if (planLeaderConfig.forced != true || !planLeaderConfig.allowedAsLeader) {
@@ -188,7 +188,7 @@ auto leaderInTarget(ParticipantId const &targetLeader,
   return std::nullopt;
 }
 
-auto computeReason(LogCurrentLocalState const &status, bool healthy,
+auto computeReason(LogCurrentLocalState const& status, bool healthy,
                    bool excluded, LogTerm term)
     -> LogCurrentSupervisionElection::ErrorCode {
   if (!healthy) {
@@ -202,14 +202,14 @@ auto computeReason(LogCurrentLocalState const &status, bool healthy,
   }
 }
 
-auto runElectionCampaign(LogCurrentLocalStates const &states,
-                         ParticipantsConfig const &participantsConfig,
-                         ParticipantsHealth const &health, LogTerm term)
+auto runElectionCampaign(LogCurrentLocalStates const& states,
+                         ParticipantsConfig const& participantsConfig,
+                         ParticipantsHealth const& health, LogTerm term)
     -> LogCurrentSupervisionElection {
   auto election = LogCurrentSupervisionElection();
   election.term = term;
 
-  for (auto const &[participant, status] : states) {
+  for (auto const& [participant, status] : states) {
     auto const excluded =
         participantsConfig.participants.contains(participant) and
         not participantsConfig.participants.at(participant).allowedAsLeader;
@@ -246,9 +246,9 @@ auto runElectionCampaign(LogCurrentLocalStates const &states,
 //  * not marked as failed
 //  * amongst the participant with the most recent TermIndex.
 //
-auto doLeadershipElection(LogPlanSpecification const &plan,
-                          LogCurrent const &current,
-                          ParticipantsHealth const &health) -> Action {
+auto doLeadershipElection(LogPlanSpecification const& plan,
+                          LogCurrent const& current,
+                          ParticipantsHealth const& health) -> Action {
   // Check whether there are enough participants to reach a quorum
   if (plan.participantsConfig.participants.size() + 1 <=
       plan.currentTerm->config.writeConcern) {
@@ -278,9 +278,9 @@ auto doLeadershipElection(LogPlanSpecification const &plan,
   if (election.participantsAvailable >= requiredNumberOfOKParticipants) {
     // We randomly elect on of the electible leaders
     auto const maxIdx = static_cast<uint16_t>(numElectible - 1);
-    auto const &newLeader =
+    auto const& newLeader =
         election.electibleLeaderSet.at(RandomGenerator::interval(maxIdx));
-    auto const &newLeaderRebootId = health._health.at(newLeader).rebootId;
+    auto const& newLeaderRebootId = health._health.at(newLeader).rebootId;
 
     return LeaderElectionAction(
         LogPlanTermSpecification::Leader(newLeader, newLeaderRebootId),
@@ -292,10 +292,10 @@ auto doLeadershipElection(LogPlanSpecification const &plan,
   }
 }
 
-auto desiredParticipantFlags(std::optional<ParticipantId> const &targetLeader,
-                             ParticipantId const &currentTermLeader,
-                             ParticipantId const &targetParticipant,
-                             ParticipantFlags const &targetFlags)
+auto desiredParticipantFlags(std::optional<ParticipantId> const& targetLeader,
+                             ParticipantId const& currentTermLeader,
+                             ParticipantId const& targetParticipant,
+                             ParticipantFlags const& targetFlags)
     -> ParticipantFlags {
   if (targetParticipant == targetLeader and
       targetParticipant != currentTermLeader) {
@@ -314,13 +314,13 @@ auto desiredParticipantFlags(std::optional<ParticipantId> const &targetLeader,
 // Note that the desired flags currently forces the flags for a configured,
 // desired, leader to contain a forced flag.
 auto getParticipantWithUpdatedFlags(
-    ParticipantsFlagsMap const &targetParticipants,
-    ParticipantsFlagsMap const &planParticipants,
-    std::optional<ParticipantId> const &targetLeader,
-    ParticipantId const &currentTermLeader)
+    ParticipantsFlagsMap const& targetParticipants,
+    ParticipantsFlagsMap const& planParticipants,
+    std::optional<ParticipantId> const& targetLeader,
+    ParticipantId const& currentTermLeader)
     -> std::optional<std::pair<ParticipantId, ParticipantFlags>> {
-  for (auto const &[targetParticipant, targetFlags] : targetParticipants) {
-    if (auto const &planParticipant = planParticipants.find(targetParticipant);
+  for (auto const& [targetParticipant, targetFlags] : targetParticipants) {
+    if (auto const& planParticipant = planParticipants.find(targetParticipant);
         planParticipant != std::end(planParticipants)) {
       // participant is in plan, check whether flags are the same
       auto const desiredFlags = desiredParticipantFlags(
@@ -339,11 +339,11 @@ auto getParticipantWithUpdatedFlags(
 // If there is a participant that is present in Target, but not in Flags,
 // returns a pair consisting of the ParticipantId and the ParticipantFlags.
 // Otherwise returns std::nullopt
-auto getAddedParticipant(ParticipantsFlagsMap const &targetParticipants,
-                         ParticipantsFlagsMap const &planParticipants)
+auto getAddedParticipant(ParticipantsFlagsMap const& targetParticipants,
+                         ParticipantsFlagsMap const& planParticipants)
     -> std::optional<std::pair<ParticipantId, ParticipantFlags>> {
-  for (auto const &[targetParticipant, targetFlags] : targetParticipants) {
-    if (auto const &planParticipant = planParticipants.find(targetParticipant);
+  for (auto const& [targetParticipant, targetFlags] : targetParticipants) {
+    if (auto const& planParticipant = planParticipants.find(targetParticipant);
         planParticipant == planParticipants.end()) {
       return std::make_pair(targetParticipant, targetFlags);
     }
@@ -354,10 +354,10 @@ auto getAddedParticipant(ParticipantsFlagsMap const &targetParticipants,
 // If there is a participant that is present in Plan, but not in Target,
 // returns a pair consisting of the ParticipantId and the ParticipantFlags.
 // Otherwise returns std::nullopt
-auto getRemovedParticipant(ParticipantsFlagsMap const &targetParticipants,
-                           ParticipantsFlagsMap const &planParticipants)
+auto getRemovedParticipant(ParticipantsFlagsMap const& targetParticipants,
+                           ParticipantsFlagsMap const& planParticipants)
     -> std::optional<std::pair<ParticipantId, ParticipantFlags>> {
-  for (auto const &[planParticipant, flags] : planParticipants) {
+  for (auto const& [planParticipant, flags] : planParticipants) {
     if (!targetParticipants.contains(planParticipant)) {
       return std::make_pair(planParticipant, flags);
     }
@@ -382,23 +382,29 @@ auto getRemovedParticipant(ParticipantsFlagsMap const &targetParticipants,
 //
 // These actions are executes by using std::visit via an Executor struct that
 // contains the necessary context.
-auto checkReplicatedLog(LogTarget const &target,
-                        std::optional<LogPlanSpecification> const &maybePlan,
-                        std::optional<LogCurrent> const &maybeCurrent,
-                        ParticipantsHealth const &health) -> Action {
+auto checkReplicatedLog(LogTarget const& target,
+                        std::optional<LogPlanSpecification> const& maybePlan,
+                        std::optional<LogCurrent> const& maybeCurrent,
+                        ParticipantsHealth const& health) -> Action {
   if (!maybePlan) {
     // The log is not planned right now, so we create it
-    LogPlanTermSpecification term;
-    term.config = target.config;
-    term.term = LogTerm{1};
-    auto leader = target.participants.begin()->first;
-    auto rebootId = health._health.at(leader).rebootId;
-    term.leader.emplace(std::move(leader), rebootId);
-    return AddLogToPlanAction(target.id, target.participants, term);
+    // provided we have enough participants
+    if (target.participants.size() + target.config.writeConcern <
+        target.config.replicationFactor + 1) {
+      return ErrorAction(
+          LogCurrentSupervisionError::TARGET_NOT_ENOUGH_PARTICIPANTS);
+    } else {
+      auto leader = target.participants.begin()->first;
+      auto rebootId = health._health.at(leader).rebootId;
+
+      return AddLogToPlanAction(
+          target.id, target.participants, target.config,
+          LogPlanTermSpecification::Leader{leader, rebootId});
+    }
   }
 
   // plan now exists
-  auto const &plan = *maybePlan;
+  auto const& plan = *maybePlan;
 
   // If the ReplicatedLog does not have a LogTerm yet, we create
   // the initial (empty) Term, which will kick off a leader election.
@@ -406,14 +412,14 @@ auto checkReplicatedLog(LogTarget const &target,
     return CreateInitialTermAction{._config = target.config};
   }
   // currentTerm has a value now.
-  auto const &currentTerm = *plan.currentTerm;
+  auto const& currentTerm = *plan.currentTerm;
 
   // If the Current subtree does not exist yet, create it by writing
   // a message into it.
   if (!maybeCurrent) {
     return CurrentNotAvailableAction{};
   }
-  auto const &current = *maybeCurrent;
+  auto const& current = *maybeCurrent;
 
   // If currentTerm's leader entry does not have a value,
   // run a leadership election. The doLeadershipElection can
@@ -423,7 +429,7 @@ auto checkReplicatedLog(LogTarget const &target,
   if (!plan.currentTerm->leader) {
     return doLeadershipElection(plan, current, health);
   }
-  auto const &leader = *plan.currentTerm->leader;
+  auto const& leader = *plan.currentTerm->leader;
 
   // If the leader is unhealthy, write a new term that
   // does not have a leader.
@@ -466,10 +472,10 @@ auto checkReplicatedLog(LogTarget const &target,
     return AddParticipantToPlanAction(participant->first, participant->second);
   }
 
-  // Check whether a specific participant is configured in Target to become the
-  // leader. This requires that participant to be flagged to always be part of a
-  // quorum; once that change is committed, the leader can be switched if the
-  // target.leader participant is healty.
+  // Check whether a specific participant is configured in Target to become
+  // the leader. This requires that participant to be flagged to always be
+  // part of a quorum; once that change is committed, the leader can be
+  // switched if the target.leader participant is healty.
   //
   // This operation can fail and
   // TODO: Report if leaderInTarget fails.
@@ -485,7 +491,7 @@ auto checkReplicatedLog(LogTarget const &target,
   // remove them
   if (auto maybeParticipant = getRemovedParticipant(
           target.participants, plan.participantsConfig.participants)) {
-    auto const &[participantId, planFlags] = *maybeParticipant;
+    auto const& [participantId, planFlags] = *maybeParticipant;
     // The removed participant is currently the leader
     if (participantId == leader.serverId) {
       return EvictLeaderAction{};
@@ -494,7 +500,8 @@ auto checkReplicatedLog(LogTarget const &target,
                    plan.participantsConfig.generation) {
       return RemoveParticipantFromPlanAction(participantId);
     } else if (planFlags.allowedInQuorum) {
-      // make this server not allowed in quorum. If the generation is committed
+      // make this server not allowed in quorum. If the generation is
+      // committed
       auto newFlags = planFlags;
       newFlags.allowedInQuorum = false;
       return UpdateParticipantFlagsAction(participantId, newFlags);
@@ -515,11 +522,11 @@ auto checkReplicatedLog(LogTarget const &target,
   if (target.version != current.supervision->targetVersion) {
     return ConvergedToTargetAction{target.version};
   } else {
-    // Note that if we converged and the version is the same this ends up doing
-    // nothing.
-    // Maybe we should have a debug mode where this is still reported?
+    // Note that if we converged and the version is the same this ends up
+    // doing nothing. Maybe we should have a debug mode where this is still
+    // reported?
     return EmptyAction("There was nothing to do.");
   }
 }
 
-} // namespace arangodb::replication2::replicated_log
+}  // namespace arangodb::replication2::replicated_log

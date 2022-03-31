@@ -165,17 +165,20 @@ struct AddLogToPlanAction {
   static constexpr std::string_view name = "AddLogToPlanAction";
 
   AddLogToPlanAction(LogId const id, ParticipantsFlagsMap participants,
-                     LogPlanTermSpecification term)
+                     LogConfig config,
+                     std::optional<LogPlanTermSpecification::Leader> leader)
       : _id(id),
         _participants(std::move(participants)),
-        _term(std::move(term)){};
-  LogId const _id;
-  ParticipantsFlagsMap const _participants;
-  std::optional<LogPlanTermSpecification> const _term;
+        _config(std::move(config)),
+        _leader(std::move(leader)){};
+  LogId _id;
+  ParticipantsFlagsMap _participants;
+  LogConfig _config;
+  std::optional<LogPlanTermSpecification::Leader> _leader;
 
   auto execute(ActionContext& ctx) const -> void {
     ctx.setPlan(LogPlanSpecification(
-        _id, _term,
+        _id, LogPlanTermSpecification(LogTerm{1}, _config, _leader),
         ParticipantsConfig{.generation = 1, .participants = _participants}));
   }
 };
@@ -183,7 +186,9 @@ template<typename Inspector>
 auto inspect(Inspector& f, AddLogToPlanAction& x) {
   auto hack = std::string{x.name};
   return f.object(x).fields(f.field("type", hack), f.field("id", x._id),
-                            f.field("participants", x._participants));
+                            f.field("participants", x._participants),
+                            f.field("leader", x._leader),
+                            f.field("config", x._config));
 }
 
 struct CreateInitialTermAction {

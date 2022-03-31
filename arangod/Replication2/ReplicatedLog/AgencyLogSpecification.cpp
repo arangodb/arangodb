@@ -163,6 +163,8 @@ auto agency::to_string(LogCurrentSupervisionError error) noexcept
       return "the leader selected in target is invalid";
     case LogCurrentSupervisionError::TARGET_LEADER_EXCLUDED:
       return "the leader selected in target is excluded";
+    case LogCurrentSupervisionError::TARGET_NOT_ENOUGH_PARTICIPANTS:
+      return "the leader selected in target is excluded";
   }
   LOG_TOPIC("7eee2", FATAL, arangodb::Logger::REPLICATION2)
       << "Invalid LogCurrentSupervisionError "
