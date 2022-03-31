@@ -83,7 +83,6 @@ ExportFeature::ExportFeature(Server& server, int* result)
       _currentCollection(),
       _currentGraph(),
       _result(result) {
-  requiresElevatedPrivileges(false);
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseClient>();
 

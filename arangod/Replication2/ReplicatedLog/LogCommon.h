@@ -439,7 +439,7 @@ auto inspect(Inspector& f,
   } else {
     x.toVelocyPack(f.builder());
   }
-  return arangodb::inspection::Result{};
+  return arangodb::inspection::Status::Success{};
 }
 
 auto operator<<(std::ostream&,
