@@ -1,6 +1,8 @@
 devel
 -----
 
+* Updated ArangoDB Starter to 0.15.4.
+
 * Always open a new, working connection before HTTP request-fuzzing during 
   testing. Otherwise the fuzzing results are not 100% comparable from run to
   run.
