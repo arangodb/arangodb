@@ -684,7 +684,7 @@ union UnitedDocumentId {
   typename LocalDocumentId::BaseType adbId;
 };
 
-union UnitedCollectionId {
+union UnitedSourceId {
   size_t readerOffset;
   LogicalCollection const* collection;
 };
@@ -738,9 +738,11 @@ struct HeapSortExecutorValue {
   bool decoded{false};
 #endif
   UnitedDocumentId documentKey;
-  UnitedCollectionId collection;
+  UnitedSourceId collection;
 };
 
+static_assert(sizeof(HeapSortExecutorValue) <= 16,
+              "HeapSortExecutorValue size is not optimal");
 
 template<bool copyStored, bool ordered,
          iresearch::MaterializeType materializeType>

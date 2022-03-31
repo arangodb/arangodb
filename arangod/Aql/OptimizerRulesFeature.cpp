@@ -319,7 +319,7 @@ void OptimizerRulesFeature::addRules() {
 
   // move constrained sort into views
   registerRule(
-      "handle-arangosearch-views-constrained-sort",
+      "arangosearch-constrained-sort",
       arangodb::iresearch::handleConstrainedSortInView,
       OptimizerRule::handleConstrainedSortInView,
       OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
