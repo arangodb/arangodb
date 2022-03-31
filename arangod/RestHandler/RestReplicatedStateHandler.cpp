@@ -67,7 +67,7 @@ auto arangodb::RestReplicatedStateHandler::handleGetRequest(
   if (suffixes.size() == 2) {
     replication2::LogId logId{basics::StringUtils::uint64(suffixes[0])};
 
-    if (suffixes[1] == "local-snapshot") {
+    if (suffixes[1] == "local-status") {
       return waitForFuture(
           methods.getLocalStatus(logId).thenValue([this](auto&& status) {
             VPackBuilder buffer;
@@ -88,7 +88,7 @@ auto arangodb::RestReplicatedStateHandler::handleGetRequest(
     }
   }
   generateError(
-      rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_BAD_PARAMETER,
+      rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
       "expecting "
       "_api/replicated-state/<state-id>/[local-status|snapshot-status]");
   return RestStatus::DONE;
