@@ -32,21 +32,24 @@ RocksDBCipherStream::RocksDBCipherStream(StreamPtr&& stream) noexcept
   TRI_ASSERT(_stream);
 }
 
-bool RocksDBEncryptionProvider::create_header(std::string const& filename,
+bool RocksDBEncryptionProvider::create_header(std::string_view filename,
                                               irs::byte_type* header) {
+  // TODO(MBkkt) remove std::string{...} when RocksDB update their interface
   return _encryption
-      ->CreateNewPrefix(filename, reinterpret_cast<char*>(header),
+      ->CreateNewPrefix(std::string{filename}, reinterpret_cast<char*>(header),
                         header_length())
       .ok();
 }
 
 irs::encryption::stream::ptr RocksDBEncryptionProvider::create_stream(
-    std::string const& filename, irs::byte_type* header) {
+    std::string_view filename, irs::byte_type* header) {
   rocksdb::Slice headerSlice(reinterpret_cast<char const*>(header),
                              header_length());
-
+  // TODO(MBkkt) remove std::string{...} when RocksDB update their interface
   std::unique_ptr<rocksdb::BlockAccessCipherStream> stream;
-  if (!_encryption->CreateCipherStream(filename, _options, headerSlice, &stream)
+  if (!_encryption
+           ->CreateCipherStream(std::string{filename}, _options, headerSlice,
+                                &stream)
            .ok()) {
     return nullptr;
   }

@@ -218,6 +218,19 @@
                   </th>
                 </tr>
                 <tr>
+                  <th class="collectionTh">Enable in-memory cache for index lookups:</th>
+                  <th>
+                    <input id="newPersistentCacheEnabled" type="checkbox" name="newPersistentCacheEnabled" value="true">
+                  </th>
+                  <th class="tooltipInfoTh">
+                    <div class="tooltipDiv">
+                      <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Cache index lookup values in memory for faster lookups of the same values. Note that the cache will be initially empty and be populated lazily during lookups. The cache can only be used for equality lookups on all index attributes. It cannot be used for range scans, partial lookups or sorting.">
+                        <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                      </a>
+                    </div>
+                  </th>
+                </tr>
+                <tr>
                   <th class="collectionTh">Create in background:</th>
                   <th>
                     <input id="newPersistentBackground" type="checkbox" name="newPersistentBackground" value="true">
@@ -303,6 +316,19 @@
                   <th class="tooltipInfoTh">
                     <div class="tooltipDiv">
                       <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Maintain index selectivity estimates for this index. This option can be turned off for non-unique-indexes to improve efficiency of write operations, but will lead to the optimizer being unaware of the data distribution inside this index">
+                        <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                      </a>
+                    </div>
+                  </th>
+                </tr>
+                <tr>
+                  <th class="collectionTh">Enable in-memory cache for index lookups:</th>
+                  <th>
+                    <input id="newHashCacheEnabled" type="checkbox" name="newHashCacheEnabled" value="true">
+                  </th>
+                  <th class="tooltipInfoTh">
+                    <div class="tooltipDiv">
+                      <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Cache index lookup values in memory for faster lookups of the same values. Note that the cache will be initially empty and be populated lazily during lookups. The cache can only be used for equality lookups on all index attributes. It cannot be used for range scans, partial lookups or sorting.">
                         <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
                       </a>
                     </div>
@@ -445,6 +471,19 @@
                   <th class="tooltipInfoTh">
                     <div class="tooltipDiv">
                       <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Maintain index selectivity estimates for this index. This option can be turned off for non-unique-indexes to improve efficiency of write operations, but will lead to the optimizer being unaware of the data distribution inside this index">
+                        <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                      </a>
+                    </div>
+                  </th>
+                </tr>
+                <tr>
+                  <th class="collectionTh">Enable in-memory cache for index lookups:</th>
+                  <th>
+                    <input id="newSkiplistCacheEnabled" type="checkbox" name="newSkiplistCacheEnabled" value="true">
+                  </th>
+                  <th class="tooltipInfoTh">
+                    <div class="tooltipDiv">
+                      <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Cache index lookup values in memory for faster lookups of the same values. Note that the cache will be initially empty and be populated lazily during lookups. The cache can only be used for equality lookups on all index attributes. It cannot be used for range scans, partial lookups or sorting.">
                         <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
                       </a>
                     </div>

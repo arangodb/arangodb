@@ -23,6 +23,7 @@
 
 #include "RocksDBGeoIndex.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/Function.h"
@@ -33,7 +34,9 @@
 #include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
+#include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -619,12 +622,18 @@ class RDBCoveringIterator final : public IndexIterator {
 };
 
 RocksDBGeoIndex::RocksDBGeoIndex(IndexId iid, LogicalCollection& collection,
-                                 arangodb::velocypack::Slice const& info,
+                                 arangodb::velocypack::Slice info,
                                  std::string const& typeName)
     : RocksDBIndex(iid, collection, info,
                    RocksDBColumnFamilyManager::get(
                        RocksDBColumnFamilyManager::Family::GeoIndex),
-                   false),
+                   /*useCache*/ false,
+                   /*cacheManager*/ nullptr,
+                   /*engine*/
+                   collection.vocbase()
+                       .server()
+                       .getFeature<EngineSelectorFeature>()
+                       .engine<RocksDBEngine>()),
       geo_index::Index(info, _fields),
       _typeName(typeName) {
   TRI_ASSERT(iid.isSet());

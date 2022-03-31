@@ -136,7 +136,7 @@ auto SingleServerProvider<Step>::expand(
   TRI_ASSERT(_cursor != nullptr);
   LOG_TOPIC("c9169", TRACE, Logger::GRAPHS)
       << "<SingleServerProvider> Expanding " << vertex.getID();
-  _cursor->rearm(vertex.getID(), step.getDepth());
+  _cursor->rearm(vertex.getID(), step.getDepth(), _stats);
   _cursor->readAll(
       *this, _stats, step.getDepth(),
       [&](EdgeDocumentToken&& eid, VPackSlice edge, size_t cursorID) -> void {
@@ -230,9 +230,7 @@ arangodb::transaction::Methods* SingleServerProvider<Step>::trx() {
 template<class Step>
 arangodb::aql::TraversalStats SingleServerProvider<Step>::stealStats() {
   auto t = _stats;
-  // Placement new of stats, do not reallocate space.
-  _stats.~TraversalStats();
-  new (&_stats) aql::TraversalStats{};
+  _stats.clear();
   return t;
 }
 

@@ -26,7 +26,7 @@ endif ()
 ################################################################################
 
 set(SKIP_INSTALL_ALL ON)
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/zlib/zlib-1.2.11)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/zlib/zlib-1.2.12)
 add_library(zlib_interface INTERFACE)
 target_include_directories(zlib_interface SYSTEM INTERFACE ${ZLIB_INCLUDE_DIR})
 
@@ -102,6 +102,13 @@ set(ICU_DT "${ICU_DT}" PARENT_SCOPE)
 set(ICU_DT_DEST "${ICU_DT_DEST}" PARENT_SCOPE)
 set(ICU_LIBRARY_DIR "${ICU_LIBRARY_DIR}" PARENT_SCOPE)
 set(ICU_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/V8/${V8_SUB_DIR}/third_party/icu/")
+
+################################################################################
+## Google Abseil
+################################################################################
+
+add_subdirectory(abseil-cpp)
+set(ARANGO_ABSEIL_CPP_VERSION "${ARANGO_ABSEIL_CPP_VERSION}" PARENT_SCOPE)
 
 ################################################################################
 ## Google S2

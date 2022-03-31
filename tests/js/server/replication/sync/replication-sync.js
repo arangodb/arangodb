@@ -43,6 +43,7 @@ const followerEndpoint = ARGUMENTS[ARGUMENTS.length - 1];
 
 const cn = 'UnitTestsReplication';
 const sysCn = '_UnitTestsReplication';
+const userManager = require("@arangodb/users");
 
 const connectToLeader = function () {
   reconnectRetry(leaderEndpoint, db._name(), 'root', '');
@@ -2136,6 +2137,12 @@ function ReplicationSuite () {
       try {
         analyzers.remove('smartCustom');
       } catch (e) { }
+      db._flushCache();
+      db._users.toArray().forEach(user => {
+        if (user.user !== "root") {
+          userManager.remove(user.user);
+        }
+      });
 
       connectToFollower();
       arango.DELETE_RAW("/_admin/debug/failat", "");
@@ -2153,6 +2160,12 @@ function ReplicationSuite () {
       try {
         analyzers.remove('smartCustom');
       } catch (e) { }
+      db._flushCache();
+      db._users.toArray().forEach(user => {
+        if (user.user !== "root") {
+          userManager.remove(user.user);
+        }
+      });
     }
   };
   
@@ -2193,12 +2206,24 @@ function ReplicationOtherDBSuiteBase (dbName) {
         db._dropDatabase(dbName);
       } catch (e) {
       }
+      db._flushCache();
+      db._users.toArray().forEach(user => {
+        if (user.user !== "root") {
+          userManager.remove(user.user);
+        }
+      });
 
       connectToFollower();
       try {
         db._dropDatabase(dbName);
       } catch (e) {
       }
+      db._flushCache();
+      db._users.toArray().forEach(user => {
+        if (user.user !== "root") {
+          userManager.remove(user.user);
+        }
+      });
     }
   };
 
@@ -2239,9 +2264,21 @@ function ReplicationIncrementalKeyConflict () {
     tearDown: function () {
       connectToLeader();
       db._drop(cn);
+      db._flushCache();
+      db._users.toArray().forEach(user => {
+        if (user.user !== "root") {
+          userManager.remove(user.user);
+        }
+      });
 
       connectToFollower();
       db._drop(cn);
+      db._flushCache();
+      db._users.toArray().forEach(user => {
+        if (user.user !== "root") {
+          userManager.remove(user.user);
+        }
+      });
     },
 
     testKeyConflictsIncremental: function () {
@@ -2546,9 +2583,21 @@ function ReplicationNonIncrementalKeyConflict () {
     tearDown: function () {
       connectToLeader();
       db._drop(cn);
+      db._flushCache();
+      db._users.toArray().forEach(user => {
+        if (user.user !== "root") {
+          userManager.remove(user.user);
+        }
+      });
 
       connectToFollower();
       db._drop(cn);
+      db._flushCache();
+      db._users.toArray().forEach(user => {
+        if (user.user !== "root") {
+          userManager.remove(user.user);
+        }
+      });
     },
 
     testKeyConflictsNonIncremental: function () {

@@ -83,7 +83,6 @@ WindowsServiceFeature::WindowsServiceFeature(Server& server)
       _progress(2),
       _shutdownNoted(false) {
   setOptional(true);
-  requiresElevatedPrivileges(true);
   startsAfter<application_features::GreetingsFeaturePhase>();
 
   ArangoInstance = this;

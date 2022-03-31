@@ -52,7 +52,6 @@
 
 #include "Basics/Exceptions.h"
 #include "Basics/ScopeGuard.h"
-#include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/debugging.h"
 #include "Basics/error.h"
@@ -109,9 +108,7 @@ StatResultType statResultType(std::string const& path) {
 
 }  // namespace
 
-namespace arangodb {
-namespace basics {
-namespace FileUtils {
+namespace arangodb::basics::FileUtils {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes trailing path separators from path
@@ -220,89 +217,7 @@ static void throwFileReadError(std::string const& filename) {
                                       "': ", TRI_last_error());
   LOG_TOPIC("a0898", TRACE, arangodb::Logger::FIXME) << message;
 
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_SYS_ERROR, message);
-}
-
-static void fillStringBuffer(int fd, std::string const& filename,
-                             StringBuffer& result, size_t chunkSize) {
-  while (true) {
-    if (result.reserve(chunkSize) != TRI_ERROR_NO_ERROR) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-    }
-    TRI_read_return_t n =
-        TRI_READ(fd, result.end(), static_cast<TRI_read_t>(chunkSize));
-
-    if (n == 0) {
-      break;
-    }
-
-    if (n < 0) {
-      throwFileReadError(filename);
-    }
-
-    result.increaseLength(n);
-  }
-}
-
-std::string slurp(std::string const& filename) {
-  int fd = TRI_OPEN(filename.c_str(), O_RDONLY | TRI_O_CLOEXEC);
-
-  if (fd == -1) {
-    throwFileReadError(filename);
-  }
-
-  auto sg = arangodb::scopeGuard([&]() noexcept { TRI_CLOSE(fd); });
-
-  constexpr size_t chunkSize = 8192;
-  StringBuffer buffer(chunkSize, false);
-
-  fillStringBuffer(fd, filename, buffer, chunkSize);
-
-  return std::string(buffer.data(), buffer.length());
-}
-
-void slurp(std::string const& filename, StringBuffer& result) {
-  int fd = TRI_OPEN(filename.c_str(), O_RDONLY | TRI_O_CLOEXEC);
-
-  if (fd == -1) {
-    throwFileReadError(filename);
-  }
-
-  auto sg = arangodb::scopeGuard([&]() noexcept { TRI_CLOSE(fd); });
-
-  result.reset();
-  constexpr size_t chunkSize = 8192;
-
-  fillStringBuffer(fd, filename, result, chunkSize);
-}
-
-Result slurpNoEx(std::string const& filename, StringBuffer& result) {
-  int fd = TRI_OPEN(filename.c_str(), O_RDONLY | TRI_O_CLOEXEC);
-
-  if (fd == -1) {
-    auto res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
-    auto message = StringUtils::concatT("read failed for file '", filename,
-                                        "': ", TRI_last_error());
-    LOG_TOPIC("a1898", TRACE, arangodb::Logger::FIXME) << message;
-    return {res, message};
-  }
-
-  auto sg = arangodb::scopeGuard([&]() noexcept { TRI_CLOSE(fd); });
-
-  result.reset();
-  constexpr size_t chunkSize = 8192;
-  fillStringBuffer(fd, filename, result, chunkSize);
-  return {};
-}
-
-Result slurp(std::string const& filename, std::string& result) {
-  constexpr size_t chunkSize = 8192;
-  StringBuffer buffer(chunkSize, false);
-
-  auto status = slurpNoEx(filename, buffer);
-
-  result = std::string(buffer.data(), buffer.length());
-  return status;
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_SYS_ERROR, std::move(message));
 }
 
 static void throwFileWriteError(std::string const& filename) {
@@ -313,6 +228,58 @@ static void throwFileWriteError(std::string const& filename) {
   LOG_TOPIC("a8930", TRACE, arangodb::Logger::FIXME) << "" << message;
 
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_SYS_ERROR, message);
+}
+
+static void fillString(int fd, std::string const& filename, size_t filesize,
+                       std::string& result) {
+  constexpr size_t chunkSize = 8192;
+
+  result.clear();
+  result.reserve(filesize + 2 * chunkSize);
+
+  size_t pos = 0;
+
+  while (true) {
+    result.resize(result.size() + chunkSize);
+
+    TRI_read_return_t n =
+        TRI_READ(fd, result.data() + pos, static_cast<TRI_read_t>(chunkSize));
+
+    if (n == 0) {
+      break;
+    }
+
+    if (n < 0) {
+      throwFileReadError(filename);
+    }
+
+    pos += static_cast<size_t>(n);
+  }
+
+  result.resize(pos);
+}
+
+void slurp(std::string const& filename, std::string& result) {
+  int64_t filesize = TRI_SizeFile(filename.c_str());
+  if (filesize < 0) {
+    throwFileReadError(filename);
+  }
+
+  int fd = TRI_OPEN(filename.c_str(), O_RDONLY | TRI_O_CLOEXEC);
+
+  if (fd == -1) {
+    throwFileReadError(filename);
+  }
+
+  auto sg = arangodb::scopeGuard([&]() noexcept { TRI_CLOSE(fd); });
+
+  fillString(fd, filename, static_cast<size_t>(filesize), result);
+}
+
+std::string slurp(std::string const& filename) {
+  std::string result;
+  slurp(filename, result);
+  return result;
 }
 
 void spit(std::string const& filename, char const* ptr, size_t len, bool sync) {
@@ -345,10 +312,6 @@ void spit(std::string const& filename, char const* ptr, size_t len, bool sync) {
 
 void spit(std::string const& filename, std::string const& content, bool sync) {
   spit(filename, content.data(), content.size(), sync);
-}
-
-void spit(std::string const& filename, StringBuffer const& content, bool sync) {
-  spit(filename, content.data(), content.length(), sync);
 }
 
 ErrorCode remove(std::string const& fileName) {
@@ -797,6 +760,4 @@ std::string slurpProgram(std::string const& program) {
   return output;
 }
 
-}  // namespace FileUtils
-}  // namespace basics
-}  // namespace arangodb
+}  // namespace arangodb::basics::FileUtils
