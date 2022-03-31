@@ -67,6 +67,27 @@ class DatabaseManagerThread final : public ServerThread<ArangodServer> {
   }
 };
 
+class IOHeartbeatThread final : public ServerThread<ArangodServer> {
+ public:
+  IOHeartbeatThread(IOHeartbeatThread const&) = delete;
+  IOHeartbeatThread& operator=(IOHeartbeatThread const&) = delete;
+
+  explicit IOHeartbeatThread(Server&);
+  ~IOHeartbeatThread();
+
+  void run() override;
+
+ private:
+  // how long will the thread pause between iterations, this is in milliseconds
+  static constexpr unsigned long waitTime() {
+    return static_cast<unsigned long>(100U);
+  }
+  // Every checkInterval() iterations we perform one check:
+  static constexpr unsigned long checkInterval() {
+    return static_cast<unsigned long>(150U);
+  }
+};
+
 class DatabaseFeature : public ArangodFeature {
   friend class DatabaseManagerThread;
 
@@ -214,6 +235,7 @@ class DatabaseFeature : public ArangodFeature {
   bool _extendedNamesForDatabases;
 
   std::unique_ptr<DatabaseManagerThread> _databaseManager;
+  std::unique_ptr<IOHeartbeatThread> _ioHeartbeatThread;
 
   std::atomic<DatabasesLists*> _databasesLists;
   // TODO: Make this again a template once everybody has gcc >= 4.9.2

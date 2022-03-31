@@ -291,6 +291,113 @@ void DatabaseManagerThread::run() {
   }
 }
 
+/// IO check thread main loop
+/// The purpose of this thread is to try to perform a simple IO write
+/// operation on the database volume regularly. We need visibility in
+/// production if IO is slow or not possible at all.
+IOHeartbeatThread::IOHeartbeatThread(Server& server)
+    : ServerThread<ArangodServer>(server, "IOHeartbeat") {}
+
+IOHeartbeatThread::~IOHeartbeatThread() { shutdown(); }
+
+void IOHeartbeatThread::run() {
+  auto& databasePathFeature = server().getFeature<DatabasePathFeature>();
+  std::string testFilePath = FileUtils::buildFilename(
+      databasePathFeature.directory().c_str(), "TestBalloonFileIOHeartbeat");
+  std::string testFileContent = "This is just an I/O test.\n";
+
+  LOG_TOPIC("66665", INFO, Logger::ENGINES)
+      << "IOHeartbeatThread: running with checkInterval= " << checkInterval()
+      << " ...";
+
+  unsigned int counter = checkInterval();
+
+  while (true) {
+    try {  // protect thread against any exceptions
+      if (isStopping()) {
+        // done
+        break;
+      }
+
+      if (--counter == 0) {
+        LOG_TOPIC("66659", DEBUG, Logger::ENGINES)
+            << "IOHeartbeat: testing to write/read/remove " << testFilePath;
+        counter = checkInterval();
+        // We simply write a file and sync it to disk in the database directory
+        // and then read it and then delete it again:
+        auto start = std::chrono::steady_clock::now();
+        bool trouble = false;
+        try {
+          FileUtils::spit(testFilePath, testFileContent, true);
+        } catch (std::exception const& exc) {
+          LOG_TOPIC("66663", INFO, Logger::ENGINES)
+              << "IOHeartbeat: exception when writing test file: "
+              << exc.what();
+          trouble = true;
+        }
+        auto finish = std::chrono::steady_clock::now();
+        if (trouble || (finish - start) > std::chrono::seconds(1)) {
+          std::chrono::duration<double> dur = finish - start;
+          LOG_TOPIC("66662", INFO, Logger::ENGINES)
+              << "IOHeartbeat: trying to write test file took "
+              << std::chrono::duration_cast<std::chrono::microseconds>(dur)
+                     .count()
+              << " milliseconds.";
+        }
+
+        // Read the file if we can reasonably assume it is there:
+        if (!trouble) {
+          start = std::chrono::steady_clock::now();
+          try {
+            std::string content = FileUtils::slurp(testFilePath);
+          } catch (std::exception const& exc) {
+            LOG_TOPIC("66661", INFO, Logger::ENGINES)
+                << "IOHeartbeat: exception when reading test file: "
+                << exc.what();
+            trouble = true;
+          }
+          auto finish = std::chrono::steady_clock::now();
+          if (trouble || (finish - start) > std::chrono::seconds(1)) {
+            std::chrono::duration<double> dur = finish - start;
+            LOG_TOPIC("66669", INFO, Logger::ENGINES)
+                << "IOHeartbeat: trying to read test file took "
+                << std::chrono::duration_cast<std::chrono::microseconds>(dur)
+                       .count()
+                << " milliseconds.";
+          }
+        }
+
+        // And remove it again:
+        start = std::chrono::steady_clock::now();
+        ErrorCode err = FileUtils::remove(testFilePath);
+        if (err != TRI_ERROR_NO_ERROR) {
+          LOG_TOPIC("66670", INFO, Logger::ENGINES)
+              << "IOHeartbeat: error when removing test file: " << err;
+          trouble = true;
+        }
+        finish = std::chrono::steady_clock::now();
+        if (trouble || (finish - start) > std::chrono::seconds(1)) {
+          std::chrono::duration<double> dur = finish - start;
+          LOG_TOPIC("66671", INFO, Logger::ENGINES)
+              << "IOHeartbeat: trying to remove test file took "
+              << std::chrono::duration_cast<std::chrono::microseconds>(dur)
+                     .count()
+              << " milliseconds.";
+        }
+
+        if (trouble) {
+          counter = 10;  // recheck in a second
+        }
+      }
+
+      std::this_thread::sleep_for(std::chrono::milliseconds(waitTime()));
+    } catch (...) {
+    }
+    // next iteration
+  }
+  LOG_TOPIC("66664", INFO, Logger::ENGINES) << "IOHeartbeatThread: stopped.";
+}
+
 DatabaseFeature::DatabaseFeature(Server& server)
     : ArangodFeature{server, *this},
       _defaultWaitForSync(false),
@@ -444,6 +551,18 @@ void DatabaseFeature::start() {
     FATAL_ERROR_EXIT();
   }
 
+  // start IOHeartbeat thread:
+  if (ServerState::instance()->isDBServer() ||
+      ServerState::instance()->isSingleServer() ||
+      ServerState::instance()->isAgent()) {
+    _ioHeartbeatThread = std::make_unique<IOHeartbeatThread>(server());
+    if (!_ioHeartbeatThread->start()) {
+      LOG_TOPIC("7eb07", FATAL, arangodb::Logger::FIXME)
+          << "could not start IO check thread";
+      FATAL_ERROR_EXIT();
+    }
+  }
+
   // activate deadlock detection in case we're not running in cluster mode
   if (!arangodb::ServerState::instance()->isRunningInCluster()) {
     enableDeadlockDetection();
@@ -546,6 +665,15 @@ void DatabaseFeature::stop() {
 }
 
 void DatabaseFeature::unprepare() {
+  // delete the IO checker thread
+  if (_ioHeartbeatThread != nullptr) {
+    _ioHeartbeatThread->beginShutdown();
+
+    while (_ioHeartbeatThread->isRunning()) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+  }
+
   // delete the database manager thread
   if (_databaseManager != nullptr) {
     _databaseManager->beginShutdown();
@@ -561,6 +689,7 @@ void DatabaseFeature::unprepare() {
     // we're in the shutdown... simply ignore any errors produced here
   }
 
+  _ioHeartbeatThread.reset();
   _databaseManager.reset();
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
