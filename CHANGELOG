@@ -1,6 +1,8 @@
 v3.9.1 (XXXX-XX-XX)
 -------------------
 
+* Updated ArangoDB Starter to 0.15.4.
+
 * Improve parallelism in arangorestore in case new data format is used.
 
 * Remove error handling fetching license information to improve user
