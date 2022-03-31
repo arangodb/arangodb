@@ -246,7 +246,8 @@ auto runElectionCampaign(LogCurrentLocalStates const& states,
 //  * not marked as failed
 //  * amongst the participant with the most recent TermIndex.
 //
-auto doLeadershipElection(LogPlanSpecification const& plan,
+auto doLeadershipElection(LogTarget const& target,
+                          LogPlanSpecification const& plan,
                           LogCurrent const& current,
                           ParticipantsHealth const& health) -> Action {
   // Check whether there are enough participants to reach a quorum
@@ -276,10 +277,23 @@ auto doLeadershipElection(LogPlanSpecification const& plan,
   }
 
   if (election.participantsAvailable >= requiredNumberOfOKParticipants) {
-    // We randomly elect on of the electible leaders
-    auto const maxIdx = static_cast<uint16_t>(numElectible - 1);
-    auto const& newLeader =
-        election.electibleLeaderSet.at(RandomGenerator::interval(maxIdx));
+    auto newLeader = std::invoke([&] {
+      if (target.leader.has_value()) {
+        // check if the target leader is one of the electible leaders
+        auto iter =
+            std::find(election.electibleLeaderSet.begin(),
+                      election.electibleLeaderSet.end(), *target.leader);
+        if (iter != std::end(election.electibleLeaderSet)) {
+          // the server is electible - take it
+          return *target.leader;
+        }
+      }
+
+      // We randomly elect on of the electible leaders
+      auto const maxIdx = static_cast<uint16_t>(numElectible - 1);
+      return election.electibleLeaderSet.at(RandomGenerator::interval(maxIdx));
+    });
+
     auto const& newLeaderRebootId = health._health.at(newLeader).rebootId;
 
     return LeaderElectionAction(
@@ -415,7 +429,7 @@ auto checkReplicatedLog(LogTarget const& target,
   // election is possible, and if so, whether there is enough
   // eligible participants for leadership.
   if (!plan.currentTerm->leader) {
-    return doLeadershipElection(plan, current, health);
+    return doLeadershipElection(target, plan, current, health);
   }
   auto const& leader = *plan.currentTerm->leader;
 

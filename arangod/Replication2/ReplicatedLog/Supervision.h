@@ -68,7 +68,8 @@ auto runElectionCampaign(LogCurrentLocalStates const& states,
                          ParticipantsHealth const& health, LogTerm term)
     -> LogCurrentSupervisionElection;
 
-auto doLeadershipElection(LogPlanSpecification const& plan,
+auto doLeadershipElection(LogTarget const& target,
+                          LogPlanSpecification const& plan,
                           LogCurrent const& current,
                           ParticipantsHealth const& health) -> Action;
 
