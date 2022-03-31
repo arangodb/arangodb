@@ -212,11 +212,11 @@ this extra check.
 @RESTRETURNCODES
 
 @RESTRETURNCODE{400}
-If the `collection-name` is missing, then am *HTTP 400* is
+If the `collection-name` is missing, then an *HTTP 400* is
 returned.
 
 @RESTRETURNCODE{404}
-If the `collection-name` is unknown, then am *HTTP 404* is returned.
+If the `collection-name` is unknown, then an *HTTP 404* is returned.
 
 @RESTRETURNCODE{200}
 
