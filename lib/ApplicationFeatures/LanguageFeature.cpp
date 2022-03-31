@@ -108,7 +108,7 @@ void LanguageFeature::collectOptions(
                   new StringParameter(&_defaultLanguage),
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Uncommon))
-      .setDeprecatedIn(30901);
+      .setDeprecatedIn(31000);
 
   options
       ->addOption("--icu-language", "ICU language",
