@@ -370,7 +370,18 @@
           if (this.ncolor) {
             this.updateColors(true, null, this.ncolor, this.ecolor);
           } else {
-            this.updateColors(true, null, '#2ecc71', '#2ecc71');
+            let edgeColor = "#2ecc71";
+            let nodeColor = "#2ecc71";
+            if (self.graphConfig) {
+              // Use GraphConfig color fallback first if available, rather than using fixed color strings.
+              if (self.graphConfig.edgeColor) {
+                edgeColor = self.graphConfig.edgeColor;
+              }
+              if (self.graphConfig.nodeColor) {
+                nodeColor = self.graphConfig.nodeColor;
+              }
+            }
+            this.updateColors(true, null, nodeColor, edgeColor);
           }
         }
       }
@@ -1629,40 +1640,125 @@
       var self = this;
       var newNodes = data.nodes;
       var newEdges = data.edges;
-      var existingNodes = this.currentGraph.graph.nodes();
+      const existingNodes = this.currentGraph.graph.nodes();
+      const existingEdges = this.currentGraph.graph.edges();
 
-      var found;
+      let found = false; // state whether the node has been added to the graph already
+
       var newNodeCounter = 0;
       var newEdgeCounter = 0;
 
-      _.each(newNodes, function (newNode) {
-        found = false;
-        _.each(existingNodes, function (existingNode) {
-          if (found === false) {
-            if (newNode.id === existingNode.id) {
-              if (existingNode.id === origin) {
-                if (existingNode.label.indexOf(' (expanded)') === -1) {
-                  existingNode.label = existingNode.label + ' (expanded)';
-                }
-              }
-              found = true;
-            } else {
-              found = false;
+      /*
+       * If nodeColorByCollection || edgeColorByCollection is set to "true",
+       * map will look like: {"<collection>": "<color>"}.
+       *
+       * If nodeColorAttribute || edgeColorAttribute is set to any string value > size of 0
+       * map will look like: {"<attribute>": "<color>"}.
+       */
+      let nodeColorMap = {};
+      let edgeColorMap = {};
+
+      /*
+       * Check on which attribute colors do rely on:
+       */
+      let nodeColorBy = "default";
+      let edgeColorBy = "default";
+
+      if (self.graphConfig) {
+        if (self.graphConfig.nodeColorByCollection === "true") {
+          nodeColorBy = "collection";
+        } else if (self.graphConfig.nodeLabel.length > 0) {
+          nodeColorBy = "label";
+        }
+
+        if (self.graphConfig.edgeColorByCollection === "true") {
+          edgeColorBy = "collection";
+        } else if (self.graphConfig.edgeLabel.length > 0) {
+          edgeColorBy = "label";
+        }
+      }
+
+      /*
+       * Helper method to create color maps for nodes and edges
+       */
+      let generateColorMap = (objects, colorMap, colorAttribute) => {
+        // Objects can be either nodes() or edges()
+          _.each(objects, function (object) {
+            if (colorAttribute === "collection") {
+              const collectionName = object.id.split('/')[0];
+              colorMap[collectionName] = object.color;
+            } else if (colorAttribute === "label") {
+              const labelName = object.label;
+              colorMap[labelName] = object.color;
+            }
+          });
+      };
+
+      let getColor = (object, colorMap, colorAttribute) => {
+        if (colorAttribute === "collection") {
+          const collectionName = object.id.split('/')[0];
+          if (colorMap[collectionName]) {
+            return colorMap[collectionName];
+          }
+        } else if (colorAttribute === "label") {
+          if (colorMap[object.label]) {
+            return colorMap[object.label];
+          }
+        }
+
+        // fallback if color has not been found in the color map
+        if (self.graphConfig) {
+          if (object.target && object.source) {
+            // means we do have an edge as object here
+            if (self.graphConfig.edgeColor) {
+              // either return default color if graphConfig could be found
+              return self.graphConfig.edgeColor;
+            }
+          } else {
+            // means we do have a node as object here
+            if (self.graphConfig.nodeColor) {
+              // either return default color if graphConfig could be found
+              return self.graphConfig.nodeColor;
             }
           }
-        });
+        }
 
-        if (found === false) {
-          newNode.originalColor = newNode.color;
+        // or last fallback: return the calculated one (server-side)
+        return object.color;
+      };
+
+      /*
+       * Check if we need to calculate the color map at all:
+       * Means, we have new data and we either colorize by collection or label
+       */
+      if (newNodes.length > 0 && nodeColorBy !== "default") {
+        generateColorMap(existingNodes, nodeColorMap, nodeColorBy);
+      }
+      if (newEdges.length > 0 && edgeColorBy !== "default") {
+        generateColorMap(existingEdges, edgeColorMap, edgeColorBy);
+      }
+
+      _.each(newNodes, function (newNode) {
+        found = self.currentGraph.graph.nodes(newNode.id);
+        if (found) {
+          if (found.id === origin) {
+            if (found.label.indexOf(' (expanded)') === -1) {
+              found.label = found.label + ' (expanded)';
+            }
+          }
+        } else {
+          const newNodeColor = getColor(newNode, nodeColorMap, nodeColorBy);
+          newNode.color = newNodeColor;
+          newNode.originalColor = newNodeColor;
           self.currentGraph.graph.addNode(newNode);
           newNodeCounter++;
         }
       });
 
-      _.each(newEdges, function (edge) {
-        if (self.currentGraph.graph.edges(edge.id) === undefined) {
-          edge.originalColor = edge.color;
-          self.currentGraph.graph.addEdge(edge);
+      _.each(newEdges, function (newEdge) {
+        if (self.currentGraph.graph.edges(newEdge.id) === undefined) {
+          newEdge.originalColor = getColor(newEdge, edgeColorMap, edgeColorBy);
+          self.currentGraph.graph.addEdge(newEdge);
           newEdgeCounter++;
         }
       });
