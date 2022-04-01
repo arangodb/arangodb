@@ -32,7 +32,19 @@ function adminLogSuite() {
     arango.POST("/_admin/execute", `for (let i = 0; i < 50; ++i) require('console')._log('general=${level}', 'testi');`);
   };
 
+  let oldLogLevel;
+
   return {
+    setUpAll : function() {
+      // save previous log level for "general" topic;
+      oldLogLevel = arango.PUT("/_admin/log/level", { general: "info" }).general;
+    },
+
+    tearDownAll : function () {
+      // restore previous log level for "general" topic;
+      arango.PUT("/_admin/log/level", { general: oldLogLevel });
+    },
+
     setUp : function() {
       arango.DELETE("/_admin/log");
     },
