@@ -15,6 +15,10 @@ if (![bool]$git_for_windows.InstallPath) {
 }
 
 $git_bash = Join-Path ($git_for_windows).InstallPath 'git-bash.exe'
-& $git_bash './scripts/clang-format.sh' $args.Replace('\', '/')
+$files = ''
+if ($args.length -gt 0) {
+    $files = $args.Replace('\', '/')
+}
+& $git_bash './scripts/clang-format.sh' $files
 
 Pop-Location
