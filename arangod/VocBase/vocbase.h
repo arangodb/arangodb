@@ -203,7 +203,7 @@ struct TRI_vocbase_t {
           arangodb::replication2::replicated_state::ReplicatedStateBase>;
   [[nodiscard]] auto getReplicatedStateStatus() const -> std::unordered_map<
       arangodb::replication2::LogId,
-      arangodb::replication2::replicated_state::StateStatus>;
+      std::optional<arangodb::replication2::replicated_state::StateStatus>>;
   [[nodiscard]] auto getReplicatedStateById(arangodb::replication2::LogId id)
       const -> std::shared_ptr<
           arangodb::replication2::replicated_state::ReplicatedStateBase>;
