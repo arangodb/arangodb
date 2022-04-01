@@ -409,11 +409,20 @@ void IndexReadBuffer<ValueType, copySorted>::pushValue(Args&&... args) {
 }
 
 template<typename ValueType, bool copySorted>
-void IndexReadBuffer<ValueType, copySorted>::pushSortedValue(ValueType&& value, float_t const* scores, size_t count) {
+void IndexReadBuffer<ValueType, copySorted>::finalizeHeapSort() {
+  if (_rows.empty()) {
+    std::sort(
+        _rows.begin(), _rows.end(),
+        BufferHeapSortContext(_numScoreRegisters, *_scoresSort, _scoreBuffer));
+  }
+}
+
+template<typename ValueType, bool copySorted>
+bool IndexReadBuffer<ValueType, copySorted>::pushSortedValue(ValueType&& value, float_t const* scores, size_t count) {
   BufferHeapSortContext sortContext(_numScoreRegisters, *_scoresSort, _scoreBuffer);
   if (_maxSize <= _rows.size()) {
     if (sortContext.compareInput(_rows.front(), scores)) {
-      return; // not interested in this document
+      return false; // not interested in this document
     }
     std::pop_heap(_rows.begin(), _rows.end(), sortContext);
     // now last contains "free" index in the buffer
@@ -441,6 +450,7 @@ void IndexReadBuffer<ValueType, copySorted>::pushSortedValue(ValueType&& value, 
     _rows.push_back(_rows.size());
   }
   std::push_heap(_rows.begin(), _rows.end(), sortContext);
+  return _rows.size() >= _maxSize;
 }
 
 template<typename ValueType, bool copyStored>
@@ -491,11 +501,6 @@ IndexReadBuffer<ValueType, copyStored>::pop_front() noexcept {
   size_t key = _keyBaseIdx;
   if (!_rows.empty()) {
     TRI_ASSERT(_scoresSort);
-    if (key == 0) {
-      std::sort(
-          _rows.begin(), _rows.end(),
-          BufferHeapSortContext(_numScoreRegisters, *_scoresSort, _scoreBuffer));
-    }
     key = _rows[_keyBaseIdx];
   }
   IndexReadBufferEntry entry{key};
@@ -857,6 +862,7 @@ bool IResearchViewExecutorBase<Impl, Traits>::writeRow(
   return true;
 }
 
+
 template<typename Impl, typename Traits>
 void IResearchViewExecutorBase<Impl, Traits>::readStoredValues(
     irs::document const& doc, size_t index) {
@@ -1009,14 +1015,12 @@ template<bool copyStored, bool ordered, MaterializeType materializeType>
 size_t IResearchViewHeapSortExecutor<copyStored, ordered, materializeType>::skipAll() {
   TRI_ASSERT(this->_indexReadBuffer.empty());
   TRI_ASSERT(this->_filter);
-  fillBufferInternal(false);
-  auto const maxBufferSize =
-      (std::min)(_totalCount, this->_infos.scoresSortLimit());
-  auto const bufferLeft = this->_indexReadBuffer.size();
-  TRI_ASSERT(maxBufferSize >= bufferLeft);
-  auto const totalSkipped = _totalCount - (maxBufferSize - this->_indexReadBuffer.size());
+  fillBufferInternal(this->_infos.scoresSortLimit());
+  TRI_ASSERT(_bufferedCount >=  this->_indexReadBuffer.size());
+  auto const totalSkipped = _totalCount - (_bufferedCount - this->_indexReadBuffer.size());
   this->_indexReadBuffer.reset();
   _totalCount = 0;
+  _bufferedCount = 0;
   return totalSkipped;
 }
 
@@ -1024,11 +1028,10 @@ size_t IResearchViewHeapSortExecutor<copyStored, ordered, materializeType>::skip
 template<bool copyStored, bool ordered, MaterializeType materializeType>
 size_t IResearchViewHeapSortExecutor<copyStored, ordered, materializeType>::skip(
     size_t limit) {
-  fillBufferInternal(true);
+  fillBufferInternal(limit);
   if (limit >= this->_indexReadBuffer.size()) {
     auto const skipped = this->_indexReadBuffer.size();
     this->_indexReadBuffer.reset();
-    _totalCount = 0;
     return skipped;
   } else {
     size_t const toSkip = limit;
@@ -1044,6 +1047,7 @@ template<bool copyStored, bool ordered, MaterializeType materializeType>
 void IResearchViewHeapSortExecutor<copyStored, ordered, materializeType>::reset() {
   Base::reset();
   _totalCount = 0;
+  _bufferedCount = 0;
   _bufferFilled = false;
 }
 
@@ -1059,12 +1063,12 @@ bool IResearchViewHeapSortExecutor<copyStored, ordered, materializeType>::writeR
 template<bool copyStored, bool ordered, MaterializeType materializeType>
 void IResearchViewHeapSortExecutor<copyStored, ordered, materializeType>::fillBuffer(
     IResearchViewHeapSortExecutor::ReadContext&) {
-  fillBufferInternal(true);
+  fillBufferInternal(0);
 }
 
 template<bool copyStored, bool ordered, MaterializeType materializeType>
 void IResearchViewHeapSortExecutor<copyStored, ordered,
-                                   materializeType>::fillBufferInternal(bool materialize) {
+                                   materializeType>::fillBufferInternal(size_t skip) {
   if (_bufferFilled) {
     return;
   }
@@ -1122,10 +1126,11 @@ void IResearchViewHeapSortExecutor<copyStored, ordered,
             doc->value, readerOffset),
         scoresBegin, numScores);
   }
-
-  if (materialize && !this->_indexReadBuffer.empty()) {
-    std::vector<size_t> pkReadingOrder(this->_indexReadBuffer.size());
-    std::iota(pkReadingOrder.begin(), pkReadingOrder.end(), 0);
+  this->_indexReadBuffer.finalizeHeapSort();
+  _bufferedCount = this->_indexReadBuffer.size();
+  if (skip < _bufferedCount) {
+    auto span = this->_indexReadBuffer.getMaterializeRange(skip);
+    std::vector<size_t> pkReadingOrder(span.begin(), span.end());
     std::sort(pkReadingOrder.begin(), pkReadingOrder.end(), [buffer = &this->_indexReadBuffer] (
       size_t lhs, size_t rhs) -> bool {
       auto const& lhs_val = buffer->getValue(lhs);
@@ -1142,7 +1147,8 @@ void IResearchViewHeapSortExecutor<copyStored, ordered,
     ColumnIterator pkReader;
     aql::QueryContext& query = this->_infos.getQuery();
     std::shared_ptr<arangodb::LogicalCollection> collection;
-    for (auto orderIt = pkReadingOrder.begin(); orderIt != pkReadingOrder.end();) {
+    auto orderIt = pkReadingOrder.begin();
+    while(orderIt != pkReadingOrder.end()) {
       auto& value = this->_indexReadBuffer.getValue(*orderIt);
       auto const irsDocId = value.irsDocId();
       auto const segmentIdx = value.readerOffset();

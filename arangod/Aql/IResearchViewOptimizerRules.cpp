@@ -786,8 +786,9 @@ void lateDocumentMaterializationArangoSearchRule(
   }
 }
 
-void handleConstrainedSortInView(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
-                     OptimizerRule const& rule) {
+void handleConstrainedSortInView(Optimizer* opt,
+                                 std::unique_ptr<ExecutionPlan> plan,
+                                 OptimizerRule const& rule) {
   TRI_ASSERT(plan && plan->getAst());
 
   // ensure 'Optimizer::addPlan' will be called

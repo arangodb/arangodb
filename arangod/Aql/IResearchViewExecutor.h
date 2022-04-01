@@ -260,8 +260,9 @@ class IndexReadBuffer {
   template<typename... Args>
   void pushValue(Args&&... args);
 
-  void pushSortedValue(ValueType&& value, float_t const* scores, size_t count);
-
+  bool pushSortedValue(ValueType&& value, float_t const* scores, size_t count);
+ 
+  void finalizeHeapSort();
   // A note on the scores: instead of saving an array of AqlValues, we could
   // save an array of floats plus a bitfield noting which entries should be
   // None.
@@ -293,6 +294,13 @@ class IndexReadBuffer {
     }
     _maxSize = atMost;
     _storedCount = stored;
+  }
+
+  auto getMaterializeRange(size_t skip) const noexcept {
+    if (_rows.size() > skip) {
+      return std::span(_rows.begin() + skip, _rows.end());
+    }
+    return std::span(_rows.end(), _rows.end());
   }
 
   void setStoredValue(size_t idx, irs::bytes_ref value) {
@@ -671,11 +679,12 @@ class IResearchViewHeapSortExecutor
 
   void reset();
   void fillBuffer(ReadContext& ctx);
-  void fillBufferInternal(bool materialize);
+  void fillBufferInternal(size_t skip);
 
   bool writeRow(ReadContext& ctx, IndexReadBufferEntry bufferEntry);
 
   size_t _totalCount{};
+  size_t _bufferedCount{};
   bool _bufferFilled{false};
 }; // ResearchViewHeapSortExecutor
 
