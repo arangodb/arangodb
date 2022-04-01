@@ -647,7 +647,7 @@ void arangodb::maintenance::diffReplicatedStates(
     return StringUtils::encodeBase64(slice.startAs<char>(), slice.byteSize());
   };
 
-  auto const createReplicatedStateAction =
+  auto const updateReplicatedStateAction =
       [&](LogId id, replicated_state::agency::Plan const* spec,
           replicated_state::agency::Current const* current) {
         auto specStr = objectToVelocyPackString(spec);
@@ -674,13 +674,13 @@ void arangodb::maintenance::diffReplicatedStates(
         if (spec.participants.contains(serverId)) {
           if (!localStates.contains(id)) {
             // we have to create this replicated state
-            createReplicatedStateAction(id, &spec, nullptr);
+            updateReplicatedStateAction(id, &spec, nullptr);
           }
         }
       };
 
   auto const forEachReplicatedStateInLocal =
-      [&](LogId id, replicated_state::StateStatus const& status,
+      [&](LogId id, std::optional<replicated_state::StateStatus> const& status,
           replicated_state::agency::Plan const* plan,
           replicated_state::agency::Current const* current) {
         bool const shouldDeleted = std::invoke([&] {
@@ -688,12 +688,12 @@ void arangodb::maintenance::diffReplicatedStates(
         });
 
         if (shouldDeleted) {
-          createReplicatedStateAction(id, nullptr, nullptr);
-        } else {
+          updateReplicatedStateAction(id, nullptr, nullptr);
+        } else if (status.has_value()) {
           TRI_ASSERT(plan != nullptr);
           auto const& participant = plan->participants.at(serverId);
-          if (participant.generation != status.getGeneration()) {
-            createReplicatedStateAction(id, plan, nullptr);
+          if (participant.generation != status->getGeneration()) {
+            updateReplicatedStateAction(id, plan, nullptr);
           }
         }
       };
@@ -1658,9 +1658,6 @@ static void reportCurrentReplicatedState(
     replication2::replicated_state::StateStatus const& status, VPackSlice cur,
     replication2::LogId id, std::string const& dbName,
     std::string const& serverId) {
-  // update the local snapshot information
-  auto const& snapshot = status.getSnapshotInfo();
-
   // load current into memory
   auto current = std::invoke(
       [&]() -> std::optional<replication2::replicated_state::agency::Current> {
@@ -1687,7 +1684,7 @@ static void reportCurrentReplicatedState(
       if (cs.generation != status.getGeneration()) {
         return true;
       }
-      if (cs.snapshot.status != snapshot.status) {
+      if (cs.snapshot.status != status.getSnapshotInfo().status) {
         return true;
       }
     } else {
@@ -2101,8 +2098,10 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
       if (auto stateIter = localStates.find(dbName);
           stateIter != std::end(localStates)) {
         for (auto const& [id, status] : stateIter->second) {
-          reportCurrentReplicatedState(report, status, cur, id, dbName,
-                                       serverId);
+          if (status.has_value()) {
+            reportCurrentReplicatedState(report, *status, cur, id, dbName,
+                                         serverId);
+          }
         }
       }
     } catch (std::exception const& ex) {
