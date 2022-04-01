@@ -35,6 +35,7 @@
 #include <velocypack/ValueType.h>
 #include <velocypack/velocypack-memory.h>
 
+#include "Inspection/Access.h"
 #include "Inspection/VPackLoadInspector.h"
 #include "Inspection/VPackSaveInspector.h"
 #include "Inspection/VPack.h"
@@ -339,6 +340,7 @@ auto inspect(Inspector& f, EnumStorage<Enum>& e) {
     return f.object(e).fields(f.field("code", e.code),
                               f.field("message", e.message));
   }
+}
 }  // namespace
 
 namespace arangodb::inspection {
@@ -1566,7 +1568,7 @@ TEST_F(VPackInspectionTest, GenericEnumClass) {
     ASSERT_TRUE(slice.isObject());
     EXPECT_EQ(static_cast<std::underlying_type_t<AnEnumClass>>(d),
               slice["code"].getInt());
-    EXPECT_EQ(to_string(d), slice["message"].getString());
+    EXPECT_EQ(to_string(d), slice["message"].copyString());
   }
 
   {
