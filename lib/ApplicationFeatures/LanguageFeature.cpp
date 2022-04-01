@@ -126,9 +126,11 @@ void LanguageFeature::collectOptions(
       new StringParameter(&_defaultLanguage),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
-  options->addOption(
-      "--icu-language", "ICU language", new StringParameter(&_icuLanguage),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+  options
+      ->addOption(
+          "--icu-language", "ICU language", new StringParameter(&_icuLanguage),
+          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+      .setIntroducedIn(30901);
 
   options
       ->addOption(
