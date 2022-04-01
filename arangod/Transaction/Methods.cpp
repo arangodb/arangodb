@@ -2790,11 +2790,12 @@ Future<Result> Methods::commitInternal(MethodsApi api) {
     }
   }
 
+  auto f = futures::makeFuture(Result());
+
   if (!_mainTransaction) {
-    return futures::makeFuture(Result());
+    return f;
   }
 
-  auto f = futures::makeFuture(Result());
   if (_state->isRunningInCluster()) {
     // first commit transaction on subordinate servers
     f = ClusterTrxMethods::commitTransaction(*this, api);
@@ -2823,11 +2824,12 @@ Future<Result> Methods::abortInternal(MethodsApi api) {
                   "transaction not running on abort");
   }
 
+  auto f = futures::makeFuture(Result());
+
   if (!_mainTransaction) {
-    return futures::makeFuture(Result());
+    return f;
   }
 
-  auto f = futures::makeFuture(Result());
   if (_state->isRunningInCluster()) {
     // first commit transaction on subordinate servers
     f = ClusterTrxMethods::abortTransaction(*this, api);
