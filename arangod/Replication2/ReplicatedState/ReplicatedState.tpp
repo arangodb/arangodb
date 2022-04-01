@@ -196,7 +196,8 @@ auto ReplicatedState<S>::GuardedData::rebuild(
 } catch (replication2::replicated_log::ParticipantResignedException const& ex) {
   LOG_CTX("eacb9", TRACE, _self.loggerContext)
       << "Replicated log participant is gone. Replicated state will go soon "
-         "as well.";
+         "as well. Error code: "
+      << ex.what();
   currentManager = nullptr;
   return {};
 } catch (...) {
