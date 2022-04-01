@@ -32,7 +32,7 @@ def generate_fish_output(args, outfile, tests):
                     f' {i} --testBuckets {num_buckets}/{i} {args}\\n"')
         else:
             output(f'{conditions_string}'
-                   f'set {varname} "${varname}""{test["weight"]},{func} \'{test["name"]}\''
+                   f'set {varname} "${varname}""{test["weight"]},{func} \'{test["name"]}\' '
                    f'{suffix} {args}\\n"')
 
     def print_all_tests(func, varname):
@@ -48,6 +48,12 @@ def generate_fish_output(args, outfile, tests):
 def generate_ps1_output(args, outfile, tests):
     def output(ln):
         print(ln, file=outfile)
+
+    if args.cluster:
+        output("Function global:registerClusterTests()")
+    else:
+        output("Function global:registerSingleTests()")
+    output("{")
 
     for test in tests:
         params = test["params"]
@@ -76,6 +82,8 @@ def generate_ps1_output(args, outfile, tests):
             output(f'{condition_prefix}'
                    f'registerTest -testname "{test["name"]}" -weight {test["weight"]}{suffix}{moreargs}'
                    f'{condition_suffix}')
+
+    output("}")
 
 
 def filter_tests(args, tests):
