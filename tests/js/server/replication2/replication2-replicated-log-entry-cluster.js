@@ -76,7 +76,7 @@ const replicatedLogEntrySuite = function () {
       assertEqual(head.length, 1);
       const [firstEntry] = head;
       assertEqual(firstEntry.logIndex, 1);
-      assertEqual(firstEntry.logTerm, 1);
+      assertTrue([1,2].includes(firstEntry.logTerm));
       assertEqual(firstEntry.logPayload, undefined);
       assertTrue(firstEntry.meta !== undefined);
       const meta = firstEntry.meta;
@@ -107,7 +107,7 @@ const replicatedLogEntrySuite = function () {
       assertEqual(head.length, 2);
       const entry = head[1];
       assertEqual(entry.logIndex, 2);
-      assertEqual(entry.logTerm, 1);
+      assertTrue([1,2].includes(entry.logTerm));
       assertEqual(entry.logPayload, undefined);
       assertTrue(entry.meta !== undefined);
       const meta = entry.meta;
