@@ -90,9 +90,7 @@ const ViewLinksReactView = ({ name }) => {
 
   const handleView = l => {
     setParentLink(l);
-    if (link !== "") {
-      setShow("ViewParent");
-    }
+    setShow("ViewParent");
   };
   const handleBackClick = e => {
     e.preventDefault();

@@ -5,23 +5,15 @@ import {
   ArangoTH
 } from "../../../components/arango/table";
 import { ViewContext } from "../ViewLinksReactView";
-import { JsonButton } from "../Actions";
 type ViewLayoutProps = {
   view?: string | undefined;
   field?: string;
   link?: string;
   children: ReactNode;
 };
-import { useJsonFormEffect } from "../helpers";
 
 const ViewLayout = ({ view, field, link, children }: ViewLayoutProps) => {
   const { setShow } = useContext(ViewContext);
-  const [json, toggleButton] = useJsonFormEffect(false);
-
-  const handeleJsonClick = () => {
-    toggleButton();
-    setShow("JsonView");
-  };
 
   return (
     <ArangoTable>
@@ -33,11 +25,6 @@ const ViewLayout = ({ view, field, link, children }: ViewLayoutProps) => {
               {link !== undefined ? "/" + link : ""}
             </a>
             <a href={`/${field}`}>{field !== undefined ? "/" + field : ""}</a>
-            <JsonButton
-              icon={!json ? "toggle-off" : "toggle-on"}
-              buttonName={!json ? "Json View" : "Form view"}
-              buttonClick={handeleJsonClick}
-            />
           </ArangoTH>
         </tr>
       </thead>
