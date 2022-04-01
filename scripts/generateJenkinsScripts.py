@@ -60,16 +60,21 @@ def generate_ps1_output(args, outfile, tests):
         if "ldap" in test["flags"]:
             raise Exception("ldap not supported for windows")
 
+        moreargs = ""
+        args = test["args"]
+        if len(args) > 0:
+            moreargs = f' -moreParams "{" ".join(args)}"'
+
         if "buckets" in params:
             num_buckets = int(params["buckets"])
             for i in range(num_buckets):
                 output(f'{condition_prefix}'
                        f'registerTest -testname "{test["name"]}" -weight {test["weight"]} '
-                       f'-index "{i}" -bucket "{num_buckets}/{i}"'
+                       f'-index "{i}" -bucket "{num_buckets}/{i}"{moreargs}'
                        f'{condition_suffix}')
         else:
             output(f'{condition_prefix}'
-                   f'registerTest -testname "{test["name"]}" -weight {test["weight"]}{suffix}'
+                   f'registerTest -testname "{test["name"]}" -weight {test["weight"]}{suffix}{moreargs}'
                    f'{condition_suffix}')
 
 
