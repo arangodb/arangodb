@@ -4,6 +4,21 @@ v3.7.18 (XXXX-XX-XX)
 * Fixed BTS-621: Fixed rare case of segfault in cluster during database recovery
   if DBServer is in upgrade mode in the same time.
 
+* Updated ArangoDB Starter to 0.15.4.
+
+* Fixed an assertion failure which could occur when there was an error in the
+  HTTP header, so that the message body was not actually read.
+
+* Fixed a crash which could occur when there was an error in the HTTP header
+  parsing.
+
+* No longer put document writes from replication into the audit log by default.
+  Same with low priority authentication like internal UI requests to .html files
+  for the UI. This solves a performance problem for shards getting in sync with
+  audit log switched on.
+
+* Updated OpenSSL to 1.1.1n and OpenLDAP to 2.6.1.
+
 * Fixed ES-1078: The REST API endpoint for handling `/_api/user/${user}/config`
   did not work properly. The supplied data by sending a PUT request has not been
   stored to the correct location. The Web UI uses this endpoint to store its

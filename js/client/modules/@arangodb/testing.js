@@ -74,6 +74,7 @@ let optionsDocumentation = [
   '   - `loopEternal`: to loop one test over and over.',
   '   - `loopSleepWhen`: sleep every nth iteration',
   '   - `loopSleepSec`: sleep seconds between iterations',
+  '   - `setInterruptable`: register special break handler',
   '   - `sleepBeforeStart` : sleep at tcpdump info - use this dump traffic or attach debugger',
   '',
   '   - `storageEngine`: set to `rocksdb` - defaults to `rocksdb`',
@@ -194,6 +195,7 @@ const optionsDefaults = {
   'sanitizer': false,
   'activefailover': false,
   'singles': 2,
+  'setInterruptable': ! internal.isATTy(),
   'sniff': false,
   'sniffAgency': true,
   'sniffDBServers': true,
@@ -570,6 +572,10 @@ function unitTest (cases, options) {
   // testsuites may register more defaults...
   _.defaults(options, optionsDefaults);
 
+  if (options.setInterruptable) {
+    internal.SetSignalToImmediateDeadline();
+  }
+  
   try {
     pu.setupBinaries(options.build, options.buildType, options.configDir);
   }
