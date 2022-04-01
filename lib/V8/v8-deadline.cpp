@@ -132,7 +132,7 @@ uint32_t correctTimeoutToExecutionDeadline(uint32_t timeoutMS) {
     return timeoutMS;
   }
   auto now = TRI_microtime();
-  auto delta = (when - now) * 1000;
+  auto delta = static_cast<uint32_t>((when - now) * 1000);
   if (delta > timeoutMS) {
     return timeoutMS;
   }
