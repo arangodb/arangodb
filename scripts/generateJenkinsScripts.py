@@ -35,33 +35,65 @@ def generate_fish_output(args, outfile, tests):
                    f'set {varname} "${varname}""{test["weight"]},{func} \'{test["name"]}\''
                    f'{suffix} {args}\\n"')
 
-    def print_all_cluster_tests():
+    def print_all_tests(func, varname):
         for test in tests:
-            if "full" in test["flags"] and not args.full:
-                continue
-            if "!full" in test["flags"] and args.full:
-                continue
-            if "single" in test["flags"]:
-                continue
-            print_test_func(test, "runClusterTest1", "CT")
-
-    def print_all_single_server_tests():
-        for test in tests:
-            if "full" in test["flags"] and not args.full:
-                continue
-            if "!full" in test["flags"] and args.full:
-                continue
-            if "cluster" in test["flags"]:
-                continue
             print_test_func(test, "runSingleTest1", "ST")
 
-    def print_all_tests():
-        if args.cluster:
-            print_all_cluster_tests()
-        else:
-            print_all_single_server_tests()
+    if args.cluster:
+        print_all_tests("runClusterTest1", "CT")
+    else:
+        print_all_tests("runSingleTest1", "ST")
 
-    print_all_tests()
+
+def generate_ps1_output(args, outfile, tests):
+    def output(ln):
+        print(ln, file=outfile)
+
+    for test in tests:
+        params = test["params"]
+        suffix = f' -index "{params["suffix"]}"' if "suffix" in params else ""
+        condition_prefix = ""
+        condition_suffix = ""
+        if "enterprise" in test["flags"]:
+            condition_prefix = 'If ($ENTERPRISEEDITION -eq "On") { '
+            condition_suffix = ' }'
+        if "ldap" in test["flags"]:
+            raise Exception("ldap not supported for windows")
+
+        if "buckets" in params:
+            num_buckets = int(params["buckets"])
+            for i in range(num_buckets):
+                output(f'{condition_prefix}'
+                       f'registerTest -testname "{test["name"]}" -weight {test["weight"]} '
+                       f'-index "{i}" -bucket "{num_buckets}/{i}"'
+                       f'{condition_suffix}')
+        else:
+            output(f'{condition_prefix}'
+                   f'registerTest -testname "{test["name"]}" -weight {test["weight"]}{suffix}'
+                   f'{condition_suffix}')
+
+
+def filter_tests(args, tests):
+    if args.all:
+        return tests
+
+    filters = []
+    if args.cluster:
+        filters.append(lambda test: "single" not in test["flags"])
+    else:
+        filters.append(lambda test: "cluster" not in test["flags"])
+
+    if args.full:
+        filters.append(lambda test: "!full" not in test["flags"])
+    else:
+        filters.append(lambda test: "full" not in test["flags"])
+
+    if args.format == "ps1":
+        filters.append(lambda test: "!windows" not in test["flags"])
+
+    for f in filters:
+        tests = filter(f, tests)
+    return list(tests)
 
 
 def generate_dump_output(args, outfile, tests):
@@ -80,7 +112,7 @@ def generate_dump_output(args, outfile, tests):
 formats = {
     "dump": generate_dump_output,
     "fish": generate_fish_output,
-    "ps1": None,
+    "ps1": generate_ps1_output,
 }
 
 known_flags = {
@@ -89,7 +121,8 @@ known_flags = {
     "full": "this test is only executed in full tests",
     "!full": "this test is only executed in non-full tests",
     "ldap": "ldap",
-    "enterprise": "this tests is only executed with the enterprise version"
+    "enterprise": "this tests is only executed with the enterprise version",
+    "!windows": "test is excluded from ps1 output"
 }
 
 known_parameter = {
@@ -114,6 +147,7 @@ def parse_arguments():
     parser.add_argument("--help-flags", help="prints information about available flags and exits", action="store_true")
     parser.add_argument("--cluster", help="output only cluster tests instead of single server", action="store_true")
     parser.add_argument("--full", help="output full test set", action="store_true")
+    parser.add_argument("--all", help="output all test, ignore other filters", action="store_true")
     args = parser.parse_args()
 
     if args.help_flags:
@@ -222,6 +256,7 @@ def main():
         tests = read_definitions(args.definitions)
         if args.validate_only:
             return  # nothing left to do
+        tests = filter_tests(args, tests)
         generate_output(args, get_output_file(args), tests)
     except Exception as e:
         print(e, file=sys.stderr)

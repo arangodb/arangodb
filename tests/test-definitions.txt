@@ -8,6 +8,7 @@
 #   enterprise - test is only executed in enterprise env
 #   ldap - test is only executed in ldap env
 #   buckets=5 - test is split into 5 buckets
+#   !windows - tests are excluded if generated for ps1
 
 
 # Single Server only Tests
@@ -55,7 +56,7 @@ shell_client weight=500 single suffix=vst -- --vst true
 shell_client_aql weight=500 single suffix=http
 shell_client_aql weight=500 single suffix=http2 -- --http2 true
 shell_client_aql weight=500 single suffix=vst -- --vst true
-shell_client_aql weight=500 single enterprise suffix=encrypt -- $EncryptionAtRest
+shell_client_aql weight=500 single enterprise suffix=encrypt -- --encryptionAtRest true
 
 shell_server_aql weight=750 single buckets=5
 # execute without buckets in single server, but use 5 buckets in cluster
@@ -96,7 +97,7 @@ shell_fuzzer weight=500 -- --dumpAgencyOnError true
 
 export -- --dumpAgencyOnError true
 importing -- --dumpAgencyOnError true
-hot_backup -- --dumpAgencyOnError true
+hot_backup !windows -- --dumpAgencyOnError true
 
 http_replication weight=500
 http_server weight=750 -- --dumpAgencyOnError true
@@ -135,13 +136,13 @@ replication_random weight=1000 single full
 upgrade single full weight=500
 
 # LDAP
-ldaprole single full ldap weight=2000 -- --ldapHost $LDAPHOST --ldap2Host $LDAPHOST2
-ldaprolesimple single full ldap weight=2000 -- --ldapHost $LDAPHOST --ldap2Host $LDAPHOST2
-ldapsearch single full ldap weight=2000 -- --ldapHost $LDAPHOST --ldap2Host $LDAPHOST2
-ldapsearchsimple single full ldap weight=2000 -- --ldapHost $LDAPHOST --ldap2Host $LDAPHOST2
-ldapdualldap single full ldap weight=2000 -- --ldapHost $LDAPHOST --ldap2Host $LDAPHOST2
-ldapfirstldap single full ldap weight=2000 -- --ldapHost $LDAPHOST --ldap2Host $LDAPHOST2
-ldapsecondldap single full ldap weight=2000 -- --ldapHost $LDAPHOST --ldap2Host $LDAPHOST2
+ldaprole !windows single full ldap weight=2000 -- --ldapHost $LDAPHOST --ldap2Host $LDAPHOST2
+ldaprolesimple !windows single full ldap weight=2000 -- --ldapHost $LDAPHOST --ldap2Host $LDAPHOST2
+ldapsearch !windows single full ldap weight=2000 -- --ldapHost $LDAPHOST --ldap2Host $LDAPHOST2
+ldapsearchsimple !windows single full ldap weight=2000 -- --ldapHost $LDAPHOST --ldap2Host $LDAPHOST2
+ldapdualldap !windows single full ldap weight=2000 -- --ldapHost $LDAPHOST --ldap2Host $LDAPHOST2
+ldapfirstldap !windows single full ldap weight=2000 -- --ldapHost $LDAPHOST --ldap2Host $LDAPHOST2
+ldapsecondldap !windows single full ldap weight=2000 -- --ldapHost $LDAPHOST --ldap2Host $LDAPHOST2
 
 
 # Full Cluster Tests
