@@ -30,10 +30,10 @@
 #include "Replication2/ReplicatedState/ReplicatedState.h"
 #include "Replication2/ReplicatedState/ReplicatedStateFeature.h"
 
-#include "Replication2/StateMachines/Prototype/PrototypeStateMachine.h"
-#include "Replication2/StateMachines/Prototype/PrototypeLeaderState.h"
-#include "Replication2/StateMachines/Prototype/PrototypeFollowerState.h"
 #include "Replication2/StateMachines/Prototype/PrototypeCore.h"
+#include "Replication2/StateMachines/Prototype/PrototypeFollowerState.h"
+#include "Replication2/StateMachines/Prototype/PrototypeLeaderState.h"
+#include "Replication2/StateMachines/Prototype/PrototypeStateMachine.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -45,16 +45,25 @@ using namespace arangodb::replication2::test;
 
 struct MockPrototypeLeaderInterface : public IPrototypeLeaderInterface {
   explicit MockPrototypeLeaderInterface(
-      std::shared_ptr<PrototypeLeaderState> leaderState)
-      : leaderState(std::move(leaderState)) {}
+      std::shared_ptr<PrototypeLeaderState> leaderState,
+      bool useDefaultSnapshot)
+      : leaderState(std::move(leaderState)),
+        useDefaultSnapshot(useDefaultSnapshot),
+        defaultSnapshot{{"a", "b"}, {"c", "d"}} {}
 
   auto getSnapshot(GlobalLogIdentifier const&, LogIndex waitForIndex)
       -> futures::Future<
           ResultT<std::unordered_map<std::string, std::string>>> override {
+    if (useDefaultSnapshot) {
+      return ResultT<std::unordered_map<std::string, std::string>>::success(
+          defaultSnapshot);
+    }
     return leaderState->getSnapshot(waitForIndex);
   }
 
   std::shared_ptr<PrototypeLeaderState> leaderState;
+  bool useDefaultSnapshot;
+  std::unordered_map<std::string, std::string> defaultSnapshot;
 };
 
 struct MockPrototypeNetworkInterface : public IPrototypeNetworkInterface {
@@ -63,7 +72,8 @@ struct MockPrototypeNetworkInterface : public IPrototypeNetworkInterface {
     if (auto leaderState = leaderStates.find(id);
         leaderState != leaderStates.end()) {
       return ResultT<std::shared_ptr<IPrototypeLeaderInterface>>::success(
-          std::make_shared<MockPrototypeLeaderInterface>(leaderState->second));
+          std::make_shared<MockPrototypeLeaderInterface>(leaderState->second,
+                                                         useDefaultSnapshot));
     }
     return {TRI_ERROR_CLUSTER_NOT_LEADER};
   }
@@ -73,6 +83,7 @@ struct MockPrototypeNetworkInterface : public IPrototypeNetworkInterface {
     leaderStates[std::move(id)] = std::move(leaderState);
   }
 
+  bool useDefaultSnapshot = false;
   std::unordered_map<ParticipantId, std::shared_ptr<PrototypeLeaderState>>
       leaderStates;
 };
@@ -278,19 +289,14 @@ TEST_F(PrototypeStateMachineTest, simple_operations) {
   }
 }
 
-/*
 TEST_F(PrototypeStateMachineTest, snapshot_transfer) {
-  auto follower1Log = makeReplicatedLog(LogId{1});
-  auto follower1 =
-      follower1Log->becomeFollower("follower1", LogTerm{1}, "leader");
+  networkMock->useDefaultSnapshot = true;
+  auto logId = LogId{1};
+  auto followerLog = makeReplicatedLog(logId);
+  auto follower = followerLog->becomeFollower("follower", LogTerm{1}, "leader");
 
-  auto follower2Log = makeReplicatedLog(LogId{1});
-  auto follower2 =
-      follower2Log->becomeFollower("follower2", LogTerm{1}, "leader");
-
-  auto leaderLog = makeReplicatedLog(LogId{1});
-  auto leader =
-      leaderLog->becomeLeader("leader", LogTerm{1}, {follower1, follower2}, 2);
+  auto leaderLog = makeReplicatedLog(logId);
+  auto leader = leaderLog->becomeLeader("leader", LogTerm{1}, {follower}, 2);
 
   leader->triggerAsyncReplication();
 
@@ -300,55 +306,21 @@ TEST_F(PrototypeStateMachineTest, snapshot_transfer) {
   ASSERT_NE(leaderReplicatedState, nullptr);
   leaderReplicatedState->start(
       std::make_unique<ReplicatedStateToken>(StateGeneration{1}));
-  follower1->runAllAsyncAppendEntries();
-  follower2->runAllAsyncAppendEntries();
+  follower->runAllAsyncAppendEntries();
 
   auto leaderState = leaderReplicatedState->getLeader();
-  networkMock->addLeaderState("leader", leaderState);
   ASSERT_NE(leaderState, nullptr);
+  networkMock->addLeaderState("leader", leaderState);
 
-  auto followerReplicatedState1 =
+  auto followerReplicatedState =
       std::dynamic_pointer_cast<ReplicatedState<PrototypeState>>(
-          feature->createReplicatedState("prototype-state", follower1Log));
-  ASSERT_NE(followerReplicatedState1, nullptr);
-  followerReplicatedState1->start(
+          feature->createReplicatedState("prototype-state", followerLog));
+  ASSERT_NE(followerReplicatedState, nullptr);
+  followerReplicatedState->start(
       std::make_unique<ReplicatedStateToken>(StateGeneration{1}));
 
-  auto followerState1 = followerReplicatedState1->getFollower();
-  ASSERT_NE(followerState1, nullptr);
-
-  std::unordered_map<std::string, std::string> expected;
-  for (std::size_t cnt{0}; cnt < PrototypeCore::kFlushBatchSize; ++cnt) {
-    auto key = "foo" + std::to_string(cnt);
-    auto value = "bar" + std::to_string(cnt);
-    auto entries = std::unordered_map<std::string, std::string>{{key, value}};
-    expected.emplace(std::move(key), std::move(value));
-    leaderState->set(std::move(entries));
-  }
-
-  follower1->runAllAsyncAppendEntries();
-
-  // bring up follower2
-  auto followerReplicatedState2 =
-      std::dynamic_pointer_cast<ReplicatedState<PrototypeState>>(
-          feature->createReplicatedState("prototype-state", follower2Log));
-  ASSERT_NE(followerReplicatedState2, nullptr);
-  followerReplicatedState2->start(
-      std::make_unique<ReplicatedStateToken>(StateGeneration{1}));
-
-  auto followerState2 = followerReplicatedState2->getFollower();
-  LOG_DEVEL << "starting up";
-  followerState2->acquireSnapshot("leader",
-                                  LogIndex{PrototypeCore::kFlushBatchSize});
-  LOG_DEVEL << *followerState2->get("foo100");
-  follower2->runAllAsyncAppendEntries();
-  auto followerState2 = followerReplicatedState2->getFollower();
-  ASSERT_NE(followerState2, nullptr);
-  {
-    auto map = followerState2->dumpContent();
-    auto expected = std::unordered_map<std::string, std::string>{
-        {"foo1", "bar1"}, {"foo2", "bar2"}, {"foo3", "bar3"}};
-    ASSERT_EQ(map, expected);
-  }
+  auto followerState = followerReplicatedState->getFollower();
+  ASSERT_NE(followerState, nullptr);
+  ASSERT_EQ(followerState->get("a"), "b");
+  ASSERT_EQ(followerState->get("c"), "d");
 }
-*/
