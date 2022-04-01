@@ -197,7 +197,7 @@ auto ReplicatedState<S>::GuardedData::rebuild(
   LOG_CTX("eacb9", TRACE, _self.loggerContext)
       << "Replicated log participant is gone. Replicated state will go soon "
          "as well. Error code: "
-      << ex.what();
+      << ex.code();
   currentManager = nullptr;
   return {};
 } catch (...) {
