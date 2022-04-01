@@ -186,8 +186,8 @@ auto PrototypeLeaderState::GuardedData::applyEntries(
   auto resolveQueue = std::make_unique<WaitForAppliedQueue>();
 
   auto const end = waitForAppliedQueue.lower_bound(nextWaitForIndex);
-  for (auto it = waitForAppliedQueue.begin(); it != end; ++it) {
-    resolveQueue->insert(waitForAppliedQueue.extract(it));
+  for (auto it = waitForAppliedQueue.begin(); it != end;) {
+    resolveQueue->insert(waitForAppliedQueue.extract(it++));
   }
 
   return DeferredAction([resolveQueue = std::move(resolveQueue)]() noexcept {
@@ -195,11 +195,6 @@ auto PrototypeLeaderState::GuardedData::applyEntries(
       p.second.setValue();
     }
   });
-}
-
-auto PrototypeLeaderState::waitForApplied(LogIndex index)
-    -> futures::Future<futures::Unit> {
-  return _guardedData.getLockedGuard()->waitForApplied(index);
 }
 
 auto PrototypeLeaderState::GuardedData::waitForApplied(LogIndex index)

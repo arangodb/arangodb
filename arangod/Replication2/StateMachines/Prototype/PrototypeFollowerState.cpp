@@ -88,4 +88,15 @@ auto PrototypeFollowerState::resign() && noexcept
   });
 }
 
+auto PrototypeFollowerState::get(std::string key)
+    -> std::optional<std::string> {
+  return _guardedData.doUnderLock(
+      [key = std::move(key)](auto& core) -> std::optional<std::string> {
+        if (!core) {
+          return std::nullopt;
+        }
+        return core->get(key);
+      });
+}
+
 #include "Replication2/ReplicatedState/ReplicatedState.tpp"

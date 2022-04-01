@@ -41,6 +41,8 @@ struct PrototypeFollowerState
   auto applyEntries(std::unique_ptr<EntryIterator> ptr) noexcept
       -> futures::Future<Result> override;
 
+  auto get(std::string key) -> std::optional<std::string>;
+
   LoggerContext const loggerContext;
 
  private:

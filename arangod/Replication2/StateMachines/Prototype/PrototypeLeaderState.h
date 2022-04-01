@@ -66,8 +66,6 @@ struct PrototypeLeaderState
   void handlePollResult(
       futures::Future<std::unique_ptr<EntryIterator>>&& pollFuture);
 
-  auto waitForApplied(LogIndex index) -> futures::Future<futures::Unit>;
-
   struct GuardedData {
     explicit GuardedData(PrototypeLeaderState& self,
                          std::unique_ptr<PrototypeCore> core)
