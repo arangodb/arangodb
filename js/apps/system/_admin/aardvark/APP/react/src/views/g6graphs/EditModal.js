@@ -112,7 +112,7 @@ const ModalBody = styled.div`
                   ref={jsonEditorRef}
                   value={nodeData}
                   onChange={(value) => {
-                    console.log('Data in jsoneditor changed: ', value);
+                    console.log('Data in jsoneditor changed (EditModal): ', value);
                     setJson(value);
                   }}
                   mode={'code'}

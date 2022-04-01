@@ -14,6 +14,7 @@ import ParameterNodeLabelByCollection from "./ParameterNodeLabelByCollection";
 import ParameterEdgeLabelByCollection from "./ParameterEdgeLabelByCollection";
 import ParameterNodeLabel from "./ParameterNodeLabel";
 import ParameterEdgeLabel from "./ParameterEdgeLabel";
+import ParameterNodeColorAttribute from "./ParameterNodeColorAttribute";
 import ButtonSave from "./ButtonSave";
 
 export const Headerinfo = ({ graphName, graphData, responseDuration, onDownloadScreenshot, onChangeLayout, onChangeGraphData, onLoadFullGraph, onDocumentSelect, onGraphDataLoaded }) => {
@@ -177,16 +178,7 @@ export const Headerinfo = ({ graphName, graphData, responseDuration, onDownloadS
               style={{ width: 240, marginTop: '24px' }}
             />
             <br />
-            <Input
-              addonBefore="Color attribute"
-              placeholder="Attribute"
-              suffix={
-                <Tooltip title="If an attribute is given, nodes will then be colorized by the attribute. This setting ignores default node color if set.">
-                  <InfoCircleOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
-                </Tooltip>
-              }
-              style={{ width: 240, marginTop: '24px' }}
-            />
+            <ParameterNodeColorAttribute />
             <br />
             <Switch
               checkedChildren="Size by connections"

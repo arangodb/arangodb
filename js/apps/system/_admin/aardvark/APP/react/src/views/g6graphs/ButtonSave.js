@@ -24,6 +24,9 @@ const ParameterStartnode = ({ onGraphDataLoaded }) => {
         data: urlParameters,
         success: function (data) {
           console.log("Graph based on urlParameter context loaded: ", data);
+          console.log("data.nodes: ", data.nodes);
+          console.log("data.nodes[0]: ", data.nodes[0]);
+          console.log("data.nodes[0].color: ", data.nodes[0].color);
           onGraphDataLoaded(data);
         },
         error: function (e) {

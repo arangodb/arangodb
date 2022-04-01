@@ -111,7 +111,7 @@ const ModalBody = styled.div`
                   ref={jsonEditorRef}
                   value={edgeData}
                   onChange={(value) => {
-                    console.log('Data in jsoneditor changed: ', value);
+                    console.log('Data in jsoneditor changed (EditEdgeModal): ', value);
                     setJson(value);
                   }}
                   mode={'code'}

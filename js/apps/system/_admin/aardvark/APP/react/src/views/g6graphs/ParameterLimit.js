@@ -21,7 +21,7 @@ const ParameterLimit = () => {
                   <InfoCircleOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
                 </Tooltip>
               }
-              style={{ width: 240, marginTop: '24px' }}
+              style={{ width: 240, marginTop: '24px', marginBottom: '24px' }}
             />
     </>
   );

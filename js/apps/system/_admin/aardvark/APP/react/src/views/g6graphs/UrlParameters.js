@@ -5,7 +5,7 @@ const URLPARAMETERS = {
   nodeColorByCollection: true,
   edgeColorByCollection: false,
   nodeColor: "#2ecc71",
-  nodeColorAttribute: "",
+  nodeColorAttribute: "isCapital",
   edgeColor: "#cccccc",
   edgeColorAttribute: "",
   nodeLabel: "_key",
