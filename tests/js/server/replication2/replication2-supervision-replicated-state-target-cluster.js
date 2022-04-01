@@ -265,7 +265,6 @@ const replicatedStateSuite = function () {
         [serverToBeRemoved]: null,
       }));
       lh.waitFor(spreds.replicatedStateIsReady(database, stateId, newServers));
-      require('internal').sleep(3);
     },
   };
 };
