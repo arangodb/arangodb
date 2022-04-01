@@ -287,10 +287,13 @@ auto inspect(Inspector& f, EvictLeaderAction& x) {
 
 struct WriteEmptyTermAction {
   static constexpr std::string_view name = "WriteEmptyTermAction";
+  LogTerm minTerm;
+
+  explicit WriteEmptyTermAction(LogTerm minTerm) : minTerm{minTerm} {};
 
   auto execute(ActionContext& ctx) const -> void {
     ctx.modifyPlan([&](LogPlanSpecification& plan) {
-      plan.currentTerm->term = LogTerm{plan.currentTerm->term.value + 1};
+      plan.currentTerm->term = LogTerm{minTerm.value + 1};
       plan.currentTerm->leader.reset();
     });
   }
@@ -298,7 +301,8 @@ struct WriteEmptyTermAction {
 template<typename Inspector>
 auto inspect(Inspector& f, WriteEmptyTermAction& x) {
   auto hack = std::string{x.name};
-  return f.object(x).fields(f.field("type", hack));
+  return f.object(x).fields(f.field("type", hack),
+                            f.field("minTerm", x.minTerm));
 }
 
 struct LeaderElectionImpossibleAction {
