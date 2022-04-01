@@ -52,7 +52,7 @@ struct VPackLoadInspector : InspectorBase<VPackLoadInspector> {
       : _slice(slice), _options(options) {}
 
   template<class T, class = std::enable_if_t<std::is_integral_v<T>>>
-  [[nodiscard]] Result value(T& v) {
+  [[nodiscard]] Status value(T& v) {
     try {
       v = _slice.getNumber<T>();
       return {};
@@ -61,7 +61,7 @@ struct VPackLoadInspector : InspectorBase<VPackLoadInspector> {
     }
   }
 
-  [[nodiscard]] Result value(double& v) {
+  [[nodiscard]] Status value(double& v) {
     try {
       v = _slice.getNumber<double>();
       return {};
@@ -70,7 +70,7 @@ struct VPackLoadInspector : InspectorBase<VPackLoadInspector> {
     }
   }
 
-  [[nodiscard]] Result value(std::string& v) {
+  [[nodiscard]] Status value(std::string& v) {
     if (!_slice.isString()) {
       return {"Expecting type String"};
     }
@@ -78,7 +78,7 @@ struct VPackLoadInspector : InspectorBase<VPackLoadInspector> {
     return {};
   }
 
-  [[nodiscard]] Result value(bool& v) {
+  [[nodiscard]] Status value(bool& v) {
     if (!_slice.isBool()) {
       return {"Expecting type Bool"};
     }
@@ -86,40 +86,40 @@ struct VPackLoadInspector : InspectorBase<VPackLoadInspector> {
     return {};
   }
 
-  [[nodiscard]] Result beginObject() {
+  [[nodiscard]] Status beginObject() {
     if (!_slice.isObject()) {
       return {"Expecting type Object"};
     }
     return {};
   }
 
-  [[nodiscard]] Result::Success endObject() { return {}; }
+  [[nodiscard]] Status::Success endObject() { return {}; }
 
-  [[nodiscard]] Result beginArray() {
+  [[nodiscard]] Status beginArray() {
     if (!_slice.isArray()) {
       return {"Expecting type Array"};
     }
     return {};
   }
 
-  [[nodiscard]] Result::Success endArray() { return {}; }
+  [[nodiscard]] Status::Success endArray() { return {}; }
 
   template<class T>
-  [[nodiscard]] Result list(T& list) {
+  [[nodiscard]] Status list(T& list) {
     return beginArray()                           //
            | [&]() { return processList(list); }  //
            | [&]() { return endArray(); };        //
   }
 
   template<class T>
-  [[nodiscard]] Result map(T& map) {
+  [[nodiscard]] Status map(T& map) {
     return beginObject()                        //
            | [&]() { return processMap(map); }  //
            | [&]() { return endObject(); };     //
   }
 
   template<class T>
-  [[nodiscard]] Result tuple(T& data) {
+  [[nodiscard]] Status tuple(T& data) {
     constexpr auto arrayLength = std::tuple_size_v<T>;
 
     return beginArray()                                            //
@@ -129,35 +129,43 @@ struct VPackLoadInspector : InspectorBase<VPackLoadInspector> {
   }
 
   template<class T, size_t N>
-  [[nodiscard]] Result tuple(T (&data)[N]) {
+  [[nodiscard]] Status tuple(T (&data)[N]) {
     return beginArray()                             //
            | [&]() { return checkArrayLength(N); }  //
            | [&]() { return processArray(data); }   //
            | [&]() { return endArray(); };          //
   }
 
+  [[nodiscard]] Status::Success parseField(velocypack::Slice, IgnoreField&&) {
+    return {};
+  }
+
   template<class T>
-  [[nodiscard]] Result parseField(velocypack::Slice slice, T&& field) {
+  [[nodiscard]] Status parseField(velocypack::Slice slice, T&& field) {
     VPackLoadInspector ff(slice, _options);
     auto name = getFieldName(field);
     auto& value = getFieldValue(field);
     auto load = [&]() {
+      auto isPresent = !slice.isNone();
       using FallbackField = decltype(getFallbackField(field));
       if constexpr (!std::is_void_v<FallbackField>) {
         auto applyFallback = [&](auto& val) {
           getFallbackField(field).apply(val);
         };
         if constexpr (!std::is_void_v<decltype(getTransformer(field))>) {
-          return loadTransformedField(ff, name, value, std::move(applyFallback),
+          return loadTransformedField(ff, name, isPresent, value,
+                                      std::move(applyFallback),
                                       getTransformer(field));
         } else {
-          return loadField(ff, name, value, std::move(applyFallback));
+          return loadField(ff, name, isPresent, value,
+                           std::move(applyFallback));
         }
       } else {
         if constexpr (!std::is_void_v<decltype(getTransformer(field))>) {
-          return loadTransformedField(ff, name, value, getTransformer(field));
+          return loadTransformedField(ff, name, isPresent, value,
+                                      getTransformer(field));
         } else {
-          return loadField(ff, name, value);
+          return loadField(ff, name, isPresent, value);
         }
       }
     };
@@ -166,7 +174,7 @@ struct VPackLoadInspector : InspectorBase<VPackLoadInspector> {
                | [&]() { return checkInvariant(field); };  //
 
     if (!res.ok()) {
-      return {std::move(res), name, Result::AttributeTag{}};
+      return {std::move(res), name, Status::AttributeTag{}};
     }
     return res;
   }
@@ -202,7 +210,7 @@ struct VPackLoadInspector : InspectorBase<VPackLoadInspector> {
   };
 
   template<class... Args>
-  Result applyFields(Args&&... args) {
+  Status applyFields(Args&&... args) {
     std::array<std::string_view, sizeof...(args)> names{getFieldName(args)...};
     std::array<velocypack::Slice, sizeof...(args)> slices;
     for (auto [k, v] : VPackObjectIterator(slice())) {
@@ -226,24 +234,24 @@ struct VPackLoadInspector : InspectorBase<VPackLoadInspector> {
   struct HasFallback<FallbackField<T, U>> : std::true_type {};
 
   template<class Arg>
-  Result parseFields(velocypack::Slice* slices, Arg&& arg) {
+  Status parseFields(velocypack::Slice* slices, Arg&& arg) {
     return parseField(*slices, std::forward<Arg>(arg));
   }
 
   template<class Arg, class... Args>
-  Result parseFields(velocypack::Slice* slices, Arg&& arg, Args&&... args) {
+  Status parseFields(velocypack::Slice* slices, Arg&& arg, Args&&... args) {
     return parseField(*slices, std::forward<Arg>(arg)) |
            [&]() { return parseFields(++slices, std::forward<Args>(args)...); };
   }
 
   template<class T>
-  Result processList(T& list) {
+  Status processList(T& list) {
     std::size_t idx = 0;
     for (auto&& s : VPackArrayIterator(_slice)) {
       VPackLoadInspector ff(s, _options);
       typename T::value_type val;
       if (auto res = process(ff, val); !res.ok()) {
-        return {std::move(res), std::to_string(idx), Result::ArrayTag{}};
+        return {std::move(res), std::to_string(idx), Status::ArrayTag{}};
       }
       list.push_back(std::move(val));
       ++idx;
@@ -252,13 +260,13 @@ struct VPackLoadInspector : InspectorBase<VPackLoadInspector> {
   }
 
   template<class T>
-  Result processMap(T& map) {
+  Status processMap(T& map) {
     for (auto&& pair : VPackObjectIterator(_slice)) {
       VPackLoadInspector ff(pair.value, _options);
       typename T::mapped_type val;
       if (auto res = process(ff, val); !res.ok()) {
         return {std::move(res), "'" + pair.key.copyString() + "'",
-                Result::ArrayTag{}};
+                Status::ArrayTag{}};
       }
       map.emplace(pair.key.copyString(), std::move(val));
     }
@@ -266,7 +274,7 @@ struct VPackLoadInspector : InspectorBase<VPackLoadInspector> {
   }
 
   template<class T, class U>
-  Result checkInvariant(InvariantField<T, U>& field) {
+  Status checkInvariant(InvariantField<T, U>& field) {
     return InspectorBase::checkInvariant<
         InvariantField<T, U>, InvariantField<T, U>::InvariantFailedError>(
         field.invariantFunc, getFieldValue(field));
@@ -277,16 +285,16 @@ struct VPackLoadInspector : InspectorBase<VPackLoadInspector> {
     if constexpr (!IsRawField<std::remove_cvref_t<T>>::value) {
       return checkInvariant(field.inner);
     } else {
-      return Result::Success{};
+      return Status::Success{};
     }
   }
 
   template<std::size_t Idx, std::size_t End, class T>
-  [[nodiscard]] Result processTuple(T& data) {
+  [[nodiscard]] Status processTuple(T& data) {
     if constexpr (Idx < End) {
       VPackLoadInspector ff{_slice[Idx], _options};
       if (auto res = process(ff, std::get<Idx>(data)); !res.ok()) {
-        return {std::move(res), std::to_string(Idx), Result::ArrayTag{}};
+        return {std::move(res), std::to_string(Idx), Status::ArrayTag{}};
       }
       return {processTuple<Idx + 1, End>(data)};
     } else {
@@ -295,19 +303,19 @@ struct VPackLoadInspector : InspectorBase<VPackLoadInspector> {
   }
 
   template<class T, size_t N>
-  [[nodiscard]] Result processArray(T (&data)[N]) {
+  [[nodiscard]] Status processArray(T (&data)[N]) {
     std::size_t index = 0;
     for (auto&& v : VPackArrayIterator(_slice)) {
       VPackLoadInspector ff(v, _options);
       if (auto res = process(ff, data[index]); !res.ok()) {
-        return {std::move(res), std::to_string(index), Result::ArrayTag{}};
+        return {std::move(res), std::to_string(index), Status::ArrayTag{}};
       }
       ++index;
     }
     return {};
   }
 
-  Result checkArrayLength(std::size_t arrayLength) {
+  Status checkArrayLength(std::size_t arrayLength) {
     if (_slice.length() != arrayLength) {
       return {"Expected array of length " + std::to_string(arrayLength)};
     }

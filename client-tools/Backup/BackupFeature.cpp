@@ -690,7 +690,6 @@ BackupFeature::BackupFeature(Server& server, int& exitCode)
       _exitCode{exitCode} {
   static_assert(Server::isCreatedAfter<BackupFeature, HttpEndpointProvider>());
 
-  requiresElevatedPrivileges(false);
   setOptional(false);
   startsAfter<HttpEndpointProvider>();
 }

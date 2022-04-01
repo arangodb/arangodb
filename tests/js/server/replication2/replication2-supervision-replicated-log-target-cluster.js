@@ -42,6 +42,7 @@ const {
   replicatedLogLeaderEstablished,
   replicatedLogUpdateTargetParticipants,
   replicatedLogParticipantsFlag,
+  replicatedLogTargetVersion,
   waitForReplicatedLogAvailable,
 } = helper;
 
@@ -165,6 +166,12 @@ const replicatedLogSuite = function () {
     replicatedLogSetTarget(database, logId, target);
   };
 
+  const setReplicatedLogVersionTarget = function (database, logId, version) {
+    let {target} = readReplicatedLogAgency(database, logId);
+    target.version = version;
+    replicatedLogSetTarget(database, logId, target);
+  };
+
   return {
     setUpAll, tearDownAll,
     setUp: registerAgencyTestBegin,
@@ -172,6 +179,19 @@ const replicatedLogSuite = function () {
       resumeAll();
       waitFor(allServersHealthy());
       registerAgencyTestEnd(test);
+    },
+
+    // This test stops the leader and a follower, then waits for a failover to happen
+    testConvergedToVersion: function () {
+      const {logId, followers, leader, term} = createReplicatedLogAndWaitForLeader(database);
+
+      const targetVersion = 15;
+
+      waitForReplicatedLogAvailable(logId);
+
+      setReplicatedLogVersionTarget(database, logId, targetVersion);
+
+      waitFor(replicatedLogTargetVersion(database, logId, targetVersion));
     },
 
     // This test stops the leader and a follower, then waits for a failover to happen
@@ -256,7 +276,7 @@ const replicatedLogSuite = function () {
         {
           const action = _.nth(actions, -2).desc;
           assertEqual(action.type, 'DictateLeaderAction');
-          assertEqual(action.newLeader.serverId, newLeader);
+          assertEqual(action.leader.serverId, newLeader);
         }
         {
           const action = _.nth(actions, -1).desc;
@@ -285,7 +305,7 @@ const replicatedLogSuite = function () {
 
       // now remove the flag again
       replicatedLogUpdateTargetParticipants(database, logId, {
-        [server]: {allowedInQuroum: true},
+        [server]: {allowedInQuorum: true},
       });
 
       waitFor(replicatedLogParticipantsFlag(database, logId, {

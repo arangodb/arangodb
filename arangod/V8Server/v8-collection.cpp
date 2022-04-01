@@ -2570,8 +2570,6 @@ static void JS_CompletionsVocbase(
       .FromMaybe(false);
   result->Set(context, j++, TRI_V8_ASCII_STRING(isolate, "_dropView()"))
       .FromMaybe(false);
-  result->Set(context, j++, TRI_V8_ASCII_STRING(isolate, "_engine()"))
-      .FromMaybe(false);
   result->Set(context, j++, TRI_V8_ASCII_STRING(isolate, "_engineStats()"))
       .FromMaybe(false);
   result
