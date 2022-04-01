@@ -63,6 +63,10 @@
       ]
     },
 
+    staticStrings: {
+      expansionString: ' (expanded)'
+    },
+
     activeNodes: [],
     selectedNodes: {},
 
@@ -1688,7 +1692,11 @@
               const collectionName = object.id.split('/')[0];
               colorMap[collectionName] = object.color;
             } else if (colorAttribute === "label") {
-              const labelName = object.label;
+              let labelName = object.label;
+              if (labelName.includes(self.staticStrings.expansionString)) {
+                // Remove the expansion " (expanded)" from the label
+                labelName = labelName.replace(self.staticStrings.expansionString,'');
+              }
               colorMap[labelName] = object.color;
             }
           });
@@ -1742,8 +1750,8 @@
         found = self.currentGraph.graph.nodes(newNode.id);
         if (found) {
           if (found.id === origin) {
-            if (found.label.indexOf(' (expanded)') === -1) {
-              found.label = found.label + ' (expanded)';
+            if (found.label.indexOf(self.staticStrings.expansionString) === -1) {
+              found.label = found.label + self.staticStrings.expansionString;
             }
           }
         } else {
