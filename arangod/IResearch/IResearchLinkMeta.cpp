@@ -833,5 +833,10 @@ size_t IResearchLinkMeta::memory() const noexcept {
   return size;
 }
 
+bool IResearchLinkMeta::willIndexIdAttribute() const noexcept {
+  return _includeAllFields ||
+         _fields.find(arangodb::StaticStrings::IdString) != _fields.end();
+}
+
 }  // namespace iresearch
 }  // namespace arangodb

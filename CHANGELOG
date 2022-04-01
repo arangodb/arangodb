@@ -1,6 +1,9 @@
 v3.7.18 (XXXX-XX-XX)
 --------------------
 
+* Fixed BTS-621: Fixed rare case of segfault in cluster during database recovery
+  if DBServer is in upgrade mode in the same time.
+
 * Updated ArangoDB Starter to 0.15.4.
 
 * Fixed an assertion failure which could occur when there was an error in the

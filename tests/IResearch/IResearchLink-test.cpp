@@ -1879,3 +1879,323 @@ TEST_F(IResearchLinkTest, test_maintenance_commit) {
   ASSERT_TRUE(view->drop().ok());
   ASSERT_TRUE(logicalCollection->drop().ok());
 }
+
+
+class IResearchLinkInRecoveryDBServerOnUpgradeTest
+    : public ::testing::Test,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION,
+                                            arangodb::LogLevel::ERR>,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::ENGINES,
+                                            arangodb::LogLevel::FATAL>,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::FIXME,
+                                            arangodb::LogLevel::FATAL> {
+ protected:
+  static constexpr size_t kEncBlockSize{13};
+  arangodb::tests::mocks::MockDBServer server;
+  std::string testFilesystemPath;
+
+  IResearchLinkInRecoveryDBServerOnUpgradeTest() : server(false) {
+    arangodb::tests::init();
+
+    // ensure ArangoSearch start 1 maintenance for each group
+    auto opts = server.server().options();
+    auto& ars = server.getFeature<arangodb::iresearch::IResearchFeature>();
+    ars.collectOptions(opts);
+    auto* commitThreads = opts->get<arangodb::options::UInt32Parameter>(
+        "--arangosearch.commit-threads");
+    opts->processingResult().touch("arangosearch.commit-threads");
+    EXPECT_NE(nullptr, commitThreads);
+    *commitThreads->ptr = 1;
+    auto* consolidationThreads = opts->get<arangodb::options::UInt32Parameter>(
+        "--arangosearch.consolidation-threads");
+    opts->processingResult().touch("arangosearch.consolidation-threads");
+    EXPECT_NE(nullptr, consolidationThreads);
+    *consolidationThreads->ptr = 1;
+    ars.validateOptions(opts);
+    server.getFeature<arangodb::ClusterFeature>().disable();
+    server.startFeatures();
+    EXPECT_EQ((std::pair<size_t, size_t>{1, 1}),
+              ars.limits(arangodb::iresearch::ThreadGroup::_0));
+    EXPECT_EQ((std::pair<size_t, size_t>{1, 1}),
+              ars.limits(arangodb::iresearch::ThreadGroup::_1));
+
+    TransactionStateMock::abortTransactionCount = 0;
+    TransactionStateMock::beginTransactionCount = 0;
+    TransactionStateMock::commitTransactionCount = 0;
+
+    auto& dbPathFeature = server.getFeature<arangodb::DatabasePathFeature>();
+    arangodb::tests::setDatabasePath(
+        dbPathFeature);  // ensure test data is stored in a unique directory
+    testFilesystemPath = dbPathFeature.directory();
+
+    long systemError;
+    std::string systemErrorStr;
+    TRI_CreateDirectory(testFilesystemPath.c_str(), systemError,
+                        systemErrorStr);
+    // simulate running recovery
+    StorageEngineMock::recoveryStateResult =
+        arangodb::RecoveryState::IN_PROGRESS;
+  }
+
+  ~IResearchLinkInRecoveryDBServerOnUpgradeTest() override {
+    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::DONE;
+    TRI_RemoveDirectory(testFilesystemPath.c_str());
+  }
+};
+
+TEST_F(IResearchLinkInRecoveryDBServerOnUpgradeTest,
+       test_init_in_recovery_no_name_includeAll) {
+  {
+    auto collectionJson = arangodb::velocypack::Parser::fromJson(
+        R"({ "name": "testCollection", "id": 100 })");
+    auto linkJson = arangodb::velocypack::Parser::fromJson(
+        R"({ "type": "arangosearch", "view": "42", "includeAllFields":true})");
+    auto viewJson = arangodb::velocypack::Parser::fromJson(
+        R"({ "name": "testView", "id": 42, "type": "arangosearch" })");
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          testDBInfo(server.server()));
+    auto logicalCollection = vocbase.createCollection(collectionJson->slice());
+    ASSERT_TRUE((nullptr != logicalCollection));
+    auto logicalView = vocbase.createView(viewJson->slice());
+    ASSERT_TRUE((false == !logicalView));
+
+    // no collections in view before
+    {
+      std::set<TRI_voc_cid_t> actual;
+
+      EXPECT_TRUE((logicalView->visitCollections(
+          [&actual](TRI_voc_cid_t cid) -> bool {
+            actual.emplace(cid);
+            return true;
+          })));
+      EXPECT_TRUE((actual.empty()));
+    }
+
+    EXPECT_THROW(
+        StorageEngineMock::buildLinkMock(arangodb::IndexId{1},
+                                         *logicalCollection, linkJson->slice()),
+        arangodb::basics::Exception);
+
+    // collection in view on destruct
+    {
+      std::set<TRI_voc_cid_t> actual;
+
+      EXPECT_TRUE((logicalView->visitCollections(
+          [&actual](TRI_voc_cid_t cid) -> bool {
+            actual.emplace(cid);
+            return true;
+          })));
+      EXPECT_TRUE((actual.empty()));
+    }
+  }
+}
+
+TEST_F(IResearchLinkInRecoveryDBServerOnUpgradeTest,
+       test_init_in_recovery_no_name_explicit) {
+  {
+    auto collectionJson = arangodb::velocypack::Parser::fromJson(
+        R"({ "name": "testCollection", "id": 100 })");
+    auto linkJson = arangodb::velocypack::Parser::fromJson(
+        R"({ "type": "arangosearch", "view": "42", "includeAllFields":false, "fields":{"_id":{}}})");
+    auto viewJson = arangodb::velocypack::Parser::fromJson(
+        R"({ "name": "testView", "id": 42, "type": "arangosearch" })");
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          testDBInfo(server.server()));
+    auto logicalCollection = vocbase.createCollection(collectionJson->slice());
+    ASSERT_TRUE((nullptr != logicalCollection));
+    auto logicalView = vocbase.createView(viewJson->slice());
+    ASSERT_TRUE((false == !logicalView));
+
+    // no collections in view before
+    {
+      std::set<TRI_voc_cid_t> actual;
+
+      EXPECT_TRUE((logicalView->visitCollections(
+          [&actual](TRI_voc_cid_t cid) -> bool {
+            actual.emplace(cid);
+            return true;
+          })));
+      EXPECT_TRUE((actual.empty()));
+    }
+
+    EXPECT_THROW(
+        StorageEngineMock::buildLinkMock(arangodb::IndexId{1},
+                                         *logicalCollection, linkJson->slice()),
+        arangodb::basics::Exception);
+
+    // collection in view on destruct
+    {
+      std::set<TRI_voc_cid_t> actual;
+
+      EXPECT_TRUE((logicalView->visitCollections(
+          [&actual](TRI_voc_cid_t cid) -> bool {
+            actual.emplace(cid);
+            return true;
+          })));
+      EXPECT_TRUE((actual.empty()));
+    }
+  }
+}
+
+TEST_F(IResearchLinkInRecoveryDBServerOnUpgradeTest,
+       test_init_in_recovery_no_name_explicit2) {
+  {
+    auto collectionJson = arangodb::velocypack::Parser::fromJson(
+        R"({ "name": "testCollection", "id": 100 })");
+    auto linkJson = arangodb::velocypack::Parser::fromJson(
+        R"({ "type": "arangosearch", "view": "42", "includeAllFields":false, "fields":{"value":{}, "_id":{}}})");
+    auto viewJson = arangodb::velocypack::Parser::fromJson(
+        R"({ "name": "testView", "id": 42, "type": "arangosearch" })");
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          testDBInfo(server.server()));
+    auto logicalCollection = vocbase.createCollection(collectionJson->slice());
+    ASSERT_TRUE((nullptr != logicalCollection));
+    auto logicalView = vocbase.createView(viewJson->slice());
+    ASSERT_TRUE((false == !logicalView));
+
+    // no collections in view before
+    {
+      std::set<TRI_voc_cid_t> actual;
+
+      EXPECT_TRUE((logicalView->visitCollections(
+          [&actual](TRI_voc_cid_t cid) -> bool {
+            actual.emplace(cid);
+            return true;
+          })));
+      EXPECT_TRUE((actual.empty()));
+    }
+
+    EXPECT_THROW(
+        StorageEngineMock::buildLinkMock(arangodb::IndexId{1},
+                                         *logicalCollection, linkJson->slice()),
+        arangodb::basics::Exception);
+
+    // collection in view on destruct
+    {
+      std::set<TRI_voc_cid_t> actual;
+
+      EXPECT_TRUE((logicalView->visitCollections(
+          [&actual](TRI_voc_cid_t cid) -> bool {
+            actual.emplace(cid);
+            return true;
+          })));
+      EXPECT_TRUE((actual.empty()));
+    }
+  }
+}
+
+TEST_F(IResearchLinkInRecoveryDBServerOnUpgradeTest,
+       test_init_in_recovery_no_name_no_id) {
+  {
+    auto collectionJson = arangodb::velocypack::Parser::fromJson(
+        R"({ "name": "testCollection", "id": 100 })");
+    auto linkJson = arangodb::velocypack::Parser::fromJson(
+        R"({ "type": "arangosearch", "view": "42", "includeAllFields":false, "fields":{"value":{}}})");
+    auto viewJson = arangodb::velocypack::Parser::fromJson(
+        R"({ "name": "testView", "id": 42, "type": "arangosearch" })");
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          testDBInfo(server.server()));
+    auto logicalCollection = vocbase.createCollection(collectionJson->slice());
+    ASSERT_TRUE((nullptr != logicalCollection));
+    auto logicalView = vocbase.createView(viewJson->slice());
+    ASSERT_TRUE((false == !logicalView));
+
+    // no collections in view before
+    {
+      std::set<TRI_voc_cid_t> actual;
+
+      EXPECT_TRUE((logicalView->visitCollections(
+          [&actual](TRI_voc_cid_t cid) -> bool {
+            actual.emplace(cid);
+            return true;
+          })));
+      EXPECT_TRUE((actual.empty()));
+    }
+
+    auto link = StorageEngineMock::buildLinkMock(
+        arangodb::IndexId{1}, *logicalCollection, linkJson->slice());
+    EXPECT_NE(nullptr, link.get());
+
+    // Data store should be initialized
+    ASSERT_EQ(
+      static_cast<irs::directory_reader const&>(
+        link->snapshot()).docs_count(), 0);
+
+    // collection in view on destruct
+    {
+      std::set<TRI_voc_cid_t> actual;
+
+      EXPECT_TRUE((logicalView->visitCollections(
+          [&actual](TRI_voc_cid_t cid) -> bool {
+            actual.emplace(cid);
+            return true;
+          })));
+      EXPECT_TRUE((actual.empty()));
+    }
+  }
+}
+
+TEST_F(IResearchLinkInRecoveryDBServerOnUpgradeTest, test_init_in_recovery) {
+  {
+    auto collectionJson = arangodb::velocypack::Parser::fromJson(
+        R"({ "name": "testCollection", "id": 100 })");
+    auto linkJson = arangodb::velocypack::Parser::fromJson(
+        R"({ "type": "arangosearch", "view": "42", "collectionName":"testCollection" })");
+    auto viewJson = arangodb::velocypack::Parser::fromJson(
+        R"({ "name": "testView", "id": 42, "type": "arangosearch" })");
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          testDBInfo(server.server()));
+    auto logicalCollection = vocbase.createCollection(collectionJson->slice());
+    ASSERT_TRUE((nullptr != logicalCollection));
+    auto logicalView = vocbase.createView(viewJson->slice());
+    ASSERT_TRUE((false == !logicalView));
+
+    // no collections in view before
+    {
+      std::set<TRI_voc_cid_t> actual;
+
+      EXPECT_TRUE((logicalView->visitCollections(
+          [&actual](TRI_voc_cid_t cid) -> bool {
+            actual.emplace(cid);
+            return true;
+          })));
+      EXPECT_TRUE((actual.empty()));
+    }
+
+    auto link = StorageEngineMock::buildLinkMock(
+        arangodb::IndexId{1}, *logicalCollection, linkJson->slice());
+    EXPECT_NE(nullptr, link.get());
+
+    // Data store should be initialized
+    ASSERT_EQ(
+      static_cast<irs::directory_reader const&>(
+        link->snapshot()).docs_count(), 0);
+
+    // no collection in view after
+    {
+      std::set<TRI_voc_cid_t> actual;
+
+      EXPECT_TRUE((logicalView->visitCollections(
+          [&actual](TRI_voc_cid_t cid) -> bool {
+            actual.emplace(cid);
+            return true;
+          })));
+
+      EXPECT_TRUE((actual.empty()));
+    }
+
+    link.reset();
+
+    // collection in view on destruct
+    {
+      std::set<TRI_voc_cid_t> actual;
+
+      EXPECT_TRUE((logicalView->visitCollections(
+          [&actual](TRI_voc_cid_t cid) -> bool {
+            actual.emplace(cid);
+            return true;
+          })));
+      EXPECT_TRUE((actual.empty()));
+    }
+  }
+}
