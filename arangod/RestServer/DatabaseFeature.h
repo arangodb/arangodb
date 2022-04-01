@@ -27,6 +27,9 @@
 #include "Basics/DataProtector.h"
 #include "Basics/Mutex.h"
 #include "Basics/Thread.h"
+#include "Metrics/Counter.h"
+#include "Metrics/Histogram.h"
+#include "Metrics/LogScale.h"
 #include "RestServer/arangod.h"
 #include "Utils/VersionTracker.h"
 #include "VocBase/voc-types.h"
@@ -72,7 +75,7 @@ class IOHeartbeatThread final : public ServerThread<ArangodServer> {
   IOHeartbeatThread(IOHeartbeatThread const&) = delete;
   IOHeartbeatThread& operator=(IOHeartbeatThread const&) = delete;
 
-  explicit IOHeartbeatThread(Server&);
+  explicit IOHeartbeatThread(Server&, metrics::MetricsFeature& metricsFeature);
   ~IOHeartbeatThread();
 
   void run() override;
@@ -86,6 +89,14 @@ class IOHeartbeatThread final : public ServerThread<ArangodServer> {
   static constexpr unsigned long checkInterval() {
     return static_cast<unsigned long>(150U);
   }
+
+  metrics::Histogram<metrics::LogScale<double>>& _exeTimeHistogram;
+  metrics::Counter& _writeFailures;
+  metrics::Counter& _readFailures;
+  metrics::Counter& _removeFailures;
+  metrics::Counter& _writeDelays;
+  metrics::Counter& _readDelays;
+  metrics::Counter& _removeDelays;
 };
 
 class DatabaseFeature : public ArangodFeature {
@@ -233,6 +244,8 @@ class DatabaseFeature : public ArangodFeature {
 
   /// @brief whether or not the allow extended database names
   bool _extendedNamesForDatabases;
+
+  bool _performIOHeartbeat;
 
   std::unique_ptr<DatabaseManagerThread> _databaseManager;
   std::unique_ptr<IOHeartbeatThread> _ioHeartbeatThread;
