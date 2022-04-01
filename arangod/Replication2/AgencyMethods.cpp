@@ -272,8 +272,8 @@ auto methods::createReplicatedState(
 }
 
 auto methods::replaceReplicatedStateParticipant(
-    TRI_vocbase_t& vocbase, LogId id, const ParticipantId& participantToRemove,
-    const ParticipantId& participantToAdd) -> futures::Future<Result> {
+    TRI_vocbase_t& vocbase, LogId id, ParticipantId const& participantToRemove,
+    ParticipantId const& participantToAdd) -> futures::Future<Result> {
   auto path =
       paths::target()->replicatedStates()->database(vocbase.name())->state(id);
 
@@ -298,8 +298,50 @@ auto methods::replaceReplicatedStateParticipant(
         if (resultT.ok() && *resultT == 0) {
           return Result(
               TRI_ERROR_HTTP_PRECONDITION_FAILED,
-              "Failed to replace participant. Either the to-be-replaced one is "
+              "Refused to replace participant. Either the to-be-replaced one "
+              "is "
               "not part of the participants, or the new one already was.");
+        }
+        return resultT.result();
+      });
+}
+
+auto methods::replaceReplicatedSetLeader(
+    TRI_vocbase_t& vocbase, LogId id,
+    std::optional<ParticipantId> const& leaderId) -> futures::Future<Result> {
+  auto path =
+      paths::target()->replicatedStates()->database(vocbase.name())->state(id);
+
+  VPackBufferUInt8 trx;
+  {
+    VPackBuilder builder(trx);
+    arangodb::agency::envelope::into_builder(builder)
+        .write()
+        .cond(leaderId.has_value(),
+              [&](auto&& write) {
+                return std::move(write).set(*path->leader(), *leaderId);
+              })
+        .cond(!leaderId.has_value(),
+              [&](auto&& write) {
+                return std::move(write).remove(*path->leader());
+              })
+        .inc(*paths::target()->version())
+        .precs()
+        .cond(leaderId.has_value(),
+              [&](auto&& precs) {
+                return std::move(precs).isNotEmpty(
+                    *path->participants()->server(*leaderId));
+              })
+        .end()
+        .done();
+  }
+
+  return sendAgencyWriteTransaction(std::move(trx))
+      .thenValue([](ResultT<std::uint64_t>&& resultT) {
+        if (resultT.ok() && *resultT == 0) {
+          return Result(TRI_ERROR_HTTP_PRECONDITION_FAILED,
+                        "Refused to set the new leader: It's not part of the "
+                        "participants.");
         }
         return resultT.result();
       });

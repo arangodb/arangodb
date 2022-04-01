@@ -466,7 +466,9 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
 
   let shutDownStart = time();
   results['testDuration'] = shutDownStart - testrunStart;
-  print(Date() + ' Shutting down...');
+  if (!options.noStartStopLogs) {
+    print(Date() + ' Shutting down...');
+  }
   if (startStopHandlers !== undefined && startStopHandlers.hasOwnProperty('preStop')) {
     customInstanceInfos['preStop'] = startStopHandlers.preStop(options,
                                                                serverOptions,
@@ -507,7 +509,9 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
   }
   results['shutdownTime'] = time() - shutDownStart;
 
-  print('done.');
+  if (!options.noStartStopLogs) {
+    print('done.');
+  }
 
   return results;
 }
@@ -993,177 +997,9 @@ function runInLocalArangosh (options, instanceInfo, file, addArgs) {
 }
 runInLocalArangosh.info = 'runInLocalArangosh';
 
-const parseRspecJson = function (testCase, res, totalDuration) {
-  let tName = testCase.description;
-  let status = (testCase.status === 'passed');
-
-  if (res.hasOwnProperty(tName)) {
-    throw new Error(`duplicate testcase name in ${tName} ${JSON.stringify(testCase)}`);
-  }
-  res[tName] = {
-    status: status,
-    message: testCase.full_description,
-    duration: totalDuration // RSpec doesn't offer per testcase time...
-  };
-
-  res.total++;
-
-  if (!status) {
-    const msg = yaml.safeDump(testCase)
-          .replace(/.*rspec\/core.*\n/gm, '')
-          .replace(/.*rspec\\core.*\n/gm, '')
-          .replace(/.*lib\/ruby.*\n/, '')
-          .replace(/.*- >-.*\n/gm, '')
-          .replace(/\n *`/gm, ' `');
-    print('RSpec test case falied: \n' + msg);
-    res[tName].message += '\n' + msg;
-  }
-  return status ? 0 : 1;
-};
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief runs a unittest file using rspec
-// //////////////////////////////////////////////////////////////////////////////
-function runInRSpec (options, instanceInfo, file, addArgs) {
-  const tmpname = fs.join(instanceInfo.rootDir, 'testconfig.rb');
-  const jsonFN = fs.join(instanceInfo.rootDir, 'testresult.json');
-
-  let command;
-  let args;
-  let rspec;
-  let ssl = "0";
-  if (instanceInfo.protocol === 'ssl') {
-    ssl = "1";
-  }
-  let rspecConfig = 'RSpec.configure do |c|\n' +
-                    '  c.add_setting :ARANGO_SERVER\n' +
-      '  c.ARANGO_SERVER = "' +
-      instanceInfo.endpoint.substr(6) + '"\n' +
-      '  c.add_setting :ARANGO_SSL\n' +
-      '  c.ARANGO_SSL = "' + ssl + '"\n' +
-      '  c.add_setting :ARANGO_USER\n' +
-      '  c.ARANGO_USER = "' + options.username + '"\n' +
-      '  c.add_setting :ARANGO_PASSWORD\n' +
-      '  c.ARANGO_PASSWORD = "' + options.password + '"\n' +
-      '  c.add_setting :SKIP_TIMECRITICAL\n' +
-      '  c.SKIP_TIMECRITICAL = ' + JSON.stringify(options.skipTimeCritical) + '\n' +
-      '  c.add_setting :STORAGE_ENGINE\n' +
-      '  c.STORAGE_ENGINE = ' + JSON.stringify(options.storageEngine) + '\n' +
-      'end\n';
-
-  fs.write(tmpname, rspecConfig);
-  if (options.hasOwnProperty('ruby')) {
-    let rx = new RegExp('ruby.exe$');
-    rspec = options.ruby.replace(rx, 'rspec');
-    command = options.ruby;
-    if (!fs.exists(rspec) || !fs.exists(command)) {
-      return {
-        total: 1,
-        failed: 1,
-        status: false,
-        forceTerminate: false,
-        message: "rspec missing on your system! either " + rspec + " or " + command + " is unavailable!"
-      };
-    }
-  } else {
-    if (platform.substr(0, 3) !== 'win') {
-      command = 'rspec';
-    } else {
-      // Windows process utilties would apply `.exe` to rspec.
-      // However the file is called .bat and .exe cannot be found.
-      command = 'rspec.bat';
-    }
-  }
-
-  if (options.extremeVerbosity === true) {
-    print('rspecConfig: \n' + rspecConfig);
-  }
-
-  try {
-    fs.makeDirectory(pu.LOGS_DIR);
-  } catch (err) {}
-
-  args = ['--color',
-          '-I', fs.join('tests', 'arangodbRspecLib'),
-          '--format', 'd',
-          '--format', 'j',
-          '--out', jsonFN,
-          '--require', tmpname];
-
-  if (options.testCase) {
-    args.push("--example-matches");
-    args.push(options.testCase + "$");
-  } else if (options.failed) {
-    let failed = Object.keys(options.failed[file]);
-    args.push("--example-matches");
-    let escapeRegExp = function(str) {
-      return str.replace(/([.*+?^${}()|[\]\/\\])/g, '\\$1');
-    };
-    args.push(failed.map(v => escapeRegExp(v)).join("$|") + "$");
-  }
-  args.push(file);
-
-  if (rspec !== undefined) {
-    args = [rspec].concat(args);
-  }
-
-  let start = Date();
-  const res = pu.executeAndWait(command, args, options, 'rspec', instanceInfo.rootDir, false, options.oneTestTimeout);
-  let end = Date();
-
-  if (!res.status && res.timeout) {
-    return {
-      total: 0,
-      failed: 1,
-      status: false,
-      forceTerminate: true,
-      message: res.message
-    };
-  }
-
-  let result = {
-    total: 0,
-    failed: 0,
-    duration: end - start,
-    status: res.status
-  };
-
-  try {
-    const jsonResult = JSON.parse(fs.read(jsonFN));
-
-    if (options.extremeVerbosity) {
-      print(yaml.safeDump(jsonResult));
-    }
-    for (let j = 0; j < jsonResult.examples.length; ++j) {
-      result.failed += parseRspecJson(
-        jsonResult.examples[j],
-        result,
-        jsonResult.summary.duration);
-    }
-
-    result.duration = jsonResult.summary.duration;
-  } catch (x) {
-    result.failed = 1;
-    result.status = false;
-    result.message = 'Failed to parse rspec results for: ' + file + ' - ' + x.message;
-
-    if (res.status === false) {
-      options.cleanup = false;
-    }
-  }
-
-  if (options.cleanup) {
-    if (fs.exists(jsonFN)) fs.remove(jsonFN);
-    fs.remove(tmpname);
-  }
-  return result;
-}
-runInRSpec.info = 'runInLocalRSpec';
-
 exports.runThere = runThere;
 exports.runInArangosh = runInArangosh;
 exports.runInLocalArangosh = runInLocalArangosh;
-exports.runInRSpec = runInRSpec;
 
 exports.makePathUnix = makePathUnix;
 exports.makePathGeneric = makePathGeneric;
