@@ -277,7 +277,7 @@ def fetch_comments(dirpath, forceDocuBlockContent):
         # stored in files called 1_structs.md, without @startDocuBlock wrappers,
         # and they need to be processed before they are referenced in other files
         filepath = os.path.join(root, filename)
-        print("Assuming this file contains shared structs: %s" % filepath)
+        print("Including the content of this file because it presumably contains shared @RESTSTRUCTs: %s" % filepath)
         fh.write("\n<!-- filename: %s -->\n" % filepath)
         infile = io.open(filepath, encoding='utf-8', newline=None)
         for line in infile:
