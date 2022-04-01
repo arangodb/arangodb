@@ -22,7 +22,7 @@ ajvErrors(ajv);
 
 export const validateAndFix = ajv.addSchema(linksSchema).compile(formSchema);
 
-export function useLinkState (formState: { [key: string]: any }, formField: string) {
+export function useLinkState(formState: { [key: string]: any }, formField: string) {
   const [field, setField] = useState('');
   const [addDisabled, setAddDisabled] = useState(true);
   const fields = useMemo(() => (formState[formField] || {}), [formField, formState]);
@@ -36,12 +36,12 @@ export function useLinkState (formState: { [key: string]: any }, formField: stri
   return [field, setField, addDisabled, fields];
 }
 
-export function useView (name: string) {
+export function useView(name: string) {
   const [view, setView] = useState<object>({ name });
   const { data } = useSWR(`/view/${name}/properties`,
     path => getApiRouteForCurrentDB().get(path), {
-      revalidateOnFocus: false
-    });
+    revalidateOnFocus: false
+  });
 
   useEffect(() => {
     if (data) {
@@ -77,17 +77,18 @@ export const buildSubNav = (isAdminUser: boolean, name: string, activeKey: strin
 
   const defaultRoute = '#view/' + encodeURIComponent(name);
   const menus: { [key: string]: any } = {
-    Info: {
-      route: defaultRoute
-    },
+
     Settings: {
-      route: `${defaultRoute}/settings`
+      route: defaultRoute
     },
     'Consolidation Policy': {
       route: `${defaultRoute}/consolidation`
     },
     Links: {
       route: `${defaultRoute}/links`
+    },
+    Info: {
+      route: `${defaultRoute}/info`
     },
     JSON: {
       route: `${defaultRoute}/json`
