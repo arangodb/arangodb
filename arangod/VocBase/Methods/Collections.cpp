@@ -884,9 +884,19 @@ Result Collections::properties(Context& ctxt, VPackBuilder& builder) {
         std::string("cannot access collection '") + coll->name() + "'");
   }
 
-  std::unordered_set<std::string> ignoreKeys{
-      "allowUserKeys", "cid",    "count",  "deleted", "id",   "indexes", "name",
-      "path",          "planId", "shards", "status",  "type", "version"};
+  std::unordered_set<std::string> ignoreKeys{StaticStrings::AllowUserKeys,
+                                             StaticStrings::DataSourceCid,
+                                             "count",
+                                             StaticStrings::DataSourceDeleted,
+                                             StaticStrings::DataSourceId,
+                                             StaticStrings::Indexes,
+                                             StaticStrings::DataSourceName,
+                                             "path",
+                                             StaticStrings::DataSourcePlanId,
+                                             "shards",
+                                             "status",
+                                             StaticStrings::DataSourceType,
+                                             StaticStrings::Version};
 
   if (ServerState::instance()->isSingleServer() &&
       (!coll->isSatellite() && !coll->isSmart())) {
@@ -1346,15 +1356,15 @@ arangodb::Result Collections::checksum(LogicalCollection& collection,
 
 /// @brief the list of collection attributes that are allowed by user-input
 /// this is to avoid retyping the same list twice
-#define COMMON_ALLOWED_COLLECTION_INPUT_ATTRIBUTES                            \
-  StaticStrings::DataSourceSystem, StaticStrings::DataSourceId, "keyOptions", \
-      StaticStrings::WaitForSyncString, StaticStrings::CacheEnabled,          \
-      StaticStrings::ShardKeys, StaticStrings::NumberOfShards,                \
-      StaticStrings::DistributeShardsLike, "avoidServers",                    \
-      StaticStrings::IsSmart, StaticStrings::ShardingStrategy,                \
-      StaticStrings::GraphSmartGraphAttribute, StaticStrings::Schema,         \
-      StaticStrings::SmartJoinAttribute, StaticStrings::ReplicationFactor,    \
-      StaticStrings::MinReplicationFactor, /* deprecated */                   \
+#define COMMON_ALLOWED_COLLECTION_INPUT_ATTRIBUTES                             \
+  StaticStrings::DataSourceSystem, StaticStrings::DataSourceId,                \
+      StaticStrings::KeyOptions, StaticStrings::WaitForSyncString,             \
+      StaticStrings::CacheEnabled, StaticStrings::ShardKeys,                   \
+      StaticStrings::NumberOfShards, StaticStrings::DistributeShardsLike,      \
+      "avoidServers", StaticStrings::IsSmart, StaticStrings::ShardingStrategy, \
+      StaticStrings::GraphSmartGraphAttribute, StaticStrings::Schema,          \
+      StaticStrings::SmartJoinAttribute, StaticStrings::ReplicationFactor,     \
+      StaticStrings::MinReplicationFactor, /* deprecated */                    \
       StaticStrings::WriteConcern, "servers"
 
 arangodb::velocypack::Builder Collections::filterInput(

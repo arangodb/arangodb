@@ -47,7 +47,7 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info,
       _writeConcern(1),
       _distributeShardsLike(basics::VelocyPackHelper::getStringValue(
           info, StaticStrings::DistributeShardsLike, "")),
-      _shardIds(new ShardMap()) {
+      _shardIds(std::make_shared<ShardMap>()) {
   bool const isSmart = basics::VelocyPackHelper::getBooleanValue(
       info, StaticStrings::IsSmart, false);
 
@@ -252,7 +252,7 @@ ShardingInfo::ShardingInfo(ShardingInfo const& other,
       _distributeShardsLike(other.distributeShardsLike()),
       _avoidServers(other.avoidServers()),
       _shardKeys(other.shardKeys()),
-      _shardIds(new ShardMap()),
+      _shardIds(std::make_shared<ShardMap>()),
       _shardingStrategy() {
   TRI_ASSERT(_collection != nullptr);
 

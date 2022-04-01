@@ -31,7 +31,7 @@ using namespace arangodb;
 
 namespace {
 bool validateKeyWrapper(char const* key) {
-  return KeyGenerator::validateKey(key, strlen(key));
+  return KeyGeneratorHelper::validateKey(key, strlen(key));
 }
 
 bool validateIdWrapper(char const* id, bool extendedNames, size_t expectedSplit,

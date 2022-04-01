@@ -70,7 +70,8 @@ static bool ParseDocumentHandle(v8::Isolate* isolate, v8::Handle<v8::Value> arg,
 
   // collection name / document key
   [[maybe_unused]] size_t split = 0;
-  if (KeyGenerator::validateId(*str, str.length(), extendedNames, split)) {
+  if (KeyGeneratorHelper::validateId(*str, str.length(), extendedNames,
+                                     split)) {
     collectionName = std::string(*str, split);
     auto const length = str.length() - split - 1;
     auto buffer = new char[length + 1];
@@ -81,7 +82,7 @@ static bool ParseDocumentHandle(v8::Isolate* isolate, v8::Handle<v8::Value> arg,
   }
 
   // document key only
-  if (KeyGenerator::validateKey(*str, str.length())) {
+  if (KeyGeneratorHelper::validateKey(*str, str.length())) {
     auto const length = str.length();
     auto buffer = new char[length + 1];
     memcpy(buffer, *str, length);

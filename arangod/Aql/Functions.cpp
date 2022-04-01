@@ -5324,7 +5324,7 @@ AqlValue Functions::IsKey(ExpressionContext*, AstNode const&,
 
   VPackValueLength l;
   char const* p = value.slice().getStringUnchecked(l);
-  return AqlValue(AqlValueHintBool(KeyGenerator::validateKey(p, l)));
+  return AqlValue(AqlValueHintBool(KeyGeneratorHelper::validateKey(p, l)));
 }
 
 /// @brief function COUNT_DISTINCT

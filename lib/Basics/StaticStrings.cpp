@@ -249,11 +249,13 @@ std::string const StaticStrings::Body("body");
 std::string const StaticStrings::ParsedBody("parsedBody");
 
 // collection attributes
+std::string const StaticStrings::AllowUserKeys("allowUserKeys");
 std::string const StaticStrings::CacheEnabled("cacheEnabled");
 std::string const StaticStrings::DistributeShardsLike("distributeShardsLike");
 std::string const StaticStrings::Indexes("indexes");
 std::string const StaticStrings::IsSmart("isSmart");
 std::string const StaticStrings::IsSmartChild("isSmartChild");
+std::string const StaticStrings::KeyOptions("keyOptions");
 std::string const StaticStrings::NumberOfShards("numberOfShards");
 std::string const StaticStrings::MinReplicationFactor("minReplicationFactor");
 std::string const StaticStrings::ObjectId("objectId");

@@ -146,7 +146,8 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
 #endif
       _waitForSync(Helper::getBooleanValue(
           info, StaticStrings::WaitForSyncString, false)),
-      _allowUserKeys(Helper::getBooleanValue(info, "allowUserKeys", true)),
+      _allowUserKeys(
+          Helper::getBooleanValue(info, StaticStrings::AllowUserKeys, true)),
       _usesRevisionsAsDocumentIds(Helper::getBooleanValue(
           info, StaticStrings::UsesRevisionsAsDocumentIds, false)),
       _syncByRevision(determineSyncByRevision()),
@@ -197,8 +198,8 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
   TRI_UpdateTickServer(id().id());
 
   // add keyOptions from slice
-  _keyGenerator.reset(
-      KeyGenerator::factory(vocbase.server(), info.get("keyOptions")));
+  _keyGenerator =
+      KeyGenerator::create(vocbase, info.get(StaticStrings::KeyOptions));
 
   _sharding = std::make_unique<ShardingInfo>(info, this);
 
@@ -264,7 +265,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
   // This has to be called AFTER _physical and _logical are properly linked
   // together.
 
-  prepareIndexes(info.get("indexes"));
+  prepareIndexes(info.get(StaticStrings::Indexes));
   decorateWithInternalValidators();
 }
 
@@ -623,7 +624,7 @@ void LogicalCollection::setStatus(TRI_vocbase_col_status_e status) {
 
 void LogicalCollection::toVelocyPackForInventory(VPackBuilder& result) const {
   result.openObject();
-  result.add(VPackValue("indexes"));
+  result.add(VPackValue(StaticStrings::Indexes));
   getIndexesVPack(result, [](arangodb::Index const* idx,
                              decltype(Index::makeFlags())& flags) {
     // we have to exclude the primary and edge index for dump / restore
@@ -637,8 +638,10 @@ void LogicalCollection::toVelocyPackForInventory(VPackBuilder& result) const {
     }
   });
   result.add("parameters", VPackValue(VPackValueType::Object));
-  toVelocyPackIgnore(result, {"objectId", "path", "statusString", "indexes"},
-                     LogicalDataSource::Serialization::Inventory);
+  toVelocyPackIgnore(
+      result,
+      {StaticStrings::ObjectId, "path", "statusString", StaticStrings::Indexes},
+      LogicalDataSource::Serialization::Inventory);
   result.close();  // parameters
   result.close();  // collection
 }
@@ -654,14 +657,15 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
   result.openObject();
   result.add(VPackValue("parameters"));
 
-  std::unordered_set<std::string> ignoreKeys{"allowUserKeys",
-                                             "cid",
-                                             "count",
-                                             "statusString",
-                                             StaticStrings::Version,
-                                             "distributeShardsLike",
-                                             StaticStrings::ObjectId,
-                                             StaticStrings::Indexes};
+  std::unordered_set<std::string> ignoreKeys{
+      StaticStrings::AllowUserKeys,
+      StaticStrings::DataSourceCid,
+      "count",
+      "statusString",
+      StaticStrings::Version,
+      StaticStrings::DistributeShardsLike,
+      StaticStrings::ObjectId,
+      StaticStrings::Indexes};
   VPackBuilder params = toVelocyPackIgnore(ignoreKeys, Serialization::List);
   {
     VPackObjectBuilder guard(&result);
@@ -680,7 +684,7 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
     }
   }
 
-  result.add(VPackValue("indexes"));
+  result.add(VPackValue(StaticStrings::Indexes));
   getIndexesVPack(result, [](Index const* idx, uint8_t& flags) {
     // we have to exclude the primary and the edge index here, because otherwise
     // at least the MMFiles engine will try to create it
@@ -709,7 +713,8 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
   // We write into an open object
   TRI_ASSERT(build.isOpenObject());
   // Collection Meta Information
-  build.add("cid", VPackValue(std::to_string(id().id())));
+  build.add(StaticStrings::DataSourceCid,
+            VPackValue(std::to_string(id().id())));
   build.add(StaticStrings::DataSourceType, VPackValue(static_cast<int>(_type)));
   build.add("status", VPackValue(_status));
   build.add("statusString", VPackValue(::translateStatus(_status)));
@@ -724,9 +729,9 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
     build.add(StaticStrings::DataSourceSystem, VPackValue(system()));
   }
   // TODO is this still releveant or redundant in keyGenerator?
-  build.add("allowUserKeys", VPackValue(_allowUserKeys));
+  build.add(StaticStrings::AllowUserKeys, VPackValue(_allowUserKeys));
   // keyoptions
-  build.add("keyOptions", VPackValue(VPackValueType::Object));
+  build.add(StaticStrings::KeyOptions, VPackValue(VPackValueType::Object));
   if (_keyGenerator != nullptr) {
     _keyGenerator->toVelocyPack(build);
   }
@@ -734,7 +739,7 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
   // Physical Information
   getPhysical()->getPropertiesVPack(build);
   // Indexes
-  build.add(VPackValue("indexes"));
+  build.add(VPackValue(StaticStrings::Indexes));
   auto indexFlags = Index::makeFlags();
   // hide hidden indexes. In effect hides unfinished indexes,
   // and iResearch links (only on a single-server and coordinator)

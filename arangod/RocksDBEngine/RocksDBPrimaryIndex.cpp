@@ -73,12 +73,6 @@ using namespace arangodb;
 using namespace arangodb::basics;
 
 namespace {
-std::string const lowest;  // smallest possible key
-std::string const highest(
-    KeyGenerator::maxKeyLength,
-    std::numeric_limits<std::string::value_type>::max());  // greatest possible
-                                                           // key
-
 using PrimaryIndexCacheType = cache::TransactionalCache<cache::BinaryKeyHasher>;
 }  // namespace
 
@@ -870,13 +864,17 @@ std::unique_ptr<IndexIterator> RocksDBPrimaryIndex::iteratorForCondition(
       // forward version
       return std::make_unique<RocksDBPrimaryIndexRangeIterator<false>>(
           &_collection /*logical collection*/, trx, this,
-          RocksDBKeyBounds::PrimaryIndex(objectId(), ::lowest, ::highest),
+          RocksDBKeyBounds::PrimaryIndex(objectId(),
+                                         KeyGeneratorHelper::lowestKey,
+                                         KeyGeneratorHelper::highestKey),
           readOwnWrites);
     }
     // reverse version
     return std::make_unique<RocksDBPrimaryIndexRangeIterator<true>>(
         &_collection /*logical collection*/, trx, this,
-        RocksDBKeyBounds::PrimaryIndex(objectId(), ::lowest, ::highest),
+        RocksDBKeyBounds::PrimaryIndex(objectId(),
+                                       KeyGeneratorHelper::lowestKey,
+                                       KeyGeneratorHelper::highestKey),
         readOwnWrites);
   }
 
@@ -970,7 +968,7 @@ std::unique_ptr<IndexIterator> RocksDBPrimaryIndex::iteratorForCondition(
       value = aap.value->getString();
     } else if (aap.value->isObject() || aap.value->isArray()) {
       // any array or object value is bigger than any potential key
-      value = ::highest;
+      value = KeyGeneratorHelper::highestKey;
     } else if (aap.value->isNullValue() || aap.value->isBoolValue() ||
                aap.value->isIntValue()) {
       // any null, bool or numeric value is lower than any potential key
@@ -1002,7 +1000,7 @@ std::unique_ptr<IndexIterator> RocksDBPrimaryIndex::iteratorForCondition(
       // a.b < value
       if (cmpResult > 0) {
         // doc._id < collection with "bigger" name
-        upper = ::highest;
+        upper = KeyGeneratorHelper::highestKey;
       } else if (cmpResult < 0) {
         // doc._id < collection with "lower" name
         return std::make_unique<EmptyIndexIterator>(&_collection, trx);
@@ -1013,7 +1011,7 @@ std::unique_ptr<IndexIterator> RocksDBPrimaryIndex::iteratorForCondition(
           // characters here
           if (value.back() >= static_cast<std::string::value_type>(0x02)) {
             value.back() -= 0x01;
-            value.append(::highest);
+            value.append(KeyGeneratorHelper::highestKey);
           }
         }
         if (!upperFound || value < upper) {
@@ -1026,7 +1024,7 @@ std::unique_ptr<IndexIterator> RocksDBPrimaryIndex::iteratorForCondition(
       // a.b > value
       if (cmpResult < 0) {
         // doc._id > collection with "smaller" name
-        lower = ::lowest;
+        lower = KeyGeneratorHelper::lowestKey;
       } else if (cmpResult > 0) {
         // doc._id > collection with "bigger" name
         return std::make_unique<EmptyIndexIterator>(&_collection, trx);
@@ -1037,7 +1035,7 @@ std::unique_ptr<IndexIterator> RocksDBPrimaryIndex::iteratorForCondition(
           // characters here
           if (value.back() >= static_cast<std::string::value_type>(0x02)) {
             value.back() -= 0x01;
-            value.append(::highest);
+            value.append(KeyGeneratorHelper::highestKey);
           }
         }
         if (!lowerFound || value > lower) {
@@ -1050,10 +1048,10 @@ std::unique_ptr<IndexIterator> RocksDBPrimaryIndex::iteratorForCondition(
 
   // if only one bound is given select the other (lowest or highest) accordingly
   if (upperFound && !lowerFound) {
-    lower = ::lowest;
+    lower = KeyGeneratorHelper::lowestKey;
     lowerFound = true;
   } else if (lowerFound && !upperFound) {
-    upper = ::highest;
+    upper = KeyGeneratorHelper::highestKey;
     upperFound = true;
   }
 

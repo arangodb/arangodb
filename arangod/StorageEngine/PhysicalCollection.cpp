@@ -120,8 +120,8 @@ bool PhysicalCollection::isValidEdgeAttribute(VPackSlice const& slice) const {
   VPackValueLength len;
   char const* docId = slice.getStringUnchecked(len);
   [[maybe_unused]] size_t split = 0;
-  return KeyGenerator::validateId(docId, static_cast<size_t>(len),
-                                  _extendedNames, split);
+  return KeyGeneratorHelper::validateId(docId, static_cast<size_t>(len),
+                                        _extendedNames, split);
 }
 
 bool PhysicalCollection::hasIndexOfType(arangodb::Index::IndexType type) const {
