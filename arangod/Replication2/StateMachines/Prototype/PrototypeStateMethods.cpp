@@ -427,7 +427,12 @@ struct PrototypeStateMethodsCoordinator final
 
   static auto processLogIndexResponse(network::Response&& resp) -> LogIndex {
     if (resp.fail() || !fuerte::statusIsSuccess(resp.statusCode())) {
-      THROW_ARANGO_EXCEPTION(resp.combinedResult());
+      auto r = resp.combinedResult();
+      r = r.mapError([&](result::Error error) {
+        error.appendErrorMessage(" while contacting server " + resp.serverId());
+        return error;
+      });
+      THROW_ARANGO_EXCEPTION(r);
     } else {
       auto slice = resp.slice();
       if (auto result = slice.get("result");
