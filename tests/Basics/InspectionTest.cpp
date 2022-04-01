@@ -1579,9 +1579,7 @@ TEST_F(VPackInspectionTest, GenericEnumClass) {
     builder.add(
         "code",
         VPackValue(static_cast<std::underlying_type_t<AnEnumClass>>(expected)));
-    builder.add(
-        "message",
-	VPackValue(to_string(expected)));
+    builder.add("message", VPackValue(to_string(expected)));
     builder.close();
 
     auto d = arangodb::velocypack::deserialize<AnEnumClass>(builder.slice());
