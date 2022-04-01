@@ -332,10 +332,13 @@ struct EnumStorage {
 
 template<class Inspector, class Enum>
 auto inspect(Inspector& f, EnumStorage<Enum>& e) {
-  return f.object(e).fields(f.field("code", e.code),
-                            f.field("message", e.message).fallback(""));
-}
-
+  if constexpr (Inspector::isLoading) {
+    return f.object(e).fields(f.field("code", e.code),
+                              f.ignoreField("message"));
+  } else {
+    return f.object(e).fields(f.field("code", e.code),
+                              f.field("message", e.message));
+  }
 }  // namespace
 
 namespace arangodb::inspection {
@@ -1563,6 +1566,7 @@ TEST_F(VPackInspectionTest, GenericEnumClass) {
     ASSERT_TRUE(slice.isObject());
     EXPECT_EQ(static_cast<std::underlying_type_t<AnEnumClass>>(d),
               slice["code"].getInt());
+    EXPECT_EQ(to_string(d), slice["message"].getString());
   }
 
   {
