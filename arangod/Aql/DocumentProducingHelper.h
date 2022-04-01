@@ -90,9 +90,9 @@ struct DocumentProducingFunctionContext {
 
   void incrFiltered() noexcept;
 
-  size_t getAndResetNumScanned() noexcept;
+  [[nodiscard]] uint64_t getAndResetNumScanned() noexcept;
 
-  size_t getAndResetNumFiltered() noexcept;
+  [[nodiscard]] uint64_t getAndResetNumFiltered() noexcept;
 
   InputAqlItemRow const& getInputRow() const noexcept;
 
@@ -130,8 +130,8 @@ struct DocumentProducingFunctionContext {
   transaction::Methods& _trx;
   Expression* _filter;
   arangodb::aql::Projections const& _projections;
-  size_t _numScanned;
-  size_t _numFiltered;
+  uint64_t _numScanned;
+  uint64_t _numFiltered;
 
   std::unique_ptr<DocumentProducingExpressionContext> _expressionContext;
 

@@ -423,7 +423,13 @@ auto checkReplicatedLog(LogTarget const& target,
   // does not have a leader.
   // In the next round this will lead to a leadership election.
   if (isLeaderFailed(leader, health)) {
-    return WriteEmptyTermAction{};
+    auto minTerm = plan.currentTerm->term;
+    for (auto [participant, state] : current.localState) {
+      if (state.spearhead.term > minTerm) {
+        minTerm = state.spearhead.term;
+      }
+    }
+    return WriteEmptyTermAction(minTerm);
   }
 
   // leader has been removed from target;
@@ -500,8 +506,14 @@ auto checkReplicatedLog(LogTarget const& target,
     return UpdateLogConfigAction(target.config);
   }
 
-  // Here we are converged and can hence signal so
-  return ConvergedToTargetAction{};
+  if (target.version != current.supervision->targetVersion) {
+    return ConvergedToTargetAction{target.version};
+  } else {
+    // Note that if we converged and the version is the same this ends up doing
+    // nothing.
+    // Maybe we should have a debug mode where this is still reported?
+    return EmptyAction("There was nothing to do.");
+  }
 }
 
 }  // namespace arangodb::replication2::replicated_log

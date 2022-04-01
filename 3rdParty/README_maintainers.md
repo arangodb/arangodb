@@ -82,7 +82,7 @@ Mocking library. https://github.com/eranpeer/FakeIt
 
 ## fuerte
 
-Our C++ Client driver capable of velocystream. Maintained at https://github.com/arangodb/fuerte
+Our C++ Client driver capable of velocystream.
 
 ## iresearch
 
@@ -126,7 +126,7 @@ https://github.com/lz4/lz4
 
 ## rocksdb
 
-(6.26.0, upstream commit f72fd5856585774063ac3fc8926f70626963d488)
+(6.29.0, upstream commit e8f116deabc601a5eae011f2fd8a38d02d87be8d)
 
 Our branch is maintained at:
 https://github.com/arangodb-helper/rocksdb
@@ -166,26 +166,6 @@ index 58205d5ca90..cb3f2c276d9 100644
    add_definitions(-DOS_LINUX)
  elseif(CMAKE_SYSTEM_NAME MATCHES "SunOS")
 ```
-
-We also made the following modification to gtest (included in a subdirectory of
-RocksDB):
-```
-diff --git a/3rdParty/rocksdb/6.8/third-party/gtest-1.8.1/fused-src/gtest/gtest.h b/3rdParty/rocksdb/6.8/third-party/gtest-1.8.1/fused-src/gtest/gtest.h
-index ebb16db7b09..10188c93a8c 100644
---- a/3rdParty/rocksdb/6.8/third-party/gtest-1.8.1/fused-src/gtest/gtest.h
-+++ b/3rdParty/rocksdb/6.8/third-party/gtest-1.8.1/fused-src/gtest/gtest.h
-@@ -19371,7 +19371,7 @@ INSTANTIATE_TYPED_TEST_CASE_P(My, FooTest, MyTypes);
-    private:                                                                   \
-     typedef CaseName<gtest_TypeParam_> TestFixture;                           \
-     typedef gtest_TypeParam_ TypeParam;                                       \
--    virtual void TestBody();                                                  \
-+    virtual void TestBody() override;                                         \
-   };                                                                          \
-   static bool gtest_##CaseName##_##TestName##_registered_                     \
-         GTEST_ATTRIBUTE_UNUSED_ =                                             \
-```
-This change suppresses compile warnings about missing override specifiers, and
-hopefully can be removed once RocksDB upgrades their version of gtest.
 
 We also applied a small patch on top of `db/wal_manager.cc` which makes it handle
 expected errors (errors that occur when moving WAL files around while they are
@@ -501,6 +481,60 @@ https://github.com/google/snappy
 
 http://snowball.tartarus.org/ stemming for IResearch. We use the latest provided cmake which we maintain.
 
+To fix a memleak in the snowball compiler that made our LSan-enabled builds
+fail, we applied the following patch for snowball:
+
+```
+diff --git a/3rdParty/snowball/compiler/driver.c b/3rdParty/snowball/compiler/driver.c
+index d887b1f23ca6..f6c764310d10 100644
+--- a/3rdParty/snowball/compiler/driver.c
++++ b/3rdParty/snowball/compiler/driver.c
+@@ -146,8 +146,17 @@ static int read_options(struct options * o, int argc, char * argv[]) {
+                 continue;
+             }
+             if (eq(s, "-n") || eq(s, "-name")) {
++                char * new_name;
++                size_t len;
++
+                 check_lim(i, argc);
+-                o->name = argv[i++];
++                /* Take a copy of the argument here, because
++                 * later we will free o->name */
++                len = strlen(argv[i]);
++                new_name = malloc(len + 1);
++                memcpy(new_name, argv[i++], len);
++                new_name[len] = '\0';
++                o->name = new_name;
+                 continue;
+             }
+ #ifndef DISABLE_JS
+@@ -599,6 +608,7 @@ extern int main(int argc, char * argv[]) {
+             lose_b(p->b); FREE(p); p = q;
+         }
+     }
++    FREE(o->name);
+     FREE(o);
+     if (space_count) fprintf(stderr, "%d blocks unfreed\n", space_count);
+     return 0;
+diff --git a/3rdParty/snowball/compiler/header.h b/3rdParty/snowball/compiler/header.h
+index 4da74a6f5529..986cc617cb21 100644
+--- a/3rdParty/snowball/compiler/header.h
++++ b/3rdParty/snowball/compiler/header.h
+@@ -338,7 +338,7 @@ struct options {
+     /* for the command line: */
+
+     const char * output_file;
+-    const char * name;
++    char * name;
+     FILE * output_src;
+     FILE * output_h;
+     byte syntax_tree;
+```
+
+The memleak has been reported to the upstream snowball repository via PR
+https://github.com/snowballstem/snowball/pull/166 and may or may not be fixed
+there.
+
 ## swagger-ui
 
 https://github.com/swagger-api/swagger-ui/releases
@@ -613,3 +647,8 @@ https://github.com/arangodb/velocypack/
 ## zlib
 
 ZLib compression library https://zlib.net/
+
+Compared to the original zlib 1.2.12, we have made changes to the CMakeLists.txt
+as can be found in the patch file
+
+    3rdParty/zlib/zlib-1.2.12.patch

@@ -1459,21 +1459,12 @@ Result selectivityEstimatesOnCoordinator(ClusterFeature& feature,
     network::Response const& r = f.get();
 
     if (r.fail()) {
-      return {network::fuerteToArangoErrorCode(r),
-              network::fuerteToArangoErrorMessage(r)};
+      return r.combinedResult();
     }
 
     VPackSlice answer = r.slice();
     if (!answer.isObject()) {
       return {TRI_ERROR_INTERNAL, "invalid response structure"};
-    }
-
-    if (answer.hasKey(StaticStrings::ErrorNum)) {
-      Result res = network::resultFromBody(answer, TRI_ERROR_NO_ERROR);
-
-      if (res.fail()) {
-        return res;
-      }
     }
 
     answer = answer.get("indexes");
@@ -2142,8 +2133,8 @@ Result fetchEdgesFromEngines(
     std::string_view vertexId, size_t depth, std::vector<VPackSlice>& result) {
   auto const* engines = travCache.engines();
   auto& cache = travCache.cache();
-  size_t& filtered = travCache.filteredDocuments();
-  size_t& read = travCache.insertedDocuments();
+  uint64_t& filtered = travCache.filteredDocuments();
+  uint64_t& read = travCache.insertedDocuments();
 
   // TODO map id => ServerID if possible
   // And go fast-path
@@ -2246,7 +2237,7 @@ Result fetchEdgesFromEngines(
 Result fetchEdgesFromEngines(transaction::Methods& trx,
                              graph::ClusterTraverserCache& travCache,
                              VPackSlice vertexId, bool backward,
-                             std::vector<VPackSlice>& result, size_t& read) {
+                             std::vector<VPackSlice>& result, uint64_t& read) {
   auto const* engines = travCache.engines();
   auto& cache = travCache.cache();
   // TODO map id => ServerID if possible

@@ -25,6 +25,7 @@
 
 #include "Basics/Common.h"
 
+#include <utility>
 #include <velocypack/Slice.h>
 
 namespace arangodb {
@@ -50,11 +51,7 @@ class ShortestPathFinder {
   virtual void clear() = 0;
 
   /// @brief return number of HTTP requests made, and reset it to 0
-  size_t getAndResetHttpRequests() {
-    size_t value = _httpRequests;
-    _httpRequests = 0;
-    return value;
-  }
+  size_t getAndResetHttpRequests() { return std::exchange(_httpRequests, 0); }
 
   void incHttpRequests(size_t requests) { _httpRequests += requests; }
 

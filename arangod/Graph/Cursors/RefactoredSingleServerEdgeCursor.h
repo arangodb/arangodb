@@ -75,7 +75,8 @@ class RefactoredSingleServerEdgeCursor {
     LookupInfo& operator=(LookupInfo const&) = delete;
 
     void rearmVertex(VertexType vertex, transaction::Methods* trx,
-                     arangodb::aql::Variable const* tmpVar);
+                     arangodb::aql::Variable const* tmpVar,
+                     aql::TraversalStats& stats);
 
     IndexIterator& cursor();
     aql::Expression* getExpression();
@@ -128,7 +129,7 @@ class RefactoredSingleServerEdgeCursor {
                aql::TraversalStats& stats, size_t depth,
                Callback const& callback);
 
-  void rearm(VertexType vertex, uint64_t depth);
+  void rearm(VertexType vertex, uint64_t depth, aql::TraversalStats& stats);
 
   void prepareIndexExpressions(aql::Ast* ast);
 
