@@ -302,7 +302,7 @@ class importRunner extends tu.runInArangoshRunner {
 
 function endpoints (options) {
   print(CYAN + 'Endpoints tests...' + RESET);
-  return new importRunner(options, "endpoints").run();
+  return new endpointRunner(options, "endpoints").run();
 }
 exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
