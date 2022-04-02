@@ -51,7 +51,7 @@ const testPaths = {
   'endpoints': [tu.pathForTesting('client/endpoint-spec.js')]
 };
 
-class importRunner extends tu.runInArangoshRunner {
+class endpointRunner extends tu.runInArangoshRunner {
   constructor(options, testname, serverOptions, checkUsers=true, checkCollections=true) {
     super(options, testname, serverOptions, checkUsers, checkCollections);
     this.info = "runImport";
