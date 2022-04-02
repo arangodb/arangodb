@@ -100,7 +100,7 @@ function goDriver (options) {
       if (this.options.hasOwnProperty('goOptions')) {
         for (var key in this.options.goOptions) {
           args.push('-'+key);
-          args.push(options.goOptions[key]);
+          args.push(this.options.goOptions[key]);
         }
       }
       if (this.options.extremeVerbosity) {
