@@ -269,7 +269,7 @@ def fetch_comments(dirpath, forceDocuBlockContent):
   shouldIgnoreLine = False
 
   for root, directories, files in os.walk(dirpath):
-    for filename in files:
+    for filename in sorted(files): # ensure that 1_structs.md files are processed first
       if not filename.endswith(".md") or "#" in filename:
         continue
       if filename[0].isdigit():
