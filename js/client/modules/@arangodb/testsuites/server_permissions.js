@@ -57,8 +57,8 @@ const testPaths = {
 };
 
 class permissionsRunner extends tu.runLocalInArangoshRunner {
-  constructor(options, testname, serverOptions, checkUsers=true, checkCollections=true) {
-    super(options, testname, serverOptions, checkUsers, checkCollections);
+  constructor(options, testname, ...optionalArgs) {
+    super(options, testname, ...optionalArgs);
     this.info = "runInDriverTest";
   }
   run(testlist) {
