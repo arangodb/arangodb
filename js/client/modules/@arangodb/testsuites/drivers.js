@@ -115,7 +115,7 @@ function driver (options) {
       }
       if (this.options.testCase) {
         args.push('--filter');
-        args.push(options.testCase);
+        args.push(this.options.testCase);
       }
       if (this.options.hasOwnProperty('driverOptions')) {
         for (var key in this.options.driverOptions) {
