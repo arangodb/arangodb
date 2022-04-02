@@ -1,6 +1,8 @@
 devel
 -----
 
+* Updated arangosync to v2.9.0-preview-4.
+
 * BugFix (enterprise-only): (BTS-787) In a hybrid disjoint SmartGraph, having more
   than one relation, if you add a new vertex collection to a Smart -> Smart edge
   relation this vertex collection was rejected with "has to be satellite" error.
