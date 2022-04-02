@@ -95,7 +95,7 @@ function goDriver (options) {
 
       if (this.options.testCase) {
         args.push('-run');
-        args.push(options.testCase);
+        args.push(this.options.testCase);
       }
       if (this.options.hasOwnProperty('goOptions')) {
         for (var key in this.options.goOptions) {
