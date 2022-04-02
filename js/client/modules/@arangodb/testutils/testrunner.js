@@ -248,7 +248,7 @@ let failurePointsCheck = {
 };
 
 class testRunner {
-  constructor(options, testname, serverOptions, checkUsers=true, checkCollections=true) {
+  constructor(options, testname, serverOptions = {}, checkUsers=true, checkCollections=true) {
     if (options.testBuckets && !didSplitBuckets) {
       throw new Error("You parametrized to split buckets, but this testsuite doesn't support it!!!");
     }
