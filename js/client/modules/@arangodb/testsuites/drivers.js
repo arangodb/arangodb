@@ -113,7 +113,7 @@ function driver (options) {
         args.push('--testsuite');
         args.push(testFilter);
       }
-      if (options.testCase) {
+      if (this.options.testCase) {
         args.push('--filter');
         args.push(options.testCase);
       }
