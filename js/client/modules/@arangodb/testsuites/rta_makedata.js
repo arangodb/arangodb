@@ -102,7 +102,7 @@ function makeDataWrapper (options) {
                             '--progress', 'true',
                             '--oldVersion', db._version()
                            ]);
-        if (options.hasOwnProperty('makedata_args')) {
+        if (this.options.hasOwnProperty('makedata_args')) {
           argv = argv.concat(toArgv(this.options['makedata_args']));
         }
         if ((this.options.cluster) && (count === 3)) {
