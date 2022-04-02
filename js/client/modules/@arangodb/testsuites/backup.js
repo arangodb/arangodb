@@ -127,7 +127,7 @@ class backupTestRunner extends tu.runInArangoshRunner {
       let dump = pu.run.arangoDumpRestore(asRoot, this.instanceInfo,
                                           'dump', '_system', path, syssys,
                                           true, options.coreCheck);
-      if (dump.status === false || !isAlive(this.instanceInfo, options)) {
+      if (dump.status === false || !this.healthCheck()) {
         log('Dump failed');
         dump.failed = 1;
         dump.state = false;
