@@ -37,7 +37,7 @@ def generate_fish_output(args, outfile, tests):
 
     def print_all_tests(func, varname):
         for test in tests:
-            print_test_func(test, "runSingleTest1", "ST")
+            print_test_func(test, func, varname)
 
     if args.cluster:
         print_all_tests("runClusterTest1", "CT")
