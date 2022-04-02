@@ -279,7 +279,7 @@ const BackupAuthNoSysTests = (options) => {
                               true,
                               asRoot,
                               sysNoSys).run(
-                                testPaths.BackupNoAuthNoSysTests);
+                                testPaths.BackupAuthNoSysTests);
 };
 
 exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
