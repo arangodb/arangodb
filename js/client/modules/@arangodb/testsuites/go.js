@@ -130,7 +130,7 @@ function goDriver (options) {
               lineStart = j + 1;
               try {
                 let item = JSON.parse(line);
-                if (options.extremeVerbosity) {
+                if (this.options.extremeVerbosity) {
                   print(item);
                 }
                 // alljsonLines.push(item)
