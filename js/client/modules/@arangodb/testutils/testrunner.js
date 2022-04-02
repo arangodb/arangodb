@@ -592,4 +592,4 @@ class testRunner {
 }
 
 exports.testRunner = testRunner;
-exports.didSplitBuckets = function (val) { didSplitBuckets = val; };
+exports.setDidSplitBuckets = function (val) { didSplitBuckets = val; };
