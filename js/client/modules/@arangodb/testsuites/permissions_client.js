@@ -57,8 +57,8 @@ const testPaths = {
   'permissions': [tu.pathForTesting('client/permissions')]
 };
 class permissionsRunner extends tu.runInArangoshRunner {
-  constructor(options, testname, serverOptions, checkUsers=true, checkCollections=true) {
-    super(options, testname, serverOptions, checkUsers, checkCollections);
+  constructor(options, testname, ...optionalArgs) {
+    super(options, testname, ...optionalArgs);
     this.info = "runImport";
   }
   
