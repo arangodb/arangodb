@@ -75,10 +75,10 @@ function makeDataWrapper (options) {
     runOneTest(file) {
       let res = {'total':0, 'duration':0.0, 'status':true};
       let tests = [
-        fs.join(options.rtasource, 'test_data', 'makedata.js'),
-        fs.join(options.rtasource, 'test_data', 'checkdata.js'),
-        fs.join(options.rtasource, 'test_data', 'checkdata.js'),
-        fs.join(options.rtasource, 'test_data', 'cleardata.js'),
+        fs.join(this.options.rtasource, 'test_data', 'makedata.js'),
+        fs.join(this.options.rtasource, 'test_data', 'checkdata.js'),
+        fs.join(this.options.rtasource, 'test_data', 'checkdata.js'),
+        fs.join(this.options.rtasource, 'test_data', 'cleardata.js'),
       ];
       let count = 0;
       let counters = { nonAgenciesCount: 1};
