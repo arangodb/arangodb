@@ -70,8 +70,8 @@ const host_re = new RegExp('([a-z]*)://([0-9.:]*):(\d*)');
 
 function driver (options) {
   class runInDriverTest extends testRunnerBase {
-    constructor(options, testname, serverOptions, checkUsers=true, checkCollections=true) {
-      super(options, testname, serverOptions, checkUsers, checkCollections);
+    constructor(options, testname, ...optionalArgs) {
+      super(options, testname, ...optionalArgs);
       this.info = "runInDriverTest";
     }
     runOneTest(file) {
