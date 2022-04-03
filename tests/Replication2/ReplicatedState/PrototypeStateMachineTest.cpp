@@ -43,6 +43,7 @@ using namespace arangodb::replication2::test;
 
 #include "Replication2/ReplicatedState/ReplicatedState.tpp"
 
+namespace {
 struct MockPrototypeLeaderInterface : public IPrototypeLeaderInterface {
   explicit MockPrototypeLeaderInterface(
       std::shared_ptr<PrototypeLeaderState> leaderState,
@@ -80,7 +81,7 @@ struct MockPrototypeNetworkInterface : public IPrototypeNetworkInterface {
 
   void addLeaderState(ParticipantId id,
                       std::shared_ptr<PrototypeLeaderState> leaderState) {
-    leaderStates[std::move(id)] = std::move(leaderState);
+    leaderStates.emplace(std::move(id), std::move(leaderState));
   }
 
   bool useDefaultSnapshot = false;
@@ -107,6 +108,7 @@ struct MockPrototypeStorageInterface : public IPrototypeStorageInterface {
   std::unordered_map<LogId, PrototypeDump> map;
   int putCalled{0};
 };
+}  // namespace
 
 struct PrototypeStateMachineTest : test::ReplicatedLogTest {
   PrototypeStateMachineTest() {
