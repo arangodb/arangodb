@@ -158,7 +158,7 @@ RestStatus RestPrototypeStateHandler::handlePostInsert(
             VPackObjectBuilder ob(&result);
             result.add("index", VPackValue(waitForResult.get()));
           }
-          generateOk(rest::ResponseCode::OK, result.slice());
+          generateOk(rest::ResponseCode::ACCEPTED, result.slice());
         } else {
           generateError(waitForResult.result());
         }
@@ -370,7 +370,7 @@ RestStatus RestPrototypeStateHandler::handleDeleteRemove(
                 VPackObjectBuilder ob(&result);
                 result.add("index", VPackValue(waitForResult.get()));
               }
-              generateOk(rest::ResponseCode::OK, result.slice());
+              generateOk(rest::ResponseCode::ACCEPTED, result.slice());
             } else {
               generateError(waitForResult.result());
             }
@@ -416,7 +416,7 @@ RestStatus RestPrototypeStateHandler::handleDeleteRemoveMulti(
             VPackObjectBuilder ob(&result);
             result.add("index", VPackValue(waitForResult.get()));
           }
-          generateOk(rest::ResponseCode::OK, result.slice());
+          generateOk(rest::ResponseCode::ACCEPTED, result.slice());
         } else {
           generateError(waitForResult.result());
         }
