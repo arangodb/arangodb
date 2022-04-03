@@ -88,14 +88,22 @@ auto PrototypeFollowerState::resign() && noexcept
   });
 }
 
-auto PrototypeFollowerState::get(std::string key)
-    -> std::optional<std::string> {
-  return _guardedData.doUnderLock(
-      [key = std::move(key)](auto& core) -> std::optional<std::string> {
-        if (!core) {
-          return std::nullopt;
+auto PrototypeFollowerState::get(std::string key, LogIndex waitForIndex)
+    -> futures::Future<ResultT<std::optional<std::string>>> {
+  return waitForApplied(waitForIndex)
+      .thenValue([key = std::move(key), weak = weak_from_this()](
+                     auto&&) -> ResultT<std::optional<std::string>> {
+        auto self = weak.lock();
+        if (self == nullptr) {
+          return {TRI_ERROR_CLUSTER_NOT_FOLLOWER};
         }
-        return core->get(key);
+        return self->_guardedData.doUnderLock(
+            [&](auto& core) -> ResultT<std::optional<std::string>> {
+              if (!core) {
+                return {TRI_ERROR_CLUSTER_NOT_FOLLOWER};
+              }
+              return core->get(key);
+            });
       });
 }
 

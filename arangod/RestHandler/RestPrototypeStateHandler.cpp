@@ -195,18 +195,27 @@ RestStatus RestPrototypeStateHandler::handlePostRetrieveMulti(
     keys.push_back(entry.copyString());
   }
 
+  auto waitForIndex =
+      LogIndex{_request->parsedValue<decltype(LogIndex::value)>("waitForIndex")
+                   .value_or(0)};
+
   return waitForFuture(
-      methods.get(logId, std::move(keys))
-          .thenValue(
-              [this](std::unordered_map<std::string, std::string>&& map) {
-                VPackBuilder result;
-                {
-                  VPackObjectBuilder ob(&result);
-                  for (auto const& [key, value] : map)
-                    result.add(key, VPackValue(value));
-                }
-                generateOk(rest::ResponseCode::OK, result.slice());
-              }));
+      methods.get(logId, std::move(keys), waitForIndex)
+          .thenValue([this](
+                         ResultT<std::unordered_map<std::string, std::string>>&&
+                             waitForResult) {
+            if (waitForResult.fail()) {
+              generateError(waitForResult.result());
+            } else {
+              VPackBuilder result;
+              {
+                VPackObjectBuilder ob(&result);
+                for (auto const& [key, value] : std::move(waitForResult.get()))
+                  result.add(key, VPackValue(value));
+              }
+              generateOk(rest::ResponseCode::OK, result.slice());
+            }
+          }));
 }
 
 RestStatus RestPrototypeStateHandler::handleGetRequest(
@@ -257,23 +266,30 @@ RestStatus RestPrototypeStateHandler::handleGetEntry(
     return RestStatus::DONE;
   }
 
+  auto waitForIndex =
+      LogIndex{_request->parsedValue<decltype(LogIndex::value)>("waitForIndex")
+                   .value_or(0)};
+
   return waitForFuture(
-      methods.get(logId, suffixes[2])
-          .thenValue(
-              [this, key = suffixes[2]](std::optional<std::string>&& entry) {
-                if (entry) {
-                  VPackBuilder result;
-                  {
-                    VPackObjectBuilder ob(&result);
-                    result.add(key, VPackValue(*entry));
-                  }
-                  generateOk(rest::ResponseCode::OK, result.slice());
-                } else {
-                  generateError(
-                      rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
-                      basics::StringUtils::concatT("key ", key, " not found"));
+      methods.get(logId, suffixes[2], waitForIndex)
+          .thenValue([this, key = suffixes[2]](auto&& waitForResult) {
+            if (waitForResult.fail()) {
+              generateError(waitForResult.result());
+            } else {
+              if (auto entry = std::move(waitForResult.get())) {
+                VPackBuilder result;
+                {
+                  VPackObjectBuilder ob(&result);
+                  result.add(key, VPackValue(*entry));
                 }
-              }));
+                generateOk(rest::ResponseCode::OK, result.slice());
+              } else {
+                generateError(
+                    rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
+                    basics::StringUtils::concatT("key ", key, " not found"));
+              }
+            }
+          }));
 }
 
 RestStatus RestPrototypeStateHandler::handleGetSnapshot(

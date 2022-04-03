@@ -85,24 +85,63 @@ auto PrototypeLeaderState::remove(std::vector<std::string> keys)
   return stream->insert(entry);
 }
 
-// TODO return result
-auto PrototypeLeaderState::get(std::vector<std::string> keys)
-    -> std::unordered_map<std::string, std::string> {
-  return _guardedData.doUnderLock([keys = std::move(keys)](auto& data) {
+auto PrototypeLeaderState::get(std::vector<std::string> keys,
+                               LogIndex waitForIndex)
+    -> futures::Future<ResultT<std::unordered_map<std::string, std::string>>> {
+  auto f = _guardedData.doUnderLock([&](auto& data) {
     if (data.didResign()) {
-      return std::unordered_map<std::string, std::string>{};
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_NOT_LEADER);
     }
-    return data.core->get(keys);
+
+    return data.waitForApplied(waitForIndex);
   });
+
+  return std::move(f).thenValue(
+      [keys = std::move(keys), weak = weak_from_this()](
+          auto&&) -> ResultT<std::unordered_map<std::string, std::string>> {
+        auto self = weak.lock();
+        if (self == nullptr) {
+          return {TRI_ERROR_CLUSTER_NOT_LEADER};
+        }
+
+        return self->_guardedData.doUnderLock(
+            [&](GuardedData& data)
+                -> ResultT<std::unordered_map<std::string, std::string>> {
+              if (data.didResign()) {
+                return {TRI_ERROR_CLUSTER_NOT_LEADER};
+              }
+
+              return {data.core->get(keys)};
+            });
+      });
 }
 
-auto PrototypeLeaderState::get(std::string key) -> std::optional<std::string> {
-  return _guardedData.doUnderLock(
-      [key = std::move(key)](auto& data) -> std::optional<std::string> {
-        if (data.didResign()) {
-          return std::nullopt;
+auto PrototypeLeaderState::get(std::string key, LogIndex waitForIndex)
+    -> futures::Future<ResultT<std::optional<std::string>>> {
+  auto f = _guardedData.doUnderLock([&](auto& data) {
+    if (data.didResign()) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_NOT_LEADER);
+    }
+
+    return data.waitForApplied(waitForIndex);
+  });
+
+  return std::move(f).thenValue(
+      [key = std::move(key),
+       weak = weak_from_this()](auto&&) -> ResultT<std::optional<std::string>> {
+        auto self = weak.lock();
+        if (self == nullptr) {
+          return {TRI_ERROR_CLUSTER_NOT_LEADER};
         }
-        return data.core->get(key);
+
+        return self->_guardedData.doUnderLock(
+            [&](GuardedData& data) -> ResultT<std::optional<std::string>> {
+              if (data.didResign()) {
+                return {TRI_ERROR_CLUSTER_NOT_LEADER};
+              }
+
+              return {data.core->get(key)};
+            });
       });
 }
 

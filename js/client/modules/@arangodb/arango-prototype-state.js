@@ -74,7 +74,7 @@ ArangoPrototypeState.prototype._writeInternal = function (values, options) {
 
 
 ArangoPrototypeState.prototype._readInternal = function (keys, options) {
-  let query = `/multi-get?waitForApplied=${options.waitForApplied || 0}`;
+  let query = `/multi-get?waitForIndex=${options.waitForIndex || 0}`;
   if (options.readFrom !== undefined) {
     query += `&readFrom=${encodeURIComponent(options.readFrom)}`;
   }

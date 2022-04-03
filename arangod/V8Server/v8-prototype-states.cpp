@@ -212,7 +212,7 @@ static void JS_GetSnapshot(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   if (args.Length() > 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("getSnapshot([waitForAppliedIndex])");
+    TRI_V8_THROW_EXCEPTION_USAGE("getSnapshot([waitForIndex])");
   }
 
   auto waitForIndex = LogIndex{0};
@@ -266,12 +266,31 @@ static void JS_ReadInternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
     keys.emplace_back(key.copyString());
   }
 
-  auto const result =
-      PrototypeStateMethods::createInstance(vocbase)->get(id, keys).get();
+  if (args.Length() > 2) {
+    TRI_V8_THROW_EXCEPTION_USAGE("get([waitForIndex])");
+  }
+
+  auto waitForIndex = LogIndex{0};
+  if (args.Length() > 1) {
+    builder.clear();
+    TRI_V8ToVPack(isolate, builder, args[1], false, false);
+    auto const options = builder.slice();
+    if (auto slice = options.get("waitForIndex"); !slice.isNone()) {
+      waitForIndex = arangodb::velocypack::deserialize<LogIndex>(slice);
+    }
+  }
+
+  auto const result = PrototypeStateMethods::createInstance(vocbase)
+                          ->get(id, keys, waitForIndex)
+                          .get();
+  if (result.fail()) {
+    TRI_V8_THROW_EXCEPTION(result.result());
+  }
+
   VPackBuilder response;
   {
     VPackObjectBuilder ob(&response);
-    for (auto const& [k, v] : result) {
+    for (auto const& [k, v] : result.get()) {
       response.add(k, v);
     }
   }

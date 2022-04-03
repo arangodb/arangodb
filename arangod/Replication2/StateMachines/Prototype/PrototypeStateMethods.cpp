@@ -1,4 +1,4 @@
-////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
 /// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
@@ -62,17 +62,18 @@ struct PrototypeStateMethodsDBServer final : PrototypeStateMethods {
     return leader->set(entries);
   };
 
-  [[nodiscard]] auto get(LogId id, std::string key) const
-      -> futures::Future<std::optional<std::string>> override {
+  [[nodiscard]] auto get(LogId id, std::string key, LogIndex waitForIndex) const
+      -> futures::Future<ResultT<std::optional<std::string>>> override {
     auto leader = getPrototypeStateLeaderById(id);
-    return leader->get(key);
+    return leader->get(key, waitForIndex);
   }
 
-  [[nodiscard]] auto get(LogId id, std::vector<std::string> keys) const
+  [[nodiscard]] auto get(LogId id, std::vector<std::string> keys,
+                         LogIndex waitForIndex) const
       -> futures::Future<
-          std::unordered_map<std::string, std::string>> override {
+          ResultT<std::unordered_map<std::string, std::string>>> override {
     auto leader = getPrototypeStateLeaderById(id);
-    return leader->get(std::move(keys));
+    return leader->get(std::move(keys), waitForIndex);
   }
 
   [[nodiscard]] auto getSnapshot(LogId id, LogIndex waitForIndex) const
@@ -156,25 +157,34 @@ struct PrototypeStateMethodsCoordinator final
         });
   }
 
-  [[nodiscard]] auto get(LogId id, std::string key) const
-      -> futures::Future<std::optional<std::string>> override {
+  [[nodiscard]] auto get(LogId id, std::string key, LogIndex waitForIndex) const
+      -> futures::Future<ResultT<std::optional<std::string>>> override {
     auto path = basics::StringUtils::joinT("/", "_api/prototype-state", id,
                                            "entry", key);
     network::RequestOptions opts;
     opts.database = _vocbase.name();
+    opts.param("waitForIndex", std::to_string(waitForIndex.value));
+
     return network::sendRequest(_pool, "server:" + getLogLeader(id),
                                 fuerte::RestVerb::Get, path, {}, opts)
-        .thenValue([](network::Response&& resp) -> std::optional<std::string> {
+        .thenValue([](network::Response&& resp)
+                       -> ResultT<std::optional<std::string>> {
           if (resp.statusCode() == fuerte::StatusNotFound) {
-            return std::nullopt;
+            return {std::nullopt};
           } else if (resp.fail() ||
                      !fuerte::statusIsSuccess(resp.statusCode())) {
-            THROW_ARANGO_EXCEPTION(resp.combinedResult());
+            auto r = resp.combinedResult();
+            r = r.mapError([&](result::Error error) {
+              error.appendErrorMessage(" while contacting server " +
+                                       resp.serverId());
+              return error;
+            });
+            THROW_ARANGO_EXCEPTION(r);
           } else {
             auto slice = resp.slice();
             if (auto result = slice.get("result");
                 result.isObject() && result.length() == 1) {
-              return result.valueAt(0).copyString();
+              return {result.valueAt(0).copyString()};
             }
             THROW_ARANGO_EXCEPTION_MESSAGE(
                 TRI_ERROR_INTERNAL, basics::StringUtils::concatT(
@@ -185,13 +195,15 @@ struct PrototypeStateMethodsCoordinator final
         });
   }
 
-  [[nodiscard]] auto get(LogId id, std::vector<std::string> keys) const
+  [[nodiscard]] auto get(LogId id, std::vector<std::string> keys,
+                         LogIndex waitForIndex) const
       -> futures::Future<
-          std::unordered_map<std::string, std::string>> override {
+          ResultT<std::unordered_map<std::string, std::string>>> override {
     auto path = basics::StringUtils::joinT("/", "_api/prototype-state", id,
                                            "multi-get");
     network::RequestOptions opts;
     opts.database = _vocbase.name();
+    opts.param("waitForIndex", std::to_string(waitForIndex.value));
 
     VPackBuilder builder{};
     {
@@ -204,25 +216,33 @@ struct PrototypeStateMethodsCoordinator final
     return network::sendRequest(_pool, "server:" + getLogLeader(id),
                                 fuerte::RestVerb::Post, path,
                                 builder.bufferRef(), opts)
-        .thenValue([](network::Response&& resp) {
-          if (resp.fail() || !fuerte::statusIsSuccess(resp.statusCode())) {
-            THROW_ARANGO_EXCEPTION(resp.combinedResult());
-          } else {
-            auto slice = resp.slice();
-            if (auto result = slice.get("result"); result.isObject()) {
-              std::unordered_map<std::string, std::string> map;
-              for (auto it : VPackObjectIterator{result}) {
-                map.emplace(it.key.copyString(), it.value.copyString());
+        .thenValue(
+            [](network::Response&& resp)
+                -> ResultT<std::unordered_map<std::string, std::string>> {
+              if (resp.fail() || !fuerte::statusIsSuccess(resp.statusCode())) {
+                auto r = resp.combinedResult();
+                r = r.mapError([&](result::Error error) {
+                  error.appendErrorMessage(" while contacting server " +
+                                           resp.serverId());
+                  return error;
+                });
+                THROW_ARANGO_EXCEPTION(r);
+              } else {
+                auto slice = resp.slice();
+                if (auto result = slice.get("result"); result.isObject()) {
+                  std::unordered_map<std::string, std::string> map;
+                  for (auto it : VPackObjectIterator{result}) {
+                    map.emplace(it.key.copyString(), it.value.copyString());
+                  }
+                  return {map};
+                }
+                THROW_ARANGO_EXCEPTION_MESSAGE(
+                    TRI_ERROR_INTERNAL, basics::StringUtils::concatT(
+                                            "expected result containing map "
+                                            "in leader response: ",
+                                            slice.toJson()));
               }
-              return map;
-            }
-            THROW_ARANGO_EXCEPTION_MESSAGE(
-                TRI_ERROR_INTERNAL,
-                basics::StringUtils::concatT("expected result containing map "
-                                             "in leader response: ",
-                                             slice.toJson()));
-          }
-        });
+            });
   }
 
   [[nodiscard]] auto getSnapshot(LogId id, LogIndex waitForIndex) const

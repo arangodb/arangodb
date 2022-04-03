@@ -72,10 +72,13 @@ struct PrototypeStateMethods {
       std::unordered_map<std::string, std::string> const& entries) const
       -> futures::Future<ResultT<LogIndex>> = 0;
 
-  [[nodiscard]] virtual auto get(LogId id, std::string key) const
-      -> futures::Future<std::optional<std::string>> = 0;
-  [[nodiscard]] virtual auto get(LogId id, std::vector<std::string> keys) const
-      -> futures::Future<std::unordered_map<std::string, std::string>> = 0;
+  [[nodiscard]] virtual auto get(LogId id, std::string key,
+                                 LogIndex waitForIndex) const
+      -> futures::Future<ResultT<std::optional<std::string>>> = 0;
+  [[nodiscard]] virtual auto get(LogId id, std::vector<std::string> keys,
+                                 LogIndex waitForIndex) const
+      -> futures::Future<
+          ResultT<std::unordered_map<std::string, std::string>>> = 0;
 
   [[nodiscard]] virtual auto getSnapshot(LogId id, LogIndex waitForIndex) const
       -> futures::Future<

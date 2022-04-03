@@ -52,9 +52,10 @@ struct PrototypeLeaderState
   auto remove(std::vector<std::string> keys)
       -> futures::Future<ResultT<LogIndex>>;
 
-  auto get(std::string key) -> std::optional<std::string>;
-  auto get(std::vector<std::string> keys)
-      -> std::unordered_map<std::string, std::string>;
+  auto get(std::string key, LogIndex waitForIndex)
+      -> futures::Future<ResultT<std::optional<std::string>>>;
+  auto get(std::vector<std::string> keys, LogIndex waitForIndex)
+      -> futures::Future<ResultT<std::unordered_map<std::string, std::string>>>;
 
   auto getSnapshot(LogIndex waitForIndex)
       -> futures::Future<ResultT<std::unordered_map<std::string, std::string>>>;

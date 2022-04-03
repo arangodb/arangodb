@@ -210,26 +210,28 @@ TEST_F(PrototypeStateMachineTest, simple_operations) {
   auto followerState = followerReplicatedState->getFollower();
   ASSERT_NE(followerState, nullptr);
 
+  decltype(LogIndex::value) index{0};
+
   // Inserting one entry
   {
     auto entries = std::unordered_map<std::string, std::string>{{"foo", "bar"}};
     auto result = leaderState->set(std::move(entries));
     follower->runAllAsyncAppendEntries();
-    auto index = result.get()->value;
+    index = result.get()->value;
     ASSERT_EQ(index, 2);
   }
 
   // Single get
   {
-    auto result = leaderState->get("foo");
-    ASSERT_EQ(result, "bar");
-    result = leaderState->get("baz");
-    ASSERT_EQ(result, std::nullopt);
+    auto result = leaderState->get("foo", LogIndex{index}).get();
+    ASSERT_EQ(result.get(), "bar");
+    result = leaderState->get("baz", LogIndex{index}).get();
+    ASSERT_EQ(result.get(), std::nullopt);
 
-    result = followerState->get("foo");
-    ASSERT_EQ(result, "bar");
-    result = followerState->get("baz");
-    ASSERT_EQ(result, std::nullopt);
+    result = followerState->get("foo", LogIndex{index}).get();
+    ASSERT_EQ(result.get(), "bar");
+    result = followerState->get("baz", LogIndex{index}).get();
+    ASSERT_EQ(result.get(), std::nullopt);
   }
 
   // Inserting multiple entries
@@ -238,7 +240,7 @@ TEST_F(PrototypeStateMachineTest, simple_operations) {
         {"foo1", "bar1"}, {"foo2", "bar2"}, {"foo3", "bar3"}};
     auto result = leaderState->set(std::move(entries));
     follower->runAllAsyncAppendEntries();
-    auto index = result.get()->value;
+    index = result.get()->value;
     ASSERT_EQ(index, 3);
   }
 
@@ -246,21 +248,22 @@ TEST_F(PrototypeStateMachineTest, simple_operations) {
   {
     std::vector<std::string> entries = {"foo1", "foo2", "foo3", "nofoo"};
     std::unordered_map<std::string, std::string> result =
-        leaderState->get(entries);
+        leaderState->get(entries, LogIndex{index}).get().get();
     ASSERT_EQ(result.size(), 3);
     ASSERT_EQ(result["foo1"], "bar1");
     ASSERT_EQ(result["foo2"], "bar2");
     ASSERT_EQ(result["foo3"], "bar3");
-    ASSERT_EQ(followerState->get("foo1"), "bar1");
+    ASSERT_EQ(followerState->get("foo1", LogIndex{index}).get().get(), "bar1");
   }
 
   // Removing single entry
   {
     auto result = leaderState->remove("foo1");
     follower->runAllAsyncAppendEntries();
-    auto index = result.get()->value;
+    index = result.get()->value;
     ASSERT_EQ(index, 4);
-    ASSERT_EQ(leaderState->get("foo1"), std::nullopt);
+    ASSERT_EQ(leaderState->get("foo1", LogIndex{index}).get().get(),
+              std::nullopt);
   }
 
   // Removing multiple entries
@@ -268,12 +271,14 @@ TEST_F(PrototypeStateMachineTest, simple_operations) {
     std::vector<std::string> entries = {"nofoo", "foo2"};
     auto result = leaderState->remove(std::move(entries));
     follower->runAllAsyncAppendEntries();
-    auto index = result.get()->value;
+    index = result.get()->value;
     ASSERT_EQ(index, 5);
-    ASSERT_EQ(leaderState->get("foo2"), std::nullopt);
-    ASSERT_EQ(leaderState->get("foo3"), "bar3");
-    ASSERT_EQ(followerState->get("foo2"), std::nullopt);
-    ASSERT_EQ(followerState->get("foo3"), "bar3");
+    ASSERT_EQ(leaderState->get("foo2", LogIndex{index}).get().get(),
+              std::nullopt);
+    ASSERT_EQ(leaderState->get("foo3", LogIndex{index}).get().get(), "bar3");
+    ASSERT_EQ(followerState->get("foo2", LogIndex{index}).get().get(),
+              std::nullopt);
+    ASSERT_EQ(followerState->get("foo3", LogIndex{index}).get().get(), "bar3");
   }
 
   // Check final state
@@ -284,8 +289,8 @@ TEST_F(PrototypeStateMachineTest, simple_operations) {
     auto expected = std::unordered_map<std::string, std::string>{
         {"foo", "bar"}, {"foo3", "bar3"}};
     ASSERT_EQ(map, expected);
-    ASSERT_EQ(followerState->get("foo"), "bar");
-    ASSERT_EQ(followerState->get("foo3"), "bar3");
+    ASSERT_EQ(followerState->get("foo", LogIndex{index}).get().get(), "bar");
+    ASSERT_EQ(followerState->get("foo3", LogIndex{index}).get().get(), "bar3");
   }
 }
 
@@ -321,6 +326,6 @@ TEST_F(PrototypeStateMachineTest, snapshot_transfer) {
 
   auto followerState = followerReplicatedState->getFollower();
   ASSERT_NE(followerState, nullptr);
-  ASSERT_EQ(followerState->get("a"), "b");
-  ASSERT_EQ(followerState->get("c"), "d");
+  ASSERT_EQ(followerState->get("a", LogIndex{0}).get().get(), "b");
+  ASSERT_EQ(followerState->get("c", LogIndex{0}).get().get(), "d");
 }
