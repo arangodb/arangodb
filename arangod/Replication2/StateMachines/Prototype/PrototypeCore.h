@@ -79,7 +79,7 @@ auto inspect(Inspector& f, PrototypeDump& x) {
 
 struct PrototypeCore {
   using StorageType = ::immer::map<std::string, std::string>;
-  static constexpr std::size_t kFlushBatchSize = 1;
+  static constexpr std::size_t kFlushBatchSize = 1000;
 
   explicit PrototypeCore(GlobalLogIdentifier logId, LoggerContext loggerContext,
                          std::shared_ptr<IPrototypeStorageInterface> storage);
