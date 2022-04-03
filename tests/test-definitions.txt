@@ -1,14 +1,6 @@
 # test_suite [flags ...] -- [additional-params...]
-# possible flags are:
-#   weight=250 - weight of the test, default is 250
-#   cluster - test is only executed in cluster env
-#   single - test is only executed in single env
-#   full - test is only executed in full tests
-#   !full - test is only executed in non-full tests
-#   enterprise - test is only executed in enterprise env
-#   ldap - test is only executed in ldap env
-#   buckets=5 - test is split into 5 buckets
-#   !windows - tests are excluded if generated for ps1
+# for possible flags and params see
+# scripts/generateJenkinsScripts.py --help-flags
 
 
 # Single Server only Tests

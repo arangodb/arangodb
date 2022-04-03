@@ -2,6 +2,11 @@
 import argparse
 import sys
 
+# check python 3
+if sys.version_info[0] != 3:
+    print("found python version ", sys.version_info)
+    quit()
+
 
 def generate_fish_output(args, outfile, tests):
     def output(ln):
@@ -49,15 +54,10 @@ def generate_ps1_output(args, outfile, tests):
     def output(ln):
         print(ln, file=outfile)
 
-    if args.cluster:
-        output("Function global:registerClusterTests()")
-    else:
-        output("Function global:registerSingleTests()")
-    output("{")
-
     for test in tests:
         params = test["params"]
         suffix = f' -index "{params["suffix"]}"' if "suffix" in params else ""
+        cluster_str = " -cluster $true" if args.cluster else ""
         condition_prefix = ""
         condition_suffix = ""
         if "enterprise" in test["flags"]:
@@ -67,23 +67,21 @@ def generate_ps1_output(args, outfile, tests):
             raise Exception("ldap not supported for windows")
 
         moreargs = ""
-        args = test["args"]
-        if len(args) > 0:
-            moreargs = f' -moreParams "{" ".join(args)}"'
+        args_list = test["args"]
+        if len(args_list) > 0:
+            moreargs = f' -moreParams "{" ".join(args_list)}"'
 
         if "buckets" in params:
             num_buckets = int(params["buckets"])
             for i in range(num_buckets):
                 output(f'{condition_prefix}'
                        f'registerTest -testname "{test["name"]}" -weight {test["weight"]} '
-                       f'-index "{i}" -bucket "{num_buckets}/{i}"{moreargs}'
+                       f'-index "{i}" -bucket "{num_buckets}/{i}"{moreargs}{cluster_str}'
                        f'{condition_suffix}')
         else:
             output(f'{condition_prefix}'
-                   f'registerTest -testname "{test["name"]}" -weight {test["weight"]}{suffix}{moreargs}'
+                   f'registerTest -testname "{test["name"]}"{cluster_str} -weight {test["weight"]}{suffix}{moreargs}'
                    f'{condition_suffix}')
-
-    output("}")
 
 
 def filter_tests(args, tests):
@@ -146,11 +144,21 @@ known_parameter = {
 
 
 def print_help_flags():
+    print("Flags are specified as a single token.")
     for flag, exp in known_flags.items():
+        print(f"{flag}: {exp}")
+
+    print("Parameter have a value and specified as param=value.")
+    for flag, exp in known_parameter.items():
         print(f"{flag}: {exp}")
 
 
 def parse_arguments():
+
+    if "--help-flags" in sys.argv:
+        print_help_flags()
+        quit()
+
     parser = argparse.ArgumentParser()
     parser.add_argument("definitions", help="file containing the test definitions", type=str)
     parser.add_argument("-f", "--format", type=str, choices=formats.keys(), help="which format to output",
@@ -162,10 +170,6 @@ def parse_arguments():
     parser.add_argument("--full", help="output full test set", action="store_true")
     parser.add_argument("--all", help="output all test, ignore other filters", action="store_true")
     args = parser.parse_args()
-
-    if args.help_flags:
-        print_help_flags()
-        quit()
 
     return args
 
