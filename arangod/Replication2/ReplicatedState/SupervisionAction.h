@@ -137,6 +137,28 @@ struct AddParticipantAction {
   }
 };
 
+struct RemoveParticipantFromLogTargetAction {
+  ParticipantId participant;
+
+  void execute(ActionContext& ctx) {
+    ctx.modify<agency::Plan, replication2::agency::LogTarget>(
+        [&](auto& plan, auto& logTarget) {
+          logTarget.participants.erase(participant);
+        });
+  }
+};
+
+struct RemoveParticipantFromStatePlanAction {
+  ParticipantId participant;
+
+  void execute(ActionContext& ctx) {
+    ctx.modify<agency::Plan, replication2::agency::LogTarget>(
+        [&](auto& plan, auto& logTarget) {
+          plan.participants.erase(participant);
+        });
+  }
+};
+
 struct AddStateToPlanAction {
   replication2::agency::LogTarget logTarget;
   agency::Plan statePlan;
@@ -177,9 +199,10 @@ struct SetLeaderAction {
   }
 };
 
-using Action = std::variant<EmptyAction, AddParticipantAction,
-                            AddStateToPlanAction, UpdateParticipantFlagsAction,
-                            CurrentConvergedAction, SetLeaderAction>;
+using Action = std::variant<
+    EmptyAction, AddParticipantAction, RemoveParticipantFromLogTargetAction,
+    RemoveParticipantFromStatePlanAction, AddStateToPlanAction,
+    UpdateParticipantFlagsAction, CurrentConvergedAction, SetLeaderAction>;
 
 auto execute(LogId id, DatabaseID const& database, Action action,
              std::optional<agency::Plan> state,
