@@ -88,7 +88,7 @@ class RocksDBZkdIndexIterator final : public IndexIterator {
     _compareResult.resize(_dim);
   }
 
-  std::string_view typeName() const noexcept override {
+  std::string_view typeName() const noexcept final {
     return "rocksdb-zkd-index-iterator";
   }
 
@@ -108,7 +108,7 @@ class RocksDBZkdIndexIterator final : public IndexIterator {
           rocks_key.constructZkdIndexValue(_index->objectId(), _cur);
           _iter->Seek(rocks_key.string());
           if (!_iter->Valid()) {
-            arangodb::rocksutils::checkIteratorStatus(_iter.get());
+            rocksutils::checkIteratorStatus(*_iter);
             _iterState = IterState::DONE;
           } else {
             TRI_ASSERT(_index->objectId() ==
@@ -126,7 +126,7 @@ class RocksDBZkdIndexIterator final : public IndexIterator {
                !foundNextZValueInBox && numTried < numNextTries(); ++numTried) {
             _iter->Next();
             if (!_iter->Valid()) {
-              arangodb::rocksutils::checkIteratorStatus(_iter.get());
+              rocksutils::checkIteratorStatus(*_iter);
               _iterState = IterState::DONE;
               break;  // for loop
             }
@@ -162,7 +162,7 @@ class RocksDBZkdIndexIterator final : public IndexIterator {
             ++i;
             _iter->Next();
             if (!_iter->Valid()) {
-              arangodb::rocksutils::checkIteratorStatus(_iter.get());
+              rocksutils::checkIteratorStatus(*_iter);
               _iterState = IterState::DONE;
             } else {
               // stay in ::CHECK_CURRENT_ITER

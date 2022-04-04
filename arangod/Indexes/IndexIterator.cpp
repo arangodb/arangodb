@@ -115,11 +115,10 @@ bool IndexIterator::nextDocumentImpl(DocumentCallback const& cb,
 /// sensible behavior
 bool IndexIterator::nextCoveringImpl(CoveringCallback const&,
                                      uint64_t /*limit*/) {
-  THROW_ARANGO_EXCEPTION_MESSAGE(
-      TRI_ERROR_INTERNAL,
-      std::string("requested next covering values from an index "
-                  "iterator that does not support it (") +
-          std::string{typeName()} + ")");
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                 "requested next covering values from an index "
+                                 "iterator that does not support it (" +
+                                     std::string{typeName()} + ")");
 }
 
 /// @brief default implementation for skip

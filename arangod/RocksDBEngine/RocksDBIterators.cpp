@@ -81,7 +81,7 @@ class RocksDBAllIndexIterator final : public IndexIterator {
       // returned false
       TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
       // validate that Iterator is in a good shape and hasn't failed
-      arangodb::rocksutils::checkIteratorStatus(_iterator.get());
+      rocksutils::checkIteratorStatus(*_iterator);
       return false;
     }
 
@@ -95,7 +95,7 @@ class RocksDBAllIndexIterator final : public IndexIterator {
 
       if (ADB_UNLIKELY(!_iterator->Valid())) {
         // validate that Iterator is in a good shape and hasn't failed
-        arangodb::rocksutils::checkIteratorStatus(_iterator.get());
+        rocksutils::checkIteratorStatus(*_iterator);
         return false;
       } else if (outOfRange()) {
         return false;
@@ -118,7 +118,7 @@ class RocksDBAllIndexIterator final : public IndexIterator {
       // returned false
       TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
       // validate that Iterator is in a good shape and hasn't failed
-      arangodb::rocksutils::checkIteratorStatus(_iterator.get());
+      rocksutils::checkIteratorStatus(*_iterator);
       return false;
     }
 
@@ -132,7 +132,7 @@ class RocksDBAllIndexIterator final : public IndexIterator {
 
       if (ADB_UNLIKELY(!_iterator->Valid())) {
         // validate that Iterator is in a good shape and hasn't failed
-        arangodb::rocksutils::checkIteratorStatus(_iterator.get());
+        rocksutils::checkIteratorStatus(*_iterator);
         return false;
       } else if (outOfRange()) {
         return false;
@@ -167,16 +167,16 @@ class RocksDBAllIndexIterator final : public IndexIterator {
     }
 
     // validate that Iterator is in a good shape and hasn't failed
-    arangodb::rocksutils::checkIteratorStatus(_iterator.get());
+    rocksutils::checkIteratorStatus(*_iterator);
   }
 
-  void resetImpl() override {
+  void resetImpl() final {
     TRI_ASSERT(_trx->state()->isRunning());
     _mustSeek = true;
   }
 
  private:
-  inline bool outOfRange() const {
+  bool outOfRange() const {
     if constexpr (mustCheckBounds) {
       TRI_ASSERT(_trx->state()->isRunning());
       TRI_ASSERT(_iterator != nullptr);
@@ -230,6 +230,8 @@ class RocksDBAllIndexIterator final : public IndexIterator {
   bool _mustSeek;
 };
 
+template<bool forward>
+;
 class RocksDBAnyIndexIterator final : public IndexIterator {
  public:
   RocksDBAnyIndexIterator(LogicalCollection* collection,
@@ -261,7 +263,6 @@ class RocksDBAnyIndexIterator final : public IndexIterator {
     }
 
     _total = collection->numberDocuments(trx, transaction::CountType::Normal);
-    _forward = RandomGenerator::interval(uint16_t(1)) ? true : false;
     reset();  // initial seek
   }
 
@@ -270,12 +271,12 @@ class RocksDBAnyIndexIterator final : public IndexIterator {
   }
 
   bool nextImpl(LocalDocumentIdCallback const& cb, uint64_t limit) override {
-    return doNext(
-        limit, [this, &cb]() { cb(RocksDBKey::documentId(_iterator->key())); });
+    return doNext(limit,
+                  [&]() { cb(RocksDBKey::documentId(_iterator->key())); });
   }
 
   bool nextDocumentImpl(DocumentCallback const& cb, uint64_t limit) override {
-    return doNext(limit, [this, &cb]() {
+    return doNext(limit, [&]() {
       cb(RocksDBKey::documentId(_iterator->key()),
          VPackSlice(
              reinterpret_cast<uint8_t const*>(_iterator->value().data())));
@@ -283,12 +284,15 @@ class RocksDBAnyIndexIterator final : public IndexIterator {
   }
 
   // cppcheck-suppress virtualCallInConstructor ; desired impl
-  void resetImpl() override {
+  void resetImpl() final {
     // the assumption is that we don't reset this iterator unless
     // it is out of range or invalid
     if (_total == 0 || (_iterator->Valid() && !outOfRange())) {
       return;
     }
+    // scanning forward or backward with RocksDB is expensive. we
+    // definitely don't want to scan a million keys here, so limit
+    // the number of scan steps to some reasonable amount.
     uint64_t steps = RandomGenerator::interval(_total - 1) % 500;
 
     RocksDBKeyLeaser key(_trx);
@@ -297,25 +301,20 @@ class RocksDBAnyIndexIterator final : public IndexIterator {
     _iterator->Seek(key->string());
 
     if (checkIter()) {
-      if (_forward) {
-        while (steps-- > 0) {
+      while (steps-- > 0) {
+        if constexpr (forward) {
           _iterator->Next();
-          if (!checkIter()) {
-            break;
-          }
-        }
-      } else {
-        while (steps-- > 0) {
+        } else {
           _iterator->Prev();
-          if (!checkIter()) {
-            break;
-          }
+        }
+        if (!checkIter()) {
+          break;
         }
       }
     }
 
     // validate that Iterator is in a good shape and hasn't failed
-    arangodb::rocksutils::checkIteratorStatus(_iterator.get());
+    rocksutils::checkIteratorStatus(*_iterator);
   }
 
  private:
@@ -328,7 +327,7 @@ class RocksDBAnyIndexIterator final : public IndexIterator {
       // returned false
       TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
       // validate that Iterator is in a good shape and hasn't failed
-      arangodb::rocksutils::checkIteratorStatus(_iterator.get());
+      rocksutils::checkIteratorStatus(*_iterator);
       return false;
     }
 
@@ -339,7 +338,7 @@ class RocksDBAnyIndexIterator final : public IndexIterator {
       _iterator->Next();
       if (!_iterator->Valid() || outOfRange()) {
         // validate that Iterator is in a good shape and hasn't failed
-        arangodb::rocksutils::checkIteratorStatus(_iterator.get());
+        rocksutils::checkIteratorStatus(*_iterator);
         if (_returned < _total) {
           _iterator->Seek(_bounds.start());
           continue;
@@ -355,12 +354,17 @@ class RocksDBAnyIndexIterator final : public IndexIterator {
   }
 
   bool checkIter() {
-    if (/* not  valid */ !_iterator->Valid() ||
-        /* out of range forward */
-        (_forward && _cmp->Compare(_iterator->key(), _bounds.end()) > 0) ||
-        /* out of range backward */
-        (!_forward && _cmp->Compare(_iterator->key(), _bounds.start()) < 0)) {
-      if (_forward) {
+    bool valid = _iterator->Valid();
+    if (valid) {
+      int res = _cmp->Compare(_iterator->key(), _bounds.end());
+      if constexpr (forward) {
+        valid = _cmp->Compare(_iterator->key(), _bounds.end()) <= 0;
+      } else {
+        valid = _cmp->Compare(_iterator->key(), _bounds.start()) >= 0;
+      }
+    }
+    if (!valid) {
+      if constexpr (_forward) {
         _iterator->Seek(_bounds.start());
       } else {
         _iterator->SeekForPrev(_bounds.end());
@@ -380,7 +384,6 @@ class RocksDBAnyIndexIterator final : public IndexIterator {
 
   uint64_t _total;
   uint64_t _returned;
-  bool _forward;
 };
 
 RocksDBGenericIterator::RocksDBGenericIterator(rocksdb::TransactionDB* db,
@@ -415,7 +418,7 @@ bool RocksDBGenericIterator::next(GenericCallback const& cb, size_t limit) {
     // No limit no data, or we are actually done. The last call should have
     // returned false
     // validate that Iterator is in a good shape and hasn't failed
-    arangodb::rocksutils::checkIteratorStatus(_iterator.get());
+    rocksutils::checkIteratorStatus(*_iterator);
     return false;
   }
 
@@ -430,7 +433,7 @@ bool RocksDBGenericIterator::next(GenericCallback const& cb, size_t limit) {
     _iterator->Next();
 
     // validate that Iterator is in a good shape and hasn't failed
-    arangodb::rocksutils::checkIteratorStatus(_iterator.get());
+    rocksutils::checkIteratorStatus(*_iterator);
   }
 
   return hasMore();
@@ -466,7 +469,7 @@ RocksDBGenericIterator arangodb::createPrimaryIndexIterator(
   return iterator;
 }
 
-namespace arangodb::RocksDBIterators {
+namespace arangodb::rocksdb_iterators {
 std::unique_ptr<IndexIterator> createAllIterator(LogicalCollection* collection,
                                                  transaction::Methods* trx,
                                                  ReadOwnWrites readOwnWrites) {
@@ -483,7 +486,11 @@ std::unique_ptr<IndexIterator> createAllIterator(LogicalCollection* collection,
 
 std::unique_ptr<IndexIterator> createAnyIterator(LogicalCollection* collection,
                                                  transaction::Methods* trx) {
-  return std::make_unique<RocksDBAnyIndexIterator>(collection, trx);
+  bool forward = RandomGenerator::interval(uint16_t(1)) ? true : false;
+  if (forward) {
+    return std::make_unique<RocksDBAnyIndexIterator<true>>(collection, trx);
+  }
+  return std::make_unique<RocksDBAnyIndexIterator<false>>(collection, trx);
 }
 
-}  // namespace arangodb::RocksDBIterators
+}  // namespace arangodb::rocksdb_iterators

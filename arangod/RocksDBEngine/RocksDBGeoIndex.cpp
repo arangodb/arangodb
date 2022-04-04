@@ -224,7 +224,7 @@ class RDBNearIterator final : public IndexIterator {
     estimateDensity();
   }
 
-  std::string_view typeName() const noexcept override {
+  std::string_view typeName() const noexcept final {
     return "geo-index-iterator";
   }
 
@@ -334,7 +334,7 @@ class RDBNearIterator final : public IndexIterator {
         limit);
   }
 
-  void resetImpl() override {
+  void resetImpl() final {
     _near.reset();
     estimateDensity();
   }
@@ -394,7 +394,7 @@ class RDBNearIterator final : public IndexIterator {
       }
 
       // validate that Iterator is in a good shape and hasn't failed
-      arangodb::rocksutils::checkIteratorStatus(_iter.get());
+      rocksutils::checkIteratorStatus(*_iter);
     }
 
     _near.didScanIntervals();  // calculate next bounds
@@ -552,7 +552,7 @@ class RDBCoveringIterator final : public IndexIterator {
         limit);
   }
 
-  void resetImpl() override { _covering.reset(); }
+  void resetImpl() final { _covering.reset(); }
 
  private:
   void performScan() {
@@ -605,7 +605,7 @@ class RDBCoveringIterator final : public IndexIterator {
       }
 
       // validate that Iterator is in a good shape and hasn't failed
-      arangodb::rocksutils::checkIteratorStatus(_iter.get());
+      rocksutils::checkIteratorStatus(*_iter);
 
       ++_scanningInterval;
       if (_covering.bufferSize() > 1024) {

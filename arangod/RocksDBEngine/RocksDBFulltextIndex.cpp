@@ -63,7 +63,7 @@ class RocksDBFulltextIndexIterator final : public IndexIterator {
         _docs(std::move(docs)),
         _pos(_docs.begin()) {}
 
-  std::string_view typeName() const noexcept override {
+  std::string_view typeName() const noexcept final {
     return "fulltext-index-iterator";
   }
 
@@ -77,7 +77,7 @@ class RocksDBFulltextIndexIterator final : public IndexIterator {
     return _pos != _docs.end();
   }
 
-  void resetImpl() override { _pos = _docs.begin(); }
+  void resetImpl() final { _pos = _docs.begin(); }
 
   void skipImpl(uint64_t count, uint64_t& skipped) override {
     while (_pos != _docs.end() && skipped < count) {

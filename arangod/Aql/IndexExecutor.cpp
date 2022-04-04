@@ -63,20 +63,19 @@ using namespace arangodb::aql;
 
 namespace {
 
-bool getHasMultipleExpansions(
-    std::vector<transaction::Methods::IndexHandle> const& indexes) noexcept {
-  // count how many attributes in the index are expanded (array index)
-  // if more than a single attribute, we always need to deduplicate the
-  // result later on
+bool hasMultipleExpansions(
+    std::span<transaction::Methods::IndexHandle> const& indexes) noexcept {
+  // count how many attributes in the index are expanded (array index).
+  // if more than a single attribute is expanded, we always need to
+  // deduplicate the result later on.
+  // if we have an expanded attribute that occurs later in the index fields
+  // definition, e.g. ["name", "status[*]"], we also need to deduplicate
+  // later on.
   for (auto const& idx : indexes) {
-    size_t expansions = 0;
     auto const& fields = idx->fields();
-    for (size_t i = 0; i < fields.size(); ++i) {
+    for (size_t i = 1; i < fields.size(); ++i) {
       if (idx->isAttributeExpanded(i)) {
-        ++expansions;
-        if (expansions > 1 || i > 0) {
-          return true;
-        }
+        return true;
       }
     }
   }
@@ -199,7 +198,7 @@ IndexExecutorInfos::IndexExecutorInfos(
       _outputRegisterId(outputRegister),
       _outNonMaterializedIndVars(outNonMaterializedIndVars),
       _outNonMaterializedIndRegs(std::move(outNonMaterializedIndRegs)),
-      _hasMultipleExpansions(::getHasMultipleExpansions(_indexes)),
+      _hasMultipleExpansions(::hasMultipleExpansions(_indexes)),
       _produceResult(produceResult),
       _count(count),
       _oneIndexCondition(oneIndexCondition),

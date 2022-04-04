@@ -101,7 +101,7 @@ class RocksDBPrimaryIndexEqIterator final : public IndexIterator {
     TRI_ASSERT(_key.slice().isString());
   }
 
-  std::string_view typeName() const noexcept override {
+  std::string_view typeName() const noexcept final {
     return "primary-index-eq-iterator";
   }
 
@@ -175,7 +175,7 @@ class RocksDBPrimaryIndexEqIterator final : public IndexIterator {
     return false;
   }
 
-  void resetImpl() override { _done = false; }
+  void resetImpl() final { _done = false; }
 
  private:
   RocksDBPrimaryIndex* _index;
@@ -200,7 +200,7 @@ class RocksDBPrimaryIndexInIterator final : public IndexIterator {
     TRI_ASSERT(_keys.slice().isArray());
   }
 
-  std::string_view typeName() const noexcept override {
+  std::string_view typeName() const noexcept final {
     return "primary-index-in-iterator";
   }
 
@@ -287,7 +287,7 @@ class RocksDBPrimaryIndexInIterator final : public IndexIterator {
     return true;
   }
 
-  void resetImpl() override { _iterator.reset(); }
+  void resetImpl() final { _iterator.reset(); }
 
  private:
   RocksDBPrimaryIndex* _index;
@@ -315,7 +315,7 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
                    RocksDBColumnFamilyManager::Family::PrimaryIndex));
   }
 
-  std::string_view typeName() const noexcept override {
+  std::string_view typeName() const noexcept final {
     return "primary-index-range-iterator";
   }
 
@@ -333,7 +333,7 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
       // returned false
       TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
       // validate that Iterator is in a good shape and hasn't failed
-      arangodb::rocksutils::checkIteratorStatus(_iterator.get());
+      rocksutils::checkIteratorStatus(*_iterator);
       return false;
     }
 
@@ -352,7 +352,7 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
 
       if (ADB_UNLIKELY(!_iterator->Valid())) {
         // validate that Iterator is in a good shape and hasn't failed
-        arangodb::rocksutils::checkIteratorStatus(_iterator.get());
+        rocksutils::checkIteratorStatus(*_iterator);
         return false;
       } else if (outOfRange()) {
         return false;
@@ -375,7 +375,7 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
       // returned false
       TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
       // validate that Iterator is in a good shape and hasn't failed
-      arangodb::rocksutils::checkIteratorStatus(_iterator.get());
+      rocksutils::checkIteratorStatus(*_iterator);
       return false;
     }
 
@@ -400,7 +400,7 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
 
       if (ADB_UNLIKELY(!_iterator->Valid())) {
         // validate that Iterator is in a good shape and hasn't failed
-        arangodb::rocksutils::checkIteratorStatus(_iterator.get());
+        rocksutils::checkIteratorStatus(*_iterator);
         return false;
       } else if (outOfRange()) {
         return false;
@@ -442,11 +442,11 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
     }
 
     // validate that Iterator is in a good shape and hasn't failed
-    arangodb::rocksutils::checkIteratorStatus(_iterator.get());
+    rocksutils::checkIteratorStatus(*_iterator);
   }
 
   /// @brief Reset the cursor
-  void resetImpl() override {
+  void resetImpl() final {
     TRI_ASSERT(_trx->state()->isRunning());
     _mustSeek = true;
   }

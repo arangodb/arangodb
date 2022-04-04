@@ -75,13 +75,13 @@ class RocksDBGenericIterator {
 RocksDBGenericIterator createPrimaryIndexIterator(transaction::Methods* trx,
                                                   LogicalCollection* col);
 
-namespace RocksDBIterators {
+namespace rocksdb_iterators {
 std::unique_ptr<IndexIterator> createAllIterator(LogicalCollection* collection,
                                                  transaction::Methods* trx,
                                                  ReadOwnWrites readOwnWrites);
 
 std::unique_ptr<IndexIterator> createAnyIterator(LogicalCollection* collection,
                                                  transaction::Methods* trx);
-}  // namespace RocksDBIterators
+}  // namespace rocksdb_iterators
 
 }  // namespace arangodb

@@ -142,7 +142,7 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
     TRI_ASSERT(_cache == nullptr || _cache->hasherName() == "BinaryKeyHasher");
   }
 
-  std::string_view typeName() const noexcept override {
+  std::string_view typeName() const noexcept final {
     return "edge-index-iterator";
   }
 
@@ -165,7 +165,7 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
         limit);
   }
 
-  void resetImpl() override {
+  void resetImpl() final {
     resetInplaceMemory();
     _keysIterator.reset();
     _lastKey = VPackSlice::nullSlice();
@@ -369,7 +369,7 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
     _builder.close();
 
     // validate that Iterator is in a good shape and hasn't failed
-    arangodb::rocksutils::checkIteratorStatus(iterator.get());
+    rocksutils::checkIteratorStatus(*iterator);
 
     if (_cache != nullptr) {
       // TODO Add cache retry on next call

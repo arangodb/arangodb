@@ -632,7 +632,7 @@ class IResearchInvertedIndexIterator final
     return limit == 0;
   }
 
-  void resetImpl() override {
+  void resetImpl() final {
     _readerOffset = 0;
     _itr.reset();
     _doc = nullptr;
@@ -662,12 +662,12 @@ class IResearchInvertedIndexMergeIterator final
         _heap_it({index->meta()._sort, index->meta()._sort.size(), _segments}),
         _projectionsPrototype(index->meta()) {}
 
-  std::string_view typeName() const noexcept override {
+  std::string_view typeName() const noexcept final {
     return "inverted-index-merge-iterator";
   }
 
  protected:
-  void resetImpl() override {
+  void resetImpl() final {
     _segments.clear();
     auto const size = _reader->size();
     _segments.reserve(size);

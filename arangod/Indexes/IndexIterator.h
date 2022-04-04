@@ -207,22 +207,23 @@ class IndexIterator {
 
   /// @brief convenience function to retrieve all results
   void all(IndexIterator::LocalDocumentIdCallback const& callback) {
-    while (next(callback, internalBatchSize)) { /* intentionally empty */
+    while (next(callback, internalBatchSize)) {
+      // intentionally empty
     }
   }
 
   /// @brief convenience function to retrieve all results
   void allDocuments(IndexIterator::DocumentCallback const& callback) {
-    while (
-        nextDocument(callback, internalBatchSize)) { /* intentionally empty */
+    while (nextDocument(callback, internalBatchSize)) {
+      // intentionally empty
     }
   }
 
   /// @brief convenience function to retrieve all results from a covering
   /// index
   void allCovering(IndexIterator::CoveringCallback const& callback) {
-    while (
-        nextCovering(callback, internalBatchSize)) { /* intentionally empty */
+    while (nextCovering(callback, internalBatchSize)) {
+      // intentionally empty
     }
   }
 
@@ -299,6 +300,9 @@ class IndexIterator {
     }
   }
 
+  // the default batch size is 1000, i.e. up to 1000 elements will be
+  // fetched from an index in one go. this is an arbitrary value selected
+  // in the early days of ArangoDB and has proven to work since then.
   static constexpr uint64_t internalBatchSize = 1000;
 
   LogicalCollection* _collection;
