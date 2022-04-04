@@ -23,7 +23,7 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 const jsunity = require('jsunity');
-const {assertEqual, assertTrue} = jsunity.jsUnity.assertions;
+const {assertEqual, assertTrue, assertUndefined} = jsunity.jsUnity.assertions;
 const arangodb = require("@arangodb");
 const _ = require('lodash');
 const db = arangodb.db;
@@ -35,7 +35,7 @@ const {waitFor} = require("@arangodb/testutils/replicated-logs-helper");
 const database = "replication2_replicated_state_http_api_db";
 
 const sortedArrayEqualOrError = (left, right) => {
-  if (_.eq(left, right)) {
+  if (_.isEqual(left, right)) {
     return true;
   } else {
     return Error(`Expected the following to be equal: ${JSON.stringify(left)} and ${JSON.stringify(right)}`);
@@ -47,6 +47,21 @@ const replaceParticipant = (database, logId, oldParticipant, newParticipant) => 
   const res = request.post(
     `${url}/_db/${database}/_api/replicated-state/${logId}/participant/${oldParticipant}/replace-with/${newParticipant}`
   );
+  lh.checkRequestResult(res);
+  const {json: {result}} = res;
+  return result;
+};
+
+const setLeader = (database, logId, newLeader) => {
+  const url = lh.getServerUrl(_.sample(lh.coordinators));
+  const res = request.post(`${url}/_db/${database}/_api/replicated-state/${logId}/leader/${newLeader}`);
+  lh.checkRequestResult(res);
+  const {json: {result}} = res;
+  return result;
+};
+const unsetLeader = (database, logId) => {
+  const url = lh.getServerUrl(_.sample(lh.coordinators));
+  const res = request.delete(`${url}/_db/${database}/_api/replicated-state/${logId}/leader`);
   lh.checkRequestResult(res);
   const {json: {result}} = res;
   return result;
@@ -121,29 +136,27 @@ const replicatedStateSuite = function () {
       const newParticipant = _.sample(nonParticipants);
       const newParticipants = _.union(_.without(participants, oldParticipant), [newParticipant]).sort();
 
-      const url = lh.getServerUrl(_.sample(lh.coordinators));
-      const res = request.post(`${url}/_db/${database}/_api/replicated-state/${stateId}/participant/${oldParticipant}/replace-with/${newParticipant}`);
-      lh.checkRequestResult(res);
-      const {json: {result}} = res;
+      const result = replaceParticipant(database, stateId, oldParticipant, newParticipant);
       assertEqual({}, result);
       {
         const stateAgencyContent = sh.readReplicatedStateAgency(database, stateId);
         assertEqual(newParticipants, Object.keys(stateAgencyContent.target.participants).sort());
       }
-      // The following does not yet work.
 
-      // waitFor(() => {
-      //   const stateAgencyContent = sh.readReplicatedStateAgency(database, stateId);
-      //   return sortedArrayEqualOrError(newParticipants, Object.keys(stateAgencyContent.plan.participants).sort());
-      // });
+      waitFor(() => {
+        const stateAgencyContent = sh.readReplicatedStateAgency(database, stateId);
+        return sortedArrayEqualOrError(newParticipants, Object.keys(stateAgencyContent.plan.participants).sort());
+      });
+      // Current won't be cleaned up yet.
       // waitFor(() => {
       //   const stateAgencyContent = sh.readReplicatedStateAgency(database, stateId);
       //   return sortedArrayEqualOrError(newParticipants, Object.keys(stateAgencyContent.current.participants).sort());
       // });
-      //
-      // const stateAgencyContent = sh.readReplicatedStateAgency(database, stateId);
-      // assertEqual(newParticipants, Object.keys(stateAgencyContent.target.participants).sort());
-      // assertEqual(newParticipants, Object.keys(stateAgencyContent.plan.participants).sort());
+
+      const stateAgencyContent = sh.readReplicatedStateAgency(database, stateId);
+      assertEqual(newParticipants, Object.keys(stateAgencyContent.target.participants).sort());
+      assertEqual(newParticipants, Object.keys(stateAgencyContent.plan.participants).sort());
+      // Current won't be cleaned up yet.
       // assertEqual(newParticipants, Object.keys(stateAgencyContent.current.participants).sort());
     },
 
@@ -164,20 +177,21 @@ const replicatedStateSuite = function () {
         const stateAgencyContent = sh.readReplicatedStateAgency(database, stateId);
         assertEqual(newParticipants, Object.keys(stateAgencyContent.target.participants).sort());
       }
-      // The following does not yet work.
 
-      // waitFor(() => {
-      //   const stateAgencyContent = sh.readReplicatedStateAgency(database, stateId);
-      //   return sortedArrayEqualOrError(newParticipants, Object.keys(stateAgencyContent.plan.participants).sort());
-      // });
+      waitFor(() => {
+        const stateAgencyContent = sh.readReplicatedStateAgency(database, stateId);
+        return sortedArrayEqualOrError(newParticipants, Object.keys(stateAgencyContent.plan.participants).sort());
+      });
+      // Current won't be cleaned up yet.
       // waitFor(() => {
       //   const stateAgencyContent = sh.readReplicatedStateAgency(database, stateId);
       //   return sortedArrayEqualOrError(newParticipants, Object.keys(stateAgencyContent.current.participants).sort());
       // });
-      //
-      // const stateAgencyContent = sh.readReplicatedStateAgency(database, stateId);
-      // assertEqual(newParticipants, Object.keys(stateAgencyContent.target.participants).sort());
-      // assertEqual(newParticipants, Object.keys(stateAgencyContent.plan.participants).sort());
+
+      const stateAgencyContent = sh.readReplicatedStateAgency(database, stateId);
+      assertEqual(newParticipants, Object.keys(stateAgencyContent.target.participants).sort());
+      assertEqual(newParticipants, Object.keys(stateAgencyContent.plan.participants).sort());
+      // Current won't be cleaned up yet.
       // assertEqual(newParticipants, Object.keys(stateAgencyContent.current.participants).sort());
     },
 
@@ -221,6 +235,107 @@ const replicatedStateSuite = function () {
       {
         const stateAgencyContent = sh.readReplicatedStateAgency(database, stateId);
         assertEqual(participants.sort(), Object.keys(stateAgencyContent.target.participants).sort());
+      }
+    },
+
+    testSetLeader: function () {
+      const {
+        stateId,
+        followers,
+      } = sh.createReplicatedStateTarget(database, targetConfig, "black-hole");
+      const newLeader = _.sample(followers);
+
+      const result = setLeader(database, stateId, newLeader);
+      assertEqual({}, result);
+      {
+        const stateAgencyContent = sh.readReplicatedStateAgency(database, stateId);
+        assertEqual(newLeader, stateAgencyContent.target.leader);
+      }
+      lh.waitFor(() => {
+        const currentLeader = lh.getReplicatedLogLeaderTarget(database, stateId);
+        if (currentLeader === newLeader) {
+          return true;
+        } else {
+          return new Error(`Expected log leader to switch to ${newLeader}, but is still ${currentLeader}`);
+        }
+      });
+      lh.waitFor(() => {
+        const {leader: currentLeader} = lh.getReplicatedLogLeaderPlan(database, stateId);
+        if (currentLeader === newLeader) {
+          return true;
+        } else {
+          return new Error(`Expected log leader to switch to ${newLeader}, but is still ${currentLeader}`);
+        }
+      });
+    },
+
+    testUnsetLeader: function () {
+      const {
+        stateId,
+        followers,
+      } = sh.createReplicatedStateTarget(database, targetConfig, "black-hole");
+      { // set the leader first
+        const newLeader = _.sample(followers);
+
+        const result = setLeader(database, stateId, newLeader);
+        assertEqual({}, result);
+        {
+          const stateAgencyContent = sh.readReplicatedStateAgency(database, stateId);
+          assertEqual(newLeader, stateAgencyContent.target.leader);
+        }
+        lh.waitFor(() => {
+          const currentLeader = lh.getReplicatedLogLeaderTarget(database, stateId);
+          if (currentLeader === newLeader) {
+            return true;
+          } else {
+            return new Error(`Expected log leader to switch to ${newLeader}, but is still ${currentLeader}`);
+          }
+        });
+        lh.waitFor(() => {
+          const {leader: currentLeader} = lh.getReplicatedLogLeaderPlan(database, stateId);
+          if (currentLeader === newLeader) {
+            return true;
+          } else {
+            return new Error(`Expected log leader to switch to ${newLeader}, but is still ${currentLeader}`);
+          }
+        });
+      }
+
+      // unset the leader
+      const result = unsetLeader(database, stateId);
+      assertEqual({}, result);
+      {
+        const stateAgencyContent = sh.readReplicatedStateAgency(database, stateId);
+        assertUndefined(stateAgencyContent.target.leader);
+      }
+      lh.waitFor(() => {
+        const currentLeader = lh.getReplicatedLogLeaderTarget(database, stateId);
+        if (currentLeader === undefined) {
+          return true;
+        } else {
+          return new Error(`Expected log leader to be unset, but is still ${currentLeader}`);
+        }
+      });
+    },
+
+    testSetLeaderWithNonParticipant: function () {
+      const {
+        stateId,
+        servers: participants,
+      } = sh.createReplicatedStateTarget(database, targetConfig, "black-hole");
+      const nonParticipants = _.without(lh.dbservers, ...participants);
+      const newLeader = _.sample(nonParticipants);
+
+      // try to set a leader that's not a participant
+      try {
+        const result = setLeader(database, stateId, newLeader);
+        throw new Error(`setLeader unexpectedly succeeded with ${JSON.stringify(result)}`);
+      } catch (e) {
+        assertEqual(412, e.code);
+      }
+      {
+        const stateAgencyContent = sh.readReplicatedStateAgency(database, stateId);
+        assertUndefined(stateAgencyContent.target.leader);
       }
     },
   };

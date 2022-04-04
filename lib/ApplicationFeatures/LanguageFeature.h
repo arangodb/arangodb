@@ -48,7 +48,6 @@ class LanguageFeature final : public application_features::ApplicationFeature {
         _locale(),
         _langType(basics::LanguageType::INVALID),
         _binaryPath(server.getBinaryPath()),
-        _icuDataPtr(nullptr),
         _forceLanguageCheck(true) {
     setOptional(false);
     startsAfter<application_features::GreetingsFeaturePhase, Server>();
@@ -59,24 +58,23 @@ class LanguageFeature final : public application_features::ApplicationFeature {
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
   void start() override final;
-  static void* prepareIcu(std::string const& binaryPath,
-                          std::string const& binaryExecutionPath,
-                          std::string& path, std::string const& binaryName);
+  static std::string prepareIcu(std::string const& binaryPath,
+                                std::string const& binaryExecutionPath,
+                                std::string& path,
+                                std::string const& binaryName);
   icu::Locale& getLocale();
-  std::tuple<std::string_view, arangodb::basics::LanguageType> getLanguage()
-      const;
+  std::tuple<std::string_view, basics::LanguageType> getLanguage() const;
   bool forceLanguageCheck() const;
   std::string getCollatorLanguage() const;
-  void resetLanguage(std::string_view language,
-                     arangodb::basics::LanguageType type);
+  void resetLanguage(std::string_view language, basics::LanguageType type);
 
  private:
   icu::Locale _locale;
   std::string _defaultLanguage;
   std::string _icuLanguage;
-  arangodb::basics::LanguageType _langType;
+  basics::LanguageType _langType;
   char const* _binaryPath;
-  void* _icuDataPtr;
+  std::string _icuData;
   bool _forceLanguageCheck;
 };
 

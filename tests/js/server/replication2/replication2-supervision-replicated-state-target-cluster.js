@@ -1,5 +1,4 @@
 /*jshint strict: true */
-/*global assertTrue, assertEqual*/
 'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -91,33 +90,37 @@ const replicatedStateSuite = function () {
     };
   }());
 
-  const createReplicatedState = function () {
+  const createReplicatedStateWithServers = function (servers) {
     const stateId = lh.nextUniqueLogId();
 
-    const servers = _.sampleSize(lh.dbservers, targetConfig.replicationFactor);
     let participants = {};
     for (const server of servers) {
       participants[server] = {};
     }
 
     updateReplicatedStateTarget(database, stateId,
-        function () {
-          return {
-            id: stateId,
-            participants: participants,
-            config: targetConfig,
-            properties: {
-              implementation: {
-                type: "black-hole"
-              }
+      function () {
+        return {
+          id: stateId,
+          participants: participants,
+          config: targetConfig,
+          version: 1,
+          properties: {
+            implementation: {
+              type: "black-hole"
             }
-          };
-        });
+          }
+        };
+      });
 
     lh.waitFor(spreds.replicatedStateIsReady(database, stateId, servers));
     const leader = lh.getReplicatedLogLeaderPlan(database, stateId).leader;
     const followers = _.difference(servers, [leader]);
     return {stateId, servers, leader, followers};
+  };
+  const createReplicatedState = function () {
+    const servers = _.sampleSize(lh.dbservers, targetConfig.replicationFactor);
+    return createReplicatedStateWithServers(servers);
   };
 
   return {
@@ -139,23 +142,23 @@ const replicatedStateSuite = function () {
       }
 
       updateReplicatedStateTarget(database, stateId,
-          function (target) {
-            return {
-              id: stateId,
-              participants: participants,
-              config: {
-                waitForSync: true,
-                writeConcern: 2,
-                softWriteConcern: 3,
-                replicationFactor: 3
-              },
-              properties: {
-                implementation: {
-                  type: "black-hole"
-                }
+        function (target) {
+          return {
+            id: stateId,
+            participants: participants,
+            config: {
+              waitForSync: true,
+              writeConcern: 2,
+              softWriteConcern: 3,
+              replicationFactor: 3
+            },
+            properties: {
+              implementation: {
+                type: "black-hole"
               }
-            };
-          });
+            }
+          };
+        });
 
       lh.waitFor(spreds.replicatedStateIsReady(database, stateId, servers));
     },
@@ -167,10 +170,10 @@ const replicatedStateSuite = function () {
       const newParticipant = _.sample(remainingServers);
 
       updateReplicatedStateTarget(database, stateId,
-          function (target) {
-            target.participants[newParticipant] = {};
-            return target;
-          });
+        function (target) {
+          target.participants[newParticipant] = {};
+          return target;
+        });
       const newServers = [...servers, newParticipant];
 
       lh.waitFor(spreds.replicatedStateIsReady(database, stateId, newServers));
@@ -178,6 +181,90 @@ const replicatedStateSuite = function () {
       lh.waitFor(lh.replicatedLogParticipantsFlag(database, stateId, {
         [newParticipant]: {allowedInQuorum: true, allowedAsLeader: true, forced: false},
       }));
+    },
+
+    testUpdateVersionTest: function () {
+      const {stateId} = createReplicatedState();
+
+      const version = 4;
+      updateReplicatedStateTarget(database, stateId,
+        function (target) {
+          target.version = version;
+          return target;
+        });
+
+      lh.waitFor(spreds.replicatedStateVersionConverged(database, stateId, version));
+
+      const newVersion = 6;
+      updateReplicatedStateTarget(database, stateId,
+        function (target) {
+          target.version = newVersion;
+          return target;
+        });
+
+      lh.waitFor(spreds.replicatedStateVersionConverged(database, stateId, newVersion));
+    },
+
+    testSetLeader: function () {
+      const {stateId, followers} = createReplicatedState();
+      const newLeader = _.sample(followers);
+      updateReplicatedStateTarget(database, stateId,
+        (target) => {
+          target.leader = newLeader;
+          return target;
+        });
+      lh.waitFor(() => {
+        const currentLeader = lh.getReplicatedLogLeaderTarget(database, stateId);
+        if (currentLeader === newLeader) {
+          return true;
+        } else {
+          return new Error(`Expected log leader to switch to ${newLeader}, but is still ${currentLeader}`);
+        }
+      });
+      lh.waitFor(() => {
+        const {leader: currentLeader} = lh.getReplicatedLogLeaderPlan(database, stateId);
+        if (currentLeader === newLeader) {
+          return true;
+        } else {
+          return new Error(`Expected log leader to switch to ${newLeader}, but is still ${currentLeader}`);
+        }
+      });
+    },
+
+    testUnsetLeader: function () {
+      const {stateId} = createReplicatedState();
+      updateReplicatedStateTarget(database, stateId,
+        (target) => {
+          delete target.leader;
+          return target;
+        });
+      lh.waitFor(() => {
+        const currentLeader = lh.getReplicatedLogLeaderTarget(database, stateId);
+        if (currentLeader === undefined) {
+          return true;
+        } else {
+          return new Error(`Expected log leader to be unset, but is still ${currentLeader}`);
+        }
+      });
+    },
+
+    testRemoveLeader: function () {
+      const servers = _.sampleSize(lh.dbservers, 4);
+      const {stateId, leader} = createReplicatedStateWithServers(servers);
+
+      const serverToBeRemoved = leader;
+      updateReplicatedStateTarget(database, stateId,
+        function (target) {
+          delete target.participants[serverToBeRemoved];
+          target.version = 2;
+          return target;
+        });
+      lh.waitFor(spreds.replicatedStateVersionConverged(database, stateId, 2));
+      const newServers = _.without(servers, serverToBeRemoved);
+      lh.waitFor(lh.replicatedLogParticipantsFlag(database, stateId, {
+        [serverToBeRemoved]: null,
+      }));
+      lh.waitFor(spreds.replicatedStateIsReady(database, stateId, newServers));
     },
   };
 };

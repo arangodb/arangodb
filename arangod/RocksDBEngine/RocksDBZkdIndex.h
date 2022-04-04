@@ -31,7 +31,7 @@ namespace arangodb {
 class RocksDBZkdIndexBase : public RocksDBIndex {
  public:
   RocksDBZkdIndexBase(IndexId iid, LogicalCollection& coll,
-                      arangodb::velocypack::Slice const& info);
+                      arangodb::velocypack::Slice info);
   void toVelocyPack(
       velocypack::Builder& builder,
       std::underlying_type<Index::Serialize>::type type) const override;

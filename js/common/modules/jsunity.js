@@ -30,6 +30,7 @@ var internal = require('internal');
 var print = internal.print;
 var fs = require('fs');
 var console = require('console');
+var minimatch = require('minimatch');
 
 var TOTAL = 0;
 var PASSED = 0;
@@ -50,6 +51,7 @@ var ENDTEST = 0.0;
 var STARTSUITE = 0.0;
 var ENDTEARDOWN = 0.0;
 var testFilter = "undefined";
+var suiteName = "undefined";
 var currentSuiteName = "undefined";
 var testCount = 0;
 var startMessage = "";
@@ -193,15 +195,22 @@ jsUnity.results.endTeardownAll = function(index) {
   TOTALTEARDOWNS += RESULTS.teardownAllDuration;
 };
 
-function MatchesTestFilter(key) {
+function matchesTestFilter(suiteName, key) {
   if (testFilter === "undefined" || testFilter === undefined || testFilter === null) {
     return true;
   }
   if (typeof testFilter === 'string') {
-    return key === testFilter;
+    var suiteMatched = true;
+    if (testFilter.includes('::')) {
+      var [suiteFilter, testCaseFilter] = testFilter.split('::');
+      suiteMatched = minimatch(suiteName, suiteFilter);
+      testFilter = testCaseFilter;
+    }
+
+    return suiteMatched && minimatch(key, testFilter);
   }
   if (Array.isArray(testFilter)) {
-    return testFilter.includes(key);
+    return testFilter.some(key => matchesTestFilter(suiteName, key));
   }
   return false;
 }
@@ -244,7 +253,7 @@ function Run (testsuite) {
 
   for (var key in definition) {
     if (key.indexOf('test') === 0) {
-      if (!MatchesTestFilter(key)) {
+      if (!matchesTestFilter(suite.suiteName, key)) {
         // print(`test "${key}" doesn't match "${testFilter}", skipping`);
         nonMatchedTests.push(key);
         continue;
@@ -258,21 +267,16 @@ function Run (testsuite) {
     }
   }
   if (tests.length === 0) {
-    let err  = `There is no test in testsuite "${suite.suiteName}" or your filter "${testFilter}" didn't match on anything. We have: [${nonMatchedTests}]`;
-    print(`${internal.COLORS.COLOR_RED}${err}${internal.COLORS.COLOR_RESET}`);
     let res = {
       suiteName: suite.suiteName,
-      message: err,
       duration: 0,
       setUpDuration: 0,
       tearDownDuration: 0,
       passed: 0,
-      status: false,
-      failed: 1,
-      total: 1
+      status: true,
+      failed: 0,
+      total: 0
     };
-    TOTAL += 1;
-    FAILED += 2;
     COMPLETE[suite.suiteName] = res;
     return res;
   }

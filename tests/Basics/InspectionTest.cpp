@@ -35,9 +35,12 @@
 #include <velocypack/ValueType.h>
 #include <velocypack/velocypack-memory.h>
 
+#include "Inspection/Access.h"
 #include "Inspection/VPackLoadInspector.h"
 #include "Inspection/VPackSaveInspector.h"
 #include "Inspection/VPack.h"
+
+#include "Logger/LogMacros.h"
 
 namespace {
 
@@ -46,6 +49,7 @@ struct Dummy {
   double d;
   bool b;
   std::string s;
+  bool operator==(Dummy const&) const = default;
 };
 
 template<class Inspector>
@@ -84,7 +88,7 @@ auto inspect(Inspector& f, TypedInt& x) {
     }
     return res;
   } else {
-    return f.apply(x.value);
+    return f.apply(x.getValue());
   }
 }
 
@@ -166,12 +170,14 @@ auto inspect(Inspector& f, Pointer& x) {
 struct Fallback {
   int i;
   std::string s;
+  Dummy d = {.i = 1, .d = 4.2, .b = true, .s = "2"};
 };
 
 template<class Inspector>
 auto inspect(Inspector& f, Fallback& x) {
   return f.object(x).fields(f.field("i", x.i).fallback(42),
-                            f.field("s", x.s).fallback("foobar"));
+                            f.field("s", x.s).fallback("foobar"),
+                            f.field("d", x.d).fallback(f.keep()));
 }
 
 struct Invariant {
@@ -195,7 +201,7 @@ struct InvariantWithResult {
 template<class Inspector>
 auto inspect(Inspector& f, InvariantWithResult& x) {
   return f.object(x).fields(
-      f.field("i", x.i).invariant([](int v) -> arangodb::inspection::Result {
+      f.field("i", x.i).invariant([](int v) -> arangodb::inspection::Status {
         if (v == 0) {
           return {"Must not be zero"};
         }
@@ -244,12 +250,12 @@ struct MyTransformer {
   using MemoryType = int;
   using SerializedType = std::string;
 
-  arangodb::inspection::Result toSerialized(MemoryType v,
+  arangodb::inspection::Status toSerialized(MemoryType v,
                                             SerializedType& result) const {
     result = std::to_string(v);
     return {};
   }
-  arangodb::inspection::Result fromSerialized(SerializedType const& v,
+  arangodb::inspection::Status fromSerialized(SerializedType const& v,
                                               MemoryType& result) const {
     result = std::stoi(v);
     return {};
@@ -295,19 +301,73 @@ struct Specialization {
   int i;
   std::string s;
 };
+
+enum class AnEnumClass { Option1, Option2, Option3 };
+
+auto to_string(AnEnumClass e) -> std::string_view {
+  switch (e) {
+    case AnEnumClass::Option1:
+      return "Option1";
+    case AnEnumClass::Option2:
+      return "Option2";
+    case AnEnumClass::Option3:
+      return "Option3";
+  }
+  return "invalid.";
+}
+
+template<typename Enum>
+struct EnumStorage {
+  using MemoryType = Enum;
+
+  std::underlying_type_t<Enum> code;
+  std::string message;
+
+  explicit EnumStorage(Enum e)
+      : code(static_cast<std::underlying_type_t<Enum>>(e)),
+        message(to_string(e)){};
+  explicit EnumStorage() {}
+
+  operator Enum() const { return Enum(code); }
+};
+
+template<class Inspector, class Enum>
+auto inspect(Inspector& f, EnumStorage<Enum>& e) {
+  if constexpr (Inspector::isLoading) {
+    return f.object(e).fields(f.field("code", e.code),
+                              f.ignoreField("message"));
+  } else {
+    return f.object(e).fields(f.field("code", e.code),
+                              f.field("message", e.message));
+  }
+}
 }  // namespace
 
 namespace arangodb::inspection {
 template<>
 struct Access<Specialization> : AccessBase<Specialization> {
   template<class Inspector>
-  [[nodiscard]] static Result apply(Inspector& f, Specialization& x) {
+  [[nodiscard]] static Status apply(Inspector& f, Specialization& x) {
     return f.object(x).fields(f.field("i", x.i), f.field("s", x.s));
   }
 };
+template<>
+struct Access<AnEnumClass>
+    : StorageTransformerAccess<AnEnumClass, EnumStorage<AnEnumClass>> {};
+
 }  // namespace arangodb::inspection
 
 namespace {
+
+struct ExplicitIgnore {
+  std::string s;
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, ExplicitIgnore& x) {
+  return f.object(x).fields(f.field("s", x.s), f.ignoreField("ignore"));
+}
+
 using namespace arangodb;
 using VPackLoadInspector = inspection::VPackLoadInspector;
 using VPackSaveInspector = inspection::VPackSaveInspector;
@@ -496,7 +556,10 @@ TEST_F(VPackSaveInspectorTest, store_optional) {
 
   velocypack::Slice slice = builder.slice();
   ASSERT_TRUE(slice.isObject());
-  EXPECT_EQ(3, slice.length());
+  EXPECT_EQ(5, slice.length());
+  // a and b have fallbacks, so we need to serialize them explicitly as null
+  EXPECT_TRUE(slice["a"].isNull());
+  EXPECT_TRUE(slice["b"].isNull());
   EXPECT_EQ("blubb", slice["y"].copyString());
 
   auto vec = slice["vec"];
@@ -534,7 +597,7 @@ TEST_F(VPackSaveInspectorTest, store_optional_pointer) {
 
   velocypack::Slice slice = builder.slice();
   ASSERT_TRUE(slice.isObject());
-  EXPECT_EQ(3, slice.length());
+  EXPECT_EQ(5, slice.length());
   EXPECT_EQ(42, slice["b"].getInt());
   EXPECT_EQ(43, slice["d"]["i"].getInt());
   auto vec = slice["vec"];
@@ -543,6 +606,9 @@ TEST_F(VPackSaveInspectorTest, store_optional_pointer) {
   EXPECT_EQ(1, vec[0].getInt());
   EXPECT_TRUE(vec[1].isNull());
   EXPECT_EQ(2, vec[2].getInt());
+  // x and y have fallbacks, so we need to serialize them explicitly as null
+  EXPECT_TRUE(slice["x"].isNull());
+  EXPECT_TRUE(slice["y"].isNull());
 }
 
 TEST_F(VPackSaveInspectorTest, store_object_with_fallbacks) {
@@ -608,6 +674,16 @@ TEST_F(VPackSaveInspectorTest, store_type_with_custom_specialization) {
   ASSERT_TRUE(slice.isObject());
   EXPECT_EQ(s.i, slice["i"].getInt());
   EXPECT_EQ(s.s, slice["s"].copyString());
+}
+
+TEST_F(VPackSaveInspectorTest, store_type_with_explicitly_ignored_fields) {
+  ExplicitIgnore e{.s = "foobar"};
+  auto result = inspector.apply(e);
+  ASSERT_TRUE(result.ok());
+
+  velocypack::Slice slice = builder.slice();
+  ASSERT_TRUE(slice.isObject());
+  EXPECT_EQ(1, slice.length());
 }
 
 struct VPackLoadInspectorTest : public ::testing::Test {
@@ -917,7 +993,7 @@ TEST_F(VPackLoadInspectorTest, error_expecting_int) {
   builder.add(VPackValue("foo"));
   VPackLoadInspector inspector{builder};
 
-  int i;
+  int i{};
   auto result = inspector.apply(i);
   ASSERT_FALSE(result.ok());
   EXPECT_EQ("Expecting type Int", result.error());
@@ -927,7 +1003,7 @@ TEST_F(VPackLoadInspectorTest, error_expecting_int16) {
   builder.add(VPackValue(123456789));
   VPackLoadInspector inspector{builder};
 
-  std::int16_t i;
+  std::int16_t i{};
   auto result = inspector.apply(i);
   ASSERT_FALSE(result.ok());
   EXPECT_EQ("Number out of range", result.error());
@@ -937,7 +1013,7 @@ TEST_F(VPackLoadInspectorTest, error_expecting_double) {
   builder.add(VPackValue("foo"));
   VPackLoadInspector inspector{builder};
 
-  double d;
+  double d{};
   auto result = inspector.apply(d);
   ASSERT_FALSE(result.ok());
   EXPECT_EQ("Expecting numeric type", result.error());
@@ -947,7 +1023,7 @@ TEST_F(VPackLoadInspectorTest, error_expecting_bool) {
   builder.add(VPackValue(42));
   VPackLoadInspector inspector{builder};
 
-  bool b;
+  bool b{};
   auto result = inspector.apply(b);
   ASSERT_FALSE(result.ok());
   EXPECT_EQ("Expecting type Bool", result.error());
@@ -1244,10 +1320,12 @@ TEST_F(VPackLoadInspectorTest, load_object_with_fallbacks) {
   VPackLoadInspector inspector{builder};
 
   Fallback f;
+  Dummy expected = f.d;
   auto result = inspector.apply(f);
   ASSERT_TRUE(result.ok());
   EXPECT_EQ(42, f.i);
   EXPECT_EQ("foobar", f.s);
+  EXPECT_EQ(expected, f.d);
 }
 
 TEST_F(VPackLoadInspectorTest, load_object_with_fallback_reference) {
@@ -1417,6 +1495,18 @@ TEST_F(VPackLoadInspectorTest, load_type_with_custom_specialization) {
   EXPECT_EQ("foobar", s.s);
 }
 
+TEST_F(VPackLoadInspectorTest, load_type_with_explicitly_ignored_fields) {
+  builder.openObject();
+  builder.add("s", VPackValue("foobar"));
+  builder.add("ignore", VPackValue("something"));
+  builder.close();
+  VPackLoadInspector inspector{builder};
+
+  ExplicitIgnore e;
+  auto result = inspector.apply(e);
+  ASSERT_TRUE(result.ok());
+}
+
 struct VPackInspectionTest : public ::testing::Test {};
 
 TEST_F(VPackInspectionTest, serialize) {
@@ -1465,6 +1555,37 @@ TEST_F(VPackInspectionTest, deserialize_throws) {
         }
       },
       arangodb::basics::Exception);
+}
+
+TEST_F(VPackInspectionTest, GenericEnumClass) {
+  {
+    velocypack::Builder builder;
+
+    AnEnumClass const d = AnEnumClass::Option1;
+    arangodb::velocypack::serialize(builder, d);
+
+    velocypack::Slice slice = builder.slice();
+    ASSERT_TRUE(slice.isObject());
+    EXPECT_EQ(static_cast<std::underlying_type_t<AnEnumClass>>(d),
+              slice["code"].getInt());
+    EXPECT_EQ(to_string(d), slice["message"].copyString());
+  }
+
+  {
+    auto const expected = AnEnumClass::Option3;
+    velocypack::Builder builder;
+
+    builder.openObject();
+    builder.add(
+        "code",
+        VPackValue(static_cast<std::underlying_type_t<AnEnumClass>>(expected)));
+    builder.add("message", VPackValue(to_string(expected)));
+    builder.close();
+
+    auto d = arangodb::velocypack::deserialize<AnEnumClass>(builder.slice());
+
+    EXPECT_EQ(d, expected);
+  }
 }
 
 }  // namespace
