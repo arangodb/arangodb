@@ -210,9 +210,9 @@ TEST_F(ReplicatedStateMaintenanceTest, do_nothing_if_stable) {
   };
   auto const localStates = ReplicatedStateStatusMap{
       {logId,
-       {replicated_state::UnconfiguredStatus{
+       {{replicated_state::UnconfiguredStatus{
            .generation = replicated_state::StateGeneration{1},
-           .snapshot = {}}}},
+           .snapshot = {}}}}},
   };
   auto const planLogs = ReplicatedLogSpecMap{
       {logId,
@@ -263,9 +263,9 @@ TEST_F(ReplicatedStateMaintenanceTest, check_resync_if_generation_changes) {
   };
   auto const localStates = ReplicatedStateStatusMap{
       {logId,
-       {replicated_state::UnconfiguredStatus{
+       {{replicated_state::UnconfiguredStatus{
            .generation = replicated_state::StateGeneration{0},
-           .snapshot = {}}}},
+           .snapshot = {}}}}},
   };
   auto const planLogs = ReplicatedLogSpecMap{
       {logId,
