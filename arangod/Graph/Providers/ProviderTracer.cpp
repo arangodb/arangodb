@@ -192,7 +192,6 @@ bool ProviderTracer<ProviderImpl>::isCached(Step* s) {
   return _impl.isCached(s);
 }
 
-
 using SingleServerProviderStep = ::arangodb::graph::SingleServerProviderStep;
 
 template class ::arangodb::graph::ProviderTracer<

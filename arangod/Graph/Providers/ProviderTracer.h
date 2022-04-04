@@ -90,6 +90,7 @@ class ProviderTracer {
   void unPrepareContext();
 
   bool isCached(Step* s);
+
  private:
   ProviderImpl _impl;
 

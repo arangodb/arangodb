@@ -119,9 +119,7 @@ class WeightedQueue {
     return first;
   }
 
-  std::string getName() const {
-    return "Weighted queue";
-  }
+  std::string getName() const { return "Weighted queue"; }
 
   std::vector<Step*> getStepsWithoutFetchedVertex() {
     std::vector<Step*> steps;

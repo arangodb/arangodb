@@ -109,6 +109,7 @@ class SingleServerProvider {
   void unPrepareContext();
 
   bool isCached(Step* s);
+
  private:
   void activateCache(bool enableDocumentCache);
 
