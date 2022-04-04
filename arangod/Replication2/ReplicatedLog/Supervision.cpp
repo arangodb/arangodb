@@ -377,8 +377,8 @@ auto pickRandomParticipantToBeLeader(ParticipantsFlagsMap const& participants,
     }
   }
 
-  if (acceptableParticipants.size() > 0) {
-    auto maxIdx = static_cast<uint16_t>(acceptableParticipants.size());
+  if (!acceptableParticipants.empty()) {
+    auto maxIdx = static_cast<uint16_t>(acceptableParticipants.size() - 1);
     auto p = acceptableParticipants.begin();
 
     std::advance(p, RandomGenerator::interval(maxIdx));

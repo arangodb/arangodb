@@ -47,6 +47,10 @@ const getLeaderStatus = function(id) {
     console.info(`leader not available for replicated log ${id}`);
     return null;
   }
+  if (!leaderResponse.leadershipEstablished) {
+    console.info(`leadership not yet established`);
+    return null;
+  }
   return status.participants[leaderId].response;
 };
 
@@ -126,7 +130,6 @@ function ReplicatedLogsSuite () {
 function ReplicatedLogsWriteSuite () {
   'use strict';
 
-  const logId = 12;
   const config = {
     replicationFactor: 3,
     writeConcern: 2,
@@ -134,26 +137,35 @@ function ReplicatedLogsWriteSuite () {
     waitForSync: true
   };
 
+  const getNextLogId = (function () {
+    let id = 13;
+    return function () {
+      return id++;
+    };
+  })();
+
+  let logId = 0;
+
   return {
     setUpAll, tearDownAll,
-    setUp : function () {
+    setUp: function () {
+      logId = getNextLogId();
       const logSpec = {id: logId, config: config};
       const log = db._createReplicatedLog(logSpec);
-      
       waitForLeader(logId);
     },
-    tearDown : function () {
+    tearDown: function () {
       db._replicatedLog(logId).drop();
     },
 
-    testStatus : function () {
+    testStatus: function () {
       let log = db._replicatedLog(logId);
       let leaderStatus = getLeaderStatus(logId);
       assertEqual(leaderStatus.local.commitIndex, 1);
       let globalStatus = log.globalStatus();
       assertEqual(globalStatus.specification.source, "RemoteAgency");
       let status = log.status();
-      
+
       // Make sure that coordinator/status and coordinator/global-status return the same thing.
       // We should avoid comparing timestamps, so comparing only the keys of these objects will suffice.
       assertEqual(Object.keys(status).sort(), Object.keys(globalStatus).sort());
