@@ -91,12 +91,8 @@ class IOHeartbeatThread final : public ServerThread<ArangodServer> {
   }
 
   metrics::Histogram<metrics::LogScale<double>>& _exeTimeHistogram;
-  metrics::Counter& _writeFailures;
-  metrics::Counter& _readFailures;
-  metrics::Counter& _removeFailures;
-  metrics::Counter& _writeDelays;
-  metrics::Counter& _readDelays;
-  metrics::Counter& _removeDelays;
+  metrics::Counter& _failures;
+  metrics::Counter& _delays;
 };
 
 class DatabaseFeature : public ArangodFeature {

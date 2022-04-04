@@ -302,18 +302,10 @@ struct HeartbeatTimescale {
 
 DECLARE_HISTOGRAM(arangodb_ioheartbeat_duration, HeartbeatTimescale,
                   "Time to execute the io heartbeat once [ms]");
-DECLARE_COUNTER(arangodb_ioheartbeat_failures_write_total,
-                "Total number of failures in IO heartbeat when writing");
-DECLARE_COUNTER(arangodb_ioheartbeat_failures_read_total,
-                "Total number of failures in IO heartbeat when reading");
-DECLARE_COUNTER(arangodb_ioheartbeat_failures_remove_total,
-                "Total number of failures in IO heartbeat when removing");
-DECLARE_COUNTER(arangodb_ioheartbeat_delays_write_total,
-                "Total number of delays in IO heartbeat when writing");
-DECLARE_COUNTER(arangodb_ioheartbeat_delays_read_total,
-                "Total number of delays in IO heartbeat when reading");
-DECLARE_COUNTER(arangodb_ioheartbeat_delays_remove_total,
-                "Total number of delays in IO heartbeat when removing");
+DECLARE_COUNTER(arangodb_ioheartbeat_failures_total,
+                "Total number of failures in IO heartbeat");
+DECLARE_COUNTER(arangodb_ioheartbeat_delays_total,
+                "Total number of delays in IO heartbeat");
 
 /// IO check thread main loop
 /// The purpose of this thread is to try to perform a simple IO write
@@ -323,17 +315,8 @@ IOHeartbeatThread::IOHeartbeatThread(Server& server,
                                      metrics::MetricsFeature& metricsFeature)
     : ServerThread<ArangodServer>(server, "IOHeartbeat"),
       _exeTimeHistogram(metricsFeature.add(arangodb_ioheartbeat_duration{})),
-      _writeFailures(
-          metricsFeature.add(arangodb_ioheartbeat_failures_write_total{})),
-      _readFailures(
-          metricsFeature.add(arangodb_ioheartbeat_failures_read_total{})),
-      _removeFailures(
-          metricsFeature.add(arangodb_ioheartbeat_failures_remove_total{})),
-      _writeDelays(
-          metricsFeature.add(arangodb_ioheartbeat_delays_write_total{})),
-      _readDelays(metricsFeature.add(arangodb_ioheartbeat_delays_read_total{})),
-      _removeDelays(
-          metricsFeature.add(arangodb_ioheartbeat_delays_remove_total{})) {}
+      _failures(metricsFeature.add(arangodb_ioheartbeat_failures_total{})),
+      _delays(metricsFeature.add(arangodb_ioheartbeat_delays_total{})) {}
 
 IOHeartbeatThread::~IOHeartbeatThread() { shutdown(); }
 
@@ -367,7 +350,7 @@ void IOHeartbeatThread::run() {
         try {
           FileUtils::spit(testFilePath, testFileContent, true);
         } catch (std::exception const& exc) {
-          ++_writeFailures;
+          ++_failures;
           LOG_TOPIC("66663", INFO, Logger::ENGINES)
               << "IOHeartbeat: exception when writing test file: "
               << exc.what();
@@ -378,7 +361,7 @@ void IOHeartbeatThread::run() {
         bool delayed = dur > std::chrono::seconds(1);
         if (trouble || delayed) {
           if (delayed) {
-            ++_writeDelays;
+            ++_delays;
           }
           LOG_TOPIC("66662", INFO, Logger::ENGINES)
               << "IOHeartbeat: trying to write test file took "
@@ -393,6 +376,7 @@ void IOHeartbeatThread::run() {
           try {
             std::string content = FileUtils::slurp(testFilePath);
           } catch (std::exception const& exc) {
+            ++_failures;
             LOG_TOPIC("66661", INFO, Logger::ENGINES)
                 << "IOHeartbeat: exception when reading test file: "
                 << exc.what();
@@ -403,7 +387,7 @@ void IOHeartbeatThread::run() {
           bool delayed = dur > std::chrono::seconds(1);
           if (trouble || delayed) {
             if (delayed) {
-              ++_readDelays;
+              ++_delays;
             }
             LOG_TOPIC("66669", INFO, Logger::ENGINES)
                 << "IOHeartbeat: trying to read test file took "
@@ -417,6 +401,7 @@ void IOHeartbeatThread::run() {
         auto start = std::chrono::steady_clock::now();
         ErrorCode err = FileUtils::remove(testFilePath);
         if (err != TRI_ERROR_NO_ERROR) {
+          ++_failures;
           LOG_TOPIC("66670", INFO, Logger::ENGINES)
               << "IOHeartbeat: error when removing test file: " << err;
           trouble = true;
@@ -426,7 +411,7 @@ void IOHeartbeatThread::run() {
         delayed = dur > std::chrono::seconds(1);
         if (trouble || delayed) {
           if (delayed) {
-            ++_removeDelays;
+            ++_delays;
           }
           LOG_TOPIC("66671", INFO, Logger::ENGINES)
               << "IOHeartbeat: trying to remove test file took "

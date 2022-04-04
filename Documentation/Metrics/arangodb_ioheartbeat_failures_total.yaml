@@ -1,7 +1,7 @@
-name: arangodb_ioheartbeat_failures_remove_total
+name: arangodb_ioheartbeat_failures_total
 introducedIn: "3.8.7"
 help: |
-  Number of failures in the io heartbeat remove test.
+  Number of failures in the io heartbeat test.
 unit: number
 type: counter
 category: Health
@@ -12,8 +12,9 @@ exposedBy:
   - single
 description: |
   This counter is increased whenever the io heartbeat encounters a problem
-  when removing a small file in the database directory. This test is done
-  periodically to ensure that the underlying volume is writable. The test can
+  when writing a small file to the database directory, reading it and then
+  removing it again. This test is done
+  periodically to ensure that the underlying volume is usable. The test can
   be switched off explicitly with the flag `--database.io-heartbeat=false`,
   but the default is `true`. Furthermore, every such failure leads to a
   line in the log at INFO level for the `ENGINES` topic.
