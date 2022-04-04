@@ -13,7 +13,7 @@ exposedBy:
 description: |
   This counter is increased whenever the io heartbeat encounters a delay
   of at least 1s when reading a small file in the database directory.
-  This test is regularly to ensure that the underlying volume is
+  This test is periodically to ensure that the underlying volume is
   readable and performs reasonably well. The test can be switched off
   explicitly with the flag `--database.io-heartbeat=false`, but the
   default is `true`. Furthermore, every such failure leads to a line in
