@@ -277,6 +277,7 @@ def main():
         generate_output(args, get_output_file(args), tests)
     except Exception as e:
         print(e, file=sys.stderr)
+        quit(1)
 
 
 if __name__ == "__main__":
