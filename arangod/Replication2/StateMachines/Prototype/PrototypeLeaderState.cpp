@@ -21,8 +21,9 @@
 /// @author Alexandru Petenchea
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "PrototypeStateMachine.h"
+#include "PrototypeFollowerState.h"
 #include "PrototypeLeaderState.h"
+#include "PrototypeStateMachine.h"
 
 #include "Logger/LogContextKeys.h"
 

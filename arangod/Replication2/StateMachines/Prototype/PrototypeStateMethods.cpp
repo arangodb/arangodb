@@ -39,6 +39,7 @@
 #include "VocBase/vocbase.h"
 #include "Random/RandomGenerator.h"
 
+#include "PrototypeFollowerState.h"
 #include "PrototypeLeaderState.h"
 #include "PrototypeStateMethods.h"
 #include "Replication2/ReplicatedState/AgencySpecification.h"

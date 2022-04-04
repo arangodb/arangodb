@@ -22,8 +22,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "PrototypeCore.h"
-#include "PrototypeStateMachineFeature.h"
+#include "PrototypeFollowerState.h"
+#include "PrototypeLeaderState.h"
 #include "PrototypeStateMachine.h"
+#include "PrototypeStateMachineFeature.h"
 
 #include "Replication2/ReplicatedState/ReplicatedStateFeature.h"
 

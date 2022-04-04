@@ -23,6 +23,8 @@
 
 #include "PrototypeCore.h"
 #include "PrototypeStateMachine.h"
+#include "PrototypeLeaderState.h"
+#include "PrototypeFollowerState.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
