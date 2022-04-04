@@ -50,9 +50,7 @@
 #include <velocypack/Slice.h>
 #include <velocypack/Value.h>
 
-#include "Inspection/VPack.h"
-#include "Inspection/VPackLoadInspector.h"
-#include "Inspection/VPackSaveInspector.h"
+#include "Inspection/Status.h"
 
 #include <Basics/Identifier.h>
 #include <Containers/FlatHashMap.h>

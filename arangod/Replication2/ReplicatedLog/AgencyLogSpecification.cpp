@@ -26,6 +26,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/application-exit.h"
+#include "Inspection/VPack.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 
