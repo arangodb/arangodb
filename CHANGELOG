@@ -1,6 +1,9 @@
 v3.9.1 (XXXX-XX-XX)
 -------------------
 
+* Fix lock order in Agent::advanceCommitIndex for State's _logLock and
+  Agent's _waitForCV.
+
 * Fixed an assertion failure which could occur when there was an error in the
   HTTP header, so that the message body was not actually read.
 
