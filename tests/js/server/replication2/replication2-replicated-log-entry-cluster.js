@@ -26,9 +26,9 @@
 const jsunity = require('jsunity');
 const arangodb = require("@arangodb");
 const _ = require('lodash');
-const {sleep} = require('internal');
-const {db, errors: ERRORS} = arangodb;
+const {db} = arangodb;
 const lh = require("@arangodb/testutils/replicated-logs-helper");
+const lpreds = require("@arangodb/testutils/replicated-logs-predicates");
 const helper = require("@arangodb/testutils/replicated-logs-helper");
 
 const {waitForReplicatedLogAvailable} = helper;
@@ -95,7 +95,7 @@ const replicatedLogEntrySuite = function () {
       lh.replicatedLogUpdateTargetParticipants(database, logId, {
         [follower]: {forced: true},
       });
-      lh.waitFor(lh.replicatedLogParticipantsFlag(database, logId, {
+      lh.waitFor(lpreds.replicatedLogParticipantsFlag(database, logId, {
         [follower]: {
           allowedInQuorum: true,
           allowedAsLeader: true,

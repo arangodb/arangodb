@@ -36,7 +36,7 @@ const {
   readReplicatedLogAgency,
   replicatedLogSetTarget,
   replicatedLogDeleteTarget,
-  dbservers, allServersHealthy,
+  dbservers,
   registerAgencyTestBegin, registerAgencyTestEnd,
   replicatedLogUpdateTargetParticipants,
   waitForReplicatedLogAvailable,
@@ -179,7 +179,7 @@ const replicatedLogSuite = function () {
     setUp: registerAgencyTestBegin,
     tearDown: function (test) {
       resumeAll();
-      waitFor(allServersHealthy());
+      waitFor(lpreds.allServersHealthy());
       registerAgencyTestEnd(test);
     },
 
