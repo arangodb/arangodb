@@ -35,7 +35,7 @@ const {waitFor} = require("@arangodb/testutils/replicated-logs-helper");
 const database = "replication2_replicated_state_http_api_db";
 
 const sortedArrayEqualOrError = (left, right) => {
-  if (_.eq(left, right)) {
+  if (_.isEqual(left, right)) {
     return true;
   } else {
     return Error(`Expected the following to be equal: ${JSON.stringify(left)} and ${JSON.stringify(right)}`);
@@ -142,20 +142,21 @@ const replicatedStateSuite = function () {
         const stateAgencyContent = sh.readReplicatedStateAgency(database, stateId);
         assertEqual(newParticipants, Object.keys(stateAgencyContent.target.participants).sort());
       }
-      // The following does not yet work.
 
-      // waitFor(() => {
-      //   const stateAgencyContent = sh.readReplicatedStateAgency(database, stateId);
-      //   return sortedArrayEqualOrError(newParticipants, Object.keys(stateAgencyContent.plan.participants).sort());
-      // });
+      waitFor(() => {
+        const stateAgencyContent = sh.readReplicatedStateAgency(database, stateId);
+        return sortedArrayEqualOrError(newParticipants, Object.keys(stateAgencyContent.plan.participants).sort());
+      });
+      // Current won't be cleaned up yet.
       // waitFor(() => {
       //   const stateAgencyContent = sh.readReplicatedStateAgency(database, stateId);
       //   return sortedArrayEqualOrError(newParticipants, Object.keys(stateAgencyContent.current.participants).sort());
       // });
-      //
-      // const stateAgencyContent = sh.readReplicatedStateAgency(database, stateId);
-      // assertEqual(newParticipants, Object.keys(stateAgencyContent.target.participants).sort());
-      // assertEqual(newParticipants, Object.keys(stateAgencyContent.plan.participants).sort());
+
+      const stateAgencyContent = sh.readReplicatedStateAgency(database, stateId);
+      assertEqual(newParticipants, Object.keys(stateAgencyContent.target.participants).sort());
+      assertEqual(newParticipants, Object.keys(stateAgencyContent.plan.participants).sort());
+      // Current won't be cleaned up yet.
       // assertEqual(newParticipants, Object.keys(stateAgencyContent.current.participants).sort());
     },
 
@@ -176,20 +177,21 @@ const replicatedStateSuite = function () {
         const stateAgencyContent = sh.readReplicatedStateAgency(database, stateId);
         assertEqual(newParticipants, Object.keys(stateAgencyContent.target.participants).sort());
       }
-      // The following does not yet work.
 
-      // waitFor(() => {
-      //   const stateAgencyContent = sh.readReplicatedStateAgency(database, stateId);
-      //   return sortedArrayEqualOrError(newParticipants, Object.keys(stateAgencyContent.plan.participants).sort());
-      // });
+      waitFor(() => {
+        const stateAgencyContent = sh.readReplicatedStateAgency(database, stateId);
+        return sortedArrayEqualOrError(newParticipants, Object.keys(stateAgencyContent.plan.participants).sort());
+      });
+      // Current won't be cleaned up yet.
       // waitFor(() => {
       //   const stateAgencyContent = sh.readReplicatedStateAgency(database, stateId);
       //   return sortedArrayEqualOrError(newParticipants, Object.keys(stateAgencyContent.current.participants).sort());
       // });
-      //
-      // const stateAgencyContent = sh.readReplicatedStateAgency(database, stateId);
-      // assertEqual(newParticipants, Object.keys(stateAgencyContent.target.participants).sort());
-      // assertEqual(newParticipants, Object.keys(stateAgencyContent.plan.participants).sort());
+
+      const stateAgencyContent = sh.readReplicatedStateAgency(database, stateId);
+      assertEqual(newParticipants, Object.keys(stateAgencyContent.target.participants).sort());
+      assertEqual(newParticipants, Object.keys(stateAgencyContent.plan.participants).sort());
+      // Current won't be cleaned up yet.
       // assertEqual(newParticipants, Object.keys(stateAgencyContent.current.participants).sort());
     },
 
