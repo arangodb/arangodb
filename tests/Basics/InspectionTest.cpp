@@ -29,6 +29,7 @@
 #include <optional>
 #include <ostream>
 #include <string>
+#include <variant>
 #include <vector>
 
 #include <velocypack/Value.h>
@@ -321,6 +322,63 @@ auto inspect(Inspector& f, ExplicitIgnore& x) {
   return f.object(x).fields(f.field("s", x.s), f.ignoreField("ignore"));
 }
 
+struct Unsafe {
+  std::string_view view;
+  arangodb::velocypack::Slice slice;
+  arangodb::velocypack::HashedStringRef hashed;
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, Unsafe& x) {
+  return f.object(x).fields(f.field("view", x.view), f.field("slice", x.slice),
+                            f.field("hashed", x.hashed));
+}
+
+struct Struct1 {
+  int v;
+};
+struct Struct2 {
+  int v;
+};
+struct Variant {
+  std::variant<std::string, int, Struct1, Struct2, std::monostate> a;
+  std::variant<std::string, int, Struct1, Struct2, std::monostate> b;
+  std::variant<std::string, int, Struct1, Struct2, std::monostate> c;
+  std::variant<std::string, int, Struct1, Struct2, std::monostate> d;
+  std::variant<std::string, int, Struct1, Struct2, std::monostate> e;
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, Variant& x) {
+  return f.object(x).fields(f.field("a", x.a), f.field("b", x.b),
+                            f.field("c", x.c), f.field("d", x.d),
+                            f.field("e", x.e));
+}
+
+template<class Inspector>
+auto inspect(Inspector& f, Struct1& x) {
+  return f.object(x).fields(f.field("v", x.v));
+}
+
+template<class Inspector>
+auto inspect(Inspector& f, Struct2& x) {
+  return f.object(x).fields(f.field("v", x.v));
+}
+}  // namespace
+
+namespace arangodb::inspection {
+template<>
+struct TypeTag<Struct1> {
+  static constexpr std::string_view name() { return "Struct1"; }
+};
+
+template<>
+struct TypeTag<Struct2> {
+  static constexpr std::string_view name() { return "Struct2"; }
+};
+}  // namespace arangodb::inspection
+
+namespace {
 using namespace arangodb;
 using VPackLoadInspector = inspection::VPackLoadInspector;
 using VPackSaveInspector = inspection::VPackSaveInspector;
@@ -637,6 +695,33 @@ TEST_F(VPackSaveInspectorTest, store_type_with_explicitly_ignored_fields) {
   velocypack::Slice slice = builder.slice();
   ASSERT_TRUE(slice.isObject());
   EXPECT_EQ(1, slice.length());
+}
+
+TEST_F(VPackSaveInspectorTest, store_variant) {
+  Variant d{.a = "foobar",
+            .b = 42,
+            .c = Struct1{1},
+            .d = Struct2{2},
+            .e = std::monostate{}};
+  auto result = inspector.apply(d);
+  ASSERT_TRUE(result.ok());
+
+  velocypack::Slice slice = builder.slice();
+  ASSERT_TRUE(slice.isObject());
+  EXPECT_EQ("string", slice["a"]["tag"].stringView());
+  EXPECT_EQ("foobar", slice["a"]["value"].stringView());
+
+  EXPECT_EQ("int32", slice["b"]["tag"].stringView());
+  EXPECT_EQ(42, slice["b"]["value"].getInt());
+
+  EXPECT_EQ("Struct1", slice["c"]["tag"].stringView());
+  EXPECT_EQ(1, slice["c"]["value"]["v"].getInt());
+
+  EXPECT_EQ("Struct2", slice["d"]["tag"].stringView());
+  EXPECT_EQ(2, slice["d"]["value"]["v"].getInt());
+
+  EXPECT_EQ("monostate", slice["e"]["tag"].stringView());
+  EXPECT_TRUE(slice["e"]["value"].isEmptyObject());
 }
 
 struct VPackLoadInspectorTest : public ::testing::Test {
@@ -1458,6 +1543,145 @@ TEST_F(VPackLoadInspectorTest, load_type_with_explicitly_ignored_fields) {
   ExplicitIgnore e;
   auto result = inspector.apply(e);
   ASSERT_TRUE(result.ok());
+}
+
+TEST_F(VPackLoadInspectorTest, load_variant) {
+  builder.openObject();
+  builder.add(VPackValue("a"));
+  builder.openObject();
+  builder.add("tag", "string");
+  builder.add("value", "foobar");
+  builder.close();
+
+  builder.add(VPackValue("b"));
+  builder.openObject();
+  builder.add("tag", "int32");
+  builder.add("value", 42);
+  builder.close();
+
+  builder.add(VPackValue("c"));
+  builder.openObject();
+  builder.add("tag", "Struct1");
+  builder.add(VPackValue("value"));
+  builder.openObject();
+  builder.add("v", 1);
+  builder.close();
+  builder.close();
+
+  builder.add(VPackValue("d"));
+  builder.openObject();
+  builder.add("tag", "Struct2");
+  builder.add(VPackValue("value"));
+  builder.openObject();
+  builder.add("v", 2);
+  builder.close();
+  builder.close();
+
+  builder.add(VPackValue("e"));
+  builder.openObject();
+  builder.add("tag", "monostate");
+  builder.add(VPackValue("value"));
+  builder.openObject();
+  builder.close();
+  builder.close();
+
+  builder.close();
+  VPackLoadInspector inspector{builder};
+
+  Variant v{.a = std::monostate{},
+            .b = std::monostate{},
+            .c = std::monostate{},
+            .d = std::monostate{},
+            .e = 0};
+  auto result = inspector.apply(v);
+  ASSERT_TRUE(result.ok());
+  EXPECT_EQ("foobar", std::get<std::string>(v.a));
+  EXPECT_EQ(42, std::get<int>(v.b));
+  EXPECT_EQ(1, std::get<Struct1>(v.c).v);
+  EXPECT_EQ(2, std::get<Struct2>(v.d).v);
+  EXPECT_TRUE(std::holds_alternative<std::monostate>(v.e));
+}
+
+TEST_F(VPackLoadInspectorTest, error_unknown_type_tag) {
+  builder.openObject();
+  builder.add(VPackValue("a"));
+  builder.openObject();
+  builder.add("tag", "blubb");
+  builder.add("value", "");
+  builder.close();
+  builder.close();
+  VPackLoadInspector inspector{builder};
+
+  Variant v;
+  auto result = inspector.apply(v);
+  ASSERT_FALSE(result.ok());
+  EXPECT_EQ("Found invalid type tag: blubb", result.error());
+  EXPECT_EQ("a", result.path());
+}
+
+TEST_F(VPackLoadInspectorTest, error_expecting_string_when_parsing_variant) {
+  builder.openObject();
+  builder.add(VPackValue("a"));
+  builder.openObject();
+  builder.add("tag", "string");
+  builder.add("value", 42);
+  builder.close();
+  builder.close();
+  VPackLoadInspector inspector{builder};
+
+  Variant v;
+  auto result = inspector.apply(v);
+  ASSERT_FALSE(result.ok());
+  EXPECT_EQ("Expecting type String", result.error());
+  EXPECT_EQ("a.value", result.path());
+}
+
+TEST_F(VPackLoadInspectorTest, error_missing_tag_when_parsing_variant) {
+  builder.openObject();
+  builder.add(VPackValue("a"));
+  builder.openObject();
+  builder.add("value", 42);
+  builder.close();
+  builder.close();
+  VPackLoadInspector inspector{builder};
+
+  Variant v;
+  auto result = inspector.apply(v);
+  ASSERT_FALSE(result.ok());
+  EXPECT_EQ("Variant tag is missing", result.error());
+  EXPECT_EQ("a", result.path());
+}
+
+TEST_F(VPackLoadInspectorTest, error_invalid_tag_type_when_parsing_variant) {
+  builder.openObject();
+  builder.add(VPackValue("a"));
+  builder.openObject();
+  builder.add("tag", 42);
+  builder.close();
+  builder.close();
+  VPackLoadInspector inspector{builder};
+
+  Variant v;
+  auto result = inspector.apply(v);
+  ASSERT_FALSE(result.ok());
+  EXPECT_EQ("Variant tag must be a string", result.error());
+  EXPECT_EQ("a", result.path());
+}
+
+TEST_F(VPackLoadInspectorTest, error_missing_value_when_parsing_variant) {
+  builder.openObject();
+  builder.add(VPackValue("a"));
+  builder.openObject();
+  builder.add("tag", "int32");
+  builder.close();
+  builder.close();
+  VPackLoadInspector inspector{builder};
+
+  Variant v;
+  auto result = inspector.apply(v);
+  ASSERT_FALSE(result.ok());
+  EXPECT_EQ("Variant value is missing", result.error());
+  EXPECT_EQ("a", result.path());
 }
 
 struct VPackInspectionTest : public ::testing::Test {};
