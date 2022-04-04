@@ -185,7 +185,7 @@ const replicatedLogRegressionSuite = function () {
       waitFor(() => {
         const followerSpearhead = log.status().participants[leader].response.follower[followers[0]].spearhead.index;
         return logIdx === followerSpearhead
-          || newError(`Expected spearhead of ${followers[0]} to be ${logIdx}, but is ${followerSpearhead}.`);
+          || new Error(`Expected spearhead of ${followers[0]} to be ${logIdx}, but is ${followerSpearhead}.`);
       });
 
       { // followers[1] got the log entry before it was stopped, and followers[0] just got it now, so it should be committed.
