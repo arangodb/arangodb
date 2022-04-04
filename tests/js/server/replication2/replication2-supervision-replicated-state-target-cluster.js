@@ -213,22 +213,8 @@ const replicatedStateSuite = function () {
           target.leader = newLeader;
           return target;
         });
-      lh.waitFor(() => {
-        const currentLeader = lh.getReplicatedLogLeaderTarget(database, stateId);
-        if (currentLeader === newLeader) {
-          return true;
-        } else {
-          return new Error(`Expected log leader to switch to ${newLeader}, but is still ${currentLeader}`);
-        }
-      });
-      lh.waitFor(() => {
-        const {leader: currentLeader} = lh.getReplicatedLogLeaderPlan(database, stateId);
-        if (currentLeader === newLeader) {
-          return true;
-        } else {
-          return new Error(`Expected log leader to switch to ${newLeader}, but is still ${currentLeader}`);
-        }
-      });
+      lh.waitFor(lh.replicatedLogLeaderTargetIs(database, stateId, newLeader));
+      lh.waitFor(lh.replicatedLogLeaderPlanIs(database, stateId, newLeader));
     },
 
     testUnsetLeader: function () {

@@ -510,6 +510,28 @@ const replicatedLogTargetVersion = function(database, logId, version) {
   };
 };
 
+const replicatedLogLeaderTargetIs = function(database, stateId, expectedLeader) {
+  return function () {
+    const currentLeader = getReplicatedLogLeaderTarget(database, stateId);
+    if (currentLeader === expectedLeader) {
+      return true;
+    } else {
+      return new Error(`Expected log leader to switch to ${expectedLeader}, but is still ${currentLeader}`);
+    }
+  };
+};
+
+const replicatedLogLeaderPlanIs = function(database, stateId, expectedLeader) {
+  return function () {
+    const {leader: currentLeader} = getReplicatedLogLeaderPlan(database, stateId);
+    if (currentLeader === expectedLeader) {
+      return true;
+    } else {
+      return new Error(`Expected log leader to switch to ${expectedLeader}, but is still ${currentLeader}`);
+    }
+  };
+};
+
 exports.waitFor = waitFor;
 exports.readAgencyValueAt = readAgencyValueAt;
 exports.createParticipantsConfig = createParticipantsConfig;
@@ -547,3 +569,5 @@ exports.checkRequestResult = checkRequestResult;
 exports.getServerUrl = getServerUrl;
 exports.getServerHealth = getServerHealth;
 exports.replicatedLogTargetVersion = replicatedLogTargetVersion;
+exports.replicatedLogLeaderTargetIs = replicatedLogLeaderTargetIs;
+exports.replicatedLogLeaderPlanIs = replicatedLogLeaderPlanIs;

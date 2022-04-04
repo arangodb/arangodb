@@ -125,8 +125,14 @@ const createReplicatedStateTarget = function (database, targetConfig, type) {
   return {stateId, servers, leader, followers};
 };
 
+const getReplicatedStateLeaderTarget = function (database, logId) {
+  let {target} = readReplicatedStateAgency(database, logId);
+  return target.leader;
+};
+
 exports.readReplicatedStateAgency = readReplicatedStateAgency;
 exports.updateReplicatedStatePlan = updateReplicatedStatePlan;
 exports.getLocalStatus = getLocalStatus;
 exports.createReplicatedStateTarget = createReplicatedStateTarget;
 exports.updateReplicatedStateTarget = updateReplicatedStateTarget;
+exports.getReplicatedStateLeaderTarget = getReplicatedStateLeaderTarget;

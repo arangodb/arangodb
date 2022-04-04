@@ -105,6 +105,17 @@ const replicatedStateVersionConverged = function (database, logId, expectedVersi
   };
 };
 
+const replicatedStateTargetLeaderIs = function (database, stateId, expectedLeader) {
+  return function () {
+    const currentLeader = SH.getReplicatedStateLeaderTarget(database, stateId);
+    if (currentLeader === expectedLeader) {
+      return true;
+    } else {
+      return new Error(`Expected state leader to switch to ${newLeader}, but is still ${currentLeader}`);
+    }
+  };
+}
+
 exports.replicatedStateIsReady = replicatedStateIsReady;
 exports.serverReceivedSnapshotGeneration = serverReceivedSnapshotGeneration;
 exports.replicatedStateVersionConverged = replicatedStateVersionConverged;
