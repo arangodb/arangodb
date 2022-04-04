@@ -558,7 +558,11 @@ IResearchViewExecutorBase<Impl, Traits>::produceRows(
       documentWritten = next(ctx);
 
       if (documentWritten) {
-        stats.incrScanned();
+        if constexpr (!Traits::ExplicitScanned) {
+          stats.incrScanned();
+        } else {
+          stats.incrScanned(static_cast<Impl&>(*this).getScanned());
+        }
         output.advanceRow();
       } else {
         _inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
@@ -613,7 +617,13 @@ IResearchViewExecutorBase<Impl, Traits>::skipRowsRange(
   }
 
   IResearchViewStats stats{};
-  stats.incrScanned(call.getSkipCount());
+  if constexpr (!Traits::ExplicitScanned) {
+    stats.incrScanned(call.getSkipCount());
+  } else {
+    stats.incrScanned(impl.getScanned());
+  }
+
+  
 
   AqlCall upstreamCall{};
   if (!call.needsFullCount()) {
@@ -1067,10 +1077,10 @@ void IResearchViewHeapSortExecutor<copyStored, ordered, materializeType>::fillBu
 }
 
 template<bool copyStored, bool ordered, MaterializeType materializeType>
-void IResearchViewHeapSortExecutor<copyStored, ordered,
+bool IResearchViewHeapSortExecutor<copyStored, ordered,
                                    materializeType>::fillBufferInternal(size_t skip) {
   if (_bufferFilled) {
-    return;
+    return false;
   }
   _bufferFilled = true;
   TRI_ASSERT(!this->_infos.scoresSort().empty());
@@ -1221,6 +1231,8 @@ void IResearchViewHeapSortExecutor<copyStored, ordered,
       ++orderIt;
     }
   }
+  _scannedCount = _totalCount;
+  return true;
 }
 
 template<bool copyStored, bool ordered, MaterializeType materializeType>

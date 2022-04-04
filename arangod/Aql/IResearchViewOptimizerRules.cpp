@@ -221,7 +221,8 @@ bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
   if (!plan->contains(ExecutionNode::LIMIT) || !plan->contains(ExecutionNode::SORT)) {
     return false;
   }
-  { // FullCount check
+
+  if constexpr (false) { // FullCount check
     // We will consume all upstream in the EnumerateViewNode
     // so fullCount should be calculated in the Enumerate node.
     // But on the other hand AQL requires only LIMIT node to be able to do that.

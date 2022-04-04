@@ -561,6 +561,7 @@ struct IResearchViewExecutorTraits<
   static constexpr bool Ordered = ordered;
   static constexpr iresearch::MaterializeType MaterializeType = materializeType;
   static constexpr bool CopyStored = copyStored;
+  static constexpr bool ExplicitScanned = false;
 };
 
 template<bool copyStored, bool ordered,
@@ -654,6 +655,7 @@ struct IResearchViewExecutorTraits<
   static constexpr bool Ordered = ordered;
   static constexpr iresearch::MaterializeType MaterializeType = materializeType;
   static constexpr bool CopyStored = copyStored;
+  static constexpr bool ExplicitScanned = false;
 };
 
 template<bool copyStored, bool ordered,
@@ -676,14 +678,20 @@ class IResearchViewHeapSortExecutor
 
   size_t skip(size_t toSkip);
   size_t skipAll();
-
+  size_t getScanned() noexcept {
+    auto tmp = _scannedCount;
+    _scannedCount = 0;
+    return tmp;
+    
+  }
   void reset();
   void fillBuffer(ReadContext& ctx);
-  void fillBufferInternal(size_t skip);
+  bool fillBufferInternal(size_t skip);
 
   bool writeRow(ReadContext& ctx, IndexReadBufferEntry bufferEntry);
 
   size_t _totalCount{};
+  size_t _scannedCount{0};
   size_t _bufferedCount{};
   bool _bufferFilled{false};
 }; // ResearchViewHeapSortExecutor
@@ -761,6 +769,7 @@ struct IResearchViewExecutorTraits<
   static constexpr bool Ordered = ordered;
   static constexpr iresearch::MaterializeType MaterializeType = materializeType;
   static constexpr bool CopyStored = copyStored;
+  static constexpr bool ExplicitScanned = true;
 };
 
 }  // namespace aql
