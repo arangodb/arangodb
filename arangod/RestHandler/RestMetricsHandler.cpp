@@ -35,10 +35,19 @@
 #include "RestServer/ServerFeature.h"
 #include "Metrics/MetricsFeature.h"
 
+#include <frozen/string.h>
+#include <frozen/unordered_map.h>
 #include <velocypack/Builder.h>
 
 namespace arangodb {
 namespace {
+
+constexpr frozen::unordered_map<frozen::string, metrics::CollectMode, 4> kModes{
+    {"local", metrics::CollectMode::Local},
+    {"trigger_global", metrics::CollectMode::TriggerGlobal},
+    {"read_global", metrics::CollectMode::ReadGlobal},
+    {"write_global", metrics::CollectMode::WriteGlobal},
+};
 
 network::Headers buildHeaders(
     std::unordered_map<std::string, std::string> const& originalHeaders) {
@@ -76,23 +85,41 @@ RestStatus RestMetricsHandler::execute() {
   }
 
   if (_request->requestType() != RequestType::GET) {
+    // TODO(MBkkt) Now our API return 405 errorCode for 400 HTTP response code
+    //             I think we should fix it, but its breaking change
     generateError(ResponseCode::BAD, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
     return RestStatus::DONE;
   }
 
-  bool foundServerIdParameter;
-  auto const& serverId = _request->value("serverId", foundServerIdParameter);
+  bool foundServerId;
+  bool foundType;
+  bool foundMode;
+  auto const& serverId = _request->value("serverId", foundServerId);
+  std::string_view type = _request->value("type", foundType);
+  std::string_view mode = _request->value("mode", foundMode);
 
-  if (ServerState::instance()->isCoordinator() && foundServerIdParameter) {
-    if (serverId != ServerState::instance()->getId()) {
-      // not ourselves! - need to pass through the request
-      auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
-      if (!ci.serverExists(serverId)) {
-        generateError(rest::ResponseCode::NOT_FOUND,
-                      TRI_ERROR_HTTP_BAD_PARAMETER,
-                      std::string("unknown serverId supplied."));
-        return RestStatus::DONE;
-      }
+  foundServerId = foundServerId && ServerState::instance()->isCoordinator() &&
+                  serverId != ServerState::instance()->getId();
+  // TODO(MBkkt) I think in the future we should return an error
+  //             if the ServerId is not a Coordinator or it's our ServerId.
+  //             But now it will be breaking changes.
+
+  std::string error;
+  size_t notFound = 0;
+  if (foundServerId) {
+    auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+    if (!ci.serverExists(serverId)) {
+      error += "Unknown value of serverId parameter.\n";
+      notFound = error.size();
+    }
+    if (foundType) {
+      error += "Can't use type parameter with serverId parameter.\n";
+    }
+    if (foundMode) {
+      error += "Can't use mode parameter with serverId parameter.\n";
+    }
+
+    if (error.empty()) {
       auto* pool = server().getFeature<NetworkFeature>().pool();
       if (pool == nullptr) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
@@ -128,6 +155,38 @@ RestStatus RestMetricsHandler::execute() {
     }
   }
 
+  if (foundType && foundMode) {
+    error += "Can't use type parameter with mode parameter.\n";
+  }
+
+  if (foundType) {
+    if (!ServerState::instance()->isDBServer()) {
+      error += "Can't supply type parameter to non-DBServer.\n";
+    }
+    if (type != "json") {
+      error += "Unknown value of type parameter.\n";
+    }
+  }
+
+  auto it = kModes.find(mode);
+  if (foundMode) {
+    if (!ServerState::instance()->isCoordinator()) {
+      error += "Can't supply mode parameter to non-Coordinator.\n";
+    }
+    if (it == kModes.end()) {
+      error += "Unknown value of mode parameter.\n";
+    }
+  }
+
+  if (!error.empty()) {
+    // TODO(MBkkt) Now our API return 400 errorCode for 404 HTTP response code
+    //             I think we should fix it, but its breaking change
+    generateError(notFound == error.size() ? rest::ResponseCode::NOT_FOUND
+                                           : rest::ResponseCode::BAD,
+                  TRI_ERROR_HTTP_BAD_PARAMETER, error);
+    return RestStatus::DONE;
+  }
+
   auto& metrics = server().getFeature<metrics::MetricsFeature>();
   if (!metrics.exportAPI()) {
     // don't export metrics, if so desired
@@ -135,31 +194,20 @@ RestStatus RestMetricsHandler::execute() {
     return RestStatus::DONE;
   }
 
-  auto const& values = _request->values();
-  auto it = values.find("type");
-  if (it != values.end() && it->second == "json") {
+  if (foundType) {
     VPackBuilder builder;
     metrics.toVPack(builder);
     _response->setResponseCode(rest::ResponseCode::OK);
     _response->setContentType(rest::ContentType::VPACK);
     _response->addPayload(builder.slice());
-  } else if (it != values.end()) {
-    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  std::string("unknown 'type' parameter supplied."));
-    return RestStatus::DONE;
   } else {
     std::string result;
-    auto mode = metrics::CollectMode::Local;
-    if (it = values.find("mode"); it != values.end()) {
-      if (it->second == "trigger_global") {
-        mode = metrics::CollectMode::TriggerGlobal;
-      } else if (it->second == "read_global") {
-        mode = metrics::CollectMode::ReadGlobal;
-      } else if (it->second == "write_global") {
-        mode = metrics::CollectMode::WriteGlobal;
+    metrics.toPrometheus(result, [&] {
+      if (it != kModes.end()) {
+        return it->second;
       }
-    }
-    metrics.toPrometheus(result, mode);
+      return metrics::CollectMode::Local;
+    }());
     _response->setResponseCode(rest::ResponseCode::OK);
     _response->setContentType(rest::ContentType::TEXT);
     _response->addRawPayload(result);

@@ -79,12 +79,17 @@ void ClusterMetricsFeature::start() {
   auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
   ci.initMetricsUpdate();
   aql::QueryString writeText{
-      absl::StrCat("INSERT { _key: \"metrics\", version: 0, data: [] } INTO ",
+      absl::StrCat("UPSERT { _key: \"metrics\" }"
+                   " INSERT { _key: \"metrics\", version: 0, data: [] }"
+                   " UPDATE { version: 0, data: [] } IN ",
                    StaticStrings::MetricsCollection)};
+  // TODO(MBkkt) We should save old value for persistent metrics
   auto vocbase = server().getFeature<SystemDatabaseFeature>().use();
+  transaction::StandaloneContext context{*vocbase};
   auto writeQuery = aql::Query::create(
-      transaction::StandaloneContext::Create(*vocbase), writeText, nullptr);
-  writeQuery->executeSync();  // TODO(MBkkt) Maybe remove old volatile metrics?
+      {std::shared_ptr<transaction::StandaloneContext>{}, &context}, writeText,
+      nullptr);
+  writeQuery->executeSync();
   update(CollectMode::ReadGlobal);
 }
 
@@ -183,6 +188,8 @@ void ClusterMetricsFeature::update() {
         _acquiredUpdateLock = !ci.unlockMetricsUpdate();
         _lastUpdate = std::chrono::steady_clock::now();
         if (result != Result::Error) {
+          LOG_TOPIC("badf1", INFO, Logger::CLUSTER)
+              << "Successful collect and store metrics";
           repeatUpdate();
         }
         rescheduleUpdate(std::max(_timeout, uint32_t{1}));
@@ -194,8 +201,10 @@ ClusterMetricsFeature::Result ClusterMetricsFeature::readData(
   auto vocbase = server().getFeature<SystemDatabaseFeature>().use();
   aql::QueryString readText{
       absl::StrCat("FOR m IN ", StaticStrings::MetricsCollection, " RETURN m")};
+  transaction::StandaloneContext context{*vocbase};
   auto readQuery = aql::Query::create(
-      transaction::StandaloneContext::Create(*vocbase), readText, nullptr);
+      {std::shared_ptr<transaction::StandaloneContext>{}, &context}, readText,
+      nullptr);
   auto r = readQuery->executeSync();
   if (r.fail()) {
     return Result::Error;
@@ -234,8 +243,10 @@ ClusterMetricsFeature::Result ClusterMetricsFeature::writeData(
                    " RETURN 0")};
   std::shared_ptr<VPackBuilder> sharedDefault;
   std::shared_ptr<VPackBuilder> bindVars{sharedDefault, &builder};
+  transaction::StandaloneContext context{*vocbase};
   auto writeQuery = aql::Query::create(
-      transaction::StandaloneContext::Create(*vocbase), writeText, bindVars);
+      {std::shared_ptr<transaction::StandaloneContext>{}, &context}, writeText,
+      bindVars);
   auto r = writeQuery->executeSync();
   if (r.fail()) {
     return Result::Error;
@@ -357,18 +368,7 @@ void ClusterMetricsFeature::toPrometheus(std::string& result,
 
 std::shared_ptr<ClusterMetricsFeature::Data>
 ClusterMetricsFeature::Data::fromVPack(uint64_t version, VPackSlice metrics) {
-  if (!metrics.isArray()) {
-    TRI_ASSERT(false);
-    return {};
-  }
   auto const size = metrics.length();
-  if (size == 0) {
-    return {};
-  }
-  if (size % 3 != 0) {
-    TRI_ASSERT(false);
-    return {};
-  }
   auto data = std::make_shared<Data>(version);
   for (size_t i = 0; i != size; i += 3) {
     auto name = metrics.at(i).stringView();

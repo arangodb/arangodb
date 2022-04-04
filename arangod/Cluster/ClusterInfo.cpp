@@ -4302,7 +4302,7 @@ void ClusterInfo::initMetricsUpdate() {
       {{kMetricsUpdateRebootId, AgencyPrecondition::Type::EMPTY, true},
        {kMetricsUpdateServerId, AgencyPrecondition::Type::EMPTY, true}}};
   AgencyComm ac{_server};
-  while (true) {
+  while (!server().isStopping()) {
     auto const r = ac.sendTransactionWithFailover(write);
     if (r.successful() ||
         r.httpCode() == rest::ResponseCode::PRECONDITION_FAILED) {
@@ -4319,7 +4319,8 @@ bool ClusterInfo::lockMetricsUpdate() {
              ourServerId != kInvalidServerId);
   auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
   auto [lockRebootId, lockServerId] = readMetricsUpdate(cache);
-  if (lockRebootId != kInvalidRebootId || ourServerId != kInvalidServerId) {
+  _metricsUpdateGuard.callAndClear();
+  if (lockRebootId != kInvalidRebootId || lockServerId != kInvalidServerId) {
     _metricsUpdateGuard = _rebootTracker.callMeOnChange(
         {lockServerId, RebootId{lockRebootId}},
         [this, rebootId = lockRebootId, serverId = lockServerId] {
@@ -4327,12 +4328,11 @@ bool ClusterInfo::lockMetricsUpdate() {
           changeMetricsUpdate(ac, rebootId, serverId, kInvalidRebootId,
                               kInvalidServerId);
         },
-        "Unlock MetricsUpdate if current owner die");
+        "Unlock MetricsUpdate if current owner dies");
     LOG_TOPIC("bfdb1", INFO, Logger::CLUSTER)
         << "Cannot lock metrics update, it's already locked";
     return false;
   }
-  _metricsUpdateGuard.callAndClear();
   AgencyComm ac{_server};
   return changeMetricsUpdate(ac, kInvalidRebootId, kInvalidServerId,
                              ourRebootId, ourServerId);

@@ -1350,6 +1350,7 @@ futures::Future<OperationResult> countOnCoordinator(
 
 futures::Future<metrics::RawDBServers> metricsOnCoordinator(
     NetworkFeature& network, ClusterFeature& cluster) {
+  LOG_TOPIC("badf0", INFO, Logger::CLUSTER) << "Start collect metrics";
   auto* pool = network.pool();
   auto serverIds = cluster.clusterInfo().getCurrentDBServers();
 

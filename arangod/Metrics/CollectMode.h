@@ -29,7 +29,7 @@ namespace arangodb::metrics {
  * .......Global -- collect cached cluster-wide metrics
  * TriggerGlobal -- and trigger async update cache
  *    ReadGlobal -- and try to sync read metrics from cache
- * CollectGlobal -- and try to sync collect metrics for cache
+ *   WriteGlobal -- and try to sync collect metrics for cache
  */
 enum class CollectMode {
   Local,
