@@ -103,14 +103,19 @@ LanguageFeature::~LanguageFeature() = default;
 
 void LanguageFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
-  options->addOption(
-      "--default-language", "ISO-639 language code",
-      new StringParameter(&_defaultLanguage),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
+  options
+      ->addOption("--default-language", "ISO-639 language code",
+                  new StringParameter(&_defaultLanguage),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::Uncommon))
+      .setDeprecatedIn(31000);
 
-  options->addOption(
-      "--icu-language", "ICU language", new StringParameter(&_icuLanguage),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
+  options
+      ->addOption("--icu-language", "ICU language",
+                  new StringParameter(&_icuLanguage),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::Uncommon))
+      .setIntroducedIn(30901);
 
   options
       ->addOption("--default-language-check",
