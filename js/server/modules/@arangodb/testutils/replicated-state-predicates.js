@@ -111,7 +111,7 @@ const replicatedStateTargetLeaderIs = function (database, stateId, expectedLeade
     if (currentLeader === expectedLeader) {
       return true;
     } else {
-      return new Error(`Expected state leader to switch to ${newLeader}, but is still ${currentLeader}`);
+      return new Error(`Expected state leader to switch to ${expectedLeader}, but is still ${currentLeader}`);
     }
   };
 }

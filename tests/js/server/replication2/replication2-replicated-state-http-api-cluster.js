@@ -225,13 +225,13 @@ const replicatedStateSuite = function () {
         assertEqual(newParticipants, Object.keys(stateAgencyContent.target.participants).sort());
       }
 
-      waitFor(replicatedStateTargetLeaderIs(newLeader));
+      waitFor(replicatedStateTargetLeaderIs(database, stateId, newLeader));
       waitFor(() => {
         const stateAgencyContent = sh.readReplicatedStateAgency(database, stateId);
         return sortedArrayEqualOrError(newParticipants, Object.keys(stateAgencyContent.plan.participants).sort());
       });
-      waitFor(replicatedLogTargetLeaderIs(newLeader));
-      waitFor(replicatedLogLeaderPlanIs(newLeader));
+      waitFor(replicatedLogTargetLeaderIs(database, stateId, newLeader));
+      waitFor(replicatedLogLeaderPlanIs(database, stateId, newLeader));
       // Current won't be cleaned up yet.
       // waitFor(() => {
       //   const stateAgencyContent = sh.readReplicatedStateAgency(database, stateId);
