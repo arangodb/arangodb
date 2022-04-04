@@ -238,6 +238,7 @@ void RocksDBLogPersistor::runPersistorWorker(Lane& lane) noexcept {
         }
 
         // resolve all promises in [nextReqToResolve, nextReqToWrite)
+        // TODO resolve those promises async using _executor
         for (; nextReqToResolve != nextReqToWrite; ++nextReqToResolve) {
           nextReqToResolve->promise.setValue(TRI_ERROR_NO_ERROR);
         }
