@@ -26,14 +26,6 @@
 #define OPENSSL_THREAD_DEFINES
 #include <openssl/opensslconf.h>
 
-#include "Basics/FileUtils.h"
-#include "Basics/Thread.h"
-#include "Logger/Logger.h"
-#include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
-#include "Random/UniformCharacter.h"
-#include "Ssl/ssl-helper.h"
-
 #ifndef OPENSSL_THREADS
 #error missing thread support for openssl, please recomple OpenSSL with threads
 #endif
@@ -43,10 +35,6 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-const asio_ns::ssl::detail::openssl_init<true> SslFeature::sslBase{};
-
-void SslFeature::prepare() {}
-
-void SslFeature::unprepare() {}
+asio_ns::ssl::detail::openssl_init<true> const SslFeature::sslBase{};
 
 }  // namespace arangodb

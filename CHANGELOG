@@ -3,9 +3,14 @@ devel
 
 * Updated arangosync to v2.9.0-preview-4.
 
-* BugFix (enterprise-only): (BTS-787) In a hybrid disjoint SmartGraph, having more
-  than one relation, if you add a new vertex collection to a Smart -> Smart edge
-  relation this vertex collection was rejected with "has to be satellite" error.
+* Make the StatisticsFeature start after the NetworkFeature, so that any 
+  network request issues by cluster statistics gathering can rely on the 
+  networking functionality being available until shutdown.
+
+* BugFix (enterprise-only): (BTS-787) In a hybrid disjoint SmartGraph, having
+  more than one relation, if you add a new vertex collection to a Smart -> 
+  Smart edge relation this vertex collection was rejected with "has to be 
+  satellite" error.
   Now the collection is created as a SmartVertexCollection as desired.
 
 * Rework internal queues for connection and request statistics. The previous
