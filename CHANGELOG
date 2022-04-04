@@ -1,6 +1,9 @@
 v3.8.7 (XXXX-XX-XX)
 -------------------
 
+* Fix deadlocked shard synchronisations when planned shard leader has
+  not yet taken over leadership.
+
 * Updated ArangoDB Starter to 0.15.4.
 
 * Fixed an assertion failure which could occur when there was an error in the
