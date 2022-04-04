@@ -43,6 +43,8 @@ struct PrototypeFollowerState
 
   auto get(std::string key, LogIndex waitForIndex)
       -> futures::Future<ResultT<std::optional<std::string>>>;
+  auto get(std::vector<std::string> keys, LogIndex waitForIndex)
+      -> futures::Future<ResultT<std::unordered_map<std::string, std::string>>>;
 
   LoggerContext const loggerContext;
 

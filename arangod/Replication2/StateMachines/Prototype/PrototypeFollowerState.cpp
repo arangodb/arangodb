@@ -108,4 +108,25 @@ auto PrototypeFollowerState::get(std::string key, LogIndex waitForIndex)
       });
 }
 
+auto PrototypeFollowerState::get(std::vector<std::string> keys,
+                                 LogIndex waitForIndex)
+    -> futures::Future<ResultT<std::unordered_map<std::string, std::string>>> {
+  return waitForApplied(waitForIndex)
+      .thenValue([keys = std::move(keys), weak = weak_from_this()](auto&&)
+                     -> ResultT<std::unordered_map<std::string, std::string>> {
+        auto self = weak.lock();
+        if (self == nullptr) {
+          return {TRI_ERROR_CLUSTER_NOT_FOLLOWER};
+        }
+        return self->_guardedData.doUnderLock(
+            [&](auto& core)
+                -> ResultT<std::unordered_map<std::string, std::string>> {
+              if (!core) {
+                return {TRI_ERROR_CLUSTER_NOT_FOLLOWER};
+              }
+              return core->get(keys);
+            });
+      });
+}
+
 #include "Replication2/ReplicatedState/ReplicatedState.tpp"

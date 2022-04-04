@@ -33,7 +33,6 @@
 #include "Replication2/Exceptions/ParticipantResignedException.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedState/ReplicatedState.h"
-#include "Replication2/StateMachines/Prototype/PrototypeStateMachine.h"
 #include "Replication2/Methods.h"
 #include "Network/Methods.h"
 #include "VocBase/vocbase.h"
@@ -41,6 +40,7 @@
 
 #include "PrototypeFollowerState.h"
 #include "PrototypeLeaderState.h"
+#include "PrototypeStateMachine.h"
 #include "PrototypeStateMethods.h"
 #include "Replication2/ReplicatedState/AgencySpecification.h"
 #include "Inspection/VPack.h"
@@ -56,25 +56,62 @@ struct PrototypeStateMethodsDBServer final : PrototypeStateMethods {
       : _vocbase(vocbase) {}
 
   [[nodiscard]] auto insert(
-      LogId id,
-      std::unordered_map<std::string, std::string> const& entries) const
-      -> futures::Future<ResultT<LogIndex>> override {
+      LogId id, std::unordered_map<std::string, std::string> const& entries,
+      PrototypeWriteOptions options) const
+      -> futures::Future<LogIndex> override {
     auto leader = getPrototypeStateLeaderById(id);
-    return leader->set(entries);
+    return leader->set(entries, options);
   };
 
-  [[nodiscard]] auto get(LogId id, std::string key, LogIndex waitForIndex) const
+  [[nodiscard]] auto get(LogId id, std::string key,
+                         LogIndex waitForApplied) const
       -> futures::Future<ResultT<std::optional<std::string>>> override {
-    auto leader = getPrototypeStateLeaderById(id);
-    return leader->get(key, waitForIndex);
+    auto stateMachine =
+        std::dynamic_pointer_cast<ReplicatedState<PrototypeState>>(
+            _vocbase.getReplicatedStateById(id));
+    if (stateMachine == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL, basics::StringUtils::concatT(
+                                  "Failed to get ProtoypeState with id ", id));
+    }
+
+    auto leader = stateMachine->getLeader();
+    if (leader != nullptr) {
+      return leader->get(std::move(key), waitForApplied);
+    }
+    auto follower = stateMachine->getFollower();
+    if (follower != nullptr) {
+      return follower->get(std::move(key), waitForApplied);
+    }
+
+    THROW_ARANGO_EXCEPTION(
+        TRI_ERROR_REPLICATION_REPLICATED_LOG_PARTICIPANT_GONE);
   }
 
   [[nodiscard]] auto get(LogId id, std::vector<std::string> keys,
-                         LogIndex waitForIndex) const
+                         LogIndex waitForApplied) const
       -> futures::Future<
           ResultT<std::unordered_map<std::string, std::string>>> override {
-    auto leader = getPrototypeStateLeaderById(id);
-    return leader->get(std::move(keys), waitForIndex);
+    auto stateMachine =
+        std::dynamic_pointer_cast<ReplicatedState<PrototypeState>>(
+            _vocbase.getReplicatedStateById(id));
+    if (stateMachine == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL, basics::StringUtils::concatT(
+                                  "Failed to get ProtoypeState with id ", id));
+    }
+
+    auto leader = stateMachine->getLeader();
+    if (leader != nullptr) {
+      return leader->get(std::move(keys), waitForApplied);
+    }
+    auto follower = stateMachine->getFollower();
+    if (follower != nullptr) {
+      return follower->get(std::move(keys), waitForApplied);
+    }
+
+    THROW_ARANGO_EXCEPTION(
+        TRI_ERROR_REPLICATION_REPLICATED_LOG_PARTICIPANT_GONE);
   }
 
   [[nodiscard]] auto getSnapshot(LogId id, LogIndex waitForIndex) const
@@ -84,16 +121,18 @@ struct PrototypeStateMethodsDBServer final : PrototypeStateMethods {
     return leader->getSnapshot(waitForIndex);
   }
 
-  [[nodiscard]] auto remove(LogId id, std::string key) const
-      -> futures::Future<ResultT<LogIndex>> override {
+  [[nodiscard]] auto remove(LogId id, std::string key,
+                            PrototypeWriteOptions options) const
+      -> futures::Future<LogIndex> override {
     auto leader = getPrototypeStateLeaderById(id);
-    return leader->remove(std::move(key));
+    return leader->remove(std::move(key), options);
   }
 
-  [[nodiscard]] auto remove(LogId id, std::vector<std::string> keys) const
-      -> futures::Future<ResultT<LogIndex>> override {
+  [[nodiscard]] auto remove(LogId id, std::vector<std::string> keys,
+                            PrototypeWriteOptions options) const
+      -> futures::Future<LogIndex> override {
     auto leader = getPrototypeStateLeaderById(id);
-    return leader->remove(std::move(keys));
+    return leader->remove(std::move(keys), options);
   }
 
   auto status(LogId id) const
@@ -136,13 +175,17 @@ struct PrototypeStateMethodsCoordinator final
     : PrototypeStateMethods,
       std::enable_shared_from_this<PrototypeStateMethodsCoordinator> {
   [[nodiscard]] auto insert(
-      LogId id,
-      std::unordered_map<std::string, std::string> const& entries) const
-      -> futures::Future<ResultT<LogIndex>> override {
+      LogId id, std::unordered_map<std::string, std::string> const& entries,
+      PrototypeWriteOptions options) const
+      -> futures::Future<LogIndex> override {
     auto path =
         basics::StringUtils::joinT("/", "_api/prototype-state", id, "insert");
     network::RequestOptions opts;
     opts.database = _vocbase.name();
+    opts.param("waitForApplied", std::to_string(options.waitForApplied));
+    opts.param("waitForSync", std::to_string(options.waitForSync));
+    opts.param("waitForCommit", std::to_string(options.waitForCommit));
+
     VPackBuilder builder{};
     {
       VPackObjectBuilder ob{&builder};
@@ -153,7 +196,7 @@ struct PrototypeStateMethodsCoordinator final
     return network::sendRequest(_pool, "server:" + getLogLeader(id),
                                 fuerte::RestVerb::Post, path,
                                 builder.bufferRef(), opts)
-        .thenValue([](network::Response&& resp) -> ResultT<LogIndex> {
+        .thenValue([](network::Response&& resp) -> LogIndex {
           return processLogIndexResponse(std::move(resp));
         });
   }
@@ -280,25 +323,35 @@ struct PrototypeStateMethodsCoordinator final
             });
   }
 
-  [[nodiscard]] auto remove(LogId id, std::string key) const
-      -> futures::Future<ResultT<LogIndex>> override {
+  [[nodiscard]] auto remove(LogId id, std::string key,
+                            PrototypeWriteOptions options) const
+      -> futures::Future<LogIndex> override {
     auto path = basics::StringUtils::joinT("/", "_api/prototype-state", id,
                                            "entry", key);
     network::RequestOptions opts;
     opts.database = _vocbase.name();
+    opts.param("waitForApplied", std::to_string(options.waitForApplied));
+    opts.param("waitForSync", std::to_string(options.waitForSync));
+    opts.param("waitForCommit", std::to_string(options.waitForCommit));
+
     return network::sendRequest(_pool, "server:" + getLogLeader(id),
                                 fuerte::RestVerb::Delete, path, {}, opts)
-        .thenValue([](network::Response&& resp) -> ResultT<LogIndex> {
+        .thenValue([](network::Response&& resp) -> LogIndex {
           return processLogIndexResponse(std::move(resp));
         });
   }
 
-  [[nodiscard]] auto remove(LogId id, std::vector<std::string> keys) const
-      -> futures::Future<ResultT<LogIndex>> override {
+  [[nodiscard]] auto remove(LogId id, std::vector<std::string> keys,
+                            PrototypeWriteOptions options) const
+      -> futures::Future<LogIndex> override {
     auto path = basics::StringUtils::joinT("/", "_api/prototype-state", id,
                                            "multi-remove");
     network::RequestOptions opts;
     opts.database = _vocbase.name();
+    opts.param("waitForApplied", std::to_string(options.waitForApplied));
+    opts.param("waitForSync", std::to_string(options.waitForSync));
+    opts.param("waitForCommit", std::to_string(options.waitForCommit));
+
     VPackBuilder builder{};
     {
       VPackArrayBuilder ab{&builder};
@@ -309,7 +362,7 @@ struct PrototypeStateMethodsCoordinator final
     return network::sendRequest(_pool, "server:" + getLogLeader(id),
                                 fuerte::RestVerb::Delete, path,
                                 builder.bufferRef(), opts)
-        .thenValue([](network::Response&& resp) -> ResultT<LogIndex> {
+        .thenValue([](network::Response&& resp) -> LogIndex {
           return processLogIndexResponse(std::move(resp));
         });
   }

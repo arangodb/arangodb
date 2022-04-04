@@ -43,15 +43,15 @@ const insertEntries = function (url, stateId, payload) {
   });
 };
 
-const getEntry = function (url, stateId, entry, waitForIndex) {
-  if (waitForIndex === undefined) {
+const getEntry = function (url, stateId, entry, waitForApplied) {
+  if (waitForApplied === undefined) {
     return request.get({url: `${url}/_db/${database}/_api/prototype-state/${stateId}/entry/${entry}`});
   }
-  return request.get({url: `${url}/_db/${database}/_api/prototype-state/${stateId}/entry/${entry}?waitForIndex=${waitForIndex}`});
+  return request.get({url: `${url}/_db/${database}/_api/prototype-state/${stateId}/entry/${entry}?waitForApplied=${waitForApplied}`});
 };
 
-const getEntries = function (url, stateId, entries, waitForIndex) {
-  let params = (waitForIndex === undefined ? '' : `?waitForIndex=${waitForIndex}`);
+const getEntries = function (url, stateId, entries, waitForApplied) {
+  let params = (waitForApplied === undefined ? '' : `?waitForApplied=${waitForApplied}`);
   return request.post({
     url: `${url}/_db/${database}/_api/prototype-state/${stateId}/multi-get${params}`,
     body: entries,
@@ -139,6 +139,15 @@ const replicatedStateSuite = function () {
       let coord = lh.coordinators[0];
       let coordUrl = lh.getServerUrl(coord);
 
+      let follower = null;
+      for (const server of servers) {
+        if (server !== leader) {
+          follower = server;
+          break;
+        }
+      }
+      let followerUrl = lh.getServerUrl(follower);
+
       let result = insertEntries(leaderUrl, stateId, {foo0 : "bar0", foo1: "bar1", foo2: "bar2"});
       lh.checkRequestResult(result);
       let index = result.json.result.index;
@@ -148,7 +157,15 @@ const replicatedStateSuite = function () {
       lh.checkRequestResult(result);
       assertEqual(result.json.result.foo0,  "bar0");
 
+      result = getEntry(followerUrl, stateId, "foo0", index);
+      lh.checkRequestResult(result);
+      assertEqual(result.json.result.foo0,  "bar0");
+
       result = getEntries(leaderUrl, stateId, ["foo1", "foo2"], index);
+      lh.checkRequestResult(result);
+      assertEqual(result.json.result, {foo1: "bar1", foo2: "bar2"});
+
+      result = getEntries(followerUrl, stateId, ["foo1", "foo2"], index);
       lh.checkRequestResult(result);
       assertEqual(result.json.result, {foo1: "bar1", foo2: "bar2"});
 

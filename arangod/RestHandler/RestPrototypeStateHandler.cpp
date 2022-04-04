@@ -32,6 +32,7 @@
 #include "Inspection/VPack.h"
 
 #include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/StateMachines/Prototype/PrototypeLeaderState.h"
 #include "Replication2/StateMachines/Prototype/PrototypeStateMethods.h"
 
 using namespace arangodb;
@@ -104,7 +105,7 @@ RestStatus RestPrototypeStateHandler::handlePostRequest(
     return RestStatus::DONE;
   }
 
-  if (suffixes.size() == 0) {
+  if (suffixes.empty()) {
     return handleCreateState(methods, body);
   }
 
@@ -150,20 +151,21 @@ RestStatus RestPrototypeStateHandler::handlePostInsert(
     }
   }
 
-  return waitForFuture(
-      methods.insert(logId, entries).thenValue([this](auto&& waitForResult) {
-        if (waitForResult.ok()) {
-          VPackBuilder result;
-          {
-            VPackObjectBuilder ob(&result);
-            result.add("index", VPackValue(waitForResult.get()));
-          }
-          generateOk(rest::ResponseCode::ACCEPTED, result.slice());
-        } else {
-          generateError(waitForResult.result());
-        }
-        return RestStatus::DONE;
-      }));
+  auto options = replicated_state::prototype::PrototypeWriteOptions{};
+  options.waitForApplied =
+      _request->parsedValue<bool>("waitForApplied").value_or(true);
+
+  return waitForFuture(methods.insert(logId, entries, options)
+                           .thenValue([this](auto&& logIndex) {
+                             VPackBuilder result;
+                             {
+                               VPackObjectBuilder ob(&result);
+                               result.add("index", VPackValue(logIndex));
+                             }
+                             generateOk(rest::ResponseCode::ACCEPTED,
+                                        result.slice());
+                             return RestStatus::DONE;
+                           }));
 }
 
 RestStatus RestPrototypeStateHandler::handlePostRetrieveMulti(
@@ -195,12 +197,12 @@ RestStatus RestPrototypeStateHandler::handlePostRetrieveMulti(
     keys.push_back(entry.copyString());
   }
 
-  auto waitForIndex =
-      LogIndex{_request->parsedValue<decltype(LogIndex::value)>("waitForIndex")
-                   .value_or(0)};
+  auto waitForApplied = LogIndex{
+      _request->parsedValue<decltype(LogIndex::value)>("waitForApplied")
+          .value_or(0)};
 
   return waitForFuture(
-      methods.get(logId, std::move(keys), waitForIndex)
+      methods.get(logId, std::move(keys), waitForApplied)
           .thenValue([this](
                          ResultT<std::unordered_map<std::string, std::string>>&&
                              waitForResult) {
@@ -266,12 +268,12 @@ RestStatus RestPrototypeStateHandler::handleGetEntry(
     return RestStatus::DONE;
   }
 
-  auto waitForIndex =
-      LogIndex{_request->parsedValue<decltype(LogIndex::value)>("waitForIndex")
-                   .value_or(0)};
+  auto waitForApplied = LogIndex{
+      _request->parsedValue<decltype(LogIndex::value)>("waitForApplied")
+          .value_or(0)};
 
   return waitForFuture(
-      methods.get(logId, suffixes[2], waitForIndex)
+      methods.get(logId, suffixes[2], waitForApplied)
           .thenValue([this, key = suffixes[2]](auto&& waitForResult) {
             if (waitForResult.fail()) {
               generateError(waitForResult.result());
@@ -361,21 +363,21 @@ RestStatus RestPrototypeStateHandler::handleDeleteRemove(
     return RestStatus::DONE;
   }
 
-  return waitForFuture(
-      methods.remove(logId, suffixes[2])
-          .thenValue([this](auto&& waitForResult) {
-            if (waitForResult.ok()) {
-              VPackBuilder result;
-              {
-                VPackObjectBuilder ob(&result);
-                result.add("index", VPackValue(waitForResult.get()));
-              }
-              generateOk(rest::ResponseCode::ACCEPTED, result.slice());
-            } else {
-              generateError(waitForResult.result());
-            }
-            return RestStatus::DONE;
-          }));
+  auto options = replicated_state::prototype::PrototypeWriteOptions{};
+  options.waitForApplied =
+      _request->parsedValue<bool>("waitForApplied").value_or(true);
+
+  return waitForFuture(methods.remove(logId, suffixes[2], options)
+                           .thenValue([this](auto&& waitForResult) {
+                             VPackBuilder result;
+                             {
+                               VPackObjectBuilder ob(&result);
+                               result.add("index", VPackValue(waitForResult));
+                             }
+                             generateOk(rest::ResponseCode::ACCEPTED,
+                                        result.slice());
+                             return RestStatus::DONE;
+                           }));
 }
 
 RestStatus RestPrototypeStateHandler::handleDeleteRemoveMulti(
@@ -408,18 +410,19 @@ RestStatus RestPrototypeStateHandler::handleDeleteRemoveMulti(
     keys.push_back(entry.copyString());
   }
 
-  return waitForFuture(
-      methods.remove(logId, keys).thenValue([this](auto&& waitForResult) {
-        if (waitForResult.ok()) {
-          VPackBuilder result;
-          {
-            VPackObjectBuilder ob(&result);
-            result.add("index", VPackValue(waitForResult.get()));
-          }
-          generateOk(rest::ResponseCode::ACCEPTED, result.slice());
-        } else {
-          generateError(waitForResult.result());
-        }
-        return RestStatus::DONE;
-      }));
+  auto options = replicated_state::prototype::PrototypeWriteOptions{};
+  options.waitForApplied =
+      _request->parsedValue<bool>("waitForApplied").value_or(true);
+
+  return waitForFuture(methods.remove(logId, keys, options)
+                           .thenValue([this](auto&& waitForResult) {
+                             VPackBuilder result;
+                             {
+                               VPackObjectBuilder ob(&result);
+                               result.add("index", VPackValue(waitForResult));
+                             }
+                             generateOk(rest::ResponseCode::ACCEPTED,
+                                        result.slice());
+                             return RestStatus::DONE;
+                           }));
 }

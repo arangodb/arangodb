@@ -195,15 +195,17 @@ struct WaitGroup {
 TEST_F(PrototypeConcurrencyTest, test_concurrent_wrires) {
   leader->waitForLeadership().get();
   const auto numKeys = 1000;
+  const auto options = PrototypeWriteOptions{};
   WaitGroup wg;
-  auto const runThread = [&wg, this](int from, int to, int delta,
-                                     std::string const& myName,
-                                     std::vector<LogIndex>& idxs) {
+  auto const runThread = [&wg, options, this](int from, int to, int delta,
+                                              std::string const& myName,
+                                              std::vector<LogIndex>& idxs) {
     for (int x = from; x != to; x += delta) {
       idxs[x] = state
-                    ->set(std::unordered_map<std::string, std::string>{
-                        {std::to_string(x), myName}})
-                    .get()
+                    ->set(
+                        std::unordered_map<std::string, std::string>{
+                            {std::to_string(x), myName}},
+                        options)
                     .get();
     }
 

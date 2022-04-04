@@ -44,6 +44,10 @@ class Future;
 namespace arangodb::replication2 {
 class LogId;
 
+namespace replicated_state::prototype {
+struct PrototypeWriteOptions;
+}
+
 /**
  * This is a collection of functions that is used by the RestHandler. It covers
  * two different implementations. One for dbservers that actually execute the
@@ -68,15 +72,15 @@ struct PrototypeStateMethods {
       -> futures::Future<ResultT<CreateResult>> = 0;
 
   [[nodiscard]] virtual auto insert(
-      LogId id,
-      std::unordered_map<std::string, std::string> const& entries) const
-      -> futures::Future<ResultT<LogIndex>> = 0;
+      LogId id, std::unordered_map<std::string, std::string> const& entries,
+      replicated_state::prototype::PrototypeWriteOptions) const
+      -> futures::Future<LogIndex> = 0;
 
   [[nodiscard]] virtual auto get(LogId id, std::string key,
-                                 LogIndex waitForIndex) const
+                                 LogIndex waitForApplied) const
       -> futures::Future<ResultT<std::optional<std::string>>> = 0;
   [[nodiscard]] virtual auto get(LogId id, std::vector<std::string> keys,
-                                 LogIndex waitForIndex) const
+                                 LogIndex waitForApplied) const
       -> futures::Future<
           ResultT<std::unordered_map<std::string, std::string>>> = 0;
 
@@ -84,11 +88,14 @@ struct PrototypeStateMethods {
       -> futures::Future<
           ResultT<std::unordered_map<std::string, std::string>>> = 0;
 
-  [[nodiscard]] virtual auto remove(LogId id, std::string key) const
-      -> futures::Future<ResultT<LogIndex>> = 0;
-  [[nodiscard]] virtual auto remove(LogId id,
-                                    std::vector<std::string> keys) const
-      -> futures::Future<ResultT<LogIndex>> = 0;
+  [[nodiscard]] virtual auto remove(
+      LogId id, std::string key,
+      replicated_state::prototype::PrototypeWriteOptions) const
+      -> futures::Future<LogIndex> = 0;
+  [[nodiscard]] virtual auto remove(
+      LogId id, std::vector<std::string> keys,
+      replicated_state::prototype::PrototypeWriteOptions) const
+      -> futures::Future<LogIndex> = 0;
 
   struct PrototypeStatus {
     // TODO

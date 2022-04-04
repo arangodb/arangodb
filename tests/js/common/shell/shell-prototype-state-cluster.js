@@ -95,17 +95,17 @@ function PrototypeStateTestSuite() {
 
     testReadEntries: function () {
       const state = db._createPrototypeState({config});
-      const idx = state.write({"A":"1", "B":"2", "C": "3", "D": "4"}, {waitForApplied: true});
+      state.write({"A":"1", "B":"2", "C": "3", "D": "4"}, {waitForApplied: true});
 
-      const valueA = state.read("A", {waitForIndex: idx});
+      const valueA = state.read("A");
       assertEqual(valueA, "1");
-      const {B: valueB, C: valueC} = state.read(["B", "C"], {waitForIndex: idx});
-      assertEqual(valueB, "2", {waitForIndex: idx});
-      assertEqual(valueC, "3", {waitForIndex: idx});
+      const {B: valueB, C: valueC} = state.read(["B", "C"]);
+      assertEqual(valueB, "2");
+      assertEqual(valueC, "3");
 
-      const nonExisting = state.read("DOES-NOT-EXIST", {waitForIndex: idx});
+      const nonExisting = state.read("DOES-NOT-EXIST");
       assertEqual(nonExisting, undefined);
-      const otherNonEx = state.read(["STILL-DOES-NOT-EXIST"], {waitForIndex: idx});
+      const otherNonEx = state.read(["STILL-DOES-NOT-EXIST"]);
       assertEqual(otherNonEx, {});
     },
 

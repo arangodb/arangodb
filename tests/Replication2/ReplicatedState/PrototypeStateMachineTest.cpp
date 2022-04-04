@@ -162,9 +162,10 @@ TEST_F(PrototypeStateMachineTest, prorotype_core_flush) {
     auto value = "bar" + std::to_string(cnt);
     auto entries = std::unordered_map<std::string, std::string>{{key, value}};
     expected.emplace(key, value);
-    auto result = leaderState->set(entries);
+    auto result = leaderState->set(
+        entries, PrototypeWriteOptions{.waitForApplied = false});
     ASSERT_TRUE(result.isReady());
-    auto index = result.get()->value;
+    auto index = result.get().value;
     ASSERT_EQ(index, cnt + 2);
   }
   follower->runAllAsyncAppendEntries();
@@ -213,13 +214,14 @@ TEST_F(PrototypeStateMachineTest, simple_operations) {
   ASSERT_NE(followerState, nullptr);
 
   decltype(LogIndex::value) index{0};
+  PrototypeWriteOptions options{};
 
   // Inserting one entry
   {
     auto entries = std::unordered_map<std::string, std::string>{{"foo", "bar"}};
-    auto result = leaderState->set(std::move(entries));
+    auto result = leaderState->set(std::move(entries), options);
     follower->runAllAsyncAppendEntries();
-    index = result.get()->value;
+    index = result.get().value;
     ASSERT_EQ(index, 2);
   }
 
@@ -240,9 +242,10 @@ TEST_F(PrototypeStateMachineTest, simple_operations) {
   {
     std::unordered_map<std::string, std::string> entries{
         {"foo1", "bar1"}, {"foo2", "bar2"}, {"foo3", "bar3"}};
-    auto result = leaderState->set(std::move(entries));
+    auto result = leaderState->set(std::move(entries), options);
     follower->runAllAsyncAppendEntries();
-    index = result.get()->value;
+    ASSERT_TRUE(result.isReady());
+    index = result.get().value;
     ASSERT_EQ(index, 3);
   }
 
@@ -255,14 +258,20 @@ TEST_F(PrototypeStateMachineTest, simple_operations) {
     ASSERT_EQ(result["foo1"], "bar1");
     ASSERT_EQ(result["foo2"], "bar2");
     ASSERT_EQ(result["foo3"], "bar3");
-    ASSERT_EQ(followerState->get("foo1", LogIndex{index}).get().get(), "bar1");
+
+    result = followerState->get(entries, LogIndex{index}).get().get();
+    ASSERT_EQ(result.size(), 3);
+    ASSERT_EQ(result["foo1"], "bar1");
+    ASSERT_EQ(result["foo2"], "bar2");
+    ASSERT_EQ(result["foo3"], "bar3");
   }
 
   // Removing single entry
   {
-    auto result = leaderState->remove("foo1");
+    auto result = leaderState->remove("foo1", options);
     follower->runAllAsyncAppendEntries();
-    index = result.get()->value;
+    ASSERT_TRUE(result.isReady());
+    index = result.get().value;
     ASSERT_EQ(index, 4);
     ASSERT_EQ(leaderState->get("foo1", LogIndex{index}).get().get(),
               std::nullopt);
@@ -271,9 +280,10 @@ TEST_F(PrototypeStateMachineTest, simple_operations) {
   // Removing multiple entries
   {
     std::vector<std::string> entries = {"nofoo", "foo2"};
-    auto result = leaderState->remove(std::move(entries));
+    auto result = leaderState->remove(std::move(entries), options);
     follower->runAllAsyncAppendEntries();
-    index = result.get()->value;
+    ASSERT_TRUE(result.isReady());
+    index = result.get().value;
     ASSERT_EQ(index, 5);
     ASSERT_EQ(leaderState->get("foo2", LogIndex{index}).get().get(),
               std::nullopt);
