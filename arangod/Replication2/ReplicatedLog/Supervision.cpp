@@ -533,12 +533,10 @@ auto checkReplicatedLog(LogTarget const& target,
   if (auto maybeParticipant = getRemovedParticipant(
           target.participants, plan.participantsConfig.participants)) {
     auto const& [participantId, planFlags] = *maybeParticipant;
-    // The removed participant is currently the leader
-    if (participantId == leader.serverId) {
-      return EvictLeaderAction{};
-    } else if (not planFlags.allowedInQuorum and
-               current.leader->committedParticipantsConfig->generation ==
-                   plan.participantsConfig.generation) {
+
+    if (not planFlags.allowedInQuorum and
+        current.leader->committedParticipantsConfig->generation ==
+            plan.participantsConfig.generation) {
       return RemoveParticipantFromPlanAction(participantId);
     } else if (planFlags.allowedInQuorum) {
       // make this server not allowed in quorum. If the generation is
