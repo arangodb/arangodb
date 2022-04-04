@@ -53,6 +53,7 @@
 #include <velocypack/Iterator.h>
 
 #include <memory>
+#include <span>
 #include <utility>
 
 // Set this to true to activate devel logging

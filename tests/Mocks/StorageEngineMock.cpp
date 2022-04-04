@@ -130,7 +130,7 @@ class EdgeIndexIteratorMock final : public arangodb::IndexIterator {
     }
   }
 
-  std::string_view typeName() const noexcept override {
+  std::string_view typeName() const noexcept final {
     return "edge-index-iterator-mock";
   }
 
@@ -432,9 +432,7 @@ class AllIteratorMock final : public arangodb::IndexIterator {
         _data(data),
         _it{_data.begin()} {}
 
-  std::string_view typeName() const noexcept override {
-    return "AllIteratorMock";
-  }
+  std::string_view typeName() const noexcept final { return "AllIteratorMock"; }
 
   void resetImpl() override { _it = _data.begin(); }
 
@@ -708,7 +706,7 @@ class HashIndexIteratorMock final : public arangodb::IndexIterator {
     _end = _documents.end();
   }
 
-  std::string_view typeName() const noexcept override {
+  std::string_view typeName() const noexcept final {
     return "hash-index-iterator-mock";
   }
 

@@ -231,7 +231,6 @@ class RocksDBAllIndexIterator final : public IndexIterator {
 };
 
 template<bool forward>
-;
 class RocksDBAnyIndexIterator final : public IndexIterator {
  public:
   RocksDBAnyIndexIterator(LogicalCollection* collection,
@@ -356,7 +355,6 @@ class RocksDBAnyIndexIterator final : public IndexIterator {
   bool checkIter() {
     bool valid = _iterator->Valid();
     if (valid) {
-      int res = _cmp->Compare(_iterator->key(), _bounds.end());
       if constexpr (forward) {
         valid = _cmp->Compare(_iterator->key(), _bounds.end()) <= 0;
       } else {
@@ -364,7 +362,7 @@ class RocksDBAnyIndexIterator final : public IndexIterator {
       }
     }
     if (!valid) {
-      if constexpr (_forward) {
+      if constexpr (forward) {
         _iterator->Seek(_bounds.start());
       } else {
         _iterator->SeekForPrev(_bounds.end());
