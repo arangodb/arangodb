@@ -323,10 +323,10 @@ IOHeartbeatThread::~IOHeartbeatThread() { shutdown(); }
 void IOHeartbeatThread::run() {
   auto& databasePathFeature = server().getFeature<DatabasePathFeature>();
   std::string testFilePath = FileUtils::buildFilename(
-      databasePathFeature.directory(), "TestBalloonFileIOHeartbeat");
+      databasePathFeature.directory(), "TestFileIOHeartbeat");
   std::string testFileContent = "This is just an I/O test.\n";
 
-  LOG_TOPIC("66665", INFO, Logger::ENGINES) << "IOHeartbeatThread: running...";
+  LOG_TOPIC("66665", DEBUG, Logger::ENGINES) << "IOHeartbeatThread: running...";
 
   while (true) {
     try {  // protect thread against any exceptions
@@ -428,9 +428,11 @@ void IOHeartbeatThread::run() {
 
       std::unique_lock<std::mutex> guard(_mutex);
       if (trouble) {
-        _cv.wait_for(guard, checkIntervalTrouble());
+        // In case of trouble, we retry more quickly, since we want to
+        // have a record when the trouble has actually stopped!
+        _cv.wait_for(guard, checkIntervalTrouble);
       } else {
-        _cv.wait_for(guard, checkIntervalNormal());
+        _cv.wait_for(guard, checkIntervalNormal);
       }
     } catch (...) {
     }

@@ -87,14 +87,12 @@ class IOHeartbeatThread final : public ServerThread<ArangodServer> {
   }
 
  private:
-  // how long will the thread pause between iterations, this is in milliseconds
-  static constexpr std::chrono::duration<int64_t> checkIntervalTrouble() {
-    return std::chrono::seconds(1);
-  }
-  // Every checkInterval() iterations we perform one check:
-  static constexpr std::chrono::duration<int64_t> checkIntervalNormal() {
-    return std::chrono::seconds(15);
-  }
+  // how long will the thread pause between iterations, in case of trouble:
+  static constexpr std::chrono::duration<int64_t> checkIntervalTrouble =
+      std::chrono::seconds(1);
+  // how long will the thread pause between iterations:
+  static constexpr std::chrono::duration<int64_t> checkIntervalNormal =
+      std::chrono::seconds(15);
 
   std::mutex _mutex;
   std::condition_variable _cv;  // for waiting with wakeup
