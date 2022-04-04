@@ -139,12 +139,18 @@ class V8ClientConnection {
       std::unordered_map<std::string, std::string> const& headerFields,
       bool raw);
 
-  uint32_t requestFuzz(fuzzer::RequestFuzzer& fuzzer);
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  uint32_t sendFuzzRequest(fuzzer::RequestFuzzer& fuzzer);
+#endif
+
+  // forces a new connection to be used
+  void forceNewConnection();
 
   void initServer(v8::Isolate*, v8::Handle<v8::Context> context);
 
  private:
-  std::shared_ptr<fuerte::Connection> createConnection();
+  std::shared_ptr<fuerte::Connection> createConnection(
+      bool bypassCache = false);
   std::shared_ptr<fuerte::Connection> acquireConnection();
 
   v8::Local<v8::Value> requestData(

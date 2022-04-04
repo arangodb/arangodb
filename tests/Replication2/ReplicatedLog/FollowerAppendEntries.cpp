@@ -47,6 +47,23 @@ struct FollowerAppendEntriesTest : ReplicatedLogTest {
     return log;
   }
 
+  auto makeDelayedPersistedLog(LogId id) -> std::shared_ptr<DelayedMockLog> {
+    auto persisted = std::make_shared<DelayedMockLog>(id);
+    _persistedLogs[id] = persisted;
+    return persisted;
+  }
+
+  auto makeDelayedFollower(ParticipantId id, LogTerm term,
+                           ParticipantId leaderId)
+      -> std::shared_ptr<ReplicatedLog> {
+    auto persisted = makeDelayedPersistedLog(LogId{3});
+    auto core = std::make_unique<LogCore>(persisted);
+    auto log = std::make_shared<ReplicatedLog>(std::move(core), _logMetricsMock,
+                                               _optionsMock, defaultLogger());
+    log->becomeFollower(std::move(id), term, std::move(leaderId));
+    return log;
+  }
+
   MessageId nextMessageId{0};
 };
 
@@ -383,4 +400,133 @@ TEST_F(FollowerAppendEntriesTest, rewrite_log) {
     auto entry = iter->next();
     ASSERT_FALSE(entry.has_value());
   }
+}
+
+TEST_F(FollowerAppendEntriesTest, deuplicate_append_entries_test) {
+  auto log = makeDelayedFollower("follower", LogTerm{5}, "leader");
+  auto follower = log->getFollower();
+  auto persisted =
+      std::dynamic_pointer_cast<DelayedMockLog>(_persistedLogs[LogId{3}]);
+
+  // send an append entry requires, this will not resolve immediately
+  // due to the delayed mock log.
+  AppendEntriesRequest request;
+  request.leaderId = "leader";
+  request.leaderTerm = LogTerm{5};
+  request.prevLogEntry = TermIndexPair{LogTerm{0}, LogIndex{0}};
+  request.leaderCommit = LogIndex{0};
+  request.messageId = ++nextMessageId;
+  request.entries = {InMemoryLogEntry(PersistingLogEntry(
+      LogTerm{1}, LogIndex{1}, LogPayload::createFromString("some payload")))};
+
+  auto f = follower->appendEntries(std::move(request));
+  ASSERT_FALSE(f.isReady());
+  ASSERT_TRUE(persisted->hasPendingInsert());
+
+  // send another append entries request
+  {
+    AppendEntriesRequest request2;
+    request2.leaderId = "leader";
+    request2.leaderTerm = LogTerm{5};
+    request2.prevLogEntry = TermIndexPair{LogTerm{0}, LogIndex{0}};
+    request2.leaderCommit = LogIndex{0};
+    request2.messageId = ++nextMessageId;
+    request2.entries = {InMemoryLogEntry(
+        PersistingLogEntry(LogTerm{1}, LogIndex{1},
+                           LogPayload::createFromString("some payload")))};
+
+    auto f2 = follower->appendEntries(std::move(request2));
+    ASSERT_TRUE(f2.isReady());
+    {
+      auto result = f2.get();
+      EXPECT_EQ(result.logTerm, LogTerm{5});
+      EXPECT_EQ(result.errorCode,
+                TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED);
+      EXPECT_EQ(
+          result.reason,
+          AppendEntriesErrorReason{
+              AppendEntriesErrorReason::ErrorType::kPrevAppendEntriesInFlight});
+    }
+  }
+
+  // now resolve the insertAsync
+  persisted->runAsyncInsert();
+  ASSERT_TRUE(f.isReady());
+  {
+    auto result = f.get();
+    EXPECT_EQ(result.logTerm, LogTerm{5});
+    EXPECT_EQ(result.errorCode, TRI_ERROR_NO_ERROR);
+    EXPECT_EQ(result.reason, AppendEntriesErrorReason{});
+  }
+
+  // now try again
+  // send another append entries request
+  {
+    AppendEntriesRequest request2;
+    request2.leaderId = "leader";
+    request2.leaderTerm = LogTerm{5};
+    request2.prevLogEntry = TermIndexPair{LogTerm{1}, LogIndex{1}};
+    request2.leaderCommit = LogIndex{0};
+    request2.messageId = ++nextMessageId;
+    request2.entries = {InMemoryLogEntry(
+        PersistingLogEntry(LogTerm{1}, LogIndex{2},
+                           LogPayload::createFromString("some payload")))};
+
+    auto f2 = follower->appendEntries(std::move(request2));
+    persisted->runAsyncInsert();  // and resolve immediately
+    ASSERT_TRUE(f2.isReady());
+    {
+      auto result = f.get();
+      EXPECT_EQ(result.logTerm, LogTerm{5});
+      EXPECT_EQ(result.errorCode, TRI_ERROR_NO_ERROR);
+      EXPECT_EQ(result.reason, AppendEntriesErrorReason{});
+    }
+  }
+}
+
+TEST_F(FollowerAppendEntriesTest, append_entries_locking_regression_test) {
+  auto log = makeDelayedFollower("follower", LogTerm{5}, "leader");
+  auto follower = log->getFollower();
+  auto persisted =
+      std::dynamic_pointer_cast<DelayedMockLog>(_persistedLogs[LogId{3}]);
+
+  // send an append entry requires, this will not resolve immediately
+  // due to the delayed mock log.
+  AppendEntriesRequest request;
+  request.leaderId = "leader";
+  request.leaderTerm = LogTerm{5};
+  request.prevLogEntry = TermIndexPair{LogTerm{0}, LogIndex{0}};
+  request.leaderCommit = LogIndex{0};
+  request.messageId = ++nextMessageId;
+  request.entries = {InMemoryLogEntry(PersistingLogEntry(
+      LogTerm{1}, LogIndex{1}, LogPayload::createFromString("some payload")))};
+
+  auto f = follower->appendEntries(request);
+  ASSERT_FALSE(f.isReady());
+  ASSERT_TRUE(persisted->hasPendingInsert());
+
+  std::move(f).thenValue([&](auto&& res) {
+    EXPECT_TRUE(res.errorCode == TRI_ERROR_NO_ERROR) << res.errorCode;
+    ASSERT_FALSE(persisted->hasPendingInsert());
+
+    request.leaderId = "leader";
+    request.leaderTerm = LogTerm{5};
+    request.prevLogEntry = TermIndexPair{LogTerm{1}, LogIndex{1}};
+    request.leaderCommit = LogIndex{0};
+    request.messageId = ++nextMessageId;
+    request.entries = {InMemoryLogEntry(
+        PersistingLogEntry(LogTerm{1}, LogIndex{2},
+                           LogPayload::createFromString("some payload")))};
+    // send another request to the follower. This will acquire the lock
+    // again and should wait for the persistor to act.
+    auto f2 = follower->appendEntries(request);
+    EXPECT_FALSE(f2.isReady());
+
+    // This will block without the fix.
+    auto status = follower->getStatus();
+  });
+
+  persisted->runAsyncInsert();
+  ASSERT_TRUE(persisted->hasPendingInsert());
+  persisted->runAsyncInsert();
 }

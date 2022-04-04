@@ -1,7 +1,31 @@
 devel
 -----
 
+* Updated arangosync to v2.9.0-preview-4.
+
+* BugFix (enterprise-only): (BTS-787) In a hybrid disjoint SmartGraph, having more
+  than one relation, if you add a new vertex collection to a Smart -> Smart edge
+  relation this vertex collection was rejected with "has to be satellite" error.
+  Now the collection is created as a SmartVertexCollection as desired.
+
+* Rework internal queues for connection and request statistics. The previous
+  implementation allocated a lot of memory at program start for initializing
+  fixed-sized queues for the statistics objects.
+  The problem with using fixed-sized queues is that they will mostly require
+  too much memory for almost all cases, but still do not protect from the
+  queues becoming full and not being able to hold more items.
+  Now we go with a variable length queue instead, which only requires a
+  small amount of memory initially, and allocate more memory only when needed.
+  Freelists for reusing statistics items are still present to avoid lots of
+  reallocations.
+  The change also reduces the size of the executable's .bss section by more 
+  than 10MB.
+
 * Updated ArangoDB Starter to 0.15.4.
+
+* Always open a new, working connection before HTTP request-fuzzing during 
+  testing. Otherwise the fuzzing results are not 100% comparable from run to
+  run.
 
 * Remove error handling fetching license information to improve user
   experience. To display the license informationn in the UI is only
