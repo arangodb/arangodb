@@ -398,8 +398,8 @@ void IOHeartbeatThread::run() {
 
       // Total duration and update histogram:
       dur = finish - start1;
-      _exeTimeHistogram.count(
-          std::chrono::duration_cast<std::chrono::microseconds>(dur).count());
+      _exeTimeHistogram.count(static_cast<double>(
+          std::chrono::duration_cast<std::chrono::microseconds>(dur).count()));
 
       std::unique_lock<std::mutex> guard(_mutex);
       if (trouble) {
