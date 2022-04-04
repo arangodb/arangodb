@@ -366,6 +366,11 @@ auto replicated_log::LogFollower::GuardedFollowerData::checkCommitIndex(
   return {};
 }
 
+auto replicated_log::LogFollower::GuardedFollowerData::didResign()
+    const noexcept -> bool {
+  return _logCore == nullptr;
+}
+
 replicated_log::LogFollower::GuardedFollowerData::GuardedFollowerData(
     LogFollower const& self, std::unique_ptr<LogCore> logCore,
     InMemoryLog inMemoryLog)
@@ -413,7 +418,7 @@ auto replicated_log::LogFollower::resign() && -> std::tuple<
   return _guardedFollowerData.doUnderLock(
       [this](GuardedFollowerData& followerData) {
         LOG_CTX("838fe", DEBUG, _loggerContext) << "follower resign";
-        if (followerData._logCore == nullptr) {
+        if (followerData.didResign()) {
           LOG_CTX("55a1d", WARN, _loggerContext)
               << "follower log core is already gone. Resign was called twice!";
           basics::abortOrThrowException(ParticipantResignedException(
@@ -478,6 +483,12 @@ replicated_log::LogFollower::LogFollower(
 auto replicated_log::LogFollower::waitFor(LogIndex idx)
     -> replicated_log::ILogParticipant::WaitForFuture {
   auto self = _guardedFollowerData.getLockedGuard();
+  if (self->didResign()) {
+    auto promise = WaitForPromise{};
+    promise.setException(ParticipantResignedException(
+        TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED, ADB_HERE));
+    return promise.getFuture();
+  }
   if (self->_commitIndex >= idx) {
     return futures::Future<WaitForResult>{
         std::in_place, self->_commitIndex,
