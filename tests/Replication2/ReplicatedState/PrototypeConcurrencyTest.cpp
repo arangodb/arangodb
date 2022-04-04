@@ -195,7 +195,7 @@ struct WaitGroup {
 TEST_F(PrototypeConcurrencyTest, test_concurrent_wrires) {
   leader->waitForLeadership().get();
   const auto numKeys = 1000;
-  const auto options = PrototypeWriteOptions{};
+  const auto options = PrototypeStateMethods::PrototypeWriteOptions{};
   WaitGroup wg;
   auto const runThread = [&wg, options, this](int from, int to, int delta,
                                               std::string const& myName,

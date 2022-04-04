@@ -64,7 +64,8 @@ auto PrototypeLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
 
 auto PrototypeLeaderState::set(
     std::unordered_map<std::string, std::string> entries,
-    PrototypeWriteOptions options) -> futures::Future<LogIndex> {
+    PrototypeStateMethods::PrototypeWriteOptions options)
+    -> futures::Future<LogIndex> {
   auto stream = getStream();
   PrototypeLogEntry entry{
       PrototypeLogEntry::InsertOperation{std::move(entries)}};
@@ -83,8 +84,8 @@ auto PrototypeLeaderState::set(
   return std::move(f).thenValue([idx](auto&&) { return idx; });
 }
 
-auto PrototypeLeaderState::remove(std::string key,
-                                  PrototypeWriteOptions options)
+auto PrototypeLeaderState::remove(
+    std::string key, PrototypeStateMethods::PrototypeWriteOptions options)
     -> futures::Future<LogIndex> {
   auto stream = getStream();
   PrototypeLogEntry entry{PrototypeLogEntry::DeleteOperation{.keys = {key}}};
@@ -102,8 +103,9 @@ auto PrototypeLeaderState::remove(std::string key,
   return std::move(f).thenValue([idx](auto&&) { return idx; });
 }
 
-auto PrototypeLeaderState::remove(std::vector<std::string> keys,
-                                  PrototypeWriteOptions options)
+auto PrototypeLeaderState::remove(
+    std::vector<std::string> keys,
+    PrototypeStateMethods::PrototypeWriteOptions options)
     -> futures::Future<LogIndex> {
   auto stream = getStream();
   PrototypeLogEntry entry{

@@ -22,6 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+#include "VocBase/vocbase.h"
+
 #include <memory>
 #include <optional>
 #include <string>
@@ -44,10 +46,6 @@ class Future;
 namespace arangodb::replication2 {
 class LogId;
 
-namespace replicated_state::prototype {
-struct PrototypeWriteOptions;
-}
-
 /**
  * This is a collection of functions that is used by the RestHandler. It covers
  * two different implementations. One for dbservers that actually execute the
@@ -68,13 +66,18 @@ struct PrototypeStateMethods {
     std::vector<ParticipantId> servers;
   };
 
+  struct PrototypeWriteOptions {
+    bool waitForCommit{true};
+    bool waitForSync{false};
+    bool waitForApplied{true};
+  };
+
   [[nodiscard]] virtual auto createState(CreateOptions options) const
       -> futures::Future<ResultT<CreateResult>> = 0;
 
   [[nodiscard]] virtual auto insert(
       LogId id, std::unordered_map<std::string, std::string> const& entries,
-      replicated_state::prototype::PrototypeWriteOptions) const
-      -> futures::Future<LogIndex> = 0;
+      PrototypeWriteOptions) const -> futures::Future<LogIndex> = 0;
 
   [[nodiscard]] virtual auto get(LogId id, std::string key,
                                  LogIndex waitForApplied) const
@@ -88,13 +91,11 @@ struct PrototypeStateMethods {
       -> futures::Future<
           ResultT<std::unordered_map<std::string, std::string>>> = 0;
 
-  [[nodiscard]] virtual auto remove(
-      LogId id, std::string key,
-      replicated_state::prototype::PrototypeWriteOptions) const
+  [[nodiscard]] virtual auto remove(LogId id, std::string key,
+                                    PrototypeWriteOptions) const
       -> futures::Future<LogIndex> = 0;
-  [[nodiscard]] virtual auto remove(
-      LogId id, std::vector<std::string> keys,
-      replicated_state::prototype::PrototypeWriteOptions) const
+  [[nodiscard]] virtual auto remove(LogId id, std::vector<std::string> keys,
+                                    PrototypeWriteOptions) const
       -> futures::Future<LogIndex> = 0;
 
   struct PrototypeStatus {
@@ -124,5 +125,11 @@ template<class Inspector>
 auto inspect(Inspector& f, PrototypeStateMethods::PrototypeStatus& x) {
   return f.object(x).fields(f.field("id", x.id));
 }
-
+template<class Inspector>
+auto inspect(Inspector& f, PrototypeStateMethods::PrototypeWriteOptions& x) {
+  return f.object(x).fields(
+      f.field("waitForCommit", x.waitForCommit).fallback(true),
+      f.field("waitForSync", x.waitForSync).fallback(false),
+      f.field("waitForApplied", x.waitForApplied).fallback(true));
+}
 }  // namespace arangodb::replication2

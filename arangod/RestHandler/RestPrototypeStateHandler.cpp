@@ -151,7 +151,7 @@ RestStatus RestPrototypeStateHandler::handlePostInsert(
     }
   }
 
-  auto options = replicated_state::prototype::PrototypeWriteOptions{};
+  auto options = PrototypeStateMethods::PrototypeWriteOptions{};
   options.waitForApplied =
       _request->parsedValue<bool>("waitForApplied").value_or(true);
 
@@ -363,7 +363,7 @@ RestStatus RestPrototypeStateHandler::handleDeleteRemove(
     return RestStatus::DONE;
   }
 
-  auto options = replicated_state::prototype::PrototypeWriteOptions{};
+  auto options = PrototypeStateMethods::PrototypeWriteOptions{};
   options.waitForApplied =
       _request->parsedValue<bool>("waitForApplied").value_or(true);
 
@@ -410,7 +410,7 @@ RestStatus RestPrototypeStateHandler::handleDeleteRemoveMulti(
     keys.push_back(entry.copyString());
   }
 
-  auto options = replicated_state::prototype::PrototypeWriteOptions{};
+  auto options = PrototypeStateMethods::PrototypeWriteOptions{};
   options.waitForApplied =
       _request->parsedValue<bool>("waitForApplied").value_or(true);
 

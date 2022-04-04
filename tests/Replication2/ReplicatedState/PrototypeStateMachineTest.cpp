@@ -34,6 +34,7 @@
 #include "Replication2/StateMachines/Prototype/PrototypeFollowerState.h"
 #include "Replication2/StateMachines/Prototype/PrototypeLeaderState.h"
 #include "Replication2/StateMachines/Prototype/PrototypeStateMachine.h"
+#include "Replication2/StateMachines/Prototype/PrototypeStateMethods.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -163,7 +164,7 @@ TEST_F(PrototypeStateMachineTest, prorotype_core_flush) {
     auto entries = std::unordered_map<std::string, std::string>{{key, value}};
     expected.emplace(key, value);
     auto result = leaderState->set(
-        entries, PrototypeWriteOptions{.waitForApplied = false});
+        entries, PrototypeStateMethods::PrototypeWriteOptions{.waitForApplied = false});
     ASSERT_TRUE(result.isReady());
     auto index = result.get().value;
     ASSERT_EQ(index, cnt + 2);
@@ -214,7 +215,7 @@ TEST_F(PrototypeStateMachineTest, simple_operations) {
   ASSERT_NE(followerState, nullptr);
 
   decltype(LogIndex::value) index{0};
-  PrototypeWriteOptions options{};
+  PrototypeStateMethods::PrototypeWriteOptions options{};
 
   // Inserting one entry
   {

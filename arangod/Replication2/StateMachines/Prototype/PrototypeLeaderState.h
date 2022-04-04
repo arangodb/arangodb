@@ -25,26 +25,13 @@
 
 #include "Inspection/VPack.h"
 
-#include "PrototypeStateMachine.h"
 #include "PrototypeCore.h"
+#include "PrototypeStateMachine.h"
+#include "PrototypeStateMethods.h"
 
 #include <memory>
 
 namespace arangodb::replication2::replicated_state::prototype {
-struct PrototypeWriteOptions {
-  bool waitForCommit{true};
-  bool waitForSync{false};
-  bool waitForApplied{true};
-};
-
-template<class Inspector>
-auto inspect(Inspector& f, PrototypeWriteOptions& x) {
-  return f.object(x).fields(
-      f.field("waitForCommit", x.waitForCommit).fallback(true),
-      f.field("waitForSync", x.waitForSync).fallback(false),
-      f.field("waitForApplied", x.waitForApplied).fallback(true));
-}
-
 struct PrototypeLeaderState
     : IReplicatedLeaderState<PrototypeState>,
       std::enable_shared_from_this<PrototypeLeaderState> {
@@ -62,11 +49,13 @@ struct PrototypeLeaderState
   void start() override;
 
   auto set(std::unordered_map<std::string, std::string> entries,
-           PrototypeWriteOptions) -> futures::Future<LogIndex>;
-
-  auto remove(std::string key, PrototypeWriteOptions)
+           PrototypeStateMethods::PrototypeWriteOptions)
       -> futures::Future<LogIndex>;
-  auto remove(std::vector<std::string> keys, PrototypeWriteOptions)
+
+  auto remove(std::string key, PrototypeStateMethods::PrototypeWriteOptions)
+      -> futures::Future<LogIndex>;
+  auto remove(std::vector<std::string> keys,
+              PrototypeStateMethods::PrototypeWriteOptions)
       -> futures::Future<LogIndex>;
 
   auto get(std::string key, LogIndex waitForApplied)

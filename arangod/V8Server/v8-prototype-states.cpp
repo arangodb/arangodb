@@ -190,13 +190,13 @@ static void JS_WriteInternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
   }
 
-  auto options = replicated_state::prototype::PrototypeWriteOptions{};
+  auto options = PrototypeStateMethods::PrototypeWriteOptions{};
   if (args.Length() > 1) {
     VPackBuilder builder;
     builder.clear();
     TRI_V8ToVPack(isolate, builder, args[1], false, false);
     options = arangodb::velocypack::deserialize<
-        replicated_state::prototype::PrototypeWriteOptions>(builder.slice());
+        PrototypeStateMethods::PrototypeWriteOptions>(builder.slice());
   }
 
   auto const logIndex = PrototypeStateMethods::createInstance(vocbase)
