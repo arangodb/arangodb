@@ -628,8 +628,10 @@ void DatabaseFeature::start() {
 // this speeds up the actual shutdown because no waiting is necessary
 // until the cursors happen to free their underlying transactions
 void DatabaseFeature::beginShutdown() {
-  _ioHeartbeatThread->beginShutdown();  // will set thread state to STOPPING
-  _ioHeartbeatThread->wakeup();         // will shorten the wait
+  if (_ioHeartbeatThread) {
+    _ioHeartbeatThread->beginShutdown();  // will set thread state to STOPPING
+    _ioHeartbeatThread->wakeup();         // will shorten the wait
+  }
 
   auto unuser(_databasesProtector.use());
   auto theLists = _databasesLists.load();
