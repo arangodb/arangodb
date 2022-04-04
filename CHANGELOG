@@ -4,6 +4,29 @@ v3.9.1 (XXXX-XX-XX)
 * Fix lock order in Agent::advanceCommitIndex for State's _logLock and
   Agent's _waitForCV.
 
+* Updated ArangoDB Starter to 0.15.4.
+
+* Improve parallelism in arangorestore in case new data format is used.
+
+* Remove error handling fetching license information to improve user
+  experience. To display the license informationn in the UI is only
+  informational. It disturbs the user experience to know somthing went wrong
+  and doesn't provide any important information for the user.
+
+* Added new server option: --icu-language. Used instead of --default-language to
+  set pure ICU collator.
+  For example, in Sweden language("sv") lowercase letters should precede
+  uppercase ones. You can achieve it using following options when server starts:
+
+    `--icu-language sv`
+
+* No longer put document writes from replication into the audit log by default.
+  Same with low priority authentication like internal UI requests to .html files
+  for the UI. This solves a performance problem for shards getting in sync with
+  audit log switched on.
+
+* Updated OpenSSL to 1.1.1n and OpenLDAP to 2.6.1.
+
 * Fixed an assertion failure which could occur when there was an error in the
   HTTP header, so that the message body was not actually read.
 
