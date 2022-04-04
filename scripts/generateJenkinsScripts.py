@@ -5,7 +5,7 @@ import sys
 # check python 3
 if sys.version_info[0] != 3:
     print("found python version ", sys.version_info)
-    quit()
+    sys.exit()
 
 
 def generate_fish_output(args, outfile, tests):
@@ -157,7 +157,7 @@ def parse_arguments():
 
     if "--help-flags" in sys.argv:
         print_help_flags()
-        quit()
+        sys.exit()
 
     parser = argparse.ArgumentParser()
     parser.add_argument("definitions", help="file containing the test definitions", type=str)
@@ -277,7 +277,7 @@ def main():
         generate_output(args, get_output_file(args), tests)
     except Exception as e:
         print(e, file=sys.stderr)
-        quit(1)
+        sys.exit(1)
 
 
 if __name__ == "__main__":
