@@ -42,7 +42,8 @@ const getLeaderStatus = function(id) {
     console.info(`participants status not available for replicated log ${id}`);
     return null;
   }
-  if (status.participants[leaderId].response.role !== "leader") {
+  const leaderResponse = status.participants[leaderId].response;
+  if (leaderResponse === undefined || leaderResponse.role !== "leader") {
     console.info(`leader not available for replicated log ${id}`);
     return null;
   }
