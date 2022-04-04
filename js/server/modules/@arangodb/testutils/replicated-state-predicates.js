@@ -21,9 +21,8 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
-const LH = require("@arangodb/testutils/replicated-logs-helper");
+
 const SH = require("@arangodb/testutils/replicated-state-helper");
-const _ = require("lodash");
 
 const isError = function (value) {
   return value instanceof Error;
@@ -114,7 +113,7 @@ const replicatedStateTargetLeaderIs = function (database, stateId, expectedLeade
       return new Error(`Expected state leader to switch to ${expectedLeader}, but is still ${currentLeader}`);
     }
   };
-}
+};
 
 exports.replicatedStateIsReady = replicatedStateIsReady;
 exports.serverReceivedSnapshotGeneration = serverReceivedSnapshotGeneration;

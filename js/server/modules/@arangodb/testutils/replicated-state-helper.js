@@ -21,6 +21,7 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
+
 const _ = require("lodash");
 const LH = require("@arangodb/testutils/replicated-logs-helper");
 const request = require('@arangodb/request');

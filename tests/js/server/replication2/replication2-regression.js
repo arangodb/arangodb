@@ -36,13 +36,13 @@ const {
   waitForReplicatedLogAvailable,
   registerAgencyTestBegin, registerAgencyTestEnd,
   waitFor,
-  allServersHealthy,
   getServerUrl,
   checkRequestResult,
-  readReplicatedLogAgency,
   replicatedLogDeleteTarget,
-  replicatedLogIsReady,
 } = helper;
+const {
+  allServersHealthy,
+} = require("@arangodb/testutils/replicated-logs-predicates");
 
 const database = "replication2_supervision_test_db";
 const IS_FAILED = true;

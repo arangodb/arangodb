@@ -22,6 +22,7 @@
 ///
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
+
 const jsunity = require('jsunity');
 const {assertEqual, assertTrue, assertUndefined} = jsunity.jsUnity.assertions;
 const arangodb = require("@arangodb");
@@ -29,7 +30,8 @@ const _ = require('lodash');
 const db = arangodb.db;
 const lh = require("@arangodb/testutils/replicated-logs-helper");
 const sh = require("@arangodb/testutils/replicated-state-helper");
-const {replicatedStateTargetLeaderIs} = require("@arangodb/testutils/replicated-state-predicates.js");
+const lpreds = require("@arangodb/testutils/replicated-logs-predicates");
+const spreds = require("@arangodb/testutils/replicated-state-predicates");
 const request = require('@arangodb/request');
 const {waitFor} = require("@arangodb/testutils/replicated-logs-helper");
 
@@ -208,9 +210,9 @@ const replicatedStateSuite = function () {
         const result = setLeader(database, stateId, leader);
         assertEqual({}, result);
         // Wait for it to trickle down the the log target
-        lh.waitFor(lh.replicatedLogLeaderTargetIs(database, stateId, leader));
+        lh.waitFor(lpreds.replicatedLogLeaderTargetIs(database, stateId, leader));
         // The plan shouldn't have changed
-        assertTrue(lh.replicatedLogLeaderPlanIs(database, stateId, leader));
+        assertTrue(lpreds.replicatedLogLeaderPlanIs(database, stateId, leader));
       }
 
       const nonParticipants = _.without(lh.dbservers, ...participants);
@@ -225,13 +227,13 @@ const replicatedStateSuite = function () {
         assertEqual(newParticipants, Object.keys(stateAgencyContent.target.participants).sort());
       }
 
-      waitFor(replicatedStateTargetLeaderIs(database, stateId, newLeader));
+      waitFor(spreds.replicatedStateTargetLeaderIs(database, stateId, newLeader));
       waitFor(() => {
         const stateAgencyContent = sh.readReplicatedStateAgency(database, stateId);
         return sortedArrayEqualOrError(newParticipants, Object.keys(stateAgencyContent.plan.participants).sort());
       });
-      waitFor(replicatedLogTargetLeaderIs(database, stateId, newLeader));
-      waitFor(replicatedLogLeaderPlanIs(database, stateId, newLeader));
+      waitFor(lpreds.replicatedLogLeaderTargetIs(database, stateId, newLeader));
+      waitFor(lpreds.replicatedLogLeaderPlanIs(database, stateId, newLeader));
       // Current won't be cleaned up yet.
       // waitFor(() => {
       //   const stateAgencyContent = sh.readReplicatedStateAgency(database, stateId);
@@ -301,8 +303,8 @@ const replicatedStateSuite = function () {
         const stateAgencyContent = sh.readReplicatedStateAgency(database, stateId);
         assertEqual(newLeader, stateAgencyContent.target.leader);
       }
-      lh.waitFor(lh.replicatedLogLeaderTargetIs(database, stateId, newLeader));
-      lh.waitFor(lh.replicatedLogLeaderPlanIs(database, stateId, newLeader));
+      lh.waitFor(lpreds.replicatedLogLeaderTargetIs(database, stateId, newLeader));
+      lh.waitFor(lpreds.replicatedLogLeaderPlanIs(database, stateId, newLeader));
     },
 
     testUnsetLeader: function () {
@@ -319,8 +321,8 @@ const replicatedStateSuite = function () {
           const stateAgencyContent = sh.readReplicatedStateAgency(database, stateId);
           assertEqual(newLeader, stateAgencyContent.target.leader);
         }
-        lh.waitFor(lh.replicatedLogLeaderTargetIs(database, stateId, newLeader));
-        lh.waitFor(lh.replicatedLogLeaderPlanIs(database, stateId, newLeader));
+        lh.waitFor(lpreds.replicatedLogLeaderTargetIs(database, stateId, newLeader));
+        lh.waitFor(lpreds.replicatedLogLeaderPlanIs(database, stateId, newLeader));
       }
 
       // unset the leader
