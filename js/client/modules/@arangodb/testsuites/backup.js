@@ -96,14 +96,8 @@ class backupTestRunner extends tu.runInArangoshRunner {
     if (this.dumpPath !== undefined) {
       return dumpPath;
     }
-    
-    const conf = {
-      'server.authentication': 'true',
-      'server.jwt-secret': 'haxxmann'
-    };
-    
-    this.instanceInfo = pu.startInstance('tcp', options, conf, 'backup', fs.join(fs.getTempPath(), this.friendlyName));
 
+    this.instanceInfo = pu.startInstance('tcp', options, _.clone(tu.testServerAuthInfo), 'backup', fs.join(fs.getTempPath(), this.friendlyName));
     if (this.instanceInfo === false) {
       return failPreStartMessage('failed to start dataGenerator server!');
     }
@@ -150,7 +144,7 @@ class backupTestRunner extends tu.runInArangoshRunner {
       log('Shutting down dump server');
 
       if (this.healthCheck()) {
-        options['server.jwt-secret'] = 'haxxmann';
+        options = Object.assign({}, options, tu.testServerAuthInfo);
         if (!pu.shutdownInstance(this.instanceInfo, options)) {
           path = {
             state: false,
@@ -178,10 +172,8 @@ class backupTestRunner extends tu.runInArangoshRunner {
       return this.dumpPath;
     }
     if (this.useAuth) {
-      this.serverOptions['server.authentication'] = 'true';
-      this.serverOptions['server.jwt-secret'] = 'haxxmann';
-      this.options['server.authentication'] = 'true';
-      this.options['server.jwt-secret'] = 'haxxmann';
+      this.serverOptions = _.clone(tu.testServerAuthInfo);
+      this.options = Object.assign({}, this.options, tu.testServerAuthInfo);
     } else {
       this.serverOptions['server.authentication'] = 'false';
     }

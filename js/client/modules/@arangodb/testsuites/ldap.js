@@ -63,10 +63,8 @@ const testPaths = {
 // / @brief Shared conf
 // //////////////////////////////////////////////////////////////////////////////
 
-const sharedConf = {
-  'server.authentication': true,
+const sharedConf = Object.assign({}, {
   'server.authentication-system-only': true,
-  'server.jwt-secret': 'haxxmann', // hardcoded in auth.js
   'server.local-authentication': 'true',
   'javascript.allow-admin-execute': 'true',
 
@@ -85,7 +83,7 @@ const sharedConf = {
   'ldap2.bindpasswd': 'password',
   'ldap2.basedn': 'dc=arangodb,dc=com',
   'ldap2.superuser-role': 'adminrole'
-};
+}, tu.testServerAuthInfo);
 
 const prefixSuffix = {
   'ldap.prefix': 'uid=',
@@ -134,10 +132,8 @@ const ldapModeSearchPlaceholderConf = Object.assign({}, sharedConf, {
 const ldapModeRolesSimpleConf = Object.assign({}, ldapModeRolesConf, prefixSuffix);
 const ldapModeSearchSimpleConf = Object.assign({}, ldapModeSearchConf, prefixSuffix);
 
-const dualLdapConf = {
-  'server.authentication': true,
+const dualLdapConf = Object.assign({}, {
   'server.authentication-system-only': true,
-  'server.jwt-secret': 'haxxmann', // hardcoded in auth.js
   'server.local-authentication': 'true',
 
   'ldap.enabled': true,
@@ -161,7 +157,7 @@ const dualLdapConf = {
   'ldap2.suffix': ',dc=com',
   'ldap2.roles-attribute-name': 'sn',
   'ldap2.responsible-for': tu.pathForTesting('client/ldap/responsible2')
-};
+}, tu.testServerAuthInfo);
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief TEST: ldap

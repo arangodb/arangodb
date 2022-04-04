@@ -50,6 +50,14 @@ const RED = require('internal').COLORS.COLOR_RED;
 const RESET = require('internal').COLORS.COLOR_RESET;
 const YELLOW = require('internal').COLORS.COLOR_YELLOW;
 
+const testsecret = 'haxxmann';
+const testServerAuthInfo = {
+  'server.authentication': 'true',
+  'server.jwt-secret': testsecret
+};
+const testClientJwtAuthInfo = {
+  jwtSecret: testsecret
+};
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief get the items uniq to arr1 or arr2
@@ -541,6 +549,9 @@ class runLocalInArangoshRunner extends testRunnerBase{
     }
   }
 }
+
+exports.testServerAuthInfo = testServerAuthInfo;
+exports.testClientJwtAuthInfo = testClientJwtAuthInfo;
 
 exports.runOnArangodRunner = runOnArangodRunner;
 exports.runInArangoshRunner = runInArangoshRunner;

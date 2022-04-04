@@ -139,13 +139,11 @@ function activeFailover (options) {
   localOptions.disableMonitor = true;
   localOptions.Agency = true;
   let testCases = tu.scanTestPaths(testPaths.active_failover, localOptions);
-  let rc = new tu.runInArangoshRunner(localOptions, 'client_resilience', {
-    'server.authentication': 'true',
-    'server.jwt-secret': 'haxxmann',
-    'javascript.allow-external-process-control': 'true',
-    'javascript.allow-port-testing': 'true',
-    'javascript.allow-admin-execute': 'true',
-  }).run(testCases);
+  let rc = new tu.runInArangoshRunner(localOptions, 'client_resilience',  Object.assign({}, {
+      'javascript.allow-external-process-control': 'true',
+      'javascript.allow-port-testing': 'true',
+      'javascript.allow-admin-execute': 'true',
+    }, tu.testServerAuthInfo)).run(testCases);
   options.cleanup = options.cleanup && localOptions.cleanup;
   return rc;
 }

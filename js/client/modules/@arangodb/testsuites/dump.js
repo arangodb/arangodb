@@ -736,11 +736,6 @@ function dumpAuthentication (options) {
     'server.authentication': 'true'
   };
 
-  const serverAuthInfo = {
-    'server.authentication': 'true',
-    'server.jwt-secret': 'haxxmann'
-  };
-
   let dumpAuthOpts = {
     username: 'foobaruser',
     password: 'foobarpasswd'
@@ -763,10 +758,13 @@ function dumpAuthentication (options) {
     foxxTest: 'check-foxx.js'
   };
 
-  options.multipleDumps = true;
-  options['server.jwt-secret'] = 'haxxmann';
+  let opts = Object.assign({}, options, tu.testServerAuthInfo, {
+    multipleDumps: true
+  });
 
-  return dump_backend(options, serverAuthInfo, clientAuth, dumpAuthOpts, restoreAuthOpts, 'dump_authentication', tstFiles, function(){});
+  let ret= dump_backend(opts, _.clone(tu.testServerAuthInfo), clientAuth, dumpAuthOpts, restoreAuthOpts, 'dump_authentication', tstFiles, function(){});
+  options.cleanup = opts.cleanup;
+  return ret;
 }
 
 function dumpJwt (options) {
@@ -774,21 +772,8 @@ function dumpJwt (options) {
     'server.authentication': 'true'
   };
 
-  const serverAuthInfo = {
-    'server.authentication': 'true',
-    'server.jwt-secret': 'haxxmann'
-  };
-
-  let dumpAuthOpts = {
-    jwtSecret: 'haxxmann',
-    // intentionally no username/password
-  };
-
-  let restoreAuthOpts = {
-    jwtSecret: 'haxxmann',
-    // intentionally no username/password
-  };
-
+  let dumpAuthOpts = _.clone(tu.testClientJwtAuthInfo);
+  let restoreAuthOpts = _.clone(tu.testClientJwtAuthInfo);
   _.defaults(dumpAuthOpts, options);
   _.defaults(restoreAuthOpts, options);
 
@@ -799,10 +784,13 @@ function dumpJwt (options) {
     dumpTearDown: 'dump-teardown.js',
   };
 
-  options.multipleDumps = true;
-  options['server.jwt-secret'] = 'haxxmann';
+  let opts = Object.assgin({}, options, tu.testServerAuthInfo, {
+    multipleDumps: true
+  });
 
-  return dump_backend(options, serverAuthInfo, clientAuth, dumpAuthOpts, restoreAuthOpts, 'dump_authentication', tstFiles, function(){});
+  let ret = dump_backend(opts, tu.testServerAuthInfo, clientAuth, dumpAuthOpts, restoreAuthOpts, 'dump_authentication', tstFiles, function(){});
+  options.cleanup = opts.cleanup;
+  return ret;
 }
 
 function dumpEncrypted (options) {

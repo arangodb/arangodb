@@ -136,11 +136,10 @@ function makeDataWrapper (options) {
       return res;
     }
   }
-  let localOptions = _.clone(options);
+  let localOptions = Object.assign({}, options, tu.testServerAuthInfo);
   if (localOptions.cluster && localOptions.dbServers < 3) {
     localOptions.dbServers = 3;
   }
-  localOptions['server.jwt-secret'] = 'haxxmann';
 
   let rc = new rtaMakedataRunner(localOptions, 'rta_makedata_test').run(['rta']);
   options.cleanup = options.cleanup && localOptions.cleanup;

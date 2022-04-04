@@ -107,10 +107,7 @@ function loadBalancingAuthClient (options) {
   opts.username = 'root';
   opts.password = '';
 
-  let rc = new tu.runInArangoshRunner(opts, 'load_balancing', {
-    'server.authentication': 'true',
-    'server.jwt-secret': 'haxxmann'
-  }).run(testCases);
+  let rc = new tu.runInArangoshRunner(opts, 'load_balancing', _.clone(tu.testServerAuthInfo)).run(testCases);
   options.cleanup = options.cleanup && opts.cleanup;
   return rc;
 }

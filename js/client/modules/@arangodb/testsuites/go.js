@@ -212,11 +212,10 @@ function goDriver (options) {
       return results;
     }
   }
-  let localOptions = _.clone(options);
+  let localOptions = Object.assign({}, options, tu.testServerAuthInfo);
   if (localOptions.cluster && localOptions.dbServers < 3) {
     localOptions.dbServers = 3;
   }
-  localOptions['server.jwt-secret'] = 'haxxmann';
 
   let rc = new runGoTest(localOptions, 'go_test').run([ 'go_test.js']);
   options.cleanup = options.cleanup && localOptions.cleanup;

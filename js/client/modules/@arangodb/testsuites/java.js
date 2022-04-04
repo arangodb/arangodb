@@ -236,11 +236,10 @@ function javaDriver (options) {
       return results;
     }
   }
-  let localOptions = _.clone(this.options);
+  let localOptions = Object.assign({}, options, tu.testServerAuthInfo);
   if (localOptions.cluster && localOptions.dbServers < 3) {
     localOptions.dbServers = 3;
   }
-  localOptions['server.jwt-secret'] = 'haxxmann';
 
   let rc = new runInJavaTest(localOptions, 'java_test').run([ 'java_test.js']);
   options.cleanup = options.cleanup && localOptions.cleanup;

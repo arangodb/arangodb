@@ -162,11 +162,10 @@ function jsDriver (options) {
       return results;
     }
   }
-  let localOptions = _.clone(options);
+  let localOptions = Object.assign({}, options, tu.testServerAuthInfo);
   if (localOptions.cluster && localOptions.dbServers < 3) {
     localOptions.dbServers = 3;
   }
-  localOptions['server.jwt-secret'] = 'haxxmann';
 
   let rc = new runInJsTest(localOptions, 'js_test').run([ 'js_test.js']);
   options.cleanup = options.cleanup && localOptions.cleanup;

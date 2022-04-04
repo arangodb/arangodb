@@ -1,4 +1,3 @@
-
 /* jshint strict: false, sub: true */
 /* global print db */
 'use strict';
@@ -157,13 +156,12 @@ function driver (options) {
       return results;
     }
   }
-  let localOptions = _.clone(options);
+  let localOptions = Object.assign({}, options, tu.testServerAuthInfo);
   if (localOptions.cluster && localOptions.dbServers < 3) {
     localOptions.dbServers = 3;
   }
   let testFilter = options.test; // no, testRunnerBase thy shal not evaluate this.
   localOptions.test = '';
-  localOptions['server.jwt-secret'] = 'haxxmann';
 
   return new runInDriverTest(localOptions, 'driver_test').run(['driver_test.js']);
 }

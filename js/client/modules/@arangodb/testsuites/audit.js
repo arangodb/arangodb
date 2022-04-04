@@ -70,12 +70,10 @@ function auditLog(onServer) {
     
     options.auditLoggingEnabled = true;
     
-    const serverOptions = {
-      'server.authentication': 'true',
-      'server.jwt-secret': 'haxxmann',
+    const serverOptions = Object.assign({}, tu.testServerAuthInfo, {
       'log.level': 'audit-authentication=info',
       'log.force-direct': true
-    };
+    });
 
     print(CYAN + 'Audit log server tests...' + RESET);
     let testCases = tu.scanTestPaths(testPaths['audit_' + (onServer ? 'server' : 'client')], options);

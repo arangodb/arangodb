@@ -60,9 +60,7 @@ function restart (options) {
   clonedOpts.skipLogAnalysis = true;
   clonedOpts.skipReconnect = true;
   let testCases = tu.scanTestPaths(testPaths.restart, clonedOpts);
-  global.obj = new tu.runLocalInArangoshRunner(clonedOpts, 'restart', {
-    'server.jwt-secret': 'haxxmann',
-  }, false, false);
+  global.obj = new tu.runLocalInArangoshRunner(clonedOpts, 'restart', _.clone(tu.testServerAuthInfo), false, false);
   let rc = global.obj.run(testCases);
   options.cleanup = options.cleanup && clonedOpts.cleanup;
   return rc;
