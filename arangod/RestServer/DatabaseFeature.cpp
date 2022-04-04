@@ -296,12 +296,12 @@ void DatabaseManagerThread::run() {
 
 struct HeartbeatTimescale {
   static arangodb::metrics::LogScale<double> scale() {
-    return {10.f, 0.f, 1000000.f, 6};
+    return {10.f, 0.f, 1000000.f, 8};
   }
 };
 
 DECLARE_HISTOGRAM(arangodb_ioheartbeat_duration, HeartbeatTimescale,
-                  "Time to execute the io heartbeat once [ms]");
+                  "Time to execute the io heartbeat once [us]");
 DECLARE_COUNTER(arangodb_ioheartbeat_failures_total,
                 "Total number of failures in IO heartbeat");
 DECLARE_COUNTER(arangodb_ioheartbeat_delays_total,
@@ -360,7 +360,7 @@ void IOHeartbeatThread::run() {
             << "IOHeartbeat: trying to write test file took "
             << std::chrono::duration_cast<std::chrono::microseconds>(dur)
                    .count()
-            << " milliseconds.";
+            << " microseconds.";
       }
 
       // Read the file if we can reasonably assume it is there:
@@ -394,7 +394,7 @@ void IOHeartbeatThread::run() {
               << "IOHeartbeat: trying to read test file took "
               << std::chrono::duration_cast<std::chrono::microseconds>(dur)
                      .count()
-              << " milliseconds.";
+              << " microseconds.";
         }
 
         // And remove it again:
@@ -417,14 +417,14 @@ void IOHeartbeatThread::run() {
               << "IOHeartbeat: trying to remove test file took "
               << std::chrono::duration_cast<std::chrono::microseconds>(dur)
                      .count()
-              << " milliseconds.";
+              << " microseconds.";
         }
       }
 
       // Total duration and update histogram:
       dur = finish - start1;
       _exeTimeHistogram.count(
-          std::chrono::duration_cast<std::chrono::milliseconds>(dur).count());
+          std::chrono::duration_cast<std::chrono::microseconds>(dur).count());
 
       std::unique_lock<std::mutex> guard(_mutex);
       if (trouble) {

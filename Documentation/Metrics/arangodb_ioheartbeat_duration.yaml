@@ -2,7 +2,7 @@ name: arangodb_ioheartbeat_duration
 introducedIn: "3.8.7"
 help: |
   Histogram of execution times of a single IO heartbeat check.
-unit: ms
+unit: us
 type: histogram
 category: Health
 complexity: medium
