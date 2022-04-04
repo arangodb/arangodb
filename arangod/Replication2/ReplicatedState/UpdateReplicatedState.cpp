@@ -74,10 +74,13 @@ auto algorithms::updateReplicatedState(
     return {TRI_ERROR_NO_ERROR};
   } else {
     auto status = state->getStatus();
-    TRI_ASSERT(status.has_value());
-    auto generation = status.value().getGeneration();
-    if (generation != expectedGeneration) {
-      state->flush(expectedGeneration);
+    if (status.has_value()) {
+      auto generation = status.value().getGeneration();
+      if (generation != expectedGeneration) {
+        state->flush(expectedGeneration);
+      }
+    } else if (!spec->participants.contains(serverId)) {
+      ctx.dropReplicatedState(id);
     }
     return {TRI_ERROR_NO_ERROR};
   }

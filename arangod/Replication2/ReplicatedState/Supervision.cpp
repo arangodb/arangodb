@@ -93,6 +93,54 @@ auto checkParticipantAdded(
   return EmptyAction();
 }
 
+auto checkTargetParticipantRemoved(
+    arangodb::replication2::agency::Log const& log,
+    replication2::replicated_state::agency::State const& state) -> Action {
+  auto const& stateTargetParticipants = state.target.participants;
+
+  if (!state.plan) {
+    return EmptyAction();
+  }
+
+  auto const& logTargetParticipants = log.target.participants;
+
+  for (auto const& [participant, flags] : logTargetParticipants) {
+    if (!stateTargetParticipants.contains(participant)) {
+      return RemoveParticipantFromLogTargetAction{participant};
+    }
+  }
+  return EmptyAction();
+}
+
+auto checkLogParticipantRemoved(
+    arangodb::replication2::agency::Log const& log,
+    replication2::replicated_state::agency::State const& state) -> Action {
+  if (!state.plan) {
+    return EmptyAction();
+  }
+
+  auto const& stateTargetParticipants = state.target.participants;
+  auto const& logTargetParticipants = log.target.participants;
+  auto const& logPlanParticipants = log.plan->participantsConfig.participants;
+  auto participantGone = [&](auto const& participant) {
+    // Check both target and plan, so we don't drop too early (i.e. when the
+    // target is already there, but the log plan hasn't been written yet).
+    // Apart from that, as soon as the plan for the log is gone, we can safely
+    // drop the state.
+    return !stateTargetParticipants.contains(participant) &&
+           !logTargetParticipants.contains(participant) &&
+           !logPlanParticipants.contains(participant);
+  };
+
+  auto const& planParticipants = state.plan->participants;
+  for (auto const& [participant, flags] : planParticipants) {
+    if (participantGone(participant)) {
+      return RemoveParticipantFromStatePlanAction{participant};
+    }
+  }
+  return EmptyAction();
+}
+
 /* Check whether there is a participant that is excluded but reported snapshot
  * complete */
 auto checkSnapshotComplete(
@@ -201,6 +249,16 @@ auto checkReplicatedState(
   }
 
   if (auto action = checkParticipantAdded(*log, state);
+      !isEmptyAction(action)) {
+    return action;
+  }
+
+  if (auto action = checkTargetParticipantRemoved(*log, state);
+      !isEmptyAction(action)) {
+    return action;
+  }
+
+  if (auto action = checkLogParticipantRemoved(*log, state);
       !isEmptyAction(action)) {
     return action;
   }

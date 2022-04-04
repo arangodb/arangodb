@@ -257,15 +257,14 @@ struct arangodb::VocBaseLogManager {
 
   [[nodiscard]] auto getReplicatedStateStatus() const -> std::unordered_map<
       arangodb::replication2::LogId,
-      arangodb::replication2::replicated_state::StateStatus> {
-    std::unordered_map<arangodb::replication2::LogId,
-                       arangodb::replication2::replicated_state::StateStatus>
+      std::optional<arangodb::replication2::replicated_state::StateStatus>> {
+    std::unordered_map<
+        arangodb::replication2::LogId,
+        std::optional<arangodb::replication2::replicated_state::StateStatus>>
         result;
     auto guard = _guardedData.getLockedGuard();
     for (auto& [id, state] : guard->states) {
-      if (auto status = state->getStatus(); status.has_value()) {
-        result.emplace(id, std::move(*status));
-      }
+      result.emplace(id, state->getStatus());
     }
     return result;
   }
@@ -2177,7 +2176,7 @@ auto TRI_vocbase_t::dropReplicatedState(LogId id) -> arangodb::Result {
 
 auto TRI_vocbase_t::getReplicatedStateStatus() const -> std::unordered_map<
     arangodb::replication2::LogId,
-    arangodb::replication2::replicated_state::StateStatus> {
+    std::optional<arangodb::replication2::replicated_state::StateStatus>> {
   return _logManager->getReplicatedStateStatus();
 }
 auto TRI_vocbase_t::getReplicatedStateById(arangodb::replication2::LogId id)
