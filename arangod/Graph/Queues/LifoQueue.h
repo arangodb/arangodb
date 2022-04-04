@@ -68,7 +68,6 @@ class LifoQueue {
     return false;
   }
 
-
   bool hasProcessableElement() const {
     if (!isEmpty()) {
       auto const& first = _queue.front();
