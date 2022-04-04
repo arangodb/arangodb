@@ -6,6 +6,13 @@ devel
   be explicitly switched off. New metrics to give visibility if the test
   fails.
 
+* Updated arangosync to v2.9.0-preview-4.
+
+* BugFix (enterprise-only): (BTS-787) In a hybrid disjoint SmartGraph, having more
+  than one relation, if you add a new vertex collection to a Smart -> Smart edge
+  relation this vertex collection was rejected with "has to be satellite" error.
+  Now the collection is created as a SmartVertexCollection as desired.
+
 * Rework internal queues for connection and request statistics. The previous
   implementation allocated a lot of memory at program start for initializing
   fixed-sized queues for the statistics objects.

@@ -102,6 +102,7 @@ class LogFollower : public ILogFollower,
     auto checkCommitIndex(LogIndex newCommitIndex, LogIndex newLITK,
                           std::unique_ptr<WaitForQueue> outQueue) noexcept
         -> DeferredAction;
+    [[nodiscard]] auto didResign() const noexcept -> bool;
 
     LogFollower const& _follower;
     InMemoryLog _inMemoryLog;
