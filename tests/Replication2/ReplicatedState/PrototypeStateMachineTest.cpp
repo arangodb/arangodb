@@ -164,7 +164,8 @@ TEST_F(PrototypeStateMachineTest, prorotype_core_flush) {
     auto entries = std::unordered_map<std::string, std::string>{{key, value}};
     expected.emplace(key, value);
     auto result = leaderState->set(
-        entries, PrototypeStateMethods::PrototypeWriteOptions{.waitForApplied = false});
+        entries,
+        PrototypeStateMethods::PrototypeWriteOptions{.waitForApplied = false});
     ASSERT_TRUE(result.isReady());
     auto index = result.get().value;
     ASSERT_EQ(index, cnt + 2);
