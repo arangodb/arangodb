@@ -294,9 +294,10 @@ auto methods::replaceReplicatedStateParticipant(
         .set(*path->participants()->server(participantToAdd),
              VPackSlice::emptyObjectSlice())
         // if the old participant was the leader, set the leader to the new one
-        .cond(replaceLeader, [&](auto&& write) {
-          return std::move(write).set(*path->leader(), participantToAdd);
-        })
+        .cond(replaceLeader,
+              [&](auto&& write) {
+                return std::move(write).set(*path->leader(), participantToAdd);
+              })
         .inc(*paths::target()->version())
         .precs()
         // assert that the old participant actually was a participant
@@ -304,9 +305,11 @@ auto methods::replaceReplicatedStateParticipant(
         // assert that the new participant didn't exist
         .isEmpty(*path->participants()->server(participantToAdd))
         // if the old participant was the leader, assert that it
-        .cond(replaceLeader, [&](auto&& precs){
-          return std::move(precs).isEqual(*path->leader(), *currentLeader);
-        })
+        .cond(replaceLeader,
+              [&](auto&& precs) {
+                return std::move(precs).isEqual(*path->leader(),
+                                                *currentLeader);
+              })
         .end()
         .done();
   }
