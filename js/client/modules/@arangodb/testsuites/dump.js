@@ -784,7 +784,7 @@ function dumpJwt (options) {
     dumpTearDown: 'dump-teardown.js',
   };
 
-  let opts = Object.assgin({}, options, tu.testServerAuthInfo, {
+  let opts = Object.assign({}, options, tu.testServerAuthInfo, {
     multipleDumps: true
   });
 

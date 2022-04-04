@@ -40,7 +40,7 @@ const platform = require('internal').platform;
 const SetGlobalExecutionDeadlineTo = require('internal').SetGlobalExecutionDeadlineTo;
 const userManager = require("@arangodb/users");
 const testRunnerBase = require('@arangodb/testutils/testrunner').testRunner;
-const didSplitBuckets = require('@arangodb/testutils/testrunner').didSplitBuckets;
+const setDidSplitBuckets = require('@arangodb/testutils/testrunner').setDidSplitBuckets;
 
 /* Constants: */
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
@@ -207,11 +207,11 @@ function splitBuckets (options, cases) {
     return cases;
   }
   if (cases.length === 0) {
-    didSplitBuckets(true);
+    setDidSplitBuckets(true);
     return cases;
   }
 
-  didSplitBuckets(didSplitBuckets);
+  setDidSplitBuckets(true);
   let m = cases.length;
   let n = options.testBuckets.split('/');
   let r = parseInt(n[0]);
