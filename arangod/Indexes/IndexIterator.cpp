@@ -94,9 +94,7 @@ bool IndexIterator::rearmImpl(arangodb::aql::AstNode const*,
 bool IndexIterator::nextImpl(LocalDocumentIdCallback const&,
                              uint64_t /*limit*/) {
   THROW_ARANGO_EXCEPTION_MESSAGE(
-      TRI_ERROR_INTERNAL, std::string("requested next values from an index "
-                                      "iterator that does not support it (") +
-                              std::string{typeName()} + ")");
+      TRI_ERROR_INTERNAL, "requested next values from an index iterator that does not support it (" + std::string{typeName()} + ")");
 }
 
 bool IndexIterator::nextDocumentImpl(DocumentCallback const& cb,
