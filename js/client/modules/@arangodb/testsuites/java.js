@@ -115,7 +115,7 @@ function javaDriver (options) {
           args.push('-D' + key + '=' + this.options.javaOptions[key]);
         }
       }
-      if (this.options.extremeVerbosity || true) {
+      if (this.options.extremeVerbosity) {
         print(args);
       }
       let start = Date();
