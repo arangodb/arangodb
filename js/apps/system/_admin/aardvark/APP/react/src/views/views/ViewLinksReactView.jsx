@@ -15,7 +15,6 @@ import { BackButton, SaveButton } from "./Actions";
 import LinkList from "./Components/LinkList";
 import LinkPropertiesForm from "./forms/LinkPropertiesForm";
 import { buildSubNav, postProcessor, useView } from "./helpers";
-import { Toast } from "./Notifications/Toast";
 export const ViewContext = createContext({
   show: "",
   setShow: noop,
@@ -94,18 +93,7 @@ const ViewLinksReactView = ({ name }) => {
   };
   const handleBackClick = e => {
     e.preventDefault();
-    if (newLink !== "") {
-      const msg = `Your link (${newLink})'s not saved!`;
-      const icon = "warning";
-      Toast.fire({ title: msg, icon: icon }).then(res => {
-        if (res.isConfirmed) {
-          removeLink(newLink);
-          setNewLink("");
-        }
-      });
-    } else {
-      setShow("LinkList");
-    }
+    setShow("LinkList");
   };
 
   return (
@@ -152,7 +140,7 @@ const ViewLinksReactView = ({ name }) => {
               </div>
             </div>
             <div className="modal-footer">
-              <BackButton buttonClick={handleBackClick} />
+              <BackButton disabled={newLink} buttonClick={handleBackClick} />
               <SaveButton view={formState} oldName={name} />
             </div>
           </div>

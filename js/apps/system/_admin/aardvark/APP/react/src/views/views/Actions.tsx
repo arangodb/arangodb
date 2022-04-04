@@ -24,6 +24,7 @@ type SaveButtonProps = ButtonProps & {
 
 type BackButtonProps = {
   buttonClick: MouseEventHandler<HTMLElement>;
+  disabled?: boolean;
 };
 
 type JsonButtonProps = {
@@ -32,9 +33,14 @@ type JsonButtonProps = {
   icon: string;
 };
 
-export const BackButton = ({ buttonClick }: BackButtonProps) => {
+export const BackButton = ({ buttonClick, disabled }: BackButtonProps) => {
   return (
-    <IconButton icon={"arrow-left"} onClick={buttonClick} type={"default"}>
+    <IconButton
+      icon={"arrow-left"}
+      onClick={buttonClick}
+      type={"default"}
+      disabled={disabled}
+    >
       Back
     </IconButton>
   );
