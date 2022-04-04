@@ -35,6 +35,8 @@
 #include "VocBase/voc-types.h"
 #include "VocBase/Methods/Databases.h"
 
+#include <condition_variable>
+
 struct TRI_vocbase_t;
 
 namespace arangodb {
@@ -79,16 +81,23 @@ class IOHeartbeatThread final : public ServerThread<ArangodServer> {
   ~IOHeartbeatThread();
 
   void run() override;
+  void wakeup() {
+    std::lock_guard<std::mutex> guard(_mutex);
+    _cv.notify_one();
+  }
 
  private:
   // how long will the thread pause between iterations, this is in milliseconds
-  static constexpr unsigned long waitTime() {
-    return static_cast<unsigned long>(100U);
+  static constexpr std::chrono::duration<int64_t> checkIntervalTrouble() {
+    return std::chrono::seconds(1);
   }
   // Every checkInterval() iterations we perform one check:
-  static constexpr unsigned long checkInterval() {
-    return static_cast<unsigned long>(150U);
+  static constexpr std::chrono::duration<int64_t> checkIntervalNormal() {
+    return std::chrono::seconds(15);
   }
+
+  std::mutex _mutex;
+  std::condition_variable _cv;  // for waiting with wakeup
 
   metrics::Histogram<metrics::LogScale<double>>& _exeTimeHistogram;
   metrics::Counter& _failures;

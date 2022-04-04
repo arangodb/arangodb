@@ -323,14 +323,10 @@ IOHeartbeatThread::~IOHeartbeatThread() { shutdown(); }
 void IOHeartbeatThread::run() {
   auto& databasePathFeature = server().getFeature<DatabasePathFeature>();
   std::string testFilePath = FileUtils::buildFilename(
-      databasePathFeature.directory().c_str(), "TestBalloonFileIOHeartbeat");
+      databasePathFeature.directory(), "TestBalloonFileIOHeartbeat");
   std::string testFileContent = "This is just an I/O test.\n";
 
-  LOG_TOPIC("66665", INFO, Logger::ENGINES)
-      << "IOHeartbeatThread: running with checkInterval= " << checkInterval()
-      << " ...";
-
-  unsigned int counter = checkInterval();
+  LOG_TOPIC("66665", INFO, Logger::ENGINES) << "IOHeartbeatThread: running...";
 
   while (true) {
     try {  // protect thread against any exceptions
@@ -339,66 +335,70 @@ void IOHeartbeatThread::run() {
         break;
       }
 
-      if (--counter == 0) {
-        LOG_TOPIC("66659", DEBUG, Logger::ENGINES)
-            << "IOHeartbeat: testing to write/read/remove " << testFilePath;
-        counter = checkInterval();
-        // We simply write a file and sync it to disk in the database
-        // directory and then read it and then delete it again:
-        auto start1 = std::chrono::steady_clock::now();
-        bool trouble = false;
+      LOG_TOPIC("66659", DEBUG, Logger::ENGINES)
+          << "IOHeartbeat: testing to write/read/remove " << testFilePath;
+      // We simply write a file and sync it to disk in the database
+      // directory and then read it and then delete it again:
+      auto start1 = std::chrono::steady_clock::now();
+      bool trouble = false;
+      try {
+        FileUtils::spit(testFilePath, testFileContent, true);
+      } catch (std::exception const& exc) {
+        ++_failures;
+        LOG_TOPIC("66663", INFO, Logger::ENGINES)
+            << "IOHeartbeat: exception when writing test file: " << exc.what();
+        trouble = true;
+      }
+      auto finish = std::chrono::steady_clock::now();
+      std::chrono::duration<double> dur = finish - start1;
+      bool delayed = dur > std::chrono::seconds(1);
+      if (trouble || delayed) {
+        if (delayed) {
+          ++_delays;
+        }
+        LOG_TOPIC("66662", INFO, Logger::ENGINES)
+            << "IOHeartbeat: trying to write test file took "
+            << std::chrono::duration_cast<std::chrono::microseconds>(dur)
+                   .count()
+            << " milliseconds.";
+      }
+
+      // Read the file if we can reasonably assume it is there:
+      if (!trouble) {
+        auto start = std::chrono::steady_clock::now();
         try {
-          FileUtils::spit(testFilePath, testFileContent, true);
+          std::string content = FileUtils::slurp(testFilePath);
+          if (content != testFileContent) {
+            LOG_TOPIC("66660", INFO, Logger::ENGINES)
+                << "IOHeartbeat: read content of test file was not as "
+                   "expected, found:'"
+                << content << "', expected: '" << testFileContent << "'";
+            trouble = true;
+            ++_failures;
+          }
         } catch (std::exception const& exc) {
           ++_failures;
-          LOG_TOPIC("66663", INFO, Logger::ENGINES)
-              << "IOHeartbeat: exception when writing test file: "
+          LOG_TOPIC("66661", INFO, Logger::ENGINES)
+              << "IOHeartbeat: exception when reading test file: "
               << exc.what();
           trouble = true;
         }
         auto finish = std::chrono::steady_clock::now();
-        std::chrono::duration<double> dur = finish - start1;
+        std::chrono::duration<double> dur = finish - start;
         bool delayed = dur > std::chrono::seconds(1);
         if (trouble || delayed) {
           if (delayed) {
             ++_delays;
           }
-          LOG_TOPIC("66662", INFO, Logger::ENGINES)
-              << "IOHeartbeat: trying to write test file took "
+          LOG_TOPIC("66669", INFO, Logger::ENGINES)
+              << "IOHeartbeat: trying to read test file took "
               << std::chrono::duration_cast<std::chrono::microseconds>(dur)
                      .count()
               << " milliseconds.";
         }
 
-        // Read the file if we can reasonably assume it is there:
-        if (!trouble) {
-          auto start = std::chrono::steady_clock::now();
-          try {
-            std::string content = FileUtils::slurp(testFilePath);
-          } catch (std::exception const& exc) {
-            ++_failures;
-            LOG_TOPIC("66661", INFO, Logger::ENGINES)
-                << "IOHeartbeat: exception when reading test file: "
-                << exc.what();
-            trouble = true;
-          }
-          auto finish = std::chrono::steady_clock::now();
-          std::chrono::duration<double> dur = finish - start;
-          bool delayed = dur > std::chrono::seconds(1);
-          if (trouble || delayed) {
-            if (delayed) {
-              ++_delays;
-            }
-            LOG_TOPIC("66669", INFO, Logger::ENGINES)
-                << "IOHeartbeat: trying to read test file took "
-                << std::chrono::duration_cast<std::chrono::microseconds>(dur)
-                       .count()
-                << " milliseconds.";
-          }
-        }
-
         // And remove it again:
-        auto start = std::chrono::steady_clock::now();
+        start = std::chrono::steady_clock::now();
         ErrorCode err = FileUtils::remove(testFilePath);
         if (err != TRI_ERROR_NO_ERROR) {
           ++_failures;
@@ -419,23 +419,24 @@ void IOHeartbeatThread::run() {
                      .count()
               << " milliseconds.";
         }
-
-        if (trouble) {
-          counter = 10;  // recheck in a second
-        }
-
-        // Total duration and update histogram:
-        dur = finish - start1;
-        _exeTimeHistogram.count(
-            std::chrono::duration_cast<std::chrono::milliseconds>(dur).count());
       }
 
-      std::this_thread::sleep_for(std::chrono::milliseconds(waitTime()));
+      // Total duration and update histogram:
+      dur = finish - start1;
+      _exeTimeHistogram.count(
+          std::chrono::duration_cast<std::chrono::milliseconds>(dur).count());
+
+      std::unique_lock<std::mutex> guard(_mutex);
+      if (trouble) {
+        _cv.wait_for(guard, checkIntervalTrouble());
+      } else {
+        _cv.wait_for(guard, checkIntervalNormal());
+      }
     } catch (...) {
     }
     // next iteration
   }
-  LOG_TOPIC("66664", INFO, Logger::ENGINES) << "IOHeartbeatThread: stopped.";
+  LOG_TOPIC("66664", DEBUG, Logger::ENGINES) << "IOHeartbeatThread: stopped.";
 }
 
 DatabaseFeature::DatabaseFeature(Server& server)
@@ -627,6 +628,9 @@ void DatabaseFeature::start() {
 // this speeds up the actual shutdown because no waiting is necessary
 // until the cursors happen to free their underlying transactions
 void DatabaseFeature::beginShutdown() {
+  _ioHeartbeatThread->beginShutdown();  // will set thread state to STOPPING
+  _ioHeartbeatThread->wakeup();         // will shorten the wait
+
   auto unuser(_databasesProtector.use());
   auto theLists = _databasesLists.load();
 
