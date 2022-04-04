@@ -99,7 +99,7 @@ function shellClientReplicationApi (options) {
 
 class replicationRunner extends tu.runInArangoshRunner {
   constructor(options, testname, serverOptions, startReplication=false) {
-    super(options, testname, serverOptions, true);
+    super(options, testname, serverOptions);
     this.follower = undefined;
     this.addArgs = {};
     this.startReplication = startReplication;
