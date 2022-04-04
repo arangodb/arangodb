@@ -1,6 +1,9 @@
 v3.9.1 (XXXX-XX-XX)
 -------------------
 
+* Fix deadlocked shard synchronisations when planned shard leader has
+  not yet taken over leadership.
+
 * Updated ArangoDB Starter to 0.15.4.
 
 * Improve parallelism in arangorestore in case new data format is used.
