@@ -35,16 +35,13 @@ const dbservers = (function () {
 }());
 
 
-const retryWithExceptions = function (check, allowedErrors) {
+const retryWithExceptions = function (check) {
   let i = 0, lastError = null;
   while (true) {
     try {
       check();
       break;
     } catch (err) {
-      if (!_.includes(allowedErrors, err.errorNum)) {
-        throw err;
-      }
       lastError = err;
     }
     i += 1;
@@ -88,10 +85,7 @@ function testSuite() {
 
       retryWithExceptions(function () {
         assertEqual(state.read("foo"), "bar");
-      }, [errors.ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED.code,
-        errors.ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND.code,
-        errors.ERROR_CLUSTER_NOT_LEADER.code,
-        errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code]);
+      });
 
       // we expect the snapshost status to be unchanged
       assertEqual(sstatus, getSnapshotStatus(state.id()));
