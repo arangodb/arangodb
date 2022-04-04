@@ -34,6 +34,7 @@
 #include "Cluster/Action.h"
 #include "Cluster/Maintenance.h"
 #include "Cluster/MaintenanceFeature.h"
+#include "Mocks/Servers.h"
 #include "RestServer/MetricsFeature.h"
 #include "RestServer/UpgradeFeature.h"
 
