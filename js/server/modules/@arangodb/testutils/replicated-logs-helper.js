@@ -30,7 +30,7 @@ const arangodb = require('@arangodb');
 const ArangoError = arangodb.ArangoError;
 const ERRORS = arangodb.errors;
 const db = arangodb.db;
-const lpreds = require("@arangodb/testutils/replicated-log-predicates");
+const lpreds = require("@arangodb/testutils/replicated-logs-predicates");
 
 const waitFor = function (checkFn, maxTries = 240) {
   let count = 0;
