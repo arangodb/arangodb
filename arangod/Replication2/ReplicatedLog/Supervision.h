@@ -82,7 +82,9 @@ auto dictateLeader(LogTarget const& target, LogPlanSpecification const& plan,
 
 // Actions capture entries in log, so they have to stay
 // valid until the returned action has been executed (or discarded)
-auto checkReplicatedLog(Log const& log, ParticipantsHealth const& health)
-    -> Action;
+auto checkReplicatedLog(LogTarget const& target,
+                        std::optional<LogPlanSpecification> const& plan,
+                        std::optional<LogCurrent> const& current,
+                        ParticipantsHealth const& health) -> Action;
 
 }  // namespace arangodb::replication2::replicated_log

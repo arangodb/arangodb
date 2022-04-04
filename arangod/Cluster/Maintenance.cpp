@@ -647,7 +647,7 @@ void arangodb::maintenance::diffReplicatedStates(
     return StringUtils::encodeBase64(slice.startAs<char>(), slice.byteSize());
   };
 
-  auto const createReplicatedStateAction =
+  auto const updateReplicatedStateAction =
       [&](LogId id, replicated_state::agency::Plan const* spec,
           replicated_state::agency::Current const* current) {
         auto specStr = objectToVelocyPackString(spec);
@@ -674,13 +674,13 @@ void arangodb::maintenance::diffReplicatedStates(
         if (spec.participants.contains(serverId)) {
           if (!localStates.contains(id)) {
             // we have to create this replicated state
-            createReplicatedStateAction(id, &spec, nullptr);
+            updateReplicatedStateAction(id, &spec, nullptr);
           }
         }
       };
 
   auto const forEachReplicatedStateInLocal =
-      [&](LogId id, replicated_state::StateStatus const& status,
+      [&](LogId id, std::optional<replicated_state::StateStatus> const& status,
           replicated_state::agency::Plan const* plan,
           replicated_state::agency::Current const* current) {
         bool const shouldDeleted = std::invoke([&] {
@@ -688,12 +688,12 @@ void arangodb::maintenance::diffReplicatedStates(
         });
 
         if (shouldDeleted) {
-          createReplicatedStateAction(id, nullptr, nullptr);
-        } else {
+          updateReplicatedStateAction(id, nullptr, nullptr);
+        } else if (status.has_value()) {
           TRI_ASSERT(plan != nullptr);
           auto const& participant = plan->participants.at(serverId);
-          if (participant.generation != status.getGeneration()) {
-            createReplicatedStateAction(id, plan, nullptr);
+          if (participant.generation != status->getGeneration()) {
+            updateReplicatedStateAction(id, plan, nullptr);
           }
         }
       };
@@ -910,15 +910,11 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
     auto const collectLogInformation = [&] {
       auto const& localLogsInDatabase = localLogsByDatabase.at(dbname);
       auto planLogsInDatabase = ReplicatedLogSpecMap{};
-      auto it = plan.find(dbname);
-      if (it == plan.end()) {
-        throw std::runtime_error{"Not found dbname in plan"};
-      }
       auto planLogInDatabaseSlice =
-          it->second->slice()[0].get(cluster::paths::aliases::plan()
-                                         ->replicatedLogs()
-                                         ->database(dbname)
-                                         ->vec());
+          plan.at(dbname)->slice()[0].get(cluster::paths::aliases::plan()
+                                              ->replicatedLogs()
+                                              ->database(dbname)
+                                              ->vec());
       if (planLogInDatabaseSlice.isObject()) {
         for (auto [key, value] : VPackObjectIterator(planLogInDatabaseSlice)) {
           auto spec =
@@ -936,21 +932,18 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
       auto planStatesInDatabase = ReplicatedStateSpecMap{};
       auto currentStatesInDatabase = ReplicatedStateCurrentMap{};
       auto const& localStatesInDatabase = localStatesByDatabase.at(dbname);
-      auto it1 = plan.find(dbname);
-      auto it2 = current.find(dbname);
-      if (it1 == plan.end() || it2 == current.end()) {
-        throw std::runtime_error{"Not found dbname in plan or current"};
-      }
+      auto& db_plan = plan.at(dbname);
+      auto& db_current = current.at(dbname);
       auto planStatesInDatabaseSlice =
-          it1->second->slice()[0].get(cluster::paths::aliases::plan()
-                                          ->replicatedStates()
-                                          ->database(dbname)
-                                          ->vec());
+          db_plan->slice()[0].get(cluster::paths::aliases::plan()
+                                      ->replicatedStates()
+                                      ->database(dbname)
+                                      ->vec());
       auto currentStatesInDatabaseSlice =
-          it2->second->slice()[0].get(cluster::paths::aliases::current()
-                                          ->replicatedStates()
-                                          ->database(dbname)
-                                          ->vec());
+          db_current->slice()[0].get(cluster::paths::aliases::current()
+                                         ->replicatedStates()
+                                         ->database(dbname)
+                                         ->vec());
       if (planStatesInDatabaseSlice.isObject()) {
         for (auto [key, value] :
              VPackObjectIterator(planStatesInDatabaseSlice)) {
@@ -1665,9 +1658,6 @@ static void reportCurrentReplicatedState(
     replication2::replicated_state::StateStatus const& status, VPackSlice cur,
     replication2::LogId id, std::string const& dbName,
     std::string const& serverId) {
-  // update the local snapshot information
-  auto const& snapshot = status.getSnapshotInfo();
-
   // load current into memory
   auto current = std::invoke(
       [&]() -> std::optional<replication2::replicated_state::agency::Current> {
@@ -1694,7 +1684,7 @@ static void reportCurrentReplicatedState(
       if (cs.generation != status.getGeneration()) {
         return true;
       }
-      if (cs.snapshot.status != snapshot.status) {
+      if (cs.snapshot.status != status.getSnapshotInfo().status) {
         return true;
       }
     } else {
@@ -2108,8 +2098,10 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
       if (auto stateIter = localStates.find(dbName);
           stateIter != std::end(localStates)) {
         for (auto const& [id, status] : stateIter->second) {
-          reportCurrentReplicatedState(report, status, cur, id, dbName,
-                                       serverId);
+          if (status.has_value()) {
+            reportCurrentReplicatedState(report, *status, cur, id, dbName,
+                                         serverId);
+          }
         }
       }
     } catch (std::exception const& ex) {

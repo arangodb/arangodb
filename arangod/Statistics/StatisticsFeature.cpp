@@ -34,9 +34,11 @@
 #include "Basics/process-utils.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
+#include "FeaturePhases/ServerFeaturePhase.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "Network/NetworkFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "RestServer/CpuUsageFeature.h"
@@ -539,35 +541,36 @@ class StatisticsThread final : public ServerThread<ArangodServer> {
 
  public:
   void run() override {
-    auto& databaseFeature = server().getFeature<arangodb::DatabaseFeature>();
-    if (databaseFeature.upgrade()) {
-      // don't start the thread when we are running an upgrade
-      return;
-    }
+    constexpr uint64_t const kMinIdleSleepTime = 100;
+    constexpr uint64_t const kMaxIdleSleepTime = 250;
 
-    uint64_t const MAX_SLEEP_TIME = 250;
-
-    uint64_t sleepTime = 100;
+    uint64_t sleepTime = kMinIdleSleepTime;
     int nothingHappened = 0;
 
     while (!isStopping()) {
-      size_t count = RequestStatistics::processAll();
+      size_t count = 0;
+      try {
+        count = RequestStatistics::processAll();
+      } catch (std::exception const& ex) {
+        LOG_TOPIC("82524", WARN, Logger::STATISTICS)
+            << "caught exception during request statistics processing: "
+            << ex.what();
+      }
 
       if (count == 0) {
+        // nothing needed to be processed
         if (++nothingHappened == 10 * 30) {
           // increase sleep time every 30 seconds
           nothingHappened = 0;
-          sleepTime += 50;
-
-          if (sleepTime > MAX_SLEEP_TIME) {
-            sleepTime = MAX_SLEEP_TIME;
-          }
+          sleepTime = std::min(sleepTime + 50, kMaxIdleSleepTime);
         }
 
         std::this_thread::sleep_for(std::chrono::milliseconds(sleepTime));
 
       } else {
+        // something needed to be processed
         nothingHappened = 0;
+        sleepTime = kMinIdleSleepTime;
 
         if (count < 10) {
           std::this_thread::sleep_for(std::chrono::milliseconds(10));
@@ -592,6 +595,7 @@ StatisticsFeature::StatisticsFeature(Server& server)
       _descriptions(server) {
   setOptional(true);
   startsAfter<AqlFeaturePhase>();
+  startsAfter<NetworkFeature>();
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   bool foundError = false;
@@ -703,12 +707,16 @@ void StatisticsFeature::start() {
     FATAL_ERROR_EXIT();
   }
 
-  _statisticsThread = std::make_unique<StatisticsThread>(server());
+  // don't start the thread when we are running an upgrade
+  auto& databaseFeature = server().getFeature<arangodb::DatabaseFeature>();
+  if (!databaseFeature.upgrade()) {
+    _statisticsThread = std::make_unique<StatisticsThread>(server());
 
-  if (!_statisticsThread->start()) {
-    LOG_TOPIC("46b0c", FATAL, arangodb::Logger::STATISTICS)
-        << "could not start statistics thread";
-    FATAL_ERROR_EXIT();
+    if (!_statisticsThread->start()) {
+      LOG_TOPIC("46b0c", FATAL, arangodb::Logger::STATISTICS)
+          << "could not start statistics thread";
+      FATAL_ERROR_EXIT();
+    }
   }
 
   // force history disable on Agents

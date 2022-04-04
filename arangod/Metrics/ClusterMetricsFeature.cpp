@@ -35,10 +35,7 @@
 #include "Network/NetworkFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
-#include "RestServer/QueryRegistryFeature.h"
-#include "RocksDBEngine/RocksDBEngine.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "Statistics/StatisticsFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 
 namespace arangodb::metrics {

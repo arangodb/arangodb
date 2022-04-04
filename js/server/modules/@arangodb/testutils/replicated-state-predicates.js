@@ -88,5 +88,23 @@ const replicatedStateIsReady = function (database, logId, servers) {
   };
 };
 
+const replicatedStateVersionConverged = function (database, logId, expectedVersion) {
+  return function () {
+    const {current} = SH.readReplicatedStateAgency(database, logId);
+
+    if (current === undefined || current.supervision === undefined) {
+      return Error(`Current/supervision is not yet defined for ${logId}`);
+    }
+
+    const supervision = current.supervision;
+    if (supervision.version === undefined || supervision.version < expectedVersion) {
+      return Error(`Expected version ${expectedVersion}, found version ${supervision.value}`);
+    }
+
+    return true;
+  };
+};
+
 exports.replicatedStateIsReady = replicatedStateIsReady;
 exports.serverReceivedSnapshotGeneration = serverReceivedSnapshotGeneration;
+exports.replicatedStateVersionConverged = replicatedStateVersionConverged;

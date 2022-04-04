@@ -30,6 +30,7 @@
 #include "velocypack/Iterator.h"
 
 #include "Logger/LogMacros.h"
+#include "Inspection/VPack.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -67,14 +68,23 @@ void Current::toVelocyPack(velocypack::Builder& builder) const {
       status.toVelocyPack(builder);
     }
   }
+  if (supervision.has_value()) {
+    builder.add(velocypack::Value("supervision"));
+    supervision->toVelocyPack(builder);
+  }
 }
 
 auto Current::fromVelocyPack(velocypack::Slice slice) -> Current {
   Current c;
-  for (auto [key, value] :
-       velocypack::ObjectIterator(slice.get(StaticStrings::Participants))) {
-    auto status = ParticipantStatus::fromVelocyPack(value);
-    c.participants.emplace(key.copyString(), std::move(status));
+  if (auto os = slice.get(StaticStrings::Participants); os.isObject()) {
+    for (auto [key, value] :
+         velocypack::ObjectIterator(slice.get(StaticStrings::Participants))) {
+      auto status = ParticipantStatus::fromVelocyPack(value);
+      c.participants.emplace(key.copyString(), std::move(status));
+    }
+  }
+  if (auto ss = slice.get("supervision"); !ss.isNone()) {
+    c.supervision = Supervision::fromVelocyPack(ss);
   }
   return c;
 }
@@ -164,10 +174,16 @@ void Target::toVelocyPack(velocypack::Builder& builder) const {
       state.toVelocyPack(builder);
     }
   }
+  if (leader) {
+    builder.add(StaticStrings::Leader, *leader);
+  }
   builder.add(velocypack::Value(StaticStrings::Properties));
   properties.toVelocyPack(builder);
   builder.add(velocypack::Value(StaticStrings::Config));
   config.toVelocyPack(builder);
+  if (version.has_value()) {
+    builder.add(StaticStrings::Version, *version);
+  }
 }
 
 auto Target::fromVelocyPack(velocypack::Slice slice) -> Target {
@@ -179,13 +195,37 @@ auto Target::fromVelocyPack(velocypack::Slice slice) -> Target {
       participants.emplace(key.copyString(), participant);
     }
   }
+  auto leader = std::invoke([&]() -> decltype(Target::leader) {
+    if (auto leaderSlice = slice.get(StaticStrings::Leader);
+        !leaderSlice.isNone()) {
+      TRI_ASSERT(leaderSlice.isString());
+      return {leaderSlice.copyString()};
+    } else {
+      return std::nullopt;
+    }
+  });
   auto properties =
       Properties::fromVelocyPack(slice.get(StaticStrings::Properties));
 
   auto config = LogConfig(slice.get(StaticStrings::Config));
+  auto version = std::optional<std::uint64_t>{};
+  if (auto vs = slice.get(StaticStrings::Version); !vs.isNone()) {
+    version = vs.extract<std::uint64_t>();
+  }
 
   return Target{.id = id,
                 .properties = std::move(properties),
+                .leader = std::move(leader),
                 .participants = std::move(participants),
-                .config = std::move(config)};
+                .config = config,
+                .version = version};
+}
+
+void Current::Supervision::toVelocyPack(velocypack::Builder& builder) const {
+  velocypack::serialize(builder, *this);
+}
+
+auto Current::Supervision::fromVelocyPack(velocypack::Slice slice)
+    -> Current::Supervision {
+  return velocypack::deserialize<Supervision>(slice);
 }

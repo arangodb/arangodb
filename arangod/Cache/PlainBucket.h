@@ -23,15 +23,13 @@
 
 #pragma once
 
-#include <atomic>
 #include <cstdint>
 
 #include "Cache/BucketState.h"
 #include "Cache/CachedValue.h"
 #include "Cache/Common.h"
 
-namespace arangodb {
-namespace cache {
+namespace arangodb::cache {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Bucket structure for PlainCache.
@@ -41,6 +39,10 @@ namespace cache {
 /// methods. Bucket must be locked before doing anything else to ensure proper
 /// synchronization. Data entries are carefully laid out to ensure the structure
 /// fits in two cachelines.
+/// Note: the object used for hashing and comparison of values is not part of
+/// every bucket, to save memory. Instead, the object used for hashing and
+/// comparison is handed into the find() and remove() methods. It is required
+/// that always the same hasher/comparator object is used for a given bucket.
 ////////////////////////////////////////////////////////////////////////////////
 struct PlainBucket {
   BucketState _state;
@@ -52,7 +54,7 @@ struct PlainBucket {
   std::uint32_t _cachedHashes[slotsData];
   CachedValue* _cachedData[slotsData];
 
-// padding, if necessary?
+  // padding, if necessary?
 #ifdef TRI_PADDING_32
   uint32_t _padding[slotsData];
 #endif
@@ -60,33 +62,33 @@ struct PlainBucket {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Initialize an empty bucket.
   //////////////////////////////////////////////////////////////////////////////
-  PlainBucket();
+  PlainBucket() noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Attempt to lock bucket (failing after maxTries attempts).
   //////////////////////////////////////////////////////////////////////////////
-  bool lock(std::uint64_t maxTries);
+  bool lock(std::uint64_t maxTries) noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Unlock the bucket. Requires bucket to be locked.
   //////////////////////////////////////////////////////////////////////////////
-  void unlock();
+  void unlock() noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Checks whether the bucket is locked.
   //////////////////////////////////////////////////////////////////////////////
-  bool isLocked() const;
+  bool isLocked() const noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Checks whether the bucket has been migrated. Requires state to be
   /// locked.
   //////////////////////////////////////////////////////////////////////////////
-  bool isMigrated() const;
+  bool isMigrated() const noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Checks whether bucket is full. Requires state to be locked.
   //////////////////////////////////////////////////////////////////////////////
-  bool isFull() const;
+  bool isFull() const noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Looks up a given key and returns associated value. Requires state
@@ -98,8 +100,9 @@ struct PlainBucket {
   /// bucket to allow basic LRU semantics. If no matching entry is found,
   /// nothing will be changed and a nullptr will be returned.
   //////////////////////////////////////////////////////////////////////////////
+  template<typename Hasher>
   CachedValue* find(std::uint32_t hash, void const* key, std::size_t keySize,
-                    bool moveToFront = true);
+                    bool moveToFront = true) noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Inserts a given value. Requires state to be locked.
@@ -112,7 +115,7 @@ struct PlainBucket {
   /// the bucket is full, the user should evict an item and specify the
   /// optimizeForInsertion flag to be true.
   //////////////////////////////////////////////////////////////////////////////
-  void insert(std::uint32_t hash, CachedValue* value);
+  void insert(std::uint32_t hash, CachedValue* value) noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Removes an item with the given key if one exists. Requires state to
@@ -123,7 +126,9 @@ struct PlainBucket {
   /// to the value. Upon removal, the empty slot generated is moved to the back
   /// of the bucket (to remove the gap).
   //////////////////////////////////////////////////////////////////////////////
-  CachedValue* remove(std::uint32_t hash, void const* key, std::size_t keySize);
+  template<typename Hasher>
+  CachedValue* remove(std::uint32_t hash, void const* key,
+                      std::size_t keySize) noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Searches for the best candidate in the bucket to evict. Requires
@@ -134,7 +139,7 @@ struct PlainBucket {
   /// returns nullptr. In the case that ignoreRefCount is set to true, then it
   /// simply returns the least recently used value, regardless of freeability.
   //////////////////////////////////////////////////////////////////////////////
-  CachedValue* evictionCandidate(bool ignoreRefCount = false) const;
+  CachedValue* evictionCandidate(bool ignoreRefCount = false) const noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Evicts the given value from the bucket. Requires state to be
@@ -144,21 +149,20 @@ struct PlainBucket {
   /// preparing an empty slot for insertion, specify the second parameter to be
   /// true. This will move the empty slot to the front instead.
   //////////////////////////////////////////////////////////////////////////////
-  void evict(CachedValue* value, bool optimizeForInsertion = false);
+  void evict(CachedValue* value, bool optimizeForInsertion = false) noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Reinitializes a bucket to be completely empty and unlocked.
   /// Requires state to be locked.
   //////////////////////////////////////////////////////////////////////////////
-  void clear();
+  void clear() noexcept;
 
  private:
-  void moveSlot(std::size_t slot, bool moveToFront);
+  void moveSlot(std::size_t slot, bool moveToFront) noexcept;
 };
 
 // ensure that PlainBucket is exactly BUCKET_SIZE
 static_assert(sizeof(PlainBucket) == BUCKET_SIZE,
               "Expected sizeof(PlainBucket) == BUCKET_SIZE.");
 
-};  // end namespace cache
-};  // end namespace arangodb
+};  // end namespace arangodb::cache

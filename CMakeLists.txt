@@ -1248,6 +1248,13 @@ endif ()
 add_definitions(-DBOOST_UUID_RANDOM_PROVIDER_FORCE_POSIX=1) #fix random provider
 add_definitions(-DBOOST_ALL_NO_LIB=1) #disable boost autolink on windows
 add_subdirectory(3rdParty)
+link_libraries(
+  absl::flat_hash_set
+  absl::flat_hash_map
+  absl::node_hash_set
+  absl::node_hash_map
+)
+
 
 add_definitions("-DARANGODB_BOOST_VERSION=\"${BOOST_VERSION}\"")
 
@@ -1380,7 +1387,6 @@ list(INSERT SYSTEM_LIBRARIES 0
   ${SYS_LIBS}
   ${CMAKE_DL_LIBS}
   ${CMAKE_THREAD_LIBS_INIT}
-  absl-static
 )
 
 add_subdirectory(lib)
