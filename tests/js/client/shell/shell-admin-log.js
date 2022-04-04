@@ -37,7 +37,8 @@ function adminLogSuite() {
   return {
     setUpAll : function() {
       // save previous log level for "general" topic;
-      oldLogLevel = arango.PUT("/_admin/log/level", { general: "info" }).general;
+      oldLogLevel = arango.GET("/_admin/log/level").general;
+      arango.PUT("/_admin/log/level", { general: "info" });
     },
 
     tearDownAll : function () {
