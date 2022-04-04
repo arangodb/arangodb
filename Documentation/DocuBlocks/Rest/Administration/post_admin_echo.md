@@ -76,8 +76,8 @@ queried using other verbs, too (`"GET"`, `"PUT"`, `"PATCH"`, `"DELETE"`).
 @RESTREPLYBODY{requestBody,string,required,}
 Stringified version of the request body you sent
 
-@RESTREPLYBODY{rawRequestBody,array,required,integer}
-The sent characters as a list of numbers
+@RESTREPLYBODY{rawRequestBody,object,required,}
+The sent payload as a JSON-encoded Buffer object
 
 @RESTREPLYBODY{parameters,object,required,}
 An object containing the query parameters
