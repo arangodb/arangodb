@@ -1,6 +1,8 @@
 devel
 -----
 
+* Updated arangosync to v2.9.0-preview-4.
+
 * Make the StatisticsFeature start after the NetworkFeature, so that any 
   network request issues by cluster statistics gathering can rely on the 
   networking functionality being available until shutdown.
