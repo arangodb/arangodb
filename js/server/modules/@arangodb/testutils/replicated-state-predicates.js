@@ -119,3 +119,4 @@ const replicatedStateTargetLeaderIs = function (database, stateId, expectedLeade
 exports.replicatedStateIsReady = replicatedStateIsReady;
 exports.serverReceivedSnapshotGeneration = serverReceivedSnapshotGeneration;
 exports.replicatedStateVersionConverged = replicatedStateVersionConverged;
+exports.replicatedStateTargetLeaderIs = replicatedStateTargetLeaderIs;

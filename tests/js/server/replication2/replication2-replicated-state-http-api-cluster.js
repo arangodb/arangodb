@@ -29,6 +29,7 @@ const _ = require('lodash');
 const db = arangodb.db;
 const lh = require("@arangodb/testutils/replicated-logs-helper");
 const sh = require("@arangodb/testutils/replicated-state-helper");
+const {replicatedStateTargetLeaderIs} = require("@arangodb/testutils/replicated-state-predicates.js");
 const request = require('@arangodb/request');
 const {waitFor} = require("@arangodb/testutils/replicated-logs-helper");
 
