@@ -134,7 +134,8 @@ struct ReplicatedStateMethods {
 
   [[nodiscard]] virtual auto replaceParticipant(
       LogId, ParticipantId const& participantToRemove,
-      ParticipantId const& participantToAdd) const
+      ParticipantId const& participantToAdd,
+      std::optional<ParticipantId> const& currentLeader) const
       -> futures::Future<Result> = 0;
 
   [[nodiscard]] virtual auto setLeader(
