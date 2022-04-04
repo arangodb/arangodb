@@ -197,10 +197,6 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
   // update server's tick value
   TRI_UpdateTickServer(id().id());
 
-  // add keyOptions from slice
-  _keyGenerator =
-      KeyGenerator::create(vocbase, info.get(StaticStrings::KeyOptions));
-
   _sharding = std::make_unique<ShardingInfo>(info, this);
 
 #ifdef USE_ENTERPRISE
@@ -267,6 +263,10 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
 
   prepareIndexes(info.get(StaticStrings::Indexes));
   decorateWithInternalValidators();
+
+  // create key generator based on keyOptions from slice
+  _keyGenerator =
+      KeyGenerator::create(*this, info.get(StaticStrings::KeyOptions));
 }
 
 Result LogicalCollection::updateSchema(VPackSlice schema) {

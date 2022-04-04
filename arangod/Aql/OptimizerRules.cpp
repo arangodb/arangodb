@@ -822,6 +822,15 @@ std::string getSingleShardId(
 
   // all shard keys found!!
 
+  if (node->getType() == EN::INSERT && collection->numberOfShards() != 1 &&
+      (shardKeys.size() != 1 ||
+       shardKeys[0] != arangodb::StaticStrings::KeyString) &&
+      builder.slice().get(arangodb::StaticStrings::KeyString).isNone()) {
+    // insert into a collection with more than one shard and custom shard keys,
+    // and _key is not given in inputs
+    return std::string();
+  }
+
   // find the responsible shard for the data
   std::string shardId;
 
@@ -8587,7 +8596,7 @@ void arangodb::aql::insertDistributeInputCalculation(ExecutionPlan& plan) {
         auto* insertNode = ExecutionNode::castTo<InsertNode*>(targetNode);
         collection = insertNode->collection();
         inputVariable = insertNode->inVariable();
-        createKeys = true;
+        createKeys = collection->numberOfShards() != 1;
         allowKeyConversionToObject = true;
         setInVariable = [insertNode](Variable* var) {
           insertNode->setInVariable(var);
@@ -8635,7 +8644,7 @@ void arangodb::aql::insertDistributeInputCalculation(ExecutionPlan& plan) {
         alternativeVariable = upsertNode->insertVariable();
         ignoreErrors = upsertNode->getOptions().ignoreErrors;
         allowKeyConversionToObject = true;
-        createKeys = true;
+        createKeys = collection->numberOfShards() != 1;
         allowSpecifiedKeys = true;
         setInVariable = [upsertNode](Variable* var) {
           upsertNode->setInsertVariable(var);

@@ -9068,7 +9068,7 @@ static AqlValue ConvertToObject(transaction::Methods& trx, VPackSlice input,
   // convert string key into object with { _key: "string" }
   TRI_ASSERT(allowKeyConversionToObject);
   transaction::BuilderLeaser builder(&trx);
-  buildKeyObject(*builder.get(), input.stringView());
+  buildKeyObject(*builder, input.stringView());
   return AqlValue{builder->slice()};
 }
 
@@ -9165,9 +9165,9 @@ AqlValue Functions::MakeDistributeInputWithKeyCreation(
     // smart vertex collection
     auto svecol =
         dynamic_cast<arangodb::SmartVertexCollection*>(logicalCollection.get());
-    auto sveRes = svecol->rewriteVertexOnInsert(input, *sBuilder.get(), false);
+    auto sveRes = svecol->rewriteVertexOnInsert(input, *sBuilder, false);
     if (sveRes.fail()) {
-      THROW_ARANGO_EXCEPTION(sveRes.errorNumber());
+      THROW_ARANGO_EXCEPTION(sveRes);
     }
     return AqlValue{sBuilder->slice()};
   }
@@ -9175,9 +9175,8 @@ AqlValue Functions::MakeDistributeInputWithKeyCreation(
 
   if (buildNewObject) {
     transaction::BuilderLeaser builder(&trx);
-    buildKeyObject(*builder.get(),
-                   std::string_view(logicalCollection->createKey(input)),
-                   false);
+    buildKeyObject(
+        *builder, std::string_view(logicalCollection->createKey(input)), false);
     for (auto cur : VPackObjectIterator(input)) {
       builder->add(cur.key.stringView(), cur.value);
     }
@@ -9198,19 +9197,18 @@ AqlValue Functions::MakeDistributeGraphInput(
     // Need to fix this document.
     // We need id and key as input.
 
+    transaction::BuilderLeaser builder(&trx);
     std::string_view s(input.stringView());
     size_t pos = s.find('/');
     if (pos == s.npos) {
-      transaction::BuilderLeaser builder(&trx);
-      buildKeyObject(*builder.get(), s);
-      return AqlValue{builder->slice()};
+      buildKeyObject(*builder, s);
+    } else {
+      // s is an id string, so let's create an object with id + key
+      auto key = s.substr(pos + 1);
+      buildKeyObject(*builder, key, false);
+      builder->add(StaticStrings::IdString, input);
+      builder->close();
     }
-    // s is an id string, so let's create an object with id + key
-    auto key = s.substr(pos + 1);
-    transaction::BuilderLeaser builder(&trx);
-    buildKeyObject(*builder.get(), key, false);
-    builder->add(StaticStrings::IdString, input);
-    builder->close();
 
     return AqlValue{builder->slice()};
   }
@@ -9238,7 +9236,7 @@ AqlValue Functions::MakeDistributeGraphInput(
     // this.
     auto keyPart = transaction::helpers::extractKeyPart(idSlice);
     transaction::BuilderLeaser builder(&trx);
-    buildKeyObject(*builder.get(), std::string_view(keyPart), false);
+    buildKeyObject(*builder, std::string_view(keyPart), false);
     for (auto cur : VPackObjectIterator(input)) {
       builder->add(cur.key.stringView(), cur.value);
     }

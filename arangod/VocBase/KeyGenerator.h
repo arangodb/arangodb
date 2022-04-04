@@ -31,6 +31,8 @@
 #include <string>
 
 namespace arangodb {
+class LogicalCollection;
+
 namespace application_features {
 class ApplicationServer;
 }
@@ -47,14 +49,14 @@ struct KeyGeneratorHelper {
   static std::string const highestKey;
 
   static std::string encodePadded(uint64_t value);
-  static uint64_t decodePadded(char const* p, size_t length);
+  static uint64_t decodePadded(char const* p, size_t length) noexcept;
 
   /// @brief validate a key
-  static bool validateKey(char const* key, size_t len);
+  static bool validateKey(char const* key, size_t len) noexcept;
 
   /// @brief validate a document id (collection name + / + document key)
   static bool validateId(char const* key, size_t len, bool extendedNames,
-                         size_t& split);
+                         size_t& split) noexcept;
 
   /// @brief maximum length of a key in a collection
   static constexpr size_t maxKeyLength = 254;
@@ -81,12 +83,12 @@ class KeyGenerator {
   virtual ~KeyGenerator() = default;
 
   /// @brief create a key generator based on the options specified
-  static std::unique_ptr<KeyGenerator> create(TRI_vocbase_t& vocbase,
-                                              arangodb::velocypack::Slice);
+  static std::unique_ptr<KeyGenerator> create(
+      LogicalCollection const& collection, arangodb::velocypack::Slice);
 
   /// @brief whether or not the key generator has dynamic state
   /// that needs to be stored and recovered
-  virtual bool hasDynamicState() const { return true; }
+  virtual bool hasDynamicState() const noexcept { return true; }
 
   /// @brief generate a key
   /// if the returned string is empty, it means no proper key was
@@ -94,17 +96,19 @@ class KeyGenerator {
   virtual std::string generate() = 0;
 
   /// @brief validate a key
-  virtual ErrorCode validate(char const* p, size_t length, bool isRestore);
+  virtual ErrorCode validate(char const* p, size_t length,
+                             bool isRestore) noexcept;
 
   /// @brief track usage of a key
-  virtual void track(char const* p, size_t length) = 0;
+  virtual void track(char const* p, size_t length) noexcept = 0;
 
   /// @brief build a VelocyPack representation of the generator in the builder
   virtual void toVelocyPack(arangodb::velocypack::Builder&) const;
 
  protected:
   /// @brief check global key attributes
-  ErrorCode globalCheck(char const* p, size_t length, bool isRestore);
+  ErrorCode globalCheck(char const* p, size_t length,
+                        bool isRestore) const noexcept;
 
   /// @brief whether or not the users can specify their own keys
   bool const _allowUserKeys;

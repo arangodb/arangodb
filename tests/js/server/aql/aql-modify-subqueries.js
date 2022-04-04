@@ -232,8 +232,8 @@ function ahuacatlModifySuite () {
 
         if (isCluster) {
           let plan = AQL_EXPLAIN(query,{}, disableSingleDocOp).plan;
-          assertFalse(hasDistributeNode(plan.nodes));
-          assertNotEqual(-1, plan.rules.indexOf("restrict-to-single-shard"));
+          assertTrue(hasDistributeNode(plan.nodes));
+          assertEqual(-1, plan.rules.indexOf("restrict-to-single-shard"));
         }
 
         assertEqual(0, actual.json.length);
