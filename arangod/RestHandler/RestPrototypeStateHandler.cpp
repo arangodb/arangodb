@@ -32,6 +32,7 @@
 #include "Inspection/VPack.h"
 
 #include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/StateMachines/Prototype/PrototypeFollowerState.h"
 #include "Replication2/StateMachines/Prototype/PrototypeLeaderState.h"
 #include "Replication2/StateMachines/Prototype/PrototypeStateMethods.h"
 
