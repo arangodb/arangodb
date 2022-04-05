@@ -167,7 +167,7 @@ exports.getRawMetric = function (endpoint, tags) {
     reconnectRetry(endpoint, db._name(), "root", "");
     return arango.GET_RAW('/_admin/metrics' + tags);
   } finally {
-    reconnectRetry(primaryEndpoint, "_system", "root", "");
+    reconnectRetry(primaryEndpoint, db._name(), "root", "");
   }
 };
 
