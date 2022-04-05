@@ -178,7 +178,7 @@ const replicatedStateSuite = function () {
         return {state, log};
       });
 
-      LH.waitFor(LH.replicatedLogIsReady(database, logId, 1, servers, leader));
+      LH.waitFor(lpreds.replicatedLogIsReady(database, logId, 1, servers, leader));
       LH.waitFor(spreds.replicatedStateIsReady(database, logId, servers));
     },
 
