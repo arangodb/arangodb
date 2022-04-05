@@ -379,79 +379,79 @@ const impTodos = [{
   batchSize: 1000
 }];
 
-function importing (options) {
-  let instanceInfo = pu.startInstance('tcp', options, {}, 'importing');
-
-  if (instanceInfo === false) {
-    return {
-      'failed': 1,
-      'importing': {
-        failed: 1,
-        status: false,
-        message: 'failed to start server!'
-      }
-    };
+class importRunner extends tu.runInArangoshRunner {
+  constructor(options, testname, ...optionalArgs) {
+    super(options, testname, ...optionalArgs);
+    this.info = "runImport";
   }
+  
+  run() {
+    this.instanceInfo = pu.startInstance('tcp', this.options, {}, 'importing');
 
-  let result = { failed: 0 };
-
-  try {
-    result.setup = tu.runInArangosh(
-      options,
-      instanceInfo,
-      tu.makePathUnix(fs.join(testPaths.importing[0],'import-setup.js')));
-
-    result.setup.failed = 0;
-    if (result.setup.status !== true) {
-      result.setup.failed = 1;
-      result.failed += 1;
-      throw new Error('cannot start import setup');
+    if (this.instanceInfo === false) {
+      return {
+        'failed': 1,
+        'importing': {
+          failed: 1,
+          status: false,
+          message: 'failed to start server!'
+        }
+      };
     }
 
-    for (let i = 0; i < impTodos.length; i++) {
-      const impTodo = impTodos[i];
+    let result = { failed: 0 };
 
-      result[impTodo.id] = pu.run.arangoImport(options, instanceInfo, impTodo, options.coreCheck);
-      result[impTodo.id].failed = 0;
+    try {
+      result.setup = this.runOneTest(tu.makePathUnix(fs.join(testPaths.importing[0],'import-setup.js')));
 
-      if (impTodo.expectFailure) {
-        // if status === false, we make true out of it
-        // if status === true, we make false out of it
-        result[impTodo.id].status = !result[impTodo.id].status;
-      }
-
-      if (result[impTodo.id].status !== true && !options.force) {
-        result[impTodo.id].failed = 1;
+      result.setup.failed = 0;
+      if (result.setup.status !== true) {
+        result.setup.failed = 1;
         result.failed += 1;
-        throw new Error('cannot run import');
+        throw new Error('cannot start import setup');
       }
+
+      for (let i = 0; i < impTodos.length; i++) {
+        const impTodo = impTodos[i];
+
+        result[impTodo.id] = pu.run.arangoImport(this.options, this.instanceInfo, impTodo, this.options.coreCheck);
+        result[impTodo.id].failed = 0;
+
+        if (impTodo.expectFailure) {
+          // if status === false, we make true out of it
+          // if status === true, we make false out of it
+          result[impTodo.id].status = !result[impTodo.id].status;
+        }
+
+        if (result[impTodo.id].status !== true && !this.options.force) {
+          result[impTodo.id].failed = 1;
+          result.failed += 1;
+          throw new Error('cannot run import');
+        }
+      }
+
+      result.check = this.runOneTest(tu.makePathUnix(fs.join(testPaths.importing[0], 'import.js')));
+
+      result.check.failed = result.check.success ? 0 : 1;
+
+      result.teardown = this.runOneTest(tu.makePathUnix(fs.join(testPaths.importing[0], 'import-teardown.js')));
+
+      result.teardown.failed = result.teardown.success ? 0 : 1;
+    } catch (banana) {
+      print('An exceptions of the following form was caught:',
+            yaml.safeDump(banana));
     }
 
-    result.check = tu.runInArangosh(
-      options,
-      instanceInfo,
-      tu.makePathUnix(fs.join(testPaths.importing[0], 'import.js')));
+    print('Shutting down...');
+    result['shutdown'] = pu.shutdownInstance(this.instanceInfo, this.options);
+    print('done.');
 
-    result.check.failed = result.check.success ? 0 : 1;
-
-    result.teardown = tu.runInArangosh(
-      options,
-      instanceInfo,
-      tu.makePathUnix(fs.join(testPaths.importing[0], 'import-teardown.js')));
-
-    result.teardown.failed = result.teardown.success ? 0 : 1;
-  } catch (banana) {
-    print('An exceptions of the following form was caught:',
-          yaml.safeDump(banana));
+    return result;
   }
-
-  print('Shutting down...');
-  result['shutdown'] = pu.shutdownInstance(instanceInfo, options);
-  print('done.');
-
-  return result;
 }
-
+function importing (options) {
+  return new importRunner(options, "importing").run();
+}
 exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['importing'] = importing;
