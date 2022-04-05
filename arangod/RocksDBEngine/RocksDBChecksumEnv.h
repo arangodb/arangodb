@@ -27,24 +27,30 @@
 #include <rocksdb/env.h>
 #include "Logger/LogMacros.h"
 
-namespace arangodb {
+namespace arangodb::checksum {
 
 class ChecksumHelper {
  public:
   ChecksumHelper();
-  bool isSstFilename(std::string const& fileName);
+  ChecksumHelper(std::string const& rootPath) : _rootPath(rootPath){};
+  static bool isFileNameSst(std::string const& fileName) noexcept;
   bool writeShaFile(std::string const& fileName, std::string const& checksum);
+  rocksdb::Status DeleteFile(std::string const& fileName);
   std::string computeChecksum();
+  void checkMissingShaFiles();
   ~ChecksumHelper();
 
  private:
+  std::string _rootPath;
   EVP_MD_CTX* _context;
+  std::unordered_map<std::string, std::string> _sstFileNamesToHashes;
 };
 
 class ChecksumWritableFile : public rocksdb::WritableFileWrapper {
  public:
-  explicit ChecksumWritableFile(rocksdb::WritableFile* t)
-      : rocksdb::WritableFileWrapper(t) {}
+  explicit ChecksumWritableFile(rocksdb::WritableFile* t,
+                                std::string const& fileName)
+      : rocksdb::WritableFileWrapper(t), _sstFileName(fileName) {}
   rocksdb::Status Append(const rocksdb::Slice& data) override {
     LOG_DEVEL << "Appending " << data.size()
               << " bytes to ChecksummingWritableFile.";
@@ -53,13 +59,14 @@ class ChecksumWritableFile : public rocksdb::WritableFileWrapper {
   rocksdb::Status Close() override;
 
  private:
+  std::shared_ptr<ChecksumHelper> _helper;
   std::string _checksum;
+  std::string const _sstFileName;
 };
 
 class ChecksumEnv
     : public rocksdb::EnvWrapper {  // must mix it with Env::Default() for the
                                     // moment
-
  public:
   explicit ChecksumEnv(Env* t) : EnvWrapper(t) {}
   explicit ChecksumEnv(std::unique_ptr<Env>&& t) : EnvWrapper(std::move(t)) {}
@@ -71,6 +78,9 @@ class ChecksumEnv
       const rocksdb::EnvOptions& options) override;
 
   rocksdb::Status DeleteFile(const std::string& fileName) override;
+
+ private:
+  std::shared_ptr<ChecksumHelper> _helper;
 };
 
-}  // namespace arangodb
+}  // namespace arangodb::checksum
