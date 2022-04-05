@@ -2139,6 +2139,12 @@ function launchFinalize(options, instanceInfo, startTime) {
                             );
             break;
           } catch (e) {
+            instanceInfo.arangods.forEach( arangod => {
+              let status = statusExternal(arangod.pid, false);
+              if (status.status !== "RUNNING") {
+                throw new Error(`Arangod ${arangod.pid} exited instantly! ` + JSON.stringify(status));
+              }
+            });
             print(Date() + " caught exception: " + e.message);
           }
         } else {
@@ -2245,7 +2251,9 @@ function launchFinalize(options, instanceInfo, startTime) {
     print(processInfo.join('\n') + '\n');
   }
   internal.sleep(options.sleepBeforeStart);
-  initProcessStats(instanceInfo);
+  if (!options.disableClusterMonitor) {
+    initProcessStats(instanceInfo);
+  }
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -2453,11 +2461,11 @@ function startInstance (protocol, options, addArgs, testname, tmpDir) {
   try {
     if (options.hasOwnProperty('server')) {
       let rc = {
-                 endpoint: options.server,
-                 rootDir: options.serverRoot,
-                 url: options.server.replace('tcp', 'http'),
-                 arangods: []
-               };
+        endpoint: options.server,
+        rootDir: options.serverRoot,
+        url: options.server.replace('tcp', 'http'),
+        arangods: []
+      };
       arango.reconnect(rc.endpoint, '_system', 'root', '');
       return rc;
     } else if (options.cluster || options.activefailover) {
