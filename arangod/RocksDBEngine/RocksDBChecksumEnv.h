@@ -26,23 +26,36 @@
 #include <openssl/evp.h>
 #include <rocksdb/env.h>
 
+#include "Basics/Mutex.h"
+#include "Logger/LogMacros.h"
+
 namespace arangodb::checksum {
+
+class ChecksumCalculator {
+ public:
+  ChecksumCalculator();
+  std::string computeChecksum();
+  void update(char const* buffer, size_t n);
+  ~ChecksumCalculator();
+
+ private:
+  EVP_MD_CTX* _context;
+};
 
 class ChecksumHelper {
  public:
-  ChecksumHelper();
-  ChecksumHelper(std::string const& rootPath) : _rootPath(rootPath){};
+  ChecksumHelper(std::string const& rootPath) : _rootPath{rootPath} {}
   static bool isFileNameSst(std::string const& fileName) noexcept;
   bool writeShaFile(std::string const& fileName, std::string const& checksum);
   rocksdb::Status DeleteFile(std::string const& fileName);
   std::string computeChecksum();
   void checkMissingShaFiles();
-  ~ChecksumHelper();
 
  private:
   std::string _rootPath;
   EVP_MD_CTX* _context;
   std::unordered_map<std::string, std::string> _sstFileNamesToHashes;
+  Mutex _calculatedHashesMutex;
 };
 
 class ChecksumWritableFile : public rocksdb::WritableFileWrapper {
