@@ -73,9 +73,9 @@ function loadBalancingClient (options) {
     opts.coordinators = 2;
   }
 
-  let rc = tu.performTests(opts, testCases, 'load_balancing', tu.runInArangosh, {
+  let rc = new tu.runInArangoshRunner(opts, 'load_balancing', {
     'server.authentication': 'false'
-  });
+  }).run(testCases);
   options.cleanup = options.cleanup && opts.cleanup;
   return rc;
 }
@@ -107,10 +107,7 @@ function loadBalancingAuthClient (options) {
   opts.username = 'root';
   opts.password = '';
 
-  let rc = tu.performTests(opts, testCases, 'load_balancing', tu.runInArangosh, {
-    'server.authentication': 'true',
-    'server.jwt-secret': 'haxxmann'
-  });
+  let rc = new tu.runInArangoshRunner(opts, 'load_balancing', _.clone(tu.testServerAuthInfo)).run(testCases);
   options.cleanup = options.cleanup && opts.cleanup;
   return rc;
 }

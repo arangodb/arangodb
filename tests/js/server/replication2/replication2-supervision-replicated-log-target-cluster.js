@@ -23,28 +23,30 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
+
 const jsunity = require('jsunity');
 const arangodb = require("@arangodb");
 const _ = require('lodash');
-const {sleep} = require('internal');
 const db = arangodb.db;
 const helper = require("@arangodb/testutils/replicated-logs-helper");
+const lpreds = require("@arangodb/testutils/replicated-logs-predicates");
 
 const {
   waitFor,
   readReplicatedLogAgency,
   replicatedLogSetTarget,
   replicatedLogDeleteTarget,
-  replicatedLogIsReady,
-  dbservers, getParticipantsObjectForServers,
-  nextUniqueLogId, allServersHealthy,
+  dbservers,
   registerAgencyTestBegin, registerAgencyTestEnd,
-  replicatedLogLeaderEstablished,
   replicatedLogUpdateTargetParticipants,
-  replicatedLogParticipantsFlag,
-  replicatedLogTargetVersion,
   waitForReplicatedLogAvailable,
 } = helper;
+const {
+  replicatedLogIsReady,
+  replicatedLogLeaderEstablished,
+  replicatedLogParticipantsFlag,
+  replicatedLogTargetVersion,
+} = lpreds;
 
 const database = "replication2_supervision_test_db";
 
@@ -62,7 +64,7 @@ const replicatedLogLeaderElectionFailed = function (database, logId, term, serve
     let election = current.supervision.election;
     if (election.term !== term) {
       return Error("supervision report not yet available for current term; "
-          + `found = ${election.term}; expected = ${term}`);
+        + `found = ${election.term}; expected = ${term}`);
     }
 
     if (servers !== undefined) {
@@ -177,7 +179,7 @@ const replicatedLogSuite = function () {
     setUp: registerAgencyTestBegin,
     tearDown: function (test) {
       resumeAll();
-      waitFor(allServersHealthy());
+      waitFor(lpreds.allServersHealthy());
       registerAgencyTestEnd(test);
     },
 
@@ -591,7 +593,7 @@ const replicatedLogSuite = function () {
 
         if (!_.isEqual(leaderData.response, localStatus)) {
           return Error("Copy of local status does not yet match actual local status, " +
-              `found = ${JSON.stringify(globalStatus.participants[leader])}; expected = ${JSON.stringify(localStatus)}`);
+            `found = ${JSON.stringify(globalStatus.participants[leader])}; expected = ${JSON.stringify(localStatus)}`);
         }
         localStatus = helper.getLocalStatus(database, logId, followers[1]);
         if (localStatus.role !== "follower") {
@@ -621,7 +623,7 @@ const replicatedLogSuite = function () {
 
         if (!_.isEqual(election, supervisionData.response.election)) {
           return Error('Coordinator not reporting latest state from supervision' +
-              `found = ${globalStatus.supervision.election}; expected = ${election}`);
+            `found = ${globalStatus.supervision.election}; expected = ${election}`);
         }
 
         if (globalStatus.specification.source !== "RemoteAgency") {

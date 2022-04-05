@@ -39,6 +39,8 @@ const pathForTesting = require('internal').pathForTesting;
 const platform = require('internal').platform;
 const SetGlobalExecutionDeadlineTo = require('internal').SetGlobalExecutionDeadlineTo;
 const userManager = require("@arangodb/users");
+const testRunnerBase = require('@arangodb/testutils/testrunner').testRunner;
+const setDidSplitBuckets = require('@arangodb/testutils/testrunner').setDidSplitBuckets;
 
 /* Constants: */
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
@@ -48,7 +50,14 @@ const RED = require('internal').COLORS.COLOR_RED;
 const RESET = require('internal').COLORS.COLOR_RESET;
 const YELLOW = require('internal').COLORS.COLOR_YELLOW;
 
-let didSplitBuckets = false;
+const testsecret = 'haxxmann';
+const testServerAuthInfo = {
+  'server.authentication': 'true',
+  'server.jwt-secret': testsecret
+};
+const testClientJwtAuthInfo = {
+  jwtSecret: testsecret
+};
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief get the items uniq to arr1 or arr2
@@ -76,444 +85,6 @@ function makePathUnix (path) {
 
 function makePathGeneric (path) {
   return fs.join.apply(null, path.split(fs.pathSeparator));
-}
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief runs a list of tests
-// //////////////////////////////////////////////////////////////////////////////
-
-function performTests (options, testList, testname, runFn, serverOptions, startStopHandlers) {
-  if (options.testBuckets && !didSplitBuckets) {
-    throw new Error("You parametrized to split buckets, but this testsuite doesn't support it!!!");
-  }
-
-  if (testList.length === 0) {
-    print('Testsuite is empty!');
-    return {
-      "ALLTESTS" : {
-        status: ((options.skipGrey || options.skipTimecritial || options.skipNondeterministic) && (options.test === undefined)),
-        skipped: true,
-        message: 'no testfiles were found!'
-      }
-    };
-  }
-
-  if (serverOptions === undefined) {
-    serverOptions = {};
-  }
-
-  let memProfCounter = 0;
-  let env = {};
-  let customInstanceInfos = {};
-  let healthCheck = function () {return true;};
-  let beforeStart = time();
-  if (startStopHandlers !== undefined && startStopHandlers.hasOwnProperty('healthCheck')) {
-    healthCheck = startStopHandlers.healthCheck;
-  }
-
-  if (startStopHandlers !== undefined && startStopHandlers.hasOwnProperty('preStart')) {
-    customInstanceInfos['preStart'] = startStopHandlers.preStart(options,
-                                                                 serverOptions,
-                                                                 customInstanceInfos,
-                                                                 startStopHandlers);
-    if (customInstanceInfos.preStart.state === false) {
-      return {
-        setup: {
-          status: false,
-          message: 'custom preStart failed!' + customInstanceInfos.preStart.message
-        },
-        shutdown: customInstanceInfos.preStart.shutdown
-      };
-    }
-    _.defaults(env, customInstanceInfos.preStart.env);
-  }
-
-  let instanceInfo = pu.startInstance(options.protocol, options, serverOptions, testname);
-
-  if (instanceInfo === false) {
-    if (startStopHandlers !== undefined && startStopHandlers.hasOwnProperty('startFailed')) {
-      customInstanceInfos['startFailed'] = startStopHandlers.startFailed(options,
-                                                                         serverOptions,
-                                                                         customInstanceInfos,
-                                                                         startStopHandlers);
-    }
-    return {
-      setup: {
-        status: false,
-        message: 'failed to start server!'
-      }
-    };
-  }
-
-  if (startStopHandlers !== undefined && startStopHandlers.hasOwnProperty('postStart')) {
-    customInstanceInfos['postStart'] = startStopHandlers.postStart(options,
-                                                                   serverOptions,
-                                                                   instanceInfo,
-                                                                   customInstanceInfos,
-                                                                   startStopHandlers);
-    if (customInstanceInfos.postStart.state === false) {
-      let shutdownStatus = customInstanceInfos.postStart.shutdown;
-      shutdownStatus = shutdownStatus && pu.shutdownInstance(instanceInfo, options);
-      return {
-        setup: {
-          status: false,
-          message: 'custom postStart failed: ' + customInstanceInfos.postStart.message,
-          shutdown: shutdownStatus
-        }
-      };
-    }
-    _.defaults(env, customInstanceInfos.postStart.env);
-  }
-
-  let testrunStart = time();
-  let results = {
-    shutdown: true,
-    startupTime: testrunStart - beforeStart
-  };
-  let continueTesting = true;
-  let serverDead = false;
-  let count = 0;
-  let forceTerminate = false;
-  let graphCount = 0;
-  let usersCount = 0;
-  if ((testname !== 'agency') && (testname !== 'authentication')){
-    usersCount = userManager.all().length;
-  }
-  for (let i = 0; i < testList.length; i++) {
-    let te = testList[i];
-    let filtered = {};
-
-    if (filterTestcaseByOptions(te, options, filtered)) {
-      let first = true;
-      let loopCount = 0;
-      count += 1;
-
-      let collectionsBefore = [];
-      let viewsBefore = [];
-      if (!serverDead) {
-        try {
-          db._collections().forEach(collection => {
-            collectionsBefore.push(collection._name);
-          });
-          db._views().forEach(view => {
-            viewsBefore.push(view._name);
-          });
-        }
-        catch (x) {
-          results[te] = {
-            status: false,
-            message: 'failed to fetch the previously available collections & views: ' + x.message
-          };
-          continueTesting = false;
-          serverDead = true;
-          first = false;
-        }
-      }
-      while (first || options.loopEternal) {
-        if (!continueTesting) {
-
-          if (!results.hasOwnProperty('SKIPPED')) {
-            print('oops! Skipping remaining tests, server is unavailable for testing.');
-            let originalMessage;
-            if (results.hasOwnProperty(te) && results[te].hasOwnProperty('message')) {
-              originalMessage = results[te].message;
-            }
-            results['SKIPPED'] = {
-              status: false,
-              message: ""
-            };
-            results[te] = {
-              status: false,
-              message: 'server unavailable for testing. ' + originalMessage
-            };
-          } else {
-            if (results['SKIPPED'].message !== '') {
-              results['SKIPPED'].message += ', ';
-            }
-            results['SKIPPED'].message += te;
-          }
-
-          instanceInfo.exitStatus = 'server is gone.';
-
-          break;
-        }
-
-        if (startStopHandlers && startStopHandlers.hasOwnProperty('preRun')) {
-          startStopHandlers.preRun(te);
-        }
-        pu.getMemProfSnapshot(instanceInfo, options, memProfCounter++);
-        
-        print('\n' + (new Date()).toISOString() + GREEN + " [============] " + runFn.info + ': Trying', te, '...', RESET);
-        let reply = runFn(options, instanceInfo, te, env);
-        if (reply.hasOwnProperty('forceTerminate') && reply.forceTerminate) {
-          results[te] = reply;
-          continueTesting = false;
-          forceTerminate = true;
-          continue;
-        } else if (reply.hasOwnProperty('status')) {
-          results[te] = reply;
-          results[te]['processStats'] = pu.getDeltaProcessStats(instanceInfo);
-
-          if (results[te].status === false) {
-            options.cleanup = false;
-          }
-
-          if (!reply.status && !options.force) {
-            break;
-          }
-        } else {
-          results[te] = {
-            status: false,
-            message: reply
-          };
-
-          if (!options.force) {
-            break;
-          }
-        }
-
-        if (pu.arangod.check.instanceAlive(instanceInfo, options) &&
-            healthCheck(options, serverOptions, instanceInfo, customInstanceInfos, startStopHandlers)) {
-          continueTesting = true;
-
-          // TODO: we are currently filtering out the UnitTestDB here because it is 
-          // created and not cleaned up by a lot of the `authentication` tests. This
-          // should be fixed eventually
-          let databasesAfter = db._databases().filter((name) => name !== 'UnitTestDB');
-          if (databasesAfter.length !== 1 || databasesAfter[0] !== '_system') {
-            results[te] = {
-              status: false,
-              message: 'Cleanup missing - test left over databases: ' + JSON.stringify(databasesAfter) + '. Original test status: ' + JSON.stringify(results[te])
-            };
-          }
-
-          // Check whether some collections & views were left behind, and if mark test as failed.
-          let collectionsAfter = [];
-          let viewsAfter = [];
-          try {
-            db._collections().forEach(collection => {
-              collectionsAfter.push(collection._name);
-            });
-            db._views().forEach(view => {
-              viewsAfter.push(view._name);
-            });
-          } catch (x) {
-            results[te] = {
-              status: false,
-              message: 'failed to fetch the currently available collections & views: ' + x.message + '. Original test status: ' + JSON.stringify(results[te])
-            };
-            continueTesting = false;
-            continue;
-          }
-          let delta = diffArray(collectionsBefore, collectionsAfter).filter(function(name) {
-            return ! ((name[0] === '_') || (name === "compact") || (name === "election")
-                     || (name === "log")); // exclude system/agency collections from the comparison
-            return (name[0] !== '_'); // exclude system collections from the comparison
-          });
-
-          let deltaViews = diffArray(viewsBefore, viewsAfter).filter(function(name) {
-            return ! ((name[0] === '_') || (name === "compact") || (name === "election")
-                     || (name === "log"));
-          });
-          if ((delta.length !== 0) || (deltaViews.length !== 0)) {
-            results[te] = {
-              status: false,
-              message: 'Cleanup missing - test left over collections / views: ' + delta + ' / ' + deltaViews + '. Original test status: ' + JSON.stringify(results[te])
-            };
-            collectionsBefore = [];
-            viewsBefore = [];
-            try {
-              db._collections().forEach(collection => {
-                collectionsBefore.push(collection._name);
-              });
-              db._views().forEach(view => {
-                viewsBefore.push(view._name);
-              });
-            } catch (x) {
-              results[te] = {
-                status: false,
-                message: 'failed to fetch the currently available delta collections / views: ' + x.message + '. Original test status: ' + JSON.stringify(results[te])
-              };
-              continueTesting = false;
-              continue;
-            }
-          }
-
-          let graphs;
-          try {
-            graphs = db._collection('_graphs');
-          } catch (x) {
-            results[te] = {
-              status: false,
-              message: 'failed to fetch the graphs: ' + x.message + '. Original test status: ' + JSON.stringify(results[te])
-            };
-            continueTesting = false;
-            continue;
-          }
-          if (graphs && graphs.count() !== graphCount) {
-            results[te] = {
-              status: false,
-              message: 'Cleanup of graphs missing - found graph definitions: [ ' +
-                JSON.stringify(graphs.toArray()) +
-                ' ] - Original test status: ' +
-                JSON.stringify(results[te])
-            };
-            graphCount = graphs.count();
-          }
-          let failurePoints = pu.checkServerFailurePoints(instanceInfo);
-          if (failurePoints.length > 0) {
-            continueTesting = false;
-            results[te] = {
-              status: false,
-              message: 'Cleanup of failure points missing - found failure points engaged: [ ' +
-                JSON.stringify(failurePoints) +
-                ' ] - Original test status: ' +
-                JSON.stringify(results[te])
-            };
-          }
-          if ((testname !== 'agency') &&
-              (testname !== 'authentication') &&
-              (userManager.all().length !== usersCount)) {
-            continueTesting = false;
-            results[te] = {
-              status: false,
-              message: 'Cleanup of users missing - found users left over: [ ' +
-                JSON.stringify(userManager.all()) +
-                ' ] - Original test status: ' +
-                JSON.stringify(results[te])
-            };
-          }
-        } else {
-          serverDead = true;
-          continueTesting = false;
-          let msg = '';
-          if (results[te].hasOwnProperty('message') && results[te].message.length > 0) {
-            msg = results[te].message + ' - ';
-          }
-          results[te] = {
-            status: false,
-            message: 'server is dead: ' + msg + instanceInfo.message
-          };
-        }
-
-        if (startStopHandlers !== undefined && startStopHandlers.hasOwnProperty('alive')) {
-          customInstanceInfos['alive'] = startStopHandlers.alive(options,
-                                                                 serverOptions,
-                                                                 instanceInfo,
-                                                                 customInstanceInfos,
-                                                                 startStopHandlers);
-          if (customInstanceInfos.alive.state === false) {
-            continueTesting = false;
-            results.setup.message = 'custom alive check failed!';
-          }
-          collectionsBefore = [];
-          viewsBefore = [];
-          try {
-            db._collections().forEach(collection => {
-              collectionsBefore.push(collection._name);
-            });
-            db._views().forEach(view => {
-              viewsBefore.push(view._name);
-            });
-          }
-          catch (x) {
-            results[te] = {
-              status: false,
-              message: 'failed to fetch the currently available shutdown collections / views: ' + x.message + '. Original test status: ' + JSON.stringify(results[te])
-            };
-            continueTesting = false;
-            continue;
-          }
-
-        }
-
-        first = false;
-
-        if (options.loopEternal) {
-          if (loopCount % options.loopSleepWhen === 0) {
-            print('sleeping...');
-            sleep(options.loopSleepSec);
-            print('continuing.');
-          }
-
-          ++loopCount;
-        }
-      }
-    } else {
-      if (options.extremeVerbosity) {
-        print('Skipped ' + te + ' because of ' + filtered.filter);
-      }
-    }
-  }
-
-  if (count === 0) {
-    results['ALLTESTS'] = {
-      status: true,
-      skipped: true
-    };
-    results.status = true;
-    print(RED + 'No testcase matched the filter.' + RESET);
-  }
-
-  if (options.sleepBeforeShutdown !== 0) {
-    print("Sleeping for " + options.sleepBeforeShutdown + " seconds");
-    sleep(options.sleepBeforeShutdown);
-  }
-
-  if (continueTesting) {
-    pu.getMemProfSnapshot(instanceInfo, options, memProfCounter++);
-  }
-
-  let shutDownStart = time();
-  results['testDuration'] = shutDownStart - testrunStart;
-  if (!options.noStartStopLogs) {
-    print(Date() + ' Shutting down...');
-  }
-  if (startStopHandlers !== undefined && startStopHandlers.hasOwnProperty('preStop')) {
-    customInstanceInfos['preStop'] = startStopHandlers.preStop(options,
-                                                               serverOptions,
-                                                               instanceInfo,
-                                                               customInstanceInfos,
-                                                               startStopHandlers);
-    if (customInstanceInfos.preStop.state === false) {
-      if (!results.hasOwnProperty('setup')) {
-        results['setup'] = {};
-      }
-      results.setup['status'] = false;
-      results.setup['message'] = 'custom preStop failed!' + customInstanceInfos.preStop.message;
-      if (customInstanceInfos.preStop.hasOwnProperty('shutdown')) {
-        results.shutdown = results.shutdown && customInstanceInfos.preStop.shutdown;
-      }
-    }
-  }
-
-  // pass on JWT secret
-  let clonedOpts = _.clone(options);
-  if (serverOptions['server.jwt-secret'] && !clonedOpts['server.jwt-secret']) {
-    clonedOpts['server.jwt-secret'] = serverOptions['server.jwt-secret'];
-  }
-  results.shutdown = results.shutdown && pu.shutdownInstance(instanceInfo, clonedOpts, forceTerminate);
-
-  loadClusterTestStabilityInfo(results, instanceInfo);
-
-  if (startStopHandlers !== undefined && startStopHandlers.hasOwnProperty('postStop')) {
-    customInstanceInfos['postStop'] = startStopHandlers.postStop(options,
-                                                                 serverOptions,
-                                                                 instanceInfo,
-                                                                 customInstanceInfos,
-                                                                 startStopHandlers);
-    if (customInstanceInfos.postStop.state === false) {
-      results.setup.status = false;
-      results.setup.message = 'custom postStop failed!';
-    }
-  }
-  results['shutdownTime'] = time() - shutDownStart;
-
-  if (!options.noStartStopLogs) {
-    print('done.');
-  }
-
-  return results;
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -636,11 +207,11 @@ function splitBuckets (options, cases) {
     return cases;
   }
   if (cases.length === 0) {
-    didSplitBuckets = true;
+    setDidSplitBuckets(true);
     return cases;
   }
 
-  didSplitBuckets = true;
+  setDidSplitBuckets(true);
   let m = cases.length;
   let n = options.testBuckets.split('/');
   let r = parseInt(n[0]);
@@ -715,40 +286,6 @@ function scanTestPaths (paths, options) {
 }
 
 
-function loadClusterTestStabilityInfo(results, instanceInfo){
-  try {
-    if (instanceInfo.hasOwnProperty('clusterHealthMonitorFile')) {
-      let status = true;
-      let slow = [];
-      let buf = fs.readBuffer(instanceInfo.clusterHealthMonitorFile);
-      let lineStart = 0;
-      let maxBuffer = buf.length;
-
-      for (let j = 0; j < maxBuffer; j++) {
-        if (buf[j] === 10) { // \n
-          const line = buf.asciiSlice(lineStart, j);
-          lineStart = j + 1;
-          let val = JSON.parse(line);
-          if (val.state === false) {
-            slow.push(val);
-            status = false;
-          }
-        }
-      }
-      if (!status) {
-        print('found ' + slow.length + ' slow lines!');
-        results.status = false;
-        results.message += 'found ' + slow.length + ' slow lines!';
-      } else {
-        print('everything fast!');
-      }
-    }
-  }
-  catch(x) {
-    print(x);
-  }
-}
-
 function getTestCode(file, options, instanceInfo) {
   let filter;
   if (options.testCase) {
@@ -774,64 +311,69 @@ function getTestCode(file, options, instanceInfo) {
 // / @brief runs a remote unittest file using /_admin/execute
 // //////////////////////////////////////////////////////////////////////////////
 
-function runThere (options, instanceInfo, file) {
-  try {
-    let testCode = getTestCode(file, options, instanceInfo);
-    let httpOptions = pu.makeAuthorizationHeaders(options);
-    httpOptions.method = 'POST';
+class runOnArangodRunner extends testRunnerBase{
+  constructor(options, testname, ...optionalArgs) {
+    super(options, testname, ...optionalArgs);
+    this.info = "onRemoteArangod";
+  }
+  runOneTest(file) {
+    try {
+      let testCode = getTestCode(file, this.options, this.instanceInfo);
+      let httpOptions = pu.makeAuthorizationHeaders(this.options);
+      httpOptions.method = 'POST';
 
-    httpOptions.timeout = options.oneTestTimeout;
-    if (options.isAsan) {
-      httpOptions.timeout *= 2;
-    }
-    if (options.valgrind) {
-      httpOptions.timeout *= 2;
-    }
-
-    httpOptions.returnBodyOnError = true;
-
-    const reply = download(instanceInfo.url + '/_admin/execute?returnAsJSON=true',
-      testCode,
-      httpOptions);
-
-    if (!reply.error && reply.code === 200) {
-      return JSON.parse(reply.body);
-    } else {
-      if ((reply.code === 500) &&
-          reply.hasOwnProperty('message') &&
-          (
-            (reply.message.search('Request timeout reached') >= 0 ) ||
-            (reply.message.search('timeout during read') >= 0 ) ||
-            (reply.message.search('Connection closed by remote') >= 0 )
-          )) {
-        print(RED + Date() + " request timeout reached (" + reply.message +
-              "), aborting test execution" + RESET);
-        return {
-          status: false,
-          message: reply.message,
-          forceTerminate: true
-        };
-      } else if (reply.hasOwnProperty('body')) {
-        return {
-          status: false,
-          message: reply.body
-        };
-      } else {
-        return {
-          status: false,
-          message: yaml.safeDump(reply)
-        };
+      httpOptions.timeout = this.options.oneTestTimeout;
+      if (this.options.isAsan) {
+        httpOptions.timeout *= 2;
       }
+      if (this.options.valgrind) {
+        httpOptions.timeout *= 2;
+      }
+
+      httpOptions.returnBodyOnError = true;
+
+      const reply = download(this.instanceInfo.url + '/_admin/execute?returnAsJSON=true',
+                             testCode,
+                             httpOptions);
+
+      if (!reply.error && reply.code === 200) {
+        return JSON.parse(reply.body);
+      } else {
+        if ((reply.code === 500) &&
+            reply.hasOwnProperty('message') &&
+            (
+              (reply.message.search('Request timeout reached') >= 0 ) ||
+                (reply.message.search('timeout during read') >= 0 ) ||
+                (reply.message.search('Connection closed by remote') >= 0 )
+            )) {
+          print(RED + Date() + " request timeout reached (" + reply.message +
+                "), aborting test execution" + RESET);
+          return {
+            status: false,
+            message: reply.message,
+            forceTerminate: true
+          };
+        } else if (reply.hasOwnProperty('body')) {
+          return {
+            status: false,
+            message: reply.body
+          };
+        } else {
+          return {
+            status: false,
+            message: yaml.safeDump(reply)
+          };
+        }
+      }
+    } catch (ex) {
+      return {
+        status: false,
+        message: ex.message || String(ex),
+        stack: ex.stack
+      };
     }
-  } catch (ex) {
-    return {
-      status: false,
-      message: ex.message || String(ex),
-      stack: ex.stack
-    };
   }
 }
-runThere.info = 'runInArangod';
 
 function readTestResult(path, rc, testCase) {
   const jsonFN = fs.join(path, 'testresult.json');
@@ -906,104 +448,117 @@ function findEndpoint(options, instanceInfo) {
 // / @brief runs a local unittest file using arangosh
 // //////////////////////////////////////////////////////////////////////////////
 
-function runInArangosh (options, instanceInfo, file, addArgs) {
-  let args = pu.makeArgs.arangosh(options);
-  args['server.endpoint'] = findEndpoint(options, instanceInfo);
-
-  args['javascript.unit-tests'] = fs.join(pu.TOP_DIR, file);
-
-  args['javascript.unit-test-filter'] = options.testCase;
-
-  if (options.forceJson) {
-    args['server.force-json'] = true;
+class runInArangoshRunner extends testRunnerBase{
+  constructor(options, testname, ...optionalArgs) {
+    super(options, testname, ...optionalArgs);
+    this.info = "forkedArangosh";
   }
+  runOneTest(file) {
+    let args = pu.makeArgs.arangosh(this.options);
+    args['server.endpoint'] = findEndpoint(this.options, this.instanceInfo);
 
-  if (!options.verbose) {
-    args['log.level'] = 'warning';
-  }
+    args['javascript.unit-tests'] = fs.join(pu.TOP_DIR, file);
 
-  if (addArgs !== undefined) {
-    args = Object.assign(args, addArgs);
+    args['javascript.unit-test-filter'] = this.options.testCase;
+
+    if (this.options.forceJson) {
+      args['server.force-json'] = true;
+    }
+
+    if (!this.options.verbose) {
+      args['log.level'] = 'warning';
+    }
+
+    if (this.addArgs !== undefined) {
+      args = Object.assign(args, this.addArgs);
+    }
+    require('internal').env.INSTANCEINFO = JSON.stringify(this.instanceInfo);
+    let rc = pu.executeAndWait(pu.ARANGOSH_BIN, toArgv(args), this.options, 'arangosh', this.instanceInfo.rootDir, this.options.coreCheck);
+    return readTestResult(this.instanceInfo.rootDir, rc, args['javascript.unit-tests']);
   }
-  require('internal').env.INSTANCEINFO = JSON.stringify(instanceInfo);
-  let rc = pu.executeAndWait(pu.ARANGOSH_BIN, toArgv(args), options, 'arangosh', instanceInfo.rootDir, options.coreCheck);
-  return readTestResult(instanceInfo.rootDir, rc, args['javascript.unit-tests']);
 }
-runInArangosh.info = 'runInExternalArangosh';
+
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief runs a local unittest file in the current arangosh
 // //////////////////////////////////////////////////////////////////////////////
 
-function runInLocalArangosh (options, instanceInfo, file, addArgs) {
-  let endpoint = arango.getEndpoint();
-  if (options.vst || options.http2) {
-    let newEndpoint = findEndpoint(options, instanceInfo);
-    if (endpoint !== newEndpoint) {
-      print(`runInLocalArangosh: Reconnecting to ${newEndpoint} from ${endpoint}`);
-      arango.reconnect(newEndpoint, '_system', 'root', '');
+class runLocalInArangoshRunner extends testRunnerBase{
+  constructor(options, testname, ...optionalArgs) {
+    super(options, testname, ...optionalArgs);
+    this.info = "localArangosh";
+  }
+  runOneTest(file) {
+    let endpoint = arango.getEndpoint();
+    if (this.options.vst || this.options.http2) {
+      let newEndpoint = findEndpoint(this.options, this.instanceInfo);
+      if (endpoint !== newEndpoint) {
+        print(`runInLocalArangosh: Reconnecting to ${newEndpoint} from ${endpoint}`);
+        arango.reconnect(newEndpoint, '_system', 'root', '');
+      }
     }
-  }
 
-  let testCode = getTestCode(file, options, instanceInfo);
-  require('internal').env.INSTANCEINFO = JSON.stringify(instanceInfo);
-  let testFunc;
-  try {
-    eval('testFunc = function () {\n' + testCode + "}");
-  } catch (ex) {
-    print(RED + 'test failed to parse:');
-    print(ex);
-    print(RESET);
-    return {
-      status: false,
-      message: "test doesn't parse! '" + file + "' - " + ex.message || String(ex),
-      stack: ex.stack
-    };
-  }
-
-  try {
-    SetGlobalExecutionDeadlineTo(options.oneTestTimeout * 1000);
-    let result = testFunc();
-    let timeout = SetGlobalExecutionDeadlineTo(0.0);
-    if (timeout) {
+    let testCode = getTestCode(file, this.options, this.instanceInfo);
+    require('internal').env.INSTANCEINFO = JSON.stringify(this.instanceInfo);
+    let testFunc;
+    try {
+      eval('testFunc = function () {\n' + testCode + "}");
+    } catch (ex) {
+      print(RED + 'test failed to parse:');
+      print(ex);
+      print(RESET);
       return {
-        timeout: true,
+        status: false,
+        message: "test doesn't parse! '" + file + "' - " + ex.message || String(ex),
+        stack: ex.stack
+      };
+    }
+
+    try {
+      SetGlobalExecutionDeadlineTo(this.options.oneTestTimeout * 1000);
+      let result = testFunc();
+      let timeout = SetGlobalExecutionDeadlineTo(0.0);
+      if (timeout) {
+        return {
+          timeout: true,
+          forceTerminate: true,
+          status: false,
+          message: "test ran into timeout. Original test status: " + JSON.stringify(result),
+        };
+      }
+      if (result === undefined) {
+        return {
+          timeout: true,
+          status: false,
+          message: "test didn't return any result at all!"
+        };
+      }
+      return result;
+    } catch (ex) {
+      let timeout = SetGlobalExecutionDeadlineTo(0.0);
+      print(RED + 'test has thrown: ' + (timeout? "because of timeout in execution":""));
+      print(ex, ex.stack);
+      print(RESET);
+      return {
+        timeout: timeout,
         forceTerminate: true,
         status: false,
-        message: "test ran into timeout. Original test status: " + JSON.stringify(result),
+        message: "test has thrown! '" + file + "' - " + ex.message || String(ex),
+        stack: ex.stack
       };
     }
-    if (result === undefined) {
-      return {
-        timeout: true,
-        status: false,
-        message: "test didn't return any result at all!"
-      };
-    }
-    return result;
-  } catch (ex) {
-    let timeout = SetGlobalExecutionDeadlineTo(0.0);
-    print(RED + 'test has thrown: ' + (timeout? "because of timeout in execution":""));
-    print(ex, ex.stack);
-    print(RESET);
-    return {
-      timeout: timeout,
-      forceTerminate: true,
-      status: false,
-      message: "test has thrown! '" + file + "' - " + ex.message || String(ex),
-      stack: ex.stack
-    };
   }
 }
-runInLocalArangosh.info = 'runInLocalArangosh';
 
-exports.runThere = runThere;
-exports.runInArangosh = runInArangosh;
-exports.runInLocalArangosh = runInLocalArangosh;
+exports.testServerAuthInfo = testServerAuthInfo;
+exports.testClientJwtAuthInfo = testClientJwtAuthInfo;
+
+exports.runOnArangodRunner = runOnArangodRunner;
+exports.runInArangoshRunner = runInArangoshRunner;
+exports.runLocalInArangoshRunner = runLocalInArangoshRunner;
 
 exports.makePathUnix = makePathUnix;
 exports.makePathGeneric = makePathGeneric;
-exports.performTests = performTests;
 exports.readTestResult = readTestResult;
 exports.writeTestResult = writeTestResult;
 exports.filterTestcaseByOptions = filterTestcaseByOptions;
