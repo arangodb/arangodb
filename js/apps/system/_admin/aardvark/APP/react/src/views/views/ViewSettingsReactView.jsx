@@ -72,7 +72,7 @@ const ViewSettingsReactView = ({ name }) => {
         <div className="modal-body">
           <div className={"tab-content"}>
             <div className="tab-pane tab-pane-modal active" id="General">
-              <table>
+              <table style={{ margin: 30, marginLeft: 20 }}>
                 <tbody>
                   <tr className="tableRow" id="row_change-view-name">
                     <th className="collectionTh">Name*:</th>
@@ -85,7 +85,7 @@ const ViewSettingsReactView = ({ name }) => {
                         disabled={frontendConfig.isCluster || !isAdminUser}
                       />
                     </th>
-                    <th className="tooltipInfoTh">
+                    <th className="collectionTh">
                       <div>
                         <span
                           rel="tooltip"
@@ -114,7 +114,7 @@ const ViewSettingsReactView = ({ name }) => {
                         )}
                       />
                     </th>
-                    <th className="tooltipInfoTh">
+                    <th className="collectionTh">
                       <div>
                         <span
                           rel="tooltip"
@@ -130,7 +130,7 @@ const ViewSettingsReactView = ({ name }) => {
                     id="row_change-view-commitIntervalMsec"
                   >
                     <th className="collectionTh">Commit Interval (msec):</th>
-                    <th className="collectionTh">
+                    <th className="collectionTh" style={{ width: "100%" }}>
                       <Textbox
                         type={"number"}
                         disabled={!isAdminUser}
@@ -143,7 +143,7 @@ const ViewSettingsReactView = ({ name }) => {
                         )}
                       />
                     </th>
-                    <th className="tooltipInfoTh">
+                    <th className="collectionTh">
                       <div>
                         <span
                           rel="tooltip"
@@ -174,7 +174,7 @@ const ViewSettingsReactView = ({ name }) => {
                         )}
                       />
                     </th>
-                    <th className="tooltipInfoTh">
+                    <th className="collectionTh">
                       <div>
                         <span
                           rel="tooltip"
