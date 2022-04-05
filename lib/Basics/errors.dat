@@ -178,6 +178,7 @@ ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED,1422,"a resigned leader instanc
 ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED,1423,"a resigned follower instance rejected a request","Will be raised when a follower instance of a replicated log rejects a request because it just resigned. This can also happen if the term changes (due to a configuration change), even if the server stays a follower."
 ERROR_REPLICATION_REPLICATED_LOG_PARTICIPANT_GONE,1424,"the replicated log of the participant is gone","Will be raised when a participant instance of a replicated log is no longer available."
 ERROR_REPLICATION_REPLICATED_LOG_INVALID_TERM,1425,"an invalid term was given","Will be raised when a participant tries to change its term but found a invalid new term."
+ERROR_REPLICATION_REPLICATED_LOG_UNCONFIGURED,1426,"log participant unconfigured","Will be raised when a participant is currently unconfigured, i.e. neither a leader nor a follower."
 
 ################################################################################
 ## ArangoDB cluster errors
