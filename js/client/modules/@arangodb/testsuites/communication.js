@@ -42,7 +42,7 @@ function communication (options) {
   let testCases = tu.scanTestPaths(testPaths.communication, options);
   testCases = tu.splitBuckets(options, testCases);
 
-  return tu.performTests(options, testCases, 'communication', tu.runInLocalArangosh);
+  return new tu.runLocalInArangoshRunner(options, 'communication', {}).run(testCases);
 }
 
 function communicationSsl (options) {
@@ -54,7 +54,7 @@ function communicationSsl (options) {
   let testCases = tu.scanTestPaths(testPaths.communication, options);
   testCases = tu.splitBuckets(options, testCases);
 
-  return tu.performTests(opts, testCases, 'communication-ssl', tu.runInLocalArangosh);
+  return new tu.runLocalInArangoshRunner(opts, 'communication-ssl', {}).run(testCases);
 }
 
 exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {

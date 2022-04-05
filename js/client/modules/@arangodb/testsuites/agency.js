@@ -50,7 +50,7 @@ function agency (options) {
 
   options.agency = true;
   options.cluster = false;
-  let results = tu.performTests(options, testCases, 'agency', tu.runInArangosh);
+  let results = new tu.runInArangoshRunner(options,  'agency', {}, false, false).run(testCases);
 
   options.agency = saveAgency;
   options.cluster = saveCluster;

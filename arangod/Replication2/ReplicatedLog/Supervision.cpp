@@ -365,6 +365,50 @@ auto getRemovedParticipant(ParticipantsFlagsMap const& targetParticipants,
   return std::nullopt;
 }
 
+// Pick leader at random from participants
+auto pickRandomParticipantToBeLeader(ParticipantsFlagsMap const& participants,
+                                     ParticipantsHealth const& health)
+    -> std::optional<ParticipantId> {
+  auto acceptableParticipants = std::vector<ParticipantId>{};
+
+  for (auto [part, flags] : participants) {
+    if (flags.allowedAsLeader && health._health.contains(part)) {
+      acceptableParticipants.emplace_back(part);
+    }
+  }
+
+  if (!acceptableParticipants.empty()) {
+    auto maxIdx = static_cast<uint16_t>(acceptableParticipants.size() - 1);
+    auto p = acceptableParticipants.begin();
+
+    std::advance(p, RandomGenerator::interval(maxIdx));
+
+    return *p;
+  }
+
+  return std::nullopt;
+}
+
+auto pickLeader(std::optional<ParticipantId> targetLeader,
+                ParticipantsFlagsMap const& participants,
+                ParticipantsHealth const& health)
+    -> std::optional<LogPlanTermSpecification::Leader> {
+  auto leaderId = targetLeader;
+
+  if (!leaderId) {
+    leaderId = pickRandomParticipantToBeLeader(participants, health);
+  }
+
+  if (leaderId.has_value()) {
+    auto rebootId = health.getRebootId(*leaderId);
+    if (rebootId.has_value()) {
+      return LogPlanTermSpecification::Leader{*leaderId, *rebootId};
+    }
+  };
+
+  return std::nullopt;
+}
+
 //
 // This function is called from Agency/Supervision.cpp every k seconds for every
 // replicated log in every database.
@@ -382,13 +426,22 @@ auto getRemovedParticipant(ParticipantsFlagsMap const& targetParticipants,
 //
 // These actions are executes by using std::visit via an Executor struct that
 // contains the necessary context.
+
 auto checkReplicatedLog(LogTarget const& target,
                         std::optional<LogPlanSpecification> const& maybePlan,
                         std::optional<LogCurrent> const& maybeCurrent,
                         ParticipantsHealth const& health) -> Action {
   if (!maybePlan) {
     // The log is not planned right now, so we create it
-    return AddLogToPlanAction(target.id, target.participants);
+    // provided we have enough participants
+    if (target.participants.size() + 1 < target.config.writeConcern) {
+      return ErrorAction(
+          LogCurrentSupervisionError::TARGET_NOT_ENOUGH_PARTICIPANTS);
+    } else {
+      auto leader = pickLeader(target.leader, target.participants, health);
+      return AddLogToPlanAction(target.id, target.participants, target.config,
+                                leader);
+    }
   }
 
   // plan now exists
@@ -493,10 +546,10 @@ auto checkReplicatedLog(LogTarget const& target,
                                         participantFlags->second);
   }
 
-  // Check whether a specific participant is configured in Target to become the
-  // leader. This requires that participant to be flagged to always be part of a
-  // quorum; once that change is committed, the leader can be switched if the
-  // target.leader participant is healty.
+  // Check whether a specific participant is configured in Target to become
+  // the leader. This requires that participant to be flagged to always be
+  // part of a quorum; once that change is committed, the leader can be
+  // switched if the target.leader participant is healty.
   //
   // This operation can fail and
   // TODO: Report if leaderInTarget fails.
@@ -508,6 +561,31 @@ auto checkReplicatedLog(LogTarget const& target,
     }
   }
 
+<<<<<<< HEAD
+=======
+  // If a participant is in Plan but not in Target, gracefully
+  // remove them
+  if (auto maybeParticipant = getRemovedParticipant(
+          target.participants, plan.participantsConfig.participants)) {
+    auto const& [participantId, planFlags] = *maybeParticipant;
+
+    if (not planFlags.allowedInQuorum and
+        current.leader->committedParticipantsConfig->generation ==
+            plan.participantsConfig.generation) {
+      return RemoveParticipantFromPlanAction(participantId);
+    } else if (planFlags.allowedInQuorum) {
+      // make this server not allowed in quorum. If the generation is
+      // committed
+      auto newFlags = planFlags;
+      newFlags.allowedInQuorum = false;
+      return UpdateParticipantFlagsAction(participantId, newFlags);
+    } else {
+      // still waiting
+      return EmptyAction("Waiting for participants config to be committed");
+    }
+  }
+
+>>>>>>> devel
   // If the configuration differs between Target and Plan,
   // apply the new configuration.
   //
@@ -519,9 +597,9 @@ auto checkReplicatedLog(LogTarget const& target,
   if (target.version != current.supervision->targetVersion) {
     return ConvergedToTargetAction{target.version};
   } else {
-    // Note that if we converged and the version is the same this ends up doing
-    // nothing.
-    // Maybe we should have a debug mode where this is still reported?
+    // Note that if we converged and the version is the same this ends up
+    // doing nothing. Maybe we should have a debug mode where this is still
+    // reported?
     return EmptyAction("There was nothing to do.");
   }
 }
