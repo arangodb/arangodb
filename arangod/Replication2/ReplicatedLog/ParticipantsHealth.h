@@ -46,6 +46,13 @@ struct ParticipantsHealth {
     }
     return false;
   };
+  auto getRebootId(ParticipantId const& participant) const
+      -> std::optional<RebootId> {
+    if (auto it = _health.find(participant); it != std::end(_health)) {
+      return it->second.rebootId;
+    }
+    return std::nullopt;
+  }
 
   std::unordered_map<ParticipantId, ParticipantHealth> _health;
 };
