@@ -63,6 +63,108 @@ using namespace arangodb::traverser;
 
 namespace {
 
+struct DisjointSmartToSatelliteTester {
+  Result isCollectionAllowed(
+      std::shared_ptr<LogicalCollection> const& collection,
+      TRI_edge_direction_e dir) {
+    if (collection->isSmartToSatEdgeCollection()) {
+      switch (dir) {
+        case TRI_EDGE_ANY:
+          // ANY is always forbidden
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+              TRI_ERROR_UNSUPPORTED_CHANGE_IN_SMART_TO_SATELLITE_DISJOINT_EDGE_DIRECTION,
+              "Using direction 'ANY' on collection: '" + collection->name() +
+                  "' could switch from Smart to Satellite and back. This "
+                  "violates the isDisjoint feature and is forbidden.");
+          break;
+        case TRI_EDGE_OUT:
+          // We are switching from Smart -> Sat
+          if (_disjointSmartToSatDirection == TRI_EDGE_IN) {
+            // Another collection is using Sat -> Smart with it's selected
+            // direction. This is disallowed
+            THROW_ARANGO_EXCEPTION_MESSAGE(
+                TRI_ERROR_UNSUPPORTED_CHANGE_IN_SMART_TO_SATELLITE_DISJOINT_EDGE_DIRECTION,
+                "Using direction 'OUTBOUND' on collection: '" +
+                    collection->name() +
+                    "' would switch from Smart to Satellite. Another "
+                    "used edge collection is switching from Satellite to "
+                    "Smart."
+                    "This violates the isDisjoint feature and is "
+                    "forbidden.");
+          }
+          _disjointSmartToSatDirection = TRI_EDGE_OUT;
+          break;
+        case TRI_EDGE_IN:
+          // We are switching from Sat <- Smart
+          if (_disjointSmartToSatDirection == TRI_EDGE_OUT) {
+            // Another collection is using Sat -> Smart with it's selected
+            // direction. This is disallowed
+            THROW_ARANGO_EXCEPTION_MESSAGE(
+                TRI_ERROR_UNSUPPORTED_CHANGE_IN_SMART_TO_SATELLITE_DISJOINT_EDGE_DIRECTION,
+                "Using direction 'INBOUND' on collection: '" +
+                    collection->name() +
+                    "' would switch from Satellite to Smart. Another "
+                    "used edge collection is switching from Smart to "
+                    "Satellite."
+                    "This violates the isDisjoint feature and is "
+                    "forbidden.");
+          }
+          _disjointSmartToSatDirection = TRI_EDGE_IN;
+          break;
+      }
+    } else if (collection->isSatToSmartEdgeCollection()) {
+      switch (dir) {
+        case TRI_EDGE_ANY:
+          // ANY is always forbidden
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+              TRI_ERROR_UNSUPPORTED_CHANGE_IN_SMART_TO_SATELLITE_DISJOINT_EDGE_DIRECTION,
+              "Using direction 'ANY' on collection: '" + collection->name() +
+                  "' could switch from Smart to Satellite and back. This "
+                  "violates the isDisjoint feature and is forbidden.");
+          break;
+        case TRI_EDGE_OUT:
+          // We are switching from Sat -> Smart
+          if (_disjointSmartToSatDirection == TRI_EDGE_OUT) {
+            // Another collection is using Smart -> Sat with it's selected
+            // direction. This is disallowed
+            THROW_ARANGO_EXCEPTION_MESSAGE(
+                TRI_ERROR_UNSUPPORTED_CHANGE_IN_SMART_TO_SATELLITE_DISJOINT_EDGE_DIRECTION,
+                "Using direction 'OUTBOUND' on collection: '" +
+                    collection->name() +
+                    "' would switch from Satellite to Smart. Another "
+                    "used edge collection is switching from Smart to "
+                    "Satellite."
+                    "This violates the isDisjoint feature and is "
+                    "forbidden.");
+          }
+          _disjointSmartToSatDirection = TRI_EDGE_IN;
+          break;
+        case TRI_EDGE_IN:
+          // We are switching from Smart <- Sat
+          if (_disjointSmartToSatDirection == TRI_EDGE_IN) {
+            // Another collection is using Sat -> Smart with it's selected
+            // direction. This is disallowed
+            THROW_ARANGO_EXCEPTION_MESSAGE(
+                TRI_ERROR_UNSUPPORTED_CHANGE_IN_SMART_TO_SATELLITE_DISJOINT_EDGE_DIRECTION,
+                "Using direction 'INBOUND' on collection: '" +
+                    collection->name() +
+                    "' would switch from Smart to Satellite. Another "
+                    "used edge collection is switching from Satellite to "
+                    "Smart."
+                    "This violates the isDisjoint feature and is "
+                    "forbidden.");
+          }
+          _disjointSmartToSatDirection = TRI_EDGE_OUT;
+          break;
+      }
+    }
+    return TRI_ERROR_NO_ERROR;
+  }
+
+ private:
+  TRI_edge_direction_e _disjointSmartToSatDirection{TRI_EDGE_ANY};
+};
+
 TRI_edge_direction_e uint64ToDirection(uint64_t dirNum) {
   switch (dirNum) {
     case 0:
@@ -117,6 +219,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
   TRI_ASSERT(graph != nullptr);
 
   auto& ci = _vocbase->server().getFeature<ClusterFeature>().clusterInfo();
+  DisjointSmartToSatelliteTester disjointTest{};
 
   if (graph->type == NODE_TYPE_COLLECTION_LIST) {
     size_t edgeCollectionCount = graph->numMembers();
@@ -201,20 +304,27 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID,
                                        msg);
       }
+      if (_isDisjoint) {
+        // TODO: Alternative to "THROW" we could run a community based Query
+        // here, instead of a Disjoint one.
+        auto res = disjointTest.isCollectionAllowed(collection, dir);
+        if (res.fail()) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
+        }
+      }
 
       auto& collections = plan->getAst()->query().collections();
 
       _graphInfo.add(VPackValue(eColName));
       if (ServerState::instance()->isRunningInCluster()) {
-        auto c = ci.getCollection(_vocbase->name(), eColName);
-        if (!c->isSmart()) {
+        if (!collection->isSmart()) {
           addEdgeCollection(collections, eColName, dir);
         } else {
           std::vector<std::string> names;
           if (_isSmart) {
-            names = c->realNames();
+            names = collection->realNames();
           } else {
-            names = c->realNamesForRead();
+            names = collection->realNamesForRead();
           }
           for (auto const& name : names) {
             addEdgeCollection(collections, name, dir);
@@ -251,15 +361,24 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
       _isDisjoint = _graphObj->isDisjoint();
     }
 
+    auto& collections = plan->getAst()->query().collections();
     for (const auto& n : eColls) {
       if (_options->shouldExcludeEdgeCollection(n)) {
         // excluded edge collection
         continue;
       }
 
-      auto& collections = plan->getAst()->query().collections();
       if (ServerState::instance()->isRunningInCluster()) {
         auto c = ci.getCollection(_vocbase->name(), n);
+        if (_isDisjoint) {
+          // TODO: Alternative to "THROW" we could run a community based Query
+          // here, instead of a Disjoint one.
+          auto res = disjointTest.isCollectionAllowed(c, _defaultDirection);
+          if (res.fail()) {
+            THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(),
+                                           res.errorMessage());
+          }
+        }
         if (!c->isSmart()) {
           addEdgeCollection(collections, n, _defaultDirection);
         } else {
@@ -278,7 +397,6 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
       }
     }
 
-    auto& collections = plan->getAst()->query().collections();
     auto vColls = _graphObj->vertexCollections();
     length = vColls.size();
     if (length == 0) {
