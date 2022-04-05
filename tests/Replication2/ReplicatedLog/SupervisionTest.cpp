@@ -499,9 +499,9 @@ TEST_F(LogSupervisionTest, test_dictate_leader_no_current) {
 
   auto const& health = ParticipantsHealth{._health = {}};
 
-  auto r = dictateLeader(target, plan, current, health);
+  auto r = switchLeader(target, plan, current, health);
 
-  ASSERT_TRUE(std::holds_alternative<DictateLeaderFailedAction>(r))
+  ASSERT_TRUE(std::holds_alternative<SwitchLeaderFailedAction>(r))
       << to_string(r);
 }
 
@@ -546,7 +546,7 @@ TEST_F(LogSupervisionTest, test_dictate_leader_force_first) {
           {"D",
            ParticipantHealth{.rebootId = RebootId{14}, .notIsFailed = true}}}};
 
-  auto r = dictateLeader(target, plan, current, health);
+  auto r = switchLeader(target, plan, current, health);
 
   // Should get an UpdateParticipantsFlagAction for one of the
   // acceptable participants that are acceptable as leaders to
@@ -606,14 +606,14 @@ TEST_F(LogSupervisionTest, test_dictate_leader_success) {
           {"D",
            ParticipantHealth{.rebootId = RebootId{14}, .notIsFailed = true}}}};
 
-  auto r = dictateLeader(target, plan, current, health);
+  auto r = switchLeader(target, plan, current, health);
 
   // Should get an UpdateParticipantsFlagAction for one of the
   // acceptable participants that are acceptable as leaders to
   // become forced
-  ASSERT_TRUE(std::holds_alternative<DictateLeaderAction>(r)) << to_string(r);
+  ASSERT_TRUE(std::holds_alternative<SwitchLeaderAction>(r)) << to_string(r);
 
-  auto action = std::get<DictateLeaderAction>(r);
+  auto action = std::get<SwitchLeaderAction>(r);
 
   ASSERT_EQ(action._leader.serverId, "D");
 }

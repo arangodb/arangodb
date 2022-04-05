@@ -229,10 +229,10 @@ auto inspect(Inspector& f, CurrentNotAvailableAction& x) {
   return f.object(x).fields(f.field("type", hack));
 }
 
-struct DictateLeaderAction {
-  static constexpr std::string_view name = "DictateLeaderAction";
+struct SwitchLeaderAction {
+  static constexpr std::string_view name = "SwitchLeaderAction";
 
-  DictateLeaderAction(LogPlanTermSpecification::Leader const& leader)
+  SwitchLeaderAction(LogPlanTermSpecification::Leader const& leader)
       : _leader{leader} {};
 
   LogPlanTermSpecification::Leader _leader;
@@ -245,16 +245,16 @@ struct DictateLeaderAction {
   }
 };
 template<typename Inspector>
-auto inspect(Inspector& f, DictateLeaderAction& x) {
+auto inspect(Inspector& f, SwitchLeaderAction& x) {
   auto hack = std::string{x.name};
   return f.object(x).fields(f.field("type", hack),
                             f.field("leader", x._leader));
 }
 
-struct DictateLeaderFailedAction {
-  static constexpr std::string_view name = "DictateLeaderFailedAction";
+struct SwitchLeaderFailedAction {
+  static constexpr std::string_view name = "SwitchLeaderFailedAction";
 
-  DictateLeaderFailedAction(std::string const& message) : _message{message} {};
+  SwitchLeaderFailedAction(std::string const& message) : _message{message} {};
 
   std::string _message;
 
@@ -269,7 +269,7 @@ struct DictateLeaderFailedAction {
   }
 };
 template<typename Inspector>
-auto inspect(Inspector& f, DictateLeaderFailedAction& x) {
+auto inspect(Inspector& f, SwitchLeaderFailedAction& x) {
   auto hack = std::string{x.name};
   return f.object(x).fields(f.field("type", hack),
                             f.field("message", x._message));
@@ -512,7 +512,7 @@ auto inspect(Inspector& f, ConvergedToTargetAction& x) {
 
 using Action = std::variant<
     EmptyAction, ErrorAction, AddLogToPlanAction, CreateInitialTermAction,
-    CurrentNotAvailableAction, DictateLeaderAction, DictateLeaderFailedAction,
+    CurrentNotAvailableAction, SwitchLeaderAction, SwitchLeaderFailedAction,
     WriteEmptyTermAction, LeaderElectionAction, LeaderElectionImpossibleAction,
     LeaderElectionOutOfBoundsAction, LeaderElectionQuorumNotReachedAction,
     UpdateParticipantFlagsAction, AddParticipantToPlanAction,

@@ -78,17 +78,15 @@ auto getParticipantsAcceptableAsLeaders(
   return acceptableLeaderSet;
 }
 
-// Switch to a new leader gracefully by finding a participant that is
-// functioning and handing leadership to them.
-// This happens when the user uses Target to specify a leader.
-auto dictateLeader(LogTarget const& target, LogPlanSpecification const& plan,
-                   LogCurrent const& current, ParticipantsHealth const& health)
+// Switch to a new leader gracefully.
+auto switchLeader(LogTarget const& target, LogPlanSpecification const& plan,
+                  LogCurrent const& current, ParticipantsHealth const& health)
     -> Action {
   // TODO: integrate
   if (!current.leader || !current.leader->committedParticipantsConfig ||
       current.leader->committedParticipantsConfig->generation !=
           plan.participantsConfig.generation) {
-    return DictateLeaderFailedAction{
+    return SwitchLeaderFailedAction{
         "No leader in current, current participants config not committed, or "
         "wrong generation"};
   }
@@ -108,7 +106,7 @@ auto dictateLeader(LogTarget const& target, LogPlanSpecification const& plan,
 
     if (participant != current.leader->serverId and flags.forced) {
       auto const rebootId = health._health.at(participant).rebootId;
-      return DictateLeaderAction(
+      return SwitchLeaderAction(
           LogPlanTermSpecification::Leader(participant, rebootId));
     }
   }
@@ -130,7 +128,7 @@ auto dictateLeader(LogTarget const& target, LogPlanSpecification const& plan,
   }
 
   // TODO: Better error message
-  return DictateLeaderFailedAction{"Failed to find a suitable leader"};
+  return SwitchLeaderFailedAction{"Failed to find a suitable leader"};
 }
 
 // Check whether Target contains an entry for a leader, which means
@@ -182,7 +180,7 @@ auto leaderInTarget(ParticipantId const& targetLeader,
     };
 
     auto const rebootId = health._health.at(targetLeader).rebootId;
-    return DictateLeaderAction(
+    return SwitchLeaderAction(
         LogPlanTermSpecification::Leader{targetLeader, rebootId});
   }
   return std::nullopt;
@@ -530,7 +528,7 @@ auto checkReplicatedLog(LogTarget const& target,
   // (the current leader); Once it is not the leader anymore
   // it will be disallowd from any quorum above.
   if (!target.participants.contains(leader.serverId)) {
-    return dictateLeader(target, plan, current, health);
+    return switchLeader(target, plan, current, health);
   }
 
   // If the user has updated flags for a participant, which is detected by
