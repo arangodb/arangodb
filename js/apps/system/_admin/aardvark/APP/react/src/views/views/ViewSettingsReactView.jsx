@@ -3,6 +3,7 @@
 import { cloneDeep } from "lodash";
 import React, { useEffect, useReducer, useRef, useState } from "react";
 import Textbox from "../../components/pure-css/form/Textbox";
+import ToolTip from "../../components/arango/tootip";
 import {
   getNumericFieldSetter,
   getNumericFieldValue,
@@ -86,13 +87,12 @@ const ViewSettingsReactView = ({ name }) => {
                       />
                     </th>
                     <th className="collectionTh">
-                      <div>
-                        <span
-                          rel="tooltip"
-                          className="modalTooltips arangoicon icon_arangodb_info"
-                          title="The View name (string, immutable)."
-                        ></span>
-                      </div>
+                      <ToolTip
+                        title="The View name (string, immutable)."
+                        setArrow={true}
+                      >
+                        <span className="arangoicon icon_arangodb_info"></span>
+                      </ToolTip>
                     </th>
                   </tr>
 
@@ -115,13 +115,12 @@ const ViewSettingsReactView = ({ name }) => {
                       />
                     </th>
                     <th className="collectionTh">
-                      <div>
-                        <span
-                          rel="tooltip"
-                          className="modalTooltips arangoicon icon_arangodb_info"
-                          title="The steps to wait before removing unused segments after release of internal resource."
-                        ></span>
-                      </div>
+                      <ToolTip
+                        title="The steps to wait before removing unused segments after release of internal resource."
+                        setArrow={true}
+                      >
+                        <span className="arangoicon icon_arangodb_info"></span>
+                      </ToolTip>
                     </th>
                   </tr>
 
@@ -144,16 +143,14 @@ const ViewSettingsReactView = ({ name }) => {
                       />
                     </th>
                     <th className="collectionTh">
-                      <div>
-                        <span
-                          rel="tooltip"
-                          className="modalTooltips arangoicon icon_arangodb_info"
-                          title="The wait time in milliseconds before performing View data store changes."
-                        ></span>
-                      </div>
+                      <ToolTip
+                        title="The wait time in milliseconds before performing View data store changes."
+                        setArrow={true}
+                      >
+                        <span className="arangoicon icon_arangodb_info"></span>
+                      </ToolTip>
                     </th>
                   </tr>
-
                   <tr
                     className="tableRow"
                     id="row_change-view-consolidationIntervalMsec"
@@ -175,13 +172,12 @@ const ViewSettingsReactView = ({ name }) => {
                       />
                     </th>
                     <th className="collectionTh">
-                      <div>
-                        <span
-                          rel="tooltip"
-                          className="modalTooltips arangoicon icon_arangodb_info"
-                          title="The wait time in milliseconds before performing View data store changes."
-                        ></span>
-                      </div>
+                      <ToolTip
+                        title="The wait time in milliseconds before performing View data store changes."
+                        setArrow={true}
+                      >
+                        <span className="arangoicon icon_arangodb_info"></span>
+                      </ToolTip>
                     </th>
                   </tr>
 
