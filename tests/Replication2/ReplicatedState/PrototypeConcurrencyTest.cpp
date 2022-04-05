@@ -27,8 +27,9 @@
 #include "Replication2/ReplicatedLog/TestHelper.h"
 #include "Replication2/ReplicatedState/ReplicatedState.h"
 #include "Replication2/ReplicatedState/ReplicatedStateFeature.h"
-#include "Replication2/StateMachines/Prototype/PrototypeStateMachine.h"
+#include "Replication2/StateMachines/Prototype/PrototypeFollowerState.h"
 #include "Replication2/StateMachines/Prototype/PrototypeLeaderState.h"
+#include "Replication2/StateMachines/Prototype/PrototypeStateMachine.h"
 #include "Replication2/Mocks/AsyncFollower.h"
 
 using namespace arangodb;
