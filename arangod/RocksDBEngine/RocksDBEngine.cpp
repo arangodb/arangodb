@@ -127,8 +127,8 @@ using namespace arangodb::options;
 namespace {
 using Env = rocksdb::Env;
 std::unique_ptr<rocksdb::Env> checksumEnv;
-Env* NewChecksumEnv(Env* base_env) {
-  return new arangodb::checksum::ChecksumEnv(base_env);
+Env* NewChecksumEnv(Env* base_env, std::string const& path) {
+  return new arangodb::checksum::ChecksumEnv(base_env, path);
 }
 }  // namespace
 
@@ -806,7 +806,7 @@ void RocksDBEngine::start() {
       static_cast<size_t>(opts._compactionReadaheadSize);
 
   if (_createShaFiles) {
-    ::checksumEnv.reset(::NewChecksumEnv(Env::Default()));
+    ::checksumEnv.reset(::NewChecksumEnv(Env::Default(), _path));
     _options.env = checksumEnv.get();
   } else {
     _options.env = Env::Default();
@@ -890,16 +890,11 @@ void RocksDBEngine::start() {
   }
 
   if (_createShaFiles) {
-    auto shaFileManager = std::make_shared<checksum::ChecksumHelper>(_path);
-    /*
-    // Register checksum factory
-    _options.file_checksum_gen_factory =
-        std::make_shared<RocksDBSha256ChecksumFactory>(shaFileManager);
-    // Do an initial check in the database directory for missing SHA checksum
-    // files
-     */
-    shaFileManager->checkMissingShaFiles();
-    //  _options.listeners.push_back(std::move(shaFileManager));
+    //  auto shaFileManager = std::make_shared<checksum::ChecksumHelper>(_path);
+    dynamic_cast<checksum::ChecksumEnv*>(_options.env)
+        ->getHelper()
+        ->checkMissingShaFiles();
+    //  shaFileManager->checkMissingShaFiles();
   }
 
   // WAL_ttl_seconds needs to be bigger than the sync interval of the count

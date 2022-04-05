@@ -25,7 +25,6 @@
 
 #include <openssl/evp.h>
 #include <rocksdb/env.h>
-#include "Logger/LogMacros.h"
 
 namespace arangodb::checksum {
 
@@ -49,8 +48,11 @@ class ChecksumHelper {
 class ChecksumWritableFile : public rocksdb::WritableFileWrapper {
  public:
   explicit ChecksumWritableFile(rocksdb::WritableFile* t,
-                                std::string const& fileName)
-      : rocksdb::WritableFileWrapper(t), _sstFileName(fileName) {}
+                                std::string const& fileName,
+                                std::shared_ptr<ChecksumHelper> helper)
+      : rocksdb::WritableFileWrapper(t),
+        _sstFileName(fileName),
+        _helper(helper) {}
   rocksdb::Status Append(const rocksdb::Slice& data) override {
     LOG_DEVEL << "Appending " << data.size()
               << " bytes to ChecksummingWritableFile.";
@@ -59,18 +61,22 @@ class ChecksumWritableFile : public rocksdb::WritableFileWrapper {
   rocksdb::Status Close() override;
 
  private:
-  std::shared_ptr<ChecksumHelper> _helper;
-  std::string _checksum;
   std::string const _sstFileName;
+  std::shared_ptr<ChecksumHelper> _helper;
 };
 
 class ChecksumEnv
     : public rocksdb::EnvWrapper {  // must mix it with Env::Default() for the
                                     // moment
  public:
+  explicit ChecksumEnv(Env* t, std::string const& path) : EnvWrapper(t) {
+    _helper = std::make_shared<ChecksumHelper>(path);
+  }
+  /*
   explicit ChecksumEnv(Env* t) : EnvWrapper(t) {}
   explicit ChecksumEnv(std::unique_ptr<Env>&& t) : EnvWrapper(std::move(t)) {}
   explicit ChecksumEnv(const std::shared_ptr<Env>& t) : EnvWrapper(t) {}
+   */
 
   rocksdb::Status NewWritableFile(
       const std::string& fileName,
@@ -78,6 +84,8 @@ class ChecksumEnv
       const rocksdb::EnvOptions& options) override;
 
   rocksdb::Status DeleteFile(const std::string& fileName) override;
+
+  std::shared_ptr<ChecksumHelper>& getHelper() { return _helper; }
 
  private:
   std::shared_ptr<ChecksumHelper> _helper;

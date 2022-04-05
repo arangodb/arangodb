@@ -67,7 +67,7 @@ bool ChecksumHelper::writeShaFile(std::string const& fileName,
       << "shaCalcFile: done " << fileName << " result: " << shaFileName;
   auto res = TRI_WriteFile(shaFileName.c_str(), "", 0);
   if (res == TRI_ERROR_NO_ERROR) {
-    _sstFileNamesToHashes.try_emplace(fileName, checksum);
+    _sstFileNamesToHashes.try_emplace(TRI_Basename(fileName), checksum);
     return true;
   }
 
@@ -150,11 +150,13 @@ rocksdb::Status ChecksumEnv::NewWritableFile(
   if (!s.ok()) {
     return s;
   }
-  result->reset(new ChecksumWritableFile(writableFile.release(), fileName));
+  result->reset(
+      new ChecksumWritableFile(writableFile.release(), fileName, _helper));
   return s;
 }
 
 rocksdb::Status ChecksumWritableFile::Close() {
+  TRI_ASSERT(_helper != nullptr);
   if (_helper->writeShaFile(_sstFileName, _helper->computeChecksum())) {
     return rocksdb::Status::OK();
   } else {
@@ -165,13 +167,14 @@ rocksdb::Status ChecksumWritableFile::Close() {
 rocksdb::Status ChecksumEnv::DeleteFile(const std::string& fileName) {
   if (!_helper->isFileNameSst(fileName) &&
       fileName.find(".sha") == std::string::npos) {
+    // return Env::DeleteFile(fileName);
+
     if (TRI_UnlinkFile(fileName.data()) == TRI_ERROR_NO_ERROR) {
       return rocksdb::Status::OK();
     } else {
       return rocksdb::Status::Aborted("Could not unlink file " + fileName);
     }
   }
-  LOG_DEVEL << "Will delete file " << fileName;
   return _helper->DeleteFile(fileName);
 }
 
