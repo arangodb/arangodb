@@ -1,3 +1,23 @@
+#new-collection-shards {
+  width: 35px;
+}
+
+#new-replication-factor {
+  width: 15px;
+}
+
+#new-write-concern {
+  width: 15px;
+}
+
+#change-replication-factor {
+  width: 15px;
+}
+
+#change-write-concern {
+  width: 15px;
+}
+
 .collectionTh {
   @extend %font-family;
   font-size: 14px;
