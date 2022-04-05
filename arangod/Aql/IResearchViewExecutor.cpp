@@ -218,7 +218,7 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
       _countApproximate(countApproximate),
       _filterConditionIsEmpty(::filterConditionIsEmpty(&_filterCondition)),
       _filterOptimization(filterOptimization), _scorersSort(std::move(scoresSort)),
-      _scoresSortLimit(scoresSortLimit) {
+      _scorersSortLimit(scoresSortLimit) {
   TRI_ASSERT(_reader != nullptr);
   std::tie(_documentOutReg, _collectionPointerReg) = std::visit(
       overload{
@@ -560,9 +560,7 @@ IResearchViewExecutorBase<Impl, Traits>::produceRows(
       if (documentWritten) {
         if constexpr (!Traits::ExplicitScanned) {
           stats.incrScanned();
-        } else {
-          stats.incrScanned(static_cast<Impl&>(*this).getScanned());
-        }
+        } 
         output.advanceRow();
       } else {
         _inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
@@ -571,7 +569,9 @@ IResearchViewExecutorBase<Impl, Traits>::produceRows(
       }
     }
   }
-
+  if constexpr (Traits::ExplicitScanned) {
+    stats.incrScanned(static_cast<Impl&>(*this).getScanned());
+  }
   return {inputRange.upstreamState(), stats, upstreamCall};
 }
 
@@ -622,8 +622,6 @@ IResearchViewExecutorBase<Impl, Traits>::skipRowsRange(
   } else {
     stats.incrScanned(impl.getScanned());
   }
-
-  
 
   AqlCall upstreamCall{};
   if (!call.needsFullCount()) {

@@ -132,7 +132,7 @@ class IResearchViewExecutorInfos {
   iresearch::IResearchViewStoredValues const& storedValues() const noexcept;
 
   size_t scoresSortLimit() const noexcept {
-    return _scoresSortLimit;
+    return _scorersSortLimit;
   }
 
    std::vector<std::pair<size_t, bool>> const& scoresSort() const noexcept {
@@ -160,7 +160,7 @@ class IResearchViewExecutorInfos {
   bool _filterConditionIsEmpty;
   iresearch::FilterOptimization _filterOptimization;
   std::vector<std::pair<size_t, bool>> _scorersSort;
-  size_t _scoresSortLimit;
+  size_t _scorersSortLimit;
 };  // IResearchViewExecutorInfos
 
 class IResearchViewStats {
@@ -680,6 +680,7 @@ class IResearchViewHeapSortExecutor
   size_t skipAll();
   size_t getScanned() noexcept {
     auto tmp = _scannedCount;
+    // one-shot getter.
     _scannedCount = 0;
     return tmp;
     
