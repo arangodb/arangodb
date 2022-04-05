@@ -47,7 +47,7 @@ function replication2Client(options) {
   const opts = _.clone(options);
   opts.dbServers = Math.max(opts.dbServers, 3);
 
-  return tu.performTests(opts, testCases, 'replication2_client', tu.runInLocalArangosh);
+  return new tu.runLocalInArangoshRunner(opts, 'replication2_client').run(testCases);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -60,13 +60,13 @@ function replication2Server(options) {
   const opts = _.clone(options);
   opts.dbServers = Math.max(opts.dbServers, 5);
 
-  return tu.performTests(opts, testCases, 'replication2_server', tu.runThere, {
-        'javascript.allow-external-process-control': 'true',
-        'javascript.allow-port-testing': 'true',
-        'javascript.allow-admin-execute': 'true',
-        'agency.supervision-grace-period': '3.0',
-        'agency.supervision-ok-threshold': '1.5',
-      });
+  return new tu.runOnArangodRunner(opts, 'replication2_server', {
+    'javascript.allow-external-process-control': 'true',
+    'javascript.allow-port-testing': 'true',
+    'javascript.allow-admin-execute': 'true',
+    'agency.supervision-grace-period': '3.0',
+    'agency.supervision-ok-threshold': '1.5',
+  }).run(testCases);
 }
 
 

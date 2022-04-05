@@ -78,11 +78,11 @@ var _resilience = function(path) {
       localOptions.dbServers = 5;
     }
     let testCases = tu.scanTestPaths(testPaths[path], localOptions);
-    let rc = tu.performTests(localOptions, testCases, suiteName, tu.runThere, {
+    let rc = new tu.runOnArangodRunner(localOptions, suiteName, {
       'javascript.allow-external-process-control': 'true',
       'javascript.allow-port-testing': 'true',
       'javascript.allow-admin-execute': 'true',
-    });
+    }).run(testCases);
     options.cleanup = options.cleanup && localOptions.cleanup;
     return rc;
   };
@@ -110,11 +110,11 @@ function clientResilience (options) {
   }
 
   let testCases = tu.scanTestPaths(testPaths.client_resilience, localOptions);
-  let rc = tu.performTests(localOptions, testCases, 'client_resilience', tu.runInArangosh, {
+  let rc = new tu.runInArangoshRunner(localOptions, 'client_resilience', {
     'javascript.allow-external-process-control': 'true',
     'javascript.allow-port-testing': 'true',
     'javascript.allow-admin-execute': 'true',
-  });
+  }).run(testCases);
   options.cleanup = options.cleanup && localOptions.cleanup;
   return rc;
 }
@@ -139,13 +139,11 @@ function activeFailover (options) {
   localOptions.disableMonitor = true;
   localOptions.Agency = true;
   let testCases = tu.scanTestPaths(testPaths.active_failover, localOptions);
-  let rc = tu.performTests(localOptions, testCases, 'client_resilience', tu.runInArangosh, {
-    'server.authentication': 'true',
-    'server.jwt-secret': 'haxxmann',
-    'javascript.allow-external-process-control': 'true',
-    'javascript.allow-port-testing': 'true',
-    'javascript.allow-admin-execute': 'true',
-  });
+  let rc = new tu.runInArangoshRunner(localOptions, 'client_resilience',  Object.assign({}, {
+      'javascript.allow-external-process-control': 'true',
+      'javascript.allow-port-testing': 'true',
+      'javascript.allow-admin-execute': 'true',
+    }, tu.testServerAuthInfo)).run(testCases);
   options.cleanup = options.cleanup && localOptions.cleanup;
   return rc;
 }

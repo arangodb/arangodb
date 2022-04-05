@@ -1,4 +1,3 @@
-
 /* jshint strict: false, sub: true */
 /* global print db */
 'use strict';
@@ -45,8 +44,10 @@ const statusExternal = internal.statusExternal;
 /* Modules: */
 const _ = require('lodash');
 const fs = require('fs');
+
 const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
+const testRunnerBase = require('@arangodb/testutils/testrunner').testRunner;
 const yaml = require('js-yaml');
 const platform = require('internal').platform;
 const time = require('internal').time;
@@ -67,98 +68,102 @@ const host_re = new RegExp('([a-z]*)://([0-9.:]*):(\d*)');
 // //////////////////////////////////////////////////////////////////////////////
 
 function driver (options) {
-  function runInDriverTest (options, instanceInfo, file, addArgs) {
-    let topology;
-    let results = {
-      'message': ''
-    };
-    let matchTopology;
-    if (options.cluster) {
-      topology = 'CLUSTER';
-      matchTopology = /^CLUSTER/;
-    } else if (options.activefailover) {
-      topology = 'ACTIVE_FAILOVER';
-      matchTopology = /^ACTIVE_FAILOVER/;
-    } else {
-      topology = 'SINGLE_SERVER';
-      matchTopology = /^SINGLE_SERVER/;
+  class runInDriverTest extends testRunnerBase {
+    constructor(options, testname, ...optionalArgs) {
+      super(options, testname, ...optionalArgs);
+      this.info = "runInDriverTest";
     }
-    let enterprise = 'false';
-    if (global.ARANGODB_CLIENT_VERSION(true).hasOwnProperty('enterprise-version')) {
-      enterprise = 'true';
-    }
-    let m = instanceInfo.url.split(host_re);
-    
-    let args = [
-      options.driverScript,
-      '--instanceUrl', instanceInfo.url,
-      '--instanceEndpoint', instanceInfo.endpoint,
-      '--port', m[4],
-      '--host', m[2],
-      '--auth', false,
-      '--username', 'root',
-      '--password', '',
-      enterprise?'--enterprise':'--no-enterprise',
-      '--deployment-mode', topology
-      
-    ];
-    if (testFilter) {
-      args.push('--testsuite');
-      args.push(testFilter);
-    }
-    if (options.testCase) {
-      args.push('--filter');
-      args.push(options.testCase);
-    }
-    if (options.hasOwnProperty('driverOptions')) {
-      for (var key in options.driverOptions) {
-        args.push('--' + key + '=' + options.driverOptions[key]);
+    runOneTest(file) {
+      let topology;
+      let results = {
+        'message': ''
+      };
+      let matchTopology;
+      if (this.options.cluster) {
+        topology = 'CLUSTER';
+        matchTopology = /^CLUSTER/;
+      } else if (this.options.activefailover) {
+        topology = 'ACTIVE_FAILOVER';
+        matchTopology = /^ACTIVE_FAILOVER/;
+      } else {
+        topology = 'SINGLE_SERVER';
+        matchTopology = /^SINGLE_SERVER/;
       }
-    }
-    if (options.extremeVerbosity) {
-      print(process.env);
-      print(args);
-    }
-    let start = Date();
-    let status = true;
-    const res = executeExternal(options.driverScriptInterpreter, args, true, [], options.driversource);
+      let enterprise = 'false';
+      if (global.ARANGODB_CLIENT_VERSION(true).hasOwnProperty('enterprise-version')) {
+        enterprise = 'true';
+      }
+      let m = this.instanceInfo.url.split(host_re);
+      
+      let args = [
+        this.options.driverScript,
+        '--instanceUrl', this.instanceInfo.url,
+        '--instanceEndpoint', this.instanceInfo.endpoint,
+        '--port', m[4],
+        '--host', m[2],
+        '--auth', false,
+        '--username', 'root',
+        '--password', '',
+        enterprise?'--enterprise':'--no-enterprise',
+        '--deployment-mode', topology
+        
+      ];
+      if (testFilter) {
+        args.push('--testsuite');
+        args.push(testFilter);
+      }
+      if (this.options.testCase) {
+        args.push('--filter');
+        args.push(this.options.testCase);
+      }
+      if (this.options.hasOwnProperty('driverOptions')) {
+        for (var key in this.options.driverOptions) {
+          args.push('--' + key + '=' + this.options.driverOptions[key]);
+        }
+      }
+      if (this.options.extremeVerbosity) {
+        print(process.env);
+        print(args);
+      }
+      let start = Date();
+      let status = true;
+      const res = executeExternal(this.options.driverScriptInterpreter, args, true, [], this.options.driversource);
 
-    let allBuff = '';
-    let count = 0;
-    let rc;
-    do {
-      let buf = fs.readPipe(res.pid);
-      print(buf);
-      allBuff += buf;
-      while ((buf.length === 1023) || count === 0) {
-        count += 1;
-        buf = fs.readPipe(res.pid);
+      let allBuff = '';
+      let count = 0;
+      let rc;
+      do {
+        let buf = fs.readPipe(res.pid);
         print(buf);
         allBuff += buf;
+        while ((buf.length === 1023) || count === 0) {
+          count += 1;
+          buf = fs.readPipe(res.pid);
+          print(buf);
+          allBuff += buf;
+        }
+        rc = statusExternal(res.pid);
+        if (rc.status === 'NOT-FOUND') {
+          break;
+        }
+      } while (rc.status === 'RUNNING');
+      if (rc.exit !== 0) {
+        status = false;
       }
-      rc = statusExternal(res.pid);
-      if (rc.status === 'NOT-FOUND') {
-        break;
-      }
-    } while (rc.status === 'RUNNING');
-    if (rc.exit !== 0) {
-      status = false;
+      results['timeout'] = false;
+      results['status'] = status;
+      results['message'] = allBuff;
+      return results;
     }
-    results['timeout'] = false;
-    results['status'] = status;
-    results['message'] = allBuff;
-    return results;
   }
-  runInDriverTest.info = 'runInDriverTest';
-  let localOptions = _.clone(options);
+  let localOptions = Object.assign({}, options, tu.testServerAuthInfo);
   if (localOptions.cluster && localOptions.dbServers < 3) {
     localOptions.dbServers = 3;
   }
-  let testFilter = options.test; // no, tu.performTests thy shal not evaluate this.
+  let testFilter = options.test; // no, testRunnerBase thy shal not evaluate this.
   localOptions.test = '';
-  localOptions['server.jwt-secret'] = 'haxxmann';
 
-  return tu.performTests(localOptions, [ 'driver_test.js'], 'driver_test', runInDriverTest);
+  return new runInDriverTest(localOptions, 'driver_test').run(['driver_test.js']);
 }
 
 
