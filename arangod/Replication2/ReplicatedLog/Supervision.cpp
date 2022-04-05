@@ -561,31 +561,6 @@ auto checkReplicatedLog(LogTarget const& target,
     }
   }
 
-<<<<<<< HEAD
-=======
-  // If a participant is in Plan but not in Target, gracefully
-  // remove them
-  if (auto maybeParticipant = getRemovedParticipant(
-          target.participants, plan.participantsConfig.participants)) {
-    auto const& [participantId, planFlags] = *maybeParticipant;
-
-    if (not planFlags.allowedInQuorum and
-        current.leader->committedParticipantsConfig->generation ==
-            plan.participantsConfig.generation) {
-      return RemoveParticipantFromPlanAction(participantId);
-    } else if (planFlags.allowedInQuorum) {
-      // make this server not allowed in quorum. If the generation is
-      // committed
-      auto newFlags = planFlags;
-      newFlags.allowedInQuorum = false;
-      return UpdateParticipantFlagsAction(participantId, newFlags);
-    } else {
-      // still waiting
-      return EmptyAction("Waiting for participants config to be committed");
-    }
-  }
-
->>>>>>> devel
   // If the configuration differs between Target and Plan,
   // apply the new configuration.
   //
