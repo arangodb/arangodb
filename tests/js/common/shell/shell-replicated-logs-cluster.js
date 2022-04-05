@@ -62,10 +62,6 @@ function ReplicatedLogsCreateSuite() {
 
   return {
     setUpAll, tearDownAll,
-    setUp: function () {
-    },
-    tearDown: function () {
-    },
 
     testCreateAndDropReplicatedLog: function () {
       const logId = 12;
@@ -85,8 +81,6 @@ function ReplicatedLogsCreateSuite() {
     testCreateNoId: function () {
       const log = db._createReplicatedLog({config});
       assertEqual(log.id(), db._replicatedLog(log.id()).id());
-      const status = log.status();
-      console.log(status);
     },
   };
 }
@@ -130,7 +124,6 @@ function ReplicatedLogsWriteSuite() {
     setUpAll, tearDownAll,
     setUp: function () {
       log = db._createReplicatedLog({config});
-      print(log.id());
     },
     tearDown: function () {
       db._replicatedLog(log.id()).drop();
@@ -263,14 +256,11 @@ function ReplicatedLogsWriteSuite() {
         assertTrue(next > index);
         index = next;
       }
-      print("first poll");
       let s = log.poll();
-      print("first poll - after");
       assertEqual(s.length, 9);
       assertEqual(s[0].logIndex, 1);
       assertEqual(s[8].logIndex, 9);
       s = log.poll(50, 10);
-      print("second poll - after");
       assertEqual(s.length, 10);
       for (let i = 0; i < 10; i++) {
         assertEqual(s[i].logIndex, 50 + i);
