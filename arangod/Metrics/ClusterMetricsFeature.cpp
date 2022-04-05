@@ -76,7 +76,6 @@ void ClusterMetricsFeature::start() {
   }
   auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
   ci.initMetricsUpdate();
-  update(CollectMode::ReadGlobal);
 }
 
 void ClusterMetricsFeature::beginShutdown() {
@@ -228,8 +227,8 @@ ClusterMetricsFeature::Result ClusterMetricsFeature::writeData(
   builder.close();
   aql::QueryString writeText{absl::StrCat(
       "LET outdated = 0 != COUNT(FOR m IN ", StaticStrings::MetricsCollection,
-      " FILTER m._key == \"metrics\" AND m.version >= @v LIMIT 1 RETURN 0);"
-      "FOR key IN outdated ? [] : [ \"metrics\" ]"
+      " FILTER m._key == \"metrics\" AND m.version >= @v LIMIT 1 RETURN 0) "
+      "FOR key IN (outdated ? [] : [ \"metrics\" ])"
       " UPSERT { _key: \"metrics\" }"
       " INSERT { _key: \"metrics\", version: @v, data: @d }"
       " UPDATE { version: @v, data: @d } IN ",
@@ -242,9 +241,13 @@ ClusterMetricsFeature::Result ClusterMetricsFeature::writeData(
       bindVars);
   auto r = writeQuery->executeSync();
   if (r.fail()) {
+    LOG_TOPIC("badf2", ERR, Logger::CLUSTER)
+        << "Some fail when store collected metrics: " << r.result;
     return Result::Error;
   }
   if (r.data->slice().length() == 0) {
+    LOG_TOPIC("badf3", WARN, Logger::CLUSTER)
+        << "Failed store collected metrics because they are outdated";
     return Result::Old;
   }
   std::atomic_store_explicit(
