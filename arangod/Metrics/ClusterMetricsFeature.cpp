@@ -195,6 +195,7 @@ ClusterMetricsFeature::Result ClusterMetricsFeature::readData(
   if (r.fail()) {
     return Result::Error;
   }
+  version = 0;
   if (r.data->slice().isEmptyArray()) {
     return Result::Old;
   }
