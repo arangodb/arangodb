@@ -432,10 +432,50 @@ auto checkReplicatedLog(LogTarget const& target,
     return WriteEmptyTermAction(minTerm);
   }
 
-  // leader has been removed from target;
-  // If so, try to gracefully remove this leader by
-  // selecting a different eligible participant as leader
-  // and switching leaders.
+  // Check whether a participant was added in Target that is not in Plan.
+  // If so, add it to Plan.
+  if (auto participant = getAddedParticipant(
+          target.participants, plan.participantsConfig.participants)) {
+    return AddParticipantToPlanAction(participant->first, participant->second);
+  }
+
+  // If a participant is in Plan but not in Target, gracefully
+  // remove them
+  if (auto maybeParticipant = getRemovedParticipant(
+          target.participants, plan.participantsConfig.participants)) {
+    auto const& [participantId, planFlags] = *maybeParticipant;
+
+    if (participantId == leader.serverId) {
+      // do not remove the leader (yet)
+    } else
+
+      // If the participant is not allowed in Quorum it is safe to remove it
+      if (not planFlags.allowedInQuorum and
+          current.leader->committedParticipantsConfig->generation ==
+              plan.participantsConfig.generation) {
+        return RemoveParticipantFromPlanAction(participantId);
+      } else
+        // if the participant is allowed in a quorum, first prevent it
+        // from being in a quorum
+        if (planFlags.allowedInQuorum) {
+          // make this server not allowed in quorum. If the generation is
+          // committed
+          auto newFlags = planFlags;
+          newFlags.allowedInQuorum = false;
+          return UpdateParticipantFlagsAction(participantId, newFlags);
+        } else {
+          // still waiting
+          return EmptyAction("Waiting for participants config to be committed");
+        }
+  }
+
+  // If the participant who is leader has been removed from target,
+  // gracefully remove it by selecting a different eligible participant
+  // as leader
+  //
+  // At this point there should only ever be precisely one participant to remove
+  // (the current leader); Once it is not the leader anymore
+  // it will be disallowd from any quorum above.
   if (!target.participants.contains(leader.serverId)) {
     return dictateLeader(target, plan, current, health);
   }
@@ -453,13 +493,6 @@ auto checkReplicatedLog(LogTarget const& target,
                                         participantFlags->second);
   }
 
-  // Check whether a participant was added in Target that is not in Plan.
-  // If so, add it to Plan.
-  if (auto participant = getAddedParticipant(
-          target.participants, plan.participantsConfig.participants)) {
-    return AddParticipantToPlanAction(participant->first, participant->second);
-  }
-
   // Check whether a specific participant is configured in Target to become the
   // leader. This requires that participant to be flagged to always be part of a
   // quorum; once that change is committed, the leader can be switched if the
@@ -472,27 +505,6 @@ auto checkReplicatedLog(LogTarget const& target,
       return *action;
     } else {
       // TODO!
-    }
-  }
-
-  // If a participant is in Plan but not in Target, gracefully
-  // remove them
-  if (auto maybeParticipant = getRemovedParticipant(
-          target.participants, plan.participantsConfig.participants)) {
-    auto const& [participantId, planFlags] = *maybeParticipant;
-
-    if (not planFlags.allowedInQuorum and
-        current.leader->committedParticipantsConfig->generation ==
-            plan.participantsConfig.generation) {
-      return RemoveParticipantFromPlanAction(participantId);
-    } else if (planFlags.allowedInQuorum) {
-      // make this server not allowed in quorum. If the generation is committed
-      auto newFlags = planFlags;
-      newFlags.allowedInQuorum = false;
-      return UpdateParticipantFlagsAction(participantId, newFlags);
-    } else {
-      // still waiting
-      return EmptyAction("Waiting for participants config to be committed");
     }
   }
 
