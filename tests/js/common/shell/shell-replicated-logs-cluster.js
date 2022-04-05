@@ -62,13 +62,14 @@ function ReplicatedLogsCreateSuite() {
 
   return {
     setUpAll, tearDownAll,
-    setUp : function () {},
-    tearDown : function () {},
+    setUp: function () {
+    },
+    tearDown: function () {
+    },
 
-    testCreateAndDropReplicatedLog : function() {
+    testCreateAndDropReplicatedLog: function () {
       const logId = 12;
-      const logSpec = {id: logId, config: config};
-      const log = db._createReplicatedLog(logSpec);
+      const log = db._createReplicatedLog({id: logId, config});
 
       assertEqual(log.id(), logId);
       assertEqual(db._replicatedLog(logId).id(), logId);
@@ -80,10 +81,17 @@ function ReplicatedLogsCreateSuite() {
         assertEqual(err.errorNum, ERRORS.ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND.code);
       }
     },
+
+    testCreateNoId: function () {
+      const log = db._createReplicatedLog({config});
+      assertEqual(log.id(), db._replicatedLog(log.id()).id());
+      const status = log.status();
+      console.log(status);
+    },
   };
 }
 
-function ReplicatedLogsWriteSuite () {
+function ReplicatedLogsWriteSuite() {
   'use strict';
 
   const config = {
@@ -93,19 +101,43 @@ function ReplicatedLogsWriteSuite () {
     waitForSync: true
   };
 
-  let log;
+  let log = null;
+
+  const getLeaderStatus = function () {
+    let status = log.status();
+    const leaderId = status.leaderId;
+    if (leaderId === undefined) {
+      console.info(`leader not available for replicated log ${log.id()}`);
+      return null;
+    }
+    if (status.participants === undefined || status.participants[leaderId] === undefined) {
+      console.info(`participants status not available for replicated log ${log.id()}`);
+      return null;
+    }
+    const leaderResponse = status.participants[leaderId].response;
+    if (leaderResponse === undefined || leaderResponse.role !== "leader") {
+      console.info(`leader not available for replicated log ${log.id()}`);
+      return null;
+    }
+    if (!leaderResponse.leadershipEstablished) {
+      console.info(`leadership not yet established`);
+      return null;
+    }
+    return status.participants[leaderId].response;
+  };
 
   return {
     setUpAll, tearDownAll,
     setUp: function () {
       log = db._createReplicatedLog({config});
+      print(log.id());
     },
     tearDown: function () {
       db._replicatedLog(log.id()).drop();
     },
 
     testStatus: function () {
-      let leaderStatus = log.status();
+      let leaderStatus = getLeaderStatus();
       assertEqual(leaderStatus.local.commitIndex, 1);
       let globalStatus = log.globalStatus();
       assertEqual(globalStatus.specification.source, "RemoteAgency");
@@ -114,12 +146,12 @@ function ReplicatedLogsWriteSuite () {
       // Make sure that coordinator/status and coordinator/global-status return the same thing.
       // We should avoid comparing timestamps, so comparing only the keys of these objects will suffice.
       assertEqual(Object.keys(status).sort(), Object.keys(globalStatus).sort());
-      
+
       let localGlobalStatus = log.globalStatus({useLocalCache: true});
       assertEqual(localGlobalStatus.specification.source, "LocalCache");
     },
 
-    testInsert : function() {
+    testInsert: function () {
       let index = 0;
       for (let i = 0; i < 100; i++) {
         let result = log.insert({foo: i});
@@ -129,11 +161,11 @@ function ReplicatedLogsWriteSuite () {
         assertTrue(next > index);
         index = next;
       }
-      let leaderStatus = log.status();
+      let leaderStatus = getLeaderStatus();
       assertTrue(leaderStatus.local.commitIndex >= index);
     },
 
-    testMultiInsert : function() {
+    testMultiInsert: function () {
       let index = 0;
       for (let i = 0; i < 100; i += 3) {
         let result = log.multiInsert([{foo0: i}, {foo1: i + 1}, {foo2: i + 2}]);
@@ -147,11 +179,11 @@ function ReplicatedLogsWriteSuite () {
             indexes[1] < indexes[2]);
         index = indexes[indexes.length - 1];
       }
-      let leaderStatus = log.status();
+      let leaderStatus = getLeaderStatus();
       assertTrue(leaderStatus.local.commitIndex >= index);
     },
 
-    testHeadTail : function() {
+    testHeadTail: function () {
       try {
         let index = 0;
         for (let i = 0; i < 100; i++) {
@@ -188,7 +220,7 @@ function ReplicatedLogsWriteSuite () {
       }
     },
 
-    testSlice : function() {
+    testSlice: function () {
       let index = 0;
       for (let i = 0; i < 100; i++) {
         let next = log.insert({foo: i}).index;
@@ -206,36 +238,39 @@ function ReplicatedLogsWriteSuite () {
       }
     },
 
-    testAt : function() {
+    testAt: function () {
       const index = log.insert({foo: "bar"}).index;
       let s = log.at(index);
       assertEqual(s.logIndex, index);
       assertEqual(s.payload.foo, "bar");
     },
 
-    testRelease : function() {
+    testRelease: function () {
       for (let i = 0; i < 2000; i++) {
         log.insert({foo: i});
       }
-      let s1 = log.status();
+      let s1 = getLeaderStatus();
       assertEqual(s1.local.firstIndex, 1);
       log.release(1500);
-      let s2 = log.status();
+      let s2 = getLeaderStatus();
       assertEqual(s2.local.firstIndex, 1501);
     },
 
-    testPoll : function() {
+    testPoll: function () {
       let index = 0;
       for (let i = 0; i < 100; i++) {
         let next = log.insert({foo: i}).index;
         assertTrue(next > index);
         index = next;
       }
+      print("first poll");
       let s = log.poll();
+      print("first poll - after");
       assertEqual(s.length, 9);
       assertEqual(s[0].logIndex, 1);
       assertEqual(s[8].logIndex, 9);
       s = log.poll(50, 10);
+      print("second poll - after");
       assertEqual(s.length, 10);
       for (let i = 0; i < 10; i++) {
         assertEqual(s[i].logIndex, 50 + i);

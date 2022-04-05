@@ -228,7 +228,6 @@ struct ReplicatedLogMethodsCoordinator final
     auto cb = std::make_shared<AgencyCallback>(
         vocbase.server(), path->str(SkipComponents(1)),
         [ctx](velocypack::Slice slice, consensus::index_t index) -> bool {
-          LOG_DEVEL << "callback called with " << slice.toJson();
           if (slice.isNone()) {
             return false;
           }
