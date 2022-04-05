@@ -47,11 +47,9 @@ using namespace std::chrono_literals;
 ClusterMetricsFeature::ClusterMetricsFeature(Server& server)
     : ArangodFeature{server, *this} {
   setOptional();
-  startsAfter<SystemDatabaseFeature>();
   startsAfter<ClusterFeature>();
   startsAfter<NetworkFeature>();
   startsAfter<SchedulerFeature>();
-  startsAfter<BootstrapFeature>();
 }
 
 void ClusterMetricsFeature::collectOptions(
@@ -78,18 +76,6 @@ void ClusterMetricsFeature::start() {
   }
   auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
   ci.initMetricsUpdate();
-  aql::QueryString writeText{
-      absl::StrCat("UPSERT { _key: \"metrics\" }"
-                   " INSERT { _key: \"metrics\", version: 0, data: [] }"
-                   " UPDATE { version: 0, data: [] } IN ",
-                   StaticStrings::MetricsCollection)};
-  // TODO(MBkkt) We should save old value for persistent metrics
-  auto vocbase = server().getFeature<SystemDatabaseFeature>().use();
-  transaction::StandaloneContext context{*vocbase};
-  auto writeQuery = aql::Query::create(
-      {std::shared_ptr<transaction::StandaloneContext>{}, &context}, writeText,
-      nullptr);
-  writeQuery->executeSync();
   update(CollectMode::ReadGlobal);
 }
 
@@ -209,6 +195,9 @@ ClusterMetricsFeature::Result ClusterMetricsFeature::readData(
   if (r.fail()) {
     return Result::Error;
   }
+  if (r.data->slice().isEmptyArray()) {
+    return Result::Old;
+  }
   auto metrics = r.data->slice().at(0);
   version = metrics.get("version").getNumber<uint64_t>();
   auto data = std::atomic_load_explicit(&_data, std::memory_order_acquire);
@@ -236,11 +225,14 @@ ClusterMetricsFeature::Result ClusterMetricsFeature::writeData(
   builder.add("d", VPackSerialize{metrics});
   builder.add("v", VPackValue{version + 1});
   builder.close();
-  aql::QueryString writeText{
-      absl::StrCat("FOR m IN ", StaticStrings::MetricsCollection,
-                   " FILTER m.version < @v"
-                   " REPLACE m WITH { data: @d, version: @v } IN _metrics"
-                   " RETURN 0")};
+  aql::QueryString writeText{absl::StrCat(
+      "LET outdated = 0 != COUNT(FOR m IN ", StaticStrings::MetricsCollection,
+      " FILTER m._key == \"metrics\" AND m.version >= @v LIMIT 1 RETURN 0);"
+      "FOR key IN outdated ? [] : [ \"metrics\" ]"
+      " UPSERT { _key: \"metrics\" }"
+      " INSERT { _key: \"metrics\", version: @v, data: @d }"
+      " UPDATE { version: @v, data: @d } IN ",
+      StaticStrings::MetricsCollection, " RETURN 0")};
   std::shared_ptr<VPackBuilder> sharedDefault;
   std::shared_ptr<VPackBuilder> bindVars{sharedDefault, &builder};
   transaction::StandaloneContext context{*vocbase};
