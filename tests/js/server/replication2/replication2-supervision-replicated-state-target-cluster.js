@@ -29,6 +29,7 @@ const db = arangodb.db;
 const lh = require("@arangodb/testutils/replicated-logs-helper");
 const sh = require("@arangodb/testutils/replicated-state-helper");
 const spreds = require("@arangodb/testutils/replicated-state-predicates");
+const lpreds = require("@arangodb/testutils/replicated-logs-predicates");
 
 const database = "replication2_supervision_test_db";
 
@@ -178,7 +179,7 @@ const replicatedStateSuite = function () {
 
       lh.waitFor(spreds.replicatedStateIsReady(database, stateId, newServers));
 
-      lh.waitFor(lh.replicatedLogParticipantsFlag(database, stateId, {
+      lh.waitFor(lpreds.replicatedLogParticipantsFlag(database, stateId, {
         [newParticipant]: {allowedInQuorum: true, allowedAsLeader: true, forced: false},
       }));
     },
@@ -213,22 +214,8 @@ const replicatedStateSuite = function () {
           target.leader = newLeader;
           return target;
         });
-      lh.waitFor(() => {
-        const currentLeader = lh.getReplicatedLogLeaderTarget(database, stateId);
-        if (currentLeader === newLeader) {
-          return true;
-        } else {
-          return new Error(`Expected log leader to switch to ${newLeader}, but is still ${currentLeader}`);
-        }
-      });
-      lh.waitFor(() => {
-        const {leader: currentLeader} = lh.getReplicatedLogLeaderPlan(database, stateId);
-        if (currentLeader === newLeader) {
-          return true;
-        } else {
-          return new Error(`Expected log leader to switch to ${newLeader}, but is still ${currentLeader}`);
-        }
-      });
+      lh.waitFor(lpreds.replicatedLogLeaderTargetIs(database, stateId, newLeader));
+      lh.waitFor(lpreds.replicatedLogLeaderPlanIs(database, stateId, newLeader));
     },
 
     testUnsetLeader: function () {
@@ -261,7 +248,7 @@ const replicatedStateSuite = function () {
         });
       lh.waitFor(spreds.replicatedStateVersionConverged(database, stateId, 2));
       const newServers = _.without(servers, serverToBeRemoved);
-      lh.waitFor(lh.replicatedLogParticipantsFlag(database, stateId, {
+      lh.waitFor(lpreds.replicatedLogParticipantsFlag(database, stateId, {
         [serverToBeRemoved]: null,
       }));
       lh.waitFor(spreds.replicatedStateIsReady(database, stateId, newServers));
