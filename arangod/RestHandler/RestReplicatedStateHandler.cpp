@@ -20,8 +20,14 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
+
 #include "RestReplicatedStateHandler.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "Agency/AgencyPaths.h"
+#include "Basics/VelocyPackHelper.h"
+#include "Cluster/AgencyCache.h"
+#include "Cluster/ClusterFeature.h"
 #include "Futures/Future.h"
 #include "Replication2/Methods.h"
 #include "Replication2/ReplicatedState/StateStatus.h"
@@ -115,15 +121,32 @@ auto arangodb::RestReplicatedStateHandler::handlePostRequest(
                     basics::StringUtils::concatT("Not a log id: ", logIdStr));
       return RestStatus::DONE;
     }
-    return waitForFuture(methods.replaceParticipant(*logId, toRemove, toAdd)
-                             .thenValue([this](auto&& result) {
-                               if (result.ok()) {
-                                 generateOk(rest::ResponseCode::OK,
-                                            VPackSlice::emptyObjectSlice());
-                               } else {
-                                 generateError(result);
-                               }
-                             }));
+
+    // If this wasn't a temporary API, it would be nice to be able to pass a
+    // minimum raft index to wait for here.
+    namespace paths = ::arangodb::cluster::paths;
+    auto& agencyCache =
+        _vocbase.server().getFeature<ClusterFeature>().agencyCache();
+    auto path = paths::aliases::target()
+                    ->replicatedStates()
+                    ->database(_vocbase.name())
+                    ->state(*logId);
+    auto&& [res, raftIdx] =
+        agencyCache.get(path->str(paths::SkipComponents{1}));
+    auto stateTarget =
+        replication2::replicated_state::agency::Target::fromVelocyPack(
+            res->slice());
+
+    return waitForFuture(
+        methods.replaceParticipant(*logId, toRemove, toAdd, stateTarget.leader)
+            .thenValue([this](auto&& result) {
+              if (result.ok()) {
+                generateOk(rest::ResponseCode::OK,
+                           VPackSlice::emptyObjectSlice());
+              } else {
+                generateError(result);
+              }
+            }));
     return RestStatus::DONE;
   } else if (std::string_view logIdStr, newLeaderStr;
              rest::Match(suffixes).against(&logIdStr, "leader",
