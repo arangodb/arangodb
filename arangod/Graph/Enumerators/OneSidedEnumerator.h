@@ -49,6 +49,10 @@ class HashedStringRef;
 
 namespace graph {
 
+namespace enterprise {
+class SmartGraphStep;
+}
+
 struct OneSidedEnumeratorOptions;
 class PathValidatorOptions;
 
@@ -64,7 +68,9 @@ class OneSidedEnumerator : public TraversalEnumerator {
  private:
   using VertexRef = arangodb::velocypack::HashedStringRef;
 
-  using ResultList = std::vector<Step>;
+  using ResultList = typename std::conditional<
+      std::is_same_v<Step, enterprise::SmartGraphStep>,
+      enterprise::SmartGraphResponse, std::vector<Step>>;
   using GraphOptions = arangodb::graph::OneSidedEnumeratorOptions;
 
  public:
