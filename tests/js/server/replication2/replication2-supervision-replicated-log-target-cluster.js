@@ -593,6 +593,54 @@ const replicatedLogSuite = function () {
       replicatedLogDeleteTarget(database, logId);
     },
 
+    // This test replaces all participants with new participants which are not allowed in quorum, not allowed as leader
+    testReplaceAllParticipantsWithNotAllowedOnes: function () {
+      const {logId, servers, term, leader} = createReplicatedLogAndWaitForLeader(database);
+
+      // now change the leader
+      const otherServers = _.difference(dbservers, servers);
+      const targetVersion = 1;
+
+      {
+        let {target} = readReplicatedLogAgency(database, logId);
+        // delete old leader from target
+        target.version = targetVersion;
+        target.participants =
+          Object.assign({}, ...otherServers.map((x) => ({[x]: {allowedInQuorum: false, allowedAsLeader: false}})));
+        replicatedLogSetTarget(database, logId, target);
+      }
+      // here we should wait for an error message from the supervision that it cannot remove a participant, because
+      // write concern would be violated
+
+      waitFor(replicatedLogTargetVersion(database, logId, targetVersion));
+
+      const {current} = readReplicatedLogAgency(database, logId);
+      waitFor(replicatedLogLeaderEstablished(database, logId, undefined, otherServers));
+
+      replicatedLogDeleteTarget(database, logId);
+    },
+
+    testRemoveAllParticipants: function () {
+      const {logId, servers, term, leader} = createReplicatedLogAndWaitForLeader(database);
+
+      const targetVersion = 1;
+
+      {
+        let {target} = readReplicatedLogAgency(database, logId);
+        // delete old leader from target
+        target.version = targetVersion;
+        target.participants = {};
+        replicatedLogSetTarget(database, logId, target);
+      }
+      // here we should wait for an error message from the supervision that it cannot remove a participant, because
+      // write concern would be violated
+
+      const {current} = readReplicatedLogAgency(database, logId);
+      // wait for an error message to appear in current
+
+      replicatedLogDeleteTarget(database, logId);
+    },
+
     testLogStatus: function () {
       const {logId, servers, leader, term, followers} = createReplicatedLogAndWaitForLeader(database);
 
