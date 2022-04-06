@@ -30,6 +30,7 @@ const _ = require('lodash');
 const LH = require("@arangodb/testutils/replicated-logs-helper");
 const SH = require("@arangodb/testutils/replicated-state-helper");
 const spreds = require("@arangodb/testutils/replicated-state-predicates");
+const lpreds = require("@arangodb/testutils/replicated-logs-predicates");
 const {dbservers} = require("@arangodb/testutils/replicated-logs-helper");
 
 const database = "Replicated_StateMaintenanceTestDB";
@@ -158,7 +159,7 @@ const replicatedStateSuite = function () {
         return {state, log};
       });
 
-      LH.waitFor(LH.replicatedLogIsReady(database, logId, 2, servers, leader));
+      LH.waitFor(lpreds.replicatedLogIsReady(database, logId, 2, servers, leader));
       LH.waitFor(spreds.replicatedStateIsReady(database, logId, servers));
     },
 
@@ -184,7 +185,7 @@ const replicatedStateSuite = function () {
       });
 
       const newParticipants = [newFollower, ..._.difference(servers, [oldFollower])];
-      LH.waitFor(LH.replicatedLogIsReady(database, logId, 1, newParticipants, leader));
+      LH.waitFor(lpreds.replicatedLogIsReady(database, logId, 1, newParticipants, leader));
       LH.waitFor(spreds.replicatedStateIsReady(database, logId, newParticipants));
     },
   };

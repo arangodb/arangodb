@@ -91,9 +91,10 @@ auto createReplicatedState(DatabaseID const& database,
 auto getCurrentSupervision(TRI_vocbase_t& vocbase, LogId id)
     -> LogCurrentSupervision;
 
-auto replaceReplicatedStateParticipant(TRI_vocbase_t& vocbase, LogId id,
-                                       ParticipantId const& participantToRemove,
-                                       ParticipantId const& participantToAdd)
+auto replaceReplicatedStateParticipant(
+    TRI_vocbase_t& vocbase, LogId id, ParticipantId const& participantToRemove,
+    ParticipantId const& participantToAdd,
+    std::optional<ParticipantId> const& currentLeader)
     -> futures::Future<Result>;
 
 auto replaceReplicatedSetLeader(TRI_vocbase_t& vocbase, LogId id,

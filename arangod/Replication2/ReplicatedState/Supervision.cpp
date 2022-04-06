@@ -150,6 +150,9 @@ auto checkSnapshotComplete(
     // TODO generation?
     for (auto const& [participant, flags] :
          log.plan->participantsConfig.participants) {
+      if (!log.target.participants.contains(participant)) {
+        continue;
+      }
       if (!flags.allowedAsLeader || !flags.allowedInQuorum) {
         auto const& plannedGeneration =
             state.plan->participants.at(participant).generation;

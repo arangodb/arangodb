@@ -25,6 +25,7 @@
 #include "velocypack/Builder.h"
 #include "velocypack/velocypack-common.h"
 #include <memory>
+#include <utility>
 
 #include "Agency/TransactionBuilder.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
@@ -163,14 +164,21 @@ auto inspect(Inspector& f, ErrorAction& x) {
 struct AddLogToPlanAction {
   static constexpr std::string_view name = "AddLogToPlanAction";
 
-  AddLogToPlanAction(LogId const id, ParticipantsFlagsMap const& participants)
-      : _id(id), _participants(participants){};
+  AddLogToPlanAction(LogId const id, ParticipantsFlagsMap participants,
+                     LogConfig config,
+                     std::optional<LogPlanTermSpecification::Leader> leader)
+      : _id(id),
+        _participants(std::move(participants)),
+        _config(std::move(config)),
+        _leader(std::move(leader)){};
   LogId _id;
   ParticipantsFlagsMap _participants;
+  LogConfig _config;
+  std::optional<LogPlanTermSpecification::Leader> _leader;
 
   auto execute(ActionContext& ctx) const -> void {
     ctx.setPlan(LogPlanSpecification(
-        _id, std::nullopt,
+        _id, LogPlanTermSpecification(LogTerm{1}, _config, _leader),
         ParticipantsConfig{.generation = 1, .participants = _participants}));
   }
 };
@@ -178,7 +186,9 @@ template<typename Inspector>
 auto inspect(Inspector& f, AddLogToPlanAction& x) {
   auto hack = std::string{x.name};
   return f.object(x).fields(f.field("type", hack), f.field("id", x._id),
-                            f.field("participants", x._participants));
+                            f.field("participants", x._participants),
+                            f.field("leader", x._leader),
+                            f.field("config", x._config));
 }
 
 struct CreateInitialTermAction {
@@ -263,26 +273,6 @@ auto inspect(Inspector& f, DictateLeaderFailedAction& x) {
   auto hack = std::string{x.name};
   return f.object(x).fields(f.field("type", hack),
                             f.field("message", x._message));
-}
-
-struct EvictLeaderAction {
-  static constexpr std::string_view name = "EvictLeaderAction";
-
-  auto execute(ActionContext& ctx) const -> void {
-    ctx.modifyPlan([&](LogPlanSpecification& plan) {
-      plan.participantsConfig.participants
-          .at(plan.currentTerm->leader->serverId)
-          .allowedAsLeader = false;
-      plan.participantsConfig.generation += 1;
-      plan.currentTerm->term = LogTerm{plan.currentTerm->term.value + 1};
-      plan.currentTerm->leader.reset();
-    });
-  }
-};
-template<typename Inspector>
-auto inspect(Inspector& f, EvictLeaderAction& x) {
-  auto hack = std::string{x.name};
-  return f.object(x).fields(f.field("type", hack));
 }
 
 struct WriteEmptyTermAction {
@@ -523,11 +513,11 @@ auto inspect(Inspector& f, ConvergedToTargetAction& x) {
 using Action = std::variant<
     EmptyAction, ErrorAction, AddLogToPlanAction, CreateInitialTermAction,
     CurrentNotAvailableAction, DictateLeaderAction, DictateLeaderFailedAction,
-    EvictLeaderAction, WriteEmptyTermAction, LeaderElectionAction,
-    LeaderElectionImpossibleAction, LeaderElectionOutOfBoundsAction,
-    LeaderElectionQuorumNotReachedAction, UpdateParticipantFlagsAction,
-    AddParticipantToPlanAction, RemoveParticipantFromPlanAction,
-    UpdateLogConfigAction, ConvergedToTargetAction>;
+    WriteEmptyTermAction, LeaderElectionAction, LeaderElectionImpossibleAction,
+    LeaderElectionOutOfBoundsAction, LeaderElectionQuorumNotReachedAction,
+    UpdateParticipantFlagsAction, AddParticipantToPlanAction,
+    RemoveParticipantFromPlanAction, UpdateLogConfigAction,
+    ConvergedToTargetAction>;
 
 auto execute(Action const& action, DatabaseID const& dbName, LogId const& log,
              std::optional<LogPlanSpecification> plan,
