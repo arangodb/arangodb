@@ -1,4 +1,4 @@
-///
+////////////////////////////////////////////////////////////////////////////////
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
@@ -42,6 +42,30 @@ ChecksumCalculator::ChecksumCalculator()
   }
 }
 
+void ChecksumCalculator::computeFinalChecksum() {
+  TRI_ASSERT(_context != nullptr);
+  unsigned char hash[EVP_MAX_MD_SIZE];
+  unsigned int lengthOfHash = 0;
+  if (EVP_DigestFinal_ex(_context, hash, &lengthOfHash) == 0) {
+    TRI_ASSERT(false);
+  }
+  _checksum = basics::StringUtils::encodeHex(
+      reinterpret_cast<char const*>(&hash[0]), lengthOfHash);
+}
+
+void ChecksumCalculator::updateIncrementalChecksum(char const* buffer) {
+  TRI_ASSERT(_context != nullptr);
+  updateEVPWithContent(
+      buffer, sizeof(buffer));  // based on the current call to Append()
+  unsigned char hash[EVP_MAX_MD_SIZE];
+  unsigned int lengthOfHash = 0;
+  if (EVP_DigestFinal_ex(_context, hash, &lengthOfHash) == 0) {
+    TRI_ASSERT(false);
+  }
+  _checksum = basics::StringUtils::encodeHex(
+      reinterpret_cast<char const*>(&hash[0]), lengthOfHash);
+}
+
 ChecksumCalculator::~ChecksumCalculator() {
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
   EVP_MD_CTX_free(_context);
@@ -50,12 +74,14 @@ ChecksumCalculator::~ChecksumCalculator() {
 #endif
 }
 
-void ChecksumCalculator::update(char const* buffer, size_t n) {
+void ChecksumCalculator::updateEVPWithContent(const char* buffer, size_t n) {
   TRI_ASSERT(_context != nullptr);
-  EVP_DigestUpdate(_context, static_cast<void const*>(buffer), n);
+  if (EVP_DigestUpdate(_context, static_cast<void const*>(buffer), n) == 0) {
+    TRI_ASSERT(false);
+  }
 }
 
-bool ChecksumHelper::isFileNameSst(std::string const& fileName) noexcept {
+bool ChecksumHelper::isFileNameSst(std::string const& fileName) {
   return TRI_Basename(fileName).size() > 4 &&
          (fileName.compare(fileName.size() - 4, 4, ".sst") == 0);
 }
@@ -64,35 +90,23 @@ bool ChecksumHelper::writeShaFile(std::string const& fileName,
                                   std::string const& checksum) {
   TRI_ASSERT(isFileNameSst(fileName));
 
-  std::string shaFileName = fileName.substr(0, fileName.size() - 4);
-  shaFileName += ".sha.";
-  shaFileName += checksum;
-  shaFileName += ".hash";
+  std::string shaFileName;
+  buildShaFileNameFromSst(fileName, checksum, shaFileName);
   LOG_TOPIC("80257", DEBUG, arangodb::Logger::ENGINES)
       << "shaCalcFile: done " << fileName << " result: " << shaFileName;
   auto res = TRI_WriteFile(shaFileName.c_str(), "", 0);
   if (res == TRI_ERROR_NO_ERROR) {
-    MUTEX_LOCKER(mutexLock, _calculatedHashesMutex);
-    _sstFileNamesToHashes.try_emplace(TRI_Basename(fileName), checksum);
+    {
+      MUTEX_LOCKER(mutexLock, _calculatedHashesMutex);
+      _fileNamesToHashes.try_emplace(TRI_Basename(fileName), checksum);
+    }
     return true;
   }
 
   LOG_TOPIC("8f7ef", WARN, arangodb::Logger::ENGINES)
-      << "shaCalcFile: TRI_WriteFile failed with " << res << " for "
+      << "ShaCalcFile: writing file failed with " << res << " for "
       << shaFileName;
   return false;
-}
-
-std::string ChecksumCalculator::computeChecksum() {
-  TRI_ASSERT(_context != nullptr);
-  unsigned char hash[EVP_MAX_MD_SIZE];
-  unsigned int lengthOfHash = 0;
-  if (EVP_DigestFinal_ex(_context, hash, &lengthOfHash) == 0) {
-    TRI_ASSERT(false);
-  }
-  std::string checksum = basics::StringUtils::encodeHex(
-      reinterpret_cast<char const*>(&hash[0]), lengthOfHash);
-  return checksum;
 }
 
 void ChecksumHelper::checkMissingShaFiles() {
@@ -117,7 +131,7 @@ void ChecksumHelper::checkMissingShaFiles() {
           std::string hash = it->substr(shaIndex + /*.sha.*/ 5, 64);
           it = nextIt;
           MUTEX_LOCKER(mutexLock, _calculatedHashesMutex);
-          _sstFileNamesToHashes.try_emplace(sstFileName, std::move(hash));
+          _fileNamesToHashes.try_emplace(sstFileName, std::move(hash));
         } else {
           std::string tempPath =
               basics::FileUtils::buildFilename(_rootPath, *it);
@@ -125,14 +139,17 @@ void ChecksumHelper::checkMissingShaFiles() {
               << "checkMissingShaFiles:"
                  " Deleting file "
               << tempPath;
-          TRI_UnlinkFile(tempPath.c_str());
+          TRI_UnlinkFile(tempPath.data());
           MUTEX_LOCKER(mutexLock, _calculatedHashesMutex);
-          _sstFileNamesToHashes.erase(sstFileName);
+          _fileNamesToHashes.erase(sstFileName);
         }
       } else if (isFileNameSst(*it)) {
-        auto hashIt = _sstFileNamesToHashes.find(*it);
-        if (hashIt == _sstFileNamesToHashes.end()) {
+        std::unordered_map<std::string, std::string>::const_iterator hashIt;
+        {
           MUTEX_LOCKER(mutexLock, _calculatedHashesMutex);
+          hashIt = _fileNamesToHashes.find(*it);
+        }
+        if (hashIt == _fileNamesToHashes.end()) {
           std::string tempPath =
               basics::FileUtils::buildFilename(_rootPath, *it);
           LOG_TOPIC("d6c86", DEBUG, arangodb::Logger::ENGINES)
@@ -142,10 +159,11 @@ void ChecksumHelper::checkMissingShaFiles() {
           auto checksumCalc = ChecksumCalculator();
           if (TRI_ProcessFile(tempPath.c_str(),
                               [&checksumCalc](char const* buffer, size_t n) {
-                                checksumCalc.update(buffer, n);
+                                checksumCalc.updateEVPWithContent(buffer, n);
                                 return true;
                               })) {
-            writeShaFile(tempPath, checksumCalc.computeChecksum());
+            checksumCalc.computeFinalChecksum();
+            writeShaFile(tempPath, checksumCalc.getChecksum());
           }
         }
       }
@@ -162,72 +180,89 @@ rocksdb::Status ChecksumEnv::NewWritableFile(
   if (!s.ok()) {
     return s;
   }
-  result->reset(
-      new ChecksumWritableFile(writableFile.release(), fileName, _helper));
+  try {
+    result->reset(
+        new ChecksumWritableFile(writableFile.release(), fileName, _helper));
+  } catch (std::exception& e) {
+    LOG_TOPIC("8b19e", ERR, arangodb::Logger::ENGINES)
+        << "ChecksumWritableFile: exception caught when allocating "
+        << e.what();
+  }
+
   return s;
 }
 
+rocksdb::Status ChecksumWritableFile::Append(const rocksdb::Slice& data) {
+  if (_helper->isFileNameSst(_fileName)) {
+    _checksumCalc.updateIncrementalChecksum(data.ToString().data());
+  }
+  return rocksdb::WritableFileWrapper::Append(data);
+}
+
 rocksdb::Status ChecksumWritableFile::Close() {
-  if (!_helper->isFileNameSst(_sstFileName)) {
-    return rocksdb::WritableFileWrapper::Close();
-  }
-  TRI_ASSERT(_helper != nullptr);
-  auto checksumCalc = ChecksumCalculator();
-  if (TRI_ProcessFile(_sstFileName.c_str(),
-                      [&checksumCalc](char const* buffer, size_t n) {
-                        checksumCalc.update(buffer, n);
-                        return true;
-                      })) {
-    if (_helper->writeShaFile(_sstFileName, checksumCalc.computeChecksum())) {
-      return rocksdb::Status::OK();
+  if (_helper->isFileNameSst(_fileName)) {
+    TRI_ASSERT(_helper != nullptr);
+    if (!_helper->writeShaFile(_fileName, _checksumCalc.getChecksum())) {
+      return rocksdb::Status::Aborted("File writing was unsuccessful");
     }
+    // _checksumCalc.~ChecksumCalculator();
+    _checksumCalc = {};  // reset the checksum
+                         // calculator context
   }
-  return rocksdb::Status::Aborted("File writing was unsuccessful");
+  return rocksdb::WritableFileWrapper::Close();
 }
 
 rocksdb::Status ChecksumEnv::DeleteFile(const std::string& fileName) {
-  if (!_helper->isFileNameSst(fileName) &&
-      fileName.find(".sha") == std::string::npos) {
-    return rocksdb::EnvWrapper::DeleteFile(fileName);
-  }
-  return _helper->DeleteFile(fileName);
-}
-
-rocksdb::Status ChecksumHelper::DeleteFile(const std::string& fileName) {
-  std::string shaFileName;
-  {
-    MUTEX_LOCKER(mutexLock, _calculatedHashesMutex);
-    if (auto it = _sstFileNamesToHashes.find(TRI_Basename(fileName));
-        it != _sstFileNamesToHashes.end()) {
-      TRI_ASSERT(fileName.size() > 4);
-      shaFileName.append(fileName, 0,
-                         fileName.size() - 4);  // append without .sst
-      TRI_ASSERT(!isFileNameSst(shaFileName));
-      shaFileName += ".sha." + (*it).second + ".hash";
-      _sstFileNamesToHashes.erase(it);
-    }
+  if (_helper->isFileNameSst(fileName) ||
+      fileName.find(".sha") != std::string::npos) {
+    std::string checksum;
+    _helper->removeFromTable(fileName, checksum);
+    std::string shaFileName;
+    _helper->buildShaFileNameFromSst(fileName, checksum, shaFileName);
     if (!shaFileName.empty()) {
-      auto res = TRI_UnlinkFile(shaFileName.data());
-      if (res == TRI_ERROR_NO_ERROR) {
+      if (rocksdb::EnvWrapper::DeleteFile(shaFileName) ==
+          rocksdb::Status::OK()) {
         LOG_TOPIC("e0a0d", DEBUG, arangodb::Logger::ENGINES)
-            << "deleteCalcFile:  TRI_UnlinkFile succeeded for " << shaFileName;
+            << "deleteCalcFile:  delete file succeeded for " << shaFileName;
       } else {
         LOG_TOPIC("acb34", WARN, arangodb::Logger::ENGINES)
-            << "deleteCalcFile:  TRI_UnlinkFile failed with " << res << " for "
-            << shaFileName;
+            << "deleteCalcFile:  delete file failed for " << shaFileName;
       }
     }
   }
-  auto res = TRI_UnlinkFile(fileName.data());
-  if (res == TRI_ERROR_NO_ERROR) {
+  rocksdb::Status res = rocksdb::EnvWrapper::DeleteFile(fileName);
+  if (res == rocksdb::Status::OK()) {
     LOG_TOPIC("77a2a", DEBUG, arangodb::Logger::ENGINES)
-        << "deleteCalcFile:  TRI_UnlinkFile succeeded for " << shaFileName;
-    return rocksdb::Status::OK();
+        << "deleteCalcFile:  delete file succeeded for " << fileName;
   } else {
     LOG_TOPIC("ce937", WARN, arangodb::Logger::ENGINES)
-        << "deleteCalcFile:  TRI_UnlinkFile failed with " << res << " for "
-        << shaFileName;
-    return rocksdb::Status::Aborted("Could not delete file");
+        << "deleteCalcFile:  delete file failed for " << fileName;
+  }
+  return res;  // will return response from removing .sst or other file, not
+               // the .sha
+}
+
+void ChecksumHelper::buildShaFileNameFromSst(std::string const& fileName,
+                                             std::string const& checksum,
+                                             std::string& shaFileName) {
+  if (!fileName.empty() && !checksum.empty()) {
+    TRI_ASSERT(fileName.size() > 4);
+    shaFileName = fileName.substr(0, fileName.size() - 4);
+    TRI_ASSERT(!isFileNameSst(shaFileName));
+    shaFileName += ".sha." + checksum + ".hash";
+  }
+}
+
+void ChecksumHelper::removeFromTable(std::string const& fileName,
+                                     std::string& checksum) {
+  std::string shaFileName;
+  {
+    MUTEX_LOCKER(mutexLock, _calculatedHashesMutex);
+    if (auto it = _fileNamesToHashes.find(TRI_Basename(fileName));
+        it != _fileNamesToHashes.end()) {
+      checksum = it->second;
+      _fileNamesToHashes.erase(it);
+    }
   }
 }
 

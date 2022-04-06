@@ -33,28 +33,32 @@ namespace arangodb::checksum {
 class ChecksumCalculator {
  public:
   ChecksumCalculator();
-  std::string computeChecksum();
-  void update(char const* buffer, size_t n);
+  void computeFinalChecksum();
+  void updateIncrementalChecksum(char const* buffer);
+  void updateEVPWithContent(char const* buffer, size_t n);
+  [[nodiscard]] std::string getChecksum() { return _checksum; }
   ~ChecksumCalculator();
 
  private:
   EVP_MD_CTX* _context;
+  std::string _checksum;
 };
 
 class ChecksumHelper {
  public:
-  ChecksumHelper(std::string const& rootPath) : _rootPath{rootPath} {}
-  [[nodiscard]] static bool isFileNameSst(std::string const& fileName) noexcept;
+  explicit ChecksumHelper(std::string const& rootPath) : _rootPath{rootPath} {}
+  [[nodiscard]] static bool isFileNameSst(std::string const& fileName);
   bool writeShaFile(std::string const& fileName,
                     std::string const& checksum);  // perhaps should be void
-  [[nodiscard]] rocksdb::Status DeleteFile(std::string const& fileName);
-  [[nodiscard]] std::string computeChecksum();
+  void buildShaFileNameFromSst(std::string const& fileName,
+                               std::string const& checksum,
+                               std::string& shaFileName);
+  void removeFromTable(std::string const& fileName, std::string& checksum);
   void checkMissingShaFiles();
 
  private:
   std::string _rootPath;
-  EVP_MD_CTX* _context;
-  std::unordered_map<std::string, std::string> _sstFileNamesToHashes;
+  std::unordered_map<std::string, std::string> _fileNamesToHashes;
   Mutex _calculatedHashesMutex;
 };
 
@@ -64,16 +68,15 @@ class ChecksumWritableFile : public rocksdb::WritableFileWrapper {
                                 std::string const& fileName,
                                 std::shared_ptr<ChecksumHelper> helper)
       : rocksdb::WritableFileWrapper(t),
-        _sstFileName(fileName),
-        _helper(helper) {}
-  rocksdb::Status Append(const rocksdb::Slice& data) override {
-    return rocksdb::WritableFileWrapper::Append(data);
-  }
+        _fileName(fileName),
+        _helper(std::move(helper)) {}
+  rocksdb::Status Append(const rocksdb::Slice& data) override;
   rocksdb::Status Close() override;
 
  private:
-  std::string const _sstFileName;
+  std::string const _fileName;
   std::shared_ptr<ChecksumHelper> _helper;
+  ChecksumCalculator _checksumCalc;
 };
 
 class ChecksumEnv : public rocksdb::EnvWrapper {
@@ -89,7 +92,7 @@ class ChecksumEnv : public rocksdb::EnvWrapper {
 
   rocksdb::Status DeleteFile(const std::string& fileName) override;
 
-  std::shared_ptr<ChecksumHelper>& getHelper() { return _helper; }
+  std::shared_ptr<ChecksumHelper> getHelper() const { return _helper; }
 
  private:
   std::shared_ptr<ChecksumHelper> _helper;
