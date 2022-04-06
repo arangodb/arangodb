@@ -62,7 +62,6 @@ bool ChecksumHelper::isFileNameSst(std::string const& fileName) noexcept {
 
 bool ChecksumHelper::writeShaFile(std::string const& fileName,
                                   std::string const& checksum) {
-  TRI_ASSERT(TRI_Basename(fileName).size() > 4);
   TRI_ASSERT(isFileNameSst(fileName));
 
   std::string shaFileName = fileName.substr(0, fileName.size() - 4);
