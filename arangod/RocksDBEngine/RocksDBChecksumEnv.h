@@ -27,7 +27,6 @@
 #include <rocksdb/env.h>
 
 #include "Basics/Mutex.h"
-#include "Logger/LogMacros.h"
 
 namespace arangodb::checksum {
 
@@ -45,10 +44,11 @@ class ChecksumCalculator {
 class ChecksumHelper {
  public:
   ChecksumHelper(std::string const& rootPath) : _rootPath{rootPath} {}
-  static bool isFileNameSst(std::string const& fileName) noexcept;
-  bool writeShaFile(std::string const& fileName, std::string const& checksum);
-  rocksdb::Status DeleteFile(std::string const& fileName);
-  std::string computeChecksum();
+  [[nodiscard]] static bool isFileNameSst(std::string const& fileName) noexcept;
+  bool writeShaFile(std::string const& fileName,
+                    std::string const& checksum);  // perhaps should be void
+  [[nodiscard]] rocksdb::Status DeleteFile(std::string const& fileName);
+  [[nodiscard]] std::string computeChecksum();
   void checkMissingShaFiles();
 
  private:
@@ -67,8 +67,6 @@ class ChecksumWritableFile : public rocksdb::WritableFileWrapper {
         _sstFileName(fileName),
         _helper(helper) {}
   rocksdb::Status Append(const rocksdb::Slice& data) override {
-    LOG_DEVEL << "Appending " << data.size()
-              << " bytes to ChecksummingWritableFile.";
     return rocksdb::WritableFileWrapper::Append(data);
   }
   rocksdb::Status Close() override;
@@ -78,18 +76,11 @@ class ChecksumWritableFile : public rocksdb::WritableFileWrapper {
   std::shared_ptr<ChecksumHelper> _helper;
 };
 
-class ChecksumEnv
-    : public rocksdb::EnvWrapper {  // must mix it with Env::Default() for the
-                                    // moment
+class ChecksumEnv : public rocksdb::EnvWrapper {
  public:
   explicit ChecksumEnv(Env* t, std::string const& path) : EnvWrapper(t) {
     _helper = std::make_shared<ChecksumHelper>(path);
   }
-  /*
-  explicit ChecksumEnv(Env* t) : EnvWrapper(t) {}
-  explicit ChecksumEnv(std::unique_ptr<Env>&& t) : EnvWrapper(std::move(t)) {}
-  explicit ChecksumEnv(const std::shared_ptr<Env>& t) : EnvWrapper(t) {}
-   */
 
   rocksdb::Status NewWritableFile(
       const std::string& fileName,

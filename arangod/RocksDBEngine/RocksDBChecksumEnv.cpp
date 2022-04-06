@@ -22,6 +22,7 @@
 #include "Basics/files.h"
 #include "Basics/FileUtils.h"
 #include "Basics/MutexLocker.h"
+#include "Logger/LogMacros.h"
 
 namespace arangodb::checksum {
 
@@ -94,7 +95,6 @@ std::string ChecksumCalculator::computeChecksum() {
   }
   std::string checksum = basics::StringUtils::encodeHex(
       reinterpret_cast<char const*>(&hash[0]), lengthOfHash);
-  LOG_DEVEL << "generated checksum " << checksum;
   return checksum;
 }
 
@@ -174,7 +174,6 @@ rocksdb::Status ChecksumWritableFile::Close() {
   if (!_helper->isFileNameSst(_sstFileName)) {
     return rocksdb::WritableFileWrapper::Close();
   }
-  LOG_DEVEL << "_sstFileName " << _sstFileName;
   TRI_ASSERT(_helper != nullptr);
   auto checksumCalc = ChecksumCalculator();
   if (TRI_ProcessFile(_sstFileName.c_str(),
@@ -194,14 +193,6 @@ rocksdb::Status ChecksumEnv::DeleteFile(const std::string& fileName) {
       fileName.find(".sha") == std::string::npos) {
     return rocksdb::EnvWrapper::DeleteFile(fileName);
   }
-  /*
-  if (TRI_UnlinkFile(fileName.data()) == TRI_ERROR_NO_ERROR) {
-    return rocksdb::Status::OK();
-  } else {
-    return rocksdb::Status::Aborted("Could not unlink file " + fileName);
-  }
-}
-   */
   return _helper->DeleteFile(fileName);
 }
 
@@ -219,7 +210,7 @@ rocksdb::Status ChecksumHelper::DeleteFile(const std::string& fileName) {
       _sstFileNamesToHashes.erase(it);
     }
     if (!shaFileName.empty()) {
-      auto res = TRI_UnlinkFile(shaFileName.c_str());
+      auto res = TRI_UnlinkFile(shaFileName.data());
       if (res == TRI_ERROR_NO_ERROR) {
         LOG_TOPIC("e0a0d", DEBUG, arangodb::Logger::ENGINES)
             << "deleteCalcFile:  TRI_UnlinkFile succeeded for " << shaFileName;
@@ -230,7 +221,7 @@ rocksdb::Status ChecksumHelper::DeleteFile(const std::string& fileName) {
       }
     }
   }
-  auto res = TRI_UnlinkFile(fileName.c_str());
+  auto res = TRI_UnlinkFile(fileName.data());
   if (res == TRI_ERROR_NO_ERROR) {
     LOG_TOPIC("77a2a", DEBUG, arangodb::Logger::ENGINES)
         << "deleteCalcFile:  TRI_UnlinkFile succeeded for " << shaFileName;
