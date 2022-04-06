@@ -23,6 +23,7 @@
 #include "LogUnconfiguredParticipant.h"
 
 #include <Basics/Exceptions.h>
+#include <Basics/voc-errors.h>
 
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
 #include "Replication2/ReplicatedLog/LogCore.h"
