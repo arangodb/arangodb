@@ -15,7 +15,7 @@ const URLPARAMETERS = {
   edgeEditable: true,
   nodeLabelByCollection: false,
   edgeLabelByCollection: false,
-  nodeStart: "frenchCity/Paris",
+  nodeStart: "",
   barnesHutOptimize: true,
   query: "",
   //mode: "all",

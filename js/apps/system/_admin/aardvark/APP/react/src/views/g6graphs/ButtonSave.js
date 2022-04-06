@@ -5,21 +5,15 @@ import { UrlParametersContext } from "./url-parameters-context";
 import { Button, Tooltip } from 'antd';
 import { SaveOutlined } from '@ant-design/icons';
 
-const ParameterStartnode = ({ onGraphDataLoaded }) => {
+const ParameterStartnode = ({ graphName, onGraphDataLoaded }) => {
   const urlParameters = useContext(UrlParametersContext);
 
   const callApi = () => {
     console.log("urlParameters to use for API call: ", urlParameters);
-    /*
-    fetch(`https://pokeapi.co/api/v2/pokemon/${urlParameters.pokemon}`)
-      .then((res) => res.json())
-      .then((data) => console.log(data))
-      .catch((err) => console.error(err));
-    */
+
       $.ajax({
         type: 'GET',
-        //url: arangoHelper.databaseUrl(`/_admin/aardvark/graph/${graphName}`),
-        url: arangoHelper.databaseUrl(`/_admin/aardvark/graph/routeplanner`),
+        url: arangoHelper.databaseUrl(`/_admin/aardvark/graph/${graphName}`),
         contentType: 'application/json',
         data: urlParameters,
         success: function (data) {
@@ -42,7 +36,6 @@ const ParameterStartnode = ({ onGraphDataLoaded }) => {
           type="primary"
           icon={<SaveOutlined />}
           onClick={() => {
-            //onChangeGraphData(data2)
             console.log("urlParameters (to make API call): ", urlParameters);
             callApi();
           }}>

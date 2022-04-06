@@ -63,7 +63,9 @@ export const Headerinfo = ({ graphName, graphData, responseDuration, onDownloadS
 
   const menuActionButtons = <>
     <Space>
-      <ButtonSave onGraphDataLoaded={(newGraphData) => onGraphDataLoaded(newGraphData)}/>
+      <ButtonSave
+        graphName={graphName}
+        onGraphDataLoaded={(newGraphData) => onGraphDataLoaded(newGraphData)}/>
       <Button>
         Restore default values
       </Button>
