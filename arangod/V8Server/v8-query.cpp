@@ -233,8 +233,7 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
       [&resultBuilder](LocalDocumentId const&, VPackSlice slice) {
         resultBuilder.add(slice);
         return true;
-      },
-      1000);
+      });
 
   resultBuilder.close();
 
