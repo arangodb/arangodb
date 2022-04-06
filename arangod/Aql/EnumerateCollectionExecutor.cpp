@@ -262,6 +262,7 @@ EnumerateCollectionExecutor::produceRows(AqlItemBlockInputRange& inputRange,
   _documentProducingFunctionContext.setOutputRow(&output);
   while (inputRange.hasDataRow() && !output.isFull()) {
     if (!_cursorHasMore) {
+      // the following call can change the value of _cursorHasMore
       initializeNewRow(inputRange);
     }
 
