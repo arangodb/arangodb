@@ -43,53 +43,6 @@ IndexIterator::IndexIterator(LogicalCollection* collection,
   TRI_ASSERT(_trx != nullptr);
 }
 
-void IndexIterator::reset() {
-  // intentionally do not reset cache statistics here.
-  _hasMore = true;
-  resetImpl();
-}
-
-/// @brief Calls cb for the next batchSize many elements
-///        NOTE: This will throw on OUT_OF_MEMORY
-bool IndexIterator::next(LocalDocumentIdCallback const& callback,
-                         uint64_t batchSize) {
-  if (_hasMore) {
-    TRI_ASSERT(batchSize != UINT64_MAX);
-    _hasMore = nextImpl(callback, static_cast<size_t>(batchSize));
-  }
-  return _hasMore;
-}
-
-bool IndexIterator::nextDocument(DocumentCallback const& callback,
-                                 uint64_t batchSize) {
-  if (_hasMore) {
-    TRI_ASSERT(batchSize != UINT64_MAX);
-    _hasMore = nextDocumentImpl(callback, static_cast<size_t>(batchSize));
-  }
-  return _hasMore;
-}
-
-bool IndexIterator::nextCovering(CoveringCallback const& callback,
-                                 uint64_t batchSize) {
-  if (_hasMore) {
-    TRI_ASSERT(batchSize != UINT64_MAX);
-    _hasMore = nextCoveringImpl(callback, static_cast<size_t>(batchSize));
-  }
-  return _hasMore;
-}
-
-bool IndexIterator::rearm(arangodb::aql::AstNode const* node,
-                          arangodb::aql::Variable const* variable,
-                          IndexIteratorOptions const& opts) {
-  // intentionally do not reset cache statistics here.
-  _hasMore = true;
-  if (rearmImpl(node, variable, opts)) {
-    reset();
-    return true;
-  }
-  return false;
-}
-
 /// @brief returns cache hits (first) and misses (second) statistics, and
 /// resets their values to 0
 std::pair<std::uint64_t, std::uint64_t>
@@ -113,17 +66,11 @@ void IndexIterator::skip(uint64_t toSkip, uint64_t& skipped) {
   }
 }
 
-/// @brief Skip all elements.
-///        skipped will be increased by the amount of skipped elements
-///        afterwards Check hasMore()==true before using this NOTE: This will
-///        throw on OUT_OF_MEMORY
 void IndexIterator::skipAll(uint64_t& skipped) {
-  size_t toSkip = 1000;
-
   while (_hasMore) {
     uint64_t skippedLocal = 0;
-    skipImpl(toSkip, skippedLocal);
-    if (skippedLocal != toSkip) {
+    skipImpl(internalBatchSize, skippedLocal);
+    if (skippedLocal != internalBatchSize) {
       _hasMore = false;
     }
     skipped += skippedLocal;
@@ -138,18 +85,22 @@ bool IndexIterator::rearmImpl(arangodb::aql::AstNode const*,
                               IndexIteratorOptions const&) {
   TRI_ASSERT(canRearm());
   THROW_ARANGO_EXCEPTION_MESSAGE(
-      TRI_ERROR_INTERNAL,
-      "requested rearming of an index iterator that does not support it");
+      TRI_ERROR_INTERNAL, std::string("requested rearming from an index "
+                                      "iterator that does not support it (") +
+                              std::string{typeName()} + ")");
 }
 
 /// @brief default implementation for nextImpl
-bool IndexIterator::nextImpl(LocalDocumentIdCallback const&, size_t /*limit*/) {
-  THROW_ARANGO_EXCEPTION_MESSAGE(
-      TRI_ERROR_INTERNAL,
-      "requested next values from an index iterator that does not support it");
+bool IndexIterator::nextImpl(LocalDocumentIdCallback const&,
+                             uint64_t /*limit*/) {
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                 "requested next values from an index iterator "
+                                 "that does not support it (" +
+                                     std::string{typeName()} + ")");
 }
 
-bool IndexIterator::nextDocumentImpl(DocumentCallback const& cb, size_t limit) {
+bool IndexIterator::nextDocumentImpl(DocumentCallback const& cb,
+                                     uint64_t limit) {
   return nextImpl(
       [this, &cb](LocalDocumentId const& token) {
         return _collection->getPhysical()
@@ -163,12 +114,11 @@ bool IndexIterator::nextDocumentImpl(DocumentCallback const& cb, size_t limit) {
 /// specialized index iterators can implement this method with some
 /// sensible behavior
 bool IndexIterator::nextCoveringImpl(CoveringCallback const&,
-                                     size_t /*limit*/) {
-  THROW_ARANGO_EXCEPTION_MESSAGE(
-      TRI_ERROR_INTERNAL,
-      std::string("requested next covering values from an index "
-                  "iterator that does not support it (") +
-          typeName() + ")");
+                                     uint64_t /*limit*/) {
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                 "requested next covering values from an index "
+                                 "iterator that does not support it (" +
+                                     std::string{typeName()} + ")");
 }
 
 /// @brief default implementation for skip
@@ -187,7 +137,7 @@ void IndexIterator::skipImpl(uint64_t count, uint64_t& skipped) {
 ///        If callback is called less than limit many times
 ///        all iterators are exhausted
 bool MultiIndexIterator::nextImpl(LocalDocumentIdCallback const& callback,
-                                  size_t limit) {
+                                  uint64_t limit) {
   auto cb = [&limit, &callback](LocalDocumentId const& token) {
     if (callback(token)) {
       --limit;
@@ -216,7 +166,7 @@ bool MultiIndexIterator::nextImpl(LocalDocumentIdCallback const& callback,
 ///        If callback is called less than limit many times
 ///        all iterators are exhausted
 bool MultiIndexIterator::nextDocumentImpl(DocumentCallback const& callback,
-                                          size_t limit) {
+                                          uint64_t limit) {
   auto cb = [&limit, &callback](LocalDocumentId const& token,
                                 arangodb::velocypack::Slice slice) {
     if (callback(token, slice)) {
@@ -246,7 +196,7 @@ bool MultiIndexIterator::nextDocumentImpl(DocumentCallback const& callback,
 ///        If callback is called less than limit many times
 ///        all iterators are exhausted
 bool MultiIndexIterator::nextCoveringImpl(CoveringCallback const& callback,
-                                          size_t limit) {
+                                          uint64_t limit) {
   auto cb = [&limit, &callback](LocalDocumentId const& token,
                                 IndexIteratorCoveringData& data) {
     if (callback(token, data)) {

@@ -26,9 +26,9 @@
 const jsunity = require('jsunity');
 const arangodb = require("@arangodb");
 const _ = require('lodash');
-const {sleep} = require('internal');
-const {db, errors: ERRORS} = arangodb;
+const {db} = arangodb;
 const lh = require("@arangodb/testutils/replicated-logs-helper");
+const lpreds = require("@arangodb/testutils/replicated-logs-predicates");
 const helper = require("@arangodb/testutils/replicated-logs-helper");
 
 const {waitForReplicatedLogAvailable} = helper;
@@ -76,7 +76,7 @@ const replicatedLogEntrySuite = function () {
       assertEqual(head.length, 1);
       const [firstEntry] = head;
       assertEqual(firstEntry.logIndex, 1);
-      assertEqual(firstEntry.logTerm, 2);
+      assertTrue([1,2].includes(firstEntry.logTerm));
       assertEqual(firstEntry.logPayload, undefined);
       assertTrue(firstEntry.meta !== undefined);
       const meta = firstEntry.meta;
@@ -95,7 +95,7 @@ const replicatedLogEntrySuite = function () {
       lh.replicatedLogUpdateTargetParticipants(database, logId, {
         [follower]: {forced: true},
       });
-      lh.waitFor(lh.replicatedLogParticipantsFlag(database, logId, {
+      lh.waitFor(lpreds.replicatedLogParticipantsFlag(database, logId, {
         [follower]: {
           allowedInQuorum: true,
           allowedAsLeader: true,
@@ -107,7 +107,7 @@ const replicatedLogEntrySuite = function () {
       assertEqual(head.length, 2);
       const entry = head[1];
       assertEqual(entry.logIndex, 2);
-      assertEqual(entry.logTerm, 2);
+      assertTrue([1,2].includes(entry.logTerm));
       assertEqual(entry.logPayload, undefined);
       assertTrue(entry.meta !== undefined);
       const meta = entry.meta;

@@ -142,17 +142,19 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
     TRI_ASSERT(_cache == nullptr || _cache->hasherName() == "BinaryKeyHasher");
   }
 
-  char const* typeName() const override { return "edge-index-iterator"; }
+  std::string_view typeName() const noexcept final {
+    return "edge-index-iterator";
+  }
 
   // calls cb(documentId)
-  bool nextImpl(LocalDocumentIdCallback const& cb, size_t limit) override {
+  bool nextImpl(LocalDocumentIdCallback const& cb, uint64_t limit) override {
     return nextImplementation(
         [&cb](LocalDocumentId docId, VPackSlice /*fromTo*/) { cb(docId); },
         limit);
   }
 
   // calls cb(documentId, [_from, _to]) or cb(documentId, [_to, _from])
-  bool nextCoveringImpl(CoveringCallback const& cb, size_t limit) override {
+  bool nextCoveringImpl(CoveringCallback const& cb, uint64_t limit) override {
     return nextImplementation(
         [&](LocalDocumentId docId, VPackSlice fromTo) {
           TRI_ASSERT(_lastKey.isString());
@@ -163,7 +165,7 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
         limit);
   }
 
-  void resetImpl() override {
+  void resetImpl() final {
     resetInplaceMemory();
     _keysIterator.reset();
     _lastKey = VPackSlice::nullSlice();
@@ -213,7 +215,7 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
 
   /// internal retrieval loop
   template<typename F>
-  inline bool nextImplementation(F&& cb, size_t limit) {
+  inline bool nextImplementation(F&& cb, uint64_t limit) {
     TRI_ASSERT(_trx->state()->isRunning());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
@@ -367,7 +369,7 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
     _builder.close();
 
     // validate that Iterator is in a good shape and hasn't failed
-    arangodb::rocksutils::checkIteratorStatus(iterator.get());
+    rocksutils::checkIteratorStatus(*iterator);
 
     if (_cache != nullptr) {
       // TODO Add cache retry on next call
