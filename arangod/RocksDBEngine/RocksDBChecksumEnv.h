@@ -48,8 +48,7 @@ class ChecksumHelper {
  public:
   explicit ChecksumHelper(std::string const& rootPath) : _rootPath{rootPath} {}
   [[nodiscard]] static bool isFileNameSst(std::string const& fileName);
-  bool writeShaFile(std::string const& fileName,
-                    std::string const& checksum);  // perhaps should be void
+  bool writeShaFile(std::string const& fileName, std::string const& checksum);
   void buildShaFileNameFromSst(std::string const& fileName,
                                std::string const& checksum,
                                std::string& shaFileName);
