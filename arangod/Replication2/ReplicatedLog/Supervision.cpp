@@ -565,7 +565,9 @@ auto checkReplicatedLog(LogTarget const& target,
     return UpdateLogConfigAction(target.config);
   }
 
-  if (target.version != current.supervision->targetVersion) {
+  if (target.version.has_value() &&
+      (!current.supervision.has_value() ||
+       target.version != current.supervision->targetVersion)) {
     return ConvergedToTargetAction{target.version};
   } else {
     // Note that if we converged and the version is the same this ends up

@@ -32,6 +32,7 @@
 #include "v8-vocbaseprivate.h"
 
 #include "velocypack/Iterator.h"
+#include "Inspection/VPack.h"
 
 #include "Basics/StaticStrings.h"
 #include "Replication2/Methods.h"
@@ -133,16 +134,17 @@ static void JS_CreateReplicatedLog(
   auto spec = std::invoke([&] {
     VPackBuilder builder;
     TRI_V8ToVPack(isolate, builder, args[0], false, false);
-    return agency::LogTarget(agency::from_velocypack, builder.slice());
+    return arangodb::velocypack::deserialize<
+        ReplicatedLogMethods::CreateOptions>(builder.slice());
   });
 
   auto res = ReplicatedLogMethods::createInstance(vocbase)
                  ->createReplicatedLog(spec)
                  .get();
   if (res.fail()) {
-    THROW_ARANGO_EXCEPTION(res);
+    THROW_ARANGO_EXCEPTION(res.result());
   }
-  auto result = WrapReplicatedLog(isolate, spec.id);
+  auto result = WrapReplicatedLog(isolate, res->id);
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
 }
