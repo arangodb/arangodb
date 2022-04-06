@@ -51,6 +51,7 @@ namespace graph {
 
 namespace enterprise {
 class SmartGraphStep;
+struct SmartGraphResponse;
 }
 
 struct OneSidedEnumeratorOptions;
@@ -68,7 +69,7 @@ class OneSidedEnumerator : public TraversalEnumerator {
  private:
   using VertexRef = arangodb::velocypack::HashedStringRef;
 
-  using ResultList = typename std::conditional<
+  using ResultList = typename std::conditional_t<
       std::is_same_v<Step, enterprise::SmartGraphStep>,
       enterprise::SmartGraphResponse, std::vector<Step>>;
   using GraphOptions = arangodb::graph::OneSidedEnumeratorOptions;
@@ -131,9 +132,12 @@ class OneSidedEnumerator : public TraversalEnumerator {
    * @return true Found and skipped a path.
    * @return false No path found.
    */
-
   bool skipPath() override;
   auto destroyEngines() -> void override;
+
+  template<typename =
+               std::enable_if<std::is_same_v<Step, enterprise::SmartGraphStep>>>
+  auto getSmartSearch() -> ResultPathType const&;
 
   auto prepareIndexExpressions(aql::Ast* ast) -> void override;
 
