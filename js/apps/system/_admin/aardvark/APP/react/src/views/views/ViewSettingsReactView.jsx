@@ -182,3 +182,4 @@ const ViewSettingsReactView = ({ name }) => {
     </div>
   </div>;
 };
+window.ViewSettingsReactView = ViewSettingsReactView;
