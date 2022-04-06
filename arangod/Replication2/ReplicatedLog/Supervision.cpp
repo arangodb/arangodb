@@ -197,14 +197,14 @@ auto leaderInTarget(ParticipantId const& targetLeader,
   return std::nullopt;
 }
 
-auto computeReason(LogCurrentLocalState const& status, bool healthy,
-                   bool excluded, LogTerm term)
+auto computeReason(std::optional<LogCurrentLocalState> const& maybeStatus,
+                   bool healthy, bool excluded, LogTerm term)
     -> LogCurrentSupervisionElection::ErrorCode {
   if (!healthy) {
     return LogCurrentSupervisionElection::ErrorCode::SERVER_NOT_GOOD;
   } else if (excluded) {
     return LogCurrentSupervisionElection::ErrorCode::SERVER_EXCLUDED;
-  } else if (term != status.term) {
+  } else if (!maybeStatus or term != maybeStatus->term) {
     return LogCurrentSupervisionElection::ErrorCode::TERM_NOT_CONFIRMED;
   } else {
     return LogCurrentSupervisionElection::ErrorCode::OK;
@@ -218,23 +218,34 @@ auto runElectionCampaign(LogCurrentLocalStates const& states,
   auto election = LogCurrentSupervisionElection();
   election.term = term;
 
-  for (auto const& [participant, status] : states) {
-    auto const excluded =
-        participantsConfig.participants.contains(participant) and
-        not participantsConfig.participants.at(participant).allowedAsLeader;
+  for (auto const& [participant, flags] : participantsConfig.participants) {
+    auto const excluded = not flags.allowedAsLeader;
     auto const healthy = health.notIsFailed(participant);
-    auto reason = computeReason(status, healthy, excluded, term);
+
+    auto maybeStatus = std::invoke(
+        [&states](ParticipantId const& participant)
+            -> std::optional<LogCurrentLocalState> {
+          auto status = states.find(participant);
+          if (status != states.end()) {
+            return status->second;
+          } else {
+            return std::nullopt;
+          }
+        },
+        participant);
+
+    auto reason = computeReason(maybeStatus, healthy, excluded, term);
     election.detail.emplace(participant, reason);
 
     if (reason == LogCurrentSupervisionElection::ErrorCode::OK) {
       election.participantsAvailable += 1;
 
-      if (status.spearhead >= election.bestTermIndex) {
-        if (status.spearhead != election.bestTermIndex) {
+      if (maybeStatus->spearhead >= election.bestTermIndex) {
+        if (maybeStatus->spearhead != election.bestTermIndex) {
           election.electibleLeaderSet.clear();
         }
         election.electibleLeaderSet.push_back(participant);
-        election.bestTermIndex = status.spearhead;
+        election.bestTermIndex = maybeStatus->spearhead;
       }
     }
   }
