@@ -512,13 +512,14 @@ auto inspect(Inspector& f, ConvergedToTargetAction& x) {
 
 using Action = std::variant<
     EmptyAction, ErrorAction, AddLogToPlanAction, CreateInitialTermAction,
-    CurrentNotAvailableAction, DictateLeaderAction, DictateLeaderFailedAction,
+    CurrentNotAvailableAction,
+    DictateLeaderAction, DictateLeaderFailedAction, 
     WriteEmptyTermAction, LeaderElectionAction, LeaderElectionImpossibleAction,
     LeaderElectionOutOfBoundsAction, LeaderElectionQuorumNotReachedAction,
     UpdateParticipantFlagsAction, AddParticipantToPlanAction,
     RemoveParticipantFromPlanAction, UpdateLogConfigAction,
     ConvergedToTargetAction>;
-
+  
 auto execute(Action const& action, DatabaseID const& dbName, LogId const& log,
              std::optional<LogPlanSpecification> plan,
              std::optional<LogCurrent> current,

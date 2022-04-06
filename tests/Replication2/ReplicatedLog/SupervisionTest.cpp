@@ -473,7 +473,7 @@ TEST_F(LogSupervisionTest, test_acceptable_leader_set) {
       {"C", ParticipantFlags{.forced = false, .allowedAsLeader = false}},
       {"D", ParticipantFlags{.forced = false, .allowedAsLeader = true}}};
 
-  auto r = getParticipantsAcceptableAsLeaders("A", participants);
+  auto r = getParticipantsAcceptableAsLeaders("A", participants, participants);
 
   auto expectedAcceptable = std::set<ParticipantId>{"B", "D"};
   auto acceptable = std::set<ParticipantId>{};
@@ -501,8 +501,10 @@ TEST_F(LogSupervisionTest, test_dictate_leader_no_current) {
 
   auto r = dictateLeader(target, plan, current, health);
 
-  ASSERT_TRUE(std::holds_alternative<DictateLeaderFailedAction>(r))
-      << to_string(r);
+  ASSERT_TRUE(r.has_value());
+
+  ASSERT_TRUE(std::holds_alternative<DictateLeaderFailedAction>(*r))
+      << to_string(*r);
 }
 
 TEST_F(LogSupervisionTest, test_dictate_leader_force_first) {
@@ -551,12 +553,13 @@ TEST_F(LogSupervisionTest, test_dictate_leader_force_first) {
   // Should get an UpdateParticipantsFlagAction for one of the
   // acceptable participants that are acceptable as leaders to
   // become forced
-  ASSERT_TRUE(std::holds_alternative<UpdateParticipantFlagsAction>(r))
-      << to_string(r);
+  ASSERT_TRUE(r.has_value());
+  ASSERT_TRUE(std::holds_alternative<UpdateParticipantFlagsAction>(*r))
+      << to_string(*r);
 
-  auto action = std::get<UpdateParticipantFlagsAction>(r);
+  auto action = std::get<UpdateParticipantFlagsAction>(*r);
   auto acceptableParticipants =
-      getParticipantsAcceptableAsLeaders("A", participants);
+      getParticipantsAcceptableAsLeaders("A", participants, participants);
 
   ASSERT_NE(std::find(std::begin(acceptableParticipants),
                       std::end(acceptableParticipants), action._participant),
@@ -611,9 +614,10 @@ TEST_F(LogSupervisionTest, test_dictate_leader_success) {
   // Should get an UpdateParticipantsFlagAction for one of the
   // acceptable participants that are acceptable as leaders to
   // become forced
-  ASSERT_TRUE(std::holds_alternative<DictateLeaderAction>(r)) << to_string(r);
+  ASSERT_TRUE(r.has_value());
+  ASSERT_TRUE(std::holds_alternative<DictateLeaderAction>(*r)) << to_string(*r);
 
-  auto action = std::get<DictateLeaderAction>(r);
+  auto action = std::get<DictateLeaderAction>(*r);
 
   ASSERT_EQ(action._leader.serverId, "D");
 }

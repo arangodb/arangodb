@@ -65,12 +65,15 @@ auto isLeaderFailed(LogPlanTermSpecification::Leader const& leader,
 
 auto getParticipantsAcceptableAsLeaders(
     ParticipantId const& currentLeader,
-    ParticipantsFlagsMap const& participants) -> std::vector<ParticipantId> {
+    ParticipantsFlagsMap const& currentParticipants,
+    ParticipantsFlagsMap const& targetParticipants)
+    -> std::vector<ParticipantId> {
   // A participant is acceptable if it is neither excluded nor
   // already the leader
   auto acceptableLeaderSet = std::vector<ParticipantId>{};
-  for (auto const& [participant, flags] : participants) {
-    if (participant != currentLeader and flags.allowedAsLeader) {
+  for (auto const& [participant, flags] : currentParticipants) {
+    if (participant != currentLeader and flags.allowedAsLeader and
+        targetParticipants.find(participant) != std::end(targetParticipants)) {
       acceptableLeaderSet.emplace_back(participant);
     }
   }
@@ -83,7 +86,7 @@ auto getParticipantsAcceptableAsLeaders(
 // This happens when the user uses Target to specify a leader.
 auto dictateLeader(LogTarget const& target, LogPlanSpecification const& plan,
                    LogCurrent const& current, ParticipantsHealth const& health)
-    -> Action {
+    -> std::optional<Action> {
   // TODO: integrate
   if (!current.leader || !current.leader->committedParticipantsConfig ||
       current.leader->committedParticipantsConfig->generation !=
@@ -95,7 +98,8 @@ auto dictateLeader(LogTarget const& target, LogPlanSpecification const& plan,
 
   auto const acceptableLeaderSet = getParticipantsAcceptableAsLeaders(
       current.leader->serverId,
-      current.leader->committedParticipantsConfig->participants);
+      current.leader->committedParticipantsConfig->participants,
+      target.participants);
 
   //  Check whether we already have a participant that is
   //  acceptable and forced
@@ -134,8 +138,9 @@ auto dictateLeader(LogTarget const& target, LogPlanSpecification const& plan,
     return UpdateParticipantFlagsAction(chosenOne, flags);
   }
 
-  // TODO: Better error message
-  return DictateLeaderFailedAction{"Failed to find a suitable leader"};
+  // We could not find a new leader even if we wanted to
+  return std::nullopt;
+  //  return DictateLeaderFailedAction{"Failed to find a suitable leader"};
 }
 
 // Check whether Target contains an entry for a leader, which means
@@ -241,6 +246,26 @@ auto runElectionCampaign(LogCurrentLocalStates const& states,
   return election;
 }
 
+// We only allow removing a participoant if we will be left
+// with enough participants to fulfil the replicationFactor implied
+// by the number of participants set in Target
+auto numberOfOKParticipants(LogCurrentLocalStates const& states,
+                            ParticipantsConfig const& participantsConfig,
+                            ParticipantsHealth const& health,
+                            LogTerm const& term) -> size_t {
+  auto okParticipants = size_t{0};
+
+  for (auto const& [participant, status] : states) {
+    if (participantsConfig.participants.contains(participant) and
+        participantsConfig.participants.at(participant).allowedAsLeader and
+        participantsConfig.participants.at(participant).allowedInQuorum and
+        health.notIsFailed(participant) and term == status.term) {
+      okParticipants++;
+    }
+  }
+  return okParticipants;
+}
+
 // If the currentTerm does not have a leader, we have to select one
 // participant to become the leader. For this we have to
 //
@@ -322,8 +347,9 @@ auto desiredParticipantFlags(std::optional<ParticipantId> const& targetLeader,
   return targetFlags;
 }
 
-// If there is a participant such that the flags between Target and Plan differ,
-// returns at a pair consisting of the ParticipantId and the desired flags.
+// If there is a participant such that the flags between Target and Plan
+// differ, returns at a pair consisting of the ParticipantId and the desired
+// flags.
 //
 // Note that the desired flags currently forces the flags for a configured,
 // desired, leader to contain a forced flag.
@@ -424,8 +450,8 @@ auto pickLeader(std::optional<ParticipantId> targetLeader,
 }
 
 //
-// This function is called from Agency/Supervision.cpp every k seconds for every
-// replicated log in every database.
+// This function is called from Agency/Supervision.cpp every k seconds for
+// every replicated log in every database.
 //
 // This means that this function is always going to deal with exactly *one*
 // replicated log.
@@ -506,29 +532,40 @@ auto checkReplicatedLog(LogTarget const& target,
     return AddParticipantToPlanAction(participant->first, participant->second);
   }
 
+  // TODO this is a hack
+  auto removalPending = false;
+
   // If a participant is in Plan but not in Target, gracefully
   // remove it
   if (auto maybeParticipant = getRemovedParticipant(
           target.participants, plan.participantsConfig.participants)) {
     auto const& [participantId, planFlags] = *maybeParticipant;
 
-    // We do not ever remove a leader
-    if (participantId != leader.serverId) {
-      // If the participant is not allowed in Quorum it is safe to remove it
-      if (not planFlags.allowedInQuorum and
-          current.leader->committedParticipantsConfig->generation ==
-              plan.participantsConfig.generation) {
-        return RemoveParticipantFromPlanAction(participantId);
-      } else if (planFlags.allowedInQuorum) {
-        // A participant can only be removed without risk,
-        // if it is not member of any quorum
-        auto newFlags = planFlags;
-        newFlags.allowedInQuorum = false;
-        return UpdateParticipantFlagsAction(participantId, newFlags);
-      } else {
-        // still waiting
-        return EmptyAction("Waiting for participants config to be committed");
+    if (target.participants.size() <=
+        numberOfOKParticipants(current.localState, plan.participantsConfig,
+                               health, plan.currentTerm->term)) {
+      // We do not ever remove a leader
+      if (participantId != leader.serverId) {
+        // If the participant is not allowed in Quorum it is safe to remove it
+        if (not planFlags.allowedInQuorum and
+            current.leader->committedParticipantsConfig->generation ==
+                plan.participantsConfig.generation) {
+          return RemoveParticipantFromPlanAction(participantId);
+        } else if (planFlags.allowedInQuorum) {
+          // A participant can only be removed without risk,
+          // if it is not member of any quorum
+          auto newFlags = planFlags;
+          newFlags.allowedInQuorum = false;
+          return UpdateParticipantFlagsAction(participantId, newFlags);
+        } else {
+          // still waiting
+          return EmptyAction("Waiting for participants config to be committed");
+        }
       }
+    } else {
+      // removal of participant pending, so we have not converged,
+      // but we need to continue trying to do things!
+      removalPending = true;
     }
   }
 
@@ -540,7 +577,9 @@ auto checkReplicatedLog(LogTarget const& target,
   // remove (the current leader); Once it is not the leader anymore it will be
   // disallowed from any quorum above.
   if (!target.participants.contains(leader.serverId)) {
-    return dictateLeader(target, plan, current, health);
+    if (auto action = dictateLeader(target, plan, current, health)) {
+      return *action;
+    }
   }
 
   // If the user has updated flags for a participant, which is detected by
@@ -579,15 +618,19 @@ auto checkReplicatedLog(LogTarget const& target,
     return UpdateLogConfigAction(target.config);
   }
 
-  if (target.version.has_value() &&
-      (!current.supervision.has_value() ||
-       target.version != current.supervision->targetVersion)) {
-    return ConvergedToTargetAction{target.version};
+  if (!removalPending) {
+    if (target.version.has_value() &&
+        (!current.supervision.has_value() ||
+         target.version != current.supervision->targetVersion)) {
+      return ConvergedToTargetAction{target.version};
+    } else {
+      // Note that if we converged and the version is the same this ends up
+      // doing nothing. Maybe we should have a debug mode where this is still
+      // reported?
+      return EmptyAction("There was nothing to do.");
+    }
   } else {
-    // Note that if we converged and the version is the same this ends up
-    // doing nothing. Maybe we should have a debug mode where this is still
-    // reported?
-    return EmptyAction("There was nothing to do.");
+    return ErrorAction(LogCurrentSupervisionError::PENDING_PARTICIPANT_REMOVAL);
   }
 }
 

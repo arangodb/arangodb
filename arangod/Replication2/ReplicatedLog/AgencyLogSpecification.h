@@ -200,8 +200,9 @@ enum class LogCurrentSupervisionError {
   TARGET_LEADER_INVALID,
   TARGET_LEADER_EXCLUDED,
   TARGET_NOT_ENOUGH_PARTICIPANTS,
-  GENERAL_ERROR  // TODO: Using this whilw refactoring
-                 // other code; needs to be improved
+  GENERAL_ERROR,  // TODO: Using this whilw refactoring
+                  // other code; needs to be improved
+  PENDING_PARTICIPANT_REMOVAL
 };
 
 auto to_string(LogCurrentSupervisionError) noexcept -> std::string_view;

@@ -609,34 +609,19 @@ const replicatedLogSuite = function () {
           Object.assign({}, ...otherServers.map((x) => ({[x]: {allowedInQuorum: false, allowedAsLeader: false}})));
         replicatedLogSetTarget(database, logId, target);
       }
+
       // here we should wait for an error message from the supervision that it cannot remove a participant, because
       // write concern would be violated
-
-      waitFor(replicatedLogTargetVersion(database, logId, targetVersion));
-
-      const {current} = readReplicatedLogAgency(database, logId);
-      waitFor(replicatedLogLeaderEstablished(database, logId, undefined, otherServers));
-
-      replicatedLogDeleteTarget(database, logId);
-    },
-
-    testRemoveAllParticipants: function () {
-      const {logId, servers, term, leader} = createReplicatedLogAndWaitForLeader(database);
-
-      const targetVersion = 1;
-
+      waitFor(replicatedLogSupervisionError(database, logId, 4));
       {
         let {target} = readReplicatedLogAgency(database, logId);
-        // delete old leader from target
-        target.version = targetVersion;
-        target.participants = {};
+        target.version = targetVersion + 1;
+        target.participants =
+          Object.assign({}, ...otherServers.map((x) => ({[x]: {allowedInQuorum: true, allowedAsLeader: true}})));
         replicatedLogSetTarget(database, logId, target);
       }
-      // here we should wait for an error message from the supervision that it cannot remove a participant, because
-      // write concern would be violated
-
-      const {current} = readReplicatedLogAgency(database, logId);
-      // wait for an error message to appear in current
+      waitFor(replicatedLogLeaderEstablished(database, logId, undefined, otherServers));
+      waitFor(replicatedLogTargetVersion(database, logId, targetVersion + 1));
 
       replicatedLogDeleteTarget(database, logId);
     },
