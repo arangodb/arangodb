@@ -5,7 +5,7 @@ import { get } from "lodash";
 import Select from "../../../components/pure-css/form/Select";
 import Textbox from "../../../components/pure-css/form/Textbox";
 import { getNumericFieldSetter } from "../../../utils/helpers";
-
+import  ToolTip from "../../../components/arango/tootip";
 const BytesAccumConsolidationPolicyForm = ({
                                              formState,
                                              dispatch,
@@ -43,6 +43,14 @@ const TierConsolidationPolicyForm = ({
         <Textbox type={'number'} value={segmentsMin} disabled={disabled}
                  onChange={getNumericFieldSetter('consolidationPolicy.segmentsMin', dispatch)}/>
       </th>
+      <th className="collectionTh">
+                  <ToolTip
+                    title="The minimum number of segments that will be evaluated as candidates for consolidation."
+                    setArrow={true}
+                  >
+                    <span className="arangoicon icon_arangodb_info"></span>
+                  </ToolTip>
+                </th>
     </tr>
 
     <tr className="tableRow" id="row_change-view-segmentsMax">
@@ -53,6 +61,14 @@ const TierConsolidationPolicyForm = ({
         <Textbox type={'number'} value={segmentsMax} disabled={disabled}
                  onChange={getNumericFieldSetter('consolidationPolicy.segmentsMax', dispatch)}/>
       </th>
+      <th className="collectionTh">
+                  <ToolTip
+                    title="The maximum number of segments that will be evaluated as candidates for consolidation."
+                    setArrow={true}
+                  >
+                    <span className="arangoicon icon_arangodb_info"></span>
+                  </ToolTip>
+                </th>
     </tr>
     <tr className="tableRow" id="row_change-view-segmentsBytesMax">
       <th className="collectionTh">
@@ -62,6 +78,14 @@ const TierConsolidationPolicyForm = ({
         <Textbox type={'number'} value={segmentsBytesMax} disabled={disabled}
                  onChange={getNumericFieldSetter('consolidationPolicy.segmentsBytesMax', dispatch)}/>
       </th>
+      <th className="collectionTh">
+                  <ToolTip
+                    title="Maximum allowed size of all consolidated segments in bytes."
+                    setArrow={true}
+                  >
+                    <span className="arangoicon icon_arangodb_info"></span>
+                  </ToolTip>
+                </th>
     </tr>
 
     <tr className="tableRow" id="row_change-view-segmentsBytesFloor">
@@ -72,6 +96,14 @@ const TierConsolidationPolicyForm = ({
         <Textbox type={'number'} value={segmentsBytesFloor} disabled={disabled}
                  onChange={getNumericFieldSetter('consolidationPolicy.segmentsBytesFloor', dispatch)}/>
       </th>
+      <th className="collectionTh">
+                  <ToolTip
+                    title="Defines the value (in bytes) to treat all smaller segments as equal for consolidation selection."
+                    setArrow={true}
+                  >
+                    <span className="arangoicon icon_arangodb_info"></span>
+                  </ToolTip>
+                </th>
     </tr>
   </>;
 };
@@ -89,7 +121,7 @@ const ConsolidationPolicyForm = ({ formState, dispatch, disabled }: FormProps<Vi
 
   const policyType = get(formState, ['consolidationPolicy', 'type'], 'tier');
 
-  return <table>
+  return <table style={{ margin: 30, marginLeft: 20 }}>
     <tbody>
     <tr className="tableRow" id="row_change-view-policyType">
       <th className="collectionTh">
@@ -101,6 +133,14 @@ const ConsolidationPolicyForm = ({ formState, dispatch, disabled }: FormProps<Vi
           <option key={'bytes_accum'} value={'bytes_accum'}>Bytes Accum [DEPRECATED]</option>
         </Select>
       </th>
+      <th className="collectionTh">
+                  <ToolTip
+                    title="Represents the type of policy."
+                    setArrow={true}
+                  >
+                    <span className="arangoicon icon_arangodb_info"></span>
+                  </ToolTip>
+                </th>
     </tr>
 
     {
