@@ -1,6 +1,9 @@
 devel
 -----
 
+* Improved help texts for the collection type and satellite collection
+  options in the web UI.
+
 * Updated arangosync to v2.9.0-preview-4.
 
 * Make the StatisticsFeature start after the NetworkFeature, so that any 
