@@ -890,11 +890,9 @@ void RocksDBEngine::start() {
   }
 
   if (_createShaFiles) {
-    //  auto shaFileManager = std::make_shared<checksum::ChecksumHelper>(_path);
     dynamic_cast<checksum::ChecksumEnv*>(_options.env)
         ->getHelper()
         ->checkMissingShaFiles();
-    //  shaFileManager->checkMissingShaFiles();
   }
 
   // WAL_ttl_seconds needs to be bigger than the sync interval of the count

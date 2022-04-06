@@ -40,11 +40,9 @@ ChecksumCalculator::ChecksumCalculator()
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "unable to initialize SHA256 processor");
   }
-  LOG_DEVEL << "I WAS CALLED";
 }
 
 ChecksumCalculator::~ChecksumCalculator() {
-  LOG_DEVEL << "destructor called";
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
   EVP_MD_CTX_free(_context);
 #else
