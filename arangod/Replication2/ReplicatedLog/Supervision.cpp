@@ -226,6 +226,7 @@ auto runElectionCampaign(LogCurrentLocalStates const& states,
         participant);
 
     auto reason = computeReason(maybeStatus, healthy, excluded, term);
+    election.detail.emplace(participant, reason);
 
     if (reason == LogCurrentSupervisionElection::ErrorCode::OK) {
       election.participantsAvailable += 1;
