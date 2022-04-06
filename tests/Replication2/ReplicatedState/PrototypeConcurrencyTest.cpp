@@ -104,8 +104,16 @@ struct PrototypeConcurrencyTest : test::ReplicatedLogTest {
         feature->createReplicatedState("prototype-state", leaderLog);
     replicatedState->start(
         std::make_unique<ReplicatedStateToken>(StateGeneration{1}));
-    state = std::dynamic_pointer_cast<PrototypeLeaderState>(
+    leaderState = std::dynamic_pointer_cast<PrototypeLeaderState>(
         replicatedState->getLeader());
+    networkMock->addLeaderState("leader", leaderState);
+
+    replicatedState =
+        feature->createReplicatedState("prototype-state", followerLog);
+    replicatedState->start(
+        std::make_unique<ReplicatedStateToken>(StateGeneration{1}));
+    followerState = std::dynamic_pointer_cast<PrototypeFollowerState>(
+        replicatedState->getFollower());
   }
 
   template<typename Impl, typename MockLog>
@@ -159,7 +167,8 @@ struct PrototypeConcurrencyTest : test::ReplicatedLogTest {
   std::shared_ptr<LogLeader> leader = createLeaderWithDefaultFlags(
       leaderLog, "leader", LogTerm{1}, {follower}, 2);
 
-  std::shared_ptr<PrototypeLeaderState> state;
+  std::shared_ptr<PrototypeLeaderState> leaderState;
+  std::shared_ptr<PrototypeFollowerState> followerState;
 
   std::shared_ptr<MockPrototypeNetworkInterface> networkMock =
       std::make_shared<MockPrototypeNetworkInterface>();
@@ -167,68 +176,38 @@ struct PrototypeConcurrencyTest : test::ReplicatedLogTest {
       std::make_shared<MockPrototypeStorageInterface>();
 };
 
-namespace {
-struct WaitGroup {
-  void add(std::size_t delta = 1) {
-    std::unique_lock guard(mutex);
-    counter += delta;
-  }
-
-  void wait() {
-    std::unique_lock guard(mutex);
-    cv.wait(guard, [this] { return counter == 0; });
-  }
-
-  void done() {
-    std::unique_lock guard(mutex);
-    counter -= 1;
-    if (counter == 0) {
-      cv.notify_all();
-    }
-  }
-
-  std::mutex mutex;
-  std::condition_variable cv;
-  std::size_t counter{0};
-};
-}  // namespace
-
 TEST_F(PrototypeConcurrencyTest, test_concurrent_wrires) {
   leader->waitForLeadership().get();
   const auto numKeys = 1000;
   const auto options = PrototypeStateMethods::PrototypeWriteOptions{};
-  WaitGroup wg;
-  auto const runThread = [&wg, options, this](int from, int to, int delta,
-                                              std::string const& myName,
-                                              std::vector<LogIndex>& idxs) {
+  auto const runThread = [options, this](int from, int to, int delta,
+                                         std::string const& myName,
+                                         std::vector<LogIndex>& idxs) {
     for (int x = from; x != to; x += delta) {
-      idxs[x] = state
-                    ->set(
-                        std::unordered_map<std::string, std::string>{
-                            {std::to_string(x), myName}},
-                        options)
+      idxs[x] = leaderState
+                    ->set(std::unordered_map<std::string, std::string>(
+                              {{std::to_string(x), myName}}),
+                          options)
                     .get();
     }
-
-    wg.done();
   };
 
-  wg.add(2);
   std::vector<LogIndex> aIdxs(numKeys + 1), bIdxs(numKeys + 1);
 
   std::thread a{runThread, 0, numKeys, 1, "A", std::ref(aIdxs)};
   std::thread b{runThread, numKeys, 0, -1, "B", std::ref(bIdxs)};
 
-  wg.wait();
+  a.join();
+  b.join();
 
-  auto snapshot = state->getSnapshot(LogIndex{1}).get();
+  auto snapshot = leaderState->getSnapshot(LogIndex{1}).get();
+  ASSERT_TRUE(snapshot.ok());
   for (int x = 0; x <= numKeys; x++) {
     bool expectA = aIdxs[x] > bIdxs[x];
-    auto value = snapshot->at(std::to_string(x));
+    auto key = std::to_string(x);
+    ASSERT_NE(snapshot->find(key), snapshot->end());
+    auto value = snapshot->at(key);
     EXPECT_EQ(value, expectA ? "A" : "B")
         << "at key " << x << " A idx = " << aIdxs[x] << " B idx = " << bIdxs[x];
   }
-
-  a.join();
-  b.join();
 }
