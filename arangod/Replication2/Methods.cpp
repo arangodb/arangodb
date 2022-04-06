@@ -96,8 +96,15 @@ struct ReplicatedLogMethodsDBServer final
 
   auto getLogEntryByIndex(LogId id, LogIndex index) const
       -> futures::Future<std::optional<PersistingLogEntry>> override {
-    return vocbase.getReplicatedLogLeaderById(id)->readReplicatedEntryByIndex(
-        index);
+    auto entry = vocbase.getReplicatedLogById(id)
+                     ->getParticipant()
+                     ->copyInMemoryLog()
+                     .getEntryByIndex(index);
+    if (entry.has_value()) {
+      return entry->entry();
+    } else {
+      return std::nullopt;
+    }
   }
 
   auto slice(LogId id, LogIndex start, LogIndex stop) const
