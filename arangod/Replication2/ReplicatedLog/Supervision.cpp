@@ -107,9 +107,14 @@ auto dictateLeader(LogTarget const& target, LogPlanSpecification const& plan,
             participant);
 
     if (participant != current.leader->serverId and flags.forced) {
-      auto const rebootId = health._health.at(participant).rebootId;
-      return DictateLeaderAction(
-          LogPlanTermSpecification::Leader(participant, rebootId));
+      auto const& rebootId = health.getRebootId(participant);
+      if (rebootId.has_value()) {
+        return DictateLeaderAction(
+            LogPlanTermSpecification::Leader(participant, *rebootId));
+      } else {
+        return DictateLeaderFailedAction{
+            "participant selected as leader does not have a valid rebootId"};
+      }
     }
   }
 
@@ -181,9 +186,13 @@ auto leaderInTarget(ParticipantId const& targetLeader,
       //       distinguishing between errors and conditions not being met (?)
     };
 
-    auto const rebootId = health._health.at(targetLeader).rebootId;
-    return DictateLeaderAction(
-        LogPlanTermSpecification::Leader{targetLeader, rebootId});
+    auto const& rebootId = health.getRebootId(targetLeader);
+    if (rebootId.has_value()) {
+      return DictateLeaderAction(
+          LogPlanTermSpecification::Leader{targetLeader, *rebootId});
+    } else {
+      return ErrorAction(LogCurrentSupervisionError::TARGET_LEADER_INVALID);
+    }
   }
   return std::nullopt;
 }
@@ -280,11 +289,16 @@ auto doLeadershipElection(LogPlanSpecification const& plan,
     auto const maxIdx = static_cast<uint16_t>(numElectible - 1);
     auto const& newLeader =
         election.electibleLeaderSet.at(RandomGenerator::interval(maxIdx));
-    auto const& newLeaderRebootId = health._health.at(newLeader).rebootId;
+    auto const& newLeaderRebootId = health.getRebootId(newLeader);
 
-    return LeaderElectionAction(
-        LogPlanTermSpecification::Leader(newLeader, newLeaderRebootId),
-        election);
+    if (newLeaderRebootId.has_value()) {
+      return LeaderElectionAction(
+          LogPlanTermSpecification::Leader(newLeader, *newLeaderRebootId),
+          election);
+    } else {
+      // TODO: better error
+      return LeaderElectionImpossibleAction();
+    }
   } else {
     // Not enough participants were available to form a quorum, so
     // we can't elect a leader
@@ -372,7 +386,7 @@ auto pickRandomParticipantToBeLeader(ParticipantsFlagsMap const& participants,
   auto acceptableParticipants = std::vector<ParticipantId>{};
 
   for (auto [part, flags] : participants) {
-    if (flags.allowedAsLeader && health._health.contains(part)) {
+    if (flags.allowedAsLeader && health.contains(part)) {
       acceptableParticipants.emplace_back(part);
     }
   }
@@ -400,7 +414,7 @@ auto pickLeader(std::optional<ParticipantId> targetLeader,
   }
 
   if (leaderId.has_value()) {
-    auto rebootId = health.getRebootId(*leaderId);
+    auto const& rebootId = health.getRebootId(*leaderId);
     if (rebootId.has_value()) {
       return LogPlanTermSpecification::Leader{*leaderId, *rebootId};
     }
@@ -565,7 +579,9 @@ auto checkReplicatedLog(LogTarget const& target,
     return UpdateLogConfigAction(target.config);
   }
 
-  if (target.version != current.supervision->targetVersion) {
+  if (target.version.has_value() &&
+      (!current.supervision.has_value() ||
+       target.version != current.supervision->targetVersion)) {
     return ConvergedToTargetAction{target.version};
   } else {
     // Note that if we converged and the version is the same this ends up

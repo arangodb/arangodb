@@ -511,7 +511,7 @@ ArangoDatabase.prototype._create = function (name, properties, type, options) {
 ArangoDatabase.prototype._createReplicatedLog = function (spec) {
   let requestResult = this._connection.POST(this._replicatedlogurl(), spec);
   arangosh.checkRequestResult(requestResult);
-  return new ArangoReplicatedLog(this, spec.id);
+  return new ArangoReplicatedLog(this, requestResult.result.id);
 };
 
 // //////////////////////////////////////////////////////////////////////////////
