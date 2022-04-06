@@ -491,28 +491,28 @@ auto checkReplicatedLog(LogTarget const& target,
   }
 
   // If a participant is in Plan but not in Target, gracefully
-  // remove them
+  // remove it
   if (auto maybeParticipant = getRemovedParticipant(
           target.participants, plan.participantsConfig.participants)) {
     auto const& [participantId, planFlags] = *maybeParticipant;
 
-    if (participantId == leader.serverId) {
-      // do not remove the leader (yet)
-    } else if (not planFlags.allowedInQuorum and
-               current.leader->committedParticipantsConfig->generation ==
-                   plan.participantsConfig.generation) {
-      // If the participant is not allowed in any quorum it is safe to
-      // remove it
-      return RemoveParticipantFromPlanAction(participantId);
-    } else if (planFlags.allowedInQuorum) {
-      // if the participant is allowed in a quorum, first prevent it
-      // from being in a quorum
-      auto newFlags = planFlags;
-      newFlags.allowedInQuorum = false;
-      return UpdateParticipantFlagsAction(participantId, newFlags);
-    } else {
-      // still waiting
-      return EmptyAction("Waiting for participants config to be committed");
+    // We do not ever remove a leader
+    if (participantId != leader.serverId) {
+      // If the participant is not allowed in Quorum it is safe to remove it
+      if (not planFlags.allowedInQuorum and
+          current.leader->committedParticipantsConfig->generation ==
+              plan.participantsConfig.generation) {
+        return RemoveParticipantFromPlanAction(participantId);
+      } else if (planFlags.allowedInQuorum) {
+        // A participant can only be removed without risk,
+        // if it is not member of any quorum
+        auto newFlags = planFlags;
+        newFlags.allowedInQuorum = false;
+        return UpdateParticipantFlagsAction(participantId, newFlags);
+      } else {
+        // still waiting
+        return EmptyAction("Waiting for participants config to be committed");
+      }
     }
   }
 
@@ -520,11 +520,24 @@ auto checkReplicatedLog(LogTarget const& target,
   // gracefully remove it by selecting a different eligible participant
   // as leader
   //
-  // At this point there should only ever be precisely one participant to remove
-  // (the current leader); Once it is not the leader anymore
-  // it will be disallowd from any quorum above.
+  // At this point there should only ever be precisely one participant to
+  // remove (the current leader); Once it is not the leader anymore it will be
+  // disallowed from any quorum above.
   if (!target.participants.contains(leader.serverId)) {
     return switchLeader(target, plan, current, health);
+  }
+
+  // If the user has updated flags for a participant, which is detected by
+  // comparing Target to Plan, write that change to Plan.
+  // TODO: This function currently forces a participant if it is set
+  //       as desired leader in Target, and this isn't obvious at all.
+  //       This should be moved to a separate action that overrides that
+  //       particular field for the desired leader.
+  if (auto participantFlags = getParticipantWithUpdatedFlags(
+          target.participants, plan.participantsConfig.participants,
+          target.leader, leader.serverId)) {
+    return UpdateParticipantFlagsAction(participantFlags->first,
+                                        participantFlags->second);
   }
 
   // Check whether a specific participant is configured in Target to become
@@ -540,19 +553,6 @@ auto checkReplicatedLog(LogTarget const& target,
     } else {
       // TODO!
     }
-  }
-
-  // If the user has updated flags for a participant, which is detected by
-  // comparing Target to Plan, write that change to Plan.
-  // TODO: This function currently forces a participant if it is set
-  //       as desired leader in Target, and this isn't obvious at all.
-  //       This should be moved to a separate action that overrides that
-  //       particular field for the desired leader.
-  if (auto participantFlags = getParticipantWithUpdatedFlags(
-          target.participants, plan.participantsConfig.participants,
-          target.leader, leader.serverId)) {
-    return UpdateParticipantFlagsAction(participantFlags->first,
-                                        participantFlags->second);
   }
 
   // If the configuration differs between Target and Plan,
