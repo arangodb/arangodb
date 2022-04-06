@@ -196,6 +196,18 @@ const replicatedStateSuite = function () {
       assertEqual(newParticipants, Object.keys(stateAgencyContent.plan.participants).sort());
       // Current won't be cleaned up yet.
       // assertEqual(newParticipants, Object.keys(stateAgencyContent.current.participants).sort());
+
+      const {plan} = lh.readReplicatedLogAgency(database, stateId);
+      waitFor(() => {
+        if (plan.participantsConfig.participants[newParticipant].allowedInQuorum === true) {
+          return true;
+        } else {
+          return Error(`Expected ${newParticipant} to be allowed in quorum`);
+        }
+      });
+      assertTrue(plan.participantsConfig.participants[newParticipant].allowedInQuorum);
+      assertTrue(plan.participantsConfig.participants[newParticipant].allowedAsLeader);
+      assertEqual(plan.participantsConfig.participants[newParticipant].forced, false);
     },
 
     testReplaceParticipantReplaceFixedLeader: function () {
