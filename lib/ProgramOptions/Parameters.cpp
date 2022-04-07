@@ -28,6 +28,7 @@
 namespace {
 std::regex const removeComments("#.*$", std::regex::ECMAScript);
 std::regex const removeTabs("^[ \t]+|[ \t]+$", std::regex::ECMAScript);
+std::regex const contextPrefix("([a-zA-Z0-9]*)=(.*)", std::regex::ECMAScript);
 }  // namespace
 
 namespace arangodb {
@@ -38,6 +39,21 @@ std::string removeCommentsFromNumber(std::string const& value) {
   auto noComment = std::regex_replace(value, ::removeComments, "");
   // replace leading spaces, replace trailing spaces
   return std::regex_replace(noComment, ::removeTabs, "");
+}
+
+void parseContext(std::string const& rawValue,
+		  std::string& context,
+		  std::string& value) {
+  std::smatch m;
+  bool match = std::regex_match(rawValue, m, contextPrefix);
+
+  if (match) {
+    context = m[1].str();
+    value = m[2].str();
+  } else {
+    context = "";
+    value = rawValue;
+  }
 }
 
 }  // namespace options

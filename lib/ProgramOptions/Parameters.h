@@ -34,6 +34,7 @@
 #include <limits>
 #include <numeric>
 #include <type_traits>
+#include <unordered_map>
 #include <unordered_set>
 #include <stdexcept>
 
@@ -277,7 +278,7 @@ template<typename T>
 struct NumericParameter : public Parameter {
   typedef T ValueType;
 
-  explicit NumericParameter(ValueType* ptr) : ptr(ptr), base(1) {}
+  explicit NumericParameter(ValueType* ptr, bool unusedParam = false) : ptr(ptr), base(1) {}
   NumericParameter(ValueType* ptr, ValueType base) : ptr(ptr), base(base) {}
 
   std::string valueString() const override { return stringifyValue(*ptr); }
@@ -304,7 +305,7 @@ struct NumericParameter : public Parameter {
 struct Int16Parameter : public NumericParameter<int16_t> {
   typedef int16_t ValueType;
 
-  explicit Int16Parameter(ValueType* ptr) : NumericParameter<ValueType>(ptr) {}
+  explicit Int16Parameter(ValueType* ptr, bool unusedParam = false) : NumericParameter<ValueType>(ptr) {}
   Int16Parameter(ValueType* ptr, ValueType base)
       : NumericParameter<ValueType>(ptr, base) {}
 
@@ -315,7 +316,7 @@ struct Int16Parameter : public NumericParameter<int16_t> {
 struct UInt16Parameter : public NumericParameter<uint16_t> {
   typedef uint16_t ValueType;
 
-  explicit UInt16Parameter(ValueType* ptr) : NumericParameter<ValueType>(ptr) {}
+  explicit UInt16Parameter(ValueType* ptr, bool unusedParam = false) : NumericParameter<ValueType>(ptr) {}
   UInt16Parameter(ValueType* ptr, ValueType base)
       : NumericParameter<ValueType>(ptr, base) {}
 
@@ -326,7 +327,7 @@ struct UInt16Parameter : public NumericParameter<uint16_t> {
 struct Int32Parameter : public NumericParameter<int32_t> {
   typedef int32_t ValueType;
 
-  explicit Int32Parameter(ValueType* ptr) : NumericParameter<ValueType>(ptr) {}
+  explicit Int32Parameter(ValueType* ptr, bool unusedParam = false) : NumericParameter<ValueType>(ptr) {}
   Int32Parameter(ValueType* ptr, ValueType base)
       : NumericParameter<ValueType>(ptr, base) {}
 
@@ -337,7 +338,7 @@ struct Int32Parameter : public NumericParameter<int32_t> {
 struct UInt32Parameter : public NumericParameter<uint32_t> {
   typedef uint32_t ValueType;
 
-  explicit UInt32Parameter(ValueType* ptr) : NumericParameter<ValueType>(ptr) {}
+  explicit UInt32Parameter(ValueType* ptr, bool unusedParam = false) : NumericParameter<ValueType>(ptr) {}
   UInt32Parameter(ValueType* ptr, ValueType base)
       : NumericParameter<ValueType>(ptr, base) {}
 
@@ -348,7 +349,7 @@ struct UInt32Parameter : public NumericParameter<uint32_t> {
 struct Int64Parameter : public NumericParameter<int64_t> {
   typedef int64_t ValueType;
 
-  explicit Int64Parameter(ValueType* ptr) : NumericParameter<ValueType>(ptr) {}
+  explicit Int64Parameter(ValueType* ptr, bool unusedParam = false) : NumericParameter<ValueType>(ptr) {}
   Int64Parameter(ValueType* ptr, ValueType base)
       : NumericParameter<ValueType>(ptr, base) {}
 
@@ -359,7 +360,7 @@ struct Int64Parameter : public NumericParameter<int64_t> {
 struct UInt64Parameter : public NumericParameter<uint64_t> {
   typedef uint64_t ValueType;
 
-  explicit UInt64Parameter(ValueType* ptr) : NumericParameter<ValueType>(ptr) {}
+  explicit UInt64Parameter(ValueType* ptr, bool unusedParam = false) : NumericParameter<ValueType>(ptr) {}
   UInt64Parameter(ValueType* ptr, ValueType base)
       : NumericParameter<ValueType>(ptr, base) {}
 
@@ -370,7 +371,7 @@ struct UInt64Parameter : public NumericParameter<uint64_t> {
 struct SizeTParameter : public NumericParameter<std::size_t> {
   typedef std::size_t ValueType;
 
-  explicit SizeTParameter(ValueType* ptr) : NumericParameter<ValueType>(ptr) {}
+  explicit SizeTParameter(ValueType* ptr, bool unusedParam = false) : NumericParameter<ValueType>(ptr) {}
   SizeTParameter(ValueType* ptr, ValueType base)
       : NumericParameter<ValueType>(ptr, base) {}
 
@@ -406,7 +407,7 @@ struct BoundedParameter : public T {
 struct DoubleParameter : public NumericParameter<double> {
   typedef double ValueType;
 
-  explicit DoubleParameter(ValueType* ptr) : NumericParameter<double>(ptr) {}
+  explicit DoubleParameter(ValueType* ptr, bool unusedParam = false) : NumericParameter<double>(ptr) {}
 
   std::string name() const override { return "double"; }
 };
@@ -415,7 +416,7 @@ struct DoubleParameter : public NumericParameter<double> {
 struct StringParameter : public Parameter {
   typedef std::string ValueType;
 
-  explicit StringParameter(ValueType* ptr) : ptr(ptr) {}
+  explicit StringParameter(ValueType* ptr, bool unusedParam = false) : ptr(ptr) {}
 
   std::string name() const override { return "string"; }
   std::string valueString() const override { return stringifyValue(*ptr); }
@@ -436,9 +437,11 @@ struct StringParameter : public Parameter {
 // this templated type needs a concrete value type
 template<typename T>
 struct DiscreteValuesParameter : public T {
+  typedef std::unordered_set<typename T::ValueType> DiscreteType;
+
   DiscreteValuesParameter(
       typename T::ValueType* ptr,
-      std::unordered_set<typename T::ValueType> const& allowed)
+      std::unordered_set<typename T::ValueType> const& allowed, bool unusedParam = false)
       : T(ptr), allowed(allowed) {
     if (allowed.find(*ptr) == allowed.end()) {
       // default value is not in list of allowed values
@@ -484,14 +487,16 @@ struct DiscreteValuesParameter : public T {
     return msg;
   }
 
-  std::unordered_set<typename T::ValueType> allowed;
+  DiscreteType allowed;
 };
 
 // specialized type for vectors of values
 // this templated type needs a concrete value type
 template<typename T>
 struct VectorParameter : public Parameter {
-  explicit VectorParameter(std::vector<typename T::ValueType>* ptr)
+  typedef std::vector<typename T::ValueType> ValueType;
+
+  explicit VectorParameter(std::vector<typename T::ValueType>* ptr, bool unusedParam = false)
       : ptr(ptr) {}
   std::string name() const override {
     typename T::ValueType dummy;
@@ -530,7 +535,7 @@ struct VectorParameter : public Parameter {
     builder.close();
   }
 
-  std::vector<typename T::ValueType>* ptr;
+  ValueType* ptr;
 };
 
 // specialized type for a vector of discrete values (defined in the
@@ -627,7 +632,7 @@ struct DiscreteValuesVectorParameter : public Parameter {
 
 // a type that's useful for obsolete parameters that do nothing
 struct ObsoleteParameter : public Parameter {
-  explicit ObsoleteParameter(bool requiresValue) : required(requiresValue) {}
+  explicit ObsoleteParameter(bool requiresValue, bool unusedParam = false) : required(requiresValue) {}
   bool requiresValue() const override { return required; }
   std::string name() const override { return "obsolete"; }
   std::string valueString() const override { return "-"; }
@@ -637,6 +642,105 @@ struct ObsoleteParameter : public Parameter {
   }
 
   bool required;
+};
+
+  // helper function to parse "context=123"
+void parseContext(std::string const& rawValue,
+		  std::string& context,
+		  std::string& value);
+
+// specialized type for context enriched values
+// you can specify a context with "abc=123" as value. If you ever
+// need a global context value with a "alphanum*=" start specify it
+// as "=alphanum*=".
+template<typename T>
+struct ContextParameter : public Parameter {
+  template<class, class = void>
+  struct hasDiscreteType : std::false_type {
+    typedef bool discret;
+  };
+ 
+  template<class W>
+  struct hasDiscreteType<W, std::void_t<typename W::DiscreteType>> : std::true_type {
+    typedef typename W::DiscreteType discret;
+  };
+
+  explicit ContextParameter(std::unordered_map<std::string, typename T::ValueType>* map)
+    : map(map), allowed(true) {}
+  
+  template<typename A = hasDiscreteType<T>::discret>
+  ContextParameter(std::unordered_map<std::string, typename T::ValueType>* map, A const& allowed)
+    : map(map), allowed(allowed) {}
+
+  std::string name() const override {
+    typename T::ValueType dummy;
+    T param(&dummy, allowed);
+    return "context=" + std::string(param.name());
+  }
+
+  template<typename A>
+  std::string stringValue(A const& a) const {
+    return stringifyValue(a);
+  }
+
+  template<typename A>
+  std::string stringValue(std::vector<A> const& a) const {
+    std::string value;
+  
+    for (size_t i = 0; i < a.size(); ++i) {
+      if (i > 0) {
+	value.append(", ");
+      }
+      value.append(stringifyValue(a.at(i)));
+    }
+
+    return value;
+  }
+
+  std::string valueString() const override {
+    std::string value;
+    std::string sep;
+    for (auto context : *map) {
+      value.append(sep);
+      value.append(context.first + "=" + stringValue(context.second));
+      sep = "; ";
+    }
+    return value;
+  }
+
+  std::string set(std::string const& rawValue) override {
+    std::string context;
+    std::string value;
+    parseContext(rawValue, context, value);
+
+    typename T::ValueType* ptr = &((*map)[context]);
+    T param(ptr, allowed);
+    
+    return param.set(value);
+  }
+
+  void flushValue() override {
+    map->clear();
+  }
+
+  void toVPack(VPackBuilder& builder) const override {
+    builder.openArray();
+    for (auto context : *map) {
+      builder.openObject();
+      builder.add("context", VPackValue(context.first));
+      builder.add(VPackValue("value"));
+
+      typename T::ValueType* ptr = &(context.second);
+      T param(ptr, allowed);
+      param.toVPack(builder);
+
+      builder.close();
+    }
+    builder.close();
+  }
+
+  std::unordered_map<std::string, typename T::ValueType>* map;
+  hasDiscreteType<T>::discret allowed;
 };
 }  // namespace options
 }  // namespace arangodb

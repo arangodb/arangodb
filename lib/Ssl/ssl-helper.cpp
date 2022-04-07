@@ -46,9 +46,7 @@ using namespace arangodb;
 extern "C" const SSL_METHOD* SSLv3_method(void);
 #endif
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates an SSL context
-////////////////////////////////////////////////////////////////////////////////
+// creates an SSL context
 
 asio_ns::ssl::context arangodb::sslContext(SslProtocol protocol,
                                            std::string const& keyfile) {
@@ -130,9 +128,7 @@ asio_ns::ssl::context arangodb::sslContext(SslProtocol protocol,
   return sslctx;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the name of an SSL protocol version
-////////////////////////////////////////////////////////////////////////////////
+// get the name of an SSL protocol version
 
 std::string arangodb::protocolName(SslProtocol protocol) {
   switch (protocol) {
@@ -194,9 +190,7 @@ std::string arangodb::availableSslProtocolsDescription() {
 #endif
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get last SSL error
-////////////////////////////////////////////////////////////////////////////////
+// get last SSL error
 
 std::string arangodb::lastSSLError() {
   char buf[122];

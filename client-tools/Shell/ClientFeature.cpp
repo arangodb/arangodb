@@ -123,7 +123,7 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addOption(
       "--server.endpoint", endpointHelp,
-      new VectorParameter<StringParameter>(&_endpoints),
+      new ContextParameter<VectorParameter<StringParameter>>(&_endpointContexts),
       arangodb::options::makeFlags(Flags::FlushOnFirst, Flags::Default));
 
   options->addOption("--server.password",
@@ -203,6 +203,19 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void ClientFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
+  // arange endpoints such that the general ones are last, see next step below
+  for (auto context : _endpointContexts) {
+    if (!context.first.empty()) {
+      for (auto entry : context.second) {
+	_endpoints.push_back(entry);
+      }
+    }
+  }
+
+  for (auto entry : _endpointContexts[""]) {
+    _endpoints.push_back(entry);
+  }
+
   if (_sslProtocol == SslProtocol::SSL_V2) {
     LOG_TOPIC("64f4f", FATAL, arangodb::Logger::SSL)
         << "SSLv2 is not supported any longer because of security "

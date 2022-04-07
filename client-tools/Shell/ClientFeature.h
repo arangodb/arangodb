@@ -149,6 +149,7 @@ class ClientFeature final : public HttpEndpointProvider {
   ShellConsoleFeature* _console;
   std::string _databaseName;
   std::vector<std::string> _endpoints;
+  std::unordered_map<std::string, std::vector<std::string>> _endpointContexts;
   size_t _maxNumEndpoints;
   std::string _username;
   std::string _password;

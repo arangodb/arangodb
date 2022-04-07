@@ -32,6 +32,7 @@
 
 #include "Basics/asio_ns.h"
 #include "RestServer/arangod.h"
+#include "Ssl/ssl-helper.h"
 
 namespace arangodb {
 namespace options {
@@ -40,6 +41,45 @@ class ProgramOptions;
 
 class SslServerFeature : public ArangodFeature {
  public:
+  struct SNIEntry {
+    SNIEntry(std::string name, std::string keyfileName)
+        : serverName(std::move(name)), keyfileName(std::move(keyfileName)) {}
+    std::string serverName;      // empty for default
+    std::string keyfileName;     // name of key file
+    std::string keyfileContent;  // content of key file
+  };
+
+  struct SslConfig {
+    SslConfig() :
+      context(),
+      cafile(),
+      cafileContent(),
+      keyfile(),
+      cipherList("HIGH:!EXPORT:!aNULL@STRENGTH"),
+      sslProtocol(TLS_GENERIC),
+      sslOptions(asio_ns::ssl::context::default_workarounds | asio_ns::ssl::context::single_dh_use),
+      ecdhCurve("prime256v1"),
+      sessionCache(false),
+      preferHttp11InAlpn(false),
+      sniEntries(),
+      sniServerIndex()
+      {}
+    std::string context;
+    std::string cafile;
+    std::string cafileContent;  // the actual cert file
+    std::string keyfile;        // name of default keyfile
+    std::string cipherList;
+    uint64_t sslProtocol;
+    uint64_t sslOptions;
+    std::string ecdhCurve;
+    bool sessionCache;
+    bool preferHttp11InAlpn;
+    // For SNI, we have two maps, one mapping to the filename for a certain
+    // server, another, to keep the actual keyfile in memory.
+    std::vector<SNIEntry> sniEntries;  // the first entry is the default server keyfile
+    std::unordered_map<std::string, size_t> sniServerIndex;  // map server names to indices in _sniEntries
+  };
+
   typedef std::shared_ptr<std::vector<asio_ns::ssl::context>> SslContextList;
 
   static constexpr std::string_view name() noexcept { return "SslServer"; }
@@ -50,9 +90,10 @@ class SslServerFeature : public ArangodFeature {
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
   void prepare() override final;
   void unprepare() override final;
-  virtual void verifySslOptions();
+  void verifySslOptions();
 
-  virtual SslContextList createSslContexts();
+  SslContextList createSslContexts(std::string const& context);
+  virtual SslContextList createSslContexts(SslConfig&);
   size_t chooseSslContext(std::string const& serverName) const;
 
   // Dump all SSL related data into a builder, private keys
@@ -60,33 +101,23 @@ class SslServerFeature : public ArangodFeature {
   virtual Result dumpTLSData(VPackBuilder& builder) const;
 
  protected:
-  struct SNIEntry {
-    std::string serverName;      // empty for default
-    std::string keyfileName;     // name of key file
-    std::string keyfileContent;  // content of key file
-    SNIEntry(std::string name, std::string keyfileName)
-        : serverName(std::move(name)), keyfileName(std::move(keyfileName)) {}
-  };
+  std::unordered_map<std::string, std::string> _cafiles;
+  std::unordered_map<std::string, std::string> _keyfiles;
+  std::unordered_map<std::string, std::string> _cipherLists;
+  std::unordered_map<std::string, uint64_t> _sslProtocols;
+  std::unordered_map<std::string, uint64_t> _sslOptionss;
+  std::unordered_map<std::string, std::string> _ecdhCurves;
+  std::unordered_map<std::string, bool> _sessionCaches;
+  std::unordered_map<std::string, bool> _preferHttp11InAlpns;
 
-  std::string _cafile;
-  std::string _cafileContent;  // the actual cert file
-  std::string _keyfile;        // name of default keyfile
-  // For SNI, we have two maps, one mapping to the filename for a certain
-  // server, another, to keep the actual keyfile in memory.
-  std::vector<SNIEntry>
-      _sniEntries;  // the first entry is the default server keyfile
-  std::unordered_map<std::string, size_t>
-      _sniServerIndex;  // map server names to indices in _sniEntries
-  std::string _cipherList;
-  uint64_t _sslProtocol;
-  uint64_t _sslOptions;
-  std::string _ecdhCurve;
-  bool _sessionCache;
-  bool _preferHttp11InAlpn;
+  std::unordered_map<std::string, SslConfig> _sslConfigs;
 
  private:
-  asio_ns::ssl::context createSslContextInternal(std::string keyfileName,
-                                                 std::string& content);
+  void validateOptionsSslConfig(SslConfig&);
+  void prepareSslConfig(std::string const& name, SslConfig&);
+  virtual void verifySslOptions(SslConfig&);
+
+  asio_ns::ssl::context createSslContextInternal(SslConfig&, size_t idx);
 
   std::string stringifySslOptions(uint64_t opts) const;
 
