@@ -63,7 +63,7 @@ namespace rocksutils {
 /// @brief throws an exception of appropriate type if the iterator's status is
 /// !ok(). does nothing if the iterator's status is ok(). this function can be
 /// used by IndexIterators to verify that an iterator is still in good shape
-void checkIteratorStatus(rocksdb::Iterator const* iterator);
+void checkIteratorStatus(rocksdb::Iterator const& iterator);
 
 /// @brief count all keys in the given column family
 std::size_t countKeys(rocksdb::DB*, rocksdb::ColumnFamilyHandle* cf);

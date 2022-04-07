@@ -31,6 +31,8 @@
 
 #include <velocypack/Slice.h>
 #include "Basics/Result.h"
+#include "Inspection/VPackLoadInspector.h"
+#include "Inspection/VPackSaveInspector.h"
 
 namespace arangodb::velocypack {
 class Value;
@@ -60,6 +62,20 @@ struct StateGeneration {
 
   [[nodiscard]] explicit operator velocypack::Value() const noexcept;
 };
+
+template<class Inspector>
+auto inspect(Inspector& f, StateGeneration& x) {
+  if constexpr (Inspector::isLoading) {
+    auto v = uint64_t{0};
+    auto res = f.apply(v);
+    if (res.ok()) {
+      x = StateGeneration(v);
+    }
+    return res;
+  } else {
+    return f.apply(x.value);
+  }
+}
 
 enum class SnapshotStatus {
   kUninitialized,
@@ -99,6 +115,16 @@ auto to_string(SnapshotStatus) noexcept -> std::string_view;
 auto snapshotStatusFromString(std::string_view) noexcept -> SnapshotStatus;
 auto operator<<(std::ostream&, SnapshotStatus const&) -> std::ostream&;
 auto operator<<(std::ostream&, StateGeneration) -> std::ostream&;
+
+template<class Inspector>
+auto inspect(Inspector& f, SnapshotInfo& x) {
+  if constexpr (Inspector::isLoading) {
+    x = SnapshotInfo::fromVelocyPack(f.slice());
+  } else {
+    x.toVelocyPack(f.builder());
+  }
+  return arangodb::inspection::Status{};
+}
 }  // namespace replication2::replicated_state
 
 template<>
