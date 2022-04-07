@@ -123,7 +123,8 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addOption(
       "--server.endpoint", endpointHelp,
-      new ContextParameter<VectorParameter<StringParameter>>(&_endpointContexts),
+      new ContextParameter<VectorParameter<StringParameter>>(
+          &_endpointContexts),
       arangodb::options::makeFlags(Flags::FlushOnFirst, Flags::Default));
 
   options->addOption("--server.password",
@@ -207,7 +208,7 @@ void ClientFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   for (auto context : _endpointContexts) {
     if (!context.first.empty()) {
       for (auto entry : context.second) {
-	_endpoints.push_back(entry);
+        _endpoints.push_back(entry);
       }
     }
   }
