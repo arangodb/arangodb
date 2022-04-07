@@ -448,7 +448,6 @@ const replicatedLogSuite = function () {
 
       waitFor(replicatedLogParticipantsFlag(database, logId, {
         [newServer]: {allowedAsLeader: false, allowedInQuorum: false, forced: false},
-        [oldServer]: null,
       }));
 
       // now remove the excluded flag
