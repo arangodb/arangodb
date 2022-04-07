@@ -118,7 +118,6 @@ void ClusterProvider<StepImpl>::fetchVerticesFromEngines(
   leased->openObject();
   leased->add("keys", VPackValue(VPackValueType::Array));
   for (auto const& looseEnd : looseEnds) {
-    TRI_ASSERT(not looseEnd->vertexFetched());
     auto const& vertexId = looseEnd->getVertex().getID();
     if (!_opts.getCache()->isVertexCached(vertexId)) {
       leased->add(VPackValuePair(vertexId.data(), vertexId.length(),
@@ -398,7 +397,7 @@ Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(Step* step) {
 
 template<class StepImpl>
 auto ClusterProvider<StepImpl>::fetchVertices(
-    const std::vector<Step*>& looseEnds) -> std::vector<Step*> {
+    std::vector<Step*> const& looseEnds) -> std::vector<Step*> {
   std::vector<Step*> result{};
 
   if (!looseEnds.empty()) {
