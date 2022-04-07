@@ -93,9 +93,10 @@ void SslServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   std::unordered_set<uint64_t> const sslProtocols = availableSslProtocols();
 
-  options->addOption("--ssl.protocol", availableSslProtocolsDescription(),
-                     new ContextParameter<DiscreteValuesParameter<UInt64Parameter>>(
-                         &_sslProtocols, sslProtocols));
+  options->addOption(
+      "--ssl.protocol", availableSslProtocolsDescription(),
+      new ContextParameter<DiscreteValuesParameter<UInt64Parameter>>(
+          &_sslProtocols, sslProtocols));
 
   options->addOption(
       "--ssl.options", "ssl connection options, see OpenSSL documentation",
@@ -107,10 +108,11 @@ void SslServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "SSL ECDH Curve, see the output of \"openssl ecparam -list_curves\"",
       new ContextParameter<StringParameter>(&_ecdhCurves));
 
-  options->addOption("--ssl.prefer-http1-in-alpn",
-                     "Allows to let the server prefer HTTP/1.1 over HTTP/2 in "
-                     "ALPN protocol negotiations",
-                     new ContextParameter<BooleanParameter>(&_preferHttp11InAlpns));
+  options->addOption(
+      "--ssl.prefer-http1-in-alpn",
+      "Allows to let the server prefer HTTP/1.1 over HTTP/2 in "
+      "ALPN protocol negotiations",
+      new ContextParameter<BooleanParameter>(&_preferHttp11InAlpns));
 }
 
 void SslServerFeature::validateOptionsSslConfig(SslConfig& config) {
@@ -125,7 +127,6 @@ void SslServerFeature::validateOptionsSslConfig(SslConfig& config) {
 
 void SslServerFeature::validateOptions(
     std::shared_ptr<ProgramOptions> options) {
-
   // build ssl config structures
   for (auto data : _cafiles) {
     _sslConfigs[data.first].context = data.first;
@@ -172,13 +173,16 @@ void SslServerFeature::validateOptions(
   }
 }
 
-void SslServerFeature::prepareSslConfig(std::string const& name, SslConfig& config) {
+void SslServerFeature::prepareSslConfig(std::string const& name,
+                                        SslConfig& config) {
   LOG_TOPIC("afcd3", INFO, arangodb::Logger::SSL)
-    << "using SSL options for '" << name << "': " << stringifySslOptions(config.sslOptions);
+      << "using SSL options for '" << name
+      << "': " << stringifySslOptions(config.sslOptions);
 
   if (!config.cipherList.empty()) {
     LOG_TOPIC("9b126", INFO, arangodb::Logger::SSL)
-        << "using SSL cipher-list for '" << name << "': '" << config.cipherList << "'";
+        << "using SSL cipher-list for '" << name << "': '" << config.cipherList
+        << "'";
   }
 }
 
@@ -195,7 +199,7 @@ void SslServerFeature::prepare() {
 void SslServerFeature::unprepare() {
   for (auto config : _sslConfigs) {
     LOG_TOPIC("7093e", TRACE, arangodb::Logger::SSL)
-      << "unpreparing ssl '" << config.first << "'";
+        << "unpreparing ssl '" << config.first << "'";
   }
 }
 
@@ -203,7 +207,8 @@ void SslServerFeature::verifySslOptions(SslConfig& config) {
   // check keyfile
   if (config.keyfile.empty()) {
     LOG_TOPIC("f0dca", FATAL, arangodb::Logger::SSL)
-      << "no value specified for '--ssl.keyfile' for '" << config.context << "'";
+        << "no value specified for '--ssl.keyfile' for '" << config.context
+        << "'";
     FATAL_ERROR_EXIT();
   }
 
@@ -212,17 +217,20 @@ void SslServerFeature::verifySslOptions(SslConfig& config) {
   if (config.sslProtocol <= SSL_UNKNOWN || config.sslProtocol >= SSL_LAST) {
     LOG_TOPIC("1f48b", FATAL, arangodb::Logger::SSL)
         << "invalid SSL protocol version specified. Please use a valid "
-      "value for '--ssl.protocol' for '" << config.context << "'";
+           "value for '--ssl.protocol' for '"
+        << config.context << "'";
     FATAL_ERROR_EXIT();
   }
 
   LOG_TOPIC("47161", DEBUG, arangodb::Logger::SSL)
       << "using SSL protocol version '"
-      << protocolName(SslProtocol(config.sslProtocol)) << "' for '" << config.context << "'";
+      << protocolName(SslProtocol(config.sslProtocol)) << "' for '"
+      << config.context << "'";
 
   if (!FileUtils::exists(config.keyfile)) {
     LOG_TOPIC("51cf0", FATAL, arangodb::Logger::SSL)
-      << "unable to find SSL keyfile '" << config.keyfile << "' for '" << config.context << "'";
+        << "unable to find SSL keyfile '" << config.keyfile << "' for '"
+        << config.context << "'";
     FATAL_ERROR_EXIT();
   }
 
@@ -236,7 +244,7 @@ void SslServerFeature::verifySslOptions(SslConfig& config) {
     }
   } catch (...) {
     LOG_TOPIC("997d2", FATAL, arangodb::Logger::SSL)
-      << "cannot create SSL context for '" << config.context << "'";
+        << "cannot create SSL context for '" << config.context << "'";
     FATAL_ERROR_EXIT();
   }
 }
@@ -298,7 +306,8 @@ static int alpn_select_proto_cb(SSL* ssl, const unsigned char** out,
   return SSL_TLSEXT_ERR_OK;
 }
 
-asio_ns::ssl::context SslServerFeature::createSslContextInternal(SslConfig& config, size_t idx) {
+asio_ns::ssl::context SslServerFeature::createSslContextInternal(
+    SslConfig& config, size_t idx) {
   std::string name = config.context;
   std::string keyfilename = config.sniEntries[idx].keyfileName;
   std::string& content = config.sniEntries[idx].keyfileContent;
@@ -334,7 +343,8 @@ asio_ns::ssl::context SslServerFeature::createSslContextInternal(SslConfig& conf
     sslContext.set_options(static_cast<long>(config.sslOptions));
 
     if (!config.cipherList.empty()) {
-      if (SSL_CTX_set_cipher_list(nativeContext, config.cipherList.c_str()) != 1) {
+      if (SSL_CTX_set_cipher_list(nativeContext, config.cipherList.c_str()) !=
+          1) {
         LOG_TOPIC("c6981", ERR, arangodb::Logger::SSL)
             << "cannot set SSL cipher list '" << config.cipherList
             << "': " << lastSSLError();
@@ -454,19 +464,21 @@ asio_ns::ssl::context SslServerFeature::createSslContextInternal(SslConfig& conf
   }
 }
 
-SslServerFeature::SslContextList SslServerFeature::createSslContexts(std::string const& context) {
+SslServerFeature::SslContextList SslServerFeature::createSslContexts(
+    std::string const& context) {
   SslContextList a;
   return a;
 }
 
-SslServerFeature::SslContextList SslServerFeature::createSslContexts(SslConfig& config) {
-    auto result = std::make_shared<std::vector<asio_ns::ssl::context>>();
-    for (size_t i = 0; i < config.sniEntries.size(); ++i) {
-      auto res = createSslContextInternal(config, i);
-      result->emplace_back(std::move(res));
-    }
-    
-    return result;
+SslServerFeature::SslContextList SslServerFeature::createSslContexts(
+    SslConfig& config) {
+  auto result = std::make_shared<std::vector<asio_ns::ssl::context>>();
+  for (size_t i = 0; i < config.sniEntries.size(); ++i) {
+    auto res = createSslContextInternal(config, i);
+    result->emplace_back(std::move(res));
+  }
+
+  return result;
 }
 
 size_t SslServerFeature::chooseSslContext(std::string const& serverName) const {
@@ -827,15 +839,15 @@ Result SslServerFeature::dumpTLSData(VPackBuilder& builder) const {
       SslConfig const& config = itr->second;
 
       if (!config.sniEntries.empty()) {
-	dumpPEM(config.sniEntries[0].keyfileContent, builder, "keyfile");
-	dumpPEM(config.cafileContent, builder, "clientCA");
-	if (config.sniEntries.size() > 1) {
-	  VPackObjectBuilder guard2(&builder, "SNI");
-	  for (size_t i = 1; i < config.sniEntries.size(); ++i) {
-	    dumpPEM(config.sniEntries[i].keyfileContent, builder,
-		    config.sniEntries[i].serverName);
-	  }
-	}
+        dumpPEM(config.sniEntries[0].keyfileContent, builder, "keyfile");
+        dumpPEM(config.cafileContent, builder, "clientCA");
+        if (config.sniEntries.size() > 1) {
+          VPackObjectBuilder guard2(&builder, "SNI");
+          for (size_t i = 1; i < config.sniEntries.size(); ++i) {
+            dumpPEM(config.sniEntries[i].keyfileContent, builder,
+                    config.sniEntries[i].serverName);
+          }
+        }
       }
     }
   }

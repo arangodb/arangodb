@@ -50,20 +50,20 @@ class SslServerFeature : public ArangodFeature {
   };
 
   struct SslConfig {
-    SslConfig() :
-      context(),
-      cafile(),
-      cafileContent(),
-      keyfile(),
-      cipherList("HIGH:!EXPORT:!aNULL@STRENGTH"),
-      sslProtocol(TLS_GENERIC),
-      sslOptions(asio_ns::ssl::context::default_workarounds | asio_ns::ssl::context::single_dh_use),
-      ecdhCurve("prime256v1"),
-      sessionCache(false),
-      preferHttp11InAlpn(false),
-      sniEntries(),
-      sniServerIndex()
-      {}
+    SslConfig()
+        : context(),
+          cafile(),
+          cafileContent(),
+          keyfile(),
+          cipherList("HIGH:!EXPORT:!aNULL@STRENGTH"),
+          sslProtocol(TLS_GENERIC),
+          sslOptions(asio_ns::ssl::context::default_workarounds |
+                     asio_ns::ssl::context::single_dh_use),
+          ecdhCurve("prime256v1"),
+          sessionCache(false),
+          preferHttp11InAlpn(false),
+          sniEntries(),
+          sniServerIndex() {}
     std::string context;
     std::string cafile;
     std::string cafileContent;  // the actual cert file
@@ -76,8 +76,10 @@ class SslServerFeature : public ArangodFeature {
     bool preferHttp11InAlpn;
     // For SNI, we have two maps, one mapping to the filename for a certain
     // server, another, to keep the actual keyfile in memory.
-    std::vector<SNIEntry> sniEntries;  // the first entry is the default server keyfile
-    std::unordered_map<std::string, size_t> sniServerIndex;  // map server names to indices in _sniEntries
+    std::vector<SNIEntry>
+        sniEntries;  // the first entry is the default server keyfile
+    std::unordered_map<std::string, size_t>
+        sniServerIndex;  // map server names to indices in _sniEntries
   };
 
   typedef std::shared_ptr<std::vector<asio_ns::ssl::context>> SslContextList;
