@@ -70,6 +70,24 @@ VertexType getEdgeDestination(arangodb::velocypack::Slice edge,
   }
   return VertexType{from};
 }
+
+ClusterProviderStep::FetchedType getFetchedType(bool vertexFetched,
+                                                bool edgesFetched) {
+  if (vertexFetched) {
+    if (edgesFetched) {
+      return ClusterProviderStep::FetchedType::VERTEX_AND_EDGES_FETCHED;
+    } else {
+      return ClusterProviderStep::FetchedType::VERTEX_FETCHED;
+    }
+  } else {
+    if (edgesFetched) {
+      return ClusterProviderStep::FetchedType::EDGES_FETCHED;
+    } else {
+      return ClusterProviderStep::FetchedType::UNFETCHED;
+    }
+  }
+}
+
 }  // namespace
 
 template<class StepImpl>
@@ -467,7 +485,7 @@ auto ClusterProvider<StepImpl>::expand(
       bool vertexCached = _opts.getCache()->isVertexCached(relation.second);
       bool edgesCached = _vertexConnectedEdges.contains(relation.second);
       typename Step::FetchedType fetchedType =
-          Step::getFetchedType(vertexCached, edgesCached);
+          ::getFetchedType(vertexCached, edgesCached);
       // [GraphRefactor] TODO: KShortestPaths does not require Depth/Weight. We
       // need a mechanism here as well to distinguish between (non)required
       // parameters.

@@ -82,37 +82,6 @@ class ClusterProviderStep
     VERTEX_AND_EDGES_FETCHED
   };
 
-  std::string fetchedTypeAsString() const {
-    auto const type = _fetchedStatus;
-    switch (type) {
-      case FetchedType::UNFETCHED:
-        return "UNFETCHED";
-      case FetchedType::VERTEX_FETCHED:
-        return "VERTEX_FETCHED";
-      case FetchedType::EDGES_FETCHED:
-        return "EDGES_FETCHED";
-      case FetchedType::VERTEX_AND_EDGES_FETCHED:
-        return "VERTEX_AND_EDGES_FETCHED";
-    }
-    return "ERROR";
-  }
-
-  static FetchedType getFetchedType(bool vertexFetched, bool edgesFetched) {
-    if (vertexFetched) {
-      if (edgesFetched) {
-        return FetchedType::VERTEX_AND_EDGES_FETCHED;
-      } else {
-        return FetchedType::VERTEX_FETCHED;
-      }
-    } else {
-      if (edgesFetched) {
-        return FetchedType::EDGES_FETCHED;
-      } else {
-        return FetchedType::UNFETCHED;
-      }
-    }
-  }
-
  private:
   ClusterProviderStep(const VertexType& v, const EdgeType& edge, size_t prev);
   ClusterProviderStep(VertexType v, EdgeType edge, size_t prev,
