@@ -391,20 +391,6 @@ auto getAddedParticipant(ParticipantsFlagsMap const& targetParticipants,
   return std::nullopt;
 }
 
-// If there is a participant that is present in Plan, but not in Target,
-// returns a pair consisting of the ParticipantId and the ParticipantFlags.
-// Otherwise returns std::nullopt
-auto getRemovedParticipant(ParticipantsFlagsMap const& targetParticipants,
-                           ParticipantsFlagsMap const& planParticipants)
-    -> std::optional<std::pair<ParticipantId, ParticipantFlags>> {
-  for (auto const& [planParticipant, flags] : planParticipants) {
-    if (!targetParticipants.contains(planParticipant)) {
-      return std::make_pair(planParticipant, flags);
-    }
-  }
-  return std::nullopt;
-}
-
 auto doParticipantRemoval(ParticipantsFlagsMap const& targetParticipants,
                           ParticipantsFlagsMap const& planParticipants,
                           ParticipantId const& leader)

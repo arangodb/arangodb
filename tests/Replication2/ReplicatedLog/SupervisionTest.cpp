@@ -397,18 +397,6 @@ TEST_F(LogSupervisionTest, test_no_participant_added) {
   EXPECT_FALSE(r);
 }
 
-TEST_F(LogSupervisionTest, test_participant_removed) {
-  auto const targetParticipants = ParticipantsFlagsMap{};
-
-  auto const planParticipants = ParticipantsFlagsMap{
-      {"A", ParticipantFlags{.forced = false, .allowedAsLeader = true}}};
-
-  auto r = getRemovedParticipant(targetParticipants, planParticipants);
-  EXPECT_TRUE(r);
-
-  EXPECT_EQ(r->first, "A");
-}
-
 TEST_F(LogSupervisionTest, test_no_participant_removed) {
   auto const targetParticipants = ParticipantsFlagsMap{
       {"A", ParticipantFlags{.forced = false, .allowedAsLeader = true}}};
