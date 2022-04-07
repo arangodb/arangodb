@@ -405,6 +405,25 @@ auto getRemovedParticipant(ParticipantsFlagsMap const& targetParticipants,
   return std::nullopt;
 }
 
+auto doParticipantRemoval(ParticipantsFlagsMap const& targetParticipants,
+                          ParticipantsFlagsMap const& planParticipants,
+                          ParticipantId const& leader)
+    -> std::optional<Action> {
+  for (auto const& [planParticipant, flags] : planParticipants) {
+    if (planParticipant != leader and
+        !targetParticipants.contains(planParticipant)) {
+      if (flags.allowedInQuorum) {
+        auto newFlags = flags;
+        newFlags.allowedInQuorum = false;
+        return UpdateParticipantFlagsAction(planParticipant, newFlags);
+      } else {
+        return RemoveParticipantFromPlanAction(planParticipant);
+      }
+    }
+  }
+  return std::nullopt;
+}
+
 // Pick leader at random from participants
 auto pickRandomParticipantToBeLeader(ParticipantsFlagsMap const& participants,
                                      ParticipantsHealth const& health)
@@ -525,6 +544,15 @@ auto checkReplicatedLog(LogTarget const& target,
     return WriteEmptyTermAction(minTerm);
   }
 
+  // barrier
+  if (!current.leader || !current.leader->committedParticipantsConfig ||
+      current.leader->committedParticipantsConfig->generation !=
+          plan.participantsConfig.generation) {
+    return EmptyAction(
+        "Waiting for participants configuration to be committed by the "
+        "leader.");
+  }
+
   // Check whether a participant was added in Target that is not in Plan.
   // If so, add it to Plan.
   if (auto participant = getAddedParticipant(
@@ -533,39 +561,26 @@ auto checkReplicatedLog(LogTarget const& target,
   }
 
   // TODO this is a hack
-  auto removalPending = false;
+  //      doParticipantRemoval will determine a planned participant that is not
+  //      in target and not the leader.
+  //      We can only execute this removal if we do not violate writeConcern
+  //      otherwise we need to be able to continue checking flags, because
+  //      the only way participants will become eligible for removal is
+  //      by flags being updated
+  auto action = doParticipantRemoval(target.participants,
+                                     plan.participantsConfig.participants,
+                                     leader.serverId);
 
-  // If a participant is in Plan but not in Target, gracefully
-  // remove it
-  if (auto maybeParticipant = getRemovedParticipant(
-          target.participants, plan.participantsConfig.participants)) {
-    auto const& [participantId, planFlags] = *maybeParticipant;
-
-    if (target.participants.size() <=
+  auto removePending = false;
+  if (action.has_value()) {
+    auto canExecuteRemove =
+        target.participants.size() <=
         numberOfOKParticipants(current.localState, plan.participantsConfig,
-                               health, plan.currentTerm->term)) {
-      // We do not ever remove a leader
-      if (participantId != leader.serverId) {
-        // If the participant is not allowed in Quorum it is safe to remove it
-        if (not planFlags.allowedInQuorum and
-            current.leader->committedParticipantsConfig->generation ==
-                plan.participantsConfig.generation) {
-          return RemoveParticipantFromPlanAction(participantId);
-        } else if (planFlags.allowedInQuorum) {
-          // A participant can only be removed without risk,
-          // if it is not member of any quorum
-          auto newFlags = planFlags;
-          newFlags.allowedInQuorum = false;
-          return UpdateParticipantFlagsAction(participantId, newFlags);
-        } else {
-          // still waiting
-          return EmptyAction("Waiting for participants config to be committed");
-        }
-      }
+                               health, plan.currentTerm->term);
+    if (canExecuteRemove) {
+      return *action;
     } else {
-      // removal of participant pending, so we have not converged,
-      // but we need to continue trying to do things!
-      removalPending = true;
+      removePending = true;
     }
   }
 
@@ -618,7 +633,9 @@ auto checkReplicatedLog(LogTarget const& target,
     return UpdateLogConfigAction(target.config);
   }
 
-  if (!removalPending) {
+  if (removePending) {
+    return ErrorAction(LogCurrentSupervisionError::PENDING_PARTICIPANT_REMOVAL);
+  } else {
     if (target.version.has_value() &&
         (!current.supervision.has_value() ||
          target.version != current.supervision->targetVersion)) {
@@ -629,8 +646,6 @@ auto checkReplicatedLog(LogTarget const& target,
       // reported?
       return EmptyAction("There was nothing to do.");
     }
-  } else {
-    return ErrorAction(LogCurrentSupervisionError::PENDING_PARTICIPANT_REMOVAL);
   }
 }
 
