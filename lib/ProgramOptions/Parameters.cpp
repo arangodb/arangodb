@@ -41,9 +41,8 @@ std::string removeCommentsFromNumber(std::string const& value) {
   return std::regex_replace(noComment, ::removeTabs, "");
 }
 
-void parseContext(std::string const& rawValue,
-		  std::string& context,
-		  std::string& value) {
+void parseContext(std::string const& rawValue, std::string& context,
+                  std::string& value) {
   std::smatch m;
   bool match = std::regex_match(rawValue, m, contextPrefix);
 
