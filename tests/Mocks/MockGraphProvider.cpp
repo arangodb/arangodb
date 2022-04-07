@@ -119,6 +119,7 @@ auto MockGraphProvider::fetchVertices(const std::vector<Step*>& looseEnds)
 
 auto MockGraphProvider::fetchEdges(const std::vector<Step*>& fetchedVertices)
     -> Result {
+  TRI_ASSERT(false);
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -246,5 +247,3 @@ aql::TraversalStats MockGraphProvider::stealStats() {
   new (&_stats) aql::TraversalStats{};
   return t;
 }
-
-bool MockGraphProvider::isCached(Step* s) { return true; }
