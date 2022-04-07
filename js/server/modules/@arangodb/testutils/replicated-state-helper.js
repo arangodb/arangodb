@@ -60,24 +60,28 @@ const spreds = require("@arangodb/testutils/replicated-state-predicates");
  *   }}
  */
 const readReplicatedStateAgency = function (database, logId) {
-  let target =  LH.readAgencyValueAt(`Target/ReplicatedStates/${database}/${logId}`);
-  let plan =  LH.readAgencyValueAt(`Plan/ReplicatedStates/${database}/${logId}`);
-  let current =  LH.readAgencyValueAt(`Current/ReplicatedStates/${database}/${logId}`);
+  let target = LH.readAgencyValueAt(`Target/ReplicatedStates/${database}/${logId}`);
+  let plan = LH.readAgencyValueAt(`Plan/ReplicatedStates/${database}/${logId}`);
+  let current = LH.readAgencyValueAt(`Current/ReplicatedStates/${database}/${logId}`);
   return {target, plan, current};
 };
 
 const updateReplicatedStatePlan = function (database, logId, callback) {
   let {plan: planState} = readReplicatedStateAgency(database, logId);
   let {plan: planLog} = LH.readReplicatedLogAgency(database, logId);
-  if (planState === undefined ) {
+  if (planState === undefined) {
     planState = {id: logId, generation: 1};
   }
   if (planLog === undefined) {
     planLog = {id: logId};
   }
-  const {state, log} = callback(planState, planLog);
-  global.ArangoAgency.set(`Plan/ReplicatedStates/${database}/${logId}`, state);
-  global.ArangoAgency.set(`Plan/ReplicatedLogs/${database}/${logId}`, log);
+  const {state, log} = callback(_.cloneDeep(planState), _.cloneDeep(planLog));
+  if (!_.isEqual(planState, state)) {
+    global.ArangoAgency.set(`Plan/ReplicatedStates/${database}/${logId}`, state);
+  }
+  if (!_.isEqual(planLog, log)) {
+    global.ArangoAgency.set(`Plan/ReplicatedLogs/${database}/${logId}`, log);
+  }
   global.ArangoAgency.increaseVersion(`Plan/Version`);
 };
 
