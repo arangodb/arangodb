@@ -275,14 +275,6 @@ auto OneSidedEnumerator<Configuration>::fetchResults() -> void {
       // the future. Also discuss: Do we want (re-)fetch logic here?
       // TODO: maybe we can combine this with prefetching of paths
     }
-
-    std::vector<Step*> unfetchedEdgesSteps =
-        _queue.getStepsWithoutFetchedEdges();
-
-    if (!unfetchedEdgesSteps.empty()) {
-      // Will throw all network errors here
-      _provider.fetchEdges(unfetchedEdgesSteps);
-    }
   }
 
   _resultsFetched = true;
