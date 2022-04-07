@@ -1300,7 +1300,7 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan,
   if (base.hasKey(NODE_VIEW_SCORERS_SORT_LIMIT)) {
     auto const slice = base.get(NODE_VIEW_SCORERS_SORT_LIMIT);
     if (!slice.isNumber()) {
-      THROW_ARANGO_EXCEPTION(
+      THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_BAD_PARAMETER,
           "\"scorersSortLimit\" attribute should be numeric");
     }
