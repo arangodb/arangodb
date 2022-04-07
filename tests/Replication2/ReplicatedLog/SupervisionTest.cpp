@@ -621,23 +621,30 @@ TEST_F(LogSupervisionTest, test_dictate_leader_success) {
 
   ASSERT_EQ(action._leader.serverId, "D");
 }
+#include <Logger/LogMacros.h>
 
 TEST_F(LogSupervisionTest, test_remove_participant_action) {
   auto const& logId = LogId{44};
   auto const& config = LogConfig(3, 3, 3, true);
 
   // Server D is missing in target
-  auto const& target =
-      LogTarget(logId,
-                ParticipantsFlagsMap{{"A", ParticipantFlags{}},
-                                     {"B", ParticipantFlags{}},
-                                     {"C", ParticipantFlags{}}},
-                config);
+  auto const& target = LogTarget(
+      logId,
+      ParticipantsFlagsMap{{"A", ParticipantFlags{.allowedInQuorum = true,
+                                                  .allowedAsLeader = true}},
+                           {"B", ParticipantFlags{.allowedInQuorum = true,
+                                                  .allowedAsLeader = true}},
+                           {"C", ParticipantFlags{.allowedInQuorum = true,
+                                                  .allowedAsLeader = true}}},
+      config);
 
-  ParticipantsFlagsMap participantsFlags{{"A", ParticipantFlags{}},
-                                         {"B", ParticipantFlags{}},
-                                         {"C", ParticipantFlags{}},
-                                         {"D", ParticipantFlags{}}};
+  ParticipantsFlagsMap participantsFlags{
+      {"A", ParticipantFlags{.allowedInQuorum = true, .allowedAsLeader = true}},
+      {"B", ParticipantFlags{.allowedInQuorum = true, .allowedAsLeader = true}},
+      {"C", ParticipantFlags{.allowedInQuorum = true, .allowedAsLeader = true}},
+      {"D",
+       ParticipantFlags{.allowedInQuorum = true, .allowedAsLeader = true}}};
+
   auto const& participantsConfig =
       ParticipantsConfig{.generation = 1, .participants = participantsFlags};
 
@@ -655,6 +662,15 @@ TEST_F(LogSupervisionTest, test_remove_participant_action) {
                          .committedParticipantsConfig = participantsConfig,
                          .leadershipEstablished = true,
                          .commitStatus = std::nullopt};
+  current.localState = {
+      {"A", LogCurrentLocalState(LogTerm(1),
+                                 TermIndexPair(LogTerm(1), LogIndex(44)))},
+      {"B", LogCurrentLocalState(LogTerm(1),
+                                 TermIndexPair(LogTerm(1), LogIndex(44)))},
+      {"C", LogCurrentLocalState(LogTerm(1),
+                                 TermIndexPair(LogTerm(1), LogIndex(44)))},
+      {"D", LogCurrentLocalState(LogTerm(1),
+                                 TermIndexPair(LogTerm(1), LogIndex(44)))}};
 
   auto const& health = ParticipantsHealth{
       ._health = {
@@ -668,8 +684,8 @@ TEST_F(LogSupervisionTest, test_remove_participant_action) {
            ParticipantHealth{.rebootId = RebootId{14}, .notIsFailed = true}}}};
 
   auto r = checkReplicatedLog(target, plan, current, health);
-  // We expect a UpdateParticipantsFlagsAction to unset the allowedInQuorum flag
-  // for d
+  // We expect a UpdateParticipantsFlagsAction to unset the allowedInQuorum
+  // flag for d
   ASSERT_TRUE(std::holds_alternative<UpdateParticipantFlagsAction>(r))
       << to_string(r);
 
@@ -684,8 +700,8 @@ TEST_F(LogSupervisionTest, test_remove_participant_action_wait_for_committed) {
   auto const& logId = LogId{44};
   auto const& config = LogConfig(3, 3, 3, true);
 
-  // Server D is missing in target and has set the allowedInQuorum flag to false
-  // but the config is not yet committed
+  // Server D is missing in target and has set the allowedInQuorum flag to
+  // false but the config is not yet committed
   auto const& target =
       LogTarget(logId,
                 ParticipantsFlagsMap{{"A", ParticipantFlags{}},
@@ -743,8 +759,8 @@ TEST_F(LogSupervisionTest, test_remove_participant_action_committed) {
   auto const& logId = LogId{44};
   auto const& config = LogConfig(3, 3, 3, true);
 
-  // Server D is missing in target and has set the allowedInQuorum flag to false
-  // but the config is not yet committed
+  // Server D is missing in target and has set the allowedInQuorum flag to
+  // false but the config is not yet committed
   auto const& target =
       LogTarget(logId,
                 ParticipantsFlagsMap{{"A", ParticipantFlags{}},
@@ -753,9 +769,9 @@ TEST_F(LogSupervisionTest, test_remove_participant_action_committed) {
                 config);
 
   ParticipantsFlagsMap participantsFlags{
-      {"A", ParticipantFlags{}},
-      {"B", ParticipantFlags{}},
-      {"C", ParticipantFlags{}},
+      {"A", ParticipantFlags{.allowedInQuorum = true, .allowedAsLeader = true}},
+      {"B", ParticipantFlags{.allowedInQuorum = true, .allowedAsLeader = true}},
+      {"C", ParticipantFlags{.allowedInQuorum = true, .allowedAsLeader = true}},
       {"D", ParticipantFlags{.allowedInQuorum = false}}};
   auto const& participantsConfig =
       ParticipantsConfig{.generation = 2, .participants = participantsFlags};
@@ -774,6 +790,15 @@ TEST_F(LogSupervisionTest, test_remove_participant_action_committed) {
                          .committedParticipantsConfig = participantsConfig,
                          .leadershipEstablished = true,
                          .commitStatus = std::nullopt};
+  current.localState = {
+      {"A", LogCurrentLocalState(LogTerm(1),
+                                 TermIndexPair(LogTerm(1), LogIndex(44)))},
+      {"B", LogCurrentLocalState(LogTerm(1),
+                                 TermIndexPair(LogTerm(1), LogIndex(44)))},
+      {"C", LogCurrentLocalState(LogTerm(1),
+                                 TermIndexPair(LogTerm(1), LogIndex(44)))},
+      {"D", LogCurrentLocalState(LogTerm(1),
+                                 TermIndexPair(LogTerm(1), LogIndex(44)))}};
 
   auto const& health = ParticipantsHealth{
       ._health = {
