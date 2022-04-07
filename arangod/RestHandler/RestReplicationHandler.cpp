@@ -3442,9 +3442,10 @@ ErrorCode RestReplicationHandler::createCollection(VPackSlice slice) {
   OperationOptions options(_context);
   std::vector<std::shared_ptr<LogicalCollection>> collections;
   Result res = methods::Collections::create(
-      _vocbase, options, infos, true, enforceReplicationFactor, isNewDatabase,
-      nullptr, collections, allowSystem,
-      allowEnterpriseCollectionsOnSingleServer, true);
+      _vocbase, options, infos, /*createWaitsForSyncReplication*/ true,
+      enforceReplicationFactor, isNewDatabase, nullptr, collections,
+      allowSystem, allowEnterpriseCollectionsOnSingleServer,
+      /*isRestore*/ true);
   if (res.fail()) {
     return res.errorNumber();
   }

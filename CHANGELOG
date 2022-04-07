@@ -1,6 +1,13 @@
 devel
 -----
 
+* Unify the creation of normal and SmartGraph collections.
+
+  This unifies the code paths for creating collections for normal
+  collections and SmartGraph collections, so that the functionality is
+  centralized in one place. SmartGraph-specific code for validation and
+  collection creation has been moved to enterprise as well.
+
 * Updated arangosync to v2.9.0-preview-4.
 
 * Make the StatisticsFeature start after the NetworkFeature, so that any 
