@@ -112,10 +112,6 @@ class ClusterProvider {
   void prepareContext(aql::InputAqlItemRow input);
   void unPrepareContext();
 
-  bool isCached(Step* s) {
-    return _opts.getCache()->isVertexCached(s->getVertex().getID());
-  }
-
  private:
   // Unique_ptr to have this class movable, and to keep reference of trx()
   // alive - Note: _trx must be first here because it is used in _cursor

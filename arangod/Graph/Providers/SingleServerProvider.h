@@ -108,8 +108,6 @@ class SingleServerProvider {
   void prepareContext(aql::InputAqlItemRow input);
   void unPrepareContext();
 
-  bool isCached(Step* s);
-
  private:
   void activateCache(bool enableDocumentCache);
 
