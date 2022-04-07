@@ -107,7 +107,6 @@ auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::populatePath()
 template<class ProviderType, class PathStoreType, class Step>
 auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::
     verticesToVelocyPack(arangodb::velocypack::Builder& builder) -> void {
-  LOG_DEVEL << "(SingleProviderPathResult::verticesToVelocyPack)";
   TRI_ASSERT(builder.isOpenObject());
   {
     builder.add(VPackValue(StaticStrings::GraphQueryVertices));
@@ -162,7 +161,6 @@ auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::toVelocyPack(
 template<class ProviderType, class PathStoreType, class Step>
 auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::
     lastVertexToVelocyPack(arangodb::velocypack::Builder& builder) -> void {
-  LOG_DEVEL << "(SingleProviderPathResult::lastVertexToVelocyPack)";
   TRI_ASSERT(!_step.getVertex().getID().empty());
   _provider.addVertexToBuilder(_step.getVertex(), builder);
 }

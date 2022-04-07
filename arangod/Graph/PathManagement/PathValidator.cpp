@@ -224,7 +224,6 @@ template<class ProviderType, class PathStore,
 auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
     evaluateVertexCondition(typename PathStore::Step const& step)
         -> ValidationResult {
-  LOG_DEVEL << "(PathValidator::evaluateVertexCondition)";
   // evaluate if vertex collection is allowed
   bool isAllowed = evaluateVertexRestriction(step);
   if (!isAllowed) {
@@ -331,7 +330,6 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
       }
     }
   }
-  LOG_DEVEL << "(PathValidator::evaluateVertexCondition - END)";
   return res;
 }
 
