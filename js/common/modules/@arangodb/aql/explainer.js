@@ -1276,6 +1276,8 @@ function processQuery(query, explain, planIndex) {
           
           });
            scorersSort =  keyword(' SORT ') + scorersSort;
+           scorersSort += keyword(' LIMIT ') + value('0, ' + JSON.stringify(node.scorersSortLimit));
+           
         }
         let viewAnnotation = '/* view query';
         if (node.hasOwnProperty('outNmDocId') && node.hasOwnProperty('outNmColPtr')) {
