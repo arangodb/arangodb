@@ -115,7 +115,6 @@ auto OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex()
   }
 
   auto tmp = _queue.pop();
-  // todo: why posPrevious? append returns the position of the inserted element
   auto posPrevious = _interior.append(std::move(tmp));
   auto& step = _interior.getStepReference(posPrevious);
 
