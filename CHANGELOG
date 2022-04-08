@@ -1,6 +1,8 @@
 devel
 -----
 
+* Auto-regenerate exit code and error code files in non-maintainer mode, too.
+
 * Only show slowest optimizer rules in explain output for optimizer rules
   that took a considerable amount of time (>= 0.0002 seconds). Previously
   the slowest 5 optimizer rules were shown, regardless of how long they
