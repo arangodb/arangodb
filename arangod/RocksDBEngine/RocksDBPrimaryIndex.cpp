@@ -868,7 +868,9 @@ std::unique_ptr<IndexIterator> RocksDBPrimaryIndex::iteratorForCondition(
       if (mustCheckBounds) {
         return std::make_unique<RocksDBPrimaryIndexRangeIterator<false, true>>(
             &_collection /*logical collection*/, trx, this,
-            RocksDBKeyBounds::PrimaryIndex(objectId(), ::lowest, ::highest),
+            RocksDBKeyBounds::PrimaryIndex(objectId(),
+                                           KeyGeneratorHelper::lowestKey,
+                                           KeyGeneratorHelper::highestKey),
             readOwnWrites);
       }
       return std::make_unique<RocksDBPrimaryIndexRangeIterator<false, false>>(
@@ -882,7 +884,9 @@ std::unique_ptr<IndexIterator> RocksDBPrimaryIndex::iteratorForCondition(
     if (mustCheckBounds) {
       return std::make_unique<RocksDBPrimaryIndexRangeIterator<true, true>>(
           &_collection /*logical collection*/, trx, this,
-          RocksDBKeyBounds::PrimaryIndex(objectId(), ::lowest, ::highest),
+          RocksDBKeyBounds::PrimaryIndex(objectId(),
+                                         KeyGeneratorHelper::lowestKey,
+                                         KeyGeneratorHelper::highestKey),
           readOwnWrites);
     }
     return std::make_unique<RocksDBPrimaryIndexRangeIterator<true, false>>(

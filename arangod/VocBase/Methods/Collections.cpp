@@ -180,30 +180,35 @@ Result validateCreationInfo(CollectionCreationInfo const& info,
     }
   }
 
-  return {TRI_ERROR_NO_ERROR};
+  return {};
 }
 
+// validate collection parameters. if the validation fails, it will audit-log
+// the failure.
 Result validateAllCollectionsInfo(
     TRI_vocbase_t const& vocbase,
     std::vector<CollectionCreationInfo> const& infos, bool allowSystem,
     bool allowEnterpriseCollectionsOnSingleServer,
     bool enforceReplicationFactor) {
+  Result res;
+
   for (auto const& info : infos) {
     // If the PlanId is not set, we either are on a single server, or this is
     // a local collection in a cluster; which means, it is neither a user-facing
     // collection (as seen on a Coordinator), nor a shard (on a DBServer).
 
     // validate the information of the collection to be created
-    Result res = validateCreationInfo(
+    res = validateCreationInfo(
         info, vocbase, allowEnterpriseCollectionsOnSingleServer,
         enforceReplicationFactor, isLocalCollection(info), isSystemName(info),
         allowSystem);
     if (res.fail()) {
       events::CreateCollection(vocbase.name(), info.name, res.errorNumber());
-      return res;
+      break;
     }
   }
-  return {TRI_ERROR_NO_ERROR};
+
+  return res;
 }
 
 // Returns a builder that combines the information from infos and cluster
@@ -573,11 +578,11 @@ void Collections::enumerate(
 /*static*/ arangodb::Result Collections::create(  // create collection
     TRI_vocbase_t& vocbase,                       // collection vocbase
     OperationOptions const& options,
-    std::string const& name,                        // collection name
-    TRI_col_type_e collectionType,                  // collection type
-    arangodb::velocypack::Slice const& properties,  // collection properties
-    bool createWaitsForSyncReplication,             // replication wait flag
-    bool enforceReplicationFactor,                  // replication factor flag
+    std::string const& name,                 // collection name
+    TRI_col_type_e collectionType,           // collection type
+    arangodb::velocypack::Slice properties,  // collection properties
+    bool createWaitsForSyncReplication,      // replication wait flag
+    bool enforceReplicationFactor,           // replication factor flag
     bool isNewDatabase,
     std::shared_ptr<LogicalCollection>& ret,  // invoke on collection creation
     bool allowSystem, bool allowEnterpriseCollectionsOnSingleServer,
@@ -625,13 +630,13 @@ Result Collections::create(
 
   TRI_ASSERT(!vocbase.isDangling());
 
-  {  // validate information from every element of infos
-    Result res = validateAllCollectionsInfo(
-        vocbase, infos, allowSystem, allowEnterpriseCollectionsOnSingleServer,
-        enforceReplicationFactor);
-    if (res.fail()) {
-      return res;
-    }
+  // validate information from every element of infos.
+  // if the validation fails, it will audit-log the failure.
+  Result res = validateAllCollectionsInfo(
+      vocbase, infos, allowSystem, allowEnterpriseCollectionsOnSingleServer,
+      enforceReplicationFactor);
+  if (res.fail()) {
+    return res;
   }
 
   // construct a builder that contains information from all elements of infos
@@ -700,7 +705,7 @@ Result Collections::create(
         // Single server does not yet have a multi collection implementation
         auto col = vocbase.createCollection(slice);
         TRI_ASSERT(col != nullptr);
-        collections.emplace_back(col);
+        collections.emplace_back(std::move(col));
       }
     }
   } catch (basics::Exception const& ex) {
@@ -782,7 +787,7 @@ Result Collections::create(
     events::PropertyUpdateCollection(vocbase.name(), info.name, result);
   }
 
-  return TRI_ERROR_NO_ERROR;
+  return {};
 }
 
 void Collections::createSystemCollectionProperties(
@@ -829,11 +834,7 @@ void Collections::createSystemCollectionProperties(
     std::shared_ptr<LogicalCollection>& createdCollection) {
   Result res = methods::Collections::lookup(vocbase, name, createdCollection);
 
-  if (res.ok()) {
-    // Collection lookup worked and we have a pointer to the collection
-    TRI_ASSERT(createdCollection);
-    return res;
-  } else if (res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
+  if (res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
     VPackBuilder bb;
     createSystemCollectionProperties(name, bb, vocbase);
 
@@ -847,30 +848,10 @@ void Collections::createSystemCollectionProperties(
                             true,        // enforceReplicationFactor
                             isNewDatabase, createdCollection,
                             true /* allow system collection creation */);
-
-    if (res.ok()) {
-      TRI_ASSERT(createdCollection);
-      return res;
-    }
   }
 
-  // Something went wrong, we return res and nullptr
-  TRI_ASSERT(!res.ok());
+  TRI_ASSERT(res.fail() || createdCollection);
   return res;
-}
-
-Result Collections::load(TRI_vocbase_t& /*vocbase*/,
-                         LogicalCollection* /*coll*/) {
-  // load doesn't do anything from ArangoDB 3.9 onwards, and the method
-  // may be deleted in a future version
-  return {};
-}
-
-Result Collections::unload(TRI_vocbase_t* /*vocbase*/,
-                           LogicalCollection* /*coll*/) {
-  // unload doesn't do anything from ArangoDB 3.9 onwards, and the method
-  // may be deleted in a future version
-  return {};
 }
 
 Result Collections::properties(Context& ctxt, VPackBuilder& builder) {
