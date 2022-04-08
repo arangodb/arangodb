@@ -1479,7 +1479,7 @@ arangodb::Result TRI_vocbase_t::validateCollectionParameters(
 
   TRI_col_type_e collectionType =
       VelocyPackHelper::getNumericValue<TRI_col_type_e, int>(
-          parameters, StaticStrings::DataSourceType, TRI_COL_TYPE_UNKNOWN);
+          parameters, StaticStrings::DataSourceType, TRI_COL_TYPE_DOCUMENT);
 
   if (collectionType != TRI_col_type_e::TRI_COL_TYPE_DOCUMENT &&
       collectionType != TRI_col_type_e::TRI_COL_TYPE_EDGE) {

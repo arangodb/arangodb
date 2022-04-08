@@ -3424,7 +3424,7 @@ ErrorCode RestReplicationHandler::createCollection(VPackSlice slice) {
 
   // Initializing creation options
   TRI_col_type_e collectionType = Helper::getNumericValue<TRI_col_type_e, int>(
-      slice, StaticStrings::DataSourceType, TRI_COL_TYPE_UNKNOWN);
+      slice, StaticStrings::DataSourceType, TRI_COL_TYPE_DOCUMENT);
   std::vector<CollectionCreationInfo> infos{{name, collectionType, slice}};
   bool isNewDatabase = false;
   bool allowSystem = true;
