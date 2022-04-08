@@ -3782,7 +3782,9 @@ RequestLane RestReplicationHandler::lane() const {
         return RequestLane::SERVER_REPLICATION_CATCHUP;
       }
     }
-    if (command == RemoveFollower || command == LoggerFollow) {
+    if (command == RemoveFollower || command == LoggerFollow ||
+        command == Batch || command == Inventory || command == Revisions ||
+        command == Dump) {
       return RequestLane::SERVER_REPLICATION_CATCHUP;
     }
   }
