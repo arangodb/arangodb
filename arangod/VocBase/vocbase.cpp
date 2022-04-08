@@ -1320,7 +1320,7 @@ TRI_vocbase_t::createCollections(
 
 #ifndef USE_ENTERPRISE
   if (allowEnterpriseCollectionsOnSingleServer) {
-    THROW_ARANGO_EXCEPTION(
+    THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_NOT_IMPLEMENTED,
         "creating SmartGraph collections is not supported in this version");
   }
