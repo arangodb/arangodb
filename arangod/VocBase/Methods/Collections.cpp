@@ -1257,12 +1257,10 @@ futures::Future<OperationResult> Collections::revisionId(
     auto iterator = trx.indexScan(cname, transaction::Methods::CursorType::ALL,
                                   ReadOwnWrites::no);
 
-    iterator->allDocuments(
-        [&](LocalDocumentId const&, VPackSlice doc) {
-          cb(doc);
-          return true;
-        },
-        1000);
+    iterator->allDocuments([&](LocalDocumentId const&, VPackSlice doc) {
+      cb(doc);
+      return true;
+    });
 
     return trx.finish(res);
   }
@@ -1302,44 +1300,43 @@ arangodb::Result Collections::checksum(LogicalCollection& collection,
       trx.indexScan(collection.name(), transaction::Methods::CursorType::ALL,
                     ReadOwnWrites::no);
 
-  iterator->allDocuments(
-      [&](LocalDocumentId const& /*token*/, VPackSlice slice) {
-        uint64_t localHash =
-            transaction::helpers::extractKeyFromDocument(slice).hashString();
+  iterator->allDocuments([&](LocalDocumentId const& /*token*/,
+                             VPackSlice slice) {
+    uint64_t localHash =
+        transaction::helpers::extractKeyFromDocument(slice).hashString();
 
-        if (withRevisions) {
-          localHash +=
-              transaction::helpers::extractRevSliceFromDocument(slice).hash();
+    if (withRevisions) {
+      localHash +=
+          transaction::helpers::extractRevSliceFromDocument(slice).hash();
+    }
+
+    if (withData) {
+      // with data
+      uint64_t const n = slice.length() ^ 0xf00ba44ba5;
+      uint64_t seed = fasthash64_uint64(n, 0xdeadf054);
+
+      for (auto it : VPackObjectIterator(slice, false)) {
+        // loop over all attributes, but exclude _rev, _id and _key
+        // _id is different for each collection anyway, _rev is covered by
+        // withRevisions, and _key was already handled before
+        VPackValueLength keyLength;
+        char const* key = it.key.getString(keyLength);
+        if (keyLength >= 3 && key[0] == '_' &&
+            ((keyLength == 3 && memcmp(key, "_id", 3) == 0) ||
+             (keyLength == 4 &&
+              (memcmp(key, "_key", 4) == 0 || memcmp(key, "_rev", 4) == 0)))) {
+          // exclude attribute
+          continue;
         }
 
-        if (withData) {
-          // with data
-          uint64_t const n = slice.length() ^ 0xf00ba44ba5;
-          uint64_t seed = fasthash64_uint64(n, 0xdeadf054);
+        localHash ^= it.key.hash(seed) ^ 0xba5befd00d;
+        localHash += it.value.normalizedHash(seed) ^ 0xd4129f526421;
+      }
+    }
 
-          for (auto it : VPackObjectIterator(slice, false)) {
-            // loop over all attributes, but exclude _rev, _id and _key
-            // _id is different for each collection anyway, _rev is covered by
-            // withRevisions, and _key was already handled before
-            VPackValueLength keyLength;
-            char const* key = it.key.getString(keyLength);
-            if (keyLength >= 3 && key[0] == '_' &&
-                ((keyLength == 3 && memcmp(key, "_id", 3) == 0) ||
-                 (keyLength == 4 && (memcmp(key, "_key", 4) == 0 ||
-                                     memcmp(key, "_rev", 4) == 0)))) {
-              // exclude attribute
-              continue;
-            }
-
-            localHash ^= it.key.hash(seed) ^ 0xba5befd00d;
-            localHash += it.value.normalizedHash(seed) ^ 0xd4129f526421;
-          }
-        }
-
-        checksum ^= localHash;
-        return true;
-      },
-      1000);
+    checksum ^= localHash;
+    return true;
+  });
 
   return trx.finish(res);
 }

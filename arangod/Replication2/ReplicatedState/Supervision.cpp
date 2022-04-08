@@ -21,10 +21,10 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Supervision.h"
-
-#include "Replication2/ReplicatedState/SupervisionAction.h"
 #include <memory>
+
+#include "Supervision.h"
+#include "Replication2/ReplicatedState/SupervisionAction.h"
 
 #include "Logger/LogMacros.h"
 
@@ -93,6 +93,87 @@ auto checkParticipantAdded(
   return EmptyAction();
 }
 
+auto checkTargetParticipantRemoved(
+    arangodb::replication2::agency::Log const& log,
+    replication2::replicated_state::agency::State const& state) -> Action {
+  auto const& stateTargetParticipants = state.target.participants;
+
+  if (!state.plan) {
+    return EmptyAction();
+  }
+
+  auto const& logTargetParticipants = log.target.participants;
+
+  for (auto const& [participant, flags] : logTargetParticipants) {
+    if (!stateTargetParticipants.contains(participant)) {
+      return RemoveParticipantFromLogTargetAction{participant};
+    }
+  }
+  return EmptyAction();
+}
+
+auto checkLogParticipantRemoved(
+    arangodb::replication2::agency::Log const& log,
+    replication2::replicated_state::agency::State const& state) -> Action {
+  if (!state.plan) {
+    return EmptyAction();
+  }
+
+  auto const& stateTargetParticipants = state.target.participants;
+  auto const& logTargetParticipants = log.target.participants;
+  auto const& logPlanParticipants = log.plan->participantsConfig.participants;
+  auto participantGone = [&](auto const& participant) {
+    // Check both target and plan, so we don't drop too early (i.e. when the
+    // target is already there, but the log plan hasn't been written yet).
+    // Apart from that, as soon as the plan for the log is gone, we can safely
+    // drop the state.
+    return !stateTargetParticipants.contains(participant) &&
+           !logTargetParticipants.contains(participant) &&
+           !logPlanParticipants.contains(participant);
+  };
+
+  auto const& planParticipants = state.plan->participants;
+  for (auto const& [participant, flags] : planParticipants) {
+    if (participantGone(participant)) {
+      return RemoveParticipantFromStatePlanAction{participant};
+    }
+  }
+  return EmptyAction();
+}
+
+auto isEmptyAction(Action const& action) {
+  return std::holds_alternative<EmptyAction>(action);
+}
+
+auto checkSnapshotCompleteServer(
+    ParticipantId const& participant,
+    arangodb::replication2::agency::Log const& log,
+    replication2::replicated_state::agency::State const& state) -> Action {
+  auto const& plannedGeneration =
+      state.plan->participants.at(participant).generation;
+
+  if (auto const& status = state.current->participants.find(participant);
+      status != std::end(state.current->participants)) {
+    auto const& participantStatus = status->second;
+
+    if (participantStatus.snapshot.status == SnapshotStatus::kCompleted and
+        participantStatus.generation == plannedGeneration) {
+      auto flags = log.target.participants.at(participant);
+      if (!flags.allowedAsLeader || !flags.allowedInQuorum) {
+        auto newFlags = flags;
+        newFlags.allowedInQuorum = true;
+        newFlags.allowedAsLeader = true;
+        return UpdateParticipantFlagsAction{participant, newFlags};
+      } else {
+        // we can continue with other servers
+        return EmptyAction();
+      }
+    }
+  }
+
+  return WaitForAction{"Waiting for snapshot: " + participant};
+}
+
 /* Check whether there is a participant that is excluded but reported snapshot
  * complete */
 auto checkSnapshotComplete(
@@ -100,25 +181,10 @@ auto checkSnapshotComplete(
     replication2::replicated_state::agency::State const& state) -> Action {
   if (state.current and log.plan) {
     // TODO generation?
-    for (auto const& [participant, flags] :
-         log.plan->participantsConfig.participants) {
-      if (!flags.allowedAsLeader || !flags.allowedInQuorum) {
-        auto const& plannedGeneration =
-            state.plan->participants.at(participant).generation;
-
-        if (auto const& status = state.current->participants.find(participant);
-            status != std::end(state.current->participants)) {
-          auto const& participantStatus = status->second;
-
-          if (participantStatus.snapshot.status ==
-                  SnapshotStatus::kCompleted and
-              participantStatus.generation == plannedGeneration) {
-            auto newFlags = flags;
-            newFlags.allowedInQuorum = true;
-            newFlags.allowedAsLeader = true;
-            return UpdateParticipantFlagsAction{participant, newFlags};
-          }
-        }
+    for (auto const& [participant, flags] : log.target.participants) {
+      if (auto action = checkSnapshotCompleteServer(participant, log, state);
+          !isEmptyAction(action)) {
+        return action;
       }
     }
   }
@@ -176,10 +242,6 @@ auto checkConverged(arangodb::replication2::agency::Log const& log,
   return CurrentConvergedAction{*state.target.version};
 }
 
-auto isEmptyAction(Action const& action) {
-  return std::holds_alternative<EmptyAction>(action);
-}
-
 auto checkReplicatedState(
     std::optional<arangodb::replication2::agency::Log> const& log,
     replication2::replicated_state::agency::State const& state) -> Action {
@@ -206,6 +268,16 @@ auto checkReplicatedState(
   }
 
   if (auto action = checkSnapshotComplete(*log, state);
+      !isEmptyAction(action)) {
+    return action;
+  }
+
+  if (auto action = checkTargetParticipantRemoved(*log, state);
+      !isEmptyAction(action)) {
+    return action;
+  }
+
+  if (auto action = checkLogParticipantRemoved(*log, state);
       !isEmptyAction(action)) {
     return action;
   }
