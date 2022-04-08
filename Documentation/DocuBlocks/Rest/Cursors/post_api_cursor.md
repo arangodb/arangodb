@@ -263,16 +263,16 @@ the top level.
 The maximum memory usage of the query while it was running. In a cluster,
 the memory accounting is done per shard, and the memory usage reported is the peak
 memory usage value from the individual shards.
-Note that to keep things light-weight, the per-query memory usage is tracked on a relatively 
+Note that to keep things lightweight, the per-query memory usage is tracked on a relatively 
 high level, not including any memory allocator overhead nor any memory used for temporary
 results calculations (e.g. memory allocated/deallocated inside AQL expressions and function 
 calls).
 
 @RESTSTRUCT{nodes,post_api_cursor_extra_stats,number,optional,}
-When the query was executed with the option `profile` set to at least `2`,
+When the query was executed with the `profile` option set to at least `2`,
 then this value contains runtime statistics per query execution node. This field contains the
-node id (in `id`), the number of calls to this node `calls` and the number of items returned
-by this node `items` (Items are the temporary results returned at this stage). You can correlate
+node id (in `id`), the number of calls to this node (`calls`), and the number of items returned
+by this node (`items`). Items are the temporary results returned at this stage. You can correlate
 this statistics with the `plan` returned in `extra`. For a human readable output you can execute
 `db._profileQuery(<query>, <bind-vars>)` in arangosh.
 
