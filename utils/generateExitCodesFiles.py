@@ -117,20 +117,16 @@ def genCHeaderFile(errors):
            + "#include \"Basics/error.h\"\n"\
            + "\n"\
            + "/* clang-format off */\n"\
-           + wiki\
-           + "\n"
+           + wiki
 
   # print individual errors
   for e in errors:
     header = header\
+           + "\n"\
            + "/// " + e[1] + ": " + e[0] + "\n"\
            + wrap(e[2], 80, 0, 0, "/// ") + "\n"\
            + wrap(e[3], 80, 0, 0, "/// ") + "\n"\
-           + "constexpr int TRI_" + e[0].ljust(61) + " = " + e[1] + ";\n"\
-           + "\n"
-
-  header = header\
-         + "\n"
+           + "constexpr int TRI_" + e[0].ljust(61) + " = " + e[1] + ";\n"
 
   return header
 
