@@ -77,42 +77,50 @@ void SslServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addSection("ssl", "SSL communication");
 
-  options->addOption("--ssl.cafile", "ca file used for secure connections",
-                     new ContextParameter<StringParameter>(&_cafiles));
+  std::unordered_set<uint64_t> const sslProtocols = availableSslProtocols();
+  SslConfig defaultConfig{};
 
-  options->addOption("--ssl.keyfile", "key-file used for secure connections",
-                     new ContextParameter<StringParameter>(&_keyfiles));
+  options->addOption(
+      "--ssl.cafile", "ca file used for secure connections",
+      new ContextParameter<StringParameter>(&_cafiles, defaultConfig.cafile));
+
+  options->addOption(
+      "--ssl.keyfile", "key-file used for secure connections",
+      new ContextParameter<StringParameter>(&_keyfiles, defaultConfig.keyfile));
 
   options->addOption("--ssl.session-cache",
                      "enable the session cache for connections",
-                     new ContextParameter<BooleanParameter>(&_sessionCaches));
+                     new ContextParameter<BooleanParameter>(
+                         &_sessionCaches, defaultConfig.sessionCache));
 
   options->addOption("--ssl.cipher-list",
                      "ssl ciphers to use, see OpenSSL documentation",
-                     new ContextParameter<StringParameter>(&_cipherLists));
-
-  std::unordered_set<uint64_t> const sslProtocols = availableSslProtocols();
+                     new ContextParameter<StringParameter>(
+                         &_cipherLists, defaultConfig.cipherList));
 
   options->addOption(
       "--ssl.protocol", availableSslProtocolsDescription(),
       new ContextParameter<DiscreteValuesParameter<UInt64Parameter>>(
-          &_sslProtocols, sslProtocols));
+          &_sslProtocols, sslProtocols, defaultConfig.sslProtocol));
 
   options->addOption(
       "--ssl.options", "ssl connection options, see OpenSSL documentation",
-      new ContextParameter<UInt64Parameter>(&_sslOptionss),
+      new ContextParameter<UInt64Parameter>(&_sslOptionss,
+                                            defaultConfig.sslOptions),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options->addOption(
       "--ssl.ecdh-curve",
       "SSL ECDH Curve, see the output of \"openssl ecparam -list_curves\"",
-      new ContextParameter<StringParameter>(&_ecdhCurves));
+      new ContextParameter<StringParameter>(&_ecdhCurves,
+                                            defaultConfig.ecdhCurve));
 
   options->addOption(
       "--ssl.prefer-http1-in-alpn",
       "Allows to let the server prefer HTTP/1.1 over HTTP/2 in "
       "ALPN protocol negotiations",
-      new ContextParameter<BooleanParameter>(&_preferHttp11InAlpns));
+      new ContextParameter<BooleanParameter>(&_preferHttp11InAlpns,
+                                             defaultConfig.preferHttp11InAlpn));
 }
 
 void SslServerFeature::validateOptionsSslConfig(SslConfig& config) {

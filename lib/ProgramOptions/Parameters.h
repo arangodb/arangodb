@@ -667,28 +667,28 @@ void parseContext(std::string const& rawValue, std::string& context,
 // as "=alphanum*=".
 template<typename T>
 struct ContextParameter : public Parameter {
-  template<class, class = void>
+  template<typename, typename = void>
   struct hasDiscreteType : std::false_type {
     typedef bool discret;
   };
 
-  template<class W>
+  template<typename W>
   struct hasDiscreteType<W, std::void_t<typename W::DiscreteType>>
       : std::true_type {
     typedef typename W::DiscreteType discret;
   };
 
-  explicit ContextParameter(
-      std::unordered_map<std::string, typename T::ValueType>* map)
-      : map(map), allowed(true) {}
-
-  template<typename A = hasDiscreteType<T>::discret>
   ContextParameter(std::unordered_map<std::string, typename T::ValueType>* map,
-                   A const& allowed)
-      : map(map), allowed(allowed) {}
+                   typename T::ValueType proto)
+      : map{map}, allowed{true}, proto{proto} {}
+
+  ContextParameter(std::unordered_map<std::string, typename T::ValueType>* map,
+                   hasDiscreteType<T>::discret const& allowed,
+                   typename T::ValueType proto)
+      : map{map}, allowed{allowed}, proto{proto} {}
 
   std::string name() const override {
-    typename T::ValueType dummy;
+    typename T::ValueType dummy = proto;
     T param(&dummy, allowed);
     return "context=" + std::string(param.name());
   }
@@ -712,21 +712,16 @@ struct ContextParameter : public Parameter {
     return value;
   }
 
-  std::string valueString() const override {
-    std::string value;
-    std::string sep;
-    for (auto context : *map) {
-      value.append(sep);
-      value.append(context.first + "=" + stringValue(context.second));
-      sep = "; ";
-    }
-    return value;
-  }
+  std::string valueString() const override { return stringValue(proto); }
 
   std::string set(std::string const& rawValue) override {
     std::string context;
     std::string value;
     parseContext(rawValue, context, value);
+
+    if (map->find(context) == map->end()) {
+      map->emplace(context, proto);
+    }
 
     typename T::ValueType* ptr = &((*map)[context]);
     T param(ptr, allowed);
@@ -737,23 +732,34 @@ struct ContextParameter : public Parameter {
   void flushValue() override { map->clear(); }
 
   void toVPack(VPackBuilder& builder) const override {
-    builder.openArray();
-    for (auto context : *map) {
-      builder.openObject();
-      builder.add("context", VPackValue(context.first));
-      builder.add(VPackValue("value"));
+    auto const& itr = map->find("");
 
-      typename T::ValueType* ptr = &(context.second);
+    if (map->size() == 1 && itr != map->end()) {
+      typename T::ValueType* ptr = &(itr->second);
       T param(ptr, allowed);
       param.toVPack(builder);
+    } else if (map->size() == 0) {
+      typename T::ValueType ptr = proto;
+      T param(&ptr, allowed);
+      param.toVPack(builder);
+    } else {
+      builder.openObject();
+
+      for (auto context : *map) {
+        builder.add(VPackValue(context.first));
+
+        typename T::ValueType* ptr = &(context.second);
+        T param(ptr, allowed);
+        param.toVPack(builder);
+      }
 
       builder.close();
     }
-    builder.close();
   }
 
   std::unordered_map<std::string, typename T::ValueType>* map;
   hasDiscreteType<T>::discret allowed;
+  typename T::ValueType proto;
 };
 }  // namespace options
 }  // namespace arangodb
