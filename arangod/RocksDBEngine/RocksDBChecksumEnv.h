@@ -28,13 +28,15 @@
 
 #include "Basics/Mutex.h"
 
+#include "Logger/LogMacros.h"
+
 namespace arangodb::checksum {
 
 class ChecksumCalculator {
  public:
   ChecksumCalculator();
   void computeFinalChecksum();
-  void updateIncrementalChecksum(char const* buffer);
+  void updateIncrementalChecksum(char const* buffer, size_t n);
   void updateEVPWithContent(char const* buffer, size_t n);
   [[nodiscard]] std::string getChecksum() { return _checksum; }
   ~ChecksumCalculator();
@@ -49,10 +51,9 @@ class ChecksumHelper {
   explicit ChecksumHelper(std::string const& rootPath) : _rootPath{rootPath} {}
   [[nodiscard]] static bool isFileNameSst(std::string const& fileName);
   bool writeShaFile(std::string const& fileName, std::string const& checksum);
-  void buildShaFileNameFromSst(std::string const& fileName,
-                               std::string const& checksum,
-                               std::string& shaFileName);
-  void removeFromTable(std::string const& fileName, std::string& checksum);
+  [[nodiscard]] std::string buildShaFileNameFromSst(
+      std::string const& fileName, std::string const& checksum);
+  [[nodiscard]] std::string removeFromTable(std::string const& fileName);
   void checkMissingShaFiles();
 
  private:
@@ -63,16 +64,18 @@ class ChecksumHelper {
 
 class ChecksumWritableFile : public rocksdb::WritableFileWrapper {
  public:
-  explicit ChecksumWritableFile(rocksdb::WritableFile* t,
-                                std::string const& fileName,
-                                std::shared_ptr<ChecksumHelper> helper)
-      : rocksdb::WritableFileWrapper(t),
+  explicit ChecksumWritableFile(
+      std::unique_ptr<rocksdb::WritableFile> writableFile,
+      std::string const& fileName, std::shared_ptr<ChecksumHelper> helper)
+      : rocksdb::WritableFileWrapper(writableFile.get()),
+        _writableFile(std::move(writableFile)),
         _fileName(fileName),
         _helper(std::move(helper)) {}
   rocksdb::Status Append(const rocksdb::Slice& data) override;
   rocksdb::Status Close() override;
 
  private:
+  std::unique_ptr<rocksdb::WritableFile> _writableFile;
   std::string const _fileName;
   std::shared_ptr<ChecksumHelper> _helper;
   ChecksumCalculator _checksumCalc;

@@ -807,13 +807,17 @@ void RocksDBEngine::start() {
 
   if (_createShaFiles) {
     ::checksumEnv.reset(::NewChecksumEnv(Env::Default(), _path));
-    _options.env = checksumEnv.get();
+    _options.env = ::checksumEnv.get();
+    static_cast<checksum::ChecksumEnv*>(::checksumEnv.get())
+        ->getHelper()
+        ->checkMissingShaFiles();
   } else {
     _options.env = Env::Default();
   }
 
 #ifdef USE_ENTERPRISE
   configureEnterpriseRocksDBOptions(_options, createdEngineDir);
+
 #endif
 
   _options.env->SetBackgroundThreads(static_cast<int>(opts._numThreadsHigh),
@@ -887,12 +891,6 @@ void RocksDBEngine::start() {
     _options.avoid_flush_during_recovery = true;
   } else {
     _options.max_open_files = -1;
-  }
-
-  if (_createShaFiles) {
-    dynamic_cast<checksum::ChecksumEnv*>(_options.env)
-        ->getHelper()
-        ->checkMissingShaFiles();
   }
 
   // WAL_ttl_seconds needs to be bigger than the sync interval of the count

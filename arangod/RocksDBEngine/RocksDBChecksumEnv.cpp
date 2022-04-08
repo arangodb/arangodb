@@ -53,17 +53,10 @@ void ChecksumCalculator::computeFinalChecksum() {
       reinterpret_cast<char const*>(&hash[0]), lengthOfHash);
 }
 
-void ChecksumCalculator::updateIncrementalChecksum(char const* buffer) {
+void ChecksumCalculator::updateIncrementalChecksum(char const* buffer,
+                                                   size_t n) {
   TRI_ASSERT(_context != nullptr);
-  updateEVPWithContent(
-      buffer, sizeof(buffer));  // based on the current call to Append()
-  unsigned char hash[EVP_MAX_MD_SIZE];
-  unsigned int lengthOfHash = 0;
-  if (EVP_DigestFinal_ex(_context, hash, &lengthOfHash) == 0) {
-    TRI_ASSERT(false);
-  }
-  _checksum = basics::StringUtils::encodeHex(
-      reinterpret_cast<char const*>(&hash[0]), lengthOfHash);
+  updateEVPWithContent(buffer, n);  // based on the current call to Append()
 }
 
 ChecksumCalculator::~ChecksumCalculator() {
@@ -90,8 +83,8 @@ bool ChecksumHelper::writeShaFile(std::string const& fileName,
                                   std::string const& checksum) {
   TRI_ASSERT(isFileNameSst(fileName));
 
-  std::string shaFileName;
-  buildShaFileNameFromSst(fileName, checksum, shaFileName);
+  std::string shaFileName = buildShaFileNameFromSst(fileName, checksum);
+
   LOG_TOPIC("80257", DEBUG, arangodb::Logger::ENGINES)
       << "shaCalcFile: done " << fileName << " result: " << shaFileName;
   auto res = TRI_WriteFile(shaFileName.c_str(), "", 0);
@@ -111,6 +104,7 @@ bool ChecksumHelper::writeShaFile(std::string const& fileName,
 
 void ChecksumHelper::checkMissingShaFiles() {
   if (!_rootPath.empty()) {
+    LOG_DEVEL << "checkMissingShaFiles";
     std::vector<std::string> fileList = TRI_FilesDirectory(_rootPath.c_str());
     std::sort(fileList.begin(), fileList.end());
     std::string sstFileName;
@@ -171,6 +165,45 @@ void ChecksumHelper::checkMissingShaFiles() {
   }
 }
 
+std::string ChecksumHelper::removeFromTable(std::string const& fileName) {
+  std::string checksum;
+  {
+    MUTEX_LOCKER(mutexLock, _calculatedHashesMutex);
+    if (auto it = _fileNamesToHashes.find(TRI_Basename(fileName));
+        it != _fileNamesToHashes.end()) {
+      checksum = it->second;
+      _fileNamesToHashes.erase(it);
+    }
+  }
+  return checksum;
+}
+
+std::string ChecksumHelper::buildShaFileNameFromSst(
+    std::string const& fileName, std::string const& checksum) {
+  if (!fileName.empty() && !checksum.empty()) {
+    TRI_ASSERT(fileName.size() > 4);
+    std::string shaFileName = fileName.substr(0, fileName.size() - 4);
+    TRI_ASSERT(!isFileNameSst(shaFileName));
+    shaFileName += ".sha." + checksum + ".hash";
+    return shaFileName;
+  }
+  return {};
+}
+
+rocksdb::Status ChecksumWritableFile::Append(const rocksdb::Slice& data) {
+  _checksumCalc.updateIncrementalChecksum(data.data(), data.size());
+  return rocksdb::WritableFileWrapper::Append(data);
+}
+
+rocksdb::Status ChecksumWritableFile::Close() {
+  TRI_ASSERT(_helper != nullptr);
+  _checksumCalc.computeFinalChecksum();
+  if (!_helper->writeShaFile(_fileName, _checksumCalc.getChecksum())) {
+    return rocksdb::Status::Corruption("File writing was unsuccessful");
+  }
+  return rocksdb::WritableFileWrapper::Close();
+}
+
 rocksdb::Status ChecksumEnv::NewWritableFile(
     const std::string& fileName, std::unique_ptr<rocksdb::WritableFile>* result,
     const rocksdb::EnvOptions& options) {
@@ -181,45 +214,29 @@ rocksdb::Status ChecksumEnv::NewWritableFile(
     return s;
   }
   try {
-    result->reset(
-        new ChecksumWritableFile(writableFile.release(), fileName, _helper));
+    if (_helper->isFileNameSst(fileName)) {
+      result->reset(
+          new ChecksumWritableFile(std::move(writableFile), fileName, _helper));
+    } else {
+      *result = std::move(writableFile);
+    }
   } catch (std::exception& e) {
     LOG_TOPIC("8b19e", ERR, arangodb::Logger::ENGINES)
-        << "ChecksumWritableFile: exception caught when allocating "
-        << e.what();
+        << "WritableFile: exception caught when allocating " << e.what();
+    return rocksdb::Status::MemoryLimit(
+        "WritableFile: exception caught when allocating");
   }
-
   return s;
-}
-
-rocksdb::Status ChecksumWritableFile::Append(const rocksdb::Slice& data) {
-  if (_helper->isFileNameSst(_fileName)) {
-    _checksumCalc.updateIncrementalChecksum(data.ToString().data());
-  }
-  return rocksdb::WritableFileWrapper::Append(data);
-}
-
-rocksdb::Status ChecksumWritableFile::Close() {
-  if (_helper->isFileNameSst(_fileName)) {
-    TRI_ASSERT(_helper != nullptr);
-    if (!_helper->writeShaFile(_fileName, _checksumCalc.getChecksum())) {
-      return rocksdb::Status::Aborted("File writing was unsuccessful");
-    }
-    // _checksumCalc.~ChecksumCalculator();
-    _checksumCalc = {};  // reset the checksum
-                         // calculator context
-  }
-  return rocksdb::WritableFileWrapper::Close();
 }
 
 rocksdb::Status ChecksumEnv::DeleteFile(const std::string& fileName) {
   if (_helper->isFileNameSst(fileName) ||
       fileName.find(".sha") != std::string::npos) {
-    std::string checksum;
-    _helper->removeFromTable(fileName, checksum);
-    std::string shaFileName;
-    _helper->buildShaFileNameFromSst(fileName, checksum, shaFileName);
+    std::string checksum = _helper->removeFromTable(fileName);
+    std::string shaFileName =
+        _helper->buildShaFileNameFromSst(fileName, checksum);
     if (!shaFileName.empty()) {
+      //  if (TRI_UnlinkFile(shaFileName.data()) == TRI_ERROR_NO_ERROR) {
       if (rocksdb::EnvWrapper::DeleteFile(shaFileName) ==
           rocksdb::Status::OK()) {
         LOG_TOPIC("e0a0d", DEBUG, arangodb::Logger::ENGINES)
@@ -240,30 +257,6 @@ rocksdb::Status ChecksumEnv::DeleteFile(const std::string& fileName) {
   }
   return res;  // will return response from removing .sst or other file, not
                // the .sha
-}
-
-void ChecksumHelper::buildShaFileNameFromSst(std::string const& fileName,
-                                             std::string const& checksum,
-                                             std::string& shaFileName) {
-  if (!fileName.empty() && !checksum.empty()) {
-    TRI_ASSERT(fileName.size() > 4);
-    shaFileName = fileName.substr(0, fileName.size() - 4);
-    TRI_ASSERT(!isFileNameSst(shaFileName));
-    shaFileName += ".sha." + checksum + ".hash";
-  }
-}
-
-void ChecksumHelper::removeFromTable(std::string const& fileName,
-                                     std::string& checksum) {
-  std::string shaFileName;
-  {
-    MUTEX_LOCKER(mutexLock, _calculatedHashesMutex);
-    if (auto it = _fileNamesToHashes.find(TRI_Basename(fileName));
-        it != _fileNamesToHashes.end()) {
-      checksum = it->second;
-      _fileNamesToHashes.erase(it);
-    }
-  }
 }
 
 }  // namespace arangodb::checksum
