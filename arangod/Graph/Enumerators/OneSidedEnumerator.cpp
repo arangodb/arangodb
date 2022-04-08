@@ -145,7 +145,7 @@ auto OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex()
   }
 
   if (step.getDepth() < _options.getMaxDepth() && !res.isPruned()) {
-    if (!step.edgesFetched()) {
+    if (!step.edgeFetched()) {
       // NOTE: The step we have should be the first, s.t. we are guaranteed
       // to work on it, as the ordering here gives the priority to the Provider
       // in how important it is to get responses for a particular step.
@@ -153,7 +153,7 @@ auto OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex()
       _queue.getStepsWithoutFetchedEdges(stepsToFetch);
       TRI_ASSERT(!stepsToFetch.empty());
       _provider.fetchEdges(stepsToFetch);
-      TRI_ASSERT(step.edgesFetched());
+      TRI_ASSERT(step.edgeFetched());
     }
     _provider.expand(step, posPrevious,
                      [&](Step n) -> void { _queue.append(n); });

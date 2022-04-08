@@ -191,7 +191,7 @@ class MockGraphProvider {
     }
 
     static bool vertexFetched() { return true; }
-    static bool edgesFetched() { return true; }
+    static bool edgeFetched() { return true; }
 
     bool isResponsible(transaction::Methods* trx) const { return true; }
 

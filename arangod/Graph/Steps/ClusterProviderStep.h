@@ -113,7 +113,7 @@ class ClusterProviderStep
            _fetchedStatus == FetchedType::VERTEX_AND_EDGES_FETCHED;
   }
 
-  bool edgesFetched() const {
+  bool edgeFetched() const {
     return _fetchedStatus == FetchedType::EDGES_FETCHED or
            _fetchedStatus == FetchedType::VERTEX_AND_EDGES_FETCHED;
   }
@@ -145,11 +145,8 @@ class ClusterProviderStep
       -> std::ostream&;
 
  private:
-  void setAllFetched() {
-    _fetchedStatus = FetchedType::VERTEX_AND_EDGES_FETCHED;
-  }
   void setVertexFetched() {
-    if (edgesFetched()) {
+    if (edgeFetched()) {
       _fetchedStatus = FetchedType::VERTEX_AND_EDGES_FETCHED;
     } else {
       _fetchedStatus = FetchedType::VERTEX_FETCHED;

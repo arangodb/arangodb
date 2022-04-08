@@ -116,7 +116,7 @@ class LifoQueue {
 
   void getStepsWithoutFetchedEdges(std::vector<Step*>& steps) {
     for (auto& step : _queue) {
-      if (!step.edgesFetched()) {
+      if (!step.edgeFetched()) {
         steps.emplace_back(&step);
       }
     }

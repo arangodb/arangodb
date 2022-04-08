@@ -118,7 +118,7 @@ class WeightedQueue {
     _queue.pop_back();
     return first;
   }
-  
+
   std::vector<Step*> getStepsWithoutFetchedVertex() {
     std::vector<Step*> steps;
     for (auto& step : _queue) {
@@ -131,7 +131,7 @@ class WeightedQueue {
 
   void getStepsWithoutFetchedEdges(std::vector<Step*>& steps) {
     for (auto& step : _queue) {
-      if (!step.edgesFetched()) {
+      if (!step.edgeFetched()) {
         steps.emplace_back(&step);
       }
     }

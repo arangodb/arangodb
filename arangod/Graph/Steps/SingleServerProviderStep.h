@@ -120,10 +120,8 @@ class SingleServerProviderStep
 
   static bool vertexFetched() { return true; }
 
-  static bool edgesFetched() { return true; }
-
-  std::string fetchedTypeAsString() const { return ""; }
-
+  static bool edgeFetched() { return true; }
+  
  private:
   Vertex _vertex;
   Edge _edge;
