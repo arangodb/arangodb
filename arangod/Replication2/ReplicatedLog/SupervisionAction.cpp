@@ -70,15 +70,17 @@ auto execute(Action const& action, DatabaseID const& dbName, LogId const& log,
     return envelope;
   }
 
-  return envelope.write()
+  return envelope
+      .write()
+      // this is here to trigger all waitForPlan, even if we only
+      // update current.
+      .inc(paths::plan()->version()->str())
       .cond(ctx.hasPlanModification(),
             [&](arangodb::agency::envelope::write_trx&& trx) {
-              return std::move(trx)
-                  .emplace_object(planPath,
-                                  [&](VPackBuilder& builder) {
-                                    ctx.getPlan().toVelocyPack(builder);
-                                  })
-                  .inc(paths::plan()->version()->str());
+              return std::move(trx).emplace_object(
+                  planPath, [&](VPackBuilder& builder) {
+                    ctx.getPlan().toVelocyPack(builder);
+                  });
             })
       .cond(ctx.hasCurrentModification(),
             [&](arangodb::agency::envelope::write_trx&& trx) {

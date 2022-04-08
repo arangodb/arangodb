@@ -310,4 +310,24 @@ struct Access<std::monostate> : AccessBase<std::monostate> {
   }
 };
 
+template<class T, class StorageT>
+struct StorageTransformerAccess {
+  static_assert(std::is_same_v<T, typename StorageT::MemoryType>);
+
+  template<class Inspector>
+  static auto apply(Inspector& f, T& x) {
+    if constexpr (Inspector::isLoading) {
+      auto v = StorageT{};
+      auto res = f.apply(v);
+      if (res.ok()) {
+        x = T(v);
+      }
+      return res;
+    } else {
+      auto v = StorageT(x);
+      return f.apply(v);
+    }
+  }
+};
+
 }  // namespace arangodb::inspection

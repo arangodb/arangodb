@@ -152,6 +152,7 @@ let optionsDocumentation = [
   '   - `crashAnalysisText`: output of debugger in case of crash',
   '   - `getSockStat`: on linux collect socket stats before shutdown',
   '   - `verbose`: if set to true, be more verbose',
+  '   - `noStartStopLogs`: if set to true, suppress startup and shutdown messages printed by process manager. Overridden by `extremeVerbosity`',
   '   - `extremeVerbosity`: if set to true, then there will be more test run',
   '     output, especially for cluster tests.',
   '   - `testCase`: filter a jsunity testsuite for one special test case',
@@ -229,6 +230,7 @@ const optionsDefaults = {
   'valgrindArgs': {},
   'valgrindHosts': false,
   'verbose': false,
+  'noStartStopLogs': internal.isATTy(),
   'vst': false,
   'http2': false,
   'walFlushTimeout': 30000,
@@ -588,6 +590,9 @@ function unitTest (cases, options) {
   loadTestSuites(options);
   // testsuites may register more defaults...
   _.defaults(options, optionsDefaults);
+
+  options.noStartStopLogs = !options.extremeVerbosity && options.noStartStopLogs;
+
   if (options.failed ||
       (Array.isArray(options.commandSwitches) && options.commandSwitches.includes("failed"))) {
     options.failed = rp.getFailedTestCases(options);

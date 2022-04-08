@@ -87,10 +87,11 @@ function shellApiClient (options) {
   // we want this to ensure that in an overload situation we do not
   // get random failedLeader / failedFollower jobs during our tests.
   let moreOptions = { "agency.supervision-ok-threshold" : "15", "agency.supervision-grace-period" : "30" };
-  let rc = tu.performTests(opts, testCases, 'shell_api', tu.runInLocalArangosh, moreOptions);
+  let rc = new tu.runLocalInArangoshRunner(opts, 'shell_api', moreOptions).run(testCases);
   options.cleanup = options.cleanup && opts.cleanup;
   return rc;
 }
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief TEST: shell_client
 // //////////////////////////////////////////////////////////////////////////////
@@ -108,7 +109,7 @@ function shellClient (options) {
   // we want this to ensure that in an overload situation we do not
   // get random failedLeader / failedFollower jobs during our tests.
   let moreOptions = { "agency.supervision-ok-threshold" : "15", "agency.supervision-grace-period" : "30" };
-  let rc = tu.performTests(opts, testCases, 'shell_client', tu.runInLocalArangosh, moreOptions);
+  let rc = new tu.runLocalInArangoshRunner(opts, 'shell_client', moreOptions).run(testCases);
   options.cleanup = options.cleanup && opts.cleanup;
   return rc;
 }
@@ -125,7 +126,7 @@ function shellServer (options) {
   testCases = tu.splitBuckets(options, testCases);
 
   let opts = ensureServers(options, 3);
-  let rc = tu.performTests(opts, testCases, 'shell_server', tu.runThere);
+  let rc = new tu.runOnArangodRunner(opts, 'shell_server', {}).run(testCases);
   options.cleanup = options.cleanup && opts.cleanup;
   return rc;
 }
@@ -140,7 +141,7 @@ function shellServerOnly (options) {
   testCases = tu.splitBuckets(options, testCases);
 
   let opts = ensureServers(options, 3);
-  let rc = tu.performTests(opts, testCases, 'shell_server_only', tu.runThere);
+  let rc = new tu.runOnArangodRunner(opts, 'shell_server_only', {}).run(testCases);
   options.cleanup = options.cleanup && opts.cleanup;
   return rc;
 }
@@ -164,7 +165,7 @@ function shellServerAql (options) {
     testCases = tu.splitBuckets(options, testCases);
 
     let opts = ensureServers(options, 3);
-    let rc = tu.performTests(opts, testCases, name, tu.runThere);
+    let rc = new tu.runOnArangodRunner(opts, name, {}).run(testCases);
     options.cleanup = options.cleanup && opts.cleanup;
     return rc;
   }
@@ -196,7 +197,7 @@ function shellClientAql (options) {
     testCases = tu.splitBuckets(options, testCases);
 
     let opts = ensureServers(options, 3);
-    let rc = tu.performTests(opts, testCases, name, tu.runInLocalArangosh);
+    let rc = new tu.runLocalInArangoshRunner(opts, name, {}).run(testCases);
     options.cleanup = options.cleanup && opts.cleanup;
     return rc;
   }
