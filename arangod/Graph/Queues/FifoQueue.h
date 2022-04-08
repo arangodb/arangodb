@@ -105,14 +105,12 @@ class FifoQueue {
     return steps;
   }
 
-  std::vector<Step*> getStepsWithoutFetchedEdges() {
-    std::vector<Step*> steps;
+  void getStepsWithoutFetchedEdges(std::vector<Step*>& steps) {
     for (auto& step : _queue) {
-      if (not step.edgesFetched()) {
+      if (!step.edgesFetched()) {
         steps.emplace_back(&step);
       }
     }
-    return steps;
   }
 
   Step pop() {

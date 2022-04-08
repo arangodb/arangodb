@@ -50,9 +50,17 @@ class QueueTracer {
   std::vector<Step*> getLooseEnds();
 
   Step pop();
-  std::string getName() const;
+
+  // Return all Steps where the Provider needs to call fetchVertices()
+  // for in order to be able to process them
   std::vector<Step*> getStepsWithoutFetchedVertex();
-  std::vector<Step*> getStepsWithoutFetchedEdges();
+
+  // Return all Steps where the Provider needs to call fetchEdges()
+  // for in order to be able to process them.
+  // Note here, we hand in the vector of Steps, as in the place
+  // we are using this method we have already popped the first
+  // Step from the queue, but it cannot be processed.
+  void getStepsWithoutFetchedEdges(std::vector<Step*>& stepsToFetch);
 
  private:
   QueueImpl _impl;

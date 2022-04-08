@@ -82,9 +82,13 @@ bool QueueTracer<QueueImpl>::firstIsVertexFetched() const {
 }
 
 template<class QueueImpl>
-std::vector<typename QueueImpl::Step*>
-QueueTracer<QueueImpl>::getStepsWithoutFetchedEdges() {
-  return {};
+void QueueTracer<QueueImpl>::getStepsWithoutFetchedEdges(
+    std::vector<Step*>& stepsToFetch) {
+  double start = TRI_microtime();
+  auto sg = arangodb::scopeGuard([&]() noexcept {
+    _stats["getStepsWithoutFetchedEdges"].addTiming(TRI_microtime() - start);
+  });
+  _impl.getStepsWithoutFetchedEdges(stepsToFetch);
 }
 
 template<class QueueImpl>

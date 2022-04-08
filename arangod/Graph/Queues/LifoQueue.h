@@ -105,23 +105,21 @@ class LifoQueue {
   }
 
   std::vector<Step*> getStepsWithoutFetchedVertex() {
-    std::vector<Step*> steps;
+    std::vector<Step*> steps{};
     for (auto& step : _queue) {
-      if (not step.vertexFetched()) {
+      if (!step.vertexFetched()) {
         steps.emplace_back(&step);
       }
     }
     return steps;
   }
 
-  std::vector<Step*> getStepsWithoutFetchedEdges() {
-    std::vector<Step*> steps;
+  void getStepsWithoutFetchedEdges(std::vector<Step*>& steps) {
     for (auto& step : _queue) {
-      if (not step.edgesFetched()) {
+      if (!step.edgesFetched()) {
         steps.emplace_back(&step);
       }
     }
-    return steps;
   }
 
  private:

@@ -145,12 +145,16 @@ auto OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex()
   }
 
   if (step.getDepth() < _options.getMaxDepth() && !res.isPruned()) {
-    std::vector<Step*> preparedEdgesSteps =
-        _queue.getStepsWithoutFetchedEdges();
-    if (not step.edgesFetched()) {
-      preparedEdgesSteps.emplace_back(&step);
+    if (!step.edgesFetched()) {
+      // NOTE: The step we have should be the first, s.t. we are guaranteed
+      // to work on it, as the ordering here gives the priority to the Provider
+      // in how important it is to get responses for a particular step.
+      std::vector<Step*> stepsToFetch{&step};
+      _queue.getStepsWithoutFetchedEdges(stepsToFetch);
+      TRI_ASSERT(!stepsToFetch.empty());
+      _provider.fetchEdges(stepsToFetch);
+      TRI_ASSERT(step.edgesFetched());
     }
-    _provider.fetchEdges(preparedEdgesSteps);
     _provider.expand(step, posPrevious,
                      [&](Step n) -> void { _queue.append(n); });
   }
