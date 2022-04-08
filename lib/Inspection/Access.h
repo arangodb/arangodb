@@ -45,35 +45,6 @@ struct Access;
 template<class T>
 struct AccessBase;
 
-template<class T>
-struct TypeTag;
-
-template<>
-struct TypeTag<std::monostate> {
-  static constexpr std::string_view name() { return "monostate"; }
-};
-
-#define DEFINE_TYPE_TAG(type, tagname)                           \
-  template<>                                                     \
-  struct TypeTag<type> {                                         \
-    static constexpr std::string_view name() { return tagname; } \
-  };
-
-DEFINE_TYPE_TAG(bool, "bool");
-DEFINE_TYPE_TAG(float, "float");
-DEFINE_TYPE_TAG(double, "double");
-DEFINE_TYPE_TAG(std::string, "string");
-DEFINE_TYPE_TAG(std::int8_t, "int8");
-DEFINE_TYPE_TAG(std::int16_t, "int16");
-DEFINE_TYPE_TAG(std::int32_t, "int32");
-DEFINE_TYPE_TAG(std::int64_t, "int64");
-DEFINE_TYPE_TAG(std::uint8_t, "uint8");
-DEFINE_TYPE_TAG(std::uint16_t, "uint16");
-DEFINE_TYPE_TAG(std::uint32_t, "uint32");
-DEFINE_TYPE_TAG(std::uint64_t, "uint64");
-
-#undef DEFINE_TYPE_TAG
-
 template<class Inspector, class T>
 [[nodiscard]] auto process(Inspector& f, T& x) {
   using TT = std::remove_cvref_t<T>;
@@ -335,71 +306,6 @@ struct Access<std::monostate> : AccessBase<std::monostate> {
     } else {
       f.builder().add(VPackSlice::emptyObjectSlice());
       return Status::Success{};
-    }
-  }
-};
-
-template<class... Ts>
-struct Access<std::variant<Ts...>> : AccessBase<std::variant<Ts...>> {
-  template<class Inspector>
-  static auto apply(Inspector& f, std::variant<Ts...>& v) {
-    if constexpr (Inspector::isLoading) {
-      return f.beginObject()                  //
-             | [&]() { return parse(f, v); }  //
-             | [&]() { return f.endObject(); };
-    } else {
-      return f.beginObject()  //
-             |
-             [&]() {
-               return std::visit(
-                   [&]<typename T>(T const& arg) {
-                     f.builder().add("tag", VPackValue(TypeTag<T>::name()));
-                     return saveField(f, "value", false, arg);
-                   },
-                   v);
-             }  //
-             | [&]() { return f.endObject(); };
-    }
-  }
-
- private:
-  template<class Inspector>
-  static Status parse(Inspector& f, std::variant<Ts...>& result) {
-    auto tag = f.slice()["tag"];
-    if (!tag.isString()) {
-      if (tag.isNone()) {
-        return {"Variant tag is missing"};
-      } else {
-        return {"Variant tag must be a string"};
-      }
-    }
-    auto value = f.slice()["value"];
-    if (value.isNone()) {
-      return {"Variant value is missing"};
-    }
-    return parseType<Ts...>(f, tag.stringView(), value, result);
-  }
-
-  template<class Head, class... Tail, class Inspector>
-  static Status parseType(Inspector& f, std::string_view tag,
-                          velocypack::Slice value,
-                          std::variant<Ts...>& result) {
-    if (TypeTag<Head>::name() == tag) {
-      Inspector inspector(value, f.options());
-      Head v;
-      auto res = inspector.apply(v);
-      if (res.ok()) {
-        result = v;
-        return res;
-      } else {
-        return {std::move(res), "value", Status::AttributeTag{}};
-      }
-    } else {
-      if constexpr (sizeof...(Tail) == 0) {
-        return {"Found invalid type tag: " + std::string(tag)};
-      } else {
-        return parseType<Tail...>(f, tag, value, result);
-      }
     }
   }
 };

@@ -28,6 +28,7 @@
 #include <tuple>
 #include <type_traits>
 #include <utility>
+#include <variant>
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -226,6 +227,18 @@ struct VPackLoadInspector : InspectorBase<VPackLoadInspector> {
     return parseFields(slices.data(), std::forward<Args>(args)...);
   }
 
+  template<class... Ts, class... Args>
+  auto processVariant(std::variant<Ts...>& value, std::string_view typeField,
+                      std::string_view valueField, Args&&... args) {
+    return beginObject()  //
+           |
+           [&]() {
+             return parseVariant(value, typeField, valueField,
+                                 std::forward<Args>(args)...);
+           }  //
+           | [&]() { return endObject(); };
+  }
+
  private:
   template<class T>
   struct HasFallback : std::false_type {};
@@ -242,6 +255,50 @@ struct VPackLoadInspector : InspectorBase<VPackLoadInspector> {
   Status parseFields(velocypack::Slice* slices, Arg&& arg, Args&&... args) {
     return parseField(*slices, std::forward<Arg>(arg)) |
            [&]() { return parseFields(++slices, std::forward<Args>(args)...); };
+  }
+
+  template<class... Ts, class... Args>
+  Status parseVariant(std::variant<Ts...>& result, std::string_view typeField,
+                      std::string_view valueField, Args&&... args) {
+    auto tag = slice()[typeField];
+    if (!tag.isString()) {
+      if (tag.isNone()) {
+        return {"Variant type field \"" + std::string(typeField) +
+                "\" is missing"};
+      } else {
+        return {"Variant type field \"" + std::string(typeField) +
+                "\" must be a string"};
+      }
+    }
+    auto value = slice()[valueField];
+    if (value.isNone()) {
+      return {"Variant value field \"" + std::string(valueField) +
+              "\" is missing"};
+    }
+    return parseType(tag.stringView(), value, result,
+                     std::forward<Args>(args)...);
+  }
+
+  template<class... Ts, class Arg, class... Args>
+  Status parseType(std::string_view tag, velocypack::Slice value,
+                   std::variant<Ts...>& result, Arg&& arg, Args&&... args) {
+    if (arg.tag == tag) {
+      VPackLoadInspector inspector(value, _options);
+      typename Arg::Type v;
+      auto res = inspector.apply(v);
+      if (res.ok()) {
+        result = v;
+        return res;
+      } else {
+        return {std::move(res), "value", Status::AttributeTag{}};
+      }
+    } else {
+      if constexpr (sizeof...(Args) == 0) {
+        return {"Found invalid type: " + std::string(tag)};
+      } else {
+        return parseType(tag, value, result, std::forward<Args>(args)...);
+      }
+    }
   }
 
   template<class T>

@@ -24,6 +24,7 @@
 #pragma once
 
 #include <array>
+#include <cstddef>
 #include <functional>
 #include <string_view>
 #include <type_traits>
@@ -121,6 +122,35 @@ struct InspectorBase {
     T& object;
   };
 
+  template<class... Ts>
+  struct Variant {
+    template<class... Args>
+    auto alternatives(Args&&... args) && {
+      // TODO - check that args cover all types and that there ate no duplicates
+      return _inspector.processVariant(_value, _typeField, _valueField,
+                                       std::forward<Args>(args)...);
+    }
+
+    Variant&& typeField(std::string_view v) && {
+      _typeField = v;
+      return std::move(*this);
+    }
+
+    Variant&& valueField(std::string_view v) && {
+      _valueField = v;
+      return std::move(*this);
+    }
+
+   private:
+    friend struct InspectorBase;
+    explicit Variant(Derived& inspector, std::variant<Ts...>& value)
+        : _inspector(inspector), _value(value) {}
+    Derived& _inspector;
+    std::variant<Ts...>& _value;
+    std::string_view _typeField{"tag"};
+    std::string_view _valueField{"value"};
+  };
+
   template<class InnerField, class Fallback>
   struct FallbackField;
 
@@ -147,6 +177,11 @@ struct InspectorBase {
   template<class T>
   [[nodiscard]] Object<T> object(T& o) noexcept {
     return Object<T>{self(), o};
+  }
+
+  template<class... Ts>
+  [[nodiscard]] Variant<Ts...> variant(std::variant<Ts...>& v) noexcept {
+    return Variant<Ts...>{self(), v};
   }
 
   template<typename T>
@@ -353,6 +388,19 @@ struct InspectorBase {
     std::string_view name;
   };
 };
+
+namespace detail {
+template<class T>
+struct AlternativeType {
+  using Type = T;
+  std::string_view const tag;
+};
+}  // namespace detail
+
+template<class T>
+detail::AlternativeType<T> type(std::string_view tag) {
+  return detail::AlternativeType<T>{tag};
+}
 
 #undef EMPTY_BASE
 

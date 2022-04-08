@@ -34,6 +34,7 @@
 #include <velocypack/Slice.h>
 #include <velocypack/Value.h>
 
+#include "Basics/overload.h"
 #include "Inspection/InspectorBase.h"
 
 namespace arangodb::inspection {
@@ -113,6 +114,24 @@ struct VPackSaveInspector : InspectorBase<VPackSaveInspector> {
       return std::move(res)                                                 //
              | [&]() { return applyFields(std::forward<Args>(args)...); };  //
     }
+  }
+
+  template<class... Ts, class... Args>
+  auto processVariant(std::variant<Ts...>& value, std::string_view typeField,
+                      std::string_view valueField, Args&&... args) {
+    return std::visit(
+        overload{[this, typeField, valueField, &args](typename Args::Type& v) {
+          std::string tag(
+              args.tag);  // TODO - remove once we have support for unsafe types
+          return beginObject()  //
+                 |
+                 [&]() {
+                   return applyFields(field(typeField, tag),
+                                      field(valueField, v));
+                 }  //
+                 | [&]() { return endObject(); };
+        }...},
+        value);
   }
 
   velocypack::Builder& builder() noexcept { return _builder; }
