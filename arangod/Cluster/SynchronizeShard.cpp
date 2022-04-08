@@ -398,7 +398,7 @@ arangodb::Result SynchronizeShard::collectionCountOnLeader(
   auto response =
       network::sendRequest(pool, leaderEndpoint, fuerte::RestVerb::Get,
                            "/_api/collection/" + getShard() + "/count",
-                           VPackBuffer<uint8_t>(), options, headers)
+                           VPackBuffer<uint8_t>(), options, std::move(headers))
           .get();
   auto res = response.combinedResult();
   if (res.fail()) {
