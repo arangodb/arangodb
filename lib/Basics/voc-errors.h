@@ -743,6 +743,12 @@
 /// invalid new term.
 #define TRI_ERROR_REPLICATION_REPLICATED_LOG_INVALID_TERM (::ErrorCode{1425})
 
+/// 1426: ERROR_REPLICATION_REPLICATED_LOG_UNCONFIGURED
+/// "log participant unconfigured"
+/// Will be raised when a participant is currently unconfigured, i.e. neither a
+/// leader nor a follower.
+#define TRI_ERROR_REPLICATION_REPLICATED_LOG_UNCONFIGURED (::ErrorCode{1426})
+
 /// 1446: ERROR_CLUSTER_NOT_FOLLOWER
 /// "not a follower"
 /// Will be raised when an operation is sent to a non-following server.
