@@ -1735,12 +1735,13 @@ bool Supervision::handleJobs() {
       << "Begin checkBrokenAnalyzers";
   checkBrokenAnalyzers();
 
-  LOG_TOPIC("f7d05", TRACE, Logger::SUPERVISION) << "Begin checkReplicatedLogs";
-  checkReplicatedLogs();
-
   LOG_TOPIC("f7aa5", TRACE, Logger::SUPERVISION)
       << "Begin checkReplicatedStates";
   checkReplicatedStates();
+  updateSnapshot();  // make updates from replicated state visible
+
+  LOG_TOPIC("f7d05", TRACE, Logger::SUPERVISION) << "Begin checkReplicatedLogs";
+  checkReplicatedLogs();
 
   LOG_TOPIC("00aab", TRACE, Logger::SUPERVISION) << "Begin workJobs";
   workJobs();

@@ -685,13 +685,13 @@ bool RocksDBCollection::dropIndex(IndexId iid) {
 
 std::unique_ptr<IndexIterator> RocksDBCollection::getAllIterator(
     transaction::Methods* trx, ReadOwnWrites readOwnWrites) const {
-  return std::make_unique<RocksDBAllIndexIterator>(&_logicalCollection, trx,
-                                                   readOwnWrites);
+  return rocksdb_iterators::createAllIterator(&_logicalCollection, trx,
+                                              readOwnWrites);
 }
 
 std::unique_ptr<IndexIterator> RocksDBCollection::getAnyIterator(
     transaction::Methods* trx) const {
-  return std::make_unique<RocksDBAnyIndexIterator>(&_logicalCollection, trx);
+  return rocksdb_iterators::createAnyIterator(&_logicalCollection, trx);
 }
 
 std::unique_ptr<ReplicationIterator> RocksDBCollection::getReplicationIterator(

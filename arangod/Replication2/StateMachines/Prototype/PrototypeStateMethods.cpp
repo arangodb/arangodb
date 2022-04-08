@@ -112,13 +112,14 @@ struct PrototypeStateMethodsDBServer final : PrototypeStateMethods {
             _vocbase.getReplicatedStateById(id));
     if (stateMachine == nullptr) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_INTERNAL, basics::StringUtils::concatT(
-                                  "Failed to get ProtoypeState with id ", id));
+          TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND,
+          basics::StringUtils::concatT("Failed to get ProtoypeState with id ",
+                                       id));
     }
     auto leader = stateMachine->getLeader();
     if (leader == nullptr) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_INTERNAL,
+          TRI_ERROR_CLUSTER_NOT_LEADER,
           basics::StringUtils::concatT(
               "Failed to get leader of ProtoypeState with id ", id));
     }

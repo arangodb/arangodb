@@ -35,9 +35,12 @@
 #include <velocypack/ValueType.h>
 #include <velocypack/velocypack-memory.h>
 
+#include "Inspection/Access.h"
 #include "Inspection/VPackLoadInspector.h"
 #include "Inspection/VPackSaveInspector.h"
 #include "Inspection/VPack.h"
+
+#include "Logger/LogMacros.h"
 
 namespace {
 
@@ -298,6 +301,46 @@ struct Specialization {
   int i;
   std::string s;
 };
+
+enum class AnEnumClass { Option1, Option2, Option3 };
+
+auto to_string(AnEnumClass e) -> std::string_view {
+  switch (e) {
+    case AnEnumClass::Option1:
+      return "Option1";
+    case AnEnumClass::Option2:
+      return "Option2";
+    case AnEnumClass::Option3:
+      return "Option3";
+  }
+  return "invalid.";
+}
+
+template<typename Enum>
+struct EnumStorage {
+  using MemoryType = Enum;
+
+  std::underlying_type_t<Enum> code;
+  std::string message;
+
+  explicit EnumStorage(Enum e)
+      : code(static_cast<std::underlying_type_t<Enum>>(e)),
+        message(to_string(e)){};
+  explicit EnumStorage() {}
+
+  operator Enum() const { return Enum(code); }
+};
+
+template<class Inspector, class Enum>
+auto inspect(Inspector& f, EnumStorage<Enum>& e) {
+  if constexpr (Inspector::isLoading) {
+    return f.object(e).fields(f.field("code", e.code),
+                              f.ignoreField("message"));
+  } else {
+    return f.object(e).fields(f.field("code", e.code),
+                              f.field("message", e.message));
+  }
+}
 }  // namespace
 
 namespace arangodb::inspection {
@@ -308,6 +351,10 @@ struct Access<Specialization> : AccessBase<Specialization> {
     return f.object(x).fields(f.field("i", x.i), f.field("s", x.s));
   }
 };
+template<>
+struct Access<AnEnumClass>
+    : StorageTransformerAccess<AnEnumClass, EnumStorage<AnEnumClass>> {};
+
 }  // namespace arangodb::inspection
 
 namespace {
@@ -1508,6 +1555,37 @@ TEST_F(VPackInspectionTest, deserialize_throws) {
         }
       },
       arangodb::basics::Exception);
+}
+
+TEST_F(VPackInspectionTest, GenericEnumClass) {
+  {
+    velocypack::Builder builder;
+
+    AnEnumClass const d = AnEnumClass::Option1;
+    arangodb::velocypack::serialize(builder, d);
+
+    velocypack::Slice slice = builder.slice();
+    ASSERT_TRUE(slice.isObject());
+    EXPECT_EQ(static_cast<std::underlying_type_t<AnEnumClass>>(d),
+              slice["code"].getInt());
+    EXPECT_EQ(to_string(d), slice["message"].copyString());
+  }
+
+  {
+    auto const expected = AnEnumClass::Option3;
+    velocypack::Builder builder;
+
+    builder.openObject();
+    builder.add(
+        "code",
+        VPackValue(static_cast<std::underlying_type_t<AnEnumClass>>(expected)));
+    builder.add("message", VPackValue(to_string(expected)));
+    builder.close();
+
+    auto d = arangodb::velocypack::deserialize<AnEnumClass>(builder.slice());
+
+    EXPECT_EQ(d, expected);
+  }
 }
 
 }  // namespace
