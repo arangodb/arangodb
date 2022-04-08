@@ -19,7 +19,7 @@ struct elsa<ErrorCode> {
 #include <cinttypes>
 
 namespace arangodb::error {
-constexpr static frozen::unordered_map<ErrorCode, const char*, 363>
+constexpr static frozen::unordered_map<ErrorCode, const char*, 364>
     ErrorMessages = {
         {TRI_ERROR_NO_ERROR,  // 0
          "no error"},
@@ -295,6 +295,8 @@ constexpr static frozen::unordered_map<ErrorCode, const char*, 363>
          "the replicated log of the participant is gone"},
         {TRI_ERROR_REPLICATION_REPLICATED_LOG_INVALID_TERM,  // 1425
          "an invalid term was given"},
+        {TRI_ERROR_REPLICATION_REPLICATED_LOG_UNCONFIGURED,  // 1426
+         "log participant unconfigured"},
         {TRI_ERROR_CLUSTER_NOT_FOLLOWER,  // 1446
          "not a follower"},
         {TRI_ERROR_CLUSTER_FOLLOWER_TRANSACTION_COMMIT_PERFORMED,  // 1447

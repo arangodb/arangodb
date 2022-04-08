@@ -96,13 +96,21 @@ struct ReplicatedLogMethodsDBServer final
 
   auto getLogEntryByIndex(LogId id, LogIndex index) const
       -> futures::Future<std::optional<PersistingLogEntry>> override {
-    return vocbase.getReplicatedLogLeaderById(id)->readReplicatedEntryByIndex(
-        index);
+    auto entry = vocbase.getReplicatedLogById(id)
+                     ->getParticipant()
+                     ->copyInMemoryLog()
+                     .getEntryByIndex(index);
+    if (entry.has_value()) {
+      return entry->entry();
+    } else {
+      return std::nullopt;
+    }
   }
 
   auto slice(LogId id, LogIndex start, LogIndex stop) const
       -> futures::Future<std::unique_ptr<PersistedLogIterator>> override {
-    return vocbase.getReplicatedLogLeaderById(id)
+    return vocbase.getReplicatedLogById(id)
+        ->getParticipant()
         ->copyInMemoryLog()
         .getInternalIteratorRange(start, stop);
   }
@@ -110,9 +118,12 @@ struct ReplicatedLogMethodsDBServer final
   auto poll(LogId id, LogIndex index, std::size_t limit) const
       -> futures::Future<std::unique_ptr<PersistedLogIterator>> override {
     auto leader = vocbase.getReplicatedLogLeaderById(id);
-    return vocbase.getReplicatedLogLeaderById(id)->waitFor(index).thenValue(
-        [index, limit, leader = std::move(leader), self = shared_from_this()](
-            auto&&) -> std::unique_ptr<PersistedLogIterator> {
+    return vocbase.getReplicatedLogById(id)
+        ->getParticipant()
+        ->waitFor(index)
+        .thenValue([index, limit, leader = std::move(leader),
+                    self = shared_from_this()](
+                       auto&&) -> std::unique_ptr<PersistedLogIterator> {
           auto log = leader->copyInMemoryLog();
           return log.getInternalIteratorRange(index, index + limit);
         });
@@ -120,7 +131,8 @@ struct ReplicatedLogMethodsDBServer final
 
   auto tail(LogId id, std::size_t limit) const
       -> futures::Future<std::unique_ptr<PersistedLogIterator>> override {
-    auto log = vocbase.getReplicatedLogLeaderById(id)->copyInMemoryLog();
+    auto log =
+        vocbase.getReplicatedLogById(id)->getParticipant()->copyInMemoryLog();
     auto stop = log.getNextIndex();
     auto start = stop.saturatedDecrement(limit);
     return log.getInternalIteratorRange(start, stop);
@@ -128,7 +140,8 @@ struct ReplicatedLogMethodsDBServer final
 
   auto head(LogId id, std::size_t limit) const
       -> futures::Future<std::unique_ptr<PersistedLogIterator>> override {
-    auto log = vocbase.getReplicatedLogLeaderById(id)->copyInMemoryLog();
+    auto log =
+        vocbase.getReplicatedLogById(id)->getParticipant()->copyInMemoryLog();
     auto start = log.getFirstIndex();
     return log.getInternalIteratorRange(start, start + limit);
   }
