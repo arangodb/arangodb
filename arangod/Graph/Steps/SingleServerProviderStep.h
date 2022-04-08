@@ -121,7 +121,7 @@ class SingleServerProviderStep
   static bool vertexFetched() { return true; }
 
   static bool edgeFetched() { return true; }
-  
+
  private:
   Vertex _vertex;
   Edge _edge;
