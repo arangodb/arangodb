@@ -11,6 +11,7 @@
 /Installation/ @arangodb/team-qa
 /scripts/ @arangodb/team-qa
 /etc/ @arangodb/team-qa
+/tests/test-definitions.txt @arangodb/team-qa
 
 # `team-cinfra` ownership
 /arangod/Replication2/ @arangodb/team-cinfra

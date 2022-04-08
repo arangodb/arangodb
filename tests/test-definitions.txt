@@ -70,7 +70,7 @@ load_balancing weight=500 cluster -- --dumpAgencyOnError true
 load_balancing_auth weight=500 cluster -- --dumpAgencyOnError true
 
 replication2_client cluster
-replication2_server cluster buckets=2 -- --dumpAgencyOnError true
+replication2_server cluster -- --dumpAgencyOnError true
 
 resilience_analyzers weight=500 cluster -- --dumpAgencyOnError true
 resilience_failover weight=750 cluster -- --dumpAgencyOnError true
