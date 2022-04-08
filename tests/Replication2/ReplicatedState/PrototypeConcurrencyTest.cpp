@@ -176,7 +176,7 @@ struct PrototypeConcurrencyTest : test::ReplicatedLogTest {
       std::make_shared<MockPrototypeStorageInterface>();
 };
 
-TEST_F(PrototypeConcurrencyTest, test_concurrent_wrires) {
+TEST_F(PrototypeConcurrencyTest, DISABLED_test_concurrent_writes) {
   leader->waitForLeadership().get();
   const auto numKeys = 1000;
   const auto options = PrototypeStateMethods::PrototypeWriteOptions{};
