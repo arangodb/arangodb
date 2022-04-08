@@ -270,6 +270,12 @@ class Node final {
   /// @brief Is string
   bool isString() const;
 
+  /// @brief Is array
+  bool isArray() const;
+
+  /// @brief Is object
+  bool isObject() const;
+
   /**
    * @brief Set expiry for this node
    * @param Time point of expiry
@@ -349,6 +355,18 @@ class Node final {
 
   /// @brief Get double value (throws if type NODE or if conversion fails)
   std::optional<double> getDouble() const noexcept;
+
+  template<typename T>
+  auto getNumber() const noexcept -> std::optional<T> {
+    if (type() == NODE) {
+      return std::nullopt;
+    }
+    try {
+      return slice().getNumber<T>();
+    } catch (velocypack::Exception const&) {
+      return std::nullopt;
+    }
+  }
 
   template<typename T>
   auto getNumberUnlessExpiredWithDefault() -> T {

@@ -55,7 +55,6 @@ struct Status {
     return _error->path;
   }
 
- private:
   template<class T>
   friend struct InspectorBase;
   friend struct VPackLoadInspector;
@@ -63,7 +62,6 @@ struct Status {
 
   struct AttributeTag {};
   struct ArrayTag {};
-
   Status(Status&& res, std::string const& index, ArrayTag)
       : Status(std::move(res)) {
     prependPath("[" + index + "]");
@@ -78,6 +76,7 @@ struct Status {
     }
   }
 
+ private:
   void prependPath(std::string const& s) {
     TRI_ASSERT(!ok());
     if (_error->path.empty()) {

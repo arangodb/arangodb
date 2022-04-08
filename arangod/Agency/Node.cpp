@@ -1124,6 +1124,20 @@ bool Node::isString() const {
   return slice().isString();
 }
 
+bool Node::isArray() const {
+  if (type() == NODE) {
+    return false;
+  }
+  return _isArray;
+}
+
+bool Node::isObject() const {
+  if (type() == NODE) {
+    return true;
+  }
+  return false;
+}
+
 bool Node::isUInt() const {
   if (type() == NODE) {
     return false;

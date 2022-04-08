@@ -36,6 +36,7 @@
 #include "Agency/JobContext.h"
 #include "Agency/RemoveFollower.h"
 #include "Agency/Store.h"
+#include "Agency/NodeLoadInspector.h"
 #include "AgencyPaths.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
@@ -2516,8 +2517,15 @@ void Supervision::checkBrokenAnalyzers() {
 namespace {
 template<typename T>
 auto parseSomethingFromNode(Node const& n) -> T {
-  auto builder = n.toBuilder();
-  return T::fromVelocyPack(builder.slice());
+  inspection::NodeLoadInspector i{n, {}};
+  T result;
+  if (auto status = i.apply(result); !status.ok()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        std::string{"Error while reading from Agency node: "} + status.error() +
+            "\nPath: " + status.path());
+  }
+  return result;
 }
 
 template<typename T>
