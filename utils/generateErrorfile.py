@@ -67,8 +67,8 @@ def errorName(error):
 
 # generate C header file from errors
 def genCHeaderFile(errors):
-  wiki = "/// Error codes and meanings\n"\
-       + "/// The following errors might be raised when running ArangoDB:\n"\
+  wiki = "// Error codes and meanings\n"\
+       + "// The following errors might be raised when running ArangoDB:\n"\
        + "\n\n"
 
   header = """
@@ -76,6 +76,7 @@ def genCHeaderFile(errors):
 
 #include "Basics/ErrorCode.h"
 
+/* clang-format off */
 """ \
            + wiki
 
@@ -95,6 +96,8 @@ def genErrorRegistryHeaderFile(errors):
 #pragma once
 
 #include "Basics/voc-errors.h"
+
+/* clang-format off */
 
 namespace frozen {{
 template <>

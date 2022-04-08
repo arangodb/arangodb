@@ -1,6 +1,8 @@
 devel
 -----
 
+* Auto-regenerate exit code and error code files in non-maintainer mode, too.
+
 * Updated arangosync to v2.9.0-preview-4.
 
 * Make the StatisticsFeature start after the NetworkFeature, so that any 
