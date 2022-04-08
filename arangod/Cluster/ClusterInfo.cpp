@@ -811,7 +811,6 @@ void ClusterInfo::loadPlan() {
   using namespace std::chrono;
   using clock = std::chrono::high_resolution_clock;
 
-  TRI_ASSERT(!ServerState::instance()->isSingleServer());
   bool const isCoordinator = ServerState::instance()->isCoordinator();
 
   auto start = clock::now();
