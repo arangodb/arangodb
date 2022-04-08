@@ -23,7 +23,9 @@
 #include "LogUnconfiguredParticipant.h"
 
 #include <Basics/Exceptions.h>
+#include <Basics/voc-errors.h>
 
+#include "Replication2/ReplicatedLog/InMemoryLog.h"
 #include "Replication2/ReplicatedLog/LogCore.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogMetricsDeclarations.h"
@@ -55,7 +57,7 @@ auto LogUnconfiguredParticipant::resign() && -> std::tuple<
 
 auto LogUnconfiguredParticipant::waitFor(LogIndex)
     -> ILogParticipant::WaitForFuture {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_UNCONFIGURED);
 }
 
 LogUnconfiguredParticipant::~LogUnconfiguredParticipant() {
@@ -65,11 +67,11 @@ LogUnconfiguredParticipant::~LogUnconfiguredParticipant() {
 auto LogUnconfiguredParticipant::waitForIterator(LogIndex index)
     -> ILogParticipant::WaitForIteratorFuture {
   TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_UNCONFIGURED);
 }
 
 auto LogUnconfiguredParticipant::release(LogIndex doneWithIdx) -> Result {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_UNCONFIGURED);
 }
 
 auto LogUnconfiguredParticipant::getCommitIndex() const noexcept -> LogIndex {
@@ -84,6 +86,10 @@ auto LogUnconfiguredParticipant::waitForResign()
     -> futures::Future<futures::Unit> {
   return _guardedData.doUnderLock(
       [](auto& self) { return self.waitForResign(); });
+}
+
+auto LogUnconfiguredParticipant::copyInMemoryLog() const -> InMemoryLog {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_UNCONFIGURED);
 }
 
 auto LogUnconfiguredParticipant::GuardedData::resign() && -> std::tuple<
