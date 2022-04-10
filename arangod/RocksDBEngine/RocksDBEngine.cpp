@@ -66,7 +66,6 @@
 #include "RocksDBEngine/Listeners/RocksDBThrottle.h"
 #include "RocksDBEngine/ReplicatedRocksDBTransactionState.h"
 #include "RocksDBEngine/RocksDBBackgroundThread.h"
-#include "../../3rdParty/rocksdb/6.29/env/composite_env_wrapper.h"  // TODO: GET RID OF THIS WEIRD INCLUDE
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
