@@ -247,9 +247,7 @@ void SslServerFeature::verifySslOptions(SslConfig& config) {
   config.sniEntries.emplace_back("", config.keyfile);
 
   try {
-    for (auto& config : _sslConfigs) {
-      createSslContexts(config.second);  // just to test if everything works
-    }
+    createSslContexts(config);  // just to test if everything works
   } catch (...) {
     LOG_TOPIC("997d2", FATAL, arangodb::Logger::SSL)
         << "cannot create SSL context for '" << config.context << "'";
@@ -839,25 +837,28 @@ static void dumpPEM(std::string const& pem, VPackBuilder& builder,
 // Dump all SSL related data into a builder, private keys
 // are hashed.
 Result SslServerFeature::dumpTLSData(VPackBuilder& builder) const {
-  {
+  for (auto const& itr : _sslConfigs) {
     VPackObjectBuilder guard(&builder);
-    auto itr = _sslConfigs.find("");
 
-    if (itr != _sslConfigs.end()) {
-      SslConfig const& config = itr->second;
+    SslConfig const& config = itr.second;
+    std::string prefix = config.context;
 
-      if (!config.sniEntries.empty()) {
-        dumpPEM(config.sniEntries[0].keyfileContent, builder, "keyfile");
-        dumpPEM(config.cafileContent, builder, "clientCA");
-        if (config.sniEntries.size() > 1) {
-          VPackObjectBuilder guard2(&builder, "SNI");
-          for (size_t i = 1; i < config.sniEntries.size(); ++i) {
-            dumpPEM(config.sniEntries[i].keyfileContent, builder,
-                    config.sniEntries[i].serverName);
-          }
+    if (!prefix.empty()) {
+      prefix = prefix + ":";
+    }
+
+    if (!config.sniEntries.empty()) {
+      dumpPEM(config.sniEntries[0].keyfileContent, builder, prefix + "keyfile");
+      dumpPEM(config.cafileContent, builder, prefix + "clientCA");
+      if (config.sniEntries.size() > 1) {
+        VPackObjectBuilder guard2(&builder, prefix + "SNI");
+        for (size_t i = 1; i < config.sniEntries.size(); ++i) {
+          dumpPEM(config.sniEntries[i].keyfileContent, builder,
+                  config.sniEntries[i].serverName);
         }
       }
     }
   }
+
   return Result(TRI_ERROR_NO_ERROR);
 }

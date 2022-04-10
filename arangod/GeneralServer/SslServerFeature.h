@@ -63,7 +63,8 @@ class SslServerFeature : public ArangodFeature {
           sessionCache(false),
           preferHttp11InAlpn(false),
           sniEntries(),
-          sniServerIndex() {}
+          sniServerIndex(),
+          sslRequirePeerCertificate(false) {}
     std::string context;
     std::string cafile;
     std::string cafileContent;  // the actual cert file
@@ -80,6 +81,7 @@ class SslServerFeature : public ArangodFeature {
         sniEntries;  // the first entry is the default server keyfile
     std::unordered_map<std::string, size_t>
         sniServerIndex;  // map server names to indices in _sniEntries
+    bool sslRequirePeerCertificate;
   };
 
   typedef std::shared_ptr<std::vector<asio_ns::ssl::context>> SslContextList;
@@ -114,14 +116,14 @@ class SslServerFeature : public ArangodFeature {
 
   std::unordered_map<std::string, SslConfig> _sslConfigs;
 
+  virtual void verifySslOptions(SslConfig&);
+
  private:
   void validateOptionsSslConfig(SslConfig&);
   void prepareSslConfig(std::string const& name, SslConfig&);
-  virtual void verifySslOptions(SslConfig&);
+  std::string stringifySslOptions(uint64_t opts) const;
 
   asio_ns::ssl::context createSslContextInternal(SslConfig&, size_t idx);
-
-  std::string stringifySslOptions(uint64_t opts) const;
 
   std::string _rctx;
 };

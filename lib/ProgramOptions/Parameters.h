@@ -678,6 +678,10 @@ struct ContextParameter : public Parameter {
     typedef typename W::DiscreteType discret;
   };
 
+  explicit ContextParameter(
+      std::unordered_map<std::string, typename T::ValueType>* map)
+      : map{map}, allowed{true}, proto{} {}
+
   ContextParameter(std::unordered_map<std::string, typename T::ValueType>* map,
                    typename T::ValueType proto)
       : map{map}, allowed{true}, proto{proto} {}
