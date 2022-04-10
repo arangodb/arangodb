@@ -8,6 +8,8 @@ devel
   centralized in one place. SmartGraph-specific code for validation and
   collection creation has been moved to enterprise as well.
 
+* Updated arangosync to v2.9.0-preview-5.
+
 * Auto-regenerate exit code and error code files in non-maintainer mode, too.
 
 * Only show slowest optimizer rules in explain output for optimizer rules
