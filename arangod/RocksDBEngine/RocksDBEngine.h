@@ -27,6 +27,7 @@
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
+#include "RocksDBEngine/RocksDBChecksumEnv.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "StorageEngine/StorageEngine.h"
@@ -646,6 +647,16 @@ class RocksDBEngine final : public StorageEngine {
 
   // @brief persistor for replicated logs
   std::shared_ptr<RocksDBLogPersistor> _logPersistor;
+
+  // Checksum env for when creation of sha files is enabled
+  // this is for when encryption is enabled, sha files will be created
+  // after the encryption of the .sst files
+  std::unique_ptr<rocksdb::Env> _checksumEnv;
+
+  rocksdb::Env* NewChecksumEnv(rocksdb::Env* base_env,
+                               std::string const& path) {
+    return new arangodb::checksum::ChecksumEnv(base_env, path);
+  }
 };
 
 static constexpr const char* kEncryptionTypeFile = "ENCRYPTION";

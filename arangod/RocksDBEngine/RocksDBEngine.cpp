@@ -91,7 +91,6 @@
 #include "RocksDBEngine/RocksDBValue.h"
 #include "RocksDBEngine/RocksDBWalAccess.h"
 #include "RocksDBEngine/SimpleRocksDBTransactionState.h"
-#include "RocksDBEngine/RocksDBChecksumEnv.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Transaction/Context.h"
 #include "Transaction/Manager.h"
@@ -122,14 +121,6 @@
 using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::options;
-
-namespace {
-using Env = rocksdb::Env;
-std::unique_ptr<rocksdb::Env> checksumEnv;
-Env* NewChecksumEnv(Env* base_env, std::string const& path) {
-  return new arangodb::checksum::ChecksumEnv(base_env, path);
-}
-}  // namespace
 
 namespace arangodb {
 
@@ -805,13 +796,13 @@ void RocksDBEngine::start() {
       static_cast<size_t>(opts._compactionReadaheadSize);
 
   if (_createShaFiles) {
-    ::checksumEnv.reset(::NewChecksumEnv(Env::Default(), _path));
-    _options.env = ::checksumEnv.get();
-    static_cast<checksum::ChecksumEnv*>(::checksumEnv.get())
+    _checksumEnv.reset(NewChecksumEnv(rocksdb::Env::Default(), _path));
+    _options.env = _checksumEnv.get();
+    static_cast<checksum::ChecksumEnv*>(_checksumEnv.get())
         ->getHelper()
         ->checkMissingShaFiles();
   } else {
-    _options.env = Env::Default();
+    _options.env = rocksdb::Env::Default();
   }
 
 #ifdef USE_ENTERPRISE
