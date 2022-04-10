@@ -1,4 +1,9 @@
 ////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
@@ -146,7 +151,7 @@ void ChecksumHelper::checkMissingShaFiles() {
               basics::FileUtils::buildFilename(_rootPath, *it);
           LOG_TOPIC("d6c86", DEBUG, arangodb::Logger::ENGINES)
               << "checkMissingShaFiles:"
-                 " Computing cheacksum for "
+                 " Computing checksum for "
               << tempPath;
           auto checksumCalc = ChecksumCalculator();
           if (TRI_ProcessFile(tempPath.c_str(),
