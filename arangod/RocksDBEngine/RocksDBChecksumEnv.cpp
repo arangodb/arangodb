@@ -56,7 +56,7 @@ void ChecksumCalculator::computeFinalChecksum() {
 void ChecksumCalculator::updateIncrementalChecksum(char const* buffer,
                                                    size_t n) {
   TRI_ASSERT(_context != nullptr);
-  updateEVPWithContent(buffer, n);  // based on the current call to Append()
+  updateEVPWithContent(buffer, n);
 }
 
 ChecksumCalculator::~ChecksumCalculator() {
@@ -104,17 +104,15 @@ bool ChecksumHelper::writeShaFile(std::string const& fileName,
 
 void ChecksumHelper::checkMissingShaFiles() {
   if (!_rootPath.empty()) {
-    LOG_DEVEL << "checkMissingShaFiles";
     std::vector<std::string> fileList = TRI_FilesDirectory(_rootPath.c_str());
     std::sort(fileList.begin(), fileList.end());
     std::string sstFileName;
-    for (auto it = fileList.begin(); fileList.end() != it; ++it) {
+    for (auto it = fileList.begin(); it != fileList.end(); ++it) {
       if (it->size() < 5) {
         // filename is too short and does not matter
         continue;
       }
       TRI_ASSERT(*it == TRI_Basename(*it));
-
       std::string::size_type shaIndex = it->find(".sha.");
       if (shaIndex != std::string::npos) {
         sstFileName = it->substr(0, shaIndex) + ".sst";

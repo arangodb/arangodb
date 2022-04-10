@@ -28,8 +28,6 @@
 
 #include "Basics/Mutex.h"
 
-#include "Logger/LogMacros.h"
-
 namespace arangodb::checksum {
 
 class ChecksumCalculator {
