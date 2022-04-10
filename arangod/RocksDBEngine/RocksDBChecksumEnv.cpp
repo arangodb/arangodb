@@ -102,7 +102,7 @@ bool ChecksumHelper::writeShaFile(std::string const& fileName,
   }
 
   LOG_TOPIC("8f7ef", WARN, arangodb::Logger::ENGINES)
-      << "ShaCalcFile: writing file failed with " << res << " for "
+      << "shaCalcFile: writing file failed with " << res << " for "
       << shaFileName;
   return false;
 }
