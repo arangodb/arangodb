@@ -8596,6 +8596,8 @@ void arangodb::aql::insertDistributeInputCalculation(ExecutionPlan& plan) {
         auto* insertNode = ExecutionNode::castTo<InsertNode*>(targetNode);
         collection = insertNode->collection();
         inputVariable = insertNode->inVariable();
+        // if we only have a single shard, we let the DB server generate the
+        // keys
         createKeys = collection->numberOfShards() != 1;
         allowKeyConversionToObject = true;
         setInVariable = [insertNode](Variable* var) {
@@ -8644,6 +8646,8 @@ void arangodb::aql::insertDistributeInputCalculation(ExecutionPlan& plan) {
         alternativeVariable = upsertNode->insertVariable();
         ignoreErrors = upsertNode->getOptions().ignoreErrors;
         allowKeyConversionToObject = true;
+        // if we only have a single shard, we let the DB server generate the
+        // keys
         createKeys = collection->numberOfShards() != 1;
         allowSpecifiedKeys = true;
         setInVariable = [upsertNode](Variable* var) {
