@@ -253,6 +253,19 @@ const replicatedStateSuite = function () {
       }));
       lh.waitFor(spreds.replicatedStateIsReady(database, stateId, newServers));
     },
+
+    testReplaceAllServers: function() {
+      const {stateId, servers} = createReplicatedState();
+      const otherServers = _.difference(lh.dbservers, servers);
+
+      updateReplicatedStateTarget(database, stateId, function (target) {
+        target.participants = Object.assign({}, ...otherServers.map((x) => ({[x]: {}})));
+        target.version = 3;
+        return target;
+      });
+      lh.waitFor(spreds.replicatedStateVersionConverged(database, stateId, 3));
+      lh.waitFor(spreds.replicatedStateIsReady(database, stateId, otherServers));
+    }
   };
 };
 

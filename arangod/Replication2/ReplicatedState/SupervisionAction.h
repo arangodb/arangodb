@@ -199,10 +199,17 @@ struct SetLeaderAction {
   }
 };
 
-using Action = std::variant<
-    EmptyAction, AddParticipantAction, RemoveParticipantFromLogTargetAction,
-    RemoveParticipantFromStatePlanAction, AddStateToPlanAction,
-    UpdateParticipantFlagsAction, CurrentConvergedAction, SetLeaderAction>;
+struct WaitForAction {
+  std::string message;
+  void execute(ActionContext& ctx) {}
+};
+
+using Action =
+    std::variant<EmptyAction, AddParticipantAction,
+                 RemoveParticipantFromLogTargetAction,
+                 RemoveParticipantFromStatePlanAction, AddStateToPlanAction,
+                 UpdateParticipantFlagsAction, CurrentConvergedAction,
+                 SetLeaderAction, WaitForAction>;
 
 auto execute(LogId id, DatabaseID const& database, Action action,
              std::optional<agency::Plan> state,
