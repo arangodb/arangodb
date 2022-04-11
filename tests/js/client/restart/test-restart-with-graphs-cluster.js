@@ -90,6 +90,9 @@ function testSuite() {
 
   return {
     tearDownAll : function() {
+      try {
+        graphs._drop(gn, true);
+      } catch (err) {}
       // Need to restart without authentication for other tests to succeed:
       let coordinators = getServers('coordinator');
       let coordinator = coordinators[0];
