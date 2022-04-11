@@ -740,7 +740,7 @@ TRI_vocbase_t::createCollectionObject(arangodb::velocypack::Slice data,
                                       bool isAStub) {
   // every collection object on coordinators must be a stub
   TRI_ASSERT(!ServerState::instance()->isCoordinator() || isAStub);
-  // collection objects on single coordinators must not be stubs
+  // collection objects on single servers must not be stubs
   TRI_ASSERT(!ServerState::instance()->isSingleServer() || !isAStub);
 
   return std::make_shared<LogicalCollection>(*this, data, isAStub);
