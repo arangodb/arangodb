@@ -100,24 +100,25 @@ const replicatedStateSuite = function () {
     }
 
     updateReplicatedStateTarget(database, stateId,
-      function () {
-        return {
-          id: stateId,
-          participants: participants,
-          config: targetConfig,
-          version: 1,
-          properties: {
-            implementation: {
-              type: "black-hole"
+        function () {
+          return {
+            id: stateId,
+            participants: participants,
+            config: targetConfig,
+            version: 1,
+            properties: {
+              implementation: {
+                type: "black-hole"
+              }
             }
-          }
-        };
-      });
+          };
+        });
 
     lh.waitFor(spreds.replicatedStateIsReady(database, stateId, servers));
     const leader = lh.getReplicatedLogLeaderPlan(database, stateId).leader;
     const followers = _.difference(servers, [leader]);
-    return {stateId, servers, leader, followers};
+    const others = _.difference(lh.dbservers, servers);
+    return {stateId, servers, leader, followers, others};
   };
   const createReplicatedState = function () {
     const servers = _.sampleSize(lh.dbservers, targetConfig.replicationFactor);
@@ -143,38 +144,36 @@ const replicatedStateSuite = function () {
       }
 
       updateReplicatedStateTarget(database, stateId,
-        function (target) {
-          return {
-            id: stateId,
-            participants: participants,
-            config: {
-              waitForSync: true,
-              writeConcern: 2,
-              softWriteConcern: 3,
-              replicationFactor: 3
-            },
-            properties: {
-              implementation: {
-                type: "black-hole"
+          function () {
+            return {
+              id: stateId,
+              participants: participants,
+              config: {
+                waitForSync: true,
+                writeConcern: 2,
+                softWriteConcern: 3,
+                replicationFactor: 3
+              },
+              properties: {
+                implementation: {
+                  type: "black-hole"
+                }
               }
-            }
-          };
-        });
+            };
+          });
 
       lh.waitFor(spreds.replicatedStateIsReady(database, stateId, servers));
     },
 
     testAddParticipant: function () {
-      const {stateId, servers} = createReplicatedState();
-
-      const remainingServers = _.difference(lh.dbservers, servers);
-      const newParticipant = _.sample(remainingServers);
+      const {stateId, servers, others} = createReplicatedState();
+      const newParticipant = _.sample(others);
 
       updateReplicatedStateTarget(database, stateId,
-        function (target) {
-          target.participants[newParticipant] = {};
-          return target;
-        });
+          function (target) {
+            target.participants[newParticipant] = {};
+            return target;
+          });
       const newServers = [...servers, newParticipant];
 
       lh.waitFor(spreds.replicatedStateIsReady(database, stateId, newServers));
@@ -189,19 +188,19 @@ const replicatedStateSuite = function () {
 
       const version = 4;
       updateReplicatedStateTarget(database, stateId,
-        function (target) {
-          target.version = version;
-          return target;
-        });
+          function (target) {
+            target.version = version;
+            return target;
+          });
 
       lh.waitFor(spreds.replicatedStateVersionConverged(database, stateId, version));
 
       const newVersion = 6;
       updateReplicatedStateTarget(database, stateId,
-        function (target) {
-          target.version = newVersion;
-          return target;
-        });
+          function (target) {
+            target.version = newVersion;
+            return target;
+          });
 
       lh.waitFor(spreds.replicatedStateVersionConverged(database, stateId, newVersion));
     },
@@ -210,10 +209,10 @@ const replicatedStateSuite = function () {
       const {stateId, followers} = createReplicatedState();
       const newLeader = _.sample(followers);
       updateReplicatedStateTarget(database, stateId,
-        (target) => {
-          target.leader = newLeader;
-          return target;
-        });
+          (target) => {
+            target.leader = newLeader;
+            return target;
+          });
       lh.waitFor(lpreds.replicatedLogLeaderTargetIs(database, stateId, newLeader));
       lh.waitFor(lpreds.replicatedLogLeaderPlanIs(database, stateId, newLeader));
     },
@@ -221,10 +220,10 @@ const replicatedStateSuite = function () {
     testUnsetLeader: function () {
       const {stateId} = createReplicatedState();
       updateReplicatedStateTarget(database, stateId,
-        (target) => {
-          delete target.leader;
-          return target;
-        });
+          (target) => {
+            delete target.leader;
+            return target;
+          });
       lh.waitFor(() => {
         const currentLeader = lh.getReplicatedLogLeaderTarget(database, stateId);
         if (currentLeader === undefined) {
@@ -241,11 +240,11 @@ const replicatedStateSuite = function () {
 
       const serverToBeRemoved = leader;
       updateReplicatedStateTarget(database, stateId,
-        function (target) {
-          delete target.participants[serverToBeRemoved];
-          target.version = 2;
-          return target;
-        });
+          function (target) {
+            delete target.participants[serverToBeRemoved];
+            target.version = 2;
+            return target;
+          });
       lh.waitFor(spreds.replicatedStateVersionConverged(database, stateId, 2));
       const newServers = _.without(servers, serverToBeRemoved);
       lh.waitFor(lpreds.replicatedLogParticipantsFlag(database, stateId, {
@@ -253,6 +252,50 @@ const replicatedStateSuite = function () {
       }));
       lh.waitFor(spreds.replicatedStateIsReady(database, stateId, newServers));
     },
+
+    testReplaceAllServers: function () {
+      const {stateId, others} = createReplicatedState();
+      const otherServers = _.sampleSize(others, targetConfig.replicationFactor);
+
+      updateReplicatedStateTarget(database, stateId, function (target) {
+        target.participants = Object.assign({}, ...otherServers.map((x) => ({[x]: {}})));
+        target.version = 3;
+        return target;
+      });
+      lh.waitFor(spreds.replicatedStateVersionConverged(database, stateId, 3));
+      lh.waitFor(spreds.replicatedStateIsReady(database, stateId, otherServers));
+    },
+
+    testReplaceWithBadParticipant: function () {
+      const {stateId, servers, others, followers} = createReplicatedState();
+      const toBeReplaced = _.sample(followers);
+      const newParticipant = _.sample(others);
+
+      // first stop that new server
+      lh.stopServer(newParticipant);
+
+      updateReplicatedStateTarget(database, stateId,
+          function (target) {
+            delete target.participants[toBeReplaced];
+            target.participants[newParticipant] = {};
+            target.version = 4;
+            return target;
+          });
+      const newServers = [..._.without(servers, toBeReplaced), newParticipant];
+
+      // wait for the server to find its way into the current flags
+      lh.waitFor(lpreds.replicatedLogParticipantsFlag(database, stateId, {
+        [newParticipant]: {allowedAsLeader: false, allowedInQuorum: false, forced: false},
+      }));
+
+      lh.continueServer(newParticipant);
+      lh.waitFor(spreds.replicatedStateIsReady(database, stateId, newServers));
+      lh.waitFor(lpreds.replicatedLogParticipantsFlag(database, stateId, {
+        [newParticipant]: {allowedInQuorum: true, allowedAsLeader: true, forced: false},
+      }));
+      lh.waitFor(spreds.replicatedStateVersionConverged(database, stateId, 4));
+    },
+
   };
 };
 
