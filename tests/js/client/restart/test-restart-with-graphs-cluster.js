@@ -157,7 +157,16 @@ function testSuite() {
       
       // vertex collection
       c = db._collection(vn);
-      let properties = c.properties();
+
+      // do NOT remove this! this is a workaround for Windows
+      // sometimes having trouble to use the already opened connection
+      // after a server restart
+      let properties;
+      try {
+        properties = c.properties();
+      } catch (err) {
+        properties = c.properties();
+      }
 
       assertFalse(properties.isSmart);
       assertEqual(2, properties.numberOfShards);
