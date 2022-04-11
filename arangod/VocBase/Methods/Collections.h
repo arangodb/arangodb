@@ -123,9 +123,6 @@ struct Collections {
       std::string const& collectionName, VPackBuilder& builder,
       TRI_vocbase_t const&);
 
-  static Result load(TRI_vocbase_t& vocbase, LogicalCollection* coll);
-  static Result unload(TRI_vocbase_t* vocbase, LogicalCollection* coll);
-
   static Result properties(Context& ctxt, velocypack::Builder&);
   static Result updateProperties(LogicalCollection& collection,
                                  velocypack::Slice const& props,

@@ -133,7 +133,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
           static_cast<uint32_t>(currentVersion())))),
       _v8CacheVersion(0),
       _type(Helper::getNumericValue<TRI_col_type_e, int>(
-          info, StaticStrings::DataSourceType, TRI_COL_TYPE_UNKNOWN)),
+          info, StaticStrings::DataSourceType, TRI_COL_TYPE_DOCUMENT)),
       _status(Helper::getNumericValue<TRI_vocbase_col_status_e, int>(
           info, "status", TRI_VOC_COL_STATUS_CORRUPTED)),
       _isAStub(isAStub),

@@ -64,10 +64,6 @@
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
 
-#ifdef USE_ENTERPRISE
-#include "Enterprise/VocBase/Methods/CollectionValidatorEE.h"
-#endif
-
 #include <unordered_set>
 
 using namespace arangodb;
@@ -169,7 +165,7 @@ Result validateCreationInfo(CollectionCreationInfo const& info,
     VPackSlice s = info.properties.get(StaticStrings::IsSmart);
     auto replicationFactorSlice =
         info.properties.get(StaticStrings::ReplicationFactor);
-    if (s.isBoolean() && s.getBoolean() &&
+    if (s.isTrue() &&
         ((replicationFactorSlice.isNumber() &&
           replicationFactorSlice.getNumber<int>() == 0) ||
          (replicationFactorSlice.isString() &&
@@ -208,7 +204,7 @@ Result validateAllCollectionsInfo(
     }
   }
 
-  return res;
+  return {};
 }
 
 // Returns a builder that combines the information from infos and cluster
@@ -646,10 +642,11 @@ Result Collections::create(
 
   VPackSlice const infoSlice = builder.slice();
 
-  std::vector<std::shared_ptr<LogicalCollection>> collections;
   TRI_ASSERT(infoSlice.isArray());
   TRI_ASSERT(infoSlice.length() >= 1);
   TRI_ASSERT(infoSlice.length() == infos.size());
+
+  std::vector<std::shared_ptr<LogicalCollection>> collections;
   collections.reserve(infoSlice.length());
 
   try {
@@ -667,32 +664,6 @@ Result Collections::create(
         }
         return Result(TRI_ERROR_INTERNAL, "createCollectionsOnCoordinator");
       }
-    } else if (allowEnterpriseCollectionsOnSingleServer) {
-#ifdef USE_ENTERPRISE
-      /*
-       * If we end up here, we do allow enterprise collections to be created in
-       * a SingleServer instance as well. Important: We're storing and
-       * persisting the meta information of those collections. They will still
-       * be used as before, but will do some further validation. This has been
-       * originally implemented for the SmartGraph Simulator feature.
-       */
-      TRI_ASSERT(ServerState::instance()->isSingleServer());
-      TRI_ASSERT(infoSlice.isArray());
-
-      auto res =
-          enterprise::CollectionValidatorEE::prepareLogicalCollectionStubs(
-              infoSlice, collections, vocbase);
-      if (res.fail()) {
-        THROW_ARANGO_EXCEPTION(res);
-      }
-
-      for (auto& col : collections) {
-        TRI_ASSERT(col != nullptr);
-        vocbase.persistCollection(col);
-      }
-#else
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-#endif
     } else {
       TRI_ASSERT(ServerState::instance()->isSingleServer() ||
                  ServerState::instance()->isDBServer() ||
@@ -701,12 +672,8 @@ Result Collections::create(
       // Agency. In that case, we're not batching collection creating.
       // Therefore, we need to iterate over the infoSlice and create each
       // collection one by one.
-      for (auto slice : VPackArrayIterator(infoSlice)) {
-        // Single server does not yet have a multi collection implementation
-        auto col = vocbase.createCollection(slice);
-        TRI_ASSERT(col != nullptr);
-        collections.emplace_back(std::move(col));
-      }
+      collections = vocbase.createCollections(
+          infoSlice, allowEnterpriseCollectionsOnSingleServer);
     }
   } catch (basics::Exception const& ex) {
     return Result(ex.code(), ex.what());
