@@ -49,6 +49,7 @@ ChecksumCalculator::ChecksumCalculator()
 
 void ChecksumCalculator::computeFinalChecksum() {
   TRI_ASSERT(_context != nullptr);
+  TRI_ASSERT(_checksum.empty());
   unsigned char hash[EVP_MAX_MD_SIZE];
   unsigned int lengthOfHash = 0;
   if (EVP_DigestFinal_ex(_context, hash, &lengthOfHash) == 0) {
@@ -80,8 +81,7 @@ void ChecksumCalculator::updateEVPWithContent(const char* buffer, size_t n) {
 }
 
 bool ChecksumHelper::isFileNameSst(std::string const& fileName) {
-  return TRI_Basename(fileName).size() > 4 &&
-         (fileName.compare(fileName.size() - 4, 4, ".sst") == 0);
+  return fileName.ends_with(".sst");
 }
 
 bool ChecksumHelper::writeShaFile(std::string const& fileName,
@@ -239,8 +239,8 @@ rocksdb::Status ChecksumEnv::DeleteFile(const std::string& fileName) {
     std::string shaFileName =
         _helper->buildShaFileNameFromSst(fileName, checksum);
     if (!shaFileName.empty()) {
-      if (rocksdb::EnvWrapper::DeleteFile(shaFileName) ==
-          rocksdb::Status::OK()) {
+      auto res = TRI_UnlinkFile(shaFileName.c_str());
+      if (res == TRI_ERROR_NO_ERROR) {
         LOG_TOPIC("e0a0d", DEBUG, arangodb::Logger::ENGINES)
             << "deleteCalcFile:  delete file succeeded for " << shaFileName;
       } else {
@@ -249,16 +249,18 @@ rocksdb::Status ChecksumEnv::DeleteFile(const std::string& fileName) {
       }
     }
   }
-  rocksdb::Status res = rocksdb::EnvWrapper::DeleteFile(fileName);
-  if (res == rocksdb::Status::OK()) {
+  auto res = TRI_UnlinkFile(fileName.c_str());
+  if (res == TRI_ERROR_NO_ERROR) {
     LOG_TOPIC("77a2a", DEBUG, arangodb::Logger::ENGINES)
         << "deleteCalcFile:  delete file succeeded for " << fileName;
   } else {
     LOG_TOPIC("ce937", WARN, arangodb::Logger::ENGINES)
         << "deleteCalcFile:  delete file failed for " << fileName;
   }
-  return res;  // will return response from removing .sst or other file, not
-               // the .sha
+  return rocksdb::Status::Corruption(
+      "delete file failed for " +
+      fileName);  // will return response from removing .sst or other file, not
+                  // the .sha
 }
 
 }  // namespace arangodb::checksum
