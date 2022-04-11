@@ -1302,7 +1302,7 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan,
     if (!slice.isNumber()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_BAD_PARAMETER,
-          "\"scorersSortLimit\" attribute should be numeric");
+          "\"scorersSortLimit\" attribute should be a numeric");
     }
     _scorersSortLimit = slice.getNumber<size_t>();
   }
