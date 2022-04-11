@@ -25,10 +25,10 @@
 #include "SynchronizeShard.h"
 
 #include "Agency/AgencyStrings.h"
-#include "Agency/TimeString.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
+#include "Basics/TimeString.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/debugging.h"
 #include "Cluster/ActionDescription.h"

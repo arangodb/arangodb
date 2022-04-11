@@ -28,7 +28,7 @@
 
 #include "Basics/debugging.h"
 #include "Basics/StaticStrings.h"
-#include "Agency/TimeString.h"
+#include "Basics/TimeString.h"
 
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_state;

@@ -33,7 +33,6 @@
 #include <boost/uuid/uuid_io.hpp>
 
 #include "Agency/AsyncAgencyComm.h"
-#include "Agency/TimeString.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
 #include "Basics/NumberOfCores.h"
@@ -41,6 +40,7 @@
 #include "Basics/ReadLocker.h"
 #include "Basics/ResultT.h"
 #include "Basics/StringUtils.h"
+#include "Basics/TimeString.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/application-exit.h"

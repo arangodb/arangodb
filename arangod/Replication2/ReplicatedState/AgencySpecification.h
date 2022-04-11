@@ -24,6 +24,8 @@
 #pragma once
 
 #include "Basics/ErrorCode.h"
+#include "Inspection/VPack.h"
+#include "Inspection/Transformers.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedState/StateCommon.h"
 
