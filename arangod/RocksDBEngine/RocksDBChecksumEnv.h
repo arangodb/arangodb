@@ -36,7 +36,7 @@ class ChecksumCalculator {
   void computeFinalChecksum();
   void updateIncrementalChecksum(char const* buffer, size_t n);
   void updateEVPWithContent(char const* buffer, size_t n);
-  [[nodiscard]] std::string getChecksum() { return _checksum; }
+  [[nodiscard]] std::string getChecksum() const { return _checksum; }
   ~ChecksumCalculator();
 
  private:
@@ -49,7 +49,7 @@ class ChecksumHelper {
   explicit ChecksumHelper(std::string const& rootPath) : _rootPath{rootPath} {}
   [[nodiscard]] static bool isFileNameSst(std::string const& fileName);
   bool writeShaFile(std::string const& fileName, std::string const& checksum);
-  [[nodiscard]] std::string buildShaFileNameFromSst(
+  [[nodiscard]] static std::string buildShaFileNameFromSst(
       std::string const& fileName, std::string const& checksum);
   [[nodiscard]] std::string removeFromTable(std::string const& fileName);
   void checkMissingShaFiles();

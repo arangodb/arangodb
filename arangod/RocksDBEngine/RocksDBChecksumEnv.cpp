@@ -94,10 +94,9 @@ bool ChecksumHelper::writeShaFile(std::string const& fileName,
       << "shaCalcFile: done " << fileName << " result: " << shaFileName;
   auto res = TRI_WriteFile(shaFileName.c_str(), "", 0);
   if (res == TRI_ERROR_NO_ERROR) {
-    {
-      MUTEX_LOCKER(mutexLock, _calculatedHashesMutex);
-      _fileNamesToHashes.try_emplace(TRI_Basename(fileName), checksum);
-    }
+    std::string basename = TRI_Basename(fileName);
+    MUTEX_LOCKER(mutexLock, _calculatedHashesMutex);
+    _fileNamesToHashes.try_emplace(std::move(basename), checksum);
     return true;
   }
 
@@ -128,7 +127,7 @@ void ChecksumHelper::checkMissingShaFiles() {
           std::string hash = it->substr(shaIndex + /*.sha.*/ 5, 64);
           it = nextIt;
           MUTEX_LOCKER(mutexLock, _calculatedHashesMutex);
-          _fileNamesToHashes.try_emplace(sstFileName, std::move(hash));
+          _fileNamesToHashes.try_emplace(std::move(sstFileName), std::move(hash));
         } else {
           std::string tempPath =
               basics::FileUtils::buildFilename(_rootPath, *it);
@@ -223,7 +222,7 @@ rocksdb::Status ChecksumEnv::NewWritableFile(
     } else {
       *result = std::move(writableFile);
     }
-  } catch (std::exception& e) {
+  } catch (std::exception const& e) {
     LOG_TOPIC("8b19e", ERR, arangodb::Logger::ENGINES)
         << "WritableFile: exception caught when allocating " << e.what();
     return rocksdb::Status::MemoryLimit(
@@ -242,10 +241,10 @@ rocksdb::Status ChecksumEnv::DeleteFile(const std::string& fileName) {
       auto res = TRI_UnlinkFile(shaFileName.c_str());
       if (res == TRI_ERROR_NO_ERROR) {
         LOG_TOPIC("e0a0d", DEBUG, arangodb::Logger::ENGINES)
-            << "deleteCalcFile:  delete file succeeded for " << shaFileName;
+            << "deleteCalcFile: delete file succeeded for " << shaFileName;
       } else {
         LOG_TOPIC("acb34", WARN, arangodb::Logger::ENGINES)
-            << "deleteCalcFile:  delete file failed for " << shaFileName;
+            << "deleteCalcFile: delete file failed for " << shaFileName;
       }
     }
   }
