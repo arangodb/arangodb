@@ -43,18 +43,20 @@ namespace arangodb::inspection {
 
 template<class Derived>
 struct InspectorBase {
-  Derived& self() { return static_cast<Derived&>(*this); }
-
   template<class T>
-  [[nodiscard]] Result apply(T& x) {
+  [[nodiscard]] Status apply(T& x) {
     return process(self(), x);
   }
 
   template<class T>
   struct Object;
 
+  struct Keep {};
+
+  constexpr Keep keep() { return {}; }
+
   template<class T, const char ErrorMsg[], class Func, class... Args>
-  static Result checkInvariant(Func&& func, Args&&... args) {
+  static Status checkInvariant(Func&& func, Args&&... args) {
     using result_t = std::invoke_result_t<Func, Args...>;
     if constexpr (std::is_same_v<result_t, bool>) {
       if (!std::invoke(std::forward<Func>(func), std::forward<Args>(args)...)) {
@@ -62,9 +64,9 @@ struct InspectorBase {
       }
       return {};
     } else {
-      static_assert(std::is_same_v<result_t, Result>,
+      static_assert(std::is_same_v<result_t, Status>,
                     "Invariants must either return bool or "
-                    "velocypack::inspection::Result");
+                    "velocypack::inspection::Status");
       return std::invoke(std::forward<Func>(func), std::forward<Args>(args)...);
     }
   }
@@ -72,7 +74,7 @@ struct InspectorBase {
   template<class T>
   struct FieldsResult {
     template<class Invariant>
-    Result invariant(Invariant&& func) {
+    Status invariant(Invariant&& func) {
       if constexpr (Derived::isLoading) {
         if (!result.ok()) {
           return std::move(result);
@@ -83,7 +85,7 @@ struct InspectorBase {
         return std::move(result);
       }
     }
-    operator Result() && { return std::move(result); }
+    operator Status() && { return std::move(result); }
 
     static constexpr const char InvariantFailedError[] =
         "Object invariant failed";
@@ -91,9 +93,9 @@ struct InspectorBase {
    private:
     template<class TT>
     friend struct Object;
-    FieldsResult(Result&& res, T& object)
+    FieldsResult(Status&& res, T& object)
         : result(std::move(res)), object(object) {}
-    Result result;
+    Status result;
     T& object;
   };
 
@@ -134,6 +136,8 @@ struct InspectorBase {
   template<typename T>
   struct RawField;
 
+  struct IgnoreField;
+
   // TODO - support virtual fields with getter/setter
   // template<typename T>
   // struct VirtualField : BasicField<VirtualField<T>> {
@@ -152,7 +156,13 @@ struct InspectorBase {
     return RawField<T>{{name}, value};
   }
 
+  [[nodiscard]] IgnoreField ignoreField(std::string_view name) const noexcept {
+    return IgnoreField{name};
+  }
+
  protected:
+  Derived& self() { return static_cast<Derived&>(*this); }
+
   template<class T>
   struct IsRawField : std::false_type {};
   template<class T>
@@ -170,7 +180,8 @@ struct InspectorBase {
 
   template<class T>
   static std::string_view getFieldName(T& field) noexcept {
-    if constexpr (IsRawField<std::remove_cvref_t<T>>::value) {
+    if constexpr (IsRawField<std::remove_cvref_t<T>>::value ||
+                  std::is_same_v<IgnoreField, std::remove_cvref_t<T>>) {
       return field.name;
     } else {
       return getFieldName(field.inner);
@@ -187,13 +198,12 @@ struct InspectorBase {
   }
 
   template<class T>
-  static decltype(auto) getFallbackValue(T& field) noexcept {
+  static decltype(auto) getFallbackField(T& field) noexcept {
     using TT = std::remove_cvref_t<T>;
     if constexpr (IsFallbackField<TT>::value) {
-      auto& result = field.fallbackValue;  // We want to return a reference!
-      return result;
+      return field;
     } else if constexpr (!IsRawField<TT>::value) {
-      return getFallbackValue(field.inner);
+      return getFallbackField(field.inner);
     }
   }
 
@@ -221,16 +231,17 @@ struct InspectorBase {
   template<class Field, class = void>
   struct HasInvariantMethod : std::false_type {};
 
-  struct True {
-    template<class T>
-    bool operator()(T&&) {
+  struct AlwaysTrue {
+    template<class... Ts>
+    [[nodiscard]] constexpr bool operator()(Ts&&...) const noexcept {
       return true;
     }
   };
 
   template<class Field>
   struct HasInvariantMethod<
-      Field, std::void_t<decltype(std::declval<Field>().invariant(True{}))>>
+      Field,
+      std::void_t<decltype(std::declval<Field>().invariant(AlwaysTrue{}))>>
       : std::true_type {};
 
   template<class Inner>
@@ -242,7 +253,8 @@ struct InspectorBase {
   struct EMPTY_BASE FallbackMixin {
     template<class U>
     [[nodiscard]] auto fallback(U&& val) && {
-      static_assert(std::is_constructible_v<typename Field::value_type, U>);
+      static_assert(std::is_constructible_v<typename Field::value_type, U> ||
+                    std::is_same_v<Keep, U>);
 
       return FallbackField<Field, U>(std::move(static_cast<Field&>(*this)),
                                      std::forward<U>(val));
@@ -334,6 +346,11 @@ struct InspectorBase {
         : BasicField<RawField>(name), value(value) {}
     using value_type = T;
     T& value;
+  };
+
+  struct IgnoreField {
+    explicit IgnoreField(std::string_view name) : name(name) {}
+    std::string_view name;
   };
 };
 

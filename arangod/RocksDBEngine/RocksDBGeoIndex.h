@@ -34,13 +34,11 @@
 namespace arangodb {
 
 class RocksDBGeoIndex final : public RocksDBIndex, public geo_index::Index {
-  friend class RocksDBSphericalIndexIterator;
-
  public:
   RocksDBGeoIndex() = delete;
 
   RocksDBGeoIndex(IndexId iid, arangodb::LogicalCollection& collection,
-                  arangodb::velocypack::Slice const& info,
+                  arangodb::velocypack::Slice info,
                   std::string const& typeName);
 
   ~RocksDBGeoIndex() = default;

@@ -36,12 +36,15 @@ const {
   replicatedLogSetPlanTerm,
   createParticipantsConfig,
   createTermSpecification,
-  replicatedLogIsReady,
   dbservers,
   nextUniqueLogId,
   registerAgencyTestBegin, registerAgencyTestEnd,
-  replicatedLogParticipantsFlag,
 } = require("@arangodb/testutils/replicated-logs-helper");
+
+const {
+  replicatedLogIsReady,
+  replicatedLogParticipantsFlag,
+} = require("@arangodb/testutils/replicated-logs-predicates");
 
 const database = 'ReplLogsMaintenanceTest';
 
@@ -137,7 +140,6 @@ const checkCommitFailReasonReport = function () {
       const generation = 1;
       replicatedLogSetPlan(database, logId, {
         id: logId,
-        targetConfig,
         currentTerm: createTermSpecification(term, servers, targetConfig, leader),
         participantsConfig: createParticipantsConfig(generation, servers),
       });
@@ -155,7 +157,6 @@ const checkCommitFailReasonReport = function () {
       const generation = 1;
       replicatedLogSetPlan(database, logId, {
         id: logId,
-        targetConfig,
         currentTerm: createTermSpecification(term, servers, targetConfig, leader),
         participantsConfig: createParticipantsConfig(generation, servers),
       });
@@ -229,7 +230,6 @@ const replicatedLogSuite = function () {
       const generation = 1;
       replicatedLogSetPlan(database, logId, {
         id: logId,
-        targetConfig,
         currentTerm: createTermSpecification(term, servers, targetConfig, leader),
         participantsConfig: createParticipantsConfig(generation, servers),
       });
@@ -247,7 +247,6 @@ const replicatedLogSuite = function () {
       const generation = 1;
       replicatedLogSetPlan(database, logId, {
         id: logId,
-        targetConfig,
         currentTerm: createTermSpecification(term, servers, targetConfig),
         participantsConfig: createParticipantsConfig(generation, servers),
       });
@@ -267,7 +266,6 @@ const replicatedLogSuite = function () {
       const participantsConfig = createParticipantsConfig(generation, servers);
       replicatedLogSetPlan(database, logId, {
         id: logId,
-        targetConfig,
         currentTerm: createTermSpecification(term, servers, targetConfig, leader),
         participantsConfig,
       });
@@ -317,7 +315,6 @@ const replicatedLogSuite = function () {
       const generation = 1;
       replicatedLogSetPlan(database, logId, {
         id: logId,
-        targetConfig,
         currentTerm: createTermSpecification(term, servers, targetConfig, leader),
         participantsConfig: createParticipantsConfig(generation, servers),
       });
@@ -339,7 +336,6 @@ const replicatedLogSuite = function () {
       const generation = 1;
       replicatedLogSetPlan(database, logId, {
         id: logId,
-        targetConfig,
         currentTerm: createTermSpecification(term, servers, targetConfig, leader),
         participantsConfig: createParticipantsConfig(generation, servers),
       });
@@ -362,7 +358,6 @@ const replicatedLogSuite = function () {
       const generation = 1;
       replicatedLogSetPlan(database, logId, {
         id: logId,
-        targetConfig,
         currentTerm: createTermSpecification(term, servers, targetConfig, leader),
         participantsConfig: createParticipantsConfig(generation, servers),
       });
@@ -390,7 +385,6 @@ const replicatedLogSuite = function () {
       const newServers = [...servers, toBeRemoved];
       replicatedLogSetPlan(database, logId, {
         id: logId,
-        targetConfig,
         currentTerm: createTermSpecification(term, newServers, targetConfig, leader),
         participantsConfig: createParticipantsConfig(generation, newServers),
       });

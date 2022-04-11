@@ -26,12 +26,11 @@
 
 #include "Basics/Common.h"
 
+#include <string>
+
 struct IcuInitializer {
-  IcuInitializer();
-  ~IcuInitializer();
-
   static void setup(char const* path);
+  static void reinit();
 
-  static void* icuDataPtr;
-  static bool initialized;
+  static std::string icuData;
 };

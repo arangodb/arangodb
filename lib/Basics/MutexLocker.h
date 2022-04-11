@@ -28,11 +28,6 @@
 #include "Basics/Locking.h"
 #include "Basics/debugging.h"
 
-#ifdef ARANGODB_SHOW_LOCK_TIME
-#include "Basics/system-functions.h"
-#include "Logger/LogMacros.h"
-#endif
-
 #include <thread>
 
 #define MUTEX_LOCKER(obj, lock)                                            \
@@ -70,21 +65,7 @@ class MutexLocker {
   /// The constructor acquires the mutex, the destructor unlocks the mutex.
   MutexLocker(LockType* mutex, LockerType type, bool condition,
               char const* file, int line) noexcept
-      : _mutex(mutex),
-        _file(file),
-        _line(line),
-#ifdef ARANGODB_SHOW_LOCK_TIME
-        _isLocked(false),
-        _time(0.0) {
-#else
-        _isLocked(false) {
-#endif
-
-#ifdef ARANGODB_SHOW_LOCK_TIME
-    // fetch current time
-    double t = TRI_microtime();
-#endif
-
+      : _mutex(mutex), _file(file), _line(line), _isLocked(false) {
     if (condition) {
       if (type == LockerType::BLOCKING) {
         lock();
@@ -96,11 +77,6 @@ class MutexLocker {
         _isLocked = tryLock();
       }
     }
-
-#ifdef ARANGODB_SHOW_LOCK_TIME
-    // add elapsed time to time tracker
-    _time = TRI_microtime() - t;
-#endif
   }
 
   /// @brief releases the read-lock
@@ -108,14 +84,6 @@ class MutexLocker {
     if (_isLocked) {
       _mutex->unlock();
     }
-
-#ifdef ARANGODB_SHOW_LOCK_TIME
-    if (_time > TRI_SHOW_LOCK_THRESHOLD) {
-      LOG_TOPIC("bb435", INFO, arangodb::Logger::PERFORMANCE)
-          << "MutexLocker for lock [" << _mutex << "]" << _file << ":" << _line
-          << " took " << _time << " s";
-    }
-#endif
   }
 
   bool isLocked() const noexcept { return _isLocked; }
@@ -174,11 +142,6 @@ class MutexLocker {
 
   /// @brief whether or not the mutex is locked
   bool _isLocked;
-
-#ifdef ARANGODB_SHOW_LOCK_TIME
-  /// @brief lock time
-  double _time;
-#endif
 };
 
 }  // namespace arangodb::basics

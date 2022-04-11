@@ -21,9 +21,8 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
-const LH = require("@arangodb/testutils/replicated-logs-helper");
+
 const SH = require("@arangodb/testutils/replicated-state-helper");
-const _ = require("lodash");
 
 const isError = function (value) {
   return value instanceof Error;
@@ -88,5 +87,35 @@ const replicatedStateIsReady = function (database, logId, servers) {
   };
 };
 
+const replicatedStateVersionConverged = function (database, logId, expectedVersion) {
+  return function () {
+    const {current} = SH.readReplicatedStateAgency(database, logId);
+
+    if (current === undefined || current.supervision === undefined) {
+      return Error(`Current/supervision is not yet defined for ${logId}`);
+    }
+
+    const supervision = current.supervision;
+    if (supervision.version === undefined || supervision.version < expectedVersion) {
+      return Error(`Expected version ${expectedVersion}, found version ${supervision.value}`);
+    }
+
+    return true;
+  };
+};
+
+const replicatedStateTargetLeaderIs = function (database, stateId, expectedLeader) {
+  return function () {
+    const currentLeader = SH.getReplicatedStateLeaderTarget(database, stateId);
+    if (currentLeader === expectedLeader) {
+      return true;
+    } else {
+      return new Error(`Expected state leader to switch to ${expectedLeader}, but is still ${currentLeader}`);
+    }
+  };
+};
+
 exports.replicatedStateIsReady = replicatedStateIsReady;
 exports.serverReceivedSnapshotGeneration = serverReceivedSnapshotGeneration;
+exports.replicatedStateVersionConverged = replicatedStateVersionConverged;
+exports.replicatedStateTargetLeaderIs = replicatedStateTargetLeaderIs;

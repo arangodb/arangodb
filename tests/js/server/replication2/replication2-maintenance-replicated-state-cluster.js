@@ -30,6 +30,7 @@ const _ = require('lodash');
 const LH = require("@arangodb/testutils/replicated-logs-helper");
 const SH = require("@arangodb/testutils/replicated-state-helper");
 const spreds = require("@arangodb/testutils/replicated-state-predicates");
+const lpreds = require("@arangodb/testutils/replicated-logs-predicates");
 const {dbservers} = require("@arangodb/testutils/replicated-logs-helper");
 
 const database = "Replicated_StateMaintenanceTestDB";
@@ -73,11 +74,6 @@ const replicatedStateSuite = function () {
             serverId: leader,
             rebootId: LH.getServerRebootId(leader),
           }
-        }, targetConfig: {
-          replicationFactor: 3,
-          writeConcern: 2,
-          softWriteConcern: 2,
-          waitForSync: false,
         },
         participantsConfig: {
           generation: 1,
@@ -163,7 +159,26 @@ const replicatedStateSuite = function () {
         return {state, log};
       });
 
-      LH.waitFor(LH.replicatedLogIsReady(database, logId, 2, servers, leader));
+      LH.waitFor(lpreds.replicatedLogIsReady(database, logId, 2, servers, leader));
+      LH.waitFor(spreds.replicatedStateIsReady(database, logId, servers));
+    },
+
+    testReplicatedStateIncreaseSnapshotGen: function () {
+      const logId = LH.nextUniqueLogId();
+      const servers = _.sampleSize(LH.dbservers, 3);
+      const leader = servers[0];
+      const follower = servers[1];
+      createReplicatedState(database, logId, servers, leader);
+
+      LH.waitFor(spreds.replicatedStateIsReady(database, logId, servers));
+
+      SH.updateReplicatedStatePlan(database, logId, function (state, log) {
+        state.generation += 1;
+        state.participants[follower].generation += 1;
+        return {state, log};
+      });
+
+      LH.waitFor(lpreds.replicatedLogIsReady(database, logId, 1, servers, leader));
       LH.waitFor(spreds.replicatedStateIsReady(database, logId, servers));
     },
 
@@ -179,7 +194,7 @@ const replicatedStateSuite = function () {
       const oldFollower = _.sample(followers);
       const newFollower = _.sample(_.difference(dbservers, servers));
       SH.updateReplicatedStatePlan(database, logId, function (state, log) {
-        log.participantsConfig.participants[newFollower] = {excluded: true};
+        log.participantsConfig.participants[newFollower] = {allowedAsLeader: false, allowedInQuorum: false};
         delete log.participantsConfig.participants[oldFollower];
         log.participantsConfig.generation += 1;
         const nextGeneration = state.generation += 1;
@@ -189,7 +204,7 @@ const replicatedStateSuite = function () {
       });
 
       const newParticipants = [newFollower, ..._.difference(servers, [oldFollower])];
-      LH.waitFor(LH.replicatedLogIsReady(database, logId, 1, newParticipants, leader));
+      LH.waitFor(lpreds.replicatedLogIsReady(database, logId, 1, newParticipants, leader));
       LH.waitFor(spreds.replicatedStateIsReady(database, logId, newParticipants));
     },
   };

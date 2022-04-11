@@ -74,6 +74,7 @@ let optionsDocumentation = [
   '   - `loopEternal`: to loop one test over and over.',
   '   - `loopSleepWhen`: sleep every nth iteration',
   '   - `loopSleepSec`: sleep seconds between iterations',
+  '   - `setInterruptable`: register special break handler',
   '   - `sleepBeforeStart` : sleep at tcpdump info - use this dump traffic or attach debugger',
   '   - `sleepBeforeShutdown`: let the system rest before terminating it',
   '',
@@ -151,6 +152,7 @@ let optionsDocumentation = [
   '   - `crashAnalysisText`: output of debugger in case of crash',
   '   - `getSockStat`: on linux collect socket stats before shutdown',
   '   - `verbose`: if set to true, be more verbose',
+  '   - `noStartStopLogs`: if set to true, suppress startup and shutdown messages printed by process manager. Overridden by `extremeVerbosity`',
   '   - `extremeVerbosity`: if set to true, then there will be more test run',
   '     output, especially for cluster tests.',
   '   - `testCase`: filter a jsunity testsuite for one special test case',
@@ -200,6 +202,7 @@ const optionsDefaults = {
   'sanitizer': false,
   'activefailover': false,
   'singles': 2,
+  'setInterruptable': ! internal.isATTy(),
   'sniff': false,
   'sniffAgency': true,
   'sniffDBServers': true,
@@ -227,6 +230,7 @@ const optionsDefaults = {
   'valgrindArgs': {},
   'valgrindHosts': false,
   'verbose': false,
+  'noStartStopLogs': internal.isATTy(),
   'vst': false,
   'http2': false,
   'walFlushTimeout': 30000,
@@ -586,11 +590,17 @@ function unitTest (cases, options) {
   loadTestSuites(options);
   // testsuites may register more defaults...
   _.defaults(options, optionsDefaults);
+
+  options.noStartStopLogs = !options.extremeVerbosity && options.noStartStopLogs;
+
   if (options.failed ||
       (Array.isArray(options.commandSwitches) && options.commandSwitches.includes("failed"))) {
     options.failed = rp.getFailedTestCases(options);
   }
-
+  if (options.setInterruptable) {
+    internal.SetSignalToImmediateDeadline();
+  }
+  
   try {
     pu.setupBinaries(options.build, options.buildType, options.configDir);
   }

@@ -46,7 +46,7 @@ namespace graph {
 
 class RefactoredClusterTraverserCache {
  public:
-  RefactoredClusterTraverserCache(ResourceMonitor& resourceMonitor);
+  explicit RefactoredClusterTraverserCache(ResourceMonitor& resourceMonitor);
 
   ~RefactoredClusterTraverserCache();
 

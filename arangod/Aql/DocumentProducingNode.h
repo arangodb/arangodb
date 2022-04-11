@@ -87,6 +87,10 @@ class DocumentProducingNode {
   /// @brief wheter or not the node can be used for counting
   bool doCount() const;
 
+  [[nodiscard]] bool useCache() const noexcept { return _useCache; }
+
+  void setUseCache(bool value) noexcept { _useCache = value; }
+
   ReadOwnWrites canReadOwnWrites() const noexcept { return _readOwnWrites; }
 
   void setCanReadOwnWrites(ReadOwnWrites v) noexcept { _readOwnWrites = v; }
@@ -108,6 +112,8 @@ class DocumentProducingNode {
   std::unique_ptr<Expression> _filter;
 
   bool _count;
+
+  bool _useCache = true;
 
   /// @brief Whether we should read our own writes performed by the current
   /// query. ATM this is only necessary for UPSERTS.

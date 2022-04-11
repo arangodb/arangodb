@@ -59,8 +59,8 @@ auto getParticipantWithUpdatedFlags(
     ParticipantId const& currentTermLeader)
     -> std::optional<std::pair<ParticipantId, ParticipantFlags>>;
 
-auto computeReason(LogCurrentLocalState const& status, bool healthy,
-                   bool excluded, LogTerm term)
+auto computeReason(std::optional<LogCurrentLocalState> const& maybeStatus,
+                   bool healthy, bool excluded, LogTerm term)
     -> LogCurrentSupervisionElection::ErrorCode;
 
 auto runElectionCampaign(LogCurrentLocalStates const& states,
@@ -82,7 +82,9 @@ auto dictateLeader(LogTarget const& target, LogPlanSpecification const& plan,
 
 // Actions capture entries in log, so they have to stay
 // valid until the returned action has been executed (or discarded)
-auto checkReplicatedLog(Log const& log, ParticipantsHealth const& health)
-    -> Action;
+auto checkReplicatedLog(LogTarget const& target,
+                        std::optional<LogPlanSpecification> const& plan,
+                        std::optional<LogCurrent> const& current,
+                        ParticipantsHealth const& health) -> Action;
 
 }  // namespace arangodb::replication2::replicated_log

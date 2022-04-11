@@ -3766,7 +3766,7 @@ static void JS_RemoveRecursiveDirectory(
     // windows paths are case-insensitive
     if (!TRI_CaseEqualString(path.c_str(), tempPath.c_str(), tempPath.size())) {
 #else
-    if (!TRI_EqualString(path.c_str(), tempPath.c_str(), tempPath.size())) {
+    if (!path.starts_with(tempPath)) {
 #endif
       std::string errorMessage = std::string("directory to be removed [") +
                                  path + "] is outside of temporary path [" +
@@ -4644,6 +4644,10 @@ static void JS_ExecuteExternal(
         "not allowed to execute or modify state of external processes");
   }
 
+  if (isExecutionDeadlineReached(isolate)) {
+    return;
+  }
+
   TRI_Utf8ValueNFC name(isolate, args[0]);
 
   if (*name == nullptr) {
@@ -4769,6 +4773,9 @@ static void JS_StatusExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
         "not allowed to execute or modify state of external processes");
   }
 
+  if (isExecutionDeadlineReached(isolate)) {
+    return;
+  }
   ExternalId pid;
 
   pid._pid = static_cast<TRI_pid_t>(TRI_ObjectToUInt64(isolate, args[0], true));
@@ -4781,6 +4788,7 @@ static void JS_StatusExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
     timeoutms =
         static_cast<uint32_t>(TRI_ObjectToUInt64(isolate, args[2], true));
   }
+  timeoutms = correctTimeoutToExecutionDeadline(timeoutms);
 
   ExternalProcessStatus external =
       TRI_CheckExternalProcess(pid, wait, timeoutms);

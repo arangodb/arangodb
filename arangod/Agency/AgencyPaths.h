@@ -1653,6 +1653,18 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
             std::shared_ptr<Leader const> leader() const {
               return Leader::make_shared(shared_from_this());
             }
+            class Actions : public StaticComponent<Actions, Log> {
+             public:
+              constexpr char const* component() const noexcept {
+                return "actions";
+              }
+
+              using BaseType::StaticComponent;
+            };
+
+            std::shared_ptr<Actions const> actions() const {
+              return Actions::make_shared(shared_from_this());
+            }
 
             class Supervision : public StaticComponent<Supervision, Log> {
              public:
@@ -1661,19 +1673,6 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
               }
 
               using BaseType::StaticComponent;
-
-              class Actions : public StaticComponent<Actions, Supervision> {
-               public:
-                constexpr char const* component() const noexcept {
-                  return "actions";
-                }
-
-                using BaseType::StaticComponent;
-              };
-
-              std::shared_ptr<Actions const> actions() const {
-                return Actions::make_shared(shared_from_this());
-              }
 
               class Election : public StaticComponent<Election, Supervision> {
                public:
@@ -1772,6 +1771,19 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
 
             std::shared_ptr<Participants const> participants() const {
               return Participants::make_shared(shared_from_this());
+            }
+
+            class Supervision : public StaticComponent<Supervision, State> {
+             public:
+              constexpr char const* component() const noexcept {
+                return "supervision";
+              }
+
+              using BaseType::StaticComponent;
+            };
+
+            std::shared_ptr<Supervision const> supervision() const {
+              return Supervision::make_shared(shared_from_this());
             }
           };
 
@@ -2467,6 +2479,19 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
 
             std::shared_ptr<Participants const> participants() const {
               return Participants::make_shared(shared_from_this());
+            }
+
+            class Leader : public StaticComponent<Leader, State> {
+             public:
+              constexpr char const* component() const noexcept {
+                return "leader";
+              }
+
+              using BaseType::StaticComponent;
+            };
+
+            std::shared_ptr<Leader const> leader() const {
+              return Leader::make_shared(shared_from_this());
             }
           };
 

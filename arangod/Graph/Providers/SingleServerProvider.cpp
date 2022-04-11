@@ -136,7 +136,7 @@ auto SingleServerProvider<Step>::expand(
   TRI_ASSERT(_cursor != nullptr);
   LOG_TOPIC("c9169", TRACE, Logger::GRAPHS)
       << "<SingleServerProvider> Expanding " << vertex.getID();
-  _cursor->rearm(vertex.getID(), step.getDepth());
+  _cursor->rearm(vertex.getID(), step.getDepth(), _stats);
   _cursor->readAll(
       *this, _stats, step.getDepth(),
       [&](EdgeDocumentToken&& eid, VPackSlice edge, size_t cursorID) -> void {
@@ -230,10 +230,25 @@ arangodb::transaction::Methods* SingleServerProvider<Step>::trx() {
 template<class Step>
 arangodb::aql::TraversalStats SingleServerProvider<Step>::stealStats() {
   auto t = _stats;
-  // Placement new of stats, do not reallocate space.
-  _stats.~TraversalStats();
-  new (&_stats) aql::TraversalStats{};
+  _stats.clear();
   return t;
+}
+
+template<class StepType>
+auto SingleServerProvider<StepType>::fetchVertices(
+    const std::vector<Step*>& looseEnds)
+    -> futures::Future<std::vector<Step*>> {
+  // We will never need to fetch anything
+  TRI_ASSERT(false);
+  return std::move(fetch(looseEnds));
+}
+
+template<class StepType>
+auto SingleServerProvider<StepType>::fetchEdges(
+    const std::vector<Step*>& fetchedVertices) -> Result {
+  // We will never need to fetch anything
+  TRI_ASSERT(false);
+  return TRI_ERROR_NO_ERROR;
 }
 
 template class arangodb::graph::SingleServerProvider<SingleServerProviderStep>;

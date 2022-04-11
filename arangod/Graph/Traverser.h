@@ -35,6 +35,8 @@
 #include "Transaction/Helpers.h"
 #include "VocBase/voc-types.h"
 
+#include <cstdint>
+
 namespace arangodb {
 
 namespace transaction {
@@ -264,22 +266,22 @@ class Traverser {
   }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Get the number of filtered paths
-  //////////////////////////////////////////////////////////////////////////////
-
-  size_t getAndResetFilteredPaths();
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief Get the number of documents loaded
   //////////////////////////////////////////////////////////////////////////////
 
-  size_t getAndResetReadDocuments();
+  [[nodiscard]] std::uint64_t getAndResetReadDocuments() noexcept;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Get the number of filtered paths
+  //////////////////////////////////////////////////////////////////////////////
+
+  [[nodiscard]] std::uint64_t getAndResetFiltered() noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Get the number of HTTP requests made
   //////////////////////////////////////////////////////////////////////////////
 
-  size_t getAndResetHttpRequests();
+  [[nodiscard]] std::uint64_t getAndResetHttpRequests() noexcept;
 
   TraverserOptions* options() { return _opts; }
 
@@ -289,7 +291,7 @@ class Traverser {
   ///        If it returns false it is guaranteed that there are no more paths.
   //////////////////////////////////////////////////////////////////////////////
 
-  bool hasMore() const { return !_done; }
+  bool hasMore() const noexcept { return !_done; }
 
   bool edgeMatchesConditions(arangodb::velocypack::Slice edge,
                              std::string_view vid, uint64_t depth,
