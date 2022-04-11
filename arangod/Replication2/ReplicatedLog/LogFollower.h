@@ -78,6 +78,7 @@ class LogFollower : public ILogFollower,
       -> std::unique_ptr<LogIterator>;
   [[nodiscard]] auto getCommitIndex() const noexcept -> LogIndex override;
 
+  [[nodiscard]] auto copyInMemoryLog() const -> InMemoryLog override;
   [[nodiscard]] auto release(LogIndex doneWithIdx) -> Result override;
 
   /// @brief Resolved when the leader has committed at least one entry.
