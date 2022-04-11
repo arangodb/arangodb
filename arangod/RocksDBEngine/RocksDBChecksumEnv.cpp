@@ -222,7 +222,7 @@ rocksdb::Status ChecksumEnv::NewWritableFile(
     } else {
       *result = std::move(writableFile);
     }
-  } catch (std::exception& e) {
+  } catch (std::exception const& e) {
     LOG_TOPIC("8b19e", ERR, arangodb::Logger::ENGINES)
         << "WritableFile: exception caught when allocating " << e.what();
     return rocksdb::Status::MemoryLimit(
