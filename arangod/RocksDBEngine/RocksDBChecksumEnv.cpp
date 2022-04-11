@@ -127,7 +127,7 @@ void ChecksumHelper::checkMissingShaFiles() {
           std::string hash = it->substr(shaIndex + /*.sha.*/ 5, 64);
           it = nextIt;
           MUTEX_LOCKER(mutexLock, _calculatedHashesMutex);
-          _fileNamesToHashes.try_emplace(sstFileName, std::move(hash));
+          _fileNamesToHashes.try_emplace(std::move(sstFileName), std::move(hash));
         } else {
           std::string tempPath =
               basics::FileUtils::buildFilename(_rootPath, *it);
