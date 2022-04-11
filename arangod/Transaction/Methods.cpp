@@ -1051,6 +1051,9 @@ Future<OperationResult> transaction::Methods::insertLocal(
       }
 
       bool sendRefusal = (options.isSynchronousReplicationFrom != theLeader);
+      TRI_IF_FAILURE("synchronousReplication::neverRefuseOnFollower") {
+        sendRefusal = false;
+      }
       TRI_IF_FAILURE("synchronousReplication::refuseOnFollower") {
         sendRefusal = true;
       }
@@ -1286,7 +1289,20 @@ Future<OperationResult> transaction::Methods::insertLocal(
     if (res.ok() && excludeFromReplication) {
       excludePositions.insert(0);
     }
+
+    // on a follower, our result should always be an empty object
+    if (replicationType == ReplicationType::FOLLOWER) {
+      TRI_ASSERT(resultBuilder.slice().isNone());
+      // add an empty object here so that when sending things back in JSON
+      // format, there is no "non-representable type 'none'" issue.
+      resultBuilder.add(VPackSlice::emptyObjectSlice());
+    }
   }
+
+  // on a follower, our result should always be an empty array or object
+  TRI_ASSERT(replicationType != ReplicationType::FOLLOWER ||
+             (value.isArray() && resultBuilder.slice().isEmptyArray()) ||
+             (value.isObject() && resultBuilder.slice().isEmptyObject()));
 
   TRI_ASSERT(res.ok() || !value.isArray());
 
@@ -1455,6 +1471,9 @@ Future<OperationResult> transaction::Methods::modifyLocal(
                                options);
       }
       bool sendRefusal = (options.isSynchronousReplicationFrom != theLeader);
+      TRI_IF_FAILURE("synchronousReplication::neverRefuseOnFollower") {
+        sendRefusal = false;
+      }
       TRI_IF_FAILURE("synchronousReplication::refuseOnFollower") {
         sendRefusal = true;
       }
@@ -1588,7 +1607,20 @@ Future<OperationResult> transaction::Methods::modifyLocal(
     if (res.ok() && excludeFromReplication) {
       excludePositions.insert(0);
     }
+
+    // on a follower, our result should always be an empty object
+    if (replicationType == ReplicationType::FOLLOWER) {
+      TRI_ASSERT(resultBuilder.slice().isNone());
+      // add an empty object here so that when sending things back in JSON
+      // format, there is no "non-representable type 'none'" issue.
+      resultBuilder.add(VPackSlice::emptyObjectSlice());
+    }
   }
+
+  // on a follower, our result should always be an empty array or object
+  TRI_ASSERT(replicationType != ReplicationType::FOLLOWER ||
+             (newValue.isArray() && resultBuilder.slice().isEmptyArray()) ||
+             (newValue.isObject() && resultBuilder.slice().isEmptyObject()));
 
   TRI_ASSERT(!newValue.isArray() || options.silent ||
              resultBuilder.slice().length() == newValue.length());
@@ -1733,6 +1765,9 @@ Future<OperationResult> transaction::Methods::removeLocal(
                                options);
       }
       bool sendRefusal = (options.isSynchronousReplicationFrom != theLeader);
+      TRI_IF_FAILURE("synchronousReplication::neverRefuseOnFollower") {
+        sendRefusal = false;
+      }
       TRI_IF_FAILURE("synchronousReplication::refuseOnFollower") {
         sendRefusal = true;
       }
@@ -1835,7 +1870,20 @@ Future<OperationResult> transaction::Methods::removeLocal(
     res.reset();
   } else {
     res = workForOneDocument(value, false);
+
+    // on a follower, our result should always be an empty object
+    if (replicationType == ReplicationType::FOLLOWER) {
+      TRI_ASSERT(resultBuilder.slice().isNone());
+      // add an empty object here so that when sending things back in JSON
+      // format, there is no "non-representable type 'none'" issue.
+      resultBuilder.add(VPackSlice::emptyObjectSlice());
+    }
   }
+
+  // on a follower, our result should always be an empty array or object
+  TRI_ASSERT(replicationType != ReplicationType::FOLLOWER ||
+             (value.isArray() && resultBuilder.slice().isEmptyArray()) ||
+             (value.isObject() && resultBuilder.slice().isEmptyObject()));
 
   TRI_ASSERT(!value.isArray() || options.silent ||
              resultBuilder.slice().length() == value.length());
@@ -2004,6 +2052,9 @@ Future<OperationResult> transaction::Methods::truncateLocal(
             OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED, options));
       }
       bool sendRefusal = (options.isSynchronousReplicationFrom != theLeader);
+      TRI_IF_FAILURE("synchronousReplication::neverRefuseOnFollower") {
+        sendRefusal = false;
+      }
       TRI_IF_FAILURE("synchronousReplication::refuseOnFollower") {
         sendRefusal = true;
       }
