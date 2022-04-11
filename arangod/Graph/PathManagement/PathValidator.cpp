@@ -330,7 +330,6 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
       }
     }
   }
-
   return res;
 }
 
