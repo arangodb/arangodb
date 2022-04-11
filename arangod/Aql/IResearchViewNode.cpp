@@ -969,16 +969,18 @@ constexpr std::unique_ptr<aql::ExecutionBlock> (*executors[])(
        aql::RegisterInfos&& registerInfos,
        aql::IResearchViewExecutorInfos&& executorInfos)
         -> std::unique_ptr<aql::ExecutionBlock> {
-      return std::make_unique<aql::ExecutionBlockImpl<
-          aql::IResearchViewHeapSortExecutor<copyStored, false, materializeType>>>(
+      return std::make_unique<
+          aql::ExecutionBlockImpl<aql::IResearchViewHeapSortExecutor<
+              copyStored, false, materializeType>>>(
           engine, viewNode, std::move(registerInfos), std::move(executorInfos));
     },
     [](aql::ExecutionEngine* engine, IResearchViewNode const* viewNode,
        aql::RegisterInfos&& registerInfos,
        aql::IResearchViewExecutorInfos&& executorInfos)
         -> std::unique_ptr<aql::ExecutionBlock> {
-      return std::make_unique<aql::ExecutionBlockImpl<
-          aql::IResearchViewHeapSortExecutor<copyStored, true, materializeType>>>(
+      return std::make_unique<
+          aql::ExecutionBlockImpl<aql::IResearchViewHeapSortExecutor<
+              copyStored, true, materializeType>>>(
           engine, viewNode, std::move(registerInfos), std::move(executorInfos));
     }};
 
@@ -1263,7 +1265,7 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan,
   }
 
   if ((base.hasKey(NODE_VIEW_SCORERS_SORT) ^
-        base.hasKey(NODE_VIEW_SCORERS_SORT_LIMIT))) {
+       base.hasKey(NODE_VIEW_SCORERS_SORT_LIMIT))) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
         "\"scorersSort\" and \"scorersSortLimit\" attributes should be "
@@ -1273,17 +1275,16 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan,
   if (base.hasKey(NODE_VIEW_SCORERS_SORT)) {
     auto const scorersSortSlice = base.get(NODE_VIEW_SCORERS_SORT);
     if (!scorersSortSlice.isArray()) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_BAD_PARAMETER,
-        "\"scorersSort\"should be an array");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                     "\"scorersSort\"should be an array");
     }
     auto itr = velocypack::ArrayIterator(scorersSortSlice);
     for (auto const scorersSortElement : itr) {
       if (!scorersSortElement.isObject()) {
-        THROW_ARANGO_EXCEPTION_FORMAT(
-            TRI_ERROR_BAD_PARAMETER,
-            "\"scorersSort[%s]\" attribute should be "
-            "an object", std::to_string(itr.index()).c_str());
+        THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_BAD_PARAMETER,
+                                      "\"scorersSort[%s]\" attribute should be "
+                                      "an object",
+                                      std::to_string(itr.index()).c_str());
       }
       auto index = scorersSortElement.get(NODE_VIEW_SCORERS_SORT_INDEX);
       auto asc = scorersSortElement.get(NODE_VIEW_SCORERS_SORT_ASC);
@@ -1860,7 +1861,8 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
         std::move(outNonMaterializedViewRegs),
         _options.countApproximate,
         filterOptimization(),
-        _scorersSort, _scorersSortLimit};
+        _scorersSort,
+        _scorersSortLimit};
 
     return std::make_tuple(materializeType, std::move(executorInfos),
                            std::move(registerInfos));
@@ -1897,38 +1899,38 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     case MaterializeType::NotMaterialize:
       return ::executors<false,
                          MaterializeType::NotMaterialize>[getExecutorIndex(
-          sorted, ordered, heapsort)](
-          &engine, this, std::move(registerInfos), std::move(executorInfos));
+          sorted, ordered, heapsort)](&engine, this, std::move(registerInfos),
+                                      std::move(executorInfos));
     case MaterializeType::LateMaterialize:
       return ::executors<false,
                          MaterializeType::LateMaterialize>[getExecutorIndex(
-          sorted, ordered, heapsort)](
-          &engine, this, std::move(registerInfos), std::move(executorInfos));
+          sorted, ordered, heapsort)](&engine, this, std::move(registerInfos),
+                                      std::move(executorInfos));
     case MaterializeType::Materialize:
       return ::executors<false, MaterializeType::Materialize>[getExecutorIndex(
-          sorted, ordered, heapsort)](
-          &engine, this, std::move(registerInfos), std::move(executorInfos));
+          sorted, ordered, heapsort)](&engine, this, std::move(registerInfos),
+                                      std::move(executorInfos));
     case MaterializeType::NotMaterialize | MaterializeType::UseStoredValues:
 #ifdef USE_ENTERPRISE
       if (encrypted) {
         return ::executors<
             true, MaterializeType::NotMaterialize |
                       MaterializeType::UseStoredValues>[getExecutorIndex(
-            sorted, ordered, heapsort)](
-            &engine, this, std::move(registerInfos), std::move(executorInfos));
+            sorted, ordered, heapsort)](&engine, this, std::move(registerInfos),
+                                        std::move(executorInfos));
       } else {
         return ::executors<
             false, MaterializeType::NotMaterialize |
                        MaterializeType::UseStoredValues>[getExecutorIndex(
-            sorted, ordered, heapsort)](
-            &engine, this, std::move(registerInfos), std::move(executorInfos));
+            sorted, ordered, heapsort)](&engine, this, std::move(registerInfos),
+                                        std::move(executorInfos));
       }
 #else
       return ::executors<false,
                          MaterializeType::NotMaterialize |
                              MaterializeType::UseStoredValues>[getExecutorIndex(
-          sorted, ordered, heapsort)](
-          &engine, this, std::move(registerInfos), std::move(executorInfos));
+          sorted, ordered, heapsort)](&engine, this, std::move(registerInfos),
+                                      std::move(executorInfos));
 #endif
     case MaterializeType::LateMaterialize | MaterializeType::UseStoredValues:
 #ifdef USE_ENTERPRISE
@@ -1936,21 +1938,21 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
         return ::executors<
             true, MaterializeType::LateMaterialize |
                       MaterializeType::UseStoredValues>[getExecutorIndex(
-            sorted, ordered, heapsort)](
-            &engine, this, std::move(registerInfos), std::move(executorInfos));
+            sorted, ordered, heapsort)](&engine, this, std::move(registerInfos),
+                                        std::move(executorInfos));
       } else {
         return ::executors<
             false, MaterializeType::LateMaterialize |
                        MaterializeType::UseStoredValues>[getExecutorIndex(
-            sorted, ordered, heapsort)](
-            &engine, this, std::move(registerInfos), std::move(executorInfos));
+            sorted, ordered, heapsort)](&engine, this, std::move(registerInfos),
+                                        std::move(executorInfos));
       }
 #else
       return ::executors<false,
                          MaterializeType::LateMaterialize |
                              MaterializeType::UseStoredValues>[getExecutorIndex(
-          _sorted, ordered, heapsort)](
-          &engine, this, std::move(registerInfos), std::move(executorInfos));
+          _sorted, ordered, heapsort)](&engine, this, std::move(registerInfos),
+                                       std::move(executorInfos));
 #endif
     default:
       ADB_UNREACHABLE;

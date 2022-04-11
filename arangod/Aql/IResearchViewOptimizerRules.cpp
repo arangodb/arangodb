@@ -218,7 +218,8 @@ bool optimizeSearchCondition(IResearchViewNode& viewNode,
 }
 
 bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
-  if (!plan->contains(ExecutionNode::LIMIT) || !plan->contains(ExecutionNode::SORT)) {
+  if (!plan->contains(ExecutionNode::LIMIT) ||
+      !plan->contains(ExecutionNode::SORT)) {
     return false;
   }
 
@@ -240,7 +241,7 @@ bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
     }
 
     if (current->getType() == ExecutionNode::SORT) {
-      // we stop on first sort 
+      // we stop on first sort
       sortNode = ExecutionNode::castTo<SortNode*>(current);
     }
 
@@ -249,7 +250,6 @@ bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
       limitNode = ExecutionNode::castTo<LimitNode*>(current);
       break;
     }
-
   }
   if (!sortNode || !limitNode) {
     return false;
@@ -289,7 +289,8 @@ bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
     scoresSort.emplace_back(std::distance(scorers.begin(), s), sort.ascending);
   }
   // all sort elements are covered by view's scorers
-  viewNode.setScorersSort(std::move(scoresSort), limitNode->offset() + limitNode->limit());
+  viewNode.setScorersSort(std::move(scoresSort),
+                          limitNode->offset() + limitNode->limit());
   sortNode->_reinsertInCluster = false;
   if (!arangodb::ServerState::instance()->isCoordinator()) {
     // in cluster node will be unlinked later by 'distributeSortToClusterRule'
@@ -777,8 +778,8 @@ void handleConstrainedSortInView(Optimizer* opt,
   });
 
   // cppcheck-suppress accessMoved
-  if (!plan->contains(ExecutionNode::ENUMERATE_IRESEARCH_VIEW) || 
-      !plan->contains(ExecutionNode::SORT) || 
+  if (!plan->contains(ExecutionNode::ENUMERATE_IRESEARCH_VIEW) ||
+      !plan->contains(ExecutionNode::SORT) ||
       !plan->contains(ExecutionNode::LIMIT)) {
     // no view && sort && limit present in the query,
     // so no need to do any expensive transformations

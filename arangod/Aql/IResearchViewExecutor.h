@@ -131,11 +131,9 @@ class IResearchViewExecutorInfos {
 
   iresearch::IResearchViewStoredValues const& storedValues() const noexcept;
 
-  size_t scoresSortLimit() const noexcept {
-    return _scorersSortLimit;
-  }
+  size_t scoresSortLimit() const noexcept { return _scorersSortLimit; }
 
-   std::vector<std::pair<size_t, bool>> const& scoresSort() const noexcept {
+  std::vector<std::pair<size_t, bool>> const& scoresSort() const noexcept {
     return _scorersSort;
   }
 
@@ -239,7 +237,6 @@ class ScoreIterator {
 template<typename ValueType, bool copyStored>
 class IndexReadBuffer {
  public:
-
   using KeyValueType = ValueType;
 
   explicit IndexReadBuffer(size_t numScoreRegisters);
@@ -261,7 +258,7 @@ class IndexReadBuffer {
   void pushValue(Args&&... args);
 
   bool pushSortedValue(ValueType&& value, float_t const* scores, size_t count);
- 
+
   void finalizeHeapSort();
   // A note on the scores: instead of saving an array of AqlValues, we could
   // save an array of floats plus a bitfield noting which entries should be
@@ -482,7 +479,7 @@ class IResearchViewExecutorBase {
                               size_t storedValuesIndex = 0);
 
  private:
-  bool next(ReadContext& ctx);
+  bool next(ReadContext& ctx, IResearchViewStats& stats);
 
  protected:
   transaction::Methods _trx;
@@ -678,13 +675,7 @@ class IResearchViewHeapSortExecutor
 
   size_t skip(size_t toSkip);
   size_t skipAll();
-  size_t getScanned() noexcept {
-    auto tmp = _scannedCount;
-    // one-shot getter.
-    _scannedCount = 0;
-    return tmp;
-    
-  }
+  size_t getScanned() const noexcept { return _scannedCount; }
   void reset();
   void fillBuffer(ReadContext& ctx);
   bool fillBufferInternal(size_t skip);
@@ -695,7 +686,7 @@ class IResearchViewHeapSortExecutor
   size_t _scannedCount{0};
   size_t _bufferedCount{};
   bool _bufferFilled{false};
-}; // ResearchViewHeapSortExecutor
+};  // ResearchViewHeapSortExecutor
 
 union UnitedDocumentId {
   irs::doc_id_t irsId;

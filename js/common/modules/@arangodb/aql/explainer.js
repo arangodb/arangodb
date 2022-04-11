@@ -1275,13 +1275,13 @@ function processQuery(query, explain, planIndex) {
               }
               scorersSort += variableName(node.scorers[sort.index]);
               if (sort.asc) {
-                scorersSort +=keyword(' ASC');
+                scorersSort += keyword(' ASC');
               } else {
-                scorersSort +=keyword(' DESC');
+                scorersSort += keyword(' DESC');
               }
           
           });
-           scorersSort =  keyword(' SORT ') + scorersSort;
+           scorersSort = keyword(' SORT ') + scorersSort;
            scorersSort += keyword(' LIMIT ') + value('0, ' + JSON.stringify(node.scorersSortLimit));
            
         }
