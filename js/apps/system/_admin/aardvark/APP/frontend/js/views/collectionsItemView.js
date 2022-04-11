@@ -15,10 +15,6 @@
     },
 
     events: {
-      'click .iconSet.icon_arangodb_settings2': 'createEditPropertiesModal',
-      'click .pull-left': 'noop',
-      'click .icon_arangodb_settings2': 'editProperties',
-      'click .spanInfo': 'showProperties',
       'click': 'selectCollection'
     },
 
@@ -35,22 +31,6 @@
       $(this.el).attr('id', 'collection_' + this.model.get('name'));
 
       return this;
-    },
-
-    editProperties: function (event) {
-      if (this.model.get('locked')) {
-        return 0;
-      }
-      event.stopPropagation();
-      this.createEditPropertiesModal();
-    },
-
-    showProperties: function (event) {
-      if (this.model.get('locked')) {
-        return 0;
-      }
-      event.stopPropagation();
-      this.createInfoModal();
     },
 
     selectCollection: function (event) {
@@ -129,7 +109,7 @@
                 replicationFactor = $('#change-replication-factor').val();
               }
 
-              this.model.changeCollection(wfs, replicationFactor, callbackChange);
+              this.model.changeCollection(wfs, replicationFactor, writeConcern, cacheEnabled, callbackChange);
             }
           }.bind(this);
 
@@ -141,126 +121,6 @@
         }
       }.bind(this);
 
-      window.isCoordinator(callback);
-    },
-
-    createEditPropertiesModal: function () {
-      var callback = function (error, isCoordinator) {
-        if (error) {
-          arangoHelper.arangoError('Error', 'Could not get coordinator info');
-        } else {
-
-          var buttons = [];
-          var tableContent = [];
-
-          if (!isCoordinator) {
-            tableContent.push(
-              window.modalView.createTextEntry(
-                'change-collection-name',
-                'Name',
-                this.model.get('name'),
-                false,
-                '',
-                true,
-                [
-                  {
-                    rule: Joi.string().regex(/^[a-zA-Z]/),
-                    msg: 'Collection name must always start with a letter.'
-                  },
-                  {
-                    rule: Joi.string().regex(/^[a-zA-Z0-9\-_]*$/),
-                    msg: 'Only Symbols "_" and "-" are allowed.'
-                  },
-                  {
-                    rule: Joi.string().required(),
-                    msg: 'No collection name given.'
-                  }
-                ]
-              )
-            );
-          }
-
-          var after = function () {
-            tableContent.push(
-              window.modalView.createReadOnlyEntry(
-                'change-collection-id', 'ID', this.model.get('id'), ''
-              )
-            );
-            tableContent.push(
-              window.modalView.createReadOnlyEntry(
-                'change-collection-type', 'Type', this.model.get('type'), ''
-              )
-            );
-            tableContent.push(
-              window.modalView.createReadOnlyEntry(
-                'change-collection-status', 'Status', this.model.get('status'), ''
-              )
-            );
-            buttons.push(
-              window.modalView.createDeleteButton(
-                'Delete',
-                this.deleteCollection.bind(this)
-              )
-            );
-            buttons.push(
-              window.modalView.createDeleteButton(
-                'Truncate',
-                this.truncateCollection.bind(this)
-              )
-            );
-
-            if (frontendConfig.engine === 'rocksdb') {
-              buttons.push(
-                window.modalView.createDeleteButton(
-                  'Load Indexes into Memory',
-                  this.warumupCollection.bind(this)
-                )
-              );
-            }
-
-            buttons.push(
-              window.modalView.createSuccessButton(
-                'Save',
-                this.saveModifiedCollection.bind(this)
-              )
-            );
-
-            var tabBar = ['General', 'Indexes'];
-            var templates = ['modalTable.ejs', 'indicesView.ejs'];
-
-            window.modalView.show(
-              templates,
-              'Modify Collection',
-              buttons,
-              tableContent, null, null,
-              this.events, null,
-              tabBar
-            );
-            this.getIndex();
-          }.bind(this);
-
-          var callback2 = function (error, data) {
-            if (error) {
-              arangoHelper.arangoError('Collection', 'Could not fetch properties');
-            } else {
-              var wfs = data.waitForSync;
-
-              // prevent "unexpected sync method error"
-              tableContent.push(
-                window.modalView.createSelectEntry(
-                  'change-collection-sync',
-                  'Wait for sync',
-                  wfs,
-                  'Synchronize to disk before returning from a create or update of a document.',
-                  [{value: false, label: 'No'}, {value: true, label: 'Yes'}])
-              );
-            }
-            after();
-          };
-
-          this.model.getProperties(callback2);
-        }
-      }.bind(this);
       window.isCoordinator(callback);
     },
 
@@ -328,37 +188,6 @@
     */
     },
 
-    createInfoModal: function () {
-      var callbackRev = function (error, revision, figures) {
-        if (error) {
-          arangoHelper.arangoError('Figures', 'Could not get revision.');
-        } else {
-          var buttons = [];
-          var tableContent = {
-            figures: figures,
-            revision: revision,
-            model: this.model
-          };
-          window.modalView.show(
-            'modalCollectionInfo.ejs',
-            'Collection: ' + (this.model.get('name').length > 64 ? this.model.get('name').substr(0, 64) + "..." : this.model.get('name')),
-            buttons,
-            tableContent
-          );
-        }
-      }.bind(this);
-
-      var callback = function (error, data) {
-        if (error) {
-          arangoHelper.arangoError('Figures', 'Could not get figures.');
-        } else {
-          var figures = data;
-          this.model.getRevision(callbackRev, figures);
-        }
-      }.bind(this);
-
-      this.model.getFigures(callback);
-    },
     // index functions
     resetIndexForms: function () {
       $('#indexHeader input').val('').prop('checked', false);
