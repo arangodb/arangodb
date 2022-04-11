@@ -32,11 +32,30 @@ const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
 const db = arangodb.db;
 const ERRORS = arangodb.errors;
-const { debugCanUseFailAt, debugSetFailAt, debugClearFailAt } = require("@arangodb/test-helper");  
+const { debugCanUseFailAt, debugSetFailAt, debugClearFailAt, getServersByType } = require("@arangodb/test-helper");  
 const cluster = require("internal").isCluster();
 const isEnterprise = require("internal").isEnterprise();
   
 const cn = "UnitTestsKeyGen";
+
+// in single server case, this is the single server.
+// in cluster case, this is the coordinator.
+let endpoints = [ arango.getEndpoint() ];
+if (cluster) {
+  endpoints = endpoints.concat(getServersByType("dbserver").map((s) => s.endpoint));
+}
+
+let debugSetFailAtAll = (fp) => {
+  endpoints.forEach((ep) => {
+    debugSetFailAt(ep, fp);
+  });
+};
+
+let debugClearFailAtAll = () => {
+  endpoints.forEach((ep) => {
+    debugClearFailAt(ep);
+  });
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite: traditional key gen
@@ -890,14 +909,18 @@ function KeyGenerationLocationSuite () {
     },
 
     tearDown : function () {
-      debugClearFailAt(arango.getEndpoint());
+      debugClearFailAtAll();
       db._drop(cn);
     },
 
     testThatFailurePointsWork1 : function () {
+      if (!cluster) {
+        return;
+      }
+
       let c = db._create(cn, { keyOptions: { type: "traditional" }, numberOfShards: 1 });
       
-      debugSetFailAt(arango.getEndpoint(), "KeyGenerator::generateOnSingleServer");
+      debugSetFailAtAll("KeyGenerator::generateOnSingleServer");
       try {
         c.insert({});
       } catch (err) {
@@ -906,9 +929,13 @@ function KeyGenerationLocationSuite () {
     },
     
     testThatFailurePointsWork2 : function () {
+      if (!cluster) {
+        return;
+      }
+
       let c = db._create(cn, { keyOptions: { type: "traditional" }, numberOfShards: 2 });
       
-      debugSetFailAt(arango.getEndpoint(), "KeyGenerator::generateOnCoordinator");
+      debugSetFailAtAll("KeyGenerator::generateOnCoordinator");
       try {
         c.insert({});
       } catch (err) {
@@ -917,8 +944,12 @@ function KeyGenerationLocationSuite () {
     },
     
     testSingleShardInserts : function () {
+      if (!cluster) {
+        return;
+      }
+
       // fail if we generate a key on a coordinator
-      debugSetFailAt(arango.getEndpoint(), "KeyGenerator::generateOnCoordinator");
+      debugSetFailAtAll("KeyGenerator::generateOnCoordinator");
 
       generators().forEach((generator) => {
         let c = db._create(cn, { keyOptions: { type: generator }, numberOfShards: 1 });
@@ -944,14 +975,46 @@ function KeyGenerationLocationSuite () {
       });
     },
     
+    testSingleShardInsertsCustomSharding : function () {
+      if (!cluster) {
+        return;
+      }
+
+      // fail if we generate a key on a coordinator
+      debugSetFailAtAll("KeyGenerator::generateOnCoordinator");
+
+      generators().forEach((generator) => {
+        let c = db._create(cn, { keyOptions: { type: generator }, numberOfShards: 1, shardKeys: ["id"] });
+        try {
+          // test various ways of inserting documents into the collection
+          
+          // single insert, using document API
+          c.insert({ id: "123" });
+          
+          // batch insert, using document API
+          c.insert([{ id: "123" }, { id: "123" }, { id: "123" }]);
+          
+          // single insert, using AQL
+          db._query(`INSERT { id: "123" } INTO ${cn}`);
+          
+          // batch insert, using AQL
+          db._query(`FOR i IN 1..3 INSERT { id: "123" } INTO ${cn}`);
+
+          assertEqual(8, c.count());
+        } finally {
+          db._drop(cn);
+        }
+      });
+    },
+    
     testOneShardInserts : function () {
-      if (!isEnterprise) {
+      if (!isEnterprise || !cluster) {
         // can test OneShard only in EE
         return;
       }
 
       // fail if we generate a key on a coordinator
-      debugSetFailAt(arango.getEndpoint(), "KeyGenerator::generateOnCoordinator");
+      debugSetFailAtAll("KeyGenerator::generateOnCoordinator");
 
       db._createDatabase(cn, { sharding: "single" });
       try {
@@ -989,8 +1052,12 @@ function KeyGenerationLocationSuite () {
     },
     
     testMultiShardInserts : function () {
+      if (!cluster) {
+        return;
+      }
+
       // fail if we generate a key on a DB server
-      debugSetFailAt(arango.getEndpoint(), "KeyGenerator::generateOnSingleServer");
+      debugSetFailAtAll("KeyGenerator::generateOnSingleServer");
 
       generators().forEach((generator) => {
         let c = db._create(cn, { keyOptions: { type: generator }, numberOfShards: 2 });
@@ -1017,8 +1084,12 @@ function KeyGenerationLocationSuite () {
     },
     
     testMultiShardInsertsCustomSharding : function () {
+      if (!cluster) {
+        return;
+      }
+
       // fail if we generate a key on a DB server
-      debugSetFailAt(arango.getEndpoint(), "KeyGenerator::generateOnSingleServer");
+      debugSetFailAtAll("KeyGenerator::generateOnSingleServer");
 
       generators().forEach((generator) => {
         let c = db._create(cn, { keyOptions: { type: generator }, numberOfShards: 2, shardKeys: ["id"] });
@@ -1056,79 +1127,204 @@ function KeyGenerationLocationSuite () {
       });
     },
 
+  };
+}
+
+function KeyGenerationLocationSmartGraphSuite () {
+  'use strict';
+  
+  const gn = "UnitTestsGraph";
+  const vn = "UnitTestsVertex";
+  const en = "UnitTestsEdge";
+
+  const disableSingleDocRule = { optimizer: { rules: ["-optimize-cluster-single-document-operations"] } };
+  const disableRestrictToSingleShardRule = { optimizer: { rules: ["-restrict-to-single-shard"] } };
+
+  const graphs = require("@arangodb/smart-graph");
+
+  let generators = function() {
+    let generators = [
+      "traditional",
+      "padded",
+      "uuid",
+    ];
+    if (!cluster) {
+      generators.push("autoincrement");
+    }
+    return generators;
+  };
+
+  return {
+    setUp : function () {
+      try {
+        graphs._drop(gn, true);
+      } catch (err) {}
+    },
+
+    tearDown : function () {
+      debugClearFailAtAll();
+      try {
+        graphs._drop(gn, true);
+      } catch (err) {}
+    },
+
     testSingleShardSmartVertexInserts : function () {
-      if (!isEnterprise) {
-        // can test Smart collections only in EE
-        return;
+      // note: test can run in single server as well!
+
+      if (cluster) {
+        // fail if we generate a key on a coordinator
+        debugSetFailAtAll("KeyGenerator::generateOnCoordinator");
+      } else {
+        // single server: we can actually get here with the SmartGraph simulator!
+        debugSetFailAtAll("KeyGenerator::generateOnCoordinator");
       }
-      
-      // fail if we generate a key on a DB server
-      debugSetFailAt(arango.getEndpoint(), "KeyGenerator::generateOnSingleServer");
 
       generators().forEach((generator) => {
-        let c = db._create(cn, { keyOptions: { type: generator }, isSmart: true, numberOfShards: 1, shardKeys: ["_key:"], smartGraphAttribute: "value" });
-        assertTrue(c.properties()["isSmart"]);
-        assertEqual("value", c.properties()["smartGraphAttribute"]);
-        assertEqual(["_key:"], c.properties()["shardKeys"]);
+        graphs._create(gn, [graphs._relation(en, vn, vn)], null, { numberOfShards: 1, smartGraphAttribute: "value" });
 
         try {
           // test various ways of inserting documents into the collection
           
           // single insert, using document API
-          c.insert({ value: 42 });
+          db[vn].insert({ value: 42 });
           
           // batch insert, using document API
-          c.insert([{ value: 42 }, { value: 42 }, { value: 42 }]);
+          db[vn].insert([{ value: 42 }, { value: 42 }, { value: 42 }]);
           
           // single insert, using AQL
-          db._query(`INSERT { value: 42 } INTO ${cn}`);
+          db._query(`INSERT { value: 42 } INTO ${vn}`);
+
+          db._query(`INSERT { value: 42 } INTO ${vn}`, null, disableSingleDocRule);
+          
+          db._query(`INSERT { value: 42 } INTO ${vn}`, null, disableRestrictToSingleShardRule);
           
           // batch insert, using AQL
-          db._query(`FOR i IN 1..3 INSERT { value: 42 } INTO ${cn}`);
+          db._query(`FOR i IN 1..3 INSERT { value: 42 } INTO ${vn}`);
 
-          assertEqual(8, c.count());
+          db._query(`FOR i IN 1..3 INSERT { value: 42 } INTO ${vn}`, null, disableRestrictToSingleShardRule);
+
+          assertEqual(13, db[vn].count());
         } finally {
-          db._drop(cn);
+          graphs._drop(gn, true);
+        }
+      });
+    },
+
+    testMultiShardSmartVertexInserts : function () {
+      // note: test can run in single server as well!
+
+      if (cluster) {
+        // fail if we generate a key on a DB server
+        debugSetFailAtAll("KeyGenerator::generateOnSingleServer");
+      } else {
+        // single server: we can actually get here with the SmartGraph simulator!
+        debugSetFailAtAll("KeyGenerator::generateOnCoordinator");
+      }
+
+      generators().forEach((generator) => {
+        graphs._create(gn, [graphs._relation(en, vn, vn)], null, { numberOfShards: 2, smartGraphAttribute: "value" });
+
+        try {
+          // test various ways of inserting documents into the collection
+          
+          // single insert, using document API
+          db[vn].insert({ value: 42 });
+          
+          // batch insert, using document API
+          db[vn].insert([{ value: 42 }, { value: 42 }, { value: 42 }]);
+          
+          // single insert, using AQL
+          db._query(`INSERT { value: 42 } INTO ${vn}`);
+          db._query(`INSERT { value: 42 } INTO ${vn}`, null, disableSingleDocRule);
+          db._query(`INSERT { value: 42 } INTO ${vn}`, null, disableRestrictToSingleShardRule);
+          
+          // batch insert, using AQL
+          db._query(`FOR i IN 1..3 INSERT { value: 42 } INTO ${vn}`);
+          db._query(`FOR i IN 1..3 INSERT { value: 42 } INTO ${vn}`, null, disableRestrictToSingleShardRule);
+
+          assertEqual(13, db[vn].count());
+        } finally {
+          graphs._drop(gn, true);
         }
       });
     },
     
-    testMultiShardSmartVertexInserts : function () {
-      if (!isEnterprise) {
-        // can test Smart collections only in EE
-        return;
+    testSingleShardSmartEdgeInserts : function () {
+      // note: test can run in single server as well!
+
+      if (cluster) {
+        // fail if we generate a key on a DB server
+        debugSetFailAtAll("KeyGenerator::generateOnSingleServer");
+      } else {
+        // single server: we can actually get here with the SmartGraph simulator!
+        debugSetFailAtAll("KeyGenerator::generateOnCoordinator");
       }
-      
-      // fail if we generate a key on a DB server
-      debugSetFailAt(arango.getEndpoint(), "KeyGenerator::generateOnSingleServer");
 
       generators().forEach((generator) => {
-        let c = db._create(cn, { keyOptions: { type: generator }, isSmart: true, numberOfShards: 2, shardKeys: ["_key:"], smartGraphAttribute: "value" });
-        assertTrue(c.properties()["isSmart"]);
-        assertEqual("value", c.properties()["smartGraphAttribute"]);
-        assertEqual(["_key:"], c.properties()["shardKeys"]);
+        graphs._create(gn, [graphs._relation(en, vn, vn)], null, { numberOfShards: 1, smartGraphAttribute: "value" });
 
         try {
           // test various ways of inserting documents into the collection
           
           // single insert, using document API
-          c.insert({ value: 42 });
+          db[en].insert({ value: 42, _from: vn + "/test:42", _to: vn + "/test:42" });
           
           // batch insert, using document API
-          c.insert([{ value: 42 }, { value: 42 }, { value: 42 }]);
+          db[en].insert([{ value: 42, _from: vn + "/test:42", _to: vn + "/test:42" }, { value: 42, _from: vn + "/test:42", _to: vn + "/test:42" }, { value: 42, _from: vn + "/test:42", _to: vn + "/test:42" }]);
           
           // single insert, using AQL
-          db._query(`INSERT { value: 42 } INTO ${cn}`);
+          db._query(`INSERT { value: 42, _from: "${vn}/test:42", _to: "${vn}/test:42" } INTO ${en}`);
+          db._query(`INSERT { value: 42, _from: "${vn}/test:42", _to: "${vn}/test:42" } INTO ${en}`, null, disableSingleDocRule);
+          db._query(`INSERT { value: 42, _from: "${vn}/test:42", _to: "${vn}/test:42" } INTO ${en}`, null, disableRestrictToSingleShardRule);
           
           // batch insert, using AQL
-          db._query(`FOR i IN 1..3 INSERT { value: 42 } INTO ${cn}`);
+          db._query(`FOR i IN 1..3 INSERT { value: 42, _from: "${vn}/test:42", _to: "${vn}/test:42" } INTO ${en}`);
+          db._query(`FOR i IN 1..3 INSERT { value: 42, _from: "${vn}/test:42", _to: "${vn}/test:42" } INTO ${en}`, null, disableRestrictToSingleShardRule);
 
-          assertEqual(8, c.count());
+          assertEqual(13, db[en].count());
         } finally {
-          db._drop(cn);
+          graphs._drop(gn, true);
         }
       });
+    },
+    
+    testMultiShardSmartEdgeInserts : function () {
+      // note: test can run in single server as well!
 
+      if (cluster) {
+        // fail if we generate a key on a DB server
+        debugSetFailAtAll("KeyGenerator::generateOnSingleServer");
+      } else {
+        // single server: we can actually get here with the SmartGraph simulator!
+        debugSetFailAtAll("KeyGenerator::generateOnCoordinator");
+      }
+
+      generators().forEach((generator) => {
+        graphs._create(gn, [graphs._relation(en, vn, vn)], null, { numberOfShards: 2, smartGraphAttribute: "value" });
+
+        try {
+          // test various ways of inserting documents into the collection
+          
+          // single insert, using document API
+          db[en].insert({ value: 42, _from: vn + "/test:42", _to: vn + "/test:42" });
+          
+          // batch insert, using document API
+          db[en].insert([{ value: 42, _from: vn + "/test:42", _to: vn + "/test:42" }, { value: 42, _from: vn + "/test:42", _to: vn + "/test:42" }, { value: 42, _from: vn + "/test:42", _to: vn + "/test:42" }]);
+          
+          // single insert, using AQL
+          db._query(`INSERT { value: 42, _from: "${vn}/test:42", _to: "${vn}/test:42" } INTO ${en}`);
+          db._query(`INSERT { value: 42, _from: "${vn}/test:42", _to: "${vn}/test:42" } INTO ${en}`, null, disableSingleDocRule);
+          db._query(`INSERT { value: 42, _from: "${vn}/test:42", _to: "${vn}/test:42" } INTO ${en}`, null, disableRestrictToSingleShardRule);
+          
+          // batch insert, using AQL
+          db._query(`FOR i IN 1..3 INSERT { value: 42, _from: "${vn}/test:42", _to: "${vn}/test:42" } INTO ${en}`);
+          db._query(`FOR i IN 1..3 INSERT { value: 42, _from: "${vn}/test:42", _to: "${vn}/test:42" } INTO ${en}`, null, disableRestrictToSingleShardRule);
+
+          assertEqual(13, db[en].count());
+        } finally {
+          graphs._drop(gn, true);
+        }
+      });
     },
     
   };
@@ -1140,8 +1336,11 @@ if (!cluster) {
 }
 jsunity.run(AllowUserKeysSuite);
 jsunity.run(PersistedLastValueSuite);
-if (cluster && debugCanUseFailAt(arango.getEndpoint())) {
- jsunity.run(KeyGenerationLocationSuite);
+if (debugCanUseFailAt(arango.getEndpoint())) {
+  jsunity.run(KeyGenerationLocationSuite);
+}
+if (isEnterprise && debugCanUseFailAt(arango.getEndpoint())) {
+  jsunity.run(KeyGenerationLocationSmartGraphSuite);
 }
 
 return jsunity.done();
