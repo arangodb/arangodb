@@ -1241,12 +1241,61 @@ auto replicated_log::LogLeader::waitForLeadership()
   return waitFor(_firstIndexOfCurrentTerm);
 }
 
+namespace {
+// For (unordered) maps left and right, return keys(left)
+// \ keys(right)
+auto keySetDifference = [](auto const& left, auto const& right) {
+  using left_t = std::decay_t<decltype(left)>;
+  using right_t = std::decay_t<decltype(right)>;
+  static_assert(
+      std::is_same_v<typename left_t::key_type, typename right_t::key_type>);
+  using key_t = typename left_t::key_type;
+
+  auto result = std::vector<key_t>{};
+  if constexpr (std::is_same_v<left_t, std::set<key_t>>) {
+    for (auto const& key : left) {
+      if (!right.contains(key)) {
+        result.emplace_back(key);
+      }
+    }
+  } else {
+    for (auto const& [key, val] : left) {
+      if (!right.contains(key)) {
+        result.emplace_back(key);
+      }
+    }
+  }
+
+  return result;
+};
+}  // namespace
+
 auto replicated_log::LogLeader::updateParticipantsConfig(
-    std::shared_ptr<ParticipantsConfig const> config,
+    std::shared_ptr<ParticipantsConfig const> const& config,
     std::size_t previousGeneration,
-    std::unordered_map<ParticipantId, std::shared_ptr<AbstractFollower>>
-        additionalFollowers,
-    std::vector<ParticipantId> const& followersToRemove) -> LogIndex {
+    std::set<ParticipantId> const& oldFollowerIds,
+    std::function<std::shared_ptr<replicated_log::AbstractFollower>(
+        ParticipantId const&)> const& buildFollower) -> LogIndex {
+  auto const [followersToRemove, additionalFollowers] = std::invoke([&] {
+    // Note that newParticipants contains the leader, while oldFollowerIds does
+    // not.
+    auto const& newParticipants = config->participants;
+    auto const additionalParticipantIds =
+        keySetDifference(newParticipants, oldFollowerIds);
+    auto followersToRemove = keySetDifference(oldFollowerIds, newParticipants);
+
+    auto additionalFollowers =
+        std::unordered_map<ParticipantId, std::shared_ptr<AbstractFollower>>{};
+    for (auto const& participantId : additionalParticipantIds) {
+      if (participantId != _id) {
+        additionalFollowers.try_emplace(participantId,
+                                        buildFollower(participantId));
+      }
+    }
+    return std::pair(std::move(followersToRemove),
+                     std::move(additionalFollowers));
+  });
+
   LOG_CTX("ac277", TRACE, _logContext)
       << "trying to update configuration to generation " << config->generation;
   TRI_ASSERT(previousGeneration < config->generation);
