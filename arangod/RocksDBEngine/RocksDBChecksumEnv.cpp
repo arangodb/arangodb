@@ -239,7 +239,6 @@ rocksdb::Status ChecksumEnv::DeleteFile(const std::string& fileName) {
     std::string shaFileName =
         _helper->buildShaFileNameFromSst(fileName, checksum);
     if (!shaFileName.empty()) {
-      //  if (TRI_UnlinkFile(shaFileName.data()) == TRI_ERROR_NO_ERROR) {
       if (rocksdb::EnvWrapper::DeleteFile(shaFileName) ==
           rocksdb::Status::OK()) {
         LOG_TOPIC("e0a0d", DEBUG, arangodb::Logger::ENGINES)
