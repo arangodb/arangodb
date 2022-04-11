@@ -6,6 +6,11 @@ devel
   be explicitly switched off. New metrics to give visibility if the test
   fails.
 
+* Make followers respond to synchronous replication requests with less data.
+  Specifically, followers will not build detailed results with _id, _key and
+  _rev for the inserted/modified/removed documents, which would be ignored 
+  by the leader anyway.
+
 * Updated arangosync to v2.9.0-preview-5.
 
 * Auto-regenerate exit code and error code files in non-maintainer mode, too.
