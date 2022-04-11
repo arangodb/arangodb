@@ -36,7 +36,7 @@ class ChecksumCalculator {
   void computeFinalChecksum();
   void updateIncrementalChecksum(char const* buffer, size_t n);
   void updateEVPWithContent(char const* buffer, size_t n);
-  [[nodiscard]] std::string getChecksum() { return _checksum; }
+  [[nodiscard]] std::string getChecksum() const { return _checksum; }
   ~ChecksumCalculator();
 
  private:
