@@ -31,7 +31,6 @@
 #include "analysis/analyzer.hpp"
 #include "utils/compression.hpp"
 #include "utils/object_pool.hpp"
-#include "utils/range.hpp"
 
 #include "Containers.h"
 #include "IResearchAnalyzerFeature.h"
@@ -87,11 +86,11 @@ struct FieldMeta {
     }
 
     bool operator()(AnalyzerPool::ptr const& lhs,
-                    irs::string_ref const& rhs) const noexcept {
+                    irs::string_ref rhs) const noexcept {
       return lhs->name() < rhs;
     }
 
-    bool operator()(irs::string_ref const& lhs,
+    bool operator()(irs::string_ref lhs,
                     AnalyzerPool::ptr const& rhs) const noexcept {
       return lhs < rhs->name();
     }

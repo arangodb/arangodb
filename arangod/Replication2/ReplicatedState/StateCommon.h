@@ -31,11 +31,15 @@
 
 #include <velocypack/Slice.h>
 #include "Basics/Result.h"
+#include "Inspection/VPackLoadInspector.h"
+#include "Inspection/VPackSaveInspector.h"
 
 namespace arangodb::velocypack {
 class Value;
 template<typename, typename>
 struct Extractor;
+class Builder;
+class Slice;
 }  // namespace arangodb::velocypack
 namespace arangodb {
 namespace replication2::replicated_state {
@@ -59,27 +63,68 @@ struct StateGeneration {
   [[nodiscard]] explicit operator velocypack::Value() const noexcept;
 };
 
-struct SnapshotStatus {
-  enum Status {
-    kUninitialized,
-    kInitiated,
-    kCompleted,
-    kFailed,
-  };
+template<class Inspector>
+auto inspect(Inspector& f, StateGeneration& x) {
+  if constexpr (Inspector::isLoading) {
+    auto v = uint64_t{0};
+    auto res = f.apply(v);
+    if (res.ok()) {
+      x = StateGeneration(v);
+    }
+    return res;
+  } else {
+    return f.apply(x.value);
+  }
+}
 
-  using clock = std::chrono::system_clock;
-
-  void updateStatus(Status, std::optional<Result> newError = std::nullopt);
-
-  Status status{kUninitialized};
-  clock::time_point lastChange;
-  StateGeneration generation;
-  std::optional<Result> error;
+enum class SnapshotStatus {
+  kUninitialized,
+  kInProgress,
+  kCompleted,
+  kFailed,
 };
 
-auto to_string(SnapshotStatus::Status) noexcept -> std::string_view;
+struct SnapshotInfo {
+  using clock = std::chrono::system_clock;
+
+  struct Error {
+    ErrorCode error;
+    std::optional<std::string> message;
+    clock::time_point retryAt;
+    void toVelocyPack(velocypack::Builder& builder) const;
+    [[nodiscard]] static auto fromVelocyPack(velocypack::Slice) -> Error;
+
+    friend auto operator==(Error const&, Error const&) noexcept
+        -> bool = default;
+  };
+
+  void updateStatus(SnapshotStatus status) noexcept;
+
+  SnapshotStatus status{SnapshotStatus::kUninitialized};
+  clock::time_point timestamp;
+  std::optional<Error> error;
+
+  friend auto operator==(SnapshotInfo const&, SnapshotInfo const&) noexcept
+      -> bool = default;
+
+  void toVelocyPack(velocypack::Builder& builder) const;
+  [[nodiscard]] static auto fromVelocyPack(velocypack::Slice) -> SnapshotInfo;
+};
+
+auto to_string(SnapshotStatus) noexcept -> std::string_view;
+auto snapshotStatusFromString(std::string_view) noexcept -> SnapshotStatus;
 auto operator<<(std::ostream&, SnapshotStatus const&) -> std::ostream&;
 auto operator<<(std::ostream&, StateGeneration) -> std::ostream&;
+
+template<class Inspector>
+auto inspect(Inspector& f, SnapshotInfo& x) {
+  if constexpr (Inspector::isLoading) {
+    x = SnapshotInfo::fromVelocyPack(f.slice());
+  } else {
+    x.toVelocyPack(f.builder());
+  }
+  return arangodb::inspection::Status{};
+}
 }  // namespace replication2::replicated_state
 
 template<>
@@ -91,4 +136,5 @@ struct arangodb::velocypack::Extractor<
         slice.getNumericValue<std::uint64_t>()};
   }
 };
+
 }  // namespace arangodb

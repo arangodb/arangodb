@@ -56,12 +56,18 @@ namespace transaction {
 class Methods;
 }
 
+enum class RocksDBVPackIndexSearchValueFormat : uint8_t {
+  kDetect,
+  kOperatorsAndValues,
+  kValuesOnly
+};
+
 class RocksDBVPackIndex : public RocksDBIndex {
-  template<bool unique, bool reverse>
+  template<bool unique, bool reverse, bool mustCheckBounds>
   friend class RocksDBVPackIndexIterator;
 
  public:
-  static uint64_t HashForKey(const rocksdb::Slice& key);
+  static uint64_t HashForKey(rocksdb::Slice const& key);
 
   RocksDBVPackIndex() = delete;
 
@@ -88,15 +94,8 @@ class RocksDBVPackIndex : public RocksDBIndex {
 
   bool canBeDropped() const override { return true; }
 
-  bool hasCoveringIterator() const override { return true; }
-
   /// @brief return the attribute paths
   std::vector<std::vector<std::string>> const& paths() const { return _paths; }
-
-  /// @brief attempts to locate an entry in the index
-  std::unique_ptr<IndexIterator> lookup(
-      transaction::Methods* trx, arangodb::velocypack::Slice searchValues,
-      bool reverse, ReadOwnWrites readOwnWrites) const;
 
   Index::FilterCosts supportsFilterCondition(
       std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
@@ -122,7 +121,17 @@ class RocksDBVPackIndex : public RocksDBIndex {
   void afterTruncate(TRI_voc_tick_t tick,
                      arangodb::transaction::Methods* trx) override;
 
+  std::shared_ptr<cache::Cache> makeCache() const override;
+
   bool hasStoredValues() const noexcept { return !_storedValues.empty(); }
+
+  // build new search values. this can also be called from the
+  // VPackIndexIterator
+  void buildSearchValues(arangodb::aql::AstNode const* node,
+                         arangodb::aql::Variable const* reference,
+                         VPackBuilder& searchValues,
+                         RocksDBVPackIndexSearchValueFormat& format,
+                         bool& needNormalize) const;
 
  protected:
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,
@@ -139,6 +148,22 @@ class RocksDBVPackIndex : public RocksDBIndex {
                 OperationOptions const& options, bool performChecks) override;
 
  private:
+  // build an index iterator from a VelocyPack range description
+  std::unique_ptr<IndexIterator> buildIterator(
+      transaction::Methods* trx, arangodb::velocypack::Slice searchValues,
+      IndexIteratorOptions const& opts, ReadOwnWrites readOwnWrites,
+      RocksDBVPackIndexSearchValueFormat format) const;
+
+  // build bounds for an index range
+  void buildIndexRangeBounds(transaction::Methods* trx, VPackSlice searchValues,
+                             VPackBuilder& leftSearch, VPackSlice lastNonEq,
+                             RocksDBKeyBounds& bounds) const;
+
+  std::unique_ptr<IndexIterator> buildIteratorFromBounds(
+      transaction::Methods* trx, bool reverse, ReadOwnWrites readOwnWrites,
+      RocksDBKeyBounds&& bounds, RocksDBVPackIndexSearchValueFormat format,
+      bool useCache) const;
+
   /// @brief returns whether the document can be inserted into the index
   /// (or if there will be a conflict)
   [[nodiscard]] Result checkInsert(transaction::Methods& trx,
@@ -196,27 +221,24 @@ class RocksDBVPackIndex : public RocksDBIndex {
       ::arangodb::containers::SmallVector<uint64_t>& hashes,
       ::arangodb::containers::SmallVector<VPackSlice>& sliceStack);
 
-  std::unique_ptr<IndexIterator> buildIterator(
-      transaction::Methods* trx, RocksDBKeyBounds bounds, bool reverse,
-      ReadOwnWrites readOwnWrites) const;
-
- private:
   /// @brief the attribute paths (for regular fields)
   std::vector<std::vector<std::string>> _paths;
   /// @brief the attribute paths (for stored values)
   std::vector<std::vector<std::string>> _storedValuesPaths;
-  ;
 
   /// @brief ... and which of them expands
   /// @brief a -1 entry means none is expanding,
   /// otherwise the non-negative number is the index of the expanding one.
   std::vector<int> _expanding;
 
-  /// @brief whether or not array indexes will de-duplicate their input values
-  bool _deduplicate;
+  /// @brief whether or not the user requested to use a cache for the index.
+  /// note: even if this is set to true, it may not mean that the cache is
+  /// effectively in use. for example, for system collections and on the
+  /// coordinator, no cache will actually be used although this flag may be true
+  bool const _cacheEnabled;
 
-  /// @brief whether or not partial indexing is allowed
-  bool _allowPartialIndex;
+  /// @brief whether or not array indexes will de-duplicate their input values
+  bool const _deduplicate;
 
   /// @brief whether or not we want to have estimates
   bool _estimates;

@@ -59,7 +59,7 @@ namespace graph {
 template<class StepType>
 class SingleServerProvider {
  public:
-  using Options = BaseProviderOptions;
+  using Options = SingleServerBaseProviderOptions;
   using Step = StepType;
 
  public:
@@ -73,6 +73,10 @@ class SingleServerProvider {
 
   auto startVertex(VertexType vertex, size_t depth = 0, double weight = 0.0)
       -> Step;
+  auto fetchVertices(std::vector<Step*> const& looseEnds)
+      -> futures::Future<std::vector<Step*>>;
+  // dummy function, needed for OneSidedEnumerator::Provider
+  auto fetchEdges(const std::vector<Step*>& fetchedVertices) -> Result;
   auto fetch(std::vector<Step*> const& looseEnds)
       -> futures::Future<std::vector<Step*>>;  // rocks
   auto expand(Step const& from, size_t previous,
@@ -101,6 +105,9 @@ class SingleServerProvider {
 
   void prepareIndexExpressions(aql::Ast* ast);
 
+  void prepareContext(aql::InputAqlItemRow input);
+  void unPrepareContext();
+
  private:
   void activateCache(bool enableDocumentCache);
 
@@ -114,7 +121,7 @@ class SingleServerProvider {
 
   std::unique_ptr<RefactoredSingleServerEdgeCursor<Step>> _cursor;
 
-  BaseProviderOptions _opts;
+  SingleServerBaseProviderOptions _opts;
 
   RefactoredTraverserCache _cache;
 

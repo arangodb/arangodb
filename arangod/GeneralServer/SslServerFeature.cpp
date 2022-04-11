@@ -74,7 +74,6 @@ SslServerFeature::SslServerFeature(Server& server)
       _sessionCache(false),
       _preferHttp11InAlpn(false) {
   setOptional(true);
-  startsAfter<application_features::AqlFeaturePhase>();
 }
 
 void SslServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -110,7 +109,7 @@ void SslServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption(
       "--ssl.options", "ssl connection options, see OpenSSL documentation",
       new UInt64Parameter(&_sslOptions),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options->addOption(
       "--ssl.ecdh-curve",

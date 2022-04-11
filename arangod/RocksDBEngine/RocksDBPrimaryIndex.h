@@ -31,7 +31,6 @@
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
 class RocksDBKeyLeaser;
@@ -43,16 +42,12 @@ class Methods;
 class RocksDBPrimaryIndex final : public RocksDBIndex {
   friend class RocksDBPrimaryIndexEqIterator;
   friend class RocksDBPrimaryIndexInIterator;
-  template<bool reverse>
+  template<bool reverse, bool mustCheckBounds>
   friend class RocksDBPrimaryIndexRangeIterator;
-  friend class RocksDBAllIndexIterator;
-  friend class RocksDBAnyIndexIterator;
 
  public:
-  RocksDBPrimaryIndex() = delete;
-
   RocksDBPrimaryIndex(arangodb::LogicalCollection& collection,
-                      arangodb::velocypack::Slice const& info);
+                      arangodb::velocypack::Slice info);
 
   ~RocksDBPrimaryIndex();
 
@@ -61,8 +56,6 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
   char const* typeName() const override { return "primary"; }
 
   bool canBeDropped() const override { return false; }
-
-  bool hasCoveringIterator() const override { return true; }
 
   bool isSorted() const override { return true; }
 
@@ -82,7 +75,8 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
       const override;
 
   LocalDocumentId lookupKey(transaction::Methods* trx, std::string_view key,
-                            ReadOwnWrites readOwnWrites) const;
+                            ReadOwnWrites readOwnWrites,
+                            bool& foundInCache) const;
 
   /// @brief reads a revision id from the primary index
   /// if the document does not exist, this function will return false
@@ -171,7 +165,7 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
                           bool isId) const;
 
   /// @brief add a single value node to the iterator's keys
-  void handleValNode(transaction::Methods* trx, VPackBuilder* keys,
+  void handleValNode(transaction::Methods* trx, VPackBuilder& keys,
                      arangodb::aql::AstNode const* valNode, bool isId) const;
 
  private:

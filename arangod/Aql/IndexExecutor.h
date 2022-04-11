@@ -67,6 +67,7 @@ class IndexExecutorInfos {
       Collection const* collection, Variable const* outVariable,
       bool produceResult, Expression* filter,
       arangodb::aql::Projections projections,
+      std::vector<std::pair<VariableId, RegisterId>> filterVarsToRegs,
       NonConstExpressionContainer&& nonConstExpressions, bool count,
       ReadOwnWrites readOwnWrites, AstNode const* condition,
       bool oneIndexCondition,
@@ -107,8 +108,8 @@ class IndexExecutorInfos {
   std::vector<std::pair<VariableId, RegisterId>> const& getVarsToRegister()
       const noexcept;
 
-  // setter
-  void setHasMultipleExpansions(bool flag);
+  std::vector<std::pair<VariableId, RegisterId>> const&
+  getFilterVarsToRegister() const noexcept;
 
   bool hasNonConstParts() const;
 
@@ -155,6 +156,8 @@ class IndexExecutorInfos {
   Expression* _filter;
   arangodb::aql::Projections _projections;
 
+  std::vector<std::pair<VariableId, RegisterId>> _filterVarsToRegs;
+
   NonConstExpressionContainer _nonConstExpressions;
 
   RegisterId _outputRegisterId;
@@ -164,16 +167,16 @@ class IndexExecutorInfos {
 
   /// @brief true if one of the indexes uses more than one expanded attribute,
   /// e.g. the index is on values[*].name and values[*].type
-  bool _hasMultipleExpansions;
+  bool const _hasMultipleExpansions;
 
-  bool _produceResult;
+  bool const _produceResult;
 
   /// @brief Counter how many documents have been returned/skipped
   ///        during one call. Retained during WAITING situations.
   ///        Needs to be 0 after we return a result.
-  bool _count;
+  bool const _count;
 
-  bool _oneIndexCondition;
+  bool const _oneIndexCondition;
 
   ReadOwnWrites const _readOwnWrites;
 };
@@ -183,12 +186,29 @@ class IndexExecutorInfos {
  */
 class IndexExecutor {
  private:
+  struct CursorStats {
+    std::uint64_t cursorsCreated = 0;
+    std::uint64_t cursorsRearmed = 0;
+    std::uint64_t cacheHits = 0;
+    std::uint64_t cacheMisses = 0;
+
+    void incrCursorsCreated(std::uint64_t value = 1) noexcept;
+    void incrCursorsRearmed(std::uint64_t value = 1) noexcept;
+    void incrCacheHits(std::uint64_t value = 1) noexcept;
+    void incrCacheMisses(std::uint64_t value = 1) noexcept;
+
+    [[nodiscard]] std::uint64_t getAndResetCursorsCreated() noexcept;
+    [[nodiscard]] std::uint64_t getAndResetCursorsRearmed() noexcept;
+    [[nodiscard]] std::uint64_t getAndResetCacheHits() noexcept;
+    [[nodiscard]] std::uint64_t getAndResetCacheMisses() noexcept;
+  };
+
   struct CursorReader {
    public:
     CursorReader(transaction::Methods& trx, IndexExecutorInfos const& infos,
                  AstNode const* condition, std::shared_ptr<Index> const& index,
                  DocumentProducingFunctionContext& context,
-                 bool checkUniqueness);
+                 CursorStats& cursorStats, bool checkUniqueness);
     bool readIndex(OutputAqlItemRow& output);
     size_t skipIndex(size_t toSkip);
     void reset();
@@ -210,6 +230,7 @@ class IndexExecutor {
     std::shared_ptr<Index> const& _index;
     std::unique_ptr<IndexIterator> _cursor;
     DocumentProducingFunctionContext& _context;
+    CursorStats& _cursorStats;
     Type const _type;
     bool const _checkUniqueness;
 
@@ -292,6 +313,9 @@ class IndexExecutor {
   ///        Retained during WAITING situations.
   ///        Needs to be 0 after we return a result.
   size_t _skipped;
+
+  /// statistics for cursors. is shared by reference with CursorReader instances
+  CursorStats _cursorStats;
 };
 
 }  // namespace aql

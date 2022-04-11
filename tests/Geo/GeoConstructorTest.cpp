@@ -40,7 +40,6 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -811,6 +810,11 @@ class GeoPolygonTest : public GeoConstructorTest {
 };
 
 TEST_F(GeoPolygonTest, checking_polygon_with_3_positive_tuples) {
+  fakeit::When(Method(expressionContextMock, registerWarning))
+      .Do([&](ErrorCode code, char const* msg) -> void {
+        ASSERT_EQ(code, TRI_ERROR_BAD_PARAMETER);
+      });
+
   char const* p = "[[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]]";
   size_t l = strlen(p);
 
@@ -819,20 +823,7 @@ TEST_F(GeoPolygonTest, checking_polygon_with_3_positive_tuples) {
   params.emplace_back(json);
 
   AqlValue res = Functions::GeoPolygon(&expressionContext, funNode, params);
-  EXPECT_TRUE(res.isObject());
-  EXPECT_TRUE(res.slice().get("coordinates").isArray());
-  EXPECT_EQ(res.slice().get("coordinates").at(0).length(), 3);
-  EXPECT_TRUE(res.slice().get("coordinates").at(0).at(0).isArray());
-  EXPECT_TRUE(res.slice().get("coordinates").at(0).at(1).isArray());
-  EXPECT_TRUE(res.slice().get("coordinates").at(0).at(2).isArray());
-  EXPECT_EQ(res.slice().get("coordinates").at(0).at(0).at(0).getDouble(), 1.0);
-  EXPECT_EQ(res.slice().get("coordinates").at(0).at(0).at(1).getDouble(), 2.0);
-  EXPECT_EQ(res.slice().get("coordinates").at(0).at(1).at(0).getDouble(), 3.0);
-  EXPECT_EQ(res.slice().get("coordinates").at(0).at(1).at(1).getDouble(), 4.0);
-  EXPECT_EQ(res.slice().get("coordinates").at(0).at(2).at(0).getDouble(), 5.0);
-  EXPECT_EQ(res.slice().get("coordinates").at(0).at(2).at(1).getDouble(), 6.0);
-  EXPECT_TRUE(res.slice().get("type").isString());
-  EXPECT_EQ(res.slice().get("type").copyString(), "Polygon");
+  EXPECT_TRUE(res.isNull(false));
   res.destroy();
   // Free input parameters
   for (auto& it : params) {
@@ -870,6 +861,11 @@ TEST_F(GeoPolygonTest, checking_polygon_representing_cologne) {
 }
 
 TEST_F(GeoPolygonTest, checking_polygon_with_3_negative_positions) {
+  fakeit::When(Method(expressionContextMock, registerWarning))
+      .Do([&](ErrorCode code, char const* msg) -> void {
+        ASSERT_EQ(code, TRI_ERROR_BAD_PARAMETER);
+      });
+
   char const* p = "[[-1.0, -2.0], [-3.0, -4.0], [-5.0, -6.0]]";
   size_t l = strlen(p);
 
@@ -878,24 +874,7 @@ TEST_F(GeoPolygonTest, checking_polygon_with_3_negative_positions) {
   params.emplace_back(json);
 
   AqlValue res = Functions::GeoPolygon(&expressionContext, funNode, params);
-  EXPECT_TRUE(res.isObject());
-  EXPECT_TRUE(res.slice().get("coordinates").isArray());
-  EXPECT_TRUE(res.slice().get("coordinates").at(0).isArray());
-  EXPECT_EQ(res.slice().get("coordinates").at(0).length(), 3);
-  EXPECT_EQ(res.slice().get("coordinates").at(0).at(0).length(), 2);
-  EXPECT_EQ(res.slice().get("coordinates").at(0).at(1).length(), 2);
-  EXPECT_EQ(res.slice().get("coordinates").at(0).at(2).length(), 2);
-  EXPECT_TRUE(res.slice().get("coordinates").at(0).at(0).isArray());
-  EXPECT_TRUE(res.slice().get("coordinates").at(0).at(1).isArray());
-  EXPECT_TRUE(res.slice().get("coordinates").at(0).at(2).isArray());
-  EXPECT_EQ(res.slice().get("coordinates").at(0).at(0).at(0).getDouble(), -1.0);
-  EXPECT_EQ(res.slice().get("coordinates").at(0).at(0).at(1).getDouble(), -2.0);
-  EXPECT_EQ(res.slice().get("coordinates").at(0).at(1).at(0).getDouble(), -3.0);
-  EXPECT_EQ(res.slice().get("coordinates").at(0).at(1).at(1).getDouble(), -4.0);
-  EXPECT_EQ(res.slice().get("coordinates").at(0).at(2).at(0).getDouble(), -5.0);
-  EXPECT_EQ(res.slice().get("coordinates").at(0).at(2).at(1).getDouble(), -6.0);
-  EXPECT_TRUE(res.slice().get("type").isString());
-  EXPECT_EQ(res.slice().get("type").copyString(), "Polygon");
+  EXPECT_TRUE(res.isNull(false));
   res.destroy();
   // Free input parameters
   for (auto& it : params) {
@@ -904,6 +883,11 @@ TEST_F(GeoPolygonTest, checking_polygon_with_3_negative_positions) {
 }
 
 TEST_F(GeoPolygonTest, checking_polygons_with_2x3_negative_positions) {
+  fakeit::When(Method(expressionContextMock, registerWarning))
+      .Do([&](ErrorCode code, char const* msg) -> void {
+        ASSERT_EQ(code, TRI_ERROR_BAD_PARAMETER);
+      });
+
   char const* p =
       "[ [[-1.0, -2.0], [-3.0, -4.0], [-5.0, -6.0]], [[-1.0, -2.0], [-3.0, "
       "-4.0], [-5.0, -6.0]] ]";
@@ -915,23 +899,7 @@ TEST_F(GeoPolygonTest, checking_polygons_with_2x3_negative_positions) {
 
   // TODO check also at 1 position
   AqlValue res = Functions::GeoPolygon(&expressionContext, funNode, params);
-  EXPECT_TRUE(res.isObject());
-  EXPECT_TRUE(res.slice().get("coordinates").isArray());
-  EXPECT_TRUE(res.slice().get("coordinates").at(0).isArray());
-  EXPECT_EQ(res.slice().get("coordinates").at(0).length(), 3);
-  EXPECT_TRUE(res.slice().get("coordinates").at(1).isArray());
-  EXPECT_EQ(res.slice().get("coordinates").at(1).length(), 3);
-  EXPECT_TRUE(res.slice().get("coordinates").at(0).at(0).isArray());
-  EXPECT_TRUE(res.slice().get("coordinates").at(0).at(1).isArray());
-  EXPECT_TRUE(res.slice().get("coordinates").at(0).at(2).isArray());
-  EXPECT_EQ(res.slice().get("coordinates").at(0).at(0).at(0).getDouble(), -1.0);
-  EXPECT_EQ(res.slice().get("coordinates").at(0).at(0).at(1).getDouble(), -2.0);
-  EXPECT_EQ(res.slice().get("coordinates").at(0).at(1).at(0).getDouble(), -3.0);
-  EXPECT_EQ(res.slice().get("coordinates").at(0).at(1).at(1).getDouble(), -4.0);
-  EXPECT_EQ(res.slice().get("coordinates").at(0).at(2).at(0).getDouble(), -5.0);
-  EXPECT_EQ(res.slice().get("coordinates").at(0).at(2).at(1).getDouble(), -6.0);
-  EXPECT_TRUE(res.slice().get("type").isString());
-  EXPECT_EQ(res.slice().get("type").copyString(), "Polygon");
+  EXPECT_TRUE(res.isNull(false));
   res.destroy();
   // Free input parameters
   for (auto& it : params) {

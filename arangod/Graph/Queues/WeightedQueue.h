@@ -68,6 +68,14 @@ class WeightedQueue {
     std::push_heap(_queue.begin(), _queue.end(), _cmpHeap);
   }
 
+  bool firstIsVertexFetched() const {
+    if (not isEmpty()) {
+      auto const& first = _queue.front();
+      return first.vertexFetched();
+    }
+    return false;
+  }
+
   bool hasProcessableElement() const {
     if (!isEmpty()) {
       // The heap structure guarantees that the first element in the queue
@@ -111,12 +119,33 @@ class WeightedQueue {
     return first;
   }
 
+  std::vector<Step*> getStepsWithoutFetchedVertex() {
+    std::vector<Step*> steps;
+    for (auto& step : _queue) {
+      if (not step.vertexFetched()) {
+        steps.emplace_back(&step);
+      }
+    }
+    return steps;
+  }
+
+  void getStepsWithoutFetchedEdges(std::vector<Step*>& steps) {
+    for (auto& step : _queue) {
+      if (!step.edgeFetched()) {
+        steps.emplace_back(&step);
+      }
+    }
+  }
+
  private:
   struct WeightedComparator {
     bool operator()(Step const& a, Step const& b) {
       if (a.getWeight() == b.getWeight()) {
-        // Only false if A is not processable but B is.
-        return !a.isProcessable() || b.isProcessable();
+        if (a.getDepth() == b.getDepth()) {
+          // Only false if A is not processable but B is.
+          return !a.isProcessable() || b.isProcessable();
+        }
+        return a.getDepth() > b.getDepth();
       }
       return a.getWeight() > b.getWeight();
     }

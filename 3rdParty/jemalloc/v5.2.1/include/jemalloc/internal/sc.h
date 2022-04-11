@@ -248,15 +248,20 @@
 
 /* The largest size class in the lookup table, and its binary log. */
 #define SC_LG_MAX_LOOKUP 12
-#define SC_LOOKUP_MAXCLASS ((size_t)1 << SC_LG_MAX_LOOKUP)
+#define SC_LOOKUP_MAXCLASS (1 << SC_LG_MAX_LOOKUP)
 
 /* Internal, only used for the definition of SC_SMALL_MAXCLASS. */
-#define SC_SMALL_MAX_BASE ((size_t)1 << (LG_PAGE + SC_LG_NGROUP - 1))
-#define SC_SMALL_MAX_DELTA ((size_t)1 << (LG_PAGE - 1))
+#define SC_SMALL_MAX_BASE (1 << (LG_PAGE + SC_LG_NGROUP - 1))
+#define SC_SMALL_MAX_DELTA (1 << (LG_PAGE - 1))
 
 /* The largest size class allocated out of a slab. */
 #define SC_SMALL_MAXCLASS (SC_SMALL_MAX_BASE				\
     + (SC_NGROUP - 1) * SC_SMALL_MAX_DELTA)
+
+/* The fastpath assumes all lookup-able sizes are small. */
+#if (SC_SMALL_MAXCLASS < SC_LOOKUP_MAXCLASS)
+#  error "Lookup table sizes must be small"
+#endif
 
 /* The smallest size class not allocated out of a slab. */
 #define SC_LARGE_MINCLASS ((size_t)1ULL << (LG_PAGE + SC_LG_NGROUP))

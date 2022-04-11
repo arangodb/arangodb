@@ -86,7 +86,6 @@
 #include "Graph/algorithm-aliases.h"
 
 #include <velocypack/Dumper.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <type_traits>
 
@@ -100,11 +99,11 @@ using KPathRefactoredTracer = arangodb::graph::TracedKPathEnumerator<
     arangodb::graph::SingleServerProvider<SingleServerProviderStep>>;
 
 /* ClusterProvider Section */
-using KPathRefactoredCluster =
-    arangodb::graph::KPathEnumerator<arangodb::graph::ClusterProvider>;
+using KPathRefactoredCluster = arangodb::graph::KPathEnumerator<
+    arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
 
-using KPathRefactoredClusterTracer =
-    arangodb::graph::TracedKPathEnumerator<arangodb::graph::ClusterProvider>;
+using KPathRefactoredClusterTracer = arangodb::graph::TracedKPathEnumerator<
+    arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -193,7 +192,7 @@ ExecutionBlockImpl<Executor>::ExecutionBlockImpl(
       _query(engine->getQuery()),
       _state(InternalState::FETCH_DATA),
       _execState{ExecState::CHECKCALL},
-      _lastRange{ExecutorState::HASMORE},
+      _lastRange{MainQueryState::HASMORE},
       _upstreamRequest{},
       _clientRequest{},
       _stackBeforeWaiting{AqlCallList{AqlCall{}}},
@@ -322,7 +321,7 @@ ExecutionBlockImpl<Executor>::initializeCursor(InputAqlItemRow const& input) {
     _lastRange.reset();
     _rowFetcher.init();
   } else {
-    _lastRange = DataRange(ExecutorState::HASMORE);
+    _lastRange = DataRange(MainQueryState::HASMORE);
   }
 
   TRI_ASSERT(_skipped.nothingSkipped());
@@ -478,7 +477,7 @@ auto ExecutionBlockImpl<IdExecutor<ConstFetcher>>::injectConstantBlock<
   _state = InternalState::FETCH_DATA;
 
   // Reset state of execute
-  _lastRange = AqlItemBlockInputRange{ExecutorState::HASMORE};
+  _lastRange = AqlItemBlockInputRange{MainQueryState::HASMORE};
   _hasUsedDataRangeBlock = false;
   _upstreamState = ExecutionState::HASMORE;
 
@@ -570,10 +569,10 @@ auto ExecutionBlockImpl<Executor>::allocateOutputBlock(AqlCall&& call)
       // In production it is now very unlikely in the non-softlimit case
       // that the upstream is no block using less than batchSize many rows, but
       // returns HASMORE.
-      if (_lastRange.finalState() == ExecutorState::DONE ||
+      if (_lastRange.finalState() == MainQueryState::DONE ||
           call.hasSoftLimit()) {
         blockSize = _executor.expectedNumberOfRowsNew(_lastRange, call);
-        if (_lastRange.finalState() == ExecutorState::HASMORE) {
+        if (_lastRange.finalState() == MainQueryState::HASMORE) {
           // There might be more from above!
           blockSize = std::max(call.getLimit(), blockSize);
         }
@@ -1081,6 +1080,11 @@ auto ExecutionBlockImpl<SubqueryStartExecutor>::shadowRowForwarding(
     TRI_ASSERT(_outputItemRow->produced());
     _outputItemRow->advanceRow();
 
+    // Count that we have now produced a row in the new depth.
+    // Note: We need to increment the depth by one, as the we have increased
+    // it while writing into the output by one as well.
+    countShadowRowProduced(stack, shadowRow.getDepth() + 1);
+
     if (_lastRange.hasShadowRow()) {
       return ExecState::SHADOWROWS;
     }
@@ -1132,6 +1136,7 @@ auto ExecutionBlockImpl<SubqueryEndExecutor>::shadowRowForwarding(
   _outputItemRow->advanceRow();
   // The stack in used here contains all calls for within the subquery.
   // Hence any inbound subquery needs to be counted on its level
+
   countShadowRowProduced(stack, shadowRow.getDepth());
 
   if (state == ExecutorState::DONE) {
@@ -2052,6 +2057,14 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(
         LOG_QUERY("0ca35", DEBUG)
             << printTypeInfo()
             << " ShadowRows moved, continue with next subquery.";
+
+        if (!ctx.stack.hasAllValidCalls()) {
+          // We can only continue if we still have a valid call
+          // on all levels
+          _execState = ExecState::DONE;
+          break;
+        }
+
         if constexpr (std::is_same_v<Executor, SubqueryStartExecutor>) {
           auto currentSubqueryCall = ctx.stack.peek();
           if (currentSubqueryCall.getLimit() == 0 &&
@@ -2062,12 +2075,6 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(
             break;
           }
           // Otherwise just check like the other blocks
-        }
-        if (!ctx.stack.hasAllValidCalls()) {
-          // We can only continue if we still have a valid call
-          // on all levels
-          _execState = ExecState::DONE;
-          break;
         }
 
         if (ctx.clientCallList.hasMoreCalls()) {
@@ -2191,7 +2198,7 @@ template<class Executor>
 void ExecutionBlockImpl<Executor>::init() {
   TRI_ASSERT(!_initialized);
   if constexpr (isMultiDepExecutor<Executor>) {
-    _lastRange.resizeOnce(ExecutorState::HASMORE, 0, _dependencies.size());
+    _lastRange.resizeOnce(MainQueryState::HASMORE, 0, _dependencies.size());
     _rowFetcher.init();
   }
 }
@@ -2275,7 +2282,7 @@ template<class Executor>
 auto ExecutionBlockImpl<Executor>::testInjectInputRange(DataRange range,
                                                         SkipResult skipped)
     -> void {
-  if (range.finalState() == ExecutorState::DONE) {
+  if (range.finalState() == MainQueryState::DONE) {
     _upstreamState = ExecutionState::DONE;
   } else {
     _upstreamState = ExecutionState::HASMORE;

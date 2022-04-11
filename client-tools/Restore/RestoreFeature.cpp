@@ -27,7 +27,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <algorithm>
 #include <chrono>
@@ -1345,7 +1344,7 @@ Result RestoreFeature::RestoreMainJob::restoreData(
   using arangodb::basics::StringUtils::formatSize;
 
   int type = arangodb::basics::VelocyPackHelper::getNumericValue<int>(
-      parameters, "type", 2);
+      parameters, std::vector<std::string_view>({"parameters", "type"}), 2);
   std::string const collectionType(type == 2 ? "document" : "edge");
 
   auto&& currentStatus = progressTracker.getStatus(collectionName);
@@ -1483,7 +1482,7 @@ Result RestoreFeature::RestoreMainJob::restoreData(
       // data in order. this is because the enveloped data format may contain
       // documents to insert *AND* documents to remove (this is an MMFiles
       // legacy).
-      bool const forceDirect = (numRead == 0) || !useEnvelope;
+      bool const forceDirect = (numRead == 0) || useEnvelope;
 
       result = dispatchRestoreData(client, datafileReadOffset, buffer->begin(),
                                    length, forceDirect);
@@ -1527,7 +1526,7 @@ Result RestoreFeature::RestoreMainJob::restoreData(
         }
 
         LOG_TOPIC("69a73", INFO, Logger::RESTORE)
-            << "# Still loading data into " << collectionType << " collection '"
+            << "# Loading data into " << collectionType << " collection '"
             << collectionName << "', " << formatSize(numReadForThisCollection)
             << ofFilesize << " read" << percentage;
         numReadSinceLastReport = 0;
@@ -1632,7 +1631,6 @@ RestoreFeature::RestoreFeature(Server& server, int& exitCode)
       _exitCode{exitCode} {
   static_assert(Server::isCreatedAfter<RestoreFeature, HttpEndpointProvider>());
 
-  requiresElevatedPrivileges(false);
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseClient>();
 
@@ -1710,7 +1708,8 @@ void RestoreFeature::collectOptions(
           "clean up duplicate attributes (use first specified value) in input "
           "documents instead of making the restore operation fail",
           new BooleanParameter(&_options.cleanupDuplicateAttributes),
-          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+          arangodb::options::makeDefaultFlags(
+              arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30322)
       .setIntroducedIn(30402);
 
@@ -1740,7 +1739,7 @@ void RestoreFeature::collectOptions(
   options->addOption(
       "--fail-after-update-continue-file", "",
       new BooleanParameter(&_options.failOnUpdateContinueFile),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 #endif
 
   options
@@ -1773,11 +1772,11 @@ void RestoreFeature::collectOptions(
 
   // deprecated options
   options
-      ->addOption(
-          "--default-number-of-shards",
-          "default value for numberOfShards if not specified in dump",
-          new UInt64Parameter(&_options.defaultNumberOfShards),
-          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+      ->addOption("--default-number-of-shards",
+                  "default value for numberOfShards if not specified in dump",
+                  new UInt64Parameter(&_options.defaultNumberOfShards),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::Uncommon))
       .setDeprecatedIn(30322)
       .setDeprecatedIn(30402);
 
@@ -1786,7 +1785,8 @@ void RestoreFeature::collectOptions(
           "--default-replication-factor",
           "default value for replicationFactor if not specified in dump",
           new UInt64Parameter(&_options.defaultReplicationFactor),
-          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+          arangodb::options::makeDefaultFlags(
+              arangodb::options::Flags::Uncommon))
       .setDeprecatedIn(30322)
       .setDeprecatedIn(30402);
 }
@@ -2213,7 +2213,7 @@ void RestoreFeature::start() {
       LOG_TOPIC("a66e1", INFO, Logger::RESTORE)
           << "Processed " << _stats.restoredCollections
           << " collection(s) from " << databases.size() << " database(s) in "
-          << Logger::FIXED(totalTime, 6) << " s total time. Read "
+          << Logger::FIXED(totalTime, 2) << " s total time. Read "
           << formatSize(_stats.totalRead) << " from datafiles, "
           << "sent " << _stats.totalBatches << " data batch(es) of "
           << formatSize(_stats.totalSent) << " total size.";
@@ -2221,7 +2221,7 @@ void RestoreFeature::start() {
       LOG_TOPIC("147ca", INFO, Logger::RESTORE)
           << "Processed " << _stats.restoredCollections
           << " collection(s) from " << databases.size() << " database(s) in "
-          << Logger::FIXED(totalTime, 6) << " s total time.";
+          << Logger::FIXED(totalTime, 2) << " s total time.";
     }
   }
 }

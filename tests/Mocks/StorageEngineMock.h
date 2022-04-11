@@ -37,6 +37,7 @@
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
 
+#include <atomic>
 #include <string_view>
 
 namespace arangodb {
@@ -103,7 +104,6 @@ class PhysicalCollectionMock : public arangodb::PhysicalCollection {
       arangodb::transaction::Methods*, std::string_view,
       std::pair<arangodb::LocalDocumentId, arangodb::RevisionId>&,
       arangodb::ReadOwnWrites) const override;
-  virtual size_t memory() const override;
   virtual uint64_t numberDocuments(
       arangodb::transaction::Methods* trx) const override;
   virtual std::string const& path() const override;
@@ -184,9 +184,9 @@ class TransactionCollectionMock : public arangodb::TransactionCollection {
 
 class TransactionStateMock : public arangodb::TransactionState {
  public:
-  static size_t abortTransactionCount;
-  static size_t beginTransactionCount;
-  static size_t commitTransactionCount;
+  static std::atomic_size_t abortTransactionCount;
+  static std::atomic_size_t beginTransactionCount;
+  static std::atomic_size_t commitTransactionCount;
 
   TransactionStateMock(TRI_vocbase_t& vocbase, arangodb::TransactionId tid,
                        arangodb::transaction::Options const& options);
@@ -231,9 +231,9 @@ class StorageEngineMock : public arangodb::StorageEngine {
   virtual void changeCollection(TRI_vocbase_t& vocbase,
                                 arangodb::LogicalCollection const& collection,
                                 bool doSync) override;
-  virtual arangodb::Result changeView(TRI_vocbase_t& vocbase,
-                                      arangodb::LogicalView const& view,
-                                      bool doSync) override;
+  arangodb::Result changeView(arangodb::LogicalView const& view,
+                              arangodb::velocypack::Slice update) override;
+
   virtual void createCollection(
       TRI_vocbase_t& vocbase,
       arangodb::LogicalCollection const& collection) override;

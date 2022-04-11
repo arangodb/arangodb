@@ -24,275 +24,507 @@
 
 #include "velocypack/Builder.h"
 #include "velocypack/velocypack-common.h"
-#include "velocypack/velocypack-aliases.h"
+#include <memory>
+#include <utility>
 
 #include "Agency/TransactionBuilder.h"
-#include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
+#include "Replication2/ReplicatedLog/LogCommon.h"
 
 using namespace arangodb::replication2::agency;
 
 namespace arangodb::replication2::replicated_log {
 
-struct Action {
-  enum class ActionType {
-    EmptyAction,
-    ErrorAction,
-    AddLogToPlanAction,
-    AddParticipantsToTargetAction,
-    CreateInitialTermAction,
-    UpdateTermAction,
-    DictateLeaderAction,
-    EvictLeaderAction,
-    LeaderElectionAction,
-    UpdateParticipantFlagsAction,
-    AddParticipantToPlanAction,
-    RemoveParticipantFromPlanAction,
-    UpdateLogConfigAction,
-  };
-  virtual auto execute(std::string dbName, arangodb::agency::envelope envelope)
-      -> arangodb::agency::envelope = 0;
+struct ActionContext {
+  ActionContext(std::optional<LogPlanSpecification> plan,
+                std::optional<LogCurrent> current)
+      : plan(std::move(plan)), current(std::move(current)) {}
 
-  virtual ActionType type() const = 0;
-  virtual void toVelocyPack(VPackBuilder& builder) const = 0;
-  virtual ~Action() = default;
+  template<typename F>
+  auto modifyPlan(F&& fn) {
+    static_assert(std::is_invocable_r_v<void, F, LogPlanSpecification&>);
+    TRI_ASSERT(plan.has_value())
+        << "modifying action expects plan to be present";
+    modifiedPlan = true;
+    return std::invoke(std::forward<F>(fn), *plan);
+  }
+
+  template<typename F>
+  auto modifyCurrent(F&& fn) {
+    static_assert(std::is_invocable_r_v<void, F, LogCurrent&>);
+    TRI_ASSERT(current.has_value())
+        << "modifying action expects current to be present";
+    modifiedCurrent = true;
+    return std::invoke(std::forward<F>(fn), *current);
+  }
+
+  template<typename F>
+  auto modifyBoth(F&& fn) {
+    static_assert(
+        std::is_invocable_r_v<void, F, LogPlanSpecification&, LogCurrent&>);
+    TRI_ASSERT(plan.has_value())
+        << "modifying action expects log plan to be present";
+    TRI_ASSERT(current.has_value())
+        << "modifying action expects current to be present";
+    modifiedPlan = true;
+    modifiedCurrent = true;
+    return std::invoke(std::forward<F>(fn), *plan, *current);
+  }
+
+  void setPlan(LogPlanSpecification newPlan) {
+    plan.emplace(std::move(newPlan));
+    modifiedPlan = true;
+  }
+
+  void setCurrent(LogCurrent newCurrent) {
+    current.emplace(std::move(newCurrent));
+    modifiedCurrent = true;
+  }
+
+  auto hasModification() const noexcept -> bool {
+    return modifiedPlan || modifiedCurrent;
+  }
+
+  auto hasPlanModification() const noexcept -> bool { return modifiedPlan; }
+
+  auto hasCurrentModification() const noexcept -> bool {
+    return modifiedCurrent;
+  }
+
+  auto getPlan() const noexcept -> LogPlanSpecification const& {
+    return plan.value();
+  }
+
+  auto getCurrent() const noexcept -> LogCurrent const& {
+    return current.value();
+  }
+
+ private:
+  std::optional<LogPlanSpecification> plan;
+  bool modifiedPlan = false;
+  std::optional<LogCurrent> current;
+  bool modifiedCurrent = false;
 };
 
-auto to_string(Action::ActionType action) -> std::string_view;
-auto operator<<(std::ostream& os, Action::ActionType const& action)
-    -> std::ostream&;
-auto operator<<(std::ostream& os, Action const& action) -> std::ostream&;
+struct EmptyAction {
+  static constexpr std::string_view name = "EmptyAction";
 
-// Empty Action
-// TODO: we currently use a mix of nullptr and EmptyAction; should only use one
-// of them.
-struct EmptyAction : Action {
-  EmptyAction() : _message(""){};
-  EmptyAction(std::string_view message) : _message(message){};
-  auto execute(std::string dbName, arangodb::agency::envelope envelope)
-      -> arangodb::agency::envelope override {
-    return envelope;
-  };
-  ActionType type() const override { return Action::ActionType::EmptyAction; };
-  void toVelocyPack(VPackBuilder& builder) const override;
+  EmptyAction() : message(std::nullopt){};
+  explicit EmptyAction(std::string message) : message(std::move(message)) {}
+
+  std::optional<std::string> message;
+
+  auto execute(ActionContext& ctx) const -> void {
+    ctx.modifyCurrent([&](LogCurrent& current) {
+      if (!current.supervision) {
+        current.supervision = LogCurrentSupervision{};
+      }
+
+      if (!current.supervision->statusMessage or
+          current.supervision->statusMessage != message) {
+        current.supervision->statusMessage = message;
+      }
+    });
+  }
+};
+
+template<typename Inspector>
+auto inspect(Inspector& f, EmptyAction& x) {
+  auto hack = std::string{x.name};
+  return f.object(x).fields(f.field("type", hack),
+                            f.field("message", x.message));
+}
+
+struct ErrorAction {
+  static constexpr std::string_view name = "ErrorAction";
+
+  ErrorAction(LogCurrentSupervisionError const& error) : _error{error} {};
+
+  LogCurrentSupervisionError _error;
+
+  auto execute(ActionContext& ctx) const -> void {
+    ctx.modifyCurrent([&](LogCurrent& current) {
+      if (!current.supervision) {
+        current.supervision = LogCurrentSupervision{};
+      }
+
+      if (!current.supervision->error || current.supervision->error != _error) {
+        current.supervision->error = _error;
+      }
+    });
+  }
+};
+template<typename Inspector>
+auto inspect(Inspector& f, ErrorAction& x) {
+  auto hack = std::string{x.name};
+  return f.object(x).fields(f.field("type", hack),
+                            f.field("message", x._error));
+}
+
+struct AddLogToPlanAction {
+  static constexpr std::string_view name = "AddLogToPlanAction";
+
+  AddLogToPlanAction(LogId const id, ParticipantsFlagsMap participants,
+                     LogConfig config,
+                     std::optional<LogPlanTermSpecification::Leader> leader)
+      : _id(id),
+        _participants(std::move(participants)),
+        _config(std::move(config)),
+        _leader(std::move(leader)){};
+  LogId _id;
+  ParticipantsFlagsMap _participants;
+  LogConfig _config;
+  std::optional<LogPlanTermSpecification::Leader> _leader;
+
+  auto execute(ActionContext& ctx) const -> void {
+    ctx.setPlan(LogPlanSpecification(
+        _id, LogPlanTermSpecification(LogTerm{1}, _config, _leader),
+        ParticipantsConfig{.generation = 1, .participants = _participants}));
+  }
+};
+template<typename Inspector>
+auto inspect(Inspector& f, AddLogToPlanAction& x) {
+  auto hack = std::string{x.name};
+  return f.object(x).fields(f.field("type", hack), f.field("id", x._id),
+                            f.field("participants", x._participants),
+                            f.field("leader", x._leader),
+                            f.field("config", x._config));
+}
+
+struct CreateInitialTermAction {
+  static constexpr std::string_view name = "CreateIntialTermAction";
+
+  LogConfig _config;
+
+  auto execute(ActionContext& ctx) const -> void {
+    ctx.modifyPlan([&](LogPlanSpecification& plan) {
+      // Precondition: currentTerm is std::nullopt
+      plan.currentTerm =
+          LogPlanTermSpecification(LogTerm{1}, _config, std::nullopt);
+    });
+  }
+};
+template<typename Inspector>
+auto inspect(Inspector& f, CreateInitialTermAction& x) {
+  auto hack = std::string{x.name};
+  return f.object(x).fields(f.field("type", hack),
+                            f.field("config", x._config));
+}
+
+struct CurrentNotAvailableAction {
+  static constexpr std::string_view name = "CurrentNotAvailableAction";
+
+  auto execute(ActionContext& ctx) const -> void {
+    auto current = LogCurrent{};
+    current.supervision = LogCurrentSupervision{};
+    current.supervision->statusMessage =
+        "Current was not available yet";  // It is now.
+
+    ctx.setCurrent(current);
+  }
+};
+template<typename Inspector>
+auto inspect(Inspector& f, CurrentNotAvailableAction& x) {
+  auto hack = std::string{x.name};
+  return f.object(x).fields(f.field("type", hack));
+}
+
+struct DictateLeaderAction {
+  static constexpr std::string_view name = "DictateLeaderAction";
+
+  DictateLeaderAction(LogPlanTermSpecification::Leader const& leader)
+      : _leader{leader} {};
+
+  LogPlanTermSpecification::Leader _leader;
+
+  auto execute(ActionContext& ctx) const -> void {
+    ctx.modifyPlan([&](LogPlanSpecification& plan) {
+      plan.currentTerm->term = LogTerm{plan.currentTerm->term.value + 1};
+      plan.currentTerm->leader = _leader;
+    });
+  }
+};
+template<typename Inspector>
+auto inspect(Inspector& f, DictateLeaderAction& x) {
+  auto hack = std::string{x.name};
+  return f.object(x).fields(f.field("type", hack),
+                            f.field("leader", x._leader));
+}
+
+struct DictateLeaderFailedAction {
+  static constexpr std::string_view name = "DictateLeaderFailedAction";
+
+  DictateLeaderFailedAction(std::string const& message) : _message{message} {};
 
   std::string _message;
+
+  auto execute(ActionContext& ctx) const -> void {
+    ctx.modifyCurrent([&](LogCurrent& current) {
+      if (!current.supervision) {
+        current.supervision = LogCurrentSupervision{};
+      }
+
+      current.supervision->statusMessage = _message;
+    });
+  }
 };
-auto to_string(EmptyAction action) -> std::string;
-auto operator<<(std::ostream& os, EmptyAction const& action) -> std::ostream&;
+template<typename Inspector>
+auto inspect(Inspector& f, DictateLeaderFailedAction& x) {
+  auto hack = std::string{x.name};
+  return f.object(x).fields(f.field("type", hack),
+                            f.field("message", x._message));
+}
 
-struct ErrorAction : Action {
-  ErrorAction(LogId const& id, LogCurrentSupervisionError const& error)
-      : _id{id}, _error{error} {};
-  auto execute(std::string dbName, arangodb::agency::envelope envelope)
-      -> arangodb::agency::envelope override;
-  ActionType type() const override { return Action::ActionType::ErrorAction; };
-  void toVelocyPack(VPackBuilder& builder) const override;
+struct WriteEmptyTermAction {
+  static constexpr std::string_view name = "WriteEmptyTermAction";
+  LogTerm minTerm;
 
-  LogId _id;
-  LogCurrentSupervisionError _error;
+  explicit WriteEmptyTermAction(LogTerm minTerm) : minTerm{minTerm} {};
+
+  auto execute(ActionContext& ctx) const -> void {
+    ctx.modifyPlan([&](LogPlanSpecification& plan) {
+      plan.currentTerm->term = LogTerm{minTerm.value + 1};
+      plan.currentTerm->leader.reset();
+    });
+  }
 };
-auto to_string(ErrorAction action) -> std::string;
-auto operator<<(std::ostream& os, ErrorAction const& action) -> std::ostream&;
+template<typename Inspector>
+auto inspect(Inspector& f, WriteEmptyTermAction& x) {
+  auto hack = std::string{x.name};
+  return f.object(x).fields(f.field("type", hack),
+                            f.field("minTerm", x.minTerm));
+}
 
-// AddLogToPlanAction
-struct AddLogToPlanAction : Action {
-  AddLogToPlanAction(LogPlanSpecification const& spec) : _spec(spec){};
-  auto execute(std::string dbName, arangodb::agency::envelope envelope)
-      -> arangodb::agency::envelope override;
-  ActionType type() const override {
-    return Action::ActionType::AddLogToPlanAction;
-  };
-  void toVelocyPack(VPackBuilder& builder) const override;
+struct LeaderElectionImpossibleAction {
+  static constexpr std::string_view name = "LeaderElectionImpossibleAction";
 
-  LogPlanSpecification const _spec;
+  auto execute(ActionContext& ctx) const -> void {
+    ctx.modifyCurrent([&](LogCurrent& current) {
+      if (!current.supervision) {
+        current.supervision = LogCurrentSupervision{};
+      }
+      current.supervision->statusMessage = "Leader election impossible";
+    });
+  }
 };
-auto to_string(AddLogToPlanAction const& action) -> std::string;
-auto operator<<(std::ostream& os, AddLogToPlanAction const& action)
-    -> std::ostream&;
+template<typename Inspector>
+auto inspect(Inspector& f, LeaderElectionImpossibleAction& x) {
+  auto hack = std::string{x.name};
+  return f.object(x).fields(f.field("type", hack));
+}
 
-// AddParticipantsToTarget
-struct AddParticipantsToTargetAction : Action {
-  AddParticipantsToTargetAction(LogTarget const& spec) : _spec(spec){};
-  auto execute(std::string dbName, arangodb::agency::envelope envelope)
-      -> arangodb::agency::envelope override;
-  ActionType type() const override {
-    return Action::ActionType::AddParticipantsToTargetAction;
-  };
-  void toVelocyPack(VPackBuilder& builder) const override;
+struct LeaderElectionOutOfBoundsAction {
+  static constexpr std::string_view name = "LeaderElectionOutOfBoundsAction";
 
-  LogTarget const _spec;
-};
-auto to_string(AddParticipantsToTargetAction const& action) -> std::string;
-auto operator<<(std::ostream& os, AddParticipantsToTargetAction const& action)
-    -> std::ostream&;
-
-struct CreateInitialTermAction : Action {
-  CreateInitialTermAction(LogId id, LogPlanTermSpecification const& term)
-      : _id(id), _term(term){};
-  auto execute(std::string dbName, arangodb::agency::envelope envelope)
-      -> arangodb::agency::envelope override;
-  ActionType type() const override {
-    return Action::ActionType::CreateInitialTermAction;
-  };
-  void toVelocyPack(VPackBuilder& builder) const override;
-
-  LogId const _id;
-  LogPlanTermSpecification const _term;
-};
-
-struct DictateLeaderAction : Action {
-  DictateLeaderAction(LogId const& id, LogPlanTermSpecification const& newTerm)
-      : _id(id), _term{newTerm} {};
-  auto execute(std::string dbName, arangodb::agency::envelope envelope)
-      -> arangodb::agency::envelope override;
-  ActionType type() const override {
-    return Action::ActionType::DictateLeaderAction;
-  };
-  void toVelocyPack(VPackBuilder& builder) const override;
-
-  LogId const _id;
-  LogPlanTermSpecification _term;
-};
-
-struct EvictLeaderAction : Action {
-  EvictLeaderAction(LogId const& id, ParticipantId const& leader,
-                    ParticipantFlags const& flags,
-                    LogPlanTermSpecification const& newTerm,
-                    std::size_t generation)
-      : _id(id),
-        _leader{leader},
-        _flags{flags},
-        _newTerm{newTerm},
-        _generation{generation} {};
-  auto execute(std::string dbName, arangodb::agency::envelope envelope)
-      -> arangodb::agency::envelope override;
-  ActionType type() const override {
-    return Action::ActionType::EvictLeaderAction;
-  };
-  void toVelocyPack(VPackBuilder& builder) const override;
-
-  LogId const _id;
-  ParticipantId _leader;
-  ParticipantFlags _flags;
-  LogPlanTermSpecification _newTerm;
-  std::size_t _generation;
-};
-
-struct UpdateTermAction : Action {
-  UpdateTermAction(LogId const& id, LogPlanTermSpecification const& newTerm)
-      : _id{id}, _newTerm(newTerm){};
-  auto execute(std::string dbName, arangodb::agency::envelope envelope)
-      -> arangodb::agency::envelope override;
-  ActionType type() const override {
-    return Action::ActionType::UpdateTermAction;
-  };
-  void toVelocyPack(VPackBuilder& builder) const override;
-
-  LogId const _id;
-  LogPlanTermSpecification _newTerm;
-};
-
-auto to_string(UpdateTermAction action) -> std::string;
-auto operator<<(std::ostream& os, UpdateTermAction const& action)
-    -> std::ostream&;
-
-struct LeaderElectionAction : Action {
-  LeaderElectionAction(LogId id, LogCurrentSupervisionElection const& election)
-      : _id(id), _election{election}, _newTerm{std::nullopt} {};
-  LeaderElectionAction(LogId id, LogCurrentSupervisionElection const& election,
-                       LogPlanTermSpecification newTerm)
-      : _id(id), _election{election}, _newTerm{newTerm} {};
-  auto execute(std::string dbName, arangodb::agency::envelope envelope)
-      -> arangodb::agency::envelope override;
-  ActionType type() const override {
-    return Action::ActionType::LeaderElectionAction;
-  };
-  void toVelocyPack(VPackBuilder& builder) const override;
-
-  LogId const _id;
   LogCurrentSupervisionElection _election;
-  std::optional<LogPlanTermSpecification> _newTerm;
+
+  auto execute(ActionContext& ctx) const -> void {
+    ctx.modifyCurrent([&](LogCurrent& current) {
+      if (!current.supervision) {
+        current.supervision = LogCurrentSupervision{};
+      }
+
+      current.supervision->statusMessage =
+          "Number of electible participants out of bounds";
+      current.supervision->election = _election;
+    });
+  }
 };
-auto to_string(LeaderElectionAction action) -> std::string;
-auto operator<<(std::ostream& os, LeaderElectionAction const& action)
-    -> std::ostream&;
+template<typename Inspector>
+auto inspect(Inspector& f, LeaderElectionOutOfBoundsAction& x) {
+  auto hack = std::string{x.name};
+  return f.object(x).fields(f.field("type", hack),
+                            f.field("election", x._election));
+}
 
-struct UpdateParticipantFlagsAction : Action {
-  UpdateParticipantFlagsAction(LogId id, ParticipantId const& participant,
-                               ParticipantFlags const& flags,
-                               std::size_t generation)
-      : _id(id),
-        _participant(participant),
-        _flags(flags),
-        _generation{generation} {};
-  ActionType type() const override {
-    return Action::ActionType::UpdateParticipantFlagsAction;
-  };
+struct LeaderElectionQuorumNotReachedAction {
+  static constexpr std::string_view name =
+      "LeaderElectionQuorumNotReachedAction";
 
-  auto execute(std::string dbName, arangodb::agency::envelope envelope)
-      -> arangodb::agency::envelope override;
-  void toVelocyPack(VPackBuilder& builder) const override;
+  LogCurrentSupervisionElection _election;
 
-  LogId const _id;
+  auto execute(ActionContext& ctx) const -> void {
+    ctx.modifyCurrent([&](LogCurrent& current) {
+      if (!current.supervision) {
+        current.supervision = LogCurrentSupervision{};
+      }
+
+      current.supervision->statusMessage = "Quorum not reached";
+      current.supervision->election = _election;
+    });
+  }
+};
+template<typename Inspector>
+auto inspect(Inspector& f, LeaderElectionQuorumNotReachedAction& x) {
+  auto hack = std::string{x.name};
+  return f.object(x).fields(f.field("type", hack),
+                            f.field("election", x._election));
+}
+
+struct LeaderElectionAction {
+  static constexpr std::string_view name = "LeaderElectionAction";
+
+  LeaderElectionAction(LogPlanTermSpecification::Leader electedLeader,
+                       LogCurrentSupervisionElection const& electionReport)
+      : _electedLeader{electedLeader}, _electionReport(electionReport){};
+
+  LogPlanTermSpecification::Leader _electedLeader;
+  LogCurrentSupervisionElection _electionReport;
+
+  auto execute(ActionContext& ctx) const -> void {
+    ctx.modifyPlan([&](LogPlanSpecification& plan) {
+      plan.currentTerm->term = LogTerm{plan.currentTerm->term.value + 1};
+      plan.currentTerm->leader = _electedLeader;
+    });
+    ctx.modifyCurrent([&](LogCurrent& current) {
+      if (!current.supervision) {
+        current.supervision = LogCurrentSupervision{};
+      }
+      current.supervision->election = _electionReport;
+    });
+  }
+};
+template<typename Inspector>
+auto inspect(Inspector& f, LeaderElectionAction& x) {
+  auto hack = std::string{x.name};
+  return f.object(x).fields(f.field("type", hack),
+                            f.field("election", x._electionReport),
+                            f.field("electedLeader", x._electedLeader));
+}
+
+struct UpdateParticipantFlagsAction {
+  static constexpr std::string_view name = "UpdateParticipantFlagsAction";
+
+  UpdateParticipantFlagsAction(ParticipantId const& participant,
+                               ParticipantFlags const& flags)
+      : _participant(participant), _flags(flags){};
+
   ParticipantId _participant;
   ParticipantFlags _flags;
-  std::size_t _generation;
+
+  auto execute(ActionContext& ctx) const -> void {
+    ctx.modifyPlan([&](LogPlanSpecification& plan) {
+      plan.participantsConfig.participants.at(_participant) = _flags;
+      plan.participantsConfig.generation += 1;
+    });
+  }
 };
+template<typename Inspector>
+auto inspect(Inspector& f, UpdateParticipantFlagsAction& x) {
+  auto hack = std::string{x.name};
+  return f.object(x).fields(f.field("type", hack),
+                            f.field("participant", x._participant),
+                            f.field("flags", x._flags));
+}
 
-struct AddParticipantToPlanAction : Action {
-  AddParticipantToPlanAction(LogId id, ParticipantId const& participant,
-                             ParticipantFlags const& flags,
-                             std::size_t generation)
-      : _id{id},
-        _participant(participant),
-        _flags(flags),
-        _generation{generation} {};
-  ActionType type() const override {
-    return Action::ActionType::AddParticipantToPlanAction;
-  };
+struct AddParticipantToPlanAction {
+  static constexpr std::string_view name = "AddParticipantToPlanAction";
 
-  auto execute(std::string dbName, arangodb::agency::envelope envelope)
-      -> arangodb::agency::envelope override;
-  void toVelocyPack(VPackBuilder& builder) const override;
+  AddParticipantToPlanAction(ParticipantId const& participant,
+                             ParticipantFlags const& flags)
+      : _participant(participant), _flags(flags) {}
 
-  LogId const _id;
   ParticipantId _participant;
   ParticipantFlags _flags;
-  std::size_t _generation;
+
+  auto execute(ActionContext& ctx) const -> void {
+    ctx.modifyPlan([&](LogPlanSpecification& plan) {
+      plan.participantsConfig.generation += 1;
+      plan.participantsConfig.participants.emplace(_participant, _flags);
+    });
+  }
 };
+template<typename Inspector>
+auto inspect(Inspector& f, AddParticipantToPlanAction& x) {
+  auto hack = std::string{x.name};
+  return f.object(x).fields(f.field("type", hack),
+                            f.field("participant", x._participant),
+                            f.field("flags", x._flags));
+}
 
-struct RemoveParticipantFromPlanAction : Action {
-  RemoveParticipantFromPlanAction(LogId const& id,
-                                  ParticipantId const& participant,
-                                  std::size_t generation)
-      : _id{id}, _participant(participant), _generation{generation} {};
-  ActionType type() const override {
-    return Action::ActionType::RemoveParticipantFromPlanAction;
-  };
+struct RemoveParticipantFromPlanAction {
+  static constexpr std::string_view name = "RemoveParticipantFromPlanAction";
 
-  auto execute(std::string dbName, arangodb::agency::envelope envelope)
-      -> arangodb::agency::envelope override;
-  void toVelocyPack(VPackBuilder& builder) const override;
+  RemoveParticipantFromPlanAction(ParticipantId const& participant)
+      : _participant(participant){};
 
-  LogId const _id;
   ParticipantId _participant;
-  std::size_t _generation;
+
+  auto execute(ActionContext& ctx) const -> void {
+    ctx.modifyPlan([&](LogPlanSpecification& plan) {
+      plan.participantsConfig.participants.erase(_participant);
+      plan.participantsConfig.generation += 1;
+    });
+  }
 };
+template<typename Inspector>
+auto inspect(Inspector& f, RemoveParticipantFromPlanAction& x) {
+  auto hack = std::string{x.name};
+  return f.object(x).fields(f.field("type", hack),
+                            f.field("participant", x._participant));
+}
 
-struct UpdateLogConfigAction : Action {
-  UpdateLogConfigAction(LogId const& id, LogConfig const& config)
-      : _id(id), _config(config){};
-  ActionType type() const override {
-    return Action::ActionType::UpdateLogConfigAction;
-  };
+struct UpdateLogConfigAction {
+  static constexpr std::string_view name = "UpdateLogConfigAction";
 
-  auto execute(std::string dbName, arangodb::agency::envelope envelope)
-      -> arangodb::agency::envelope override;
-  void toVelocyPack(VPackBuilder& builder) const override;
+  UpdateLogConfigAction(LogConfig const& config) : _config(config){};
 
-  LogId const _id;
   LogConfig _config;
+
+  auto execute(ActionContext& ctx) const -> void {
+    ctx.modifyCurrent([&](LogCurrent& current) {
+      if (!current.supervision) {
+        current.supervision = LogCurrentSupervision{};
+      }
+
+      current.supervision->statusMessage =
+          "UpdatingLogConfig is not implemented yet";
+    });
+  }
 };
+template<typename Inspector>
+auto inspect(Inspector& f, UpdateLogConfigAction& x) {
+  auto hack = std::string{x.name};
+  return f.object(x).fields(f.field("type", hack));
+}
+
+struct ConvergedToTargetAction {
+  static constexpr std::string_view name = "ConvergedToTargetAction";
+  std::optional<std::uint64_t> version{std::nullopt};
+
+  auto execute(ActionContext& ctx) const -> void {
+    ctx.modifyCurrent([&](LogCurrent& current) {
+      if (!current.supervision) {
+        current.supervision = LogCurrentSupervision{};
+      }
+
+      if (current.supervision) current.supervision->targetVersion = version;
+    });
+  }
+};
+
+template<typename Inspector>
+auto inspect(Inspector& f, ConvergedToTargetAction& x) {
+  auto hack = std::string{x.name};
+  return f.object(x).fields(f.field("type", hack),
+                            f.field("version", x.version));
+}
+
+using Action = std::variant<
+    EmptyAction, ErrorAction, AddLogToPlanAction, CreateInitialTermAction,
+    CurrentNotAvailableAction, DictateLeaderAction, DictateLeaderFailedAction,
+    WriteEmptyTermAction, LeaderElectionAction, LeaderElectionImpossibleAction,
+    LeaderElectionOutOfBoundsAction, LeaderElectionQuorumNotReachedAction,
+    UpdateParticipantFlagsAction, AddParticipantToPlanAction,
+    RemoveParticipantFromPlanAction, UpdateLogConfigAction,
+    ConvergedToTargetAction>;
+
+auto execute(Action const& action, DatabaseID const& dbName, LogId const& log,
+             std::optional<LogPlanSpecification> plan,
+             std::optional<LogCurrent> current,
+             arangodb::agency::envelope envelope) -> arangodb::agency::envelope;
+
+auto to_string(Action const& action) -> std::string_view;
+void toVelocyPack(Action const& action, VPackBuilder& builder);
 
 }  // namespace arangodb::replication2::replicated_log

@@ -25,7 +25,6 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "BenchFeature.h"
 
@@ -101,7 +100,6 @@ BenchFeature::BenchFeature(Server& server, int* result)
       _histogramNumIntervals(1000),
       _histogramIntervalSize(0.0),
       _percentiles({50.0, 80.0, 85.0, 90.0, 95.0, 99.0, 99.99}) {
-  requiresElevatedPrivileges(false);
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseClient>();
 

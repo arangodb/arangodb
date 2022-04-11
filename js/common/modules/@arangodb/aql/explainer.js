@@ -168,6 +168,11 @@ function attribute(v) {
   return '`' + colors.COLOR_YELLOW + v + colors.COLOR_RESET + '`';
 }
 
+function attributePath(v) {
+  'use strict';
+  return v.split('.').map(attribute).join('.');
+}
+
 function header(v) {
   'use strict';
   return colors.COLOR_MAGENTA + v + colors.COLOR_RESET;
@@ -252,6 +257,9 @@ function printRules(rules, stats) {
     }
     return { name: key, time: stats.rules[key] };
   });
+  // filter out everything that was reasonably fast
+  times = times.filter((item) => item.time >= 0.0002);
+
   times.sort(function(l, r) {
     // highest cost first
     return r.time - l.time;
@@ -259,13 +267,16 @@ function printRules(rules, stats) {
   // top few only
   times = times.slice(0, 5);
 
-  stringBuilder.appendLine(section('Optimization rules with highest execution times:'));
-  stringBuilder.appendLine(' ' + header('RuleName') + '   ' + pad(maxNameLength - 'RuleName'.length) + header('Duration [s]'));
-  times.forEach(function(rule) {
-    stringBuilder.appendLine(' ' + keyword(rule.name) + '   ' + pad(12 + maxNameLength - rule.name.length - rule.time.toFixed(5).length) + value(rule.time.toFixed(5)));
-  });
+  if (times.length > 0) {
+    stringBuilder.appendLine(section('Optimization rules with highest execution times:'));
+    stringBuilder.appendLine(' ' + header('RuleName') + '   ' + pad(maxNameLength - 'RuleName'.length) + header('Duration [s]'));
+    times.forEach(function(rule) {
+      stringBuilder.appendLine(' ' + keyword(rule.name) + '   ' + pad(12 + maxNameLength - rule.name.length - rule.time.toFixed(5).length) + value(rule.time.toFixed(5)));
+    });
   
-  stringBuilder.appendLine();
+    stringBuilder.appendLine();
+  }
+
   stringBuilder.appendLine(value(stats.rulesExecuted) + annotation(' rule(s) executed, ') + value(stats.plansCreated) + annotation(' plan(s) created'));
   stringBuilder.appendLine();
 }
@@ -298,18 +309,21 @@ function printStats(stats) {
   var maxWILen = String('Writes Ign').length;
   var maxSFLen = String('Scan Full').length;
   var maxSILen = String('Scan Index').length;
+  var maxCHMLen = String('Cache Hits/Misses').length;
   var maxFLen = String('Filtered').length;
   var maxMem = String('Peak Mem [b]').length;
   var maxETen = String('Exec Time [s]').length;
   stats.executionTime = stats.executionTime.toFixed(5);
   stringBuilder.appendLine(' ' + header('Writes Exec') + '   ' + header('Writes Ign') + '   ' + header('Scan Full') + '   ' +
-    header('Scan Index') + '   ' + header('Filtered') + '   ' + header('Peak Mem [b]') + '   ' + header('Exec Time [s]'));
+    header('Scan Index') + '   ' + header('Cache Hits/Misses') + '   ' + header('Filtered') + '   ' + 
+    header('Peak Mem [b]') + '   ' + header('Exec Time [s]'));
 
   stringBuilder.appendLine(' ' + pad(1 + maxWELen - String(stats.writesExecuted).length) + value(stats.writesExecuted) + '   ' +
     pad(1 + maxWILen - String(stats.writesIgnored).length) + value(stats.writesIgnored) + '   ' +
     pad(1 + maxSFLen - String(stats.scannedFull).length) + value(stats.scannedFull) + '   ' +
     pad(1 + maxSILen - String(stats.scannedIndex).length) + value(stats.scannedIndex) + '   ' +
-    pad(1 + maxFLen - String(stats.filtered).length) + value(stats.filtered) + '   ' +
+    pad(1 + maxCHMLen - (String(stats.cacheHits || 0) + ' / ' + String(stats.cacheMisses || 0)).length) + value(stats.cacheHits || 0) + ' / ' + value(stats.cacheMisses || 0) + '   ' +
+    pad(1 + maxFLen - String(stats.filtered || 0).length) + value(stats.filtered || 0) + '   ' +
     pad(1 + maxMem - String(stats.peakMemoryUsage).length) + value(stats.peakMemoryUsage) + '   ' +
     pad(1 + maxETen - String(stats.executionTime).length) + value(stats.executionTime));
   stringBuilder.appendLine();
@@ -352,6 +366,7 @@ function printIndexes(indexes) {
     var maxCollectionLen = String('Collection').length;
     var maxUniqueLen = String('Unique').length;
     var maxSparseLen = String('Sparse').length;
+    var maxCacheLen = String('Cache').length;
     var maxNameLen = String('Name').length;
     var maxTypeLen = String('Type').length;
     var maxSelectivityLen = String('Selectivity').length;
@@ -384,6 +399,7 @@ function printIndexes(indexes) {
       header('Collection') + pad(1 + maxCollectionLen - 'Collection'.length) + '   ' +
       header('Unique') + pad(1 + maxUniqueLen - 'Unique'.length) + '   ' +
       header('Sparse') + pad(1 + maxSparseLen - 'Sparse'.length) + '   ' +
+      header('Cache') + pad(1 + maxCacheLen - 'Cache'.length) + '   ' +
       header('Selectivity') + '   ' +
       header('Fields') + pad(1 + maxFieldsLen - 'Fields'.length) + '   ' +
       header('Ranges');
@@ -393,6 +409,7 @@ function printIndexes(indexes) {
     for (var i = 0; i < indexes.length; ++i) {
       var uniqueness = (indexes[i].unique ? 'true' : 'false');
       var sparsity = (indexes[i].hasOwnProperty('sparse') ? (indexes[i].sparse ? 'true' : 'false') : 'n/a');
+      var cache = (indexes[i].hasOwnProperty('cacheEnabled') && indexes[i].cacheEnabled ? 'true' : 'false');
       var fields = '[ ' + indexes[i].fields.map(indexFieldToName).map(attribute).join(', ') + ' ]';
       var fieldsLen = indexes[i].fields.map(indexFieldToName).map(attributeUncolored).join(', ').length + '[  ]'.length;
       var ranges;
@@ -419,6 +436,7 @@ function printIndexes(indexes) {
         collection(indexes[i].collection) + pad(1 + maxCollectionLen - indexes[i].collection.length) + '   ' +
         value(uniqueness) + pad(1 + maxUniqueLen - uniqueness.length) + '   ' +
         value(sparsity) + pad(1 + maxSparseLen - sparsity.length) + '   ' +
+        value(cache) + pad(1 + maxCacheLen - cache.length) + '   ' +
         pad(1 + maxSelectivityLen - estimate.length) + value(estimate) + '   ' +
         fields + pad(1 + maxFieldsLen - fieldsLen) + '   ' +
         ranges;
@@ -1238,7 +1256,7 @@ function processQuery(query, explain, planIndex) {
           }
 
           sortCondition = keyword(' SORT ') + node.primarySort.slice(0, primarySortBuckets).map(function (element) {
-            return variableName(node.outVariable) + '.' + attribute(element.field) + ' ' + keyword(element.asc ? 'ASC' : 'DESC');
+            return variableName(node.outVariable) + '.' + attributePath(element.field) + ' ' + keyword(element.asc ? 'ASC' : 'DESC');
           }).join(', ');
         }
 
@@ -1263,10 +1281,10 @@ function processQuery(query, explain, planIndex) {
         if (node.hasOwnProperty('viewValuesVars') && node.viewValuesVars.length > 0) {
           viewVariables = node.viewValuesVars.map(function (viewValuesColumn) {
             if (viewValuesColumn.hasOwnProperty('field')) {
-              return keyword(' LET ') + variableName(viewValuesColumn) + ' = ' + variableName(node.outVariable) + '.' + attribute(viewValuesColumn.field);
+              return keyword(' LET ') + variableName(viewValuesColumn) + ' = ' + variableName(node.outVariable) + '.' + attributePath(viewValuesColumn.field);
             } else {
               return viewValuesColumn.viewStoredValuesVars.map(function (viewValuesVar) {
-                return keyword(' LET ') + variableName(viewValuesVar) + ' = ' + variableName(node.outVariable) + '.' + attribute(viewValuesVar.field);
+                return keyword(' LET ') + variableName(viewValuesVar) + ' = ' + variableName(node.outVariable) + '.' + attributePath(viewValuesVar.field);
               }).join('');
             }
           }).join('');
@@ -2124,11 +2142,11 @@ function processQuery(query, explain, planIndex) {
 
   printRules(plan.rules, explain.stats);
   printModificationFlags(modificationFlags);
-  printWarnings(explain.warnings);
   if (profileMode) {
     printStats(explain.stats);
     printProfile(explain.profile);
   }
+  printWarnings(explain.warnings);
 }
 
 /* the exposed explain function */

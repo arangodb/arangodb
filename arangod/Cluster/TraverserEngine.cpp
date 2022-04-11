@@ -41,7 +41,6 @@
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Transaction/IgnoreNoAccessMethods.h"
@@ -83,7 +82,7 @@ static const std::string VERTICES = "vertices";
 
 BaseEngine::BaseEngine(TRI_vocbase_t& vocbase, aql::QueryContext& query,
                        VPackSlice info)
-    : _engineId(TRI_NewTickServer()), _query(query), _trx(nullptr) {
+    : _engineId(TRI_NewTickServer()), _query(query) {
   VPackSlice shardsSlice = info.get(SHARDS);
 
   if (shardsSlice.isNone() || !shardsSlice.isObject()) {
@@ -136,19 +135,19 @@ BaseEngine::BaseEngine(TRI_vocbase_t& vocbase, aql::QueryContext& query,
 
 #ifdef USE_ENTERPRISE
   if (_query.queryOptions().transactionOptions.skipInaccessibleCollections) {
-    _trx = new transaction::IgnoreNoAccessMethods(
+    _trx = std::make_unique<transaction::IgnoreNoAccessMethods>(
         _query.newTrxContext(), _query.queryOptions().transactionOptions);
   } else {
-    _trx = new transaction::Methods(_query.newTrxContext(),
-                                    _query.queryOptions().transactionOptions);
+    _trx = std::make_unique<transaction::Methods>(
+        _query.newTrxContext(), _query.queryOptions().transactionOptions);
   }
 #else
-  _trx = new transaction::Methods(_query.newTrxContext(),
-                                  _query.queryOptions().transactionOptions);
+  _trx = std::make_unique<transaction::Methods>(
+      _query.newTrxContext(), _query.queryOptions().transactionOptions);
 #endif
 }
 
-BaseEngine::~BaseEngine() { delete _trx; }
+BaseEngine::~BaseEngine() = default;
 
 std::shared_ptr<transaction::Context> BaseEngine::context() const {
   return _trx->transactionContext();
@@ -159,7 +158,7 @@ void BaseEngine::getVertexData(VPackSlice vertex, VPackBuilder& builder,
   TRI_ASSERT(ServerState::instance()->isDBServer());
   TRI_ASSERT(vertex.isString() || vertex.isArray());
 
-  size_t read = 0;
+  std::uint64_t read = 0;
   bool shouldProduceVertices = this->produceVertices();
 
   auto workOnOneDocument = [&](VPackSlice v) {
@@ -192,7 +191,7 @@ void BaseEngine::getVertexData(VPackSlice vertex, VPackBuilder& builder,
       for (std::string const& shard : shards->second) {
         Result res = _trx->documentFastPathLocal(
             shard, vertex, [&](LocalDocumentId const&, VPackSlice doc) {
-              // FOUND short circuit.
+              // FOUND. short circuit.
               read++;
               builder.add(v);
               builder.add(doc);
@@ -215,7 +214,7 @@ void BaseEngine::getVertexData(VPackSlice vertex, VPackBuilder& builder,
     builder.add(VPackValue("vertices"));
 
     if (vertex.isArray()) {
-      builder.openArray();
+      builder.openArray(true);
     }
   }
 
@@ -231,8 +230,14 @@ void BaseEngine::getVertexData(VPackSlice vertex, VPackBuilder& builder,
     if (vertex.isArray()) {
       builder.close();
     }
+    // statistics
     builder.add("readIndex", VPackValue(read));
     builder.add("filtered", VPackValue(0));
+    // TODO: wire these counters
+    builder.add("cacheHits", VPackValue(0));
+    builder.add("cacheMisses", VPackValue(0));
+    // intentionally not sending "cursorsCreated" and "cursorsRearmed"
+    // here, as we are not using a cursor. the caller can handle that.
   }
   builder.close();
 }
@@ -246,17 +251,31 @@ BaseTraverserEngine::~BaseTraverserEngine() = default;
 
 graph::EdgeCursor* BaseTraverserEngine::getCursor(std::string_view nextVertex,
                                                   uint64_t currentDepth) {
-  if (currentDepth >= _cursors.size()) {
-    _cursors.emplace_back(_opts->buildCursor(currentDepth));
+  graph::EdgeCursor* cursor = nullptr;
+  if (_opts->hasSpecificCursorForDepth(currentDepth)) {
+    if (_depthSpecificCursors.find(currentDepth) ==
+        _depthSpecificCursors.end()) {
+      _depthSpecificCursors.emplace(currentDepth,
+                                    _opts->buildCursor(currentDepth));
+    }
+    cursor = _depthSpecificCursors.find(currentDepth)->second.get();
+  } else {
+    if (_generalCursor == nullptr) {
+      _generalCursor = _opts->buildCursor(currentDepth);
+      TRI_ASSERT(_generalCursor != nullptr);
+    }
+    cursor = _generalCursor.get();
   }
-  graph::EdgeCursor* cursor = _cursors.at(currentDepth).get();
+  TRI_ASSERT(cursor != nullptr);
+
   cursor->rearm(nextVertex, currentDepth);
   return cursor;
 }
 
 void BaseTraverserEngine::getEdges(VPackSlice vertex, size_t depth,
                                    VPackBuilder& builder) {
-  auto outputVertex = [this, depth](VPackBuilder& builder, VPackSlice vertex) {
+  auto outputVertex = [this](VPackBuilder& builder, VPackSlice vertex,
+                             size_t depth) {
     TRI_ASSERT(vertex.isString());
 
     graph::EdgeCursor* cursor = getCursor(vertex.stringView(), depth);
@@ -278,22 +297,30 @@ void BaseTraverserEngine::getEdges(VPackSlice vertex, size_t depth,
 
   TRI_ASSERT(vertex.isString() || vertex.isArray());
   builder.openObject();
-  builder.add("edges", VPackValue(VPackValueType::Array));
+  builder.add(VPackValue("edges"));
+  builder.openArray(true);
   if (vertex.isArray()) {
     for (VPackSlice v : VPackArrayIterator(vertex)) {
-      outputVertex(builder, v);
+      outputVertex(builder, v, depth);
     }
   } else if (vertex.isString()) {
-    outputVertex(builder, vertex);
+    outputVertex(builder, vertex, depth);
     // Result now contains all valid edges, probably multiples.
   } else {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
   }
   builder.close();
+  // statistics
   builder.add("readIndex",
               VPackValue(_opts->cache()->getAndResetInsertedDocuments()));
-  builder.add("filtered",
-              VPackValue(_opts->cache()->getAndResetFilteredDocuments()));
+  builder.add("filtered", VPackValue(_opts->cache()->getAndResetFiltered()));
+  builder.add("cacheHits", VPackValue(_opts->cache()->getAndResetCacheHits()));
+  builder.add("cacheMisses",
+              VPackValue(_opts->cache()->getAndResetCacheMisses()));
+  builder.add("cursorsCreated",
+              VPackValue(_opts->cache()->getAndResetCursorsCreated()));
+  builder.add("cursorsRearmed",
+              VPackValue(_opts->cache()->getAndResetCursorsRearmed()));
   builder.close();
 }
 
@@ -348,7 +375,7 @@ ShortestPathEngine::ShortestPathEngine(TRI_vocbase_t& vocbase,
         "The " + OPTIONS + " require a " + TYPE + " attribute.");
   }
   TRI_ASSERT(type.isEqualString("shortestPath"));
-  _opts.reset(new ShortestPathOptions(_query, optsSlice, edgesSlice));
+  _opts = std::make_unique<ShortestPathOptions>(_query, optsSlice, edgesSlice);
   // We create the cache, but we do not need any engines.
   _opts->activateCache(false, nullptr);
 
@@ -379,9 +406,18 @@ void ShortestPathEngine::getEdges(VPackSlice vertex, bool backward,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
   }
   builder.close();
+
+  // statistics
   builder.add("readIndex",
               VPackValue(_opts->cache()->getAndResetInsertedDocuments()));
   builder.add("filtered", VPackValue(0));
+  builder.add("cacheHits", VPackValue(_opts->cache()->getAndResetCacheHits()));
+  builder.add("cacheMisses",
+              VPackValue(_opts->cache()->getAndResetCacheMisses()));
+  builder.add("cursorsCreated",
+              VPackValue(_opts->cache()->getAndResetCursorsCreated()));
+  builder.add("cursorsRearmed",
+              VPackValue(_opts->cache()->getAndResetCursorsRearmed()));
   builder.close();
 }
 
@@ -422,7 +458,7 @@ TraverserEngine::TraverserEngine(TRI_vocbase_t& vocbase,
         "The " + OPTIONS + " require a " + TYPE + " attribute.");
   }
   TRI_ASSERT(type.isEqualString("traversal"));
-  _opts.reset(new TraverserOptions(_query, optsSlice, edgesSlice));
+  _opts = std::make_unique<TraverserOptions>(_query, optsSlice, edgesSlice);
   // We create the cache, but we do not need any engines.
   _opts->activateCache(false, nullptr);
 }

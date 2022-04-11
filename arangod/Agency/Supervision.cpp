@@ -43,17 +43,19 @@
 #include "Basics/StaticStrings.h"
 #include "Cluster/ClusterHelpers.h"
 #include "Cluster/ServerState.h"
-#include "Random/RandomGenerator.h"
-#include "Replication2/AgencyMethods.h"
-#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
-#include "Replication2/ReplicatedLog/Algorithms.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/HistogramBuilder.h"
 #include "Metrics/LogScale.h"
 #include "Metrics/MetricsFeature.h"
-#include "StorageEngine/HealthData.h"
+#include "Random/RandomGenerator.h"
+#include "Replication2/AgencyMethods.h"
+#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
+#include "Replication2/ReplicatedLog/Algorithms.h"
 #include "Replication2/ReplicatedLog/ParticipantsHealth.h"
 #include "Replication2/ReplicatedLog/Supervision.h"
+#include "Replication2/ReplicatedState/AgencySpecification.h"
+#include "Replication2/ReplicatedState/Supervision.h"
+#include "StorageEngine/HealthData.h"
 
 using namespace arangodb;
 using namespace arangodb::consensus;
@@ -1733,6 +1735,11 @@ bool Supervision::handleJobs() {
       << "Begin checkBrokenAnalyzers";
   checkBrokenAnalyzers();
 
+  LOG_TOPIC("f7aa5", TRACE, Logger::SUPERVISION)
+      << "Begin checkReplicatedStates";
+  checkReplicatedStates();
+  updateSnapshot();  // make updates from replicated state visible
+
   LOG_TOPIC("f7d05", TRACE, Logger::SUPERVISION) << "Begin checkReplicatedLogs";
   checkReplicatedLogs();
 
@@ -2521,6 +2528,35 @@ auto parseIfExists(Node const& root, std::string const& url)
   }
   return std::nullopt;
 }
+
+auto parseReplicatedLogAgency(Node const& root, std::string const& dbName,
+                              std::string const& idString)
+    -> std::optional<replication2::agency::Log> {
+  auto targetPath =
+      aliases::target()->replicatedLogs()->database(dbName)->log(idString);
+  // first check if target exists
+  if (auto targetNode = root.hasAsNode(targetPath->str(SkipComponents(1)));
+      targetNode.has_value()) {
+    auto log = replication2::agency::Log{
+        .target = parseSomethingFromNode<replication2::agency::LogTarget>(
+            *targetNode),
+        .plan = parseIfExists<LogPlanSpecification>(
+            root, aliases::plan()
+                      ->replicatedLogs()
+                      ->database(dbName)
+                      ->log(idString)
+                      ->str(SkipComponents(1))),
+        .current =
+            parseIfExists<LogCurrent>(root, aliases::current()
+                                                ->replicatedLogs()
+                                                ->database(dbName)
+                                                ->log(idString)
+                                                ->str(SkipComponents(1)))};
+    return log;
+  } else {
+    return std::nullopt;
+  }
+}
 }  // namespace
 
 void Supervision::checkReplicatedLogs() {
@@ -2540,13 +2576,14 @@ void Supervision::checkReplicatedLogs() {
     std::unordered_map<replication2::ParticipantId, ParticipantHealth> info;
     auto& dbservers = snapshot().hasAsChildren(plannedServers).value().get();
     for (auto const& [serverId, node] : dbservers) {
-      bool const isHealthy = serverHealth(serverId) == HEALTH_STATUS_GOOD;
+      bool const notIsFailed = (serverHealth(serverId) == HEALTH_STATUS_GOOD) or
+                               (serverHealth(serverId) == HEALTH_STATUS_BAD);
 
       auto rebootID = snapshot().hasAsUInt(basics::StringUtils::concatT(
           curServersKnown, serverId, "/", StaticStrings::RebootId));
       if (rebootID) {
         info.emplace(serverId,
-                     ParticipantHealth{RebootId{*rebootID}, isHealthy});
+                     ParticipantHealth{RebootId{*rebootID}, notIsFailed});
       }
     }
     return ParticipantsHealth{info};
@@ -2571,20 +2608,22 @@ void Supervision::checkReplicatedLogs() {
                                                     ->log(idString)
                                                     ->str(SkipComponents(1)));
 
-      auto action =
-          std::invoke([&, &dbName = dbName]() -> std::unique_ptr<Action> {
+      auto maybeAction =
+          std::invoke([&, &dbName = dbName]() -> std::optional<Action> {
             try {
-              return checkReplicatedLog(Log{target, plan, current}, info);
+              return checkReplicatedLog(target, plan, current, info);
             } catch (std::exception const& err) {
               LOG_TOPIC("576c1", ERR, Logger::REPLICATION2)
                   << "Supervision caught exception in checkReplicatedLog for "
                      "replicated log "
                   << dbName << "/" << target.id << ": " << err.what();
-              return nullptr;
+              return std::nullopt;
             }
           });
 
-      if (action != nullptr) {
+      if (maybeAction) {
+        auto const& action = *maybeAction;
+
         if (target.supervision.has_value() &&
             target.supervision->maxActionsTraceLength > 0) {
           envelope =
@@ -2594,7 +2633,6 @@ void Supervision::checkReplicatedLogs() {
                           ->replicatedLogs()
                           ->database(dbName)
                           ->log(idString)
-                          ->supervision()
                           ->actions()
                           ->str(),
                       [&](velocypack::Builder& b) {
@@ -2602,12 +2640,14 @@ void Supervision::checkReplicatedLogs() {
                         b.add("time", VPackValue(timepointToString(
                                           std::chrono::system_clock::now())));
                         b.add(VPackValue("desc"));
-                        action->toVelocyPack(b);
+                        arangodb::replication2::replicated_log::toVelocyPack(
+                            action, b);
                       },
                       target.supervision->maxActionsTraceLength)
                   .end();
         }
-        envelope = action->execute(dbName, std::move(envelope));
+        envelope = arangodb::replication2::replicated_log::execute(
+            action, dbName, target.id, plan, current, std::move(envelope));
       }
     }
   }
@@ -2617,6 +2657,99 @@ void Supervision::checkReplicatedLogs() {
     write_ret_t res = _agent->write(builder);
     if (!res.successful()) {
       LOG_TOPIC("12d36", WARN, Logger::SUPERVISION)
+          << "failed to update term in agency. Will retry. "
+          << builder->toJson();
+    }
+  }
+}
+
+void Supervision::checkReplicatedStates() {
+  _lock.assertLockedByCurrentThread();
+
+  using namespace replication2::agency;
+
+  auto targetNode = snapshot().hasAsNode(targetRepStatePrefix);
+  if (!targetNode.has_value()) {
+    return;
+  }
+
+  auto builder = std::make_shared<Builder>();
+  auto envelope = arangodb::agency::envelope::into_builder(*builder);
+
+  for (auto const& [dbName, db] : targetNode->get().children()) {
+    for (auto const& [idString, node] : db->children()) {
+      auto log = parseReplicatedLogAgency(snapshot(), dbName, idString);
+
+      auto state = replication2::replicated_state::agency::State{
+          .target = parseSomethingFromNode<
+              replication2::replicated_state::agency::Target>(*node),
+          .plan = parseIfExists<replication2::replicated_state::agency::Plan>(
+              snapshot(), aliases::plan()
+                              ->replicatedStates()
+                              ->database(dbName)
+                              ->state(idString)
+                              ->str(SkipComponents(1))),
+          .current =
+              parseIfExists<replication2::replicated_state::agency::Current>(
+                  snapshot(), aliases::current()
+                                  ->replicatedStates()
+                                  ->database(dbName)
+                                  ->state(idString)
+                                  ->str(SkipComponents(1)))};
+
+      auto action = std::invoke(
+          [&, &dbName = dbName, &idString = idString]()
+              -> std::optional<replication2::replicated_state::Action> {
+            try {
+              return replication2::replicated_state::checkReplicatedState(
+                  log, state);
+            } catch (std::exception const& err) {
+              LOG_TOPIC("676d1", ERR, Logger::REPLICATION2)
+                  << "Supervision caught exception in checkReplicatedLog "
+                     "for "
+                     "replicated log "
+                  << dbName << "/" << idString << ": " << err.what();
+              return std::nullopt;
+            }
+          });
+
+      if (action.has_value()) {
+        auto logTarget = std::invoke(
+            [&]() -> std::optional<replication2::agency::LogTarget> {
+              if (log.has_value()) {
+                return std::move(log->target);
+              }
+              return std::nullopt;
+            });
+        auto statePlan = std::invoke(
+            [&]()
+                -> std::optional<replication2::replicated_state::agency::Plan> {
+              if (state.plan.has_value()) {
+                return std::move(*state.plan);
+              }
+              return std::nullopt;
+            });
+        auto stateCurrent = std::invoke(
+            [&]() -> std::optional<replication2::replicated_state::agency::
+                                       Current::Supervision> {
+              if (state.current.has_value() &&
+                  state.current->supervision.has_value()) {
+                return std::move(*state.current->supervision);
+              }
+              return std::nullopt;
+            });
+        envelope = execute(state.target.id, dbName, *action,
+                           std::move(statePlan), std::move(stateCurrent),
+                           std::move(logTarget), std::move(envelope));
+      }
+    }
+  }
+
+  envelope.done();
+  if (builder->slice().length() > 0) {
+    write_ret_t res = _agent->write(builder);
+    if (!res.successful()) {
+      LOG_TOPIC("12e37", WARN, Logger::SUPERVISION)
           << "failed to update term in agency. Will retry. "
           << builder->toJson();
     }

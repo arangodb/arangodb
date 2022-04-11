@@ -49,7 +49,6 @@
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
 
@@ -632,7 +631,7 @@ futures::Future<OperationResult> PhysicalCollection::figures(
   builder.openObject();
 
   // add index information
-  size_t sizeIndexes = memory();
+  size_t sizeIndexes = 0;
   size_t numIndexes = 0;
 
   {

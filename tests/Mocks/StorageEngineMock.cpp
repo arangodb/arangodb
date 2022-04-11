@@ -61,7 +61,6 @@
 
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 namespace {
 
@@ -110,8 +109,7 @@ class EdgeIndexIteratorMock final : public arangodb::IndexIterator {
         _begin(_map.end()),
         _end(_map.end()),
         _keys(std::move(keys)),
-        _keysIt(_keys->slice()),
-        _isFrom(isFrom) {}
+        _keysIt(_keys->slice()) {}
 
   bool prepareNextRange() {
     if (_keysIt.valid()) {
@@ -132,13 +130,13 @@ class EdgeIndexIteratorMock final : public arangodb::IndexIterator {
     }
   }
 
-  char const* typeName() const override { return "edge-index-iterator-mock"; }
+  std::string_view typeName() const noexcept final {
+    return "edge-index-iterator-mock";
+  }
 
-  bool hasExtra() const override { return true; }
-
-  bool nextImpl(LocalDocumentIdCallback const& cb, size_t limit) override {
+  bool nextImpl(LocalDocumentIdCallback const& cb, uint64_t limit) override {
     // We can at most return limit
-    for (size_t l = 0; l < limit; ++l) {
+    for (uint64_t l = 0; l < limit; ++l) {
       while (_begin == _end) {
         if (!prepareNextRange()) {
           return false;
@@ -157,33 +155,6 @@ class EdgeIndexIteratorMock final : public arangodb::IndexIterator {
     return true;
   }
 
-  bool nextExtraImpl(ExtraCallback const& cb, size_t limit) override {
-    auto res = nextImpl(
-        [&](arangodb::LocalDocumentId docId) -> bool {
-          auto res = _collection->getPhysical()->read(
-              _trx, docId,
-              [&](arangodb::LocalDocumentId const& token,
-                  arangodb::velocypack::Slice doc) -> bool {
-                // The nextExtra API in EdgeIndex will deliver the _id value of
-                // the oposite vertex. We simulate that here by reading the real
-                // document one more time and just extracting this value.
-                if (_isFrom) {
-                  return cb(token, doc.get(arangodb::StaticStrings::ToString));
-                } else {
-                  return cb(token,
-                            doc.get(arangodb::StaticStrings::FromString));
-                }
-              },
-              arangodb::ReadOwnWrites::no);
-          // We can only have good responses here.
-          // Otherwise storage and Index do differ
-          TRI_ASSERT(res.ok());
-          return res.ok();
-        },
-        limit);
-    return res;
-  }
-
   void resetImpl() override {
     _keysIt.reset();
     _begin = _map.begin();
@@ -196,7 +167,6 @@ class EdgeIndexIteratorMock final : public arangodb::IndexIterator {
   Map::const_iterator _end;
   std::unique_ptr<VPackBuilder> _keys;
   arangodb::velocypack::ArrayIterator _keysIt;
-  bool _isFrom;
 };  // EdgeIndexIteratorMock
 
 class EdgeIndexMock final : public arangodb::Index {
@@ -223,6 +193,12 @@ class EdgeIndexMock final : public arangodb::Index {
   IndexType type() const override { return Index::TRI_IDX_TYPE_EDGE_INDEX; }
 
   char const* typeName() const override { return "edge"; }
+
+  std::vector<std::vector<arangodb::basics::AttributeName>> const&
+  coveredFields() const override {
+    // index does not cover the index attribute!
+    return Index::emptyCoveredFields;
+  }
 
   bool canBeDropped() const override { return false; }
 
@@ -446,35 +422,6 @@ class EdgeIndexMock final : public arangodb::Index {
   EdgeIndexIteratorMock::Map _edgesTo;
 };  // EdgeIndexMock
 
-class ReverseAllIteratorMock final : public arangodb::IndexIterator {
- public:
-  ReverseAllIteratorMock(uint64_t size, arangodb::LogicalCollection* coll,
-                         arangodb::transaction::Methods* trx)
-      : arangodb::IndexIterator(coll, trx, arangodb::ReadOwnWrites::no),
-        _end(size),
-        _size(size) {}
-
-  virtual char const* typeName() const override {
-    return "ReverseAllIteratorMock";
-  }
-
-  virtual void resetImpl() override { _end = _size; }
-
-  virtual bool nextImpl(LocalDocumentIdCallback const& callback,
-                        size_t limit) override {
-    while (_end && limit) {  // `_end` always > 0
-      callback(arangodb::LocalDocumentId(_end--));
-      --limit;
-    }
-
-    return 0 == limit;
-  }
-
- private:
-  uint64_t _end;
-  uint64_t _size;  // the original size
-};                 // ReverseAllIteratorMock
-
 class AllIteratorMock final : public arangodb::IndexIterator {
  public:
   AllIteratorMock(
@@ -485,12 +432,12 @@ class AllIteratorMock final : public arangodb::IndexIterator {
         _data(data),
         _it{_data.begin()} {}
 
-  virtual char const* typeName() const override { return "AllIteratorMock"; }
+  std::string_view typeName() const noexcept final { return "AllIteratorMock"; }
 
-  virtual void resetImpl() override { _it = _data.begin(); }
+  void resetImpl() override { _it = _data.begin(); }
 
-  virtual bool nextImpl(LocalDocumentIdCallback const& callback,
-                        size_t limit) override {
+  bool nextImpl(LocalDocumentIdCallback const& callback,
+                uint64_t limit) override {
     while (_it != _data.end() && limit != 0) {
       callback(_it->second.docId());
       ++_it;
@@ -759,9 +706,11 @@ class HashIndexIteratorMock final : public arangodb::IndexIterator {
     _end = _documents.end();
   }
 
-  char const* typeName() const override { return "hash-index-iterator-mock"; }
+  std::string_view typeName() const noexcept final {
+    return "hash-index-iterator-mock";
+  }
 
-  bool nextCoveringImpl(CoveringCallback const& cb, size_t limit) override {
+  bool nextCoveringImpl(CoveringCallback const& cb, uint64_t limit) override {
     while (limit && _begin != _end) {
       auto data = SliceCoveringData(_begin->second.slice());
       cb(_begin->first, data);
@@ -772,7 +721,7 @@ class HashIndexIteratorMock final : public arangodb::IndexIterator {
     return _begin != _end;
   }
 
-  bool nextImpl(LocalDocumentIdCallback const& cb, size_t limit) override {
+  bool nextImpl(LocalDocumentIdCallback const& cb, uint64_t limit) override {
     while (limit && _begin != _end) {
       cb(_begin->first);
       ++_begin;
@@ -787,8 +736,6 @@ class HashIndexIteratorMock final : public arangodb::IndexIterator {
     _begin = _documents.begin();
     _end = _documents.end();
   }
-
-  bool hasCovering() const override { return true; }
 
  private:
   HashIndexMap const& _map;
@@ -825,8 +772,6 @@ class HashIndexMock final : public arangodb::Index {
   char const* typeName() const override { return "hash"; }
 
   bool canBeDropped() const override { return false; }
-
-  bool hasCoveringIterator() const override { return true; }
 
   bool isHidden() const override { return false; }
 
@@ -1308,12 +1253,6 @@ arangodb::Result PhysicalCollectionMock::lookupKey(
   return arangodb::Result(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
 }
 
-size_t PhysicalCollectionMock::memory() const {
-  before();
-  TRI_ASSERT(false);
-  return 0;
-}
-
 uint64_t PhysicalCollectionMock::numberDocuments(
     arangodb::transaction::Methods*) const {
   before();
@@ -1564,9 +1503,20 @@ StorageEngineMock::buildLinkMock(arangodb::IndexId id,
                                  VPackSlice const& info) {
   auto index = std::shared_ptr<arangodb::iresearch::IResearchLinkMock>(
       new arangodb::iresearch::IResearchLinkMock(id, collection));
+  bool pathExists = false;
+  auto cleanup = arangodb::scopeGuard([&]() noexcept {
+    if (pathExists) {
+      try {
+        index->unload();  // TODO(MBkkt) unload should be implicit noexcept?
+      } catch (...) {
+      }
+    } else {
+      index->drop();
+    }
+  });
   auto res =
       static_cast<arangodb::iresearch::IResearchLinkMock*>(index.get())
-          ->init(info, []() -> irs::directory_attributes {
+          ->init(info, pathExists, []() -> irs::directory_attributes {
             if (arangodb::iresearch::IResearchLinkMock::InitCallback !=
                 nullptr) {
               return arangodb::iresearch::IResearchLinkMock::InitCallback();
@@ -1577,6 +1527,7 @@ StorageEngineMock::buildLinkMock(arangodb::IndexId id,
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
   }
+  cleanup.cancel();
   return index;
 }
 
@@ -1623,20 +1574,11 @@ void StorageEngineMock::changeCollection(
 }
 
 arangodb::Result StorageEngineMock::changeView(
-    TRI_vocbase_t& vocbase, arangodb::LogicalView const& view, bool doSync) {
+    arangodb::LogicalView const& view, arangodb::velocypack::Slice update) {
   before();
-  TRI_ASSERT(views.find(std::make_pair(vocbase.id(), view.id())) !=
-             views.end());
-  arangodb::velocypack::Builder builder;
-
-  builder.openObject();
-  auto res = view.properties(
-      builder, arangodb::LogicalDataSource::Serialization::Persistence);
-  if (!res.ok()) {
-    return res;
-  }
-  builder.close();
-  views[std::make_pair(vocbase.id(), view.id())] = std::move(builder);
+  std::pair key{view.vocbase().id(), view.id()};
+  TRI_ASSERT(views.find(key) != views.end());
+  views.emplace(key, update);
   return {};
 }
 
@@ -2018,9 +1960,9 @@ arangodb::Result TransactionCollectionMock::doUnlock(
   return {};
 }
 
-size_t TransactionStateMock::abortTransactionCount;
-size_t TransactionStateMock::beginTransactionCount;
-size_t TransactionStateMock::commitTransactionCount;
+std::atomic_size_t TransactionStateMock::abortTransactionCount{0};
+std::atomic_size_t TransactionStateMock::beginTransactionCount{0};
+std::atomic_size_t TransactionStateMock::commitTransactionCount{0};
 
 // ensure each transaction state has a unique ID
 TransactionStateMock::TransactionStateMock(

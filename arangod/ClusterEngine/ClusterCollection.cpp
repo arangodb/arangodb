@@ -53,7 +53,6 @@
 
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 using Helper = arangodb::basics::VelocyPackHelper;
 
@@ -207,9 +206,6 @@ RevisionId ClusterCollection::revision(transaction::Methods* trx) const {
 uint64_t ClusterCollection::numberDocuments(transaction::Methods* trx) const {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
-
-/// @brief report extra memory used by indexes etc.
-size_t ClusterCollection::memory() const { return 0; }
 
 void ClusterCollection::prepareIndexes(
     arangodb::velocypack::Slice indexesSlice) {

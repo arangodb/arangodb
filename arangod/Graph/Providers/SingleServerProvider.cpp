@@ -67,7 +67,8 @@ void SingleServerProvider<Step>::addEdgeIDToBuilder(
 
 template<class Step>
 SingleServerProvider<Step>::SingleServerProvider(
-    arangodb::aql::QueryContext& queryContext, BaseProviderOptions opts,
+    arangodb::aql::QueryContext& queryContext,
+    SingleServerBaseProviderOptions opts,
     arangodb::ResourceMonitor& resourceMonitor)
     : _trx(std::make_unique<arangodb::transaction::Methods>(
           queryContext.newTrxContext())),
@@ -135,7 +136,7 @@ auto SingleServerProvider<Step>::expand(
   TRI_ASSERT(_cursor != nullptr);
   LOG_TOPIC("c9169", TRACE, Logger::GRAPHS)
       << "<SingleServerProvider> Expanding " << vertex.getID();
-  _cursor->rearm(vertex.getID(), step.getDepth());
+  _cursor->rearm(vertex.getID(), step.getDepth(), _stats);
   _cursor->readAll(
       *this, _stats, step.getDepth(),
       [&](EdgeDocumentToken&& eid, VPackSlice edge, size_t cursorID) -> void {
@@ -156,13 +157,12 @@ auto SingleServerProvider<Step>::expand(
         LOG_TOPIC("c9168", TRACE, Logger::GRAPHS)
             << "<SingleServerProvider> Neighbor of " << vertex.getID() << " -> "
             << id;
-        if (_opts.hasWeightMethod()) {
-          callback(Step{id, std::move(eid), previous, step.getDepth() + 1,
-                        _opts.weightEdge(step.getWeight(), edge), cursorID});
-        } else {
-          callback(Step{id, std::move(eid), previous, step.getDepth() + 1, 1.0,
-                        cursorID});
-        }
+
+        callback(Step{id, std::move(eid), previous, step.getDepth() + 1,
+                      _opts.weightEdge(step.getWeight(), edge), cursorID});
+        // TODO [GraphRefactor]: Why is cursorID set, but never used?
+        // Note: There is one implementation that used, it, but there is a high
+        // probability we do not need it anymore after refactoring is complete.
       });
 }
 
@@ -200,13 +200,23 @@ void SingleServerProvider<Step>::prepareIndexExpressions(aql::Ast* ast) {
 }
 
 template<class Step>
+void SingleServerProvider<Step>::prepareContext(aql::InputAqlItemRow input) {
+  _opts.prepareContext(std::move(input));
+}
+
+template<class Step>
+void SingleServerProvider<Step>::unPrepareContext() {
+  _opts.unPrepareContext();
+}
+
+template<class Step>
 std::unique_ptr<RefactoredSingleServerEdgeCursor<Step>>
 SingleServerProvider<Step>::buildCursor(
     arangodb::aql::FixedVarExpressionContext& expressionContext) {
   return std::make_unique<RefactoredSingleServerEdgeCursor<Step>>(
       trx(), _opts.tmpVar(), _opts.indexInformations().first,
       _opts.indexInformations().second, expressionContext,
-      _opts.hasWeightMethod());
+      _opts.hasWeightMethod() /*, requiresFullDocument*/);
 }
 
 template<class Step>
@@ -220,10 +230,25 @@ arangodb::transaction::Methods* SingleServerProvider<Step>::trx() {
 template<class Step>
 arangodb::aql::TraversalStats SingleServerProvider<Step>::stealStats() {
   auto t = _stats;
-  // Placement new of stats, do not reallocate space.
-  _stats.~TraversalStats();
-  new (&_stats) aql::TraversalStats{};
+  _stats.clear();
   return t;
+}
+
+template<class StepType>
+auto SingleServerProvider<StepType>::fetchVertices(
+    const std::vector<Step*>& looseEnds)
+    -> futures::Future<std::vector<Step*>> {
+  // We will never need to fetch anything
+  TRI_ASSERT(false);
+  return std::move(fetch(looseEnds));
+}
+
+template<class StepType>
+auto SingleServerProvider<StepType>::fetchEdges(
+    const std::vector<Step*>& fetchedVertices) -> Result {
+  // We will never need to fetch anything
+  TRI_ASSERT(false);
+  return TRI_ERROR_NO_ERROR;
 }
 
 template class arangodb::graph::SingleServerProvider<SingleServerProviderStep>;

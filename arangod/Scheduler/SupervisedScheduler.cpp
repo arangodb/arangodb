@@ -27,7 +27,6 @@
 #include <memory>
 
 #include <velocypack/Value.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "SupervisedScheduler.h"
 
@@ -40,7 +39,6 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Network/NetworkFeature.h"
-#include "Random/RandomGenerator.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/MetricsFeature.h"
@@ -493,7 +491,7 @@ void SupervisedScheduler::runWorker() {
   std::shared_ptr<WorkerState> state;
 
   {
-    std::lock_guard<std::mutex> guard1(_mutex);
+    std::lock_guard<std::mutex> guard(_mutex);
     id =
         _numWorkers++;  // increase the number of workers here, to obtain the id
     // copy shared_ptr with worker state
@@ -730,6 +728,8 @@ bool SupervisedScheduler::canPullFromQueue(uint64_t queueIndex) const noexcept {
         (_maxNumWorkers >= 8) ? (_maxNumWorkers * 7 / 8) : _maxNumWorkers - 1;
     return threadsWorking < limit;
   }
+
+  TRI_IF_FAILURE("BlockSchedulerMediumQueue") { return false; }
 
   if (queueIndex == MediumPriorityQueue) {
     // We can work on med if less than 75% of the workers are busy

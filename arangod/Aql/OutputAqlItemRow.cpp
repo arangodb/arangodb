@@ -42,7 +42,6 @@ The following conditions need to hold true, we need to add c++ tests for this.
 #include "Basics/Exceptions.h"
 
 #include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -315,11 +314,17 @@ void OutputAqlItemRow::toVelocyPack(velocypack::Options const* options,
   block().rowToSimpleVPack(_baseIndex, options, builder);
 }
 
-AqlCall::Limit OutputAqlItemRow::softLimit() const { return _call.softLimit; }
+AqlCall::Limit OutputAqlItemRow::softLimit() const noexcept {
+  return _call.softLimit;
+}
 
-AqlCall::Limit OutputAqlItemRow::hardLimit() const { return _call.hardLimit; }
+AqlCall::Limit OutputAqlItemRow::hardLimit() const noexcept {
+  return _call.hardLimit;
+}
 
-AqlCall const& OutputAqlItemRow::getClientCall() const { return _call; }
+AqlCall const& OutputAqlItemRow::getClientCall() const noexcept {
+  return _call;
+}
 
 AqlCall& OutputAqlItemRow::getModifiableClientCall() { return _call; }
 
@@ -353,14 +358,14 @@ SharedAqlItemBlockPtr OutputAqlItemRow::stealBlock() {
   return block;
 }
 
-void OutputAqlItemRow::setBaseIndex(std::size_t index) {
+void OutputAqlItemRow::setBaseIndex(std::size_t index) noexcept {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   _setBaseIndexNotUsed = false;
 #endif
   _baseIndex = index;
 }
 
-void OutputAqlItemRow::setMaxBaseIndex(std::size_t index) {
+void OutputAqlItemRow::setMaxBaseIndex(std::size_t index) noexcept {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   _setBaseIndexNotUsed = true;
 #endif

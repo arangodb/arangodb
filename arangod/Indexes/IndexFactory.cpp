@@ -39,7 +39,6 @@
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 #include <limits.h>
 
 #include <regex>
@@ -522,6 +521,13 @@ Result IndexFactory::processIndexStoredValues(VPackSlice definition,
   return res;
 }
 
+void IndexFactory::processIndexCacheEnabled(VPackSlice definition,
+                                            VPackBuilder& builder) {
+  bool cacheEnabled = basics::VelocyPackHelper::getBooleanValue(
+      definition, StaticStrings::CacheEnabled, false);
+  builder.add(StaticStrings::CacheEnabled, VPackValue(cacheEnabled));
+}
+
 void IndexFactory::processIndexInBackground(VPackSlice definition,
                                             VPackBuilder& builder) {
   bool bck = basics::VelocyPackHelper::getBooleanValue(
@@ -555,9 +561,9 @@ void IndexFactory::processIndexSparseFlag(VPackSlice definition,
 /// @brief process the deduplicate flag and add it to the json
 void IndexFactory::processIndexDeduplicateFlag(VPackSlice definition,
                                                VPackBuilder& builder) {
-  bool dup = basics::VelocyPackHelper::getBooleanValue(definition,
-                                                       "deduplicate", true);
-  builder.add("deduplicate", VPackValue(dup));
+  bool dup = basics::VelocyPackHelper::getBooleanValue(
+      definition, StaticStrings::IndexDeduplicate, true);
+  builder.add(StaticStrings::IndexDeduplicate, VPackValue(dup));
 }
 
 /// @brief process the geojson flag and add it to the json
@@ -575,25 +581,42 @@ void IndexFactory::processIndexGeoJsonFlag(VPackSlice definition,
   }
 }
 
+/// @brief process the legacyPolygons flag and add it to the json
+void IndexFactory::processIndexLegacyPolygonsFlag(VPackSlice definition,
+                                                  VPackBuilder& builder) {
+  bool legacyPolygons = basics::VelocyPackHelper::getBooleanValue(
+      definition, StaticStrings::IndexLegacyPolygons, false);
+
+  builder.add(StaticStrings::IndexLegacyPolygons, VPackValue(legacyPolygons));
+}
+
 /// @brief enhances the json of a persistent index (hash and skiplist are
 /// aliases for this too)
 Result IndexFactory::enhanceJsonIndexGeneric(VPackSlice definition,
                                              VPackBuilder& builder,
                                              bool create) {
+  // "fields"
   Result res =
       processIndexFields(definition, builder, 1, INT_MAX, create,
                          /*allowExpansion*/ true, /*allowSubAttributes*/ true);
 
   if (res.ok()) {
+    // "storedValues"
     res = processIndexStoredValues(definition, builder, 1, 32, create,
                                    /*allowSubAttributes*/ true);
   }
 
   if (res.ok()) {
+    // "sparse"
     processIndexSparseFlag(definition, builder, create);
+    // "unique"
     processIndexUniqueFlag(definition, builder);
+    // "deduplicate"
     processIndexDeduplicateFlag(definition, builder);
+    // "inBackground"
     processIndexInBackground(definition, builder);
+    // "cacheEnabled"
+    processIndexCacheEnabled(definition, builder);
   }
 
   return res;
@@ -645,6 +668,7 @@ Result IndexFactory::enhanceJsonIndexGeo(VPackSlice definition,
     builder.add(StaticStrings::IndexSparse, velocypack::Value(true));
     builder.add(StaticStrings::IndexUnique, velocypack::Value(false));
     IndexFactory::processIndexGeoJsonFlag(definition, builder);
+    IndexFactory::processIndexLegacyPolygonsFlag(definition, builder);
 
     processIndexInBackground(definition, builder);
   }

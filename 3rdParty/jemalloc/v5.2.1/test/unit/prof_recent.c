@@ -15,7 +15,7 @@ confirm_prof_setup() {
 	    "opt_prof_recent_alloc_max not set correctly");
 
 	/* Dynamics */
-	assert_true(prof_active, "prof_active not on");
+	assert_true(prof_active_state, "prof_active not on");
 	assert_zd_eq(prof_recent_alloc_max_ctl_read(), OPT_ALLOC_MAX,
 	    "prof_recent_alloc_max not set correctly");
 }
@@ -553,7 +553,7 @@ TEST_END
 #undef DUMP_ERROR
 #undef DUMP_OUT_SIZE
 
-#define N_THREADS 16
+#define N_THREADS 8
 #define N_PTRS 512
 #define N_CTLS 8
 #define N_ITERS 2048

@@ -46,7 +46,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -234,8 +233,7 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
       [&resultBuilder](LocalDocumentId const&, VPackSlice slice) {
         resultBuilder.add(slice);
         return true;
-      },
-      1000);
+      });
 
   resultBuilder.close();
 

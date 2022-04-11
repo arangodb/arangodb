@@ -42,6 +42,9 @@
 #include "Rest/GeneralResponse.h"
 #include "Rest/Version.h"
 #include "Shell/ClientFeature.h"
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+#include "Shell/RequestFuzzer.h"
+#endif
 #include "Shell/ShellConsoleFeature.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
@@ -59,7 +62,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <iostream>
 
@@ -80,6 +82,13 @@ std::string connectionIdentifier(fuerte::ConnectionBuilder& builder) {
          to_string(builder.authenticationType()) + "/" +
          to_string(builder.protocolType());
 }
+
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+static constexpr uint32_t kFuzzClosedConnectionCode = 1000;
+static constexpr uint32_t kFuzzNoResponseCode = 1001;
+static constexpr uint32_t kFuzzNotConnected = 1002;
+#endif
+
 }  // namespace
 
 V8ClientConnection::V8ClientConnection(ArangoshServer& server,
@@ -123,13 +132,14 @@ V8ClientConnection::~V8ClientConnection() {
   _loop.stop();
 }
 
-std::shared_ptr<fu::Connection> V8ClientConnection::createConnection() {
+std::shared_ptr<fu::Connection> V8ClientConnection::createConnection(
+    bool bypassCache) {
   if (_client.endpoint() == "none") {
     setCustomError(400, "no endpoint specified");
     return nullptr;
   }
 
-  auto findConnection = [this]() {
+  auto findConnection = [bypassCache, this]() {
     std::string id = connectionIdentifier(_builder);
 
     // check if we have a connection for that endpoint in our cache
@@ -138,7 +148,9 @@ std::shared_ptr<fu::Connection> V8ClientConnection::createConnection() {
       auto c = (*it).second;
       // cache hit. remove the connection from the cache and return it!
       _connectionCache.erase(it);
-      return std::make_pair(c, true);
+      if (!bypassCache) {
+        return std::make_pair(c, true);
+      }
     }
     // no connection found in cache. create a new one
     return std::make_pair(_builder.connect(_loop), false);
@@ -590,8 +602,10 @@ static void ClientConnection_reconnect(
   }
 
   if (args.Length() < 2) {
+    // Note that there are two additional parameters, which aren't advertised,
+    // namely `warnConnect` and `jwtSecret`.
     TRI_V8_THROW_EXCEPTION_USAGE(
-        "reconnect(<endpoint>, <database>, [, <username>, <password>])");
+        "reconnect(<endpoint>, <database>, [ <username>, <password> ])");
   }
 
   std::string const endpoint = TRI_ObjectToString(isolate, args[0]);
@@ -629,6 +643,11 @@ static void ClientConnection_reconnect(
     warnConnect = TRI_ObjectToBoolean(isolate, args[4]);
   }
 
+  std::string jwtSecret;
+  if (args.Length() > 5) {
+    jwtSecret = TRI_ObjectToString(isolate, args[5]);
+  }
+
   V8SecurityFeature& v8security =
       v8connection->server().getFeature<V8SecurityFeature>();
   if (!v8security.isAllowedToConnectToEndpoint(isolate, endpoint, endpoint)) {
@@ -642,6 +661,7 @@ static void ClientConnection_reconnect(
   client->setUsername(username);
   client->setPassword(password);
   client->setWarnConnect(warnConnect);
+  client->setJwtSecret(jwtSecret);
 
   try {
     v8connection->reconnect();
@@ -979,6 +999,110 @@ static void ClientConnection_httpPostRaw(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
   ClientConnection_httpPostAny(args, true);
 }
+
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ClientConnection method "fuzzRequests"
+////////////////////////////////////////////////////////////////////////////////
+
+static void ClientConnection_httpFuzzRequests(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+  if (isExecutionDeadlineReached(isolate)) {
+    return;
+  }
+
+  // get the connection
+  V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
+      args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
+
+  if (v8connection == nullptr) {
+    TRI_V8_THROW_EXCEPTION_INTERNAL(
+        "fuzzRequests() must be invoked on an arango connection object "
+        "instance.");
+  }
+
+  if (args.Length() < 2 || args.Length() > 3) {
+    TRI_V8_THROW_EXCEPTION_USAGE(
+        "fuzzRequests(<numRequests>, <numIterations> [, <seed>])");
+  }
+
+  // arg0 = number of requests, arg1 = number of iterations, arg2 = seed for
+  // rand
+  uint64_t numReqs = TRI_ObjectToUInt64(isolate, args[0], true);
+  uint64_t numIts = TRI_ObjectToUInt64(isolate, args[1], true);
+
+  if (numIts > 256) {
+    TRI_V8_THROW_EXCEPTION_USAGE("<numIterations> is expected to be <= 256");
+  }
+
+  std::optional<uint32_t> seed;
+  if (args.Length() > 2) {
+    if (!args[2]->IsUint32()) {
+      TRI_V8_THROW_EXCEPTION_USAGE("<seed> must be an unsigned int.");
+    }
+    seed = static_cast<uint32_t>(TRI_ObjectToUInt64(isolate, args[2], false));
+  }
+
+  fuzzer::RequestFuzzer fuzzer(static_cast<uint32_t>(numIts), seed);
+  if (!seed.has_value()) {
+    // log the random seed value for later reproducibility.
+    // log level must be warning here because log levels < WARN are suppressed
+    // during testing.
+    LOG_TOPIC("39e50", WARN, arangodb::Logger::FIXME)
+        << "fuzzer producing " << numReqs << " requests(s) with " << numIts
+        << " iteration(s) each, using seed " << fuzzer.getSeed();
+  }
+  std::unordered_map<uint32_t, uint32_t> fuzzReturnCodesCount;
+
+  // by creating a new connection here we make sure that we always use a new
+  // connection when starting the fuzzing. that way the fuzzing results for the
+  // same input seed value should be fully deterministic.
+  v8connection->forceNewConnection();
+
+  for (uint64_t i = 0; i < numReqs; ++i) {
+    uint32_t returnCode = v8connection->sendFuzzRequest(fuzzer);
+    fuzzReturnCodesCount[returnCode]++;
+  }
+
+  VPackBuilder builder;
+  builder.openObject();
+  builder.add("seed", velocypack::Value(fuzzer.getSeed()));
+  builder.add("totalRequests", velocypack::Value(numReqs));
+
+  if (auto it = fuzzReturnCodesCount.find(kFuzzClosedConnectionCode);
+      it != fuzzReturnCodesCount.end()) {
+    builder.add("connectionClosed", velocypack::Value(it->second));
+  }
+
+  if (auto it = fuzzReturnCodesCount.find(kFuzzNoResponseCode);
+      it != fuzzReturnCodesCount.end()) {
+    builder.add("noResponse", velocypack::Value(it->second));
+  }
+
+  if (auto it = fuzzReturnCodesCount.find(kFuzzNotConnected);
+      it != fuzzReturnCodesCount.end()) {
+    builder.add("notConnected", velocypack::Value(it->second));
+  }
+
+  builder.add(velocypack::Value("returnCodes"));
+  builder.openObject();
+  for (auto const& [returnCode, count] : fuzzReturnCodesCount) {
+    if (returnCode != kFuzzClosedConnectionCode &&
+        returnCode != kFuzzNoResponseCode && returnCode != kFuzzNotConnected) {
+      builder.add(std::to_string(returnCode), velocypack::Value(count));
+    }
+  }
+  builder.close();
+  builder.close();
+
+  TRI_V8_RETURN(TRI_VPackToV8(isolate, builder.slice()));
+
+  TRI_V8_TRY_CATCH_END
+}
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ClientConnection method "PUT" helper
@@ -2153,6 +2277,39 @@ void setResultMessage(v8::Isolate* isolate, v8::Local<v8::Context> context,
   }
 }
 
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+uint32_t V8ClientConnection::sendFuzzRequest(fuzzer::RequestFuzzer& fuzzer) {
+  std::shared_ptr<fu::Connection> connection = acquireConnection();
+  if (!connection || connection->state() == fu::Connection::State::Closed) {
+    return kFuzzNotConnected;
+  }
+
+  auto req = fuzzer.createRequest();
+
+  fu::Error rc = fu::Error::NoError;
+  std::unique_ptr<fu::Response> response;
+  try {
+    response = connection->sendRequest(std::move(req));
+  } catch (fu::Error const& ec) {
+    rc = ec;
+  }
+
+  if (rc == fu::Error::ConnectionClosed) {
+    return kFuzzClosedConnectionCode;
+  }
+
+  // not complete
+  if (!response) {
+    return kFuzzNoResponseCode;
+  }
+
+  TRI_ASSERT(response != nullptr);
+
+  // complete
+  return response->statusCode();
+}
+#endif
+
 v8::Local<v8::Value> V8ClientConnection::requestData(
     v8::Isolate* isolate, fu::RestVerb method, std::string_view location,
     v8::Local<v8::Value> const& body,
@@ -2325,6 +2482,17 @@ again:
   return result;
 }
 
+// forces a new connection to be used
+void V8ClientConnection::forceNewConnection() {
+  std::lock_guard<std::recursive_mutex> guard(_lock);
+
+  _lastErrorMessage = "";
+  _lastHttpReturnCode = 0;
+
+  // createConnection will populate _connection
+  createConnection(/*bypassCache*/ true);
+}
+
 void V8ClientConnection::initServer(v8::Isolate* isolate,
                                     v8::Local<v8::Context> context) {
   v8::Local<v8::Value> v8client = v8::External::New(isolate, &_client);
@@ -2396,6 +2564,12 @@ void V8ClientConnection::initServer(v8::Isolate* isolate,
   connection_proto->Set(
       isolate, "SEND_FILE",
       v8::FunctionTemplate::New(isolate, ClientConnection_httpSendFile));
+
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  connection_proto->Set(
+      isolate, "fuzzRequests",
+      v8::FunctionTemplate::New(isolate, ClientConnection_httpFuzzRequests));
+#endif
 
   connection_proto->Set(isolate, "getEndpoint",
                         v8::FunctionTemplate::New(

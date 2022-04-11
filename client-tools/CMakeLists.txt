@@ -168,7 +168,6 @@ target_link_libraries(${BIN_ARANGODUMP}
   boost_system
   boost_boost
   arango_shell
-  fuerte
 )
 
 install(
@@ -278,8 +277,6 @@ install(
 
 install_config(arangoimport)
 
-add_dependencies(arangoimport fuerte)
-
 if (NOT USE_PRECOMPILED_V8)
   add_dependencies(arangoimport zlibstatic v8_build) # v8_build includes ICU
                                                      # build
@@ -335,7 +332,6 @@ target_link_libraries(${BIN_ARANGORESTORE}
   boost_system
   boost_boost
   arango_shell
-  fuerte
 )
 
 install(
@@ -370,6 +366,10 @@ if (MSVC AND NOT(SKIP_PACKAGING))
   )
 endif ()
 
+set(FUZZER "")
+if (USE_FAILURE_TESTS)
+    set(FUZZER "Shell/RequestFuzzer.cpp")
+endif()
 add_executable(${BIN_ARANGOSH}
   ${ProductVersionFiles_arangosh}
   ../cmake/activeCodePage.manifest
@@ -380,7 +380,9 @@ add_executable(${BIN_ARANGOSH}
   Shell/V8ClientConnection.cpp
   Shell/V8ShellFeature.cpp
   Shell/arangosh.cpp
+  ${FUZZER}
 )
+
 target_include_directories(${BIN_ARANGOSH} PRIVATE ${PROJECT_SOURCE_DIR}/client-tools)
 
 target_link_libraries(${BIN_ARANGOSH}

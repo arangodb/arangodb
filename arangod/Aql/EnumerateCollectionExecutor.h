@@ -63,14 +63,13 @@ class SingleRowFetcher;
 
 class EnumerateCollectionExecutorInfos {
  public:
-  EnumerateCollectionExecutorInfos(RegisterId outputRegister,
-                                   aql::QueryContext& query,
-                                   Collection const* collection,
-                                   Variable const* outVariable,
-                                   bool produceResult, Expression* filter,
-                                   arangodb::aql::Projections projections,
-                                   bool random, bool count,
-                                   ReadOwnWrites readOwnWrites);
+  EnumerateCollectionExecutorInfos(
+      RegisterId outputRegister, aql::QueryContext& query,
+      Collection const* collection, Variable const* outVariable,
+      bool produceResult, Expression* filter,
+      arangodb::aql::Projections projections,
+      std::vector<std::pair<VariableId, RegisterId>> filterVarsToRegs,
+      bool random, bool count, ReadOwnWrites readOwnWrites);
 
   EnumerateCollectionExecutorInfos() = delete;
   EnumerateCollectionExecutorInfos(EnumerateCollectionExecutorInfos&&) =
@@ -89,6 +88,9 @@ class EnumerateCollectionExecutorInfos {
   bool getCount() const noexcept;
   RegisterId getOutputRegisterId() const;
 
+  std::vector<std::pair<VariableId, RegisterId>> const&
+  getFilterVarsToRegister() const noexcept;
+
   ReadOwnWrites canReadOwnWrites() const noexcept { return _readOwnWrites; }
 
  private:
@@ -98,9 +100,10 @@ class EnumerateCollectionExecutorInfos {
   Expression* _filter;
   arangodb::aql::Projections _projections;
   RegisterId _outputRegisterId;
-  bool _produceResult;
-  bool _random;
-  bool _count;
+  std::vector<std::pair<VariableId, RegisterId>> _filterVarsToRegs;
+  bool const _produceResult;
+  bool const _random;
+  bool const _count;
   ReadOwnWrites const _readOwnWrites;
 };
 
@@ -174,7 +177,6 @@ class EnumerateCollectionExecutor {
   ExecutorState _executorState;
   bool _cursorHasMore;
   InputAqlItemRow _currentRow;
-  ExecutorState _currentRowState;
   std::unique_ptr<IndexIterator> _cursor;
 };
 

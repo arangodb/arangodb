@@ -815,7 +815,7 @@ function killRemainingProcesses(results) {
       print(killExternal(running[i].pid, abortSignal));
     }
     results.crashed = true;
-  };
+  }
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -1327,7 +1327,9 @@ function abortSurvivors(arangod, options) {
   }
 }
 
-function checkInstanceAlive (instanceInfo, options) {
+// skipHealthCheck can be set to true to avoid a call to /_admin/cluster/health
+// on the coordinator. This is necessary if only the agency is running yet.
+function checkInstanceAlive(instanceInfo, options, {skipHealthCheck = false} = {}) {
   if (options.activefailover &&
       instanceInfo.hasOwnProperty('authOpts') &&
       (instanceInfo.url !== instanceInfo.agencyUrl)
@@ -1350,26 +1352,23 @@ function checkInstanceAlive (instanceInfo, options) {
     }
     return previous && ret;
   }, true);
-  if (rc && options.cluster && instanceInfo.arangods.length > 1) {
-    try {
-      let health = require('internal').clusterHealth();
-      rc = instanceInfo.arangods.reduce((previous, arangod) => {
-        if (arangod.role === "agent") return true;
-        if (arangod.role === "single") return true;
-        if (health.hasOwnProperty(arangod.id)) {
-          if (health[arangod.id].Status === "GOOD") {
-            return true;
-          } else {
-            print(RED + "ClusterHealthCheck failed " + arangod.id + " has status " + health[arangod.id].Status + " (which is not equal to GOOD)");
-            return false;
-          }
-        } else {
-          print(RED + "ClusterHealthCheck failed " + arangod.id + " does not have health property");
-          return false;
+  if (rc && options.cluster && !skipHealthCheck && instanceInfo.arangods.length > 1) {
+    const seconds = x => x * 1000;
+    const checkAllAlive = () => instanceInfo.arangods.every(arangod => checkArangoAlive(arangod, options));
+    let first = true;
+    rc = false;
+    for (
+      const start = Date.now();
+      !rc && Date.now() < start + seconds(60) && checkAllAlive();
+      internal.sleep(1)
+    ) {
+      rc = checkServersGOOD(instanceInfo);
+      if (first) {
+        if (!options.noStartStopLogs) {
+          print(RESET + "Waiting for all servers to go GOOD...");
         }
-      }, true);
-    } catch (x) {
-      print(Date() + " ClusterHealthCheck failed: " + x);
+        first = false;
+      }
     }
   }
   if (!rc) {
@@ -1535,7 +1534,9 @@ function shutdownArangod (arangod, options, forceTerminate) {
       const requestOptions = makeAuthorizationHeaders(options);
       requestOptions.method = 'DELETE';
       requestOptions.timeout = 60; // 60 seconds hopefully are enough for getting a response
-      print(Date() + ' ' + arangod.url + '/_admin/shutdown');
+      if (!options.noStartStopLogs) {
+        print(Date() + ' ' + arangod.url + '/_admin/shutdown');
+      }
       let sockStat = getSockStat(arangod, options, "Sock stat for: ");
       const reply = download(arangod.url + '/_admin/shutdown', '', requestOptions);
       if ((reply.code !== 200) && // if the server should reply, we expect 200 - if not:
@@ -1548,7 +1549,7 @@ function shutdownArangod (arangod, options, forceTerminate) {
         print(Date() + ' Wrong shutdown response: ' + JSON.stringify(reply) + "' " + sockStat + " continuing with hard kill!");
         shutdownArangod(arangod, options, true);
       }
-      else {
+      else if (!options.noStartStopLogs) {
         print(sockStat);
       }
       if (options.extremeVerbosity) {
@@ -1625,7 +1626,9 @@ function shutDownOneInstance(options, arangod, fullInstance, counters, forceTerm
     if (arangod.role !== 'agent') {
       counters.nonAgenciesCount--;
     }
-    print(Date() + ' Server "' + arangod.role + '" shutdown: Success: pid', arangod.pid);
+    if (!options.noStartStopLogs) {
+      print(Date() + ' Server "' + arangod.role + '" shutdown: Success: pid', arangod.pid);
+    }
     crashUtils.stopProcdump(options, arangod);
     return false;
   }
@@ -1667,7 +1670,9 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
         let requestOptions = makeAuthorizationHeaders(options);
         requestOptions.method = 'PUT';
 
-        print(coords[0].url + "/_admin/cluster/maintenance");
+        if (!options.noStartStopLogs) {
+          print(coords[0].url + "/_admin/cluster/maintenance");
+        }
         download(coords[0].url + "/_admin/cluster/maintenance", JSON.stringify("on"), requestOptions);
       }
     } catch (err) {
@@ -1700,7 +1705,10 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
     if (b.role === 'agent') return -1;
     return 0;
   });
-  print(Date() + ' Shutdown order ' + JSON.stringify(toShutdown));
+
+  if (!options.noStartStopLogs) {
+    print(Date() + ' Shutdown order ' + JSON.stringify(toShutdown));
+  }
 
   let nonAgenciesCount = instanceInfo.arangods
       .filter(arangod => {
@@ -1736,7 +1744,10 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
           arangod.exitStatus = {
             status: 'RUNNING'
           };
-          print(Date() + " Commanded shut down: " + JSON.stringify(arangod));
+
+          if (!options.noStartStopLogs) {
+            print(Date() + " Commanded shut down: " + JSON.stringify(arangod));
+          }
         }
         return true;
       }
@@ -1790,7 +1801,9 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
         if (arangod.role !== 'agent') {
           nonAgenciesCount--;
         }
-        print(Date() + ' Server "' + arangod.role + '" shutdown: Success: pid', arangod.pid);
+        if (!options.noStartStopLogs) {
+          print(Date() + ' Server "' + arangod.role + '" shutdown: Success: pid', arangod.pid);
+        }
         crashUtils.stopProcdump(options, arangod);
         return false;
       }
@@ -1808,7 +1821,9 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
         // e.g. 2 + coordinator + (s)
         roleNames.push(roles[r] + ' ' + r + '(s)');
       }
-      print(roleNames.join(', ') + ' are still running...');
+      if (!options.noStartStopLogs) {
+        print(roleNames.join(', ') + ' are still running...');
+      }
       require('internal').wait(1, false);
     }
   }
@@ -1898,7 +1913,9 @@ function checkClusterAlive(options, instanceInfo, addArgs) {
         arangod.upAndRunning = true;
         return;
       }
-      print(Date() + " tickeling cluster node " + arangod.url + " - " + arangod.role);
+      if (!options.noStartStopLogs) {
+        print(Date() + " tickeling cluster node " + arangod.url + " - " + arangod.role);
+      }
       let url = arangod.url;
       if (arangod.role === "coordinator" && arangod.args["javascript.enabled"] !== "false") {
         url += '/_admin/aardvark/index.html';
@@ -1947,7 +1964,9 @@ function checkClusterAlive(options, instanceInfo, addArgs) {
     }
   }
 
-  print("Determining server IDs");
+  if (!options.noStartStopLogs) {
+    print("Determining server IDs");
+  }
   instanceInfo.arangods.forEach(arangod => {
     if (arangod.suspended) {
       return;
@@ -2022,7 +2041,7 @@ function startInstanceCluster (instanceInfo, protocol, options,
 
   let agencyEndpoint = instanceInfo.endpoint;
   instanceInfo.agencyUrl = instanceInfo.url;
-  if (!checkInstanceAlive(instanceInfo, options)) {
+  if (!checkInstanceAlive(instanceInfo, options, {skipHealthCheck: true})) {
     throw new Error('startup of agency failed! bailing out!');
   }
 
@@ -2120,6 +2139,12 @@ function launchFinalize(options, instanceInfo, startTime) {
                             );
             break;
           } catch (e) {
+            instanceInfo.arangods.forEach( arangod => {
+              let status = statusExternal(arangod.pid, false);
+              if (status.status !== "RUNNING") {
+                throw new Error(`Arangod ${arangod.pid} exited instantly! ` + JSON.stringify(status));
+              }
+            });
             print(Date() + " caught exception: " + e.message);
           }
         } else {
@@ -2154,7 +2179,9 @@ function launchFinalize(options, instanceInfo, startTime) {
       }
     });
   }
-  print(CYAN + Date() + ' up and running in ' + (time() - startTime) + ' seconds' + RESET);
+  if (!options.noStartStopLogs) {
+    print(CYAN + Date() + ' up and running in ' + (time() - startTime) + ' seconds' + RESET);
+  }
   var matchPort = /.*:.*:([0-9]*)/;
   var ports = [];
   var processInfo = [];
@@ -2181,7 +2208,6 @@ function launchFinalize(options, instanceInfo, startTime) {
                      ' - ' + arangod.args['database.directory']);
   });
 
-  print(Date() + ' sniffing template:\n  tcpdump -ni lo -s0 -w /tmp/out.pcap ' + ports.join(' or ') + '\n');
   if (options.sniff !== undefined && options.sniff !== false) {
     options.cleanup = false;
     let device = 'lo';
@@ -2221,9 +2247,13 @@ function launchFinalize(options, instanceInfo, startTime) {
     print(CYAN + 'launching ' + prog + ' ' + JSON.stringify(args) + RESET);
     tcpdump = executeExternal(prog, args);
   }
-  print(processInfo.join('\n') + '\n');
+  if (!options.noStartStopLogs) {
+    print(processInfo.join('\n') + '\n');
+  }
   internal.sleep(options.sleepBeforeStart);
-  initProcessStats(instanceInfo);
+  if (!options.disableClusterMonitor) {
+    initProcessStats(instanceInfo);
+  }
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -2285,6 +2315,8 @@ function startArango (protocol, options, addArgs, rootDir, role) {
 
   if (options.verbose) {
     args['log.level'] = 'debug';
+  } else if (options.noStartStopLogs) {
+    args['log.level'] = 'all=error';
   }
 
   instanceInfo.url = endpointToURL(instanceInfo.endpoint);
@@ -2370,7 +2402,9 @@ function startInstanceAgency (instanceInfo, protocol, options, addArgs, rootDir)
     instanceInfo.endpoint = instanceInfo.arangods[instanceInfo.arangods.length - 1].endpoint;
     instanceInfo.url = instanceInfo.arangods[instanceInfo.arangods.length - 1].url;
     instanceInfo.role = 'agent';
-    print(Date() + ' Agency Endpoint: ' + instanceInfo.endpoint);
+    if (!options.noStartStopLogs) {
+      print(Date() + ' Agency Endpoint: ' + instanceInfo.endpoint);
+    }
   }
 
   checkClusterAlive(options, instanceInfo, addArgs);
@@ -2427,11 +2461,11 @@ function startInstance (protocol, options, addArgs, testname, tmpDir) {
   try {
     if (options.hasOwnProperty('server')) {
       let rc = {
-                 endpoint: options.server,
-                 rootDir: options.serverRoot,
-                 url: options.server.replace('tcp', 'http'),
-                 arangods: []
-               };
+        endpoint: options.server,
+        rootDir: options.serverRoot,
+        url: options.server.replace('tcp', 'http'),
+        arangods: []
+      };
       arango.reconnect(rc.endpoint, '_system', 'root', '');
       return rc;
     } else if (options.cluster || options.activefailover) {
@@ -2488,7 +2522,7 @@ function restartOneInstance(options, oneInstance, instanceInfo, moreArgs) {
     print("relaunching: " + JSON.stringify(oneInstance));
     launchInstance(options, oneInstance, moreArgs);
   }
- 
+
   if (options.cluster && !options.skipReconnect) {
     checkClusterAlive(options, instanceInfo, {}); // todo addArgs
     print("reconnecting " + instanceInfo.endpoint);
@@ -2527,8 +2561,7 @@ function reStartInstance(options, instanceInfo, moreArgs) {
         agencyInstance.arangods.push(_.clone(oneInstance));
       }
     });
-    let agencyEndpoint = instanceInfo.endpoint;
-    if (!checkInstanceAlive(agencyInstance, options)) {
+    if (!checkInstanceAlive(agencyInstance, options, {skipHealthCheck: true})) {
       throw new Error('startup of agency failed! bailing out!');
     }
   }
@@ -2587,6 +2620,34 @@ function aggregateFatalErrors(currentTest) {
     serverFailMessagesLocal = "";
   }
 }
+
+function checkServersGOOD(instanceInfo) {
+  try {
+    const health = internal.clusterHealth();
+    return instanceInfo.arangods.every((arangod) => {
+      if (arangod.role === "agent" || arangod.role === "single") {
+        return true;
+      }
+      if (health.hasOwnProperty(arangod.id)) {
+        if (health[arangod.id].Status === "GOOD") {
+          return true;
+        } else {
+          print(RED + "ClusterHealthCheck failed " + arangod.id + " has status "
+            + health[arangod.id].Status + " (which is not equal to GOOD)");
+          return false;
+        }
+      } else {
+        print(RED + "ClusterHealthCheck failed " + arangod.id
+          + " does not have health property");
+        return false;
+      }
+    });
+  } catch(e) {
+    print("Error checking cluster health " + e);
+    return false;
+  }
+}
+
 // exports.analyzeServerCrash = analyzeServerCrash;
 exports.makeArgs = {
   arangod: makeArgsArangod,
@@ -2634,6 +2695,7 @@ exports.restartOneInstance = restartOneInstance;
 exports.setupBinaries = setupBinaries;
 exports.executableExt = executableExt;
 exports.serverCrashed = serverCrashedLocal;
+exports.checkServersGOOD = checkServersGOOD;
 
 exports.aggregateFatalErrors = aggregateFatalErrors;
 exports.cleanupDBDirectoriesAppend = cleanupDBDirectoriesAppend;

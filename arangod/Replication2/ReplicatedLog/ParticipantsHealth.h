@@ -29,13 +29,13 @@ namespace arangodb::replication2::replicated_log {
 
 struct ParticipantHealth {
   RebootId rebootId;
-  bool isHealthy;
+  bool notIsFailed;
 };
 
 struct ParticipantsHealth {
-  auto isHealthy(ParticipantId const& participant) const -> bool {
+  auto notIsFailed(ParticipantId const& participant) const -> bool {
     if (auto it = _health.find(participant); it != std::end(_health)) {
-      return it->second.isHealthy;
+      return it->second.notIsFailed;
     }
     return false;
   };
@@ -46,6 +46,16 @@ struct ParticipantsHealth {
     }
     return false;
   };
+  auto getRebootId(ParticipantId const& participant) const
+      -> std::optional<RebootId> {
+    if (auto it = _health.find(participant); it != std::end(_health)) {
+      return it->second.rebootId;
+    }
+    return std::nullopt;
+  }
+  auto contains(ParticipantId const& participant) const -> bool {
+    return _health.contains(participant);
+  }
 
   std::unordered_map<ParticipantId, ParticipantHealth> _health;
 };

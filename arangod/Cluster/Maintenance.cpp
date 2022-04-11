@@ -42,6 +42,7 @@
 #include "Replication2/LoggerContext.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
+#include "Replication2/ReplicatedState/StateStatus.h"
 #include "Metrics/Counter.h"
 #include "Metrics/Gauge.h"
 #include "Metrics/Histogram.h"
@@ -55,7 +56,6 @@
 #include <velocypack/Compare.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <algorithm>
 
@@ -67,7 +67,8 @@ using namespace arangodb::methods;
 using namespace arangodb::basics::StringUtils;
 
 static std::unordered_set<std::string> const alwaysRemoveProperties({ID, NAME});
-
+static std::unordered_set<std::string> const selectivityEstimates(
+    {SELECTIVITY_ESTIMATE});
 static VPackValue const VP_DELETE("delete");
 static VPackValue const VP_SET("set");
 
@@ -113,14 +114,12 @@ static std::shared_ptr<VPackBuilder> compareRelevantProps(
   return result;
 }
 
-static VPackBuilder compareIndexes(StorageEngine& engine,
-                                   std::string const& dbname,
-                                   std::string const& collname,
-                                   std::string const& shname,
-                                   VPackSlice const& plan,
-                                   VPackSlice const& local,
-                                   MaintenanceFeature::errors_t const& errors,
-                                   std::unordered_set<std::string>& indis) {
+static VPackBuilder compareIndexes(
+    StorageEngine& engine, std::string const& dbname,
+    std::string const& collname, std::string const& shname,
+    VPackSlice const& plan, VPackSlice const& local,
+    MaintenanceFeature::errors_t const& errors,
+    containers::FlatHashSet<std::string>& indis) {
   TRI_ASSERT(plan.isArray());
 
   VPackBuilder builder;
@@ -229,10 +228,10 @@ static void handlePlanShard(
     VPackSlice const& ldb, std::string const& dbname,
     std::string const& colname, std::string const& shname,
     std::string const& serverId, std::string const& leaderId,
-    std::unordered_set<std::string>& commonShrds,
-    std::unordered_set<std::string>& indis,
+    containers::FlatHashSet<std::string>& commonShrds,
+    containers::FlatHashSet<std::string>& indis,
     MaintenanceFeature::errors_t& errors,
-    std::unordered_set<DatabaseID>& makeDirty, bool& callNotify,
+    containers::FlatHashSet<DatabaseID>& makeDirty, bool& callNotify,
     std::vector<std::shared_ptr<ActionDescription>>& actions,
     MaintenanceFeature::ShardActionMap const& shardActionMap) {
   // First check if the shard is locked:
@@ -268,7 +267,7 @@ static void handlePlanShard(
       if (shards.isObject()) {
         VPackSlice planServers = shards.get(shname);
         if (planServers.isArray()) {
-          std::unordered_set<std::string> followersToDrop;
+          containers::FlatHashSet<std::string> followersToDrop;
           // Now we have two server lists (servers and
           // failoverCandidates, we are looking for a server which
           // occurs in either of them but not in the plan
@@ -408,10 +407,10 @@ static void handlePlanShard(
 static void handleLocalShard(
     std::string const& dbname, std::string const& colname,
     VPackSlice const& cprops, VPackSlice const& shardMap,
-    std::unordered_set<std::string>& commonShrds,
-    std::unordered_set<std::string>& indis, std::string const& serverId,
+    containers::FlatHashSet<std::string>& commonShrds,
+    containers::FlatHashSet<std::string>& indis, std::string const& serverId,
     std::vector<std::shared_ptr<ActionDescription>>& actions,
-    std::unordered_set<DatabaseID>& makeDirty, bool& callNotify,
+    containers::FlatHashSet<DatabaseID>& makeDirty, bool& callNotify,
     MaintenanceFeature::ShardActionMap const& shardActionMap) {
   // First check if the shard is locked:
   auto iter = shardActionMap.find(colname);
@@ -426,8 +425,7 @@ static void handleLocalShard(
 
   std::shared_ptr<ActionDescription> description;
 
-  std::unordered_set<std::string>::const_iterator it =
-      commonShrds.find(colname);
+  auto it = commonShrds.find(colname);
 
   auto localLeader = cprops.get(THE_LEADER).stringView();
   bool const isLeading = localLeader.empty();
@@ -537,7 +535,7 @@ void arangodb::maintenance::diffReplicatedLogs(
     DatabaseID const& database, ReplicatedLogStatusMap const& localLogs,
     ReplicatedLogSpecMap const& planLogs, std::string const& serverId,
     MaintenanceFeature::errors_t& errors,
-    std::unordered_set<DatabaseID>& makeDirty, bool& callNotify,
+    containers::FlatHashSet<DatabaseID>& makeDirty, bool& callNotify,
     std::vector<std::shared_ptr<ActionDescription>>& actions) {
   using namespace arangodb::replication2;
 
@@ -628,25 +626,134 @@ void arangodb::maintenance::diffReplicatedLogs(
   }
 }
 
+void arangodb::maintenance::diffReplicatedStates(
+    DatabaseID const& database, ReplicatedLogStatusMap const& localLogs,
+    ReplicatedStateStatusMap const& localStates,
+    ReplicatedLogSpecMap const& planLogs,
+    ReplicatedStateSpecMap const& planStates,
+    ReplicatedStateCurrentMap const& statesCurrent, std::string const& serverId,
+    MaintenanceFeature::errors_t& errors,
+    containers::FlatHashSet<DatabaseID>& makeDirty, bool& callNotify,
+    std::vector<std::shared_ptr<ActionDescription>>& actions) {
+  using namespace arangodb::replication2;
+
+  auto const objectToVelocyPackString = [](auto const* obj) -> std::string {
+    VPackBuilder builder;
+    auto slice = VPackSlice::noneSlice();
+    if (obj != nullptr) {
+      obj->toVelocyPack(builder);
+      slice = builder.slice();
+    }
+    return StringUtils::encodeBase64(slice.startAs<char>(), slice.byteSize());
+  };
+
+  auto const updateReplicatedStateAction =
+      [&](LogId id, replicated_state::agency::Plan const* spec,
+          replicated_state::agency::Current const* current) {
+        auto specStr = objectToVelocyPackString(spec);
+        auto currentStr = objectToVelocyPackString(current);
+
+        auto description = std::make_shared<ActionDescription>(
+            std::map<std::string, std::string>{
+                {std::string(NAME), std::string(UPDATE_REPLICATED_STATE)},
+                {std::string(DATABASE), database},
+                {REPLICATED_LOG_ID, std::to_string(id.id())},
+                {REPLICATED_LOG_SPEC, specStr},
+                {REPLICATED_STATE_CURRENT, currentStr},
+            },
+            NORMAL_PRIORITY, false);
+
+        makeDirty.insert(database);
+        callNotify = true;
+        actions.emplace_back(std::move(description));
+      };
+
+  auto const forEachReplicatedStateInPlan =
+      [&](LogId id, replicated_state::agency::Plan const& spec,
+          replicated_state::agency::Current const* current) {
+        if (spec.participants.contains(serverId)) {
+          if (!localLogs.contains(id)) {
+            return;  // wait for replicated log first
+          }
+          if (!localStates.contains(id)) {
+            // we have to create this replicated state
+            updateReplicatedStateAction(id, &spec, current);
+          }
+        }
+      };
+
+  auto const forEachReplicatedStateInLocal =
+      [&](LogId id, std::optional<replicated_state::StateStatus> const& status,
+          replicated_state::agency::Plan const* plan,
+          replicated_state::agency::Current const* current) {
+        bool const shouldDeleted = std::invoke([&] {
+          return plan == nullptr || !plan->participants.contains(serverId);
+        });
+
+        if (shouldDeleted) {
+          updateReplicatedStateAction(id, nullptr, nullptr);
+        } else if (status.has_value()) {
+          TRI_ASSERT(plan != nullptr);
+          auto const& participant = plan->participants.at(serverId);
+          if (participant.generation != status->getGeneration()) {
+            updateReplicatedStateAction(id, plan, nullptr);
+          }
+        }
+      };
+
+  auto const getPtrIfFound = []<typename M>(auto const& key, M const& map) ->
+      typename M::mapped_type const* {
+        if (auto iter = map.find(key); iter != map.end()) {
+          return &iter->second;
+        }
+        return nullptr;
+      };
+
+  // 1. for each state in Plan
+  //    1.1. check if state exists locally
+  // 2. for each local state
+  //    2.1. check that it is still in Plan
+  //      otherwise delete
+  //    2.2: check if we are still a participant
+  //      otherwise delete
+  //    2.2. check if local snapshot is valid
+  //      otherwise flush
+  for (auto const& [id, spec] : planStates) {
+    auto current = getPtrIfFound(id, statesCurrent);
+    forEachReplicatedStateInPlan(id, spec, current);
+  }
+
+  for (auto const& [id, status] : localStates) {
+    auto plan = getPtrIfFound(id, planStates);
+    forEachReplicatedStateInLocal(id, status, plan, nullptr);
+  }
+}
+
 /// @brief calculate difference between plan and local for for databases
 arangodb::Result arangodb::maintenance::diffPlanLocal(
     StorageEngine& engine,
-    std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& plan,
-    uint64_t planIndex, std::unordered_set<std::string> dirty,
-    std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& local,
+    containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
+        plan,
+    uint64_t planIndex,
+    containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
+        current,
+    uint64_t currentIndex, containers::FlatHashSet<std::string> dirty,
+    containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
+        local,
     std::string const& serverId, MaintenanceFeature::errors_t& errors,
-    std::unordered_set<DatabaseID>& makeDirty, bool& callNotify,
+    containers::FlatHashSet<DatabaseID>& makeDirty, bool& callNotify,
     std::vector<std::shared_ptr<ActionDescription>>& actions,
     MaintenanceFeature::ShardActionMap const& shardActionMap,
-    ReplicatedLogStatusMapByDatabase const& localLogs) {
+    ReplicatedLogStatusMapByDatabase const& localLogsByDatabase,
+    ReplicatedStateStatusMapByDatabase const& localStatesByDatabase) {
   // You are entering the functional sector.
   // Vous entrez dans le secteur fonctionel.
   // Sie betreten den funktionalen Sektor.
-
   arangodb::Result result;
-  std::unordered_set<std::string>
-      commonShrds;                        // Intersection collections plan&local
-  std::unordered_set<std::string> indis;  // Intersection indexes plan&local
+  containers::FlatHashSet<std::string>
+      commonShrds;  // Intersection collections plan&local
+  containers::FlatHashSet<std::string>
+      indis;  // Intersection indexes plan&local
 
   // Plan to local mismatch ----------------------------------------------------
   // Create or modify if local databases are affected
@@ -697,7 +804,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
         actions.emplace_back(std::make_shared<ActionDescription>(
             std::map<std::string, std::string>{
                 {std::string(NAME), std::string(DROP_DATABASE)},
-                {std::string(DATABASE), std::move(dbname)}},
+                {std::string(DATABASE), dbname}},
             HIGHER_PRIORITY, false));
       }
     }
@@ -796,35 +903,86 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
     }
   }
 
+  // Replicated Logs and States
   for (auto const& dbname : dirty) {
     using namespace arangodb::replication2;
-    auto lit = localLogs.find(dbname);
-    if (lit == std::end(localLogs)) {
-      continue;
-    }
-    auto pit = plan.find(dbname);
-    if (pit == std::end(plan)) {
+    if (!plan.contains(dbname) || !localLogsByDatabase.contains(dbname)) {
       continue;
     }
 
-    auto const& logs = lit->second;
-    auto plans = pit->second->slice()[0].get(cluster::paths::aliases::plan()
-                                                 ->replicatedLogs()
-                                                 ->database(dbname)
-                                                 ->vec());
-    if (!plans.isObject()) {
-      continue;
-    }
+    auto const collectLogInformation = [&] {
+      auto const& localLogsInDatabase = localLogsByDatabase.at(dbname);
+      auto planLogsInDatabase = ReplicatedLogSpecMap{};
+      auto planLogInDatabaseSlice =
+          plan.at(dbname)->slice()[0].get(cluster::paths::aliases::plan()
+                                              ->replicatedLogs()
+                                              ->database(dbname)
+                                              ->vec());
+      if (planLogInDatabaseSlice.isObject()) {
+        for (auto [key, value] : VPackObjectIterator(planLogInDatabaseSlice)) {
+          auto spec =
+              agency::LogPlanSpecification(agency::from_velocypack, value);
+          planLogsInDatabase.emplace(spec.id, std::move(spec));
+        }
+      }
 
-    // create data structure
-    auto planLogs = ReplicatedLogSpecMap{};
-    for (auto [key, value] : VPackObjectIterator(plans)) {
-      auto spec = agency::LogPlanSpecification(agency::from_velocypack, value);
-      planLogs.emplace(spec.id, std::move(spec));
-    }
+      return std::make_pair(std::ref(localLogsInDatabase),
+                            std::move(planLogsInDatabase));
+    };
 
-    diffReplicatedLogs(dbname, logs, planLogs, serverId, errors, makeDirty,
+    const auto collectStateInformation = [&]() {
+      TRI_ASSERT(current.contains(dbname));
+      auto planStatesInDatabase = ReplicatedStateSpecMap{};
+      auto currentStatesInDatabase = ReplicatedStateCurrentMap{};
+      auto const& localStatesInDatabase = localStatesByDatabase.at(dbname);
+      auto& db_plan = plan.at(dbname);
+      auto& db_current = current.at(dbname);
+      auto planStatesInDatabaseSlice =
+          db_plan->slice()[0].get(cluster::paths::aliases::plan()
+                                      ->replicatedStates()
+                                      ->database(dbname)
+                                      ->vec());
+      auto currentStatesInDatabaseSlice =
+          db_current->slice()[0].get(cluster::paths::aliases::current()
+                                         ->replicatedStates()
+                                         ->database(dbname)
+                                         ->vec());
+      if (planStatesInDatabaseSlice.isObject()) {
+        for (auto [key, value] :
+             VPackObjectIterator(planStatesInDatabaseSlice)) {
+          auto spec = replicated_state::agency::Plan::fromVelocyPack(value);
+
+          auto id = spec.id;
+          planStatesInDatabase.emplace(id, std::move(spec));
+          if (currentStatesInDatabaseSlice.isObject()) {
+            if (auto currentSlice =
+                    currentStatesInDatabaseSlice.get(key.stringView());
+                !currentSlice.isNone()) {
+              auto currentObj =
+                  replicated_state::agency::Current::fromVelocyPack(
+                      currentSlice);
+              currentStatesInDatabase.emplace(id, std::move(currentObj));
+            }
+          }
+        }
+      }
+      return std::make_tuple(std::ref(localStatesInDatabase),
+                             planStatesInDatabase, currentStatesInDatabase);
+    };
+
+    auto const& [localLogs, planLogs] = collectLogInformation();
+
+    diffReplicatedLogs(dbname, localLogs, planLogs, serverId, errors, makeDirty,
                        callNotify, actions);
+
+    if (current.contains(dbname) and localStatesByDatabase.contains(dbname)) {
+      auto const& [localStates, planStates, currentStates] =
+          collectStateInformation();
+
+      diffReplicatedStates(dbname, localLogs, localStates, planLogs, planStates,
+                           currentStates, serverId, errors, makeDirty,
+                           callNotify, actions);
+    }
   }
 
   // See if shard errors can be thrown out:
@@ -902,14 +1060,20 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
 /// @brief handle plan for local databases
 
 arangodb::Result arangodb::maintenance::executePlan(
-    std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& plan,
-    uint64_t planIndex, std::unordered_set<std::string> const& dirty,
-    std::unordered_set<std::string> const& moreDirt,
-    std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& local,
+    containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
+        plan,
+    uint64_t planIndex,
+    containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
+        current,
+    uint64_t currentIndex, containers::FlatHashSet<std::string> const& dirty,
+    containers::FlatHashSet<std::string> const& moreDirt,
+    containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
+        local,
     std::string const& serverId, arangodb::MaintenanceFeature& feature,
     VPackBuilder& report,
     MaintenanceFeature::ShardActionMap const& shardActionMap,
-    ReplicatedLogStatusMapByDatabase const& localLogs) {
+    ReplicatedLogStatusMapByDatabase const& localLogs,
+    ReplicatedStateStatusMapByDatabase const& localStates) {
   // Errors from maintenance feature
   MaintenanceFeature::errors_t errors;
   arangodb::Result result = feature.copyAllErrors(errors);
@@ -928,12 +1092,13 @@ arangodb::Result arangodb::maintenance::executePlan(
   report.add(VPackValue(AGENCY));
   {
     VPackArrayBuilder a(&report);
-    std::unordered_set<DatabaseID> makeDirty;
+    containers::FlatHashSet<DatabaseID> makeDirty;
     bool callNotify = false;
     auto& engine =
         feature.server().getFeature<EngineSelectorFeature>().engine();
-    diffPlanLocal(engine, plan, planIndex, dirty, local, serverId, errors,
-                  makeDirty, callNotify, actions, shardActionMap, localLogs);
+    diffPlanLocal(engine, plan, planIndex, current, currentIndex, dirty, local,
+                  serverId, errors, makeDirty, callNotify, actions,
+                  shardActionMap, localLogs, localStates);
     feature.addDirty(makeDirty, callNotify);
   }
 
@@ -1043,8 +1208,8 @@ void addDatabaseToTransactions(std::string const& name,
 
 /// @brief report local to current
 arangodb::Result arangodb::maintenance::diffLocalCurrent(
-
-    std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& local,
+    containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
+        local,
     VPackSlice const& current, std::string const& serverId,
     Transactions& transactions,
     MaintenanceFeature::ShardActionMap const& shardActionMap) {
@@ -1064,14 +1229,20 @@ arangodb::Result arangodb::maintenance::diffLocalCurrent(
 
 /// @brief Phase one: Compare plan and local and create descriptions
 arangodb::Result arangodb::maintenance::phaseOne(
-    std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& plan,
-    uint64_t planIndex, std::unordered_set<std::string> const& dirty,
-    std::unordered_set<std::string> const& moreDirt,
-    std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& local,
+    containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
+        plan,
+    uint64_t planIndex,
+    containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
+        current,
+    uint64_t currentIndex, containers::FlatHashSet<std::string> const& dirty,
+    containers::FlatHashSet<std::string> const& moreDirt,
+    containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
+        local,
     std::string const& serverId, MaintenanceFeature& feature,
     VPackBuilder& report,
     MaintenanceFeature::ShardActionMap const& shardActionMap,
-    ReplicatedLogStatusMapByDatabase const& localLogs) {
+    ReplicatedLogStatusMapByDatabase const& localLogs,
+    ReplicatedStateStatusMapByDatabase const& localStates) {
   auto start = std::chrono::steady_clock::now();
 
   arangodb::Result result;
@@ -1082,8 +1253,9 @@ arangodb::Result arangodb::maintenance::phaseOne(
 
     // Execute database changes
     try {
-      result = executePlan(plan, planIndex, dirty, moreDirt, local, serverId,
-                           feature, report, shardActionMap, localLogs);
+      result = executePlan(plan, planIndex, current, currentIndex, dirty,
+                           moreDirt, local, serverId, feature, report,
+                           shardActionMap, localLogs, localStates);
     } catch (std::exception const& e) {
       LOG_TOPIC("55938", ERR, Logger::MAINTENANCE)
           << "Error executing plan: " << e.what();
@@ -1108,8 +1280,7 @@ arangodb::Result arangodb::maintenance::phaseOne(
 
 static VPackBuilder removeSelectivityEstimate(VPackSlice const& index) {
   TRI_ASSERT(index.isObject());
-  return arangodb::velocypack::Collection::remove(
-      index, std::unordered_set<std::string>({SELECTIVITY_ESTIMATE}));
+  return arangodb::velocypack::Collection::remove(index, selectivityEstimates);
 }
 
 static std::tuple<VPackBuilder, bool, bool> assembleLocalCollectionInfo(
@@ -1158,7 +1329,7 @@ static std::tuple<VPackBuilder, bool, bool> assembleLocalCollectionInfo(
         VPackArrayBuilder ixs(&ret);
         if (info.get(INDEXES).isArray()) {
           auto it1 = allErrors.indexes.find(errorKey);
-          std::unordered_set<std::string> indexesDone;
+          containers::FlatHashSet<std::string> indexesDone;
           // First the indexes as they are in Local, potentially replaced
           // by an error:
           for (auto const& index : VPackArrayIterator(info.get(INDEXES))) {
@@ -1484,19 +1655,90 @@ static void reportCurrentReplicatedLog(
     }
   }
 }
+
+static void reportCurrentReplicatedState(
+    VPackBuilder& report,
+    replication2::replicated_state::StateStatus const& status, VPackSlice cur,
+    replication2::LogId id, std::string const& dbName,
+    std::string const& serverId) {
+  // load current into memory
+  auto current = std::invoke(
+      [&]() -> std::optional<replication2::replicated_state::agency::Current> {
+        auto currentSlice = cur.get(cluster::paths::aliases::current()
+                                        ->replicatedStates()
+                                        ->database(dbName)
+                                        ->state(to_string(id))
+                                        ->vec());
+        if (currentSlice.isNone()) {
+          return std::nullopt;
+        }
+        return replication2::replicated_state::agency::Current::fromVelocyPack(
+            currentSlice);
+      });
+
+  bool const updateCurrent = std::invoke([&] {
+    if (!current.has_value()) {
+      return true;
+    }
+    // update current if the snapshot information is different
+    if (auto iter = current->participants.find(serverId);
+        iter != std::end(current->participants)) {
+      auto const& cs = iter->second;
+      if (cs.generation != status.getGeneration()) {
+        return true;
+      }
+      if (cs.snapshot.status != status.getSnapshotInfo().status) {
+        return true;
+      }
+    } else {
+      return true;
+    }
+    return false;
+  });
+
+  if (!updateCurrent) {
+    return;
+  }
+
+  using ParticipantStatus =
+      replication2::replicated_state::agency::Current::ParticipantStatus;
+
+  auto updatePath = cluster::paths::aliases::current()
+                        ->replicatedStates()
+                        ->database(dbName)
+                        ->state(id)
+                        ->participants()
+                        ->participant(serverId);
+
+  ParticipantStatus update;
+  update.generation = status.getGeneration();
+  update.snapshot = status.getSnapshotInfo();
+
+  report.add(VPackValue(updatePath->str(cluster::paths::SkipComponents(1))));
+  {
+    VPackObjectBuilder o(&report);
+    report.add(OP, VP_SET);
+    report.add(VPackValue("payload"));
+    update.toVelocyPack(report);
+  }
+}
+
 // updateCurrentForCollections
 // diff current and local and prepare agency transactions or whatever
 // to update current. Will report the errors created locally to the agency
 arangodb::Result arangodb::maintenance::reportInCurrent(
     MaintenanceFeature& feature,
-    std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& plan,
-    std::unordered_set<std::string> const& dirty,
-    std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const&
+    containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
+        plan,
+    containers::FlatHashSet<std::string> const& dirty,
+    containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
         current,
-    std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& local,
+    containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
+        local,
     MaintenanceFeature::errors_t const& allErrors, std::string const& serverId,
     VPackBuilder& report, ShardStatistics& shardStats,
-    ReplicatedLogStatusMapByDatabase const& localLogs) {
+    ReplicatedLogStatusMapByDatabase const& localLogs,
+    ReplicatedStateStatusMapByDatabase const& localStates) {
   for (auto const& dbName : dirty) {
     auto lit = local.find(dbName);
     VPackSlice ldb;
@@ -1854,6 +2096,24 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
           << "': " << ex.what();
       throw;
     }
+    // Update Replicated States
+    try {
+      if (auto stateIter = localStates.find(dbName);
+          stateIter != std::end(localStates)) {
+        for (auto const& [id, status] : stateIter->second) {
+          if (status.has_value()) {
+            reportCurrentReplicatedState(report, *status, cur, id, dbName,
+                                         serverId);
+          }
+        }
+      }
+    } catch (std::exception const& ex) {
+      LOG_TOPIC("84ef0", WARN, Logger::MAINTENANCE)
+          << "caught exception in Maintenance for replicated states '" << dbName
+          << "': " << ex.what();
+      TRI_ASSERT(false);
+      throw;
+    }
 
   }  // next database
 
@@ -1969,15 +2229,16 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
 }
 
 void arangodb::maintenance::syncReplicatedShardsWithLeaders(
-    std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& plan,
-    std::unordered_set<std::string> const& dirty,
-    std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const&
+    containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
+        plan,
+    containers::FlatHashSet<std::string> const& dirty,
+    containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
         current,
-    std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& local,
+    containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
+        local,
     std::string const& serverId, MaintenanceFeature& feature,
     MaintenanceFeature::ShardActionMap const& shardActionMap,
-    std::unordered_set<std::string>& makeDirty,
-    std::unordered_set<std::string> const& failedServers) {
+    containers::FlatHashSet<std::string>& makeDirty) {
   for (auto const& dbname : dirty) {
     auto pit = plan.find(dbname);
     VPackSlice pdb;
@@ -2111,15 +2372,18 @@ void arangodb::maintenance::syncReplicatedShardsWithLeaders(
 
 /// @brief Phase two: See, what we can report to the agency
 arangodb::Result arangodb::maintenance::phaseTwo(
-    std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& plan,
-    std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& cur,
-    uint64_t currentIndex, std::unordered_set<std::string> const& dirty,
-    std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& local,
+    containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
+        plan,
+    containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
+        cur,
+    uint64_t currentIndex, containers::FlatHashSet<std::string> const& dirty,
+    containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
+        local,
     std::string const& serverId, MaintenanceFeature& feature,
     VPackBuilder& report,
     MaintenanceFeature::ShardActionMap const& shardActionMap,
     ReplicatedLogStatusMapByDatabase const& localLogs,
-    std::unordered_set<std::string> const& failedServers) {
+    ReplicatedStateStatusMapByDatabase const& localStates) {
   auto start = std::chrono::steady_clock::now();
 
   MaintenanceFeature::errors_t allErrors;
@@ -2139,7 +2403,8 @@ arangodb::Result arangodb::maintenance::phaseTwo(
       // Update Current
       try {
         result = reportInCurrent(feature, plan, dirty, cur, local, allErrors,
-                                 serverId, report, shardStats, localLogs);
+                                 serverId, report, shardStats, localLogs,
+                                 localStates);
       } catch (std::exception const& e) {
         LOG_TOPIC("c9a75", ERR, Logger::MAINTENANCE)
             << "Error reporting in current: " << e.what();
@@ -2151,10 +2416,9 @@ arangodb::Result arangodb::maintenance::phaseTwo(
     {
       VPackObjectBuilder agency(&report);
       try {
-        std::unordered_set<std::string> makeDirty;
+        containers::FlatHashSet<std::string> makeDirty;
         syncReplicatedShardsWithLeaders(plan, dirty, cur, local, serverId,
-                                        feature, shardActionMap, makeDirty,
-                                        failedServers);
+                                        feature, shardActionMap, makeDirty);
         feature.addDirty(makeDirty, false);
       } catch (std::exception const& e) {
         LOG_TOPIC("7e286", ERR, Logger::MAINTENANCE)

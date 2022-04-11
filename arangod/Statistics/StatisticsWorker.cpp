@@ -22,10 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "StatisticsWorker.h"
-#include "ConnectionStatistics.h"
-#include "RequestStatistics.h"
-#include "ServerStatistics.h"
-#include "StatisticsFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
@@ -48,6 +44,9 @@
 #include "RestServer/TtlFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "Statistics/ConnectionStatistics.h"
+#include "Statistics/RequestStatistics.h"
+#include "Statistics/ServerStatistics.h"
 #include "Statistics/StatisticsFeature.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
@@ -59,7 +58,6 @@
 
 #include <velocypack/Exception.h>
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 namespace {
 std::string const garbageCollectionQuery(

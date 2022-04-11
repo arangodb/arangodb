@@ -48,7 +48,6 @@
 #include <velocypack/Sink.h>
 #include <velocypack/Slice.h>
 #include <velocypack/ValueType.h>
-#include <velocypack/velocypack-aliases.h>
 #include <array>
 
 using namespace arangodb;

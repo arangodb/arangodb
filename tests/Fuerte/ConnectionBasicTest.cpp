@@ -25,7 +25,6 @@
 #include <fuerte/fuerte.h>
 #include <fuerte/helper.h>
 #include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "ConnectionTest.h"
 

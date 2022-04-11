@@ -21,6 +21,7 @@
 /// @author Andrey Abramov
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
+#include "Basics/DownCast.h"
 
 #include "gtest/gtest.h"
 
@@ -58,17 +59,17 @@ struct TestView : public arangodb::LogicalView {
   TestView(TRI_vocbase_t& vocbase,
            arangodb::velocypack::Slice const& definition)
       : arangodb::LogicalView(*this, vocbase, definition) {}
-  virtual arangodb::Result appendVelocyPackImpl(
-      arangodb::velocypack::Builder& builder, Serialization) const override {
-    builder.add("properties", _properties.slice());
+  arangodb::Result appendVPackImpl(arangodb::velocypack::Builder& build,
+                                   Serialization, bool) const override {
+    build.add("properties", _properties.slice());
     return _appendVelocyPackResult;
   }
   virtual arangodb::Result dropImpl() override {
-    return arangodb::LogicalViewHelperStorageEngine::drop(*this);
+    return arangodb::storage_helper::drop(*this);
   }
   virtual void open() override {}
   virtual arangodb::Result renameImpl(std::string const& oldName) override {
-    return arangodb::LogicalViewHelperStorageEngine::rename(*this, oldName);
+    return arangodb::storage_helper::rename(*this, oldName);
   }
   virtual arangodb::Result properties(arangodb::velocypack::Slice properties,
                                       bool isUserRequest,
@@ -493,7 +494,7 @@ TEST_F(RestViewHandlerTest, test_auth) {
                            arangodb::auth::Level::NONE);
       userManager->setAuthInfo(userMap);  // set user map to avoid loading
                                           // configuration from system database
-      auto* testView = arangodb::LogicalView::cast<TestView>(logicalView.get());
+      auto* testView = arangodb::basics::downCast<TestView>(logicalView.get());
       testView->_appendVelocyPackResult = arangodb::Result(TRI_ERROR_FORBIDDEN);
       auto resetAppendVelocyPackResult =
           std::shared_ptr<TestView>(testView, [](TestView* p) -> void {
@@ -675,7 +676,7 @@ TEST_F(RestViewHandlerTest, test_auth) {
                            arangodb::auth::Level::NONE);
       userManager->setAuthInfo(userMap);  // set user map to avoid loading
                                           // configuration from system database
-      auto* testView = arangodb::LogicalView::cast<TestView>(logicalView.get());
+      auto* testView = arangodb::basics::downCast<TestView>(logicalView.get());
       testView->_appendVelocyPackResult = arangodb::Result(TRI_ERROR_INTERNAL);
       auto resetAppendVelocyPackResult =
           std::shared_ptr<TestView>(testView, [](TestView* p) -> void {
@@ -705,7 +706,7 @@ TEST_F(RestViewHandlerTest, test_auth) {
                              .getNumber<int>()}));
       auto view = vocbase.lookupView("testView");
       EXPECT_FALSE(!view);
-      slice = arangodb::LogicalView::cast<TestView>(*view)._properties.slice();
+      slice = arangodb::basics::downCast<TestView>(*view)._properties.slice();
       EXPECT_FALSE(slice.isObject());
     }
 
@@ -741,7 +742,7 @@ TEST_F(RestViewHandlerTest, test_auth) {
                        slice.get("properties").get("key").copyString()));
       auto view = vocbase.lookupView("testView");
       EXPECT_FALSE(!view);
-      slice = arangodb::LogicalView::cast<TestView>(*view)._properties.slice();
+      slice = arangodb::basics::downCast<TestView>(*view)._properties.slice();
       EXPECT_TRUE(slice.isObject());
       EXPECT_TRUE((slice.hasKey("key") && slice.get("key").isString() &&
                    std::string("value") == slice.get("key").copyString()));
@@ -785,7 +786,7 @@ TEST_F(RestViewHandlerTest, test_auth) {
           user.grantCollection(vocbase.name(), "testView",
        arangodb::auth::Level::RW); userManager->setAuthInfo(userMap); // set
        user map to avoid loading configuration from system database auto*
-       testView = arangodb::LogicalView::cast<TestView>(logicalView.get());
+       testView = arangodb::basics::downCast<TestView>(logicalView.get());
           testView->_appendVelocyPackResult =
        arangodb::Result(TRI_ERROR_INTERNAL); auto resetAppendVelocyPackResult =
        std::shared_ptr<TestView>(testView, [](TestView* p)->void {
@@ -808,7 +809,7 @@ TEST_F(RestViewHandlerTest, test_auth) {
        TRI_ERROR_INTERNAL,
        slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()); auto view
        = vocbase.lookupView("testView"); EXPECT_FALSE(!view); slice =
-       arangodb::LogicalView::cast<TestView>(*view)._properties.slice();
+       arangodb::basics::downCast<TestView>(*view)._properties.slice();
           EXPECT_FALSE(slice.isObject());
         }
 
@@ -837,7 +838,7 @@ TEST_F(RestViewHandlerTest, test_auth) {
        slice.get("properties").get("key").isString() && std::string("value"),
        slice.get("properties").get("key").copyString()); auto view =
        vocbase.lookupView("testView"); EXPECT_FALSE(!view); slice =
-       arangodb::LogicalView::cast<TestView>(*view)._properties.slice();
+       arangodb::basics::downCast<TestView>(*view)._properties.slice();
           EXPECT_TRUE(slice.isObject());
           EXPECT_EQ(slice.hasKey("key") && slice.get("key").isString() &&
        std::string("value"), slice.get("key").copyString());
@@ -923,7 +924,7 @@ TEST_F(RestViewHandlerTest, test_auth) {
                                           // returns database auth::Level
       userManager->setAuthInfo(userMap);  // set user map to avoid loading
                                           // configuration from system database
-      auto* testView = arangodb::LogicalView::cast<TestView>(logicalView.get());
+      auto* testView = arangodb::basics::downCast<TestView>(logicalView.get());
       testView->_appendVelocyPackResult = arangodb::Result(TRI_ERROR_FORBIDDEN);
       auto resetAppendVelocyPackResult =
           std::shared_ptr<TestView>(testView, [](TestView* p) -> void {
@@ -1113,7 +1114,7 @@ TEST_F(RestViewHandlerTest, test_auth) {
                                           // returns database auth::Level
       userManager->setAuthInfo(userMap);  // set user map to avoid loading
                                           // configuration from system database
-      auto* testView = arangodb::LogicalView::cast<TestView>(logicalView.get());
+      auto* testView = arangodb::basics::downCast<TestView>(logicalView.get());
       testView->_appendVelocyPackResult = arangodb::Result(TRI_ERROR_FORBIDDEN);
       auto resetAppendVelocyPackResult =
           std::shared_ptr<TestView>(testView, [](TestView* p) -> void {
@@ -1311,8 +1312,7 @@ TEST_F(RestViewHandlerTest, test_auth) {
                                           // returns database auth::Level
       userManager->setAuthInfo(userMap);  // set user map to avoid loading
                                           // configuration from system database
-      auto* testView =
-          arangodb::LogicalView::cast<TestView>(logicalView2.get());
+      auto* testView = arangodb::basics::downCast<TestView>(logicalView2.get());
       testView->_appendVelocyPackResult = arangodb::Result(TRI_ERROR_FORBIDDEN);
       auto resetAppendVelocyPackResult =
           std::shared_ptr<TestView>(testView, [](TestView* p) -> void {

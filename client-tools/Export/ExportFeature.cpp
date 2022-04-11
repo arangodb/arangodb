@@ -44,7 +44,6 @@
 #include <velocypack/Dumper.h>
 #include <velocypack/Slice.h>
 #include <velocypack/Sink.h>
-#include <velocypack/velocypack-aliases.h>
 #include <iostream>
 #include <regex>
 #include <sys/types.h>
@@ -84,7 +83,6 @@ ExportFeature::ExportFeature(Server& server, int* result)
       _currentCollection(),
       _currentGraph(),
       _result(result) {
-  requiresElevatedPrivileges(false);
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseClient>();
 

@@ -26,7 +26,6 @@
 #include "analysis/analyzer.hpp"
 #include "analysis/token_attributes.hpp"
 #include "velocypack/Slice.h"
-#include "velocypack/velocypack-aliases.h"
 
 namespace arangodb {
 namespace iresearch {
@@ -35,13 +34,13 @@ class IdentityAnalyzer final : public irs::analysis::analyzer {
  public:
   static constexpr irs::string_ref type_name() noexcept { return "identity"; }
 
-  static bool normalize(const irs::string_ref& /*args*/, std::string& out);
+  static bool normalize(irs::string_ref /*args*/, std::string& out);
 
-  static ptr make(irs::string_ref const& /*args*/);
+  static ptr make(irs::string_ref /*args*/);
 
-  static bool normalize_json(const irs::string_ref& /*args*/, std::string& out);
+  static bool normalize_json(irs::string_ref /*args*/, std::string& out);
 
-  static ptr make_json(irs::string_ref const& /*args*/);
+  static ptr make_json(irs::string_ref /*args*/);
 
   IdentityAnalyzer() noexcept;
 
@@ -56,7 +55,7 @@ class IdentityAnalyzer final : public irs::analysis::analyzer {
     return !empty;
   }
 
-  virtual bool reset(irs::string_ref const& data) noexcept override {
+  virtual bool reset(irs::string_ref data) noexcept override {
     _empty = false;
     _term.value = irs::ref_cast<irs::byte_type>(data);
 

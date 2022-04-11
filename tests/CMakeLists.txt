@@ -192,6 +192,7 @@ set(ARANGODB_TESTS_SOURCES
   Basics/FixedSizeAllocatorTest.cpp
   Basics/GuardedTest.cpp
   Basics/InifileParserTest.cpp
+  Basics/InspectionTest.cpp
   Basics/LoggerTest.cpp
   Basics/MemoryUsageTest.cpp
   Basics/NumberUtilsTest.cpp
@@ -216,6 +217,7 @@ set(ARANGODB_TESTS_SOURCES
   Cache/Table.cpp
   Cache/TransactionalBucket.cpp
   Cache/TransactionalCache.cpp
+  Cache/TransactionalCacheVPackKeyHasher.cpp
   Cache/TransactionalStore.cpp
   Cache/TransactionManager.cpp
   Cache/TransactionsWithBackingStore.cpp
@@ -268,12 +270,14 @@ set(ARANGODB_TESTS_SOURCES
   Network/UtilsTest.cpp
   Pregel/typedbuffer.cpp
   Replication/ReplicationClientsProgressTrackerTest.cpp
+  Rest/PathMatchTest.cpp
   RestHandler/RestAnalyzerHandlerTest.cpp
   RestHandler/RestDocumentHandlerTest.cpp
   RestHandler/RestUsersHandlerTest.cpp
   RestHandler/RestViewHandlerTest.cpp
   RestHandler/VstResponseTest.cpp
   RestServer/FlushFeatureTest.cpp
+  RestServer/LanguageFeatureTest.cpp
   Restore/CollectionRestoreOrder.cpp
   RocksDBEngine/Endian.cpp
   RocksDBEngine/KeyTest.cpp
@@ -309,28 +313,43 @@ set(ARANGODB_TESTS_SOURCES
 set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/Helper/WaitForQueue.cpp
   Replication2/Mocks/AsyncFollower.cpp
+  Replication2/Mocks/AsyncFollower.cpp
+  Replication2/Mocks/AsyncFollower.h
   Replication2/Mocks/AsyncFollower.h
   Replication2/Mocks/AsyncLeader.cpp
+  Replication2/Mocks/AsyncLeader.cpp
   Replication2/Mocks/FakeAbstractFollower.h
+  Replication2/Mocks/FakeFailureOracle.cpp
+  Replication2/Mocks/FakeFailureOracle.h
+  Replication2/Mocks/FakeFollower.cpp
+  Replication2/Mocks/FakeFollower.h
   Replication2/Mocks/FakeReplicatedLog.cpp
   Replication2/Mocks/FakeReplicatedLog.h
   Replication2/Mocks/FakeReplicatedState.cpp
   Replication2/Mocks/PersistedLog.cpp
+  Replication2/Mocks/PersistedLog.cpp
+  Replication2/Mocks/PersistedLog.h
   Replication2/Mocks/PersistedLog.h
   Replication2/Mocks/ReplicatedLogMetricsMock.cpp
   Replication2/ReplicatedLog/AppendEntriesBatchTest.cpp
   Replication2/ReplicatedLog/AppendEntriesErrorReasonTest.cpp
+  Replication2/ReplicatedLog/AppendEntriesErrorReasonTest.cpp
+  Replication2/ReplicatedLog/CalcCommitIndexTest.cpp
   Replication2/ReplicatedLog/CalcCommitIndexTest.cpp
   Replication2/ReplicatedLog/ChangeStreamTests.cpp
   Replication2/ReplicatedLog/CheckLogsTest.cpp
   Replication2/ReplicatedLog/ConcurrencyTests.cpp
   Replication2/ReplicatedLog/DetectConflictTest.cpp
   Replication2/ReplicatedLog/EstablishLeadershipTest.cpp
+  Replication2/ReplicatedLog/EstablishLeadershipTest.cpp
   Replication2/ReplicatedLog/FollowerAppendEntries.cpp
   Replication2/ReplicatedLog/FollowerWaitFor.cpp
   Replication2/ReplicatedLog/InMemoryLogTest.cpp
+  Replication2/ReplicatedLog/InMemoryLogTest.cpp
   Replication2/ReplicatedLog/LeaderAppendEntriesTest.cpp
+  Replication2/ReplicatedLog/LogParticipantWaitForResignTests.cpp
   Replication2/ReplicatedLog/LogReclaimTest.cpp
+  Replication2/ReplicatedLog/LogStatusTest.cpp
   Replication2/ReplicatedLog/MaintenanceTests.cpp
   Replication2/ReplicatedLog/MultiTermTest.cpp
   Replication2/ReplicatedLog/ReplicatedLogTest.cpp
@@ -340,43 +359,30 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/ReplicatedLog/SupervisionTest.cpp
   Replication2/ReplicatedLog/TestHelper.cpp
   Replication2/ReplicatedLog/UpdateParticipantsFlags.cpp
+  Replication2/ReplicatedLog/UpdateParticipantsFlags.cpp
   Replication2/ReplicatedLog/UpdateReplicatedLogTests.cpp
   Replication2/ReplicatedLog/WaitForSyncTest.cpp
-  Replication2/ReplicatedLog/InMemoryLogTest.cpp
-  Replication2/ReplicatedState/AbstractStateMachinePollTest.cpp
+  Replication2/ReplicatedLog/WaitForSyncTest.cpp
   Replication2/ReplicatedState/FollowerSnapshotTest.cpp
+  Replication2/ReplicatedState/FollowerWaitForTest.cpp
   Replication2/ReplicatedState/LeaderRecoveryTest.cpp
+  Replication2/ReplicatedState/LeaderRecoveryTest.cpp
+  Replication2/ReplicatedState/MaintenanceTest.cpp
+  Replication2/ReplicatedState/PrototypeStateMachineTest.cpp
+  Replication2/ReplicatedState/ReplicatedStateFeatureTest.cpp
   Replication2/ReplicatedState/ReplicatedStateFeatureTest.cpp
   Replication2/ReplicatedState/ReplicatedStateTest.cpp
-  Replication2/ReplicatedState/StateMachineTestHelper.cpp
-  Replication2/ReplicatedState/StateMachineTestHelper.h
+  Replication2/ReplicatedState/ReplicatedStateTest.cpp
   Replication2/ReplicatedState/StateMachines/MyStateMachine.cpp
-  Replication2/Mocks/PersistedLog.cpp
-  Replication2/Mocks/PersistedLog.h
+  Replication2/ReplicatedState/StateMachines/MyStateMachine.cpp
+  Replication2/Serialization/AgencyLogSpecificationTest.cpp
   Replication2/Serialization/LogCommonTest.cpp
   Replication2/Serialization/LogStatusTest.cpp
   Replication2/Streams/LogMultiplexerTest.cpp
   Replication2/Streams/MultiplexerConcurrencyTest.cpp
+  Replication2/Streams/MultiplexerConcurrencyTest.cpp
   Replication2/Streams/TestLogSpecification.cpp
   Replication2/Streams/TestLogSpecification.h
-  Replication2/Streams/MultiplexerConcurrencyTest.cpp
-  Replication2/Mocks/AsyncFollower.cpp
-  Replication2/Mocks/AsyncFollower.h
-  Replication2/Mocks/FakeFollower.cpp
-  Replication2/Mocks/FakeFollower.h
-  Replication2/ReplicatedLog/WaitForSyncTest.cpp
-  Replication2/ReplicatedLog/CalcCommitIndexTest.cpp
-  Replication2/Serialization/LogStatusTest.cpp
-  Replication2/ReplicatedLog/EstablishLeadershipTest.cpp
-  Replication2/ReplicatedState/ReplicatedStateTest.cpp
-  Replication2/ReplicatedState/StateMachines/MyStateMachine.cpp
-  Replication2/ReplicatedState/ReplicatedStateFeatureTest.cpp
-  Replication2/ReplicatedState/LeaderRecoveryTest.cpp
-  Replication2/ReplicatedLog/UpdateParticipantsFlags.cpp
-  Replication2/Serialization/LogCommonTest.cpp
-  Replication2/ReplicatedLog/AppendEntriesErrorReasonTest.cpp
-  Replication2/Mocks/AsyncLeader.cpp
-  Replication2/ReplicatedLog/LogStatusTest.cpp
 )
 
 

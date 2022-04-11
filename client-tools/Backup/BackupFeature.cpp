@@ -690,7 +690,6 @@ BackupFeature::BackupFeature(Server& server, int& exitCode)
       _exitCode{exitCode} {
   static_assert(Server::isCreatedAfter<BackupFeature, HttpEndpointProvider>());
 
-  requiresElevatedPrivileges(false);
   setOptional(false);
   startsAfter<HttpEndpointProvider>();
 }
@@ -722,7 +721,7 @@ void BackupFeature::collectOptions(
       "argument without '--operation')",
       new DiscreteValuesParameter<StringParameter>(&_options.operation,
                                                    ::Operations),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options->addOption(
       "--allow-inconsistent",

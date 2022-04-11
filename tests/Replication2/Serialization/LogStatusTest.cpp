@@ -76,7 +76,12 @@ TEST(LogStatusTest, commit_fail_reason) {
       << "expected " << jsonSlice.toJson() << " found " << slice.toJson();
 
   builder.clear();
-  reason = CommitFailReason::withQuorumSizeNotReached("PRMR-1234");
+  reason = CommitFailReason::withQuorumSizeNotReached(
+      {{"PRMR-1234",
+        {.isFailed = true,
+         .isAllowedInQuorum = true,
+         .lastAcknowledged = TermIndexPair(LogTerm(1), LogIndex(2))}}},
+      TermIndexPair(LogTerm(3), LogIndex(4)));
   reason.toVelocyPack(builder);
   slice = builder.slice();
   fromVPack = CommitFailReason::fromVelocyPack(slice);
@@ -166,7 +171,7 @@ TEST(LogStatusTest, leader_status) {
   statistics.firstIndex = LogIndex{1};
   leaderStatus.local = statistics;
   leaderStatus.term = LogTerm{2};
-  leaderStatus.largestCommonIndex = LogIndex{1};
+  leaderStatus.lowestIndexToKeep = LogIndex{1};
   leaderStatus.activeParticipantsConfig.generation = 14;
   leaderStatus.committedParticipantsConfig = ParticipantsConfig{};
   leaderStatus.committedParticipantsConfig->generation = 18;
@@ -207,7 +212,7 @@ TEST(LogStatusTest, follower_status) {
     "role": "follower",
     "leader": "PRMR-d2a1b29e-ff75-412e-8b97-f3bfbf464fab",
     "term": 2,
-    "largestCommonIndex": 3,
+    "lowestIndexToKeep": 3,
     "local": {
       "commitIndex": 4,
       "firstIndex": 1,
@@ -235,7 +240,7 @@ TEST(LogStatusTest, follower_status) {
   jsonBuffer = R"({
     "role": "follower",
     "term": 2,
-    "largestCommonIndex": 3,
+    "lowestIndexToKeep": 3,
     "local": {
       "commitIndex": 4,
       "firstIndex": 1,
@@ -256,6 +261,7 @@ TEST(LogStatusTest, follower_status) {
 TEST(LogStatusTest, global_status) {
   auto election = agency::LogCurrentSupervisionElection{};
   election.term = LogTerm{1};
+  election.bestTermIndex = TermIndexPair(LogTerm{1}, LogIndex{1});
   election.participantsRequired = 2;
   election.participantsAvailable = 0;
 
@@ -264,8 +270,24 @@ TEST(LogStatusTest, global_status) {
 
   auto participants = std::unordered_map<ParticipantId, LogStatus>{
       {"LeaderId", LogStatus{UnconfiguredStatus{}}}};
-  auto status = GlobalStatus{
-      supervision, {{"LeaderId", LogStatus{UnconfiguredStatus{}}}}, "LeaderId"};
+
+  GlobalStatus::SupervisionStatus supervisionStatus{
+      .connection = {}, .response = std::move(supervision)};
+  std::unordered_map<ParticipantId, GlobalStatus::ParticipantStatus>
+      globalStatusParticipants;
+  {
+    LogStatus responseValue = LogStatus{UnconfiguredStatus{}};
+    GlobalStatus::ParticipantStatus::Response response{
+        .value = std::move(responseValue)};
+    GlobalStatus::ParticipantStatus participantStatus{
+        .connection = {}, .response = std::move(response)};
+    globalStatusParticipants[ParticipantId("LeaderId")] =
+        std::move(participantStatus);
+  }
+  GlobalStatus status{.supervision = std::move(supervisionStatus),
+                      .participants = std::move(globalStatusParticipants),
+                      .specification = {},
+                      .leaderId = "LeaderId"};
 
   VPackBuilder builder;
   status.toVelocyPack(builder);
@@ -273,17 +295,29 @@ TEST(LogStatusTest, global_status) {
 
   auto jsonBuffer = R"({
     "supervision": {
-      "election": {
-        "term": 1,
-        "participantsRequired": 2,
-        "participantsAvailable": 0,
-        "details": {}
+      "connection":{"errorCode":0},
+      "response": {
+        "election": {
+          "term": 1,
+          "bestTermIndex": { "term": 1, "index": 1 },
+          "participantsRequired": 2,
+          "participantsAvailable": 0,
+          "details": {},
+          "electibleLeaderSet": []
+        }
       }
     },
     "participants": {
       "LeaderId": {
-        "role": "unconfigured"
+        "connection":{"errorCode":0},
+        "response":{
+          "role": "unconfigured"
+        }
       }
+    },
+    "specification":{
+      "plan":{"id":0,"participantsConfig":{"generation":0,"participants":{}}},
+      "source": "LocalCache"
     },
     "leaderId": "LeaderId"
   })"_vpack;

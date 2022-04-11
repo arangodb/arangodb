@@ -38,10 +38,7 @@
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "V8/v8-conv.h"
-#include "V8/v8-globals.h"
-#include "V8/v8-utils.h"
-#include "V8Server/V8Context.h"
+#include "Statistics/StatisticsFeature.h"
 #include "V8Server/V8DealerFeature.h"
 
 using namespace arangodb::application_features;
@@ -62,8 +59,6 @@ ServerFeature::ServerFeature(Server& server, int* res)
 {
   setOptional(true);
   startsAfter<AqlFeaturePhase>();
-
-  startsAfter<StatisticsFeature>();
   startsAfter<UpgradeFeature>();
 }
 
@@ -76,7 +71,7 @@ void ServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption(
       "--server.rest-server", "start a rest-server",
       new BooleanParameter(&_restServer),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options
       ->addOption(
@@ -84,7 +79,8 @@ void ServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
           "perform UTF-8 string validation for incoming JSON and VelocyPack "
           "data",
           new BooleanParameter(&_validateUtf8Strings),
-          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+          arangodb::options::makeDefaultFlags(
+              arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30700);
 
   options->addOption("--javascript.script", "run scripts and exit",
@@ -94,7 +90,7 @@ void ServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption(
       "--console.code-page", "Windows code page to use; defaults to UTF8",
       new UInt16Parameter(&_codePage),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 #endif
 
   // add several obsoleted options here

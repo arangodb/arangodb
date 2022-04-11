@@ -23,15 +23,11 @@
 
 #include "RestServer/arangod.h"
 
+#include <string_view>
 #include <type_traits>
 #ifdef _WIN32
 #include <iostream>
 #endif
-
-#include "Basics/Common.h"
-#include "Basics/directories.h"
-#include "Basics/operating-system.h"
-#include "Basics/tri-strings.h"
 
 #include "Actions/ActionFeature.h"
 #include "Agency/AgencyFeature.h"
@@ -50,14 +46,20 @@
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Basics/ArangoGlobalContext.h"
+#include "Basics/Common.h"
 #include "Basics/CrashHandler.h"
 #include "Basics/FileUtils.h"
+#include "Basics/directories.h"
+#include "Basics/operating-system.h"
+#include "Basics/tri-strings.h"
 #include "Cache/CacheManagerFeature.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterUpgradeFeature.h"
 #include "Cluster/MaintenanceFeature.h"
+#include "Cluster/FailureOracleFeature.h"
 #include "Cluster/ReplicationTimeoutFeature.h"
 #include "Cluster/ServerState.h"
+#include "ClusterEngine/ClusterEngine.h"
 #include "FeaturePhases/AgencyFeaturePhase.h"
 #include "FeaturePhases/AqlFeaturePhase.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
@@ -71,7 +73,11 @@
 #include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/ServerSecurityFeature.h"
 #include "GeneralServer/SslServerFeature.h"
+#include "IResearch/IResearchAnalyzerFeature.h"
+#include "IResearch/IResearchFeature.h"
 #include "Logger/LoggerFeature.h"
+#include "Metrics/ClusterMetricsFeature.h"
+#include "Metrics/MetricsFeature.h"
 #include "Network/NetworkFeature.h"
 #include "Pregel/PregelFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -79,10 +85,14 @@
 #include "Replication/ReplicationFeature.h"
 #include "Replication/ReplicationMetricsFeature.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogFeature.h"
+#include "Replication2/ReplicatedState/ReplicatedStateFeature.h"
+#include "Replication2/StateMachines/BlackHole/BlackHoleStateMachineFeature.h"
+#include "Replication2/StateMachines/Prototype/PrototypeStateMachineFeature.h"
 #include "RestServer/AqlFeature.h"
 #include "RestServer/BootstrapFeature.h"
 #include "RestServer/CheckVersionFeature.h"
 #include "RestServer/ConsoleFeature.h"
+#include "RestServer/CpuUsageFeature.h"
 #include "RestServer/DaemonFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
@@ -97,25 +107,24 @@
 #include "RestServer/LockfileFeature.h"
 #include "RestServer/LogBufferFeature.h"
 #include "RestServer/MaxMapCountFeature.h"
-#include "RestServer/TimeZoneFeature.h"
-#include "RestServer/CpuUsageFeature.h"
 #include "RestServer/NonceFeature.h"
 #include "RestServer/PrivilegeFeature.h"
-#include "RestServer/SharedPRNGFeature.h"
-#include "Metrics/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/RestartAction.h"
 #include "RestServer/ScriptFeature.h"
 #include "RestServer/ServerFeature.h"
 #include "RestServer/ServerIdFeature.h"
+#include "RestServer/SharedPRNGFeature.h"
 #include "RestServer/SoftShutdownFeature.h"
 #include "RestServer/SupervisorFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
+#include "RestServer/TimeZoneFeature.h"
 #include "RestServer/TtlFeature.h"
 #include "RestServer/UpgradeFeature.h"
 #include "RestServer/ViewTypesFeature.h"
-#include "Replication2/ReplicatedState/ReplicatedStateFeature.h"
-#include "Replication2/StateMachines/BlackHole/BlackHoleStateMachineFeature.h"
+#include "RocksDBEngine/RocksDBEngine.h"
+#include "RocksDBEngine/RocksDBOptionFeature.h"
+#include "RocksDBEngine/RocksDBRecoveryManager.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Sharding/ShardingFeature.h"
 #include "Ssl/SslFeature.h"
@@ -126,16 +135,10 @@
 #include "Transaction/ManagerFeature.h"
 #include "V8Server/FoxxFeature.h"
 #include "V8Server/V8DealerFeature.h"
-#include "IResearch/IResearchAnalyzerFeature.h"
-#include "IResearch/IResearchFeature.h"
-#include "ClusterEngine/ClusterEngine.h"
-#include "RocksDBEngine/RocksDBEngine.h"
-#include "RocksDBEngine/RocksDBOptionFeature.h"
-#include "RocksDBEngine/RocksDBRecoveryManager.h"
 
 #ifdef _WIN32
-#include "RestServer/WindowsServiceFeature.h"
 #include "Basics/win-utils.h"
+#include "RestServer/WindowsServiceFeature.h"
 #endif
 
 #ifdef USE_ENTERPRISE
@@ -330,7 +333,7 @@ int main(int argc, char* argv[]) {
 
   TRI_GET_ARGV(argc, argv);
 #if _WIN32
-  if (argc > 1 && TRI_EqualString("--start-service", argv[1])) {
+  if (argc > 1 && std::string_view(argv[1]) == "--start-service") {
     ARGC = argc;
     ARGV = argv;
 

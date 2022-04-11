@@ -52,6 +52,7 @@ test/include/test/jemalloc_test.h
 test/include/test/jemalloc_test_defs.h
 
 /test/integration/[A-Za-z]*
+!/test/integration/cpp/
 !/test/integration/[A-Za-z]*.*
 /test/integration/*.[od]
 /test/integration/*.out

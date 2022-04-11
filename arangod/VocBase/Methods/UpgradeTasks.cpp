@@ -49,7 +49,6 @@
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Collection.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::methods;

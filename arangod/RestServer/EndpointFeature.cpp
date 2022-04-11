@@ -43,7 +43,6 @@ EndpointFeature::EndpointFeature(ArangodServer& server)
       _reuseAddress(true),
       _backlogSize(64) {
   setOptional(true);
-  requiresElevatedPrivileges(true);
   startsAfter<application_features::AqlFeaturePhase, ArangodServer>();
 
   startsAfter<ServerFeature, ArangodServer>();
@@ -70,12 +69,12 @@ void EndpointFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption(
       "--tcp.reuse-address", "try to reuse TCP port(s)",
       new BooleanParameter(&_reuseAddress),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options->addOption(
       "--tcp.backlog-size", "listen backlog size",
       new UInt64Parameter(&_backlogSize),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 }
 
 void EndpointFeature::validateOptions(std::shared_ptr<ProgramOptions>) {

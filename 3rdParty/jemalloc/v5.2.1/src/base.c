@@ -303,7 +303,7 @@ static edata_t *
 base_extent_alloc(tsdn_t *tsdn, base_t *base, size_t size, size_t alignment) {
 	malloc_mutex_assert_owner(tsdn, &base->mtx);
 
-	ehooks_t *ehooks = base_ehooks_get(base);
+	ehooks_t *ehooks = base_ehooks_get_for_metadata(base);
 	/*
 	 * Drop mutex during base_block_alloc(), because an extent hook will be
 	 * called.
@@ -342,7 +342,8 @@ b0get(void) {
 }
 
 base_t *
-base_new(tsdn_t *tsdn, unsigned ind, const extent_hooks_t *extent_hooks) {
+base_new(tsdn_t *tsdn, unsigned ind, const extent_hooks_t *extent_hooks,
+    bool metadata_use_hooks) {
 	pszind_t pind_last = 0;
 	size_t extent_sn_next = 0;
 
@@ -352,7 +353,9 @@ base_new(tsdn_t *tsdn, unsigned ind, const extent_hooks_t *extent_hooks) {
 	 * memory, and then initialize the ehooks within the base_t.
 	 */
 	ehooks_t fake_ehooks;
-	ehooks_init(&fake_ehooks, (extent_hooks_t *)extent_hooks, ind);
+	ehooks_init(&fake_ehooks, metadata_use_hooks ?
+	    (extent_hooks_t *)extent_hooks :
+	    (extent_hooks_t *)&ehooks_default_extent_hooks, ind);
 
 	base_block_t *block = base_block_alloc(tsdn, NULL, &fake_ehooks, ind,
 	    &pind_last, &extent_sn_next, sizeof(base_t), QUANTUM);
@@ -366,6 +369,9 @@ base_new(tsdn_t *tsdn, unsigned ind, const extent_hooks_t *extent_hooks) {
 	base_t *base = (base_t *)base_extent_bump_alloc_helper(&block->edata,
 	    &gap_size, base_size, base_alignment);
 	ehooks_init(&base->ehooks, (extent_hooks_t *)extent_hooks, ind);
+	ehooks_init(&base->ehooks_base, metadata_use_hooks ?
+	    (extent_hooks_t *)extent_hooks :
+	    (extent_hooks_t *)&ehooks_default_extent_hooks, ind);
 	if (malloc_mutex_init(&base->mtx, "base", WITNESS_RANK_BASE,
 	    malloc_mutex_rank_exclusive)) {
 		base_unmap(tsdn, &fake_ehooks, ind, block, block->size);
@@ -397,7 +403,7 @@ base_new(tsdn_t *tsdn, unsigned ind, const extent_hooks_t *extent_hooks) {
 
 void
 base_delete(tsdn_t *tsdn, base_t *base) {
-	ehooks_t *ehooks = base_ehooks_get(base);
+	ehooks_t *ehooks = base_ehooks_get_for_metadata(base);
 	base_block_t *next = base->blocks;
 	do {
 		base_block_t *block = next;
@@ -410,6 +416,11 @@ base_delete(tsdn_t *tsdn, base_t *base) {
 ehooks_t *
 base_ehooks_get(base_t *base) {
 	return &base->ehooks;
+}
+
+ehooks_t *
+base_ehooks_get_for_metadata(base_t *base) {
+	return &base->ehooks_base;
 }
 
 extent_hooks_t *
@@ -512,6 +523,7 @@ base_postfork_child(tsdn_t *tsdn, base_t *base) {
 
 bool
 base_boot(tsdn_t *tsdn) {
-	b0 = base_new(tsdn, 0, (extent_hooks_t *)&ehooks_default_extent_hooks);
+	b0 = base_new(tsdn, 0, (extent_hooks_t *)&ehooks_default_extent_hooks,
+	    /* metadata_use_hooks */ true);
 	return (b0 == NULL);
 }

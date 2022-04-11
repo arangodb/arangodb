@@ -22,16 +22,20 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Zkd/ZkdHelper.h"
-
-#include <Aql/Variable.h>
-#include <Containers/Enumerate.h>
-#include <Transaction/Helpers.h>
-#include "RocksDBColumnFamilyManager.h"
-#include "RocksDBMethods.h"
-#include "RocksDBTransactionMethods.h"
 #include "RocksDBZkdIndex.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "Aql/Variable.h"
+#include "Containers/Enumerate.h"
+#include "Containers/FlatHashSet.h"
+#include "Transaction/Helpers.h"
+#include "RocksDBEngine/RocksDBColumnFamilyManager.h"
+#include "RocksDBEngine/RocksDBEngine.h"
+#include "RocksDBEngine/RocksDBMethods.h"
+#include "RocksDBEngine/RocksDBTransactionMethods.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Methods.h"
+#include "Zkd/ZkdHelper.h"
 
 using namespace arangodb;
 
@@ -84,7 +88,9 @@ class RocksDBZkdIndexIterator final : public IndexIterator {
     _compareResult.resize(_dim);
   }
 
-  char const* typeName() const override { return "rocksdb-zkd-index-iterator"; }
+  std::string_view typeName() const noexcept final {
+    return "rocksdb-zkd-index-iterator";
+  }
 
  protected:
   size_t numNextTries()
@@ -94,15 +100,15 @@ class RocksDBZkdIndexIterator final : public IndexIterator {
   }
 
   bool nextImpl(LocalDocumentIdCallback const& callback,
-                size_t limit) override {
-    for (auto i = size_t{0}; i < limit;) {
+                uint64_t limit) override {
+    for (uint64_t i = 0; i < limit;) {
       switch (_iterState) {
         case IterState::SEEK_ITER_TO_CUR: {
           RocksDBKey rocks_key;
           rocks_key.constructZkdIndexValue(_index->objectId(), _cur);
           _iter->Seek(rocks_key.string());
           if (!_iter->Valid()) {
-            arangodb::rocksutils::checkIteratorStatus(_iter.get());
+            rocksutils::checkIteratorStatus(*_iter);
             _iterState = IterState::DONE;
           } else {
             TRI_ASSERT(_index->objectId() ==
@@ -120,7 +126,7 @@ class RocksDBZkdIndexIterator final : public IndexIterator {
                !foundNextZValueInBox && numTried < numNextTries(); ++numTried) {
             _iter->Next();
             if (!_iter->Valid()) {
-              arangodb::rocksutils::checkIteratorStatus(_iter.get());
+              rocksutils::checkIteratorStatus(*_iter);
               _iterState = IterState::DONE;
               break;  // for loop
             }
@@ -156,7 +162,7 @@ class RocksDBZkdIndexIterator final : public IndexIterator {
             ++i;
             _iter->Next();
             if (!_iter->Valid()) {
-              arangodb::rocksutils::checkIteratorStatus(_iter.get());
+              rocksutils::checkIteratorStatus(*_iter);
               _iterState = IterState::DONE;
             } else {
               // stay in ::CHECK_CURRENT_ITER
@@ -330,7 +336,7 @@ void zkd::extractBoundsFromCondition(
   auto const checkIsBoundForAttribute =
       [&](aql::AstNode* op, aql::AstNode* access, aql::AstNode* other,
           bool reverse) -> bool {
-    std::unordered_set<std::string>
+    arangodb::containers::FlatHashSet<std::string>
         nonNullAttributes;  // TODO only used in sparse case
     if (!index->canUseConditionPart(access, other, op, reference,
                                     nonNullAttributes, false)) {
@@ -518,11 +524,17 @@ arangodb::Result arangodb::RocksDBZkdIndexBase::remove(
 
 arangodb::RocksDBZkdIndexBase::RocksDBZkdIndexBase(
     arangodb::IndexId iid, arangodb::LogicalCollection& coll,
-    arangodb::velocypack::Slice const& info)
+    arangodb::velocypack::Slice info)
     : RocksDBIndex(iid, coll, info,
                    RocksDBColumnFamilyManager::get(
                        RocksDBColumnFamilyManager::Family::ZkdIndex),
-                   false) {}
+                   /*useCache*/ false,
+                   /*cacheManager*/ nullptr,
+                   /*engine*/
+                   coll.vocbase()
+                       .server()
+                       .getFeature<EngineSelectorFeature>()
+                       .engine<RocksDBEngine>()) {}
 
 void arangodb::RocksDBZkdIndexBase::toVelocyPack(
     arangodb::velocypack::Builder& builder,

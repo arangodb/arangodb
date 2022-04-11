@@ -39,9 +39,25 @@ class Slice;
 
 namespace arangodb::replication2::replicated_state::agency {
 
+struct ImplementationSpec {
+  std::string type;
+
+  void toVelocyPack(velocypack::Builder& builder) const;
+  [[nodiscard]] static auto fromVelocyPack(velocypack::Slice)
+      -> ImplementationSpec;
+};
+
+struct Properties {
+  ImplementationSpec implementation;
+
+  void toVelocyPack(velocypack::Builder& builder) const;
+  [[nodiscard]] static auto fromVelocyPack(velocypack::Slice) -> Properties;
+};
+
 struct Plan {
   LogId id;
   StateGeneration generation;
+  Properties properties;
 
   struct Participant {
     StateGeneration generation;
@@ -57,44 +73,9 @@ struct Plan {
 };
 
 struct Current {
-  LogId id;
-
   struct ParticipantStatus {
     StateGeneration generation;
-
-    struct Snapshot {
-      enum class Status {
-        kInProgress,
-        kCompleted,
-        kFailed,
-      };
-
-      using clock = std::chrono::system_clock;
-
-      struct Error {
-        ErrorCode error;
-        std::optional<std::string> message;
-        clock::time_point retryAt;
-        void toVelocyPack(velocypack::Builder& builder) const;
-        [[nodiscard]] static auto fromVelocyPack(velocypack::Slice) -> Error;
-
-        friend auto operator==(Error const&, Error const&) noexcept
-            -> bool = default;
-      };
-
-      void toVelocyPack(velocypack::Builder& builder) const;
-      [[nodiscard]] static auto fromVelocyPack(velocypack::Slice) -> Snapshot;
-
-      friend auto operator==(Snapshot const&, Snapshot const&) noexcept
-          -> bool = default;
-
-      Status status{Status::kInProgress};
-      clock::time_point timestamp;
-      std::optional<Error> error;
-    };
-
-    // TODO might become an array later?
-    Snapshot snapshot;
+    SnapshotInfo snapshot;  // TODO might become an array later?
 
     friend auto operator==(ParticipantStatus const&,
                            ParticipantStatus const&) noexcept -> bool = default;
@@ -105,15 +86,52 @@ struct Current {
 
   std::unordered_map<ParticipantId, ParticipantStatus> participants;
 
+  struct Supervision {
+    std::uint64_t version;
+
+    void toVelocyPack(velocypack::Builder& builder) const;
+    [[nodiscard]] static auto fromVelocyPack(velocypack::Slice) -> Supervision;
+    friend auto operator==(Supervision const&, Supervision const&) noexcept
+        -> bool = default;
+  };
+
+  std::optional<Supervision> supervision;
+
   friend auto operator==(Current const&, Current const&) noexcept
       -> bool = default;
   void toVelocyPack(velocypack::Builder& builder) const;
   [[nodiscard]] static auto fromVelocyPack(velocypack::Slice) -> Current;
 };
 
-auto to_string(Current::ParticipantStatus::Snapshot::Status status)
-    -> std::string_view;
-auto from_string(std::string_view string)
-    -> Current::ParticipantStatus::Snapshot::Status;
+struct Target {
+  LogId id;
+
+  Properties properties;
+
+  std::optional<ParticipantId> leader;
+
+  struct Participant {
+    void toVelocyPack(velocypack::Builder& builder) const;
+    [[nodiscard]] static auto fromVelocyPack(velocypack::Slice) -> Participant;
+  };
+
+  std::unordered_map<ParticipantId, Participant> participants;
+  LogConfig config;
+  std::optional<std::uint64_t> version;
+
+  void toVelocyPack(velocypack::Builder& builder) const;
+  [[nodiscard]] static auto fromVelocyPack(velocypack::Slice) -> Target;
+};
+
+struct State {
+  Target target;
+  std::optional<Plan> plan;
+  std::optional<Current> current;
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, Current::Supervision& x) {
+  return f.object(x).fields(f.field("version", x.version));
+}
 
 }  // namespace arangodb::replication2::replicated_state::agency

@@ -26,7 +26,6 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Options.h>
-#include <velocypack/velocypack-aliases.h>
 #include <numeric>
 
 #include "Logger/LogMacros.h"
@@ -51,12 +50,12 @@ static auto RowHasNonEmptyValue(ShadowAqlItemRow const& row) -> bool {
 }  // namespace
 
 MultiAqlItemBlockInputRange::MultiAqlItemBlockInputRange(
-    ExecutorState state, std::size_t skipped, std::size_t nrInputRanges) {
+    MainQueryState state, std::size_t skipped, std::size_t nrInputRanges) {
   _inputs.resize(nrInputRanges, AqlItemBlockInputRange{state, skipped});
   TRI_ASSERT(nrInputRanges > 0);
 }
 
-auto MultiAqlItemBlockInputRange::resizeOnce(ExecutorState state,
+auto MultiAqlItemBlockInputRange::resizeOnce(MainQueryState state,
                                              size_t skipped,
                                              size_t nrInputRanges) -> void {
   // Is expected to be called exactly once to set the number of dependencies.
@@ -288,7 +287,7 @@ auto MultiAqlItemBlockInputRange::numberDependencies() const noexcept
 
 auto MultiAqlItemBlockInputRange::reset() -> void {
   for (auto& range : _inputs) {
-    range = AqlItemBlockInputRange(ExecutorState::HASMORE);
+    range = AqlItemBlockInputRange(MainQueryState::HASMORE);
   }
 }
 
@@ -316,13 +315,13 @@ auto MultiAqlItemBlockInputRange::reset() -> void {
 }
 
 [[nodiscard]] auto MultiAqlItemBlockInputRange::finalState() const noexcept
-    -> ExecutorState {
+    -> MainQueryState {
   bool hasMore =
       std::any_of(_inputs.begin(), _inputs.end(), [](auto const& range) {
-        return range.finalState() == ExecutorState::HASMORE;
+        return range.finalState() == MainQueryState::HASMORE;
       });
   if (hasMore) {
-    return ExecutorState::HASMORE;
+    return MainQueryState::HASMORE;
   }
-  return ExecutorState::DONE;
+  return MainQueryState::DONE;
 }

@@ -84,7 +84,6 @@ ClientFeature::ClientFeature(ApplicationServer& server,
       _haveServerPassword(false),
       _forceJson(false) {
   setOptional(true);
-  requiresElevatedPrivileges(false);
 }
 
 void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -139,7 +138,7 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                     "force to not use VelocyPack for easier debugging",
                     new BooleanParameter(&_forceJson),
                     arangodb::options::makeDefaultFlags(
-                        arangodb::options::Flags::Hidden))
+                        arangodb::options::Flags::Uncommon))
         .setIntroducedIn(30600);
   }
 
@@ -155,7 +154,8 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
         "connections - even when a new connection to another server is "
         "created",
         new BooleanParameter(&_askJwtSecret),
-        arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+        arangodb::options::makeDefaultFlags(
+            arangodb::options::Flags::Uncommon));
 
     options->addOption(
         "--server.jwt-secret-keyfile",
@@ -166,7 +166,8 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
         "connections - even when a new connection to another server is "
         "created",
         new StringParameter(&_jwtSecretFile),
-        arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+        arangodb::options::makeDefaultFlags(
+            arangodb::options::Flags::Uncommon));
   }
 
   options->addOption("--server.connection-timeout",
@@ -182,7 +183,7 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "--server.max-packet-size",
       "maximum packet size (in bytes) for client/server communication",
       new UInt64Parameter(&_maxPacketSize),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   std::unordered_set<uint64_t> const sslProtocols = availableSslProtocols();
 
@@ -196,7 +197,7 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       new UInt16Parameter(&_codePage),
       arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs,
                                    arangodb::options::Flags::OsWindows,
-                                   arangodb::options::Flags::Hidden));
+                                   arangodb::options::Flags::Uncommon));
 #endif
 }
 

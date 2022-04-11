@@ -29,6 +29,7 @@
 #include <optional>
 
 #include "Futures/Future.h"
+#include "Replication2/ReplicatedState/AgencySpecification.h"
 
 namespace arangodb {
 class Result;
@@ -84,6 +85,20 @@ auto createReplicatedLogTrx(arangodb::agency::envelope envelope,
     -> arangodb::agency::envelope;
 auto createReplicatedLog(DatabaseID const& database, LogTarget const& spec)
     -> futures::Future<ResultT<uint64_t>>;
+auto createReplicatedState(DatabaseID const& database,
+                           replicated_state::agency::Target const& spec)
+    -> futures::Future<ResultT<uint64_t>>;
 auto getCurrentSupervision(TRI_vocbase_t& vocbase, LogId id)
     -> LogCurrentSupervision;
+
+auto replaceReplicatedStateParticipant(
+    TRI_vocbase_t& vocbase, LogId id, ParticipantId const& participantToRemove,
+    ParticipantId const& participantToAdd,
+    std::optional<ParticipantId> const& currentLeader)
+    -> futures::Future<Result>;
+
+auto replaceReplicatedSetLeader(TRI_vocbase_t& vocbase, LogId id,
+                                std::optional<ParticipantId> const& leaderId)
+    -> futures::Future<Result>;
+
 }  // namespace arangodb::replication2::agency::methods

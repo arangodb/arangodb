@@ -26,7 +26,8 @@
 #include "Basics/Common.h"
 #include "Basics/Result.h"
 #include "Basics/VelocyPackHelper.h"
-
+#include "Containers/FlatHashMap.h"
+#include "Containers/FlatHashSet.h"
 #include "RestServer/arangod.h"
 
 namespace arangodb {
@@ -34,6 +35,9 @@ namespace arangodb {
 namespace replication2 {
 namespace replicated_log {
 struct QuickLogStatus;
+}
+namespace replicated_state {
+struct StateStatus;
 }
 class LogId;
 }  // namespace replication2
@@ -71,16 +75,21 @@ class DBServerAgencySync {
       std::string, std::unordered_map<
                        arangodb::replication2::LogId,
                        arangodb::replication2::replicated_log::QuickLogStatus>>;
+  using LocalStatesMap = std::unordered_map<
+      std::string,
+      std::unordered_map<arangodb::replication2::LogId,
+                         std::optional<arangodb::replication2::
+                                           replicated_state::StateStatus>>>;
 
   /**
    * @brief Get copy of current local state
    * @param  collections  Builder to fill to
    */
   arangodb::Result getLocalCollections(
-      std::unordered_set<std::string> const& dirty,
-      std::unordered_map<std::string, std::shared_ptr<VPackBuilder>>&
+      containers::FlatHashSet<std::string> const& dirty,
+      containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>>&
           collections,
-      LocalLogsMap& replLogs);
+      LocalLogsMap& replLogs, LocalStatesMap& replStates);
 
  private:
   DBServerAgencySyncResult execute();

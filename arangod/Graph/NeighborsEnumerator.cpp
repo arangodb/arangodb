@@ -147,7 +147,7 @@ bool NeighborsEnumerator::next() {
             _currentDepth.emplace(v);
           }
         } else {
-          _opts->cache()->increaseFilterCounter();
+          _opts->cache()->incrFiltered();
         }
       });
 

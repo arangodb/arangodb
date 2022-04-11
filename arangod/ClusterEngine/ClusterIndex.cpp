@@ -21,11 +21,11 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "ClusterIndex.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "ClusterEngine/ClusterEngine.h"
-#include "ClusterIndex.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "Indexes/SortedIndexAttributeMatcher.h"
 #include "RocksDBEngine/RocksDBZkdIndex.h"
@@ -35,26 +35,8 @@
 
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
-using Helper = arangodb::basics::VelocyPackHelper;
-
-namespace {
-/// @brief hard-coded vector of the index attributes
-/// note that the attribute names must be hard-coded here to avoid an init-order
-/// fiasco with StaticStrings::IdString etc.
-/// TODO FIXME
-constexpr std::string_view idAttribute("_id");
-constexpr std::string_view keyAttribute("_key");
-
-// The primary indexes do not have `_id` in the _fields instance variable
-std::vector<std::vector<arangodb::basics::AttributeName>> const
-    primaryIndexAttributes{
-        {arangodb::basics::AttributeName(idAttribute, false)},
-        {arangodb::basics::AttributeName(keyAttribute, false)}};
-
-};  // namespace
 
 ClusterIndex::ClusterIndex(IndexId id, LogicalCollection& collection,
                            ClusterEngineType engineType, Index::IndexType itype,
@@ -86,7 +68,9 @@ ClusterIndex::ClusterIndex(IndexId id, LogicalCollection& collection,
       }
     } else if (_indexType == TRI_IDX_TYPE_PRIMARY_INDEX) {
       // The Primary Index on RocksDB can serve _key and _id when being asked.
-      _coveredFields = ::primaryIndexAttributes;
+      _coveredFields = {
+          {arangodb::basics::AttributeName(StaticStrings::IdString, false)},
+          {arangodb::basics::AttributeName(StaticStrings::KeyString, false)}};
     } else if (_indexType == TRI_IDX_TYPE_PERSISTENT_INDEX) {
       _coveredFields = Index::mergeFields(
           _fields, Index::parseFields(
@@ -114,8 +98,6 @@ void ClusterIndex::toVelocyPackFigures(VPackBuilder& builder) const {
   TRI_ASSERT(builder.isOpenObject());
   Index::toVelocyPackFigures(builder);
 }
-
-// ========== below is cluster schmutz ============
 
 /// @brief return a VelocyPack representation of the index
 void ClusterIndex::toVelocyPack(
@@ -189,12 +171,10 @@ void ClusterIndex::updateClusterSelectivityEstimate(double estimate) {
 bool ClusterIndex::isSorted() const {
   if (_engineType == ClusterEngineType::RocksDBEngine) {
     return _indexType == Index::TRI_IDX_TYPE_PRIMARY_INDEX ||
-           _indexType == Index::TRI_IDX_TYPE_EDGE_INDEX ||
            _indexType == Index::TRI_IDX_TYPE_HASH_INDEX ||
            _indexType == Index::TRI_IDX_TYPE_SKIPLIST_INDEX ||
            _indexType == Index::TRI_IDX_TYPE_PERSISTENT_INDEX ||
-           _indexType == Index::TRI_IDX_TYPE_TTL_INDEX ||
-           _indexType == Index::TRI_IDX_TYPE_FULLTEXT_INDEX;
+           _indexType == Index::TRI_IDX_TYPE_TTL_INDEX;
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   } else if (_engineType == ClusterEngineType::MockEngine) {
     return false;
@@ -211,7 +191,7 @@ void ClusterIndex::updateProperties(velocypack::Slice const& slice) {
 
   if (_engineType == ClusterEngineType::RocksDBEngine) {
     merge.add(StaticStrings::CacheEnabled,
-              VPackValue(Helper::getBooleanValue(
+              VPackValue(arangodb::basics::VelocyPackHelper::getBooleanValue(
                   slice, StaticStrings::CacheEnabled, false)));
 
   } else {
@@ -227,18 +207,6 @@ void ClusterIndex::updateProperties(velocypack::Slice const& slice) {
   _info = std::move(tmp);
   TRI_ASSERT(_info.slice().isObject());
   TRI_ASSERT(_info.isClosed());
-}
-
-bool ClusterIndex::hasCoveringIterator() const {
-  if (_engineType == ClusterEngineType::RocksDBEngine) {
-    return _indexType == Index::TRI_IDX_TYPE_PRIMARY_INDEX ||
-           _indexType == Index::TRI_IDX_TYPE_EDGE_INDEX ||
-           _indexType == Index::TRI_IDX_TYPE_HASH_INDEX ||
-           _indexType == Index::TRI_IDX_TYPE_SKIPLIST_INDEX ||
-           _indexType == Index::TRI_IDX_TYPE_TTL_INDEX ||
-           _indexType == Index::TRI_IDX_TYPE_PERSISTENT_INDEX;
-  }
-  return false;
 }
 
 bool ClusterIndex::matchesDefinition(VPackSlice const& info) const {
@@ -262,7 +230,10 @@ Index::FilterCosts ClusterIndex::supportsFilterCondition(
             allIndexes, this, node, reference, itemsInIndex);
       }
       // other...
-      SimpleAttributeEqualityMatcher matcher(::primaryIndexAttributes);
+      std::vector<std::vector<arangodb::basics::AttributeName>> fields{
+          {arangodb::basics::AttributeName(StaticStrings::IdString, false)},
+          {arangodb::basics::AttributeName(StaticStrings::KeyString, false)}};
+      SimpleAttributeEqualityMatcher matcher(fields);
       return matcher.matchOne(this, node, reference, itemsInIndex);
     }
     case TRI_IDX_TYPE_EDGE_INDEX: {
@@ -422,5 +393,18 @@ ClusterIndex::coveredFields() const {
     TRI_ASSERT(_engineType == ClusterEngineType::RocksDBEngine);
     return _coveredFields;
   }
-  return _fields;
+  switch (_indexType) {
+    case TRI_IDX_TYPE_GEO_INDEX:
+    case TRI_IDX_TYPE_GEO1_INDEX:
+    case TRI_IDX_TYPE_GEO2_INDEX:
+    case TRI_IDX_TYPE_FULLTEXT_INDEX:
+    case TRI_IDX_TYPE_TTL_INDEX:
+    case TRI_IDX_TYPE_ZKD_INDEX:
+    case TRI_IDX_TYPE_IRESEARCH_LINK:
+    case TRI_IDX_TYPE_NO_ACCESS_INDEX: {
+      return arangodb::Index::emptyCoveredFields;
+    }
+    default:
+      return _fields;
+  }
 }

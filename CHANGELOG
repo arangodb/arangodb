@@ -1,6 +1,307 @@
 devel
 -----
 
+* Updated arangosync to v2.9.0-preview-5.
+
+* Auto-regenerate exit code and error code files in non-maintainer mode, too.
+
+* Only show slowest optimizer rules in explain output for optimizer rules
+  that took a considerable amount of time (>= 0.0002 seconds). Previously
+  the slowest 5 optimizer rules were shown, regardless of how long they
+  took to execute and even if they executed sufficiently fast.
+
+* Updated arangosync to v2.9.0-preview-4.
+
+* Make the StatisticsFeature start after the NetworkFeature, so that any 
+  network request issues by cluster statistics gathering can rely on the 
+  networking functionality being available until shutdown.
+
+* BugFix (enterprise-only): (BTS-787) In a hybrid disjoint SmartGraph, having
+  more than one relation, if you add a new vertex collection to a Smart -> 
+  Smart edge relation this vertex collection was rejected with "has to be 
+  satellite" error.
+  Now the collection is created as a SmartVertexCollection as desired.
+
+* Rework internal queues for connection and request statistics. The previous
+  implementation allocated a lot of memory at program start for initializing
+  fixed-sized queues for the statistics objects.
+  The problem with using fixed-sized queues is that they will mostly require
+  too much memory for almost all cases, but still do not protect from the
+  queues becoming full and not being able to hold more items.
+  Now we go with a variable length queue instead, which only requires a
+  small amount of memory initially, and allocate more memory only when needed.
+  Freelists for reusing statistics items are still present to avoid lots of
+  reallocations.
+  The change also reduces the size of the executable's .bss section by more 
+  than 10MB.
+
+* Updated ArangoDB Starter to 0.15.4.
+
+* Always open a new, working connection before HTTP request-fuzzing during 
+  testing. Otherwise the fuzzing results are not 100% comparable from run to
+  run.
+
+* Remove error handling fetching license information to improve user
+  experience. To display the license informationn in the UI is only
+  informational. It disturbs the user experience to know somthing went wrong
+  and doesn't provide any important information for the user.
+
+* Updated bundled version of zlib library to 1.2.12.
+
+* Improve parallelism in arangorestore in case new data format is used.
+
+* Updated OpenSSL to 1.1.1n and OpenLDAP to 2.6.1.
+
+* Updated arangosync to v2.9.0-preview-2.
+
+* Added AQL hint "useCache" for FOR loops, to explicitly disable the usage of 
+  in-memory caches for lookups.
+
+* When profiling an AQL query via `db._profileQuery(...)` or via the web UI,
+  the query profile will now contain the number of index entries read from
+  in-memory caches (usable for edge indexes and indexes of type "persistent",
+  "hash" or "skiplist") plus the number of cache misses.
+
+* The caching subsystem now provides the following 3 additional metrics:
+  - `rocksdb_cache_active_tables`: total number of active hash tables used for
+    caching index values. There should be 1 table per shard per index for which
+    the in-memory cache is enabled. The number also includes temporary tables
+    that are built when migrating existing tables to larger equivalents.
+  - `rocksdb_cache_unused_memory`: total amount of memory used for inactive
+    hash tables used for caching index values. Some inactive tables can be kept
+    around after use, so they can be recycled quickly. The overall amount of
+    inactive tables is limited, so not much memory will be used here.
+  - `rocksdb_cache_unused_tables`: total number of inactive hash tables used
+    for caching index values. Some inactive tables are kept around after use, 
+    so they can be recycled quickly. The overall amount of inactive tables is
+    limited, so not much memory will be used here.
+
+* Added optional in-memory caching for index entries when doing point lookups
+  in indexes of type "persistent", "hash" or "skiplist".
+  The caching is turned off by default, but can be enabled when creating an
+  index of type "persistent", "hash" or "skiplist" by setting the 
+  "cacheEnabled" flag for the index upon index creation. 
+  The cache will be initially empty, but will be populated lazily upon querying 
+  data from the index using equality lookups on all index attributes. 
+  As the cache is hash-based and unsorted, it cannot be used for full or
+  partial range scans, for sorting, or for lookups that do not include all
+  index attributes.
+  The maximum size of index entries that can be stored is currently 4 MB, i.e.
+  the cumulated size of all index entries for any index lookup value must be
+  less than 4 MB. This limitation is there to avoid storing the index entries
+  of "super nodes" in the cache.
+
+  The maximum combined memory usage of all in-memory caches can be controlled 
+  via the existing `--cache.size` startup option, which now not only contains
+  the maximum memory usage for edge caches, but also for index caches added
+  here.
+
+* Updated arangosync to v2.9.0-preview-1.
+
+* Updated ArangoDB Starter to 0.15.4-preview-1.
+
+* Added API method to query a list of available optimizer rules from the 
+  arangod process.
+
+* Added new server option: --icu-language. Used instead of --default-language 
+  to set pure ICU collator.
+
+  For example, in Sweden language("sv") lowercase letters should precede 
+  uppercase ones. You can achieve it using following options when server starts
+
+    --icu-language sv
+
+* Added new AQL function `KEEP_RECURSIVE` to recursively keep attributes from
+  objects/documents, as a counterpart to `UNSET_RECURSIVE`.
+
+* No longer put document writes from replication into the audit log by
+  default. Same with low priority authentication like internal UI requests
+  to .html files for the UI. This solves a performance problem for
+  shards getting in sync with audit log switched on.
+
+* Added an HTTP fuzzer to arangosh that can send fuzzed requests to the server.
+  The amount of requests sent is provided by one of the parameters of the 
+  new arangosh function `fuzzRequests()`.
+  The optional parameters that can be supplied are: 
+  `fuzzRequests(<numRequests>, <numIterations>, <seed>)`
+  The parameter numIterations is the amount of times the fuzzer is going to 
+  perform its random actions on the header, and seed is for the seed that is 
+  used for randomizing. 
+  The fuzzer is available only when building with failure points.
+
+* Fixed ES-1078: The REST API endpoint for handling `/_api/user/${user}/config`
+  did not work properly. The supplied data by sending a PUT request has not been
+  stored to the correct location. The Web UI uses this endpoint to store its
+  graph properties for storing the visualization properties. As this endpoint
+  did not work as expected, the graph visualization properties did not get
+  persisted as well. This is now resolved.
+
+* Speed up initial sync (in case there is already data present) by prefetching
+  data from leader.
+
+* Escape each key in attribute paths of nested attributes in the query explain
+  output for SEARCH queries that utilize the primary sort order.
+
+* Turn off sending "Server" HTTP response header on DB servers if not 
+  explicitly requested. This saves a tiny bit of traffic on each response
+  from a DB server.
+
+* Fix null pointer access when using WINDOW operation with a COUNT/LENGTH
+  aggregate function without any arguments.
+
+* Enable range deletions in the WAL for truncate operations in the cluster, 
+  too. This can speed up truncate operations for large collections/shards.
+
+* Set max recursion depth for VelocyPack, JSON and JavaScript arrays and 
+  objects to about 200.
+
+* Updated snowball to version 2.2.0
+
+* Fixed: Deadlock created by high load and a follower trying to get into 
+  sync.
+  In the final synchronization phase the follower needs to temporarily block 
+  writes on the leader so we have a reliable point in time where we can prove 
+  that the data is consistent.
+  If the leader at this point is flooded with write requests to that shard 
+  there is a chance that all worker threads only pick up those writes, which 
+  cannot make any progress until the lock is cleared. However, the process to 
+  clear the lock was on the same priority as those writes.
+  Hence this lock clear operations could not bypass the writes. Now we moved 
+  every follow up request after the lock to HIGH lanes, which will allow them 
+  to bypass all non-internal operations.
+
+* arangosh now uses the same header the UI uses to gain higher priority on 
+  initial connection.
+  This will increase the chance for an arangosh to connect to a server under 
+  very high load.
+
+* Removed internal JavaScript dependencies "mocha" and "chalk". We recommend
+  always bundling your own copy of third-party modules, even ones listed as
+  public.
+
+* Bugfix: DC2DC Disjoint-SmartGraphs and Hybrid-SmartGraphs are now
+  replicated to the follower data-center keeping their sharding intact.
+
+* Optimize further RocksDB throttle to allow for no change on any
+  given calculation cycle.
+
+* Added a log message that appears upon starting arangod that shows the number 
+  of the parent process id and, if able to acknowledge it, the name of the 
+  parent process.
+
+* Avoid multiple parallel SIGHUP requests to be handled at the same time.
+  Now collapse multiple incoming SIGHUP requests into a single one, which can
+  be executed race-free.
+
+* Parallelize applying of revision tree changes with fetching next revision
+  tree range in incremental collection replication for collections created 
+  with ArangoDB 3.8 and higher.
+
+* Support JSON schema objects for documenting Foxx endpoints.
+
+* Internal refactoring of IndexIterator APIs.
+
+* Sorted out various geo problems:
+
+  - No more special detection of "latitude-longitude rectangles" is done,
+    since this is in conflict with the definition of polygon boundaries to
+    be geodesics.
+  - Linear rings in polygons are no longer automatically "normalized", so
+    now it is possible to have polygons which cover more than half of the
+    Earth.
+  - Rules for polygons and multigons have been clarified and are now properly
+    enforced for the `GEO_POLYGON` and `GEO_MULTIPOLYGON` AQL functions.
+  - Introduced `legacyPolygon` flag for geo indexes to continue to support
+    the old behaviour in existing geo indexes.
+  - Added lots of additional tests, thereby fixing several bugs in geo index
+    lookup.
+  - Use a faster algorithm for pure `GEO_CONTAINS` and `GEO_INTERSECTS`
+    queries.
+
+* Fix counts and file size sum in hotbackup META files. Do no longer count
+  directories.
+
+* Fixed an assertion failure which could occur when there was an error in
+  the HTTP header, so that the message body was not actually read.
+
+* Fixed a crash which could occur when there was an error in the HTTP
+  header parsing).
+
+* Added back the optimization for empty document update operations (i.e. update
+  requests in which no attributes were specified to be updated), handling them 
+  in a special way without performing any writes, also excluding such special 
+  cases of operation from replication to followers.
+
+* Upgraded JavaScript "i" module from 0.3.6 to 0.3.7.
+
+* Bug-Fix: Resolve BTS-673/Issue #15107, a spliced subquery could return
+  too few results
+
+* Changed Foxx service generator output to use static variable names
+
+* As we are now in constant stall regime, stall onset and warnings are
+  demoted to DEBUG.
+
+* Allow early pruning (moving a FILTER condition into an IndexNode or
+  EnumerateCollectionNode) in more cases than before. Previously, early
+  pruning was only possible if the FILTER condition referred to exactly one
+  variable, which had to be the FOR loop's own variable. Now, early
+  pruning is possible with arbitrary variables that are accessible by the
+  FOR loop.
+
+* Fixed a race detected with chaos tests, where a db server could have
+  momentarily lost leadership, just when it was about to drop a
+  follower to that shard.
+
+* In an attempt to make the performance of the RocksDB throttle much
+  more consistent and predictable the default compaction slow down
+  trigger is lowered to 128kB.
+
+* Fixed BTS-750: Fixed the issue restricted to cluster mode in which queries 
+  containing the keywords UPDATE or REPLACE together with the keyword WITH and
+  the same key value would result in an error. For example: 
+  `UPDATE 'key1' WITH {_key: 'key1'} IN Collection`
+  because the same key used to update was provided in the object to update the
+  document with.  
+
+* The multi-dimensional index type `zkd` now supports an optional index hint for
+  tweaking performance by prefetching documents:
+	
+	```
+	FOR app IN appointments OPTIONS { lookahead: 32 }
+    FILTER @to <= app.to
+    FILTER app.from <= @from
+    RETURN app
+	```
+	
+	Specifiying a lookahead value greater than zero makes the index fetch more documents
+	that are no longer in the search box, before seeking to the next lookup position.
+	Because the seek operation is computationally expensive, probing more documents
+	before seeking may reduce the number of seeks, if matching documents are found.
+	Please keep in mind that it might also affect performance negatively if documents
+	are fetched unnecessarily.
+
+* Replaced internal JS dependency xmldom with @xmldom/xmldom.
+
+* Enabled new internal graph refactored code for depth-first, breadth-first and
+  weighted traversals by default.
+
+* Replaced internal JS dependency ansi-html with ansi-html-community.
+
+* Improved performance of inner joins with dynamic lookup conditions being
+  injected from an outer loop, for indexes of type "persistent", "hash" and
+  "skiplist". Performance improvements can be expected if the inner join is
+  invoked a lot of times with many different values fed in by the outer loop.
+  The performance improvements are due to some improved handling of index
+  lookup conditions in the internals of the VelocyPack-based index.
+
+* Upgrade bundled version of jemalloc to 5.3rc (upstream commit a4e8122).
+
+* Improve usefulness of `storedValues` together with late materialization.
+
+* Reintroduce shard synchronization cancellation check that was disabled
+  before.
+
 * Bug-Fix: AQL WINDOW statement if applied within a subquery could accidentally
   skip over some subquery results. This did only show up if the subquery fills
   exactly one internal batch before it is completed, so it is rather unlikely.
@@ -8,10 +309,11 @@ devel
 * Fix potential access to dangling reference in cancellation of shard
   synchronization.
 
-* Limited module resolution in arangosh to the path from which arangosh is invoked.
+* Limited module resolution in arangosh to the path from which arangosh is
+  invoked.
 
-* Fixed BTS-621 Fixed rare case of segfault in cluster during database recovery if DBServer is
-  in upgrade mode in the same time.
+* Fixed BTS-621 Fixed rare case of segfault in cluster during database recovery
+  if DBServer is in upgrade mode in the same time.
 
 * Changed default value of startup option 
   `--rocksdb.cache-index-and-filter-blocks` from `false` to `true`.
@@ -59,7 +361,7 @@ devel
   This drastically reduces peak memory usage for queries that use index lookups
   in inner loops and that get lots of different inputs from outer loops.
 
-* Adjust interal RocksDB setting `optimize_filters_for_hits` for Documents
+* Adjust internal RocksDB setting `optimize_filters_for_hits` for Documents
   column family, setting it from `false` to `true`. This should reduce memory
   and disk space requirements for the bottom-most .sst files of the documents
   column family.
@@ -72,23 +374,24 @@ devel
   and total amount of data parsed for the client tools arangodump and 
   arangorestore. 
 
-* Fixed minDepth handling of weighted Traversals. When using a minDepth of 3, also paths of length
-  2 have been returned, on all locally executed variants (SingleServer, OneShard, DisjointSmart).
+* Fixed minDepth handling of weighted traversals. When using a minDepth of 3, 
+  also paths of length 2 have been returned, on all locally executed variants 
+  (SingleServer, OneShard, DisjointSmart).
 
-* Fixed BTS-728 (no released version infected) fixed: for DisjointSmartGraphs, that include
-  a satellite vertex collection, valid disjoint path were not always followed, if one of the
-  satellites has a connection to two (or more) vertices that have different shardValues that
-  by chance are routed to the same shard.
+* Fixed BTS-728 (no released version infected) fixed: for DisjointSmartGraphs, 
+  that include a satellite vertex collection, valid disjoint path were not always 
+  followed, if one of the satellites has a connection to two (or more) vertices 
+  that have different shardValues that by chance are routed to the same shard.
 
-* Fixed PRESUPP-445: Foxx queues: Some Jobs are never run in case of
+* Fixed PRESUPP-445: Foxx queues: Some jobs are never run in case of
   multiple Coordinators.
 
-* Fixed BTS-740 (no released version infected) fixed Smart<->Sat SmartEdgeCollections
-  determining the shard in SingleRemoteModification nodes was incorrect. E.g. this could
-  be triggered, by viewing the details of an edge in the UI. Only alpha/beta of 3.9.0
-  contained this bug.
+* Fixed BTS-740 (no released version infected) fixed Smart<->Sat 
+  SmartEdgeCollections determining the shard in SingleRemoteModification nodes 
+  was incorrect. E.g. this could be triggered, by viewing the details of an edge 
+  in the UI. Only alpha/beta of 3.9.0 contained this bug.
 
-* Fixed BTS-729 (no released version infected): Some conditions in a Hybrid
+* Fixed BTS-729 (no released version affected): Some conditions in a Hybrid
   Smart Graph could led to wrong shard location calculation and therefore to
   wrong graph query results. Only alpha/beta of 3.9.0 contained this bug.
 
@@ -218,8 +521,6 @@ devel
   
 * Fixed BTS-693: Sort-limit rule now always ensures proper LIMIT node placement
   to avoid possible invalid results in the fullCount data.
-
-* Added new AQL function SHARD_ID.
 
 * Updated OpenSSL to 1.1.1m and OpenLDAP to 2.6.0.
 
@@ -13034,7 +13335,7 @@ v2.8.0-alpha1 (2015-12-03)
   the HTTP response header `"Server: ArangoDB"` in its HTTP responses. By default,
   the option is turned off so the header is still sent as usual.
 
-* added new AQL function `UNSET_RECURSIVE` to recursively unset attritutes from
+* added new AQL function `UNSET_RECURSIVE` to recursively unset attributes from
   objects/documents
 
 * switched command-line editor in ArangoShell and arangod to linenoise-ng

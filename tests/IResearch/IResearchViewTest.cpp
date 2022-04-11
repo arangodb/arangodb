@@ -101,7 +101,7 @@ struct DocIdScorer : public irs::sort {
     return "test_doc_id";
   }
 
-  static ptr make(const irs::string_ref&) {
+  static ptr make(irs::string_ref) {
     PTR_NAMED(DocIdScorer, ptr);
     return ptr;
   }
@@ -1856,9 +1856,7 @@ TEST_F(IResearchViewTest, test_cleanup) {
         arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
         EMPTY, arangodb::transaction::Options());
     EXPECT_TRUE((trx.begin().ok()));
-    EXPECT_TRUE((link->remove(trx, arangodb::LocalDocumentId(0),
-                              arangodb::velocypack::Slice::emptyObjectSlice())
-                     .ok()));
+    EXPECT_TRUE((link->remove(trx, arangodb::LocalDocumentId(0)).ok()));
     EXPECT_TRUE((trx.commit().ok()));
     EXPECT_TRUE(link->commit().ok());
   }
@@ -2765,7 +2763,9 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
     Link(arangodb::IndexId id, arangodb::LogicalCollection& col)
         : IResearchLink(id, col) {
       auto json = VPackParser::fromJson(R"({ "view": "42" })");
-      EXPECT_TRUE(init(json->slice()).ok());
+      bool pathExists = false;
+      EXPECT_TRUE(init(json->slice(), pathExists).ok());
+      EXPECT_TRUE(pathExists);
     }
   };
 
@@ -3653,9 +3653,7 @@ TEST_F(IResearchViewTest, test_remove) {
 
       // skip tick operations before recovery tick
       StorageEngineMock::recoveryTickResult = 41;
-      EXPECT_TRUE(link->remove(trx, arangodb::LocalDocumentId(1),
-                               VPackSlice::noneSlice())
-                      .ok());
+      EXPECT_TRUE(link->remove(trx, arangodb::LocalDocumentId(1)).ok());
       StorageEngineMock::recoveryTickResult = 42;
       EXPECT_TRUE(link->insert(trx, arangodb::LocalDocumentId(2),
                                VPackSlice::noneSlice())
@@ -3663,9 +3661,7 @@ TEST_F(IResearchViewTest, test_remove) {
 
       // apply remove after recovery tick
       StorageEngineMock::recoveryTickResult = 43;
-      EXPECT_TRUE(link->remove(trx, arangodb::LocalDocumentId(3),
-                               VPackSlice::noneSlice())
-                      .ok());
+      EXPECT_TRUE(link->remove(trx, arangodb::LocalDocumentId(3)).ok());
 
       EXPECT_TRUE(trx.commit().ok());
       EXPECT_TRUE(link->commit().ok());

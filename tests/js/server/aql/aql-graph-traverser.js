@@ -1838,7 +1838,12 @@ function complexInternaSuite() {
       vc.save({_key: '1'});
       vc2.save({_key: '1'});
       ec.save(vn + '/1', vn2 + '/1', {});
-      var query = `WITH ${vn2}
+
+      // [GraphRefactor] Note: Eventually related to #GORDO-1361
+      // Currently we always load the start vertex, even if it might not be required.
+      // Therefore, "WITH ${vn}" have been added here. This can be improved, after we
+      // are capable of handling the issue: #GORDO-1360.
+      var query = `WITH ${vn}, ${vn2}
       FOR x IN OUTBOUND @startId @@eCol
       RETURN x`;
       var bindVars = {
@@ -2930,15 +2935,17 @@ function complexFilteringSuite() {
       assertEqual(cursor.count(), 0);
       var stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
-      // 1 Primary (Tri1)
-      // 1 Edge (Tri1->Tri2)
-      // 1 Primary (Tri2)
 
       if (isCluster) {
+        // Note: In the cluster case, we're currently pre-fetching. Therefore, our scannedIndex result
+        // mismatches in comparison to the SingleServer variant.
+        // 1 Primary (Tri1)
+        // 1 Edge (Tri1->Tri2)
+        // 1 Primary (Tri2)
+        assertEqual(stats.scannedIndex, 3);
+      } else {
         // one edge and one vertex lookup
         assertEqual(stats.scannedIndex, 2);
-      } else {
-        assertEqual(stats.scannedIndex, 1);
       }
 
       assertEqual(stats.filtered, 1);
@@ -2977,7 +2984,14 @@ function complexFilteringSuite() {
       assertEqual(stats.scannedFull, 0);
       // The lookup will be using the primary Index.
       // It will find 0 elements.
-      assertEqual(stats.scannedIndex, 0);
+      if (isCluster) {
+        // Note: In the cluster case, we're currently pre-fetching. Therefore, our scannedIndex result
+        // mismatches in comparison to the SingleServer variant.
+        assertEqual(stats.scannedIndex, 1);
+      } else {
+        assertEqual(stats.scannedIndex, 0);
+      }
+
       assertEqual(stats.filtered, 0);
     },
 
@@ -3023,7 +3037,7 @@ function complexFilteringSuite() {
         // 2 Primary lookup B,D
         // 2 Edge Lookups (2 B) (0 D)
         // 2 Primary Lookups (C, F)
-        assertTrue(stats.scannedIndex <= 9);
+        assertTrue(stats.scannedIndex <= 11);
       } else {
         // 2 Edge Lookups (A)
         // 2 Primary (B, D) for Filtering
@@ -3110,7 +3124,7 @@ function complexFilteringSuite() {
         // 2 Primary lookup B,D
         // 2 Edge Lookups (0 B) (2 D)
         // 2 Primary Lookups (E, G)
-        assertTrue(stats.scannedIndex <= 8);
+        assertTrue(stats.scannedIndex <= 11);
       } else {
         // 2 Edge Lookups (A)
         // 2 Primary Lookups for Eval (B, D)
@@ -3151,7 +3165,7 @@ function complexFilteringSuite() {
         // 1 Primary (B)
         // 2 Edge
         // 2 Primary (C,F)
-        assertTrue(stats.scannedIndex <= 7);
+        assertTrue(stats.scannedIndex <= 8);
       } else {
         // 2 Edge Lookups (A)
         // 2 Edge Lookups (B)
@@ -3194,7 +3208,7 @@ function complexFilteringSuite() {
         // they may be inserted in the vertexToFetch list, which
         // lazy loads all vertices in it.
         if (stats.scannedIndex !== 8) {
-          assertTrue(stats.scannedIndex <= 10);
+          assertTrue(stats.scannedIndex <= 11);
         }
       } else {
         // 2 Edge Lookups (A)
@@ -3249,7 +3263,7 @@ function complexFilteringSuite() {
           // 2 Primary lookup B,D
           // 2 Edge Lookups (2 B) (0 D)
           // 2 Primary Lookups (C, F)
-          assertTrue(stats.scannedIndex <= 8, stats.scannedIndex);
+          assertTrue(stats.scannedIndex <= 11, stats.scannedIndex);
         } else {
           // Cluster uses a lookup cache.
           // Pointless in single-server mode
@@ -3307,7 +3321,7 @@ function complexFilteringSuite() {
           // 2 Primary lookup B,D
           // 2 Edge Lookups (2 B) (0 D)
           // 2 Primary Lookups (C, F)
-          assertTrue(stats.scannedIndex <= 8);
+          assertTrue(stats.scannedIndex <= 11);
         } else {
           // Cluster uses a lookup cache.
           // Pointless in single-server mode
@@ -4167,7 +4181,7 @@ function optimizeQuantifierSuite() {
       let stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
-        assertTrue(stats.scannedIndex <= 9, stats.scannedIndex);
+        assertTrue(stats.scannedIndex <= 11, stats.scannedIndex);
       } else {
         // With traverser-read-cache
         // assertEqual(stats.scannedIndex, 9);
@@ -4271,7 +4285,7 @@ function optimizeQuantifierSuite() {
       let stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
-        assertTrue(stats.scannedIndex <= 9, stats.scannedIndex);
+        assertTrue(stats.scannedIndex <= 11, stats.scannedIndex);
       } else {
         // With traverser-read-cache
         // assertEqual(stats.scannedIndex, 9);
@@ -4375,7 +4389,7 @@ function optimizeQuantifierSuite() {
       let stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
-        assertTrue(stats.scannedIndex <= 9, stats.scannedIndex);
+        assertTrue(stats.scannedIndex <= 11, stats.scannedIndex);
       } else {
         // With traverser-read-cache
         // assertEqual(stats.scannedIndex, 9);
@@ -4437,7 +4451,7 @@ function optimizeQuantifierSuite() {
       let stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
-        assertTrue(stats.scannedIndex <= 9, stats.scannedIndex);
+        assertTrue(stats.scannedIndex <= 11, stats.scannedIndex);
       } else {
         // With traverser-read-cache
         // assertEqual(stats.scannedIndex, 9);
@@ -4501,7 +4515,7 @@ function optimizeQuantifierSuite() {
       let stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
-        assertTrue(stats.scannedIndex <= 9, stats.scannedIndex);
+        assertTrue(stats.scannedIndex <= 11, stats.scannedIndex);
       } else {
         // With activated traverser-read-cache:
         // assertEqual(stats.scannedIndex, 9);
@@ -4533,7 +4547,7 @@ function optimizeQuantifierSuite() {
       let stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
-        assertTrue(stats.scannedIndex <= 6, stats.scannedIndex);
+        assertTrue(stats.scannedIndex <= 7, stats.scannedIndex);
       } else {
         // With activated traverser-read-cache:
         // assertEqual(stats.scannedIndex, 7);
@@ -5118,20 +5132,39 @@ function unusedVariableSuite() {
     },
 
     testCountSubquery: function () {
-      const queries = [
-        [ 'RETURN COUNT(FOR v IN 1..1 OUTBOUND @start @@edges RETURN 1)', 1],
-        [ 'RETURN COUNT(FOR v IN 1..100 OUTBOUND @start @@edges RETURN 1)', 100],
-        [ 'RETURN COUNT(FOR v IN 1..1000 OUTBOUND @start @@edges RETURN 1)', 1000],
-        [ 'RETURN COUNT(FOR v,e IN 1..1 OUTBOUND @start @@edges RETURN 1)', 1],
-        [ 'RETURN COUNT(FOR v,e IN 1..100 OUTBOUND @start @@edges RETURN 1)', 100],
-        [ 'RETURN COUNT(FOR v,e IN 1..1000 OUTBOUND @start @@edges RETURN 1)', 1000],
-        [ 'RETURN COUNT(FOR v,e,p IN 1..1 OUTBOUND @start @@edges RETURN 1)', 1],
-        [ 'RETURN COUNT(FOR v,e,p IN 1..100 OUTBOUND @start @@edges RETURN 1)', 100],
-        [ 'RETURN COUNT(FOR v,e,p IN 1..1000 OUTBOUND @start @@edges RETURN 1)', 1000],
-        [ 'RETURN COUNT(FOR v,e,p IN 1..1 OUTBOUND @start @@edges RETURN v)', 1],
-        [ 'RETURN COUNT(FOR v,e,p IN 1..100 OUTBOUND @start @@edges RETURN v)', 100],
-        [ 'RETURN COUNT(FOR v,e,p IN 1..1000 OUTBOUND @start @@edges RETURN v)', 1000],
-      ];
+      let queries = [];
+      if (isCluster) {
+        // [GraphRefactor] Note: Related to #GORDO-1360
+        queries = [
+          [ `WITH ${gn}v RETURN COUNT(FOR v IN 1..1 OUTBOUND @start @@edges RETURN 1)`, 1],
+          [ `WITH ${gn}v RETURN COUNT(FOR v IN 1..100 OUTBOUND @start @@edges RETURN 1)`, 100],
+          [ `WITH ${gn}v RETURN COUNT(FOR v IN 1..1000 OUTBOUND @start @@edges RETURN 1)`, 1000],
+          [ `WITH ${gn}v RETURN COUNT(FOR v,e IN 1..1 OUTBOUND @start @@edges RETURN 1)`, 1],
+          [ `WITH ${gn}v RETURN COUNT(FOR v,e IN 1..100 OUTBOUND @start @@edges RETURN 1)`, 100],
+          [ `WITH ${gn}v RETURN COUNT(FOR v,e IN 1..1000 OUTBOUND @start @@edges RETURN 1)`, 1000],
+          [ `WITH ${gn}v RETURN COUNT(FOR v,e,p IN 1..1 OUTBOUND @start @@edges RETURN 1)`, 1],
+          [ `WITH ${gn}v RETURN COUNT(FOR v,e,p IN 1..100 OUTBOUND @start @@edges RETURN 1)`, 100],
+          [ `WITH ${gn}v RETURN COUNT(FOR v,e,p IN 1..1000 OUTBOUND @start @@edges RETURN 1)`, 1000],
+          [ `WITH ${gn}v RETURN COUNT(FOR v,e,p IN 1..1 OUTBOUND @start @@edges RETURN v)`, 1],
+          [ `WITH ${gn}v RETURN COUNT(FOR v,e,p IN 1..100 OUTBOUND @start @@edges RETURN v)`, 100],
+          [ `WITH ${gn}v RETURN COUNT(FOR v,e,p IN 1..1000 OUTBOUND @start @@edges RETURN v)`, 1000],
+        ];
+      } else {
+        queries = [
+          [ 'RETURN COUNT(FOR v IN 1..1 OUTBOUND @start @@edges RETURN 1)', 1],
+          [ 'RETURN COUNT(FOR v IN 1..100 OUTBOUND @start @@edges RETURN 1)', 100],
+          [ 'RETURN COUNT(FOR v IN 1..1000 OUTBOUND @start @@edges RETURN 1)', 1000],
+          [ 'RETURN COUNT(FOR v,e IN 1..1 OUTBOUND @start @@edges RETURN 1)', 1],
+          [ 'RETURN COUNT(FOR v,e IN 1..100 OUTBOUND @start @@edges RETURN 1)', 100],
+          [ 'RETURN COUNT(FOR v,e IN 1..1000 OUTBOUND @start @@edges RETURN 1)', 1000],
+          [ 'RETURN COUNT(FOR v,e,p IN 1..1 OUTBOUND @start @@edges RETURN 1)', 1],
+          [ 'RETURN COUNT(FOR v,e,p IN 1..100 OUTBOUND @start @@edges RETURN 1)', 100],
+          [ 'RETURN COUNT(FOR v,e,p IN 1..1000 OUTBOUND @start @@edges RETURN 1)', 1000],
+          [ 'RETURN COUNT(FOR v,e,p IN 1..1 OUTBOUND @start @@edges RETURN v)', 1],
+          [ 'RETURN COUNT(FOR v,e,p IN 1..100 OUTBOUND @start @@edges RETURN v)', 100],
+          [ 'RETURN COUNT(FOR v,e,p IN 1..1000 OUTBOUND @start @@edges RETURN v)', 1000],
+        ]; 
+      }
 
       queries.forEach(function (query) {
         const r = db._query(query[0], {"start": gn + 'v/test0', "@edges": gn+'e'});
