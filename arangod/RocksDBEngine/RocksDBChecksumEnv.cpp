@@ -94,10 +94,9 @@ bool ChecksumHelper::writeShaFile(std::string const& fileName,
       << "shaCalcFile: done " << fileName << " result: " << shaFileName;
   auto res = TRI_WriteFile(shaFileName.c_str(), "", 0);
   if (res == TRI_ERROR_NO_ERROR) {
-    {
-      MUTEX_LOCKER(mutexLock, _calculatedHashesMutex);
-      _fileNamesToHashes.try_emplace(TRI_Basename(fileName), checksum);
-    }
+    std::string basename = TRI_Basename(fileName);
+    MUTEX_LOCKER(mutexLock, _calculatedHashesMutex);
+    _fileNamesToHashes.try_emplace(std::move(basename), checksum);
     return true;
   }
 
