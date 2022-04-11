@@ -241,7 +241,7 @@ rocksdb::Status ChecksumEnv::DeleteFile(const std::string& fileName) {
       if (rocksdb::EnvWrapper::DeleteFile(shaFileName) ==
           rocksdb::Status::OK()) {
         LOG_TOPIC("e0a0d", DEBUG, arangodb::Logger::ENGINES)
-            << "deleteCalcFile:  delete file succeeded for " << shaFileName;
+            << "deleteCalcFile: delete file succeeded for " << shaFileName;
       } else {
         LOG_TOPIC("acb34", WARN, arangodb::Logger::ENGINES)
             << "deleteCalcFile:  delete file failed for " << shaFileName;
