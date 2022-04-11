@@ -186,25 +186,23 @@ Result validateAllCollectionsInfo(
     std::vector<CollectionCreationInfo> const& infos, bool allowSystem,
     bool allowEnterpriseCollectionsOnSingleServer,
     bool enforceReplicationFactor) {
-  Result res;
-
   for (auto const& info : infos) {
     // If the PlanId is not set, we either are on a single server, or this is
     // a local collection in a cluster; which means, it is neither a user-facing
     // collection (as seen on a Coordinator), nor a shard (on a DBServer).
 
     // validate the information of the collection to be created
-    res = validateCreationInfo(
+    Result res = validateCreationInfo(
         info, vocbase, allowEnterpriseCollectionsOnSingleServer,
         enforceReplicationFactor, isLocalCollection(info), isSystemName(info),
         allowSystem);
     if (res.fail()) {
       events::CreateCollection(vocbase.name(), info.name, res.errorNumber());
-      break;
+      return res;
     }
   }
 
-  return res;
+  return {};
 }
 
 // Returns a builder that combines the information from infos and cluster

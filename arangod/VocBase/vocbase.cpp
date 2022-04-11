@@ -1460,21 +1460,20 @@ arangodb::Result TRI_vocbase_t::dropCollection(DataSourceId cid,
 
 arangodb::Result TRI_vocbase_t::validateCollectionParameters(
     arangodb::velocypack::Slice parameters) {
-  bool valid = parameters.isObject();
-  if (valid) {
-    // check that the name does not contain any strange characters
-    std::string name = VelocyPackHelper::getStringValue(
-        parameters, StaticStrings::DataSourceName, "");
-    bool isSystem = VelocyPackHelper::getBooleanValue(
-        parameters, StaticStrings::DataSourceSystem, false);
-    bool extendedNames =
-        server().getFeature<DatabaseFeature>().extendedNamesForCollections();
-    valid =
-        CollectionNameValidator::isAllowedName(isSystem, extendedNames, name);
+  if (!parameters.isObject()) {
+    return {TRI_ERROR_BAD_PARAMETER,
+            "collection parameters should be an object"};
   }
-
-  if (!valid) {
-    return {TRI_ERROR_ARANGO_ILLEGAL_NAME};
+  // check that the name does not contain any strange characters
+  std::string name = VelocyPackHelper::getStringValue(
+      parameters, StaticStrings::DataSourceName, "");
+  bool isSystem = VelocyPackHelper::getBooleanValue(
+      parameters, StaticStrings::DataSourceSystem, false);
+  bool extendedNames =
+      server().getFeature<DatabaseFeature>().extendedNamesForCollections();
+  if (!CollectionNameValidator::isAllowedName(isSystem, extendedNames, name)) {
+    return {TRI_ERROR_ARANGO_ILLEGAL_NAME,
+            "illegal collection name '" + name + "'"};
   }
 
   TRI_col_type_e collectionType =
@@ -1483,7 +1482,8 @@ arangodb::Result TRI_vocbase_t::validateCollectionParameters(
 
   if (collectionType != TRI_col_type_e::TRI_COL_TYPE_DOCUMENT &&
       collectionType != TRI_col_type_e::TRI_COL_TYPE_EDGE) {
-    return {TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID};
+    return {TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID,
+            "invalid collection type for collection '" + name + "'"};
   }
 
   // needed for EE
