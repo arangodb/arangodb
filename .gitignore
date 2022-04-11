@@ -29,6 +29,10 @@ build
 *.lnk
 Thumbs.db
 
+lib/Basics/error-registry.h
+lib/Basics/exitcodes.h
+lib/Basics/voc-errors.h
+
 cppcheck.xml
 
 enterprise
@@ -70,8 +74,6 @@ cmake_install.cmake
 lib/cmake_install.cmake
 
 arangod/Aql/grammar.output
-
-UnitTests/HttpInterface/logs/
 
 /bin
 logs/
@@ -120,8 +122,6 @@ last_compiled_version.sha
 scripts/perfanalysis
 perf*
 callgrind*
-
-Documentation/Metrics/allMetrics.yaml
 
 cmake-build*/
 .cache/

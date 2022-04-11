@@ -64,6 +64,27 @@ typename ProviderImpl::Step ProviderTracer<ProviderImpl>::startVertex(
 
 template<class ProviderImpl>
 futures::Future<std::vector<typename ProviderImpl::Step*>>
+ProviderTracer<ProviderImpl>::fetchVertices(
+    std::vector<typename ProviderImpl::Step*> const& looseEnds) {
+  double start = TRI_microtime();
+  auto sg = arangodb::scopeGuard([&]() noexcept {
+    _stats["fetchVertices"].addTiming(TRI_microtime() - start);
+  });
+  return _impl.fetchVertices(std::move(looseEnds));
+}
+
+template<class ProviderImpl>
+Result ProviderTracer<ProviderImpl>::fetchEdges(
+    std::vector<typename ProviderImpl::Step*> const& fetchedVertices) {
+  double start = TRI_microtime();
+  auto sg = arangodb::scopeGuard([&]() noexcept {
+    _stats["fetchEdges"].addTiming(TRI_microtime() - start);
+  });
+  return _impl.fetchEdges(fetchedVertices);
+}
+
+template<class ProviderImpl>
+futures::Future<std::vector<typename ProviderImpl::Step*>>
 ProviderTracer<ProviderImpl>::fetch(
     std::vector<typename ProviderImpl::Step*> const& looseEnds) {
   double start = TRI_microtime();

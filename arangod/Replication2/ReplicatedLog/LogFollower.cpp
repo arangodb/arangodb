@@ -655,6 +655,9 @@ auto LogFollower::construct(LoggerContext const& loggerContext,
       loggerContext, std::move(logMetrics), std::move(id), std::move(logCore),
       term, std::move(leaderId), std::move(log));
 }
+auto LogFollower::copyInMemoryLog() const -> InMemoryLog {
+  return _guardedFollowerData.getLockedGuard()->_inMemoryLog;
+}
 
 auto replicated_log::LogFollower::GuardedFollowerData::getLocalStatistics()
     const noexcept -> LogStatistics {

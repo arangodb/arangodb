@@ -273,22 +273,43 @@ auto methods::createReplicatedState(
 
 auto methods::replaceReplicatedStateParticipant(
     TRI_vocbase_t& vocbase, LogId id, ParticipantId const& participantToRemove,
-    ParticipantId const& participantToAdd) -> futures::Future<Result> {
+    ParticipantId const& participantToAdd,
+    std::optional<ParticipantId> const& currentLeader)
+    -> futures::Future<Result> {
   auto path =
       paths::target()->replicatedStates()->database(vocbase.name())->state(id);
+
+  bool replaceLeader = currentLeader == participantToRemove;
+  // note that replaceLeader => currentLeader.has_value()
+  TRI_ASSERT(!replaceLeader || currentLeader.has_value());
 
   VPackBufferUInt8 trx;
   {
     VPackBuilder builder(trx);
     arangodb::agency::envelope::into_builder(builder)
         .write()
+        // remove the old participant
         .remove(*path->participants()->server(participantToRemove))
+        // add the new participant
         .set(*path->participants()->server(participantToAdd),
              VPackSlice::emptyObjectSlice())
+        // if the old participant was the leader, set the leader to the new one
+        .cond(replaceLeader,
+              [&](auto&& write) {
+                return std::move(write).set(*path->leader(), participantToAdd);
+              })
         .inc(*paths::target()->version())
         .precs()
+        // assert that the old participant actually was a participant
         .isNotEmpty(*path->participants()->server(participantToRemove))
+        // assert that the new participant didn't exist
         .isEmpty(*path->participants()->server(participantToAdd))
+        // if the old participant was the leader, assert that it
+        .cond(replaceLeader,
+              [&](auto&& precs) {
+                return std::move(precs).isEqual(*path->leader(),
+                                                *currentLeader);
+              })
         .end()
         .done();
   }
