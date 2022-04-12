@@ -125,27 +125,14 @@ auto algorithms::updateReplicatedLog(
       // something has changed in the term volatile configuration
       auto leader = log->getLeader();
       TRI_ASSERT(leader != nullptr);
-      auto const status = log->getParticipant()->getStatus();
-      auto* const leaderStatus = status.asLeaderStatus();
-      // get the keys of leaderStatus->follower
-      auto const oldFollowerIds = std::invoke([&] {
-        auto result = std::set<ParticipantId>();
-        std::transform(std::begin(leaderStatus->follower),
-                       std::end(leaderStatus->follower),
-                       std::inserter(result, result.end()),
-                       [&](auto const& it) { return it.first; });
-        return result;
-      });
       // Provide the leader with a way to build a follower
       auto const buildFollower = [&ctx,
                                   &logId](ParticipantId const& participantId) {
         return ctx.buildAbstractFollowerImpl(logId, participantId);
       };
-
-      auto const& previousConfig = leaderStatus->activeParticipantsConfig;
       auto index = leader->updateParticipantsConfig(
           std::make_shared<ParticipantsConfig const>(spec->participantsConfig),
-          previousConfig.generation, oldFollowerIds, buildFollower);
+          buildFollower);
       return leader->waitFor(index).thenValue(
           [](auto&& quorum) -> Result { return Result{TRI_ERROR_NO_ERROR}; });
     } else if (plannedLeader.has_value() &&

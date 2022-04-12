@@ -1242,9 +1242,8 @@ auto replicated_log::LogLeader::waitForLeadership()
 }
 
 namespace {
-// For (unordered) maps left and right, return keys(left)
-// \ keys(right)
-auto keySetDifference = [](auto const& left, auto const& right) {
+// For (unordered) maps `left` and `right`, return `keys(left) \ keys(right)`
+auto const keySetDifference = [](auto const& left, auto const& right) {
   using left_t = std::decay_t<decltype(left)>;
   using right_t = std::decay_t<decltype(right)>;
   static_assert(
@@ -1252,17 +1251,9 @@ auto keySetDifference = [](auto const& left, auto const& right) {
   using key_t = typename left_t::key_type;
 
   auto result = std::vector<key_t>{};
-  if constexpr (std::is_same_v<left_t, std::set<key_t>>) {
-    for (auto const& key : left) {
-      if (!right.contains(key)) {
-        result.emplace_back(key);
-      }
-    }
-  } else {
-    for (auto const& [key, val] : left) {
-      if (!right.contains(key)) {
-        result.emplace_back(key);
-      }
+  for (auto const& [key, val] : left) {
+    if (!right.contains(key)) {
+      result.emplace_back(key);
     }
   }
 
@@ -1272,17 +1263,21 @@ auto keySetDifference = [](auto const& left, auto const& right) {
 
 auto replicated_log::LogLeader::updateParticipantsConfig(
     std::shared_ptr<ParticipantsConfig const> const& config,
-    std::size_t previousGeneration,
-    std::set<ParticipantId> const& oldFollowerIds,
     std::function<std::shared_ptr<replicated_log::AbstractFollower>(
         ParticipantId const&)> const& buildFollower) -> LogIndex {
+  auto const status = getStatus();
+  auto* const leaderStatus = status.asLeaderStatus();
+  auto const& oldFollowers = leaderStatus->follower;
+  auto const& previousConfig = leaderStatus->activeParticipantsConfig;
+  auto const previousGeneration = previousConfig.generation;
+
   auto const [followersToRemove, additionalFollowers] = std::invoke([&] {
-    // Note that newParticipants contains the leader, while oldFollowerIds does
+    // Note that newParticipants contains the leader, while oldFollowers does
     // not.
     auto const& newParticipants = config->participants;
     auto const additionalParticipantIds =
-        keySetDifference(newParticipants, oldFollowerIds);
-    auto followersToRemove_ = keySetDifference(oldFollowerIds, newParticipants);
+        keySetDifference(newParticipants, oldFollowers);
+    auto followersToRemove_ = keySetDifference(oldFollowers, newParticipants);
 
     auto additionalFollowers_ =
         std::unordered_map<ParticipantId, std::shared_ptr<AbstractFollower>>{};

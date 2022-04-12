@@ -160,8 +160,6 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
   // Updates the flags of the participants.
   auto updateParticipantsConfig(
       std::shared_ptr<ParticipantsConfig const> const& config,
-      std::size_t previousGeneration,
-      std::set<ParticipantId> const& oldFollowerIds,
       std::function<std::shared_ptr<replicated_log::AbstractFollower>(
           ParticipantId const&)> const& buildFollower) -> LogIndex;
 
