@@ -493,7 +493,7 @@ auto executeCheckReplicatedState(DatabaseID const& database, RSA::State state,
     if (ctx.isErrorReportingEnabled()) {
       // now compare the new status with the old status
       if (state.current && state.current->supervision) {
-        if (state.current->supervision->errorReport == ctx.getReport()) {
+        if (state.current->supervision->statusReport == ctx.getReport()) {
           // report did not change, do not create a transaction
           return env;
         }
@@ -509,14 +509,14 @@ auto executeCheckReplicatedState(DatabaseID const& database, RSA::State state,
   if (ctx.isErrorReportingEnabled()) {
     actionCtx.modify<RSA::Current::Supervision>([&](auto& supervision) {
       if (ctx.getReport().empty()) {
-        supervision.errorReport.reset();
+        supervision.statusReport.reset();
       } else {
-        supervision.errorReport = std::move(ctx.getReport());
+        supervision.statusReport = std::move(ctx.getReport());
       }
     });
   } else if (std::holds_alternative<CurrentConvergedAction>(ctx.getAction())) {
     actionCtx.modify<RSA::Current::Supervision>(
-        [&](auto& supervision) { supervision.errorReport.reset(); });
+        [&](auto& supervision) { supervision.statusReport.reset(); });
   }
 
   // update last time modified

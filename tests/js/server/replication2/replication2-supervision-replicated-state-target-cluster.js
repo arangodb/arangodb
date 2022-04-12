@@ -290,8 +290,8 @@ const replicatedStateSuite = function () {
 
       // wait for the supervision to report that the snapshot is missing
       lh.waitFor(spreds.replicatedStateSupervisionStatus(database, stateId, [
-        {participant: newParticipant, code: 2},
-        {participant: toBeReplaced, code: 3}
+        {participant: newParticipant, code: "ServerSnapshotMissing"},
+        {participant: toBeReplaced, code: "InsufficientSnapshotCoverage"}
       ], true));
 
       lh.continueServer(newParticipant);

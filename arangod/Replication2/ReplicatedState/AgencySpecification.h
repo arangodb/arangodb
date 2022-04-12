@@ -103,7 +103,7 @@ struct Current {
 
     struct StatusMessage {
       std::optional<std::string> message;
-      int code{0};
+      StatusCode code;
       std::optional<ParticipantId> participant;
 
       StatusMessage() = default;
@@ -116,7 +116,7 @@ struct Current {
 
     using StatusReport = std::vector<StatusMessage>;
 
-    std::optional<StatusReport> errorReport;
+    std::optional<StatusReport> statusReport;
     std::optional<clock::time_point> lastTimeModified;
 
     void toVelocyPack(velocypack::Builder& builder) const;
@@ -136,6 +136,16 @@ struct Current {
 using StatusCode = Current::Supervision::StatusCode;
 using StatusMessage = Current::Supervision::StatusMessage;
 using StatusReport = Current::Supervision::StatusReport;
+
+auto to_string(StatusCode) noexcept -> std::string_view;
+
+struct StatusCodeStringTransformer {
+  using SerializedType = std::string;
+  auto toSerialized(StatusCode source, std::string& target) const
+      -> inspection::Status;
+  auto fromSerialized(std::string const& source, StatusCode& target) const
+      -> inspection::Status;
+};
 
 struct Target {
   LogId id;
@@ -171,14 +181,15 @@ auto inspect(Inspector& f, Current::Supervision& x) {
       f.field("version", x.version),
       f.field("lastTimeModified", x.lastTimeModified)
           .transformWith(inspection::TimeStampTransformer{}),
-      f.field("statusReport", x.errorReport));
+      f.field("statusReport", x.statusReport));
 }
 
 template<class Inspector>
 auto inspect(Inspector& f, Current::Supervision::StatusMessage& x) {
-  return f.object(x).fields(f.field("message", x.message),
-                            f.field("code", x.code),
-                            f.field("participant", x.participant));
+  return f.object(x).fields(
+      f.field("message", x.message),
+      f.field("code", x.code).transformWith(StatusCodeStringTransformer{}),
+      f.field("participant", x.participant));
 }
 
 }  // namespace arangodb::replication2::replicated_state::agency
