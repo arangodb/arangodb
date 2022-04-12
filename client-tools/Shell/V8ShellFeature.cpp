@@ -87,7 +87,6 @@ V8ShellFeature::V8ShellFeature(Server& server, std::string const& name)
       _gcInterval(50),
       _name(name),
       _isolate(nullptr) {
-  requiresElevatedPrivileges(false);
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseClient>();
 

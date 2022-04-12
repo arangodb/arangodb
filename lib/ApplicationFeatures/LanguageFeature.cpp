@@ -103,14 +103,19 @@ LanguageFeature::~LanguageFeature() = default;
 
 void LanguageFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
-  options->addOption(
-      "--default-language", "ISO-639 language code",
-      new StringParameter(&_defaultLanguage),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
+  options
+      ->addOption("--default-language", "ISO-639 language code",
+                  new StringParameter(&_defaultLanguage),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::Uncommon))
+      .setDeprecatedIn(31000);
 
-  options->addOption(
-      "--icu-language", "ICU language", new StringParameter(&_icuLanguage),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
+  options
+      ->addOption("--icu-language", "ICU language",
+                  new StringParameter(&_icuLanguage),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::Uncommon))
+      .setIntroducedIn(30901);
 
   options
       ->addOption("--default-language-check",
@@ -198,8 +203,10 @@ void LanguageFeature::prepare() {
   auto context = ArangoGlobalContext::CONTEXT;
   std::string binaryExecutionPath = context->getBinaryPath();
   std::string binaryName = context->binaryName();
-  _icuData = LanguageFeature::prepareIcu(_binaryPath, binaryExecutionPath, p,
-                                         binaryName);
+  if (_icuData.empty()) {
+    _icuData = LanguageFeature::prepareIcu(_binaryPath, binaryExecutionPath, p,
+                                           binaryName);
+  }
 
   _langType = ::getLanguageType(_defaultLanguage, _icuLanguage);
 
@@ -234,15 +241,7 @@ bool LanguageFeature::forceLanguageCheck() const { return _forceLanguageCheck; }
 
 std::string LanguageFeature::getCollatorLanguage() const {
   using arangodb::basics::Utf8Helper;
-  std::string languageName;
-  if (Utf8Helper::DefaultUtf8Helper.getCollatorCountry() != "") {
-    languageName =
-        std::string(Utf8Helper::DefaultUtf8Helper.getCollatorLanguage() + "_" +
-                    Utf8Helper::DefaultUtf8Helper.getCollatorCountry());
-  } else {
-    languageName = Utf8Helper::DefaultUtf8Helper.getCollatorLanguage();
-  }
-  return languageName;
+  return Utf8Helper::DefaultUtf8Helper.getCollatorLanguage();
 }
 
 void LanguageFeature::resetLanguage(std::string_view language,
@@ -260,6 +259,7 @@ void LanguageFeature::resetLanguage(std::string_view language,
       break;
 
     case LanguageType::INVALID:
+    default:
       TRI_ASSERT(false);
       return;
   }

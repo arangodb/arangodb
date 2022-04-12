@@ -64,6 +64,8 @@ struct FakeFollower final : replicated_log::ILogFollower,
   auto addEntry(LogPayload) -> LogIndex;
   void triggerLeaderAcked();
 
+  auto copyInMemoryLog() const -> replicated_log::InMemoryLog override;
+
   template<typename State>
   auto insertMultiplexedValue(typename State::EntryType const& t) -> LogIndex {
     using streamSpec =

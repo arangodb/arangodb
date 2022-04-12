@@ -3,6 +3,71 @@ devel
 
 * Resync follower shard after a follower restart immediately and not lazily.
 
+* Unify the creation of normal and SmartGraph collections.
+
+  This unifies the code paths for creating collections for normal
+  collections and SmartGraph collections, so that the functionality is
+  centralized in one place. SmartGraph-specific code for validation and
+  collection creation has been moved to enterprise as well.
+
+* Make followers respond to synchronous replication requests with less data.
+  Specifically, followers will not build detailed results with _id, _key and
+  _rev for the inserted/modified/removed documents, which would be ignored 
+  by the leader anyway.
+
+* Updated arangosync to v2.9.0-preview-5.
+
+* Auto-regenerate exit code and error code files in non-maintainer mode, too.
+
+* Only show slowest optimizer rules in explain output for optimizer rules
+  that took a considerable amount of time (>= 0.0002 seconds). Previously
+  the slowest 5 optimizer rules were shown, regardless of how long they
+  took to execute and even if they executed sufficiently fast.
+
+* Updated arangosync to v2.9.0-preview-4.
+
+* Make the StatisticsFeature start after the NetworkFeature, so that any 
+  network request issues by cluster statistics gathering can rely on the 
+  networking functionality being available until shutdown.
+
+* BugFix (enterprise-only): (BTS-787) In a hybrid disjoint SmartGraph, having
+  more than one relation, if you add a new vertex collection to a Smart -> 
+  Smart edge relation this vertex collection was rejected with "has to be 
+  satellite" error.
+  Now the collection is created as a SmartVertexCollection as desired.
+
+* Rework internal queues for connection and request statistics. The previous
+  implementation allocated a lot of memory at program start for initializing
+  fixed-sized queues for the statistics objects.
+  The problem with using fixed-sized queues is that they will mostly require
+  too much memory for almost all cases, but still do not protect from the
+  queues becoming full and not being able to hold more items.
+  Now we go with a variable length queue instead, which only requires a
+  small amount of memory initially, and allocate more memory only when needed.
+  Freelists for reusing statistics items are still present to avoid lots of
+  reallocations.
+  The change also reduces the size of the executable's .bss section by more 
+  than 10MB.
+
+* Updated ArangoDB Starter to 0.15.4.
+
+* Always open a new, working connection before HTTP request-fuzzing during 
+  testing. Otherwise the fuzzing results are not 100% comparable from run to
+  run.
+
+* Remove error handling fetching license information to improve user
+  experience. To display the license informationn in the UI is only
+  informational. It disturbs the user experience to know somthing went wrong
+  and doesn't provide any important information for the user.
+
+* Updated bundled version of zlib library to 1.2.12.
+
+* Improve parallelism in arangorestore in case new data format is used.
+
+* Updated OpenSSL to 1.1.1n and OpenLDAP to 2.6.1.
+
+* Updated arangosync to v2.9.0-preview-2.
+
 * Added AQL hint "useCache" for FOR loops, to explicitly disable the usage of 
   in-memory caches for lookups.
 
@@ -98,7 +163,7 @@ devel
 * Fix null pointer access when using WINDOW operation with a COUNT/LENGTH
   aggregate function without any arguments.
 
-* Enable range deletions in the WAL for truncate operationns in the cluster, 
+* Enable range deletions in the WAL for truncate operations in the cluster, 
   too. This can speed up truncate operations for large collections/shards.
 
 * Set max recursion depth for VelocyPack, JSON and JavaScript arrays and 
@@ -106,17 +171,23 @@ devel
 
 * Updated snowball to version 2.2.0
 
-* Fixed: Deadlock created by high load and a follower trying to get into sync.
-  In the final synchronization phase the follower needs to temporarily block writes
-  on the leader so we have a reliable point in time where we can prove that the data is consistent.
-  If the leader at this point is flooded with write requests to that shard there is a chance
-  that all worker threads only pick up those writes, which cannot make any progress until the
-  lock is cleared. However, the process to clear the lock was on the same priority as those writes.
-  Hence this lock clear operations could not bypass the writes. Now we moved every follow up request
-  after the lock to HIGH lanes, which will allow them to bypass all non-internal operations.
+* Fixed: Deadlock created by high load and a follower trying to get into 
+  sync.
+  In the final synchronization phase the follower needs to temporarily block 
+  writes on the leader so we have a reliable point in time where we can prove 
+  that the data is consistent.
+  If the leader at this point is flooded with write requests to that shard 
+  there is a chance that all worker threads only pick up those writes, which 
+  cannot make any progress until the lock is cleared. However, the process to 
+  clear the lock was on the same priority as those writes.
+  Hence this lock clear operations could not bypass the writes. Now we moved 
+  every follow up request after the lock to HIGH lanes, which will allow them 
+  to bypass all non-internal operations.
 
-* arangosh now uses the same header the UI uses to gain higher priority on initial connection.
-  This will increase the chance for an arangosh to connect to a server under very high load.
+* arangosh now uses the same header the UI uses to gain higher priority on 
+  initial connection.
+  This will increase the chance for an arangosh to connect to a server under 
+  very high load.
 
 * Removed internal JavaScript dependencies "mocha" and "chalk". We recommend
   always bundling your own copy of third-party modules, even ones listed as
@@ -304,7 +375,7 @@ devel
   This drastically reduces peak memory usage for queries that use index lookups
   in inner loops and that get lots of different inputs from outer loops.
 
-* Adjust interal RocksDB setting `optimize_filters_for_hits` for Documents
+* Adjust internal RocksDB setting `optimize_filters_for_hits` for Documents
   column family, setting it from `false` to `true`. This should reduce memory
   and disk space requirements for the bottom-most .sst files of the documents
   column family.
@@ -317,23 +388,24 @@ devel
   and total amount of data parsed for the client tools arangodump and 
   arangorestore. 
 
-* Fixed minDepth handling of weighted Traversals. When using a minDepth of 3, also paths of length
-  2 have been returned, on all locally executed variants (SingleServer, OneShard, DisjointSmart).
+* Fixed minDepth handling of weighted traversals. When using a minDepth of 3, 
+  also paths of length 2 have been returned, on all locally executed variants 
+  (SingleServer, OneShard, DisjointSmart).
 
-* Fixed BTS-728 (no released version infected) fixed: for DisjointSmartGraphs, that include
-  a satellite vertex collection, valid disjoint path were not always followed, if one of the
-  satellites has a connection to two (or more) vertices that have different shardValues that
-  by chance are routed to the same shard.
+* Fixed BTS-728 (no released version infected) fixed: for DisjointSmartGraphs, 
+  that include a satellite vertex collection, valid disjoint path were not always 
+  followed, if one of the satellites has a connection to two (or more) vertices 
+  that have different shardValues that by chance are routed to the same shard.
 
-* Fixed PRESUPP-445: Foxx queues: Some Jobs are never run in case of
+* Fixed PRESUPP-445: Foxx queues: Some jobs are never run in case of
   multiple Coordinators.
 
-* Fixed BTS-740 (no released version infected) fixed Smart<->Sat SmartEdgeCollections
-  determining the shard in SingleRemoteModification nodes was incorrect. E.g. this could
-  be triggered, by viewing the details of an edge in the UI. Only alpha/beta of 3.9.0
-  contained this bug.
+* Fixed BTS-740 (no released version infected) fixed Smart<->Sat 
+  SmartEdgeCollections determining the shard in SingleRemoteModification nodes 
+  was incorrect. E.g. this could be triggered, by viewing the details of an edge 
+  in the UI. Only alpha/beta of 3.9.0 contained this bug.
 
-* Fixed BTS-729 (no released version infected): Some conditions in a Hybrid
+* Fixed BTS-729 (no released version affected): Some conditions in a Hybrid
   Smart Graph could led to wrong shard location calculation and therefore to
   wrong graph query results. Only alpha/beta of 3.9.0 contained this bug.
 
@@ -463,8 +535,6 @@ devel
   
 * Fixed BTS-693: Sort-limit rule now always ensures proper LIMIT node placement
   to avoid possible invalid results in the fullCount data.
-
-* Added new AQL function SHARD_ID.
 
 * Updated OpenSSL to 1.1.1m and OpenLDAP to 2.6.0.
 

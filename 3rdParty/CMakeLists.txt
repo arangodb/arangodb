@@ -26,7 +26,7 @@ endif ()
 ################################################################################
 
 set(SKIP_INSTALL_ALL ON)
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/zlib/zlib-1.2.11)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/zlib/zlib-1.2.12)
 add_library(zlib_interface INTERFACE)
 target_include_directories(zlib_interface SYSTEM INTERFACE ${ZLIB_INCLUDE_DIR})
 

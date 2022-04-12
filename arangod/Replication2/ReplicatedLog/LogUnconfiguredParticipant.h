@@ -61,6 +61,8 @@ struct LogUnconfiguredParticipant final
   [[nodiscard]] auto getCommitIndex() const noexcept
       -> arangodb::replication2::LogIndex override;
 
+  [[nodiscard]] auto copyInMemoryLog() const -> InMemoryLog override;
+
  private:
   std::shared_ptr<
       arangodb::replication2::replicated_log::ReplicatedLogMetrics> const

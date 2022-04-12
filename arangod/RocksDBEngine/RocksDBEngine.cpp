@@ -538,7 +538,7 @@ void RocksDBEngine::collectOptions(
                       arangodb::options::Flags::OnSingle,
                       arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30604)
-      .setDeprecatedIn(30100);
+      .setDeprecatedIn(31000);
 
   options->addOption(
       "--rocksdb.wal-archive-size-limit",
@@ -2902,9 +2902,8 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
     for (VPackSlice it : VPackArrayIterator(slice)) {
       // we found a collection that is still active
       TRI_ASSERT(!it.get("id").isNone() || !it.get("cid").isNone());
-      auto uniqCol =
-          std::make_shared<arangodb::LogicalCollection>(*vocbase, it, false);
-      auto collection = uniqCol.get();
+
+      auto collection = vocbase->createCollectionObject(it, /*isAStub*/ false);
       TRI_ASSERT(collection != nullptr);
 
       auto phy = static_cast<RocksDBCollection*>(collection->getPhysical());
@@ -2917,7 +2916,7 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
             << "': " << r.errorMessage();
       }
 
-      StorageEngine::registerCollection(*vocbase, uniqCol);
+      StorageEngine::registerCollection(*vocbase, collection);
       LOG_TOPIC("39404", DEBUG, arangodb::Logger::ENGINES)
           << "added document collection '" << collection->name() << "'";
     }
