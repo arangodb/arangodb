@@ -7,8 +7,10 @@ v3.9.2 (XXXX-XX-XX)
   error.
   Now the collection is created as a SmartVertexCollection as desired.
 
+* Resync follower shard after a follower restart immediately and not lazily.
 
-v3.9.1 (XXXX-XX-XX)
+
+v3.9.1 (2022-04-04)
 -------------------
 
 * Updated ArangoDB Starter to 0.15.4.
