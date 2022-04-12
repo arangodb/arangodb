@@ -1,28 +1,31 @@
-import React, { useContext } from "react";
+import React, { useContext, useState } from "react";
 import { UrlParametersContext } from "./url-parameters-context";
 import { Input, Tooltip } from 'antd';
 import { InfoCircleOutlined } from '@ant-design/icons';
 
 const ParameterDepth = () => {
-  const urlParameters = useContext(UrlParametersContext);
+  const [urlParameters, setUrlParameters] = useContext(UrlParametersContext);
+  const [depth, setDepth] = useState(urlParameters.depth);
 
-  const onDepthChange = (e) => {
-    urlParameters.depth = e.target.value;
-  }
+  const NEWURLPARAMETERS = { ...urlParameters };
   
   return (
     <>
-      <Input
-              addonBefore="Search depth"
-              placeholder={urlParameters.depth || ''}
-              onChange={onDepthChange}
-              suffix={
-                <Tooltip title="Search depth, starting from your startnode">
-                  <InfoCircleOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
-                </Tooltip>
-              }
-              style={{ width: 240, marginTop: '24px' }}
-            />
+      <h5>urlParameters (context value): {JSON.stringify(urlParameters)}</h5>
+      <form>
+        <label>
+          Depth:
+          <input
+            type="text"
+            value={depth}
+            onChange={(e) => {
+              setDepth(+e.target.value);
+              NEWURLPARAMETERS.depth = +e.target.value;
+              setUrlParameters(NEWURLPARAMETERS);
+            }}
+          />
+        </label>
+      </form>
     </>
   );
 };
