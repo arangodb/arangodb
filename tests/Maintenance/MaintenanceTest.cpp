@@ -36,6 +36,7 @@
 #include "Replication2/ReplicatedLog/LogStatus.h"
 #include "Replication2/ReplicatedState/StateStatus.h"
 #include "RocksDBEngine/RocksDBEngine.h"
+#include "RocksDBEngine/RocksDBOptionFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 
 #include <velocypack/Iterator.h>
@@ -555,7 +556,8 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
 
     // need to construct this after adding the MetricsFeature to the application
     // server
-    engine = std::make_unique<arangodb::RocksDBEngine>(as);
+    engine = std::make_unique<arangodb::RocksDBEngine>(
+        as, as.template getFeature<arangodb::RocksDBOptionFeature>());
     selector.setEngineTesting(engine.get());
   }
 
