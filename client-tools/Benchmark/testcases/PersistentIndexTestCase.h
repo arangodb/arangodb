@@ -44,7 +44,7 @@ struct PersistentIndexTest : public Benchmark<PersistentIndexTest> {
           DeleteCollection(client, _arangobench.collection()) &&
           CreateCollection(client, _arangobench.collection(), 2, _arangobench);
     }
-    return result && CreateIndex(client, _arangobench.collection(), "hash",
+    return result && CreateIndex(client, _arangobench.collection(), "persistent",
                                  "[\"value\"]");
   }
 

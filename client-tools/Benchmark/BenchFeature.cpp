@@ -184,7 +184,8 @@ void BenchFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--create-collection",
                      "whether we should create the collection specified via "
                      "the --collection parameter",
-                     new BooleanParameter(&_createCollection));
+                     new BooleanParameter(&_createCollection))
+                     .setIntroducedIn(31000);
 
   options->addOption("--duration",
                      "test for duration seconds instead of a fixed test count",
