@@ -1,8 +1,12 @@
-v3.9.1 (XXXX-XX-XX)
+v3.9.2 (XXXX-XX-XX)
 -------------------
 
-* Fix lock order in Agent::advanceCommitIndex for State's _logLock and
-  Agent's _waitForCV.
+* Fix lock order in Agent::advanceCommitIndex for State's _logLock and Agent's
+  _waitForCV.
+
+
+v3.9.1 (XXXX-XX-XX)
+-------------------
 
 * Updated ArangoDB Starter to 0.15.4.
 
