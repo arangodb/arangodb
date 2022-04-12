@@ -30,7 +30,7 @@
 namespace paths = arangodb::cluster::paths::aliases;
 
 using namespace arangodb::replication2;
-
+#if 0
 auto replicated_state::execute(
     LogId id, DatabaseID const& database, Action action,
     std::optional<agency::Plan> state,
@@ -93,3 +93,4 @@ auto replicated_state::execute(
             })
       .end();
 }
+#endif

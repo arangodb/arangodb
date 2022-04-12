@@ -68,7 +68,7 @@ struct ModifyContext {
 
   template<typename T>
   auto getValue() const -> T const& {
-    return forType<T>().getMyValue();
+    return forType<T>().value.value();
   }
 
   template<typename T>

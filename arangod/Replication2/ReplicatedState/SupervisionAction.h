@@ -36,6 +36,10 @@ namespace arangodb::replication2::replicated_state {
 using ActionContext = ModifyContext<replication2::agency::LogTarget,
                                     agency::Plan, agency::Current::Supervision>;
 
+struct EmptyAction {
+  void execute(ActionContext&) {}
+};
+
 struct AddParticipantAction {
   ParticipantId participant;
   StateGeneration generation;
@@ -113,7 +117,7 @@ struct SetLeaderAction {
 };
 
 using Action = std::variant<
-    std::monostate, AddParticipantAction, RemoveParticipantFromLogTargetAction,
+    EmptyAction, AddParticipantAction, RemoveParticipantFromLogTargetAction,
     RemoveParticipantFromStatePlanAction, AddStateToPlanAction,
     UpdateParticipantFlagsAction, CurrentConvergedAction, SetLeaderAction>;
 

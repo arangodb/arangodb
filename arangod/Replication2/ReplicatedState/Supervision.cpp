@@ -25,6 +25,7 @@
 
 #include "Replication2/ReplicatedState/SupervisionAction.h"
 #include <memory>
+#include "Agency/AgencyPaths.h"
 
 #include "Logger/LogMacros.h"
 
@@ -62,6 +63,7 @@ using namespace arangodb;
 
 namespace RLA = arangodb::replication2::agency;
 namespace RSA = arangodb::replication2::replicated_state::agency;
+namespace paths = arangodb::cluster::paths::aliases;
 
 namespace arangodb::replication2::replicated_state {
 
@@ -144,37 +146,7 @@ auto countOkServers(RLA::Log const& log, RSA::State const& state)
       [&](auto const& p) { return isParticipantOk(p.first, log, state); });
 }
 
-struct SupervisionContext {
-  RLA::Log const& log;
-  RSA::State const& state;
-
-  SupervisionContext(RLA::Log const& log, RSA::State const& state)
-      : log(log), state(state) {}
-
-  template<typename ActionType, typename... Args>
-  void createAction(Args&&... args) {
-    if (std::holds_alternative<std::monostate>(_action)) {
-      _action.emplace(std::forward<Args>(args)...);
-    }
-  }
-
-  void reportStatus(RSA::StatusCode code,
-                    std::optional<ParticipantId> participant) {
-    _reports.emplace_back(code, std::move(participant));
-  }
-
- private:
-  Action _action;
-  std::vector<RSA::StatusMessage> _reports;
-};
-
-auto checkStatePlanLogTargetCreate(RSA::State const& state,
-                                   RLA::Log const& log) {}
-
-void checkReplicatedState(SupervisionContext& ctx) {}
-
-#if 0
-auto checkStateAdded(RSA::State const& state) -> Action {
+auto checkStateAdded(SupervisionContext& ctx, RSA::State const& state) {
   auto id = state.target.id;
 
   if (!state.plan) {
@@ -193,45 +165,43 @@ auto checkStateAdded(RSA::State const& state) -> Action {
           agency::Plan::Participant{.generation = StateGeneration{1}});
     }
 
-    return AddStateToPlanAction{logTarget, statePlan};
-  } else {
-    return EmptyAction();
+    ctx.createAction<AddStateToPlanAction>(std::move(logTarget),
+                                           std::move(statePlan));
   }
 }
 
-auto checkLeaderSet(RLA::Log const& log, RSA::State const& state) -> Action {
+auto checkLeaderSet(SupervisionContext& ctx, RLA::Log const& log,
+                    RSA::State const& state) {
   auto const& targetLeader = state.target.leader;
   auto const& planLeader = log.target.leader;
 
   if (targetLeader != planLeader) {
-    return SetLeaderAction{targetLeader};
+    ctx.createAction<SetLeaderAction>(targetLeader);
   }
-
-  return EmptyAction();
 }
 
-auto checkParticipantAdded(SupervisionContext const& ctx, RLA::Log const& log,
-                           RSA::State const& state) -> Action {
+auto checkParticipantAdded(SupervisionContext& ctx, RLA::Log const& log,
+                           RSA::State const& state) {
   TRI_ASSERT(state.plan.has_value());
-
-  if (ctx.numberServersInTarget + 1 < ctx.numberServersOk) {
-    return EmptyAction();
-  }
 
   auto const& targetParticipants = state.target.participants;
   auto const& planParticipants = state.plan->participants;
 
   for (auto const& [participant, flags] : targetParticipants) {
     if (!planParticipants.contains(participant)) {
-      return AddParticipantAction{participant, state.plan->generation};
+      if (ctx.numberServersInTarget + 1 >= ctx.numberServersOk) {
+        ctx.createAction<AddParticipantAction>(participant,
+                                               state.plan->generation);
+      } else {
+        ctx.reportStatus(RSA::StatusCode::kInsufficientSnapshotCoverage,
+                         participant);
+      }
     }
   }
-  return EmptyAction();
 }
 
-auto checkTargetParticipantRemoved(SupervisionContext const& ctx,
-                                   RLA::Log const& log, RSA::State const& state)
-    -> Action {
+void checkTargetParticipantRemoved(SupervisionContext& ctx, RLA::Log const& log,
+                                   RSA::State const& state) {
   TRI_ASSERT(state.plan.has_value());
 
   auto const& stateTargetParticipants = state.target.participants;
@@ -244,15 +214,17 @@ auto checkTargetParticipantRemoved(SupervisionContext const& ctx,
       auto newNumberOfOkServer = ctx.numberServersOk - (isOk ? 1 : 0);
 
       if (newNumberOfOkServer >= ctx.numberServersInTarget) {
-        return RemoveParticipantFromLogTargetAction{participant};
+        ctx.createAction<RemoveParticipantFromLogTargetAction>(participant);
+      } else {
+        ctx.reportStatus(RSA::StatusCode::kInsufficientSnapshotCoverage,
+                         participant);
       }
     }
   }
-  return EmptyAction();
 }
 
-auto checkLogParticipantRemoved(RLA::Log const& log, RSA::State const& state)
-    -> Action {
+auto checkLogParticipantRemoved(SupervisionContext& ctx, RLA::Log const& log,
+                                RSA::State const& state) {
   TRI_ASSERT(state.plan.has_value());
 
   auto const& stateTargetParticipants = state.target.participants;
@@ -270,24 +242,22 @@ auto checkLogParticipantRemoved(RLA::Log const& log, RSA::State const& state)
 
   auto const& planParticipants = state.plan->participants;
   for (auto const& [participant, flags] : planParticipants) {
-    if (participantGone(participant)) {
-      return RemoveParticipantFromStatePlanAction{participant};
+    auto const inTarget = logTargetParticipants.contains(participant);
+    if (!inTarget && participantGone(participant)) {
+      ctx.createAction<RemoveParticipantFromStatePlanAction>(participant);
+    } else if (!inTarget) {
+      ctx.reportStatus(RSA::StatusCode::kLogParticipantNotYetGone, participant);
     }
   }
-  return EmptyAction();
 }
 
 /* Check whether there is a participant that is excluded but reported snapshot
  * complete */
-auto checkSnapshotComplete(RLA::Log const& log, RSA::State const& state)
-    -> Action {
+auto checkSnapshotComplete(SupervisionContext& ctx, RLA::Log const& log,
+                           RSA::State const& state) {
   if (state.current and log.plan) {
     // TODO generation?
-    for (auto const& [participant, flags] :
-         log.plan->participantsConfig.participants) {
-      if (!log.target.participants.contains(participant)) {
-        continue;
-      }
+    for (auto const& [participant, flags] : log.target.participants) {
       if (!flags.allowedAsLeader || !flags.allowedInQuorum) {
         auto const& plannedGeneration =
             state.plan->participants.at(participant).generation;
@@ -302,14 +272,16 @@ auto checkSnapshotComplete(RLA::Log const& log, RSA::State const& state)
             auto newFlags = flags;
             newFlags.allowedInQuorum = true;
             newFlags.allowedAsLeader = true;
-            return UpdateParticipantFlagsAction{participant, newFlags};
-          } else {
+            ctx.createAction<UpdateParticipantFlagsAction>(participant,
+                                                           newFlags);
+            continue;
           }
         }
+        // otherwise, report error
+        ctx.reportStatus(RSA::StatusCode::kServerSnapshotMissing, participant);
       }
     }
   }
-  return EmptyAction();
 }
 
 auto hasConverged(RSA::State const& state) -> bool {
@@ -340,104 +312,223 @@ auto hasConverged(RSA::State const& state) -> bool {
   return true;
 }
 
-auto checkConverged(RLA::Log const& log, RSA::State const& state) -> Action {
+auto checkConverged(SupervisionContext& ctx, RLA::Log const& log,
+                    RSA::State const& state) {
   if (!state.target.version.has_value()) {
-    return EmptyAction();
+    return;
   }
 
   if (!state.current or !state.current->supervision) {
-    return CurrentConvergedAction{0};
+    return ctx.createAction<CurrentConvergedAction>(std::uint64_t{0});
   }
 
   // check that we are actually waiting for this version
   if (state.current->supervision->version == state.target.version) {
-    return EmptyAction{};
+    return;
   }
 
   // now check if we actually have converged
-  if (!hasConverged(state)) {
-    return EmptyAction{};
+  if (hasConverged(state)) {
+    ctx.createAction<CurrentConvergedAction>(*state.target.version);
   }
-  return CurrentConvergedAction{*state.target.version};
 }
 
 auto isEmptyAction(Action const& action) {
   return std::holds_alternative<EmptyAction>(action);
 }
 
-auto checkReplicatedStateParticipants(RLA::Log const& log,
-                                      RSA::State const& state) -> Action {
+auto checkReplicatedStateParticipants(SupervisionContext& ctx,
+                                      RLA::Log const& log,
+                                      RSA::State const& state) {
   if (!state.current.has_value()) {
-    return WaitForAction{"waiting for current"};
+    return ctx.reportStatus(RSA::StatusCode::kLogCurrentNotAvailable,
+                            "State/Current not yet populated");
   }
 
   auto const serversInTarget = state.target.participants.size();
   auto const serversOk = countOkServers(log, state);
-  auto ctx = SupervisionContext{serversInTarget, serversOk, true};
+  ctx.numberServersInTarget = serversInTarget;
+  ctx.numberServersOk = serversOk;
 
-  if (auto action = checkParticipantAdded(ctx, log, state);
-      !isEmptyAction(action)) {
-    return action;
-  }
-
-  if (auto action = checkTargetParticipantRemoved(ctx, log, state);
-      !isEmptyAction(action)) {
-    return action;
-  }
-
-  if (auto action = checkLogParticipantRemoved(log, state);
-      !isEmptyAction(action)) {
-    return action;
-  }
-
-  if (auto action = checkSnapshotComplete(log, state); !isEmptyAction(action)) {
-    return action;
-  }
-
-  return EmptyAction();
+  checkParticipantAdded(ctx, log, state);
+  checkTargetParticipantRemoved(ctx, log, state);
+  checkLogParticipantRemoved(ctx, log, state);
+  checkSnapshotComplete(ctx, log, state);
 }
 
-auto checkForwardSettings(RLA::Log const& log, RSA::State const& state)
-    -> Action {
-  if (auto action = checkLeaderSet(log, state); !isEmptyAction(action)) {
-    return action;
-  }
-
-  return EmptyAction();
+auto checkForwardSettings(SupervisionContext& ctx, RLA::Log const& log,
+                          RSA::State const& state) {
+  checkLeaderSet(ctx, log, state);
 }
 
-auto checkReplicatedState(std::optional<RLA::Log> const& log,
-                          RSA::State const& state) -> Action {
+void checkReplicatedState(SupervisionContext& ctx,
+                          std::optional<RLA::Log> const& log,
+                          RSA::State const& state) {
   // First check if the replicated log is already there, if not create it.
   // Everything else requires the replicated log to exist.
-  if (auto action = checkStateAdded(state); !isEmptyAction(action)) {
-    return action;
-  }
+  checkStateAdded(ctx, state);
 
   // It will need to be observable in future that we are doing nothing because
   // we're waiting for the log to appear.
   if (!log.has_value()) {
     // if state/plan is visible, log/target should be visible as well
     TRI_ASSERT(state.plan == std::nullopt);
-    return WaitForAction{"replicated log not yet visible"};
+    ctx.reportStatus(RSA::StatusCode::kLogNotCreated,
+                     "replicated log has not yet been created");
+    return;
   }
 
   TRI_ASSERT(state.plan.has_value());
-  if (auto action = checkReplicatedStateParticipants(*log, state);
-      !isEmptyAction(action)) {
-    return action;
-  }
-
-  if (auto action = checkForwardSettings(*log, state); !isEmptyAction(action)) {
-    return action;
-  }
-
-  if (auto action = checkConverged(*log, state); !isEmptyAction(action)) {
-    return action;
-  }
-
-  return EmptyAction{};
+  checkReplicatedStateParticipants(ctx, *log, state);
+  checkForwardSettings(ctx, *log, state);
+  checkConverged(ctx, *log, state);
 }
-#endif
+
+auto executeAction(RSA::State state, std::optional<RLA::Log> log,
+                   Action& action) -> ActionContext {
+  auto logTarget = std::invoke([&]() -> std::optional<RLA::LogTarget> {
+    if (log) {
+      return std::move(log->target);
+    }
+    return std::nullopt;
+  });
+
+  auto statePlan = std::invoke([&]() -> std::optional<RSA::Plan> {
+    if (state.plan) {
+      return std::move(state.plan);
+    }
+    return std::nullopt;
+  });
+
+  auto currentSupervision =
+      std::invoke([&]() -> std::optional<RSA::Current::Supervision> {
+        if (state.current) {
+          return std::move(state.current->supervision);
+        }
+        return RSA::Current::Supervision{};
+      });
+
+  auto actionCtx = replicated_state::ActionContext{
+      std::move(logTarget), std::move(statePlan),
+      std::move(currentSupervision)};
+  std::visit([&](auto& action) { action.execute(actionCtx); }, action);
+  return actionCtx;
+}
+
+auto buildAgencyTransaction(DatabaseID const& database, LogId id,
+                            SupervisionContext& sctx, ActionContext& actx,
+                            arangodb::agency::envelope envelope)
+    -> arangodb::agency::envelope {
+  auto logTargetPath =
+      paths::target()->replicatedLogs()->database(database)->log(id)->str();
+  auto statePlanPath =
+      paths::plan()->replicatedStates()->database(database)->state(id)->str();
+  auto currentSupervisionPath = paths::current()
+                                    ->replicatedStates()
+                                    ->database(database)
+                                    ->state(id)
+                                    ->supervision()
+                                    ->str();
+
+  return envelope.write()
+      .cond(actx.hasModificationFor<replication2::agency::LogTarget>(),
+            [&](arangodb::agency::envelope::write_trx&& trx) {
+              return std::move(trx)
+                  .emplace_object(
+                      logTargetPath,
+                      [&](VPackBuilder& builder) {
+                        actx.getValue<replication2::agency::LogTarget>()
+                            .toVelocyPack(builder);
+                      })
+                  .inc(paths::target()->version()->str());
+            })
+      .cond(actx.hasModificationFor<agency::Plan>(),
+            [&](arangodb::agency::envelope::write_trx&& trx) {
+              return std::move(trx)
+                  .emplace_object(
+                      statePlanPath,
+                      [&](VPackBuilder& builder) {
+                        actx.getValue<agency::Plan>().toVelocyPack(builder);
+                      })
+                  .inc(paths::plan()->version()->str());
+            })
+      .cond(actx.hasModificationFor<agency::Current::Supervision>(),
+            [&](arangodb::agency::envelope::write_trx&& trx) {
+              return std::move(trx)
+                  .emplace_object(
+                      currentSupervisionPath,
+                      [&](VPackBuilder& builder) {
+                        actx.getValue<agency::Current::Supervision>()
+                            .toVelocyPack(builder);
+                      })
+                  .inc(paths::plan()->version()->str());
+            })
+      .end();
+}
+
+auto executeCheckReplicatedState(DatabaseID const& database, RSA::State state,
+                                 std::optional<RLA::Log> log,
+                                 arangodb::agency::envelope env) noexcept
+    -> arangodb::agency::envelope {
+  auto const now = std::chrono::system_clock::now();
+  auto const id = state.target.id;
+
+  // prepare the context
+  SupervisionContext ctx;
+  // check if error reporting is enabled
+  if (state.current && state.current->supervision &&
+      state.current->supervision->lastTimeModified.has_value()) {
+    auto const lastMod = *state.current->supervision->lastTimeModified;
+    if ((now - lastMod) > std::chrono::seconds{15}) {
+      ctx.enableErrorReporting();
+    }
+  }
+
+  // now run checkReplicatedState
+  checkReplicatedState(ctx, log, state);
+
+  // now check if there is status update
+  if (std::holds_alternative<EmptyAction>(ctx.getAction())) {
+    // there is only a status update
+    if (ctx.isErrorReportingEnabled()) {
+      // now compare the new status with the old status
+      if (state.current && state.current->supervision) {
+        if (state.current->supervision->errorReport == ctx.getReport()) {
+          // report did not change, do not create a transaction
+          return env;
+        }
+      }
+    }
+  }
+
+  // and now compose the agency transaction
+  auto actionCtx =
+      executeAction(std::move(state), std::move(log), ctx.getAction());
+
+  // update status report
+  if (ctx.isErrorReportingEnabled()) {
+    actionCtx.modify<RSA::Current::Supervision>([&](auto& supervision) {
+      if (ctx.getReport().empty()) {
+        supervision.errorReport.reset();
+      } else {
+        supervision.errorReport = std::move(ctx.getReport());
+      }
+    });
+  } else if (std::holds_alternative<CurrentConvergedAction>(ctx.getAction())) {
+    actionCtx.modify<RSA::Current::Supervision>(
+        [&](auto& supervision) { supervision.errorReport.reset(); });
+  }
+
+  // update last time modified
+  if (!std::holds_alternative<EmptyAction>(ctx.getAction())) {
+    actionCtx.modify<RSA::Current::Supervision>(
+        [&](auto& supervision) { supervision.lastTimeModified = now; });
+  }
+
+  if (!actionCtx.hasModification()) {
+    return env;
+  }
+  return buildAgencyTransaction(database, id, ctx, actionCtx, std::move(env));
+}
 
 }  // namespace arangodb::replication2::replicated_state

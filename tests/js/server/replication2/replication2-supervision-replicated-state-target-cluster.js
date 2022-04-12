@@ -288,6 +288,12 @@ const replicatedStateSuite = function () {
         [newParticipant]: {allowedAsLeader: false, allowedInQuorum: false, forced: false},
       }));
 
+      // wait for the supervision to report that the snapshot is missing
+      lh.waitFor(spreds.replicatedStateSupervisionStatus(database, stateId, [
+        {participant: newParticipant, code: 2},
+        {participant: toBeReplaced, code: 3}
+      ], true));
+
       lh.continueServer(newParticipant);
       lh.waitFor(spreds.replicatedStateIsReady(database, stateId, newServers));
       lh.waitFor(lpreds.replicatedLogParticipantsFlag(database, stateId, {

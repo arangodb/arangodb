@@ -94,15 +94,17 @@ struct Current {
     std::optional<std::uint64_t> version;
 
     enum StatusCode {
+      kLogNotCreated,
+      kLogCurrentNotAvailable,
       kServerSnapshotMissing,
       kInsufficientSnapshotCoverage,
+      kLogParticipantNotYetGone,
     };
 
     struct StatusMessage {
       std::optional<std::string> message;
       int code{0};
       std::optional<ParticipantId> participant;
-      clock::time_point timestamp;
 
       StatusMessage() = default;
       StatusMessage(StatusCode code, std::optional<ParticipantId> participant)
@@ -133,6 +135,7 @@ struct Current {
 
 using StatusCode = Current::Supervision::StatusCode;
 using StatusMessage = Current::Supervision::StatusMessage;
+using StatusReport = Current::Supervision::StatusReport;
 
 struct Target {
   LogId id;
@@ -168,16 +171,14 @@ auto inspect(Inspector& f, Current::Supervision& x) {
       f.field("version", x.version),
       f.field("lastTimeModified", x.lastTimeModified)
           .transformWith(inspection::TimeStampTransformer{}),
-      f.field("errorReport", x.errorReport));
+      f.field("statusReport", x.errorReport));
 }
 
 template<class Inspector>
 auto inspect(Inspector& f, Current::Supervision::StatusMessage& x) {
-  return f.object(x).fields(
-      f.field("message", x.message), f.field("code", x.code),
-      f.field("participant", x.participant),
-      f.field("timestamp", x.timestamp)
-          .transformWith(inspection::TimeStampTransformer{}));
+  return f.object(x).fields(f.field("message", x.message),
+                            f.field("code", x.code),
+                            f.field("participant", x.participant));
 }
 
 }  // namespace arangodb::replication2::replicated_state::agency
