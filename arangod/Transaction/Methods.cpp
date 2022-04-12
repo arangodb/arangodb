@@ -1146,7 +1146,7 @@ Future<OperationResult> transaction::Methods::insertLocal(
         }
 
         auto sveRes =
-            svecol->rewriteVertexOnInsert(value, *req.get(), options.isRestore);
+            svecol->rewriteVertexOnInsert(value, *req, options.isRestore);
         if (sveRes.fail()) {
           return sveRes;
         }
