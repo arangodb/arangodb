@@ -69,8 +69,10 @@ auto replicated_state::operator<<(std::ostream& os, SnapshotStatus const& ss)
 }
 
 void SnapshotInfo::updateStatus(SnapshotStatus s) noexcept {
-  status = s;
-  timestamp = clock::now();
+  if (status != s) {
+    status = s;
+    timestamp = clock::now();
+  }
 }
 
 auto replicated_state::to_string(SnapshotStatus s) noexcept

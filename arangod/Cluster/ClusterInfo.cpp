@@ -762,7 +762,7 @@ ClusterInfo::CollectionWithHash ClusterInfo::buildCollection(
   if (collection == nullptr) {
     // no previous version of the collection exists, or its hash value has
     // changed
-    collection = createCollectionObject(data, vocbase);
+    collection = vocbase.createCollectionObject(data, /*isAStub*/ true);
     TRI_ASSERT(collection != nullptr);
 
     if (!isBuilding) {
@@ -789,26 +789,6 @@ ClusterInfo::CollectionWithHash ClusterInfo::buildCollection(
   TRI_ASSERT(!isBuilding || hash == 0);
 
   return {hash, collection};
-}
-
-/// @brief helper function to build a new LogicalCollection object from the
-/// velocypack input
-/*static*/ std::shared_ptr<LogicalCollection>
-ClusterInfo::createCollectionObject(arangodb::velocypack::Slice data,
-                                    TRI_vocbase_t& vocbase) {
-#ifdef USE_ENTERPRISE
-  auto isSmart = data.get(StaticStrings::IsSmart);
-
-  if (isSmart.isTrue()) {
-    auto type = data.get(StaticStrings::DataSourceType);
-
-    if (type.isInteger() && type.getUInt() == TRI_COL_TYPE_EDGE) {
-      return std::make_shared<VirtualClusterSmartEdgeCollection>(vocbase, data);
-    }
-    return std::make_shared<SmartVertexCollection>(vocbase, data);
-  }
-#endif
-  return std::make_shared<LogicalCollection>(vocbase, data, true);
 }
 
 struct ClusterInfo::NewStuffByDatabase {
@@ -3648,42 +3628,40 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
     return Result(TRI_ERROR_NO_ERROR);
   }
 
-  {
-    while (true) {
-      auto tmpRes = dbServerResult->load();
-      if (tmpRes.has_value()) {
-        cbGuard.fire();  // unregister cb before calling ac.removeValues(...)
-        // ...remove the entire directory for the collection
-        AgencyOperation delCurrentCollection(
-            "Current/Collections/" + dbName + "/" + collectionID,
-            AgencySimpleOperationType::DELETE_OP);
-        AgencyWriteTransaction cx({delCurrentCollection});
-        res = ac.sendTransactionWithFailover(cx);
-        events::DropCollection(dbName, collectionID, *tmpRes);
-        return Result(*tmpRes);
-      }
+  while (true) {
+    auto tmpRes = dbServerResult->load();
+    if (tmpRes.has_value()) {
+      cbGuard.fire();  // unregister cb before calling ac.removeValues(...)
+      // ...remove the entire directory for the collection
+      AgencyOperation delCurrentCollection(
+          "Current/Collections/" + dbName + "/" + collectionID,
+          AgencySimpleOperationType::DELETE_OP);
+      AgencyWriteTransaction cx({delCurrentCollection});
+      res = ac.sendTransactionWithFailover(cx);
+      events::DropCollection(dbName, collectionID, *tmpRes);
+      return Result(*tmpRes);
+    }
 
-      if (TRI_microtime() > endTime) {
-        LOG_TOPIC("76ea6", ERR, Logger::CLUSTER)
-            << "Timeout in _drop collection (" << realTimeout << ")"
-            << ": database: " << dbName << ", collId:" << collectionID
-            << "\ntransaction sent to agency: " << trans.toJson();
+    if (TRI_microtime() > endTime) {
+      LOG_TOPIC("76ea6", ERR, Logger::CLUSTER)
+          << "Timeout in _drop collection (" << realTimeout << ")"
+          << ": database: " << dbName << ", collId:" << collectionID
+          << "\ntransaction sent to agency: " << trans.toJson();
 
-        logAgencyDump();
+      logAgencyDump();
 
-        events::DropCollection(dbName, collectionID, TRI_ERROR_CLUSTER_TIMEOUT);
-        return Result(TRI_ERROR_CLUSTER_TIMEOUT);
-      }
+      events::DropCollection(dbName, collectionID, TRI_ERROR_CLUSTER_TIMEOUT);
+      return Result(TRI_ERROR_CLUSTER_TIMEOUT);
+    }
 
-      {
-        CONDITION_LOCKER(locker, agencyCallback->_cv);
-        agencyCallback->executeByCallbackOrTimeout(interval);
-      }
+    {
+      CONDITION_LOCKER(locker, agencyCallback->_cv);
+      agencyCallback->executeByCallbackOrTimeout(interval);
+    }
 
-      if (_server.isStopping()) {
-        events::DropCollection(dbName, collectionID, TRI_ERROR_SHUTTING_DOWN);
-        return Result(TRI_ERROR_SHUTTING_DOWN);
-      }
+    if (_server.isStopping()) {
+      events::DropCollection(dbName, collectionID, TRI_ERROR_SHUTTING_DOWN);
+      return Result(TRI_ERROR_SHUTTING_DOWN);
     }
   }
 }
