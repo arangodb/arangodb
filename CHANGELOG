@@ -1,6 +1,9 @@
 v3.9.2 (XXXX-XX-XX)
 -------------------
 
+* Fix lock order in Agent::advanceCommitIndex for State's _logLock and Agent's
+  _waitForCV.
+
 * BugFix (enterprise-only): (BTS-787) In a hybrid disjoint SmartGraph, having
   more than one relation, if you add a new vertex collection to a Smart -> Smart
   edge relation this vertex collection was rejected with "has to be satellite"
