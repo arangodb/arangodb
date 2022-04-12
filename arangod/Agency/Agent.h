@@ -181,6 +181,12 @@ class Agent final : public arangodb::ServerThread<ArangodServer>,
   /// can advance _commitIndex and apply things to readDB.
   void advanceCommitIndex();
 
+  /// In a single server agency advanceCommitIndex can be called from any
+  /// thread which does `transact` or `write`. However, it is not thread-safe,
+  /// since it is usually only called in the main agent thread. Therefore,
+  /// in these cases we protect it with this mutex.
+  std::mutex _protectAdvanceCommitIndexInSingleServerAgency;
+
  public:
   /// @brief Get last confirmed index of an agent. Default my own.
   ///   Safe ONLY IF via executeLock() (see example Supervision.cpp)

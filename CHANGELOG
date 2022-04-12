@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fix lock order in Agent::advanceCommitIndex for State's _logLock and
+  Agent's _waitForCV.
+
 * Fix deadlocked shard synchronisations when planned shard leader has
   not yet taken over leadership.
 
