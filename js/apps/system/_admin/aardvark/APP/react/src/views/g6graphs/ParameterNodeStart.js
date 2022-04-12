@@ -1,28 +1,31 @@
-import React, { useContext } from "react";
+import React, { useContext, useState } from "react";
 import { UrlParametersContext } from "./url-parameters-context";
 import { Input, Tooltip } from 'antd';
 import { InfoCircleOutlined } from '@ant-design/icons';
 
 const ParameterNodeStart = () => {
-  const urlParameters = useContext(UrlParametersContext);
+  const [urlParameters, setUrlParameters] = useContext(UrlParametersContext);
+  const [nodeStart, setNodeStart] = useState(urlParameters.nodeStart);
 
-  const onNodeStartChange = (e) => {
-    urlParameters.nodeStart = e.target.value;
-  }
+  const NEWURLPARAMETERS = { ...urlParameters };
   
   return (
     <>
-      <Input
-        addonBefore="Startnode"
-        placeholder={urlParameters.nodeStart || ''}
-        onChange={onNodeStartChange}
-        suffix={
-          <Tooltip title="A valid node id or space seperated list of id's. If empty a random node will be chosen.">
-            <InfoCircleOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
-          </Tooltip>
-        }
-        style={{ width: 240, marginTop: '24px' }}
-      />
+      <h5>urlParameters (in ParameterNodeStart): {JSON.stringify(urlParameters)}</h5>
+      <form>
+        <label>
+          nodeStart:
+          <input
+            type="text"
+            value={nodeStart}
+            onChange={(e) => {
+              setNodeStart(e.target.value);
+              NEWURLPARAMETERS.nodeStart = e.target.value;
+              setUrlParameters(NEWURLPARAMETERS);
+            }}
+          />
+        </label>
+      </form>
     </>
   );
 };
