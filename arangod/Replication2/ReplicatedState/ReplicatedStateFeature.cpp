@@ -40,12 +40,12 @@ auto replicated_state::ReplicatedStateFeature::createReplicatedState(
     -> std::shared_ptr<ReplicatedStateBase> {
   auto name_str = std::string{name};
   if (auto iter = factories.find(name_str); iter != std::end(factories)) {
-    LOG_TOPIC("24af7", TRACE, Logger::REPLICATED_STATE)
-        << "Creating replicated state of type `" << name << "`.";
     auto logId = log->getId();
-    return iter->second->createReplicatedState(
-        std::move(log), loggerContext.with<logContextKeyStateImpl>(name_str)
-                            .with<logContextKeyLogId>(logId));
+    auto lc = loggerContext.with<logContextKeyStateImpl>(name_str)
+                  .with<logContextKeyLogId>(logId);
+    LOG_CTX("24af7", TRACE, lc)
+        << "Creating replicated state of type `" << name << "`.";
+    return iter->second->createReplicatedState(std::move(log), std::move(lc));
   }
   THROW_ARANGO_EXCEPTION(
       TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);  // TODO fix error code

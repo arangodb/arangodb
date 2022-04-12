@@ -25,6 +25,7 @@
 #include "velocypack/Builder.h"
 #include "velocypack/velocypack-common.h"
 #include <memory>
+#include <utility>
 
 #include "Agency/TransactionBuilder.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
@@ -108,25 +109,31 @@ struct ActionContext {
 struct EmptyAction {
   static constexpr std::string_view name = "EmptyAction";
 
-  EmptyAction() : _message(""){};
-  explicit EmptyAction(std::string message) : _message(std::move(message)) {}
-  std::string _message;
+  EmptyAction() : message(std::nullopt){};
+  explicit EmptyAction(std::string message) : message(std::move(message)) {}
 
-  auto updateCurrent(LogCurrent current) -> LogCurrent {
-    if (!current.supervision) {
-      current.supervision = LogCurrentSupervision{};
-    }
+  std::optional<std::string> message;
 
-    if (!current.supervision->statusMessage or
-        current.supervision->statusMessage != _message) {
-      current.supervision->statusMessage = _message;
-    }
+  auto execute(ActionContext& ctx) const -> void {
+    ctx.modifyCurrent([&](LogCurrent& current) {
+      if (!current.supervision) {
+        current.supervision = LogCurrentSupervision{};
+      }
 
-    return current;
+      if (!current.supervision->statusMessage or
+          current.supervision->statusMessage != message) {
+        current.supervision->statusMessage = message;
+      }
+    });
   }
-
-  auto execute(ActionContext& ctx) const -> void {}
 };
+
+template<typename Inspector>
+auto inspect(Inspector& f, EmptyAction& x) {
+  auto hack = std::string{x.name};
+  return f.object(x).fields(f.field("type", hack),
+                            f.field("message", x.message));
+}
 
 struct ErrorAction {
   static constexpr std::string_view name = "ErrorAction";
@@ -147,26 +154,47 @@ struct ErrorAction {
     });
   }
 };
+template<typename Inspector>
+auto inspect(Inspector& f, ErrorAction& x) {
+  auto hack = std::string{x.name};
+  return f.object(x).fields(f.field("type", hack),
+                            f.field("message", x._error));
+}
 
 struct AddLogToPlanAction {
   static constexpr std::string_view name = "AddLogToPlanAction";
 
-  AddLogToPlanAction(LogId const id, ParticipantsFlagsMap const& participants)
-      : _id(id), _participants(participants){};
-  LogId const _id;
-  ParticipantsFlagsMap const _participants;
+  AddLogToPlanAction(LogId const id, ParticipantsFlagsMap participants,
+                     LogConfig config,
+                     std::optional<LogPlanTermSpecification::Leader> leader)
+      : _id(id),
+        _participants(std::move(participants)),
+        _config(std::move(config)),
+        _leader(std::move(leader)){};
+  LogId _id;
+  ParticipantsFlagsMap _participants;
+  LogConfig _config;
+  std::optional<LogPlanTermSpecification::Leader> _leader;
 
   auto execute(ActionContext& ctx) const -> void {
     ctx.setPlan(LogPlanSpecification(
-        _id, std::nullopt,
+        _id, LogPlanTermSpecification(LogTerm{1}, _config, _leader),
         ParticipantsConfig{.generation = 1, .participants = _participants}));
   }
 };
+template<typename Inspector>
+auto inspect(Inspector& f, AddLogToPlanAction& x) {
+  auto hack = std::string{x.name};
+  return f.object(x).fields(f.field("type", hack), f.field("id", x._id),
+                            f.field("participants", x._participants),
+                            f.field("leader", x._leader),
+                            f.field("config", x._config));
+}
 
 struct CreateInitialTermAction {
   static constexpr std::string_view name = "CreateIntialTermAction";
 
-  LogConfig const _config;
+  LogConfig _config;
 
   auto execute(ActionContext& ctx) const -> void {
     ctx.modifyPlan([&](LogPlanSpecification& plan) {
@@ -176,6 +204,12 @@ struct CreateInitialTermAction {
     });
   }
 };
+template<typename Inspector>
+auto inspect(Inspector& f, CreateInitialTermAction& x) {
+  auto hack = std::string{x.name};
+  return f.object(x).fields(f.field("type", hack),
+                            f.field("config", x._config));
+}
 
 struct CurrentNotAvailableAction {
   static constexpr std::string_view name = "CurrentNotAvailableAction";
@@ -189,6 +223,11 @@ struct CurrentNotAvailableAction {
     ctx.setCurrent(current);
   }
 };
+template<typename Inspector>
+auto inspect(Inspector& f, CurrentNotAvailableAction& x) {
+  auto hack = std::string{x.name};
+  return f.object(x).fields(f.field("type", hack));
+}
 
 struct DictateLeaderAction {
   static constexpr std::string_view name = "DictateLeaderAction";
@@ -205,6 +244,12 @@ struct DictateLeaderAction {
     });
   }
 };
+template<typename Inspector>
+auto inspect(Inspector& f, DictateLeaderAction& x) {
+  auto hack = std::string{x.name};
+  return f.object(x).fields(f.field("type", hack),
+                            f.field("leader", x._leader));
+}
 
 struct DictateLeaderFailedAction {
   static constexpr std::string_view name = "DictateLeaderFailedAction";
@@ -223,32 +268,32 @@ struct DictateLeaderFailedAction {
     });
   }
 };
-
-struct EvictLeaderAction {
-  static constexpr std::string_view name = "EvictLeaderAction";
-
-  auto execute(ActionContext& ctx) const -> void {
-    ctx.modifyPlan([&](LogPlanSpecification& plan) {
-      plan.participantsConfig.participants
-          .at(plan.currentTerm->leader->serverId)
-          .allowedAsLeader = false;
-      plan.participantsConfig.generation += 1;
-      plan.currentTerm->term = LogTerm{plan.currentTerm->term.value + 1};
-      plan.currentTerm->leader.reset();
-    });
-  }
-};
+template<typename Inspector>
+auto inspect(Inspector& f, DictateLeaderFailedAction& x) {
+  auto hack = std::string{x.name};
+  return f.object(x).fields(f.field("type", hack),
+                            f.field("message", x._message));
+}
 
 struct WriteEmptyTermAction {
   static constexpr std::string_view name = "WriteEmptyTermAction";
+  LogTerm minTerm;
+
+  explicit WriteEmptyTermAction(LogTerm minTerm) : minTerm{minTerm} {};
 
   auto execute(ActionContext& ctx) const -> void {
     ctx.modifyPlan([&](LogPlanSpecification& plan) {
-      plan.currentTerm->term = LogTerm{plan.currentTerm->term.value + 1};
+      plan.currentTerm->term = LogTerm{minTerm.value + 1};
       plan.currentTerm->leader.reset();
     });
   }
 };
+template<typename Inspector>
+auto inspect(Inspector& f, WriteEmptyTermAction& x) {
+  auto hack = std::string{x.name};
+  return f.object(x).fields(f.field("type", hack),
+                            f.field("minTerm", x.minTerm));
+}
 
 struct LeaderElectionImpossibleAction {
   static constexpr std::string_view name = "LeaderElectionImpossibleAction";
@@ -262,6 +307,11 @@ struct LeaderElectionImpossibleAction {
     });
   }
 };
+template<typename Inspector>
+auto inspect(Inspector& f, LeaderElectionImpossibleAction& x) {
+  auto hack = std::string{x.name};
+  return f.object(x).fields(f.field("type", hack));
+}
 
 struct LeaderElectionOutOfBoundsAction {
   static constexpr std::string_view name = "LeaderElectionOutOfBoundsAction";
@@ -280,6 +330,12 @@ struct LeaderElectionOutOfBoundsAction {
     });
   }
 };
+template<typename Inspector>
+auto inspect(Inspector& f, LeaderElectionOutOfBoundsAction& x) {
+  auto hack = std::string{x.name};
+  return f.object(x).fields(f.field("type", hack),
+                            f.field("election", x._election));
+}
 
 struct LeaderElectionQuorumNotReachedAction {
   static constexpr std::string_view name =
@@ -298,6 +354,12 @@ struct LeaderElectionQuorumNotReachedAction {
     });
   }
 };
+template<typename Inspector>
+auto inspect(Inspector& f, LeaderElectionQuorumNotReachedAction& x) {
+  auto hack = std::string{x.name};
+  return f.object(x).fields(f.field("type", hack),
+                            f.field("election", x._election));
+}
 
 struct LeaderElectionAction {
   static constexpr std::string_view name = "LeaderElectionAction";
@@ -322,6 +384,13 @@ struct LeaderElectionAction {
     });
   }
 };
+template<typename Inspector>
+auto inspect(Inspector& f, LeaderElectionAction& x) {
+  auto hack = std::string{x.name};
+  return f.object(x).fields(f.field("type", hack),
+                            f.field("election", x._electionReport),
+                            f.field("electedLeader", x._electedLeader));
+}
 
 struct UpdateParticipantFlagsAction {
   static constexpr std::string_view name = "UpdateParticipantFlagsAction";
@@ -340,6 +409,13 @@ struct UpdateParticipantFlagsAction {
     });
   }
 };
+template<typename Inspector>
+auto inspect(Inspector& f, UpdateParticipantFlagsAction& x) {
+  auto hack = std::string{x.name};
+  return f.object(x).fields(f.field("type", hack),
+                            f.field("participant", x._participant),
+                            f.field("flags", x._flags));
+}
 
 struct AddParticipantToPlanAction {
   static constexpr std::string_view name = "AddParticipantToPlanAction";
@@ -358,6 +434,13 @@ struct AddParticipantToPlanAction {
     });
   }
 };
+template<typename Inspector>
+auto inspect(Inspector& f, AddParticipantToPlanAction& x) {
+  auto hack = std::string{x.name};
+  return f.object(x).fields(f.field("type", hack),
+                            f.field("participant", x._participant),
+                            f.field("flags", x._flags));
+}
 
 struct RemoveParticipantFromPlanAction {
   static constexpr std::string_view name = "RemoveParticipantFromPlanAction";
@@ -374,6 +457,12 @@ struct RemoveParticipantFromPlanAction {
     });
   }
 };
+template<typename Inspector>
+auto inspect(Inspector& f, RemoveParticipantFromPlanAction& x) {
+  auto hack = std::string{x.name};
+  return f.object(x).fields(f.field("type", hack),
+                            f.field("participant", x._participant));
+}
 
 struct UpdateLogConfigAction {
   static constexpr std::string_view name = "UpdateLogConfigAction";
@@ -393,9 +482,15 @@ struct UpdateLogConfigAction {
     });
   }
 };
+template<typename Inspector>
+auto inspect(Inspector& f, UpdateLogConfigAction& x) {
+  auto hack = std::string{x.name};
+  return f.object(x).fields(f.field("type", hack));
+}
 
 struct ConvergedToTargetAction {
   static constexpr std::string_view name = "ConvergedToTargetAction";
+  std::optional<std::uint64_t> version{std::nullopt};
 
   auto execute(ActionContext& ctx) const -> void {
     ctx.modifyCurrent([&](LogCurrent& current) {
@@ -403,45 +498,26 @@ struct ConvergedToTargetAction {
         current.supervision = LogCurrentSupervision{};
       }
 
-      current.supervision->statusMessage = "Converged to target";
+      if (current.supervision) current.supervision->targetVersion = version;
     });
   }
 };
 
+template<typename Inspector>
+auto inspect(Inspector& f, ConvergedToTargetAction& x) {
+  auto hack = std::string{x.name};
+  return f.object(x).fields(f.field("type", hack),
+                            f.field("version", x.version));
+}
+
 using Action = std::variant<
     EmptyAction, ErrorAction, AddLogToPlanAction, CreateInitialTermAction,
     CurrentNotAvailableAction, DictateLeaderAction, DictateLeaderFailedAction,
-    EvictLeaderAction, WriteEmptyTermAction, LeaderElectionAction,
-    LeaderElectionImpossibleAction, LeaderElectionOutOfBoundsAction,
-    LeaderElectionQuorumNotReachedAction, UpdateParticipantFlagsAction,
-    AddParticipantToPlanAction, RemoveParticipantFromPlanAction,
-    UpdateLogConfigAction, ConvergedToTargetAction>;
-
-struct VelocyPacker {
-  VelocyPacker(VPackBuilder& builder) : builder(builder), ob(&builder){};
-  VelocyPacker(VelocyPacker&) = delete;
-  VPackBuilder& builder;
-  VPackObjectBuilder ob;
-
-  void operator()(EmptyAction const& action);
-  void operator()(ErrorAction const& action);
-  void operator()(AddLogToPlanAction const& action);
-  void operator()(CreateInitialTermAction const& action);
-  void operator()(CurrentNotAvailableAction const& action);
-  void operator()(DictateLeaderAction const& action);
-  void operator()(DictateLeaderFailedAction const& action);
-  void operator()(EvictLeaderAction const& action);
-  void operator()(WriteEmptyTermAction const& action);
-  void operator()(LeaderElectionImpossibleAction const& action);
-  void operator()(LeaderElectionOutOfBoundsAction const& action);
-  void operator()(LeaderElectionQuorumNotReachedAction const& action);
-  void operator()(LeaderElectionAction const& action);
-  void operator()(UpdateParticipantFlagsAction const& action);
-  void operator()(AddParticipantToPlanAction const& action);
-  void operator()(RemoveParticipantFromPlanAction const& action);
-  void operator()(UpdateLogConfigAction const& action);
-  void operator()(ConvergedToTargetAction const& action);
-};
+    WriteEmptyTermAction, LeaderElectionAction, LeaderElectionImpossibleAction,
+    LeaderElectionOutOfBoundsAction, LeaderElectionQuorumNotReachedAction,
+    UpdateParticipantFlagsAction, AddParticipantToPlanAction,
+    RemoveParticipantFromPlanAction, UpdateLogConfigAction,
+    ConvergedToTargetAction>;
 
 auto execute(Action const& action, DatabaseID const& dbName, LogId const& log,
              std::optional<LogPlanSpecification> plan,

@@ -36,12 +36,15 @@ const {
   replicatedLogSetPlanTerm,
   createParticipantsConfig,
   createTermSpecification,
-  replicatedLogIsReady,
   dbservers,
   nextUniqueLogId,
   registerAgencyTestBegin, registerAgencyTestEnd,
-  replicatedLogParticipantsFlag,
 } = require("@arangodb/testutils/replicated-logs-helper");
+
+const {
+  replicatedLogIsReady,
+  replicatedLogParticipantsFlag,
+} = require("@arangodb/testutils/replicated-logs-predicates");
 
 const database = 'ReplLogsMaintenanceTest';
 

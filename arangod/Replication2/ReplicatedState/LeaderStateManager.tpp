@@ -70,7 +70,7 @@ void LeaderStateManager<S>::run() noexcept {
                 TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED};
           }
           LOG_CTX("53ba0", TRACE, self->loggerContext)
-              << "creating leader instance and starting recovery";
+              << "creating leader instance";
           auto core = self->guardedData.doUnderLock([&](GuardedData& data) {
             data.updateInternalState(LeaderInternalState::kRecoveryInProgress,
                                      result->range());
@@ -81,6 +81,8 @@ void LeaderStateManager<S>::run() noexcept {
             return futures::Future<Result>{
                 TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED};
           }
+          LOG_CTX("5af0d", DEBUG, self->loggerContext)
+              << "starting recovery on range " << result->range();
           std::shared_ptr<IReplicatedLeaderState<S>> machine =
               self->factory->constructLeader(std::move(core));
           return machine->recoverEntries(std::move(result))

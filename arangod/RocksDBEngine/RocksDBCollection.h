@@ -47,8 +47,6 @@ class LocalDocumentId;
 
 class RocksDBCollection final : public RocksDBMetaCollection {
   friend class RocksDBEngine;
-  friend class RocksDBFulltextIndex;
-  friend class RocksDBVPackIndex;
 
   RocksDBCollection(LogicalCollection& collection,
                     PhysicalCollection const*);  // use in cluster only!!!!!
@@ -83,6 +81,7 @@ class RocksDBCollection final : public RocksDBMetaCollection {
 
   /// @brief Drop an index with the given iid.
   bool dropIndex(IndexId iid) override;
+
   std::unique_ptr<IndexIterator> getAllIterator(
       transaction::Methods* trx, ReadOwnWrites readOwnWrites) const override;
   std::unique_ptr<IndexIterator> getAnyIterator(

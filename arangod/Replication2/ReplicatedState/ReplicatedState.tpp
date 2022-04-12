@@ -193,13 +193,14 @@ auto ReplicatedState<S>::GuardedData::rebuild(
         << "Replicated log has an unhandled participant type.";
     std::abort();
   }
-} catch (basics::Exception const& ex) {
-  if (ex.code() == TRI_ERROR_REPLICATION_REPLICATED_LOG_PARTICIPANT_GONE) {
-    LOG_CTX("eacb9", TRACE, _self.loggerContext)
-        << "Replicated log participant is gone. Replicated state will go soon "
-           "as well.";
-    return {};
-  }
+} catch (replication2::replicated_log::ParticipantResignedException const& ex) {
+  LOG_CTX("eacb9", TRACE, _self.loggerContext)
+      << "Replicated log participant is gone. Replicated state will go soon "
+         "as well. Error code: "
+      << ex.code();
+  currentManager = nullptr;
+  return {};
+} catch (...) {
   throw;
 }
 

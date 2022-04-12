@@ -177,7 +177,6 @@ MaintenanceFeature::MaintenanceFeature(Server& server)
   startsAfter<metrics::MetricsFeature>();
 
   setOptional(true);
-  requiresElevatedPrivileges(false);
 }
 
 MaintenanceFeature::~MaintenanceFeature() { stop(); }
