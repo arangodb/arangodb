@@ -45,7 +45,8 @@ YAMLFILE = "Documentation/Metrics/allMetrics.yaml"
 CATEGORYNAMES = ["Health", "AQL", "Transactions", "Foxx", "Pregel", \
                  "Statistics", "Replication", "Disk", "Errors", \
                  "RocksDB", "Hotbackup", "k8s", "Connectivity", "Network",\
-                 "V8", "Agency", "Scheduler", "Maintenance", "kubearangodb"]
+                 "V8", "Agency", "Scheduler", "Maintenance", "kubearangodb",
+                 "ArangoSearch"]
 
 COMPLEXITIES = ["none", "simple", "medium", "advanced"]
 
@@ -70,6 +71,7 @@ PERSONAINTERESTS["all"] = \
      "Scheduler":    "advanced", \
      "Maintenance":  "advanced", \
      "kubearangodb": "advanced", \
+     "ArangoSearch": "advanced", \
     }
 PERSONAINTERESTS["dbadmin"] = \
     {"Health":       "advanced", \
@@ -91,6 +93,7 @@ PERSONAINTERESTS["dbadmin"] = \
      "Scheduler":    "none", \
      "Maintenance":  "none", \
      "kubearangodb": "medium", \
+     "ArangoSearch": "advanced", \
     }
 PERSONAINTERESTS["sysadmin"] = \
     {"Health":       "advanced", \
@@ -112,6 +115,7 @@ PERSONAINTERESTS["sysadmin"] = \
      "Scheduler":    "none", \
      "Maintenance":  "none", \
      "kubearangodb": "simple", \
+     "ArangoSearch": "simple", \
     }
 PERSONAINTERESTS["user"] = \
     {"Health":       "simple", \
@@ -133,6 +137,7 @@ PERSONAINTERESTS["user"] = \
      "Scheduler":    "none", \
      "Maintenance":  "none", \
      "kubearangodb": "none", \
+     "ArangoSearch": "simple", \
     }
 PERSONAINTERESTS["oasiscustomer"] = \
     {"Health":       "simple", \
@@ -154,6 +159,7 @@ PERSONAINTERESTS["oasiscustomer"] = \
      "Scheduler":    "none", \
      "Maintenance":  "none", \
      "kubearangodb": "none", \
+     "ArangoSearch": "simple", \
     }
 PERSONAINTERESTS["appdeveloper"] = \
     {"Health":       "medium", \
@@ -175,6 +181,7 @@ PERSONAINTERESTS["appdeveloper"] = \
      "Scheduler":    "simple", \
      "Maintenance":  "none", \
      "kubearangodb": "none", \
+     "ArangoSearch": "simple", \
     }
 PERSONAINTERESTS["oasisoncall"] = \
     {"Health":       "advanced", \
@@ -196,6 +203,7 @@ PERSONAINTERESTS["oasisoncall"] = \
      "Scheduler":    "medium", \
      "Maintenance":  "simple", \
      "kubearangodb": "medium", \
+     "ArangoSearch": "simple", \
     }
 PERSONAINTERESTS["arangodbdeveloper"] = \
     {"Health":       "advanced", \
@@ -217,6 +225,7 @@ PERSONAINTERESTS["arangodbdeveloper"] = \
      "Scheduler":    "advanced", \
      "Maintenance":  "advanced", \
      "kubearangodb": "advanced", \
+     "ArangoSearch": "advanced", \
     }
 
 # Parse command line options:

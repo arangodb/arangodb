@@ -1,6 +1,10 @@
 v3.8.7 (XXXX-XX-XX)
 -------------------
 
+* Added an IO heartbeat which checks that the underlying volume is writable with
+  reasonable performance. The test is done every 15 seconds and can be
+  explicitly switched off. New metrics to give visibility if the test fails.
+
 * Resync follower shard after a follower restart immediately and not lazily
   (BTS-829).
 
