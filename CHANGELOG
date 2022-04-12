@@ -1,3 +1,9 @@
+v3.9.2 (XXXX-XX-XX)
+-------------------
+
+* Resync follower shard after a follower restart immediately and not lazily.
+
+
 v3.9.1 (2022-04-04)
 -------------------
 
