@@ -393,7 +393,7 @@ Result PhysicalCollection::newObjectForInsert(
     char const* p = s.getStringUnchecked(l);
 
     // validate and track the key just used
-    auto res = _logicalCollection.keyGenerator()->validate(p, l, isRestore);
+    auto res = _logicalCollection.keyGenerator().validate(p, l, isRestore);
 
     if (res != TRI_ERROR_NO_ERROR) {
       return Result(res);

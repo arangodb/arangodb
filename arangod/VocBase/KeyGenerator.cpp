@@ -932,19 +932,8 @@ bool KeyGeneratorHelper::validateId(char const* key, size_t len,
   return KeyGeneratorHelper::validateKey(key + split + 1, len - split - 1);
 }
 
-/// @brief create the key generator
-KeyGenerator::KeyGenerator(bool allowUserKeys)
-    : _allowUserKeys(allowUserKeys),
-      _isDBServer(ServerState::instance()->isDBServer()) {}
-
-/// @brief build a VelocyPack representation of the generator in the builder
-void KeyGenerator::toVelocyPack(arangodb::velocypack::Builder& builder) const {
-  TRI_ASSERT(!builder.isClosed());
-  builder.add(StaticStrings::AllowUserKeys, VPackValue(_allowUserKeys));
-}
-
 /// @brief create a key generator based on the options specified
-std::unique_ptr<KeyGenerator> KeyGenerator::create(
+std::unique_ptr<KeyGenerator> KeyGeneratorHelper::createKeyGenerator(
     LogicalCollection const& collection, VPackSlice options) {
   if (!options.isObject()) {
     options = VPackSlice::emptyObjectSlice();
@@ -964,6 +953,16 @@ std::unique_ptr<KeyGenerator> KeyGenerator::create(
   return (*it).second(collection, options);
 }
 
+/// @brief create the key generator
+KeyGenerator::KeyGenerator(bool allowUserKeys)
+    : _allowUserKeys(allowUserKeys) {}
+
+/// @brief build a VelocyPack representation of the generator in the builder
+void KeyGenerator::toVelocyPack(arangodb::velocypack::Builder& builder) const {
+  TRI_ASSERT(!builder.isClosed());
+  builder.add(StaticStrings::AllowUserKeys, VPackValue(_allowUserKeys));
+}
+
 /// @brief validate a key
 ErrorCode KeyGenerator::validate(char const* p, size_t length,
                                  bool isRestore) noexcept {
@@ -974,7 +973,8 @@ ErrorCode KeyGenerator::validate(char const* p, size_t length,
 ErrorCode KeyGenerator::globalCheck(char const* p, size_t length,
                                     bool isRestore) const noexcept {
   // user has specified a key
-  if (length > 0 && !_allowUserKeys && !isRestore && !_isDBServer) {
+  if (length > 0 && !_allowUserKeys && !isRestore &&
+      !ServerState::instance()->isDBServer()) {
     // we do not allow user-generated keys
     // note: on a DB server the coordinator will already have generated the key
     return TRI_ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED;

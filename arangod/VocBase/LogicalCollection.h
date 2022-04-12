@@ -351,7 +351,7 @@ class LogicalCollection : public LogicalDataSource {
 
   // Get a reference to this KeyGenerator.
   // Caller is not allowed to free it.
-  inline KeyGenerator* keyGenerator() const { return _keyGenerator.get(); }
+  KeyGenerator& keyGenerator() const { return *_keyGenerator; }
 
   transaction::CountCache& countCache() { return _countCache; }
 

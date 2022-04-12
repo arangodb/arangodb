@@ -561,7 +561,7 @@ struct CreateOperationCtx {
       if (keySlice.isString()) {
         VPackValueLength l;
         char const* p = keySlice.getString(l);
-        auto res = collinfo.keyGenerator()->validate(p, l, isRestore);
+        auto res = collinfo.keyGenerator().validate(p, l, isRestore);
         if (res != TRI_ERROR_NO_ERROR) {
           return res;
         }

@@ -212,8 +212,8 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
   decorateWithInternalValidators();
 
   // create key generator based on keyOptions from slice
-  _keyGenerator =
-      KeyGenerator::create(*this, info.get(StaticStrings::KeyOptions));
+  _keyGenerator = KeyGeneratorHelper::createKeyGenerator(
+      *this, info.get(StaticStrings::KeyOptions));
 }
 
 #ifndef USE_ENTERPRISE
@@ -347,13 +347,13 @@ ErrorCode LogicalCollection::getResponsibleShard(velocypack::Slice slice,
 /// @briefs creates a new document key, the input slice is ignored here
 #ifndef USE_ENTERPRISE
 std::string LogicalCollection::createKey(VPackSlice input) {
-  return keyGenerator()->generate();
+  return keyGenerator().generate();
 }
 #endif
 
 #ifndef USE_ENTERPRISE
 std::string LogicalCollection::createSmartToSatKey(VPackSlice) {
-  return keyGenerator()->generate();
+  return keyGenerator().generate();
 }
 #endif
 
@@ -708,8 +708,7 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
 
   // keyoptions
   build.add(StaticStrings::KeyOptions, VPackValue(VPackValueType::Object));
-  TRI_ASSERT(_keyGenerator != nullptr);
-  _keyGenerator->toVelocyPack(build);
+  keyGenerator().toVelocyPack(build);
   build.close();
 
   // Physical Information

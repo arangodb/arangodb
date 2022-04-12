@@ -31,6 +31,7 @@
 #include <string>
 
 namespace arangodb {
+class KeyGenerator;
 class LogicalCollection;
 
 namespace application_features {
@@ -58,6 +59,10 @@ struct KeyGeneratorHelper {
   static bool validateId(char const* key, size_t len, bool extendedNames,
                          size_t& split) noexcept;
 
+  /// @brief create a key generator based on the options specified
+  static std::unique_ptr<KeyGenerator> createKeyGenerator(
+      LogicalCollection const& collection, arangodb::velocypack::Slice);
+
   /// @brief maximum length of a key in a collection
   static constexpr size_t maxKeyLength = 254;
 };
@@ -71,6 +76,8 @@ struct KeyGeneratorHelper {
 /// temporary LogicalCollection objects one after the other, which
 /// will also discard the collection's particular KeyGenerator object!
 class KeyGenerator {
+  friend struct KeyGeneratorHelper;
+
   KeyGenerator(KeyGenerator const&) = delete;
   KeyGenerator& operator=(KeyGenerator const&) = delete;
 
@@ -81,10 +88,6 @@ class KeyGenerator {
  public:
   /// @brief destroy the generator
   virtual ~KeyGenerator() = default;
-
-  /// @brief create a key generator based on the options specified
-  static std::unique_ptr<KeyGenerator> create(
-      LogicalCollection const& collection, arangodb::velocypack::Slice);
 
   /// @brief whether or not the key generator has dynamic state
   /// that needs to be stored and recovered
@@ -105,6 +108,8 @@ class KeyGenerator {
   /// @brief build a VelocyPack representation of the generator in the builder
   virtual void toVelocyPack(arangodb::velocypack::Builder&) const;
 
+  bool allowUserKeys() const noexcept { return _allowUserKeys; }
+
  protected:
   /// @brief check global key attributes
   ErrorCode globalCheck(char const* p, size_t length,
@@ -112,8 +117,47 @@ class KeyGenerator {
 
   /// @brief whether or not the users can specify their own keys
   bool const _allowUserKeys;
-  /// @brief whether or not we are running on a DB server
-  bool const _isDBServer;
+};
+
+/// @brief wrapper class that wraps another KeyGenerator.
+/// all public methods delegate to the wrapped KeyGenerator.
+/// can be used as a base class for creating own KeyGenerators
+/// that reuse functionality from other KeyGenerators.
+class KeyGeneratorWrapper : public KeyGenerator {
+ public:
+  /// @brief create the generator
+  explicit KeyGeneratorWrapper(std::unique_ptr<KeyGenerator> wrapped)
+      : KeyGenerator(wrapped->allowUserKeys()), _wrapped(std::move(wrapped)) {}
+
+  /// @brief whether or not the key generator has dynamic state
+  /// that needs to be stored and recovered
+  bool hasDynamicState() const noexcept override {
+    return _wrapped->hasDynamicState();
+  }
+
+  /// @brief generate a key
+  /// if the returned string is empty, it means no proper key was
+  /// generated, and the caller must handle the situation
+  std::string generate() override { return _wrapped->generate(); }
+
+  /// @brief validate a key
+  ErrorCode validate(char const* p, size_t length,
+                     bool isRestore) noexcept override {
+    return _wrapped->validate(p, length, isRestore);
+  }
+
+  /// @brief track usage of a key
+  void track(char const* p, size_t length) noexcept override {
+    _wrapped->track(p, length);
+  }
+
+  /// @brief build a VelocyPack representation of the generator in the builder
+  void toVelocyPack(arangodb::velocypack::Builder& result) const override {
+    _wrapped->toVelocyPack(result);
+  }
+
+ protected:
+  std::unique_ptr<KeyGenerator> _wrapped;
 };
 
 }  // namespace arangodb
