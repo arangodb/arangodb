@@ -48,6 +48,8 @@ class ChecksumHelper {
  public:
   explicit ChecksumHelper(std::string const& rootPath) : _rootPath{rootPath} {}
   [[nodiscard]] static bool isFileNameSst(std::string const& fileName);
+  // writeShaFile() also inserts the .sst file name and the checksum in the
+  // _fileNamesToHashes table
   bool writeShaFile(std::string const& fileName, std::string const& checksum);
   [[nodiscard]] static std::string buildShaFileNameFromSst(
       std::string const& fileName, std::string const& checksum);
@@ -81,9 +83,8 @@ class ChecksumWritableFile : public rocksdb::WritableFileWrapper {
 
 class ChecksumEnv : public rocksdb::EnvWrapper {
  public:
-  explicit ChecksumEnv(Env* t, std::string const& path) : EnvWrapper(t) {
-    _helper = std::make_shared<ChecksumHelper>(path);
-  }
+  explicit ChecksumEnv(Env* t, std::string const& path)
+      : EnvWrapper(t), _helper{std::make_shared<ChecksumHelper>(path)} {}
 
   rocksdb::Status NewWritableFile(
       const std::string& fileName,

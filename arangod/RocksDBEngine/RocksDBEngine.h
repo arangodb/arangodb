@@ -653,10 +653,8 @@ class RocksDBEngine final : public StorageEngine {
   // after the encryption of the .sst files
   std::unique_ptr<rocksdb::Env> _checksumEnv;
 
-  rocksdb::Env* NewChecksumEnv(rocksdb::Env* base_env,
-                               std::string const& path) {
-    return new arangodb::checksum::ChecksumEnv(base_env, path);
-  }
+  std::unique_ptr<rocksdb::Env> NewChecksumEnv(rocksdb::Env* base_env,
+                                               std::string const& path);
 };
 
 static constexpr const char* kEncryptionTypeFile = "ENCRYPTION";

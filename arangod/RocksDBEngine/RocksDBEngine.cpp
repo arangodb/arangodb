@@ -266,6 +266,11 @@ RocksDBEngine::RocksDBEngine(Server& server)
 
 RocksDBEngine::~RocksDBEngine() { shutdownRocksDBInstance(); }
 
+std::unique_ptr<rocksdb::Env> RocksDBEngine::NewChecksumEnv(
+    rocksdb::Env* base_env, std::string const& path) {
+  return std::make_unique<arangodb::checksum::ChecksumEnv>(base_env, path);
+}
+
 /// shuts down the RocksDB instance. this is called from unprepare
 /// and the dtor
 void RocksDBEngine::shutdownRocksDBInstance() noexcept {
@@ -796,7 +801,7 @@ void RocksDBEngine::start() {
       static_cast<size_t>(opts._compactionReadaheadSize);
 
   if (_createShaFiles) {
-    _checksumEnv.reset(NewChecksumEnv(rocksdb::Env::Default(), _path));
+    _checksumEnv = NewChecksumEnv(rocksdb::Env::Default(), _path);
     _options.env = _checksumEnv.get();
     static_cast<checksum::ChecksumEnv*>(_checksumEnv.get())
         ->getHelper()

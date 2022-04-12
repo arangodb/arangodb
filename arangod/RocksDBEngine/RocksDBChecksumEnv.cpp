@@ -94,9 +94,9 @@ bool ChecksumHelper::writeShaFile(std::string const& fileName,
       << "shaCalcFile: done " << fileName << " result: " << shaFileName;
   auto res = TRI_WriteFile(shaFileName.c_str(), "", 0);
   if (res == TRI_ERROR_NO_ERROR) {
-    std::string basename = TRI_Basename(fileName);
+    std::string baseName = TRI_Basename(fileName);
     MUTEX_LOCKER(mutexLock, _calculatedHashesMutex);
-    _fileNamesToHashes.try_emplace(std::move(basename), checksum);
+    _fileNamesToHashes.try_emplace(std::move(baseName), checksum);
     return true;
   }
 
@@ -127,7 +127,8 @@ void ChecksumHelper::checkMissingShaFiles() {
           std::string hash = it->substr(shaIndex + /*.sha.*/ 5, 64);
           it = nextIt;
           MUTEX_LOCKER(mutexLock, _calculatedHashesMutex);
-          _fileNamesToHashes.try_emplace(std::move(sstFileName), std::move(hash));
+          _fileNamesToHashes.try_emplace(std::move(sstFileName),
+                                         std::move(hash));
         } else {
           std::string tempPath =
               basics::FileUtils::buildFilename(_rootPath, *it);
@@ -170,8 +171,9 @@ void ChecksumHelper::checkMissingShaFiles() {
 std::string ChecksumHelper::removeFromTable(std::string const& fileName) {
   std::string checksum;
   {
+    std::string baseName = TRI_Basename(fileName);
     MUTEX_LOCKER(mutexLock, _calculatedHashesMutex);
-    if (auto it = _fileNamesToHashes.find(TRI_Basename(fileName));
+    if (auto it = _fileNamesToHashes.find(baseName);
         it != _fileNamesToHashes.end()) {
       checksum = it->second;
       _fileNamesToHashes.erase(it);
@@ -201,7 +203,8 @@ rocksdb::Status ChecksumWritableFile::Close() {
   TRI_ASSERT(_helper != nullptr);
   _checksumCalc.computeFinalChecksum();
   if (!_helper->writeShaFile(_fileName, _checksumCalc.getChecksum())) {
-    return rocksdb::Status::Corruption("File writing was unsuccessful");
+    LOG_TOPIC("0b00e", ERR, arangodb::Logger::ENGINES)
+        << "Writing sha file for " << _fileName << " was unsuccessful";
   }
   return rocksdb::WritableFileWrapper::Close();
 }
@@ -217,8 +220,8 @@ rocksdb::Status ChecksumEnv::NewWritableFile(
   }
   try {
     if (_helper->isFileNameSst(fileName)) {
-      result->reset(
-          new ChecksumWritableFile(std::move(writableFile), fileName, _helper));
+      *result = std::make_unique<ChecksumWritableFile>(std::move(writableFile),
+                                                       fileName, _helper);
     } else {
       *result = std::move(writableFile);
     }
@@ -232,8 +235,7 @@ rocksdb::Status ChecksumEnv::NewWritableFile(
 }
 
 rocksdb::Status ChecksumEnv::DeleteFile(const std::string& fileName) {
-  if (_helper->isFileNameSst(fileName) ||
-      fileName.find(".sha") != std::string::npos) {
+  if (_helper->isFileNameSst(fileName)) {
     std::string checksum = _helper->removeFromTable(fileName);
     std::string shaFileName =
         _helper->buildShaFileNameFromSst(fileName, checksum);
@@ -256,7 +258,7 @@ rocksdb::Status ChecksumEnv::DeleteFile(const std::string& fileName) {
     LOG_TOPIC("ce937", WARN, arangodb::Logger::ENGINES)
         << "deleteCalcFile:  delete file failed for " << fileName;
   }
-  return rocksdb::Status::Corruption(
+  return rocksdb::Status::IOError(
       "delete file failed for " +
       fileName);  // will return response from removing .sst or other file, not
                   // the .sha
