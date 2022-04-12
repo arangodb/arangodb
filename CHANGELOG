@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fix deadlocked shard synchronisations when planned shard leader has
+  not yet taken over leadership.
+
 * Resync follower shard after a follower restart immediately and not lazily.
 
 * Unify the creation of normal and SmartGraph collections.
