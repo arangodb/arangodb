@@ -288,7 +288,7 @@ class MockDBServer : public MockClusterServer {
   TRI_vocbase_t* createDatabase(std::string const& name) override;
   void dropDatabase(std::string const& name) override;
 
-  void createShard(std::string const& dbName, std::string shardName,
+  void createShard(std::string const& dbName, std::string const& shardName,
                    LogicalCollection& clusterCollection);
 };
 

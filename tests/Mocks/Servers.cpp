@@ -834,7 +834,8 @@ void MockDBServer::dropDatabase(std::string const& name) {
   dd.first();  // Does the job
 }
 
-void MockDBServer::createShard(std::string const& dbName, std::string shardName,
+void MockDBServer::createShard(std::string const& dbName,
+                               std::string const& shardName,
                                LogicalCollection& clusterCollection) {
   auto props = std::make_shared<VPackBuilder>();
   {
@@ -860,7 +861,7 @@ void MockDBServer::createShard(std::string const& dbName, std::string shardName,
            basics::StringUtils::itoa(clusterCollection.planId().id())},
           {maintenance::SHARD, shardName},
           {maintenance::DATABASE, dbName},
-          {maintenance::SERVER_ID, "PRMR_0001"},
+          {maintenance::SERVER_ID, ServerState::instance()->getId()},
           {maintenance::THE_LEADER, ""}},
       maintenance::HIGHER_PRIORITY, false, props);
 
