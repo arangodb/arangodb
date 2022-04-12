@@ -39,6 +39,7 @@ constexpr char const* DROP_DATABASE = "DropDatabase";
 constexpr char const* DROP_INDEX = "DropIndex";
 constexpr char const* ENSURE_INDEX = "EnsureIndex";
 constexpr char const* FIELDS = "fields";
+constexpr char const* FORCED_RESYNC = "forcedResync";
 constexpr char const* FOLLOWER_ID = "followerId";
 constexpr char const* FOLLOWERS_TO_DROP = "followersToDrop";
 constexpr char const* GLOB_UID = "globallyUniqueId";
