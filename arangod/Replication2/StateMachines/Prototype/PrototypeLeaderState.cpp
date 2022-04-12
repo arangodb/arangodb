@@ -286,6 +286,8 @@ auto PrototypeLeaderState::GuardedData::waitForApplied(LogIndex index)
   return f;
 }
 
-void PrototypeLeaderState::start() { handlePollResult(pollNewEntries()); }
+void PrototypeLeaderState::onSnapshotCompleted() {
+  handlePollResult(pollNewEntries());
+}
 
 #include "Replication2/ReplicatedState/ReplicatedState.tpp"

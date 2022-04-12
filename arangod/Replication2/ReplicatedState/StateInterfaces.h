@@ -81,11 +81,11 @@ struct IReplicatedLeaderState : IReplicatedLeaderStateBase {
       -> std::unique_ptr<CoreType> = 0;
 
   /**
-   * This function has been added to allow resolving futures once the
-   * stream is available. The PrototypeLeaderState uses it as an opportunity
-   * to begin its waiting-for-entries cycle.
+   * This hook is called after the leader recovery is completed and the internal
+   * state has been updated. The underlying stream is guaranteed to have been
+   * initialized.
    */
-  virtual void start(){};
+  virtual void onSnapshotCompleted(){};
 
   // TODO make private
   std::shared_ptr<Stream> _stream;

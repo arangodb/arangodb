@@ -46,7 +46,7 @@ struct PrototypeLeaderState
   auto recoverEntries(std::unique_ptr<EntryIterator> ptr)
       -> futures::Future<Result> override;
 
-  void start() override;
+  void onSnapshotCompleted() override;
 
   auto set(std::unordered_map<std::string, std::string> entries,
            PrototypeStateMethods::PrototypeWriteOptions)
