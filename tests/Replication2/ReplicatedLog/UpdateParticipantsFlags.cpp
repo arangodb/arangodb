@@ -740,3 +740,70 @@ TEST_F(UpdateParticipantsFlagsTest, check_update_participants_meta_entry) {
     EXPECT_EQ(info.participants, *newConfig);
   }
 }
+
+TEST_F(UpdateParticipantsFlagsTest, refuse_old_generation) {
+  leader->triggerAsyncReplication();
+  runAllAsyncAppendEntries();
+  ASSERT_TRUE(leader->isLeadershipEstablished());
+
+  {
+    auto [accepted, committed] = leader->getParticipantConfigGenerations();
+    EXPECT_EQ(accepted, 1);
+    EXPECT_EQ(committed, 1);
+  }
+
+  {
+    auto oldConfig =
+        leader->getStatus().asLeaderStatus()->activeParticipantsConfig;
+    auto newConfig = std::make_shared<ParticipantsConfig>(oldConfig);
+    // just update the generation
+    newConfig->generation = 3;
+    leader->updateParticipantsConfig(newConfig, nullptr);
+  }
+
+  {
+    auto [accepted, committed] = leader->getParticipantConfigGenerations();
+    EXPECT_EQ(accepted, 3);
+    EXPECT_EQ(committed, 1);
+  }
+
+  {
+    auto oldConfig =
+        leader->getStatus().asLeaderStatus()->activeParticipantsConfig;
+    auto newConfig = std::make_shared<ParticipantsConfig>(oldConfig);
+    // purposefully try to update to an old generation
+    newConfig->generation = 2;
+    EXPECT_ANY_THROW(leader->updateParticipantsConfig(newConfig, nullptr));
+  }
+
+  {
+    auto [accepted, committed] = leader->getParticipantConfigGenerations();
+    EXPECT_EQ(accepted, 3);
+    EXPECT_EQ(committed, 1);
+  }
+
+  runAllAsyncAppendEntries();
+
+  {
+    auto [accepted, committed] = leader->getParticipantConfigGenerations();
+    EXPECT_EQ(accepted, 3);
+    EXPECT_EQ(committed, 3);
+  }
+
+  {
+    auto oldConfig =
+        leader->getStatus().asLeaderStatus()->activeParticipantsConfig;
+    auto newConfig = std::make_shared<ParticipantsConfig>(oldConfig);
+    // purposefully try to update to an old generation
+    newConfig->generation = 2;
+    EXPECT_ANY_THROW(leader->updateParticipantsConfig(newConfig, nullptr));
+  }
+
+  runAllAsyncAppendEntries();
+
+  {
+    auto [accepted, committed] = leader->getParticipantConfigGenerations();
+    EXPECT_EQ(accepted, 3);
+    EXPECT_EQ(committed, 3);
+  }
+}
