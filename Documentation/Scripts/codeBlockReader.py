@@ -9,10 +9,6 @@ try:
 except ImportError:
   from urllib import quote_plus
 
-validExtensions = (".cpp", ".h", ".js", ".md")
-# specify the paths in which docublocks are searched. note that js/apps/* must not be included because it contains js/apps/system/
-# and that path also contains copies of some files present in js/ anyway.
-
 searchMDPaths = [
   "Manual",
   "AQL",
@@ -30,7 +26,7 @@ searchPaths = [
 ]
 fullSuccess = True
 
-def file_content(filepath, forceDokuBlockContent):
+def file_content(filepath, forceDocuBlockContent):
   """ Fetches and formats file's content to perform the required operation.
   """
 
@@ -65,7 +61,7 @@ def file_content(filepath, forceDokuBlockContent):
         print("endDocuBlock without previous startDocublock seen while analyzing file %s [%s]" %(filepath, line))
         raise Exception
 
-  if len(docublockname) != 0 and forceDokuBlockContent: 
+  if len(docublockname) != 0 and forceDocuBlockContent: 
     print("no endDocuBlock found while analyzing file %s [%s]" %(filepath, docublockname))
     raise Exception
 
@@ -264,22 +260,32 @@ def example_content(filepath, fh, tag, blockType, placeIntoFilePath):
   fh.write("</div>\n")
   fh.write("\n")
 
-
-def fetch_comments(dirpath, forceDokuBlockContent):
+def fetch_comments(dirpath, forceDocuBlockContent):
   """ Fetches comments from files and writes to a file in required format.
   """
   global fullSuccess
-  global validExtensions
   comments_filename = "allComments.txt"
   fh = io.open(comments_filename, "a", encoding="utf-8", newline="")
   shouldIgnoreLine = False
 
   for root, directories, files in os.walk(dirpath):
-    for filename in files:
-      if filename.endswith(validExtensions) and (filename.find("#") < 0):
-
+    for filename in sorted(files): # ensure that 1_structs.md files are processed first
+      if not filename.endswith(".md") or "#" in filename:
+        continue
+      if filename[0].isdigit():
+        # Some @RESTSTRUCTs are shared between DocuBlocks. They are typically
+        # stored in files called 1_structs.md, without @startDocuBlock wrappers,
+        # and they need to be processed before they are referenced in other files
         filepath = os.path.join(root, filename)
-        file_comments = file_content(filepath, forceDokuBlockContent)
+        print("Including the content of this file because it presumably contains shared @RESTSTRUCTs: %s" % filepath)
+        fh.write("\n<!-- filename: %s -->\n" % filepath)
+        infile = io.open(filepath, encoding='utf-8', newline=None)
+        for line in infile:
+          fh.write(line)
+        infile.close()
+      else:
+        filepath = os.path.join(root, filename)
+        file_comments = file_content(filepath, forceDocuBlockContent)
         for comment in file_comments:
           fh.write("\n<!-- filename: %s -->\n" % filepath)
           explain = False
@@ -287,10 +293,7 @@ def fetch_comments(dirpath, forceDokuBlockContent):
             if "@EXPLAIN{TRUE}" in _com:
               explain = True
           for _com in comment:
-            _text = re.sub(r"//(/)+\s*\n", "<br />\n", _com) # place in temporary brs...
-            _text = re.sub(r"///+(\s+\s+)([-\*\d])", r"  \2", _text)
-            _text = re.sub(r"///\s", "", _text)
-            _text = _text.strip("\n")
+            _text = _com.strip("\n")
             if _text:
               if not shouldIgnoreLine:
                 if ("@startDocuBlock" in _text) or \
@@ -342,7 +345,7 @@ if __name__ == "__main__":
   commentsFile.close()
   errorsFile.close()
   for i in searchPaths:
-    print("Searching for docublocks in " + i[0] + ": ")
+    print("Searching for DocuBlocks in " + i[0] + ": ")
     dirpath = os.path.abspath(os.path.join(os.path.dirname( __file__ ), os.pardir,"ArangoDB/../../"+i[0]))
     fetch_comments(dirpath, i[1])
     os.path.abspath(os.path.join(os.path.dirname( __file__ ), '..', 'templates'))

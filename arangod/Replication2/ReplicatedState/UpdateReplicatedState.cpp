@@ -23,6 +23,7 @@
 #include "UpdateReplicatedState.h"
 #include "Replication2/ReplicatedState/StateCommon.h"
 #include "Basics/voc-errors.h"
+#include "Logger/LogContextKeys.h"
 
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_state;
@@ -38,9 +39,12 @@ auto algorithms::updateReplicatedState(
   TRI_ASSERT(id == spec->id);
   TRI_ASSERT(spec->participants.contains(serverId));
   auto expectedGeneration = spec->participants.at(serverId).generation;
-  LOG_TOPIC("b089c", TRACE, Logger::REPLICATED_STATE)
-      << "Update replicated log" << id << " for generation "
-      << expectedGeneration;
+
+  auto logCtx =
+      LoggerContext(Logger::REPLICATED_STATE).with<logContextKeyLogId>(id);
+
+  LOG_CTX("b089c", TRACE, logCtx) << "Update replicated log" << id
+                                  << " for generation " << expectedGeneration;
 
   auto state = ctx.getReplicatedStateById(id);
   if (state == nullptr) {
@@ -59,12 +63,28 @@ auto algorithms::updateReplicatedState(
         if (auto const p = current->participants.find(serverId);
             p != std::end(current->participants)) {
           if (p->second.generation == expectedGeneration) {
+            LOG_CTX("19d00", DEBUG, logCtx)
+                << "Using existing snapshot information from current";
             // we are allowed to use the information stored here
             return std::make_unique<ReplicatedStateToken>(
                 ReplicatedStateToken::withExplicitSnapshotStatus(
                     expectedGeneration, p->second.snapshot));
+          } else {
+            LOG_CTX("6d8c9", DEBUG, logCtx)
+                << "Must not use existing information, generation is "
+                   "different. "
+                << "Plan = " << expectedGeneration
+                << " but Current = " << p->second.generation;
           }
+        } else {
+          LOG_CTX("cef1a", DEBUG, logCtx)
+              << "No snapshot information available for this server "
+              << serverId;
         }
+      } else {
+        LOG_CTX("d4fd8", DEBUG, logCtx)
+            << "no current available to read snapshot information from. "
+               "Assuming no snapshot available";
       }
 
       return std::make_unique<ReplicatedStateToken>(expectedGeneration);
@@ -79,8 +99,6 @@ auto algorithms::updateReplicatedState(
       if (generation != expectedGeneration) {
         state->flush(expectedGeneration);
       }
-    } else if (!spec->participants.contains(serverId)) {
-      ctx.dropReplicatedState(id);
     }
     return {TRI_ERROR_NO_ERROR};
   }
