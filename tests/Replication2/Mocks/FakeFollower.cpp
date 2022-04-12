@@ -149,3 +149,7 @@ void FakeFollower::resign() & {
       futures::Try<replicated_log::WaitForResult>(exPtr));
   waitForResignQueue.resolveAll();
 }
+
+replicated_log::InMemoryLog FakeFollower::copyInMemoryLog() const {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}

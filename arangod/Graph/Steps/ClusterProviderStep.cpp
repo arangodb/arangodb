@@ -35,41 +35,44 @@ auto operator<<(std::ostream& out, ClusterProviderStep const& step)
 }  // namespace arangodb::graph
 
 ClusterProviderStep::ClusterProviderStep(const VertexType& v)
-    : _vertex(v), _edge(), _fetched(false) {}
+    : _vertex(v), _edge(), _fetchedStatus(FetchedType::UNFETCHED) {}
 
 ClusterProviderStep::ClusterProviderStep(const VertexType& v,
                                          const EdgeType& edge, size_t prev)
-    : BaseStep(prev), _vertex(v), _edge(edge), _fetched(false) {}
+    : BaseStep(prev),
+      _vertex(v),
+      _edge(edge),
+      _fetchedStatus(FetchedType::UNFETCHED) {}
 
 ClusterProviderStep::ClusterProviderStep(VertexType v, EdgeType edge,
-                                         size_t prev, bool fetched)
+                                         size_t prev, FetchedType fetchedStatus)
     : BaseStep(prev),
       _vertex(std::move(v)),
       _edge(std::move(edge)),
-      _fetched(fetched) {}
+      _fetchedStatus(fetchedStatus) {}
 
 ClusterProviderStep::ClusterProviderStep(VertexType v, EdgeType edge,
-                                         size_t prev, bool fetched,
+                                         size_t prev, FetchedType fetchedStatus,
                                          size_t depth)
     : BaseStep(prev, depth),
       _vertex(std::move(v)),
       _edge(std::move(edge)),
-      _fetched(fetched) {}
+      _fetchedStatus(fetchedStatus) {}
 
 ClusterProviderStep::ClusterProviderStep(VertexType v, EdgeType edge,
-                                         size_t prev, bool fetched,
+                                         size_t prev, FetchedType fetched,
                                          size_t depth, double weight)
     : BaseStep(prev, depth, weight),
       _vertex(std::move(v)),
       _edge(std::move(edge)),
-      _fetched(fetched) {}
+      _fetchedStatus(fetched) {}
 
 ClusterProviderStep::ClusterProviderStep(VertexType v, size_t depth,
                                          double weight)
     : BaseStep(std::numeric_limits<size_t>::max(), depth, weight),
       _vertex(std::move(v)),
       _edge(),
-      _fetched(false) {}
+      _fetchedStatus(FetchedType::UNFETCHED) {}
 
 ClusterProviderStep::~ClusterProviderStep() = default;
 
