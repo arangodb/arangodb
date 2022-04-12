@@ -36,8 +36,8 @@ struct TimeStampTransformer {
     target = timepointToString(source);
     return {};
   }
-  auto fromSerialized(std::string const& source, clock::time_point& target) const
-      -> inspection::Status {
+  auto fromSerialized(std::string const& source,
+                      clock::time_point& target) const -> inspection::Status {
     target = stringToTimepoint(source);
     return {};
   }
