@@ -384,11 +384,13 @@ class LogicalCollection : public LogicalDataSource {
 
   bool determineSyncByRevision() const;
 
+ protected:
+  // Only protected for rolling upgrades within 3.9 branch
+  // can be moved to private in devel again
   void decorateWithInternalValidators();
 
   void decorateWithInternalEEValidators();
 
- protected:
   virtual void includeVelocyPackEnterprise(velocypack::Builder& result) const;
 
   // SECTION: Meta Information

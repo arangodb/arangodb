@@ -1,4 +1,23 @@
-v3.9.1 (XXXX-XX-XX)
+v3.9.2 (XXXX-XX-XX)
+-------------------
+
+* Added an IO heartbeat which checks that the underlying volume is writable with
+  reasonable performance. The test is done every 15 seconds and can be
+  explicitly switched off. New metrics to give visibility if the test fails.
+
+* Fix lock order in Agent::advanceCommitIndex for State's _logLock and Agent's
+  _waitForCV.
+
+* BugFix (enterprise-only): (BTS-787) In a hybrid disjoint SmartGraph, having
+  more than one relation, if you add a new vertex collection to a Smart -> Smart
+  edge relation this vertex collection was rejected with "has to be satellite"
+  error.
+  Now the collection is created as a SmartVertexCollection as desired.
+
+* Resync follower shard after a follower restart immediately and not lazily.
+
+
+v3.9.1 (2022-04-04)
 -------------------
 
 * Fix deadlocked shard synchronisations when planned shard leader has
