@@ -25,7 +25,9 @@
 
 #include <openssl/evp.h>
 #include <rocksdb/env.h>
+#include <rocksdb/status.h>
 
+#include "Basics/Common.h"
 #include "Basics/Mutex.h"
 
 namespace arangodb::checksum {
