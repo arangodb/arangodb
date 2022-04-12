@@ -840,7 +840,8 @@ TEST_F(MaintenanceFeatureTestDBServer, test_synchronize_shard_abort) {
                                              {COLLECTION, "tmp"},
                                              {SHARD, "s1"},
                                              {THE_LEADER, "PRMR-1"},
-                                             {SHARD_VERSION, "1"}},
+                                             {SHARD_VERSION, "1"},
+                                             {FORCED_RESYNC, "false"}},
           SYNCHRONIZE_PRIORITY, true);
 
   // The following will executed the action right away:
