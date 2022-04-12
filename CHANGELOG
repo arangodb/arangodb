@@ -1,6 +1,8 @@
 devel
 -----
 
+* Resync follower shard after a follower restart immediately and not lazily.
+
 * Unify the creation of normal and SmartGraph collections.
 
   This unifies the code paths for creating collections for normal

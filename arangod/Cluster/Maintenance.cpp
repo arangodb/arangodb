@@ -2333,12 +2333,30 @@ void arangodb::maintenance::syncReplicatedShardsWithLeaders(
         // Current's servers
         VPackSlice const cservers = cshrd.get(SERVERS);
 
+        // From above, we know that the shard exists locally. For the case
+        // that we have been restarted but the leader did not notice that
+        // we were gone, we must check if the leader is set correctly here
+        // locally for our shard:
+        VPackSlice lshard = localdb.get(shname);
+        TRI_ASSERT(lshard.isObject());
+        bool needsResyncBecauseOfRestart = false;
+        if (lshard.isObject()) {  // just in case
+          VPackSlice theLeader = lshard.get("theLeader");
+          if (theLeader.isString() &&
+              theLeader.compareString(maintenance::ResignShardLeadership::
+                                          LeaderNotYetKnownString) == 0) {
+            needsResyncBecauseOfRestart = true;
+          }
+        }
+
         // if we are considered to be in sync there is nothing to do
-        if (indexOf(cservers, serverId) > 0) {
+        if (!needsResyncBecauseOfRestart && indexOf(cservers, serverId) > 0) {
           continue;
         }
 
         std::string leader = pservers[0].copyString();
+        std::string forcedResync =
+            needsResyncBecauseOfRestart ? "true" : "false";
         std::shared_ptr<ActionDescription> description =
             std::make_shared<ActionDescription>(
                 std::map<std::string, std::string>{
@@ -2347,6 +2365,7 @@ void arangodb::maintenance::syncReplicatedShardsWithLeaders(
                     {COLLECTION, std::string(colname)},
                     {SHARD, std::string(shname)},
                     {THE_LEADER, std::move(leader)},
+                    {FORCED_RESYNC, std::move(forcedResync)},
                     {SHARD_VERSION, std::to_string(feature.shardVersion(
                                         std::string(shname)))}},
                 SYNCHRONIZE_PRIORITY, true);
