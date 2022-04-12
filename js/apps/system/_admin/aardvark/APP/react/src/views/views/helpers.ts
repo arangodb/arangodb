@@ -96,17 +96,18 @@ export const buildSubNav = (isAdminUser: boolean, name: string, activeKey: strin
 
   const defaultRoute = '#view/' + encodeURIComponent(name);
   const menus: { [key: string]: any } = {
-    Info: {
-      route: defaultRoute
-    },
+
     Settings: {
-      route: `${defaultRoute}/settings`
+      route: defaultRoute
     },
     'Consolidation Policy': {
       route: `${defaultRoute}/consolidation`
     },
     Links: {
       route: `${defaultRoute}/links`
+    },
+    Info: {
+      route: `${defaultRoute}/info`
     },
     JSON: {
       route: `${defaultRoute}/json`
