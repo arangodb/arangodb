@@ -1,28 +1,31 @@
-import React, { useContext } from "react";
+import React, { useContext, useState } from "react";
 import { UrlParametersContext } from "./url-parameters-context";
 import { Input, Tooltip } from 'antd';
 import { InfoCircleOutlined } from '@ant-design/icons';
 
 const ParameterNodeLabel = () => {
-  const urlParameters = useContext(UrlParametersContext);
+  const [urlParameters, setUrlParameters] = useContext(UrlParametersContext);
+  const [nodeLabel, setNodeLabel] = useState(urlParameters.nodeLabel);
 
-  const onNodeLabelChange = (e) => {
-    urlParameters.nodeLabel = e.target.value;
-  }
+  const NEWURLPARAMETERS = { ...urlParameters };
   
   return (
     <>
-      <Input
-              addonBefore="Label"
-              placeholder={urlParameters.nodeLabel || ''}
-              onChange={onNodeLabelChange}
-              suffix={
-                <Tooltip title="Node label. Please choose a valid and available node attribute.">
-                  <InfoCircleOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
-                </Tooltip>
-              }
-              style={{ width: 240, marginTop: '24px' }}
-            />
+      <h5>urlParameters (in ParameterNodeLabel): {JSON.stringify(urlParameters)}</h5>
+      <form>
+        <label>
+          nodeLabel:
+          <input
+            type="text"
+            value={nodeLabel}
+            onChange={(e) => {
+              setNodeLabel(e.target.value);
+              NEWURLPARAMETERS.nodeLabel = e.target.value;
+              setUrlParameters(NEWURLPARAMETERS);
+            }}
+          />
+        </label>
+      </form>
     </>
   );
 };
