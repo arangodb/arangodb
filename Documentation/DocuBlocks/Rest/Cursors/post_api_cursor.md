@@ -198,12 +198,83 @@ available if the query was executed with the *count* attribute set)
 @RESTREPLYBODY{id,string,required,string}
 id of temporary cursor created on the server (optional, see above)
 
-@RESTREPLYBODY{extra,object,optional,}
-an optional JSON object with extra information about the query result
-contained in its *stats* sub-attribute. For data-modification queries, the
-*extra.stats* sub-attribute will contain the number of modified documents and
-the number of documents that could not be modified
-due to an error (if *ignoreErrors* query option is specified)
+@RESTREPLYBODY{extra,object,optional,post_api_cursor_extra}
+An optional JSON object with extra information about the query result.
+
+@RESTSTRUCT{stats,post_api_cursor_extra,object,required,post_api_cursor_extra_stats}
+An object with query statistics.
+
+@RESTSTRUCT{writesExecuted,post_api_cursor_extra_stats,number,required,}
+The total number of data-modification operations successfully executed.
+
+@RESTSTRUCT{writesIgnored,post_api_cursor_extra_stats,number,required,}
+The total number of data-modification operations that were unsuccessful,
+but have been ignored because of query option `ignoreErrors`.
+
+@RESTSTRUCT{scannedFull,post_api_cursor_extra_stats,number,required,}
+The total number of documents iterated over when scanning a collection 
+without an index. Documents scanned by subqueries will be included in the result, but
+operations triggered by built-in or user-defined AQL functions will not.
+
+@RESTSTRUCT{scannedIndex,post_api_cursor_extra_stats,number,required,}
+The total number of documents iterated over when scanning a collection using
+an index. Documents scanned by subqueries will be included in the result, but operations
+triggered by built-in or user-defined AQL functions will not.
+
+@RESTSTRUCT{cursorsCreated,post_api_cursor_extra_stats,number,required,}
+The total number of cursor objects created during query execution. Cursor
+objects are created for index lookups.
+
+@RESTSTRUCT{cursorsRearmed,post_api_cursor_extra_stats,number,required,}
+The total number of times an existing cursor object was repurposed.
+Repurposing an existing cursor object is normally more efficient compared to destroying an
+existing cursor object and creating a new one from scratch.
+
+@RESTSTRUCT{cacheHits,post_api_cursor_extra_stats,number,required,}
+The total number of index entries read from in-memory caches for indexes
+of type edge or persistent. This value will only be non-zero when reading from indexes
+that have an in-memory cache enabled, and when the query allows using the in-memory
+cache (i.e. using equality lookups on all index attributes).
+
+@RESTSTRUCT{cacheMisses,post_api_cursor_extra_stats,number,required,}
+The total number of cache read attempts for index entries that could not
+be served from in-memory caches for indexes of type edge or persistent. This value will
+only be non-zero when reading from indexes that have an in-memory cache enabled, the
+query allows using the in-memory cache (i.e. using equality lookups on all index attributes)
+and the looked up values are not present in the cache.
+
+@RESTSTRUCT{filtered,post_api_cursor_extra_stats,number,required,}
+The total number of documents that were removed after executing a filter condition
+in a `FilterNode` or another node that post-filters data. 
+Note that `IndexNode`s can also filter documents by selecting only the required index range 
+from a collection, and the `filtered` value only indicates how much filtering was done by a
+post filter in the `IndexNode` itself or following `FilterNode`s. 
+`EnumerateCollectionNode`s and `TraversalNode`s can also apply filter conditions and can
+reported the number of filtered documents.
+
+@RESTSTRUCT{fullCount,post_api_cursor_extra_stats,number,optional,}
+The total number of documents that matched the search condition if the query's
+final top-level `LIMIT` statement were not present.
+This attribute may only be returned if the `fullCount` option was set when starting the 
+query and will only contain a sensible value if the query contained a `LIMIT` operation on
+the top level.
+
+@RESTSTRUCT{peakMemoryUsage,post_api_cursor_extra_stats,number,required,}
+The maximum memory usage of the query while it was running. In a cluster,
+the memory accounting is done per shard, and the memory usage reported is the peak
+memory usage value from the individual shards.
+Note that to keep things lightweight, the per-query memory usage is tracked on a relatively 
+high level, not including any memory allocator overhead nor any memory used for temporary
+results calculations (e.g. memory allocated/deallocated inside AQL expressions and function 
+calls).
+
+@RESTSTRUCT{nodes,post_api_cursor_extra_stats,number,optional,}
+When the query was executed with the `profile` option set to at least `2`,
+then this value contains runtime statistics per query execution node. This field contains the
+node id (in `id`), the number of calls to this node (`calls`), and the number of items returned
+by this node (`items`). Items are the temporary results returned at this stage. You can correlate
+this statistics with the `plan` returned in `extra`. For a human readable output you can execute
+`db._profileQuery(<query>, <bind-vars>)` in arangosh.
 
 @RESTREPLYBODY{cached,boolean,required,}
 a boolean flag indicating whether the query result was served

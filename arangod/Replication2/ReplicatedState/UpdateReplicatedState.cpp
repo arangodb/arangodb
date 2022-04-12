@@ -99,8 +99,6 @@ auto algorithms::updateReplicatedState(
       if (generation != expectedGeneration) {
         state->flush(expectedGeneration);
       }
-    } else if (!spec->participants.contains(serverId)) {
-      ctx.dropReplicatedState(id);
     }
     return {TRI_ERROR_NO_ERROR};
   }

@@ -29,7 +29,6 @@ const arangodb = require('@arangodb');
 const _ = require('lodash');
 const db = arangodb.db;
 const { getEndpointById, getEndpointsByType, getMetric } = require('@arangodb/test-helper');
-const request = require('@arangodb/request');
 
 function getDroppedFollowers(servers) {
   let droppedFollowers = {};
@@ -70,7 +69,7 @@ function transactionDroppedFollowersSuite() {
         docs.push({});
       }
 
-      let shards = db._collection(cn ).shards(true);
+      let shards = db._collection(cn).shards(true);
       let servers = shards[Object.keys(shards)[0]];
 
       let droppedFollowersBefore = getDroppedFollowers(servers);
@@ -89,7 +88,7 @@ function transactionDroppedFollowersSuite() {
     testInsertAQLSameFollower: function () {
       let c = db._create(cn, { numberOfShards: 40, replicationFactor: 3 });
 
-      let shards = db._collection(cn ).shards(true);
+      let shards = db._collection(cn).shards(true);
       let servers = shards[Object.keys(shards)[0]];
 
       let droppedFollowersBefore = getDroppedFollowers(servers);
@@ -117,7 +116,7 @@ function transactionDroppedFollowersSuite() {
         }
       };
 
-      let shards = db._collection(cn ).shards(true);
+      let shards = db._collection(cn).shards(true);
       let servers = shards[Object.keys(shards)[0]];
 
       let droppedFollowersBefore = getDroppedFollowers(servers);
@@ -149,7 +148,7 @@ function transactionDroppedFollowersSuite() {
         }
       };
 
-      let shards = db._collection(cn ).shards(true);
+      let shards = db._collection(cn).shards(true);
       let servers = shards[Object.keys(shards)[0]];
 
       let droppedFollowersBefore = getDroppedFollowers(servers);
@@ -181,7 +180,7 @@ function transactionDroppedFollowersSuite() {
         }
       };
 
-      let shards = db._collection(cn ).shards(true);
+      let shards = db._collection(cn).shards(true);
       let servers = shards[Object.keys(shards)[0]];
 
       let droppedFollowersBefore = getDroppedFollowers(servers);
@@ -214,7 +213,7 @@ function transactionDroppedFollowersSuite() {
         intermediateCommitCount: 50
       };
 
-      let shards = db._collection(cn ).shards(true);
+      let shards = db._collection(cn).shards(true);
       let servers = shards[Object.keys(shards)[0]];
 
       let droppedFollowersBefore = getDroppedFollowers(servers);
