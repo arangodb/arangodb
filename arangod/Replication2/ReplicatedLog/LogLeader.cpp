@@ -1282,24 +1282,29 @@ auto replicated_log::LogLeader::updateParticipantsConfig(
     auto const& newParticipants = config->participants;
     auto const additionalParticipantIds =
         keySetDifference(newParticipants, oldFollowerIds);
-    auto followersToRemove = keySetDifference(oldFollowerIds, newParticipants);
+    auto followersToRemove_ = keySetDifference(oldFollowerIds, newParticipants);
 
-    auto additionalFollowers =
+    auto additionalFollowers_ =
         std::unordered_map<ParticipantId, std::shared_ptr<AbstractFollower>>{};
     for (auto const& participantId : additionalParticipantIds) {
       if (participantId != _id) {
-        additionalFollowers.try_emplace(participantId,
-                                        buildFollower(participantId));
+        additionalFollowers_.try_emplace(participantId,
+                                         buildFollower(participantId));
       }
     }
-    return std::pair(std::move(followersToRemove),
-                     std::move(additionalFollowers));
+    return std::pair(std::move(followersToRemove_),
+                     std::move(additionalFollowers_));
   });
 
   LOG_CTX("ac277", TRACE, _logContext)
       << "trying to update configuration to generation " << config->generation;
   TRI_ASSERT(previousGeneration < config->generation);
-  auto waitForIndex = _guardedLeaderData.doUnderLock([&](GuardedLeaderData&
+  auto waitForIndex = _guardedLeaderData.doUnderLock([&,
+                                                      &followersToRemove =
+                                                          followersToRemove,
+                                                      &additionalFollowers =
+                                                          additionalFollowers](
+                                                         GuardedLeaderData&
                                                              data) {
     if (data.activeParticipantsConfig->generation >= config->generation) {
       auto const message = basics::StringUtils::concatT(
