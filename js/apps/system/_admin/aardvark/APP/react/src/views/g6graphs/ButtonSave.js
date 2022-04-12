@@ -15,7 +15,7 @@ const ParameterStartnode = ({ graphName, onGraphDataLoaded }) => {
         type: 'GET',
         url: arangoHelper.databaseUrl(`/_admin/aardvark/graph/${graphName}`),
         contentType: 'application/json',
-        data: urlParameters,
+        data: urlParameters[0],
         success: function (data) {
           console.log("Graph based on urlParameter context loaded: ", data);
           console.log("data.nodes: ", data.nodes);
