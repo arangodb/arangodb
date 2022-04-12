@@ -440,9 +440,10 @@ target_link_libraries(arangodbtests
 
 set(ARANGODB_SEPP_SOURCES
   sepp/main.cpp
-  sepp/Server.cpp
   sepp/Benchmark.cpp
+  sepp/Runner.cpp
   sepp/RocksDBOptions.cpp
+  sepp/Server.cpp
 )
 
 add_executable(

@@ -105,7 +105,7 @@ struct RocksDBOptions : arangodb::RocksDBOptionsProvider {
     uint32_t bloomLocality = 1;
 
     template<class Inspector>
-    auto inspect(Inspector& f, GeneralOptions& o) {
+    inline friend auto inspect(Inspector& f, GeneralOptions& o) {
       return f.object(o).fields(
           f.field("numThreadsLow", o.numThreadsLow),
           f.field("numThreadsHigh", o.numThreadsHigh),
@@ -305,7 +305,7 @@ struct RocksDBOptions : arangodb::RocksDBOptionsProvider {
     */
 
     template<class Inspector>
-    auto inspect(Inspector& f, DBOptions& o) {
+    inline friend auto inspect(Inspector& f, DBOptions& o) {
       return f.object(o).fields(
           f.field("numStripes", o.numStripes),
           f.field("transactionLockTimeout", o.transactionLockTimeout));
@@ -319,7 +319,7 @@ struct RocksDBOptions : arangodb::RocksDBOptionsProvider {
       bool enforceBlockCacheSizeLimit{true};
 
       template<class Inspector>
-      auto inspect(Inspector& f, LruCacheOptions& o) {
+      inline friend auto inspect(Inspector& f, LruCacheOptions& o) {
         return f.object(o).fields(
             f.field("blockCacheSize", o.blockCacheSize),
             f.field("blockCacheShardBits", o.blockCacheShardBits),
@@ -342,7 +342,7 @@ struct RocksDBOptions : arangodb::RocksDBOptionsProvider {
       bool useBlockBasedBuilder{true};
 
       template<class Inspector>
-      auto inspect(Inspector& f, BloomFilterPolicy& o) {
+      inline friend auto inspect(Inspector& f, BloomFilterPolicy& o) {
         return f.object(o).fields(
             f.field("bitsPerKey", o.bitsPerKey),
             f.field("useBlockBasedBuilder", o.useBlockBasedBuilder));
@@ -355,7 +355,7 @@ struct RocksDBOptions : arangodb::RocksDBOptionsProvider {
     rocksdb::ChecksumType checksum;
 
     template<class Inspector>
-    auto inspect(Inspector& f, TableOptions& o) {
+    inline friend auto inspect(Inspector& f, TableOptions& o) {
       return f.object(o).fields(
           // f.field("blockCache", o.blockCache),
           f.field("cacheIndexAndFilterBlocks", o.cacheIndexAndFilterBlocks),

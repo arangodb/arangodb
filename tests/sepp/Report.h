@@ -23,11 +23,33 @@
 
 #pragma once
 
+#include <vector>
+
+#include <velocypack/SliceContainer.h>
+
 namespace arangodb::sepp {
 
-struct Benchmark {
-  ~Benchmark();
-
- private:
+struct ThreadReport {
+  // a JSON value containing arbitrary result data for this thread
+  velocypack::SliceContainer data;
+  // total number of operations performed by this thread
+  std::uint64_t operations;
 };
+
+struct RoundReport {
+  std::vector<ThreadReport> threads;
+  double runtime;  // runtime in milliseconds
+  [[nodiscard]] std::uint64_t operations() const;
+  [[nodiscard]] double throughput() const {
+    return static_cast<double>(operations()) / runtime;
+  }
+};
+
+struct Report {
+  std::string name;
+  std::int64_t timestamp;
+  // velocypack::SliceContainer config;
+  std::vector<RoundReport> rounds;
+};
+
 }  // namespace arangodb::sepp

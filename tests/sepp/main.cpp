@@ -25,30 +25,47 @@
 #include <fstream>
 #include <sstream>
 #include <stdexcept>
+#include <string>
 
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Parser.h>
 #include <velocypack/SliceContainer.h>
 
-#include "ApplicationFeatures/ApplicationServer.h"
-#include "ProgramOptions/ProgramOptions.h"
 #include "Logger/LogMacros.h"
 
-#include "Benchmark.h"
+#include "Runner.h"
+
+namespace {
+
+struct InvalidArgumentException : std::exception {
+  explicit InvalidArgumentException(std::string_view arg) : arg(arg) {}
+  [[nodiscard]] const char* what() const noexcept override {
+    return arg.data();
+  }
+
+ private:
+  std::string_view arg;
+};
+
+struct Options {
+  std::string_view configFile;
+  std::string_view report;
+  std::vector<std::string_view> params;
+};
+
+std::pair<std::string_view, std::string_view> splitKeyValue(
+    std::string_view s) {
+  auto pos = s.find("=");
+  if (pos == std::string::npos) {
+    throw InvalidArgumentException(s);
+  }
+  return {s.substr(0, pos), s.substr(pos + 1)};
+}
 
 void addConfig(arangodb::velocypack::Builder& config, std::string_view param) {
-  std::cout << "processing arg " << param << std::endl;
-  auto pos = param.find('=');
-  if (pos == std::string::npos) {
-    throw std::runtime_error("Invalid config parameter \"" +
-                             std::string(param) +
-                             "\". Config parameters must be of the form "
-                             "\"<some.attribute.path>=<value>\"");
-  }
-  auto path = param.substr(0, pos);
-  auto value = arangodb::velocypack::Parser::fromJson(
-      std::string(param.substr(pos + 1)));
+  auto [path, v] = splitKeyValue(param);
+  auto value = arangodb::velocypack::Parser::fromJson(std::string(v));
 
   arangodb::velocypack::Builder builder;
   builder.openObject();
@@ -74,34 +91,70 @@ void addConfig(arangodb::velocypack::Builder& config, std::string_view param) {
                                           builder.slice(), true);
 }
 
+auto parseConfig(Options const& opts) {
+  std::ifstream t(std::string(opts.configFile));
+  std::stringstream buffer;
+  buffer << t.rdbuf();
+
+  auto config = arangodb::velocypack::Parser::fromJson(buffer.str());
+
+  for (auto& v : opts.params) {
+    addConfig(*config, v);
+  }
+  return config;
+}
+
+void parseOptions(int argc, char const* argv[], Options& opts) {
+  opts.configFile = argv[1];
+  for (int i = 2; i < argc; ++i) {
+    if (argv[i] == std::string("--")) {
+      for (int j = i + 1; j < argc; ++j) {
+        opts.params.emplace_back(argv[j]);
+      }
+      return;
+    }
+
+    auto [key, value] = splitKeyValue(argv[i]);
+    if (key == "--report") {
+      opts.report = value;
+    } else {
+      throw InvalidArgumentException(argv[i]);
+    }
+  }
+}
+
+void printUsage() {
+  std::cout << "Usage: sepp"
+            << " <config-file>"
+            << " [--report=<report-file>]"
+            << " [-- <some.attribute.path>=<value> ...]" << std::endl;
+}
+
+}  // namespace
+
 int main(int argc, char const* argv[]) {
   std::cout << "Storage Engine Performance Predictor\n" << std::endl;
 
-  try {
-    std::string name = "sepp";
-    auto options = std::make_shared<arangodb::options::ProgramOptions>(
-        argv[0], "Usage: " + name + " [<options>]",
-        "For more information use:", "");
-
-    if (argc > 1) {
-      std::ifstream t(argv[1]);
-      std::stringstream buffer;
-      buffer << t.rdbuf();
-
-      auto config = arangodb::velocypack::Parser::fromJson(buffer.str());
-
-      for (int i = 2; i < argc; ++i) {
-        addConfig(*config, argv[i]);
-      }
-      std::cout << config->slice().toJson();
-    }
-    arangodb::sepp::Benchmark benchmark;
-
-    benchmark.run(argv[0]);
-
-  } catch (std::exception& e) {
-    std::cerr << e.what();
+  if (argc < 2) {
+    printUsage();
     return 1;
+  }
+
+  try {
+    Options options;
+    parseOptions(argc, argv, options);
+
+    arangodb::sepp::Runner runner(argv[0], options.report,
+                                  parseConfig(options)->slice());
+    runner.run();
+
+  } catch (const InvalidArgumentException& e) {
+    std::cerr << "Invalid argument: " << e.what() << std::endl;
+    printUsage();
+    return 1;
+  } catch (const std::exception& e) {
+    std::cerr << "ERROR: " << e.what() << std::endl;
+    return 2;
   }
 
   return 0;

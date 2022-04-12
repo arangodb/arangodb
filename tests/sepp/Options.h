@@ -23,11 +23,26 @@
 
 #pragma once
 
+#include <cstddef>
+
+#include "RocksDBOptions.h"
+
 namespace arangodb::sepp {
 
-struct Benchmark {
-  ~Benchmark();
+struct Options {
+  std::string databaseDirectory;
+  std::size_t runtime;
+  std::size_t rounds;
 
- private:
+  RocksDBOptions rocksdb;
 };
+
+template<class Inspector>
+auto inspect(Inspector& f, Options& o) {
+  return f.object(o).fields(
+      f.field("databaseDirectory", o.databaseDirectory).fallback("/tmp/sepp"),
+      f.field("runtime", o.runtime).fallback(10000u),
+      f.field("rounds", o.rounds).fallback(5u), f.field("rocksdb", o.rocksdb));
+}
+
 }  // namespace arangodb::sepp

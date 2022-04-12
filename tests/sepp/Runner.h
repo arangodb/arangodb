@@ -23,11 +23,33 @@
 
 #pragma once
 
+#include <memory>
+#include <string_view>
+
+#include <velocypack/Slice.h>
+
+#include "Options.h"
+#include "Report.h"
+
 namespace arangodb::sepp {
 
-struct Benchmark {
-  ~Benchmark();
+struct Server;
+
+class Runner {
+ public:
+  Runner(std::string_view executable, std::string_view reportFile,
+         velocypack::Slice config);
+  ~Runner();
+  void run();
 
  private:
+  auto runBenchmark() -> Report;
+
+  std::string_view _executable;
+  std::string_view _reportFile;
+
+  Options _options;
+  std::unique_ptr<Server> _server;
 };
+
 }  // namespace arangodb::sepp
