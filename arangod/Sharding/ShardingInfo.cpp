@@ -273,7 +273,7 @@ std::string ShardingInfo::shardingStrategyName() const {
   return _shardingStrategy->name();
 }
 
-LogicalCollection* ShardingInfo::collection() const {
+LogicalCollection* ShardingInfo::collection() const noexcept {
   TRI_ASSERT(_collection != nullptr);
   return _collection;
 }
@@ -354,7 +354,7 @@ void ShardingInfo::toVelocyPack(VPackBuilder& result,
   _shardingStrategy->toVelocyPack(result);
 }
 
-std::string const& ShardingInfo::distributeShardsLike() const {
+std::string const& ShardingInfo::distributeShardsLike() const noexcept {
   return _distributeShardsLike;
 }
 
@@ -386,7 +386,7 @@ void ShardingInfo::distributeShardsLike(std::string const& cid,
   _numberOfShards = other->numberOfShards();
 }
 
-std::vector<std::string> const& ShardingInfo::avoidServers() const {
+std::vector<std::string> const& ShardingInfo::avoidServers() const noexcept {
   return _avoidServers;
 }
 
@@ -394,7 +394,7 @@ void ShardingInfo::avoidServers(std::vector<std::string> const& avoidServers) {
   _avoidServers = avoidServers;
 }
 
-size_t ShardingInfo::replicationFactor() const {
+size_t ShardingInfo::replicationFactor() const noexcept {
   TRI_ASSERT(isSatellite() || _writeConcern <= _replicationFactor);
   return _replicationFactor;
 }
@@ -410,7 +410,7 @@ void ShardingInfo::replicationFactor(size_t replicationFactor) {
   _replicationFactor = replicationFactor;
 }
 
-size_t ShardingInfo::writeConcern() const {
+size_t ShardingInfo::writeConcern() const noexcept {
   TRI_ASSERT(isSatellite() || _writeConcern <= _replicationFactor);
   return _writeConcern;
 }
@@ -439,7 +439,9 @@ void ShardingInfo::setWriteConcernAndReplicationFactor(
   _replicationFactor = replicationFactor;
 }
 
-bool ShardingInfo::isSatellite() const { return _replicationFactor == 0; }
+bool ShardingInfo::isSatellite() const noexcept {
+  return _replicationFactor == 0;
+}
 
 std::pair<bool, bool> ShardingInfo::makeSatellite() {
   _replicationFactor = 0;
@@ -450,7 +452,7 @@ std::pair<bool, bool> ShardingInfo::makeSatellite() {
   return std::make_pair(false, true);
 }
 
-size_t ShardingInfo::numberOfShards() const { return _numberOfShards; }
+size_t ShardingInfo::numberOfShards() const noexcept { return _numberOfShards; }
 
 void ShardingInfo::numberOfShards(size_t numberOfShards) {
   // the only allowed value is "0", because the only allowed
@@ -460,11 +462,11 @@ void ShardingInfo::numberOfShards(size_t numberOfShards) {
   _numberOfShards = numberOfShards;
 }
 
-bool ShardingInfo::usesDefaultShardKeys() const {
+bool ShardingInfo::usesDefaultShardKeys() const noexcept {
   return _shardingStrategy->usesDefaultShardKeys();
 }
 
-std::vector<std::string> const& ShardingInfo::shardKeys() const {
+std::vector<std::string> const& ShardingInfo::shardKeys() const noexcept {
   TRI_ASSERT(!_shardKeys.empty());
   return _shardKeys;
 }

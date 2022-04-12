@@ -73,11 +73,6 @@
 #include "VocBase/LogicalView.h"
 #include "VocBase/VocbaseInfo.h"
 
-#ifdef USE_ENTERPRISE
-#include "Enterprise/VocBase/SmartVertexCollection.h"
-#include "Enterprise/VocBase/VirtualClusterSmartEdgeCollection.h"
-#endif
-
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>

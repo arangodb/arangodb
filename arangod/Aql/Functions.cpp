@@ -83,10 +83,6 @@
 #include "utils/levenshtein_utils.hpp"
 #include "utils/ngram_match_utils.hpp"
 
-#ifdef USE_ENTERPRISE
-#include "Enterprise/VocBase/SmartVertexCollection.h"
-#endif
-
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_generators.hpp>
 #include <boost/uuid/uuid_io.hpp>
@@ -9138,7 +9134,7 @@ AqlValue Functions::MakeDistributeInputWithKeyCreation(
   bool canUseCustomKey =
       logicalCollection->usesDefaultShardKeys() || allowSpecifiedKeys;
 
-  VPackSlice const input = value.slice();  // will throw when wrong type
+  VPackSlice input = value.slice();  // will throw when wrong type
   if (!input.isObject()) {
     return ConvertToObject(trx, input, true, canUseCustomKey, ignoreErrors);
   }
@@ -9156,22 +9152,6 @@ AqlValue Functions::MakeDistributeInputWithKeyCreation(
     // the data. a _key was given, but user is not allowed to specify _key
     THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY);
   }
-
-#ifdef USE_ENTERPRISE
-  // TODO: Remove me as soon SmartVertex Schema Validation is in place (!)
-  if (logicalCollection->isSmart() &&
-      logicalCollection->type() == TRI_COL_TYPE_DOCUMENT) {
-    transaction::BuilderLeaser sBuilder(&trx);
-    // smart vertex collection
-    auto svecol =
-        dynamic_cast<arangodb::SmartVertexCollection*>(logicalCollection.get());
-    auto sveRes = svecol->rewriteVertexOnInsert(input, *sBuilder, false);
-    if (sveRes.fail()) {
-      THROW_ARANGO_EXCEPTION(sveRes);
-    }
-    return AqlValue{sBuilder->slice()};
-  }
-#endif
 
   if (buildNewObject) {
     transaction::BuilderLeaser builder(&trx);

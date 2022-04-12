@@ -552,7 +552,7 @@ struct CreateOperationCtx {
       // the key. this is beneficial so that the key generators can generate
       // an increasing sequence of keys, regardless of how many coordinators
       // there are.
-      if (numberOfShards != 1) {
+      if (numberOfShards != 1 || collinfo.isSmart()) {
         // The user did not specify a key, let's create one:
         key = collinfo.createKey(value);
       }

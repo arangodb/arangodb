@@ -404,7 +404,7 @@ class PaddedKeyGenerator : public KeyGenerator {
   bool hasDynamicState() const noexcept override final { return true; }
 
   /// @brief generate a key
-  std::string generate() override {
+  std::string generate() override final {
     uint64_t tick = generateValue();
 
     if (ADB_UNLIKELY(tick == 0 || tick == UINT64_MAX)) {

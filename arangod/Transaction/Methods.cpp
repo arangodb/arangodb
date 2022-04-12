@@ -69,11 +69,6 @@
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/ticks.h"
 
-#ifdef USE_ENTERPRISE
-#include "Enterprise/VocBase/SmartVertexCollection.h"
-#include "Enterprise/VocBase/VirtualSmartEdgeCollection.h"
-#endif
-
 #include <sstream>
 
 using namespace arangodb;
@@ -1132,31 +1127,7 @@ Future<OperationResult> transaction::Methods::insertLocal(
     if (!isPrimaryKeyConstraintViolation) {
       // regular insert without overwrite option. the insert itself will check
       // if the primary key already exists
-#ifdef USE_ENTERPRISE
-      if (collection->isSmart() &&
-          collection->type() == TRI_COL_TYPE_DOCUMENT &&
-          ServerState::instance()->isSingleServer()) {
-        transaction::BuilderLeaser req(this);
-        auto svecol =
-            dynamic_cast<arangodb::SmartVertexCollection*>(collection.get());
-
-        if (svecol == nullptr) {
-          // Cast did not work. Illegal state
-          return Result(TRI_ERROR_NO_SMART_COLLECTION);
-        }
-
-        auto sveRes =
-            svecol->rewriteVertexOnInsert(value, *req, options.isRestore);
-        if (sveRes.fail()) {
-          return sveRes;
-        }
-        res = collection->insert(this, req->slice(), docResult, options);
-      } else {
-        res = collection->insert(this, value, docResult, options);
-      }
-#else
       res = collection->insert(this, value, docResult, options);
-#endif
     } else {
       // RepSert Case - unique_constraint violated ->  try update, replace or
       // ignore!

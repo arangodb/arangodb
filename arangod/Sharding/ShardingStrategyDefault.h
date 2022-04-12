@@ -43,7 +43,7 @@ class ShardingStrategyNone final : public ShardingStrategy {
   static std::string const NAME;
 
   /// @brief does not really matter here
-  bool usesDefaultShardKeys() override { return true; }
+  bool usesDefaultShardKeys() const noexcept override { return true; }
 
   ErrorCode getResponsibleShard(arangodb::velocypack::Slice slice,
                                 bool docComplete, ShardID& shardID,
@@ -62,7 +62,7 @@ class ShardingStrategyOnlyInEnterprise final : public ShardingStrategy {
   std::string const& name() const override { return _name; }
 
   /// @brief does not really matter here
-  bool usesDefaultShardKeys() override { return true; }
+  bool usesDefaultShardKeys() const noexcept override { return true; }
 
   /// @brief will always throw an exception telling the user the selected
   /// sharding is only available in the Enterprise Edition
@@ -87,7 +87,9 @@ class ShardingStrategyHashBase : public ShardingStrategy {
                                         std::string_view const& key) override;
 
   /// @brief does not really matter here
-  bool usesDefaultShardKeys() override { return _usesDefaultShardKeys; }
+  bool usesDefaultShardKeys() const noexcept override {
+    return _usesDefaultShardKeys;
+  }
 
   virtual uint64_t hashByAttributes(arangodb::velocypack::Slice slice,
                                     std::vector<std::string> const& attributes,
