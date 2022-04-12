@@ -157,13 +157,15 @@ RestStatus RestPrototypeStateHandler::handlePostInsert(
       _request->parsedValue<bool>("waitForApplied").value_or(true);
 
   return waitForFuture(methods.insert(logId, entries, options)
-                           .thenValue([this](auto&& logIndex) {
+                           .thenValue([this, options](auto&& logIndex) {
                              VPackBuilder result;
                              {
                                VPackObjectBuilder ob(&result);
                                result.add("index", VPackValue(logIndex));
                              }
-                             generateOk(rest::ResponseCode::ACCEPTED,
+                             generateOk(options.waitForApplied
+                                            ? rest::ResponseCode::OK
+                                            : rest::ResponseCode::ACCEPTED,
                                         result.slice());
                              return RestStatus::DONE;
                            }));
@@ -369,13 +371,15 @@ RestStatus RestPrototypeStateHandler::handleDeleteRemove(
       _request->parsedValue<bool>("waitForApplied").value_or(true);
 
   return waitForFuture(methods.remove(logId, suffixes[2], options)
-                           .thenValue([this](auto&& waitForResult) {
+                           .thenValue([this, options](auto&& waitForResult) {
                              VPackBuilder result;
                              {
                                VPackObjectBuilder ob(&result);
                                result.add("index", VPackValue(waitForResult));
                              }
-                             generateOk(rest::ResponseCode::ACCEPTED,
+                             generateOk(options.waitForApplied
+                                            ? rest::ResponseCode::OK
+                                            : rest::ResponseCode::ACCEPTED,
                                         result.slice());
                              return RestStatus::DONE;
                            }));
@@ -416,13 +420,15 @@ RestStatus RestPrototypeStateHandler::handleDeleteRemoveMulti(
       _request->parsedValue<bool>("waitForApplied").value_or(true);
 
   return waitForFuture(methods.remove(logId, keys, options)
-                           .thenValue([this](auto&& waitForResult) {
+                           .thenValue([this, options](auto&& waitForResult) {
                              VPackBuilder result;
                              {
                                VPackObjectBuilder ob(&result);
                                result.add("index", VPackValue(waitForResult));
                              }
-                             generateOk(rest::ResponseCode::ACCEPTED,
+                             generateOk(options.waitForApplied
+                                            ? rest::ResponseCode::OK
+                                            : rest::ResponseCode::ACCEPTED,
                                         result.slice());
                              return RestStatus::DONE;
                            }));
