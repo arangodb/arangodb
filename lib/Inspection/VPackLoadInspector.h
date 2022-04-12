@@ -35,11 +35,13 @@
 #include <velocypack/Value.h>
 
 #include "Inspection/InspectorBase.h"
+#include "Inspection/Status.h"
 
 namespace arangodb::inspection {
 
 struct ParseOptions {
   bool ignoreUnknownFields = false;
+  bool ignoreMissingFields = false;
 };
 
 struct VPackLoadInspector : InspectorBase<VPackLoadInspector> {
@@ -145,7 +147,7 @@ struct VPackLoadInspector : InspectorBase<VPackLoadInspector> {
     VPackLoadInspector ff(slice, _options);
     auto name = getFieldName(field);
     auto& value = getFieldValue(field);
-    auto load = [&]() {
+    auto load = [&]() -> Status {
       auto isPresent = !slice.isNone();
       using FallbackField = decltype(getFallbackField(field));
       if constexpr (!std::is_void_v<FallbackField>) {
@@ -161,6 +163,10 @@ struct VPackLoadInspector : InspectorBase<VPackLoadInspector> {
                            std::move(applyFallback));
         }
       } else {
+        if (!isPresent && _options.ignoreMissingFields) {
+          return {};
+        }
+
         if constexpr (!std::is_void_v<decltype(getTransformer(field))>) {
           return loadTransformedField(ff, name, isPresent, value,
                                       getTransformer(field));
