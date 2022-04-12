@@ -3,6 +3,7 @@
 import { cloneDeep } from 'lodash';
 import React, { useEffect, useReducer, useRef, useState } from 'react';
 import Textbox from '../../components/pure-css/form/Textbox';
+import ToolTip from "../../components/arango/tootip";
 import {
   getNumericFieldSetter, getNumericFieldValue, getReducer, isAdminUser as userIsAdmin,
   usePermissions
@@ -59,7 +60,7 @@ const ViewSettingsReactView = ({ name }) => {
       <div className="modal-body">
         <div className={'tab-content'}>
           <div className="tab-pane tab-pane-modal active" id="General">
-            <table>
+            <table style={{ margin: 30, marginLeft: 20 }}>
               <tbody>
               <tr className="tableRow" id="row_change-view-name">
                 <th className="collectionTh">
@@ -68,6 +69,14 @@ const ViewSettingsReactView = ({ name }) => {
                 <th className="collectionTh">
                   <Textbox type={'text'} value={formState.name} onChange={updateName}
                            required={true} disabled={frontendConfig.isCluster || !isAdminUser}/>
+                </th>
+                <th className="collectionTh">
+                  <ToolTip
+                    title="The View name (string, immutable)."
+                    setArrow={true}
+                  >
+                    <span className="arangoicon icon_arangodb_info"></span>
+                  </ToolTip>
                 </th>
               </tr>
 
@@ -80,16 +89,32 @@ const ViewSettingsReactView = ({ name }) => {
                            value={getNumericFieldValue(formState.cleanupIntervalStep)}
                            onChange={getNumericFieldSetter('cleanupIntervalStep', dispatch)}/>
                 </th>
+                <th className="collectionTh">
+                  <ToolTip
+                    title="The steps to wait before removing unused segments after release of internal resource."
+                    setArrow={true}
+                  >
+                    <span className="arangoicon icon_arangodb_info"></span>
+                  </ToolTip>
+                </th>
               </tr>
 
               <tr className="tableRow" id="row_change-view-commitIntervalMsec">
                 <th className="collectionTh">
                   Commit Interval (msec):
                 </th>
-                <th className="collectionTh">
+                <th className="collectionTh" style={{ width: "100%" }}>
                   <Textbox type={'number'} disabled={!isAdminUser}
                            value={getNumericFieldValue(formState.commitIntervalMsec)}
                            onChange={getNumericFieldSetter('commitIntervalMsec', dispatch)}/>
+                </th>
+                <th className="collectionTh">
+                  <ToolTip
+                    title="The wait time in milliseconds before performing View data store changes."
+                    setArrow={true}
+                  >
+                    <span className="arangoicon icon_arangodb_info"></span>
+                  </ToolTip>
                 </th>
               </tr>
 
@@ -101,6 +126,14 @@ const ViewSettingsReactView = ({ name }) => {
                   <Textbox type={'number'} disabled={!isAdminUser}
                            value={getNumericFieldValue(formState.consolidationIntervalMsec)}
                            onChange={getNumericFieldSetter('consolidationIntervalMsec', dispatch)}/>
+                </th>
+                <th className="collectionTh">
+                  <ToolTip
+                    title="The wait time in milliseconds before performing View data store changes."
+                    setArrow={true}
+                  >
+                    <span className="arangoicon icon_arangodb_info"></span>
+                  </ToolTip>
                 </th>
               </tr>
 
@@ -149,5 +182,4 @@ const ViewSettingsReactView = ({ name }) => {
     </div>
   </div>;
 };
-
 window.ViewSettingsReactView = ViewSettingsReactView;
