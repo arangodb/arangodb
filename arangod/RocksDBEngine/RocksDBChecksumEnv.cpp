@@ -205,7 +205,7 @@ rocksdb::Status ChecksumWritableFile::Close() {
   TRI_ASSERT(_helper != nullptr);
   _checksumCalc.computeFinalChecksum();
   if (!_helper->writeShaFile(_fileName, _checksumCalc.getChecksum())) {
-    LOG_TOPIC("0b00e", ERR, arangodb::Logger::ENGINES)
+    LOG_TOPIC("0b00e", WARN, arangodb::Logger::ENGINES)
         << "Writing sha file for " << _fileName << " was unsuccessful";
   }
   return rocksdb::WritableFileWrapper::Close();
