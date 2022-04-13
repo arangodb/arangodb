@@ -33,8 +33,6 @@
 #include "RocksDBKey.h"
 #include "RocksDBPersistedLog.h"
 #include "RocksDBValue.h"
-#include "Scheduler/Scheduler.h"
-#include "Scheduler/SchedulerFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
