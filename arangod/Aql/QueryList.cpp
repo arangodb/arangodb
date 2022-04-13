@@ -44,6 +44,8 @@
 #include <velocypack/Sink.h>
 #include <velocypack/Value.h>
 
+#include <absl/container/inlined_vector.h>
+
 using namespace arangodb;
 using namespace arangodb::aql;
 
@@ -265,47 +267,43 @@ void QueryList::remove(Query& query) {
 Result QueryList::kill(TRI_voc_tick_t id) {
   size_t const maxLength =
       _maxQueryStringLength.load(std::memory_order_relaxed);
-
-  READ_LOCKER(writeLocker, _lock);
-
-  auto it = _current.find(id);
-
-  if (it == _current.end()) {
-    return {TRI_ERROR_QUERY_NOT_FOUND, "query ID not found in query list"};
+  std::shared_ptr<Query> queryPtr;
+  {
+    READ_LOCKER(writeLocker, _lock);
+    auto it = _current.find(id);
+    if (it == _current.end()) {
+      return {TRI_ERROR_QUERY_NOT_FOUND, "query ID not found in query list"};
+    }
+    queryPtr = it->second.lock();
   }
-
-  if (auto query_ptr = it->second.lock(); query_ptr) {
-    killQuery(*query_ptr, maxLength, false);
+  if (queryPtr) {
+    killQuery(*queryPtr, maxLength, false);
   }
-
-  return Result();
+  return {};
 }
 
 /// @brief kills all currently running queries that match the filter function
 /// (i.e. the filter should return true for a queries to be killed)
 uint64_t QueryList::kill(std::function<bool(Query&)> const& filter,
                          bool silent) {
-  uint64_t killed = 0;
-  size_t const maxLength =
-      _maxQueryStringLength.load(std::memory_order_relaxed);
-
-  READ_LOCKER(readLocker, _lock);
-
-  for (auto& it : _current) {
-    auto query_ptr = it.second.lock();
-    if (!query_ptr) {
-      continue;
+  absl::InlinedVector<std::shared_ptr<Query>, 16> queries;
+  {
+    READ_LOCKER(readLocker, _lock);
+    queries.reserve(_current.size());
+    for (auto& it : _current) {
+      if (auto queryPtr = it.second.lock(); queryPtr) {
+        queries.push_back(std::move(queryPtr));
+      }
     }
-    auto& query = *query_ptr;
-
-    if (!filter(query)) {
-      continue;
-    }
-
-    killQuery(query, maxLength, silent);
-    ++killed;
   }
-
+  uint64_t killed = 0;
+  auto const maxLength = _maxQueryStringLength.load(std::memory_order_relaxed);
+  for (auto const& queryPtr : queries) {
+    if (auto& query = *queryPtr; filter(query)) {
+      killQuery(query, maxLength, silent);
+      ++killed;
+    }
+  }
   return killed;
 }
 
@@ -316,22 +314,22 @@ std::vector<QueryEntryCopy> QueryList::listCurrent() {
   // so we reduce the possibility of having to reserve more room
   // later
   result.reserve(16);
-
-  size_t const maxLength =
-      _maxQueryStringLength.load(std::memory_order_relaxed);
+  absl::InlinedVector<std::shared_ptr<Query>, 16> queries;
+  auto const maxLength = _maxQueryStringLength.load(std::memory_order_relaxed);
   double const now = TRI_microtime();
 
   {
     READ_LOCKER(readLocker, _lock);
     // reserve the actually needed space
     result.reserve(_current.size());
-
+    queries.reserve(_current.size());
     for (auto const& it : _current) {
-      auto query_ptr = it.second.lock();
-      if (!query_ptr) {
+      auto queryPtr = it.second.lock();
+      if (!queryPtr) {
         continue;
       }
-      auto& query = *query_ptr;
+      queries.push_back(std::move(queryPtr));
+      auto& query = *queries.back();
 
       // elapsed time since query start
       double const elapsed = elapsedSince(query.startTime());
