@@ -512,8 +512,8 @@ auto executeCheckReplicatedState(DatabaseID const& database, RSA::State state,
 
   // update status report
   if (ctx.isErrorReportingEnabled()) {
-    if (hasStatusReport) {
-      if (ctx.getReport().empty()) {
+    if (ctx.getReport().empty()) {
+      if (hasStatusReport) {
         actionCtx.modify<RSA::Current::Supervision>(
             [&](auto& supervision) { supervision.statusReport.reset(); });
       }
