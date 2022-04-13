@@ -125,7 +125,7 @@ const suiteWithState = function (stateType) {
   return function () {
     return replicatedStateSuite(stateType);
   };
-}
+};
 
 jsunity.run(suiteWithState("black-hole"));
 jsunity.run(suiteWithState("prototype"));
