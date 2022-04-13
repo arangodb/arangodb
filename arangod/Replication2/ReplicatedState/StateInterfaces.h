@@ -81,7 +81,7 @@ struct IReplicatedLeaderState : IReplicatedLeaderStateBase {
       -> std::unique_ptr<CoreType> = 0;
 
   /**
-   * This hook is called after the leader recovery is completed and the internal
+   * This hook is called after leader recovery is completed and the internal
    * state has been updated. The underlying stream is guaranteed to have been
    * initialized.
    */

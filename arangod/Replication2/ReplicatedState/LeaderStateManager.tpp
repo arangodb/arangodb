@@ -95,36 +95,26 @@ void LeaderStateManager<S>::run() {
                   if (auto result = tryResult.get(); result.ok()) {
                     LOG_CTX("1a375", DEBUG, self->loggerContext)
                         << "recovery on leader completed";
-                    auto snapshotCompletedAction =
-                        self->guardedData.doUnderLock(
-                            [&](GuardedData& data)
-                                -> std::optional<DeferredAction> {
-                              if (data.token == nullptr) {
-                                LOG_CTX("59a31", DEBUG, self->loggerContext)
-                                    << "token already gone";
-                                return std::nullopt;
-                              }
-                              data.state = machine;
-                              data.token->snapshot.updateStatus(
-                                  SnapshotStatus::kCompleted);
-                              data.updateInternalState(
-                                  LeaderInternalState::kServiceAvailable);
-                              data.state->_stream = data.stream;
+                    auto state = self->guardedData.doUnderLock(
+                        [&](GuardedData& data)
+                            -> std::shared_ptr<IReplicatedLeaderState<S>> {
+                          if (data.token == nullptr) {
+                            LOG_CTX("59a31", DEBUG, self->loggerContext)
+                                << "token already gone";
+                            return nullptr;
+                          }
+                          data.state = machine;
+                          data.token->snapshot.updateStatus(
+                              SnapshotStatus::kCompleted);
+                          data.updateInternalState(
+                              LeaderInternalState::kServiceAvailable);
+                          data.state->_stream = data.stream;
+                          return data.state;
+                        });
 
-                              std::weak_ptr<IReplicatedLeaderState<S>> state =
-                                  data.state;
-                              return DeferredAction(
-                                  [state = std::move(state)]() noexcept {
-                                    if (auto leaderState = state.lock();
-                                        leaderState) {
-                                      leaderState->onSnapshotCompleted();
-                                    }
-                                  });
-                            });
-
-                    if (snapshotCompletedAction.has_value()) {
+                    if (state != nullptr) {
+                      state->onSnapshotCompleted();
                       self->beginWaitingForParticipantResigned();
-                      snapshotCompletedAction->fire();
                       return result;
                     } else {
                       return Result{
