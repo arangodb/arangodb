@@ -55,6 +55,8 @@ class Result final {
 
   Result(ErrorCode errorNumber, const char* errorMessage);
 
+  Result(result::Error error);
+
   /**
    * @brief Construct as copy
    * @param  other  To copy from
@@ -170,7 +172,7 @@ class Result final {
                        int> = 0>
   auto mapError(F&& f) -> Result {
     if (_error != nullptr) {
-      return Result{errorNumber(), std::forward<F>(f)(*_error)};
+      return Result{std::forward<F>(f)(*_error)};
     }
 
     return *this;
