@@ -49,10 +49,12 @@ class HashedStringRef;
 
 namespace graph {
 
+struct VertexData;
+
 namespace enterprise {
 class SmartGraphStep;
 struct SmartGraphResponse;
-}
+}  // namespace enterprise
 
 struct OneSidedEnumeratorOptions;
 class PathValidatorOptions;
@@ -110,6 +112,8 @@ class OneSidedEnumerator : public TraversalEnumerator {
    */
   void reset(VertexRef source, size_t depth = 0, double weight = 0.0,
              bool keepPathStore = false) override;
+
+  void resetManyStartVertices(std::vector<VertexData> const&);
 
   /**
    * @brief Get the next path, if available written into the result build.
