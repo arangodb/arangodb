@@ -200,7 +200,7 @@ Result validateAllCollectionsInfo(
         allowSystem);
     if (res.fail()) {
       events::CreateCollection(vocbase.name(), info.name, res.errorNumber());
-      break;
+      return res;
     }
   }
 
