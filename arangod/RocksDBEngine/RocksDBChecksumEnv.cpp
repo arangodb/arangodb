@@ -258,7 +258,7 @@ rocksdb::Status ChecksumEnv::DeleteFile(const std::string& fileName) {
         << "deleteCalcFile: delete file succeeded for " << fileName;
   } else {
     LOG_TOPIC("ce937", WARN, arangodb::Logger::ENGINES)
-        << "deleteCalcFile:  delete file failed for " << fileName;
+        << "deleteCalcFile: delete file failed for " << fileName;
   }
   return res;
 }
