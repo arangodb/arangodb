@@ -239,7 +239,8 @@ class IndexReadBuffer {
  public:
   using KeyValueType = ValueType;
 
-  explicit IndexReadBuffer(size_t numScoreRegisters);
+  explicit IndexReadBuffer(size_t numScoreRegisters,
+                           ResourceMonitor& monitor);
 
   ValueType const& getValue(IndexReadBufferEntry bufferEntry) const noexcept;
 
@@ -280,6 +281,15 @@ class IndexReadBuffer {
   // before and after.
   void assertSizeCoherence() const noexcept;
 
+  size_t memoryUsage() const noexcept {
+    return _keyBuffer.capacity() * sizeof(decltype(_keyBuffer)::value_type) +
+           _scoreBuffer.capacity() *
+               sizeof(decltype(_scoreBuffer)::value_type) +
+           _storedValuesBuffer.capacity() *
+               sizeof(decltype(_storedValuesBuffer)::value_type) +
+           _rows.capacity() * sizeof(decltype(_rows)::value_type);
+  }
+
   void preAllocateStoredValuesBuffer(size_t atMost, size_t scores,
                                      size_t stored) {
     TRI_ASSERT(_storedValuesBuffer.empty());
@@ -287,10 +297,21 @@ class IndexReadBuffer {
       _keyBuffer.reserve(atMost);
       _scoreBuffer.reserve(atMost * scores);
       _storedValuesBuffer.reserve(atMost * stored);
-      _rows.reserve(atMost);
+      if (_scoresSort) {
+        _rows.reserve(atMost);
+      }
+      auto newMemoryUsage = memoryUsage();
+      auto tracked = _memoryTracker.tracked();
+      if (newMemoryUsage != tracked) {
+        if (newMemoryUsage > tracked) {
+          _memoryTracker.increase(newMemoryUsage - tracked);
+        } else {
+          _memoryTracker.decrease(tracked - newMemoryUsage);
+        }
+      }
     }
     _maxSize = atMost;
-    _storedCount = stored;
+    _storedValuesCount = stored;
   }
 
   auto getMaterializeRange(size_t skip) const noexcept {
@@ -338,7 +359,8 @@ class IndexReadBuffer {
   std::vector<std::pair<size_t, bool>> const* _scoresSort;
   std::vector<size_t> _rows;
   size_t _maxSize;
-  size_t _storedCount;
+  size_t _storedValuesCount;
+  ResourceUsageScope _memoryTracker;
 };  // IndexReadBuffer
 
 template<typename Impl>
@@ -516,7 +538,7 @@ class IResearchViewExecutor
 
   using ReadContext = typename Base::ReadContext;
 
-  size_t skip(size_t toSkip);
+  size_t skip(size_t toSkip, IResearchViewStats&);
   size_t skipAll();
 
   void saveCollection();
@@ -635,7 +657,7 @@ class IResearchViewMergeExecutor
   bool writeRow(ReadContext& ctx, IndexReadBufferEntry bufferEntry);
 
   void reset();
-  size_t skip(size_t toSkip);
+  size_t skip(size_t toSkip, IResearchViewStats&);
   size_t skipAll();
 
  private:
@@ -673,9 +695,15 @@ class IResearchViewHeapSortExecutor
   friend Base;
   using ReadContext = typename Base::ReadContext;
 
-  size_t skip(size_t toSkip);
+  size_t skip(size_t toSkip, IResearchViewStats& stats);
   size_t skipAll();
-  size_t getScanned() const noexcept { return _scannedCount; }
+  size_t getScanned() const noexcept {
+    if (!_bufferFilled) {
+      return 0;
+    }
+    TRI_ASSERT(_totalCount >= _bufferedCount);
+    return _totalCount - _bufferedCount;
+  }
   void reset();
   void fillBuffer(ReadContext& ctx);
   bool fillBufferInternal(size_t skip);
