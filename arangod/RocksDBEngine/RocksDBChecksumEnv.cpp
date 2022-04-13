@@ -29,6 +29,8 @@
 #include "Basics/MutexLocker.h"
 #include "Logger/LogMacros.h"
 
+#undef DeleteFile
+
 namespace arangodb::checksum {
 
 ChecksumCalculator::ChecksumCalculator()

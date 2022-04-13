@@ -30,6 +30,8 @@
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
 
+#undef DeleteFile
+
 namespace arangodb::checksum {
 
 class ChecksumCalculator {
