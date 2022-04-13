@@ -805,7 +805,13 @@ void RocksDBEngine::start() {
     _options.env = _checksumEnv.get();
     static_cast<checksum::ChecksumEnv*>(_checksumEnv.get())
         ->getHelper()
-        ->checkMissingShaFiles();
+        ->checkMissingShaFiles();  // this works even if done before
+                                   // configureEnterpriseRocksDBOptions() is
+                                   // called when tehre's encryption, because
+                                   // checkMissingShafiles() only looks for
+                                   // existing sst files without their sha files
+                                   // in the directory and writes the missing
+                                   // sha files.
   } else {
     _options.env = rocksdb::Env::Default();
   }
