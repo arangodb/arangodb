@@ -151,7 +151,7 @@ auto checkStateAdded(SupervisionContext& ctx, RSA::State const& state) {
 
   if (!state.plan) {
     auto statePlan = RSA::Plan{.id = state.target.id,
-                               .generation = StateGeneration{1},
+                               .generation = StateGeneration{2},
                                .properties = state.target.properties,
                                .participants = {}};
 
@@ -188,7 +188,10 @@ auto checkParticipantAdded(SupervisionContext& ctx, RLA::Log const& log,
   auto const& planParticipants = state.plan->participants;
 
   for (auto const& [participant, flags] : targetParticipants) {
-    if (!planParticipants.contains(participant)) {
+    // participant might be new to target or readded
+    // i.e. it is still in State/Plan but not in Log/Target
+    if (!planParticipants.contains(participant) ||
+        !log.target.participants.contains(participant)) {
       if (ctx.numberServersInTarget + 1 >= ctx.numberServersOk) {
         ctx.createAction<AddParticipantAction>(participant,
                                                state.plan->generation);
@@ -472,6 +475,8 @@ auto executeCheckReplicatedState(DatabaseID const& database, RSA::State state,
     -> arangodb::agency::envelope {
   auto const now = std::chrono::system_clock::now();
   auto const id = state.target.id;
+  auto const hasStatusReport = state.current && state.current->supervision &&
+                               state.current->supervision->statusReport;
 
   // prepare the context
   SupervisionContext ctx;
@@ -507,13 +512,16 @@ auto executeCheckReplicatedState(DatabaseID const& database, RSA::State state,
 
   // update status report
   if (ctx.isErrorReportingEnabled()) {
-    actionCtx.modify<RSA::Current::Supervision>([&](auto& supervision) {
+    if (hasStatusReport) {
       if (ctx.getReport().empty()) {
-        supervision.statusReport.reset();
-      } else {
-        supervision.statusReport = std::move(ctx.getReport());
+        actionCtx.modify<RSA::Current::Supervision>(
+            [&](auto& supervision) { supervision.statusReport.reset(); });
       }
-    });
+    } else {
+      actionCtx.modify<RSA::Current::Supervision>([&](auto& supervision) {
+        supervision.statusReport = std::move(ctx.getReport());
+      });
+    }
   } else if (std::holds_alternative<CurrentConvergedAction>(ctx.getAction())) {
     actionCtx.modify<RSA::Current::Supervision>(
         [&](auto& supervision) { supervision.statusReport.reset(); });

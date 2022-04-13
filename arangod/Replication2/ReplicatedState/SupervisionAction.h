@@ -126,7 +126,7 @@ using Action =
                  RemoveParticipantFromLogTargetAction,
                  RemoveParticipantFromStatePlanAction, AddStateToPlanAction,
                  UpdateParticipantFlagsAction, CurrentConvergedAction,
-                 SetLeaderAction, WaitForAction>;
+                 SetLeaderAction>;
 
 auto execute(LogId id, DatabaseID const& database, Action action,
              std::optional<agency::Plan> state,

@@ -154,8 +154,30 @@ const replicatedStateSupervisionStatus = function (database, stateId, errors, ex
   };
 };
 
+const replicatedStateServerIsGone = function (database, stateId, serverId) {
+  return function () {
+    const {plan} = SH.readReplicatedStateAgency(database, stateId);
+    if (plan.participants[serverId] !== undefined) {
+      return Error(`Server ${serverId} still present in State/Plan`);
+    }
+    return true;
+  };
+};
+
+const replicatedStateStatusAvailable = function (database, stateId) {
+  return function () {
+    const report = SH.getReplicatedStateStatus(database, stateId);
+    if (report === undefined) {
+      return Error(`Status report for replicated state ${database}/${stateId} not yet available`);
+    }
+    return true;
+  };
+};
+
 exports.replicatedStateSupervisionStatus = replicatedStateSupervisionStatus;
 exports.replicatedStateIsReady = replicatedStateIsReady;
 exports.serverReceivedSnapshotGeneration = serverReceivedSnapshotGeneration;
 exports.replicatedStateVersionConverged = replicatedStateVersionConverged;
 exports.replicatedStateTargetLeaderIs = replicatedStateTargetLeaderIs;
+exports.replicatedStateServerIsGone = replicatedStateServerIsGone;
+exports.replicatedStateStatusAvailable = replicatedStateStatusAvailable;
