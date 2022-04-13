@@ -25,7 +25,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require('jsunity');
-const arangodb = require("@arangodb");
 const _ = require('lodash');
 const lh = require("@arangodb/testutils/replicated-logs-helper");
 const sh = require("@arangodb/testutils/replicated-state-helper");
@@ -34,7 +33,7 @@ const lpreds = require("@arangodb/testutils/replicated-logs-predicates");
 
 const database = "replicated_state_test_bad_participants_database";
 
-const replicatedStateSuite = function () {
+const replicatedStateSuite = function (stateType) {
   const targetConfig = {
     writeConcern: 2,
     softWriteConcern: 2,
@@ -43,13 +42,13 @@ const replicatedStateSuite = function () {
   };
   const {setUpAll, tearDownAll, stopServerWait, setUp, tearDown} = lh.testHelperFunctions(database);
   const createReplicatedState = function () {
-    return sh.createReplicatedStateTarget(database, targetConfig, "black-hole");
+    return sh.createReplicatedStateTarget(database, targetConfig, stateType);
   };
 
   return {
     setUpAll, tearDownAll, setUp, tearDown,
 
-    testReplaceBadServer: function () {
+    ["testReplaceBadServer_" + stateType]: function () {
       const {stateId, followers, servers, others} = createReplicatedState();
       const badServer = _.sample(followers);
       stopServerWait(badServer);
@@ -70,7 +69,7 @@ const replicatedStateSuite = function () {
       lh.waitFor(spreds.replicatedStateServerIsGone(database, stateId, badServer));
     },
 
-    testReplaceBadServerLeader: function () {
+    ["testReplaceBadServerLeader_" + stateType]: function () {
       const {stateId, servers, others, leader} = createReplicatedState();
       const badServer = leader;
       stopServerWait(badServer);
@@ -91,7 +90,7 @@ const replicatedStateSuite = function () {
       lh.waitFor(spreds.replicatedStateServerIsGone(database, stateId, badServer));
     },
 
-    testRemoveAllFollowers: function () {
+    ["testRemoveAllFollowers_" + stateType]: function () {
       const {stateId, followers} = createReplicatedState();
       // remove both followers
       sh.updateReplicatedStateTarget(database, stateId, function (target) {
@@ -122,5 +121,12 @@ const replicatedStateSuite = function () {
   };
 };
 
-jsunity.run(replicatedStateSuite);
+const suiteWithState = function (stateType) {
+  return function () {
+    return replicatedStateSuite(stateType);
+  };
+}
+
+jsunity.run(suiteWithState("black-hole"));
+jsunity.run(suiteWithState("prototype"));
 return jsunity.done();
