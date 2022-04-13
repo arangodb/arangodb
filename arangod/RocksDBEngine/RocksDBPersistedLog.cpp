@@ -33,6 +33,8 @@
 #include "RocksDBKey.h"
 #include "RocksDBPersistedLog.h"
 #include "RocksDBValue.h"
+#include "Scheduler/Scheduler.h"
+#include "Scheduler/SchedulerFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -238,9 +240,11 @@ void RocksDBLogPersistor::runPersistorWorker(Lane& lane) noexcept {
         }
 
         // resolve all promises in [nextReqToResolve, nextReqToWrite)
-        // TODO resolve those promises async using _executor
         for (; nextReqToResolve != nextReqToWrite; ++nextReqToResolve) {
-          nextReqToResolve->promise.setValue(TRI_ERROR_NO_ERROR);
+          _executor->operator()(fu2::unique_function<void() noexcept>{
+              [reqToResolve = std::move(*nextReqToResolve)]() mutable noexcept {
+                reqToResolve.promise.setValue(TRI_ERROR_NO_ERROR);
+              }});
         }
       }
 
@@ -255,7 +259,12 @@ void RocksDBLogPersistor::runPersistorWorker(Lane& lane) noexcept {
         // should always be increased as well; meaning we only exactly iterate
         // over the unfulfilled promises here.
         TRI_ASSERT(!nextReqToResolve->promise.isFulfilled());
-        nextReqToResolve->promise.setValue(result);
+        _executor->operator()(fu2::unique_function<void() noexcept>{
+            [reqToResolve = std::move(*nextReqToResolve),
+             result = result]() mutable noexcept {
+              TRI_ASSERT(!reqToResolve.promise.isFulfilled());
+              reqToResolve.promise.setValue(std::move(result));
+            }});
       }
     }
   }
