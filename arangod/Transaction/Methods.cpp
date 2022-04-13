@@ -2587,11 +2587,12 @@ Future<Result> Methods::replicateOperations(
   auto doOneDoc = [&](VPackSlice doc, VPackSlice result) {
     VPackObjectBuilder guard(payload.get());
     VPackSlice s = result.get(StaticStrings::KeyString);
+    TRI_ASSERT(s.isString());
     payload->add(StaticStrings::KeyString, s);
     s = result.get(StaticStrings::RevString);
     payload->add(StaticStrings::RevString, s);
     if (operation != TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
-      TRI_SanitizeObject(doc, *payload.get());
+      TRI_SanitizeObject(doc, *payload);
     }
   };
 
