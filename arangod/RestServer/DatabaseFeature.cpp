@@ -63,7 +63,6 @@
 #include "Utils/Events.h"
 #include "Utilities/NameValidator.h"
 #include "V8Server/V8DealerFeature.h"
-#include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"

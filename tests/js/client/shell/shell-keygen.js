@@ -960,7 +960,9 @@ function KeyGenerationLocationSuite () {
           c.insert({});
           
           // batch insert, using document API
-          c.insert([{}, {}, {}]);
+          c.insert([{}, {}, {}]).forEach((res) => {
+            assertFalse(res.hasOwnProperty('error'));
+          });
           
           // single insert, using AQL
           db._query(`INSERT {} INTO ${cn}`);
@@ -992,7 +994,9 @@ function KeyGenerationLocationSuite () {
           c.insert({ id: "123" });
           
           // batch insert, using document API
-          c.insert([{ id: "123" }, { id: "123" }, { id: "123" }]);
+          c.insert([{ id: "123" }, { id: "123" }, { id: "123" }]).forEach((res) => {
+            assertFalse(res.hasOwnProperty('error'));
+          });
           
           // single insert, using AQL
           db._query(`INSERT { id: "123" } INTO ${cn}`);
@@ -1032,7 +1036,9 @@ function KeyGenerationLocationSuite () {
             c.insert({});
             
             // batch insert, using document API
-            c.insert([{}, {}, {}]);
+            c.insert([{}, {}, {}]).forEach((res) => {
+              assertFalse(res.hasOwnProperty('error'));
+            });
             
             // single insert, using AQL
             db._query(`INSERT {} INTO ${cn}`);
@@ -1068,7 +1074,9 @@ function KeyGenerationLocationSuite () {
           c.insert({});
           
           // batch insert, using document API
-          c.insert([{}, {}, {}]);
+          c.insert([{}, {}, {}]).forEach((res) => {
+            assertFalse(res.hasOwnProperty('error'));
+          });
           
           // single insert, using AQL
           db._query(`INSERT {} INTO ${cn}`);
@@ -1106,7 +1114,9 @@ function KeyGenerationLocationSuite () {
           c.insert([{}, {}, {}]);
           
           // with custom shard key value
-          c.insert([{id: "123"}, {id: "123"}, {id: "123"}]);
+          c.insert([{id: "123"}, {id: "123"}, {id: "123"}]).forEach((res) => {
+            assertFalse(res.hasOwnProperty('error'));
+          });
           
           // single insert, using AQL
           db._query(`INSERT {} INTO ${cn}`);
@@ -1186,22 +1196,24 @@ function KeyGenerationLocationSmartGraphSuite () {
           // test various ways of inserting documents into the collection
           
           // single insert, using document API
-          db[vn].insert({ value: 42 });
+          db[vn].insert({ value: "42" });
           
           // batch insert, using document API
-          db[vn].insert([{ value: 42 }, { value: 42 }, { value: 42 }]);
+          db[vn].insert([{ value: "42" }, { value: "42" }, { value: "42" }]).forEach((res) => {
+            assertFalse(res.hasOwnProperty('error'));
+          });
           
           // single insert, using AQL
-          db._query(`INSERT { value: 42 } INTO ${vn}`);
+          db._query(`INSERT { value: "42" } INTO ${vn}`);
 
-          db._query(`INSERT { value: 42 } INTO ${vn}`, null, disableSingleDocRule);
+          db._query(`INSERT { value: "42" } INTO ${vn}`, null, disableSingleDocRule);
           
-          db._query(`INSERT { value: 42 } INTO ${vn}`, null, disableRestrictToSingleShardRule);
+          db._query(`INSERT { value: "42" } INTO ${vn}`, null, disableRestrictToSingleShardRule);
           
           // batch insert, using AQL
-          db._query(`FOR i IN 1..3 INSERT { value: 42 } INTO ${vn}`);
+          db._query(`FOR i IN 1..3 INSERT { value: "42" } INTO ${vn}`);
 
-          db._query(`FOR i IN 1..3 INSERT { value: 42 } INTO ${vn}`, null, disableRestrictToSingleShardRule);
+          db._query(`FOR i IN 1..3 INSERT { value: "42" } INTO ${vn}`, null, disableRestrictToSingleShardRule);
 
           assertEqual(13, db[vn].count());
         } finally {
@@ -1228,19 +1240,21 @@ function KeyGenerationLocationSmartGraphSuite () {
           // test various ways of inserting documents into the collection
           
           // single insert, using document API
-          db[vn].insert({ value: 42 });
+          db[vn].insert({ value: "42" });
           
           // batch insert, using document API
-          db[vn].insert([{ value: 42 }, { value: 42 }, { value: 42 }]);
+          db[vn].insert([{ value: "42" }, { value: "42" }, { value: "42" }]).forEach((res) => {
+            assertFalse(res.hasOwnProperty('error'));
+          });
           
           // single insert, using AQL
-          db._query(`INSERT { value: 42 } INTO ${vn}`);
-          db._query(`INSERT { value: 42 } INTO ${vn}`, null, disableSingleDocRule);
-          db._query(`INSERT { value: 42 } INTO ${vn}`, null, disableRestrictToSingleShardRule);
+          db._query(`INSERT { value: "42" } INTO ${vn}`);
+          db._query(`INSERT { value: "42" } INTO ${vn}`, null, disableSingleDocRule);
+          db._query(`INSERT { value: "42" } INTO ${vn}`, null, disableRestrictToSingleShardRule);
           
           // batch insert, using AQL
-          db._query(`FOR i IN 1..3 INSERT { value: 42 } INTO ${vn}`);
-          db._query(`FOR i IN 1..3 INSERT { value: 42 } INTO ${vn}`, null, disableRestrictToSingleShardRule);
+          db._query(`FOR i IN 1..3 INSERT { value: "42" } INTO ${vn}`);
+          db._query(`FOR i IN 1..3 INSERT { value: "42" } INTO ${vn}`, null, disableRestrictToSingleShardRule);
 
           assertEqual(13, db[vn].count());
         } finally {
@@ -1267,19 +1281,21 @@ function KeyGenerationLocationSmartGraphSuite () {
           // test various ways of inserting documents into the collection
           
           // single insert, using document API
-          db[en].insert({ value: 42, _from: vn + "/test:42", _to: vn + "/test:42" });
+          db[en].insert({ value: "42", _from: vn + "/test:42", _to: vn + "/test:42" });
           
           // batch insert, using document API
-          db[en].insert([{ value: 42, _from: vn + "/test:42", _to: vn + "/test:42" }, { value: 42, _from: vn + "/test:42", _to: vn + "/test:42" }, { value: 42, _from: vn + "/test:42", _to: vn + "/test:42" }]);
+          db[en].insert([{ value: "42", _from: vn + "/test:42", _to: vn + "/test:42" }, { value: "42", _from: vn + "/test:42", _to: vn + "/test:42" }, { value: "42", _from: vn + "/test:42", _to: vn + "/test:42" }]).forEach((res) => {
+            assertFalse(res.hasOwnProperty('error'));
+          });
           
           // single insert, using AQL
-          db._query(`INSERT { value: 42, _from: "${vn}/test:42", _to: "${vn}/test:42" } INTO ${en}`);
-          db._query(`INSERT { value: 42, _from: "${vn}/test:42", _to: "${vn}/test:42" } INTO ${en}`, null, disableSingleDocRule);
-          db._query(`INSERT { value: 42, _from: "${vn}/test:42", _to: "${vn}/test:42" } INTO ${en}`, null, disableRestrictToSingleShardRule);
+          db._query(`INSERT { value: "42", _from: "${vn}/test:42", _to: "${vn}/test:42" } INTO ${en}`);
+          db._query(`INSERT { value: "42", _from: "${vn}/test:42", _to: "${vn}/test:42" } INTO ${en}`, null, disableSingleDocRule);
+          db._query(`INSERT { value: "42", _from: "${vn}/test:42", _to: "${vn}/test:42" } INTO ${en}`, null, disableRestrictToSingleShardRule);
           
           // batch insert, using AQL
-          db._query(`FOR i IN 1..3 INSERT { value: 42, _from: "${vn}/test:42", _to: "${vn}/test:42" } INTO ${en}`);
-          db._query(`FOR i IN 1..3 INSERT { value: 42, _from: "${vn}/test:42", _to: "${vn}/test:42" } INTO ${en}`, null, disableRestrictToSingleShardRule);
+          db._query(`FOR i IN 1..3 INSERT { value: "42", _from: "${vn}/test:42", _to: "${vn}/test:42" } INTO ${en}`);
+          db._query(`FOR i IN 1..3 INSERT { value: "42", _from: "${vn}/test:42", _to: "${vn}/test:42" } INTO ${en}`, null, disableRestrictToSingleShardRule);
 
           assertEqual(13, db[en].count());
         } finally {

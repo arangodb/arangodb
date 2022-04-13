@@ -574,13 +574,11 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db,
       // simon: wtf who decided this is a good deserialization routine ?!
       VPackSlice val = keyGenProps.get(StaticStrings::LastValue);
       if (val.isString()) {
-        VPackValueLength size;
-        char const* data = val.getString(size);
-        keyGen.track(data, size);
+        keyGen.track(val.stringView());
       } else if (val.isInteger()) {
         uint64_t lastValue = val.getUInt();
         std::string str = std::to_string(lastValue);
-        keyGen.track(str.data(), str.size());
+        keyGen.track(str);
       }
 
     } else if (!s.IsNotFound()) {

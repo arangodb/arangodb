@@ -344,19 +344,6 @@ ErrorCode LogicalCollection::getResponsibleShard(velocypack::Slice slice,
                                         usesDefaultShardKeys, key);
 }
 
-/// @briefs creates a new document key, the input slice is ignored here
-#ifndef USE_ENTERPRISE
-std::string LogicalCollection::createKey(VPackSlice input) {
-  return keyGenerator().generate();
-}
-#endif
-
-#ifndef USE_ENTERPRISE
-std::string LogicalCollection::createSmartToSatKey(VPackSlice) {
-  return keyGenerator().generate();
-}
-#endif
-
 void LogicalCollection::prepareIndexes(VPackSlice indexesSlice) {
   TRI_ASSERT(_physical != nullptr);
 

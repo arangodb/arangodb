@@ -29,6 +29,7 @@
 #include <array>
 #include <memory>
 #include <string>
+#include <string_view>
 
 namespace arangodb {
 class KeyGenerator;
@@ -63,6 +64,9 @@ struct KeyGeneratorHelper {
   static std::unique_ptr<KeyGenerator> createKeyGenerator(
       LogicalCollection const& collection, arangodb::velocypack::Slice);
 
+  static std::unique_ptr<KeyGenerator> createEnterpriseKeyGenerator(
+      std::unique_ptr<KeyGenerator> generator);
+
   /// @brief maximum length of a key in a collection
   static constexpr size_t maxKeyLength = 254;
 };
@@ -83,7 +87,8 @@ class KeyGenerator {
 
  protected:
   /// @brief create the generator
-  explicit KeyGenerator(bool allowUserKeys);
+  explicit KeyGenerator(LogicalCollection const& collection,
+                        bool allowUserKeys);
 
  public:
   /// @brief destroy the generator
@@ -96,24 +101,28 @@ class KeyGenerator {
   /// @brief generate a key
   /// if the returned string is empty, it means no proper key was
   /// generated, and the caller must handle the situation
-  virtual std::string generate() = 0;
+  virtual std::string generate(velocypack::Slice input) = 0;
 
   /// @brief validate a key
-  virtual ErrorCode validate(char const* p, size_t length,
+  virtual ErrorCode validate(std::string_view key, velocypack::Slice input,
                              bool isRestore) noexcept;
 
   /// @brief track usage of a key
-  virtual void track(char const* p, size_t length) noexcept = 0;
+  virtual void track(std::string_view key) noexcept = 0;
 
   /// @brief build a VelocyPack representation of the generator in the builder
   virtual void toVelocyPack(arangodb::velocypack::Builder&) const;
 
   bool allowUserKeys() const noexcept { return _allowUserKeys; }
 
+  LogicalCollection const& collection() const noexcept { return _collection; }
+
  protected:
   /// @brief check global key attributes
   ErrorCode globalCheck(char const* p, size_t length,
                         bool isRestore) const noexcept;
+
+  LogicalCollection const& _collection;
 
   /// @brief whether or not the users can specify their own keys
   bool const _allowUserKeys;
@@ -127,7 +136,8 @@ class KeyGeneratorWrapper : public KeyGenerator {
  public:
   /// @brief create the generator
   explicit KeyGeneratorWrapper(std::unique_ptr<KeyGenerator> wrapped)
-      : KeyGenerator(wrapped->allowUserKeys()), _wrapped(std::move(wrapped)) {}
+      : KeyGenerator(wrapped->collection(), wrapped->allowUserKeys()),
+        _wrapped(std::move(wrapped)) {}
 
   /// @brief whether or not the key generator has dynamic state
   /// that needs to be stored and recovered
@@ -138,18 +148,18 @@ class KeyGeneratorWrapper : public KeyGenerator {
   /// @brief generate a key
   /// if the returned string is empty, it means no proper key was
   /// generated, and the caller must handle the situation
-  std::string generate() override { return _wrapped->generate(); }
+  std::string generate(velocypack::Slice input) override {
+    return _wrapped->generate(input);
+  }
 
   /// @brief validate a key
-  ErrorCode validate(char const* p, size_t length,
+  ErrorCode validate(std::string_view key, velocypack::Slice input,
                      bool isRestore) noexcept override {
-    return _wrapped->validate(p, length, isRestore);
+    return _wrapped->validate(key, input, isRestore);
   }
 
   /// @brief track usage of a key
-  void track(char const* p, size_t length) noexcept override {
-    _wrapped->track(p, length);
-  }
+  void track(std::string_view key) noexcept override { _wrapped->track(key); }
 
   /// @brief build a VelocyPack representation of the generator in the builder
   void toVelocyPack(arangodb::velocypack::Builder& result) const override {

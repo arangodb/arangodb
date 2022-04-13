@@ -9156,7 +9156,9 @@ AqlValue Functions::MakeDistributeInputWithKeyCreation(
   if (buildNewObject) {
     transaction::BuilderLeaser builder(&trx);
     buildKeyObject(
-        *builder, std::string_view(logicalCollection->createKey(input)), false);
+        *builder,
+        std::string_view(logicalCollection->keyGenerator().generate(input)),
+        false);
     for (auto cur : VPackObjectIterator(input)) {
       builder->add(cur.key.stringView(), cur.value);
     }

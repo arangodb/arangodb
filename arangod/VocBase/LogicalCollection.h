@@ -71,8 +71,6 @@ class Methods;
 /// needs to be derived from the JSON info in the agency's plan entry for the
 /// collection...
 
-typedef std::shared_ptr<LogicalCollection> LogicalCollectionPtr;
-
 class LogicalCollection : public LogicalDataSource {
   friend struct ::TRI_vocbase_t;
 
@@ -220,10 +218,6 @@ class LogicalCollection : public LogicalDataSource {
                                 std::string& shardID,
                                 bool& usesDefaultShardKeys,
                                 std::string_view key = std::string_view());
-
-  /// @briefs creates a new document key, the input slice is ignored here
-  /// this method is overriden in derived classes
-  virtual std::string createKey(velocypack::Slice input);
 
   PhysicalCollection* getPhysical() const { return _physical.get(); }
 
@@ -373,22 +367,6 @@ class LogicalCollection : public LogicalDataSource {
 
   uint64_t getInternalValidatorTypes() const noexcept;
 
- protected:
-  void addInternalValidator(std::unique_ptr<ValidatorBase>);
-
-  Result appendVPack(velocypack::Builder& build, Serialization ctx,
-                     bool safe) const override;
-
-  Result updateSchema(VPackSlice schema);
-
-  /**
-   * Enterprise only method. See enterprise code for implementation
-   * Community has a dummy stub.
-   */
-  std::string createSmartToSatKey(velocypack::Slice input);
-
-  void decorateWithInternalEEValidators();
-
  private:
   void initializeSmartAttributes(velocypack::Slice info);
 
@@ -401,6 +379,15 @@ class LogicalCollection : public LogicalDataSource {
   void decorateWithInternalValidators();
 
  protected:
+  void addInternalValidator(std::unique_ptr<ValidatorBase>);
+
+  Result appendVPack(velocypack::Builder& build, Serialization ctx,
+                     bool safe) const override;
+
+  Result updateSchema(VPackSlice schema);
+
+  void decorateWithInternalEEValidators();
+
   virtual void includeVelocyPackEnterprise(velocypack::Builder& result) const;
 
   // SECTION: Meta Information

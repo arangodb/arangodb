@@ -377,7 +377,7 @@ Result PhysicalCollection::newObjectForInsert(
   VPackSlice s = value.get(StaticStrings::KeyString);
   if (s.isNone()) {
     TRI_ASSERT(!isRestore);  // need key in case of restore
-    auto keyString = _logicalCollection.createKey(value);
+    auto keyString = _logicalCollection.keyGenerator().generate(value);
 
     if (keyString.empty()) {
       return Result(TRI_ERROR_ARANGO_OUT_OF_KEYS);
@@ -389,11 +389,9 @@ Result PhysicalCollection::newObjectForInsert(
   } else {
     TRI_ASSERT(s.isString());
 
-    VPackValueLength l;
-    char const* p = s.getStringUnchecked(l);
-
     // validate and track the key just used
-    auto res = _logicalCollection.keyGenerator().validate(p, l, isRestore);
+    auto res = _logicalCollection.keyGenerator().validate(s.stringView(), value,
+                                                          isRestore);
 
     if (res != TRI_ERROR_NO_ERROR) {
       return Result(res);

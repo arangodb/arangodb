@@ -226,12 +226,12 @@ class TraditionalKeyGenerator : public KeyGenerator {
   /// @brief create the generator
   explicit TraditionalKeyGenerator(LogicalCollection const& collection,
                                    bool allowUserKeys)
-      : KeyGenerator(allowUserKeys), _collection(collection) {}
+      : KeyGenerator(collection, allowUserKeys) {}
 
   bool hasDynamicState() const noexcept override final { return true; }
 
   /// @brief generate a key
-  std::string generate() override final {
+  std::string generate(velocypack::Slice /*input*/) override final {
     uint64_t tick = generateValue();
 
     if (ADB_UNLIKELY(tick == 0)) {
@@ -244,26 +244,28 @@ class TraditionalKeyGenerator : public KeyGenerator {
   }
 
   /// @brief validate a key
-  ErrorCode validate(char const* p, size_t length,
+  ErrorCode validate(std::string_view key, velocypack::Slice input,
                      bool isRestore) noexcept override {
-    auto res = KeyGenerator::validate(p, length, isRestore);
+    auto res = KeyGenerator::validate(key, input, isRestore);
 
     if (res == TRI_ERROR_NO_ERROR) {
-      track(p, length);
+      track(key);
     }
 
     return res;
   }
 
   /// @brief track usage of a key
-  void track(char const* p, size_t length) noexcept override {
+  void track(std::string_view key) noexcept override {
+    char const* p = key.data();
+    size_t length = key.size();
     // check the numeric key part
     if (length > 0 && p[0] >= '0' && p[0] <= '9') {
       // potentially numeric key
       uint64_t value = NumberUtils::atoi_zero<uint64_t>(p, p + length);
 
       if (value > 0) {
-        track(value);
+        trackValue(value);
       }
     }
   }
@@ -279,9 +281,7 @@ class TraditionalKeyGenerator : public KeyGenerator {
   virtual uint64_t generateValue() = 0;
 
   /// @brief track a value (internal)
-  virtual void track(uint64_t value) noexcept = 0;
-
-  LogicalCollection const& _collection;
+  virtual void trackValue(uint64_t value) noexcept = 0;
 };
 
 /// @brief traditional key generator for a single server
@@ -341,7 +341,7 @@ class TraditionalKeyGeneratorSingle final : public TraditionalKeyGenerator {
   }
 
   /// @brief track a key value (internal)
-  void track(uint64_t value) noexcept override {
+  void trackValue(uint64_t value) noexcept override {
     auto lastValue = _lastValue.load(std::memory_order_relaxed);
     while (value > lastValue) {
       // and update our last value
@@ -385,7 +385,7 @@ class TraditionalKeyGeneratorCoordinator final
   }
 
   /// @brief track a key value (internal)
-  void track(uint64_t /* value */) noexcept override {}
+  void trackValue(uint64_t /* value */) noexcept override {}
 
  private:
   ClusterInfo& _ci;
@@ -397,14 +397,12 @@ class PaddedKeyGenerator : public KeyGenerator {
   /// @brief create the generator
   explicit PaddedKeyGenerator(LogicalCollection const& collection,
                               bool allowUserKeys, uint64_t lastValue)
-      : KeyGenerator(allowUserKeys),
-        _collection(collection),
-        _lastValue(lastValue) {}
+      : KeyGenerator(collection, allowUserKeys), _lastValue(lastValue) {}
 
   bool hasDynamicState() const noexcept override final { return true; }
 
   /// @brief generate a key
-  std::string generate() override final {
+  std::string generate(velocypack::Slice /*input*/) override final {
     uint64_t tick = generateValue();
 
     if (ADB_UNLIKELY(tick == 0 || tick == UINT64_MAX)) {
@@ -431,21 +429,21 @@ class PaddedKeyGenerator : public KeyGenerator {
   }
 
   /// @brief validate a key
-  ErrorCode validate(char const* p, size_t length,
+  ErrorCode validate(std::string_view key, velocypack::Slice input,
                      bool isRestore) noexcept override {
-    auto res = KeyGenerator::validate(p, length, isRestore);
+    auto res = KeyGenerator::validate(key, input, isRestore);
 
     if (res == TRI_ERROR_NO_ERROR) {
-      track(p, length);
+      track(key);
     }
 
     return res;
   }
 
   /// @brief track usage of a key
-  void track(char const* p, size_t length) noexcept override final {
+  void track(std::string_view key) noexcept override final {
     // check the numeric key part
-    uint64_t value = KeyGeneratorHelper::decodePadded(p, length);
+    uint64_t value = KeyGeneratorHelper::decodePadded(key.data(), key.size());
     if (value > 0) {
       auto lastValue = _lastValue.load(std::memory_order_relaxed);
       while (value > lastValue) {
@@ -472,8 +470,6 @@ class PaddedKeyGenerator : public KeyGenerator {
  protected:
   /// @brief generate a key value (internal)
   virtual uint64_t generateValue() = 0;
-
-  LogicalCollection const& _collection;
 
  private:
   std::atomic<uint64_t> _lastValue;
@@ -541,8 +537,7 @@ class AutoIncrementKeyGenerator final : public KeyGenerator {
   AutoIncrementKeyGenerator(LogicalCollection const& collection,
                             bool allowUserKeys, uint64_t lastValue,
                             uint64_t offset, uint64_t increment)
-      : KeyGenerator(allowUserKeys),
-        _collection(collection),
+      : KeyGenerator(collection, allowUserKeys),
         _lastValue(lastValue),
         _offset(offset),
         _increment(increment) {}
@@ -550,7 +545,7 @@ class AutoIncrementKeyGenerator final : public KeyGenerator {
   bool hasDynamicState() const noexcept override { return true; }
 
   /// @brief generate a key
-  std::string generate() override {
+  std::string generate(velocypack::Slice /*input*/) override {
     TRI_ASSERT(ServerState::instance()->isSingleServer() ||
                _collection.numberOfShards() == 1);
     uint64_t keyValue;
@@ -579,13 +574,13 @@ class AutoIncrementKeyGenerator final : public KeyGenerator {
   }
 
   /// @brief validate a key
-  ErrorCode validate(char const* p, size_t length,
+  ErrorCode validate(std::string_view key, velocypack::Slice input,
                      bool isRestore) noexcept override {
-    auto res = KeyGenerator::validate(p, length, isRestore);
+    auto res = KeyGenerator::validate(key, input, isRestore);
 
     if (res == TRI_ERROR_NO_ERROR) {
-      char const* s = p;
-      char const* e = s + length;
+      char const* s = key.data();
+      char const* e = s + key.size();
       TRI_ASSERT(s != e);
       do {
         if (*s < '0' || *s > '9') {
@@ -593,14 +588,16 @@ class AutoIncrementKeyGenerator final : public KeyGenerator {
         }
       } while (++s < e);
 
-      track(p, length);
+      track(key);
     }
 
     return res;
   }
 
   /// @brief track usage of a key
-  void track(char const* p, size_t length) noexcept override {
+  void track(std::string_view key) noexcept override {
+    char const* p = key.data();
+    size_t length = key.size();
     // check the numeric key part
     if (length > 0 && p[0] >= '0' && p[0] <= '9') {
       uint64_t value = NumberUtils::atoi_zero<uint64_t>(p, p + length);
@@ -630,7 +627,6 @@ class AutoIncrementKeyGenerator final : public KeyGenerator {
   }
 
  private:
-  LogicalCollection const& _collection;
   std::atomic<uint64_t> _lastValue;  // last value assigned
   uint64_t const _offset;            // start value
   uint64_t const _increment;         // increment value
@@ -640,19 +636,20 @@ class AutoIncrementKeyGenerator final : public KeyGenerator {
 class UuidKeyGenerator final : public KeyGenerator {
  public:
   /// @brief create the generator
-  explicit UuidKeyGenerator(LogicalCollection const&, bool allowUserKeys)
-      : KeyGenerator(allowUserKeys) {}
+  explicit UuidKeyGenerator(LogicalCollection const& collection,
+                            bool allowUserKeys)
+      : KeyGenerator(collection, allowUserKeys) {}
 
   bool hasDynamicState() const noexcept override { return false; }
 
   /// @brief generate a key
-  std::string generate() override {
+  std::string generate(velocypack::Slice /*input*/) override {
     MUTEX_LOCKER(locker, _lock);
     return boost::uuids::to_string(_uuid());
   }
 
   /// @brief track usage of a key
-  void track(char const* /*p*/, size_t /*length*/) noexcept override {}
+  void track(std::string_view /*key*/) noexcept override {}
 
   void toVelocyPack(arangodb::velocypack::Builder& builder) const override {
     KeyGenerator::toVelocyPack(builder);
@@ -950,12 +947,26 @@ std::unique_ptr<KeyGenerator> KeyGeneratorHelper::createKeyGenerator(
 
   TRI_ASSERT(it != ::factories.end());
 
-  return (*it).second(collection, options);
+  // create key generator based on what the user requested
+  std::unique_ptr<KeyGenerator> generator = (*it).second(collection, options);
+
+  // optionally wrap it into a KeyGenerator for a smart graph collection,
+  // if necessary
+  return createEnterpriseKeyGenerator(std::move(generator));
 }
 
+#ifndef USE_ENTERPRISE
+std::unique_ptr<KeyGenerator> KeyGeneratorHelper::createEnterpriseKeyGenerator(
+    std::unique_ptr<KeyGenerator> generator) {
+  // nothing to be done here
+  return generator;
+}
+#endif
+
 /// @brief create the key generator
-KeyGenerator::KeyGenerator(bool allowUserKeys)
-    : _allowUserKeys(allowUserKeys) {}
+KeyGenerator::KeyGenerator(LogicalCollection const& collection,
+                           bool allowUserKeys)
+    : _collection(collection), _allowUserKeys(allowUserKeys) {}
 
 /// @brief build a VelocyPack representation of the generator in the builder
 void KeyGenerator::toVelocyPack(arangodb::velocypack::Builder& builder) const {
@@ -964,9 +975,10 @@ void KeyGenerator::toVelocyPack(arangodb::velocypack::Builder& builder) const {
 }
 
 /// @brief validate a key
-ErrorCode KeyGenerator::validate(char const* p, size_t length,
+ErrorCode KeyGenerator::validate(std::string_view key,
+                                 velocypack::Slice /*input*/,
                                  bool isRestore) noexcept {
-  return globalCheck(p, length, isRestore);
+  return globalCheck(key.data(), key.size(), isRestore);
 }
 
 /// @brief check global key attributes
