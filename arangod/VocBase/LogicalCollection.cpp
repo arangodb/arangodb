@@ -395,7 +395,6 @@ bool LogicalCollection::mustCreateKeyOnCoordinator() const noexcept {
   TRI_ASSERT(ServerState::instance()->isRunningInCluster());
   // when there is more than 1 shard, or if we do have a satellite
   // collection, we need to create the key on the coordinator.
-  TRI_ASSERT(numberOfShards() > 0 || isSatellite());
   return numberOfShards() != 1;
 }
 

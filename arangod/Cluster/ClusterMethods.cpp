@@ -531,12 +531,6 @@ struct InsertOperationCtx {
     // We just assign it to any shard and pretend the user has given a key
     shardID = collinfo.shardingInfo()->shardListAsShardID()->at(0);
   } else {
-    auto r = transaction::Methods::validateSmartJoinAttribute(collinfo, value);
-
-    if (r != TRI_ERROR_NO_ERROR) {
-      return r;
-    }
-
     // Sort out the _key attribute:
     // The user is allowed to specify _key, provided that _key is the one
     // and only sharding attribute, because in this case we can delegate
