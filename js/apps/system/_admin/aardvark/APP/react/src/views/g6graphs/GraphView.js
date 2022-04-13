@@ -108,12 +108,11 @@ export class GraphView extends React.Component {
       itemTypes: ['node', 'edge', 'canvas'],
     });
     
-    /*
     const toolbar = new G6.ToolBar({
       position: { x: 10, y: 10 },
     });
-    */
 
+    /*
     const tc = document.createElement('div');
     tc.id = 'toolbarContainer';
     document.body.appendChild(tc);
@@ -159,6 +158,7 @@ export class GraphView extends React.Component {
         }
       }
     });
+    */
 
     const container = ReactDOM.findDOMNode(this.ref.current);
     console.log(`Size: ${container.offsetWidth} x ${container.offsetHeight}`);
@@ -573,11 +573,11 @@ export class GraphView extends React.Component {
     return <>
       <button onClick={() => this.printVertexCollections()}>Print vertex collections</button>
       <button onClick={() => {
-        console.log("Color these nodes: ", this.props.data.nodes);
         this.props.data.nodes.forEach(node => {
           if (node.id.startsWith("frenchCity")) {
+            console.log("Color node: ", node);
             node.style = {
-              fill: '#e18826',
+              fill: '#f00',
               // ... other styles
             }
           } else {
