@@ -218,7 +218,6 @@ Server::Impl::Impl(RocksDBOptionsProvider const& optionsProvider,
 }
 
 Server::Impl::~Impl() {
-  LOG_DEVEL << "initiating server shutdown";
   if (_vocbase) {
     _vocbase->release();
     _vocbase = nullptr;
@@ -231,9 +230,9 @@ Server::Impl::~Impl() {
 
 void Server::Impl::start(char const* exectuable) {
   _serverThread = std::thread(&Impl::runServer, this, exectuable);
+  using arangodb::application_features::ApplicationServer;
 
   // wait for server
-  using arangodb::application_features::ApplicationServer;
   unsigned count = 0;
   while (_server.state() < ApplicationServer::State::IN_WAIT && count < 20) {
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -245,9 +244,6 @@ void Server::Impl::start(char const* exectuable) {
 
   DatabaseFeature& databaseFeature = _server.getFeature<DatabaseFeature>();
   _vocbase = databaseFeature.useDatabase("_system");
-
-  LOG_DEVEL << "server thread started";
-  // TODO
 }
 
 void Server::Impl::setupServer(std::string const& name, int& result) {
@@ -318,7 +314,6 @@ void Server::Impl::runServer(char const* exectuable) {
   int ret{EXIT_FAILURE};
 
   // TODO
-  std::string folder = "/tmp/sepp";
   std::filesystem::remove_all(_databaseDirectory);
 
   std::vector<std::string> args{exectuable, "--database.directory",
@@ -329,6 +324,7 @@ void Server::Impl::runServer(char const* exectuable) {
     argv.push_back(arg.data());
   }
   ArangoGlobalContext context(argv.size(), argv.data(), "");
+  ServerState::reset();
   ServerState state{_server};
   try {
     _server.run(argv.size(), argv.data());

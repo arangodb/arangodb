@@ -266,7 +266,10 @@ RocksDBEngine::RocksDBEngine(Server& server,
   startsAfter<LanguageCheckFeature>();
 }
 
-RocksDBEngine::~RocksDBEngine() { shutdownRocksDBInstance(); }
+RocksDBEngine::~RocksDBEngine() {
+  _recoveryHelpers.clear();
+  shutdownRocksDBInstance();
+}
 
 /// shuts down the RocksDB instance. this is called from unprepare
 /// and the dtor

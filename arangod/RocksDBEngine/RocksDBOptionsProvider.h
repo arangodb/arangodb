@@ -24,6 +24,7 @@
 #pragma once
 
 #include <rocksdb/options.h>
+#include <rocksdb/table.h>
 #include <rocksdb/utilities/transaction_db.h>
 
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"

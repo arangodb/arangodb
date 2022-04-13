@@ -44,6 +44,9 @@ class Runner {
 
  private:
   auto runBenchmark() -> Report;
+  auto executeRound(std::uint32_t round) -> RoundReport;
+  void startServer();
+  void setup();
 
   std::string_view _executable;
   std::string_view _reportFile;

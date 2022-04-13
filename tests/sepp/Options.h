@@ -31,8 +31,9 @@ namespace arangodb::sepp {
 
 struct Options {
   std::string databaseDirectory;
-  std::size_t runtime;
-  std::size_t rounds;
+  std::uint32_t runtime;
+  std::uint32_t rounds;
+  std::uint32_t threads;
 
   RocksDBOptions rocksdb;
 };
@@ -42,6 +43,7 @@ auto inspect(Inspector& f, Options& o) {
   return f.object(o).fields(
       f.field("databaseDirectory", o.databaseDirectory).fallback("/tmp/sepp"),
       f.field("runtime", o.runtime).fallback(10000u),
+      f.field("threads", o.threads).fallback(1u),
       f.field("rounds", o.rounds).fallback(5u), f.field("rocksdb", o.rocksdb));
 }
 

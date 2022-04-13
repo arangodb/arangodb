@@ -25,13 +25,13 @@
 
 #include <vector>
 
-#include <velocypack/SliceContainer.h>
+#include <velocypack/Builder.h>
 
 namespace arangodb::sepp {
 
 struct ThreadReport {
-  // a JSON value containing arbitrary result data for this thread
-  velocypack::SliceContainer data;
+  // a velocypack value containing arbitrary result data for this thread
+  velocypack::Builder data;
   // total number of operations performed by this thread
   std::uint64_t operations;
 };
@@ -39,14 +39,22 @@ struct ThreadReport {
 struct RoundReport {
   std::vector<ThreadReport> threads;
   double runtime;  // runtime in milliseconds
-  [[nodiscard]] std::uint64_t operations() const;
+  std::uint64_t databaseSize;
+
+  [[nodiscard]] std::uint64_t operations() const {
+    std::uint64_t result = 0;
+    for (const auto& thread : threads) {
+      result += thread.operations;
+    }
+    return result;
+  }
+
   [[nodiscard]] double throughput() const {
     return static_cast<double>(operations()) / runtime;
   }
 };
 
 struct Report {
-  std::string name;
   std::int64_t timestamp;
   // velocypack::SliceContainer config;
   std::vector<RoundReport> rounds;

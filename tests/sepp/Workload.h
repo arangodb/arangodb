@@ -23,11 +23,20 @@
 
 #pragma once
 
+#include <cstddef>
+#include <memory>
+
 namespace arangodb::sepp {
 
-struct Benchmark {
-  ~Benchmark();
+struct Server;
+struct Execution;
+struct ExecutionThread;
 
- private:
+struct Workload {
+  virtual ~Workload() = default;
+
+  virtual std::unique_ptr<ExecutionThread> createThread(std::uint32_t id,
+                                                        Execution const& exec,
+                                                        Server& server) = 0;
 };
 }  // namespace arangodb::sepp

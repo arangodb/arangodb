@@ -440,10 +440,11 @@ target_link_libraries(arangodbtests
 
 set(ARANGODB_SEPP_SOURCES
   sepp/main.cpp
-  sepp/Benchmark.cpp
+  sepp/Execution.cpp
   sepp/Runner.cpp
   sepp/RocksDBOptions.cpp
   sepp/Server.cpp
+  sepp/Workloads/InsertDocuments.cpp
 )
 
 add_executable(
@@ -461,6 +462,7 @@ target_link_libraries(sepp
 
 target_include_directories(sepp PRIVATE
   ${PROJECT_SOURCE_DIR}/arangod
+  ${PROJECT_SOURCE_DIR}/tests/sepp
 )
 
 

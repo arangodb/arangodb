@@ -1246,6 +1246,8 @@ Result ServerState::propagateClusterReadOnly(bool mode) {
   return Result();
 }
 
+void ServerState::reset() { Instance = nullptr; }
+
 #ifdef ARANGODB_USE_GOOGLE_TESTS
 bool ServerState::isGoogleTest() const noexcept { return _isGoogleTests; }
 

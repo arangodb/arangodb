@@ -21,10 +21,29 @@
 /// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Benchmark.h"
+#pragma once
 
-namespace arangodb::sepp {
+#include "Workload.h"
+#include "Execution.h"
 
-Benchmark::~Benchmark() = default;
+namespace arangodb::sepp::workloads {
 
-}  // namespace arangodb::sepp
+struct InsertDocuments : Workload {
+  using Workload::Workload;
+
+  std::unique_ptr<ExecutionThread> createThread(std::uint32_t id,
+                                                Execution const& exec,
+                                                Server& server) override;
+  struct Thread : ExecutionThread {
+    using ExecutionThread::ExecutionThread;
+    ~Thread();
+    void run() override;
+    [[nodiscard]] virtual ThreadReport report() const override {
+      return {.operations = _operations};
+    }
+
+   private:
+    std::uint64_t _operations{0};
+  };
+};
+}  // namespace arangodb::sepp::workloads

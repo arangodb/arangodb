@@ -53,6 +53,8 @@ ServerIdFeature::ServerIdFeature(Server& server)
   startsAfter<SystemDatabaseFeature>();
 }
 
+ServerIdFeature::~ServerIdFeature() { SERVERID = ServerId::none(); }
+
 void ServerIdFeature::start() {
   auto& databasePath = server().getFeature<DatabasePathFeature>();
   _idFilename = databasePath.subdirectoryName("SERVER");
