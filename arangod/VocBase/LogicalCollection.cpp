@@ -195,9 +195,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
 
   _sharding = std::make_unique<ShardingInfo>(info, this);
 
-#ifdef USE_ENTERPRISE
   initializeSmartAttributes(info);
-#endif
 
   if (ServerState::instance()->isDBServer() ||
       !ServerState::instance()->isRunningInCluster()) {
@@ -217,7 +215,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
 }
 
 #ifndef USE_ENTERPRISE
-void LogicalCollection::readSmartAttributes(velocypack::Slice info) {
+void LogicalCollection::initializeSmartAttributes(velocypack::Slice info) {
   // nothing to do in community edition
 }
 #endif
@@ -434,13 +432,13 @@ RevisionId LogicalCollection::revision(transaction::Methods* trx) const {
 
 #ifndef USE_ENTERPRISE
 std::string const& LogicalCollection::smartJoinAttribute() const noexcept {
-  return StaticStrings::EmptyString;
+  return StaticStrings::Empty;
 }
 #endif
 
 #ifndef USE_ENTERPRISE
 std::string const& LogicalCollection::smartGraphAttribute() const noexcept {
-  return StaticStrings::EmptyString;
+  return StaticStrings::Empty;
 }
 #endif
 
