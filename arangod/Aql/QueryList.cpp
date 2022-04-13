@@ -127,7 +127,8 @@ bool QueryList::insert(Query& query) {
     }
 
     // return whether or not insertion worked
-    bool inserted = _current.insert({query.id(), &query}).second;
+    bool inserted =
+        _current.insert({query.id(), query.weak_from_this()}).second;
     _queryRegistryFeature.trackQueryStart();
     return inserted;
   } catch (...) {
@@ -273,7 +274,9 @@ Result QueryList::kill(TRI_voc_tick_t id) {
     return {TRI_ERROR_QUERY_NOT_FOUND, "query ID not found in query list"};
   }
 
-  killQuery(*it->second, maxLength, false);
+  if (auto query_ptr = it->second.lock(); query_ptr) {
+    killQuery(*query_ptr, maxLength, false);
+  }
 
   return Result();
 }
@@ -289,7 +292,11 @@ uint64_t QueryList::kill(std::function<bool(Query&)> const& filter,
   READ_LOCKER(readLocker, _lock);
 
   for (auto& it : _current) {
-    Query& query = *(it.second);
+    auto query_ptr = it.second.lock();
+    if (!query_ptr) {
+      continue;
+    }
+    auto& query = *query_ptr;
 
     if (!filter(query)) {
       continue;
@@ -320,27 +327,29 @@ std::vector<QueryEntryCopy> QueryList::listCurrent() {
     result.reserve(_current.size());
 
     for (auto const& it : _current) {
-      Query const* query = it.second;
-
-      TRI_ASSERT(query != nullptr);
+      auto query_ptr = it.second.lock();
+      if (!query_ptr) {
+        continue;
+      }
+      auto& query = *query_ptr;
 
       // elapsed time since query start
-      double const elapsed = elapsedSince(query->startTime());
+      double const elapsed = elapsedSince(query.startTime());
 
       // we calculate the query start timestamp as the current time minus
       // the elapsed time since query start. this is not 100% accurrate, but
       // best effort, and saves us from bookkeeping the start timestamp of the
       // query inside the Query object.
       result.emplace_back(
-          query->id(), query->vocbase().name(), query->user(),
-          extractQueryString(*query, maxLength),
-          _trackBindVars ? query->bindParameters() : nullptr,
-          _trackDataSources ? query->collectionNames()
+          query.id(), query.vocbase().name(), query.user(),
+          extractQueryString(query, maxLength),
+          _trackBindVars ? query.bindParameters() : nullptr,
+          _trackDataSources ? query.collectionNames()
                             : std::vector<std::string>(),
           now - elapsed /* start timestamp */, elapsed /* run time */,
-          query->killed() ? QueryExecutionState::ValueType::KILLED
-                          : query->state(),
-          query->queryOptions().stream,
+          query.killed() ? QueryExecutionState::ValueType::KILLED
+                         : query.state(),
+          query.queryOptions().stream,
           /*resultCode*/ std::nullopt /*not set yet*/);
     }
   }

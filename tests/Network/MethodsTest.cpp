@@ -63,7 +63,10 @@ struct DummyConnection final : public fuerte::Connection {
 
   fuerte::Error _err = fuerte::Error::NoError;
   std::unique_ptr<fuerte::Response> _response;
-  int _sendRequestNum = 0;
+  // Should be atomic because we don't wait,
+  // we just sleep and expect the request to be completed within that time.
+  // In general, this is synchronization via sleep and you can’t write like that
+  std::atomic_int _sendRequestNum = 0;
 };
 
 struct DummyPool : public network::ConnectionPool {
