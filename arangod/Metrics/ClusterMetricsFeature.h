@@ -117,6 +117,8 @@ class ClusterMetricsFeature final : public ArangodFeature {
 
   void toPrometheus(std::string& result, std::string_view globals) const;
 
+  std::shared_ptr<Data> getData() const;
+
  private:
   mutable std::shared_mutex _m;
   containers::FlatHashMap<std::string_view, ToCoordinator> _toCoordinator;

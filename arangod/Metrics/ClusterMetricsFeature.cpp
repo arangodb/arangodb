@@ -205,4 +205,9 @@ void ClusterMetricsFeature::toPrometheus(std::string& result,
   }
 }
 
+std::shared_ptr<ClusterMetricsFeature::Data> ClusterMetricsFeature::getData()
+    const {
+  return std::atomic_load_explicit(&_data, std::memory_order_acquire);
+}
+
 }  // namespace arangodb::metrics

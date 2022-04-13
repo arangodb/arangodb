@@ -140,6 +140,44 @@ Result IResearchLinkCoordinator::init(velocypack::Slice definition) {
 
   return r;
 }
+IResearchDataStore::Stats IResearchLinkCoordinator::stats() const {
+  auto& cmf = IResearchLink::collection()
+                  .vocbase()
+                  .server()
+                  .getFeature<metrics::ClusterMetricsFeature>();
+  auto data = cmf.getData();
+  if (!data) {
+    return {};
+  }
+  auto& metrics = data->metrics;
+  std::string labels;
+  auto addLabel = [&](std::string_view key, std::string_view value) {
+    if (!labels.empty()) {
+      labels.push_back(',');
+    }
+    labels.append(key);
+    labels.push_back('=');
+    labels.push_back('"');
+    labels.append(value);
+    labels.push_back('"');
+  };
+  addLabel("db", getDbName());
+  addLabel("view", getViewId());
+  addLabel("collection", getCollectionName());
+  auto getValue = [&](const std::string& key) {
+    if (auto it = metrics.find({key, labels}); it != metrics.end()) {
+      return std::get<uint64_t>(it->second);
+    }
+    return uint64_t{0};
+  };
+  return {
+      getValue("arangodb_search_num_docs"),
+      getValue("arangodb_search_num_live_docs"),
+      getValue("arangodb_search_num_segments"),
+      getValue("arangodb_search_num_files"),
+      getValue("arangodb_search_index_size"),
+  };
+}
 
 void IResearchLinkCoordinator::toVelocyPack(
     velocypack::Builder& builder,
