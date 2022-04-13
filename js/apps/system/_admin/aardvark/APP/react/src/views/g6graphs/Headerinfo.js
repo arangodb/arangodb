@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Switch, Input, Space, Tag, Card, Select, PageHeader, Tabs, Button, Statistic, Descriptions, Tooltip } from 'antd';
+import { Dropdown, Switch, Input, Space, Menu, Tag, Card, Select, PageHeader, Tabs, Button, Statistic, Descriptions, Tooltip } from 'antd';
 import GraphDataInfo from './GraphDataInfo';
 import { InfoCircleOutlined, SaveOutlined, NodeIndexOutlined, NodeExpandOutlined, DownloadOutlined, FullscreenOutlined, ShareAltOutlined, CameraOutlined, SearchOutlined } from '@ant-design/icons';
 import LayoutSelector from './LayoutSelector.js';
@@ -17,7 +17,7 @@ import ParameterEdgeLabel from "./ParameterEdgeLabel";
 import ParameterNodeColorAttribute from "./ParameterNodeColorAttribute";
 import ButtonSave from "./ButtonSave";
 
-export const Headerinfo = ({ graphName, graphData, responseDuration, onDownloadScreenshot, onChangeLayout, onChangeGraphData, onLoadFullGraph, onDocumentSelect, onGraphDataLoaded }) => {
+export const Headerinfo = ({ graphName, graphData, responseDuration, onDownloadScreenshot, onDownloadFullScreenshot, onChangeLayout, onChangeGraphData, onLoadFullGraph, onDocumentSelect, onGraphDataLoaded }) => {
   
   const [layout, setLayout] = useState('gForce');
   const { Option } = Select;
@@ -72,6 +72,26 @@ export const Headerinfo = ({ graphName, graphData, responseDuration, onDownloadS
     </Space>
   </>;
 
+const screenshotMenu = (
+  <Menu>
+    <Menu.Item onClick={() => {
+      onDownloadScreenshot();
+    }}>
+      Download visible graph
+    </Menu.Item>
+    <Menu.Item onClick={() => {
+      onDownloadFullScreenshot();
+    }}>
+      Download full graph
+    </Menu.Item>
+  </Menu>
+);
+
+/*
+<Tooltip placement="bottom" title={"Download visible graph as screenshot"}>
+</Tooltip>
+*/
+
   return (
     <PageHeader
       className="site-page-header-responsive"
@@ -83,12 +103,11 @@ export const Headerinfo = ({ graphName, graphData, responseDuration, onDownloadS
           <Tooltip placement="bottom" title={"Fetch full graph - use with caution"}>
             <Button key="4" onClick={onLoadFullGraph()}><DownloadOutlined /></Button>
           </Tooltip>
-          <Tooltip placement="bottom" title={"Download visible graph as screenshot"}>
-            <Button key="3" onClick={() => {
-              console.log("Screenshot button clicked");
-              onDownloadScreenshot();
-            }}><CameraOutlined /></Button>
-          </Tooltip>
+          
+            <Dropdown overlay={screenshotMenu} placement="bottomRight">
+              <Button><CameraOutlined /></Button>
+            </Dropdown>
+          
           <Tooltip placement="bottom" title={"Switch to fullscreen mode"}>
             <Button key="2"
               onClick={() => {
@@ -115,7 +134,10 @@ export const Headerinfo = ({ graphName, graphData, responseDuration, onDownloadS
             }
             key="1"
           >
-            <ParameterNodeStart />
+            <ParameterNodeStart
+              nodes={graphData.nodes}
+              onNodeSelect={(node) => onDocumentSelect(node)}
+            />
             <br />
             <LayoutSelector
               value={layout}

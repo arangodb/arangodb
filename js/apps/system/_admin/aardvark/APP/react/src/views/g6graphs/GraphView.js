@@ -517,7 +517,18 @@ export class GraphView extends React.Component {
   }
 
   downloadScreenshot = () => {
-    this.graph.downloadImage();
+    this.graph.downloadImage('graph', 'image/png', '#fff');
+  }
+
+  downloadFullScreenshot = () => {
+    this.graph.downloadFullImage(
+      'fullGraph',
+      'image/png',
+      {
+        backgroundColor: '#fff',
+        padding: [30, 15, 15, 15],
+      }
+    );
   }
 
   highlightDocument = (document) => {
@@ -603,6 +614,7 @@ export class GraphView extends React.Component {
         graphData={this.props.data}
         responseDuration={this.props.responseDuration}
         onDownloadScreenshot={() => this.downloadScreenshot()}
+        onDownloadFullScreenshot={() => this.downloadFullScreenshot()}
         onChangeLayout={(layout) => {
           console.log("Change layout to: ", layout);
           this.changeLayout(layout);
