@@ -925,20 +925,20 @@ void Agent::advanceCommitIndex() {
   index_t index = temp[temp.size() - quorum];
 
   term_t t = _constituent.term();
+
+  auto ci = _commitIndex.load(std::memory_order_relaxed);
+  auto slices = _state.slices(ci + 1, index);
   {
     WRITE_LOCKER(oLocker, _outputLock);
-    auto ci = _commitIndex.load(std::memory_order_relaxed);
+
     if (index > ci) {
       CONDITION_LOCKER(guard, _waitForCV);
       LOG_TOPIC("e24a9", TRACE, Logger::AGENCY)
-          << "Critical mass for commiting "
-          << _commitIndex.load(std::memory_order_relaxed) + 1 << " through "
-          << index << " to read db";
+          << "Critical mass for commiting " << ci + 1 << " through " << index
+          << " to read db";
 
       // Change _readDB and _commitIndex atomically together:
-      _readDB.applyLogEntries(_state.slices(/* inform others by callbacks */
-                                            ci + 1, index),
-                              ci, t, true);
+      _readDB.applyLogEntries(slices, ci, t, true);
 
       LOG_TOPIC("e24aa", DEBUG, Logger::AGENCY)
           << "Critical mass for commiting " << ci + 1 << " through " << index
@@ -1294,6 +1294,8 @@ trans_ret_t Agent::transact(query_t const& queries) {
   reportIn(id(), maxind);
 
   if (size() == 1) {
+    std::unique_lock<std::mutex> guard(
+        _protectAdvanceCommitIndexInSingleServerAgency);
     advanceCommitIndex();
   }
 
@@ -1489,6 +1491,8 @@ write_ret_t Agent::write(query_t const& query, WriteMode const& wmode) {
   reportIn(id(), maxind);
 
   if (size() == 1) {
+    std::unique_lock<std::mutex> guard(
+        _protectAdvanceCommitIndexInSingleServerAgency);
     advanceCommitIndex();
   }
 

@@ -70,6 +70,9 @@ Result::Result(ErrorCode errorNumber, const char* errorMessage)
              0 == strcmp("", errorMessage));
 }
 
+Result::Result(result::Error error)
+    : _error{std::make_unique<Error>(std::move(error))} {}
+
 Result::Result(Result const& other)
     : _error(other._error == nullptr ? nullptr
                                      : std::make_unique<Error>(*other._error)) {
