@@ -107,7 +107,9 @@ Result GraphManager::createCollection(std::string const& name,
       name,     // collection name
       colType,  // collection type
       options,  // collection properties
-      waitForSync, true, false, coll);
+      /*createWaitsForSyncReplication*/ waitForSync,
+      /*enforceReplicationFactor*/ true,
+      /*isNewDatabase*/ false, coll);
 
   return res;
 }
@@ -656,16 +658,19 @@ Result GraphManager::ensureCollections(
   OperationOptions opOptions(ExecContext::current());
 
 #ifdef USE_ENTERPRISE
-  const bool allowEnterpriseCollectionsOnSingleServer =
+  bool const allowEnterpriseCollectionsOnSingleServer =
       ServerState::instance()->isSingleServer() &&
       (graph.isSmart() || graph.isSatellite());
 #else
-  const bool allowEnterpriseCollectionsOnSingleServer = false;
+  bool const allowEnterpriseCollectionsOnSingleServer = false;
 #endif
 
   Result finalResult = methods::Collections::create(
-      ctx()->vocbase(), opOptions, collectionsToCreate.get(), waitForSync, true,
-      false, nullptr, created, false, allowEnterpriseCollectionsOnSingleServer);
+      ctx()->vocbase(), opOptions, collectionsToCreate.get(),
+      /*createWaitsForSyncReplication*/ waitForSync,
+      /*enforceReplicationFactor*/ true,
+      /*isNewDatabase*/ false, nullptr, created, /*allowSystem*/ false,
+      allowEnterpriseCollectionsOnSingleServer);
 #ifdef USE_ENTERPRISE
   if (finalResult.ok()) {
     guard.cancel();

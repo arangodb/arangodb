@@ -5,6 +5,31 @@ devel
   creation. This allows one to run tests against a manually created and
   configured collection.
 
+* Added an IO heartbeat which checks that the underlying volume is writable
+  with reasonable performance. The test is done every 15 seconds and can
+  be explicitly switched off. New metrics to give visibility if the test
+  fails.
+
+* Fix lock order in Agent::advanceCommitIndex for State's _logLock and
+  Agent's _waitForCV.
+
+* Fix deadlocked shard synchronisations when planned shard leader has
+  not yet taken over leadership.
+
+* Resync follower shard after a follower restart immediately and not lazily.
+
+* Unify the creation of normal and SmartGraph collections.
+
+  This unifies the code paths for creating collections for normal
+  collections and SmartGraph collections, so that the functionality is
+  centralized in one place. SmartGraph-specific code for validation and
+  collection creation has been moved to enterprise as well.
+
+* Make followers respond to synchronous replication requests with less data.
+  Specifically, followers will not build detailed results with _id, _key and
+  _rev for the inserted/modified/removed documents, which would be ignored 
+  by the leader anyway.
+
 * Updated arangosync to v2.9.0-preview-5.
 
 * Auto-regenerate exit code and error code files in non-maintainer mode, too.
