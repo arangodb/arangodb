@@ -265,8 +265,8 @@ void QueryList::remove(Query& query) {
 
 /// @brief kills a query
 Result QueryList::kill(TRI_voc_tick_t id) {
-  size_t const maxLength =
-      _maxQueryStringLength.load(std::memory_order_relaxed);
+  // We should call dtor std::shared_ptr<Query> not under a lock,
+  // otherwise a deadlock will occur. Query dtor make a WRITE_LOCKER(..., _lock)
   std::shared_ptr<Query> queryPtr;
   {
     READ_LOCKER(writeLocker, _lock);
@@ -277,7 +277,8 @@ Result QueryList::kill(TRI_voc_tick_t id) {
     queryPtr = it->second.lock();
   }
   if (queryPtr) {
-    killQuery(*queryPtr, maxLength, false);
+    auto const length = _maxQueryStringLength.load(std::memory_order_relaxed);
+    killQuery(*queryPtr, length, false);
   }
   return {};
 }
@@ -286,6 +287,8 @@ Result QueryList::kill(TRI_voc_tick_t id) {
 /// (i.e. the filter should return true for a queries to be killed)
 uint64_t QueryList::kill(std::function<bool(Query&)> const& filter,
                          bool silent) {
+  // We should call dtor std::shared_ptr<Query> not under a lock,
+  // otherwise a deadlock will occur. Query dtor make a WRITE_LOCKER(..., _lock)
   absl::InlinedVector<std::shared_ptr<Query>, 16> queries;
   {
     READ_LOCKER(readLocker, _lock);
@@ -309,12 +312,13 @@ uint64_t QueryList::kill(std::function<bool(Query&)> const& filter,
 
 /// @brief get the list of currently running queries
 std::vector<QueryEntryCopy> QueryList::listCurrent() {
+  // We should call dtor std::shared_ptr<Query> not under a lock,
+  // otherwise a deadlock will occur. Query dtor make a WRITE_LOCKER(..., _lock)
+  absl::InlinedVector<std::shared_ptr<Query>, 16> queries;
   std::vector<QueryEntryCopy> result;
   // reserve room for some queries outside of the lock already,
-  // so we reduce the possibility of having to reserve more room
-  // later
+  // so we reduce the possibility of having to reserve more room later
   result.reserve(16);
-  absl::InlinedVector<std::shared_ptr<Query>, 16> queries;
   auto const maxLength = _maxQueryStringLength.load(std::memory_order_relaxed);
   double const now = TRI_microtime();
 

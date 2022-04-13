@@ -266,20 +266,16 @@ void Query::setLockTimeout(double timeout) noexcept {
 }
 
 bool Query::killed() const {
-  if (_queryOptions.maxRuntime > std::numeric_limits<double>::epsilon() &&
-      elapsedSince(_startTime) > _queryOptions.maxRuntime) {
-    return true;
-  }
-  return _queryKilled;
+  return (std::numeric_limits<double>::epsilon() < _queryOptions.maxRuntime &&
+          _queryOptions.maxRuntime < elapsedSince(_startTime)) ||
+         _queryKilled.load(std::memory_order_acquire);
 }
 
 /// @brief set the query to killed
 void Query::kill() {
-  if (ServerState::instance()->isCoordinator() && !_queryKilled) {
-    _queryKilled = true;
-    this->cleanupPlanAndEngine(TRI_ERROR_QUERY_KILLED, /*sync*/ false);
-  } else {
-    _queryKilled = true;
+  auto const wasKilled = _queryKilled.exchange(true, std::memory_order_acq_rel);
+  if (ServerState::instance()->isCoordinator() && !wasKilled) {
+    cleanupPlanAndEngine(TRI_ERROR_QUERY_KILLED, /*sync*/ false);
   }
 }
 
@@ -1269,7 +1265,7 @@ void Query::enterState(QueryExecutionState::ValueType state) {
 
 /// @brief cleanup plan and engine for current query
 ExecutionState Query::cleanupPlanAndEngine(ErrorCode errorCode, bool sync) {
-  if (!_resultCode.has_value()) {
+  if (!_resultCode.has_value()) {  // TODO possible data race here
     // result code not yet set.
     _resultCode = errorCode;
   }
