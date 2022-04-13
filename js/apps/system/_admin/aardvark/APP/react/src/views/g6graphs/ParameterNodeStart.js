@@ -1,31 +1,48 @@
 import React, { useContext, useState } from "react";
 import { UrlParametersContext } from "./url-parameters-context";
+import { Node } from './components/node/node.component';
 import { Input, Tooltip } from 'antd';
 import { InfoCircleOutlined } from '@ant-design/icons';
 
-const ParameterNodeStart = () => {
+const ParameterNodeStart = ({ nodes, onNodeSelect }) => {
   const [urlParameters, setUrlParameters] = useContext(UrlParametersContext);
   const [nodeStart, setNodeStart] = useState(urlParameters.nodeStart);
 
   const NEWURLPARAMETERS = { ...urlParameters };
-  
+
   return (
     <>
       <h5>urlParameters (in ParameterNodeStart): {JSON.stringify(urlParameters)}</h5>
-      <form>
-        <label>
-          nodeStart:
-          <input
-            type="text"
-            value={nodeStart}
-            onChange={(e) => {
+      <p>nodeStart: {JSON.stringify(urlParameters.nodeStart)}</p>
+      <p>depth: {JSON.stringify(urlParameters.depth)}</p>
+      <p>limit: {JSON.stringify(urlParameters.limit)}</p>
+      <div>
+      <label>
+      <div className="node-list">
+        <input
+          list="nodelist"
+          id="graphnodes"
+          name="graphnodes"
+          placeholder="Set start node"
+          onChange={
+            (e) => {
               setNodeStart(e.target.value);
               NEWURLPARAMETERS.nodeStart = e.target.value;
               setUrlParameters(NEWURLPARAMETERS);
-            }}
-          />
-        </label>
-      </form>
+            }
+          }
+          style={{ 'width': '100%' }} />
+        <datalist id="nodelist">
+          {nodes.map(node => (
+            <Node
+              key={node.id}
+              node={node} />
+          ))}
+        </datalist>
+      </div>
+        Start node
+      </label>
+    </div>
     </>
   );
 };
