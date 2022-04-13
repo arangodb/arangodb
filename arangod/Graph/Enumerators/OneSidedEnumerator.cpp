@@ -34,6 +34,7 @@
 #include "Graph/Providers/SingleServerProvider.h"
 #include "Graph/Queues/QueueTracer.h"
 #include "Graph/Steps/SingleServerProviderStep.h"
+#include "Graph/Steps/VertexDescription.h"
 #include "Graph/Types/ValidationResult.h"
 #include "Graph/algorithm-aliases.h"
 #ifdef USE_ENTERPRISE
@@ -205,6 +206,20 @@ void OneSidedEnumerator<Configuration>::reset(VertexRef source, size_t depth,
   clear(keepPathStore);
   auto firstStep = _provider.startVertex(source, depth, weight);
   _queue.append(std::move(firstStep));
+}
+
+template<class Configuration>
+void OneSidedEnumerator<Configuration>::resetManyStartVertices(
+    std::vector<VertexDescription> const& vertices) {
+  clear(false);
+  std::vector<Step> startSteps{};
+  startSteps.reserve(vertices.size());
+  for (auto const& v : vertices) {
+    VPackHashedStringRef source{v.id.data(),
+                                static_cast<uint32_t>(v.id.size())};
+    startSteps.emplace_back(_provider.startVertex(source, v.depth, v.weight));
+  }
+  _queue.setStartContent(std::move(startSteps));
 }
 
 /**

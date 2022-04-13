@@ -49,7 +49,7 @@ class HashedStringRef;
 
 namespace graph {
 
-struct VertexData;
+struct VertexDescription;
 
 namespace enterprise {
 class SmartGraphStep;
@@ -113,7 +113,7 @@ class OneSidedEnumerator : public TraversalEnumerator {
   void reset(VertexRef source, size_t depth = 0, double weight = 0.0,
              bool keepPathStore = false) override;
 
-  void resetManyStartVertices(std::vector<VertexData> const&);
+  void resetManyStartVertices(std::vector<VertexDescription> const&) override;
 
   /**
    * @brief Get the next path, if available written into the result build.

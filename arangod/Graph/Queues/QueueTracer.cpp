@@ -76,6 +76,18 @@ void QueueTracer<QueueImpl>::append(typename QueueImpl::Step step) {
 }
 
 template<class QueueImpl>
+void QueueTracer<QueueImpl>::setStartContent(
+    std::vector<typename QueueImpl::Step> startSteps) {
+  double start = TRI_microtime();
+  // this can extend _stats, thus requires mutability, may allocate
+  // dynamic memory and can throw
+  auto sg = arangodb::scopeGuard([&]() noexcept {
+    _stats["setStartContent"].addTiming(TRI_microtime() - start);
+  });
+  return _impl.setStartContent(std::move(startSteps));
+}
+
+template<class QueueImpl>
 bool QueueTracer<QueueImpl>::firstIsVertexFetched() const {
   double start = TRI_microtime();
   auto sg = arangodb::scopeGuard([&]() noexcept {
