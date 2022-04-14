@@ -563,7 +563,9 @@ IResearchViewExecutorBase<Impl, Traits>::produceRows(
       documentWritten = next(ctx, stats);
 
       if (documentWritten) {
-        stats.incrScanned();
+        if constexpr (!Traits::ExplicitScanned) {
+          stats.incrScanned();
+        }
         output.advanceRow();
       } else {
         _inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
@@ -620,7 +622,9 @@ IResearchViewExecutorBase<Impl, Traits>::skipRowsRange(
       _inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
     }
   }
-  stats.incrScanned(call.getSkipCount());
+  if constexpr (!Traits::ExplicitScanned) {
+    stats.incrScanned(call.getSkipCount());
+  }
 
   AqlCall upstreamCall{};
   if (!call.needsFullCount()) {
@@ -641,17 +645,15 @@ bool IResearchViewExecutorBase<Impl, Traits>::next(ReadContext& ctx,
   while (true) {
     if (_indexReadBuffer.empty()) {
       impl.fillBuffer(ctx);
+      if constexpr (Traits::ExplicitScanned) {
+        if (!_indexReadBuffer.empty()) {
+          stats.incrScanned(static_cast<Impl&>(*this).getScanned());
+        }
+      }
     }
     if (_indexReadBuffer.empty()) {
       return false;
     }
-
-    if constexpr (Traits::ExplicitScanned) {
-      // executor could scan some documents internally before returning anything
-      // report this numbers immediately
-      stats.incrScanned(static_cast<Impl&>(*this).getScanned());
-    }
-
     IndexReadBufferEntry bufferEntry = _indexReadBuffer.pop_front();
 
     if (ADB_LIKELY(impl.writeRow(ctx, bufferEntry))) {
@@ -1036,7 +1038,9 @@ IResearchViewHeapSortExecutor<copyStored, ordered, materializeType>::skipAll() {
   } else {
     // Looks like this is currently unreachable.
     // If this assert is ever triggered tests for such case should be added.
-    // But implementations should work.
+    // But implementations should work. The only thing should be fixed - 
+    // here we should also explicitly report scanned just like in regular 
+    // skip implementation.
     TRI_ASSERT(false);
     size_t const count = this->_reader->size();
     for (size_t readerOffset = 0; readerOffset < count; ++readerOffset) {

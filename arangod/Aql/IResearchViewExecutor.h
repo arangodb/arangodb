@@ -698,11 +698,7 @@ class IResearchViewHeapSortExecutor
   size_t skip(size_t toSkip, IResearchViewStats& stats);
   size_t skipAll();
   size_t getScanned() const noexcept {
-    if (!_bufferFilled) {
-      return 0;
-    }
-    TRI_ASSERT(_totalCount >= _bufferedCount);
-    return _totalCount - _bufferedCount;
+    return _totalCount;
   }
   void reset();
   void fillBuffer(ReadContext& ctx);

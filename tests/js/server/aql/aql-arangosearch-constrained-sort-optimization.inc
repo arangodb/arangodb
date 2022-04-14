@@ -137,7 +137,7 @@
                       " DESC LIMIT 1000, 300 COLLECT WITH COUNT INTO c  RETURN c ";
           let plan = AQL_EXPLAIN(query).plan;
           assertNotEqual(-1, plan.rules.indexOf(ruleName));
-          let result = AQL_EXECUTE(query, {}, {fullCount:true});
+          let result = AQL_EXECUTE(query, {}, {fullCount:false});
           assertEqual(1, result.json.length);
           assertEqual(300, result.json[0]);
           assertEqual(17871, result.stats.scannedIndex);
@@ -157,7 +157,7 @@
                       " DESC LIMIT 1000, 300 RETURN d";
           let plan = AQL_EXPLAIN(query).plan;
           assertNotEqual(-1, plan.rules.indexOf(ruleName));
-          let result = AQL_EXECUTE(query, {}, {fullCount:true});
+          let result = AQL_EXECUTE(query, {}, {fullCount:false});
           assertEqual(300, result.json.length);
           assertEqual(17871, result.stats.scannedIndex);
       },
@@ -176,7 +176,7 @@
                       " DESC LIMIT 1500 RETURN d";
           let plan = AQL_EXPLAIN(query).plan;
           assertNotEqual(-1, plan.rules.indexOf(ruleName));
-          let result = AQL_EXECUTE(query, {}, {fullCount:true});
+          let result = AQL_EXECUTE(query, {}, {fullCount:false});
           assertEqual(1500, result.json.length);
           assertEqual(17871, result.stats.scannedIndex);
       },
