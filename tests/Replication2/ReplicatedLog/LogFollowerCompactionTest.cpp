@@ -77,3 +77,9 @@ TEST_F(LogFollowerCompactionTest, simple_release) {
   ASSERT_EQ(firstUncompactedIdx, compactedLog.getFirstIndex());
   ASSERT_EQ(latestIdx, compactedLog.getLastIndex());
 }
+
+// TODO Add a test that runs a `checkCompaction` during an appendEntries,
+//      specifically after core->insertAsync is called (and the new InMemoryLog
+//      is created), and before the new InMemoryLog is applied.
+//      We probably need another Mock for the PersistedLog, so we can control
+//      when the core->insertAsync promise will be resolved.
