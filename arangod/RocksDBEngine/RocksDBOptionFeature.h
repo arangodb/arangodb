@@ -75,6 +75,7 @@ class RocksDBOptionFeature final : public ArangodFeature,
   uint32_t numThreadsLow() const noexcept override { return _numThreadsLow; }
 
  private:
+  uint64_t _transactionLockStripes;
   int64_t _transactionLockTimeout;
   std::string _walDirectory;
   uint64_t _totalWriteBufferSize;

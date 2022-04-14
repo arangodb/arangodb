@@ -122,6 +122,10 @@ uint64_t defaultMinWriteBufferNumberToMerge(uint64_t totalSize,
 
 RocksDBOptionFeature::RocksDBOptionFeature(Server& server)
     : ArangodFeature{server, *this},
+      // number of lock stripes for the transaction lock manager. we bump this
+      // to at least 16 to reduce contention for small scale systems.
+      _transactionLockStripes(
+          std::max(NumberOfCores::getValue(), std::size_t(16))),
       _transactionLockTimeout(rocksDBTrxDefaults.transaction_lock_timeout),
       _totalWriteBufferSize(rocksDBDefaults.db_write_buffer_size),
       _writeBufferSize(rocksDBDefaults.write_buffer_size),
@@ -226,6 +230,12 @@ void RocksDBOptionFeature::collectOptions(
           "that files in different levels will have the same size",
           new UInt64Parameter(&_targetFileSizeMultiplier))
       .setIntroducedIn(30701);
+
+  options
+      ->addOption("--rocksdb.transaction-lock-stripes",
+                  "Number of lock stripes to use for transaction locks",
+                  new UInt64Parameter(&_transactionLockStripes))
+      .setIntroducedIn(30902);
 
   options->addOption(
       "--rocksdb.transaction-lock-timeout",
@@ -713,7 +723,8 @@ rocksdb::TransactionDBOptions RocksDBOptionFeature::getTransactionDBOptions()
     const {
   rocksdb::TransactionDBOptions result;
   // number of locks per column_family
-  result.num_stripes = NumberOfCores::getValue();
+  result.num_stripes =
+      std::max(size_t(1), static_cast<size_t>(_transactionLockStripes));
   result.transaction_lock_timeout = _transactionLockTimeout;
   return result;
 }
