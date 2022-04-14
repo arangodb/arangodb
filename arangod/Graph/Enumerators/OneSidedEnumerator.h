@@ -130,6 +130,10 @@ class OneSidedEnumerator : public TraversalEnumerator {
    */
   auto getNextPath() -> std::unique_ptr<PathResultInterface> override;
 
+#ifdef USE_ENTERPRISE
+  auto smartSearch() -> enterprise::SmartGraphResponse override;
+#endif
+
   /**
    * @brief Skip the next Path, like getNextPath, but does not return the path.
    *
@@ -171,6 +175,10 @@ class OneSidedEnumerator : public TraversalEnumerator {
   // It may be a noop if _result is not empty.
   auto searchMoreResults() -> void;
   void clearProvider();
+
+#ifdef USE_ENTERPRISE
+  auto smartExpand(Step const& step, size_t posPrevious) -> void;
+#endif
 
  private:
   GraphOptions _options;

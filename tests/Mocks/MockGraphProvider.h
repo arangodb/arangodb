@@ -292,6 +292,7 @@ class MockGraphProvider {
   void addEdgeIDToBuilder(Step::Edge const& edge,
                           arangodb::velocypack::Builder& builder);
   std::string getEdgeId(Step::Edge const& edge);
+  velocypack::HashedStringRef getEdgeIdRef(Step::Edge const& edge);
 
   void prepareIndexExpressions(aql::Ast* ast);
   void prepareContext(aql::InputAqlItemRow input);

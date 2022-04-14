@@ -200,6 +200,15 @@ std::string SingleServerProvider<Step>::getEdgeId(
 }
 
 template<class Step>
+EdgeType SingleServerProvider<Step>::getEdgeIdRef(
+    typename Step::Edge const& edge) {
+  // TODO: Maybe we can simplify this
+  auto id = getEdgeId(edge);
+  VPackHashedStringRef hashed{id.data(), static_cast<uint32_t>(id.size())};
+  return _cache.persistString(hashed);
+}
+
+template<class Step>
 void SingleServerProvider<Step>::prepareIndexExpressions(aql::Ast* ast) {
   TRI_ASSERT(_cursor != nullptr);
   _cursor->prepareIndexExpressions(ast);

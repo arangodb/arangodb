@@ -46,7 +46,7 @@
 #include <Logger/LogMacros.h>
 #include <velocypack/Builder.h>
 
-    using namespace arangodb;
+using namespace arangodb;
 using namespace arangodb::graph;
 
 template<class Configuration>
@@ -71,9 +71,7 @@ auto OneSidedEnumerator<Configuration>::destroyEngines() -> void {
 template<class Configuration>
 void OneSidedEnumerator<Configuration>::clear(bool keepPathStore) {
   _queue.clear();
-  if constexpr (std::is_same_v<ResultList, std::vector<Step>>) {
-    _results.clear();
-  }
+  _results.clear();
   _validator.reset();
 
   if (!keepPathStore) {
@@ -88,11 +86,9 @@ void OneSidedEnumerator<Configuration>::clearProvider() {
   // PathStore. Info: Steps do contain VertexRefs which are hold in PathStore.
   TRI_ASSERT(_queue.isEmpty());
 
-  if constexpr (std::is_same_v<ResultList, std::vector<Step>>) {
-    // Guarantee that _results is empty. Steps are contained in _results and do
-    // contain Steps which do contain VertexRefs which are hold in PathStore.
-    TRI_ASSERT(_results.empty());
-  }
+  // Guarantee that _results is empty. Steps are contained in _results and do
+  // contain Steps which do contain VertexRefs which are hold in PathStore.
+  TRI_ASSERT(_results.empty());
 
   // Guarantee that the used PathStore is cleared, before we clear the Provider.
   // The Provider does hold the StringHeap cache.
@@ -167,12 +163,12 @@ auto OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex()
       _provider.fetchEdges(stepsToFetch);
       TRI_ASSERT(step.edgeFetched());
     }
-    _provider.expand(step, posPrevious, [&](Step n) -> void {
-      // We get all Edges outbound
-      // of step, so we add them
-      // the SmartGraphResponse
-      _queue.append(n);
-    });
+    if constexpr (std::is_same_v<ResultList, enterprise::SmartGraphResponse>) {
+      smartExpand(step, posPrevious);
+    } else {
+      _provider.expand(step, posPrevious,
+                       [&](Step n) -> void { _queue.append(n); });
+    }
   }
 }
 
@@ -389,6 +385,11 @@ auto OneSidedEnumerator<Configuration>::unprepareValidatorContext() -> void {
     _validator.unpreparePostFilterContext();
   }
 }
+
+#ifdef USE_ENTERPRISE
+// Include Enterprise part of the template implementation
+#include "Enterprise/Graph/Enumerators/OneSidedEnumeratorEE.tpp"
+#endif
 
 /* SingleServerProvider Section */
 using SingleServerProviderStep = ::arangodb::graph::SingleServerProviderStep;

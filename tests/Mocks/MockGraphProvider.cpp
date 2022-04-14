@@ -190,6 +190,12 @@ auto MockGraphProvider::getEdgeId(const Step::Edge& edge) -> std::string {
   return "e/" + keyId;
 }
 
+auto MockGraphProvider::getEdgeIdRef(const Step::Edge& edge)
+    -> VPackHashedStringRef {
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
 auto MockGraphProvider::expand(Step const& source, size_t previousIndex)
     -> std::vector<Step> {
   LOG_TOPIC("78157", TRACE, Logger::GRAPHS)

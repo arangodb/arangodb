@@ -81,6 +81,8 @@ class ProviderTracer {
 
   auto getEdgeId(typename Step::Edge const& edge) -> std::string;
 
+  auto getEdgeIdRef(typename Step::Edge const& edge) -> EdgeType;
+
   void prepareIndexExpressions(aql::Ast* ast);
 
   // Note: ClusterProvider will need to implement destroyEngines
