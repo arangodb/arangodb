@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include <limits>
 #include <optional>
 #include <string_view>
 #include <tuple>
@@ -96,7 +97,10 @@ struct VPackLoadInspectorImpl
       return {"Expecting type String"};
     }
     auto s = _slice.stringView();
-    v = velocypack::HashedStringRef(s.data(), s.size());
+    if (s.size() > std::numeric_limits<uint32_t>::max()) {
+      return {"String value too long to store In HashedStringRef"};
+    }
+    v = velocypack::HashedStringRef(s.data(), static_cast<uint32_t>(s.size()));
     return {};
   }
 
