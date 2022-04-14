@@ -106,7 +106,7 @@ Result IResearchLinkCoordinator::init(velocypack::Slice definition) {
   auto batchToPrometheus = [](std::string& result, std::string_view globals,
                               ClusterMetricsFeature::MetricKey const& key,
                               ClusterMetricsFeature::MetricValue const& value) {
-    Metric::addMark(result, key.first, globals, key.second);
+    Metric::addMark(result, std::get<0>(key), globals, std::get<1>(key));
     result.append(std::to_string(std::get<uint64_t>(value))) += '\n';
   };
   metric.add("arangodb_search_num_docs", batchToCoordinator, batchToPrometheus);
@@ -164,8 +164,8 @@ IResearchDataStore::Stats IResearchLinkCoordinator::stats() const {
   addLabel("db", getDbName());
   addLabel("view", getViewId());
   addLabel("collection", getCollectionName());
-  auto getValue = [&](const std::string& key) {
-    if (auto it = metrics.find({key, labels}); it != metrics.end()) {
+  auto getValue = [&, labels = std::string_view{labels}](std::string_view key) {
+    if (auto it = metrics.find(std::tuple{key, labels}); it != metrics.end()) {
       return std::get<uint64_t>(it->second);
     }
     return uint64_t{0};
