@@ -33,6 +33,8 @@ using namespace arangodb::replication2::test;
 struct LogFollowerCompactionTest : ReplicatedLogTest {};
 
 TEST_F(LogFollowerCompactionTest, simple_release) {
+  using namespace std::string_literals;
+
   auto leaderLog = makeReplicatedLog(LogId{1});
   auto followerLog = makeReplicatedLog(LogId{1});
 
@@ -43,20 +45,35 @@ TEST_F(LogFollowerCompactionTest, simple_release) {
   follower->runAllAsyncAppendEntries();
   ASSERT_TRUE(leader->isLeadershipEstablished());
 
-  leader->insert(LogPayload::createFromString("log entry #1"));
-  auto const stopCompactionIdx =
-      leader->insert(LogPayload::createFromString("log entry #2"));
-  auto const latestIdx =
-      leader->insert(LogPayload::createFromString("log entry #3"));
+  auto i = 0;
+  // compaction will only run if at least 1000 entries are to be compacted,
+  // so let's start with that
+  for (; i < 1000; ++i) {
+    leader->insert(
+        LogPayload::createFromString("log entry #"s + std::to_string(i)));
+  }
+  // let's add some more
+  auto const stopCompactionIdx = leader->insert(
+      LogPayload::createFromString("log entry #"s + std::to_string(i++)));
+  auto const firstUncompactedIdx = leader->insert(
+      LogPayload::createFromString("log entry #"s + std::to_string(i++)));
+  leader->insert(
+      LogPayload::createFromString("log entry #"s + std::to_string(i++)));
+  auto const latestIdx = leader->insert(
+      LogPayload::createFromString("log entry #"s + std::to_string(i++)));
 
+  // replicate entries
   follower->runAllAsyncAppendEntries();
   ASSERT_EQ(latestIdx,
             leader->getQuickStatus().getLocalStatistics().value().commitIndex);
+  ASSERT_EQ(latestIdx,
+            follower->getQuickStatus().getLocalStatistics().value().commitIndex);
   auto const fullLog = follower->copyInMemoryLog();
   ASSERT_EQ(LogIndex{1}, fullLog.getFirstIndex());
   ASSERT_EQ(latestIdx, fullLog.getLastIndex());
+  // release some entries
   follower->release(stopCompactionIdx);
   auto const compactedLog = follower->copyInMemoryLog();
-  ASSERT_EQ(stopCompactionIdx, compactedLog.getFirstIndex());
+  ASSERT_EQ(firstUncompactedIdx, compactedLog.getFirstIndex());
   ASSERT_EQ(latestIdx, compactedLog.getLastIndex());
 }
