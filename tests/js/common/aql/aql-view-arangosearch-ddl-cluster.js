@@ -26,9 +26,9 @@
 
 var jsunity = require("jsunity");
 var db = require("@arangodb").db;
-var isServer = require("@arangodb").isServer;
 var analyzers = require("@arangodb/analyzers");
 var ERRORS = require("@arangodb").errors;
+const isServer = require("@arangodb").isServer;
 const {getMetricRaw} = require("@arangodb/test-helper");
 
 ////////////////////////////////////////////////////////////////////////////////
