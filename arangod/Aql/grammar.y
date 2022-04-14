@@ -115,9 +115,10 @@ void validateOptions(Parser* parser, AstNode const* node,
 
 /// @brief check if any of the variables used in the INTO expression were
 /// introduced by the COLLECT itself, in which case it would fail
-void checkIntoVariables(Parser* parser, AstNode const* expression,
-                        int line, int column,
-                        VarSet const& variablesIntroduced) {
+void checkCollectVariables(Parser* parser, char const* context, 
+                           AstNode const* expression,
+                           int line, int column,
+                           VarSet const& variablesIntroduced) {
   if (expression == nullptr) {
     return;
   }
@@ -127,7 +128,7 @@ void checkIntoVariables(Parser* parser, AstNode const* expression,
 
   for (auto const& it : varsInAssignment) {
     if (variablesIntroduced.find(it) != variablesIntroduced.end()) {
-      std::string msg("use of COLLECT variable '" + it->name + "' inside same COLLECT's INTO expression");
+      std::string msg("use of COLLECT variable '" + it->name + "' inside same COLLECT's " + context + " expression");
       parser->registerParseError(TRI_ERROR_QUERY_VARIABLE_NAME_UNKNOWN, msg.c_str(), it->name.c_str(), line, column);
       return;
     }
@@ -925,7 +926,7 @@ collect_statement:
       }
 
       if ($3 != nullptr && $3->type == NODE_TYPE_ARRAY) {
-        ::checkIntoVariables(parser, $3->getMember(1), yylloc.first_line, yylloc.first_column, variablesIntroduced);
+        ::checkCollectVariables(parser, "INTO", $3->getMember(1), yylloc.first_line, yylloc.first_column, variablesIntroduced);
       }
 
       AstNode const* into = ::getIntoVariable(parser, $3);
@@ -949,7 +950,7 @@ collect_statement:
       }
 
       if ($3 != nullptr && $3->type == NODE_TYPE_ARRAY) {
-        ::checkIntoVariables(parser, $3->getMember(1), yylloc.first_line, yylloc.first_column, variablesIntroduced);
+        ::checkCollectVariables(parser, "INTO", $3->getMember(1), yylloc.first_line, yylloc.first_column, variablesIntroduced);
       }
 
       // note all group variables
@@ -1000,7 +1001,7 @@ collect_statement:
       }
 
       if ($2 != nullptr && $2->type == NODE_TYPE_ARRAY) {
-        ::checkIntoVariables(parser, $2->getMember(1), yylloc.first_line, yylloc.first_column, variablesIntroduced);
+        ::checkCollectVariables(parser, "INTO", $2->getMember(1), yylloc.first_line, yylloc.first_column, variablesIntroduced);
       }
 
       AstNode const* into = ::getIntoVariable(parser, $2);
@@ -1024,7 +1025,11 @@ collect_statement:
       }
 
       if ($2 != nullptr && $2->type == NODE_TYPE_ARRAY) {
-        ::checkIntoVariables(parser, $2->getMember(1), yylloc.first_line, yylloc.first_column, variablesIntroduced);
+        ::checkCollectVariables(parser, "INTO", $2->getMember(1), yylloc.first_line, yylloc.first_column, variablesIntroduced);
+      }
+        
+      if ($3 != nullptr && $3->type == NODE_TYPE_ARRAY) {
+        ::checkCollectVariables(parser, "KEEP", $3, yylloc.first_line, yylloc.first_column, variablesIntroduced);
       }
 
       AstNode const* into = ::getIntoVariable(parser, $2);

@@ -1,6 +1,11 @@
 v3.9.2 (XXXX-XX-XX)
 -------------------
 
+* Improve validation for variables used in the `KEEP` part of AQL COLLECT
+  operations. Previously referring to a variable that was introduced by the
+  COLLECT itself from out of the KEEP part triggered an internal error. The
+  case is detected properly now and handled with a descriptive error message.
+
 * Added an IO heartbeat which checks that the underlying volume is writable with
   reasonable performance. The test is done every 15 seconds and can be
   explicitly switched off. New metrics to give visibility if the test fails.
