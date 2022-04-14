@@ -1,6 +1,11 @@
 devel
 -----
 
+* Improve validation for variables used in the `KEEP` part of AQL COLLECT
+  operations. Previously referring to a variable that was introduced by the
+  COLLECT itself from out of the KEEP part triggered an internal error. The
+  case is detected properly now and handled with a descriptive error message.
+
 * Fixed BTS-811 in which there was an incongruence between data being
   checksummed and data being written to `.sst` files, because checksumming 
   should have been made after the encryption of the data, not before it.
