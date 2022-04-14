@@ -28,6 +28,8 @@ var jsunity = require("jsunity");
 var db = require("@arangodb").db;
 var analyzers = require("@arangodb/analyzers");
 var ERRORS = require("@arangodb").errors;
+const isServer = require("@arangodb").isServer;
+const {getMetricRaw} = require("@arangodb/test-helper");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -908,9 +910,12 @@ function IResearchFeatureDDLTestSuite () {
 
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief test link on analyzers collection
-    /// FIXME not supported in cluster atm
     ////////////////////////////////////////////////////////////////////////////////
     testIndexStats : function() {
+      if (isServer) {
+        return;
+      }
+      const arango = require("@arangodb").arango;
       const colName = 'TestCollection';
       const viewName = 'TestView';
 
@@ -925,6 +930,9 @@ function IResearchFeatureDDLTestSuite () {
       });
       view.properties({ links: { [colName]: { includeAllFields: true } } });
 
+      getMetricRaw(arango.getEndpoint(), '');
+      require('internal').sleep(5);
+
       // check link stats
       {
         let figures = db.TestCollection.getIndexes(true, true)
@@ -936,7 +944,7 @@ function IResearchFeatureDDLTestSuite () {
         assertEqual(0, figures.indexSize);
         assertEqual(0, figures.numDocs);
         assertEqual(0, figures.numLiveDocs);
-        assertEqual(0, figures.numFiles);
+        assertEqual(1, figures.numFiles);
         assertEqual(0, figures.numSegments);
       }
 
@@ -944,6 +952,9 @@ function IResearchFeatureDDLTestSuite () {
       col.save({ foo: 'bar' });
       col.save({ foo: 'baz' });
 
+      getMetricRaw(arango.getEndpoint(), '');
+      require('internal').sleep(5);
+
       // check link stats
       {
         let figures = db.TestCollection.getIndexes(true, true)
@@ -955,7 +966,7 @@ function IResearchFeatureDDLTestSuite () {
         assertEqual(0, figures.indexSize);
         assertEqual(0, figures.numDocs);
         assertEqual(0, figures.numLiveDocs);
-        assertEqual(0, figures.numFiles);
+        assertEqual(1, figures.numFiles);
         assertEqual(0, figures.numSegments);
       }
 
@@ -965,6 +976,9 @@ function IResearchFeatureDDLTestSuite () {
       assertEqual('bar', res[0].foo);
       assertEqual('baz', res[1].foo);
 
+      getMetricRaw(arango.getEndpoint(), '');
+      require('internal').sleep(5);
+
       // check link stats
       {
         let figures = db.TestCollection.getIndexes(true, true)
@@ -973,11 +987,11 @@ function IResearchFeatureDDLTestSuite () {
         assertNotEqual(null, figures);
         assertTrue(Object === figures.constructor);
         assertEqual(5, Object.keys(figures).length);
-        assertEqual(0, figures.indexSize);
-        assertEqual(0, figures.numDocs);
-        assertEqual(0, figures.numLiveDocs);
-        assertEqual(0, figures.numFiles);
-        assertEqual(0, figures.numSegments);
+        assertEqual(1278, figures.indexSize);
+        assertEqual(2, figures.numDocs);
+        assertEqual(2, figures.numLiveDocs);
+        assertEqual(6, figures.numFiles);
+        assertEqual(1, figures.numSegments);
       }
 
       // remove document
@@ -988,6 +1002,9 @@ function IResearchFeatureDDLTestSuite () {
       assertEqual(1, res.length);
       assertEqual('baz', res[0].foo);
 
+      getMetricRaw(arango.getEndpoint(), '');
+      require('internal').sleep(5);
+
       // check link stats
       {
         let figures = db.TestCollection.getIndexes(true, true)
@@ -996,11 +1013,11 @@ function IResearchFeatureDDLTestSuite () {
         assertNotEqual(null, figures);
         assertTrue(Object === figures.constructor);
         assertEqual(5, Object.keys(figures).length);
-        assertEqual(0, figures.indexSize);
-        assertEqual(0, figures.numDocs);
-        assertEqual(0, figures.numLiveDocs);
-        assertEqual(0, figures.numFiles);
-        assertEqual(0, figures.numSegments);
+        assertEqual(1326, figures.indexSize);
+        assertEqual(2, figures.numDocs);
+        assertEqual(1, figures.numLiveDocs);
+        assertEqual(7, figures.numFiles);
+        assertEqual(1, figures.numSegments);
       }
 
       // truncate collection
@@ -1010,6 +1027,9 @@ function IResearchFeatureDDLTestSuite () {
       res = db._query("FOR d IN TestView OPTIONS {waitForSync:true} SORT d.foo RETURN d").toArray();
       assertEqual(0, res.length);
 
+      getMetricRaw(arango.getEndpoint(), '');
+      require('internal').sleep(5);
+
       // check link stats
       {
         let figures = db.TestCollection.getIndexes(true, true)
@@ -1021,7 +1041,7 @@ function IResearchFeatureDDLTestSuite () {
         assertEqual(0, figures.indexSize);
         assertEqual(0, figures.numDocs);
         assertEqual(0, figures.numLiveDocs);
-        assertEqual(0, figures.numFiles);
+        assertEqual(1, figures.numFiles);
         assertEqual(0, figures.numSegments);
       }
     },
