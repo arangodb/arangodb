@@ -23,27 +23,62 @@
 
 #pragma once
 
+#include <optional>
+
+#include "Inspection/Status.h"
+
+#include "ExecutionThread.h"
 #include "Workload.h"
-#include "Execution.h"
 
 namespace arangodb::sepp::workloads {
 
 struct InsertDocuments : Workload {
-  using Workload::Workload;
+  struct ThreadOptions;
+  struct Options;
+  struct Thread;
 
-  std::unique_ptr<ExecutionThread> createThread(std::uint32_t id,
-                                                Execution const& exec,
-                                                Server& server) override;
-  struct Thread : ExecutionThread {
-    using ExecutionThread::ExecutionThread;
-    ~Thread();
-    void run() override;
-    [[nodiscard]] virtual ThreadReport report() const override {
-      return {.operations = _operations};
-    }
+  InsertDocuments(Options const& options) : _options(options) {}
 
-   private:
-    std::uint64_t _operations{0};
-  };
+  WorkerThreadList createThreads(Execution const& exec,
+                                 Server& server) override;
+
+ private:
+  Options const& _options;
 };
+
+struct InsertDocuments::ThreadOptions {
+  std::string collection;
+  velocypack::Slice object;
+
+  template<class Inspector>
+  friend inline auto inspect(Inspector& f, ThreadOptions& o) {
+    return f.object(o).fields(f.field("object", o.object),
+                              f.field("collection", o.collection));
+  }
+};
+
+struct InsertDocuments::Options {
+  std::optional<ThreadOptions> defaultThreadOptions;
+  std::uint32_t threads{1};
+
+  template<class Inspector>
+  friend inline auto inspect(Inspector& f, Options& o) {
+    return f.object(o).fields(f.field("default", o.defaultThreadOptions),
+                              f.field("threads", o.threads));
+  }
+};
+
+struct InsertDocuments::Thread : ExecutionThread {
+  Thread(ThreadOptions options, Execution const& exec, Server& server);
+  ~Thread();
+  void run() override;
+  [[nodiscard]] virtual ThreadReport report() const override {
+    return {.operations = _operations};
+  }
+
+ private:
+  std::uint64_t _operations{0};
+  ThreadOptions _options;
+};
+
 }  // namespace arangodb::sepp::workloads

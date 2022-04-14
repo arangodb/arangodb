@@ -36,10 +36,19 @@
 
 namespace arangodb::sepp::workloads {
 
-std::unique_ptr<ExecutionThread> InsertDocuments::createThread(
-    std::uint32_t id, Execution const& exec, Server& server) {
-  return std::make_unique<Thread>(id, exec, server);
+auto InsertDocuments::createThreads(Execution const& exec, Server& server)
+    -> WorkerThreadList {
+  WorkerThreadList result;
+  for (std::uint32_t i = 0; i < _options.threads; ++i) {
+    result.emplace_back(std::make_unique<Thread>(
+        _options.defaultThreadOptions.value(), exec, server));
+  }
+  return result;
 }
+
+InsertDocuments::Thread::Thread(ThreadOptions options, Execution const& exec,
+                                Server& server)
+    : ExecutionThread(exec, server), _options(options) {}
 
 InsertDocuments::Thread::~Thread() = default;
 
@@ -47,16 +56,11 @@ void InsertDocuments::Thread::run() {
   // TODO - make more configurable
   for (unsigned i = 0; i < 10; ++i) {
     auto trx = std::make_unique<SingleCollectionTransaction>(
-        transaction::StandaloneContext::Create(*_server.vocbase()), "testcol",
-        AccessMode::Type::WRITE);
-
-    VPackBuilder docBuilder;
-    docBuilder.openObject();
-    docBuilder.add("foo", VPackValue("bar"));
-    docBuilder.close();
+        transaction::StandaloneContext::Create(*_server.vocbase()),
+        _options.collection, AccessMode::Type::WRITE);
 
     trx->begin();
-    trx->insert("testcol", docBuilder.slice(), {});
+    trx->insert("testcol", _options.object, {});
     trx->commit();
   }
   _operations += 10;

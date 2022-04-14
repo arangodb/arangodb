@@ -60,16 +60,7 @@ Execution::~Execution() {
 }
 
 void Execution::createThreads(Server& server) {
-  // TODO - allow configuration of different thread types
-  std::uint32_t cnt = _options.threads;
-
-  _threads.reserve(cnt);
-  for (std::uint32_t i = 0; i < cnt; ++i) {
-    auto id = (_round << threadIdBits) | cnt;
-    auto thread = _workload->createThread(id, *this, server);
-    _threads.push_back(std::move(thread));
-    _threads.back()->setup();
-  }
+  _threads = _workload->createThreads(*this, server);
 }
 
 ExecutionState Execution::state(std::memory_order order) const {
@@ -129,67 +120,6 @@ void Execution::waitUntilThreadStateIs(ExecutionThread const& thread,
       throw std::runtime_error("worker thread finished prematurely");
     }
     state = thread._state.load(std::memory_order_relaxed);
-  }
-}
-
-ExecutionThread::ExecutionThread(std::uint32_t id, Execution const& exec,
-                                 Server& server)
-    : _server(server),
-      _execution(exec),
-      _id(id),
-      _thread(&ExecutionThread::threadFunc, this) {}
-
-void ExecutionThread::threadFunc() {
-  waitUntilAllThreadsAreStarted();
-  try {
-    doRun();
-  } catch (std::exception& e) {
-    std::cerr << "Thread " << std::this_thread::get_id()
-              << " failed: " << e.what() << std::endl;
-  }
-  _state.store(ThreadState::finished);
-}
-
-void ExecutionThread::doRun() {
-  if (_execution.state(std::memory_order_relaxed) == ExecutionState::stopped) {
-    return;
-  }
-
-  _state.store(ThreadState::running);
-
-  waitUntilInitialization();
-
-  initialize(_execution.numThreads());
-
-  _state.store(ThreadState::ready);
-
-  waitUntilBenchmarkStarts();
-
-  auto start = std::chrono::high_resolution_clock::now();
-
-  while (_execution.state() == ExecutionState::running) {
-    run();
-  }
-
-  _runtime = std::chrono::high_resolution_clock::now() - start;
-}
-
-void ExecutionThread::waitUntilAllThreadsAreStarted() {
-  while (_execution.state(std::memory_order_acquire) ==
-         ExecutionState::starting) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(20));
-  }
-}
-
-void ExecutionThread::waitUntilInitialization() {
-  while (_execution.state() == ExecutionState::preparing) {
-    ;
-  }
-}
-
-void ExecutionThread::waitUntilBenchmarkStarts() {
-  while (_execution.state() == ExecutionState::initializing) {
-    ;
   }
 }
 

@@ -47,8 +47,8 @@ namespace arangodb::sepp {
 Runner::Runner(std::string_view executable, std::string_view reportFile,
                velocypack::Slice config)
     : _executable(executable), _reportFile(reportFile) {
-  std::cout << config.toJson();
-  velocypack::deserialize(config, _options, {.ignoreMissingFields = true});
+  velocypack::deserializeUnsafe(config, _options,
+                                {.ignoreMissingFields = true});
 }
 
 Runner::~Runner() = default;
@@ -81,7 +81,8 @@ auto Runner::executeRound(std::uint32_t round) -> RoundReport {
   startServer();
   setup();
 
-  auto workload = std::make_shared<workloads::InsertDocuments>();
+  auto workload =
+      std::make_shared<workloads::InsertDocuments>(_options.workload);
   Execution exec(round, _options, workload);
   exec.createThreads(*_server);
   return exec.run();

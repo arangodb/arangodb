@@ -428,6 +428,7 @@ target_link_libraries(arangodbtests
 set(ARANGODB_SEPP_SOURCES
   sepp/main.cpp
   sepp/Execution.cpp
+  sepp/ExecutionThread.cpp
   sepp/Runner.cpp
   sepp/RocksDBOptions.cpp
   sepp/Server.cpp

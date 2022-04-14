@@ -24,10 +24,8 @@
 #pragma once
 
 #include <atomic>
-#include <chrono>
-#include <random>
-#include <thread>
 
+#include "ExecutionThread.h"
 #include "Options.h"
 #include "Report.h"
 
@@ -44,42 +42,7 @@ enum class ExecutionState {
   stopped
 };
 
-enum class ThreadState { starting, running, ready, finished };
-
-struct Execution;
-
-struct ExecutionThread {
-  ExecutionThread(std::uint32_t id, Execution const& exec, Server& server);
-  virtual ~ExecutionThread() = default;
-  virtual void setup() {}
-  virtual void run() = 0;
-  virtual void initialize(std::uint32_t /*numThreads*/) {}
-  [[nodiscard]] virtual ThreadReport report() const { return {{}, 0}; }
-  [[nodiscard]] std::uint32_t id() const { return _id; }
-
- protected:
-  Server& _server;
-
- private:
-  Execution const& _execution;
-  std::uint32_t const _id;
-  std::atomic<ThreadState> _state{ThreadState::starting};
-  std::mt19937_64 _randomizer{};
-  std::thread _thread{};
-  std::chrono::duration<double, std::milli> _runtime{};
-
-  friend struct Execution;
-  void threadFunc();
-  void doRun();
-  void waitUntilAllThreadsAreStarted();
-  void waitUntilInitialization();
-  void waitUntilBenchmarkStarts();
-};
-
 struct Execution {
-  static constexpr std::uint32_t threadIdBits = 16;
-  static constexpr std::uint32_t threadIdMask = (1 << threadIdBits) - 1;
-
   Execution(std::uint32_t round, Options const& options,
             std::shared_ptr<Workload> workload);
   ~Execution();

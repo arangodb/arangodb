@@ -144,8 +144,8 @@ int main(int argc, char const* argv[]) {
     Options options;
     parseOptions(argc, argv, options);
 
-    arangodb::sepp::Runner runner(argv[0], options.report,
-                                  parseConfig(options)->slice());
+    auto config = parseConfig(options);
+    arangodb::sepp::Runner runner(argv[0], options.report, config->slice());
     runner.run();
 
   } catch (const InvalidArgumentException& e) {

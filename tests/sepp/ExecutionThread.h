@@ -23,30 +23,45 @@
 
 #pragma once
 
-#include <cstddef>
+#include <atomic>
+#include <chrono>
+#include <random>
+#include <thread>
 
-#include "RocksDBOptions.h"
-#include "Workloads/InsertDocuments.h"
+#include "Report.h"
 
 namespace arangodb::sepp {
 
-struct Options {
-  std::string databaseDirectory;
-  std::uint32_t runtime;
-  std::uint32_t rounds;
+struct Server;
 
-  workloads::InsertDocuments::Options workload;
+enum class ThreadState { starting, running, ready, finished };
 
-  RocksDBOptions rocksdb;
+struct Execution;
+
+struct ExecutionThread {
+  ExecutionThread(Execution const& exec, Server& server);
+  virtual ~ExecutionThread() = default;
+  virtual void setup() {}
+  virtual void run() = 0;
+  virtual void initialize(std::uint32_t /*numThreads*/) {}
+  [[nodiscard]] virtual ThreadReport report() const { return {{}, 0}; }
+
+ protected:
+  Server& _server;
+
+ private:
+  Execution const& _execution;
+  std::atomic<ThreadState> _state{ThreadState::starting};
+  std::mt19937_64 _randomizer{};
+  std::thread _thread{};
+  std::chrono::duration<double, std::milli> _runtime{};
+
+  friend struct Execution;
+  void threadFunc();
+  void doRun();
+  void waitUntilAllThreadsAreStarted();
+  void waitUntilInitialization();
+  void waitUntilBenchmarkStarts();
 };
-
-template<class Inspector>
-auto inspect(Inspector& f, Options& o) {
-  return f.object(o).fields(
-      f.field("databaseDirectory", o.databaseDirectory).fallback("/tmp/sepp"),
-      f.field("runtime", o.runtime).fallback(10000u),
-      f.field("workload", o.workload).fallback(f.keep()),
-      f.field("rounds", o.rounds).fallback(5u), f.field("rocksdb", o.rocksdb));
-}
 
 }  // namespace arangodb::sepp

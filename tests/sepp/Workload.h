@@ -25,6 +25,7 @@
 
 #include <cstddef>
 #include <memory>
+#include <vector>
 
 namespace arangodb::sepp {
 
@@ -35,8 +36,8 @@ struct ExecutionThread;
 struct Workload {
   virtual ~Workload() = default;
 
-  virtual std::unique_ptr<ExecutionThread> createThread(std::uint32_t id,
-                                                        Execution const& exec,
-                                                        Server& server) = 0;
+  using WorkerThreadList = std::vector<std::unique_ptr<ExecutionThread>>;
+  virtual WorkerThreadList createThreads(Execution const& exec,
+                                         Server& server) = 0;
 };
 }  // namespace arangodb::sepp
