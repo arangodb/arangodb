@@ -59,26 +59,37 @@ void ReplicationTimeoutFeature::collectOptions(
   options->addOption("--cluster.synchronous-replication-timeout-minimum",
                      "all synchronous replication timeouts will be at least "
                      "this value (in seconds)",
-                     new DoubleParameter(&_lowerLimit));
+                     new DoubleParameter(&_lowerLimit),
+                     arangodb::options::makeDefaultFlags(
+                         arangodb::options::Flags::Uncommon,
+                         arangodb::options::Flags::OnDBServer));
 
   options
       ->addOption("--cluster.synchronous-replication-timeout-maximum",
                   "all synchronous replication timeouts will be at most "
                   "this value (in seconds)",
-                  new DoubleParameter(&_upperLimit))
+                  new DoubleParameter(&_upperLimit),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::Uncommon,
+                      arangodb::options::Flags::OnDBServer))
       .setIntroducedIn(30800);
 
   options->addOption(
       "--cluster.synchronous-replication-timeout-factor",
       "all synchronous replication timeouts are multiplied by this factor",
-      new DoubleParameter(&_timeoutFactor));
+      new DoubleParameter(&_timeoutFactor),
+      arangodb::options::makeDefaultFlags(
+          arangodb::options::Flags::Uncommon,
+          arangodb::options::Flags::OnDBServer));
 
   options->addOption(
       "--cluster.synchronous-replication-timeout-per-4k",
       "all synchronous replication timeouts are increased by this amount per "
       "4096 bytes (in seconds)",
       new DoubleParameter(&_timeoutPer4k),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
+      arangodb::options::makeDefaultFlags(
+          arangodb::options::Flags::Uncommon,
+          arangodb::options::Flags::OnDBServer));
 
   options
       ->addOption(
@@ -91,7 +102,8 @@ void ReplicationTimeoutFeature::collectOptions(
           "leader earlier",
           new DoubleParameter(&_shardSynchronizationAttemptTimeout),
           arangodb::options::makeDefaultFlags(
-              arangodb::options::Flags::Uncommon))
+              arangodb::options::Flags::Uncommon,
+              arangodb::options::Flags::OnDBServer))
       .setIntroducedIn(30902);
 }
 
