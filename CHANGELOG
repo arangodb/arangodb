@@ -1,6 +1,10 @@
 devel
 -----
 
+* Fixed BTS-811 in which there was an incongruence between data being
+  checksummed and data being written to `.sst` files, because checksumming 
+  should have been made after the encryption of the data, not before it.
+
 * Increase internal transaction lock timeout on followers during cluster
   write operations. Although writes to the same keys on followers should be
   serialized by the key locks held on the leader, it is still possible that
